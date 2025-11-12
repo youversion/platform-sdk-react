@@ -1,60 +1,130 @@
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Node.js >= 20.0.0](https://img.shields.io/badge/Node.js-%3E%3D%2020.0.0-339933?logo=node.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+
+## Table of Contents
+
+- [@youversion/platform-core](#youversionplatform-core)
+  - [🎯 For Different Use Cases](#-for-different-use-cases)
+  - [🏗 Architecture](#-architecture)
+  - [🚀 Getting Started](#-getting-started)
+  - [📦 Packages](#-packages)
+  - [🛠 Development](#-development)
+  - [🧪 Testing](#-testing)
+  - [📝 Contributing](#-contributing)
+  - [🔧 Configuration](#-configuration)
+  - [📖 API Reference](#-api-reference)
+  - [🔍 TypeScript Types](#-typescript-types)
+  - [🎯 Common Use Cases](#-common-use-cases)
+  - [🚦 Error Handling](#-error-handling)
+  - [📄 License](#-license)
+  - [🤝 Support](#-support)
+
 # @youversion/platform-core
 
 A powerful, type-safe TypeScript library for interacting with Bible data. This package provides a comprehensive API client for fetching Bible versions, books, chapters, verses, and user authentication from the YouVersion Bible API.
 
-## 🚀 Features
+Built with TypeScript for type safety and modern JavaScript tooling.
 
-- **🔒 Type-safe API** - Full TypeScript support with comprehensive type definitions
-- **🌐 Multi-language support** - Access Bible versions in multiple languages
-- **📚 Complete Bible data** - Versions, books, chapters, verses, and metadata
-- **🔐 User authentication** - Secure user authentication with Long Access Tokens (LAT)
-- **⚡ Lightweight** - Minimal dependencies with tree-shaking support
-- **🎯 Easy to use** - Simple, intuitive API design
-- **📦 Modern packaging** - CommonJS and ES Module support
+## 🎯 For Different Use Cases
 
-## 📦 Installation
+### 🔧 API Integration
+
+Need direct access to YouVersion Platform APIs? This core package provides the foundational API client for advanced integration patterns, [see our full API documentation here](https://developers.youversion.com/overview).
+
+## 🏗 Architecture
+
+The core package serves as the internal foundation for the YouVersion Platform SDK ecosystem. It encapsulates:
+
+- **API Client Layer**: Handles HTTP requests, authentication, and error management
+- **Bible Data Models**: Type-safe interfaces for Bible versions, books, chapters, and verses
+- **Authentication Strategies**: Secure user authentication with Long Access Tokens
+- **Utility Functions**: Helpers for data processing and API interactions
+
+This package is bundled into published SDKs and is not distributed separately.
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js >= 20.0.0
+- pnpm >= 9.0.0 (for monorepo development)
+- TypeScript 4.8+
+
+For contribution to this package, ensure you have the full monorepo setup as described in the [main README](../README.md).
+
+### Installation
+
+This is an internal package. For development within the monorepo:
 
 ```bash
-# npm
-npm install @youversion/platform-core
-
-# yarn
-yarn add @youversion/platform-core
-
-# pnpm
-pnpm add @youversion/platform-core
+# From monorepo root
+pnpm install
 ```
 
-## 🔑 Getting Started
+For external use, the functionality is available through published SDK packages.
 
-Before using the library, you'll need to obtain an App ID from the [YouVersion Developer Portal](https://developers.youversion.com/). This is required for API authentication.
+## 📦 Packages
 
-## 🏃 Quick Start
+### @youversion/platform-core (Internal)
 
-```ts
-import { ApiClient, BibleClient } from '@youversion/platform-core'
+TypeScript library for Bible data interaction.
 
-// Initialize the API client
-const apiClient = new ApiClient({
-  appId: 'YOUR_APP_ID', // Required: Get your App ID from https://developers.youversion.com/
-})
+This package contains shared business logic and is bundled into the published `@youversion/platform-react-ui` SDK. It is not published separately.
 
-// Create a Bible client
-const bibleClient = new BibleClient(apiClient)
+## 🛠 Development
 
-// Fetch Bible versions
-const versions = await bibleClient.getVersions('en*')
+### Prerequisites
 
-// Get a specific version
-const version = await bibleClient.getVersion(206) // ESV
+- Node.js >= 20.0.0
+- TypeScript 4.8+
 
-// Fetch books for a version
-const books = await bibleClient.getBooks(206)
+### Building
 
-// Get a specific chapter
-const chapter = await bibleClient.getChapter(206, 'GEN', 1)
-const chapterContent = await bibleClient.getPassage(206, chapter.passage_id)
+```bash
+# Install dependencies (from monorepo root)
+pnpm install
+
+# Build the library
+pnpm build:core
+
+# Run tests (from monorepo root for consistency)
+pnpm test
+
+# Run linting
+pnpm lint
 ```
+
+## 🧪 Testing
+
+The core package includes comprehensive unit tests using Vitest.
+
+```bash
+# Run tests for core package
+pnpm --filter @youversion/platform-core test
+
+# Run tests with coverage
+pnpm --filter @youversion/platform-core test:coverage
+
+# Watch mode for development
+pnpm --filter @youversion/platform-core test:watch
+```
+
+**Testing Architecture:**
+- **Vitest**: Consistent testing framework across the monorepo
+- **Unit Tests**: Cover API clients, data models, and utilities
+- **Integration Tests**: Validate API interactions and error handling
+
+## 📝 Contributing
+
+This is an internal YouVersion package. For contributions:
+
+1. Follow the monorepo contribution guidelines in the [main README](../README.md)
+2. Ensure changes maintain backward compatibility
+3. Add tests for new functionality
+4. Update documentation as needed
+
+For issues or feature requests, please contact the YouVersion development team.
 
 ## 🔧 Configuration
 
@@ -333,37 +403,10 @@ try {
 }
 ```
 
-## 🔧 Development
-
-### Prerequisites
-
-- Node.js 18+
-- TypeScript 4.8+
-
-### Building
-
-```bash
-# Install dependencies
-npm install
-
-# Build the library
-npm run build
-
-# Run tests (from monorepo root for consistency)
-pnpm test
-
-# Run linting
-npm run lint
-```
-
 ## 📄 License
 
-This package is part of the YouVersion Bible SDK and is subject to YouVersion's terms of service.
+This package is part of the YouVersion Platform react SDK and is subject to YouVersion's licensing and terms of service.
 
-## 🤝 Contributing
+## 🤝 Support
 
-This is an internal YouVersion package. For issues or feature requests, please contact the YouVersion development team.
-
-## 📚 Related Packages
-
-- `@youversion/platform-react-ui` - React UI components for Bible applications
+For support, please open an issue in the GitHub repository.
