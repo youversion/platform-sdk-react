@@ -9,8 +9,7 @@
 ![pnpm >= 9.0.0](https://img.shields.io/badge/pnpm-%3E%3D%209.0.0%20(required%20for%20workspace%20management)-F69220?logo=pnpm&logoColor=white)
 ![Changesets](https://img.shields.io/badge/Changesets-Version%20management%20%26%20changelog%20generation-8A2BE2?logo=gitbook&logoColor=white)
 
-![API Extractor](https://img.shields.io/badge/API%20Extractor-Type%20definition%20rollup%20for%20published%20packages-2E8B57?logo=microsoft&logoColor=white)
-
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 
 ## Table of Contents
 
@@ -51,7 +50,13 @@
 
 # YouVersion Platform React SDK
 
-A comprehensive React SDK for integrating YouVersion Platform features into your web applications. This monorepo provides ready-to-use UI components and powerful hooks for Bible content, search, authentication, and more.
+A comprehensive React SDK for integrating [YouVersion Platform](https://platform.youversion.com/) features into your web applications.
+
+This monorepo provides:
+
+1. Core type-safe YouVersion API client for Bible content, search, authentication, and more
+2. Powerful React hooks wrapping the core API client for ease of use
+3. Ready-to-use React components to bring the Bible to everyone, everywhere, every day
 
 Built with pnpm workspaces and Turbo for build orchestration.
 
@@ -75,12 +80,13 @@ Building AI applications with Bible content? Access YouVersion's LLM-optimized e
 
 ```
 ├── packages/
-│   ├── core/        # Private internal package (bundled into SDK)
-│   └── ui/          # @youversion/platform-react-ui (published)
+│   ├── core/        # @youversion/platform-core
+│   ├── hooks/       # @youversion/platform-react-hooks
+│   └── ui/          # @youversion/platform-react-ui
 ├── examples/
-│   └── nextjs/             # Next.js example app
-├── scripts/                # Build and development scripts
-└── tools/                  # Shared configs (TypeScript, ESLint, Testing)
+│   └── nextjs/      # Next.js example app
+├── scripts/         # Build and development scripts
+└── tools/           # Shared configs (TypeScript, ESLint, Testing)
 ```
 
 ### Build Tools
@@ -88,14 +94,7 @@ Building AI applications with Bible content? Access YouVersion's LLM-optimized e
 - **pnpm workspaces** (v9.0.0+) - Package management and workspace linking
 - **Turbo** (v2.0.0) - Build pipeline orchestration with caching
 - **tsup** - TypeScript bundling for React SDK
-- **API Extractor** - Type definition rollup for published packages
 - **Changesets** - Version management and changelog generation
-
-### Dependency Flow
-
-1. `core` contains shared business logic (private package)
-2. The SDK bundles `core` directly (not published separately)
-3. Build order enforced by Turbo: `core` → SDK package
 
 ## 🚀 Getting Started
 
@@ -123,6 +122,22 @@ pnpm verify
 
 ## 📦 Packages
 
+### @youversion/platform-core
+
+A powerful, type-safe TypeScript library for interacting with Bible data. This package provides a comprehensive API client for fetching Bible versions, books, chapters, verses, and user authentication from the YouVersion Bible API.
+
+```bash
+pnpm add @youversion/platform-core
+```
+
+See [packages/core/README.md](packages/core/README.md) for detailed documentation.
+
+### @youversion/platform-hooks
+
+Interact with Bible data using React hooks.
+
+See [packages/hooks/README.md](packages/hooks/README.md) for detailed documentation.
+
 ### @youversion/platform-react-ui
 
 React SDK for web applications.
@@ -135,18 +150,21 @@ pnpm add @youversion/platform-react-ui
 - react (^18.0.0 || ^19.0.0)
 - react-dom (^18.0.0 || ^19.0.0)
 
-### core (Internal)
-
-Private package containing shared business logic. This package is bundled into the SDK during build and is not published separately.
+See [packages/ui/README.md](packages/ui/README.md) for detailed documentation.
 
 ## 🛠 Development
 
 ### Development Environments
 
-The monorepo includes a development script for web development:
+Install package dependencies:
 
 ```bash
-# Web development (Next.js + React SDK)
+pnpm install
+```
+
+Run the example app:
+
+```bash
 pnpm dev:web
 ```
 
@@ -322,7 +340,7 @@ pnpm --filter @youversion/platform-react-hooks test:coverage
 
 ## 📄 License
 
-MIT
+See [LICENSE](./LICENSE)
 
 ## 🤝 Support
 
