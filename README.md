@@ -26,8 +26,9 @@
     - [Prerequisites](#prerequisites)
     - [Installation](#installation)
   - [📦 Packages](#-packages)
+    - [@youversion/platform-core](#youversion/platform-core)
+    - [@youversion/platform-react-hooks](#youversionplatform-react-hooks)
     - [@youversion/platform-react-ui](#youversionplatform-react-ui)
-    - [core (Internal)](#core-internal)
   - [🛠 Development](#-development)
     - [Development Environments](#development-environments)
     - [Component Development with Storybook](#component-development-with-storybook)
@@ -116,7 +117,7 @@ pnpm install
 # Build all packages in dependency order
 pnpm build
 
-# Verify build outputs and type definitions
+# Verify build outputs
 pnpm verify
 ```
 
@@ -155,12 +156,6 @@ See [packages/ui/README.md](packages/ui/README.md) for detailed documentation.
 ## 🛠 Development
 
 ### Development Environments
-
-Install package dependencies:
-
-```bash
-pnpm install
-```
 
 Run the example app:
 
@@ -290,8 +285,6 @@ pnpm --filter @youversion/platform-react-hooks test:coverage
 
 - Shared configurations in `tools/tsconfig/`
 - Strict mode enabled with comprehensive type checking
-- API Extractor generates rolled-up `.d.ts` files for published packages
-- Custom verification ensures no internal package references leak
 
 ### Testing
 
