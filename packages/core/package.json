@@ -1,0 +1,41 @@
+{
+  "name": "@youversion/platform-core",
+  "version": "0.4.0",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "lint": "eslint . --max-warnings 0",
+    "test": "dotenv -e .env.local -- vitest run",
+    "test:watch": "dotenv -e .env.local -- vitest",
+    "test:coverage": "dotenv -e .env.local -- vitest run --coverage"
+  },
+  "devDependencies": {
+    "@internal/eslint-config": "workspace:*",
+    "@internal/tsconfig": "workspace:*",
+    "@vitest/coverage-v8": "^4.0.4",
+    "dotenv-cli": "7.4.2",
+    "eslint": "9.38.0",
+    "jsdom": "^24.0.0",
+    "msw": "2.11.6",
+    "typescript": "5.9.3",
+    "vitest": "4.0.4"
+  },
+  "dependencies": {
+    "tsup": "8.5.0",
+    "zod": "4.1.12"
+  }
+}

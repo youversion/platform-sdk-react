@@ -1,0 +1,844 @@
+/* #region Bible Reader */
+[data-slot='yv-bible-renderer'] {
+  /* Makes it where cascading styles from the parent app do not affect the bible reader */
+  all: unset;
+  --yv-font-family: var(--font-sans), var(--font-serif);
+  --yv-reader-font-size: 20px;
+  --yv-reader-line-height: 1.625;
+  
+  /* Disable text selection and tap highlights on mobile */
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  
+  /* Set default font and line-height for all descendants */
+  & * {
+    line-height: var(--yv-reader-line-height);
+    font-family: var(--yv-font-family);
+    font-size: var(--yv-reader-font-size);
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  
+  /* We want to make sure that the paragraph is not too wide */
+  @apply yv:*:w-full yv:text-primary yv:*:max-w-lg;
+
+  /* Hide metadata and navigation classes */
+  & .id,
+  & .ide,
+  & .sts,
+  & .rem,
+  & .toc1,
+  & .toc2,
+  & .toc3,
+  & .imte,
+  & .ie,
+  & .mte,
+  & .cl {
+    display: none;
+  }
+
+  /* Version/chapter container */
+  & .version {
+    margin-top: 1.6em;
+    padding: 1.2em;
+  }
+
+  /* Chapter label hidden */
+  & .chapter > .label {
+    display: none;
+  }
+
+  /* Verse labels */
+  & .verse > .label,
+  & .fv,
+  & .yv-vlbl {
+    display: inline;
+    padding-right: 0.3em;
+    font-size: 0.5em;
+    color: var(--yv-muted-foreground);
+    line-height: 1em;
+    vertical-align: baseline;
+    position: relative;
+    top: -0.6em;
+    white-space: nowrap;
+  }
+
+  /* Verse marker */
+  & .vp {
+    display: inline;
+    font-size: 0.5em;
+    color: var(--yv-gray-20);
+    line-height: 1em;
+    vertical-align: baseline;
+    position: relative;
+    top: -0.6em;
+  }
+
+  /* Prevent verse label from wrapping away from first word */
+  & .verse > .label + .content,
+  & .yv-vlbl + .content,
+  & .fv + .content {
+    white-space: normal;
+  }
+
+  /* Wrap verse + label + content together to prevent breaking */
+  & .yv-v,
+  & .verse {
+    white-space: nowrap;
+    display: inline;
+  }
+
+  /* Major titles */
+  & .imt,
+  & .imt1,
+  & .mt,
+  & .mt1,
+  & .ms,
+  & .ms1 {
+    font-size: 1.3em;
+    font-weight: bold;
+    line-height: 1.8em;
+    margin: 1em 0 0;
+    display: block;
+  }
+
+  /* Other title */
+  & .iot {
+    font-size: 1.3em;
+    font-weight: 700;
+    line-height: 1.8em;
+    margin: 0.5em 0;
+    display: block;
+  }
+
+  /* Indented ordered list */
+  & .io,
+  & .io1 {
+    list-style-type: disc;
+    margin-left: 1em;
+    display: list-item;
+  }
+
+  & .io2,
+  & .io3 {
+    list-style-type: disc;
+    margin-left: 2em;
+    display: list-item;
+  }
+
+  /* Indented paragraph indent */
+  & .ipi {
+    text-indent: 1.5em;
+  }
+
+  /* Title levels 2-4 */
+  & .imt2,
+  & .imt3,
+  & .imt4,
+  & .mt2,
+  & .mt3,
+  & .mt4 {
+    line-height: 1.8em;
+    margin: 0.5em 0;
+    font-weight: bold;
+    display: block;
+  }
+
+  /* Section headers */
+  & .is,
+  & .s,
+  & .s1,
+  & .ms1,
+  & .is1,
+  & .is2 {
+    font-size: 1.1em;
+    font-weight: bold;
+    line-height: 1.8em;
+    margin: 0 0 0.5em;
+    display: block;
+  }
+
+  & .heading {
+    font-weight: bold;
+    line-height: 1.8em;
+    margin: 0 0 0.5em 0;
+    display: block;
+  }
+
+  /* Notes within headings */
+  & .s1 .note .heading,
+  & .s .note .heading {
+    font-size: 0.67em;
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  & .s1 .note_close,
+  & .s .note_close {
+    font-size: 0.67em;
+  }
+
+  & .s .note,
+  & .is .note,
+  & .s1 .note,
+  & .ms1 .note,
+  & .is1 .note,
+  & .is2 .note,
+  & .mr .note {
+    font-size: 0.9em;
+  }
+
+  /* Other styles within a footnote */
+  & .note .fr {
+    padding-right: 0.25em;
+  }
+
+  & .note .fq,
+  & .note .fqa {
+    font-style: italic;
+  }
+
+  & .note .fv {
+    vertical-align: super;
+    font-size: 0.75em;
+  }
+
+  & .note .fk {
+    font-style: italic;
+    font-weight: bold;
+  }
+
+  /* Paragraphs - text-indent 1em based on iOS CSS */
+  & .p,
+  & .ip {
+    margin-bottom: 0;
+    text-indent: 1em;
+  }
+
+  /* Special paragraph spacing rules */
+  & .pi + .p,
+  & .pi1 + .p,
+  & .s + .pi,
+  & .s + .pi1,
+  & .s1 + .pi,
+  & .s1 + .pi1,
+  & .ms + .p,
+  & .ms1 + .p,
+  & .ms2 + .p,
+  & .q + .m,
+  & .q1 + .m,
+  & .q2 + .m,
+  & .q3 + .m {
+    margin-top: 0.5em;
+    text-indent: 0;
+  }
+
+  & .label + .p {
+    text-indent: 0;
+  }
+
+  & .chapter div:first-child {
+    margin-top: 0;
+  }
+
+  /* Hebrew text heading spacing */
+  & .d + .d {
+    margin-top: -1.25em;
+  }
+
+  /* Complex spacing rules between elements */
+  & .p + .s,
+  & .p + .s1,
+  & .p + .s2,
+  & .p + .ms,
+  & .p + .ms1,
+  & .p + .ms2,
+  & .p + .q,
+  & .p + .q1,
+  & .p + .li,
+  & .p + .li1,
+  & .li + .li2,
+  & .li1 + .li2,
+  & .li2 + .li,
+  & .li2 + .li1,
+  & .m + .s,
+  & .m + .s1,
+  & .m + .s2,
+  & .q + p,
+  & .q1 + .p,
+  & .q2 + .p,
+  & .q + .s,
+  & .q + .s1,
+  & .q + .s2,
+  & .q + .ms,
+  & .q + .ms1,
+  & .q + .ms2,
+  & .q1 + .s,
+  & .q1 + .s1,
+  & .q1 + .s2,
+  & .q1 + .ms,
+  & .q1 + .ms1,
+  & .q1 + .ms2,
+  & .q2 + .s,
+  & .q2 + .s1,
+  & .q2 + .s2,
+  & .q2 + .ms,
+  & .q2 + .m1,
+  & .q2 + .m2,
+  & .q3 + .s,
+  & .q3 + .s1,
+  & .q3 + .s2,
+  & .q3 + .ms,
+  & .q3 + .m1,
+  & .q3 + .m2,
+  & .imt + .is,
+  & .imt + .is1,
+  & .imt1 + .is,
+  & .imt1 + .is1,
+  & .ip + .is,
+  & .ip + .is1,
+  & .io + .is,
+  & .io + .is1,
+  & .io1 + .is,
+  & .io1 + .is1,
+  & .io2 + .is,
+  & .io2 + .is1,
+  & .io3 + .is,
+  & .io3 + .is1,
+  & .ip + .io,
+  & .ip + .io1,
+  & .ip + .io2,
+  & .ip + .io3,
+  & .table + .p,
+  & .p + .table,
+  & .pi1 + .s,
+  & .pi + .s {
+    margin-top: 1em;
+  }
+
+  & .p + .pm,
+  & .p + .pmo,
+  & .p + .pmc,
+  & .p + .q1,
+  & .p + .q2,
+  & .p + .q3,
+  & .p + .q4,
+  & .p + .qr,
+  & .p + .qm1,
+  & .p + .qm2,
+  & .p + .pmr,
+  & .m + .pm,
+  & .m + .pmo,
+  & .m + .pmc,
+  & .m + .q1,
+  & .m + .q2,
+  & .m + .q3,
+  & .m + .q4,
+  & .m + .qr,
+  & .m + .qm1,
+  & .m + .qm2,
+  & .m + .pmr,
+  & .mi + .pm,
+  & .mi + .pmo,
+  & .mi + .pmc,
+  & .mi + .q1,
+  & .mi + .q2,
+  & .mi + .q3,
+  & .mi + .q4,
+  & .mi + .qr,
+  & .mi + .qm1,
+  & .mi + .qm2,
+  & .mi + .pmr,
+  & .pi1 + .pm,
+  & .pi1 + .pmo,
+  & .pi1 + .pmc,
+  & .pi1 + .q1,
+  & .pi1 + .q2,
+  & .pi1 + .q3,
+  & .pi1 + .q4,
+  & .pi1 + .qr,
+  & .pi1 + .qm1,
+  & .pi1 + .qm2,
+  & .pi1 + .pmr,
+  & .pi2 + .pm,
+  & .pi2 + .pmo,
+  & .pi2 + .pmc,
+  & .pi2 + .q1,
+  & .pi2 + .q2,
+  & .pi2 + .q3,
+  & .pi2 + .q4,
+  & .pi2 + .qr,
+  & .pi2 + .qm1,
+  & .pi2 + .qm2,
+  & .pi2 + .pmr,
+  & .pi3 + .pm,
+  & .pi3 + .pmo,
+  & .pi3 + .pmc,
+  & .pi3 + .q1,
+  & .pi3 + .q2,
+  & .pi3 + .q3,
+  & .pi3 + .q4,
+  & .pi3 + .qr,
+  & .pi3 + .qm1,
+  & .pi3 + .qm2,
+  & .pi3 + .pmr,
+  & .li + .pm,
+  & .li + .pmo,
+  & .li + .pmc,
+  & .li + .q1,
+  & .li + .q2,
+  & .li + .q3,
+  & .li + .q4,
+  & .li + .qr,
+  & .li + .qm1,
+  & .li + .qm2,
+  & .li + .pmr,
+  & .li1 + .pm,
+  & .li1 + .pmo,
+  & .li1 + .pmc,
+  & .li1 + .q1,
+  & .li1 + .q2,
+  & .li1 + .q3,
+  & .li1 + .q4,
+  & .li1 + .qr,
+  & .li1 + .qm1,
+  & .li1 + .qm2,
+  & .li1 + .pmr,
+  & .li2 + .pm,
+  & .li2 + .pmo,
+  & .li2 + .pmc,
+  & .li2 + .q1,
+  & .li2 + .q2,
+  & .li2 + .q3,
+  & .li2 + .q4,
+  & .li2 + .qr,
+  & .li2 + .qm1,
+  & .li2 + .qm2,
+  & .li2 + .pmr,
+  & .li3 + .pm,
+  & .li3 + .pmo,
+  & .li3 + .pmc,
+  & .li3 + .q1,
+  & .li3 + .q2,
+  & .li3 + .q3,
+  & .li3 + .q4,
+  & .li3 + .qr,
+  & .li3 + .qm1,
+  & .li3 + .qm2,
+  & .li3 + .pmr,
+  & .li4 + .pm,
+  & .li4 + .pmo,
+  & .li4 + .pmc,
+  & .li4 + .q1,
+  & .li4 + .q2,
+  & .li4 + .q3,
+  & .li4 + .q4,
+  & .li4 + .qr,
+  & .li4 + .qm1,
+  & .li4 + .qm2,
+  & .li4 + .pmr,
+  & .lpi + .pm,
+  & .lpi + .pmo,
+  & .lpi + .pmc,
+  & .lpi + .q1,
+  & .lpi + .q2,
+  & .lpi + .q3,
+  & .lpi + .q4,
+  & .lpi + .qr,
+  & .lpi + .qm1,
+  & .lpi + .qm2,
+  & .lpi + .pmr {
+    margin-top: 0;
+  }
+
+  /* Words of Jesus */
+  & .wj {
+    color: var(--yv-red);
+  }
+
+  /* Name of Deity (small-caps) */
+  & .nd,
+  & .sc {
+    font-variant: small-caps;
+  }
+
+  /* Line break */
+  & .b {
+    line-height: 2em;
+    height: 1em;
+    display: block;
+  }
+
+  /* No-break paragraph */
+  & .m,
+  & .nb {
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
+    text-indent: 0;
+    display: block;
+  }
+
+  /* Poetry quotes */
+  & .q,
+  & .q1 {
+    display: block;
+    padding-left: 2em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  & .q2 {
+    display: block;
+    padding-left: 2em;
+    text-indent: -1em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  & .q3 {
+    display: block;
+    padding-left: 3em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  & .q4 {
+    display: block;
+    padding-left: 4em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  /* Indented paragraphs */
+  & .pi,
+  & .pi1 {
+    display: block;
+    text-indent: 1em;
+    padding-left: 0;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
+  }
+
+  & .pi2 {
+    display: block;
+    text-indent: 2em;
+    padding-left: 1em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
+  }
+
+  & .pi3 {
+    display: block;
+    text-indent: 4em;
+    padding-left: 3em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
+  }
+
+  /* Margin indented */
+  & .mi,
+  & .pm,
+  & .pmo,
+  & .pmc,
+  & .pmr {
+    display: block;
+    text-indent: 0;
+    padding-left: 2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
+  }
+
+  /* Right-aligned */
+  & .pr,
+  & .qr {
+    text-align: right;
+    display: block;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
+  }
+
+  /* Center-aligned */
+  & .pc,
+  & .qc {
+    font-variant: small-caps;
+    text-align: center;
+    font-weight: bold;
+    display: block;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
+  }
+
+  /* Indented quotes */
+  & .iq,
+  & .iq1 {
+    display: block;
+    padding-left: 2em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  & .iq2 {
+    display: block;
+    padding-left: 2em;
+    text-indent: -1em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  & .iq3 {
+    display: block;
+    padding-left: 3em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  & .iq4 {
+    display: block;
+    padding-left: 4em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  /* Quote margin */
+  & .qm,
+  & .qm1 {
+    display: block;
+    padding-left: 2em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  & .qm2 {
+    display: block;
+    padding-left: 2em;
+    text-indent: -1em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  & .qm3 {
+    display: block;
+    padding-left: 3em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  & .qm4 {
+    display: block;
+    padding-left: 4em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  /* Italic text */
+  & .add,
+  & .it,
+  & .tl {
+    font-style: italic;
+  }
+
+  & .qt {
+    font-style: italic;
+  }
+
+  /* Selah */
+  & .qs {
+    display: block;
+    text-align: right;
+    font-style: italic;
+    margin-top: calc(var(--yv-reader-font-size) * 0.5);
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
+  }
+
+  /* Section headers level 2 */
+  & .s2 {
+    display: block;
+    font-weight: bold;
+    line-height: 1.8em;
+    margin: 0 0 0.5em;
+    font-size: 1em;
+  }
+
+  & .s3,
+  & .s4 {
+    display: block;
+    font-weight: bold;
+    line-height: 1.8em;
+    margin: 0 0 0.5em;
+  }
+
+  /* Major section header level 2 */
+  & .ms2 {
+    line-height: 1.8em;
+    margin: 0.5em 0;
+    font-weight: bold;
+    display: block;
+  }
+
+  /* Reference/ruby text */
+  & .r {
+    display: block;
+    font-style: italic;
+    font-weight: bold;
+    line-height: 1.8em;
+    margin: 0 0 0.5em;
+  }
+
+  & .sp,
+  & .sr {
+    display: block;
+    font-style: italic;
+    font-weight: bold;
+    line-height: 1.8em;
+    margin: 0 0 0.5em;
+  }
+
+  & .qa {
+    display: block;
+    font-weight: bold;
+    line-height: 1.8em;
+    margin: 0 0 0.5em;
+  }
+
+  /* Hebrew text heading */
+  & .d {
+    display: block;
+    font-style: italic;
+    font-weight: bold;
+    line-height: 1.8em;
+    margin: 0.5em 0;
+  }
+
+  /* List items */
+  & .li,
+  & .li1 {
+    display: list-item;
+    list-style-type: disc;
+    margin-left: 1em;
+  }
+
+  & .li2 {
+    display: list-item;
+    list-style-type: disc;
+    margin-left: 2em;
+  }
+
+  & .li3,
+  & .li4 {
+    display: list-item;
+    list-style-type: disc;
+  }
+
+  /* Line breaks */
+  & br {
+    line-height: inherit;
+  }
+
+  /* Content classes */
+  & .content {
+    display: inline;
+  }
+
+  /* Footnotes and cross-references */
+  & .footnote,
+  & .crossref {
+    vertical-align: super;
+    font-size: 0.6em;
+    line-height: 0;
+    white-space: nowrap;
+  }
+
+  /* Subscript and superscript */
+  & .sub,
+  & .sup {
+    font-size: 75%;
+    line-height: 0;
+    position: relative;
+    vertical-align: baseline;
+  }
+
+  & .sup {
+    top: -0.25em;
+  }
+
+  & .sub {
+    bottom: -0.1em;
+  }
+
+  /* Tables */
+  & table {
+    width: 100%;
+    background: var(--yv-background);
+    border-radius: 0.5rem;
+    border: 1px solid var(--yv-border);
+    margin-bottom: calc(var(--yv-reader-font-size) * 1);
+    margin-top: calc(var(--yv-reader-font-size) * 0.75);
+    table-layout: auto;
+    font-size: inherit;
+    line-height: normal;
+    border-collapse: separate;
+    border-spacing: 0;
+    overflow: hidden;
+  }
+
+  & table tr:nth-child(odd) {
+    background-color: var(--yv-card);
+  }
+
+  & table td,
+  & .tc {
+    padding: 0.25em;
+    text-align: inherit;
+    vertical-align: top;
+  }
+  
+  & table td:not(:last-child),
+  & table th:not(:last-child) {
+    border-right: 1px solid var(--yv-border);
+  }
+  
+  & table tr:not(:last-child) td,
+  & table tr:not(:last-child) th {
+    border-bottom: 1px solid var(--yv-border);
+  }
+
+  & table td[colspan],
+  & table th[colspan] {
+    border-right: none;
+  }
+
+  & table th,
+  & .th,
+  & .th1 {
+    background: var(--yv-foreground);
+    color: var(--yv-primary-foreground);
+    font-weight: 700;
+    padding: 0.25em;
+    vertical-align: top;
+  }
+
+  & .tcr,
+  & .tcr1 {
+    padding: 0.25em;
+    text-align: right;
+    vertical-align: top;
+  }
+
+  & .thr,
+  & .thr1 {
+    background: var(--yv-foreground);
+    color: var(--yv-primary-foreground);
+    font-weight: 700;
+    padding: 0.25em;
+    text-align: right;
+    vertical-align: top;
+  }
+
+  /* RTL Support */
+  &[dir='rtl'] {
+    direction: rtl;
+    text-align: right;
+  }
+
+  &[dir='rtl'] .p,
+  &[dir='rtl'] .m {
+    text-align: right;
+  }
+}
+/* #endregion */

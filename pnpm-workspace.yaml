@@ -1,0 +1,6 @@
+packages:
+  - "packages/*"
+  - "examples/*"
+  - "tools/*"
+  # Note: shared/ is intentionally not a package - it contains source code
+  # that gets bundled directly into the SDK packages

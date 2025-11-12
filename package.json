@@ -1,0 +1,56 @@
+{
+  "name": "youversion-sdk-monorepo",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build:hooks": "pnpm --filter @youversion/platform-react-hooks build",
+    "build:core": "pnpm --filter @youversion/platform-core build",
+    "build:react": "pnpm --filter @youversion/platform-react-ui build",
+    "build": "pnpm build:core && pnpm build:hooks && pnpm build:react",
+    "verify": "pnpm build",
+    "clean": "rimraf packages/*/dist && rimraf packages/*/node_modules && rimraf ./node_modules",
+    "dev": "turbo dev",
+    "dev:web": "pnpm turbo dev --filter @youversion/platform-react-ui --filter nextjs --filter core --concurrency=10",
+    "test": "pnpm --filter @youversion/platform-core test && pnpm --filter @youversion/platform-react-hooks test && pnpm --filter @youversion/platform-react-ui test",
+    "test:watch": "turbo test:watch",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "turbo build && changeset publish",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@changesets/cli": "2.29.7",
+    "@eslint/eslintrc": "3.3.1",
+    "@microsoft/api-extractor": "7.53.1",
+    "@types/node": "24.9.1",
+    "eslint": "9.38.0",
+    "husky": "9.1.7",
+    "knip": "5.66.3",
+    "lint-staged": "16.2.5",
+    "prettier": "3.6.2",
+    "rimraf": "6.0.1",
+    "tsup": "8.5.0",
+    "turbo": "2.5.8",
+    "typescript": "5.9.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "react": "19.1.0",
+      "react-dom": "19.1.0",
+      "@types/react": "19.1.0",
+      "@types/react-dom": "19.1.0",
+      "vite": ">=5.4.21"
+    }
+  }
+}

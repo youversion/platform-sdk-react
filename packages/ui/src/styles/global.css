@@ -1,0 +1,214 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+Pro:wght@400;700&display=swap');
+@import 'tailwindcss' prefix(yv); /* The CSS linter error is a known issue and does not affect functionality */
+@import 'tw-animate-css';
+@import './bible-reader.css';
+
+/* #region shadcn UI theme */
+@custom-variant dark (&:is([data-yv-sdk][data-yv-theme='dark'] *));
+
+[data-yv-sdk] {
+  /* #region YouVersion Design System Tokens */
+  /* Brand colors */
+  --yv-red: oklch(0.64 0.22 15);
+  --yv-red-dark-mode: oklch(0.68 0.19 15);
+  --yv-warm-neutral: oklch(0.96 0.005 20);
+  --yv-warm-neutral-dm: oklch(0.25 0.005 20);
+
+  /* Expressive palette */
+  --yv-teal-10: oklch(0.95 0.01 195);
+  --yv-teal-20: oklch(0.78 0.01 180);
+  --yv-teal-30-dm: oklch(0.58 0.08 195);
+  --yv-teal-30: oklch(0.52 0.06 195);
+  --yv-teal-40: oklch(0.35 0.04 195);
+  --yv-teal-50: oklch(0.18 0.02 195);
+
+  --yv-blue-10: oklch(0.96 0.02 240);
+  --yv-blue-20: oklch(0.78 0.04 240);
+  --yv-blue-30-dm: oklch(0.62 0.12 240);
+  --yv-blue-30: oklch(0.58 0.08 240);
+  --yv-blue-40: oklch(0.38 0.06 240);
+  --yv-blue-50: oklch(0.22 0.04 240);
+
+  --yv-purple-10: oklch(0.94 0.02 320);
+  --yv-purple-20: oklch(0.76 0.04 320);
+  --yv-purple-30-dm: oklch(0.52 0.08 320);
+  --yv-purple-30: oklch(0.48 0.06 320);
+  --yv-purple-40: oklch(0.32 0.04 320);
+  --yv-purple-50: oklch(0.18 0.02 320);
+
+  --yv-magenta-10: oklch(0.94 0.04 15);
+  --yv-magenta-20: oklch(0.76 0.06 15);
+  --yv-magenta-30-dm: oklch(0.52 0.12 15);
+  --yv-magenta-30: oklch(0.48 0.08 15);
+  --yv-magenta-40: oklch(0.28 0.06 15);
+  --yv-magenta-50: oklch(0.14 0.04 15);
+
+  --yv-orange-10: oklch(0.93 0.04 45);
+  --yv-orange-20: oklch(0.76 0.06 45);
+  --yv-orange-30-dm: oklch(0.62 0.12 45);
+  --yv-orange-30: oklch(0.58 0.08 45);
+  --yv-orange-40: oklch(0.38 0.06 45);
+  --yv-orange-50: oklch(0.22 0.04 45);
+
+  --yv-yellow-10: oklch(0.96 0.04 90);
+  --yv-yellow-20: oklch(0.84 0.06 90);
+  --yv-yellow-30-dm: oklch(0.68 0.12 90);
+  --yv-yellow-30: oklch(0.68 0.08 90);
+  --yv-yellow-40: oklch(0.52 0.08 90);
+  --yv-yellow-50: oklch(0.32 0.06 90);
+
+  --yv-green-10: oklch(0.93 0.02 150);
+  --yv-green-20: oklch(0.78 0.04 150);
+  --yv-green-30-dm: oklch(0.58 0.08 150);
+  --yv-green-30: oklch(0.54 0.06 150);
+  --yv-green-40: oklch(0.36 0.04 150);
+  --yv-green-50: oklch(0.18 0.02 150);
+
+  /* Grayscale palette */
+  --yv-white: oklch(1 0 0);
+  --yv-gray-2: oklch(0.988 0.001 17.2);
+  --yv-gray-5: oklch(0.965 0.001 17.2);
+  --yv-gray-10: oklch(0.925 0.001 17.2);
+  --yv-gray-15: oklch(0.893 0.0022 17.2);
+  --yv-gray-20: oklch(0.788 0.001 17.2);
+  --yv-gray-25: oklch(0.588 0.001 17.2);
+  --yv-gray-30: oklch(0.478 0.001 17.2);
+  --yv-gray-35: oklch(0.378 0.001 17.2);
+  --yv-gray-40: oklch(0.298 0.001 17.2);
+  --yv-gray-45: oklch(0.218 0.001 17.2);
+  --yv-gray-48: oklch(0.178 0.001 17.2);
+  --yv-gray-50: oklch(0.138 0.001 17.2);
+  /* #endregion */
+
+  --yv-background: var(--yv-white);
+  --yv-foreground: var(--yv-gray-50);
+  --yv-card: var(--yv-gray-2);
+  --yv-card-foreground: var(--yv-gray-50);
+  --yv-popover: var(--yv-white);
+  --yv-popover-foreground: var(--yv-gray-50);
+  --yv-primary: var(--yv-gray-50);
+  --yv-primary-foreground: var(--yv-white);
+  --yv-secondary: var(--yv-warm-neutral);
+  --yv-secondary-foreground: var(--yv-gray-50);
+  --yv-muted: var(--yv-gray-5);
+  --yv-muted-foreground: var(--yv-gray-30);
+  --yv-accent: var(--yv-gray-5);
+  --yv-accent-foreground: var(--yv-gray-50);
+  --yv-destructive: var(--yv-red);
+  --yv-destructive-foreground: var(--yv-white);
+  --yv-border: var(--yv-gray-15);
+  --yv-input: var(--yv-gray-5);
+  --yv-ring: var(--yv-blue-30);
+  --yv-chart-1: var(--yv-blue-30);
+  --yv-chart-2: var(--yv-green-30);
+  --yv-chart-3: var(--yv-purple-30);
+  --yv-chart-4: var(--yv-orange-30);
+  --yv-chart-5: var(--yv-magenta-30);
+  --yv-radius: 2rem;
+  --yv-sidebar: var(--yv-gray-2);
+  --yv-sidebar-foreground: var(--yv-gray-50);
+  --yv-sidebar-primary: var(--yv-teal-30);
+  --yv-sidebar-primary-foreground: var(--yv-white);
+  --yv-sidebar-accent: var(--yv-gray-5);
+  --yv-sidebar-accent-foreground: var(--yv-gray-50);
+  --yv-sidebar-border: var(--yv-gray-15);
+  --yv-sidebar-ring: var(--yv-blue-30);
+
+  &[data-yv-theme='dark'] {
+    /* Brand colors - Dark theme */
+    --yv-red: oklch(0.68 0.19 15);
+    --yv-red-dark-mode: oklch(0.64 0.22 15);
+    --yv-warm-neutral: oklch(0.25 0.005 20);
+    --yv-warm-neutral-dm: oklch(0.96 0.005 20);
+  
+    --yv-background: var(--yv-gray-50);
+    --yv-foreground: var(--yv-white);
+    --yv-card: var(--yv-gray-45);
+    --yv-card-foreground: var(--yv-white);
+    --yv-popover: var(--yv-gray-48);
+    --yv-popover-foreground: var(--yv-white);
+    --yv-primary: var(--yv-red-dark-mode);
+    --yv-primary-foreground: var(--yv-white);
+    --yv-secondary: var(--yv-warm-neutral-dm);
+    --yv-secondary-foreground: var(--yv-white);
+    --yv-muted: var(--yv-gray-40);
+    --yv-muted-foreground: var(--yv-gray-10);
+    --yv-accent: var(--yv-gray-30);
+    --yv-accent-foreground: var(--yv-gray-2);
+    --yv-destructive: var(--yv-red);
+    --yv-destructive-foreground: var(--yv-white);
+    --yv-border: var(--yv-gray-35);
+    --yv-input: var(--yv-gray-40);
+    --yv-ring: var(--yv-blue-30-dm);
+    --yv-chart-1: var(--yv-blue-30-dm);
+    --yv-chart-2: var(--yv-green-30-dm);
+    --yv-chart-3: var(--yv-purple-30-dm);
+    --yv-chart-4: var(--yv-orange-30-dm);
+    --yv-chart-5: var(--yv-magenta-30-dm);
+    --yv-sidebar: var(--yv-gray-48);
+    --yv-sidebar-foreground: var(--yv-white);
+    --yv-sidebar-primary: var(--yv-teal-30-dm);
+    --yv-sidebar-primary-foreground: var(--yv-white);
+    --yv-sidebar-accent: var(--yv-gray-40);
+    --yv-sidebar-accent-foreground: var(--yv-white);
+    --yv-sidebar-border: var(--yv-gray-35);
+    --yv-sidebar-ring: var(--yv-blue-30-dm);
+  }
+}
+
+@theme inline {
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: 'Source Serif Pro', serif;
+  --color-background: var(--yv-background);
+  --color-foreground: var(--yv-foreground);
+  --color-card: var(--yv-card);
+  --color-card-foreground: var(--yv-card-foreground);
+  --color-popover: var(--yv-popover);
+  --color-popover-foreground: var(--yv-popover-foreground);
+  --color-primary: var(--yv-primary);
+  --color-primary-foreground: var(--yv-primary-foreground);
+  --color-secondary: var(--yv-secondary);
+  --color-secondary-foreground: var(--yv-secondary-foreground);
+  --color-muted: var(--yv-muted);
+  --color-muted-foreground: var(--yv-muted-foreground);
+  --color-accent: var(--yv-accent);
+  --color-accent-foreground: var(--yv-accent-foreground);
+  --color-destructive: var(--yv-destructive);
+  --color-destructive-foreground: var(--yv-destructive-foreground);
+  --color-border: var(--yv-border);
+  --color-input: var(--yv-input);
+  --color-ring: var(--yv-ring);
+  --color-chart-1: var(--yv-chart-1);
+  --color-chart-2: var(--yv-chart-2);
+  --color-chart-3: var(--yv-chart-3);
+  --color-chart-4: var(--yv-chart-4);
+  --color-chart-5: var(--yv-chart-5);
+  --radius-sm: calc(var(--yv-radius) - 4px);
+  --radius-md: calc(var(--yv-radius) - 2px);
+  --radius-lg: var(--yv-radius);
+  --radius-xl: calc(var(--yv-radius) + 4px);
+  --color-sidebar: var(--yv-sidebar);
+  --color-sidebar-foreground: var(--yv-sidebar-foreground);
+  --color-sidebar-primary: var(--yv-sidebar-primary);
+  --color-sidebar-primary-foreground: var(--yv-sidebar-primary-foreground);
+  --color-sidebar-accent: var(--yv-sidebar-accent);
+  --color-sidebar-accent-foreground: var(--yv-sidebar-accent-foreground);
+  --color-sidebar-border: var(--yv-sidebar-border);
+  --color-sidebar-ring: var(--yv-sidebar-ring);
+}
+
+@layer base {
+  [data-yv-sdk] * {
+    @apply yv:outline-ring/50;
+  }
+  [data-yv-sdk] {
+    @apply yv:bg-background yv:text-foreground yv:font-sans;
+  }
+}
+
+@layer utilities {
+  .trim-both {
+    text-box-trim: trim-both;
+  }
+}
+/* #endregion */

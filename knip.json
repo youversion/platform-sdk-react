@@ -1,0 +1,17 @@
+{
+  "workspaces": {
+    "packages/*": {
+      "project": "src/**/*.{ts,tsx}"
+    }
+  },
+  "ignoreDependencies": [
+    ".*eslint.*",
+    ".*test.*",
+    "tailwindcss",
+    "tsup",
+    "tw-animate-css",
+    "@microsoft/api-extractor",
+    "postcss"
+  ],
+  "ignoreFiles": ["packages/core/src/highlight.ts", "packages/core/src/types/highlight.ts"]
+}

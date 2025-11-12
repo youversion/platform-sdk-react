@@ -1,0 +1,16 @@
+{
+  "extends": "@internal/tsconfig/react.json",
+  "compilerOptions": {
+    "strict": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "types": ["vite/client", "vitest/browser"]
+  },
+  "include": ["src/**/*", ".storybook/**/*", "./index.d.ts"],
+  "exclude": ["node_modules", "dist"]
+}

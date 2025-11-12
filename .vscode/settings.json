@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    // VS Code's CSS LSP by default does not support Tailwind CSS,
+    // so this re-associates CSS files with the Tailwind CSS LSP.
+    "*.css": "tailwindcss"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "onlyChanged": true,
+  "projectId": "$CHROMATIC_PROJECT_ID",
+  "storybookBaseDir": "packages/ui",
+  "zip": true
+}
