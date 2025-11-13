@@ -39,8 +39,8 @@ export function BibleWidgetView({
         versionId={versionId}
       />
 
-      <div className="yv:grid yv:grid-cols-2 yv:items-center yv:mt-8">
-        <div className="yv:text-muted-foreground yv:justify-self-start yv:font-bold yv:text-[0.5rem]">
+      <div className="yv:grid yv:grid-cols-[1fr_auto] yv:gap-4 yv:items-center yv:mt-4">
+        <div className="yv:text-balance yv:text-muted-foreground yv:justify-self-start yv:font-bold yv:text-[0.5rem]">
           {version?.copyright_short}
         </div>
 
