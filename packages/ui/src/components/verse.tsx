@@ -192,7 +192,12 @@ export const BibleTextView = ({
   versionId,
   showVerseNumbers,
 }: BibleTextViewProps): React.ReactElement => {
-  const { passage, loading, error } = usePassage(versionId, reference, 'html');
+  const { passage, loading, error } = usePassage({
+    versionId,
+    usfm: reference,
+    include_headings: true,
+    include_notes: true,
+  });
 
   if (loading) {
     return (

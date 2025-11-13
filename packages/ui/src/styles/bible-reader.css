@@ -1,21 +1,21 @@
 /* #region Bible Reader */
-[data-slot='yv-bible-renderer'] {
+[data-slot="yv-bible-renderer"] {
   /* Makes it where cascading styles from the parent app do not affect the bible reader */
   all: unset;
-  --yv-font-family: var(--font-sans), var(--font-serif);
+  --yv-reader-font-family: var(--font-sans), var(--font-serif);
   --yv-reader-font-size: 20px;
   --yv-reader-line-height: 1.625;
-  
+
   /* Disable text selection and tap highlights on mobile */
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
-  
+
   /* Set default font and line-height for all descendants */
   & * {
     line-height: var(--yv-reader-line-height);
-    font-family: var(--yv-font-family);
+    font-family: var(--yv-reader-font-family);
     font-size: var(--yv-reader-font-size);
     margin: 0;
     padding: 0;
@@ -24,9 +24,9 @@
     -webkit-user-select: none;
     user-select: none;
   }
-  
+
   /* We want to make sure that the paragraph is not too wide */
-  @apply yv:*:w-full yv:text-primary yv:*:max-w-lg;
+  @apply yv:*:w-full yv:text-foreground yv:*:max-w-lg;
 
   /* Hide metadata and navigation classes */
   & .id,
@@ -787,12 +787,12 @@
     text-align: inherit;
     vertical-align: top;
   }
-  
+
   & table td:not(:last-child),
   & table th:not(:last-child) {
     border-right: 1px solid var(--yv-border);
   }
-  
+
   & table tr:not(:last-child) td,
   & table tr:not(:last-child) th {
     border-bottom: 1px solid var(--yv-border);
@@ -831,13 +831,13 @@
   }
 
   /* RTL Support */
-  &[dir='rtl'] {
+  &[dir="rtl"] {
     direction: rtl;
     text-align: right;
   }
 
-  &[dir='rtl'] .p,
-  &[dir='rtl'] .m {
+  &[dir="rtl"] .p,
+  &[dir="rtl"] .m {
     text-align: right;
   }
 }
