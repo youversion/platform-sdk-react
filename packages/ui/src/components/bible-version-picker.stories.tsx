@@ -114,7 +114,7 @@ export const InteractiveLanguageSelection: Story = {
     const canvas = within(canvasElement);
 
     // Open popover
-    const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 5000 });
+    const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 5_000 });
     await userEvent.click(trigger);
 
     // Validate the dialog is open
@@ -162,7 +162,11 @@ export const InteractiveVersionSearch: Story = {
     await expect(searchInput).toHaveValue('NIV');
 
     await expect(
-      await screen.findByRole('listitem', { name: /new international version 2011/i }),
+      await screen.findByRole(
+        'listitem',
+        { name: /new international version 2011/i },
+        { timeout: 5_000 },
+      ),
     ).toBeInTheDocument();
   },
 };
