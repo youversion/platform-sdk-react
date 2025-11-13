@@ -7,9 +7,9 @@
 - [@youversion/platform-core](#youversionplatform-core)
   - [Overview](#overview)
   - [Installation](#installation)
+  - [Related Packages](#related-packages)
   - [Quick Start](#quick-start)
   - [Features and Capabilities](#features-and-capabilities)
-  - [React SDK Packages](#react-sdk-packages)
   - [Configuration](#configuration)
   - [API Reference](#api-reference)
   - [Troubleshooting](#troubleshooting)
@@ -60,6 +60,19 @@ yarn add @youversion/platform-core
 - Node.js >= 20.0.0
 - TypeScript 4.8+ (for development)
 - A YouVersion Platform App ID (Get from https://platform.youversion.com/)
+
+## Related Packages
+
+This package provides low-level API access. Depending on your use case, you may want to consider related packages:
+
+- **[@youversion/platform-react-hooks](../../packages/hooks/README.md)** - React hooks wrapping this core SDK for easier integration in React applications
+- **[@youversion/platform-react-ui](../../packages/ui/README.md)** - Pre-built React components for common Bible features
+
+### When to use each package
+
+- **Core package**: Direct API access, server-side usage, or building your own React integration
+- **React hooks**: When building custom React components with Bible functionality
+- **React UI components**: When you want ready-to-use UI components in your React app
 
 ## Quick Start
 
@@ -188,19 +201,6 @@ results.data.forEach(item => {
 - Access daily Verses of the Day
 - Get the full year's VOTD calendar
 - Retrieve specific day's verse
-
-## React SDK Packages
-
-While `@youversion/platform-core` provides the underlying API functionality, you may be looking for React-specific components and hooks:
-
-- **[React Hooks](../../packages/hooks/README.md)** - React hooks for Bible data, verse selection, search, and more
-- **[React UI Components](../../packages/ui/README.md)** - Pre-built React components like a Bible readers, Bible version pickers, Bible verse widget, and a Verse of the Day component
-
-### When to use each package
-
-- **Core package**: Direct API access, server-side usage, or building your own React integration
-- **React hooks**: When building custom React components with Bible functionality
-- **React UI components**: When you want ready-to-use our UI components in your React app
 
 ## Configuration
 
@@ -876,3 +876,4 @@ For support and questions:
 - Open an issue in the [GitHub repository](https://github.com/youversion/platform-sdk-react)
 - Visit [https://platform.youversion.com/](https://platform.youversion.com/) for developer resources
 - Check existing documentation and examples in this README
+- See [YouVersion Platform SDK Monorepo](../../README.md) for the full SDK overview and all packages
