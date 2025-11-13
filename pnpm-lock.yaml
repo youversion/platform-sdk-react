@@ -299,10 +299,10 @@ importers:
         specifier: 2.11.6
         version: 2.11.6(@types/node@24.9.1)(typescript@5.9.3)
       msw-storybook-addon:
-        specifier: ^2.0.6
+        specifier: 2.0.6
         version: 2.0.6(msw@2.11.6(@types/node@24.9.1)(typescript@5.9.3))
       playwright:
-        specifier: ^1.56.1
+        specifier: 1.56.1
         version: 1.56.1
       storybook:
         specifier: 10.0.0
