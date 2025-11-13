@@ -1,15 +1,26 @@
-'use client';
+"use client";
 
-import { useBibleClient } from './useBibleClient';
-import { useApiData, type UseApiDataOptions } from './useApiData';
-import type { BiblePassage } from '@youversion/platform-core';
+import { useBibleClient } from "./useBibleClient";
+import { useApiData, type UseApiDataOptions } from "./useApiData";
+import type { BiblePassage } from "@youversion/platform-core";
 
-export function usePassage(
-  versionId: number,
-  usfm: string,
-  format: 'html' | 'text' = 'html',
-  options?: UseApiDataOptions,
-): {
+type usePassageProps = {
+  versionId: number;
+  usfm: string;
+  format?: "html" | "text";
+  include_headings?: boolean;
+  include_notes?: boolean;
+  options?: UseApiDataOptions;
+};
+
+export function usePassage({
+  versionId,
+  usfm,
+  format = "html",
+  include_headings = false,
+  include_notes = false,
+  options,
+}: usePassageProps): {
   passage: BiblePassage | null;
   loading: boolean;
   error: Error | null;
@@ -18,11 +29,18 @@ export function usePassage(
   const bibleClient = useBibleClient();
 
   // Don't attempt to fetch if usfm is invalid
-  const isValidUsfm = Boolean(usfm) && usfm !== 'undefined' && usfm !== 'null';
+  const isValidUsfm = Boolean(usfm) && usfm !== "undefined" && usfm !== "null";
 
   const { data, loading, error, refetch } = useApiData<BiblePassage>(
-    () => bibleClient.getPassage(versionId, usfm, format),
-    [bibleClient, versionId, usfm, format],
+    () =>
+      bibleClient.getPassage(
+        versionId,
+        usfm,
+        format,
+        include_headings,
+        include_notes,
+      ),
+    [bibleClient, versionId, usfm, format, include_headings, include_notes],
     { enabled: options?.enabled !== false && isValidUsfm },
   );
 
