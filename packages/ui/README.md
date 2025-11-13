@@ -117,7 +117,7 @@ Add custom styles after importing `@youversion/platform-react-ui/styles.css`:
   /* Override Bible reader styles */
   --yv-reader-font-size: 18px;
   --yv-reader-line-height: 1.5;
-  --yv-font-family: 'Your Font', serif;
+  --yv-reader-font-family: 'Your Font', serif;
 }
 ```
 
@@ -132,7 +132,7 @@ Add custom styles after importing `@youversion/platform-react-ui/styles.css`:
 - `--yv-destructive`, `--yv-destructive-foreground`: Error/destructive colors
 
 #### Bible Reader
-- `--yv-font-family`: Font stack for Bible text (defaults to Inter and Source Serif Pro)
+- `--yv-reader-font-family`: Font stack for Bible text (defaults to Inter and Source Serif Pro)
 - `--yv-reader-font-size`: Font size for verses (default: 20px)
 - `--yv-reader-line-height`: Line height for verses (default: 1.625)
 - `--yv-red`, `--yv-red-dark-mode`: Color for words of Jesus
