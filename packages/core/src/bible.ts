@@ -64,7 +64,7 @@ export class BibleClient {
   ): Promise<Collection<BibleVersion>> {
     this.languageRangesSchema.parse(language_ranges);
     const params: Record<string, string | number> = {
-      language_ranges,
+      'language_ranges[]': language_ranges,
     };
     if (license_id !== undefined) {
       params.license_id = license_id;
