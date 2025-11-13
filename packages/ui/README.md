@@ -7,8 +7,11 @@
 - [@youversion/platform-react-ui](#youversionplatform-react-ui)
   - [Overview](#overview)
   - [Installation](#installation)
+  - [When to Use This Package](#when-to-use-this-package)
   - [Related Packages](#related-packages)
+  - [Setup: Provider Configuration](#setup-provider-configuration)
   - [Quick Start](#quick-start)
+  - [Common Patterns](#common-patterns)
   - [Features and Capabilities](#features-and-capabilities)
   - [Theming](#theming)
   - [Components Reference](#components-reference)
@@ -75,6 +78,19 @@ pnpm install react@19.0.0
 
 - YouVersion Platform App ID (Get from [https://platform.youversion.com/](https://platform.youversion.com/))
 
+## When to Use This Package
+
+Use `@youversion/platform-react-ui` when you need:
+- ✅ Production-ready Bible components for your React app
+- ✅ Pre-styled components with light/dark mode
+- ✅ Minimal setup—wrap your app with providers and use components
+- ✅ Consistent, accessible UI out of the box
+- ✅ Authentication, verse display, and Bible reading experiences
+
+**Use other packages instead if:**
+- ❌ Need low-level API access → Use `@youversion/platform-core` for direct client
+- ❌ Want custom UI → Use `@youversion/platform-react-hooks` to build custom components
+
 ## Related Packages
 
 This package builds on two other core packages in the SDK:
@@ -82,25 +98,31 @@ This package builds on two other core packages in the SDK:
 - **[@youversion/platform-core](../../packages/core/README.md)** - Low-level TypeScript SDK for direct API access to Bible data, authentication, and search functionality
 - **[@youversion/platform-react-hooks](../../packages/hooks/README.md)** - React hooks wrapping the core SDK for declarative data fetching with loading and error states
 
-## Quick Start
+## Setup: Provider Configuration
 
-### 1. Import Styles
+This package requires two providers to function:
 
-Import the CSS once at your app's root entry point:
+### 1. BibleSDKProvider (Required)
 
-**Next.js App Router** (`app/layout.tsx`):
+Initializes the API client that all components depend on:
+
 ```tsx
-import '@youversion/platform-react-ui/styles.css';
+<BibleSDKProvider appId="YOUR_APP_ID">
+  {/* Components work here */}
+</BibleSDKProvider>
 ```
 
-**Vite/SPA** (`main.tsx`):
+### 2. YVPProvider (Required)
+
+Manages authentication and YouVersion Platform features:
+
 ```tsx
-import '@youversion/platform-react-ui/styles.css';
+<YVPProvider config={{ appId: 'YOUR_APP_ID' }}>
+  {/* Authenticated components work here */}
+</YVPProvider>
 ```
 
-### 2. Add Providers
-
-Wrap your app with the required providers:
+### Complete Setup Example
 
 ```tsx
 import { BibleSDKProvider, YVPProvider } from '@youversion/platform-react-ui';
@@ -110,28 +132,117 @@ function App() {
   return (
     <BibleSDKProvider appId="YOUR_APP_ID">
       <YVPProvider config={{ appId: 'YOUR_APP_ID' }}>
+        {/* All components work here */}
         <YourApp />
       </YVPProvider>
     </BibleSDKProvider>
   );
 }
-
-export default App;
 ```
 
-### 3. Use a Component
+> **⚠️ Missing Provider Error:** If components don't render correctly, check that both `BibleSDKProvider` and `YVPProvider` wrap your component tree. Errors will indicate which provider is missing.
+
+## Quick Start
+
+### Complete Setup Example: Next.js App Router
+
+**1. Import styles in `app/layout.tsx`:**
 
 ```tsx
-import { SignInButton } from '@youversion/platform-react-ui';
+import '@youversion/platform-react-ui/styles.css';
 
-export default function Page() {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+**2. Add providers in your root layout or app component:**
+
+```tsx
+import { BibleSDKProvider, YVPProvider } from '@youversion/platform-react-ui';
+import '@youversion/platform-react-ui/styles.css';
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>
+        <BibleSDKProvider appId={process.env.NEXT_PUBLIC_APP_ID!}>
+          <YVPProvider config={{ appId: process.env.NEXT_PUBLIC_APP_ID! }}>
+            {children}
+          </YVPProvider>
+        </BibleSDKProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+**3. Use components in your pages:**
+
+```tsx
+import { SignInButton, VerseOfTheDay } from '@youversion/platform-react-ui';
+
+export default function Home() {
   return (
     <div>
-      <h1>Welcome</h1>
+      <h1>Welcome to Bible App</h1>
       <SignInButton />
+      <VerseOfTheDay />
     </div>
   );
 }
+```
+
+### Complete Setup Example: Vite/SPA
+
+**1. Import styles in `main.tsx`:**
+
+```tsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { BibleSDKProvider, YVPProvider } from '@youversion/platform-react-ui';
+import '@youversion/platform-react-ui/styles.css';
+import App from './App';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <BibleSDKProvider appId={import.meta.env.VITE_APP_ID}>
+      <YVPProvider config={{ appId: import.meta.env.VITE_APP_ID }}>
+        <App />
+      </YVPProvider>
+    </BibleSDKProvider>
+  </React.StrictMode>
+);
+```
+
+**2. Use components in your app:**
+
+```tsx
+import { SignInButton, VerseOfTheDay } from '@youversion/platform-react-ui';
+
+function App() {
+  return (
+    <div>
+      <h1>Welcome to Bible App</h1>
+      <SignInButton />
+      <VerseOfTheDay />
+    </div>
+  );
+}
+
+export default App;
 ```
 
 ## Features and Capabilities
@@ -458,6 +569,131 @@ pnpm --filter @youversion/platform-react-ui test:watch
 
 # Run tests with coverage
 pnpm --filter @youversion/platform-react-ui test:coverage
+```
+
+## Common Patterns
+
+### Pattern 1: Display Bible Verse with Version Picker
+
+```tsx
+import { BibleSDKProvider, YVPProvider } from '@youversion/platform-react-ui';
+import { BibleVersionPicker, BibleVerseText } from '@youversion/platform-react-ui';
+import '@youversion/platform-react-ui/styles.css';
+
+function VerseDisplay() {
+  const [versionId, setVersionId] = React.useState(111); // NIV
+
+  return (
+    <div>
+      <BibleVersionPicker selected={versionId} onSelect={setVersionId} />
+      <BibleVerseText versionId={versionId} usfm="JHN.3.16" />
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BibleSDKProvider appId="YOUR_APP_ID">
+      <YVPProvider config={{ appId: 'YOUR_APP_ID' }}>
+        <VerseDisplay />
+      </YVPProvider>
+    </BibleSDKProvider>
+  );
+}
+```
+
+### Pattern 2: Build a Simple Bible Reader
+
+```tsx
+import React from 'react';
+import { BibleSDKProvider, YVPProvider } from '@youversion/platform-react-ui';
+import { BibleChapterPicker, BibleChapterText } from '@youversion/platform-react-ui';
+import '@youversion/platform-react-ui/styles.css';
+
+function BibleReader() {
+  const [versionId, setVersionId] = React.useState(111);
+  const [bookId, setBookId] = React.useState('JHN');
+  const [chapterId, setChapterId] = React.useState(3);
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+        <select value={versionId} onChange={(e) => setVersionId(Number(e.target.value))}>
+          <option value={111}>NIV</option>
+          <option value={112}>ESV</option>
+          <option value={113}>NKJV</option>
+        </select>
+        <BibleChapterPicker
+          versionId={versionId}
+          selected={{ bookId, chapterId }}
+          onSelect={({ bookId: b, chapterId: c }) => {
+            setBookId(b);
+            setChapterId(c);
+          }}
+        />
+      </div>
+      <BibleChapterText versionId={versionId} bookId={bookId} chapterId={chapterId} />
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BibleSDKProvider appId="YOUR_APP_ID">
+      <YVPProvider config={{ appId: 'YOUR_APP_ID' }}>
+        <BibleReader />
+      </YVPProvider>
+    </BibleSDKProvider>
+  );
+}
+```
+
+### Pattern 3: Search and Display Results
+
+```tsx
+import React from 'react';
+import { BibleSDKProvider, YVPProvider } from '@youversion/platform-react-ui';
+import { useSearch } from '@youversion/platform-react-hooks';
+import '@youversion/platform-react-ui/styles.css';
+
+function SearchResults() {
+  const [query, setQuery] = React.useState('love');
+  const [versionId, setVersionId] = React.useState(111);
+  const { results, loading, error } = useSearch(query, versionId);
+
+  return (
+    <div>
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search the Bible..."
+      />
+      
+      {loading && <p>Searching...</p>}
+      {error && <p>Error: {error.message}</p>}
+      
+      <div>
+        {results?.data?.map((result) => (
+          <div key={result.usfm}>
+            <strong>{result.reference}</strong>
+            <p>{result.text}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BibleSDKProvider appId="YOUR_APP_ID">
+      <YVPProvider config={{ appId: 'YOUR_APP_ID' }}>
+        <SearchResults />
+      </YVPProvider>
+    </BibleSDKProvider>
+  );
+}
 ```
 
 ## Troubleshooting

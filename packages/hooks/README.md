@@ -7,7 +7,9 @@
 - [@youversion/platform-react-hooks](#youversionplatform-react-hooks)
   - [Overview](#overview)
   - [Installation](#installation)
+  - [When to Use This Package](#when-to-use-this-package)
   - [Related Packages](#related-packages)
+  - [Setup: Provider Configuration](#setup-provider-configuration)
   - [Quick Start](#quick-start)
   - [Features and Capabilities](#features-and-capabilities)
   - [API Reference](#api-reference)
@@ -15,6 +17,7 @@
     - [Bible Content Hooks](#bible-content-hooks)
     - [Search and Language Hooks](#search-and-language-hooks)
     - [Context Providers](#context-providers)
+  - [Troubleshooting](#troubleshooting)
   - [Development](#development)
   - [License](#license)
   - [Support](#support)
@@ -64,6 +67,19 @@ This package requires React 19.0.0 or higher as a peer dependency:
 pnpm install react@19.0.0
 ```
 
+## When to Use This Package
+
+Use `@youversion/platform-react-hooks` when you need:
+- ✅ Building custom React components with Bible features
+- ✅ Declarative data fetching with automatic loading/error states
+- ✅ Control over component UI while using reusable hooks
+- ✅ Integration with existing React component libraries
+- ✅ Server-side rendering compatible hooks (recommended for most React apps)
+
+**Use other packages instead if:**
+- ❌ Need direct API access → Use `@youversion/platform-core` for low-level client
+- ❌ Want ready-made UI → Use `@youversion/platform-react-ui` for production components
+
 ## Related Packages
 
 This package provides React hooks wrapping the core SDK. Depending on your use case, you may want to consider related packages:
@@ -71,33 +87,78 @@ This package provides React hooks wrapping the core SDK. Depending on your use c
 - **[@youversion/platform-core](../../packages/core/README.md)** - Core TypeScript SDK for direct API access (this hooks package depends on it)
 - **[@youversion/platform-react-ui](../../packages/ui/README.md)** - Pre-built React components for common Bible features
 
-### When to use each package
+## Setup: Provider Configuration
 
-- **Core package**: Direct API access, server-side usage, or when you need more control
-- **React hooks**: When building custom React components with Bible functionality (recommended for most React apps)
-- **React UI components**: When you want ready-to-use UI components in your React app
+All hooks in this package require the `BibleSDKProvider` to be wrapped around your application or component subtree. This provider initializes the API client and context required by all hooks.
+
+### BibleSDKProvider (Required)
+
+The `BibleSDKProvider` is the foundation for all hooks. It requires your YouVersion Platform App ID:
+
+```tsx
+import { BibleSDKProvider } from '@youversion/platform-react-hooks';
+
+function App() {
+  return (
+    <BibleSDKProvider appId="YOUR_APP_ID">
+      {/* All hooks work here */}
+    </BibleSDKProvider>
+  );
+}
+```
+
+### Optional Providers
+
+For advanced use cases, additional providers can be nested:
+
+- **`ReaderProvider`** - Manages reader state for building custom Bible readers
+- **`VerseSelectionProvider`** - Manages verse selection state
+
+These are typically used when building custom reading experiences:
+
+```tsx
+import { BibleSDKProvider, ReaderProvider, VerseSelectionProvider } from '@youversion/platform-react-hooks';
+
+function App() {
+  return (
+    <BibleSDKProvider appId="YOUR_APP_ID">
+      <ReaderProvider>
+        <VerseSelectionProvider>
+          {/* Custom reader component here */}
+        </VerseSelectionProvider>
+      </ReaderProvider>
+    </BibleSDKProvider>
+  );
+}
+```
+
+> **⚠️ Missing Provider Error:** If you use a hook without wrapping it in `BibleSDKProvider`, you'll get: `Error: useBibleClient must be used within a BibleSDKProvider`. Always ensure providers wrap your component tree.
 
 ## Quick Start
 
-### Basic Bible Content Retrieval
+### Basic Setup
 
 > [!important]
 > While this is an example of how to use the `usePassage` hook, we recommend using the `BibleVerseText` component in the `@youversion/platform-react-ui` package for proper verse formatting that honors the Bible Publishers intended way to display the Bible text. 
 
 ```tsx
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { BibleSDKProvider, useVersion, usePassage } from '@youversion/platform-react-hooks';
 
 function BibleVerse() {
-  const { version, loading, error } = useVersion(111); // New International Version
+  const { version, loading: versionLoading, error: versionError } = useVersion(111);
   const { passage, loading: passageLoading, error: passageError } = usePassage(111, 'JHN.3.16');
 
-  if (loading || passageLoading) return <div>Loading...</div>;
-  if (error || passageError) return <div>Error: {error?.message || passageError?.message}</div>;
+  if (versionLoading || passageLoading) return <div>Loading...</div>;
+  
+  if (versionError) return <div>Version Error: {versionError.message}</div>;
+  if (passageError) return <div>Passage Error: {passageError.message}</div>;
 
   return (
     <div>
       <h1>{passage?.human_reference}</h1>
+      <p>Version: {version?.abbreviation}</p>
+      {/* We recommend using the BibleVerseText component in our @youversion/platform-react-ui package instead of this example approach */}
       <div dangerouslySetInnerHTML={{ __html: passage?.content || '' }} />
     </div>
   );
@@ -896,6 +957,55 @@ function VerseSelectorComponent() {
 - `isSelected`: (usfm: string) => boolean - Check if verse is selected
 - `clearSelection`: () => void - Clear all selections
 - `selectedCount`: number - Number of selected verses
+
+## Troubleshooting
+
+### Provider Not Found Error
+
+**Error:** `Error: useBibleClient must be used within a BibleSDKProvider`
+
+**Solution:** Ensure `BibleSDKProvider` wraps your component tree:
+
+```tsx
+// ❌ Wrong - hook used outside provider
+function MyComponent() {
+  const { client } = useBibleClient(); // ERROR!
+}
+
+// ✅ Correct - hook used inside provider
+function App() {
+  return (
+    <BibleSDKProvider appId="YOUR_APP_ID">
+      <MyComponent />
+    </BibleSDKProvider>
+  );
+}
+```
+
+### Invalid App ID Error
+
+**Error:** `Error: Invalid appId provided`
+
+**Solution:** Verify your App ID:
+- Get your App ID from https://platform.youversion.com/
+- Ensure it's passed correctly: `<BibleSDKProvider appId="your_actual_id">`
+- Check for typos or extra whitespace
+- Verify the app is active (not archived)
+
+### Hook Validation Error
+
+**Error:** `Error: Invalid parameters passed to hook`
+
+**Solution:** Check hook arguments:
+- Version IDs must be numbers (e.g., `useVersion(111)`)
+- Passage references must be valid USFM (e.g., `usePassage(111, 'JHN.3.16')`)
+- Verify you're using enabled hooks correctly with the `enabled` option:
+
+```tsx
+const { passage, loading, error } = usePassage(111, 'JHN.3.16', {
+  enabled: true // Disable with false to prevent fetching
+});
+```
 
 ## Development
 

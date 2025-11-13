@@ -7,7 +7,9 @@
 - [@youversion/platform-core](#youversionplatform-core)
   - [Overview](#overview)
   - [Installation](#installation)
+  - [When to Use This Package](#when-to-use-this-package)
   - [Related Packages](#related-packages)
+  - [Setup & Configuration](#setup--configuration)
   - [Quick Start](#quick-start)
   - [Features and Capabilities](#features-and-capabilities)
   - [Configuration](#configuration)
@@ -61,6 +63,19 @@ yarn add @youversion/platform-core
 - TypeScript 4.8+ (for development)
 - A YouVersion Platform App ID (Get from https://platform.youversion.com/)
 
+## When to Use This Package
+
+Use `@youversion/platform-core` when you need:
+- ✅ Direct access to YouVersion Platform APIs
+- ✅ Server-side/Node.js Bible data fetching
+- ✅ Full control over API calls and data handling
+- ✅ Building custom React integrations
+- ✅ Minimal dependencies (works anywhere JavaScript runs)
+
+**Use other packages instead if:**
+- ❌ Building React components → Use `@youversion/platform-react-hooks` for hooks with automatic state management
+- ❌ Need ready-made UI → Use `@youversion/platform-react-ui` for production-ready components
+
 ## Related Packages
 
 This package provides low-level API access. Depending on your use case, you may want to consider related packages:
@@ -68,33 +83,69 @@ This package provides low-level API access. Depending on your use case, you may 
 - **[@youversion/platform-react-hooks](../../packages/hooks/README.md)** - React hooks wrapping this core SDK for easier integration in React applications
 - **[@youversion/platform-react-ui](../../packages/ui/README.md)** - Pre-built React components for common Bible features
 
-### When to use each package
+## Setup & Configuration
 
-- **Core package**: Direct API access, server-side usage, or building your own React integration
-- **React hooks**: When building custom React components with Bible functionality
-- **React UI components**: When you want ready-to-use UI components in your React app
+Unlike React packages, `@youversion/platform-core` doesn't use providers. Instead, you initialize API clients directly:
 
-## Quick Start
+1. **Create an ApiClient** with your YouVersion Platform App ID
+2. **Use specialized clients** (BibleClient, SearchClient, AuthClient) for different API features
+3. **Set access tokens** only when needed for authenticated endpoints
 
-### Basic Bible Content Retrieval
+### Installation & Initialization
 
 ```ts
 import { ApiClient, BibleClient } from '@youversion/platform-core'
 
-// Initialize the API client with your App ID
+// Step 1: Initialize the API client (required)
 const apiClient = new ApiClient({
   appId: 'YOUR_APP_ID', // Get from https://platform.youversion.com/
 })
 
+// Step 2: Create specialized clients as needed
 const bibleClient = new BibleClient(apiClient)
+const searchClient = new SearchClient(apiClient)
 
-// Get English Bible versions
+// Step 3: Make API calls
 const versions = await bibleClient.getVersions('en*')
-console.log(versions.data[0].title) // "English Standard Version"
-
-// Get a specific passage
 const passage = await bibleClient.getPassage(111, 'JHN.3.16')
-console.log(passage.content) // "For God so loved the world..."
+```
+
+## Quick Start
+
+### Basic Bible Content Retrieval with Error Handling
+
+```ts
+import { ApiClient, BibleClient } from '@youversion/platform-core'
+
+async function main() {
+  try {
+    // Initialize the API client with your App ID
+    const apiClient = new ApiClient({
+      appId: 'YOUR_APP_ID', // Get from https://platform.youversion.com/
+    })
+
+    const bibleClient = new BibleClient(apiClient)
+
+    // Get English Bible versions
+    const versions = await bibleClient.getVersions('en*')
+    console.log(versions.data[0].title) // "English Standard Version"
+
+    // Get a specific passage
+    const passage = await bibleClient.getPassage(111, 'JHN.3.16')
+    console.log(passage.content) // "For God so loved the world..."
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('Error fetching Bible data:', error.message)
+      
+      // Common errors:
+      // - "Invalid appId" - Check your App ID from platform.youversion.com
+      // - "Network error" - Check your internet connection
+      // - "404 Not Found" - Invalid passage or version ID
+    }
+  }
+}
+
+main()
 ```
 
 ### Authentication Setup
