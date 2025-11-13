@@ -114,11 +114,8 @@ cd yvp-react-sdk
 # Install dependencies (uses pnpm workspaces)
 pnpm install
 
-# Build all packages in dependency order
+# Build all packages in dependency order (with Turbo caching)
 pnpm build
-
-# Verify build outputs and type definitions
-pnpm verify
 ```
 
 ## 📦 Packages
@@ -186,9 +183,6 @@ pnpm build
 # Build specific packages
 pnpm build:core    # Build core
 pnpm build:react   # Build React SDK
-
-# Verify build outputs and type definitions
-pnpm verify
 ```
 
 ### Development Commands

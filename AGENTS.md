@@ -43,8 +43,8 @@ pnpm test:watch
 pnpm --filter @youversion/platform-core test:coverage
 pnpm --filter @youversion/platform-react-hooks test:coverage
 
-# Verify build outputs and type definitions
-pnpm verify
+# Build and verify outputs
+pnpm build
 ```
 
 ### Release Process

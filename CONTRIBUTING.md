@@ -10,7 +10,7 @@ This monorepo uses a private workspace package (`core`) for internal shared code
 
 - ❌ Do not deep import from the shared package. Always use package name `core` from the SDK.
 - ❌ `core` is private; never publish it.
-- ✅ Every PR must pass `pnpm verify` (build + DTS checks).
+- ✅ Every PR must pass `pnpm build` (includes type definitions and linting).
 - ✅ Keep shared exports behind barrels (`core`, `api`). Don't deep-import internals.
 - ✅ If you add new barrels in shared, update the "exports" map and rebuild the SDK.
 - ✅ Prefer small, stable types in shared; mark non-API items with `/** @internal */` to keep them out of public .d.ts.
@@ -18,7 +18,7 @@ This monorepo uses a private workspace package (`core`) for internal shared code
 ### Development Workflow
 
 1. Make your changes
-2. Run `pnpm verify` to ensure builds pass and type checking succeeds
+2. Run `pnpm build` to ensure builds pass and type checking succeeds
 3. Run tests with `pnpm test` (sequential execution for clear output)
 4. Submit your PR
 
