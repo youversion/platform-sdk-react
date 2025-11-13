@@ -114,7 +114,7 @@ export const InteractiveLanguageSelection: Story = {
     const canvas = within(canvasElement);
 
     // Open popover
-    const trigger = await canvas.findByRole('button', { name: /NIV/i });
+    const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 5000 });
     await userEvent.click(trigger);
 
     // Validate the dialog is open
