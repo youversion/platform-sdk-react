@@ -1,7 +1,7 @@
 
 ![image](/assets/github-react-sdk-banner.png)
 
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![License](https://img.shields.io/badge/license-Apache%20License%202.0-blue)
 ![Node.js >= 20.0.0](https://img.shields.io/badge/Node.js-%3E%3D%2020.0.0-339933?logo=node.js&logoColor=white)
 ![Turbo](https://img.shields.io/badge/Turbo-v2.0.0-000000?logo=turbo&logoColor=white)
 ![tsup](https://img.shields.io/badge/tsup-TypeScript%20bundling%20for%20React%20SDK-3178C6?logo=typescript&logoColor=white)
