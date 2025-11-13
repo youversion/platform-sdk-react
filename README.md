@@ -16,7 +16,8 @@
 - [YouVersion Platform React SDK](#youversion-platform-react-sdk)
   - [🎯 For Different Use Cases](#-for-different-use-cases)
     - [🎨 UI Component Library](#-ui-component-library)
-    - [🔧 API Integration](#-api-integration)
+    - [🔧 Building Custom Components](#-building-custom-components)
+    - [🔌 API Integration](#-api-integration)
     - [🤖 LLM Integration](#-llm-integration)
   - [🏗 Architecture](#-architecture)
     - [Package Structure](#package-structure)
@@ -26,7 +27,7 @@
     - [Prerequisites](#prerequisites)
     - [Installation](#installation)
   - [📦 Packages](#-packages)
-    - [@youversion/platform-core](#youversion/platform-core)
+    - [@youversion/platform-core](#youversionplatform-core)
     - [@youversion/platform-react-hooks](#youversionplatform-react-hooks)
     - [@youversion/platform-react-ui](#youversionplatform-react-ui)
   - [🛠 Development](#-development)
@@ -65,11 +66,15 @@ Built with pnpm workspaces and Turbo for build orchestration.
 
 ### 🎨 UI Component Library
 
-Ready to add Bible features to your app? Install this React SDK `@youversion/platform-react-ui` for pre-built React components including verse displays, chapter navigation, search interfaces, and reading experiences.
+Ready to add Bible features to your app? Install `@youversion/platform-react-ui` for pre-built React components including verse displays, chapter navigation, search interfaces, and reading experiences.
 
-### 🔧 API Integration
+### 🔧 Building Custom Components
 
-Need direct access to YouVersion Platform APIs? See YouVersions comprehensive Platform API documentation and advanced integration patterns, [see our full API documentation here](https://developers.youversion.com/overview).
+Need more control over the UI? Use `@youversion/platform-react-hooks` to build custom components with React hooks for declarative data fetching and Bible content integration.
+
+### 🔌 API Integration
+
+Need direct access to YouVersion Platform APIs? Use `@youversion/platform-core` for a type-safe client library, or [see our full API documentation here](https://developers.youversion.com/overview) for advanced integration patterns.
 
 ### 🤖 LLM Integration
 
@@ -114,6 +119,8 @@ Building AI applications with Bible content? Access YouVersion's LLM-optimized e
 
 ### Installation
 
+> **⚠️ pnpm Required:** This monorepo uses pnpm workspaces for development. While individual packages work with npm/yarn when installed via npm registry, local development requires **pnpm >= 9.0.0**. Verify with `pnpm --version`.
+
 ```bash
 # Clone the repository
 git clone https://github.com/youversion/yvp-react-sdk.git
@@ -143,9 +150,13 @@ pnpm add @youversion/platform-core
 
 See [packages/core/README.md](packages/core/README.md) for detailed documentation.
 
-### @youversion/platform-hooks
+### @youversion/platform-react-hooks
 
-Interact with Bible data using React hooks.
+Interact with Bible data using React hooks for custom component development.
+
+```bash
+pnpm add @youversion/platform-react-hooks
+```
 
 **Use this package** if you need direct API access without React components or hooks.
 
