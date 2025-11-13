@@ -55,9 +55,6 @@ const meta = {
     showSunIcon: {
       control: 'boolean',
     },
-    showReadFullChapterButton: {
-      control: 'boolean',
-    },
     showBibleAppAttribution: {
       control: 'boolean',
     },
@@ -78,7 +75,6 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   args: {
     showSunIcon: true,
-    showReadFullChapterButton: true,
     showBibleAppAttribution: true,
     showShareButton: true,
     size: 'default',
@@ -122,7 +118,6 @@ export const Minimal: Story = {
   args: {
     showSunIcon: false,
     showShareButton: false,
-    showReadFullChapterButton: false,
     showBibleAppAttribution: false,
   },
 };
