@@ -26,20 +26,8 @@
   }
 
   /* We want to make sure that the paragraph is not too wide */
-  @apply yv:*:w-full yv:text-primary yv:*:max-w-lg;
-}
+  @apply yv:*:w-full yv:text-foreground yv:*:max-w-lg;
 
-/* Dark theme override for Bible text */
-[data-yv-theme="dark"] [data-slot="yv-bible-renderer"] {
-  @apply yv:text-foreground;
-}
-
-/* Dark theme override for Bible App logo text */
-[data-yv-theme="dark"] svg path[fill="#121212"] {
-  fill: white !important;
-}
-
-[data-slot="yv-bible-renderer"] {
   /* Hide metadata and navigation classes */
   & .id,
   & .ide,
