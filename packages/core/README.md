@@ -97,7 +97,55 @@ YouVersionPlatformConfiguration.setAccessToken('YOUR_LONG_ACCESS_TOKEN')
 const authClient = new AuthClient(apiClient)
 const user = await authClient.getUser('YOUR_LONG_ACCESS_TOKEN')
 console.log(user.first_name)
+console.log(user.id)
 ```
+
+### OAuth Sign-In Flow
+
+For applications that need to authenticate users via OAuth, use the `YouVersionAPIUsers` utility class:
+
+```ts
+import {
+  YouVersionAPIUsers,
+  YouVersionPlatformConfiguration,
+  SignInWithYouVersionPermission
+} from '@youversion/platform-core'
+
+// Set your app ID first
+YouVersionPlatformConfiguration.appId = 'YOUR_APP_ID'
+
+// Define required and optional permissions
+const requiredPermissions = new Set([
+  SignInWithYouVersionPermission.bibles
+])
+
+const optionalPermissions = new Set([
+  SignInWithYouVersionPermission.votd
+])
+
+// Initiate sign-in flow
+const result = await YouVersionAPIUsers.signIn(requiredPermissions, optionalPermissions)
+
+if (result.accessToken) {
+  console.log('User signed in:', result.yvpUserId)
+  console.log('Granted permissions:', result.permissions)
+
+  // Get user info
+  const userInfo = await YouVersionAPIUsers.userInfo(result.accessToken)
+  console.log(userInfo.first_name, userInfo.last_name)
+} else if (result.errorMsg) {
+  console.error('Sign-in failed:', result.errorMsg)
+}
+
+// Sign out when done
+YouVersionAPIUsers.signOut()
+```
+
+**Available Permissions:**
+- `SignInWithYouVersionPermission.bibles` - Access to Bible content
+- `SignInWithYouVersionPermission.votd` - Access Verse of the Day
+- `SignInWithYouVersionPermission.demographics` - User demographic information
+- `SignInWithYouVersionPermission.bibleActivity` - User's Bible reading activity
 
 ### Search Functionality
 
@@ -108,7 +156,8 @@ const searchClient = new SearchClient(apiClient)
 
 const results = await searchClient.search('love', 111)
 results.data.forEach(item => {
-  console.log(item.usfm, item.text) // "JHN.3.16", "For God so loved..."
+  console.log(item.usfm) // "JHN.3.16"
+  // Note: Use bibleClient.getPassage() to retrieve the actual verse text
 })
 ```
 
@@ -351,9 +400,10 @@ console.log(verses.data.length) // 31
   data: [
     {
       id: "GEN.1.1",
+      book_id: "GEN",
+      chapter_id: "1",
       passage_id: "GEN.1.1",
-      reference: "Genesis 1:1",
-      verse_num: 1
+      reference: "Genesis 1:1"
     }
   ]
 }
@@ -407,11 +457,14 @@ const formatted = await bibleClient.getPassage(111, 'JHN.3.16', 'html', true, tr
 **Response Example:**
 ```ts
 {
-  reference: "John 3:16",
-  content: "<p><span class=\"verse-num\">16</span> For God so loved the world...</p>",
-  html: "<p>...</p>"
+  id: "JHN.3.16",
+  bible_id: 111,
+  human_reference: "John 3:16",
+  content: "<p><span class=\"verse-num\">16</span> For God so loved the world...</p>"
 }
 ```
+
+**Note:** The `content` field contains the formatted text (HTML or plain text depending on the `format` parameter).
 
 ---
 
@@ -537,19 +590,25 @@ const page2 = await languagesClient.getLanguages({
   data: [
     {
       id: "en",
-      name: "English",
+      language: "en",
       script: "Latn",
-      region: "US"
+      display_names: { "en": "English" },
+      countries: ["US"],
+      text_direction: "ltr"
     },
     {
       id: "es",
-      name: "Español",
+      language: "es",
       script: "Latn",
-      region: "US"
+      display_names: { "en": "Spanish", "es": "Español" },
+      countries: ["US", "MX", "ES"],
+      text_direction: "ltr"
     }
   ]
 }
 ```
+
+**Note:** The Language type contains many additional optional fields including `script_name`, `aliases`, `scripts`, `variants`, `writing_population`, `speaking_population`, and `default_bible_version_id`.
 
 ---
 
@@ -559,7 +618,7 @@ Fetch details about a specific language.
 
 ```ts
 const english = await languagesClient.getLanguage('en')
-console.log(english.name) // "English"
+console.log(english.display_names?.en) // "English"
 
 // With script specification
 const serbianCyrillic = await languagesClient.getLanguage('sr-Cyrl')
@@ -587,8 +646,11 @@ const results = await searchClient.search('The Lord is my shepherd', 111)
 
 results.data.forEach(item => {
   console.log(item.usfm) // "PSA.23.1"
-  console.log(item.text) // "The Lord is my shepherd..."
 })
+
+// To get the actual verse text, use getPassage()
+const verseText = await bibleClient.getPassage(111, results.data[0].usfm)
+console.log(verseText.content) // "The Lord is my shepherd..."
 
 // Search in different version
 const nltResults = await searchClient.search('love', 206)
@@ -603,17 +665,94 @@ const nltResults = await searchClient.search('love', 206)
 {
   data: [
     {
-      usfm: "PSA.23.1",
-      text: "The Lord is my shepherd; I shall not want.",
-      book: "Psalms",
-      chapter: 23,
-      verse: 1
+      usfm: "PSA.23.1"
     }
   ],
-  meta: {
-    query: "The Lord is my shepherd",
-    count: 5
-  }
+  did_you_mean: [],
+  filters: {
+    books: [{ count: 1, usfm: "PSA" }],
+    canons: [{ count: 1, section: "ot" }]
+  },
+  next_page: false,
+  page_size: 20,
+  query: "The Lord is my shepherd",
+  search_instead_for: null,
+  user_intent: "unknown"
+}
+```
+
+**Note:** Search results only contain USFM identifiers. Use `BibleClient.getPassage()` to retrieve the actual verse text for each result.
+
+---
+
+### YouVersionAPIUsers
+
+Utility class for OAuth authentication flow with YouVersion.
+
+#### Methods
+
+##### `static signIn(requiredPermissions: Set<SignInWithYouVersionPermissionValues>, optionalPermissions: Set<SignInWithYouVersionPermissionValues>): Promise<SignInWithYouVersionResult>`
+
+Initiates the OAuth sign-in flow with YouVersion.
+
+```ts
+import { YouVersionAPIUsers, SignInWithYouVersionPermission } from '@youversion/platform-core'
+
+const result = await YouVersionAPIUsers.signIn(
+  new Set([SignInWithYouVersionPermission.bibles]),
+)
+
+if (result.accessToken) {
+  console.log('Access token:', result.accessToken)
+  console.log('User ID:', result.yvpUserId)
+  console.log('Permissions:', result.permissions)
+}
+```
+
+**Parameters:**
+- `requiredPermissions` (Set, required): Permissions that must be granted for successful sign-in
+- `optionalPermissions` (Set, required): Permissions requested but not required
+
+**Returns:** `SignInWithYouVersionResult` with:
+- `accessToken: string | null` - The Long Access Token (LAT)
+- `yvpUserId: string | null` - The YouVersion user ID
+- `permissions: string[]` - Array of granted permissions
+- `errorMsg: string | null` - Error message if sign-in failed
+
+---
+
+##### `static signOut(): void`
+
+Clears the stored access token.
+
+```ts
+YouVersionAPIUsers.signOut()
+```
+
+---
+
+##### `static userInfo(accessToken: string): Promise<YouVersionUserInfo>`
+
+Retrieves user profile information using an access token.
+
+```ts
+const userInfo = await YouVersionAPIUsers.userInfo('YOUR_ACCESS_TOKEN')
+console.log(userInfo.first_name)
+console.log(userInfo.last_name)
+console.log(userInfo.id)
+console.log(userInfo.getAvatarUrl())
+```
+
+**Parameters:**
+- `accessToken` (string, required): The Long Access Token from sign-in
+
+**Response Example:**
+```ts
+{
+  id: "user_123",
+  first_name: "John",
+  last_name: "Doe",
+  avatar_url: "https://..."
 }
 ```
 
@@ -634,7 +773,6 @@ const authClient = new AuthClient(apiClient)
 
 const user = await authClient.getUser('YOUR_LONG_ACCESS_TOKEN')
 console.log(user.first_name)
-console.log(user.email)
 console.log(user.id)
 ```
 
@@ -645,9 +783,9 @@ console.log(user.id)
 ```ts
 {
   id: "user_123",
+  avatar_url: "https://...",
   first_name: "John",
-  last_name: "Doe",
-  email: "john@example.com"
+  last_name: "Doe"
 }
 ```
 
