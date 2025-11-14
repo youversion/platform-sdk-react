@@ -69,6 +69,10 @@
     white-space: nowrap;
   }
 
+  &[data-show-verse-numbers] .yv-vlbl {
+    @apply yv:hidden;
+  }
+
   /* Footnote */
   /* TODO - Implement footnotes */
   & .yv-n {
