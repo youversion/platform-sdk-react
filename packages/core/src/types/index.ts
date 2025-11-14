@@ -14,13 +14,6 @@ export type {
 export type { Language } from '../schemas/language';
 export type { User } from '../schemas/user';
 export type { Highlight, CreateHighlight } from '../schemas/highlight';
-export type {
-  SearchResultItem,
-  SearchBookFilter,
-  SearchCanonFilter,
-  SearchFilters,
-  SearchResponse,
-} from '../schemas/search';
 export type { Collection } from '../schemas/collection';
 
 // Re-export internal/non-API types
