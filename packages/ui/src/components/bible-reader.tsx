@@ -128,9 +128,16 @@ function Content() {
   return (
     <main className="yv:*:max-w-lg yv:flex yv:flex-col yv:items-center yv:gap-6 yv:overflow-y-auto yv:px-6 yv:max-sm:px-4 yv:py-12 yv:h-full">
       <h1 className="yv:flex yv:gap-2 yv:flex-col yv:justify-center yv:items-center yv:font-serif yv:text-muted-foreground yv:font-medium">
-        <span className="yv:leading-none yv:block yv:text-2xl">{bookData?.title || book}</span>
+        <span
+          className={cn(
+            'yv:leading-none yv:block yv:text-2xl yv:transition-[filter]',
+            !bookData?.title && 'yv:blur-sm',
+          )}
+        >
+          {bookData?.title || 'Loading...'}
+        </span>
         <span className="yv:leading-none yv:block yv:ml-2 yv:text-[2.5rem] yv:font-normal">
-          {chapter}
+          {chapter || '-'}
         </span>
       </h1>
 
