@@ -151,8 +151,8 @@ function Content() {
       />
 
       {version?.copyright_short && (
-        <footer>
-          <p className="yv:text-balance yv:text-sm yv:text-center yv:text-muted-foreground yv:line-clamp-3">
+        <footer style={{ fontSize }}>
+          <p className="yv:text-balance yv:text-[0.75em] yv:text-center yv:text-muted-foreground">
             {version.copyright_short}
           </p>
         </footer>
