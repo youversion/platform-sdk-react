@@ -85,19 +85,30 @@ export function YVPProvider({
 
       if (storedCallback) {
         try {
-          const result = new SignInWithYouVersionResult(storedCallback);
-          const { accessToken, errorMsg } = result;
+          // Retrieve authentication data from localStorage
+          const accessToken = YouVersionPlatformConfiguration.accessToken;
+          const refreshToken = YouVersionPlatformConfiguration.refreshToken;
+          const expiryDate = YouVersionPlatformConfiguration.tokenExpiryDate;
 
-          if (accessToken) {
-            YouVersionPlatformConfiguration.setAccessToken(accessToken);
-          }
+          const result = new SignInWithYouVersionResult({
+            accessToken: accessToken ?? undefined,
+            expiresIn: expiryDate
+              ? Math.floor((expiryDate.getTime() - Date.now()) / 1000)
+              : undefined,
+            refreshToken: refreshToken ?? undefined,
+            permissions: undefined,
+            yvpUserId: undefined,
+            name: undefined,
+            profilePicture: undefined,
+            email: undefined,
+          });
 
           setAuthState({
             isAuthenticated: !!accessToken,
             isLoading: false,
             accessToken: accessToken ?? null,
             result,
-            error: errorMsg ? new Error(errorMsg) : null,
+            error: null,
           });
         } catch (error) {
           setAuthState({

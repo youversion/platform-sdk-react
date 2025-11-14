@@ -4,16 +4,15 @@ import {
   type AuthenticationState,
   type YouVersionUserInfo,
   type SignInWithYouVersionPermissionValues,
-  type SignInWithYouVersionResult,
 } from '@youversion/platform-core';
 import { useCallback } from 'react';
 
 export function useAuthentication(): {
   auth: AuthenticationState;
   signIn: (
-    requiredPermissions?: SignInWithYouVersionPermissionValues[],
+    permissions?: SignInWithYouVersionPermissionValues[],
     optionalPermissions?: SignInWithYouVersionPermissionValues[],
-  ) => Promise<SignInWithYouVersionResult>;
+  ) => Promise<void>;
   signOut: () => void;
   fetchUserInfo: () => Promise<YouVersionUserInfo>;
 } {
@@ -24,10 +23,8 @@ export function useAuthentication(): {
       requiredPermissions: SignInWithYouVersionPermissionValues[] = [],
       optionalPermissions: SignInWithYouVersionPermissionValues[] = [],
     ) => {
-      return await YouVersionAPIUsers.signIn(
-        new Set(requiredPermissions),
-        new Set(optionalPermissions),
-      );
+      const allPermissions = [...requiredPermissions, ...optionalPermissions];
+      return await YouVersionAPIUsers.signIn(new Set(allPermissions));
     },
     [],
   );

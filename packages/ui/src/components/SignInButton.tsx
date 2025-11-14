@@ -140,11 +140,7 @@ export const SignInButton = React.forwardRef<HTMLButtonElement, SignInButtonProp
       setLocalLoading(true);
 
       try {
-        const result = await signIn(requiredPermissions, optionalPermissions);
-
-        if (onSuccess) {
-          onSuccess(result);
-        }
+        await signIn(requiredPermissions, optionalPermissions);
       } catch (error) {
         if (onAuthError) {
           onAuthError(error as Error);
