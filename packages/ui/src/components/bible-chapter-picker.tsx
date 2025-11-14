@@ -214,7 +214,16 @@ function Root({
   );
 }
 
-export type TriggerProps = React.ComponentProps<typeof PopoverTrigger>;
+export type TriggerProps = Omit<React.ComponentProps<typeof PopoverTrigger>, 'children'> & {
+  children?:
+    | React.ReactNode
+    | ((props: {
+        book: string;
+        chapter: string;
+        currentBook: BibleBook | undefined;
+        loading: boolean;
+      }) => React.ReactNode);
+};
 
 function Trigger({ asChild = true, children, ...props }: TriggerProps) {
   const { book, chapter, background, versionId } = useBibleChapterPickerContext();
@@ -225,11 +234,16 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
     ? 'Loading...'
     : `${currentBook?.title || 'Select a chapter'}${chapter ? ` ${chapter}` : ''}`;
 
+  const content =
+    typeof children === 'function'
+      ? children({ book, chapter, currentBook, loading })
+      : children || (
+          <Button variant={background === 'light' ? 'outline' : 'default'}>{buttonText}</Button>
+        );
+
   return (
     <PopoverTrigger asChild={asChild} {...props}>
-      {children || (
-        <Button variant={background === 'light' ? 'outline' : 'default'}>{buttonText}</Button>
-      )}
+      {content}
     </PopoverTrigger>
   );
 }
