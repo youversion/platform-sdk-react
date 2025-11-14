@@ -134,7 +134,7 @@ function Root({
           </section>
 
           <Accordion
-            className="yv:relative yv:overflow-y-auto yv:bg-background yv:mx-6 yv:shadow-[inset_0_-16px_16px_-12px_rgba(0,0,0,0.1)]"
+            className="yv:relative yv:overflow-y-auto yv:bg-background yv:mx-6"
             type="single"
             collapsible
             defaultValue={defaultBook || book || 'GEN'}
