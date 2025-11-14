@@ -69,6 +69,12 @@
     white-space: nowrap;
   }
 
+  /* Footnote */
+  /* TODO - Implement footnotes */
+  & .yv-n {
+    display: none;
+  }
+
   /* Verse marker */
   & .vp {
     display: inline;
