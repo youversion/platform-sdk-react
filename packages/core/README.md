@@ -380,7 +380,7 @@ console.log(verse.reference) // "Genesis 1:1"
 
 ##### `getPassage(versionId: number, usfm: string, format?: 'html' | 'text', include_headings?: boolean, include_notes?: boolean): Promise<BiblePassage>`
 
-Fetch a passage (one or more verses) with formatted content. **Recommended method for retrieving verse text** instead of individual verse calls.
+Fetch a passage (one or more verses) with formatted content. **This is the recommended method for retrieving verse text** instead of individual verse calls in order to preserve proper formatting of paragraphs, tables, etc.
 
 ```ts
 // Single verse
