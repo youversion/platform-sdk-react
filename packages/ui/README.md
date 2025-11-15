@@ -76,7 +76,7 @@ pnpm install react@19.0.0
 
 ### Prerequisites
 
-- YouVersion Platform App ID (Get from [https://platform.youversion.com/](https://platform.youversion.com/))
+- YouVersion Platform App Key (Get from [https://platform.youversion.com/](https://platform.youversion.com/))
 
 ## When to Use This Package
 
@@ -95,8 +95,10 @@ Use `@youversion/platform-react-ui` when you need:
 
 This package builds on two other core packages in the SDK:
 
-- **[@youversion/platform-core](../../packages/core/README.md)** - Low-level TypeScript SDK for direct API access to Bible data, authentication, and search functionality
+- **[@youversion/platform-core](../../packages/core/README.md)** - Low-level TypeScript SDK for direct API access to Bible data and authentication
 - **[@youversion/platform-react-hooks](../../packages/hooks/README.md)** - React hooks wrapping the core SDK for declarative data fetching with loading and error states
+
+For complete parameter and configuration documentation, see the [Core SDK API Reference](../../packages/core/README.md#configuration).
 
 ## Setup: Provider Configuration
 
@@ -107,7 +109,7 @@ This package requires two providers to function:
 Initializes the API client that all components depend on:
 
 ```tsx
-<BibleSDKProvider appId="YOUR_APP_ID">
+<BibleSDKProvider appKey="YOUR_APP_KEY">
   {/* Components work here */}
 </BibleSDKProvider>
 ```
@@ -117,7 +119,7 @@ Initializes the API client that all components depend on:
 Manages authentication and YouVersion Platform features:
 
 ```tsx
-<YVPProvider config={{ appId: 'YOUR_APP_ID' }}>
+<YVPProvider config={{ appKey: import.meta.env.YVP_APP_KEY }}>
   {/* Authenticated components work here */}
 </YVPProvider>
 ```
@@ -130,8 +132,8 @@ import '@youversion/platform-react-ui/styles.css';
 
 function App() {
   return (
-    <BibleSDKProvider appId="YOUR_APP_ID">
-      <YVPProvider config={{ appId: 'YOUR_APP_ID' }}>
+    <BibleSDKProvider appKey="YOUR_APP_KEY">
+      <YVPProvider config={{ appKey: import.meta.env.YVP_APP_KEY }}>
         {/* All components work here */}
         <YourApp />
       </YVPProvider>
@@ -178,8 +180,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <BibleSDKProvider appId={process.env.NEXT_PUBLIC_APP_ID!}>
-          <YVPProvider config={{ appId: process.env.NEXT_PUBLIC_APP_ID! }}>
+        <BibleSDKProvider appKey={import.meta.env.YVP_APP_KEY}>
+          <YVPProvider config={{ appKey: import.meta.env.YVP_APP_KEY }}>
             {children}
           </YVPProvider>
         </BibleSDKProvider>
@@ -218,8 +220,8 @@ import App from './App';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BibleSDKProvider appId={import.meta.env.VITE_APP_ID}>
-      <YVPProvider config={{ appId: import.meta.env.VITE_APP_ID }}>
+    <BibleSDKProvider appKey={import.meta.env.VITE_APP_KEY}>
+      <YVPProvider config={{ appKey: import.meta.env.VITE_APP_KEY }}>
         <App />
       </YVPProvider>
     </BibleSDKProvider>
@@ -290,9 +292,9 @@ import { BibleSDKProvider, YVPProvider } from '@youversion/platform-react-ui';
 
 export default function App() {
   return (
-    <BibleSDKProvider appId="YOUR_APP_ID">
+    <BibleSDKProvider appKey="YOUR_APP_KEY">
       <YVPProvider
-        config={{ appId: 'YOUR_APP_ID' }}
+        config={{ appKey: import.meta.env.YVP_APP_KEY }}
         theme="dark"  // 'light' | 'dark' (default: 'light')
       >
         <YourApp />
@@ -312,9 +314,9 @@ export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   return (
-    <BibleSDKProvider appId="YOUR_APP_ID">
+    <BibleSDKProvider appKey="YOUR_APP_KEY">
       <YVPProvider
-        config={{ appId: 'YOUR_APP_ID' }}
+        config={{ appKey: import.meta.env.YVP_APP_KEY }}
         theme={theme}
       >
         <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
@@ -386,7 +388,7 @@ export default function Page() {
 ```
 
 **Props:**
-- `reference`: Bible reference in USFM format (e.g., `"JHN.3.16"` for John 3:16, `"GEN.1.1-5"` for a range) (required)
+- `reference`: Bible reference in USFM format (e.g., `"JHN.3.16"` for John 3:16, `"GEN.1.1-5"` for a range) (required) - [YouVersion API Docs](https://developers.youversion.com/api)
 - `versionId`: Bible version ID (e.g., 1 for KJV) (required)
 - `fontFamily`: Optional font family for the text
 - `fontSize`: Optional font size in pixels
@@ -443,14 +445,14 @@ See [@youversion/platform-react-hooks documentation](../../packages/hooks/README
 
 #### BibleSDKProvider
 
-Required provider that configures the YouVersion Platform SDK. Pass your App ID here.
+Required provider that configures the YouVersion Platform SDK. Pass your App Key here.
 
 ```tsx
 import { BibleSDKProvider } from '@youversion/platform-react-ui';
 
 function App() {
   return (
-    <BibleSDKProvider appId="YOUR_APP_ID">
+    <BibleSDKProvider appKey="YOUR_APP_KEY">
       {/* Your components */}
     </BibleSDKProvider>
   );
@@ -458,7 +460,7 @@ function App() {
 ```
 
 **Props:**
-- `appId`: Your YouVersion Platform App ID (required)
+- `appKey`: Your YouVersion Platform App Key (required)
 
 #### YVPProvider
 
@@ -470,7 +472,7 @@ import { YVPProvider } from '@youversion/platform-react-ui';
 function App() {
   return (
     <YVPProvider 
-      config={{ appId: 'YOUR_APP_ID' }} 
+      config={{ appKey: import.meta.env.YVP_APP_KEY }} 
       theme="light"
     >
       {/* Your components */}
@@ -480,7 +482,7 @@ function App() {
 ```
 
 **Props:**
-- `config`: Configuration object with `appId` (required)
+- `config`: Configuration object with `appKey` (required)
 - `theme`: Theme mode (`'light'` | `'dark'`, default: `'light'`)
 
 ## Development
@@ -543,7 +545,7 @@ Create a `.env.local` file in `packages/ui/` with:
 
 ```bash
 # Required for Storybook components that interact with YouVersion API
-STORYBOOK_YOUVERSION_APP_ID="your-app-id"
+STORYBOOK_YOUVERSION_APP_KEY="your-app-id"
 ```
 
 **Start Storybook:**
@@ -593,8 +595,8 @@ function VerseDisplay() {
 
 export default function App() {
   return (
-    <BibleSDKProvider appId="YOUR_APP_ID">
-      <YVPProvider config={{ appId: 'YOUR_APP_ID' }}>
+    <BibleSDKProvider appKey="YOUR_APP_KEY">
+      <YVPProvider config={{ appKey: import.meta.env.YVP_APP_KEY }}>
         <VerseDisplay />
       </YVPProvider>
     </BibleSDKProvider>
@@ -620,7 +622,7 @@ function BibleReader() {
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
         <select value={versionId} onChange={(e) => setVersionId(Number(e.target.value))}>
           <option value={111}>NIV</option>
-          <option value={112}>ESV</option>
+          <option value={206}>NLT</option>
           <option value={113}>NKJV</option>
         </select>
         <BibleChapterPicker
@@ -639,8 +641,8 @@ function BibleReader() {
 
 export default function App() {
   return (
-    <BibleSDKProvider appId="YOUR_APP_ID">
-      <YVPProvider config={{ appId: 'YOUR_APP_ID' }}>
+    <BibleSDKProvider appKey="YOUR_APP_KEY">
+      <YVPProvider config={{ appKey: import.meta.env.YVP_APP_KEY }}>
         <BibleReader />
       </YVPProvider>
     </BibleSDKProvider>
@@ -687,8 +689,8 @@ function SearchResults() {
 
 export default function App() {
   return (
-    <BibleSDKProvider appId="YOUR_APP_ID">
-      <YVPProvider config={{ appId: 'YOUR_APP_ID' }}>
+    <BibleSDKProvider appKey="YOUR_APP_KEY">
+      <YVPProvider config={{ appKey: import.meta.env.YVP_APP_KEY }}>
         <SearchResults />
       </YVPProvider>
     </BibleSDKProvider>
@@ -719,7 +721,7 @@ import '@youversion/platform-react-ui/styles.css';
 
 **Problem:** Components show error or fallback states in Storybook.
 
-**Solution:** Ensure `STORYBOOK_YOUVERSION_APP_ID` is set in `packages/ui/.env.local`. Components will use fallback demo values if the environment variable is not set.
+**Solution:** Ensure `STORYBOOK_YOUVERSION_APP_KEY` is set in `packages/ui/.env.local`. Components will use fallback demo values if the environment variable is not set.
 
 ### Provider Errors
 
@@ -728,8 +730,8 @@ import '@youversion/platform-react-ui/styles.css';
 **Solution:** Wrap your component tree with both required providers at the app root:
 
 ```tsx
-<BibleSDKProvider appId="YOUR_APP_ID">
-  <YVPProvider config={{ appId: 'YOUR_APP_ID' }}>
+<BibleSDKProvider appKey="YOUR_APP_KEY">
+  <YVPProvider config={{ appKey: import.meta.env.YVP_APP_KEY }}>
     {/* Your components */}
   </YVPProvider>
 </BibleSDKProvider>

@@ -21,7 +21,7 @@
 
 # @youversion/platform-core
 
-A powerful, type-safe TypeScript SDK for accessing the YouVersion Platform APIs. Get Bible content, search verses, and build Bible-based applications with full authentication support.
+A type-safe TypeScript SDK for accessing the YouVersion Platform APIs. Get Bible content and build Bible-based applications with full authentication support.
 
 ## Overview
 
@@ -29,7 +29,6 @@ A powerful, type-safe TypeScript SDK for accessing the YouVersion Platform APIs.
 
 - Access Bible data (versions, books, chapters, verses, passages)
 - Authenticate users with OAuth
-- Search Bible content
 - Access language information
 - Fetch Verse of the Day
 
@@ -61,7 +60,7 @@ yarn add @youversion/platform-core
 
 - Node.js >= 20.0.0
 - TypeScript 4.8+ (for development)
-- A YouVersion Platform App ID (Get from https://platform.youversion.com/)
+- A YouVersion Platform App Key (Get from https://platform.youversion.com/)
 
 ## When to Use This Package
 
@@ -87,8 +86,8 @@ This package provides low-level API access. Depending on your use case, you may 
 
 Unlike React packages, `@youversion/platform-core` doesn't use providers. Instead, you initialize API clients directly:
 
-1. **Create an ApiClient** with your YouVersion Platform App ID
-2. **Use specialized clients** (BibleClient, SearchClient, AuthClient) for different API features
+1. **Create an ApiClient** with your YouVersion Platform App Key
+2. **Use specialized clients** (BibleClient, AuthClient) for different API features
 3. **Set access tokens** only when needed for authenticated endpoints
 
 ### Installation & Initialization
@@ -98,12 +97,11 @@ import { ApiClient, BibleClient } from '@youversion/platform-core'
 
 // Step 1: Initialize the API client (required)
 const apiClient = new ApiClient({
-  appId: 'YOUR_APP_ID', // Get from https://platform.youversion.com/
+  appKey: import.meta.env.YVP_APP_KEY, // Get from https://platform.youversion.com/
 })
 
 // Step 2: Create specialized clients as needed
 const bibleClient = new BibleClient(apiClient)
-const searchClient = new SearchClient(apiClient)
 
 // Step 3: Make API calls
 const versions = await bibleClient.getVersions('en*')
@@ -119,16 +117,16 @@ import { ApiClient, BibleClient } from '@youversion/platform-core'
 
 async function main() {
   try {
-    // Initialize the API client with your App ID
+    // Initialize the API client with your App Key
     const apiClient = new ApiClient({
-      appId: 'YOUR_APP_ID', // Get from https://platform.youversion.com/
+      appKey: import.meta.env.YVP_APP_KEY, // Get from https://platform.youversion.com/
     })
 
     const bibleClient = new BibleClient(apiClient)
 
     // Get English Bible versions
     const versions = await bibleClient.getVersions('en*')
-    console.log(versions.data[0].title) // "English Standard Version"
+    console.log(versions.data[0].title) // Bible version title
 
     // Get a specific passage
     const passage = await bibleClient.getPassage(111, 'JHN.3.16')
@@ -138,7 +136,7 @@ async function main() {
       console.error('Error fetching Bible data:', error.message)
       
       // Common errors:
-      // - "Invalid appId" - Check your App ID from platform.youversion.com
+      // - "Invalid appKey" - Check your App Key from platform.youversion.com
       // - "Network error" - Check your internet connection
       // - "404 Not Found" - Invalid passage or version ID
     }
@@ -150,7 +148,7 @@ main()
 
 ### Authentication Setup
 
-To access protected endpoints (user data), authenticate using a Long Access Token (LAT):
+To access protected endpoints (user data), authenticate using a Long-lived Access Token:
 
 ```ts
 import { AuthClient, YouVersionPlatformConfiguration } from '@youversion/platform-core'
@@ -175,8 +173,8 @@ import {
   SignInWithYouVersionPermission
 } from '@youversion/platform-core'
 
-// Set your app ID first
-YouVersionPlatformConfiguration.appId = 'YOUR_APP_ID'
+// Set your App Key first
+YouVersionPlatformConfiguration.appKey = import.meta.env.YVP_APP_KEY
 
 // Define required and optional permissions
 const requiredPermissions = new Set([
@@ -211,20 +209,6 @@ YouVersionAPIUsers.signOut()
 - `SignInWithYouVersionPermission.demographics` - User demographic information
 - `SignInWithYouVersionPermission.bibleActivity` - User's Bible reading activity
 
-### Search Functionality
-
-```ts
-import { SearchClient } from '@youversion/platform-core'
-
-const searchClient = new SearchClient(apiClient)
-
-const results = await searchClient.search('love', 111)
-results.data.forEach(item => {
-  console.log(item.usfm) // "JHN.3.16"
-  // Note: Use bibleClient.getPassage() to retrieve the actual verse text
-})
-```
-
 ## Features and Capabilities
 
 ### Bible Data Access
@@ -235,13 +219,8 @@ results.data.forEach(item => {
 
 ### User Authentication
 - OAuth authentication with YouVersion
-- Long Access Token (LAT) support
+- Long-lived Access Token support
 - User profile information retrieval
-
-### Search Functionality
-- Full-text Bible search
-- Version-specific results
-- Search facets and filters
 
 ### Language Support
 - Query available languages by country
@@ -259,11 +238,9 @@ results.data.forEach(item => {
 
 ```ts
 const apiClient = new ApiClient({
-  appId: 'YOUR_APP_ID', // Required: Get from https://platform.youversion.com/
-  baseUrl: 'https://api-dev.youversion.com', // Optional: API base URL
+  appKey: import.meta.env.YVP_APP_KEY, // Required: Get from https://platform.youversion.com/
+  baseUrl: 'https://api.youversion.com', // Optional: API base URL
   timeout: 10000, // Optional: Request timeout in ms (default: 10000)
-  version: 'v1', // Optional: API version (default: "v1")
-  installationId: 'my-app-instance', // Optional: Installation identifier
 })
 ```
 
@@ -271,11 +248,9 @@ const apiClient = new ApiClient({
 
 | Option           | Type     | Default                       | Description                                                               |
 | ---------------- | -------- | ----------------------------- | ------------------------------------------------------------------------- |
-| `appId`          | `string` | **Required**                  | Your application ID for API authentication                               |
-| `baseUrl`        | `string` | `"https://api-dev.youversion.com"` | Base URL for the API                                                |
+| `appKey`          | `string` | **Required**                  | Your App Key for API authentication                               |
+| `baseUrl`        | `string` | `"https://api.youversion.com"` | Base URL for the API                                                |
 | `timeout`        | `number` | `10000`                       | Request timeout in milliseconds                                          |
-| `version`        | `string` | `"v1"`                        | API version to use                                                        |
-| `installationId` | `string` | `"web-sdk-default"`           | Unique identifier for this application instance                          |
 
 ### Platform Configuration
 
@@ -283,8 +258,8 @@ const apiClient = new ApiClient({
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core'
 
 // Set global configuration
-YouVersionPlatformConfiguration.appId = 'YOUR_APP_ID'
-YouVersionPlatformConfiguration.setAccessToken('YOUR_LAT')
+YouVersionPlatformConfiguration.appKey = import.meta.env.YVP_APP_KEY
+YouVersionPlatformConfiguration.setAccessToken('YOUR_ACCESS_TOKEN')
 YouVersionPlatformConfiguration.apiHost = 'api.youversion.com'
 ```
 
@@ -324,10 +299,10 @@ const licenseVersions = await bibleClient.getVersions('en*', 123)
   data: [
     {
       id: 111,
-      abbreviation: "ESV",
-      title: "English Standard Version",
+      abbreviation: "NIV",
+      title: "New International Version",
       language_tag: "en",
-      copyright_short: "© 2001 by Crossway...",
+      copyright_short: "© 2011 by Biblica...",
       books: ["GEN", "EXO", ...]
     }
   ]
@@ -341,9 +316,9 @@ const licenseVersions = await bibleClient.getVersions('en*', 123)
 Fetch a specific Bible version by ID.
 
 ```ts
-const esv = await bibleClient.getVersion(111)
-console.log(esv.title) // "English Standard Version"
-console.log(esv.books) // ["GEN", "EXO", "LEV", ...]
+const niv = await bibleClient.getVersion(111)
+console.log(niv.title) // "New International Version"
+console.log(niv.books) // ["GEN", "EXO", "LEV", ...]
 ```
 
 **Parameters:**
@@ -351,21 +326,16 @@ console.log(esv.books) // ["GEN", "EXO", "LEV", ...]
 
 ---
 
-##### `getBooks(versionId: number, canon?: 'ot' | 'nt' | 'deuterocanon'): Promise<Collection<BibleBook>>`
+##### `getBooks(versionId: number): Promise<Collection<BibleBook>>`
 
 Fetch all books for a specific Bible version.
 
 ```ts
 const books = await bibleClient.getBooks(111)
-
-// Filter by canon
-const otBooks = await bibleClient.getBooks(111, 'ot')
-const ntBooks = await bibleClient.getBooks(111, 'nt')
 ```
 
 **Parameters:**
 - `versionId` (number, required): Bible version ID
-- `canon` (string, optional): Filter by canon type - `"ot"` (Old Testament), `"nt"` (New Testament), or `"deuterocanon"`
 
 **Response Example:**
 ```ts
@@ -503,7 +473,7 @@ const formatted = await bibleClient.getPassage(111, 'JHN.3.16', 'html', true, tr
 - `usfm` (string, required): USFM reference format (e.g., `"JHN.3.16"`, `"GEN.1.1-5"`, `"MAT.1"`)
 - `format` (string, optional): `"html"` or `"text"` (default: `"html"`)
 - `include_headings` (boolean, optional): Include section headings in output
-- `include_notes` (boolean, optional): Include footnotes/endnotes in output
+- `include_notes` (boolean, optional): Include footnotes/endnotes in output. Note: Paragraphs and tables are always preserved in the output for accurate Bible text formatting.
 
 **Response Example:**
 ```ts
@@ -535,7 +505,7 @@ console.log(index.books[0].chapters.length) // Structure of entire Bible
 ```ts
 {
   id: 111,
-  abbreviation: "ESV",
+  abbreviation: "NIV",
   books: [
     {
       id: "GEN",
@@ -554,7 +524,7 @@ console.log(index.books[0].chapters.length) // Structure of entire Bible
 
 ##### `getAllVOTDs(): Promise<Collection<VOTD>>`
 
-Fetch the Verse of the Day for the entire year.
+Fetch the Verse of the Day for the entire year. Day 1 always represents January 1.
 
 ```ts
 const allVOTDs = await bibleClient.getAllVOTDs()
@@ -577,7 +547,7 @@ console.log(allVOTDs.data[0].passage_id) // "JHN.3.16"
 
 ##### `getVOTD(day: number): Promise<VOTD>`
 
-Fetch the Verse of the Day for a specific day of the year.
+Fetch the Verse of the Day for a specific day of the year. Day 1 always represents January 1.
 
 ```ts
 // Day 1 of the year
@@ -680,62 +650,6 @@ const serbianCyrillic = await languagesClient.getLanguage('sr-Cyrl')
 
 ---
 
-### SearchClient
-
-Client for full-text Bible search.
-
-#### Methods
-
-##### `search(query: string, versionId: number): Promise<SearchResponse>`
-
-Perform a full-text search over Bible verses.
-
-```ts
-const searchClient = new SearchClient(apiClient)
-
-const results = await searchClient.search('The Lord is my shepherd', 111)
-
-results.data.forEach(item => {
-  console.log(item.usfm) // "PSA.23.1"
-})
-
-// To get the actual verse text, use getPassage()
-const verseText = await bibleClient.getPassage(111, results.data[0].usfm)
-console.log(verseText.content) // "The Lord is my shepherd..."
-
-// Search in different version
-const nltResults = await searchClient.search('love', 206)
-```
-
-**Parameters:**
-- `query` (string, required): Search phrase
-- `versionId` (number, required): Bible version ID
-
-**Response Example:**
-```ts
-{
-  data: [
-    {
-      usfm: "PSA.23.1"
-    }
-  ],
-  did_you_mean: [],
-  filters: {
-    books: [{ count: 1, usfm: "PSA" }],
-    canons: [{ count: 1, section: "ot" }]
-  },
-  next_page: false,
-  page_size: 20,
-  query: "The Lord is my shepherd",
-  search_instead_for: null,
-  user_intent: "unknown"
-}
-```
-
-**Note:** Search results only contain USFM identifiers. Use `BibleClient.getPassage()` to retrieve the actual verse text for each result.
-
----
-
 ### YouVersionAPIUsers
 
 Utility class for OAuth authentication flow with YouVersion.
@@ -765,7 +679,7 @@ if (result.accessToken) {
 - `optionalPermissions` (Set, required): Permissions requested but not required
 
 **Returns:** `SignInWithYouVersionResult` with:
-- `accessToken: string | null` - The Long Access Token (LAT)
+- `accessToken: string | null` - The Long-lived Access Token
 - `yvpUserId: string | null` - The YouVersion user ID
 - `permissions: string[]` - Array of granted permissions
 - `errorMsg: string | null` - Error message if sign-in failed
@@ -795,7 +709,7 @@ console.log(userInfo.getAvatarUrl())
 ```
 
 **Parameters:**
-- `accessToken` (string, required): The Long Access Token from sign-in
+- `accessToken` (string, required): The Long-lived Access Token from sign-in
 
 **Response Example:**
 ```ts
@@ -828,7 +742,7 @@ console.log(user.id)
 ```
 
 **Parameters:**
-- `lat` (string, required): Long Access Token
+- `lat` (string, required): Long-lived Access Token
 
 **Response Example:**
 ```ts

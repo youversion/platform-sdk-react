@@ -15,7 +15,7 @@
   - [API Reference](#api-reference)
     - [Core Hooks](#core-hooks)
     - [Bible Content Hooks](#bible-content-hooks)
-    - [Search and Language Hooks](#search-and-language-hooks)
+    - [Language Hooks](#language-hooks)
     - [Context Providers](#context-providers)
   - [Troubleshooting](#troubleshooting)
   - [Development](#development)
@@ -28,7 +28,7 @@ A comprehensive collection of React hooks for accessing the YouVersion Platform 
 
 ## Overview
 
-`@youversion/platform-react-hooks` provides React hooks that wrap the [`@youversion/platform-core`](../../packages/core/README.md) SDK, offering a declarative way to access Bible data, search functionality, and user features in your React applications.
+`@youversion/platform-react-hooks` provides React hooks that wrap the [`@youversion/platform-core`](../../packages/core/README.md) SDK, offering a declarative way to access Bible data and user features in your React applications.
 
 Key features include:
 - Automatic loading and error state management
@@ -87,20 +87,22 @@ This package provides React hooks wrapping the core SDK. Depending on your use c
 - **[@youversion/platform-core](../../packages/core/README.md)** - Core TypeScript SDK for direct API access (this hooks package depends on it)
 - **[@youversion/platform-react-ui](../../packages/ui/README.md)** - Pre-built React components for common Bible features
 
+For complete parameter and configuration documentation, see the [Core SDK API Reference](../../packages/core/README.md#configuration).
+
 ## Setup: Provider Configuration
 
 All hooks in this package require the `BibleSDKProvider` to be wrapped around your application or component subtree. This provider initializes the API client and context required by all hooks.
 
 ### BibleSDKProvider (Required)
 
-The `BibleSDKProvider` is the foundation for all hooks. It requires your YouVersion Platform App ID:
+The `BibleSDKProvider` is the foundation for all hooks. It requires your YouVersion Platform App Key:
 
 ```tsx
 import { BibleSDKProvider } from '@youversion/platform-react-hooks';
 
 function App() {
   return (
-    <BibleSDKProvider appId="YOUR_APP_ID">
+    <BibleSDKProvider appKey="YOUR_APP_KEY">
       {/* All hooks work here */}
     </BibleSDKProvider>
   );
@@ -121,7 +123,7 @@ import { BibleSDKProvider, ReaderProvider, VerseSelectionProvider } from '@youve
 
 function App() {
   return (
-    <BibleSDKProvider appId="YOUR_APP_ID">
+    <BibleSDKProvider appKey="YOUR_APP_KEY">
       <ReaderProvider>
         <VerseSelectionProvider>
           {/* Custom reader component here */}
@@ -166,7 +168,7 @@ function BibleVerse() {
 
 function App() {
   return (
-    <BibleSDKProvider appId="YOUR_APP_ID">
+    <BibleSDKProvider appKey="YOUR_APP_KEY">
       <BibleVerse />
     </BibleSDKProvider>
   );
@@ -212,11 +214,6 @@ function VersionList() {
 - Access Verse of the Day content
 - Navigate between chapters and verses
 
-### Search Functionality
-- Full-text search across Bible content
-- Search client for advanced search queries
-- Configurable search parameters and filters
-
 ### Language Support
 - Get available languages and their metadata
 - Filter versions by language ranges
@@ -231,14 +228,14 @@ function VersionList() {
 
 ### BibleSDKProvider
 
-Required provider that configures the YouVersion Platform SDK with your App ID.
+Required provider that configures the YouVersion Platform SDK with your App Key.
 
 ```tsx
 import { BibleSDKProvider } from '@youversion/platform-react-hooks';
 
 function App({ children }) {
   return (
-    <BibleSDKProvider appId="YOUR_APP_ID">
+    <BibleSDKProvider appKey="YOUR_APP_KEY">
       {children}
     </BibleSDKProvider>
   );
@@ -299,7 +296,7 @@ function MyComponent() {
 }
 ```
 
-**Throws:** Error if used outside of `BibleSDKProvider` or if `appId` is not provided.
+**Throws:** Error if used outside of `BibleSDKProvider` or if `appKey` is not provided.
 
 #### useApiData
 
@@ -721,8 +718,8 @@ function BiblePassage({ versionId, usfm }) {
 ```
 
 **Parameters:**
-- `versionId`: number - The Bible version ID
-- `usfm`: string - USFM reference (e.g., 'JHN.3.16', 'GEN.1.1-2.3')
+- `versionId`: number - The Bible version ID ([YouVersion API Docs](https://developers.youversion.com/api))
+- `usfm`: string - USFM reference (e.g., 'JHN.3.16', 'GEN.1.1-2.3') ([YouVersion API Docs](https://developers.youversion.com/api))
 - `format?`: 'html' | 'text' - Output format (default: 'html')
 - `includeHeadings?`: boolean - Include section headings (default: false)
 - `includeNotes?`: boolean - Include study notes (default: false)
@@ -761,69 +758,7 @@ function DailyVerse() {
 
 **Returns:** Object with `data`, `loading`, `error`, and `refetch` properties.
 
-### Search and Language Hooks
-
-#### Search Hooks
-
-##### useSearch
-
-Executes a full-text search against Bible content.
-
-```tsx
-import { useSearch } from '@youversion/platform-react-hooks';
-
-function BibleSearch() {
-  const [query, setQuery] = useState('');
-  const { results, loading, error } = useSearch(query, 111); // Search in ESV
-  
-  return (
-    <div>
-      <input 
-        type="text" 
-        value={query} 
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search the Bible..."
-      />
-      {results?.data.map((result) => (
-        <div key={result.usfm}>
-          <h3>{result.usfm}</h3>
-          <p>{result.text}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-```
-
-**Parameters:**
-- `query`: string - Search query
-- `versionId`: number - Bible version to search in
-- `options?`: UseApiDataOptions - Optional configuration
-
-**Returns:** Object with `results`, `loading`, `error`, and `refetch` properties.
-
-##### useSearchClient
-
-Returns a configured `SearchClient` instance for advanced search operations.
-
-```tsx
-import { useSearchClient } from '@youversion/platform-react-hooks';
-
-function AdvancedSearch() {
-  const searchClient = useSearchClient();
-  
-  const handleSearch = async () => {
-    const results = await searchClient.search('love', 111);
-    console.log(results);
-  };
-  
-  return <button onClick={handleSearch}>Search</button>;
-}
-```
-
-**Throws:** Error if used outside of `BibleSDKProvider`.
-
-#### Language Hook
+### Language Hooks
 
 ##### useLanguages
 
@@ -868,12 +803,12 @@ import { BibleSDKProvider } from '@youversion/platform-react-hooks';
 
 interface BibleSDKProviderProps {
   children: React.ReactNode;
-  appId: string; // Your YouVersion Platform App ID
+  appKey: string; // Your YouVersion Platform App Key
 }
 
 function App() {
   return (
-    <BibleSDKProvider appId="YOUR_APP_ID">
+    <BibleSDKProvider appKey="YOUR_APP_KEY">
       {/* Your app components */}
     </BibleSDKProvider>
   );
@@ -881,7 +816,7 @@ function App() {
 ```
 
 **Props:**
-- `appId`: string - Your YouVersion Platform App ID (required)
+- `appKey`: string - Your YouVersion Platform App Key (required)
 
 #### ReaderProvider
 
@@ -975,20 +910,20 @@ function MyComponent() {
 // ✅ Correct - hook used inside provider
 function App() {
   return (
-    <BibleSDKProvider appId="YOUR_APP_ID">
+    <BibleSDKProvider appKey="YOUR_APP_KEY">
       <MyComponent />
     </BibleSDKProvider>
   );
 }
 ```
 
-### Invalid App ID Error
+### Invalid App Key Error
 
-**Error:** `Error: Invalid appId provided`
+**Error:** `Error: Invalid appKey provided`
 
-**Solution:** Verify your App ID:
-- Get your App ID from https://platform.youversion.com/
-- Ensure it's passed correctly: `<BibleSDKProvider appId="your_actual_id">`
+**Solution:** Verify your App Key:
+- Get your App Key from https://platform.youversion.com/
+- Ensure it's passed correctly: `<BibleSDKProvider appKey="your_actual_id">`
 - Check for typos or extra whitespace
 - Verify the app is active (not archived)
 
