@@ -56,8 +56,8 @@ A comprehensive React SDK for integrating [YouVersion Platform](https://platform
 
 This monorepo provides:
 
-1. Core type-safe YouVersion API client for Bible content, search, authentication, and more
-2. Powerful React hooks wrapping the core API client for ease of use
+1. Core type-safe YouVersion API client for Bible content and more
+2. React hooks wrapping the core API client for ease of use
 3. Ready-to-use React components to bring the Bible to everyone, everywhere, every day
 
 Built with pnpm workspaces and Turbo for build orchestration.
@@ -140,7 +140,7 @@ All packages use **unified versioning** - they share the same version number and
 
 ### @youversion/platform-core
 
-A type-safe TypeScript library for interacting with Bible data. This package provides an API client for fetching Bible versions, books, chapters, verses, and user authentication from the YouVersion Bible API.
+A type-safe TypeScript library for interacting with Bible data. This package provides an API client for fetching Bible versions, books, chapters, and verses from the YouVersion Bible API.
 
 ```bash
 pnpm add @youversion/platform-core
