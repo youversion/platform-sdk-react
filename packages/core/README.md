@@ -158,9 +158,8 @@ main()
 - Support for multiple scripts (e.g., sr-Latn for Serbian Cyrillic)
 
 ### Verse of the Day
-- Access daily Verses of the Day
 - Get the full year's VOTD calendar
-- Retrieve specific day's verse
+- Retrieve specific day's verse reference (You then should fetch the Bible verse text from that reference)
 
 ## Configuration
 
