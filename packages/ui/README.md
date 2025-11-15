@@ -30,12 +30,6 @@ Pre-built React components for building Bible-based applications with the YouVer
 
 This package depends on [`@youversion/platform-react-hooks`](../../packages/hooks/README.md) and [`@youversion/platform-core`](../../packages/core/README.md), and re-exports components and hooks to simplify your imports.
 
-### When to use each package
-
-- **Core package**: You need direct API access, server-side usage, or full control over data fetching
-- **React hooks package**: You're building custom React components and want hooks for Bible data access
-- **React UI package** (this one): You want production-ready UI components with styling already applied
-
 ### Key Benefits
 
 - Pre-styled components with theming support
