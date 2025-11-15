@@ -43,8 +43,8 @@ pnpm test:watch
 pnpm --filter @youversion/platform-core test:coverage
 pnpm --filter @youversion/platform-react-hooks test:coverage
 
-# Verify build outputs and type definitions
-pnpm verify
+# Build and verify outputs
+pnpm build
 ```
 
 ### Release Process
@@ -64,7 +64,8 @@ pnpm release
 ### Monorepo Structure
 ```
 ├── packages/
-│   ├── core/       # Internal core package
+│   ├── core/       # @youversion/platform-core - Published core package
+│   ├── hooks/      # @youversion/platform-react-hooks - Published React hooks
 │   └── ui/         # @youversion/platform-react-ui - Published React SDK
 ├── tools/                 # Shared configs (TypeScript, ESLint, Jest)
 └── scripts/              # Build and development scripts
@@ -72,20 +73,24 @@ pnpm release
 
 ### Key Architectural Patterns
 
-1. **Internal Dependencies**: The published SDK (`@youversion/platform-react-ui`) depends on the internal workspace package (`core`)
+1. **Package Dependencies**:
+   - `core` is the foundation (API clients, utilities)
+   - `hooks` depends on `core`
+   - `ui` depends on both `hooks` and `core`
 
 2. **Build Order**: Dependencies must be built in order:
    - First: `core`
-   - Finally: SDK packages
+   - Second: `hooks`
+   - Finally: `ui`
 
-3. **Internal Packages**: The internal workspace package (`core`) contains bundled shared code
+3. **Unified Versioning**: All published packages share the same version number and are released together
 
 4. **UI Components**: All UI components use React.forwardRef and accept standard HTML attributes
 
 5. **TypeScript Configuration**: Shared configs in `tools/tsconfig/`
 
-6. **Testing**: 
-   - React SDK uses Vitest
+6. **Testing**:
+   - All packages use Vitest
    - Test files follow `*.test.ts(x)` pattern
 
 ### Build System
@@ -104,8 +109,11 @@ pnpm release
 
 ### Publishing
 
-- Published packages: `@youversion/platform-react-ui`
-- Internal packages (`core`) are private
+- Published packages:
+  - `@youversion/platform-core`
+  - `@youversion/platform-react-hooks`
+  - `@youversion/platform-react-ui`
+- All packages use unified versioning (same version number)
 - NPM registry: https://registry.npmjs.org/
 - Access: public
 
@@ -114,4 +122,5 @@ pnpm release
 1. Always run `pnpm install` after pulling changes
 2. Use `pnpm` (not npm or yarn) for all operations
 3. Node.js >= 20.0.0 required
-4. When modifying shared code, rebuild dependent packages
+4. When modifying packages, rebuild dependent packages in order (core → hooks → ui)
+5. All packages use unified versioning - they're always released together at the same version

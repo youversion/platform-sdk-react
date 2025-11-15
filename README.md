@@ -27,8 +27,9 @@
     - [Prerequisites](#prerequisites)
     - [Installation](#installation)
   - [📦 Packages](#-packages)
+    - [@youversion/platform-core](#youversionplatform-core)
+    - [@youversion/platform-react-hooks](#youversionplatform-react-hooks)
     - [@youversion/platform-react-ui](#youversionplatform-react-ui)
-    - [core (Internal)](#core-internal)
   - [🛠 Development](#-development)
     - [Development Environments](#development-environments)
     - [Component Development with Storybook](#component-development-with-storybook)
@@ -75,8 +76,9 @@ Building AI applications with Bible content? Access YouVersion's LLM-optimized e
 
 ```
 ├── packages/
-│   ├── core/        # Private internal package (bundled into SDK)
-│   └── ui/          # @youversion/platform-react-ui (published)
+│   ├── core/        # @youversion/platform-core - Core API clients
+│   ├── hooks/       # @youversion/platform-react-hooks - React hooks
+│   └── ui/          # @youversion/platform-react-ui - React components
 ├── examples/
 │   └── nextjs/             # Next.js example app
 ├── scripts/                # Build and development scripts
@@ -93,9 +95,11 @@ Building AI applications with Bible content? Access YouVersion's LLM-optimized e
 
 ### Dependency Flow
 
-1. `core` contains shared business logic (private package)
-2. The SDK bundles `core` directly (not published separately)
-3. Build order enforced by Turbo: `core` → SDK package
+1. `@youversion/platform-core` - Foundation layer with API clients and utilities
+2. `@youversion/platform-react-hooks` - React hooks depending on core
+3. `@youversion/platform-react-ui` - UI components depending on hooks and core
+4. Build order enforced by Turbo: `core` → `hooks` → `ui`
+5. **Unified Versioning**: All packages share the same version number
 
 ## 🚀 Getting Started
 
@@ -114,18 +118,39 @@ cd yvp-react-sdk
 # Install dependencies (uses pnpm workspaces)
 pnpm install
 
-# Build all packages in dependency order
+# Build all packages in dependency order (with Turbo caching)
 pnpm build
-
-# Verify build outputs and type definitions
-pnpm verify
 ```
 
 ## 📦 Packages
 
+All packages use **unified versioning** - they share the same version number and are released together.
+
+### @youversion/platform-core
+
+Core API clients and utilities for YouVersion Platform APIs.
+
+```bash
+pnpm add @youversion/platform-core
+```
+
+**Use this package** if you need direct API access without React components or hooks.
+
+### @youversion/platform-react-hooks
+
+React hooks for YouVersion Platform APIs.
+
+```bash
+pnpm add @youversion/platform-react-hooks
+```
+
+**Peer Dependencies:**
+- react (^18.0.0 || ^19.0.0)
+- Automatically includes `@youversion/platform-core`
+
 ### @youversion/platform-react-ui
 
-React SDK for web applications.
+Ready-to-use React UI components for YouVersion Platform features.
 
 ```bash
 pnpm add @youversion/platform-react-ui
@@ -134,10 +159,7 @@ pnpm add @youversion/platform-react-ui
 **Peer Dependencies:**
 - react (^18.0.0 || ^19.0.0)
 - react-dom (^18.0.0 || ^19.0.0)
-
-### core (Internal)
-
-Private package containing shared business logic. This package is bundled into the SDK during build and is not published separately.
+- Automatically includes `@youversion/platform-core` and `@youversion/platform-react-hooks`
 
 ## 🛠 Development
 
@@ -186,9 +208,6 @@ pnpm build
 # Build specific packages
 pnpm build:core    # Build core
 pnpm build:react   # Build React SDK
-
-# Verify build outputs and type definitions
-pnpm verify
 ```
 
 ### Development Commands
@@ -206,19 +225,25 @@ pnpm format        # Prettier formatting
 
 ### Release Process
 
+This project uses **unified versioning** - all packages are versioned and released together.
+
 1. Make your changes
 2. Run `pnpm changeset` to create a changeset
+   - Select appropriate bump type (major/minor/patch)
+   - Note: All packages will be bumped together, even if changes only affect one
 3. Submit a PR
 4. Once merged, the CI/CD pipeline will:
-   - Create a release PR with version updates
-   - Publish packages to npm after merge
+   - Create a release PR with version updates for all packages
+   - Publish all packages to npm after release PR is merged
 
 ```bash
 # Manual release commands (usually handled by CI)
 pnpm changeset          # Create changeset
-pnpm version-packages   # Update versions
-pnpm release           # Build and publish
+pnpm version-packages   # Update versions (all packages bumped together)
+pnpm release           # Build and publish all packages
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md#versioning-strategy) for detailed versioning strategy.
 
 ## 🧪 Testing
 
