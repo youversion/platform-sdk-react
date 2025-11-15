@@ -11,7 +11,6 @@
   - [Related Packages](#related-packages)
   - [Setup: Provider Configuration](#setup-provider-configuration)
   - [Quick Start](#quick-start)
-  - [Common Patterns](#common-patterns)
   - [Features and Capabilities](#features-and-capabilities)
   - [Theming](#theming)
   - [Components Reference](#components-reference)
