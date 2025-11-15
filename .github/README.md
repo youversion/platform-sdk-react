@@ -18,7 +18,6 @@ Visual diagrams and quick reference. Great for understanding the flow at a glanc
 
 - Visual workflow diagrams
 - Version bump examples
-- Common scenarios
 - Quick reference commands
 - GitHub Actions job flows
 
