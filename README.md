@@ -52,7 +52,7 @@
 
 # YouVersion Platform React SDK
 
-A comprehensive React SDK for integrating YouVersion Platform features into your web applications. This monorepo provides ready-to-use UI components and powerful hooks for Bible content, search, authentication, and more.
+A comprehensive React SDK for integrating YouVersion Platform features into your web applications. This monorepo provides ready-to-use UI components and powerful hooks for Bible content, authentication, and more.
 
 Built with pnpm workspaces and Turbo for build orchestration.
 
@@ -60,7 +60,7 @@ Built with pnpm workspaces and Turbo for build orchestration.
 
 ### 🎨 UI Component Library
 
-Ready to add Bible features to your app? Install this React SDK `@youversion/platform-react-ui` for pre-built React components including verse displays, chapter navigation, search interfaces, and reading experiences.
+Ready to add Bible features to your app? Install this React SDK `@youversion/platform-react-ui` for pre-built React components including verse displays, chapter navigation, and reading experiences.
 
 ### 🔧 API Integration
 
