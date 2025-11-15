@@ -188,7 +188,6 @@ import { YouVersionPlatformConfiguration } from '@youversion/platform-core'
 
 // Set global configuration
 YouVersionPlatformConfiguration.appKey = import.meta.env.YVP_APP_KEY
-YouVersionPlatformConfiguration.setAccessToken('YOUR_ACCESS_TOKEN')
 YouVersionPlatformConfiguration.apiHost = 'api.youversion.com'
 ```
 
@@ -453,11 +452,11 @@ console.log(index.books[0].chapters.length) // Structure of entire Bible
 
 ##### `getAllVOTDs(): Promise<Collection<VOTD>>`
 
-Fetch the Verse of the Day for the entire year. Day 1 always represents January 1.
+Fetch the Verse of the Day for the entire year.
 
 ```ts
 const allVOTDs = await bibleClient.getAllVOTDs()
-console.log(allVOTDs.data[0].day) // 1
+console.log(allVOTDs.data[0].day) // Day 1 is January 1st
 console.log(allVOTDs.data[0].passage_id) // "JHN.3.16"
 ```
 
@@ -476,10 +475,10 @@ console.log(allVOTDs.data[0].passage_id) // "JHN.3.16"
 
 ##### `getVOTD(day: number): Promise<VOTD>`
 
-Fetch the Verse of the Day for a specific day of the year. Day 1 always represents January 1.
+Fetch the Verse of the Day for a specific day of the year.
 
 ```ts
-// Day 1 of the year
+// Day 1 of the year (January 1st)
 const votd1 = await bibleClient.getVOTD(1)
 
 // Day 100 of the year
@@ -490,7 +489,7 @@ const votd366 = await bibleClient.getVOTD(366)
 ```
 
 **Parameters:**
-- `day` (number, required): Day of the year (1-366)
+- `day` (number, required): Day of the year (1-366), where day 1 is January 1st
 
 **Response Example:**
 ```ts
@@ -557,8 +556,6 @@ const page2 = await languagesClient.getLanguages({
   ]
 }
 ```
-
-**Note:** The Language type contains many additional optional fields including `script_name`, `aliases`, `scripts`, `variants`, `writing_population`, `speaking_population`, and `default_bible_version_id`.
 
 ---
 
