@@ -6,7 +6,7 @@ import React from 'react';
 
 import { BibleTextView } from './verse';
 
-const baseUrl = 'https://api-dev.youversion.com';
+const baseUrl = 'https://api.youversion.com';
 
 // USFM format: BOOK.CHAPTER or BOOK.CHAPTER.VERSE or BOOK.CHAPTER.VERSE-VERSE
 const USFM_PATTERN = /^[A-Z1-4]{3}\.\d+(\.\d+(-\d+)?)?$/;

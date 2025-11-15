@@ -8,7 +8,7 @@ describe('ApiClient', () => {
 
   beforeEach(() => {
     apiClient = new ApiClient({
-      baseUrl: 'https://api-dev.youversion.com',
+      baseUrl: 'https://api.youversion.com',
       appKey: 'test-app',
       version: 'v1',
       installationId: 'test-installation',
@@ -18,7 +18,7 @@ describe('ApiClient', () => {
   describe('constructor', () => {
     it('should set default version to v1', () => {
       const client = new ApiClient({
-        baseUrl: 'https://api-dev.youversion.com',
+        baseUrl: 'https://api.youversion.com',
         appKey: 'test-app',
         installationId: 'test-installation',
       });
@@ -28,7 +28,7 @@ describe('ApiClient', () => {
 
     it('should use provided version', () => {
       const client = new ApiClient({
-        baseUrl: 'https://api-dev.youversion.com',
+        baseUrl: 'https://api.youversion.com',
         appKey: 'test-app',
         version: 'v2',
         installationId: 'test-installation',
@@ -41,7 +41,7 @@ describe('ApiClient', () => {
   describe('get', () => {
     it('should make GET request and return data', async () => {
       server.use(
-        http.get('https://api-dev.youversion.com/test', () => {
+        http.get('https://api.youversion.com/test', () => {
           return HttpResponse.json({ message: 'success' });
         }),
       );
@@ -53,7 +53,7 @@ describe('ApiClient', () => {
 
     it('should include query parameters', async () => {
       server.use(
-        http.get('https://api-dev.youversion.com/test', ({ request }) => {
+        http.get('https://api.youversion.com/test', ({ request }) => {
           const url = new URL(request.url);
           const param = url.searchParams.get('param');
           return HttpResponse.json({ param });
@@ -71,7 +71,7 @@ describe('ApiClient', () => {
   describe('post', () => {
     it('should make POST request and return data', async () => {
       server.use(
-        http.post('https://api-dev.youversion.com/test', async ({ request }) => {
+        http.post('https://api.youversion.com/test', async ({ request }) => {
           const body = await request.json();
           return HttpResponse.json({ received: body });
         }),
@@ -86,7 +86,7 @@ describe('ApiClient', () => {
 
     it('should include query parameters in POST request', async () => {
       server.use(
-        http.post('https://api-dev.youversion.com/test', async ({ request }) => {
+        http.post('https://api.youversion.com/test', async ({ request }) => {
           const url = new URL(request.url);
           const param = url.searchParams.get('param');
           const body = await request.json();

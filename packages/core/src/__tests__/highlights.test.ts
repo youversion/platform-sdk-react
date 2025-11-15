@@ -9,7 +9,7 @@ describe('HighlightsClient', () => {
 
   beforeEach(() => {
     apiClient = new ApiClient({
-      baseUrl: 'https://api-dev.youversion.com',
+      baseUrl: 'https://api.youversion.com',
       appKey: 'test-app',
       version: 'v1',
       installationId: 'test-installation',

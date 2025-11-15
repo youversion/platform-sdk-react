@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import type { Collection, Highlight } from '../types';
 
-const baseUrl = 'https://api-dev.youversion.com';
+const baseUrl = 'https://api.youversion.com';
 
 export const handlers = [
   // Highlights endpoints

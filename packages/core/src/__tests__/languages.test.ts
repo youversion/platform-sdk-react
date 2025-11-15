@@ -9,7 +9,7 @@ describe('LanguagesClient', () => {
 
   beforeEach(() => {
     apiClient = new ApiClient({
-      baseUrl: 'https://api-dev.youversion.com',
+      baseUrl: 'https://api.youversion.com',
       appKey: process.env.YVP_APP_KEY || '',
       version: 'v1',
       installationId: 'test-installation',
