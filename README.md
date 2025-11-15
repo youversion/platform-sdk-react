@@ -11,286 +11,105 @@
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 
-## Table of Contents
-
-- [YouVersion Platform React SDK](#youversion-platform-react-sdk)
-  - [🎯 For Different Use Cases](#-for-different-use-cases)
-    - [🎨 UI Component Library](#-ui-component-library)
-    - [🔧 Building Custom Components](#-building-custom-components)
-    - [🔌 API Integration](#-api-integration)
-    - [🤖 LLM Integration](#-llm-integration)
-  - [🏗 Architecture](#-architecture)
-    - [Package Structure](#package-structure)
-    - [Build Tools](#build-tools)
-    - [Dependency Flow](#dependency-flow)
-  - [🚀 Getting Started](#-getting-started)
-    - [Prerequisites](#prerequisites)
-    - [Installation](#installation)
-  - [📦 Packages](#-packages)
-    - [@youversion/platform-core](#youversionplatform-core)
-    - [@youversion/platform-react-hooks](#youversionplatform-react-hooks)
-    - [@youversion/platform-react-ui](#youversionplatform-react-ui)
-  - [🛠 Development](#-development)
-    - [Development Environments](#development-environments)
-    - [Component Development with Storybook](#component-development-with-storybook)
-    - [Build Commands](#build-commands)
-    - [Development Commands](#development-commands)
-    - [Release Process](#release-process)
-  - [🧪 Testing](#-testing)
-  - [📝 Contributing](#-contributing)
-  - [🔧 Configuration](#-configuration)
-    - [Build System](#build-system)
-    - [TypeScript](#typescript)
-    - [Testing](#testing)
-    - [Code Quality](#code-quality)
-      - [ESLint configuration (monorepo)](#eslint-configuration-monorepo)
-    - [Package Management](#package-management)
-    - [CI/CD](#cicd)
-    - [Version Control](#version-control)
-  - [📄 License](#-license)
-  - [🤝 Support](#-support)
-
 # YouVersion Platform React SDK
 
-A comprehensive React SDK for integrating [YouVersion Platform](https://platform.youversion.com/) features into your web applications.
+A comprehensive React SDK for integrating [YouVersion Platform](https://platform.youversion.com/) features into your web applications. This monorepo provides a type-safe API client, React hooks, and ready-to-use components for Bible content.
 
-This monorepo provides:
+> **📚 Full Documentation:** [developers.youversion.com/sdks/react](https://developers.youversion.com/sdks/react)
 
-1. Core type-safe YouVersion API client for Bible content and more
-2. React hooks wrapping the core API client for ease of use
-3. Ready-to-use React components to bring the Bible to everyone, everywhere, every day
+## Which Package Should I Use?
 
-Built with pnpm workspaces and Turbo for build orchestration.
+**[@youversion/platform-react-ui](packages/ui/README.md)** - Pre-built React components with styling included. Use this for ready-made Bible verse displays, chapter navigation, and reading experiences.
 
-## 🎯 For Different Use Cases
+**[@youversion/platform-react-hooks](packages/hooks/README.md)** - React hooks for building custom components. Use this when you want full control over UI while using declarative data fetching.
 
-### 🎨 UI Component Library
+**[@youversion/platform-core](packages/core/README.md)** - Type-safe API client for direct access to YouVersion Platform. Use this for Node.js applications or when React isn't needed.
 
-Ready to add Bible features to your app? Install `@youversion/platform-react-ui` for pre-built React components including verse displays, chapter navigation, and reading experiences.
+**For AI applications** - See [YouVersion LLM documentation](https://developers.youversion.com/for-llms) for endpoints optimized for language models.
 
-### 🔧 Building Custom Components
-
-Need more control over the UI? Use `@youversion/platform-react-hooks` to build custom components with React hooks for declarative data fetching and Bible content integration.
-
-### 🔌 API Integration
-
-Need direct access to YouVersion Platform APIs? Use `@youversion/platform-core` for a type-safe client library, or [see our full API documentation here](https://developers.youversion.com/overview) for advanced integration patterns.
-
-### 🤖 LLM Integration
-
-Building AI applications with Bible content? Access YouVersion's LLM-optimized endpoints and structured data designed for language models and AI applications, [see our LLM documentation here](https://developers.youversion.com/for-llms).
-
-## 🏗 Architecture
-
-### Package Structure
-
-```
-├── packages/
-│   ├── core/        # @youversion/platform-core
-│   ├── hooks/       # @youversion/platform-react-hooks
-│   └── ui/          # @youversion/platform-react-ui
-├── examples/
-│   └── nextjs/      # Next.js example app
-├── scripts/         # Build and development scripts
-└── tools/           # Shared configs (TypeScript, ESLint, Testing)
-```
-
-### Build Tools
-
-- **pnpm workspaces** (v9.0.0+) - Package management and workspace linking
-- **Turbo** (v2.0.0) - Build pipeline orchestration with caching
-- **tsup** - TypeScript bundling for React SDK
-- **Changesets** - Version management and changelog generation
-
-### Dependency Flow
-
-1. `@youversion/platform-core` - Foundation layer with API clients and utilities
-2. `@youversion/platform-react-hooks` - React hooks depending on core
-3. `@youversion/platform-react-ui` - UI components depending on hooks and core
-4. Build order enforced by Turbo: `core` → `hooks` → `ui`
-5. **Unified Versioning**: All packages share the same version number
-
-## 🚀 Getting Started
+## Quick Start
 
 ### Prerequisites
 
 - Node.js >= 20.0.0
-- pnpm >= 9.0.0 (required for workspace management)
+- pnpm >= 9.0.0 (required for monorepo development)
+- YouVersion Platform App Key ([Get one here](https://platform.youversion.com/))
 
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/youversion/yvp-react-sdk.git
-cd yvp-react-sdk
+# For UI components
+pnpm add @youversion/platform-react-ui
 
-# Install dependencies (uses pnpm workspaces)
-pnpm install
+# For React hooks only
+pnpm add @youversion/platform-react-hooks
 
-# Build all packages in dependency order (with Turbo caching)
-pnpm build
-
-# Verify build outputs
-pnpm verify
-```
-
-## 📦 Packages
-
-All packages use **unified versioning** - they share the same version number and are released together.
-
-### @youversion/platform-core
-
-A type-safe TypeScript library for interacting with Bible data. This package provides an API client for fetching Bible versions, books, chapters, and verses from the YouVersion Bible API.
-
-```bash
+# For direct API access
 pnpm add @youversion/platform-core
 ```
 
-See [packages/core/README.md](packages/core/README.md) for detailed documentation.
+## Quick Start Examples
 
-### @youversion/platform-react-hooks
+### UI Components
 
-Interact with Bible data using React hooks for custom component development.
+```tsx
+import { BibleSDKProvider, YVPProvider, VerseOfTheDay } from '@youversion/platform-react-ui';
+import '@youversion/platform-react-ui/styles.css';
 
-```bash
-pnpm add @youversion/platform-react-hooks
+function App() {
+  return (
+    <BibleSDKProvider appKey="YOUR_APP_KEY">
+      <YVPProvider config={{ appKey: "YOUR_APP_KEY" }}>
+        <VerseOfTheDay versionId={111} />
+      </YVPProvider>
+    </BibleSDKProvider>
+  );
+}
 ```
 
-**Use this package** if you need direct API access without React components or hooks.
+### Custom Hooks
 
-**Peer Dependencies:**
-- react (^18.0.0 || ^19.0.0)
-- Automatically includes `@youversion/platform-core`
+```tsx
+import { BibleSDKProvider, usePassage } from '@youversion/platform-react-hooks';
 
-See [packages/hooks/README.md](packages/hooks/README.md) for detailed documentation.
+function BibleVerse() {
+  const { passage, loading } = usePassage(111, 'JHN.3.16');
+  if (loading) return <div>Loading...</div>;
+  return <div dangerouslySetInnerHTML={{ __html: passage?.content || '' }} />;
+}
 
-### @youversion/platform-react-ui
-
-Ready-to-use React UI components for YouVersion Platform features.
-
-```bash
-pnpm add @youversion/platform-react-ui
+function App() {
+  return (
+    <BibleSDKProvider appKey="YOUR_APP_KEY">
+      <BibleVerse />
+    </BibleSDKProvider>
+  );
+}
 ```
 
-**Peer Dependencies:**
-- react (^18.0.0 || ^19.0.0)
-- react-dom (^18.0.0 || ^19.0.0)
+### Core API
 
-Automatically includes `@youversion/platform-core` and `@youversion/platform-react-hooks`
+```ts
+import { ApiClient, BibleClient } from '@youversion/platform-core';
 
-See [packages/ui/README.md](packages/ui/README.md) for detailed documentation.
+const apiClient = new ApiClient({ appKey: 'YOUR_APP_KEY' });
+const bibleClient = new BibleClient(apiClient);
 
-## 🛠 Development
-
-### Development Environments
-
-Run the example app:
-
-```bash
-pnpm dev:web
+const versions = await bibleClient.getVersions('en*');
+const passage = await bibleClient.getPassage(111, 'JHN.3.16');
 ```
 
-The development script automatically:
-- Builds and watches SDK packages for changes
-- Starts the Next.js example app
-- Manages dependencies with Turbo for optimal performance
+## Packages
 
-### Component Development with Storybook
+All packages use unified versioning and are released together.
 
-The UI package includes Storybook for component development and documentation:
+- **[@youversion/platform-core](packages/core/README.md)** - Core TypeScript SDK for API access
+- **[@youversion/platform-react-hooks](packages/hooks/README.md)** - React hooks wrapping core SDK
+- **[@youversion/platform-react-ui](packages/ui/README.md)** - Production-ready UI components
 
-```bash
-# Start Storybook development server
-pnpm --filter @youversion/platform-react-ui storybook
+## Contributing
 
-# Build Storybook for deployment
-pnpm --filter @youversion/platform-react-ui build-storybook
-```
-
-**Visual Testing with Chromatic:**
-
-Chromatic provides visual regression testing for components. To use:
-
-1. Create `.env.local` in `packages/ui/` (see [packages/ui/.env.example](packages/ui/.env.example))
-2. Add your `CHROMATIC_PROJECT_TOKEN`
-3. Run: `pnpm --filter @youversion/platform-react-ui chromatic`
-
-See [packages/ui/README.md](packages/ui/README.md) for details.
-
-### Build Commands
-
-```bash
-# Build all packages in dependency order
-pnpm build
-
-# Build specific packages
-pnpm build:core    # Build core
-pnpm build:react   # Build React SDK
-```
-
-### Development Commands
-
-```bash
-# Run tests (sequential, clear output)
-pnpm test          # Run all tests
-pnpm test:watch    # Watch mode across packages
-
-# Code quality
-pnpm typecheck     # TypeScript type checking
-pnpm lint          # ESLint
-pnpm format        # Prettier formatting
-```
-
-### Release Process
-
-This project uses **unified versioning** - all packages are versioned and released together.
-
-1. Make your changes
-2. Run `pnpm changeset` to create a changeset
-   - Select appropriate bump type (major/minor/patch)
-   - Note: All packages will be bumped together, even if changes only affect one
-3. Submit a PR
-4. Once merged, the CI/CD pipeline will:
-   - Create a release PR with version updates for all packages
-   - Publish all packages to npm after release PR is merged
-
-```bash
-# Manual release commands (usually handled by CI)
-pnpm changeset          # Create changeset
-pnpm version-packages   # Update versions (all packages bumped together)
-pnpm release           # Build and publish all packages
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md#versioning-strategy) for detailed versioning strategy.
-
-## 🧪 Testing
-
-The project uses a standardized testing approach with clear, sequential output:
-
-```bash
-# Run all tests (sequential execution for clear output)
-pnpm test
-
-# Watch mode for development
-pnpm test:watch
-
-# Individual package testing
-pnpm --filter @youversion/platform-core test
-pnpm --filter @youversion/platform-react-hooks test
-pnpm --filter @youversion/platform-react-ui test
-
-# Coverage (per package)
-pnpm --filter @youversion/platform-core test:coverage
-pnpm --filter @youversion/platform-react-hooks test:coverage
-```
-
-**Testing Architecture:**
-- **Sequential execution**: Tests run one package at a time for clear, debuggable output
-- **Vitest**: All packages use Vitest for consistent testing experience
-- **React Testing Library**: Used for component and hook testing
-- **Watch mode**: Turbo-powered concurrent watching for active development
-
-## 📝 Contributing
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, build commands, and testing instructions.
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -298,77 +117,10 @@ pnpm --filter @youversion/platform-react-hooks test:coverage
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 🔧 Configuration
-
-### Build System
-
-**Turbo Pipeline** (`turbo.json`):
-- Orchestrates build tasks with proper dependencies
-- Caching enabled for builds, tests, linting, and type checking
-- Build order: `dependsOn: ["^build"]` ensures dependencies build first
-
-**Package Bundling**:
-- **React SDK**: Uses tsup with `noExternal: ['core']` to bundle dependencies
-- **Output formats**: ESM and CommonJS
-
-### TypeScript
-
-- Shared configurations in `tools/tsconfig/`
-- Strict mode enabled with comprehensive type checking
-
-### Testing
-
-- **Test Framework**: Vitest across all packages for consistency
-- **React Testing**: React Testing Library for component and hook testing
-- **Execution**: Sequential testing for clear, debuggable output (no concurrent jumbled logs)
-- **Test files pattern**: `*.test.ts(x)`
-- **Coverage**: Available per package with `test:coverage` script
-
-### Code Quality
-
-- **ESLint**: Shared config from `tools/eslint-config/`
-- **Prettier**: Consistent code formatting
-- **Husky**: Git hooks for pre-commit checks
-- **lint-staged**: Runs linting on staged files only
-- **Maximum warnings**: 0 (enforced in CI)
-
-#### ESLint configuration (monorepo)
-- Single flat config shared across the repo. The rule set lives in [tools/eslint-config/index.js](tools/eslint-config/index.js) and is imported by the root [eslint.config.js](eslint.config.js).
-- Strict, typed rules are enabled via typescript-eslint v8. React + Hooks rules are enforced.
-- Pre-commit uses lint-staged via [/.husky/pre-commit](.husky/pre-commit) and [/.lintstagedrc.json](.lintstagedrc.json).
-- Commands:
-  - Lint all: `pnpm lint`
-  - Typecheck: `pnpm typecheck`
-  - Format: `pnpm format`
-
-### Package Management
-
-- `pnpm-workspace.yaml` - Defines workspace packages
-- `.npmrc` - pnpm configuration with hoisting patterns
-- React versions pinned via pnpm overrides (19.1.0)
-
-### CI/CD
-
-**GitHub Actions** (`.github/workflows/ci.yml`):
-- **CI Job**: Runs on all PRs (build, lint, typecheck, test)
-- **Release Job**: Runs on main branch
-  - Creates release PRs via changesets
-  - Publishes to npm with automated versioning
-
-### Version Control
-
-- **Changesets**: Manages versions and changelogs
-- **Publishing**: Public packages to npm registry
-- **Pre-commit hooks**: Automated quality checks
-
-## 📄 License
+## License
 
 See [LICENSE](./LICENSE)
 
-## 👥 Contributing
+## Support
 
-We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details on how to get started.
-
-## 🤝 Support
-
-For support, please open an issue in the GitHub repository.
+For support, please open an issue in the GitHub repository or visit [https://platform.youversion.com/](https://platform.youversion.com/) for developer resources.
