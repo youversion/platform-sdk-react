@@ -692,7 +692,7 @@ function DailyVerse() {
 ```
 
 **Parameters:**
-- `day`: number - Day of the year (1-366)
+- `day`: number - Day of the year (1-366), where day 1 is January 1st
 - `options?`: UseApiDataOptions - Optional configuration
 
 **Returns:** Object with `data`, `loading`, `error`, and `refetch` properties.
