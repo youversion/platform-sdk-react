@@ -5,7 +5,6 @@ This is a [Next.js](https://nextjs.org) example application demonstrating integr
 ## What This Example Demonstrates
 
 This example showcases:
-- **Authentication flow** with YouVersion Platform
 - Integration of `@youversion/platform-react-ui` components
 - Setup of required providers (`BibleSDKProvider`, `YVPProvider`)
 - Basic Bible content display and interaction
@@ -39,8 +38,8 @@ cp .env.example .env.local
 Edit `.env.local` and add your [YouVersion Platform](https://platform.youversion.com/) credentials:
 
 ```
-NEXT_PUBLIC_APP_ID=your_app_id_here
-NEXT_PUBLIC_API_KEY=your_api_key_here
+NEXT_PUBLIC_YVP_APP_KEY=your_APP_KEY_here
+NEXT_PUBLIC_REDIRECT_URI=http://localhost:3000/auth/callback
 ```
 
 ### 3. Run the Example
@@ -65,17 +64,10 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 To use this example as a starting point:
 
-1. **Update App ID** in `.env.local` with your YouVersion Platform app credentials
+1. **Update App Key** in `.env.local` with your YouVersion Platform app credentials
 2. **Import components** from `@youversion/platform-react-ui` in your pages
 3. **Wrap your app** with required providers (see `app/layout.tsx`)
 4. **Customize components** and styling as needed
-
-## Common Next Steps
-
-- **Add custom components** - Use hooks from `@youversion/platform-react-hooks` to build custom UI
-- **Add authentication** - Implement user login/logout flows
-- **Customize styles** - Override component styles via CSS modules or Tailwind
-- **Add more pages** - Extend the example with additional features
 
 ## Key Files
 

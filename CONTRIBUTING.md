@@ -1,8 +1,10 @@
 # Contributing to YouVersion Platform React SDKs
 
-## Development Guidelines
+This project is maintained and developed by the YouVersion team.
 
-### Package Development Guidelines
+### Development Guidelines
+
+> **⚠️ pnpm Required:** This monorepo uses pnpm workspaces for development. While individual packages work with npm/yarn when installed via npm registry, local development requires **pnpm >= 9.0.0**. Verify with `pnpm --version`.
 
 **Important Rules:**
 
@@ -48,8 +50,6 @@ This monorepo uses **unified versioning** - all published packages share the sam
 
 **Note:** Even if you only change one package, all three packages will be versioned and released together. This is intentional and ensures ecosystem consistency.
 
-### Development Workflow
-
 1. Make your changes
 2. Run `pnpm build` to ensure builds pass and type checking succeeds
 3. Run tests with `pnpm test` (sequential execution for clear output)
@@ -71,3 +71,11 @@ This monorepo uses **unified versioning** - all published packages share the sam
 - `hooks` depends on `core` for data access
 - `ui` depends on both `core` and `hooks` for full functionality
 - Build order enforced by Turbo: `core` → `hooks` → `ui`
+
+## Acknowledgements
+
+We thank all contributors who have helped make this SDK better through bug reports, feature requests, and code contributions.
+
+## Support
+
+For support, please open an issue in the [GitHub repository](https://github.com/youversion/platform-sdk-react).

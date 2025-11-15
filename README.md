@@ -52,7 +52,13 @@
 
 # YouVersion Platform React SDK
 
-A comprehensive React SDK for integrating YouVersion Platform features into your web applications. This monorepo provides ready-to-use UI components and powerful hooks for Bible content, authentication, and more.
+A comprehensive React SDK for integrating [YouVersion Platform](https://platform.youversion.com/) features into your web applications.
+
+This monorepo provides:
+
+1. Core type-safe YouVersion API client for Bible content, search, authentication, and more
+2. Powerful React hooks wrapping the core API client for ease of use
+3. Ready-to-use React components to bring the Bible to everyone, everywhere, every day
 
 Built with pnpm workspaces and Turbo for build orchestration.
 
@@ -60,7 +66,7 @@ Built with pnpm workspaces and Turbo for build orchestration.
 
 ### 🎨 UI Component Library
 
-Ready to add Bible features to your app? Install this React SDK `@youversion/platform-react-ui` for pre-built React components including verse displays, chapter navigation, and reading experiences.
+Ready to add Bible features to your app? Install `@youversion/platform-react-ui` for pre-built React components including verse displays, chapter navigation, search interfaces, and reading experiences.
 
 ### 🔧 Building Custom Components
 
@@ -113,8 +119,6 @@ Building AI applications with Bible content? Access YouVersion's LLM-optimized e
 
 ### Installation
 
-> **⚠️ pnpm Required:** This monorepo uses pnpm workspaces for development. While individual packages work with npm/yarn when installed via npm registry, local development requires **pnpm >= 9.0.0**. Verify with `pnpm --version`.
-
 ```bash
 # Clone the repository
 git clone https://github.com/youversion/yvp-react-sdk.git
@@ -136,7 +140,7 @@ All packages use **unified versioning** - they share the same version number and
 
 ### @youversion/platform-core
 
-A powerful, type-safe TypeScript library for interacting with Bible data. This package provides a comprehensive API client for fetching Bible versions, books, chapters, verses, and user authentication from the YouVersion Bible API.
+A type-safe TypeScript library for interacting with Bible data. This package provides an API client for fetching Bible versions, books, chapters, verses, and user authentication from the YouVersion Bible API.
 
 ```bash
 pnpm add @youversion/platform-core
@@ -360,6 +364,10 @@ pnpm --filter @youversion/platform-react-hooks test:coverage
 ## 📄 License
 
 See [LICENSE](./LICENSE)
+
+## 👥 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details on how to get started.
 
 ## 🤝 Support
 
