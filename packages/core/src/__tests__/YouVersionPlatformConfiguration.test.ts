@@ -17,7 +17,7 @@ import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfigurat
 describe('YouVersionPlatformConfiguration', () => {
   beforeEach(() => {
     // Reset all static properties
-    YouVersionPlatformConfiguration.appId = null;
+    YouVersionPlatformConfiguration.appKey = null;
     YouVersionPlatformConfiguration.installationId = null;
     YouVersionPlatformConfiguration.setAccessToken(null);
     YouVersionPlatformConfiguration.apiHost = 'api-dev.youversion.com';
@@ -37,15 +37,15 @@ describe('YouVersionPlatformConfiguration', () => {
     vi.restoreAllMocks();
   });
 
-  describe('appId', () => {
-    it('should get and set appId', () => {
-      expect(YouVersionPlatformConfiguration.appId).toBeNull();
+  describe('appKey', () => {
+    it('should get and set appKey', () => {
+      expect(YouVersionPlatformConfiguration.appKey).toBeNull();
 
-      YouVersionPlatformConfiguration.appId = 'test-app-id';
-      expect(YouVersionPlatformConfiguration.appId).toBe('test-app-id');
+      YouVersionPlatformConfiguration.appKey = 'test-app-key';
+      expect(YouVersionPlatformConfiguration.appKey).toBe('test-app-key');
 
-      YouVersionPlatformConfiguration.appId = null;
-      expect(YouVersionPlatformConfiguration.appId).toBeNull();
+      YouVersionPlatformConfiguration.appKey = null;
+      expect(YouVersionPlatformConfiguration.appKey).toBeNull();
     });
   });
 

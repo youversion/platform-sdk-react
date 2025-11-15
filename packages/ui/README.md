@@ -545,7 +545,7 @@ Create a `.env.local` file in `packages/ui/` with:
 
 ```bash
 # Required for Storybook components that interact with YouVersion API
-STORYBOOK_YOUVERSION_APP_KEY="your-app-id"
+STORYBOOK_YOUVERSION_APP_KEY="your-app-key"
 ```
 
 **Start Storybook:**

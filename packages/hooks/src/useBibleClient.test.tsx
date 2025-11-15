@@ -28,7 +28,7 @@ vi.mock('@youversion/platform-core', async () => {
 });
 
 describe('useBibleClient', () => {
-  const mockAppId = 'test-app-id';
+  const mockAppKey = 'test-app-key';
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -38,7 +38,7 @@ describe('useBibleClient', () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <BibleSDKContext.Provider
         value={{
-          appId: mockAppId,
+          appKey: mockAppKey,
         }}
       >
         {children}
@@ -48,7 +48,7 @@ describe('useBibleClient', () => {
     const { result } = renderHook(() => useBibleClient(), { wrapper });
 
     expect(ApiClient).toHaveBeenCalledWith({
-      appId: mockAppId,
+      appKey: mockAppKey,
       installationId: 'auto-generated-uuid',
     });
     expect(BibleClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
@@ -61,11 +61,11 @@ describe('useBibleClient', () => {
     );
   });
 
-  it('should throw error when appId is missing', () => {
+  it('should throw error when appKey is missing', () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <BibleSDKContext.Provider
         value={{
-          appId: '',
+          appKey: '',
         }}
       >
         {children}
@@ -81,7 +81,7 @@ describe('useBibleClient', () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <BibleSDKContext.Provider
         value={{
-          appId: mockAppId,
+          appKey: mockAppKey,
         }}
       >
         {children}
@@ -98,13 +98,13 @@ describe('useBibleClient', () => {
     expect(BibleClient).toHaveBeenCalledTimes(1);
   });
 
-  it('should create new BibleClient when appId changes', () => {
-    let currentAppId = mockAppId;
+  it('should create new BibleClient when appKey changes', () => {
+    let currentAppKey = mockAppKey;
 
     const wrapper = ({ children }: { children: ReactNode }) => (
       <BibleSDKContext.Provider
         value={{
-          appId: currentAppId,
+          appKey: currentAppKey,
         }}
       >
         {children}
@@ -116,11 +116,11 @@ describe('useBibleClient', () => {
     const firstClient = result.current;
     expect(BibleClient).toHaveBeenCalledTimes(1);
     expect(ApiClient).toHaveBeenCalledWith({
-      appId: mockAppId,
+      appKey: mockAppKey,
       installationId: 'auto-generated-uuid',
     });
 
-    currentAppId = 'new-app-id';
+    currentAppKey = 'new-app-key';
     rerender();
 
     const secondClient = result.current;
@@ -128,16 +128,16 @@ describe('useBibleClient', () => {
     expect(firstClient).not.toBe(secondClient);
 
     expect(ApiClient).toHaveBeenLastCalledWith({
-      appId: 'new-app-id',
+      appKey: 'new-app-key',
       installationId: 'auto-generated-uuid',
     });
   });
 
-  it('should throw error when appId is null', () => {
+  it('should throw error when appKey is null', () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <BibleSDKContext.Provider
         value={{
-          appId: null as unknown as string,
+          appKey: null as unknown as string,
         }}
       >
         {children}

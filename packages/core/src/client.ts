@@ -17,7 +17,7 @@ export class ApiClient {
   /**
    * Creates an instance of ApiClient.
    *
-   * @param config - The API configuration object containing baseUrl, timeout, and appId.
+   * @param config - The API configuration object containing baseUrl, timeout, and appKey.
    */
   constructor(config: ApiConfig) {
     this.config = {
@@ -28,7 +28,7 @@ export class ApiClient {
     this.timeout = config.timeout || 10000;
     this.defaultHeaders = {
       'Content-Type': 'application/json',
-      'X-YVP-App-Key': this.config.appId,
+      'X-YVP-App-Key': this.config.appKey,
       'X-YVP-Installation-Id': this.config.installationId || 'web-sdk-default',
     };
   }

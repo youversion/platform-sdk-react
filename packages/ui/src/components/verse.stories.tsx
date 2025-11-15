@@ -115,7 +115,7 @@ const meta = {
   },
   decorators: [
     (Story: React.ComponentType): React.ReactElement => (
-      <BibleSDKProvider appId={import.meta.env.STORYBOOK_YOUVERSION_APP_ID || ''}>
+      <BibleSDKProvider appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || ''}>
         <Story />
       </BibleSDKProvider>
     ),

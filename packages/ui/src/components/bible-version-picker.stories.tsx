@@ -8,9 +8,9 @@ import { Button } from './ui/button';
 
 const withProvider = (Story: React.ComponentType) => (
   <BibleSDKProvider
-    appId={
-      (import.meta.env.STORYBOOK_PROD_YVP_APP_ID ||
-        import.meta.env.STORYBOOK_YOUVERSION_APP_ID ||
+    appKey={
+      (import.meta.env.STORYBOOK_PROD_YVP_APP_KEY ||
+        import.meta.env.STORYBOOK_YOUVERSION_APP_KEY ||
         '') as string
     }
   >

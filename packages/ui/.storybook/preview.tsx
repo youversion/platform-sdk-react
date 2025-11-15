@@ -15,10 +15,10 @@ initialize();
 const preview: Preview = {
   decorators: [
     (Story: React.ComponentType): React.ReactElement => (
-      <StorybookEnvCheck requiredEnvVars={['STORYBOOK_YOUVERSION_APP_ID']}>
+      <StorybookEnvCheck requiredEnvVars={['STORYBOOK_YOUVERSION_APP_KEY']}>
         <YVPProvider
           config={{
-            appId: import.meta.env.STORYBOOK_YOUVERSION_APP_ID || '',
+            appKey: import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || '',
             redirectUri: 'http://localhost:6006/auth/callback',
           }}
         >

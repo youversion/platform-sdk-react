@@ -14,7 +14,7 @@ describe('AuthClient', () => {
     global.fetch = vi.fn();
     apiClient = new ApiClient({
       baseUrl: 'https://api-dev.youversion.com',
-      appId: 'test-app-id',
+      appKey: 'test-app-key',
       version: 'v1',
     });
     authClient = new AuthClient(apiClient);

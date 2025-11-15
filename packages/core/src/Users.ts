@@ -34,12 +34,12 @@ export class YouVersionAPIUsers {
       throw new Error('Invalid optionalPermissions: must be a Set');
     }
 
-    const appId = YouVersionPlatformConfiguration.appId;
-    if (!appId) {
-      throw new Error('YouVersionPlatformConfiguration.appId must be set before calling signIn');
+    const appKey = YouVersionPlatformConfiguration.appKey;
+    if (!appKey) {
+      throw new Error('YouVersionPlatformConfiguration.appKey must be set before calling signIn');
     }
 
-    const url = URLBuilder.authURL(appId, requiredPermissions, optionalPermissions);
+    const url = URLBuilder.authURL(appKey, requiredPermissions, optionalPermissions);
 
     // Use the registered authentication strategy
     const strategy = AuthenticationStrategyRegistry.get();
