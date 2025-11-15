@@ -2,9 +2,102 @@
 
 This project is maintained and developed by the YouVersion team.
 
-### Development Guidelines
+## Development & Testing
+
+### Prerequisites
+
+- Node.js >= 20.0.0
+- pnpm >= 9.0.0 (required for workspace management)
 
 > **⚠️ pnpm Required:** This monorepo uses pnpm workspaces for development. While individual packages work with npm/yarn when installed via npm registry, local development requires **pnpm >= 9.0.0**. Verify with `pnpm --version`.
+
+### Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/youversion/platform-sdk-react.git
+cd platform-sdk-react
+
+# Install dependencies
+pnpm install
+```
+
+### Build Commands
+
+```bash
+# Build all packages in dependency order
+pnpm build
+
+# Build specific packages
+pnpm build:core    # Build core
+pnpm build:react   # Build React SDK (hooks + ui)
+```
+
+### Test Commands
+
+```bash
+# Run all tests (sequential execution for clear output)
+pnpm test
+
+# Run tests in watch mode
+pnpm test:watch
+
+# Run tests for specific packages
+pnpm --filter @youversion/platform-core test
+pnpm --filter @youversion/platform-react-hooks test
+pnpm --filter @youversion/platform-react-ui test
+
+# Run tests with coverage
+pnpm --filter @youversion/platform-core test:coverage
+pnpm --filter @youversion/platform-react-hooks test:coverage
+pnpm --filter @youversion/platform-react-ui test:coverage
+```
+
+### Type Checking
+
+```bash
+# Type check all packages
+pnpm typecheck
+```
+
+### Linting and Formatting
+
+```bash
+# Run ESLint
+pnpm lint
+
+# Format code with Prettier
+pnpm format
+```
+
+### Development Environment
+
+```bash
+# Run the example app with watch mode
+pnpm dev:web
+```
+
+The development script automatically:
+- Builds and watches SDK packages for changes
+- Starts the Next.js example app
+- Manages dependencies with Turbo for optimal performance
+
+### Storybook Development (UI Package)
+
+```bash
+# Start Storybook development server
+pnpm --filter @youversion/platform-react-ui storybook
+
+# Build Storybook for deployment
+pnpm --filter @youversion/platform-react-ui build-storybook
+```
+
+**Storybook Setup:**
+1. Create `.env.local` in `packages/ui/`
+2. Add `STORYBOOK_YOUVERSION_APP_KEY="your-app-key"`
+3. Run `pnpm --filter @youversion/platform-react-ui storybook`
+
+### Development Guidelines
 
 **Important Rules:**
 
