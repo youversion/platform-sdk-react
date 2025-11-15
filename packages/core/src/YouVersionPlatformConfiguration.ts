@@ -1,7 +1,7 @@
 import type { YouVersionUserInfo } from './YouVersionUserInfo';
 
 export class YouVersionPlatformConfiguration {
-  private static _appId: string | null = null;
+  private static _appKey: string | null = null;
   private static _installationId: string | null = null;
   private static _accessToken: string | null = null;
   private static _apiHost: string = 'api-dev.youversion.com';
@@ -23,12 +23,12 @@ export class YouVersionPlatformConfiguration {
     return newId;
   }
 
-  static get appId(): string | null {
-    return this._appId;
+  static get appKey(): string | null {
+    return this._appKey;
   }
 
-  static set appId(value: string | null) {
-    this._appId = value;
+  static set appKey(value: string | null) {
+    this._appKey = value;
   }
 
   static get installationId(): string {

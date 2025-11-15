@@ -9,7 +9,7 @@ describe('ApiClient', () => {
   beforeEach(() => {
     apiClient = new ApiClient({
       baseUrl: 'https://api-dev.youversion.com',
-      appId: 'test-app',
+      appKey: 'test-app',
       version: 'v1',
       installationId: 'test-installation',
     });
@@ -19,7 +19,7 @@ describe('ApiClient', () => {
     it('should set default version to v1', () => {
       const client = new ApiClient({
         baseUrl: 'https://api-dev.youversion.com',
-        appId: 'test-app',
+        appKey: 'test-app',
         installationId: 'test-installation',
       });
 
@@ -29,7 +29,7 @@ describe('ApiClient', () => {
     it('should use provided version', () => {
       const client = new ApiClient({
         baseUrl: 'https://api-dev.youversion.com',
-        appId: 'test-app',
+        appKey: 'test-app',
         version: 'v2',
         installationId: 'test-installation',
       });

@@ -9,7 +9,7 @@ import type { SearchResponse } from '@youversion/platform-core';
  * Search API and returns the associated loading & error state.
  *
  * The hook will throw if it is used outside of a `BibleSDKProvider` because it
- * needs an `appId` from context to construct the underlying {@link ApiClient}.
+ * needs an `appKey` from context to construct the underlying {@link ApiClient}.
  *
  * Results are automatically re-fetched when the `query` or `versionId`
  * arguments change. Fetching can be disabled via `options.enabled`.

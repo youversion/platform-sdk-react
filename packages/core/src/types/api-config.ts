@@ -1,6 +1,6 @@
 export interface ApiConfig {
   baseUrl?: string;
-  appId: string;
+  appKey: string;
   timeout?: number;
   hostEnv?: string;
   version?: string;

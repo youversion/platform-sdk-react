@@ -7,16 +7,14 @@ export class YouVersionAPI {
       'Content-Type': 'application/json',
     };
 
-    // Add app ID header
-    const appId = YouVersionPlatformConfiguration.appId;
-    if (appId) {
-      headers['X-App-Id'] = appId;
+    const appKey = YouVersionPlatformConfiguration.appKey;
+    if (appKey) {
+      headers['X-YVP-App-Key'] = appKey;
     }
 
-    // Add installation ID header
     const installationId = YouVersionPlatformConfiguration.installationId;
     if (installationId) {
-      headers['x-yvp-installation-id'] = installationId;
+      headers['X-YVP-Installation-ID'] = installationId;
     }
 
     const request = new Request(url.toString(), {

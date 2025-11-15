@@ -31,7 +31,7 @@ vi.mock('@youversion/platform-core', async () => {
 });
 
 describe('useLanguages', () => {
-  const mockAppId = 'test-app-id';
+  const mockAppKey = 'test-app-key';
 
   const mockLanguages: Collection<Language> = {
     data: [
@@ -77,7 +77,7 @@ describe('useLanguages', () => {
 
   let mockGetLanguages: Mock;
 
-  const createWrapper = (contextValue: { appId: string }) => {
+  const createWrapper = (contextValue: { appKey: string }) => {
     return ({ children }: { children: ReactNode }) => (
       <BibleSDKContext.Provider value={contextValue}>{children}</BibleSDKContext.Provider>
     );
@@ -108,9 +108,9 @@ describe('useLanguages', () => {
       );
     });
 
-    it('should throw error when appId is missing', () => {
+    it('should throw error when appKey is missing', () => {
       const wrapper = createWrapper({
-        appId: '',
+        appKey: '',
       });
 
       expect(() => renderHook(() => useLanguages({ country: 'US' }), { wrapper })).toThrow(
@@ -122,13 +122,13 @@ describe('useLanguages', () => {
   describe('client creation', () => {
     it('should create LanguagesClient with correct ApiClient config', () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       renderHook(() => useLanguages({ country: 'US' }), { wrapper });
 
       expect(ApiClient).toHaveBeenCalledWith({
-        appId: mockAppId,
+        appKey: mockAppKey,
         installationId: 'auto-generated-uuid',
       });
       expect(LanguagesClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
@@ -136,7 +136,7 @@ describe('useLanguages', () => {
 
     it('should memoize LanguagesClient instance', () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result, rerender } = renderHook(() => useLanguages({ country: 'US' }), { wrapper });
@@ -149,12 +149,12 @@ describe('useLanguages', () => {
     });
 
     it('should create new LanguagesClient when context values change', () => {
-      let currentAppId = mockAppId;
+      let currentAppKey = mockAppKey;
 
       const wrapper = ({ children }: { children: ReactNode }) => (
         <BibleSDKContext.Provider
           value={{
-            appId: currentAppId,
+            appKey: currentAppKey,
           }}
         >
           {children}
@@ -165,7 +165,7 @@ describe('useLanguages', () => {
 
       expect(LanguagesClient).toHaveBeenCalledTimes(1);
 
-      currentAppId = 'new-app-id';
+      currentAppKey = 'new-app-key';
       rerender();
 
       expect(LanguagesClient).toHaveBeenCalledTimes(2);
@@ -175,7 +175,7 @@ describe('useLanguages', () => {
   describe('fetching languages', () => {
     it('should fetch languages with required country', async () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useLanguages({ country: 'US' }), { wrapper });
@@ -193,7 +193,7 @@ describe('useLanguages', () => {
 
     it('should fetch languages with all options', async () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const options: GetLanguagesOptions = {
@@ -214,7 +214,7 @@ describe('useLanguages', () => {
 
     it('should refetch when options change', async () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result, rerender } = renderHook(({ options }) => useLanguages(options), {
@@ -240,7 +240,7 @@ describe('useLanguages', () => {
 
     it('should not fetch when enabled is false', async () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useLanguages({ country: 'US' }, { enabled: false }), {
@@ -260,7 +260,7 @@ describe('useLanguages', () => {
       mockGetLanguages.mockRejectedValueOnce(error);
 
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useLanguages({ country: 'US' }), { wrapper });
@@ -275,7 +275,7 @@ describe('useLanguages', () => {
 
     it('should support manual refetch', async () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useLanguages({ country: 'US' }), { wrapper });
