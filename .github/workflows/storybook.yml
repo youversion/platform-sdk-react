@@ -5,7 +5,6 @@ on:
     paths:
       - 'packages/ui/**'
       - 'pnpm-lock.yaml'
-      - '.github/workflows/storybook-tests.yml'
 
 jobs:
   visual-tests:
@@ -21,7 +20,7 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           version: 9.0.0
-
+      
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -49,18 +48,15 @@ jobs:
       image: mcr.microsoft.com/playwright:v1.56.1-noble
     env:
       STORYBOOK_YOUVERSION_APP_ID: ${{ secrets.STORYBOOK_YOUVERSION_APP_ID }}
-      YVP_APP_ID: ${{ secrets.STORYBOOK_YOUVERSION_APP_ID }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9.0.0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
 
