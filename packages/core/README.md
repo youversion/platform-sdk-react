@@ -21,14 +21,13 @@
 
 # @youversion/platform-core
 
-A type-safe TypeScript SDK for accessing the YouVersion Platform APIs. Get Bible content and build Bible-based applications with full authentication support.
+A type-safe TypeScript SDK for accessing the YouVersion Platform APIs. Get Bible content and build Bible-based applications.
 
 ## Overview
 
 `@youversion/platform-core` is a published npm package that provides comprehensive API clients for the YouVersion Bible Platform. It enables developers to:
 
 - Access Bible data (versions, books, chapters, verses, passages)
-- Authenticate users with OAuth
 - Access language information
 - Fetch Verse of the Day
 
@@ -87,8 +86,7 @@ This package provides low-level API access. Depending on your use case, you may 
 Unlike React packages, `@youversion/platform-core` doesn't use providers. Instead, you initialize API clients directly:
 
 1. **Create an ApiClient** with your YouVersion Platform App Key
-2. **Use specialized clients** (BibleClient, AuthClient) for different API features
-3. **Set access tokens** only when needed for authenticated endpoints
+2. **Use specialized clients** (BibleClient, LanguagesClient) for different API features
 
 ### Installation & Initialization
 
@@ -146,69 +144,6 @@ async function main() {
 main()
 ```
 
-### Authentication Setup
-
-To access protected endpoints (user data), authenticate using a Long-lived Access Token:
-
-```ts
-import { AuthClient, YouVersionPlatformConfiguration } from '@youversion/platform-core'
-
-// Set the access token (e.g., from OAuth flow)
-YouVersionPlatformConfiguration.setAccessToken('YOUR_LONG_ACCESS_TOKEN')
-
-const authClient = new AuthClient(apiClient)
-const user = await authClient.getUser('YOUR_LONG_ACCESS_TOKEN')
-console.log(user.first_name)
-console.log(user.id)
-```
-
-### OAuth Sign-In Flow
-
-For applications that need to authenticate users via OAuth, use the `YouVersionAPIUsers` utility class:
-
-```ts
-import {
-  YouVersionAPIUsers,
-  YouVersionPlatformConfiguration,
-  SignInWithYouVersionPermission
-} from '@youversion/platform-core'
-
-// Set your App Key first
-YouVersionPlatformConfiguration.appKey = import.meta.env.YVP_APP_KEY
-
-// Define required and optional permissions
-const requiredPermissions = new Set([
-  SignInWithYouVersionPermission.bibles
-])
-
-const optionalPermissions = new Set([
-  SignInWithYouVersionPermission.votd
-])
-
-// Initiate sign-in flow
-const result = await YouVersionAPIUsers.signIn(requiredPermissions, optionalPermissions)
-
-if (result.accessToken) {
-  console.log('User signed in:', result.yvpUserId)
-  console.log('Granted permissions:', result.permissions)
-
-  // Get user info
-  const userInfo = await YouVersionAPIUsers.userInfo(result.accessToken)
-  console.log(userInfo.first_name, userInfo.last_name)
-} else if (result.errorMsg) {
-  console.error('Sign-in failed:', result.errorMsg)
-}
-
-// Sign out when done
-YouVersionAPIUsers.signOut()
-```
-
-**Available Permissions:**
-- `SignInWithYouVersionPermission.bibles` - Access to Bible content
-- `SignInWithYouVersionPermission.votd` - Access Verse of the Day
-- `SignInWithYouVersionPermission.demographics` - User demographic information
-- `SignInWithYouVersionPermission.bibleActivity` - User's Bible reading activity
-
 ## Features and Capabilities
 
 ### Bible Data Access
@@ -216,11 +151,6 @@ YouVersionAPIUsers.signOut()
 - Get formatted passages with optional headings and notes
 - Access the complete Bible index structure
 - Support for multiple Bible translations
-
-### User Authentication
-- OAuth authentication with YouVersion
-- Long-lived Access Token support
-- User profile information retrieval
 
 ### Language Support
 - Query available languages by country
@@ -647,112 +577,6 @@ const serbianCyrillic = await languagesClient.getLanguage('sr-Cyrl')
 
 **Parameters:**
 - `languageId` (string, required): BCP 47 language code (e.g., `"en"`, `"es"`, `"sr-Cyrl"`)
-
----
-
-### YouVersionAPIUsers
-
-Utility class for OAuth authentication flow with YouVersion.
-
-#### Methods
-
-##### `static signIn(requiredPermissions: Set<SignInWithYouVersionPermissionValues>, optionalPermissions: Set<SignInWithYouVersionPermissionValues>): Promise<SignInWithYouVersionResult>`
-
-Initiates the OAuth sign-in flow with YouVersion.
-
-```ts
-import { YouVersionAPIUsers, SignInWithYouVersionPermission } from '@youversion/platform-core'
-
-const result = await YouVersionAPIUsers.signIn(
-  new Set([SignInWithYouVersionPermission.bibles]),
-)
-
-if (result.accessToken) {
-  console.log('Access token:', result.accessToken)
-  console.log('User ID:', result.yvpUserId)
-  console.log('Permissions:', result.permissions)
-}
-```
-
-**Parameters:**
-- `requiredPermissions` (Set, required): Permissions that must be granted for successful sign-in
-- `optionalPermissions` (Set, required): Permissions requested but not required
-
-**Returns:** `SignInWithYouVersionResult` with:
-- `accessToken: string | null` - The Long-lived Access Token
-- `yvpUserId: string | null` - The YouVersion user ID
-- `permissions: string[]` - Array of granted permissions
-- `errorMsg: string | null` - Error message if sign-in failed
-
----
-
-##### `static signOut(): void`
-
-Clears the stored access token.
-
-```ts
-YouVersionAPIUsers.signOut()
-```
-
----
-
-##### `static userInfo(accessToken: string): Promise<YouVersionUserInfo>`
-
-Retrieves user profile information using an access token.
-
-```ts
-const userInfo = await YouVersionAPIUsers.userInfo('YOUR_ACCESS_TOKEN')
-console.log(userInfo.first_name)
-console.log(userInfo.last_name)
-console.log(userInfo.id)
-console.log(userInfo.getAvatarUrl())
-```
-
-**Parameters:**
-- `accessToken` (string, required): The Long-lived Access Token from sign-in
-
-**Response Example:**
-```ts
-{
-  id: "user_123",
-  first_name: "John",
-  last_name: "Doe",
-  avatar_url: "https://..."
-}
-```
-
----
-
-### AuthClient
-
-Client for user authentication.
-
-#### Methods
-
-##### `getUser(lat: string): Promise<User>`
-
-Retrieve the current authenticated user's profile.
-
-```ts
-const authClient = new AuthClient(apiClient)
-
-const user = await authClient.getUser('YOUR_LONG_ACCESS_TOKEN')
-console.log(user.first_name)
-console.log(user.id)
-```
-
-**Parameters:**
-- `lat` (string, required): Long-lived Access Token
-
-**Response Example:**
-```ts
-{
-  id: "user_123",
-  avatar_url: "https://...",
-  first_name: "John",
-  last_name: "Doe"
-}
-```
 
 ---
 

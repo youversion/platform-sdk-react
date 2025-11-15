@@ -23,11 +23,11 @@
 
 # @youversion/platform-react-ui
 
-Pre-built React components for building Bible-based applications with the YouVersion Platform SDK. Get styled, production-ready components that work seamlessly with authentication, Bible reading, and YouVersion APIs.
+Pre-built React components for building Bible-based applications with the YouVersion Platform SDK. Get styled, production-ready components that work seamlessly with Bible content and YouVersion APIs.
 
 ## Overview
 
-`@youversion/platform-react-ui` provides a collection of ready-to-use React components for Bible-focused applications. Instead of building UI components from scratch, this package offers styled components that handle authentication, Bible content display, and version/chapter selection out of the box.
+`@youversion/platform-react-ui` provides a collection of ready-to-use React components for Bible-focused applications. Instead of building UI components from scratch, this package offers styled components that handle Bible content display and version/chapter selection out of the box.
 
 This package depends on [`@youversion/platform-react-hooks`](../../packages/hooks/README.md) and [`@youversion/platform-core`](../../packages/core/README.md), and re-exports components and hooks to simplify your imports.
 
@@ -85,7 +85,7 @@ Use `@youversion/platform-react-ui` when you need:
 - ✅ Pre-styled components with light/dark mode
 - ✅ Minimal setup—wrap your app with providers and use components
 - ✅ Consistent, accessible UI out of the box
-- ✅ Authentication, verse display, and Bible reading experiences
+- ✅ Verse display and Bible content experiences
 
 **Use other packages instead if:**
 - ❌ Need low-level API access → Use `@youversion/platform-core` for direct client
@@ -95,7 +95,7 @@ Use `@youversion/platform-react-ui` when you need:
 
 This package builds on two other core packages in the SDK:
 
-- **[@youversion/platform-core](../../packages/core/README.md)** - Low-level TypeScript SDK for direct API access to Bible data and authentication
+- **[@youversion/platform-core](../../packages/core/README.md)** - Low-level TypeScript SDK for direct API access to Bible data
 - **[@youversion/platform-react-hooks](../../packages/hooks/README.md)** - React hooks wrapping the core SDK for declarative data fetching with loading and error states
 
 For complete parameter and configuration documentation, see the [Core SDK API Reference](../../packages/core/README.md#configuration).
@@ -104,7 +104,7 @@ For complete parameter and configuration documentation, see the [Core SDK API Re
 
 This package requires two providers to function:
 
-### 1. BibleSDKProvider (Required)
+### BibleSDKProvider (Required)
 
 Initializes the API client that all components depend on:
 
@@ -112,16 +112,6 @@ Initializes the API client that all components depend on:
 <BibleSDKProvider appKey="YOUR_APP_KEY">
   {/* Components work here */}
 </BibleSDKProvider>
-```
-
-### 2. YVPProvider (Required)
-
-Manages authentication and YouVersion Platform features:
-
-```tsx
-<YVPProvider config={{ appKey: import.meta.env.YVP_APP_KEY }}>
-  {/* Authenticated components work here */}
-</YVPProvider>
 ```
 
 ### Complete Setup Example
@@ -250,7 +240,7 @@ export default App;
 ## Features and Capabilities
 
 ### Pre-Built Components
-- Ready-to-use UI components for authentication, Bible reading, and content display
+- Ready-to-use UI components for Bible content and content display
 - Styled out of the box with professional design
 - No additional styling configuration required
 
@@ -263,11 +253,6 @@ export default App;
 - Display Bible verses and passages with proper formatting
 - Bible version and chapter selection components
 - Verse of the Day component with automatic daily updates
-
-### Authentication
-- SignInButton for OAuth flow with YouVersion
-- Authentication state management built-in
-- User profile and permission handling
 
 ### Type Safety
 - Full TypeScript support with exported types
@@ -348,24 +333,6 @@ The SDK uses scoped CSS variables prefixed with `--yv-` to avoid conflicts. Over
 ```
 
 ## Components Reference
-
-### SignInButton
-
-A button that initiates the OAuth sign-in flow with YouVersion. Handles authentication state and user management.
-
-```tsx
-import { SignInButton } from '@youversion/platform-react-ui';
-
-export default function AuthPage() {
-  return (
-    <div className="flex flex-col items-center gap-4">
-      <SignInButton />
-    </div>
-  );
-}
-```
-
-**Related Hook:** [`useAuthentication`](#useauthentication)
 
 ### BibleTextView
 
@@ -461,29 +428,6 @@ function App() {
 
 **Props:**
 - `appKey`: Your YouVersion Platform App Key (required)
-
-#### YVPProvider
-
-Configures authentication and theming for the UI components.
-
-```tsx
-import { YVPProvider } from '@youversion/platform-react-ui';
-
-function App() {
-  return (
-    <YVPProvider 
-      config={{ appKey: import.meta.env.YVP_APP_KEY }} 
-      theme="light"
-    >
-      {/* Your components */}
-    </YVPProvider>
-  );
-}
-```
-
-**Props:**
-- `config`: Configuration object with `appKey` (required)
-- `theme`: Theme mode (`'light'` | `'dark'`, default: `'light'`)
 
 ## Development
 
@@ -597,20 +541,6 @@ import '@youversion/platform-react-ui/styles.css';
 **Problem:** Components show error or fallback states in Storybook.
 
 **Solution:** Ensure `STORYBOOK_YOUVERSION_APP_KEY` is set in `packages/ui/.env.local`. Components will use fallback demo values if the environment variable is not set.
-
-### Provider Errors
-
-**Problem:** "useAuthentication() called outside of provider" or similar errors.
-
-**Solution:** Wrap your component tree with both required providers at the app root:
-
-```tsx
-<BibleSDKProvider appKey="YOUR_APP_KEY">
-  <YVPProvider config={{ appKey: import.meta.env.YVP_APP_KEY }}>
-    {/* Your components */}
-  </YVPProvider>
-</BibleSDKProvider>
-```
 
 ### Common Styling Issues
 

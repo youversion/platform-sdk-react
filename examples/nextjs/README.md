@@ -39,7 +39,6 @@ Edit `.env.local` and add your [YouVersion Platform](https://platform.youversion
 
 ```
 NEXT_PUBLIC_YVP_APP_KEY=your_APP_KEY_here
-NEXT_PUBLIC_REDIRECT_URI=http://localhost:3000/auth/callback
 ```
 
 ### 3. Run the Example

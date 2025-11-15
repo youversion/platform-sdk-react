@@ -221,7 +221,7 @@ function VersionList() {
 
 ### Context Management
 - BibleSDKProvider for API configuration
-- ReaderProvider for Bible reading workflows
+- ReaderProvider for Bible content workflows
 - VerseSelectionProvider for verse selection features
 
 ## Context Providers
@@ -244,7 +244,7 @@ function App({ children }) {
 
 ### ReaderProvider
 
-Optional provider for managing Bible reading state (current book, chapter, verse).
+Optional provider for managing Bible content state (current book, chapter, verse).
 
 ```tsx
 import { ReaderProvider } from '@youversion/platform-react-hooks';
@@ -333,67 +333,6 @@ function AppInitializer() {
   // Handle initialization logic
 }
 ```
-
-#### useAuthentication
-
-Manages user authentication with the YouVersion Platform, including sign-in, sign-out, and user info retrieval.
-
-```tsx
-import { useAuthentication } from '@youversion/platform-react-hooks';
-import { SignInWithYouVersionPermission } from '@youversion/platform-core';
-
-function AuthComponent() {
-  const { auth, signIn, signOut, fetchUserInfo } = useAuthentication();
-
-  const handleSignIn = async () => {
-    const result = await signIn(
-      [SignInWithYouVersionPermission.bibles], // required permissions
-      [SignInWithYouVersionPermission.votd] // optional permissions
-    );
-    console.log(result);
-  };
-
-  const handleGetUserInfo = async () => {
-    const userInfo = await fetchUserInfo();
-    console.log(userInfo);
-  };
-
-  return (
-    <div>
-      <p>Authenticated: {auth.isAuthenticated ? 'Yes' : 'No'}</p>
-      <p>Loading: {auth.isLoading ? 'Yes' : 'No'}</p>
-      {auth.error && <p>Error: {auth.error.message}</p>}
-      
-      {!auth.isAuthenticated ? (
-        <button onClick={handleSignIn}>Sign In</button>
-      ) : (
-        <>
-          <button onClick={handleGetUserInfo}>Get User Info</button>
-          <button onClick={signOut}>Sign Out</button>
-        </>
-      )}
-    </div>
-  );
-}
-```
-
-**Returns:**
-- `auth`: AuthenticationState object containing:
-  - `isAuthenticated`: boolean - Whether user is currently authenticated
-  - `isLoading`: boolean - Whether authentication operations are in progress
-  - `accessToken`: string | null - Current access token if authenticated
-  - `result`: SignInWithYouVersionResult | null - Sign-in result details
-  - `error`: Error | null - Any authentication error that occurred
-- `signIn`: Function to initiate sign-in with optional permission scopes
-  - **Parameters:**
-    - `requiredPermissions?`: Permission strings required for sign-in
-    - `optionalPermissions?`: Permission strings requested but not required
-  - **Returns:** Promise<SignInWithYouVersionResult>
-- `signOut`: Function to log out the current user
-- `fetchUserInfo`: Async function to retrieve current user information
-  - **Returns:** Promise<YouVersionUserInfo>
-
-**Throws:** Error if used outside of a provider that supplies authentication context.
 
 ### Bible Content Hooks
 
@@ -820,7 +759,7 @@ function App() {
 
 #### ReaderProvider
 
-Provider for managing Bible reading state.
+Provider for managing Bible content state.
 
 ```tsx
 import { ReaderProvider } from '@youversion/platform-react-hooks';
