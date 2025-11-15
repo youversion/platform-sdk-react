@@ -117,7 +117,7 @@ export const SignInButton = React.forwardRef<HTMLButtonElement, SignInButtonProp
       disabled,
       onAuthError,
       onClick,
-      onSuccess,
+      _onSuccess,
       optionalPermissions = [],
       radius = 'rounded',
       requiredPermissions = [],
@@ -130,7 +130,7 @@ export const SignInButton = React.forwardRef<HTMLButtonElement, SignInButtonProp
     const { signIn, auth } = useAuthentication();
     const [localLoading, setLocalLoading] = React.useState(false);
 
-    const handleClick = async (e: React.MouseEvent<HTMLButtonElement>): Promise<void> => {
+    const handleClick = (e: React.MouseEvent<HTMLButtonElement>): void => {
       e.preventDefault();
 
       if (onClick) {
@@ -139,19 +139,18 @@ export const SignInButton = React.forwardRef<HTMLButtonElement, SignInButtonProp
 
       setLocalLoading(true);
 
-      try {
-        const result = await signIn(requiredPermissions, optionalPermissions);
-
-        if (onSuccess) {
-          onSuccess(result);
-        }
-      } catch (error) {
+      // Fire-and-forget: In web apps, signIn() triggers a full-page redirect,
+      // so the promise won't resolve. The YVPProvider will auto-complete
+      // the flow when the user returns from OAuth.
+      // Note: onSuccess and onAuthError won't fire in web - observe auth state instead.
+      signIn(requiredPermissions, optionalPermissions).catch((error) => {
+        // Only handle errors that happen before redirect (e.g., config errors)
+        console.error('[SignInButton] Pre-redirect error:', error);
         if (onAuthError) {
           onAuthError(error as Error);
         }
-      } finally {
         setLocalLoading(false);
-      }
+      });
     };
 
     const buttonLoading = Boolean(auth.isLoading || localLoading);

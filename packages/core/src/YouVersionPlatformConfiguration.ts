@@ -4,7 +4,10 @@ export class YouVersionPlatformConfiguration {
   private static _appId: string | null = null;
   private static _installationId: string | null = null;
   private static _accessToken: string | null = null;
-  private static _apiHost: string = 'api-dev.youversion.com';
+  private static _refreshToken: string | null = null;
+  private static _tokenExpiryDate: Date | null = null;
+  private static _apiHost: string = 'api-staging.youversion.com';
+  private static _authCallbackProxyUrl: string | null = null;
   private static _isPreviewMode: boolean = false;
   private static _previewUserInfo: YouVersionUserInfo | null = null;
 
@@ -42,6 +45,16 @@ export class YouVersionPlatformConfiguration {
     this._installationId = value || this.getOrSetInstallationId();
   }
 
+  static saveAuthData(
+    accessToken: string | null,
+    refreshToken: string | null,
+    expiryDate: Date | null,
+  ): void {
+    this._accessToken = accessToken;
+    this._refreshToken = refreshToken;
+    this._tokenExpiryDate = expiryDate;
+  }
+
   static setAccessToken(token: string | null): void {
     // Validate token: if not null, must be a non-empty string
     if (token !== null && (typeof token !== 'string' || token.trim().length === 0)) {
@@ -54,12 +67,28 @@ export class YouVersionPlatformConfiguration {
     return this._accessToken;
   }
 
+  static get refreshToken(): string | null {
+    return this._refreshToken;
+  }
+
+  static get tokenExpiryDate(): Date | null {
+    return this._tokenExpiryDate;
+  }
+
   static get apiHost(): string {
     return this._apiHost;
   }
 
   static set apiHost(value: string) {
     this._apiHost = value;
+  }
+
+  static get authCallbackProxyUrl(): string | null {
+    return this._authCallbackProxyUrl;
+  }
+
+  static set authCallbackProxyUrl(value: string | null) {
+    this._authCallbackProxyUrl = value;
   }
 
   static get isPreviewMode(): boolean {

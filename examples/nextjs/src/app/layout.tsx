@@ -16,10 +16,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>): JSX.Element {
-  // For static export, use a default redirect URI
+  // For local development, use port 6006 (root path - backend configured)
   // In a real deployment, this would be configured as an environment variable
-  const redirectUri =
-    process.env.NEXT_PUBLIC_REDIRECT_URI ?? 'https://your-app.vercel.app/auth/callback';
+  const redirectUri = process.env.NEXT_PUBLIC_REDIRECT_URI ?? 'http://localhost:6006';
 
   return (
     <html lang="en">

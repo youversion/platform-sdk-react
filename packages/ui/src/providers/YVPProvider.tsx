@@ -9,7 +9,6 @@ import React, {
 import {
   ApiClient,
   AuthenticationStrategyRegistry,
-  SignInWithYouVersionResult,
   YouVersionPlatformConfiguration,
   YouVersionAPIUsers,
   WebAuthenticationStrategy,
@@ -55,51 +54,51 @@ export function YVPProvider({
 
   // Initialize authentication
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
       // Set configuration
       YouVersionPlatformConfiguration.appId = config.appId;
       YouVersionPlatformConfiguration.installationId = config.installationId ?? null;
 
       // Register the authentication strategy
+      const callbackPath = config.redirectUri
+        ? new URL(config.redirectUri).pathname
+        : '/auth/callback';
       const strategy = new WebAuthenticationStrategy({
-        redirectUri: config.redirectUri || '',
+        redirectUri: config.redirectUri,
+        callbackPath,
       });
       AuthenticationStrategyRegistry.register(strategy);
 
-      // Check for existing token
-      const existingToken = YouVersionPlatformConfiguration.accessToken;
-      if (existingToken) {
+      // Handle authentication callback and store it
+      const wasCallback = WebAuthenticationStrategy.handleCallback(callbackPath);
+
+      console.log('[YVP] Callback handled:', wasCallback);
+      console.log('[YVP] Has stored callback:', WebAuthenticationStrategy.hasStoredCallback());
+
+      // Check if we have a stored OAuth callback to complete
+      if (WebAuthenticationStrategy.hasStoredCallback()) {
+        // We just came back from OAuth - complete the PKCE flow
         setAuthState({
-          isAuthenticated: true,
-          isLoading: false,
-          accessToken: existingToken,
+          isAuthenticated: false,
+          isLoading: true,
+          accessToken: null,
           result: null,
           error: null,
         });
-        return;
-      }
 
-      // Handle authentication callback
-      WebAuthenticationStrategy.handleCallback();
-      const storedCallback = WebAuthenticationStrategy.getStoredCallback();
-
-      if (storedCallback) {
         try {
-          const result = new SignInWithYouVersionResult(storedCallback);
-          const { accessToken, errorMsg } = result;
-
-          if (accessToken) {
-            YouVersionPlatformConfiguration.setAccessToken(accessToken);
-          }
+          const result = await YouVersionAPIUsers.completeSignInFromStoredCallback();
 
           setAuthState({
-            isAuthenticated: !!accessToken,
+            isAuthenticated: true,
             isLoading: false,
-            accessToken: accessToken ?? null,
+            accessToken: result.accessToken,
             result,
-            error: errorMsg ? new Error(errorMsg) : null,
+            error: null,
           });
+          return;
         } catch (error) {
+          console.error('[YVP] Failed to complete sign-in from callback:', error);
           setAuthState({
             isAuthenticated: false,
             isLoading: false,
@@ -107,23 +106,26 @@ export function YVPProvider({
             result: null,
             error: error as Error,
           });
+          return;
         }
-      } else {
-        setAuthState({
-          isAuthenticated: false,
-          isLoading: false,
-          accessToken: null,
-          result: null,
-          error: null,
-        });
       }
+
+      // No stored callback - check for existing token
+      const existingToken = YouVersionPlatformConfiguration.accessToken;
+      setAuthState({
+        isAuthenticated: !!existingToken,
+        isLoading: false,
+        accessToken: existingToken,
+        result: null,
+        error: null,
+      });
     };
 
-    initializeAuth();
+    void initializeAuth();
   }, [config.appId, config.installationId, config.redirectUri]);
 
   const signOut = useCallback(() => {
-    YouVersionPlatformConfiguration.setAccessToken(null);
+    YouVersionAPIUsers.signOut();
     setAuthState({
       isAuthenticated: false,
       isLoading: false,
@@ -133,13 +135,15 @@ export function YVPProvider({
     });
   }, []);
 
-  const fetchUserInfo = useCallback(async (): Promise<YouVersionUserInfo> => {
-    if (!authState.isAuthenticated || !authState.accessToken) {
-      throw new Error('User is not authenticated');
-    }
-
-    return YouVersionAPIUsers.userInfo(authState.accessToken);
-  }, [authState.isAuthenticated, authState.accessToken]);
+  const fetchUserInfo = useCallback((): Promise<YouVersionUserInfo> => {
+    // User info now comes from SignInWithYouVersionResult during sign-in
+    // This method is deprecated but kept for backward compatibility
+    return Promise.reject(
+      new Error(
+        'User info is now included in SignInWithYouVersionResult. Access it via auth.result after sign-in.',
+      ),
+    );
+  }, []);
 
   const value: YVPContextValue = {
     config,

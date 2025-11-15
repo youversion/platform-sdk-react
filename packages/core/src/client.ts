@@ -24,7 +24,7 @@ export class ApiClient {
       version: config.version || 'v1',
       ...config,
     };
-    this.baseURL = config.baseUrl || 'https://api-dev.youversion.com';
+    this.baseURL = config.baseUrl || 'https://api-staging.youversion.com';
     this.timeout = config.timeout || 10000;
     this.defaultHeaders = {
       'Content-Type': 'application/json',

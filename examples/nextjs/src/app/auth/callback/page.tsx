@@ -4,34 +4,26 @@ import { type JSX } from 'react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { WebAuthenticationStrategy } from '@youversion/platform-react-ui';
-import { SignInWithYouVersionResult } from '@youversion/platform-react-ui';
 
 export default function AuthCallbackPage(): JSX.Element {
   const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(true);
-  const [result, setResult] = useState<SignInWithYouVersionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
-      // Store the original callback URL before WebAuthenticationStrategy cleans it up
-      const originalCallbackUrl = new URL(window.location.href);
-
-      // Let the WebAuthenticationStrategy handle the callback storage
-      // This should happen BEFORE we redirect back to home
+      // Let the WebAuthenticationStrategy handle the callback
+      // This stores the callback URL in sessionStorage for the signIn flow to process
       const isCallback = WebAuthenticationStrategy.handleCallback();
 
       if (isCallback) {
-        // Use the original URL that still has the parameters
-        const authResult = new SignInWithYouVersionResult(originalCallbackUrl);
-        setResult(authResult);
-
-        // Short delay to show the result, then redirect
+        // The PKCE flow will handle token exchange in Users.signIn()
+        // Just redirect back to home - the auth state will update automatically
         setTimeout(() => {
           router.push('/');
-        }, 2000);
+        }, 500);
       } else {
-        setError('Invalid callback URL');
+        setError('Invalid callback - missing required parameters');
         setTimeout(() => router.push('/'), 2000);
       }
     } catch (err) {
@@ -68,29 +60,7 @@ export default function AuthCallbackPage(): JSX.Element {
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center max-w-md">
-        <h2 className="text-2xl font-bold mb-4 text-green-600">Sign In Successful!</h2>
-        {result && (
-          <div className="bg-gray-100 p-4 rounded-lg mb-4">
-            <p className="text-sm mb-2">
-              <strong>Status:</strong> {result.accessToken ? 'Authenticated' : 'Failed'}
-            </p>
-            {result.yvpUserId && (
-              <p className="text-sm mb-2">
-                <strong>User ID:</strong> {result.yvpUserId}
-              </p>
-            )}
-            {result.permissions.length > 0 && (
-              <p className="text-sm mb-2">
-                <strong>Permissions:</strong> {result.permissions.join(', ')}
-              </p>
-            )}
-            {result.accessToken && (
-              <p className="text-xs text-gray-600">
-                <strong>Access Token:</strong> {result.accessToken.substring(0, 20)}...
-              </p>
-            )}
-          </div>
-        )}
+        <h2 className="text-2xl font-bold mb-4 text-green-600">Processing authentication...</h2>
         <p className="text-sm text-gray-500">Redirecting back to home...</p>
       </div>
     </div>

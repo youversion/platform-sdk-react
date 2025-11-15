@@ -10,44 +10,35 @@ export const SignInWithYouVersionPermission = {
 
 export class SignInWithYouVersionResult {
   public readonly accessToken: string | null;
+  public readonly refreshToken: string | null;
+  public readonly expiryDate: Date | null;
   public readonly permissions: SignInWithYouVersionPermissionValues[];
-  public readonly errorMsg: string | null;
   public readonly yvpUserId: string | null;
+  public readonly name: string | null;
+  public readonly profilePicture: string | null;
+  public readonly email: string | null;
 
-  constructor(url: URL) {
-    const queryParams = new URLSearchParams(url.search);
+  constructor(
+    accessToken: string | null,
+    expiresIn: string | null,
+    refreshToken: string | null,
+    permissions: SignInWithYouVersionPermissionValues[],
+    yvpUserId?: string,
+    name?: string,
+    profilePicture?: string,
+    email?: string,
+  ) {
+    this.accessToken = accessToken;
+    this.refreshToken = refreshToken;
 
-    const status = queryParams.get('status');
-    const userId = queryParams.get('yvp_user_id');
-    const latValue = queryParams.get('lat');
-    const grants = queryParams.get('grants');
+    // Calculate expiry date from expires_in (in seconds)
+    const seconds = parseInt(expiresIn || '0', 10);
+    this.expiryDate = seconds > 0 ? new Date(Date.now() + seconds * 1000) : null;
 
-    const perms =
-      grants
-        ?.split(',')
-        .map((grant) => grant.trim())
-        .filter((grant) =>
-          Object.values(SignInWithYouVersionPermission).includes(
-            grant as SignInWithYouVersionPermissionValues,
-          ),
-        )
-        .map((grant) => grant as SignInWithYouVersionPermissionValues) ?? [];
-
-    if (status === 'success' && latValue && userId) {
-      this.accessToken = latValue;
-      this.permissions = perms;
-      this.errorMsg = null;
-      this.yvpUserId = userId;
-    } else if (status === 'canceled') {
-      this.accessToken = null;
-      this.permissions = [];
-      this.errorMsg = null;
-      this.yvpUserId = null;
-    } else {
-      this.accessToken = null;
-      this.permissions = [];
-      this.errorMsg = 'Authentication failed';
-      this.yvpUserId = null;
-    }
+    this.permissions = permissions;
+    this.yvpUserId = yvpUserId || null;
+    this.name = name || yvpUserId || null; // Use yvpUserId as fallback for name
+    this.profilePicture = profilePicture || null;
+    this.email = email || null;
   }
 }

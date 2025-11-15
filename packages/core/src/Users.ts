@@ -1,25 +1,33 @@
 import type { SignInWithYouVersionPermissionValues } from './types';
-import { SignInWithYouVersionResult } from './SignInWithYouVersionResult';
-import { YouVersionUserInfo } from './YouVersionUserInfo';
+import {
+  SignInWithYouVersionResult,
+  SignInWithYouVersionPermission,
+} from './SignInWithYouVersionResult';
 import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
-import { YouVersionAPI } from './YouVersionAPI';
-import { URLBuilder } from './URLBuilder';
 import { AuthenticationStrategyRegistry } from './AuthenticationStrategy';
+import { SignInWithYouVersionPKCEAuthorizationRequestBuilder } from './SignInWithYouVersionPKCEAuthorizationRequest';
+import { WebAuthenticationStrategy } from './WebAuthenticationStrategy';
 
-const MAX_RETRY_ATTEMPTS = 3;
-const RETRY_DELAY_MS = 1000;
+interface TokenResponse {
+  access_token: string;
+  expires_in: string;
+  id_token: string;
+  refresh_token: string;
+  scope: string;
+  token_type: string;
+}
 
 export class YouVersionAPIUsers {
   /**
    * Presents the YouVersion login flow to the user and returns the login result upon completion.
    *
-   * This function authenticates the user with YouVersion, requesting the specified required and optional permissions.
+   * This function authenticates the user with YouVersion using OAuth 2.0 with PKCE, requesting the specified permissions.
    * The function returns a promise that resolves when the user completes or cancels the login flow,
-   * returning the login result containing the authorization code and granted permissions.
+   * returning the login result containing access token, refresh token, and user information from the ID token.
    *
    * @param requiredPermissions - The set of permissions that must be granted by the user for successful login.
    * @param optionalPermissions - The set of permissions that will be requested from the user but are not required for successful login.
-   * @returns A Promise resolving to a SignInWithYouVersionResult containing the authorization code and granted permissions upon successful login.
+   * @returns A Promise resolving to a SignInWithYouVersionResult containing tokens and user info upon successful login.
    * @throws An error if authentication fails or is cancelled by the user.
    */
   static async signIn(
@@ -34,104 +42,246 @@ export class YouVersionAPIUsers {
       throw new Error('Invalid optionalPermissions: must be a Set');
     }
 
-    const appId = YouVersionPlatformConfiguration.appId;
-    if (!appId) {
+    const appKey = YouVersionPlatformConfiguration.appId;
+    if (!appKey) {
       throw new Error('YouVersionPlatformConfiguration.appId must be set before calling signIn');
     }
 
-    const url = URLBuilder.authURL(appId, requiredPermissions, optionalPermissions);
+    // Combine required and optional permissions
+    const allPermissions = new Set([...requiredPermissions, ...optionalPermissions]);
 
-    // Use the registered authentication strategy
+    // Get redirect URL from authentication strategy
     const strategy = AuthenticationStrategyRegistry.get();
-    const callbackUrl = await strategy.authenticate(url);
-    const result = new SignInWithYouVersionResult(callbackUrl);
+    const redirectURL = new URL(window.location.origin + '/auth/callback');
 
-    if (result.accessToken) {
-      YouVersionPlatformConfiguration.setAccessToken(result.accessToken);
-    }
+    // Generate PKCE request
+    const authorizationRequest = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
+      appKey,
+      allPermissions,
+      redirectURL,
+    );
+
+    // Authenticate and get callback URL
+    const callbackURL = await strategy.authenticate(authorizationRequest.url);
+
+    // Extract location from callback
+    const location = await this.obtainLocation(callbackURL, authorizationRequest.parameters.state);
+
+    // Extract code from location
+    const code = this.obtainCode(location);
+
+    // Exchange code for tokens
+    const tokens = await this.obtainTokens(
+      code,
+      authorizationRequest.parameters.codeVerifier,
+      redirectURL.toString(),
+    );
+
+    // Extract result from tokens
+    const result = this.extractSignInWithYouVersionResult(tokens);
+
+    // Save tokens to configuration
+    YouVersionPlatformConfiguration.saveAuthData(
+      result.accessToken,
+      result.refreshToken,
+      result.expiryDate,
+    );
 
     return result;
   }
 
+  private static async obtainLocation(callbackURL: URL, state: string): Promise<string> {
+    const components = new URLSearchParams(callbackURL.search);
+
+    // Validate state parameter
+    if (components.get('state') !== state) {
+      throw new Error('Invalid state parameter');
+    }
+
+    // Use proxy if configured (to bypass CORS in web apps)
+    const proxyUrl = (
+      YouVersionPlatformConfiguration as unknown as Record<string, string | undefined>
+    ).authCallbackProxyUrl;
+
+    if (proxyUrl) {
+      // Use server-side proxy to bypass CORS
+      const proxyURL = new URL(proxyUrl);
+      proxyURL.search = callbackURL.search;
+
+      const response = await fetch(proxyURL.toString());
+
+      if (!response.ok) {
+        throw new Error(`Proxy request failed with status ${response.status}`);
+      }
+
+      const data = (await response.json()) as Record<string, string | undefined>;
+      if (!data.location) {
+        throw new Error('Proxy did not return location');
+      }
+
+      return data.location;
+    }
+
+    // Fallback to direct request (works in native apps, fails in browsers due to CORS)
+    const newURL = new URL(`https://${YouVersionPlatformConfiguration.apiHost}/auth/callback`);
+    newURL.search = callbackURL.search;
+
+    const response = await fetch(newURL.toString(), {
+      method: 'GET',
+      redirect: 'manual',
+    });
+
+    if (response.status !== 302) {
+      throw new Error(`Expected redirect (302), got ${response.status}`);
+    }
+
+    const location = response.headers.get('Location');
+    if (!location) {
+      throw new Error('No Location header in redirect response');
+    }
+
+    return location;
+  }
+
+  private static obtainCode(location: string): string {
+    const locationURL = new URL(location);
+    const code = locationURL.searchParams.get('code');
+
+    if (!code) {
+      throw new Error('No authorization code in redirect location');
+    }
+
+    return code;
+  }
+
+  private static async obtainTokens(
+    code: string,
+    codeVerifier: string,
+    redirectUri: string,
+  ): Promise<TokenResponse> {
+    const request = SignInWithYouVersionPKCEAuthorizationRequestBuilder.tokenURLRequest(
+      code,
+      codeVerifier,
+      redirectUri,
+    );
+
+    const response = await fetch(request);
+
+    if (response.status !== 200) {
+      throw new Error(`Token exchange failed with status ${response.status}`);
+    }
+
+    return (await response.json()) as TokenResponse;
+  }
+
+  private static decodeJWT(token: string): Record<string, string | undefined> {
+    const segments = token.split('.');
+    if (segments.length !== 3 || !segments[1]) {
+      return {};
+    }
+
+    let base64 = segments[1].replace(/-/g, '+').replace(/_/g, '/');
+
+    while (base64.length % 4 !== 0) {
+      base64 += '=';
+    }
+
+    try {
+      const json = atob(base64);
+      return JSON.parse(json) as Record<string, string | undefined>;
+    } catch {
+      return {};
+    }
+  }
+
+  private static extractSignInWithYouVersionResult(
+    tokens: TokenResponse,
+  ): SignInWithYouVersionResult {
+    const idClaims = this.decodeJWT(tokens.id_token);
+
+    const permissions = tokens.scope
+      .split(' ')
+      .map((s) => s.trim())
+      .filter((s) =>
+        Object.values(SignInWithYouVersionPermission).includes(
+          s as SignInWithYouVersionPermissionValues,
+        ),
+      ) as SignInWithYouVersionPermissionValues[];
+
+    return new SignInWithYouVersionResult(
+      tokens.access_token,
+      tokens.expires_in,
+      tokens.refresh_token,
+      permissions,
+      idClaims.sub,
+      idClaims.name,
+      idClaims.profile_picture,
+      idClaims.email,
+    );
+  }
+
   static signOut(): void {
-    YouVersionPlatformConfiguration.setAccessToken(null);
+    YouVersionPlatformConfiguration.saveAuthData(null, null, null);
+    // Clean up PKCE state
+    SignInWithYouVersionPKCEAuthorizationRequestBuilder.clearStored();
   }
 
   /**
-   * Retrieves user information for the authenticated user using the provided access token.
+   * Complete sign-in from a stored OAuth callback after a full-page redirect.
    *
-   * This function fetches the user's profile information from the YouVersion API, decoding it into a YouVersionUserInfo model.
+   * This method should be called automatically by the provider after detecting
+   * a stored callback in sessionStorage. It retrieves the PKCE parameters,
+   * completes the code exchange, and returns the sign-in result.
    *
-   * @param accessToken - The access token obtained from the login process.
-   * @returns A Promise resolving to a YouVersionUserInfo object containing the user's profile information.
-   * @throws An error if the URL is invalid, the network request fails, or the response cannot be decoded.
+   * @returns A Promise resolving to SignInWithYouVersionResult with tokens and user info
+   * @throws Error if no stored callback or PKCE parameters are found
    */
-  static async userInfo(accessToken: string): Promise<YouVersionUserInfo> {
-    // Validate access token
-    if (!accessToken || typeof accessToken !== 'string') {
-      throw new Error('Invalid access token: must be a non-empty string');
+  static async completeSignInFromStoredCallback(): Promise<SignInWithYouVersionResult> {
+    // Get stored callback URL
+    const callbackURL = WebAuthenticationStrategy.getStoredCallback();
+    if (!callbackURL) {
+      throw new Error('No stored OAuth callback found');
     }
 
-    // Check for preview mode if configured
-    if (YouVersionPlatformConfiguration.isPreviewMode && accessToken === 'preview') {
-      return (
-        YouVersionPlatformConfiguration.previewUserInfo ||
-        new YouVersionUserInfo({
-          first_name: 'Preview',
-          last_name: 'User',
-          id: 'preview-user',
-          avatar_url: undefined,
-        })
+    // Restore PKCE parameters
+    const pkceParams = SignInWithYouVersionPKCEAuthorizationRequestBuilder.restore();
+    if (!pkceParams) {
+      throw new Error('No stored PKCE parameters found (state/codeVerifier/redirectUri)');
+    }
+
+    try {
+      // Extract location from callback
+      const location = await this.obtainLocation(callbackURL, pkceParams.state);
+
+      // Extract code from location
+      const code = this.obtainCode(location);
+
+      // Exchange code for tokens using the stored redirect URI
+      console.log('[PKCE] Exchanging code with verifier:', {
+        code: code.substring(0, 10) + '...',
+        verifier: pkceParams.codeVerifier.substring(0, 10) + '...',
+        redirectUri: pkceParams.redirectUri,
+      });
+      const tokens = await this.obtainTokens(code, pkceParams.codeVerifier, pkceParams.redirectUri);
+
+      // Extract result from tokens
+      const result = this.extractSignInWithYouVersionResult(tokens);
+
+      // Save tokens to configuration
+      YouVersionPlatformConfiguration.saveAuthData(
+        result.accessToken,
+        result.refreshToken,
+        result.expiryDate,
       );
+
+      // Clean up stored PKCE parameters
+      SignInWithYouVersionPKCEAuthorizationRequestBuilder.clearStored();
+
+      return result;
+    } catch (error) {
+      // Clean up on error
+      SignInWithYouVersionPKCEAuthorizationRequestBuilder.clearStored();
+      throw error;
     }
-
-    const url = URLBuilder.userURL(accessToken);
-
-    const request = YouVersionAPI.addStandardHeaders(url);
-
-    // Retry logic for transient failures
-    let lastError: Error | null = null;
-    for (let attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
-      try {
-        const response = await fetch(request);
-
-        if (response.status === 401) {
-          throw new Error(
-            'Authentication failed: Invalid or expired access token. Please sign in again.',
-          );
-        }
-
-        if (response.status === 403) {
-          throw new Error('Access denied: Insufficient permissions to retrieve user information');
-        }
-
-        if (response.status !== 200) {
-          throw new Error(
-            `Failed to retrieve user information: Server responded with status ${response.status}`,
-          );
-        }
-
-        const data = (await response.json()) as YouVersionUserInfo;
-        return data;
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error('Failed to parse server response');
-
-        // Don't retry on authentication errors
-        if (
-          error instanceof Error &&
-          (error.message.includes('401') || error.message.includes('403'))
-        ) {
-          throw error;
-        }
-
-        // Retry on network errors
-        if (attempt < MAX_RETRY_ATTEMPTS) {
-          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * attempt));
-          continue;
-        }
-      }
-    }
-
-    throw lastError || new Error('Failed to retrieve user information after multiple attempts');
   }
 }

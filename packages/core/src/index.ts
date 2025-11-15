@@ -14,6 +14,7 @@ export * from './StorageStrategy';
 export * from './Users';
 export * from './YouVersionUserInfo';
 export * from './SignInWithYouVersionResult';
+export * from './SignInWithYouVersionPKCEAuthorizationRequest';
 export * from './YouVersionAPI';
 export * from './URLBuilder';
 export * from './YouVersionPlatformConfiguration';

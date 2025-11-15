@@ -20,7 +20,7 @@ export class WebAuthenticationStrategy implements AuthenticationStrategy {
     storage?: StorageStrategy;
   }) {
     this.callbackPath = options?.callbackPath ?? '/auth/callback';
-    this.redirectUri = options?.redirectUri ?? window.location.origin + this.callbackPath;
+    this.redirectUri = options?.redirectUri || window.location.origin + this.callbackPath;
     this.timeout = options?.timeout ?? 300000; // 5 minutes default
     this.storage = options?.storage ?? new SessionStorageStrategy();
   }
@@ -38,8 +38,8 @@ export class WebAuthenticationStrategy implements AuthenticationStrategy {
   static handleCallback(callbackPath: string = '/auth/callback'): boolean {
     const currentUrl = new URL(window.location.href);
 
-    // Check if this is a callback URL
-    if (currentUrl.pathname === callbackPath && currentUrl.searchParams.has('status')) {
+    // Check if this is a callback URL (PKCE flow uses 'state' parameter)
+    if (currentUrl.pathname === callbackPath && currentUrl.searchParams.has('state')) {
       // For web apps, use the HTTP URL directly (no need to convert to youversionauth scheme)
       const callbackUrl = new URL(currentUrl.toString());
 
@@ -73,6 +73,14 @@ export class WebAuthenticationStrategy implements AuthenticationStrategy {
     }
     WebAuthenticationStrategy.pendingAuthResolve = null;
     WebAuthenticationStrategy.pendingAuthReject = null;
+  }
+
+  /**
+   * Check if a stored callback exists without removing it
+   */
+  static hasStoredCallback(): boolean {
+    const storageStrategy = new SessionStorageStrategy();
+    return !!storageStrategy.getItem('youversion-auth-callback');
   }
 
   /**
