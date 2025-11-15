@@ -13,7 +13,7 @@ describe('AuthClient', () => {
   beforeEach(() => {
     global.fetch = vi.fn();
     apiClient = new ApiClient({
-      baseUrl: 'https://api-dev.youversion.com',
+      baseUrl: 'https://api.youversion.com',
       appKey: 'test-app-key',
       version: 'v1',
     });
