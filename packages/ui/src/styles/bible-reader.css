@@ -69,6 +69,16 @@
     white-space: nowrap;
   }
 
+  &[data-show-verse-numbers="false"] .yv-vlbl {
+    @apply yv:hidden;
+  }
+
+  /* Footnote */
+  /* TODO - Implement footnotes */
+  & .yv-n {
+    display: none;
+  }
+
   /* Verse marker */
   & .vp {
     display: inline;

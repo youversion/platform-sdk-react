@@ -134,7 +134,7 @@ function Root({
           </section>
 
           <Accordion
-            className="yv:relative yv:overflow-y-auto yv:bg-background yv:mx-6 yv:shadow-[inset_0_-16px_16px_-12px_rgba(0,0,0,0.1)]"
+            className="yv:relative yv:overflow-y-auto yv:bg-background yv:mx-6"
             type="single"
             collapsible
             defaultValue={defaultBook || book || 'GEN'}
@@ -214,7 +214,16 @@ function Root({
   );
 }
 
-export type TriggerProps = React.ComponentProps<typeof PopoverTrigger>;
+export type TriggerProps = Omit<React.ComponentProps<typeof PopoverTrigger>, 'children'> & {
+  children?:
+    | React.ReactNode
+    | ((props: {
+        book: string;
+        chapter: string;
+        currentBook: BibleBook | undefined;
+        loading: boolean;
+      }) => React.ReactNode);
+};
 
 function Trigger({ asChild = true, children, ...props }: TriggerProps) {
   const { book, chapter, background, versionId } = useBibleChapterPickerContext();
@@ -225,11 +234,16 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
     ? 'Loading...'
     : `${currentBook?.title || 'Select a chapter'}${chapter ? ` ${chapter}` : ''}`;
 
+  const content =
+    typeof children === 'function'
+      ? children({ book, chapter, currentBook, loading })
+      : children || (
+          <Button variant={background === 'light' ? 'outline' : 'default'}>{buttonText}</Button>
+        );
+
   return (
     <PopoverTrigger asChild={asChild} {...props}>
-      {children || (
-        <Button variant={background === 'light' ? 'outline' : 'default'}>{buttonText}</Button>
-      )}
+      {content}
     </PopoverTrigger>
   );
 }

@@ -115,22 +115,34 @@ function Root({
   );
 }
 
-export type TriggerProps = React.ComponentProps<typeof PopoverTrigger>;
+export type BibleVersionPickerTriggerProps = Omit<
+  React.ComponentProps<typeof PopoverTrigger>,
+  'children'
+> & {
+  children?:
+    | React.ReactNode
+    | ((props: { version: BibleVersion | null; loading: boolean }) => React.ReactNode);
+};
 
-function Trigger({ asChild = true, children, ...props }: TriggerProps) {
+function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTriggerProps) {
   const { versionId, background } = useBibleVersionPickerContext();
-  const { version } = useVersion(versionId);
+  const { version, loading } = useVersion(versionId);
+
+  const content =
+    typeof children === 'function'
+      ? children({ version, loading })
+      : children || (
+          <Button
+            variant={background === 'light' ? 'outline' : 'default'}
+            className="yv:cursor-pointer"
+          >
+            {version?.local_abbreviation || 'Select'}
+          </Button>
+        );
 
   return (
     <PopoverTrigger asChild={asChild} {...props}>
-      {children || (
-        <Button
-          variant={background === 'light' ? 'outline' : 'default'}
-          className="yv:cursor-pointer"
-        >
-          {version?.local_abbreviation || 'Select'}
-        </Button>
-      )}
+      {content}
     </PopoverTrigger>
   );
 }
@@ -324,3 +336,4 @@ function Content() {
 }
 
 export const BibleVersionPicker = Object.assign({}, { Root, Trigger, Content });
+export type BibleVersionPickerRootProps = RootProps;
