@@ -94,12 +94,12 @@ export function VerseOfTheDay({
       enabled: !loadingVerseOfTheDay && !errorVerseOfTheDay && !!data?.passage_id,
     },
   });
-  const { version, loading: loadingVersion, error: errorVersion } = useVersion(versionId);
+  const { version, loading: loadingVersion } = useVersion(versionId);
 
   let referenceText = '';
   if (loadingPassage || loadingVerseOfTheDay || loadingVersion) {
     referenceText = 'Loading...';
-  } else if (errorPassage || errorVerseOfTheDay || errorVersion) {
+  } else if (errorPassage || errorVerseOfTheDay) {
     referenceText = 'Error loading verse';
   } else if (passage?.human_reference && version?.local_abbreviation) {
     referenceText = `${passage?.human_reference} ${version?.local_abbreviation}`;
