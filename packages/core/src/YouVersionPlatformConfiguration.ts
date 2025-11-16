@@ -4,7 +4,7 @@ export class YouVersionPlatformConfiguration {
   private static _appKey: string | null = null;
   private static _installationId: string | null = null;
   private static _accessToken: string | null = null;
-  private static _apiHost: string = 'api-dev.youversion.com';
+  private static _apiHost: string = 'api.youversion.com';
   private static _isPreviewMode: boolean = false;
   private static _previewUserInfo: YouVersionUserInfo | null = null;
 

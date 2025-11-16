@@ -21,10 +21,15 @@ export class ApiClient {
    */
   constructor(config: ApiConfig) {
     this.config = {
-      version: config.version || 'v1',
       ...config,
     };
-    this.baseURL = config.baseUrl || 'https://api.youversion.com';
+    const apiHost = config.apiHost ?? process.env.YVP_API_HOST;
+    if (!apiHost) {
+      throw new Error(
+        'ApiClient requires a host name. Provide an apiHost in the config or set the YVP_API_HOST environment variable.',
+      );
+    }
+    this.baseURL = 'https://' + apiHost;
     this.timeout = config.timeout || 10000;
     this.defaultHeaders = {
       'Content-Type': 'application/json',

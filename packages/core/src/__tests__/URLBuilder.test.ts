@@ -5,7 +5,7 @@ import type { SignInWithYouVersionPermissionValues } from '../types';
 
 describe('URLBuilder - Input Validation', () => {
   let originalApiHost: string;
-  let originalInstallationId: string | undefined;
+  let originalInstallationId: string | null;
 
   beforeEach(() => {
     // Store original config
@@ -13,7 +13,11 @@ describe('URLBuilder - Input Validation', () => {
     originalInstallationId = YouVersionPlatformConfiguration.installationId;
 
     // Set test config
-    YouVersionPlatformConfiguration.apiHost = 'api-dev.youversion.com';
+    const apiHost = process.env.YVP_API_HOST;
+    if (!apiHost) {
+      throw new Error('YVP_API_HOST environment variable must be set for URLBuilder tests.');
+    }
+    YouVersionPlatformConfiguration.apiHost = apiHost;
     YouVersionPlatformConfiguration.installationId = 'test-installation-id';
   });
 
@@ -58,7 +62,7 @@ describe('URLBuilder - Input Validation', () => {
       const url = URLBuilder.authURL('valid-app-key');
 
       expect(url).toBeInstanceOf(URL);
-      expect(url.hostname).toBe('api-dev.youversion.com');
+      expect(url.hostname.endsWith('.youversion.com')).toBe(true);
       expect(url.pathname).toBe('/auth/login');
       expect(url.searchParams.get('APP_KEY')).toBe('valid-app-key');
     });
@@ -85,7 +89,7 @@ describe('URLBuilder - Input Validation', () => {
       const url = URLBuilder.authURL('test-app');
 
       expect(url.protocol).toBe('https:');
-      expect(url.hostname).toBe('api-dev.youversion.com');
+      expect(url.hostname.endsWith('.youversion.com')).toBe(true);
       expect(url.pathname).toBe('/auth/login');
     });
 
@@ -109,7 +113,7 @@ describe('URLBuilder - Input Validation', () => {
     });
 
     it('should not include installation ID when not configured', () => {
-      YouVersionPlatformConfiguration.installationId = undefined;
+      YouVersionPlatformConfiguration.installationId = null;
       const url = URLBuilder.authURL('test-app');
 
       expect(url.searchParams.get('x-yvp-installation-id')).toBeNull();
@@ -187,7 +191,7 @@ describe('URLBuilder - Input Validation', () => {
       const url = URLBuilder.userURL('valid-access-token-123');
 
       expect(url).toBeInstanceOf(URL);
-      expect(url.hostname).toBe('api-dev.youversion.com');
+      expect(url.hostname.endsWith('.youversion.com')).toBe(true);
       expect(url.pathname).toBe('/auth/me');
       expect(url.searchParams.get('lat')).toBe('valid-access-token-123');
     });
@@ -205,7 +209,7 @@ describe('URLBuilder - Input Validation', () => {
       const url = URLBuilder.userURL('test-token');
 
       expect(url.protocol).toBe('https:');
-      expect(url.hostname).toBe('api-dev.youversion.com');
+      expect(url.hostname.endsWith('.youversion.com')).toBe(true);
       expect(url.pathname).toBe('/auth/me');
     });
 

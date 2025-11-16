@@ -9,9 +9,7 @@ describe('HighlightsClient', () => {
 
   beforeEach(() => {
     apiClient = new ApiClient({
-      baseUrl: 'https://api.youversion.com',
       appKey: 'test-app',
-      version: 'v1',
       installationId: 'test-installation',
     });
     highlightsClient = new HighlightsClient(apiClient);

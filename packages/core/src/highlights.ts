@@ -39,10 +39,6 @@ export class HighlightsClient {
     this.client = client;
   }
 
-  private get rootPath(): string {
-    return `/${this.client.config.version}`;
-  }
-
   /**
    * Gets the authentication token, either from the provided parameter or from the platform configuration.
    * @param lat Optional explicit long access token. If not provided, retrieves from YouVersionPlatformConfiguration.
@@ -122,7 +118,7 @@ export class HighlightsClient {
       params.passage_id = options.passage_id;
     }
 
-    return this.client.get<Collection<Highlight>>(`${this.rootPath}/highlights`, params);
+    return this.client.get<Collection<Highlight>>(`/v1/highlights`, params);
   }
 
   /**
@@ -140,7 +136,7 @@ export class HighlightsClient {
 
     const token = this.getAuthToken(lat);
 
-    return this.client.post<Highlight>(`${this.rootPath}/highlights`, data, { lat: token });
+    return this.client.post<Highlight>(`/v1/highlights`, data, { lat: token });
   }
 
   /**
@@ -168,6 +164,6 @@ export class HighlightsClient {
       params.version_id = options.version_id;
     }
 
-    await this.client.delete<void>(`${this.rootPath}/highlights/${passageId}`, params);
+    await this.client.delete<void>(`/v1/highlights/${passageId}`, params);
   }
 }

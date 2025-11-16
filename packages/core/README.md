@@ -74,7 +74,6 @@ console.log(passage.content) // "For God so loved the world..."
 ```ts
 const apiClient = new ApiClient({
   appKey: import.meta.env.YVP_APP_KEY, // Required
-  baseUrl: 'https://api.youversion.com', // Optional
   timeout: 10000, // Optional (default: 10000ms)
 })
 ```
