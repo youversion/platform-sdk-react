@@ -1,5 +1,13 @@
 # @youversion/platform-react-hooks
 
+## 0.4.2
+
+### Patch Changes
+
+- 6764bfe: chore: permit range of React versions
+- Updated dependencies [6764bfe]
+  - @youversion/platform-core@0.4.2
+
 ## 0.4.1
 
 ### Patch Changes
