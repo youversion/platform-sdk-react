@@ -39,10 +39,6 @@ export class LanguagesClient {
     this.client = client;
   }
 
-  private get rootPath(): string {
-    return `/${this.client.config.version}`;
-  }
-
   /**
    * Fetches a collection of languages supported in the Platform.
    * @param options Query parameters for pagination and filtering (country is required).
@@ -65,7 +61,7 @@ export class LanguagesClient {
       params.page_token = options.page_token;
     }
 
-    return this.client.get<Collection<Language>>(`${this.rootPath}/languages`, params);
+    return this.client.get<Collection<Language>>(`/v1/languages`, params);
   }
 
   /**
@@ -75,6 +71,6 @@ export class LanguagesClient {
    */
   async getLanguage(languageId: string): Promise<Language> {
     this.languageIdSchema.parse(languageId);
-    return this.client.get<Language>(`${this.rootPath}/languages/${languageId}`);
+    return this.client.get<Language>(`/v1/languages/${languageId}`);
   }
 }

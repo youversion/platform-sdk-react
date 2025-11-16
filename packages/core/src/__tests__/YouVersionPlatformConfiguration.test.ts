@@ -14,13 +14,20 @@ vi.stubGlobal('localStorage', { getItem: mockGetItem, setItem: mockSetItem });
 
 import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfiguration';
 
+const envApiHost = process.env.YVP_API_HOST;
+if (!envApiHost) {
+  throw new Error(
+    'YVP_API_HOST environment variable must be set for YouVersionPlatformConfiguration tests.',
+  );
+}
+
 describe('YouVersionPlatformConfiguration', () => {
   beforeEach(() => {
     // Reset all static properties
     YouVersionPlatformConfiguration.appKey = null;
     YouVersionPlatformConfiguration.installationId = null;
     YouVersionPlatformConfiguration.setAccessToken(null);
-    YouVersionPlatformConfiguration.apiHost = 'api-dev.youversion.com';
+    YouVersionPlatformConfiguration.apiHost = envApiHost;
     YouVersionPlatformConfiguration.isPreviewMode = false;
     YouVersionPlatformConfiguration.previewUserInfo = null;
 
@@ -104,10 +111,12 @@ describe('YouVersionPlatformConfiguration', () => {
 
   describe('apiHost', () => {
     it('should get and set apiHost', () => {
-      expect(YouVersionPlatformConfiguration.apiHost).toBe('api-dev.youversion.com');
-
-      YouVersionPlatformConfiguration.apiHost = 'api.youversion.com';
-      expect(YouVersionPlatformConfiguration.apiHost).toBe('api.youversion.com');
+      const apiHost = process.env.YVP_API_HOST || 'MISSING_API_HOST';
+      expect(YouVersionPlatformConfiguration.apiHost).toBe(apiHost);
+      YouVersionPlatformConfiguration.apiHost = 'somethingelse.youversion.com';
+      expect(YouVersionPlatformConfiguration.apiHost).toBe('somethingelse.youversion.com');
+      YouVersionPlatformConfiguration.apiHost = apiHost;
+      expect(YouVersionPlatformConfiguration.apiHost).toBe(apiHost);
     });
   });
 

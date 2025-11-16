@@ -4,6 +4,14 @@ import reactPlugin from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import prettierConfig from 'eslint-config-prettier';
 
+const typescriptFiles = ['**/*.ts', '**/*.tsx', '**/*.mts', '**/*.cts'];
+
+const applyTypeScriptFileGlobs = (configs) =>
+  configs.map((config) => ({
+    ...config,
+    files: config.files ?? typescriptFiles,
+  }));
+
 export default tseslint.config(
   // Base JS recommended
   eslint.configs.recommended,
@@ -11,7 +19,7 @@ export default tseslint.config(
   // Enable TypeScript Project Service for typed linting (monorepo-friendly)
   {
     name: 'internal/ts-project-service',
-    files: ['**/*.ts', '**/*.tsx'],
+    files: typescriptFiles,
     languageOptions: {
       parserOptions: {
         projectService: true,
@@ -20,8 +28,8 @@ export default tseslint.config(
   },
 
   // TypeScript ESLint v8 presets (typed)
-  ...tseslint.configs.recommendedTypeChecked,
-  ...tseslint.configs.stylisticTypeChecked,
+  ...applyTypeScriptFileGlobs(tseslint.configs.recommendedTypeChecked),
+  ...applyTypeScriptFileGlobs(tseslint.configs.stylisticTypeChecked),
 
   // Allow default project for tests and .d.ts so projectService doesn't error on files outside tsconfig "include"
   {
@@ -57,7 +65,7 @@ export default tseslint.config(
   // Custom TS rules
   {
     name: 'internal/custom-ts-rules',
-    files: ['**/*.ts', '**/*.tsx'],
+    files: typescriptFiles,
     rules: {
       '@typescript-eslint/explicit-module-boundary-types': 'error',
       '@typescript-eslint/no-explicit-any': 'off',

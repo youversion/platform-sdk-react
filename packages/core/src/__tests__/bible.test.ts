@@ -16,9 +16,7 @@ describe('BibleClient', () => {
 
   beforeEach(() => {
     apiClient = new ApiClient({
-      baseUrl: 'https://api.youversion.com',
       appKey: process.env.YVP_APP_KEY || '',
-      version: 'v1',
       installationId: 'test-installation',
     });
     bibleClient = new BibleClient(apiClient);

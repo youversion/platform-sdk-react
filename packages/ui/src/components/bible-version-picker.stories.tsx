@@ -8,11 +8,7 @@ import { Button } from './ui/button';
 
 const withProvider = (Story: React.ComponentType) => (
   <BibleSDKProvider
-    appKey={
-      (import.meta.env.STORYBOOK_PROD_YVP_APP_KEY ||
-        import.meta.env.STORYBOOK_YOUVERSION_APP_KEY ||
-        '') as string
-    }
+    appKey={(import.meta.env.YVP_APP_KEY || process.env.YVP_APP_KEY || '') as string}
   >
     <div className="yv:h-screen yv:flex yv:justify-center yv:items-end yv:p-12">
       <Story />

@@ -47,10 +47,6 @@ export class BibleClient {
     this.client = client;
   }
 
-  private get rootPath(): string {
-    return `/${this.client.config.version}`;
-  }
-
   /**
    * Fetches a collection of Bible versions filtered by language ranges.
    *
@@ -69,7 +65,7 @@ export class BibleClient {
     if (license_id !== undefined) {
       params.license_id = license_id;
     }
-    return this.client.get<Collection<BibleVersion>>(`${this.rootPath}/bibles`, params);
+    return this.client.get<Collection<BibleVersion>>(`/v1/bibles`, params);
   }
 
   /**
@@ -79,7 +75,7 @@ export class BibleClient {
    */
   async getVersion(id: number): Promise<BibleVersion> {
     this.versionIdSchema.parse(id);
-    return this.client.get<BibleVersion>(`${this.rootPath}/bibles/${id}`);
+    return this.client.get<BibleVersion>(`/v1/bibles/${id}`);
   }
 
   /**
@@ -90,7 +86,7 @@ export class BibleClient {
    */
   async getBooks(versionId: number, canon?: CANON): Promise<Collection<BibleBook>> {
     this.versionIdSchema.parse(versionId);
-    return this.client.get<Collection<BibleBook>>(`${this.rootPath}/bibles/${versionId}/books`, {
+    return this.client.get<Collection<BibleBook>>(`/v1/bibles/${versionId}/books`, {
       ...(canon && { canon }),
     });
   }
@@ -104,7 +100,7 @@ export class BibleClient {
   async getBook(versionId: number, book: string): Promise<BibleBook> {
     this.versionIdSchema.parse(versionId);
     this.bookSchema.parse(book);
-    return this.client.get<BibleBook>(`${this.rootPath}/bibles/${versionId}/books/${book}`);
+    return this.client.get<BibleBook>(`/v1/bibles/${versionId}/books/${book}`);
   }
 
   /**
@@ -117,7 +113,7 @@ export class BibleClient {
     this.versionIdSchema.parse(versionId);
     this.bookSchema.parse(book);
     return this.client.get<Collection<BibleChapter>>(
-      `${this.rootPath}/bibles/${versionId}/books/${book}/chapters`,
+      `/v1/bibles/${versionId}/books/${book}/chapters`,
     );
   }
 
@@ -134,7 +130,7 @@ export class BibleClient {
     this.chapterSchema.parse(chapter);
 
     return this.client.get<BibleChapter>(
-      `${this.rootPath}/bibles/${versionId}/books/${book}/chapters/${chapter}`,
+      `/v1/bibles/${versionId}/books/${book}/chapters/${chapter}`,
     );
   }
 
@@ -155,7 +151,7 @@ export class BibleClient {
     this.chapterSchema.parse(chapter);
 
     return this.client.get<Collection<BibleVerse>>(
-      `${this.rootPath}/bibles/${versionId}/books/${book}/chapters/${chapter}/verses`,
+      `/v1/bibles/${versionId}/books/${book}/chapters/${chapter}/verses`,
     );
   }
 
@@ -179,7 +175,7 @@ export class BibleClient {
     this.verseSchema.parse(verse);
 
     return this.client.get<BibleVerse>(
-      `${this.rootPath}/bibles/${versionId}/books/${book}/chapters/${chapter}/verses/${verse}`,
+      `/v1/bibles/${versionId}/books/${book}/chapters/${chapter}/verses/${verse}`,
     );
   }
 
@@ -227,10 +223,7 @@ export class BibleClient {
     if (include_notes !== undefined) {
       params.include_notes = include_notes;
     }
-    return this.client.get<BiblePassage>(
-      `${this.rootPath}/bibles/${versionId}/passages/${usfm}`,
-      params,
-    );
+    return this.client.get<BiblePassage>(`/v1/bibles/${versionId}/passages/${usfm}`, params);
   }
 
   /**
@@ -240,7 +233,7 @@ export class BibleClient {
    */
   async getIndex(versionId: number): Promise<BibleIndex> {
     this.versionIdSchema.parse(versionId);
-    return this.client.get<BibleIndex>(`${this.rootPath}/bibles/${versionId}/index`);
+    return this.client.get<BibleIndex>(`/v1/bibles/${versionId}/index`);
   }
 
   /**
@@ -248,7 +241,7 @@ export class BibleClient {
    * @returns A collection of VOTD objects for all days of the year.
    */
   async getAllVOTDs(): Promise<Collection<VOTD>> {
-    return this.client.get<Collection<VOTD>>(`${this.rootPath}/verse_of_the_days`);
+    return this.client.get<Collection<VOTD>>(`/v1/verse_of_the_days`);
   }
 
   /**
@@ -267,6 +260,6 @@ export class BibleClient {
   async getVOTD(day: number): Promise<VOTD> {
     const daySchema = z.number().int().min(1).max(366);
     daySchema.parse(day);
-    return this.client.get<VOTD>(`${this.rootPath}/verse_of_the_days/${day}`);
+    return this.client.get<VOTD>(`/v1/verse_of_the_days/${day}`);
   }
 }
