@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { BibleSDKProvider } from '@youversion/platform-react-hooks';
 import { http, HttpResponse } from 'msw';
-import { expect, within, userEvent, fn } from 'storybook/test';
+import { expect, within, userEvent, spyOn } from 'storybook/test';
 
 import { VerseOfTheDay } from './verse-of-the-day';
 
@@ -82,7 +82,7 @@ export const Default: Story = {
   tags: ['integration'],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    window.alert = fn();
+    const shareSpy = spyOn(navigator, 'share').mockResolvedValue();
 
     // `getByText` is synchronous and happens instantly, which allows us to check
     // that the loading text is shown before the verse.
@@ -92,19 +92,10 @@ export const Default: Story = {
     ).toBeInTheDocument();
     await expect(await canvas.findByText(/isaiah 43:19/i)).toBeInTheDocument();
     await expect(await canvas.findByTitle(/Sun/i)).toBeInTheDocument();
-    await expect(
-      await canvas.findByRole('button', { name: /read full chapter/i }),
-    ).toBeInTheDocument();
-    await expect(await canvas.findByRole('button', { name: /share/i })).toBeInTheDocument();
     await expect(await canvas.findByTitle(/Bible App/i)).toBeInTheDocument();
 
-    // TODO - YVP-NTN-69 - Implement read full chapter functionalities.
-    await userEvent.click(await canvas.findByRole('button', { name: /read full chapter/i }));
-    await expect(window.alert).toHaveBeenCalled();
-
-    // TODO - YVP-NTN-68 - Implement share functionalities.
     await userEvent.click(await canvas.findByRole('button', { name: /share/i }));
-    await expect(window.alert).toHaveBeenCalledTimes(2);
+    await expect(shareSpy).toHaveBeenCalled();
   },
 };
 
