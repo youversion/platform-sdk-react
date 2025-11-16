@@ -45,8 +45,8 @@ async function share({ title, text, url }: { title?: string; text: string; url?:
     try {
       await navigator.share({
         text,
-        ...(url ? { url } : {}),
-        ...(title ? { title } : {}),
+        url,
+        title,
       });
     } catch {
       // Silently fail
