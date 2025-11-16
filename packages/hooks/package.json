@@ -33,7 +33,7 @@
     "@youversion/platform-core": "workspace:*"
   },
   "peerDependencies": {
-    "react": "19.0.0"
+    "react": ">=19.1.0 <20.0.0",
   },
   "devDependencies": {
     "@internal/eslint-config": "workspace:*",
