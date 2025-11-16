@@ -141,13 +141,8 @@ export const Verse = {
     );
   },
 
-  Html: ({
-    html,
-    fontFamily,
-    fontSize,
-    lineHeight,
-    showVerseNumbers = true,
-  }: VerseHtmlProps): React.ReactElement => {
+  Html: React.forwardRef<HTMLDivElement, VerseHtmlProps>((props, ref) => {
+    const { html, fontFamily, fontSize, lineHeight, showVerseNumbers = true } = props;
     const [transformedHtml, setTransformedHtml] = React.useState(html);
 
     // Transform HTML client-side to avoid SSR hydration mismatch since DOMParser is not available on server
@@ -157,6 +152,7 @@ export const Verse = {
 
     return (
       <section
+        ref={ref}
         style={
           {
             ...(fontFamily ? { '--yv-reader-font-family': fontFamily } : {}),
@@ -169,7 +165,7 @@ export const Verse = {
         dangerouslySetInnerHTML={{ __html: transformedHtml }}
       />
     );
-  },
+  }),
 };
 
 export type BibleTextViewProps = {

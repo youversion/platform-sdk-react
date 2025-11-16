@@ -5,7 +5,12 @@ import { Share } from '@/components/icons/share';
 import { BibleAppLogoLockup } from '@/components/bible-app-logo-lockup';
 import { cn } from '@/lib/utils';
 import { Verse } from '@/components/verse';
-import { useVerseOfTheDay, usePassage, getDayOfYear } from '@youversion/platform-react-hooks';
+import {
+  useVerseOfTheDay,
+  usePassage,
+  getDayOfYear,
+  useVersion,
+} from '@youversion/platform-react-hooks';
 
 export type VerseOfTheDayProps = {
   /**
@@ -35,6 +40,24 @@ export type VerseOfTheDayProps = {
   size?: 'default' | 'lg';
 };
 
+async function share({ title, text, url }: { title?: string; text: string; url?: string }) {
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        text,
+        ...(url ? { url } : {}),
+        ...(title ? { title } : {}),
+      });
+    } catch {
+      // Silently fail
+    }
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).catch(() => {
+      alert('Unable to share. Please try again.');
+    });
+  }
+}
+
 /**
  * A Verse of the Day card component with customizable options.
  *
@@ -58,6 +81,7 @@ export function VerseOfTheDay({
   size = 'default',
 }: VerseOfTheDayProps): React.ReactElement {
   const day = React.useMemo(() => dayOfYear || getDayOfYear(new Date()), [dayOfYear]);
+  const verseRef = React.useRef<HTMLDivElement>(null);
   const { data, loading: loadingVerseOfTheDay, error: errorVerseOfTheDay } = useVerseOfTheDay(day);
   const {
     passage,
@@ -70,17 +94,27 @@ export function VerseOfTheDay({
       enabled: !loadingVerseOfTheDay && !errorVerseOfTheDay && !!data?.passage_id,
     },
   });
+  const { version, loading: loadingVersion, error: errorVersion } = useVersion(versionId);
 
   let referenceText = '';
-  if (loadingPassage || loadingVerseOfTheDay) {
+  if (loadingPassage || loadingVerseOfTheDay || loadingVersion) {
     referenceText = 'Loading...';
-  } else if (errorPassage || errorVerseOfTheDay) {
+  } else if (errorPassage || errorVerseOfTheDay || errorVersion) {
     referenceText = 'Error loading verse';
+  } else if (passage?.human_reference && version?.local_abbreviation) {
+    referenceText = `${passage?.human_reference} ${version?.local_abbreviation}`;
   } else if (passage?.human_reference) {
     referenceText = passage?.human_reference;
   } else {
     referenceText = 'No verse found';
   }
+
+  const handleShareVerse = async () => {
+    if (verseRef.current) {
+      const text = verseRef.current.innerText + '\n\n' + referenceText;
+      await share({ text });
+    }
+  };
 
   return (
     <section
@@ -115,8 +149,7 @@ export function VerseOfTheDay({
             <Button
               aria-label="Share"
               className={cn(size === 'lg' ? 'yv:translate-x-3' : 'yv:translate-x-2')}
-              // TODO: Implement share functionality
-              onClick={() => alert('Share: To be implemented...')}
+              onClick={void handleShareVerse}
               size="icon"
               variant="ghost"
             >
@@ -129,8 +162,9 @@ export function VerseOfTheDay({
       <div>
         {passage ? (
           <Verse.Html
+            ref={verseRef}
             fontSize={size === 'default' ? 16 : 20}
-            fontFamily={size === 'default' ? 'sans' : 'serif'}
+            fontFamily={size === 'default' ? 'var(--yv-font-sans)' : 'var(--yv-font-serif)'}
             html={passage?.content || ''}
           />
         ) : null}
