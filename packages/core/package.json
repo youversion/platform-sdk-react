@@ -1,9 +1,14 @@
 {
   "name": "@youversion/platform-core",
-  "version": "0.4.0",
+  "version": "0.4.2",
   "type": "module",
   "publishConfig": {
     "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/youversion/platform-sdk-react",
+    "directory": "packages/core"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

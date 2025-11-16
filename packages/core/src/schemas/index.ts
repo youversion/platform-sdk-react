@@ -5,7 +5,6 @@ export * from './collection';
 export * from './highlight';
 export * from './language';
 export * from './passage';
-export * from './search';
 export * from './version';
 export * from './verse';
 export * from './votd';

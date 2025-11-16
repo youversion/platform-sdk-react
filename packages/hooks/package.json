@@ -1,9 +1,14 @@
 {
   "name": "@youversion/platform-react-hooks",
-  "version": "0.2.0",
+  "version": "0.4.2",
   "type": "module",
   "publishConfig": {
     "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/youversion/platform-sdk-react",
+    "directory": "packages/hooks"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -28,7 +33,7 @@
     "@youversion/platform-core": "workspace:*"
   },
   "peerDependencies": {
-    "react": "19.0.0"
+    "react": ">=19.1.0 <20.0.0"
   },
   "devDependencies": {
     "@internal/eslint-config": "workspace:*",
