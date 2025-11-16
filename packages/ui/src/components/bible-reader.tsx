@@ -13,9 +13,9 @@ type BibleReaderContextType = {
   book: string;
   chapter: string;
   versionId: number;
-  setBook: (book: string) => void;
-  setChapter: (chapter: string) => void;
-  setVersionId: (versionId: number) => void;
+  setBook: React.Dispatch<React.SetStateAction<string>>;
+  setChapter: React.Dispatch<React.SetStateAction<string>>;
+  setVersionId: React.Dispatch<React.SetStateAction<number>>;
   fontFamily?: string;
   fontSize?: number;
   lineHeight?: number;
