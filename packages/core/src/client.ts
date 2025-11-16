@@ -23,7 +23,7 @@ export class ApiClient {
     this.config = {
       ...config,
     };
-    const apiHost = config.apiHost ?? process.env.YVP_API_HOST;
+    const apiHost = config.apiHost ?? process.env.YVP_API_HOST ?? 'api.youversion.com';
     if (!apiHost) {
       throw new Error(
         'ApiClient requires a host name. Provide an apiHost in the config or set the YVP_API_HOST environment variable.',
