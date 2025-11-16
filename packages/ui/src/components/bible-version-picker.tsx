@@ -115,13 +115,16 @@ function Root({
   );
 }
 
-export type TriggerProps = Omit<React.ComponentProps<typeof PopoverTrigger>, 'children'> & {
+export type BibleVersionPickerTriggerProps = Omit<
+  React.ComponentProps<typeof PopoverTrigger>,
+  'children'
+> & {
   children?:
     | React.ReactNode
     | ((props: { version: BibleVersion | null; loading: boolean }) => React.ReactNode);
 };
 
-function Trigger({ asChild = true, children, ...props }: TriggerProps) {
+function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTriggerProps) {
   const { versionId, background } = useBibleVersionPickerContext();
   const { version, loading } = useVersion(versionId);
 
