@@ -149,7 +149,7 @@ export function VerseOfTheDay({
             <Button
               aria-label="Share"
               className={cn(size === 'lg' ? 'yv:translate-x-3' : 'yv:translate-x-2')}
-              onClick={void handleShareVerse}
+              onClick={() => void handleShareVerse()}
               size="icon"
               variant="ghost"
             >
