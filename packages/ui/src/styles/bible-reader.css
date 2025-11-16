@@ -69,7 +69,7 @@
     white-space: nowrap;
   }
 
-  &[data-show-verse-numbers] .yv-vlbl {
+  &[data-show-verse-numbers="false"] .yv-vlbl {
     @apply yv:hidden;
   }
 

@@ -164,7 +164,7 @@ export const Verse = {
             ...(lineHeight ? { '--yv-reader-line-height': lineHeight } : {}),
           } as React.CSSProperties
         }
-        {...(showVerseNumbers ? {} : { 'data-show-verse-numbers': showVerseNumbers })}
+        data-show-verse-numbers={showVerseNumbers}
         data-slot="yv-bible-renderer"
         dangerouslySetInnerHTML={{ __html: transformedHtml }}
       />
