@@ -22,11 +22,6 @@ vi.mock('@youversion/platform-core', async () => {
     ApiClient: vi.fn(function () {
       return { isApiClient: true };
     }),
-    YouVersionPlatformConfiguration: {
-      get installationId() {
-        return 'auto-generated-uuid';
-      },
-    },
   };
 });
 
@@ -129,7 +124,6 @@ describe('useLanguages', () => {
 
       expect(ApiClient).toHaveBeenCalledWith({
         appKey: mockAppKey,
-        installationId: 'auto-generated-uuid',
       });
       expect(LanguagesClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
     });

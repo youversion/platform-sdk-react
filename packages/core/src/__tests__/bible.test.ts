@@ -16,6 +16,7 @@ describe('BibleClient', () => {
 
   beforeEach(() => {
     apiClient = new ApiClient({
+      apiHost: process.env.YVP_API_HOST || '',
       appKey: process.env.YVP_APP_KEY || '',
       installationId: 'test-installation',
     });

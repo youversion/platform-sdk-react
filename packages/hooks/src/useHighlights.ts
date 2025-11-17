@@ -32,8 +32,14 @@ export function useHighlights(
         'BibleSDK context not found. Make sure your component is wrapped with BibleSDKProvider and an API key is provided.',
       );
     }
-    return new HighlightsClient(new ApiClient(context));
-  }, [context]);
+    return new HighlightsClient(
+      new ApiClient({
+        appKey: context.appKey,
+        apiHost: context.apiHost,
+        installationId: context.installationId,
+      }),
+    );
+  }, [context?.apiHost, context?.appKey, context?.installationId]);
 
   const { data, loading, error, refetch } = useApiData<Collection<Highlight>>(
     () => highlightsClient.getHighlights(options),

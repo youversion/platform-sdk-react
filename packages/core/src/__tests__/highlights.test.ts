@@ -9,6 +9,7 @@ describe('HighlightsClient', () => {
 
   beforeEach(() => {
     apiClient = new ApiClient({
+      apiHost: process.env.YVP_API_HOST || '',
       appKey: 'test-app',
       installationId: 'test-installation',
     });

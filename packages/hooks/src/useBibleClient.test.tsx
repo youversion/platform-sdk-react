@@ -19,11 +19,6 @@ vi.mock('@youversion/platform-core', async () => {
         isApiClient: true,
       };
     }),
-    YouVersionPlatformConfiguration: {
-      get installationId() {
-        return 'auto-generated-uuid';
-      },
-    },
   };
 });
 
@@ -49,7 +44,6 @@ describe('useBibleClient', () => {
 
     expect(ApiClient).toHaveBeenCalledWith({
       appKey: mockAppKey,
-      installationId: 'auto-generated-uuid',
     });
     expect(BibleClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
     expect(result.current).toEqual(expect.objectContaining({ isBibleClient: true }));
@@ -117,7 +111,6 @@ describe('useBibleClient', () => {
     expect(BibleClient).toHaveBeenCalledTimes(1);
     expect(ApiClient).toHaveBeenCalledWith({
       appKey: mockAppKey,
-      installationId: 'auto-generated-uuid',
     });
 
     currentAppKey = 'new-app-key';
@@ -129,7 +122,6 @@ describe('useBibleClient', () => {
 
     expect(ApiClient).toHaveBeenLastCalledWith({
       appKey: 'new-app-key',
-      installationId: 'auto-generated-uuid',
     });
   });
 

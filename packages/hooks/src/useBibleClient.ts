@@ -14,6 +14,12 @@ export function useBibleClient(): BibleClient {
       );
     }
 
-    return new BibleClient(new ApiClient(context));
-  }, [context]);
+    return new BibleClient(
+      new ApiClient({
+        appKey: context.appKey,
+        apiHost: context.apiHost,
+        installationId: context.installationId,
+      }),
+    );
+  }, [context?.apiHost, context?.appKey, context?.installationId]);
 }
