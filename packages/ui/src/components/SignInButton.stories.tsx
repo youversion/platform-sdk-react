@@ -254,9 +254,6 @@ export const InteractionTestWithMockedAuth: Story = {
     onSuccess: fn(),
     onAuthError: fn(),
   },
-  parameters: {
-    chromatic: { disableSnapshot: true },
-  },
   tags: ['integration'],
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);

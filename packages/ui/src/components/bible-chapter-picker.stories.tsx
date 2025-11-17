@@ -28,7 +28,10 @@ const meta = {
       const [book, setBook] = useState('MAT');
       const [chapter, setChapter] = useState('5');
       return (
-        <BibleSDKProvider appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || ''}>
+        <BibleSDKProvider
+          appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY}
+          apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
+        >
           <div className="yv:h-screen yv:flex yv:justify-center yv:items-end yv:p-12">
             <BibleChapterPicker.Root
               book={book}

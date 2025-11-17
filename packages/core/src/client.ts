@@ -23,11 +23,9 @@ export class ApiClient {
     this.config = {
       ...config,
     };
-    const apiHost = config.apiHost ?? process.env.YVP_API_HOST ?? 'api.youversion.com';
+    const apiHost = config.apiHost || 'api.youversion.com';
     if (!apiHost) {
-      throw new Error(
-        'ApiClient requires a host name. Provide an apiHost in the config or set the YVP_API_HOST environment variable.',
-      );
+      throw new Error('ApiClient requires a host name. Provide an apiHost in the config.');
     }
     this.baseURL = 'https://' + apiHost;
     this.timeout = config.timeout || 10000;

@@ -11,7 +11,10 @@ const meta = {
   },
   decorators: [
     (Story: React.ComponentType): React.ReactElement => (
-      <BibleSDKProvider appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || ''}>
+      <BibleSDKProvider
+        appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY}
+        apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
+      >
         <Story />
       </BibleSDKProvider>
     ),

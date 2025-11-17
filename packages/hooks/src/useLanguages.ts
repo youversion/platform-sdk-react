@@ -3,11 +3,7 @@
 import { useMemo } from 'react';
 import { useContext } from 'react';
 import { BibleSDKContext } from './context';
-import {
-  LanguagesClient,
-  ApiClient,
-  YouVersionPlatformConfiguration,
-} from '@youversion/platform-core';
+import { LanguagesClient, ApiClient } from '@youversion/platform-core';
 import { useApiData, type UseApiDataOptions } from './useApiData';
 import {
   type GetLanguagesOptions,
@@ -35,10 +31,11 @@ export function useLanguages(
     return new LanguagesClient(
       new ApiClient({
         appKey: context.appKey,
-        installationId: YouVersionPlatformConfiguration.installationId,
+        apiHost: context.apiHost,
+        installationId: context.installationId,
       }),
     );
-  }, [context?.appKey]);
+  }, [context?.apiHost, context?.appKey, context?.installationId]);
 
   const { data, loading, error, refetch } = useApiData<Collection<Language>>(
     () => languagesClient.getLanguages(options),

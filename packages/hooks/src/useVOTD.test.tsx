@@ -5,8 +5,6 @@ import { useVerseOfTheDay } from './useVOTD';
 import { BibleSDKContext } from './context';
 import { BibleClient, ApiClient, type VOTD } from '@youversion/platform-core';
 
-const MOCK_INSTALLATION_ID = 'auto-generated-uuid';
-
 // Mock the core package
 vi.mock('@youversion/platform-core', async () => {
   const actual = await vi.importActual('@youversion/platform-core');
@@ -18,11 +16,6 @@ vi.mock('@youversion/platform-core', async () => {
     ApiClient: vi.fn(function () {
       return { isApiClient: true };
     }),
-    YouVersionPlatformConfiguration: {
-      get installationId() {
-        return MOCK_INSTALLATION_ID;
-      },
-    },
   };
 });
 
@@ -88,7 +81,6 @@ describe('useVerseOfTheDay', () => {
 
       expect(ApiClient).toHaveBeenCalledWith({
         appKey: mockAppKey,
-        installationId: MOCK_INSTALLATION_ID,
       });
       expect(BibleClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
     });

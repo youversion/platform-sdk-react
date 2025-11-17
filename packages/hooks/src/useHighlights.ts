@@ -3,11 +3,7 @@
 import { useMemo, useCallback } from 'react';
 import { useContext } from 'react';
 import { BibleSDKContext } from './context';
-import {
-  HighlightsClient,
-  ApiClient,
-  YouVersionPlatformConfiguration,
-} from '@youversion/platform-core';
+import { HighlightsClient, ApiClient } from '@youversion/platform-core';
 import { useApiData, type UseApiDataOptions } from './useApiData';
 import {
   type GetHighlightsOptions,
@@ -39,10 +35,11 @@ export function useHighlights(
     return new HighlightsClient(
       new ApiClient({
         appKey: context.appKey,
-        installationId: YouVersionPlatformConfiguration.installationId,
+        apiHost: context.apiHost,
+        installationId: context.installationId,
       }),
     );
-  }, [context?.appKey]);
+  }, [context?.apiHost, context?.appKey, context?.installationId]);
 
   const { data, loading, error, refetch } = useApiData<Collection<Highlight>>(
     () => highlightsClient.getHighlights(options),

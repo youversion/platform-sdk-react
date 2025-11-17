@@ -14,6 +14,7 @@ describe('AuthClient', () => {
     global.fetch = vi.fn();
     apiClient = new ApiClient({
       appKey: 'test-app-key',
+      apiHost: process.env.YVP_API_HOST || '',
     });
     authClient = new AuthClient(apiClient);
   });
