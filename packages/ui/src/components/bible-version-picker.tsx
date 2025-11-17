@@ -74,16 +74,30 @@ function Root({
   // Fetch languages from hook with default country 'US'
   const { languages: hookLanguages } = useLanguages({ country: 'US' });
 
-  // Fetch languages from hook
+  // Fetch languages from hook, without duplicates.
+  // Filtering has been added because the API's
+  // have returned duplicate languages with the same ID.
   const languages = useMemo(() => {
-    if (hookLanguages?.data && hookLanguages.data.length > 0) {
-      return hookLanguages.data.map((lang) => ({
-        id: lang.id || '',
-        englishName: lang.display_names?.en || lang.language,
-        name: lang.display_names?.[lang.id] || lang.language,
-      }));
+    if (!hookLanguages?.data || hookLanguages.data.length === 0) {
+      return [];
     }
-    return [];
+
+    const seen = new Set<string>();
+    const result: { id: string; englishName: string; name: string }[] = [];
+
+    for (const lang of hookLanguages.data) {
+      const id = lang.id || '';
+      if (id && !seen.has(id)) {
+        seen.add(id);
+        result.push({
+          id,
+          englishName: lang.display_names?.en || lang.language,
+          name: lang.display_names?.[lang.id] || lang.language,
+        });
+      }
+    }
+
+    return result;
   }, [hookLanguages?.data]);
 
   const { versions } = useVersions(selectedLanguageId);
@@ -233,7 +247,7 @@ function Content() {
             <ItemGroup>
               {filteredVersions.map((version: BibleVersion) => (
                 <Item
-                  key={version.id}
+                  key={version.abbreviation}
                   className={cn(
                     'yv:hover:bg-muted yv:rounded-[8px]',
                     versionId === version.id ? 'yv:bg-muted' : '',

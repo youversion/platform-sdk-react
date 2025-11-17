@@ -12,7 +12,6 @@ import {
 
 function VotdTester() {
   const [showBibleAppAttribution, setShowBibleAppAttribution] = useState(true);
-  const [showReadFullChapterButton, setShowReadFullChapterButton] = useState(true);
   const [showShareButton, setShowShareButton] = useState(false);
   const [showSunIcon, setShowSunIcon] = useState(true);
   const [size, setSize] = useState<'default' | 'lg'>('default');
@@ -28,14 +27,6 @@ function VotdTester() {
             onChange={(e) => setShowBibleAppAttribution(e.target.checked)}
           />
           Show Bible App Attribution
-        </label>
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={showReadFullChapterButton}
-            onChange={(e) => setShowReadFullChapterButton(e.target.checked)}
-          />
-          Show Read Full Chapter Button
         </label>
         <label className="flex items-center gap-2">
           <input
@@ -79,7 +70,6 @@ function VotdTester() {
       <VerseOfTheDay
         size={size}
         showBibleAppAttribution={showBibleAppAttribution}
-        showReadFullChapterButton={showReadFullChapterButton}
         showShareButton={showShareButton}
         showSunIcon={showSunIcon}
         dayOfYear={dayOfYear}

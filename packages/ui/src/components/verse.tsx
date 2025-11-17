@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import { useEffect, forwardRef, useState, type ReactNode } from 'react';
 import DOMPurify from 'isomorphic-dompurify';
 import { usePassage } from '@youversion/platform-react-hooks';
 
@@ -141,35 +141,35 @@ export const Verse = {
     );
   },
 
-  Html: ({
-    html,
-    fontFamily,
-    fontSize,
-    lineHeight,
-    showVerseNumbers = true,
-  }: VerseHtmlProps): React.ReactElement => {
-    const [transformedHtml, setTransformedHtml] = React.useState(html);
+  Html: forwardRef<HTMLDivElement, VerseHtmlProps>(
+    (
+      { html, fontFamily, fontSize, lineHeight, showVerseNumbers = true }: VerseHtmlProps,
+      ref,
+    ): ReactNode => {
+      const [transformedHtml, setTransformedHtml] = useState(html);
 
-    // Transform HTML client-side to avoid SSR hydration mismatch since DOMParser is not available on server
-    React.useEffect(() => {
-      setTransformedHtml(yvDomTransformer(html));
-    }, [html]);
+      // Transform HTML client-side to avoid SSR hydration mismatch since DOMParser is not available on server
+      useEffect(() => {
+        setTransformedHtml(yvDomTransformer(html));
+      }, [html]);
 
-    return (
-      <section
-        style={
-          {
-            ...(fontFamily ? { '--yv-reader-font-family': fontFamily } : {}),
-            ...(fontSize ? { '--yv-reader-font-size': `${fontSize}px` } : {}),
-            ...(lineHeight ? { '--yv-reader-line-height': lineHeight } : {}),
-          } as React.CSSProperties
-        }
-        data-show-verse-numbers={showVerseNumbers}
-        data-slot="yv-bible-renderer"
-        dangerouslySetInnerHTML={{ __html: transformedHtml }}
-      />
-    );
-  },
+      return (
+        <section
+          ref={ref}
+          style={
+            {
+              ...(fontFamily ? { '--yv-reader-font-family': fontFamily } : {}),
+              ...(fontSize ? { '--yv-reader-font-size': `${fontSize}px` } : {}),
+              ...(lineHeight ? { '--yv-reader-line-height': lineHeight } : {}),
+            } as React.CSSProperties
+          }
+          data-show-verse-numbers={showVerseNumbers}
+          data-slot="yv-bible-renderer"
+          dangerouslySetInnerHTML={{ __html: transformedHtml }}
+        />
+      );
+    },
+  ),
 };
 
 export type BibleTextViewProps = {
