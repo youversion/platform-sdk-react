@@ -31,18 +31,18 @@ export function useHighlights(
   const context = useContext(BibleSDKContext);
 
   const highlightsClient = useMemo(() => {
-    if (!context?.appId) {
+    if (!context?.appKey) {
       throw new Error(
         'BibleSDK context not found. Make sure your component is wrapped with BibleSDKProvider and an API key is provided.',
       );
     }
     return new HighlightsClient(
       new ApiClient({
-        appId: context.appId,
+        appKey: context.appKey,
         installationId: YouVersionPlatformConfiguration.installationId,
       }),
     );
-  }, [context?.appId]);
+  }, [context?.appKey]);
 
   const { data, loading, error, refetch } = useApiData<Collection<Highlight>>(
     () => highlightsClient.getHighlights(options),

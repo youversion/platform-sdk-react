@@ -31,7 +31,7 @@ vi.mock('@youversion/platform-core', async () => {
 });
 
 describe('useHighlights', () => {
-  const mockAppId = 'test-app-id';
+  const mockAppKey = 'test-app-key';
 
   const mockHighlights: Collection<Highlight> = {
     data: [
@@ -59,7 +59,7 @@ describe('useHighlights', () => {
   let mockCreateHighlight: Mock;
   let mockDeleteHighlight: Mock;
 
-  const createWrapper = (contextValue: { appId: string }) => {
+  const createWrapper = (contextValue: { appKey: string }) => {
     return ({ children }: { children: ReactNode }) => (
       <BibleSDKContext.Provider value={contextValue}>{children}</BibleSDKContext.Provider>
     );
@@ -94,9 +94,9 @@ describe('useHighlights', () => {
       );
     });
 
-    it('should throw error when appId is missing', () => {
+    it('should throw error when appKey is missing', () => {
       const wrapper = createWrapper({
-        appId: '',
+        appKey: '',
       });
 
       expect(() => renderHook(() => useHighlights(), { wrapper })).toThrow(
@@ -108,13 +108,13 @@ describe('useHighlights', () => {
   describe('client creation', () => {
     it('should create HighlightsClient with correct ApiClient config', () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       renderHook(() => useHighlights(), { wrapper });
 
       expect(ApiClient).toHaveBeenCalledWith({
-        appId: mockAppId,
+        appKey: mockAppKey,
         installationId: 'auto-generated-uuid',
       });
       expect(HighlightsClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
@@ -122,7 +122,7 @@ describe('useHighlights', () => {
 
     it('should memoize HighlightsClient instance', () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { rerender } = renderHook(() => useHighlights(), { wrapper });
@@ -134,12 +134,12 @@ describe('useHighlights', () => {
     });
 
     it('should create new HighlightsClient when context values change', () => {
-      let currentAppId = mockAppId;
+      let currentAppKey = mockAppKey;
 
       const wrapper = ({ children }: { children: ReactNode }) => (
         <BibleSDKContext.Provider
           value={{
-            appId: currentAppId,
+            appKey: currentAppKey,
           }}
         >
           {children}
@@ -150,7 +150,7 @@ describe('useHighlights', () => {
 
       expect(HighlightsClient).toHaveBeenCalledTimes(1);
 
-      currentAppId = 'new-app-id';
+      currentAppKey = 'new-app-key';
 
       rerender();
 
@@ -161,7 +161,7 @@ describe('useHighlights', () => {
   describe('fetching highlights', () => {
     it('should fetch highlights with no options', async () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useHighlights(), { wrapper });
@@ -179,7 +179,7 @@ describe('useHighlights', () => {
 
     it('should fetch highlights with version_id option', async () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useHighlights({ version_id: 111 }), { wrapper });
@@ -194,7 +194,7 @@ describe('useHighlights', () => {
 
     it('should fetch highlights with passage_id option', async () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useHighlights({ passage_id: 'MAT.1.1' }), { wrapper });
@@ -209,7 +209,7 @@ describe('useHighlights', () => {
 
     it('should fetch highlights with both options', async () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(
@@ -232,7 +232,7 @@ describe('useHighlights', () => {
 
     it('should refetch when options change', async () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result, rerender } = renderHook(({ options }) => useHighlights(options), {
@@ -258,7 +258,7 @@ describe('useHighlights', () => {
 
     it('should not fetch when enabled is false', async () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useHighlights(undefined, { enabled: false }), {
@@ -278,7 +278,7 @@ describe('useHighlights', () => {
       mockGetHighlights.mockRejectedValueOnce(error);
 
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useHighlights(), { wrapper });
@@ -293,7 +293,7 @@ describe('useHighlights', () => {
 
     it('should support manual refetch', async () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useHighlights(), { wrapper });
@@ -315,7 +315,7 @@ describe('useHighlights', () => {
   describe('createHighlight mutation', () => {
     it('should create highlight and refetch', async () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useHighlights(), { wrapper });
@@ -350,7 +350,7 @@ describe('useHighlights', () => {
       mockCreateHighlight.mockRejectedValueOnce(error);
 
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useHighlights(), { wrapper });
@@ -377,7 +377,7 @@ describe('useHighlights', () => {
   describe('deleteHighlight mutation', () => {
     it('should delete highlight and refetch', async () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useHighlights(), { wrapper });
@@ -402,7 +402,7 @@ describe('useHighlights', () => {
 
     it('should delete highlight with options', async () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useHighlights(), { wrapper });
@@ -428,7 +428,7 @@ describe('useHighlights', () => {
       mockDeleteHighlight.mockRejectedValueOnce(error);
 
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useHighlights(), { wrapper });

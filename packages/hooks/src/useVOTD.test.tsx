@@ -27,7 +27,7 @@ vi.mock('@youversion/platform-core', async () => {
 });
 
 describe('useVerseOfTheDay', () => {
-  const mockAppId = 'test-app-id';
+  const mockAppKey = 'test-app-key';
 
   const mockVOTD: VOTD = {
     day: 1,
@@ -36,7 +36,7 @@ describe('useVerseOfTheDay', () => {
 
   let mockGetVOTD: Mock;
 
-  const createWrapper = (contextValue: { appId: string }) => {
+  const createWrapper = (contextValue: { appKey: string }) => {
     return ({ children }: { children: ReactNode }) => (
       <BibleSDKContext.Provider value={contextValue}>{children}</BibleSDKContext.Provider>
     );
@@ -67,9 +67,9 @@ describe('useVerseOfTheDay', () => {
       );
     });
 
-    it('should throw error when appId is missing', () => {
+    it('should throw error when appKey is missing', () => {
       const wrapper = createWrapper({
-        appId: '',
+        appKey: '',
       });
 
       expect(() => renderHook(() => useVerseOfTheDay(1), { wrapper })).toThrow(
@@ -81,13 +81,13 @@ describe('useVerseOfTheDay', () => {
   describe('client creation', () => {
     it('should create BibleClient with correct ApiClient config', () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       renderHook(() => useVerseOfTheDay(1), { wrapper });
 
       expect(ApiClient).toHaveBeenCalledWith({
-        appId: mockAppId,
+        appKey: mockAppKey,
         installationId: MOCK_INSTALLATION_ID,
       });
       expect(BibleClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
@@ -95,7 +95,7 @@ describe('useVerseOfTheDay', () => {
 
     it('should memoize BibleClient instance', () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result, rerender } = renderHook(() => useVerseOfTheDay(1), { wrapper });
@@ -108,12 +108,12 @@ describe('useVerseOfTheDay', () => {
     });
 
     it('should create new BibleClient when context values change', () => {
-      let currentAppId = mockAppId;
+      let currentAppKey = mockAppKey;
 
       const wrapper = ({ children }: { children: ReactNode }) => (
         <BibleSDKContext.Provider
           value={{
-            appId: currentAppId,
+            appKey: currentAppKey,
           }}
         >
           {children}
@@ -124,7 +124,7 @@ describe('useVerseOfTheDay', () => {
 
       expect(BibleClient).toHaveBeenCalledTimes(1);
 
-      currentAppId = 'new-app-id';
+      currentAppKey = 'new-app-key';
       rerender();
 
       expect(BibleClient).toHaveBeenCalledTimes(2);
@@ -134,7 +134,7 @@ describe('useVerseOfTheDay', () => {
   describe('fetching VOTD', () => {
     it('should fetch VOTD for day 1', async () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useVerseOfTheDay(1), { wrapper });
@@ -155,7 +155,7 @@ describe('useVerseOfTheDay', () => {
       mockGetVOTD.mockResolvedValueOnce(mockVOTD100);
 
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useVerseOfTheDay(100), { wrapper });
@@ -173,7 +173,7 @@ describe('useVerseOfTheDay', () => {
       mockGetVOTD.mockResolvedValueOnce(mockVOTD366);
 
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useVerseOfTheDay(366), { wrapper });
@@ -188,7 +188,7 @@ describe('useVerseOfTheDay', () => {
 
     it('should refetch when day changes', async () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result, rerender } = renderHook(({ day }) => useVerseOfTheDay(day), {
@@ -215,7 +215,7 @@ describe('useVerseOfTheDay', () => {
 
     it('should not fetch when enabled is false', async () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useVerseOfTheDay(1, { enabled: false }), { wrapper });
@@ -233,7 +233,7 @@ describe('useVerseOfTheDay', () => {
       mockGetVOTD.mockRejectedValueOnce(error);
 
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useVerseOfTheDay(1), { wrapper });
@@ -248,7 +248,7 @@ describe('useVerseOfTheDay', () => {
 
     it('should support manual refetch', async () => {
       const wrapper = createWrapper({
-        appId: mockAppId,
+        appKey: mockAppKey,
       });
 
       const { result } = renderHook(() => useVerseOfTheDay(1), { wrapper });

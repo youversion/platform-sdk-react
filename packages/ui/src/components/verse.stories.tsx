@@ -6,7 +6,7 @@ import React from 'react';
 
 import { BibleTextView } from './verse';
 
-const baseUrl = 'https://api-dev.youversion.com';
+const baseUrl = 'https://' + process.env.YVP_API_HOST;
 
 // USFM format: BOOK.CHAPTER or BOOK.CHAPTER.VERSE or BOOK.CHAPTER.VERSE-VERSE
 const USFM_PATTERN = /^[A-Z1-4]{3}\.\d+(\.\d+(-\d+)?)?$/;
@@ -115,7 +115,7 @@ const meta = {
   },
   decorators: [
     (Story: React.ComponentType): React.ReactElement => (
-      <BibleSDKProvider appId={import.meta.env.STORYBOOK_YOUVERSION_APP_ID || ''}>
+      <BibleSDKProvider appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || ''}>
         <Story />
       </BibleSDKProvider>
     ),

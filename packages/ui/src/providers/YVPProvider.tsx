@@ -57,7 +57,7 @@ export function YVPProvider({
   useEffect(() => {
     const initializeAuth = () => {
       // Set configuration
-      YouVersionPlatformConfiguration.appId = config.appId;
+      YouVersionPlatformConfiguration.appKey = config.appKey;
       YouVersionPlatformConfiguration.installationId = config.installationId ?? null;
 
       // Register the authentication strategy
@@ -120,7 +120,7 @@ export function YVPProvider({
     };
 
     initializeAuth();
-  }, [config.appId, config.installationId, config.redirectUri]);
+  }, [config.appKey, config.installationId, config.redirectUri]);
 
   const signOut = useCallback(() => {
     YouVersionPlatformConfiguration.setAccessToken(null);

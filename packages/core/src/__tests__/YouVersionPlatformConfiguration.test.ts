@@ -14,13 +14,20 @@ vi.stubGlobal('localStorage', { getItem: mockGetItem, setItem: mockSetItem });
 
 import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfiguration';
 
+const envApiHost = process.env.YVP_API_HOST || 'api.youversion.com';
+if (!envApiHost) {
+  throw new Error(
+    'YVP_API_HOST environment variable must be set for YouVersionPlatformConfiguration tests.',
+  );
+}
+
 describe('YouVersionPlatformConfiguration', () => {
   beforeEach(() => {
     // Reset all static properties
-    YouVersionPlatformConfiguration.appId = null;
+    YouVersionPlatformConfiguration.appKey = null;
     YouVersionPlatformConfiguration.installationId = null;
     YouVersionPlatformConfiguration.setAccessToken(null);
-    YouVersionPlatformConfiguration.apiHost = 'api-dev.youversion.com';
+    YouVersionPlatformConfiguration.apiHost = envApiHost;
     YouVersionPlatformConfiguration.isPreviewMode = false;
     YouVersionPlatformConfiguration.previewUserInfo = null;
 
@@ -37,15 +44,15 @@ describe('YouVersionPlatformConfiguration', () => {
     vi.restoreAllMocks();
   });
 
-  describe('appId', () => {
-    it('should get and set appId', () => {
-      expect(YouVersionPlatformConfiguration.appId).toBeNull();
+  describe('appKey', () => {
+    it('should get and set appKey', () => {
+      expect(YouVersionPlatformConfiguration.appKey).toBeNull();
 
-      YouVersionPlatformConfiguration.appId = 'test-app-id';
-      expect(YouVersionPlatformConfiguration.appId).toBe('test-app-id');
+      YouVersionPlatformConfiguration.appKey = 'test-app-key';
+      expect(YouVersionPlatformConfiguration.appKey).toBe('test-app-key');
 
-      YouVersionPlatformConfiguration.appId = null;
-      expect(YouVersionPlatformConfiguration.appId).toBeNull();
+      YouVersionPlatformConfiguration.appKey = null;
+      expect(YouVersionPlatformConfiguration.appKey).toBeNull();
     });
   });
 
@@ -104,10 +111,12 @@ describe('YouVersionPlatformConfiguration', () => {
 
   describe('apiHost', () => {
     it('should get and set apiHost', () => {
-      expect(YouVersionPlatformConfiguration.apiHost).toBe('api-dev.youversion.com');
-
-      YouVersionPlatformConfiguration.apiHost = 'api.youversion.com';
-      expect(YouVersionPlatformConfiguration.apiHost).toBe('api.youversion.com');
+      const apiHost = process.env.YVP_API_HOST || 'api.youversion.com';
+      expect(YouVersionPlatformConfiguration.apiHost).toBe(apiHost);
+      YouVersionPlatformConfiguration.apiHost = 'somethingelse.youversion.com';
+      expect(YouVersionPlatformConfiguration.apiHost).toBe('somethingelse.youversion.com');
+      YouVersionPlatformConfiguration.apiHost = apiHost;
+      expect(YouVersionPlatformConfiguration.apiHost).toBe(apiHost);
     });
   });
 

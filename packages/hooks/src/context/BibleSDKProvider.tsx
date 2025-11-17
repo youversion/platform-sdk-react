@@ -5,12 +5,12 @@ import { BibleSDKContext } from './BibleSDKContext';
 
 type BibleSDKProviderProps = {
   children: ReactNode;
-  appId: string;
+  appKey: string;
 };
 
 export function BibleSDKProvider({
-  appId,
+  appKey,
   children,
 }: PropsWithChildren<BibleSDKProviderProps>): React.ReactElement {
-  return <BibleSDKContext.Provider value={{ appId }}>{children}</BibleSDKContext.Provider>;
+  return <BibleSDKContext.Provider value={{ appKey }}>{children}</BibleSDKContext.Provider>;
 }

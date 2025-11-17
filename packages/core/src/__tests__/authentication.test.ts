@@ -13,9 +13,7 @@ describe('AuthClient', () => {
   beforeEach(() => {
     global.fetch = vi.fn();
     apiClient = new ApiClient({
-      baseUrl: 'https://api-dev.youversion.com',
-      appId: 'test-app-id',
-      version: 'v1',
+      appKey: 'test-app-key',
     });
     authClient = new AuthClient(apiClient);
   });

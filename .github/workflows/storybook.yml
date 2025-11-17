@@ -39,7 +39,9 @@ jobs:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           workingDir: packages/ui
         env:
-          STORYBOOK_YOUVERSION_APP_ID: ${{ secrets.STORYBOOK_YOUVERSION_APP_ID }}
+          STORYBOOK_YOUVERSION_APP_KEY: ${{ secrets.STORYBOOK_YOUVERSION_APP_KEY }}
+          YVP_API_HOST: ${{ secrets.YVP_API_HOST }}
+          YVP_APP_KEY: ${{ secrets.YVP_APP_KEY }}
 
   integration-tests:
     name: Integration Tests
@@ -47,7 +49,7 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.56.1-noble
     env:
-      STORYBOOK_YOUVERSION_APP_ID: ${{ secrets.STORYBOOK_YOUVERSION_APP_ID }}
+      STORYBOOK_YOUVERSION_APP_KEY: ${{ secrets.STORYBOOK_YOUVERSION_APP_KEY }}
     steps:
       - uses: actions/checkout@v5
 
@@ -68,3 +70,6 @@ jobs:
 
       - name: Run integration tests
         run: cd packages/ui && pnpm run test:integration
+        env:
+          YVP_API_HOST: ${{ secrets.YVP_API_HOST }}
+          YVP_APP_KEY: ${{ secrets.YVP_APP_KEY }}

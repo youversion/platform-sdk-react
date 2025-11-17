@@ -1,47 +1,84 @@
-This is a [Next.js](https://nextjs.org) example demonstrating the YouVersion Platform React SDK authentication flow.
+# YouVersion Platform React SDK - Next.js Example
 
-## Configuration
+This is a [Next.js](https://nextjs.org) example application demonstrating integration with the [YouVersion Platform React SDK](../../README.md).
 
-Before running the example, you need to set up your environment variables:
+## What This Example Demonstrates
 
-1. Copy `.env.example` to `.env.local`:
-   ```bash
-   cp .env.example .env.local
-   ```
+This example showcases:
+- Integration of `@youversion/platform-react-ui` components
+- Setup of required providers (`BibleSDKProvider`, `YVPProvider`)
+- Basic Bible content display and interaction
 
-2. Edit `.env.local` and add your [YouVersion Platform](https://platform.youversion.com/) credentials
+## Packages Used
 
-## Getting Started
+This example uses:
 
-First, run the development server:
+- **[@youversion/platform-react-ui](../../packages/ui/README.md)** - Pre-built React components for Bible features
+- **[@youversion/platform-core](../../packages/core/README.md)** - Type-safe API client (used internally by UI components)
+- **[Next.js](https://nextjs.org)** - React framework for production
+
+## Setup & Configuration
+
+### 1. Install Dependencies
+
+From the monorepo root:
+
+```bash
+pnpm install
+```
+
+### 2. Configure Environment Variables
+
+Copy `.env.example` to `.env.local`:
+
+```bash
+cp .env.example .env.local
+```
+
+Edit `.env.local` and add your [YouVersion Platform](https://platform.youversion.com/) credentials:
+
+```
+NEXT_PUBLIC_YVP_APP_KEY=your_APP_KEY_here
+```
+
+### 3. Run the Example
+
+From the monorepo root:
+
+```bash
+pnpm dev:web
+```
+
+Or from this directory:
 
 ```bash
 npm run dev
 # or
-yarn dev
-# or
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Modifying for Your App
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+To use this example as a starting point:
+
+1. **Update App Key** in `.env.local` with your YouVersion Platform app credentials
+2. **Import components** from `@youversion/platform-react-ui` in your pages
+3. **Wrap your app** with required providers (see `app/layout.tsx`)
+4. **Customize components** and styling as needed
+
+## Key Files
+
+- `app/layout.tsx` - Provider setup and layout
+- `app/page.tsx` - Main page with example components
+- `.env.example` - Environment variable template
 
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [YouVersion Platform React SDK](../../README.md) - SDK overview and architecture
+- [React UI Package](../../packages/ui/README.md) - Component documentation
+- [React Hooks Package](../../packages/hooks/README.md) - Custom hook documentation
+- [Core Package](../../packages/core/README.md) - API client documentation
+- [Next.js Documentation](https://nextjs.org/docs) - Next.js features and API
+- [YouVersion Platform Docs](https://developers.youversion.com/) - Platform API reference

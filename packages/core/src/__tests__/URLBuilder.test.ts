@@ -5,7 +5,7 @@ import type { SignInWithYouVersionPermissionValues } from '../types';
 
 describe('URLBuilder - Input Validation', () => {
   let originalApiHost: string;
-  let originalInstallationId: string | undefined;
+  let originalInstallationId: string | null;
 
   beforeEach(() => {
     // Store original config
@@ -13,7 +13,11 @@ describe('URLBuilder - Input Validation', () => {
     originalInstallationId = YouVersionPlatformConfiguration.installationId;
 
     // Set test config
-    YouVersionPlatformConfiguration.apiHost = 'api-dev.youversion.com';
+    const apiHost = process.env.YVP_API_HOST;
+    if (!apiHost) {
+      throw new Error('YVP_API_HOST environment variable must be set for URLBuilder tests.');
+    }
+    YouVersionPlatformConfiguration.apiHost = apiHost;
     YouVersionPlatformConfiguration.installationId = 'test-installation-id';
   });
 
@@ -23,23 +27,23 @@ describe('URLBuilder - Input Validation', () => {
     YouVersionPlatformConfiguration.installationId = originalInstallationId;
   });
 
-  describe('authURL - appId validation', () => {
-    it('should throw error for empty string appId', () => {
+  describe('authURL - appKey validation', () => {
+    it('should throw error for empty string appKey', () => {
       expect(() => {
         URLBuilder.authURL('');
-      }).toThrow('appId must be a non-empty string');
+      }).toThrow('appKey must be a non-empty string');
     });
 
-    it('should throw error for whitespace-only appId', () => {
+    it('should throw error for whitespace-only appKey', () => {
       expect(() => {
         URLBuilder.authURL('   ');
-      }).toThrow('appId must be a non-empty string');
+      }).toThrow('appKey must be a non-empty string');
     });
 
-    it('should throw error for tab/newline-only appId', () => {
+    it('should throw error for tab/newline-only appKey', () => {
       expect(() => {
         URLBuilder.authURL('\t\n  ');
-      }).toThrow('appId must be a non-empty string');
+      }).toThrow('appKey must be a non-empty string');
     });
 
     it('should throw descriptive error message', () => {
@@ -49,34 +53,34 @@ describe('URLBuilder - Input Validation', () => {
         expect.fail('Should have thrown an error');
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toContain('appId');
+        expect((error as Error).message).toContain('appKey');
         expect((error as Error).message).toContain('non-empty string');
       }
     });
 
-    it('should accept valid non-empty appId', () => {
-      const url = URLBuilder.authURL('valid-app-id');
+    it('should accept valid non-empty appKey', () => {
+      const url = URLBuilder.authURL('valid-app-key');
 
       expect(url).toBeInstanceOf(URL);
-      expect(url.hostname).toBe('api-dev.youversion.com');
+      expect(url.hostname.endsWith('.youversion.com')).toBe(true);
       expect(url.pathname).toBe('/auth/login');
-      expect(url.searchParams.get('app_id')).toBe('valid-app-id');
+      expect(url.searchParams.get('APP_KEY')).toBe('valid-app-key');
     });
 
-    it('should trim and accept appId with surrounding whitespace', () => {
+    it('should trim and accept appKey with surrounding whitespace', () => {
       // Note: The validation checks trim().length, so this should pass
-      const url = URLBuilder.authURL(' valid-app-id ');
+      const url = URLBuilder.authURL(' valid-app-key ');
 
       expect(url).toBeInstanceOf(URL);
       // The actual value passed has whitespace preserved in the URL
-      expect(url.searchParams.get('app_id')).toBe(' valid-app-id ');
+      expect(url.searchParams.get('APP_KEY')).toBe(' valid-app-key ');
     });
 
-    it('should accept appId with special characters', () => {
-      const specialAppId = 'app-id_123.test';
-      const url = URLBuilder.authURL(specialAppId);
+    it('should accept appKey with special characters', () => {
+      const specialAppKey = 'app-key_123.test';
+      const url = URLBuilder.authURL(specialAppKey);
 
-      expect(url.searchParams.get('app_id')).toBe(specialAppId);
+      expect(url.searchParams.get('APP_KEY')).toBe(specialAppKey);
     });
   });
 
@@ -85,14 +89,14 @@ describe('URLBuilder - Input Validation', () => {
       const url = URLBuilder.authURL('test-app');
 
       expect(url.protocol).toBe('https:');
-      expect(url.hostname).toBe('api-dev.youversion.com');
+      expect(url.hostname.endsWith('.youversion.com')).toBe(true);
       expect(url.pathname).toBe('/auth/login');
     });
 
-    it('should include app_id in query parameters', () => {
-      const url = URLBuilder.authURL('my-app-id');
+    it('should include APP_KEY in query parameters', () => {
+      const url = URLBuilder.authURL('my-app-key');
 
-      expect(url.searchParams.get('app_id')).toBe('my-app-id');
+      expect(url.searchParams.get('APP_KEY')).toBe('my-app-key');
     });
 
     it('should include default language parameter', () => {
@@ -109,7 +113,7 @@ describe('URLBuilder - Input Validation', () => {
     });
 
     it('should not include installation ID when not configured', () => {
-      YouVersionPlatformConfiguration.installationId = undefined;
+      YouVersionPlatformConfiguration.installationId = null;
       const url = URLBuilder.authURL('test-app');
 
       expect(url.searchParams.get('x-yvp-installation-id')).toBeNull();
@@ -187,7 +191,7 @@ describe('URLBuilder - Input Validation', () => {
       const url = URLBuilder.userURL('valid-access-token-123');
 
       expect(url).toBeInstanceOf(URL);
-      expect(url.hostname).toBe('api-dev.youversion.com');
+      expect(url.hostname.endsWith('.youversion.com')).toBe(true);
       expect(url.pathname).toBe('/auth/me');
       expect(url.searchParams.get('lat')).toBe('valid-access-token-123');
     });
@@ -205,7 +209,7 @@ describe('URLBuilder - Input Validation', () => {
       const url = URLBuilder.userURL('test-token');
 
       expect(url.protocol).toBe('https:');
-      expect(url.hostname).toBe('api-dev.youversion.com');
+      expect(url.hostname.endsWith('.youversion.com')).toBe(true);
       expect(url.pathname).toBe('/auth/me');
     });
 
@@ -227,7 +231,7 @@ describe('URLBuilder - Input Validation', () => {
   });
 
   describe('Error handling', () => {
-    it('should throw errors instead of returning null for invalid appId', () => {
+    it('should throw errors instead of returning null for invalid appKey', () => {
       // Verify that the method throws, not returns null
       let threwError = false;
       let returnValue: any;
@@ -260,7 +264,7 @@ describe('URLBuilder - Input Validation', () => {
       // This is hard to trigger, but we can at least verify the pattern exists
       // by checking that valid inputs don't trigger the catch block
       expect(() => {
-        URLBuilder.authURL('valid-app-id');
+        URLBuilder.authURL('valid-app-key');
       }).not.toThrow(/Failed to construct auth URL/);
     });
 

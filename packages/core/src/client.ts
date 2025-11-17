@@ -17,18 +17,23 @@ export class ApiClient {
   /**
    * Creates an instance of ApiClient.
    *
-   * @param config - The API configuration object containing baseUrl, timeout, and appId.
+   * @param config - The API configuration object containing baseUrl, timeout, and appKey.
    */
   constructor(config: ApiConfig) {
     this.config = {
-      version: config.version || 'v1',
       ...config,
     };
-    this.baseURL = config.baseUrl || 'https://api-dev.youversion.com';
+    const apiHost = config.apiHost ?? process.env.YVP_API_HOST ?? 'api.youversion.com';
+    if (!apiHost) {
+      throw new Error(
+        'ApiClient requires a host name. Provide an apiHost in the config or set the YVP_API_HOST environment variable.',
+      );
+    }
+    this.baseURL = 'https://' + apiHost;
     this.timeout = config.timeout || 10000;
     this.defaultHeaders = {
       'Content-Type': 'application/json',
-      'X-YVP-App-Key': this.config.appId,
+      'X-YVP-App-Key': this.config.appKey,
       'X-YVP-Installation-Id': this.config.installationId || 'web-sdk-default',
     };
   }

@@ -7,12 +7,12 @@ export class URLBuilder {
   }
 
   static authURL(
-    appId: string,
+    appKey: string,
     requiredPermissions: Set<SignInWithYouVersionPermissionValues> = new Set<SignInWithYouVersionPermissionValues>(),
     optionalPermissions: Set<SignInWithYouVersionPermissionValues> = new Set<SignInWithYouVersionPermissionValues>(),
   ): URL {
-    if (typeof appId !== 'string' || appId.trim().length === 0) {
-      throw new Error('appId must be a non-empty string');
+    if (typeof appKey !== 'string' || appKey.trim().length === 0) {
+      throw new Error('appKey must be a non-empty string');
     }
 
     try {
@@ -21,7 +21,7 @@ export class URLBuilder {
 
       // Add query parameters
       const searchParams = new URLSearchParams();
-      searchParams.append('app_id', appId);
+      searchParams.append('APP_KEY', appKey);
       searchParams.append('language', 'en'); // TODO: load from system
 
       if (requiredPermissions.size > 0) {
