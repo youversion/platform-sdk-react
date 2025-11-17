@@ -4,12 +4,7 @@ import { fileURLToPath } from 'url';
 
 const config: StorybookConfig = {
   stories: ['../src/**/*.mdx', '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
-  addons: [
-    '@storybook/addon-docs',
-    '@storybook/addon-onboarding',
-    '@storybook/addon-vitest',
-    '@chromatic-com/storybook',
-  ],
+  addons: ['@storybook/addon-docs', '@storybook/addon-onboarding', '@storybook/addon-vitest'],
   framework: '@storybook/react-vite',
   staticDirs: ['../public'], // This is for Storybook mock service worker
   viteFinal: (config) => {

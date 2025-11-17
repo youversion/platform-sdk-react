@@ -33,17 +33,6 @@ jobs:
       - name: Build packages
         run: pnpm build
 
-      - name: Run Chromatic
-        uses: chromaui/action@latest
-        with:
-          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
-          workingDir: packages/ui
-        env:
-          STORYBOOK_YOUVERSION_APP_KEY: ${{ secrets.STORYBOOK_YOUVERSION_APP_KEY }}
-          # Our tests intentionally need to run on staging API.
-          STORYBOOK_YOUVERSION_API_HOST: api-staging.youversion.com
-          YVP_APP_KEY: ${{ secrets.YVP_APP_KEY }}
-
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest

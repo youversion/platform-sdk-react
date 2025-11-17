@@ -39,8 +39,7 @@
     "prepublishOnly": "pnpm build",
     "storybook": "concurrently \"tailwindcss -i src/styles/global.css -o dist/tailwind.css --watch\" \"storybook dev -p 6006\"",
     "build-storybook": "storybook build",
-    "test:integration": "vitest run",
-    "chromatic": "dotenv -e .env.local -- chromatic"
+    "test:integration": "vitest run"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "1.2.12",
@@ -64,7 +63,6 @@
     "react-dom": ">=19.1.0 <20.0.0"
   },
   "devDependencies": {
-    "@chromatic-com/storybook": "4.1.1",
     "@internal/eslint-config": "workspace:*",
     "@internal/tsconfig": "workspace:*",
     "@storybook/addon-docs": "10.0.0",
@@ -79,7 +77,6 @@
     "@vitejs/plugin-react": "5.0.4",
     "@vitest/browser-playwright": "4.0.4",
     "@vitest/coverage-v8": "4.0.4",
-    "chromatic": "13.3.2",
     "concurrently": "9.2.1",
     "dotenv-cli": "7.4.2",
     "eslint-plugin-storybook": "10.0.0",
