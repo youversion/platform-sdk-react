@@ -87,7 +87,7 @@ jobs:
         run: pnpm test
         env:
           # We intentionally want to use the staging API host for testing
-          YVP_API_HOST: api-staging.youversion.com
+          YVP_API_HOST: ${{ secrets.YVP_API_HOST }}
           YVP_APP_KEY: ${{ secrets.YVP_APP_KEY }}
 
   build:

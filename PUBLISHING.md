@@ -2,28 +2,6 @@
 
 This guide is for project maintainers who need to set up publishing infrastructure or troubleshoot release issues.
 
-## Initial Setup
-
-### 1. Create NPM Access Token
-
-1. Log in to [npmjs.com](https://www.npmjs.com)
-2. Go to **Access Tokens** → **Generate New Token**
-3. Select **Automation** token type
-4. Copy the token
-
-### 2. Add NPM_TOKEN to GitHub Secrets
-
-1. Go to your GitHub repository
-2. Navigate to **Settings** → **Secrets and variables** → **Actions**
-3. Click **New repository secret**
-4. Name: `NPM_TOKEN`
-5. Value: Paste the NPM token
-6. Click **Add secret**
-
-### 3. Configure NPM Package Access
-
-Ensure you have publish permissions for the `@youversion` scope on NPM.
-
 ## How Publishing Works
 
 The repository uses [Changesets](https://github.com/changesets/changesets) with GitHub Actions for automated publishing.
@@ -36,20 +14,6 @@ The repository uses [Changesets](https://github.com/changesets/changesets) with 
 4. Release workflow creates/updates "Version Packages" PR
 5. Merge "Version Packages" PR
 6. Packages auto-publish to NPM with provenance
-
-## Security Features
-
-### NPM Provenance
-Cryptographic proof packages were built in CI. Users can verify authenticity.
-
-### OIDC Authentication
-Short-lived tokens instead of permanent NPM tokens. More secure.
-
-### Protected Branches
-Recommended for `main`:
-- Require PR reviews
-- Require status checks to pass
-- Require signed commits (optional)
 
 ## Troubleshooting
 
