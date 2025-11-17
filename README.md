@@ -109,7 +109,7 @@ All packages use unified versioning and are released together.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, build commands, and testing instructions.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, build commands, testing instructions, and [Publishing & Releases](CONTRIBUTING.md#publishing--releases).
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
