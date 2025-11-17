@@ -1,5 +1,14 @@
 # @youversion/platform-react-ui
 
+## 0.4.3
+
+### Patch Changes
+
+- 7b652f7: chore(docs): update documentation and readmes, and env var usage
+- Updated dependencies [7b652f7]
+  - @youversion/platform-core@0.4.3
+  - @youversion/platform-react-hooks@0.4.3
+
 ## 0.4.2
 
 ### Patch Changes
