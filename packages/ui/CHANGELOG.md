@@ -1,5 +1,14 @@
 # @youversion/platform-react-ui
 
+## 0.4.4
+
+### Patch Changes
+
+- 8dee8f6: chore: allow setting apiHost from React code
+- Updated dependencies [8dee8f6]
+  - @youversion/platform-core@0.4.4
+  - @youversion/platform-react-hooks@0.4.4
+
 ## 0.4.3
 
 ### Patch Changes
