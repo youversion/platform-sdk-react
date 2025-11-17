@@ -8,6 +8,7 @@ on:
 
 env:
   YVP_API_HOST: "api-staging.youversion.com"
+  YVP_APP_KEY: "Hbi7iCDpIbA3Yw4qFnMJrHGm0Ilc9fGkcL7ch3zZd8LmLsui"
 
 jobs:
   visual-tests:
