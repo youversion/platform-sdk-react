@@ -1,15 +1,9 @@
 # Contributing to YouVersion Platform React SDKs
 
-This project is maintained and developed by the YouVersion team.
-
-## Development & Testing
-
-### Prerequisites
+## Prerequisites
 
 - Node.js >= 20.0.0
-- pnpm >= 9.0.0 (required for workspace management)
-
-> **⚠️ pnpm Required:** This monorepo uses pnpm workspaces for development. While individual packages work with npm/yarn when installed via npm registry, local development requires **pnpm >= 9.0.0**. Verify with `pnpm --version`.
+- pnpm >= 9.0.0
 
 ### Setup
 
@@ -77,26 +71,6 @@ pnpm format
 pnpm dev:web
 ```
 
-The development script automatically:
-- Builds and watches SDK packages for changes
-- Starts the Next.js example app
-- Manages dependencies with Turbo for optimal performance
-
-### Storybook Development (UI Package)
-
-```bash
-# Start Storybook development server
-pnpm --filter @youversion/platform-react-ui storybook
-
-# Build Storybook for deployment
-pnpm --filter @youversion/platform-react-ui build-storybook
-```
-
-**Storybook Setup:**
-1. Create `.env.local` in `packages/ui/`
-2. Add `STORYBOOK_YOUVERSION_APP_KEY="your-app-key"`
-3. Run `pnpm --filter @youversion/platform-react-ui storybook`
-
 ### Development Guidelines
 
 **Important Rules:**
@@ -108,67 +82,48 @@ pnpm --filter @youversion/platform-react-ui build-storybook
 - ✅ Mark internal/private APIs with `/** @internal */` JSDoc comments to exclude them from public .d.ts files
 - ✅ Respect package boundaries: `ui` can use `hooks` and `core`, `hooks` can use `core`, `core` is self-contained
 
-### Versioning Strategy
+### Workflow
 
-This monorepo uses **unified versioning** - all published packages share the same version number and are always released together.
+1. Make your changes and run `pnpm build` + `pnpm test`
+2. Run `pnpm changeset` (select patch/minor/major based on change type)
+3. Submit PR → once merged, CI creates a "Version Packages" PR
+4. Merge version PR → packages auto-publish to npm
 
-**Published Packages (always at same version):**
-- `@youversion/platform-core`
-- `@youversion/platform-react-hooks`
-- `@youversion/platform-react-ui`
+**Note:** All packages use unified versioning and release together.
 
-**Benefits:**
-- Guaranteed compatibility between all packages
-- Simplified dependency management for consumers
-- Clear, cohesive release units
-- One version number to communicate
+## Changesets
 
-**How it works:**
-- Changesets enforces unified versioning via the `fixed` configuration
-- Any breaking change in any package triggers a major version bump for all packages
-- Dependencies between packages automatically use matching versions
+### When to Create
 
-**Release Process:**
+**Include changesets for:**
+- New features or bug fixes
+- Breaking changes
+- Dependency updates affecting APIs
 
-1. Make your changes
-2. Run `pnpm changeset` and select the appropriate bump type:
-   - `major` - Breaking changes in any package
-   - `minor` - New features (backward compatible)
-   - `patch` - Bug fixes
-3. Describe the changes in the changeset
-4. Submit your PR
-5. Once merged to `main`, CI will:
-   - Create a release PR with updated versions (all packages bumped together)
-   - After release PR is merged, automatically publish to npm
+**Skip changesets for:**
+- Documentation
+- Internal refactoring
+- CI/CD changes
 
-**Note:** Even if you only change one package, all three packages will be versioned and released together. This is intentional and ensures ecosystem consistency.
+### Writing Summaries
 
-1. Make your changes
-2. Run `pnpm build` to ensure builds pass and type checking succeeds
-3. Run tests with `pnpm test` (sequential execution for clear output)
-4. Run `pnpm changeset` to document your changes
-5. Submit your PR
+```markdown
+# Good
+- Added dark mode support to Button component
+- Fixed crash on Video unmount
 
-### Architecture
+# Bad
+- Updated code
+- Bug fix
+```
 
-**Published Packages:**
-- `packages/core` - Core API clients and utilities (`@youversion/platform-core`)
-- `packages/hooks` - React hooks for Platform APIs (`@youversion/platform-react-hooks`)
-- `packages/ui` - React UI components (`@youversion/platform-react-ui`)
+## Architecture
 
-**Internal Packages:**
-- `tools/*` - Shared TypeScript, ESLint, and testing configurations (never published)
+- `packages/core` - API clients (`@youversion/platform-core`)
+- `packages/hooks` - React hooks (`@youversion/platform-react-hooks`)
+- `packages/ui` - React components (`@youversion/platform-react-ui`)
+- `tools/*` - Shared configs (not published)
 
-**Dependency Flow:**
-- `core` is the foundation layer with API clients and business logic
-- `hooks` depends on `core` for data access
-- `ui` depends on both `core` and `hooks` for full functionality
-- Build order enforced by Turbo: `core` → `hooks` → `ui`
+Build order: `core` → `hooks` → `ui`
 
-## Acknowledgements
-
-We thank all contributors who have helped make this SDK better through bug reports, feature requests, and code contributions.
-
-## Support
-
-For support, please open an issue in the [GitHub repository](https://github.com/youversion/platform-sdk-react).
+For maintainers: See [PUBLISHING.md](PUBLISHING.md) for release setup and troubleshooting.
