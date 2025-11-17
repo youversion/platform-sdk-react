@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 0.5.0
+
+### Minor Changes
+
+- e07208d: feat(ui): add share button to verse of the day component
+
 ## 0.4.4
 
 ### Patch Changes
