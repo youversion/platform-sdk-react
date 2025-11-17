@@ -13,6 +13,9 @@ permissions:
   pull-requests: write
   id-token: write
 
+env:
+  YVP_API_HOST: "api-staging.youversion.com"
+
 jobs:
   release:
     name: Release
