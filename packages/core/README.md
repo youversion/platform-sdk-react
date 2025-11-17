@@ -2,7 +2,7 @@
 
 # @youversion/platform-core
 
-Type-safe TypeScript SDK for accessing YouVersion Platform APIs.
+A type-safe TypeScript SDK for accessing the YouVersion Platform APIs. Get Bible content and build Bible-based applications.
 
 ## Install
 
