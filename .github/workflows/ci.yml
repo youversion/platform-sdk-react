@@ -10,6 +10,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  YVP_API_HOST: "api-staging.youversion.com"
+
 jobs:
   lint:
     name: Lint

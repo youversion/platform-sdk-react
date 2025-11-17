@@ -14,7 +14,7 @@ vi.stubGlobal('localStorage', { getItem: mockGetItem, setItem: mockSetItem });
 
 import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfiguration';
 
-const envApiHost = process.env.YVP_API_HOST;
+const envApiHost = process.env.YVP_API_HOST || 'api.youversion.com';
 if (!envApiHost) {
   throw new Error(
     'YVP_API_HOST environment variable must be set for YouVersionPlatformConfiguration tests.',
@@ -111,7 +111,7 @@ describe('YouVersionPlatformConfiguration', () => {
 
   describe('apiHost', () => {
     it('should get and set apiHost', () => {
-      const apiHost = process.env.YVP_API_HOST || 'MISSING_API_HOST';
+      const apiHost = process.env.YVP_API_HOST || 'api.youversion.com';
       expect(YouVersionPlatformConfiguration.apiHost).toBe(apiHost);
       YouVersionPlatformConfiguration.apiHost = 'somethingelse.youversion.com';
       expect(YouVersionPlatformConfiguration.apiHost).toBe('somethingelse.youversion.com');

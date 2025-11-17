@@ -6,6 +6,9 @@ on:
       - 'packages/ui/**'
       - 'pnpm-lock.yaml'
 
+env:
+  YVP_API_HOST: "api-staging.youversion.com"
+
 jobs:
   visual-tests:
     name: Visual Regression Tests
