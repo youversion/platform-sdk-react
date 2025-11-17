@@ -3,11 +3,7 @@
 import { useMemo, useCallback } from 'react';
 import { useContext } from 'react';
 import { BibleSDKContext } from './context';
-import {
-  HighlightsClient,
-  ApiClient,
-  YouVersionPlatformConfiguration,
-} from '@youversion/platform-core';
+import { HighlightsClient, ApiClient } from '@youversion/platform-core';
 import { useApiData, type UseApiDataOptions } from './useApiData';
 import {
   type GetHighlightsOptions,
@@ -36,13 +32,8 @@ export function useHighlights(
         'BibleSDK context not found. Make sure your component is wrapped with BibleSDKProvider and an API key is provided.',
       );
     }
-    return new HighlightsClient(
-      new ApiClient({
-        appKey: context.appKey,
-        installationId: YouVersionPlatformConfiguration.installationId,
-      }),
-    );
-  }, [context?.appKey]);
+    return new HighlightsClient(new ApiClient(context));
+  }, [context]);
 
   const { data, loading, error, refetch } = useApiData<Collection<Highlight>>(
     () => highlightsClient.getHighlights(options),

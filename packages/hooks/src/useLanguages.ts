@@ -3,11 +3,7 @@
 import { useMemo } from 'react';
 import { useContext } from 'react';
 import { BibleSDKContext } from './context';
-import {
-  LanguagesClient,
-  ApiClient,
-  YouVersionPlatformConfiguration,
-} from '@youversion/platform-core';
+import { LanguagesClient, ApiClient } from '@youversion/platform-core';
 import { useApiData, type UseApiDataOptions } from './useApiData';
 import {
   type GetLanguagesOptions,
@@ -32,13 +28,8 @@ export function useLanguages(
         'BibleSDK context not found. Make sure your component is wrapped with BibleSDKProvider and an API key is provided.',
       );
     }
-    return new LanguagesClient(
-      new ApiClient({
-        appKey: context.appKey,
-        installationId: YouVersionPlatformConfiguration.installationId,
-      }),
-    );
-  }, [context?.appKey]);
+    return new LanguagesClient(new ApiClient(context));
+  }, [context]);
 
   const { data, loading, error, refetch } = useApiData<Collection<Language>>(
     () => languagesClient.getLanguages(options),

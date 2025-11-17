@@ -40,7 +40,8 @@ jobs:
           workingDir: packages/ui
         env:
           STORYBOOK_YOUVERSION_APP_KEY: ${{ secrets.STORYBOOK_YOUVERSION_APP_KEY }}
-          YVP_API_HOST: ${{ secrets.YVP_API_HOST }}
+          # Our tests intentionally need to run on staging API.
+          STORYBOOK_YOUVERSION_API_HOST: api-staging.youversion.com
           YVP_APP_KEY: ${{ secrets.YVP_APP_KEY }}
 
   integration-tests:
@@ -73,3 +74,5 @@ jobs:
         env:
           YVP_API_HOST: ${{ secrets.YVP_API_HOST }}
           YVP_APP_KEY: ${{ secrets.YVP_APP_KEY }}
+          STORYBOOK_YOUVERSION_API_HOST: api-staging.youversion.com
+          STORYBOOK_YOUVERSION_APP_KEY: ${{ secrets.STORYBOOK_YOUVERSION_APP_KEY }}
