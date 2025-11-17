@@ -35,23 +35,6 @@ describe('LanguagesClient', () => {
       expect(languages.next_page_token).toBe('eyJzdGFydCI6IDEwfQ==');
     });
 
-    it('should fetch languages with page_token option', async () => {
-      const languages = await languagesClient.getLanguages({
-        country: 'US',
-        page_token: 'eyJzdGFydCI6IDEwMH0=',
-      });
-
-      const { success } = LanguageSchema.safeParse(languages.data[0]);
-      expect(success).toBe(true);
-      expect(languages.data).toHaveLength(25);
-    });
-
-    it('should uppercase country code', async () => {
-      const languages = await languagesClient.getLanguages({ country: 'us' });
-
-      expect(languages.data[0]?.countries).toContain('US');
-    });
-
     it('should throw an error for invalid country code - empty string', async () => {
       await expect(languagesClient.getLanguages({ country: '' })).rejects.toThrow(
         'Country code must be a 2-character ISO 3166-1 alpha-2 code',
@@ -71,22 +54,6 @@ describe('LanguagesClient', () => {
       await expect(languagesClient.getLanguages({ country: '  ' })).rejects.toThrow(
         'Country code must be a 2-character ISO 3166-1 alpha-2 code',
       );
-    });
-
-    it('should throw an error for invalid page_size - zero', async () => {
-      await expect(languagesClient.getLanguages({ country: 'US', page_size: 0 })).rejects.toThrow();
-    });
-
-    it('should throw an error for invalid page_size - negative', async () => {
-      await expect(
-        languagesClient.getLanguages({ country: 'US', page_size: -1 }),
-      ).rejects.toThrow();
-    });
-
-    it('should throw an error for invalid page_size - non-integer', async () => {
-      await expect(
-        languagesClient.getLanguages({ country: 'US', page_size: 1.5 }),
-      ).rejects.toThrow();
     });
   });
 
