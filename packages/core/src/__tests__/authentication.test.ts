@@ -38,7 +38,7 @@ describe('AuthClient', () => {
         headers: {
           get: vi.fn((name: string) => (name === 'content-type' ? 'application/json' : null)),
         },
-      } as Response);
+      } as unknown as Response);
 
       const user = await authClient.getUser('test-token');
 
@@ -58,14 +58,23 @@ describe('WebAuthenticationStrategy', () => {
   beforeEach(() => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     delete (window as any).location;
-    window.location = {
-      ...oldWindowLocation,
-      href: 'http://localhost:3000',
-      origin: 'http://localhost:3000',
-      pathname: '/',
-      assign: vi.fn(),
-      replace: vi.fn(),
-    } as Location;
+    const newLocation = new URL('http://localhost:3000');
+    // Add mocked functions with proper descriptors
+    Object.defineProperty(newLocation, 'assign', {
+      configurable: true,
+      value: vi.fn(),
+    });
+
+    Object.defineProperty(newLocation, 'replace', {
+      configurable: true,
+      value: vi.fn(),
+    });
+
+    // Assign the new location object to window.location
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: newLocation,
+    });
 
     const sessionStorageMock = (() => {
       let store: Record<string, string> = {};
@@ -97,7 +106,10 @@ describe('WebAuthenticationStrategy', () => {
   });
 
   afterEach(() => {
-    window.location = oldWindowLocation;
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: oldWindowLocation,
+    });
     WebAuthenticationStrategy.cleanup();
     vi.clearAllMocks();
   });
@@ -112,7 +124,7 @@ describe('WebAuthenticationStrategy', () => {
       // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(sessionStorage.setItem).toHaveBeenCalledWith(
         'youversion-auth-return',
-        'http://localhost:3000',
+        'http://localhost:3000/',
       );
     });
   });
