@@ -261,7 +261,7 @@ const meta = {
             total_size: 141,
           });
         }),
-        http.get(/\/v1\/bibles\?/, () => {
+        http.get(/\/v1\/bibles/, () => {
           return HttpResponse.json({
             data: [
               {
