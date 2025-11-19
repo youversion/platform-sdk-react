@@ -7,9 +7,9 @@ export const BibleVersionSchema = z.object({
   /** Bible version abbreviation */
   abbreviation: z.string(),
   /** Long copyright text */
-  copyright_long: z.string(),
+  copyright_long: z.string().nullable().optional(),
   /** Short copyright text */
-  copyright_short: z.string(),
+  copyright_short: z.string().nullable().optional(),
   /** Bible information text */
   info: z.string().nullable().optional(),
   /** Publisher URL */
@@ -20,6 +20,8 @@ export const BibleVersionSchema = z.object({
   local_abbreviation: z.string(),
   /** Localized title */
   local_title: z.string(),
+  /** Organization ID of publisher */
+  organization_id: z.string().nullable().optional(),
   /** Full title */
   title: z.string(),
   /** Array of book identifiers (e.g., ["GEN", "EXO", "LEV"]) */

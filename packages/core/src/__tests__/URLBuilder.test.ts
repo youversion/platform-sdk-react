@@ -120,33 +120,30 @@ describe('URLBuilder - Input Validation', () => {
     });
 
     it('should include required permissions when provided', () => {
-      const permissions = new Set<SignInWithYouVersionPermissionValues>([
-        'plans.read',
-        'user.read',
-      ]);
+      const permissions = new Set<SignInWithYouVersionPermissionValues>(['bibles', 'votd']);
       const url = URLBuilder.authURL('test-app', permissions);
 
       const requiredPerms = url.searchParams.get('required_perms');
       expect(requiredPerms).toBeTruthy();
-      expect(requiredPerms?.split(',')).toContain('plans.read');
-      expect(requiredPerms?.split(',')).toContain('user.read');
+      expect(requiredPerms?.split(',')).toContain('bibles');
+      expect(requiredPerms?.split(',')).toContain('votd');
     });
 
     it('should include optional permissions when provided', () => {
-      const optionalPermissions = new Set<SignInWithYouVersionPermissionValues>(['moments.read']);
+      const optionalPermissions = new Set<SignInWithYouVersionPermissionValues>(['demographics']);
       const url = URLBuilder.authURL('test-app', new Set(), optionalPermissions);
 
       const optPerms = url.searchParams.get('opt_perms');
-      expect(optPerms).toBe('moments.read');
+      expect(optPerms).toBe('demographics');
     });
 
     it('should include both required and optional permissions', () => {
-      const required = new Set<SignInWithYouVersionPermissionValues>(['user.read']);
-      const optional = new Set<SignInWithYouVersionPermissionValues>(['plans.read']);
+      const required = new Set<SignInWithYouVersionPermissionValues>(['bibles']);
+      const optional = new Set<SignInWithYouVersionPermissionValues>(['bible_activity']);
       const url = URLBuilder.authURL('test-app', required, optional);
 
-      expect(url.searchParams.get('required_perms')).toBe('user.read');
-      expect(url.searchParams.get('opt_perms')).toBe('plans.read');
+      expect(url.searchParams.get('required_perms')).toBe('bibles');
+      expect(url.searchParams.get('opt_perms')).toBe('bible_activity');
     });
 
     it('should handle empty permission sets', () => {
