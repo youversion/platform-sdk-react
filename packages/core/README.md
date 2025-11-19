@@ -4,6 +4,18 @@
 
 A type-safe TypeScript SDK for accessing the YouVersion Platform APIs. Get Bible content and build Bible-based applications.
 
+## When to use this package
+
+Use `@youversion/platform-core` when you need:
+- ✅ Direct access to YouVersion Platform APIs
+- ✅ Server-side/Node.js Bible data fetching
+- ✅ Full control over API calls and data handling
+- ✅ Minimal dependencies (works anywhere JavaScript runs)
+
+**Use other packages instead if:**
+- ❌ Building React components → Use [@youversion/platform-react-hooks](../hooks/README.md) for hooks with state management
+- ❌ Need ready-made UI → Use [@youversion/platform-react-ui](../ui/README.md) for production-ready components
+
 ## Install
 
 ```bash
@@ -35,4 +47,4 @@ console.log(passage.content) // "For God so loved the world..."
 
 ---
 
-**API Reference:** [developers.youversion.com/sdks/react](https://developers.youversion.com/sdks/react)
+**API Reference:** [developers.youversion.com/sdks/typescript](https://developers.youversion.com/sdks/typescript)

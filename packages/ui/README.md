@@ -4,6 +4,19 @@
 
 Pre-built React components for Bible applications with styling included.
 
+## When to use this package
+
+Use `@youversion/platform-react-ui` when you need:
+- ✅ Production-ready Bible components for your React app
+- ✅ Pre-styled components with light/dark mode
+- ✅ Minimal setup. Wrap your app with providers and use the components
+- ✅ Consistent, accessible UI out of the box
+Get your App Key at [platform.youversion.com](https://platform.youversion.com/)
+
+**Use other packages instead if:**
+- ❌ Need low-level API access → Use [@youversion/platform-core](../core/README.md)
+- ❌ Want custom UI → Use [@youversion/platform-react-hooks](../hooks/README.md)
+
 ## Install
 
 ```bash

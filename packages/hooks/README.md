@@ -4,6 +4,18 @@
 
 React hooks for accessing YouVersion Platform APIs with automatic loading/error states.
 
+## When to use this package
+
+Use `@youversion/platform-react-hooks` when you need:
+- ✅ Building custom React components with Bible features
+- ✅ Declarative data fetching with automatic loading/error states
+- ✅ Control over component UI while using reusable hooks
+- ✅ Server-side rendering compatible hooks
+
+**Use other packages instead if:**
+- ❌ Need direct API access → Use [@youversion/platform-core](../core/README.md) for low-level client
+- ❌ Want ready-made UI → Use [@youversion/platform-react-ui](../ui/README.md) for production components
+
 ## Install
 
 ```bash
