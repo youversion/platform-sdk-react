@@ -2,7 +2,7 @@ import { usePassage, useVersion } from '@youversion/platform-react-hooks';
 import { BibleTextView } from './verse';
 import { BibleAppLogoLockup } from './bible-app-logo-lockup';
 
-type BibleWidgetViewProps = {
+export type BibleWidgetViewProps = {
   reference: string;
   versionId: number;
   background?: 'light' | 'dark';

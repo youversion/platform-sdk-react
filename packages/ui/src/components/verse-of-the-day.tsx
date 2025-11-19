@@ -1,15 +1,16 @@
-import React from "react";
-import { Button } from "@/components/ui/button";
-import { Votd } from "@/components/icons/votd";
-import { Share } from "@/components/icons/share";
-import { BibleAppLogoLockup } from "@/components/bible-app-logo-lockup";
-import { cn } from "@/lib/utils";
-import { Verse } from "@/components/verse";
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { Votd } from '@/components/icons/votd';
+import { Share } from '@/components/icons/share';
+import { BibleAppLogoLockup } from '@/components/bible-app-logo-lockup';
+import { cn } from '@/lib/utils';
+import { Verse } from '@/components/verse';
 import {
   useVerseOfTheDay,
   usePassage,
   getDayOfYear,
-} from "@youversion/platform-react-hooks";
+  useVersion,
+} from '@youversion/platform-react-hooks';
 
 export type VerseOfTheDayProps = {
   /**
@@ -25,10 +26,6 @@ export type VerseOfTheDayProps = {
    */
   showSunIcon?: boolean;
   /**
-   * Whether to show the read full chapter button.
-   */
-  showReadFullChapterButton?: boolean;
-  /**
    * Whether to show the YouVersion Bible App attribution.
    */
   showBibleAppAttribution?: boolean;
@@ -40,8 +37,26 @@ export type VerseOfTheDayProps = {
    * The size of the card. Changing this will change the
    * size of the card and the font size of the text.
    */
-  size?: "default" | "lg";
+  size?: 'default' | 'lg';
 };
+
+async function share({ title, text, url }: { title?: string; text: string; url?: string }) {
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        text,
+        url,
+        title,
+      });
+    } catch {
+      // Silently fail
+    }
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).catch(() => {
+      alert('Unable to share. Please try again.');
+    });
+  }
+}
 
 /**
  * A Verse of the Day card component with customizable options.
@@ -52,7 +67,6 @@ export type VerseOfTheDayProps = {
  *   versionId={1}
  *   showSunIcon={true}
  *   showShareButton={false}
- *   showReadFullChapterButton={true}
  *   showBibleAppAttribution={true}
  *   size={size}
  * />
@@ -63,48 +77,50 @@ export function VerseOfTheDay({
   versionId = 1, // KJV by default
   showSunIcon = true,
   showShareButton = true,
-  showReadFullChapterButton = true,
   showBibleAppAttribution = true,
-  size = "default",
+  size = 'default',
 }: VerseOfTheDayProps): React.ReactElement {
-  const day = React.useMemo(
-    () => dayOfYear || getDayOfYear(new Date()),
-    [dayOfYear],
-  );
-  const {
-    data,
-    loading: loadingVerseOfTheDay,
-    error: errorVerseOfTheDay,
-  } = useVerseOfTheDay(day);
+  const day = React.useMemo(() => dayOfYear || getDayOfYear(new Date()), [dayOfYear]);
+  const verseRef = React.useRef<HTMLDivElement>(null);
+  const { data, loading: loadingVerseOfTheDay, error: errorVerseOfTheDay } = useVerseOfTheDay(day);
   const {
     passage,
     loading: loadingPassage,
     error: errorPassage,
   } = usePassage({
     versionId,
-    usfm: data?.passage_id || "",
+    usfm: data?.passage_id || '',
     options: {
-      enabled:
-        !loadingVerseOfTheDay && !errorVerseOfTheDay && !!data?.passage_id,
+      enabled: !loadingVerseOfTheDay && !errorVerseOfTheDay && !!data?.passage_id,
     },
   });
+  const { version, loading: loadingVersion } = useVersion(versionId);
 
-  let referenceText = "";
-  if (loadingPassage || loadingVerseOfTheDay) {
-    referenceText = "Loading...";
+  let referenceText = '';
+  if (loadingPassage || loadingVerseOfTheDay || loadingVersion) {
+    referenceText = 'Loading...';
   } else if (errorPassage || errorVerseOfTheDay) {
-    referenceText = "Error loading verse";
+    referenceText = 'Error loading verse';
+  } else if (passage?.human_reference && version?.local_abbreviation) {
+    referenceText = `${passage?.human_reference} ${version?.local_abbreviation}`;
   } else if (passage?.human_reference) {
     referenceText = passage?.human_reference;
   } else {
-    referenceText = "No verse found";
+    referenceText = 'No verse found';
   }
+
+  const handleShareVerse = async () => {
+    if (verseRef.current) {
+      const text = verseRef.current.innerText + '\n\n' + referenceText;
+      await share({ text });
+    }
+  };
 
   return (
     <section
       data-size={size}
       className={
-        "yv:data-[size=lg]:p-8 yv:data-[size=default]:p-4 yv:*:shrink-0 yv:font-sans yv:flex yv:flex-col yv:gap-3 yv:max-w-screen-sm yv:p-4 yv:shadow yv:rounded-2xl"
+        'yv:data-[size=lg]:p-8 yv:data-[size=default]:p-4 yv:*:shrink-0 yv:font-sans yv:flex yv:flex-col yv:gap-3 yv:max-w-screen-sm yv:p-4 yv:shadow yv:rounded-2xl'
       }
     >
       <div className="yv:flex yv:items-center yv:gap-2">
@@ -119,7 +135,7 @@ export function VerseOfTheDay({
         <div className="yv:grow yv:grid">
           <p
             className={
-              "trim-both yv:line-clamp-1 yv:text-muted-foreground yv:uppercase yv:text-xs yv:font-medium yv:select-none"
+              'trim-both yv:line-clamp-1 yv:text-muted-foreground yv:uppercase yv:text-xs yv:font-medium yv:select-none'
             }
           >
             Verse of The Day
@@ -132,11 +148,8 @@ export function VerseOfTheDay({
           >
             <Button
               aria-label="Share"
-              className={cn(
-                size === "lg" ? "yv:translate-x-3" : "yv:translate-x-2",
-              )}
-              // TODO: Implement share functionality
-              onClick={() => alert("Share: To be implemented...")}
+              className={cn(size === 'lg' ? 'yv:translate-x-3' : 'yv:translate-x-2')}
+              onClick={() => void handleShareVerse()}
               size="icon"
               variant="ghost"
             >
@@ -149,40 +162,23 @@ export function VerseOfTheDay({
       <div>
         {passage ? (
           <Verse.Html
-            fontSize={size === "default" ? 16 : 20}
-            fontFamily={size === "default" ? "sans" : "serif"}
-            html={passage?.content || ""}
+            ref={verseRef}
+            fontSize={size === 'default' ? 16 : 20}
+            fontFamily={size === 'default' ? 'var(--yv-font-sans)' : 'var(--yv-font-serif)'}
+            html={passage?.content || ''}
           />
         ) : null}
       </div>
 
-      <p className="yv:text-(--yv-gray-30) yv:font-medium yv:text-sm">
-        {referenceText}
-      </p>
+      <p className="yv:text-(--yv-gray-30) yv:font-medium yv:text-sm">{referenceText}</p>
 
-      {showReadFullChapterButton || showBibleAppAttribution ? (
+      {showBibleAppAttribution ? (
         <div
           className={
-            'yv:grid yv:grid-cols-1 yv:[:has([data-slot="card-action"]):has([data-slot="attribution"])]:grid-cols-2 yv:mt-4 yv:justify-between yv:items-center yv:gap-2 yv:w-full'
+            'yv:grid yv:grid-cols-1 yv:mt-4 yv:justify-between yv:items-center yv:gap-2 yv:w-full'
           }
         >
-          {showReadFullChapterButton ? (
-            <Button
-              data-slot="card-action"
-              className="yv:justify-self-start"
-              // TODO: Implement read full chapter functionality
-              onClick={() => alert("Read Full Chapter: To be implemented...")}
-              variant="secondary"
-            >
-              Read Full Chapter
-            </Button>
-          ) : null}
-          {showBibleAppAttribution ? (
-            <BibleAppLogoLockup
-              data-slot="attribution"
-              className="yv:justify-self-end"
-            />
-          ) : null}
+          <BibleAppLogoLockup data-slot="attribution" className="yv:justify-self-end" />
         </div>
       ) : null}
     </section>

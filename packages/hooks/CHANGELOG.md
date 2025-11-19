@@ -1,5 +1,24 @@
 # @youversion/platform-react-hooks
 
+## 0.5.1
+
+### Patch Changes
+
+- caaf811: fix(ui): add export for BibleWidgetView
+- Updated dependencies [caaf811]
+  - @youversion/platform-core@0.5.1
+
+## 0.5.0
+
+### Minor Changes
+
+- e07208d: feat(ui): add share button to verse of the day component
+
+### Patch Changes
+
+- Updated dependencies [e07208d]
+  - @youversion/platform-core@0.5.0
+
 ## 0.4.4
 
 ### Patch Changes
