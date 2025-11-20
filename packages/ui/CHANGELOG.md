@@ -1,5 +1,16 @@
 # @youversion/platform-react-ui
 
+## 0.5.5
+
+### Patch Changes
+
+- 752e0d5: fix(ci): remove registry-url for NPM Trusted Publishing
+- 752e0d5: Use npm during the release process to support OIDC.
+- Updated dependencies [752e0d5]
+- Updated dependencies [752e0d5]
+  - @youversion/platform-react-hooks@0.5.5
+  - @youversion/platform-core@0.5.5
+
 ## 0.5.4
 
 ### Patch Changes
