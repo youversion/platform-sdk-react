@@ -149,5 +149,5 @@ git tag -l "@youversion/*"
 
 - [Changesets Documentation](https://github.com/changesets/changesets)
 - [NPM Provenance](https://docs.npmjs.com/generating-provenance-statements)
-- [NPM Trusted Publishing](https://docs.npmjs.com/configuring-your-npm-token-to-use-openid-connect)
+- [NPM Trusted Publishing](https://docs.npmjs.com/trusted-publishers)
 - [GitHub Actions Security](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions)
