@@ -1,5 +1,12 @@
 # @youversion/platform-core
 
+## 0.5.5
+
+### Patch Changes
+
+- 752e0d5: fix(ci): remove registry-url for NPM Trusted Publishing
+- 752e0d5: Use npm during the release process to support OIDC.
+
 ## 0.5.4
 
 ### Patch Changes
