@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 0.5.3
+
+### Patch Changes
+
+- 7fd89a0: fix(ci): remove registry-url for NPM Trusted Publishing
+
 ## 0.5.2
 
 ### Patch Changes
