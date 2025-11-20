@@ -1,5 +1,13 @@
 # @youversion/platform-react-hooks
 
+## 0.5.2
+
+### Patch Changes
+
+- 2d11ab6: Publishing workflow now uses NPM Trusted Publishing instead of token publishing.
+- Updated dependencies [2d11ab6]
+  - @youversion/platform-core@0.5.2
+
 ## 0.5.1
 
 ### Patch Changes
