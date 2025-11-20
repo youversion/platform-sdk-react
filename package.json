@@ -25,7 +25,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "turbo build && changeset publish",
+    "release": "turbo build && npm exec --yes -- changeset publish",
     "prepare": "husky"
   },
   "devDependencies": {
