@@ -1,5 +1,14 @@
 # @youversion/platform-react-ui
 
+## 0.5.6
+
+### Patch Changes
+
+- 27b32f8: Publish with NPM Token
+- Updated dependencies [27b32f8]
+  - @youversion/platform-core@0.5.6
+  - @youversion/platform-react-hooks@0.5.6
+
 ## 0.5.5
 
 ### Patch Changes
