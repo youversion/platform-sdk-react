@@ -16,7 +16,6 @@ export {
   SignInWithYouVersionResult,
 
   // Authentication
-  WebAuthenticationStrategy,
   type ApiConfig,
   type AuthenticationState,
 } from '@youversion/platform-core';

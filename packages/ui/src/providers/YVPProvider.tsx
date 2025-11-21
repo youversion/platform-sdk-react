@@ -8,11 +8,9 @@ import React, {
 } from 'react';
 import {
   ApiClient,
-  AuthenticationStrategyRegistry,
   SignInWithYouVersionResult,
   YouVersionPlatformConfiguration,
   YouVersionAPIUsers,
-  WebAuthenticationStrategy,
   type ApiConfig,
   type AuthenticationState,
   type YouVersionUserInfo,
@@ -35,7 +33,6 @@ export interface YVPProviderProps {
   errorFallback?: ReactNode;
   onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
   theme?: 'light' | 'dark';
-  skipAuth?: boolean;
 }
 
 export function YVPProvider({
@@ -55,62 +52,37 @@ export function YVPProvider({
 
   // Initialize authentication
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
       // Set configuration
       YouVersionPlatformConfiguration.appKey = config.appKey;
       YouVersionPlatformConfiguration.installationId = config.installationId ?? null;
 
-      // Register the authentication strategy
-      const strategy = new WebAuthenticationStrategy({
-        redirectUri: config.redirectUri || '',
-      });
-      AuthenticationStrategyRegistry.register(strategy);
-
-      // Check for existing token
+      // Check for existing token first
       const existingToken = YouVersionPlatformConfiguration.accessToken;
       if (existingToken) {
-        setAuthState({
-          isAuthenticated: true,
-          isLoading: false,
-          accessToken: existingToken,
-          result: null,
-          error: null,
-        });
-        return;
-      }
-
-      // Handle authentication callback
-      WebAuthenticationStrategy.handleCallback();
-      const storedCallback = WebAuthenticationStrategy.getStoredCallback();
-
-      if (storedCallback) {
         try {
-          // Retrieve authentication data from localStorage
-          const accessToken = YouVersionPlatformConfiguration.accessToken;
-          const refreshToken = YouVersionPlatformConfiguration.refreshToken;
-          const expiryDate = YouVersionPlatformConfiguration.tokenExpiryDate;
-
+          // Fetch user info with existing token
+          const userInfo = await YouVersionAPIUsers.userInfo(existingToken);
+          // Convert YouVersionUserInfo to SignInWithYouVersionResult format
           const result = new SignInWithYouVersionResult({
-            accessToken: accessToken ?? undefined,
-            expiresIn: expiryDate
-              ? Math.floor((expiryDate.getTime() - Date.now()) / 1000)
-              : undefined,
-            refreshToken: refreshToken ?? undefined,
-            permissions: undefined,
-            yvpUserId: undefined,
-            name: undefined,
-            profilePicture: undefined,
-            email: undefined,
+            accessToken: existingToken,
+            yvpUserId: userInfo.userId,
+            name:
+              userInfo.firstName && userInfo.lastName
+                ? `${userInfo.firstName} ${userInfo.lastName}`
+                : userInfo.firstName || userInfo.lastName,
+            profilePicture: userInfo.avatarUrl?.toString(),
           });
-
           setAuthState({
-            isAuthenticated: !!accessToken,
+            isAuthenticated: true,
             isLoading: false,
-            accessToken: accessToken ?? null,
-            result,
+            accessToken: existingToken,
+            result: result,
             error: null,
           });
         } catch (error) {
+          // Token might be expired or invalid, clear it
+          YouVersionPlatformConfiguration.setAccessToken(null);
           setAuthState({
             isAuthenticated: false,
             isLoading: false,
@@ -119,13 +91,41 @@ export function YVPProvider({
             error: error as Error,
           });
         }
-      } else {
+        return;
+      }
+
+      // Handle authentication callback
+      try {
+        const authResult = await YouVersionAPIUsers.handleAuthCallback();
+
+        if (authResult) {
+          // Callback was processed, use the returned authentication result
+          const accessToken = YouVersionPlatformConfiguration.accessToken;
+
+          setAuthState({
+            isAuthenticated: !!accessToken,
+            isLoading: false,
+            accessToken: accessToken ?? null,
+            result: authResult,
+            error: null,
+          });
+        } else {
+          // No callback, user is not authenticated
+          setAuthState({
+            isAuthenticated: false,
+            isLoading: false,
+            accessToken: null,
+            result: null,
+            error: null,
+          });
+        }
+      } catch (error) {
         setAuthState({
           isAuthenticated: false,
           isLoading: false,
           accessToken: null,
           result: null,
-          error: null,
+          error: error as Error,
         });
       }
     };
@@ -142,6 +142,7 @@ export function YVPProvider({
       result: null,
       error: null,
     });
+    YouVersionPlatformConfiguration.clearAuthTokens();
   }, []);
 
   const fetchUserInfo = useCallback(async (): Promise<YouVersionUserInfo> => {

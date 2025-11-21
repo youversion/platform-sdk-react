@@ -21,11 +21,7 @@ export class URLBuilder {
 
       // Add query parameters
       const searchParams = new URLSearchParams();
-<<<<<<< HEAD
       searchParams.append('APP_KEY', appKey);
-=======
-      searchParams.append('app_id', appKey);
->>>>>>> f2456b0 (wip: saving initial changes)
       searchParams.append('language', 'en'); // TODO: load from system
 
       if (requiredPermissions.size > 0) {
@@ -48,27 +44,6 @@ export class URLBuilder {
     } catch (error) {
       throw new Error(
         `Failed to construct auth URL: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
-    }
-  }
-
-  static userURL(accessToken: string): URL {
-    if (typeof accessToken !== 'string' || accessToken.trim().length === 0) {
-      throw new Error('accessToken must be a non-empty string');
-    }
-
-    try {
-      const url = new URL(this.baseURL);
-      url.pathname = '/auth/me';
-
-      const searchParams = new URLSearchParams();
-      searchParams.append('lat', accessToken);
-
-      url.search = searchParams.toString();
-      return url;
-    } catch (error) {
-      throw new Error(
-        `Failed to construct user URL: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }

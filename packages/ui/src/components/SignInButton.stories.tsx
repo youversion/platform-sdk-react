@@ -33,6 +33,7 @@ const meta = {
       .mockName('YouVersionAPIUsers.signIn');
   },
   args: {
+    redirectUrl: import.meta.env.STORYBOOK_AUTH_REDIRECT_URL,
     onSuccess: fn(),
     onAuthError: fn(),
   },
@@ -47,12 +48,7 @@ const meta = {
         disable: true,
       },
     },
-    optionalPermissions: {
-      table: {
-        disable: true,
-      },
-    },
-    requiredPermissions: {
+    permissions: {
       table: {
         disable: true,
       },

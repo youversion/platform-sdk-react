@@ -18,10 +18,10 @@ export class SignInWithYouVersionPKCEAuthorizationRequestBuilder {
     permissions: Set<SignInWithYouVersionPermissionValues>,
     redirectURL: URL,
   ): Promise<SignInWithYouVersionPKCEAuthorizationRequest> {
-    const codeVerifier = await this.randomURLSafeString(32);
+    const codeVerifier = this.randomURLSafeString(32);
     const codeChallenge = await this.codeChallenge(codeVerifier);
-    const state = await this.randomURLSafeString(24);
-    const nonce = await this.randomURLSafeString(24);
+    const state = this.randomURLSafeString(24);
+    const nonce = this.randomURLSafeString(24);
 
     const parameters: SignInWithYouVersionPKCEParameters = {
       codeVerifier,
@@ -31,7 +31,6 @@ export class SignInWithYouVersionPKCEAuthorizationRequestBuilder {
     };
 
     const url = this.authorizeURL(appKey, permissions, redirectURL, parameters);
-    console.log({ url, parameters });
 
     return { url, parameters };
   }
@@ -43,18 +42,20 @@ export class SignInWithYouVersionPKCEAuthorizationRequestBuilder {
     parameters: SignInWithYouVersionPKCEParameters,
   ): URL {
     const components = new URL(`https://${YouVersionPlatformConfiguration.apiHost}/auth/authorize`);
-    console.log({ components });
 
+    const redirectUrlString =
+      redirectURL.toString().slice(-1) === '/'
+        ? redirectURL.toString().slice(0, -1)
+        : redirectURL.toString();
     const queryParams = new URLSearchParams({
       response_type: 'code',
       client_id: appKey,
-      redirect_uri: redirectURL.toString(),
+      redirect_uri: redirectUrlString,
       nonce: parameters.nonce,
       state: parameters.state,
       code_challenge: parameters.codeChallenge,
       code_challenge_method: 'S256',
     });
-    console.log({ queryParams });
 
     const installId = YouVersionPlatformConfiguration.installationId;
     if (installId) {
@@ -67,7 +68,6 @@ export class SignInWithYouVersionPKCEAuthorizationRequestBuilder {
     }
 
     components.search = queryParams.toString();
-    console.log(components);
     return components;
   }
 
@@ -91,7 +91,7 @@ export class SignInWithYouVersionPKCEAuthorizationRequestBuilder {
     });
   }
 
-  private static async randomURLSafeString(byteCount: number): Promise<string> {
+  private static randomURLSafeString(byteCount: number): string {
     const bytes = new Uint8Array(byteCount);
     crypto.getRandomValues(bytes);
     return this.base64URLEncodedString(bytes);

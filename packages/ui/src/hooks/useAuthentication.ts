@@ -10,8 +10,8 @@ import { useCallback } from 'react';
 export function useAuthentication(): {
   auth: AuthenticationState;
   signIn: (
+    redirectUrl: string,
     permissions?: SignInWithYouVersionPermissionValues[],
-    optionalPermissions?: SignInWithYouVersionPermissionValues[],
   ) => Promise<void>;
   signOut: () => void;
   fetchUserInfo: () => Promise<YouVersionUserInfo>;
@@ -19,12 +19,8 @@ export function useAuthentication(): {
   const { auth, signOut, fetchUserInfo, client: _client } = useYVP();
 
   const signIn = useCallback(
-    async (
-      requiredPermissions: SignInWithYouVersionPermissionValues[] = [],
-      optionalPermissions: SignInWithYouVersionPermissionValues[] = [],
-    ) => {
-      const allPermissions = [...requiredPermissions, ...optionalPermissions];
-      return await YouVersionAPIUsers.signIn(new Set(allPermissions));
+    async (redirectUrl: string, permissions: SignInWithYouVersionPermissionValues[] = []) => {
+      return await YouVersionAPIUsers.signIn(new Set(permissions), redirectUrl);
     },
     [],
   );

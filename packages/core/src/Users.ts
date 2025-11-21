@@ -1,29 +1,25 @@
 import type { SignInWithYouVersionPermissionValues } from './types';
 import { YouVersionUserInfo } from './YouVersionUserInfo';
 import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
-import { YouVersionAPI } from './YouVersionAPI';
-import { URLBuilder } from './URLBuilder';
-import { AuthenticationStrategyRegistry } from './AuthenticationStrategy';
 import { SignInWithYouVersionPKCEAuthorizationRequestBuilder } from './SignInWithYouVersionPKCE';
-
-const MAX_RETRY_ATTEMPTS = 3;
-const RETRY_DELAY_MS = 1000;
+import { SignInWithYouVersionResult } from './SignInWithYouVersionResult';
+import { SignInWithYouVersionPermission } from './SignInWithYouVersionResult';
 
 export class YouVersionAPIUsers {
   /**
    * Presents the YouVersion login flow to the user and returns the login result upon completion.
    *
    * This function authenticates the user with YouVersion, requesting the specified required and optional permissions.
-   * The function returns a promise that resolves when the user completes or cancels the login flow,
-   * returning the login result containing the authorization code and granted permissions.
+   * The function redirects to the YouVersion authorization URL and expects the callback to be handled separately.
    *
-   * @param requiredPermissions - The set of permissions that must be granted by the user for successful login.
-   * @param optionalPermissions - The set of permissions that will be requested from the user but are not required for successful login.
-   * @returns A Promise resolving to a SignInWithYouVersionResult containing the authorization code and granted permissions upon successful login.
-   * @throws An error if authentication fails or is cancelled by the user.
+   * @param permissions - The set of permissions that must be granted by the user for successful login.
+   * @param redirectURL - The URL to redirect back to after authentication.
+   * @throws An error if authentication fails or configuration is invalid.
    */
-  static async signIn(permissions: Set<SignInWithYouVersionPermissionValues>): Promise<void> {
-    const redirectURL = new URL('youversionauth://callback');
+  static async signIn(
+    permissions: Set<SignInWithYouVersionPermissionValues>,
+    redirectURL: string,
+  ): Promise<void> {
     const appKey = YouVersionPlatformConfiguration.appKey;
     if (!appKey) {
       throw new Error('YouVersionPlatformConfiguration.appKey must be set before calling signIn');
@@ -32,18 +28,209 @@ export class YouVersionAPIUsers {
     const authorizationRequest = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
       appKey,
       permissions,
-      redirectURL,
+      new URL(redirectURL),
     );
 
-    sessionStorage.setItem(
+    // Store auth data for callback handler
+    localStorage.setItem(
       'youversion-auth-code-verifier',
       authorizationRequest.parameters.codeVerifier,
     );
+    localStorage.setItem('youversion-auth-redirect-uri', redirectURL);
+    localStorage.setItem('youversion-auth-state', authorizationRequest.parameters.state);
 
-    console.log('codeVerifier in signIn', authorizationRequest.parameters.codeVerifier);
-    // Use the registered authentication strategy
-    const strategy = AuthenticationStrategyRegistry.get();
-    await strategy.authenticate(authorizationRequest.url);
+    // Simple redirect to authorization URL
+    window.location.href = authorizationRequest.url.toString();
+  }
+
+  /**
+   * Handles the OAuth callback after user authentication.
+   *
+   * Call this method when your app loads to check if the current URL contains
+   * an OAuth callback with authorization code. If found, it exchanges the code
+   * for tokens and stores them.
+   *
+   * @returns Promise<SignInWithYouVersionResult | null> - SignInWithYouVersionResult if callback was handled, null otherwise
+   * @throws An error if token exchange fails
+   */
+  static async handleAuthCallback(): Promise<SignInWithYouVersionResult | null> {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
+    const error = urlParams.get('error');
+
+    // Check if this is an OAuth callback
+    if (!state && !error) {
+      return null;
+    }
+
+    // Handle OAuth error
+    if (error) {
+      const errorDescription = urlParams.get('error_description') || error;
+      throw new Error(`OAuth authentication failed: ${errorDescription}`);
+    }
+
+    // Verify state parameter
+    const storedState = localStorage.getItem('youversion-auth-state');
+    if (state !== storedState) {
+      throw new Error('Invalid state parameter - possible CSRF attack');
+    }
+
+    // If we don't have a code, this might be the first callback with user data
+    // We need to redirect to the server callback to get the authorization code
+    if (!code && state) {
+      this.obtainLocation(window.location.href, state);
+    }
+
+    // Get stored auth data
+    const codeVerifier = localStorage.getItem('youversion-auth-code-verifier');
+    const redirectUri = localStorage.getItem('youversion-auth-redirect-uri');
+
+    if (!code || !codeVerifier || !redirectUri) {
+      throw new Error('Missing required authentication parameters');
+    }
+
+    try {
+      // Exchange authorization code for tokens
+      const tokenRequest = SignInWithYouVersionPKCEAuthorizationRequestBuilder.tokenURLRequest(
+        code,
+        codeVerifier,
+        redirectUri,
+      );
+
+      const response = await fetch(tokenRequest);
+
+      if (!response.ok) {
+        throw new Error(`Token exchange failed: ${response.status} ${response.statusText}`);
+      }
+
+      const responseText = await response.text();
+
+      const tokens = JSON.parse(responseText) as {
+        access_token: string;
+        expires_in: number;
+        id_token: string;
+        refresh_token: string;
+        scope: string;
+        token_type: string;
+      };
+
+      // Extract user info from ID token
+      const result = this.extractSignInResult(tokens);
+
+      // Store tokens in configuration
+      YouVersionPlatformConfiguration.saveAuthData(
+        result.accessToken || null,
+        result.refreshToken || null,
+        result.expiryDate || null,
+      );
+
+      // Clean up localStorage
+      localStorage.removeItem('youversion-auth-code-verifier');
+      localStorage.removeItem('youversion-auth-redirect-uri');
+      localStorage.removeItem('youversion-auth-state');
+
+      // Clean up URL
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.search = '';
+      window.history.replaceState({}, '', cleanUrl.toString());
+
+      return result;
+    } catch (error) {
+      // Clean up on error
+      localStorage.removeItem('youversion-auth-code-verifier');
+      localStorage.removeItem('youversion-auth-redirect-uri');
+      localStorage.removeItem('youversion-auth-state');
+      throw error;
+    }
+  }
+
+  /**
+   * Redirects to the server callback endpoint to obtain authorization code
+   */
+  private static obtainLocation(callbackURL: string, state: string): void {
+    const url = new URL(callbackURL);
+    const params = new URLSearchParams(url.search);
+
+    if (params.get('state') !== state) {
+      throw new Error('Invalid state parameter');
+    }
+
+    // Redirect to the server callback endpoint with all the current parameters
+    const serverCallbackUrl = new URL(
+      `https://${YouVersionPlatformConfiguration.apiHost}/auth/callback`,
+    );
+    params.forEach((value, key) => {
+      serverCallbackUrl.searchParams.set(key, value);
+    });
+
+    window.location.href = serverCallbackUrl.toString();
+  }
+
+  /**
+   * Extracts sign-in result from token response
+   */
+  private static extractSignInResult(tokens: {
+    access_token: string;
+    expires_in: number;
+    id_token: string;
+    refresh_token: string;
+    scope: string;
+    token_type: string;
+  }): SignInWithYouVersionResult {
+    const idClaims = this.decodeJWT(tokens.id_token);
+
+    const permissions = tokens.scope
+      .split(' ')
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0)
+      .filter((p): p is SignInWithYouVersionPermissionValues =>
+        Object.values(SignInWithYouVersionPermission).includes(
+          p as SignInWithYouVersionPermissionValues,
+        ),
+      );
+
+    const resultData = {
+      accessToken: tokens.access_token,
+      expiresIn: tokens.expires_in,
+      refreshToken: tokens.refresh_token,
+      permissions,
+      yvpUserId: idClaims.sub as string,
+      name: idClaims.name as string,
+      profilePicture: idClaims.profile_picture as string,
+      email: idClaims.email as string,
+    };
+
+    return new SignInWithYouVersionResult(resultData);
+  }
+
+  /**
+   * Decodes JWT token payload
+   */
+  private static decodeJWT(token: string): Record<string, any> {
+    const segments = token.split('.');
+
+    if (segments.length !== 3) {
+      return {};
+    }
+
+    let base64 = segments[1]?.replace(/-/g, '+').replace(/_/g, '/');
+
+    while (base64 && base64.length % 4 !== 0) {
+      base64 += '=';
+    }
+
+    try {
+      if (base64) {
+        const data = atob(base64);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        return JSON.parse(data);
+      } else {
+        return {};
+      }
+    } catch {
+      return {};
+    }
   }
 
   static signOut(): void {
@@ -51,67 +238,43 @@ export class YouVersionAPIUsers {
   }
 
   /**
-   * Retrieves user information for the authenticated user using the provided access token.
+   * Retrieves user information for the authenticated user by decoding the provided JWT access token.
    *
-   * This function fetches the user's profile information from the YouVersion API, decoding it into a YouVersionUserInfo model.
+   * This function extracts the user's profile information directly from the JWT token payload.
    *
-   * @param accessToken - The access token obtained from the login process.
+   * @param accessToken - The JWT access token obtained from the login process.
    * @returns A Promise resolving to a YouVersionUserInfo object containing the user's profile information.
-   * @throws An error if the URL is invalid, the network request fails, or the response cannot be decoded.
+   * @throws An error if the access token is invalid or cannot be decoded.
    */
-  static async userInfo(accessToken: string): Promise<YouVersionUserInfo> {
+  static userInfo(accessToken: string): YouVersionUserInfo {
     // Validate access token
     if (!accessToken || typeof accessToken !== 'string') {
       throw new Error('Invalid access token: must be a non-empty string');
     }
 
-    const url = URLBuilder.userURL(accessToken);
+    try {
+      // Decode JWT payload to extract user information
+      const claims = this.decodeJWT(accessToken);
 
-    const request = YouVersionAPI.addStandardHeaders(url);
+      if (!claims || Object.keys(claims).length === 0) {
+        throw new Error('Invalid JWT token: Unable to decode token payload');
+      }
 
-    // Retry logic for transient failures
-    let lastError: Error | null = null;
-    for (let attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
-      try {
-        const response = await fetch(request);
+      // Map JWT claims to YouVersionUserInfo format
+      const userInfoData = {
+        id: claims.sub as string,
+        first_name: claims.given_name as string,
+        last_name: claims.family_name as string,
+        avatar_url: claims.profile_picture as string,
+      };
 
-        if (response.status === 401) {
-          throw new Error(
-            'Authentication failed: Invalid or expired access token. Please sign in again.',
-          );
-        }
-
-        if (response.status === 403) {
-          throw new Error('Access denied: Insufficient permissions to retrieve user information');
-        }
-
-        if (response.status !== 200) {
-          throw new Error(
-            `Failed to retrieve user information: Server responded with status ${response.status}`,
-          );
-        }
-
-        const data = (await response.json()) as YouVersionUserInfo;
-        return data;
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error('Failed to parse server response');
-
-        // Don't retry on authentication errors
-        if (
-          error instanceof Error &&
-          (error.message.includes('401') || error.message.includes('403'))
-        ) {
-          throw error;
-        }
-
-        // Retry on network errors
-        if (attempt < MAX_RETRY_ATTEMPTS) {
-          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * attempt));
-          continue;
-        }
+      return new YouVersionUserInfo(userInfoData);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Failed to decode user information from JWT: ${error.message}`);
+      } else {
+        throw new Error('Failed to decode user information from JWT: Unknown error');
       }
     }
-
-    throw lastError || new Error('Failed to retrieve user information after multiple attempts');
   }
 }

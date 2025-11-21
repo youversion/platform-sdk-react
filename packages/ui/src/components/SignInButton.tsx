@@ -23,11 +23,8 @@ interface SignInAuthProps {
   /**
    * Permissions that are requested but not required for sign-in to succeed.
    */
-  optionalPermissions?: SignInWithYouVersionPermissionValues[];
-  /**
-   * Permissions that must be granted for sign-in to succeed.
-   */
-  requiredPermissions?: SignInWithYouVersionPermissionValues[];
+  permissions?: SignInWithYouVersionPermissionValues[];
+  redirectUrl: string;
 }
 
 export interface SignInButtonProps
@@ -118,9 +115,9 @@ export const SignInButton = React.forwardRef<HTMLButtonElement, SignInButtonProp
       onAuthError,
       onClick,
       onSuccess,
-      optionalPermissions = [],
+      permissions = [],
       radius = 'rounded',
-      requiredPermissions = [],
+      redirectUrl,
       size = 'default',
       variant = 'default',
       ...props
@@ -140,7 +137,7 @@ export const SignInButton = React.forwardRef<HTMLButtonElement, SignInButtonProp
       setLocalLoading(true);
 
       try {
-        await signIn(requiredPermissions, optionalPermissions);
+        await signIn(redirectUrl, permissions);
       } catch (error) {
         if (onAuthError) {
           onAuthError(error as Error);
