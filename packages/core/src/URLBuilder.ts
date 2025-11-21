@@ -21,11 +21,7 @@ export class URLBuilder {
 
       // Add query parameters
       const searchParams = new URLSearchParams();
-<<<<<<< HEAD
       searchParams.append('APP_KEY', appKey);
-=======
-      searchParams.append('app_id', appKey);
->>>>>>> f2456b0 (wip: saving initial changes)
       searchParams.append('language', 'en'); // TODO: load from system
 
       if (requiredPermissions.size > 0) {
