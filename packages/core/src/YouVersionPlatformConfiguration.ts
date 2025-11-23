@@ -1,9 +1,6 @@
-import type { YouVersionUserInfo } from './YouVersionUserInfo';
-
 export class YouVersionPlatformConfiguration {
   private static _appKey: string | null = null;
   private static _installationId: string | null = null;
-  private static _accessTokenKey: string | null = null;
   private static _apiHost: string = 'api-staging.youversion.com';
   private static _refreshTokenKey: string | null = null;
   private static _expiryDateKey: string | null = null;
@@ -81,18 +78,6 @@ export class YouVersionPlatformConfiguration {
 
   static set installationId(value: string | null) {
     this._installationId = value || this.getOrSetInstallationId();
-  }
-
-  static setAccessToken(token: string | null): void {
-    // Validate token: if not null, must be a non-empty string
-    if (token !== null && (typeof token !== 'string' || token.trim().length === 0)) {
-      throw new Error('Access token must be a non-empty string or null');
-    }
-    this._accessTokenKey = token;
-  }
-
-  static get accessTokenKey(): string | null {
-    return this._accessTokenKey;
   }
 
   static get apiHost(): string {

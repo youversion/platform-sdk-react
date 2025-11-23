@@ -43,10 +43,9 @@ export class SignInWithYouVersionPKCEAuthorizationRequestBuilder {
   ): URL {
     const components = new URL(`https://${YouVersionPlatformConfiguration.apiHost}/auth/authorize`);
 
-    const redirectUrlString =
-      redirectURL.toString().slice(-1) === '/'
-        ? redirectURL.toString().slice(0, -1)
-        : redirectURL.toString();
+    const redirectUrlString = redirectURL.toString().endsWith('/')
+      ? redirectURL.toString().slice(0, -1)
+      : redirectURL.toString();
     const queryParams = new URLSearchParams({
       response_type: 'code',
       client_id: appKey,

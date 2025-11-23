@@ -137,7 +137,11 @@ export const SignInButton = React.forwardRef<HTMLButtonElement, SignInButtonProp
       setLocalLoading(true);
 
       try {
-        await signIn(redirectUrl, permissions);
+        const result = await signIn(redirectUrl, permissions);
+        // If signIn returns a result (e.g., in tests), call onSuccess
+        if (result && onSuccess && typeof result === 'object' && 'accessToken' in result) {
+          onSuccess(result);
+        }
       } catch (error) {
         if (onAuthError) {
           onAuthError(error as Error);

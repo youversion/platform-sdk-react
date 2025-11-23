@@ -234,7 +234,7 @@ export class YouVersionAPIUsers {
   }
 
   static signOut(): void {
-    YouVersionPlatformConfiguration.setAccessToken(null);
+    YouVersionPlatformConfiguration.clearAuthTokens();
   }
 
   /**

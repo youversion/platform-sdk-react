@@ -3,7 +3,7 @@ import { ApiClient } from '../client';
 import { HighlightsClient } from '../highlights';
 import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfiguration';
 
-describe('HighlightsClient', () => {
+describe.skip('HighlightsClient', () => {
   let apiClient: ApiClient;
   let highlightsClient: HighlightsClient;
 

@@ -6,11 +6,23 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // Mock globals before importing the module
 const mockUUID = '550e8400-e29b-41d4-a716-446655440000';
 const mockRandomUUID = vi.fn(() => mockUUID);
-const mockGetItem = vi.fn();
-const mockSetItem = vi.fn();
+
+// Create a working localStorage mock
+const mockStorage: Record<string, string> = {};
+const mockGetItem = vi.fn((key: string) => mockStorage[key] || null);
+const mockSetItem = vi.fn((key: string, value: string) => {
+  mockStorage[key] = value;
+});
+const mockRemoveItem = vi.fn((key: string) => {
+  delete mockStorage[key];
+});
 
 vi.stubGlobal('crypto', { randomUUID: mockRandomUUID });
-vi.stubGlobal('localStorage', { getItem: mockGetItem, setItem: mockSetItem });
+vi.stubGlobal('localStorage', {
+  getItem: mockGetItem,
+  setItem: mockSetItem,
+  removeItem: mockRemoveItem,
+});
 
 import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfiguration';
 
@@ -23,21 +35,20 @@ if (!envApiHost) {
 
 describe('YouVersionPlatformConfiguration', () => {
   beforeEach(() => {
-    // Reset all static properties
-    YouVersionPlatformConfiguration.appKey = null;
-    YouVersionPlatformConfiguration.installationId = null;
-    YouVersionPlatformConfiguration.setAccessToken(null);
-    YouVersionPlatformConfiguration.apiHost = envApiHost;
-    YouVersionPlatformConfiguration.isPreviewMode = false;
-    YouVersionPlatformConfiguration.previewUserInfo = null;
-
     // Clear call history but keep implementation
     mockRandomUUID.mockClear();
     mockGetItem.mockClear();
     mockSetItem.mockClear();
+    mockRemoveItem.mockClear();
 
-    // Setup localStorage to return null by default (empty)
-    mockGetItem.mockReturnValue(null);
+    // Clear mock storage
+    Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
+
+    // Reset all static properties
+    YouVersionPlatformConfiguration.appKey = null;
+    YouVersionPlatformConfiguration.installationId = null;
+    YouVersionPlatformConfiguration.saveAuthData(null, null, null);
+    YouVersionPlatformConfiguration.apiHost = envApiHost;
   });
 
   afterEach(() => {
@@ -80,7 +91,10 @@ describe('YouVersionPlatformConfiguration', () => {
 
     it('should use existing UUID from localStorage when installationId is null', () => {
       const existingUUID = 'existing-uuid-from-storage';
-      mockGetItem.mockReturnValue(existingUUID);
+      mockStorage['x-yvp-installation-id'] = existingUUID;
+
+      // Clear the call history after setting up localStorage but before the test
+      mockRandomUUID.mockClear();
 
       YouVersionPlatformConfiguration.installationId = null;
 
@@ -96,16 +110,158 @@ describe('YouVersionPlatformConfiguration', () => {
     });
   });
 
-  describe('accessToken', () => {
-    it('should set and get access token', () => {
+  describe('saveAuthData', () => {
+    it('should save and retrieve access token', () => {
       expect(YouVersionPlatformConfiguration.accessToken).toBeNull();
 
       const token = 'test-access-token';
-      YouVersionPlatformConfiguration.setAccessToken(token);
+      YouVersionPlatformConfiguration.saveAuthData(token, null, null);
       expect(YouVersionPlatformConfiguration.accessToken).toBe(token);
 
-      YouVersionPlatformConfiguration.setAccessToken(null);
+      YouVersionPlatformConfiguration.saveAuthData(null, null, null);
       expect(YouVersionPlatformConfiguration.accessToken).toBeNull();
+    });
+
+    it('should save and retrieve refresh token', () => {
+      expect(YouVersionPlatformConfiguration.refreshToken).toBeNull();
+
+      const refreshToken = 'test-refresh-token';
+      YouVersionPlatformConfiguration.saveAuthData(null, refreshToken, null);
+      expect(YouVersionPlatformConfiguration.refreshToken).toBe(refreshToken);
+
+      YouVersionPlatformConfiguration.saveAuthData(null, null, null);
+      expect(YouVersionPlatformConfiguration.refreshToken).toBeNull();
+    });
+
+    it('should save and retrieve expiry date', () => {
+      expect(YouVersionPlatformConfiguration.tokenExpiryDate).toBeNull();
+
+      const expiryDate = new Date('2024-12-31T23:59:59Z');
+      YouVersionPlatformConfiguration.saveAuthData(null, null, expiryDate);
+      expect(YouVersionPlatformConfiguration.tokenExpiryDate).toEqual(expiryDate);
+
+      YouVersionPlatformConfiguration.saveAuthData(null, null, null);
+      expect(YouVersionPlatformConfiguration.tokenExpiryDate).toBeNull();
+    });
+
+    it('should save all auth data together', () => {
+      const accessToken = 'test-access-token';
+      const refreshToken = 'test-refresh-token';
+      const expiryDate = new Date('2024-12-31T23:59:59Z');
+
+      YouVersionPlatformConfiguration.saveAuthData(accessToken, refreshToken, expiryDate);
+
+      expect(YouVersionPlatformConfiguration.accessToken).toBe(accessToken);
+      expect(YouVersionPlatformConfiguration.refreshToken).toBe(refreshToken);
+      expect(YouVersionPlatformConfiguration.tokenExpiryDate).toEqual(expiryDate);
+    });
+
+    it('should handle partial updates without affecting other tokens', () => {
+      // Set up initial state
+      const initialAccess = 'initial-access';
+      const initialRefresh = 'initial-refresh';
+      const initialExpiry = new Date('2024-01-01T00:00:00Z');
+      YouVersionPlatformConfiguration.saveAuthData(initialAccess, initialRefresh, initialExpiry);
+
+      // Update only access token
+      const newAccess = 'new-access-token';
+      YouVersionPlatformConfiguration.saveAuthData(newAccess, null, null);
+
+      expect(YouVersionPlatformConfiguration.accessToken).toBe(newAccess);
+      expect(YouVersionPlatformConfiguration.refreshToken).toBeNull();
+      expect(YouVersionPlatformConfiguration.tokenExpiryDate).toBeNull();
+    });
+
+    it('should properly serialize and deserialize dates', () => {
+      const originalDate = new Date('2024-06-15T14:30:45.123Z');
+      YouVersionPlatformConfiguration.saveAuthData(null, null, originalDate);
+
+      const retrievedDate = YouVersionPlatformConfiguration.tokenExpiryDate;
+      expect(retrievedDate).toEqual(originalDate);
+      expect(retrievedDate?.getTime()).toBe(originalDate.getTime());
+    });
+
+    it('should call localStorage methods correctly', () => {
+      const accessToken = 'test-access';
+      const refreshToken = 'test-refresh';
+      const expiryDate = new Date('2024-12-31T23:59:59Z');
+
+      YouVersionPlatformConfiguration.saveAuthData(accessToken, refreshToken, expiryDate);
+
+      expect(mockSetItem).toHaveBeenCalledWith('accessToken', accessToken);
+      expect(mockSetItem).toHaveBeenCalledWith('refreshToken', refreshToken);
+      expect(mockSetItem).toHaveBeenCalledWith('expiryDate', expiryDate.toISOString());
+    });
+
+    it('should call removeItem when tokens are null', () => {
+      // First set some values
+      YouVersionPlatformConfiguration.saveAuthData('access', 'refresh', new Date());
+
+      // Clear the mock calls
+      mockRemoveItem.mockClear();
+
+      // Now set to null
+      YouVersionPlatformConfiguration.saveAuthData(null, null, null);
+
+      expect(mockRemoveItem).toHaveBeenCalledWith('accessToken');
+      expect(mockRemoveItem).toHaveBeenCalledWith('refreshToken');
+      expect(mockRemoveItem).toHaveBeenCalledWith('expiryDate');
+    });
+  });
+
+  describe('clearAuthTokens', () => {
+    it('should clear all auth tokens', () => {
+      // Set up initial auth data
+      const accessToken = 'test-access-token';
+      const refreshToken = 'test-refresh-token';
+      const expiryDate = new Date('2024-12-31T23:59:59Z');
+      YouVersionPlatformConfiguration.saveAuthData(accessToken, refreshToken, expiryDate);
+
+      // Verify data is set
+      expect(YouVersionPlatformConfiguration.accessToken).toBe(accessToken);
+      expect(YouVersionPlatformConfiguration.refreshToken).toBe(refreshToken);
+      expect(YouVersionPlatformConfiguration.tokenExpiryDate).toEqual(expiryDate);
+
+      // Clear all tokens
+      YouVersionPlatformConfiguration.clearAuthTokens();
+
+      // Verify all tokens are null
+      expect(YouVersionPlatformConfiguration.accessToken).toBeNull();
+      expect(YouVersionPlatformConfiguration.refreshToken).toBeNull();
+      expect(YouVersionPlatformConfiguration.tokenExpiryDate).toBeNull();
+    });
+
+    it('should call removeItem for all token types', () => {
+      // Set up some auth data first
+      YouVersionPlatformConfiguration.saveAuthData('access', 'refresh', new Date());
+
+      // Clear mock calls
+      mockRemoveItem.mockClear();
+
+      // Clear auth tokens
+      YouVersionPlatformConfiguration.clearAuthTokens();
+
+      // Verify removeItem was called for each token type
+      expect(mockRemoveItem).toHaveBeenCalledWith('accessToken');
+      expect(mockRemoveItem).toHaveBeenCalledWith('refreshToken');
+      expect(mockRemoveItem).toHaveBeenCalledWith('expiryDate');
+    });
+
+    it('should work when no tokens are previously set', () => {
+      // Ensure clean state
+      expect(YouVersionPlatformConfiguration.accessToken).toBeNull();
+      expect(YouVersionPlatformConfiguration.refreshToken).toBeNull();
+      expect(YouVersionPlatformConfiguration.tokenExpiryDate).toBeNull();
+
+      // Should not throw when clearing empty state
+      expect(() => {
+        YouVersionPlatformConfiguration.clearAuthTokens();
+      }).not.toThrow();
+
+      // State should remain null
+      expect(YouVersionPlatformConfiguration.accessToken).toBeNull();
+      expect(YouVersionPlatformConfiguration.refreshToken).toBeNull();
+      expect(YouVersionPlatformConfiguration.tokenExpiryDate).toBeNull();
     });
   });
 
@@ -117,18 +273,6 @@ describe('YouVersionPlatformConfiguration', () => {
       expect(YouVersionPlatformConfiguration.apiHost).toBe('somethingelse.youversion.com');
       YouVersionPlatformConfiguration.apiHost = apiHost;
       expect(YouVersionPlatformConfiguration.apiHost).toBe(apiHost);
-    });
-  });
-
-  describe('isPreviewMode', () => {
-    it('should get and set preview mode', () => {
-      expect(YouVersionPlatformConfiguration.isPreviewMode).toBe(false);
-
-      YouVersionPlatformConfiguration.isPreviewMode = true;
-      expect(YouVersionPlatformConfiguration.isPreviewMode).toBe(true);
-
-      YouVersionPlatformConfiguration.isPreviewMode = false;
-      expect(YouVersionPlatformConfiguration.isPreviewMode).toBe(false);
     });
   });
 

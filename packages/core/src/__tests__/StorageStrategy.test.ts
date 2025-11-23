@@ -3,7 +3,6 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SessionStorageStrategy, MemoryStorageStrategy } from '../StorageStrategy';
-import { WebAuthenticationStrategy } from '../WebAuthenticationStrategy';
 
 describe('SessionStorageStrategy', () => {
   let strategy: SessionStorageStrategy;
@@ -288,77 +287,6 @@ describe('MemoryStorageStrategy', () => {
       // Should not affect sessionStorage
       expect(sessionStorage.getItem('testKey')).toBeNull();
     });
-  });
-});
-
-describe('WebAuthenticationStrategy - Custom Storage', () => {
-  beforeEach(() => {
-    sessionStorage.clear();
-  });
-
-  afterEach(() => {
-    sessionStorage.clear();
-  });
-
-  it('should use SessionStorageStrategy by default', () => {
-    const strategy = new WebAuthenticationStrategy();
-
-    // The strategy should use sessionStorage internally (we can't access private field directly)
-    // But we can verify it works by checking that data persists in sessionStorage
-    // This is an indirect test
-    expect(strategy).toBeInstanceOf(WebAuthenticationStrategy);
-  });
-
-  it('should accept custom storage strategy in constructor', () => {
-    const customStorage = new MemoryStorageStrategy();
-
-    const strategy = new WebAuthenticationStrategy({
-      storage: customStorage,
-    });
-
-    expect(strategy).toBeInstanceOf(WebAuthenticationStrategy);
-    // The strategy should use the custom storage
-  });
-
-  it('should use custom MemoryStorageStrategy when provided', () => {
-    const memoryStorage = new MemoryStorageStrategy();
-
-    const strategy = new WebAuthenticationStrategy({
-      storage: memoryStorage,
-    });
-
-    expect(strategy).toBeInstanceOf(WebAuthenticationStrategy);
-  });
-
-  it('should support custom storage implementations', () => {
-    // Create a custom storage implementation
-    class CustomStorageStrategy {
-      private data = new Map<string, string>();
-
-      setItem(key: string, value: string): void {
-        this.data.set(key, value);
-      }
-
-      getItem(key: string): string | null {
-        return this.data.get(key) ?? null;
-      }
-
-      removeItem(key: string): void {
-        this.data.delete(key);
-      }
-
-      clear(): void {
-        this.data.clear();
-      }
-    }
-
-    const customStorage = new CustomStorageStrategy();
-
-    const strategy = new WebAuthenticationStrategy({
-      storage: customStorage,
-    });
-
-    expect(strategy).toBeInstanceOf(WebAuthenticationStrategy);
   });
 });
 

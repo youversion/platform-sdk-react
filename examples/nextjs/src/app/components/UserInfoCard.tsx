@@ -46,14 +46,6 @@ function AuthenticatedUserInfo({
   );
 }
 
-function UnauthenticatedUserInfo() {
-  return (
-    <div className="bg-gray-50 p-4 rounded-lg max-w-md">
-      <p className="text-sm text-gray-600">Not signed in</p>
-    </div>
-  );
-}
-
 export default function UserInfoCard(): JSX.Element {
   const { auth } = useAuthentication();
   console.log({ auth });

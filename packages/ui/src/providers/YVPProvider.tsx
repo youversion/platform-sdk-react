@@ -22,7 +22,7 @@ export interface YVPContextValue {
   client: typeof ApiClient;
   auth: AuthenticationState;
   signOut: () => void;
-  fetchUserInfo: () => Promise<YouVersionUserInfo>;
+  fetchUserInfo: () => YouVersionUserInfo;
 }
 
 const YVPContext = createContext<YVPContextValue | null>(null);
@@ -62,7 +62,7 @@ export function YVPProvider({
       if (existingToken) {
         try {
           // Fetch user info with existing token
-          const userInfo = await YouVersionAPIUsers.userInfo(existingToken);
+          const userInfo = YouVersionAPIUsers.userInfo(existingToken);
           // Convert YouVersionUserInfo to SignInWithYouVersionResult format
           const result = new SignInWithYouVersionResult({
             accessToken: existingToken,
@@ -82,7 +82,7 @@ export function YVPProvider({
           });
         } catch (error) {
           // Token might be expired or invalid, clear it
-          YouVersionPlatformConfiguration.setAccessToken(null);
+          YouVersionPlatformConfiguration.clearAuthTokens();
           setAuthState({
             isAuthenticated: false,
             isLoading: false,
@@ -130,11 +130,11 @@ export function YVPProvider({
       }
     };
 
-    initializeAuth();
+    void initializeAuth();
   }, [config.appKey, config.installationId, config.redirectUri]);
 
   const signOut = useCallback(() => {
-    YouVersionPlatformConfiguration.setAccessToken(null);
+    YouVersionPlatformConfiguration.clearAuthTokens();
     setAuthState({
       isAuthenticated: false,
       isLoading: false,
@@ -142,10 +142,9 @@ export function YVPProvider({
       result: null,
       error: null,
     });
-    YouVersionPlatformConfiguration.clearAuthTokens();
   }, []);
 
-  const fetchUserInfo = useCallback(async (): Promise<YouVersionUserInfo> => {
+  const fetchUserInfo = useCallback((): YouVersionUserInfo => {
     if (!authState.isAuthenticated || !authState.accessToken) {
       throw new Error('User is not authenticated');
     }

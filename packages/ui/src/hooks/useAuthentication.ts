@@ -4,6 +4,7 @@ import {
   type AuthenticationState,
   type YouVersionUserInfo,
   type SignInWithYouVersionPermissionValues,
+  type SignInWithYouVersionResult,
 } from '@youversion/platform-core';
 import { useCallback } from 'react';
 
@@ -12,9 +13,9 @@ export function useAuthentication(): {
   signIn: (
     redirectUrl: string,
     permissions?: SignInWithYouVersionPermissionValues[],
-  ) => Promise<void>;
+  ) => Promise<SignInWithYouVersionResult | void>;
   signOut: () => void;
-  fetchUserInfo: () => Promise<YouVersionUserInfo>;
+  fetchUserInfo: () => YouVersionUserInfo;
 } {
   const { auth, signOut, fetchUserInfo, client: _client } = useYVP();
 

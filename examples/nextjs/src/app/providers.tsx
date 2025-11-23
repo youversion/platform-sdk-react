@@ -11,6 +11,7 @@ interface ProvidersProps {
 export function Providers({ children, redirectUri }: ProvidersProps): JSX.Element {
   // Use fallback values for static export/build compatibility
   const appKey = process.env.NEXT_PUBLIC_YVP_APP_KEY ?? 'demo-app-key';
+  const apiHost = process.env.NEXT_PUBLIC_YVP_API_HOST ?? 'api-test.youversion.com';
 
   return (
     <YVPProvider
@@ -19,7 +20,9 @@ export function Providers({ children, redirectUri }: ProvidersProps): JSX.Elemen
         redirectUri: redirectUri,
       }}
     >
-      <BibleSDKProvider appKey={appKey}>{children}</BibleSDKProvider>
+      <BibleSDKProvider apiHost={apiHost} appKey={appKey}>
+        {children}
+      </BibleSDKProvider>
     </YVPProvider>
   );
 }

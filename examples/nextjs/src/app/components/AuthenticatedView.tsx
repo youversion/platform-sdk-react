@@ -5,7 +5,7 @@ import { useAuthentication } from '@youversion/platform-react-ui';
 import UserInfoCard from './UserInfoCard';
 
 export default function AuthenticatedView(): JSX.Element {
-  const { auth, signOut } = useAuthentication();
+  const { signOut } = useAuthentication();
 
   const handleSignOut = () => {
     signOut();
