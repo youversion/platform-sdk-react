@@ -1,5 +1,14 @@
 # @youversion/platform-react-ui
 
+## 0.5.7
+
+### Patch Changes
+
+- 8b2be56: Improve sample code and readmes
+- Updated dependencies [8b2be56]
+  - @youversion/platform-react-hooks@0.5.7
+  - @youversion/platform-core@0.5.7
+
 ## 0.5.6
 
 ### Patch Changes
