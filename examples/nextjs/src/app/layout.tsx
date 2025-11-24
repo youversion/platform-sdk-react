@@ -1,7 +1,6 @@
 import { Providers } from './providers';
 import React, { type JSX } from 'react';
 import './globals.css';
-import '@youversion/platform-react-ui/styles.css';
 
 export const viewport = {
   width: 'device-width',

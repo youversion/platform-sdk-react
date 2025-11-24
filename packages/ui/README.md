@@ -27,11 +27,10 @@ Get your App Key at [platform.youversion.com](https://platform.youversion.com/)
 
 ## Usage
 
-Import styles and wrap your app:
+Wrap your app with the provider and use components:
 
 ```tsx
 import { BibleSDKProvider, BibleTextView } from '@youversion/platform-react-ui';
-import '@youversion/platform-react-ui/styles.css';
 
 function App() {
   return (
