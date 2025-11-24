@@ -27,24 +27,28 @@ Get your App Key at [platform.youversion.com](https://platform.youversion.com/)
 ## Usage
 
 ```ts
-import { ApiClient, BibleClient } from '@youversion/platform-core'
+import { ApiClient, BibleClient } from '@youversion/platform-core';
 
-// Initialize API client
 const apiClient = new ApiClient({
-  appKey: import.meta.env.YVP_APP_KEY,
-})
+  appKey: 'YOUR_APP_KEY',
+});
+const bibleClient = new BibleClient(apiClient);
 
-const bibleClient = new BibleClient(apiClient)
+// Find available Bible versions in English
+const versions = await bibleClient.getVersions('en*');
+console.log(versions.data[0].title);
 
-// Get English Bible versions
-const versions = await bibleClient.getVersions('en*')
-console.log(versions.data[0].title)
-
-// Get a specific passage
-const passage = await bibleClient.getPassage(111, 'JHN.3.16')
-console.log(passage.content) // "For God so loved the world..."
+// Fetch the html text of John 3:16 in that first Bible version
+const passage = await bibleClient.getPassage(versions.data[0].id, 'JHN.3.16');
+console.log(passage.content);
 ```
 
----
+## Documentation and API Reference
+* [developers.youversion.com/sdks/typescript](https://developers.youversion.com/sdks/typescript)
 
-**API Reference:** [developers.youversion.com/sdks/typescript](https://developers.youversion.com/sdks/typescript)
+## License
+
+This SDK is licensed under [Apache 2.0](./LICENSE). 
+
+Licensing information for the Bible versions is available 
+at the [YouVersion Platform](https://platform.youversion.com/) site.

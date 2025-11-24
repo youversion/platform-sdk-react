@@ -6,13 +6,13 @@ React hooks for accessing YouVersion Platform APIs with automatic loading/error 
 
 ## When to use this package
 
-Use `@youversion/platform-react-hooks` when you need:
-- ✅ Building custom React components with Bible features
-- ✅ Declarative data fetching with automatic loading/error states
-- ✅ Control over component UI while using reusable hooks
-- ✅ Server-side rendering compatible hooks
+Use `@youversion/platform-react-hooks` when you need to:
+- ✅ Build custom React components with Bible features
+- ✅ Fetch data declaratively with automatic loading/error states
+- ✅ Keep control over component UI while leveraging reusable hooks
+- ✅ Support server-side rendering compatible hooks
 
-**Use other packages instead if:**
+**Use other packages instead if you:**
 - ❌ Need direct API access → Use [@youversion/platform-core](../core/README.md) for low-level client
 - ❌ Want ready-made UI → Use [@youversion/platform-react-ui](../ui/README.md) for production components
 
@@ -26,24 +26,13 @@ Get your App Key at [platform.youversion.com](https://platform.youversion.com/)
 
 ## Usage
 
-Wrap your app with `BibleSDKProvider`:
-
 ```tsx
-import { BibleSDKProvider, useVersion, usePassage } from '@youversion/platform-react-hooks';
+import { BibleSDKProvider, usePassage } from '@youversion/platform-react-hooks';
 
 function BibleVerse() {
-  const { version, loading: versionLoading } = useVersion(111);
-  const { passage, loading: passageLoading } = usePassage(111, 'JHN.3.16');
-
-  if (versionLoading || passageLoading) return <div>Loading...</div>;
-
-  return (
-    <div>
-      <h1>{passage?.human_reference}</h1>
-      <p>Version: {version?.abbreviation}</p>
-      <div dangerouslySetInnerHTML={{ __html: passage?.content || '' }} />
-    </div>
-  );
+  const { passage, loading } = usePassage({ versionId: 111, usfm: 'JHN.3.16' });
+  if (loading) return <div>Loading...</div>;
+  return <div dangerouslySetInnerHTML={{ __html: passage?.content || '' }} />;
 }
 
 function App() {
@@ -55,6 +44,12 @@ function App() {
 }
 ```
 
----
+## Documentation and API Reference
+* [developers.youversion.com/sdks/react](https://developers.youversion.com/sdks/react)
 
-**API Reference:** [developers.youversion.com/sdks/react](https://developers.youversion.com/sdks/react)
+## License
+
+This SDK is licensed under [Apache 2.0](./LICENSE). 
+
+Licensing information for the Bible versions is available 
+at the [YouVersion Platform](https://platform.youversion.com/) site.

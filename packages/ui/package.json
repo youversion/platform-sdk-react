@@ -107,9 +107,9 @@
     "sdk",
     "youversion"
   ],
-  "homepage": "https://github.com/youversion/sdk-monorepo#readme",
+  "homepage": "https://github.com/youversion/platform-sdk-react#readme",
   "bugs": {
-    "url": "https://github.com/youversion/sdk-monorepo/issues"
+    "url": "https://github.com/youversion/platform-sdk-react/issues"
   },
   "msw": {
     "workerDirectory": [
