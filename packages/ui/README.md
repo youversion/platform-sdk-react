@@ -9,11 +9,11 @@ Pre-built React components for Bible applications with styling included.
 Use `@youversion/platform-react-ui` when you need:
 - ✅ Production-ready Bible components for your React app
 - ✅ Pre-styled components with light/dark mode
-- ✅ Minimal setup. Wrap your app with providers and use the components
+- ✅ Minimal setup: wrap your app with providers and use the components
 - ✅ Consistent, accessible UI out of the box
 Get your App Key at [platform.youversion.com](https://platform.youversion.com/)
 
-**Use other packages instead if:**
+**Use other packages instead if you:**
 - ❌ Need low-level API access → Use [@youversion/platform-core](../core/README.md)
 - ❌ Want custom UI → Use [@youversion/platform-react-hooks](../hooks/README.md)
 
@@ -30,15 +30,13 @@ Get your App Key at [platform.youversion.com](https://platform.youversion.com/)
 Import styles and wrap your app:
 
 ```tsx
-import { BibleSDKProvider, YVPProvider, VerseOfTheDay } from '@youversion/platform-react-ui';
+import { BibleSDKProvider, BibleTextView } from '@youversion/platform-react-ui';
 import '@youversion/platform-react-ui/styles.css';
 
 function App() {
   return (
-    <BibleSDKProvider appKey="YOUR_APP_KEY">
-      <YVPProvider config={{ appKey: "YOUR_APP_KEY" }}>
-        <VerseOfTheDay versionId={111} />
-      </YVPProvider>
+    <BibleSDKProvider appKey={"YOUR_APP_KEY"}>
+      <BibleTextView reference="JHN.1.1-4" versionId={111} />
     </BibleSDKProvider>
   );
 }
@@ -50,7 +48,7 @@ Toggle theme via the `YVPProvider`:
 
 ```tsx
 import { useState } from 'react';
-import { BibleSDKProvider, YVPProvider } from '@youversion/platform-react-ui';
+import { BibleSDKProvider, YVPProvider, BibleTextView } from '@youversion/platform-react-ui';
 
 export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -61,6 +59,7 @@ export default function App() {
         <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
           Toggle theme
         </button>
+        <BibleTextView reference="JHN.1.1-4" versionId={111} />
       </YVPProvider>
     </BibleSDKProvider>
   );
@@ -77,6 +76,12 @@ Customize via CSS variables:
 }
 ```
 
----
+## Documentation and API Reference
+* [developers.youversion.com/sdks/react](https://developers.youversion.com/sdks/react)
 
-**API Reference:** [developers.youversion.com/sdks/react](https://developers.youversion.com/sdks/react)
+## License
+
+This SDK is licensed under [Apache 2.0](./LICENSE). 
+
+Licensing information for the Bible versions is available 
+at the [YouVersion Platform](https://platform.youversion.com/) site.
