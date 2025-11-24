@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 0.5.7
+
+### Patch Changes
+
+- 8b2be56: Improve sample code and readmes
+
 ## 0.5.6
 
 ### Patch Changes
