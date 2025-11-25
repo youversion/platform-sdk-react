@@ -1,5 +1,16 @@
 # @youversion/platform-react-hooks
 
+## 0.6.0
+
+### Minor Changes
+
+- 8518018: fix(ui)!: remove the need to export our css file
+
+### Patch Changes
+
+- Updated dependencies [8518018]
+  - @youversion/platform-core@0.6.0
+
 ## 0.5.8
 
 ### Patch Changes
