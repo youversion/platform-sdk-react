@@ -106,9 +106,6 @@ importers:
 
   packages/core:
     dependencies:
-      tsup:
-        specifier: 8.5.0
-        version: 8.5.0(@microsoft/api-extractor@7.53.1(@types/node@24.9.1))(@swc/core@1.13.5(@swc/helpers@0.5.17))(jiti@2.6.1)(postcss@8.5.6)(typescript@5.9.3)(yaml@2.8.1)
       zod:
         specifier: 4.1.12
         version: 4.1.12
@@ -134,6 +131,9 @@ importers:
       msw:
         specifier: 2.11.6
         version: 2.11.6(@types/node@24.9.1)(typescript@5.9.3)
+      tsup:
+        specifier: 8.5.0
+        version: 8.5.0(@microsoft/api-extractor@7.53.1(@types/node@24.9.1))(@swc/core@1.13.5(@swc/helpers@0.5.17))(jiti@2.6.1)(postcss@8.5.6)(typescript@5.9.3)(yaml@2.8.1)
       typescript:
         specifier: 5.9.3
         version: 5.9.3
