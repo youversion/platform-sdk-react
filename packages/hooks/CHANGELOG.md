@@ -1,5 +1,14 @@
 # @youversion/platform-react-hooks
 
+## 0.5.8
+
+### Patch Changes
+
+- ae9c599: chore(build): move tsup to devDependency
+- Updated dependencies [ae9c599]
+- Updated dependencies [ae9c599]
+  - @youversion/platform-core@0.5.8
+
 ## 0.5.7
 
 ### Patch Changes
