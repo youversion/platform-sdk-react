@@ -1,6 +1,6 @@
 {
   "name": "@youversion/platform-core",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "type": "module",
   "publishConfig": {
     "access": "public",
@@ -37,11 +37,11 @@
     "eslint": "9.38.0",
     "jsdom": "24.0.0",
     "msw": "2.11.6",
+    "tsup": "8.5.0",
     "typescript": "5.9.3",
     "vitest": "4.0.4"
   },
   "dependencies": {
-    "tsup": "8.5.0",
     "zod": "4.1.12"
   }
 }

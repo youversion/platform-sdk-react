@@ -1,5 +1,12 @@
 # @youversion/platform-core
 
+## 0.5.8
+
+### Patch Changes
+
+- ae9c599: chore(build): move tsup to devDependency
+- ae9c599: chore(build): move tsup to devDependency
+
 ## 0.5.7
 
 ### Patch Changes
