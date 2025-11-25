@@ -1,5 +1,5 @@
 import { defineConfig } from 'tsup';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 
 export default defineConfig({
@@ -20,9 +20,14 @@ export default defineConfig({
   dts: false, // types come from `tsc` + API Extractor
   // Embed built Tailwind CSS as a global constant for runtime injection
   // Users don't need to manually import the CSS file
-  define: {
-    __YV_STYLES__: JSON.stringify(readFileSync(resolve(__dirname, 'dist/tailwind.css'), 'utf-8')),
-  },
+  define: (() => {
+    const cssPath = resolve(__dirname, 'dist/tailwind.css');
+    if (!existsSync(cssPath)) {
+      console.warn(`Warning: ${cssPath} not found. Styles will be empty.`);
+      return { __YV_STYLES__: '""' };
+    }
+    return { __YV_STYLES__: JSON.stringify(readFileSync(cssPath, 'utf-8')) };
+  })(),
   onSuccess: () => {
     console.log('React SDK build completed');
   },
