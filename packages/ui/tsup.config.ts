@@ -4,7 +4,7 @@ export default defineConfig({
   entry: ['src/index.ts'],
   sourcemap: false,
   splitting: false,
-  injectStyle: false,
+  injectStyle: true,
   clean: process.env.NODE_ENV === 'production',
   format: ['esm', 'cjs'],
   target: 'es2020',

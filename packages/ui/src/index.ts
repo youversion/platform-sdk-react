@@ -1,5 +1,8 @@
 // React SDK main entry point
 
+// Import processed styles for injection
+import '../dist/tailwind.css';
+
 export * from './components';
 export * from './hooks';
 export * from './providers';
