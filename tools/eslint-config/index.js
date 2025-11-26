@@ -42,26 +42,6 @@ export default tseslint.config(
     },
   },
 
-  // Disable strict TypeScript rules for test files and Storybook files
-  {
-    name: 'internal/test-rules',
-    files: [
-      '**/__tests__/**/*.{ts,tsx}',
-      '**/*.test.{ts,tsx}',
-      '**/*.stories.{ts,tsx}',
-      '**/.storybook/**/*.{ts,tsx}',
-    ],
-    rules: {
-      '@typescript-eslint/no-unsafe-assignment': 'off',
-      '@typescript-eslint/no-unsafe-call': 'off',
-      '@typescript-eslint/no-unsafe-member-access': 'off',
-      '@typescript-eslint/no-unsafe-argument': 'off',
-      '@typescript-eslint/no-unsafe-return': 'off',
-      '@typescript-eslint/consistent-type-imports': 'off',
-      'no-useless-escape': 'off',
-    },
-  },
-
   // React + Hooks rules
   {
     name: 'internal/react',

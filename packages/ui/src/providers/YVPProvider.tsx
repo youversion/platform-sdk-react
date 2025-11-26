@@ -46,6 +46,7 @@ export function YVPProvider({
     isAuthenticated: false,
     isLoading: false,
     accessToken: null,
+    idToken: null,
     result: null,
     error: null,
   });
@@ -61,25 +62,44 @@ export function YVPProvider({
       const existingToken = YouVersionPlatformConfiguration.accessToken;
       if (existingToken) {
         try {
-          // Fetch user info with existing token
-          const userInfo = YouVersionAPIUsers.userInfo(existingToken);
-          // Convert YouVersionUserInfo to SignInWithYouVersionResult format
-          const result = new SignInWithYouVersionResult({
-            accessToken: existingToken,
-            yvpUserId: userInfo.userId,
-            name:
-              userInfo.firstName && userInfo.lastName
-                ? `${userInfo.firstName} ${userInfo.lastName}`
-                : userInfo.firstName || userInfo.lastName,
-            profilePicture: userInfo.avatarUrl?.toString(),
-          });
-          setAuthState({
-            isAuthenticated: true,
-            isLoading: false,
-            accessToken: existingToken,
-            result: result,
-            error: null,
-          });
+          // Try to refresh token if needed before using it
+          const refreshSuccess = await YouVersionAPIUsers.refreshTokenIfNeeded();
+
+          if (!refreshSuccess) {
+            // Refresh failed, tokens should be cleared already
+            setAuthState({
+              isAuthenticated: false,
+              isLoading: false,
+              accessToken: null,
+              idToken: null,
+              result: null,
+              error: null,
+            });
+            return;
+          }
+
+          // Get the (possibly refreshed) tokens
+          const currentToken = YouVersionPlatformConfiguration.accessToken;
+          const storedIdToken = YouVersionPlatformConfiguration.idToken;
+          if (currentToken && storedIdToken) {
+            // Fetch user info with id token
+            const userInfo = YouVersionAPIUsers.userInfo(storedIdToken);
+            // Convert YouVersionUserInfo to SignInWithYouVersionResult format
+            const result = new SignInWithYouVersionResult({
+              accessToken: currentToken,
+              yvpUserId: userInfo.userId,
+              name: userInfo.name,
+              profilePicture: userInfo.avatarUrl?.toString(),
+            });
+            setAuthState({
+              isAuthenticated: true,
+              isLoading: false,
+              accessToken: currentToken,
+              idToken: storedIdToken,
+              result: result,
+              error: null,
+            });
+          }
         } catch (error) {
           // Token might be expired or invalid, clear it
           YouVersionPlatformConfiguration.clearAuthTokens();
@@ -87,6 +107,7 @@ export function YVPProvider({
             isAuthenticated: false,
             isLoading: false,
             accessToken: null,
+            idToken: null,
             result: null,
             error: error as Error,
           });
@@ -101,11 +122,13 @@ export function YVPProvider({
         if (authResult) {
           // Callback was processed, use the returned authentication result
           const accessToken = YouVersionPlatformConfiguration.accessToken;
+          const idToken = YouVersionPlatformConfiguration.idToken;
 
           setAuthState({
             isAuthenticated: !!accessToken,
             isLoading: false,
             accessToken: accessToken ?? null,
+            idToken: idToken,
             result: authResult,
             error: null,
           });
@@ -115,6 +138,7 @@ export function YVPProvider({
             isAuthenticated: false,
             isLoading: false,
             accessToken: null,
+            idToken: null,
             result: null,
             error: null,
           });
@@ -124,6 +148,7 @@ export function YVPProvider({
           isAuthenticated: false,
           isLoading: false,
           accessToken: null,
+          idToken: null,
           result: null,
           error: error as Error,
         });
@@ -139,18 +164,19 @@ export function YVPProvider({
       isAuthenticated: false,
       isLoading: false,
       accessToken: null,
+      idToken: null,
       result: null,
       error: null,
     });
   }, []);
 
   const fetchUserInfo = useCallback((): YouVersionUserInfo => {
-    if (!authState.isAuthenticated || !authState.accessToken) {
+    if (!authState.isAuthenticated || !authState.idToken) {
       throw new Error('User is not authenticated');
     }
 
-    return YouVersionAPIUsers.userInfo(authState.accessToken);
-  }, [authState.isAuthenticated, authState.accessToken]);
+    return YouVersionAPIUsers.userInfo(authState.idToken);
+  }, [authState.isAuthenticated, authState.idToken]);
 
   const value: YVPContextValue = {
     config,
