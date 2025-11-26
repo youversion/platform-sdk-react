@@ -48,7 +48,6 @@ function AuthenticatedUserInfo({
 
 export default function UserInfoCard(): JSX.Element {
   const { auth } = useAuthentication();
-  console.log({ auth });
 
   if (!auth.result) {
     return <UnauthenticatedView />;

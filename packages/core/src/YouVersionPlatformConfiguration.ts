@@ -23,6 +23,7 @@ export class YouVersionPlatformConfiguration {
   public static saveAuthData(
     accessToken: string | null,
     refreshToken: string | null,
+    idToken: string | null,
     expiryDate: Date | null,
   ): void {
     if (accessToken !== null) {
@@ -37,6 +38,12 @@ export class YouVersionPlatformConfiguration {
       localStorage.removeItem('refreshToken');
     }
 
+    if (idToken !== null) {
+      localStorage.setItem('idToken', idToken);
+    } else {
+      localStorage.removeItem('idToken');
+    }
+
     if (expiryDate !== null) {
       localStorage.setItem('expiryDate', expiryDate.toISOString());
     } else {
@@ -45,7 +52,7 @@ export class YouVersionPlatformConfiguration {
   }
 
   public static clearAuthTokens(): void {
-    this.saveAuthData(null, null, null);
+    this.saveAuthData(null, null, null, null);
   }
 
   public static get accessToken(): string | null {
@@ -54,6 +61,10 @@ export class YouVersionPlatformConfiguration {
 
   public static get refreshToken(): string | null {
     return localStorage.getItem('refreshToken');
+  }
+
+  public static get idToken(): string | null {
+    return localStorage.getItem('idToken');
   }
 
   public static get tokenExpiryDate(): Date | null {

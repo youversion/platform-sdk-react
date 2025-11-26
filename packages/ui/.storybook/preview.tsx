@@ -21,7 +21,7 @@ const preview: Preview = {
         <YVPProvider
           config={{
             appKey: import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || '',
-            redirectUri: import.meta.env.STORYBOOK_AUTH_REDIRECT_URL,
+            redirectUri: import.meta.env.STORYBOOK_AUTH_REDIRECT_URL || '',
           }}
         >
           <Story />

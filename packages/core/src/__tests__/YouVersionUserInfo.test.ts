@@ -6,30 +6,30 @@ describe('YouVersionUserInfo', () => {
   describe('constructor', () => {
     it('should create instance with valid data', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'John',
-        last_name: 'Doe',
+        name: 'John Doe',
         id: 'user123',
         avatar_url: 'https://example.com/avatar/{width}x{height}.jpg',
+        email: 'john.doe@example.com',
       };
 
       const userInfo = new YouVersionUserInfo(userData);
 
-      expect(userInfo.firstName).toBe('John');
-      expect(userInfo.lastName).toBe('Doe');
+      expect(userInfo.name).toBe('John Doe');
       expect(userInfo.userId).toBe('user123');
+      expect(userInfo.email).toBe('john.doe@example.com');
       expect(userInfo.avatarUrlFormat).toBe('https://example.com/avatar/{width}x{height}.jpg');
     });
 
     it('should create instance with partial data', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'Jane',
+        name: 'Jane',
         id: 'user456',
       };
 
       const userInfo = new YouVersionUserInfo(userData);
 
-      expect(userInfo.firstName).toBe('Jane');
-      expect(userInfo.lastName).toBeUndefined();
+      expect(userInfo.name).toBe('Jane');
+      expect(userInfo.email).toBeUndefined();
       expect(userInfo.userId).toBe('user456');
       expect(userInfo.avatarUrlFormat).toBeUndefined();
     });
@@ -39,35 +39,40 @@ describe('YouVersionUserInfo', () => {
 
       const userInfo = new YouVersionUserInfo(userData);
 
-      expect(userInfo.firstName).toBeUndefined();
-      expect(userInfo.lastName).toBeUndefined();
+      expect(userInfo.name).toBeUndefined();
+      expect(userInfo.email).toBeUndefined();
       expect(userInfo.userId).toBeUndefined();
       expect(userInfo.avatarUrlFormat).toBeUndefined();
     });
 
     it('should throw error for null data', () => {
       expect(() => {
-        new YouVersionUserInfo(null as any);
+        // @ts-expect-error - Testing invalid input type
+        new YouVersionUserInfo(null);
       }).toThrow('Invalid user data provided');
     });
 
     it('should throw error for undefined data', () => {
       expect(() => {
-        new YouVersionUserInfo(undefined as any);
+        // @ts-expect-error - Testing invalid input type
+        new YouVersionUserInfo(undefined);
       }).toThrow('Invalid user data provided');
     });
 
     it('should throw error for non-object data', () => {
       expect(() => {
-        new YouVersionUserInfo('invalid data' as any);
+        // @ts-expect-error - Testing invalid input type
+        new YouVersionUserInfo('invalid data');
       }).toThrow('Invalid user data provided');
 
       expect(() => {
-        new YouVersionUserInfo(123 as any);
+        // @ts-expect-error - Testing invalid input type
+        new YouVersionUserInfo(123);
       }).toThrow('Invalid user data provided');
 
       expect(() => {
-        new YouVersionUserInfo(true as any);
+        // @ts-expect-error - Testing invalid input type
+        new YouVersionUserInfo(true);
       }).toThrow('Invalid user data provided');
     });
   });
@@ -284,16 +289,14 @@ describe('YouVersionUserInfo', () => {
     it('should handle typical YouVersion API response format', () => {
       const userData: YouVersionUserInfoJSON = {
         id: '12345',
-        first_name: 'Sarah',
-        last_name: 'Johnson',
+        name: 'Sarah Johnson',
         avatar_url: '//images.youversion.com/users/12345/{width}x{height}/avatar.jpg',
       };
 
       const userInfo = new YouVersionUserInfo(userData);
 
       expect(userInfo.userId).toBe('12345');
-      expect(userInfo.firstName).toBe('Sarah');
-      expect(userInfo.lastName).toBe('Johnson');
+      expect(userInfo.name).toBe('Sarah Johnson');
 
       const avatarUrl = userInfo.getAvatarUrl(150, 150);
       expect(avatarUrl?.toString()).toBe(
@@ -301,17 +304,17 @@ describe('YouVersionUserInfo', () => {
       );
     });
 
-    it('should handle user with no last name', () => {
+    it('should handle user with single name', () => {
       const userData: YouVersionUserInfoJSON = {
         id: 'user789',
-        first_name: 'Madonna',
+        name: 'Madonna',
         avatar_url: 'https://cdn.example.com/{width}/{height}/user.png',
       };
 
       const userInfo = new YouVersionUserInfo(userData);
 
-      expect(userInfo.firstName).toBe('Madonna');
-      expect(userInfo.lastName).toBeUndefined();
+      expect(userInfo.name).toBe('Madonna');
+      expect(userInfo.userId).toBe('user789');
       expect(userInfo.avatarUrl?.toString()).toBe('https://cdn.example.com/200/200/user.png');
     });
 

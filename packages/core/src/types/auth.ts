@@ -10,6 +10,7 @@ export interface AuthenticationState {
   isAuthenticated: boolean;
   isLoading: boolean;
   accessToken: string | null;
+  idToken: string | null;
   result: SignInWithYouVersionResult | null;
   error: Error | null;
 }

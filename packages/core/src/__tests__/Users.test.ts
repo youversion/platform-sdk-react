@@ -72,16 +72,15 @@ describe('YouVersionAPIUsers', () => {
     });
 
     it('should create authorization request and redirect on successful signIn', async () => {
-      // Mock crypto functions for PKCE
-      const mockCrypto = vi.mocked(crypto);
-      mockCrypto.getRandomValues.mockImplementation((array: Uint8Array) => {
+      vi.spyOn(crypto, 'getRandomValues').mockImplementation((array: Uint8Array) => {
         for (let i = 0; i < array.length; i++) {
           array[i] = i;
         }
         return array;
       });
-      mockCrypto.subtle.digest.mockResolvedValue(new Uint8Array(32).buffer);
-      vi.mocked(btoa).mockReturnValue('mockBase64Value');
+
+      vi.spyOn(crypto.subtle, 'digest').mockResolvedValue(new Uint8Array(32).buffer);
+      global.btoa = vi.fn().mockReturnValue('mockBase64Value');
 
       const permissions = new Set<SignInWithYouVersionPermissionValues>([
         SignInWithYouVersionPermission.bibles,
@@ -107,6 +106,8 @@ describe('YouVersionAPIUsers', () => {
 
       // Verify redirect occurred
       expect(mockLocation.href).toContain('https://api.youversion.com/auth/authorize');
+
+      vi.restoreAllMocks();
     });
   });
 
@@ -287,7 +288,8 @@ describe('YouVersionAPIUsers', () => {
       const state = 'test-state';
 
       // Access private method
-      (YouVersionAPIUsers as any).obtainLocation(callbackURL, state);
+      // @ts-expect-error - accessing private method for testing
+      YouVersionAPIUsers.obtainLocation(callbackURL, state);
 
       expect(mockLocation.href).toBe(
         'https://api-test.youversion.com/auth/callback?state=test-state&user=123',
@@ -299,7 +301,8 @@ describe('YouVersionAPIUsers', () => {
       const state = 'valid-state';
 
       expect(() => {
-        (YouVersionAPIUsers as any).obtainLocation(callbackURL, state);
+        // @ts-expect-error - accessing private method for testing
+        YouVersionAPIUsers.obtainLocation(callbackURL, state);
       }).toThrow('Invalid state parameter');
     });
   });
@@ -328,7 +331,8 @@ describe('YouVersionAPIUsers', () => {
         }),
       );
 
-      const result = (YouVersionAPIUsers as any).extractSignInResult(tokens);
+      // @ts-expect-error - accessing private method for testing
+      const result = YouVersionAPIUsers.extractSignInResult(tokens);
 
       expect(result.accessToken).toBe('access-token-123');
       expect(result.expiryDate).toStrictEqual(new Date(fixedDate.getTime() + 60 * 60 * 1000));
@@ -354,7 +358,8 @@ describe('YouVersionAPIUsers', () => {
       // Mock JWT decoding
       vi.mocked(atob).mockReturnValue(JSON.stringify({ sub: 'user123' }));
 
-      const result = (YouVersionAPIUsers as any).extractSignInResult(tokens);
+      // @ts-expect-error - accessing private method for testing
+      const result = YouVersionAPIUsers.extractSignInResult(tokens);
 
       expect(result.permissions).toEqual(['bibles', 'highlights']);
     });
@@ -368,13 +373,15 @@ describe('YouVersionAPIUsers', () => {
 
       vi.mocked(atob).mockReturnValue(JSON.stringify(payload));
 
-      const result = (YouVersionAPIUsers as any).decodeJWT(token);
+      // @ts-expect-error - accessing private method for testing
+      const result = YouVersionAPIUsers.decodeJWT(token);
 
       expect(result).toEqual(payload);
     });
 
     it('should return empty object for invalid token format', () => {
-      const result = (YouVersionAPIUsers as any).decodeJWT('invalid.token');
+      // @ts-expect-error - accessing private method for testing
+      const result = YouVersionAPIUsers.decodeJWT('invalid.token');
 
       expect(result).toEqual({});
     });
@@ -386,7 +393,8 @@ describe('YouVersionAPIUsers', () => {
 
       vi.mocked(atob).mockReturnValue(JSON.stringify(payload));
 
-      const result = (YouVersionAPIUsers as any).decodeJWT(token);
+      // @ts-expect-error - accessing private method for testing
+      const result = YouVersionAPIUsers.decodeJWT(token);
 
       expect(result).toEqual(payload);
     });
@@ -397,7 +405,8 @@ describe('YouVersionAPIUsers', () => {
         throw new Error('Invalid base64');
       });
 
-      const result = (YouVersionAPIUsers as any).decodeJWT(token);
+      // @ts-expect-error - accessing private method for testing
+      const result = YouVersionAPIUsers.decodeJWT(token);
 
       expect(result).toEqual({});
     });
@@ -406,7 +415,8 @@ describe('YouVersionAPIUsers', () => {
       const token = 'header.dmFsaWRiYXNlNjQ.signature';
       vi.mocked(atob).mockReturnValue('invalid json');
 
-      const result = (YouVersionAPIUsers as any).decodeJWT(token);
+      // @ts-expect-error - accessing private method for testing
+      const result = YouVersionAPIUsers.decodeJWT(token);
 
       expect(result).toEqual({});
     });
@@ -430,17 +440,18 @@ describe('YouVersionAPIUsers', () => {
         'Invalid access token: must be a non-empty string',
       );
 
-      expect(() => YouVersionAPIUsers.userInfo(null as any)).toThrow(
-        'Invalid access token: must be a non-empty string',
-      );
+      expect(() => {
+        // @ts-expect-error - Testing invalid input type
+        YouVersionAPIUsers.userInfo(null);
+      }).toThrow('Invalid access token: must be a non-empty string');
     });
 
     it('should decode user info from valid JWT token', () => {
       const claims = {
         sub: 'user123',
-        given_name: 'John',
-        family_name: 'Doe',
+        name: 'John Doe',
         profile_picture: 'https://example.com/avatar.jpg',
+        email: 'john@example.com',
       };
 
       vi.mocked(atob).mockReturnValue(JSON.stringify(claims));
@@ -449,8 +460,8 @@ describe('YouVersionAPIUsers', () => {
 
       expect(result).toBeInstanceOf(YouVersionUserInfo);
       expect(result.userId).toBe('user123');
-      expect(result.firstName).toBe('John');
-      expect(result.lastName).toBe('Doe');
+      expect(result.name).toBe('John Doe');
+      expect(result.email).toBe('john@example.com');
       expect(result.avatarUrl).toStrictEqual(new URL('https://example.com/avatar.jpg'));
     });
 
@@ -470,6 +481,295 @@ describe('YouVersionAPIUsers', () => {
       expect(() => YouVersionAPIUsers.userInfo('invalid.jwt.token')).toThrow(
         'Invalid JWT token: Unable to decode token payload',
       );
+    });
+  });
+
+  describe('refreshTokens', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should throw error when no refresh token available', async () => {
+      mockLocalStorage.getItem.mockImplementation((key) => {
+        if (key === 'refreshToken') return null;
+        if (key === 'idToken') return 'id-token-123';
+        return null;
+      });
+
+      await expect(YouVersionAPIUsers.refreshTokens()).rejects.toThrow(
+        'No refresh token or id token available',
+      );
+    });
+
+    it('should throw error when no id token available', async () => {
+      mockLocalStorage.getItem.mockImplementation((key) => {
+        if (key === 'refreshToken') return 'refresh-token-123';
+        if (key === 'idToken') return null;
+        return null;
+      });
+
+      await expect(YouVersionAPIUsers.refreshTokens()).rejects.toThrow(
+        'No refresh token or id token available',
+      );
+    });
+
+    it('should throw error when appKey is not set', async () => {
+      YouVersionPlatformConfiguration.appKey = null;
+
+      mockLocalStorage.getItem.mockImplementation((key) => {
+        if (key === 'refreshToken') return 'refresh-token-123';
+        if (key === 'idToken') return 'id-token-123';
+        return null;
+      });
+
+      await expect(YouVersionAPIUsers.refreshTokens()).rejects.toThrow(
+        'YouVersionPlatformConfiguration.appKey must be set before refreshing tokens',
+      );
+    });
+
+    it('should successfully refresh tokens and preserve existing id_token', async () => {
+      const originalAccessToken = 'old-access-token';
+      const originalRefreshToken = 'old-refresh-token';
+      const existingIdToken = 'existing-id-token';
+
+      const mockRefreshResponse = {
+        access_token: 'new-access-token',
+        expires_in: 3600,
+        refresh_token: 'new-refresh-token',
+        scope: 'bibles highlights openid',
+        token_type: 'Bearer',
+      };
+
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: vi.fn().mockResolvedValue(mockRefreshResponse),
+      };
+
+      mockLocalStorage.getItem.mockImplementation((key) => {
+        if (key === 'refreshToken') return originalRefreshToken;
+        if (key === 'idToken') return existingIdToken;
+        if (key === 'accessToken') return originalAccessToken;
+        return null;
+      });
+
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const saveAuthDataSpy = vi.spyOn(YouVersionPlatformConfiguration, 'saveAuthData');
+
+      const result = await YouVersionAPIUsers.refreshTokens();
+
+      expect(result).toBeTruthy();
+
+      // Assert that access_token and refresh_token are new (different from original)
+      expect(result?.accessToken).toBe('new-access-token');
+      expect(result?.accessToken).not.toBe(originalAccessToken);
+      expect(result?.refreshToken).toBe('new-refresh-token');
+      expect(result?.refreshToken).not.toBe(originalRefreshToken);
+
+      // Assert that id_token is preserved (same as original)
+      expect(result?.idToken).toBe(existingIdToken);
+
+      expect(result?.permissions).toEqual(['bibles', 'highlights']);
+
+      // Verify the refresh token request was made correctly
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'POST',
+          url: 'https://api.youversion.com/auth/token',
+        }),
+      );
+
+      const [calledRequest] = mockFetch.mock.calls[0] as [Request];
+      expect(calledRequest).toBeInstanceOf(Request);
+      expect(calledRequest.method).toBe('POST');
+      expect(calledRequest.url).toBe('https://api.youversion.com/auth/token');
+      expect(calledRequest.headers.get('content-type')).toBe('application/x-www-form-urlencoded');
+      const bodyText = await calledRequest.clone().text();
+      const body = new URLSearchParams(bodyText);
+      expect(body.get('grant_type')).toBe('refresh_token');
+
+      // Verify saveAuthData was called with new tokens but existing id_token
+      expect(saveAuthDataSpy).toHaveBeenCalledWith(
+        'new-access-token',
+        'new-refresh-token',
+        existingIdToken,
+        expect.any(Date),
+      );
+
+      saveAuthDataSpy.mockRestore();
+    });
+
+    it('should handle refresh token request failure', async () => {
+      const mockResponse = {
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+      };
+
+      mockLocalStorage.getItem.mockImplementation((key) => {
+        if (key === 'refreshToken') return 'refresh-token-123';
+        if (key === 'idToken') return 'id-token-123';
+        return null;
+      });
+
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await expect(YouVersionAPIUsers.refreshTokens()).rejects.toThrow(
+        'Token refresh failed: 401 Unauthorized',
+      );
+    });
+
+    it('should handle network errors during refresh', async () => {
+      mockLocalStorage.getItem.mockImplementation((key) => {
+        if (key === 'refreshToken') return 'refresh-token-123';
+        if (key === 'idToken') return 'id-token-123';
+        return null;
+      });
+
+      mockFetch.mockRejectedValue(new Error('Network error'));
+
+      await expect(YouVersionAPIUsers.refreshTokens()).rejects.toThrow(
+        'Token refresh failed: Network error',
+      );
+    });
+  });
+
+  describe('isTokenExpired', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should return true when no expiry date is available', () => {
+      mockLocalStorage.getItem.mockReturnValue(null);
+
+      const result = YouVersionAPIUsers.isTokenExpired();
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false when token is not expired', () => {
+      const futureDate = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+      mockLocalStorage.getItem.mockImplementation((key) => {
+        if (key === 'expiryDate') return futureDate.toISOString();
+        return null;
+      });
+
+      const result = YouVersionAPIUsers.isTokenExpired();
+
+      expect(result).toBe(false);
+    });
+
+    it('should return true when token is expired', () => {
+      const pastDate = new Date(Date.now() - 10 * 60 * 1000); // 10 minutes ago
+      mockLocalStorage.getItem.mockImplementation((key) => {
+        if (key === 'expiryDate') return pastDate.toISOString();
+        return null;
+      });
+
+      const result = YouVersionAPIUsers.isTokenExpired();
+
+      expect(result).toBe(true);
+    });
+
+    it('should return true when token expires within buffer time', () => {
+      const soonDate = new Date(Date.now() + 3 * 60 * 1000); // 3 minutes from now
+      mockLocalStorage.getItem.mockImplementation((key) => {
+        if (key === 'expiryDate') return soonDate.toISOString();
+        return null;
+      });
+
+      const result = YouVersionAPIUsers.isTokenExpired(5); // 5 minute buffer
+
+      expect(result).toBe(true);
+    });
+
+    it('should use custom buffer time', () => {
+      const soonDate = new Date(Date.now() + 8 * 60 * 1000); // 8 minutes from now
+      mockLocalStorage.getItem.mockImplementation((key) => {
+        if (key === 'expiryDate') return soonDate.toISOString();
+        return null;
+      });
+
+      const result = YouVersionAPIUsers.isTokenExpired(10); // 10 minute buffer
+
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('refreshTokenIfNeeded', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should return true when token is not expired', async () => {
+      const futureDate = new Date(Date.now() + 10 * 60 * 1000);
+      mockLocalStorage.getItem.mockImplementation((key) => {
+        if (key === 'expiryDate') return futureDate.toISOString();
+        return null;
+      });
+
+      const result = await YouVersionAPIUsers.refreshTokenIfNeeded();
+
+      expect(result).toBe(true);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should refresh tokens when expired and return true on success', async () => {
+      const pastDate = new Date(Date.now() - 10 * 60 * 1000);
+      mockLocalStorage.getItem.mockImplementation((key) => {
+        if (key === 'expiryDate') return pastDate.toISOString();
+        if (key === 'refreshToken') return 'refresh-token-123';
+        if (key === 'idToken') return 'id-token-123';
+        return null;
+      });
+
+      const mockRefreshResponse = {
+        access_token: 'new-access-token',
+        expires_in: 3600,
+        refresh_token: 'new-refresh-token',
+        scope: 'bibles highlights openid',
+        token_type: 'Bearer',
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: vi.fn().mockResolvedValue(mockRefreshResponse),
+      });
+
+      const result = await YouVersionAPIUsers.refreshTokenIfNeeded();
+
+      expect(result).toBe(true);
+      expect(mockFetch).toHaveBeenCalled();
+    });
+
+    it('should return false and clear tokens when refresh fails', async () => {
+      const pastDate = new Date(Date.now() - 10 * 60 * 1000);
+      mockLocalStorage.getItem.mockImplementation((key) => {
+        if (key === 'expiryDate') return pastDate.toISOString();
+        if (key === 'refreshToken') return 'refresh-token-123';
+        if (key === 'idToken') return 'id-token-123';
+        return null;
+      });
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+      });
+
+      const clearAuthTokensSpy = vi.spyOn(YouVersionPlatformConfiguration, 'clearAuthTokens');
+
+      const result = await YouVersionAPIUsers.refreshTokenIfNeeded();
+
+      expect(result).toBe(false);
+      expect(clearAuthTokensSpy).toHaveBeenCalled();
+
+      clearAuthTokensSpy.mockRestore();
     });
   });
 });

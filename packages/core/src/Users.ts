@@ -122,6 +122,7 @@ export class YouVersionAPIUsers {
       YouVersionPlatformConfiguration.saveAuthData(
         result.accessToken || null,
         result.refreshToken || null,
+        result.idToken || null,
         result.expiryDate || null,
       );
 
@@ -194,6 +195,7 @@ export class YouVersionAPIUsers {
       accessToken: tokens.access_token,
       expiresIn: tokens.expires_in,
       refreshToken: tokens.refresh_token,
+      idToken: tokens.id_token,
       permissions,
       yvpUserId: idClaims.sub as string,
       name: idClaims.name as string,
@@ -207,6 +209,7 @@ export class YouVersionAPIUsers {
   /**
    * Decodes JWT token payload
    */
+
   private static decodeJWT(token: string): Record<string, any> {
     const segments = token.split('.');
 
@@ -246,15 +249,15 @@ export class YouVersionAPIUsers {
    * @returns A Promise resolving to a YouVersionUserInfo object containing the user's profile information.
    * @throws An error if the access token is invalid or cannot be decoded.
    */
-  static userInfo(accessToken: string): YouVersionUserInfo {
+  static userInfo(idToken: string): YouVersionUserInfo {
     // Validate access token
-    if (!accessToken || typeof accessToken !== 'string') {
+    if (!idToken || typeof idToken !== 'string') {
       throw new Error('Invalid access token: must be a non-empty string');
     }
 
     try {
       // Decode JWT payload to extract user information
-      const claims = this.decodeJWT(accessToken);
+      const claims = this.decodeJWT(idToken);
 
       if (!claims || Object.keys(claims).length === 0) {
         throw new Error('Invalid JWT token: Unable to decode token payload');
@@ -263,9 +266,9 @@ export class YouVersionAPIUsers {
       // Map JWT claims to YouVersionUserInfo format
       const userInfoData = {
         id: claims.sub as string,
-        first_name: claims.given_name as string,
-        last_name: claims.family_name as string,
+        name: claims.name as string,
         avatar_url: claims.profile_picture as string,
+        email: claims.email as string,
       };
 
       return new YouVersionUserInfo(userInfoData);
@@ -275,6 +278,129 @@ export class YouVersionAPIUsers {
       } else {
         throw new Error('Failed to decode user information from JWT: Unknown error');
       }
+    }
+  }
+
+  /**
+   * Refreshes the access token using the stored refresh token.
+   *
+   * @returns Promise<SignInWithYouVersionResult | null> - New tokens if refresh succeeds, null otherwise
+   * @throws An error if refresh fails or no refresh token is available
+   */
+  static async refreshTokens(): Promise<SignInWithYouVersionResult | null> {
+    const refreshToken = YouVersionPlatformConfiguration.refreshToken;
+    const appKey = YouVersionPlatformConfiguration.appKey;
+    const existingIdToken = YouVersionPlatformConfiguration.idToken;
+
+    if (!refreshToken || !existingIdToken) {
+      throw new Error('No refresh token or id token available');
+    }
+
+    if (!appKey) {
+      throw new Error(
+        'YouVersionPlatformConfiguration.appKey must be set before refreshing tokens',
+      );
+    }
+
+    try {
+      const url = new URL(`https://${YouVersionPlatformConfiguration.apiHost}/auth/token`);
+
+      const parameters = new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        client_id: appKey,
+      });
+
+      const request = new Request(url, {
+        method: 'POST',
+        body: parameters,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
+
+      const response = await fetch(request);
+
+      if (!response.ok) {
+        throw new Error(`Token refresh failed: ${response.status} ${response.statusText}`);
+      }
+
+      const tokens = (await response.json()) as {
+        access_token: string;
+        expires_in: number;
+        refresh_token: string;
+        scope: string;
+        token_type: string;
+      };
+
+      // Create result with new tokens but preserve user info
+      const result = new SignInWithYouVersionResult({
+        accessToken: tokens.access_token,
+        expiresIn: tokens.expires_in,
+        refreshToken: tokens.refresh_token,
+        idToken: existingIdToken,
+        permissions: tokens.scope
+          .split(' ')
+          .map((p) => p.trim())
+          .filter((p) => p.length > 0)
+          .filter((p): p is SignInWithYouVersionPermissionValues =>
+            Object.values(SignInWithYouVersionPermission).includes(
+              p as SignInWithYouVersionPermissionValues,
+            ),
+          ),
+      });
+
+      // Store updated tokens
+      YouVersionPlatformConfiguration.saveAuthData(
+        result.accessToken || null,
+        result.refreshToken || null,
+        result.idToken || null,
+        result.expiryDate || null,
+      );
+
+      return result;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Token refresh failed: ${error.message}`);
+      } else {
+        throw new Error('Token refresh failed: Unknown error');
+      }
+    }
+  }
+
+  /**
+   * Checks if the current access token is expired or about to expire.
+   *
+   * @param bufferMinutes - Minutes before expiry to consider token expired (default: 5)
+   * @returns true if token is expired or about to expire
+   */
+  static isTokenExpired(bufferMinutes: number = 5): boolean {
+    const expiryDate = YouVersionPlatformConfiguration.tokenExpiryDate;
+    if (!expiryDate) {
+      return true; // No expiry date means no token or invalid token
+    }
+
+    const bufferTime = bufferMinutes * 60 * 1000; // Convert to milliseconds
+    return new Date().getTime() >= expiryDate.getTime() - bufferTime;
+  }
+
+  /**
+   * Refreshes the access token if it's expired or about to expire.
+   *
+   * @returns Promise<boolean> - true if refresh was successful or not needed, false if failed
+   */
+  static async refreshTokenIfNeeded(): Promise<boolean> {
+    if (!this.isTokenExpired()) {
+      return true; // Token is still valid
+    }
+
+    try {
+      const result = await this.refreshTokens();
+      return !!result;
+    } catch {
+      // Refresh failed, clear tokens
+      YouVersionPlatformConfiguration.clearAuthTokens();
+      return false;
     }
   }
 }

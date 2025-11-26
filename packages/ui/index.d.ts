@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly STORYBOOK_YOUVERSION_APP_KEY: string;
+  readonly STORYBOOK_AUTH_REDIRECT_URL: string;
   /** The YouVersion API host. @default api.youversion.com */
   readonly STORYBOOK_YOUVERSION_API_HOST: string;
 }
