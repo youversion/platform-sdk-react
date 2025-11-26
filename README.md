@@ -37,7 +37,6 @@ pnpm add @youversion/platform-core
 To display a verse, or a range of verses:
 ```tsx
 import { BibleSDKProvider, BibleTextView } from '@youversion/platform-react-ui';
-import '@youversion/platform-react-ui/styles.css';
 
 function App() {
   return (
@@ -51,7 +50,6 @@ function App() {
 To display the YouVersion Verse of the Day:
 ```tsx
 import { BibleSDKProvider, VerseOfTheDay } from '@youversion/platform-react-ui';
-import '@youversion/platform-react-ui/styles.css';
 
 function App() {
   return (
