@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuthentication } from '@youversion/platform-react-ui';
+import { useYVAuth } from '@youversion/platform-react-ui';
 import type { JSX } from 'react';
 import UnauthenticatedView from './UnauthenticatedView';
 
@@ -9,13 +9,11 @@ function AuthenticatedUserInfo({
   yvpUserId,
   email,
   profilePicture,
-  permissions,
 }: {
   name?: string;
   yvpUserId: string;
   email?: string;
   profilePicture?: string;
-  permissions?: string[];
 }): JSX.Element {
   return (
     <div className="bg-green-50 p-4 rounded-lg max-w-md text-black">
@@ -39,27 +37,23 @@ function AuthenticatedUserInfo({
           />
         </p>
       )}
-      <p className="text-sm">
-        <strong>Permissions:</strong> {permissions?.length ? permissions.join(', ') : 'None'}
-      </p>
     </div>
   );
 }
 
 export default function UserInfoCard(): JSX.Element {
-  const { auth } = useAuthentication();
+  const { auth, userInfo } = useYVAuth();
 
-  if (!auth.result) {
+  if (!auth.isAuthenticated || !userInfo) {
     return <UnauthenticatedView />;
   }
 
   return (
     <AuthenticatedUserInfo
-      name={auth.result.name}
-      yvpUserId={auth.result.yvpUserId || ''}
-      email={auth.result.email}
-      profilePicture={auth.result.profilePicture}
-      permissions={auth.result.permissions}
+      name={userInfo.name}
+      yvpUserId={userInfo.userId || ''}
+      email={userInfo.email}
+      profilePicture={userInfo.avatarUrl?.toString()}
     />
   );
 }

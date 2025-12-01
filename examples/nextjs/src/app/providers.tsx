@@ -1,7 +1,7 @@
 'use client';
 
 import { type JSX } from 'react';
-import { BibleSDKProvider, YVPProvider } from '@youversion/platform-react-ui';
+import { BibleSDKProvider, YVAuthProvider } from '@youversion/platform-react-ui';
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -14,15 +14,16 @@ export function Providers({ children, redirectUri }: ProvidersProps): JSX.Elemen
   const apiHost = process.env.NEXT_PUBLIC_YVP_API_HOST ?? 'api-test.youversion.com';
 
   return (
-    <YVPProvider
+    <YVAuthProvider
       config={{
         appKey,
         redirectUri: redirectUri,
+        apiHost: apiHost,
       }}
     >
       <BibleSDKProvider apiHost={apiHost} appKey={appKey}>
         {children}
       </BibleSDKProvider>
-    </YVPProvider>
+    </YVAuthProvider>
   );
 }

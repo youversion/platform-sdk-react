@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, waitFor, userEvent, within, spyOn } from 'storybook/test';
+import { expect, fn, userEvent, within, spyOn } from 'storybook/test';
 
 import { SignInButton } from './SignInButton';
 
@@ -34,16 +34,10 @@ const meta = {
   },
   args: {
     redirectUrl: import.meta.env.STORYBOOK_AUTH_REDIRECT_URL,
-    onSuccess: fn(),
     onAuthError: fn(),
   },
   argTypes: {
     onAuthError: {
-      table: {
-        disable: true,
-      },
-    },
-    onSuccess: {
       table: {
         disable: true,
       },
@@ -247,25 +241,15 @@ export const DarkRectangleIconOutline: Story = {
 
 export const InteractionTestWithMockedAuth: Story = {
   args: {
-    onSuccess: fn(),
     onAuthError: fn(),
   },
   tags: ['integration'],
-  play: async ({ canvasElement, args }) => {
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
     const loginButton = canvas.getByRole('button', { name: /sign in with youversion/i });
     await userEvent.click(loginButton);
 
     void expect(signInMock).toHaveBeenCalled();
-
-    await waitFor(() => {
-      void expect(args.onSuccess).toHaveBeenCalledWith(
-        expect.objectContaining({
-          accessToken: 'mock-token',
-          yvpUserId: 'mock-user-id',
-        }),
-      );
-    });
   },
 };

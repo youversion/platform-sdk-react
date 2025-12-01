@@ -673,30 +673,6 @@ describe('YouVersionAPIUsers', () => {
 
       expect(result).toBe(true);
     });
-
-    it('should return true when token expires within buffer time', () => {
-      const soonDate = new Date(Date.now() + 3 * 60 * 1000); // 3 minutes from now
-      mockLocalStorage.getItem.mockImplementation((key) => {
-        if (key === 'expiryDate') return soonDate.toISOString();
-        return null;
-      });
-
-      const result = YouVersionAPIUsers.isTokenExpired(5); // 5 minute buffer
-
-      expect(result).toBe(true);
-    });
-
-    it('should use custom buffer time', () => {
-      const soonDate = new Date(Date.now() + 8 * 60 * 1000); // 8 minutes from now
-      mockLocalStorage.getItem.mockImplementation((key) => {
-        if (key === 'expiryDate') return soonDate.toISOString();
-        return null;
-      });
-
-      const result = YouVersionAPIUsers.isTokenExpired(10); // 10 minute buffer
-
-      expect(result).toBe(true);
-    });
   });
 
   describe('refreshTokenIfNeeded', () => {

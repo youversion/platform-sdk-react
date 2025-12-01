@@ -4,10 +4,10 @@ import { type JSX, useState } from 'react';
 import {
   SignInButton,
   SignInWithYouVersionPermission,
-  useAuthentication,
   VerseOfTheDay,
   BibleTextView,
   BibleChapterPicker,
+  useYVAuth,
 } from '@youversion/platform-react-ui';
 
 function VotdTester() {
@@ -83,12 +83,8 @@ export default function UnauthenticatedView(): JSX.Element {
   const [versionId, _setVersionId] = useState(206);
   const [book, setBook] = useState('GEN');
   const [chapter, setChapter] = useState('1');
-  const { auth } = useAuthentication();
+  const { auth } = useYVAuth();
   const redirectUrl = process.env.NEXT_PUBLIC_REDIRECT_URI || 'http://localhost:6006';
-
-  const handleSuccess = () => {
-    // Authentication success is handled by the hook
-  };
 
   const handleError = (error: Error) => {
     console.error('Authentication error:', error);
@@ -110,14 +106,12 @@ export default function UnauthenticatedView(): JSX.Element {
           <SignInButton
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
             variant="outline"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
@@ -125,7 +119,6 @@ export default function UnauthenticatedView(): JSX.Element {
             variant="default"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
@@ -133,7 +126,6 @@ export default function UnauthenticatedView(): JSX.Element {
             variant="outline"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
@@ -141,7 +133,6 @@ export default function UnauthenticatedView(): JSX.Element {
             variant="default"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
@@ -149,7 +140,6 @@ export default function UnauthenticatedView(): JSX.Element {
             variant="outline"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
         </section>
@@ -158,7 +148,6 @@ export default function UnauthenticatedView(): JSX.Element {
             background="dark"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
@@ -166,7 +155,6 @@ export default function UnauthenticatedView(): JSX.Element {
             variant="outline"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
@@ -175,7 +163,6 @@ export default function UnauthenticatedView(): JSX.Element {
             variant="default"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
@@ -184,7 +171,6 @@ export default function UnauthenticatedView(): JSX.Element {
             variant="outline"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
@@ -193,7 +179,6 @@ export default function UnauthenticatedView(): JSX.Element {
             variant="default"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
@@ -202,7 +187,6 @@ export default function UnauthenticatedView(): JSX.Element {
             variant="outline"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
         </section>
@@ -211,7 +195,6 @@ export default function UnauthenticatedView(): JSX.Element {
             radius="rectangular"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
@@ -219,7 +202,6 @@ export default function UnauthenticatedView(): JSX.Element {
             variant="outline"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
@@ -228,7 +210,6 @@ export default function UnauthenticatedView(): JSX.Element {
             variant="default"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
@@ -237,7 +218,6 @@ export default function UnauthenticatedView(): JSX.Element {
             variant="outline"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
@@ -246,7 +226,6 @@ export default function UnauthenticatedView(): JSX.Element {
             variant="default"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
@@ -255,7 +234,6 @@ export default function UnauthenticatedView(): JSX.Element {
             variant="outline"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
         </section>
@@ -265,7 +243,6 @@ export default function UnauthenticatedView(): JSX.Element {
             background="dark"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
@@ -274,7 +251,6 @@ export default function UnauthenticatedView(): JSX.Element {
             variant="outline"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
@@ -284,7 +260,6 @@ export default function UnauthenticatedView(): JSX.Element {
             variant="default"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
@@ -294,7 +269,6 @@ export default function UnauthenticatedView(): JSX.Element {
             variant="outline"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
@@ -304,7 +278,6 @@ export default function UnauthenticatedView(): JSX.Element {
             variant="default"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
           <SignInButton
@@ -314,7 +287,6 @@ export default function UnauthenticatedView(): JSX.Element {
             variant="outline"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
-            onSuccess={handleSuccess}
             onAuthError={handleError}
           />
         </section>

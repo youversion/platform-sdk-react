@@ -18,3 +18,9 @@ export * from './usePassage';
 export * from './useVOTD';
 export * from './useHighlights';
 export * from './useLanguages';
+
+// Auth hooks
+export * from './useYVAuth';
+export * from './context/YVAuthContext';
+export * from './context/YVAuthProvider';
+export * from './types/auth';

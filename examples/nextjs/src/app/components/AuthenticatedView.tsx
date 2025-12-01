@@ -1,11 +1,11 @@
 'use client';
 
 import { type JSX } from 'react';
-import { useAuthentication } from '@youversion/platform-react-ui';
+import { useYVAuth } from '@youversion/platform-react-ui';
 import UserInfoCard from './UserInfoCard';
 
 export default function AuthenticatedView(): JSX.Element {
-  const { signOut } = useAuthentication();
+  const { signOut } = useYVAuth();
 
   const handleSignOut = () => {
     signOut();

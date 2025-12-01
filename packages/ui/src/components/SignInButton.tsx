@@ -1,10 +1,7 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
-import {
-  type SignInWithYouVersionPermissionValues,
-  type SignInWithYouVersionResult,
-} from '@youversion/platform-core';
-import { useAuthentication } from '../hooks/useAuthentication';
+import { type SignInWithYouVersionPermissionValues } from '@youversion/platform-core';
+import { useYVAuth } from '@youversion/platform-react-hooks';
 import { Button } from '../components/ui/button';
 import { YouVersionLogo } from './youversion-logo';
 import { cn } from '../lib/utils';
@@ -15,11 +12,6 @@ interface SignInAuthProps {
    * @param error - The error thrown by the sign-in flow.
    */
   onAuthError?: (error: Error) => void;
-  /**
-   * Called when the sign-in flow succeeds.
-   * @param result - The result of the sign-in flow.
-   */
-  onSuccess?: (result: SignInWithYouVersionResult) => void;
   /**
    * Permissions that are requested but not required for sign-in to succeed.
    */
@@ -65,7 +57,6 @@ export interface SignInButtonProps
  *
  * Key behaviors:
  * - Prevents default click behavior and triggers the SDK `signIn` method.
- * - Calls `onSuccess` with the SignInWithYouVersionResult when sign-in succeeds.
  * - Calls `onAuthError` when the underlying sign-in flow throws.
  *
  * @param {SignInButtonProps} props - Component props (see {@link SignInButtonProps}).
@@ -73,10 +64,10 @@ export interface SignInButtonProps
  *
  * @example
  * import { SignInButton, SignInWithYouVersionPermission } from '@youversion/platform-react-ui';
- * import { useAuthentication } from '@youversion/platform-react-ui';
+ * import { useYVAuth } from '@youversion/platform-react-hooks';
  *
  * export default function UnauthenticatedView() {
- *   const auth = useAuthentication();
+ *   const { auth } = useYVAuth();
  *
  *   return (
  *     <div>
@@ -84,7 +75,6 @@ export interface SignInButtonProps
  *       <SignInButton
  *         requiredPermissions={[SignInWithYouVersionPermission.bibles]}
  *         optionalPermissions={[SignInWithYouVersionPermission.highlights]}
- *         onSuccess={(result) => console.log('signed in', result)}
  *         onAuthError={(err) => console.error(err)}
  *       />
  *     </div>
@@ -114,7 +104,6 @@ export const SignInButton = React.forwardRef<HTMLButtonElement, SignInButtonProp
       disabled,
       onAuthError,
       onClick,
-      onSuccess,
       permissions = [],
       radius = 'rounded',
       redirectUrl,
@@ -124,8 +113,7 @@ export const SignInButton = React.forwardRef<HTMLButtonElement, SignInButtonProp
     },
     ref,
   ): React.ReactElement => {
-    const { signIn, auth } = useAuthentication();
-    const [localLoading, setLocalLoading] = React.useState(false);
+    const { signIn, auth } = useYVAuth();
 
     const handleClick = async (e: React.MouseEvent<HTMLButtonElement>): Promise<void> => {
       e.preventDefault();
@@ -134,24 +122,19 @@ export const SignInButton = React.forwardRef<HTMLButtonElement, SignInButtonProp
         onClick(e);
       }
 
-      setLocalLoading(true);
-
       try {
-        const result = await signIn(redirectUrl, permissions);
-        // If signIn returns a result (e.g., in tests), call onSuccess
-        if (result && onSuccess && typeof result === 'object' && 'accessToken' in result) {
-          onSuccess(result);
-        }
+        await signIn({
+          redirectUrl,
+          permissions,
+        });
       } catch (error) {
         if (onAuthError) {
           onAuthError(error as Error);
         }
-      } finally {
-        setLocalLoading(false);
       }
     };
 
-    const buttonLoading = Boolean(auth.isLoading || localLoading);
+    const buttonLoading = auth.isLoading;
 
     let buttonCopy = 'Sign in with YouVersion';
     if (size === 'short') {
@@ -171,10 +154,9 @@ export const SignInButton = React.forwardRef<HTMLButtonElement, SignInButtonProp
             variant === 'outline' ? 'yv:border' : 'yv:border-none',
             className,
           )}
+          data-yv-sdk
           disabled={buttonLoading ? true : (disabled ?? false)}
           ref={ref}
-          // This was needed to pass eslint.
-          // See https://github.com/orgs/react-hook-form/discussions/8622
           onClick={(e) => void handleClick(e)}
           size="icon"
           style={{
@@ -203,10 +185,9 @@ export const SignInButton = React.forwardRef<HTMLButtonElement, SignInButtonProp
           variant === 'outline' ? 'yv:border' : 'yv:border-none',
           className,
         )}
+        data-yv-sdk
         disabled={buttonLoading ? true : (disabled ?? false)}
         ref={ref}
-        // This was needed to pass eslint.
-        // See https://github.com/orgs/react-hook-form/discussions/8622
         onClick={(e) => void handleClick(e)}
         size="lg"
         style={{

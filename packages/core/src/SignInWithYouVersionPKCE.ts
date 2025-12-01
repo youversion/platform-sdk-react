@@ -71,13 +71,15 @@ export class SignInWithYouVersionPKCEAuthorizationRequestBuilder {
   }
 
   public static tokenURLRequest(code: string, codeVerifier: string, redirectUri: string): Request {
-    const url = new URL(`https://${YouVersionPlatformConfiguration.apiHost}/auth/token`);
+    const apiHost = YouVersionPlatformConfiguration.apiHost;
+    const appKey = YouVersionPlatformConfiguration.appKey;
+    const url = new URL(`https://${apiHost}/auth/token`);
 
     const parameters = new URLSearchParams({
       grant_type: 'authorization_code',
       code: code,
       redirect_uri: redirectUri,
-      client_id: YouVersionPlatformConfiguration.appKey ?? '',
+      client_id: appKey ?? '',
       code_verifier: codeVerifier,
     });
 

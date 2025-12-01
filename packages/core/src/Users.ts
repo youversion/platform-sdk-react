@@ -36,7 +36,10 @@ export class YouVersionAPIUsers {
       'youversion-auth-code-verifier',
       authorizationRequest.parameters.codeVerifier,
     );
-    localStorage.setItem('youversion-auth-redirect-uri', redirectURL);
+    const redirectUrlString = redirectURL.toString().endsWith('/')
+      ? redirectURL.toString().slice(0, -1)
+      : redirectURL.toString();
+    localStorage.setItem('youversion-auth-redirect-uri', redirectUrlString);
     localStorage.setItem('youversion-auth-state', authorizationRequest.parameters.state);
 
     // Simple redirect to authorization URL
@@ -371,17 +374,15 @@ export class YouVersionAPIUsers {
   /**
    * Checks if the current access token is expired or about to expire.
    *
-   * @param bufferMinutes - Minutes before expiry to consider token expired (default: 5)
    * @returns true if token is expired or about to expire
    */
-  static isTokenExpired(bufferMinutes: number = 5): boolean {
+  static isTokenExpired(): boolean {
     const expiryDate = YouVersionPlatformConfiguration.tokenExpiryDate;
     if (!expiryDate) {
       return true; // No expiry date means no token or invalid token
     }
 
-    const bufferTime = bufferMinutes * 60 * 1000; // Convert to milliseconds
-    return new Date().getTime() >= expiryDate.getTime() - bufferTime;
+    return new Date().getTime() >= expiryDate.getTime();
   }
 
   /**
