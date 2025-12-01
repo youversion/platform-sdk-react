@@ -210,7 +210,15 @@ export class YouVersionAPIUsers {
   }
 
   /**
-   * Decodes JWT token payload
+   * Decodes JWT payload for UI display purposes.
+   *
+   * Note: We intentionally do not verify the JWT signature here because:
+   *
+   * 1. YouVersion's backend verifies all tokens on API requests
+   * 2. This decoded data is only used for UI display
+   * 3. No security decisions are made based on these claims
+   *
+   * @private
    */
 
   private static decodeJWT(token: string): Record<string, any> {
@@ -234,7 +242,10 @@ export class YouVersionAPIUsers {
       } else {
         return {};
       }
-    } catch {
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('JWT decode failed:', error);
+      }
       return {};
     }
   }

@@ -1,3 +1,10 @@
+/**
+ * Security Note: Tokens are stored in localStorage for persistence.
+ * Ensure your application follows XSS prevention best practices:
+ * - Sanitize user input
+ * - Use Content Security Policy headers
+ * - Avoid innerHTML with untrusted content
+ */
 export class YouVersionPlatformConfiguration {
   private static _appKey: string | null = null;
   private static _installationId: string | null = null;
