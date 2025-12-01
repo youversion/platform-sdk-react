@@ -37,9 +37,6 @@ function AuthenticatedUserInfo({
           />
         </p>
       )}
-      <p className="text-sm">
-        <strong>Permissions:</strong> {permissions?.length ? permissions.join(', ') : 'None'}
-      </p>
     </div>
   );
 }
