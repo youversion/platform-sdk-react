@@ -2,20 +2,20 @@
 
 import type { PropsWithChildren, ReactNode } from 'react';
 import { useEffect } from 'react';
-import { BibleSDKContext } from './BibleSDKContext';
+import { YouVersionContext } from './YouVersionContext';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 
-type BibleSDKProviderProps = {
+type YouVersionProviderProps = {
   children: ReactNode;
   appKey: string;
   apiHost?: string;
 };
 
-export function BibleSDKProvider({
+export function YouVersionProvider({
   appKey,
   apiHost = 'api.youversion.com',
   children,
-}: PropsWithChildren<BibleSDKProviderProps>): React.ReactElement {
+}: PropsWithChildren<YouVersionProviderProps>): React.ReactElement {
   // Syncing appKey and apiHost to YouVersionPlatformConfiguration
   // so that this can be in sync with any other code that uses
   // the YouVersionPlatformConfiguration, of which a lot of our
@@ -26,10 +26,10 @@ export function BibleSDKProvider({
   }, [appKey, apiHost]);
   // Installation ID gets set automatically by YouVersionPlatformConfiguration
   return (
-    <BibleSDKContext.Provider
+    <YouVersionContext.Provider
       value={{ appKey, apiHost, installationId: YouVersionPlatformConfiguration.installationId }}
     >
       {children}
-    </BibleSDKContext.Provider>
+    </YouVersionContext.Provider>
   );
 }

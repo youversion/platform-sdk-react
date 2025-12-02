@@ -7,7 +7,7 @@ import {
   type SignInWithYouVersionResult,
   type YouVersionUserInfo,
 } from '@youversion/platform-core';
-import { useYVAuthContext } from './context/YVAuthContext';
+import { useYouVersionAuthContext } from './context/YouVersionAuthContext';
 
 export interface UseYVAuthReturn {
   // Main auth state
@@ -113,7 +113,7 @@ export interface UseYVAuthReturn {
  */
 export function useYVAuth(): UseYVAuthReturn {
   // Get auth state from provider context
-  const { userInfo, setUserInfo, isLoading, error } = useYVAuthContext();
+  const { userInfo, setUserInfo, isLoading, error } = useYouVersionAuthContext();
 
   // Derive authentication state
   const isAuthenticated = !!userInfo;

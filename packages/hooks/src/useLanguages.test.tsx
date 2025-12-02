@@ -2,7 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import type { ReactNode } from 'react';
 import { useLanguages } from './useLanguages';
-import { BibleSDKContext } from './context';
+import { YouVersionContext } from './context';
 import {
   LanguagesClient,
   ApiClient,
@@ -74,7 +74,7 @@ describe('useLanguages', () => {
 
   const createWrapper = (contextValue: { appKey: string }) => {
     return ({ children }: { children: ReactNode }) => (
-      <BibleSDKContext.Provider value={contextValue}>{children}</BibleSDKContext.Provider>
+      <YouVersionContext.Provider value={contextValue}>{children}</YouVersionContext.Provider>
     );
   };
 
@@ -99,7 +99,7 @@ describe('useLanguages', () => {
   describe('context validation', () => {
     it('should throw error when context is not provided', () => {
       expect(() => renderHook(() => useLanguages({ country: 'US' }))).toThrow(
-        'BibleSDK context not found. Make sure your component is wrapped with BibleSDKProvider and an API key is provided.',
+        'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
       );
     });
 
@@ -109,7 +109,7 @@ describe('useLanguages', () => {
       });
 
       expect(() => renderHook(() => useLanguages({ country: 'US' }), { wrapper })).toThrow(
-        'BibleSDK context not found. Make sure your component is wrapped with BibleSDKProvider and an API key is provided.',
+        'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
       );
     });
   });
@@ -146,13 +146,13 @@ describe('useLanguages', () => {
       let currentAppKey = mockAppKey;
 
       const wrapper = ({ children }: { children: ReactNode }) => (
-        <BibleSDKContext.Provider
+        <YouVersionContext.Provider
           value={{
             appKey: currentAppKey,
           }}
         >
           {children}
-        </BibleSDKContext.Provider>
+        </YouVersionContext.Provider>
       );
 
       const { rerender } = renderHook(() => useLanguages({ country: 'US' }), { wrapper });

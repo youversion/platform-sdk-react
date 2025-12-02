@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { BibleSDKProvider } from '@youversion/platform-react-hooks';
+import { YouVersionProvider } from '@youversion/platform-react-hooks';
 import { http, HttpResponse } from 'msw';
 import { expect, within, userEvent, spyOn } from 'storybook/test';
 
@@ -49,12 +49,12 @@ const meta = {
   },
   decorators: [
     (Story: React.ComponentType): React.ReactElement => (
-      <BibleSDKProvider
+      <YouVersionProvider
         appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY}
         apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
       >
         <Story />
-      </BibleSDKProvider>
+      </YouVersionProvider>
     ),
   ],
   tags: ['autodocs'],

@@ -2,10 +2,10 @@
 
 import { createContext } from 'react';
 
-type BibleSDKContextData = {
+type YouVersionContextData = {
   appKey: string;
   apiHost?: string;
   installationId?: string;
 };
 
-export const BibleSDKContext = createContext<BibleSDKContextData | null>(null);
+export const YouVersionContext = createContext<YouVersionContextData | null>(null);

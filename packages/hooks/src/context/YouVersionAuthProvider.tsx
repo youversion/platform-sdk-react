@@ -6,15 +6,18 @@ import {
   YouVersionPlatformConfiguration,
   type YouVersionUserInfo,
 } from '@youversion/platform-core';
-import { YVAuthContext } from './YVAuthContext';
+import { YouVersionAuthContext } from './YouVersionAuthContext';
 import type { AuthConfig, AuthContextValue } from '../types/auth';
 
-export interface YVAuthProviderProps {
+export interface YouVersionAuthProviderProps {
   config: AuthConfig;
   children: ReactNode;
 }
 
-export function YVAuthProvider({ config, children }: YVAuthProviderProps): React.ReactElement {
+export function YouVersionAuthProvider({
+  config,
+  children,
+}: YouVersionAuthProviderProps): React.ReactElement {
   const [userInfo, setUserInfo] = useState<YouVersionUserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -73,5 +76,5 @@ export function YVAuthProvider({ config, children }: YVAuthProviderProps): React
     error,
   };
 
-  return <YVAuthContext.Provider value={value}>{children}</YVAuthContext.Provider>;
+  return <YouVersionAuthContext.Provider value={value}>{children}</YouVersionAuthContext.Provider>;
 }

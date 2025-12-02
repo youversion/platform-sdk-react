@@ -6,8 +6,8 @@ import {
   SignInWithYouVersionPermission,
 } from '@youversion/platform-core';
 import { useYVAuth } from './useYVAuth';
-import { YVAuthProvider } from './context/YVAuthProvider';
-import { YVAuthContext } from './context/YVAuthContext';
+import { YouVersionAuthProvider } from './context/YouVersionAuthProvider';
+import { YouVersionAuthContext } from './context/YouVersionAuthContext';
 import type { AuthConfig } from './types/auth';
 
 // Mock the core modules
@@ -66,7 +66,7 @@ const mockWindow = {
 };
 
 function TestWrapper({ children }: { children: React.ReactNode }) {
-  return <YVAuthProvider config={mockConfig}>{children}</YVAuthProvider>;
+  return <YouVersionAuthProvider config={mockConfig}>{children}</YouVersionAuthProvider>;
 }
 
 describe('useYVAuth', () => {
@@ -103,7 +103,7 @@ describe('useYVAuth', () => {
     it('should throw error when used outside provider', () => {
       expect(() => {
         renderHook(() => useYVAuth());
-      }).toThrow('useYVAuthContext must be used within an auth provider');
+      }).toThrow('useYouVersionAuthContext must be used within an auth provider');
     });
   });
 
@@ -256,7 +256,7 @@ describe('useYVAuth', () => {
       // Test with multiple renders to verify different context values create new auth states
       const { result: result1 } = renderHook(() => useYVAuth(), {
         wrapper: ({ children }) => (
-          <YVAuthContext.Provider
+          <YouVersionAuthContext.Provider
             value={{
               userInfo: null,
               setUserInfo: () => {
@@ -267,7 +267,7 @@ describe('useYVAuth', () => {
             }}
           >
             {children}
-          </YVAuthContext.Provider>
+          </YouVersionAuthContext.Provider>
         ),
       });
 
@@ -278,7 +278,7 @@ describe('useYVAuth', () => {
       // Create a new hook instance with different context values
       const { result: result2 } = renderHook(() => useYVAuth(), {
         wrapper: ({ children }) => (
-          <YVAuthContext.Provider
+          <YouVersionAuthContext.Provider
             value={{
               userInfo: mockUserInfo,
               setUserInfo: () => {
@@ -289,7 +289,7 @@ describe('useYVAuth', () => {
             }}
           >
             {children}
-          </YVAuthContext.Provider>
+          </YouVersionAuthContext.Provider>
         ),
       });
 

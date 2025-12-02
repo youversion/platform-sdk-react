@@ -2,8 +2,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
-import { YVAuthProvider } from './YVAuthProvider';
-import { useYVAuthContext } from './YVAuthContext';
+import { YouVersionAuthProvider } from './YouVersionAuthProvider';
+import { useYouVersionAuthContext } from './YouVersionAuthContext';
 import type { AuthConfig } from '../types/auth';
 
 // Mock the core modules
@@ -66,7 +66,7 @@ const mockWindow = {
 
 // Test component to access context
 function TestChild() {
-  const { userInfo, isLoading, error } = useYVAuthContext();
+  const { userInfo, isLoading, error } = useYouVersionAuthContext();
 
   return (
     <div>
@@ -77,7 +77,7 @@ function TestChild() {
   );
 }
 
-describe('YVAuthProvider', () => {
+describe('YouVersionAuthProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -98,9 +98,9 @@ describe('YVAuthProvider', () => {
   describe('initialization', () => {
     it('should configure YouVersionPlatformConfiguration on mount', async () => {
       render(
-        <YVAuthProvider config={mockConfig}>
+        <YouVersionAuthProvider config={mockConfig}>
           <TestChild />
-        </YVAuthProvider>,
+        </YouVersionAuthProvider>,
       );
 
       // Wait for async initialization to complete
@@ -117,9 +117,9 @@ describe('YVAuthProvider', () => {
       };
 
       render(
-        <YVAuthProvider config={configWithoutApiHost}>
+        <YouVersionAuthProvider config={configWithoutApiHost}>
           <TestChild />
-        </YVAuthProvider>,
+        </YouVersionAuthProvider>,
       );
 
       await vi.waitFor(() => {
@@ -137,9 +137,9 @@ describe('YVAuthProvider', () => {
       };
 
       render(
-        <YVAuthProvider config={configWithoutInstallation}>
+        <YouVersionAuthProvider config={configWithoutInstallation}>
           <TestChild />
-        </YVAuthProvider>,
+        </YouVersionAuthProvider>,
       );
 
       await vi.waitFor(() => {
@@ -156,9 +156,9 @@ describe('YVAuthProvider', () => {
       YouVersionPlatformConfiguration.idToken = 'test-id-token';
 
       const { getByTestId } = render(
-        <YVAuthProvider config={mockConfig}>
+        <YouVersionAuthProvider config={mockConfig}>
           <TestChild />
-        </YVAuthProvider>,
+        </YouVersionAuthProvider>,
       );
 
       await vi.waitFor(() => {
@@ -175,9 +175,9 @@ describe('YVAuthProvider', () => {
       vi.mocked(YouVersionAPIUsers).handleAuthCallback.mockResolvedValue(mockAuthResult);
 
       const { getByTestId } = render(
-        <YVAuthProvider config={mockConfig}>
+        <YouVersionAuthProvider config={mockConfig}>
           <TestChild />
-        </YVAuthProvider>,
+        </YouVersionAuthProvider>,
       );
 
       await vi.waitFor(() => {
@@ -193,9 +193,9 @@ describe('YVAuthProvider', () => {
       vi.mocked(YouVersionAPIUsers).handleAuthCallback.mockRejectedValue(callbackError);
 
       const { getByTestId } = render(
-        <YVAuthProvider config={mockConfig}>
+        <YouVersionAuthProvider config={mockConfig}>
           <TestChild />
-        </YVAuthProvider>,
+        </YouVersionAuthProvider>,
       );
 
       await vi.waitFor(() => {
@@ -211,9 +211,9 @@ describe('YVAuthProvider', () => {
       YouVersionPlatformConfiguration.idToken = null;
 
       const { getByTestId } = render(
-        <YVAuthProvider config={mockConfig}>
+        <YouVersionAuthProvider config={mockConfig}>
           <TestChild />
-        </YVAuthProvider>,
+        </YouVersionAuthProvider>,
       );
 
       await vi.waitFor(() => {
@@ -233,9 +233,9 @@ describe('YVAuthProvider', () => {
       vi.mocked(YouVersionAPIUsers).userInfo.mockReturnValue(mockUserInfo);
 
       const { getByTestId } = render(
-        <YVAuthProvider config={mockConfig}>
+        <YouVersionAuthProvider config={mockConfig}>
           <TestChild />
-        </YVAuthProvider>,
+        </YouVersionAuthProvider>,
       );
 
       await vi.waitFor(() => {
@@ -254,9 +254,9 @@ describe('YVAuthProvider', () => {
       );
 
       const { getByTestId } = render(
-        <YVAuthProvider config={mockConfig}>
+        <YouVersionAuthProvider config={mockConfig}>
           <TestChild />
-        </YVAuthProvider>,
+        </YouVersionAuthProvider>,
       );
 
       await vi.waitFor(() => {
@@ -272,9 +272,9 @@ describe('YVAuthProvider', () => {
       vi.mocked(YouVersionAPIUsers).refreshTokenIfNeeded.mockResolvedValue();
 
       const { getByTestId } = render(
-        <YVAuthProvider config={mockConfig}>
+        <YouVersionAuthProvider config={mockConfig}>
           <TestChild />
-        </YVAuthProvider>,
+        </YouVersionAuthProvider>,
       );
 
       await vi.waitFor(() => {

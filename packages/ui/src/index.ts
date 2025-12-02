@@ -20,8 +20,8 @@ export {
 } from '@youversion/platform-core';
 
 export {
-  BibleSDKProvider,
+  YouVersionProvider,
   useYVAuth,
-  YVAuthProvider,
+  YouVersionAuthProvider,
   type UseYVAuthReturn,
 } from '@youversion/platform-react-hooks';

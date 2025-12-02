@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { type ReactNode } from 'react';
-import { YVAuthContext, useYVAuthContext } from './YVAuthContext';
+import { YouVersionAuthContext, useYouVersionAuthContext } from './YouVersionAuthContext';
 import type { AuthContextValue } from '../types/auth';
 
 const mockContextValue: AuthContextValue = {
@@ -27,13 +27,13 @@ function TestWrapper({
   children: ReactNode;
   value?: AuthContextValue | null;
 }) {
-  return <YVAuthContext.Provider value={value}>{children}</YVAuthContext.Provider>;
+  return <YouVersionAuthContext.Provider value={value}>{children}</YouVersionAuthContext.Provider>;
 }
 
-describe('YVAuthContext', () => {
-  describe('useYVAuthContext', () => {
+describe('YouVersionAuthContext', () => {
+  describe('useYouVersionAuthContext', () => {
     it('should return context value when used within provider', () => {
-      const { result } = renderHook(() => useYVAuthContext(), {
+      const { result } = renderHook(() => useYouVersionAuthContext(), {
         wrapper: ({ children }) => <TestWrapper>{children}</TestWrapper>,
       });
 
@@ -46,23 +46,23 @@ describe('YVAuthContext', () => {
 
     it('should throw error when used outside provider', () => {
       expect(() => {
-        renderHook(() => useYVAuthContext());
+        renderHook(() => useYouVersionAuthContext());
       }).toThrow(
-        'useYVAuthContext must be used within an auth provider. ' +
-          'Make sure your app is wrapped with <YVAuthProvider> from @youversion/platform-react-hooks ' +
-          'or create your own provider using YVAuthContext from @youversion/platform-react-hooks.',
+        'useYouVersionAuthContext must be used within an auth provider. ' +
+          'Make sure your app is wrapped with <YouVersionAuthProvider> from @youversion/platform-react-hooks ' +
+          'or create your own provider using YouVersionAuthContext from @youversion/platform-react-hooks.',
       );
     });
 
     it('should throw error when context value is null', () => {
       expect(() => {
-        renderHook(() => useYVAuthContext(), {
+        renderHook(() => useYouVersionAuthContext(), {
           wrapper: ({ children }) => <TestWrapper value={null}>{children}</TestWrapper>,
         });
       }).toThrow(
-        'useYVAuthContext must be used within an auth provider. ' +
-          'Make sure your app is wrapped with <YVAuthProvider> from @youversion/platform-react-hooks ' +
-          'or create your own provider using YVAuthContext from @youversion/platform-react-hooks.',
+        'useYouVersionAuthContext must be used within an auth provider. ' +
+          'Make sure your app is wrapped with <YouVersionAuthProvider> from @youversion/platform-react-hooks ' +
+          'or create your own provider using YouVersionAuthContext from @youversion/platform-react-hooks.',
       );
     });
 
@@ -76,7 +76,7 @@ describe('YVAuthContext', () => {
         error: new Error('Test error'),
       };
 
-      const { result } = renderHook(() => useYVAuthContext(), {
+      const { result } = renderHook(() => useYouVersionAuthContext(), {
         wrapper: ({ children }) => <TestWrapper value={customContextValue}>{children}</TestWrapper>,
       });
 

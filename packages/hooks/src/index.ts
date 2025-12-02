@@ -21,6 +21,6 @@ export * from './useLanguages';
 
 // Auth hooks
 export * from './useYVAuth';
-export * from './context/YVAuthContext';
-export * from './context/YVAuthProvider';
+export * from './context/YouVersionAuthContext';
+export * from './context/YouVersionAuthProvider';
 export * from './types/auth';
