@@ -5,6 +5,7 @@ import {
   YouVersionAPIUsers,
   YouVersionPlatformConfiguration,
   SignInWithYouVersionPermission,
+  SignInWithYouVersionResult,
 } from '@youversion/platform-core';
 import { useYVAuth } from './useYVAuth';
 import { YouVersionAuthProvider } from './context/YouVersionAuthProvider';
@@ -57,13 +58,16 @@ const mockUserInfo = {
   },
 };
 
-const mockAuthResult = {
+const mockAuthResult = new SignInWithYouVersionResult({
   ...mockUserInfo,
   accessToken: 'access-token',
   idToken: 'id-token',
   refreshToken: 'refresh-token',
   expiresIn: 3600,
-};
+  permissions: ['bibles', 'highlights'],
+  yvpUserId: 'test-yvp-user-id',
+  profilePicture: 'https://example.com/profile.jpg',
+});
 
 // Mock window object
 const mockLocation = {

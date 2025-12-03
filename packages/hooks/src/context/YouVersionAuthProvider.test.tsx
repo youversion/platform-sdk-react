@@ -1,7 +1,11 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render } from '@testing-library/react';
-import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
+import {
+  YouVersionAPIUsers,
+  YouVersionPlatformConfiguration,
+  SignInWithYouVersionResult,
+} from '@youversion/platform-core';
 import { YouVersionAuthProvider } from './YouVersionAuthProvider';
 import { useYouVersionAuthContext } from './YouVersionAuthContext';
 import type { AuthConfig } from '../types/auth';
@@ -55,13 +59,16 @@ const mockUserInfo = {
   },
 };
 
-const mockAuthResult = {
+const mockAuthResult = new SignInWithYouVersionResult({
   ...mockUserInfo,
   accessToken: 'access-token',
   idToken: 'id-token',
   refreshToken: 'refresh-token',
   expiresIn: 3600,
-};
+  permissions: ['bibles', 'highlights'],
+  yvpUserId: 'test-yvp-user-id',
+  profilePicture: 'https://example.com/profile.jpg',
+});
 
 // Mock window and location
 const mockLocation = {
@@ -242,7 +249,7 @@ describe('YouVersionAuthProvider', () => {
         'refreshed-id-token',
         null,
       );
-      vi.mocked(YouVersionAPIUsers.refreshTokenIfNeeded).mockResolvedValue();
+      vi.mocked(YouVersionAPIUsers.refreshTokenIfNeeded).mockResolvedValue(true);
       vi.mocked(YouVersionAPIUsers.userInfo).mockReturnValue(mockUserInfo);
 
       const { getByTestId } = render(
@@ -281,7 +288,7 @@ describe('YouVersionAuthProvider', () => {
 
     it('should clear user when refresh token exists but no idToken after refresh', async () => {
       YouVersionPlatformConfiguration.saveAuthData(null, 'existing-refresh-token', null, null);
-      vi.mocked(YouVersionAPIUsers.refreshTokenIfNeeded).mockResolvedValue();
+      vi.mocked(YouVersionAPIUsers.refreshTokenIfNeeded).mockResolvedValue(false);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
