@@ -3,9 +3,6 @@ import { expect, fn, userEvent, within, spyOn } from 'storybook/test';
 
 import { YouVersionAuthButton } from './YouVersionAuthButton';
 
-// Store mock reference for interaction test
-let signInMock: ReturnType<typeof fn>;
-
 const meta = {
   title: 'Components/YouVersionAuthButton',
   component: YouVersionAuthButton,

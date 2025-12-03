@@ -1,20 +1,26 @@
 import { usePassage, useVersion } from '@youversion/platform-react-hooks';
 import { BibleTextView } from './verse';
 import { BibleAppLogoLockup } from './bible-app-logo-lockup';
+import { BibleVersionPicker } from './bible-version-picker';
+import { Button } from './ui/button';
+import { useState } from 'react';
 
 export type BibleWidgetViewProps = {
   reference: string;
   versionId: number;
   background?: 'light' | 'dark';
+  showVersionPicker?: boolean;
 };
 export function BibleWidgetView({
   reference,
   versionId,
   background = 'light',
+  showVersionPicker = false,
 }: BibleWidgetViewProps): React.ReactNode {
-  const { version } = useVersion(versionId);
+  const [versionNum, setVersionNum] = useState(versionId);
+  const { version } = useVersion(versionNum);
   const { passage } = usePassage({
-    versionId,
+    versionId: versionNum,
     usfm: reference,
     include_headings: true,
     include_notes: true,
@@ -30,12 +36,32 @@ export function BibleWidgetView({
           {passage.reference} {version?.localized_abbreviation}
         </h2>
       ) : null}
+      <div className="yv:flex yv:justify-between">
+        {passage?.human_reference ? (
+          <h2 className="yv:font-bold yv:tracking-widest yv:text-xs yv:uppercase">
+            {passage.human_reference} {version?.local_abbreviation}
+          </h2>
+        ) : null}
+
+        {showVersionPicker ? (
+          <BibleVersionPicker.Root onVersionChange={setVersionNum} versionId={versionNum}>
+            <BibleVersionPicker.Trigger aria-label="Change Bible version">
+              {({ version, loading }) => (
+                <Button variant="secondary" disabled={loading}>
+                  {loading ? 'Loading...' : version?.local_abbreviation || 'Select version'}
+                </Button>
+              )}
+            </BibleVersionPicker.Trigger>
+            <BibleVersionPicker.Content />
+          </BibleVersionPicker.Root>
+        ) : null}
+      </div>
 
       <BibleTextView
         fontSize={16}
         fontFamily={"'Source Serif Pro', serif"}
         reference={reference}
-        versionId={versionId}
+        versionId={versionNum}
       />
 
       <div className="yv:grid yv:grid-cols-[1fr_auto] yv:gap-4 yv:items-center yv:mt-4">

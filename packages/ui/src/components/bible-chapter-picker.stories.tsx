@@ -3,8 +3,6 @@ import { BibleChapterPicker } from './bible-chapter-picker';
 import { http, HttpResponse } from 'msw';
 import { YouVersionProvider } from '@youversion/platform-react-hooks';
 import { within, waitFor, expect, userEvent } from 'storybook/test';
-import { mockChapters } from '../test/mock-data/chapters';
-import { mockBooks } from '../test/mock-data/books';
 import { useState } from 'react';
 
 const meta = {
@@ -12,16 +10,6 @@ const meta = {
   component: BibleChapterPicker.Root,
   parameters: {
     layout: 'fullscreen',
-    msw: {
-      handlers: [
-        http.get(/\/v1\/bibles\/\d+\/books$/i, () => {
-          return HttpResponse.json(mockBooks);
-        }),
-        http.get(/\/v1\/bibles\/\d+\/books\/\w+\/chapters$/i, () => {
-          return HttpResponse.json(mockChapters);
-        }),
-      ],
-    },
   },
   decorators: [
     (Story, { args }) => {
