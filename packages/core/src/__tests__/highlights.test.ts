@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { ApiClient } from '../client';
 import { HighlightsClient } from '../highlights';
