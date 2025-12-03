@@ -13,6 +13,9 @@ import type { AuthConfig } from '../types/auth';
 // Mock the core modules
 vi.mock('@youversion/platform-core', () => {
   let mockInstallationId = 'auto-generated-installation-id';
+  let mockIdToken: string | null = null;
+  let mockRefreshToken: string | null = null;
+  let mockAccessToken: string | null = null;
 
   return {
     YouVersionAPIUsers: {
@@ -29,11 +32,27 @@ vi.mock('@youversion/platform-core', () => {
         if (value) mockInstallationId = value;
       },
       apiHost: 'test-api.example.com',
-      idToken: null,
-      refreshToken: null,
-      accessToken: null,
-      clearAuthTokens: vi.fn(),
-      saveAuthData: vi.fn(),
+      get idToken() {
+        return mockIdToken;
+      },
+      get refreshToken() {
+        return mockRefreshToken;
+      },
+      get accessToken() {
+        return mockAccessToken;
+      },
+      clearAuthTokens: vi.fn(() => {
+        mockIdToken = null;
+        mockRefreshToken = null;
+        mockAccessToken = null;
+      }),
+      saveAuthData: vi.fn(
+        (accessToken: string | null, refreshToken: string | null, idToken: string | null) => {
+          mockAccessToken = accessToken;
+          mockRefreshToken = refreshToken;
+          mockIdToken = idToken;
+        },
+      ),
     },
     SignInWithYouVersionResult: class {
       accessToken: string | undefined;
@@ -140,6 +159,7 @@ describe('YouVersionAuthProvider', () => {
     // Reset configuration
     YouVersionPlatformConfiguration.appKey = '';
     YouVersionPlatformConfiguration.apiHost = 'test-api.example.com';
+    YouVersionPlatformConfiguration.clearAuthTokens();
   });
 
   afterEach(() => {
@@ -205,7 +225,12 @@ describe('YouVersionAuthProvider', () => {
       mockLocation.search = '?state=test-state&code=auth-code';
       vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult);
       vi.mocked(YouVersionAPIUsers.userInfo).mockReturnValue(mockUserInfo);
-      YouVersionPlatformConfiguration.saveAuthData(null, null, 'test-id-token', null);
+
+      // Mock the configuration to return the id token after handleAuthCallback
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockImplementation(() => {
+        YouVersionPlatformConfiguration.saveAuthData(null, null, 'test-id-token', null);
+        return Promise.resolve(mockAuthResult);
+      });
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
@@ -279,13 +304,14 @@ describe('YouVersionAuthProvider', () => {
 
   describe('existing token handling', () => {
     it('should refresh token when refresh token exists', async () => {
-      YouVersionPlatformConfiguration.saveAuthData(
-        null,
-        'existing-refresh-token',
-        'refreshed-id-token',
-        null,
-      );
-      vi.mocked(YouVersionAPIUsers.refreshTokenIfNeeded).mockResolvedValue(true);
+      // Set up refresh token before mounting component
+      YouVersionPlatformConfiguration.saveAuthData(null, 'existing-refresh-token', null, null);
+
+      // Mock refreshTokenIfNeeded to set the id token after successful refresh
+      vi.mocked(YouVersionAPIUsers.refreshTokenIfNeeded).mockImplementation(() => {
+        YouVersionPlatformConfiguration.saveAuthData(null, null, 'refreshed-id-token', null);
+        return Promise.resolve(true);
+      });
       vi.mocked(YouVersionAPIUsers.userInfo).mockReturnValue(mockUserInfo);
 
       const { getByTestId } = render(
