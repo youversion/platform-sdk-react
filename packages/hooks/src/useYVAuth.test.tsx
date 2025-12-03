@@ -45,6 +45,16 @@ const mockUserInfo = {
   name: 'John Doe',
   email: 'john@example.com',
   picture: 'https://example.com/avatar.jpg',
+  getAvatarUrl: vi.fn((width = 200, height = 200) => {
+    try {
+      return new URL(`https://example.com/avatar.jpg?w=${width}&h=${height}`);
+    } catch {
+      return null;
+    }
+  }),
+  get avatarUrl() {
+    return this.getAvatarUrl();
+  },
 };
 
 const mockAuthResult = {
