@@ -25,6 +25,7 @@ vi.mock('@youversion/platform-core', () => ({
     idToken: null,
     refreshToken: null,
     clearAuthTokens: vi.fn(),
+    saveAuthData: vi.fn(),
     appKey: '',
     apiHost: 'test-api.example.com',
     installationId: null,
@@ -33,6 +34,41 @@ vi.mock('@youversion/platform-core', () => ({
     bibles: 'bibles',
     highlights: 'highlights',
     user: 'user',
+  },
+  SignInWithYouVersionResult: class {
+    accessToken: string | undefined;
+    expiryDate: Date | undefined;
+    refreshToken: string | undefined;
+    idToken: string | undefined;
+    permissions: string[] | undefined;
+    yvpUserId: string | undefined;
+    name: string | undefined;
+    profilePicture: string | undefined;
+    email: string | undefined;
+
+    constructor(props: {
+      accessToken?: string;
+      expiresIn?: number;
+      refreshToken?: string;
+      idToken?: string;
+      permissions?: string[];
+      yvpUserId?: string;
+      name?: string;
+      profilePicture?: string;
+      email?: string;
+    }) {
+      this.accessToken = props.accessToken;
+      this.expiryDate = props.expiresIn
+        ? new Date(Date.now() + props.expiresIn * 1000)
+        : new Date();
+      this.refreshToken = props.refreshToken;
+      this.idToken = props.idToken;
+      this.permissions = props.permissions;
+      this.yvpUserId = props.yvpUserId;
+      this.name = props.name;
+      this.profilePicture = props.profilePicture;
+      this.email = props.email;
+    }
   },
 }));
 
