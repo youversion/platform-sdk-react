@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import {
@@ -120,7 +121,6 @@ describe('useYVAuth', () => {
         await result.current.signIn({ redirectUrl, permissions });
       });
 
-      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(
         new Set(permissions),
         redirectUrl,
@@ -138,14 +138,12 @@ describe('useYVAuth', () => {
         await result.current.signIn({ redirectUrl });
       });
 
-      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(new Set([]), redirectUrl);
     });
 
     it('should throw error when signIn fails', async () => {
       const error = new Error('Sign in failed');
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      vi.mocked(YouVersionAPIUsers).signIn.mockRejectedValue(error);
+      vi.mocked(YouVersionAPIUsers.signIn).mockRejectedValue(error);
 
       const { result } = renderHook(() => useYVAuth(), {
         wrapper: TestWrapper,
@@ -161,8 +159,7 @@ describe('useYVAuth', () => {
 
   describe('processCallback', () => {
     it('should call handleAuthCallback and return result', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      vi.mocked(YouVersionAPIUsers).handleAuthCallback.mockResolvedValue(mockAuthResult);
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult);
 
       const { result } = renderHook(() => useYVAuth(), {
         wrapper: TestWrapper,
@@ -173,15 +170,13 @@ describe('useYVAuth', () => {
         callbackResult = await result.current.processCallback();
       });
 
-      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(vi.mocked(YouVersionAPIUsers.handleAuthCallback)).toHaveBeenCalled();
       expect(callbackResult).toEqual(mockAuthResult);
     });
 
     it('should throw error when callback processing fails', async () => {
       const error = new Error('Callback processing failed');
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      vi.mocked(YouVersionAPIUsers).handleAuthCallback.mockRejectedValue(error);
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockRejectedValue(error);
 
       const { result } = renderHook(() => useYVAuth(), {
         wrapper: TestWrapper,
@@ -195,8 +190,7 @@ describe('useYVAuth', () => {
     });
 
     it('should return null when no result from callback', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      vi.mocked(YouVersionAPIUsers).handleAuthCallback.mockResolvedValue(null);
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(null);
 
       const { result } = renderHook(() => useYVAuth(), {
         wrapper: TestWrapper,
@@ -221,7 +215,6 @@ describe('useYVAuth', () => {
         result.current.signOut();
       });
 
-      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(YouVersionPlatformConfiguration.clearAuthTokens).toHaveBeenCalled();
     });
   });

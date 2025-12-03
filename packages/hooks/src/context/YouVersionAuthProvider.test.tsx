@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/unbound-method */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
@@ -151,8 +151,8 @@ describe('YouVersionAuthProvider', () => {
   describe('OAuth callback handling', () => {
     it('should detect OAuth callback with state parameter', async () => {
       mockLocation.search = '?state=test-state&code=auth-code';
-      vi.mocked(YouVersionAPIUsers).handleAuthCallback.mockResolvedValue(mockAuthResult);
-      vi.mocked(YouVersionAPIUsers).userInfo.mockReturnValue(mockUserInfo);
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult);
+      vi.mocked(YouVersionAPIUsers.userInfo).mockReturnValue(mockUserInfo);
       YouVersionPlatformConfiguration.idToken = 'test-id-token';
 
       const { getByTestId } = render(
@@ -172,7 +172,7 @@ describe('YouVersionAuthProvider', () => {
 
     it('should detect OAuth callback with error parameter', async () => {
       mockLocation.search = '?error=access_denied&error_description=User+denied+access';
-      vi.mocked(YouVersionAPIUsers).handleAuthCallback.mockResolvedValue(mockAuthResult);
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
@@ -190,7 +190,7 @@ describe('YouVersionAuthProvider', () => {
     it('should handle callback error and set error state', async () => {
       mockLocation.search = '?state=test-state&code=auth-code';
       const callbackError = new Error('Callback processing failed');
-      vi.mocked(YouVersionAPIUsers).handleAuthCallback.mockRejectedValue(callbackError);
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockRejectedValue(callbackError);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
@@ -207,7 +207,7 @@ describe('YouVersionAuthProvider', () => {
 
     it('should handle callback with no idToken', async () => {
       mockLocation.search = '?state=test-state&code=auth-code';
-      vi.mocked(YouVersionAPIUsers).handleAuthCallback.mockResolvedValue(mockAuthResult);
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult);
       YouVersionPlatformConfiguration.idToken = null;
 
       const { getByTestId } = render(
@@ -229,8 +229,8 @@ describe('YouVersionAuthProvider', () => {
     it('should refresh token when refresh token exists', async () => {
       YouVersionPlatformConfiguration.refreshToken = 'existing-refresh-token';
       YouVersionPlatformConfiguration.idToken = 'refreshed-id-token';
-      vi.mocked(YouVersionAPIUsers).refreshTokenIfNeeded.mockResolvedValue();
-      vi.mocked(YouVersionAPIUsers).userInfo.mockReturnValue(mockUserInfo);
+      vi.mocked(YouVersionAPIUsers.refreshTokenIfNeeded).mockResolvedValue();
+      vi.mocked(YouVersionAPIUsers.userInfo).mockReturnValue(mockUserInfo);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
@@ -249,7 +249,7 @@ describe('YouVersionAuthProvider', () => {
 
     it('should handle refresh token failure', async () => {
       YouVersionPlatformConfiguration.refreshToken = 'existing-refresh-token';
-      vi.mocked(YouVersionAPIUsers).refreshTokenIfNeeded.mockRejectedValue(
+      vi.mocked(YouVersionAPIUsers.refreshTokenIfNeeded).mockRejectedValue(
         new Error('Refresh failed'),
       );
 
@@ -269,7 +269,7 @@ describe('YouVersionAuthProvider', () => {
     it('should clear user when refresh token exists but no idToken after refresh', async () => {
       YouVersionPlatformConfiguration.refreshToken = 'existing-refresh-token';
       YouVersionPlatformConfiguration.idToken = null;
-      vi.mocked(YouVersionAPIUsers).refreshTokenIfNeeded.mockResolvedValue();
+      vi.mocked(YouVersionAPIUsers.refreshTokenIfNeeded).mockResolvedValue();
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
