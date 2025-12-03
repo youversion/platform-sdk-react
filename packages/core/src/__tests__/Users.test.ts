@@ -72,9 +72,11 @@ describe('YouVersionAPIUsers', () => {
     });
 
     it('should create authorization request and redirect on successful signIn', async () => {
-      vi.spyOn(crypto, 'getRandomValues').mockImplementation((array: Uint8Array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = i;
+      vi.spyOn(crypto, 'getRandomValues').mockImplementation((array: ArrayBufferView) => {
+        if (array instanceof Uint8Array) {
+          for (let i = 0; i < array.length; i++) {
+            array[i] = i;
+          }
         }
         return array;
       });

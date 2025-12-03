@@ -80,7 +80,7 @@ describe('YouVersionUserInfo', () => {
   describe('getAvatarUrl', () => {
     it('should return null when avatarUrlFormat is undefined', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'John',
+        name: 'John',
         id: 'user123',
       };
 
@@ -92,7 +92,7 @@ describe('YouVersionUserInfo', () => {
 
     it('should return null when avatarUrlFormat is empty string', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'John',
+        name: 'John',
         id: 'user123',
         avatar_url: '',
       };
@@ -105,7 +105,7 @@ describe('YouVersionUserInfo', () => {
 
     it('should replace width and height placeholders with default values', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'John',
+        name: 'John',
         avatar_url: 'https://example.com/avatar/{width}x{height}.jpg',
       };
 
@@ -118,7 +118,7 @@ describe('YouVersionUserInfo', () => {
 
     it('should replace width and height placeholders with custom values', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'John',
+        name: 'John',
         avatar_url: 'https://example.com/avatar/{width}x{height}.jpg',
       };
 
@@ -131,7 +131,7 @@ describe('YouVersionUserInfo', () => {
 
     it('should handle URL starting with // by adding https:', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'John',
+        name: 'John',
         avatar_url: '//example.com/avatar/{width}x{height}.jpg',
       };
 
@@ -144,7 +144,7 @@ describe('YouVersionUserInfo', () => {
 
     it('should handle URL without placeholders', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'John',
+        name: 'John',
         avatar_url: 'https://example.com/static-avatar.jpg',
       };
 
@@ -157,7 +157,7 @@ describe('YouVersionUserInfo', () => {
 
     it('should handle URL with only width placeholder', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'John',
+        name: 'John',
         avatar_url: 'https://example.com/avatar/w{width}.jpg',
       };
 
@@ -170,7 +170,7 @@ describe('YouVersionUserInfo', () => {
 
     it('should handle URL with only height placeholder', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'John',
+        name: 'John',
         avatar_url: 'https://example.com/avatar/h{height}.jpg',
       };
 
@@ -183,7 +183,7 @@ describe('YouVersionUserInfo', () => {
 
     it('should not handle multiple occurrences of placeholders', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'John',
+        name: 'John',
         avatar_url: 'https://example.com/avatar/{width}/thumb_{height}_{width}.jpg',
       };
 
@@ -197,7 +197,7 @@ describe('YouVersionUserInfo', () => {
 
     it('should return null for malformed URLs', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'John',
+        name: 'John',
         avatar_url: 'not-a-valid-url-{width}x{height}',
       };
 
@@ -209,7 +209,7 @@ describe('YouVersionUserInfo', () => {
 
     it('should handle zero width and height', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'John',
+        name: 'John',
         avatar_url: 'https://example.com/avatar/{width}x{height}.jpg',
       };
 
@@ -222,7 +222,7 @@ describe('YouVersionUserInfo', () => {
 
     it('should handle negative width and height', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'John',
+        name: 'John',
         avatar_url: 'https://example.com/avatar/{width}x{height}.jpg',
       };
 
@@ -235,7 +235,7 @@ describe('YouVersionUserInfo', () => {
 
     it('should handle large width and height values', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'John',
+        name: 'John',
         avatar_url: 'https://example.com/avatar/{width}x{height}.jpg',
       };
 
@@ -250,7 +250,7 @@ describe('YouVersionUserInfo', () => {
   describe('avatarUrl getter', () => {
     it('should return same result as getAvatarUrl() with default parameters', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'John',
+        name: 'John',
         avatar_url: 'https://example.com/avatar/{width}x{height}.jpg',
       };
 
@@ -264,7 +264,7 @@ describe('YouVersionUserInfo', () => {
 
     it('should return null when avatarUrlFormat is undefined', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'John',
+        name: 'John',
         id: 'user123',
       };
 
@@ -275,7 +275,7 @@ describe('YouVersionUserInfo', () => {
 
     it('should return null for malformed URLs', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'John',
+        name: 'John',
         avatar_url: 'invalid-url-format',
       };
 
@@ -320,7 +320,7 @@ describe('YouVersionUserInfo', () => {
 
     it('should handle complex URL with query parameters', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'Alex',
+        name: 'Alex',
         avatar_url: 'https://api.service.com/v1/avatar?user=123&w={width}&h={height}&format=jpg',
       };
 
@@ -334,7 +334,7 @@ describe('YouVersionUserInfo', () => {
 
     it('should handle URL with fragment identifier', () => {
       const userData: YouVersionUserInfoJSON = {
-        first_name: 'Taylor',
+        name: 'Taylor',
         avatar_url: 'https://example.com/avatar/{width}x{height}.jpg#section1',
       };
 
