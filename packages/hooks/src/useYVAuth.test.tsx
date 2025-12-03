@@ -5,7 +5,6 @@ import {
   YouVersionAPIUsers,
   YouVersionPlatformConfiguration,
   SignInWithYouVersionPermission,
-  SignInWithYouVersionResult,
 } from '@youversion/platform-core';
 import { useYVAuth } from './useYVAuth';
 import { YouVersionAuthContext } from './context/YouVersionAuthContext';
