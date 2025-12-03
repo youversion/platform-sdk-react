@@ -3,36 +3,13 @@ import { SignInWithYouVersionPKCEAuthorizationRequestBuilder } from '../SignInWi
 import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfiguration';
 import { SignInWithYouVersionPermission } from '../SignInWithYouVersionResult';
 import type { SignInWithYouVersionPermissionValues } from '../types/auth';
-
-// Mock crypto API for consistent testing
-const mockCrypto = {
-  getRandomValues: vi.fn(),
-  randomUUID: vi.fn(() => 'test-installation-id-123'),
-  subtle: {
-    digest: vi.fn(),
-  },
-};
-
-// Mock btoa for base64 encoding
-const mockBtoa = vi.fn();
+import { setupBrowserMocks, cleanupBrowserMocks } from './mocks/browser';
 
 describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
+  let mocks: ReturnType<typeof setupBrowserMocks>;
+
   beforeEach(() => {
-    // Mock global crypto
-    vi.stubGlobal('crypto', mockCrypto);
-    vi.stubGlobal('btoa', mockBtoa);
-
-    // Mock window object to simulate browser environment
-    vi.stubGlobal('window', {});
-
-    // Mock localStorage
-    const mockStorage = {
-      getItem: vi.fn(() => null),
-      setItem: vi.fn(),
-      removeItem: vi.fn(),
-      clear: vi.fn(),
-    };
-    vi.stubGlobal('localStorage', mockStorage);
+    mocks = setupBrowserMocks();
 
     // Reset YouVersionPlatformConfiguration
     YouVersionPlatformConfiguration.appKey = 'test-app-key';
@@ -41,13 +18,13 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
-    vi.unstubAllGlobals();
+    cleanupBrowserMocks();
   });
 
   describe('make', () => {
     it('should generate authorization request with all required parameters', async () => {
       // Mock crypto.getRandomValues to return predictable values
-      mockCrypto.getRandomValues
+      mocks.crypto.getRandomValues
         .mockImplementationOnce((array: Uint8Array) => {
           // Mock code verifier generation (32 bytes)
           for (let i = 0; i < 32; i++) {
@@ -75,10 +52,10 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
       for (let i = 0; i < 32; i++) {
         mockDigest[i] = i + 50;
       }
-      mockCrypto.subtle.digest.mockResolvedValue(mockDigest.buffer);
+      mocks.crypto.subtle.digest.mockResolvedValue(mockDigest.buffer);
 
       // Mock btoa for base64 encoding
-      mockBtoa
+      mocks.btoa
         .mockReturnValueOnce('codeVerifierBase64==') // Code verifier
         .mockReturnValueOnce('codeChallengeBase64==') // Code challenge
         .mockReturnValueOnce('stateBase64==') // State
@@ -113,7 +90,7 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
     it('should generate unique parameters on each call', async () => {
       // Mock crypto to return different values for each call
       let callCount = 0;
-      mockCrypto.getRandomValues.mockImplementation((array: Uint8Array) => {
+      mocks.crypto.getRandomValues.mockImplementation((array: Uint8Array) => {
         for (let i = 0; i < array.length; i++) {
           array[i] = callCount + i;
         }
@@ -121,8 +98,8 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
         return array;
       });
 
-      mockCrypto.subtle.digest.mockResolvedValue(new Uint8Array(32).buffer);
-      mockBtoa.mockImplementation((str: string) => `base64_${callCount}_${str.length}`);
+      mocks.crypto.subtle.digest.mockResolvedValue(new Uint8Array(32).buffer);
+      mocks.btoa.mockImplementation((str: string) => `base64_${callCount}_${str.length}`);
 
       const permissions = new Set<SignInWithYouVersionPermissionValues>();
       const redirectURL = new URL('https://example.com/callback');
@@ -146,6 +123,18 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
   });
 
   describe('authorizeURL', () => {
+    beforeEach(() => {
+      // Setup mocks for btoa which are needed for these tests
+      mocks.crypto.getRandomValues.mockImplementation((array: Uint8Array) => {
+        for (let i = 0; i < array.length; i++) {
+          array[i] = i;
+        }
+        return array;
+      });
+      mocks.crypto.subtle.digest.mockResolvedValue(new Uint8Array(32).buffer);
+      mocks.btoa.mockImplementation((str: string) => Buffer.from(str).toString('base64'));
+    });
+
     it('should build authorization URL with all required OAuth2 parameters', async () => {
       const permissions = new Set<SignInWithYouVersionPermissionValues>([
         SignInWithYouVersionPermission.bibles,
@@ -345,6 +334,18 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
   });
 
   describe('randomness and security', () => {
+    beforeEach(() => {
+      // Setup mocks for btoa which are needed for these tests
+      mocks.crypto.getRandomValues.mockImplementation((array: Uint8Array) => {
+        for (let i = 0; i < array.length; i++) {
+          array[i] = i;
+        }
+        return array;
+      });
+      mocks.crypto.subtle.digest.mockResolvedValue(new Uint8Array(32).buffer);
+      mocks.btoa.mockImplementation((str: string) => Buffer.from(str).toString('base64'));
+    });
+
     it('should use crypto.getRandomValues for secure random generation', async () => {
       const permissions = new Set<SignInWithYouVersionPermissionValues>();
       const redirectURL = new URL('https://example.com/callback');
@@ -356,10 +357,10 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
       );
 
       // Should call crypto.getRandomValues for code verifier, state, and nonce
-      expect(mockCrypto.getRandomValues).toHaveBeenCalledTimes(3);
+      expect(mocks.crypto.getRandomValues).toHaveBeenCalledTimes(3);
 
       // Verify correct byte lengths
-      const calls = mockCrypto.getRandomValues.mock.calls;
+      const calls = mocks.crypto.getRandomValues.mock.calls;
       expect(calls[0]?.[0]).toHaveLength(32); // Code verifier
       expect(calls[1]?.[0]).toHaveLength(24); // State
       expect(calls[2]?.[0]).toHaveLength(24); // Nonce
@@ -375,12 +376,12 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
         redirectURL,
       );
 
-      expect(mockCrypto.subtle.digest).toHaveBeenCalledWith('SHA-256', expect.any(Uint8Array));
+      expect(mocks.crypto.subtle.digest).toHaveBeenCalledWith('SHA-256', expect.any(Uint8Array));
     });
 
     it('should generate parameters with sufficient entropy', async () => {
       // Use real crypto for this test to verify actual randomness
-      vi.unstubAllGlobals();
+      cleanupBrowserMocks();
 
       const permissions = new Set<SignInWithYouVersionPermissionValues>();
       const redirectURL = new URL('https://example.com/callback');

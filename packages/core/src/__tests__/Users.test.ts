@@ -4,49 +4,26 @@ import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfigurat
 import { SignInWithYouVersionPermission } from '../SignInWithYouVersionResult';
 import { YouVersionUserInfo } from '../YouVersionUserInfo';
 import type { SignInWithYouVersionPermissionValues } from '../types/auth';
-
-// Mock global objects
-const mockLocation = {
-  href: '',
-  search: '',
-};
-
-const mockHistory = {
-  replaceState: vi.fn(),
-};
-
-const mockLocalStorage = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-};
+import { setupBrowserMocks, cleanupBrowserMocks } from './mocks/browser';
 
 const mockFetch = vi.fn();
 
 describe('YouVersionAPIUsers', () => {
+  let mocks: ReturnType<typeof setupBrowserMocks>;
+
   beforeEach(() => {
     vi.clearAllMocks();
 
     // Setup global mocks
-    vi.stubGlobal('window', {
-      location: mockLocation,
-      history: mockHistory,
-    });
-    vi.stubGlobal('localStorage', mockLocalStorage);
+    mocks = setupBrowserMocks();
     vi.stubGlobal('fetch', mockFetch);
-    vi.stubGlobal('atob', vi.fn());
-    vi.stubGlobal('crypto', {
-      randomUUID: vi.fn(() => 'test-installation-id'),
-      getRandomValues: vi.fn(),
-      subtle: {
-        digest: vi.fn(),
-      },
-    });
-    vi.stubGlobal('btoa', vi.fn());
+
+    // Override randomUUID for this test suite
+    mocks.crypto.randomUUID = vi.fn(() => 'test-installation-id');
 
     // Reset location
-    mockLocation.href = '';
-    mockLocation.search = '';
+    mocks.window.location.href = '';
+    mocks.window.location.search = '';
 
     // Setup YouVersionPlatformConfiguration
     YouVersionPlatformConfiguration.appKey = 'test-app-key';
@@ -54,6 +31,7 @@ describe('YouVersionAPIUsers', () => {
   });
 
   afterEach(() => {
+    cleanupBrowserMocks();
     vi.unstubAllGlobals();
     YouVersionPlatformConfiguration.appKey = null;
   });
@@ -82,7 +60,7 @@ describe('YouVersionAPIUsers', () => {
       });
 
       vi.spyOn(crypto.subtle, 'digest').mockResolvedValue(new Uint8Array(32).buffer);
-      global.btoa = vi.fn().mockReturnValue('mockBase64Value');
+      mocks.btoa.mockReturnValue('mockBase64Value');
 
       const permissions = new Set<SignInWithYouVersionPermissionValues>([
         SignInWithYouVersionPermission.bibles,
@@ -93,21 +71,21 @@ describe('YouVersionAPIUsers', () => {
       await YouVersionAPIUsers.signIn(permissions, redirectURL);
 
       // Verify localStorage items stored
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
+      expect(mocks.localStorage.setItem).toHaveBeenCalledWith(
         'youversion-auth-code-verifier',
         expect.any(String),
       );
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
+      expect(mocks.localStorage.setItem).toHaveBeenCalledWith(
         'youversion-auth-redirect-uri',
         redirectURL,
       );
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
+      expect(mocks.localStorage.setItem).toHaveBeenCalledWith(
         'youversion-auth-state',
         expect.any(String),
       );
 
       // Verify redirect occurred
-      expect(mockLocation.href).toContain('https://api.youversion.com/auth/authorize');
+      expect(mocks.window.location.href).toContain('https://api.youversion.com/auth/authorize');
 
       vi.restoreAllMocks();
     });
@@ -115,14 +93,14 @@ describe('YouVersionAPIUsers', () => {
 
   describe('handleAuthCallback', () => {
     it('should return null when no state or error in URL', async () => {
-      mockLocation.search = '';
+      mocks.window.location.search = '';
 
       const result = await YouVersionAPIUsers.handleAuthCallback();
       expect(result).toBeNull();
     });
 
     it('should throw error when OAuth error is present', async () => {
-      mockLocation.search = '?error=access_denied&error_description=User denied access';
+      mocks.window.location.search = '?error=access_denied&error_description=User denied access';
 
       await expect(YouVersionAPIUsers.handleAuthCallback()).rejects.toThrow(
         'OAuth authentication failed: User denied access',
@@ -130,7 +108,7 @@ describe('YouVersionAPIUsers', () => {
     });
 
     it('should throw error when OAuth error is present without description', async () => {
-      mockLocation.search = '?error=server_error';
+      mocks.window.location.search = '?error=server_error';
 
       await expect(YouVersionAPIUsers.handleAuthCallback()).rejects.toThrow(
         'OAuth authentication failed: server_error',
@@ -138,8 +116,8 @@ describe('YouVersionAPIUsers', () => {
     });
 
     it('should throw error when state parameter is invalid', async () => {
-      mockLocation.search = '?state=invalid-state&code=auth-code';
-      mockLocalStorage.getItem.mockImplementation((key) => {
+      mocks.window.location.search = '?state=invalid-state&code=auth-code';
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
         if (key === 'youversion-auth-state') return 'valid-state';
         return null;
       });
@@ -150,9 +128,9 @@ describe('YouVersionAPIUsers', () => {
     });
 
     it('should redirect to server when state exists but no code', async () => {
-      mockLocation.href = 'https://example.com/callback?state=test-state';
-      mockLocation.search = '?state=test-state';
-      mockLocalStorage.getItem.mockImplementation((key) => {
+      mocks.window.location.href = 'https://example.com/callback?state=test-state';
+      mocks.window.location.search = '?state=test-state';
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
         if (key === 'youversion-auth-state') return 'test-state';
         return null;
       });
@@ -161,12 +139,14 @@ describe('YouVersionAPIUsers', () => {
       await expect(YouVersionAPIUsers.handleAuthCallback()).rejects.toThrow();
 
       // Verify that the redirect was attempted
-      expect(mockLocation.href).toBe('https://api.youversion.com/auth/callback?state=test-state');
+      expect(mocks.window.location.href).toBe(
+        'https://api.youversion.com/auth/callback?state=test-state',
+      );
     });
 
     it('should throw error when required parameters are missing', async () => {
-      mockLocation.search = '?state=test-state&code=auth-code';
-      mockLocalStorage.getItem.mockImplementation((key) => {
+      mocks.window.location.search = '?state=test-state&code=auth-code';
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
         if (key === 'youversion-auth-state') return 'test-state';
         return null; // Missing other required parameters
       });
@@ -194,10 +174,10 @@ describe('YouVersionAPIUsers', () => {
         text: vi.fn().mockResolvedValue(JSON.stringify(mockTokens)),
       };
 
-      mockLocation.search = '?state=test-state&code=auth-code';
-      mockLocation.href = 'https://example.com/callback?state=test-state&code=auth-code';
+      mocks.window.location.search = '?state=test-state&code=auth-code';
+      mocks.window.location.href = 'https://example.com/callback?state=test-state&code=auth-code';
 
-      mockLocalStorage.getItem.mockImplementation((key) => {
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
         switch (key) {
           case 'youversion-auth-state':
             return 'test-state';
@@ -239,11 +219,15 @@ describe('YouVersionAPIUsers', () => {
       expect(saveAuthDataSpy).toHaveBeenCalled();
 
       // Verify cleanup
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('youversion-auth-code-verifier');
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('youversion-auth-redirect-uri');
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('youversion-auth-state');
+      expect(mocks.localStorage.removeItem).toHaveBeenCalledWith('youversion-auth-code-verifier');
+      expect(mocks.localStorage.removeItem).toHaveBeenCalledWith('youversion-auth-redirect-uri');
+      expect(mocks.localStorage.removeItem).toHaveBeenCalledWith('youversion-auth-state');
 
-      expect(mockHistory.replaceState).toHaveBeenCalledWith({}, '', 'https://example.com/callback');
+      expect(mocks.window.history.replaceState).toHaveBeenCalledWith(
+        {},
+        '',
+        'https://example.com/callback',
+      );
 
       saveAuthDataSpy.mockRestore();
     });
@@ -255,8 +239,8 @@ describe('YouVersionAPIUsers', () => {
         statusText: 'Bad Request',
       };
 
-      mockLocation.search = '?state=test-state&code=auth-code';
-      mockLocalStorage.getItem.mockImplementation((key) => {
+      mocks.window.location.search = '?state=test-state&code=auth-code';
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
         switch (key) {
           case 'youversion-auth-state':
             return 'test-state';
@@ -276,9 +260,9 @@ describe('YouVersionAPIUsers', () => {
       );
 
       // Verify cleanup on error
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('youversion-auth-code-verifier');
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('youversion-auth-redirect-uri');
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('youversion-auth-state');
+      expect(mocks.localStorage.removeItem).toHaveBeenCalledWith('youversion-auth-code-verifier');
+      expect(mocks.localStorage.removeItem).toHaveBeenCalledWith('youversion-auth-redirect-uri');
+      expect(mocks.localStorage.removeItem).toHaveBeenCalledWith('youversion-auth-state');
     });
   });
 
@@ -293,7 +277,7 @@ describe('YouVersionAPIUsers', () => {
       // @ts-expect-error - accessing private method for testing
       YouVersionAPIUsers.obtainLocation(callbackURL, state);
 
-      expect(mockLocation.href).toBe(
+      expect(mocks.window.location.href).toBe(
         'https://api-test.youversion.com/auth/callback?state=test-state&user=123',
       );
     });
@@ -370,7 +354,7 @@ describe('YouVersionAPIUsers', () => {
   describe('decodeJWT', () => {
     it('should decode valid JWT token', () => {
       const payload = { sub: '123', name: 'John' };
-      const base64Payload = btoa(JSON.stringify(payload));
+      const base64Payload = String(mocks.btoa(JSON.stringify(payload)) || 'mockbase64');
       const token = `header.${base64Payload}.signature`;
 
       vi.mocked(atob).mockReturnValue(JSON.stringify(payload));
@@ -492,7 +476,7 @@ describe('YouVersionAPIUsers', () => {
     });
 
     it('should throw error when no refresh token available', async () => {
-      mockLocalStorage.getItem.mockImplementation((key) => {
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
         if (key === 'refreshToken') return null;
         if (key === 'idToken') return 'id-token-123';
         return null;
@@ -504,7 +488,7 @@ describe('YouVersionAPIUsers', () => {
     });
 
     it('should throw error when no id token available', async () => {
-      mockLocalStorage.getItem.mockImplementation((key) => {
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
         if (key === 'refreshToken') return 'refresh-token-123';
         if (key === 'idToken') return null;
         return null;
@@ -518,7 +502,7 @@ describe('YouVersionAPIUsers', () => {
     it('should throw error when appKey is not set', async () => {
       YouVersionPlatformConfiguration.appKey = null;
 
-      mockLocalStorage.getItem.mockImplementation((key) => {
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
         if (key === 'refreshToken') return 'refresh-token-123';
         if (key === 'idToken') return 'id-token-123';
         return null;
@@ -549,7 +533,7 @@ describe('YouVersionAPIUsers', () => {
         json: vi.fn().mockResolvedValue(mockRefreshResponse),
       };
 
-      mockLocalStorage.getItem.mockImplementation((key) => {
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
         if (key === 'refreshToken') return originalRefreshToken;
         if (key === 'idToken') return existingIdToken;
         if (key === 'accessToken') return originalAccessToken;
@@ -611,7 +595,7 @@ describe('YouVersionAPIUsers', () => {
         statusText: 'Unauthorized',
       };
 
-      mockLocalStorage.getItem.mockImplementation((key) => {
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
         if (key === 'refreshToken') return 'refresh-token-123';
         if (key === 'idToken') return 'id-token-123';
         return null;
@@ -625,7 +609,7 @@ describe('YouVersionAPIUsers', () => {
     });
 
     it('should handle network errors during refresh', async () => {
-      mockLocalStorage.getItem.mockImplementation((key) => {
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
         if (key === 'refreshToken') return 'refresh-token-123';
         if (key === 'idToken') return 'id-token-123';
         return null;
@@ -645,7 +629,7 @@ describe('YouVersionAPIUsers', () => {
     });
 
     it('should return true when no expiry date is available', () => {
-      mockLocalStorage.getItem.mockReturnValue(null);
+      mocks.localStorage.getItem.mockReturnValue(null);
 
       const result = YouVersionAPIUsers.isTokenExpired();
 
@@ -654,7 +638,7 @@ describe('YouVersionAPIUsers', () => {
 
     it('should return false when token is not expired', () => {
       const futureDate = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
-      mockLocalStorage.getItem.mockImplementation((key) => {
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
         if (key === 'expiryDate') return futureDate.toISOString();
         return null;
       });
@@ -666,7 +650,7 @@ describe('YouVersionAPIUsers', () => {
 
     it('should return true when token is expired', () => {
       const pastDate = new Date(Date.now() - 10 * 60 * 1000); // 10 minutes ago
-      mockLocalStorage.getItem.mockImplementation((key) => {
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
         if (key === 'expiryDate') return pastDate.toISOString();
         return null;
       });
@@ -684,7 +668,7 @@ describe('YouVersionAPIUsers', () => {
 
     it('should return true when token is not expired', async () => {
       const futureDate = new Date(Date.now() + 10 * 60 * 1000);
-      mockLocalStorage.getItem.mockImplementation((key) => {
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
         if (key === 'expiryDate') return futureDate.toISOString();
         return null;
       });
@@ -697,7 +681,7 @@ describe('YouVersionAPIUsers', () => {
 
     it('should refresh tokens when expired and return true on success', async () => {
       const pastDate = new Date(Date.now() - 10 * 60 * 1000);
-      mockLocalStorage.getItem.mockImplementation((key) => {
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
         if (key === 'expiryDate') return pastDate.toISOString();
         if (key === 'refreshToken') return 'refresh-token-123';
         if (key === 'idToken') return 'id-token-123';
@@ -727,7 +711,7 @@ describe('YouVersionAPIUsers', () => {
 
     it('should return false and clear tokens when refresh fails', async () => {
       const pastDate = new Date(Date.now() - 10 * 60 * 1000);
-      mockLocalStorage.getItem.mockImplementation((key) => {
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
         if (key === 'expiryDate') return pastDate.toISOString();
         if (key === 'refreshToken') return 'refresh-token-123';
         if (key === 'idToken') return 'id-token-123';

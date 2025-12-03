@@ -1,14 +1,11 @@
-/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render } from '@testing-library/react';
-import {
-  YouVersionAPIUsers,
-  YouVersionPlatformConfiguration,
-  SignInWithYouVersionResult,
-} from '@youversion/platform-core';
+import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionAuthProvider } from './YouVersionAuthProvider';
 import { useYouVersionAuthContext } from './YouVersionAuthContext';
 import type { AuthConfig } from '../types/auth';
+import { createMockUserInfo, createMockAuthResult } from '../__tests__/mocks/auth';
 
 // Mock the core modules
 vi.mock('@youversion/platform-core', () => {
@@ -54,7 +51,42 @@ vi.mock('@youversion/platform-core', () => {
         },
       ),
     },
-    SignInWithYouVersionResult: class {
+    YouVersionUserInfo: class YouVersionUserInfo {
+      readonly name?: string;
+      readonly userId?: string;
+      readonly email?: string;
+      readonly avatarUrlFormat?: string;
+
+      constructor(data: any) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        this.name = data.name;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        this.userId = data.id;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        this.email = data.email;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        this.avatarUrlFormat = data.avatar_url;
+      }
+
+      getAvatarUrl(width: number = 200, height: number = 200): URL | null {
+        if (!this.avatarUrlFormat) {
+          return null;
+        }
+        try {
+          let urlString = this.avatarUrlFormat;
+          urlString = urlString.replace('{width}', width.toString());
+          urlString = urlString.replace('{height}', height.toString());
+          return new URL(urlString);
+        } catch {
+          return null;
+        }
+      }
+
+      get avatarUrl(): URL | null {
+        return this.getAvatarUrl();
+      }
+    },
+    SignInWithYouVersionResult: class SignInWithYouVersionResult {
       accessToken: string | undefined;
       expiryDate: Date | undefined;
       refreshToken: string | undefined;
@@ -97,42 +129,15 @@ const mockConfig: AuthConfig = {
   apiHost: 'test-api.example.com',
 };
 
-const mockUserInfo = {
-  id: '123',
-  name: 'John Doe',
-  email: 'john@example.com',
-  picture: 'https://example.com/avatar.jpg',
-  getAvatarUrl: vi.fn((width = 200, height = 200) => {
-    try {
-      return new URL(`https://example.com/avatar.jpg?w=${width}&h=${height}`);
-    } catch {
-      return null;
-    }
-  }),
-  get avatarUrl() {
-    return this.getAvatarUrl();
-  },
-};
-
-const mockAuthResult = new SignInWithYouVersionResult({
-  ...mockUserInfo,
-  accessToken: 'access-token',
-  idToken: 'id-token',
-  refreshToken: 'refresh-token',
-  expiresIn: 3600,
-  permissions: ['bibles', 'highlights'],
-  yvpUserId: 'test-yvp-user-id',
-  profilePicture: 'https://example.com/profile.jpg',
-});
+const mockUserInfo = createMockUserInfo();
+const mockAuthResult = createMockAuthResult();
 
 // Mock window and location
-const mockLocation = {
-  href: 'https://example.com',
-  search: '',
-};
-
 const mockWindow = {
-  location: mockLocation,
+  location: {
+    href: 'https://example.com',
+    search: '',
+  },
 };
 
 // Test component to access context
@@ -154,7 +159,7 @@ describe('YouVersionAuthProvider', () => {
 
     // Setup window mock
     vi.stubGlobal('window', mockWindow);
-    mockLocation.search = '';
+    mockWindow.location.search = '';
 
     // Reset configuration
     YouVersionPlatformConfiguration.appKey = '';
@@ -222,14 +227,14 @@ describe('YouVersionAuthProvider', () => {
 
   describe('OAuth callback handling', () => {
     it('should detect OAuth callback with state parameter', async () => {
-      mockLocation.search = '?state=test-state&code=auth-code';
-      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult);
-      vi.mocked(YouVersionAPIUsers.userInfo).mockReturnValue(mockUserInfo);
+      mockWindow.location.search = '?state=test-state&code=auth-code';
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult as any);
+      vi.mocked(YouVersionAPIUsers.userInfo).mockReturnValue(mockUserInfo as any);
 
       // Mock the configuration to return the id token after handleAuthCallback
       vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockImplementation(() => {
         YouVersionPlatformConfiguration.saveAuthData(null, null, 'test-id-token', null);
-        return Promise.resolve(mockAuthResult);
+        return Promise.resolve(mockAuthResult as any);
       });
 
       const { getByTestId } = render(
@@ -248,8 +253,8 @@ describe('YouVersionAuthProvider', () => {
     });
 
     it('should detect OAuth callback with error parameter', async () => {
-      mockLocation.search = '?error=access_denied&error_description=User+denied+access';
-      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult);
+      mockWindow.location.search = '?error=access_denied&error_description=User+denied+access';
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult as any);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
@@ -265,7 +270,7 @@ describe('YouVersionAuthProvider', () => {
     });
 
     it('should handle callback error and set error state', async () => {
-      mockLocation.search = '?state=test-state&code=auth-code';
+      mockWindow.location.search = '?state=test-state&code=auth-code';
       const callbackError = new Error('Callback processing failed');
       vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockRejectedValue(callbackError);
 
@@ -283,8 +288,8 @@ describe('YouVersionAuthProvider', () => {
     });
 
     it('should handle callback with no idToken', async () => {
-      mockLocation.search = '?state=test-state&code=auth-code';
-      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult);
+      mockWindow.location.search = '?state=test-state&code=auth-code';
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult as any);
       YouVersionPlatformConfiguration.saveAuthData(null, null, null, null);
 
       const { getByTestId } = render(
@@ -312,7 +317,7 @@ describe('YouVersionAuthProvider', () => {
         YouVersionPlatformConfiguration.saveAuthData(null, null, 'refreshed-id-token', null);
         return Promise.resolve(true);
       });
-      vi.mocked(YouVersionAPIUsers.userInfo).mockReturnValue(mockUserInfo);
+      vi.mocked(YouVersionAPIUsers.userInfo).mockReturnValue(mockUserInfo as any);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
