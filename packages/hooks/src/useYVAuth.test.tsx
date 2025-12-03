@@ -38,7 +38,6 @@ vi.mock('@youversion/platform-core', () => ({
 const mockConfig: AuthConfig = {
   appKey: 'test-app-key',
   apiHost: 'test-api.example.com',
-  installationId: 'test-installation-id',
 };
 
 const mockUserInfo = {
