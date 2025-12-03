@@ -79,9 +79,7 @@ describe('useYVAuth', () => {
     mockLocation.search = '';
 
     // Reset configuration mocks
-    YouVersionPlatformConfiguration.accessToken = null;
-    YouVersionPlatformConfiguration.idToken = null;
-    YouVersionPlatformConfiguration.refreshToken = null;
+    YouVersionPlatformConfiguration.saveAuthData(null, null, null, null);
   });
 
   afterEach(() => {
@@ -221,8 +219,7 @@ describe('useYVAuth', () => {
 
   describe('auth state', () => {
     it('should derive correct auth state from configuration', () => {
-      YouVersionPlatformConfiguration.accessToken = 'access-token';
-      YouVersionPlatformConfiguration.idToken = 'id-token';
+      YouVersionPlatformConfiguration.saveAuthData('access-token', null, 'id-token', null);
 
       const { result } = renderHook(() => useYVAuth(), {
         wrapper: TestWrapper,

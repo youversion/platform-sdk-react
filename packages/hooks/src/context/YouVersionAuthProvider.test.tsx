@@ -153,7 +153,7 @@ describe('YouVersionAuthProvider', () => {
       mockLocation.search = '?state=test-state&code=auth-code';
       vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult);
       vi.mocked(YouVersionAPIUsers.userInfo).mockReturnValue(mockUserInfo);
-      YouVersionPlatformConfiguration.idToken = 'test-id-token';
+      YouVersionPlatformConfiguration.saveAuthData(null, null, 'test-id-token', null);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
@@ -208,7 +208,7 @@ describe('YouVersionAuthProvider', () => {
     it('should handle callback with no idToken', async () => {
       mockLocation.search = '?state=test-state&code=auth-code';
       vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult);
-      YouVersionPlatformConfiguration.idToken = null;
+      YouVersionPlatformConfiguration.saveAuthData(null, null, null, null);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
@@ -227,8 +227,12 @@ describe('YouVersionAuthProvider', () => {
 
   describe('existing token handling', () => {
     it('should refresh token when refresh token exists', async () => {
-      YouVersionPlatformConfiguration.refreshToken = 'existing-refresh-token';
-      YouVersionPlatformConfiguration.idToken = 'refreshed-id-token';
+      YouVersionPlatformConfiguration.saveAuthData(
+        null,
+        'existing-refresh-token',
+        'refreshed-id-token',
+        null,
+      );
       vi.mocked(YouVersionAPIUsers.refreshTokenIfNeeded).mockResolvedValue();
       vi.mocked(YouVersionAPIUsers.userInfo).mockReturnValue(mockUserInfo);
 
@@ -248,7 +252,7 @@ describe('YouVersionAuthProvider', () => {
     });
 
     it('should handle refresh token failure', async () => {
-      YouVersionPlatformConfiguration.refreshToken = 'existing-refresh-token';
+      YouVersionPlatformConfiguration.saveAuthData(null, 'existing-refresh-token', null, null);
       vi.mocked(YouVersionAPIUsers.refreshTokenIfNeeded).mockRejectedValue(
         new Error('Refresh failed'),
       );
@@ -267,8 +271,7 @@ describe('YouVersionAuthProvider', () => {
     });
 
     it('should clear user when refresh token exists but no idToken after refresh', async () => {
-      YouVersionPlatformConfiguration.refreshToken = 'existing-refresh-token';
-      YouVersionPlatformConfiguration.idToken = null;
+      YouVersionPlatformConfiguration.saveAuthData(null, 'existing-refresh-token', null, null);
       vi.mocked(YouVersionAPIUsers.refreshTokenIfNeeded).mockResolvedValue();
 
       const { getByTestId } = render(
