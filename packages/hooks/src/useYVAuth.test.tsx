@@ -13,64 +13,85 @@ import { YouVersionAuthContext } from './context/YouVersionAuthContext';
 import type { AuthConfig } from './types/auth';
 
 // Mock the core modules
-vi.mock('@youversion/platform-core', () => ({
-  YouVersionAPIUsers: {
-    signIn: vi.fn(),
-    handleAuthCallback: vi.fn(),
-    userInfo: vi.fn(),
-    refreshTokenIfNeeded: vi.fn(),
-  },
-  YouVersionPlatformConfiguration: {
-    accessToken: null,
-    idToken: null,
-    refreshToken: null,
-    clearAuthTokens: vi.fn(),
-    saveAuthData: vi.fn(),
+vi.mock('@youversion/platform-core', () => {
+  // Create a mock configuration object that can be updated
+  const mockConfiguration = {
+    accessToken: null as string | null,
+    idToken: null as string | null,
+    refreshToken: null as string | null,
     appKey: '',
     apiHost: 'test-api.example.com',
-    installationId: null,
-  },
-  SignInWithYouVersionPermission: {
-    bibles: 'bibles',
-    highlights: 'highlights',
-    user: 'user',
-  },
-  SignInWithYouVersionResult: class {
-    accessToken: string | undefined;
-    expiryDate: Date | undefined;
-    refreshToken: string | undefined;
-    idToken: string | undefined;
-    permissions: string[] | undefined;
-    yvpUserId: string | undefined;
-    name: string | undefined;
-    profilePicture: string | undefined;
-    email: string | undefined;
+    installationId: null as string | null,
+    clearAuthTokens: vi.fn(() => {
+      mockConfiguration.accessToken = null;
+      mockConfiguration.idToken = null;
+      mockConfiguration.refreshToken = null;
+    }),
+    saveAuthData: vi.fn(
+      (
+        accessToken: string | null,
+        refreshToken: string | null,
+        idToken: string | null,
+        installationId: string | null,
+      ) => {
+        mockConfiguration.accessToken = accessToken;
+        mockConfiguration.refreshToken = refreshToken;
+        mockConfiguration.idToken = idToken;
+        mockConfiguration.installationId = installationId;
+      },
+    ),
+  };
 
-    constructor(props: {
-      accessToken?: string;
-      expiresIn?: number;
-      refreshToken?: string;
-      idToken?: string;
-      permissions?: string[];
-      yvpUserId?: string;
-      name?: string;
-      profilePicture?: string;
-      email?: string;
-    }) {
-      this.accessToken = props.accessToken;
-      this.expiryDate = props.expiresIn
-        ? new Date(Date.now() + props.expiresIn * 1000)
-        : new Date();
-      this.refreshToken = props.refreshToken;
-      this.idToken = props.idToken;
-      this.permissions = props.permissions;
-      this.yvpUserId = props.yvpUserId;
-      this.name = props.name;
-      this.profilePicture = props.profilePicture;
-      this.email = props.email;
-    }
-  },
-}));
+  return {
+    YouVersionAPIUsers: {
+      signIn: vi.fn(),
+      handleAuthCallback: vi.fn(),
+      userInfo: vi.fn(),
+      refreshTokenIfNeeded: vi.fn(),
+    },
+    YouVersionPlatformConfiguration: mockConfiguration,
+    SignInWithYouVersionPermission: {
+      bibles: 'bibles',
+      highlights: 'highlights',
+      user: 'user',
+    },
+    SignInWithYouVersionResult: class {
+      accessToken: string | undefined;
+      expiryDate: Date | undefined;
+      refreshToken: string | undefined;
+      idToken: string | undefined;
+      permissions: string[] | undefined;
+      yvpUserId: string | undefined;
+      name: string | undefined;
+      profilePicture: string | undefined;
+      email: string | undefined;
+
+      constructor(props: {
+        accessToken?: string;
+        expiresIn?: number;
+        refreshToken?: string;
+        idToken?: string;
+        permissions?: string[];
+        yvpUserId?: string;
+        name?: string;
+        profilePicture?: string;
+        email?: string;
+      }) {
+        this.accessToken = props.accessToken;
+        this.expiryDate = props.expiresIn
+          ? new Date(Date.now() + props.expiresIn * 1000)
+          : new Date();
+        this.refreshToken = props.refreshToken;
+        this.idToken = props.idToken;
+        this.permissions = props.permissions;
+        this.yvpUserId = props.yvpUserId;
+        this.name = props.name;
+        this.profilePicture = props.profilePicture;
+        this.email = props.email;
+      }
+    },
+  };
+});
 
 const mockConfig: AuthConfig = {
   appKey: 'test-app-key',
@@ -128,7 +149,10 @@ describe('useYVAuth', () => {
     mockLocation.search = '';
 
     // Reset configuration mocks
-    YouVersionPlatformConfiguration.saveAuthData(null, null, null, null);
+    YouVersionPlatformConfiguration.accessToken = null;
+    YouVersionPlatformConfiguration.idToken = null;
+    YouVersionPlatformConfiguration.refreshToken = null;
+    YouVersionPlatformConfiguration.installationId = null;
   });
 
   afterEach(() => {
