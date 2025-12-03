@@ -149,9 +149,7 @@ describe('useYVAuth', () => {
     mockLocation.search = '';
 
     // Reset configuration mocks
-    YouVersionPlatformConfiguration.accessToken = null;
-    YouVersionPlatformConfiguration.idToken = null;
-    YouVersionPlatformConfiguration.refreshToken = null;
+    YouVersionPlatformConfiguration.clearAuthTokens();
     YouVersionPlatformConfiguration.installationId = null;
   });
 
