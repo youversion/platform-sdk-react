@@ -23,6 +23,7 @@ export default function YouVersionAuthProvider({
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    let mounted = true;
     const initAuth = async () => {
       // Set configuration
       YouVersionPlatformConfiguration.appKey = config.appKey;
@@ -38,9 +39,11 @@ export default function YouVersionAuthProvider({
             const result = await YouVersionAPIUsers.handleAuthCallback();
             if (result && YouVersionPlatformConfiguration.idToken) {
               const info = YouVersionAPIUsers.userInfo(YouVersionPlatformConfiguration.idToken);
+              if (!mounted) return;
               setUserInfo(info);
             }
           } catch (err) {
+            if (!mounted) return;
             setError(err as Error);
           }
         } else {
@@ -52,21 +55,28 @@ export default function YouVersionAuthProvider({
               const idToken = YouVersionPlatformConfiguration.idToken;
               if (idToken) {
                 const info = YouVersionAPIUsers.userInfo(idToken);
+                if (!mounted) return;
                 setUserInfo(info);
               } else {
+                if (!mounted) return;
                 setUserInfo(null);
               }
             } catch {
+              if (!mounted) return;
               setUserInfo(null);
             }
           }
         }
       }
 
+      if (!mounted) return;
       setIsLoading(false);
     };
 
     void initAuth();
+    return () => {
+      mounted = false;
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const value: AuthContextValue = {

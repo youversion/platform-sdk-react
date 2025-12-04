@@ -8,7 +8,7 @@
 export class YouVersionPlatformConfiguration {
   private static _appKey: string | null = null;
   private static _installationId: string | null = null;
-  private static _apiHost: string = 'api-staging.youversion.com';
+  private static _apiHost: string = 'api.youversion.com';
   private static _refreshTokenKey: string | null = null;
   private static _expiryDateKey: string | null = null;
 
