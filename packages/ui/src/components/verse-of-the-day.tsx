@@ -14,6 +14,10 @@ import {
 
 export type VerseOfTheDayProps = {
   /**
+   * Sets the background color of the Verse Of the Day component.
+   */
+  background?: 'light' | 'dark';
+  /**
    * The Bible Translation version id to use, defaults to 1 (KJV).
    */
   versionId?: number;
@@ -73,6 +77,7 @@ async function share({ title, text, url }: { title?: string; text: string; url?:
  * ```
  */
 export function VerseOfTheDay({
+  background = 'light',
   dayOfYear,
   versionId = 1, // KJV by default
   showSunIcon = true,
@@ -118,6 +123,8 @@ export function VerseOfTheDay({
 
   return (
     <section
+      data-yv-sdk
+      data-yv-theme={background === 'dark' ? 'dark' : 'light'}
       data-size={size}
       className={
         'yv:data-[size=lg]:p-8 yv:data-[size=default]:p-4 yv:*:shrink-0 yv:font-sans yv:flex yv:flex-col yv:gap-3 yv:max-w-screen-sm yv:p-4 yv:shadow yv:rounded-2xl'
@@ -170,7 +177,7 @@ export function VerseOfTheDay({
         ) : null}
       </div>
 
-      <p className="yv:text-(--yv-gray-30) yv:font-medium yv:text-sm">{referenceText}</p>
+      <p className="yv:text-muted-foreground yv:font-medium yv:text-sm">{referenceText}</p>
 
       {showBibleAppAttribution ? (
         <div
