@@ -47,25 +47,4 @@ export class URLBuilder {
       );
     }
   }
-
-  static userURL(accessToken: string): URL {
-    if (typeof accessToken !== 'string' || accessToken.trim().length === 0) {
-      throw new Error('accessToken must be a non-empty string');
-    }
-
-    try {
-      const url = new URL(this.baseURL);
-      url.pathname = '/auth/me';
-
-      const searchParams = new URLSearchParams();
-      searchParams.append('lat', accessToken);
-
-      url.search = searchParams.toString();
-      return url;
-    } catch (error) {
-      throw new Error(
-        `Failed to construct user URL: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
-    }
-  }
 }

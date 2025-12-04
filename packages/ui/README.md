@@ -30,13 +30,13 @@ Get your App Key at [platform.youversion.com](https://platform.youversion.com/)
 Wrap your app with the provider and use components:
 
 ```tsx
-import { BibleSDKProvider, BibleTextView } from '@youversion/platform-react-ui';
+import { YouVersionProvider, BibleTextView } from '@youversion/platform-react-ui';
 
 function App() {
   return (
-    <BibleSDKProvider appKey={"YOUR_APP_KEY"}>
+    <YouVersionProvider appKey={"YOUR_APP_KEY"}>
       <BibleTextView reference="JHN.1.1-4" versionId={111} />
-    </BibleSDKProvider>
+    </YouVersionProvider>
   );
 }
 ```
@@ -47,20 +47,20 @@ Toggle theme via the `YVPProvider`:
 
 ```tsx
 import { useState } from 'react';
-import { BibleSDKProvider, YVPProvider, BibleTextView } from '@youversion/platform-react-ui';
+import { YouVersionProvider, YVPProvider, BibleTextView } from '@youversion/platform-react-ui';
 
 export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   return (
-    <BibleSDKProvider appKey="YOUR_APP_KEY">
+    <YouVersionProvider appKey="YOUR_APP_KEY">
       <YVPProvider config={{ appKey: "YOUR_APP_KEY" }} theme={theme}>
         <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
           Toggle theme
         </button>
         <BibleTextView reference="JHN.1.1-4" versionId={111} />
       </YVPProvider>
-    </BibleSDKProvider>
+    </YouVersionProvider>
   );
 }
 ```

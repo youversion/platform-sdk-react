@@ -8,46 +8,47 @@ export const SignInWithYouVersionPermission = {
   bibleActivity: 'bible_activity',
 } as const;
 
+type SignInWithYouVersionResultProps = {
+  accessToken?: string;
+  expiresIn?: number;
+  refreshToken?: string;
+  idToken?: string;
+  permissions?: SignInWithYouVersionPermissionValues[];
+  yvpUserId?: string;
+  name?: string;
+  profilePicture?: string;
+  email?: string;
+};
 export class SignInWithYouVersionResult {
-  public readonly accessToken: string | null;
-  public readonly permissions: SignInWithYouVersionPermissionValues[];
-  public readonly errorMsg: string | null;
-  public readonly yvpUserId: string | null;
+  public readonly accessToken: string | undefined;
+  public readonly expiryDate: Date | undefined;
+  public readonly refreshToken: string | undefined;
+  public readonly idToken: string | undefined;
+  public readonly permissions: SignInWithYouVersionPermissionValues[] | undefined;
+  public readonly yvpUserId: string | undefined;
+  public readonly name: string | undefined;
+  public readonly profilePicture: string | undefined;
+  public readonly email: string | undefined;
 
-  constructor(url: URL) {
-    const queryParams = new URLSearchParams(url.search);
-
-    const status = queryParams.get('status');
-    const userId = queryParams.get('yvp_user_id');
-    const latValue = queryParams.get('lat');
-    const grants = queryParams.get('grants');
-
-    const perms =
-      grants
-        ?.split(',')
-        .map((grant) => grant.trim())
-        .filter((grant) =>
-          Object.values(SignInWithYouVersionPermission).includes(
-            grant as SignInWithYouVersionPermissionValues,
-          ),
-        )
-        .map((grant) => grant as SignInWithYouVersionPermissionValues) ?? [];
-
-    if (status === 'success' && latValue && userId) {
-      this.accessToken = latValue;
-      this.permissions = perms;
-      this.errorMsg = null;
-      this.yvpUserId = userId;
-    } else if (status === 'canceled') {
-      this.accessToken = null;
-      this.permissions = [];
-      this.errorMsg = null;
-      this.yvpUserId = null;
-    } else {
-      this.accessToken = null;
-      this.permissions = [];
-      this.errorMsg = 'Authentication failed';
-      this.yvpUserId = null;
-    }
+  constructor({
+    accessToken,
+    expiresIn,
+    refreshToken,
+    idToken,
+    permissions,
+    yvpUserId,
+    name,
+    profilePicture,
+    email,
+  }: SignInWithYouVersionResultProps) {
+    this.accessToken = accessToken;
+    this.expiryDate = expiresIn ? new Date(Date.now() + expiresIn * 1000) : new Date();
+    this.refreshToken = refreshToken;
+    this.idToken = idToken;
+    this.permissions = permissions;
+    this.yvpUserId = yvpUserId;
+    this.name = name;
+    this.profilePicture = profilePicture;
+    this.email = email;
   }
 }

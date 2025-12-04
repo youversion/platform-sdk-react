@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { BibleChapterPicker } from './bible-chapter-picker';
 import { http, HttpResponse } from 'msw';
-import { BibleSDKProvider } from '@youversion/platform-react-hooks';
+import { YouVersionProvider } from '@youversion/platform-react-hooks';
 import { within, waitFor, expect, userEvent } from 'storybook/test';
 import mockChapters from '../test/mock-data/chapters.json';
 import mockBooks from '../test/mock-data/books.json';
@@ -28,7 +28,7 @@ const meta = {
       const [book, setBook] = useState('MAT');
       const [chapter, setChapter] = useState('5');
       return (
-        <BibleSDKProvider
+        <YouVersionProvider
           appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY}
           apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
         >
@@ -44,7 +44,7 @@ const meta = {
               <BibleChapterPicker.Trigger />
             </BibleChapterPicker.Root>
           </div>
-        </BibleSDKProvider>
+        </YouVersionProvider>
       );
     },
   ],

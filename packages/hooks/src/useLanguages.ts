@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useContext } from 'react';
-import { BibleSDKContext } from './context';
+import { YouVersionContext } from './context';
 import { LanguagesClient, ApiClient } from '@youversion/platform-core';
 import { useApiData, type UseApiDataOptions } from './useApiData';
 import {
@@ -20,12 +20,12 @@ export function useLanguages(
   error: Error | null;
   refetch: () => void;
 } {
-  const context = useContext(BibleSDKContext);
+  const context = useContext(YouVersionContext);
 
   const languagesClient = useMemo(() => {
     if (!context?.appKey) {
       throw new Error(
-        'BibleSDK context not found. Make sure your component is wrapped with BibleSDKProvider and an API key is provided.',
+        'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
       );
     }
     return new LanguagesClient(

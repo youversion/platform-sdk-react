@@ -1,16 +1,16 @@
 'use client';
 
 import { useContext, useMemo } from 'react';
-import { BibleSDKContext } from './context';
+import { YouVersionContext } from './context';
 import { BibleClient, ApiClient } from '@youversion/platform-core';
 
 export function useBibleClient(): BibleClient {
-  const context = useContext(BibleSDKContext);
+  const context = useContext(YouVersionContext);
 
   return useMemo(() => {
     if (!context?.appKey) {
       throw new Error(
-        'BibleSDK context not found. Make sure your component is wrapped with BibleSDKProvider and an API key is provided.',
+        'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
       );
     }
 

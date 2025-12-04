@@ -6,9 +6,6 @@ export {
   type GetHighlightsOptions,
   type DeleteHighlightOptions,
 } from './highlights';
-export { AuthClient } from './authentication';
-export * from './AuthenticationStrategy';
-export { WebAuthenticationStrategy } from './WebAuthenticationStrategy';
 export * from './StorageStrategy';
 export * from './Users';
 export * from './YouVersionUserInfo';

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, waitFor, userEvent, within, spyOn } from 'storybook/test';
+import { expect, fn, userEvent, within, spyOn } from 'storybook/test';
 
 import { SignInButton } from './SignInButton';
 
@@ -33,7 +33,7 @@ const meta = {
       .mockName('YouVersionAPIUsers.signIn');
   },
   args: {
-    onSuccess: fn(),
+    redirectUrl: import.meta.env.STORYBOOK_AUTH_REDIRECT_URL,
     onAuthError: fn(),
   },
   argTypes: {
@@ -42,17 +42,7 @@ const meta = {
         disable: true,
       },
     },
-    onSuccess: {
-      table: {
-        disable: true,
-      },
-    },
-    optionalPermissions: {
-      table: {
-        disable: true,
-      },
-    },
-    requiredPermissions: {
+    permissions: {
       table: {
         disable: true,
       },
@@ -251,25 +241,16 @@ export const DarkRectangleIconOutline: Story = {
 
 export const InteractionTestWithMockedAuth: Story = {
   args: {
-    onSuccess: fn(),
     onAuthError: fn(),
   },
   tags: ['integration'],
-  play: async ({ canvasElement, args }) => {
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const loginButton = canvas.getByRole('button', { name: /sign in with youversion/i });
+    // Wait for the auth provider to load and the button to appear
+    const loginButton = await canvas.findByRole('button', { name: /sign in with youversion/i });
     await userEvent.click(loginButton);
 
     void expect(signInMock).toHaveBeenCalled();
-
-    await waitFor(() => {
-      void expect(args.onSuccess).toHaveBeenCalledWith(
-        expect.objectContaining({
-          accessToken: 'mock-token',
-          yvpUserId: 'mock-user-id',
-        }),
-      );
-    });
   },
 };

@@ -1,14 +1,14 @@
 export interface YouVersionUserInfoJSON {
-  first_name?: string;
-  last_name?: string;
+  name?: string;
   id?: string;
   avatar_url?: string;
+  email?: string;
 }
 
 export class YouVersionUserInfo {
-  readonly firstName?: string;
-  readonly lastName?: string;
+  readonly name?: string;
   readonly userId?: string;
+  readonly email?: string;
   readonly avatarUrlFormat?: string;
 
   constructor(data: YouVersionUserInfoJSON) {
@@ -16,9 +16,9 @@ export class YouVersionUserInfo {
       throw new Error('Invalid user data provided');
     }
 
-    this.firstName = data.first_name;
-    this.lastName = data.last_name;
+    this.name = data.name;
     this.userId = data.id;
+    this.email = data.email;
     this.avatarUrlFormat = data.avatar_url;
   }
 

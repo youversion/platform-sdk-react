@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { BibleSDKProvider } from '@youversion/platform-react-hooks';
+import { YouVersionProvider } from '@youversion/platform-react-hooks';
 import { BibleVersionPicker, type RootProps } from './bible-version-picker';
 import { useState } from 'react';
 import { screen, userEvent, within, expect } from 'storybook/test';
@@ -8,14 +8,14 @@ import { Button } from './ui/button';
 import { http, HttpResponse } from 'msw';
 
 const withProvider = (Story: React.ComponentType) => (
-  <BibleSDKProvider
+  <YouVersionProvider
     appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY}
     apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
   >
     <div className="yv:h-screen yv:flex yv:justify-center yv:items-end yv:p-12">
       <Story />
     </div>
-  </BibleSDKProvider>
+  </YouVersionProvider>
 );
 
 const PickerWrapper = ({ versionId: initialVersionId = 111, ...props }: RootProps) => {

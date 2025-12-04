@@ -2,7 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import type { ReactNode } from 'react';
 import { useHighlights } from './useHighlights';
-import { BibleSDKContext } from './context';
+import { YouVersionContext } from './context';
 import {
   HighlightsClient,
   ApiClient,
@@ -56,7 +56,7 @@ describe('useHighlights', () => {
 
   const createWrapper = (contextValue: { appKey: string }) => {
     return ({ children }: { children: ReactNode }) => (
-      <BibleSDKContext.Provider value={contextValue}>{children}</BibleSDKContext.Provider>
+      <YouVersionContext.Provider value={contextValue}>{children}</YouVersionContext.Provider>
     );
   };
 
@@ -85,7 +85,7 @@ describe('useHighlights', () => {
   describe('context validation', () => {
     it('should throw error when context is not provided', () => {
       expect(() => renderHook(() => useHighlights())).toThrow(
-        'BibleSDK context not found. Make sure your component is wrapped with BibleSDKProvider and an API key is provided.',
+        'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
       );
     });
 
@@ -95,7 +95,7 @@ describe('useHighlights', () => {
       });
 
       expect(() => renderHook(() => useHighlights(), { wrapper })).toThrow(
-        'BibleSDK context not found. Make sure your component is wrapped with BibleSDKProvider and an API key is provided.',
+        'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
       );
     });
   });
@@ -131,13 +131,13 @@ describe('useHighlights', () => {
       let currentAppKey = mockAppKey;
 
       const wrapper = ({ children }: { children: ReactNode }) => (
-        <BibleSDKContext.Provider
+        <YouVersionContext.Provider
           value={{
             appKey: currentAppKey,
           }}
         >
           {children}
-        </BibleSDKContext.Provider>
+        </YouVersionContext.Provider>
       );
 
       const { rerender } = renderHook(() => useHighlights(), { wrapper });

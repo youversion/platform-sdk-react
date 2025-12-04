@@ -4,10 +4,10 @@ import { type JSX, useState } from 'react';
 import {
   SignInButton,
   SignInWithYouVersionPermission,
-  useAuthentication,
   VerseOfTheDay,
   BibleTextView,
   BibleChapterPicker,
+  useYVAuth,
 } from '@youversion/platform-react-ui';
 
 function VotdTester() {
@@ -83,11 +83,8 @@ export default function UnauthenticatedView(): JSX.Element {
   const [versionId, _setVersionId] = useState(206);
   const [book, setBook] = useState('GEN');
   const [chapter, setChapter] = useState('1');
-  const { auth } = useAuthentication();
-
-  const handleSuccess = () => {
-    // Authentication success is handled by the hook
-  };
+  const { auth } = useYVAuth();
+  const redirectUrl = process.env.NEXT_PUBLIC_REDIRECT_URI || 'http://localhost:6006';
 
   const handleError = (error: Error) => {
     console.error('Authentication error:', error);
@@ -107,154 +104,136 @@ export default function UnauthenticatedView(): JSX.Element {
       <div className="flex flex-wrap gap-4">
         <section className="bg-[rgba(238,238,238,1)] p-4 flex items-center gap-4 w-full">
           <SignInButton
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
             variant="outline"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
             size="short"
             variant="default"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
             size="short"
             variant="outline"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
             size="icon"
             variant="default"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
             size="icon"
             variant="outline"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
         </section>
         <section className="bg-[#333333] p-4 flex items-center gap-4 w-full">
           <SignInButton
             background="dark"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
             background="dark"
             variant="outline"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
             background="dark"
             size="short"
             variant="default"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
             background="dark"
             size="short"
             variant="outline"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
             background="dark"
             size="icon"
             variant="default"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
             background="dark"
             size="icon"
             variant="outline"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
         </section>
         <section className="bg-[rgba(238,238,238,1)] p-4 flex items-center gap-4 w-full">
           <SignInButton
             radius="rectangular"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
             radius="rectangular"
             variant="outline"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
             radius="rectangular"
             size="short"
             variant="default"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
             radius="rectangular"
             size="short"
             variant="outline"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
             radius="rectangular"
             size="icon"
             variant="default"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
             radius="rectangular"
             size="icon"
             variant="outline"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
         </section>
@@ -262,18 +241,16 @@ export default function UnauthenticatedView(): JSX.Element {
           <SignInButton
             radius="rectangular"
             background="dark"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
             radius="rectangular"
             background="dark"
             variant="outline"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
@@ -281,9 +258,8 @@ export default function UnauthenticatedView(): JSX.Element {
             background="dark"
             size="short"
             variant="default"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
@@ -291,9 +267,8 @@ export default function UnauthenticatedView(): JSX.Element {
             background="dark"
             size="short"
             variant="outline"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
@@ -301,9 +276,8 @@ export default function UnauthenticatedView(): JSX.Element {
             background="dark"
             size="icon"
             variant="default"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
           <SignInButton
@@ -311,9 +285,8 @@ export default function UnauthenticatedView(): JSX.Element {
             background="dark"
             size="icon"
             variant="outline"
-            requiredPermissions={[SignInWithYouVersionPermission.bibles]}
-            optionalPermissions={[SignInWithYouVersionPermission.highlights]}
-            onSuccess={handleSuccess}
+            permissions={[SignInWithYouVersionPermission.bibles]}
+            redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
         </section>

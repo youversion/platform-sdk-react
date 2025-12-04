@@ -1,12 +1,16 @@
-import type { YouVersionUserInfo } from './YouVersionUserInfo';
-
+/**
+ * Security Note: Tokens are stored in localStorage for persistence.
+ * Ensure your application follows XSS prevention best practices:
+ * - Sanitize user input
+ * - Use Content Security Policy headers
+ * - Avoid innerHTML with untrusted content
+ */
 export class YouVersionPlatformConfiguration {
   private static _appKey: string | null = null;
   private static _installationId: string | null = null;
-  private static _accessToken: string | null = null;
   private static _apiHost: string = 'api.youversion.com';
-  private static _isPreviewMode: boolean = false;
-  private static _previewUserInfo: YouVersionUserInfo | null = null;
+  private static _refreshTokenKey: string | null = null;
+  private static _expiryDateKey: string | null = null;
 
   private static getOrSetInstallationId(): string {
     if (typeof window === 'undefined') {
@@ -21,6 +25,58 @@ export class YouVersionPlatformConfiguration {
     const newId = crypto.randomUUID();
     localStorage.setItem('x-yvp-installation-id', newId);
     return newId;
+  }
+
+  public static saveAuthData(
+    accessToken: string | null,
+    refreshToken: string | null,
+    idToken: string | null,
+    expiryDate: Date | null,
+  ): void {
+    if (accessToken !== null) {
+      localStorage.setItem('accessToken', accessToken);
+    } else {
+      localStorage.removeItem('accessToken');
+    }
+
+    if (refreshToken !== null) {
+      localStorage.setItem('refreshToken', refreshToken);
+    } else {
+      localStorage.removeItem('refreshToken');
+    }
+
+    if (idToken !== null) {
+      localStorage.setItem('idToken', idToken);
+    } else {
+      localStorage.removeItem('idToken');
+    }
+
+    if (expiryDate !== null) {
+      localStorage.setItem('expiryDate', expiryDate.toISOString());
+    } else {
+      localStorage.removeItem('expiryDate');
+    }
+  }
+
+  public static clearAuthTokens(): void {
+    this.saveAuthData(null, null, null, null);
+  }
+
+  public static get accessToken(): string | null {
+    return localStorage.getItem('accessToken');
+  }
+
+  public static get refreshToken(): string | null {
+    return localStorage.getItem('refreshToken');
+  }
+
+  public static get idToken(): string | null {
+    return localStorage.getItem('idToken');
+  }
+
+  public static get tokenExpiryDate(): Date | null {
+    const dateString = localStorage.getItem('expiryDate');
+    return dateString ? new Date(dateString) : null;
   }
 
   static get appKey(): string | null {
@@ -42,18 +98,6 @@ export class YouVersionPlatformConfiguration {
     this._installationId = value || this.getOrSetInstallationId();
   }
 
-  static setAccessToken(token: string | null): void {
-    // Validate token: if not null, must be a non-empty string
-    if (token !== null && (typeof token !== 'string' || token.trim().length === 0)) {
-      throw new Error('Access token must be a non-empty string or null');
-    }
-    this._accessToken = token;
-  }
-
-  static get accessToken(): string | null {
-    return this._accessToken;
-  }
-
   static get apiHost(): string {
     return this._apiHost;
   }
@@ -62,19 +106,19 @@ export class YouVersionPlatformConfiguration {
     this._apiHost = value;
   }
 
-  static get isPreviewMode(): boolean {
-    return this._isPreviewMode;
+  static get refreshTokenKey(): string | null {
+    return this._refreshTokenKey;
   }
 
-  static set isPreviewMode(value: boolean) {
-    this._isPreviewMode = value;
+  static set refreshTokenKey(value: string) {
+    this._refreshTokenKey = value;
   }
 
-  static get previewUserInfo(): YouVersionUserInfo | null {
-    return this._previewUserInfo;
+  static get expiryDateKey(): string | null {
+    return this._expiryDateKey;
   }
 
-  static set previewUserInfo(value: YouVersionUserInfo | null) {
-    this._previewUserInfo = value;
+  static set expiryDateKey(value: string) {
+    this._expiryDateKey = value;
   }
 }

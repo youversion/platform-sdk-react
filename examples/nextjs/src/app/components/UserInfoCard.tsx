@@ -1,44 +1,37 @@
 'use client';
 
-import { useAuthentication, type YouVersionUserInfo } from '@youversion/platform-react-ui';
-import { useState, useEffect, type JSX } from 'react';
+import { useYVAuth } from '@youversion/platform-react-ui';
+import type { JSX } from 'react';
+import UnauthenticatedView from './UnauthenticatedView';
 
 function AuthenticatedUserInfo({
-  userInfo,
-  isLoading,
+  name,
+  yvpUserId,
+  email,
+  profilePicture,
 }: {
-  userInfo: YouVersionUserInfo | null;
-  isLoading: boolean;
-}): JSX.Element | null {
-  if (isLoading) {
-    return (
-      <div className="bg-blue-50 p-4 rounded-lg max-w-md">
-        <p className="text-sm text-blue-600">Loading user info...</p>
-      </div>
-    );
-  }
-
-  if (!userInfo) {
-    return null;
-  }
-
+  name?: string;
+  yvpUserId: string;
+  email?: string;
+  profilePicture?: string;
+}): JSX.Element {
   return (
     <div className="bg-green-50 p-4 rounded-lg max-w-md text-black">
-      <h3 className="font-semibold text-green-800 mb-2">User Information</h3>
+      <h3 className="font-semibold text-green-800 mb-2">User Information (from JWT)</h3>
       <p className="text-sm">
-        <strong>Name:</strong>{' '}
-        {userInfo.firstName && userInfo.lastName
-          ? `${userInfo.firstName} ${userInfo.lastName}`
-          : userInfo.firstName || userInfo.lastName || 'N/A'}
+        <strong>Name:</strong> {name || 'N/A'}
       </p>
       <p className="text-sm">
-        <strong>User ID:</strong> {userInfo.userId || 'N/A'}
+        <strong>User ID:</strong> {yvpUserId}
       </p>
-      {userInfo.avatarUrl && (
+      <p className="text-sm">
+        <strong>Email:</strong> {email || 'N/A'}
+      </p>
+      {profilePicture && (
         <p className="text-sm">
           <strong>Avatar:</strong>{' '}
           <img
-            src={userInfo.avatarUrl.toString()}
+            src={profilePicture}
             alt="User Avatar"
             className="inline-block w-8 h-8 rounded-full ml-2"
           />
@@ -48,43 +41,19 @@ function AuthenticatedUserInfo({
   );
 }
 
-function UnauthenticatedUserInfo() {
-  return (
-    <div className="bg-gray-50 p-4 rounded-lg max-w-md">
-      <p className="text-sm text-gray-600">Not signed in</p>
-    </div>
-  );
-}
+export default function UserInfoCard(): JSX.Element {
+  const { auth, userInfo } = useYVAuth();
 
-export default function UserInfoCard(): JSX.Element | null {
-  const { auth, fetchUserInfo } = useAuthentication();
-  const [userInfo, setUserInfo] = useState<YouVersionUserInfo | null>(null);
-  const [userInfoLoading, setUserInfoLoading] = useState(false);
-
-  useEffect(() => {
-    const loadUserInfo = async () => {
-      if (auth.isAuthenticated) {
-        setUserInfoLoading(true);
-        try {
-          const info = await fetchUserInfo();
-          setUserInfo(info);
-        } catch {
-          // On error, clear any stale user info
-          setUserInfo(null);
-        } finally {
-          setUserInfoLoading(false);
-        }
-      } else {
-        setUserInfo(null);
-      }
-    };
-
-    void loadUserInfo();
-  }, [auth.isAuthenticated, fetchUserInfo]);
-
-  if (!auth.isAuthenticated) {
-    return <UnauthenticatedUserInfo />;
+  if (!auth.isAuthenticated || !userInfo) {
+    return <UnauthenticatedView />;
   }
 
-  return <AuthenticatedUserInfo userInfo={userInfo} isLoading={userInfoLoading} />;
+  return (
+    <AuthenticatedUserInfo
+      name={userInfo.name}
+      yvpUserId={userInfo.userId || ''}
+      email={userInfo.email}
+      profilePicture={userInfo.avatarUrl?.toString()}
+    />
+  );
 }

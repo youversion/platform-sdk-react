@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback } from 'react';
 import { useContext } from 'react';
-import { BibleSDKContext } from './context';
+import { YouVersionContext } from './context';
 import { HighlightsClient, ApiClient } from '@youversion/platform-core';
 import { useApiData, type UseApiDataOptions } from './useApiData';
 import {
@@ -24,12 +24,12 @@ export function useHighlights(
   createHighlight: (data: CreateHighlight) => Promise<Highlight>;
   deleteHighlight: (passageId: string, deleteOptions?: DeleteHighlightOptions) => Promise<void>;
 } {
-  const context = useContext(BibleSDKContext);
+  const context = useContext(YouVersionContext);
 
   const highlightsClient = useMemo(() => {
     if (!context?.appKey) {
       throw new Error(
-        'BibleSDK context not found. Make sure your component is wrapped with BibleSDKProvider and an API key is provided.',
+        'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
       );
     }
     return new HighlightsClient(

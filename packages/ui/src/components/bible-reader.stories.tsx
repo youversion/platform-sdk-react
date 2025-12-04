@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import React from 'react';
 import { BibleReader } from './bible-reader';
-import { BibleSDKProvider } from '@youversion/platform-react-hooks';
+import { YouVersionProvider } from '@youversion/platform-react-hooks';
 
 const meta: Meta<typeof BibleReader.Root> = {
   title: 'Components/BibleReader',
@@ -11,12 +11,12 @@ const meta: Meta<typeof BibleReader.Root> = {
   },
   decorators: [
     (Story: React.ComponentType): React.ReactElement => (
-      <BibleSDKProvider
+      <YouVersionProvider
         appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY}
         apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
       >
         <Story />
-      </BibleSDKProvider>
+      </YouVersionProvider>
     ),
   ],
   argTypes: {

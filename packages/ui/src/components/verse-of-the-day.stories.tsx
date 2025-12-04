@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { BibleSDKProvider } from '@youversion/platform-react-hooks';
+import { YouVersionProvider } from '@youversion/platform-react-hooks';
 import { http, HttpResponse } from 'msw';
 import { expect, within, userEvent, spyOn } from 'storybook/test';
 
@@ -49,12 +49,12 @@ const meta = {
   },
   decorators: [
     (Story: React.ComponentType): React.ReactElement => (
-      <BibleSDKProvider
+      <YouVersionProvider
         appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY}
         apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
       >
         <Story />
-      </BibleSDKProvider>
+      </YouVersionProvider>
     ),
   ],
   tags: ['autodocs'],
@@ -112,9 +112,8 @@ export const Default: Story = {
     const mockSpy = spyOn(navigator, 'share');
     const canvas = within(canvasElement);
 
-    // `getByText` is synchronous and happens instantly, which allows us to check
-    // that the loading text is shown before the verse.
-    await expect(canvas.getByText('Loading...')).toBeInTheDocument();
+    // Wait for component to load, then check that the loading text is shown before the verse.
+    await expect(await canvas.findByText('Loading...')).toBeInTheDocument();
     await expect(
       await canvas.findByText(/for I am about to do something new/i),
     ).toBeInTheDocument();

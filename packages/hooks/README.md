@@ -27,7 +27,7 @@ Get your App Key at [platform.youversion.com](https://platform.youversion.com/)
 ## Usage
 
 ```tsx
-import { BibleSDKProvider, usePassage } from '@youversion/platform-react-hooks';
+import { YouVersionProvider, usePassage } from '@youversion/platform-react-hooks';
 
 function BibleVerse() {
   const { passage, loading } = usePassage({ versionId: 111, usfm: 'JHN.3.16' });
@@ -37,9 +37,9 @@ function BibleVerse() {
 
 function App() {
   return (
-    <BibleSDKProvider appKey="YOUR_APP_KEY">
+    <YouVersionProvider appKey="YOUR_APP_KEY">
       <BibleVerse />
-    </BibleSDKProvider>
+    </YouVersionProvider>
   );
 }
 ```

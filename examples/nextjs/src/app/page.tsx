@@ -1,12 +1,12 @@
 'use client';
 
 import { type JSX } from 'react';
-import { useAuthentication } from '@youversion/platform-react-ui';
+import { useYVAuth } from '@youversion/platform-react-ui';
 import AuthenticatedView from './components/AuthenticatedView';
 import UnauthenticatedView from './components/UnauthenticatedView';
 
 export default function Home(): JSX.Element {
-  const { auth } = useAuthentication();
+  const { auth } = useYVAuth();
 
   if (auth.isLoading) {
     return (

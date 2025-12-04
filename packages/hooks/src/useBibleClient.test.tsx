@@ -2,7 +2,7 @@ import { renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ReactNode } from 'react';
 import { useBibleClient } from './useBibleClient';
-import { BibleSDKContext } from './context';
+import { YouVersionContext } from './context';
 import { BibleClient, ApiClient } from '@youversion/platform-core';
 
 vi.mock('@youversion/platform-core', async () => {
@@ -31,13 +31,13 @@ describe('useBibleClient', () => {
 
   it('should create and return a BibleClient instance when context is valid', () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
-      <BibleSDKContext.Provider
+      <YouVersionContext.Provider
         value={{
           appKey: mockAppKey,
         }}
       >
         {children}
-      </BibleSDKContext.Provider>
+      </YouVersionContext.Provider>
     );
 
     const { result } = renderHook(() => useBibleClient(), { wrapper });
@@ -51,35 +51,35 @@ describe('useBibleClient', () => {
 
   it('should throw error when context is not provided', () => {
     expect(() => renderHook(() => useBibleClient())).toThrow(
-      'BibleSDK context not found. Make sure your component is wrapped with BibleSDKProvider and an API key is provided.',
+      'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
     );
   });
 
   it('should throw error when appKey is missing', () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
-      <BibleSDKContext.Provider
+      <YouVersionContext.Provider
         value={{
           appKey: '',
         }}
       >
         {children}
-      </BibleSDKContext.Provider>
+      </YouVersionContext.Provider>
     );
 
     expect(() => renderHook(() => useBibleClient(), { wrapper })).toThrow(
-      'BibleSDK context not found. Make sure your component is wrapped with BibleSDKProvider and an API key is provided.',
+      'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
     );
   });
 
   it('should memoize the BibleClient instance', () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
-      <BibleSDKContext.Provider
+      <YouVersionContext.Provider
         value={{
           appKey: mockAppKey,
         }}
       >
         {children}
-      </BibleSDKContext.Provider>
+      </YouVersionContext.Provider>
     );
 
     const { result, rerender } = renderHook(() => useBibleClient(), { wrapper });
@@ -96,13 +96,13 @@ describe('useBibleClient', () => {
     let currentAppKey = mockAppKey;
 
     const wrapper = ({ children }: { children: ReactNode }) => (
-      <BibleSDKContext.Provider
+      <YouVersionContext.Provider
         value={{
           appKey: currentAppKey,
         }}
       >
         {children}
-      </BibleSDKContext.Provider>
+      </YouVersionContext.Provider>
     );
 
     const { result, rerender } = renderHook(() => useBibleClient(), { wrapper });
@@ -127,17 +127,17 @@ describe('useBibleClient', () => {
 
   it('should throw error when appKey is null', () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
-      <BibleSDKContext.Provider
+      <YouVersionContext.Provider
         value={{
           appKey: null as unknown as string,
         }}
       >
         {children}
-      </BibleSDKContext.Provider>
+      </YouVersionContext.Provider>
     );
 
     expect(() => renderHook(() => useBibleClient(), { wrapper })).toThrow(
-      'BibleSDK context not found. Make sure your component is wrapped with BibleSDKProvider and an API key is provided.',
+      'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
     );
   });
 });

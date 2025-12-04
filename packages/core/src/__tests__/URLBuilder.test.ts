@@ -154,79 +154,6 @@ describe('URLBuilder - Input Validation', () => {
     });
   });
 
-  describe('userURL - accessToken validation', () => {
-    it('should throw error for empty string accessToken', () => {
-      expect(() => {
-        URLBuilder.userURL('');
-      }).toThrow('accessToken must be a non-empty string');
-    });
-
-    it('should throw error for whitespace-only accessToken', () => {
-      expect(() => {
-        URLBuilder.userURL('   ');
-      }).toThrow('accessToken must be a non-empty string');
-    });
-
-    it('should throw error for tab/newline-only accessToken', () => {
-      expect(() => {
-        URLBuilder.userURL('\t\n  ');
-      }).toThrow('accessToken must be a non-empty string');
-    });
-
-    it('should throw descriptive error message', () => {
-      try {
-        URLBuilder.userURL('');
-        expect.fail('Should have thrown an error');
-      } catch (error) {
-        expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toContain('accessToken');
-        expect((error as Error).message).toContain('non-empty string');
-      }
-    });
-
-    it('should accept valid non-empty accessToken', () => {
-      const url = URLBuilder.userURL('valid-access-token-123');
-
-      expect(url).toBeInstanceOf(URL);
-      expect(url.hostname.endsWith('.youversion.com')).toBe(true);
-      expect(url.pathname).toBe('/auth/me');
-      expect(url.searchParams.get('lat')).toBe('valid-access-token-123');
-    });
-
-    it('should accept accessToken with special characters', () => {
-      const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.signature';
-      const url = URLBuilder.userURL(token);
-
-      expect(url.searchParams.get('lat')).toBe(token);
-    });
-  });
-
-  describe('userURL - URL construction', () => {
-    it('should construct correct base URL and pathname', () => {
-      const url = URLBuilder.userURL('test-token');
-
-      expect(url.protocol).toBe('https:');
-      expect(url.hostname.endsWith('.youversion.com')).toBe(true);
-      expect(url.pathname).toBe('/auth/me');
-    });
-
-    it('should include access token in lat query parameter', () => {
-      const token = 'my-access-token-abc123';
-      const url = URLBuilder.userURL(token);
-
-      expect(url.searchParams.get('lat')).toBe(token);
-    });
-
-    it('should properly encode special characters in token', () => {
-      const tokenWithSpecialChars = 'token+with/special=chars';
-      const url = URLBuilder.userURL(tokenWithSpecialChars);
-
-      // URLSearchParams automatically encodes special characters
-      expect(url.searchParams.get('lat')).toBe(tokenWithSpecialChars);
-      expect(url.toString()).toContain('token%2Bwith%2Fspecial%3Dchars');
-    });
-  });
-
   describe('Error handling', () => {
     it('should throw errors instead of returning null for invalid appKey', () => {
       // Verify that the method throws, not returns null
@@ -243,20 +170,6 @@ describe('URLBuilder - Input Validation', () => {
       expect(returnValue).toBeUndefined();
     });
 
-    it('should throw errors instead of returning null for invalid accessToken', () => {
-      let threwError = false;
-      let returnValue: any;
-
-      try {
-        returnValue = URLBuilder.userURL('');
-      } catch {
-        threwError = true;
-      }
-
-      expect(threwError).toBe(true);
-      expect(returnValue).toBeUndefined();
-    });
-
     it('should wrap URL construction errors with descriptive message for authURL', () => {
       // This is hard to trigger, but we can at least verify the pattern exists
       // by checking that valid inputs don't trigger the catch block
@@ -264,24 +177,11 @@ describe('URLBuilder - Input Validation', () => {
         URLBuilder.authURL('valid-app-key');
       }).not.toThrow(/Failed to construct auth URL/);
     });
-
-    it('should wrap URL construction errors with descriptive message for userURL', () => {
-      expect(() => {
-        URLBuilder.userURL('valid-token');
-      }).not.toThrow(/Failed to construct user URL/);
-    });
   });
 
   describe('Return type validation', () => {
     it('authURL should return URL object (not null)', () => {
       const result = URLBuilder.authURL('test-app');
-
-      expect(result).toBeInstanceOf(URL);
-      expect(result).not.toBeNull();
-    });
-
-    it('userURL should return URL object (not null)', () => {
-      const result = URLBuilder.userURL('test-token');
 
       expect(result).toBeInstanceOf(URL);
       expect(result).not.toBeNull();
