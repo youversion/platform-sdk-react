@@ -1,8 +1,8 @@
 import React from 'react';
 import type { Preview } from '@storybook/react-vite';
 import { initialize, mswLoader } from 'msw-storybook-addon';
-import { YouVersionAuthProvider } from '@youversion/platform-react-hooks';
 import { StorybookEnvCheck } from '../src/test/StorybookEnvCheck';
+import { YouVersionProvider } from '@youversion/platform-react-hooks';
 import '../dist/tailwind.css';
 
 /*
@@ -18,14 +18,13 @@ const preview: Preview = {
       <StorybookEnvCheck
         requiredEnvVars={['STORYBOOK_YOUVERSION_APP_KEY', 'STORYBOOK_AUTH_REDIRECT_URL']}
       >
-        <YouVersionAuthProvider
-          config={{
-            appKey: import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || '',
-            redirectUri: import.meta.env.STORYBOOK_AUTH_REDIRECT_URL || '',
-          }}
+        <YouVersionProvider
+          appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || ''}
+          authRedirectUrl={import.meta.env.STORYBOOK_AUTH_REDIRECT_URL || ''}
+          includeAuth={true}
         >
           <Story />
-        </YouVersionAuthProvider>
+        </YouVersionProvider>
       </StorybookEnvCheck>
     ),
   ],

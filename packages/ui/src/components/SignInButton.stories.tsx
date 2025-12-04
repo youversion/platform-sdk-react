@@ -247,7 +247,8 @@ export const InteractionTestWithMockedAuth: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const loginButton = canvas.getByRole('button', { name: /sign in with youversion/i });
+    // Wait for the auth provider to load and the button to appear
+    const loginButton = await canvas.findByRole('button', { name: /sign in with youversion/i });
     await userEvent.click(loginButton);
 
     void expect(signInMock).toHaveBeenCalled();

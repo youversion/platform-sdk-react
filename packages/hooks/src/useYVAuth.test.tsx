@@ -8,7 +8,6 @@ import {
 } from '@youversion/platform-core';
 import { useYVAuth } from './useYVAuth';
 import { YouVersionAuthContext } from './context/YouVersionAuthContext';
-import type { AuthConfig } from './types/auth';
 import { createMockUserInfo, createMockAuthResult } from './__tests__/mocks/auth';
 import { createAuthProviderWrapper } from './__tests__/utils/test-utils';
 
@@ -128,11 +127,6 @@ vi.mock('@youversion/platform-core', () => {
   };
 });
 
-const mockConfig: AuthConfig = {
-  appKey: 'test-app-key',
-  apiHost: 'test-api.example.com',
-};
-
 const mockUserInfo = createMockUserInfo();
 const mockAuthResult = createMockAuthResult();
 
@@ -144,7 +138,21 @@ const mockWindow = {
   },
 };
 
-const TestWrapper = createAuthProviderWrapper(mockConfig);
+const TestWrapper = createAuthProviderWrapper();
+
+// Helper function to render hook and wait for it to be ready
+const renderAuthHook = async () => {
+  const hookResult = renderHook(() => useYVAuth(), {
+    wrapper: TestWrapper,
+  });
+
+  // Wait for the lazy-loaded provider with act to handle suspended data
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  });
+
+  return hookResult;
+};
 
 describe('useYVAuth', () => {
   beforeEach(() => {
@@ -165,11 +173,15 @@ describe('useYVAuth', () => {
   });
 
   describe('initialization', () => {
-    it('should return unauthenticated state when no user info available', () => {
-      const { result } = renderHook(() => useYVAuth(), {
-        wrapper: TestWrapper,
-      });
+    it('should return unauthenticated state when no user info available', async () => {
+      const { result } = await renderAuthHook();
 
+      // Add a small extra wait if still null
+      if (result.current === null) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+
+      expect(result.current).not.toBeNull();
       expect(result.current.auth.isAuthenticated).toBe(false);
       expect(result.current.auth.accessToken).toBe(null);
       expect(result.current.auth.idToken).toBe(null);
@@ -185,10 +197,7 @@ describe('useYVAuth', () => {
 
   describe('signIn', () => {
     it('should call YouVersionAPIUsers.signIn with correct parameters', async () => {
-      const { result } = renderHook(() => useYVAuth(), {
-        wrapper: TestWrapper,
-      });
-
+      const { result } = await renderAuthHook();
       const redirectUrl = 'https://example.com/callback';
       const permissions = [SignInWithYouVersionPermission.bibles];
 
@@ -203,10 +212,7 @@ describe('useYVAuth', () => {
     });
 
     it('should call signIn with empty permissions when not provided', async () => {
-      const { result } = renderHook(() => useYVAuth(), {
-        wrapper: TestWrapper,
-      });
-
+      const { result } = await renderAuthHook();
       const redirectUrl = 'https://example.com/callback';
 
       await act(async () => {
@@ -217,12 +223,9 @@ describe('useYVAuth', () => {
     });
 
     it('should throw error when signIn fails', async () => {
+      const { result } = await renderAuthHook();
       const error = new Error('Sign in failed');
       vi.mocked(YouVersionAPIUsers.signIn).mockRejectedValue(error);
-
-      const { result } = renderHook(() => useYVAuth(), {
-        wrapper: TestWrapper,
-      });
 
       await expect(
         act(async () => {
@@ -234,11 +237,8 @@ describe('useYVAuth', () => {
 
   describe('processCallback', () => {
     it('should call handleAuthCallback and return result', async () => {
+      const { result } = await renderAuthHook();
       vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult as any);
-
-      const { result } = renderHook(() => useYVAuth(), {
-        wrapper: TestWrapper,
-      });
 
       let callbackResult;
       await act(async () => {
@@ -250,12 +250,9 @@ describe('useYVAuth', () => {
     });
 
     it('should throw error when callback processing fails', async () => {
+      const { result } = await renderAuthHook();
       const error = new Error('Callback processing failed');
       vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockRejectedValue(error);
-
-      const { result } = renderHook(() => useYVAuth(), {
-        wrapper: TestWrapper,
-      });
 
       await expect(
         act(async () => {
@@ -265,11 +262,8 @@ describe('useYVAuth', () => {
     });
 
     it('should return null when no result from callback', async () => {
+      const { result } = await renderAuthHook();
       vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(null);
-
-      const { result } = renderHook(() => useYVAuth(), {
-        wrapper: TestWrapper,
-      });
 
       let callbackResult;
       await act(async () => {
@@ -281,10 +275,8 @@ describe('useYVAuth', () => {
   });
 
   describe('signOut', () => {
-    it('should call clearAuthTokens and reset user info', () => {
-      const { result } = renderHook(() => useYVAuth(), {
-        wrapper: TestWrapper,
-      });
+    it('should call clearAuthTokens and reset user info', async () => {
+      const { result } = await renderAuthHook();
 
       act(() => {
         result.current.signOut();
@@ -295,12 +287,9 @@ describe('useYVAuth', () => {
   });
 
   describe('auth state', () => {
-    it('should derive correct auth state from configuration', () => {
+    it('should derive correct auth state from configuration', async () => {
       YouVersionPlatformConfiguration.saveAuthData('access-token', null, 'id-token', null);
-
-      const { result } = renderHook(() => useYVAuth(), {
-        wrapper: TestWrapper,
-      });
+      const { result } = await renderAuthHook();
 
       expect(result.current.auth.accessToken).toBe('access-token');
       expect(result.current.auth.idToken).toBe('id-token');
@@ -308,11 +297,8 @@ describe('useYVAuth', () => {
   });
 
   describe('memoization', () => {
-    it('should memoize auth state when values do not change', () => {
-      const { result, rerender } = renderHook(() => useYVAuth(), {
-        wrapper: TestWrapper,
-      });
-
+    it('should memoize auth state when values do not change', async () => {
+      const { result, rerender } = await renderAuthHook();
       const firstAuthState = result.current.auth;
       rerender();
 
@@ -366,11 +352,8 @@ describe('useYVAuth', () => {
       expect(result2.current.auth).not.toBe(firstAuthState);
     });
 
-    it('should memoize callbacks', () => {
-      const { result, rerender } = renderHook(() => useYVAuth(), {
-        wrapper: TestWrapper,
-      });
-
+    it('should memoize callbacks', async () => {
+      const { result, rerender } = await renderAuthHook();
       const firstSignIn = result.current.signIn;
       const firstSignOut = result.current.signOut;
       const firstProcessCallback = result.current.processCallback;
@@ -384,13 +367,10 @@ describe('useYVAuth', () => {
   });
 
   describe('error handling', () => {
-    it('should include error in auth state when provider has error', () => {
+    it('should include error in auth state when provider has error', async () => {
+      const { result } = await renderAuthHook();
       // This test would require modifying the TestWrapper to inject an error
       // For now, we'll test the structure
-      const { result } = renderHook(() => useYVAuth(), {
-        wrapper: TestWrapper,
-      });
-
       expect(result.current.auth).toHaveProperty('error');
       expect(result.current.auth.result).toBe(null);
     });

@@ -1,20 +1,21 @@
 import React from 'react';
-import { YouVersionAuthProvider } from '../../context/YouVersionAuthProvider';
+import { YouVersionProvider } from '../../context/YouVersionProvider';
 import { useYouVersionAuthContext } from '../../context/YouVersionAuthContext';
-import type { AuthConfig } from '../../types/auth';
 
 /**
  * Creates a test wrapper component with YouVersionAuthProvider
  * @param config Optional auth configuration
  */
-export const createAuthProviderWrapper = (
-  config: AuthConfig = {
-    appKey: 'test-app-key',
-    apiHost: 'test-api.example.com',
-  },
-): React.ComponentType<{ children: React.ReactNode }> => {
+export const createAuthProviderWrapper = (): React.ComponentType<{ children: React.ReactNode }> => {
   return ({ children }: { children: React.ReactNode }) => (
-    <YouVersionAuthProvider config={config}>{children}</YouVersionAuthProvider>
+    <YouVersionProvider
+      appKey="test-app-key"
+      apiHost="test-api.example.com"
+      includeAuth={true}
+      authRedirectUrl="http://test.example.com"
+    >
+      {children}
+    </YouVersionProvider>
   );
 };
 

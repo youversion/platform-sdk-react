@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
-import { YouVersionAuthProvider } from './YouVersionAuthProvider';
+import YouVersionAuthProvider from './YouVersionAuthProvider';
 import { useYouVersionAuthContext } from './YouVersionAuthContext';
 import type { AuthConfig } from '../types/auth';
 import { createMockUserInfo, createMockAuthResult } from '../__tests__/mocks/auth';

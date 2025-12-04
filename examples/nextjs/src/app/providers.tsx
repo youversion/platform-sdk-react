@@ -1,7 +1,7 @@
 'use client';
 
 import { type JSX } from 'react';
-import { YouVersionProvider, YouVersionAuthProvider } from '@youversion/platform-react-ui';
+import { YouVersionProvider } from '@youversion/platform-react-ui';
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -14,16 +14,13 @@ export function Providers({ children, redirectUri }: ProvidersProps): JSX.Elemen
   const apiHost = process.env.NEXT_PUBLIC_YVP_API_HOST ?? 'api-test.youversion.com';
 
   return (
-    <YouVersionAuthProvider
-      config={{
-        appKey,
-        redirectUri: redirectUri,
-        apiHost: apiHost,
-      }}
+    <YouVersionProvider
+      apiHost={apiHost}
+      appKey={appKey}
+      includeAuth={true}
+      authRedirectUrl={redirectUri}
     >
-      <YouVersionProvider apiHost={apiHost} appKey={appKey}>
-        {children}
-      </YouVersionProvider>
-    </YouVersionAuthProvider>
+      {children}
+    </YouVersionProvider>
   );
 }

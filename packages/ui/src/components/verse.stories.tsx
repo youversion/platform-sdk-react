@@ -190,7 +190,7 @@ export const SingleVerse: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(canvas.getByText('Loading...')).toBeInTheDocument();
+    await expect(await canvas.findByText('Loading...')).toBeInTheDocument();
 
     void waitFor(async () => {
       // The text loading indicates that the passages API

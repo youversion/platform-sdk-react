@@ -14,7 +14,7 @@ export interface YouVersionAuthProviderProps {
   children: ReactNode;
 }
 
-export function YouVersionAuthProvider({
+export default function YouVersionAuthProvider({
   config,
   children,
 }: YouVersionAuthProviderProps): React.ReactElement {

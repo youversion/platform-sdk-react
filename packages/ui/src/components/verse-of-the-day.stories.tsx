@@ -112,9 +112,8 @@ export const Default: Story = {
     const mockSpy = spyOn(navigator, 'share');
     const canvas = within(canvasElement);
 
-    // `getByText` is synchronous and happens instantly, which allows us to check
-    // that the loading text is shown before the verse.
-    await expect(canvas.getByText('Loading...')).toBeInTheDocument();
+    // Wait for component to load, then check that the loading text is shown before the verse.
+    await expect(await canvas.findByText('Loading...')).toBeInTheDocument();
     await expect(
       await canvas.findByText(/for I am about to do something new/i),
     ).toBeInTheDocument();
