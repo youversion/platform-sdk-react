@@ -1,14 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within, spyOn } from 'storybook/test';
 
-import { SignInButton } from './SignInButton';
+import { YouVersionAuthButton } from './YouVersionAuthButton';
 
 // Store mock reference for interaction test
 let signInMock: ReturnType<typeof fn>;
 
 const meta = {
-  title: 'Components/SignInButton',
-  component: SignInButton,
+  title: 'Components/YouVersionAuthButton',
+  component: YouVersionAuthButton,
   parameters: {
     layout: 'centered',
   },
@@ -35,6 +35,7 @@ const meta = {
   args: {
     redirectUrl: import.meta.env.STORYBOOK_AUTH_REDIRECT_URL,
     onAuthError: fn(),
+    mode: 'auto',
   },
   argTypes: {
     onAuthError: {
@@ -51,6 +52,10 @@ const meta = {
       control: { type: 'select' },
       options: ['light', 'dark'],
     },
+    mode: {
+      control: { type: 'select' },
+      options: ['signIn', 'signOut', 'auto'],
+    },
     radius: {
       control: { type: 'select' },
       options: ['rounded', 'rectangular'],
@@ -64,7 +69,7 @@ const meta = {
       options: ['default', 'outline'],
     },
   },
-} satisfies Meta<typeof SignInButton>;
+} satisfies Meta<typeof YouVersionAuthButton>;
 
 export default meta;
 

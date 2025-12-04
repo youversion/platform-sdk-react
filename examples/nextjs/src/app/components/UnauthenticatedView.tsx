@@ -2,7 +2,7 @@
 
 import { type JSX, useState } from 'react';
 import {
-  SignInButton,
+  YouVersionAuthButton,
   SignInWithYouVersionPermission,
   VerseOfTheDay,
   BibleTextView,
@@ -103,39 +103,39 @@ export default function UnauthenticatedView(): JSX.Element {
       <h3 className="text-lg">Sign in with YouVersion Button</h3>
       <div className="flex flex-wrap gap-4">
         <section className="bg-[rgba(238,238,238,1)] p-4 flex items-center gap-4 w-full">
-          <SignInButton
+          <YouVersionAuthButton
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             variant="outline"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             size="short"
             variant="default"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             size="short"
             variant="outline"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             size="icon"
             variant="default"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             size="icon"
             variant="outline"
             permissions={[SignInWithYouVersionPermission.bibles]}
@@ -144,20 +144,20 @@ export default function UnauthenticatedView(): JSX.Element {
           />
         </section>
         <section className="bg-[#333333] p-4 flex items-center gap-4 w-full">
-          <SignInButton
+          <YouVersionAuthButton
             background="dark"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             background="dark"
             variant="outline"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             background="dark"
             size="short"
             variant="default"
@@ -165,7 +165,7 @@ export default function UnauthenticatedView(): JSX.Element {
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             background="dark"
             size="short"
             variant="outline"
@@ -173,7 +173,7 @@ export default function UnauthenticatedView(): JSX.Element {
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             background="dark"
             size="icon"
             variant="default"
@@ -181,7 +181,7 @@ export default function UnauthenticatedView(): JSX.Element {
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             background="dark"
             size="icon"
             variant="outline"
@@ -191,20 +191,20 @@ export default function UnauthenticatedView(): JSX.Element {
           />
         </section>
         <section className="bg-[rgba(238,238,238,1)] p-4 flex items-center gap-4 w-full">
-          <SignInButton
+          <YouVersionAuthButton
             radius="rectangular"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             radius="rectangular"
             variant="outline"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             radius="rectangular"
             size="short"
             variant="default"
@@ -212,7 +212,7 @@ export default function UnauthenticatedView(): JSX.Element {
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             radius="rectangular"
             size="short"
             variant="outline"
@@ -220,7 +220,7 @@ export default function UnauthenticatedView(): JSX.Element {
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             radius="rectangular"
             size="icon"
             variant="default"
@@ -228,7 +228,7 @@ export default function UnauthenticatedView(): JSX.Element {
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             radius="rectangular"
             size="icon"
             variant="outline"
@@ -238,14 +238,14 @@ export default function UnauthenticatedView(): JSX.Element {
           />
         </section>
         <section className="bg-[#333333] p-4 flex items-center gap-4 w-full">
-          <SignInButton
+          <YouVersionAuthButton
             radius="rectangular"
             background="dark"
             permissions={[SignInWithYouVersionPermission.bibles]}
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             radius="rectangular"
             background="dark"
             variant="outline"
@@ -253,7 +253,7 @@ export default function UnauthenticatedView(): JSX.Element {
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             radius="rectangular"
             background="dark"
             size="short"
@@ -262,7 +262,7 @@ export default function UnauthenticatedView(): JSX.Element {
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             radius="rectangular"
             background="dark"
             size="short"
@@ -271,7 +271,7 @@ export default function UnauthenticatedView(): JSX.Element {
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             radius="rectangular"
             background="dark"
             size="icon"
@@ -280,7 +280,7 @@ export default function UnauthenticatedView(): JSX.Element {
             redirectUrl={redirectUrl}
             onAuthError={handleError}
           />
-          <SignInButton
+          <YouVersionAuthButton
             radius="rectangular"
             background="dark"
             size="icon"

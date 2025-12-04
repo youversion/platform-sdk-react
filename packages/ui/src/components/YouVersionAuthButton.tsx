@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
 import { type SignInWithYouVersionPermissionValues } from '@youversion/platform-core';
 import { useYVAuth } from '@youversion/platform-react-hooks';
@@ -19,7 +19,7 @@ interface SignInAuthProps {
   redirectUrl: string;
 }
 
-export interface SignInButtonProps
+export interface YouVersionAuthButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     SignInAuthProps {
   /**
@@ -50,20 +50,31 @@ export interface SignInButtonProps
    * - `outline` - Button with contrast border.
    */
   variant?: 'default' | 'outline';
+  /**
+   * The mode of the signIn/SignOut button
+   *
+   * - `signIn` - Renders the YouVersionAuthButton
+   * - `signOut` - Renders the SignOutButton
+   * - `auto` - Renders the YouVersionAuthButton when there
+   *   is not a user signed in and renders the SignOutButton
+   *   when there is a user signed in.
+   *
+   * */
+  mode?: 'signIn' | 'signOut' | 'auto';
 }
 
 /**
- * SignInButton - Initiates the YouVersion OAuth sign-in flow on click.
+ * YouVersionAuthButton - Initiates the YouVersion OAuth sign-in flow on click.
  *
  * Key behaviors:
  * - Prevents default click behavior and triggers the SDK `signIn` method.
  * - Calls `onAuthError` when the underlying sign-in flow throws.
  *
- * @param {SignInButtonProps} props - Component props (see {@link SignInButtonProps}).
+ * @param {YouVersionAuthButtonProps} props - Component props (see {@link YouVersionAuthButtonProps}).
  * @returns {React.ReactElement} A button element that starts the sign-in flow.
  *
  * @example
- * import { SignInButton, SignInWithYouVersionPermission } from '@youversion/platform-react-ui';
+ * import { YouVersionAuthButton, SignInWithYouVersionPermission } from '@youversion/platform-react-ui';
  * import { useYVAuth } from '@youversion/platform-react-hooks';
  *
  * export default function UnauthenticatedView() {
@@ -72,9 +83,8 @@ export interface SignInButtonProps
  *   return (
  *     <div>
  *       {auth.error && <p className="text-red-600">Error: {auth.error.message}</p>}
- *       <SignInButton
- *         requiredPermissions={[SignInWithYouVersionPermission.bibles]}
- *         optionalPermissions={[SignInWithYouVersionPermission.highlights]}
+ *       <YouVersionAuthButton
+ *         permissions={[SignInWithYouVersionPermission.bibles]}
  *         onAuthError={(err) => console.error(err)}
  *       />
  *     </div>
@@ -83,20 +93,19 @@ export interface SignInButtonProps
  *
  * @example
  * // Example: different button styles shown in the example app
- * <SignInButton /> // default light background, labeled
- * <SignInButton size="short" variant="outline" /> // shorter label with outline
+ * <YouVersionAuthButton /> // default light background, labeled
+ * <YouVersionAuthButton size="short" variant="outline" /> // shorter label with outline
  *
  * @example
  * // Example showing permission enum usage from the example app
  * import { SignInWithYouVersionPermission } from '@youversion/platform-react-ui';
  *
- * <SignInButton
- *   requiredPermissions={[SignInWithYouVersionPermission.bibles]}
- *   optionalPermissions={[SignInWithYouVersionPermission.highlights]}
+ * <YouVersionAuthButton
+ *   permissions={[SignInWithYouVersionPermission.bibles]}
  * />
  *
  */
-export const SignInButton = React.forwardRef<HTMLButtonElement, SignInButtonProps>(
+export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersionAuthButtonProps>(
   (
     {
       background = 'light',
@@ -104,6 +113,7 @@ export const SignInButton = React.forwardRef<HTMLButtonElement, SignInButtonProp
       disabled,
       onAuthError,
       onClick,
+      mode,
       permissions = [],
       radius = 'rounded',
       redirectUrl,
@@ -113,7 +123,7 @@ export const SignInButton = React.forwardRef<HTMLButtonElement, SignInButtonProp
     },
     ref,
   ): React.ReactElement => {
-    const { signIn, auth } = useYVAuth();
+    const { signIn, signOut, auth } = useYVAuth();
 
     const handleClick = async (e: React.MouseEvent<HTMLButtonElement>): Promise<void> => {
       e.preventDefault();
@@ -123,10 +133,14 @@ export const SignInButton = React.forwardRef<HTMLButtonElement, SignInButtonProp
       }
 
       try {
-        await signIn({
-          redirectUrl,
-          permissions,
-        });
+        if (mode === 'signOut' || auth.isAuthenticated) {
+          signOut();
+        } else {
+          await signIn({
+            redirectUrl,
+            permissions,
+          });
+        }
       } catch (error) {
         if (onAuthError) {
           onAuthError(error as Error);
@@ -136,10 +150,25 @@ export const SignInButton = React.forwardRef<HTMLButtonElement, SignInButtonProp
 
     const buttonLoading = auth.isLoading;
 
-    let buttonCopy = 'Sign in with YouVersion';
-    if (size === 'short') {
-      buttonCopy = 'Sign in';
-    }
+    const buttonText = useMemo(() => {
+      if (size === 'short') {
+        if (mode === 'signOut') {
+          return 'Sign Out';
+        } else if (mode === 'signIn') {
+          return 'Sign In';
+        } else {
+          return auth.isAuthenticated ? 'Sign Out' : 'Sign In';
+        }
+      } else {
+        if (mode === 'signOut') {
+          return 'Sign Out of YouVersion';
+        } else if (mode === 'signIn') {
+          return 'Sign In with YouVersion';
+        } else {
+          return auth.isAuthenticated ? 'Sign Out of YouVersion' : 'Sign In with YouVersion';
+        }
+      }
+    }, [mode, auth.isAuthenticated, size]);
 
     const loadingSpinner = (
       <Loader2 className="yv:z-20 yv:absolute yv:left-1/2 yv:top-1/2 yv:animate-spin yv:-translate-x-1/2 yv:-translate-y-1/2 yv:fill-primary-foreground yv:text-primary" />
@@ -172,7 +201,7 @@ export const SignInButton = React.forwardRef<HTMLButtonElement, SignInButtonProp
         >
           {buttonLoading ? loadingSpinner : null}
           <YouVersionLogo />
-          <span className="yv:sr-only">{buttonCopy}</span>
+          <span className="yv:sr-only">{buttonText}</span>
         </Button>
       );
     }
@@ -203,10 +232,10 @@ export const SignInButton = React.forwardRef<HTMLButtonElement, SignInButtonProp
       >
         {buttonLoading ? loadingSpinner : null}
         <YouVersionLogo />
-        {buttonCopy}
+        {buttonText}
       </Button>
     );
   },
 );
 
-SignInButton.displayName = 'SignInButton';
+YouVersionAuthButton.displayName = 'YouVersionAuthButton';
