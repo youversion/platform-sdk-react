@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { YouVersionProvider } from '@youversion/platform-react-hooks';
-import { http, HttpResponse } from 'msw';
 import { expect, waitFor, within } from 'storybook/test';
 import React from 'react';
 

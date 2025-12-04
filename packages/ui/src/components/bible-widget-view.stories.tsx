@@ -1,8 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { YouVersionProvider } from '@youversion/platform-react-hooks';
 import { within, expect, userEvent, screen } from 'storybook/test';
-import { BibleSDKProvider } from '@youversion/platform-react-hooks';
-
 import { BibleWidgetView } from './bible-widget-view';
 import { waitFor } from '@testing-library/react';
 
@@ -96,9 +94,14 @@ export const WithVersionPicker: Story = {
     await expect(versionItems[0]).toHaveTextContent(/amplified/i);
 
     await userEvent.click(screen.getByRole('listitem', { name: /amplified bible/i }));
-    await expect(screen.getByRole('button', { name: /change bible version/i })).toHaveTextContent(
-      'AMP',
-    );
+
+    // Wait for version change to complete
+    await waitFor(async () => {
+      await expect(screen.getByRole('button', { name: /change bible version/i })).toHaveTextContent(
+        'AMP',
+      );
+    });
+
     expect(screen.getByText(/luke 1.39-45 amp/i));
   },
 };

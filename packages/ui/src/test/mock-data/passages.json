@@ -1,8 +1,14 @@
 {
-  "LUK.1.39-45": {
+  "LUK.1.39-45.NIV": {
     "id": "LUK.1.39-45",
     "content": "<div><div class=\"p\"><span class=\"yv-v\" v=\"39\"></span><span class=\"yv-vlbl\">39</span>At that time Mary got ready and hurried to a town in the hill country of Judea, <span class=\"yv-v\" v=\"40\"></span><span class=\"yv-vlbl\">40</span>where she entered Zechariah's home and greeted Elizabeth. <span class=\"yv-v\" v=\"41\"></span><span class=\"yv-vlbl\">41</span>When Elizabeth heard Mary's greeting, the baby leaped in her womb, and Elizabeth was filled with the Holy Spirit. <span class=\"yv-v\" v=\"42\"></span><span class=\"yv-vlbl\">42</span>In a loud voice she exclaimed: \"Blessed are you among women, and blessed is the child you will bear! <span class=\"yv-v\" v=\"43\"></span><span class=\"yv-vlbl\">43</span>But why am I so favored, that the mother of my Lord should come to me? <span class=\"yv-v\" v=\"44\"></span><span class=\"yv-vlbl\">44</span>As soon as the sound of your greeting reached my ears, the baby in my womb leaped for joy. <span class=\"yv-v\" v=\"45\"></span><span class=\"yv-vlbl\">45</span>Blessed is she who has believed that the Lord would fulfill his promises to her!\"</div></div>",
     "bible_id": 111,
+    "human_reference": "Luke 1:39-45"
+  },
+  "LUK.1.39-45.AMP": {
+    "id": "LUK.1.39-45",
+    "content": "<div><div class=\"p\"><span class=\"yv-v\" v=\"39\"></span><span class=\"yv-vlbl\">39</span>At that time Mary got ready and hurried to a town in the hill country of Judea, <span class=\"yv-v\" v=\"40\"></span><span class=\"yv-vlbl\">40</span>where she entered Zechariah's home and greeted Elizabeth. <span class=\"yv-v\" v=\"41\"></span><span class=\"yv-vlbl\">41</span>When Elizabeth heard Mary's greeting, the baby leaped in her womb, and Elizabeth was filled with the Holy Spirit. <span class=\"yv-v\" v=\"42\"></span><span class=\"yv-vlbl\">42</span>In a loud voice she exclaimed: \"Blessed are you among women, and blessed is the child you will bear! <span class=\"yv-v\" v=\"43\"></span><span class=\"yv-vlbl\">43</span>But why am I so favored, that the mother of my Lord should come to me? <span class=\"yv-v\" v=\"44\"></span><span class=\"yv-vlbl\">44</span>As soon as the sound of your greeting reached my ears, the baby in my womb leaped for joy. <span class=\"yv-v\" v=\"45\"></span><span class=\"yv-vlbl\">45</span>Blessed is she who has believed that the Lord would fulfill his promises to her!\"</div></div>",
+    "bible_id": 1588,
     "human_reference": "Luke 1:39-45"
   },
   "ROM.1": {

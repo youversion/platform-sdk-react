@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { YouVersionProvider } from '@youversion/platform-react-hooks';
-import { http, HttpResponse } from 'msw';
 import { expect, within, userEvent, spyOn } from 'storybook/test';
 
 import { VerseOfTheDay } from './verse-of-the-day';

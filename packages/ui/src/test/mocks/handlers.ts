@@ -8,9 +8,11 @@ import mockLanguages from '../mock-data/languages.json';
 export const globalHandlers = [
   // Specific Bible passages
   http.get('*/v1/bibles/111/passages/LUK.1.39-45', () => {
-    return HttpResponse.json(mockPassages['LUK.1.39-45']);
+    return HttpResponse.json(mockPassages['LUK.1.39-45.NIV']);
   }),
-
+  http.get('*/v1/bibles/1588/passages/LUK.1.39-45', () => {
+    return HttpResponse.json(mockPassages['LUK.1.39-45.AMP']);
+  }),
   http.get('*/v1/bibles/111/passages/ROM.1', () => {
     return HttpResponse.json(mockPassages['ROM.1']);
   }),

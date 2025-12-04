@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { BibleChapterPicker } from './bible-chapter-picker';
-import { http, HttpResponse } from 'msw';
 import { YouVersionProvider } from '@youversion/platform-react-hooks';
 import { within, waitFor, expect, userEvent } from 'storybook/test';
 import { useState } from 'react';
