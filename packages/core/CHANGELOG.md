@@ -1,5 +1,18 @@
 # @youversion/platform-core
 
+## 0.8.0
+
+### Minor Changes
+
+- 29b865d: Summary:
+  Add sign-out functionality and refactor authentication system. This includes:
+  - New sign-out capability on the authentication button
+  - Rename the SignInButton to YouVersionAuthButton
+
+  Breaking changes:
+  - Button component now includes sign-out functionality
+  - Must replace old SignInButton with YouVersionAuthButton
+
 ## 0.7.0
 
 ### Minor Changes
