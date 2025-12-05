@@ -1,5 +1,14 @@
 # @youversion/platform-react-ui
 
+## 0.8.1
+
+### Patch Changes
+
+- 6a7b8ba: Upgrade to React 19.1.2 to fix a security vulnerability in React.
+- Updated dependencies [6a7b8ba]
+  - @youversion/platform-core@0.8.1
+  - @youversion/platform-react-hooks@0.8.1
+
 ## 0.8.0
 
 ### Minor Changes
