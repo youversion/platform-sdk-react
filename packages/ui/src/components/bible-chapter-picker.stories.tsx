@@ -3,8 +3,8 @@ import { BibleChapterPicker } from './bible-chapter-picker';
 import { http, HttpResponse } from 'msw';
 import { YouVersionProvider } from '@youversion/platform-react-hooks';
 import { within, waitFor, expect, userEvent } from 'storybook/test';
-import mockChapters from '../test/mock-data/chapters.json';
-import mockBooks from '../test/mock-data/books.json';
+import { mockChapters } from '../test/mock-data/chapters';
+import { mockBooks } from '../test/mock-data/books';
 import { useState } from 'react';
 
 const meta = {

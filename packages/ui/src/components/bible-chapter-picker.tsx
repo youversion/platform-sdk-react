@@ -160,9 +160,9 @@ function Root({
                     {bookItem.chapters && bookItem.chapters.length > 0 ? (
                       <div className="yv:grid yv:grid-cols-5 yv:gap-2">
                         {bookItem.chapters.map((chapterRef) => {
-                          const chapterId = chapterRef.split('.').pop() || '';
+                          const chapterId = chapterRef.passage_id.split('.').pop() || '';
                           return (
-                            <PopoverClose asChild key={`${bookItem.id}-${chapterRef}`}>
+                            <PopoverClose asChild key={`${bookItem.id}-${chapterRef.passage_id}`}>
                               <Button
                                 variant="secondary"
                                 size="icon"

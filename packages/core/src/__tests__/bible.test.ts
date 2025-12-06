@@ -75,8 +75,13 @@ describe('BibleClient', () => {
       expect(books.data).toHaveLength(66);
       expect(books.data[0]).toHaveProperty('id', 'GEN');
       expect(books.data[0]).toHaveProperty('title', 'Genesis');
+      expect(books.data[0]).toHaveProperty(
+        'full_title',
+        'The First Book of Moses, Commonly Called Genesis',
+      );
       expect(books.data[0]).toHaveProperty('abbreviation', 'Gen');
       expect(books.data[0]).toHaveProperty('canon', 'ot');
+      expect(books.data[0]?.chapters).toHaveLength(50);
     });
   });
 
@@ -116,7 +121,6 @@ describe('BibleClient', () => {
 
       expect(chapters.data).toHaveLength(50);
       expect(chapters.data[0]).toHaveProperty('id', '1');
-      expect(chapters.data[0]).toHaveProperty('book_id', 'GEN');
       expect(chapters.data[0]).toHaveProperty('passage_id', 'GEN.1');
       expect(chapters.data[0]).toHaveProperty('title', '1');
       expect(chapters.data[0]?.verses).toHaveLength(31);
@@ -131,7 +135,6 @@ describe('BibleClient', () => {
       expect(success).toBe(true);
 
       expect(chapter).toHaveProperty('id', '1');
-      expect(chapter).toHaveProperty('book_id', 'GEN');
       expect(chapter).toHaveProperty('passage_id', 'GEN.1');
       expect(chapter).toHaveProperty('title', '1');
       expect(chapter.verses).toHaveLength(31);
@@ -154,11 +157,9 @@ describe('BibleClient', () => {
       const { success } = BibleVerseSchema.safeParse(verses.data[0]);
       expect(success).toBe(true);
 
-      expect(verses.data).toHaveLength(24);
+      expect(verses.data).toHaveLength(31);
       expect(verses.data[0]).toHaveProperty('id', '1');
-      expect(verses.data[0]).toHaveProperty('reference', 'Genesis 1:1');
-      expect(verses.data[0]).toHaveProperty('book_id', 'GEN');
-      expect(verses.data[0]).toHaveProperty('chapter_id', '1');
+      expect(verses.data[0]).toHaveProperty('title', '1');
       expect(verses.data[0]).toHaveProperty('passage_id', 'GEN.1.1');
     });
   });
@@ -171,9 +172,7 @@ describe('BibleClient', () => {
       expect(success).toBe(true);
 
       expect(verse).toHaveProperty('id', '1');
-      expect(verse).toHaveProperty('reference', 'Genesis 1:1');
-      expect(verse).toHaveProperty('book_id', 'GEN');
-      expect(verse).toHaveProperty('chapter_id', '1');
+      expect(verse).toHaveProperty('title', '1');
       expect(verse).toHaveProperty('passage_id', 'GEN.1.1');
     });
 
