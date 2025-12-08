@@ -46,8 +46,8 @@ const meta = {
             info: null,
             publisher_url: 'https://www.biblica.com/yv-learn-more/',
             language_tag: 'en',
-            local_abbreviation: 'NIV',
-            local_title: 'New International Version',
+            localized_abbreviation: 'NIV',
+            localized_title: 'New International Version',
             title: 'New International Version 2011',
             books: [
               'GEN',
@@ -274,8 +274,8 @@ const meta = {
                 info: null,
                 publisher_url: 'https://www.biblica.com/yv-learn-more/',
                 language_tag: 'en',
-                local_abbreviation: 'NIrV',
-                local_title: "New International Reader's Version",
+                localized_abbreviation: 'NIrV',
+                localized_title: "New International Reader's Version",
                 title: "New International Reader's Version 2014",
                 books: [
                   'GEN',
@@ -358,8 +358,8 @@ const meta = {
                 info: null,
                 publisher_url: 'https://www.biblica.com/yv-learn-more/',
                 language_tag: 'en',
-                local_abbreviation: 'NIV',
-                local_title: 'New International Version',
+                localized_abbreviation: 'NIV',
+                localized_title: 'New International Version',
                 title: 'New International Version 2011',
                 books: [
                   'GEN',
@@ -473,7 +473,7 @@ export const Default: Story = {
 
 export const LightBackground: Story = {
   args: {
-    versionId: 1,
+    versionId: 111,
     background: 'light',
   },
   tags: ['integration'],
@@ -481,7 +481,7 @@ export const LightBackground: Story = {
 
 export const DarkBackground: Story = {
   args: {
-    versionId: 1,
+    versionId: 111,
     background: 'dark',
   },
   tags: ['integration'],

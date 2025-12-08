@@ -18,7 +18,7 @@ const meta = {
             content:
               '<div><div class="q1"><span class="yv-v" v="19"></span><span class="yv-vlbl">19</span>For I am about to do something new.</div><div class="q2">See, I have already begun! Do you not see it?</div><div class="q1">I will make a pathway through the wilderness.</div><div class="q2">I will create rivers in the dry wasteland.</div></div>',
             version_id: 111,
-            human_reference: 'Isaiah 43:19',
+            reference: 'Isaiah 43:19',
           });
         }),
         http.get(/\/v1\/verse_of_the_days\/\d+/, () => {
@@ -36,8 +36,8 @@ const meta = {
             info: null,
             publisher_url: null,
             language_tag: 'en',
-            local_abbreviation: 'KJV',
-            local_title: 'King James Version',
+            localized_abbreviation: 'KJV',
+            localized_title: 'King James Version',
             title: 'King James Version',
             books: [],
             youversion_deep_link: 'https://www.bible.com/versions/1',

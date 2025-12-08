@@ -75,10 +75,7 @@ describe('BibleClient', () => {
       expect(books.data).toHaveLength(66);
       expect(books.data[0]).toHaveProperty('id', 'GEN');
       expect(books.data[0]).toHaveProperty('title', 'Genesis');
-      expect(books.data[0]).toHaveProperty(
-        'full_title',
-        'The First Book of Moses, Commonly Called Genesis',
-      );
+      expect(books.data[0]).toHaveProperty('full_title', 'The First Book of Moses, Called Genesis');
       expect(books.data[0]).toHaveProperty('abbreviation', 'Gen');
       expect(books.data[0]).toHaveProperty('canon', 'ot');
       expect(books.data[0]?.chapters).toHaveLength(50);
@@ -209,8 +206,7 @@ describe('BibleClient', () => {
         id: 'GEN.1.1',
         content:
           '<div><div class="pi"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>In the beginning God created the heavens and the earth. </div></div>',
-        bible_id: 111,
-        human_reference: 'Genesis 1:1',
+        reference: 'Genesis 1:1',
       });
     });
 
@@ -221,8 +217,7 @@ describe('BibleClient', () => {
       expect(success).toBe(true);
 
       expect(passage).toHaveProperty('id', 'GEN.1');
-      expect(passage).toHaveProperty('bible_id', 111);
-      expect(passage).toHaveProperty('human_reference', 'Genesis 1');
+      expect(passage).toHaveProperty('reference', 'Genesis 1');
     });
 
     it('should fetch a passage with html format by default', async () => {
@@ -241,7 +236,6 @@ describe('BibleClient', () => {
       const passage = await bibleClient.getPassage(111, 'ROM.1', 'html', true);
 
       expect(passage.id).toBe('ROM.1');
-      expect(passage.bible_id).toBe(111);
       expect(passage.content).toContain('yv-h');
       expect(passage.content).not.toContain('yv-n');
     });
@@ -250,7 +244,6 @@ describe('BibleClient', () => {
       const passage = await bibleClient.getPassage(111, 'ROM.1', 'html', undefined, true);
 
       expect(passage.id).toBe('ROM.1');
-      expect(passage.bible_id).toBe(111);
       expect(passage.content).toContain('yv-n');
       expect(passage.content).not.toContain('yv-h');
     });
@@ -259,7 +252,6 @@ describe('BibleClient', () => {
       const passage = await bibleClient.getPassage(111, 'ROM.1', 'html', true, true);
 
       expect(passage.id).toBe('ROM.1');
-      expect(passage.bible_id).toBe(111);
       expect(passage.content).toContain('yv-n');
       expect(passage.content).toContain('yv-h');
     });

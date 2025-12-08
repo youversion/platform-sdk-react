@@ -22,13 +22,12 @@ export function BibleWidgetView({
 
   return (
     <section
-      data-yv-sdk
       data-yv-theme={background === 'dark' ? 'dark' : 'light'}
       className="yv:flex yv:flex-col yv:bg-card yv:p-6 yv:max-w-md yv:rounded-2xl"
     >
-      {passage?.human_reference ? (
+      {passage?.reference ? (
         <h2 className="yv:font-bold yv:tracking-widest yv:text-xs yv:uppercase">
-          {passage.human_reference} {version?.local_abbreviation}
+          {passage.reference} {version?.localized_abbreviation}
         </h2>
       ) : null}
 

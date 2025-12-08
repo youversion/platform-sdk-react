@@ -199,7 +199,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
           <BibleVersionPicker.Trigger aria-label="Change Bible version">
             {({ version, loading }) => (
               <Button variant="secondary" className="yv:rounded-l-none" disabled={loading}>
-                {loading ? 'Loading...' : version?.local_abbreviation || 'Select version'}
+                {loading ? 'Loading...' : version?.localized_abbreviation || 'Select version'}
               </Button>
             )}
           </BibleVersionPicker.Trigger>

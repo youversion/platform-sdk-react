@@ -3,7 +3,7 @@ import { mockGenesisChapters } from './MockChapters';
 export const mockBibleGenesis = {
   id: 'GEN',
   title: 'Genesis',
-  full_title: 'The First Book of Moses, Commonly Called Genesis',
+  full_title: 'The First Book of Moses, Called Genesis',
   abbreviation: 'Gen',
   canon: 'ot',
   chapters: mockGenesisChapters,
@@ -12,7 +12,7 @@ export const mockBibleBooks = [
   {
     id: 'GEN',
     title: 'Genesis',
-    full_title: 'The First Book of Moses, Commonly Called Genesis',
+    full_title: 'The First Book of Moses, Called Genesis',
     abbreviation: 'Gen',
     canon: 'ot',
     chapters: Array.from({ length: 50 }, (_, i) => {

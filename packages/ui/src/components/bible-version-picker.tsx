@@ -150,7 +150,7 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
             variant={background === 'light' ? 'outline' : 'default'}
             className="yv:cursor-pointer"
           >
-            {version?.local_abbreviation || 'Select'}
+            {version?.localized_abbreviation || 'Select'}
           </Button>
         );
 
@@ -268,7 +268,7 @@ function Content() {
                       className="yv:rounded-[8px] yv:size-12 yv:border-border"
                     >
                       <span className="yv:font-serif yv:font-bold">
-                        {version.local_abbreviation}
+                        {version.localized_abbreviation}
                       </span>
                     </ItemMedia>
                     <ItemContent>

@@ -4,14 +4,17 @@ import { handlers } from './handlers';
 
 export const server = setupServer(...handlers);
 
-beforeAll(() => {
-  server.listen();
-});
+// Only setup MSW if INTEGRATION_TESTS env var is not set
+if (!process.env.INTEGRATION_TESTS) {
+  beforeAll(() => {
+    server.listen();
+  });
 
-afterEach(() => {
-  server.resetHandlers();
-});
+  afterEach(() => {
+    server.resetHandlers();
+  });
 
-afterAll(() => {
-  server.close();
-});
+  afterAll(() => {
+    server.close();
+  });
+}
