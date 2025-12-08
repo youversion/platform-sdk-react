@@ -17,9 +17,9 @@ export const BibleVersionSchema = z.object({
   /** Language tag (e.g., "en") */
   language_tag: z.string(),
   /** Localized abbreviation */
-  local_abbreviation: z.string(),
+  localized_abbreviation: z.string(),
   /** Localized title */
-  local_title: z.string(),
+  localized_title: z.string(),
   /** Organization ID of publisher */
   organization_id: z.string().nullable().optional(),
   /** Full title */

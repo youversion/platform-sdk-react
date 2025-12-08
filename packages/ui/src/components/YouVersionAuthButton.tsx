@@ -183,7 +183,6 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
             variant === 'outline' ? 'yv:border' : 'yv:border-none',
             className,
           )}
-          data-yv-sdk
           disabled={buttonLoading ? true : (disabled ?? false)}
           ref={ref}
           onClick={(e) => void handleClick(e)}
@@ -214,7 +213,6 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
           variant === 'outline' ? 'yv:border' : 'yv:border-none',
           className,
         )}
-        data-yv-sdk
         disabled={buttonLoading ? true : (disabled ?? false)}
         ref={ref}
         onClick={(e) => void handleClick(e)}

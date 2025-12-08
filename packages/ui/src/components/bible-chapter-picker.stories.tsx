@@ -3,8 +3,8 @@ import { BibleChapterPicker } from './bible-chapter-picker';
 import { http, HttpResponse } from 'msw';
 import { YouVersionProvider } from '@youversion/platform-react-hooks';
 import { within, waitFor, expect, userEvent } from 'storybook/test';
-import mockChapters from '../test/mock-data/chapters.json';
-import mockBooks from '../test/mock-data/books.json';
+import { mockChapters } from '../test/mock-data/chapters';
+import { mockBooks } from '../test/mock-data/books';
 import { useState } from 'react';
 
 const meta = {
@@ -67,7 +67,7 @@ type Story = StoryObj<typeof meta>;
 
 export const LightBackground: Story = {
   args: {
-    versionId: 1,
+    versionId: 111,
     background: 'light',
   },
   tags: ['integration'],
@@ -119,7 +119,7 @@ export const LightBackground: Story = {
 
 export const DarkBackground: Story = {
   args: {
-    versionId: 1,
+    versionId: 111,
     background: 'dark',
   },
   tags: ['integration'],
@@ -138,7 +138,7 @@ export const DarkBackground: Story = {
 
 export const CustomStartingPoint: Story = {
   args: {
-    versionId: 1,
+    versionId: 111,
   },
   tags: ['integration'],
   // Using the play function get component in the open state for visual testing

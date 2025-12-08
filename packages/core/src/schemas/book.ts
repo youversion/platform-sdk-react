@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { BOOK_IDS } from '../utils/constants';
+import { BibleChapterSchema } from './chapter';
 
 export const CanonSchema = z.enum([
   'ot', // Old Testament
@@ -20,14 +21,14 @@ export const BibleBookSchema = z.object({
   id: BookUsfmSchema,
   /** Book title (e.g., "Genesis") */
   title: z.string(),
+  /** Full Book title (e.g., "The First Book of Moses, Commonly Called Genesis") */
+  full_title: z.string(),
   /** Book abbreviation (e.g., "Gen") */
   abbreviation: z.string().optional(),
   /** Canonical section (new_testament, old_testament, deuterocanon) */
   canon: CanonSchema,
   /** Array of chapter identifiers (e.g., ["GEN.1", "GEN.2", "GEN.3"]) */
-  chapters: z
-    .array(z.string().regex(/^\w{3}\.\d+$/, { message: 'Chapter must be an integer string' }))
-    .optional(),
+  chapters: z.array(BibleChapterSchema).optional(),
 });
 
 export type BibleBook = z.infer<typeof BibleBookSchema>;

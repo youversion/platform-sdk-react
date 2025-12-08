@@ -75,8 +75,10 @@ describe('BibleClient', () => {
       expect(books.data).toHaveLength(66);
       expect(books.data[0]).toHaveProperty('id', 'GEN');
       expect(books.data[0]).toHaveProperty('title', 'Genesis');
+      expect(books.data[0]).toHaveProperty('full_title', 'The First Book of Moses, Called Genesis');
       expect(books.data[0]).toHaveProperty('abbreviation', 'Gen');
       expect(books.data[0]).toHaveProperty('canon', 'ot');
+      expect(books.data[0]?.chapters).toHaveLength(50);
     });
   });
 
@@ -116,7 +118,6 @@ describe('BibleClient', () => {
 
       expect(chapters.data).toHaveLength(50);
       expect(chapters.data[0]).toHaveProperty('id', '1');
-      expect(chapters.data[0]).toHaveProperty('book_id', 'GEN');
       expect(chapters.data[0]).toHaveProperty('passage_id', 'GEN.1');
       expect(chapters.data[0]).toHaveProperty('title', '1');
       expect(chapters.data[0]?.verses).toHaveLength(31);
@@ -131,7 +132,6 @@ describe('BibleClient', () => {
       expect(success).toBe(true);
 
       expect(chapter).toHaveProperty('id', '1');
-      expect(chapter).toHaveProperty('book_id', 'GEN');
       expect(chapter).toHaveProperty('passage_id', 'GEN.1');
       expect(chapter).toHaveProperty('title', '1');
       expect(chapter.verses).toHaveLength(31);
@@ -154,11 +154,9 @@ describe('BibleClient', () => {
       const { success } = BibleVerseSchema.safeParse(verses.data[0]);
       expect(success).toBe(true);
 
-      expect(verses.data).toHaveLength(24);
+      expect(verses.data).toHaveLength(31);
       expect(verses.data[0]).toHaveProperty('id', '1');
-      expect(verses.data[0]).toHaveProperty('reference', 'Genesis 1:1');
-      expect(verses.data[0]).toHaveProperty('book_id', 'GEN');
-      expect(verses.data[0]).toHaveProperty('chapter_id', '1');
+      expect(verses.data[0]).toHaveProperty('title', '1');
       expect(verses.data[0]).toHaveProperty('passage_id', 'GEN.1.1');
     });
   });
@@ -171,9 +169,7 @@ describe('BibleClient', () => {
       expect(success).toBe(true);
 
       expect(verse).toHaveProperty('id', '1');
-      expect(verse).toHaveProperty('reference', 'Genesis 1:1');
-      expect(verse).toHaveProperty('book_id', 'GEN');
-      expect(verse).toHaveProperty('chapter_id', '1');
+      expect(verse).toHaveProperty('title', '1');
       expect(verse).toHaveProperty('passage_id', 'GEN.1.1');
     });
 
@@ -210,8 +206,7 @@ describe('BibleClient', () => {
         id: 'GEN.1.1',
         content:
           '<div><div class="pi"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>In the beginning God created the heavens and the earth. </div></div>',
-        bible_id: 111,
-        human_reference: 'Genesis 1:1',
+        reference: 'Genesis 1:1',
       });
     });
 
@@ -222,8 +217,7 @@ describe('BibleClient', () => {
       expect(success).toBe(true);
 
       expect(passage).toHaveProperty('id', 'GEN.1');
-      expect(passage).toHaveProperty('bible_id', 111);
-      expect(passage).toHaveProperty('human_reference', 'Genesis 1');
+      expect(passage).toHaveProperty('reference', 'Genesis 1');
     });
 
     it('should fetch a passage with html format by default', async () => {
@@ -242,7 +236,6 @@ describe('BibleClient', () => {
       const passage = await bibleClient.getPassage(111, 'ROM.1', 'html', true);
 
       expect(passage.id).toBe('ROM.1');
-      expect(passage.bible_id).toBe(111);
       expect(passage.content).toContain('yv-h');
       expect(passage.content).not.toContain('yv-n');
     });
@@ -251,7 +244,6 @@ describe('BibleClient', () => {
       const passage = await bibleClient.getPassage(111, 'ROM.1', 'html', undefined, true);
 
       expect(passage.id).toBe('ROM.1');
-      expect(passage.bible_id).toBe(111);
       expect(passage.content).toContain('yv-n');
       expect(passage.content).not.toContain('yv-h');
     });
@@ -260,7 +252,6 @@ describe('BibleClient', () => {
       const passage = await bibleClient.getPassage(111, 'ROM.1', 'html', true, true);
 
       expect(passage.id).toBe('ROM.1');
-      expect(passage.bible_id).toBe(111);
       expect(passage.content).toContain('yv-n');
       expect(passage.content).toContain('yv-h');
     });

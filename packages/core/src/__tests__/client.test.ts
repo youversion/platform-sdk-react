@@ -1,7 +1,16 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll } from 'vitest';
 import { ApiClient } from '../client';
 import { http, HttpResponse } from 'msw';
 import { server } from './setup';
+
+// We always want this test to hit msw since this is only testing
+// the setup of and ApiClient instance and not actually hitting
+// any real APIs.
+if (process.env.INTEGRATION_TESTS) {
+  beforeAll(() => server.listen());
+  afterEach(() => server.resetHandlers());
+  afterAll(() => server.close());
+}
 
 describe('ApiClient', () => {
   let apiClient: ApiClient;
