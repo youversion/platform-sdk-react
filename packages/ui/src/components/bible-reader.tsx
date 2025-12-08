@@ -103,7 +103,6 @@ function Root({
   return (
     <BibleReaderContext.Provider value={contextValue}>
       <div
-        data-yv-sdk
         data-yv-theme={background === 'dark' ? 'dark' : 'light'}
         className="yv:flex yv:flex-col yv:h-full yv:bg-background yv:text-foreground"
       >

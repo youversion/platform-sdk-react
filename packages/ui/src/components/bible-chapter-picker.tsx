@@ -242,7 +242,7 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
         );
 
   return (
-    <PopoverTrigger asChild={asChild} {...props}>
+    <PopoverTrigger data-yv-sdk asChild={asChild} {...props}>
       {content}
     </PopoverTrigger>
   );
