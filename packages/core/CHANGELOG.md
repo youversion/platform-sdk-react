@@ -1,5 +1,14 @@
 # @youversion/platform-core
 
+## 0.8.2
+
+### Patch Changes
+
+- 93be9ef: Update types, zod schemas, and test mocks for the following updated endpoints:
+  - get bible books
+  - get bible chapters
+  - get bible verses
+
 ## 0.8.1
 
 ### Patch Changes
