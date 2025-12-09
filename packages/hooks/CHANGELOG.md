@@ -1,5 +1,24 @@
 # @youversion/platform-react-hooks
 
+## 0.9.0
+
+### Minor Changes
+
+- e4f93b6: Update authentication system with enhanced OAuth scopes and API schema alignment
+
+  Key Changes:
+  - Added profile and email scopes to OAuth authentication
+  - Updated book resource schema to match new API endpoints
+  - Removed deprecated URLBuilder functionality
+
+  Breaking Changes:
+  - Book Schema: Must use the new updated book schema in any APIs returning bible book data Please enter a summary for your changes.
+
+### Patch Changes
+
+- Updated dependencies [e4f93b6]
+  - @youversion/platform-core@0.9.0
+
 ## 0.8.2
 
 ### Patch Changes
