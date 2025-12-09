@@ -91,7 +91,6 @@ vi.mock('@youversion/platform-core', () => {
       expiryDate: Date | undefined;
       refreshToken: string | undefined;
       idToken: string | undefined;
-      permissions: string[] | undefined;
       yvpUserId: string | undefined;
       name: string | undefined;
       profilePicture: string | undefined;
@@ -102,7 +101,6 @@ vi.mock('@youversion/platform-core', () => {
         expiresIn?: number;
         refreshToken?: string;
         idToken?: string;
-        permissions?: string[];
         yvpUserId?: string;
         name?: string;
         profilePicture?: string;
@@ -114,7 +112,6 @@ vi.mock('@youversion/platform-core', () => {
           : new Date();
         this.refreshToken = props.refreshToken;
         this.idToken = props.idToken;
-        this.permissions = props.permissions;
         this.yvpUserId = props.yvpUserId;
         this.name = props.name;
         this.profilePicture = props.profilePicture;

@@ -5,7 +5,7 @@ export const mockBooks = {
       title: 'Genesis',
       full_title: 'The First Book of Moses, Commonly Called Genesis',
       abbreviation: 'Gen',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 50 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -28,7 +28,7 @@ export const mockBooks = {
       title: 'Exodus',
       full_title: 'The Second Book of Moses, Commonly Called Exodus',
       abbreviation: 'Exod',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 40 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -51,7 +51,7 @@ export const mockBooks = {
       title: 'Leviticus',
       full_title: 'The Third Book of Moses, Commonly Called Leviticus',
       abbreviation: 'Lev',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 27 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -74,7 +74,7 @@ export const mockBooks = {
       title: 'Numbers',
       full_title: 'The Fourth Book of Moses, Commonly Called Numbers',
       abbreviation: 'Num',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 36 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -97,7 +97,7 @@ export const mockBooks = {
       title: 'Deuteronomy',
       full_title: 'The Fifth Book of Moses, Commonly Called Deuteronomy',
       abbreviation: 'Deut',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 34 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -120,7 +120,7 @@ export const mockBooks = {
       title: 'Joshua',
       full_title: 'The Book of Joshua',
       abbreviation: 'Josh',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 24 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -143,7 +143,7 @@ export const mockBooks = {
       title: 'Judges',
       full_title: 'The Book of Judges',
       abbreviation: 'Judg',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 21 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -166,7 +166,7 @@ export const mockBooks = {
       title: 'Ruth',
       full_title: 'The Book of Ruth',
       abbreviation: 'Ruth',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 4 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -189,7 +189,7 @@ export const mockBooks = {
       title: '1 Samuel',
       full_title: 'The First Book of Samuel',
       abbreviation: '1 Sam',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 31 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -212,7 +212,7 @@ export const mockBooks = {
       title: '2 Samuel',
       full_title: 'The Second Book of Samuel',
       abbreviation: '2 Sam',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 24 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -235,7 +235,7 @@ export const mockBooks = {
       title: '1 Kings',
       full_title: 'The First Book of Kings',
       abbreviation: '1 Kgs',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 22 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -258,7 +258,7 @@ export const mockBooks = {
       title: '2 Kings',
       full_title: 'The Second Book of Kings',
       abbreviation: '2 Kgs',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 25 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -281,7 +281,7 @@ export const mockBooks = {
       title: '1 Chronicles',
       full_title: 'The First Book of Chronicles',
       abbreviation: '1 Chr',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 29 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -304,7 +304,7 @@ export const mockBooks = {
       title: '2 Chronicles',
       full_title: 'The Second Book of Chronicles',
       abbreviation: '2 Chr',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 36 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -327,7 +327,7 @@ export const mockBooks = {
       title: 'Ezra',
       full_title: 'The Book of Ezra',
       abbreviation: 'Ezra',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 10 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -350,7 +350,7 @@ export const mockBooks = {
       title: 'Nehemiah',
       full_title: 'The Book of Nehemiah',
       abbreviation: 'Neh',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 13 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -373,7 +373,7 @@ export const mockBooks = {
       title: 'Esther',
       full_title: 'The Book of Esther',
       abbreviation: 'Esth',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 10 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -396,7 +396,7 @@ export const mockBooks = {
       title: 'Job',
       full_title: 'The Book of Job',
       abbreviation: 'Job',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 42 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -419,7 +419,7 @@ export const mockBooks = {
       title: 'Psalms',
       full_title: 'The Book of Psalms',
       abbreviation: 'Ps',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 150 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -442,7 +442,7 @@ export const mockBooks = {
       title: 'Proverbs',
       full_title: 'The Book of Proverbs',
       abbreviation: 'Prov',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 31 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -465,7 +465,7 @@ export const mockBooks = {
       title: 'Ecclesiastes',
       full_title: 'The Book of Ecclesiastes',
       abbreviation: 'Eccl',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 12 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -488,7 +488,7 @@ export const mockBooks = {
       title: 'Song of Solomon',
       full_title: 'The Song of Solomon',
       abbreviation: 'Song',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 8 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -511,7 +511,7 @@ export const mockBooks = {
       title: 'Isaiah',
       full_title: 'The Book of Isaiah',
       abbreviation: 'Isa',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 66 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -534,7 +534,7 @@ export const mockBooks = {
       title: 'Jeremiah',
       full_title: 'The Book of Jeremiah',
       abbreviation: 'Jer',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 52 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -557,7 +557,7 @@ export const mockBooks = {
       title: 'Lamentations',
       full_title: 'The Book of Lamentations',
       abbreviation: 'Lam',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 5 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -580,7 +580,7 @@ export const mockBooks = {
       title: 'Ezekiel',
       full_title: 'The Book of Ezekiel',
       abbreviation: 'Ezek',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 48 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -603,7 +603,7 @@ export const mockBooks = {
       title: 'Daniel',
       full_title: 'The Book of Daniel',
       abbreviation: 'Dan',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 12 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -626,7 +626,7 @@ export const mockBooks = {
       title: 'Hosea',
       full_title: 'The Book of Hosea',
       abbreviation: 'Hos',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 14 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -649,7 +649,7 @@ export const mockBooks = {
       title: 'Joel',
       full_title: 'The Book of Joel',
       abbreviation: 'Joel',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 3 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -672,7 +672,7 @@ export const mockBooks = {
       title: 'Amos',
       full_title: 'The Book of Amos',
       abbreviation: 'Amos',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 9 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -695,7 +695,7 @@ export const mockBooks = {
       title: 'Obadiah',
       full_title: 'The Book of Obadiah',
       abbreviation: 'Obad',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 1 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -718,7 +718,7 @@ export const mockBooks = {
       title: 'Jonah',
       full_title: 'The Book of Jonah',
       abbreviation: 'Jonah',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 4 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -741,7 +741,7 @@ export const mockBooks = {
       title: 'Micah',
       full_title: 'The Book of Micah',
       abbreviation: 'Mic',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 7 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -764,7 +764,7 @@ export const mockBooks = {
       title: 'Nahum',
       full_title: 'The Book of Nahum',
       abbreviation: 'Nah',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 3 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -787,7 +787,7 @@ export const mockBooks = {
       title: 'Habakkuk',
       full_title: 'The Book of Habakkuk',
       abbreviation: 'Hab',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 3 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -810,7 +810,7 @@ export const mockBooks = {
       title: 'Zephaniah',
       full_title: 'The Book of Zephaniah',
       abbreviation: 'Zeph',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 3 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -833,7 +833,7 @@ export const mockBooks = {
       title: 'Haggai',
       full_title: 'The Book of Haggai',
       abbreviation: 'Hag',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 2 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -856,7 +856,7 @@ export const mockBooks = {
       title: 'Zechariah',
       full_title: 'The Book of Zechariah',
       abbreviation: 'Zech',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 14 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -879,7 +879,7 @@ export const mockBooks = {
       title: 'Malachi',
       full_title: 'The Book of Malachi',
       abbreviation: 'Mal',
-      canon: 'ot',
+      canon: 'old_testament',
       chapters: Array.from({ length: 4 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -902,7 +902,7 @@ export const mockBooks = {
       title: 'Matthew',
       full_title: 'The Gospel According to Matthew',
       abbreviation: 'Matt',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 28 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -925,7 +925,7 @@ export const mockBooks = {
       title: 'Mark',
       full_title: 'The Gospel According to Mark',
       abbreviation: 'Mark',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 16 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -948,7 +948,7 @@ export const mockBooks = {
       title: 'Luke',
       full_title: 'The Gospel According to Luke',
       abbreviation: 'Luke',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 24 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -971,7 +971,7 @@ export const mockBooks = {
       title: 'John',
       full_title: 'The Gospel According to John',
       abbreviation: 'John',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 21 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -994,7 +994,7 @@ export const mockBooks = {
       title: 'Acts',
       full_title: 'The Acts of the Apostles',
       abbreviation: 'Acts',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 28 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1017,7 +1017,7 @@ export const mockBooks = {
       title: 'Romans',
       full_title: 'The Epistle to the Romans',
       abbreviation: 'Rom',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 16 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1040,7 +1040,7 @@ export const mockBooks = {
       title: '1 Corinthians',
       full_title: 'The First Epistle to the Corinthians',
       abbreviation: '1 Cor',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 16 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1063,7 +1063,7 @@ export const mockBooks = {
       title: '2 Corinthians',
       full_title: 'The Second Epistle to the Corinthians',
       abbreviation: '2 Cor',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 13 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1086,7 +1086,7 @@ export const mockBooks = {
       title: 'Galatians',
       full_title: 'The Epistle to the Galatians',
       abbreviation: 'Gal',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 6 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1109,7 +1109,7 @@ export const mockBooks = {
       title: 'Ephesians',
       full_title: 'The Epistle to the Ephesians',
       abbreviation: 'Eph',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 6 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1132,7 +1132,7 @@ export const mockBooks = {
       title: 'Philippians',
       full_title: 'The Epistle to the Philippians',
       abbreviation: 'Phil',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 4 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1155,7 +1155,7 @@ export const mockBooks = {
       title: 'Colossians',
       full_title: 'The Epistle to the Colossians',
       abbreviation: 'Col',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 4 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1178,7 +1178,7 @@ export const mockBooks = {
       title: '1 Thessalonians',
       full_title: 'The First Epistle to the Thessalonians',
       abbreviation: '1 Thess',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 5 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1201,7 +1201,7 @@ export const mockBooks = {
       title: '2 Thessalonians',
       full_title: 'The Second Epistle to the Thessalonians',
       abbreviation: '2 Thess',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 3 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1224,7 +1224,7 @@ export const mockBooks = {
       title: '1 Timothy',
       full_title: 'The First Epistle to Timothy',
       abbreviation: '1 Tim',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 6 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1247,7 +1247,7 @@ export const mockBooks = {
       title: '2 Timothy',
       full_title: 'The Second Epistle to Timothy',
       abbreviation: '2 Tim',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 4 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1270,7 +1270,7 @@ export const mockBooks = {
       title: 'Titus',
       full_title: 'The Epistle to Titus',
       abbreviation: 'Titus',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 3 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1293,7 +1293,7 @@ export const mockBooks = {
       title: 'Philemon',
       full_title: 'The Epistle to Philemon',
       abbreviation: 'Phlm',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 1 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1316,7 +1316,7 @@ export const mockBooks = {
       title: 'Hebrews',
       full_title: 'The Epistle to the Hebrews',
       abbreviation: 'Heb',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 13 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1339,7 +1339,7 @@ export const mockBooks = {
       title: 'James',
       full_title: 'The Epistle of James',
       abbreviation: 'Jas',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 5 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1362,7 +1362,7 @@ export const mockBooks = {
       title: '1 Peter',
       full_title: 'The First Epistle of Peter',
       abbreviation: '1 Pet',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 5 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1385,7 +1385,7 @@ export const mockBooks = {
       title: '2 Peter',
       full_title: 'The Second Epistle of Peter',
       abbreviation: '2 Pet',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 3 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1408,7 +1408,7 @@ export const mockBooks = {
       title: '1 John',
       full_title: 'The First Epistle of John',
       abbreviation: '1 John',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 5 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1431,7 +1431,7 @@ export const mockBooks = {
       title: '2 John',
       full_title: 'The Second Epistle of John',
       abbreviation: '2 John',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 1 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1454,7 +1454,7 @@ export const mockBooks = {
       title: '3 John',
       full_title: 'The Third Epistle of John',
       abbreviation: '3 John',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 1 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1477,7 +1477,7 @@ export const mockBooks = {
       title: 'Jude',
       full_title: 'The Epistle of Jude',
       abbreviation: 'Jude',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 1 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
@@ -1500,7 +1500,7 @@ export const mockBooks = {
       title: 'Revelation',
       full_title: 'The Revelation of Jesus Christ',
       abbreviation: 'Rev',
-      canon: 'nt',
+      canon: 'new_testament',
       chapters: Array.from({ length: 22 }, (_, i) => {
         const chapterNumber = i + 1;
         return {

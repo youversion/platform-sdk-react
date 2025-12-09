@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
-import { type SignInWithYouVersionPermissionValues } from '@youversion/platform-core';
+import { type AuthenticationScopes } from '@youversion/platform-core';
 import { useYVAuth } from '@youversion/platform-react-hooks';
 import { Button } from '../components/ui/button';
 import { YouVersionLogo } from './youversion-logo';
@@ -12,10 +12,7 @@ interface SignInAuthProps {
    * @param error - The error thrown by the sign-in flow.
    */
   onAuthError?: (error: Error) => void;
-  /**
-   * Permissions that are requested but not required for sign-in to succeed.
-   */
-  permissions?: SignInWithYouVersionPermissionValues[];
+  scopes?: AuthenticationScopes[];
   redirectUrl: string;
 }
 
@@ -84,7 +81,6 @@ export interface YouVersionAuthButtonProps
  *     <div>
  *       {auth.error && <p className="text-red-600">Error: {auth.error.message}</p>}
  *       <YouVersionAuthButton
- *         permissions={[SignInWithYouVersionPermission.bibles]}
  *         onAuthError={(err) => console.error(err)}
  *       />
  *     </div>
@@ -97,12 +93,10 @@ export interface YouVersionAuthButtonProps
  * <YouVersionAuthButton size="short" variant="outline" /> // shorter label with outline
  *
  * @example
- * // Example showing permission enum usage from the example app
+ * // Example showing scope usage from the example app
  * import { SignInWithYouVersionPermission } from '@youversion/platform-react-ui';
  *
- * <YouVersionAuthButton
- *   permissions={[SignInWithYouVersionPermission.bibles]}
- * />
+ * <YouVersionAuthButton scopes={['profile']}/>
  *
  */
 export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersionAuthButtonProps>(
@@ -114,7 +108,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
       onAuthError,
       onClick,
       mode,
-      permissions = [],
+      scopes = [],
       radius = 'rounded',
       redirectUrl,
       size = 'default',
@@ -138,7 +132,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
         } else {
           await signIn({
             redirectUrl,
-            permissions,
+            scopes,
           });
         }
       } catch (error) {

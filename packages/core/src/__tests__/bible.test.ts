@@ -77,7 +77,7 @@ describe('BibleClient', () => {
       expect(books.data[0]).toHaveProperty('title', 'Genesis');
       expect(books.data[0]).toHaveProperty('full_title', 'The First Book of Moses, Called Genesis');
       expect(books.data[0]).toHaveProperty('abbreviation', 'Gen');
-      expect(books.data[0]).toHaveProperty('canon', 'ot');
+      expect(books.data[0]).toHaveProperty('canon', 'old_testament');
       expect(books.data[0]?.chapters).toHaveLength(50);
     });
   });
@@ -93,7 +93,7 @@ describe('BibleClient', () => {
       expect(book).toHaveProperty('id', 'GEN');
       expect(book).toHaveProperty('title', 'Genesis');
       expect(book).toHaveProperty('abbreviation', 'Gen');
-      expect(book).toHaveProperty('canon', 'ot');
+      expect(book).toHaveProperty('canon', 'old_testament');
     });
 
     it('should throw an error for invalid inputs', async () => {

@@ -9,7 +9,6 @@ describe('SignInWithYouVersionResult', () => {
       accessToken: 'test-access-token',
       expiresIn: 3600,
       refreshToken: 'test-refresh-token',
-      permissions: ['votd', 'bibles'],
       yvpUserId: 'test-user-id',
       name: 'test user',
       profilePicture: 'https://this-is-a-test-picture.com',
@@ -19,7 +18,6 @@ describe('SignInWithYouVersionResult', () => {
     expect(result.accessToken).toBe('test-access-token');
     expect(result.expiryDate).toStrictEqual(new Date(fixedDate.getTime() + 60 * 60 * 1000));
     expect(result.refreshToken).toBe('test-refresh-token');
-    expect(result.permissions).toStrictEqual(['votd', 'bibles']);
     expect(result.yvpUserId).toBe('test-user-id');
     expect(result.name).toBe('test user');
     expect(result.profilePicture).toBe('https://this-is-a-test-picture.com');
