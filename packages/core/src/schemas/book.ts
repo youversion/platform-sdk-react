@@ -2,11 +2,7 @@ import { z } from 'zod';
 import { BOOK_IDS } from '../utils/constants';
 import { BibleChapterSchema } from './chapter';
 
-export const CanonSchema = z.enum([
-  'ot', // Old Testament
-  'nt', // New Testament
-  'dc', // Deuterocanon (Apocrypha)
-]);
+export const CanonSchema = z.enum(['old_testament', 'new_testament', 'deuterocanon']);
 export type Canon = z.infer<typeof CanonSchema>;
 
 // https://github.com/colinhacks/zod/discussions/4934#discussioncomment-13858053

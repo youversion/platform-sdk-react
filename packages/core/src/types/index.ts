@@ -18,5 +18,9 @@ export type { Collection } from '../schemas/collection';
 
 // Re-export internal/non-API types
 export type { ApiConfig } from './api-config';
-export type { AuthenticationState, SignInWithYouVersionPermissionValues } from './auth';
+export type {
+  AuthenticationState,
+  SignInWithYouVersionPermissionValues,
+  AuthenticationScopes,
+} from './auth';
 export type { HighlightColor } from './highlight';

@@ -14,3 +14,5 @@ export interface AuthenticationState {
   result: SignInWithYouVersionResult | null;
   error: Error | null;
 }
+
+export type AuthenticationScopes = 'profile' | 'email';

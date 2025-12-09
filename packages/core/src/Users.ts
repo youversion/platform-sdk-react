@@ -1,25 +1,21 @@
-import type { SignInWithYouVersionPermissionValues } from './types';
+import type { AuthenticationScopes } from './types';
 import { YouVersionUserInfo } from './YouVersionUserInfo';
 import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
 import { SignInWithYouVersionPKCEAuthorizationRequestBuilder } from './SignInWithYouVersionPKCE';
 import { SignInWithYouVersionResult } from './SignInWithYouVersionResult';
-import { SignInWithYouVersionPermission } from './SignInWithYouVersionResult';
 
 export class YouVersionAPIUsers {
   /**
    * Presents the YouVersion login flow to the user and returns the login result upon completion.
    *
-   * This function authenticates the user with YouVersion, requesting the specified required and optional permissions.
+   * This function authenticates the user with YouVersion.
    * The function redirects to the YouVersion authorization URL and expects the callback to be handled separately.
    *
-   * @param permissions - The set of permissions that must be granted by the user for successful login.
+   * @param scopes - The scopes given to the authentication call.
    * @param redirectURL - The URL to redirect back to after authentication.
    * @throws An error if authentication fails or configuration is invalid.
    */
-  static async signIn(
-    permissions: Set<SignInWithYouVersionPermissionValues>,
-    redirectURL: string,
-  ): Promise<void> {
+  static async signIn(redirectURL: string, scopes?: AuthenticationScopes[]): Promise<void> {
     const appKey = YouVersionPlatformConfiguration.appKey;
     if (!appKey) {
       throw new Error('YouVersionPlatformConfiguration.appKey must be set before calling signIn');
@@ -27,8 +23,8 @@ export class YouVersionAPIUsers {
 
     const authorizationRequest = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
       appKey,
-      permissions,
       new URL(redirectURL),
+      scopes,
     );
 
     // Store auth data for callback handler
@@ -184,22 +180,11 @@ export class YouVersionAPIUsers {
   }): SignInWithYouVersionResult {
     const idClaims = this.decodeJWT(tokens.id_token);
 
-    const permissions = tokens.scope
-      .split(' ')
-      .map((p) => p.trim())
-      .filter((p) => p.length > 0)
-      .filter((p): p is SignInWithYouVersionPermissionValues =>
-        Object.values(SignInWithYouVersionPermission).includes(
-          p as SignInWithYouVersionPermissionValues,
-        ),
-      );
-
     const resultData = {
       accessToken: tokens.access_token,
       expiresIn: tokens.expires_in,
       refreshToken: tokens.refresh_token,
       idToken: tokens.id_token,
-      permissions,
       yvpUserId: idClaims.sub as string,
       name: idClaims.name as string,
       profilePicture: idClaims.profile_picture as string,
@@ -353,15 +338,6 @@ export class YouVersionAPIUsers {
         expiresIn: tokens.expires_in,
         refreshToken: tokens.refresh_token,
         idToken: existingIdToken,
-        permissions: tokens.scope
-          .split(' ')
-          .map((p) => p.trim())
-          .filter((p) => p.length > 0)
-          .filter((p): p is SignInWithYouVersionPermissionValues =>
-            Object.values(SignInWithYouVersionPermission).includes(
-              p as SignInWithYouVersionPermissionValues,
-            ),
-          ),
       });
 
       // Store updated tokens

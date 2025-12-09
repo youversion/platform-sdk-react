@@ -1,9 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { YouVersionAPIUsers } from '../Users';
 import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfiguration';
-import { SignInWithYouVersionPermission } from '../SignInWithYouVersionResult';
 import { YouVersionUserInfo } from '../YouVersionUserInfo';
-import type { SignInWithYouVersionPermissionValues } from '../types/auth';
 import { setupBrowserMocks, cleanupBrowserMocks } from './mocks/browser';
 
 const mockFetch = vi.fn();
@@ -40,13 +38,9 @@ describe('YouVersionAPIUsers', () => {
     it('should throw error when appKey is not set', async () => {
       YouVersionPlatformConfiguration.appKey = null;
 
-      const permissions = new Set<SignInWithYouVersionPermissionValues>([
-        SignInWithYouVersionPermission.bibles,
-      ]);
-
-      await expect(
-        YouVersionAPIUsers.signIn(permissions, 'https://example.com/callback'),
-      ).rejects.toThrow('YouVersionPlatformConfiguration.appKey must be set before calling signIn');
+      await expect(YouVersionAPIUsers.signIn('https://example.com/callback')).rejects.toThrow(
+        'YouVersionPlatformConfiguration.appKey must be set before calling signIn',
+      );
     });
 
     it('should create authorization request and redirect on successful signIn', async () => {
@@ -62,13 +56,9 @@ describe('YouVersionAPIUsers', () => {
       vi.spyOn(crypto.subtle, 'digest').mockResolvedValue(new Uint8Array(32).buffer);
       mocks.btoa.mockReturnValue('mockBase64Value');
 
-      const permissions = new Set<SignInWithYouVersionPermissionValues>([
-        SignInWithYouVersionPermission.bibles,
-        SignInWithYouVersionPermission.highlights,
-      ]);
       const redirectURL = 'https://example.com/callback';
 
-      await YouVersionAPIUsers.signIn(permissions, redirectURL);
+      await YouVersionAPIUsers.signIn(redirectURL);
 
       // Verify localStorage items stored
       expect(mocks.localStorage.setItem).toHaveBeenCalledWith(
@@ -210,7 +200,6 @@ describe('YouVersionAPIUsers', () => {
       expect(result).toBeTruthy();
       expect(result?.accessToken).toBe('access-token-123');
       expect(result?.refreshToken).toBe('refresh-token-456');
-      expect(result?.permissions).toEqual(['bibles', 'highlights']);
       expect(result?.yvpUserId).toBe('1234567890');
       expect(result?.name).toBe('John Doe');
       expect(result?.email).toBe('john@example.com');
@@ -323,31 +312,10 @@ describe('YouVersionAPIUsers', () => {
       expect(result.accessToken).toBe('access-token-123');
       expect(result.expiryDate).toStrictEqual(new Date(fixedDate.getTime() + 60 * 60 * 1000));
       expect(result.refreshToken).toBe('refresh-token-456');
-      expect(result.permissions).toEqual(['bibles', 'highlights']);
       expect(result.yvpUserId).toBe('1234567890');
       expect(result.name).toBe('John Doe');
       expect(result.email).toBe('john@example.com');
       expect(result.profilePicture).toBe('https://example.com/avatar.jpg');
-    });
-
-    it('should filter out unknown permissions', () => {
-      const tokens = {
-        access_token: 'token',
-        expires_in: 3600,
-        id_token:
-          'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.e30.Et9HFtf9R3GEMA0IICOfFMVXY7kkTX1wr4qCyhIf58U',
-        refresh_token: 'refresh',
-        scope: 'bibles unknown_permission highlights invalid_scope',
-        token_type: 'Bearer',
-      };
-
-      // Mock JWT decoding
-      vi.mocked(atob).mockReturnValue(JSON.stringify({ sub: 'user123' }));
-
-      // @ts-expect-error - accessing private method for testing
-      const result = YouVersionAPIUsers.extractSignInResult(tokens);
-
-      expect(result.permissions).toEqual(['bibles', 'highlights']);
     });
   });
 
@@ -556,8 +524,6 @@ describe('YouVersionAPIUsers', () => {
 
       // Assert that id_token is preserved (same as original)
       expect(result?.idToken).toBe(existingIdToken);
-
-      expect(result?.permissions).toEqual(['bibles', 'highlights']);
 
       // Verify the refresh token request was made correctly
       expect(mockFetch).toHaveBeenCalledTimes(1);

@@ -22,7 +22,6 @@ const meta = {
 
       return {
         accessToken: 'mock-token',
-        permissions: [],
         errorMsg: null,
         yvpUserId: 'mock-user-id',
       };
@@ -43,7 +42,7 @@ const meta = {
         disable: true,
       },
     },
-    permissions: {
+    scopes: {
       table: {
         disable: true,
       },
