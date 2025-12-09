@@ -130,8 +130,9 @@ export function useYVAuth(): UseYVAuthReturn {
     async ({ redirectUrl, scopes }: { redirectUrl: string; scopes?: AuthenticationScopes[] }) => {
       if (scopes) {
         await YouVersionAPIUsers.signIn(redirectUrl, scopes);
+      } else {
+        await YouVersionAPIUsers.signIn(redirectUrl);
       }
-      await YouVersionAPIUsers.signIn(redirectUrl);
       // Note: This will redirect, so code after this won't execute
     },
     [],

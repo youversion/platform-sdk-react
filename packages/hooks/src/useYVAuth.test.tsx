@@ -6,6 +6,7 @@ import { useYVAuth } from './useYVAuth';
 import { YouVersionAuthContext } from './context/YouVersionAuthContext';
 import { createMockUserInfo, createMockAuthResult } from './__tests__/mocks/auth';
 import { createAuthProviderWrapper } from './__tests__/utils/test-utils';
+import type { AuthenticationScopes } from '@youversion/platform-core';
 
 // Mock the core modules
 vi.mock('@youversion/platform-core', () => {
@@ -208,6 +209,31 @@ describe('useYVAuth', () => {
         await result.current.signIn({ redirectUrl });
       });
 
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(redirectUrl);
+    });
+
+    it('should call YouVersionAPIUsers.signIn exactly once with scopes', async () => {
+      const { result } = await renderAuthHook();
+      const redirectUrl = 'https://example.com/callback';
+      const scopes: AuthenticationScopes[] = ['profile', 'email'];
+
+      await act(async () => {
+        await result.current.signIn({ redirectUrl, scopes });
+      });
+
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(redirectUrl, scopes);
+    });
+
+    it('should call YouVersionAPIUsers.signIn exactly once without scopes', async () => {
+      const { result } = await renderAuthHook();
+      const redirectUrl = 'https://example.com/callback';
+
+      await act(async () => {
+        await result.current.signIn({ redirectUrl });
+      });
+
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledTimes(1);
       expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(redirectUrl);
     });
 
