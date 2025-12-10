@@ -60,6 +60,7 @@ export const WithVersionPicker: Story = {
     reference: 'LUK.1.39-45',
     versionId: 111,
     showVersionPicker: true,
+    background: 'dark',
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {

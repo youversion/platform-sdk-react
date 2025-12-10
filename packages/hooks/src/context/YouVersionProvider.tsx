@@ -47,7 +47,7 @@ export function YouVersionProvider(
       >
         <Suspense>
           <AuthProvider config={{ appKey, apiHost, redirectUri: authRedirectUrl }}>
-            <div data-yv-sdk>{children}</div>
+            {children}
           </AuthProvider>
         </Suspense>
       </YouVersionContext.Provider>

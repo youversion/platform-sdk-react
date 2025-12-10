@@ -28,6 +28,7 @@ export function BibleWidgetView({
 
   return (
     <section
+      data-yv-sdk
       data-yv-theme={background === 'dark' ? 'dark' : 'light'}
       className="yv:flex yv:flex-col yv:bg-card yv:p-6 yv:max-w-md yv:rounded-2xl"
     >
@@ -39,10 +40,19 @@ export function BibleWidgetView({
         ) : null}
 
         {showVersionPicker ? (
-          <BibleVersionPicker.Root onVersionChange={setVersionNum} versionId={versionNum}>
+          <BibleVersionPicker.Root
+            onVersionChange={setVersionNum}
+            versionId={versionNum}
+            background={background}
+          >
             <BibleVersionPicker.Trigger aria-label="Change Bible version">
               {({ version, loading }) => (
-                <Button variant="secondary" disabled={loading}>
+                <Button
+                  variant="secondary"
+                  className="yv:font-bold yv:text-xs"
+                  disabled={loading}
+                  data-yv-theme={background === 'dark' ? 'dark' : 'light'}
+                >
                   {loading ? 'Loading...' : version?.localized_abbreviation || 'Select version'}
                 </Button>
               )}

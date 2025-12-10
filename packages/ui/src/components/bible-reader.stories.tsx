@@ -63,7 +63,7 @@ export const Default: Story = {
     lineHeight: 1.6,
     fontFamily: "'Inter', sans-serif",
     showVerseNumbers: true,
-    background: 'light',
+    background: 'dark',
   },
   render: (args) => (
     <div className="yv:h-screen yv:bg-background">

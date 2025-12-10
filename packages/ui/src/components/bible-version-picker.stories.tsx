@@ -167,3 +167,14 @@ export const InteractiveVersionSearch: Story = {
     ).toBeInTheDocument();
   },
 };
+
+export const RealAPI: Story = {
+  args: {
+    versionId: 111,
+  },
+  parameters: {
+    msw: {
+      handlers: null,
+    },
+  },
+};

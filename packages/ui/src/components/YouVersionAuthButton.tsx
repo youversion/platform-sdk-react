@@ -172,6 +172,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
       return (
         <Button
           {...props}
+          data-yv-sdk
           className={cn(
             'yv:shadow-none yv:p-3 yv:h-auto yv:w-fit',
             variant === 'outline' ? 'yv:border' : 'yv:border-none',
@@ -202,6 +203,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
     return (
       <Button
         {...props}
+        data-yv-sdk
         className={cn(
           'yv:relative yv:shadow-none yv:w-fit',
           variant === 'outline' ? 'yv:border' : 'yv:border-none',

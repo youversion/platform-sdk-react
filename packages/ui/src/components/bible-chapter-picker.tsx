@@ -23,6 +23,7 @@ type BibleChapterPickerContextType = {
   setChapter: (chapter: string) => void;
   versionId: number;
   background: 'light' | 'dark';
+  scrollToCurrentBook: () => void;
 };
 
 const BibleChapterPickerContext = createContext<BibleChapterPickerContextType | null>(null);
@@ -71,7 +72,7 @@ function Root({
   });
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedBook, setExpandedBook] = useState<string | null>(null);
+  const [expandedBook, setExpandedBook] = useState<string | null>(book || null);
 
   const { books } = useBooks(versionId);
 
@@ -84,6 +85,18 @@ function Root({
   }, [books?.data, searchQuery]);
 
   const bookElementsRef = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const scrollToCurrentBook = () => {
+    if (book) {
+      setExpandedBook(book);
+      setTimeout(() => {
+        bookElementsRef.current[book]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      }, 200);
+    }
+  };
 
   // When an accordion is expanded, scroll that book into view
   useEffect(() => {
@@ -108,7 +121,7 @@ function Root({
   return (
     <Popover>
       <BibleChapterPickerContext.Provider
-        value={{ book, chapter, setBook, setChapter, versionId, background }}
+        value={{ book, chapter, setBook, setChapter, versionId, background, scrollToCurrentBook }}
       >
         {children}
 
@@ -134,7 +147,7 @@ function Root({
           </section>
 
           <Accordion
-            className="yv:relative yv:overflow-y-auto yv:bg-background yv:mx-6"
+            className="yv:relative yv:overflow-y-auto yv:bg-background yv:px-6"
             type="single"
             collapsible
             defaultValue={defaultBook || book || 'GEN'}
@@ -226,7 +239,8 @@ export type TriggerProps = Omit<React.ComponentProps<typeof PopoverTrigger>, 'ch
 };
 
 function Trigger({ asChild = true, children, ...props }: TriggerProps) {
-  const { book, chapter, background, versionId } = useBibleChapterPickerContext();
+  const { book, chapter, background, versionId, scrollToCurrentBook } =
+    useBibleChapterPickerContext();
   const { books, loading } = useBooks(versionId);
 
   const currentBook = books?.data?.find((bookItem) => bookItem.id === book);
@@ -237,12 +251,16 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
   const content =
     typeof children === 'function'
       ? children({ book, chapter, currentBook, loading })
-      : children || (
-          <Button variant={background === 'light' ? 'outline' : 'default'}>{buttonText}</Button>
-        );
+      : children || <Button variant="secondary">{buttonText}</Button>;
 
   return (
-    <PopoverTrigger data-yv-sdk asChild={asChild} {...props}>
+    <PopoverTrigger
+      data-yv-sdk
+      data-yv-theme={background === 'dark' ? 'dark' : 'light'}
+      asChild={asChild}
+      onClick={scrollToCurrentBook}
+      {...props}
+    >
       {content}
     </PopoverTrigger>
   );

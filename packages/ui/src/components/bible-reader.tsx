@@ -103,6 +103,7 @@ function Root({
   return (
     <BibleReaderContext.Provider value={contextValue}>
       <div
+        data-yv-sdk
         data-yv-theme={background === 'dark' ? 'dark' : 'light'}
         className="yv:flex yv:flex-col yv:h-full yv:bg-background yv:text-foreground"
       >
@@ -183,7 +184,11 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
         >
           <BibleChapterPicker.Trigger aria-label="Change Bible book and chapter">
             {({ chapter, currentBook, loading }) => (
-              <Button variant="secondary" className="yv:rounded-r-none" disabled={loading}>
+              <Button
+                variant="secondary"
+                className="yv:rounded-r-none yv:font-bold yv:text-primary"
+                disabled={loading}
+              >
                 {loading ? 'Loading...' : `${currentBook?.title || 'Select'} ${chapter || ''}`}
               </Button>
             )}
@@ -197,7 +202,11 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
         >
           <BibleVersionPicker.Trigger aria-label="Change Bible version">
             {({ version, loading }) => (
-              <Button variant="secondary" className="yv:rounded-l-none" disabled={loading}>
+              <Button
+                variant="secondary"
+                className="yv:rounded-l-none yv:font-bold yv:text-primary"
+                disabled={loading}
+              >
                 {loading ? 'Loading...' : version?.localized_abbreviation || 'Select version'}
               </Button>
             )}

@@ -146,16 +146,18 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
     typeof children === 'function'
       ? children({ version, loading })
       : children || (
-          <Button
-            variant={background === 'light' ? 'outline' : 'default'}
-            className="yv:cursor-pointer"
-          >
+          <Button variant={'secondary'} className="yv:cursor-pointer yv:font-bold yv:text-base">
             {version?.localized_abbreviation || 'Select'}
           </Button>
         );
 
   return (
-    <PopoverTrigger asChild={asChild} {...props}>
+    <PopoverTrigger
+      data-yv-sdk
+      data-yv-theme={background === 'dark' ? 'dark' : 'light'}
+      asChild={asChild}
+      {...props}
+    >
       {content}
     </PopoverTrigger>
   );
