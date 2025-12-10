@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
-import mockBooks from '../mock-data/books.json';
-import mockChapters from '../mock-data/chapters.json';
+import { mockBooks } from '../mock-data/books';
+import { mockChapters } from '../mock-data/chapters';
 import mockPassages from '../mock-data/passages.json';
 import mockBibles from '../mock-data/bibles.json';
 import mockLanguages from '../mock-data/languages.json';
@@ -111,61 +111,11 @@ export const globalHandlers = [
     });
   }),
 
-  // Search
-  // http.get('*/v1/search', () => {
-  //   return HttpResponse.json({
-  //     data: [
-  //       {
-  //         id: 'JHN.3.16',
-  //         content: 'For God so loved the world...',
-  //         reference: 'John 3:16',
-  //         bible_id: 111,
-  //       },
-  //     ],
-  //     total_size: 1,
-  //   });
-  // }),
-  //
-  // // Verse of the day
-  // http.get('*/v1/verses/daily', () => {
-  //   return HttpResponse.json({
-  //     verse: {
-  //       id: 'JHN.3.16',
-  //       content:
-  //         'For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.',
-  //       reference: 'John 3:16',
-  //       bible_id: 111,
-  //     },
-  //     image: {
-  //       url: 'https://example.com/votd-image.jpg',
-  //       attribution: 'Photo attribution',
-  //     },
-  //   });
-  // }),
-
   // Verse of the day by day number
   http.get('*/v1/verse_of_the_days/*', () => {
     return HttpResponse.json({
       day: 1,
       passage_id: 'ISA.43.19',
-    });
-  }),
-
-  // Authentication
-  http.post('*/oauth/token', () => {
-    return HttpResponse.json({
-      access_token: 'mock-access-token',
-      token_type: 'Bearer',
-      expires_in: 3600,
-      refresh_token: 'mock-refresh-token',
-    });
-  }),
-
-  http.get('*/v1/user', () => {
-    return HttpResponse.json({
-      id: 'mock-user-id',
-      name: 'Test User',
-      email: 'test@example.com',
     });
   }),
 ];

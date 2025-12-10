@@ -31,15 +31,10 @@ export function BibleWidgetView({
       data-yv-theme={background === 'dark' ? 'dark' : 'light'}
       className="yv:flex yv:flex-col yv:bg-card yv:p-6 yv:max-w-md yv:rounded-2xl"
     >
-      {passage?.reference ? (
-        <h2 className="yv:font-bold yv:tracking-widest yv:text-xs yv:uppercase">
-          {passage.reference} {version?.localized_abbreviation}
-        </h2>
-      ) : null}
-      <div className="yv:flex yv:justify-between">
-        {passage?.human_reference ? (
+      <div className="yv:flex yv:justify-between yv:items-center">
+        {passage?.reference ? (
           <h2 className="yv:font-bold yv:tracking-widest yv:text-xs yv:uppercase">
-            {passage.human_reference} {version?.local_abbreviation}
+            {passage.reference} {version?.localized_abbreviation}
           </h2>
         ) : null}
 
@@ -48,7 +43,7 @@ export function BibleWidgetView({
             <BibleVersionPicker.Trigger aria-label="Change Bible version">
               {({ version, loading }) => (
                 <Button variant="secondary" disabled={loading}>
-                  {loading ? 'Loading...' : version?.local_abbreviation || 'Select version'}
+                  {loading ? 'Loading...' : version?.localized_abbreviation || 'Select version'}
                 </Button>
               )}
             </BibleVersionPicker.Trigger>

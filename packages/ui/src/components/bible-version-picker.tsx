@@ -268,8 +268,8 @@ function Content() {
                       className="yv:rounded-[8px] yv:size-12 yv:border-border yv:p-1 yv:flex yv:flex-col yv:justify-center"
                     >
                       {(() => {
-                        const match = /^(.+?)(\d+)$/.exec(version.local_abbreviation) || [];
-                        const prefix = match[1] || version.local_abbreviation;
+                        const match = /^(.+?)(\d+)$/.exec(version.localized_abbreviation) || [];
+                        const prefix = match[1] || version.localized_abbreviation;
                         const digits = match[2];
                         return (
                           <div className="yv:font-serif yv:text-sm yv:leading-none yv:font-bold yv:text-center">

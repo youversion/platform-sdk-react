@@ -135,7 +135,7 @@ function Content() {
         >
           {bookData?.title || 'Loading...'}
         </span>
-        <span className="yv:leading-none yv:block yv:ml-2 yv:text-[2.5rem] yv:font-normal">
+        <span className="yv:leading-none yv:block yv:text-[2.5rem] yv:font-normal">
           {chapter || '-'}
         </span>
       </h1>

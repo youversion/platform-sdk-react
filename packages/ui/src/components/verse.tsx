@@ -1,90 +1,10 @@
 'use client';
 
-import { useEffect, forwardRef, useState, useMemo, useRef, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, forwardRef, useState, type ReactNode } from 'react';
 import DOMPurify from 'isomorphic-dompurify';
 import { usePassage } from '@youversion/platform-react-hooks';
-import { sanitize } from 'storybook/internal/csf';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Footnote } from './icons/footnote';
-import { createRoot } from 'react-dom/client';
 
 const NON_BREAKING_SPACE = '\u00A0';
-
-type NoteMarker = {
-  id: number,
-  text: string,
-  element?: HTMLElement
-}
-
-function renderHtmlWithNotes(html: string): ReactNode {
-  const contentRef = useRef<HTMLDivElement>(null)
-  const [noteMarkers, setNoteMarkers] = useState<Record<string, NoteMarker>>({})
-  if (!html) return null;
-
-  if (typeof window === 'undefined' || !('DOMParser' in window)) {
-    return <div dangerouslySetInnerHTML={{ __html: html }} />;
-  }
-
-  const { modifiedHtml } = useMemo(() => {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const noteElements = doc.querySelectorAll('span.yv-n.f');
-
-    const notesDict: Record<string, NoteMarker> = {};
-
-    noteElements.forEach((element, index) => {
-      // notesDict[index] = element.innerHTML;
-      const text = element.textContent
-
-      // Replace note element with empty span with ID
-      const emptySpan = doc.createElement('span');
-      emptySpan.id = `note-${index}`;
-      element.parentNode?.replaceChild(emptySpan, element);
-
-      notesDict[index] = {id: index, text}
-    });
-
-    setNoteMarkers(notesDict)
-    return { modifiedHtml: doc.body.innerHTML, notes: notesDict };
-  }, [html]);
-
-  useEffect(() => {
-    if(!contentRef.current) return
-    
-    setNoteMarkers(prev => {
-      const updated = {...prev}
-
-      Object.keys(prev).forEach(noteId => {
-        const element = contentRef.current?.querySelector(`note-${noteId}`) as HTMLElement
-        if(element){
-          updated[noteId] = {...prev[noteId], element}
-
-        }
-      })
-      return updated
-    })
-
-  }, [modifiedHtml])
-
-  return (
-    <>
-      <div ref={contentRef} dangerouslySetInnerHTML={{ __html: modifiedHtml }} />
-
-      {Object.entries(notes).map(([noteId, content]) => {
-        if (!content || !notes[noteId]) return null;
-
-        return createPortal(
-          <Popover>
-            <PopoverTrigger>
-              <PopoverContent></PopoverContent>
-            </PopoverTrigger>
-          </Popover>,
-          , content);
-      })}
-    </>
-  );
-}
 
 // Configure DOMPurify to allow specific attributes safe for Bible content
 const DOMPURIFY_CONFIG = {
@@ -93,7 +13,7 @@ const DOMPURIFY_CONFIG = {
 };
 
 function yvDomTransformer(html: string): string {
-  if (typeof window === 'undefined' || !('DOMParser' in window)) {
+  if (!window || !('DOMParser' in window)) {
     return html;
   }
 
@@ -184,7 +104,6 @@ type VerseHtmlProps = {
   fontSize?: number;
   lineHeight?: number;
   showVerseNumbers?: boolean;
-  renderNotes?: boolean;
 };
 
 /**
@@ -224,14 +143,7 @@ export const Verse = {
 
   Html: forwardRef<HTMLDivElement, VerseHtmlProps>(
     (
-      {
-        html,
-        fontFamily,
-        fontSize,
-        lineHeight,
-        showVerseNumbers = true,
-        renderNotes = true,
-      }: VerseHtmlProps,
+      { html, fontFamily, fontSize, lineHeight, showVerseNumbers = true }: VerseHtmlProps,
       ref,
     ): ReactNode => {
       const [transformedHtml, setTransformedHtml] = useState(html);
@@ -240,26 +152,6 @@ export const Verse = {
       useEffect(() => {
         setTransformedHtml(yvDomTransformer(html));
       }, [html]);
-
-      if (renderNotes) {
-        const notesContent = renderHtmlWithNotes(transformedHtml);
-        return (
-          <section
-            ref={ref}
-            style={
-              {
-                ...(fontFamily ? { '--yv-reader-font-family': fontFamily } : {}),
-                ...(fontSize ? { '--yv-reader-font-size': `${fontSize}px` } : {}),
-                ...(lineHeight ? { '--yv-reader-line-height': lineHeight } : {}),
-              } as React.CSSProperties
-            }
-            data-show-verse-numbers={showVerseNumbers}
-            data-slot="yv-bible-renderer"
-          >
-            {notesContent}
-          </section>
-        );
-      }
 
       return (
         <section
@@ -287,7 +179,6 @@ export type BibleTextViewProps = {
   lineHeight?: number;
   versionId: number;
   showVerseNumbers?: boolean;
-  renderNotes?: boolean;
 };
 
 /**
@@ -300,7 +191,6 @@ export const BibleTextView = ({
   lineHeight,
   versionId,
   showVerseNumbers,
-  renderNotes,
 }: BibleTextViewProps): React.ReactElement => {
   const { passage, loading, error } = usePassage({
     versionId,
@@ -308,18 +198,6 @@ export const BibleTextView = ({
     include_headings: true,
     include_notes: true,
   });
-
-  let notes: Record<number, string> = {};
-  if (passage) {
-    const sanitizedHTML = DOMPurify.sanitize(passage.content, DOMPURIFY_CONFIG);
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(sanitizedHTML, 'text/html');
-
-    const noteElements = doc.querySelectorAll('span.yv-n.f');
-    noteElements.forEach((element, index) => {
-      notes[index] = element.innerHTML;
-    });
-  }
 
   if (loading) {
     return (
@@ -329,7 +207,6 @@ export const BibleTextView = ({
         fontSize={fontSize}
         lineHeight={lineHeight}
         showVerseNumbers={showVerseNumbers}
-        renderNotes={renderNotes}
       />
     );
   }
@@ -342,7 +219,6 @@ export const BibleTextView = ({
         fontSize={fontSize}
         lineHeight={lineHeight}
         showVerseNumbers={showVerseNumbers}
-        renderNotes={renderNotes}
       />
     );
   }
@@ -354,7 +230,6 @@ export const BibleTextView = ({
       fontSize={fontSize}
       lineHeight={lineHeight}
       showVerseNumbers={showVerseNumbers}
-      renderNotes={renderNotes}
     />
   );
 };
