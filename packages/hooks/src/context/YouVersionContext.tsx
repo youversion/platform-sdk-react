@@ -6,6 +6,7 @@ type YouVersionContextData = {
   appKey: string;
   apiHost?: string;
   installationId?: string;
+  theme?: 'light' | 'dark';
 };
 
 export const YouVersionContext = createContext<YouVersionContextData | null>(null);

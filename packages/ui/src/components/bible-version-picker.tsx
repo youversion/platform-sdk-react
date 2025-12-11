@@ -5,6 +5,7 @@ import {
   useVersion,
   useVersions,
   useLanguages,
+  YouVersionContext,
 } from '@youversion/platform-react-hooks';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -57,7 +58,7 @@ export type RootProps = {
 function Root({
   versionId: controlledVersionId,
   onVersionChange,
-  background = 'light',
+  background,
   side = 'top',
   children,
 }: RootProps) {
@@ -66,6 +67,9 @@ function Root({
     defaultProp: controlledVersionId,
     onChange: onVersionChange,
   });
+
+  const context = useContext(YouVersionContext);
+  const theme = background || context?.theme;
 
   const [selectedLanguageId, setSelectedLanguageId] = useState('en');
   const [searchQuery, setSearchQuery] = useState('');
@@ -110,7 +114,7 @@ function Root({
   const contextValue: BibleVersionPickerContextType = {
     versionId,
     setVersionId: setVersionIdState,
-    background,
+    background: theme,
     side,
     languages,
     selectedLanguageId,
@@ -152,12 +156,7 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
         );
 
   return (
-    <PopoverTrigger
-      data-yv-sdk
-      data-yv-theme={background === 'dark' ? 'dark' : 'light'}
-      asChild={asChild}
-      {...props}
-    >
+    <PopoverTrigger data-yv-sdk data-yv-theme={background} asChild={asChild} {...props}>
       {content}
     </PopoverTrigger>
   );
@@ -194,7 +193,7 @@ function Content() {
   return (
     <PopoverContent
       data-yv-sdk
-      data-yv-theme={background === 'dark' ? 'dark' : 'light'}
+      data-yv-theme={background}
       side={side}
       className="yv:flex yv:flex-col yv:bg-background yv:p-0 yv:h-[66vh] yv:max-h-[66vh] yv:w-96 yv:sm:w-sm yv:overflow-hidden yv:rounded-2xl yv:border-0 yv:shadow-lg"
     >

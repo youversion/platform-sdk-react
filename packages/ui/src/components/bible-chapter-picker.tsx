@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
-import { useBooks } from '@youversion/platform-react-hooks';
+import { useBooks, YouVersionContext } from '@youversion/platform-react-hooks';
 import { type BibleBook } from '@youversion/platform-core';
 import { Info, Search, XIcon } from 'lucide-react';
 import { Button } from './ui/button';
@@ -56,7 +56,7 @@ function Root({
   defaultChapter = '',
   onChapterChange,
   versionId,
-  background = 'light',
+  background,
   children,
 }: RootProps) {
   const [book, setBook] = useControllableState({
@@ -70,6 +70,9 @@ function Root({
     defaultProp: defaultChapter,
     onChange: onChapterChange,
   });
+
+  const context = useContext(YouVersionContext);
+  const theme = background || context?.theme;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedBook, setExpandedBook] = useState<string | null>(book || null);
@@ -121,14 +124,22 @@ function Root({
   return (
     <Popover>
       <BibleChapterPickerContext.Provider
-        value={{ book, chapter, setBook, setChapter, versionId, background, scrollToCurrentBook }}
+        value={{
+          book,
+          chapter,
+          setBook,
+          setChapter,
+          versionId,
+          background: theme,
+          scrollToCurrentBook,
+        }}
       >
         {children}
 
         {/* data-yv-sdk for styles is needed because the popover gets rendered outside of the providers scope **/}
         <PopoverContent
           data-yv-sdk
-          data-yv-theme={background === 'dark' ? 'dark' : 'light'}
+          data-yv-theme={theme}
           side="top"
           className="yv:grid yv:grid-rows-[auto_1fr_auto] yv:bg-background yv:p-0 yv:h-full yv:max-h-[66vh] yv:w-96 yv:sm:w-sm yv:overflow-hidden yv:rounded-2xl yv:border-0 yv:shadow-lg"
         >
@@ -256,7 +267,7 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
   return (
     <PopoverTrigger
       data-yv-sdk
-      data-yv-theme={background === 'dark' ? 'dark' : 'light'}
+      data-yv-theme={background}
       asChild={asChild}
       onClick={scrollToCurrentBook}
       {...props}

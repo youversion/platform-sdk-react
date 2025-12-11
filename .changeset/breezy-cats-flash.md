@@ -12,6 +12,7 @@ New Features
 - Enhanced Version Display: Improved version abbreviation presentation (e.g., "KJV1984" displays as "KJV" over "1984" in stacked format)
 - Auto-Scroll Navigation: Bible chapter picker now automatically scrolls to and expands the current book when opened
 - Added the ability to customize the text on the YouVersionAuthButton
+- Add theme to the YouVersionProvider to specify light or dark mode to the SDK
 
 UI/UX Improvements
 
@@ -19,3 +20,5 @@ UI/UX Improvements
 - Better Theme Support: Added comprehensive dark/light mode theming with data-yv-theme attributes
 - Improved Accessibility: Enhanced search functionality with proper ARIA labels
 - Cleaner DOM Structure: Simplified component hierarchy by removing unnecessary wrapper elements
+- Improve component theming to apply theme to the ui components and improve
+isolating the sdk css.

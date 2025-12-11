@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
-import { useBooks, useVersion } from '@youversion/platform-react-hooks';
+import { useBooks, useVersion, YouVersionContext } from '@youversion/platform-react-hooks';
 import { BibleChapterPicker } from './bible-chapter-picker';
 import { BibleVersionPicker } from './bible-version-picker';
 import { BibleTextView } from './verse';
@@ -65,7 +65,7 @@ function Root({
   fontSize = 16,
   lineHeight,
   showVerseNumbers = true,
-  background = 'light',
+  background,
   children,
 }: RootProps) {
   const [book, setBook] = useControllableState({
@@ -86,6 +86,9 @@ function Root({
     onChange: onVersionChange,
   });
 
+  const context = useContext(YouVersionContext);
+  const theme = background || context?.theme;
+
   const contextValue: BibleReaderContextType = {
     book,
     chapter,
@@ -97,14 +100,14 @@ function Root({
     fontSize,
     lineHeight,
     showVerseNumbers,
-    background,
+    background: theme,
   };
 
   return (
     <BibleReaderContext.Provider value={contextValue}>
       <div
         data-yv-sdk
-        data-yv-theme={background === 'dark' ? 'dark' : 'light'}
+        data-yv-theme={theme}
         className="yv:flex yv:flex-col yv:h-full yv:bg-background yv:text-foreground"
       >
         {children}
@@ -186,7 +189,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
             {({ chapter, currentBook, loading }) => (
               <Button
                 variant="secondary"
-                className="yv:rounded-r-none yv:font-bold yv:text-primary"
+                className="yv:rounded-r-none yv:font-bold yv:text-foreground"
                 disabled={loading}
               >
                 {loading ? 'Loading...' : `${currentBook?.title || 'Select'} ${chapter || ''}`}
@@ -204,7 +207,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
             {({ version, loading }) => (
               <Button
                 variant="secondary"
-                className="yv:rounded-l-none yv:font-bold yv:text-primary"
+                className="yv:rounded-l-none yv:font-bold yv:text-foreground"
                 disabled={loading}
               >
                 {loading ? 'Loading...' : version?.localized_abbreviation || 'Select version'}
