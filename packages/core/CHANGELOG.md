@@ -1,5 +1,26 @@
 # @youversion/platform-core
 
+## 0.10.0
+
+### Minor Changes
+
+- df2082d: Added version picker functionality to BibleWidgetView component with enhanced UI theming and user experience improvements.
+
+  New Features
+  - BibleWidgetView Version Picker: Added showVersionPicker prop enabling dynamic Bible version switching within the widget
+  - Enhanced Version Display: Improved version abbreviation presentation (e.g., "KJV1984" displays as "KJV" over "1984" in stacked format)
+  - Auto-Scroll Navigation: Bible chapter picker now automatically scrolls to and expands the current book when opened
+  - Added the ability to customize the text on the YouVersionAuthButton
+  - Add theme to the YouVersionProvider to specify light or dark mode to the SDK
+
+  UI/UX Improvements
+  - Consistent Button Styling: Updated all picker buttons to use secondary variant with bold typography
+  - Better Theme Support: Added comprehensive dark/light mode theming with data-yv-theme attributes
+  - Improved Accessibility: Enhanced search functionality with proper ARIA labels
+  - Cleaner DOM Structure: Simplified component hierarchy by removing unnecessary wrapper elements
+  - Improve component theming to apply theme to the ui components and improve
+    isolating the sdk css.
+
 ## 0.9.0
 
 ### Minor Changes
