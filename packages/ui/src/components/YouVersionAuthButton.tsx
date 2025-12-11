@@ -149,25 +149,15 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
     const buttonLoading = auth.isLoading;
 
     const buttonText = useMemo(() => {
-      if (text) {
-        return text;
-      } else if (size === 'short') {
-        if (mode === 'signOut') {
-          return 'Sign Out';
-        } else if (mode === 'signIn') {
-          return 'Sign In';
-        } else {
-          return auth.isAuthenticated ? 'Sign Out' : 'Sign In';
-        }
-      } else {
-        if (mode === 'signOut') {
-          return 'Sign Out of YouVersion';
-        } else if (mode === 'signIn') {
-          return 'Sign In with YouVersion';
-        } else {
-          return auth.isAuthenticated ? 'Sign Out of YouVersion' : 'Sign In with YouVersion';
-        }
+      if (text) return text;
+
+      const isSignOut = mode === 'signOut' || (mode === 'auto' && auth.isAuthenticated);
+
+      if (size === 'short') {
+        return isSignOut ? 'Sign Out' : 'Sign In';
       }
+
+      return isSignOut ? 'Sign Out of YouVersion' : 'Sign In with YouVersion';
     }, [mode, auth.isAuthenticated, size, text]);
 
     const loadingSpinner = (
