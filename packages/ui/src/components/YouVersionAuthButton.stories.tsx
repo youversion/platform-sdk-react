@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within, spyOn } from 'storybook/test';
-
 import { YouVersionAuthButton } from './YouVersionAuthButton';
 
 // Store mock reference for interaction test
@@ -62,6 +61,9 @@ const meta = {
     size: {
       control: { type: 'select' },
       options: ['default', 'short', 'icon'],
+    },
+    text: {
+      control: { type: 'text' },
     },
     variant: {
       control: { type: 'select' },
@@ -253,6 +255,23 @@ export const InteractionTestWithMockedAuth: Story = {
 
     // Wait for the auth provider to load and the button to appear
     const loginButton = await canvas.findByRole('button', { name: /sign in with youversion/i });
+    await userEvent.click(loginButton);
+
+    void expect(signInMock).toHaveBeenCalled();
+  },
+};
+
+export const CustomText: Story = {
+  args: {
+    onAuthError: fn(),
+    text: 'Custom Text',
+  },
+  tags: ['integration'],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Wait for the auth provider to load and the button to appear
+    const loginButton = await canvas.findByRole('button', { name: /custom text/i });
     await userEvent.click(loginButton);
 
     void expect(signInMock).toHaveBeenCalled();

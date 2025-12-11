@@ -1,0 +1,36 @@
+{
+  "data": [
+    {
+      "id": "en",
+      "language": "en",
+      "script": "Latn",
+      "script_name": "Latin",
+      "aliases": ["eng"],
+      "display_names": { "en": "English" },
+      "scripts": ["Latn"],
+      "variants": [],
+      "countries": ["US", "GB", "CA", "AU"],
+      "text_direction": "ltr",
+      "writing_population": 1327104050,
+      "speaking_population": 1636485840,
+      "default_bible_id": 111
+    },
+    {
+      "id": "ko",
+      "language": "ko",
+      "script": "Kore",
+      "script_name": "한국 문자",
+      "aliases": ["kor"],
+      "display_names": { "en": "Korean", "ko": "한국어" },
+      "scripts": ["Kore"],
+      "variants": [],
+      "countries": ["KR", "KP"],
+      "text_direction": "ltr",
+      "writing_population": 77143580,
+      "speaking_population": 78357046,
+      "default_bible_id": null
+    }
+  ],
+  "next_page_token": "eyJzdGFydCI6IDI1fQ==",
+  "total_size": 141
+}

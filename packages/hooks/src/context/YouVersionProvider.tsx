@@ -9,6 +9,7 @@ interface YouVersionProviderPropsBase {
   children: ReactNode;
   appKey: string;
   apiHost?: string;
+  theme?: 'light' | 'dark';
 }
 
 interface YouVersionProviderPropsWithAuth extends YouVersionProviderPropsBase {
@@ -26,7 +27,7 @@ const AuthProvider = lazy(() => import('./YouVersionAuthProvider'));
 export function YouVersionProvider(
   props: PropsWithChildren<YouVersionProviderPropsWithAuth | YouVersionProviderPropsWithoutAuth>,
 ): React.ReactElement {
-  const { appKey, apiHost = 'api.youversion.com', includeAuth, children } = props;
+  const { appKey, apiHost = 'api.youversion.com', includeAuth, theme = 'light', children } = props;
 
   // Syncing appKey and apiHost to YouVersionPlatformConfiguration
   // so that this can be in sync with any other code that uses
@@ -43,11 +44,16 @@ export function YouVersionProvider(
     // Installation ID gets set automatically by YouVersionPlatformConfiguration
     return (
       <YouVersionContext.Provider
-        value={{ appKey, apiHost, installationId: YouVersionPlatformConfiguration.installationId }}
+        value={{
+          appKey,
+          apiHost,
+          installationId: YouVersionPlatformConfiguration.installationId,
+          theme,
+        }}
       >
         <Suspense>
           <AuthProvider config={{ appKey, apiHost, redirectUri: authRedirectUrl }}>
-            <div data-yv-sdk>{children}</div>
+            {children}
           </AuthProvider>
         </Suspense>
       </YouVersionContext.Provider>

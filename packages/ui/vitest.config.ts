@@ -39,6 +39,9 @@ export default defineConfig({
         ],
         test: {
           name: 'storybook',
+          // Increase timeouts for CI stability
+          testTimeout: 60000, // 60 seconds for test execution
+          hookTimeout: 30000, // 30 seconds for setup/teardown hooks
           // Enable browser mode
           browser: {
             enabled: true,

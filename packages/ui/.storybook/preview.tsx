@@ -3,14 +3,17 @@ import type { Preview } from '@storybook/react-vite';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { StorybookEnvCheck } from '../src/test/StorybookEnvCheck';
 import { YouVersionProvider } from '@youversion/platform-react-hooks';
+import { globalHandlers } from '../src/test/mocks/handlers';
 import '../dist/tailwind.css';
 
 /*
- * Initializes MSW
+ * Initializes MSW with global handlers
  * See https://github.com/mswjs/msw-storybook-addon#configuring-msw
  * to learn how to customize it
  */
-initialize();
+initialize({
+  onUnhandledRequest: 'warn',
+});
 
 const preview: Preview = {
   decorators: [
@@ -34,6 +37,9 @@ const preview: Preview = {
         color: /(background|color)$/i,
         date: /Date$/i,
       },
+    },
+    msw: {
+      handlers: globalHandlers,
     },
   },
   loaders: [mswLoader], // Adds the MSW loader to all stories
