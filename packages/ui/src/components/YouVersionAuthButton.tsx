@@ -58,6 +58,7 @@ export interface YouVersionAuthButtonProps
    *
    * */
   mode?: 'signIn' | 'signOut' | 'auto';
+  text?: string;
 }
 
 /**
@@ -112,6 +113,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
       radius = 'rounded',
       redirectUrl,
       size = 'default',
+      text,
       variant = 'default',
       ...props
     },
@@ -145,7 +147,9 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
     const buttonLoading = auth.isLoading;
 
     const buttonText = useMemo(() => {
-      if (size === 'short') {
+      if (text) {
+        return text;
+      } else if (size === 'short') {
         if (mode === 'signOut') {
           return 'Sign Out';
         } else if (mode === 'signIn') {
@@ -162,7 +166,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
           return auth.isAuthenticated ? 'Sign Out of YouVersion' : 'Sign In with YouVersion';
         }
       }
-    }, [mode, auth.isAuthenticated, size]);
+    }, [mode, auth.isAuthenticated, size, text]);
 
     const loadingSpinner = (
       <Loader2 className="yv:z-20 yv:absolute yv:left-1/2 yv:top-1/2 yv:animate-spin yv:-translate-x-1/2 yv:-translate-y-1/2 yv:fill-primary-foreground yv:text-primary" />

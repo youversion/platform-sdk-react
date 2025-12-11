@@ -1,7 +1,7 @@
 ---
-'@youversion/platform-react-hooks': patch
-'@youversion/platform-react-ui': patch
-'@youversion/platform-core': patch
+'@youversion/platform-react-hooks': minor
+'@youversion/platform-react-ui': minor
+'@youversion/platform-core': minor
 ---
 
 Added version picker functionality to BibleWidgetView component with enhanced UI theming and user experience improvements.
@@ -11,6 +11,7 @@ New Features
 - BibleWidgetView Version Picker: Added showVersionPicker prop enabling dynamic Bible version switching within the widget
 - Enhanced Version Display: Improved version abbreviation presentation (e.g., "KJV1984" displays as "KJV" over "1984" in stacked format)
 - Auto-Scroll Navigation: Bible chapter picker now automatically scrolls to and expands the current book when opened
+- Added the ability to customize the text on the YouVersionAuthButton
 
 UI/UX Improvements
 
