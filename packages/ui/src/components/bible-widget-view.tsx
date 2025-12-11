@@ -1,9 +1,9 @@
-import { usePassage, useVersion, YouVersionContext } from '@youversion/platform-react-hooks';
+import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hooks';
 import { BibleTextView } from './verse';
 import { BibleAppLogoLockup } from './bible-app-logo-lockup';
 import { BibleVersionPicker } from './bible-version-picker';
 import { Button } from './ui/button';
-import { useState, useContext } from 'react';
+import { useState } from 'react';
 
 export type BibleWidgetViewProps = {
   reference: string;
@@ -25,8 +25,8 @@ export function BibleWidgetView({
     include_headings: true,
     include_notes: true,
   });
-  const context = useContext(YouVersionContext);
-  const theme = background || context?.theme;
+  const providerTheme = useTheme();
+  const theme = background || providerTheme;
 
   return (
     <section

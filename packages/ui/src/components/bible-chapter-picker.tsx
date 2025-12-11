@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
-import { useBooks, YouVersionContext } from '@youversion/platform-react-hooks';
+import { useBooks, useTheme } from '@youversion/platform-react-hooks';
 import { type BibleBook } from '@youversion/platform-core';
 import { Info, Search, XIcon } from 'lucide-react';
 import { Button } from './ui/button';
@@ -71,8 +71,8 @@ function Root({
     onChange: onChapterChange,
   });
 
-  const context = useContext(YouVersionContext);
-  const theme = background || context?.theme;
+  const providerTheme = useTheme();
+  const theme = background || providerTheme;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedBook, setExpandedBook] = useState<string | null>(book || null);

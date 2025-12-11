@@ -18,6 +18,7 @@ export * from './usePassage';
 export * from './useVOTD';
 export * from './useHighlights';
 export * from './useLanguages';
+export * from './useTheme';
 
 // Auth hooks
 export * from './useYVAuth';

@@ -1,7 +1,7 @@
-import React, { useMemo, useContext } from 'react';
+import React, { useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
 import { type AuthenticationScopes } from '@youversion/platform-core';
-import { useYVAuth, YouVersionContext } from '@youversion/platform-react-hooks';
+import { useYVAuth, useTheme } from '@youversion/platform-react-hooks';
 import { Button } from '../components/ui/button';
 import { YouVersionLogo } from './youversion-logo';
 import { cn } from '../lib/utils';
@@ -120,8 +120,8 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
     ref,
   ): React.ReactElement => {
     const { signIn, signOut, auth } = useYVAuth();
-    const context = useContext(YouVersionContext);
-    const theme = background || context?.theme;
+    const providerTheme = useTheme();
+    const theme = background || providerTheme;
 
     const handleClick = async (e: React.MouseEvent<HTMLButtonElement>): Promise<void> => {
       e.preventDefault();

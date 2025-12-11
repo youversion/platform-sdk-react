@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
-import { useBooks, useVersion, YouVersionContext } from '@youversion/platform-react-hooks';
+import { useBooks, useVersion, useTheme } from '@youversion/platform-react-hooks';
 import { BibleChapterPicker } from './bible-chapter-picker';
 import { BibleVersionPicker } from './bible-version-picker';
 import { BibleTextView } from './verse';
@@ -86,8 +86,8 @@ function Root({
     onChange: onVersionChange,
   });
 
-  const context = useContext(YouVersionContext);
-  const theme = background || context?.theme;
+  const providerTheme = useTheme();
+  const theme = background || providerTheme;
 
   const contextValue: BibleReaderContextType = {
     book,

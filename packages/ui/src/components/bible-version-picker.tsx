@@ -5,7 +5,7 @@ import {
   useVersion,
   useVersions,
   useLanguages,
-  YouVersionContext,
+  useTheme,
 } from '@youversion/platform-react-hooks';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -68,8 +68,8 @@ function Root({
     onChange: onVersionChange,
   });
 
-  const context = useContext(YouVersionContext);
-  const theme = background || context?.theme;
+  const providerTheme = useTheme();
+  const theme = background || providerTheme;
 
   const [selectedLanguageId, setSelectedLanguageId] = useState('en');
   const [searchQuery, setSearchQuery] = useState('');
