@@ -5,10 +5,8 @@ export const BiblePassageSchema = z.object({
   id: z.string(),
   /** Passage content text */
   content: z.string(),
-  /** Bible version identifier */
-  bible_id: z.number().int().positive(),
   /** Human-readable reference (e.g., "Matthew 1:1") */
-  human_reference: z.string(),
+  reference: z.string(),
 });
 
 export type BiblePassage = z.infer<typeof BiblePassageSchema>;

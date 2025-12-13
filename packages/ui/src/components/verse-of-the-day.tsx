@@ -106,10 +106,10 @@ export function VerseOfTheDay({
     referenceText = 'Loading...';
   } else if (errorPassage || errorVerseOfTheDay) {
     referenceText = 'Error loading verse';
-  } else if (passage?.human_reference && version?.local_abbreviation) {
-    referenceText = `${passage?.human_reference} ${version?.local_abbreviation}`;
-  } else if (passage?.human_reference) {
-    referenceText = passage?.human_reference;
+  } else if (passage?.reference && version?.localized_abbreviation) {
+    referenceText = `${passage?.reference} ${version?.localized_abbreviation}`;
+  } else if (passage?.reference) {
+    referenceText = passage?.reference;
   } else {
     referenceText = 'No verse found';
   }

@@ -7,6 +7,7 @@ const SvgComponent = (props: SVGProps<SVGSVGElement>): React.ReactElement => (
     height={17}
     viewBox="0 0 80 17"
     fill="none"
+    className="yv:text-black yv:dark:text-white"
     {...props}
   >
     <title>Bible App</title>

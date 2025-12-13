@@ -5,6 +5,7 @@ import {
   useVersion,
   useVersions,
   useLanguages,
+  useTheme,
 } from '@youversion/platform-react-hooks';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -57,7 +58,7 @@ export type RootProps = {
 function Root({
   versionId: controlledVersionId,
   onVersionChange,
-  background = 'light',
+  background,
   side = 'top',
   children,
 }: RootProps) {
@@ -66,6 +67,9 @@ function Root({
     defaultProp: controlledVersionId,
     onChange: onVersionChange,
   });
+
+  const providerTheme = useTheme();
+  const theme = background || providerTheme;
 
   const [selectedLanguageId, setSelectedLanguageId] = useState('en');
   const [searchQuery, setSearchQuery] = useState('');
@@ -110,7 +114,7 @@ function Root({
   const contextValue: BibleVersionPickerContextType = {
     versionId,
     setVersionId: setVersionIdState,
-    background,
+    background: theme,
     side,
     languages,
     selectedLanguageId,
@@ -146,16 +150,13 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
     typeof children === 'function'
       ? children({ version, loading })
       : children || (
-          <Button
-            variant={background === 'light' ? 'outline' : 'default'}
-            className="yv:cursor-pointer"
-          >
-            {version?.local_abbreviation || 'Select'}
+          <Button variant={'secondary'} className="yv:cursor-pointer yv:font-bold yv:text-base">
+            {version?.localized_abbreviation || 'Select'}
           </Button>
         );
 
   return (
-    <PopoverTrigger asChild={asChild} {...props}>
+    <PopoverTrigger data-yv-sdk data-yv-theme={background} asChild={asChild} {...props}>
       {content}
     </PopoverTrigger>
   );
@@ -192,7 +193,7 @@ function Content() {
   return (
     <PopoverContent
       data-yv-sdk
-      data-yv-theme={background === 'dark' ? 'dark' : 'light'}
+      data-yv-theme={background}
       side={side}
       className="yv:flex yv:flex-col yv:bg-background yv:p-0 yv:h-[66vh] yv:max-h-[66vh] yv:w-96 yv:sm:w-sm yv:overflow-hidden yv:rounded-2xl yv:border-0 yv:shadow-lg"
     >
@@ -244,7 +245,7 @@ function Content() {
 
         <div className="yv:flex-1 yv:overflow-y-auto yv:py-2">
           {filteredVersions && filteredVersions.length > 0 ? (
-            <ItemGroup>
+            <ItemGroup data-testid="version-list">
               {filteredVersions.map((version: BibleVersion) => (
                 <Item
                   key={version.abbreviation}
@@ -265,14 +266,24 @@ function Content() {
                   >
                     <ItemMedia
                       variant="icon"
-                      className="yv:rounded-[8px] yv:size-12 yv:border-border"
+                      className="yv:rounded-[8px] yv:size-12 yv:border-border yv:p-1 yv:flex yv:flex-col yv:justify-center"
                     >
-                      <span className="yv:font-serif yv:font-bold">
-                        {version.local_abbreviation}
-                      </span>
+                      {(() => {
+                        const match = /^(.+?)(\d+)$/.exec(version.localized_abbreviation) || [];
+                        const prefix = match[1] || version.localized_abbreviation;
+                        const digits = match[2];
+                        return (
+                          <div className="yv:font-serif yv:text-sm yv:leading-none yv:font-bold yv:text-center">
+                            <div>{prefix}</div>
+                            {digits && <div>{digits}</div>}
+                          </div>
+                        );
+                      })()}
                     </ItemMedia>
                     <ItemContent>
-                      <ItemTitle className="yv:line-clamp-2">{version.title}</ItemTitle>
+                      <ItemTitle className="yv:line-clamp-2 yv:text-left">
+                        {version.title}
+                      </ItemTitle>
                     </ItemContent>
                   </button>
                 </Item>
@@ -295,6 +306,7 @@ function Content() {
               className="yv:rounded-3xl yv:bg-background yv:pl-9 yv:py-3 yv:border-border"
               type="text"
               placeholder="Search"
+              aria-label="Search Versions"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />

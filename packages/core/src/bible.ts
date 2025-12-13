@@ -81,7 +81,7 @@ export class BibleClient {
   /**
    * Fetches all books for a given Bible version.
    * @param versionId The version ID.
-   * @param canon Optional canon filter ('ot', 'nt', 'deuterocanon').
+   * @param canon Optional canon filter ("old_testament", 'new_testament', 'deuterocanon').
    * @returns An array of BibleBook objects.
    */
   async getBooks(versionId: number, canon?: CANON): Promise<Collection<BibleBook>> {

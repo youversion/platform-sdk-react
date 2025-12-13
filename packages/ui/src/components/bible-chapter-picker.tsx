@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
-import { useBooks } from '@youversion/platform-react-hooks';
+import { useBooks, useTheme } from '@youversion/platform-react-hooks';
 import { type BibleBook } from '@youversion/platform-core';
 import { Info, Search, XIcon } from 'lucide-react';
 import { Button } from './ui/button';
@@ -23,6 +23,7 @@ type BibleChapterPickerContextType = {
   setChapter: (chapter: string) => void;
   versionId: number;
   background: 'light' | 'dark';
+  scrollToCurrentBook: () => void;
 };
 
 const BibleChapterPickerContext = createContext<BibleChapterPickerContextType | null>(null);
@@ -55,7 +56,7 @@ function Root({
   defaultChapter = '',
   onChapterChange,
   versionId,
-  background = 'light',
+  background,
   children,
 }: RootProps) {
   const [book, setBook] = useControllableState({
@@ -70,8 +71,11 @@ function Root({
     onChange: onChapterChange,
   });
 
+  const providerTheme = useTheme();
+  const theme = background || providerTheme;
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedBook, setExpandedBook] = useState<string | null>(null);
+  const [expandedBook, setExpandedBook] = useState<string | null>(book || null);
 
   const { books } = useBooks(versionId);
 
@@ -84,6 +88,18 @@ function Root({
   }, [books?.data, searchQuery]);
 
   const bookElementsRef = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const scrollToCurrentBook = () => {
+    if (book) {
+      setExpandedBook(book);
+      setTimeout(() => {
+        bookElementsRef.current[book]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      }, 200);
+    }
+  };
 
   // When an accordion is expanded, scroll that book into view
   useEffect(() => {
@@ -108,14 +124,22 @@ function Root({
   return (
     <Popover>
       <BibleChapterPickerContext.Provider
-        value={{ book, chapter, setBook, setChapter, versionId, background }}
+        value={{
+          book,
+          chapter,
+          setBook,
+          setChapter,
+          versionId,
+          background: theme,
+          scrollToCurrentBook,
+        }}
       >
         {children}
 
         {/* data-yv-sdk for styles is needed because the popover gets rendered outside of the providers scope **/}
         <PopoverContent
           data-yv-sdk
-          data-yv-theme={background === 'dark' ? 'dark' : 'light'}
+          data-yv-theme={theme}
           side="top"
           className="yv:grid yv:grid-rows-[auto_1fr_auto] yv:bg-background yv:p-0 yv:h-full yv:max-h-[66vh] yv:w-96 yv:sm:w-sm yv:overflow-hidden yv:rounded-2xl yv:border-0 yv:shadow-lg"
         >
@@ -134,7 +158,7 @@ function Root({
           </section>
 
           <Accordion
-            className="yv:relative yv:overflow-y-auto yv:bg-background yv:mx-6"
+            className="yv:relative yv:overflow-y-auto yv:bg-background yv:px-6"
             type="single"
             collapsible
             defaultValue={defaultBook || book || 'GEN'}
@@ -160,9 +184,9 @@ function Root({
                     {bookItem.chapters && bookItem.chapters.length > 0 ? (
                       <div className="yv:grid yv:grid-cols-5 yv:gap-2">
                         {bookItem.chapters.map((chapterRef) => {
-                          const chapterId = chapterRef.split('.').pop() || '';
+                          const chapterId = chapterRef.passage_id.split('.').pop() || '';
                           return (
-                            <PopoverClose asChild key={`${bookItem.id}-${chapterRef}`}>
+                            <PopoverClose asChild key={`${bookItem.id}-${chapterRef.passage_id}`}>
                               <Button
                                 variant="secondary"
                                 size="icon"
@@ -226,7 +250,8 @@ export type TriggerProps = Omit<React.ComponentProps<typeof PopoverTrigger>, 'ch
 };
 
 function Trigger({ asChild = true, children, ...props }: TriggerProps) {
-  const { book, chapter, background, versionId } = useBibleChapterPickerContext();
+  const { book, chapter, background, versionId, scrollToCurrentBook } =
+    useBibleChapterPickerContext();
   const { books, loading } = useBooks(versionId);
 
   const currentBook = books?.data?.find((bookItem) => bookItem.id === book);
@@ -237,12 +262,16 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
   const content =
     typeof children === 'function'
       ? children({ book, chapter, currentBook, loading })
-      : children || (
-          <Button variant={background === 'light' ? 'outline' : 'default'}>{buttonText}</Button>
-        );
+      : children || <Button variant="secondary">{buttonText}</Button>;
 
   return (
-    <PopoverTrigger asChild={asChild} {...props}>
+    <PopoverTrigger
+      data-yv-sdk
+      data-yv-theme={background}
+      asChild={asChild}
+      onClick={scrollToCurrentBook}
+      {...props}
+    >
       {content}
     </PopoverTrigger>
   );

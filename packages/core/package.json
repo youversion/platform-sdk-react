@@ -1,6 +1,6 @@
 {
   "name": "@youversion/platform-core",
-  "version": "0.8.1",
+  "version": "0.10.1",
   "type": "module",
   "publishConfig": {
     "access": "public",
@@ -27,6 +27,7 @@
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "dotenv -e .env.local -- vitest run",
+    "test:integration": "INTEGRATION_TESTS=true dotenv -e .env.local -- vitest run",
     "test:watch": "dotenv -e .env.local -- vitest",
     "test:coverage": "dotenv -e .env.local -- vitest run --coverage"
   },

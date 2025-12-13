@@ -11,7 +11,6 @@ export * from './Users';
 export * from './YouVersionUserInfo';
 export * from './SignInWithYouVersionResult';
 export * from './YouVersionAPI';
-export * from './URLBuilder';
 export * from './YouVersionPlatformConfiguration';
 export * from './types';
 export * from './utils/constants';

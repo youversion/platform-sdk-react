@@ -1,5 +1,5 @@
 import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
-import type { SignInWithYouVersionPermissionValues } from './types/auth';
+import type { AuthenticationScopes } from './types';
 
 type SignInWithYouVersionPKCEParameters = {
   readonly codeVerifier: string;
@@ -15,8 +15,8 @@ type SignInWithYouVersionPKCEAuthorizationRequest = {
 export class SignInWithYouVersionPKCEAuthorizationRequestBuilder {
   public static async make(
     appKey: string,
-    permissions: Set<SignInWithYouVersionPermissionValues>,
     redirectURL: URL,
+    scopes?: AuthenticationScopes[],
   ): Promise<SignInWithYouVersionPKCEAuthorizationRequest> {
     const codeVerifier = this.randomURLSafeString(32);
     const codeChallenge = await this.codeChallenge(codeVerifier);
@@ -30,16 +30,16 @@ export class SignInWithYouVersionPKCEAuthorizationRequestBuilder {
       nonce,
     };
 
-    const url = this.authorizeURL(appKey, permissions, redirectURL, parameters);
+    const url = this.authorizeURL(appKey, redirectURL, parameters, scopes);
 
     return { url, parameters };
   }
 
   private static authorizeURL(
     appKey: string,
-    permissions: Set<SignInWithYouVersionPermissionValues>,
     redirectURL: URL,
     parameters: SignInWithYouVersionPKCEParameters,
+    scopes?: AuthenticationScopes[],
   ): URL {
     const components = new URL(`https://${YouVersionPlatformConfiguration.apiHost}/auth/authorize`);
 
@@ -61,7 +61,7 @@ export class SignInWithYouVersionPKCEAuthorizationRequestBuilder {
       queryParams.set('x-yvp-installation-id', installId);
     }
 
-    const scopeValue = this.scopeValue(permissions);
+    const scopeValue = this.scopeValue(scopes || []);
     if (scopeValue) {
       queryParams.set('scope', scopeValue);
     }
@@ -109,8 +109,8 @@ export class SignInWithYouVersionPKCEAuthorizationRequestBuilder {
     return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
   }
 
-  private static scopeValue(permissions: Set<SignInWithYouVersionPermissionValues>): string | null {
-    const scopeArray = Array.from(permissions).sort();
+  private static scopeValue(scopes: AuthenticationScopes[]): string | null {
+    const scopeArray = Array.from(scopes).sort();
     let scopeWithOpenID = scopeArray.join(' ');
 
     if (!scopeWithOpenID.split(' ').includes('openid')) {

@@ -1,5 +1,58 @@
 # @youversion/platform-core
 
+## 0.10.1
+
+### Patch Changes
+
+- 8e3a672: fix(ui): fix the css build so that it removes our css from all layers
+  - this fixes the issue where our sdk css was getting overridden due to
+    the consuming app having css that is unlayered and unlayered css will
+    always take precedence over layered css.
+
+## 0.10.0
+
+### Minor Changes
+
+- df2082d: Added version picker functionality to BibleWidgetView component with enhanced UI theming and user experience improvements.
+
+  New Features
+  - BibleWidgetView Version Picker: Added showVersionPicker prop enabling dynamic Bible version switching within the widget
+  - Enhanced Version Display: Improved version abbreviation presentation (e.g., "KJV1984" displays as "KJV" over "1984" in stacked format)
+  - Auto-Scroll Navigation: Bible chapter picker now automatically scrolls to and expands the current book when opened
+  - Added the ability to customize the text on the YouVersionAuthButton
+  - Add theme to the YouVersionProvider to specify light or dark mode to the SDK
+
+  UI/UX Improvements
+  - Consistent Button Styling: Updated all picker buttons to use secondary variant with bold typography
+  - Better Theme Support: Added comprehensive dark/light mode theming with data-yv-theme attributes
+  - Improved Accessibility: Enhanced search functionality with proper ARIA labels
+  - Cleaner DOM Structure: Simplified component hierarchy by removing unnecessary wrapper elements
+  - Improve component theming to apply theme to the ui components and improve
+    isolating the sdk css.
+
+## 0.9.0
+
+### Minor Changes
+
+- e4f93b6: Update authentication system with enhanced OAuth scopes and API schema alignment
+
+  Key Changes:
+  - Added profile and email scopes to OAuth authentication
+  - Updated book resource schema to match new API endpoints
+  - Removed deprecated URLBuilder functionality
+
+  Breaking Changes:
+  - Book Schema: Must use the new updated book schema in any APIs returning bible book data Please enter a summary for your changes.
+
+## 0.8.2
+
+### Patch Changes
+
+- 93be9ef: Update types, zod schemas, and test mocks for the following updated endpoints:
+  - get bible books
+  - get bible chapters
+  - get bible verses
+
 ## 0.8.1
 
 ### Patch Changes

@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
-import { type SignInWithYouVersionPermissionValues } from '@youversion/platform-core';
-import { useYVAuth } from '@youversion/platform-react-hooks';
+import { type AuthenticationScopes } from '@youversion/platform-core';
+import { useYVAuth, useTheme } from '@youversion/platform-react-hooks';
 import { Button } from '../components/ui/button';
-import { YouVersionLogo } from './youversion-logo';
+import { YouVersionLogo } from './icons/youversion-logo';
 import { cn } from '../lib/utils';
 
 interface SignInAuthProps {
@@ -12,10 +12,7 @@ interface SignInAuthProps {
    * @param error - The error thrown by the sign-in flow.
    */
   onAuthError?: (error: Error) => void;
-  /**
-   * Permissions that are requested but not required for sign-in to succeed.
-   */
-  permissions?: SignInWithYouVersionPermissionValues[];
+  scopes?: AuthenticationScopes[];
   redirectUrl: string;
 }
 
@@ -61,6 +58,7 @@ export interface YouVersionAuthButtonProps
    *
    * */
   mode?: 'signIn' | 'signOut' | 'auto';
+  text?: string;
 }
 
 /**
@@ -84,7 +82,6 @@ export interface YouVersionAuthButtonProps
  *     <div>
  *       {auth.error && <p className="text-red-600">Error: {auth.error.message}</p>}
  *       <YouVersionAuthButton
- *         permissions={[SignInWithYouVersionPermission.bibles]}
  *         onAuthError={(err) => console.error(err)}
  *       />
  *     </div>
@@ -97,33 +94,34 @@ export interface YouVersionAuthButtonProps
  * <YouVersionAuthButton size="short" variant="outline" /> // shorter label with outline
  *
  * @example
- * // Example showing permission enum usage from the example app
+ * // Example showing scope usage from the example app
  * import { SignInWithYouVersionPermission } from '@youversion/platform-react-ui';
  *
- * <YouVersionAuthButton
- *   permissions={[SignInWithYouVersionPermission.bibles]}
- * />
+ * <YouVersionAuthButton scopes={['profile']}/>
  *
  */
 export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersionAuthButtonProps>(
   (
     {
-      background = 'light',
+      background,
       className,
       disabled,
       onAuthError,
       onClick,
       mode,
-      permissions = [],
+      scopes = [],
       radius = 'rounded',
       redirectUrl,
       size = 'default',
+      text,
       variant = 'default',
       ...props
     },
     ref,
   ): React.ReactElement => {
     const { signIn, signOut, auth } = useYVAuth();
+    const providerTheme = useTheme();
+    const theme = background || providerTheme;
 
     const handleClick = async (e: React.MouseEvent<HTMLButtonElement>): Promise<void> => {
       e.preventDefault();
@@ -138,7 +136,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
         } else {
           await signIn({
             redirectUrl,
-            permissions,
+            scopes,
           });
         }
       } catch (error) {
@@ -151,24 +149,24 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
     const buttonLoading = auth.isLoading;
 
     const buttonText = useMemo(() => {
+      if (text) return text;
+
+      const isSignOut = mode === 'signOut' || (mode === 'auto' && auth.isAuthenticated);
+
       if (size === 'short') {
-        if (mode === 'signOut') {
-          return 'Sign Out';
-        } else if (mode === 'signIn') {
-          return 'Sign In';
-        } else {
-          return auth.isAuthenticated ? 'Sign Out' : 'Sign In';
-        }
-      } else {
-        if (mode === 'signOut') {
-          return 'Sign Out of YouVersion';
-        } else if (mode === 'signIn') {
-          return 'Sign In with YouVersion';
-        } else {
-          return auth.isAuthenticated ? 'Sign Out of YouVersion' : 'Sign In with YouVersion';
-        }
+        return isSignOut ? 'Sign out' : 'Sign in';
       }
-    }, [mode, auth.isAuthenticated, size]);
+
+      return isSignOut ? (
+        <div className="yv:font-normal">
+          Sign out of <span className="yv:font-bold">YouVersion</span>
+        </div>
+      ) : (
+        <div className="yv:font-normal">
+          Sign in with <span className="yv:font-bold">YouVersion</span>
+        </div>
+      );
+    }, [mode, auth.isAuthenticated, size, text]);
 
     const loadingSpinner = (
       <Loader2 className="yv:z-20 yv:absolute yv:left-1/2 yv:top-1/2 yv:animate-spin yv:-translate-x-1/2 yv:-translate-y-1/2 yv:fill-primary-foreground yv:text-primary" />
@@ -178,12 +176,14 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
       return (
         <Button
           {...props}
+          data-yv-sdk
+          data-yv-theme={theme}
           className={cn(
             'yv:shadow-none yv:p-3 yv:h-auto yv:w-fit',
             variant === 'outline' ? 'yv:border' : 'yv:border-none',
+            theme === 'light' ? 'yv:text-black' : 'yv:text-white',
             className,
           )}
-          data-yv-sdk
           disabled={buttonLoading ? true : (disabled ?? false)}
           ref={ref}
           onClick={(e) => void handleClick(e)}
@@ -194,10 +194,10 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
                   '--yv-radius': '0.65rem',
                 } as React.CSSProperties)
               : {}),
-            borderColor: background === 'light' ? 'var(--yv-gray-15)' : 'var(--yv-gray-35)',
+            borderColor: theme === 'light' ? 'var(--yv-gray-15)' : 'var(--yv-gray-35)',
             borderWidth: '1px',
           }}
-          variant={background === 'light' ? 'outline' : 'default'}
+          variant={'default'}
         >
           {buttonLoading ? loadingSpinner : null}
           <YouVersionLogo />
@@ -209,12 +209,14 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
     return (
       <Button
         {...props}
+        data-yv-sdk
+        data-yv-theme={theme}
         className={cn(
           'yv:relative yv:shadow-none yv:w-fit',
           variant === 'outline' ? 'yv:border' : 'yv:border-none',
+          theme === 'light' ? 'yv:text-black' : 'yv:text-white',
           className,
         )}
-        data-yv-sdk
         disabled={buttonLoading ? true : (disabled ?? false)}
         ref={ref}
         onClick={(e) => void handleClick(e)}
@@ -225,10 +227,10 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
                 '--yv-radius': '0.65rem',
               } as React.CSSProperties)
             : {}),
-          borderColor: background === 'light' ? 'var(--yv-gray-15)' : 'var(--yv-gray-35)',
+          borderColor: theme === 'light' ? 'var(--yv-gray-15)' : 'var(--yv-gray-35)',
           borderWidth: '1px',
         }}
-        variant={background === 'light' ? 'outline' : 'default'}
+        variant={'default'}
       >
         {buttonLoading ? loadingSpinner : null}
         <YouVersionLogo />

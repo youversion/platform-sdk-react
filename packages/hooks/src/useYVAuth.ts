@@ -3,9 +3,9 @@ import {
   YouVersionAPIUsers,
   YouVersionPlatformConfiguration,
   type AuthenticationState,
-  type SignInWithYouVersionPermissionValues,
   type SignInWithYouVersionResult,
   type YouVersionUserInfo,
+  type AuthenticationScopes,
 } from '@youversion/platform-core';
 import { useYouVersionAuthContext } from './context/YouVersionAuthContext';
 
@@ -14,10 +14,7 @@ export interface UseYVAuthReturn {
   auth: AuthenticationState;
 
   // Actions
-  signIn: (params: {
-    redirectUrl: string;
-    permissions?: SignInWithYouVersionPermissionValues[];
-  }) => Promise<void>;
+  signIn: (params: { redirectUrl: string; scopes?: AuthenticationScopes[] }) => Promise<void>;
   signOut: () => void;
 
   // Callback processing (for callback page) - caches user info
@@ -47,7 +44,6 @@ export interface UseYVAuthReturn {
  *     try {
  *       await signIn({
  *         redirectUrl: 'https://myapp.com/callback',
- *         permissions: [SignInWithYouVersionPermission.bibles]
  *       });
  *     } catch (error) {
  *       console.error('Sign in failed:', error);
@@ -131,14 +127,12 @@ export function useYVAuth(): UseYVAuthReturn {
 
   // Sign in function
   const signIn = useCallback(
-    async ({
-      redirectUrl,
-      permissions = [],
-    }: {
-      redirectUrl: string;
-      permissions?: SignInWithYouVersionPermissionValues[];
-    }) => {
-      await YouVersionAPIUsers.signIn(new Set(permissions), redirectUrl);
+    async ({ redirectUrl, scopes }: { redirectUrl: string; scopes?: AuthenticationScopes[] }) => {
+      if (scopes) {
+        await YouVersionAPIUsers.signIn(redirectUrl, scopes);
+      } else {
+        await YouVersionAPIUsers.signIn(redirectUrl);
+      }
       // Note: This will redirect, so code after this won't execute
     },
     [],

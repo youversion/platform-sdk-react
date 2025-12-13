@@ -40,7 +40,6 @@ export const createMockAuthResult = (
     idToken: 'id-token',
     refreshToken: 'refresh-token',
     expiresIn: 3600,
-    permissions: ['bibles', 'highlights'],
     yvpUserId: 'test-yvp-user-id',
     profilePicture: 'https://example.com/profile.jpg',
     ...overrides,

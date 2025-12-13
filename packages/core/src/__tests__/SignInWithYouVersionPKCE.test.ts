@@ -1,8 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SignInWithYouVersionPKCEAuthorizationRequestBuilder } from '../SignInWithYouVersionPKCE';
 import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfiguration';
-import { SignInWithYouVersionPermission } from '../SignInWithYouVersionResult';
-import type { SignInWithYouVersionPermissionValues } from '../types/auth';
 import { setupBrowserMocks, cleanupBrowserMocks } from './mocks/browser';
 
 describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
@@ -61,15 +59,10 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
         .mockReturnValueOnce('stateBase64==') // State
         .mockReturnValueOnce('nonceBase64=='); // Nonce
 
-      const permissions = new Set<SignInWithYouVersionPermissionValues>([
-        SignInWithYouVersionPermission.bibles,
-        SignInWithYouVersionPermission.highlights,
-      ]);
       const redirectURL = new URL('https://example.com/callback');
 
       const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
         'test-app-key',
-        permissions,
         redirectURL,
       );
 
@@ -101,17 +94,14 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
       mocks.crypto.subtle.digest.mockResolvedValue(new Uint8Array(32).buffer);
       mocks.btoa.mockImplementation((str: string) => `base64_${callCount}_${str.length}`);
 
-      const permissions = new Set<SignInWithYouVersionPermissionValues>();
       const redirectURL = new URL('https://example.com/callback');
 
       const result1 = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
         'app-key',
-        permissions,
         redirectURL,
       );
       const result2 = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
         'app-key',
-        permissions,
         redirectURL,
       );
 
@@ -136,14 +126,10 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
     });
 
     it('should build authorization URL with all required OAuth2 parameters', async () => {
-      const permissions = new Set<SignInWithYouVersionPermissionValues>([
-        SignInWithYouVersionPermission.bibles,
-      ]);
       const redirectURL = new URL('https://example.com/callback');
 
       const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
         'test-app-key',
-        permissions,
         redirectURL,
       );
 
@@ -163,12 +149,10 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
     });
 
     it('should handle redirect URL with trailing slash', async () => {
-      const permissions = new Set<SignInWithYouVersionPermissionValues>();
       const redirectURL = new URL('https://example.com/callback/');
 
       const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
         'test-app-key',
-        permissions,
         redirectURL,
       );
 
@@ -177,12 +161,10 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
     });
 
     it('should include x-yvp-installation-id param', async () => {
-      const permissions = new Set<SignInWithYouVersionPermissionValues>();
       const redirectURL = new URL('https://example.com/callback');
 
       const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
         'test-app-key',
-        permissions,
         redirectURL,
       );
 
@@ -190,73 +172,41 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
       expect(params.get('x-yvp-installation-id')).not.toBeFalsy();
     });
 
-    it('should create scope string with permissions and openid', async () => {
-      const permissions = new Set<SignInWithYouVersionPermissionValues>([
-        SignInWithYouVersionPermission.bibles,
-        SignInWithYouVersionPermission.highlights,
-      ]);
+    it('should create scope string with profile and openid', async () => {
       const redirectURL = new URL('https://example.com/callback');
 
       const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
         'test-app-key',
-        permissions,
         redirectURL,
+        ['profile'],
       );
 
       const params = new URLSearchParams(result.url.search);
       const scope = params.get('scope');
 
-      expect(scope).toContain('bibles');
-      expect(scope).toContain('highlights');
-      expect(scope).toContain('openid');
-    });
-
-    it('should sort permissions alphabetically', async () => {
-      const permissions = new Set<SignInWithYouVersionPermissionValues>([
-        SignInWithYouVersionPermission.votd,
-        SignInWithYouVersionPermission.bibles,
-        SignInWithYouVersionPermission.demographics,
-      ]);
-      const redirectURL = new URL('https://example.com/callback');
-
-      const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
-        'test-app-key',
-        permissions,
-        redirectURL,
-      );
-
-      const params = new URLSearchParams(result.url.search);
-      const scope = params.get('scope');
-
-      // Should be sorted: bibles demographics votd openid
-      expect(scope).toBe('bibles demographics votd openid');
+      expect(scope).toContain('profile');
     });
 
     it('should add openid when not present', async () => {
-      const permissions = new Set<SignInWithYouVersionPermissionValues>([
-        SignInWithYouVersionPermission.bibles,
-      ]);
       const redirectURL = new URL('https://example.com/callback');
 
       const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
         'test-app-key',
-        permissions,
         redirectURL,
+        ['profile'],
       );
 
       const params = new URLSearchParams(result.url.search);
       const scope = params.get('scope');
 
-      expect(scope).toBe('bibles openid');
+      expect(scope).toBe('profile openid');
     });
 
-    it('should handle empty permissions set', async () => {
-      const permissions = new Set<SignInWithYouVersionPermissionValues>();
+    it('should handle empty scope params', async () => {
       const redirectURL = new URL('https://example.com/callback');
 
       const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
         'test-app-key',
-        permissions,
         redirectURL,
       );
 
@@ -267,16 +217,10 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
     });
 
     it('should not duplicate openid if already present', async () => {
-      // This test simulates if openid was somehow in the permissions set
-      const permissions = new Set<SignInWithYouVersionPermissionValues>([
-        'openid' as SignInWithYouVersionPermissionValues,
-        SignInWithYouVersionPermission.bibles,
-      ]);
       const redirectURL = new URL('https://example.com/callback');
 
       const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
         'test-app-key',
-        permissions,
         redirectURL,
       );
 
@@ -347,14 +291,9 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
     });
 
     it('should use crypto.getRandomValues for secure random generation', async () => {
-      const permissions = new Set<SignInWithYouVersionPermissionValues>();
       const redirectURL = new URL('https://example.com/callback');
 
-      await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
-        'test-app-key',
-        permissions,
-        redirectURL,
-      );
+      await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make('test-app-key', redirectURL);
 
       // Should call crypto.getRandomValues for code verifier, state, and nonce
       expect(mocks.crypto.getRandomValues).toHaveBeenCalledTimes(3);
@@ -367,14 +306,9 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
     });
 
     it('should use SHA-256 for code challenge', async () => {
-      const permissions = new Set<SignInWithYouVersionPermissionValues>();
       const redirectURL = new URL('https://example.com/callback');
 
-      await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
-        'test-app-key',
-        permissions,
-        redirectURL,
-      );
+      await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make('test-app-key', redirectURL);
 
       expect(mocks.crypto.subtle.digest).toHaveBeenCalledWith('SHA-256', expect.any(Uint8Array));
     });
@@ -383,17 +317,14 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
       // Use real crypto for this test to verify actual randomness
       cleanupBrowserMocks();
 
-      const permissions = new Set<SignInWithYouVersionPermissionValues>();
       const redirectURL = new URL('https://example.com/callback');
 
       const result1 = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
         'test-app-key',
-        permissions,
         redirectURL,
       );
       const result2 = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
         'test-app-key',
-        permissions,
         redirectURL,
       );
 

@@ -1,15 +1,12 @@
 /* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import {
-  YouVersionAPIUsers,
-  YouVersionPlatformConfiguration,
-  SignInWithYouVersionPermission,
-} from '@youversion/platform-core';
+import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { useYVAuth } from './useYVAuth';
 import { YouVersionAuthContext } from './context/YouVersionAuthContext';
 import { createMockUserInfo, createMockAuthResult } from './__tests__/mocks/auth';
 import { createAuthProviderWrapper } from './__tests__/utils/test-utils';
+import type { AuthenticationScopes } from '@youversion/platform-core';
 
 // Mock the core modules
 vi.mock('@youversion/platform-core', () => {
@@ -94,7 +91,6 @@ vi.mock('@youversion/platform-core', () => {
       expiryDate: Date | undefined;
       refreshToken: string | undefined;
       idToken: string | undefined;
-      permissions: string[] | undefined;
       yvpUserId: string | undefined;
       name: string | undefined;
       profilePicture: string | undefined;
@@ -105,7 +101,6 @@ vi.mock('@youversion/platform-core', () => {
         expiresIn?: number;
         refreshToken?: string;
         idToken?: string;
-        permissions?: string[];
         yvpUserId?: string;
         name?: string;
         profilePicture?: string;
@@ -117,7 +112,6 @@ vi.mock('@youversion/platform-core', () => {
           : new Date();
         this.refreshToken = props.refreshToken;
         this.idToken = props.idToken;
-        this.permissions = props.permissions;
         this.yvpUserId = props.yvpUserId;
         this.name = props.name;
         this.profilePicture = props.profilePicture;
@@ -199,19 +193,15 @@ describe('useYVAuth', () => {
     it('should call YouVersionAPIUsers.signIn with correct parameters', async () => {
       const { result } = await renderAuthHook();
       const redirectUrl = 'https://example.com/callback';
-      const permissions = [SignInWithYouVersionPermission.bibles];
 
       await act(async () => {
-        await result.current.signIn({ redirectUrl, permissions });
+        await result.current.signIn({ redirectUrl, scopes: ['profile'] });
       });
 
-      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(
-        new Set(permissions),
-        redirectUrl,
-      );
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(redirectUrl, ['profile']);
     });
 
-    it('should call signIn with empty permissions when not provided', async () => {
+    it('should call signIn with empty scopes when not provided', async () => {
       const { result } = await renderAuthHook();
       const redirectUrl = 'https://example.com/callback';
 
@@ -219,7 +209,32 @@ describe('useYVAuth', () => {
         await result.current.signIn({ redirectUrl });
       });
 
-      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(new Set([]), redirectUrl);
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(redirectUrl);
+    });
+
+    it('should call YouVersionAPIUsers.signIn exactly once with scopes', async () => {
+      const { result } = await renderAuthHook();
+      const redirectUrl = 'https://example.com/callback';
+      const scopes: AuthenticationScopes[] = ['profile', 'email'];
+
+      await act(async () => {
+        await result.current.signIn({ redirectUrl, scopes });
+      });
+
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(redirectUrl, scopes);
+    });
+
+    it('should call YouVersionAPIUsers.signIn exactly once without scopes', async () => {
+      const { result } = await renderAuthHook();
+      const redirectUrl = 'https://example.com/callback';
+
+      await act(async () => {
+        await result.current.signIn({ redirectUrl });
+      });
+
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(redirectUrl);
     });
 
     it('should throw error when signIn fails', async () => {
