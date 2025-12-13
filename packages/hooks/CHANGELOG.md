@@ -1,5 +1,13 @@
 # @youversion/platform-react-hooks
 
+## 0.10.2
+
+### Patch Changes
+
+- 6ea85da: fix(ui): fix styling on YouVersionAuthButton and Bible App logo
+- Updated dependencies [6ea85da]
+  - @youversion/platform-core@0.10.2
+
 ## 0.10.1
 
 ### Patch Changes
