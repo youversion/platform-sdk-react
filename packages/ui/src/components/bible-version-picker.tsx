@@ -177,6 +177,8 @@ function Content() {
     selectedLanguageId,
     setSelectedLanguageId,
   } = useBibleVersionPickerContext();
+  const providerTheme = useTheme();
+  const theme = background || providerTheme;
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const handleSelectLanguage = (languageId: string) => {
@@ -193,7 +195,7 @@ function Content() {
   return (
     <PopoverContent
       data-yv-sdk
-      data-yv-theme={background}
+      data-yv-theme={theme}
       side={side}
       className="yv:flex yv:flex-col yv:bg-background yv:p-0 yv:h-[66vh] yv:max-h-[66vh] yv:w-96 yv:sm:w-sm yv:overflow-hidden yv:rounded-2xl yv:border-0 yv:shadow-lg"
     >

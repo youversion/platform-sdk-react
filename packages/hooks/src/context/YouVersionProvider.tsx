@@ -63,7 +63,12 @@ export function YouVersionProvider(
   // Installation ID gets set automatically by YouVersionPlatformConfiguration
   return (
     <YouVersionContext.Provider
-      value={{ appKey, apiHost, installationId: YouVersionPlatformConfiguration.installationId }}
+      value={{
+        appKey,
+        apiHost,
+        installationId: YouVersionPlatformConfiguration.installationId,
+        theme,
+      }}
     >
       {children}
     </YouVersionContext.Provider>

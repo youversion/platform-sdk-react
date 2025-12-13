@@ -253,6 +253,8 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
   const { book, chapter, background, versionId, scrollToCurrentBook } =
     useBibleChapterPickerContext();
   const { books, loading } = useBooks(versionId);
+  const providerTheme = useTheme();
+  const theme = background || providerTheme;
 
   const currentBook = books?.data?.find((bookItem) => bookItem.id === book);
   const buttonText = loading
@@ -267,7 +269,7 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
   return (
     <PopoverTrigger
       data-yv-sdk
-      data-yv-theme={background}
+      data-yv-theme={theme}
       asChild={asChild}
       onClick={scrollToCurrentBook}
       {...props}

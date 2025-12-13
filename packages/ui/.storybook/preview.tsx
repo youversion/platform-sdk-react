@@ -49,6 +49,7 @@ const preview: Preview = {
         <YouVersionProvider
           appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || ''}
           authRedirectUrl={import.meta.env.STORYBOOK_AUTH_REDIRECT_URL || ''}
+          apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
           includeAuth={true}
           theme={getTheme(context.globals.theme)}
         >

@@ -10,9 +10,14 @@ import {
   usePassage,
   getDayOfYear,
   useVersion,
+  useTheme,
 } from '@youversion/platform-react-hooks';
 
 export type VerseOfTheDayProps = {
+  /**
+   * Sets the background color of the Verse Of the Day component.
+   */
+  background?: 'light' | 'dark';
   /**
    * The Bible Translation version id to use, defaults to 1 (KJV).
    */
@@ -73,6 +78,7 @@ async function share({ title, text, url }: { title?: string; text: string; url?:
  * ```
  */
 export function VerseOfTheDay({
+  background,
   dayOfYear,
   versionId = 1, // KJV by default
   showSunIcon = true,
@@ -95,6 +101,8 @@ export function VerseOfTheDay({
     },
   });
   const { version, loading: loadingVersion } = useVersion(versionId);
+  const providerTheme = useTheme();
+  const theme = background || providerTheme;
 
   let referenceText = '';
   if (loadingPassage || loadingVerseOfTheDay || loadingVersion) {
@@ -118,12 +126,14 @@ export function VerseOfTheDay({
 
   return (
     <section
+      data-yv-sdk
+      data-yv-theme={theme}
       data-size={size}
       className={
-        'yv:data-[size=lg]:p-8 yv:data-[size=default]:p-4 yv:*:shrink-0 yv:font-sans yv:flex yv:flex-col yv:gap-3 yv:max-w-screen-sm yv:p-4 yv:shadow yv:rounded-2xl'
+        'yv:data-[size=lg]:p-8 yv:data-[size=default]:p-4 yv:*:shrink-0 yv:font-sans yv:flex yv:flex-col yv:gap-3 yv:max-w-screen-sm yv:p-4 yv:shadow yv:rounded-2xl yv:bg-card'
       }
     >
-      <div className="yv:flex yv:items-center yv:gap-2">
+      <div className="yv:flex yv:items-center yv:gap-2 yv:text-black yv:dark:text-white">
         {showSunIcon ? (
           <div
             data-slot="card-icon"
@@ -170,12 +180,12 @@ export function VerseOfTheDay({
         ) : null}
       </div>
 
-      <p className="yv:text-(--yv-gray-30) yv:font-medium yv:text-sm">{referenceText}</p>
+      <p className="yv:text-muted-foreground yv:font-medium yv:text-sm">{referenceText}</p>
 
       {showBibleAppAttribution ? (
         <div
           className={
-            'yv:grid yv:grid-cols-1 yv:mt-4 yv:justify-between yv:items-center yv:gap-2 yv:w-full'
+            'yv:grid yv:grid-cols-1 yv:mt-4 yv:justify-between yv:items-center yv:gap-2 yv:w-full yv:text-black yv:dark:text-white'
           }
         >
           <BibleAppLogoLockup data-slot="attribution" className="yv:justify-self-end" />
