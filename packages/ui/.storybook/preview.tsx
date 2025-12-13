@@ -1,5 +1,10 @@
 import React from 'react';
-import type { Preview } from '@storybook/react-vite';
+import type { Preview, ReactRenderer } from '@storybook/react-vite';
+import type { PartialStoryFn, StoryContext } from 'storybook/internal/csf';
+
+function getTheme(value: unknown): 'light' | 'dark' {
+  return value === 'dark' ? 'dark' : 'light';
+}
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { StorybookEnvCheck } from '../src/test/StorybookEnvCheck';
 import { YouVersionProvider } from '@youversion/platform-react-hooks';
@@ -16,8 +21,28 @@ initialize({
 });
 
 const preview: Preview = {
+  globalTypes: {
+    theme: {
+      description: 'Provider theme',
+      toolbar: {
+        title: 'Theme',
+        icon: 'paintbrush',
+        items: [
+          { value: 'light', title: 'Light', icon: 'sun' },
+          { value: 'dark', title: 'Dark', icon: 'moon' },
+        ],
+        dynamicTitle: true,
+      },
+    },
+  },
+  initialGlobals: {
+    theme: 'light',
+  },
   decorators: [
-    (Story: React.ComponentType): React.ReactElement => (
+    (
+      Story: PartialStoryFn<ReactRenderer>,
+      context: StoryContext<ReactRenderer>,
+    ): React.ReactElement => (
       <StorybookEnvCheck
         requiredEnvVars={['STORYBOOK_YOUVERSION_APP_KEY', 'STORYBOOK_AUTH_REDIRECT_URL']}
       >
@@ -25,6 +50,7 @@ const preview: Preview = {
           appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || ''}
           authRedirectUrl={import.meta.env.STORYBOOK_AUTH_REDIRECT_URL || ''}
           includeAuth={true}
+          theme={getTheme(context.globals.theme)}
         >
           <Story />
         </YouVersionProvider>

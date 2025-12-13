@@ -3,7 +3,7 @@ import { Loader2 } from 'lucide-react';
 import { type AuthenticationScopes } from '@youversion/platform-core';
 import { useYVAuth, useTheme } from '@youversion/platform-react-hooks';
 import { Button } from '../components/ui/button';
-import { YouVersionLogo } from './youversion-logo';
+import { YouVersionLogo } from './icons/youversion-logo';
 import { cn } from '../lib/utils';
 
 interface SignInAuthProps {
@@ -154,10 +154,18 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
       const isSignOut = mode === 'signOut' || (mode === 'auto' && auth.isAuthenticated);
 
       if (size === 'short') {
-        return isSignOut ? 'Sign Out' : 'Sign In';
+        return isSignOut ? 'Sign out' : 'Sign in';
       }
 
-      return isSignOut ? 'Sign Out of YouVersion' : 'Sign In with YouVersion';
+      return isSignOut ? (
+        <div className="yv:font-normal">
+          Sign out of <span className="yv:font-bold">YouVersion</span>
+        </div>
+      ) : (
+        <div className="yv:font-normal">
+          Sign in with <span className="yv:font-bold">YouVersion</span>
+        </div>
+      );
     }, [mode, auth.isAuthenticated, size, text]);
 
     const loadingSpinner = (
@@ -173,6 +181,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
           className={cn(
             'yv:shadow-none yv:p-3 yv:h-auto yv:w-fit',
             variant === 'outline' ? 'yv:border' : 'yv:border-none',
+            theme === 'light' ? 'yv:text-black' : 'yv:text-white',
             className,
           )}
           disabled={buttonLoading ? true : (disabled ?? false)}
@@ -188,7 +197,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
             borderColor: theme === 'light' ? 'var(--yv-gray-15)' : 'var(--yv-gray-35)',
             borderWidth: '1px',
           }}
-          variant={theme === 'light' ? 'outline' : 'default'}
+          variant={'default'}
         >
           {buttonLoading ? loadingSpinner : null}
           <YouVersionLogo />
@@ -205,6 +214,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
         className={cn(
           'yv:relative yv:shadow-none yv:w-fit',
           variant === 'outline' ? 'yv:border' : 'yv:border-none',
+          theme === 'light' ? 'yv:text-black' : 'yv:text-white',
           className,
         )}
         disabled={buttonLoading ? true : (disabled ?? false)}
@@ -220,7 +230,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
           borderColor: theme === 'light' ? 'var(--yv-gray-15)' : 'var(--yv-gray-35)',
           borderWidth: '1px',
         }}
-        variant={theme === 'light' ? 'outline' : 'default'}
+        variant={'default'}
       >
         {buttonLoading ? loadingSpinner : null}
         <YouVersionLogo />
