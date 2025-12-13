@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 0.10.2
+
+### Patch Changes
+
+- 6ea85da: fix(ui): fix styling on YouVersionAuthButton and Bible App logo
+
 ## 0.10.1
 
 ### Patch Changes
