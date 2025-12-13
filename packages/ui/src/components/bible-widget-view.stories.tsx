@@ -103,6 +103,6 @@ export const WithVersionPicker: Story = {
       );
     });
 
-    expect(screen.getByText(/luke 1.39-45 amp/i));
+    await expect(screen.getByText(/luke 1:39-45 amp/i)).toBeVisible();
   },
 };
