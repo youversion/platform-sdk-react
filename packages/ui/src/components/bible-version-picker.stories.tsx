@@ -1,20 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { YouVersionProvider } from '@youversion/platform-react-hooks';
 import { BibleVersionPicker, type RootProps } from './bible-version-picker';
 import { useState } from 'react';
 import { screen, userEvent, within, expect } from 'storybook/test';
 import { BookOpen } from 'lucide-react';
 import { Button } from './ui/button';
 
-const withProvider = (Story: React.ComponentType) => (
-  <YouVersionProvider
-    appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY}
-    apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
-  >
-    <div className="yv:h-screen yv:flex yv:justify-center yv:items-end yv:p-12">
-      <Story />
-    </div>
-  </YouVersionProvider>
+const withLayout = (Story: React.ComponentType) => (
+  <div className="yv:h-screen yv:flex yv:justify-center yv:items-end yv:p-12">
+    <Story />
+  </div>
 );
 
 const PickerWrapper = ({ versionId: initialVersionId = 111, ...props }: RootProps) => {
@@ -33,7 +27,7 @@ const meta = {
   parameters: {
     layout: 'fullscreen',
   },
-  decorators: [withProvider],
+  decorators: [withLayout],
   argTypes: {
     versionId: {
       control: 'number',
@@ -41,7 +35,7 @@ const meta = {
     },
     background: {
       control: 'select',
-      options: ['light', 'dark'],
+      options: [undefined, 'light', 'dark'],
       description: 'Background theme for the picker',
     },
     side: {

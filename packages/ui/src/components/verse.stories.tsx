@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { YouVersionProvider } from '@youversion/platform-react-hooks';
 import { expect, waitFor, within } from 'storybook/test';
 import React from 'react';
 
@@ -110,16 +109,6 @@ const meta = {
   parameters: {
     layout: 'centered',
   },
-  decorators: [
-    (Story: React.ComponentType): React.ReactElement => (
-      <YouVersionProvider
-        appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY}
-        apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
-      >
-        <Story />
-      </YouVersionProvider>
-    ),
-  ],
   tags: ['autodocs'],
   argTypes: {
     reference: {

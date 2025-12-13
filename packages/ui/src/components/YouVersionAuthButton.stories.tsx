@@ -48,7 +48,7 @@ const meta = {
     },
     background: {
       control: { type: 'select' },
-      options: ['light', 'dark'],
+      options: [undefined, 'light', 'dark'],
     },
     mode: {
       control: { type: 'select' },

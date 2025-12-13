@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { BibleChapterPicker } from './bible-chapter-picker';
-import { YouVersionProvider } from '@youversion/platform-react-hooks';
 import { within, waitFor, expect, userEvent } from 'storybook/test';
 import { useState } from 'react';
 
@@ -15,23 +14,18 @@ const meta = {
       const [book, setBook] = useState('MAT');
       const [chapter, setChapter] = useState('5');
       return (
-        <YouVersionProvider
-          appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY}
-          apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
-        >
-          <div className="yv:h-screen yv:flex yv:justify-center yv:items-end yv:p-12">
-            <BibleChapterPicker.Root
-              book={book}
-              onBookChange={setBook}
-              chapter={chapter}
-              onChapterChange={setChapter}
-              versionId={args.versionId}
-              background={args.background}
-            >
-              <BibleChapterPicker.Trigger />
-            </BibleChapterPicker.Root>
-          </div>
-        </YouVersionProvider>
+        <div className="yv:h-screen yv:flex yv:justify-center yv:items-end yv:p-12">
+          <BibleChapterPicker.Root
+            book={book}
+            onBookChange={setBook}
+            chapter={chapter}
+            onChapterChange={setChapter}
+            versionId={args.versionId}
+            background={args.background}
+          >
+            <BibleChapterPicker.Trigger />
+          </BibleChapterPicker.Root>
+        </div>
       );
     },
   ],
@@ -42,7 +36,7 @@ const meta = {
     },
     background: {
       control: 'select',
-      options: ['light', 'dark'],
+      options: [undefined, 'light', 'dark'],
     },
   },
   tags: ['autodocs'],

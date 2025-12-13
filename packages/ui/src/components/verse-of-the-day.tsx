@@ -10,6 +10,7 @@ import {
   usePassage,
   getDayOfYear,
   useVersion,
+  useTheme,
 } from '@youversion/platform-react-hooks';
 
 export type VerseOfTheDayProps = {
@@ -77,7 +78,7 @@ async function share({ title, text, url }: { title?: string; text: string; url?:
  * ```
  */
 export function VerseOfTheDay({
-  background = 'light',
+  background,
   dayOfYear,
   versionId = 1, // KJV by default
   showSunIcon = true,
@@ -100,6 +101,8 @@ export function VerseOfTheDay({
     },
   });
   const { version, loading: loadingVersion } = useVersion(versionId);
+  const providerTheme = useTheme();
+  const theme = background || providerTheme;
 
   let referenceText = '';
   if (loadingPassage || loadingVerseOfTheDay || loadingVersion) {
@@ -124,10 +127,10 @@ export function VerseOfTheDay({
   return (
     <section
       data-yv-sdk
-      data-yv-theme={background === 'dark' ? 'dark' : 'light'}
+      data-yv-theme={theme}
       data-size={size}
       className={
-        'yv:data-[size=lg]:p-8 yv:data-[size=default]:p-4 yv:*:shrink-0 yv:font-sans yv:flex yv:flex-col yv:gap-3 yv:max-w-screen-sm yv:p-4 yv:shadow yv:rounded-2xl'
+        'yv:data-[size=lg]:p-8 yv:data-[size=default]:p-4 yv:*:shrink-0 yv:font-sans yv:flex yv:flex-col yv:gap-3 yv:max-w-screen-sm yv:p-4 yv:shadow yv:rounded-2xl yv:bg-card'
       }
     >
       <div className="yv:flex yv:items-center yv:gap-2">

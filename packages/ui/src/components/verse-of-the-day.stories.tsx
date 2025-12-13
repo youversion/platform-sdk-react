@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { YouVersionProvider } from '@youversion/platform-react-hooks';
 import { expect, within, userEvent, spyOn } from 'storybook/test';
 
 import { VerseOfTheDay } from './verse-of-the-day';
@@ -10,19 +9,9 @@ const meta = {
   parameters: {
     layout: 'centered',
   },
-  decorators: [
-    (Story: React.ComponentType): React.ReactElement => (
-      <YouVersionProvider
-        appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY}
-        apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
-      >
-        <Story />
-      </YouVersionProvider>
-    ),
-  ],
   tags: ['autodocs'],
   argTypes: {
-    background: { control: { type: 'select' }, options: ['light', 'dark'] },
+    background: { control: { type: 'select' }, options: [undefined, 'light', 'dark'] },
     // We are intentionally not allowing controls
     // for dayOfYear and versionId, since they are
     // mocked, essentially hard-coded, above.

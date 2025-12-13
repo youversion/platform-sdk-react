@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import React from 'react';
 import { BibleReader } from './bible-reader';
-import { YouVersionProvider } from '@youversion/platform-react-hooks';
 
 const meta: Meta<typeof BibleReader.Root> = {
   title: 'Components/BibleReader',
@@ -9,16 +8,6 @@ const meta: Meta<typeof BibleReader.Root> = {
   parameters: {
     layout: 'fullscreen',
   },
-  decorators: [
-    (Story: React.ComponentType): React.ReactElement => (
-      <YouVersionProvider
-        appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY}
-        apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
-      >
-        <Story />
-      </YouVersionProvider>
-    ),
-  ],
   argTypes: {
     versionId: {
       control: 'number',
@@ -44,7 +33,7 @@ const meta: Meta<typeof BibleReader.Root> = {
     },
     background: {
       control: 'select',
-      options: ['light', 'dark'],
+      options: [undefined, 'light', 'dark'],
       description: 'Background theme',
     },
   },
