@@ -6,7 +6,7 @@ const SvgComponent = (props: SVGProps<SVGSVGElement>): React.ReactElement => (
     height="44"
     {...props}
     viewBox="0 0 44 44"
-    fill="none"
+    fill="currentColor"
     xmlns="http://www.w3.org/2000/svg"
   >
     <title>Sun</title>

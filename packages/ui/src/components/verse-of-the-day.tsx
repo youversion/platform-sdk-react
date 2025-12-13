@@ -133,7 +133,7 @@ export function VerseOfTheDay({
         'yv:data-[size=lg]:p-8 yv:data-[size=default]:p-4 yv:*:shrink-0 yv:font-sans yv:flex yv:flex-col yv:gap-3 yv:max-w-screen-sm yv:p-4 yv:shadow yv:rounded-2xl yv:bg-card'
       }
     >
-      <div className="yv:flex yv:items-center yv:gap-2">
+      <div className="yv:flex yv:items-center yv:gap-2 yv:text-black yv:dark:text-white">
         {showSunIcon ? (
           <div
             data-slot="card-icon"
@@ -185,7 +185,7 @@ export function VerseOfTheDay({
       {showBibleAppAttribution ? (
         <div
           className={
-            'yv:grid yv:grid-cols-1 yv:mt-4 yv:justify-between yv:items-center yv:gap-2 yv:w-full'
+            'yv:grid yv:grid-cols-1 yv:mt-4 yv:justify-between yv:items-center yv:gap-2 yv:w-full yv:text-black yv:dark:text-white'
           }
         >
           <BibleAppLogoLockup data-slot="attribution" className="yv:justify-self-end" />
