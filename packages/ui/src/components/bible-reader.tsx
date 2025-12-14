@@ -8,6 +8,7 @@ import { BibleVersionPicker } from './bible-version-picker';
 import { BibleTextView } from './verse';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
+import { Info } from 'lucide-react';
 
 type BibleReaderContextType = {
   book: string;
@@ -154,10 +155,17 @@ function Content() {
       />
 
       {version?.copyright_short && (
-        <footer style={{ fontSize }}>
+        <footer className="yv:flex yv:flex-col yv:items-center yv:gap-2" style={{ fontSize }}>
           <p className="yv:text-balance yv:text-[0.75em] yv:text-center yv:text-muted-foreground">
             {version.copyright_short}
           </p>
+          <a
+            className="yv:flex yv:items-center yv:gap-1 yv:text-xs yv:font-bold"
+            href={version.publisher_url || ''}
+            target="_blank"
+          >
+            <Info size={12} /> Learn More
+          </a>
         </footer>
       )}
     </main>
