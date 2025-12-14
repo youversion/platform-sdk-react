@@ -178,31 +178,28 @@ function HtmlWithNotes({
   useEffect(() => {
     if (!contentRef.current) return;
 
+    const roots = rootsRef.current;
+
     Object.entries(notes).forEach(([verseNum, verseNotes]) => {
-      const placeholder = contentRef.current?.querySelector(
-        `[data-verse-footnote="${verseNum}"]`,
-      ) as HTMLElement | null;
+      const placeholder = contentRef.current?.querySelector(`[data-verse-footnote="${verseNum}"]`);
 
       if (placeholder) {
-        let root = rootsRef.current.get(verseNum);
+        let root = roots.get(verseNum);
         if (!root) {
           root = createRoot(placeholder);
-          rootsRef.current.set(verseNum, root);
+          roots.set(verseNum, root);
         }
         root.render(
           <VerseFootnoteButton verseNum={verseNum} verseNotes={verseNotes} reference={reference} />,
         );
       }
     });
-  }, [html, notes, reference]);
 
-  useEffect(() => {
-    const roots = rootsRef.current;
     return () => {
       roots.forEach((root) => root.unmount());
       roots.clear();
     };
-  }, []);
+  }, [html, notes, reference]);
 
   return <div ref={contentRef} dangerouslySetInnerHTML={{ __html: html }} />;
 }

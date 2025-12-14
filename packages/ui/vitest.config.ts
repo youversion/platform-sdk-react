@@ -17,6 +17,11 @@ export default defineConfig({
     projects: [
       // Unit tests project
       defineProject({
+        resolve: {
+          alias: {
+            '@': path.join(dirname, 'src'),
+          },
+        },
         test: {
           name: 'unit',
           environment: 'jsdom',
