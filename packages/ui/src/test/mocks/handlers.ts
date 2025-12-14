@@ -42,6 +42,10 @@ export const globalHandlers = [
     return HttpResponse.json(mockPassages['JHN.1']);
   }),
 
+  http.get('*/v1/bibles/111/passages/JHN.1.51', () => {
+    return HttpResponse.json(mockPassages['JHN.1.51']);
+  }),
+
   // Isaiah passage for verse of the day
   http.get('*/v1/bibles/1/passages/ISA.43.19', () => {
     return HttpResponse.json(mockPassages['ISA.43.19']);
