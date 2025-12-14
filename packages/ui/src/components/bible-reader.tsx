@@ -159,13 +159,16 @@ function Content() {
           <p className="yv:text-balance yv:text-[0.75em] yv:text-center yv:text-muted-foreground">
             {version.copyright_short}
           </p>
-          <a
-            className="yv:flex yv:items-center yv:gap-1 yv:text-xs yv:font-bold"
-            href={version.publisher_url || ''}
-            target="_blank"
-          >
-            <Info size={12} /> Learn More
-          </a>
+          {version.publisher_url ? (
+            <a
+              className="yv:flex yv:items-center yv:gap-1 yv:text-xs yv:font-bold"
+              href={version.publisher_url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Info size={12} /> Learn More
+            </a>
+          ) : null}
         </footer>
       )}
     </main>
