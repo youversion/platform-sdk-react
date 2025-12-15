@@ -1,10 +1,208 @@
 'use client';
 
-import { useEffect, forwardRef, useState, type ReactNode } from 'react';
+import { useEffect, forwardRef, useState, useRef, type ReactNode } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
 import DOMPurify from 'isomorphic-dompurify';
 import { usePassage } from '@youversion/platform-react-hooks';
+import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from '@/components/ui/popover';
+import { Button } from './ui/button';
+import { Footnote } from './icons/footnote';
+import { X as XIcon } from 'lucide-react';
 
 const NON_BREAKING_SPACE = '\u00A0';
+
+const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
+
+type VerseNotes = {
+  verseHtml: string;
+  notes: string[];
+};
+
+type ExtractedNotes = {
+  html: string;
+  notes: Record<string, VerseNotes>;
+};
+
+function extractNotesFromHtml(html: string): ExtractedNotes {
+  if (typeof window === 'undefined') return { html, notes: {} };
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const noteElements = doc.querySelectorAll('span.yv-n.f');
+  const verseData: Record<string, { verseHtml: string; notes: string[]; elements: Element[] }> = {};
+
+  // Build the verse html, and store notes for the footnotes popover
+  noteElements.forEach((element) => {
+    let label: Element | null = null;
+    let node: Node | null = element.previousSibling;
+    while (node) {
+      if (node instanceof Element && node.classList.contains('yv-vlbl')) {
+        label = node;
+        break;
+      }
+      node = node.previousSibling;
+    }
+
+    const verseNum = label?.textContent?.trim() || '0';
+
+    if (!verseData[verseNum]) {
+      let verseHtml = `<sup>${verseNum}</sup> `;
+      let current: Node | null = label?.nextSibling || null;
+      let noteIdx = 0;
+
+      while (current) {
+        if (current instanceof Element && current.classList.contains('yv-v')) break;
+        if (current instanceof Element) {
+          if (current.classList.contains('yv-n') && current.classList.contains('f')) {
+            verseHtml += `<sup>${LETTERS[noteIdx] || noteIdx + 1}</sup>`;
+            noteIdx++;
+          } else {
+            verseHtml += current.outerHTML;
+          }
+        } else if (current.nodeType === Node.TEXT_NODE) {
+          verseHtml += current.textContent || '';
+        }
+        current = current.nextSibling;
+      }
+
+      verseData[verseNum] = {
+        verseHtml,
+        notes: [],
+        elements: [],
+      };
+    }
+
+    verseData[verseNum].notes.push(element.innerHTML || '');
+    verseData[verseNum].elements.push(element);
+  });
+
+  // Place the popovers at the end of the verse if notes exist in the verse
+  // and remove the note elements from the DOM as they are now in the popover
+  // element.
+  Object.entries(verseData).forEach(([verseNum, { elements }]) => {
+    const lastElement = elements[elements.length - 1];
+    let endNode: Node | null = lastElement || null;
+    let current: Node | null = lastElement?.nextSibling || null;
+
+    while (current) {
+      if (current instanceof Element && current.classList.contains('yv-v')) break;
+      endNode = current;
+      current = current.nextSibling;
+    }
+
+    const placeholder = doc.createElement('span');
+    placeholder.setAttribute('data-verse-footnote', verseNum);
+    if (endNode?.parentNode) {
+      endNode.parentNode.insertBefore(placeholder, endNode.nextSibling);
+    }
+
+    elements.forEach((el) => el.remove());
+  });
+
+  const notes: Record<string, VerseNotes> = {};
+  Object.entries(verseData).forEach(([verseNum, { verseHtml, notes: noteContents }]) => {
+    notes[verseNum] = { verseHtml, notes: noteContents };
+  });
+
+  return { html: doc.body.innerHTML, notes };
+}
+
+function VerseFootnoteButton({
+  verseNum,
+  verseNotes,
+  reference,
+}: {
+  verseNum: string;
+  verseNotes: VerseNotes;
+  reference?: string;
+}) {
+  const verseReference = reference ? `${reference}:${verseNum}` : `Verse ${verseNum}`;
+  return (
+    <Popover>
+      <PopoverTrigger data-yv-sdk asChild>
+        <button
+          type="button"
+          className="yv:inline-flex yv:align-super yv:cursor-pointer yv:ml-1 yv:text-(--yv-gray-20)"
+        >
+          <Footnote />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        data-yv-sdk
+        className="yv:flex yv:flex-col yv:bg-background yv:p-0 yv:sm:w-sm yv:overflow-hidden yv:rounded-2xl yv:border-0 yv:shadow-lg"
+      >
+        <div className="yv:flex yv:justify-between yv:items-center yv:bg-secondary yv:p-2 yv:font-bold">
+          Footnotes
+          <PopoverClose asChild>
+            <Button variant="ghost" size="icon" className="yv:w-8 yv:h-8 yv:text-muted-foreground">
+              <XIcon size={16} />
+              <span className="yv:sr-only">Close footnotes</span>
+            </Button>
+          </PopoverClose>
+        </div>
+        <div className="yv:p-3">
+          <div className="yv:font-bold yv:mb-2">{verseReference}</div>
+          <div
+            className="yv:mb-3 yv:font-serif yv:text-xl"
+            dangerouslySetInnerHTML={{ __html: verseNotes.verseHtml }}
+          />
+          <ul className="yv:list-none yv:p-0 yv:m-0 yv:space-y-1">
+            {verseNotes.notes.map((note, index) => (
+              <li
+                key={index}
+                className="yv:flex yv:gap-2 yv:text-xs yv:border-b yv:border-border yv:py-2"
+              >
+                <span className="">{LETTERS[index] || index + 1}.</span>
+                <span dangerouslySetInnerHTML={{ __html: note }} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function HtmlWithNotes({
+  html,
+  notes,
+  reference,
+}: {
+  html: string;
+  notes: Record<string, VerseNotes>;
+  reference?: string;
+}) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const rootsRef = useRef<Map<string, Root>>(new Map());
+
+  useEffect(() => {
+    if (!contentRef.current) return;
+
+    const roots = rootsRef.current;
+
+    Object.entries(notes).forEach(([verseNum, verseNotes]) => {
+      const placeholder = contentRef.current?.querySelector(`[data-verse-footnote="${verseNum}"]`);
+
+      if (placeholder) {
+        let root = roots.get(verseNum);
+        if (!root) {
+          root = createRoot(placeholder);
+          roots.set(verseNum, root);
+        }
+        root.render(
+          <VerseFootnoteButton verseNum={verseNum} verseNotes={verseNotes} reference={reference} />,
+        );
+      }
+    });
+
+    return () => {
+      roots.forEach((root) => root.unmount());
+      roots.clear();
+    };
+  }, [html, notes, reference]);
+
+  return <div ref={contentRef} dangerouslySetInnerHTML={{ __html: html }} />;
+}
 
 // Configure DOMPurify to allow specific attributes safe for Bible content
 const DOMPURIFY_CONFIG = {
@@ -12,13 +210,22 @@ const DOMPURIFY_CONFIG = {
   ALLOW_DATA_ATTR: true,
 };
 
-function yvDomTransformer(html: string): string {
-  if (!window || !('DOMParser' in window)) {
-    return html;
+function yvDomTransformer(html: string, extractNotes: boolean = false): ExtractedNotes {
+  if (typeof window === 'undefined' || !('DOMParser' in window)) {
+    return { html, notes: {} };
   }
 
-  // First, sanitize HTML to remove any XSS payloads
-  const sanitizedHtml = DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
+  let extractedNotes: Record<string, VerseNotes> = {};
+  let processedHtml = html;
+
+  if (extractNotes) {
+    const result = extractNotesFromHtml(html);
+    processedHtml = result.html;
+    extractedNotes = result.notes;
+  }
+
+  // Sanitize HTML to remove any XSS payloads
+  const sanitizedHtml = DOMPurify.sanitize(processedHtml, DOMPURIFY_CONFIG);
 
   // Safely parse and modify HTML to add spaces to paragraph elements
   const parser = new DOMParser();
@@ -77,7 +284,7 @@ function yvDomTransformer(html: string): string {
 
   // Serialize back to HTML
   const modifiedHtml = doc.body.innerHTML;
-  return modifiedHtml;
+  return { html: modifiedHtml, notes: extractedNotes };
 }
 
 /**
@@ -104,6 +311,8 @@ type VerseHtmlProps = {
   fontSize?: number;
   lineHeight?: number;
   showVerseNumbers?: boolean;
+  renderNotes?: boolean;
+  reference?: string;
 };
 
 /**
@@ -143,15 +352,45 @@ export const Verse = {
 
   Html: forwardRef<HTMLDivElement, VerseHtmlProps>(
     (
-      { html, fontFamily, fontSize, lineHeight, showVerseNumbers = true }: VerseHtmlProps,
+      {
+        html,
+        fontFamily,
+        fontSize,
+        lineHeight,
+        showVerseNumbers = true,
+        renderNotes = true,
+        reference,
+      }: VerseHtmlProps,
       ref,
     ): ReactNode => {
-      const [transformedHtml, setTransformedHtml] = useState(html);
+      const [transformedData, setTransformedData] = useState<ExtractedNotes>({ html, notes: {} });
 
-      // Transform HTML client-side to avoid SSR hydration mismatch since DOMParser is not available on server
       useEffect(() => {
-        setTransformedHtml(yvDomTransformer(html));
-      }, [html]);
+        setTransformedData(yvDomTransformer(html, renderNotes));
+      }, [html, renderNotes]);
+
+      if (renderNotes) {
+        return (
+          <section
+            ref={ref}
+            style={
+              {
+                ...(fontFamily ? { '--yv-reader-font-family': fontFamily } : {}),
+                ...(fontSize ? { '--yv-reader-font-size': `${fontSize}px` } : {}),
+                ...(lineHeight ? { '--yv-reader-line-height': lineHeight } : {}),
+              } as React.CSSProperties
+            }
+            data-show-verse-numbers={showVerseNumbers}
+            data-slot="yv-bible-renderer"
+          >
+            <HtmlWithNotes
+              html={transformedData.html}
+              notes={transformedData.notes}
+              reference={reference}
+            />
+          </section>
+        );
+      }
 
       return (
         <section
@@ -165,7 +404,7 @@ export const Verse = {
           }
           data-show-verse-numbers={showVerseNumbers}
           data-slot="yv-bible-renderer"
-          dangerouslySetInnerHTML={{ __html: transformedHtml }}
+          dangerouslySetInnerHTML={{ __html: transformedData.html }}
         />
       );
     },
@@ -179,6 +418,7 @@ export type BibleTextViewProps = {
   lineHeight?: number;
   versionId: number;
   showVerseNumbers?: boolean;
+  renderNotes?: boolean;
 };
 
 /**
@@ -191,6 +431,7 @@ export const BibleTextView = ({
   lineHeight,
   versionId,
   showVerseNumbers,
+  renderNotes,
 }: BibleTextViewProps): React.ReactElement => {
   const { passage, loading, error } = usePassage({
     versionId,
@@ -207,6 +448,7 @@ export const BibleTextView = ({
         fontSize={fontSize}
         lineHeight={lineHeight}
         showVerseNumbers={showVerseNumbers}
+        renderNotes={renderNotes}
       />
     );
   }
@@ -219,6 +461,7 @@ export const BibleTextView = ({
         fontSize={fontSize}
         lineHeight={lineHeight}
         showVerseNumbers={showVerseNumbers}
+        renderNotes={renderNotes}
       />
     );
   }
@@ -230,6 +473,8 @@ export const BibleTextView = ({
       fontSize={fontSize}
       lineHeight={lineHeight}
       showVerseNumbers={showVerseNumbers}
+      renderNotes={renderNotes}
+      reference={passage?.reference}
     />
   );
 };

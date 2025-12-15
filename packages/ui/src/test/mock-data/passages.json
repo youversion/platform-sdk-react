@@ -58,5 +58,11 @@
     "content": "<div><div class=\"q1\"><span class=\"yv-v\" v=\"19\"></span><span class=\"yv-vlbl\">19</span>For I am about to do something new.</div><div class=\"q2\">See, I have already begun! Do you not see it?</div><div class=\"q1\">I will make a pathway through the wilderness.</div><div class=\"q2\">I will create rivers in the dry wasteland.</div></div>",
     "version_id": 1,
     "reference": "Isaiah 43:19"
+  },
+  "JHN.1.51": {
+    "id": "JHN.1.51",
+    "content": "<div><div class=\"p\"><span class=\"yv-v\" v=\"51\"></span><span class=\"yv-vlbl\">51</span>He then added, <span class=\"wj\">\"Very truly I tell you,</span><span class=\"yv-n f\"><span class=\"fr\">1:51 </span><span class=\"ft\">The Greek is plural.</span></span> <span class=\"wj\">you</span><span class=\"yv-n f\"><span class=\"fr\">1:51 </span><span class=\"ft\">The Greek is plural.</span></span> <span class=\"wj\">will see 'heaven open, and the angels of God ascending and descending on'</span><span class=\"yv-n f\"><span class=\"fr\">1:51 </span><span class=\"ft\"><span class=\"ref\" usfm=\"GEN.28.12\">Gen. 28:12</span></span></span> <span class=\"wj\">the Son of Man.\"</span></div></div>",
+    "bible_id": 111,
+    "reference": "John 1:51"
   }
 }

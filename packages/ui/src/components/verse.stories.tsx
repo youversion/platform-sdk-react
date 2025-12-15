@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor, within } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import React from 'react';
 
 import { BibleTextView } from './verse';
@@ -131,6 +131,9 @@ const meta = {
       control: 'number',
       description: 'Line height',
     },
+    renderNotes: {
+      control: 'boolean',
+    },
   },
 } satisfies Meta<typeof BibleTextView>;
 
@@ -138,25 +141,12 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const hideArgs = {
-  reference: {
-    table: {
-      disable: true,
-    },
-  },
-  versionId: {
-    table: {
-      disable: true,
-    },
-  },
-};
-
 export const SingleVerse: Story = {
   args: {
     reference: 'JHN.3.16',
     versionId: 111,
+    renderNotes: true,
   },
-  argTypes: hideArgs,
   tags: ['integration'],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -175,27 +165,64 @@ export const VerseRange: Story = {
   args: {
     reference: 'JHN.3.16-17',
     versionId: 111,
+    renderNotes: true,
   },
-  argTypes: hideArgs,
 };
 
 export const FullChapter: Story = {
   args: {
     reference: 'JHN.3',
     versionId: 111,
+    renderNotes: true,
   },
-  argTypes: hideArgs,
 };
 
 export const RealAPI: Story = {
   render: (args) => <DebouncedBibleTextView {...args} />,
   args: {
-    reference: 'JHN.3.16',
+    reference: 'JHN.1',
     versionId: 111,
+    renderNotes: true,
+    showVerseNumbers: true,
   },
   parameters: {
     msw: {
       handlers: [],
     },
+  },
+};
+
+export const FootnoteInteraction: Story = {
+  args: {
+    reference: 'JHN.1.51',
+    versionId: 111,
+    renderNotes: true,
+    showVerseNumbers: true,
+  },
+  tags: ['integration'],
+  play: async ({ canvasElement }) => {
+    await waitFor(
+      async () => {
+        const footnoteButton = canvasElement.querySelector('[data-verse-footnote] button');
+        await expect(footnoteButton).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    const footnoteButton = canvasElement.querySelector('[data-verse-footnote] button');
+    await userEvent.click(footnoteButton!);
+
+    await waitFor(async () => {
+      await expect(await screen.findByText('Footnotes')).toBeInTheDocument();
+    });
+
+    await waitFor(async () => {
+      await expect(await screen.findByText(/John 1:51/i)).toBeInTheDocument();
+    });
+
+    await waitFor(async () => {
+      const noteItems = document.querySelectorAll('[data-yv-sdk] ul li');
+      await expect(noteItems.length).toBeGreaterThan(0);
+    });
   },
 };
