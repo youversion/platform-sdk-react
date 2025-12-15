@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 0.10.4
+
+### Patch Changes
+
+- 273105e: fix(ui): BibleTextView now provides footnotes when renderNotes is true
+
 ## 0.10.3
 
 ### Patch Changes
