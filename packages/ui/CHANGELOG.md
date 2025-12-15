@@ -1,5 +1,14 @@
 # @youversion/platform-react-ui
 
+## 0.10.4
+
+### Patch Changes
+
+- 273105e: fix(ui): BibleTextView now provides footnotes when renderNotes is true
+- Updated dependencies [273105e]
+  - @youversion/platform-react-hooks@0.10.4
+  - @youversion/platform-core@0.10.4
+
 ## 0.10.3
 
 ### Patch Changes
