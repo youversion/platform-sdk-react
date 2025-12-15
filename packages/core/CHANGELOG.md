@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 0.11.0
+
+### Minor Changes
+
+- 3d37aee: feat(ui): add learn more link that takes user to bible publishers website on the bottom of the BibleReader
+
 ## 0.10.4
 
 ### Patch Changes

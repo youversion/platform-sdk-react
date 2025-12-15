@@ -1,5 +1,16 @@
 # @youversion/platform-react-hooks
 
+## 0.11.0
+
+### Minor Changes
+
+- 3d37aee: feat(ui): add learn more link that takes user to bible publishers website on the bottom of the BibleReader
+
+### Patch Changes
+
+- Updated dependencies [3d37aee]
+  - @youversion/platform-core@0.11.0
+
 ## 0.10.4
 
 ### Patch Changes
