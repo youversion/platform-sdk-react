@@ -2,6 +2,9 @@
 
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
 ![Node.js >= 20.0.0](https://img.shields.io/badge/Node.js-%3E%3D%2020.0.0-339933?logo=node.js&logoColor=white)
+![Core Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/youversion/platform-sdk-react/main/.coverage/core.json)
+![Hooks Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/youversion/platform-sdk-react/main/.coverage/hooks.json)
+![UI Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/youversion/platform-sdk-react/main/.coverage/ui.json)
 
 # YouVersion Platform React SDK
 
