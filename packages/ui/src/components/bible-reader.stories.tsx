@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import React from 'react';
 import { BibleReader } from './bible-reader';
 
 const meta: Meta<typeof BibleReader.Root> = {
@@ -103,6 +102,25 @@ export const CustomStyling: Story = {
       <BibleReader.Root {...args}>
         <BibleReader.Toolbar border="bottom" />
         <BibleReader.Content />
+      </BibleReader.Root>
+    </div>
+  ),
+};
+
+export const RealAPI: Story = {
+  args: {
+    versionId: 111,
+  },
+  parameters: {
+    msw: {
+      handlers: null,
+    },
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background yv:dark">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
       </BibleReader.Root>
     </div>
   ),

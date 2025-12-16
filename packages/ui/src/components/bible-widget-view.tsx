@@ -73,7 +73,7 @@ export function BibleWidgetView({
 
       <div className="yv:grid yv:grid-cols-[1fr_auto] yv:gap-4 yv:items-center yv:mt-4">
         <div className="yv:text-balance yv:text-muted-foreground yv:justify-self-start yv:font-bold yv:text-[0.5rem]">
-          {version?.copyright_short}
+          {version?.copyright}
         </div>
 
         <div className="yv:justify-self-end">

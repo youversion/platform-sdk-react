@@ -3,9 +3,9 @@ import type { BibleVersion } from '@/types';
 export const mockVersionKJV: BibleVersion = {
   id: 1,
   abbreviation: 'KJV',
-  copyright_long:
+  promotional_content:
     " King James Version (KJV)  The King James Version (KJV) of the holy Bible was first printed in 1611, but the main edition used today is the 1769 version. The King James Version (KJV) is also known as the Authorized (or Authorised) Version (AV) because it was authorized to be read in churches. For over 300 years it was the main English translation used in the English speaking world, and is much admired and respected. About 400 words and phrases coined or popularised by the King James Version are part the English language today.   Revision  The King James Version of the Bible was not a new translation but a revision of the English Bible which was commissioned by King James I of Great Britain, following the Church of England Hampton Court Conference in 1604. 54 scholars from London, Oxford and Cambridge worked on the project. They were all from the Church of England (Anglicans), but included those of traditional and Puritan views. Officially the 1586 Bishop’s Bible was used as the base for the revision, but the scholars referenced all existing Bible translations in English, such as the Geneva Bible and Tyndale, and also editions in other languages. The completed Bible was first printed in 1611, and included the Apocrypha, which is omitted from this edition.   1769 edition  In 1611 English spelling and punctuation were not in standard forms, and the Bible underwent a mainly-orthographic revision by Oxford and Cambridge universities in 1769, which is the version most people use today. The rights of the King James Version of the Bible were, and still are, protected under British law and are vested in the Crown.   Bible Society edition  In 1804 the British and Foreign Bible Society (BFBS) was founded and they printed millions of cheap copies of the Bible for people to buy and read. Through the work of the Bible Societies the King James Version (KJV) became the most printed and most widely read book in the world.   1954 Paragraphed Edition  The King James Version was printed with each new verse starting on a new line. In 1954 the British and Foreign Bible Society produced a new edition of the KJV, keeping the original 1769 text, but adding sub-titles and paragraphs, making it easier to read. In 2011 this was reprinted in a special edition, with other appendices such as a Glossary, and concordance, to mark the 400th anniversary of the King James Version. This is the text used in this on-line edition. The paragraphing, sub-headings from 1954, and other additions from 2011, are copyright the British and Foreign Bible Society.  Copyright Information  Rights in the Authorized (King James) Version of the Bible are vested in the Crown. Published by permission of the Crown's patentee, Cambridge University Press.  This edition  This edition of the King James Authorised Version was paragraphed with sub-headings added by the British and Foreign Bible Society in 1954 and released again as a special edition in 2011. BFBS additions © 2011 British and Foreign Bible Society This text is maintained by the British and Foreign Bible Society If you are interested in obtaining a printed copy, please contact the British and Foreign Bible Society at www.biblesociety.org.uk",
-  copyright_short:
+  copyright:
     'Rights in the Authorized (King James) Version in the United Kingdom are vested in the Crown. Published by permission of the Crown’s patentee, Cambridge University Press.',
   info: null,
   publisher_url: null,
@@ -88,9 +88,9 @@ export const mockVersions: BibleVersion[] = [
   {
     id: 110,
     abbreviation: 'NIrV',
-    copyright_long:
+    promotional_content:
       'Biblica is a global Bible ministry inspired by radical generosity. We are motivated by the belief that God’s Word radically changes lives, and that everyone everywhere deserves to experience its truth for themselves. To that end, we pioneer ways to break down barriers to the Bible, doing whatever it takes to activate Scripture where needed most.\nNow in its third century of ministry, Biblica continues to produce relevant, reliable Scripture translations and innovative resources that power the Bible ministry of hundreds of global mission organizations. Together, we invite millions to discover the love of Jesus Christ through our three core pillars of ministry:\nGateway Translation\nWe translate God’s Word for the world’s most strategic languages, catalyzing greater reach to Bibleless language communities.\nFrontline Church\nWe equip the frontlines of Gospel ministry with Scripture resources that serve the unreached, unengaged, and unseen.\nKids in Crisis\nWe develop and deploy Bible programs that bring the love of Jesus to children and youth in the world’s hardest places.',
-    copyright_short:
+    copyright:
       'Holy Bible, New International Reader’s Version®, NIrV®\nCopyright © 1995, 1996, 1998, 2014 by Biblica, Inc.®\nUsed by permission. All rights reserved worldwide.',
     info: null,
     publisher_url: 'https://www.biblica.com/yv-learn-more/',
@@ -172,9 +172,9 @@ export const mockVersions: BibleVersion[] = [
   {
     id: 111,
     abbreviation: 'NIV11',
-    copyright_long:
+    promotional_content:
       'Biblica is the worldwide publisher and translation sponsor of the New International Version—one of the most widely read contemporary English versions of the Bible.\nAt Biblica, we believe that with God, all things are possible. Partnering with other ministries and people like you, we are reaching the world with God’s Word, providing Bibles that are easier to understand and faster to receive. When God’s Word is put into someone’s hands, it has the power to change everything.\nTo learn more, visit biblica.com and facebook.com/Biblica.',
-    copyright_short:
+    copyright:
       'The Holy Bible, New International Version® NIV®\nCopyright © 1973, 1978, 1984, 2011 by Biblica, Inc.®\nUsed by Permission of Biblica, Inc.® All rights reserved worldwide.',
     info: null,
     publisher_url: 'https://www.biblica.com/yv-learn-more/',
@@ -256,9 +256,9 @@ export const mockVersions: BibleVersion[] = [
   {
     id: 113,
     abbreviation: 'NIVUK11',
-    copyright_long:
+    promotional_content:
       'Biblica is the worldwide publisher and translation sponsor of the New International Version – one of the most widely read contemporary English versions of the Bible.\nAt Biblica, we believe that with God, all things are possible. Partnering with other ministries and people like you, we are reaching the world with God’s Word, providing Bibles that are easier to understand and faster to receive. When God’s Word is put into someone’s hands, it has the power to change everything.\nTo learn more, visit biblica.com and facebook.com/Biblica.',
-    copyright_short:
+    copyright:
       'The Holy Bible, New International Version® (Anglicised), NIV®\nCopyright © 1979, 1984, 2011 by Biblica, Inc.®\nUsed by permission of Biblica, Inc.® All rights reserved worldwide.',
     info: null,
     publisher_url: 'https://www.biblica.com/yv-learn-more/',
@@ -340,9 +340,9 @@ export const mockVersions: BibleVersion[] = [
   {
     id: 1588,
     abbreviation: 'AMP',
-    copyright_long:
+    promotional_content:
       'The Amplified Bible is a Literal Equivalent translation that, by using synonyms and definitions, both explains and expands the meaning of words in the text by placing amplification in parentheses, brackets, and after key words. This unique system of translation allows the reader to more completely and clearly grasp the meaning as it was understood in the original languages. Additionally, amplifications may provide further theological, historical, and other details for a better understanding of the text.',
-    copyright_short:
+    copyright:
       'Amplified® Bible\nCopyright © 2015 by\nThe Lockman Foundation, La Habra, CA 90631\nAll rights reserved. http://www.lockman.org',
     info: null,
     publisher_url: null,
@@ -424,9 +424,9 @@ export const mockVersions: BibleVersion[] = [
   {
     id: 100,
     abbreviation: 'NASB1995',
-    copyright_long:
+    promotional_content:
       'NEW AMERICAN STANDARD BIBLE® Copyright © 1960, 1962, 1963, 1968, 1971, 1972, 1973, 1975, 1977, 1995 by THE LOCKMAN FOUNDATION A Corporation Not for Profit LA HABRA, CA All Rights Reserved http://www.lockman.org',
-    copyright_short:
+    copyright:
       'NEW AMERICAN STANDARD BIBLE® Copyright © 1960, 1962, 1963, 1968, 1971, 1972, 1973, 1975, 1977, 1995 by THE LOCKMAN FOUNDATION A Corporation Not for Profit LA HABRA, CA All Rights Reserved http://www.lockman.org',
     info: null,
     publisher_url: null,
@@ -508,9 +508,9 @@ export const mockVersions: BibleVersion[] = [
   {
     id: 2692,
     abbreviation: 'NASB2020',
-    copyright_long:
+    promotional_content:
       'The NASB 2020 is an update of the NASB 1995 that further improves accuracy where possible, modernizes language, and improves readability. These refinements maintain faithful accuracy to the original texts and provide a clear understanding of God’s Word to those who prefer more modern English standards. The long-established translation standard for the NASB remains the same as it always has been, that is to accurately translate the inspired Word of God from the Hebrew, Aramaic, and Greek texts into modern English that is clearly understandable today.',
-    copyright_short:
+    copyright:
       'NEW AMERICAN STANDARD BIBLE® NASB®\nCopyright © 1960, 1971, 1977,1995, 2020 by The Lockman Foundation\nA Corporation Not for Profit\nLa Habra, CA\nAll Rights Reserved\nwww.lockman.org',
     info: null,
     publisher_url: null,
@@ -592,8 +592,8 @@ export const mockVersions: BibleVersion[] = [
   {
     id: 12,
     abbreviation: 'ASV',
-    copyright_long: null,
-    copyright_short: null,
+    promotional_content: null,
+    copyright: null,
     info: null,
     publisher_url: null,
     language_tag: 'en',
@@ -674,8 +674,8 @@ export const mockVersions: BibleVersion[] = [
   {
     id: 42,
     abbreviation: 'CPDV',
-    copyright_long: null,
-    copyright_short: null,
+    promotional_content: null,
+    copyright: null,
     info: null,
     publisher_url: null,
     language_tag: 'en',
@@ -763,9 +763,9 @@ export const mockVersions: BibleVersion[] = [
   {
     id: 130,
     abbreviation: 'TOJB2011',
-    copyright_long:
+    promotional_content:
       'THE ORTHODOX JEWISH TANAKH\nArtists For Israel Intl Inc.\nThis version also appears with the Orthodox Yiddish Triglot which presents the Hebrew Yiddish script in Latin script and an English word for word translation, available at afii.org/Torah\nTo donate PayPal.Me',
-    copyright_short:
+    copyright:
       'THE ORTHODOX JEWISH BIBLE\nFOURTH EDITION REVISED © Artists For Israel Intl Inc., 2002-2011, 2021, 2024.',
     info: null,
     publisher_url: null,
@@ -847,8 +847,8 @@ export const mockVersions: BibleVersion[] = [
   {
     id: 206,
     abbreviation: 'engWEBUS',
-    copyright_long: 'This Public Domain Bible text is courtesy of eBible.org.',
-    copyright_short: 'PUBLIC DOMAIN (not copyrighted)',
+    promotional_content: 'This Public Domain Bible text is courtesy of eBible.org.',
+    copyright: 'PUBLIC DOMAIN (not copyrighted)',
     info: null,
     publisher_url: null,
     language_tag: 'en',
@@ -943,9 +943,9 @@ export const mockVersions: BibleVersion[] = [
   {
     id: 1932,
     abbreviation: 'FBV',
-    copyright_long:
+    promotional_content:
       'FBV: this translation is directly from the Hebrew and Greek text. It is licensed under a Creative Commons Attribution-ShareAlike 4.0 Unported License. This means this work can be copied and used as long as it is identified as the Free Bible Version and any adaptations are identified. Any derivative work is to be released under the same license. (A full description of the license is at https://creativecommons.org/licenses/by-sa/4.0/legalcode). The intent is to be as faithful as possible to the original meaning without being awkward or misleading. The style is contemporary English, avoiding slang or colloquialisms, speaking to our modern society in a way people will understand. The Free Bible Version is a project of Free Bible Ministry www.freebibleministry.org',
-    copyright_short:
+    copyright:
       'Dr. Jonathan Gallagher. Released under Creative Commons Attribution-ShareAlike 4.0 Unported License. Version 4.3. For corrections send email to jonathangallagherfbv@gmail.com',
     info: null,
     publisher_url: null,
@@ -1027,9 +1027,9 @@ export const mockVersions: BibleVersion[] = [
   {
     id: 2660,
     abbreviation: 'LSV',
-    copyright_long:
+    promotional_content:
       'The Literal Standard Version of The Holy Bible is a registered copyright of Covenant Press and the Covenant Christian Coalition (© 2020), but has been subsequently released under the Creative Commons Attribution-ShareAlike license (CC BY-SA) per our desire to provide God’s word freely. Covenant Press requests that the text remain unaltered in the English language and that translations based on the LSV maintain the same spirit of faithfulness to the original Hebrew, Aramaic, and Greek text. Attribution of minor citations for personal or non-commercial use can be provided as simply “LSV” or “Literal Standard Version.” Citations for commercial use, or distribution of the entire LSV Bible or entire book(s) of the LSV Bible, must be fully attributed and include both “Literal Standard Version (LSV)” and the name of our organization. Covenant Press is soliciting partnerships with Bible publishers that are interested in the LSV project. For queries about partnering with us, please email the translation team at covenantpress@ccc.one. To learn more, visit lsvbible.com. The purpose behind the LSV is to provide readers with a modern, easy-to-read, literal, and accurate translation of the Bible that is free to read, distribute, and translate from. We pray that God will use the LSV to illuminate the hearts and minds of multitudes with the good news that His Son Jesus Christ came in the flesh, died for our sins as a substitutionary sacrifice, rose bodily from the dead, and is coming back again.',
-    copyright_short:
+    copyright:
       'The Literal Standard Version of The Holy Bible is a registered copyright of Covenant Press and the Covenant Christian Coalition (© 2020), but has been subsequently released under the Creative Commons Attribution-ShareAlike license (CC BY-SA) per our desire to provide God’s word freely. Covenant Press requests that the text remain unaltered in the English language and that translations based on the LSV maintain the same spirit of faithfulness to the original Hebrew, Aramaic, and Greek text. Attribution of minor citations for personal or non-commercial use can be provided as simply “LSV” or “Literal Standard Version.” Citations for commercial use, or distribution of the entire LSV Bible or entire book(s) of the LSV Bible, must be fully attributed and include both “Literal Standard Version (LSV)” and the name of our organization. Covenant Press is soliciting partnerships with Bible publishers that are interested in the LSV project. For queries about partnering with us, please email the translation team at covenantpress@ccc.one. To learn more, visit lsvbible.com. The purpose behind the LSV is to provide readers with a modern, easy-to-read, literal, and accurate translation of the Bible that is free to read, distribute, and translate from. We pray that God will use the LSV to illuminate the hearts and minds of multitudes with the good news that His Son Jesus Christ came in the flesh, died for our sins as a substitutionary sacrifice, rose bodily from the dead, and is coming back again.',
     info: null,
     publisher_url: null,
@@ -1111,8 +1111,8 @@ export const mockVersions: BibleVersion[] = [
   {
     id: 3034,
     abbreviation: 'BSB',
-    copyright_long: 'https://berean.bible/',
-    copyright_short:
+    promotional_content: 'https://berean.bible/',
+    copyright:
       "The Holy Bible, Berean Standard Bible, BSB is produced in cooperation with Bible Hub, Discovery Bible, OpenBible.com, and the Berean Bible Translation Committee. This text of God's Word has been dedicated to the public domain.",
     info: null,
     publisher_url: null,
@@ -1194,9 +1194,9 @@ export const mockVersions: BibleVersion[] = [
   {
     id: 3427,
     abbreviation: 'TCENT',
-    copyright_long:
+    promotional_content:
       'Copyright © 2022 Robert Adam Boyd\nThe Text-Critical English New Testament and the Byzantine Text Version are made available to you under the terms of the Creative Commons Attribution license 4.0.\nYou are free to:\nShare — copy and redistribute the material in any medium or format\nAdapt — remix, transform, and build upon the material for any purpose, even commercially,\nUnder the following terms:\nAttribution — You must give appropriate credit, provide a link to the license, and indicate if changes were made. You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.\nNo additional restrictions — You may not apply legal terms or technological measures that legally restrict others from doing anything the license permits.\n"The Text-Critical English New Testament" and "Byzantine Text Version" are trademarks of Robert Adam Boyd. If you adapt, remix, transform, or in any other way change the translation or footnotes, you may not call it "The Text-Critical English New Testament" or "Byzantine Text Version".',
-    copyright_short: 'Copyright © 2022 Robert Adam Boyd',
+    copyright: 'Copyright © 2022 Robert Adam Boyd',
     info: null,
     publisher_url: null,
     language_tag: 'en',

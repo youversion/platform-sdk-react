@@ -154,10 +154,10 @@ function Content() {
         showVerseNumbers={showVerseNumbers}
       />
 
-      {version?.copyright_short && (
+      {version?.copyright && (
         <footer className="yv:flex yv:flex-col yv:items-center yv:gap-2" style={{ fontSize }}>
           <p className="yv:text-balance yv:text-[0.75em] yv:text-center yv:text-muted-foreground">
-            {version.copyright_short}
+            {version.copyright}
           </p>
           {version.publisher_url ? (
             <a
