@@ -96,3 +96,17 @@ export const Minimal: Story = {
     showBibleAppAttribution: false,
   },
 };
+
+export const RealAPI: Story = {
+  args: {
+    showSunIcon: true,
+    showBibleAppAttribution: true,
+    showShareButton: true,
+    size: 'default',
+  },
+  parameters: {
+    msw: {
+      handlers: null,
+    },
+  },
+};

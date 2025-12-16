@@ -95,3 +95,17 @@ export const WithVersionPicker: Story = {
     await expect(screen.getByText(/luke 1:39-45 amp/i)).toBeVisible();
   },
 };
+
+export const RealAPI: Story = {
+  args: {
+    reference: 'LUK.1.39-45',
+    versionId: 111,
+    showVersionPicker: true,
+    background: 'dark',
+  },
+  parameters: {
+    msw: {
+      handlers: null,
+    },
+  },
+};

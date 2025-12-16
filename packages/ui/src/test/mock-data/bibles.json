@@ -3,8 +3,8 @@
     "1": {
       "id": 1,
       "abbreviation": "KJV",
-      "copyright_long": "King James Version (KJV) The King James Version (KJV) of the holy Bible was first printed in 1611, but the main edition used today is the 1769 version.",
-      "copyright_short": "Rights in the Authorized (King James) Version in the United Kingdom are vested in the Crown. Published by permission of the Crown's patentee, Cambridge University Press.",
+      "promotional_content": "King James Version (KJV) The King James Version (KJV) of the holy Bible was first printed in 1611, but the main edition used today is the 1769 version.",
+      "copyright": "Rights in the Authorized (King James) Version in the United Kingdom are vested in the Crown. Published by permission of the Crown's patentee, Cambridge University Press.",
       "info": null,
       "publisher_url": null,
       "language_tag": "en",
@@ -18,8 +18,8 @@
     "111": {
       "id": 111,
       "abbreviation": "NIV11",
-      "copyright_long": "Biblica is the worldwide publisher and translation sponsor of the New International Version—one of the most widely read contemporary English versions of the Bible.\nAt Biblica, we believe that with God, all things are possible. Partnering with other ministries and people like you, we are reaching the world with God's Word, providing Bibles that are easier to understand and faster to receive. When God's Word is put into someone's hands, it has the power to change everything.\nTo learn more, visit biblica.com and facebook.com/Biblica.",
-      "copyright_short": "The Holy Bible, New International Version® NIV®\nCopyright © 1973, 1978, 1984, 2011 by Biblica, Inc.®\nUsed by Permission of Biblica, Inc.® All rights reserved worldwide.",
+      "promotional_content": "Biblica is the worldwide publisher and translation sponsor of the New International Version—one of the most widely read contemporary English versions of the Bible.\nAt Biblica, we believe that with God, all things are possible. Partnering with other ministries and people like you, we are reaching the world with God's Word, providing Bibles that are easier to understand and faster to receive. When God's Word is put into someone's hands, it has the power to change everything.\nTo learn more, visit biblica.com and facebook.com/Biblica.",
+      "copyright": "The Holy Bible, New International Version® NIV®\nCopyright © 1973, 1978, 1984, 2011 by Biblica, Inc.®\nUsed by Permission of Biblica, Inc.® All rights reserved worldwide.",
       "info": null,
       "publisher_url": "https://www.biblica.com/yv-learn-more/",
       "language_tag": "en",
@@ -100,7 +100,7 @@
     "1588": {
       "id": 1588,
       "abbreviation": "AMP",
-      "copyright_short": "Amplified® Bible\nCopyright © 2015 by The Lockman Foundation",
+      "copyright": "Amplified® Bible\nCopyright © 2015 by The Lockman Foundation",
       "language_tag": "en",
       "localized_abbreviation": "AMP",
       "localized_title": "Amplified Bible",
@@ -115,7 +115,7 @@
         {
           "id": 110,
           "abbreviation": "NIrV",
-          "copyright_short": "Holy Bible, New International Reader's Version®, NIrV®\nCopyright © 1995, 1996, 1998, 2014 by Biblica, Inc.®",
+          "copyright": "Holy Bible, New International Reader's Version®, NIrV®\nCopyright © 1995, 1996, 1998, 2014 by Biblica, Inc.®",
           "language_tag": "en",
           "localized_abbreviation": "NIrV",
           "localized_title": "New International Reader's Version",
@@ -126,7 +126,7 @@
         {
           "id": 111,
           "abbreviation": "NIV11",
-          "copyright_short": "The Holy Bible, New International Version® NIV®\nCopyright © 1973, 1978, 1984, 2011 by Biblica, Inc.®",
+          "copyright": "The Holy Bible, New International Version® NIV®\nCopyright © 1973, 1978, 1984, 2011 by Biblica, Inc.®",
           "language_tag": "en",
           "localized_abbreviation": "NIV2011",
           "localized_title": "New International Version",
