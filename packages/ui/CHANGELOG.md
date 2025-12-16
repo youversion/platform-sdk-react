@@ -1,5 +1,18 @@
 # @youversion/platform-react-ui
 
+## 1.0.1
+
+### Patch Changes
+
+- 0ae8237: fix: update version apis
+  - change copyright_short -> copyright in version apis
+  - change copyright_long -> promotional_content in version apis
+  - add stories that hit real apis for local testing api changes
+
+- Updated dependencies [0ae8237]
+  - @youversion/platform-react-hooks@1.0.1
+  - @youversion/platform-core@1.0.1
+
 ## 1.0.0
 
 ### Major Changes
