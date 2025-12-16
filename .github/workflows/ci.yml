@@ -97,19 +97,26 @@ jobs:
           mkdir -p .coverage
 
           # Core coverage
-          CORE_PCT=$(jq '.total.lines.pct' packages/core/coverage/coverage-summary.json)
-          CORE_COLOR=$(node -e "const p=$CORE_PCT; console.log(p >= 80 ? 'brightgreen' : p >= 60 ? 'yellow' : 'red')")
-          echo "{\"schemaVersion\":1,\"label\":\"core coverage\",\"message\":\"${CORE_PCT}%\",\"color\":\"${CORE_COLOR}\"}" > .coverage/core.json
+          # Core coverage
+          if [ -f packages/core/coverage/coverage-summary.json ]; then
+            CORE_PCT=$(jq '.total.lines.pct' packages/core/coverage/coverage-summary.json)
+            CORE_COLOR=$(node -e "const p=$CORE_PCT; console.log(p >= 80 ? 'brightgreen' : p >= 60 ? 'yellow' : 'red')")
+            echo "{\"schemaVersion\":1,\"label\":\"core coverage\",\"message\":\"${CORE_PCT}%\",\"color\":\"${CORE_COLOR}\"}" > .coverage/core.json
+          fi
 
           # Hooks coverage
-          HOOKS_PCT=$(jq '.total.lines.pct' packages/hooks/coverage/coverage-summary.json)
-          HOOKS_COLOR=$(node -e "const p=$HOOKS_PCT; console.log(p >= 80 ? 'brightgreen' : p >= 60 ? 'yellow' : 'red')")
-          echo "{\"schemaVersion\":1,\"label\":\"hooks coverage\",\"message\":\"${HOOKS_PCT}%\",\"color\":\"${HOOKS_COLOR}\"}" > .coverage/hooks.json
+          if [ -f packages/hooks/coverage/coverage-summary.json ]; then
+            HOOKS_PCT=$(jq '.total.lines.pct' packages/hooks/coverage/coverage-summary.json)
+            HOOKS_COLOR=$(node -e "const p=$HOOKS_PCT; console.log(p >= 80 ? 'brightgreen' : p >= 60 ? 'yellow' : 'red')")
+            echo "{\"schemaVersion\":1,\"label\":\"hooks coverage\",\"message\":\"${HOOKS_PCT}%\",\"color\":\"${HOOKS_COLOR}\"}" > .coverage/hooks.json
+          fi
 
           # UI coverage
-          UI_PCT=$(jq '.total.lines.pct' packages/ui/coverage/coverage-summary.json)
-          UI_COLOR=$(node -e "const p=$UI_PCT; console.log(p >= 80 ? 'brightgreen' : p >= 60 ? 'yellow' : 'red')")
-          echo "{\"schemaVersion\":1,\"label\":\"ui coverage\",\"message\":\"${UI_PCT}%\",\"color\":\"${UI_COLOR}\"}" > .coverage/ui.json
+          if [ -f packages/ui/coverage/coverage-summary.json ]; then
+            UI_PCT=$(jq '.total.lines.pct' packages/ui/coverage/coverage-summary.json)
+            UI_COLOR=$(node -e "const p=$UI_PCT; console.log(p >= 80 ? 'brightgreen' : p >= 60 ? 'yellow' : 'red')")
+            echo "{\"schemaVersion\":1,\"label\":\"ui coverage\",\"message\":\"${UI_PCT}%\",\"color\":\"${UI_COLOR}\"}" > .coverage/ui.json
+          fi
 
       - name: Commit coverage badges
         if: github.ref == 'refs/heads/main'
