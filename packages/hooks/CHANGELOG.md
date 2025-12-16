@@ -1,5 +1,16 @@
 # @youversion/platform-react-hooks
 
+## 1.0.0
+
+### Major Changes
+
+- 9e53543: Public Beta 1.0 Release
+
+### Patch Changes
+
+- Updated dependencies [9e53543]
+  - @youversion/platform-core@1.0.0
+
 ## 0.11.0
 
 ### Minor Changes

@@ -28,6 +28,11 @@ export default defineConfig({
           setupFiles: './src/test/setup.ts',
           include: ['src/**/*.test.{ts,tsx}'],
           exclude: ['**/*.stories.{ts,tsx}', 'node_modules/**'],
+          coverage: {
+            provider: 'v8',
+            reporter: ['text', 'json-summary'],
+            reportsDirectory: './coverage',
+          },
         },
       }),
       // Storybook integration tests project

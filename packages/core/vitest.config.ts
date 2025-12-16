@@ -5,5 +5,10 @@ export default defineConfig({
     environment: 'node',
     setupFiles: ['./src/__tests__/setup.ts'],
     testTimeout: 10_000,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json-summary'],
+      reportsDirectory: './coverage',
+    },
   },
 });
