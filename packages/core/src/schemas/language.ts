@@ -35,4 +35,4 @@ export const LanguageSchema = z.object({
   default_bible_version_id: z.number().int().nullable().optional(),
 });
 
-export type Language = z.infer<typeof LanguageSchema>;
+export type Language = Readonly<z.infer<typeof LanguageSchema>>;

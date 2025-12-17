@@ -9,4 +9,4 @@ export const BiblePassageSchema = z.object({
   reference: z.string(),
 });
 
-export type BiblePassage = z.infer<typeof BiblePassageSchema>;
+export type BiblePassage = Readonly<z.infer<typeof BiblePassageSchema>>;

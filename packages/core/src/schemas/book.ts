@@ -3,7 +3,7 @@ import { BOOK_IDS } from '../utils/constants';
 import { BibleChapterSchema } from './chapter';
 
 export const CanonSchema = z.enum(['old_testament', 'new_testament', 'deuterocanon']);
-export type Canon = z.infer<typeof CanonSchema>;
+export type Canon = Readonly<z.infer<typeof CanonSchema>>;
 
 // https://github.com/colinhacks/zod/discussions/4934#discussioncomment-13858053
 export const BookUsfmSchema = z.union([
@@ -27,5 +27,5 @@ export const BibleBookSchema = z.object({
   chapters: z.array(BibleChapterSchema).optional(),
 });
 
-export type BibleBook = z.infer<typeof BibleBookSchema>;
-export type CANON = z.infer<typeof CanonSchema>;
+export type BibleBook = Readonly<z.infer<typeof BibleBookSchema>>;
+export type CANON = Readonly<z.infer<typeof CanonSchema>>;
