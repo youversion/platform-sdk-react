@@ -7,4 +7,4 @@ export const VOTDSchema = z.object({
   passage_id: z.string(),
 });
 
-export type VOTD = z.infer<typeof VOTDSchema>;
+export type VOTD = Readonly<z.infer<typeof VOTDSchema>>;

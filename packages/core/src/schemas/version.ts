@@ -30,4 +30,4 @@ export const BibleVersionSchema = z.object({
   youversion_deep_link: z.url(),
 });
 
-export type BibleVersion = z.infer<typeof BibleVersionSchema>;
+export type BibleVersion = Readonly<z.infer<typeof BibleVersionSchema>>;

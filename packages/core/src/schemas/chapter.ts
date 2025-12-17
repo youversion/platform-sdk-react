@@ -12,4 +12,4 @@ export const BibleChapterSchema = z.object({
   verses: z.array(BibleVerseSchema).optional(),
 });
 
-export type BibleChapter = z.infer<typeof BibleChapterSchema>;
+export type BibleChapter = Readonly<z.infer<typeof BibleChapterSchema>>;

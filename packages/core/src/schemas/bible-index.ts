@@ -8,7 +8,7 @@ const BibleIndexVerseSchema = z.object({
   title: z.string(),
 });
 
-export type BibleIndexVerse = z.infer<typeof BibleIndexVerseSchema>;
+export type BibleIndexVerse = Readonly<z.infer<typeof BibleIndexVerseSchema>>;
 
 const BibleIndexChapterSchema = z.object({
   /** Chapter identifier */
@@ -19,7 +19,7 @@ const BibleIndexChapterSchema = z.object({
   verses: z.array(BibleIndexVerseSchema),
 });
 
-export type BibleIndexChapter = z.infer<typeof BibleIndexChapterSchema>;
+export type BibleIndexChapter = Readonly<z.infer<typeof BibleIndexChapterSchema>>;
 
 const BibleIndexBookSchema = z.object({
   /** Book identifier */
@@ -36,7 +36,7 @@ const BibleIndexBookSchema = z.object({
   chapters: z.array(BibleIndexChapterSchema),
 });
 
-export type BibleIndexBook = z.infer<typeof BibleIndexBookSchema>;
+export type BibleIndexBook = Readonly<z.infer<typeof BibleIndexBookSchema>>;
 
 const _BibleIndexSchema = z.object({
   /** Text direction (e.g., "ltr") */
@@ -45,4 +45,4 @@ const _BibleIndexSchema = z.object({
   books: z.array(BibleIndexBookSchema),
 });
 
-export type BibleIndex = z.infer<typeof _BibleIndexSchema>;
+export type BibleIndex = Readonly<z.infer<typeof _BibleIndexSchema>>;
