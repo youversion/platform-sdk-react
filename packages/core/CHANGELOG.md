@@ -1,5 +1,14 @@
 # @youversion/platform-core
 
+## 1.1.0
+
+### Minor Changes
+
+- efb1030: feat(core): make data objects that should be immutable readonly
+  - changed data types that come from api responses and should not
+    be mutated to be readonly.
+  - See the documentation on these types, https://developers.youversion.com/sdks/react#referenced-types
+
 ## 1.0.1
 
 ### Patch Changes
