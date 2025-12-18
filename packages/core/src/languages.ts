@@ -8,7 +8,7 @@ import type { Collection, Language } from './types';
 export type GetLanguagesOptions = {
   page_size?: number;
   page_token?: string;
-  country: string; // ISO 3166-1 alpha-2 country code (required per OpenAPI spec)
+  country?: string; // ISO 3166-1 alpha-2 country code
 };
 
 /**
@@ -41,15 +41,16 @@ export class LanguagesClient {
 
   /**
    * Fetches a collection of languages supported in the Platform.
-   * @param options Query parameters for pagination and filtering (country is required).
+   * @param options Query parameters for pagination and filtering.
    * @returns A collection of Language objects.
    */
-  async getLanguages(options: GetLanguagesOptions): Promise<Collection<Language>> {
+  async getLanguages(options: GetLanguagesOptions = {}): Promise<Collection<Language>> {
     const params: Record<string, string | number> = {};
 
-    // Country is required per OpenAPI spec
-    const country = this.countrySchema.parse(options.country);
-    params.country = country;
+    if (options.country !== undefined) {
+      const country = this.countrySchema.parse(options.country);
+      params.country = country;
+    }
 
     if (options.page_size !== undefined) {
       const pageSizeSchema = z.number().int().positive();
