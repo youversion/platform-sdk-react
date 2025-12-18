@@ -1,6 +1,7 @@
 import type { ApiConfig } from './types';
 
-type QueryParams = Record<string, string | number | boolean>;
+type PrimitiveQueryParam = string | number | boolean;
+type QueryParams = Record<string, PrimitiveQueryParam | PrimitiveQueryParam[]>;
 type RequestData = Record<string, string | number | boolean | object>;
 type RequestHeaders = Record<string, string>;
 
@@ -41,9 +42,18 @@ export class ApiClient {
    */
   private buildQueryString(params?: QueryParams): string {
     if (!params) return '';
-    const queryString = new URLSearchParams(
-      Object.entries(params).map(([key, value]) => [key, String(value)]),
-    ).toString();
+
+    const searchParams = new URLSearchParams();
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        value.forEach((item) => searchParams.append(key, String(item)));
+      } else {
+        searchParams.append(key, String(value));
+      }
+    });
+
+    const queryString = searchParams.toString();
     return queryString ? `?${queryString}` : '';
   }
 
