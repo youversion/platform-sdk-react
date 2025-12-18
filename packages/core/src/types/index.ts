@@ -1,6 +1,6 @@
 // Re-export all schema-derived types from schemas
 export type { BibleVersion } from '../schemas/version';
-export type { BibleBook, CANON } from '../schemas/book';
+export type { BibleBook, BibleBookIntro, CANON } from '../schemas/book';
 export type { BibleChapter } from '../schemas/chapter';
 export type { BibleVerse } from '../schemas/verse';
 export type { BiblePassage } from '../schemas/passage';

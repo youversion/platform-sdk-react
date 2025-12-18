@@ -3,6 +3,11 @@ export type BibleBook = Readonly<{
   title: string;
   abbreviation?: string; // Book name abbreviation if provided by publisher
   canon: CANON;
+  intro?: Readonly<{
+    id: string; // Intro identifier
+    passage_id: string; // Intro passage identifier
+    title: string; // Intro title
+  }>; // Optional introduction metadata
   // eslint-disable-next-line @typescript-eslint/array-type -- Array<> syntax required for template literal type to represent chapter references
   chapters?: Array<`${BOOK_ID}.${number | `INTRO${number}`}`>; // Ordered list of chapter ids for given Bible and book (e.g., ["GEN.1", "GEN.2", "3JN.INTRO1", "3JN.1"])
 }>;
