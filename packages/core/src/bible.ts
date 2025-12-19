@@ -50,17 +50,23 @@ export class BibleClient {
   /**
    * Fetches a collection of Bible versions filtered by language ranges.
    *
-   * @param language_ranges - A comma-separated list of language codes or ranges to filter the versions (required).
+   * @param language_ranges - One or more language codes or ranges to filter the versions (required).
    * @param license_id - Optional license ID to filter versions by license.
    * @returns A promise that resolves to a collection of BibleVersion objects.
    */
   async getVersions(
-    language_ranges: string,
+    language_ranges: string | string[],
     license_id?: string | number,
   ): Promise<Collection<BibleVersion>> {
-    this.languageRangesSchema.parse(language_ranges);
-    const params: Record<string, string | number> = {
-      'language_ranges[]': language_ranges,
+    const languageRangeArray = Array.isArray(language_ranges) ? language_ranges : [language_ranges];
+
+    const parsedLanguageRanges = z
+      .array(this.languageRangesSchema)
+      .nonempty('At least one language range is required')
+      .parse(languageRangeArray);
+
+    const params: Record<string, string | number | string[]> = {
+      'language_ranges[]': parsedLanguageRanges,
     };
     if (license_id !== undefined) {
       params.license_id = license_id;
