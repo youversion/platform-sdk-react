@@ -1,5 +1,21 @@
 # @youversion/platform-react-ui
 
+## 1.2.0
+
+### Minor Changes
+
+- a8a5dd7: feat: Add intro metadata to BibleBook
+  - Added optional `intro` field to BibleBook schema for retrieving book introduction metadata
+  - The intro field includes `id`, `passage_id`, and `title` properties when available
+  - Simplified type definitions by removing duplicate type files and using Zod schemas as single source of truth
+  - Updated Bible mocks and tests to cover the new intro field
+
+### Patch Changes
+
+- Updated dependencies [a8a5dd7]
+  - @youversion/platform-core@1.2.0
+  - @youversion/platform-react-hooks@1.2.0
+
 ## 1.1.0
 
 ### Minor Changes

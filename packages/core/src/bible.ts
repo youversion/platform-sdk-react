@@ -88,7 +88,9 @@ export class BibleClient {
    * Fetches all books for a given Bible version.
    * @param versionId The version ID.
    * @param canon Optional canon filter ("old_testament", 'new_testament', 'deuterocanon').
-   * @returns An array of BibleBook objects.
+   * @returns An array of BibleBook objects. Each book may include an optional `intro` field
+   *          containing metadata (id, passage_id, title) for the book's introduction when
+   *          available in the Bible version.
    */
   async getBooks(versionId: number, canon?: CANON): Promise<Collection<BibleBook>> {
     this.versionIdSchema.parse(versionId);
@@ -101,7 +103,9 @@ export class BibleClient {
    * Fetches a specific book by USFM code for a given version.
    * @param versionId The version ID.
    * @param book The Book Identifier code of the book.
-   * @returns The requested BibleBook object.
+   * @returns The requested BibleBook object, which may include an optional `intro` field
+   *          containing metadata (id, passage_id, title) for the book's introduction when
+   *          available. Use the `passage_id` with `getPassage()` to fetch intro content.
    */
   async getBook(versionId: number, book: string): Promise<BibleBook> {
     this.versionIdSchema.parse(versionId);
