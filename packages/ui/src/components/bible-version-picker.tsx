@@ -9,10 +9,10 @@ import {
 } from '@youversion/platform-react-hooks';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Popover, PopoverTrigger, PopoverContent, PopoverClose } from './ui/popover';
+import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 import { Item, ItemGroup, ItemMedia, ItemContent, ItemTitle, ItemDescription } from './ui/item';
 import type { BibleVersion } from '@youversion/platform-core';
-import { Search, Globe, X as XIcon, ArrowLeft } from 'lucide-react';
+import { Search, Globe, ArrowLeft } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -192,59 +192,46 @@ function Content() {
     closeRef.current?.click();
   };
 
+  function LanguagePicker() {
+    return (
+      <div className="yv:ml-auto">
+        <Button
+          aria-label="Select language"
+          className="yv:bg-card yv:border yv:border-transparent yv:hover:bg-card yv:hover:border-border"
+          size="sm"
+          onClick={() => setIsLanguagesOpen(true)}
+          variant="secondary"
+        >
+          <Globe size={16} />
+          <span className="yv:text-sm yv:font-medium yv:line-clamp-1">
+            {languages.find((language) => language.id === selectedLanguageId)?.englishName}
+          </span>
+          <Badge
+            variant="secondary"
+            className="yv:h-5 yv:min-w-5 yv:rounded-full yv:px-1 yv:font-mono yv:tabular-nums"
+          >
+            {filteredVersions.length}
+          </Badge>
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <PopoverContent
-      data-yv-sdk
-      data-yv-theme={theme}
+      heading="Bible Versions"
+      headerChild={<LanguagePicker />}
+      theme={theme}
       side={side}
-      className="yv:flex yv:flex-col yv:bg-background yv:p-0 yv:h-[66vh] yv:max-h-[66vh] yv:w-96 yv:sm:w-sm yv:overflow-hidden yv:rounded-2xl yv:border-0 yv:shadow-lg"
     >
       {/* Versions View */}
       <div
-        className={`yv:h-[66vh] yv:absolute yv:inset-0 yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center ${
+        className={`yv:h-[66vh] yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center ${
           isLanguagesOpen
             ? 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
             : 'yv:opacity-100 yv:pointer-events-auto yv:blur-none yv:scale-100'
         }`}
       >
-        <section className="yv:bg-muted yv:py-3 yv:w-full yv:rounded-t-2xl yv:px-4 yv:border-b yv:border-border yv:flex yv:flex-row yv:justify-between yv:items-center">
-          <div className="yv:flex yv:flex-col">
-            <h2 className="yv:font-bold yv:text-base yv:line-clamp-1">Bible Versions</h2>
-          </div>
-          <div className="yv:flex yv:items-center yv:gap-2">
-            <Button
-              aria-label="Select language"
-              className="yv:bg-card yv:border yv:border-transparent yv:hover:bg-card yv:hover:border-border"
-              size="sm"
-              onClick={() => setIsLanguagesOpen(true)}
-              variant="secondary"
-            >
-              <Globe size={16} />
-              <span className="yv:text-sm yv:font-medium yv:line-clamp-1">
-                {languages.find((language) => language.id === selectedLanguageId)?.englishName}
-              </span>
-              <Badge
-                variant="secondary"
-                className="yv:h-5 yv:min-w-5 yv:rounded-full yv:px-1 yv:font-mono yv:tabular-nums"
-              >
-                {filteredVersions.length}
-              </Badge>
-            </Button>
-
-            <PopoverClose asChild>
-              <Button
-                ref={closeRef}
-                variant="ghost"
-                size="icon"
-                className="yv:w-8 yv:h-8 yv:text-muted-foreground"
-              >
-                <XIcon size={16} />
-                <span className="yv:sr-only">Close version selector</span>
-              </Button>
-            </PopoverClose>
-          </div>
-        </section>
-
         <div className="yv:flex-1 yv:overflow-y-auto yv:py-2">
           {filteredVersions && filteredVersions.length > 0 ? (
             <ItemGroup data-testid="version-list">

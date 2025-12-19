@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, useState, useEffect, type ReactNode } from 'react';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import { useBooks, useVersion, useTheme } from '@youversion/platform-react-hooks';
 import { BibleChapterPicker } from './bible-chapter-picker';
@@ -8,7 +8,8 @@ import { BibleVersionPicker } from './bible-version-picker';
 import { BibleTextView } from './verse';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
-import { Info } from 'lucide-react';
+import { Info, Settings } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 
 type BibleReaderContextType = {
   book: string;
@@ -17,8 +18,10 @@ type BibleReaderContextType = {
   setBook: React.Dispatch<React.SetStateAction<string>>;
   setChapter: React.Dispatch<React.SetStateAction<string>>;
   setVersionId: React.Dispatch<React.SetStateAction<number>>;
-  fontFamily?: string;
-  fontSize?: number;
+  currentFontFamily: string;
+  setCurrentFontFamily: React.Dispatch<React.SetStateAction<string>>;
+  currentFontSize: number;
+  setCurrentFontSize: React.Dispatch<React.SetStateAction<number>>;
   lineHeight?: number;
   showVerseNumbers: boolean;
   background: 'light' | 'dark';
@@ -62,7 +65,7 @@ function Root({
   versionId: controlledVersionId,
   defaultVersionId = 111,
   onVersionChange,
-  fontFamily,
+  fontFamily = 'Inter',
   fontSize = 16,
   lineHeight,
   showVerseNumbers = true,
@@ -87,6 +90,23 @@ function Root({
     onChange: onVersionChange,
   });
 
+  const [currentFontSize, setCurrentFontSize] = useState(() => {
+    if (typeof window === 'undefined') return fontSize;
+    const size = localStorage.getItem('font-size');
+    return size ? parseInt(size) : fontSize;
+  });
+
+  const [currentFontFamily, setCurrentFontFamily] = useState(() => {
+    if (typeof window === 'undefined') return fontFamily;
+    return localStorage.getItem('font-family') || fontFamily;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('font-size', currentFontSize.toString());
+    localStorage.setItem('font-family', currentFontFamily);
+  }, [currentFontSize, currentFontFamily]);
+
   const providerTheme = useTheme();
   const theme = background || providerTheme;
 
@@ -97,8 +117,10 @@ function Root({
     setBook,
     setChapter,
     setVersionId,
-    fontFamily,
-    fontSize,
+    currentFontFamily,
+    setCurrentFontFamily,
+    currentFontSize,
+    setCurrentFontSize,
     lineHeight,
     showVerseNumbers,
     background: theme,
@@ -118,8 +140,15 @@ function Root({
 }
 
 function Content() {
-  const { book, chapter, versionId, fontFamily, fontSize, lineHeight, showVerseNumbers } =
-    useBibleReaderContext();
+  const {
+    book,
+    chapter,
+    versionId,
+    currentFontSize,
+    currentFontFamily,
+    lineHeight,
+    showVerseNumbers,
+  } = useBibleReaderContext();
   const { books } = useBooks(versionId);
   const { version } = useVersion(versionId);
 
@@ -148,14 +177,17 @@ function Content() {
       <BibleTextView
         reference={usfmReference}
         versionId={versionId}
-        fontFamily={fontFamily}
-        fontSize={fontSize}
+        fontFamily={currentFontFamily}
+        fontSize={currentFontSize}
         lineHeight={lineHeight}
         showVerseNumbers={showVerseNumbers}
       />
 
       {version?.copyright && (
-        <footer className="yv:flex yv:flex-col yv:items-center yv:gap-2" style={{ fontSize }}>
+        <footer
+          className="yv:flex yv:flex-col yv:items-center yv:gap-2"
+          style={{ fontSize: currentFontSize }}
+        >
           <p className="yv:text-balance yv:text-[0.75em] yv:text-center yv:text-muted-foreground">
             {version.copyright}
           </p>
@@ -176,8 +208,18 @@ function Content() {
 }
 
 function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
-  const { book, chapter, versionId, setBook, setChapter, setVersionId, background } =
-    useBibleReaderContext();
+  const {
+    book,
+    chapter,
+    versionId,
+    setBook,
+    setChapter,
+    setVersionId,
+    currentFontFamily,
+    setCurrentFontFamily,
+    setCurrentFontSize,
+    background,
+  } = useBibleReaderContext();
 
   return (
     <section
@@ -187,7 +229,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
         border === 'bottom' && 'yv:border-b',
       )}
     >
-      <div className="yv:grid yv:w-full yv:grid-cols-2 yv:items-center yv:max-w-lg yv:gap-1">
+      <div className="yv:grid yv:w-full yv:grid-cols-7 yv:items-center yv:max-w-lg yv:gap-1">
         <BibleChapterPicker.Root
           book={book}
           chapter={chapter}
@@ -196,7 +238,10 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
           versionId={versionId}
           background={background}
         >
-          <BibleChapterPicker.Trigger aria-label="Change Bible book and chapter">
+          <BibleChapterPicker.Trigger
+            className="yv:col-span-2 yv:col-start-2"
+            aria-label="Change Bible book and chapter"
+          >
             {({ chapter, currentBook, loading }) => (
               <Button
                 variant="secondary"
@@ -214,7 +259,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
           onVersionChange={setVersionId}
           background={background}
         >
-          <BibleVersionPicker.Trigger aria-label="Change Bible version">
+          <BibleVersionPicker.Trigger className="yv:col-span-2" aria-label="Change Bible version">
             {({ version, loading }) => (
               <Button
                 variant="secondary"
@@ -227,6 +272,91 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
           </BibleVersionPicker.Trigger>
           <BibleVersionPicker.Content />
         </BibleVersionPicker.Root>
+        <Popover>
+          <PopoverTrigger className="yv:col-span-1">
+            <Button
+              aria-label="Settings"
+              className="yv:px-2 yv:py-1 yv:text-foreground"
+              variant="secondary"
+            >
+              <Settings size={24} />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent heading="Reader Settings" theme={background}>
+            <div className="yv:flex yv:flex-col yv:gap-7 yv:p-10">
+              <div className="yv:grid yv:grid-cols-2">
+                <Button
+                  className="yv:text-xs yv:text-black yv:dark:text-muted-foreground yv:rounded-l-[8px] yv:rounded-r-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
+                  onClick={() => setCurrentFontSize((prev) => (prev -= 2))}
+                  size="lg"
+                  variant="secondary"
+                  data-testid="decrease-font-size"
+                >
+                  A
+                </Button>
+                <Button
+                  className="yv:text-3xl yv:text-black yv:dark:text-muted-foreground yv:rounded-r-[8px] yv:rounded-l-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
+                  onClick={() => setCurrentFontSize((prev) => (prev += 2))}
+                  size="lg"
+                  variant="secondary"
+                  data-testid="increase-font-size"
+                >
+                  A
+                </Button>
+              </div>
+              <div className="yv:grid yv:grid-cols-2">
+                <Button
+                  className={cn(
+                    'yv:group yv:dark:bg-muted yv:rounded-r-none yv:dark:border-border yv:rounded-l-[8px] yv:h-auto',
+                    currentFontFamily === 'Inter'
+                      ? 'yv:bg-black yv:dark:bg-inherit yv:text-white yv:hover:text-white yv:hover:bg-black/80'
+                      : '',
+                  )}
+                  onClick={() => setCurrentFontFamily('Inter')}
+                  variant="outline"
+                >
+                  <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
+                    <span
+                      className={cn(
+                        'yv:text-xs yv:text-muted-foreground',
+                        currentFontFamily === 'Inter'
+                          ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
+                          : '',
+                      )}
+                    >
+                      Font
+                    </span>
+                    <span className="yv:text-xl">Inter</span>
+                  </div>
+                </Button>
+                <Button
+                  className={cn(
+                    'yv:group yv:dark:bg-muted yv:rounded-l-none yv:rounded-r-[8px] yv:h-auto',
+                    currentFontFamily === 'Source Serif'
+                      ? 'yv:bg-black yv:dark:bg-inherit yv:text-white yv:hover:text-white yv:hover:bg-black/80'
+                      : '',
+                  )}
+                  onClick={() => setCurrentFontFamily('Source Serif')}
+                  variant="outline"
+                >
+                  <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
+                    <span
+                      className={cn(
+                        'yv:text-xs yv:text-muted-foreground',
+                        currentFontFamily === 'Source Serif'
+                          ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
+                          : '',
+                      )}
+                    >
+                      Font
+                    </span>
+                    <span className="yv:text-xl yv:font-serif">Source Serif</span>
+                  </div>
+                </Button>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
     </section>
   );

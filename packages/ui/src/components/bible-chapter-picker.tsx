@@ -10,7 +10,7 @@ import {
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import { useBooks, useTheme } from '@youversion/platform-react-hooks';
 import { type BibleBook } from '@youversion/platform-core';
-import { Info, Search, XIcon } from 'lucide-react';
+import { Info, Search } from 'lucide-react';
 import { Button } from './ui/button';
 import { Popover, PopoverTrigger, PopoverContent, PopoverClose } from './ui/popover';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/accordion';
@@ -137,26 +137,7 @@ function Root({
         {children}
 
         {/* data-yv-sdk for styles is needed because the popover gets rendered outside of the providers scope **/}
-        <PopoverContent
-          data-yv-sdk
-          data-yv-theme={theme}
-          side="top"
-          className="yv:grid yv:grid-rows-[auto_1fr_auto] yv:bg-background yv:p-0 yv:h-full yv:max-h-[66vh] yv:w-96 yv:sm:w-sm yv:overflow-hidden yv:rounded-2xl yv:border-0 yv:shadow-lg"
-        >
-          <section className="yv:bg-muted yv:py-3 yv:w-full yv:rounded-t-2xl yv:px-4 yv:border-b yv:border-border yv:flex yv:flex-row yv:justify-between">
-            <h2 className="yv:font-bold yv:text-base">Books</h2>
-            <PopoverClose asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="yv:w-6 yv:h-6 yv:text-muted-foreground"
-              >
-                <XIcon />
-                <span className="yv:sr-only">Close</span>
-              </Button>
-            </PopoverClose>
-          </section>
-
+        <PopoverContent heading="Books" theme={theme} side="top">
           <Accordion
             className="yv:relative yv:overflow-y-auto yv:bg-background yv:px-6"
             type="single"
