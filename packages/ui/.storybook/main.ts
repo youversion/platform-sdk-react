@@ -4,7 +4,12 @@ import { fileURLToPath } from 'url';
 
 const config: StorybookConfig = {
   stories: ['../src/**/*.mdx', '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
-  addons: ['@storybook/addon-docs', '@storybook/addon-onboarding', '@storybook/addon-vitest'],
+  addons: [
+    '@storybook/addon-docs',
+    '@storybook/addon-onboarding',
+    '@storybook/addon-vitest',
+    { name: '@storybook/addon-coverage', options: { istanbul: { include: ['**/stories/**'] } } },
+  ],
   framework: '@storybook/react-vite',
   staticDirs: ['../public'], // This is for Storybook mock service worker
   viteFinal: (config) => {

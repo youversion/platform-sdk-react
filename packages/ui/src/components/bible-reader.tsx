@@ -287,7 +287,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
               <div className="yv:grid yv:grid-cols-2">
                 <Button
                   className="yv:text-xs yv:text-black yv:dark:text-muted-foreground yv:rounded-l-[8px] yv:rounded-r-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
-                  onClick={() => setCurrentFontSize((prev) => (prev -= 2))}
+                  onClick={() => setCurrentFontSize((prev) => prev - 2)}
                   size="lg"
                   variant="secondary"
                   data-testid="decrease-font-size"
@@ -296,7 +296,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                 </Button>
                 <Button
                   className="yv:text-3xl yv:text-black yv:dark:text-muted-foreground yv:rounded-r-[8px] yv:rounded-l-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
-                  onClick={() => setCurrentFontSize((prev) => (prev += 2))}
+                  onClick={() => setCurrentFontSize((prev) => prev + 2)}
                   size="lg"
                   variant="secondary"
                   data-testid="increase-font-size"

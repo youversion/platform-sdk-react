@@ -127,7 +127,9 @@ export const InteractiveLanguageSelection: Story = {
     const koreanOption = await screen.findByRole('listitem', { name: /korean/i });
     await userEvent.click(koreanOption);
 
-    await expect(languageButton).toHaveTextContent(/korean/i);
+    await expect(await screen.findByRole('button', { name: /select language/i })).toHaveTextContent(
+      /korean/i,
+    );
     await userEvent.click(languageButton);
   },
 };

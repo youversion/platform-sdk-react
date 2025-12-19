@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, screen, userEvent, waitFor } from 'storybook/test';
 import { BibleReader } from './bible-reader';
 
 const meta: Meta<typeof BibleReader.Root> = {
@@ -6,6 +7,9 @@ const meta: Meta<typeof BibleReader.Root> = {
   component: BibleReader.Root,
   parameters: {
     layout: 'fullscreen',
+  },
+  beforeEach: () => {
+    localStorage.clear();
   },
   argTypes: {
     versionId: {
@@ -45,6 +49,7 @@ type Story = StoryObj<typeof BibleReader.Root>;
  * Default uncontrolled story: Component manages its own state with John 1 NIV as default
  */
 export const Default: Story = {
+  tags: ['integration'],
   args: {
     versionId: 111,
     fontSize: 16,
@@ -61,6 +66,49 @@ export const Default: Story = {
       </BibleReader.Root>
     </div>
   ),
+  play: async ({ canvasElement }) => {
+    await waitFor(
+      async () => {
+        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(verseContainer).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+    await expect(verseContainer).toBeInTheDocument();
+
+    const themeContainer = canvasElement.querySelector('[data-yv-theme="light"]');
+    await expect(themeContainer).toBeInTheDocument();
+
+    const settingsButton = screen.getByRole('button', { name: /settings/i });
+    await userEvent.click(settingsButton);
+
+    await waitFor(async () => {
+      await expect(await screen.findByText('Reader Settings')).toBeInTheDocument();
+    });
+
+    const fontButtons = screen.getAllByRole('button', { name: /font/i });
+    await expect(fontButtons.length).toBe(2);
+
+    const decreaseFontButton = screen.getByTestId('decrease-font-size');
+    const increaseFontButton = screen.getByTestId('increase-font-size');
+
+    await userEvent.click(increaseFontButton);
+    await expect(localStorage.getItem('font-size')).toBe('18');
+
+    await userEvent.click(decreaseFontButton);
+    await expect(localStorage.getItem('font-size')).toBe('16');
+
+    const interButton = screen.getByRole('button', { name: /inter/i });
+    const sourceSerifButton = screen.getByRole('button', { name: /source serif/i });
+
+    await userEvent.click(sourceSerifButton);
+    await expect(localStorage.getItem('font-family')).toBe('Source Serif');
+
+    await userEvent.click(interButton);
+    await expect(localStorage.getItem('font-family')).toBe('Inter');
+  },
 };
 
 /**

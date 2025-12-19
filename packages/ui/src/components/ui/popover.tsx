@@ -29,7 +29,7 @@ function PopoverContent({
 }: React.ComponentProps<typeof PopoverPrimitive.Content> & {
   heading?: string;
   headerChild?: React.ReactNode;
-  theme: 'light' | 'dark';
+  theme?: 'light' | 'dark';
 }): React.ReactNode {
   return (
     <PopoverPrimitive.Portal>
