@@ -1,36 +1,13 @@
 import { mockGenesisChapters } from './MockChapters';
 
-export const mockBibleGenesis = {
-  id: 'GEN',
-  title: 'Genesis',
-  full_title: 'The First Book of Moses, Called Genesis',
-  abbreviation: 'Gen',
-  canon: 'old_testament',
-  chapters: mockGenesisChapters,
-};
-export const mockBibleBooks = [
+const baseBibleBooks = [
   {
     id: 'GEN',
     title: 'Genesis',
     full_title: 'The First Book of Moses, Called Genesis',
     abbreviation: 'Gen',
     canon: 'old_testament',
-    chapters: Array.from({ length: 50 }, (_, i) => {
-      const chapterNumber = i + 1;
-      return {
-        id: chapterNumber.toString(),
-        passage_id: `GEN.${chapterNumber}`,
-        title: chapterNumber.toString(),
-        verses: Array.from({ length: 31 }, (_, j) => {
-          const verseNumber = j + 1;
-          return {
-            id: verseNumber.toString(),
-            passage_id: `GEN.${chapterNumber}.${verseNumber}`,
-            title: verseNumber.toString(),
-          };
-        }),
-      };
-    }),
+    chapters: mockGenesisChapters,
   },
   {
     id: 'EXO',
@@ -1528,3 +1505,15 @@ export const mockBibleBooks = [
     }),
   },
 ];
+
+const addIntro = <T extends { id: string }>(book: T) => ({
+  ...book,
+  intro: {
+    id: 'INTRO',
+    passage_id: `${book.id}.INTRO`,
+    title: 'Intro',
+  },
+});
+
+export const mockBibleBooks = baseBibleBooks.map(addIntro);
+export const mockBibleGenesis = mockBibleBooks[0];
