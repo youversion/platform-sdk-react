@@ -12,7 +12,7 @@ import {
 } from '@youversion/platform-core';
 
 export function useLanguages(
-  options: GetLanguagesOptions,
+  options: GetLanguagesOptions = {},
   apiOptions?: UseApiDataOptions,
 ): {
   languages: Collection<Language> | null;

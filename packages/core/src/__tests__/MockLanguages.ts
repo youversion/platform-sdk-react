@@ -76,8 +76,8 @@ export const mockLanguages: Language[] = [
     speaking_population: 8000000,
     default_bible_version_id: null,
   },
-  // Add more languages to reach 25 for default page size when filtering by 'US'
-  ...Array.from({ length: 24 }, (_, i) => ({
+  // Add more languages to exceed the maximum page size and exercise pagination
+  ...Array.from({ length: 120 }, (_, i) => ({
     id: `lang${i + 1}`,
     language: `lang${i + 1}`,
     script: 'Latn',
@@ -86,7 +86,7 @@ export const mockLanguages: Language[] = [
     display_names: {},
     scripts: ['Latn'],
     variants: [],
-    countries: ['US'],
+    countries: i % 2 === 0 ? ['US', 'CA'] : ['BR'],
     text_direction: 'ltr' as const,
     writing_population: 1000000,
     speaking_population: 1000000,

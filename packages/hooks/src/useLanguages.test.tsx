@@ -167,7 +167,25 @@ describe('useLanguages', () => {
   });
 
   describe('fetching languages', () => {
-    it('should fetch languages with required country', async () => {
+    it('should fetch languages without country filter', async () => {
+      const wrapper = createWrapper({
+        appKey: mockAppKey,
+      });
+
+      const { result } = renderHook(() => useLanguages(), { wrapper });
+
+      expect(result.current.loading).toBe(true);
+      expect(result.current.languages).toBe(null);
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(mockGetLanguages).toHaveBeenCalledWith({});
+      expect(result.current.languages).toEqual(mockLanguages);
+    });
+
+    it('should fetch languages with provided country', async () => {
       const wrapper = createWrapper({
         appKey: mockAppKey,
       });

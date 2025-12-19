@@ -17,22 +17,23 @@ describe('LanguagesClient', () => {
   });
 
   describe('getLanguages', () => {
-    it('should fetch languages with required country param', async () => {
-      const languages = await languagesClient.getLanguages({ country: 'US' });
+    it('should fetch languages without country filter', async () => {
+      const languages = await languagesClient.getLanguages({ page_size: 99 });
 
       const { success } = LanguageSchema.safeParse(languages.data[0]);
       expect(success).toBe(true);
-      expect(languages.data).toHaveLength(25);
-      expect(languages.data[0]).toHaveProperty('countries', expect.arrayContaining(['US']));
+      expect(languages.data).toHaveLength(99);
+      expect(languages.next_page_token).not.toBeNull();
     });
 
-    it('should fetch languages with page_size option', async () => {
-      const languages = await languagesClient.getLanguages({ country: 'US', page_size: 10 });
+    it('should fetch languages with country filter', async () => {
+      const languages = await languagesClient.getLanguages({ country: 'US', page_size: 20 });
 
       const { success } = LanguageSchema.safeParse(languages.data[0]);
       expect(success).toBe(true);
-      expect(languages.data).toHaveLength(10);
-      expect(languages.next_page_token).toBe('eyJzdGFydCI6IDEwfQ==');
+      expect(languages.data).toHaveLength(20);
+      expect(languages.data.every((language) => language.countries?.includes('US'))).toBe(true);
+      expect(languages.next_page_token).not.toBeNull();
     });
 
     it('should throw an error for invalid country code - empty string', async () => {
