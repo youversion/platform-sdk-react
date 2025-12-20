@@ -91,21 +91,26 @@ function Root({
   });
 
   const [currentFontSize, setCurrentFontSize] = useState(() => {
+    if (fontSize > 20 || fontSize < 12) fontSize = 16;
     if (typeof window === 'undefined') return fontSize;
-    const size = localStorage.getItem('font-size');
+    const size = localStorage.getItem('youversion-platform:reader:font-size');
     return size ? parseInt(size) : fontSize;
   });
 
   const [currentFontFamily, setCurrentFontFamily] = useState(() => {
     if (typeof window === 'undefined') return fontFamily;
-    return localStorage.getItem('font-family') || fontFamily;
+    return localStorage.getItem('youversion-platform:reader:font-family') || fontFamily;
   });
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    localStorage.setItem('font-size', currentFontSize.toString());
-    localStorage.setItem('font-family', currentFontFamily);
-  }, [currentFontSize, currentFontFamily]);
+    localStorage.setItem('youversion-platform:reader:font-size', currentFontSize.toString());
+  }, [currentFontSize]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('youversion-platform:reader:font-family', currentFontFamily);
+  }, [currentFontFamily]);
 
   const providerTheme = useTheme();
   const theme = background || providerTheme;
@@ -287,7 +292,12 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
               <div className="yv:grid yv:grid-cols-2">
                 <Button
                   className="yv:text-xs yv:text-black yv:dark:text-muted-foreground yv:rounded-l-[8px] yv:rounded-r-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
-                  onClick={() => setCurrentFontSize((prev) => prev - 2)}
+                  onClick={() =>
+                    setCurrentFontSize((prev) => {
+                      if (prev > 12) return prev - 2;
+                      return prev;
+                    })
+                  }
                   size="lg"
                   variant="secondary"
                   data-testid="decrease-font-size"
@@ -296,7 +306,12 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                 </Button>
                 <Button
                   className="yv:text-3xl yv:text-black yv:dark:text-muted-foreground yv:rounded-r-[8px] yv:rounded-l-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
-                  onClick={() => setCurrentFontSize((prev) => prev + 2)}
+                  onClick={() =>
+                    setCurrentFontSize((prev) => {
+                      if (prev < 20) return prev + 2;
+                      return prev;
+                    })
+                  }
                   size="lg"
                   variant="secondary"
                   data-testid="increase-font-size"
