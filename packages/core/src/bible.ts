@@ -50,17 +50,23 @@ export class BibleClient {
   /**
    * Fetches a collection of Bible versions filtered by language ranges.
    *
-   * @param language_ranges - A comma-separated list of language codes or ranges to filter the versions (required).
+   * @param language_ranges - One or more language codes or ranges to filter the versions (required).
    * @param license_id - Optional license ID to filter versions by license.
    * @returns A promise that resolves to a collection of BibleVersion objects.
    */
   async getVersions(
-    language_ranges: string,
+    language_ranges: string | string[],
     license_id?: string | number,
   ): Promise<Collection<BibleVersion>> {
-    this.languageRangesSchema.parse(language_ranges);
-    const params: Record<string, string | number> = {
-      'language_ranges[]': language_ranges,
+    const languageRangeArray = Array.isArray(language_ranges) ? language_ranges : [language_ranges];
+
+    const parsedLanguageRanges = z
+      .array(this.languageRangesSchema)
+      .nonempty('At least one language range is required')
+      .parse(languageRangeArray);
+
+    const params: Record<string, string | number | string[]> = {
+      'language_ranges[]': parsedLanguageRanges,
     };
     if (license_id !== undefined) {
       params.license_id = license_id;
@@ -82,7 +88,9 @@ export class BibleClient {
    * Fetches all books for a given Bible version.
    * @param versionId The version ID.
    * @param canon Optional canon filter ("old_testament", 'new_testament', 'deuterocanon').
-   * @returns An array of BibleBook objects.
+   * @returns An array of BibleBook objects. Each book may include an optional `intro` field
+   *          containing metadata (id, passage_id, title) for the book's introduction when
+   *          available in the Bible version.
    */
   async getBooks(versionId: number, canon?: CANON): Promise<Collection<BibleBook>> {
     this.versionIdSchema.parse(versionId);
@@ -95,7 +103,9 @@ export class BibleClient {
    * Fetches a specific book by USFM code for a given version.
    * @param versionId The version ID.
    * @param book The Book Identifier code of the book.
-   * @returns The requested BibleBook object.
+   * @returns The requested BibleBook object, which may include an optional `intro` field
+   *          containing metadata (id, passage_id, title) for the book's introduction when
+   *          available. Use the `passage_id` with `getPassage()` to fetch intro content.
    */
   async getBook(versionId: number, book: string): Promise<BibleBook> {
     this.versionIdSchema.parse(versionId);

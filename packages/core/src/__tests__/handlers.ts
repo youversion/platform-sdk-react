@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import type { Collection, Highlight, Language } from '../types';
-import { mockLanguages } from './MockLangauges';
+import { mockLanguages } from './MockLanguages';
 import { mockVersions, mockVersionKJV } from './MockVersions';
 import { mockBibleGenesis, mockBibleBooks } from './MockBibles';
 import { mockChapterGenesis1, mockGenesisChapters } from './MockChapters';

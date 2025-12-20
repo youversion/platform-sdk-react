@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { http, HttpResponse } from 'msw';
 import { ApiClient } from '../client';
 import { BibleClient } from '../bible';
 import {
@@ -9,6 +10,8 @@ import {
   BibleVersionSchema,
   VOTDSchema,
 } from '../schemas';
+import { server } from './setup';
+import { mockVersions } from './MockVersions';
 
 describe('BibleClient', () => {
   let apiClient: ApiClient;
@@ -34,12 +37,59 @@ describe('BibleClient', () => {
       expect(hasNIV).toBe(true);
     });
 
+    it('should send multiple language ranges when provided', async () => {
+      server.use(
+        http.get('https://api.youversion.com/v1/bibles', ({ request }) => {
+          const url = new URL(request.url);
+          const languageRanges = url.searchParams.getAll('language_ranges[]');
+
+          expect(languageRanges).toEqual(['en*', 'es*']);
+
+          return HttpResponse.json({
+            data: mockVersions,
+            next_page_token: null,
+            total_size: mockVersions.length,
+          });
+        }),
+      );
+
+      const versions = await bibleClient.getVersions(['en*', 'es*']);
+
+      const { success } = BibleVersionSchema.safeParse(versions.data[0]);
+      expect(success).toBe(true);
+    });
+
+    it('should accept a wildcard language range', async () => {
+      server.use(
+        http.get('https://api.youversion.com/v1/bibles', ({ request }) => {
+          const url = new URL(request.url);
+          const languageRanges = url.searchParams.getAll('language_ranges[]');
+
+          expect(languageRanges).toEqual(['*']);
+
+          return HttpResponse.json({
+            data: mockVersions,
+            next_page_token: null,
+            total_size: mockVersions.length,
+          });
+        }),
+      );
+
+      const versions = await bibleClient.getVersions('*');
+
+      const { success } = BibleVersionSchema.safeParse(versions.data[0]);
+      expect(success).toBe(true);
+    });
+
     it('should throw an error for invalid language ranges', async () => {
       await expect(bibleClient.getVersions('')).rejects.toThrow(
         'Language ranges must be a non-empty string',
       );
       await expect(bibleClient.getVersions('   ')).rejects.toThrow(
         'Language ranges must be a non-empty string',
+      );
+      await expect(bibleClient.getVersions([])).rejects.toThrow(
+        'At least one language range is required',
       );
     });
   });
@@ -77,6 +127,11 @@ describe('BibleClient', () => {
       expect(books.data[0]).toHaveProperty('title', 'Genesis');
       expect(books.data[0]).toHaveProperty('full_title', 'The First Book of Moses, Called Genesis');
       expect(books.data[0]).toHaveProperty('abbreviation', 'Gen');
+      expect(books.data[0]?.intro).toEqual({
+        id: 'INTRO',
+        passage_id: 'GEN.INTRO',
+        title: 'Intro',
+      });
       expect(books.data[0]).toHaveProperty('canon', 'old_testament');
       expect(books.data[0]?.chapters).toHaveLength(50);
     });
@@ -93,6 +148,12 @@ describe('BibleClient', () => {
       expect(book).toHaveProperty('id', 'GEN');
       expect(book).toHaveProperty('title', 'Genesis');
       expect(book).toHaveProperty('abbreviation', 'Gen');
+      expect(book).toHaveProperty('intro');
+      expect(book.intro).toEqual({
+        id: 'INTRO',
+        passage_id: 'GEN.INTRO',
+        title: 'Intro',
+      });
       expect(book).toHaveProperty('canon', 'old_testament');
     });
 

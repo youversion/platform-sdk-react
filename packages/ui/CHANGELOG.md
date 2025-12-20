@@ -1,5 +1,51 @@
 # @youversion/platform-react-ui
 
+## 1.3.0
+
+### Minor Changes
+
+- b2b86c2: Add support for array query parameters in API client and improve language range handling
+  - **API Client**: Enhanced query string serialization to support array parameters, properly formatting them as repeated keys (e.g., `?param=one&param=two`)
+  - **Bible Client**: Updated `getVersions()` method to accept either a single language range string or an array of language ranges, providing more flexibility for filtering Bible versions
+  - **Schema**: Renamed language range schema to use plural naming convention for consistency
+  - **Testing**: Added comprehensive test coverage for query string building with both scalar and array parameters
+
+  This change maintains backward compatibility while providing more flexible API parameter handling.
+
+### Patch Changes
+
+- Updated dependencies [b2b86c2]
+  - @youversion/platform-core@1.3.0
+  - @youversion/platform-react-hooks@1.3.0
+
+## 1.2.1
+
+### Patch Changes
+
+- e845974: fix: make country parameter optional for getLanguages
+
+  The country parameter is now optional when fetching languages, allowing developers to retrieve all available languages without filtering by country. This improves developer experience by providing a more flexible API while maintaining backward compatibility for existing code that provides a country filter.
+
+- Updated dependencies [e845974]
+  - @youversion/platform-core@1.2.1
+  - @youversion/platform-react-hooks@1.2.1
+
+## 1.2.0
+
+### Minor Changes
+
+- a8a5dd7: feat: Add intro metadata to BibleBook
+  - Added optional `intro` field to BibleBook schema for retrieving book introduction metadata
+  - The intro field includes `id`, `passage_id`, and `title` properties when available
+  - Simplified type definitions by removing duplicate type files and using Zod schemas as single source of truth
+  - Updated Bible mocks and tests to cover the new intro field
+
+### Patch Changes
+
+- Updated dependencies [a8a5dd7]
+  - @youversion/platform-core@1.2.0
+  - @youversion/platform-react-hooks@1.2.0
+
 ## 1.1.0
 
 ### Minor Changes
