@@ -106,11 +106,32 @@ export const handlers = [
   }),
 
   // Versions endpoints
-  http.get(`https://${apiHost}/v1/bibles`, () => {
+  http.get(`https://${apiHost}/v1/bibles`, ({ request }) => {
+    const url = new URL(request.url);
+    const pageSize = url.searchParams.get('page_size');
+    const pageToken = url.searchParams.get('page_token');
+
+    const defaultPageSize = 25;
+    const size = pageSize ? parseInt(pageSize, 10) : defaultPageSize;
+    let start = 0;
+
+    if (pageToken) {
+      try {
+        const decoded = JSON.parse(atob(pageToken)) as { start?: number };
+        start = decoded.start || 0;
+      } catch {
+        start = 0;
+      }
+    }
+
+    const end = start + size;
+    const paginatedVersions = mockVersions.slice(start, end);
+    const hasMore = end < mockVersions.length;
+
     return HttpResponse.json({
-      data: mockVersions,
-      next_page_token: null,
-      total_size: 14,
+      data: paginatedVersions,
+      next_page_token: hasMore ? btoa(JSON.stringify({ start: end })) : null,
+      total_size: mockVersions.length,
     });
   }),
 
@@ -127,7 +148,7 @@ export const handlers = [
     return HttpResponse.json(mockBibleGenesis);
   }),
 
-  // Chaper endpoints
+  // Chapter endpoints
   http.get(`https://${apiHost}/v1/bibles/:bible_id/books/:book_id/chapters`, () => {
     return HttpResponse.json({ data: mockGenesisChapters });
   }),

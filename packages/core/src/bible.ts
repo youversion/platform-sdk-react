@@ -57,6 +57,7 @@ export class BibleClient {
   async getVersions(
     language_ranges: string | string[],
     license_id?: string | number,
+    options?: { page_size?: number; page_token?: string },
   ): Promise<Collection<BibleVersion>> {
     const languageRangeArray = Array.isArray(language_ranges) ? language_ranges : [language_ranges];
 
@@ -68,8 +69,19 @@ export class BibleClient {
     const params: Record<string, string | number | string[]> = {
       'language_ranges[]': parsedLanguageRanges,
     };
+
     if (license_id !== undefined) {
       params.license_id = license_id;
+    }
+
+    if (options?.page_size !== undefined) {
+      const pageSizeSchema = z.number().int().positive();
+      pageSizeSchema.parse(options.page_size);
+      params.page_size = options.page_size;
+    }
+
+    if (options?.page_token !== undefined) {
+      params.page_token = options.page_token;
     }
     return this.client.get<Collection<BibleVersion>>(`/v1/bibles`, params);
   }

@@ -32,7 +32,11 @@ describe('LanguagesClient', () => {
       const { success } = LanguageSchema.safeParse(languages.data[0]);
       expect(success).toBe(true);
       expect(languages.data).toHaveLength(20);
-      expect(languages.data.every((language) => language.countries?.includes('US'))).toBe(true);
+      /** This is not true, it will always return the number provided in page_size
+       *  and it will put the ones that have the country in their countries array
+       *  at the top of the list.
+       */
+      // expect(languages.data.every((language) => language.countries?.includes('US'))).toBe(true);
       expect(languages.next_page_token).not.toBeNull();
     });
 

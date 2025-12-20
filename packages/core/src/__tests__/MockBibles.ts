@@ -4,8 +4,8 @@ const baseBibleBooks = [
   {
     id: 'GEN',
     title: 'Genesis',
-    full_title: 'The First Book of Moses, Called Genesis',
-    abbreviation: 'Gen',
+    full_title: 'Genesis',
+    abbreviation: 'Gen.',
     canon: 'old_testament',
     chapters: mockGenesisChapters,
   },
