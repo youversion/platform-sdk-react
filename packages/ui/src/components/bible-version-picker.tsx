@@ -45,7 +45,9 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
       if (!element) return 20;
 
       const containerWidth = container.offsetWidth;
+      const containerHeight = container.offsetHeight;
       const targetWidth = containerWidth * 0.7;
+      const maxHeight = containerHeight * 0.4;
 
       let currentSize = 20;
       let ratio = 1;
@@ -53,9 +55,12 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
       for (let i = 0; i < 5; i++) {
         element.style.fontSize = `${currentSize}px`;
         const currentWidth = element.scrollWidth;
+        const currentHeight = element.offsetHeight;
 
         if (currentWidth > 0) {
-          ratio = targetWidth / currentWidth;
+          const widthRatio = targetWidth / currentWidth;
+          const heightRatio = maxHeight / currentHeight;
+          ratio = Math.min(widthRatio, heightRatio);
           currentSize = currentSize * ratio;
         }
       }
@@ -86,11 +91,15 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
       ref={containerRef}
       className="yv:flex yv:flex-col yv:w-full yv:h-full yv:px-2 yv:font-serif yv:leading-none yv:font-bold yv:items-center yv:justify-center"
     >
-      <div ref={prefixRef} style={{ fontSize: `${prefixSize}px` }}>
+      <div ref={prefixRef} className="yv:whitespace-nowrap" style={{ fontSize: `${prefixSize}px` }}>
         {prefix}
       </div>
       {digits && (
-        <div ref={digitsRef} style={{ fontSize: `${digitsSize}px` }}>
+        <div
+          ref={digitsRef}
+          className="yv:whitespace-nowrap"
+          style={{ fontSize: `${digitsSize}px` }}
+        >
           {digits}
         </div>
       )}
