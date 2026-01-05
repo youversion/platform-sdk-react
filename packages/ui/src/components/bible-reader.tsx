@@ -55,6 +55,10 @@ export type RootProps = {
   children?: ReactNode;
 };
 
+const MIN_FONT_SIZE = 12;
+const MAX_FONT_SIZE = 20;
+const DEFAULT_FONT_SIZE = 16;
+
 function Root({
   book: controlledBook,
   defaultBook = 'JHN',
@@ -66,7 +70,7 @@ function Root({
   defaultVersionId = 111,
   onVersionChange,
   fontFamily = 'Inter',
-  fontSize = 16,
+  fontSize = DEFAULT_FONT_SIZE,
   lineHeight,
   showVerseNumbers = true,
   background,
@@ -91,10 +95,11 @@ function Root({
   });
 
   const [currentFontSize, setCurrentFontSize] = useState(() => {
-    if (fontSize > 20 || fontSize < 12) fontSize = 16;
-    if (typeof window === 'undefined') return fontSize;
+    const validatedFontSize =
+      fontSize > MAX_FONT_SIZE || fontSize < MIN_FONT_SIZE ? DEFAULT_FONT_SIZE : fontSize;
+    if (typeof window === 'undefined') return validatedFontSize;
     const size = localStorage.getItem('youversion-platform:reader:font-size');
-    return size ? parseInt(size) : fontSize;
+    return size ? parseInt(size) : validatedFontSize;
   });
 
   const [currentFontFamily, setCurrentFontFamily] = useState(() => {
@@ -294,7 +299,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                   className="yv:text-xs yv:text-black yv:dark:text-muted-foreground yv:rounded-l-[8px] yv:rounded-r-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
                   onClick={() =>
                     setCurrentFontSize((prev) => {
-                      if (prev > 12) return prev - 2;
+                      if (prev > MIN_FONT_SIZE) return prev - 2;
                       return prev;
                     })
                   }
@@ -308,7 +313,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                   className="yv:text-3xl yv:text-black yv:dark:text-muted-foreground yv:rounded-r-[8px] yv:rounded-l-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
                   onClick={() =>
                     setCurrentFontSize((prev) => {
-                      if (prev < 20) return prev + 2;
+                      if (prev < MAX_FONT_SIZE) return prev + 2;
                       return prev;
                     })
                   }
