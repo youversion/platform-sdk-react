@@ -78,6 +78,7 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
 
     const resizeObserver = new ResizeObserver(updateSizes);
     resizeObserver.observe(container);
+    updateSizes();
 
     return () => {
       resizeObserver.disconnect();
