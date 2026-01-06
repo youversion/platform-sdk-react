@@ -1,5 +1,13 @@
 # @youversion/platform-react-hooks
 
+## 1.5.1
+
+### Patch Changes
+
+- d0d596c: feat(ui): update Bible version picker to fit container bounds
+- Updated dependencies [d0d596c]
+  - @youversion/platform-core@1.5.1
+
 ## 1.5.0
 
 ### Minor Changes
