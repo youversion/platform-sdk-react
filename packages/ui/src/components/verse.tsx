@@ -12,10 +12,8 @@ import {
 import { createPortal } from 'react-dom';
 import DOMPurify from 'isomorphic-dompurify';
 import { usePassage } from '@youversion/platform-react-hooks';
-import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from '@/components/ui/popover';
-import { Button } from './ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Footnote } from './icons/footnote';
-import { X as XIcon } from 'lucide-react';
 
 const NON_BREAKING_SPACE = '\u00A0';
 
@@ -136,16 +134,10 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
           <Footnote />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="yv:flex yv:flex-col yv:bg-background yv:p-0 yv:sm:w-sm yv:overflow-hidden yv:rounded-2xl yv:border-0 yv:shadow-lg">
-        <div className="yv:flex yv:justify-between yv:items-center yv:bg-secondary yv:p-2 yv:font-bold">
-          Footnotes
-          <PopoverClose asChild>
-            <Button variant="ghost" size="icon" className="yv:w-8 yv:h-8 yv:text-muted-foreground">
-              <XIcon size={16} />
-              <span className="yv:sr-only">Close footnotes</span>
-            </Button>
-          </PopoverClose>
-        </div>
+      <PopoverContent
+        className="yv:flex yv:flex-col yv:bg-background yv:p-0 yv:sm:w-sm yv:overflow-hidden yv:rounded-2xl yv:border-0 yv:shadow-lg"
+        heading="Footnotes"
+      >
         <div className="yv:p-3">
           <div className="yv:font-bold yv:mb-2">{verseReference}</div>
           <div
