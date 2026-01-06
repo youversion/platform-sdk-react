@@ -65,6 +65,7 @@
   "devDependencies": {
     "@internal/eslint-config": "workspace:*",
     "@internal/tsconfig": "workspace:*",
+    "@storybook/addon-coverage": "^3.0.0",
     "@storybook/addon-docs": "10.0.0",
     "@storybook/addon-onboarding": "10.0.0",
     "@storybook/addon-vitest": "10.0.0",

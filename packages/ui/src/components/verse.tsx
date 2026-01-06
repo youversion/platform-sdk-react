@@ -127,10 +127,7 @@ function VerseFootnoteButton({
           <Footnote />
         </button>
       </PopoverTrigger>
-      <PopoverContent
-        data-yv-sdk
-        className="yv:flex yv:flex-col yv:bg-background yv:p-0 yv:sm:w-sm yv:overflow-hidden yv:rounded-2xl yv:border-0 yv:shadow-lg"
-      >
+      <PopoverContent className="yv:flex yv:flex-col yv:bg-background yv:p-0 yv:sm:w-sm yv:overflow-hidden yv:rounded-2xl yv:border-0 yv:shadow-lg">
         <div className="yv:flex yv:justify-between yv:items-center yv:bg-secondary yv:p-2 yv:font-bold">
           Footnotes
           <PopoverClose asChild>

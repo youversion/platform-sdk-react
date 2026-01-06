@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, screen, userEvent, waitFor } from 'storybook/test';
 import { BibleReader } from './bible-reader';
 
 const meta: Meta<typeof BibleReader.Root> = {
@@ -7,13 +8,16 @@ const meta: Meta<typeof BibleReader.Root> = {
   parameters: {
     layout: 'fullscreen',
   },
+  beforeEach: () => {
+    localStorage.clear();
+  },
   argTypes: {
     versionId: {
       control: 'number',
       description: 'The Bible version ID to display',
     },
     fontSize: {
-      control: { type: 'range', min: 14, max: 24, step: 1 },
+      control: { type: 'range', min: 8, max: 24, step: 1 },
       description: 'Font size in pixels',
     },
     lineHeight: {
@@ -45,9 +49,9 @@ type Story = StoryObj<typeof BibleReader.Root>;
  * Default uncontrolled story: Component manages its own state with John 1 NIV as default
  */
 export const Default: Story = {
+  tags: ['integration'],
   args: {
     versionId: 111,
-    fontSize: 16,
     lineHeight: 1.6,
     fontFamily: "'Inter', sans-serif",
     showVerseNumbers: true,
@@ -61,6 +65,59 @@ export const Default: Story = {
       </BibleReader.Root>
     </div>
   ),
+  play: async ({ canvasElement }) => {
+    await waitFor(
+      async () => {
+        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(verseContainer).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+    await expect(verseContainer).toBeInTheDocument();
+
+    const themeContainer = canvasElement.querySelector('[data-yv-theme="light"]');
+    await expect(themeContainer).toBeInTheDocument();
+
+    const settingsButton = screen.getByRole('button', { name: /settings/i });
+    await userEvent.click(settingsButton);
+
+    await waitFor(async () => {
+      await expect(await screen.findByText('Reader Settings')).toBeInTheDocument();
+    });
+
+    const fontButtons = screen.getAllByRole('button', { name: /font/i });
+    await expect(fontButtons.length).toBe(2);
+
+    const decreaseFontButton = screen.getByTestId('decrease-font-size');
+    const increaseFontButton = screen.getByTestId('increase-font-size');
+
+    await userEvent.click(increaseFontButton);
+    await expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('18');
+    await userEvent.click(increaseFontButton);
+    await userEvent.click(increaseFontButton);
+    await expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('20');
+
+    await userEvent.click(decreaseFontButton);
+    await userEvent.click(decreaseFontButton);
+    await expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('16');
+    await userEvent.click(decreaseFontButton);
+    await userEvent.click(decreaseFontButton);
+    await userEvent.click(decreaseFontButton);
+    await expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('12');
+
+    const interButton = screen.getByRole('button', { name: /inter/i });
+    const sourceSerifButton = screen.getByRole('button', { name: /source serif/i });
+
+    await userEvent.click(sourceSerifButton);
+    await expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(
+      'Source Serif',
+    );
+
+    await userEvent.click(interButton);
+    await expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe('Inter');
+  },
 };
 
 /**
@@ -89,6 +146,7 @@ export const DarkTheme: Story = {
  * Custom styling with larger font and increased line height
  */
 export const CustomStyling: Story = {
+  tags: ['integration'],
   args: {
     versionId: 111,
     fontSize: 18,
@@ -105,6 +163,48 @@ export const CustomStyling: Story = {
       </BibleReader.Root>
     </div>
   ),
+  play: async ({ canvasElement }) => {
+    await waitFor(
+      async () => {
+        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(verseContainer).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    await expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('18');
+  },
+};
+
+export const FontSizeOutOfRange: Story = {
+  tags: ['integration'],
+  args: {
+    versionId: 111,
+    fontSize: 28,
+    lineHeight: 2.0,
+    fontFamily: "'Nunito Sans', sans-serif",
+    showVerseNumbers: false,
+    background: 'light',
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Toolbar border="bottom" />
+        <BibleReader.Content />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(
+      async () => {
+        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(verseContainer).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    await expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('16');
+  },
 };
 
 export const RealAPI: Story = {
