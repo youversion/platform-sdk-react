@@ -171,9 +171,17 @@ function HtmlWithNotes({
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const rootsRef = useRef<Map<string, Root>>(new Map());
+  const currentHtmlRef = useRef<string>('');
 
   useEffect(() => {
     if (!contentRef.current) return;
+
+    if (currentHtmlRef.current !== html) {
+      rootsRef.current.forEach((root) => root.unmount());
+      rootsRef.current.clear();
+      contentRef.current.innerHTML = html;
+      currentHtmlRef.current = html;
+    }
 
     const roots = rootsRef.current;
 
@@ -198,7 +206,7 @@ function HtmlWithNotes({
     };
   }, [html, notes, reference]);
 
-  return <div ref={contentRef} dangerouslySetInnerHTML={{ __html: html }} />;
+  return <div ref={contentRef} />;
 }
 
 // Configure DOMPurify to allow specific attributes safe for Bible content
