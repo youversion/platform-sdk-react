@@ -24,4 +24,4 @@ React integration layer providing 20+ data fetching hooks and 3 core providers.
 ## TESTING
 - Vitest with jsdom environment
 - React Testing Library for component tests
-- 9 test files covering hooks and providers
+- Many test files covering hooks and providers

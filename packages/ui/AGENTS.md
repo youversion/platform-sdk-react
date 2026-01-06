@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## OVERVIEW
-Complete UI layer with 7 Bible components: BibleTextView, VerseOfTheDay, BibleReader, BibleChapterPicker, BibleVersionPicker, YouVersionAuthButton, BibleWidgetView, BibleAppLogoLockup
+Complete UI layer with many Bible components: BibleTextView, VerseOfTheDay, BibleReader, BibleChapterPicker, BibleVersionPicker, YouVersionAuthButton, BibleWidgetView, BibleAppLogoLockup
 
 ## STRUCTURE
 ```

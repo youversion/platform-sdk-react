@@ -33,4 +33,4 @@ StorageStrategy.ts # Storage interface (SessionStorage, MemoryStorage)
 - Mocking: MSW for API endpoints
 - Integration: Set `INTEGRATION_TESTS=true` for real API tests
 - Coverage: @vitest/coverage-v8
-- Files: 12 test files covering all clients and auth
+- Files: Many test files covering all clients and auth
