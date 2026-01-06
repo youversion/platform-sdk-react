@@ -1,0 +1,43 @@
+{
+  "commentTypes": ["logic", "syntax", "style"],
+  "instructions": "Enforce project-specific review guidelines - see docs/review-guidelines.md for complete checklist",
+  "customContext": {
+    "rules": [
+      {
+        "scope": ["src/**/*.ts", "src/**/*.tsx", "packages/**/*.ts", "packages/**/*.tsx"],
+        "rule": "All components must use React.forwardRef and accept standard HTML attributes"
+      },
+      {
+        "scope": ["src/**"],
+        "rule": "Package dependencies must follow core → hooks → ui dependency order"
+      },
+      {
+        "scope": ["src/**"],
+        "rule": "Always use workspace:* protocol for internal dependencies"
+      },
+      {
+        "scope": ["src/**"],
+        "rule": "Schema-first: All types defined in schemas/*.ts using Zod"
+      },
+      {
+        "scope": ["packages/core/src/**"],
+        "rule": "Zero React: Pure TypeScript, no React dependencies"
+      },
+      {
+        "scope": ["packages/hooks/src/context/**"],
+        "rule": "Context and Provider in separate files, exported via context/index.ts"
+      },
+      {
+        "scope": ["packages/ui/src/**"],
+        "rule": "Auto-injected styles: index.ts calls injectStyles() on module load"
+      }
+    ],
+    "files": [
+      {
+        "scope": ["*"],
+        "path": "docs/review-guidelines.md",
+        "description": "Comprehensive review checklist for all pull requests"
+      }
+    ]
+  }
+}
