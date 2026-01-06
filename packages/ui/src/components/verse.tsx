@@ -3,7 +3,7 @@
 import { useEffect, forwardRef, useState, useRef, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import DOMPurify from 'isomorphic-dompurify';
-import { usePassage } from '@youversion/platform-react-hooks';
+import { usePassage, useTheme } from '@youversion/platform-react-hooks';
 import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from '@/components/ui/popover';
 import { Button } from './ui/button';
 import { Footnote } from './icons/footnote';
@@ -416,6 +416,7 @@ export type BibleTextViewProps = {
   versionId: number;
   showVerseNumbers?: boolean;
   renderNotes?: boolean;
+  theme?: 'light' | 'dark';
 };
 
 /**
@@ -429,6 +430,7 @@ export const BibleTextView = ({
   versionId,
   showVerseNumbers,
   renderNotes,
+  theme,
 }: BibleTextViewProps): React.ReactElement => {
   const { passage, loading, error } = usePassage({
     versionId,
@@ -436,42 +438,50 @@ export const BibleTextView = ({
     include_headings: true,
     include_notes: true,
   });
+  const providerTheme = useTheme();
+  const currentTheme = theme || providerTheme;
 
   if (loading) {
     return (
-      <Verse.Html
-        html={'<span>Loading...</span>'}
-        fontFamily={fontFamily}
-        fontSize={fontSize}
-        lineHeight={lineHeight}
-        showVerseNumbers={showVerseNumbers}
-        renderNotes={renderNotes}
-      />
+      <div data-yv-sdk data-yv-theme={currentTheme}>
+        <Verse.Html
+          html={'<span>Loading...</span>'}
+          fontFamily={fontFamily}
+          fontSize={fontSize}
+          lineHeight={lineHeight}
+          showVerseNumbers={showVerseNumbers}
+          renderNotes={renderNotes}
+        />
+      </div>
     );
   }
 
   if (error) {
     return (
+      <div data-yv-sdk data-yv-theme={currentTheme}>
+        <Verse.Html
+          html={'<span class="wj">We have run into an error...</span>'}
+          fontFamily={fontFamily}
+          fontSize={fontSize}
+          lineHeight={lineHeight}
+          showVerseNumbers={showVerseNumbers}
+          renderNotes={renderNotes}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div data-yv-sdk data-yv-theme={currentTheme}>
       <Verse.Html
-        html={'<span class="wj">We have run into an error...</span>'}
+        html={passage?.content || ''}
         fontFamily={fontFamily}
         fontSize={fontSize}
         lineHeight={lineHeight}
         showVerseNumbers={showVerseNumbers}
         renderNotes={renderNotes}
+        reference={passage?.reference}
       />
-    );
-  }
-
-  return (
-    <Verse.Html
-      html={passage?.content || ''}
-      fontFamily={fontFamily}
-      fontSize={fontSize}
-      lineHeight={lineHeight}
-      showVerseNumbers={showVerseNumbers}
-      renderNotes={renderNotes}
-      reference={passage?.reference}
-    />
+    </div>
   );
 };
