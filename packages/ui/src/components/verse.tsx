@@ -26,8 +26,9 @@ type ExtractedNotes = {
 function extractNotesFromHtml(html: string): ExtractedNotes {
   if (typeof window === 'undefined') return { html, notes: {} };
 
+  const sanitizedHtml = DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
   const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
+  const doc = parser.parseFromString(sanitizedHtml, 'text/html');
   const noteElements = doc.querySelectorAll('span.yv-n.f');
   const verseData: Record<string, { verseHtml: string; notes: string[]; elements: Element[] }> = {};
 
@@ -227,14 +228,13 @@ function yvDomTransformer(html: string, extractNotes: boolean = false): Extracte
     const result = extractNotesFromHtml(html);
     processedHtml = result.html;
     extractedNotes = result.notes;
+  } else {
+    processedHtml = DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
   }
-
-  // Sanitize HTML to remove any XSS payloads
-  const sanitizedHtml = DOMPurify.sanitize(processedHtml, DOMPURIFY_CONFIG);
 
   // Safely parse and modify HTML to add spaces to paragraph elements
   const parser = new DOMParser();
-  const doc = parser.parseFromString(sanitizedHtml, 'text/html');
+  const doc = parser.parseFromString(processedHtml, 'text/html');
 
   // Adds non-breaking space to the end of verse labels for better copying and pasting
   // (i.e. "3For God so loved..." to "3 For God so loved...")
