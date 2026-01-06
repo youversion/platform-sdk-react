@@ -27,6 +27,27 @@ describe('BibleClient', () => {
   });
 
   describe('getVersions', () => {
+    it('should fetch number of Bible versions specified by page_size param', async () => {
+      const versions = await bibleClient.getVersions('en*', undefined, { page_size: 11 });
+
+      expect(versions.data.length).toEqual(11);
+    });
+
+    it('should fetch next page using page_token from first response', async () => {
+      const firstPage = await bibleClient.getVersions('en*', undefined, { page_size: 5 });
+
+      expect(firstPage.data.length).toEqual(5);
+      expect(firstPage.next_page_token).toBeDefined();
+
+      const secondPage = await bibleClient.getVersions('en*', undefined, {
+        page_size: 5,
+        page_token: firstPage.next_page_token!,
+      });
+
+      expect(secondPage.data.length).toEqual(5);
+      expect(secondPage.data[0]?.id).not.toEqual(firstPage.data[0]?.id);
+    });
+
     it('should fetch Bible versions with language ranges', async () => {
       const versions = await bibleClient.getVersions('en*');
 
@@ -117,7 +138,7 @@ describe('BibleClient', () => {
 
   describe('getBooks', () => {
     it('should fetch all books for a version', async () => {
-      const books = await bibleClient.getBooks(1);
+      const books = await bibleClient.getBooks(111);
 
       const { success } = BibleBookSchema.safeParse(books.data[0]);
       expect(success).toBe(true);
@@ -125,8 +146,8 @@ describe('BibleClient', () => {
       expect(books.data).toHaveLength(66);
       expect(books.data[0]).toHaveProperty('id', 'GEN');
       expect(books.data[0]).toHaveProperty('title', 'Genesis');
-      expect(books.data[0]).toHaveProperty('full_title', 'The First Book of Moses, Called Genesis');
-      expect(books.data[0]).toHaveProperty('abbreviation', 'Gen');
+      expect(books.data[0]).toHaveProperty('full_title', 'Genesis');
+      expect(books.data[0]).toHaveProperty('abbreviation', 'Gen.');
       expect(books.data[0]?.intro).toEqual({
         id: 'INTRO',
         passage_id: 'GEN.INTRO',
@@ -139,7 +160,7 @@ describe('BibleClient', () => {
 
   describe('getBook', () => {
     it('should fetch a specific book', async () => {
-      const book = await bibleClient.getBook(1, 'GEN');
+      const book = await bibleClient.getBook(111, 'GEN');
 
       const { success } = BibleBookSchema.safeParse(book);
       expect(success).toBe(true);
@@ -147,7 +168,7 @@ describe('BibleClient', () => {
       expect(book.chapters).toHaveLength(50);
       expect(book).toHaveProperty('id', 'GEN');
       expect(book).toHaveProperty('title', 'Genesis');
-      expect(book).toHaveProperty('abbreviation', 'Gen');
+      expect(book).toHaveProperty('abbreviation', 'Gen.');
       expect(book).toHaveProperty('intro');
       expect(book.intro).toEqual({
         id: 'INTRO',
