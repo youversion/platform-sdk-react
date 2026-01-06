@@ -1,7 +1,15 @@
 'use client';
 
-import { useEffect, forwardRef, useState, useRef, type ReactNode } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+import {
+  useLayoutEffect,
+  useEffect,
+  forwardRef,
+  useState,
+  useRef,
+  memo,
+  type ReactNode,
+} from 'react';
+import { createPortal } from 'react-dom';
 import DOMPurify from 'isomorphic-dompurify';
 import { usePassage } from '@youversion/platform-react-hooks';
 import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from '@/components/ui/popover';
@@ -108,7 +116,7 @@ function extractNotesFromHtml(html: string): ExtractedNotes {
   return { html: doc.body.innerHTML, notes };
 }
 
-function VerseFootnoteButton({
+const VerseFootnoteButton = memo(function VerseFootnoteButton({
   verseNum,
   verseNotes,
   reference,
@@ -159,7 +167,7 @@ function VerseFootnoteButton({
       </PopoverContent>
     </Popover>
   );
-}
+});
 
 function HtmlWithNotes({
   html,
@@ -171,43 +179,33 @@ function HtmlWithNotes({
   reference?: string;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
-  const rootsRef = useRef<Map<string, Root>>(new Map());
-  const currentHtmlRef = useRef<string>('');
+  const [placeholders, setPlaceholders] = useState<Map<string, Element>>(new Map());
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!contentRef.current) return;
+    contentRef.current.innerHTML = html;
 
-    if (currentHtmlRef.current !== html) {
-      rootsRef.current.forEach((root) => root.unmount());
-      rootsRef.current.clear();
-      contentRef.current.innerHTML = html;
-      currentHtmlRef.current = html;
-    }
-
-    const roots = rootsRef.current;
-
-    Object.entries(notes).forEach(([verseNum, verseNotes]) => {
-      const placeholder = contentRef.current?.querySelector(`[data-verse-footnote="${verseNum}"]`);
-
-      if (placeholder) {
-        let root = roots.get(verseNum);
-        if (!root) {
-          root = createRoot(placeholder);
-          roots.set(verseNum, root);
-        }
-        root.render(
-          <VerseFootnoteButton verseNum={verseNum} verseNotes={verseNotes} reference={reference} />,
-        );
-      }
+    const map = new Map<string, Element>();
+    Object.keys(notes).forEach((verseNum) => {
+      const el = contentRef.current?.querySelector(`[data-verse-footnote="${verseNum}"]`);
+      if (el) map.set(verseNum, el);
     });
+    setPlaceholders(map);
+  }, [html, notes]);
 
-    return () => {
-      roots.forEach((root) => root.unmount());
-      roots.clear();
-    };
-  }, [html, notes, reference]);
-
-  return <div ref={contentRef} />;
+  return (
+    <>
+      <div ref={contentRef} />
+      {Array.from(placeholders.entries()).map(([verseNum, el]) => {
+        const verseNotes = notes[verseNum];
+        if (!verseNotes) return null;
+        return createPortal(
+          <VerseFootnoteButton verseNum={verseNum} verseNotes={verseNotes} reference={reference} />,
+          el,
+        );
+      })}
+    </>
+  );
 }
 
 // Configure DOMPurify to allow specific attributes safe for Bible content
