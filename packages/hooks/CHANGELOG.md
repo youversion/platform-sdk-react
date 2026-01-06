@@ -1,5 +1,19 @@
 # @youversion/platform-react-hooks
 
+## 1.4.0
+
+### Minor Changes
+
+- 8275a27: feat(ui): add bible reader settings
+  - refactor popover component to have consistent styling across
+    multiple components and reduce duplication in code.
+  - add bible reader settings and save the users settings to localStorage.
+
+### Patch Changes
+
+- Updated dependencies [8275a27]
+  - @youversion/platform-core@1.4.0
+
 ## 1.3.0
 
 ### Minor Changes
