@@ -24,13 +24,14 @@ import { Input } from './ui/input';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from './ui/item';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 
+// Displays a version abbreviation (e.g., "NIV", "KJV2") centered within a fixed-size icon.
+// Dynamically scales the font size to fit the text within the container with padding.
 function VersionAbbreviationIcon({ text }: { text: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const prefixRef = useRef<HTMLDivElement>(null);
-  const digitsRef = useRef<HTMLDivElement>(null);
   const [prefixSize, setPrefixSize] = useState(20);
-  const [digitsSize, setDigitsSize] = useState(16);
 
+  // Split abbreviation into letters and numbers (e.g., "KJV2" → "KJV", "2")
   const match = /^(.+?)(\d+)$/.exec(text) || [];
   const prefix = match[1] || text;
   const digits = match[2];
@@ -38,20 +39,22 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
   useEffect(() => {
     const container = containerRef.current;
     const prefixElement = prefixRef.current;
-    const digitsElement = digitsRef.current;
     if (!container || !prefixElement) return;
 
+    // Calculate the maximum font size that fits the text within container bounds
     const calculateSize = (element: HTMLElement | null) => {
       if (!element) return 20;
 
       const containerWidth = container.offsetWidth;
       const containerHeight = container.offsetHeight;
+      // Target 70% of width for horizontal padding, max 40% height for vertical spacing
       const targetWidth = containerWidth * 0.7;
       const maxHeight = containerHeight * 0.4;
 
       let currentSize = 20;
       let ratio = 1;
 
+      // Iteratively converge on the optimal size (5 iterations sufficient for convergence)
       for (let i = 0; i < 5; i++) {
         element.style.fontSize = `${currentSize}px`;
         const currentWidth = element.scrollWidth;
@@ -60,22 +63,22 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
         if (currentWidth > 0) {
           const widthRatio = targetWidth / currentWidth;
           const heightRatio = maxHeight / currentHeight;
+          // Use the more restrictive constraint (width or height)
           ratio = Math.min(widthRatio, heightRatio);
           currentSize = currentSize * ratio;
         }
       }
 
+      // Ensure minimum readable size of 12px
       return Math.max(12, currentSize);
     };
 
     const updateSizes = () => {
       const newPrefixSize = calculateSize(prefixElement);
-      const newDigitsSize = calculateSize(digitsElement);
-
       setPrefixSize(newPrefixSize);
-      setDigitsSize(newDigitsSize);
     };
 
+    // Recalculate when container size changes (e.g., window resize, theme switch)
     const resizeObserver = new ResizeObserver(updateSizes);
     resizeObserver.observe(container);
     updateSizes();
@@ -94,11 +97,7 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
         {prefix}
       </div>
       {digits && (
-        <div
-          ref={digitsRef}
-          className="yv:whitespace-nowrap"
-          style={{ fontSize: `${digitsSize}px` }}
-        >
+        <div className="yv:whitespace-nowrap" style={{ fontSize: `${prefixSize}px` }}>
           {digits}
         </div>
       )}
