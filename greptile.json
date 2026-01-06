@@ -20,6 +20,10 @@
         "rule": "Schema-first: All types defined in schemas/*.ts using Zod"
       },
       {
+        "scope": ["packages/**"],
+        "rule": "Unified versioning: All packages must maintain exact same version - never version packages independently"
+      },
+      {
         "scope": ["packages/core/src/**"],
         "rule": "Zero React: Pure TypeScript, no React dependencies"
       },

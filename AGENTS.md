@@ -73,3 +73,5 @@ pnpm release             # Build + publish all packages
 - Changesets required for ALL version bumps (even patches)
 - Pre-commit hooks fail if typecheck or lint fails
 - Workspace protocol: use `workspace:*` in package.json dependencies
+- **Unified versioning**: All packages must share exact same version - never version packages independently
+- **Node.js requirement**: Minimum version 20.0.0 required for all environments
