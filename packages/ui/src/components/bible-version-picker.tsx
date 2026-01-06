@@ -1,20 +1,109 @@
-import { createContext, useContext, useState, useMemo, useRef, type ReactNode } from 'react';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
+import type { BibleVersion } from '@youversion/platform-core';
 import {
   useFilteredVersions,
-  useVersion,
-  useVersions,
   useLanguages,
   useTheme,
+  useVersion,
+  useVersions,
 } from '@youversion/platform-react-hooks';
+import { ArrowLeft, Globe, Search } from 'lucide-react';
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { cn } from '@/lib/utils';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
-import { Item, ItemGroup, ItemMedia, ItemContent, ItemTitle, ItemDescription } from './ui/item';
-import type { BibleVersion } from '@youversion/platform-core';
-import { Search, Globe, ArrowLeft } from 'lucide-react';
-import { Badge } from './ui/badge';
-import { cn } from '@/lib/utils';
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from './ui/item';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+
+// Displays a version abbreviation (e.g., "NIV", "KJV2") centered within a fixed-size icon.
+// Dynamically scales the font size to fit the text within the container with padding.
+function VersionAbbreviationIcon({ text }: { text: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const prefixRef = useRef<HTMLDivElement>(null);
+  const [prefixSize, setPrefixSize] = useState(20);
+
+  // Split abbreviation into letters and numbers (e.g., "KJV2" → "KJV", "2")
+  const match = /^(.+?)(\d+)$/.exec(text) || [];
+  const prefix = match[1] || text;
+  const digits = match[2];
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const prefixElement = prefixRef.current;
+    if (!container || !prefixElement) return;
+
+    // Calculate the maximum font size that fits the text within container bounds
+    const calculateSize = (element: HTMLElement | null) => {
+      if (!element) return 20;
+
+      const containerWidth = container.offsetWidth;
+      const containerHeight = container.offsetHeight;
+      // Target 70% of width for horizontal padding, max 40% height for vertical spacing
+      const targetWidth = containerWidth * 0.7;
+      const maxHeight = containerHeight * 0.4;
+
+      let currentSize = 20;
+      let ratio = 1;
+
+      // Iteratively converge on the optimal size (5 iterations sufficient for convergence)
+      for (let i = 0; i < 5; i++) {
+        element.style.fontSize = `${currentSize}px`;
+        const currentWidth = element.scrollWidth;
+        const currentHeight = element.offsetHeight;
+
+        if (currentWidth > 0) {
+          const widthRatio = targetWidth / currentWidth;
+          const heightRatio = maxHeight / currentHeight;
+          // Use the more restrictive constraint (width or height)
+          ratio = Math.min(widthRatio, heightRatio);
+          currentSize = currentSize * ratio;
+        }
+      }
+
+      // Ensure minimum readable size of 12px
+      return Math.max(12, currentSize);
+    };
+
+    const updateSizes = () => {
+      const newPrefixSize = calculateSize(prefixElement);
+      setPrefixSize(newPrefixSize);
+    };
+
+    // Recalculate when container size changes (e.g., window resize, theme switch)
+    const resizeObserver = new ResizeObserver(updateSizes);
+    resizeObserver.observe(container);
+    updateSizes();
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className="yv:flex yv:flex-col yv:w-full yv:h-full yv:px-2 yv:font-serif yv:leading-none yv:font-bold yv:items-center yv:justify-center"
+    >
+      <div ref={prefixRef} className="yv:whitespace-nowrap" style={{ fontSize: `${prefixSize}px` }}>
+        {prefix}
+      </div>
+      {digits && (
+        <div className="yv:whitespace-nowrap" style={{ fontSize: `${prefixSize}px` }}>
+          {digits}
+        </div>
+      )}
+    </div>
+  );
+}
 
 type LanguageOption = {
   id: string;
@@ -255,19 +344,9 @@ function Content() {
                   >
                     <ItemMedia
                       variant="icon"
-                      className="yv:rounded-[8px] yv:size-12 yv:border-border yv:p-1 yv:flex yv:flex-col yv:justify-center"
+                      className="yv:rounded-[8px] yv:size-12 yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center"
                     >
-                      {(() => {
-                        const match = /^(.+?)(\d+)$/.exec(version.localized_abbreviation) || [];
-                        const prefix = match[1] || version.localized_abbreviation;
-                        const digits = match[2];
-                        return (
-                          <div className="yv:font-serif yv:text-sm yv:leading-none yv:font-bold yv:text-center">
-                            <div>{prefix}</div>
-                            {digits && <div>{digits}</div>}
-                          </div>
-                        );
-                      })()}
+                      <VersionAbbreviationIcon text={version.localized_abbreviation} />
                     </ItemMedia>
                     <ItemContent>
                       <ItemTitle className="yv:line-clamp-2 yv:text-left">
@@ -334,7 +413,11 @@ function Content() {
               aria-label={language.englishName}
               asChild
             >
-              <button className="yv:w-full" onClick={() => handleSelectLanguage(language.id)}>
+              <button
+                className="yv:w-full"
+                onClick={() => handleSelectLanguage(language.id)}
+                type="button"
+              >
                 <ItemContent>
                   <ItemTitle className="yv:line-clamp-2">{language.englishName}</ItemTitle>
                 </ItemContent>
