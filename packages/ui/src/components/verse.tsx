@@ -56,14 +56,15 @@ function extractNotesFromHtml(html: string): ExtractedNotes {
   const nodeIndex = new Map(allNodes.map((n, i) => [n, i]));
   const footnotes = doc.querySelectorAll('.yv-n.f');
 
-  const verses = verseMarkers.map((marker, i) => ({
-    num: marker.getAttribute('v') || '0',
-    start: nodeIndex.get(marker) ?? 0,
-    end: verseMarkers[i + 1]
-      ? (nodeIndex.get(verseMarkers[i + 1]) ?? allNodes.length)
-      : allNodes.length,
-    fns: [] as Element[],
-  }));
+  const verses = verseMarkers.map((marker, i) => {
+    const nextMarker = verseMarkers[i + 1];
+    return {
+      num: marker.getAttribute('v') || '0',
+      start: nodeIndex.get(marker) ?? 0,
+      end: nextMarker ? (nodeIndex.get(nextMarker) ?? allNodes.length) : allNodes.length,
+      fns: [] as Element[],
+    };
+  });
 
   footnotes.forEach((fn) => {
     const idx = nodeIndex.get(fn);
@@ -83,6 +84,7 @@ function extractNotesFromHtml(html: string): ExtractedNotes {
 
     for (let i = verse.start; i < verse.end; i++) {
       const node = allNodes[i];
+      if (!node) continue;
       const parent = node.parentNode as Element | null;
 
       if (node instanceof Element) {
@@ -110,6 +112,7 @@ function extractNotesFromHtml(html: string): ExtractedNotes {
 
     for (let i = verse.end - 1; i > verse.start; i--) {
       const node = allNodes[i];
+      if (!node) continue;
       const parent = node.parentNode as Element | null;
       if (
         node.nodeType === Node.TEXT_NODE &&
