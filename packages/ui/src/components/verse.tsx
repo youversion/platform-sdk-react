@@ -29,6 +29,10 @@ type ExtractedNotes = {
   notes: Record<string, VerseNotes>;
 };
 
+/**
+ * Checks if a node should be excluded from verse text reconstruction.
+ * Excludes: verse markers (.yv-v), verse labels (.yv-vlbl), headers (.yv-h), and footnotes (.yv-n).
+ */
 function isExcludedNode(node: Node): boolean {
   if (!(node instanceof Element)) return false;
   if (node.classList.contains('yv-v') || node.classList.contains('yv-vlbl')) return true;
@@ -37,6 +41,20 @@ function isExcludedNode(node: Node): boolean {
   return false;
 }
 
+/**
+ * Extracts footnotes from Bible HTML and prepares data for footnote popovers.
+ *
+ * This function does three things:
+ * 1. Identifies verse boundaries using `.yv-v[v]` markers (verses can span multiple paragraphs)
+ * 2. For each verse with footnotes, builds a plain-text version with A/B/C markers for the popover
+ * 3. Inserts placeholder spans at the end of each verse (where the footnote icon will render)
+ *
+ * The challenge: verses don't respect paragraph boundaries. A verse starts at `.yv-v[v="X"]`
+ * and ends at the next `.yv-v[v]` marker, potentially spanning multiple `<div class="p">` elements.
+ * We use a TreeWalker to flatten the DOM into document order, then use index ranges to define verses.
+ *
+ * @returns Modified HTML with footnotes removed and placeholders inserted, plus notes data for popovers
+ */
 function extractNotesFromHtml(html: string): ExtractedNotes {
   if (typeof window === 'undefined') return { html, notes: {} };
 
@@ -47,6 +65,7 @@ function extractNotesFromHtml(html: string): ExtractedNotes {
   const verseMarkers = Array.from(doc.querySelectorAll('.yv-v[v]'));
   if (!verseMarkers.length) return { html: doc.body.innerHTML, notes: {} };
 
+  // Flatten DOM into document order so we can define verse boundaries by index ranges
   const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
   const allNodes: Node[] = [];
   do {
@@ -56,6 +75,7 @@ function extractNotesFromHtml(html: string): ExtractedNotes {
   const nodeIndex = new Map(allNodes.map((n, i) => [n, i]));
   const footnotes = doc.querySelectorAll('.yv-n.f');
 
+  // Define verse boundaries: each verse spans from its marker to the next marker (or end of content)
   const verses = verseMarkers.map((marker, i) => {
     const nextMarker = verseMarkers[i + 1];
     return {
@@ -66,6 +86,7 @@ function extractNotesFromHtml(html: string): ExtractedNotes {
     };
   });
 
+  // Assign each footnote to its containing verse (find verse whose range contains the footnote)
   footnotes.forEach((fn) => {
     const idx = nodeIndex.get(fn);
     if (idx !== undefined) {
@@ -78,6 +99,7 @@ function extractNotesFromHtml(html: string): ExtractedNotes {
 
   const notes: Record<string, VerseNotes> = {};
   withNotes.forEach((verse) => {
+    // Build plain-text verse content for popover, replacing footnotes with A/B/C markers
     let text = '';
     let noteIdx = 0;
     let lastP: Element | null = null;
@@ -101,6 +123,7 @@ function extractNotesFromHtml(html: string): ExtractedNotes {
       } else if (node.nodeType === Node.TEXT_NODE && parent) {
         if (parent.closest('.yv-h') || parent.closest('.yv-n.f')) continue;
         if (parent.classList.contains('yv-v') || parent.classList.contains('yv-vlbl')) continue;
+        // Add space when transitioning between paragraphs (verses can span multiple <p> elements)
         const curP = parent.closest('.p, p, div.p');
         if (lastP && curP && lastP !== curP) text += ' ';
         text += node.textContent || '';
@@ -110,6 +133,7 @@ function extractNotesFromHtml(html: string): ExtractedNotes {
 
     notes[verse.num] = { verseHtml: text, notes: verse.fns.map((fn) => fn.innerHTML) };
 
+    // Insert placeholder at end of verse content (walk backwards to find last text node)
     for (let i = verse.end - 1; i > verse.start; i--) {
       const node = allNodes[i];
       if (!node) continue;
