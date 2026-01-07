@@ -92,7 +92,10 @@ export const WithVersionPicker: Story = {
       );
     });
 
-    await expect(screen.getByText(/luke 1:39-45 amp/i)).toBeVisible();
+    await waitFor(async () => {
+      const heading = screen.getByRole('heading', { level: 2, name: /luke 1:39-45/i });
+      await expect(heading).toHaveTextContent(/amp/i);
+    });
   },
 };
 
