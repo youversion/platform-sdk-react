@@ -129,9 +129,9 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
       <PopoverTrigger data-yv-sdk asChild>
         <button
           type="button"
-          className="yv:inline-flex yv:align-super yv:cursor-pointer yv:ml-1 yv:text-(--yv-gray-20)"
+          className="yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1! yv:text-(--yv-gray-20)"
         >
-          <Footnote />
+          <Footnote className="yv:size-[1.5em]" />
         </button>
       </PopoverTrigger>
       <PopoverContent
