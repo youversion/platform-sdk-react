@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import DOMPurify from 'isomorphic-dompurify';
-import { usePassage } from '@youversion/platform-react-hooks';
+import { usePassage, useTheme } from '@youversion/platform-react-hooks';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Footnote } from './icons/footnote';
 
@@ -163,16 +163,18 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   verseNotes,
   reference,
   fontSize,
+  theme,
 }: {
   verseNum: string;
   verseNotes: VerseNotes;
   reference?: string;
   fontSize?: number;
+  theme: 'light' | 'dark';
 }) {
   const verseReference = reference ? `${reference}:${verseNum}` : `Verse ${verseNum}`;
   return (
     <Popover>
-      <PopoverTrigger data-yv-sdk asChild>
+      <PopoverTrigger data-yv-sdk data-yv-theme={theme} asChild>
         <button
           type="button"
           className="yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1! yv:text-(--yv-gray-20)"
@@ -183,6 +185,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
       <PopoverContent
         className="yv:flex yv:flex-col yv:bg-background yv:p-0 yv:sm:w-sm yv:overflow-none yv:rounded-2xl yv:border-0 yv:shadow-lg"
         heading="Footnotes"
+        theme={theme}
       >
         <div className="yv:p-3 yv:overflow-y-auto yv:max-h-[33svh]">
           <div className="yv:font-bold yv:mb-2">{verseReference}</div>
@@ -213,14 +216,18 @@ function HtmlWithNotes({
   notes,
   reference,
   fontSize,
+  theme,
 }: {
   html: string;
   notes: Record<string, VerseNotes>;
   reference?: string;
   fontSize?: number;
+  theme?: 'light' | 'dark';
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [placeholders, setPlaceholders] = useState<Map<string, Element>>(new Map());
+  const providerTheme = useTheme();
+  const currentTheme = theme || providerTheme;
 
   useLayoutEffect(() => {
     if (!contentRef.current) return;
@@ -246,6 +253,7 @@ function HtmlWithNotes({
             verseNotes={verseNotes}
             reference={reference}
             fontSize={fontSize}
+            theme={currentTheme}
           />,
           el,
         );
@@ -362,6 +370,7 @@ type VerseHtmlProps = {
   showVerseNumbers?: boolean;
   renderNotes?: boolean;
   reference?: string;
+  theme?: 'light' | 'dark';
 };
 
 /**
@@ -409,10 +418,13 @@ export const Verse = {
         showVerseNumbers = true,
         renderNotes = true,
         reference,
+        theme,
       }: VerseHtmlProps,
       ref,
     ): ReactNode => {
       const [transformedData, setTransformedData] = useState<ExtractedNotes>({ html, notes: {} });
+      const providerTheme = useTheme();
+      const currentTheme = theme || providerTheme;
 
       useEffect(() => {
         setTransformedData(yvDomTransformer(html, renderNotes));
@@ -437,6 +449,7 @@ export const Verse = {
               notes={transformedData.notes}
               reference={reference}
               fontSize={fontSize}
+              theme={currentTheme}
             />
           </section>
         );
@@ -469,6 +482,7 @@ export type BibleTextViewProps = {
   versionId: number;
   showVerseNumbers?: boolean;
   renderNotes?: boolean;
+  theme?: 'light' | 'dark';
 };
 
 /**
@@ -482,6 +496,7 @@ export const BibleTextView = ({
   versionId,
   showVerseNumbers,
   renderNotes,
+  theme,
 }: BibleTextViewProps): React.ReactElement => {
   const { passage, loading, error } = usePassage({
     versionId,
@@ -489,6 +504,8 @@ export const BibleTextView = ({
     include_headings: true,
     include_notes: true,
   });
+  const providerTheme = useTheme();
+  const currentTheme = theme || providerTheme;
 
   if (loading) {
     return (
@@ -525,6 +542,7 @@ export const BibleTextView = ({
       showVerseNumbers={showVerseNumbers}
       renderNotes={renderNotes}
       reference={passage?.reference}
+      theme={currentTheme}
     />
   );
 };
