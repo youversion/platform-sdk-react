@@ -261,3 +261,86 @@ export const DarkMode: Story = {
     </section>
   ),
 };
+
+export const FootnotePopoverThemeLight: Story = {
+  args: {
+    reference: 'JHN.1',
+    versionId: 111,
+    renderNotes: true,
+    showVerseNumbers: true,
+    theme: 'light',
+  },
+  tags: ['integration'],
+  play: async ({ canvasElement }) => {
+    await waitFor(
+      async () => {
+        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(verseContainer).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    await waitFor(
+      async () => {
+        const footnoteButton = canvasElement.querySelector('[data-verse-footnote] button');
+        await expect(footnoteButton).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    const footnoteButton = canvasElement.querySelector('[data-verse-footnote] button');
+    await expect(footnoteButton?.closest('[data-yv-theme="light"]')).toBeInTheDocument();
+
+    await userEvent.click(footnoteButton!);
+
+    await waitFor(async () => {
+      const popover = document.querySelector('[data-slot="popover-content"]');
+      await expect(popover).toBeInTheDocument();
+      await expect(popover?.closest('[data-yv-theme="light"]')).toBeInTheDocument();
+    });
+  },
+};
+
+export const FootnotePopoverThemeDark: Story = {
+  args: {
+    reference: 'JHN.1',
+    versionId: 111,
+    renderNotes: true,
+    showVerseNumbers: true,
+    theme: 'dark',
+  },
+  tags: ['integration'],
+  render: (args) => (
+    <div className="yv:dark">
+      <BibleTextView {...args} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(
+      async () => {
+        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(verseContainer).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    await waitFor(
+      async () => {
+        const footnoteButton = canvasElement.querySelector('[data-verse-footnote] button');
+        await expect(footnoteButton).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    const footnoteButton = canvasElement.querySelector('[data-verse-footnote] button');
+    await expect(footnoteButton?.closest('[data-yv-theme="dark"]')).toBeInTheDocument();
+
+    await userEvent.click(footnoteButton!);
+
+    await waitFor(async () => {
+      const popover = document.querySelector('[data-slot="popover-content"]');
+      await expect(popover).toBeInTheDocument();
+      await expect(popover?.closest('[data-yv-theme="dark"]')).toBeInTheDocument();
+    });
+  },
+};

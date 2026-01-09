@@ -166,16 +166,18 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   verseNotes,
   reference,
   fontSize,
+  theme,
 }: {
   verseNum: string;
   verseNotes: VerseNotes;
   reference?: string;
   fontSize?: number;
+  theme: 'light' | 'dark';
 }) {
   const verseReference = reference ? `${reference}:${verseNum}` : `Verse ${verseNum}`;
   return (
     <Popover>
-      <PopoverTrigger data-yv-sdk asChild>
+      <PopoverTrigger data-yv-sdk data-yv-theme={theme} asChild>
         <button
           type="button"
           className="yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1! yv:text-(--yv-gray-20)"
@@ -186,6 +188,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
       <PopoverContent
         className="yv:flex yv:flex-col yv:bg-background yv:p-0 yv:sm:w-sm yv:overflow-none yv:rounded-2xl yv:border-0 yv:shadow-lg"
         heading="Footnotes"
+        theme={theme}
       >
         <div className="yv:p-3 yv:overflow-y-auto yv:max-h-[33svh]">
           <div className="yv:font-bold yv:mb-2">{verseReference}</div>
@@ -218,14 +221,18 @@ function HtmlWithNotes({
   notes,
   reference,
   fontSize,
+  theme,
 }: {
   html: string;
   notes: Record<string, VerseNotes>;
   reference?: string;
   fontSize?: number;
+  theme?: 'light' | 'dark';
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [placeholders, setPlaceholders] = useState<Map<string, Element>>(new Map());
+  const providerTheme = useTheme();
+  const currentTheme = theme || providerTheme;
 
   useLayoutEffect(() => {
     if (!contentRef.current) return;
@@ -251,6 +258,7 @@ function HtmlWithNotes({
             verseNotes={verseNotes}
             reference={reference}
             fontSize={fontSize}
+            theme={currentTheme}
           />,
           el,
         );
@@ -367,6 +375,7 @@ type VerseHtmlProps = {
   showVerseNumbers?: boolean;
   renderNotes?: boolean;
   reference?: string;
+  theme?: 'light' | 'dark';
 };
 
 /**
@@ -414,10 +423,13 @@ export const Verse = {
         showVerseNumbers = true,
         renderNotes = true,
         reference,
+        theme,
       }: VerseHtmlProps,
       ref,
     ): ReactNode => {
       const [transformedData, setTransformedData] = useState<ExtractedNotes>({ html, notes: {} });
+      const providerTheme = useTheme();
+      const currentTheme = theme || providerTheme;
 
       useEffect(() => {
         setTransformedData(yvDomTransformer(html, renderNotes));
@@ -442,6 +454,7 @@ export const Verse = {
               notes={transformedData.notes}
               reference={reference}
               fontSize={fontSize}
+              theme={currentTheme}
             />
           </section>
         );

@@ -151,6 +151,7 @@ function Root({
 
 function Content() {
   const {
+    background,
     book,
     chapter,
     versionId,
@@ -193,6 +194,7 @@ function Content() {
         fontSize={currentFontSize}
         lineHeight={lineHeight}
         showVerseNumbers={showVerseNumbers}
+        theme={background}
       />
 
       {version?.copyright && (
