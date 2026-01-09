@@ -79,7 +79,7 @@ export const Default: Story = {
     const callArgs = mockSpy.mock.calls[0]?.[0];
     await expect(callArgs).toHaveProperty('text');
     await expect(callArgs?.text).toContain('For I am about to do something new');
-    await expect(callArgs?.text).toContain('Isaiah 43:19 KJV');
+    await expect(callArgs?.text).toContain('Isaiah 43:19 NIV');
   },
 };
 
