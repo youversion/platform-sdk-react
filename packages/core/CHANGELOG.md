@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 1.5.1
+
+### Patch Changes
+
+- d0d596c: feat(ui): update Bible version picker to fit container bounds
+
 ## 1.5.0
 
 ### Minor Changes
