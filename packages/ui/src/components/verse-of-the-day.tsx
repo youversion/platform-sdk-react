@@ -19,7 +19,7 @@ export type VerseOfTheDayProps = {
    */
   background?: 'light' | 'dark';
   /**
-   * The Bible Translation version id to use, defaults to 1 (KJV).
+   * The Bible Translation version id to use, defaults to 111 (NIV).
    */
   versionId?: number;
   /**
@@ -69,7 +69,7 @@ async function share({ title, text, url }: { title?: string; text: string; url?:
  * @example
  * ```tsx
  * <VerseOfTheDay
- *   versionId={1}
+ *   versionId={111}
  *   showSunIcon={true}
  *   showShareButton={false}
  *   showBibleAppAttribution={true}
@@ -80,7 +80,7 @@ async function share({ title, text, url }: { title?: string; text: string; url?:
 export function VerseOfTheDay({
   background,
   dayOfYear,
-  versionId = 1, // KJV by default
+  versionId = 111, // NIV by default
   showSunIcon = true,
   showShareButton = true,
   showBibleAppAttribution = true,
