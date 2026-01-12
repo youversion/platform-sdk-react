@@ -1,4 +1,4 @@
-# AGENTS.md
+# @youversion/platform-react-ui
 
 ## OVERVIEW
 Complete UI layer with many Bible components: BibleTextView, VerseOfTheDay, BibleReader, BibleChapterPicker, BibleVersionPicker, YouVersionAuthButton, BibleWidgetView, BibleAppLogoLockup
@@ -13,7 +13,23 @@ src/index.ts           # Entry point with style injection side effect
 
 ## PUBLIC API
 - Components exported from `src/components/`
-- Re-exports: `YouVersionProvider`, `useYVAuth` from @youversion/platform-react-hooks
+- Re-exports from `@youversion/platform-core`:
+  - `SignInWithYouVersionPermission`, `SignInWithYouVersionResult`, `YouVersionAPIUsers`
+  - `ApiConfig`, `AuthenticationState` types
+- Re-exports from `@youversion/platform-react-hooks`:
+  - `YouVersionProvider`, `useYVAuth`, `UseYVAuthReturn` type
+
+## DOs / DON'Ts
+
+✅ Do: Use hooks from `@youversion/platform-react-hooks` for data; keep components thin
+✅ Do: Use Radix UI primitives from `components/ui/` for low-level behaviors (modals, popovers, etc.)
+✅ Do: Use Tailwind classes with the `yv:` prefix only
+✅ Do: Use semantic theme tokens (`yv:text-muted-foreground`, `yv:bg-destructive`) instead of arbitrary colors
+
+❌ Don't: Make raw network requests from UI components
+❌ Don't: Import from `@youversion/platform-core` directly (except re-exports in index.ts)
+❌ Don't: Add global CSS files; all styling goes through Tailwind build and `injectStyles`
+❌ Don't: Use unprefixed Tailwind classes (causes collisions in consumer apps)
 
 ## CONVENTIONS
 - React 19+ peer dependency
@@ -30,6 +46,18 @@ src/index.ts           # Entry point with style injection side effect
 - Light/dark mode via CSS variables (`[data-yv-sdk]`)
 - Use semantic theme tokens (`yv:text-muted-foreground`, `yv:bg-destructive`) instead of arbitrary color values
 
+### Styling Usage Example
+
+```tsx
+export function Example() {
+  return (
+    <div data-yv-sdk>
+      <BibleTextView reference="John 3:16" />
+    </div>
+  );
+}
+```
+
 ## TESTING
 - Vitest + jsdom for unit tests (`*.test.tsx`)
 - Playwright for Storybook integration tests (`pnpm test:integration`)
@@ -42,6 +70,11 @@ pnpm build:css    # Tailwind build + strip-layers.js
 pnpm build:js     # tsup bundling with __YV_STYLES__ injection
 pnpm build:types  # tsc declarations
 ```
+
+From repo root, `pnpm build` runs Turbo which builds in order:
+1. `@youversion/platform-core`
+2. `@youversion/platform-react-hooks`
+3. `@youversion/platform-react-ui` (build:css → build:js → build:types)
 
 ## CRITICAL
 - **Side effect**: importing package injects styles automatically

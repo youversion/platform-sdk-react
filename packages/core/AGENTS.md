@@ -1,3 +1,5 @@
+# @youversion/platform-core
+
 ## OVERVIEW
 Foundation package providing pure TypeScript API clients for YouVersion services with zero React dependencies.
 
@@ -21,6 +23,40 @@ StorageStrategy.ts           # Storage interface (SessionStorage, MemoryStorage)
 - `SignInWithYouVersionPKCE()`: PKCE auth flow function
 - `SessionStorage`, `MemoryStorage`: Storage strategies
 
+## DOs / DON'Ts
+
+✅ Do: Keep this package **framework-agnostic** (no React, no DOM, no browser-only APIs)
+✅ Do: Define all input/output types in `schemas/` using Zod; schemas are the single source of truth
+✅ Do: Reuse `YouVersionAPI` base client for new service clients
+✅ Do: Parse API responses with Zod schemas for validation
+
+❌ Don't: Import React, `window`, `document`, or browser storage APIs directly
+❌ Don't: Bypass Zod validation for API responses
+❌ Don't: Implement UI, hooks, or React state here
+
+## ADDING A NEW ENDPOINT OR CLIENT
+
+1. **Define types** in `schemas/` using Zod:
+   - Request payload schema
+   - Response schema
+2. **Extend or add a client**:
+   - Prefer extending existing clients (e.g., `BibleClient`) when the endpoint logically belongs there
+   - Otherwise, create `xyz.ts` with a new `XyzClient` that composes `YouVersionAPI`
+3. **Wire validation**:
+   - Parse API responses with the corresponding Zod schema
+   - Throw or return typed errors on validation failure
+4. **Export from public API**:
+   - Expose the new client/types from the main entry file so consumers can import them
+5. **Add tests**:
+   - Unit tests with MSW for mock responses
+   - Optional integration tests guarded by `INTEGRATION_TESTS=true`
+
+## HTTP & CONFIGURATION
+
+- HTTP client: Native `fetch` API
+- Base client: `YouVersionAPI` handles base URL, headers, auth tokens
+- All clients extend or compose `YouVersionAPI` for consistent HTTP behavior
+
 ## CONVENTIONS
 - Schema-first: All types defined in schemas/*.ts using Zod
 - Zero React: Pure TypeScript, no React dependencies
@@ -29,8 +65,11 @@ StorageStrategy.ts           # Storage interface (SessionStorage, MemoryStorage)
 - Error handling: Zod validation for all API responses
 
 ## TESTING
+
+- Run tests: `pnpm --filter @youversion/platform-core test`
 - Framework: Vitest with Node environment
 - Mocking: MSW for API endpoints
-- Integration: Set `INTEGRATION_TESTS=true` for real API tests
+- Integration tests:
+  - Guarded by `INTEGRATION_TESTS=true`
+  - Only run in CI or when explicitly needed; default to mocked tests
 - Coverage: @vitest/coverage-v8
-- Files: Many test files covering all clients and auth
