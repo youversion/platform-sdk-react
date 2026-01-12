@@ -1,13 +1,19 @@
 'use client';
 
-import { useEffect, forwardRef, useState, useRef, type ReactNode } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import DOMPurify from 'isomorphic-dompurify';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { usePassage, useTheme } from '@youversion/platform-react-hooks';
-import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from '@/components/ui/popover';
-import { Button } from './ui/button';
+import DOMPurify from 'isomorphic-dompurify';
+import {
+  forwardRef,
+  memo,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+import { createPortal } from 'react-dom';
 import { Footnote } from './icons/footnote';
-import { X as XIcon } from 'lucide-react';
 
 const NON_BREAKING_SPACE = '\u00A0';
 
@@ -23,133 +29,177 @@ type ExtractedNotes = {
   notes: Record<string, VerseNotes>;
 };
 
+/**
+ * Checks if a node should be excluded from verse text reconstruction.
+ * Excludes: verse markers (.yv-v), verse labels (.yv-vlbl), headers (.yv-h), and footnotes (.yv-n).
+ */
+function isExcludedNode(node: Node): boolean {
+  if (!(node instanceof Element)) return false;
+  if (node.classList.contains('yv-v') || node.classList.contains('yv-vlbl')) return true;
+  if (node.classList.contains('yv-h') || node.closest('.yv-h')) return true;
+  if (node.classList.contains('yv-n') || node.closest('.yv-n')) return true;
+  return false;
+}
+
+/**
+ * Extracts footnotes from Bible HTML and prepares data for footnote popovers.
+ *
+ * This function does three things:
+ * 1. Identifies verse boundaries using `.yv-v[v]` markers (verses can span multiple paragraphs)
+ * 2. For each verse with footnotes, builds a plain-text version with A/B/C markers for the popover
+ * 3. Inserts placeholder spans at the end of each verse (where the footnote icon will render)
+ *
+ * The challenge: verses don't respect paragraph boundaries. A verse starts at `.yv-v[v="X"]`
+ * and ends at the next `.yv-v[v]` marker, potentially spanning multiple `<div class="p">` elements.
+ * We use a TreeWalker to flatten the DOM into document order, then use index ranges to define verses.
+ *
+ * @returns Modified HTML with footnotes removed and placeholders inserted, plus notes data for popovers
+ */
 function extractNotesFromHtml(html: string): ExtractedNotes {
   if (typeof window === 'undefined') return { html, notes: {} };
 
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-  const noteElements = doc.querySelectorAll('span.yv-n.f');
-  const verseData: Record<string, { verseHtml: string; notes: string[]; elements: Element[] }> = {};
+  const doc = new DOMParser().parseFromString(
+    DOMPurify.sanitize(html, DOMPURIFY_CONFIG),
+    'text/html',
+  );
+  const verseMarkers = Array.from(doc.querySelectorAll('.yv-v[v]'));
+  if (!verseMarkers.length) return { html: doc.body.innerHTML, notes: {} };
 
-  // Build the verse html, and store notes for the footnotes popover
-  noteElements.forEach((element) => {
-    let label: Element | null = null;
-    let node: Node | null = element.previousSibling;
-    while (node) {
-      if (node instanceof Element && node.classList.contains('yv-vlbl')) {
-        label = node;
-        break;
-      }
-      node = node.previousSibling;
-    }
+  // Flatten DOM into document order so we can define verse boundaries by index ranges
+  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+  const allNodes: Node[] = [];
+  do {
+    allNodes.push(walker.currentNode);
+  } while (walker.nextNode());
 
-    const verseNum = label?.textContent?.trim() || '0';
+  const nodeIndex = new Map(allNodes.map((n, i) => [n, i]));
+  const footnotes = doc.querySelectorAll('.yv-n.f');
 
-    if (!verseData[verseNum]) {
-      let verseHtml = `<sup>${verseNum}</sup> `;
-      let current: Node | null = label?.nextSibling || null;
-      let noteIdx = 0;
-
-      while (current) {
-        if (current instanceof Element && current.classList.contains('yv-v')) break;
-        if (current instanceof Element) {
-          if (current.classList.contains('yv-n') && current.classList.contains('f')) {
-            verseHtml += `<sup>${LETTERS[noteIdx] || noteIdx + 1}</sup>`;
-            noteIdx++;
-          } else {
-            verseHtml += current.outerHTML;
-          }
-        } else if (current.nodeType === Node.TEXT_NODE) {
-          verseHtml += current.textContent || '';
-        }
-        current = current.nextSibling;
-      }
-
-      verseData[verseNum] = {
-        verseHtml,
-        notes: [],
-        elements: [],
-      };
-    }
-
-    verseData[verseNum].notes.push(element.innerHTML || '');
-    verseData[verseNum].elements.push(element);
+  // Define verse boundaries: each verse spans from its marker to the next marker (or end of content)
+  const verses = verseMarkers.map((marker, i) => {
+    const nextMarker = verseMarkers[i + 1];
+    return {
+      num: marker.getAttribute('v') || '0',
+      start: nodeIndex.get(marker) ?? 0,
+      end: nextMarker ? (nodeIndex.get(nextMarker) ?? allNodes.length) : allNodes.length,
+      fns: [] as Element[],
+    };
   });
 
-  // Place the popovers at the end of the verse if notes exist in the verse
-  // and remove the note elements from the DOM as they are now in the popover
-  // element.
-  Object.entries(verseData).forEach(([verseNum, { elements }]) => {
-    const lastElement = elements[elements.length - 1];
-    let endNode: Node | null = lastElement || null;
-    let current: Node | null = lastElement?.nextSibling || null;
-
-    while (current) {
-      if (current instanceof Element && current.classList.contains('yv-v')) break;
-      endNode = current;
-      current = current.nextSibling;
+  // Assign each footnote to its containing verse (find verse whose range contains the footnote)
+  footnotes.forEach((fn) => {
+    const idx = nodeIndex.get(fn);
+    if (idx !== undefined) {
+      const verse = [...verses].reverse().find((v) => idx > v.start);
+      if (verse) verse.fns.push(fn);
     }
-
-    const placeholder = doc.createElement('span');
-    placeholder.setAttribute('data-verse-footnote', verseNum);
-    if (endNode?.parentNode) {
-      endNode.parentNode.insertBefore(placeholder, endNode.nextSibling);
-    }
-
-    elements.forEach((el) => el.remove());
   });
+
+  const withNotes = verses.filter((v) => v.fns.length > 0);
 
   const notes: Record<string, VerseNotes> = {};
-  Object.entries(verseData).forEach(([verseNum, { verseHtml, notes: noteContents }]) => {
-    notes[verseNum] = { verseHtml, notes: noteContents };
+  withNotes.forEach((verse) => {
+    // Build plain-text verse content for popover, replacing footnotes with A/B/C markers
+    let text = '';
+    let noteIdx = 0;
+    let lastP: Element | null = null;
+
+    for (let i = verse.start; i < verse.end; i++) {
+      const node = allNodes[i];
+      if (!node) continue;
+      const parent = node.parentNode as Element | null;
+
+      if (node instanceof Element) {
+        if (node.classList.contains('yv-h') || node.closest('.yv-h')) continue;
+        if (node.classList.contains('yv-n') && node.classList.contains('f')) {
+          text += `<sup class="yv:text-muted-foreground">${LETTERS[noteIdx++] || noteIdx}</sup>`;
+        }
+      } else if (node.nodeType === Node.TEXT_NODE && parent) {
+        if (parent.closest('.yv-h') || parent.closest('.yv-n.f')) continue;
+        if (parent.classList.contains('yv-v') || parent.classList.contains('yv-vlbl')) continue;
+        // Add space when transitioning between paragraphs (verses can span multiple <p> elements)
+        const curP = parent.closest('.p, p, div.p');
+        if (lastP && curP && lastP !== curP) text += ' ';
+        text += node.textContent || '';
+        if (curP) lastP = curP;
+      }
+    }
+
+    notes[verse.num] = { verseHtml: text, notes: verse.fns.map((fn) => fn.innerHTML) };
+
+    // Insert placeholder at end of verse content (walk backwards to find last text node)
+    for (let i = verse.end - 1; i > verse.start; i--) {
+      const node = allNodes[i];
+      if (!node) continue;
+      const parent = node.parentNode as Element | null;
+      if (
+        node.nodeType === Node.TEXT_NODE &&
+        node.textContent?.trim() &&
+        parent &&
+        !isExcludedNode(parent) &&
+        !parent.closest('.yv-n') &&
+        !parent.closest('.yv-h')
+      ) {
+        const placeholder = doc.createElement('span');
+        placeholder.setAttribute('data-verse-footnote', verse.num);
+        parent.insertBefore(placeholder, node.nextSibling);
+        break;
+      }
+    }
+  });
+
+  footnotes.forEach((fn) => {
+    fn.remove();
   });
 
   return { html: doc.body.innerHTML, notes };
 }
 
-function VerseFootnoteButton({
+const VerseFootnoteButton = memo(function VerseFootnoteButton({
   verseNum,
   verseNotes,
   reference,
+  fontSize,
+  theme,
 }: {
   verseNum: string;
   verseNotes: VerseNotes;
   reference?: string;
+  fontSize?: number;
+  theme: 'light' | 'dark';
 }) {
   const verseReference = reference ? `${reference}:${verseNum}` : `Verse ${verseNum}`;
   return (
     <Popover>
-      <PopoverTrigger data-yv-sdk asChild>
+      <PopoverTrigger data-yv-sdk data-yv-theme={theme} asChild>
         <button
           type="button"
-          className="yv:inline-flex yv:align-super yv:cursor-pointer yv:ml-1 yv:text-(--yv-gray-20)"
+          className="yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1! yv:text-(--yv-gray-20)"
         >
-          <Footnote />
+          <Footnote className="yv:size-[1.5em]" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="yv:flex yv:flex-col yv:bg-background yv:p-0 yv:sm:w-sm yv:overflow-hidden yv:rounded-2xl yv:border-0 yv:shadow-lg">
-        <div className="yv:flex yv:justify-between yv:items-center yv:bg-secondary yv:p-2 yv:font-bold">
-          Footnotes
-          <PopoverClose asChild>
-            <Button variant="ghost" size="icon" className="yv:w-8 yv:h-8 yv:text-muted-foreground">
-              <XIcon size={16} />
-              <span className="yv:sr-only">Close footnotes</span>
-            </Button>
-          </PopoverClose>
-        </div>
-        <div className="yv:p-3">
+      <PopoverContent
+        className="yv:flex yv:flex-col yv:bg-background yv:p-0 yv:sm:w-sm yv:overflow-none yv:rounded-2xl yv:border-0 yv:shadow-lg"
+        heading="Footnotes"
+        theme={theme}
+      >
+        <div className="yv:p-3 yv:overflow-y-auto yv:max-h-[33svh]">
           <div className="yv:font-bold yv:mb-2">{verseReference}</div>
           <div
-            className="yv:mb-3 yv:font-serif yv:text-xl"
+            className="yv:mb-3 yv:font-serif"
+            style={{ fontSize: fontSize ? `${fontSize}px` : '1.25rem' }}
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML has been run through DOMPurify and is safe
             dangerouslySetInnerHTML={{ __html: verseNotes.verseHtml }}
           />
           <ul className="yv:list-none yv:p-0 yv:m-0 yv:space-y-1">
             {verseNotes.notes.map((note, index) => (
               <li
-                key={index}
+                key={LETTERS[index]}
                 className="yv:flex yv:gap-2 yv:text-xs yv:border-b yv:border-border yv:py-2"
               >
                 <span className="">{LETTERS[index] || index + 1}.</span>
+                {/** biome-ignore lint/security/noDangerouslySetInnerHtml: HTML has been run through DOMPurify and is safe */}
                 <span dangerouslySetInnerHTML={{ __html: note }} />
               </li>
             ))}
@@ -158,52 +208,62 @@ function VerseFootnoteButton({
       </PopoverContent>
     </Popover>
   );
-}
+});
 
 function HtmlWithNotes({
   html,
   notes,
   reference,
+  fontSize,
+  theme,
 }: {
   html: string;
   notes: Record<string, VerseNotes>;
   reference?: string;
+  fontSize?: number;
+  theme?: 'light' | 'dark';
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
-  const rootsRef = useRef<Map<string, Root>>(new Map());
+  const [placeholders, setPlaceholders] = useState<Map<string, Element>>(new Map());
+  const providerTheme = useTheme();
+  const currentTheme = theme || providerTheme;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!contentRef.current) return;
+    contentRef.current.innerHTML = html;
 
-    const roots = rootsRef.current;
-
-    Object.entries(notes).forEach(([verseNum, verseNotes]) => {
-      const placeholder = contentRef.current?.querySelector(`[data-verse-footnote="${verseNum}"]`);
-
-      if (placeholder) {
-        let root = roots.get(verseNum);
-        if (!root) {
-          root = createRoot(placeholder);
-          roots.set(verseNum, root);
-        }
-        root.render(
-          <VerseFootnoteButton verseNum={verseNum} verseNotes={verseNotes} reference={reference} />,
-        );
-      }
+    const map = new Map<string, Element>();
+    Object.keys(notes).forEach((verseNum) => {
+      const el = contentRef.current?.querySelector(`[data-verse-footnote="${verseNum}"]`);
+      if (el) map.set(verseNum, el);
     });
+    setPlaceholders(map);
+  }, [html, notes]);
 
-    return () => {
-      roots.forEach((root) => root.unmount());
-      roots.clear();
-    };
-  }, [html, notes, reference]);
-
-  return <div ref={contentRef} dangerouslySetInnerHTML={{ __html: html }} />;
+  return (
+    <>
+      <div ref={contentRef} />
+      {Array.from(placeholders.entries()).map(([verseNum, el]) => {
+        const verseNotes = notes[verseNum];
+        if (!verseNotes) return null;
+        return createPortal(
+          <VerseFootnoteButton
+            verseNum={verseNum}
+            verseNotes={verseNotes}
+            reference={reference}
+            fontSize={fontSize}
+            theme={currentTheme}
+          />,
+          el,
+        );
+      })}
+    </>
+  );
 }
 
 // Configure DOMPurify to allow specific attributes safe for Bible content
 const DOMPURIFY_CONFIG = {
-  ALLOWED_ATTR: ['class', 'style', 'id'],
+  ALLOWED_ATTR: ['class', 'style', 'id', 'v', 'usfm'],
   ALLOW_DATA_ATTR: true,
 };
 
@@ -219,14 +279,13 @@ function yvDomTransformer(html: string, extractNotes: boolean = false): Extracte
     const result = extractNotesFromHtml(html);
     processedHtml = result.html;
     extractedNotes = result.notes;
+  } else {
+    processedHtml = DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
   }
-
-  // Sanitize HTML to remove any XSS payloads
-  const sanitizedHtml = DOMPurify.sanitize(processedHtml, DOMPURIFY_CONFIG);
 
   // Safely parse and modify HTML to add spaces to paragraph elements
   const parser = new DOMParser();
-  const doc = parser.parseFromString(sanitizedHtml, 'text/html');
+  const doc = parser.parseFromString(processedHtml, 'text/html');
 
   // Adds non-breaking space to the end of verse labels for better copying and pasting
   // (i.e. "3For God so loved..." to "3 For God so loved...")
@@ -310,6 +369,7 @@ type VerseHtmlProps = {
   showVerseNumbers?: boolean;
   renderNotes?: boolean;
   reference?: string;
+  theme?: 'light' | 'dark';
 };
 
 /**
@@ -357,10 +417,13 @@ export const Verse = {
         showVerseNumbers = true,
         renderNotes = true,
         reference,
+        theme,
       }: VerseHtmlProps,
       ref,
     ): ReactNode => {
       const [transformedData, setTransformedData] = useState<ExtractedNotes>({ html, notes: {} });
+      const providerTheme = useTheme();
+      const currentTheme = theme || providerTheme;
 
       useEffect(() => {
         setTransformedData(yvDomTransformer(html, renderNotes));
@@ -384,6 +447,8 @@ export const Verse = {
               html={transformedData.html}
               notes={transformedData.notes}
               reference={reference}
+              fontSize={fontSize}
+              theme={currentTheme}
             />
           </section>
         );
@@ -401,6 +466,7 @@ export const Verse = {
           }
           data-show-verse-numbers={showVerseNumbers}
           data-slot="yv-bible-renderer"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML has been run through DOMPurify and is safe
           dangerouslySetInnerHTML={{ __html: transformedData.html }}
         />
       );
@@ -451,6 +517,7 @@ export const BibleTextView = ({
           lineHeight={lineHeight}
           showVerseNumbers={showVerseNumbers}
           renderNotes={renderNotes}
+          theme={currentTheme}
         />
       </div>
     );
@@ -466,6 +533,7 @@ export const BibleTextView = ({
           lineHeight={lineHeight}
           showVerseNumbers={showVerseNumbers}
           renderNotes={renderNotes}
+          theme={currentTheme}
         />
       </div>
     );
@@ -481,6 +549,7 @@ export const BibleTextView = ({
         showVerseNumbers={showVerseNumbers}
         renderNotes={renderNotes}
         reference={passage?.reference}
+        theme={currentTheme}
       />
     </div>
   );

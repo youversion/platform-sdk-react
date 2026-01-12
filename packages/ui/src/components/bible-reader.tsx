@@ -151,6 +151,7 @@ function Root({
 
 function Content() {
   const {
+    background,
     book,
     chapter,
     versionId,
@@ -158,7 +159,6 @@ function Content() {
     currentFontFamily,
     lineHeight,
     showVerseNumbers,
-    background,
   } = useBibleReaderContext();
   const { books } = useBooks(versionId);
   const { version } = useVersion(versionId);
@@ -186,13 +186,13 @@ function Content() {
       </h1>
 
       <BibleTextView
-        theme={background}
         reference={usfmReference}
         versionId={versionId}
         fontFamily={currentFontFamily}
         fontSize={currentFontSize}
         lineHeight={lineHeight}
         showVerseNumbers={showVerseNumbers}
+        theme={background}
       />
 
       {version?.copyright && (
