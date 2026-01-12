@@ -2,7 +2,8 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect } from 'vitest';
-import { render, waitFor, fireEvent } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Verse } from './verse';
 
 describe('Verse.Html - XSS Protection', () => {
@@ -306,7 +307,7 @@ describe('Verse.Html - Footnotes', () => {
     const footnoteButton = container.querySelector('[data-verse-footnote="51"] button');
     expect(footnoteButton).not.toBeNull();
 
-    fireEvent.click(footnoteButton!);
+    await userEvent.click(footnoteButton!);
 
     await waitFor(() => {
       const popover = document.body.querySelector('[role="dialog"]');

@@ -49,6 +49,7 @@
     "@radix-ui/react-slot": "1.2.3",
     "@radix-ui/react-tabs": "1.1.13",
     "@radix-ui/react-use-controllable-state": "^1.2.2",
+    "@testing-library/user-event": "^14.6.1",
     "@youversion/platform-core": "workspace:*",
     "@youversion/platform-react-hooks": "workspace:*",
     "class-variance-authority": "0.7.1",
