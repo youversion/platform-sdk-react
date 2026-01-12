@@ -14,7 +14,6 @@ src/index.ts           # Entry point with style injection side effect
 ## PUBLIC API
 - Components exported from `src/components/`
 - Re-exports: `YouVersionProvider`, `useYVAuth` from @youversion/platform-react-hooks
-- All components use React.forwardRef, accept standard HTML attributes
 
 ## CONVENTIONS
 - React 19+ peer dependency

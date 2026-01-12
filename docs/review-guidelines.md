@@ -8,7 +8,6 @@ When conducting code reviews, AI agents should systematically evaluate the follo
 - Are the appropriate design patterns being used where applicable?
 - Does the code follow the monorepo structure and package boundaries?
 - Are TypeScript types properly defined and avoiding `any` types?
-- Do components follow the React.forwardRef pattern for UI components?
 
 ### Security Assessment
 - Do the changes introduce any security vulnerabilities or risks?

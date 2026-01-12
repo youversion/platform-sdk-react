@@ -4,10 +4,6 @@
   "customContext": {
     "rules": [
       {
-        "scope": ["src/**/*.ts", "src/**/*.tsx", "packages/**/*.ts", "packages/**/*.tsx"],
-        "rule": "All components must use React.forwardRef and accept standard HTML attributes"
-      },
-      {
         "scope": ["src/**"],
         "rule": "Package dependencies must follow core → hooks → ui dependency order"
       },
