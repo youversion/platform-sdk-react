@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect } from 'vitest';
-import { render, waitFor } from '@testing-library/react';
+import { render, waitFor, fireEvent } from '@testing-library/react';
 import { Verse } from './verse';
 
 describe('Verse.Html - XSS Protection', () => {
@@ -298,8 +298,22 @@ describe('Verse.Html - Footnotes', () => {
     await waitFor(() => {
       const placeholder = container.querySelector('[data-verse-footnote="51"]');
       expect(placeholder).not.toBeNull();
+
       const footnoteElements = container.querySelectorAll('.yv-n.f');
       expect(footnoteElements.length).toBe(0);
+    });
+
+    const footnoteButton = container.querySelector('[data-verse-footnote="51"] button');
+    expect(footnoteButton).not.toBeNull();
+
+    fireEvent.click(footnoteButton!);
+
+    await waitFor(() => {
+      const popover = document.body.querySelector('[role="dialog"]');
+      expect(popover).not.toBeNull();
+
+      const listItems = popover?.querySelectorAll('ul li');
+      expect(listItems?.length).toBe(2);
     });
   });
 });
