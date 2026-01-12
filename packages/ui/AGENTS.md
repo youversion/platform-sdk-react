@@ -17,9 +17,9 @@ src/index.ts           # Entry point with style injection side effect
 - All components use React.forwardRef, accept standard HTML attributes
 
 ## CONVENTIONS
-- React 19.1.2+ peer dependency
+- React 19+ peer dependency
 - Radix UI primitives for accessibility
-- Tailwind CSS via @tailwindcss/cli 4.1.15
+- Tailwind CSS via @tailwindcss/cli v4
 - tsup for bundling, tsc for type declarations
 
 ## STYLING

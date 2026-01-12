@@ -3,14 +3,14 @@ Foundation package providing pure TypeScript API clients for YouVersion services
 
 ## STRUCTURE
 ```
-schemas/           # Zod schemas for all data types (schema-first design)
-client.ts          # ApiClient - main HTTP client
-bible.ts           # BibleClient - Bible data operations
-languages.ts       # LanguagesClient - language data
-highlights.ts      # HighlightsClient - user highlights
-YouVersionAPI.ts   # Base YouVersion API client
+schemas/                     # Zod schemas for all data types (schema-first design)
+client.ts                    # ApiClient - main HTTP client
+bible.ts                     # BibleClient - Bible data operations
+languages.ts                 # LanguagesClient - language data
+highlights.ts                # HighlightsClient - user highlights
+YouVersionAPI.ts             # Base YouVersion API client
 SignInWithYouVersionPKCE.ts  # PKCE auth implementation
-StorageStrategy.ts # Storage interface (SessionStorage, MemoryStorage)
+StorageStrategy.ts           # Storage interface (SessionStorage, MemoryStorage)
 ```
 
 ## PUBLIC API
