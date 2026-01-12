@@ -220,6 +220,90 @@ describe('Verse.Html - XSS Protection', () => {
   });
 });
 
+describe('Verse.Html - Footnotes', () => {
+  it('should extract footnotes and create placeholders', async () => {
+    const htmlWithFootnotes = `
+      <div class="p">
+        <span class="yv-v" v="5"></span><span class="yv-vlbl">5</span>The light shines in the darkness, and the
+        darkness has not overcome<span class="yv-n f"><span class="fr">1:5 </span><span class="ft">Or </span><span class="fqa">understood</span></span>
+        it.
+      </div>
+    `;
+
+    const { container } = render(<Verse.Html html={htmlWithFootnotes} renderNotes={true} />);
+
+    await waitFor(() => {
+      const placeholder = container.querySelector('[data-verse-footnote="5"]');
+      expect(placeholder).not.toBeNull();
+    });
+  });
+
+  it('should remove original footnote elements', async () => {
+    const htmlWithFootnotes = `
+      <div class="p">
+        <span class="yv-v" v="5"></span><span class="yv-vlbl">5</span>The light shines<span class="yv-n f"><span class="fr">1:5 </span><span class="ft">Or understood</span></span> it.
+      </div>
+    `;
+
+    const { container } = render(<Verse.Html html={htmlWithFootnotes} renderNotes={true} />);
+
+    await waitFor(() => {
+      const footnoteElements = container.querySelectorAll('.yv-n.f');
+      expect(footnoteElements.length).toBe(0);
+    });
+  });
+
+  it('should place footnote at end of correct verse (v42 not v43)', async () => {
+    const htmlWithFootnotes = `
+      <div class="p">
+        <span class="yv-v" v="42"></span><span class="yv-vlbl">42</span>And he brought him to Jesus.
+      </div>
+      <div class="p">
+        Jesus looked at him and said,
+        <span class="wj">"You are Simon son of John. You will be called Cephas"</span>
+        (which, when translated, is Peter<span class="yv-n f"><span class="fr">1:42 </span><span class="fq">Cephas </span><span class="ft">(Aramaic) and </span><span class="fq">Peter </span><span class="ft">(Greek) both mean </span><span class="fqa">rock.</span></span>).
+      </div>
+      <div class="s1 yv-h">Jesus Calls Philip and Nathanael</div>
+      <div class="p">
+        <span class="yv-v" v="43"></span><span class="yv-vlbl">43</span>The next day Jesus decided to leave for Galilee.
+      </div>
+    `;
+
+    const { container } = render(<Verse.Html html={htmlWithFootnotes} renderNotes={true} />);
+
+    await waitFor(() => {
+      const placeholder42 = container.querySelector('[data-verse-footnote="42"]');
+      expect(placeholder42).not.toBeNull();
+
+      const verse43Marker = container.querySelector('.yv-v[v="43"]');
+      expect(verse43Marker).not.toBeNull();
+
+      const position42 = placeholder42?.compareDocumentPosition(verse43Marker!);
+      expect(position42! & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+  });
+
+  it('should handle multiple footnotes in a single verse', async () => {
+    const htmlWithMultipleNotes = `
+      <div class="p">
+        <span class="yv-v" v="51"></span><span class="yv-vlbl">51</span>He then added,
+        <span class="wj">"Very truly I tell you,</span><span class="yv-n f"><span class="fr">1:51 </span><span class="ft">The Greek is plural.</span></span>
+        <span class="wj">you</span><span class="yv-n f"><span class="fr">1:51 </span><span class="ft">The Greek is plural.</span></span>
+        <span class="wj">will see heaven open."</span>
+      </div>
+    `;
+
+    const { container } = render(<Verse.Html html={htmlWithMultipleNotes} renderNotes={true} />);
+
+    await waitFor(() => {
+      const placeholder = container.querySelector('[data-verse-footnote="51"]');
+      expect(placeholder).not.toBeNull();
+      const footnoteElements = container.querySelectorAll('.yv-n.f');
+      expect(footnoteElements.length).toBe(0);
+    });
+  });
+});
+
 describe('Verse.Text', () => {
   it('should render verse with number and text (default size)', () => {
     const { container } = render(<Verse.Text number={1} text="In the beginning" />);
