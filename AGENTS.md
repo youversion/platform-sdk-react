@@ -75,3 +75,5 @@ pnpm release             # Build + publish all packages
 - Workspace protocol: use `workspace:*` in package.json dependencies
 - **Unified versioning**: All packages must share exact same version - never version packages independently
 - **Node.js requirement**: Minimum version 20.0.0 required for all environments
+- One change in a package could break something in another package, so we want to make sure that all tests are passing across the packages before code gets pushed
+- When stuck, ask clarifying questions
