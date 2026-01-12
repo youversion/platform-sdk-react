@@ -517,6 +517,7 @@ export const BibleTextView = ({
           lineHeight={lineHeight}
           showVerseNumbers={showVerseNumbers}
           renderNotes={renderNotes}
+          theme={currentTheme}
         />
       </div>
     );
@@ -532,6 +533,7 @@ export const BibleTextView = ({
           lineHeight={lineHeight}
           showVerseNumbers={showVerseNumbers}
           renderNotes={renderNotes}
+          theme={currentTheme}
         />
       </div>
     );
@@ -547,6 +549,7 @@ export const BibleTextView = ({
         showVerseNumbers={showVerseNumbers}
         renderNotes={renderNotes}
         reference={passage?.reference}
+        theme={currentTheme}
       />
     </div>
   );
