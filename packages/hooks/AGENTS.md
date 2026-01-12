@@ -25,3 +25,4 @@ React integration layer providing many data fetching hooks with 3 core providers
 - Vitest with jsdom environment
 - React Testing Library for component tests
 - Many test files covering hooks and providers
+- Mock API's live in `__tests__/mocks`
