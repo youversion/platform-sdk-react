@@ -113,12 +113,6 @@ function extractNotesFromHtml(html: string): ExtractedNotes {
         if (node.classList.contains('yv-h') || node.closest('.yv-h')) continue;
         if (node.classList.contains('yv-n') && node.classList.contains('f')) {
           text += `<sup class="yv:text-muted-foreground">${LETTERS[noteIdx++] || noteIdx}</sup>`;
-        } else if (
-          !node.classList.contains('yv-v') &&
-          !node.classList.contains('yv-vlbl') &&
-          !node.childNodes.length
-        ) {
-          text += node.textContent || '';
         }
       } else if (node.nodeType === Node.TEXT_NODE && parent) {
         if (parent.closest('.yv-h') || parent.closest('.yv-n.f')) continue;
