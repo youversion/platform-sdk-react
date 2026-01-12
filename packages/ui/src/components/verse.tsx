@@ -1,21 +1,19 @@
 'use client';
 
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { usePassage, useTheme } from '@youversion/platform-react-hooks';
+import DOMPurify from 'isomorphic-dompurify';
 import {
-  useLayoutEffect,
-  useEffect,
   forwardRef,
-  useState,
-  useRef,
   memo,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import DOMPurify from 'isomorphic-dompurify';
-import { usePassage, useTheme } from '@youversion/platform-react-hooks';
-import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from '@/components/ui/popover';
-import { Button } from './ui/button';
 import { Footnote } from './icons/footnote';
-import { X as XIcon } from 'lucide-react';
 
 const NON_BREAKING_SPACE = '\u00A0';
 
@@ -105,7 +103,9 @@ function extractNotesFromHtml(html: string): ExtractedNotes {
       endNode.parentNode.insertBefore(placeholder, endNode.nextSibling);
     }
 
-    elements.forEach((el) => el.remove());
+    elements.forEach((el) => {
+      el.remove();
+    });
   });
 
   const notes: Record<string, VerseNotes> = {};
@@ -136,29 +136,25 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
           <Footnote />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="yv:flex yv:flex-col yv:bg-background yv:p-0 yv:sm:w-sm yv:overflow-hidden yv:rounded-2xl yv:border-0 yv:shadow-lg">
-        <div className="yv:flex yv:justify-between yv:items-center yv:bg-secondary yv:p-2 yv:font-bold">
-          Footnotes
-          <PopoverClose asChild>
-            <Button variant="ghost" size="icon" className="yv:w-8 yv:h-8 yv:text-muted-foreground">
-              <XIcon size={16} />
-              <span className="yv:sr-only">Close footnotes</span>
-            </Button>
-          </PopoverClose>
-        </div>
+      <PopoverContent
+        className="yv:flex yv:flex-col yv:bg-background yv:p-0 yv:sm:w-sm yv:overflow-hidden yv:rounded-2xl yv:border-0 yv:shadow-lg"
+        heading="Footnotes"
+      >
         <div className="yv:p-3">
           <div className="yv:font-bold yv:mb-2">{verseReference}</div>
           <div
             className="yv:mb-3 yv:font-serif yv:text-xl"
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML has been run through DOMPurify and is safe
             dangerouslySetInnerHTML={{ __html: verseNotes.verseHtml }}
           />
           <ul className="yv:list-none yv:p-0 yv:m-0 yv:space-y-1">
             {verseNotes.notes.map((note, index) => (
               <li
-                key={index}
+                key={LETTERS[index]}
                 className="yv:flex yv:gap-2 yv:text-xs yv:border-b yv:border-border yv:py-2"
               >
                 <span className="">{LETTERS[index] || index + 1}.</span>
+                {/** biome-ignore lint/security/noDangerouslySetInnerHtml: HTML has been run through DOMPurify and is safe */}
                 <span dangerouslySetInnerHTML={{ __html: note }} />
               </li>
             ))}
