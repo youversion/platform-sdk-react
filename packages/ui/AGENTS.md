@@ -27,6 +27,7 @@ src/index.ts           # Entry point with style injection side effect
 - Built Tailwind CSS: `dist/tailwind.css` → injected as JS string at build time
 - Light/dark mode via CSS variables (`[data-yv-sdk]`)
 - For the theme to be applied to our components, we add a `data-yv-sdk` attribute on the parent containing element
+- Tailwind CSS classes must be prefixed with `yv:` to prevent class naming collision when someone uses our components in their app. For example, `mt-4` becomes `yv:mt-4`
 
 ## TESTING
 - Vitest + jsdom for unit tests (`*.test.tsx`)
