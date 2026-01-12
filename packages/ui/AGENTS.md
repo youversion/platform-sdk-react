@@ -27,6 +27,7 @@ src/index.ts           # Entry point with style injection side effect
 - CSS embedded as `__YV_STYLES__` constant via tsup define (no separate CSS file)
 - Built Tailwind CSS: `dist/tailwind.css` → injected as JS string at build time
 - Light/dark mode via CSS variables (`[data-yv-sdk]`)
+- For the theme to be applied to our components, we add a `data-yv-sdk` attribute on the parent containing element
 
 ## TESTING
 - Vitest + jsdom for unit tests (`*.test.tsx`)
