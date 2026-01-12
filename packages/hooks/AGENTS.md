@@ -9,7 +9,7 @@ React integration layer providing many data fetching hooks with 3 core providers
 - `utility/` - Helper functions (useDebounce, extractTextFromHTML, extractVersesFromHTML)
 
 ## PUBLIC API
-- Data fetching hooks for YouVersion API resources
+- Data fetching hooks: useBook, useChapter, usePassage, useVersion, etc.
 - YouVersionProvider - Core SDK configuration
 - YouVersionAuthProvider - Authentication state
 - ReaderProvider - Reading session context
