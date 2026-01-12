@@ -31,7 +31,8 @@ src/index.ts           # Entry point with style injection side effect
 
 ## TESTING
 - Vitest + jsdom for unit tests (`*.test.tsx`)
-- Playwright for Storybook integration tests (`vitest run --project storybook`)
+- Playwright for Storybook integration tests (`pnpm test:integration`)
+- All Storybook tests with a play function need to have a `tags: ['integration']`
 - Test setup: `src/test/setup.ts`
 
 ## BUILD ORDER
