@@ -12,7 +12,7 @@
  * `@import 'tailwindcss'`. This is Tailwind's officially supported method
  * to opt out of CSS layers.
  *
- * The `prefix(yv)` ensures all Tailwind classes use a `yv-` prefix to avoid
+ * The `prefix(yv)` ensures all Tailwind classes use a `yv:` prefix to avoid
  * collisions with consumer Tailwind setups.
  *
  * Reference: https://github.com/tailwindlabs/tailwindcss/discussions/13188
