@@ -111,6 +111,11 @@ const meta = {
   },
   tags: ['autodocs'],
   argTypes: {
+    theme: {
+      table: {
+        disable: true,
+      },
+    },
     reference: {
       control: 'text',
       description: 'USFM reference (e.g., "JHN.3.16", "JHN.3.16-17", "JHN.3")',
@@ -223,6 +228,119 @@ export const FootnoteInteraction: Story = {
     await waitFor(async () => {
       const noteItems = document.querySelectorAll('[data-yv-sdk] ul li');
       await expect(noteItems.length).toBeGreaterThan(0);
+    });
+  },
+};
+
+export const DarkMode: Story = {
+  args: {
+    reference: 'JHN.3.16',
+    versionId: 111,
+    renderNotes: true,
+    theme: 'dark',
+  },
+  argTypes: {
+    // The `theme` control is disabled across all of the Bible verse text
+    // components, stories, except the dark mode one.
+    theme: {
+      table: {
+        disable: false,
+      },
+    },
+  },
+  render: (args) => (
+    <section className="yv:flex yv:flex-col yv:gap-4 yv:max-w-lg">
+      <p className="yv:text-muted-foreground yv:font-sm">
+        Important: The background and padding for this Story was added manually to showcase the text
+        being influenced by the theme prop for the BibleTextView component. Otherwise, the text on a
+        light theme would be white on white (aka unreadable)
+      </p>
+      <div className="yv:[&>div]:bg-background yv:[&>div]:p-4 yv:[&>div]:rounded-[8px]">
+        <BibleTextView {...args} />
+      </div>
+    </section>
+  ),
+};
+
+export const FootnotePopoverThemeLight: Story = {
+  args: {
+    reference: 'JHN.1',
+    versionId: 111,
+    renderNotes: true,
+    showVerseNumbers: true,
+    theme: 'light',
+  },
+  tags: ['integration'],
+  play: async ({ canvasElement }) => {
+    await waitFor(
+      async () => {
+        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(verseContainer).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    await waitFor(
+      async () => {
+        const footnoteButton = canvasElement.querySelector('[data-verse-footnote] button');
+        await expect(footnoteButton).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    const footnoteButton = canvasElement.querySelector('[data-verse-footnote] button');
+    await expect(footnoteButton?.closest('[data-yv-theme="light"]')).toBeInTheDocument();
+
+    await userEvent.click(footnoteButton!);
+
+    await waitFor(async () => {
+      const popover = document.querySelector('[data-slot="popover-content"]');
+      await expect(popover).toBeInTheDocument();
+      await expect(popover?.closest('[data-yv-theme="light"]')).toBeInTheDocument();
+    });
+  },
+};
+
+export const FootnotePopoverThemeDark: Story = {
+  args: {
+    reference: 'JHN.1',
+    versionId: 111,
+    renderNotes: true,
+    showVerseNumbers: true,
+    theme: 'dark',
+  },
+  tags: ['integration'],
+  render: (args) => (
+    <div className="yv:dark">
+      <BibleTextView {...args} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(
+      async () => {
+        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(verseContainer).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    await waitFor(
+      async () => {
+        const footnoteButton = canvasElement.querySelector('[data-verse-footnote] button');
+        await expect(footnoteButton).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    const footnoteButton = canvasElement.querySelector('[data-verse-footnote] button');
+    await expect(footnoteButton?.closest('[data-yv-theme="dark"]')).toBeInTheDocument();
+
+    await userEvent.click(footnoteButton!);
+
+    await waitFor(async () => {
+      const popover = document.querySelector('[data-slot="popover-content"]');
+      await expect(popover).toBeInTheDocument();
+      await expect(popover?.closest('[data-yv-theme="dark"]')).toBeInTheDocument();
     });
   },
 };

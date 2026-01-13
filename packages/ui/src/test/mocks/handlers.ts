@@ -47,17 +47,13 @@ export const globalHandlers = [
   }),
 
   // Isaiah passage for verse of the day
-  http.get('*/v1/bibles/1/passages/ISA.43.19', () => {
+  http.get('*/v1/bibles/111/passages/ISA.43.19', () => {
     return HttpResponse.json(mockPassages['ISA.43.19']);
   }),
 
   // Specific Bible versions
   http.get('*/v1/bibles/111', () => {
     return HttpResponse.json(mockBibles.individual['111']);
-  }),
-
-  http.get('*/v1/bibles/1', () => {
-    return HttpResponse.json(mockBibles.individual['1']);
   }),
 
   http.get('*/v1/bibles/1588', () => {
