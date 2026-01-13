@@ -150,7 +150,7 @@ const renderAuthHook = async () => {
 
 describe('useYVAuth', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
 
     // Setup window mock
     vi.stubGlobal('window', mockWindow);
@@ -247,6 +247,30 @@ describe('useYVAuth', () => {
           await result.current.signIn({ redirectUrl: 'https://example.com/callback' });
         }),
       ).rejects.toThrow('Sign in failed');
+    });
+
+    it('should use redirectUri from provider when redirectUrl is not passed', async () => {
+      const { result } = await renderAuthHook();
+
+      await act(async () => {
+        await result.current.signIn();
+      });
+
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith('http://test.example.com');
+    });
+
+    it('should use redirectUri from provider with scopes when redirectUrl is not passed', async () => {
+      const { result } = await renderAuthHook();
+      const scopes: AuthenticationScopes[] = ['profile', 'email'];
+
+      await act(async () => {
+        await result.current.signIn({ scopes });
+      });
+
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(
+        'http://test.example.com',
+        scopes,
+      );
     });
   });
 
