@@ -1,5 +1,13 @@
 # @youversion/platform-react-hooks
 
+## 1.6.2
+
+### Patch Changes
+
+- 694325f: Removing CSS layers approach to prevent CSS conflicts when our components are added to existing apps with global styles.
+- Updated dependencies [694325f]
+  - @youversion/platform-core@1.6.2
+
 ## 1.6.1
 
 ### Patch Changes
