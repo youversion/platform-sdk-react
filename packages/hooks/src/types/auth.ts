@@ -12,6 +12,7 @@ export interface AuthContextValue {
   setUserInfo: Dispatch<SetStateAction<YouVersionUserInfo | null>>;
   isLoading: boolean;
   error: Error | null;
+  redirectUri?: string;
 }
 
 export interface AuthProviderProps {

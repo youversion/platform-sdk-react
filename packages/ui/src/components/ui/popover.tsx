@@ -23,10 +23,12 @@ function PopoverContent({
   headerChild,
   align = 'center',
   heading,
+  showHeader = true,
   sideOffset = 4,
   theme = 'light',
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content> & {
+  showHeader?: boolean;
   heading?: string;
   headerChild?: React.ReactNode;
   theme?: 'light' | 'dark';
@@ -45,16 +47,22 @@ function PopoverContent({
         )}
         {...props}
       >
-        <section className="yv:bg-muted yv:py-3 yv:w-full yv:rounded-t-2xl yv:px-4 yv:border-b yv:border-border yv:flex yv:flex-row yv:justify-between yv:items-center yv:gap-1">
-          <h2 className="yv:font-bold yv:text-base">{heading}</h2>
-          {headerChild}
-          <PopoverClose asChild>
-            <Button variant="ghost" size="icon" className="yv:w-6 yv:h-6 yv:text-muted-foreground">
-              <XIcon />
-              <span className="yv:sr-only">Close</span>
-            </Button>
-          </PopoverClose>
-        </section>
+        {showHeader ? (
+          <section className="yv:bg-muted yv:py-3 yv:w-full yv:rounded-t-2xl yv:px-4 yv:border-b yv:border-border yv:flex yv:flex-row yv:justify-between yv:items-center yv:gap-1">
+            <h2 className="yv:font-bold yv:text-base">{heading}</h2>
+            {headerChild}
+            <PopoverClose asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="yv:w-6 yv:h-6 yv:text-muted-foreground"
+              >
+                <XIcon />
+                <span className="yv:sr-only">Close</span>
+              </Button>
+            </PopoverClose>
+          </section>
+        ) : null}
         {children}
       </PopoverPrimitive.Content>
     </PopoverPrimitive.Portal>

@@ -14,7 +14,7 @@ export interface UseYVAuthReturn {
   auth: AuthenticationState;
 
   // Actions
-  signIn: (params: { redirectUrl: string; scopes?: AuthenticationScopes[] }) => Promise<void>;
+  signIn: (params?: { redirectUrl?: string; scopes?: AuthenticationScopes[] }) => Promise<void>;
   signOut: () => void;
 
   // Callback processing (for callback page) - caches user info
@@ -22,6 +22,9 @@ export interface UseYVAuthReturn {
 
   // Cached user info (populated after successful callback)
   userInfo: YouVersionUserInfo | null;
+
+  // Redirect URI from provider config
+  redirectUri?: string;
 }
 
 /**
@@ -109,7 +112,7 @@ export interface UseYVAuthReturn {
  */
 export function useYVAuth(): UseYVAuthReturn {
   // Get auth state from provider context
-  const { userInfo, setUserInfo, isLoading, error } = useYouVersionAuthContext();
+  const { userInfo, setUserInfo, isLoading, error, redirectUri } = useYouVersionAuthContext();
 
   // Derive authentication state
   const isAuthenticated = !!userInfo;
@@ -127,15 +130,21 @@ export function useYVAuth(): UseYVAuthReturn {
 
   // Sign in function
   const signIn = useCallback(
-    async ({ redirectUrl, scopes }: { redirectUrl: string; scopes?: AuthenticationScopes[] }) => {
-      if (scopes) {
-        await YouVersionAPIUsers.signIn(redirectUrl, scopes);
+    async (params?: { redirectUrl?: string; scopes?: AuthenticationScopes[] }) => {
+      const url = params?.redirectUrl ?? redirectUri;
+      if (!url) {
+        throw new Error(
+          'redirectUrl is required. Provide it via signIn params or configure redirectUri in the auth provider.',
+        );
+      }
+      if (params?.scopes) {
+        await YouVersionAPIUsers.signIn(url, params.scopes);
       } else {
-        await YouVersionAPIUsers.signIn(redirectUrl);
+        await YouVersionAPIUsers.signIn(url);
       }
       // Note: This will redirect, so code after this won't execute
     },
-    [],
+    [redirectUri],
   );
 
   // Process callback function
@@ -169,5 +178,6 @@ export function useYVAuth(): UseYVAuthReturn {
     signOut,
     processCallback,
     userInfo,
+    redirectUri,
   };
 }
