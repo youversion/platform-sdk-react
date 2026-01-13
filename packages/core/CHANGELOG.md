@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 1.6.1
+
+### Patch Changes
+
+- 3f69494: Refactors footnotes implementation to use React portals, improves HTML sanitization, and fixes footnote popover behavior.
+
 ## 1.6.0
 
 ### Minor Changes

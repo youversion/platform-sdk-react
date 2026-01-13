@@ -1,5 +1,14 @@
 # @youversion/platform-react-ui
 
+## 1.6.1
+
+### Patch Changes
+
+- 3f69494: Refactors footnotes implementation to use React portals, improves HTML sanitization, and fixes footnote popover behavior.
+- Updated dependencies [3f69494]
+  - @youversion/platform-react-hooks@1.6.1
+  - @youversion/platform-core@1.6.1
+
 ## 1.6.0
 
 ### Minor Changes
