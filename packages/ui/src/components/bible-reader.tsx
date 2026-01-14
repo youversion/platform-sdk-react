@@ -263,13 +263,19 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
               <PersonIcon />
             )}
           </PopoverTrigger>
-          <PopoverContent className="yv:rounded-[6px] yv:w-min yv:px-4 yv:mb-6" showHeader={false}>
+          <PopoverContent
+            className="yv:rounded-[6px] yv:sm:w-min yv:px-4 yv:mb-6"
+            showHeader={false}
+          >
             {auth.isAuthenticated ? (
               <Button className="yv:text-black" onClick={signOut}>
                 Sign Out
               </Button>
             ) : (
-              <Button className="yv:text-black" onClick={() => void signIn()}>
+              <Button
+                className="yv:text-black"
+                onClick={() => void signIn({ scopes: ['profile'] })}
+              >
                 Sign In
               </Button>
             )}
