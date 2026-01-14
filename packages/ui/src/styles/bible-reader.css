@@ -100,7 +100,6 @@
   /* Wrap verse + label + content together to prevent breaking */
   & .yv-v,
   & .verse {
-    white-space: nowrap;
     display: inline;
   }
 
