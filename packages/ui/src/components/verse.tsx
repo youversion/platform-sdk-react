@@ -30,18 +30,6 @@ type ExtractedNotes = {
 };
 
 /**
- * Checks if a node should be excluded from verse text reconstruction.
- * Excludes: verse markers (.yv-v), verse labels (.yv-vlbl), headers (.yv-h), and footnotes (.yv-n).
- */
-function isExcludedNode(node: Node): boolean {
-  if (!(node instanceof Element)) return false;
-  if (node.classList.contains('yv-v') || node.classList.contains('yv-vlbl')) return true;
-  if (node.classList.contains('yv-h') || node.closest('.yv-h')) return true;
-  if (node.classList.contains('yv-n') || node.closest('.yv-n')) return true;
-  return false;
-}
-
-/**
  * Wraps verse content in `yv-v` elements for easier CSS targeting.
  *
  * Transforms empty verse markers into wrapping containers. When a verse spans
@@ -187,117 +175,76 @@ function wrapParagraphContent(doc: Document, paragraph: Element, verseNum: strin
 }
 
 /**
- * Extracts footnotes from Bible HTML and prepares data for footnote popovers.
+ * Extracts footnotes from wrapped verse HTML and prepares data for footnote popovers.
  *
- * This function does three things:
- * 1. Identifies verse boundaries using `.yv-v[v]` markers (verses can span multiple paragraphs)
- * 2. For each verse with footnotes, builds a plain-text version with A/B/C markers for the popover
- * 3. Inserts placeholder spans at the end of each verse (where the footnote icon will render)
+ * This function assumes verses are already wrapped in `.yv-v[v]` elements (by wrapVerseContent).
+ * It uses `.closest('.yv-v[v]')` to find which verse each footnote belongs to.
  *
- * The challenge: verses don't respect paragraph boundaries. A verse starts at `.yv-v[v="X"]`
- * and ends at the next `.yv-v[v]` marker, potentially spanning multiple `<div class="p">` elements.
- * We use a TreeWalker to flatten the DOM into document order, then use index ranges to define verses.
- *
- * @returns Modified HTML with footnotes removed and placeholders inserted, plus notes data for popovers
+ * @returns Notes data for popovers, keyed by verse number
  */
-function extractNotesFromHtml(html: string): ExtractedNotes {
-  if (typeof window === 'undefined') return { html, notes: {} };
+function extractNotesFromWrappedHtml(doc: Document): Record<string, VerseNotes> {
+  const footnotes = Array.from(doc.querySelectorAll('.yv-n.f'));
+  if (!footnotes.length) return {};
 
-  const doc = new DOMParser().parseFromString(
-    DOMPurify.sanitize(html, DOMPURIFY_CONFIG),
-    'text/html',
-  );
-  const verseMarkers = Array.from(doc.querySelectorAll('.yv-v[v]'));
-  if (!verseMarkers.length) return { html: doc.body.innerHTML, notes: {} };
-
-  // Flatten DOM into document order so we can define verse boundaries by index ranges
-  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
-  const allNodes: Node[] = [];
-  do {
-    allNodes.push(walker.currentNode);
-  } while (walker.nextNode());
-
-  const nodeIndex = new Map(allNodes.map((n, i) => [n, i]));
-  const footnotes = doc.querySelectorAll('.yv-n.f');
-
-  // Define verse boundaries: each verse spans from its marker to the next marker (or end of content)
-  const verses = verseMarkers.map((marker, i) => {
-    const nextMarker = verseMarkers[i + 1];
-    return {
-      num: marker.getAttribute('v') || '0',
-      start: nodeIndex.get(marker) ?? 0,
-      end: nextMarker ? (nodeIndex.get(nextMarker) ?? allNodes.length) : allNodes.length,
-      fns: [] as Element[],
-    };
-  });
-
-  // Assign each footnote to its containing verse (find verse whose range contains the footnote)
+  // Group footnotes by verse number using closest wrapper
+  const footnotesByVerse = new Map<string, Element[]>();
   footnotes.forEach((fn) => {
-    const idx = nodeIndex.get(fn);
-    if (idx !== undefined) {
-      const verse = [...verses].reverse().find((v) => idx > v.start);
-      if (verse) verse.fns.push(fn);
+    const verseNum = fn.closest('.yv-v[v]')?.getAttribute('v');
+    if (verseNum) {
+      if (!footnotesByVerse.has(verseNum)) {
+        footnotesByVerse.set(verseNum, []);
+      }
+      footnotesByVerse.get(verseNum)!.push(fn);
     }
   });
-
-  const withNotes = verses.filter((v) => v.fns.length > 0);
 
   const notes: Record<string, VerseNotes> = {};
-  withNotes.forEach((verse) => {
-    // Build plain-text verse content for popover, replacing footnotes with A/B/C markers
-    let text = '';
+
+  footnotesByVerse.forEach((fns, verseNum) => {
+    // Find all wrappers for this verse (could be multiple if verse spans paragraphs)
+    const verseWrappers = Array.from(doc.querySelectorAll(`.yv-v[v="${verseNum}"]`));
+
+    // Build verse HTML with A/B/C markers for popover display
+    let verseHtml = '';
     let noteIdx = 0;
-    let lastP: Element | null = null;
 
-    for (let i = verse.start; i < verse.end; i++) {
-      const node = allNodes[i];
-      if (!node) continue;
-      const parent = node.parentNode as Element | null;
+    verseWrappers.forEach((wrapper, wrapperIdx) => {
+      if (wrapperIdx > 0) verseHtml += ' ';
 
-      if (node instanceof Element) {
-        if (node.classList.contains('yv-h') || node.closest('.yv-h')) continue;
-        if (node.classList.contains('yv-n') && node.classList.contains('f')) {
-          text += `<sup class="yv:text-muted-foreground">${LETTERS[noteIdx++] || noteIdx}</sup>`;
+      const walker = doc.createTreeWalker(wrapper, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        if (node instanceof Element) {
+          if (node.classList.contains('yv-n') && node.classList.contains('f')) {
+            verseHtml += `<sup class="yv:text-muted-foreground">${LETTERS[noteIdx++] || noteIdx}</sup>`;
+          }
+        } else if (node.nodeType === Node.TEXT_NODE) {
+          const parent = node.parentElement;
+          if (parent?.closest('.yv-n.f') || parent?.closest('.yv-h')) continue;
+          if (parent?.classList.contains('yv-vlbl')) continue;
+          verseHtml += node.textContent || '';
         }
-      } else if (node.nodeType === Node.TEXT_NODE && parent) {
-        if (parent.closest('.yv-h') || parent.closest('.yv-n.f')) continue;
-        if (parent.classList.contains('yv-v') || parent.classList.contains('yv-vlbl')) continue;
-        // Add space when transitioning between paragraphs (verses can span multiple <p> elements)
-        const curP = parent.closest('.p, p, div.p');
-        if (lastP && curP && lastP !== curP) text += ' ';
-        text += node.textContent || '';
-        if (curP) lastP = curP;
       }
-    }
+    });
 
-    notes[verse.num] = { verseHtml: text, notes: verse.fns.map((fn) => fn.innerHTML) };
+    notes[verseNum] = {
+      verseHtml,
+      notes: fns.map((fn) => fn.innerHTML),
+    };
 
-    // Insert placeholder at end of verse content (walk backwards to find last text node)
-    for (let i = verse.end - 1; i > verse.start; i--) {
-      const node = allNodes[i];
-      if (!node) continue;
-      const parent = node.parentNode as Element | null;
-      if (
-        node.nodeType === Node.TEXT_NODE &&
-        node.textContent?.trim() &&
-        parent &&
-        !isExcludedNode(parent) &&
-        !parent.closest('.yv-n') &&
-        !parent.closest('.yv-h')
-      ) {
-        const placeholder = doc.createElement('span');
-        placeholder.setAttribute('data-verse-footnote', verse.num);
-        parent.insertBefore(placeholder, node.nextSibling);
-        break;
-      }
+    // Insert placeholder at end of last verse wrapper
+    const lastWrapper = verseWrappers[verseWrappers.length - 1];
+    if (lastWrapper) {
+      const placeholder = doc.createElement('span');
+      placeholder.setAttribute('data-verse-footnote', verseNum);
+      lastWrapper.appendChild(placeholder);
     }
   });
 
-  footnotes.forEach((fn) => {
-    fn.remove();
-  });
+  // Remove all footnotes from DOM
+  footnotes.forEach((fn) => fn.remove());
 
-  return { html: doc.body.innerHTML, notes };
+  return notes;
 }
 
 const VerseFootnoteButton = memo(function VerseFootnoteButton({
@@ -417,23 +364,17 @@ function yvDomTransformer(html: string, extractNotes: boolean = false): Extracte
     return { html, notes: {} };
   }
 
-  let extractedNotes: Record<string, VerseNotes> = {};
-  let processedHtml = html;
+  // Parse and sanitize HTML
+  const doc = new DOMParser().parseFromString(
+    DOMPurify.sanitize(html, DOMPURIFY_CONFIG),
+    'text/html',
+  );
 
-  if (extractNotes) {
-    const result = extractNotesFromHtml(html);
-    processedHtml = result.html;
-    extractedNotes = result.notes;
-  } else {
-    processedHtml = DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
-  }
-
-  // Safely parse and modify HTML to add spaces to paragraph elements
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(processedHtml, 'text/html');
-
-  // Wrap verse content in yv-v elements for easier CSS targeting (e.g., highlights)
+  // Wrap verse content FIRST (enables simple footnote extraction)
   wrapVerseContent(doc);
+
+  // Extract footnotes using the wrapped verse structure
+  const extractedNotes = extractNotes ? extractNotesFromWrappedHtml(doc) : {};
 
   // Adds non-breaking space to the end of verse labels for better copying and pasting
   // (i.e. "3For God so loved..." to "3 For God so loved...")
