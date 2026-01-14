@@ -232,12 +232,12 @@ function extractNotesFromWrappedHtml(doc: Document): Record<string, VerseNotes> 
       notes: fns.map((fn) => fn.innerHTML),
     };
 
-    // Insert placeholder at end of last verse wrapper
+    // Insert placeholder after last verse wrapper (sibling, not child)
     const lastWrapper = verseWrappers[verseWrappers.length - 1];
-    if (lastWrapper) {
+    if (lastWrapper?.parentNode) {
       const placeholder = doc.createElement('span');
       placeholder.setAttribute('data-verse-footnote', verseNum);
-      lastWrapper.appendChild(placeholder);
+      lastWrapper.parentNode.insertBefore(placeholder, lastWrapper.nextSibling);
     }
   });
 
