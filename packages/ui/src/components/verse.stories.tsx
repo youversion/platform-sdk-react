@@ -344,3 +344,47 @@ export const FootnotePopoverThemeDark: Story = {
     });
   },
 };
+
+function VerseSelectionDemo(props) {
+  const [selectedVerses, setSelectedVerses] = React.useState<number[]>([]);
+
+  return (
+    <div
+      data-yv-sdk
+      className="yv:grid yv:grid-rows-[auto_1fr] yv:gap-4 yv:max-w-lg yv:h-svh yv:max-h-svh yv:overflow-hidden"
+    >
+      <div className="yv:bg-secondary yv:py-2 yv:px-4 yv:rounded-sm yv:sticky yv:text-sm yv:text-muted-foreground">
+        Selected: {selectedVerses.length > 0 ? selectedVerses.join(', ') : 'None'}
+        {selectedVerses.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setSelectedVerses([])}
+            className="yv:ml-2 yv:text-primary yv:underline"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      <div className="yv:h-full yv:overflow-y-auto">
+        <BibleTextView
+          reference="JHN.1"
+          versionId={111}
+          renderNotes={true}
+          {...props}
+          selectedVerses={selectedVerses}
+          onVerseSelect={setSelectedVerses}
+        />
+      </div>
+    </div>
+  );
+}
+
+export const VerseSelection: Story = {
+  args: {
+    reference: 'JHN.1',
+    versionId: 111,
+    renderNotes: true,
+  },
+  render: (props) => <VerseSelectionDemo {...props} />,
+};
