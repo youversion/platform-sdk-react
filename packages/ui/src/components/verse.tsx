@@ -42,6 +42,151 @@ function isExcludedNode(node: Node): boolean {
 }
 
 /**
+ * Wraps verse content in `yv-v` elements for easier CSS targeting.
+ *
+ * Transforms empty verse markers into wrapping containers. When a verse spans
+ * multiple paragraphs, creates duplicate wrappers in each paragraph (Bible.com pattern).
+ *
+ * Before: <span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text...
+ * After:  <span class="yv-v" v="1"><span class="yv-vlbl">1</span>Text...</span>
+ *
+ * This enables simple CSS selectors like `.yv-v[v="1"] { background: yellow; }`
+ */
+function wrapVerseContent(doc: Document): void {
+  const verseMarkers = Array.from(doc.querySelectorAll('.yv-v[v]'));
+  if (!verseMarkers.length) return;
+
+  verseMarkers.forEach((marker, markerIndex) => {
+    const verseNum = marker.getAttribute('v');
+    if (!verseNum) return;
+
+    const nextMarker = verseMarkers[markerIndex + 1];
+    const markerParent = marker.parentElement;
+    if (!markerParent) return;
+
+    const nodesToWrap: Node[] = [];
+    let currentNode: Node | null = marker.nextSibling;
+    const currentParagraph = markerParent.closest('.p, p, div.p');
+
+    while (currentNode) {
+      if (currentNode === nextMarker) break;
+      if (nextMarker && currentNode instanceof Element && currentNode.contains(nextMarker)) break;
+
+      if (currentNode instanceof Element && currentNode.classList.contains('yv-h')) {
+        currentNode = currentNode.nextSibling;
+        continue;
+      }
+
+      nodesToWrap.push(currentNode);
+      currentNode = currentNode.nextSibling;
+    }
+
+    if (nodesToWrap.length === 0) return;
+
+    const wrapper = doc.createElement('span');
+    wrapper.className = 'yv-v';
+    wrapper.setAttribute('v', verseNum);
+
+    const firstNode = nodesToWrap[0];
+    if (firstNode) {
+      marker.parentNode?.insertBefore(wrapper, firstNode);
+    }
+    nodesToWrap.forEach((node) => wrapper.appendChild(node));
+    marker.remove();
+
+    if (!nextMarker) {
+      wrapRemainingParagraphs(doc, verseNum, currentParagraph);
+    } else {
+      const nextMarkerParagraph = nextMarker.closest('.p, p, div.p');
+      if (currentParagraph && nextMarkerParagraph && currentParagraph !== nextMarkerParagraph) {
+        wrapIntermediateParagraphs(doc, verseNum, currentParagraph, nextMarkerParagraph);
+      }
+    }
+  });
+}
+
+/**
+ * Wraps content in paragraphs between the current verse wrapper and the next verse marker.
+ */
+function wrapIntermediateParagraphs(
+  doc: Document,
+  verseNum: string,
+  startParagraph: Element,
+  endParagraph: Element,
+): void {
+  let currentP: Element | null = startParagraph.nextElementSibling;
+
+  while (currentP && currentP !== endParagraph) {
+    if (currentP.classList.contains('yv-h') || currentP.matches('.s1, .s2, .s3, .s4, .ms')) {
+      currentP = currentP.nextElementSibling;
+      continue;
+    }
+
+    if (
+      currentP.classList.contains('p') ||
+      currentP.tagName === 'P' ||
+      (currentP.tagName === 'DIV' && currentP.classList.contains('p'))
+    ) {
+      if (!currentP.querySelector('.yv-v[v]')) {
+        wrapParagraphContent(doc, currentP, verseNum);
+      }
+    }
+
+    currentP = currentP.nextElementSibling;
+  }
+}
+
+/**
+ * Wraps remaining paragraphs after the last verse marker.
+ */
+function wrapRemainingParagraphs(
+  doc: Document,
+  verseNum: string,
+  startParagraph: Element | null,
+): void {
+  if (!startParagraph) return;
+
+  let currentP: Element | null = startParagraph.nextElementSibling;
+
+  while (currentP) {
+    if (currentP.classList.contains('yv-h') || currentP.matches('.s1, .s2, .s3, .s4, .ms')) {
+      currentP = currentP.nextElementSibling;
+      continue;
+    }
+
+    if (currentP.querySelector('.yv-v[v]')) break;
+
+    if (
+      currentP.classList.contains('p') ||
+      currentP.tagName === 'P' ||
+      (currentP.tagName === 'DIV' && currentP.classList.contains('p'))
+    ) {
+      wrapParagraphContent(doc, currentP, verseNum);
+    }
+
+    currentP = currentP.nextElementSibling;
+  }
+}
+
+/**
+ * Wraps all content in a paragraph with a verse span.
+ */
+function wrapParagraphContent(doc: Document, paragraph: Element, verseNum: string): void {
+  const children = Array.from(paragraph.childNodes);
+  if (children.length === 0) return;
+
+  const wrapper = doc.createElement('span');
+  wrapper.className = 'yv-v';
+  wrapper.setAttribute('v', verseNum);
+
+  const firstChild = children[0];
+  if (firstChild) {
+    paragraph.insertBefore(wrapper, firstChild);
+  }
+  children.forEach((child) => wrapper.appendChild(child));
+}
+
+/**
  * Extracts footnotes from Bible HTML and prepares data for footnote popovers.
  *
  * This function does three things:
@@ -287,13 +432,16 @@ function yvDomTransformer(html: string, extractNotes: boolean = false): Extracte
   const parser = new DOMParser();
   const doc = parser.parseFromString(processedHtml, 'text/html');
 
+  // Wrap verse content in yv-v elements for easier CSS targeting (e.g., highlights)
+  wrapVerseContent(doc);
+
   // Adds non-breaking space to the end of verse labels for better copying and pasting
   // (i.e. "3For God so loved..." to "3 For God so loved...")
-  const paragraphs = doc.querySelectorAll('.yv-vlbl');
-  paragraphs.forEach((p) => {
-    const text = p.textContent || '';
+  const verseLabels = doc.querySelectorAll('.yv-vlbl');
+  verseLabels.forEach((label) => {
+    const text = label.textContent || '';
     if (!text.endsWith(NON_BREAKING_SPACE)) {
-      p.textContent = text + NON_BREAKING_SPACE;
+      label.textContent = text + NON_BREAKING_SPACE;
     }
   });
 
