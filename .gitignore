@@ -71,3 +71,5 @@ storybook-static
 !.yarn/sdks
 !.yarn/versions
 .yarn/install-state.gz
+
+.opencode/plans
