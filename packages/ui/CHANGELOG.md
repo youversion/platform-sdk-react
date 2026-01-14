@@ -1,5 +1,20 @@
 # @youversion/platform-react-ui
 
+## 1.7.0
+
+### Minor Changes
+
+- a3e357e: feat(ui, hook): add sign in/out to bible reader
+  - Add sign in/out functionality to the BibleReader component
+  - Refactor auth hooks so redirectUri is optional (can be inferred from provider)
+  - New icons: gear.tsx and person.tsx for settings/auth UI
+
+### Patch Changes
+
+- Updated dependencies [a3e357e]
+  - @youversion/platform-react-hooks@1.7.0
+  - @youversion/platform-core@1.7.0
+
 ## 1.6.2
 
 ### Patch Changes
