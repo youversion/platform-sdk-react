@@ -84,6 +84,7 @@ export default function YouVersionAuthProvider({
     setUserInfo,
     isLoading,
     error,
+    redirectUri: config.redirectUri,
   };
 
   return <YouVersionAuthContext.Provider value={value}>{children}</YouVersionAuthContext.Provider>;
