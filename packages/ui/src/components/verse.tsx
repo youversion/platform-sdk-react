@@ -211,7 +211,7 @@ function extractNotesFromWrappedHtml(doc: Document): Record<string, VerseNotes> 
     };
 
     // Insert placeholder at end of last verse wrapper
-    const lastWrapper = verseWrappers[verseWrappers.length - 1]!;
+    const lastWrapper = verseWrappers[verseWrappers.length - 1];
     const placeholder = doc.createElement('span');
     placeholder.setAttribute('data-verse-footnote', verseNum);
     lastWrapper.appendChild(placeholder);
