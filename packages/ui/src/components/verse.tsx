@@ -162,10 +162,12 @@ function extractNotesFromWrappedHtml(doc: Document): Record<string, VerseNotes> 
   footnotes.forEach((fn) => {
     const verseNum = fn.closest('.yv-v[v]')?.getAttribute('v');
     if (verseNum) {
-      if (!footnotesByVerse.has(verseNum)) {
-        footnotesByVerse.set(verseNum, []);
+      let arr = footnotesByVerse.get(verseNum);
+      if (!arr) {
+        arr = [];
+        footnotesByVerse.set(verseNum, arr);
       }
-      footnotesByVerse.get(verseNum)!.push(fn);
+      arr.push(fn);
     }
   });
 
