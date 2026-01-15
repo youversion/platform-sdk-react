@@ -83,60 +83,31 @@ function wrapVerseContent(doc: Document): void {
     marker.remove();
 
     if (!nextMarker) {
-      wrapRemainingParagraphs(doc, verseNum, currentParagraph);
+      wrapParagraphsUntilBoundary(doc, verseNum, currentParagraph);
     } else {
       const nextMarkerParagraph = nextMarker.closest('.p, p, div.p');
       if (currentParagraph && nextMarkerParagraph && currentParagraph !== nextMarkerParagraph) {
-        wrapIntermediateParagraphs(doc, verseNum, currentParagraph, nextMarkerParagraph);
+        wrapParagraphsUntilBoundary(doc, verseNum, currentParagraph, nextMarkerParagraph);
       }
     }
   });
 }
 
 /**
- * Wraps content in paragraphs between the current verse wrapper and the next verse marker.
+ * Wraps paragraphs between startParagraph and an optional endParagraph boundary.
+ * If no endParagraph is provided, wraps until a verse marker is found or siblings are exhausted.
  */
-function wrapIntermediateParagraphs(
-  doc: Document,
-  verseNum: string,
-  startParagraph: Element,
-  endParagraph: Element,
-): void {
-  let currentP: Element | null = startParagraph.nextElementSibling;
-
-  while (currentP && currentP !== endParagraph) {
-    if (currentP.classList.contains('yv-h') || currentP.matches('.s1, .s2, .s3, .s4, .ms')) {
-      currentP = currentP.nextElementSibling;
-      continue;
-    }
-
-    if (
-      currentP.classList.contains('p') ||
-      currentP.tagName === 'P' ||
-      (currentP.tagName === 'DIV' && currentP.classList.contains('p'))
-    ) {
-      if (!currentP.querySelector('.yv-v[v]')) {
-        wrapParagraphContent(doc, currentP, verseNum);
-      }
-    }
-
-    currentP = currentP.nextElementSibling;
-  }
-}
-
-/**
- * Wraps remaining paragraphs after the last verse marker.
- */
-function wrapRemainingParagraphs(
+function wrapParagraphsUntilBoundary(
   doc: Document,
   verseNum: string,
   startParagraph: Element | null,
+  endParagraph?: Element | null,
 ): void {
   if (!startParagraph) return;
 
   let currentP: Element | null = startParagraph.nextElementSibling;
 
-  while (currentP) {
+  while (currentP && currentP !== endParagraph) {
     if (currentP.classList.contains('yv-h') || currentP.matches('.s1, .s2, .s3, .s4, .ms')) {
       currentP = currentP.nextElementSibling;
       continue;
