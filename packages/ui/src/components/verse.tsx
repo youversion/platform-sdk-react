@@ -108,7 +108,12 @@ function wrapParagraphsUntilBoundary(
   let currentP: Element | null = startParagraph.nextElementSibling;
 
   while (currentP && currentP !== endParagraph) {
-    if (currentP.classList.contains('yv-h') || currentP.matches('.s1, .s2, .s3, .s4, .ms')) {
+    // Skip heading elements - these are structural, not verse content
+    // See iOS implementation: https://github.com/youversion/platform-sdk-swift/blob/main/Sources/YouVersionPlatformUI/Views/Rendering/BibleVersionRendering.swift
+    const isHeading =
+      currentP.classList.contains('yv-h') ||
+      currentP.matches('.s1, .s2, .s3, .s4, .ms, .ms1, .ms2, .ms3, .ms4, .mr, .sp, .sr, .qa, .r');
+    if (isHeading) {
       currentP = currentP.nextElementSibling;
       continue;
     }
