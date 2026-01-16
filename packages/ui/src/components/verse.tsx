@@ -1,227 +1,31 @@
 'use client';
 
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { usePassage, useTheme } from '@youversion/platform-react-hooks';
 import DOMPurify from 'isomorphic-dompurify';
 import {
   forwardRef,
   memo,
+  type ReactNode,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
-  type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  extractNotesFromWrappedHtml,
+  LETTERS,
+  NON_BREAKING_SPACE,
+  type VerseNotes,
+  wrapVerseContent,
+} from '@/lib/verse-html-utils';
 import { Footnote } from './icons/footnote';
-
-const NON_BREAKING_SPACE = '\u00A0';
-
-const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
-
-type VerseNotes = {
-  verseHtml: string;
-  notes: string[];
-};
 
 type ExtractedNotes = {
   html: string;
   notes: Record<string, VerseNotes>;
 };
-
-/**
- * Wraps verse content in `yv-v` elements for easier CSS targeting.
- *
- * Transforms empty verse markers into wrapping containers. When a verse spans
- * multiple paragraphs, creates duplicate wrappers in each paragraph (Bible.com pattern).
- *
- * Before: <span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text...
- * After:  <span class="yv-v" v="1"><span class="yv-vlbl">1</span>Text...</span>
- *
- * This enables simple CSS selectors like `.yv-v[v="1"] { background: yellow; }`
- */
-function wrapVerseContent(doc: Document): void {
-  const verseMarkers = Array.from(doc.querySelectorAll('.yv-v[v]'));
-  if (!verseMarkers.length) return;
-
-  verseMarkers.forEach((marker, markerIndex) => {
-    const verseNum = marker.getAttribute('v');
-    if (!verseNum) return;
-
-    const nextMarker = verseMarkers[markerIndex + 1];
-    const markerParent = marker.parentElement;
-    if (!markerParent) return;
-
-    const nodesToWrap: Node[] = [];
-    let currentNode: Node | null = marker.nextSibling;
-    const currentParagraph = markerParent.closest('.p, p, div.p');
-
-    while (currentNode) {
-      if (currentNode === nextMarker) break;
-      if (nextMarker && currentNode instanceof Element && currentNode.contains(nextMarker)) break;
-
-      if (currentNode instanceof Element && currentNode.classList.contains('yv-h')) {
-        currentNode = currentNode.nextSibling;
-        continue;
-      }
-
-      nodesToWrap.push(currentNode);
-      currentNode = currentNode.nextSibling;
-    }
-
-    if (nodesToWrap.length === 0) return;
-
-    const wrapper = doc.createElement('span');
-    wrapper.className = 'yv-v';
-    wrapper.setAttribute('v', verseNum);
-
-    const firstNode = nodesToWrap[0];
-    if (firstNode) {
-      marker.parentNode?.insertBefore(wrapper, firstNode);
-    }
-    nodesToWrap.forEach((node) => wrapper.appendChild(node));
-    marker.remove();
-
-    if (!nextMarker) {
-      wrapParagraphsUntilBoundary(doc, verseNum, currentParagraph);
-    } else {
-      const nextMarkerParagraph = nextMarker.closest('.p, p, div.p');
-      if (currentParagraph && nextMarkerParagraph && currentParagraph !== nextMarkerParagraph) {
-        wrapParagraphsUntilBoundary(doc, verseNum, currentParagraph, nextMarkerParagraph);
-      }
-    }
-  });
-}
-
-/**
- * Wraps paragraphs between startParagraph and an optional endParagraph boundary.
- * If no endParagraph is provided, wraps until a verse marker is found or siblings are exhausted.
- */
-function wrapParagraphsUntilBoundary(
-  doc: Document,
-  verseNum: string,
-  startParagraph: Element | null,
-  endParagraph?: Element | null,
-): void {
-  if (!startParagraph) return;
-
-  let currentP: Element | null = startParagraph.nextElementSibling;
-
-  while (currentP && currentP !== endParagraph) {
-    // Skip heading elements - these are structural, not verse content
-    // See iOS implementation: https://github.com/youversion/platform-sdk-swift/blob/main/Sources/YouVersionPlatformUI/Views/Rendering/BibleVersionRendering.swift
-    const isHeading =
-      currentP.classList.contains('yv-h') ||
-      currentP.matches('.s1, .s2, .s3, .s4, .ms, .ms1, .ms2, .ms3, .ms4, .mr, .sp, .sr, .qa, .r');
-    if (isHeading) {
-      currentP = currentP.nextElementSibling;
-      continue;
-    }
-
-    if (currentP.querySelector('.yv-v[v]')) break;
-
-    if (
-      currentP.classList.contains('p') ||
-      currentP.tagName === 'P' ||
-      (currentP.tagName === 'DIV' && currentP.classList.contains('p'))
-    ) {
-      wrapParagraphContent(doc, currentP, verseNum);
-    }
-
-    currentP = currentP.nextElementSibling;
-  }
-}
-
-/**
- * Wraps all content in a paragraph with a verse span.
- */
-function wrapParagraphContent(doc: Document, paragraph: Element, verseNum: string): void {
-  const children = Array.from(paragraph.childNodes);
-  if (children.length === 0) return;
-
-  const wrapper = doc.createElement('span');
-  wrapper.className = 'yv-v';
-  wrapper.setAttribute('v', verseNum);
-
-  const firstChild = children[0];
-  if (firstChild) {
-    paragraph.insertBefore(wrapper, firstChild);
-  }
-  children.forEach((child) => wrapper.appendChild(child));
-}
-
-/**
- * Extracts footnotes from wrapped verse HTML and prepares data for footnote popovers.
- *
- * This function assumes verses are already wrapped in `.yv-v[v]` elements (by wrapVerseContent).
- * It uses `.closest('.yv-v[v]')` to find which verse each footnote belongs to.
- *
- * @returns Notes data for popovers, keyed by verse number
- */
-function extractNotesFromWrappedHtml(doc: Document): Record<string, VerseNotes> {
-  const footnotes = Array.from(doc.querySelectorAll('.yv-n.f'));
-  if (!footnotes.length) return {};
-
-  // Group footnotes by verse number using closest wrapper
-  const footnotesByVerse = new Map<string, Element[]>();
-  footnotes.forEach((fn) => {
-    const verseNum = fn.closest('.yv-v[v]')?.getAttribute('v');
-    if (verseNum) {
-      let arr = footnotesByVerse.get(verseNum);
-      if (!arr) {
-        arr = [];
-        footnotesByVerse.set(verseNum, arr);
-      }
-      arr.push(fn);
-    }
-  });
-
-  const notes: Record<string, VerseNotes> = {};
-
-  footnotesByVerse.forEach((fns, verseNum) => {
-    // Find all wrappers for this verse (could be multiple if verse spans paragraphs)
-    const verseWrappers = Array.from(doc.querySelectorAll(`.yv-v[v="${verseNum}"]`));
-
-    // Build verse HTML with A/B/C markers for popover display
-    let verseHtml = '';
-    let noteIdx = 0;
-
-    verseWrappers.forEach((wrapper, wrapperIdx) => {
-      if (wrapperIdx > 0) verseHtml += ' ';
-
-      const walker = doc.createTreeWalker(wrapper, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
-      while (walker.nextNode()) {
-        const node = walker.currentNode;
-        if (node instanceof Element) {
-          if (node.classList.contains('yv-n') && node.classList.contains('f')) {
-            verseHtml += `<sup class="yv:text-muted-foreground">${LETTERS[noteIdx++] || noteIdx}</sup>`;
-          }
-        } else if (node.nodeType === Node.TEXT_NODE) {
-          const parent = node.parentElement;
-          if (parent?.closest('.yv-n.f') || parent?.closest('.yv-h')) continue;
-          if (parent?.classList.contains('yv-vlbl')) continue;
-          verseHtml += node.textContent || '';
-        }
-      }
-    });
-
-    notes[verseNum] = {
-      verseHtml,
-      notes: fns.map((fn) => fn.innerHTML),
-    };
-
-    // Insert placeholder at end of last verse wrapper
-    const lastWrapper = verseWrappers[verseWrappers.length - 1];
-    const placeholder = doc.createElement('span');
-    placeholder.setAttribute('data-verse-footnote', verseNum);
-    lastWrapper.appendChild(placeholder);
-  });
-
-  // Remove all footnotes from DOM
-  footnotes.forEach((fn) => fn.remove());
-
-  return notes;
-}
 
 const VerseFootnoteButton = memo(function VerseFootnoteButton({
   verseNum,
