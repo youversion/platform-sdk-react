@@ -19,140 +19,141 @@ export type VerseNotes = {
  * This enables simple CSS selectors like `.yv-v[v="1"] { background: yellow; }`
  */
 export function wrapVerseContent(doc: Document): void {
+  /**
+   * Wraps all content in a paragraph with a verse span.
+   */
+  function wrapParagraphContent(doc: Document, paragraph: Element, verseNum: string): void {
+    const children = Array.from(paragraph.childNodes);
+    if (children.length === 0) return;
+
+    const wrapper = doc.createElement('span');
+    wrapper.className = 'yv-v';
+    wrapper.setAttribute('v', verseNum);
+
+    const firstChild = children[0];
+    if (firstChild) {
+      paragraph.insertBefore(wrapper, firstChild);
+    }
+    children.forEach((child) => {
+      wrapper.appendChild(child);
+    });
+  }
+
+  /**
+   * Wraps paragraphs between startParagraph and an optional endParagraph boundary.
+   * If no endParagraph is provided, wraps until a verse marker is found or siblings are exhausted.
+   */
+  function wrapParagraphsUntilBoundary(
+    doc: Document,
+    verseNum: string,
+    startParagraph: Element | null,
+    endParagraph?: Element | null,
+  ): void {
+    if (!startParagraph) return;
+
+    let currentP: Element | null = startParagraph.nextElementSibling;
+
+    while (currentP && currentP !== endParagraph) {
+      // Skip heading elements - these are structural, not verse content
+      // See iOS implementation: https://github.com/youversion/platform-sdk-swift/blob/main/Sources/YouVersionPlatformUI/Views/Rendering/BibleVersionRendering.swift
+      const isHeading =
+        currentP.classList.contains('yv-h') ||
+        currentP.matches('.s1, .s2, .s3, .s4, .ms, .ms1, .ms2, .ms3, .ms4, .mr, .sp, .sr, .qa, .r');
+      if (isHeading) {
+        currentP = currentP.nextElementSibling;
+        continue;
+      }
+
+      if (currentP.querySelector('.yv-v[v]')) break;
+
+      if (
+        currentP.classList.contains('p') ||
+        currentP.tagName === 'P'
+      ) {
+        wrapParagraphContent(doc, currentP, verseNum);
+      }
+
+      currentP = currentP.nextElementSibling;
+    }
+  }
+
+  function handleParagraphWrapping(
+    marker: Element,
+    nextMarker: Element | undefined,
+    verseNum: string | null,
+  ): void {
+    const doc = marker.ownerDocument;
+    const currentParagraph = marker.closest('.p, p, div.p');
+    if (!currentParagraph || !verseNum) return;
+
+    if (!nextMarker) {
+      wrapParagraphsUntilBoundary(doc, verseNum, currentParagraph);
+      return;
+    }
+
+    const nextParagraph = nextMarker.closest('.p, p, div.p');
+    if (nextParagraph && currentParagraph !== nextParagraph) {
+      wrapParagraphsUntilBoundary(doc, verseNum, currentParagraph, nextParagraph);
+    }
+  }
+
+  function wrapNodesInVerse(marker: Element, verseNum: string, nodes: Node[]): void {
+    const wrapper = marker.ownerDocument.createElement('span');
+    wrapper.className = 'yv-v';
+    wrapper.setAttribute('v', verseNum);
+
+    const firstNode = nodes[0];
+    if (firstNode) {
+      marker.parentNode?.insertBefore(wrapper, firstNode);
+    }
+
+    nodes.forEach((node) => {
+      wrapper.appendChild(node);
+    });
+    marker.remove();
+  }
+
+  function shouldStopCollecting(node: Node, endMarker: Element | undefined): boolean {
+    if (node === endMarker) return true;
+    if (endMarker && node instanceof Element && node.contains(endMarker)) return true;
+    return false;
+  }
+
+  function shouldSkipNode(node: Node): boolean {
+    return node instanceof Element && node.classList.contains('yv-h');
+  }
+
+  function collectNodesBetweenMarkers(startMarker: Element, endMarker: Element | undefined): Node[] {
+    const nodes: Node[] = [];
+    let current: Node | null = startMarker.nextSibling;
+
+    while (current && !shouldStopCollecting(current, endMarker)) {
+      if (shouldSkipNode(current)) {
+        current = current.nextSibling;
+        continue;
+      }
+      nodes.push(current);
+      current = current.nextSibling;
+    }
+
+    return nodes;
+  }
+
+  function processVerseMarker(marker: Element, index: number, markers: Element[]): void {
+    const verseNum = marker.getAttribute('v');
+    if (!verseNum) return;
+
+    const nodesToWrap = collectNodesBetweenMarkers(marker, markers[index + 1]);
+    if (nodesToWrap.length === 0) return;
+
+    wrapNodesInVerse(marker, verseNum, nodesToWrap);
+    handleParagraphWrapping(marker, markers[index + 1], verseNum);
+  }
+
   const verseMarkers = Array.from(doc.querySelectorAll('.yv-v[v]'));
   verseMarkers.forEach(processVerseMarker);
 }
 
-function processVerseMarker(marker: Element, index: number, markers: Element[]): void {
-  const verseNum = marker.getAttribute('v');
-  if (!verseNum) return;
-
-  const nodesToWrap = collectNodesBetweenMarkers(marker, markers[index + 1]);
-  if (nodesToWrap.length === 0) return;
-
-  wrapNodesInVerse(marker, verseNum, nodesToWrap);
-  handleParagraphWrapping(marker, markers[index + 1], verseNum);
-}
-
-function collectNodesBetweenMarkers(startMarker: Element, endMarker: Element | undefined): Node[] {
-  const nodes: Node[] = [];
-  let current: Node | null = startMarker.nextSibling;
-
-  while (current && !shouldStopCollecting(current, endMarker)) {
-    if (shouldSkipNode(current)) {
-      current = current.nextSibling;
-      continue;
-    }
-    nodes.push(current);
-    current = current.nextSibling;
-  }
-
-  return nodes;
-}
-
-function shouldStopCollecting(node: Node, endMarker: Element | undefined): boolean {
-  if (node === endMarker) return true;
-  if (endMarker && node instanceof Element && node.contains(endMarker)) return true;
-  return false;
-}
-
-function shouldSkipNode(node: Node): boolean {
-  return node instanceof Element && node.classList.contains('yv-h');
-}
-
-function wrapNodesInVerse(marker: Element, verseNum: string, nodes: Node[]): void {
-  const wrapper = marker.ownerDocument.createElement('span');
-  wrapper.className = 'yv-v';
-  wrapper.setAttribute('v', verseNum);
-
-  const firstNode = nodes[0];
-  if (firstNode) {
-    marker.parentNode?.insertBefore(wrapper, firstNode);
-  }
-
-  nodes.forEach((node) => {
-    wrapper.appendChild(node);
-  });
-  marker.remove();
-}
-
-function handleParagraphWrapping(
-  marker: Element,
-  nextMarker: Element | undefined,
-  verseNum: string | null,
-): void {
-  const doc = marker.ownerDocument;
-  const currentParagraph = marker.closest('.p, p, div.p');
-  if (!currentParagraph || !verseNum) return;
-
-  if (!nextMarker) {
-    wrapParagraphsUntilBoundary(doc, verseNum, currentParagraph);
-    return;
-  }
-
-  const nextParagraph = nextMarker.closest('.p, p, div.p');
-  if (nextParagraph && currentParagraph !== nextParagraph) {
-    wrapParagraphsUntilBoundary(doc, verseNum, currentParagraph, nextParagraph);
-  }
-}
-
-/**
- * Wraps paragraphs between startParagraph and an optional endParagraph boundary.
- * If no endParagraph is provided, wraps until a verse marker is found or siblings are exhausted.
- */
-function wrapParagraphsUntilBoundary(
-  doc: Document,
-  verseNum: string,
-  startParagraph: Element | null,
-  endParagraph?: Element | null,
-): void {
-  if (!startParagraph) return;
-
-  let currentP: Element | null = startParagraph.nextElementSibling;
-
-  while (currentP && currentP !== endParagraph) {
-    // Skip heading elements - these are structural, not verse content
-    // See iOS implementation: https://github.com/youversion/platform-sdk-swift/blob/main/Sources/YouVersionPlatformUI/Views/Rendering/BibleVersionRendering.swift
-    const isHeading =
-      currentP.classList.contains('yv-h') ||
-      currentP.matches('.s1, .s2, .s3, .s4, .ms, .ms1, .ms2, .ms3, .ms4, .mr, .sp, .sr, .qa, .r');
-    if (isHeading) {
-      currentP = currentP.nextElementSibling;
-      continue;
-    }
-
-    if (currentP.querySelector('.yv-v[v]')) break;
-
-    if (
-      currentP.classList.contains('p') ||
-      currentP.tagName === 'P'
-    ) {
-      wrapParagraphContent(doc, currentP, verseNum);
-    }
-
-    currentP = currentP.nextElementSibling;
-  }
-}
-
-/**
- * Wraps all content in a paragraph with a verse span.
- */
-function wrapParagraphContent(doc: Document, paragraph: Element, verseNum: string): void {
-  const children = Array.from(paragraph.childNodes);
-  if (children.length === 0) return;
-
-  const wrapper = doc.createElement('span');
-  wrapper.className = 'yv-v';
-  wrapper.setAttribute('v', verseNum);
-
-  const firstChild = children[0];
-  if (firstChild) {
-    paragraph.insertBefore(wrapper, firstChild);
-  }
-  children.forEach((child) => {
-    wrapper.appendChild(child);
-  });
-}
 
 /**
  * Extracts footnotes from wrapped verse HTML and prepares data for footnote popovers.
