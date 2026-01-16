@@ -1,9 +1,21 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { BibleVersionPicker, type RootProps } from './bible-version-picker';
 import { useState } from 'react';
-import { screen, userEvent, within, expect } from 'storybook/test';
+import { screen, userEvent, within, expect, waitFor } from 'storybook/test';
 import { BookOpen } from 'lucide-react';
 import { Button } from './ui/button';
+
+const RECENT_VERSIONS_KEY = 'youversion-platform:picker:recent-versions';
+
+type StoredRecentVersion = {
+  id: number;
+  title: string;
+  localized_abbreviation: string;
+};
+
+function getStoredRecentVersions(): StoredRecentVersion[] {
+  return JSON.parse(localStorage.getItem(RECENT_VERSIONS_KEY) || '[]') as StoredRecentVersion[];
+}
 
 const withLayout = (Story: React.ComponentType) => (
   <div className="yv:h-screen yv:flex yv:justify-center yv:items-end yv:p-12">
@@ -28,6 +40,9 @@ const meta = {
     layout: 'fullscreen',
   },
   decorators: [withLayout],
+  beforeEach: () => {
+    localStorage.removeItem(RECENT_VERSIONS_KEY);
+  },
   argTypes: {
     versionId: {
       control: 'number',
@@ -172,5 +187,146 @@ export const RealAPI: Story = {
     msw: {
       handlers: null,
     },
+  },
+};
+
+export const RecentVersionsSelection: Story = {
+  args: {
+    versionId: 111,
+    background: 'light',
+  },
+  tags: ['integration'],
+  play: async () => {
+    // Open popover
+    const trigger = await screen.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
+    await userEvent.click(trigger);
+
+    // Verify initially there's no recent versions section
+    const dialog = await screen.findByRole('dialog');
+    await expect(dialog).toBeInTheDocument();
+    await expect(screen.queryByText('Recently Used Versions')).not.toBeInTheDocument();
+
+    // Select a different version (Amplified Bible)
+    const ampOption = await screen.findByRole('listitem', { name: /Amplified Bible/i });
+    await userEvent.click(ampOption);
+
+    // Reopen the popover and verify the recent versions section now appears
+    const updatedTrigger = await screen.findByRole('button', { name: /AMP/i });
+    await expect(updatedTrigger).toBeInTheDocument();
+    await userEvent.click(updatedTrigger);
+
+    await expect(await screen.findByText('Recently Used Versions')).toBeInTheDocument();
+    const recentVersionList = await screen.findByTestId('recent-version-list');
+    await expect(within(recentVersionList).getByText(/Amplified Bible/i)).toBeInTheDocument();
+
+    // Verify localStorage was updated
+    let storedVersions = getStoredRecentVersions();
+    await expect(storedVersions.length).toBe(1);
+    await expect(storedVersions[0].title).toContain('Amplified');
+
+    // Now select NIV from the main list
+    const nivOption = await screen.findByRole('listitem', {
+      name: /New International Version 2011/i,
+    });
+    await userEvent.click(nivOption);
+
+    // Reopen and select AMP from recent versions
+    const nivTrigger = await screen.findByRole('button', { name: /NIV/i });
+    await expect(nivTrigger).toBeInTheDocument();
+    await userEvent.click(nivTrigger);
+
+    const recentList = await screen.findByTestId('recent-version-list');
+    const ampRecentOption = within(recentList).getByRole('listitem', {
+      name: /Amplified Bible/i,
+    });
+    await userEvent.click(ampRecentOption);
+
+    // Verify AMP is selected and moved to top of recent versions
+    const ampTrigger = await screen.findByRole('button', { name: /AMP/i });
+    await expect(ampTrigger).toBeInTheDocument();
+
+    storedVersions = getStoredRecentVersions();
+    await expect(storedVersions[0].localized_abbreviation).toBe('AMP');
+  },
+};
+
+export const RecentVersionsSearchFilter: Story = {
+  args: {
+    versionId: 111,
+    background: 'light',
+  },
+  tags: ['integration'],
+  beforeEach: () => {
+    // Pre-populate localStorage with recent versions before component mounts
+    localStorage.setItem(
+      RECENT_VERSIONS_KEY,
+      JSON.stringify([
+        { id: 1588, title: 'Amplified Bible', localized_abbreviation: 'AMP' },
+        { id: 12, title: 'American Standard Version', localized_abbreviation: 'ASV' },
+      ]),
+    );
+  },
+  play: async () => {
+    // Open popover
+    const trigger = await screen.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
+    await userEvent.click(trigger);
+
+    // Verify recent versions are displayed
+    await expect(await screen.findByText('Recently Used Versions')).toBeInTheDocument();
+    const recentVersionList = await screen.findByTestId('recent-version-list');
+    await expect(within(recentVersionList).getByText(/Amplified Bible/i)).toBeInTheDocument();
+    await expect(
+      within(recentVersionList).getByText(/American Standard Version/i),
+    ).toBeInTheDocument();
+
+    // Search for "ASV"
+    const searchInput = screen.getByPlaceholderText('Search');
+    await userEvent.type(searchInput, 'ASV', { delay: 50 });
+
+    // Verify only ASV appears in recent versions after filtering
+    await waitFor(async () => {
+      await expect(screen.queryByText(/Amplified Bible/i)).not.toBeInTheDocument();
+    });
+    await expect(
+      within(await screen.findByTestId('recent-version-list')).getByText(
+        /American Standard Version/i,
+      ),
+    ).toBeInTheDocument();
+  },
+};
+
+export const RecentVersionsMaxLimit: Story = {
+  args: {
+    versionId: 111,
+    background: 'light',
+  },
+  tags: ['integration'],
+  beforeEach: () => {
+    // Pre-populate localStorage with 3 recent versions (max limit) before component mounts
+    localStorage.setItem(
+      RECENT_VERSIONS_KEY,
+      JSON.stringify([
+        { id: 1588, title: 'Amplified Bible', localized_abbreviation: 'AMP' },
+        { id: 100, title: 'New American Standard Bible 1995', localized_abbreviation: 'NASB1995' },
+        { id: 12, title: 'American Standard Version', localized_abbreviation: 'ASV' },
+      ]),
+    );
+  },
+  play: async () => {
+    // Open popover
+    const trigger = await screen.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
+    await userEvent.click(trigger);
+
+    // Select a new version (NASB2020) - this should push out ASV
+    const nasbOption = await screen.findByRole('listitem', {
+      name: /New American Standard Bible 2020/i,
+    });
+    await userEvent.click(nasbOption);
+
+    // Verify localStorage was updated with max 3 versions, NASB2020 at the top
+    const storedVersions = getStoredRecentVersions();
+    await expect(storedVersions.length).toBe(3);
+    await expect(storedVersions[0].title).toContain('New American Standard Bible 2020');
+    await expect(storedVersions.map((v) => v.localized_abbreviation)).not.toContain('ASV');
   },
 };

@@ -468,7 +468,7 @@ function Content() {
             <InputGroupInput
               tabIndex={1}
               type="text"
-              placeholder="Search Versions"
+              placeholder="Search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             ></InputGroupInput>
