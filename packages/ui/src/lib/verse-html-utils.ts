@@ -78,23 +78,38 @@ export function wrapVerseContent(doc: Document): void {
   }
 
   function handleParagraphWrapping(
-    marker: Element,
-    nextMarker: Element | undefined,
-    verseNum: string | null,
+    doc: Document,
+    currentParagraph: Element | null,
+    nextParagraph: Element | null,
+    verseNum: string,
   ): void {
-    const doc = marker.ownerDocument;
-    const currentParagraph = marker.closest('.p, p, div.p');
-    if (!currentParagraph || !verseNum) return;
+    if (!currentParagraph) return;
 
-    if (!nextMarker) {
+    if (!nextParagraph) {
       wrapParagraphsUntilBoundary(doc, verseNum, currentParagraph);
       return;
     }
 
-    const nextParagraph = nextMarker.closest('.p, p, div.p');
-    if (nextParagraph && currentParagraph !== nextParagraph) {
+    if (currentParagraph !== nextParagraph) {
       wrapParagraphsUntilBoundary(doc, verseNum, currentParagraph, nextParagraph);
     }
+  }
+
+  function processVerseMarker(marker: Element, index: number, markers: Element[]): void {
+    const verseNum = marker.getAttribute('v');
+    if (!verseNum) return;
+
+    const nextMarker = markers[index + 1];
+
+    const nodesToWrap = collectNodesBetweenMarkers(marker, nextMarker);
+    if (nodesToWrap.length === 0) return;
+
+    const currentParagraph = marker.closest('.p, p, div.p');
+    const nextParagraph = nextMarker?.closest('.p, p, div.p') || null;
+    const doc = marker.ownerDocument;
+
+    wrapNodesInVerse(marker, verseNum, nodesToWrap);
+    handleParagraphWrapping(doc, currentParagraph, nextParagraph, verseNum);
   }
 
   function wrapNodesInVerse(marker: Element, verseNum: string, nodes: Node[]): void {
@@ -137,17 +152,6 @@ export function wrapVerseContent(doc: Document): void {
     }
 
     return nodes;
-  }
-
-  function processVerseMarker(marker: Element, index: number, markers: Element[]): void {
-    const verseNum = marker.getAttribute('v');
-    if (!verseNum) return;
-
-    const nodesToWrap = collectNodesBetweenMarkers(marker, markers[index + 1]);
-    if (nodesToWrap.length === 0) return;
-
-    wrapNodesInVerse(marker, verseNum, nodesToWrap);
-    handleParagraphWrapping(marker, markers[index + 1], verseNum);
   }
 
   const verseMarkers = Array.from(doc.querySelectorAll('.yv-v[v]'));
