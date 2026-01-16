@@ -125,8 +125,7 @@ function wrapParagraphsUntilBoundary(
 
     if (
       currentP.classList.contains('p') ||
-      currentP.tagName === 'P' ||
-      (currentP.tagName === 'DIV' && currentP.classList.contains('p'))
+      currentP.tagName === 'P'
     ) {
       wrapParagraphContent(doc, currentP, verseNum);
     }
