@@ -19,7 +19,7 @@ import {
   useState,
 } from 'react';
 
-const RECENT_VERSIONS_KEY = 'youversion-platform:picker:recent-versions';
+export const RECENT_VERSIONS_KEY = 'youversion-platform:picker:recent-versions';
 const MAX_RECENT_VERSIONS = 3;
 
 type RecentVersion = Pick<BibleVersion, 'id' | 'title' | 'localized_abbreviation' | 'abbreviation'>;
@@ -372,7 +372,7 @@ function Content() {
     >
       {/* Versions View */}
       <div
-        className={`yv:min-h-0 yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center ${
+        className={`yv:min-h-0 yv:max-h-[66svh] yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center ${
           isLanguagesOpen
             ? 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
             : 'yv:opacity-100 yv:pointer-events-auto yv:blur-none yv:scale-100'

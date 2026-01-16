@@ -4,8 +4,7 @@ import { useState } from 'react';
 import { screen, userEvent, within, expect, waitFor } from 'storybook/test';
 import { BookOpen } from 'lucide-react';
 import { Button } from './ui/button';
-
-const RECENT_VERSIONS_KEY = 'youversion-platform:picker:recent-versions';
+import { RECENT_VERSIONS_KEY } from './bible-version-picker';
 
 type StoredRecentVersion = {
   id: number;
@@ -14,7 +13,11 @@ type StoredRecentVersion = {
 };
 
 function getStoredRecentVersions(): StoredRecentVersion[] {
-  return JSON.parse(localStorage.getItem(RECENT_VERSIONS_KEY) || '[]') as StoredRecentVersion[];
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_VERSIONS_KEY) || '[]') as StoredRecentVersion[];
+  } catch {
+    return [];
+  }
 }
 
 const withLayout = (Story: React.ComponentType) => (
