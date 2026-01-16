@@ -222,7 +222,7 @@ export const RecentVersionsSelection: Story = {
     // Verify localStorage was updated
     let storedVersions = getStoredRecentVersions();
     await expect(storedVersions.length).toBe(1);
-    await expect(storedVersions[0].title).toContain('Amplified');
+    await expect(storedVersions[0]?.title).toContain('Amplified');
 
     // Now select NIV from the main list
     const nivOption = await screen.findByRole('listitem', {
@@ -246,7 +246,7 @@ export const RecentVersionsSelection: Story = {
     await expect(ampTrigger).toBeInTheDocument();
 
     storedVersions = getStoredRecentVersions();
-    await expect(storedVersions[0].localized_abbreviation).toBe('AMP');
+    await expect(storedVersions[0]?.localized_abbreviation).toBe('AMP');
   },
 };
 
@@ -326,7 +326,7 @@ export const RecentVersionsMaxLimit: Story = {
     // Verify localStorage was updated with max 3 versions, NASB2020 at the top
     const storedVersions = getStoredRecentVersions();
     await expect(storedVersions.length).toBe(3);
-    await expect(storedVersions[0].title).toContain('New American Standard Bible 2020');
+    await expect(storedVersions[0]?.title).toContain('New American Standard Bible 2020');
     await expect(storedVersions.map((v) => v.localized_abbreviation)).not.toContain('ASV');
   },
 };

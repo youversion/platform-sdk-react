@@ -22,7 +22,7 @@ import {
 const RECENT_VERSIONS_KEY = 'youversion-platform:picker:recent-versions';
 const MAX_RECENT_VERSIONS = 3;
 
-type RecentVersion = Pick<BibleVersion, 'id' | 'title' | 'localized_abbreviation'>;
+type RecentVersion = Pick<BibleVersion, 'id' | 'title' | 'localized_abbreviation' | 'abbreviation'>;
 
 function getRecentVersions(): RecentVersion[] {
   if (typeof window === 'undefined') return [];
@@ -315,8 +315,9 @@ function Content() {
     const query = searchQuery.trim().toLowerCase();
     return recentVersions.filter(
       (v) =>
-        v.title.toLowerCase().includes(query) ||
-        v.localized_abbreviation.toLowerCase().includes(query),
+        v.title?.toLowerCase().includes(query) ||
+        v.localized_abbreviation?.toLowerCase().includes(query) ||
+        v.abbreviation?.toLowerCase().includes(query),
     );
   }, [recentVersions, searchQuery]);
 
@@ -331,6 +332,7 @@ function Content() {
       id: version.id,
       title: version.title,
       localized_abbreviation: version.localized_abbreviation,
+      abbreviation: version.abbreviation,
     });
     setIsLanguagesOpen(false);
     closeRef.current?.click();
@@ -380,9 +382,7 @@ function Content() {
           {/* Recent Versions */}
           {filteredRecentVersions.length > 0 && (
             <>
-              <h2 className="yv:px-4 yv:py-2 yv:text-lg yv:font-bold yv:text-primary">
-                Recently Used Versions
-              </h2>
+              <h2 className="yv:px-4 yv:py-2 yv:text-lg yv:font-bold">Recently Used Versions</h2>
               <ItemGroup data-testid="recent-version-list">
                 {filteredRecentVersions.map((version) => (
                   <Item
@@ -422,7 +422,7 @@ function Content() {
           {/* All Versions */}
           {filteredVersions && filteredVersions.length > 0 ? (
             <ItemGroup data-testid="version-list">
-              <h3 className="yv:px-4 yv:py-2 yv:font-bold yv:text-primary">All Versions</h3>
+              <h3 className="yv:px-4 yv:py-2 yv:font-bold">All Versions</h3>
               {filteredVersions.map((version: BibleVersion) => (
                 <Item
                   key={version.abbreviation}
