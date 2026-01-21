@@ -198,6 +198,64 @@ describe('useFilteredVersions', () => {
     });
   });
 
+  describe('recent versions exclusion', () => {
+    it('should not exclude any versions when recentVersions is undefined', () => {
+      const { result } = renderHook(() => useFilteredVersions(mockVersions, '', '*', undefined));
+
+      expect(result.current).toEqual(mockVersions);
+      expect(result.current).toHaveLength(5);
+    });
+
+    it('should exclude recent versions from the results', () => {
+      const recentVersions = [
+        { id: 1, title: 'King James Version', localized_abbreviation: 'KJV' },
+      ];
+
+      const { result } = renderHook(() =>
+        useFilteredVersions(mockVersions, '', '*', recentVersions),
+      );
+
+      expect(result.current).toHaveLength(4);
+      expect(result.current.find((v) => v.id === 1)).toBeUndefined();
+    });
+
+    it('should exclude multiple recent versions from the results', () => {
+      const recentVersions = [
+        { id: 1, title: 'King James Version', localized_abbreviation: 'KJV' },
+        { id: 2, title: 'New International Version', localized_abbreviation: 'NIV' },
+      ];
+
+      const { result } = renderHook(() =>
+        useFilteredVersions(mockVersions, '', '*', recentVersions),
+      );
+
+      expect(result.current).toHaveLength(3);
+      expect(result.current.find((v) => v.id === 1)).toBeUndefined();
+      expect(result.current.find((v) => v.id === 2)).toBeUndefined();
+    });
+
+    it('should not exclude any versions when recentVersions is empty array', () => {
+      const { result } = renderHook(() => useFilteredVersions(mockVersions, '', '*', []));
+
+      expect(result.current).toEqual(mockVersions);
+      expect(result.current).toHaveLength(5);
+    });
+
+    it('should exclude recent versions even when they match search term', () => {
+      const recentVersions = [
+        { id: 2, title: 'New International Version', localized_abbreviation: 'NIV' },
+      ];
+
+      const { result } = renderHook(() =>
+        useFilteredVersions(mockVersions, 'Version', '*', recentVersions),
+      );
+
+      // "Version" matches KJV and NIV, but NIV is excluded as a recent version
+      expect(result.current).toHaveLength(1);
+      expect(result.current[0]?.title).toBe('King James Version');
+    });
+  });
+
   describe('memoization', () => {
     it('should return the same reference when inputs do not change', () => {
       const { result, rerender } = renderHook(

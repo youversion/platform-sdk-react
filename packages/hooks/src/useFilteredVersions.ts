@@ -11,6 +11,7 @@ export function useFilteredVersions(
   versions: BibleVersion[],
   searchTerm: string,
   selectedLanguage: string,
+  recentVersions?: Pick<BibleVersion, 'id' | 'title' | 'localized_abbreviation'>[],
 ): BibleVersion[] {
   return useMemo(() => {
     let result = [...versions];
@@ -33,6 +34,12 @@ export function useFilteredVersions(
       );
     }
 
+    // Recently Used Filter
+    if (recentVersions) {
+      const recentVersionIds = recentVersions.map((version) => version.id);
+      result = result.filter((version) => !recentVersionIds.includes(version.id));
+    }
+
     return result;
-  }, [versions, searchTerm, selectedLanguage]);
+  }, [versions, recentVersions, searchTerm, selectedLanguage]);
 }

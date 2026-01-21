@@ -1,5 +1,14 @@
 # @youversion/platform-core
 
+## 1.8.0
+
+### Minor Changes
+
+- 45516c2: Add recently used versions to the Bible Version Picker
+  - Display up to 3 recently selected Bible versions at the top of the picker
+  - Persist recent version selections in localStorage
+  - Recent versions are searchable and excluded from the main "All Versions" list
+
 ## 1.7.0
 
 ### Minor Changes
