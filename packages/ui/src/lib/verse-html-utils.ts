@@ -228,8 +228,29 @@ export function extractNotesFromWrappedHtml(doc: Document): Record<string, Verse
     }
   });
 
-  // Remove all footnotes from DOM
+  // Remove all footnotes from DOM, inserting space if needed to prevent word concatenation.
+  //
+  // Some Bible versions (e.g., World English Bible, version ID 206) have malformed HTML where
+  // there's no whitespace between a word, the footnote element, and the next word:
+  //
+  //   ...hasn't overcome<span class="yv-n f">...</span>it.
+  //
+  // When we remove the footnote, "overcome" + "it" would become "overcomeit".
+  // We detect this case and insert a space, but only if the next character isn't punctuation.
   footnotes.forEach((fn) => {
+    const prev = fn.previousSibling;
+    const next = fn.nextSibling;
+
+    const prevNeedsSpace =
+      prev?.nodeType === Node.TEXT_NODE && prev.textContent && !/\s$/.test(prev.textContent);
+    const nextNeedsSpace =
+      next?.nodeType === Node.TEXT_NODE &&
+      next.textContent &&
+      !/^[\s.,;:!?)}\]'"»›]/.test(next.textContent);
+
+    if (prevNeedsSpace && nextNeedsSpace) {
+      fn.parentNode?.insertBefore(doc.createTextNode(' '), next);
+    }
     fn.remove();
   });
 

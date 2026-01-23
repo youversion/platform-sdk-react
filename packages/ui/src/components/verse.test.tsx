@@ -319,6 +319,40 @@ describe('Verse.Html - Footnotes', () => {
   });
 });
 
+describe('Verse.Html - Footnote spacing', () => {
+  it('should insert space when footnote is between two words without spacing', async () => {
+    const htmlWithNoSpacing = `
+      <div class="p">
+        <span class="yv-v" v="5"></span><span class="yv-vlbl">5</span>The darkness hasn't overcome<span class="yv-n f"><span class="fr">1:5 </span><span class="ft">Note text</span></span>it.
+      </div>
+    `;
+
+    const { container } = render(<Verse.Html html={htmlWithNoSpacing} renderNotes={true} />);
+
+    await waitFor(() => {
+      const text = container.textContent;
+      expect(text).toContain('overcome it');
+      expect(text).not.toContain('overcomeit');
+    });
+  });
+
+  it('should not insert space when footnote is followed by punctuation', async () => {
+    const htmlWithPunctuation = `
+      <div class="p">
+        <span class="yv-v" v="5"></span><span class="yv-vlbl">5</span>The darkness hasn't overcome<span class="yv-n f"><span class="fr">1:5 </span><span class="ft">Note text</span></span>.
+      </div>
+    `;
+
+    const { container } = render(<Verse.Html html={htmlWithPunctuation} renderNotes={true} />);
+
+    await waitFor(() => {
+      const text = container.textContent;
+      expect(text).toContain('overcome.');
+      expect(text).not.toContain('overcome .');
+    });
+  });
+});
+
 describe('Verse.Html - Verse Wrapping', () => {
   it('should wrap verse content in yv-v elements', async () => {
     const html = `
