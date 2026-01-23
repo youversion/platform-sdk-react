@@ -20,8 +20,10 @@ Get your App Key at [platform.youversion.com](https://platform.youversion.com/)
 ## Install
 
 ```bash
-pnpm add @youversion/platform-react-ui
+pnpm add @youversion/platform-react-ui lucide-react
 ```
+
+`lucide-react` is a peer dependency (icons used by components). If your app already uses it, you can omit it.
 
 Get your App Key at [platform.youversion.com](https://platform.youversion.com/)
 
