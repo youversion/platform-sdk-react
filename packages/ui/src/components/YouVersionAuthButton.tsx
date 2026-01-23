@@ -13,7 +13,7 @@ interface SignInAuthProps {
    */
   onAuthError?: (error: Error) => void;
   scopes?: AuthenticationScopes[];
-  redirectUrl: string;
+  redirectUrl?: string;
 }
 
 export interface YouVersionAuthButtonProps
