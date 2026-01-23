@@ -199,17 +199,26 @@ export function extractNotesFromWrappedHtml(doc: Document): Record<string, Verse
       if (wrapperIdx > 0) verseHtml += ' ';
 
       const walker = doc.createTreeWalker(wrapper, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+      let lastWasFootnote = false;
       while (walker.nextNode()) {
         const node = walker.currentNode;
         if (node instanceof Element) {
           if (node.classList.contains('yv-n') && node.classList.contains('f')) {
             verseHtml += `<sup class="yv:text-muted-foreground">${LETTERS[noteIdx++] || noteIdx}</sup>`;
+            lastWasFootnote = true;
           }
         } else if (node.nodeType === Node.TEXT_NODE) {
           const parent = node.parentElement;
           if (parent?.closest('.yv-n.f') || parent?.closest('.yv-h')) continue;
           if (parent?.classList.contains('yv-vlbl')) continue;
-          verseHtml += node.textContent || '';
+          let text = node.textContent || '';
+          // Insert space after footnote marker if text doesn't start with whitespace/punctuation
+          // (same fix as footnote removal - see World English Bible, version ID 206)
+          if (lastWasFootnote && text && !/^[\s.,;:!?)}\]'"»›]/.test(text)) {
+            text = ' ' + text;
+          }
+          verseHtml += text;
+          lastWasFootnote = false;
         }
       }
     });
