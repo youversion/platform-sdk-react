@@ -5,7 +5,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../lib/utils';
 
 const buttonVariants = cva(
-  'yv:select-none yv:cursor-pointer yv:inline-flex yv:items-center yv:justify-center yv:gap-2 yv:whitespace-nowrap yv:rounded-md yv:text-sm yv:font-medium yv:transition-all yv:disabled:pointer-events-none yv:disabled:opacity-50 yv:[&_svg]:pointer-events-none yv:[&_svg:not([class*=size-])]:size-4 yv:shrink-0 yv:[&_svg]:shrink-0 yv:outline-none yv:focus-visible:border-ring yv:focus-visible:ring-ring/50 yv:focus-visible:ring-[3px] yv:aria-invalid:ring-destructive/20 yv:dark:aria-invalid:ring-destructive/40 yv:aria-invalid:border-destructive',
+  'yv:select-none yv:cursor-pointer yv:inline-flex yv:items-center yv:justify-center yv:gap-2 yv:whitespace-nowrap yv:rounded-md yv:text-sm yv:font-medium yv:transition-all yv:disabled:pointer-events-none yv:disabled:opacity-50 yv:[&_svg]:pointer-events-none yv:[&_svg:not([class*=size-])]:size-6 yv:shrink-0 yv:[&_svg]:shrink-0 yv:outline-none yv:focus-visible:border-ring yv:focus-visible:ring-ring/50 yv:focus-visible:ring-[3px] yv:aria-invalid:ring-destructive/20 yv:dark:aria-invalid:ring-destructive/40 yv:aria-invalid:border-destructive',
   {
     variants: {
       variant: {

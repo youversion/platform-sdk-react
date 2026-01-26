@@ -1,5 +1,35 @@
 # @youversion/platform-core
 
+## 1.8.0
+
+### Minor Changes
+
+- 45516c2: Add recently used versions to the Bible Version Picker
+  - Display up to 3 recently selected Bible versions at the top of the picker
+  - Persist recent version selections in localStorage
+  - Recent versions are searchable and excluded from the main "All Versions" list
+
+## 1.7.0
+
+### Minor Changes
+
+- a3e357e: feat(ui, hook): add sign in/out to bible reader
+  - Add sign in/out functionality to the BibleReader component
+  - Refactor auth hooks so redirectUri is optional (can be inferred from provider)
+  - New icons: gear.tsx and person.tsx for settings/auth UI
+
+## 1.6.2
+
+### Patch Changes
+
+- 694325f: Removing CSS layers approach to prevent CSS conflicts when our components are added to existing apps with global styles.
+
+## 1.6.1
+
+### Patch Changes
+
+- 3f69494: Refactors footnotes implementation to use React portals, improves HTML sanitization, and fixes footnote popover behavior.
+
 ## 1.6.0
 
 ### Minor Changes

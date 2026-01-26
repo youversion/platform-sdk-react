@@ -2,14 +2,16 @@
 
 import { createContext, useContext, useMemo, useState, useEffect, type ReactNode } from 'react';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
-import { useBooks, useVersion, useTheme } from '@youversion/platform-react-hooks';
+import { useBooks, useVersion, useTheme, useYVAuth } from '@youversion/platform-react-hooks';
 import { BibleChapterPicker } from './bible-chapter-picker';
 import { BibleVersionPicker } from './bible-version-picker';
 import { BibleTextView } from './verse';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
-import { Info, Settings } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { PersonIcon } from './icons/person';
+import { GearIcon } from './icons/gear';
 
 type BibleReaderContextType = {
   book: string;
@@ -232,6 +234,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
     setCurrentFontSize,
     background,
   } = useBibleReaderContext();
+  const { auth, signIn, signOut, userInfo } = useYVAuth();
 
   return (
     <section
@@ -241,7 +244,43 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
         border === 'bottom' && 'yv:border-b',
       )}
     >
-      <div className="yv:grid yv:w-full yv:grid-cols-7 yv:items-center yv:max-w-lg yv:gap-1">
+      <div className="yv:grid yv:w-full yv:grid-cols-7 yv:items-center yv:max-w-lg yv:gap-0.5">
+        <Popover>
+          <PopoverTrigger
+            data-testid="user-menu-trigger"
+            className={cn(
+              'yv:inline-flex yv:items-center yv:justify-center yv:justify-self-end yv:mr-4 yv:h-9 yv:rounded-md yv:bg-muted yv:text-foreground yv:hover:bg-muted/80 yv:hover:cursor-pointer yv:overflow-hidden',
+              !(auth.isAuthenticated && userInfo?.avatarUrlFormat) && 'yv:px-2',
+            )}
+          >
+            {auth.isAuthenticated && userInfo?.avatarUrlFormat ? (
+              <img
+                src={userInfo.getAvatarUrl(32, 32)?.toString()}
+                alt={userInfo.name || 'User avatar'}
+                className="yv:size-full yv:rounded-full yv:object-cover"
+              />
+            ) : (
+              <PersonIcon />
+            )}
+          </PopoverTrigger>
+          <PopoverContent
+            className="yv:rounded-[6px] yv:sm:w-min yv:px-4 yv:mb-6"
+            showHeader={false}
+          >
+            {auth.isAuthenticated ? (
+              <Button className="yv:text-black" onClick={signOut}>
+                Sign Out
+              </Button>
+            ) : (
+              <Button
+                className="yv:text-black"
+                onClick={() => void signIn({ scopes: ['profile'] })}
+              >
+                Sign In
+              </Button>
+            )}
+          </PopoverContent>
+        </Popover>
         <BibleChapterPicker.Root
           book={book}
           chapter={chapter}
@@ -285,16 +324,13 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
           <BibleVersionPicker.Content />
         </BibleVersionPicker.Root>
         <Popover>
-          <PopoverTrigger className="yv:col-span-1">
-            <Button
-              aria-label="Settings"
-              className="yv:px-2 yv:py-1 yv:text-foreground"
-              variant="secondary"
-            >
-              <Settings size={24} />
-            </Button>
+          <PopoverTrigger
+            aria-label="Settings"
+            className="yv:col-span-1 yv:inline-flex yv:items-center yv:justify-center yv:justify-self-start yv:h-9 yv:px-2 yv:ml-4 yv:rounded-md yv:bg-muted yv:text-foreground yv:hover:bg-muted/80 yv:hover:cursor-pointer"
+          >
+            <GearIcon />
           </PopoverTrigger>
-          <PopoverContent heading="Reader Settings" theme={background}>
+          <PopoverContent className="yv:mb-6" heading="Reader Settings" theme={background}>
             <div className="yv:flex yv:flex-col yv:gap-7 yv:p-10">
               <div className="yv:grid yv:grid-cols-2">
                 <Button

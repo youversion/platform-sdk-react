@@ -11,18 +11,41 @@ import { ArrowLeft, Globe, Search } from 'lucide-react';
 import {
   createContext,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
+
+export const RECENT_VERSIONS_KEY = 'youversion-platform:picker:recent-versions';
+const MAX_RECENT_VERSIONS = 3;
+
+type RecentVersion = Pick<BibleVersion, 'id' | 'title' | 'localized_abbreviation' | 'abbreviation'>;
+
+function getRecentVersions(): RecentVersion[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const stored = localStorage.getItem(RECENT_VERSIONS_KEY);
+    const recentVersions: RecentVersion[] = stored ? (JSON.parse(stored) as RecentVersion[]) : [];
+    return recentVersions;
+  } catch {
+    return [];
+  }
+}
+
+function saveRecentVersions(versions: RecentVersion[]): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(RECENT_VERSIONS_KEY, JSON.stringify(versions));
+}
+
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from './ui/item';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { InputGroup, InputGroupInput, InputGroupAddon } from './ui/input-group';
 
 // Displays a version abbreviation (e.g., "NIV", "KJV2") centered within a fixed-size icon.
 // Dynamically scales the font size to fit the text within the container with padding.
@@ -124,6 +147,8 @@ type BibleVersionPickerContextType = {
   filteredVersions: BibleVersion[];
   isLanguagesOpen: boolean;
   setIsLanguagesOpen: (open: boolean) => void;
+  recentVersions: RecentVersion[];
+  addRecentVersion: (version: RecentVersion) => void;
 };
 
 const BibleVersionPickerContext = createContext<BibleVersionPickerContextType | null>(null);
@@ -163,6 +188,16 @@ function Root({
   const [selectedLanguageId, setSelectedLanguageId] = useState('en');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLanguagesOpen, setIsLanguagesOpen] = useState(false);
+  const [recentVersions, setRecentVersions] = useState<RecentVersion[]>(getRecentVersions);
+
+  const addRecentVersion = useCallback((version: RecentVersion) => {
+    setRecentVersions((prev) => {
+      const filtered = prev.filter((v) => v.id !== version.id);
+      const updated = [version, ...filtered].slice(0, MAX_RECENT_VERSIONS);
+      saveRecentVersions(updated);
+      return updated;
+    });
+  }, []);
 
   // Fetch languages from hook with default country 'US'
   const { languages: hookLanguages } = useLanguages({ country: 'US' });
@@ -198,6 +233,7 @@ function Root({
     versions?.data || [],
     searchQuery,
     selectedLanguageId,
+    recentVersions,
   );
 
   const contextValue: BibleVersionPickerContextType = {
@@ -213,6 +249,8 @@ function Root({
     filteredVersions,
     isLanguagesOpen,
     setIsLanguagesOpen,
+    recentVersions,
+    addRecentVersion,
   };
 
   return (
@@ -265,18 +303,37 @@ function Content() {
     languages,
     selectedLanguageId,
     setSelectedLanguageId,
+    recentVersions,
+    addRecentVersion,
   } = useBibleVersionPickerContext();
   const providerTheme = useTheme();
   const theme = background || providerTheme;
   const closeRef = useRef<HTMLButtonElement>(null);
+
+  const filteredRecentVersions = useMemo(() => {
+    if (!searchQuery.trim()) return recentVersions;
+    const query = searchQuery.trim().toLowerCase();
+    return recentVersions.filter(
+      (v) =>
+        v.title?.toLowerCase().includes(query) ||
+        v.localized_abbreviation?.toLowerCase().includes(query) ||
+        v.abbreviation?.toLowerCase().includes(query),
+    );
+  }, [recentVersions, searchQuery]);
 
   const handleSelectLanguage = (languageId: string) => {
     setSelectedLanguageId(languageId);
     setIsLanguagesOpen(false);
   };
 
-  const handleSelectVersion = (versionId: number) => {
-    setVersionId(versionId);
+  const handleSelectVersion = (version: BibleVersion | RecentVersion) => {
+    setVersionId(version.id);
+    addRecentVersion({
+      id: version.id,
+      title: version.title,
+      localized_abbreviation: version.localized_abbreviation,
+      abbreviation: version.abbreviation,
+    });
     setIsLanguagesOpen(false);
     closeRef.current?.click();
   };
@@ -315,15 +372,57 @@ function Content() {
     >
       {/* Versions View */}
       <div
-        className={`yv:h-[66vh] yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center ${
+        className={`yv:min-h-0 yv:max-h-[66svh] yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center ${
           isLanguagesOpen
             ? 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
             : 'yv:opacity-100 yv:pointer-events-auto yv:blur-none yv:scale-100'
         }`}
       >
         <div className="yv:flex-1 yv:overflow-y-auto yv:py-2">
+          {/* Recent Versions */}
+          {filteredRecentVersions.length > 0 && (
+            <>
+              <h2 className="yv:px-4 yv:py-2 yv:text-lg yv:font-bold">Recently Used Versions</h2>
+              <ItemGroup data-testid="recent-version-list">
+                {filteredRecentVersions.map((version) => (
+                  <Item
+                    key={`recent-${version.id}`}
+                    className={cn(
+                      'yv:hover:bg-muted yv:rounded-[8px]',
+                      versionId === version.id ? 'yv:bg-muted' : '',
+                    )}
+                    size="sm"
+                    variant="default"
+                    role="listitem"
+                    asChild
+                    aria-label={version.title}
+                  >
+                    <button
+                      type="button"
+                      className="yv:w-full"
+                      onClick={() => handleSelectVersion(version)}
+                    >
+                      <ItemMedia
+                        variant="icon"
+                        className="yv:rounded-[8px] yv:size-12 yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center"
+                      >
+                        <VersionAbbreviationIcon text={version.localized_abbreviation} />
+                      </ItemMedia>
+                      <ItemContent>
+                        <ItemTitle className="yv:line-clamp-2 yv:text-left">
+                          {version.title}
+                        </ItemTitle>
+                      </ItemContent>
+                    </button>
+                  </Item>
+                ))}
+              </ItemGroup>
+            </>
+          )}
+          {/* All Versions */}
           {filteredVersions && filteredVersions.length > 0 ? (
             <ItemGroup data-testid="version-list">
+              <h3 className="yv:px-4 yv:py-2 yv:font-bold">All Versions</h3>
               {filteredVersions.map((version: BibleVersion) => (
                 <Item
                   key={version.abbreviation}
@@ -340,7 +439,7 @@ function Content() {
                   <button
                     type="button"
                     className="yv:w-full"
-                    onClick={() => handleSelectVersion(version.id)}
+                    onClick={() => handleSelectVersion(version)}
                   >
                     <ItemMedia
                       variant="icon"
@@ -357,28 +456,26 @@ function Content() {
                 </Item>
               ))}
             </ItemGroup>
-          ) : (
+          ) : null}
+          {!filteredVersions.length && !filteredRecentVersions.length ? (
             <div className="yv:w-full yv:flex yv:items-center yv:justify-center yv:py-8 yv:text-center yv:text-muted-foreground yv:text-sm">
               No versions found
             </div>
-          )}
+          ) : null}
         </div>
-
-        <section className="yv:bg-muted yv:border-t yv:border-border yv:p-4 yv:w-full yv:rounded-b-2xl yv:flex yv:gap-3">
-          <div className="yv:flex-1 yv:relative">
-            <Search
-              size={13}
-              className="yv:absolute yv:left-3 yv:top-1/2 yv:-translate-y-1/2 yv:text-muted-foreground"
-            />
-            <Input
-              className="yv:rounded-3xl yv:bg-background yv:pl-9 yv:py-3 yv:border-border"
+        <section className="yv:bg-muted yv:border-s yv:border-muted yv:p-4">
+          <InputGroup className="yv:bg-background yv:shadow-none yv:border-border">
+            <InputGroupInput
+              tabIndex={1}
               type="text"
               placeholder="Search"
-              aria-label="Search Versions"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+            ></InputGroupInput>
+            <InputGroupAddon>
+              <Search size={13} className="yv:text-muted-foreground" />
+            </InputGroupAddon>
+          </InputGroup>
         </section>
       </div>
 

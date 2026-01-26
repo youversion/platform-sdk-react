@@ -1,5 +1,29 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+Pro:wght@400;700&display=swap');
-@import 'tailwindcss' prefix(yv); /* The CSS linter error is a known issue and does not affect functionality */
+
+/*
+ * Tailwind v4 CSS Layer Opt-Out
+ * ==============================
+ * By default, Tailwind v4 wraps styles in CSS @layer directives. This causes
+ * specificity issues when consumers embed our SDK components alongside their
+ * own CSS—the consumer's non-layered styles can unexpectedly override our
+ * Tailwind utilities.
+ *
+ * Solution: Import Tailwind's CSS files separately instead of using
+ * `@import 'tailwindcss'`. This is Tailwind's officially supported method
+ * to opt out of CSS layers.
+ *
+ * The `prefix(yv)` ensures all Tailwind classes use a `yv:` prefix to avoid
+ * collisions with consumer Tailwind setups.
+ *
+ * Reference: https://github.com/tailwindlabs/tailwindcss/discussions/13188
+ *
+ * Note: CSS linter warnings on these imports are a known issue and do not
+ * affect functionality.
+ */
+@import 'tailwindcss/preflight.css' prefix(yv);
+@import 'tailwindcss/theme.css' prefix(yv);
+@import 'tailwindcss/utilities.css' prefix(yv);
+
 @import 'tw-animate-css';
 @import './bible-reader.css';
 
@@ -120,7 +144,7 @@
     --yv-red-dark-mode: oklch(0.64 0.22 15);
     --yv-warm-neutral: oklch(0.25 0.005 20);
     --yv-warm-neutral-dm: oklch(0.96 0.005 20);
-  
+
     --yv-background: var(--yv-gray-50);
     --yv-foreground: var(--yv-white);
     --yv-card: var(--yv-gray-45);
