@@ -3,6 +3,10 @@
 ## OVERVIEW
 Complete UI layer with many Bible components: BibleTextView, VerseOfTheDay, BibleReader, BibleChapterPicker, BibleVersionPicker, YouVersionAuthButton, BibleWidgetView, BibleAppLogoLockup
 
+**Related packages:**
+- For lower-level API clients → see `packages/core/AGENTS.md`
+- For React hooks without UI → see `packages/hooks/AGENTS.md`
+
 ## STRUCTURE
 ```
 components/            # Public Bible components (exported)

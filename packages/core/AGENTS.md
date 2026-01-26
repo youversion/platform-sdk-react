@@ -3,6 +3,10 @@
 ## OVERVIEW
 Foundation package providing pure TypeScript API clients for YouVersion services with zero React dependencies.
 
+**Related packages:**
+- For React hooks wrapping these clients → see `packages/hooks/AGENTS.md`
+- For pre-built UI components → see `packages/ui/AGENTS.md`
+
 ## STRUCTURE
 ```
 schemas/                     # Zod schemas for all data types (schema-first design)

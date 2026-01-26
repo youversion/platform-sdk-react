@@ -5,6 +5,10 @@ React integration layer providing data fetching hooks with 3 core providers: You
 
 **Depends on `@youversion/platform-core` for all API calls.** Hooks delegate to core clients; do not implement raw HTTP here.
 
+**Related packages:**
+- For lower-level API clients → see `packages/core/AGENTS.md`
+- For pre-built UI components → see `packages/ui/AGENTS.md`
+
 ## STRUCTURE
 - `use*.ts` - Data fetching hooks (useBook, useChapter, usePassage, useVersion, etc.)
 - `context/` - Providers and contexts (separate files, exported via index.ts)
