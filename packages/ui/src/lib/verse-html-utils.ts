@@ -186,6 +186,7 @@ export function extractNotesFromWrappedHtml(doc: Document): Record<string, Verse
   });
 
   const notes: Record<string, VerseNotes> = {};
+  const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]'"»›]/
 
   footnotesByVerse.forEach((fns, verseNum) => {
     // Find all wrappers for this verse (could be multiple if verse spans paragraphs)
@@ -214,7 +215,7 @@ export function extractNotesFromWrappedHtml(doc: Document): Record<string, Verse
           let text = node.textContent || '';
           // Insert space after footnote marker if text doesn't start with whitespace/punctuation
           // (same fix as footnote removal - see World English Bible, version ID 206)
-          if (lastWasFootnote && text && !/^[\s.,;:!?)}\]'"»›]/.test(text)) {
+          if (lastWasFootnote && text && NEEDS_SPACE_BEFORE.test(text)) {
             text = ' ' + text;
           }
           verseHtml += text;
@@ -255,7 +256,7 @@ export function extractNotesFromWrappedHtml(doc: Document): Record<string, Verse
     const nextNeedsSpace =
       next?.nodeType === Node.TEXT_NODE &&
       next.textContent &&
-      !/^[\s.,;:!?)}\]'"»›]/.test(next.textContent);
+      NEEDS_SPACE_BEFORE.test(next.textContent);
 
     if (prevNeedsSpace && nextNeedsSpace) {
       fn.parentNode?.insertBefore(doc.createTextNode(' '), next);
