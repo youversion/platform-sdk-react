@@ -64,5 +64,5 @@ Hooks use a custom React Query-like pattern via `useApiData`:
 - Run tests: `pnpm --filter @youversion/platform-react-hooks test`
 - Framework: Vitest with jsdom environment
 - React Testing Library for component/hook tests
-- Mock APIs live in `__tests__/mocks`
+- Mock object factories live in `__tests__/mocks` (not MSW - hooks delegate HTTP to core)
 - Use provider wrappers for tests so hooks see the same context as in the app
