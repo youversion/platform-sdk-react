@@ -59,6 +59,122 @@ Hooks use a custom React Query-like pattern via `useApiData`:
 - TypeScript declarations generated separately (no bundling)
 - Build: tsc only
 
+## USAGE EXAMPLES
+
+### Provider Setup (Required)
+
+```tsx
+// Wrap your app with YouVersionProvider before using any hooks
+import { YouVersionProvider } from '@youversion/platform-react-hooks';
+
+function App() {
+  return (
+    <YouVersionProvider
+      appKey="your-app-key"
+      apiHost="api.youversion.com"      // optional, this is the default
+      theme="light"                      // "light" | "dark"
+    >
+      <MyApp />
+    </YouVersionProvider>
+  );
+}
+
+// With authentication enabled
+function AppWithAuth() {
+  return (
+    <YouVersionProvider
+      appKey="your-app-key"
+      includeAuth={true}
+      authRedirectUrl="https://myapp.com/callback"
+    >
+      <MyApp />
+    </YouVersionProvider>
+  );
+}
+```
+
+### Data Fetching Hooks
+
+All data hooks return `{ data, loading, error, refetch }`:
+
+```tsx
+import { useChapter, useVersion, useVerseOfTheDay } from '@youversion/platform-react-hooks';
+
+// Fetch a Bible chapter
+function ChapterView() {
+  const { chapter, loading, error } = useChapter(
+    111,      // versionId (e.g., 111 = NIV)
+    'JHN',    // book (USFM abbreviation)
+    3         // chapter number
+  );
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+  return <div>{chapter?.content}</div>;
+}
+
+// Fetch Bible version metadata
+function VersionInfo() {
+  const { version, loading } = useVersion(111);
+  if (loading) return <div>Loading...</div>;
+  return <div>{version?.name} ({version?.abbreviation})</div>;
+}
+
+// Fetch Verse of the Day
+function DailyVerse() {
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+  const { data: votd, loading, refetch } = useVerseOfTheDay(dayOfYear);
+
+  if (loading) return <div>Loading...</div>;
+  return (
+    <div>
+      <p>{votd?.verse.text}</p>
+      <button onClick={refetch}>Refresh</button>
+    </div>
+  );
+}
+```
+
+### Authentication Hook
+
+```tsx
+import { useYVAuth } from '@youversion/platform-react-hooks';
+
+function AuthExample() {
+  const { auth, userInfo, signIn, signOut } = useYVAuth();
+
+  if (auth.isLoading) return <div>Loading...</div>;
+
+  if (!auth.isAuthenticated) {
+    return (
+      <button onClick={() => signIn({ redirectUrl: window.location.origin + '/callback' })}>
+        Sign In with YouVersion
+      </button>
+    );
+  }
+
+  return (
+    <div>
+      <p>Welcome, {userInfo?.name}!</p>
+      <button onClick={signOut}>Sign Out</button>
+    </div>
+  );
+}
+```
+
+### Conditional Fetching
+
+```tsx
+// Use the `enabled` option to conditionally fetch
+function ConditionalFetch({ versionId }: { versionId: number | null }) {
+  const { version, loading } = useVersion(versionId ?? 0, {
+    enabled: versionId !== null,  // Only fetch when versionId is provided
+  });
+
+  // ...
+}
+```
+
 ## TESTING
 
 - Run tests: `pnpm --filter @youversion/platform-react-hooks test`
