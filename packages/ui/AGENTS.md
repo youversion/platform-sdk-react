@@ -50,16 +50,116 @@ src/index.ts           # Entry point with style injection side effect
 - Light/dark mode via CSS variables (`[data-yv-sdk]`)
 - Use semantic theme tokens (`yv:text-muted-foreground`, `yv:bg-destructive`) instead of arbitrary color values
 
-### Styling Usage Example
+### Usage Examples
 
 ```tsx
-export function Example() {
+// BibleTextView - Display a Bible verse
+<div data-yv-sdk>
+  <BibleTextView reference="John 3:16" />
+</div>
+```
+
+```tsx
+// VerseOfTheDay - Daily verse card with optional features
+<div data-yv-sdk>
+  <VerseOfTheDay
+    versionId={111}              // NIV translation
+    showSunIcon={true}
+    showShareButton={true}
+    showBibleAppAttribution={true}
+    size="default"               // or "lg"
+  />
+</div>
+```
+
+```tsx
+// BibleReader - Full reading experience (compound component)
+<div data-yv-sdk>
+  <BibleReader.Root
+    versionId={111}
+    book="JHN"
+    chapter="1"
+    fontSize={16}
+    lineHeight={1.6}
+    fontFamily="Inter"
+    showVerseNumbers={true}
+    background="light"           // or "dark"
+  >
+    <BibleReader.Content />
+    <BibleReader.Toolbar />
+  </BibleReader.Root>
+</div>
+```
+
+```tsx
+// BibleChapterPicker - Book and chapter selection (controlled component)
+function MyComponent() {
+  const [book, setBook] = useState('GEN');
+  const [chapter, setChapter] = useState('1');
+
   return (
     <div data-yv-sdk>
-      <BibleTextView reference="John 3:16" />
+      <BibleChapterPicker.Root
+        versionId={111}
+        book={book}
+        onBookChange={setBook}
+        chapter={chapter}
+        onChapterChange={setChapter}
+        background="light"
+      >
+        <BibleChapterPicker.Trigger />
+      </BibleChapterPicker.Root>
     </div>
   );
 }
+```
+
+```tsx
+// BibleVersionPicker - Bible translation selection (controlled component)
+function MyComponent() {
+  const [versionId, setVersionId] = useState(111);
+
+  return (
+    <div data-yv-sdk>
+      <BibleVersionPicker.Root
+        versionId={versionId}
+        onVersionChange={setVersionId}
+        background="light"
+        side="top"               // popover position: "top" | "right" | "bottom" | "left"
+      >
+        <BibleVersionPicker.Trigger />
+        <BibleVersionPicker.Content />
+      </BibleVersionPicker.Root>
+    </div>
+  );
+}
+```
+
+```tsx
+// BibleWidgetView - Embeddable Bible passage widget
+<div data-yv-sdk>
+  <BibleWidgetView
+    reference="JHN.3.16-17"      // USFM format: "BOOK.CHAPTER.VERSE" or range
+    versionId={111}
+    showVersionPicker={true}
+    background="light"
+  />
+</div>
+```
+
+```tsx
+// YouVersionAuthButton - Sign in/out with YouVersion
+<div data-yv-sdk>
+  <YouVersionAuthButton
+    redirectUrl="https://example.com/callback"
+    onAuthError={(error) => console.error(error)}
+    mode="auto"                  // "signIn" | "signOut" | "auto"
+    size="default"               // "default" | "short" | "icon"
+    variant="default"            // "default" | "outline"
+    radius="rounded"             // "rounded" | "rectangular"
+    background="light"
+  />
+</div>
 ```
 
 ## TESTING
