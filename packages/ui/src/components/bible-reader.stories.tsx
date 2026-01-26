@@ -227,7 +227,7 @@ export const FontSizeOutOfRange: Story = {
 
 export const RealAPI: Story = {
   args: {
-    versionId: 111,
+    defaultVersionId: 111,
   },
   parameters: {
     msw: {
