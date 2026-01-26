@@ -71,7 +71,6 @@ function App() {
   return (
     <YouVersionProvider
       appKey="your-app-key"
-      apiHost="api.youversion.com"      // optional, this is the default
       theme="light"                      // "light" | "dark"
     >
       <MyApp />
