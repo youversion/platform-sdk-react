@@ -163,9 +163,10 @@ function MyComponent() {
 ```
 
 ## TESTING
-- Vitest + jsdom for unit tests (`*.test.tsx`)
-- Playwright for Storybook integration tests (`pnpm test:integration`)
+- **Prefer Storybook** for UI component tests using the `play` function
 - All Storybook tests with a play function need to have a `tags: ['integration']`
+- Run integration tests: `pnpm test:integration`
+- Vitest + jsdom for unit tests (`*.test.tsx`)
 - Test setup: `src/test/setup.ts`
 
 ## BUILD ORDER
