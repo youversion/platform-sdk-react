@@ -319,6 +319,159 @@ describe('Verse.Html - Footnotes', () => {
   });
 });
 
+describe('Verse.Html - Footnote spacing', () => {
+  it('should insert space when footnote is between two words without spacing', async () => {
+    const htmlWithNoSpacing = `
+      <div class="p">
+        <span class="yv-v" v="5"></span><span class="yv-vlbl">5</span>The darkness hasn't overcome<span class="yv-n f"><span class="fr">1:5 </span><span class="ft">Note text</span></span>it.
+      </div>
+    `;
+
+    const { container } = render(<Verse.Html html={htmlWithNoSpacing} renderNotes={true} />);
+
+    await waitFor(() => {
+      const text = container.textContent;
+      expect(text).toContain('overcome it');
+      expect(text).not.toContain('overcomeit');
+    });
+  });
+
+  it('should not insert space when footnote is followed by punctuation', async () => {
+    const htmlWithPunctuation = `
+      <div class="p">
+        <span class="yv-v" v="5"></span><span class="yv-vlbl">5</span>The darkness hasn't overcome<span class="yv-n f"><span class="fr">1:5 </span><span class="ft">Note text</span></span>.
+      </div>
+    `;
+
+    const { container } = render(<Verse.Html html={htmlWithPunctuation} renderNotes={true} />);
+
+    await waitFor(() => {
+      const text = container.textContent;
+      expect(text).toContain('overcome.');
+      expect(text).not.toContain('overcome .');
+    });
+  });
+});
+
+describe('Verse.Html - Verse Wrapping', () => {
+  it('should wrap verse content in yv-v elements', async () => {
+    const html = `
+      <div class="p">
+        <span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>In the beginning was the Word.
+      </div>
+    `;
+
+    const { container } = render(<Verse.Html html={html} />);
+
+    await waitFor(() => {
+      const verseWrapper = container.querySelector('.yv-v[v="1"]');
+      expect(verseWrapper).not.toBeNull();
+      expect(verseWrapper?.textContent).toContain('In the beginning was the Word');
+    });
+  });
+
+  it('should wrap multiple verses in same paragraph', async () => {
+    const html = `
+      <div class="p">
+        <span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>First verse.
+        <span class="yv-v" v="2"></span><span class="yv-vlbl">2</span>Second verse.
+      </div>
+    `;
+
+    const { container } = render(<Verse.Html html={html} />);
+
+    await waitFor(() => {
+      const verse1 = container.querySelector('.yv-v[v="1"]');
+      const verse2 = container.querySelector('.yv-v[v="2"]');
+
+      expect(verse1).not.toBeNull();
+      expect(verse2).not.toBeNull();
+      expect(verse1?.textContent).toContain('First verse');
+      expect(verse2?.textContent).toContain('Second verse');
+    });
+  });
+
+  it('should duplicate yv-v wrapper when verse spans multiple paragraphs', async () => {
+    const html = `
+      <div class="p">
+        <span class="yv-v" v="39"></span><span class="yv-vlbl">39</span>"Come," he replied.
+      </div>
+      <div class="p">So they went and saw where he was staying.</div>
+      <div class="p">
+        <span class="yv-v" v="40"></span><span class="yv-vlbl">40</span>Andrew was one of the two.
+      </div>
+    `;
+
+    const { container } = render(<Verse.Html html={html} />);
+
+    await waitFor(() => {
+      const verse39Wrappers = container.querySelectorAll('.yv-v[v="39"]');
+      expect(verse39Wrappers.length).toBe(2);
+
+      expect(verse39Wrappers[0]?.textContent).toContain('Come');
+      expect(verse39Wrappers[1]?.textContent).toContain('So they went');
+    });
+  });
+
+  it('should enable CSS selection of individual verses', async () => {
+    const html = `
+      <div class="p">
+        <span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>First verse text.
+        <span class="yv-v" v="2"></span><span class="yv-vlbl">2</span>Second verse text.
+      </div>
+    `;
+
+    const { container } = render(<Verse.Html html={html} />);
+
+    await waitFor(() => {
+      const verse1 = container.querySelector('.yv-v[v="1"]');
+      const verse2 = container.querySelector('.yv-v[v="2"]');
+
+      expect(verse1).not.toBeNull();
+      expect(verse2).not.toBeNull();
+      expect(verse1).not.toBe(verse2);
+    });
+  });
+
+  it('should preserve verse label inside wrapper', async () => {
+    const html = `
+      <div class="p">
+        <span class="yv-v" v="5"></span><span class="yv-vlbl">5</span>The light shines.
+      </div>
+    `;
+
+    const { container } = render(<Verse.Html html={html} />);
+
+    await waitFor(() => {
+      const verseWrapper = container.querySelector('.yv-v[v="5"]');
+      const label = verseWrapper?.querySelector('.yv-vlbl');
+
+      expect(label).not.toBeNull();
+      expect(label?.textContent).toContain('5');
+    });
+  });
+
+  it('should not wrap header elements in verse spans', async () => {
+    const html = `
+      <div class="p">
+        <span class="yv-v" v="42"></span><span class="yv-vlbl">42</span>And he brought him to Jesus.
+      </div>
+      <div class="s1 yv-h">Jesus Calls Philip</div>
+      <div class="p">
+        <span class="yv-v" v="43"></span><span class="yv-vlbl">43</span>The next day Jesus decided to leave.
+      </div>
+    `;
+
+    const { container } = render(<Verse.Html html={html} />);
+
+    await waitFor(() => {
+      const header = container.querySelector('.yv-h');
+      expect(header).not.toBeNull();
+      expect(header?.closest('.yv-v')).toBeNull();
+    });
+  });
+});
+
 describe('Verse.Text', () => {
   it('should render verse with number and text (default size)', () => {
     const { container } = render(<Verse.Text number={1} text="In the beginning" />);
