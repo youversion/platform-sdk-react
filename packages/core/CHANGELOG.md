@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 1.9.1
+
+### Patch Changes
+
+- b4da78d: YouVersionAuthButton redirectUrl prop is now optional.
+
 ## 1.9.0
 
 ### Minor Changes
