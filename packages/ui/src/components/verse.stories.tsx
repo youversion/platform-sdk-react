@@ -4,6 +4,8 @@ import React from 'react';
 
 import { DEFAULT_BIBLE_VERSION } from '@/lib/constants';
 import { type BibleTextViewProps, BibleTextView } from './verse';
+import { Button } from './ui/button';
+import { X } from 'lucide-react';
 
 // USFM format: BOOK.CHAPTER or BOOK.CHAPTER.VERSE or BOOK.CHAPTER.VERSE-VERSE
 const USFM_PATTERN = /^[A-Z1-4]{3}\.\d+(\.\d+(-\d+)?)?$/;
@@ -354,17 +356,21 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
       data-yv-sdk
       className="yv:grid yv:grid-rows-[auto_1fr] yv:gap-4 yv:max-w-lg yv:h-svh yv:max-h-svh yv:overflow-hidden"
     >
-      <div className="yv:bg-secondary yv:py-2 yv:px-4 yv:rounded-sm yv:sticky yv:text-sm yv:text-muted-foreground">
-        Selected: {selectedVerses.length > 0 ? selectedVerses.join(', ') : 'None'}
-        {selectedVerses.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setSelectedVerses([])}
-            className="yv:ml-2 yv:text-primary yv:underline"
-          >
-            Clear
-          </button>
-        )}
+      <div className="yv:grid yv:grid-cols-[1fr_auto_auto] yv:items-center yv:bg-secondary yv:py-2 yv:px-4 yv:rounded-sm yv:sticky yv:text-sm yv:text-muted-foreground">
+        <p>Selected: {selectedVerses.length > 0 ? selectedVerses.join(', ') : 'None'}</p>
+        <Button disabled={!selectedVerses.length} variant="outline" size="sm">
+          Highlight
+        </Button>
+        <Button
+          disabled={!selectedVerses.length}
+          type="button"
+          size="icon"
+          variant="outline"
+          onClick={() => setSelectedVerses([])}
+          className="yv:ml-2 yv:text-primary"
+        >
+          <X className="yv:size-4" />
+        </Button>
       </div>
 
       <div className="yv:h-full yv:overflow-y-auto">
