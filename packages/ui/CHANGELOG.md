@@ -1,5 +1,14 @@
 # @youversion/platform-react-ui
 
+## 1.9.1
+
+### Patch Changes
+
+- b4da78d: YouVersionAuthButton redirectUrl prop is now optional.
+- Updated dependencies [b4da78d]
+  - @youversion/platform-core@1.9.1
+  - @youversion/platform-react-hooks@1.9.1
+
 ## 1.9.0
 
 ### Minor Changes
