@@ -340,8 +340,9 @@ export const Verse = {
       const currentTheme = theme || providerTheme;
 
       useEffect(() => {
-        setTransformedData(yvDomTransformer(html, renderNotes));
-      }, [html, renderNotes]);
+        // Always extract notes to keep DOM stable (visibility controlled via CSS)
+        setTransformedData(yvDomTransformer(html, true));
+      }, [html]);
 
       return (
         <section
@@ -354,11 +355,12 @@ export const Verse = {
             } as React.CSSProperties
           }
           data-show-verse-numbers={showVerseNumbers}
+          data-show-notes={renderNotes}
           data-slot="yv-bible-renderer"
         >
           <BibleTextHtml
             html={transformedData.html}
-            notes={renderNotes ? transformedData.notes : {}}
+            notes={transformedData.notes}
             reference={reference}
             fontSize={fontSize}
             theme={currentTheme}

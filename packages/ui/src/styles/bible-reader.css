@@ -73,8 +73,12 @@
   }
 
   /* Footnote */
-  /* TODO - Implement footnotes */
   & .yv-n {
+    display: none;
+  }
+
+  /* Hide footnote buttons when notes are disabled */
+  &[data-show-notes='false'] [data-verse-footnote] {
     display: none;
   }
 
