@@ -130,11 +130,11 @@ const meta = {
       description: 'Font family for the Bible text',
     },
     fontSize: {
-      control: 'number',
+      control: { type: 'range', min: 12, max: 36, step: 1 },
       description: 'Font size in pixels',
     },
     lineHeight: {
-      control: 'number',
+      control: { type: 'range', min: 1.375, max: 2, step: 0.125 },
       description: 'Line height',
     },
     renderNotes: {
