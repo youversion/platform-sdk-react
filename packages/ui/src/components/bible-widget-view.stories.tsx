@@ -71,6 +71,12 @@ export const WithVersionPicker: Story = {
     // Click the version picker button
     await userEvent.click(versionPickerButton);
 
+    // Validate the dialog is open
+    // P.S. I use screen here because the Popover uses a Portal that moves
+    // the element out of the original canvas element.
+    const dialog = await screen.findByRole('dialog');
+    await expect(dialog).toBeInTheDocument();
+
     // Wait for the version list to load before searching - use screen because popover uses portal
     await screen.findByTestId('version-list', {}, { timeout: 10_000 });
 
