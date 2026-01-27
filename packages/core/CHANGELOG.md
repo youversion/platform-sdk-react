@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 1.9.0
+
+### Minor Changes
+
+- d4b0071: feat(hooks): Add useLanguage hook to retrieve a language from api
+
 ## 1.8.1
 
 ### Patch Changes
