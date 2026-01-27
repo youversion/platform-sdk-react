@@ -1,32 +1,21 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ReactNode } from 'react';
 import { useLanguages } from './useLanguages';
 import { YouVersionContext } from './context';
 import {
-  LanguagesClient,
-  ApiClient,
+  type LanguagesClient,
   type Collection,
   type Language,
   type GetLanguagesOptions,
 } from '@youversion/platform-core';
+import { useLanguagesClient } from './useLanguageClient';
 
-// Mock the core package
-vi.mock('@youversion/platform-core', async () => {
-  const actual = await vi.importActual('@youversion/platform-core');
-  return {
-    ...actual,
-    LanguagesClient: vi.fn(function () {
-      return {};
-    }),
-    ApiClient: vi.fn(function () {
-      return { isApiClient: true };
-    }),
-  };
-});
+vi.mock('./useLanguageClient');
 
 describe('useLanguages', () => {
   const mockAppKey = 'test-app-key';
+  const mockGetLanguages = vi.fn();
 
   const mockLanguages: Collection<Language> = {
     data: [
@@ -46,7 +35,7 @@ describe('useLanguages', () => {
         text_direction: 'ltr',
         writing_population: 370000000,
         speaking_population: 1500000000,
-        default_bible_version_id: 1,
+        default_bible_id: 1,
       },
       {
         id: 'es',
@@ -64,13 +53,11 @@ describe('useLanguages', () => {
         text_direction: 'ltr',
         writing_population: 470000000,
         speaking_population: 580000000,
-        default_bible_version_id: 128,
+        default_bible_id: 128,
       },
     ],
     next_page_token: null,
   };
-
-  let mockGetLanguages: Mock;
 
   const createWrapper = (contextValue: { appKey: string }) => {
     return ({ children }: { children: ReactNode }) => (
@@ -79,91 +66,12 @@ describe('useLanguages', () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
 
-    mockGetLanguages = vi.fn().mockResolvedValue(mockLanguages);
+    mockGetLanguages.mockResolvedValue(mockLanguages);
 
-    (LanguagesClient as unknown as ReturnType<typeof vi.fn>).mockImplementation(function () {
-      return {
-        getLanguages: mockGetLanguages,
-      };
-    });
-
-    (ApiClient as unknown as ReturnType<typeof vi.fn>).mockImplementation(function () {
-      return {
-        isApiClient: true,
-      };
-    });
-  });
-
-  describe('context validation', () => {
-    it('should throw error when context is not provided', () => {
-      expect(() => renderHook(() => useLanguages({ country: 'US' }))).toThrow(
-        'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
-      );
-    });
-
-    it('should throw error when appKey is missing', () => {
-      const wrapper = createWrapper({
-        appKey: '',
-      });
-
-      expect(() => renderHook(() => useLanguages({ country: 'US' }), { wrapper })).toThrow(
-        'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
-      );
-    });
-  });
-
-  describe('client creation', () => {
-    it('should create LanguagesClient with correct ApiClient config', () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
-      renderHook(() => useLanguages({ country: 'US' }), { wrapper });
-
-      expect(ApiClient).toHaveBeenCalledWith({
-        appKey: mockAppKey,
-      });
-      expect(LanguagesClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
-    });
-
-    it('should memoize LanguagesClient instance', () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
-      const { result, rerender } = renderHook(() => useLanguages({ country: 'US' }), { wrapper });
-      const _firstRefetch = result.current.refetch;
-
-      rerender();
-      const _secondRefetch = result.current.refetch;
-
-      expect(LanguagesClient).toHaveBeenCalledTimes(1);
-    });
-
-    it('should create new LanguagesClient when context values change', () => {
-      let currentAppKey = mockAppKey;
-
-      const wrapper = ({ children }: { children: ReactNode }) => (
-        <YouVersionContext.Provider
-          value={{
-            appKey: currentAppKey,
-          }}
-        >
-          {children}
-        </YouVersionContext.Provider>
-      );
-
-      const { rerender } = renderHook(() => useLanguages({ country: 'US' }), { wrapper });
-
-      expect(LanguagesClient).toHaveBeenCalledTimes(1);
-
-      currentAppKey = 'new-app-key';
-      rerender();
-
-      expect(LanguagesClient).toHaveBeenCalledTimes(2);
-    });
+    const mockClient: Partial<LanguagesClient> = { getLanguages: mockGetLanguages };
+    vi.mocked(useLanguagesClient).mockReturnValue(mockClient as LanguagesClient);
   });
 
   describe('fetching languages', () => {

@@ -14,7 +14,7 @@ export const mockLanguages: Language[] = [
     text_direction: 'ltr',
     writing_population: 1500000000,
     speaking_population: 1500000000,
-    default_bible_version_id: null,
+    default_bible_id: null,
   },
   {
     id: 'es',
@@ -29,7 +29,7 @@ export const mockLanguages: Language[] = [
     text_direction: 'ltr',
     writing_population: 500000000,
     speaking_population: 500000000,
-    default_bible_version_id: null,
+    default_bible_id: null,
   },
   {
     id: 'fr',
@@ -44,7 +44,7 @@ export const mockLanguages: Language[] = [
     text_direction: 'ltr',
     writing_population: 300000000,
     speaking_population: 300000000,
-    default_bible_version_id: null,
+    default_bible_id: null,
   },
   {
     id: 'de',
@@ -59,7 +59,7 @@ export const mockLanguages: Language[] = [
     text_direction: 'ltr',
     writing_population: 100000000,
     speaking_population: 100000000,
-    default_bible_version_id: null,
+    default_bible_id: null,
   },
   {
     id: 'sr-Latn',
@@ -74,7 +74,7 @@ export const mockLanguages: Language[] = [
     text_direction: 'ltr',
     writing_population: 8000000,
     speaking_population: 8000000,
-    default_bible_version_id: null,
+    default_bible_id: null,
   },
   // Add more languages to exceed the maximum page size and exercise pagination
   ...Array.from({ length: 120 }, (_, i) => ({
@@ -90,6 +90,6 @@ export const mockLanguages: Language[] = [
     text_direction: 'ltr' as const,
     writing_population: 1000000,
     speaking_population: 1000000,
-    default_bible_version_id: null,
+    default_bible_id: null,
   })),
 ];
