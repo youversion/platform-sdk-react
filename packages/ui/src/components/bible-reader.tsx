@@ -212,7 +212,7 @@ function Content() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <InfoIcon className="yv:size-3" /> Learn More
+              <InfoIcon className="yv:size-4" /> Learn More
             </a>
           ) : null}
         </footer>
