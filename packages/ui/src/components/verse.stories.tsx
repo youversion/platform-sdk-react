@@ -386,5 +386,22 @@ export const VerseSelection: Story = {
     versionId: 111,
     renderNotes: true,
   },
+  argTypes: {
+    theme: {
+      table: {
+        disable: true,
+      },
+    },
+    selectedVerses: {
+      table: {
+        disable: true,
+      },
+    },
+    onVerseSelect: {
+      table: {
+        disable: true,
+      },
+    },
+  },
   render: (props) => <VerseSelectionDemo {...props} />,
 };
