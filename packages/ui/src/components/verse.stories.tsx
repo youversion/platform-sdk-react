@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import React from 'react';
 
-import { BibleTextView } from './verse';
+import { type BibleTextViewProps, BibleTextView } from './verse';
 
 // USFM format: BOOK.CHAPTER or BOOK.CHAPTER.VERSE or BOOK.CHAPTER.VERSE-VERSE
 const USFM_PATTERN = /^[A-Z1-4]{3}\.\d+(\.\d+(-\d+)?)?$/;
@@ -343,4 +343,48 @@ export const FootnotePopoverThemeDark: Story = {
       await expect(popover?.closest('[data-yv-theme="dark"]')).toBeInTheDocument();
     });
   },
+};
+
+function VerseSelectionDemo(props: BibleTextViewProps) {
+  const [selectedVerses, setSelectedVerses] = React.useState<number[]>([]);
+
+  return (
+    <div
+      data-yv-sdk
+      className="yv:grid yv:grid-rows-[auto_1fr] yv:gap-4 yv:max-w-lg yv:h-svh yv:max-h-svh yv:overflow-hidden"
+    >
+      <div className="yv:bg-secondary yv:py-2 yv:px-4 yv:rounded-sm yv:sticky yv:text-sm yv:text-muted-foreground">
+        Selected: {selectedVerses.length > 0 ? selectedVerses.join(', ') : 'None'}
+        {selectedVerses.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setSelectedVerses([])}
+            className="yv:ml-2 yv:text-primary yv:underline"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      <div className="yv:h-full yv:overflow-y-auto">
+        <BibleTextView
+          reference="JHN.1"
+          versionId={111}
+          renderNotes={true}
+          {...props}
+          selectedVerses={selectedVerses}
+          onVerseSelect={setSelectedVerses}
+        />
+      </div>
+    </div>
+  );
+}
+
+export const VerseSelection: Story = {
+  args: {
+    reference: 'JHN.1',
+    versionId: 111,
+    renderNotes: true,
+  },
+  render: (props) => <VerseSelectionDemo {...props} />,
 };

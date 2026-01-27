@@ -88,12 +88,16 @@ function HtmlWithNotes({
   reference,
   fontSize,
   theme,
+  selectedVerses = [],
+  onVerseSelect,
 }: {
   html: string;
   notes: Record<string, VerseNotes>;
   reference?: string;
   fontSize?: number;
   theme?: 'light' | 'dark';
+  selectedVerses?: number[];
+  onVerseSelect?: (verses: number[]) => void;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [placeholders, setPlaceholders] = useState<Map<string, Element>>(new Map());
@@ -111,6 +115,43 @@ function HtmlWithNotes({
     });
     setPlaceholders(map);
   }, [html, notes]);
+
+  useLayoutEffect(() => {
+    if (!contentRef.current) return;
+
+    const verseElements = contentRef.current.querySelectorAll('.yv-v[v]');
+    verseElements.forEach((el) => {
+      const verseNum = parseInt(el.getAttribute('v') || '0', 10);
+      if (selectedVerses.includes(verseNum)) {
+        el.classList.add('yv-v-selected');
+      } else {
+        el.classList.remove('yv-v-selected');
+      }
+    });
+  }, [selectedVerses]);
+
+  useLayoutEffect(() => {
+    const element = contentRef.current;
+    if (!element || !onVerseSelect) return;
+
+    const handleClick = (e: Event) => {
+      const target = e.target as HTMLElement;
+      const verseEl = target.closest('.yv-v[v]');
+      if (!verseEl) return;
+
+      const verseNum = parseInt(verseEl.getAttribute('v') || '0', 10);
+      if (verseNum === 0) return;
+
+      const newSelected = selectedVerses.includes(verseNum)
+        ? selectedVerses.filter((v) => v !== verseNum)
+        : [...selectedVerses, verseNum].sort((a, b) => a - b);
+
+      onVerseSelect(newSelected);
+    };
+
+    element.addEventListener('click', handleClick);
+    return () => element.removeEventListener('click', handleClick);
+  }, [selectedVerses, onVerseSelect]);
 
   return (
     <>
@@ -239,6 +280,8 @@ type VerseHtmlProps = {
   renderNotes?: boolean;
   reference?: string;
   theme?: 'light' | 'dark';
+  selectedVerses?: number[];
+  onVerseSelect?: (verses: number[]) => void;
 };
 
 /**
@@ -287,6 +330,8 @@ export const Verse = {
         renderNotes = true,
         reference,
         theme,
+        selectedVerses,
+        onVerseSelect,
       }: VerseHtmlProps,
       ref,
     ): ReactNode => {
@@ -318,6 +363,8 @@ export const Verse = {
               reference={reference}
               fontSize={fontSize}
               theme={currentTheme}
+              selectedVerses={selectedVerses}
+              onVerseSelect={onVerseSelect}
             />
           </section>
         );
@@ -352,6 +399,8 @@ export type BibleTextViewProps = {
   showVerseNumbers?: boolean;
   renderNotes?: boolean;
   theme?: 'light' | 'dark';
+  selectedVerses?: number[];
+  onVerseSelect?: (verses: number[]) => void;
 };
 
 /**
@@ -366,6 +415,8 @@ export const BibleTextView = ({
   showVerseNumbers,
   renderNotes,
   theme,
+  selectedVerses,
+  onVerseSelect,
 }: BibleTextViewProps): React.ReactElement => {
   const { passage, loading, error } = usePassage({
     versionId,
@@ -419,6 +470,8 @@ export const BibleTextView = ({
         renderNotes={renderNotes}
         reference={passage?.reference}
         theme={currentTheme}
+        selectedVerses={selectedVerses}
+        onVerseSelect={onVerseSelect}
       />
     </div>
   );
