@@ -475,7 +475,7 @@ function Content() {
               onChange={(e) => setSearchQuery(e.target.value)}
             ></InputGroupInput>
             <InputGroupAddon>
-              <SearchIcon className="yv:size-[13px] yv:text-muted-foreground" />
+              <SearchIcon className="yv:size-5 yv:text-muted-foreground" />
             </InputGroupAddon>
           </InputGroup>
         </section>
