@@ -13,7 +13,11 @@ interface SignInAuthProps {
    */
   onAuthError?: (error: Error) => void;
   scopes?: AuthenticationScopes[];
-  redirectUrl: string;
+  /**
+   * The URL to redirect to after authentication.
+   * @deprecated Use `authRedirectUrl` on `YouVersionProvider` instead. This prop will be removed in a future version.
+   */
+  redirectUrl?: string;
 }
 
 export interface YouVersionAuthButtonProps
