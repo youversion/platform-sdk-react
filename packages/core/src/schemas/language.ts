@@ -32,7 +32,7 @@ export const LanguageSchema = z.object({
   /** Speaking population count */
   speaking_population: z.number().int().optional(),
   /** Default Bible version ID for this language */
-  default_bible_version_id: z.number().int().nullable().optional(),
+  default_bible_id: z.number().int().nullable().optional(),
 });
 
 export type Language = Readonly<z.infer<typeof LanguageSchema>>;
