@@ -104,6 +104,14 @@
   & .yv-v,
   & .verse {
     display: inline;
+    cursor: pointer;
+  }
+
+  /* Selected verse styling */
+  & .yv-v.yv-v-selected {
+    text-decoration: underline;
+    text-decoration-color: var(--yv-border);
+    text-underline-offset: 0.33em;
   }
 
   /* Only show pointer cursor when verses are selectable */

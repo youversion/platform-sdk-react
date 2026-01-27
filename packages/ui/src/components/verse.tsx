@@ -124,23 +124,13 @@ function BibleTextHtml({
     const verseElements = contentRef.current.querySelectorAll('.yv-v[v]');
     verseElements.forEach((el) => {
       const verseNum = parseInt(el.getAttribute('v') || '0', 10);
-
       if (selectedVerses.includes(verseNum)) {
         el.classList.add('yv-v-selected');
       } else {
         el.classList.remove('yv-v-selected');
       }
-
-      if (highlightedVerses[verseNum]) {
-        el.classList.add('yv-v-highlighted');
-      } else {
-        el.classList.remove('yv-v-highlighted');
-      }
     });
-  }, [html, selectedVerses, highlightedVerses]);
-
-  const selectedVersesRef = useRef(selectedVerses);
-  selectedVersesRef.current = selectedVerses;
+  }, [selectedVerses]);
 
   useLayoutEffect(() => {
     const element = contentRef.current;
@@ -154,17 +144,16 @@ function BibleTextHtml({
       const verseNum = parseInt(verseEl.getAttribute('v') || '0', 10);
       if (verseNum === 0) return;
 
-      const current = selectedVersesRef.current;
-      const newSelected = current.includes(verseNum)
-        ? current.filter((v) => v !== verseNum)
-        : [...current, verseNum].sort((a, b) => a - b);
+      const newSelected = selectedVerses.includes(verseNum)
+        ? selectedVerses.filter((v) => v !== verseNum)
+        : [...selectedVerses, verseNum].sort((a, b) => a - b);
 
       onVerseSelect(newSelected);
     };
 
     element.addEventListener('click', handleClick);
     return () => element.removeEventListener('click', handleClick);
-  }, [onVerseSelect]);
+  }, [selectedVerses, onVerseSelect]);
 
   return (
     <>
