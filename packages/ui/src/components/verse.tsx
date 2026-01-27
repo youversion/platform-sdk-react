@@ -363,7 +363,7 @@ export const Verse = {
         >
           <BibleTextHtml
             html={transformedData.html}
-            notes={renderNotes ? transformedData.notes : {}}
+            notes={transformedData.notes}
             reference={reference}
             fontSize={fontSize}
             theme={currentTheme}
