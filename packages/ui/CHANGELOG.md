@@ -1,5 +1,17 @@
 # @youversion/platform-react-ui
 
+## 1.9.0
+
+### Minor Changes
+
+- d4b0071: feat(hooks): Add useLanguage hook to retrieve a language from api
+
+### Patch Changes
+
+- Updated dependencies [d4b0071]
+  - @youversion/platform-react-hooks@1.9.0
+  - @youversion/platform-core@1.9.0
+
 ## 1.8.1
 
 ### Patch Changes
