@@ -214,7 +214,7 @@ function Root({
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               <InputGroupAddon align="inline-start">
-                <SearchIcon className="yv:size-[13px] yv:text-muted-foreground" />
+                <SearchIcon className="yv:size-4 yv:text-muted-foreground" />
               </InputGroupAddon>
             </InputGroup>
           </section>

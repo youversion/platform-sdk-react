@@ -57,7 +57,7 @@ function PopoverContent({
                 size="icon"
                 className="yv:w-6 yv:h-6 yv:text-muted-foreground"
               >
-                <XIcon />
+                <XIcon className="yv:size-5" />
                 <span className="yv:sr-only">Close</span>
               </Button>
             </PopoverClose>
