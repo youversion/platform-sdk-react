@@ -1,7 +1,7 @@
 import * as React from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { Button } from './button';
-import { XIcon } from 'lucide-react';
+import { XIcon } from '../icons/x';
 
 import { cn } from '@/lib/utils';
 

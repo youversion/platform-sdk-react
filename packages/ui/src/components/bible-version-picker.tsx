@@ -7,7 +7,9 @@ import {
   useVersion,
   useVersions,
 } from '@youversion/platform-react-hooks';
-import { ArrowLeft, Globe, Search } from 'lucide-react';
+import { ArrowLeftIcon } from './icons/arrow-left';
+import { GlobeIcon } from './icons/globe';
+import { SearchIcon } from './icons/search';
 import {
   createContext,
   type ReactNode,
@@ -348,7 +350,7 @@ function Content() {
           onClick={() => setIsLanguagesOpen(true)}
           variant="secondary"
         >
-          <Globe size={16} />
+          <GlobeIcon className="yv:size-4" />
           <span className="yv:text-sm yv:font-medium yv:line-clamp-1">
             {languages.find((language) => language.id === selectedLanguageId)?.englishName}
           </span>
@@ -473,7 +475,7 @@ function Content() {
               onChange={(e) => setSearchQuery(e.target.value)}
             ></InputGroupInput>
             <InputGroupAddon>
-              <Search size={13} className="yv:text-muted-foreground" />
+              <SearchIcon className="yv:size-[13px] yv:text-muted-foreground" />
             </InputGroupAddon>
           </InputGroup>
         </section>
@@ -494,7 +496,7 @@ function Content() {
             size="icon"
             className="yv:w-8 yv:h-8 yv:text-muted-foreground"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeftIcon className="yv:size-4" />
             <span className="yv:sr-only">Close Language selector</span>
           </Button>
           <h2 className="yv:font-bold yv:text-base">Select Language</h2>

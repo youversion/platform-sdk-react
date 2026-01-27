@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Loader2 } from 'lucide-react';
+import { LoaderIcon } from './icons/loader';
 import { type AuthenticationScopes } from '@youversion/platform-core';
 import { useYVAuth, useTheme } from '@youversion/platform-react-hooks';
 import { Button } from '../components/ui/button';
@@ -173,7 +173,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
     }, [mode, auth.isAuthenticated, size, text]);
 
     const loadingSpinner = (
-      <Loader2 className="yv:z-20 yv:absolute yv:left-1/2 yv:top-1/2 yv:animate-spin yv:-translate-x-1/2 yv:-translate-y-1/2 yv:fill-primary-foreground yv:text-primary" />
+      <LoaderIcon className="yv:z-20 yv:absolute yv:left-1/2 yv:top-1/2 yv:animate-spin yv:-translate-x-1/2 yv:-translate-y-1/2 yv:fill-primary-foreground yv:text-primary" />
     );
 
     if (size === 'icon') {

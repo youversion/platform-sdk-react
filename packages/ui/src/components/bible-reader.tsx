@@ -8,7 +8,7 @@ import { BibleVersionPicker } from './bible-version-picker';
 import { BibleTextView } from './verse';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
-import { Info } from 'lucide-react';
+import { InfoIcon } from './icons/info';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { PersonIcon } from './icons/person';
 import { GearIcon } from './icons/gear';
@@ -212,7 +212,7 @@ function Content() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <Info size={12} /> Learn More
+              <InfoIcon className="yv:size-3" /> Learn More
             </a>
           ) : null}
         </footer>

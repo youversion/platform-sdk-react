@@ -10,7 +10,8 @@ import {
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import { useBooks, useTheme } from '@youversion/platform-react-hooks';
 import { type BibleBook } from '@youversion/platform-core';
-import { Info, Search } from 'lucide-react';
+import { InfoIcon } from './icons/info';
+import { SearchIcon } from './icons/search';
 import { Button } from './ui/button';
 import { Popover, PopoverTrigger, PopoverContent, PopoverClose } from './ui/popover';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/accordion';
@@ -178,7 +179,11 @@ function Root({
                                   setSearchQuery('');
                                 }}
                               >
-                                {!chapterId.toLowerCase().includes('intro') ? chapterId : <Info />}
+                                {!chapterId.toLowerCase().includes('intro') ? (
+                                  chapterId
+                                ) : (
+                                  <InfoIcon />
+                                )}
                               </Button>
                             </PopoverClose>
                           );
@@ -209,7 +214,7 @@ function Root({
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               <InputGroupAddon align="inline-start">
-                <Search size={13} className="yv:text-muted-foreground" />
+                <SearchIcon className="yv:size-[13px] yv:text-muted-foreground" />
               </InputGroupAddon>
             </InputGroup>
           </section>

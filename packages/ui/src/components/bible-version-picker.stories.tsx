@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { BibleVersionPicker, type RootProps } from './bible-version-picker';
 import { useState } from 'react';
 import { screen, userEvent, within, expect, waitFor } from 'storybook/test';
-import { BookOpen } from 'lucide-react';
+import { BookOpenIcon } from './icons/book-open';
 import { Button } from './ui/button';
 import { RECENT_VERSIONS_KEY } from './bible-version-picker';
 
@@ -105,7 +105,7 @@ export const WithCustomTrigger: Story = {
     >
       <BibleVersionPicker.Trigger>
         <Button size="icon">
-          <BookOpen className="yv:w-4 yv:h-4" />
+          <BookOpenIcon className="yv:w-4 yv:h-4" />
         </Button>
       </BibleVersionPicker.Trigger>
       <BibleVersionPicker.Content />
