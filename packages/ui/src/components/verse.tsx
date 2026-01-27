@@ -82,7 +82,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   );
 });
 
-function HtmlWithNotes({
+function BibleTextHtml({
   html,
   notes,
   reference,
@@ -343,33 +343,6 @@ export const Verse = {
         setTransformedData(yvDomTransformer(html, renderNotes));
       }, [html, renderNotes]);
 
-      if (renderNotes) {
-        return (
-          <section
-            ref={ref}
-            style={
-              {
-                ...(fontFamily ? { '--yv-reader-font-family': fontFamily } : {}),
-                ...(fontSize ? { '--yv-reader-font-size': `${fontSize}px` } : {}),
-                ...(lineHeight ? { '--yv-reader-line-height': lineHeight } : {}),
-              } as React.CSSProperties
-            }
-            data-show-verse-numbers={showVerseNumbers}
-            data-slot="yv-bible-renderer"
-          >
-            <HtmlWithNotes
-              html={transformedData.html}
-              notes={transformedData.notes}
-              reference={reference}
-              fontSize={fontSize}
-              theme={currentTheme}
-              selectedVerses={selectedVerses}
-              onVerseSelect={onVerseSelect}
-            />
-          </section>
-        );
-      }
-
       return (
         <section
           ref={ref}
@@ -382,9 +355,17 @@ export const Verse = {
           }
           data-show-verse-numbers={showVerseNumbers}
           data-slot="yv-bible-renderer"
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML has been run through DOMPurify and is safe
-          dangerouslySetInnerHTML={{ __html: transformedData.html }}
-        />
+        >
+          <BibleTextHtml
+            html={transformedData.html}
+            notes={renderNotes ? transformedData.notes : {}}
+            reference={reference}
+            fontSize={fontSize}
+            theme={currentTheme}
+            selectedVerses={selectedVerses}
+            onVerseSelect={onVerseSelect}
+          />
+        </section>
       );
     },
   ),
