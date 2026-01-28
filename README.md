@@ -97,6 +97,10 @@ const passage = await bibleClient.getPassage(versions.data[0].id, 'JHN.3.16');
 console.log(passage.content);
 ```
 
+## Contributing
+
+Want to contribute? See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup instructions, development workflow, and guidelines.
+
 ## License
 
 This SDK is licensed under [Apache 2.0](./LICENSE). 
