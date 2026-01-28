@@ -1,5 +1,13 @@
 # @youversion/platform-react-hooks
 
+## 1.9.2
+
+### Patch Changes
+
+- d7fb66a: Replace lucide-react icons dependency with custom SVG icon components to reduce the size of our platform-react-ui bundle
+- Updated dependencies [d7fb66a]
+  - @youversion/platform-core@1.9.2
+
 ## 1.9.1
 
 ### Patch Changes
