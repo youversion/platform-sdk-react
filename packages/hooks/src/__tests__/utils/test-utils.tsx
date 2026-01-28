@@ -1,6 +1,15 @@
 import React from 'react';
+import { render, type RenderResult } from '@testing-library/react';
 import { YouVersionProvider } from '../../context/YouVersionProvider';
 import { useYouVersionAuthContext } from '../../context/YouVersionAuthContext';
+import { ReaderProvider } from '../../context/ReaderProvider';
+import type { ReaderProviderOptions } from '../../types/bibles';
+import {
+  createMockBook,
+  createMockChapter,
+  createMockVerse,
+  createMockVersion,
+} from '../mocks/bibles';
 
 /**
  * Creates a test wrapper component with YouVersionAuthProvider
@@ -41,3 +50,29 @@ export function TestAuthChild({ onRender }: { onRender?: (data: any) => void }):
     </div>
   );
 }
+
+/**
+ * Renders a component wrapped in ReaderProvider for testing
+ * @param ui Component to render
+ * @param options Optional provider props to override defaults
+ */
+export const renderWithReaderProvider = (
+  ui: React.ReactElement,
+  {
+    currentVersion = createMockVersion(),
+    currentBook = createMockBook(),
+    currentChapter = createMockChapter(),
+    currentVerse = createMockVerse(),
+  }: ReaderProviderOptions = {},
+): RenderResult => {
+  return render(
+    <ReaderProvider
+      currentVersion={currentVersion}
+      currentBook={currentBook}
+      currentChapter={currentChapter}
+      currentVerse={currentVerse}
+    >
+      {ui}
+    </ReaderProvider>,
+  );
+};
