@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import React from 'react';
 
-import { DEFAULT_BIBLE_VERSION } from '@/lib/constants';
 import { type BibleTextViewProps, BibleTextView } from './verse';
 import { Button } from './ui/button';
 import { X } from 'lucide-react';
@@ -152,7 +151,7 @@ type Story = StoryObj<typeof meta>;
 export const SingleVerse: Story = {
   args: {
     reference: 'JHN.3.16',
-    versionId: DEFAULT_BIBLE_VERSION,
+    versionId: 111,
     renderNotes: true,
   },
   tags: ['integration'],
@@ -172,7 +171,7 @@ export const SingleVerse: Story = {
 export const VerseRange: Story = {
   args: {
     reference: 'JHN.3.16-17',
-    versionId: DEFAULT_BIBLE_VERSION,
+    versionId: 111,
     renderNotes: true,
   },
 };
@@ -180,7 +179,7 @@ export const VerseRange: Story = {
 export const FullChapter: Story = {
   args: {
     reference: 'JHN.3',
-    versionId: DEFAULT_BIBLE_VERSION,
+    versionId: 111,
     renderNotes: true,
   },
 };
@@ -189,7 +188,7 @@ export const RealAPI: Story = {
   render: (args) => <DebouncedBibleTextView {...args} />,
   args: {
     reference: 'JHN.1',
-    versionId: DEFAULT_BIBLE_VERSION,
+    versionId: 111,
     renderNotes: true,
     showVerseNumbers: true,
   },
@@ -203,7 +202,7 @@ export const RealAPI: Story = {
 export const FootnoteInteraction: Story = {
   args: {
     reference: 'JHN.1.51',
-    versionId: DEFAULT_BIBLE_VERSION,
+    versionId: 111,
     renderNotes: true,
     showVerseNumbers: true,
   },
@@ -238,7 +237,7 @@ export const FootnoteInteraction: Story = {
 export const DarkMode: Story = {
   args: {
     reference: 'JHN.3.16',
-    versionId: DEFAULT_BIBLE_VERSION,
+    versionId: 111,
     renderNotes: true,
     theme: 'dark',
   },
@@ -268,7 +267,7 @@ export const DarkMode: Story = {
 export const FootnotePopoverThemeLight: Story = {
   args: {
     reference: 'JHN.1',
-    versionId: DEFAULT_BIBLE_VERSION,
+    versionId: 111,
     renderNotes: true,
     showVerseNumbers: true,
     theme: 'light',
@@ -307,7 +306,7 @@ export const FootnotePopoverThemeLight: Story = {
 export const FootnotePopoverThemeDark: Story = {
   args: {
     reference: 'JHN.1',
-    versionId: DEFAULT_BIBLE_VERSION,
+    versionId: 111,
     renderNotes: true,
     showVerseNumbers: true,
     theme: 'dark',
@@ -427,7 +426,7 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
 export const VerseSelection: Story = {
   args: {
     reference: 'JHN.1',
-    versionId: DEFAULT_BIBLE_VERSION,
+    versionId: 111,
     renderNotes: true,
   },
   argTypes: {
