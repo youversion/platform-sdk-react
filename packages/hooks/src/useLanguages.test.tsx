@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ReactNode } from 'react';
 import { useLanguages } from './useLanguages';
@@ -206,10 +206,60 @@ describe('useLanguages', () => {
 
       expect(mockGetLanguages).toHaveBeenCalledTimes(1);
 
-      result.current.refetch();
+      act(() => {
+        result.current.refetch();
+      });
 
       await waitFor(() => {
         expect(mockGetLanguages).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('should fetch languages with fields filter', async () => {
+      const wrapper = createWrapper({
+        appKey: mockAppKey,
+      });
+
+      const options: GetLanguagesOptions = {
+        'fields[]': ['id', 'language', 'script'],
+        page_size: '*',
+      };
+
+      const { result } = renderHook(() => useLanguages(options), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(mockGetLanguages).toHaveBeenCalledWith(options);
+      expect(result.current.languages).toEqual(mockLanguages);
+    });
+
+    it('should refetch when fields change', async () => {
+      const wrapper = createWrapper({
+        appKey: mockAppKey,
+      });
+
+      const { result, rerender } = renderHook(({ options }) => useLanguages(options), {
+        wrapper,
+        initialProps: { options: { 'fields[]': ['id', 'language'] } as GetLanguagesOptions },
+      });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(mockGetLanguages).toHaveBeenCalledTimes(1);
+
+      rerender({ options: { 'fields[]': ['id', 'language', 'script'] } as GetLanguagesOptions });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(mockGetLanguages).toHaveBeenCalledTimes(2);
+      expect(mockGetLanguages).toHaveBeenLastCalledWith({
+        'fields[]': ['id', 'language', 'script'],
       });
     });
   });

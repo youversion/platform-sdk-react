@@ -60,6 +60,50 @@ describe('LanguagesClient', () => {
         'Country code must be a 2-character ISO 3166-1 alpha-2 code',
       );
     });
+
+    it('should fetch languages with valid fields filter', async () => {
+      const languages = await languagesClient.getLanguages({
+        'fields[]': ['id', 'language', 'script'],
+        page_size: 10,
+      });
+
+      expect(languages.data).toHaveLength(10);
+    });
+
+    it('should throw an error for invalid field name', async () => {
+      await expect(
+        languagesClient.getLanguages({
+          // @ts-expect-error - testing invalid field name
+          'fields[]': ['id', 'invalid_field'],
+        }),
+      ).rejects.toThrow();
+    });
+
+    it('should allow page_size="*" with 1-3 fields', async () => {
+      const languages = await languagesClient.getLanguages({
+        'fields[]': ['id', 'language'],
+        page_size: '*',
+      });
+
+      expect(languages.data.length).toBeGreaterThan(0);
+    });
+
+    it('should throw an error for page_size="*" without fields', async () => {
+      await expect(
+        languagesClient.getLanguages({
+          page_size: '*',
+        }),
+      ).rejects.toThrow('page_size="*" requires 1-3 fields to be specified');
+    });
+
+    it('should throw an error for page_size="*" with more than 3 fields', async () => {
+      await expect(
+        languagesClient.getLanguages({
+          'fields[]': ['id', 'language', 'script', 'script_name'],
+          page_size: '*',
+        }),
+      ).rejects.toThrow('page_size="*" requires 1-3 fields to be specified');
+    });
   });
 
   describe('getLanguage', () => {
