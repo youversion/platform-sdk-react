@@ -1,7 +1,7 @@
 import * as React from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { Button } from './button';
-import { XIcon } from 'lucide-react';
+import { XIcon } from '../icons/x';
 
 import { cn } from '@/lib/utils';
 
@@ -57,7 +57,7 @@ function PopoverContent({
                 size="icon"
                 className="yv:w-6 yv:h-6 yv:text-muted-foreground"
               >
-                <XIcon />
+                <XIcon className="yv:size-5" />
                 <span className="yv:sr-only">Close</span>
               </Button>
             </PopoverClose>

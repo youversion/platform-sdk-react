@@ -55,24 +55,36 @@ export const WithVersionPicker: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    // Wait for loading to finish
-    await canvas.findByRole('button', { name: /change bible version/i });
-    await waitFor(async () => {
-      await expect(
-        canvas.getByRole('button', { name: /change bible version/i }),
-      ).not.toHaveTextContent('Loading...');
-    });
+    // Wait for loading to finish with extended timeout for CI
+    const versionPickerButton = await canvas.findByRole(
+      'button',
+      { name: /change bible version/i },
+      { timeout: 10_000 },
+    );
+    await waitFor(
+      async () => {
+        await expect(versionPickerButton).not.toHaveTextContent('Loading...');
+      },
+      { timeout: 10_000 },
+    );
 
     // Click the version picker button
-    const versionPickerButton = canvas.getByRole('button', { name: /change bible version/i });
     await userEvent.click(versionPickerButton);
 
-    // Wait for the search input to be available - use screen because popover uses portal
+    // Validate the dialog is open
+    // P.S. I use screen here because the Popover uses a Portal that moves
+    // the element out of the original canvas element.
+    const dialog = await screen.findByRole('dialog');
+    await expect(dialog).toBeInTheDocument();
+
+    // Wait for the version list to load before searching - use screen because popover uses portal
+    await screen.findByTestId('version-list', {}, { timeout: 10_000 });
+
+    // Now search for amplified bible
     const searchInput = await screen.findByPlaceholderText('Search');
     await userEvent.type(searchInput, 'amplified bible');
 
     // Wait for filtering and assert only one result
-    // Find the list that contains Amplified Bible (the versions list, not the languages list)
     await screen.findByText('Amplified Bible');
     const versionList = await screen.findByTestId('version-list');
     await expect(versionList).toBeInTheDocument();
@@ -86,16 +98,22 @@ export const WithVersionPicker: Story = {
     await userEvent.click(screen.getByRole('listitem', { name: /amplified bible/i }));
 
     // Wait for version change to complete
-    await waitFor(async () => {
-      await expect(screen.getByRole('button', { name: /change bible version/i })).toHaveTextContent(
-        'AMP',
-      );
-    });
+    await waitFor(
+      async () => {
+        await expect(
+          screen.getByRole('button', { name: /change bible version/i }),
+        ).toHaveTextContent('AMP');
+      },
+      { timeout: 10_000 },
+    );
 
-    await waitFor(async () => {
-      const heading = screen.getByRole('heading', { level: 2, name: /luke 1:39-45/i });
-      await expect(heading).toHaveTextContent(/amp/i);
-    });
+    await waitFor(
+      async () => {
+        const heading = screen.getByRole('heading', { level: 2, name: /luke 1:39-45/i });
+        await expect(heading).toHaveTextContent(/amp/i);
+      },
+      { timeout: 10_000 },
+    );
   },
 };
 

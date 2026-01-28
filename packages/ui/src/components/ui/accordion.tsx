@@ -1,6 +1,6 @@
 import * as React from 'react';
 import * as AccordionPrimitive from '@radix-ui/react-accordion';
-import { ChevronDownIcon } from 'lucide-react';
+import { ChevronDownIcon } from '../icons/chevron-down';
 
 import { cn } from '@/lib/utils';
 
@@ -39,7 +39,7 @@ function AccordionTrigger({
         {...props}
       >
         {children}
-        <ChevronDownIcon className="yv:text-muted-foreground yv:size-4 yv:shrink-0 yv:translate-y-0.5 yv:transition-transform yv:duration-200" />
+        <ChevronDownIcon className="yv:text-muted-foreground yv:size-6 yv:shrink-0 yv:translate-y-0.5 yv:transition-transform yv:duration-200" />
       </AccordionPrimitive.Trigger>
     </AccordionPrimitive.Header>
   );
