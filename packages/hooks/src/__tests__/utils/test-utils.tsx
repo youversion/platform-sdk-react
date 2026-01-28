@@ -63,7 +63,7 @@ export const renderWithReaderProvider = (
     currentBook = createMockBook(),
     currentChapter = createMockChapter(),
     currentVerse = createMockVerse(),
-  }: ReaderProviderOptions = {},
+  }: Partial<ReaderProviderOptions> = {},
 ): RenderResult => {
   return render(
     <ReaderProvider
