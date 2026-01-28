@@ -350,16 +350,54 @@ export const FootnotePopoverThemeDark: Story = {
 
 function VerseSelectionDemo(props: BibleTextViewProps) {
   const [selectedVerses, setSelectedVerses] = React.useState<number[]>([]);
+  const [highlightedVerses, setHighlightedVerses] = React.useState<Record<number, boolean>>({});
+
+  const handleHighlight = () => {
+    setHighlightedVerses((prev) => {
+      const next = { ...prev };
+      for (const verse of selectedVerses) {
+        next[verse] = true;
+      }
+      return next;
+    });
+    setSelectedVerses([]);
+  };
+
+  const handleClearHighlights = () => {
+    setHighlightedVerses((prev) => {
+      const next = { ...prev };
+      for (const verse of selectedVerses) {
+        delete next[verse];
+      }
+      return next;
+    });
+    setSelectedVerses([]);
+  };
 
   return (
     <div
       data-yv-sdk
       className="yv:grid yv:grid-rows-[auto_1fr] yv:gap-4 yv:max-w-lg yv:h-svh yv:max-h-svh yv:overflow-hidden"
     >
-      <div className="yv:grid yv:grid-cols-[1fr_auto_auto] yv:items-center yv:bg-secondary yv:py-2 yv:px-4 yv:rounded-sm yv:sticky yv:text-sm yv:text-muted-foreground">
-        <p>Selected: {selectedVerses.length > 0 ? selectedVerses.join(', ') : 'None'}</p>
-        <Button disabled={!selectedVerses.length} variant="outline" size="sm">
+      <div className="yv:flex yv:items-center yv:gap-2 yv:bg-secondary yv:py-2 yv:px-4 yv:rounded-sm yv:sticky yv:text-sm yv:text-muted-foreground">
+        <p className="yv:flex-1">
+          Selected: {selectedVerses.length > 0 ? selectedVerses.join(', ') : 'None'}
+        </p>
+        <Button
+          onClick={handleHighlight}
+          disabled={!selectedVerses.length}
+          variant="outline"
+          size="sm"
+        >
           Highlight
+        </Button>
+        <Button
+          onClick={handleClearHighlights}
+          disabled={!selectedVerses.length}
+          variant="outline"
+          size="sm"
+        >
+          Clear
         </Button>
         <Button
           disabled={!selectedVerses.length}
@@ -367,7 +405,7 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
           size="icon"
           variant="outline"
           onClick={() => setSelectedVerses([])}
-          className="yv:ml-2 yv:text-primary"
+          className="yv:text-primary"
         >
           <X className="yv:size-4" />
         </Button>
@@ -379,6 +417,7 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
           {...props}
           selectedVerses={selectedVerses}
           onVerseSelect={setSelectedVerses}
+          highlightedVerses={highlightedVerses}
         />
       </div>
     </div>
@@ -403,6 +442,11 @@ export const VerseSelection: Story = {
       },
     },
     onVerseSelect: {
+      table: {
+        disable: true,
+      },
+    },
+    highlightedVerses: {
       table: {
         disable: true,
       },

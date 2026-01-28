@@ -90,6 +90,7 @@ function BibleTextHtml({
   theme,
   selectedVerses = [],
   onVerseSelect,
+  highlightedVerses = {},
 }: {
   html: string;
   notes: Record<string, VerseNotes>;
@@ -98,6 +99,7 @@ function BibleTextHtml({
   theme?: 'light' | 'dark';
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
+  highlightedVerses?: Record<number, boolean>;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [placeholders, setPlaceholders] = useState<Map<string, Element>>(new Map());
@@ -122,13 +124,20 @@ function BibleTextHtml({
     const verseElements = contentRef.current.querySelectorAll('.yv-v[v]');
     verseElements.forEach((el) => {
       const verseNum = parseInt(el.getAttribute('v') || '0', 10);
+
       if (selectedVerses.includes(verseNum)) {
         el.classList.add('yv-v-selected');
       } else {
         el.classList.remove('yv-v-selected');
       }
+
+      if (highlightedVerses[verseNum]) {
+        el.classList.add('yv-v-highlighted');
+      } else {
+        el.classList.remove('yv-v-highlighted');
+      }
     });
-  }, [selectedVerses]);
+  }, [selectedVerses, highlightedVerses]);
 
   useLayoutEffect(() => {
     const element = contentRef.current;
@@ -282,6 +291,7 @@ type VerseHtmlProps = {
   theme?: 'light' | 'dark';
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
+  highlightedVerses?: Record<number, boolean>;
 };
 
 /**
@@ -332,6 +342,7 @@ export const Verse = {
         theme,
         selectedVerses,
         onVerseSelect,
+        highlightedVerses,
       }: VerseHtmlProps,
       ref,
     ): ReactNode => {
@@ -366,6 +377,7 @@ export const Verse = {
             theme={currentTheme}
             selectedVerses={selectedVerses}
             onVerseSelect={onVerseSelect}
+            highlightedVerses={highlightedVerses}
           />
         </section>
       );
@@ -384,6 +396,7 @@ export type BibleTextViewProps = {
   theme?: 'light' | 'dark';
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
+  highlightedVerses?: Record<number, boolean>;
 };
 
 /**
@@ -400,6 +413,7 @@ export const BibleTextView = ({
   theme,
   selectedVerses,
   onVerseSelect,
+  highlightedVerses,
 }: BibleTextViewProps): React.ReactElement => {
   const { passage, loading, error } = usePassage({
     versionId,
@@ -455,6 +469,7 @@ export const BibleTextView = ({
         theme={currentTheme}
         selectedVerses={selectedVerses}
         onVerseSelect={onVerseSelect}
+        highlightedVerses={highlightedVerses}
       />
     </div>
   );

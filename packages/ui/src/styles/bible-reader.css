@@ -114,6 +114,14 @@
     text-underline-offset: 0.33em;
   }
 
+  /* Demo highlighted verse styling 20% opacity of expressive yellow 30 */
+  & .yv-v.yv-v-highlighted {
+    background-color: rgba(241, 156, 51, 0.2);
+    border-radius: 2px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+
   /* Major titles */
   & .imt,
   & .imt1,
