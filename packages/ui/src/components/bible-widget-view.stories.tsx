@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { within, expect, userEvent, screen } from 'storybook/test';
+import { within, expect, userEvent, screen, waitFor } from 'storybook/test';
 import { BibleWidgetView } from './bible-widget-view';
-import { waitFor } from '@testing-library/react';
 
 const meta = {
   title: 'Components/BibleWidgetView',
@@ -55,51 +54,55 @@ export const WithVersionPicker: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    // Wait for loading to finish with extended timeout for CI
-    const versionPickerButton = await canvas.findByRole(
-      'button',
-      { name: /change bible version/i },
-      { timeout: 10_000 },
-    );
+    // Wait for initial content to load
+    const versionPickerButton = await canvas.findByRole('button', {
+      name: /change bible version/i,
+    });
+
     await waitFor(
       async () => {
-        await expect(versionPickerButton).not.toHaveTextContent('Loading...');
+        await expect(versionPickerButton).toHaveTextContent(/NIV/i);
+        await expect(canvas.getByText(/at that time mary got ready/i)).toBeInTheDocument();
       },
       { timeout: 10_000 },
     );
 
-    // Click the version picker button
+    // Open version picker dialog
     await userEvent.click(versionPickerButton);
 
-    // Validate the dialog is open
-    // P.S. I use screen here because the Popover uses a Portal that moves
-    // the element out of the original canvas element.
-    const dialog = await screen.findByRole('dialog');
-    await expect(dialog).toBeInTheDocument();
+    // Use screen for portal elements (popover renders outside canvas)
+    await expect(await screen.findByRole('dialog')).toBeInTheDocument();
 
-    // Wait for the version list to load before searching - use screen because popover uses portal
-    await within(dialog).findByTestId('version-list', {}, { timeout: 10_000 });
+    // Wait for versions to actually load (not just the container)
+    await waitFor(
+      async () => {
+        const versionList = within(await screen.findByRole('dialog')).getByTestId('version-list');
+        // Search for New International Version to exist to show data came back from API
+        await within(versionList).findByText(/new international version 2011/i);
+        const items = await within(versionList).findAllByRole('listitem');
+        await expect(items.length).toBeGreaterThan(0);
+      },
+      { timeout: 10_000 },
+    );
 
-    // Now search for amplified bible
-    const searchInput = await within(dialog).findByPlaceholderText('Search');
+    // Search for Amplified Bible
+    const searchInput = within(await screen.findByRole('dialog')).getByPlaceholderText('Search');
     await userEvent.type(searchInput, 'amplified bible');
 
-    // Wait for filtering and assert only one result
-    await within(dialog).findByText('Amplified Bible');
-    const versionList = await within(dialog).findByTestId('version-list');
-    const versionItems = await within(versionList).findAllByRole('listitem');
-    await expect(versionItems).toHaveLength(1);
+    await waitFor(async () => {
+      const versionList = within(await screen.findByRole('dialog')).getByTestId('version-list');
+      const versionItems = within(versionList).getAllByRole('listitem');
+      await expect(versionItems).toHaveLength(1);
+      await expect(versionItems[0]).toHaveTextContent(/amplified bible/i);
+    });
 
-    // Assert the Amplified Bible is showing
-    await expect(versionItems[0]).toHaveTextContent(/amplified bible/i);
-
-    // Select the Ampilfied Bible list item
-    const versionListItem = await within(dialog).findByRole('listitem', {
+    // Select Amplified Bible version
+    const versionListItem = within(await screen.findByRole('dialog')).getByRole('listitem', {
       name: /amplified bible/i,
     });
     await userEvent.click(versionListItem);
 
-    // Wait for version change to complete
+    // Verify version changed to AMP
     await waitFor(
       async () => {
         await expect(
