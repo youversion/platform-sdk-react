@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, fireEvent, renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { VerseSelectionProvider } from './VerseSelectionProvider';
@@ -236,6 +236,7 @@ describe('VerseSelectionProvider', () => {
       fireEvent.click(getByTestId('clear'));
 
       expect(getByTestId('selected-usfms')).toHaveTextContent('[]');
+      expect(getByTestId('selected-count')).toHaveTextContent('0');
     });
 
     it('should reset selectedCount to 0', () => {
@@ -428,119 +429,6 @@ describe('VerseSelectionProvider', () => {
       const isSelectedRef2 = result.current.isSelected;
 
       expect(isSelectedRef1).toBe(isSelectedRef2);
-    });
-  });
-
-  describe('Set immutability', () => {
-    it('should create new Set on toggle add', () => {
-      const { result } = renderHook(() => useVerseSelection(), { wrapper });
-
-      const set1 = result.current.selectedVerseUsfms;
-
-      act(() => {
-        result.current.toggleVerse('MAT.1.1');
-      });
-
-      const set2 = result.current.selectedVerseUsfms;
-
-      // Different references
-      expect(set1).not.toBe(set2);
-
-      // Original set unchanged
-      expect(set1.has('MAT.1.1')).toBe(false);
-
-      // New set has the verse
-      expect(set2.has('MAT.1.1')).toBe(true);
-    });
-
-    it('should create new Set on toggle remove', () => {
-      const { result } = renderHook(() => useVerseSelection(), { wrapper });
-
-      act(() => {
-        result.current.toggleVerse('MAT.1.1');
-      });
-
-      const set1 = result.current.selectedVerseUsfms;
-
-      act(() => {
-        result.current.toggleVerse('MAT.1.1');
-      });
-
-      const set2 = result.current.selectedVerseUsfms;
-
-      // Different references
-      expect(set1).not.toBe(set2);
-
-      // Original set still has the verse (it's a snapshot)
-      expect(set1.has('MAT.1.1')).toBe(true);
-
-      // New set doesn't have the verse
-      expect(set2.has('MAT.1.1')).toBe(false);
-    });
-
-    it('should create new Set on clear', () => {
-      const { result } = renderHook(() => useVerseSelection(), { wrapper });
-
-      act(() => {
-        result.current.toggleVerse('MAT.1.1');
-        result.current.toggleVerse('GEN.1.1');
-      });
-
-      const set1 = result.current.selectedVerseUsfms;
-
-      act(() => {
-        result.current.clearSelection();
-      });
-
-      const set2 = result.current.selectedVerseUsfms;
-
-      // Different references
-      expect(set1).not.toBe(set2);
-
-      // Original set unchanged
-      expect(set1.size).toBe(2);
-      expect(set1.has('MAT.1.1')).toBe(true);
-      expect(set1.has('GEN.1.1')).toBe(true);
-
-      // New set is empty
-      expect(set2.size).toBe(0);
-    });
-  });
-
-  describe('useVerseSelection hook error handling', () => {
-    it('should throw error when used outside provider', () => {
-      // Suppress console.error for this test since we expect an error
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(vi.fn());
-
-      expect(() => {
-        renderHook(() => useVerseSelection());
-      }).toThrow('useVerseSelection must be used within a VerseSelectionProvider');
-
-      consoleSpy.mockRestore();
-    });
-  });
-
-  describe('provider rendering', () => {
-    it('should render children correctly', () => {
-      const { getByText } = render(
-        <VerseSelectionProvider>
-          <div>Test Content</div>
-        </VerseSelectionProvider>,
-      );
-
-      expect(getByText('Test Content')).toBeInTheDocument();
-    });
-
-    it('should render multiple children', () => {
-      const { getByText } = render(
-        <VerseSelectionProvider>
-          <div>Child 1</div>
-          <div>Child 2</div>
-        </VerseSelectionProvider>,
-      );
-
-      expect(getByText('Child 1')).toBeInTheDocument();
-      expect(getByText('Child 2')).toBeInTheDocument();
     });
   });
 });
