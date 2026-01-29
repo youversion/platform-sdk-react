@@ -59,13 +59,10 @@ export const WithVersionPicker: Story = {
       name: /change bible version/i,
     });
 
-    await waitFor(
-      async () => {
-        await expect(versionPickerButton).toHaveTextContent(/NIV/i);
-        await expect(canvas.getByText(/at that time mary got ready/i)).toBeInTheDocument();
-      },
-      { timeout: 10_000 },
-    );
+    await waitFor(async () => {
+      await expect(versionPickerButton).toHaveTextContent(/NIV/i);
+      await expect(canvas.getByText(/at that time mary got ready/i)).toBeInTheDocument();
+    });
 
     // Open version picker dialog
     await userEvent.click(versionPickerButton);
@@ -74,16 +71,13 @@ export const WithVersionPicker: Story = {
     await expect(await screen.findByRole('dialog')).toBeInTheDocument();
 
     // Wait for versions to actually load (not just the container)
-    await waitFor(
-      async () => {
-        const versionList = within(await screen.findByRole('dialog')).getByTestId('version-list');
-        // Search for New International Version to exist to show data came back from API
-        await within(versionList).findByText(/new international version 2011/i);
-        const items = await within(versionList).findAllByRole('listitem');
-        await expect(items.length).toBeGreaterThan(0);
-      },
-      { timeout: 10_000 },
-    );
+    await waitFor(async () => {
+      const versionList = within(await screen.findByRole('dialog')).getByTestId('version-list');
+      // Search for New International Version to exist to show data came back from API
+      await within(versionList).findByText(/new international version 2011/i);
+      const items = await within(versionList).findAllByRole('listitem');
+      await expect(items.length).toBeGreaterThan(0);
+    });
 
     // Search for Amplified Bible
     const searchInput = within(await screen.findByRole('dialog')).getByPlaceholderText('Search');
@@ -103,22 +97,16 @@ export const WithVersionPicker: Story = {
     await userEvent.click(versionListItem);
 
     // Verify version changed to AMP
-    await waitFor(
-      async () => {
-        await expect(
-          screen.getByRole('button', { name: /change bible version/i }),
-        ).toHaveTextContent('AMP');
-      },
-      { timeout: 10_000 },
-    );
+    await waitFor(async () => {
+      await expect(screen.getByRole('button', { name: /change bible version/i })).toHaveTextContent(
+        'AMP',
+      );
+    });
 
-    await waitFor(
-      async () => {
-        const heading = screen.getByRole('heading', { level: 2, name: /luke 1:39-45/i });
-        await expect(heading).toHaveTextContent(/amp/i);
-      },
-      { timeout: 10_000 },
-    );
+    await waitFor(async () => {
+      const heading = screen.getByRole('heading', { level: 2, name: /luke 1:39-45/i });
+      await expect(heading).toHaveTextContent(/amp/i);
+    });
   },
 };
 
