@@ -55,7 +55,7 @@ function expectReaderState(
   const content = element.textContent ?? '';
 
   if (expected === null) {
-    expect(content).toBe('');
+    expect(content).toBe('null');
   } else {
     expect(JSON.parse(content)).toMatchObject(expected);
   }
@@ -94,7 +94,7 @@ function TestChild() {
       <div data-testid="current-version">{JSON.stringify(currentVersion)}</div>
       <div data-testid="current-book">{JSON.stringify(currentBook)}</div>
       <div data-testid="current-chapter">{JSON.stringify(currentChapter)}</div>
-      <div data-testid="current-verse">{currentVerse ? JSON.stringify(currentVerse) : null}</div>
+      <div data-testid="current-verse">{currentVerse ? JSON.stringify(currentVerse) : 'null'}</div>
       <button onClick={() => setVersion(mockVersion2)} data-testid="set-version">
         Set Version
       </button>
@@ -276,7 +276,7 @@ describe('ReaderProvider', () => {
       renderWithReaderProvider(<TestChild />);
 
       const verseBefore = screen.getByTestId('current-verse');
-      expect(verseBefore.textContent).not.toBe('');
+      expect(verseBefore.textContent).not.toBe('null');
 
       const button = screen.getByTestId('clear-verse');
       act(() => {
@@ -284,7 +284,7 @@ describe('ReaderProvider', () => {
       });
 
       const verseAfter = screen.getByTestId('current-verse');
-      expect(verseAfter.textContent).toBe('');
+      expect(verseAfter.textContent).toBe('null');
     });
   });
 
