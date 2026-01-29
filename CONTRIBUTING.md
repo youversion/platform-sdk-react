@@ -16,6 +16,27 @@ cd platform-sdk-react
 pnpm install
 ```
 
+### Get an app key
+
+You'll need to obtain an app key from https://platform.youversion.com
+
+### Set up environment variables
+
+Create an .env.local file in the `./packages/core` package and update the app key variable. 
+
+```bash
+cp ./packages/core/.env.example ./packages/core/.env.local
+```
+
+Create an .env.local file in the `./packages/ui` package and update the app key variable. 
+
+```bash
+cp ./packages/ui/.env.example ./packages/ui/.env.local
+```
+
+> [!NOTE]
+> Our React hooks package does not require environment variables at this time.
+
 ### Build Commands
 
 ```bash
