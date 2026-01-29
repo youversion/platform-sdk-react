@@ -4,7 +4,7 @@ import React from 'react';
 
 import { type BibleTextViewProps, BibleTextView } from './verse';
 import { Button } from './ui/button';
-import { X } from 'lucide-react';
+import { XIcon } from '@/components/icons/x';
 
 // USFM format: BOOK.CHAPTER or BOOK.CHAPTER.VERSE or BOOK.CHAPTER.VERSE-VERSE
 const USFM_PATTERN = /^[A-Z1-4]{3}\.\d+(\.\d+(-\d+)?)?$/;
@@ -406,7 +406,7 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
           onClick={() => setSelectedVerses([])}
           className="yv:text-primary"
         >
-          <X className="yv:size-4" />
+          <XIcon className="yv:size-4" />
         </Button>
       </div>
 
