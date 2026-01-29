@@ -104,6 +104,11 @@
   & .yv-v,
   & .verse {
     display: inline;
+  }
+
+  /* Only show pointer cursor when verses are selectable */
+  &[data-selectable='true'] .yv-v,
+  &[data-selectable='true'] .verse {
     cursor: pointer;
   }
 

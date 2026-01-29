@@ -368,6 +368,7 @@ export const Verse = {
           data-show-verse-numbers={showVerseNumbers}
           data-show-notes={renderNotes}
           data-slot="yv-bible-renderer"
+          data-selectable={onVerseSelect ? 'true' : 'false'}
         >
           <BibleTextHtml
             html={transformedData.html}
