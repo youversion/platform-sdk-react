@@ -137,7 +137,7 @@ function BibleTextHtml({
         el.classList.remove('yv-v-highlighted');
       }
     });
-  }, [selectedVerses, highlightedVerses]);
+  }, [html, selectedVerses, highlightedVerses]);
 
   useLayoutEffect(() => {
     const element = contentRef.current;
