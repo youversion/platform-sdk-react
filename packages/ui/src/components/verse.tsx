@@ -139,6 +139,9 @@ function BibleTextHtml({
     });
   }, [html, selectedVerses, highlightedVerses]);
 
+  const selectedVersesRef = useRef(selectedVerses);
+  selectedVersesRef.current = selectedVerses;
+
   useLayoutEffect(() => {
     const element = contentRef.current;
     if (!element || !onVerseSelect) return;
@@ -151,16 +154,17 @@ function BibleTextHtml({
       const verseNum = parseInt(verseEl.getAttribute('v') || '0', 10);
       if (verseNum === 0) return;
 
-      const newSelected = selectedVerses.includes(verseNum)
-        ? selectedVerses.filter((v) => v !== verseNum)
-        : [...selectedVerses, verseNum].sort((a, b) => a - b);
+      const current = selectedVersesRef.current;
+      const newSelected = current.includes(verseNum)
+        ? current.filter((v) => v !== verseNum)
+        : [...current, verseNum].sort((a, b) => a - b);
 
       onVerseSelect(newSelected);
     };
 
     element.addEventListener('click', handleClick);
     return () => element.removeEventListener('click', handleClick);
-  }, [selectedVerses, onVerseSelect]);
+  }, [onVerseSelect]);
 
   return (
     <>
