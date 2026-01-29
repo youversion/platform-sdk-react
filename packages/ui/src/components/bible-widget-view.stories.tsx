@@ -78,15 +78,15 @@ export const WithVersionPicker: Story = {
     await expect(dialog).toBeInTheDocument();
 
     // Wait for the version list to load before searching - use screen because popover uses portal
-    await screen.findByTestId('version-list', {}, { timeout: 10_000 });
+    await within(dialog).findByTestId('version-list', {}, { timeout: 10_000 });
 
     // Now search for amplified bible
-    const searchInput = await screen.findByPlaceholderText('Search');
+    const searchInput = await within(dialog).findByPlaceholderText('Search');
     await userEvent.type(searchInput, 'amplified bible');
 
     // Wait for filtering and assert only one result
-    await screen.findByText('Amplified Bible');
-    const versionList = await screen.findByTestId('version-list');
+    await within(dialog).findByText('Amplified Bible');
+    const versionList = await within(dialog).findByTestId('version-list', {}, { timeout: 10_000 });
     await expect(versionList).toBeInTheDocument();
 
     const versionItems = await within(versionList).findAllByRole('listitem');
