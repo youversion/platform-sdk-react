@@ -42,6 +42,26 @@ const config: StorybookConfig = {
         ],
       },
     };
+    /**
+     * Pre-optimize dependencies to prevent Vite from reloading mid-test in CI.
+     * Without this, Vite discovers dependencies during test execution and triggers
+     * a reload, which breaks the Vitest runner and causes "sb-preparing-story" failures.
+     * @see https://github.com/storybookjs/storybook/issues/33067
+     * @see https://github.com/storybookjs/storybook/issues/32049
+     */
+    config.optimizeDeps = {
+      ...config.optimizeDeps,
+      include: [
+        ...(config.optimizeDeps?.include ?? []),
+        'react',
+        'react-dom',
+        'react-dom/client',
+        'react/jsx-runtime',
+        'react/jsx-dev-runtime',
+        '@radix-ui/react-popover',
+        '@radix-ui/react-use-controllable-state',
+      ],
+    };
     return config;
   },
 };

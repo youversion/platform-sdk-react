@@ -18,6 +18,7 @@ import '../dist/tailwind.css';
  */
 initialize({
   onUnhandledRequest: 'warn',
+  quiet: true,
 });
 
 const preview: Preview = {
