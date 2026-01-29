@@ -1,34 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { render, fireEvent, renderHook, act } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { VerseSelectionProvider } from './VerseSelectionProvider';
 import { useVerseSelection } from '../useVerseSelection';
-
-// Test helper component to interact with the context
-function TestChild() {
-  const { selectedVerseUsfms, toggleVerse, isSelected, clearSelection, selectedCount } =
-    useVerseSelection();
-  return (
-    <div>
-      <div data-testid="selected-count">{selectedCount}</div>
-      <div data-testid="selected-usfms">{JSON.stringify([...selectedVerseUsfms])}</div>
-      <button data-testid="toggle-mat-1-1" onClick={() => toggleVerse('MAT.1.1')}>
-        Toggle MAT.1.1
-      </button>
-      <button data-testid="toggle-gen-1-1" onClick={() => toggleVerse('GEN.1.1')}>
-        Toggle GEN.1.1
-      </button>
-      <button data-testid="toggle-jhn-3-16" onClick={() => toggleVerse('JHN.3.16')}>
-        Toggle JHN.3.16
-      </button>
-      <button data-testid="clear" onClick={() => clearSelection()}>
-        Clear
-      </button>
-      <div data-testid="is-mat-selected">{isSelected('MAT.1.1').toString()}</div>
-      <div data-testid="is-gen-selected">{isSelected('GEN.1.1').toString()}</div>
-    </div>
-  );
-}
 
 // Wrapper for renderHook
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -37,81 +11,69 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 
 describe('VerseSelectionProvider', () => {
   describe('initial state', () => {
-    it('should have empty Set with selectedCount = 0', () => {
-      const { getByTestId } = render(
-        <VerseSelectionProvider>
-          <TestChild />
-        </VerseSelectionProvider>,
-      );
-
-      expect(getByTestId('selected-count')).toHaveTextContent('0');
-      expect(getByTestId('selected-usfms')).toHaveTextContent('[]');
-    });
-
-    it('should return false for isSelected on any verse', () => {
-      const { getByTestId } = render(
-        <VerseSelectionProvider>
-          <TestChild />
-        </VerseSelectionProvider>,
-      );
-
-      expect(getByTestId('is-mat-selected')).toHaveTextContent('false');
-      expect(getByTestId('is-gen-selected')).toHaveTextContent('false');
-    });
-
     it('should provide an empty Set instance', () => {
       const { result } = renderHook(() => useVerseSelection(), { wrapper });
 
       expect(result.current.selectedVerseUsfms).toBeInstanceOf(Set);
       expect(result.current.selectedVerseUsfms.size).toBe(0);
     });
+
+    it('should have selectedCount of 0', () => {
+      const { result } = renderHook(() => useVerseSelection(), { wrapper });
+
+      expect(result.current.selectedCount).toBe(0);
+    });
+
+    it('should return false for isSelected on any verse', () => {
+      const { result } = renderHook(() => useVerseSelection(), { wrapper });
+
+      expect(result.current.isSelected('MAT.1.1')).toBe(false);
+      expect(result.current.isSelected('GEN.1.1')).toBe(false);
+    });
   });
 
   describe('toggleVerse', () => {
     it('should add verse to selection when not present', () => {
-      const { getByTestId } = render(
-        <VerseSelectionProvider>
-          <TestChild />
-        </VerseSelectionProvider>,
-      );
+      const { result } = renderHook(() => useVerseSelection(), { wrapper });
 
-      fireEvent.click(getByTestId('toggle-mat-1-1'));
+      act(() => {
+        result.current.toggleVerse('MAT.1.1');
+      });
 
-      expect(getByTestId('selected-count')).toHaveTextContent('1');
-      expect(getByTestId('selected-usfms')).toHaveTextContent('["MAT.1.1"]');
+      expect(result.current.selectedVerseUsfms.has('MAT.1.1')).toBe(true);
+      expect(result.current.selectedCount).toBe(1);
     });
 
     it('should remove verse from selection when already present', () => {
-      const { getByTestId } = render(
-        <VerseSelectionProvider>
-          <TestChild />
-        </VerseSelectionProvider>,
-      );
+      const { result } = renderHook(() => useVerseSelection(), { wrapper });
 
-      // Add verse
-      fireEvent.click(getByTestId('toggle-mat-1-1'));
-      expect(getByTestId('selected-count')).toHaveTextContent('1');
+      act(() => {
+        result.current.toggleVerse('MAT.1.1');
+      });
 
-      // Remove verse
-      fireEvent.click(getByTestId('toggle-mat-1-1'));
-      expect(getByTestId('selected-count')).toHaveTextContent('0');
-      expect(getByTestId('selected-usfms')).toHaveTextContent('[]');
+      expect(result.current.selectedCount).toBe(1);
+
+      act(() => {
+        result.current.toggleVerse('MAT.1.1');
+      });
+
+      expect(result.current.selectedVerseUsfms.has('MAT.1.1')).toBe(false);
+      expect(result.current.selectedCount).toBe(0);
     });
 
     it('should support multiple verses selected simultaneously', () => {
-      const { getByTestId } = render(
-        <VerseSelectionProvider>
-          <TestChild />
-        </VerseSelectionProvider>,
-      );
+      const { result } = renderHook(() => useVerseSelection(), { wrapper });
 
-      fireEvent.click(getByTestId('toggle-mat-1-1'));
-      fireEvent.click(getByTestId('toggle-gen-1-1'));
-      fireEvent.click(getByTestId('toggle-jhn-3-16'));
+      act(() => {
+        result.current.toggleVerse('MAT.1.1');
+        result.current.toggleVerse('GEN.1.1');
+        result.current.toggleVerse('JHN.3.16');
+      });
 
-      expect(getByTestId('selected-count')).toHaveTextContent('3');
-      expect(getByTestId('is-mat-selected')).toHaveTextContent('true');
-      expect(getByTestId('is-gen-selected')).toHaveTextContent('true');
+      expect(result.current.selectedCount).toBe(3);
+      expect(result.current.selectedVerseUsfms.has('MAT.1.1')).toBe(true);
+      expect(result.current.selectedVerseUsfms.has('GEN.1.1')).toBe(true);
+      expect(result.current.selectedVerseUsfms.has('JHN.3.16')).toBe(true);
     });
 
     it('should create new Set reference on each update (immutability)', () => {
@@ -165,95 +127,62 @@ describe('VerseSelectionProvider', () => {
 
   describe('isSelected', () => {
     it('should return true for selected verses', () => {
-      const { getByTestId } = render(
-        <VerseSelectionProvider>
-          <TestChild />
-        </VerseSelectionProvider>,
-      );
-
-      fireEvent.click(getByTestId('toggle-mat-1-1'));
-
-      expect(getByTestId('is-mat-selected')).toHaveTextContent('true');
-    });
-
-    it('should return false for unselected verses', () => {
-      const { getByTestId } = render(
-        <VerseSelectionProvider>
-          <TestChild />
-        </VerseSelectionProvider>,
-      );
-
-      fireEvent.click(getByTestId('toggle-mat-1-1'));
-
-      expect(getByTestId('is-gen-selected')).toHaveTextContent('false');
-    });
-
-    it('should work correctly after toggle operations', () => {
-      const { getByTestId } = render(
-        <VerseSelectionProvider>
-          <TestChild />
-        </VerseSelectionProvider>,
-      );
-
-      // Initially not selected
-      expect(getByTestId('is-mat-selected')).toHaveTextContent('false');
-
-      // Add verse - now selected
-      fireEvent.click(getByTestId('toggle-mat-1-1'));
-      expect(getByTestId('is-mat-selected')).toHaveTextContent('true');
-
-      // Remove verse - not selected again
-      fireEvent.click(getByTestId('toggle-mat-1-1'));
-      expect(getByTestId('is-mat-selected')).toHaveTextContent('false');
-    });
-
-    it('should return correct value via hook', () => {
       const { result } = renderHook(() => useVerseSelection(), { wrapper });
-
-      expect(result.current.isSelected('MAT.1.1')).toBe(false);
 
       act(() => {
         result.current.toggleVerse('MAT.1.1');
       });
 
       expect(result.current.isSelected('MAT.1.1')).toBe(true);
+    });
+
+    it('should return false for unselected verses', () => {
+      const { result } = renderHook(() => useVerseSelection(), { wrapper });
+
+      act(() => {
+        result.current.toggleVerse('MAT.1.1');
+      });
+
       expect(result.current.isSelected('GEN.1.1')).toBe(false);
+    });
+
+    it('should work correctly after toggle operations', () => {
+      const { result } = renderHook(() => useVerseSelection(), { wrapper });
+
+      // Initially not selected
+      expect(result.current.isSelected('MAT.1.1')).toBe(false);
+
+      // Add verse - now selected
+      act(() => {
+        result.current.toggleVerse('MAT.1.1');
+      });
+      expect(result.current.isSelected('MAT.1.1')).toBe(true);
+
+      // Remove verse - not selected again
+      act(() => {
+        result.current.toggleVerse('MAT.1.1');
+      });
+      expect(result.current.isSelected('MAT.1.1')).toBe(false);
     });
   });
 
   describe('clearSelection', () => {
-    it('should empty the Set', () => {
-      const { getByTestId } = render(
-        <VerseSelectionProvider>
-          <TestChild />
-        </VerseSelectionProvider>,
-      );
+    it('should clear all selected verses', () => {
+      const { result } = renderHook(() => useVerseSelection(), { wrapper });
 
-      fireEvent.click(getByTestId('toggle-mat-1-1'));
-      fireEvent.click(getByTestId('toggle-gen-1-1'));
-      expect(getByTestId('selected-count')).toHaveTextContent('2');
+      act(() => {
+        result.current.toggleVerse('MAT.1.1');
+        result.current.toggleVerse('GEN.1.1');
+      });
 
-      fireEvent.click(getByTestId('clear'));
+      expect(result.current.selectedCount).toBe(2);
 
-      expect(getByTestId('selected-usfms')).toHaveTextContent('[]');
-      expect(getByTestId('selected-count')).toHaveTextContent('0');
-    });
+      act(() => {
+        result.current.clearSelection();
+      });
 
-    it('should reset selectedCount to 0', () => {
-      const { getByTestId } = render(
-        <VerseSelectionProvider>
-          <TestChild />
-        </VerseSelectionProvider>,
-      );
-
-      fireEvent.click(getByTestId('toggle-mat-1-1'));
-      fireEvent.click(getByTestId('toggle-gen-1-1'));
-      fireEvent.click(getByTestId('toggle-jhn-3-16'));
-      expect(getByTestId('selected-count')).toHaveTextContent('3');
-
-      fireEvent.click(getByTestId('clear'));
-
-      expect(getByTestId('selected-count')).toHaveTextContent('0');
+      expect(result.current.selectedCount).toBe(0);
+      expect(result.current.selectedVerseUsfms.size).toBe(0);
     });
 
     it('should create new Set reference', () => {
@@ -287,7 +216,6 @@ describe('VerseSelectionProvider', () => {
 
       const setAfterClear = result.current.selectedVerseUsfms;
 
-      // Should still create a new Set reference
       expect(setBeforeClear).not.toBe(setAfterClear);
       expect(setAfterClear.size).toBe(0);
     });
