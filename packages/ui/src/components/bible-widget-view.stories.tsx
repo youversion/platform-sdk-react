@@ -86,16 +86,18 @@ export const WithVersionPicker: Story = {
 
     // Wait for filtering and assert only one result
     await within(dialog).findByText('Amplified Bible');
-    const versionList = await within(dialog).findByTestId('version-list', {}, { timeout: 10_000 });
-    await expect(versionList).toBeInTheDocument();
-
+    const versionList = await within(dialog).findByTestId('version-list');
     const versionItems = await within(versionList).findAllByRole('listitem');
     await expect(versionItems).toHaveLength(1);
 
     // Assert the Amplified Bible is showing
-    await expect(versionItems[0]).toHaveTextContent(/amplified/i);
+    await expect(versionItems[0]).toHaveTextContent(/amplified bible/i);
 
-    await userEvent.click(screen.getByRole('listitem', { name: /amplified bible/i }));
+    // Select the Ampilfied Bible list item
+    const versionListItem = await within(dialog).findByRole('listitem', {
+      name: /amplified bible/i,
+    });
+    await userEvent.click(versionListItem);
 
     // Wait for version change to complete
     await waitFor(
