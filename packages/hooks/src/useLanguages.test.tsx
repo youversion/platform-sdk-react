@@ -221,7 +221,7 @@ describe('useLanguages', () => {
       });
 
       const options: GetLanguagesOptions = {
-        'fields[]': ['id', 'language', 'script'],
+        fields: ['id', 'language', 'script'],
         page_size: '*',
       };
 
@@ -242,7 +242,7 @@ describe('useLanguages', () => {
 
       const { result, rerender } = renderHook(({ options }) => useLanguages(options), {
         wrapper,
-        initialProps: { options: { 'fields[]': ['id', 'language'] } as GetLanguagesOptions },
+        initialProps: { options: { fields: ['id', 'language'] } as GetLanguagesOptions },
       });
 
       await waitFor(() => {
@@ -251,7 +251,7 @@ describe('useLanguages', () => {
 
       expect(mockGetLanguages).toHaveBeenCalledTimes(1);
 
-      rerender({ options: { 'fields[]': ['id', 'language', 'script'] } as GetLanguagesOptions });
+      rerender({ options: { fields: ['id', 'language', 'script'] } as GetLanguagesOptions });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -259,7 +259,7 @@ describe('useLanguages', () => {
 
       expect(mockGetLanguages).toHaveBeenCalledTimes(2);
       expect(mockGetLanguages).toHaveBeenLastCalledWith({
-        'fields[]': ['id', 'language', 'script'],
+        fields: ['id', 'language', 'script'],
       });
     });
   });

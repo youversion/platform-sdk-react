@@ -23,7 +23,7 @@ export function useLanguages(
     () => languagesClient.getLanguages(options),
     [
       languagesClient,
-      JSON.stringify(options['fields[]']),
+      JSON.stringify(options.fields),
       options?.country,
       options?.page_size,
       options?.page_token,
