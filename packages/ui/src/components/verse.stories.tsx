@@ -2,7 +2,9 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import React from 'react';
 
-import { BibleTextView } from './verse';
+import { type BibleTextViewProps, BibleTextView } from './verse';
+import { Button } from './ui/button';
+import { XIcon } from '@/components/icons/x';
 
 // USFM format: BOOK.CHAPTER or BOOK.CHAPTER.VERSE or BOOK.CHAPTER.VERSE-VERSE
 const USFM_PATTERN = /^[A-Z1-4]{3}\.\d+(\.\d+(-\d+)?)?$/;
@@ -122,18 +124,18 @@ const meta = {
     },
     versionId: {
       control: 'number',
-      description: 'Bible version ID (e.g., 111 for NLT)',
+      description: 'Bible version ID (e.g., 206 for WEB)',
     },
     fontFamily: {
       control: 'text',
       description: 'Font family for the Bible text',
     },
     fontSize: {
-      control: 'number',
+      control: { type: 'range', min: 12, max: 36, step: 1 },
       description: 'Font size in pixels',
     },
     lineHeight: {
-      control: 'number',
+      control: { type: 'range', min: 1.375, max: 2, step: 0.125 },
       description: 'Line height',
     },
     renderNotes: {
@@ -343,4 +345,111 @@ export const FootnotePopoverThemeDark: Story = {
       await expect(popover?.closest('[data-yv-theme="dark"]')).toBeInTheDocument();
     });
   },
+};
+
+function VerseSelectionDemo(props: BibleTextViewProps) {
+  const [selectedVerses, setSelectedVerses] = React.useState<number[]>([]);
+  const [highlightedVerses, setHighlightedVerses] = React.useState<Record<number, boolean>>({});
+
+  const handleHighlight = () => {
+    setHighlightedVerses((prev) => {
+      const next = { ...prev };
+      for (const verse of selectedVerses) {
+        next[verse] = true;
+      }
+      return next;
+    });
+    setSelectedVerses([]);
+  };
+
+  const handleClearHighlights = () => {
+    setHighlightedVerses((prev) => {
+      const next = { ...prev };
+      for (const verse of selectedVerses) {
+        delete next[verse];
+      }
+      return next;
+    });
+    setSelectedVerses([]);
+  };
+
+  return (
+    <div
+      data-yv-sdk
+      className="yv:grid yv:grid-rows-[auto_1fr] yv:gap-4 yv:max-w-lg yv:h-svh yv:max-h-svh yv:overflow-hidden"
+    >
+      <div className="yv:flex yv:items-center yv:gap-2 yv:bg-secondary yv:py-2 yv:px-4 yv:rounded-sm yv:sticky yv:text-sm yv:text-muted-foreground">
+        <p className="yv:flex-1">
+          Selected: {selectedVerses.length > 0 ? selectedVerses.join(', ') : 'None'}
+        </p>
+        <Button
+          onClick={handleHighlight}
+          disabled={!selectedVerses.length}
+          variant="outline"
+          size="sm"
+        >
+          Highlight
+        </Button>
+        <Button
+          onClick={handleClearHighlights}
+          disabled={!selectedVerses.length}
+          variant="outline"
+          size="sm"
+        >
+          Clear
+        </Button>
+        <Button
+          disabled={!selectedVerses.length}
+          type="button"
+          size="icon"
+          variant="outline"
+          onClick={() => setSelectedVerses([])}
+          className="yv:text-primary"
+        >
+          <XIcon className="yv:size-4" />
+        </Button>
+      </div>
+
+      <div className="yv:h-full yv:overflow-y-auto">
+        <BibleTextView
+          renderNotes={true}
+          {...props}
+          selectedVerses={selectedVerses}
+          onVerseSelect={setSelectedVerses}
+          highlightedVerses={highlightedVerses}
+        />
+      </div>
+    </div>
+  );
+}
+
+export const VerseSelection: Story = {
+  args: {
+    reference: 'JHN.1',
+    versionId: 111,
+    renderNotes: true,
+  },
+  argTypes: {
+    theme: {
+      table: {
+        disable: true,
+      },
+    },
+    selectedVerses: {
+      table: {
+        disable: true,
+      },
+    },
+    onVerseSelect: {
+      table: {
+        disable: true,
+      },
+    },
+    highlightedVerses: {
+      table: {
+        disable: true,
+      },
+    },
+  },
+  render: (props) => <VerseSelectionDemo {...props} />,
 };

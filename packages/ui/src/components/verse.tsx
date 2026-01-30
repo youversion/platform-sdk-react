@@ -82,18 +82,24 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   );
 });
 
-function HtmlWithNotes({
+function BibleTextHtml({
   html,
   notes,
   reference,
   fontSize,
   theme,
+  selectedVerses = [],
+  onVerseSelect,
+  highlightedVerses = {},
 }: {
   html: string;
   notes: Record<string, VerseNotes>;
   reference?: string;
   fontSize?: number;
   theme?: 'light' | 'dark';
+  selectedVerses?: number[];
+  onVerseSelect?: (verses: number[]) => void;
+  highlightedVerses?: Record<number, boolean>;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [placeholders, setPlaceholders] = useState<Map<string, Element>>(new Map());
@@ -111,6 +117,54 @@ function HtmlWithNotes({
     });
     setPlaceholders(map);
   }, [html, notes]);
+
+  useLayoutEffect(() => {
+    if (!contentRef.current) return;
+
+    const verseElements = contentRef.current.querySelectorAll('.yv-v[v]');
+    verseElements.forEach((el) => {
+      const verseNum = parseInt(el.getAttribute('v') || '0', 10);
+
+      if (selectedVerses.includes(verseNum)) {
+        el.classList.add('yv-v-selected');
+      } else {
+        el.classList.remove('yv-v-selected');
+      }
+
+      if (highlightedVerses[verseNum]) {
+        el.classList.add('yv-v-highlighted');
+      } else {
+        el.classList.remove('yv-v-highlighted');
+      }
+    });
+  }, [html, selectedVerses, highlightedVerses]);
+
+  const selectedVersesRef = useRef(selectedVerses);
+  selectedVersesRef.current = selectedVerses;
+
+  useLayoutEffect(() => {
+    const element = contentRef.current;
+    if (!element || !onVerseSelect) return;
+
+    const handleClick = (e: Event) => {
+      const target = e.target as HTMLElement;
+      const verseEl = target.closest('.yv-v[v]');
+      if (!verseEl) return;
+
+      const verseNum = parseInt(verseEl.getAttribute('v') || '0', 10);
+      if (verseNum === 0) return;
+
+      const current = selectedVersesRef.current;
+      const newSelected = current.includes(verseNum)
+        ? current.filter((v) => v !== verseNum)
+        : [...current, verseNum].sort((a, b) => a - b);
+
+      onVerseSelect(newSelected);
+    };
+
+    element.addEventListener('click', handleClick);
+    return () => element.removeEventListener('click', handleClick);
+  }, [onVerseSelect]);
 
   return (
     <>
@@ -239,6 +293,9 @@ type VerseHtmlProps = {
   renderNotes?: boolean;
   reference?: string;
   theme?: 'light' | 'dark';
+  selectedVerses?: number[];
+  onVerseSelect?: (verses: number[]) => void;
+  highlightedVerses?: Record<number, boolean>;
 };
 
 /**
@@ -287,6 +344,9 @@ export const Verse = {
         renderNotes = true,
         reference,
         theme,
+        selectedVerses,
+        onVerseSelect,
+        highlightedVerses,
       }: VerseHtmlProps,
       ref,
     ): ReactNode => {
@@ -295,33 +355,9 @@ export const Verse = {
       const currentTheme = theme || providerTheme;
 
       useEffect(() => {
-        setTransformedData(yvDomTransformer(html, renderNotes));
-      }, [html, renderNotes]);
-
-      if (renderNotes) {
-        return (
-          <section
-            ref={ref}
-            style={
-              {
-                ...(fontFamily ? { '--yv-reader-font-family': fontFamily } : {}),
-                ...(fontSize ? { '--yv-reader-font-size': `${fontSize}px` } : {}),
-                ...(lineHeight ? { '--yv-reader-line-height': lineHeight } : {}),
-              } as React.CSSProperties
-            }
-            data-show-verse-numbers={showVerseNumbers}
-            data-slot="yv-bible-renderer"
-          >
-            <HtmlWithNotes
-              html={transformedData.html}
-              notes={transformedData.notes}
-              reference={reference}
-              fontSize={fontSize}
-              theme={currentTheme}
-            />
-          </section>
-        );
-      }
+        // Always extract notes to keep DOM stable (visibility controlled via CSS)
+        setTransformedData(yvDomTransformer(html, true));
+      }, [html]);
 
       return (
         <section
@@ -334,10 +370,21 @@ export const Verse = {
             } as React.CSSProperties
           }
           data-show-verse-numbers={showVerseNumbers}
+          data-show-notes={renderNotes}
           data-slot="yv-bible-renderer"
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML has been run through DOMPurify and is safe
-          dangerouslySetInnerHTML={{ __html: transformedData.html }}
-        />
+          data-selectable={onVerseSelect ? 'true' : 'false'}
+        >
+          <BibleTextHtml
+            html={transformedData.html}
+            notes={transformedData.notes}
+            reference={reference}
+            fontSize={fontSize}
+            theme={currentTheme}
+            selectedVerses={selectedVerses}
+            onVerseSelect={onVerseSelect}
+            highlightedVerses={highlightedVerses}
+          />
+        </section>
       );
     },
   ),
@@ -352,6 +399,9 @@ export type BibleTextViewProps = {
   showVerseNumbers?: boolean;
   renderNotes?: boolean;
   theme?: 'light' | 'dark';
+  selectedVerses?: number[];
+  onVerseSelect?: (verses: number[]) => void;
+  highlightedVerses?: Record<number, boolean>;
 };
 
 /**
@@ -366,6 +416,9 @@ export const BibleTextView = ({
   showVerseNumbers,
   renderNotes,
   theme,
+  selectedVerses,
+  onVerseSelect,
+  highlightedVerses,
 }: BibleTextViewProps): React.ReactElement => {
   const { passage, loading, error } = usePassage({
     versionId,
@@ -419,6 +472,9 @@ export const BibleTextView = ({
         renderNotes={renderNotes}
         reference={passage?.reference}
         theme={currentTheme}
+        selectedVerses={selectedVerses}
+        onVerseSelect={onVerseSelect}
+        highlightedVerses={highlightedVerses}
       />
     </div>
   );
