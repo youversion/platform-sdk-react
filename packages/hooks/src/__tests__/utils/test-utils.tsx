@@ -57,7 +57,7 @@ export function TestAuthChild({ onRender }: { onRender?: (data: any) => void }):
  * @param options Optional provider props to override defaults
  */
 export const renderWithReaderProvider = (
-  ui: React.ReactElement,
+  ui: React.ReactNode,
   {
     currentVersion = createMockVersion(),
     currentBook = createMockBook(),

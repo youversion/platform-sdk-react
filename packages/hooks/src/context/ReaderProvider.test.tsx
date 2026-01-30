@@ -307,6 +307,7 @@ describe('ReaderProvider', () => {
       expectBook(mockBook);
       expectChapter(mockChapter);
       expectVerse(mockVerse);
+      expectVersion(mockVersion);
     });
 
     it('should handle rapid successive state updates without corruption', () => {
