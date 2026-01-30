@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 1.11.0
+
+### Minor Changes
+
+- a3efcc9: Add fields query param to the getLanguages api in core package
+
 ## 1.10.0
 
 ### Minor Changes

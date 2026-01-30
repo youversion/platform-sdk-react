@@ -1,5 +1,17 @@
 # @youversion/platform-react-ui
 
+## 1.11.0
+
+### Minor Changes
+
+- a3efcc9: Add fields query param to the getLanguages api in core package
+
+### Patch Changes
+
+- Updated dependencies [a3efcc9]
+  - @youversion/platform-react-hooks@1.11.0
+  - @youversion/platform-core@1.11.0
+
 ## 1.10.0
 
 ### Minor Changes
