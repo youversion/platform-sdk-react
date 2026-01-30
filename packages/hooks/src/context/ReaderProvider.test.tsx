@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
-import type { BibleVersion, BibleBook, BibleChapter, BibleVerse } from '@youversion/platform-core';
+import { renderHook, act } from '@testing-library/react';
+import React from 'react';
 import { useReaderContext } from './ReaderContext';
-import { renderWithReaderProvider } from '../__tests__/utils/test-utils';
+import { ReaderProvider } from './ReaderProvider';
 import {
   createMockBook,
   createMockChapter,
@@ -46,110 +46,65 @@ const mockVerse2 = createMockVerse({
   title: '16',
 });
 
-// Helper functions to verify state
-function expectReaderState(
-  testId: string,
-  expected: BibleVersion | BibleBook | BibleChapter | BibleVerse | null,
-) {
-  const element = screen.getByTestId(testId);
-  const content = element.textContent ?? '';
+// Test wrappers
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <ReaderProvider
+    currentVersion={mockVersion}
+    currentBook={mockBook}
+    currentChapter={mockChapter}
+    currentVerse={mockVerse}
+  >
+    {children}
+  </ReaderProvider>
+);
 
-  if (expected === null) {
-    expect(content).toBe('');
-  } else {
-    expect(JSON.parse(content)).toMatchObject(expected);
-  }
-}
-
-function expectVersion(expected: BibleVersion) {
-  expectReaderState('current-version', expected);
-}
-
-function expectBook(expected: BibleBook) {
-  expectReaderState('current-book', expected);
-}
-
-function expectChapter(expected: BibleChapter) {
-  expectReaderState('current-chapter', expected);
-}
-
-function expectVerse(expected: BibleVerse | null) {
-  expectReaderState('current-verse', expected);
-}
-
-function TestChild() {
-  const {
-    currentVersion,
-    currentBook,
-    currentChapter,
-    currentVerse,
-    setVersion,
-    setBook,
-    setChapter,
-    setVerse,
-  } = useReaderContext();
-
-  return (
-    <div>
-      <div data-testid="current-version">{JSON.stringify(currentVersion)}</div>
-      <div data-testid="current-book">{JSON.stringify(currentBook)}</div>
-      <div data-testid="current-chapter">{JSON.stringify(currentChapter)}</div>
-      <div data-testid="current-verse">{currentVerse ? JSON.stringify(currentVerse) : null}</div>
-      <button onClick={() => setVersion(mockVersion2)} data-testid="set-version">
-        Set Version
-      </button>
-      <button onClick={() => setBook(mockBook2)} data-testid="set-book">
-        Set Book
-      </button>
-      <button onClick={() => setChapter(mockChapter2)} data-testid="set-chapter">
-        Set Chapter
-      </button>
-      <button onClick={() => setVerse(mockVerse2)} data-testid="set-verse">
-        Set Verse
-      </button>
-      <button onClick={() => setVerse(null)} data-testid="clear-verse">
-        Clear Verse
-      </button>
-    </div>
-  );
-}
+const wrapperWithNullVerse = ({ children }: { children: React.ReactNode }) => (
+  <ReaderProvider
+    currentVersion={mockVersion}
+    currentBook={mockBook}
+    currentChapter={mockChapter}
+    currentVerse={null}
+  >
+    {children}
+  </ReaderProvider>
+);
 
 describe('ReaderProvider', () => {
   describe('initialization', () => {
     it('should initialize with provided version', () => {
-      renderWithReaderProvider(<TestChild />);
+      const { result } = renderHook(() => useReaderContext(), { wrapper });
 
-      expectVersion(mockVersion);
+      expect(result.current.currentVersion).toEqual(mockVersion);
     });
 
     it('should initialize with provided book', () => {
-      renderWithReaderProvider(<TestChild />);
+      const { result } = renderHook(() => useReaderContext(), { wrapper });
 
-      expectBook(mockBook);
+      expect(result.current.currentBook).toEqual(mockBook);
     });
 
     it('should initialize with provided chapter', () => {
-      renderWithReaderProvider(<TestChild />);
+      const { result } = renderHook(() => useReaderContext(), { wrapper });
 
-      expectChapter(mockChapter);
+      expect(result.current.currentChapter).toEqual(mockChapter);
     });
 
     it('should initialize with provided verse', () => {
-      renderWithReaderProvider(<TestChild />);
+      const { result } = renderHook(() => useReaderContext(), { wrapper });
 
-      expectVerse(mockVerse);
+      expect(result.current.currentVerse).toEqual(mockVerse);
     });
 
     it('should initialize with null verse when provided', () => {
-      renderWithReaderProvider(<TestChild />, { currentVerse: null });
+      const { result } = renderHook(() => useReaderContext(), { wrapper: wrapperWithNullVerse });
 
-      expectVerse(null);
+      expect(result.current.currentVerse).toBeNull();
     });
 
     it('should throw error when useReaderContext is used outside provider', () => {
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-      expect(() => render(<TestChild />)).toThrow(
+      expect(() => renderHook(() => useReaderContext())).toThrow(
         'useReaderContext() must be used within a ReaderProvider',
       );
 
@@ -159,174 +114,151 @@ describe('ReaderProvider', () => {
 
   describe('setVersion', () => {
     it('should update version when setVersion is called', () => {
-      renderWithReaderProvider(<TestChild />);
+      const { result } = renderHook(() => useReaderContext(), { wrapper });
 
-      const button = screen.getByTestId('set-version');
       act(() => {
-        button.click();
+        result.current.setVersion(mockVersion2);
       });
 
-      expectVersion(mockVersion2);
+      expect(result.current.currentVersion).toEqual(mockVersion2);
     });
 
-    it('should update version in consumers when setVersion is called', () => {
-      renderWithReaderProvider(<TestChild />);
+    it('should preserve other state when version changes', () => {
+      const { result } = renderHook(() => useReaderContext(), { wrapper });
 
-      act(() => screen.getByTestId('set-version').click());
+      act(() => {
+        result.current.setVersion(mockVersion2);
+      });
 
-      expect(screen.getByTestId('current-version')).toHaveTextContent('NIV');
+      expect(result.current.currentVersion).toMatchObject({ abbreviation: 'NIV' });
+      expect(result.current.currentBook).toEqual(mockBook);
+      expect(result.current.currentChapter).toEqual(mockChapter);
+      expect(result.current.currentVerse).toEqual(mockVerse);
     });
   });
 
   describe('setBook', () => {
     it('should update book when setBook is called', () => {
-      renderWithReaderProvider(<TestChild />);
+      const { result } = renderHook(() => useReaderContext(), { wrapper });
 
-      const button = screen.getByTestId('set-book');
       act(() => {
-        button.click();
+        result.current.setBook(mockBook2);
       });
 
-      expectBook(mockBook2);
+      expect(result.current.currentBook).toEqual(mockBook2);
     });
 
-    it('should trigger re-render in consumers when book changes', () => {
-      renderWithReaderProvider(<TestChild />);
+    it('should preserve other state when book changes', () => {
+      const { result } = renderHook(() => useReaderContext(), { wrapper });
 
-      const bookBefore = screen.getByTestId('current-book');
-      const bookBeforeContent = bookBefore.textContent;
-
-      const button = screen.getByTestId('set-book');
       act(() => {
-        button.click();
+        result.current.setBook(mockBook2);
       });
 
-      const bookAfter = screen.getByTestId('current-book');
-      expect(bookAfter.textContent).not.toBe(bookBeforeContent);
+      expect(result.current.currentBook).toMatchObject({ id: 'JHN' });
+      expect(result.current.currentVersion).toEqual(mockVersion);
+      expect(result.current.currentChapter).toEqual(mockChapter);
+      expect(result.current.currentVerse).toEqual(mockVerse);
     });
   });
 
   describe('setChapter', () => {
     it('should update chapter when setChapter is called', () => {
-      renderWithReaderProvider(<TestChild />);
+      const { result } = renderHook(() => useReaderContext(), { wrapper });
 
-      const button = screen.getByTestId('set-chapter');
       act(() => {
-        button.click();
+        result.current.setChapter(mockChapter2);
       });
 
-      expectChapter(mockChapter2);
+      expect(result.current.currentChapter).toEqual(mockChapter2);
     });
 
-    it('should trigger re-render in consumers when chapter changes', () => {
-      renderWithReaderProvider(<TestChild />);
+    it('should preserve other state when chapter changes', () => {
+      const { result } = renderHook(() => useReaderContext(), { wrapper });
 
-      const chapterBefore = screen.getByTestId('current-chapter');
-      const chapterBeforeContent = chapterBefore.textContent;
-
-      const button = screen.getByTestId('set-chapter');
       act(() => {
-        button.click();
+        result.current.setChapter(mockChapter2);
       });
 
-      const chapterAfter = screen.getByTestId('current-chapter');
-      expect(chapterAfter.textContent).not.toBe(chapterBeforeContent);
+      expect(result.current.currentChapter).toMatchObject({ id: '3' });
+      expect(result.current.currentVersion).toEqual(mockVersion);
+      expect(result.current.currentBook).toEqual(mockBook);
+      expect(result.current.currentVerse).toEqual(mockVerse);
     });
   });
 
   describe('setVerse', () => {
     it('should update verse when setVerse is called', () => {
-      renderWithReaderProvider(<TestChild />);
+      const { result } = renderHook(() => useReaderContext(), { wrapper });
 
-      const button = screen.getByTestId('set-verse');
       act(() => {
-        button.click();
+        result.current.setVerse(mockVerse2);
       });
 
-      expectVerse(mockVerse2);
+      expect(result.current.currentVerse).toEqual(mockVerse2);
     });
 
     it('should update verse to null when setVerse is called with null', () => {
-      renderWithReaderProvider(<TestChild />);
+      const { result } = renderHook(() => useReaderContext(), { wrapper });
 
-      const button = screen.getByTestId('clear-verse');
       act(() => {
-        button.click();
+        result.current.setVerse(null);
       });
 
-      expectVerse(null);
+      expect(result.current.currentVerse).toBeNull();
     });
 
-    it('should trigger re-render in consumers when verse changes', () => {
-      renderWithReaderProvider(<TestChild />);
+    it('should preserve other state when verse changes', () => {
+      const { result } = renderHook(() => useReaderContext(), { wrapper });
 
-      const verseBefore = screen.getByTestId('current-verse');
-      const verseBeforeContent = verseBefore.textContent;
-
-      const button = screen.getByTestId('set-verse');
       act(() => {
-        button.click();
+        result.current.setVerse(mockVerse2);
       });
 
-      const verseAfter = screen.getByTestId('current-verse');
-      expect(verseAfter.textContent).not.toBe(verseBeforeContent);
+      expect(result.current.currentVerse).toMatchObject({ id: '16' });
+      expect(result.current.currentVersion).toEqual(mockVersion);
+      expect(result.current.currentBook).toEqual(mockBook);
+      expect(result.current.currentChapter).toEqual(mockChapter);
     });
 
-    it('should trigger re-render when verse changes from value to null', () => {
-      renderWithReaderProvider(<TestChild />);
+    it('should preserve other state when verse changes to null', () => {
+      const { result } = renderHook(() => useReaderContext(), { wrapper });
 
-      const verseBefore = screen.getByTestId('current-verse');
-      expect(verseBefore.textContent).not.toBe('');
-
-      const button = screen.getByTestId('clear-verse');
       act(() => {
-        button.click();
+        result.current.setVerse(null);
       });
 
-      const verseAfter = screen.getByTestId('current-verse');
-      expect(verseAfter.textContent).toBe('');
+      expect(result.current.currentVerse).toBeNull();
+      expect(result.current.currentVersion).toEqual(mockVersion);
+      expect(result.current.currentBook).toEqual(mockBook);
+      expect(result.current.currentChapter).toEqual(mockChapter);
     });
   });
 
   describe('state persistence', () => {
     it('should initialize with all provided props', () => {
-      renderWithReaderProvider(<TestChild />);
+      const { result } = renderHook(() => useReaderContext(), { wrapper });
 
-      expectVersion(mockVersion);
-      expectBook(mockBook);
-      expectChapter(mockChapter);
-      expectVerse(mockVerse);
-    });
-
-    it('should update state independently', () => {
-      renderWithReaderProvider(<TestChild />);
-
-      act(() => screen.getByTestId('set-version').click());
-
-      // Expect only version to have changed
-      expectVersion(mockVersion2);
-
-      // Verify book/chapter/verse remain unchanged
-      expectBook(mockBook);
-      expectChapter(mockChapter);
-      expectVerse(mockVerse);
+      expect(result.current.currentVersion).toEqual(mockVersion);
+      expect(result.current.currentBook).toEqual(mockBook);
+      expect(result.current.currentChapter).toEqual(mockChapter);
+      expect(result.current.currentVerse).toEqual(mockVerse);
     });
 
     it('should handle rapid successive state updates without corruption', () => {
-      renderWithReaderProvider(<TestChild />);
+      const { result } = renderHook(() => useReaderContext(), { wrapper });
 
-      // Perform multiple rapid updates to simulate potential race conditions
       act(() => {
-        screen.getByTestId('set-version').click();
-        screen.getByTestId('set-book').click();
-        screen.getByTestId('set-chapter').click();
-        screen.getByTestId('set-verse').click();
+        result.current.setVersion(mockVersion2);
+        result.current.setBook(mockBook2);
+        result.current.setChapter(mockChapter2);
+        result.current.setVerse(mockVerse2);
       });
 
-      expectVersion(mockVersion2);
-      expectBook(mockBook2);
-      expectChapter(mockChapter2);
-      expectVerse(mockVerse2);
+      expect(result.current.currentVersion).toEqual(mockVersion2);
+      expect(result.current.currentBook).toEqual(mockBook2);
+      expect(result.current.currentChapter).toEqual(mockChapter2);
+      expect(result.current.currentVerse).toEqual(mockVerse2);
     });
   });
 });
