@@ -1,5 +1,6 @@
 export { ArrowLeftIcon } from './arrow-left';
 export { BookOpenIcon } from './book-open';
+export { BoxArrowUpIcon } from './box-arrow-up';
 export { BoxStackIcon } from './box-stack';
 export { ChevronDownIcon } from './chevron-down';
 export { Footnote, Footnote as FootnoteIcon } from './footnote';
