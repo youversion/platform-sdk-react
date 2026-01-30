@@ -1,0 +1,15 @@
+export { ArrowLeftIcon } from './arrow-left';
+export { BookOpenIcon } from './book-open';
+export { BoxStackIcon } from './box-stack';
+export { ChevronDownIcon } from './chevron-down';
+export { Footnote, Footnote as FootnoteIcon } from './footnote';
+export { GearIcon } from './gear';
+export { GlobeIcon } from './globe';
+export { InfoIcon } from './info';
+export { LoaderIcon } from './loader';
+export { PersonIcon } from './person';
+export { SearchIcon } from './search';
+export { Share, Share as ShareIcon } from './share';
+export { Votd, Votd as VotdIcon } from './votd';
+export { XIcon } from './x';
+export { YouVersionLogo } from './youversion-logo';
