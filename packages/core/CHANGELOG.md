@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 1.12.0
+
+### Minor Changes
+
+- 1bafe50: Add all_available and fields parameters to getVersions api call in core package and useVersions in hooks package.
+
 ## 1.11.0
 
 ### Minor Changes
