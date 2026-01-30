@@ -1,5 +1,16 @@
 # @youversion/platform-react-hooks
 
+## 1.10.0
+
+### Minor Changes
+
+- ce3e92e: This PR adds verse selection and highlighting to the Bible reader component, preparing the way for highlights. It also includes infrastructure fixes for Storybook test stability in CI.
+
+### Patch Changes
+
+- Updated dependencies [ce3e92e]
+  - @youversion/platform-core@1.10.0
+
 ## 1.9.2
 
 ### Patch Changes
