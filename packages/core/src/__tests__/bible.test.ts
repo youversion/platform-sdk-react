@@ -113,6 +113,235 @@ describe('BibleClient', () => {
         'At least one language range is required',
       );
     });
+
+    describe('options validation', () => {
+      it('should accept valid page_size as positive integer', async () => {
+        const versions = await bibleClient.getVersions('en*', undefined, { page_size: 10 });
+        expect(versions.data.length).toBeLessThanOrEqual(10);
+      });
+
+      it('should accept page_size as "*" with 1-3 fields specified', async () => {
+        server.use(
+          http.get('*/v1/bibles', () => {
+            return HttpResponse.json({
+              data: mockVersions.map(({ id, title }) => ({ id, title })),
+              next_page_token: null,
+              total_size: mockVersions.length,
+            });
+          }),
+        );
+
+        const versions = await bibleClient.getVersions('en*', undefined, {
+          page_size: '*',
+          fields: ['id', 'title'],
+        });
+        expect(versions.data.length).toBeGreaterThan(0);
+      });
+
+      it('should accept page_size as "*" with exactly 1 field', async () => {
+        server.use(
+          http.get('*/v1/bibles', () => {
+            return HttpResponse.json({
+              data: mockVersions.map(({ id }) => ({ id })),
+              next_page_token: null,
+              total_size: mockVersions.length,
+            });
+          }),
+        );
+
+        const versions = await bibleClient.getVersions('en*', undefined, {
+          page_size: '*',
+          fields: ['id'],
+        });
+        expect(versions.data.length).toBeGreaterThan(0);
+      });
+
+      it('should accept page_size as "*" with exactly 3 fields', async () => {
+        server.use(
+          http.get('*/v1/bibles', () => {
+            return HttpResponse.json({
+              data: mockVersions.map(({ id, title, abbreviation }) => ({
+                id,
+                title,
+                abbreviation,
+              })),
+              next_page_token: null,
+              total_size: mockVersions.length,
+            });
+          }),
+        );
+
+        const versions = await bibleClient.getVersions('en*', undefined, {
+          page_size: '*',
+          fields: ['id', 'title', 'abbreviation'],
+        });
+        expect(versions.data.length).toBeGreaterThan(0);
+      });
+
+      it('should throw when page_size is "*" but no fields specified', async () => {
+        await expect(bibleClient.getVersions('en*', undefined, { page_size: '*' })).rejects.toThrow(
+          /required 1-3 fields to be specified/,
+        );
+      });
+
+      it('should throw when page_size is "*" with empty fields array', async () => {
+        await expect(
+          bibleClient.getVersions('en*', undefined, { page_size: '*', fields: [] }),
+        ).rejects.toThrow(/required 1-3 fields to be specified/);
+      });
+
+      it('should throw when page_size is "*" with more than 3 fields', async () => {
+        await expect(
+          bibleClient.getVersions('en*', undefined, {
+            page_size: '*',
+            fields: ['id', 'title', 'abbreviation', 'language_tag'],
+          }),
+        ).rejects.toThrow(/required 1-3 fields to be specified/);
+      });
+
+      it('should throw for page_size of zero', async () => {
+        await expect(bibleClient.getVersions('en*', undefined, { page_size: 0 })).rejects.toThrow();
+      });
+
+      it('should throw for negative page_size', async () => {
+        await expect(
+          bibleClient.getVersions('en*', undefined, { page_size: -1 }),
+        ).rejects.toThrow();
+      });
+
+      it('should throw for non-integer page_size', async () => {
+        await expect(
+          bibleClient.getVersions('en*', undefined, { page_size: 1.5 }),
+        ).rejects.toThrow();
+      });
+
+      it('should throw for invalid page_size string', async () => {
+        await expect(
+          // @ts-expect-error - testing invalid input
+          bibleClient.getVersions('en*', undefined, { page_size: 'invalid' }),
+        ).rejects.toThrow();
+      });
+
+      it('should accept valid page_token string', async () => {
+        server.use(
+          http.get('*/v1/bibles', () => {
+            return HttpResponse.json({
+              data: mockVersions,
+              next_page_token: null,
+              total_size: mockVersions.length,
+            });
+          }),
+        );
+
+        const versions = await bibleClient.getVersions('en*', undefined, {
+          page_token: 'some-token-value',
+        });
+        expect(versions.data.length).toBeGreaterThan(0);
+      });
+
+      it('should accept valid fields array with BibleVersionSchema keys', async () => {
+        server.use(
+          http.get('*/v1/bibles', () => {
+            return HttpResponse.json({
+              data: mockVersions,
+              next_page_token: null,
+              total_size: mockVersions.length,
+            });
+          }),
+        );
+
+        const versions = await bibleClient.getVersions('en*', undefined, {
+          fields: ['id', 'title', 'abbreviation'],
+        });
+        expect(versions.data.length).toBeGreaterThan(0);
+      });
+
+      it('should throw for invalid fields that are not BibleVersionSchema keys', async () => {
+        await expect(
+          bibleClient.getVersions('en*', undefined, {
+            // @ts-expect-error - testing invalid input
+            fields: ['invalid_field'],
+          }),
+        ).rejects.toThrow();
+      });
+
+      it('should accept undefined options', async () => {
+        const versions = await bibleClient.getVersions('en*', undefined, undefined);
+        expect(versions.data.length).toBeGreaterThan(0);
+      });
+
+      it('should accept empty options object', async () => {
+        const versions = await bibleClient.getVersions('en*', undefined, {});
+        expect(versions.data.length).toBeGreaterThan(0);
+      });
+
+      it('should send all_available param when set to true', async () => {
+        server.use(
+          http.get('*/v1/bibles', ({ request }) => {
+            const url = new URL(request.url);
+            const allAvailable = url.searchParams.get('all_available');
+
+            expect(allAvailable).toBe('true');
+
+            return HttpResponse.json({
+              data: mockVersions,
+              next_page_token: null,
+              total_size: mockVersions.length,
+            });
+          }),
+        );
+
+        const versions = await bibleClient.getVersions('en*', undefined, { all_available: true });
+        expect(versions.data.length).toBeGreaterThan(0);
+      });
+
+      it('should not send all_available param when set to false', async () => {
+        server.use(
+          http.get('*/v1/bibles', ({ request }) => {
+            const url = new URL(request.url);
+            const allAvailable = url.searchParams.get('all_available');
+
+            expect(allAvailable).toBeNull();
+
+            return HttpResponse.json({
+              data: mockVersions,
+              next_page_token: null,
+              total_size: mockVersions.length,
+            });
+          }),
+        );
+
+        const versions = await bibleClient.getVersions('en*', undefined, { all_available: false });
+        expect(versions.data.length).toBeGreaterThan(0);
+      });
+
+      it('should not send all_available param when not specified', async () => {
+        server.use(
+          http.get('*/v1/bibles', ({ request }) => {
+            const url = new URL(request.url);
+            const allAvailable = url.searchParams.get('all_available');
+
+            expect(allAvailable).toBeNull();
+
+            return HttpResponse.json({
+              data: mockVersions,
+              next_page_token: null,
+              total_size: mockVersions.length,
+            });
+          }),
+        );
+
+        const versions = await bibleClient.getVersions('en*', undefined, {});
+        expect(versions.data.length).toBeGreaterThan(0);
+      });
+
+      it('should throw for invalid all_available type', async () => {
+        await expect(
+          // @ts-expect-error - testing invalid input
+          bibleClient.getVersions('en*', undefined, { all_available: 'true' }),
+        ).rejects.toThrow();
+      });
+    });
   });
 
   describe('getVersion', () => {

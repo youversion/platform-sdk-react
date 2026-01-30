@@ -11,6 +11,7 @@ import type {
   BibleIndex,
   CANON,
 } from './types';
+import { BibleVersionSchema } from './schemas';
 
 /**
  * Client for interacting with Bible API endpoints.
@@ -19,25 +20,48 @@ export class BibleClient {
   private client: ApiClient;
 
   // Validation schemas
-  private versionIdSchema = z.number().int().positive('Version ID must be a positive integer');
-  private bookSchema = z
+  private static readonly versionIdSchema = z
+    .number()
+    .int()
+    .positive('Version ID must be a positive integer');
+  private static readonly bookSchema = z
     .string()
     .trim()
     .min(3, 'Book ID must be exactly 3 characters')
     .max(3, 'Book ID must be exactly 3 characters');
-  private chapterSchema = z
+  private static readonly chapterSchema = z
     .number()
     .int('Chapter must be an integer')
     .positive('Chapter must be a positive integer');
-  private verseSchema = z
+  private static readonly verseSchema = z
     .number()
     .int('Verse must be an integer')
     .positive('Verse must be a positive integer');
-  private languageRangesSchema = z
+  private static readonly languageRangesSchema = z
     .string()
     .trim()
     .min(1, 'Language ranges must be a non-empty string');
-  private booleanSchema = z.boolean();
+  private static readonly booleanSchema = z.boolean();
+  private static readonly GetVersionsOptionsSchema = z
+    .object({
+      page_size: z.union([z.number().int().positive(), z.literal('*')]).optional(),
+      page_token: z.string().optional(),
+      fields: z.array(BibleVersionSchema.keyof()).optional(),
+      all_available: z.boolean().default(false),
+    })
+    .optional()
+    .refine(
+      (data) => {
+        if (data?.page_size === '*') {
+          return data.fields && data.fields.length >= 1 && data.fields.length <= 3;
+        }
+        return true;
+      },
+      {
+        message: 'page_size="*" required 1-3 fields to be specified',
+        path: ['page_size', 'fields'],
+      },
+    );
 
   /**
    * Creates a new BibleClient instance.
@@ -57,12 +81,12 @@ export class BibleClient {
   async getVersions(
     language_ranges: string | string[],
     license_id?: string | number,
-    options?: { page_size?: number; page_token?: string },
+    options?: z.infer<typeof BibleClient.GetVersionsOptionsSchema>,
   ): Promise<Collection<BibleVersion>> {
     const languageRangeArray = Array.isArray(language_ranges) ? language_ranges : [language_ranges];
 
     const parsedLanguageRanges = z
-      .array(this.languageRangesSchema)
+      .array(BibleClient.languageRangesSchema)
       .nonempty('At least one language range is required')
       .parse(languageRangeArray);
 
@@ -70,18 +94,25 @@ export class BibleClient {
       'language_ranges[]': parsedLanguageRanges,
     };
 
-    if (license_id !== undefined) {
+    if (license_id) {
       params.license_id = license_id;
     }
 
-    if (options?.page_size !== undefined) {
-      const pageSizeSchema = z.number().int().positive();
-      pageSizeSchema.parse(options.page_size);
+    BibleClient.GetVersionsOptionsSchema.parse(options);
+    if (options?.page_size) {
       params.page_size = options.page_size;
     }
 
-    if (options?.page_token !== undefined) {
+    if (options?.fields) {
+      params['fields[]'] = options.fields;
+    }
+
+    if (options?.page_token) {
       params.page_token = options.page_token;
+    }
+
+    if (options?.all_available) {
+      params.all_available = 'true';
     }
     return this.client.get<Collection<BibleVersion>>(`/v1/bibles`, params);
   }
@@ -92,7 +123,7 @@ export class BibleClient {
    * @returns The requested BibleVersion object.
    */
   async getVersion(id: number): Promise<BibleVersion> {
-    this.versionIdSchema.parse(id);
+    BibleClient.versionIdSchema.parse(id);
     return this.client.get<BibleVersion>(`/v1/bibles/${id}`);
   }
 
@@ -105,7 +136,7 @@ export class BibleClient {
    *          available in the Bible version.
    */
   async getBooks(versionId: number, canon?: CANON): Promise<Collection<BibleBook>> {
-    this.versionIdSchema.parse(versionId);
+    BibleClient.versionIdSchema.parse(versionId);
     return this.client.get<Collection<BibleBook>>(`/v1/bibles/${versionId}/books`, {
       ...(canon && { canon }),
     });
@@ -120,8 +151,8 @@ export class BibleClient {
    *          available. Use the `passage_id` with `getPassage()` to fetch intro content.
    */
   async getBook(versionId: number, book: string): Promise<BibleBook> {
-    this.versionIdSchema.parse(versionId);
-    this.bookSchema.parse(book);
+    BibleClient.versionIdSchema.parse(versionId);
+    BibleClient.bookSchema.parse(book);
     return this.client.get<BibleBook>(`/v1/bibles/${versionId}/books/${book}`);
   }
 
@@ -132,8 +163,8 @@ export class BibleClient {
    * @returns An array of BibleChapter objects.
    */
   async getChapters(versionId: number, book: string): Promise<Collection<BibleChapter>> {
-    this.versionIdSchema.parse(versionId);
-    this.bookSchema.parse(book);
+    BibleClient.versionIdSchema.parse(versionId);
+    BibleClient.bookSchema.parse(book);
     return this.client.get<Collection<BibleChapter>>(
       `/v1/bibles/${versionId}/books/${book}/chapters`,
     );
@@ -147,9 +178,9 @@ export class BibleClient {
    * @returns The requested BibleChapter object.
    */
   async getChapter(versionId: number, book: string, chapter: number): Promise<BibleChapter> {
-    this.versionIdSchema.parse(versionId);
-    this.bookSchema.parse(book);
-    this.chapterSchema.parse(chapter);
+    BibleClient.versionIdSchema.parse(versionId);
+    BibleClient.bookSchema.parse(book);
+    BibleClient.chapterSchema.parse(chapter);
 
     return this.client.get<BibleChapter>(
       `/v1/bibles/${versionId}/books/${book}/chapters/${chapter}`,
@@ -168,9 +199,9 @@ export class BibleClient {
     book: string,
     chapter: number,
   ): Promise<Collection<BibleVerse>> {
-    this.versionIdSchema.parse(versionId);
-    this.bookSchema.parse(book);
-    this.chapterSchema.parse(chapter);
+    BibleClient.versionIdSchema.parse(versionId);
+    BibleClient.bookSchema.parse(book);
+    BibleClient.chapterSchema.parse(chapter);
 
     return this.client.get<Collection<BibleVerse>>(
       `/v1/bibles/${versionId}/books/${book}/chapters/${chapter}/verses`,
@@ -191,10 +222,10 @@ export class BibleClient {
     chapter: number,
     verse: number,
   ): Promise<BibleVerse> {
-    this.versionIdSchema.parse(versionId);
-    this.bookSchema.parse(book);
-    this.chapterSchema.parse(chapter);
-    this.verseSchema.parse(verse);
+    BibleClient.versionIdSchema.parse(versionId);
+    BibleClient.bookSchema.parse(book);
+    BibleClient.chapterSchema.parse(chapter);
+    BibleClient.verseSchema.parse(verse);
 
     return this.client.get<BibleVerse>(
       `/v1/bibles/${versionId}/books/${book}/chapters/${chapter}/verses/${verse}`,
@@ -229,12 +260,12 @@ export class BibleClient {
     include_headings?: boolean,
     include_notes?: boolean,
   ): Promise<BiblePassage> {
-    this.versionIdSchema.parse(versionId);
+    BibleClient.versionIdSchema.parse(versionId);
     if (include_headings !== undefined) {
-      this.booleanSchema.parse(include_headings);
+      BibleClient.booleanSchema.parse(include_headings);
     }
     if (include_notes !== undefined) {
-      this.booleanSchema.parse(include_notes);
+      BibleClient.booleanSchema.parse(include_notes);
     }
     const params: Record<string, string | number | boolean> = {
       format,
@@ -254,7 +285,7 @@ export class BibleClient {
    * @returns The BibleIndex object containing full hierarchy of books, chapters, and verses.
    */
   async getIndex(versionId: number): Promise<BibleIndex> {
-    this.versionIdSchema.parse(versionId);
+    BibleClient.versionIdSchema.parse(versionId);
     return this.client.get<BibleIndex>(`/v1/bibles/${versionId}/index`);
   }
 
