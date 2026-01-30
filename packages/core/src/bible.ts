@@ -47,7 +47,7 @@ export class BibleClient {
       page_size: z.union([z.number().int().positive(), z.literal('*')]).optional(),
       page_token: z.string().optional(),
       fields: z.array(BibleVersionSchema.keyof()).optional(),
-      all_available: z.boolean().default(false),
+      all_available: z.boolean().optional(),
     })
     .optional()
     .refine(
