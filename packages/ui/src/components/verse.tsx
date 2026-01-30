@@ -99,7 +99,7 @@ function BibleTextHtml({
   theme?: 'light' | 'dark';
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
-  highlightedVerses?: Record<number, boolean>;
+  highlightedVerses?: Record<number, string>;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [placeholders, setPlaceholders] = useState<Map<string, Element>>(new Map());
@@ -131,10 +131,13 @@ function BibleTextHtml({
         el.classList.remove('yv-v-selected');
       }
 
-      if (highlightedVerses[verseNum]) {
+      const highlightColor = highlightedVerses[verseNum];
+      if (highlightColor) {
         el.classList.add('yv-v-highlighted');
+        (el as HTMLElement).style.backgroundColor = `#${highlightColor}`;
       } else {
         el.classList.remove('yv-v-highlighted');
+        (el as HTMLElement).style.backgroundColor = '';
       }
     });
   }, [html, selectedVerses, highlightedVerses]);
@@ -295,7 +298,7 @@ type VerseHtmlProps = {
   theme?: 'light' | 'dark';
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
-  highlightedVerses?: Record<number, boolean>;
+  highlightedVerses?: Record<number, string>;
 };
 
 /**
@@ -401,7 +404,7 @@ export type BibleTextViewProps = {
   theme?: 'light' | 'dark';
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
-  highlightedVerses?: Record<number, boolean>;
+  highlightedVerses?: Record<number, string>;
 };
 
 /**

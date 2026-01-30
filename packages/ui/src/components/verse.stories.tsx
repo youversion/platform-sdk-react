@@ -5,6 +5,7 @@ import React from 'react';
 import { type BibleTextViewProps, BibleTextView } from './verse';
 import { Button } from './ui/button';
 import { XIcon } from '@/components/icons/x';
+import VerseActionPopover from './verse-action-popover';
 
 // USFM format: BOOK.CHAPTER or BOOK.CHAPTER.VERSE or BOOK.CHAPTER.VERSE-VERSE
 const USFM_PATTERN = /^[A-Z1-4]{3}\.\d+(\.\d+(-\d+)?)?$/;
@@ -349,13 +350,13 @@ export const FootnotePopoverThemeDark: Story = {
 
 function VerseSelectionDemo(props: BibleTextViewProps) {
   const [selectedVerses, setSelectedVerses] = React.useState<number[]>([]);
-  const [highlightedVerses, setHighlightedVerses] = React.useState<Record<number, boolean>>({});
+  const [highlightedVerses, setHighlightedVerses] = React.useState<Record<number, string>>({});
 
   const handleHighlight = () => {
     setHighlightedVerses((prev) => {
       const next = { ...prev };
       for (const verse of selectedVerses) {
-        next[verse] = true;
+        next[verse] = 'e6d163'; // yellow
       }
       return next;
     });
@@ -452,4 +453,143 @@ export const VerseSelection: Story = {
     },
   },
   render: (props) => <VerseSelectionDemo {...props} />,
+};
+
+function VerseActionPopoverDemo(props: BibleTextViewProps) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [selectedVerses, setSelectedVerses] = React.useState<number[]>([]);
+  const [highlightedVerses, setHighlightedVerses] = React.useState<Record<number, string>>({});
+  const [popoverOpen, setPopoverOpen] = React.useState(false);
+  const [popoverPosition, setPopoverPosition] = React.useState({ x: 0, y: 0 });
+
+  const handleVerseSelect = React.useCallback((verses: number[]) => {
+    setSelectedVerses(verses);
+
+    if (verses.length === 0) {
+      setPopoverOpen(false);
+      return;
+    }
+
+    // Position popover below last selected verse
+    const lastVerse = Math.max(...verses);
+    const verseEl = containerRef.current?.querySelector(`.yv-v[v="${lastVerse}"]`);
+    if (verseEl) {
+      const rect = verseEl.getBoundingClientRect();
+      setPopoverPosition({
+        x: rect.left + rect.width / 2,
+        y: rect.bottom + 8,
+      });
+    }
+    setPopoverOpen(true);
+  }, []);
+
+  // Derive activeHighlights from selected verses
+  const activeHighlights = React.useMemo(() => {
+    return new Set(
+      selectedVerses.map((v) => highlightedVerses[v]).filter((c): c is string => Boolean(c)),
+    );
+  }, [selectedVerses, highlightedVerses]);
+
+  const hasUnhighlightedVerses = React.useMemo(() => {
+    return selectedVerses.some((v) => !highlightedVerses[v]);
+  }, [selectedVerses, highlightedVerses]);
+
+  const handleHighlight = React.useCallback(
+    (color: string) => {
+      setHighlightedVerses((prev) => {
+        const next = { ...prev };
+        for (const verse of selectedVerses) {
+          if (!next[verse]) {
+            next[verse] = color;
+          }
+        }
+        return next;
+      });
+    },
+    [selectedVerses],
+  );
+
+  const handleClearHighlight = React.useCallback(
+    (color: string) => {
+      setHighlightedVerses((prev) => {
+        const next = { ...prev };
+        for (const verse of selectedVerses) {
+          if (next[verse] === color) {
+            delete next[verse];
+          }
+        }
+        return next;
+      });
+    },
+    [selectedVerses],
+  );
+
+  return (
+    <div
+      ref={containerRef}
+      data-yv-sdk
+      className="yv:grid yv:grid-rows-[auto_1fr] yv:gap-4 yv:max-w-lg yv:h-svh yv:max-h-svh yv:overflow-hidden"
+    >
+      <div className="yv:flex yv:items-center yv:gap-2 yv:bg-secondary yv:py-2 yv:px-4 yv:rounded-sm yv:sticky yv:text-sm yv:text-muted-foreground">
+        <p className="yv:flex-1">
+          Selected: {selectedVerses.length > 0 ? selectedVerses.join(', ') : 'None'}
+        </p>
+        <Button
+          disabled={!selectedVerses.length}
+          type="button"
+          size="icon"
+          variant="outline"
+          onClick={() => {
+            setSelectedVerses([]);
+            setPopoverOpen(false);
+          }}
+          className="yv:text-primary"
+        >
+          <XIcon className="yv:size-4" />
+        </Button>
+      </div>
+
+      <div className="yv:h-full yv:overflow-y-auto">
+        <BibleTextView
+          renderNotes={true}
+          {...props}
+          selectedVerses={selectedVerses}
+          onVerseSelect={handleVerseSelect}
+          highlightedVerses={highlightedVerses}
+        />
+      </div>
+
+      <VerseActionPopover
+        open={popoverOpen}
+        onOpenChange={setPopoverOpen}
+        activeHighlights={activeHighlights}
+        hasUnhighlightedVerses={hasUnhighlightedVerses}
+        position={popoverPosition}
+        onHighlight={handleHighlight}
+        onClearHighlight={handleClearHighlight}
+        onCopy={() => {
+          // Do nothing at this second
+        }}
+        onShare={() => {
+          // Do nothing at this second
+        }}
+      />
+    </div>
+  );
+}
+
+export const VerseActionPopoverStory: Story = {
+  name: 'Verse Action Popover',
+  args: {
+    reference: 'JHN.1',
+    versionId: 111,
+    renderNotes: true,
+  },
+  argTypes: {
+    theme: { table: { disable: true } },
+    selectedVerses: { table: { disable: true } },
+    onVerseSelect: { table: { disable: true } },
+    highlightedVerses: { table: { disable: true } },
+  },
+  render: (props) => <VerseActionPopoverDemo {...props} />,
 };
