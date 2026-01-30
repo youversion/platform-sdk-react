@@ -303,11 +303,13 @@ describe('ReaderProvider', () => {
 
       act(() => screen.getByTestId('set-version').click());
 
+      // Expect only version to have changed
+      expectVersion(mockVersion2);
+
       // Verify book/chapter/verse remain unchanged
       expectBook(mockBook);
       expectChapter(mockChapter);
       expectVerse(mockVerse);
-      expectVersion(mockVersion);
     });
 
     it('should handle rapid successive state updates without corruption', () => {
