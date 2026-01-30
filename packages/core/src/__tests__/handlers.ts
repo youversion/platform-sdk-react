@@ -45,7 +45,12 @@ export const handlers = [
       : mockLanguages;
 
     const defaultPageSize = 25;
-    const size = pageSize ? parseInt(pageSize, 10) : defaultPageSize;
+    const size =
+      pageSize === '*'
+        ? filteredLanguages.length
+        : pageSize
+          ? parseInt(pageSize, 10)
+          : defaultPageSize;
     let start = 0;
 
     if (pageToken) {

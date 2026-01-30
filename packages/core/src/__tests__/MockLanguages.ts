@@ -76,6 +76,21 @@ export const mockLanguages: Language[] = [
     speaking_population: 8000000,
     default_bible_id: null,
   },
+  {
+    id: 'por',
+    language: 'por',
+    script: 'Latn',
+    script_name: 'Latin',
+    aliases: ['pt'],
+    display_names: { en: 'Portuguese', pt: 'português' },
+    scripts: ['Latn'],
+    variants: [],
+    countries: ['PT', 'BR'],
+    text_direction: 'ltr',
+    writing_population: 250000000,
+    speaking_population: 250000000,
+    default_bible_id: null,
+  },
   // Add more languages to exceed the maximum page size and exercise pagination
   ...Array.from({ length: 120 }, (_, i) => ({
     id: `lang${i + 1}`,
