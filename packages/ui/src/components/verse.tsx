@@ -337,8 +337,8 @@ export const Verse = {
     (
       {
         html,
-        fontFamily,
-        fontSize,
+        fontFamily = 'Inter',
+        fontSize = 18,
         lineHeight,
         showVerseNumbers = true,
         renderNotes = true,
@@ -409,11 +409,11 @@ export type BibleTextViewProps = {
  */
 export const BibleTextView = ({
   reference,
-  fontFamily,
-  fontSize,
+  fontFamily = 'Inter',
+  fontSize = 18,
   lineHeight,
   versionId,
-  showVerseNumbers,
+  showVerseNumbers = true,
   renderNotes,
   theme,
   selectedVerses,
