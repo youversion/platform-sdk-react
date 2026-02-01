@@ -13,7 +13,7 @@ export default function ReaderPage() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <BibleReader.Root defaultBook="JHN" defaultChapter="3" defaultVersionId={126}>
+        <BibleReader.Root defaultBook="JHN" defaultChapter="3" defaultVersionId={3034}>
           <BibleReader.Toolbar />
           <BibleReader.Content />
         </BibleReader.Root>

@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { BibleTextView } from '@youversion/platform-react-ui';
+import { VerseDisplay } from '../components/VerseDisplay';
 import { Providers } from '../app/providers';
 
 const meta = {
-  title: 'Bible/TextView',
-  component: BibleTextView,
+  title: 'Bible/VerseDisplay',
+  component: VerseDisplay,
   decorators: [
     (Story) => (
       <Providers>
@@ -14,12 +14,18 @@ const meta = {
       </Providers>
     ),
   ],
-} satisfies Meta<typeof BibleTextView>;
+} satisfies Meta<typeof VerseDisplay>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const JohnThree16: Story = {
+export const Default: Story = {
+  args: {
+    // Add default props based on your component
+  },
+};
+
+export const John316: Story = {
   args: {
     reference: 'JHN.3.16',
     versionId: 3034,
@@ -28,14 +34,16 @@ export const JohnThree16: Story = {
 
 export const Psalm23: Story = {
   args: {
-    reference: 'PSA.23.1',
+    reference: 'PSA.23.1-6',
     versionId: 3034,
   },
 };
 
-export const Romans12: Story = {
+export const CustomFont: Story = {
   args: {
-    reference: 'ROM.12.1',
+    reference: 'GEN.1.1',
     versionId: 3034,
+    fontFamily: 'Georgia',
+    fontSize: 18,
   },
 };

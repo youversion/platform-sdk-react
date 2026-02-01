@@ -21,7 +21,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   render: () => (
-    <BibleReader.Root defaultVersionId={111}>
+    <BibleReader.Root defaultVersionId={3034}>
       <BibleReader.Content />
       <BibleReader.Toolbar />
     </BibleReader.Root>
@@ -30,7 +30,7 @@ export const Default: Story = {
 
 export const Genesis: Story = {
   render: () => (
-    <BibleReader.Root defaultBook="GEN" defaultChapter="1" defaultVersionId={111}>
+    <BibleReader.Root defaultBook="GEN" defaultChapter="1" defaultVersionId={3034}>
       <BibleReader.Content />
       <BibleReader.Toolbar />
     </BibleReader.Root>
@@ -39,7 +39,7 @@ export const Genesis: Story = {
 
 export const Psalms: Story = {
   render: () => (
-    <BibleReader.Root defaultBook="PSA" defaultChapter="23" defaultVersionId={111}>
+    <BibleReader.Root defaultBook="PSA" defaultChapter="23" defaultVersionId={3034}>
       <BibleReader.Content />
       <BibleReader.Toolbar />
     </BibleReader.Root>

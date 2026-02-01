@@ -2,8 +2,8 @@
 
 import { BibleTextView } from '@youversion/platform-react-ui';
 
-export default function Home() {
+export default function BibleViewer() {
   return (
-    <BibleTextView reference="JHN.1" versionId={111} fontFamily="Source Serif" fontSize={18} />
+    <BibleTextView reference="JHN.1" versionId={3034} fontFamily="Source Serif" fontSize={18} />
   );
 }
