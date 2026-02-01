@@ -21,7 +21,13 @@ export function useLanguages(
 
   const { data, loading, error, refetch } = useApiData<Collection<Language>>(
     () => languagesClient.getLanguages(options),
-    [languagesClient, options?.country, options?.page_size, options?.page_token],
+    [
+      languagesClient,
+      JSON.stringify(options.fields),
+      options?.country,
+      options?.page_size,
+      options?.page_token,
+    ],
     {
       enabled: apiOptions?.enabled !== false,
     },

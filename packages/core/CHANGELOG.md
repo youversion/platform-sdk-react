@@ -1,5 +1,23 @@
 # @youversion/platform-core
 
+## 1.12.0
+
+### Minor Changes
+
+- 1bafe50: Add all_available and fields parameters to getVersions api call in core package and useVersions in hooks package.
+
+## 1.11.0
+
+### Minor Changes
+
+- a3efcc9: Add fields query param to the getLanguages api in core package
+
+## 1.10.0
+
+### Minor Changes
+
+- ce3e92e: This PR adds verse selection and highlighting to the Bible reader component, preparing the way for highlights. It also includes infrastructure fixes for Storybook test stability in CI.
+
 ## 1.9.2
 
 ### Patch Changes
