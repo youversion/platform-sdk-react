@@ -1,23 +1,16 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ReactNode } from 'react';
 import { useVerses } from './useVerses';
 import { YouVersionContext } from './context';
-import {
-  BibleClient,
-  ApiClient,
-  type BibleVerse,
-  type Collection,
-} from '@youversion/platform-core';
-
-// Mock the core package
+import { type BibleClient, type BibleVerse, type Collection } from '@youversion/platform-core';
 import { useBibleClient } from './useBibleClient';
 
 vi.mock('./useBibleClient');
-});
 
 describe('useVerses', () => {
   const mockAppKey = 'test-app-key';
+  const mockGetVerses = vi.fn();
 
   const mockVerses: Collection<BibleVerse> = {
     data: [
@@ -28,8 +21,6 @@ describe('useVerses', () => {
     next_page_token: null,
   };
 
-  let mockGetVerses: Mock;
-
   const createWrapper = (contextValue: { appKey: string }) => {
     return ({ children }: { children: ReactNode }) => (
       <YouVersionContext.Provider value={contextValue}>{children}</YouVersionContext.Provider>
@@ -37,105 +28,12 @@ describe('useVerses', () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
 
-    mockGetVerses = vi.fn().mockResolvedValue(mockVerses);
+    mockGetVerses.mockResolvedValue(mockVerses);
 
-    (BibleClient as unknown as ReturnType<typeof vi.fn>).mockImplementation(function () {
-      return {
-        getVerses: mockGetVerses,
-      };
-    });
-
-    (ApiClient as unknown as ReturnType<typeof vi.fn>).mockImplementation(function () {
-      return {
-        isApiClient: true,
-      };
-    });
-  });
-
-  describe('context validation', () => {
-    it('should throw error when context is not provided', () => {
-      expect(() => renderHook(() => useVerses(1, 'MAT', 1))).toThrow(
-        'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
-      );
-    });
-
-    it('should throw error when appKey is missing', () => {
-      const wrapper = createWrapper({
-        appKey: '',
-      });
-
-      expect(() => renderHook(() => useVerses(1, 'MAT', 1), { wrapper })).toThrow(
-        'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
-      );
-    });
-  });
-
-  describe('client creation', () => {
-    it('should create BibleClient with correct ApiClient config', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
-      const { result } = renderHook(() => useVerses(1, 'MAT', 1), { wrapper });
-
-      expect(ApiClient).toHaveBeenCalledWith({
-        appKey: mockAppKey,
-      });
-      expect(BibleClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-    });
-
-    it('should memoize BibleClient instance', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
-      const { result, rerender } = renderHook(() => useVerses(1, 'MAT', 1), { wrapper });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      rerender();
-
-      expect(BibleClient).toHaveBeenCalledTimes(1);
-    });
-
-    it('should create new BibleClient when context values change', async () => {
-      let currentAppKey = mockAppKey;
-
-      const wrapper = ({ children }: { children: ReactNode }) => (
-        <YouVersionContext.Provider
-          value={{
-            appKey: currentAppKey,
-          }}
-        >
-          {children}
-        </YouVersionContext.Provider>
-      );
-
-      const { result, rerender } = renderHook(() => useVerses(1, 'MAT', 1), { wrapper });
-
-      expect(BibleClient).toHaveBeenCalledTimes(1);
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      currentAppKey = 'new-app-key';
-      rerender();
-
-      expect(BibleClient).toHaveBeenCalledTimes(2);
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-    });
+    const mockClient: Partial<BibleClient> = { getVerses: mockGetVerses };
+    vi.mocked(useBibleClient).mockReturnValue(mockClient as BibleClient);
   });
 
   describe('fetching verses', () => {
@@ -174,7 +72,9 @@ describe('useVerses', () => {
       expect(mockGetVerses).toHaveBeenCalledTimes(1);
       expect(mockGetVerses).toHaveBeenLastCalledWith(1, 'MAT', 1);
 
-      rerender({ versionId: 111 });
+      act(() => {
+        rerender({ versionId: 111 });
+      });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -201,7 +101,9 @@ describe('useVerses', () => {
       expect(mockGetVerses).toHaveBeenCalledTimes(1);
       expect(mockGetVerses).toHaveBeenLastCalledWith(1, 'MAT', 1);
 
-      rerender({ book: 'GEN' });
+      act(() => {
+        rerender({ book: 'GEN' });
+      });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -228,7 +130,9 @@ describe('useVerses', () => {
       expect(mockGetVerses).toHaveBeenCalledTimes(1);
       expect(mockGetVerses).toHaveBeenLastCalledWith(1, 'MAT', 1);
 
-      rerender({ chapter: 5 });
+      act(() => {
+        rerender({ chapter: 5 });
+      });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
