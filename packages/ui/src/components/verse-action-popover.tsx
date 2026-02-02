@@ -119,11 +119,12 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
 
   // Build color circles:
   // 1. Active highlights with X (to clear) - always shown first/left
-  // 2. At minimum, show all 5 colors without X (to apply/change) - shown when any verses selected
+  // 2. Only inactive colors without X (to apply) - don't duplicate active colors
   const activeColors = HIGHLIGHT_COLORS.filter((c) => activeHighlights.has(c));
+  const inactiveColors = HIGHLIGHT_COLORS.filter((c) => !activeHighlights.has(c));
   const colorCircles = [
     ...activeColors.map((color) => ({ color, showX: true, key: `${color}-clear` })),
-    ...HIGHLIGHT_COLORS.map((color) => ({ color, showX: false, key: `${color}-apply` })),
+    ...inactiveColors.map((color) => ({ color, showX: false, key: `${color}-apply` })),
   ];
 
   if (!open) {

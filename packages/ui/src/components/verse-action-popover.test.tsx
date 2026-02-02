@@ -110,7 +110,7 @@ describe('VerseActionPopover', () => {
   });
 
   describe('AC5: Single highlighted verse', () => {
-    it('should show 6 circles: 1 remove + 5 apply', () => {
+    it('should show 5 circles: 1 remove + 4 apply (only inactive colors)', () => {
       const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0]]);
 
       render(<VerseActionPopover {...defaultProps} activeHighlights={activeHighlights} />);
@@ -124,12 +124,12 @@ describe('VerseActionPopover', () => {
         .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply highlight'));
 
       expect(removeButtons).toHaveLength(1);
-      expect(applyButtons).toHaveLength(5);
+      expect(applyButtons).toHaveLength(4);
     });
   });
 
   describe('AC5a: Ordering of circles', () => {
-    it('should show X circles leftmost, then apply circles in order', () => {
+    it('should show X circles leftmost, then apply circles for only inactive colors', () => {
       const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0], HIGHLIGHT_COLORS[2]]);
 
       const { container } = render(
@@ -139,15 +139,17 @@ describe('VerseActionPopover', () => {
       const colorGroup = container.querySelector('[role="group"]')!;
       const buttons = Array.from(colorGroup.querySelectorAll('button'));
 
+      // First 2 should be clear (yellow, blue), then 3 apply (green, orange, pink - the inactive ones)
       expect(buttons[0].getAttribute('aria-label')).toContain('Clear highlight');
       expect(buttons[1].getAttribute('aria-label')).toContain('Clear highlight');
       expect(buttons[2].getAttribute('aria-label')).toContain('Apply highlight');
       expect(buttons[3].getAttribute('aria-label')).toContain('Apply highlight');
+      expect(buttons[4].getAttribute('aria-label')).toContain('Apply highlight');
     });
   });
 
   describe('AC6: Mixed selection (highlighted + unhighlighted)', () => {
-    it('should show remove circles for active highlights plus all 5 apply colors', () => {
+    it('should show remove circles for active highlights plus apply colors only for inactive ones', () => {
       const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0]]);
 
       render(<VerseActionPopover {...defaultProps} activeHighlights={activeHighlights} />);
@@ -160,14 +162,14 @@ describe('VerseActionPopover', () => {
         .getAllByRole('button')
         .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply highlight'));
 
-      // 1 yellow remove + 5 apply colors
+      // 1 yellow remove + 4 apply colors (only green, blue, orange, pink)
       expect(removeButtons).toHaveLength(1);
-      expect(applyButtons).toHaveLength(5);
+      expect(applyButtons).toHaveLength(4);
     });
   });
 
   describe('AC7: Multiple different highlights', () => {
-    it('should show multiple X circles (7 total for 2 colors)', () => {
+    it('should show multiple X circles (5 total for 2 colors: 2 remove + 3 apply)', () => {
       const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0], HIGHLIGHT_COLORS[1]]);
 
       render(<VerseActionPopover {...defaultProps} activeHighlights={activeHighlights} />);
@@ -180,9 +182,9 @@ describe('VerseActionPopover', () => {
         .getAllByRole('button')
         .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply highlight'));
 
-      // 2 remove (X) + 5 apply = 7 total
+      // 2 remove (X) + 3 apply (only blue, orange, pink) = 5 total
       expect(removeButtons).toHaveLength(2);
-      expect(applyButtons).toHaveLength(5);
+      expect(applyButtons).toHaveLength(3);
     });
 
     it('should call onClearHighlights when X circle clicked', () => {
@@ -327,9 +329,9 @@ describe('VerseActionPopover', () => {
         .getAllByRole('button')
         .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply highlight'));
 
-      // 5 remove + 5 apply = 10 total
+      // 5 remove (X) + 0 apply (no inactive colors) = 5 total
       expect(removeButtons).toHaveLength(5);
-      expect(applyButtons).toHaveLength(5);
+      expect(applyButtons).toHaveLength(0);
     });
   });
 });
