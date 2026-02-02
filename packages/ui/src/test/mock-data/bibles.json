@@ -776,6 +776,21 @@
           "organization_id": null
         },
         {
+          "id": 88,
+          "abbreviation": "KRV",
+          "promotional_content": "개역한글",
+          "copyright": "대한성서공회",
+          "info": null,
+          "publisher_url": null,
+          "language_tag": "ko",
+          "localized_abbreviation": "개역한글",
+          "localized_title": "개역한글",
+          "title": "Korean Revised Version",
+          "books": ["GEN", "EXO", "MAT", "MRK", "LUK", "JHN", "ACT", "ROM", "REV"],
+          "youversion_deep_link": "https://www.bible.com/versions/88",
+          "organization_id": null
+        },
+        {
           "id": 130,
           "abbreviation": "TOJB2011",
           "promotional_content": "THE ORTHODOX JEWISH TANAKH\nArtists For Israel Intl Inc.\nThis version also appears with the Orthodox Yiddish Triglot which presents the Hebrew Yiddish script in Latin script and an English word for word translation, available at afii.org/Torah\nTo donate PayPal.Me",

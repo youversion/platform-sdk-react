@@ -262,12 +262,13 @@ function Root({
     const countryLanguagesIds = countryLanguages?.data.map((language) => language.id) || [];
 
     // Extract language codes from browser (e.g., 'en-US' -> 'en')
+    // Map over userLanguageCodes to preserve browser preference order
     const userLanguageCodes = navigator.languages.map(
       (code) => code.split('-')[0]?.toLowerCase() || '',
     );
-    const userLanguages = uniqueLanguages.filter((language) =>
-      userLanguageCodes.includes(language.id),
-    );
+    const userLanguages = userLanguageCodes
+      .map((code) => uniqueLanguages.find((language) => language.id === code))
+      .filter((language) => language !== undefined);
 
     const filteredCountryLanguages: Language[] =
       uniqueLanguages.filter((language) => countryLanguagesIds.includes(language.id)) || [];

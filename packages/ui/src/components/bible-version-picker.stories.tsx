@@ -152,6 +152,102 @@ export const InteractiveLanguageSelection: Story = {
   },
 };
 
+export const SuggestedLanguagesTabs: Story = {
+  args: {
+    versionId: 111,
+    background: 'light',
+  },
+  tags: ['integration'],
+  beforeEach: () => {
+    // Save original navigator.languages and mock it for deterministic test behavior
+    // This sets Korean first, then English as user's preferred languages
+    const originalLanguages = navigator.languages;
+    Object.defineProperty(navigator, 'languages', {
+      value: ['ko-KR', 'en-US'],
+      configurable: true,
+    });
+
+    // Return cleanup function to restore original value
+    return () => {
+      Object.defineProperty(navigator, 'languages', {
+        value: originalLanguages,
+        configurable: true,
+      });
+    };
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Open popover
+    const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
+    await userEvent.click(trigger);
+
+    // Validate the dialog is open
+    const dialog = await screen.findByRole('dialog');
+    await expect(dialog).toBeInTheDocument();
+
+    // Click language button to open language selection
+    const languageButton = await screen.findByRole('button', { name: /select language/i });
+    await userEvent.click(languageButton);
+
+    // Verify the Suggested tab is active by default and shows "Regional" heading
+    const suggestedTab = await screen.findByRole('tab', { name: /suggested/i });
+    await expect(suggestedTab).toHaveAttribute('data-state', 'active');
+
+    const regionalHeading = await screen.findByRole('heading', { name: /regional/i });
+    await expect(regionalHeading).toBeInTheDocument();
+
+    // Find the active tab panel (Suggested) to scope our language queries
+    const suggestedTabPanel = await screen.findByRole('tabpanel');
+
+    // Verify user's browser languages appear at the top of suggested languages
+    // We mocked navigator.languages to ['en-US', 'ko-KR'], so English should be first, Korean second
+    const suggestedLanguageItems = within(suggestedTabPanel).getAllByRole('listitem');
+    await expect(suggestedLanguageItems[1]).toHaveAttribute('aria-label', 'English');
+    await expect(suggestedLanguageItems[0]).toHaveAttribute('aria-label', 'Korean');
+
+    // Verify the All tab exists with language count
+    const allTab = await screen.findByRole('tab', { name: /all/i });
+    await expect(allTab).toBeInTheDocument();
+
+    // Switch to All tab
+    await userEvent.click(allTab);
+    await expect(allTab).toHaveAttribute('data-state', 'active');
+    await expect(suggestedTab).toHaveAttribute('data-state', 'inactive');
+
+    // Verify All Languages heading is shown
+    const allLanguagesHeading = await screen.findByRole('heading', { name: /all languages/i });
+    await expect(allLanguagesHeading).toBeInTheDocument();
+
+    // Find the active tab panel (All) to scope our language queries
+    const allTabPanel = await screen.findByRole('tabpanel');
+
+    // Verify languages in All tab are sorted alphabetically by display name
+    // English comes before Korean alphabetically
+    const allLanguageItems = within(allTabPanel).getAllByRole('listitem');
+    const languageLabels = allLanguageItems.map((item) => item.getAttribute('aria-label'));
+    const englishIndex = languageLabels.indexOf('English');
+    const koreanIndex = languageLabels.indexOf('Korean');
+    await expect(englishIndex).toBeLessThan(koreanIndex);
+
+    // Switch back to Suggested tab and select a language
+    await userEvent.click(suggestedTab);
+    await expect(suggestedTab).toHaveAttribute('data-state', 'active');
+
+    // Find the active tab panel again after switching tabs
+    const suggestedTabPanelAgain = await screen.findByRole('tabpanel');
+    const englishOption = within(suggestedTabPanelAgain).getByRole('listitem', {
+      name: /english/i,
+    });
+    await userEvent.click(englishOption);
+
+    // Verify the language button shows the selected language
+    await expect(await screen.findByRole('button', { name: /select language/i })).toHaveTextContent(
+      /english/i,
+    );
+  },
+};
+
 export const InteractiveVersionSearch: Story = {
   args: {
     versionId: 111,

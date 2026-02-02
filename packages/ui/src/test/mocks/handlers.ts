@@ -51,18 +51,44 @@ export const globalHandlers = [
     return HttpResponse.json(mockPassages['ISA.43.19']);
   }),
 
-  // Specific Bible versions
-  http.get('*/v1/bibles/111', () => {
-    return HttpResponse.json(mockBibles.individual['111']);
-  }),
+  // Individual Bible version lookup - dynamically finds Bible from mock data
+  http.get('*/v1/bibles/:id', ({ params }) => {
+    const id = params.id as string;
 
-  http.get('*/v1/bibles/1588', () => {
-    return HttpResponse.json(mockBibles.individual['1588']);
+    // Check individual mock data first
+    if (mockBibles.individual[id as keyof typeof mockBibles.individual]) {
+      return HttpResponse.json(mockBibles.individual[id as keyof typeof mockBibles.individual]);
+    }
+
+    // Fall back to collections data
+    const bible = mockBibles.collections.default.data.find((b) => b.id === Number(id));
+    if (bible) {
+      return HttpResponse.json(bible);
+    }
+
+    return new HttpResponse(null, { status: 404 });
   }),
 
   // Languages - extended data for version picker
   http.get('*/v1/languages', () => {
     return HttpResponse.json(mockLanguages);
+  }),
+
+  // Individual language lookup
+  http.get('*/v1/languages/en', () => {
+    return HttpResponse.json({
+      id: 'en',
+      language: 'en',
+      display_names: { en: 'English' },
+    });
+  }),
+
+  http.get('*/v1/languages/ko', () => {
+    return HttpResponse.json({
+      id: 'ko',
+      language: 'ko',
+      display_names: { en: 'Korean', ko: '한국어' },
+    });
   }),
 
   // Bibles list - extended data for version picker
