@@ -86,7 +86,6 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
 }) => {
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  // Show/hide popover based on open state
   useEffect(() => {
     const el = popoverRef.current;
     if (!el) return;
@@ -98,7 +97,6 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
     }
   }, [open]);
 
-  // Listen for toggle events to sync state
   useEffect(() => {
     const el = popoverRef.current;
     if (!el) return;
@@ -113,7 +111,6 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
     return () => el.removeEventListener('toggle', handleToggle);
   }, [onOpenChange]);
 
-  // Focus first button when popover opens
   useEffect(() => {
     if (open && popoverRef.current) {
       const firstButton = popoverRef.current.querySelector('button');
@@ -121,26 +118,12 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
     }
   }, [open]);
 
-  // Build color circles:
-  // 1. Active highlights with X (to clear) - always shown first/left
-  // 2. Decide which apply colors to show:
-  //    - If all selected verses have the SAME single color: hide that color's apply button
-  //    - Otherwise (multiple colors OR unhighlighted verses): show all 5 apply colors
   const activeColors = HIGHLIGHT_COLORS.filter((c) => activeHighlights.has(c));
-
-  // Count unhighlighted verses
   const highlightedVerseCount = selectedVerses.filter((v) => highlightedVerses[v]).length;
   const unHighlightedCount = selectedVerses.length - highlightedVerseCount;
-
-  // Check if all 5 colors are already active highlights
   const allColorsActive = activeHighlights.size === HIGHLIGHT_COLORS.length;
-
-  // Show all 5 apply colors when there are unhighlighted verses or multiple active colors
-  // (unless all 5 colors are already active)
   const showAllApplyColors =
     !allColorsActive && (unHighlightedCount > 0 || activeHighlights.size > 1);
-
-  // Choose apply colors based on the scenario
   const colorsToApply = showAllApplyColors
     ? HIGHLIGHT_COLORS
     : HIGHLIGHT_COLORS.filter((c) => !activeHighlights.has(c));
@@ -175,7 +158,6 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
         transform: 'translateX(-50%)',
       }}
     >
-      {/* Highlight color circles */}
       <div className="yv:flex yv:items-center yv:gap-2" role="group" aria-label="Highlight colors">
         {colorCircles.map(({ color, showX, key }) => (
           <ColorCircle
@@ -190,7 +172,6 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
       {/* Separator */}
       <div className="yv:w-px yv:h-8 yv:bg-border" aria-hidden="true" />
 
-      {/* Action buttons */}
       <div className="yv:flex yv:items-center yv:gap-1">
         <ActionButton icon={<BoxStackIcon className="yv:size-5" />} label="Copy" onClick={onCopy} />
         <ActionButton

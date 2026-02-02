@@ -358,7 +358,6 @@ export const Verse = {
       const currentTheme = theme || providerTheme;
 
       useEffect(() => {
-        // Always extract notes to keep DOM stable (visibility controlled via CSS)
         setTransformedData(yvDomTransformer(html, true));
       }, [html]);
 
