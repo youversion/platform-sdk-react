@@ -13,6 +13,8 @@ type VerseActionPopoverProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   activeHighlights: Set<string>;
+  selectedVerses: number[];
+  highlightedVerses: Record<number, string>;
   position: { x: number; y: number };
   onHighlight: (color: string) => void;
   onClearHighlights: () => void;
@@ -73,6 +75,8 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   open,
   onOpenChange,
   activeHighlights,
+  selectedVerses,
+  highlightedVerses,
   position,
   onHighlight,
   onClearHighlights,
@@ -119,12 +123,34 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
 
   // Build color circles:
   // 1. Active highlights with X (to clear) - always shown first/left
-  // 2. Only inactive colors without X (to apply) - don't duplicate active colors
+  // 2. Decide which apply colors to show:
+  //    - If all selected verses have the SAME single color: hide that color's apply button
+  //    - Otherwise (multiple colors OR unhighlighted verses): show all 5 apply colors
   const activeColors = HIGHLIGHT_COLORS.filter((c) => activeHighlights.has(c));
-  const inactiveColors = HIGHLIGHT_COLORS.filter((c) => !activeHighlights.has(c));
+
+  // Count unhighlighted verses
+  const highlightedVerseCount = selectedVerses.filter((v) => highlightedVerses[v]).length;
+  const unHighlightedCount = selectedVerses.length - highlightedVerseCount;
+
+  // Check if all 5 colors are already active highlights
+  const allColorsActive = activeHighlights.size === HIGHLIGHT_COLORS.length;
+
+  // Determine which apply colors to show:
+  // Show all inactive colors ONLY if:
+  //   - There are unhighlighted verses to apply colors to, AND
+  //   - Not all colors are already active
+  // OR if there are multiple different active colors (but not all 5)
+  const showAllApplyColors =
+    (unHighlightedCount > 0 && !allColorsActive) || (activeHighlights.size > 1 && !allColorsActive);
+
+  // Choose apply colors based on the scenario
+  const colorsToApply = showAllApplyColors
+    ? HIGHLIGHT_COLORS
+    : HIGHLIGHT_COLORS.filter((c) => !activeHighlights.has(c));
+
   const colorCircles = [
     ...activeColors.map((color) => ({ color, showX: true, key: `${color}-clear` })),
-    ...inactiveColors.map((color) => ({ color, showX: false, key: `${color}-apply` })),
+    ...colorsToApply.map((color) => ({ color, showX: false, key: `${color}-apply` })),
   ];
 
   if (!open) {

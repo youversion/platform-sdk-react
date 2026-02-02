@@ -7,6 +7,8 @@ describe('VerseActionPopover', () => {
     open: true,
     onOpenChange: vi.fn(),
     activeHighlights: new Set<string>(),
+    selectedVerses: [],
+    highlightedVerses: {},
     position: { x: 100, y: 100 },
     onHighlight: vi.fn(),
     onClearHighlights: vi.fn(),
@@ -112,8 +114,17 @@ describe('VerseActionPopover', () => {
   describe('AC5: Single highlighted verse', () => {
     it('should show 5 circles: 1 remove + 4 apply (only inactive colors)', () => {
       const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0]]);
+      const selectedVerses = [1];
+      const highlightedVerses = { 1: HIGHLIGHT_COLORS[0] };
 
-      render(<VerseActionPopover {...defaultProps} activeHighlights={activeHighlights} />);
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          activeHighlights={activeHighlights}
+          selectedVerses={selectedVerses}
+          highlightedVerses={highlightedVerses}
+        />,
+      );
 
       const removeButtons = screen
         .getAllByRole('button')
@@ -131,9 +142,16 @@ describe('VerseActionPopover', () => {
   describe('AC5a: Ordering of circles', () => {
     it('should show X circles leftmost, then apply circles for only inactive colors', () => {
       const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0], HIGHLIGHT_COLORS[2]]);
+      const selectedVerses = [1, 2];
+      const highlightedVerses = { 1: HIGHLIGHT_COLORS[0], 2: HIGHLIGHT_COLORS[2] };
 
       const { container } = render(
-        <VerseActionPopover {...defaultProps} activeHighlights={activeHighlights} />,
+        <VerseActionPopover
+          {...defaultProps}
+          activeHighlights={activeHighlights}
+          selectedVerses={selectedVerses}
+          highlightedVerses={highlightedVerses}
+        />,
       );
 
       const colorGroup = container.querySelector('[role="group"]')!;
@@ -149,52 +167,74 @@ describe('VerseActionPopover', () => {
   });
 
   describe('AC6: Mixed selection (highlighted + unhighlighted)', () => {
-    it('should show remove circles for active highlights plus apply colors only for inactive ones', () => {
+    it('should show all 5 apply colors when there are unhighlighted verses', () => {
       const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0]]);
-
-      render(<VerseActionPopover {...defaultProps} activeHighlights={activeHighlights} />);
-
-      const removeButtons = screen
-        .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear highlight'));
-
-      const applyButtons = screen
-        .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply highlight'));
-
-      // 1 yellow remove + 4 apply colors (only green, blue, orange, pink)
-      expect(removeButtons).toHaveLength(1);
-      expect(applyButtons).toHaveLength(4);
-    });
-  });
-
-  describe('AC7: Multiple different highlights', () => {
-    it('should show multiple X circles (5 total for 2 colors: 2 remove + 3 apply)', () => {
-      const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0], HIGHLIGHT_COLORS[1]]);
-
-      render(<VerseActionPopover {...defaultProps} activeHighlights={activeHighlights} />);
-
-      const removeButtons = screen
-        .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear highlight'));
-
-      const applyButtons = screen
-        .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply highlight'));
-
-      // 2 remove (X) + 3 apply (only blue, orange, pink) = 5 total
-      expect(removeButtons).toHaveLength(2);
-      expect(applyButtons).toHaveLength(3);
-    });
-
-    it('should call onClearHighlights when X circle clicked', () => {
-      const onClearHighlights = vi.fn();
-      const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0]]);
+      const selectedVerses = [1, 2];
+      const highlightedVerses = { 1: HIGHLIGHT_COLORS[0] }; // verse 2 is unhighlighted
 
       render(
         <VerseActionPopover
           {...defaultProps}
           activeHighlights={activeHighlights}
+          selectedVerses={selectedVerses}
+          highlightedVerses={highlightedVerses}
+        />,
+      );
+
+      const removeButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear highlight'));
+
+      const applyButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply highlight'));
+
+      // 1 yellow remove + all 5 apply (because verse 2 is unhighlighted)
+      expect(removeButtons).toHaveLength(1);
+      expect(applyButtons).toHaveLength(5);
+    });
+  });
+
+  describe('AC7: Multiple different highlights', () => {
+    it('should show all 5 apply colors when multiple colors are active', () => {
+      const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0], HIGHLIGHT_COLORS[1]]);
+      const selectedVerses = [1, 2];
+      const highlightedVerses = { 1: HIGHLIGHT_COLORS[0], 2: HIGHLIGHT_COLORS[1] };
+
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          activeHighlights={activeHighlights}
+          selectedVerses={selectedVerses}
+          highlightedVerses={highlightedVerses}
+        />,
+      );
+
+      const removeButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear highlight'));
+
+      const applyButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply highlight'));
+
+      // 2 remove (X) + all 5 apply (because multiple colors)
+      expect(removeButtons).toHaveLength(2);
+      expect(applyButtons).toHaveLength(5);
+    });
+
+    it('should call onClearHighlights when X circle clicked', () => {
+      const onClearHighlights = vi.fn();
+      const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0]]);
+      const selectedVerses = [1];
+      const highlightedVerses = { 1: HIGHLIGHT_COLORS[0] };
+
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          activeHighlights={activeHighlights}
+          selectedVerses={selectedVerses}
+          highlightedVerses={highlightedVerses}
           onClearHighlights={onClearHighlights}
         />,
       );
@@ -208,8 +248,17 @@ describe('VerseActionPopover', () => {
   describe('AC8 & AC8a: Dismiss logic on remove', () => {
     it('should show remove buttons for active highlights', () => {
       const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0], HIGHLIGHT_COLORS[1]]);
+      const selectedVerses = [1, 2];
+      const highlightedVerses = { 1: HIGHLIGHT_COLORS[0], 2: HIGHLIGHT_COLORS[1] };
 
-      render(<VerseActionPopover {...defaultProps} activeHighlights={activeHighlights} />);
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          activeHighlights={activeHighlights}
+          selectedVerses={selectedVerses}
+          highlightedVerses={highlightedVerses}
+        />,
+      );
 
       const removeButtons = screen
         .getAllByRole('button')
@@ -246,9 +295,16 @@ describe('VerseActionPopover', () => {
   describe('Accessibility', () => {
     it('should have proper ARIA labels for all buttons', () => {
       const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0]]);
+      const selectedVerses = [1];
+      const highlightedVerses = { 1: HIGHLIGHT_COLORS[0] };
 
       const { container } = render(
-        <VerseActionPopover {...defaultProps} activeHighlights={activeHighlights} />,
+        <VerseActionPopover
+          {...defaultProps}
+          activeHighlights={activeHighlights}
+          selectedVerses={selectedVerses}
+          highlightedVerses={highlightedVerses}
+        />,
       );
 
       // Get color circle buttons (color buttons have aria-label)
@@ -318,8 +374,23 @@ describe('VerseActionPopover', () => {
 
     it('should handle all 5 colors highlighted', () => {
       const activeHighlights = new Set<HighlightColor>(HIGHLIGHT_COLORS);
+      const selectedVerses = [1, 2, 3, 4, 5];
+      const highlightedVerses = {
+        1: HIGHLIGHT_COLORS[0],
+        2: HIGHLIGHT_COLORS[1],
+        3: HIGHLIGHT_COLORS[2],
+        4: HIGHLIGHT_COLORS[3],
+        5: HIGHLIGHT_COLORS[4],
+      };
 
-      render(<VerseActionPopover {...defaultProps} activeHighlights={activeHighlights} />);
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          activeHighlights={activeHighlights}
+          selectedVerses={selectedVerses}
+          highlightedVerses={highlightedVerses}
+        />,
+      );
 
       const removeButtons = screen
         .getAllByRole('button')
@@ -329,9 +400,44 @@ describe('VerseActionPopover', () => {
         .getAllByRole('button')
         .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply highlight'));
 
-      // 5 remove (X) + 0 apply (no inactive colors) = 5 total
+      // 5 remove (X) + 0 apply (all colors already active) = 5 total
       expect(removeButtons).toHaveLength(5);
       expect(applyButtons).toHaveLength(0);
+    });
+
+    it('should show 3 verses with different highlights: Y(x), B(x), G(x), Y, G, B, O, P', () => {
+      const activeHighlights = new Set<HighlightColor>([
+        HIGHLIGHT_COLORS[0], // yellow
+        HIGHLIGHT_COLORS[2], // blue
+        HIGHLIGHT_COLORS[1], // green
+      ]);
+      const selectedVerses = [1, 2, 3];
+      const highlightedVerses = {
+        1: HIGHLIGHT_COLORS[0], // yellow
+        2: HIGHLIGHT_COLORS[2], // blue
+        3: HIGHLIGHT_COLORS[1], // green
+      };
+
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          activeHighlights={activeHighlights}
+          selectedVerses={selectedVerses}
+          highlightedVerses={highlightedVerses}
+        />,
+      );
+
+      const removeButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear highlight'));
+
+      const applyButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply highlight'));
+
+      // 3 remove (X for Y, B, G) + all 5 apply (yellow, green, blue, orange, pink) = 8 total
+      expect(removeButtons).toHaveLength(3);
+      expect(applyButtons).toHaveLength(5);
     });
   });
 });

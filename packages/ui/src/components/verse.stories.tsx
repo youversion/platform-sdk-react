@@ -556,6 +556,8 @@ function VerseActionPopoverDemo(props: BibleTextViewProps) {
         open={popoverOpen && selectedVerses.length > 0}
         onOpenChange={setPopoverOpen}
         activeHighlights={activeHighlights}
+        selectedVerses={selectedVerses}
+        highlightedVerses={highlightedVerses}
         position={popoverPosition}
         onHighlight={handleHighlight}
         onClearHighlights={handleClearHighlights}
