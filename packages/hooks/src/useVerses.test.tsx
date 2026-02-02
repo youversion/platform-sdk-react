@@ -11,17 +11,9 @@ import {
 } from '@youversion/platform-core';
 
 // Mock the core package
-vi.mock('@youversion/platform-core', async () => {
-  const actual = await vi.importActual('@youversion/platform-core');
-  return {
-    ...actual,
-    BibleClient: vi.fn(function () {
-      return {};
-    }),
-    ApiClient: vi.fn(function () {
-      return { isApiClient: true };
-    }),
-  };
+import { useBibleClient } from './useBibleClient';
+
+vi.mock('./useBibleClient');
 });
 
 describe('useVerses', () => {
