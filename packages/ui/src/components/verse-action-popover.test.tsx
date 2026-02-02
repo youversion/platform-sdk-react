@@ -237,7 +237,7 @@ describe('VerseActionPopover', () => {
         />,
       );
 
-      const removeButton = screen.getByRole('button', { name: /Clear yellow highlight/ });
+      const removeButton = screen.getByRole('button', { name: /Clear highlight/ });
       fireEvent.click(removeButton);
       expect(onClearHighlight).toHaveBeenCalledWith(HIGHLIGHT_COLORS[0]);
     });
