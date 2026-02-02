@@ -90,6 +90,7 @@ function BibleTextHtml({
   theme,
   selectedVerses = [],
   onVerseSelect,
+  highlightedVerses = {},
 }: {
   html: string;
   notes: Record<string, VerseNotes>;
@@ -98,6 +99,7 @@ function BibleTextHtml({
   theme?: 'light' | 'dark';
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
+  highlightedVerses?: Record<number, boolean>;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [placeholders, setPlaceholders] = useState<Map<string, Element>>(new Map());
@@ -122,13 +124,20 @@ function BibleTextHtml({
     const verseElements = contentRef.current.querySelectorAll('.yv-v[v]');
     verseElements.forEach((el) => {
       const verseNum = parseInt(el.getAttribute('v') || '0', 10);
+
       if (selectedVerses.includes(verseNum)) {
         el.classList.add('yv-v-selected');
       } else {
         el.classList.remove('yv-v-selected');
       }
+
+      if (highlightedVerses[verseNum]) {
+        el.classList.add('yv-v-highlighted');
+      } else {
+        el.classList.remove('yv-v-highlighted');
+      }
     });
-  }, [selectedVerses]);
+  }, [selectedVerses, highlightedVerses]);
 
   useLayoutEffect(() => {
     const element = contentRef.current;
