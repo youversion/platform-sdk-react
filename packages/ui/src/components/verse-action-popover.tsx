@@ -135,13 +135,10 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   // Check if all 5 colors are already active highlights
   const allColorsActive = activeHighlights.size === HIGHLIGHT_COLORS.length;
 
-  // Determine which apply colors to show:
-  // Show all inactive colors ONLY if:
-  //   - There are unhighlighted verses to apply colors to, AND
-  //   - Not all colors are already active
-  // OR if there are multiple different active colors (but not all 5)
+  // Show all 5 apply colors when there are unhighlighted verses or multiple active colors
+  // (unless all 5 colors are already active)
   const showAllApplyColors =
-    (unHighlightedCount > 0 && !allColorsActive) || (activeHighlights.size > 1 && !allColorsActive);
+    !allColorsActive && (unHighlightedCount > 0 || activeHighlights.size > 1);
 
   // Choose apply colors based on the scenario
   const colorsToApply = showAllApplyColors

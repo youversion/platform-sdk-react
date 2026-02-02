@@ -26,7 +26,7 @@ describe('VerseActionPopover', () => {
 
       const colorButtons = screen
         .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply highlight'));
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
 
       expect(colorButtons).toHaveLength(5);
     });
@@ -34,9 +34,7 @@ describe('VerseActionPopover', () => {
     it('should render colors in correct order (yellow, green, blue, orange, pink)', () => {
       const { container } = render(<VerseActionPopover {...defaultProps} />);
 
-      const applyButtons = Array.from(
-        container.querySelectorAll('[aria-label*="Apply highlight"]'),
-      );
+      const applyButtons = Array.from(container.querySelectorAll('[aria-label*="Apply"]'));
 
       expect(applyButtons).toHaveLength(5);
       applyButtons.forEach((btn) => {
@@ -53,7 +51,7 @@ describe('VerseActionPopover', () => {
 
       const firstColorButton = screen
         .getAllByRole('button')
-        .find((btn) => btn.getAttribute('aria-label')?.includes('Apply highlight'))!;
+        .find((btn) => btn.getAttribute('aria-label')?.includes('Apply'))!;
 
       fireEvent.click(firstColorButton);
       expect(onHighlight).toHaveBeenCalledWith(HIGHLIGHT_COLORS[0]);
@@ -70,7 +68,7 @@ describe('VerseActionPopover', () => {
 
       const firstColorButton = screen
         .getAllByRole('button')
-        .find((btn) => btn.getAttribute('aria-label')?.includes('Apply highlight'))!;
+        .find((btn) => btn.getAttribute('aria-label')?.includes('Apply'))!;
 
       fireEvent.click(firstColorButton);
       expect(firstColorButton).toBeTruthy();
@@ -128,11 +126,11 @@ describe('VerseActionPopover', () => {
 
       const removeButtons = screen
         .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear highlight'));
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear'));
 
       const applyButtons = screen
         .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply highlight'));
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
 
       expect(removeButtons).toHaveLength(1);
       expect(applyButtons).toHaveLength(4);
@@ -158,11 +156,11 @@ describe('VerseActionPopover', () => {
       const buttons = Array.from(colorGroup.querySelectorAll('button'));
 
       // First 2 should be clear (yellow, blue), then 3 apply (green, orange, pink - the inactive ones)
-      expect(buttons[0].getAttribute('aria-label')).toContain('Clear highlight');
-      expect(buttons[1].getAttribute('aria-label')).toContain('Clear highlight');
-      expect(buttons[2].getAttribute('aria-label')).toContain('Apply highlight');
-      expect(buttons[3].getAttribute('aria-label')).toContain('Apply highlight');
-      expect(buttons[4].getAttribute('aria-label')).toContain('Apply highlight');
+      expect(buttons[0]?.getAttribute('aria-label')).toContain('Clear');
+      expect(buttons[1]?.getAttribute('aria-label')).toContain('Clear');
+      expect(buttons[2]?.getAttribute('aria-label')).toContain('Apply');
+      expect(buttons[3]?.getAttribute('aria-label')).toContain('Apply');
+      expect(buttons[4]?.getAttribute('aria-label')).toContain('Apply');
     });
   });
 
@@ -183,11 +181,11 @@ describe('VerseActionPopover', () => {
 
       const removeButtons = screen
         .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear highlight'));
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear'));
 
       const applyButtons = screen
         .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply highlight'));
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
 
       // 1 yellow remove + all 5 apply (because verse 2 is unhighlighted)
       expect(removeButtons).toHaveLength(1);
@@ -212,11 +210,11 @@ describe('VerseActionPopover', () => {
 
       const removeButtons = screen
         .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear highlight'));
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear'));
 
       const applyButtons = screen
         .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply highlight'));
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
 
       // 2 remove (X) + all 5 apply (because multiple colors)
       expect(removeButtons).toHaveLength(2);
@@ -239,7 +237,7 @@ describe('VerseActionPopover', () => {
         />,
       );
 
-      const removeButton = screen.getByRole('button', { name: /Clear highlight/ });
+      const removeButton = screen.getByRole('button', { name: /Clear yellow highlight/ });
       fireEvent.click(removeButton);
       expect(onClearHighlight).toHaveBeenCalledWith(HIGHLIGHT_COLORS[0]);
     });
@@ -260,17 +258,19 @@ describe('VerseActionPopover', () => {
         />,
       );
 
-      const removeButtons = Array.from(
-        container.querySelectorAll('[aria-label*="Clear highlight"]'),
-      );
+      const removeButtons = Array.from(container.querySelectorAll('[aria-label*="Clear"]'));
       expect(removeButtons).toHaveLength(2);
 
       // Click first remove button (yellow)
-      fireEvent.click(removeButtons[0]);
+      const firstBtn = removeButtons[0];
+      const secondBtn = removeButtons[1];
+      if (!firstBtn || !secondBtn) throw new Error('Expected 2 remove buttons');
+
+      fireEvent.click(firstBtn);
       expect(onClearHighlight).toHaveBeenCalledWith(HIGHLIGHT_COLORS[0]);
 
       // Click second remove button (green)
-      fireEvent.click(removeButtons[1]);
+      fireEvent.click(secondBtn);
       expect(onClearHighlight).toHaveBeenCalledWith(HIGHLIGHT_COLORS[1]);
     });
   });
@@ -292,7 +292,7 @@ describe('VerseActionPopover', () => {
 
       const removeButtons = screen
         .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear highlight'));
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear'));
 
       expect(removeButtons).toHaveLength(2);
     });
@@ -337,11 +337,11 @@ describe('VerseActionPopover', () => {
         />,
       );
 
-      // Get color circle buttons (color buttons have aria-label)
+      // Get color circle buttons (color buttons have aria-label with color name)
       const colorButtons = container.querySelectorAll('[aria-label*="highlight"]');
       colorButtons.forEach((btn) => {
         const label = btn.getAttribute('aria-label');
-        expect(label).toMatch(/^(Apply highlight|Clear highlight)$/);
+        expect(label).toMatch(/^(Apply|Clear) (yellow|green|blue|orange|pink) highlight$/);
       });
 
       // Check action buttons have accessible text (they use icon + text)
@@ -396,7 +396,7 @@ describe('VerseActionPopover', () => {
 
       const applyButtons = screen
         .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply highlight'));
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
 
       // Should still show 5 apply colors
       expect(applyButtons).toHaveLength(5);
@@ -424,11 +424,11 @@ describe('VerseActionPopover', () => {
 
       const removeButtons = screen
         .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear highlight'));
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear'));
 
       const applyButtons = screen
         .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply highlight'));
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
 
       // 5 remove (X) + 0 apply (all colors already active) = 5 total
       expect(removeButtons).toHaveLength(5);
@@ -459,11 +459,11 @@ describe('VerseActionPopover', () => {
 
       const removeButtons = screen
         .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear highlight'));
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear'));
 
       const applyButtons = screen
         .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply highlight'));
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
 
       // 3 remove (X for Y, B, G) + all 5 apply (yellow, green, blue, orange, pink) = 8 total
       expect(removeButtons).toHaveLength(3);

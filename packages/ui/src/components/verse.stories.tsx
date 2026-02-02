@@ -576,10 +576,30 @@ function VerseActionPopoverDemo(props: BibleTextViewProps) {
         onHighlight={handleHighlight}
         onClearHighlight={handleClearHighlight}
         onCopy={() => {
-          // Do nothing at this second
+          const verseText = selectedVerses
+            .map((v) => containerRef.current?.querySelector(`.yv-v[v="${v}"]`)?.textContent)
+            .filter(Boolean)
+            .join(' ');
+          const formatted = `"${verseText}" - John 1:${selectedVerses.join('-')} NIV`;
+          void navigator.clipboard.writeText(formatted);
+          setPopoverOpen(false);
+          setSelectedVerses([]);
         }}
         onShare={() => {
-          // Do nothing at this second
+          const verseText = selectedVerses
+            .map((v) => containerRef.current?.querySelector(`.yv-v[v="${v}"]`)?.textContent)
+            .filter(Boolean)
+            .join(' ');
+          const formatted = `"${verseText}" - John 1:${selectedVerses.join('-')} NIV`;
+          navigator
+            .share({ text: formatted })
+            .then(() => {
+              setPopoverOpen(false);
+              setSelectedVerses([]);
+            })
+            .catch(() => {
+              // User cancelled or share failed - keep popover open per AC4
+            });
         }}
       />
     </div>
