@@ -90,7 +90,6 @@ function BibleTextHtml({
   theme,
   selectedVerses = [],
   onVerseSelect,
-  highlightedVerses = {},
 }: {
   html: string;
   notes: Record<string, VerseNotes>;
@@ -99,7 +98,6 @@ function BibleTextHtml({
   theme?: 'light' | 'dark';
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
-  highlightedVerses?: Record<number, boolean>;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [placeholders, setPlaceholders] = useState<Map<string, Element>>(new Map());
@@ -365,7 +363,7 @@ export const Verse = {
         >
           <BibleTextHtml
             html={transformedData.html}
-            notes={transformedData.notes}
+            notes={renderNotes ? transformedData.notes : {}}
             reference={reference}
             fontSize={fontSize}
             theme={currentTheme}
