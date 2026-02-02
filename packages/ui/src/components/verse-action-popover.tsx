@@ -1,5 +1,6 @@
 import { useEffect, useRef, type FC } from 'react';
 import { cn } from '../lib/utils';
+import { useAnchorPositioningPolyfill } from '../lib/use-anchor-positioning-polyfill';
 import { BoxStackIcon } from './icons/box-stack';
 import { BoxArrowUpIcon } from './icons/box-arrow-up';
 import { XIcon } from './icons/x';
@@ -15,7 +16,7 @@ type VerseActionPopoverProps = {
   activeHighlights: Set<string>;
   selectedVerses: number[];
   highlightedVerses: Record<number, string>;
-  position: { x: number; y: number };
+  anchorElement?: HTMLElement | null;
   onHighlight: (color: string) => void;
   onClearHighlight: (color: string) => void;
   onCopy: () => void;
@@ -71,13 +72,15 @@ function ActionButton({ icon, label, onClick }: ActionButtonProps) {
   );
 }
 
+const ANCHOR_NAME = '--yv-verse-action-anchor';
+
 export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   open,
   onOpenChange,
   activeHighlights,
   selectedVerses,
   highlightedVerses,
-  position,
+  anchorElement,
   onHighlight,
   onClearHighlight,
   onCopy,
@@ -85,6 +88,25 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   theme = 'light',
 }) => {
   const popoverRef = useRef<HTMLDivElement>(null);
+
+  // Load CSS anchor positioning polyfill for older browsers
+  useAnchorPositioningPolyfill();
+
+  // Set anchor-name on the anchor element when it changes
+  useEffect(() => {
+    if (!anchorElement) return;
+
+    const prevAnchorName = anchorElement.style.getPropertyValue('anchor-name');
+    anchorElement.style.setProperty('anchor-name', ANCHOR_NAME);
+
+    return () => {
+      if (prevAnchorName) {
+        anchorElement.style.setProperty('anchor-name', prevAnchorName);
+      } else {
+        anchorElement.style.removeProperty('anchor-name');
+      }
+    };
+  }, [anchorElement]);
 
   useEffect(() => {
     const el = popoverRef.current;
@@ -150,13 +172,17 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
         'yv:rounded-full yv:shadow-lg yv:border yv:border-border',
         'yv:px-4 yv:py-2',
         'yv:flex yv:items-center yv:gap-3',
+        'yv:m-0',
       )}
-      style={{
-        position: 'fixed',
-        left: position.x,
-        top: position.y,
-        transform: 'translateX(-50%)',
-      }}
+      style={
+        {
+          position: 'fixed',
+          positionAnchor: ANCHOR_NAME,
+          top: `anchor(bottom)`,
+          left: `anchor(center)`,
+          translate: '-50% 8px',
+        } as React.CSSProperties
+      }
     >
       <div className="yv:flex yv:items-center yv:gap-2" role="group" aria-label="Highlight colors">
         {colorCircles.map(({ color, showX, key }) => (

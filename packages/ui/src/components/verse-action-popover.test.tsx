@@ -9,7 +9,7 @@ describe('VerseActionPopover', () => {
     activeHighlights: new Set<string>(),
     selectedVerses: [],
     highlightedVerses: {},
-    position: { x: 100, y: 100 },
+    anchorElement: null,
     onHighlight: vi.fn(),
     onClearHighlight: vi.fn(),
     onCopy: vi.fn(),
@@ -311,14 +311,11 @@ describe('VerseActionPopover', () => {
       expect(container.querySelector('[role="dialog"]')).not.toBeNull();
     });
 
-    it('should have correct position attributes', () => {
-      const position = { x: 200, y: 300 };
-      const { container } = render(<VerseActionPopover {...defaultProps} position={position} />);
+    it('should have fixed positioning for popover API', () => {
+      const { container } = render(<VerseActionPopover {...defaultProps} />);
 
       const popover = container.querySelector('[role="dialog"]')!;
-      expect((popover as HTMLElement).style.left).toBe('200px');
-      expect((popover as HTMLElement).style.top).toBe('300px');
-      expect((popover as HTMLElement).style.transform).toBe('translateX(-50%)');
+      expect((popover as HTMLElement).style.position).toBe('fixed');
     });
   });
 

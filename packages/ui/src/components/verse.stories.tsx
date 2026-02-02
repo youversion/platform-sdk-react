@@ -460,25 +460,21 @@ function VerseActionPopoverDemo(props: BibleTextViewProps) {
   const [selectedVerses, setSelectedVerses] = React.useState<number[]>([]);
   const [highlightedVerses, setHighlightedVerses] = React.useState<Record<number, string>>({});
   const [popoverOpen, setPopoverOpen] = React.useState(false);
-  const [popoverPosition, setPopoverPosition] = React.useState({ x: 0, y: 0 });
+  const [anchorElement, setAnchorElement] = React.useState<HTMLElement | null>(null);
 
   const handleVerseSelect = React.useCallback((verses: number[]) => {
     setSelectedVerses(verses);
 
     if (verses.length === 0) {
       setPopoverOpen(false);
+      setAnchorElement(null);
       return;
     }
 
-    // Position popover below last selected verse
     const lastVerse = Math.max(...verses);
     const verseEl = containerRef.current?.querySelector(`.yv-v[v="${lastVerse}"]`);
-    if (verseEl) {
-      const rect = verseEl.getBoundingClientRect();
-      setPopoverPosition({
-        x: rect.left + rect.width / 2,
-        y: rect.bottom + 8,
-      });
+    if (verseEl instanceof HTMLElement) {
+      setAnchorElement(verseEl);
     }
     setPopoverOpen(true);
   }, []);
@@ -572,7 +568,7 @@ function VerseActionPopoverDemo(props: BibleTextViewProps) {
         activeHighlights={activeHighlights}
         selectedVerses={selectedVerses}
         highlightedVerses={highlightedVerses}
-        position={popoverPosition}
+        anchorElement={anchorElement}
         onHighlight={handleHighlight}
         onClearHighlight={handleClearHighlight}
         onCopy={() => {

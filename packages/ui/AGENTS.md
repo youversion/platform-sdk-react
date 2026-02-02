@@ -29,11 +29,14 @@ src/index.ts           # Entry point with style injection side effect
 ✅ Do: Use Radix UI primitives from `components/ui/` for low-level behaviors (modals, popovers, etc.)
 ✅ Do: Use Tailwind classes with the `yv:` prefix only
 ✅ Do: Use semantic theme tokens (`yv:text-muted-foreground`, `yv:bg-destructive`) instead of arbitrary colors
+✅ Do: Keep components SSR-safe (see SSR SAFETY section below)
 
 ❌ Don't: Make raw network requests from UI components
 ❌ Don't: Import from `@youversion/platform-core` directly (except re-exports in index.ts)
 ❌ Don't: Add global CSS files; all styling goes through Tailwind build and `injectStyles`
 ❌ Don't: Use unprefixed Tailwind classes (causes collisions in consumer apps)
+❌ Don't: Access `window`, `document`, or browser APIs outside of `useEffect`
+❌ Don't: Use `useLayoutEffect` (causes React warnings during SSR)
 
 ## CONVENTIONS
 - React 19+ peer dependency
@@ -166,6 +169,26 @@ From repo root, `pnpm build` runs Turbo which builds in order:
 1. `@youversion/platform-core`
 2. `@youversion/platform-react-hooks`
 3. `@youversion/platform-react-ui` (build:css → build:js → build:types)
+
+## SSR SAFETY
+Components must work with SSR frameworks (Next.js, Remix, etc.) without errors or warnings:
+
+- **All browser API access must be inside `useEffect`** - never access `window`, `document`, `navigator`, `localStorage`, or DOM APIs at module level or during render
+- **Use `useEffect` instead of `useLayoutEffect`** - `useLayoutEffect` logs warnings during SSR; since our components typically start hidden/closed, the visual flash concern doesn't apply
+- **Guard dynamic imports** - polyfills and browser-only code should be loaded inside `useEffect`
+- **Props like `anchorElement` will be `null` during SSR** - always check before accessing
+
+Example pattern for browser-only code:
+```tsx
+useEffect(() => {
+  // Safe: only runs on client after hydration
+  if ('anchorName' in document.documentElement.style) {
+    // native support
+  } else {
+    // load polyfill
+  }
+}, []);
+```
 
 ## CRITICAL
 - **Side effect**: importing package injects styles automatically
