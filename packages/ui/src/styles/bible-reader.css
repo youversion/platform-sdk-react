@@ -119,19 +119,6 @@
     text-underline-offset: 0.33em;
   }
 
-  /* Only show pointer cursor when verses are selectable */
-  &[data-selectable='true'] .yv-v,
-  &[data-selectable='true'] .verse {
-    cursor: pointer;
-  }
-
-  /* Selected verse styling */
-  & .yv-v.yv-v-selected {
-    text-decoration: underline;
-    text-decoration-color: var(--yv-border);
-    text-underline-offset: 0.33em;
-  }
-
   /* Demo highlighted verse styling 20% opacity of expressive yellow 30 */
   & .yv-v.yv-v-highlighted {
     background-color: rgba(241, 156, 51, 0.2);
