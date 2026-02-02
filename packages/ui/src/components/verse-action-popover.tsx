@@ -17,7 +17,7 @@ type VerseActionPopoverProps = {
   highlightedVerses: Record<number, string>;
   position: { x: number; y: number };
   onHighlight: (color: string) => void;
-  onClearHighlights: () => void;
+  onClearHighlight: (color: string) => void;
   onCopy: () => void;
   onShare: () => void;
   theme?: 'light' | 'dark';
@@ -79,7 +79,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   highlightedVerses,
   position,
   onHighlight,
-  onClearHighlights,
+  onClearHighlight,
   onCopy,
   onShare,
   theme = 'light',
@@ -185,7 +185,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
             key={key}
             color={color}
             showX={showX}
-            onClick={() => (showX ? onClearHighlights() : onHighlight(color))}
+            onClick={() => (showX ? onClearHighlight(color) : onHighlight(color))}
           />
         ))}
       </div>

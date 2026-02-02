@@ -505,17 +505,31 @@ function VerseActionPopoverDemo(props: BibleTextViewProps) {
     [selectedVerses],
   );
 
-  const handleClearHighlights = React.useCallback(() => {
-    setHighlightedVerses((prev) => {
-      const next = { ...prev };
-      for (const verse of selectedVerses) {
-        delete next[verse];
+  const handleClearHighlight = React.useCallback(
+    (color: string) => {
+      setHighlightedVerses((prev) => {
+        const next = { ...prev };
+        for (const verse of selectedVerses) {
+          // Only remove if this verse has the specified color
+          if (next[verse] === color) {
+            delete next[verse];
+          }
+        }
+        return next;
+      });
+      // Check if any highlights remain in the selection
+      const hasRemaining = selectedVerses.some((v) => {
+        const currentColor = highlightedVerses[v];
+        return currentColor && currentColor !== color;
+      });
+      // Dismiss popover only if no highlights remain (AC 8/8a)
+      if (!hasRemaining) {
+        setPopoverOpen(false);
+        setSelectedVerses([]);
       }
-      return next;
-    });
-    setPopoverOpen(false);
-    setSelectedVerses([]);
-  }, [selectedVerses]);
+    },
+    [selectedVerses, highlightedVerses],
+  );
 
   return (
     <div
@@ -560,7 +574,7 @@ function VerseActionPopoverDemo(props: BibleTextViewProps) {
         highlightedVerses={highlightedVerses}
         position={popoverPosition}
         onHighlight={handleHighlight}
-        onClearHighlights={handleClearHighlights}
+        onClearHighlight={handleClearHighlight}
         onCopy={() => {
           // Do nothing at this second
         }}

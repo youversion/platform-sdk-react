@@ -11,7 +11,7 @@ describe('VerseActionPopover', () => {
     highlightedVerses: {},
     position: { x: 100, y: 100 },
     onHighlight: vi.fn(),
-    onClearHighlights: vi.fn(),
+    onClearHighlight: vi.fn(),
     onCopy: vi.fn(),
     onShare: vi.fn(),
   };
@@ -223,8 +223,8 @@ describe('VerseActionPopover', () => {
       expect(applyButtons).toHaveLength(5);
     });
 
-    it('should call onClearHighlights when X circle clicked', () => {
-      const onClearHighlights = vi.fn();
+    it('should call onClearHighlight with color when X circle clicked', () => {
+      const onClearHighlight = vi.fn();
       const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0]]);
       const selectedVerses = [1];
       const highlightedVerses = { 1: HIGHLIGHT_COLORS[0] };
@@ -235,13 +235,43 @@ describe('VerseActionPopover', () => {
           activeHighlights={activeHighlights}
           selectedVerses={selectedVerses}
           highlightedVerses={highlightedVerses}
-          onClearHighlights={onClearHighlights}
+          onClearHighlight={onClearHighlight}
         />,
       );
 
       const removeButton = screen.getByRole('button', { name: /Clear highlight/ });
       fireEvent.click(removeButton);
-      expect(onClearHighlights).toHaveBeenCalled();
+      expect(onClearHighlight).toHaveBeenCalledWith(HIGHLIGHT_COLORS[0]);
+    });
+
+    it('should call onClearHighlight with correct color for each button clicked', () => {
+      const onClearHighlight = vi.fn();
+      const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0], HIGHLIGHT_COLORS[1]]);
+      const selectedVerses = [1, 2];
+      const highlightedVerses = { 1: HIGHLIGHT_COLORS[0], 2: HIGHLIGHT_COLORS[1] };
+
+      const { container } = render(
+        <VerseActionPopover
+          {...defaultProps}
+          activeHighlights={activeHighlights}
+          selectedVerses={selectedVerses}
+          highlightedVerses={highlightedVerses}
+          onClearHighlight={onClearHighlight}
+        />,
+      );
+
+      const removeButtons = Array.from(
+        container.querySelectorAll('[aria-label*="Clear highlight"]'),
+      );
+      expect(removeButtons).toHaveLength(2);
+
+      // Click first remove button (yellow)
+      fireEvent.click(removeButtons[0]);
+      expect(onClearHighlight).toHaveBeenCalledWith(HIGHLIGHT_COLORS[0]);
+
+      // Click second remove button (green)
+      fireEvent.click(removeButtons[1]);
+      expect(onClearHighlight).toHaveBeenCalledWith(HIGHLIGHT_COLORS[1]);
     });
   });
 
