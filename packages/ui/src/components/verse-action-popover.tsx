@@ -120,15 +120,18 @@ const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   }, [open]);
 
   // Build color circles:
-  // 1. Active highlights with X (to clear) - always shown first
-  // 2. Non-active colors without X (to apply) - shown if any verse can be highlighted/re-highlighted
+  // 1. Active highlights with X (to clear) - always shown first/left
+  // 2. Apply colors (without X):
+  //    - If hasUnhighlightedVerses: show ALL colors (active color can be applied to unhighlighted verse)
+  //    - If only re-highlighting: show only inactive colors (no point applying same color)
   const activeColors = HIGHLIGHT_COLORS.filter((c) => activeHighlights.has(c));
   const inactiveColors = HIGHLIGHT_COLORS.filter((c) => !activeHighlights.has(c));
+  const applyColors = hasUnhighlightedVerses ? HIGHLIGHT_COLORS : inactiveColors;
   const showApplyColors = hasUnhighlightedVerses || activeHighlights.size > 0;
   const colorCircles = [
     ...activeColors.map((color) => ({ color, showX: true, key: `${color}-clear` })),
     ...(showApplyColors
-      ? inactiveColors.map((color) => ({ color, showX: false, key: `${color}-apply` }))
+      ? applyColors.map((color) => ({ color, showX: false, key: `${color}-apply` }))
       : []),
   ];
 
