@@ -13,6 +13,7 @@ type VerseActionPopoverProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   activeHighlights: Set<string>;
+  hasUnhighlightedVerses: boolean;
   position: { x: number; y: number };
   onHighlight: (color: string) => void;
   onClearHighlights: () => void;
@@ -73,6 +74,7 @@ const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   open,
   onOpenChange,
   activeHighlights,
+  hasUnhighlightedVerses,
   position,
   onHighlight,
   onClearHighlights,
@@ -117,12 +119,17 @@ const VerseActionPopover: FC<VerseActionPopoverProps> = ({
     }
   }, [open]);
 
-  // Build color circles: active highlights (with X) first, then remaining colors
+  // Build color circles:
+  // 1. Active highlights with X (to clear) - always shown first
+  // 2. Non-active colors without X (to apply) - shown if any verse can be highlighted/re-highlighted
   const activeColors = HIGHLIGHT_COLORS.filter((c) => activeHighlights.has(c));
   const inactiveColors = HIGHLIGHT_COLORS.filter((c) => !activeHighlights.has(c));
+  const showApplyColors = hasUnhighlightedVerses || activeHighlights.size > 0;
   const colorCircles = [
     ...activeColors.map((color) => ({ color, showX: true, key: `${color}-clear` })),
-    ...inactiveColors.map((color) => ({ color, showX: false, key: color })),
+    ...(showApplyColors
+      ? inactiveColors.map((color) => ({ color, showX: false, key: `${color}-apply` }))
+      : []),
   ];
 
   if (!open) {

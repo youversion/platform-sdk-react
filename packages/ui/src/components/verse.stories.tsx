@@ -490,6 +490,10 @@ function VerseActionPopoverDemo(props: BibleTextViewProps) {
     );
   }, [selectedVerses, highlightedVerses]);
 
+  const hasUnhighlightedVerses = React.useMemo(() => {
+    return selectedVerses.some((v) => !highlightedVerses[v]);
+  }, [selectedVerses, highlightedVerses]);
+
   const handleHighlight = React.useCallback(
     (color: string) => {
       setHighlightedVerses((prev) => {
@@ -556,6 +560,7 @@ function VerseActionPopoverDemo(props: BibleTextViewProps) {
         open={popoverOpen && selectedVerses.length > 0}
         onOpenChange={setPopoverOpen}
         activeHighlights={activeHighlights}
+        hasUnhighlightedVerses={hasUnhighlightedVerses}
         position={popoverPosition}
         onHighlight={handleHighlight}
         onClearHighlights={handleClearHighlights}
