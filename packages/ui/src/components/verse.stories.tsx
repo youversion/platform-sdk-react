@@ -495,9 +495,7 @@ function VerseActionPopoverDemo(props: BibleTextViewProps) {
       setHighlightedVerses((prev) => {
         const next = { ...prev };
         for (const verse of selectedVerses) {
-          if (!next[verse]) {
-            next[verse] = color;
-          }
+          next[verse] = color;
         }
         return next;
       });
