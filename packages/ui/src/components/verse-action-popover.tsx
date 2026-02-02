@@ -136,6 +136,10 @@ const VerseActionPopover: FC<VerseActionPopoverProps> = ({
     }
   }
 
+  if (!open) {
+    return null;
+  }
+
   return (
     <div
       ref={popoverRef}

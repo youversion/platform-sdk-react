@@ -505,6 +505,8 @@ function VerseActionPopoverDemo(props: BibleTextViewProps) {
         }
         return next;
       });
+      setPopoverOpen(false);
+      setSelectedVerses([]);
     },
     [selectedVerses],
   );
@@ -520,6 +522,8 @@ function VerseActionPopoverDemo(props: BibleTextViewProps) {
         }
         return next;
       });
+      setPopoverOpen(false);
+      setSelectedVerses([]);
     },
     [selectedVerses],
   );
@@ -559,23 +563,21 @@ function VerseActionPopoverDemo(props: BibleTextViewProps) {
         />
       </div>
 
-      {selectedVerses.length > 0 && (
-        <VerseActionPopover
-          open={popoverOpen}
-          onOpenChange={setPopoverOpen}
-          activeHighlights={activeHighlights}
-          hasUnhighlightedVerses={hasUnhighlightedVerses}
-          position={popoverPosition}
-          onHighlight={handleHighlight}
-          onClearHighlight={handleClearHighlight}
-          onCopy={() => {
-            // Do nothing at this second
-          }}
-          onShare={() => {
-            // Do nothing at this second
-          }}
-        />
-      )}
+      <VerseActionPopover
+        open={popoverOpen && selectedVerses.length > 0}
+        onOpenChange={setPopoverOpen}
+        activeHighlights={activeHighlights}
+        hasUnhighlightedVerses={hasUnhighlightedVerses}
+        position={popoverPosition}
+        onHighlight={handleHighlight}
+        onClearHighlight={handleClearHighlight}
+        onCopy={() => {
+          // Do nothing at this second
+        }}
+        onShare={() => {
+          // Do nothing at this second
+        }}
+      />
     </div>
   );
 }
