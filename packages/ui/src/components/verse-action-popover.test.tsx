@@ -341,7 +341,7 @@ describe('VerseActionPopover', () => {
       const colorButtons = container.querySelectorAll('[aria-label*="highlight"]');
       colorButtons.forEach((btn) => {
         const label = btn.getAttribute('aria-label');
-        expect(label).toMatch(/^(Apply|Clear) (yellow|green|blue|orange|pink) highlight$/);
+        expect(label).toMatch(/^(Apply|Clear) highlight$/);
       });
 
       // Check action buttons have accessible text (they use icon + text)
