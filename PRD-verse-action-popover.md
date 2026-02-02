@@ -38,8 +38,3 @@ When multiple highlight colors are active in selection, clicking an X removes on
 
 ### AC 9 - All 5 colors highlighted
 When all 5 verses with all 5 different colors are selected (or all 5 colors are already active), popover shows all 5 remove buttons (X) with no apply buttons (no new colors available). Total: 5 circles.
-
-### AC 10 - Remove highlight verse actions popover remaining open edge-case
-When two or more verses are selected and one has a highlight, when I remove that highlight from the verse, then both those verses remain selected and the verse actions popover remains open. 
-
-Yes, this differs from the existing criteria and is an edge case. The reason this edge case exists is if someone was removing a highlight and then wanted to highlight the remaining verses a single color, then they could do that. (This is the experience that exists on iOS and I was told to align with iOS.)
