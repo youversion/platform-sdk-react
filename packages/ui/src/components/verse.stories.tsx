@@ -559,21 +559,23 @@ function VerseActionPopoverDemo(props: BibleTextViewProps) {
         />
       </div>
 
-      <VerseActionPopover
-        open={popoverOpen}
-        onOpenChange={setPopoverOpen}
-        activeHighlights={activeHighlights}
-        hasUnhighlightedVerses={hasUnhighlightedVerses}
-        position={popoverPosition}
-        onHighlight={handleHighlight}
-        onClearHighlight={handleClearHighlight}
-        onCopy={() => {
-          // Do nothing at this second
-        }}
-        onShare={() => {
-          // Do nothing at this second
-        }}
-      />
+      {selectedVerses.length > 0 && (
+        <VerseActionPopover
+          open={popoverOpen}
+          onOpenChange={setPopoverOpen}
+          activeHighlights={activeHighlights}
+          hasUnhighlightedVerses={hasUnhighlightedVerses}
+          position={popoverPosition}
+          onHighlight={handleHighlight}
+          onClearHighlight={handleClearHighlight}
+          onCopy={() => {
+            // Do nothing at this second
+          }}
+          onShare={() => {
+            // Do nothing at this second
+          }}
+        />
+      )}
     </div>
   );
 }
