@@ -5,7 +5,7 @@ import React from 'react';
 import { type BibleTextViewProps, BibleTextView } from './verse';
 import { Button } from './ui/button';
 import { XIcon } from '@/components/icons/x';
-import VerseActionPopover from './verse-action-popover';
+import { VerseActionPopover } from './verse-action-popover';
 
 // USFM format: BOOK.CHAPTER or BOOK.CHAPTER.VERSE or BOOK.CHAPTER.VERSE-VERSE
 const USFM_PATTERN = /^[A-Z1-4]{3}\.\d+(\.\d+(-\d+)?)?$/;

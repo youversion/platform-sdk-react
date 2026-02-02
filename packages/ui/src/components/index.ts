@@ -9,3 +9,4 @@ export { YouVersionAuthButton, type YouVersionAuthButtonProps } from './YouVersi
 export { VerseOfTheDay, type VerseOfTheDayProps } from './verse-of-the-day';
 export { BibleTextView, type BibleTextViewProps } from './verse';
 export { BibleWidgetView, type BibleWidgetViewProps } from './bible-widget-view';
+export { VerseActionPopover, HIGHLIGHT_COLORS } from './verse-action-popover';

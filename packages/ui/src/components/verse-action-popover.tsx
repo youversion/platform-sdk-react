@@ -69,7 +69,7 @@ function ActionButton({ icon, label, onClick }: ActionButtonProps) {
   );
 }
 
-const VerseActionPopover: FC<VerseActionPopoverProps> = ({
+export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   open,
   onOpenChange,
   activeHighlights,
@@ -178,5 +178,3 @@ const VerseActionPopover: FC<VerseActionPopoverProps> = ({
     </div>
   );
 };
-
-export default VerseActionPopover;
