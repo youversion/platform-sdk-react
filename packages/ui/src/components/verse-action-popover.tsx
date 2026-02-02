@@ -117,13 +117,13 @@ const VerseActionPopover: FC<VerseActionPopoverProps> = ({
     }
   }, [open]);
 
-  // Build color circles: always show all colors
-  // Active highlights show X (to clear), inactive show no X (to apply)
-  const colorCircles = HIGHLIGHT_COLORS.map((color) => ({
-    color,
-    showX: activeHighlights.has(color),
-    key: color,
-  }));
+  // Build color circles: active highlights (with X) first, then remaining colors
+  const activeColors = HIGHLIGHT_COLORS.filter((c) => activeHighlights.has(c));
+  const inactiveColors = HIGHLIGHT_COLORS.filter((c) => !activeHighlights.has(c));
+  const colorCircles = [
+    ...activeColors.map((color) => ({ color, showX: true, key: `${color}-clear` })),
+    ...inactiveColors.map((color) => ({ color, showX: false, key: color })),
+  ];
 
   if (!open) {
     return null;
