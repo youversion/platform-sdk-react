@@ -10,7 +10,13 @@ import {
   type ReactNode,
 } from 'react';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
-import { useBooks, useVersion, useTheme, useYVAuth } from '@youversion/platform-react-hooks';
+import {
+  useBooks,
+  useVersion,
+  useTheme,
+  useYVAuth,
+  YouVersionContext,
+} from '@youversion/platform-react-hooks';
 import { BibleChapterPicker } from './bible-chapter-picker';
 import { BibleVersionPicker } from './bible-version-picker';
 import { BibleTextView } from './verse';
@@ -237,6 +243,43 @@ function Content() {
   );
 }
 
+function UserMenu() {
+  const { auth, signIn, signOut, userInfo } = useYVAuth();
+
+  return (
+    <Popover>
+      <PopoverTrigger
+        data-testid="user-menu-trigger"
+        className={cn(
+          'yv:inline-flex yv:items-center yv:justify-center yv:justify-self-end yv:mr-4 yv:h-9 yv:rounded-md yv:bg-muted yv:text-foreground yv:hover:bg-muted/80 yv:hover:cursor-pointer yv:overflow-hidden',
+          !(auth.isAuthenticated && userInfo?.avatarUrlFormat) && 'yv:px-2',
+        )}
+      >
+        {auth.isAuthenticated && userInfo?.avatarUrlFormat ? (
+          <img
+            src={userInfo.getAvatarUrl(32, 32)?.toString()}
+            alt={userInfo.name || 'User avatar'}
+            className="yv:size-full yv:rounded-full yv:object-cover"
+          />
+        ) : (
+          <PersonIcon />
+        )}
+      </PopoverTrigger>
+      <PopoverContent className="yv:rounded-[6px] yv:sm:w-min yv:px-4 yv:mb-6" showHeader={false}>
+        {auth.isAuthenticated ? (
+          <Button className="yv:text-black" onClick={() => signOut()}>
+            Sign Out
+          </Button>
+        ) : (
+          <Button className="yv:text-black" onClick={() => void signIn({ scopes: ['profile'] })}>
+            Sign In
+          </Button>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
   const {
     book,
@@ -250,7 +293,8 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
     setCurrentFontSize,
     background,
   } = useBibleReaderContext();
-  const { auth, signIn, signOut, userInfo } = useYVAuth();
+  const yvContext = useContext(YouVersionContext);
+  const authEnabled = yvContext?.authEnabled || false;
 
   return (
     <section
@@ -261,42 +305,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
       )}
     >
       <div className="yv:grid yv:w-full yv:grid-cols-7 yv:items-center yv:max-w-lg yv:gap-0.5">
-        <Popover>
-          <PopoverTrigger
-            data-testid="user-menu-trigger"
-            className={cn(
-              'yv:inline-flex yv:items-center yv:justify-center yv:justify-self-end yv:mr-4 yv:h-9 yv:rounded-md yv:bg-muted yv:text-foreground yv:hover:bg-muted/80 yv:hover:cursor-pointer yv:overflow-hidden',
-              !(auth.isAuthenticated && userInfo?.avatarUrlFormat) && 'yv:px-2',
-            )}
-          >
-            {auth.isAuthenticated && userInfo?.avatarUrlFormat ? (
-              <img
-                src={userInfo.getAvatarUrl(32, 32)?.toString()}
-                alt={userInfo.name || 'User avatar'}
-                className="yv:size-full yv:rounded-full yv:object-cover"
-              />
-            ) : (
-              <PersonIcon />
-            )}
-          </PopoverTrigger>
-          <PopoverContent
-            className="yv:rounded-[6px] yv:sm:w-min yv:px-4 yv:mb-6"
-            showHeader={false}
-          >
-            {auth.isAuthenticated ? (
-              <Button className="yv:text-black" onClick={signOut}>
-                Sign Out
-              </Button>
-            ) : (
-              <Button
-                className="yv:text-black"
-                onClick={() => void signIn({ scopes: ['profile'] })}
-              >
-                Sign In
-              </Button>
-            )}
-          </PopoverContent>
-        </Popover>
+        {authEnabled && <UserMenu />}
         <BibleChapterPicker.Root
           book={book}
           chapter={chapter}

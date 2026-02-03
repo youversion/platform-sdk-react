@@ -43,21 +43,40 @@ const preview: Preview = {
     (
       Story: PartialStoryFn<ReactRenderer>,
       context: StoryContext<ReactRenderer>,
-    ): React.ReactElement => (
-      <StorybookEnvCheck
-        requiredEnvVars={['STORYBOOK_YOUVERSION_APP_KEY', 'STORYBOOK_AUTH_REDIRECT_URL']}
-      >
-        <YouVersionProvider
-          appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || ''}
-          authRedirectUrl={import.meta.env.STORYBOOK_AUTH_REDIRECT_URL || ''}
-          apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
-          includeAuth={true}
-          theme={getTheme(context.globals.theme)}
-        >
-          <Story />
-        </YouVersionProvider>
-      </StorybookEnvCheck>
-    ),
+    ): React.ReactElement => {
+      const includeAuth = context.parameters.includeAuth !== false;
+      const requiredEnvVars = includeAuth
+        ? ['STORYBOOK_YOUVERSION_APP_KEY', 'STORYBOOK_AUTH_REDIRECT_URL']
+        : ['STORYBOOK_YOUVERSION_APP_KEY'];
+
+      if (includeAuth) {
+        return (
+          <StorybookEnvCheck requiredEnvVars={requiredEnvVars}>
+            <YouVersionProvider
+              appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || ''}
+              authRedirectUrl={import.meta.env.STORYBOOK_AUTH_REDIRECT_URL || ''}
+              apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
+              includeAuth={true}
+              theme={getTheme(context.globals.theme)}
+            >
+              <Story />
+            </YouVersionProvider>
+          </StorybookEnvCheck>
+        );
+      }
+
+      return (
+        <StorybookEnvCheck requiredEnvVars={requiredEnvVars}>
+          <YouVersionProvider
+            appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || ''}
+            apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
+            theme={getTheme(context.globals.theme)}
+          >
+            <Story />
+          </YouVersionProvider>
+        </StorybookEnvCheck>
+      );
+    },
   ],
   parameters: {
     controls: {

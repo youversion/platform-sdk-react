@@ -7,6 +7,7 @@ type YouVersionContextData = {
   apiHost?: string;
   installationId?: string;
   theme?: 'light' | 'dark';
+  authEnabled?: boolean;
 };
 
 export const YouVersionContext = createContext<YouVersionContextData | null>(null);
