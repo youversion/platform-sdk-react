@@ -583,7 +583,7 @@ function Content() {
                     type="button"
                     variant="ghost"
                   >
-                    <ItemContent className="yv:flex yv:flex-row yv:justify-between yv:items-center yv:h-10 yv:overflow-hidden">
+                    <ItemContent className="yv:flex yv:flex-row yv:justify-between yv:items-center">
                       <ItemTitle className="yv:text-start yv:line-clamp-2 yv:min-w-0 yv:flex-1 yv:truncate">
                         {suggestedLanguage.display_names?.en}
                       </ItemTitle>
@@ -619,7 +619,7 @@ function Content() {
                     type="button"
                     variant="ghost"
                   >
-                    <ItemContent className="yv:flex yv:flex-row yv:justify-between yv:items-center yv:h-10 yv:overflow-hidden">
+                    <ItemContent className="yv:flex yv:flex-row yv:justify-between yv:items-center">
                       <ItemTitle className="yv:text-start yv:line-clamp-2 yv:truncate yv:min-w-0 yv:max-w-2/3 yv:flex-1">
                         {language.display_names?.en}
                       </ItemTitle>
