@@ -205,11 +205,6 @@ function Root({
     page_size: '*',
   });
 
-  /**
-   * I really dislike this api and want to make it like useLanguages above where you
-   * pass in an object. This would give us better typesafety and autocomplete through
-   * TypeScript which would be less error prone.
-   **/
   const { versions } = useVersions(selectedLanguageId);
   const { versions: versionsLanguageInfo } = useVersions('*', undefined, {
     fields: ['id', 'language_tag'],
