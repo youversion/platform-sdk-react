@@ -148,6 +148,8 @@ type BibleVersionPickerContextType = {
   setIsLanguagesOpen: (open: boolean) => void;
   recentVersions: RecentVersion[];
   addRecentVersion: (version: RecentVersion) => void;
+  isPopoverOpen: boolean;
+  setIsPopoverOpen: (open: boolean) => void;
 };
 
 const BibleVersionPickerContext = createContext<BibleVersionPickerContextType | null>(null);
@@ -190,6 +192,7 @@ function Root({
   const [searchQuery, setSearchQuery] = useState('');
   const [isLanguagesOpen, setIsLanguagesOpen] = useState(false);
   const [recentVersions, setRecentVersions] = useState<RecentVersion[]>(getRecentVersions);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const addRecentVersion = useCallback((version: RecentVersion) => {
     setRecentVersions((prev) => {
@@ -293,11 +296,15 @@ function Root({
     setIsLanguagesOpen,
     recentVersions,
     addRecentVersion,
+    isPopoverOpen,
+    setIsPopoverOpen,
   };
 
   return (
     <BibleVersionPickerContext.Provider value={contextValue}>
-      <Popover>{children}</Popover>
+      <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+        {children}
+      </Popover>
     </BibleVersionPickerContext.Provider>
   );
 }
@@ -349,10 +356,10 @@ function Content() {
     addRecentVersion,
     suggestedLanguages,
     languages,
+    setIsPopoverOpen,
   } = useBibleVersionPickerContext();
   const providerTheme = useTheme();
   const theme = background || providerTheme;
-  const closeRef = useRef<HTMLButtonElement>(null);
 
   const filteredRecentVersions = useMemo(() => {
     if (!searchQuery.trim()) return recentVersions;
@@ -381,7 +388,7 @@ function Content() {
       abbreviation: version.abbreviation,
     });
     setIsLanguagesOpen(false);
-    closeRef.current?.click();
+    setIsPopoverOpen(false);
   };
 
   function LanguagePicker() {
