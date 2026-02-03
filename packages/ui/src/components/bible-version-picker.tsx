@@ -254,7 +254,7 @@ function Root({
   });
 
   const suggestedLanguages = useMemo(() => {
-    const countryLanguagesIds = countryLanguages?.data.map((language) => language.id) || [];
+    const countryLanguagesIds = countryLanguages?.data?.map((language) => language.id) || [];
 
     // Extract language codes from browser (e.g., 'en-US' -> 'en')
     // Map over userLanguageCodes to preserve browser preference order
@@ -534,7 +534,7 @@ function Content() {
             : 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
         }`}
       >
-        <section className="yv:bg-muted yv:py-3 yv:w-full yv:rounded-t-2xl yv:border-b yv:border-border yv:grid yv:grid-cols-[auto_1fr] yv:gap-2 yv:items-center">
+        <section className="yv:bg-muted yv:px-2 yv:py-3 yv:w-full yv:rounded-t-2xl yv:border-b yv:border-border yv:grid yv:grid-cols-[auto_1fr] yv:gap-2 yv:items-center">
           <Button
             onClick={() => setIsLanguagesOpen(false)}
             variant="ghost"
@@ -548,7 +548,7 @@ function Content() {
         </section>
 
         <Tabs
-          className="yv:mt-6 yv:gap-4 yv:flex-1 yv:min-h-0 yv:flex yv:flex-col yv:px-4"
+          className="yv:mt-4 yv:gap-4 yv:flex-1 yv:min-h-0 yv:flex yv:flex-col yv:px-4"
           defaultValue="suggested"
         >
           <TabsList className="yv:w-full">
