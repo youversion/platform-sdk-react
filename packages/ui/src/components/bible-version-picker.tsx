@@ -264,7 +264,7 @@ function Root({
     // Extract language codes from browser (e.g., 'en-US' -> 'en')
     // Map over userLanguageCodes to preserve browser preference order
     const userLanguageCodes = (typeof navigator !== 'undefined' ? navigator.languages : []).map(
-      (code) => code.split('-')[0]?.toLowerCase() || '',
+      (code) => code.split('-')[0]?.toLowerCase(),
     );
     const userLanguages = userLanguageCodes
       .map((code) => uniqueLanguages.find((language) => language.id === code))
