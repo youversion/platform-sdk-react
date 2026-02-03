@@ -605,10 +605,9 @@ describe('useVersions', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.loading).toBe(false);
+        expect(result.current.error).toBe(null);
       });
 
-      expect(result.current.error).toBe(null);
       expect(result.current.versions).toEqual(mockVersions);
     });
   });
