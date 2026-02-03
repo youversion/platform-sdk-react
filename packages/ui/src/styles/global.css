@@ -128,7 +128,7 @@
   --yv-chart-3: var(--yv-purple-30);
   --yv-chart-4: var(--yv-orange-30);
   --yv-chart-5: var(--yv-magenta-30);
-  --yv-radius: 1rem;
+  --yv-radius: 2rem;
   --yv-sidebar: var(--yv-gray-2);
   --yv-sidebar-foreground: var(--yv-gray-50);
   --yv-sidebar-primary: var(--yv-teal-30);
