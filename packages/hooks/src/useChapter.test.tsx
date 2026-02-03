@@ -14,8 +14,7 @@ describe('useChapter', () => {
 
   const mockChapter: BibleChapter = {
     id: '1',
-    book_id: 'MAT',
-    chapter: 1,
+    passage_id: 'MAT.1',
     title: 'Matthew 1',
   };
 
