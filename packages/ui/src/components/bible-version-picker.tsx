@@ -185,7 +185,7 @@ function Root({
   const theme = background || providerTheme;
 
   const [selectedLanguageId, setSelectedLanguageId] = useState(
-    navigator.languages[0]?.split('-')[0] || 'en',
+    (typeof navigator !== 'undefined' && navigator.languages[0]?.split('-')[0]) || 'en',
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [isLanguagesOpen, setIsLanguagesOpen] = useState(false);
@@ -263,7 +263,7 @@ function Root({
 
     // Extract language codes from browser (e.g., 'en-US' -> 'en')
     // Map over userLanguageCodes to preserve browser preference order
-    const userLanguageCodes = navigator.languages.map(
+    const userLanguageCodes = (typeof navigator !== 'undefined' ? navigator.languages : []).map(
       (code) => code.split('-')[0]?.toLowerCase() || '',
     );
     const userLanguages = userLanguageCodes
