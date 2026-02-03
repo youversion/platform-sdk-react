@@ -497,6 +497,62 @@ export const AuthenticatedWithAvatar: Story = {
   },
 };
 
+export const LoadsSavedPreferencesFromLocalStorage: Story = {
+  tags: ['integration'],
+  args: {
+    versionId: 111,
+    book: 'JHN',
+    chapter: '1',
+    background: 'light',
+  },
+  beforeEach: () => {
+    localStorage.clear();
+    // Pre-populate localStorage with saved preferences
+    localStorage.setItem('youversion-platform:reader:font-size', '18');
+    localStorage.setItem('youversion-platform:reader:font-family', 'Source Serif');
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(
+      async () => {
+        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(verseContainer).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    // Verify the saved settings were applied via CSS variables
+    const verseContainer = canvasElement.querySelector<HTMLElement>(
+      '[data-slot="yv-bible-renderer"]',
+    )!;
+    await expect(verseContainer.style.getPropertyValue('--yv-reader-font-size')).toBe('18px');
+    await expect(verseContainer.style.getPropertyValue('--yv-reader-font-family')).toBe(
+      'Source Serif',
+    );
+
+    // Open settings and verify the correct font family button is active
+    const settingsButton = screen.getByRole('button', { name: /settings/i });
+    await userEvent.click(settingsButton);
+
+    await waitFor(async () => {
+      await expect(await screen.findByText('Reader Settings')).toBeInTheDocument();
+    });
+
+    const sourceSerifButton = screen.getByRole('button', { name: /source serif/i });
+    await expect(sourceSerifButton).toHaveClass('yv:bg-black');
+
+    const interButton = screen.getByRole('button', { name: /inter/i });
+    await expect(interButton).not.toHaveClass('yv:bg-black');
+  },
+};
+
 export const AuthenticatedWithoutAvatar: Story = {
   tags: ['integration'],
   args: {
