@@ -8,9 +8,6 @@ import {
   useVersion,
   useVersions,
 } from '@youversion/platform-react-hooks';
-import { ArrowLeftIcon } from './icons/arrow-left';
-import { GlobeIcon } from './icons/globe';
-import { SearchIcon } from './icons/search';
 import {
   createContext,
   type ReactNode,
@@ -22,12 +19,15 @@ import {
   useState,
 } from 'react';
 import { cn } from '@/lib/utils';
+import { ArrowLeftIcon } from './icons/arrow-left';
+import { GlobeIcon } from './icons/globe';
+import { SearchIcon } from './icons/search';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { InputGroup, InputGroupAddon, InputGroupInput } from './ui/input-group';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from './ui/item';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { InputGroup, InputGroupInput, InputGroupAddon } from './ui/input-group';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
 export const RECENT_VERSIONS_KEY = 'youversion-platform:picker:recent-versions';
 const MAX_RECENT_VERSIONS = 3;
@@ -559,6 +559,7 @@ function Content() {
               All ({totalLanguages})
             </TabsTrigger>
           </TabsList>
+
           <TabsContent value="suggested" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
             <ItemGroup className="yv:gap-1">
               <h3 className="yv:text-xl yv:font-bold yv:sticky yv:top-0 yv:z-10 yv:bg-popover yv:mb-2">
