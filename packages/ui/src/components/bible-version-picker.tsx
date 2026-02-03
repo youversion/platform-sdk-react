@@ -546,8 +546,9 @@ function Content() {
           </Button>
           <h2 className="yv:font-bold yv:text-base">Select Language</h2>
         </section>
+
         <Tabs
-          className="yv:mt-6 yv:gap-4 yv:flex-1 yv:min-h-0 yv:flex yv:flex-col yv:px-10"
+          className="yv:mt-6 yv:gap-4 yv:flex-1 yv:min-h-0 yv:flex yv:flex-col yv:px-4"
           defaultValue="suggested"
         >
           <TabsList className="yv:w-full">
