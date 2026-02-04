@@ -174,6 +174,35 @@ describe('useChapter', () => {
       expect(result.current.chapter).toBe(null);
     });
 
+    it('should clear error on successful refetch', async () => {
+      const error = new Error('Failed to fetch chapter');
+      mockGetChapter.mockRejectedValueOnce(error).mockResolvedValueOnce(mockChapter);
+
+      const wrapper = createWrapper({
+        appKey: mockAppKey,
+      });
+
+      const { result } = renderHook(() => useChapter(1, 'MAT', 1), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.error).toEqual(error);
+      expect(result.current.chapter).toBe(null);
+
+      act(() => {
+        result.current.refetch();
+      });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.error).toBe(null);
+      expect(result.current.chapter).toEqual(mockChapter);
+    });
+
     it('should support manual refetch', async () => {
       const wrapper = createWrapper({
         appKey: mockAppKey,
