@@ -108,7 +108,7 @@ function ItemContent({ className, ...props }: React.ComponentProps<'div'>): Reac
     <div
       data-slot="item-content"
       className={cn(
-        'yv:flex yv:flex-1 yv:flex-col yv:gap-1 yv:[&+[data-slot=item-content]]:flex-none',
+        'yv:flex yv:flex-1 yv:flex-col yv:gap-0 yv:[&+[data-slot=item-content]]:flex-none',
         className,
       )}
       {...props}

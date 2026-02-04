@@ -24,7 +24,7 @@ function TabsList({
     <TabsPrimitive.List
       data-slot="tabs-list"
       className={cn(
-        'yv:bg-muted yv:text-muted-foreground yv:inline-flex yv:h-9 yv:w-fit yv:items-center yv:justify-center yv:rounded-lg yv:p-0.5',
+        'yv:bg-muted yv:text-muted-foreground yv:inline-flex yv:min-h-8 yv:w-fit yv:items-center yv:justify-center yv:rounded-[8px] yv:p-0.5',
         className,
       )}
       {...props}
@@ -40,7 +40,7 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        'yv:data-[state=active]:bg-background yv:dark:data-[state=active]:text-foreground yv:focus-visible:border-ring yv:focus-visible:ring-ring/50 yv:focus-visible:outline-ring yv:dark:data-[state=active]:border-input yv:dark:data-[state=active]:bg-input/30 yv:text-foreground yv:dark:text-muted-foreground yv:inline-flex yv:h-[calc(100%-1px)] yv:flex-1 yv:items-center yv:justify-center yv:gap-1.5 yv:rounded-md yv:border yv:border-transparent yv:px-2 yv:py-1 yv:text-sm yv:font-medium yv:whitespace-nowrap yv:transition-[color,box-shadow] yv:focus-visible:ring-[3px] yv:focus-visible:outline-1 yv:disabled:pointer-events-none yv:disabled:opacity-50 yv:data-[state=active]:shadow-sm yv:[&_svg]:pointer-events-none yv:[&_svg]:shrink-0 yv:[&_svg:not([class*=size-])]:size-4',
+        'yv:data-[state=active]:bg-background yv:dark:data-[state=active]:text-foreground yv:focus-visible:border-ring yv:focus-visible:ring-ring/50 yv:focus-visible:outline-ring yv:dark:data-[state=active]:border-input yv:text-foreground yv:leading-0 yv:dark:text-muted-foreground yv:inline-flex yv:h-full yv:flex-1 yv:items-center yv:justify-center yv:gap-1.5 yv:rounded-[6px] yv:border yv:border-transparent yv:px-2 yv:py-2 yv:text-xs yv:font-medium yv:data-[state=active]:font-bold yv:whitespace-nowrap yv:transition-[color,box-shadow] yv:focus-visible:ring-[3px] yv:focus-visible:outline-1 yv:disabled:pointer-events-none yv:disabled:opacity-50 yv:data-[state=active]:shadow-sm yv:[&_svg]:pointer-events-none yv:[&_svg]:shrink-0 yv:[&_svg:not([class*=size-])]:size-4 yv:cursor-pointer',
         className,
       )}
       {...props}
@@ -55,7 +55,7 @@ function TabsContent({
   return (
     <TabsPrimitive.Content
       data-slot="tabs-content"
-      className={cn('yv:flex-1 yv:outline-none', className)}
+      className={cn('yv:flex-1 yv:outline-none yv:overflow-y-auto', className)}
       {...props}
     />
   );

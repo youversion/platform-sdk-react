@@ -6,7 +6,7 @@
       "script": "Latn",
       "script_name": "Latin",
       "aliases": ["eng"],
-      "display_names": { "en": "English" },
+      "display_names": { "en": "English", "ko": "영어" },
       "scripts": ["Latn"],
       "variants": [],
       "countries": ["US", "GB", "CA", "AU"],
@@ -28,7 +28,7 @@
       "text_direction": "ltr",
       "writing_population": 77143580,
       "speaking_population": 78357046,
-      "default_bible_id": null
+      "default_bible_id": 88
     }
   ],
   "next_page_token": "eyJzdGFydCI6IDI1fQ==",
