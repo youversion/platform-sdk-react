@@ -306,6 +306,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
     >
       <div className="yv:grid yv:w-full yv:grid-cols-7 yv:items-center yv:max-w-lg yv:gap-0.5">
         {!!yvContext?.authEnabled && <UserMenu />}
+
         <BibleChapterPicker.Root
           book={book}
           chapter={chapter}
@@ -335,7 +336,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
           onVersionChange={setVersionId}
           background={background}
         >
-          <BibleVersionPicker.Trigger className="yv:col-span-2" aria-label="Change Bible version">
+          <BibleVersionPicker.Trigger aria-label="Change Bible version">
             {({ version, loading }) => (
               <Button
                 variant="secondary"
