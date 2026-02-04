@@ -248,26 +248,27 @@ function UserMenu() {
 
   return (
     <Popover>
-      <PopoverTrigger
-        data-testid="user-menu-trigger"
-        className={cn(
-          'yv:inline-flex yv:items-center yv:justify-center yv:justify-self-end yv:mr-4 yv:h-9 yv:rounded-md yv:bg-muted yv:text-foreground yv:hover:bg-muted/80 yv:hover:cursor-pointer yv:overflow-hidden',
-          !(auth.isAuthenticated && userInfo?.avatarUrlFormat) && 'yv:px-2',
-        )}
-      >
-        {auth.isAuthenticated && userInfo?.avatarUrlFormat ? (
-          <img
-            src={userInfo.getAvatarUrl(32, 32)?.toString()}
-            alt={userInfo.name || 'User avatar'}
-            className="yv:size-full yv:rounded-full yv:object-cover"
-          />
-        ) : (
-          <PersonIcon />
-        )}
+      <PopoverTrigger data-testid="user-menu-trigger">
+        <Button size="icon" variant="secondary">
+          {auth.isAuthenticated && userInfo?.avatarUrlFormat ? (
+            <img
+              src={userInfo.getAvatarUrl(32, 32)?.toString()}
+              alt={userInfo.name || 'User avatar'}
+              className="yv:size-full yv:rounded-full yv:object-cover"
+            />
+          ) : (
+            <PersonIcon className="yv:text-primary" />
+          )}
+        </Button>
       </PopoverTrigger>
-      <PopoverContent className="yv:rounded-[6px] yv:sm:w-min yv:px-4 yv:mb-6" showHeader={false}>
+
+      <PopoverContent
+        className="yv:rounded-[6px] yv:w-fit yv:px-4"
+        sideOffset={16}
+        showHeader={false}
+      >
         {auth.isAuthenticated ? (
-          <Button className="yv:text-black" onClick={() => signOut()}>
+          <Button className="yv:text-black" onClick={signOut}>
             Sign Out
           </Button>
         ) : (
@@ -294,7 +295,6 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
     background,
   } = useBibleReaderContext();
   const yvContext = useContext(YouVersionContext);
-  const authEnabled = yvContext?.authEnabled || false;
 
   return (
     <section
@@ -305,7 +305,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
       )}
     >
       <div className="yv:grid yv:w-full yv:grid-cols-7 yv:items-center yv:max-w-lg yv:gap-0.5">
-        {authEnabled && <UserMenu />}
+        {!!yvContext?.authEnabled && <UserMenu />}
         <BibleChapterPicker.Root
           book={book}
           chapter={chapter}
@@ -350,14 +350,13 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
         </BibleVersionPicker.Root>
 
         <Popover>
-          <PopoverTrigger
-            aria-label="Settings"
-            className="yv:col-span-1 yv:inline-flex yv:items-center yv:justify-center yv:justify-self-start yv:h-9 yv:px-2 yv:ml-4 yv:rounded-md yv:bg-muted yv:text-foreground yv:hover:bg-muted/80 yv:hover:cursor-pointer"
-          >
-            <GearIcon />
+          <PopoverTrigger aria-label="Settings">
+            <Button size="icon" variant="secondary">
+              <GearIcon className="yv:text-primary" />
+            </Button>
           </PopoverTrigger>
 
-          <PopoverContent className="yv:mb-6" heading="Reader Settings" theme={background}>
+          <PopoverContent sideOffset={16} heading="Reader Settings" theme={background}>
             <div className="yv:flex yv:flex-col yv:gap-4 yv:p-4">
               <div className="yv:grid yv:grid-cols-2">
                 <Button
