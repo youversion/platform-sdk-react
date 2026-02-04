@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 1.12.1
+
+### Patch Changes
+
+- 165feca: Fix user settings from localStorage not loading in the bible reader
+
 ## 1.12.0
 
 ### Minor Changes

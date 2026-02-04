@@ -1,5 +1,13 @@
 # @youversion/platform-react-hooks
 
+## 1.12.1
+
+### Patch Changes
+
+- 165feca: Fix user settings from localStorage not loading in the bible reader
+- Updated dependencies [165feca]
+  - @youversion/platform-core@1.12.1
+
 ## 1.12.0
 
 ### Minor Changes
