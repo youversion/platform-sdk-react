@@ -418,6 +418,7 @@ function Content() {
 
   return (
     <PopoverContent
+      className="yv:h-[66svh]"
       heading="Bible Versions"
       headerChild={<LanguagePicker />}
       theme={theme}
