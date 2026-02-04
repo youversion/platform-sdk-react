@@ -1,5 +1,20 @@
 # @youversion/platform-react-hooks
 
+## 1.13.0
+
+### Minor Changes
+
+- d5579d5: Add suggested languages to Bible version picker
+  - Auto-detect user's preferred language from browser settings instead of defaulting to English
+  - Display suggested languages based on available Bible versions and user locale
+  - Fetch complete language data with display names for better internationalization
+  - Add integration tests and Storybook stories for suggested languages functionality
+
+### Patch Changes
+
+- Updated dependencies [d5579d5]
+  - @youversion/platform-core@1.13.0
+
 ## 1.12.2
 
 ### Patch Changes
