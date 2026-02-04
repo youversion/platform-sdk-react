@@ -569,38 +569,46 @@ function Content() {
           </TabsList>
 
           <TabsContent value="suggested" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
-            <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">Regional</h3>
-            <ItemGroup className="yv:gap-1">
-              {suggestedLanguages.map((suggestedLanguage) => (
-                <Item
-                  key={suggestedLanguage.id}
-                  className={cn(
-                    'yv:hover:bg-muted yv:rounded-[8px] yv:px-4',
-                    selectedLanguageId === suggestedLanguage.id ? 'yv:bg-muted' : '',
-                  )}
-                  size="sm"
-                  role="listitem"
-                  aria-label={suggestedLanguage.display_names?.en}
-                  asChild
-                >
-                  <Button
-                    className="yv:w-full yv:h-auto"
-                    onClick={() => handleSelectLanguage(suggestedLanguage.id)}
-                    type="button"
-                    variant="ghost"
-                  >
-                    <ItemContent className="yv:flex yv:flex-row yv:justify-between yv:items-center">
-                      <ItemTitle className="yv:text-start yv:line-clamp-2 yv:min-w-0 yv:flex-1 yv:truncate">
-                        {suggestedLanguage.display_names?.en}
-                      </ItemTitle>
-                      <ItemDescription className="yv:shrink-0">
-                        {suggestedLanguage.display_names?.[suggestedLanguage.id]}
-                      </ItemDescription>
-                    </ItemContent>
-                  </Button>
-                </Item>
-              ))}
-            </ItemGroup>
+            {suggestedLanguages.length > 0 ? (
+              <>
+                <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">Regional</h3>
+                <ItemGroup className="yv:gap-1">
+                  {suggestedLanguages.map((suggestedLanguage) => (
+                    <Item
+                      key={suggestedLanguage.id}
+                      className={cn(
+                        'yv:hover:bg-muted yv:rounded-[8px] yv:px-4',
+                        selectedLanguageId === suggestedLanguage.id ? 'yv:bg-muted' : '',
+                      )}
+                      size="sm"
+                      role="listitem"
+                      aria-label={suggestedLanguage.display_names?.en}
+                      asChild
+                    >
+                      <Button
+                        className="yv:w-full yv:h-auto"
+                        onClick={() => handleSelectLanguage(suggestedLanguage.id)}
+                        type="button"
+                        variant="ghost"
+                      >
+                        <ItemContent className="yv:flex yv:flex-row yv:justify-between yv:items-center">
+                          <ItemTitle className="yv:text-start yv:line-clamp-2 yv:min-w-0 yv:flex-1 yv:truncate">
+                            {suggestedLanguage.display_names?.en}
+                          </ItemTitle>
+                          <ItemDescription className="yv:shrink-0">
+                            {suggestedLanguage.display_names?.[suggestedLanguage.id]}
+                          </ItemDescription>
+                        </ItemContent>
+                      </Button>
+                    </Item>
+                  ))}
+                </ItemGroup>
+              </>
+            ) : (
+              <p className="yv:px-4 yv:py-8 yv:text-center yv:text-muted-foreground">
+                No regional languages available
+              </p>
+            )}
           </TabsContent>
 
           <TabsContent value="all" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
