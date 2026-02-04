@@ -1,6 +1,14 @@
 'use client';
 
-import { createContext, useContext, useMemo, useState, useEffect, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  useEffect,
+  useLayoutEffect,
+  type ReactNode,
+} from 'react';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import { useBooks, useVersion, useTheme, useYVAuth } from '@youversion/platform-react-hooks';
 import { BibleChapterPicker } from './bible-chapter-picker';
@@ -96,26 +104,34 @@ function Root({
     onChange: onVersionChange,
   });
 
-  const [currentFontSize, setCurrentFontSize] = useState(() => {
-    const validatedFontSize =
-      fontSize > MAX_FONT_SIZE || fontSize < MIN_FONT_SIZE ? DEFAULT_FONT_SIZE : fontSize;
-    if (typeof window === 'undefined') return validatedFontSize;
-    const size = localStorage.getItem('youversion-platform:reader:font-size');
-    return size ? parseInt(size) : validatedFontSize;
-  });
+  const validatedFontSize =
+    fontSize > MAX_FONT_SIZE || fontSize < MIN_FONT_SIZE ? DEFAULT_FONT_SIZE : fontSize;
 
-  const [currentFontFamily, setCurrentFontFamily] = useState(() => {
-    if (typeof window === 'undefined') return fontFamily;
-    return localStorage.getItem('youversion-platform:reader:font-family') || fontFamily;
-  });
+  const [currentFontSize, setCurrentFontSize] = useState(validatedFontSize);
+  const [currentFontFamily, setCurrentFontFamily] = useState(fontFamily);
 
+  // Load saved preferences from localStorage before paint (avoids flash of default values)
+  useLayoutEffect(() => {
+    const savedFontSize = localStorage.getItem('youversion-platform:reader:font-size');
+    if (savedFontSize) {
+      const parsed = parseInt(savedFontSize);
+      if (parsed >= MIN_FONT_SIZE && parsed <= MAX_FONT_SIZE) {
+        setCurrentFontSize(parsed);
+      }
+    }
+
+    const savedFontFamily = localStorage.getItem('youversion-platform:reader:font-family');
+    if (savedFontFamily) {
+      setCurrentFontFamily(savedFontFamily);
+    }
+  }, []);
+
+  // Save preferences to localStorage when they change
   useEffect(() => {
-    if (typeof window === 'undefined') return;
     localStorage.setItem('youversion-platform:reader:font-size', currentFontSize.toString());
   }, [currentFontSize]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
     localStorage.setItem('youversion-platform:reader:font-family', currentFontFamily);
   }, [currentFontFamily]);
 
