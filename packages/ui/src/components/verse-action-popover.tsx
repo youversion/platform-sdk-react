@@ -169,7 +169,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
       aria-label="Verse actions"
       className={cn(
         'yv:bg-card yv:text-popover-foreground',
-        'yv:rounded-full yv:drop-shadow-[0_6px_12px_rgb(0,0,0,0.2)]',
+        'yv:rounded-full yv:drop-shadow-[0px_4.8432px_20px_rgba(0,0,0,0.19)]',
         'yv:px-4 yv:py-2',
         'yv:flex yv:items-center yv:gap-3',
         'yv:m-0',
