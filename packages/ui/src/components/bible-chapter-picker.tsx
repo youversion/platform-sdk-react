@@ -138,7 +138,7 @@ function Root({
         {children}
 
         {/* data-yv-sdk for styles is needed because the popover gets rendered outside of the providers scope **/}
-        <PopoverContent heading="Books" theme={theme} side="top">
+        <PopoverContent sideOffset={16} heading="Books" theme={theme} side="top">
           <Accordion
             className="yv:relative yv:overflow-y-auto yv:bg-background yv:px-6"
             type="single"
