@@ -268,8 +268,9 @@ function Root({
       .map((code) => uniqueLanguages.find((language) => language.id === code))
       .filter((language) => language !== undefined);
 
-    const filteredCountryLanguages: Language[] =
-      uniqueLanguages.filter((language) => countryLanguagesIds.includes(language.id)) || [];
+    const filteredCountryLanguages = uniqueLanguages.filter((language) =>
+      countryLanguagesIds.includes(language.id),
+    );
     const sortedCountryLanguages = filteredCountryLanguages.sort(
       (a, b) => (b.speaking_population || 0) - (a.speaking_population || 0),
     );
