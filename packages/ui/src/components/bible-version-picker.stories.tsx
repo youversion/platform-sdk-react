@@ -145,9 +145,12 @@ export const InteractiveLanguageSelection: Story = {
     const koreanOption = await screen.findByRole('listitem', { name: /korean/i });
     await userEvent.click(koreanOption);
 
-    await expect(await screen.findByRole('button', { name: /select language/i })).toHaveTextContent(
-      /korean/i,
-    );
+    // Wait for the language button to update with the selected language
+    await waitFor(async () => {
+      await expect(
+        await screen.findByRole('button', { name: /select language/i }),
+      ).toHaveTextContent(/korean/i);
+    });
     await userEvent.click(languageButton);
   },
 };
@@ -236,15 +239,17 @@ export const SuggestedLanguagesTabs: Story = {
 
     // Find the active tab panel again after switching tabs
     const suggestedTabPanelAgain = await screen.findByRole('tabpanel');
-    const englishOption = within(suggestedTabPanelAgain).getByRole('listitem', {
+    const englishOption = await within(suggestedTabPanelAgain).findByRole('listitem', {
       name: /english/i,
     });
     await userEvent.click(englishOption);
 
     // Verify the language button shows the selected language
-    await expect(await screen.findByRole('button', { name: /select language/i })).toHaveTextContent(
-      /english/i,
-    );
+    await waitFor(async () => {
+      await expect(
+        await screen.findByRole('button', { name: /select language/i }),
+      ).toHaveTextContent(/english/i);
+    });
   },
 };
 
