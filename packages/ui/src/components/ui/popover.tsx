@@ -48,7 +48,12 @@ function PopoverContent({
         {...props}
       >
         {showHeader ? (
-          <section className="yv:bg-muted yv:py-3 yv:w-full yv:rounded-t-2xl yv:px-4 yv:border-b yv:border-border yv:flex yv:flex-row yv:justify-between yv:items-center yv:gap-1">
+          <section
+            className={cn([
+              'yv:bg-muted yv:py-3 yv:rounded-t-2xl yv:px-4 yv:border-b yv:border-border yv:grid yv:grid-cols-[1fr_auto] yv:justify-between yv:items-center yv:gap-2',
+              headerChild ? 'yv:grid-cols-[1fr_auto_auto]' : '',
+            ])}
+          >
             <h2 className="yv:font-bold yv:text-base">{heading}</h2>
             {headerChild}
             <PopoverClose asChild>

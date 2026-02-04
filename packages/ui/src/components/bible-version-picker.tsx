@@ -393,26 +393,24 @@ function Content() {
 
   function LanguagePicker() {
     return (
-      <div className="yv:ml-auto">
-        <Button
-          aria-label="Select language"
-          className="yv:bg-card yv:border yv:border-transparent yv:hover:bg-card yv:hover:border-border"
-          size="sm"
-          onClick={() => setIsLanguagesOpen(true)}
+      <Button
+        aria-label="Select language"
+        className="yv:ml-auto yv:bg-card yv:border yv:border-transparent yv:hover:bg-card yv:hover:border-border yv:max-w-40"
+        size="sm"
+        onClick={() => setIsLanguagesOpen(true)}
+        variant="secondary"
+      >
+        <GlobeIcon className="yv:size-4" />
+        <span className="yv:text-sm yv:font-medium yv:truncate">
+          {selectedLanguage?.display_names?.en || selectedLanguage?.language}
+        </span>
+        <Badge
           variant="secondary"
+          className="yv:h-5 yv:min-w-5 yv:rounded-full yv:px-1 yv:font-mono yv:tabular-nums"
         >
-          <GlobeIcon className="yv:size-4" />
-          <span className="yv:text-sm yv:font-medium yv:truncate">
-            {selectedLanguage?.display_names?.en || selectedLanguage?.language}
-          </span>
-          <Badge
-            variant="secondary"
-            className="yv:h-5 yv:min-w-5 yv:rounded-full yv:px-1 yv:font-mono yv:tabular-nums"
-          >
-            {filteredVersions.length + filteredRecentVersions.length}
-          </Badge>
-        </Button>
-      </div>
+          {filteredVersions.length + filteredRecentVersions.length}
+        </Badge>
+      </Button>
     );
   }
 
@@ -420,7 +418,7 @@ function Content() {
     <PopoverContent
       sideOffset={16}
       className="yv:h-[66svh]"
-      heading="Bible Versions"
+      heading="Bible Versions"
       headerChild={<LanguagePicker />}
       theme={theme}
       side={side}
