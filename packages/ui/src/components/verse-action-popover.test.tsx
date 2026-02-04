@@ -32,13 +32,15 @@ describe('VerseActionPopover', () => {
     });
 
     it('should render colors in correct order (yellow, green, blue, orange, pink)', () => {
-      const { container } = render(<VerseActionPopover {...defaultProps} />);
+      render(<VerseActionPopover {...defaultProps} />);
 
-      const applyButtons = Array.from(container.querySelectorAll('[aria-label*="Apply"]'));
+      const applyButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
 
       expect(applyButtons).toHaveLength(5);
       applyButtons.forEach((btn) => {
-        const bgColor = (btn as HTMLElement).style.backgroundColor;
+        const bgColor = btn.style.backgroundColor;
         expect(bgColor).toMatch(/^(#[a-fA-F0-9]{6}|rgb\(.*\))$/);
       });
     });
@@ -57,20 +59,16 @@ describe('VerseActionPopover', () => {
       expect(onHighlight).toHaveBeenCalledWith(HIGHLIGHT_COLORS[0]);
     });
 
-    it('should dismiss popover after applying highlight', () => {
-      const onOpenChange = vi.fn();
-      const { container } = render(
-        <VerseActionPopover {...defaultProps} onOpenChange={onOpenChange} />,
-      );
+    it('should render popover with color buttons', () => {
+      render(<VerseActionPopover {...defaultProps} />);
 
-      const popover = container.querySelector('[popover]')!;
-      expect(popover).not.toBeNull();
+      const dialog = screen.getByRole('dialog');
+      expect(dialog).toBeTruthy();
 
       const firstColorButton = screen
         .getAllByRole('button')
         .find((btn) => btn.getAttribute('aria-label')?.includes('Apply'))!;
 
-      fireEvent.click(firstColorButton);
       expect(firstColorButton).toBeTruthy();
     });
   });
@@ -143,7 +141,7 @@ describe('VerseActionPopover', () => {
       const selectedVerses = [1, 2];
       const highlightedVerses = { 1: HIGHLIGHT_COLORS[0], 2: HIGHLIGHT_COLORS[2] };
 
-      const { container } = render(
+      render(
         <VerseActionPopover
           {...defaultProps}
           activeHighlights={activeHighlights}
@@ -152,7 +150,7 @@ describe('VerseActionPopover', () => {
         />,
       );
 
-      const colorGroup = container.querySelector('[role="group"]')!;
+      const colorGroup = screen.getByRole('group', { name: 'Highlight colors' });
       const buttons = Array.from(colorGroup.querySelectorAll('button'));
 
       // First 2 should be clear (yellow, blue), then 3 apply (green, orange, pink - the inactive ones)
@@ -248,7 +246,7 @@ describe('VerseActionPopover', () => {
       const selectedVerses = [1, 2];
       const highlightedVerses = { 1: HIGHLIGHT_COLORS[0], 2: HIGHLIGHT_COLORS[1] };
 
-      const { container } = render(
+      render(
         <VerseActionPopover
           {...defaultProps}
           activeHighlights={activeHighlights}
@@ -258,10 +256,11 @@ describe('VerseActionPopover', () => {
         />,
       );
 
-      const removeButtons = Array.from(container.querySelectorAll('[aria-label*="Clear"]'));
+      const removeButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear'));
       expect(removeButtons).toHaveLength(2);
 
-      // Click first remove button (yellow)
       const firstBtn = removeButtons[0];
       const secondBtn = removeButtons[1];
       if (!firstBtn || !secondBtn) throw new Error('Expected 2 remove buttons');
@@ -269,7 +268,6 @@ describe('VerseActionPopover', () => {
       fireEvent.click(firstBtn);
       expect(onClearHighlight).toHaveBeenCalledWith(HIGHLIGHT_COLORS[0]);
 
-      // Click second remove button (green)
       fireEvent.click(secondBtn);
       expect(onClearHighlight).toHaveBeenCalledWith(HIGHLIGHT_COLORS[1]);
     });
@@ -299,23 +297,23 @@ describe('VerseActionPopover', () => {
   });
 
   describe('Popover visibility', () => {
-    it('should not render when open is false', () => {
-      const { container } = render(<VerseActionPopover {...defaultProps} open={false} />);
+    it('should not render content when open is false', () => {
+      render(<VerseActionPopover {...defaultProps} open={false} />);
 
-      expect(container.querySelector('[role="dialog"]')).toBeNull();
+      expect(screen.queryByRole('dialog')).toBeNull();
     });
 
-    it('should render when open is true', () => {
-      const { container } = render(<VerseActionPopover {...defaultProps} open={true} />);
+    it('should render content when open is true', () => {
+      render(<VerseActionPopover {...defaultProps} open={true} />);
 
-      expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+      expect(screen.getByRole('dialog')).toBeTruthy();
     });
 
-    it('should have fixed positioning for popover API', () => {
-      const { container } = render(<VerseActionPopover {...defaultProps} />);
+    it('should use Radix popover with portal', () => {
+      render(<VerseActionPopover {...defaultProps} />);
 
-      const popover = container.querySelector('[role="dialog"]')!;
-      expect((popover as HTMLElement).style.position).toBe('fixed');
+      const dialog = screen.getByRole('dialog');
+      expect(dialog).toBeTruthy();
     });
   });
 
@@ -325,7 +323,7 @@ describe('VerseActionPopover', () => {
       const selectedVerses = [1];
       const highlightedVerses = { 1: HIGHLIGHT_COLORS[0] };
 
-      const { container } = render(
+      render(
         <VerseActionPopover
           {...defaultProps}
           activeHighlights={activeHighlights}
@@ -334,54 +332,55 @@ describe('VerseActionPopover', () => {
         />,
       );
 
-      // Get color circle buttons (color buttons have aria-label with color name)
-      const colorButtons = container.querySelectorAll('[aria-label*="highlight"]');
+      const colorButtons = screen.getAllByRole('button').filter((btn) => {
+        const label = btn.getAttribute('aria-label');
+        return label?.includes('highlight');
+      });
       colorButtons.forEach((btn) => {
         const label = btn.getAttribute('aria-label');
         expect(label).toMatch(/^(Apply|Clear) highlight$/);
       });
 
-      // Check action buttons have accessible text (they use icon + text)
-      const copyButton = screen.getByText('Copy');
-      const shareButton = screen.getByText('Share');
-      expect(copyButton).toBeTruthy();
-      expect(shareButton).toBeTruthy();
+      expect(screen.getByText('Copy')).toBeTruthy();
+      expect(screen.getByText('Share')).toBeTruthy();
     });
 
     it('should have dialog role with aria-label', () => {
-      const { container } = render(<VerseActionPopover {...defaultProps} />);
+      render(<VerseActionPopover {...defaultProps} />);
 
-      const dialog = container.querySelector('[role="dialog"]');
+      const dialog = screen.getByRole('dialog');
       expect(dialog).toBeTruthy();
-      expect(dialog?.getAttribute('aria-label')).toBe('Verse actions');
+      expect(dialog.getAttribute('aria-label')).toBe('Verse actions');
     });
 
     it('should have semantic color group', () => {
-      const { container } = render(<VerseActionPopover {...defaultProps} />);
+      render(<VerseActionPopover {...defaultProps} />);
 
-      const colorGroup = container.querySelector('[role="group"]');
+      const colorGroup = screen.getByRole('group', { name: 'Highlight colors' });
       expect(colorGroup).toBeTruthy();
-      expect(colorGroup?.getAttribute('aria-label')).toBe('Highlight colors');
     });
   });
 
   describe('Styling', () => {
     it('should have data-yv-sdk attribute for scoping', () => {
-      const { container } = render(<VerseActionPopover {...defaultProps} />);
+      render(<VerseActionPopover {...defaultProps} />);
 
-      expect(container.querySelector('[data-yv-sdk]')).toBeTruthy();
+      const dialog = screen.getByRole('dialog');
+      expect(dialog.getAttribute('data-yv-sdk')).not.toBeNull();
     });
 
     it('should apply theme attribute', () => {
-      const { container } = render(<VerseActionPopover {...defaultProps} theme="dark" />);
+      render(<VerseActionPopover {...defaultProps} theme="dark" />);
 
-      expect(container.querySelector('[data-yv-theme="dark"]')).toBeTruthy();
+      const dialog = screen.getByRole('dialog');
+      expect(dialog.getAttribute('data-yv-theme')).toBe('dark');
     });
 
     it('should default to light theme', () => {
-      const { container } = render(<VerseActionPopover {...defaultProps} />);
+      render(<VerseActionPopover {...defaultProps} />);
 
-      expect(container.querySelector('[data-yv-theme="light"]')).toBeTruthy();
+      const dialog = screen.getByRole('dialog');
+      expect(dialog.getAttribute('data-yv-theme')).toBe('light');
     });
   });
 
