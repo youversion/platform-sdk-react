@@ -49,6 +49,7 @@ export function YouVersionProvider(
           apiHost,
           installationId: YouVersionPlatformConfiguration.installationId,
           theme,
+          authEnabled: !!includeAuth,
         }}
       >
         <Suspense>
@@ -68,6 +69,7 @@ export function YouVersionProvider(
         apiHost,
         installationId: YouVersionPlatformConfiguration.installationId,
         theme,
+        authEnabled: !!includeAuth,
       }}
     >
       {children}

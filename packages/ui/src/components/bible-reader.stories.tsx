@@ -593,3 +593,57 @@ export const AuthenticatedWithoutAvatar: Story = {
     });
   },
 };
+
+/**
+ * Tests that BibleReader works without auth enabled in the provider.
+ * The user menu should not be visible when auth is disabled.
+ */
+export const WithoutAuth: Story = {
+  tags: ['integration'],
+  args: {
+    versionId: 111,
+    book: 'JHN',
+    chapter: '1',
+    background: 'light',
+  },
+  parameters: {
+    includeAuth: false,
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    // Wait for the Bible content to load
+    await waitFor(
+      async () => {
+        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(verseContainer).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    // Verify Bible content is displayed
+    const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+    await expect(verseContainer).toBeInTheDocument();
+
+    // User menu should not be visible when auth is disabled
+    const userMenuTrigger = canvasElement.querySelector('[data-testid="user-menu-trigger"]');
+    await expect(userMenuTrigger).not.toBeInTheDocument();
+
+    // Chapter picker and version picker should still work
+    const chapterButton = screen.getByRole('button', { name: /change bible book and chapter/i });
+    await expect(chapterButton).toBeInTheDocument();
+
+    const versionButton = screen.getByRole('button', { name: /change bible version/i });
+    await expect(versionButton).toBeInTheDocument();
+
+    // Settings should still work
+    const settingsButton = screen.getByRole('button', { name: /settings/i });
+    await expect(settingsButton).toBeInTheDocument();
+  },
+};
