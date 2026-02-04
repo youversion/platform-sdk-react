@@ -425,7 +425,7 @@ function Content() {
     >
       {/* Versions View */}
       <div
-        className={`yv:min-h-0 yv:max-h-[66svh] yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center ${
+        className={`yv:overflow-y-auto yv:h-full yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center ${
           isLanguagesOpen
             ? 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
             : 'yv:opacity-100 yv:pointer-events-auto yv:blur-none yv:scale-100'
@@ -516,6 +516,7 @@ function Content() {
             </div>
           ) : null}
         </div>
+
         <section className="yv:bg-muted yv:border-s yv:border-muted yv:p-4">
           <InputGroup className="yv:bg-background yv:shadow-none yv:border-border">
             <InputGroupInput
