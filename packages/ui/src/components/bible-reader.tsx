@@ -257,22 +257,25 @@ function UserMenu() {
               className="yv:size-full yv:rounded-full yv:object-cover"
             />
           ) : (
-            <PersonIcon className="yv:text-primary" />
+            <PersonIcon className="yv:text-foreground" />
           )}
         </Button>
       </PopoverTrigger>
 
       <PopoverContent
-        className="yv:rounded-[6px] yv:w-fit yv:px-4"
+        className="yv:rounded-[6px] yv:w-fit! yv:px-4"
         sideOffset={16}
         showHeader={false}
       >
         {auth.isAuthenticated ? (
-          <Button className="yv:text-black" onClick={signOut}>
+          <Button className="yv:card yv:text-foreground" onClick={signOut}>
             Sign Out
           </Button>
         ) : (
-          <Button className="yv:text-black" onClick={() => void signIn({ scopes: ['profile'] })}>
+          <Button
+            className="yv:card yv:text-foreground"
+            onClick={() => void signIn({ scopes: ['profile'] })}
+          >
             Sign In
           </Button>
         )}
@@ -304,53 +307,55 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
         border === 'bottom' && 'yv:border-b',
       )}
     >
-      <div className="yv:grid yv:w-full yv:grid-cols-7 yv:items-center yv:max-w-lg yv:gap-0.5">
+      <div className="yv:grid yv:w-full yv:grid-cols-[auto_1fr_auto] yv:items-center yv:max-w-lg yv:gap-4">
         {!!yvContext?.authEnabled && <UserMenu />}
 
-        <BibleChapterPicker.Root
-          book={book}
-          chapter={chapter}
-          onBookChange={setBook}
-          onChapterChange={setChapter}
-          versionId={versionId}
-          background={background}
-        >
-          <BibleChapterPicker.Trigger aria-label="Change Bible book and chapter">
-            {({ chapter, currentBook, loading }) => (
-              <Button
-                variant="secondary"
-                className="yv:rounded-r-none yv:font-bold yv:text-foreground"
-                disabled={loading}
-              >
-                {loading ? 'Loading...' : `${currentBook?.title || 'Select'} ${chapter || ''}`}
-              </Button>
-            )}
-          </BibleChapterPicker.Trigger>
-        </BibleChapterPicker.Root>
+        <div className="yv:grid yv:grid-cols-2 yv:gap-0.5">
+          <BibleChapterPicker.Root
+            book={book}
+            chapter={chapter}
+            onBookChange={setBook}
+            onChapterChange={setChapter}
+            versionId={versionId}
+            background={background}
+          >
+            <BibleChapterPicker.Trigger aria-label="Change Bible book and chapter">
+              {({ chapter, currentBook, loading }) => (
+                <Button
+                  variant="secondary"
+                  className="yv:rounded-r-none yv:font-bold yv:text-foreground"
+                  disabled={loading}
+                >
+                  {loading ? 'Loading...' : `${currentBook?.title || 'Select'} ${chapter || ''}`}
+                </Button>
+              )}
+            </BibleChapterPicker.Trigger>
+          </BibleChapterPicker.Root>
 
-        <BibleVersionPicker.Root
-          versionId={versionId}
-          onVersionChange={setVersionId}
-          background={background}
-        >
-          <BibleVersionPicker.Trigger aria-label="Change Bible version">
-            {({ version, loading }) => (
-              <Button
-                variant="secondary"
-                className="yv:rounded-l-none yv:font-bold yv:text-foreground"
-                disabled={loading}
-              >
-                {loading ? 'Loading...' : version?.localized_abbreviation || 'Select version'}
-              </Button>
-            )}
-          </BibleVersionPicker.Trigger>
-          <BibleVersionPicker.Content />
-        </BibleVersionPicker.Root>
+          <BibleVersionPicker.Root
+            versionId={versionId}
+            onVersionChange={setVersionId}
+            background={background}
+          >
+            <BibleVersionPicker.Trigger aria-label="Change Bible version">
+              {({ version, loading }) => (
+                <Button
+                  variant="secondary"
+                  className="yv:rounded-l-none yv:font-bold yv:text-foreground"
+                  disabled={loading}
+                >
+                  {loading ? 'Loading...' : version?.localized_abbreviation || 'Select version'}
+                </Button>
+              )}
+            </BibleVersionPicker.Trigger>
+            <BibleVersionPicker.Content />
+          </BibleVersionPicker.Root>
+        </div>
 
         <Popover>
           <PopoverTrigger aria-label="Settings">
             <Button size="icon" variant="secondary">
-              <GearIcon className="yv:text-primary" />
+              <GearIcon className="yv:text-foreground" />
             </Button>
           </PopoverTrigger>
 
