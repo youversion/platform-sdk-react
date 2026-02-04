@@ -315,10 +315,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
           versionId={versionId}
           background={background}
         >
-          <BibleChapterPicker.Trigger
-            className="yv:col-span-2 yv:col-start-2"
-            aria-label="Change Bible book and chapter"
-          >
+          <BibleChapterPicker.Trigger aria-label="Change Bible book and chapter">
             {({ chapter, currentBook, loading }) => (
               <Button
                 variant="secondary"
