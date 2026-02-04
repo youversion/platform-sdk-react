@@ -348,6 +348,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
           </BibleVersionPicker.Trigger>
           <BibleVersionPicker.Content />
         </BibleVersionPicker.Root>
+
         <Popover>
           <PopoverTrigger
             aria-label="Settings"
@@ -355,8 +356,9 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
           >
             <GearIcon />
           </PopoverTrigger>
+
           <PopoverContent className="yv:mb-6" heading="Reader Settings" theme={background}>
-            <div className="yv:flex yv:flex-col yv:gap-7 yv:p-10">
+            <div className="yv:flex yv:flex-col yv:gap-4 yv:p-4">
               <div className="yv:grid yv:grid-cols-2">
                 <Button
                   className="yv:text-xs yv:text-black yv:dark:text-muted-foreground yv:rounded-l-[8px] yv:rounded-r-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
