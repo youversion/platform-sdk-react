@@ -168,11 +168,12 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
       role="dialog"
       aria-label="Verse actions"
       className={cn(
-        'yv:bg-popover yv:text-popover-foreground',
-        'yv:rounded-full yv:shadow-lg yv:border yv:border-border',
+        'yv:bg-card yv:text-popover-foreground',
+        'yv:rounded-full yv:drop-shadow-[0_6px_12px_rgb(0,0,0,0.2)]',
         'yv:px-4 yv:py-2',
         'yv:flex yv:items-center yv:gap-3',
         'yv:m-0',
+        'yv:overflow-visible yv:relative',
       )}
       style={
         {
@@ -180,10 +181,22 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
           positionAnchor: ANCHOR_NAME,
           top: `anchor(bottom)`,
           left: `anchor(center)`,
-          translate: '-50% 8px',
+          translate: '-50% 32px',
         } as React.CSSProperties
       }
     >
+      {/* Caret - position absolutely */}
+      <svg
+        className="yv:text-(--yv-gray-2) yv:absolute yv:-top-[16px] yv:left-1/2 yv:-translate-x-1/2"
+        width="33"
+        height="17"
+        viewBox="0 0 33 17"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path d="M16.0215 0L32.0429 16.5H0L16.0215 0Z" fill="currentColor" />
+      </svg>
+
       <div className="yv:flex yv:items-center yv:gap-2" role="group" aria-label="Highlight colors">
         {colorCircles.map(({ color, showX, key }) => (
           <ColorCircle
