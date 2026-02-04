@@ -555,10 +555,10 @@ function Content() {
         </section>
 
         <Tabs
-          className="yv:mt-4 yv:gap-4 yv:flex-1 yv:min-h-0 yv:flex yv:flex-col yv:px-4"
+          className="yv:mt-4 yv:gap-4 yv:flex-1 yv:min-h-0 yv:flex yv:flex-col"
           defaultValue="suggested"
         >
-          <TabsList className="yv:w-full">
+          <TabsList className="yv:mx-4 yv:w-[calc(100%-4*var(--spacing))]">
             <TabsTrigger className="yv:p-0" value="suggested">
               Suggested
             </TabsTrigger>
@@ -568,15 +568,13 @@ function Content() {
           </TabsList>
 
           <TabsContent value="suggested" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
+            <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">Regional</h3>
             <ItemGroup className="yv:gap-1">
-              <h3 className="yv:text-xl yv:font-bold yv:sticky yv:top-0 yv:z-10 yv:bg-popover yv:mb-2">
-                Regional
-              </h3>
               {suggestedLanguages.map((suggestedLanguage) => (
                 <Item
                   key={suggestedLanguage.id}
                   className={cn(
-                    'yv:hover:bg-muted yv:rounded-[8px] yv:px-1',
+                    'yv:hover:bg-muted yv:rounded-[8px] yv:px-4',
                     selectedLanguageId === suggestedLanguage.id ? 'yv:bg-muted' : '',
                   )}
                   size="sm"
@@ -603,16 +601,15 @@ function Content() {
               ))}
             </ItemGroup>
           </TabsContent>
+
           <TabsContent value="all" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
-            <h3 className="yv:text-xl yv:font-bold yv:sticky yv:top-0 yv:z-10 yv:bg-popover yv:mb-2">
-              All Languages
-            </h3>
-            <ItemGroup className="yv:py-2 yv:gap-1 yv:overflow-x-hidden">
+            <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">All Languages</h3>
+            <ItemGroup className="yv:gap-1">
               {languages.map((language) => (
                 <Item
                   key={language.id}
                   className={cn(
-                    'yv:hover:bg-muted yv:rounded-[8px] yv:px-1',
+                    'yv:hover:bg-muted yv:rounded-[8px] yv:px-4',
                     selectedLanguageId === language.id ? 'yv:bg-muted' : '',
                   )}
                   size="sm"
