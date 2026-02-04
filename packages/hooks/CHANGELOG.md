@@ -1,5 +1,13 @@
 # @youversion/platform-react-hooks
 
+## 1.12.2
+
+### Patch Changes
+
+- ad912db: Fix broken bible reader when auth is disabled.
+- Updated dependencies [ad912db]
+  - @youversion/platform-core@1.12.2
+
 ## 1.12.1
 
 ### Patch Changes
