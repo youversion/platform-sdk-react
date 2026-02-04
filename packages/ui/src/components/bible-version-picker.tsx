@@ -136,7 +136,7 @@ type BibleVersionPickerContextType = {
   setVersionId: (versionId: number) => void;
   background: 'light' | 'dark';
   side: 'top' | 'right' | 'bottom' | 'left';
-  languages: Pick<Language, 'id' | 'display_names'>[];
+  languages: Pick<Language, 'id' | 'display_names' | 'speaking_population'>[];
   totalLanguages: number;
   selectedLanguageId: string;
   setSelectedLanguageId: (id: string) => void;
