@@ -396,7 +396,7 @@ function Content() {
       <div className="yv:ml-auto">
         <Button
           aria-label="Select language"
-          className="yv:bg-card yv:border yv:border-transparent yv:hover:bg-card yv:hover:border-border yv:max-w-42"
+          className="yv:bg-card yv:border yv:border-transparent yv:hover:bg-card yv:hover:border-border"
           size="sm"
           onClick={() => setIsLanguagesOpen(true)}
           variant="secondary"
@@ -418,7 +418,6 @@ function Content() {
 
   return (
     <PopoverContent
-      className="yv:min-h-[500px]"
       heading="Bible Versions"
       headerChild={<LanguagePicker />}
       theme={theme}
@@ -426,7 +425,7 @@ function Content() {
     >
       {/* Versions View */}
       <div
-        className={`yv:h-full yv:flex yv:flex-col yv:overflow-hidden yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center ${
+        className={`yv:min-h-0 yv:max-h-[66svh] yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center ${
           isLanguagesOpen
             ? 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
             : 'yv:opacity-100 yv:pointer-events-auto yv:blur-none yv:scale-100'
