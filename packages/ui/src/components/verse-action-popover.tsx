@@ -181,7 +181,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
           positionAnchor: ANCHOR_NAME,
           top: `anchor(bottom)`,
           left: `anchor(center)`,
-          translate: '-50% 32px',
+          translate: '-50% 20px',
         } as React.CSSProperties
       }
     >
