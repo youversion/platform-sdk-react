@@ -52,9 +52,7 @@ const meta = {
       description: 'The version ID to display',
     },
     background: {
-      control: 'select',
-      options: [undefined, 'light', 'dark'],
-      description: 'Background theme for the picker',
+      table: { disable: true },
     },
     side: {
       control: 'select',
@@ -71,7 +69,6 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   args: {
     versionId: 111,
-    background: 'light',
     side: 'top',
   },
 };
@@ -79,7 +76,6 @@ export const Default: Story = {
 export const LightBackground: Story = {
   args: {
     versionId: 111,
-    background: 'light',
   },
   tags: ['integration'],
 };
@@ -87,7 +83,9 @@ export const LightBackground: Story = {
 export const DarkBackground: Story = {
   args: {
     versionId: 111,
-    background: 'dark',
+  },
+  globals: {
+    theme: 'dark',
   },
   tags: ['integration'],
 };
@@ -95,14 +93,9 @@ export const DarkBackground: Story = {
 export const WithCustomTrigger: Story = {
   args: {
     versionId: 111,
-    background: 'light',
   },
   render: (args) => (
-    <BibleVersionPicker.Root
-      versionId={args.versionId}
-      background={args.background}
-      side={args.side}
-    >
+    <BibleVersionPicker.Root versionId={args.versionId} side={args.side}>
       <BibleVersionPicker.Trigger>
         <Button size="icon">
           <BookOpenIcon className="yv:w-4 yv:h-4" />
@@ -116,7 +109,6 @@ export const WithCustomTrigger: Story = {
 export const InteractiveLanguageSelection: Story = {
   args: {
     versionId: 111,
-    background: 'light',
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
@@ -158,7 +150,6 @@ export const InteractiveLanguageSelection: Story = {
 export const SuggestedLanguagesTabs: Story = {
   args: {
     versionId: 111,
-    background: 'light',
   },
   tags: ['integration'],
   beforeEach: () => {
@@ -256,7 +247,6 @@ export const SuggestedLanguagesTabs: Story = {
 export const InteractiveVersionSearch: Story = {
   args: {
     versionId: 111,
-    background: 'light',
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
@@ -297,7 +287,6 @@ export const RealAPI: Story = {
 export const RecentVersionsSelection: Story = {
   args: {
     versionId: 111,
-    background: 'light',
   },
   tags: ['integration'],
   play: async () => {
@@ -357,7 +346,6 @@ export const RecentVersionsSelection: Story = {
 export const RecentVersionsSearchFilter: Story = {
   args: {
     versionId: 111,
-    background: 'light',
   },
   tags: ['integration'],
   beforeEach: () => {
@@ -402,7 +390,6 @@ export const RecentVersionsSearchFilter: Story = {
 export const RecentVersionsMaxLimit: Story = {
   args: {
     versionId: 111,
-    background: 'light',
   },
   tags: ['integration'],
   beforeEach: () => {

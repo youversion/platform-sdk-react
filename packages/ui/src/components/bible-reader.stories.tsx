@@ -53,9 +53,7 @@ const meta: Meta<typeof BibleReader.Root> = {
       description: 'Show verse numbers',
     },
     background: {
-      control: 'select',
-      options: [undefined, 'light', 'dark'],
-      description: 'Background theme',
+      table: { disable: true },
     },
   },
 };
@@ -73,7 +71,6 @@ export const Default: Story = {
     lineHeight: 1.6,
     fontFamily: "'Inter', sans-serif",
     showVerseNumbers: true,
-    background: 'light',
   },
   render: (args) => (
     <div className="yv:h-screen yv:bg-background">
@@ -148,10 +145,12 @@ export const DarkTheme: Story = {
     lineHeight: 1.6,
     fontFamily: "'Inter', sans-serif",
     showVerseNumbers: true,
-    background: 'dark',
+  },
+  globals: {
+    theme: 'dark',
   },
   render: (args) => (
-    <div className="yv:h-screen yv:bg-background yv:dark">
+    <div className="yv:h-screen yv:bg-background">
       <BibleReader.Root {...args}>
         <BibleReader.Content />
         <BibleReader.Toolbar />
@@ -171,7 +170,6 @@ export const CustomStyling: Story = {
     lineHeight: 2.0,
     fontFamily: "'Nunito Sans', sans-serif",
     showVerseNumbers: false,
-    background: 'light',
   },
   render: (args) => (
     <div className="yv:h-screen yv:bg-background">
@@ -202,7 +200,6 @@ export const FontSizeOutOfRange: Story = {
     lineHeight: 2.0,
     fontFamily: "'Nunito Sans', sans-serif",
     showVerseNumbers: false,
-    background: 'light',
   },
   render: (args) => (
     <div className="yv:h-screen yv:bg-background">
@@ -250,7 +247,6 @@ export const FootnotesPersistAfterFontSizeChange: Story = {
     versionId: 111,
     book: 'JHN',
     chapter: '1',
-    background: 'light',
   },
   render: (args) => (
     <div className="yv:h-screen yv:bg-background">
@@ -365,7 +361,6 @@ export const SignInFlow: Story = {
     versionId: 111,
     book: 'JHN',
     chapter: '1',
-    background: 'light',
   },
   render: (args) => (
     <div className="yv:h-screen yv:bg-background">
@@ -407,7 +402,6 @@ export const SignOutFlow: Story = {
     versionId: 111,
     book: 'JHN',
     chapter: '1',
-    background: 'light',
   },
   beforeEach: async () => {
     localStorage.clear();
@@ -462,7 +456,6 @@ export const AuthenticatedWithAvatar: Story = {
     versionId: 111,
     book: 'JHN',
     chapter: '1',
-    background: 'light',
   },
   beforeEach: async () => {
     localStorage.clear();
@@ -503,7 +496,6 @@ export const LoadsSavedPreferencesFromLocalStorage: Story = {
     versionId: 111,
     book: 'JHN',
     chapter: '1',
-    background: 'light',
   },
   beforeEach: () => {
     localStorage.clear();
@@ -559,7 +551,6 @@ export const AuthenticatedWithoutAvatar: Story = {
     versionId: 111,
     book: 'JHN',
     chapter: '1',
-    background: 'light',
   },
   beforeEach: async () => {
     localStorage.clear();
@@ -604,7 +595,6 @@ export const WithoutAuth: Story = {
     versionId: 111,
     book: 'JHN',
     chapter: '1',
-    background: 'light',
   },
   parameters: {
     includeAuth: false,

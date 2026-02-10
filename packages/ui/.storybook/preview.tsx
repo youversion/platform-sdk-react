@@ -1,15 +1,24 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import type { Preview, ReactRenderer } from '@storybook/react-vite';
 import type { PartialStoryFn, StoryContext } from 'storybook/internal/csf';
 
-function getTheme(value: unknown): 'light' | 'dark' {
-  return value === 'dark' ? 'dark' : 'light';
+function getTheme(value: unknown): 'light' | 'dark' | 'system' {
+  if (value === 'dark') return 'dark';
+  if (value === 'system') return 'system';
+  return 'light';
 }
+
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { StorybookEnvCheck } from '../src/test/StorybookEnvCheck';
 import { YouVersionProvider } from '@youversion/platform-react-hooks';
 import { globalHandlers } from '../src/test/mocks/handlers';
 import '../dist/tailwind.css';
+
+const THEME_BACKGROUNDS: Record<string, string> = {
+  light: '#ffffff',
+  dark: 'oklch(0.138 0.001 17.2)',
+  system: '',
+};
 
 /*
  * Initializes MSW with global handlers
@@ -31,6 +40,7 @@ const preview: Preview = {
         items: [
           { value: 'light', title: 'Light', icon: 'sun' },
           { value: 'dark', title: 'Dark', icon: 'moon' },
+          { value: 'system', title: 'System', icon: 'monitor' },
         ],
         dynamicTitle: true,
       },
@@ -44,6 +54,16 @@ const preview: Preview = {
       Story: PartialStoryFn<ReactRenderer>,
       context: StoryContext<ReactRenderer>,
     ): React.ReactElement => {
+      const theme = getTheme(context.globals.theme);
+
+      useEffect(() => {
+        const bg = THEME_BACKGROUNDS[theme] || '';
+        document.body.style.backgroundColor = bg;
+        return () => {
+          document.body.style.backgroundColor = '';
+        };
+      }, [theme]);
+
       const includeAuth = context.parameters.includeAuth !== false;
       const requiredEnvVars = includeAuth
         ? ['STORYBOOK_YOUVERSION_APP_KEY', 'STORYBOOK_AUTH_REDIRECT_URL']
@@ -85,6 +105,7 @@ const preview: Preview = {
         date: /Date$/i,
       },
     },
+    backgrounds: { disable: true },
     msw: {
       handlers: globalHandlers,
     },

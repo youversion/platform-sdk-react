@@ -21,7 +21,6 @@ const meta = {
             chapter={chapter}
             onChapterChange={setChapter}
             versionId={args.versionId}
-            background={args.background}
           >
             <BibleChapterPicker.Trigger />
           </BibleChapterPicker.Root>
@@ -35,8 +34,7 @@ const meta = {
       description: 'The version ID to display',
     },
     background: {
-      control: 'select',
-      options: [undefined, 'light', 'dark'],
+      table: { disable: true },
     },
   },
   tags: ['autodocs'],
@@ -49,7 +47,6 @@ type Story = StoryObj<typeof meta>;
 export const LightBackground: Story = {
   args: {
     versionId: 111,
-    background: 'light',
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
@@ -101,7 +98,9 @@ export const LightBackground: Story = {
 export const DarkBackground: Story = {
   args: {
     versionId: 111,
-    background: 'dark',
+  },
+  globals: {
+    theme: 'dark',
   },
   tags: ['integration'],
   // Using the play function get component in the open state for visual testing

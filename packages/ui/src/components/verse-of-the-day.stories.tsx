@@ -11,7 +11,9 @@ const meta = {
   },
   tags: ['autodocs'],
   argTypes: {
-    background: { control: { type: 'select' }, options: [undefined, 'light', 'dark'] },
+    background: {
+      table: { disable: true },
+    },
     // We are intentionally not allowing controls
     // for dayOfYear and versionId, since they are
     // mocked, essentially hard-coded, above.

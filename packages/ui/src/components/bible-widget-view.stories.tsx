@@ -10,6 +10,9 @@ const meta = {
   },
   tags: ['autodocs'],
   argTypes: {
+    background: {
+      table: { disable: true },
+    },
     reference: {
       control: 'text',
       description: 'USFM reference (e.g., "JHN.3.16", "JHN.3.16-17", "JHN.3")',
@@ -39,7 +42,9 @@ export const DarkMode: Story = {
   args: {
     reference: 'LUK.1.39-45',
     versionId: 111,
-    background: 'dark',
+  },
+  globals: {
+    theme: 'dark',
   },
 };
 
@@ -48,7 +53,9 @@ export const WithVersionPicker: Story = {
     reference: 'LUK.1.39-45',
     versionId: 111,
     showVersionPicker: true,
-    background: 'dark',
+  },
+  globals: {
+    theme: 'dark',
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
@@ -115,7 +122,6 @@ export const RealAPI: Story = {
     reference: 'LUK.1.39-45',
     versionId: 111,
     showVersionPicker: true,
-    background: 'dark',
   },
   parameters: {
     msw: {
