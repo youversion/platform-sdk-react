@@ -4,9 +4,9 @@
 
 Thank you for your interest in contributing to the YouVersion Platform React SDK. We're grateful for the enthusiasm and support from the community.
 
-This project is currently in **beta**, and we are **not yet accepting pull requests** from external contributors. We're actively working on documentation, testing, and examples to get the SDK ready for General Availability (GA). Until then, we need to keep development focused within our team to ensure a stable and consistent foundation.
+We are **not yet accepting pull requests** from external contributors, as we're still early enough in the project that we need to keep development focused within our team to ensure a stable and consistent foundation.
 
-**This is temporary.** Once the SDK reaches GA, we plan to open up contributions and would love to collaborate with the community.
+**This is temporary.** We plan to welcome code contributions.
 
 ### How You Can Help Right Now
 
@@ -15,8 +15,6 @@ Even though we're not accepting code contributions at the moment, there are mean
 - **Use the SDK** — Try it out in your projects and let us know how it goes.
 - **Report bugs** — If you find an issue with the SDK, please [open a GitHub issue](https://github.com/youversion/platform-sdk-react/issues).
 - **Report platform issues** — For issues with the YouVersion Platform itself (API keys, rate limits, etc.), please reach out via [YouVersion Platform Support](https://platform.youversion.com/support).
-
-We appreciate your patience and understanding as we work toward GA.
 
 ---
 
