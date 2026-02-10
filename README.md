@@ -100,7 +100,7 @@ console.log(passage.content);
 ## Contributing
 
 > [!NOTE]
-> This project is currently in **beta** and is not yet accepting pull requests from external contributors. We plan to open contributions after General Availability (GA). In the meantime, we welcome you to use the SDK, report bugs via [GitHub Issues](https://github.com/youversion/platform-sdk-react/issues), and share feedback. See [CONTRIBUTING.md](./CONTRIBUTING.md) for more details.
+> We are not yet accepting pull requests from external contributors, though we intend to do so in the future. In the meantime, we welcome you to use the SDK, report bugs via [GitHub Issues](https://github.com/youversion/platform-sdk-react/issues), and share feedback. See [CONTRIBUTING.md](./CONTRIBUTING.md) for more details.
 
 ## License
 
