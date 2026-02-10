@@ -10,8 +10,8 @@ interface ProvidersProps {
 
 export function Providers({ children, redirectUri }: ProvidersProps): JSX.Element {
   // Use fallback values for static export/build compatibility
-  const appKey = process.env.NEXT_PUBLIC_YVP_APP_KEY ?? 'demo-app-key';
-  const apiHost = process.env.NEXT_PUBLIC_YVP_API_HOST ?? 'api-test.youversion.com';
+  const appKey = process.env.NEXT_PUBLIC_YVP_APP_KEY ?? crypto.randomUUID();
+  const apiHost = process.env.NEXT_PUBLIC_YVP_API_HOST ?? 'api.youversion.com';
 
   return (
     <YouVersionProvider

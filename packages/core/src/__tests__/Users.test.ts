@@ -257,7 +257,7 @@ describe('YouVersionAPIUsers', () => {
 
   describe('obtainLocation', () => {
     it('should redirect to server callback with correct parameters', () => {
-      YouVersionPlatformConfiguration.apiHost = 'api-test.youversion.com';
+      YouVersionPlatformConfiguration.apiHost = 'api.youversion.com';
 
       const callbackURL = 'https://example.com/callback?state=test-state&user=123';
       const state = 'test-state';
@@ -267,7 +267,7 @@ describe('YouVersionAPIUsers', () => {
       YouVersionAPIUsers.obtainLocation(callbackURL, state);
 
       expect(mocks.window.location.href).toBe(
-        'https://api-test.youversion.com/auth/callback?state=test-state&user=123',
+        'https://api.youversion.com/auth/callback?state=test-state&user=123',
       );
     });
 

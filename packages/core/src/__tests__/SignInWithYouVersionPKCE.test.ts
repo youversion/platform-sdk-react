@@ -11,7 +11,7 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
 
     // Reset YouVersionPlatformConfiguration
     YouVersionPlatformConfiguration.appKey = 'test-app-key';
-    YouVersionPlatformConfiguration.apiHost = 'api-test.youversion.com';
+    YouVersionPlatformConfiguration.apiHost = 'api.youversion.com';
   });
 
   afterEach(() => {
@@ -76,7 +76,7 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
 
       // Verify URL structure
       expect(result.url).toBeInstanceOf(URL);
-      expect(result.url.hostname).toBe('api-test.youversion.com');
+      expect(result.url.hostname).toBe('api.youversion.com');
       expect(result.url.pathname).toBe('/auth/authorize');
     });
 
@@ -246,7 +246,7 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
       );
 
       expect(request.method).toBe('POST');
-      expect(request.url).toBe('https://api-test.youversion.com/auth/token');
+      expect(request.url).toBe('https://api.youversion.com/auth/token');
       expect(request.headers.get('Content-Type')).toBe('application/x-www-form-urlencoded');
 
       const body = await request.text();
