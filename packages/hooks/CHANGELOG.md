@@ -1,5 +1,16 @@
 # @youversion/platform-react-hooks
 
+## 1.14.0
+
+### Minor Changes
+
+- 2d2c597: Added 'system' as an option to YouVersionProvider theme prop that resolves via `prefers-color-scheme` with live OS change listener
+
+### Patch Changes
+
+- Updated dependencies [2d2c597]
+  - @youversion/platform-core@1.14.0
+
 ## 1.13.0
 
 ### Minor Changes

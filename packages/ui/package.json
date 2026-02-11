@@ -1,6 +1,6 @@
 {
   "name": "@youversion/platform-react-ui",
-  "version": "1.13.0",
+  "version": "1.14.0",
   "description": "React SDK for YouVersion Platform",
   "license": "TBD",
   "type": "module",
