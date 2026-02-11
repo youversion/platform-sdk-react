@@ -102,7 +102,7 @@ import { useChapter, useVersion, useVerseOfTheDay } from '@youversion/platform-r
 // Fetch a Bible chapter
 function ChapterView() {
   const { chapter, loading, error } = useChapter(
-    111,      // versionId (e.g., 111 = NIV)
+    3034,      // versionId (e.g., 3034 = BSB Bible Translation)
     'JHN',    // book (USFM abbreviation)
     3         // chapter number
   );
@@ -114,7 +114,7 @@ function ChapterView() {
 
 // Fetch Bible version metadata
 function VersionInfo() {
-  const { version, loading } = useVersion(111);
+  const { version, loading } = useVersion(3034);
   if (loading) return <div>Loading...</div>;
   return <div>{version?.name} ({version?.abbreviation})</div>;
 }

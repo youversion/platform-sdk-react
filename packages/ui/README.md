@@ -35,7 +35,7 @@ import { YouVersionProvider, BibleTextView } from '@youversion/platform-react-ui
 function App() {
   return (
     <YouVersionProvider appKey={"YOUR_APP_KEY"}>
-      <BibleTextView reference="JHN.1.1-4" versionId={111} />
+      <BibleTextView reference="JHN.1.1-4" versionId={3034} />
     </YouVersionProvider>
   );
 }
@@ -51,7 +51,7 @@ import { YouVersionProvider, BibleTextView } from '@youversion/platform-react-ui
 function App() {
   return (
     <YouVersionProvider appKey="YOUR_APP_KEY" theme="dark">
-      <BibleTextView reference="JHN.1.1-4" versionId={111} />
+      <BibleTextView reference="JHN.1.1-4" versionId={3034} />
     </YouVersionProvider>
   );
 }

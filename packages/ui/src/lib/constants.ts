@@ -1,4 +1,6 @@
-// 3034 is the Berean Standard Bible and does not require
-// a license to use, which makes it a great use-case as a
-// default Bible Version.
-export const DEFAULT_BIBLE_VERSION = 3034;
+/**
+ * The Berean Standard Bible does not require a license
+ * to use via the YouVersion Platform, qualifying it as
+ * a good use-case for a default Bible Version.
+ */
+export const DEFAULT_LICENSE_FREE_BIBLE_VERSION = 3034;

@@ -72,7 +72,7 @@ function VotdTester() {
         showShareButton={showShareButton}
         showSunIcon={showSunIcon}
         dayOfYear={dayOfYear}
-        versionId={111}
+        versionId={3034}
       />
     </div>
   );

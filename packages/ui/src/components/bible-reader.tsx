@@ -1,31 +1,32 @@
 'use client';
 
-import {
-  createContext,
-  useContext,
-  useMemo,
-  useState,
-  useEffect,
-  useLayoutEffect,
-  type ReactNode,
-} from 'react';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import {
   useBooks,
-  useVersion,
   useTheme,
+  useVersion,
   useYVAuth,
   YouVersionContext,
 } from '@youversion/platform-react-hooks';
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { cn } from '@/lib/utils';
+import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '../lib/constants';
 import { BibleChapterPicker } from './bible-chapter-picker';
 import { BibleVersionPicker } from './bible-version-picker';
-import { BibleTextView } from './verse';
-import { Button } from './ui/button';
-import { cn } from '@/lib/utils';
-import { InfoIcon } from './icons/info';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { PersonIcon } from './icons/person';
 import { GearIcon } from './icons/gear';
+import { InfoIcon } from './icons/info';
+import { PersonIcon } from './icons/person';
+import { Button } from './ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { BibleTextView } from './verse';
 
 type BibleReaderContextType = {
   book: string;
@@ -83,7 +84,7 @@ function Root({
   defaultChapter = '1',
   onChapterChange,
   versionId: controlledVersionId,
-  defaultVersionId = 111,
+  defaultVersionId = DEFAULT_LICENSE_FREE_BIBLE_VERSION,
   onVersionChange,
   fontFamily = 'Inter',
   fontSize = DEFAULT_FONT_SIZE,

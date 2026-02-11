@@ -54,13 +54,13 @@ src/index.ts           # Entry point with style injection side effect
 
 ```tsx
 // BibleTextView - Display a Bible verse
-<BibleTextView reference="JHN.3.16" versionId={111} />
+<BibleTextView reference="JHN.3.16" versionId={3034} />
 ```
 
 ```tsx
 // VerseOfTheDay - Daily verse card with optional features
 <VerseOfTheDay
-  versionId={111}              // NIV translation
+  versionId={3034}              // BSB translation
   showSunIcon={true}
   showShareButton={true}
   showBibleAppAttribution={true}
@@ -71,7 +71,7 @@ src/index.ts           # Entry point with style injection side effect
 ```tsx
 // BibleReader - Full reading experience (compound component)
 <BibleReader.Root
-  versionId={111}
+  versionId={3034}
   book="JHN"
   chapter="1"
   fontSize={16}
@@ -93,7 +93,7 @@ function MyComponent() {
 
   return (
     <BibleChapterPicker.Root
-      versionId={111}
+      versionId={3034}
       book={book}
       onBookChange={setBook}
       chapter={chapter}
@@ -109,7 +109,7 @@ function MyComponent() {
 ```tsx
 // BibleVersionPicker - Bible translation selection (controlled component)
 function MyComponent() {
-  const [versionId, setVersionId] = useState(111);
+  const [versionId, setVersionId] = useState(3034);
 
   return (
     <BibleVersionPicker.Root
@@ -129,7 +129,7 @@ function MyComponent() {
 // BibleWidgetView - Embeddable Bible passage widget
 <BibleWidgetView
   reference="JHN.3.16-17"      // USFM format: "BOOK.CHAPTER.VERSE" or range
-  versionId={111}
+  versionId={3034}
   showVersionPicker={true}
   background="light"
 />

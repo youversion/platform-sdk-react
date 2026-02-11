@@ -1,10 +1,10 @@
-import { useVersion } from './useVersion';
+import type { BibleBook, BibleChapter, BibleVersion } from '@youversion/platform-core';
 import { useBook } from './useBook';
 import { useChapter } from './useChapter';
-import type { BibleChapter, BibleVersion, BibleBook } from '@youversion/platform-core';
+import { useVersion } from './useVersion';
 
 export const DEFAULT = {
-  VERSION: 111,
+  VERSION: 3034,
   BOOK: 'GEN',
   CHAPTER: 1,
 } as const;
