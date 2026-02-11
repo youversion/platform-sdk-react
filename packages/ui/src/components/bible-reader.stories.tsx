@@ -69,7 +69,7 @@ type Story = StoryObj<typeof BibleReader.Root>;
 export const Default: Story = {
   tags: ['integration'],
   args: {
-    versionId: 111,
+    defaultVersionId: 111,
     lineHeight: 1.6,
     fontFamily: "'Inter', sans-serif",
     showVerseNumbers: true,
@@ -143,7 +143,7 @@ export const Default: Story = {
  */
 export const DarkTheme: Story = {
   args: {
-    versionId: 111,
+    defaultVersionId: 111,
     fontSize: 16,
     lineHeight: 1.6,
     fontFamily: "'Inter', sans-serif",
@@ -166,7 +166,7 @@ export const DarkTheme: Story = {
 export const CustomStyling: Story = {
   tags: ['integration'],
   args: {
-    versionId: 111,
+    defaultVersionId: 111,
     fontSize: 18,
     lineHeight: 2.0,
     fontFamily: "'Nunito Sans', sans-serif",
@@ -197,7 +197,7 @@ export const CustomStyling: Story = {
 export const FontSizeOutOfRange: Story = {
   tags: ['integration'],
   args: {
-    versionId: 111,
+    defaultVersionId: 111,
     fontSize: 28,
     lineHeight: 2.0,
     fontFamily: "'Nunito Sans', sans-serif",
@@ -247,7 +247,7 @@ export const RealAPI: Story = {
 export const FootnotesPersistAfterFontSizeChange: Story = {
   tags: ['integration'],
   args: {
-    versionId: 111,
+    defaultVersionId: 111,
     book: 'JHN',
     chapter: '1',
     background: 'light',
@@ -310,7 +310,7 @@ export const FootnotesPersistAfterFontSizeChange: Story = {
 export const ThemeOverridesProvider: Story = {
   tags: ['integration'],
   args: {
-    versionId: 111,
+    defaultVersionId: 111,
     book: 'JHN',
     chapter: '1',
     background: 'light',
@@ -362,7 +362,7 @@ export const ThemeOverridesProvider: Story = {
 export const SignInFlow: Story = {
   tags: ['integration'],
   args: {
-    versionId: 111,
+    defaultVersionId: 111,
     book: 'JHN',
     chapter: '1',
     background: 'light',
@@ -404,7 +404,7 @@ export const SignInFlow: Story = {
 export const SignOutFlow: Story = {
   tags: ['integration'],
   args: {
-    versionId: 111,
+    defaultVersionId: 111,
     book: 'JHN',
     chapter: '1',
     background: 'light',
@@ -459,7 +459,7 @@ export const SignOutFlow: Story = {
 export const AuthenticatedWithAvatar: Story = {
   tags: ['integration'],
   args: {
-    versionId: 111,
+    defaultVersionId: 111,
     book: 'JHN',
     chapter: '1',
     background: 'light',
@@ -500,7 +500,7 @@ export const AuthenticatedWithAvatar: Story = {
 export const LoadsSavedPreferencesFromLocalStorage: Story = {
   tags: ['integration'],
   args: {
-    versionId: 111,
+    defaultVersionId: 111,
     book: 'JHN',
     chapter: '1',
     background: 'light',
@@ -556,7 +556,7 @@ export const LoadsSavedPreferencesFromLocalStorage: Story = {
 export const AuthenticatedWithoutAvatar: Story = {
   tags: ['integration'],
   args: {
-    versionId: 111,
+    defaultVersionId: 111,
     book: 'JHN',
     chapter: '1',
     background: 'light',
@@ -601,7 +601,7 @@ export const AuthenticatedWithoutAvatar: Story = {
 export const WithoutAuth: Story = {
   tags: ['integration'],
   args: {
-    versionId: 111,
+    defaultVersionId: 111,
     book: 'JHN',
     chapter: '1',
     background: 'light',
