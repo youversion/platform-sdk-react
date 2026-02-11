@@ -89,7 +89,7 @@ function App() {
       <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
         Toggle theme
       </button>
-      <BibleTextView reference="JHN.1.1-4" versionId={111} />
+      <BibleTextView reference="JHN.1.1-4" versionId={3034} />
     </YouVersionProvider>
   );
 }
@@ -102,7 +102,7 @@ Individual components accept a `background` prop to override the provider theme 
 ```tsx
 <YouVersionProvider appKey="YOUR_APP_KEY" theme="light">
   {/* This component uses dark styling despite the provider being light */}
-  <BibleReader.Root background="dark" versionId={111}>
+  <BibleReader.Root background="dark" versionId={3034}>
     <BibleReader.Content />
   </BibleReader.Root>
 </YouVersionProvider>
