@@ -20,7 +20,7 @@ export type VerseOfTheDayProps = {
    */
   background?: 'light' | 'dark';
   /**
-   * The Bible Translation version id to use, defaults to 3034 (BSB).
+   * The Bible version id to use, defaults to DEFAULT_LICENSE_FREE_BIBLE_VERSION.
    */
   versionId?: number;
   /**

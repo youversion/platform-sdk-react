@@ -60,7 +60,7 @@ src/index.ts           # Entry point with style injection side effect
 ```tsx
 // VerseOfTheDay - Daily verse card with optional features
 <VerseOfTheDay
-  versionId={3034}              // BSB translation
+  versionId={3034}              // Berean Standard Bible
   showSunIcon={true}
   showShareButton={true}
   showBibleAppAttribution={true}
@@ -107,7 +107,7 @@ function MyComponent() {
 ```
 
 ```tsx
-// BibleVersionPicker - Bible translation selection (controlled component)
+// BibleVersionPicker - Bible version selection (controlled component)
 function MyComponent() {
   const [versionId, setVersionId] = useState(3034);
 

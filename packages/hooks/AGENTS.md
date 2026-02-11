@@ -102,7 +102,7 @@ import { useChapter, useVersion, useVerseOfTheDay } from '@youversion/platform-r
 // Fetch a Bible chapter
 function ChapterView() {
   const { chapter, loading, error } = useChapter(
-    3034,      // versionId (e.g., 3034 = BSB Bible Translation)
+    3034,      // versionId (e.g., 3034 = Berean Standard Bible)
     'JHN',    // book (USFM abbreviation)
     3         // chapter number
   );

@@ -1,10 +1,11 @@
 import type { BibleBook, BibleChapter, BibleVersion } from '@youversion/platform-core';
+import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '@youversion/platform-core';
 import { useBook } from './useBook';
 import { useChapter } from './useChapter';
 import { useVersion } from './useVersion';
 
 export const DEFAULT = {
-  VERSION: 3034,
+  VERSION: DEFAULT_LICENSE_FREE_BIBLE_VERSION,
   BOOK: 'GEN',
   CHAPTER: 1,
 } as const;
