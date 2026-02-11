@@ -239,29 +239,11 @@ export const DarkMode: Story = {
     reference: 'JHN.3.16',
     versionId: 111,
     renderNotes: true,
+  },
+  globals: {
     theme: 'dark',
   },
-  argTypes: {
-    // The `theme` control is disabled across all of the Bible verse text
-    // components, stories, except the dark mode one.
-    theme: {
-      table: {
-        disable: false,
-      },
-    },
-  },
-  render: (args) => (
-    <section className="yv:flex yv:flex-col yv:gap-4 yv:max-w-lg">
-      <p className="yv:text-muted-foreground yv:font-sm">
-        Important: The background and padding for this Story was added manually to showcase the text
-        being influenced by the theme prop for the BibleTextView component. Otherwise, the text on a
-        light theme would be white on white (aka unreadable)
-      </p>
-      <div className="yv:[&>div]:bg-background yv:[&>div]:p-4 yv:[&>div]:rounded-[8px]">
-        <BibleTextView {...args} />
-      </div>
-    </section>
-  ),
+  render: (args) => <BibleTextView {...args} />,
 };
 
 export const FootnotePopoverThemeLight: Story = {
@@ -270,7 +252,6 @@ export const FootnotePopoverThemeLight: Story = {
     versionId: 111,
     renderNotes: true,
     showVerseNumbers: true,
-    theme: 'light',
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
@@ -309,14 +290,12 @@ export const FootnotePopoverThemeDark: Story = {
     versionId: 111,
     renderNotes: true,
     showVerseNumbers: true,
+  },
+  globals: {
     theme: 'dark',
   },
   tags: ['integration'],
-  render: (args) => (
-    <div className="yv:dark">
-      <BibleTextView {...args} />
-    </div>
-  ),
+  render: (args) => <BibleTextView {...args} />,
   play: async ({ canvasElement }) => {
     await waitFor(
       async () => {

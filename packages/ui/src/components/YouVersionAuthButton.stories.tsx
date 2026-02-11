@@ -49,8 +49,7 @@ const meta = {
       },
     },
     background: {
-      control: { type: 'select' },
-      options: [undefined, 'light', 'dark'],
+      table: { disable: true },
     },
     mode: {
       control: { type: 'select' },
@@ -156,94 +155,116 @@ export const LightRectangleIconOutline: Story = {
 };
 
 export const Dark: Story = {
-  args: {
-    background: 'dark',
+  globals: {
+    theme: 'dark',
   },
 };
 
 export const DarkOutline: Story = {
   args: {
-    background: 'dark',
     variant: 'outline',
+  },
+  globals: {
+    theme: 'dark',
   },
 };
 
 export const DarkShort: Story = {
   args: {
-    background: 'dark',
     size: 'short',
+  },
+  globals: {
+    theme: 'dark',
   },
 };
 
 export const DarkShortOutline: Story = {
   args: {
-    background: 'dark',
     size: 'short',
     variant: 'outline',
+  },
+  globals: {
+    theme: 'dark',
   },
 };
 
 export const DarkIcon: Story = {
   args: {
-    background: 'dark',
     size: 'icon',
+  },
+  globals: {
+    theme: 'dark',
   },
 };
 
 export const DarkIconOutline: Story = {
   args: {
-    background: 'dark',
     size: 'icon',
     variant: 'outline',
+  },
+  globals: {
+    theme: 'dark',
   },
 };
 
 export const DarkRectangle: Story = {
   args: {
-    background: 'dark',
     radius: 'rectangular',
+  },
+  globals: {
+    theme: 'dark',
   },
 };
 
 export const DarkRectangleOutline: Story = {
   args: {
-    background: 'dark',
     radius: 'rectangular',
     variant: 'outline',
+  },
+  globals: {
+    theme: 'dark',
   },
 };
 
 export const DarkRectangleShort: Story = {
   args: {
-    background: 'dark',
     radius: 'rectangular',
     size: 'short',
+  },
+  globals: {
+    theme: 'dark',
   },
 };
 
 export const DarkRectangleShortOutline: Story = {
   args: {
-    background: 'dark',
     radius: 'rectangular',
     size: 'short',
     variant: 'outline',
+  },
+  globals: {
+    theme: 'dark',
   },
 };
 
 export const DarkRectangleIcon: Story = {
   args: {
-    background: 'dark',
     radius: 'rectangular',
     size: 'icon',
+  },
+  globals: {
+    theme: 'dark',
   },
 };
 
 export const DarkRectangleIconOutline: Story = {
   args: {
-    background: 'dark',
     radius: 'rectangular',
     size: 'icon',
     variant: 'outline',
+  },
+  globals: {
+    theme: 'dark',
   },
 };
 

@@ -43,29 +43,72 @@ function App() {
 
 ## Theming
 
-Toggle theme via the `YVPProvider`:
+Set the theme via the `YouVersionProvider`'s `theme` prop. Defaults to `'light'`.
 
 ```tsx
-import { useState } from 'react';
-import { YouVersionProvider, YVPProvider, BibleTextView } from '@youversion/platform-react-ui';
+import { YouVersionProvider, BibleTextView } from '@youversion/platform-react-ui';
 
-export default function App() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-
+function App() {
   return (
-    <YouVersionProvider appKey="YOUR_APP_KEY">
-      <YVPProvider config={{ appKey: "YOUR_APP_KEY" }} theme={theme}>
-        <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
-          Toggle theme
-        </button>
-        <BibleTextView reference="JHN.1.1-4" versionId={111} />
-      </YVPProvider>
+    <YouVersionProvider appKey="YOUR_APP_KEY" theme="dark">
+      <BibleTextView reference="JHN.1.1-4" versionId={111} />
     </YouVersionProvider>
   );
 }
 ```
 
-Customize via CSS variables:
+### Theme options
+
+| Value | Behavior |
+|-------|----------|
+| `'light'` | Light mode (default) |
+| `'dark'` | Dark mode |
+| `'system'` | Follows the user's OS preference via `prefers-color-scheme` |
+
+### Following OS theme
+
+Pass `theme="system"` to automatically match the user's OS setting:
+
+```tsx
+<YouVersionProvider appKey="YOUR_APP_KEY" theme="system">
+  {/* Components switch between light/dark based on OS preference */}
+</YouVersionProvider>
+```
+
+### Toggling theme manually
+
+```tsx
+import { useState } from 'react';
+import { YouVersionProvider, BibleTextView } from '@youversion/platform-react-ui';
+
+function App() {
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  return (
+    <YouVersionProvider appKey="YOUR_APP_KEY" theme={theme}>
+      <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
+        Toggle theme
+      </button>
+      <BibleTextView reference="JHN.1.1-4" versionId={111} />
+    </YouVersionProvider>
+  );
+}
+```
+
+### Per-component overrides
+
+Individual components accept a `background` prop to override the provider theme locally:
+
+```tsx
+<YouVersionProvider appKey="YOUR_APP_KEY" theme="light">
+  {/* This component uses dark styling despite the provider being light */}
+  <BibleReader.Root background="dark" versionId={111}>
+    <BibleReader.Content />
+  </BibleReader.Root>
+</YouVersionProvider>
+```
+
+### Custom CSS variables
 
 ```css
 [data-yv-sdk] {
