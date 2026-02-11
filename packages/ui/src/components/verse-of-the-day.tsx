@@ -11,7 +11,7 @@ import { Share } from '@/components/icons/share';
 import { Votd } from '@/components/icons/votd';
 import { Button } from '@/components/ui/button';
 import { Verse } from '@/components/verse';
-import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '@/lib/constants';
+import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '@youversion/platform-core';
 import { cn } from '@/lib/utils';
 
 export type VerseOfTheDayProps = {

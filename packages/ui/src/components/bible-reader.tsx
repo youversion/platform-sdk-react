@@ -18,7 +18,7 @@ import {
   useState,
 } from 'react';
 import { cn } from '@/lib/utils';
-import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '../lib/constants';
+import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '@youversion/platform-core';
 import { BibleChapterPicker } from './bible-chapter-picker';
 import { BibleVersionPicker } from './bible-version-picker';
 import { GearIcon } from './icons/gear';
