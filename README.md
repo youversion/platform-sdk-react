@@ -99,7 +99,8 @@ console.log(passage.content);
 
 ## Contributing
 
-Want to contribute? See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup instructions, development workflow, and guidelines.
+> [!NOTE]
+> We are not yet accepting pull requests from external contributors, though we intend to do so in the future. In the meantime, we welcome you to use the SDK, report bugs via [GitHub Issues](https://github.com/youversion/platform-sdk-react/issues), and share feedback. See [CONTRIBUTING.md](./CONTRIBUTING.md) for more details.
 
 ## License
 
