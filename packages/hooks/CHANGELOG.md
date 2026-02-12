@@ -1,5 +1,13 @@
 # @youversion/platform-react-hooks
 
+## 1.14.1
+
+### Patch Changes
+
+- 51d97e5: Standardized our default Bible Version to one that does not require opt-in license to use, so that our components work out of the box by default
+- Updated dependencies [51d97e5]
+  - @youversion/platform-core@1.14.1
+
 ## 1.14.0
 
 ### Minor Changes
