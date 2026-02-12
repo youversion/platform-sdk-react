@@ -1,17 +1,17 @@
 import { z } from 'zod';
 import type { ApiClient } from './client';
+import { BibleVersionSchema } from './schemas';
 import type {
   BibleBook,
   BibleChapter,
-  Collection,
+  BibleIndex,
+  BiblePassage,
   BibleVerse,
   BibleVersion,
-  BiblePassage,
-  VOTD,
-  BibleIndex,
   CANON,
+  Collection,
+  VOTD,
 } from './types';
-import { BibleVersionSchema } from './schemas';
 
 /**
  * Client for interacting with Bible API endpoints.
@@ -244,13 +244,13 @@ export class BibleClient {
    * @example
    * ```ts
    * // Get a single verse
-   * const verse = await bibleClient.getPassage(111, "JHN.3.16");
+   * const verse = await bibleClient.getPassage(3034, "JHN.3.16");
    *
    * // Get a range of verses
-   * const verses = await bibleClient.getPassage(111, "JHN.3.1-5");
+   * const verses = await bibleClient.getPassage(3034, "JHN.3.1-5");
    *
    * // Get an entire chapter
-   * const chapter = await bibleClient.getPassage(111, "GEN.1");
+   * const chapter = await bibleClient.getPassage(3034, "GEN.1");
    * ```
    */
   async getPassage(

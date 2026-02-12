@@ -41,7 +41,7 @@ import { BibleSDKProvider, BibleTextView } from '@youversion/platform-react-ui';
 function App() {
   return (
     <BibleSDKProvider appKey={"YOUR_APP_KEY"}>
-      <BibleTextView reference="JHN.1.1-4" versionId={111} />
+      <BibleTextView reference="JHN.1.1-4" versionId={3034} />
     </BibleSDKProvider>
   );
 }
@@ -54,7 +54,7 @@ import { BibleSDKProvider, VerseOfTheDay } from '@youversion/platform-react-ui';
 function App() {
   return (
     <BibleSDKProvider appKey="YOUR_APP_KEY">
-      <VerseOfTheDay versionId={111} />
+      <VerseOfTheDay versionId={3034} />
     </BibleSDKProvider>
   );
 }
@@ -66,7 +66,7 @@ function App() {
 import { BibleSDKProvider, usePassage } from '@youversion/platform-react-hooks';
 
 function BibleVerse() {
-  const { passage, loading } = usePassage({ versionId: 111, usfm: 'JHN.3.16' });
+  const { passage, loading } = usePassage({ versionId: 3034, usfm: 'JHN.3.16' });
   if (loading) return <div>Loading...</div>;
   return <div dangerouslySetInnerHTML={{ __html: passage?.content || '' }} />;
 }

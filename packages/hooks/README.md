@@ -30,7 +30,7 @@ Get your App Key at [platform.youversion.com](https://platform.youversion.com/)
 import { YouVersionProvider, usePassage } from '@youversion/platform-react-hooks';
 
 function BibleVerse() {
-  const { passage, loading } = usePassage({ versionId: 111, usfm: 'JHN.3.16' });
+  const { passage, loading } = usePassage({ versionId: 3034, usfm: 'JHN.3.16' });
   if (loading) return <div>Loading...</div>;
   return <div dangerouslySetInnerHTML={{ __html: passage?.content || '' }} />;
 }

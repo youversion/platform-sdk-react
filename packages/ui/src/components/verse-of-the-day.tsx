@@ -1,17 +1,18 @@
-import React from 'react';
-import { Button } from '@/components/ui/button';
-import { Votd } from '@/components/icons/votd';
-import { Share } from '@/components/icons/share';
-import { BibleAppLogoLockup } from '@/components/bible-app-logo-lockup';
-import { cn } from '@/lib/utils';
-import { Verse } from '@/components/verse';
 import {
-  useVerseOfTheDay,
-  usePassage,
   getDayOfYear,
-  useVersion,
+  usePassage,
   useTheme,
+  useVerseOfTheDay,
+  useVersion,
 } from '@youversion/platform-react-hooks';
+import React from 'react';
+import { BibleAppLogoLockup } from '@/components/bible-app-logo-lockup';
+import { Share } from '@/components/icons/share';
+import { Votd } from '@/components/icons/votd';
+import { Button } from '@/components/ui/button';
+import { Verse } from '@/components/verse';
+import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '@youversion/platform-core';
+import { cn } from '@/lib/utils';
 
 export type VerseOfTheDayProps = {
   /**
@@ -19,7 +20,7 @@ export type VerseOfTheDayProps = {
    */
   background?: 'light' | 'dark';
   /**
-   * The Bible Translation version id to use, defaults to 111 (NIV).
+   * The Bible version id to use, defaults to DEFAULT_LICENSE_FREE_BIBLE_VERSION.
    */
   versionId?: number;
   /**
@@ -69,7 +70,7 @@ async function share({ title, text, url }: { title?: string; text: string; url?:
  * @example
  * ```tsx
  * <VerseOfTheDay
- *   versionId={111}
+ *   versionId={3034}
  *   showSunIcon={true}
  *   showShareButton={false}
  *   showBibleAppAttribution={true}
@@ -80,7 +81,7 @@ async function share({ title, text, url }: { title?: string; text: string; url?:
 export function VerseOfTheDay({
   background,
   dayOfYear,
-  versionId = 111, // NIV by default
+  versionId = DEFAULT_LICENSE_FREE_BIBLE_VERSION,
   showSunIcon = true,
   showShareButton = true,
   showBibleAppAttribution = true,

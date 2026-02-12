@@ -49,6 +49,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
+    versionId: 111, // This is intentionally set to NIV due to mock data
     showSunIcon: true,
     showBibleAppAttribution: true,
     showShareButton: true,
