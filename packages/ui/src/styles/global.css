@@ -30,8 +30,13 @@
 @import 'tw-animate-css';
 @import './bible-reader.css';
 
-/* #region Scoped Preflight — only resets elements inside [data-yv-sdk] */
-[data-yv-sdk] {
+/* #region Tailwind's Reset CSS, scoped to [data-yv-sdk] */
+/*
+ * :where() is a CSS pseudo-class that drops the specificity of
+ * everything inside it to zero (0,0,0,0). The selectors still
+ * match, but they never win a specificity fight. This is desired.
+ */
+:where([data-yv-sdk]) {
   *,
   ::after,
   ::before,
