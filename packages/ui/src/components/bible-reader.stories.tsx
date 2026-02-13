@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, screen, spyOn, userEvent, waitFor } from 'storybook/test';
 import { BibleReader } from './bible-reader';
 import { setupAuthenticatedUser } from '../test/utils';
-import { SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
+import { INTER_FONT, SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
 
 let signInMock: ReturnType<typeof fn>;
 
@@ -132,7 +132,7 @@ export const Default: Story = {
     );
 
     await userEvent.click(interButton);
-    await expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe('Inter');
+    await expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(INTER_FONT);
   },
 };
 
