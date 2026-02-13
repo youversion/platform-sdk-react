@@ -7,9 +7,9 @@ export function injectStyles() {
   const id = '__yv-sdk-styles';
   if (document.getElementById(id)) return; // Already injected
 
-  // Create and append style tag to DOM
+  // Prepend style tag so consumer styles take cascade priority
   const style = document.createElement('style');
   style.id = id;
   style.textContent = __YV_STYLES__;
-  document.head.appendChild(style);
+  document.head.prepend(style);
 }

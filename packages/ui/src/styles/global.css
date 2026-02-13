@@ -20,7 +20,7 @@
  * Note: CSS linter warnings on these imports are a known issue and do not
  * affect functionality.
  */
-@import 'tailwindcss/preflight.css' prefix(yv);
+@import './preflight-scoped.css';
 @import 'tailwindcss/theme.css' prefix(yv);
 @import 'tailwindcss/utilities.css' prefix(yv);
 
