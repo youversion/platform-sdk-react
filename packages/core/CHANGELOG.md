@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 1.14.2
+
+### Patch Changes
+
+- 0987b6c: This change fixes a bug where the serif font failed to render properly in the Bible reader.
+
 ## 1.14.1
 
 ### Patch Changes
