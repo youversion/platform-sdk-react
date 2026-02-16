@@ -67,7 +67,7 @@ export function BibleWidgetView({
       <BibleTextView
         theme={theme}
         fontSize={16}
-        fontFamily={"'Source Serif 4', serif"}
+        fontFamily={SOURCE_SERIF_FONT}
         reference={reference}
         versionId={versionNum}
       />
