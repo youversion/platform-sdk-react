@@ -4,6 +4,7 @@ import { BibleAppLogoLockup } from './bible-app-logo-lockup';
 import { BibleVersionPicker } from './bible-version-picker';
 import { Button } from './ui/button';
 import { useState } from 'react';
+import { SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
 
 export type BibleWidgetViewProps = {
   reference: string;
