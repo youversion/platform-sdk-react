@@ -42,6 +42,8 @@
   ::before,
   ::backdrop,
   ::file-selector-button {
+    font: inherit;
+    font-family: var(--yv-font-sans);
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -150,7 +152,7 @@
   textarea,
   ::file-selector-button {
     font: inherit;
-    font-family: var(--yv-font-sans), var(--yv-font-serif);
+    font-family: var(--yv-font-sans);
     font-feature-settings: inherit;
     font-variation-settings: inherit;
     letter-spacing: inherit;
