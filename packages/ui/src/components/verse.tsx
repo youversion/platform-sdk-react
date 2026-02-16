@@ -17,6 +17,7 @@ import {
   extractNotesFromWrappedHtml,
   LETTERS,
   NON_BREAKING_SPACE,
+  type FontFamily,
   type VerseNotes,
   wrapVerseContent,
 } from '@/lib/verse-html-utils';
@@ -286,7 +287,7 @@ type VerseProps = {
 
 type VerseHtmlProps = {
   html: string;
-  fontFamily?: string;
+  fontFamily?: FontFamily;
   fontSize?: number;
   lineHeight?: number;
   showVerseNumbers?: boolean;
@@ -392,7 +393,7 @@ export const Verse = {
 
 export type BibleTextViewProps = {
   reference: string;
-  fontFamily?: string;
+  fontFamily?: FontFamily;
   fontSize?: number;
   lineHeight?: number;
   versionId: number;
