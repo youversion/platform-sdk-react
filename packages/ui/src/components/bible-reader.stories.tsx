@@ -46,7 +46,7 @@ const meta: Meta<typeof BibleReader.Root> = {
     },
     fontFamily: {
       control: 'select',
-      options: [SOURCE_SERIF_FONT, 'Inter', "'Georgia', serif", "'Nunito Sans', sans-serif"],
+      options: [SOURCE_SERIF_FONT, INTER_FONT, "'Georgia', serif", "'Nunito Sans', sans-serif"],
       description: 'Font family',
     },
     showVerseNumbers: {
