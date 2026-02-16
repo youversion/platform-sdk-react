@@ -4,6 +4,7 @@ import { BibleAppLogoLockup } from './bible-app-logo-lockup';
 import { BibleVersionPicker } from './bible-version-picker';
 import { Button } from './ui/button';
 import { useState } from 'react';
+import { SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
 
 export type BibleWidgetViewProps = {
   reference: string;
@@ -67,7 +68,7 @@ export function BibleWidgetView({
       <BibleTextView
         theme={theme}
         fontSize={16}
-        fontFamily={"'Source Serif Pro', serif"}
+        fontFamily={SOURCE_SERIF_FONT}
         reference={reference}
         versionId={versionNum}
       />

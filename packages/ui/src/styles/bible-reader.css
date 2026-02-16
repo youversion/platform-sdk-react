@@ -2,7 +2,10 @@
 [data-slot='yv-bible-renderer'] {
   /* Makes it where cascading styles from the parent app do not affect the bible reader */
   all: unset;
-  --yv-reader-font-family: var(--font-sans), var(--font-serif);
+
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: 'Source Serif 4', serif;
+  --yv-reader-font-family: var(--font-serif), var(--font-sans);
   --yv-reader-font-size: 20px;
   --yv-reader-line-height: 1.625;
 

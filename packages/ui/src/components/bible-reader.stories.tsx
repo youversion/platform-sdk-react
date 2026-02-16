@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, screen, spyOn, userEvent, waitFor } from 'storybook/test';
 import { BibleReader } from './bible-reader';
 import { setupAuthenticatedUser } from '../test/utils';
+import { INTER_FONT, SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
 
 let signInMock: ReturnType<typeof fn>;
 
@@ -45,7 +46,7 @@ const meta: Meta<typeof BibleReader.Root> = {
     },
     fontFamily: {
       control: 'select',
-      options: ['Source Serif Pro', 'Inter', "'Georgia', serif", "'Nunito Sans', sans-serif"],
+      options: [SOURCE_SERIF_FONT, INTER_FONT, "'Georgia', serif", "'Nunito Sans', sans-serif"],
       description: 'Font family',
     },
     showVerseNumbers: {
@@ -127,11 +128,11 @@ export const Default: Story = {
 
     await userEvent.click(sourceSerifButton);
     await expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(
-      'Source Serif',
+      SOURCE_SERIF_FONT,
     );
 
     await userEvent.click(interButton);
-    await expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe('Inter');
+    await expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(INTER_FONT);
   },
 };
 
@@ -501,7 +502,7 @@ export const LoadsSavedPreferencesFromLocalStorage: Story = {
     localStorage.clear();
     // Pre-populate localStorage with saved preferences
     localStorage.setItem('youversion-platform:reader:font-size', '18');
-    localStorage.setItem('youversion-platform:reader:font-family', 'Source Serif');
+    localStorage.setItem('youversion-platform:reader:font-family', SOURCE_SERIF_FONT);
   },
   render: (args) => (
     <div className="yv:h-screen yv:bg-background">
@@ -526,7 +527,7 @@ export const LoadsSavedPreferencesFromLocalStorage: Story = {
     )!;
     await expect(verseContainer.style.getPropertyValue('--yv-reader-font-size')).toBe('18px');
     await expect(verseContainer.style.getPropertyValue('--yv-reader-font-family')).toBe(
-      'Source Serif',
+      SOURCE_SERIF_FONT,
     );
 
     // Open settings and verify the correct font family button is active

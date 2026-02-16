@@ -27,6 +27,7 @@ import { PersonIcon } from './icons/person';
 import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { BibleTextView } from './verse';
+import { INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
 
 type BibleReaderContextType = {
   book: string;
@@ -35,8 +36,8 @@ type BibleReaderContextType = {
   setBook: React.Dispatch<React.SetStateAction<string>>;
   setChapter: React.Dispatch<React.SetStateAction<string>>;
   setVersionId: React.Dispatch<React.SetStateAction<number>>;
-  currentFontFamily: string;
-  setCurrentFontFamily: React.Dispatch<React.SetStateAction<string>>;
+  currentFontFamily: FontFamily;
+  setCurrentFontFamily: React.Dispatch<React.SetStateAction<FontFamily>>;
   currentFontSize: number;
   setCurrentFontSize: React.Dispatch<React.SetStateAction<number>>;
   lineHeight?: number;
@@ -64,7 +65,7 @@ export type RootProps = {
   versionId?: number;
   defaultVersionId?: number;
   onVersionChange?: (versionId: number) => void;
-  fontFamily?: string;
+  fontFamily?: FontFamily;
   fontSize?: number;
   lineHeight?: number;
   showVerseNumbers?: boolean;
@@ -86,7 +87,7 @@ function Root({
   versionId: controlledVersionId,
   defaultVersionId = DEFAULT_LICENSE_FREE_BIBLE_VERSION,
   onVersionChange,
-  fontFamily = 'Inter',
+  fontFamily = SOURCE_SERIF_FONT,
   fontSize = DEFAULT_FONT_SIZE,
   lineHeight,
   showVerseNumbers = true,
@@ -396,18 +397,18 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                 <Button
                   className={cn(
                     'yv:group yv:dark:bg-muted yv:rounded-r-none yv:dark:border-border yv:rounded-l-[8px] yv:h-auto',
-                    currentFontFamily === 'Inter'
+                    currentFontFamily === INTER_FONT
                       ? 'yv:bg-black yv:dark:bg-inherit yv:text-white yv:hover:text-white yv:hover:bg-black/80'
                       : '',
                   )}
-                  onClick={() => setCurrentFontFamily('Inter')}
+                  onClick={() => setCurrentFontFamily(INTER_FONT)}
                   variant="outline"
                 >
                   <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
                     <span
                       className={cn(
                         'yv:text-xs yv:text-muted-foreground',
-                        currentFontFamily === 'Inter'
+                        currentFontFamily === INTER_FONT
                           ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
                           : '',
                       )}
@@ -420,18 +421,18 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                 <Button
                   className={cn(
                     'yv:group yv:dark:bg-muted yv:rounded-l-none yv:rounded-r-[8px] yv:h-auto',
-                    currentFontFamily === 'Source Serif'
+                    currentFontFamily === SOURCE_SERIF_FONT
                       ? 'yv:bg-black yv:dark:bg-inherit yv:text-white yv:hover:text-white yv:hover:bg-black/80'
                       : '',
                   )}
-                  onClick={() => setCurrentFontFamily('Source Serif')}
+                  onClick={() => setCurrentFontFamily(SOURCE_SERIF_FONT)}
                   variant="outline"
                 >
                   <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
                     <span
                       className={cn(
                         'yv:text-xs yv:text-muted-foreground',
-                        currentFontFamily === 'Source Serif'
+                        currentFontFamily === SOURCE_SERIF_FONT
                           ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
                           : '',
                       )}
