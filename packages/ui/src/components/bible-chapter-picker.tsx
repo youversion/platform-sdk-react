@@ -258,13 +258,18 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
   const theme = background || providerTheme;
 
   const currentBook = books?.data?.find((bookItem) => bookItem.id === book);
+  let currentChapter: string =
+    currentBook?.chapters?.find((ch) => ch.id === chapter)?.title || chapter;
+  if (!!currentBook?.intro && chapter === currentBook.intro.id) {
+    currentChapter = currentBook.intro.title;
+  }
   const buttonText = loading
     ? 'Loading...'
-    : `${currentBook?.title || 'Select a chapter'}${chapter ? ` ${chapter}` : ''}`;
+    : `${currentBook?.title || 'Select a chapter'}${currentChapter ? ` ${currentChapter}` : ''}`;
 
   const content =
     typeof children === 'function'
-      ? children({ book, chapter, currentBook, loading })
+      ? children({ book, chapter: currentChapter, currentBook, loading })
       : children || <Button variant="secondary">{buttonText}</Button>;
 
   return (
