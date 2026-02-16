@@ -168,7 +168,7 @@
     display: list-item;
   }
 
-  /* Intended list item (e.g. see Acts Intro in NIV Bible Version `111`) */
+  /* Indented list item (e.g. see Acts Intro in NIV Bible Version `111`) */
   & .ili1 {
     list-style-type: none;
     margin-left: 2em;
