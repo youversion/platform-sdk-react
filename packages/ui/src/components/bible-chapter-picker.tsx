@@ -165,6 +165,25 @@ function Root({
                   <AccordionContent>
                     {bookItem.chapters && bookItem.chapters.length > 0 ? (
                       <div className="yv:grid yv:grid-cols-5 yv:gap-2">
+                        {bookItem.intro?.id && bookItem.intro?.passage_id ? (
+                          <PopoverClose asChild key={`${bookItem.id}-${bookItem.intro.passage_id}`}>
+                            <Button
+                              variant="secondary"
+                              size="icon"
+                              className="yv:aspect-square yv:w-full yv:h-full yv:flex yv:items-center yv:justify-center yv:rounded-[4px]"
+                              onClick={() => {
+                                const chapterId = bookItem.intro?.passage_id.split('.').pop();
+                                if (chapterId) {
+                                  setBook(bookItem.id);
+                                  setChapter(chapterId);
+                                  setSearchQuery('');
+                                }
+                              }}
+                            >
+                              <InfoIcon />
+                            </Button>
+                          </PopoverClose>
+                        ) : null}
                         {bookItem.chapters.map((chapterRef) => {
                           const chapterId = chapterRef.passage_id.split('.').pop() || '';
                           return (
@@ -179,11 +198,7 @@ function Root({
                                   setSearchQuery('');
                                 }}
                               >
-                                {!chapterId.toLowerCase().includes('intro') ? (
-                                  chapterId
-                                ) : (
-                                  <InfoIcon />
-                                )}
+                                {chapterId}
                               </Button>
                             </PopoverClose>
                           );
