@@ -250,7 +250,7 @@ function UserMenu() {
 
   return (
     <Popover>
-      <PopoverTrigger data-testid="user-menu-trigger">
+      <PopoverTrigger asChild data-testid="user-menu-trigger">
         <Button size="icon" variant="secondary">
           {auth.isAuthenticated && userInfo?.avatarUrlFormat ? (
             <img
@@ -355,7 +355,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
         </div>
 
         <Popover>
-          <PopoverTrigger aria-label="Settings">
+          <PopoverTrigger asChild aria-label="Settings">
             <Button size="icon" variant="secondary">
               <GearIcon className="yv:text-foreground" />
             </Button>
