@@ -196,6 +196,13 @@ function Content() {
   const usfmReference = `${book}.${chapter}`;
   const chapterIsNumerical: boolean = !!parseInt(chapter || '', 10) || false;
 
+  // Check if the current chapter is available in this version
+  const chapterUnavailable = useMemo(() => {
+    if (!bookData || !chapter) return false;
+    if (!chapterIsNumerical && !bookData.intro) return true;
+    return false;
+  }, [bookData, chapter, chapterIsNumerical]);
+
   return (
     <main className="yv:*:max-w-lg yv:flex yv:flex-col yv:items-center yv:gap-6 yv:overflow-y-auto yv:px-6 yv:max-sm:px-4 yv:py-12 yv:h-full">
       {chapterIsNumerical ? (
@@ -214,15 +221,23 @@ function Content() {
         </h1>
       ) : null}
 
-      <BibleTextView
-        reference={usfmReference}
-        versionId={versionId}
-        fontFamily={currentFontFamily}
-        fontSize={currentFontSize}
-        lineHeight={lineHeight}
-        showVerseNumbers={showVerseNumbers}
-        theme={background}
-      />
+      {chapterUnavailable ? (
+        // This copy was taken from bible.com (e.g. https://www.bible.com/bible/4253/ACT.INTRO1.AFV)
+        <p className="yv:text-center yv:text-balance yv:text-muted-foreground">
+          This chapter is not available in this version. Please choose a different chapter or
+          version.
+        </p>
+      ) : (
+        <BibleTextView
+          reference={usfmReference}
+          versionId={versionId}
+          fontFamily={currentFontFamily}
+          fontSize={currentFontSize}
+          lineHeight={lineHeight}
+          showVerseNumbers={showVerseNumbers}
+          theme={background}
+        />
+      )}
 
       {version?.copyright && (
         <footer
