@@ -489,6 +489,16 @@
     text-indent: -1em;
   }
 
+  /* This adds top margin to the introduction list items */
+  & .ili:not(.ili + .ili) {
+    margin-block-start: 1em;
+  }
+
+  /* This adds bottommargin to the introduction list items */
+  & .ili:has(+ :not(.ili)) {
+    margin-block-end: 1em;
+  }
+
   /* \ili2 - Introduction list item (level 2) */
   & .ili2 {
     display: block;
