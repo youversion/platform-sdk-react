@@ -346,13 +346,15 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
             background={background}
           >
             <BibleChapterPicker.Trigger aria-label="Change Bible book and chapter">
-              {({ chapter, currentBook, loading }) => (
+              {({ chapterLabel, currentBook, loading }) => (
                 <Button
                   variant="secondary"
                   className="yv:rounded-r-none yv:font-bold yv:text-foreground"
                   disabled={loading}
                 >
-                  {loading ? 'Loading...' : `${currentBook?.title || 'Select'} ${chapter || ''}`}
+                  {loading
+                    ? 'Loading...'
+                    : `${currentBook?.title || 'Select'} ${chapterLabel || ''}`}
                 </Button>
               )}
             </BibleChapterPicker.Trigger>

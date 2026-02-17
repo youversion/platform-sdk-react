@@ -244,8 +244,10 @@ export type TriggerProps = Omit<React.ComponentProps<typeof PopoverTrigger>, 'ch
     | React.ReactNode
     | ((props: {
         book: string;
-        /** Display label for the current chapter (e.g. "1", "Intro"), not the raw chapter ID. */
+        /** Raw chapter ID as passed to the Root component (e.g. "GEN.1", "GEN.INTRO"). */
         chapter: string;
+        /** Display label for the current chapter (e.g. "1", "Intro"). */
+        chapterLabel: string;
         currentBook: BibleBook | undefined;
         loading: boolean;
       }) => React.ReactNode);
@@ -259,18 +261,18 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
   const theme = background || providerTheme;
 
   const currentBook = books?.data?.find((bookItem) => bookItem.id === book);
-  let currentChapter: string =
+  let chapterLabel: string =
     currentBook?.chapters?.find((ch) => ch.id === chapter)?.title || chapter;
   if (!!currentBook?.intro && chapter === currentBook.intro.id) {
-    currentChapter = currentBook.intro.title;
+    chapterLabel = currentBook.intro.title;
   }
   const buttonText = loading
     ? 'Loading...'
-    : `${currentBook?.title || 'Select a chapter'}${currentChapter ? ` ${currentChapter}` : ''}`;
+    : `${currentBook?.title || 'Select a chapter'}${chapterLabel ? ` ${chapterLabel}` : ''}`;
 
   const content =
     typeof children === 'function'
-      ? children({ book, chapter: currentChapter, currentBook, loading })
+      ? children({ book, chapter, chapterLabel, currentBook, loading })
       : children || <Button variant="secondary">{buttonText}</Button>;
 
   return (

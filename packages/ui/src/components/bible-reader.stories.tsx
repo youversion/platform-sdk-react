@@ -678,13 +678,14 @@ export const IntroChapter: Story = {
     const hasUnavailableText = unavailableMessage?.textContent?.includes('not available');
     await expect(hasUnavailableText).not.toBeTruthy();
 
-    // Toolbar trigger should show "Intro" label once books data loads
+    // Toolbar trigger should show "Intro" (title-case label), NOT "INTRO" (raw chapter ID)
     await waitFor(
       async () => {
         const chapterButton = screen.getByRole('button', {
           name: /change bible book and chapter/i,
         });
         await expect(chapterButton.textContent).toContain('Intro');
+        await expect(chapterButton.textContent).not.toContain('INTRO');
       },
       { timeout: 5000 },
     );
@@ -756,13 +757,14 @@ export const JoshuaIntroChapter: Story = {
     await expect(verseContainer.textContent).toContain('The Typology of Jesus');
     await expect(verseContainer.textContent).toContain('Yahweh');
 
-    // Toolbar trigger should show "Intro" label for Joshua
+    // Toolbar trigger should show "Intro" (title-case label), NOT "INTRO" (raw chapter ID)
     await waitFor(
       async () => {
         const chapterButton = screen.getByRole('button', {
           name: /change bible book and chapter/i,
         });
         await expect(chapterButton.textContent).toContain('Intro');
+        await expect(chapterButton.textContent).not.toContain('INTRO');
       },
       { timeout: 5000 },
     );
