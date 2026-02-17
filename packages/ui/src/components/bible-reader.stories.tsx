@@ -640,6 +640,58 @@ export const WithoutAuth: Story = {
 };
 
 /**
+ * Tests that the Bible reader renders intro chapter content when navigated to a
+ * non-numerical chapter (e.g. JHN.INTRO). The h1 header should be hidden and
+ * the intro passage content should render.
+ */
+export const IntroChapter: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    book: 'JHN',
+    chapter: 'INTRO',
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    // Intro passage content should render
+    await waitFor(
+      async () => {
+        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(verseContainer).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    // The h1 book/chapter header should not be present for non-numerical chapters
+    const h1 = canvasElement.querySelector('h1');
+    await expect(h1).not.toBeInTheDocument();
+
+    // The unavailable message should not show since the version has this intro
+    const unavailableMessage = canvasElement.querySelector('p');
+    const hasUnavailableText = unavailableMessage?.textContent?.includes('not available');
+    await expect(hasUnavailableText).not.toBeTruthy();
+
+    // Toolbar trigger should show "Intro" label once books data loads
+    await waitFor(
+      async () => {
+        const chapterButton = screen.getByRole('button', {
+          name: /change bible book and chapter/i,
+        });
+        await expect(chapterButton.textContent).toContain('Intro');
+      },
+      { timeout: 5000 },
+    );
+  },
+};
+
+/**
  * Tests that a rich intro chapter (Joshua) renders correctly with real-world content
  * including structured sections (At a Glance, Purpose, Major Themes), italic spans,
  * bold-italic spans, and special formatting classes (imt1, imt2, is, ili, ip, etc.).
@@ -661,11 +713,12 @@ export const JoshuaIntroChapter: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
-    // Wait for the Bible renderer to mount
+    // Wait for the intro content to fully load (not just the renderer element)
     await waitFor(
       async () => {
         const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
         await expect(verseContainer).toBeInTheDocument();
+        await expect(verseContainer?.textContent).toContain('Joshua');
       },
       { timeout: 5000 },
     );
@@ -681,7 +734,6 @@ export const JoshuaIntroChapter: Story = {
     await expect(hasUnavailableText).not.toBeTruthy();
 
     // Verify key intro content rendered — title and structured sections
-    await expect(verseContainer.textContent).toContain('Joshua');
     await expect(verseContainer.textContent).toContain('Introduction');
     await expect(verseContainer.textContent).toContain('At a Glance');
     await expect(verseContainer.textContent).toContain('Traditionally Joshua');
