@@ -156,7 +156,7 @@
     font-size: 1.6em;
     font-weight: bold;
     line-height: 1.4em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 1em 0 0.25em;
     display: block;
   }
@@ -166,7 +166,7 @@
     font-size: 1.3em;
     font-style: italic;
     line-height: 1.4em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 0.5em 0 0.15em;
     display: block;
   }
@@ -176,7 +176,7 @@
     font-size: 1.3em;
     font-weight: bold;
     line-height: 1.4em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 0.15em 0;
     display: block;
   }
@@ -184,7 +184,7 @@
   /* \mt4 - Main title (level 4) — FontSize 12, Center */
   & .mt4 {
     line-height: 1.8em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 0.15em 0;
     display: block;
   }
@@ -199,7 +199,7 @@
     font-size: 1.17em;
     font-weight: bold;
     line-height: 1.8em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 1em 0 0.25em;
     display: block;
   }
@@ -209,7 +209,7 @@
     font-size: 1.08em;
     font-style: italic;
     line-height: 1.8em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 0.5em 0 0.25em;
     display: block;
   }
@@ -218,7 +218,7 @@
   & .imt3 {
     font-weight: bold;
     line-height: 1.8em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 0.15em 0;
     display: block;
   }
@@ -227,7 +227,7 @@
   & .imt4 {
     font-style: italic;
     line-height: 1.8em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 0.15em 0;
     display: block;
   }
@@ -242,7 +242,7 @@
     font-size: 1.6em;
     font-weight: bold;
     line-height: 1.4em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 1em 0 0.25em;
     display: block;
   }
@@ -252,7 +252,7 @@
     font-size: 1.3em;
     font-style: italic;
     line-height: 1.4em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 0.5em 0 0.15em;
     display: block;
   }
@@ -267,7 +267,7 @@
     font-size: 1.17em;
     font-weight: bold;
     line-height: 1.8em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 1em 0 0.25em;
     display: block;
   }
@@ -277,7 +277,7 @@
     font-size: 1.17em;
     font-weight: bold;
     line-height: 1.8em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 0.5em 0;
     display: block;
   }
@@ -287,7 +287,7 @@
     font-size: 1.17em;
     font-style: italic;
     line-height: 1.8em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 0.5em 0;
     display: block;
   }
@@ -297,7 +297,7 @@
     display: block;
     font-style: italic;
     line-height: 1.8em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 0 0 0.5em;
   }
 
@@ -310,7 +310,7 @@
   & .s1 {
     font-weight: bold;
     line-height: 1.8em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 0.5em 0 0.5em 0;
     display: block;
   }
@@ -320,7 +320,7 @@
     display: block;
     font-style: italic;
     line-height: 1.8em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 0.5em 0;
   }
 
@@ -345,7 +345,7 @@
     display: block;
     font-weight: bold;
     line-height: 1.8em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 0 0 0.5em;
   }
 
@@ -354,7 +354,7 @@
     display: block;
     font-style: italic;
     line-height: 1.8em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 0 0 0.5em;
   }
 
@@ -371,7 +371,7 @@
     display: block;
     font-style: italic;
     line-height: 1.8em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 0.5em 0;
   }
 
@@ -400,7 +400,7 @@
     font-size: 1.17em;
     font-weight: bold;
     line-height: 1.8em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 0.5em 0 0.5em 0;
     display: block;
   }
@@ -409,7 +409,7 @@
   & .is2 {
     font-weight: bold;
     line-height: 1.8em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 0.5em 0 0.5em 0;
     display: block;
   }
@@ -442,7 +442,7 @@
   & .iot {
     font-weight: bold;
     line-height: 1.8em;
-    text-align: center;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
     margin: 0.5em 0;
     display: block;
   }
