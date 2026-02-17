@@ -2,6 +2,7 @@
 [data-slot='yv-bible-renderer'] {
   /* Makes it where cascading styles from the parent app do not affect the bible reader */
   all: unset;
+  display: block;
 
   --font-sans: 'Inter', sans-serif;
   --font-serif: 'Source Serif 4', serif;
@@ -9,17 +10,23 @@
   --yv-reader-font-size: 20px;
   --yv-reader-line-height: 1.625;
 
+  /* Set base typography on the root so descendants can inherit */
+  font-family: var(--yv-reader-font-family);
+  font-size: var(--yv-reader-font-size);
+  line-height: var(--yv-reader-line-height);
+
   /* Disable text selection and tap highlights on mobile */
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
 
-  /* Set default font and line-height for all descendants */
+  /* Inherit typography from root instead of forcing a fixed size on every element.
+     This allows em-based sizing in headings/poetry to cascade properly to children. */
   & * {
-    line-height: var(--yv-reader-line-height);
-    font-family: var(--yv-reader-font-family);
-    font-size: var(--yv-reader-font-size);
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
     margin: 0;
     padding: 0;
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
@@ -32,17 +39,16 @@
   @apply yv:*:w-full yv:text-foreground yv:*:max-w-lg;
 
   /* Hide metadata and navigation classes */
-  & .id,
-  & .ide,
-  & .sts,
-  & .rem,
-  & .toc1,
-  & .toc2,
-  & .toc3,
-  & .imte,
-  & .ie,
-  & .mte,
-  & .cl {
+  & .id, /* \id - File identification */
+  & .ide, /* \ide - Encoding specification */
+  & .sts, /* \sts - Status */
+  & .rem, /* \rem - Remark */
+  & .toc1, /* \toc1 - Long table of contents text */
+  & .toc2, /* \toc2 - Short table of contents text */
+  & .toc3, /* \toc3 - Book abbreviation */
+  & .ie, /* \ie - Introduction end marker */
+  & .mte, /* \mte - Major title at ending */
+  & .cl { /* \cl - Chapter label */
     display: none;
   }
 
@@ -75,7 +81,7 @@
     @apply yv:hidden;
   }
 
-  /* Footnote */
+  /* \f - Footnote container (YouVersion wrapper) */
   & .yv-n {
     display: none;
   }
@@ -131,12 +137,12 @@
   }
 
   /* Major titles */
-  & .imt,
-  & .imt1,
-  & .mt,
-  & .mt1,
-  & .ms,
-  & .ms1 {
+  & .imt, /* \imt - Introduction major title */
+  & .imt1, /* \imt1 - Introduction major title (level 1) */
+  & .mt, /* \mt - Main title */
+  & .mt1, /* \mt1 - Main title (level 1) */
+  & .ms, /* \ms - Major section heading */
+  & .ms1 { /* \ms1 - Major section heading (level 1) */
     font-size: 1.3em;
     font-weight: bold;
     line-height: 1.8em;
@@ -144,7 +150,7 @@
     display: block;
   }
 
-  /* Other title */
+  /* \iot - Introduction outline title (e.g. "Outline of Contents") */
   & .iot {
     font-size: 1.3em;
     font-weight: 700;
@@ -153,40 +159,140 @@
     display: block;
   }
 
-  /* Indented ordered list */
-  & .io,
-  & .io1 {
+  /* \io - Introduction outline entries (displayed as bulleted list items) */
+  & .io, /* \io - Introduction outline entry */
+  & .io1 { /* \io1 - Introduction outline entry (level 1) */
     list-style-type: disc;
-    margin-left: 1em;
+    margin-inline-start: 1em;
     display: list-item;
   }
 
-  & .io2,
-  & .io3 {
+  & .io2, /* \io2 - Introduction outline entry (level 2) */
+  & .io3 { /* \io3 - Introduction outline entry (level 3) */
     list-style-type: disc;
-    margin-left: 2em;
+    margin-inline-start: 2em;
     display: list-item;
   }
 
-  /* Indented list item (e.g. see Acts Intro in NIV Bible Version `111`) */
-  & .ili1 {
+  /* \io4 - Introduction outline entry (level 4) */
+  & .io4 {
+    list-style-type: disc;
+    margin-inline-start: 3em;
+    display: list-item;
+  }
+
+  /* \ior - Introduction outline reference range (e.g. "(1.1-13)") */
+  & .ior {
+    font-style: italic;
+  }
+
+  /* \ili - Introduction list items */
+  & .ili, /* \ili - Introduction list item (default) */
+  & .ili1 { /* \ili1 - Introduction list item (level 1) */
     list-style-type: none;
-    margin-left: 2em;
+    margin-inline-start: 2em;
     display: list-item;
   }
 
-  /* Indented paragraph indent */
+  /* \ili2 - Introduction list item (level 2) */
+  & .ili2 {
+    list-style-type: none;
+    margin-inline-start: 4em;
+    display: list-item;
+  }
+
+  /* \ili3 - Introduction list item (level 3) */
+  & .ili3 {
+    list-style-type: none;
+    margin-inline-start: 6em;
+    display: list-item;
+  }
+
+  /* \ipi - Indented introduction paragraph */
   & .ipi {
+    display: block;
     text-indent: 1.5em;
   }
 
+  /* \im - Introduction flush left (margin) paragraph */
+  & .im {
+    display: block;
+    text-indent: 0;
+    margin: 0;
+  }
+
+  /* \imi - Indented introduction flush left (margin) paragraph */
+  & .imi {
+    display: block;
+    margin-inline-start: 1em;
+    text-indent: 0;
+  }
+
+  /* \ipq - Introduction quote from scripture text */
+  & .ipq {
+    display: block;
+    font-style: italic;
+    text-indent: 1em;
+  }
+
+  /* \imq - Introduction flush left quote from text */
+  & .imq {
+    display: block;
+    font-style: italic;
+    text-indent: 0;
+  }
+
+  /* \ipr - Introduction right-aligned paragraph (typically a scripture reference) */
+  & .ipr {
+    display: block;
+    text-align: end;
+  }
+
+  /* \ib - Introduction blank line (whitespace between intro paragraphs) */
+  & .ib {
+    display: block;
+    height: 1em;
+  }
+
+  /* \iqt - Introduction quoted text (scripture quotation in intro) */
+  & .iqt {
+    font-style: italic;
+    margin-inline-start: 1em;
+  }
+
+  /* \imte - Introduction major title ending (marks end of introduction) */
+  & .imte, /* \imte - Introduction major title ending */
+  & .imte1 { /* \imte1 - Introduction major title ending (level 1) */
+    font-size: 1.3em;
+    font-weight: bold;
+    line-height: 1.8em;
+    margin: 1em 0 0;
+    display: block;
+  }
+
+  /* \imte2 - Introduction major title ending (level 2) */
+  & .imte2 {
+    line-height: 1.8em;
+    margin: 0.5em 0;
+    font-weight: bold;
+    display: block;
+  }
+
+  /* \iex - Introduction explanatory/bridge text (e.g. attribution at end of epistles) */
+  & .iex {
+    display: block;
+    font-style: italic;
+    line-height: 2em;
+    margin: 0.5em 0;
+  }
+
   /* Title levels 2-4 */
-  & .imt2,
-  & .imt3,
-  & .imt4,
-  & .mt2,
-  & .mt3,
-  & .mt4 {
+  & .imt2, /* \imt2 - Introduction major title (level 2) */
+  & .imt3, /* \imt3 - Introduction major title (level 3) */
+  & .imt4, /* \imt4 - Introduction major title (level 4) */
+  & .mt2, /* \mt2 - Main title (level 2) */
+  & .mt3, /* \mt3 - Main title (level 3) */
+  & .mt4 { /* \mt4 - Main title (level 4) */
     line-height: 1.8em;
     margin: 0.5em 0;
     font-weight: bold;
@@ -194,12 +300,11 @@
   }
 
   /* Section headers */
-  & .is,
-  & .s,
-  & .s1,
-  & .ms1,
-  & .is1,
-  & .is2 {
+  & .is, /* \is - Introduction section heading */
+  & .s, /* \s - Section heading */
+  & .s1, /* \s1 - Section heading (level 1) */
+  & .is1, /* \is1 - Introduction section heading (level 1) */
+  & .is2 { /* \is2 - Introduction section heading (level 2) */
     font-size: 1.1em;
     font-weight: bold;
     line-height: 1.8em;
@@ -211,6 +316,23 @@
     font-weight: bold;
     line-height: 1.8em;
     margin: 0 0 0.5em 0;
+    display: block;
+  }
+
+  /* \mr - Major section reference range (e.g. "(Psalms 1–41)") */
+  & .mr {
+    display: block;
+    font-style: italic;
+    font-weight: bold;
+    line-height: 1.8em;
+    margin: 0 0 0.5em;
+  }
+
+  /* \ms3 - Major section heading (level 3) */
+  & .ms3 {
+    line-height: 1.8em;
+    margin: 0.5em 0;
+    font-weight: bold;
     display: block;
   }
 
@@ -237,29 +359,34 @@
     font-size: 0.9em;
   }
 
-  /* Other styles within a footnote */
-  & .note .fr {
+  /* Footnote/note character styles */
+  & .note .fr { /* \fr - Footnote reference (verse number) */
     padding-right: 0.25em;
   }
 
-  & .note .fq,
-  & .note .fqa {
+  & .note .fq, /* \fq - Footnote quotation from text */
+  & .note .fqa { /* \fqa - Footnote alternate translation */
     font-style: italic;
   }
 
-  & .note .fv {
+  & .note .ft { /* \ft - Footnote text */
+    display: inline;
+  }
+
+  & .note .fv { /* \fv - Footnote verse number */
     vertical-align: super;
     font-size: 0.75em;
   }
 
-  & .note .fk {
+  & .note .fk { /* \fk - Footnote keyword */
     font-style: italic;
     font-weight: bold;
   }
 
   /* Paragraphs - text-indent 1em based on iOS CSS */
-  & .p,
-  & .ip {
+  & .p, /* \p - Normal paragraph */
+  & .ip { /* \ip - Introduction paragraph */
+    display: block;
     margin-bottom: 0;
     text-indent: 1em;
   }
@@ -500,25 +627,87 @@
     margin-top: 0;
   }
 
-  /* Words of Jesus */
+  /* \wj - Words of Jesus (red letter) */
   & .wj {
     color: var(--yv-red);
   }
 
-  /* Name of Deity (small-caps) */
+  /* \nd - Name of Deity (e.g. "LORD"), \sc - Small-cap text */
   & .nd,
   & .sc {
     font-variant: small-caps;
   }
 
-  /* Line break */
+  /* \bd - Bold text */
+  & .bd {
+    font-weight: bold;
+  }
+
+  /* \em - Emphasis text */
+  & .em {
+    font-style: italic;
+  }
+
+  /* \bdit - Bold-italic text */
+  & .bdit {
+    font-weight: bold;
+    font-style: italic;
+  }
+
+  /* \bk - Book name reference (e.g. "The Gospel according to Mark") */
+  & .bk {
+    font-style: italic;
+  }
+
+  /* \ord - Ordinal number ending (e.g. the "st" in "1st") */
+  & .ord {
+    font-size: 0.75em;
+    line-height: 2em;
+    position: relative;
+    vertical-align: baseline;
+    top: -0.5em;
+  }
+
+  /* \pn - Proper name */
+  & .pn {
+    text-decoration: underline;
+  }
+
+  /* \k - Keyword/keyterm */
+  & .k {
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  /* \w - Wordlist/glossary entry */
+  & .w {
+    display: inline;
+  }
+
+  /* \rq - Inline cross-reference quotation */
+  & .rq {
+    font-style: italic;
+    font-size: 0.8em;
+  }
+
+  /* \x - Cross-reference note */
+  & .x {
+    display: none;
+  }
+
+  /* \f - Footnote container */
+  & .f {
+    display: inline;
+  }
+
+  /* \b - Blank line (stanza break in poetry) */
   & .b {
     line-height: 2em;
     height: 1em;
     display: block;
   }
 
-  /* No-break paragraph */
+  /* \m - Continuation (margin) paragraph, \nb - No-break paragraph */
   & .m,
   & .nb {
     margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
@@ -526,60 +715,60 @@
     display: block;
   }
 
-  /* Poetry quotes */
+  /* \q - Poetic line */
   & .q,
   & .q1 {
     display: block;
-    padding-left: 2em;
+    padding-inline-start: 2em;
     text-indent: -2em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
   }
 
   & .q2 {
     display: block;
-    padding-left: 2em;
+    padding-inline-start: 2em;
     text-indent: -1em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
   }
 
   & .q3 {
     display: block;
-    padding-left: 3em;
+    padding-inline-start: 3em;
     text-indent: -2em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
   }
 
   & .q4 {
     display: block;
-    padding-left: 4em;
+    padding-inline-start: 4em;
     text-indent: -2em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
   }
 
-  /* Indented paragraphs */
+  /* \pi - Indented paragraph (used for discourse sections) */
   & .pi,
   & .pi1 {
     display: block;
     text-indent: 1em;
-    padding-left: 0;
+    padding-inline-start: 0;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
   }
 
   & .pi2 {
     display: block;
     text-indent: 2em;
-    padding-left: 1em;
+    padding-inline-start: 1em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
   }
 
   & .pi3 {
     display: block;
     text-indent: 4em;
-    padding-left: 3em;
+    padding-inline-start: 3em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
   }
 
-  /* Margin indented */
+  /* \mi - Indented flush left, \pm - Embedded text, \pmo - Embedded opening, \pmc - Embedded closing, \pmr - Embedded refrain */
   & .mi,
   & .pm,
   & .pmo,
@@ -587,109 +776,108 @@
   & .pmr {
     display: block;
     text-indent: 0;
-    padding-left: 2em;
+    padding-inline-start: 2em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
   }
 
-  /* Right-aligned */
+  /* \pr - Right-aligned paragraph, \qr - Right-aligned poetic refrain */
   & .pr,
   & .qr {
-    text-align: right;
+    text-align: end;
     display: block;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
   }
 
-  /* Center-aligned */
+  /* \pc - Centered paragraph (inscriptions), \qc - Centered poetic line */
   & .pc,
   & .qc {
-    font-variant: small-caps;
     text-align: center;
-    font-weight: bold;
     display: block;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
   }
 
-  /* Indented quotes */
+  /* \iq - Introduction poetic line */
   & .iq,
   & .iq1 {
     display: block;
-    padding-left: 2em;
+    padding-inline-start: 2em;
     text-indent: -2em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
   }
 
   & .iq2 {
     display: block;
-    padding-left: 2em;
+    padding-inline-start: 2em;
     text-indent: -1em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
   }
 
   & .iq3 {
     display: block;
-    padding-left: 3em;
+    padding-inline-start: 3em;
     text-indent: -2em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
   }
 
   & .iq4 {
     display: block;
-    padding-left: 4em;
+    padding-inline-start: 4em;
     text-indent: -2em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
   }
 
-  /* Quote margin */
+  /* \qm - Embedded text poetic line (quoted poetry within prose) */
   & .qm,
   & .qm1 {
     display: block;
-    padding-left: 2em;
+    padding-inline-start: 2em;
     text-indent: -2em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
   }
 
   & .qm2 {
     display: block;
-    padding-left: 2em;
+    padding-inline-start: 2em;
     text-indent: -1em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
   }
 
   & .qm3 {
     display: block;
-    padding-left: 3em;
+    padding-inline-start: 3em;
     text-indent: -2em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
   }
 
   & .qm4 {
     display: block;
-    padding-left: 4em;
+    padding-inline-start: 4em;
     text-indent: -2em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
   }
 
-  /* Italic text */
+  /* \add - Translator addition, \it - Italic text, \tl - Transliterated word */
   & .add,
   & .it,
   & .tl {
     font-style: italic;
   }
 
+  /* \qt - Quoted text (OT quotation in NT, etc.) */
   & .qt {
     font-style: italic;
   }
 
-  /* Selah */
+  /* \qs - Selah (commonly in Psalms and Habakkuk) */
   & .qs {
     display: block;
-    text-align: right;
+    text-align: end;
     font-style: italic;
     margin-top: calc(var(--yv-reader-font-size) * 0.5);
     margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
   }
 
-  /* Section headers level 2 */
+  /* \s2 - Section heading (level 2) */
   & .s2 {
     display: block;
     font-weight: bold;
@@ -698,15 +886,15 @@
     font-size: 1em;
   }
 
-  & .s3,
-  & .s4 {
+  & .s3, /* \s3 - Section heading (level 3) */
+  & .s4 { /* \s4 - Section heading (level 4) */
     display: block;
     font-weight: bold;
     line-height: 1.8em;
     margin: 0 0 0.5em;
   }
 
-  /* Major section header level 2 */
+  /* \ms2 - Major section heading (level 2) */
   & .ms2 {
     line-height: 1.8em;
     margin: 0.5em 0;
@@ -714,58 +902,70 @@
     display: block;
   }
 
-  /* Reference/ruby text */
+  /* \r - Parallel passage reference (e.g. "(Mark 1.1-8; Luke 3.1-18)") */
   & .r {
     display: block;
     font-style: italic;
-    font-weight: bold;
     line-height: 1.8em;
     margin: 0 0 0.5em;
   }
 
-  & .sp,
+  /* \sp - Speaker identification (e.g. Job, Song of Songs) */
+  & .sp {
+    display: block;
+    font-style: italic;
+    line-height: 1.8em;
+    margin: 0 0 0.5em;
+  }
+
+  /* \sr - Section reference range */
   & .sr {
     display: block;
     font-style: italic;
-    font-weight: bold;
+    font-size: 0.8em;
     line-height: 1.8em;
     margin: 0 0 0.5em;
   }
 
-  & .qa {
+  & .qa { /* \qa - Acrostic heading (e.g. Hebrew letters in Psalm 119) */
     display: block;
     font-weight: bold;
     line-height: 1.8em;
     margin: 0 0 0.5em;
   }
 
-  /* Hebrew text heading */
+  /* \d - Descriptive title / Hebrew subtitle (e.g. Psalm superscriptions) */
   & .d {
     display: block;
     font-style: italic;
-    font-weight: bold;
     line-height: 1.8em;
     margin: 0.5em 0;
   }
 
-  /* List items */
+  /* \li - List entry */
   & .li,
   & .li1 {
     display: list-item;
     list-style-type: disc;
-    margin-left: 1em;
+    margin-inline-start: 1em;
   }
 
   & .li2 {
     display: list-item;
     list-style-type: disc;
-    margin-left: 2em;
+    margin-inline-start: 2em;
   }
 
-  & .li3,
+  & .li3 {
+    display: list-item;
+    list-style-type: disc;
+    margin-inline-start: 3em;
+  }
+
   & .li4 {
     display: list-item;
     list-style-type: disc;
+    margin-inline-start: 4em;
   }
 
   /* Line breaks */
@@ -873,14 +1073,127 @@
     vertical-align: top;
   }
 
-  /* RTL Support */
-  &[dir='rtl'] {
-    direction: rtl;
-    text-align: right;
+  /* \po - Opening of an epistle/letter */
+  & .po {
+    display: block;
+    text-indent: 1em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
   }
 
-  &[dir='rtl'] .p,
-  &[dir='rtl'] .m {
+  /* \ph - Indented paragraph with hanging indent (deprecated, use \li) */
+  & .ph,
+  & .ph1 {
+    display: block;
+    padding-inline-start: 2em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
+  }
+
+  & .ph2 {
+    display: block;
+    padding-inline-start: 3em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
+  }
+
+  /* \sig - Signature of the author of a letter/epistle */
+  & .sig {
+    font-style: italic;
+  }
+
+  /* \dc - Deuterocanonical/LXX additions */
+  & .dc {
+    font-style: italic;
+  }
+
+  /* \qd - Hebrew note at end of poetic section */
+  & .qd {
+    display: block;
+    font-style: italic;
+    margin: 0.5em 0;
+  }
+
+  /* \sd - Semantic division (vertical space between sections) */
+  & .sd {
+    display: block;
+    height: 1em;
+  }
+
+  /* \lh - List header, \lf - List footer */
+  & .lh,
+  & .lf {
+    display: block;
+    margin: 0.5em 0 0.25em;
+  }
+
+  /* \lim - Embedded list entry */
+  & .lim,
+  & .lim1 {
+    display: list-item;
+    list-style-type: disc;
+    margin-inline-start: 2em;
+  }
+
+  & .lim2 {
+    display: list-item;
+    list-style-type: disc;
+    margin-inline-start: 4em;
+  }
+
+  /* \qac - Acrostic letter within a poetic line */
+  & .qac {
+    font-weight: bold;
+  }
+
+  /* \lb - Line break (same as \b) */
+  & .lb {
+    display: block;
+    height: 1em;
+  }
+
+  /* \cd - Chapter description */
+  & .cd {
+    display: block;
+    font-style: italic;
+    margin: 0.5em 0;
+  }
+
+  /* \fdc - Footnote deuterocanonical content */
+  & .fdc {
+    font-style: italic;
+  }
+
+  /* \cls - Closure of an epistle/letter (e.g. "May God's grace be with you.") */
+  & .cls {
+    display: block;
+    text-align: end;
+    margin: 0.5em 0;
+  }
+
+  /* \no - Normal text (resets italic/bold within a styled context) */
+  & .no {
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  /* \fp - Footnote paragraph (block-level paragraph within a footnote) */
+  & .fp {
+    display: block;
+    margin-top: 0.5em;
+    text-indent: 1em;
+  }
+
+  /* \lit - Liturgical note (e.g. "Glory:" in Psalms) */
+  & .lit {
+    display: block;
+    text-align: end;
+    font-style: italic;
+  }
+
+  /* RTL Support - logical properties handle indent/padding mirroring automatically.
+     This block only needs to set direction and base text alignment. */
+  &[dir='rtl'] {
+    direction: rtl;
     text-align: right;
   }
 }
