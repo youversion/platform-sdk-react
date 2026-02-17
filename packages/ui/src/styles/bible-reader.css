@@ -48,7 +48,8 @@
   & .toc3, /* \toc3 - Book abbreviation */
   & .ie, /* \ie - Introduction end marker */
   & .mte, /* \mte - Major title at ending */
-  & .cl { /* \cl - Chapter label */
+  & .cl {
+    /* \cl - Chapter label */
     display: none;
   }
 
@@ -79,6 +80,10 @@
 
   &[data-show-verse-numbers='false'] .yv-vlbl {
     @apply yv:hidden;
+  }
+
+  & .yv-vlbl {
+    font-family: var(--font-sans);
   }
 
   /* \f - Footnote container (YouVersion wrapper) */
@@ -142,7 +147,8 @@
   & .mt, /* \mt - Main title */
   & .mt1, /* \mt1 - Main title (level 1) */
   & .ms, /* \ms - Major section heading */
-  & .ms1 { /* \ms1 - Major section heading (level 1) */
+  & .ms1 {
+    /* \ms1 - Major section heading (level 1) */
     font-size: 1.3em;
     font-weight: bold;
     line-height: 1.8em;
@@ -161,14 +167,16 @@
 
   /* \io - Introduction outline entries (displayed as bulleted list items) */
   & .io, /* \io - Introduction outline entry */
-  & .io1 { /* \io1 - Introduction outline entry (level 1) */
+  & .io1 {
+    /* \io1 - Introduction outline entry (level 1) */
     list-style-type: disc;
     margin-inline-start: 1em;
     display: list-item;
   }
 
   & .io2, /* \io2 - Introduction outline entry (level 2) */
-  & .io3 { /* \io3 - Introduction outline entry (level 3) */
+  & .io3 {
+    /* \io3 - Introduction outline entry (level 3) */
     list-style-type: disc;
     margin-inline-start: 2em;
     display: list-item;
@@ -188,7 +196,8 @@
 
   /* \ili - Introduction list items */
   & .ili, /* \ili - Introduction list item (default) */
-  & .ili1 { /* \ili1 - Introduction list item (level 1) */
+  & .ili1 {
+    /* \ili1 - Introduction list item (level 1) */
     list-style-type: none;
     margin-inline-start: 2em;
     display: list-item;
@@ -262,7 +271,8 @@
 
   /* \imte - Introduction major title ending (marks end of introduction) */
   & .imte, /* \imte - Introduction major title ending */
-  & .imte1 { /* \imte1 - Introduction major title ending (level 1) */
+  & .imte1 {
+    /* \imte1 - Introduction major title ending (level 1) */
     font-size: 1.3em;
     font-weight: bold;
     line-height: 1.8em;
@@ -292,7 +302,8 @@
   & .imt4, /* \imt4 - Introduction major title (level 4) */
   & .mt2, /* \mt2 - Main title (level 2) */
   & .mt3, /* \mt3 - Main title (level 3) */
-  & .mt4 { /* \mt4 - Main title (level 4) */
+  & .mt4 {
+    /* \mt4 - Main title (level 4) */
     line-height: 1.8em;
     margin: 0.5em 0;
     font-weight: bold;
@@ -304,7 +315,8 @@
   & .s, /* \s - Section heading */
   & .s1, /* \s1 - Section heading (level 1) */
   & .is1, /* \is1 - Introduction section heading (level 1) */
-  & .is2 { /* \is2 - Introduction section heading (level 2) */
+  & .is2 {
+    /* \is2 - Introduction section heading (level 2) */
     font-size: 1.1em;
     font-weight: bold;
     line-height: 1.8em;
@@ -360,32 +372,38 @@
   }
 
   /* Footnote/note character styles */
-  & .note .fr { /* \fr - Footnote reference (verse number) */
+  & .note .fr {
+    /* \fr - Footnote reference (verse number) */
     padding-right: 0.25em;
   }
 
   & .note .fq, /* \fq - Footnote quotation from text */
-  & .note .fqa { /* \fqa - Footnote alternate translation */
+  & .note .fqa {
+    /* \fqa - Footnote alternate translation */
     font-style: italic;
   }
 
-  & .note .ft { /* \ft - Footnote text */
+  & .note .ft {
+    /* \ft - Footnote text */
     display: inline;
   }
 
-  & .note .fv { /* \fv - Footnote verse number */
+  & .note .fv {
+    /* \fv - Footnote verse number */
     vertical-align: super;
     font-size: 0.75em;
   }
 
-  & .note .fk { /* \fk - Footnote keyword */
+  & .note .fk {
+    /* \fk - Footnote keyword */
     font-style: italic;
     font-weight: bold;
   }
 
   /* Paragraphs - text-indent 1em based on iOS CSS */
   & .p, /* \p - Normal paragraph */
-  & .ip { /* \ip - Introduction paragraph */
+  & .ip {
+    /* \ip - Introduction paragraph */
     display: block;
     margin-bottom: 0;
     text-indent: 1em;
@@ -887,7 +905,8 @@
   }
 
   & .s3, /* \s3 - Section heading (level 3) */
-  & .s4 { /* \s4 - Section heading (level 4) */
+  & .s4 {
+    /* \s4 - Section heading (level 4) */
     display: block;
     font-weight: bold;
     line-height: 1.8em;
@@ -927,7 +946,8 @@
     margin: 0 0 0.5em;
   }
 
-  & .qa { /* \qa - Acrostic heading (e.g. Hebrew letters in Psalm 119) */
+  & .qa {
+    /* \qa - Acrostic heading (e.g. Hebrew letters in Psalm 119) */
     display: block;
     font-weight: bold;
     line-height: 1.8em;
