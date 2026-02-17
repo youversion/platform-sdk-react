@@ -551,8 +551,7 @@
     display: block;
     font-style: italic;
     text-indent: 0;
-    margin-inline-start: 1em;
-    margin-inline-end: 1em;
+    margin: 1em;
   }
 
   /* \ipr - Introduction right-aligned paragraph — Italic, Right, margins */
@@ -593,7 +592,7 @@
     display: block;
     font-style: italic;
     padding-inline-start: 2em;
-    text-indent: -2em;
+    text-indent: -1em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
   }
 
@@ -601,8 +600,8 @@
   & .iq2 {
     display: block;
     font-style: italic;
-    padding-inline-start: 2em;
-    text-indent: -1em;
+    padding-inline-start: 3em;
+    text-indent: -1.5em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
   }
 
