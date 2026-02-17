@@ -209,6 +209,8 @@ export function extractNotesFromWrappedHtml(doc: Document): Record<string, Verse
         const node = walker.currentNode;
         if (node instanceof Element) {
           if (node.classList.contains('yv-n') && node.classList.contains('f')) {
+            node.setAttribute("data-verse-footnote", verseNum);
+            // node.innerHTML = '';
             verseHtml += `<sup class="yv:text-muted-foreground">${LETTERS[noteIdx++] || noteIdx}</sup>`;
             lastWasFootnote = true;
           }
@@ -252,20 +254,21 @@ export function extractNotesFromWrappedHtml(doc: Document): Record<string, Verse
   // When we remove the footnote, "overcome" + "it" would become "overcomeit".
   // We detect this case and insert a space, but only if the next character isn't punctuation.
   footnotes.forEach((fn) => {
-    const prev = fn.previousSibling;
-    const next = fn.nextSibling;
+    fn.classList.remove("yv-n")
+    // const prev = fn.previousSibling;
+    // const next = fn.nextSibling;
 
-    const prevNeedsSpace =
-      prev?.nodeType === Node.TEXT_NODE && prev.textContent && !/\s$/.test(prev.textContent);
-    const nextNeedsSpace =
-      next?.nodeType === Node.TEXT_NODE &&
-      next.textContent &&
-      NEEDS_SPACE_BEFORE.test(next.textContent);
+    // const prevNeedsSpace =
+    //   prev?.nodeType === Node.TEXT_NODE && prev.textContent && !/\s$/.test(prev.textContent);
+    // const nextNeedsSpace =
+    //   next?.nodeType === Node.TEXT_NODE &&
+    //   next.textContent &&
+    //   NEEDS_SPACE_BEFORE.test(next.textContent);
 
-    if (prevNeedsSpace && nextNeedsSpace) {
-      fn.parentNode?.insertBefore(doc.createTextNode(' '), next);
-    }
-    fn.remove();
+    // if (prevNeedsSpace && nextNeedsSpace) {
+    //   fn.parentNode?.insertBefore(doc.createTextNode(' '), next);
+    // }
+    // fn.remove();
   });
 
   return notes;
