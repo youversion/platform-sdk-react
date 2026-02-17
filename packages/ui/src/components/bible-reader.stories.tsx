@@ -638,3 +638,48 @@ export const WithoutAuth: Story = {
     await expect(settingsButton).toBeInTheDocument();
   },
 };
+
+/**
+ * Tests that the Bible reader renders intro chapter content when navigated to a
+ * non-numerical chapter (e.g. JHN.INTRO). The h1 header should be hidden and
+ * the intro passage content should render.
+ */
+export const IntroChapter: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    book: 'JHN',
+    chapter: 'INTRO',
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    // Intro passage content should render
+    await waitFor(
+      async () => {
+        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(verseContainer).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    // The h1 book/chapter header should not be present for non-numerical chapters
+    const h1 = canvasElement.querySelector('h1');
+    await expect(h1).not.toBeInTheDocument();
+
+    // The unavailable message should not show since the version has this intro
+    const unavailableMessage = canvasElement.querySelector('p');
+    const hasUnavailableText = unavailableMessage?.textContent?.includes('not available');
+    await expect(hasUnavailableText).not.toBeTruthy();
+
+    // Toolbar trigger should show "Intro" label
+    const chapterButton = screen.getByRole('button', { name: /change bible book and chapter/i });
+    await expect(chapterButton.textContent).toContain('Intro');
+  },
+};

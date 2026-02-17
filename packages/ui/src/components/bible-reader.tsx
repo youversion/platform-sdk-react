@@ -194,14 +194,15 @@ function Content() {
   }, [books?.data, book]);
 
   const usfmReference = `${book}.${chapter}`;
-  const chapterIsNumerical: boolean = !!parseInt(chapter || '', 10) || false;
+  const chapterIsNumerical = /^\d+$/.test(chapter || '');
 
   // Check if the current chapter is available in this version
   const chapterUnavailable = useMemo(() => {
     if (!bookData || !chapter) return false;
-    if (!chapterIsNumerical && !bookData.intro) return true;
-    return false;
-  }, [bookData, chapter, chapterIsNumerical]);
+    const inChapters = bookData.chapters?.some((ch) => ch.passage_id.split('.').pop() === chapter);
+    const isIntro = bookData.intro?.id === chapter;
+    return !inChapters && !isIntro;
+  }, [bookData, chapter]);
 
   return (
     <main className="yv:*:max-w-lg yv:flex yv:flex-col yv:items-center yv:gap-6 yv:overflow-y-auto yv:px-6 yv:max-sm:px-4 yv:py-12 yv:h-full">
@@ -330,9 +331,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
       <div
         className={cn(
           'yv:grid yv:w-full yv:items-center yv:max-w-lg yv:gap-4',
-          !!yvContext?.authEnabled || false
-            ? 'yv:grid-cols-[auto_1fr_auto]'
-            : 'yv:grid-cols-[1fr_auto]',
+          yvContext?.authEnabled ? 'yv:grid-cols-[auto_1fr_auto]' : 'yv:grid-cols-[1fr_auto]',
         )}
       >
         {!!yvContext?.authEnabled && <UserMenu />}

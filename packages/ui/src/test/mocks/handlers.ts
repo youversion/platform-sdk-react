@@ -46,6 +46,16 @@ export const globalHandlers = [
     return HttpResponse.json(mockPassages['JHN.1.51']);
   }),
 
+  // John intro passage
+  http.get('*/v1/bibles/111/passages/JHN.INTRO', () => {
+    return HttpResponse.json({
+      id: 'JHN.INTRO',
+      content:
+        '<div><div class="imt">Intro</div><div class="im">John closes his book by revealing his purpose in writing Jesus\' story: <span class="qt">These are written that you may believe that Jesus is the Messiah, the Son of God, and that by believing you may have life in his name.</span></div><div class="ip">John begins his book by echoing words from the Bible\'s creation story—<span class="qt">In the beginning</span>—showing his readers that this is a story of a new creation. Just as the first creation was completed in seven days, John uses the number seven to structure his book. For the Jews the number seven represented completeness and wholeness, a finished work of God revealing his purpose for the world.</div><div class="ip">The story is told in two main parts. The first describes Jesus\' public ministry and has seven sections. Each section closes with a report on how people respond to Jesus, either in faith or unbelief. The second part is devoted to the Passover weekend, when Jesus gave his life for the world.</div><div class="ip">John records seven instances in which Jesus revealed his identity by using the phrase <span class="qt">I am</span>, the name by which God had revealed himself earlier. Similarly, John records seven miraculous signs that Jesus performed. John\'s narrative mentions twice that the resurrection of Jesus took place on the<span class="qt">first day of the week.</span> In this way he confirms that the power of a new creation has broken into our world.</div></div>',
+      reference: 'John Intro',
+    });
+  }),
+
   // Isaiah passage for verse of the day
   http.get('*/v1/bibles/111/passages/ISA.43.19', () => {
     return HttpResponse.json(mockPassages['ISA.43.19']);

@@ -244,6 +244,7 @@ export type TriggerProps = Omit<React.ComponentProps<typeof PopoverTrigger>, 'ch
     | React.ReactNode
     | ((props: {
         book: string;
+        /** Display label for the current chapter (e.g. "1", "Intro"), not the raw chapter ID. */
         chapter: string;
         currentBook: BibleBook | undefined;
         loading: boolean;
