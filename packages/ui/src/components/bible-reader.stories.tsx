@@ -678,8 +678,15 @@ export const IntroChapter: Story = {
     const hasUnavailableText = unavailableMessage?.textContent?.includes('not available');
     await expect(hasUnavailableText).not.toBeTruthy();
 
-    // Toolbar trigger should show "Intro" label
-    const chapterButton = screen.getByRole('button', { name: /change bible book and chapter/i });
-    await expect(chapterButton.textContent).toContain('Intro');
+    // Toolbar trigger should show "Intro" label once books data loads
+    await waitFor(
+      async () => {
+        const chapterButton = screen.getByRole('button', {
+          name: /change bible book and chapter/i,
+        });
+        await expect(chapterButton.textContent).toContain('Intro');
+      },
+      { timeout: 5000 },
+    );
   },
 };
