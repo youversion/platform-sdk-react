@@ -486,21 +486,21 @@
   & .ili1 {
     display: block;
     margin-inline-start: 2em;
-    text-indent: -1.5em;
+    text-indent: -1em;
   }
 
   /* \ili2 - Introduction list item (level 2) */
   & .ili2 {
     display: block;
     margin-inline-start: 3em;
-    text-indent: -1.5em;
+    text-indent: -1em;
   }
 
   /* \ili3 - Introduction list item (level 3) */
   & .ili3 {
     display: block;
     margin-inline-start: 4em;
-    text-indent: -1.5em;
+    text-indent: -1em;
   }
 
   /* ============================================================
