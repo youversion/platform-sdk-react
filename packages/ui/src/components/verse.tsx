@@ -167,12 +167,9 @@ function BibleTextHtml({
     return () => element.removeEventListener('click', handleClick);
   }, [onVerseSelect]);
 
-  console.log({
-    placeholders,
-  });
-
   return (
     <>
+      <div ref={contentRef} />
       {Array.from(placeholders.entries()).map(([verseNum, el]) => {
         const verseNotes = notes[verseNum];
         if (!verseNotes) return null;
@@ -187,7 +184,6 @@ function BibleTextHtml({
           el,
         );
       })}
-      <div ref={contentRef} />
     </>
   );
 }

@@ -166,17 +166,92 @@ export function wrapVerseContent(doc: Document): void {
 /**
  * Extracts footnotes from wrapped verse HTML and prepares data for footnote popovers.
  *
- * This function assumes verses are already wrapped in `.yv-v[v]` elements (by wrapVerseContent).
- * It uses `.closest('.yv-v[v]')` to find which verse each footnote belongs to.
+ * Assumes verses are already wrapped in `.yv-v[v]` elements (by wrapVerseContent).
+ *
+ * Performance characteristics:
+ * - Group footnotes by verse in one pass
+ * - Build verse-wrapper lookup in one pass
+ * - Traverse each verse wrapper subtree once via TreeWalker
+ *
+ * `.closest('.yv-v[v]')` is used only during initial footnote grouping.
  *
  * @returns Notes data for popovers, keyed by verse number
  */
 export function extractNotesFromWrappedHtml(doc: Document): Record<string, VerseNotes> {
+  /**
+   * Matches text that needs a space inserted before it (not whitespace or punctuation).
+   * Used when removing footnotes to prevent word concatenation.
+   */
+  const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]'"»›]/;
+
+  /**
+   * Creates a TreeWalker scoped to a verse wrapper that yields only:
+   * - footnote elements (`.yv-n.f`) used as inline marker positions
+   * - text nodes that contribute to rendered verse content
+   *
+   * Traversal rules:
+   * - `FILTER_REJECT` headings/labels to skip whole structural subtrees
+   * - `FILTER_ACCEPT` footnote elements so we can place a marker/anchor there
+   * - skip text nested in footnotes/headings/labels via `parent.closest(...)`
+   */
+  function createVerseWalker(root: Element): TreeWalker {
+    return doc.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        if (node instanceof Element) {
+          if (node.classList.contains('yv-h')) return NodeFilter.FILTER_REJECT;
+          if (node.classList.contains('yv-vlbl')) return NodeFilter.FILTER_REJECT;
+          if (node.classList.contains('yv-n') && node.classList.contains('f')) {
+            return NodeFilter.FILTER_ACCEPT;
+          }
+          return NodeFilter.FILTER_SKIP;
+        }
+
+        if (node.nodeType === Node.TEXT_NODE) {
+          const parent = node.parentElement;
+          if (!parent) return NodeFilter.FILTER_ACCEPT;
+
+          if (parent.closest('.yv-n.f')) return NodeFilter.FILTER_SKIP;
+          if (parent.closest('.yv-h')) return NodeFilter.FILTER_SKIP;
+          if (parent.closest('.yv-vlbl')) return NodeFilter.FILTER_SKIP;
+
+          return NodeFilter.FILTER_ACCEPT;
+        }
+
+        return NodeFilter.FILTER_SKIP;
+      },
+    });
+  }
+
+  /**
+   * Converts a 0-based footnote index into an alphabetic marker.
+   *
+   * Examples with LETTERS = "abcdefghijklmnopqrstuvwxyz":
+   * 0 -> "a", 25 -> "z", 26 -> "aa", 27 -> "ab"
+   *
+   * This uses spreadsheet-style indexing and derives its base from
+   * LETTERS.length so there are no hardcoded numeric assumptions.
+   */
+  function getFootnoteMarker(index: number): string {
+    const base = LETTERS.length;
+    if (base === 0) return String(index + 1);
+
+    let value = index;
+    let marker = '';
+
+    do {
+      marker = LETTERS[value % base] + marker;
+      value = Math.floor(value / base) - 1;
+    } while (value >= 0);
+
+    return marker;
+  }
+
   const footnotes = Array.from(doc.querySelectorAll('.yv-n.f'));
   if (!footnotes.length) return {};
 
-  // Group footnotes by verse number using closest wrapper
+  // Group footnotes by verse number in a single pass.
   const footnotesByVerse = new Map<string, Element[]>();
+
   footnotes.forEach((fn) => {
     const verseNum = fn.closest('.yv-v[v]')?.getAttribute('v');
     if (verseNum) {
@@ -189,86 +264,99 @@ export function extractNotesFromWrappedHtml(doc: Document): Record<string, Verse
     }
   });
 
+  // Build a verse -> wrappers lookup once to avoid repeated selector traversal per verse.
+  const wrappersByVerse = new Map<string, Element[]>();
+  doc.querySelectorAll('.yv-v[v]').forEach((el) => {
+    const verseNum = el.getAttribute('v');
+    if (!verseNum) return;
+
+    const arr = wrappersByVerse.get(verseNum);
+    if (arr) arr.push(el);
+    else wrappersByVerse.set(verseNum, [el]);
+  });
+
   const notes: Record<string, VerseNotes> = {};
-  const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]'"»›]/
 
   footnotesByVerse.forEach((fns, verseNum) => {
-    // Find all wrappers for this verse (could be multiple if verse spans paragraphs)
-    const verseWrappers = Array.from(doc.querySelectorAll(`.yv-v[v="${verseNum}"]`));
+    const verseWrappers = wrappersByVerse.get(verseNum) ?? [];
 
-    // Build verse HTML with A/B/C markers for popover display
-    let verseHtml = '';
+    // Build verse HTML with alphabetic markers for popover display.
+    // Marker sequence is: a, b, ... z, aa, ab, ...
+    const verseHtmlParts: string[] = [];
     let noteIdx = 0;
+    let hasInlineAnchor = false;
 
     verseWrappers.forEach((wrapper, wrapperIdx) => {
-      if (wrapperIdx > 0) verseHtml += ' ';
+      if (wrapperIdx > 0) verseHtmlParts.push(' ');
 
-      const walker = doc.createTreeWalker(wrapper, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+      const walker = createVerseWalker(wrapper);
       let lastWasFootnote = false;
+
       while (walker.nextNode()) {
         const node = walker.currentNode;
         if (node instanceof Element) {
           if (node.classList.contains('yv-n') && node.classList.contains('f')) {
-            node.setAttribute("data-verse-footnote", verseNum);
-            // node.innerHTML = '';
-            verseHtml += `<sup class="yv:text-muted-foreground">${LETTERS[noteIdx++] || noteIdx}</sup>`;
+            // Attach the portal anchor to the first inline footnote position for this verse.
+            // If a verse has no inline footnote element available, we create a fallback
+            // placeholder after the last verse wrapper (see below).
+            if (!hasInlineAnchor) {
+              node.setAttribute('data-verse-footnote', verseNum);
+              hasInlineAnchor = true;
+            }
+            verseHtmlParts.push(
+              `<sup class="yv:text-muted-foreground">${getFootnoteMarker(noteIdx++)}</sup>`,
+            );
             lastWasFootnote = true;
           }
-        } else if (node.nodeType === Node.TEXT_NODE) {
-          const parent = node.parentElement;
-          if (parent?.closest('.yv-n.f') || parent?.closest('.yv-h')) continue;
-          if (parent?.classList.contains('yv-vlbl')) continue;
-          let text = node.textContent || '';
-          // Insert space after footnote marker if text doesn't start with whitespace/punctuation
-          // (same fix as footnote removal - see World English Bible, version ID 206)
+          continue;
+        }
+
+        if (node.nodeType === Node.TEXT_NODE) {
+          let text = node.textContent ?? '';
+          // Preserve spacing when marker is immediately followed by a word.
           if (lastWasFootnote && text && NEEDS_SPACE_BEFORE.test(text)) {
-            text = ' ' + text;
+            text = ` ${text}`;
           }
-          verseHtml += text;
+          verseHtmlParts.push(text);
           lastWasFootnote = false;
         }
       }
     });
 
     notes[verseNum] = {
-      verseHtml,
+      verseHtml: verseHtmlParts.join(''),
       notes: fns.map((fn) => fn.innerHTML),
     };
 
-    // Insert placeholder after last verse wrapper (sibling, not child)
-    const lastWrapper = verseWrappers[verseWrappers.length - 1];
-    if (lastWrapper?.parentNode) {
-      const placeholder = doc.createElement('span');
-      placeholder.setAttribute('data-verse-footnote', verseNum);
-      lastWrapper.parentNode.insertBefore(placeholder, lastWrapper.nextSibling);
+    // Fallback: if no inline anchor was found, insert one after the last wrapper.
+    if (!hasInlineAnchor) {
+      const lastWrapper = verseWrappers[verseWrappers.length - 1];
+      if (lastWrapper?.parentNode) {
+        const placeholder = doc.createElement('span');
+        placeholder.setAttribute('data-verse-footnote', verseNum);
+        lastWrapper.parentNode.insertBefore(placeholder, lastWrapper.nextSibling);
+      }
     }
   });
 
-  // Remove all footnotes from DOM, inserting space if needed to prevent word concatenation.
-  //
-  // Some Bible versions (e.g., World English Bible, version ID 206) have malformed HTML where
-  // there's no whitespace between a word, the footnote element, and the next word:
-  //
-  //   ...hasn't overcome<span class="yv-n f">...</span>it.
-  //
-  // When we remove the footnote, "overcome" + "it" would become "overcomeit".
-  // We detect this case and insert a space, but only if the next character isn't punctuation.
+  // Gut footnotes in place: keep the element for inline portal anchoring, but remove its
+  // visible content. Before clearing, insert a literal space only when adjacent text would
+  // otherwise merge (e.g., "overcome" + "it" -> "overcomeit"), excluding punctuation cases.
+  // The first gutted footnote per verse remains the `[data-verse-footnote]` anchor.
   footnotes.forEach((fn) => {
-    fn.classList.remove("yv-n")
-    // const prev = fn.previousSibling;
-    // const next = fn.nextSibling;
+    const prevText = fn.previousSibling?.textContent ?? '';
+    const nextText = fn.nextSibling?.textContent ?? '';
 
-    // const prevNeedsSpace =
-    //   prev?.nodeType === Node.TEXT_NODE && prev.textContent && !/\s$/.test(prev.textContent);
-    // const nextNeedsSpace =
-    //   next?.nodeType === Node.TEXT_NODE &&
-    //   next.textContent &&
-    //   NEEDS_SPACE_BEFORE.test(next.textContent);
+    const prevNeedsSpace = prevText.length > 0 && !/\s$/.test(prevText);
+    const nextNeedsSpace = nextText.length > 0 && NEEDS_SPACE_BEFORE.test(nextText);
 
-    // if (prevNeedsSpace && nextNeedsSpace) {
-    //   fn.parentNode?.insertBefore(doc.createTextNode(' '), next);
-    // }
-    // fn.remove();
+    if (prevNeedsSpace && nextNeedsSpace && fn.parentNode) {
+      fn.parentNode.insertBefore(doc.createTextNode(' '), fn.nextSibling);
+    }
+
+    fn.classList.remove('yv-n');
+    // DEBUG: comment this out to render raw footnote content inline for anchor debugging.
+    fn.textContent = '';
   });
 
   return notes;
