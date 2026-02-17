@@ -377,7 +377,7 @@
   /* Footnote/note character styles */
   & .note .fr {
     /* \fr - Footnote reference (verse number) */
-    padding-right: 0.25em;
+    padding-inline-end: 0.25em;
   }
 
   & .note .fq, /* \fq - Footnote quotation from text */
