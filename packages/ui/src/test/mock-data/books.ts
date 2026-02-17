@@ -121,6 +121,11 @@ export const mockBooks = {
       full_title: 'The Book of Joshua',
       abbreviation: 'Josh',
       canon: 'old_testament',
+      intro: {
+        id: 'INTRO',
+        passage_id: 'JOS.INTRO',
+        title: 'Intro',
+      },
       chapters: Array.from({ length: 24 }, (_, i) => {
         const chapterNumber = i + 1;
         return {
