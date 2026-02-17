@@ -41,13 +41,18 @@
   /* Hide metadata and navigation classes */
   & .id, /* \id - File identification */
   & .ide, /* \ide - Encoding specification */
+  & .usfm, /* \usfm - USFM version specification */
+  & .h, /* \h - Running header text */
   & .sts, /* \sts - Status */
   & .rem, /* \rem - Remark */
   & .toc1, /* \toc1 - Long table of contents text */
   & .toc2, /* \toc2 - Short table of contents text */
   & .toc3, /* \toc3 - Book abbreviation */
+  & .toca1, /* \toca1 - Alt language long TOC text */
+  & .toca2, /* \toca2 - Alt language short TOC text */
+  & .toca3, /* \toca3 - Alt language book abbreviation */
   & .ie, /* \ie - Introduction end marker */
-  & .mte, /* \mte - Major title at ending */
+  & .mte, /* \mte - Major title at ending (print convention) */
   & .cl {
     /* \cl - Chapter label */
     display: none;
@@ -263,10 +268,9 @@
     height: 1em;
   }
 
-  /* \iqt - Introduction quoted text (scripture quotation in intro) */
+  /* \iqt - Introduction quoted text (scripture quotation in intro, character style) */
   & .iqt {
     font-style: italic;
-    margin-inline-start: 1em;
   }
 
   /* \imte - Introduction major title ending (marks end of introduction) */
@@ -335,7 +339,6 @@
   & .mr {
     display: block;
     font-style: italic;
-    font-weight: bold;
     line-height: 1.8em;
     margin: 0 0 0.5em;
   }
@@ -397,6 +400,11 @@
   & .note .fk {
     /* \fk - Footnote keyword */
     font-style: italic;
+    font-weight: bold;
+  }
+
+  & .note .fl {
+    /* \fl - Footnote label (e.g. "Or", "Heb.", "LXX") */
     font-weight: bold;
   }
 
@@ -686,9 +694,10 @@
     top: -0.5em;
   }
 
-  /* \pn - Proper name */
+  /* \pn - Proper name (semantic marker, no special formatting per USFM spec) */
   & .pn {
-    text-decoration: underline;
+    font-weight: normal;
+    font-style: normal;
   }
 
   /* \k - Keyword/keyterm */
@@ -713,8 +722,9 @@
     display: none;
   }
 
-  /* \f - Footnote container */
-  & .f {
+  /* \f - Footnote container, \fe - Endnote container */
+  & .f,
+  & .fe {
     display: inline;
   }
 
@@ -874,10 +884,12 @@
     margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
   }
 
-  /* \add - Translator addition, \it - Italic text, \tl - Transliterated word */
+  /* \add - Translator addition, \it - Italic text, \tl - Transliterated word,
+     \sls - Secondary language/alternate source text (e.g. Aramaic sections in Ezra/Daniel) */
   & .add,
   & .it,
-  & .tl {
+  & .tl,
+  & .sls {
     font-style: italic;
   }
 
@@ -915,6 +927,7 @@
 
   /* \ms2 - Major section heading (level 2) */
   & .ms2 {
+    font-size: 1.1em;
     line-height: 1.8em;
     margin: 0.5em 0;
     font-weight: bold;
@@ -1079,7 +1092,7 @@
   & .tcr,
   & .tcr1 {
     padding: 0.25em;
-    text-align: right;
+    text-align: end;
     vertical-align: top;
   }
 
@@ -1089,7 +1102,7 @@
     color: var(--yv-primary-foreground);
     font-weight: 700;
     padding: 0.25em;
-    text-align: right;
+    text-align: end;
     vertical-align: top;
   }
 
@@ -1112,6 +1125,13 @@
   & .ph2 {
     display: block;
     padding-inline-start: 3em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
+  }
+
+  & .ph3 {
+    display: block;
+    padding-inline-start: 4em;
     text-indent: -2em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
   }
@@ -1158,6 +1178,12 @@
     display: list-item;
     list-style-type: disc;
     margin-inline-start: 4em;
+  }
+
+  & .lim3 {
+    display: list-item;
+    list-style-type: disc;
+    margin-inline-start: 6em;
   }
 
   /* \qac - Acrostic letter within a poetic line */
