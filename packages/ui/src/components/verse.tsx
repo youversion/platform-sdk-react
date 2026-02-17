@@ -15,7 +15,7 @@ import { createPortal } from 'react-dom';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   extractNotesFromWrappedHtml,
-  LETTERS,
+  getFootnoteMarker,
   NON_BREAKING_SPACE,
   type FontFamily,
   type VerseNotes,
@@ -66,16 +66,19 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
             dangerouslySetInnerHTML={{ __html: verseNotes.verseHtml }}
           />
           <ul className="yv:list-none yv:p-0 yv:m-0 yv:space-y-1">
-            {verseNotes.notes.map((note, index) => (
-              <li
-                key={LETTERS[index]}
-                className="yv:flex yv:gap-2 yv:text-xs yv:border-b yv:border-border yv:py-2"
-              >
-                <span className="">{LETTERS[index] || index + 1}.</span>
-                {/** biome-ignore lint/security/noDangerouslySetInnerHtml: HTML has been run through DOMPurify and is safe */}
-                <span dangerouslySetInnerHTML={{ __html: note }} />
-              </li>
-            ))}
+            {verseNotes.notes.map((note, index) => {
+              const marker = getFootnoteMarker(index);
+              return (
+                <li
+                  key={marker}
+                  className="yv:flex yv:gap-2 yv:text-xs yv:border-b yv:border-border yv:py-2"
+                >
+                  <span className="">{marker}.</span>
+                  {/** biome-ignore lint/security/noDangerouslySetInnerHtml: HTML has been run through DOMPurify and is safe */}
+                  <span dangerouslySetInnerHTML={{ __html: note }} />
+                </li>
+              );
+            })}
           </ul>
         </div>
       </PopoverContent>

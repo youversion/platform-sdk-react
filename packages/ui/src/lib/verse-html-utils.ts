@@ -2,6 +2,30 @@ export const NON_BREAKING_SPACE = '\u00A0';
 
 export const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
 
+/**
+ * Converts a 0-based footnote index into an alphabetic marker.
+ *
+ * Examples with LETTERS = "abcdefghijklmnopqrstuvwxyz":
+ * 0 -> "a", 25 -> "z", 26 -> "aa", 27 -> "ab"
+ *
+ * This uses spreadsheet-style indexing and derives its base from
+ * LETTERS.length so there are no hardcoded numeric assumptions.
+ */
+export function getFootnoteMarker(index: number): string {
+  const base = LETTERS.length;
+  if (base === 0) return String(index + 1);
+
+  let value = index;
+  let marker = '';
+
+  do {
+    marker = LETTERS[value % base] + marker;
+    value = Math.floor(value / base) - 1;
+  } while (value >= 0);
+
+  return marker;
+}
+
 export type VerseNotes = {
   verseHtml: string;
   notes: string[];
@@ -222,30 +246,6 @@ export function extractNotesFromWrappedHtml(doc: Document): Record<string, Verse
     });
   }
 
-  /**
-   * Converts a 0-based footnote index into an alphabetic marker.
-   *
-   * Examples with LETTERS = "abcdefghijklmnopqrstuvwxyz":
-   * 0 -> "a", 25 -> "z", 26 -> "aa", 27 -> "ab"
-   *
-   * This uses spreadsheet-style indexing and derives its base from
-   * LETTERS.length so there are no hardcoded numeric assumptions.
-   */
-  function getFootnoteMarker(index: number): string {
-    const base = LETTERS.length;
-    if (base === 0) return String(index + 1);
-
-    let value = index;
-    let marker = '';
-
-    do {
-      marker = LETTERS[value % base] + marker;
-      value = Math.floor(value / base) - 1;
-    } while (value >= 0);
-
-    return marker;
-  }
-
   const footnotes = Array.from(doc.querySelectorAll('.yv-n.f'));
   if (!footnotes.length) return {};
 
@@ -344,8 +344,11 @@ export function extractNotesFromWrappedHtml(doc: Document): Record<string, Verse
   // otherwise merge (e.g., "overcome" + "it" -> "overcomeit"), excluding punctuation cases.
   // The first gutted footnote per verse remains the `[data-verse-footnote]` anchor.
   footnotes.forEach((fn) => {
-    const prevText = fn.previousSibling?.textContent ?? '';
-    const nextText = fn.nextSibling?.textContent ?? '';
+    const prev = fn.previousSibling;
+    const next = fn.nextSibling;
+
+    const prevText = prev?.nodeType === Node.TEXT_NODE ? (prev.textContent ?? '') : '';
+    const nextText = next?.nodeType === Node.TEXT_NODE ? (next.textContent ?? '') : '';
 
     const prevNeedsSpace = prevText.length > 0 && !/\s$/.test(prevText);
     const nextNeedsSpace = nextText.length > 0 && NEEDS_SPACE_BEFORE.test(nextText);
