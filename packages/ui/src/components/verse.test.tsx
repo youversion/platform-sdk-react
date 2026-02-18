@@ -385,7 +385,7 @@ describe('Verse.Html - Footnote spacing', () => {
     });
   });
 
-  it('should only insert spacing when adjacent siblings are text nodes', async () => {
+  it('should insert spacing when adjacent siblings are element nodes', async () => {
     const htmlWithElementSiblings = `
       <div class="p">
         <span class="yv-v" v="5"></span><span class="yv-vlbl">5</span><span class="wj">overcome</span><span class="yv-n f"><span class="fr">1:5 </span><span class="ft">Note text</span></span><span class="wj">it</span>.
@@ -396,8 +396,8 @@ describe('Verse.Html - Footnote spacing', () => {
 
     await waitFor(() => {
       const text = container.textContent ?? '';
-      expect(text).toContain('overcomeit.');
-      expect(text).not.toContain('overcome it.');
+      expect(text).toContain('overcome it.');
+      expect(text).not.toContain('overcomeit.');
     });
   });
 });

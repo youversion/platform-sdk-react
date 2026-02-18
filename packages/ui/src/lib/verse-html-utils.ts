@@ -188,177 +188,125 @@ export function wrapVerseContent(doc: Document): void {
 
 
 /**
- * Extracts footnotes from wrapped verse HTML and prepares data for footnote popovers.
- *
- * Assumes verses are already wrapped in `.yv-v[v]` elements (by wrapVerseContent).
- *
- * Performance characteristics:
- * - Group footnotes by verse in one pass
- * - Build verse-wrapper lookup in one pass
- * - Traverse each verse wrapper subtree once via TreeWalker
- *
- * `.closest('.yv-v[v]')` is used only during initial footnote grouping.
- *
- * @returns Notes data for popovers, keyed by verse number
+ * Matches text that needs a space inserted before it (not whitespace or punctuation).
+ * Used when replacing footnotes to prevent word concatenation.
  */
-export function extractNotesFromWrappedHtml(doc: Document): Record<string, VerseNotes> {
-  /**
-   * Matches text that needs a space inserted before it (not whitespace or punctuation).
-   * Used when removing footnotes to prevent word concatenation.
-   */
-  const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]'"»›]/;
+const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]'"»›]/;
 
-  /**
-   * Creates a TreeWalker scoped to a verse wrapper that yields only:
-   * - footnote elements (`.yv-n.f`) used as inline marker positions
-   * - text nodes that contribute to rendered verse content
-   *
-   * Traversal rules:
-   * - `FILTER_REJECT` headings/labels to skip whole structural subtrees
-   * - `FILTER_ACCEPT` footnote elements so we can place a marker/anchor there
-   * - skip text nested in footnotes/headings/labels via `parent.closest(...)`
-   */
-  function createVerseWalker(root: Element): TreeWalker {
-    return doc.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
-      acceptNode(node) {
-        if (node instanceof Element) {
-          if (node.classList.contains('yv-h')) return NodeFilter.FILTER_REJECT;
-          if (node.classList.contains('yv-vlbl')) return NodeFilter.FILTER_REJECT;
-          if (node.classList.contains('yv-n') && node.classList.contains('f')) {
-            return NodeFilter.FILTER_ACCEPT;
-          }
-          return NodeFilter.FILTER_SKIP;
-        }
+/**
+ * Builds the verse text shown inside the footnote popover.
+ *
+ * Works on clones of the verse wrappers so it never mutates the real DOM.
+ * Strips headings and labels, replaces each footnote with a superscript
+ * marker (a, b, … z, aa, ab, …).
+ */
+function buildVerseHtml(wrappers: Element[]): string {
+  const parts: string[] = [];
+  let noteIdx = 0;
 
-        if (node.nodeType === Node.TEXT_NODE) {
-          const parent = node.parentElement;
-          if (!parent) return NodeFilter.FILTER_ACCEPT;
+  for (let i = 0; i < wrappers.length; i++) {
+    if (i > 0) parts.push(' ');
 
-          if (parent.closest('.yv-n.f')) return NodeFilter.FILTER_SKIP;
-          if (parent.closest('.yv-h')) return NodeFilter.FILTER_SKIP;
-          if (parent.closest('.yv-vlbl')) return NodeFilter.FILTER_SKIP;
+    const clone = wrappers[i]!.cloneNode(true) as Element;
+    const ownerDoc = wrappers[i]!.ownerDocument;
 
-          return NodeFilter.FILTER_ACCEPT;
-        }
+    // Remove structural elements that shouldn't appear in the popover.
+    clone.querySelectorAll('.yv-h, .yv-vlbl').forEach((el) => el.remove());
 
-        return NodeFilter.FILTER_SKIP;
-      },
+    // Replace each footnote with a superscript marker.
+    clone.querySelectorAll('.yv-n.f').forEach((fn) => {
+      const marker = ownerDoc.createElement('sup');
+      marker.className = 'yv:text-muted-foreground';
+      marker.textContent = getFootnoteMarker(noteIdx++);
+      fn.replaceWith(marker);
     });
+
+    parts.push(clone.innerHTML);
   }
 
-  const footnotes = Array.from(doc.querySelectorAll('.yv-n.f'));
-  if (!footnotes.length) return {};
+  return parts.join('');
+}
 
-  // Group footnotes by verse number in a single pass.
-  const footnotesByVerse = new Map<string, Element[]>();
-
-  footnotes.forEach((fn) => {
+/**
+ * Replaces each footnote element in the real DOM with a clean anchor span
+ * that React portals can target.
+ *
+ * Also inserts a space when the removal of the footnote would cause two
+ * adjacent words to merge (e.g., "overcome" + "it" → "overcomeit").
+ */
+function replaceFootnotesWithAnchors(doc: Document, footnotes: Element[]): void {
+  for (const fn of footnotes) {
     const verseNum = fn.closest('.yv-v[v]')?.getAttribute('v');
-    if (verseNum) {
-      let arr = footnotesByVerse.get(verseNum);
-      if (!arr) {
-        arr = [];
-        footnotesByVerse.set(verseNum, arr);
-      }
-      arr.push(fn);
-    }
-  });
+    if (!verseNum) continue;
 
-  // Build a verse -> wrappers lookup once to avoid repeated selector traversal per verse.
-  const wrappersByVerse = new Map<string, Element[]>();
-  doc.querySelectorAll('.yv-v[v]').forEach((el) => {
-    const verseNum = el.getAttribute('v');
-    if (!verseNum) return;
-
-    const arr = wrappersByVerse.get(verseNum);
-    if (arr) arr.push(el);
-    else wrappersByVerse.set(verseNum, [el]);
-  });
-
-  const notes: Record<string, VerseNotes> = {};
-
-  footnotesByVerse.forEach((fns, verseNum) => {
-    const verseWrappers = wrappersByVerse.get(verseNum) ?? [];
-
-    // Build verse HTML with alphabetic markers for popover display.
-    // Marker sequence is: a, b, ... z, aa, ab, ...
-    const verseHtmlParts: string[] = [];
-    let noteIdx = 0;
-    let inlineAnchorCount = 0;
-
-    verseWrappers.forEach((wrapper, wrapperIdx) => {
-      if (wrapperIdx > 0) verseHtmlParts.push(' ');
-
-      const walker = createVerseWalker(wrapper);
-      let lastWasFootnote = false;
-
-      while (walker.nextNode()) {
-        const node = walker.currentNode;
-        if (node instanceof Element) {
-          if (node.classList.contains('yv-n') && node.classList.contains('f')) {
-            // Attach a portal anchor at every inline footnote position for this verse.
-            // If a verse has no inline footnote element available, we create a fallback
-            // placeholder after the last verse wrapper (see below).
-            node.setAttribute('data-verse-footnote', verseNum);
-            inlineAnchorCount += 1;
-            verseHtmlParts.push(
-              `<sup class="yv:text-muted-foreground">${getFootnoteMarker(noteIdx++)}</sup>`,
-            );
-            lastWasFootnote = true;
-          }
-          continue;
-        }
-
-        if (node.nodeType === Node.TEXT_NODE) {
-          let text = node.textContent ?? '';
-          // Preserve spacing when marker is immediately followed by a word.
-          if (lastWasFootnote && text && NEEDS_SPACE_BEFORE.test(text)) {
-            text = ` ${text}`;
-          }
-          verseHtmlParts.push(text);
-          lastWasFootnote = false;
-        }
-      }
-    });
-
-    notes[verseNum] = {
-      verseHtml: verseHtmlParts.join(''),
-      notes: fns.map((fn) => fn.innerHTML),
-    };
-
-    // Fallback: if no inline anchors were found, insert one after the last wrapper.
-    if (inlineAnchorCount === 0) {
-      const lastWrapper = verseWrappers[verseWrappers.length - 1];
-      if (lastWrapper?.parentNode) {
-        const placeholder = doc.createElement('span');
-        placeholder.setAttribute('data-verse-footnote', verseNum);
-        lastWrapper.parentNode.insertBefore(placeholder, lastWrapper.nextSibling);
-      }
-    }
-  });
-
-  // Gut footnotes in place: keep the element for inline portal anchoring, but remove its
-  // visible content. Before clearing, insert a literal space only when adjacent text would
-  // otherwise merge (e.g., "overcome" + "it" -> "overcomeit"), excluding punctuation cases.
-  // Gutted footnotes remain in place as `[data-verse-footnote]` anchors.
-  footnotes.forEach((fn) => {
     const prev = fn.previousSibling;
     const next = fn.nextSibling;
 
-    const prevText = prev?.nodeType === Node.TEXT_NODE ? (prev.textContent ?? '') : '';
-    const nextText = next?.nodeType === Node.TEXT_NODE ? (next.textContent ?? '') : '';
+    const prevText = prev?.textContent ?? '';
+    const nextText = next?.textContent ?? '';
 
     const prevNeedsSpace = prevText.length > 0 && !/\s$/.test(prevText);
     const nextNeedsSpace = nextText.length > 0 && NEEDS_SPACE_BEFORE.test(nextText);
 
     if (prevNeedsSpace && nextNeedsSpace && fn.parentNode) {
-      fn.parentNode.insertBefore(doc.createTextNode(' '), fn.nextSibling);
+      fn.parentNode.insertBefore(doc.createTextNode(' '), fn);
     }
 
-    fn.classList.remove('yv-n');
-    // DEBUG: comment this out to render raw footnote content inline for anchor debugging.
-    fn.textContent = '';
+    const anchor = doc.createElement('span');
+    anchor.setAttribute('data-verse-footnote', verseNum);
+    fn.replaceWith(anchor);
+  }
+}
+
+/**
+ * Extracts footnotes from wrapped verse HTML and prepares data for footnote popovers.
+ *
+ * Assumes verses are already wrapped in `.yv-v[v]` elements (by wrapVerseContent).
+ *
+ * Two-phase approach:
+ * 1. Build popover data (verseHtml + note content) using cloned DOM — no side effects.
+ * 2. Replace footnotes in the real DOM with clean anchor spans for React portals.
+ *
+ * @returns Notes data for popovers, keyed by verse number.
+ */
+export function extractNotesFromWrappedHtml(doc: Document): Record<string, VerseNotes> {
+  const footnotes = Array.from(doc.querySelectorAll('.yv-n.f'));
+  if (!footnotes.length) return {};
+
+  // Group footnotes by verse number.
+  const footnotesByVerse = new Map<string, Element[]>();
+  for (const fn of footnotes) {
+    const verseNum = fn.closest('.yv-v[v]')?.getAttribute('v');
+    if (!verseNum) continue;
+    let arr = footnotesByVerse.get(verseNum);
+    if (!arr) {
+      arr = [];
+      footnotesByVerse.set(verseNum, arr);
+    }
+    arr.push(fn);
+  }
+
+  // Build verse-wrapper lookup.
+  const wrappersByVerse = new Map<string, Element[]>();
+  doc.querySelectorAll('.yv-v[v]').forEach((el) => {
+    const verseNum = el.getAttribute('v');
+    if (!verseNum) return;
+    const arr = wrappersByVerse.get(verseNum);
+    if (arr) arr.push(el);
+    else wrappersByVerse.set(verseNum, [el]);
   });
+
+  // Phase 1: Extract data (cloned DOM — no mutations).
+  const notes: Record<string, VerseNotes> = {};
+  for (const [verseNum, fns] of footnotesByVerse) {
+    notes[verseNum] = {
+      verseHtml: buildVerseHtml(wrappersByVerse.get(verseNum) ?? []),
+      notes: fns.map((fn) => fn.innerHTML),
+    };
+  }
+
+  // Phase 2: Replace footnotes with portal anchors (real DOM mutation).
+  replaceFootnotesWithAnchors(doc, footnotes);
 
   return notes;
 }
