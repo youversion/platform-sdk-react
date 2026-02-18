@@ -454,6 +454,18 @@
     margin-inline-start: 2em;
   }
 
+  /* This adds top margin to the introduction outline entries */
+  & .io:not(.io + .io),
+  & .io1:not(.io1 + .io1) {
+    margin-block-start: 1em;
+  }
+
+  /* This adds bottom margin to the introduction outline entries */
+  & .io:has(+ :not(.io)),
+  & .io1:has(+ :not(.io1)) {
+    margin-block-end: 1em;
+  }
+
   /* \io2 - Introduction outline entry (level 2) — LeftMargin .75in */
   & .io2 {
     display: block;
@@ -494,7 +506,7 @@
     margin-block-start: 1em;
   }
 
-  /* This adds bottommargin to the introduction list items */
+  /* This adds bottom margin to the introduction list items */
   & .ili:has(+ :not(.ili)) {
     margin-block-end: 1em;
   }
