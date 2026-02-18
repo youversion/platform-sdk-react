@@ -188,7 +188,6 @@ function wrapVerseContent(doc: Document): void {
   verseMarkers.forEach(processVerseMarker);
 }
 
-
 /**
  * Matches text that needs a space inserted before it (not whitespace or punctuation).
  * Used when replacing footnotes to prevent word concatenation.

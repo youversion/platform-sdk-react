@@ -137,6 +137,8 @@ function BibleTextHtml({
     });
   }, [html, selectedVerses, highlightedVerses]);
 
+  // Not wrapped in useCallback — this component is not memoized, so the
+  // handler always captures the latest selectedVerses via closure.
   const handleClick = onVerseSelect
     ? (e: React.MouseEvent<HTMLDivElement>) => {
         const verseEl = (e.target as HTMLElement).closest('.yv-v[v]');
