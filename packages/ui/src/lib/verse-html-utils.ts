@@ -1,6 +1,8 @@
-export const NON_BREAKING_SPACE = '\u00A0';
+import DOMPurify from 'isomorphic-dompurify';
 
-export const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
+const NON_BREAKING_SPACE = '\u00A0';
+
+const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
 
 /**
  * Converts a 0-based footnote index into an alphabetic marker.
@@ -46,7 +48,7 @@ export type FontFamily = typeof INTER_FONT | typeof SOURCE_SERIF_FONT | (string 
  *
  * This enables simple CSS selectors like `.yv-v[v="1"] { background: yellow; }`
  */
-export function wrapVerseContent(doc: Document): void {
+function wrapVerseContent(doc: Document): void {
   /**
    * Wraps all content in a paragraph with a verse span.
    */
@@ -269,7 +271,7 @@ function replaceFootnotesWithAnchors(doc: Document, footnotes: Element[]): void 
  *
  * @returns Notes data for popovers, keyed by verse number.
  */
-export function extractNotesFromWrappedHtml(doc: Document): Record<string, VerseNotes> {
+function extractNotesFromWrappedHtml(doc: Document): Record<string, VerseNotes> {
   const footnotes = Array.from(doc.querySelectorAll('.yv-n.f'));
   if (!footnotes.length) return {};
 
@@ -309,4 +311,84 @@ export function extractNotesFromWrappedHtml(doc: Document): Record<string, Verse
   replaceFootnotesWithAnchors(doc, footnotes);
 
   return notes;
+}
+
+/**
+ * Adds non-breaking space after verse labels for better copy/paste
+ * (e.g., "3For God so loved..." → "3 For God so loved...").
+ */
+function addNbspToVerseLabels(doc: Document): void {
+  doc.querySelectorAll('.yv-vlbl').forEach((label) => {
+    const text = label.textContent || '';
+    if (!text.endsWith(NON_BREAKING_SPACE)) {
+      label.textContent = text + NON_BREAKING_SPACE;
+    }
+  });
+}
+
+/**
+ * Fixes irregular tables by adding colspan to single-cell rows in multi-column tables.
+ * (e.g., https://www.bible.com/bible/111/EZR.2.NIV)
+ */
+function fixIrregularTables(doc: Document): void {
+  doc.querySelectorAll('table').forEach((table) => {
+    const rows = table.querySelectorAll('tr');
+    if (rows.length === 0) return;
+
+    let maxColumns = 0;
+    rows.forEach((row) => {
+      let count = 0;
+      row.querySelectorAll('td, th').forEach((cell) => {
+        count +=
+          cell instanceof HTMLTableCellElement
+            ? parseInt(cell.getAttribute('colspan') || '1', 10)
+            : 1;
+      });
+      maxColumns = Math.max(maxColumns, count);
+    });
+
+    if (maxColumns > 1) {
+      rows.forEach((row) => {
+        const cells = row.querySelectorAll('td, th');
+        if (cells.length === 1 && cells[0] instanceof HTMLTableCellElement) {
+          const existing = parseInt(cells[0].getAttribute('colspan') || '1', 10);
+          if (existing < maxColumns) {
+            cells[0].setAttribute('colspan', maxColumns.toString());
+          }
+        }
+      });
+    }
+  });
+}
+
+const DOMPURIFY_CONFIG = {
+  ALLOWED_ATTR: ['class', 'style', 'id', 'v', 'usfm'],
+  ALLOW_DATA_ATTR: true,
+};
+
+/**
+ * Full transformation pipeline for Bible HTML from the API.
+ *
+ * 1. Sanitize (DOMPurify)
+ * 2. Wrap verse content in selectable spans
+ * 3. Extract footnotes and replace with portal anchors
+ * 4. Add non-breaking spaces to verse labels
+ * 5. Fix irregular table layouts
+ */
+export function transformBibleHtml(html: string): { html: string; notes: Record<string, VerseNotes> } {
+  if (typeof window === 'undefined' || !('DOMParser' in window)) {
+    return { html, notes: {} };
+  }
+
+  const doc = new DOMParser().parseFromString(
+    DOMPurify.sanitize(html, DOMPURIFY_CONFIG),
+    'text/html',
+  );
+
+  wrapVerseContent(doc);
+  const notes = extractNotesFromWrappedHtml(doc);
+  addNbspToVerseLabels(doc);
+  fixIrregularTables(doc);
+
+  return { html: doc.body.innerHTML, notes };
 }

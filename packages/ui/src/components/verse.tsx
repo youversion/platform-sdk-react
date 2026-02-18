@@ -1,12 +1,11 @@
 'use client';
 
 import { usePassage, useTheme } from '@youversion/platform-react-hooks';
-import DOMPurify from 'isomorphic-dompurify';
 import {
   forwardRef,
   memo,
   type ReactNode,
-  useEffect,
+  useMemo,
   useLayoutEffect,
   useRef,
   useState,
@@ -14,22 +13,19 @@ import {
 import { createPortal } from 'react-dom';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
-  extractNotesFromWrappedHtml,
   getFootnoteMarker,
-  NON_BREAKING_SPACE,
+  transformBibleHtml,
   type FontFamily,
   type VerseNotes,
-  wrapVerseContent,
 } from '@/lib/verse-html-utils';
 import { Footnote } from './icons/footnote';
 
-type ExtractedNotes = {
+type TransformedBibleHtml = {
   html: string;
   notes: Record<string, VerseNotes>;
 };
 
 type VerseFootnotePlaceholder = {
-  key: string;
   verseNum: string;
   el: Element;
 };
@@ -116,73 +112,48 @@ function BibleTextHtml({
   const providerTheme = useTheme();
   const currentTheme = theme || providerTheme;
 
+  // Set innerHTML manually so the DOM nodes persist across renders
+  // (portals need stable element references).
   useLayoutEffect(() => {
     if (!contentRef.current) return;
     contentRef.current.innerHTML = html;
 
-    const allPlaceholders: VerseFootnotePlaceholder[] = [];
-    Object.keys(notes).forEach((verseNum) => {
-      const anchors =
-        contentRef.current?.querySelectorAll(`[data-verse-footnote="${verseNum}"]`) ?? [];
-      anchors.forEach((el, index) => {
-        allPlaceholders.push({ key: `${verseNum}-${index}`, verseNum, el });
-      });
+    const anchors = contentRef.current.querySelectorAll('[data-verse-footnote]');
+    const result: VerseFootnotePlaceholder[] = [];
+    anchors.forEach((el) => {
+      const verseNum = el.getAttribute('data-verse-footnote');
+      if (verseNum) result.push({ verseNum, el });
     });
-    setPlaceholders(allPlaceholders);
-  }, [html, notes]);
+    setPlaceholders(result);
+  }, [html]);
 
+  // Toggle selected/highlighted classes on verse wrappers.
   useLayoutEffect(() => {
     if (!contentRef.current) return;
-
-    const verseElements = contentRef.current.querySelectorAll('.yv-v[v]');
-    verseElements.forEach((el) => {
+    contentRef.current.querySelectorAll('.yv-v[v]').forEach((el) => {
       const verseNum = parseInt(el.getAttribute('v') || '0', 10);
-
-      if (selectedVerses.includes(verseNum)) {
-        el.classList.add('yv-v-selected');
-      } else {
-        el.classList.remove('yv-v-selected');
-      }
-
-      if (highlightedVerses[verseNum]) {
-        el.classList.add('yv-v-highlighted');
-      } else {
-        el.classList.remove('yv-v-highlighted');
-      }
+      el.classList.toggle('yv-v-selected', selectedVerses.includes(verseNum));
+      el.classList.toggle('yv-v-highlighted', !!highlightedVerses[verseNum]);
     });
   }, [html, selectedVerses, highlightedVerses]);
 
-  const selectedVersesRef = useRef(selectedVerses);
-  selectedVersesRef.current = selectedVerses;
-
-  useLayoutEffect(() => {
-    const element = contentRef.current;
-    if (!element || !onVerseSelect) return;
-
-    const handleClick = (e: Event) => {
-      const target = e.target as HTMLElement;
-      const verseEl = target.closest('.yv-v[v]');
-      if (!verseEl) return;
-
-      const verseNum = parseInt(verseEl.getAttribute('v') || '0', 10);
-      if (verseNum === 0) return;
-
-      const current = selectedVersesRef.current;
-      const newSelected = current.includes(verseNum)
-        ? current.filter((v) => v !== verseNum)
-        : [...current, verseNum].sort((a, b) => a - b);
-
-      onVerseSelect(newSelected);
-    };
-
-    element.addEventListener('click', handleClick);
-    return () => element.removeEventListener('click', handleClick);
-  }, [onVerseSelect]);
+  const handleClick = onVerseSelect
+    ? (e: React.MouseEvent<HTMLDivElement>) => {
+        const verseEl = (e.target as HTMLElement).closest('.yv-v[v]');
+        if (!verseEl) return;
+        const verseNum = parseInt(verseEl.getAttribute('v') || '0', 10);
+        if (!verseNum) return;
+        const newSelected = selectedVerses.includes(verseNum)
+          ? selectedVerses.filter((v) => v !== verseNum)
+          : [...selectedVerses, verseNum].sort((a, b) => a - b);
+        onVerseSelect(newSelected);
+      }
+    : undefined;
 
   return (
     <>
-      <div ref={contentRef} />
-      {placeholders.map(({ key, verseNum, el }) => {
+      <div ref={contentRef} onClick={handleClick} />
+      {placeholders.map(({ verseNum, el }, index) => {
         const verseNotes = notes[verseNum];
         if (!verseNotes) return null;
         return createPortal(
@@ -194,90 +165,11 @@ function BibleTextHtml({
             theme={currentTheme}
           />,
           el,
-          key,
+          `${verseNum}-${index}`,
         );
       })}
     </>
   );
-}
-
-// Configure DOMPurify to allow specific attributes safe for Bible content
-const DOMPURIFY_CONFIG = {
-  ALLOWED_ATTR: ['class', 'style', 'id', 'v', 'usfm'],
-  ALLOW_DATA_ATTR: true,
-};
-
-function yvDomTransformer(html: string, extractNotes: boolean = false): ExtractedNotes {
-  if (typeof window === 'undefined' || !('DOMParser' in window)) {
-    return { html, notes: {} };
-  }
-
-  // Parse and sanitize HTML
-  const doc = new DOMParser().parseFromString(
-    DOMPurify.sanitize(html, DOMPURIFY_CONFIG),
-    'text/html',
-  );
-
-  // Wrap verse content FIRST (enables simple footnote extraction)
-  wrapVerseContent(doc);
-
-  // Extract footnotes using the wrapped verse structure
-  const extractedNotes = extractNotes ? extractNotesFromWrappedHtml(doc) : {};
-
-  // Adds non-breaking space to the end of verse labels for better copying and pasting
-  // (i.e. "3For God so loved..." to "3 For God so loved...")
-  const verseLabels = doc.querySelectorAll('.yv-vlbl');
-  verseLabels.forEach((label) => {
-    const text = label.textContent || '';
-    if (!text.endsWith(NON_BREAKING_SPACE)) {
-      label.textContent = text + NON_BREAKING_SPACE;
-    }
-  });
-
-  // Fix irregular tables - add colspan to single-cell rows in multi-column tables.
-  // Test with https://www.bible.com/bible/111/EZR.2.NIV
-  const tables = doc.querySelectorAll('table');
-  tables.forEach((table) => {
-    const rows = table.querySelectorAll('tr');
-    if (rows.length === 0) return;
-
-    // Find maximum column count across all rows (accounting for existing colspan)
-    let maxColumns = 0;
-    rows.forEach((row) => {
-      const cells = row.querySelectorAll('td, th');
-      let rowColumnCount = 0;
-      cells.forEach((cell) => {
-        if (cell instanceof HTMLTableCellElement) {
-          const colspan = parseInt(cell.getAttribute('colspan') || '1', 10);
-          rowColumnCount += colspan;
-        } else {
-          rowColumnCount += 1;
-        }
-      });
-      maxColumns = Math.max(maxColumns, rowColumnCount);
-    });
-
-    // If table has mixed column counts, add colspan to single-cell rows
-    if (maxColumns > 1) {
-      rows.forEach((row) => {
-        const cells = row.querySelectorAll('td, th');
-        if (cells.length === 1) {
-          const cell = cells[0];
-          if (cell instanceof HTMLTableCellElement) {
-            const existingColspan = parseInt(cell.getAttribute('colspan') || '1', 10);
-            // Only add colspan if cell doesn't already span all columns
-            if (existingColspan < maxColumns) {
-              cell.setAttribute('colspan', maxColumns.toString());
-            }
-          }
-        }
-      });
-    }
-  });
-
-  // Serialize back to HTML
-  const modifiedHtml = doc.body.innerHTML;
-  return { html: modifiedHtml, notes: extractedNotes };
 }
 
 /**
@@ -364,14 +256,9 @@ export const Verse = {
       }: VerseHtmlProps,
       ref,
     ): ReactNode => {
-      const [transformedData, setTransformedData] = useState<ExtractedNotes>({ html, notes: {} });
+      const transformedData = useMemo<TransformedBibleHtml>(() => transformBibleHtml(html), [html]);
       const providerTheme = useTheme();
       const currentTheme = theme || providerTheme;
-
-      useEffect(() => {
-        // Always extract notes to keep DOM stable (visibility controlled via CSS)
-        setTransformedData(yvDomTransformer(html, true));
-      }, [html]);
 
       return (
         <section
