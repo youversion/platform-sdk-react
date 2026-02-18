@@ -122,6 +122,15 @@ function Root({
     };
   }, [expandedBook]);
 
+  const handleChapterButtonClick = (bookId: string, passageId: string) => {
+    const chapterId = passageId.split('.').pop() || '';
+    if (chapterId && bookId) {
+      setBook(bookId);
+      setChapter(chapterId);
+      setSearchQuery('');
+    }
+  };
+
   return (
     <Popover>
       <BibleChapterPickerContext.Provider
@@ -171,14 +180,12 @@ function Root({
                               variant="secondary"
                               size="icon"
                               className="yv:aspect-square yv:w-full yv:h-full yv:flex yv:items-center yv:justify-center yv:rounded-[4px]"
-                              onClick={() => {
-                                const chapterId = bookItem.intro?.passage_id.split('.').pop();
-                                if (chapterId) {
-                                  setBook(bookItem.id);
-                                  setChapter(chapterId);
-                                  setSearchQuery('');
-                                }
-                              }}
+                              onClick={() =>
+                                handleChapterButtonClick(
+                                  bookItem.id,
+                                  bookItem.intro?.passage_id || '',
+                                )
+                              }
                             >
                               <InfoIcon />
                             </Button>
@@ -192,11 +199,9 @@ function Root({
                                 variant="secondary"
                                 size="icon"
                                 className="yv:aspect-square yv:w-full yv:h-full yv:flex yv:items-center yv:justify-center yv:rounded-[4px]"
-                                onClick={() => {
-                                  setBook(bookItem.id);
-                                  setChapter(chapterId);
-                                  setSearchQuery('');
-                                }}
+                                onClick={() =>
+                                  handleChapterButtonClick(bookItem.id, chapterRef.passage_id)
+                                }
                               >
                                 {chapterId}
                               </Button>
