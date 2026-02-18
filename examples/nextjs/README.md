@@ -6,7 +6,7 @@ This is a [Next.js](https://nextjs.org) example application demonstrating integr
 
 This example showcases:
 - Integration of `@youversion/platform-react-ui` components
-- Setup of required providers (`BibleSDKProvider`, `YVPProvider`)
+- Setup of the `YouVersionProvider`
 - Basic Bible content display and interaction
 
 ## Packages Used
