@@ -399,7 +399,6 @@ function Content() {
       localized_abbreviation: version.localized_abbreviation,
       abbreviation: version.abbreviation,
     });
-    setSearchQuery('');
     setIsLanguagesOpen(false);
     setIsPopoverOpen(false);
   };
