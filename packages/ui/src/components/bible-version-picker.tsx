@@ -199,6 +199,7 @@ function Root({
       setIsPopoverOpenRaw(open);
       if (!open) {
         setSearchQuery('');
+        setIsLanguagesOpen(false);
       }
     },
     [setSearchQuery],
