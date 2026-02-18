@@ -74,9 +74,9 @@ export function BibleCard({
       />
 
       <div className="yv:grid yv:grid-cols-[1fr_auto] yv:gap-4 yv:items-center yv:mt-4">
-        <div className="yv:text-balance yv:text-muted-foreground yv:justify-self-start yv:font-bold yv:text-[0.5rem]">
+        <p className="yv:text-balance yv:text-muted-foreground yv:justify-self-start yv:font-bold yv:text-[0.5rem]">
           {version?.copyright}
-        </div>
+        </p>
 
         <div className="yv:justify-self-end">
           <BibleAppLogoLockup fontSize={12} />
