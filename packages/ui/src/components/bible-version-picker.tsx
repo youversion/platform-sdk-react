@@ -192,7 +192,17 @@ function Root({
   const [searchQuery, setSearchQuery] = useState('');
   const [isLanguagesOpen, setIsLanguagesOpen] = useState(false);
   const [recentVersions, setRecentVersions] = useState<RecentVersion[]>(getRecentVersions);
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpenRaw] = useState(false);
+
+  const setIsPopoverOpen = useCallback(
+    (open: boolean) => {
+      setIsPopoverOpenRaw(open);
+      if (!open) {
+        setSearchQuery('');
+      }
+    },
+    [setSearchQuery],
+  );
 
   const addRecentVersion = useCallback((version: RecentVersion) => {
     setRecentVersions((prev) => {
@@ -388,6 +398,7 @@ function Content() {
       localized_abbreviation: version.localized_abbreviation,
       abbreviation: version.abbreviation,
     });
+    setSearchQuery('');
     setIsLanguagesOpen(false);
     setIsPopoverOpen(false);
   };
