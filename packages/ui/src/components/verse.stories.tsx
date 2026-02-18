@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import React from 'react';
 
-import { type BibleTextViewProps, BibleTextView } from './verse';
+import { type BibleTextViewProps, BibleTextView, Verse } from './verse';
 import { Button } from './ui/button';
 import { XIcon } from '@/components/icons/x';
 
@@ -17,6 +17,15 @@ type DebouncedBibleTextViewProps = {
   lineHeight?: number;
   debounceMs?: number;
 };
+
+const MULTIPLE_FOOTNOTE_SINGLE_VERSE_HTML = `
+  <div class="p">
+    <span class="yv-v" v="51"></span><span class="yv-vlbl">51</span>He then added,
+    <span class="wj">"Very truly I tell you,</span><span class="yv-n f"><span class="fr">1:51 </span><span class="ft">The Greek is plural.</span></span>
+    <span class="wj">you</span><span class="yv-n f"><span class="fr">1:51 </span><span class="ft">The Greek is plural.</span></span>
+    <span class="wj">will see heaven open."</span>
+  </div>
+`;
 
 function DebouncedBibleTextView({
   reference,
@@ -232,6 +241,52 @@ export const FootnoteInteraction: Story = {
       const noteItems = document.querySelectorAll('[data-yv-sdk] ul li');
       await expect(noteItems.length).toBeGreaterThan(0);
     });
+  },
+};
+
+export const MultipleFootnotesInSingleVerse: Story = {
+  args: {
+    reference: 'JHN.1.51',
+    versionId: 111,
+    renderNotes: true,
+  },
+  tags: ['integration'],
+  render: () => (
+    <div data-yv-sdk data-yv-theme="light">
+      <Verse.Html html={MULTIPLE_FOOTNOTE_SINGLE_VERSE_HTML} renderNotes={true} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(
+      async () => {
+        const footnoteButtons = canvasElement.querySelectorAll('[data-verse-footnote="51"] button');
+        await expect(footnoteButtons.length).toBe(2);
+      },
+      { timeout: 5000 },
+    );
+
+    const footnoteButtons = canvasElement.querySelectorAll('[data-verse-footnote="51"] button');
+    await expect(footnoteButtons.length).toBe(2);
+
+    for (const button of footnoteButtons) {
+      await expect(button.closest('.yv-v[v="51"]')).toBeInTheDocument();
+    }
+
+    const footnoteAnchors = canvasElement.querySelectorAll('[data-verse-footnote="51"]');
+    await expect(footnoteAnchors.length).toBe(2);
+
+    const firstAnchor = footnoteAnchors[0];
+    const secondAnchor = footnoteAnchors[1];
+
+    await expect(firstAnchor?.previousElementSibling?.textContent ?? '').toMatch(
+      /very truly i tell you,/i,
+    );
+    await expect(firstAnchor?.nextElementSibling?.textContent ?? '').toMatch(/^you$/i);
+
+    await expect(secondAnchor?.previousElementSibling?.textContent ?? '').toMatch(/^you$/i);
+    await expect(secondAnchor?.nextElementSibling?.textContent ?? '').toMatch(
+      /will see heaven open/i,
+    );
   },
 };
 
