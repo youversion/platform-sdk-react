@@ -210,14 +210,15 @@ export const FootnoteInteraction: Story = {
   play: async ({ canvasElement }) => {
     await waitFor(
       async () => {
-        const footnoteButton = canvasElement.querySelector('[data-verse-footnote] button');
-        await expect(footnoteButton).toBeInTheDocument();
+        const footnoteButtons = canvasElement.querySelectorAll('[data-verse-footnote] button');
+        await expect(footnoteButtons.length).toBeGreaterThan(0);
       },
       { timeout: 5000 },
     );
 
-    const footnoteButton = canvasElement.querySelector('[data-verse-footnote] button');
-    await userEvent.click(footnoteButton!);
+    const footnoteButtons = canvasElement.querySelectorAll('[data-verse-footnote] button');
+    await expect(footnoteButtons.length).toBeGreaterThan(0);
+    await userEvent.click(footnoteButtons[0]!);
 
     await waitFor(async () => {
       await expect(await screen.findByText('Footnotes')).toBeInTheDocument();
@@ -265,16 +266,17 @@ export const FootnotePopoverThemeLight: Story = {
 
     await waitFor(
       async () => {
-        const footnoteButton = canvasElement.querySelector('[data-verse-footnote] button');
-        await expect(footnoteButton).toBeInTheDocument();
+        const footnoteButtons = canvasElement.querySelectorAll('[data-verse-footnote] button');
+        await expect(footnoteButtons.length).toBeGreaterThan(0);
       },
       { timeout: 5000 },
     );
 
-    const footnoteButton = canvasElement.querySelector('[data-verse-footnote] button');
-    await expect(footnoteButton?.closest('[data-yv-theme="light"]')).toBeInTheDocument();
+    const footnoteButtons = canvasElement.querySelectorAll('[data-verse-footnote] button');
+    await expect(footnoteButtons.length).toBeGreaterThan(0);
+    await expect(footnoteButtons[0]?.closest('[data-yv-theme="light"]')).toBeInTheDocument();
 
-    await userEvent.click(footnoteButton!);
+    await userEvent.click(footnoteButtons[0]!);
 
     await waitFor(async () => {
       const popover = document.querySelector('[data-slot="popover-content"]');
@@ -307,16 +309,17 @@ export const FootnotePopoverThemeDark: Story = {
 
     await waitFor(
       async () => {
-        const footnoteButton = canvasElement.querySelector('[data-verse-footnote] button');
-        await expect(footnoteButton).toBeInTheDocument();
+        const footnoteButtons = canvasElement.querySelectorAll('[data-verse-footnote] button');
+        await expect(footnoteButtons.length).toBeGreaterThan(0);
       },
       { timeout: 5000 },
     );
 
-    const footnoteButton = canvasElement.querySelector('[data-verse-footnote] button');
-    await expect(footnoteButton?.closest('[data-yv-theme="dark"]')).toBeInTheDocument();
+    const footnoteButtons = canvasElement.querySelectorAll('[data-verse-footnote] button');
+    await expect(footnoteButtons.length).toBeGreaterThan(0);
+    await expect(footnoteButtons[0]?.closest('[data-yv-theme="dark"]')).toBeInTheDocument();
 
-    await userEvent.click(footnoteButton!);
+    await userEvent.click(footnoteButtons[0]!);
 
     await waitFor(async () => {
       const popover = document.querySelector('[data-slot="popover-content"]');
