@@ -28,6 +28,12 @@ type ExtractedNotes = {
   notes: Record<string, VerseNotes>;
 };
 
+type VerseFootnotePlaceholder = {
+  key: string;
+  verseNum: string;
+  el: Element;
+};
+
 const VerseFootnoteButton = memo(function VerseFootnoteButton({
   verseNum,
   verseNotes,
@@ -106,7 +112,7 @@ function BibleTextHtml({
   highlightedVerses?: Record<number, boolean>;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
-  const [placeholders, setPlaceholders] = useState<Map<string, Element>>(new Map());
+  const [placeholders, setPlaceholders] = useState<VerseFootnotePlaceholder[]>([]);
   const providerTheme = useTheme();
   const currentTheme = theme || providerTheme;
 
@@ -114,12 +120,15 @@ function BibleTextHtml({
     if (!contentRef.current) return;
     contentRef.current.innerHTML = html;
 
-    const map = new Map<string, Element>();
+    const allPlaceholders: VerseFootnotePlaceholder[] = [];
     Object.keys(notes).forEach((verseNum) => {
-      const el = contentRef.current?.querySelector(`[data-verse-footnote="${verseNum}"]`);
-      if (el) map.set(verseNum, el);
+      const anchors =
+        contentRef.current?.querySelectorAll(`[data-verse-footnote="${verseNum}"]`) ?? [];
+      anchors.forEach((el, index) => {
+        allPlaceholders.push({ key: `${verseNum}-${index}`, verseNum, el });
+      });
     });
-    setPlaceholders(map);
+    setPlaceholders(allPlaceholders);
   }, [html, notes]);
 
   useLayoutEffect(() => {
@@ -173,7 +182,7 @@ function BibleTextHtml({
   return (
     <>
       <div ref={contentRef} />
-      {Array.from(placeholders.entries()).map(([verseNum, el]) => {
+      {placeholders.map(({ key, verseNum, el }) => {
         const verseNotes = notes[verseNum];
         if (!verseNotes) return null;
         return createPortal(
@@ -185,6 +194,7 @@ function BibleTextHtml({
             theme={currentTheme}
           />,
           el,
+          key,
         );
       })}
     </>

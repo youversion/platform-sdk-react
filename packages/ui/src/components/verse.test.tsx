@@ -297,17 +297,17 @@ describe('Verse.Html - Footnotes', () => {
     const { container } = render(<Verse.Html html={htmlWithMultipleNotes} renderNotes={true} />);
 
     await waitFor(() => {
-      const placeholder = container.querySelector('[data-verse-footnote="51"]');
-      expect(placeholder).not.toBeNull();
+      const placeholders = container.querySelectorAll('[data-verse-footnote="51"]');
+      expect(placeholders.length).toBe(2);
 
       const footnoteElements = container.querySelectorAll('.yv-n.f');
       expect(footnoteElements.length).toBe(0);
     });
 
-    const footnoteButton = container.querySelector('[data-verse-footnote="51"] button');
-    expect(footnoteButton).not.toBeNull();
+    const footnoteButtons = container.querySelectorAll('[data-verse-footnote="51"] button');
+    expect(footnoteButtons.length).toBe(2);
 
-    await userEvent.click(footnoteButton!);
+    await userEvent.click(footnoteButtons[0]!);
 
     await waitFor(() => {
       const popover = document.body.querySelector('[role="dialog"]');

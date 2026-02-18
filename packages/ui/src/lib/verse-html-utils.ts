@@ -284,7 +284,7 @@ export function extractNotesFromWrappedHtml(doc: Document): Record<string, Verse
     // Marker sequence is: a, b, ... z, aa, ab, ...
     const verseHtmlParts: string[] = [];
     let noteIdx = 0;
-    let hasInlineAnchor = false;
+    let inlineAnchorCount = 0;
 
     verseWrappers.forEach((wrapper, wrapperIdx) => {
       if (wrapperIdx > 0) verseHtmlParts.push(' ');
@@ -296,13 +296,11 @@ export function extractNotesFromWrappedHtml(doc: Document): Record<string, Verse
         const node = walker.currentNode;
         if (node instanceof Element) {
           if (node.classList.contains('yv-n') && node.classList.contains('f')) {
-            // Attach the portal anchor to the first inline footnote position for this verse.
+            // Attach a portal anchor at every inline footnote position for this verse.
             // If a verse has no inline footnote element available, we create a fallback
             // placeholder after the last verse wrapper (see below).
-            if (!hasInlineAnchor) {
-              node.setAttribute('data-verse-footnote', verseNum);
-              hasInlineAnchor = true;
-            }
+            node.setAttribute('data-verse-footnote', verseNum);
+            inlineAnchorCount += 1;
             verseHtmlParts.push(
               `<sup class="yv:text-muted-foreground">${getFootnoteMarker(noteIdx++)}</sup>`,
             );
@@ -328,8 +326,8 @@ export function extractNotesFromWrappedHtml(doc: Document): Record<string, Verse
       notes: fns.map((fn) => fn.innerHTML),
     };
 
-    // Fallback: if no inline anchor was found, insert one after the last wrapper.
-    if (!hasInlineAnchor) {
+    // Fallback: if no inline anchors were found, insert one after the last wrapper.
+    if (inlineAnchorCount === 0) {
       const lastWrapper = verseWrappers[verseWrappers.length - 1];
       if (lastWrapper?.parentNode) {
         const placeholder = doc.createElement('span');
@@ -342,7 +340,7 @@ export function extractNotesFromWrappedHtml(doc: Document): Record<string, Verse
   // Gut footnotes in place: keep the element for inline portal anchoring, but remove its
   // visible content. Before clearing, insert a literal space only when adjacent text would
   // otherwise merge (e.g., "overcome" + "it" -> "overcomeit"), excluding punctuation cases.
-  // The first gutted footnote per verse remains the `[data-verse-footnote]` anchor.
+  // Gutted footnotes remain in place as `[data-verse-footnote]` anchors.
   footnotes.forEach((fn) => {
     const prev = fn.previousSibling;
     const next = fn.nextSibling;
