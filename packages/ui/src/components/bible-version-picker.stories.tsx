@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { BibleVersionPicker, type RootProps } from './bible-version-picker';
 import { useState } from 'react';
 import { screen, userEvent, within, expect, waitFor } from 'storybook/test';
+import { http, HttpResponse, delay } from 'msw';
 import { BookOpenIcon } from './icons/book-open';
 import { Button } from './ui/button';
 import { RECENT_VERSIONS_KEY } from './bible-version-picker';
@@ -70,6 +71,30 @@ export const Default: Story = {
   args: {
     versionId: 111,
     side: 'top',
+  },
+};
+
+export const Loading: Story = {
+  args: {
+    versionId: 111,
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('*/v1/bibles', async () => {
+          await delay('infinite');
+          return new HttpResponse(null);
+        }),
+        http.get('*/v1/languages', async () => {
+          await delay('infinite');
+          return new HttpResponse(null);
+        }),
+        http.get('*/v1/bibles/:id', async () => {
+          await delay('infinite');
+          return new HttpResponse(null);
+        }),
+      ],
+    },
   },
 };
 
