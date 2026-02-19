@@ -1,22 +1,20 @@
 /**
  * @vitest-environment jsdom
  */
+/* eslint-disable @typescript-eslint/no-empty-function */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 // ResizeObserver is used by VersionAbbreviationIcon and @floating-ui/dom (Radix Popover)
 class ResizeObserverMock {
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
   observe() {}
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
   unobserve() {}
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
   disconnect() {}
 }
 globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 
-import { BibleVersionPicker } from './bible-version-picker';
+import { BibleVersionPicker, RECENT_VERSIONS_KEY } from './bible-version-picker';
 import {
   useVersions,
   useVersion,
@@ -126,6 +124,36 @@ describe('BibleVersionPicker', () => {
       });
 
       expect(screen.queryByText('No versions found')).toBeNull();
+    });
+
+    it('should show spinner in version list when loading even with recent versions', async () => {
+      const recentVersions = [
+        {
+          id: 111,
+          title: 'New International Version',
+          localized_abbreviation: 'NIV',
+          abbreviation: 'NIV',
+        },
+      ];
+      const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key) => {
+        if (key === RECENT_VERSIONS_KEY) return JSON.stringify(recentVersions);
+        return null;
+      });
+
+      setupDefaultMocks({ versionsLoading: true, filteredVersions: [] });
+      renderPicker();
+      await openPicker();
+
+      await waitFor(() => {
+        const dialog = screen.getByRole('dialog');
+        const spinners = dialog.querySelectorAll('svg.yv\\:animate-spin');
+        // Badge spinner + version list spinner
+        expect(spinners.length).toBeGreaterThanOrEqual(2);
+      });
+
+      expect(screen.queryByText('No versions found')).toBeNull();
+
+      getItemSpy.mockRestore();
     });
 
     it('should show spinner in badge when versions are loading', async () => {

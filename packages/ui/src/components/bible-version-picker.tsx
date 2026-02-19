@@ -493,7 +493,7 @@ function Content() {
             </>
           )}
           {/* All Versions */}
-          {filteredVersions && filteredVersions.length > 0 ? (
+          {filteredVersions.length > 0 ? (
             <ItemGroup data-testid="version-list">
               <h3 className="yv:px-4 yv:py-2 yv:font-bold">All Versions</h3>
               {filteredVersions.map((version: BibleVersion) => (
@@ -529,14 +529,13 @@ function Content() {
                 </Item>
               ))}
             </ItemGroup>
-          ) : null}
-          {!filteredVersions.length && !filteredRecentVersions.length ? (
+          ) : versionsLoading ? (
             <div className="yv:w-full yv:flex yv:items-center yv:justify-center yv:py-8 yv:text-center yv:text-muted-foreground yv:text-sm">
-              {versionsLoading ? (
-                <LoaderIcon className="yv:size-6 yv:animate-spin yv:text-muted-foreground" />
-              ) : (
-                'No versions found'
-              )}
+              <LoaderIcon className="yv:size-6 yv:animate-spin yv:text-muted-foreground" />
+            </div>
+          ) : !filteredRecentVersions.length ? (
+            <div className="yv:w-full yv:flex yv:items-center yv:justify-center yv:py-8 yv:text-center yv:text-muted-foreground yv:text-sm">
+              No versions found
             </div>
           ) : null}
         </div>
