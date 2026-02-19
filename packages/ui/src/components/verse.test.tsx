@@ -297,17 +297,17 @@ describe('Verse.Html - Footnotes', () => {
     const { container } = render(<Verse.Html html={htmlWithMultipleNotes} renderNotes={true} />);
 
     await waitFor(() => {
-      const placeholder = container.querySelector('[data-verse-footnote="51"]');
-      expect(placeholder).not.toBeNull();
+      const placeholders = container.querySelectorAll('[data-verse-footnote="51"]');
+      expect(placeholders.length).toBe(2);
 
       const footnoteElements = container.querySelectorAll('.yv-n.f');
       expect(footnoteElements.length).toBe(0);
     });
 
-    const footnoteButton = container.querySelector('[data-verse-footnote="51"] button');
-    expect(footnoteButton).not.toBeNull();
+    const footnoteButtons = container.querySelectorAll('[data-verse-footnote="51"] button');
+    expect(footnoteButtons.length).toBe(2);
 
-    await userEvent.click(footnoteButton!);
+    await userEvent.click(footnoteButtons[0]!);
 
     await waitFor(() => {
       const popover = document.body.querySelector('[role="dialog"]');
@@ -315,6 +315,39 @@ describe('Verse.Html - Footnotes', () => {
 
       const listItems = popover?.querySelectorAll('ul li');
       expect(listItems?.length).toBe(2);
+    });
+  });
+
+  it('should use alphabetic markers beyond z in the popover list', async () => {
+    const repeatedFootnotes = Array.from({ length: 27 }, () => {
+      return '<span class="yv-n f"><span class="fr">1:1 </span><span class="ft">Footnote text</span></span>';
+    }).join('');
+
+    const htmlWithManyFootnotes = `
+      <div class="p">
+        <span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text ${repeatedFootnotes}
+      </div>
+    `;
+
+    const { container } = render(<Verse.Html html={htmlWithManyFootnotes} renderNotes={true} />);
+
+    const footnoteButton = await waitFor(() => {
+      const button = container.querySelector('[data-verse-footnote="1"] button');
+      expect(button).not.toBeNull();
+      return button as HTMLButtonElement;
+    });
+
+    await userEvent.click(footnoteButton);
+
+    await waitFor(() => {
+      const popover = document.body.querySelector('[role="dialog"]');
+      expect(popover).not.toBeNull();
+
+      const listItems = popover?.querySelectorAll('ul li');
+      expect(listItems?.length).toBe(27);
+
+      const marker27 = listItems?.[26]?.querySelector('span')?.textContent;
+      expect(marker27).toBe('aa.');
     });
   });
 });
@@ -349,6 +382,22 @@ describe('Verse.Html - Footnote spacing', () => {
       const text = container.textContent;
       expect(text).toContain('overcome.');
       expect(text).not.toContain('overcome .');
+    });
+  });
+
+  it('should insert spacing when adjacent siblings are element nodes', async () => {
+    const htmlWithElementSiblings = `
+      <div class="p">
+        <span class="yv-v" v="5"></span><span class="yv-vlbl">5</span><span class="wj">overcome</span><span class="yv-n f"><span class="fr">1:5 </span><span class="ft">Note text</span></span><span class="wj">it</span>.
+      </div>
+    `;
+
+    const { container } = render(<Verse.Html html={htmlWithElementSiblings} renderNotes={true} />);
+
+    await waitFor(() => {
+      const text = container.textContent ?? '';
+      expect(text).toContain('overcome it.');
+      expect(text).not.toContain('overcomeit.');
     });
   });
 });
