@@ -62,7 +62,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
         <div className="yv:p-3 yv:overflow-y-auto yv:max-h-[33svh]">
           <div className="yv:font-bold yv:mb-2">{verseReference}</div>
           <div
-            className="yv:mb-3 yv:font-serif"
+            className="yv:mb-3 yv:font-serif font-serif"
             style={{ fontSize: fontSize ? `${fontSize}px` : '1.25rem' }}
             // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML has been run through DOMPurify and is safe
             dangerouslySetInnerHTML={{ __html: verseNotes.verseHtml }}
