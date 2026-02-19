@@ -1,5 +1,19 @@
 # @youversion/platform-react-ui
 
+## 1.15.0
+
+### Minor Changes
+
+- 0fb1d86: Rename `BibleWidgetView` to `BibleCard`. The old `BibleWidgetView` component and `BibleWidgetViewProps` type are still exported but marked as `@deprecated` and will be removed in a future major version.
+
+### Patch Changes
+
+- b8aedbb: Fix Bible Version Picker search input retaining stale text after selecting a version or closing the popover. Search state now resets on version selection and on popover close.
+- Updated dependencies [b8aedbb]
+- Updated dependencies [0fb1d86]
+  - @youversion/platform-core@1.15.0
+  - @youversion/platform-react-hooks@1.15.0
+
 ## 1.14.4
 
 ### Patch Changes
