@@ -192,7 +192,18 @@ function Root({
   const [searchQuery, setSearchQuery] = useState('');
   const [isLanguagesOpen, setIsLanguagesOpen] = useState(false);
   const [recentVersions, setRecentVersions] = useState<RecentVersion[]>(getRecentVersions);
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpenRaw] = useState(false);
+
+  const setIsPopoverOpen = useCallback(
+    (open: boolean) => {
+      setIsPopoverOpenRaw(open);
+      if (!open) {
+        setSearchQuery('');
+        setIsLanguagesOpen(false);
+      }
+    },
+    [setSearchQuery],
+  );
 
   const addRecentVersion = useCallback((version: RecentVersion) => {
     setRecentVersions((prev) => {

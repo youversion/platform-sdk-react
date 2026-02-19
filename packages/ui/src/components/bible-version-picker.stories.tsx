@@ -343,6 +343,37 @@ export const RecentVersionsSelection: Story = {
   },
 };
 
+export const SearchResetsAfterSelection: Story = {
+  args: {
+    versionId: 111,
+  },
+  tags: ['integration'],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Open popover
+    const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
+    await userEvent.click(trigger);
+
+    // Type in search
+    const searchInput = screen.getByPlaceholderText('Search');
+    await userEvent.type(searchInput, 'Amplified', { delay: 50 });
+    await expect(searchInput).toHaveValue('Amplified');
+
+    // Select a version from the filtered results
+    const ampOption = await screen.findByRole('listitem', { name: /Amplified Bible/i });
+    await userEvent.click(ampOption);
+
+    // Reopen the popover
+    const updatedTrigger = await canvas.findByRole('button', { name: /AMP/i });
+    await userEvent.click(updatedTrigger);
+
+    // Verify search input is cleared
+    const resetSearchInput = screen.getByPlaceholderText('Search');
+    await expect(resetSearchInput).toHaveValue('');
+  },
+};
+
 export const RecentVersionsSearchFilter: Story = {
   args: {
     versionId: 111,
