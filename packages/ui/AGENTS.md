@@ -1,7 +1,7 @@
 # @youversion/platform-react-ui
 
 ## OVERVIEW
-Complete UI layer with many Bible components: BibleTextView, VerseOfTheDay, BibleReader, BibleChapterPicker, BibleVersionPicker, YouVersionAuthButton, BibleWidgetView, BibleAppLogoLockup
+Complete UI layer with many Bible components: BibleTextView, VerseOfTheDay, BibleReader, BibleChapterPicker, BibleVersionPicker, YouVersionAuthButton, BibleCard (formerly BibleWidgetView), BibleAppLogoLockup
 
 **Related packages:**
 - For lower-level API clients → see `packages/core/AGENTS.md`
@@ -126,8 +126,8 @@ function MyComponent() {
 ```
 
 ```tsx
-// BibleWidgetView - Embeddable Bible passage widget
-<BibleWidgetView
+// BibleCard - Embeddable Bible passage card (formerly BibleWidgetView)
+<BibleCard
   reference="JHN.3.16-17"      // USFM format: "BOOK.CHAPTER.VERSE" or range
   versionId={3034}
   showVersionPicker={true}

@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { within, expect, userEvent, screen, waitFor } from 'storybook/test';
-import { BibleWidgetView } from './bible-widget-view';
+import { BibleCard } from './bible-card';
 
 const meta = {
-  title: 'Components/BibleWidgetView',
-  component: BibleWidgetView,
+  title: 'Components/BibleCard',
+  component: BibleCard,
   parameters: {
     layout: 'centered',
   },
@@ -26,7 +26,7 @@ const meta = {
       description: 'toggle version picker',
     },
   },
-} satisfies Meta<typeof BibleWidgetView>;
+} satisfies Meta<typeof BibleCard>;
 
 export default meta;
 
