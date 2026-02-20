@@ -92,8 +92,8 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
 const VERSE_UNAVAILABLE_MESSAGE = 'Your previously selected Bible verse is unavailable.';
 
 /**
- * Standardized verse-unavailable error message: light box with circular
- * exclamation icon and message text. Matches Figma design across platforms.
+ * Displays a verse-unavailable error message with a circular exclamation
+ * icon and descriptive text.
  */
 function VerseUnavailableMessage(): React.ReactElement {
   return (
