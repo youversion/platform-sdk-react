@@ -1,5 +1,14 @@
 # @youversion/platform-react-ui
 
+## 1.15.1
+
+### Patch Changes
+
+- c030f6c: fix mixed font family in footnotes popover
+- Updated dependencies [c030f6c]
+  - @youversion/platform-core@1.15.1
+  - @youversion/platform-react-hooks@1.15.1
+
 ## 1.15.0
 
 ### Minor Changes
