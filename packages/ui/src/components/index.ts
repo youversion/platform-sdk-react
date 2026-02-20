@@ -8,4 +8,5 @@ export {
 export { YouVersionAuthButton, type YouVersionAuthButtonProps } from './YouVersionAuthButton';
 export { VerseOfTheDay, type VerseOfTheDayProps } from './verse-of-the-day';
 export { BibleTextView, type BibleTextViewProps } from './verse';
+export { BibleCard, type BibleCardProps } from './bible-card';
 export { BibleWidgetView, type BibleWidgetViewProps } from './bible-widget-view';

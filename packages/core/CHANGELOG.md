@@ -1,5 +1,34 @@
 # @youversion/platform-core
 
+## 1.15.1
+
+### Patch Changes
+
+- c030f6c: fix mixed font family in footnotes popover
+
+## 1.15.0
+
+### Minor Changes
+
+- 0fb1d86: Rename `BibleWidgetView` to `BibleCard`. The old `BibleWidgetView` component and `BibleWidgetViewProps` type are still exported but marked as `@deprecated` and will be removed in a future major version.
+
+### Patch Changes
+
+- b8aedbb: Fix Bible Version Picker search input retaining stale text after selecting a version or closing the popover. Search state now resets on version selection and on popover close.
+
+## 1.14.4
+
+### Patch Changes
+
+- 60cffb9: Fix PopoverTrigger components to use 'asChild' prop to avoid console warnings
+- 3e1c3dc: Refactor verse footnote extraction and rendering for clarity and correctness
+  - Replace TreeWalker-based footnote extraction with clone-and-transform approach
+  - Move HTML transformation pipeline into `verse-html-utils.ts` as `transformBibleHtml`
+  - Fix space insertion between element siblings when footnotes are removed
+  - Fix footnote marker/label mismatch for verses with >26 footnotes
+  - Simplify `BibleTextHtml` hooks and use React `onClick` instead of manual event listeners
+  - Use `useMemo` for synchronous HTML transformation instead of `useEffect` + `useState`
+
 ## 1.14.3
 
 ### Patch Changes

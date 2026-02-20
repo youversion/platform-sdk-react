@@ -1,6 +1,32 @@
-export const NON_BREAKING_SPACE = '\u00A0';
+import DOMPurify from 'isomorphic-dompurify';
 
-export const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
+const NON_BREAKING_SPACE = '\u00A0';
+
+const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
+
+/**
+ * Converts a 0-based footnote index into an alphabetic marker.
+ *
+ * Examples with LETTERS = "abcdefghijklmnopqrstuvwxyz":
+ * 0 -> "a", 25 -> "z", 26 -> "aa", 27 -> "ab"
+ *
+ * This uses spreadsheet-style indexing and derives its base from
+ * LETTERS.length so there are no hardcoded numeric assumptions.
+ */
+export function getFootnoteMarker(index: number): string {
+  const base = LETTERS.length;
+  if (base === 0) return String(index + 1);
+
+  let value = index;
+  let marker = '';
+
+  do {
+    marker = LETTERS[value % base] + marker;
+    value = Math.floor(value / base) - 1;
+  } while (value >= 0);
+
+  return marker;
+}
 
 export type VerseNotes = {
   verseHtml: string;
@@ -22,7 +48,7 @@ export type FontFamily = typeof INTER_FONT | typeof SOURCE_SERIF_FONT | (string 
  *
  * This enables simple CSS selectors like `.yv-v[v="1"] { background: yellow; }`
  */
-export function wrapVerseContent(doc: Document): void {
+function wrapVerseContent(doc: Document): void {
   /**
    * Wraps all content in a paragraph with a verse span.
    */
@@ -162,111 +188,206 @@ export function wrapVerseContent(doc: Document): void {
   verseMarkers.forEach(processVerseMarker);
 }
 
+/**
+ * Matches text that needs a space inserted before it (not whitespace or punctuation).
+ * Used when replacing footnotes to prevent word concatenation.
+ */
+const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]'"»›]/;
+
+/**
+ * Builds the verse text shown inside the footnote popover.
+ *
+ * Works on clones of the verse wrappers so it never mutates the real DOM.
+ * Strips headings and labels, replaces each footnote with a superscript
+ * marker (a, b, … z, aa, ab, …).
+ */
+function buildVerseHtml(wrappers: Element[]): string {
+  const parts: string[] = [];
+  let noteIdx = 0;
+
+  for (let i = 0; i < wrappers.length; i++) {
+    if (i > 0) parts.push(' ');
+
+    const clone = wrappers[i]!.cloneNode(true) as Element;
+    const ownerDoc = wrappers[i]!.ownerDocument;
+
+    // Remove structural elements that shouldn't appear in the popover.
+    clone.querySelectorAll('.yv-h, .yv-vlbl').forEach((el) => el.remove());
+
+    // Replace each footnote with a superscript marker.
+    clone.querySelectorAll('.yv-n.f').forEach((fn) => {
+      const marker = ownerDoc.createElement('sup');
+      marker.className = 'yv:text-muted-foreground';
+      marker.textContent = getFootnoteMarker(noteIdx++);
+      fn.replaceWith(marker);
+    });
+
+    parts.push(clone.innerHTML);
+  }
+
+  return parts.join('');
+}
+
+/**
+ * Replaces each footnote element in the real DOM with a clean anchor span
+ * that React portals can target.
+ *
+ * Also inserts a space when the removal of the footnote would cause two
+ * adjacent words to merge (e.g., "overcome" + "it" → "overcomeit").
+ */
+function replaceFootnotesWithAnchors(doc: Document, footnotes: Element[]): void {
+  for (const fn of footnotes) {
+    const verseNum = fn.closest('.yv-v[v]')?.getAttribute('v');
+    if (!verseNum) continue;
+
+    const prev = fn.previousSibling;
+    const next = fn.nextSibling;
+
+    const prevText = prev?.textContent ?? '';
+    const nextText = next?.textContent ?? '';
+
+    const prevNeedsSpace = prevText.length > 0 && !/\s$/.test(prevText);
+    const nextNeedsSpace = nextText.length > 0 && NEEDS_SPACE_BEFORE.test(nextText);
+
+    if (prevNeedsSpace && nextNeedsSpace && fn.parentNode) {
+      fn.parentNode.insertBefore(doc.createTextNode(' '), fn);
+    }
+
+    const anchor = doc.createElement('span');
+    anchor.setAttribute('data-verse-footnote', verseNum);
+    fn.replaceWith(anchor);
+  }
+}
 
 /**
  * Extracts footnotes from wrapped verse HTML and prepares data for footnote popovers.
  *
- * This function assumes verses are already wrapped in `.yv-v[v]` elements (by wrapVerseContent).
- * It uses `.closest('.yv-v[v]')` to find which verse each footnote belongs to.
+ * Assumes verses are already wrapped in `.yv-v[v]` elements (by wrapVerseContent).
  *
- * @returns Notes data for popovers, keyed by verse number
+ * Two-phase approach:
+ * 1. Build popover data (verseHtml + note content) using cloned DOM — no side effects.
+ * 2. Replace footnotes in the real DOM with clean anchor spans for React portals.
+ *
+ * @returns Notes data for popovers, keyed by verse number.
  */
-export function extractNotesFromWrappedHtml(doc: Document): Record<string, VerseNotes> {
+function extractNotesFromWrappedHtml(doc: Document): Record<string, VerseNotes> {
   const footnotes = Array.from(doc.querySelectorAll('.yv-n.f'));
   if (!footnotes.length) return {};
 
-  // Group footnotes by verse number using closest wrapper
+  // Group footnotes by verse number.
   const footnotesByVerse = new Map<string, Element[]>();
-  footnotes.forEach((fn) => {
+  for (const fn of footnotes) {
     const verseNum = fn.closest('.yv-v[v]')?.getAttribute('v');
-    if (verseNum) {
-      let arr = footnotesByVerse.get(verseNum);
-      if (!arr) {
-        arr = [];
-        footnotesByVerse.set(verseNum, arr);
-      }
-      arr.push(fn);
+    if (!verseNum) continue;
+    let arr = footnotesByVerse.get(verseNum);
+    if (!arr) {
+      arr = [];
+      footnotesByVerse.set(verseNum, arr);
     }
+    arr.push(fn);
+  }
+
+  // Build verse-wrapper lookup.
+  const wrappersByVerse = new Map<string, Element[]>();
+  doc.querySelectorAll('.yv-v[v]').forEach((el) => {
+    const verseNum = el.getAttribute('v');
+    if (!verseNum) return;
+    const arr = wrappersByVerse.get(verseNum);
+    if (arr) arr.push(el);
+    else wrappersByVerse.set(verseNum, [el]);
   });
 
+  // Phase 1: Extract data (cloned DOM — no mutations).
   const notes: Record<string, VerseNotes> = {};
-  const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]'"»›]/
-
-  footnotesByVerse.forEach((fns, verseNum) => {
-    // Find all wrappers for this verse (could be multiple if verse spans paragraphs)
-    const verseWrappers = Array.from(doc.querySelectorAll(`.yv-v[v="${verseNum}"]`));
-
-    // Build verse HTML with A/B/C markers for popover display
-    let verseHtml = '';
-    let noteIdx = 0;
-
-    verseWrappers.forEach((wrapper, wrapperIdx) => {
-      if (wrapperIdx > 0) verseHtml += ' ';
-
-      const walker = doc.createTreeWalker(wrapper, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
-      let lastWasFootnote = false;
-      while (walker.nextNode()) {
-        const node = walker.currentNode;
-        if (node instanceof Element) {
-          if (node.classList.contains('yv-n') && node.classList.contains('f')) {
-            verseHtml += `<sup class="yv:text-muted-foreground">${LETTERS[noteIdx++] || noteIdx}</sup>`;
-            lastWasFootnote = true;
-          }
-        } else if (node.nodeType === Node.TEXT_NODE) {
-          const parent = node.parentElement;
-          if (parent?.closest('.yv-n.f') || parent?.closest('.yv-h')) continue;
-          if (parent?.classList.contains('yv-vlbl')) continue;
-          let text = node.textContent || '';
-          // Insert space after footnote marker if text doesn't start with whitespace/punctuation
-          // (same fix as footnote removal - see World English Bible, version ID 206)
-          if (lastWasFootnote && text && NEEDS_SPACE_BEFORE.test(text)) {
-            text = ' ' + text;
-          }
-          verseHtml += text;
-          lastWasFootnote = false;
-        }
-      }
-    });
-
+  for (const [verseNum, fns] of footnotesByVerse) {
     notes[verseNum] = {
-      verseHtml,
+      verseHtml: buildVerseHtml(wrappersByVerse.get(verseNum) ?? []),
       notes: fns.map((fn) => fn.innerHTML),
     };
+  }
 
-    // Insert placeholder after last verse wrapper (sibling, not child)
-    const lastWrapper = verseWrappers[verseWrappers.length - 1];
-    if (lastWrapper?.parentNode) {
-      const placeholder = doc.createElement('span');
-      placeholder.setAttribute('data-verse-footnote', verseNum);
-      lastWrapper.parentNode.insertBefore(placeholder, lastWrapper.nextSibling);
-    }
-  });
-
-  // Remove all footnotes from DOM, inserting space if needed to prevent word concatenation.
-  //
-  // Some Bible versions (e.g., World English Bible, version ID 206) have malformed HTML where
-  // there's no whitespace between a word, the footnote element, and the next word:
-  //
-  //   ...hasn't overcome<span class="yv-n f">...</span>it.
-  //
-  // When we remove the footnote, "overcome" + "it" would become "overcomeit".
-  // We detect this case and insert a space, but only if the next character isn't punctuation.
-  footnotes.forEach((fn) => {
-    const prev = fn.previousSibling;
-    const next = fn.nextSibling;
-
-    const prevNeedsSpace =
-      prev?.nodeType === Node.TEXT_NODE && prev.textContent && !/\s$/.test(prev.textContent);
-    const nextNeedsSpace =
-      next?.nodeType === Node.TEXT_NODE &&
-      next.textContent &&
-      NEEDS_SPACE_BEFORE.test(next.textContent);
-
-    if (prevNeedsSpace && nextNeedsSpace) {
-      fn.parentNode?.insertBefore(doc.createTextNode(' '), next);
-    }
-    fn.remove();
-  });
+  // Phase 2: Replace footnotes with portal anchors (real DOM mutation).
+  replaceFootnotesWithAnchors(doc, footnotes);
 
   return notes;
+}
+
+/**
+ * Adds non-breaking space after verse labels for better copy/paste
+ * (e.g., "3For God so loved..." → "3 For God so loved...").
+ */
+function addNbspToVerseLabels(doc: Document): void {
+  doc.querySelectorAll('.yv-vlbl').forEach((label) => {
+    const text = label.textContent || '';
+    if (!text.endsWith(NON_BREAKING_SPACE)) {
+      label.textContent = text + NON_BREAKING_SPACE;
+    }
+  });
+}
+
+/**
+ * Fixes irregular tables by adding colspan to single-cell rows in multi-column tables.
+ * (e.g., https://www.bible.com/bible/111/EZR.2.NIV)
+ */
+function fixIrregularTables(doc: Document): void {
+  doc.querySelectorAll('table').forEach((table) => {
+    const rows = table.querySelectorAll('tr');
+    if (rows.length === 0) return;
+
+    let maxColumns = 0;
+    rows.forEach((row) => {
+      let count = 0;
+      row.querySelectorAll('td, th').forEach((cell) => {
+        count +=
+          cell instanceof HTMLTableCellElement
+            ? parseInt(cell.getAttribute('colspan') || '1', 10)
+            : 1;
+      });
+      maxColumns = Math.max(maxColumns, count);
+    });
+
+    if (maxColumns > 1) {
+      rows.forEach((row) => {
+        const cells = row.querySelectorAll('td, th');
+        if (cells.length === 1 && cells[0] instanceof HTMLTableCellElement) {
+          const existing = parseInt(cells[0].getAttribute('colspan') || '1', 10);
+          if (existing < maxColumns) {
+            cells[0].setAttribute('colspan', maxColumns.toString());
+          }
+        }
+      });
+    }
+  });
+}
+
+const DOMPURIFY_CONFIG = {
+  ALLOWED_ATTR: ['class', 'style', 'id', 'v', 'usfm'],
+  ALLOW_DATA_ATTR: true,
+};
+
+/**
+ * Full transformation pipeline for Bible HTML from the API.
+ *
+ * 1. Sanitize (DOMPurify)
+ * 2. Wrap verse content in selectable spans
+ * 3. Extract footnotes and replace with portal anchors
+ * 4. Add non-breaking spaces to verse labels
+ * 5. Fix irregular table layouts
+ */
+export function transformBibleHtml(html: string): { html: string; notes: Record<string, VerseNotes> } {
+  if (typeof window === 'undefined' || !('DOMParser' in window)) {
+    return { html, notes: {} };
+  }
+
+  const doc = new DOMParser().parseFromString(
+    DOMPurify.sanitize(html, DOMPURIFY_CONFIG),
+    'text/html',
+  );
+
+  wrapVerseContent(doc);
+  const notes = extractNotesFromWrappedHtml(doc);
+  addNbspToVerseLabels(doc);
+  fixIrregularTables(doc);
+
+  return { html: doc.body.innerHTML, notes };
 }

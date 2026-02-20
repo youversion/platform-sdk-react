@@ -36,26 +36,26 @@ pnpm add @youversion/platform-core
 
 To display a verse, or a range of verses:
 ```tsx
-import { BibleSDKProvider, BibleTextView } from '@youversion/platform-react-ui';
+import { YouVersionProvider, BibleTextView } from '@youversion/platform-react-ui';
 
 function App() {
   return (
-    <BibleSDKProvider appKey={"YOUR_APP_KEY"}>
+    <YouVersionProvider appKey={"YOUR_APP_KEY"}>
       <BibleTextView reference="JHN.1.1-4" versionId={3034} />
-    </BibleSDKProvider>
+    </YouVersionProvider>
   );
 }
 ```
 
 To display the YouVersion Verse of the Day:
 ```tsx
-import { BibleSDKProvider, VerseOfTheDay } from '@youversion/platform-react-ui';
+import { YouVersionProvider, VerseOfTheDay } from '@youversion/platform-react-ui';
 
 function App() {
   return (
-    <BibleSDKProvider appKey="YOUR_APP_KEY">
+    <YouVersionProvider appKey="YOUR_APP_KEY">
       <VerseOfTheDay versionId={3034} />
-    </BibleSDKProvider>
+    </YouVersionProvider>
   );
 }
 ```
@@ -63,7 +63,7 @@ function App() {
 ### Custom Hooks
 
 ```tsx
-import { BibleSDKProvider, usePassage } from '@youversion/platform-react-hooks';
+import { YouVersionProvider, usePassage } from '@youversion/platform-react-hooks';
 
 function BibleVerse() {
   const { passage, loading } = usePassage({ versionId: 3034, usfm: 'JHN.3.16' });
@@ -73,9 +73,9 @@ function BibleVerse() {
 
 function App() {
   return (
-    <BibleSDKProvider appKey="YOUR_APP_KEY">
+    <YouVersionProvider appKey="YOUR_APP_KEY">
       <BibleVerse />
-    </BibleSDKProvider>
+    </YouVersionProvider>
   );
 }
 ```

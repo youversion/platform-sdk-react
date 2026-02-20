@@ -21,6 +21,7 @@ import {
 import { cn } from '@/lib/utils';
 import { ArrowLeftIcon } from './icons/arrow-left';
 import { GlobeIcon } from './icons/globe';
+import { LoaderIcon } from './icons/loader';
 import { SearchIcon } from './icons/search';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -150,6 +151,7 @@ type BibleVersionPickerContextType = {
   addRecentVersion: (version: RecentVersion) => void;
   isPopoverOpen: boolean;
   setIsPopoverOpen: (open: boolean) => void;
+  versionsLoading: boolean;
 };
 
 const BibleVersionPickerContext = createContext<BibleVersionPickerContextType | null>(null);
@@ -192,7 +194,18 @@ function Root({
   const [searchQuery, setSearchQuery] = useState('');
   const [isLanguagesOpen, setIsLanguagesOpen] = useState(false);
   const [recentVersions, setRecentVersions] = useState<RecentVersion[]>(getRecentVersions);
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpenRaw] = useState(false);
+
+  const setIsPopoverOpen = useCallback(
+    (open: boolean) => {
+      setIsPopoverOpenRaw(open);
+      if (!open) {
+        setSearchQuery('');
+        setIsLanguagesOpen(false);
+      }
+    },
+    [setSearchQuery],
+  );
 
   const addRecentVersion = useCallback((version: RecentVersion) => {
     setRecentVersions((prev) => {
@@ -208,7 +221,7 @@ function Root({
     page_size: '*',
   });
 
-  const { versions } = useVersions(selectedLanguageId);
+  const { versions, loading: versionsLoading } = useVersions(selectedLanguageId);
   const { versions: versionsLanguageInfo } = useVersions('*', undefined, {
     fields: ['id', 'language_tag'],
     page_size: '*',
@@ -299,6 +312,7 @@ function Root({
     addRecentVersion,
     isPopoverOpen,
     setIsPopoverOpen,
+    versionsLoading,
   };
 
   return (
@@ -358,6 +372,7 @@ function Content() {
     suggestedLanguages,
     languages,
     setIsPopoverOpen,
+    versionsLoading,
   } = useBibleVersionPickerContext();
   const providerTheme = useTheme();
   const theme = background || providerTheme;
@@ -409,7 +424,11 @@ function Content() {
           variant="secondary"
           className="yv:h-5 yv:min-w-5 yv:rounded-full yv:px-1 yv:font-mono yv:tabular-nums"
         >
-          {filteredVersions.length + filteredRecentVersions.length}
+          {versionsLoading ? (
+            <LoaderIcon className="yv:size-3 yv:animate-spin" />
+          ) : (
+            filteredVersions.length + filteredRecentVersions.length
+          )}
         </Badge>
       </Button>
     );
@@ -474,7 +493,7 @@ function Content() {
             </>
           )}
           {/* All Versions */}
-          {filteredVersions && filteredVersions.length > 0 ? (
+          {filteredVersions.length > 0 ? (
             <ItemGroup data-testid="version-list">
               <h3 className="yv:px-4 yv:py-2 yv:font-bold">All Versions</h3>
               {filteredVersions.map((version: BibleVersion) => (
@@ -510,8 +529,11 @@ function Content() {
                 </Item>
               ))}
             </ItemGroup>
-          ) : null}
-          {!filteredVersions.length && !filteredRecentVersions.length ? (
+          ) : versionsLoading ? (
+            <div className="yv:w-full yv:flex yv:items-center yv:justify-center yv:py-8 yv:text-center yv:text-muted-foreground yv:text-sm">
+              <LoaderIcon className="yv:size-6 yv:animate-spin yv:text-muted-foreground" />
+            </div>
+          ) : !filteredRecentVersions.length ? (
             <div className="yv:w-full yv:flex yv:items-center yv:justify-center yv:py-8 yv:text-center yv:text-muted-foreground yv:text-sm">
               No versions found
             </div>

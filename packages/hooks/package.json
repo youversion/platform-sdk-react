@@ -1,6 +1,6 @@
 {
   "name": "@youversion/platform-react-hooks",
-  "version": "1.14.3",
+  "version": "1.15.1",
   "type": "module",
   "publishConfig": {
     "access": "public",

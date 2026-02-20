@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { BibleVersionPicker, type RootProps } from './bible-version-picker';
 import { useState } from 'react';
 import { screen, userEvent, within, expect, waitFor } from 'storybook/test';
+import { http, HttpResponse, delay } from 'msw';
 import { BookOpenIcon } from './icons/book-open';
 import { Button } from './ui/button';
 import { RECENT_VERSIONS_KEY } from './bible-version-picker';
@@ -70,6 +71,30 @@ export const Default: Story = {
   args: {
     versionId: 111,
     side: 'top',
+  },
+};
+
+export const Loading: Story = {
+  args: {
+    versionId: 111,
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('*/v1/bibles', async () => {
+          await delay('infinite');
+          return new HttpResponse(null);
+        }),
+        http.get('*/v1/languages', async () => {
+          await delay('infinite');
+          return new HttpResponse(null);
+        }),
+        http.get('*/v1/bibles/:id', async () => {
+          await delay('infinite');
+          return new HttpResponse(null);
+        }),
+      ],
+    },
   },
 };
 
@@ -340,6 +365,37 @@ export const RecentVersionsSelection: Story = {
 
     storedVersions = getStoredRecentVersions();
     await expect(storedVersions[0]?.localized_abbreviation).toBe('AMP');
+  },
+};
+
+export const SearchResetsAfterSelection: Story = {
+  args: {
+    versionId: 111,
+  },
+  tags: ['integration'],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Open popover
+    const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
+    await userEvent.click(trigger);
+
+    // Type in search
+    const searchInput = screen.getByPlaceholderText('Search');
+    await userEvent.type(searchInput, 'Amplified', { delay: 50 });
+    await expect(searchInput).toHaveValue('Amplified');
+
+    // Select a version from the filtered results
+    const ampOption = await screen.findByRole('listitem', { name: /Amplified Bible/i });
+    await userEvent.click(ampOption);
+
+    // Reopen the popover
+    const updatedTrigger = await canvas.findByRole('button', { name: /AMP/i });
+    await userEvent.click(updatedTrigger);
+
+    // Verify search input is cleared
+    const resetSearchInput = screen.getByPlaceholderText('Search');
+    await expect(resetSearchInput).toHaveValue('');
   },
 };
 
