@@ -5,6 +5,7 @@ import { BibleVersionPicker } from './bible-version-picker';
 import { Button } from './ui/button';
 import { useState } from 'react';
 import { SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
+import { formatUsfmForDisplay } from '@youversion/platform-core';
 
 export type BibleCardProps = {
   reference: string;
@@ -29,6 +30,13 @@ export function BibleCard({
   const providerTheme = useTheme();
   const theme = background || providerTheme;
 
+  // Use the server-provided reference when available, otherwise fall back to
+  // formatting the raw USFM prop client-side. This ensures a reference is
+  // visible immediately (before the API responds) and during error states,
+  // rather than showing nothing while passage is loading or unavailable.
+  const displayReference: string | null =
+    passage?.reference ?? (reference ? formatUsfmForDisplay(reference) : null);
+
   return (
     <section
       data-yv-sdk
@@ -36,9 +44,9 @@ export function BibleCard({
       className="yv:flex yv:flex-col yv:bg-card yv:p-6 yv:max-w-md yv:rounded-2xl"
     >
       <div className="yv:flex yv:justify-between yv:items-center">
-        {passage?.reference ? (
+        {displayReference ? (
           <h2 className="yv:font-bold yv:tracking-widest yv:text-xs yv:uppercase yv:text-foreground">
-            {passage.reference} {version?.localized_abbreviation}
+            {displayReference} {version?.localized_abbreviation}
           </h2>
         ) : null}
 
