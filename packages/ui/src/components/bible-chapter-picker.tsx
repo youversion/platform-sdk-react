@@ -249,7 +249,7 @@ export type TriggerProps = Omit<React.ComponentProps<typeof PopoverTrigger>, 'ch
     | React.ReactNode
     | ((props: {
         book: string;
-        /** Raw chapter ID as passed to the Root component (e.g. "GEN.1", "GEN.INTRO"). */
+        /** Raw chapter ID as passed to the Root component (e.g. "1", "INTRO"). */
         chapter: string;
         /** Display label for the current chapter (e.g. "1", "Intro"). */
         chapterLabel: string;
