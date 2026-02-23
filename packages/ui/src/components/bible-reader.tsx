@@ -28,6 +28,8 @@ import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { BibleTextView } from './verse';
 import { INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
+import { ChevronLeftIcon } from './icons/chevron-left';
+import { ChevronRightIcon } from './icons/chevron-right';
 
 type BibleReaderContextType = {
   book: string;
@@ -325,10 +327,20 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
               <Button
                 size="lg"
                 variant="secondary"
-                className="yv:grow yv:font-bold yv:text-foreground"
+                className="yv:relative yv:grow yv:font-bold yv:text-foreground"
                 disabled={loading}
               >
-                {loading ? 'Loading...' : `${currentBook?.title || 'Select'} ${chapter || ''}`}
+                <Button asChild role="button" size="icon" variant="secondary">
+                  <ChevronLeftIcon className="yv:z-10 yv:size-6! yv:-translate-x-2" />
+                </Button>
+
+                <div className="yv:grow">
+                  {loading ? 'Loading...' : `${currentBook?.title || 'Select'} ${chapter || ''}`}
+                </div>
+
+                <Button asChild role="button" size="icon" variant="secondary">
+                  <ChevronRightIcon className="yv:z-10 yv:size-6! yv:translate-x-2" />
+                </Button>
               </Button>
             )}
           </BibleChapterPicker.Trigger>
