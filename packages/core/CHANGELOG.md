@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 1.15.2
+
+### Patch Changes
+
+- aa31bd7: Fixed a styling bug on the BibleReader.Toolbar component. When auth was disabled in the YouVersionProvider, then it caused a layout issue on the toolbar.
+
 ## 1.15.1
 
 ### Patch Changes

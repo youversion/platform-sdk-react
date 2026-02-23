@@ -21,7 +21,7 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body className="w-full p-6">
+      <body className="w-full">
         <Providers redirectUri={redirectUri}>{children}</Providers>
       </body>
     </html>
