@@ -23,6 +23,7 @@ import { BibleChapterPicker } from './bible-chapter-picker';
 import { BibleVersionPicker } from './bible-version-picker';
 import { GearIcon } from './icons/gear';
 import { InfoIcon } from './icons/info';
+import { LoaderIcon } from './icons/loader';
 import { PersonIcon } from './icons/person';
 import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -352,9 +353,11 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                   className="yv:rounded-r-none yv:font-bold yv:text-foreground"
                   disabled={loading}
                 >
-                  {loading
-                    ? 'Loading...'
-                    : `${currentBook?.title || 'Select'} ${chapterLabel || ''}`}
+                  {loading ? (
+                    <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
+                  ) : (
+                    `${currentBook?.title || 'Select'} ${chapterLabel || ''}`
+                  )}
                 </Button>
               )}
             </BibleChapterPicker.Trigger>
@@ -372,7 +375,11 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                   className="yv:rounded-l-none yv:font-bold yv:text-foreground"
                   disabled={loading}
                 >
-                  {loading ? 'Loading...' : version?.localized_abbreviation || 'Select version'}
+                  {loading ? (
+                    <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
+                  ) : (
+                    version?.localized_abbreviation || 'Select version'
+                  )}
                 </Button>
               )}
             </BibleVersionPicker.Trigger>
