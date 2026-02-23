@@ -196,7 +196,7 @@ function Content() {
   const usfmReference = `${book}.${chapter}`;
 
   return (
-    <main className="yv:*:max-w-lg yv:flex yv:flex-col yv:items-center yv:gap-6 yv:overflow-y-auto yv:px-6 yv:max-sm:px-4 yv:py-12 yv:flex-1 yv:min-h-0">
+    <main className="yv:*:max-w-lg yv:flex yv:flex-col yv:items-center yv:gap-6 yv:overflow-y-auto yv:px-6 yv:max-sm:px-4 yv:py-12 yv:h-full">
       <h1 className="yv:flex yv:gap-2 yv:flex-col yv:justify-center yv:items-center yv:font-serif yv:text-muted-foreground yv:font-medium">
         <span
           className={cn(
