@@ -309,7 +309,12 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
         border === 'bottom' && 'yv:border-b',
       )}
     >
-      <div className="yv:grid yv:w-full yv:grid-cols-[auto_1fr_auto] yv:items-center yv:max-w-lg yv:gap-4">
+      <div
+        className={cn(
+          'yv:grid yv:w-full yv:items-center yv:max-w-lg yv:gap-4',
+          yvContext?.authEnabled ? 'yv:grid-cols-[auto_1fr_auto]' : 'yv:grid-cols-[1fr_auto]',
+        )}
+      >
         {!!yvContext?.authEnabled && <UserMenu />}
 
         <div className="yv:grid yv:grid-cols-2 yv:gap-0.5">
