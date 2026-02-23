@@ -1,5 +1,14 @@
 # @youversion/platform-react-ui
 
+## 1.15.2
+
+### Patch Changes
+
+- aa31bd7: Fixed a styling bug on the BibleReader.Toolbar component. When auth was disabled in the YouVersionProvider, then it caused a layout issue on the toolbar.
+- Updated dependencies [aa31bd7]
+  - @youversion/platform-core@1.15.2
+  - @youversion/platform-react-hooks@1.15.2
+
 ## 1.15.1
 
 ### Patch Changes
