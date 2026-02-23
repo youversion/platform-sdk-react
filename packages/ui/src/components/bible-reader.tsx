@@ -167,7 +167,7 @@ function Root({
       <div
         data-yv-sdk
         data-yv-theme={theme}
-        className="yv:flex yv:flex-col yv:h-full yv:overflow-hidden yv:bg-background yv:text-foreground"
+        className="yv:flex yv:flex-col yv:h-full yv:bg-background yv:text-foreground"
       >
         {children}
       </div>
