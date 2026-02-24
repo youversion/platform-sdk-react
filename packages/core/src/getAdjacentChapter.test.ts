@@ -138,4 +138,16 @@ describe('getAdjacentChapter', () => {
       chapterId: '1',
     });
   });
+
+  it('cross-book previous from book without intro goes to last chapter of previous book', () => {
+    const mixed = [
+      makeBook('GEN', 50, { hasIntro: true }),
+      makeBook('EXO', 40),
+      makeBook('LEV', 27, { hasIntro: true }),
+    ];
+    expect(getAdjacentChapter(mixed, 'EXO', '1', 'previous')).toEqual({
+      bookId: 'GEN',
+      chapterId: '50',
+    });
+  });
 });
