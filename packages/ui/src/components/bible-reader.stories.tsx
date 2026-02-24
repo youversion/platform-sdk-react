@@ -638,3 +638,82 @@ export const WithoutAuth: Story = {
     await expect(settingsButton).toBeInTheDocument();
   },
 };
+
+/**
+ * Tests that a rich intro chapter (Joshua) renders correctly with real-world content
+ * including structured sections (At a Glance, Purpose, Major Themes), italic spans,
+ * bold-italic spans, and special formatting classes (imt1, imt2, is, ili, ip, etc.).
+ * The h1 header should be hidden and all intro content should render.
+ */
+export const JoshuaIntroChapter: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 1849,
+    book: 'JOS',
+    chapter: 'INTRO',
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    // Wait for the intro content to fully load (not just the renderer element)
+    await waitFor(
+      async () => {
+        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(verseContainer).toBeInTheDocument();
+        await expect(verseContainer?.textContent).toContain('Joshua');
+      },
+      { timeout: 5000 },
+    );
+
+    const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]')!;
+
+    // The h1 header should not be present for intro chapters
+    const h1 = canvasElement.querySelector('h1');
+    await expect(h1).not.toBeInTheDocument();
+
+    // The unavailable message should not appear
+    const hasUnavailableText = verseContainer.textContent?.includes('not available');
+    await expect(hasUnavailableText).not.toBeTruthy();
+
+    // Verify key intro content rendered — title and structured sections
+    await expect(verseContainer.textContent).toContain('Introduction');
+    await expect(verseContainer.textContent).toContain('At a Glance');
+    await expect(verseContainer.textContent).toContain('Traditionally Joshua');
+    await expect(verseContainer.textContent).toContain('Purpose');
+    await expect(verseContainer.textContent).toContain('Major Themes');
+
+    // Verify structured list items rendered (ili class content)
+    await expect(verseContainer.textContent).toContain('Entering the Land');
+    await expect(verseContainer.textContent).toContain('Conquering the Land');
+    await expect(verseContainer.textContent).toContain('Dividing the Land');
+
+    // Verify paragraph content rendered (ip class)
+    await expect(verseContainer.textContent).toContain(
+      'wilderness wanderers to courageous conquerors',
+    );
+
+    // Verify special formatting rendered (bdit = bold-italic, nd = divine name)
+    await expect(verseContainer.textContent).toContain('The Land of Promise');
+    await expect(verseContainer.textContent).toContain('Covenant and Obedience');
+    await expect(verseContainer.textContent).toContain('The Typology of Jesus');
+    await expect(verseContainer.textContent).toContain('Yahweh');
+
+    // Toolbar trigger should show "Intro" (title-case label), NOT "INTRO" (raw chapter ID)
+    await waitFor(
+      async () => {
+        const chapterButton = screen.getByRole('button', {
+          name: /change bible book and chapter/i,
+        });
+        await expect(chapterButton.textContent).toContain('Intro');
+        await expect(chapterButton.textContent).not.toContain('INTRO');
+      },
+      { timeout: 5000 },
+    );
+  },
+};

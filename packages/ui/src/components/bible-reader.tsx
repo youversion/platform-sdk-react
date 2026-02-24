@@ -23,6 +23,7 @@ import { BibleChapterPicker } from './bible-chapter-picker';
 import { BibleVersionPicker } from './bible-version-picker';
 import { GearIcon } from './icons/gear';
 import { InfoIcon } from './icons/info';
+import { LoaderIcon } from './icons/loader';
 import { PersonIcon } from './icons/person';
 import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -197,31 +198,52 @@ function Content() {
 
   const usfmReference = `${book}.${chapter}`;
 
+  // Check if the current chapter is available in this version
+  const chapterUnavailable = useMemo(() => {
+    if (!bookData || !chapter) return false;
+    const inChapters = bookData.chapters?.some((ch) => ch.passage_id.split('.').pop() === chapter);
+    const isIntro = bookData.intro?.id === chapter;
+    return !inChapters && !isIntro;
+  }, [bookData, chapter]);
+
+  let chapterLabel: string = bookData?.chapters?.find((ch) => ch.id === chapter)?.title || chapter;
+  if (!!bookData?.intro && chapter === bookData?.intro.id) {
+    chapterLabel = bookData.intro.title;
+  }
+
   return (
     <main className="yv:*:max-w-lg yv:flex yv:flex-col yv:items-center yv:gap-6 yv:overflow-y-auto yv:px-6 yv:max-sm:px-4 yv:py-12 yv:h-full">
-      <h1 className="yv:flex yv:gap-2 yv:flex-col yv:justify-center yv:items-center yv:font-serif yv:text-muted-foreground yv:font-medium">
+      <h1 className="yv:flex yv:gap-2 yv:flex-col yv:justify-center yv:items-center yv:text-muted-foreground yv:font-medium">
         <span
           className={cn(
-            'yv:leading-none yv:block yv:text-2xl yv:transition-[filter]',
+            'yv:font-serif yv:leading-none yv:block yv:text-2xl yv:transition-[filter]',
             !bookData?.title && 'yv:blur-sm',
           )}
         >
           {bookData?.title || 'Loading...'}
         </span>
-        <span className="yv:leading-none yv:block yv:text-[2.5rem] yv:font-normal">
-          {chapter || '-'}
+        <span className="yv:font-serif yv:leading-none yv:block yv:text-[2.5rem] yv:font-normal">
+          {chapterLabel || chapter || '-'}
         </span>
       </h1>
 
-      <BibleTextView
-        reference={usfmReference}
-        versionId={versionId}
-        fontFamily={currentFontFamily}
-        fontSize={currentFontSize}
-        lineHeight={lineHeight}
-        showVerseNumbers={showVerseNumbers}
-        theme={background}
-      />
+      {chapterUnavailable ? (
+        // This copy was taken from bible.com (e.g. https://www.bible.com/bible/4253/ACT.INTRO1.AFV)
+        <p className="yv:text-center yv:text-balance yv:text-muted-foreground">
+          This chapter is not available in this version. Please choose a different chapter or
+          version.
+        </p>
+      ) : (
+        <BibleTextView
+          reference={usfmReference}
+          versionId={versionId}
+          fontFamily={currentFontFamily}
+          fontSize={currentFontSize}
+          lineHeight={lineHeight}
+          showVerseNumbers={showVerseNumbers}
+          theme={background}
+        />
+      )}
 
       {version?.copyright && (
         <footer
@@ -330,7 +352,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
           background={background}
         >
           <BibleChapterPicker.Trigger aria-label="Change Bible book and chapter">
-            {({ chapter, currentBook, loading }) => (
+            {({ chapterLabel, currentBook, loading }) => (
               <div className="yv:relative yv:grow">
                 <Button
                   className="yv:group yv:absolute yv:place-self-center yv:top-0 yv:bottom-0 yv:left-4 yv:z-10 yv:size-6! yv:-translate-x-2 yv:touch-hitbox"
@@ -354,7 +376,11 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                   className="yv:w-full yv:font-bold yv:text-foreground"
                   disabled={loading}
                 >
-                  {loading ? 'Loading...' : `${currentBook?.title || 'Select'} ${chapter || ''}`}
+                  {loading ? (
+                    <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
+                  ) : (
+                    `${currentBook?.title || 'Select'} ${chapterLabel || ''}`
+                  )}
                 </Button>
 
                 <Button
