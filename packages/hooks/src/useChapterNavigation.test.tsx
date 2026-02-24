@@ -92,7 +92,7 @@ describe('useChapterNavigation', () => {
 
   it('navigateToNext cross-book updates both book and chapter', () => {
     const { result } = renderHook(useNavWithContext, {
-      wrapper: wrapper(genBook, genChapters[49]!),
+      wrapper: wrapper(genBook, genChapters.at(-1)!),
     });
 
     act(() => result.current.nav.navigateToNext());

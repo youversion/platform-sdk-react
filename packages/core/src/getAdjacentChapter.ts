@@ -49,7 +49,9 @@ function getNext(
       return { bookId: book.id, chapterId: firstCanonical.id };
     }
     // No canonical chapters — fall through to cross-book
-  } else {
+  }
+
+  if (!isIntroChapter(currentChapterId)) {
     const idx = chapters.findIndex((c) => c.id === currentChapterId);
     if (idx !== -1 && idx < chapters.length - 1) {
       const next = chapters[idx + 1]!;

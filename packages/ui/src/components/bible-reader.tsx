@@ -207,7 +207,7 @@ function Content() {
   }, [bookData, chapter]);
 
   let chapterLabel: string = bookData?.chapters?.find((ch) => ch.id === chapter)?.title || chapter;
-  if (!!bookData?.intro && chapter === bookData?.intro.id) {
+  if (bookData?.intro && chapter === bookData?.intro.id) {
     chapterLabel = bookData.intro.title;
   }
 
@@ -359,6 +359,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                   size="icon"
                   variant="secondary"
                   disabled={!canNavigatePrevious}
+                  aria-label="Previous chapter"
                   onClick={(e) => {
                     e.stopPropagation();
                     if (prevResult) {
@@ -395,6 +396,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                   size="icon"
                   variant="secondary"
                   disabled={!canNavigateNext}
+                  aria-label="Next chapter"
                 >
                   <ChevronRightIcon className="yv:transition-transform yv:duration-100 yv:group-active:translate-y-px" />
                 </Button>
