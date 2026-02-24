@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { getAdjacentChapter } from './getAdjacentChapter';
 import type { BibleBook } from './schemas/book';
 
-// Minimal book helper
 function makeBook(
   id: string,
   chapterCount: number,
@@ -37,7 +36,6 @@ const REV = makeBook('REV', 22);
 const books: BibleBook[] = [GEN, EXO, LEV, REV];
 
 describe('getAdjacentChapter', () => {
-  // --- Next ---
   it('next chapter within same book', () => {
     expect(getAdjacentChapter(books, 'GEN', '1', 'next')).toEqual({
       bookId: 'GEN',
@@ -63,7 +61,6 @@ describe('getAdjacentChapter', () => {
     });
   });
 
-  // --- Previous ---
   it('previous chapter within same book', () => {
     expect(getAdjacentChapter(books, 'GEN', '3', 'previous')).toEqual({
       bookId: 'GEN',
@@ -101,7 +98,6 @@ describe('getAdjacentChapter', () => {
     expect(getAdjacentChapter(booksNoIntro, 'GEN', '1', 'previous')).toBeNull();
   });
 
-  // --- Edge cases ---
   it('empty books array returns null', () => {
     expect(getAdjacentChapter([], 'GEN', '1', 'next')).toBeNull();
   });
@@ -110,7 +106,6 @@ describe('getAdjacentChapter', () => {
     expect(getAdjacentChapter(books, 'FAKE', '1', 'next')).toBeNull();
   });
 
-  // --- Intro in chapters array ---
   it('handles intro chapter present in chapters array for next', () => {
     const booksWithIntroInArray = [
       makeBook('GEN', 50, { hasIntro: true, introInChapters: true }),
@@ -127,7 +122,6 @@ describe('getAdjacentChapter', () => {
       makeBook('GEN', 50, { hasIntro: true, introInChapters: true }),
       makeBook('EXO', 40, { hasIntro: true, introInChapters: true }),
     ];
-    // From EXO chapter 1, previous should go to EXO intro
     expect(getAdjacentChapter(booksWithIntroInArray, 'EXO', '1', 'previous')).toEqual({
       bookId: 'EXO',
       chapterId: 'INTRO',

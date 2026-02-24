@@ -6,7 +6,6 @@ import { ReaderProvider } from './context/ReaderProvider';
 import { createMockBook, createMockVersion } from './__tests__/mocks/bibles';
 import type { BibleBook, BibleChapter } from '@youversion/platform-core';
 
-// -- helpers --
 function makeChapters(bookId: string, count: number): BibleChapter[] {
   return Array.from({ length: count }, (_, i) => ({
     id: (i + 1).toString(),
@@ -40,7 +39,6 @@ const mockBooks: BibleBook[] = [
   }),
 ];
 
-// Mock useBooks to return our test data
 const mockUseBooks = vi.fn();
 vi.mock('./useBooks', () => ({
   // eslint-disable-next-line @typescript-eslint/no-unsafe-return
