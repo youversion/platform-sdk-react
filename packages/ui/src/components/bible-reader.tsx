@@ -8,6 +8,7 @@ import {
   useYVAuth,
   YouVersionContext,
 } from '@youversion/platform-react-hooks';
+import type { BibleBook } from '@youversion/platform-core';
 import {
   createContext,
   type ReactNode,
@@ -39,6 +40,8 @@ type BibleReaderContextType = {
   setBook: React.Dispatch<React.SetStateAction<string>>;
   setChapter: React.Dispatch<React.SetStateAction<string>>;
   setVersionId: React.Dispatch<React.SetStateAction<number>>;
+  booksData: BibleBook[];
+  booksLoading: boolean;
   currentFontFamily: FontFamily;
   setCurrentFontFamily: React.Dispatch<React.SetStateAction<FontFamily>>;
   currentFontSize: number;
@@ -149,6 +152,9 @@ function Root({
   const providerTheme = useTheme();
   const theme = background || providerTheme;
 
+  const { books, loading: booksLoading } = useBooks(versionId);
+  const booksData = books?.data ?? [];
+
   const contextValue: BibleReaderContextType = {
     book,
     chapter,
@@ -156,6 +162,8 @@ function Root({
     setBook,
     setChapter,
     setVersionId,
+    booksData,
+    booksLoading,
     currentFontFamily,
     setCurrentFontFamily,
     currentFontSize,
@@ -184,17 +192,17 @@ function Content() {
     book,
     chapter,
     versionId,
+    booksData,
     currentFontSize,
     currentFontFamily,
     lineHeight,
     showVerseNumbers,
   } = useBibleReaderContext();
-  const { books } = useBooks(versionId);
   const { version } = useVersion(versionId);
 
   const bookData = useMemo(() => {
-    return books?.data?.find((b) => b.id === book);
-  }, [books?.data, book]);
+    return booksData.find((b) => b.id === book);
+  }, [booksData, book]);
 
   const usfmReference = `${book}.${chapter}`;
 
@@ -318,14 +326,14 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
     setBook,
     setChapter,
     setVersionId,
+    booksData,
+    booksLoading,
     currentFontFamily,
     setCurrentFontFamily,
     setCurrentFontSize,
     background,
   } = useBibleReaderContext();
   const yvContext = useContext(YouVersionContext);
-  const { books, loading: booksLoading } = useBooks(versionId);
-  const booksData = books?.data ?? [];
 
   const prevResult = getAdjacentChapter(booksData, book, chapter, 'previous');
   const nextResult = getAdjacentChapter(booksData, book, chapter, 'next');
