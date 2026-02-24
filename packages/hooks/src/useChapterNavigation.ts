@@ -1,5 +1,8 @@
+'use client';
+
+import { getAdjacentChapter } from '@youversion/platform-core';
 import { useReaderContext } from './context/ReaderContext';
-import { useChapters } from './useChapters';
+import { useBooks } from './useBooks';
 
 interface UseChapterNavigationResult {
   canNavigatePrevious: boolean;
@@ -11,8 +14,8 @@ interface UseChapterNavigationResult {
 }
 
 /**
- * Provides navigation functionality for chapters within a book, allowing the user to move
- * to the previous or next chapter, as well as access additional chapter navigation metadata.
+ * Provides navigation functionality for chapters across book boundaries,
+ * including intro chapter support.
  *
  * @return {UseChapterNavigationResult} An object containing properties and methods for chapter navigation:
  * - `canNavigatePrevious` (boolean): Indicates whether navigating to the previous chapter is possible.
@@ -20,51 +23,53 @@ interface UseChapterNavigationResult {
  * - `navigateToPrevious` (function): Moves to the previous chapter if possible.
  * - `navigateToNext` (function): Moves to the next chapter if possible.
  * - `currentChapterIndex` (number): The index of the current chapter within the list of chapters.
- * - `isLoading` (boolean): Whether the chapter data is still loading.
+ * - `isLoading` (boolean): Whether the book data is still loading.
  */
 export function useChapterNavigation(): UseChapterNavigationResult {
-  const { currentChapter, currentVersion, currentBook, setChapter } = useReaderContext();
+  const { currentChapter, currentVersion, currentBook, setChapter, setBook } = useReaderContext();
 
-  const bookIdentifier = currentBook?.id ?? '';
+  const { books, loading: booksLoading } = useBooks(currentVersion?.id ?? 0, {
+    enabled: Boolean(currentVersion?.id),
+  });
 
-  const { chapters, loading: chaptersLoading } = useChapters(
-    currentVersion?.id ?? 0,
-    bookIdentifier,
-    { enabled: Boolean(bookIdentifier && currentVersion?.id) },
-  );
+  const booksData = books?.data ?? [];
+  const bookId = currentBook?.id ?? '';
+  const chapterId = currentChapter?.id ?? '';
 
-  const currentChapterIndex = chapters?.data.findIndex((c) => c.id === currentChapter.id) ?? -1;
+  const nextResult = getAdjacentChapter(booksData, bookId, chapterId, 'next');
+  const prevResult = getAdjacentChapter(booksData, bookId, chapterId, 'previous');
 
-  const canNavigatePrevious = Boolean(
-    !chaptersLoading && chapters?.data && currentChapterIndex !== -1 && currentChapterIndex > 0,
-  );
+  const canNavigateNext = !booksLoading && nextResult !== null;
+  const canNavigatePrevious = !booksLoading && prevResult !== null;
 
-  const canNavigateNext = Boolean(
-    !chaptersLoading &&
-      chapters?.data &&
-      currentChapterIndex !== -1 &&
-      currentChapterIndex < chapters.data.length - 1,
-  );
+  const currentChapterIndex =
+    currentBook?.chapters?.findIndex((c) => c.id === currentChapter?.id) ?? -1;
 
-  const navigateToPrevious = () => {
-    if (canNavigatePrevious && chapters?.data) {
-      const previousChapter = chapters.data[currentChapterIndex - 1];
-      if (previousChapter) {
-        // Use the chapter as-is since it already has all required fields
-        setChapter(previousChapter);
-      }
+  const navigate = (result: { bookId: string; chapterId: string } | null) => {
+    if (!result || !booksData.length) return;
+
+    const targetBook = booksData.find((b) => b.id === result.bookId);
+    if (!targetBook) return;
+
+    const targetChapter =
+      targetBook.chapters?.find((c) => c.id === result.chapterId) ??
+      (targetBook.intro?.id === result.chapterId
+        ? {
+            id: targetBook.intro.id,
+            passage_id: targetBook.intro.passage_id,
+            title: targetBook.intro.title,
+          }
+        : undefined);
+    if (!targetChapter) return;
+
+    if (targetBook.id !== currentBook?.id) {
+      setBook(targetBook);
     }
+    setChapter(targetChapter);
   };
 
-  const navigateToNext = () => {
-    if (canNavigateNext && chapters?.data) {
-      const nextChapter = chapters.data[currentChapterIndex + 1];
-      if (nextChapter) {
-        // Use the chapter as-is since it already has all required fields
-        setChapter(nextChapter);
-      }
-    }
-  };
+  const navigateToNext = () => navigate(nextResult);
+  const navigateToPrevious = () => navigate(prevResult);
 
   return {
     canNavigatePrevious,
@@ -72,6 +77,6 @@ export function useChapterNavigation(): UseChapterNavigationResult {
     navigateToPrevious,
     navigateToNext,
     currentChapterIndex,
-    isLoading: chaptersLoading,
+    isLoading: booksLoading,
   };
 }

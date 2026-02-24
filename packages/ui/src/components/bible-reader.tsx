@@ -18,7 +18,7 @@ import {
   useState,
 } from 'react';
 import { cn } from '@/lib/utils';
-import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '@youversion/platform-core';
+import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, getAdjacentChapter } from '@youversion/platform-core';
 import { BibleChapterPicker } from './bible-chapter-picker';
 import { BibleVersionPicker } from './bible-version-picker';
 import { GearIcon } from './icons/gear';
@@ -302,6 +302,13 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
     background,
   } = useBibleReaderContext();
   const yvContext = useContext(YouVersionContext);
+  const { books, loading: booksLoading } = useBooks(versionId);
+  const booksData = books?.data ?? [];
+
+  const prevResult = getAdjacentChapter(booksData, book, chapter, 'previous');
+  const nextResult = getAdjacentChapter(booksData, book, chapter, 'next');
+  const canNavigatePrevious = !booksLoading && prevResult !== null;
+  const canNavigateNext = !booksLoading && nextResult !== null;
 
   return (
     <section
@@ -329,9 +336,13 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                   className="yv:group yv:absolute yv:place-self-center yv:top-0 yv:bottom-0 yv:left-4 yv:z-10 yv:size-6! yv:-translate-x-2 yv:touch-hitbox"
                   size="icon"
                   variant="secondary"
+                  disabled={!canNavigatePrevious}
                   onClick={(e) => {
                     e.stopPropagation();
-                    // TODO - add previous chapter logic here
+                    if (prevResult) {
+                      setBook(prevResult.bookId);
+                      setChapter(prevResult.chapterId);
+                    }
                   }}
                 >
                   <ChevronLeftIcon className="yv:transition-transform yv:duration-100 yv:group-active:translate-y-px" />
@@ -349,11 +360,15 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                 <Button
                   onClick={(e) => {
                     e.stopPropagation();
-                    // TODO - add next chapter logic here
+                    if (nextResult) {
+                      setBook(nextResult.bookId);
+                      setChapter(nextResult.chapterId);
+                    }
                   }}
                   className="yv:group yv:absolute yv:place-self-center yv:top-0 yv:bottom-0 yv:right-4 yv:z-10 yv:size-6! yv:translate-x-2 yv:touch-hitbox"
                   size="icon"
                   variant="secondary"
+                  disabled={!canNavigateNext}
                 >
                   <ChevronRightIcon className="yv:transition-transform yv:duration-100 yv:group-active:translate-y-px" />
                 </Button>
