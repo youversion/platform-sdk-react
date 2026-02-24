@@ -1,5 +1,17 @@
 # @youversion/platform-react-ui
 
+## 1.16.0
+
+### Minor Changes
+
+- 1c9d542: We've added support for rendering Bible introduction chapters (e.g., JHN.INTRO) in the Bible Reader component
+
+### Patch Changes
+
+- Updated dependencies [1c9d542]
+  - @youversion/platform-core@1.16.0
+  - @youversion/platform-react-hooks@1.16.0
+
 ## 1.15.2
 
 ### Patch Changes
