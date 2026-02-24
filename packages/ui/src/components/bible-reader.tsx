@@ -340,7 +340,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
         border === 'bottom' && 'yv:border-b',
       )}
     >
-      <div className={cn('yv:flex yv:grow yv:w-full yv:items-center yv:max-w-lg yv:gap-4')}>
+      <div className={cn('yv:flex yv:grow yv:w-full yv:items-center yv:max-w-lg yv:gap-3')}>
         {!!yvContext?.authEnabled && <UserMenu />}
 
         <BibleChapterPicker.Root
