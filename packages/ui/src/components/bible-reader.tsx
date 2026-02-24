@@ -351,7 +351,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
           versionId={versionId}
           background={background}
         >
-          <BibleChapterPicker.Trigger aria-label="Change Bible book and chapter">
+          <BibleChapterPicker.Trigger>
             {({ chapterLabel, currentBook, loading }) => (
               <div className="yv:relative yv:grow">
                 <Button
@@ -376,6 +376,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                   variant="secondary"
                   className="yv:w-full yv:font-bold yv:text-foreground"
                   disabled={loading}
+                  aria-label="Change Bible book and chapter"
                 >
                   {loading ? (
                     <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />

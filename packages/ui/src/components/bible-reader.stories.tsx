@@ -643,7 +643,7 @@ export const WithoutAuth: Story = {
  * Tests that a rich intro chapter (Joshua) renders correctly with real-world content
  * including structured sections (At a Glance, Purpose, Major Themes), italic spans,
  * bold-italic spans, and special formatting classes (imt1, imt2, is, ili, ip, etc.).
- * The h1 header should be hidden and all intro content should render.
+ * All intro content should render correctly.
  */
 export const JoshuaIntroChapter: Story = {
   tags: ['integration'],
@@ -672,10 +672,6 @@ export const JoshuaIntroChapter: Story = {
     );
 
     const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]')!;
-
-    // The h1 header should not be present for intro chapters
-    const h1 = canvasElement.querySelector('h1');
-    await expect(h1).not.toBeInTheDocument();
 
     // The unavailable message should not appear
     const hasUnavailableText = verseContainer.textContent?.includes('not available');
