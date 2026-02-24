@@ -122,6 +122,15 @@ function Root({
     };
   }, [expandedBook]);
 
+  const handleChapterButtonClick = (bookId: string, passageId: string) => {
+    const chapterId = passageId.split('.').pop() || '';
+    if (chapterId && bookId) {
+      setBook(bookId);
+      setChapter(chapterId);
+      setSearchQuery('');
+    }
+  };
+
   return (
     <Popover>
       <BibleChapterPickerContext.Provider
@@ -165,6 +174,23 @@ function Root({
                   <AccordionContent>
                     {bookItem.chapters && bookItem.chapters.length > 0 ? (
                       <div className="yv:grid yv:grid-cols-5 yv:gap-2">
+                        {bookItem.intro?.id && bookItem.intro?.passage_id ? (
+                          <PopoverClose asChild key={`${bookItem.id}-${bookItem.intro.passage_id}`}>
+                            <Button
+                              variant="secondary"
+                              size="icon"
+                              className="yv:aspect-square yv:w-full yv:h-full yv:flex yv:items-center yv:justify-center yv:rounded-[4px]"
+                              onClick={() =>
+                                handleChapterButtonClick(
+                                  bookItem.id,
+                                  bookItem.intro?.passage_id || '',
+                                )
+                              }
+                            >
+                              <InfoIcon />
+                            </Button>
+                          </PopoverClose>
+                        ) : null}
                         {bookItem.chapters.map((chapterRef) => {
                           const chapterId = chapterRef.passage_id.split('.').pop() || '';
                           return (
@@ -173,17 +199,11 @@ function Root({
                                 variant="secondary"
                                 size="icon"
                                 className="yv:aspect-square yv:w-full yv:h-full yv:flex yv:items-center yv:justify-center yv:rounded-[4px]"
-                                onClick={() => {
-                                  setBook(bookItem.id);
-                                  setChapter(chapterId);
-                                  setSearchQuery('');
-                                }}
+                                onClick={() =>
+                                  handleChapterButtonClick(bookItem.id, chapterRef.passage_id)
+                                }
                               >
-                                {!chapterId.toLowerCase().includes('intro') ? (
-                                  chapterId
-                                ) : (
-                                  <InfoIcon />
-                                )}
+                                {chapterId}
                               </Button>
                             </PopoverClose>
                           );
@@ -229,7 +249,10 @@ export type TriggerProps = Omit<React.ComponentProps<typeof PopoverTrigger>, 'ch
     | React.ReactNode
     | ((props: {
         book: string;
+        /** Raw chapter ID as passed to the Root component (e.g. "1", "INTRO"). */
         chapter: string;
+        /** Display label for the current chapter (e.g. "1", "Intro"). */
+        chapterLabel: string;
         currentBook: BibleBook | undefined;
         loading: boolean;
       }) => React.ReactNode);
@@ -243,13 +266,18 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
   const theme = background || providerTheme;
 
   const currentBook = books?.data?.find((bookItem) => bookItem.id === book);
+  let chapterLabel: string =
+    currentBook?.chapters?.find((ch) => ch.id === chapter)?.title || chapter;
+  if (!!currentBook?.intro && chapter === currentBook.intro.id) {
+    chapterLabel = currentBook.intro.title;
+  }
   const buttonText = loading
     ? 'Loading...'
-    : `${currentBook?.title || 'Select a chapter'}${chapter ? ` ${chapter}` : ''}`;
+    : `${currentBook?.title || 'Select a chapter'}${chapterLabel ? ` ${chapterLabel}` : ''}`;
 
   const content =
     typeof children === 'function'
-      ? children({ book, chapter, currentBook, loading })
+      ? children({ book, chapter, chapterLabel, currentBook, loading })
       : children || <Button variant="secondary">{buttonText}</Button>;
 
   return (

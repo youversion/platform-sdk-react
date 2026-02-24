@@ -2,6 +2,7 @@
 [data-slot='yv-bible-renderer'] {
   /* Makes it where cascading styles from the parent app do not affect the bible reader */
   all: unset;
+  display: block;
 
   --font-sans: 'Inter', sans-serif;
   --font-serif: 'Source Serif 4', serif;
@@ -9,17 +10,23 @@
   --yv-reader-font-size: 20px;
   --yv-reader-line-height: 1.625;
 
+  /* Set base typography on the root so descendants can inherit */
+  font-family: var(--yv-reader-font-family);
+  font-size: var(--yv-reader-font-size);
+  line-height: var(--yv-reader-line-height);
+
   /* Disable text selection and tap highlights on mobile */
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
 
-  /* Set default font and line-height for all descendants */
+  /* Inherit typography from root instead of forcing a fixed size on every element.
+     This allows em-based sizing in headings/poetry to cascade properly to children. */
   & * {
-    line-height: var(--yv-reader-line-height);
-    font-family: var(--yv-reader-font-family);
-    font-size: var(--yv-reader-font-size);
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
     margin: 0;
     padding: 0;
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
@@ -32,17 +39,22 @@
   @apply yv:*:w-full yv:text-foreground yv:*:max-w-lg;
 
   /* Hide metadata and navigation classes */
-  & .id,
-  & .ide,
-  & .sts,
-  & .rem,
-  & .toc1,
-  & .toc2,
-  & .toc3,
-  & .imte,
-  & .ie,
-  & .mte,
+  & .id, /* \id - File identification */
+  & .ide, /* \ide - Encoding specification */
+  & .usfm, /* \usfm - USFM version specification */
+  & .h, /* \h - Running header text */
+  & .sts, /* \sts - Status */
+  & .rem, /* \rem - Remark */
+  & .toc1, /* \toc1 - Long table of contents text */
+  & .toc2, /* \toc2 - Short table of contents text */
+  & .toc3, /* \toc3 - Book abbreviation */
+  & .toca1, /* \toca1 - Alt language long TOC text */
+  & .toca2, /* \toca2 - Alt language short TOC text */
+  & .toca3, /* \toca3 - Alt language book abbreviation */
+  & .ie, /* \ie - Introduction end marker */
+  & .mte, /* \mte - Major title at ending (print convention) */
   & .cl {
+    /* \cl - Chapter label */
     display: none;
   }
 
@@ -62,12 +74,12 @@
   & .fv,
   & .yv-vlbl {
     display: inline;
-    font-size: 0.5em;
+    font-size: 0.65em;
     color: var(--yv-muted-foreground);
     line-height: 1em;
     vertical-align: baseline;
     position: relative;
-    top: -0.6em;
+    top: -0.3em;
     white-space: nowrap;
   }
 
@@ -75,7 +87,11 @@
     @apply yv:hidden;
   }
 
-  /* Footnote */
+  & .yv-vlbl {
+    font-family: var(--font-sans);
+  }
+
+  /* \f - Footnote container (YouVersion wrapper) */
   & .yv-n {
     display: none;
   }
@@ -130,82 +146,508 @@
     -webkit-box-decoration-break: clone;
   }
 
-  /* Major titles */
-  & .imt,
-  & .imt1,
+  /* ============================================================
+     TITLES — Major Book Titles
+     ============================================================ */
+
+  /* \mt, \mt1 - Main title (level 1) — FontSize 20, Bold, Center */
   & .mt,
-  & .mt1,
-  & .ms,
-  & .ms1 {
+  & .mt1 {
+    font-size: 1.6em;
+    font-weight: bold;
+    line-height: 1.4em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 1em 0 0.25em;
+    display: block;
+  }
+
+  /* \mt2 - Main title (level 2) — FontSize 16, Italic, Center */
+  & .mt2 {
+    font-size: 1.3em;
+    font-style: italic;
+    line-height: 1.4em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 0.5em 0 0.15em;
+    display: block;
+  }
+
+  /* \mt3 - Main title (level 3) — FontSize 16, Bold, Center */
+  & .mt3 {
     font-size: 1.3em;
     font-weight: bold;
-    line-height: 1.8em;
-    margin: 1em 0 0;
+    line-height: 1.4em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 0.15em 0;
     display: block;
   }
 
-  /* Other title */
-  & .iot {
-    font-size: 1.3em;
-    font-weight: 700;
-    line-height: 1.8em;
-    margin: 0.5em 0;
-    display: block;
-  }
-
-  /* Indented ordered list */
-  & .io,
-  & .io1 {
-    list-style-type: disc;
-    margin-left: 1em;
-    display: list-item;
-  }
-
-  & .io2,
-  & .io3 {
-    list-style-type: disc;
-    margin-left: 2em;
-    display: list-item;
-  }
-
-  /* Indented paragraph indent */
-  & .ipi {
-    text-indent: 1.5em;
-  }
-
-  /* Title levels 2-4 */
-  & .imt2,
-  & .imt3,
-  & .imt4,
-  & .mt2,
-  & .mt3,
+  /* \mt4 - Main title (level 4) — FontSize 12, Center */
   & .mt4 {
     line-height: 1.8em;
-    margin: 0.5em 0;
-    font-weight: bold;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 0.15em 0;
     display: block;
   }
 
-  /* Section headers */
-  & .is,
-  & .s,
-  & .s1,
-  & .ms1,
-  & .is1,
-  & .is2 {
-    font-size: 1.1em;
+  /* ============================================================
+     TITLES — Introduction Major Titles
+     ============================================================ */
+
+  /* \imt, \imt1 - Introduction major title (level 1) — FontSize 14, Bold, Center */
+  & .imt,
+  & .imt1 {
+    font-size: 1.17em;
     font-weight: bold;
     line-height: 1.8em;
-    margin: 0 0 0.5em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 1em 0 0.25em;
     display: block;
+  }
+
+  /* \imt2 - Introduction major title (level 2) — FontSize 13, Italic, Center */
+  & .imt2 {
+    font-size: 1.08em;
+    font-style: italic;
+    line-height: 1.8em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 0.5em 0 0.25em;
+    display: block;
+  }
+
+  /* \imt3 - Introduction major title (level 3) — FontSize 12, Bold, Center */
+  & .imt3 {
+    font-weight: bold;
+    line-height: 1.8em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 0.15em 0;
+    display: block;
+  }
+
+  /* \imt4 - Introduction major title (level 4) — FontSize 12, Italic, Center */
+  & .imt4 {
+    font-style: italic;
+    line-height: 1.8em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 0.15em 0;
+    display: block;
+  }
+
+  /* ============================================================
+     TITLES — Introduction Major Title Ending
+     ============================================================ */
+
+  /* \imte, \imte1 - Introduction major title ending (level 1) — FontSize 20, Bold, Center */
+  & .imte,
+  & .imte1 {
+    font-size: 1.6em;
+    font-weight: bold;
+    line-height: 1.4em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 1em 0 0.25em;
+    display: block;
+  }
+
+  /* \imte2 - Introduction major title ending (level 2) — FontSize 16, Italic, Center */
+  & .imte2 {
+    font-size: 1.3em;
+    font-style: italic;
+    line-height: 1.4em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 0.5em 0 0.15em;
+    display: block;
+  }
+
+  /* ============================================================
+     HEADINGS — Major Section Headings
+     ============================================================ */
+
+  /* \ms, \ms1 - Major section heading (level 1) — FontSize 14, Bold, Center */
+  & .ms,
+  & .ms1 {
+    font-size: 1.17em;
+    font-weight: bold;
+    line-height: 1.8em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 1em 0 0.25em;
+    display: block;
+  }
+
+  /* \ms2 - Major section heading (level 2) — FontSize 14, Bold, Center */
+  & .ms2 {
+    font-size: 1.17em;
+    font-weight: bold;
+    line-height: 1.8em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 0.5em 0;
+    display: block;
+  }
+
+  /* \ms3 - Major section heading (level 3) — FontSize 14, Italic, Center */
+  & .ms3 {
+    font-size: 1.17em;
+    font-style: italic;
+    line-height: 1.8em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 0.5em 0;
+    display: block;
+  }
+
+  /* \mr - Major section reference range — Italic, Center */
+  & .mr {
+    display: block;
+    font-style: italic;
+    line-height: 1.8em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 0 0 0.5em;
+  }
+
+  /* ============================================================
+     HEADINGS — Section Headings
+     ============================================================ */
+
+  /* \s, \s1 - Section heading (level 1) — Bold, Center */
+  & .s,
+  & .s1 {
+    font-weight: bold;
+    line-height: 1.8em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 0.5em 0 0.5em 0;
+    display: block;
+  }
+
+  /* \s2 - Section heading (level 2) — Italic, Center */
+  & .s2 {
+    display: block;
+    font-style: italic;
+    line-height: 1.8em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 0.5em 0;
+  }
+
+  /* \s3 - Section heading (level 3) — Italic, Left */
+  & .s3 {
+    display: block;
+    font-style: italic;
+    line-height: 1.8em;
+    margin: 0.5em 0 0.25em;
+  }
+
+  /* \s4 - Section heading (level 4) — Italic, Left */
+  & .s4 {
+    display: block;
+    font-style: italic;
+    line-height: 1.8em;
+    margin: 0.5em 0 0.25em;
+  }
+
+  /* \sr - Section reference range — Bold, Center */
+  & .sr {
+    display: block;
+    font-weight: bold;
+    line-height: 1.8em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 0 0 0.5em;
+  }
+
+  /* \r - Parallel passage reference — Italic, Center */
+  & .r {
+    display: block;
+    font-style: italic;
+    line-height: 1.8em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 0 0 0.5em;
+  }
+
+  /* \sp - Speaker identification — Italic, Left */
+  & .sp {
+    display: block;
+    font-style: italic;
+    line-height: 1.8em;
+    margin: 0 0 0.5em;
+  }
+
+  /* \d - Descriptive title / Hebrew subtitle — Italic, Center */
+  & .d {
+    display: block;
+    font-style: italic;
+    line-height: 1.8em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 0.5em 0;
+  }
+
+  /* \qa - Acrostic heading — Italic */
+  & .qa {
+    display: block;
+    font-style: italic;
+    line-height: 1.8em;
+    margin: 0 0 0.5em;
   }
 
   & .heading {
     font-weight: bold;
     line-height: 1.8em;
+    margin: 0.5em 0 0.5em 0;
+    display: block;
+  }
+
+  /* ============================================================
+     HEADINGS — Introduction Section Headings
+     ============================================================ */
+
+  /* \is, \is1 - Introduction section heading (level 1) — FontSize 14, Bold, Center */
+  & .is,
+  & .is1 {
+    font-size: 1.17em;
+    font-weight: bold;
+    line-height: 1.8em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 0.5em 0 0.5em 0;
+    display: block;
+  }
+
+  /* \is2 - Introduction section heading (level 2) — FontSize 12, Bold, Center */
+  & .is2 {
+    font-weight: bold;
+    line-height: 1.8em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 0.5em 0 0.5em 0;
+    display: block;
+  }
+
+  /* \yv-h - YouVersion heading (custom, styled like \is) */
+  & .yv-h {
+    font-size: 1.17em;
+    font-weight: bold;
+    line-height: 1.8em;
+    text-align: start;
+    margin: 0.5em 0 0.5em 0;
+    display: block;
+  }
+
+  & .yv-h.r {
+    font-size: 1em;
+    font-weight: normal;
+    line-height: 1.8em;
+    font-style: italic;
+    text-align: start;
     margin: 0 0 0.5em 0;
     display: block;
   }
+
+  /* ============================================================
+     INTRODUCTION — Outline
+     ============================================================ */
+
+  /* \iot - Introduction outline title — Bold, Center */
+  & .iot {
+    font-weight: bold;
+    line-height: 1.8em;
+    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    margin: 0.5em 0;
+    display: block;
+  }
+
+  /* \io, \io1 - Introduction outline entry (level 1) — LeftMargin .5in */
+  & .io,
+  & .io1 {
+    display: block;
+    margin-inline-start: 2em;
+  }
+
+  /* This adds top margin to the introduction outline entries */
+  & .io:not(.io + .io),
+  & .io1:not(.io1 + .io1) {
+    margin-block-start: 1em;
+  }
+
+  /* This adds bottom margin to the introduction outline entries */
+  & .io:has(+ :not(.io)),
+  & .io1:has(+ :not(.io1)) {
+    margin-block-end: 1em;
+  }
+
+  /* \io2 - Introduction outline entry (level 2) — LeftMargin .75in */
+  & .io2 {
+    display: block;
+    margin-inline-start: 3em;
+  }
+
+  /* \io3 - Introduction outline entry (level 3) — LeftMargin 1in */
+  & .io3 {
+    display: block;
+    margin-inline-start: 4em;
+  }
+
+  /* \io4 - Introduction outline entry (level 4) — LeftMargin 1.25in */
+  & .io4 {
+    display: block;
+    margin-inline-start: 5em;
+  }
+
+  /* \ior - Introduction outline reference range — no special style per spec */
+  & .ior {
+    display: inline;
+  }
+
+  /* ============================================================
+     INTRODUCTION — List Items
+     ============================================================ */
+
+  /* \ili, \ili1 - Introduction list item (level 1) — hanging indent */
+  & .ili,
+  & .ili1 {
+    display: block;
+    margin-inline-start: 2em;
+    text-indent: -1em;
+  }
+
+  /* This adds top margin to the introduction list items */
+  & .ili:not(.ili + .ili) {
+    margin-block-start: 1em;
+  }
+
+  /* This adds bottom margin to the introduction list items */
+  & .ili:has(+ :not(.ili)) {
+    margin-block-end: 1em;
+  }
+
+  /* \ili2 - Introduction list item (level 2) */
+  & .ili2 {
+    display: block;
+    margin-inline-start: 3em;
+    text-indent: -1em;
+  }
+
+  /* \ili3 - Introduction list item (level 3) */
+  & .ili3 {
+    display: block;
+    margin-inline-start: 4em;
+    text-indent: -1em;
+  }
+
+  /* ============================================================
+     INTRODUCTION — Paragraphs
+     ============================================================ */
+
+  /* \ip - Introduction paragraph — first line indent */
+  & .ip {
+    display: block;
+    margin-bottom: 0;
+    text-indent: 1em;
+  }
+
+  /* \im - Introduction flush left (margin) paragraph — no indent */
+  & .im {
+    display: block;
+    text-indent: 0;
+    margin: 0;
+  }
+
+  /* \ipi - Indented introduction paragraph — first line indent + margins */
+  & .ipi {
+    display: block;
+    text-indent: 1em;
+    margin-inline-start: 1em;
+    margin-inline-end: 1em;
+  }
+
+  /* \imi - Indented introduction flush left paragraph — margins, no indent */
+  & .imi {
+    display: block;
+    margin-inline-start: 1em;
+    margin-inline-end: 1em;
+    text-indent: 0;
+  }
+
+  /* \ipq - Introduction quote from scripture text — Italic, margins, indent */
+  & .ipq {
+    display: block;
+    font-style: italic;
+    text-indent: 1em;
+    margin-inline-start: 1em;
+    margin-inline-end: 1em;
+  }
+
+  /* \imq - Introduction flush left quote from text — Italic, margins */
+  & .imq {
+    display: block;
+    font-style: italic;
+    text-indent: 0;
+    margin: 1em;
+  }
+
+  /* \ipr - Introduction right-aligned paragraph — Italic, Right, margins */
+  & .ipr {
+    display: block;
+    font-style: italic;
+    text-align: end;
+    margin-inline-start: 1em;
+    margin-inline-end: 1em;
+  }
+
+  /* \ib - Introduction blank line */
+  & .ib {
+    display: block;
+    height: 1em;
+  }
+
+  /* \iex - Introduction explanatory/bridge text — first line indent */
+  & .iex {
+    display: block;
+    text-indent: 1em;
+    line-height: 2em;
+    margin: 0.5em 0;
+  }
+
+  /* \iqt - Introduction quoted text (scripture quotation, character style) — Italic */
+  & .iqt {
+    font-style: italic;
+  }
+
+  /* ============================================================
+     INTRODUCTION — Poetry
+     ============================================================ */
+
+  /* \iq, \iq1 - Introduction poetry (level 1) — Italic, hanging indent */
+  & .iq,
+  & .iq1 {
+    display: block;
+    font-style: italic;
+    padding-inline-start: 2em;
+    text-indent: -1em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  /* \iq2 - Introduction poetry (level 2) — Italic */
+  & .iq2 {
+    display: block;
+    font-style: italic;
+    padding-inline-start: 3em;
+    text-indent: -1.5em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  /* \iq3 - Introduction poetry (level 3) — Italic */
+  & .iq3 {
+    display: block;
+    font-style: italic;
+    padding-inline-start: 3em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  /* \iq4 - Introduction poetry (level 4) — Italic */
+  & .iq4 {
+    display: block;
+    font-style: italic;
+    padding-inline-start: 4em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  /* ============================================================
+     NOTES — Footnote/Note Character Styles
+     ============================================================ */
 
   /* Notes within headings */
   & .s1 .note .heading,
@@ -230,29 +672,48 @@
     font-size: 0.9em;
   }
 
-  /* Other styles within a footnote */
   & .note .fr {
-    padding-right: 0.25em;
+    /* \fr - Footnote reference (verse number) — Bold */
+    padding-inline-end: 0.25em;
+    font-weight: bold;
   }
 
-  & .note .fq,
+  & .note .fq, /* \fq - Footnote quotation from text — Italic */
   & .note .fqa {
+    /* \fqa - Footnote alternate translation — Italic */
     font-style: italic;
   }
 
+  & .note .ft {
+    /* \ft - Footnote text */
+    display: inline;
+  }
+
   & .note .fv {
+    /* \fv - Footnote verse number — Superscript */
     vertical-align: super;
     font-size: 0.75em;
   }
 
   & .note .fk {
+    /* \fk - Footnote keyword — Bold + Italic */
     font-style: italic;
     font-weight: bold;
   }
 
-  /* Paragraphs - text-indent 1em based on iOS CSS */
-  & .p,
-  & .ip {
+  & .note .fl {
+    /* \fl - Footnote label — Italic + Bold */
+    font-weight: bold;
+    font-style: italic;
+  }
+
+  /* ============================================================
+     PARAGRAPHS
+     ============================================================ */
+
+  /* \p - Normal paragraph — first line indent */
+  & .p {
+    display: block;
     margin-bottom: 0;
     text-indent: 1em;
   }
@@ -493,25 +954,241 @@
     margin-top: 0;
   }
 
-  /* Words of Jesus */
+  /* ============================================================
+     CHARACTER STYLES
+     ============================================================ */
+
+  /* \wj - Words of Jesus (red letter) */
   & .wj {
     color: var(--yv-red);
   }
 
-  /* Name of Deity (small-caps) */
-  & .nd,
+  /* \nd - Name of Deity (e.g. "LORD") — Smallcaps */
+  & .nd {
+    font-variant: small-caps;
+  }
+
+  /* \sc - Small-cap text — Smallcaps */
   & .sc {
     font-variant: small-caps;
   }
 
-  /* Line break */
+  /* \bd - Bold text */
+  & .bd {
+    font-weight: bold;
+  }
+
+  /* \em - Emphasis text — Italic */
+  & .em {
+    font-style: italic;
+  }
+
+  /* \bdit - Bold-italic text */
+  & .bdit {
+    font-weight: bold;
+    font-style: italic;
+  }
+
+  /* \bk - Book name reference — Italic */
+  & .bk {
+    font-style: italic;
+  }
+
+  /* \ord - Ordinal number ending — Superscript */
+  & .ord {
+    font-size: 0.75em;
+    line-height: 2em;
+    position: relative;
+    vertical-align: baseline;
+    top: -0.5em;
+  }
+
+  /* \pn - Proper name (semantic marker, no special formatting in this reader) */
+  & .pn {
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  /* \k - Keyword/keyterm — Italic + Bold */
+  & .k {
+    font-style: italic;
+    font-weight: bold;
+  }
+
+  /* \w - Wordlist/glossary entry */
+  & .w {
+    display: inline;
+  }
+
+  /* \rq - Inline cross-reference quotation — Italic, smaller */
+  & .rq {
+    font-style: italic;
+    font-size: 0.8em;
+  }
+
+  /* \x - Cross-reference note */
+  & .x {
+    display: none;
+  }
+
+  /* \f - Footnote container, \fe - Endnote container */
+  & .f,
+  & .fe {
+    display: inline;
+  }
+
+  /* \add - Translator addition — Bold + Italic */
+  & .add {
+    font-weight: bold;
+    font-style: italic;
+  }
+
+  /* \it - Italic text, \tl - Transliterated word,
+     \sls - Secondary language/alternate source text — Italic */
+  & .it,
+  & .tl,
+  & .sls {
+    font-style: italic;
+  }
+
+  /* \qt - Quoted text (OT quotation in NT, etc.) — Italic */
+  & .qt {
+    font-style: italic;
+  }
+
+  /* \sig - Signature of the author of a letter/epistle — Italic */
+  & .sig {
+    font-style: italic;
+  }
+
+  /* \dc - Deuterocanonical/LXX additions — Italic */
+  & .dc {
+    font-style: italic;
+  }
+
+  /* \no - Normal text (resets italic/bold within a styled context) */
+  & .no {
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  /* \fdc - Footnote deuterocanonical content */
+  & .fdc {
+    font-style: italic;
+  }
+
+  /* ============================================================
+     POETRY
+     ============================================================ */
+
+  /* \b - Blank line (stanza break in poetry) */
   & .b {
     line-height: 2em;
     height: 1em;
     display: block;
   }
 
-  /* No-break paragraph */
+  /* \q, \q1 - Poetic line (level 1) */
+  & .q,
+  & .q1 {
+    display: block;
+    padding-inline-start: 2em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  & .q2 {
+    display: block;
+    padding-inline-start: 2em;
+    text-indent: -1em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  & .q3 {
+    display: block;
+    padding-inline-start: 3em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  & .q4 {
+    display: block;
+    padding-inline-start: 4em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  /* \qc - Centered poetic line */
+  & .qc {
+    text-align: center;
+    display: block;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
+  }
+
+  /* \qr - Right-aligned poetic refrain */
+  & .qr {
+    text-align: end;
+    display: block;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
+  }
+
+  /* \qs - Selah (commonly in Psalms and Habakkuk) — Italic */
+  & .qs {
+    display: block;
+    text-align: end;
+    font-style: italic;
+    margin-top: calc(var(--yv-reader-font-size) * 0.5);
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
+  }
+
+  /* \qac - Acrostic letter within a poetic line — Italic */
+  & .qac {
+    font-style: italic;
+  }
+
+  /* \qd - Hebrew note at end of poetic section — Italic */
+  & .qd {
+    display: block;
+    font-style: italic;
+    margin: 0.5em 0;
+    margin-inline-start: 1em;
+  }
+
+  /* \qm, \qm1 - Embedded text poetic line (level 1) */
+  & .qm,
+  & .qm1 {
+    display: block;
+    padding-inline-start: 2em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  & .qm2 {
+    display: block;
+    padding-inline-start: 2em;
+    text-indent: -1em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  & .qm3 {
+    display: block;
+    padding-inline-start: 3em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  & .qm4 {
+    display: block;
+    padding-inline-start: 4em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
+  }
+
+  /* ============================================================
+     PARAGRAPHS — Continued
+     ============================================================ */
+
+  /* \m - Continuation (margin) paragraph, \nb - No-break paragraph */
   & .m,
   & .nb {
     margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
@@ -519,60 +1196,31 @@
     display: block;
   }
 
-  /* Poetry quotes */
-  & .q,
-  & .q1 {
-    display: block;
-    padding-left: 2em;
-    text-indent: -2em;
-    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
-  }
-
-  & .q2 {
-    display: block;
-    padding-left: 2em;
-    text-indent: -1em;
-    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
-  }
-
-  & .q3 {
-    display: block;
-    padding-left: 3em;
-    text-indent: -2em;
-    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
-  }
-
-  & .q4 {
-    display: block;
-    padding-left: 4em;
-    text-indent: -2em;
-    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
-  }
-
-  /* Indented paragraphs */
+  /* \pi, \pi1 - Indented paragraph (level 1) — first line indent + left margin */
   & .pi,
   & .pi1 {
     display: block;
     text-indent: 1em;
-    padding-left: 0;
+    padding-inline-start: 0;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
   }
 
   & .pi2 {
     display: block;
     text-indent: 2em;
-    padding-left: 1em;
+    padding-inline-start: 1em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
   }
 
   & .pi3 {
     display: block;
     text-indent: 4em;
-    padding-left: 3em;
+    padding-inline-start: 3em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
   }
 
-  /* Margin indented */
+  /* \mi - Indented flush left, \pm - Embedded text, \pmo - Embedded opening,
+     \pmc - Embedded closing, \pmr - Embedded refrain */
   & .mi,
   & .pm,
   & .pmo,
@@ -580,198 +1228,134 @@
   & .pmr {
     display: block;
     text-indent: 0;
-    padding-left: 2em;
+    padding-inline-start: 2em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
   }
 
-  /* Right-aligned */
-  & .pr,
-  & .qr {
-    text-align: right;
+  /* \pr - Right-aligned paragraph */
+  & .pr {
+    text-align: end;
     display: block;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
   }
 
-  /* Center-aligned */
-  & .pc,
-  & .qc {
-    font-variant: small-caps;
+  /* \pc - Centered paragraph (inscriptions) */
+  & .pc {
     text-align: center;
-    font-weight: bold;
     display: block;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
   }
 
-  /* Indented quotes */
-  & .iq,
-  & .iq1 {
+  /* \po - Opening of an epistle/letter */
+  & .po {
     display: block;
-    padding-left: 2em;
-    text-indent: -2em;
-    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
-  }
-
-  & .iq2 {
-    display: block;
-    padding-left: 2em;
-    text-indent: -1em;
-    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
-  }
-
-  & .iq3 {
-    display: block;
-    padding-left: 3em;
-    text-indent: -2em;
-    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
-  }
-
-  & .iq4 {
-    display: block;
-    padding-left: 4em;
-    text-indent: -2em;
-    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
-  }
-
-  /* Quote margin */
-  & .qm,
-  & .qm1 {
-    display: block;
-    padding-left: 2em;
-    text-indent: -2em;
-    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
-  }
-
-  & .qm2 {
-    display: block;
-    padding-left: 2em;
-    text-indent: -1em;
-    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
-  }
-
-  & .qm3 {
-    display: block;
-    padding-left: 3em;
-    text-indent: -2em;
-    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
-  }
-
-  & .qm4 {
-    display: block;
-    padding-left: 4em;
-    text-indent: -2em;
-    margin-bottom: calc(var(--yv-reader-font-size) * 0.3);
-  }
-
-  /* Italic text */
-  & .add,
-  & .it,
-  & .tl {
-    font-style: italic;
-  }
-
-  & .qt {
-    font-style: italic;
-  }
-
-  /* Selah */
-  & .qs {
-    display: block;
-    text-align: right;
-    font-style: italic;
-    margin-top: calc(var(--yv-reader-font-size) * 0.5);
+    text-indent: 1em;
     margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
   }
 
-  /* Section headers level 2 */
-  & .s2 {
+  /* \ph - Indented paragraph with hanging indent (deprecated, use \li) */
+  & .ph,
+  & .ph1 {
     display: block;
-    font-weight: bold;
-    line-height: 1.8em;
-    margin: 0 0 0.5em;
-    font-size: 1em;
+    padding-inline-start: 2em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
   }
 
-  & .s3,
-  & .s4 {
+  & .ph2 {
     display: block;
-    font-weight: bold;
-    line-height: 1.8em;
-    margin: 0 0 0.5em;
+    padding-inline-start: 3em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
   }
 
-  /* Major section header level 2 */
-  & .ms2 {
-    line-height: 1.8em;
-    margin: 0.5em 0;
-    font-weight: bold;
+  & .ph3 {
     display: block;
+    padding-inline-start: 4em;
+    text-indent: -2em;
+    margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
   }
 
-  /* Reference/ruby text */
-  & .r {
+  /* \cls - Closure of an epistle/letter — Right-aligned */
+  & .cls {
     display: block;
-    font-style: italic;
-    font-weight: bold;
-    line-height: 1.8em;
-    margin: 0 0 0.5em;
-  }
-
-  & .sp,
-  & .sr {
-    display: block;
-    font-style: italic;
-    font-weight: bold;
-    line-height: 1.8em;
-    margin: 0 0 0.5em;
-  }
-
-  & .qa {
-    display: block;
-    font-weight: bold;
-    line-height: 1.8em;
-    margin: 0 0 0.5em;
-  }
-
-  /* Hebrew text heading */
-  & .d {
-    display: block;
-    font-style: italic;
-    font-weight: bold;
-    line-height: 1.8em;
+    text-align: end;
     margin: 0.5em 0;
   }
 
-  /* List items */
+  /* ============================================================
+     LISTS
+     ============================================================ */
+
+  /* \lh - List header, \lf - List footer */
+  & .lh,
+  & .lf {
+    display: block;
+    margin: 0.5em 0 0.25em;
+  }
+
+  /* \li, \li1 - List entry (level 1) */
   & .li,
   & .li1 {
     display: list-item;
     list-style-type: disc;
-    margin-left: 1em;
+    margin-inline-start: 1em;
   }
 
   & .li2 {
     display: list-item;
     list-style-type: disc;
-    margin-left: 2em;
+    margin-inline-start: 2em;
   }
 
-  & .li3,
+  & .li3 {
+    display: list-item;
+    list-style-type: disc;
+    margin-inline-start: 3em;
+  }
+
   & .li4 {
     display: list-item;
     list-style-type: disc;
+    margin-inline-start: 4em;
   }
 
-  /* Line breaks */
+  /* \lim, \lim1 - Embedded list entry (level 1) */
+  & .lim,
+  & .lim1 {
+    display: list-item;
+    list-style-type: disc;
+    margin-inline-start: 2em;
+  }
+
+  & .lim2 {
+    display: list-item;
+    list-style-type: disc;
+    margin-inline-start: 4em;
+  }
+
+  & .lim3 {
+    display: list-item;
+    list-style-type: disc;
+    margin-inline-start: 6em;
+  }
+
+  /* ============================================================
+     LINE BREAKS & CONTENT
+     ============================================================ */
+
   & br {
     line-height: inherit;
   }
 
-  /* Content classes */
   & .content {
     display: inline;
   }
 
-  /* Footnotes and cross-references */
+  /* ============================================================
+     FOOTNOTES & CROSS-REFERENCES (display elements)
+     ============================================================ */
+
   & .footnote,
   & .crossref {
     vertical-align: super;
@@ -780,7 +1364,10 @@
     white-space: nowrap;
   }
 
-  /* Subscript and superscript */
+  /* ============================================================
+     SUBSCRIPT & SUPERSCRIPT
+     ============================================================ */
+
   & .sub,
   & .sup {
     font-size: 75%;
@@ -797,7 +1384,10 @@
     bottom: -0.1em;
   }
 
-  /* Tables */
+  /* ============================================================
+     TABLES
+     ============================================================ */
+
   & table {
     width: 100%;
     background: var(--yv-background);
@@ -852,7 +1442,7 @@
   & .tcr,
   & .tcr1 {
     padding: 0.25em;
-    text-align: right;
+    text-align: end;
     vertical-align: top;
   }
 
@@ -862,18 +1452,53 @@
     color: var(--yv-primary-foreground);
     font-weight: 700;
     padding: 0.25em;
-    text-align: right;
+    text-align: end;
     vertical-align: top;
   }
 
-  /* RTL Support */
-  &[dir='rtl'] {
-    direction: rtl;
-    text-align: right;
+  /* ============================================================
+     SPECIAL / MISC
+     ============================================================ */
+
+  /* \sd - Semantic division (vertical space between sections) */
+  & .sd {
+    display: block;
+    height: 1em;
   }
 
-  &[dir='rtl'] .p,
-  &[dir='rtl'] .m {
+  /* \lb - Line break (same as \b) */
+  & .lb {
+    display: block;
+    height: 1em;
+  }
+
+  /* \cd - Chapter description — Italic */
+  & .cd {
+    display: block;
+    font-style: italic;
+    margin: 0.5em 0;
+  }
+
+  /* \fp - Footnote paragraph (block-level paragraph within a footnote) */
+  & .fp {
+    display: block;
+    margin-top: 0.5em;
+    text-indent: 1em;
+  }
+
+  /* \lit - Liturgical note — Right-aligned, Bold */
+  & .lit {
+    display: block;
+    text-align: end;
+    font-weight: bold;
+  }
+
+  /* ============================================================
+     RTL SUPPORT
+     ============================================================ */
+
+  &[dir='rtl'] {
+    direction: rtl;
     text-align: right;
   }
 }
