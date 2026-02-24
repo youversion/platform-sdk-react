@@ -16,14 +16,6 @@ interface UseChapterNavigationResult {
 /**
  * Provides navigation functionality for chapters across book boundaries,
  * including intro chapter support.
- *
- * @return {UseChapterNavigationResult} An object containing properties and methods for chapter navigation:
- * - `canNavigatePrevious` (boolean): Indicates whether navigating to the previous chapter is possible.
- * - `canNavigateNext` (boolean): Indicates whether navigating to the next chapter is possible.
- * - `navigateToPrevious` (function): Moves to the previous chapter if possible.
- * - `navigateToNext` (function): Moves to the next chapter if possible.
- * - `currentChapterIndex` (number): The index of the current chapter within the list of chapters.
- * - `isLoading` (boolean): Whether the book data is still loading.
  */
 export function useChapterNavigation(): UseChapterNavigationResult {
   const { currentChapter, currentVersion, currentBook, setChapter, setBook } = useReaderContext();
