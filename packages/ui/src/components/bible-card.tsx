@@ -2,6 +2,7 @@ import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hoo
 import { BibleTextView } from './verse';
 import { BibleAppLogoLockup } from './bible-app-logo-lockup';
 import { BibleVersionPicker } from './bible-version-picker';
+import { BibleCardSkeleton } from './bible-card-skeleton';
 import { Button } from './ui/button';
 import { useState } from 'react';
 import { SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
@@ -19,8 +20,12 @@ export function BibleCard({
   showVersionPicker = false,
 }: BibleCardProps): React.ReactNode {
   const [versionNum, setVersionNum] = useState(versionId);
-  const { version } = useVersion(versionNum);
-  const { passage } = usePassage({
+  const { version, loading: versionLoading } = useVersion(versionNum);
+  const {
+    passage,
+    loading: passageLoading,
+    error,
+  } = usePassage({
     versionId: versionNum,
     usfm: reference,
     include_headings: true,
@@ -28,6 +33,10 @@ export function BibleCard({
   });
   const providerTheme = useTheme();
   const theme = background || providerTheme;
+
+  if (versionLoading || passageLoading) {
+    return <BibleCardSkeleton showVersionPicker={showVersionPicker} background={theme} />;
+  }
 
   return (
     <section
@@ -71,6 +80,8 @@ export function BibleCard({
         fontFamily={SOURCE_SERIF_FONT}
         reference={reference}
         versionId={versionNum}
+        passage={passage ? { content: passage.content, reference: passage.reference } : null}
+        error={error}
       />
 
       <div className="yv:grid yv:grid-cols-[1fr_auto] yv:gap-4 yv:items-center yv:mt-4">

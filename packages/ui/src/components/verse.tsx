@@ -96,11 +96,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
 
 const VERSE_UNAVAILABLE_MESSAGE = 'Your previously selected Bible verse is unavailable.';
 
-/**
- * Displays a verse-unavailable error message with a circular exclamation
- * icon and descriptive text.
- */
-function VerseUnavailableMessage(): React.ReactElement {
+export function VerseUnavailableMessage(): React.ReactElement {
   return (
     <div
       role="alert"
@@ -332,6 +328,9 @@ export type BibleTextViewProps = {
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
   highlightedVerses?: Record<number, boolean>;
+  passage?: { content: string; reference?: string } | null;
+  loading?: boolean;
+  error?: Error | null;
 };
 
 /**
@@ -349,13 +348,29 @@ export const BibleTextView = ({
   selectedVerses,
   onVerseSelect,
   highlightedVerses,
+  passage: externalPassage,
+  loading: externalLoading,
+  error: externalError,
 }: BibleTextViewProps): React.ReactElement => {
-  const { passage, loading, error } = usePassage({
+  const hasExternalState =
+    externalPassage !== undefined || externalLoading !== undefined || externalError !== undefined;
+
+  const {
+    passage: fetchedPassage,
+    loading: fetchedLoading,
+    error: fetchedError,
+  } = usePassage({
     versionId,
     usfm: reference,
     include_headings: true,
     include_notes: true,
+    options: { enabled: !hasExternalState },
   });
+
+  const passage = hasExternalState ? (externalPassage ?? null) : fetchedPassage;
+  const loading = hasExternalState ? Boolean(externalLoading) : fetchedLoading;
+  const error = hasExternalState ? (externalError ?? null) : fetchedError;
+
   const providerTheme = useTheme();
   const currentTheme = theme || providerTheme;
 
