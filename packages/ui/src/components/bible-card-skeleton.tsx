@@ -23,16 +23,19 @@ export function BibleCardSkeleton({
       <span className="yv:sr-only">Loading Bible verse</span>
 
       <div className="yv:flex yv:justify-between yv:items-center">
-        <Skeleton className="yv:h-8 yv:w-52" />
-        {showVersionPicker ? <Skeleton className="yv:h-12 yv:w-24 yv:rounded-full" /> : null}
+        <Skeleton className="yv:h-6 yv:w-24 yv:rounded-[5px]" />
+        {showVersionPicker ? <Skeleton className="yv:h-10 yv:w-18 yv:rounded-full" /> : null}
       </div>
 
       <div className="yv:mt-10">
-        <Skeleton className="yv:h-32 yv:w-full" />
+        <Skeleton className="yv:h-32 yv:w-full yv:rounded-[5px]" />
       </div>
 
       <div className="yv:grid yv:grid-cols-[1fr_auto] yv:gap-4 yv:items-center yv:mt-10">
-        <Skeleton className="yv:h-14 yv:w-64" />
+        <div className="yv:space-y-2 yv:w-64 yv:flex yv:flex-col yv:gap-2 yv:rounded-sm">
+          <Skeleton className="yv:h-4 yv:w-full yv:rounded-[5px]" />
+          <Skeleton className="yv:h-4 yv:w-40 yv:rounded-[5px]" />
+        </div>
         <div className="yv:justify-self-end">
           <BibleAppLogoLockup fontSize={12} />
         </div>
