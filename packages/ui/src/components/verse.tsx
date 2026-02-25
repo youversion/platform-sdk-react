@@ -44,7 +44,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   fontSize?: number;
   theme: 'light' | 'dark';
 }) {
-  const isIntroFootnote = verseNum.startsWith('intro-') || !verseNotes.verseHtml;
+  const { hasVerseContext } = verseNotes;
   const verseReference = reference ? `${reference}:${verseNum}` : `Verse ${verseNum}`;
   return (
     <Popover>
@@ -62,7 +62,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
         theme={theme}
       >
         <div className="yv:p-3 yv:overflow-y-auto yv:max-h-[33svh]">
-          {!isIntroFootnote && (
+          {hasVerseContext && (
             <>
               <div className="yv:font-bold yv:mb-2">{verseReference}</div>
               <div

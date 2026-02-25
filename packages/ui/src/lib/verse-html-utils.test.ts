@@ -29,6 +29,7 @@ describe('transformBibleHtml - intro chapter footnotes', () => {
     const result = transformBibleHtml(html);
 
     expect(result.notes['intro-0']!.verseHtml).toBe('');
+    expect(result.notes['intro-0']!.hasVerseContext).toBe(false);
   });
 
   it('should extract correct note content for intro footnotes', () => {
@@ -72,10 +73,12 @@ describe('transformBibleHtml - intro chapter footnotes', () => {
 
     expect(result.notes['intro-0']).toBeDefined();
     expect(result.notes['intro-0']!.verseHtml).toBe('');
+    expect(result.notes['intro-0']!.hasVerseContext).toBe(false);
     expect(result.notes['intro-0']!.notes[0]).toContain('Intro note');
 
     expect(result.notes['1']).toBeDefined();
     expect(result.notes['1']!.verseHtml).not.toBe('');
+    expect(result.notes['1']!.hasVerseContext).toBe(true);
     expect(result.notes['1']!.notes[0]).toContain('Verse note');
   });
 
