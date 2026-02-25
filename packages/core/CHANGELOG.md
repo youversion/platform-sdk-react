@@ -1,5 +1,15 @@
 # @youversion/platform-core
 
+## 1.17.0
+
+### Minor Changes
+
+- c3d673e: added error ui for faild verses
+
+### Patch Changes
+
+- a5f91bf: Add cross-book chapter navigation to Bible Reader toolbar with prev/next buttons, intro chapter support, and accessible aria-labels
+
 ## 1.16.0
 
 ### Minor Changes
