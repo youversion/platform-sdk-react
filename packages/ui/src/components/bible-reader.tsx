@@ -8,6 +8,7 @@ import {
   useYVAuth,
   YouVersionContext,
 } from '@youversion/platform-react-hooks';
+import type { BibleBook } from '@youversion/platform-core';
 import {
   createContext,
   type ReactNode,
@@ -18,7 +19,7 @@ import {
   useState,
 } from 'react';
 import { cn } from '@/lib/utils';
-import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '@youversion/platform-core';
+import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, getAdjacentChapter } from '@youversion/platform-core';
 import { BibleChapterPicker } from './bible-chapter-picker';
 import { BibleVersionPicker } from './bible-version-picker';
 import { GearIcon } from './icons/gear';
@@ -29,6 +30,8 @@ import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { BibleTextView } from './verse';
 import { INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
+import { ChevronLeftIcon } from './icons/chevron-left';
+import { ChevronRightIcon } from './icons/chevron-right';
 
 type BibleReaderContextType = {
   book: string;
@@ -37,6 +40,8 @@ type BibleReaderContextType = {
   setBook: React.Dispatch<React.SetStateAction<string>>;
   setChapter: React.Dispatch<React.SetStateAction<string>>;
   setVersionId: React.Dispatch<React.SetStateAction<number>>;
+  booksData: BibleBook[];
+  booksLoading: boolean;
   currentFontFamily: FontFamily;
   setCurrentFontFamily: React.Dispatch<React.SetStateAction<FontFamily>>;
   currentFontSize: number;
@@ -147,6 +152,9 @@ function Root({
   const providerTheme = useTheme();
   const theme = background || providerTheme;
 
+  const { books, loading: booksLoading } = useBooks(versionId);
+  const booksData = books?.data ?? [];
+
   const contextValue: BibleReaderContextType = {
     book,
     chapter,
@@ -154,6 +162,8 @@ function Root({
     setBook,
     setChapter,
     setVersionId,
+    booksData,
+    booksLoading,
     currentFontFamily,
     setCurrentFontFamily,
     currentFontSize,
@@ -182,20 +192,19 @@ function Content() {
     book,
     chapter,
     versionId,
+    booksData,
     currentFontSize,
     currentFontFamily,
     lineHeight,
     showVerseNumbers,
   } = useBibleReaderContext();
-  const { books } = useBooks(versionId);
   const { version } = useVersion(versionId);
 
   const bookData = useMemo(() => {
-    return books?.data?.find((b) => b.id === book);
-  }, [books?.data, book]);
+    return booksData.find((b) => b.id === book);
+  }, [booksData, book]);
 
   const usfmReference = `${book}.${chapter}`;
-  const chapterIsNumerical = /^\d+$/.test(chapter || '');
 
   // Check if the current chapter is available in this version
   const chapterUnavailable = useMemo(() => {
@@ -205,23 +214,26 @@ function Content() {
     return !inChapters && !isIntro;
   }, [bookData, chapter]);
 
+  let chapterLabel: string = bookData?.chapters?.find((ch) => ch.id === chapter)?.title || chapter;
+  if (bookData?.intro && chapter === bookData?.intro.id) {
+    chapterLabel = bookData.intro.title;
+  }
+
   return (
     <main className="yv:*:max-w-lg yv:flex yv:flex-col yv:items-center yv:gap-6 yv:overflow-y-auto yv:px-6 yv:max-sm:px-4 yv:py-12 yv:h-full">
-      {chapterIsNumerical ? (
-        <h1 className="yv:flex yv:gap-2 yv:flex-col yv:justify-center yv:items-center yv:text-muted-foreground yv:font-medium">
-          <span
-            className={cn(
-              'yv:font-serif yv:leading-none yv:block yv:text-2xl yv:transition-[filter]',
-              !bookData?.title && 'yv:blur-sm',
-            )}
-          >
-            {bookData?.title || 'Loading...'}
-          </span>
-          <span className="yv:font-serif yv:leading-none yv:block yv:text-[2.5rem] yv:font-normal">
-            {chapter || '-'}
-          </span>
-        </h1>
-      ) : null}
+      <h1 className="yv:flex yv:gap-2 yv:flex-col yv:justify-center yv:items-center yv:text-muted-foreground yv:font-medium">
+        <span
+          className={cn(
+            'yv:font-serif yv:leading-none yv:block yv:text-2xl yv:transition-[filter]',
+            !bookData?.title && 'yv:blur-sm',
+          )}
+        >
+          {bookData?.title || 'Loading...'}
+        </span>
+        <span className="yv:font-serif yv:leading-none yv:block yv:text-[2.5rem] yv:font-normal">
+          {chapterLabel || chapter || '-'}
+        </span>
+      </h1>
 
       {chapterUnavailable ? (
         // This copy was taken from bible.com (e.g. https://www.bible.com/bible/4253/ACT.INTRO1.AFV)
@@ -271,7 +283,7 @@ function UserMenu() {
   return (
     <Popover>
       <PopoverTrigger asChild data-testid="user-menu-trigger">
-        <Button size="icon" variant="secondary">
+        <Button size="sm" variant="secondary">
           {auth.isAuthenticated && userInfo?.avatarUrlFormat ? (
             <img
               src={userInfo.getAvatarUrl(32, 32)?.toString()}
@@ -314,12 +326,19 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
     setBook,
     setChapter,
     setVersionId,
+    booksData,
+    booksLoading,
     currentFontFamily,
     setCurrentFontFamily,
     setCurrentFontSize,
     background,
   } = useBibleReaderContext();
   const yvContext = useContext(YouVersionContext);
+
+  const prevResult = getAdjacentChapter(booksData, book, chapter, 'previous');
+  const nextResult = getAdjacentChapter(booksData, book, chapter, 'next');
+  const canNavigatePrevious = !booksLoading && prevResult !== null;
+  const canNavigateNext = !booksLoading && nextResult !== null;
 
   return (
     <section
@@ -329,29 +348,43 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
         border === 'bottom' && 'yv:border-b',
       )}
     >
-      <div
-        className={cn(
-          'yv:grid yv:w-full yv:items-center yv:max-w-lg yv:gap-4',
-          yvContext?.authEnabled ? 'yv:grid-cols-[auto_1fr_auto]' : 'yv:grid-cols-[1fr_auto]',
-        )}
-      >
+      <div className={cn('yv:flex yv:grow yv:w-full yv:items-center yv:max-w-lg yv:gap-3')}>
         {!!yvContext?.authEnabled && <UserMenu />}
 
-        <div className="yv:grid yv:grid-cols-2 yv:gap-0.5">
-          <BibleChapterPicker.Root
-            book={book}
-            chapter={chapter}
-            onBookChange={setBook}
-            onChapterChange={setChapter}
-            versionId={versionId}
-            background={background}
-          >
-            <BibleChapterPicker.Trigger aria-label="Change Bible book and chapter">
-              {({ chapterLabel, currentBook, loading }) => (
+        <BibleChapterPicker.Root
+          book={book}
+          chapter={chapter}
+          onBookChange={setBook}
+          onChapterChange={setChapter}
+          versionId={versionId}
+          background={background}
+        >
+          <BibleChapterPicker.Trigger>
+            {({ chapterLabel, currentBook, loading }) => (
+              <div className="yv:relative yv:grow">
                 <Button
+                  className="yv:group yv:absolute yv:place-self-center yv:top-0 yv:bottom-0 yv:left-4 yv:z-10 yv:size-6! yv:-translate-x-2 yv:touch-hitbox"
+                  size="icon"
                   variant="secondary"
-                  className="yv:rounded-r-none yv:font-bold yv:text-foreground"
+                  disabled={!canNavigatePrevious}
+                  aria-label="Previous chapter"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (prevResult) {
+                      setBook(prevResult.bookId);
+                      setChapter(prevResult.chapterId);
+                    }
+                  }}
+                >
+                  <ChevronLeftIcon className="yv:transition-transform yv:duration-100 yv:group-active:translate-y-px" />
+                </Button>
+
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  className="yv:w-full yv:font-bold yv:text-foreground"
                   disabled={loading}
+                  aria-label="Change Bible book and chapter"
                 >
                   {loading ? (
                     <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
@@ -359,37 +392,51 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                     `${currentBook?.title || 'Select'} ${chapterLabel || ''}`
                   )}
                 </Button>
-              )}
-            </BibleChapterPicker.Trigger>
-          </BibleChapterPicker.Root>
 
-          <BibleVersionPicker.Root
-            versionId={versionId}
-            onVersionChange={setVersionId}
-            background={background}
-          >
-            <BibleVersionPicker.Trigger aria-label="Change Bible version">
-              {({ version, loading }) => (
                 <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (nextResult) {
+                      setBook(nextResult.bookId);
+                      setChapter(nextResult.chapterId);
+                    }
+                  }}
+                  className="yv:group yv:absolute yv:place-self-center yv:top-0 yv:bottom-0 yv:right-4 yv:z-10 yv:size-6! yv:translate-x-2 yv:touch-hitbox"
+                  size="icon"
                   variant="secondary"
-                  className="yv:rounded-l-none yv:font-bold yv:text-foreground"
-                  disabled={loading}
+                  disabled={!canNavigateNext}
+                  aria-label="Next chapter"
                 >
-                  {loading ? (
-                    <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
-                  ) : (
-                    version?.localized_abbreviation || 'Select version'
-                  )}
+                  <ChevronRightIcon className="yv:transition-transform yv:duration-100 yv:group-active:translate-y-px" />
                 </Button>
-              )}
-            </BibleVersionPicker.Trigger>
-            <BibleVersionPicker.Content />
-          </BibleVersionPicker.Root>
-        </div>
+              </div>
+            )}
+          </BibleChapterPicker.Trigger>
+        </BibleChapterPicker.Root>
+
+        <BibleVersionPicker.Root
+          versionId={versionId}
+          onVersionChange={setVersionId}
+          background={background}
+        >
+          <BibleVersionPicker.Trigger aria-label="Change Bible version">
+            {({ version, loading }) => (
+              <Button
+                size="lg"
+                variant="secondary"
+                className="yv:font-bold yv:text-foreground"
+                disabled={loading}
+              >
+                {loading ? 'Loading...' : version?.localized_abbreviation || 'Select version'}
+              </Button>
+            )}
+          </BibleVersionPicker.Trigger>
+          <BibleVersionPicker.Content />
+        </BibleVersionPicker.Root>
 
         <Popover>
           <PopoverTrigger asChild aria-label="Settings">
-            <Button size="icon" variant="secondary">
+            <Button size="sm" variant="secondary">
               <GearIcon className="yv:text-foreground" />
             </Button>
           </PopoverTrigger>

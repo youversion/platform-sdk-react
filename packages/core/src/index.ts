@@ -14,3 +14,4 @@ export * from './YouVersionAPI';
 export * from './YouVersionPlatformConfiguration';
 export * from './types';
 export * from './utils/constants';
+export { getAdjacentChapter } from './getAdjacentChapter';

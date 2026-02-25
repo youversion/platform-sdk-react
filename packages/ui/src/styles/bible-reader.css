@@ -1294,50 +1294,60 @@
     margin: 0.5em 0 0.25em;
   }
 
-  /* \li, \li1 - List entry (level 1) */
+  /* \li, \li1 - List entry (level 1) — hanging indent, no bullets per USFM spec */
   & .li,
   & .li1 {
-    display: list-item;
-    list-style-type: disc;
-    margin-inline-start: 1em;
+    display: block;
+    list-style-type: none;
+    padding-inline-start: 2em;
+    text-indent: -1.5em;
   }
 
   & .li2 {
-    display: list-item;
-    list-style-type: disc;
-    margin-inline-start: 2em;
+    display: block;
+    list-style-type: none;
+    padding-inline-start: 3em;
+    text-indent: -1.5em;
   }
 
   & .li3 {
-    display: list-item;
-    list-style-type: disc;
-    margin-inline-start: 3em;
+    display: block;
+    list-style-type: none;
+    padding-inline-start: 4em;
+    text-indent: -1.5em;
   }
 
   & .li4 {
-    display: list-item;
-    list-style-type: disc;
-    margin-inline-start: 4em;
+    display: block;
+    list-style-type: none;
+    padding-inline-start: 5em;
+    text-indent: -1.5em;
   }
 
-  /* \lim, \lim1 - Embedded list entry (level 1) */
+  /* \lim, \lim1 - Embedded list entry (level 1) — hanging indent, no bullets per USFM spec */
   & .lim,
   & .lim1 {
-    display: list-item;
-    list-style-type: disc;
-    margin-inline-start: 2em;
+    display: block;
+    list-style-type: none;
+    padding-inline-start: 3em;
+    padding-inline-end: 1em;
+    text-indent: -1.5em;
   }
 
   & .lim2 {
-    display: list-item;
-    list-style-type: disc;
-    margin-inline-start: 4em;
+    display: block;
+    list-style-type: none;
+    padding-inline-start: 4em;
+    padding-inline-end: 1em;
+    text-indent: -1.5em;
   }
 
   & .lim3 {
-    display: list-item;
-    list-style-type: disc;
-    margin-inline-start: 6em;
+    display: block;
+    list-style-type: none;
+    padding-inline-start: 5em;
+    padding-inline-end: 1em;
+    text-indent: -1.5em;
   }
 
   /* ============================================================
