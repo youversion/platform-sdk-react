@@ -18,6 +18,7 @@ import {
   type FontFamily,
   type VerseNotes,
 } from '@/lib/verse-html-utils';
+import { ExclamationCircle } from './icons/exclamation-circle';
 import { Footnote } from './icons/footnote';
 
 type TransformedBibleHtml = {
@@ -87,6 +88,27 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
     </Popover>
   );
 });
+
+const VERSE_UNAVAILABLE_MESSAGE = 'Your previously selected Bible verse is unavailable.';
+
+/**
+ * Displays a verse-unavailable error message with a circular exclamation
+ * icon and descriptive text.
+ */
+function VerseUnavailableMessage(): React.ReactElement {
+  return (
+    <div
+      role="alert"
+      aria-live="polite"
+      className="yv:flex yv:items-center yv:justify-center yv:gap-2.5 yv:px-3 yv:py-2.5 yv:text-foreground"
+    >
+      <ExclamationCircle className="yv:size-5 yv:shrink-0 yv:text-foreground" />
+      <p className="yv:m-0 yv:text-[13px] yv:font-medium yv:leading-tight">
+        {VERSE_UNAVAILABLE_MESSAGE}
+      </p>
+    </div>
+  );
+}
 
 function BibleTextHtml({
   html,
@@ -350,16 +372,8 @@ export const BibleTextView = ({
 
   if (error) {
     return (
-      <div data-yv-sdk data-yv-theme={currentTheme}>
-        <Verse.Html
-          html={'<span class="wj">We have run into an error...</span>'}
-          fontFamily={fontFamily}
-          fontSize={fontSize}
-          lineHeight={lineHeight}
-          showVerseNumbers={showVerseNumbers}
-          renderNotes={renderNotes}
-          theme={currentTheme}
-        />
+      <div data-yv-sdk data-yv-theme={currentTheme} className="yv:mt-4">
+        <VerseUnavailableMessage />
       </div>
     );
   }
