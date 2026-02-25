@@ -44,6 +44,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   fontSize?: number;
   theme: 'light' | 'dark';
 }) {
+  const isIntroFootnote = verseNum.startsWith('intro-') || !verseNotes.verseHtml;
   const verseReference = reference ? `${reference}:${verseNum}` : `Verse ${verseNum}`;
   return (
     <Popover>
@@ -61,13 +62,17 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
         theme={theme}
       >
         <div className="yv:p-3 yv:overflow-y-auto yv:max-h-[33svh]">
-          <div className="yv:font-bold yv:mb-2">{verseReference}</div>
-          <div
-            className="yv:mb-3 yv:font-serif yv:*:font-serif"
-            style={{ fontSize: fontSize ? `${fontSize}px` : '1.25rem' }}
-            // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML has been run through DOMPurify and is safe
-            dangerouslySetInnerHTML={{ __html: verseNotes.verseHtml }}
-          />
+          {!isIntroFootnote && (
+            <>
+              <div className="yv:font-bold yv:mb-2">{verseReference}</div>
+              <div
+                className="yv:mb-3 yv:font-serif yv:*:font-serif"
+                style={{ fontSize: fontSize ? `${fontSize}px` : '1.25rem' }}
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML has been run through DOMPurify and is safe
+                dangerouslySetInnerHTML={{ __html: verseNotes.verseHtml }}
+              />
+            </>
+          )}
           <ul className="yv:list-none yv:p-0 yv:m-0 yv:space-y-1">
             {verseNotes.notes.map((note, index) => {
               const marker = getFootnoteMarker(index);

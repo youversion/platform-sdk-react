@@ -234,11 +234,17 @@ function buildVerseHtml(wrappers: Element[]): string {
  *
  * Also inserts a space when the removal of the footnote would cause two
  * adjacent words to merge (e.g., "overcome" + "it" → "overcomeit").
+ *
+ * Footnotes inside `.yv-v[v]` wrappers use the verse number as their key.
+ * Orphaned footnotes (no `.yv-v[v]` ancestor, e.g. intro chapters) use
+ * synthetic keys like `"intro-0"`, `"intro-1"`, etc.
  */
 function replaceFootnotesWithAnchors(doc: Document, footnotes: Element[]): void {
+  let introIdx = 0;
+
   for (const fn of footnotes) {
     const verseNum = fn.closest('.yv-v[v]')?.getAttribute('v');
-    if (!verseNum) continue;
+    const key = verseNum ?? `intro-${introIdx++}`;
 
     const prev = fn.previousSibling;
     const next = fn.nextSibling;
@@ -254,7 +260,7 @@ function replaceFootnotesWithAnchors(doc: Document, footnotes: Element[]): void 
     }
 
     const anchor = doc.createElement('span');
-    anchor.setAttribute('data-verse-footnote', verseNum);
+    anchor.setAttribute('data-verse-footnote', key);
     fn.replaceWith(anchor);
   }
 }
@@ -274,11 +280,15 @@ function extractNotesFromWrappedHtml(doc: Document): Record<string, VerseNotes> 
   const footnotes = Array.from(doc.querySelectorAll('.yv-n.f'));
   if (!footnotes.length) return {};
 
-  // Group footnotes by verse number.
+  // Group footnotes by verse number, tracking orphans separately.
   const footnotesByVerse = new Map<string, Element[]>();
+  const orphanedFootnotes: Element[] = [];
   for (const fn of footnotes) {
     const verseNum = fn.closest('.yv-v[v]')?.getAttribute('v');
-    if (!verseNum) continue;
+    if (!verseNum) {
+      orphanedFootnotes.push(fn);
+      continue;
+    }
     let arr = footnotesByVerse.get(verseNum);
     if (!arr) {
       arr = [];
@@ -303,6 +313,16 @@ function extractNotesFromWrappedHtml(doc: Document): Record<string, VerseNotes> 
     notes[verseNum] = {
       verseHtml: buildVerseHtml(wrappersByVerse.get(verseNum) ?? []),
       notes: fns.map((fn) => fn.innerHTML),
+    };
+  }
+
+  // Phase 1b: Orphaned footnotes (intro chapters — no verse wrappers).
+  // Each gets its own synthetic key so the counter matches replaceFootnotesWithAnchors.
+  for (let i = 0; i < orphanedFootnotes.length; i++) {
+    const key = `intro-${i}`;
+    notes[key] = {
+      verseHtml: '',
+      notes: [orphanedFootnotes[i]!.innerHTML],
     };
   }
 
