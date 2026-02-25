@@ -563,12 +563,10 @@ describe('Verse.Html - Intro Chapter Footnotes', () => {
       const popover = document.body.querySelector('[role="dialog"]');
       expect(popover).not.toBeNull();
 
-      // Should NOT have a verse reference like "Joshua:intro-0"
       const contentArea = popover?.querySelector('.yv\\:p-3');
       const boldHeaders = contentArea?.querySelectorAll('.yv\\:font-bold');
       expect(boldHeaders?.length ?? 0).toBe(0);
 
-      // Should have the note content
       const listItems = popover?.querySelectorAll('ul li');
       expect(listItems?.length).toBe(1);
       expect(listItems?.[0]?.textContent).toContain('A scholarly note');

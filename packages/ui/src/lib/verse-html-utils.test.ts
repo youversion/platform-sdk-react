@@ -101,7 +101,6 @@ describe('transformBibleHtml - intro chapter footnotes', () => {
 
     const result = transformBibleHtml(html);
 
-    // No space before punctuation
     expect(result.html).not.toContain('overcome .');
   });
 });

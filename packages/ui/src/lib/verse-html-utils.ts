@@ -316,8 +316,7 @@ function extractNotesFromWrappedHtml(doc: Document): Record<string, VerseNotes> 
     };
   }
 
-  // Phase 1b: Orphaned footnotes (intro chapters — no verse wrappers).
-  // Each gets its own synthetic key so the counter matches replaceFootnotesWithAnchors.
+  // Orphaned footnotes (intro chapters — no verse wrappers).
   for (let i = 0; i < orphanedFootnotes.length; i++) {
     const key = `intro-${i}`;
     notes[key] = {
