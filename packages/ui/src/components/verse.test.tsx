@@ -521,6 +521,59 @@ describe('Verse.Html - Verse Wrapping', () => {
   });
 });
 
+describe('Verse.Html - Intro Chapter Footnotes', () => {
+  it('should render footnote buttons for intro HTML with no verse markers', async () => {
+    const introHtml = `
+      <div>
+        <div class="ip">Israel recognized Joshua as their prophet<span class="yv-n f"><span class="ft">See Rashi</span></span> and leader.</div>
+      </div>
+    `;
+
+    const { container } = render(<Verse.Html html={introHtml} renderNotes={true} />);
+
+    await waitFor(() => {
+      const placeholder = container.querySelector('[data-verse-footnote="intro-0"]');
+      expect(placeholder).not.toBeNull();
+
+      const button = placeholder?.querySelector('button');
+      expect(button).not.toBeNull();
+    });
+  });
+
+  it('should show popover without verse reference or verse text for intro footnotes', async () => {
+    const introHtml = `
+      <div>
+        <div class="ip">Some text<span class="yv-n f"><span class="ft">A scholarly note</span></span> here.</div>
+      </div>
+    `;
+
+    const { container } = render(
+      <Verse.Html html={introHtml} renderNotes={true} reference="Joshua" />,
+    );
+
+    const button = await waitFor(() => {
+      const btn = container.querySelector('[data-verse-footnote="intro-0"] button');
+      expect(btn).not.toBeNull();
+      return btn as HTMLButtonElement;
+    });
+
+    await userEvent.click(button);
+
+    await waitFor(() => {
+      const popover = document.body.querySelector('[role="dialog"]');
+      expect(popover).not.toBeNull();
+
+      const contentArea = popover?.querySelector('.yv\\:p-3');
+      const boldHeaders = contentArea?.querySelectorAll('.yv\\:font-bold');
+      expect(boldHeaders?.length ?? 0).toBe(0);
+
+      const listItems = popover?.querySelectorAll('ul li');
+      expect(listItems?.length).toBe(1);
+      expect(listItems?.[0]?.textContent).toContain('A scholarly note');
+    });
+  });
+});
+
 describe('Verse.Text', () => {
   it('should render verse with number and text (default size)', () => {
     const { container } = render(<Verse.Text number={1} text="In the beginning" />);

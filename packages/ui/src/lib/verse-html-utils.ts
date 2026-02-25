@@ -31,6 +31,7 @@ export function getFootnoteMarker(index: number): string {
 export type VerseNotes = {
   verseHtml: string;
   notes: string[];
+  hasVerseContext: boolean;
 };
 
 export const INTER_FONT = '"Inter", sans-serif' as const;
@@ -229,6 +230,23 @@ function buildVerseHtml(wrappers: Element[]): string {
 }
 
 /**
+ * Assigns a stable key to every footnote element in document order.
+ *
+ * Verse-bound footnotes get the verse number; orphaned footnotes (intro
+ * chapters with no `.yv-v[v]` ancestor) get synthetic keys `"intro-0"`, etc.
+ * Called once so both extraction and anchor replacement read the same key.
+ */
+const FOOTNOTE_KEY_ATTR = 'data-footnote-key';
+
+function assignFootnoteKeys(doc: Document): void {
+  let introIdx = 0;
+  doc.querySelectorAll('.yv-n.f').forEach((fn) => {
+    const verseNum = fn.closest('.yv-v[v]')?.getAttribute('v');
+    fn.setAttribute(FOOTNOTE_KEY_ATTR, verseNum ?? `intro-${introIdx++}`);
+  });
+}
+
+/**
  * Replaces each footnote element in the real DOM with a clean anchor span
  * that React portals can target.
  *
@@ -237,8 +255,7 @@ function buildVerseHtml(wrappers: Element[]): string {
  */
 function replaceFootnotesWithAnchors(doc: Document, footnotes: Element[]): void {
   for (const fn of footnotes) {
-    const verseNum = fn.closest('.yv-v[v]')?.getAttribute('v');
-    if (!verseNum) continue;
+    const key = fn.getAttribute(FOOTNOTE_KEY_ATTR)!;
 
     const prev = fn.previousSibling;
     const next = fn.nextSibling;
@@ -254,7 +271,7 @@ function replaceFootnotesWithAnchors(doc: Document, footnotes: Element[]): void 
     }
 
     const anchor = doc.createElement('span');
-    anchor.setAttribute('data-verse-footnote', verseNum);
+    anchor.setAttribute('data-verse-footnote', key);
     fn.replaceWith(anchor);
   }
 }
@@ -262,27 +279,27 @@ function replaceFootnotesWithAnchors(doc: Document, footnotes: Element[]): void 
 /**
  * Extracts footnotes from wrapped verse HTML and prepares data for footnote popovers.
  *
- * Assumes verses are already wrapped in `.yv-v[v]` elements (by wrapVerseContent).
+ * Assumes verses are already wrapped in `.yv-v[v]` elements (by wrapVerseContent)
+ * and footnote keys assigned (by assignFootnoteKeys).
  *
  * Two-phase approach:
  * 1. Build popover data (verseHtml + note content) using cloned DOM — no side effects.
  * 2. Replace footnotes in the real DOM with clean anchor spans for React portals.
  *
- * @returns Notes data for popovers, keyed by verse number.
+ * @returns Notes data for popovers, keyed by verse number (or synthetic intro key).
  */
 function extractNotesFromWrappedHtml(doc: Document): Record<string, VerseNotes> {
   const footnotes = Array.from(doc.querySelectorAll('.yv-n.f'));
   if (!footnotes.length) return {};
 
-  // Group footnotes by verse number.
-  const footnotesByVerse = new Map<string, Element[]>();
+  // Group footnotes by their assigned key.
+  const footnotesByKey = new Map<string, Element[]>();
   for (const fn of footnotes) {
-    const verseNum = fn.closest('.yv-v[v]')?.getAttribute('v');
-    if (!verseNum) continue;
-    let arr = footnotesByVerse.get(verseNum);
+    const key = fn.getAttribute(FOOTNOTE_KEY_ATTR)!;
+    let arr = footnotesByKey.get(key);
     if (!arr) {
       arr = [];
-      footnotesByVerse.set(verseNum, arr);
+      footnotesByKey.set(key, arr);
     }
     arr.push(fn);
   }
@@ -299,10 +316,12 @@ function extractNotesFromWrappedHtml(doc: Document): Record<string, VerseNotes> 
 
   // Phase 1: Extract data (cloned DOM — no mutations).
   const notes: Record<string, VerseNotes> = {};
-  for (const [verseNum, fns] of footnotesByVerse) {
-    notes[verseNum] = {
-      verseHtml: buildVerseHtml(wrappersByVerse.get(verseNum) ?? []),
+  for (const [key, fns] of footnotesByKey) {
+    const wrappers = wrappersByVerse.get(key);
+    notes[key] = {
+      verseHtml: wrappers ? buildVerseHtml(wrappers) : '',
       notes: fns.map((fn) => fn.innerHTML),
+      hasVerseContext: !!wrappers,
     };
   }
 
@@ -385,6 +404,7 @@ export function transformBibleHtml(html: string): { html: string; notes: Record<
   );
 
   wrapVerseContent(doc);
+  assignFootnoteKeys(doc);
   const notes = extractNotesFromWrappedHtml(doc);
   addNbspToVerseLabels(doc);
   fixIrregularTables(doc);
