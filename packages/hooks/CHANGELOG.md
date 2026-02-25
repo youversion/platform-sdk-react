@@ -1,5 +1,13 @@
 # @youversion/platform-react-hooks
 
+## 1.17.1
+
+### Patch Changes
+
+- a7100fd: We've added support for footnotes in Bible book introduction chapters. This is a rare occurance, but an example can be found in Joshua's introduction chapter when using the TPT Bible Version
+- Updated dependencies [a7100fd]
+  - @youversion/platform-core@1.17.1
+
 ## 1.17.0
 
 ### Minor Changes
