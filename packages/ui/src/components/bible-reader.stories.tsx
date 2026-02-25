@@ -711,5 +711,23 @@ export const JoshuaIntroChapter: Story = {
       },
       { timeout: 5000 },
     );
+
+    // Verify intro footnotes render as clickable buttons
+    const footnoteButton = verseContainer.querySelector('[data-verse-footnote^="intro-"] button');
+    await expect(footnoteButton).toBeInTheDocument();
+
+    // Click the footnote and verify the popover shows note content without verse reference
+    await userEvent.click(footnoteButton!);
+
+    await waitFor(async () => {
+      const popover = document.querySelector('[role="dialog"]');
+      await expect(popover).toBeInTheDocument();
+
+      // Should show note content (e.g., "See Rashi")
+      await expect(popover?.textContent).toContain('See Rashi');
+
+      // Should NOT show a verse reference like "Joshua :intro-0"
+      await expect(popover?.textContent).not.toContain('intro-0');
+    });
   },
 };
