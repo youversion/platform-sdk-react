@@ -1,6 +1,39 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { within, expect, userEvent, screen, waitFor } from 'storybook/test';
+import { delay, http, HttpResponse } from 'msw';
 import { BibleCard } from './bible-card';
+import mockPassages from '../test/mock-data/passages.json';
+import mockBibles from '../test/mock-data/bibles.json';
+
+const LOADING_DELAY = 1000;
+
+const delayedHandlers = [
+  http.get('*/v1/bibles/:id/passages/*', async ({ params }) => {
+    await delay(LOADING_DELAY);
+
+    const id = String(params.id);
+    if (id === '111') {
+      return HttpResponse.json(mockPassages['LUK.1.39-45.NIV']);
+    }
+
+    if (id === '1588') {
+      return HttpResponse.json(mockPassages['LUK.1.39-45.AMP']);
+    }
+
+    return new HttpResponse(null, { status: 404 });
+  }),
+  http.get('*/v1/bibles/:id', async ({ params }) => {
+    await delay(LOADING_DELAY);
+
+    const id = String(params.id);
+    const bible = mockBibles.individual[id as keyof typeof mockBibles.individual];
+    if (bible) {
+      return HttpResponse.json(bible);
+    }
+
+    return new HttpResponse(null, { status: 404 });
+  }),
+];
 
 const meta = {
   title: 'Components/BibleCard',
@@ -114,6 +147,74 @@ export const WithVersionPicker: Story = {
       const heading = screen.getByRole('heading', { level: 2, name: /luke 1:39-45/i });
       await expect(heading).toHaveTextContent(/amp/i);
     });
+  },
+};
+
+export const Loading: Story = {
+  args: {
+    reference: 'LUK.1.39-45',
+    versionId: 111,
+  },
+  tags: ['integration'],
+  parameters: {
+    msw: {
+      handlers: delayedHandlers,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const loadingSkeleton = await canvas.findByRole('status', {
+      name: /loading bible verse/i,
+    });
+    await expect(loadingSkeleton).toHaveAttribute('aria-busy', 'true');
+  },
+};
+
+export const LoadingWithVersionPicker: Story = {
+  args: {
+    reference: 'LUK.1.39-45',
+    versionId: 111,
+    showVersionPicker: true,
+  },
+  tags: ['integration'],
+  parameters: {
+    msw: {
+      handlers: delayedHandlers,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const loadingSkeleton = await canvas.findByRole('status', {
+      name: /loading bible verse/i,
+    });
+    await expect(loadingSkeleton).toHaveAttribute('aria-busy', 'true');
+  },
+};
+
+export const LoadingDarkMode: Story = {
+  args: {
+    reference: 'LUK.1.39-45',
+    versionId: 111,
+    showVersionPicker: true,
+  },
+  globals: {
+    theme: 'dark',
+  },
+  tags: ['integration'],
+  parameters: {
+    msw: {
+      handlers: delayedHandlers,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const loadingSkeleton = await canvas.findByRole('status', {
+      name: /loading bible verse/i,
+    });
+    await expect(loadingSkeleton).toHaveAttribute('aria-busy', 'true');
   },
 };
 
