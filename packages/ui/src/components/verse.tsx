@@ -31,6 +31,14 @@ type VerseFootnotePlaceholder = {
   el: Element;
 };
 
+type PassageResult = ReturnType<typeof usePassage>;
+
+export type BibleTextViewPassageState = {
+  passage: PassageResult['passage'];
+  loading: PassageResult['loading'];
+  error: PassageResult['error'];
+};
+
 const VerseFootnoteButton = memo(function VerseFootnoteButton({
   verseNum,
   verseNotes,
@@ -332,6 +340,7 @@ export type BibleTextViewProps = {
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
   highlightedVerses?: Record<number, boolean>;
+  passageState?: Partial<BibleTextViewPassageState>;
 };
 
 /**
@@ -349,17 +358,34 @@ export const BibleTextView = ({
   selectedVerses,
   onVerseSelect,
   highlightedVerses,
+  passageState,
 }: BibleTextViewProps): React.ReactElement => {
-  const { passage, loading, error } = usePassage({
+  const providerTheme = useTheme();
+  const currentTheme = theme || providerTheme;
+
+  const hasProvidedPassageState = passageState !== undefined;
+
+  const {
+    passage: fetchedPassage,
+    loading: fetchedLoading,
+    error: fetchedError,
+  } = usePassage({
     versionId,
     usfm: reference,
     include_headings: true,
     include_notes: true,
+    options: {
+      enabled: !hasProvidedPassageState,
+    },
   });
-  const providerTheme = useTheme();
-  const currentTheme = theme || providerTheme;
 
-  if (loading) {
+  const currentPassage = hasProvidedPassageState ? passageState?.passage : fetchedPassage;
+  const currentLoading = hasProvidedPassageState
+    ? (passageState?.loading ?? false)
+    : fetchedLoading;
+  const currentError = hasProvidedPassageState ? (passageState?.error ?? null) : fetchedError;
+
+  if (currentLoading) {
     return (
       <div data-yv-sdk data-yv-theme={currentTheme}>
         <Verse.Html
@@ -375,7 +401,7 @@ export const BibleTextView = ({
     );
   }
 
-  if (error) {
+  if (currentError) {
     return (
       <div data-yv-sdk data-yv-theme={currentTheme} className="yv:mt-4">
         <VerseUnavailableMessage />
@@ -386,13 +412,13 @@ export const BibleTextView = ({
   return (
     <div data-yv-sdk data-yv-theme={currentTheme}>
       <Verse.Html
-        html={passage?.content || ''}
+        html={currentPassage?.content || ''}
         fontFamily={fontFamily}
         fontSize={fontSize}
         lineHeight={lineHeight}
         showVerseNumbers={showVerseNumbers}
         renderNotes={renderNotes}
-        reference={passage?.reference}
+        reference={currentPassage?.reference}
         theme={currentTheme}
         selectedVerses={selectedVerses}
         onVerseSelect={onVerseSelect}

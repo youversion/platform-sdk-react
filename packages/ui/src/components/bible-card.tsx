@@ -94,7 +94,11 @@ export function BibleCard({
 }: BibleCardProps): React.ReactNode {
   const [versionNum, setVersionNum] = useState(versionId);
   const { version } = useVersion(versionNum);
-  const { passage, error: passageError } = usePassage({
+  const {
+    passage,
+    loading: passageLoading,
+    error: passageError,
+  } = usePassage({
     versionId: versionNum,
     usfm: reference,
     include_headings: true,
@@ -132,6 +136,11 @@ export function BibleCard({
         fontFamily={SOURCE_SERIF_FONT}
         reference={reference}
         versionId={versionNum}
+        passageState={{
+          passage,
+          loading: passageLoading,
+          error: passageError,
+        }}
       />
 
       <BibleCardFooter copyright={!passageError ? version?.copyright : null} />
