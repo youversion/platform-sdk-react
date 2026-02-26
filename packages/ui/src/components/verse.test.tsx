@@ -6,6 +6,8 @@ import { render, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Verse, BibleTextView, type BibleTextViewPassageState } from './verse';
 
+// BibleTextView always calls usePassage/useTheme internally (even when passageState
+// is provided), so we must mock the hooks to avoid requiring YouVersionProvider.
 vi.mock('@youversion/platform-react-hooks', async () => {
   const actual = await vi.importActual('@youversion/platform-react-hooks');
   return {
