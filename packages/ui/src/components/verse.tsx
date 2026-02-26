@@ -385,7 +385,7 @@ export const BibleTextView = ({
     : fetchedLoading;
   const currentError = hasProvidedPassageState ? (passageState?.error ?? null) : fetchedError;
 
-  if (currentLoading) {
+  if (currentLoading && !currentPassage) {
     return (
       <div data-yv-sdk data-yv-theme={currentTheme}>
         <Verse.Html
@@ -410,7 +410,11 @@ export const BibleTextView = ({
   }
 
   return (
-    <div data-yv-sdk data-yv-theme={currentTheme}>
+    <div
+      data-yv-sdk
+      data-yv-theme={currentTheme}
+      style={currentLoading ? { pointerEvents: 'none' } : undefined}
+    >
       <Verse.Html
         html={currentPassage?.content || ''}
         fontFamily={fontFamily}

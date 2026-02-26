@@ -3,8 +3,25 @@ import { BibleTextView } from './verse';
 import { BibleAppLogoLockup } from './bible-app-logo-lockup';
 import { BibleVersionPicker } from './bible-version-picker';
 import { Button } from './ui/button';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
+import { LoaderIcon } from './icons/loader';
+
+function useDelayedLoading(loading: boolean, delay = 250): boolean {
+  const [showSpinner, setShowSpinner] = useState(false);
+
+  useEffect(() => {
+    if (!loading) {
+      setShowSpinner(false);
+      return;
+    }
+
+    const timer = setTimeout(() => setShowSpinner(true), delay);
+    return () => clearTimeout(timer);
+  }, [loading, delay]);
+
+  return showSpinner;
+}
 
 type PassageResult = ReturnType<typeof usePassage>;
 type VersionResult = ReturnType<typeof useVersion>;
@@ -108,6 +125,9 @@ export function BibleCard({
   const providerTheme = useTheme();
   const theme = background || providerTheme;
 
+  const isRefetching = passageLoading && passage !== null;
+  const showSpinner = useDelayedLoading(isRefetching);
+
   return (
     <section
       data-yv-sdk
@@ -118,7 +138,12 @@ export function BibleCard({
         {passageError ? <BibleCardHeaderError /> : null}
 
         {!passageError && passage ? (
-          <BibleCardHeaderReference passage={passage} version={version} />
+          <div className="yv:flex yv:items-center yv:gap-1.5">
+            <BibleCardHeaderReference passage={passage} version={version} />
+            {showSpinner ? (
+              <LoaderIcon className="yv:size-3 yv:animate-spin yv:text-muted-foreground" />
+            ) : null}
+          </div>
         ) : null}
 
         {showVersionPicker && !passageError ? (
