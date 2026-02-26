@@ -4,8 +4,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Verse, BibleTextView } from './verse';
-import type { usePassage } from '@youversion/platform-react-hooks';
+import { Verse, BibleTextView, type BibleTextViewPassageState } from './verse';
 
 vi.mock('@youversion/platform-react-hooks', async () => {
   const actual = await vi.importActual('@youversion/platform-react-hooks');
@@ -608,7 +607,8 @@ describe('Verse.Text', () => {
 });
 
 describe('BibleTextView - Refetch loading behavior', () => {
-  const mockPassage = {
+  const mockPassage: BibleTextViewPassageState['passage'] = {
+    id: 'JHN.3.16',
     content: '<p class="yv-p">For God so loved the world</p>',
     reference: 'John 3:16',
   };
@@ -619,7 +619,7 @@ describe('BibleTextView - Refetch loading behavior', () => {
         reference="JHN.3.16"
         versionId={3034}
         passageState={{
-          passage: mockPassage as ReturnType<typeof usePassage>['passage'],
+          passage: mockPassage,
           loading: true,
           error: null,
         }}
@@ -656,7 +656,7 @@ describe('BibleTextView - Refetch loading behavior', () => {
         reference="JHN.3.16"
         versionId={3034}
         passageState={{
-          passage: mockPassage as ReturnType<typeof usePassage>['passage'],
+          passage: mockPassage,
           loading: true,
           error: null,
         }}
@@ -676,7 +676,7 @@ describe('BibleTextView - Refetch loading behavior', () => {
         reference="JHN.3.16"
         versionId={3034}
         passageState={{
-          passage: mockPassage as ReturnType<typeof usePassage>['passage'],
+          passage: mockPassage,
           loading: false,
           error: null,
         }}
