@@ -4,4 +4,4 @@
 '@youversion/platform-react-hooks': minor
 ---
 
-added error ui for reference
+In our BibleCard component, we've added an error UI to make it more clear when an error has occured fetching the Bible verse.
