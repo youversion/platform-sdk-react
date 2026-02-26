@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 1.18.0
+
+### Minor Changes
+
+- b8c6e1b: In our BibleCard component, we've added an error UI to make it more clear when an error has occurred fetching the Bible verse.
+
 ## 1.17.1
 
 ### Patch Changes
