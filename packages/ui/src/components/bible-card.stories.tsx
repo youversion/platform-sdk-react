@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { within, expect, userEvent, screen, waitFor } from 'storybook/test';
+import { http, HttpResponse } from 'msw';
 import { BibleCard } from './bible-card';
 
 const meta = {
@@ -127,5 +128,39 @@ export const RealAPI: Story = {
     msw: {
       handlers: null,
     },
+  },
+};
+
+export const Error: Story = {
+  args: {
+    reference: 'LUK.1.39-45',
+    versionId: 111,
+  },
+  tags: ['integration'],
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('*/v1/bibles/111', () => {
+          return HttpResponse.json({
+            id: 111,
+            localized_abbreviation: 'NIV',
+          });
+        }),
+        http.get('*/v1/bibles/111/passages/LUK.1.39-45', () => {
+          return new HttpResponse(null, { status: 500 });
+        }),
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(async () => {
+      await expect(canvas.getByRole('heading', { level: 2, name: /error/i })).toBeInTheDocument();
+      const errorMessages = canvas.getAllByText(
+        'Your previously selected Bible verse is unavailable.',
+      );
+      await expect(errorMessages.length).toBeGreaterThan(0);
+    });
   },
 };
