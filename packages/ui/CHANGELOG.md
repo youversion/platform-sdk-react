@@ -1,5 +1,17 @@
 # @youversion/platform-react-ui
 
+## 1.18.0
+
+### Minor Changes
+
+- b8c6e1b: In our BibleCard component, we've added an error UI to make it more clear when an error has occurred fetching the Bible verse.
+
+### Patch Changes
+
+- Updated dependencies [b8c6e1b]
+  - @youversion/platform-core@1.18.0
+  - @youversion/platform-react-hooks@1.18.0
+
 ## 1.17.1
 
 ### Patch Changes
