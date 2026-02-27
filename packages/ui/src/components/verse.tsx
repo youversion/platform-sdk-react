@@ -389,8 +389,11 @@ export const BibleTextView = ({
 
   if (currentLoading && !currentPassage) {
     return (
-      <div data-yv-sdk data-yv-theme={currentTheme}>
-        <LoaderIcon className="yv:size-3 yv:animate-spin yv:text-muted-foreground" />
+      <div data-yv-sdk data-yv-theme={currentTheme} role="status" aria-label="Loading passage">
+        <LoaderIcon
+          className="yv:size-3 yv:animate-spin yv:text-muted-foreground"
+          aria-hidden="true"
+        />
       </div>
     );
   }
