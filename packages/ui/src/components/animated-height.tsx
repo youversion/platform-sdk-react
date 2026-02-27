@@ -1,4 +1,4 @@
-import { useRef, useState, useLayoutEffect, type ReactNode } from 'react';
+import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
 
 export function AnimatedHeight({ children }: { children: ReactNode }): React.ReactElement {
   const innerRef = useRef<HTMLDivElement>(null);
@@ -8,9 +8,9 @@ export function AnimatedHeight({ children }: { children: ReactNode }): React.Rea
     const el = innerRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
 
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry) {
-        setHeight(entry.contentRect.height);
+    const observer = new ResizeObserver(() => {
+      if (el) {
+        setHeight(el.offsetHeight);
       }
     });
 
@@ -20,10 +20,12 @@ export function AnimatedHeight({ children }: { children: ReactNode }): React.Rea
 
   return (
     <div
-      className="yv:overflow-hidden yv:transition-[height] yv:duration-300 yv:ease-in-out yv:motion-reduce:transition-none"
+      className="yv:overflow-hidden yv:transition-[height] yv:duration-300 yv:ease-out yv:motion-reduce:transition-none"
       style={{ height }}
     >
-      <div ref={innerRef}>{children}</div>
+      <div ref={innerRef} className="yv:flow-root">
+        {children}
+      </div>
     </div>
   );
 }
