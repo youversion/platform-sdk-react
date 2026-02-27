@@ -9,6 +9,11 @@ const meta = {
   parameters: {
     layout: 'centered',
   },
+  render: (args) => (
+    <div className="yv:h-screen yv:w-screen yv:flex yv:justify-center yv:items-center yv:bg-background">
+      <BibleCard {...args} />
+    </div>
+  ),
   tags: ['autodocs'],
   argTypes: {
     background: {
