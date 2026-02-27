@@ -400,7 +400,7 @@ export const BibleTextView = ({
 
   if (currentError) {
     return (
-      <div data-yv-sdk data-yv-theme={currentTheme} className="yv:mt-4">
+      <div data-yv-sdk data-yv-theme={currentTheme}>
         <VerseUnavailableMessage />
       </div>
     );
