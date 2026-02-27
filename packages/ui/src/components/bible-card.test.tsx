@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, act } from '@testing-library/react';
+import { render, act, within } from '@testing-library/react';
 import { BibleCard } from './bible-card';
 import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hooks';
 import type { BiblePassage, BibleVersion } from '@youversion/platform-core';
@@ -56,7 +56,7 @@ describe('BibleCard - Delayed spinner', () => {
       vi.advanceTimersByTime(100);
     });
 
-    expect(container.querySelector('.yv\\:animate-spin')).toBeNull();
+    expect(within(container).queryByRole('status', { name: /loading/i })).toBeNull();
   });
 
   it('should show spinner after 250ms when refetching', () => {
@@ -73,7 +73,7 @@ describe('BibleCard - Delayed spinner', () => {
       vi.advanceTimersByTime(250);
     });
 
-    expect(container.querySelector('.yv\\:animate-spin')).not.toBeNull();
+    expect(within(container).getByRole('status', { name: /loading/i })).toBeInTheDocument();
   });
 
   it('should hide spinner when loading completes', () => {
@@ -90,7 +90,7 @@ describe('BibleCard - Delayed spinner', () => {
       vi.advanceTimersByTime(250);
     });
 
-    expect(container.querySelector('.yv\\:animate-spin')).not.toBeNull();
+    expect(within(container).getByRole('status', { name: /loading/i })).toBeInTheDocument();
 
     vi.mocked(usePassage).mockReturnValue({
       passage: mockPassage,
@@ -101,10 +101,10 @@ describe('BibleCard - Delayed spinner', () => {
 
     rerender(<BibleCard reference="JHN.3.16" versionId={3034} />);
 
-    expect(container.querySelector('.yv\\:animate-spin')).toBeNull();
+    expect(within(container).queryByRole('status', { name: /loading/i })).toBeNull();
   });
 
-  it('should not show spinner on initial load (no passage yet)', () => {
+  it('should show spinner on initial load (no passage yet)', () => {
     vi.mocked(usePassage).mockReturnValue({
       passage: null,
       loading: true,
@@ -114,10 +114,8 @@ describe('BibleCard - Delayed spinner', () => {
 
     const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
 
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
-
-    expect(container.querySelector('.yv\\:animate-spin')).toBeNull();
+    expect(within(container).getAllByRole('status', { name: /loading/i }).length).toBeGreaterThan(
+      0,
+    );
   });
 });

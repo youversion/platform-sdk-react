@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render, waitFor } from '@testing-library/react';
+import { render, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Verse, BibleTextView, type BibleTextViewPassageState } from './verse';
 
@@ -634,7 +634,7 @@ describe('BibleTextView - Refetch loading behavior', () => {
     });
   });
 
-  it('should show Loading... on initial load when passage is null', async () => {
+  it('should show spinner on initial load when passage is null', async () => {
     const { container } = render(
       <BibleTextView
         reference="JHN.3.16"
@@ -648,7 +648,7 @@ describe('BibleTextView - Refetch loading behavior', () => {
     );
 
     await waitFor(() => {
-      expect(container.textContent).toContain('Loading...');
+      expect(within(container).getByRole('status', { name: /loading/i })).toBeInTheDocument();
     });
   });
 
