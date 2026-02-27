@@ -395,7 +395,7 @@ export const BibleTextView = ({
     );
   }
 
-  if (currentError) {
+  if (currentError || fetchedError) {
     return (
       <div data-yv-sdk data-yv-theme={currentTheme} className="yv:mt-4">
         <VerseUnavailableMessage />
