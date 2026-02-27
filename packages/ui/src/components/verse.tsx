@@ -11,16 +11,17 @@ import {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { ExclamationCircle } from '@/components/icons/exclamation-circle';
+import { Footnote } from '@/components/icons/footnote';
+import { LoaderIcon } from '@/components/icons/loader';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import {
   type FontFamily,
   getFootnoteMarker,
   transformBibleHtml,
   type VerseNotes,
 } from '@/lib/verse-html-utils';
-import { ExclamationCircle } from './icons/exclamation-circle';
-import { Footnote } from './icons/footnote';
-import { LoaderIcon } from './icons/loader';
 
 type TransformedBibleHtml = {
   html: string;
@@ -406,6 +407,7 @@ export const BibleTextView = ({
     <div
       data-yv-sdk
       data-yv-theme={currentTheme}
+      className={cn(fetchedLoading || currentLoading ? 'yv:animate-pulse' : '')}
       style={currentLoading ? { pointerEvents: 'none' } : undefined}
     >
       <Verse.Html
