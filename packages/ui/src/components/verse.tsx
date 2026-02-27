@@ -5,21 +5,22 @@ import {
   forwardRef,
   memo,
   type ReactNode,
-  useMemo,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
+  type FontFamily,
   getFootnoteMarker,
   transformBibleHtml,
-  type FontFamily,
   type VerseNotes,
 } from '@/lib/verse-html-utils';
 import { ExclamationCircle } from './icons/exclamation-circle';
 import { Footnote } from './icons/footnote';
+import { LoaderIcon } from './icons/loader';
 
 type TransformedBibleHtml = {
   html: string;
@@ -388,15 +389,7 @@ export const BibleTextView = ({
   if (currentLoading && !currentPassage) {
     return (
       <div data-yv-sdk data-yv-theme={currentTheme}>
-        <Verse.Html
-          html={'<span>Loading...</span>'}
-          fontFamily={fontFamily}
-          fontSize={fontSize}
-          lineHeight={lineHeight}
-          showVerseNumbers={showVerseNumbers}
-          renderNotes={renderNotes}
-          theme={currentTheme}
-        />
+        <LoaderIcon className="yv:size-3 yv:animate-spin yv:text-muted-foreground" />
       </div>
     );
   }

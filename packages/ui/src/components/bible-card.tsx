@@ -6,6 +6,7 @@ import { Button } from './ui/button';
 import { useState, useEffect } from 'react';
 import { SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
 import { LoaderIcon } from './icons/loader';
+import { AnimatedHeight } from './animated-height';
 
 function useDelayedLoading(loading: boolean, delay = 250): boolean {
   const [showSpinner, setShowSpinner] = useState(false);
@@ -161,18 +162,20 @@ export function BibleCard({
         ) : null}
       </div>
 
-      <BibleTextView
-        theme={theme}
-        fontSize={16}
-        fontFamily={SOURCE_SERIF_FONT}
-        reference={reference}
-        versionId={versionNum}
-        passageState={{
-          passage,
-          loading: passageLoading,
-          error: passageError,
-        }}
-      />
+      <AnimatedHeight>
+        <BibleTextView
+          theme={theme}
+          fontSize={16}
+          fontFamily={SOURCE_SERIF_FONT}
+          reference={reference}
+          versionId={versionNum}
+          passageState={{
+            passage,
+            loading: passageLoading,
+            error: passageError,
+          }}
+        />
+      </AnimatedHeight>
 
       <BibleCardFooter copyright={!passageError ? version?.copyright : null} />
     </section>
