@@ -1,4 +1,5 @@
 import { vi, type MockedFunction } from 'vitest';
+import type { YouVersionAPIUsers } from '@youversion/platform-core';
 
 interface MockUserInfoData {
   name?: string;
@@ -95,10 +96,10 @@ interface MockConfiguration {
 
 interface SimpleCoreMockFactory {
   YouVersionAPIUsers: {
-    signIn: MockedFunction<() => Promise<void>>;
-    handleAuthCallback: MockedFunction<() => Promise<void>>;
-    userInfo: MockedFunction<() => Promise<void>>;
-    refreshTokenIfNeeded: MockedFunction<() => Promise<void>>;
+    signIn: MockedFunction<typeof YouVersionAPIUsers.signIn>;
+    handleAuthCallback: MockedFunction<typeof YouVersionAPIUsers.handleAuthCallback>;
+    userInfo: MockedFunction<typeof YouVersionAPIUsers.userInfo>;
+    refreshTokenIfNeeded: MockedFunction<typeof YouVersionAPIUsers.refreshTokenIfNeeded>;
   };
   YouVersionPlatformConfiguration: MockConfiguration;
   SignInWithYouVersionPermission: Record<string, string>;
@@ -108,9 +109,9 @@ interface SimpleCoreMockFactory {
 
 interface GetterCoreMockFactory {
   YouVersionAPIUsers: {
-    handleAuthCallback: MockedFunction<() => Promise<void>>;
-    userInfo: MockedFunction<() => Promise<void>>;
-    refreshTokenIfNeeded: MockedFunction<() => Promise<void>>;
+    handleAuthCallback: MockedFunction<typeof YouVersionAPIUsers.handleAuthCallback>;
+    userInfo: MockedFunction<typeof YouVersionAPIUsers.userInfo>;
+    refreshTokenIfNeeded: MockedFunction<typeof YouVersionAPIUsers.refreshTokenIfNeeded>;
   };
   YouVersionPlatformConfiguration: {
     appKey: string;

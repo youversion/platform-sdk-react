@@ -1,7 +1,6 @@
 // ESLint disables necessary for Vitest mocking patterns:
 // - unbound-method: required when accessing methods via vi.mocked() for mock setup
-// - no-unsafe-argument: required when passing mock objects with 'as any' for mock implementations
-/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/unbound-method */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
@@ -113,8 +112,8 @@ describe('YouVersionAuthProvider', () => {
   describe('OAuth callback handling', () => {
     it('should detect OAuth callback with state parameter', async () => {
       mockWindow.location.search = '?state=test-state&code=auth-code';
-      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult as any);
-      vi.mocked(YouVersionAPIUsers.userInfo).mockReturnValue(mockUserInfo as any);
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult);
+      vi.mocked(YouVersionAPIUsers.userInfo).mockReturnValue(mockUserInfo);
 
       // Mock the configuration to return the id token after handleAuthCallback
       vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockImplementation(() => {
@@ -139,7 +138,7 @@ describe('YouVersionAuthProvider', () => {
 
     it('should detect OAuth callback with error parameter', async () => {
       mockWindow.location.search = '?error=access_denied&error_description=User+denied+access';
-      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult as any);
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
@@ -174,7 +173,7 @@ describe('YouVersionAuthProvider', () => {
 
     it('should handle callback with no idToken', async () => {
       mockWindow.location.search = '?state=test-state&code=auth-code';
-      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult as any);
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult);
       YouVersionPlatformConfiguration.saveAuthData(null, null, null, null);
 
       const { getByTestId } = render(
@@ -202,7 +201,7 @@ describe('YouVersionAuthProvider', () => {
         YouVersionPlatformConfiguration.saveAuthData(null, null, 'refreshed-id-token', null);
         return Promise.resolve(true);
       });
-      vi.mocked(YouVersionAPIUsers.userInfo).mockReturnValue(mockUserInfo as any);
+      vi.mocked(YouVersionAPIUsers.userInfo).mockReturnValue(mockUserInfo);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
