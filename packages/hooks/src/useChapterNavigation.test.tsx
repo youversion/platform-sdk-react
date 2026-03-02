@@ -44,6 +44,7 @@ const { mockUseBooks } = vi.hoisted(() => ({
   mockUseBooks: vi.fn(),
 }));
 vi.mock('./useBooks', () => ({
+  // ESLint disable: forwarding to mock with unknown args; return type is controlled by mockReturnValue in tests
   // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   useBooks: (...args: unknown[]) => mockUseBooks(...args),
 }));

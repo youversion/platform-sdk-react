@@ -1,3 +1,6 @@
+// ESLint disables necessary for Vitest mocking patterns:
+// - unbound-method: required when accessing methods via vi.mocked() for mock setup
+// - no-unsafe-argument: required when passing mock objects with 'as any' for mock implementations
 /* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
