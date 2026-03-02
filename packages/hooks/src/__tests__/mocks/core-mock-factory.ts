@@ -1,3 +1,5 @@
+// ESLint disables necessary: mock classes intentionally use `any` to mirror core types,
+// and return type inference is preferred for simple factory functions.
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/explicit-module-boundary-types */
 import { vi } from 'vitest';
 

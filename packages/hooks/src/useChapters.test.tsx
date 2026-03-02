@@ -1,3 +1,6 @@
+// ESLint disable necessary: it.each() test cases define hook call patterns that ESLint
+// can't statically verify are always called inside renderHook(). The hooks are only
+// invoked within renderHook() at runtime, satisfying rules-of-hooks semantics.
 /* eslint-disable react-hooks/rules-of-hooks */
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
