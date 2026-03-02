@@ -1,7 +1,3 @@
-// ESLint disable necessary: it.each() test cases define hook call patterns that ESLint
-// can't statically verify are always called inside renderHook(). The hooks are only
-// invoked within renderHook() at runtime, satisfying rules-of-hooks semantics.
-/* eslint-disable react-hooks/rules-of-hooks */
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useChapters } from './useChapters';
@@ -49,7 +45,7 @@ describe('useChapters', () => {
     it.each([
       {
         param: 'versionId',
-        hookFn: ({ val }: { val: number | string }) => useChapters(val as number, 'MAT'),
+        HookFn: ({ val }: { val: number | string }) => useChapters(val as number, 'MAT'),
         initial: { val: 1 },
         updated: { val: 111 },
         expectedInitial: [1, 'MAT'],
@@ -57,7 +53,7 @@ describe('useChapters', () => {
       },
       {
         param: 'book',
-        hookFn: ({ val }: { val: number | string }) => useChapters(1, val as string),
+        HookFn: ({ val }: { val: number | string }) => useChapters(1, val as string),
         initial: { val: 'MAT' },
         updated: { val: 'GEN' },
         expectedInitial: [1, 'MAT'],
@@ -65,9 +61,9 @@ describe('useChapters', () => {
       },
     ])(
       'should refetch when $param changes',
-      async ({ hookFn, initial, updated, expectedInitial, expectedUpdated }) => {
+      async ({ HookFn, initial, updated, expectedInitial, expectedUpdated }) => {
         const wrapper = createYVWrapper();
-        const { result, rerender } = renderHook(hookFn, {
+        const { result, rerender } = renderHook(HookFn, {
           wrapper,
           initialProps: initial,
         });

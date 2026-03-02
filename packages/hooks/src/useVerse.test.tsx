@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/rules-of-hooks */
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useVerse } from './useVerse';
@@ -43,7 +42,7 @@ describe('useVerse', () => {
     it.each([
       {
         param: 'versionId',
-        hookFn: ({ val }: { val: number | string }) => useVerse(val as number, 'MAT', 1, 1),
+        HookFn: ({ val }: { val: number | string }) => useVerse(val as number, 'MAT', 1, 1),
         initial: { val: 1 },
         updated: { val: 111 },
         expectedInitial: [1, 'MAT', 1, 1],
@@ -51,7 +50,7 @@ describe('useVerse', () => {
       },
       {
         param: 'book',
-        hookFn: ({ val }: { val: number | string }) => useVerse(1, val as string, 1, 1),
+        HookFn: ({ val }: { val: number | string }) => useVerse(1, val as string, 1, 1),
         initial: { val: 'MAT' },
         updated: { val: 'GEN' },
         expectedInitial: [1, 'MAT', 1, 1],
@@ -59,7 +58,7 @@ describe('useVerse', () => {
       },
       {
         param: 'chapter',
-        hookFn: ({ val }: { val: number | string }) => useVerse(1, 'MAT', val as number, 1),
+        HookFn: ({ val }: { val: number | string }) => useVerse(1, 'MAT', val as number, 1),
         initial: { val: 1 },
         updated: { val: 5 },
         expectedInitial: [1, 'MAT', 1, 1],
@@ -67,7 +66,7 @@ describe('useVerse', () => {
       },
       {
         param: 'verse',
-        hookFn: ({ val }: { val: number | string }) => useVerse(1, 'MAT', 1, val as number),
+        HookFn: ({ val }: { val: number | string }) => useVerse(1, 'MAT', 1, val as number),
         initial: { val: 1 },
         updated: { val: 10 },
         expectedInitial: [1, 'MAT', 1, 1],
@@ -75,9 +74,9 @@ describe('useVerse', () => {
       },
     ])(
       'should refetch when $param changes',
-      async ({ hookFn, initial, updated, expectedInitial, expectedUpdated }) => {
+      async ({ HookFn, initial, updated, expectedInitial, expectedUpdated }) => {
         const wrapper = createYVWrapper();
-        const { result, rerender } = renderHook(hookFn, {
+        const { result, rerender } = renderHook(HookFn, {
           wrapper,
           initialProps: initial,
         });
