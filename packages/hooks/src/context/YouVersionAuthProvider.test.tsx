@@ -109,7 +109,6 @@ describe('YouVersionAuthProvider', () => {
   describe('OAuth callback handling', () => {
     it('should detect OAuth callback with state parameter', async () => {
       mockWindow.location.search = '?state=test-state&code=auth-code';
-      vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockResolvedValue(mockAuthResult);
       vi.spyOn(YouVersionAPIUsers, 'userInfo').mockReturnValue(mockUserInfo);
 
       // Mock the configuration to return the id token after handleAuthCallback
