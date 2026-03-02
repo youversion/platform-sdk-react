@@ -1,10 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { describe, expect, vi, beforeEach } from 'vitest';
-import { it } from './test/hook-fixtures';
+import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useVerses } from './useVerses';
 import { type BibleClient, type BibleVerse, type Collection } from '@youversion/platform-core';
 import { useBibleClient } from './useBibleClient';
+import { createYVWrapper } from './test/utils';
 
 vi.mock('./useBibleClient');
 
@@ -28,7 +27,8 @@ describe('useVerses', () => {
   });
 
   describe('fetching verses', () => {
-    it('should fetch verses with all 3 parameters', async ({ wrapper }) => {
+    it('should fetch verses with all 3 parameters', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVerses(111, 'MAT', 1), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -58,39 +58,34 @@ describe('useVerses', () => {
         initialArgs: [1, 'MAT', 1] as [number, string, number],
         updatedArgs: [1, 'MAT', 5] as [number, string, number],
       },
-    ])(
-      'should refetch when $param changes',
-      // @ts-expect-error -- wrapper is injected by vitest fixture, not present in each() data
-      async ({ wrapper, initialArgs, updatedArgs }) => {
-        const { result, rerender } = renderHook(
-          ({ args }) => useVerses(args[0], args[1], args[2]),
-          {
-            wrapper,
-            initialProps: { args: initialArgs },
-          },
-        );
+    ])('should refetch when $param changes', async ({ initialArgs, updatedArgs }) => {
+      const wrapper = createYVWrapper();
+      const { result, rerender } = renderHook(({ args }) => useVerses(args[0], args[1], args[2]), {
+        wrapper,
+        initialProps: { args: initialArgs },
+      });
 
-        await waitFor(() => {
-          expect(result.current.loading).toBe(false);
-        });
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
 
-        expect.soft(mockGetVerses).toHaveBeenCalledTimes(1);
-        expect.soft(mockGetVerses).toHaveBeenLastCalledWith(...initialArgs);
+      expect.soft(mockGetVerses).toHaveBeenCalledTimes(1);
+      expect.soft(mockGetVerses).toHaveBeenLastCalledWith(...initialArgs);
 
-        act(() => {
-          rerender({ args: updatedArgs });
-        });
+      act(() => {
+        rerender({ args: updatedArgs });
+      });
 
-        await waitFor(() => {
-          expect(result.current.loading).toBe(false);
-        });
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
 
-        expect.soft(mockGetVerses).toHaveBeenCalledTimes(2);
-        expect.soft(mockGetVerses).toHaveBeenLastCalledWith(...updatedArgs);
-      },
-    );
+      expect.soft(mockGetVerses).toHaveBeenCalledTimes(2);
+      expect.soft(mockGetVerses).toHaveBeenLastCalledWith(...updatedArgs);
+    });
 
-    it('should not fetch when enabled is false', async ({ wrapper }) => {
+    it('should not fetch when enabled is false', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVerses(1, 'MAT', 1, { enabled: false }), {
         wrapper,
       });
@@ -103,7 +98,8 @@ describe('useVerses', () => {
       expect.soft(result.current.verses).toBe(null);
     });
 
-    it('should handle fetch errors', async ({ wrapper }) => {
+    it('should handle fetch errors', async () => {
+      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch verses');
       mockGetVerses.mockRejectedValueOnce(error);
 
@@ -117,7 +113,8 @@ describe('useVerses', () => {
       expect.soft(result.current.verses).toBe(null);
     });
 
-    it('should support manual refetch', async ({ wrapper }) => {
+    it('should support manual refetch', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVerses(1, 'MAT', 1), { wrapper });
 
       await waitFor(() => {
