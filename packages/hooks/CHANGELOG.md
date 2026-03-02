@@ -1,5 +1,13 @@
 # @youversion/platform-react-hooks
 
+## 1.18.1
+
+### Patch Changes
+
+- 325dff9: BibleCard now animates content height transitions when loading new data instead of flashing and abruptly resizing
+- Updated dependencies [325dff9]
+  - @youversion/platform-core@1.18.1
+
 ## 1.18.0
 
 ### Minor Changes
