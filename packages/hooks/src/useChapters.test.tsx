@@ -61,6 +61,7 @@ describe('useChapters', () => {
       },
     ])(
       'should refetch when $param changes',
+      // @ts-expect-error -- wrapper is injected by vitest fixture, not present in each() data
       async ({ hookFn, initial, updated, expectedInitial, expectedUpdated, wrapper }) => {
         const { result, rerender } = renderHook(hookFn, {
           wrapper,
@@ -161,6 +162,7 @@ describe('useChapters', () => {
   describe('book validation', () => {
     it.each([{ invalidBook: 'undefined' }, { invalidBook: 'null' }, { invalidBook: '' }])(
       'should skip fetch when book is "$invalidBook"',
+      // @ts-expect-error -- wrapper is injected by vitest fixture, not present in each() data
       async ({ invalidBook, wrapper }) => {
         const { result } = renderHook(() => useChapters(1, invalidBook), { wrapper });
 
