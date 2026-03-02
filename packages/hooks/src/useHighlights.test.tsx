@@ -78,12 +78,6 @@ describe('useHighlights', () => {
         'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
       );
     });
-
-    it('should throw error when appKey is missing', () => {
-      expect(() => renderHook(() => useHighlights())).toThrow(
-        'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
-      );
-    });
   });
 
   describe('client creation', () => {
