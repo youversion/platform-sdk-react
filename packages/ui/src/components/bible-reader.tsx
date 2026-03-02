@@ -225,10 +225,11 @@ function Content() {
         <span
           className={cn(
             'yv:font-serif yv:leading-none yv:block yv:text-2xl yv:transition-[filter]',
-            !bookData?.title && 'yv:blur-sm',
           )}
         >
-          {bookData?.title || 'Loading...'}
+          {bookData?.title || (
+            <LoaderIcon className="yv:size-6 yv:animate-spin yv:text-muted-foreground" />
+          )}
         </span>
         <span className="yv:font-serif yv:leading-none yv:block yv:text-[2.5rem] yv:font-normal">
           {chapterLabel || chapter || '-'}
