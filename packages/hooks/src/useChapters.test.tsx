@@ -1,15 +1,14 @@
+/* eslint-disable react-hooks/rules-of-hooks, @typescript-eslint/no-unsafe-assignment */
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { ReactNode } from 'react';
+import { describe, expect, vi, beforeEach } from 'vitest';
+import { it } from './test/hook-fixtures';
 import { useChapters } from './useChapters';
-import { YouVersionContext } from './context';
 import { type BibleClient, type BibleChapter, type Collection } from '@youversion/platform-core';
 import { useBibleClient } from './useBibleClient';
 
 vi.mock('./useBibleClient');
 
 describe('useChapters', () => {
-  const mockAppKey = 'test-app-key';
   const mockGetChapters = vi.fn();
 
   const mockChapters: Collection<BibleChapter> = {
@@ -21,15 +20,7 @@ describe('useChapters', () => {
     next_page_token: null,
   };
 
-  const createWrapper = (contextValue: { appKey: string }) => {
-    return ({ children }: { children: ReactNode }) => (
-      <YouVersionContext.Provider value={contextValue}>{children}</YouVersionContext.Provider>
-    );
-  };
-
   beforeEach(() => {
-    vi.resetAllMocks();
-
     mockGetChapters.mockResolvedValue(mockChapters);
 
     const mockClient: Partial<BibleClient> = { getChapters: mockGetChapters };
@@ -37,11 +28,7 @@ describe('useChapters', () => {
   });
 
   describe('fetching chapters', () => {
-    it('should fetch chapters with versionId, book params', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+    it('should fetch chapters with versionId, book params', async ({ wrapper }) => {
       const { result } = renderHook(() => useChapters(111, 'MAT'), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -51,73 +38,56 @@ describe('useChapters', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetChapters).toHaveBeenCalledWith(111, 'MAT');
-      expect(result.current.chapters).toEqual(mockChapters);
+      expect.soft(mockGetChapters).toHaveBeenCalledWith(111, 'MAT');
+      expect.soft(result.current.chapters).toEqual(mockChapters);
     });
 
-    it('should refetch when versionId changes', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
+    it.each([
+      {
+        param: 'versionId',
+        hookFn: ({ val }: { val: number | string }) => useChapters(val as number, 'MAT'),
+        initial: { val: 1 },
+        updated: { val: 111 },
+        expectedInitial: [1, 'MAT'],
+        expectedUpdated: [111, 'MAT'],
+      },
+      {
+        param: 'book',
+        hookFn: ({ val }: { val: number | string }) => useChapters(1, val as string),
+        initial: { val: 'MAT' },
+        updated: { val: 'GEN' },
+        expectedInitial: [1, 'MAT'],
+        expectedUpdated: [1, 'GEN'],
+      },
+    ])(
+      'should refetch when $param changes',
+      async ({ hookFn, initial, updated, expectedInitial, expectedUpdated, wrapper }) => {
+        const { result, rerender } = renderHook(hookFn, {
+          wrapper,
+          initialProps: initial,
+        });
 
-      const { result, rerender } = renderHook(({ versionId }) => useChapters(versionId, 'MAT'), {
-        wrapper,
-        initialProps: { versionId: 1 },
-      });
+        await waitFor(() => {
+          expect(result.current.loading).toBe(false);
+        });
 
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
+        expect.soft(mockGetChapters).toHaveBeenCalledTimes(1);
+        expect.soft(mockGetChapters).toHaveBeenLastCalledWith(...expectedInitial);
 
-      expect(mockGetChapters).toHaveBeenCalledTimes(1);
-      expect(mockGetChapters).toHaveBeenLastCalledWith(1, 'MAT');
+        act(() => {
+          rerender(updated);
+        });
 
-      act(() => {
-        rerender({ versionId: 111 });
-      });
+        await waitFor(() => {
+          expect(result.current.loading).toBe(false);
+        });
 
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
+        expect.soft(mockGetChapters).toHaveBeenCalledTimes(2);
+        expect.soft(mockGetChapters).toHaveBeenLastCalledWith(...expectedUpdated);
+      },
+    );
 
-      expect(mockGetChapters).toHaveBeenCalledTimes(2);
-      expect(mockGetChapters).toHaveBeenLastCalledWith(111, 'MAT');
-    });
-
-    it('should refetch when book changes', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
-      const { result, rerender } = renderHook(({ book }) => useChapters(1, book), {
-        wrapper,
-        initialProps: { book: 'MAT' },
-      });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect(mockGetChapters).toHaveBeenCalledTimes(1);
-      expect(mockGetChapters).toHaveBeenLastCalledWith(1, 'MAT');
-
-      act(() => {
-        rerender({ book: 'GEN' });
-      });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect(mockGetChapters).toHaveBeenCalledTimes(2);
-      expect(mockGetChapters).toHaveBeenLastCalledWith(1, 'GEN');
-    });
-
-    it('should not fetch when enabled is false', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+    it('should not fetch when enabled is false', async ({ wrapper }) => {
       const { result } = renderHook(() => useChapters(1, 'MAT', { enabled: false }), {
         wrapper,
       });
@@ -126,44 +96,36 @@ describe('useChapters', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetChapters).not.toHaveBeenCalled();
-      expect(result.current.chapters).toBe(null);
+      expect.soft(mockGetChapters).not.toHaveBeenCalled();
+      expect.soft(result.current.chapters).toBe(null);
     });
 
-    it('should handle fetch errors', async () => {
+    it('should handle fetch errors', async ({ wrapper }) => {
       const error = new Error('Failed to fetch chapters');
       mockGetChapters.mockRejectedValueOnce(error);
 
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
       const { result } = renderHook(() => useChapters(1, 'MAT'), { wrapper });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(result.current.error).toEqual(error);
-      expect(result.current.chapters).toBe(null);
+      expect.soft(result.current.error).toEqual(error);
+      expect.soft(result.current.chapters).toBe(null);
     });
 
-    it('should clear error on successful refetch', async () => {
+    it('should clear error on successful refetch', async ({ wrapper }) => {
       const error = new Error('Failed to fetch chapters');
       mockGetChapters.mockRejectedValueOnce(error).mockResolvedValueOnce(mockChapters);
 
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
       const { result } = renderHook(() => useChapters(1, 'MAT'), { wrapper });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(result.current.error).toEqual(error);
-      expect(result.current.chapters).toBe(null);
+      expect.soft(result.current.error).toEqual(error);
+      expect.soft(result.current.chapters).toBe(null);
 
       act(() => {
         result.current.refetch();
@@ -173,15 +135,11 @@ describe('useChapters', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(result.current.error).toBe(null);
-      expect(result.current.chapters).toEqual(mockChapters);
+      expect.soft(result.current.error).toBe(null);
+      expect.soft(result.current.chapters).toEqual(mockChapters);
     });
 
-    it('should support manual refetch', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+    it('should support manual refetch', async ({ wrapper }) => {
       const { result } = renderHook(() => useChapters(1, 'MAT'), { wrapper });
 
       await waitFor(() => {
@@ -201,56 +159,21 @@ describe('useChapters', () => {
   });
 
   describe('book validation', () => {
-    it('should skip fetch when book is "undefined" string', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
+    it.each([{ invalidBook: 'undefined' }, { invalidBook: 'null' }, { invalidBook: '' }])(
+      'should skip fetch when book is "$invalidBook"',
+      async ({ invalidBook, wrapper }) => {
+        const { result } = renderHook(() => useChapters(1, invalidBook), { wrapper });
 
-      const { result } = renderHook(() => useChapters(1, 'undefined'), { wrapper });
+        await waitFor(() => {
+          expect(result.current.loading).toBe(false);
+        });
 
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
+        expect.soft(mockGetChapters).not.toHaveBeenCalled();
+        expect.soft(result.current.chapters).toBe(null);
+      },
+    );
 
-      expect(mockGetChapters).not.toHaveBeenCalled();
-      expect(result.current.chapters).toBe(null);
-    });
-
-    it('should skip fetch when book is "null" string', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
-      const { result } = renderHook(() => useChapters(1, 'null'), { wrapper });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect(mockGetChapters).not.toHaveBeenCalled();
-      expect(result.current.chapters).toBe(null);
-    });
-
-    it('should skip fetch when book is empty string', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
-      const { result } = renderHook(() => useChapters(1, ''), { wrapper });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect(mockGetChapters).not.toHaveBeenCalled();
-      expect(result.current.chapters).toBe(null);
-    });
-
-    it('should fetch when book changes from invalid to valid', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+    it('should fetch when book changes from invalid to valid', async ({ wrapper }) => {
       const { result, rerender } = renderHook(({ book }) => useChapters(1, book), {
         wrapper,
         initialProps: { book: 'undefined' },
@@ -270,9 +193,9 @@ describe('useChapters', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetChapters).toHaveBeenCalledTimes(1);
-      expect(mockGetChapters).toHaveBeenCalledWith(1, 'MAT');
-      expect(result.current.chapters).toEqual(mockChapters);
+      expect.soft(mockGetChapters).toHaveBeenCalledTimes(1);
+      expect.soft(mockGetChapters).toHaveBeenCalledWith(1, 'MAT');
+      expect.soft(result.current.chapters).toEqual(mockChapters);
     });
   });
 });

@@ -26,8 +26,6 @@ describe('useLanguage', () => {
   };
 
   beforeEach(() => {
-    vi.resetAllMocks();
-
     mockGetLanguage.mockResolvedValue(mockLanguage);
 
     const mockClient: Partial<LanguagesClient> = { getLanguage: mockGetLanguage };
@@ -45,8 +43,8 @@ describe('useLanguage', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetLanguage).toHaveBeenCalledWith('en');
-      expect(result.current.language).toEqual(mockLanguage);
+      expect.soft(mockGetLanguage).toHaveBeenCalledWith('en');
+      expect.soft(result.current.language).toEqual(mockLanguage);
     });
 
     it('should refetch when languageId changes', async () => {
@@ -58,8 +56,8 @@ describe('useLanguage', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetLanguage).toHaveBeenCalledTimes(1);
-      expect(mockGetLanguage).toHaveBeenCalledWith('en');
+      expect.soft(mockGetLanguage).toHaveBeenCalledTimes(1);
+      expect.soft(mockGetLanguage).toHaveBeenCalledWith('en');
 
       rerender({ languageId: 'es' });
 
@@ -77,8 +75,8 @@ describe('useLanguage', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetLanguage).not.toHaveBeenCalled();
-      expect(result.current.language).toBe(null);
+      expect.soft(mockGetLanguage).not.toHaveBeenCalled();
+      expect.soft(result.current.language).toBe(null);
     });
 
     it('should handle fetch errors', async () => {
@@ -91,8 +89,8 @@ describe('useLanguage', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(result.current.error).toEqual(error);
-      expect(result.current.language).toBe(null);
+      expect.soft(result.current.error).toEqual(error);
+      expect.soft(result.current.language).toBe(null);
     });
 
     it('should support manual refetch', async () => {

@@ -1,15 +1,14 @@
+/* eslint-disable react-hooks/rules-of-hooks, @typescript-eslint/no-unsafe-assignment */
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { ReactNode } from 'react';
+import { describe, expect, vi, beforeEach } from 'vitest';
+import { it } from './test/hook-fixtures';
 import { useVerse } from './useVerse';
-import { YouVersionContext } from './context';
 import { type BibleClient, type BibleVerse } from '@youversion/platform-core';
 import { useBibleClient } from './useBibleClient';
 
 vi.mock('./useBibleClient');
 
 describe('useVerse', () => {
-  const mockAppKey = 'test-app-key';
   const mockGetVerse = vi.fn();
 
   const mockVerse: BibleVerse = {
@@ -18,15 +17,7 @@ describe('useVerse', () => {
     title: '1',
   };
 
-  const createWrapper = (contextValue: { appKey: string }) => {
-    return ({ children }: { children: ReactNode }) => (
-      <YouVersionContext.Provider value={contextValue}>{children}</YouVersionContext.Provider>
-    );
-  };
-
   beforeEach(() => {
-    vi.resetAllMocks();
-
     mockGetVerse.mockResolvedValue(mockVerse);
 
     const mockClient: Partial<BibleClient> = { getVerse: mockGetVerse };
@@ -34,11 +25,7 @@ describe('useVerse', () => {
   });
 
   describe('fetching verse', () => {
-    it('should fetch verse with all 4 parameters', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+    it('should fetch verse with all 4 parameters', async ({ wrapper }) => {
       const { result } = renderHook(() => useVerse(111, 'MAT', 1, 1), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -48,131 +35,72 @@ describe('useVerse', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetVerse).toHaveBeenCalledWith(111, 'MAT', 1, 1);
-      expect(result.current.verse).toEqual(mockVerse);
+      expect.soft(mockGetVerse).toHaveBeenCalledWith(111, 'MAT', 1, 1);
+      expect.soft(result.current.verse).toEqual(mockVerse);
     });
 
-    it('should refetch when versionId changes', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
+    it.each([
+      {
+        param: 'versionId',
+        hookFn: ({ val }: { val: number | string }) => useVerse(val as number, 'MAT', 1, 1),
+        initial: { val: 1 },
+        updated: { val: 111 },
+        expectedInitial: [1, 'MAT', 1, 1],
+        expectedUpdated: [111, 'MAT', 1, 1],
+      },
+      {
+        param: 'book',
+        hookFn: ({ val }: { val: number | string }) => useVerse(1, val as string, 1, 1),
+        initial: { val: 'MAT' },
+        updated: { val: 'GEN' },
+        expectedInitial: [1, 'MAT', 1, 1],
+        expectedUpdated: [1, 'GEN', 1, 1],
+      },
+      {
+        param: 'chapter',
+        hookFn: ({ val }: { val: number | string }) => useVerse(1, 'MAT', val as number, 1),
+        initial: { val: 1 },
+        updated: { val: 5 },
+        expectedInitial: [1, 'MAT', 1, 1],
+        expectedUpdated: [1, 'MAT', 5, 1],
+      },
+      {
+        param: 'verse',
+        hookFn: ({ val }: { val: number | string }) => useVerse(1, 'MAT', 1, val as number),
+        initial: { val: 1 },
+        updated: { val: 10 },
+        expectedInitial: [1, 'MAT', 1, 1],
+        expectedUpdated: [1, 'MAT', 1, 10],
+      },
+    ])(
+      'should refetch when $param changes',
+      async ({ hookFn, initial, updated, expectedInitial, expectedUpdated, wrapper }) => {
+        const { result, rerender } = renderHook(hookFn, {
+          wrapper,
+          initialProps: initial,
+        });
 
-      const { result, rerender } = renderHook(({ versionId }) => useVerse(versionId, 'MAT', 1, 1), {
-        wrapper,
-        initialProps: { versionId: 1 },
-      });
+        await waitFor(() => {
+          expect(result.current.loading).toBe(false);
+        });
 
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
+        expect.soft(mockGetVerse).toHaveBeenCalledTimes(1);
+        expect.soft(mockGetVerse).toHaveBeenLastCalledWith(...expectedInitial);
 
-      expect(mockGetVerse).toHaveBeenCalledTimes(1);
-      expect(mockGetVerse).toHaveBeenLastCalledWith(1, 'MAT', 1, 1);
+        act(() => {
+          rerender(updated);
+        });
 
-      act(() => {
-        rerender({ versionId: 111 });
-      });
+        await waitFor(() => {
+          expect(result.current.loading).toBe(false);
+        });
 
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
+        expect.soft(mockGetVerse).toHaveBeenCalledTimes(2);
+        expect.soft(mockGetVerse).toHaveBeenLastCalledWith(...expectedUpdated);
+      },
+    );
 
-      expect(mockGetVerse).toHaveBeenCalledTimes(2);
-      expect(mockGetVerse).toHaveBeenLastCalledWith(111, 'MAT', 1, 1);
-    });
-
-    it('should refetch when book changes', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
-      const { result, rerender } = renderHook(({ book }) => useVerse(1, book, 1, 1), {
-        wrapper,
-        initialProps: { book: 'MAT' },
-      });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect(mockGetVerse).toHaveBeenCalledTimes(1);
-      expect(mockGetVerse).toHaveBeenLastCalledWith(1, 'MAT', 1, 1);
-
-      act(() => {
-        rerender({ book: 'GEN' });
-      });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect(mockGetVerse).toHaveBeenCalledTimes(2);
-      expect(mockGetVerse).toHaveBeenLastCalledWith(1, 'GEN', 1, 1);
-    });
-
-    it('should refetch when chapter changes', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
-      const { result, rerender } = renderHook(({ chapter }) => useVerse(1, 'MAT', chapter, 1), {
-        wrapper,
-        initialProps: { chapter: 1 },
-      });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect(mockGetVerse).toHaveBeenCalledTimes(1);
-      expect(mockGetVerse).toHaveBeenLastCalledWith(1, 'MAT', 1, 1);
-
-      act(() => {
-        rerender({ chapter: 5 });
-      });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect(mockGetVerse).toHaveBeenCalledTimes(2);
-      expect(mockGetVerse).toHaveBeenLastCalledWith(1, 'MAT', 5, 1);
-    });
-
-    it('should refetch when verse changes', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
-      const { result, rerender } = renderHook(({ verse }) => useVerse(1, 'MAT', 1, verse), {
-        wrapper,
-        initialProps: { verse: 1 },
-      });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect(mockGetVerse).toHaveBeenCalledTimes(1);
-      expect(mockGetVerse).toHaveBeenLastCalledWith(1, 'MAT', 1, 1);
-
-      act(() => {
-        rerender({ verse: 10 });
-      });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect(mockGetVerse).toHaveBeenCalledTimes(2);
-      expect(mockGetVerse).toHaveBeenLastCalledWith(1, 'MAT', 1, 10);
-    });
-
-    it('should not fetch when enabled is false', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+    it('should not fetch when enabled is false', async ({ wrapper }) => {
       const { result } = renderHook(() => useVerse(1, 'MAT', 1, 1, { enabled: false }), {
         wrapper,
       });
@@ -181,17 +109,13 @@ describe('useVerse', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetVerse).not.toHaveBeenCalled();
-      expect(result.current.verse).toBe(null);
+      expect.soft(mockGetVerse).not.toHaveBeenCalled();
+      expect.soft(result.current.verse).toBe(null);
     });
 
-    it('should handle fetch errors', async () => {
+    it('should handle fetch errors', async ({ wrapper }) => {
       const error = new Error('Failed to fetch verse');
       mockGetVerse.mockRejectedValueOnce(error);
-
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
 
       const { result } = renderHook(() => useVerse(1, 'MAT', 1, 1), { wrapper });
 
@@ -199,15 +123,11 @@ describe('useVerse', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(result.current.error).toEqual(error);
-      expect(result.current.verse).toBe(null);
+      expect.soft(result.current.error).toEqual(error);
+      expect.soft(result.current.verse).toBe(null);
     });
 
-    it('should support manual refetch', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+    it('should support manual refetch', async ({ wrapper }) => {
       const { result } = renderHook(() => useVerse(1, 'MAT', 1, 1), { wrapper });
 
       await waitFor(() => {

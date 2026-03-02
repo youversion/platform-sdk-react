@@ -40,7 +40,9 @@ const mockBooks: BibleBook[] = [
   }),
 ];
 
-const mockUseBooks = vi.fn();
+const { mockUseBooks } = vi.hoisted(() => ({
+  mockUseBooks: vi.fn(),
+}));
 vi.mock('./useBooks', () => ({
   // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   useBooks: (...args: unknown[]) => mockUseBooks(...args),

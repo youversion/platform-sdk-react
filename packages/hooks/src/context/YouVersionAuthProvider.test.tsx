@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-argument */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import YouVersionAuthProvider from './YouVersionAuthProvider';
@@ -7,118 +7,10 @@ import { useYouVersionAuthContext } from './YouVersionAuthContext';
 import type { AuthConfig } from '../types/auth';
 import { createMockUserInfo, createMockAuthResult } from '../__tests__/mocks/auth';
 
-// Mock the core modules
-vi.mock('@youversion/platform-core', () => {
-  let mockInstallationId = 'auto-generated-installation-id';
-  let mockIdToken: string | null = null;
-  let mockRefreshToken: string | null = null;
-  let mockAccessToken: string | null = null;
-
-  return {
-    YouVersionAPIUsers: {
-      handleAuthCallback: vi.fn(),
-      userInfo: vi.fn(),
-      refreshTokenIfNeeded: vi.fn(),
-    },
-    YouVersionPlatformConfiguration: {
-      appKey: '',
-      get installationId() {
-        return mockInstallationId;
-      },
-      set installationId(value) {
-        if (value) mockInstallationId = value;
-      },
-      apiHost: 'test-api.example.com',
-      get idToken() {
-        return mockIdToken;
-      },
-      get refreshToken() {
-        return mockRefreshToken;
-      },
-      get accessToken() {
-        return mockAccessToken;
-      },
-      clearAuthTokens: vi.fn(() => {
-        mockIdToken = null;
-        mockRefreshToken = null;
-        mockAccessToken = null;
-      }),
-      saveAuthData: vi.fn(
-        (accessToken: string | null, refreshToken: string | null, idToken: string | null) => {
-          mockAccessToken = accessToken;
-          mockRefreshToken = refreshToken;
-          mockIdToken = idToken;
-        },
-      ),
-    },
-    YouVersionUserInfo: class YouVersionUserInfo {
-      readonly name?: string;
-      readonly userId?: string;
-      readonly email?: string;
-      readonly avatarUrlFormat?: string;
-
-      constructor(data: any) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        this.name = data.name;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        this.userId = data.id;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        this.email = data.email;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        this.avatarUrlFormat = data.avatar_url;
-      }
-
-      getAvatarUrl(width: number = 200, height: number = 200): URL | null {
-        if (!this.avatarUrlFormat) {
-          return null;
-        }
-        try {
-          let urlString = this.avatarUrlFormat;
-          urlString = urlString.replace('{width}', width.toString());
-          urlString = urlString.replace('{height}', height.toString());
-          return new URL(urlString);
-        } catch {
-          return null;
-        }
-      }
-
-      get avatarUrl(): URL | null {
-        return this.getAvatarUrl();
-      }
-    },
-    SignInWithYouVersionResult: class SignInWithYouVersionResult {
-      accessToken: string | undefined;
-      expiryDate: Date | undefined;
-      refreshToken: string | undefined;
-      idToken: string | undefined;
-      yvpUserId: string | undefined;
-      name: string | undefined;
-      profilePicture: string | undefined;
-      email: string | undefined;
-
-      constructor(props: {
-        accessToken?: string;
-        expiresIn?: number;
-        refreshToken?: string;
-        idToken?: string;
-        yvpUserId?: string;
-        name?: string;
-        profilePicture?: string;
-        email?: string;
-      }) {
-        this.accessToken = props.accessToken;
-        this.expiryDate = props.expiresIn
-          ? new Date(Date.now() + props.expiresIn * 1000)
-          : new Date();
-        this.refreshToken = props.refreshToken;
-        this.idToken = props.idToken;
-        this.yvpUserId = props.yvpUserId;
-        this.name = props.name;
-        this.profilePicture = props.profilePicture;
-        this.email = props.email;
-      }
-    },
-  };
+// Mock the core modules using shared factory
+vi.mock('@youversion/platform-core', async () => {
+  const { createGetterCoreMockFactory } = await import('../__tests__/mocks/core-mock-factory');
+  return createGetterCoreMockFactory();
 });
 
 const mockConfig: AuthConfig = {
@@ -152,8 +44,6 @@ function TestChild() {
 
 describe('YouVersionAuthProvider', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-
     // Setup window mock
     vi.stubGlobal('window', mockWindow);
     mockWindow.location.search = '';
@@ -162,11 +52,6 @@ describe('YouVersionAuthProvider', () => {
     YouVersionPlatformConfiguration.appKey = '';
     YouVersionPlatformConfiguration.apiHost = 'test-api.example.com';
     YouVersionPlatformConfiguration.clearAuthTokens();
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
-    vi.unstubAllGlobals();
   });
 
   describe('initialization', () => {
