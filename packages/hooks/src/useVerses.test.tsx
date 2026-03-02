@@ -45,43 +45,50 @@ describe('useVerses', () => {
     it.each([
       {
         param: 'versionId',
-        initialArgs: [1, 'MAT', 1] as const,
-        updatedArgs: [111, 'MAT', 1] as const,
+        initialArgs: [1, 'MAT', 1] as [number, string, number],
+        updatedArgs: [111, 'MAT', 1] as [number, string, number],
       },
       {
         param: 'book',
-        initialArgs: [1, 'MAT', 1] as const,
-        updatedArgs: [1, 'GEN', 1] as const,
+        initialArgs: [1, 'MAT', 1] as [number, string, number],
+        updatedArgs: [1, 'GEN', 1] as [number, string, number],
       },
       {
         param: 'chapter',
-        initialArgs: [1, 'MAT', 1] as const,
-        updatedArgs: [1, 'MAT', 5] as const,
+        initialArgs: [1, 'MAT', 1] as [number, string, number],
+        updatedArgs: [1, 'MAT', 5] as [number, string, number],
       },
-    ])('should refetch when $param changes', async ({ wrapper, initialArgs, updatedArgs }) => {
-      const { result, rerender } = renderHook(({ args }) => useVerses(args[0], args[1], args[2]), {
-        wrapper,
-        initialProps: { args: initialArgs },
-      });
+    ])(
+      'should refetch when $param changes',
+      // @ts-expect-error -- wrapper is injected by vitest fixture, not present in each() data
+      async ({ wrapper, initialArgs, updatedArgs }) => {
+        const { result, rerender } = renderHook(
+          ({ args }) => useVerses(args[0], args[1], args[2]),
+          {
+            wrapper,
+            initialProps: { args: initialArgs },
+          },
+        );
 
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
+        await waitFor(() => {
+          expect(result.current.loading).toBe(false);
+        });
 
-      expect.soft(mockGetVerses).toHaveBeenCalledTimes(1);
-      expect.soft(mockGetVerses).toHaveBeenLastCalledWith(...initialArgs);
+        expect.soft(mockGetVerses).toHaveBeenCalledTimes(1);
+        expect.soft(mockGetVerses).toHaveBeenLastCalledWith(...initialArgs);
 
-      act(() => {
-        rerender({ args: updatedArgs });
-      });
+        act(() => {
+          rerender({ args: updatedArgs });
+        });
 
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
+        await waitFor(() => {
+          expect(result.current.loading).toBe(false);
+        });
 
-      expect.soft(mockGetVerses).toHaveBeenCalledTimes(2);
-      expect.soft(mockGetVerses).toHaveBeenLastCalledWith(...updatedArgs);
-    });
+        expect.soft(mockGetVerses).toHaveBeenCalledTimes(2);
+        expect.soft(mockGetVerses).toHaveBeenLastCalledWith(...updatedArgs);
+      },
+    );
 
     it('should not fetch when enabled is false', async ({ wrapper }) => {
       const { result } = renderHook(() => useVerses(1, 'MAT', 1, { enabled: false }), {

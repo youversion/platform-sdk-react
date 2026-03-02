@@ -74,6 +74,7 @@ describe('useVerse', () => {
       },
     ])(
       'should refetch when $param changes',
+      // @ts-expect-error -- wrapper is injected by vitest fixture, not present in each() data
       async ({ hookFn, initial, updated, expectedInitial, expectedUpdated, wrapper }) => {
         const { result, rerender } = renderHook(hookFn, {
           wrapper,
