@@ -1,7 +1,3 @@
-// ESLint disable necessary: it.each() test cases define hook call patterns that ESLint
-// can't statically verify are always called inside renderHook(). The hooks are only
-// invoked within renderHook() at runtime, satisfying rules-of-hooks semantics.
-/* eslint-disable react-hooks/rules-of-hooks */
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useChapter } from './useChapter';
@@ -46,7 +42,7 @@ describe('useChapter', () => {
     it.each([
       {
         param: 'versionId',
-        hookFn: ({ val }: { val: number | string }) => useChapter(val as number, 'MAT', 1),
+        HookFn: ({ val }: { val: number | string }) => useChapter(val as number, 'MAT', 1),
         initial: { val: 1 },
         updated: { val: 111 },
         expectedInitial: [1, 'MAT', 1],
@@ -54,7 +50,7 @@ describe('useChapter', () => {
       },
       {
         param: 'book',
-        hookFn: ({ val }: { val: number | string }) => useChapter(1, val as string, 1),
+        HookFn: ({ val }: { val: number | string }) => useChapter(1, val as string, 1),
         initial: { val: 'MAT' },
         updated: { val: 'GEN' },
         expectedInitial: [1, 'MAT', 1],
@@ -62,7 +58,7 @@ describe('useChapter', () => {
       },
       {
         param: 'chapter',
-        hookFn: ({ val }: { val: number | string }) => useChapter(1, 'MAT', val as number),
+        HookFn: ({ val }: { val: number | string }) => useChapter(1, 'MAT', val as number),
         initial: { val: 1 },
         updated: { val: 5 },
         expectedInitial: [1, 'MAT', 1],
@@ -70,9 +66,9 @@ describe('useChapter', () => {
       },
     ])(
       'should refetch when $param changes',
-      async ({ hookFn, initial, updated, expectedInitial, expectedUpdated }) => {
+      async ({ HookFn, initial, updated, expectedInitial, expectedUpdated }) => {
         const wrapper = createYVWrapper();
-        const { result, rerender } = renderHook(hookFn, {
+        const { result, rerender } = renderHook(HookFn, {
           wrapper,
           initialProps: initial,
         });
