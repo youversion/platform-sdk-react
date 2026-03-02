@@ -67,10 +67,6 @@ export class MockSignInWithYouVersionResult {
   }
 }
 
-/**
- * Creates a mock factory for @youversion/platform-core with a simple
- * configuration object (direct property access). Used by useYVAuth tests.
- */
 export function createSimpleCoreMockFactory() {
   const mockConfiguration = {
     accessToken: null as string | null,
@@ -117,10 +113,6 @@ export function createSimpleCoreMockFactory() {
   };
 }
 
-/**
- * Creates a mock factory for @youversion/platform-core with getter/setter
- * configuration (reactive token access). Used by YouVersionAuthProvider tests.
- */
 export function createGetterCoreMockFactory() {
   let mockInstallationId = 'auto-generated-installation-id';
   let mockIdToken: string | null = null;
