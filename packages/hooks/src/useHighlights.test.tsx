@@ -1,5 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { describe, expect, vi, beforeEach, it, type Mock } from 'vitest';
+import { describe, expect, vi, beforeEach, type Mock } from 'vitest';
+import { it } from './test/hook-fixtures';
 import type { ReactNode } from 'react';
 import { useHighlights } from './useHighlights';
 import { YouVersionContext } from './context';
@@ -10,8 +11,8 @@ import {
   type Highlight,
   type CreateHighlight,
 } from '@youversion/platform-core';
-import { createYVWrapper } from './test/utils';
 
+// Mock the core package
 vi.mock('@youversion/platform-core', async () => {
   const actual = await vi.importActual('@youversion/platform-core');
   return {
@@ -78,11 +79,16 @@ describe('useHighlights', () => {
         'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
       );
     });
+
+    it('should throw error when appKey is missing', () => {
+      expect(() => renderHook(() => useHighlights())).toThrow(
+        'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
+      );
+    });
   });
 
   describe('client creation', () => {
-    it('should create HighlightsClient with correct ApiClient config', () => {
-      const wrapper = createYVWrapper();
+    it('should create HighlightsClient with correct ApiClient config', ({ wrapper }) => {
       renderHook(() => useHighlights(), { wrapper });
 
       expect(ApiClient).toHaveBeenCalledWith({
@@ -91,12 +97,12 @@ describe('useHighlights', () => {
       expect(HighlightsClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
     });
 
-    it('should memoize HighlightsClient instance', () => {
-      const wrapper = createYVWrapper();
+    it('should memoize HighlightsClient instance', ({ wrapper }) => {
       const { rerender } = renderHook(() => useHighlights(), { wrapper });
 
       rerender();
 
+      // If client is memoized, refetch should be stable (though useCallback might still create new refs)
       expect(HighlightsClient).toHaveBeenCalledTimes(1);
     });
 
@@ -126,8 +132,7 @@ describe('useHighlights', () => {
   });
 
   describe('fetching highlights', () => {
-    it('should fetch highlights with no options', async () => {
-      const wrapper = createYVWrapper();
+    it('should fetch highlights with no options', async ({ wrapper }) => {
       const { result } = renderHook(() => useHighlights(), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -141,8 +146,7 @@ describe('useHighlights', () => {
       expect.soft(result.current.highlights).toEqual(mockHighlights);
     });
 
-    it('should fetch highlights with version_id option', async () => {
-      const wrapper = createYVWrapper();
+    it('should fetch highlights with version_id option', async ({ wrapper }) => {
       const { result } = renderHook(() => useHighlights({ version_id: 111 }), { wrapper });
 
       await waitFor(() => {
@@ -153,8 +157,7 @@ describe('useHighlights', () => {
       expect.soft(result.current.highlights).toEqual(mockHighlights);
     });
 
-    it('should fetch highlights with passage_id option', async () => {
-      const wrapper = createYVWrapper();
+    it('should fetch highlights with passage_id option', async ({ wrapper }) => {
       const { result } = renderHook(() => useHighlights({ passage_id: 'MAT.1.1' }), { wrapper });
 
       await waitFor(() => {
@@ -165,8 +168,7 @@ describe('useHighlights', () => {
       expect.soft(result.current.highlights).toEqual(mockHighlights);
     });
 
-    it('should fetch highlights with both options', async () => {
-      const wrapper = createYVWrapper();
+    it('should fetch highlights with both options', async ({ wrapper }) => {
       const { result } = renderHook(
         () => useHighlights({ version_id: 111, passage_id: 'MAT.1.1' }),
         {
@@ -185,8 +187,7 @@ describe('useHighlights', () => {
       expect.soft(result.current.highlights).toEqual(mockHighlights);
     });
 
-    it('should refetch when options change', async () => {
-      const wrapper = createYVWrapper();
+    it('should refetch when options change', async ({ wrapper }) => {
       const { result, rerender } = renderHook(({ options }) => useHighlights(options), {
         wrapper,
         initialProps: { options: { version_id: 111 } },
@@ -208,8 +209,7 @@ describe('useHighlights', () => {
       expect.soft(mockGetHighlights).toHaveBeenLastCalledWith({ version_id: 1 });
     });
 
-    it('should not fetch when enabled is false', async () => {
-      const wrapper = createYVWrapper();
+    it('should not fetch when enabled is false', async ({ wrapper }) => {
       const { result } = renderHook(() => useHighlights(undefined, { enabled: false }), {
         wrapper,
       });
@@ -222,8 +222,7 @@ describe('useHighlights', () => {
       expect.soft(result.current.highlights).toBe(null);
     });
 
-    it('should handle fetch errors', async () => {
-      const wrapper = createYVWrapper();
+    it('should handle fetch errors', async ({ wrapper }) => {
       const error = new Error('Failed to fetch highlights');
       mockGetHighlights.mockRejectedValueOnce(error);
 
@@ -237,8 +236,7 @@ describe('useHighlights', () => {
       expect.soft(result.current.highlights).toBe(null);
     });
 
-    it('should support manual refetch', async () => {
-      const wrapper = createYVWrapper();
+    it('should support manual refetch', async ({ wrapper }) => {
       const { result } = renderHook(() => useHighlights(), { wrapper });
 
       await waitFor(() => {
@@ -256,8 +254,7 @@ describe('useHighlights', () => {
   });
 
   describe('createHighlight mutation', () => {
-    it('should create highlight and refetch', async () => {
-      const wrapper = createYVWrapper();
+    it('should create highlight and refetch', async ({ wrapper }) => {
       const { result } = renderHook(() => useHighlights(), { wrapper });
 
       await waitFor(() => {
@@ -279,13 +276,13 @@ describe('useHighlights', () => {
       const created = await createPromise;
       expect(created).toEqual(mockHighlight);
 
+      // Should refetch after creation
       await waitFor(() => {
         expect(mockGetHighlights).toHaveBeenCalledTimes(2);
       });
     });
 
-    it('should handle create error', async () => {
-      const wrapper = createYVWrapper();
+    it('should handle create error', async ({ wrapper }) => {
       const error = new Error('Failed to create highlight');
       mockCreateHighlight.mockRejectedValueOnce(error);
 
@@ -305,13 +302,13 @@ describe('useHighlights', () => {
         'Failed to create highlight',
       );
 
+      // Should not refetch on error
       expect(mockGetHighlights).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('deleteHighlight mutation', () => {
-    it('should delete highlight and refetch', async () => {
-      const wrapper = createYVWrapper();
+    it('should delete highlight and refetch', async ({ wrapper }) => {
       const { result } = renderHook(() => useHighlights(), { wrapper });
 
       await waitFor(() => {
@@ -326,13 +323,13 @@ describe('useHighlights', () => {
 
       await deletePromise;
 
+      // Should refetch after deletion
       await waitFor(() => {
         expect(mockGetHighlights).toHaveBeenCalledTimes(2);
       });
     });
 
-    it('should delete highlight with options', async () => {
-      const wrapper = createYVWrapper();
+    it('should delete highlight with options', async ({ wrapper }) => {
       const { result } = renderHook(() => useHighlights(), { wrapper });
 
       await waitFor(() => {
@@ -347,11 +344,11 @@ describe('useHighlights', () => {
 
       await deletePromise;
 
+      // Should refetch after deletion
       expect(mockGetHighlights).toHaveBeenCalledTimes(2);
     });
 
-    it('should handle delete error', async () => {
-      const wrapper = createYVWrapper();
+    it('should handle delete error', async ({ wrapper }) => {
       const error = new Error('Failed to delete highlight');
       mockDeleteHighlight.mockRejectedValueOnce(error);
 
@@ -365,6 +362,7 @@ describe('useHighlights', () => {
         'Failed to delete highlight',
       );
 
+      // Should not refetch on error
       expect(mockGetHighlights).toHaveBeenCalledTimes(1);
     });
   });

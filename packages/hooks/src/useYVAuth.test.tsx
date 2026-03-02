@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
@@ -83,7 +84,7 @@ describe('useYVAuth', () => {
         await result.current.signIn({ redirectUrl, scopes: ['profile'] });
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(redirectUrl, ['profile']);
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(redirectUrl, ['profile']);
     });
 
     it('should call signIn with empty scopes when not provided', async () => {
@@ -94,7 +95,7 @@ describe('useYVAuth', () => {
         await result.current.signIn({ redirectUrl });
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(redirectUrl);
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(redirectUrl);
     });
 
     it('should call YouVersionAPIUsers.signIn exactly once with scopes', async () => {
@@ -106,8 +107,8 @@ describe('useYVAuth', () => {
         await result.current.signIn({ redirectUrl, scopes });
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledTimes(1);
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(redirectUrl, scopes);
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(redirectUrl, scopes);
     });
 
     it('should call YouVersionAPIUsers.signIn exactly once without scopes', async () => {
@@ -118,15 +119,14 @@ describe('useYVAuth', () => {
         await result.current.signIn({ redirectUrl });
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledTimes(1);
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(redirectUrl);
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(redirectUrl);
     });
 
     it('should throw error when signIn fails', async () => {
       const { result } = await renderAuthHook();
       const error = new Error('Sign in failed');
-      const signInMock = vi.spyOn(YouVersionAPIUsers, 'signIn');
-      signInMock.mockRejectedValue(error);
+      vi.mocked(YouVersionAPIUsers.signIn).mockRejectedValue(error);
 
       await expect(
         act(async () => {
@@ -142,7 +142,7 @@ describe('useYVAuth', () => {
         await result.current.signIn();
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith('http://test.example.com');
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith('http://test.example.com');
     });
 
     it('should use redirectUri from provider with scopes when redirectUrl is not passed', async () => {
@@ -153,7 +153,7 @@ describe('useYVAuth', () => {
         await result.current.signIn({ scopes });
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(
+      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(
         'http://test.example.com',
         scopes,
       );
@@ -163,23 +163,21 @@ describe('useYVAuth', () => {
   describe('processCallback', () => {
     it('should call handleAuthCallback and return result', async () => {
       const { result } = await renderAuthHook();
-      const callbackMock = vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback');
-      callbackMock.mockResolvedValue(mockAuthResult);
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult as any);
 
       let callbackResult;
       await act(async () => {
         callbackResult = await result.current.processCallback();
       });
 
-      expect(callbackMock).toHaveBeenCalled();
+      expect(vi.mocked(YouVersionAPIUsers.handleAuthCallback)).toHaveBeenCalled();
       expect(callbackResult).toEqual(mockAuthResult);
     });
 
     it('should throw error when callback processing fails', async () => {
       const { result } = await renderAuthHook();
       const error = new Error('Callback processing failed');
-      const callbackMock = vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback');
-      callbackMock.mockRejectedValue(error);
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockRejectedValue(error);
 
       await expect(
         act(async () => {
@@ -190,8 +188,7 @@ describe('useYVAuth', () => {
 
     it('should return null when no result from callback', async () => {
       const { result } = await renderAuthHook();
-      const callbackMock = vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback');
-      callbackMock.mockResolvedValue(null);
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(null);
 
       let callbackResult;
       await act(async () => {
@@ -210,7 +207,7 @@ describe('useYVAuth', () => {
         result.current.signOut();
       });
 
-      expect(vi.mocked(YouVersionPlatformConfiguration).clearAuthTokens).toHaveBeenCalled();
+      expect(YouVersionPlatformConfiguration.clearAuthTokens).toHaveBeenCalled();
     });
   });
 

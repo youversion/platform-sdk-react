@@ -1,11 +1,12 @@
 import { renderHook } from '@testing-library/react';
-import { describe, expect, vi, beforeEach, it } from 'vitest';
+import { describe, expect, vi, beforeEach } from 'vitest';
+import { it } from './test/hook-fixtures';
 import type { ReactNode } from 'react';
 import { useLanguagesClient } from './useLanguageClient';
 import { YouVersionContext } from './context';
 import { LanguagesClient, ApiClient } from '@youversion/platform-core';
-import { createYVWrapper } from './test/utils';
 
+// Mock the core package
 vi.mock('@youversion/platform-core', async () => {
   const actual = await vi.importActual('@youversion/platform-core');
   return {
@@ -51,8 +52,7 @@ describe('useLanguagesClient', () => {
   });
 
   describe('client creation', () => {
-    it('should create LanguagesClient with correct ApiClient config', () => {
-      const wrapper = createYVWrapper();
+    it('should create LanguagesClient with correct ApiClient config', ({ wrapper }) => {
       renderHook(() => useLanguagesClient(), { wrapper });
 
       expect(ApiClient).toHaveBeenCalledWith({
@@ -61,8 +61,7 @@ describe('useLanguagesClient', () => {
       expect(LanguagesClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
     });
 
-    it('should memoize LanguagesClient instance', () => {
-      const wrapper = createYVWrapper();
+    it('should memoize LanguagesClient instance', ({ wrapper }) => {
       const { rerender } = renderHook(() => useLanguagesClient(), { wrapper });
 
       rerender();

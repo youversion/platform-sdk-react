@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { describe, expect, vi, beforeEach, it } from 'vitest';
+import { describe, expect, vi, beforeEach } from 'vitest';
+import { it } from './test/hook-fixtures';
 import { useVerses } from './useVerses';
 import { type BibleClient, type BibleVerse, type Collection } from '@youversion/platform-core';
 import { useBibleClient } from './useBibleClient';
-import { createYVWrapper } from './test/utils';
 
 vi.mock('./useBibleClient');
 
@@ -27,8 +28,7 @@ describe('useVerses', () => {
   });
 
   describe('fetching verses', () => {
-    it('should fetch verses with all 3 parameters', async () => {
-      const wrapper = createYVWrapper();
+    it('should fetch verses with all 3 parameters', async ({ wrapper }) => {
       const { result } = renderHook(() => useVerses(111, 'MAT', 1), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -45,21 +45,20 @@ describe('useVerses', () => {
     it.each([
       {
         param: 'versionId',
-        initialArgs: [1, 'MAT', 1] as [number, string, number],
-        updatedArgs: [111, 'MAT', 1] as [number, string, number],
+        initialArgs: [1, 'MAT', 1] as const,
+        updatedArgs: [111, 'MAT', 1] as const,
       },
       {
         param: 'book',
-        initialArgs: [1, 'MAT', 1] as [number, string, number],
-        updatedArgs: [1, 'GEN', 1] as [number, string, number],
+        initialArgs: [1, 'MAT', 1] as const,
+        updatedArgs: [1, 'GEN', 1] as const,
       },
       {
         param: 'chapter',
-        initialArgs: [1, 'MAT', 1] as [number, string, number],
-        updatedArgs: [1, 'MAT', 5] as [number, string, number],
+        initialArgs: [1, 'MAT', 1] as const,
+        updatedArgs: [1, 'MAT', 5] as const,
       },
-    ])('should refetch when $param changes', async ({ initialArgs, updatedArgs }) => {
-      const wrapper = createYVWrapper();
+    ])('should refetch when $param changes', async ({ wrapper, initialArgs, updatedArgs }) => {
       const { result, rerender } = renderHook(({ args }) => useVerses(args[0], args[1], args[2]), {
         wrapper,
         initialProps: { args: initialArgs },
@@ -84,8 +83,7 @@ describe('useVerses', () => {
       expect.soft(mockGetVerses).toHaveBeenLastCalledWith(...updatedArgs);
     });
 
-    it('should not fetch when enabled is false', async () => {
-      const wrapper = createYVWrapper();
+    it('should not fetch when enabled is false', async ({ wrapper }) => {
       const { result } = renderHook(() => useVerses(1, 'MAT', 1, { enabled: false }), {
         wrapper,
       });
@@ -98,8 +96,7 @@ describe('useVerses', () => {
       expect.soft(result.current.verses).toBe(null);
     });
 
-    it('should handle fetch errors', async () => {
-      const wrapper = createYVWrapper();
+    it('should handle fetch errors', async ({ wrapper }) => {
       const error = new Error('Failed to fetch verses');
       mockGetVerses.mockRejectedValueOnce(error);
 
@@ -113,8 +110,7 @@ describe('useVerses', () => {
       expect.soft(result.current.verses).toBe(null);
     });
 
-    it('should support manual refetch', async () => {
-      const wrapper = createYVWrapper();
+    it('should support manual refetch', async ({ wrapper }) => {
       const { result } = renderHook(() => useVerses(1, 'MAT', 1), { wrapper });
 
       await waitFor(() => {

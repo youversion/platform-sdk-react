@@ -1,9 +1,10 @@
+/* eslint-disable react-hooks/rules-of-hooks, @typescript-eslint/no-unsafe-assignment */
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { describe, expect, vi, beforeEach, it } from 'vitest';
+import { describe, expect, vi, beforeEach } from 'vitest';
+import { it } from './test/hook-fixtures';
 import { useChapter } from './useChapter';
 import { type BibleClient, type BibleChapter } from '@youversion/platform-core';
 import { useBibleClient } from './useBibleClient';
-import { createYVWrapper } from './test/utils';
 
 vi.mock('./useBibleClient');
 
@@ -24,8 +25,7 @@ describe('useChapter', () => {
   });
 
   describe('fetching chapter', () => {
-    it('should fetch chapter with versionId, book, chapter params', async () => {
-      const wrapper = createYVWrapper();
+    it('should fetch chapter with versionId, book, chapter params', async ({ wrapper }) => {
       const { result } = renderHook(() => useChapter(111, 'MAT', 1), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -42,7 +42,7 @@ describe('useChapter', () => {
     it.each([
       {
         param: 'versionId',
-        HookFn: ({ val }: { val: number | string }) => useChapter(val as number, 'MAT', 1),
+        hookFn: ({ val }: { val: number | string }) => useChapter(val as number, 'MAT', 1),
         initial: { val: 1 },
         updated: { val: 111 },
         expectedInitial: [1, 'MAT', 1],
@@ -50,7 +50,7 @@ describe('useChapter', () => {
       },
       {
         param: 'book',
-        HookFn: ({ val }: { val: number | string }) => useChapter(1, val as string, 1),
+        hookFn: ({ val }: { val: number | string }) => useChapter(1, val as string, 1),
         initial: { val: 'MAT' },
         updated: { val: 'GEN' },
         expectedInitial: [1, 'MAT', 1],
@@ -58,7 +58,7 @@ describe('useChapter', () => {
       },
       {
         param: 'chapter',
-        HookFn: ({ val }: { val: number | string }) => useChapter(1, 'MAT', val as number),
+        hookFn: ({ val }: { val: number | string }) => useChapter(1, 'MAT', val as number),
         initial: { val: 1 },
         updated: { val: 5 },
         expectedInitial: [1, 'MAT', 1],
@@ -66,9 +66,8 @@ describe('useChapter', () => {
       },
     ])(
       'should refetch when $param changes',
-      async ({ HookFn, initial, updated, expectedInitial, expectedUpdated }) => {
-        const wrapper = createYVWrapper();
-        const { result, rerender } = renderHook(HookFn, {
+      async ({ hookFn, initial, updated, expectedInitial, expectedUpdated, wrapper }) => {
+        const { result, rerender } = renderHook(hookFn, {
           wrapper,
           initialProps: initial,
         });
@@ -93,8 +92,7 @@ describe('useChapter', () => {
       },
     );
 
-    it('should not fetch when enabled is false', async () => {
-      const wrapper = createYVWrapper();
+    it('should not fetch when enabled is false', async ({ wrapper }) => {
       const { result } = renderHook(() => useChapter(1, 'MAT', 1, { enabled: false }), {
         wrapper,
       });
@@ -107,8 +105,7 @@ describe('useChapter', () => {
       expect.soft(result.current.chapter).toBe(null);
     });
 
-    it('should handle fetch errors', async () => {
-      const wrapper = createYVWrapper();
+    it('should handle fetch errors', async ({ wrapper }) => {
       const error = new Error('Failed to fetch chapter');
       mockGetChapter.mockRejectedValueOnce(error);
 
@@ -122,8 +119,7 @@ describe('useChapter', () => {
       expect.soft(result.current.chapter).toBe(null);
     });
 
-    it('should clear error on successful refetch', async () => {
-      const wrapper = createYVWrapper();
+    it('should clear error on successful refetch', async ({ wrapper }) => {
       const error = new Error('Failed to fetch chapter');
       mockGetChapter.mockRejectedValueOnce(error).mockResolvedValueOnce(mockChapter);
 
@@ -148,8 +144,7 @@ describe('useChapter', () => {
       expect.soft(result.current.chapter).toEqual(mockChapter);
     });
 
-    it('should support manual refetch', async () => {
-      const wrapper = createYVWrapper();
+    it('should support manual refetch', async ({ wrapper }) => {
       const { result } = renderHook(() => useChapter(1, 'MAT', 1), { wrapper });
 
       await waitFor(() => {

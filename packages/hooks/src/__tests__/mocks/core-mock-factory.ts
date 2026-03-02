@@ -1,23 +1,8 @@
-import { vi, type MockedFunction } from 'vitest';
-import type { YouVersionAPIUsers } from '@youversion/platform-core';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/explicit-module-boundary-types */
+import { vi } from 'vitest';
 
-interface MockUserInfoData {
-  name?: string;
-  id?: string;
-  email?: string;
-  avatar_url?: string;
-}
-
-interface MockAuthResultProps {
-  accessToken?: string;
-  expiresIn?: number;
-  refreshToken?: string;
-  idToken?: string;
-  yvpUserId?: string;
-  name?: string;
-  profilePicture?: string;
-  email?: string;
-}
+// Shared mock classes for YouVersionUserInfo and SignInWithYouVersionResult
+// Used by useYVAuth.test.tsx and YouVersionAuthProvider.test.tsx
 
 export class MockYouVersionUserInfo {
   readonly name?: string;
@@ -25,7 +10,7 @@ export class MockYouVersionUserInfo {
   readonly email?: string;
   readonly avatarUrlFormat?: string;
 
-  constructor(data: MockUserInfoData) {
+  constructor(data: any) {
     this.name = data.name;
     this.userId = data.id;
     this.email = data.email;
@@ -38,9 +23,6 @@ export class MockYouVersionUserInfo {
     }
     try {
       let urlString = this.avatarUrlFormat;
-      if (urlString.startsWith('//')) {
-        urlString = 'https:' + urlString;
-      }
       urlString = urlString.replace('{width}', width.toString());
       urlString = urlString.replace('{height}', height.toString());
       return new URL(urlString);
@@ -55,16 +37,25 @@ export class MockYouVersionUserInfo {
 }
 
 export class MockSignInWithYouVersionResult {
-  readonly accessToken: string | undefined;
-  readonly expiryDate: Date | undefined;
-  readonly refreshToken: string | undefined;
-  readonly idToken: string | undefined;
-  readonly yvpUserId: string | undefined;
-  readonly name: string | undefined;
-  readonly profilePicture: string | undefined;
-  readonly email: string | undefined;
+  accessToken: string | undefined;
+  expiryDate: Date | undefined;
+  refreshToken: string | undefined;
+  idToken: string | undefined;
+  yvpUserId: string | undefined;
+  name: string | undefined;
+  profilePicture: string | undefined;
+  email: string | undefined;
 
-  constructor(props: MockAuthResultProps) {
+  constructor(props: {
+    accessToken?: string;
+    expiresIn?: number;
+    refreshToken?: string;
+    idToken?: string;
+    yvpUserId?: string;
+    name?: string;
+    profilePicture?: string;
+    email?: string;
+  }) {
     this.accessToken = props.accessToken;
     this.expiryDate = props.expiresIn ? new Date(Date.now() + props.expiresIn * 1000) : new Date();
     this.refreshToken = props.refreshToken;
@@ -76,67 +67,18 @@ export class MockSignInWithYouVersionResult {
   }
 }
 
-interface MockConfiguration {
-  accessToken: string | null;
-  idToken: string | null;
-  refreshToken: string | null;
-  appKey: string;
-  apiHost: string;
-  installationId: string | null;
-  clearAuthTokens: MockedFunction<() => void>;
-  saveAuthData: MockedFunction<
-    (
-      accessToken: string | null,
-      refreshToken: string | null,
-      idToken: string | null,
-      installationId: string | null,
-    ) => void
-  >;
-}
-
-interface SimpleCoreMockFactory {
-  YouVersionAPIUsers: {
-    signIn: MockedFunction<typeof YouVersionAPIUsers.signIn>;
-    handleAuthCallback: MockedFunction<typeof YouVersionAPIUsers.handleAuthCallback>;
-    userInfo: MockedFunction<typeof YouVersionAPIUsers.userInfo>;
-    refreshTokenIfNeeded: MockedFunction<typeof YouVersionAPIUsers.refreshTokenIfNeeded>;
-  };
-  YouVersionPlatformConfiguration: MockConfiguration;
-  SignInWithYouVersionPermission: Record<string, string>;
-  YouVersionUserInfo: typeof MockYouVersionUserInfo;
-  SignInWithYouVersionResult: typeof MockSignInWithYouVersionResult;
-}
-
-interface GetterCoreMockFactory {
-  YouVersionAPIUsers: {
-    handleAuthCallback: MockedFunction<typeof YouVersionAPIUsers.handleAuthCallback>;
-    userInfo: MockedFunction<typeof YouVersionAPIUsers.userInfo>;
-    refreshTokenIfNeeded: MockedFunction<typeof YouVersionAPIUsers.refreshTokenIfNeeded>;
-  };
-  YouVersionPlatformConfiguration: {
-    appKey: string;
-    installationId: string;
-    apiHost: string;
-    readonly idToken: string | null;
-    readonly refreshToken: string | null;
-    readonly accessToken: string | null;
-    clearAuthTokens: MockedFunction<() => void>;
-    saveAuthData: MockedFunction<
-      (accessToken: string | null, refreshToken: string | null, idToken: string | null) => void
-    >;
-  };
-  YouVersionUserInfo: typeof MockYouVersionUserInfo;
-  SignInWithYouVersionResult: typeof MockSignInWithYouVersionResult;
-}
-
-export function createSimpleCoreMockFactory(): SimpleCoreMockFactory {
-  const mockConfiguration: MockConfiguration = {
-    accessToken: null,
-    idToken: null,
-    refreshToken: null,
+/**
+ * Creates a mock factory for @youversion/platform-core with a simple
+ * configuration object (direct property access). Used by useYVAuth tests.
+ */
+export function createSimpleCoreMockFactory() {
+  const mockConfiguration = {
+    accessToken: null as string | null,
+    idToken: null as string | null,
+    refreshToken: null as string | null,
     appKey: '',
     apiHost: 'test-api.example.com',
-    installationId: null,
+    installationId: null as string | null,
     clearAuthTokens: vi.fn(() => {
       mockConfiguration.accessToken = null;
       mockConfiguration.idToken = null;
@@ -168,16 +110,18 @@ export function createSimpleCoreMockFactory(): SimpleCoreMockFactory {
     SignInWithYouVersionPermission: {
       bibles: 'bibles',
       highlights: 'highlights',
-      votd: 'votd',
-      demographics: 'demographics',
-      bibleActivity: 'bible_activity',
+      user: 'user',
     },
     YouVersionUserInfo: MockYouVersionUserInfo,
     SignInWithYouVersionResult: MockSignInWithYouVersionResult,
   };
 }
 
-export function createGetterCoreMockFactory(): GetterCoreMockFactory {
+/**
+ * Creates a mock factory for @youversion/platform-core with getter/setter
+ * configuration (reactive token access). Used by YouVersionAuthProvider tests.
+ */
+export function createGetterCoreMockFactory() {
   let mockInstallationId = 'auto-generated-installation-id';
   let mockIdToken: string | null = null;
   let mockRefreshToken: string | null = null;

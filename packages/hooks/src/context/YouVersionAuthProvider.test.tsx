@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
@@ -109,10 +110,11 @@ describe('YouVersionAuthProvider', () => {
   describe('OAuth callback handling', () => {
     it('should detect OAuth callback with state parameter', async () => {
       mockWindow.location.search = '?state=test-state&code=auth-code';
-      vi.spyOn(YouVersionAPIUsers, 'userInfo').mockReturnValue(mockUserInfo);
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult as any);
+      vi.mocked(YouVersionAPIUsers.userInfo).mockReturnValue(mockUserInfo as any);
 
       // Mock the configuration to return the id token after handleAuthCallback
-      vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockImplementation(() => {
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockImplementation(() => {
         YouVersionPlatformConfiguration.saveAuthData(null, null, 'test-id-token', null);
         return Promise.resolve(mockAuthResult as any);
       });
@@ -134,7 +136,7 @@ describe('YouVersionAuthProvider', () => {
 
     it('should detect OAuth callback with error parameter', async () => {
       mockWindow.location.search = '?error=access_denied&error_description=User+denied+access';
-      vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockResolvedValue(mockAuthResult);
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult as any);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
@@ -152,7 +154,7 @@ describe('YouVersionAuthProvider', () => {
     it('should handle callback error and set error state', async () => {
       mockWindow.location.search = '?state=test-state&code=auth-code';
       const callbackError = new Error('Callback processing failed');
-      vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockRejectedValue(callbackError);
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockRejectedValue(callbackError);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
@@ -169,7 +171,7 @@ describe('YouVersionAuthProvider', () => {
 
     it('should handle callback with no idToken', async () => {
       mockWindow.location.search = '?state=test-state&code=auth-code';
-      vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockResolvedValue(mockAuthResult);
+      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult as any);
       YouVersionPlatformConfiguration.saveAuthData(null, null, null, null);
 
       const { getByTestId } = render(
@@ -193,11 +195,11 @@ describe('YouVersionAuthProvider', () => {
       YouVersionPlatformConfiguration.saveAuthData(null, 'existing-refresh-token', null, null);
 
       // Mock refreshTokenIfNeeded to set the id token after successful refresh
-      vi.spyOn(YouVersionAPIUsers, 'refreshTokenIfNeeded').mockImplementation(() => {
+      vi.mocked(YouVersionAPIUsers.refreshTokenIfNeeded).mockImplementation(() => {
         YouVersionPlatformConfiguration.saveAuthData(null, null, 'refreshed-id-token', null);
         return Promise.resolve(true);
       });
-      vi.spyOn(YouVersionAPIUsers, 'userInfo').mockReturnValue(mockUserInfo);
+      vi.mocked(YouVersionAPIUsers.userInfo).mockReturnValue(mockUserInfo as any);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
@@ -216,7 +218,7 @@ describe('YouVersionAuthProvider', () => {
 
     it('should handle refresh token failure', async () => {
       YouVersionPlatformConfiguration.saveAuthData(null, 'existing-refresh-token', null, null);
-      vi.spyOn(YouVersionAPIUsers, 'refreshTokenIfNeeded').mockRejectedValue(
+      vi.mocked(YouVersionAPIUsers.refreshTokenIfNeeded).mockRejectedValue(
         new Error('Refresh failed'),
       );
 
@@ -235,7 +237,7 @@ describe('YouVersionAuthProvider', () => {
 
     it('should clear user when refresh token exists but no idToken after refresh', async () => {
       YouVersionPlatformConfiguration.saveAuthData(null, 'existing-refresh-token', null, null);
-      vi.spyOn(YouVersionAPIUsers, 'refreshTokenIfNeeded').mockResolvedValue(false);
+      vi.mocked(YouVersionAPIUsers.refreshTokenIfNeeded).mockResolvedValue(false);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
