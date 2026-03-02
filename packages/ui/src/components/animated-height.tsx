@@ -2,11 +2,16 @@ import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
 
 export function AnimatedHeight({ children }: { children: ReactNode }): React.ReactElement {
   const innerRef = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState<number>(0);
+  const [height, setHeight] = useState<number | 'auto'>('auto');
 
   useLayoutEffect(() => {
     const el = innerRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
+    if (!el || typeof ResizeObserver === 'undefined') {
+      setHeight('auto');
+      return;
+    }
+
+    setHeight(el.offsetHeight);
 
     const observer = new ResizeObserver(() => {
       if (el) {

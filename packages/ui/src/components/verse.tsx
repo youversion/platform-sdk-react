@@ -411,6 +411,7 @@ export const BibleTextView = ({
       data-yv-sdk
       data-yv-theme={currentTheme}
       className={cn(fetchedLoading || currentLoading ? 'yv:animate-pulse' : '')}
+      aria-busy={currentLoading || undefined}
       style={currentLoading ? { pointerEvents: 'none' } : undefined}
     >
       <Verse.Html
