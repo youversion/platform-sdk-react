@@ -51,9 +51,7 @@ describe('useVerseOfTheDay', () => {
     });
 
     it('should throw error when appKey is missing', () => {
-      const wrapper = ({ children }: { children: ReactNode }) => (
-        <YouVersionContext.Provider value={{ appKey: '' }}>{children}</YouVersionContext.Provider>
-      );
+      const wrapper = createYVWrapper('');
 
       expect(() => renderHook(() => useVerseOfTheDay(1), { wrapper })).toThrow(
         'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
