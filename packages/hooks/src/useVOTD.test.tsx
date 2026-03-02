@@ -1,12 +1,11 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { describe, expect, vi, beforeEach, type Mock } from 'vitest';
-import { it } from './test/hook-fixtures';
+import { describe, expect, vi, beforeEach, it, type Mock } from 'vitest';
 import type { ReactNode } from 'react';
 import { useVerseOfTheDay } from './useVOTD';
 import { YouVersionContext } from './context';
 import { BibleClient, ApiClient, type VOTD } from '@youversion/platform-core';
+import { createYVWrapper } from './test/utils';
 
-// Mock the core package
 vi.mock('@youversion/platform-core', async () => {
   const actual = await vi.importActual('@youversion/platform-core');
   return {
@@ -63,7 +62,8 @@ describe('useVerseOfTheDay', () => {
   });
 
   describe('client creation', () => {
-    it('should create BibleClient with correct ApiClient config', ({ wrapper }) => {
+    it('should create BibleClient with correct ApiClient config', () => {
+      const wrapper = createYVWrapper();
       renderHook(() => useVerseOfTheDay(1), { wrapper });
 
       expect(ApiClient).toHaveBeenCalledWith({
@@ -72,7 +72,8 @@ describe('useVerseOfTheDay', () => {
       expect(BibleClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
     });
 
-    it('should memoize BibleClient instance', ({ wrapper }) => {
+    it('should memoize BibleClient instance', () => {
+      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(() => useVerseOfTheDay(1), { wrapper });
       const _firstRefetch = result.current.refetch;
 
@@ -107,7 +108,8 @@ describe('useVerseOfTheDay', () => {
   });
 
   describe('fetching VOTD', () => {
-    it('should fetch VOTD for day 1', async ({ wrapper }) => {
+    it('should fetch VOTD for day 1', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVerseOfTheDay(1), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -121,7 +123,8 @@ describe('useVerseOfTheDay', () => {
       expect.soft(result.current.data).toEqual(mockVOTD);
     });
 
-    it('should fetch VOTD for day 100', async ({ wrapper }) => {
+    it('should fetch VOTD for day 100', async () => {
+      const wrapper = createYVWrapper();
       const mockVOTD100: VOTD = { day: 100, passage_id: 'PSA.23.1' };
       mockGetVOTD.mockResolvedValueOnce(mockVOTD100);
 
@@ -135,7 +138,8 @@ describe('useVerseOfTheDay', () => {
       expect.soft(result.current.data).toEqual(mockVOTD100);
     });
 
-    it('should fetch VOTD for day 366', async ({ wrapper }) => {
+    it('should fetch VOTD for day 366', async () => {
+      const wrapper = createYVWrapper();
       const mockVOTD366: VOTD = { day: 366, passage_id: 'REV.22.21' };
       mockGetVOTD.mockResolvedValueOnce(mockVOTD366);
 
@@ -149,7 +153,8 @@ describe('useVerseOfTheDay', () => {
       expect.soft(result.current.data).toEqual(mockVOTD366);
     });
 
-    it('should refetch when day changes', async ({ wrapper }) => {
+    it('should refetch when day changes', async () => {
+      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(({ day }) => useVerseOfTheDay(day), {
         wrapper,
         initialProps: { day: 1 },
@@ -172,7 +177,8 @@ describe('useVerseOfTheDay', () => {
       expect.soft(mockGetVOTD).toHaveBeenLastCalledWith(100);
     });
 
-    it('should not fetch when enabled is false', async ({ wrapper }) => {
+    it('should not fetch when enabled is false', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVerseOfTheDay(1, { enabled: false }), { wrapper });
 
       await waitFor(() => {
@@ -183,7 +189,8 @@ describe('useVerseOfTheDay', () => {
       expect.soft(result.current.data).toBe(null);
     });
 
-    it('should handle fetch errors', async ({ wrapper }) => {
+    it('should handle fetch errors', async () => {
+      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch VOTD');
       mockGetVOTD.mockRejectedValueOnce(error);
 
@@ -197,7 +204,8 @@ describe('useVerseOfTheDay', () => {
       expect.soft(result.current.data).toBe(null);
     });
 
-    it('should support manual refetch', async ({ wrapper }) => {
+    it('should support manual refetch', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVerseOfTheDay(1), { wrapper });
 
       await waitFor(() => {

@@ -1,10 +1,10 @@
 import { renderHook } from '@testing-library/react';
-import { describe, expect, vi } from 'vitest';
-import { it } from './test/hook-fixtures';
+import { describe, expect, vi, it } from 'vitest';
 import type { ReactNode } from 'react';
 import { useBibleClient } from './useBibleClient';
 import { YouVersionContext } from './context';
 import { BibleClient, ApiClient } from '@youversion/platform-core';
+import { createYVWrapper } from './test/utils';
 
 vi.mock('@youversion/platform-core', async () => {
   const actual = await vi.importActual('@youversion/platform-core');
@@ -24,7 +24,8 @@ vi.mock('@youversion/platform-core', async () => {
 });
 
 describe('useBibleClient', () => {
-  it('should create and return a BibleClient instance when context is valid', ({ wrapper }) => {
+  it('should create and return a BibleClient instance when context is valid', () => {
+    const wrapper = createYVWrapper();
     const { result } = renderHook(() => useBibleClient(), { wrapper });
 
     expect(ApiClient).toHaveBeenCalledWith({
@@ -50,7 +51,8 @@ describe('useBibleClient', () => {
     );
   });
 
-  it('should memoize the BibleClient instance', ({ wrapper }) => {
+  it('should memoize the BibleClient instance', () => {
+    const wrapper = createYVWrapper();
     const { result, rerender } = renderHook(() => useBibleClient(), { wrapper });
     const firstClient = result.current;
 

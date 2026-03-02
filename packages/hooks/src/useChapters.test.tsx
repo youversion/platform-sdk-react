@@ -1,10 +1,10 @@
-/* eslint-disable react-hooks/rules-of-hooks, @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable react-hooks/rules-of-hooks */
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { describe, expect, vi, beforeEach } from 'vitest';
-import { it } from './test/hook-fixtures';
+import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useChapters } from './useChapters';
 import { type BibleClient, type BibleChapter, type Collection } from '@youversion/platform-core';
 import { useBibleClient } from './useBibleClient';
+import { createYVWrapper } from './test/utils';
 
 vi.mock('./useBibleClient');
 
@@ -28,7 +28,8 @@ describe('useChapters', () => {
   });
 
   describe('fetching chapters', () => {
-    it('should fetch chapters with versionId, book params', async ({ wrapper }) => {
+    it('should fetch chapters with versionId, book params', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useChapters(111, 'MAT'), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -61,8 +62,8 @@ describe('useChapters', () => {
       },
     ])(
       'should refetch when $param changes',
-      // @ts-expect-error -- wrapper is injected by vitest fixture, not present in each() data
-      async ({ hookFn, initial, updated, expectedInitial, expectedUpdated, wrapper }) => {
+      async ({ hookFn, initial, updated, expectedInitial, expectedUpdated }) => {
+        const wrapper = createYVWrapper();
         const { result, rerender } = renderHook(hookFn, {
           wrapper,
           initialProps: initial,
@@ -88,7 +89,8 @@ describe('useChapters', () => {
       },
     );
 
-    it('should not fetch when enabled is false', async ({ wrapper }) => {
+    it('should not fetch when enabled is false', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useChapters(1, 'MAT', { enabled: false }), {
         wrapper,
       });
@@ -101,7 +103,8 @@ describe('useChapters', () => {
       expect.soft(result.current.chapters).toBe(null);
     });
 
-    it('should handle fetch errors', async ({ wrapper }) => {
+    it('should handle fetch errors', async () => {
+      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch chapters');
       mockGetChapters.mockRejectedValueOnce(error);
 
@@ -115,7 +118,8 @@ describe('useChapters', () => {
       expect.soft(result.current.chapters).toBe(null);
     });
 
-    it('should clear error on successful refetch', async ({ wrapper }) => {
+    it('should clear error on successful refetch', async () => {
+      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch chapters');
       mockGetChapters.mockRejectedValueOnce(error).mockResolvedValueOnce(mockChapters);
 
@@ -140,7 +144,8 @@ describe('useChapters', () => {
       expect.soft(result.current.chapters).toEqual(mockChapters);
     });
 
-    it('should support manual refetch', async ({ wrapper }) => {
+    it('should support manual refetch', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useChapters(1, 'MAT'), { wrapper });
 
       await waitFor(() => {
@@ -162,8 +167,8 @@ describe('useChapters', () => {
   describe('book validation', () => {
     it.each([{ invalidBook: 'undefined' }, { invalidBook: 'null' }, { invalidBook: '' }])(
       'should skip fetch when book is "$invalidBook"',
-      // @ts-expect-error -- wrapper is injected by vitest fixture, not present in each() data
-      async ({ invalidBook, wrapper }) => {
+      async ({ invalidBook }) => {
+        const wrapper = createYVWrapper();
         const { result } = renderHook(() => useChapters(1, invalidBook), { wrapper });
 
         await waitFor(() => {
@@ -175,7 +180,8 @@ describe('useChapters', () => {
       },
     );
 
-    it('should fetch when book changes from invalid to valid', async ({ wrapper }) => {
+    it('should fetch when book changes from invalid to valid', async () => {
+      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(({ book }) => useChapters(1, book), {
         wrapper,
         initialProps: { book: 'undefined' },

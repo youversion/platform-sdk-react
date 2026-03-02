@@ -1,9 +1,9 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { describe, expect, vi, beforeEach } from 'vitest';
-import { it } from './test/hook-fixtures';
+import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useVersions } from './useVersions';
 import { type BibleClient, type Collection, type BibleVersion } from '@youversion/platform-core';
 import { useBibleClient } from './useBibleClient';
+import { createYVWrapper } from './test/utils';
 
 vi.mock('./useBibleClient');
 
@@ -44,7 +44,8 @@ describe('useVersions', () => {
   });
 
   describe('fetching versions', () => {
-    it('should fetch versions with default language range', async ({ wrapper }) => {
+    it('should fetch versions with default language range', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions(), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -58,7 +59,8 @@ describe('useVersions', () => {
       expect.soft(result.current.versions).toEqual(mockVersions);
     });
 
-    it('should fetch versions with custom language range string', async ({ wrapper }) => {
+    it('should fetch versions with custom language range string', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions('es'), { wrapper });
 
       await waitFor(() => {
@@ -69,7 +71,8 @@ describe('useVersions', () => {
       expect.soft(result.current.versions).toEqual(mockVersions);
     });
 
-    it('should fetch versions with language range array', async ({ wrapper }) => {
+    it('should fetch versions with language range array', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions(['en', 'es', 'fr']), { wrapper });
 
       await waitFor(() => {
@@ -80,7 +83,8 @@ describe('useVersions', () => {
       expect.soft(result.current.versions).toEqual(mockVersions);
     });
 
-    it('should fetch versions with license ID', async ({ wrapper }) => {
+    it('should fetch versions with license ID', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions('en', 123), { wrapper });
 
       await waitFor(() => {
@@ -91,7 +95,8 @@ describe('useVersions', () => {
       expect.soft(result.current.versions).toEqual(mockVersions);
     });
 
-    it('should fetch versions with string license ID', async ({ wrapper }) => {
+    it('should fetch versions with string license ID', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions('en', 'license-abc'), { wrapper });
 
       await waitFor(() => {
@@ -103,7 +108,8 @@ describe('useVersions', () => {
   });
 
   describe('fetching with options', () => {
-    it('should fetch versions with page_size option', async ({ wrapper }) => {
+    it('should fetch versions with page_size option', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions('en', undefined, { page_size: 10 }), {
         wrapper,
       });
@@ -120,7 +126,8 @@ describe('useVersions', () => {
       });
     });
 
-    it('should fetch versions with page_size "*" and fields', async ({ wrapper }) => {
+    it('should fetch versions with page_size "*" and fields', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(
         () => useVersions('en', undefined, { page_size: '*', fields: ['id', 'abbreviation'] }),
         { wrapper },
@@ -138,7 +145,8 @@ describe('useVersions', () => {
       });
     });
 
-    it('should fetch versions with page_token option', async ({ wrapper }) => {
+    it('should fetch versions with page_token option', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(
         () => useVersions('en', undefined, { page_token: 'next-page-token' }),
         { wrapper },
@@ -156,7 +164,8 @@ describe('useVersions', () => {
       });
     });
 
-    it('should fetch versions with fields option', async ({ wrapper }) => {
+    it('should fetch versions with fields option', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(
         () => useVersions('en', undefined, { fields: ['id', 'title', 'abbreviation'] }),
         { wrapper },
@@ -174,7 +183,8 @@ describe('useVersions', () => {
       });
     });
 
-    it('should fetch versions with all_available option', async ({ wrapper }) => {
+    it('should fetch versions with all_available option', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions('en', undefined, { all_available: true }), {
         wrapper,
       });
@@ -191,7 +201,8 @@ describe('useVersions', () => {
       });
     });
 
-    it('should fetch versions with all options combined', async ({ wrapper }) => {
+    it('should fetch versions with all options combined', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(
         () =>
           useVersions('en', 456, {
@@ -217,7 +228,8 @@ describe('useVersions', () => {
   });
 
   describe('refetch behavior', () => {
-    it('should refetch when languageRanges changes', async ({ wrapper }) => {
+    it('should refetch when languageRanges changes', async () => {
+      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(({ lang }) => useVersions(lang), {
         wrapper,
         initialProps: { lang: 'en' as string | string[] },
@@ -240,7 +252,8 @@ describe('useVersions', () => {
       expect.soft(mockGetVersions).toHaveBeenNthCalledWith(2, 'es', undefined, undefined);
     });
 
-    it('should refetch when languageRanges array changes', async ({ wrapper }) => {
+    it('should refetch when languageRanges array changes', async () => {
+      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(({ lang }) => useVersions(lang), {
         wrapper,
         initialProps: { lang: ['en', 'es'] as string | string[] },
@@ -263,7 +276,8 @@ describe('useVersions', () => {
       expect.soft(mockGetVersions).toHaveBeenNthCalledWith(2, ['en', 'fr'], undefined, undefined);
     });
 
-    it('should refetch when licenseId changes', async ({ wrapper }) => {
+    it('should refetch when licenseId changes', async () => {
+      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(({ license }) => useVersions('en', license), {
         wrapper,
         initialProps: { license: 123 as string | number | undefined },
@@ -286,7 +300,8 @@ describe('useVersions', () => {
       expect.soft(mockGetVersions).toHaveBeenNthCalledWith(2, 'en', 456, undefined);
     });
 
-    it('should refetch when page_size changes', async ({ wrapper }) => {
+    it('should refetch when page_size changes', async () => {
+      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(
         ({ options }) => useVersions('en', undefined, options),
         {
@@ -322,7 +337,8 @@ describe('useVersions', () => {
       });
     });
 
-    it('should refetch when page_token changes', async ({ wrapper }) => {
+    it('should refetch when page_token changes', async () => {
+      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(
         ({ options }) => useVersions('en', undefined, options),
         {
@@ -358,7 +374,8 @@ describe('useVersions', () => {
       });
     });
 
-    it('should refetch when fields changes', async ({ wrapper }) => {
+    it('should refetch when fields changes', async () => {
+      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(
         ({ options }) => useVersions('en', undefined, options),
         {
@@ -394,7 +411,8 @@ describe('useVersions', () => {
       });
     });
 
-    it('should refetch when all_available changes', async ({ wrapper }) => {
+    it('should refetch when all_available changes', async () => {
+      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(
         ({ options }) => useVersions('en', undefined, options),
         {
@@ -432,7 +450,8 @@ describe('useVersions', () => {
   });
 
   describe('enabled option', () => {
-    it('should not fetch when enabled is false', async ({ wrapper }) => {
+    it('should not fetch when enabled is false', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions('en', undefined, { enabled: false }), {
         wrapper,
       });
@@ -445,7 +464,8 @@ describe('useVersions', () => {
       expect.soft(result.current.versions).toBe(null);
     });
 
-    it('should fetch when enabled is true', async ({ wrapper }) => {
+    it('should fetch when enabled is true', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions('en', undefined, { enabled: true }), {
         wrapper,
       });
@@ -458,7 +478,8 @@ describe('useVersions', () => {
       expect.soft(result.current.versions).toEqual(mockVersions);
     });
 
-    it('should fetch when enabled is not specified', async ({ wrapper }) => {
+    it('should fetch when enabled is not specified', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions('en', undefined, { page_size: 10 }), {
         wrapper,
       });
@@ -472,7 +493,8 @@ describe('useVersions', () => {
   });
 
   describe('error handling', () => {
-    it('should handle fetch errors', async ({ wrapper }) => {
+    it('should handle fetch errors', async () => {
+      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch versions');
       mockGetVersions.mockRejectedValueOnce(error);
 
@@ -486,7 +508,8 @@ describe('useVersions', () => {
       expect.soft(result.current.versions).toBe(null);
     });
 
-    it('should clear error on successful refetch', async ({ wrapper }) => {
+    it('should clear error on successful refetch', async () => {
+      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch versions');
       mockGetVersions.mockRejectedValueOnce(error).mockResolvedValueOnce(mockVersions);
 
@@ -513,7 +536,8 @@ describe('useVersions', () => {
   });
 
   describe('manual refetch', () => {
-    it('should support manual refetch', async ({ wrapper }) => {
+    it('should support manual refetch', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions('en'), { wrapper });
 
       await waitFor(() => {

@@ -1,10 +1,10 @@
-/* eslint-disable react-hooks/rules-of-hooks, @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable react-hooks/rules-of-hooks */
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { describe, expect, vi, beforeEach } from 'vitest';
-import { it } from './test/hook-fixtures';
+import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useVerse } from './useVerse';
 import { type BibleClient, type BibleVerse } from '@youversion/platform-core';
 import { useBibleClient } from './useBibleClient';
+import { createYVWrapper } from './test/utils';
 
 vi.mock('./useBibleClient');
 
@@ -25,7 +25,8 @@ describe('useVerse', () => {
   });
 
   describe('fetching verse', () => {
-    it('should fetch verse with all 4 parameters', async ({ wrapper }) => {
+    it('should fetch verse with all 4 parameters', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVerse(111, 'MAT', 1, 1), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -74,8 +75,8 @@ describe('useVerse', () => {
       },
     ])(
       'should refetch when $param changes',
-      // @ts-expect-error -- wrapper is injected by vitest fixture, not present in each() data
-      async ({ hookFn, initial, updated, expectedInitial, expectedUpdated, wrapper }) => {
+      async ({ hookFn, initial, updated, expectedInitial, expectedUpdated }) => {
+        const wrapper = createYVWrapper();
         const { result, rerender } = renderHook(hookFn, {
           wrapper,
           initialProps: initial,
@@ -101,7 +102,8 @@ describe('useVerse', () => {
       },
     );
 
-    it('should not fetch when enabled is false', async ({ wrapper }) => {
+    it('should not fetch when enabled is false', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVerse(1, 'MAT', 1, 1, { enabled: false }), {
         wrapper,
       });
@@ -114,7 +116,8 @@ describe('useVerse', () => {
       expect.soft(result.current.verse).toBe(null);
     });
 
-    it('should handle fetch errors', async ({ wrapper }) => {
+    it('should handle fetch errors', async () => {
+      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch verse');
       mockGetVerse.mockRejectedValueOnce(error);
 
@@ -128,7 +131,8 @@ describe('useVerse', () => {
       expect.soft(result.current.verse).toBe(null);
     });
 
-    it('should support manual refetch', async ({ wrapper }) => {
+    it('should support manual refetch', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVerse(1, 'MAT', 1, 1), { wrapper });
 
       await waitFor(() => {

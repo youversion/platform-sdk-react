@@ -1,9 +1,9 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { describe, expect, vi, beforeEach } from 'vitest';
-import { it } from './test/hook-fixtures';
+import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useVersion } from './useVersion';
 import { type BibleClient, type BibleVersion } from '@youversion/platform-core';
 import { useBibleClient } from './useBibleClient';
+import { createYVWrapper } from './test/utils';
 
 vi.mock('./useBibleClient');
 
@@ -29,7 +29,8 @@ describe('useVersion', () => {
   });
 
   describe('fetching version', () => {
-    it('should fetch version by ID', async ({ wrapper }) => {
+    it('should fetch version by ID', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersion(111), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -43,7 +44,8 @@ describe('useVersion', () => {
       expect.soft(result.current.version).toEqual(mockVersion);
     });
 
-    it('should fetch different version by ID', async ({ wrapper }) => {
+    it('should fetch different version by ID', async () => {
+      const wrapper = createYVWrapper();
       const mockKJV: BibleVersion = {
         id: 1,
         title: 'King James Version',
@@ -68,7 +70,8 @@ describe('useVersion', () => {
   });
 
   describe('refetch behavior', () => {
-    it('should refetch when versionId changes', async ({ wrapper }) => {
+    it('should refetch when versionId changes', async () => {
+      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(({ versionId }) => useVersion(versionId), {
         wrapper,
         initialProps: { versionId: 111 },
@@ -93,7 +96,8 @@ describe('useVersion', () => {
   });
 
   describe('enabled option', () => {
-    it('should not fetch when enabled is false', async ({ wrapper }) => {
+    it('should not fetch when enabled is false', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersion(111, { enabled: false }), {
         wrapper,
       });
@@ -106,7 +110,8 @@ describe('useVersion', () => {
       expect.soft(result.current.version).toBe(null);
     });
 
-    it('should fetch when enabled is true', async ({ wrapper }) => {
+    it('should fetch when enabled is true', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersion(111, { enabled: true }), {
         wrapper,
       });
@@ -119,7 +124,8 @@ describe('useVersion', () => {
       expect.soft(result.current.version).toEqual(mockVersion);
     });
 
-    it('should fetch when enabled is not specified', async ({ wrapper }) => {
+    it('should fetch when enabled is not specified', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersion(111), {
         wrapper,
       });
@@ -133,7 +139,8 @@ describe('useVersion', () => {
   });
 
   describe('error handling', () => {
-    it('should handle fetch errors', async ({ wrapper }) => {
+    it('should handle fetch errors', async () => {
+      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch version');
       mockGetVersion.mockRejectedValueOnce(error);
 
@@ -147,7 +154,8 @@ describe('useVersion', () => {
       expect.soft(result.current.version).toBe(null);
     });
 
-    it('should clear error on successful refetch', async ({ wrapper }) => {
+    it('should clear error on successful refetch', async () => {
+      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch version');
       mockGetVersion.mockRejectedValueOnce(error).mockResolvedValueOnce(mockVersion);
 
@@ -174,7 +182,8 @@ describe('useVersion', () => {
   });
 
   describe('manual refetch', () => {
-    it('should support manual refetch', async ({ wrapper }) => {
+    it('should support manual refetch', async () => {
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersion(111), { wrapper });
 
       await waitFor(() => {
