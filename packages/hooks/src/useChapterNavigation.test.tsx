@@ -278,7 +278,7 @@ describe('useChapterNavigation', () => {
     expect(result.current.nav.currentChapterIndex).toBe(-1);
   });
 
-  it('navigate is no-op when target chapter not in chapters or intro', () => {
+  it('navigateToNext is no-op when next book has no canonical chapters', () => {
     const bookNoIntro = createMockBook({
       id: 'GEN',
       title: 'Genesis',
