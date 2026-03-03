@@ -181,7 +181,7 @@ describe('useChapterNavigation', () => {
   });
 
   it('isLoading is true and both canNavigate are false while loading', () => {
-    setMockBooks([], true);
+    setMockBooks(allBooks, true);
 
     const { result } = renderHook(useNavWithContext, {
       wrapper: createWrapper(genBook, genChapters[0]!),
