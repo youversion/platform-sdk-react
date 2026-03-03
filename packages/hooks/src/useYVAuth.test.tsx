@@ -206,7 +206,7 @@ describe('useYVAuth', () => {
     it('should call clearAuthTokens and reset user info', async () => {
       const { result } = await renderAuthHook();
       // Reset call count after beforeEach call
-      (YouVersionPlatformConfiguration.clearAuthTokens as ReturnType<typeof vi.fn>).mockClear();
+      vi.mocked(YouVersionPlatformConfiguration).clearAuthTokens.mockClear();
 
       act(() => {
         result.current.signOut();
