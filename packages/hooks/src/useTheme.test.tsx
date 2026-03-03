@@ -4,26 +4,26 @@ import { useTheme } from './useTheme';
 import { createYVWrapper } from './test/utils';
 
 describe('useTheme', () => {
-  it('returns light when used outside provider', () => {
+  it('should return light when used outside provider', () => {
     const { result } = renderHook(() => useTheme());
     expect(result.current).toBe('light');
   });
 
-  it('returns light when theme is undefined in provider', () => {
+  it('should return light when theme is undefined in provider', () => {
     const { result } = renderHook(() => useTheme(), {
       wrapper: createYVWrapper(),
     });
     expect(result.current).toBe('light');
   });
 
-  it('returns light when theme is light', () => {
+  it('should return light when theme is light', () => {
     const { result } = renderHook(() => useTheme(), {
       wrapper: createYVWrapper('test-app-key', { theme: 'light' }),
     });
     expect(result.current).toBe('light');
   });
 
-  it('returns dark when theme is dark', () => {
+  it('should return dark when theme is dark', () => {
     const { result } = renderHook(() => useTheme(), {
       wrapper: createYVWrapper('test-app-key', { theme: 'dark' }),
     });
