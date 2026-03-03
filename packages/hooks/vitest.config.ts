@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   test: {
-    env: { TZ: 'UTC' },
+    env: { TZ: 'UTC' }, // Pin to UTC so date-arithmetic tests are timezone-independent
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     globals: true,
