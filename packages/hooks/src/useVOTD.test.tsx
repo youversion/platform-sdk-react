@@ -1,11 +1,11 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
+import { describe, expect, vi, beforeEach, it, type Mock } from 'vitest';
 import type { ReactNode } from 'react';
 import { useVerseOfTheDay } from './useVOTD';
 import { YouVersionContext } from './context';
 import { BibleClient, ApiClient, type VOTD } from '@youversion/platform-core';
+import { createYVWrapper } from './test/utils';
 
-// Mock the core package
 vi.mock('@youversion/platform-core', async () => {
   const actual = await vi.importActual('@youversion/platform-core');
   return {
@@ -20,8 +20,6 @@ vi.mock('@youversion/platform-core', async () => {
 });
 
 describe('useVerseOfTheDay', () => {
-  const mockAppKey = 'test-app-key';
-
   const mockVOTD: VOTD = {
     day: 1,
     passage_id: 'ISA.43.19',
@@ -29,15 +27,7 @@ describe('useVerseOfTheDay', () => {
 
   let mockGetVOTD: Mock;
 
-  const createWrapper = (contextValue: { appKey: string }) => {
-    return ({ children }: { children: ReactNode }) => (
-      <YouVersionContext.Provider value={contextValue}>{children}</YouVersionContext.Provider>
-    );
-  };
-
   beforeEach(() => {
-    vi.clearAllMocks();
-
     mockGetVOTD = vi.fn().mockResolvedValue(mockVOTD);
 
     (BibleClient as unknown as ReturnType<typeof vi.fn>).mockImplementation(function () {
@@ -61,9 +51,7 @@ describe('useVerseOfTheDay', () => {
     });
 
     it('should throw error when appKey is missing', () => {
-      const wrapper = createWrapper({
-        appKey: '',
-      });
+      const wrapper = createYVWrapper('');
 
       expect(() => renderHook(() => useVerseOfTheDay(1), { wrapper })).toThrow(
         'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
@@ -73,23 +61,17 @@ describe('useVerseOfTheDay', () => {
 
   describe('client creation', () => {
     it('should create BibleClient with correct ApiClient config', () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       renderHook(() => useVerseOfTheDay(1), { wrapper });
 
       expect(ApiClient).toHaveBeenCalledWith({
-        appKey: mockAppKey,
+        appKey: 'test-app-key',
       });
       expect(BibleClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
     });
 
     it('should memoize BibleClient instance', () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(() => useVerseOfTheDay(1), { wrapper });
       const _firstRefetch = result.current.refetch;
 
@@ -100,7 +82,7 @@ describe('useVerseOfTheDay', () => {
     });
 
     it('should create new BibleClient when context values change', () => {
-      let currentAppKey = mockAppKey;
+      let currentAppKey = 'test-app-key';
 
       const wrapper = ({ children }: { children: ReactNode }) => (
         <YouVersionContext.Provider
@@ -125,10 +107,7 @@ describe('useVerseOfTheDay', () => {
 
   describe('fetching VOTD', () => {
     it('should fetch VOTD for day 1', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVerseOfTheDay(1), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -138,17 +117,14 @@ describe('useVerseOfTheDay', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetVOTD).toHaveBeenCalledWith(1);
-      expect(result.current.data).toEqual(mockVOTD);
+      expect.soft(mockGetVOTD).toHaveBeenCalledWith(1);
+      expect.soft(result.current.data).toEqual(mockVOTD);
     });
 
     it('should fetch VOTD for day 100', async () => {
+      const wrapper = createYVWrapper();
       const mockVOTD100: VOTD = { day: 100, passage_id: 'PSA.23.1' };
       mockGetVOTD.mockResolvedValueOnce(mockVOTD100);
-
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
 
       const { result } = renderHook(() => useVerseOfTheDay(100), { wrapper });
 
@@ -156,17 +132,14 @@ describe('useVerseOfTheDay', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetVOTD).toHaveBeenCalledWith(100);
-      expect(result.current.data).toEqual(mockVOTD100);
+      expect.soft(mockGetVOTD).toHaveBeenCalledWith(100);
+      expect.soft(result.current.data).toEqual(mockVOTD100);
     });
 
     it('should fetch VOTD for day 366', async () => {
+      const wrapper = createYVWrapper();
       const mockVOTD366: VOTD = { day: 366, passage_id: 'REV.22.21' };
       mockGetVOTD.mockResolvedValueOnce(mockVOTD366);
-
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
 
       const { result } = renderHook(() => useVerseOfTheDay(366), { wrapper });
 
@@ -174,15 +147,12 @@ describe('useVerseOfTheDay', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetVOTD).toHaveBeenCalledWith(366);
-      expect(result.current.data).toEqual(mockVOTD366);
+      expect.soft(mockGetVOTD).toHaveBeenCalledWith(366);
+      expect.soft(result.current.data).toEqual(mockVOTD366);
     });
 
     it('should refetch when day changes', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(({ day }) => useVerseOfTheDay(day), {
         wrapper,
         initialProps: { day: 1 },
@@ -192,8 +162,8 @@ describe('useVerseOfTheDay', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetVOTD).toHaveBeenCalledTimes(1);
-      expect(mockGetVOTD).toHaveBeenLastCalledWith(1);
+      expect.soft(mockGetVOTD).toHaveBeenCalledTimes(1);
+      expect.soft(mockGetVOTD).toHaveBeenLastCalledWith(1);
 
       rerender({ day: 100 });
 
@@ -201,32 +171,26 @@ describe('useVerseOfTheDay', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetVOTD).toHaveBeenCalledTimes(2);
-      expect(mockGetVOTD).toHaveBeenLastCalledWith(100);
+      expect.soft(mockGetVOTD).toHaveBeenCalledTimes(2);
+      expect.soft(mockGetVOTD).toHaveBeenLastCalledWith(100);
     });
 
     it('should not fetch when enabled is false', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVerseOfTheDay(1, { enabled: false }), { wrapper });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetVOTD).not.toHaveBeenCalled();
-      expect(result.current.data).toBe(null);
+      expect.soft(mockGetVOTD).not.toHaveBeenCalled();
+      expect.soft(result.current.data).toBe(null);
     });
 
     it('should handle fetch errors', async () => {
+      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch VOTD');
       mockGetVOTD.mockRejectedValueOnce(error);
-
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
 
       const { result } = renderHook(() => useVerseOfTheDay(1), { wrapper });
 
@@ -234,15 +198,12 @@ describe('useVerseOfTheDay', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(result.current.error).toEqual(error);
-      expect(result.current.data).toBe(null);
+      expect.soft(result.current.error).toEqual(error);
+      expect.soft(result.current.data).toBe(null);
     });
 
     it('should support manual refetch', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVerseOfTheDay(1), { wrapper });
 
       await waitFor(() => {

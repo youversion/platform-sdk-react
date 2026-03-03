@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-argument */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { useYVAuth } from './useYVAuth';
@@ -8,117 +7,10 @@ import { createMockUserInfo, createMockAuthResult } from './__tests__/mocks/auth
 import { createAuthProviderWrapper } from './__tests__/utils/test-utils';
 import type { AuthenticationScopes } from '@youversion/platform-core';
 
-// Mock the core modules
-vi.mock('@youversion/platform-core', () => {
-  // Create a mock configuration object that can be updated
-  const mockConfiguration = {
-    accessToken: null as string | null,
-    idToken: null as string | null,
-    refreshToken: null as string | null,
-    appKey: '',
-    apiHost: 'test-api.example.com',
-    installationId: null as string | null,
-    clearAuthTokens: vi.fn(() => {
-      mockConfiguration.accessToken = null;
-      mockConfiguration.idToken = null;
-      mockConfiguration.refreshToken = null;
-    }),
-    saveAuthData: vi.fn(
-      (
-        accessToken: string | null,
-        refreshToken: string | null,
-        idToken: string | null,
-        installationId: string | null,
-      ) => {
-        mockConfiguration.accessToken = accessToken;
-        mockConfiguration.refreshToken = refreshToken;
-        mockConfiguration.idToken = idToken;
-        mockConfiguration.installationId = installationId;
-      },
-    ),
-  };
-
-  return {
-    YouVersionAPIUsers: {
-      signIn: vi.fn(),
-      handleAuthCallback: vi.fn(),
-      userInfo: vi.fn(),
-      refreshTokenIfNeeded: vi.fn(),
-    },
-    YouVersionPlatformConfiguration: mockConfiguration,
-    SignInWithYouVersionPermission: {
-      bibles: 'bibles',
-      highlights: 'highlights',
-      user: 'user',
-    },
-    YouVersionUserInfo: class YouVersionUserInfo {
-      readonly name?: string;
-      readonly userId?: string;
-      readonly email?: string;
-      readonly avatarUrlFormat?: string;
-
-      constructor(data: any) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        this.name = data.name;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        this.userId = data.id;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        this.email = data.email;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        this.avatarUrlFormat = data.avatar_url;
-      }
-
-      getAvatarUrl(width: number = 200, height: number = 200): URL | null {
-        if (!this.avatarUrlFormat) {
-          return null;
-        }
-        try {
-          let urlString = this.avatarUrlFormat;
-          urlString = urlString.replace('{width}', width.toString());
-          urlString = urlString.replace('{height}', height.toString());
-          return new URL(urlString);
-        } catch {
-          return null;
-        }
-      }
-
-      get avatarUrl(): URL | null {
-        return this.getAvatarUrl();
-      }
-    },
-    SignInWithYouVersionResult: class SignInWithYouVersionResult {
-      accessToken: string | undefined;
-      expiryDate: Date | undefined;
-      refreshToken: string | undefined;
-      idToken: string | undefined;
-      yvpUserId: string | undefined;
-      name: string | undefined;
-      profilePicture: string | undefined;
-      email: string | undefined;
-
-      constructor(props: {
-        accessToken?: string;
-        expiresIn?: number;
-        refreshToken?: string;
-        idToken?: string;
-        yvpUserId?: string;
-        name?: string;
-        profilePicture?: string;
-        email?: string;
-      }) {
-        this.accessToken = props.accessToken;
-        this.expiryDate = props.expiresIn
-          ? new Date(Date.now() + props.expiresIn * 1000)
-          : new Date();
-        this.refreshToken = props.refreshToken;
-        this.idToken = props.idToken;
-        this.yvpUserId = props.yvpUserId;
-        this.name = props.name;
-        this.profilePicture = props.profilePicture;
-        this.email = props.email;
-      }
-    },
-  };
+// Mock the core modules using shared factory
+vi.mock('@youversion/platform-core', async () => {
+  const { createSimpleCoreMockFactory } = await import('./__tests__/mocks/core-mock-factory');
+  return createSimpleCoreMockFactory();
 });
 
 const mockUserInfo = createMockUserInfo();
@@ -150,8 +42,6 @@ const renderAuthHook = async () => {
 
 describe('useYVAuth', () => {
   beforeEach(() => {
-    vi.resetAllMocks();
-
     // Setup window mock
     vi.stubGlobal('window', mockWindow);
     mockWindow.location.search = '';
@@ -159,11 +49,6 @@ describe('useYVAuth', () => {
     // Reset configuration mocks
     YouVersionPlatformConfiguration.clearAuthTokens();
     YouVersionPlatformConfiguration.installationId = null;
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
-    vi.unstubAllGlobals();
   });
 
   describe('initialization', () => {
@@ -198,7 +83,7 @@ describe('useYVAuth', () => {
         await result.current.signIn({ redirectUrl, scopes: ['profile'] });
       });
 
-      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(redirectUrl, ['profile']);
+      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(redirectUrl, ['profile']);
     });
 
     it('should call signIn with empty scopes when not provided', async () => {
@@ -209,7 +94,7 @@ describe('useYVAuth', () => {
         await result.current.signIn({ redirectUrl });
       });
 
-      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(redirectUrl);
+      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(redirectUrl);
     });
 
     it('should call YouVersionAPIUsers.signIn exactly once with scopes', async () => {
@@ -221,8 +106,8 @@ describe('useYVAuth', () => {
         await result.current.signIn({ redirectUrl, scopes });
       });
 
-      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledTimes(1);
-      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(redirectUrl, scopes);
+      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(redirectUrl, scopes);
     });
 
     it('should call YouVersionAPIUsers.signIn exactly once without scopes', async () => {
@@ -233,14 +118,15 @@ describe('useYVAuth', () => {
         await result.current.signIn({ redirectUrl });
       });
 
-      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledTimes(1);
-      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(redirectUrl);
+      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(redirectUrl);
     });
 
     it('should throw error when signIn fails', async () => {
       const { result } = await renderAuthHook();
       const error = new Error('Sign in failed');
-      vi.mocked(YouVersionAPIUsers.signIn).mockRejectedValue(error);
+      const signInMock = vi.spyOn(YouVersionAPIUsers, 'signIn');
+      signInMock.mockRejectedValue(error);
 
       await expect(
         act(async () => {
@@ -256,7 +142,7 @@ describe('useYVAuth', () => {
         await result.current.signIn();
       });
 
-      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith('http://test.example.com');
+      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith('http://test.example.com');
     });
 
     it('should use redirectUri from provider with scopes when redirectUrl is not passed', async () => {
@@ -267,7 +153,7 @@ describe('useYVAuth', () => {
         await result.current.signIn({ scopes });
       });
 
-      expect(vi.mocked(YouVersionAPIUsers.signIn)).toHaveBeenCalledWith(
+      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(
         'http://test.example.com',
         scopes,
       );
@@ -277,21 +163,23 @@ describe('useYVAuth', () => {
   describe('processCallback', () => {
     it('should call handleAuthCallback and return result', async () => {
       const { result } = await renderAuthHook();
-      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult as any);
+      const callbackMock = vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback');
+      callbackMock.mockResolvedValue(mockAuthResult);
 
       let callbackResult;
       await act(async () => {
         callbackResult = await result.current.processCallback();
       });
 
-      expect(vi.mocked(YouVersionAPIUsers.handleAuthCallback)).toHaveBeenCalled();
+      expect(callbackMock).toHaveBeenCalled();
       expect(callbackResult).toEqual(mockAuthResult);
     });
 
     it('should throw error when callback processing fails', async () => {
       const { result } = await renderAuthHook();
       const error = new Error('Callback processing failed');
-      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockRejectedValue(error);
+      const callbackMock = vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback');
+      callbackMock.mockRejectedValue(error);
 
       await expect(
         act(async () => {
@@ -302,7 +190,8 @@ describe('useYVAuth', () => {
 
     it('should return null when no result from callback', async () => {
       const { result } = await renderAuthHook();
-      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(null);
+      const callbackMock = vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback');
+      callbackMock.mockResolvedValue(null);
 
       let callbackResult;
       await act(async () => {
@@ -321,7 +210,7 @@ describe('useYVAuth', () => {
         result.current.signOut();
       });
 
-      expect(YouVersionPlatformConfiguration.clearAuthTokens).toHaveBeenCalled();
+      expect(vi.mocked(YouVersionPlatformConfiguration).clearAuthTokens).toHaveBeenCalled();
     });
   });
 

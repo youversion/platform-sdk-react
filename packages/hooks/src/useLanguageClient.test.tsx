@@ -1,11 +1,11 @@
 import { renderHook } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, expect, vi, beforeEach, it } from 'vitest';
 import type { ReactNode } from 'react';
 import { useLanguagesClient } from './useLanguageClient';
 import { YouVersionContext } from './context';
 import { LanguagesClient, ApiClient } from '@youversion/platform-core';
+import { createYVWrapper } from './test/utils';
 
-// Mock the core package
 vi.mock('@youversion/platform-core', async () => {
   const actual = await vi.importActual('@youversion/platform-core');
   return {
@@ -20,17 +20,7 @@ vi.mock('@youversion/platform-core', async () => {
 });
 
 describe('useLanguagesClient', () => {
-  const mockAppKey = 'test-app-key';
-
-  const createWrapper = (contextValue: { appKey: string }) => {
-    return ({ children }: { children: ReactNode }) => (
-      <YouVersionContext.Provider value={contextValue}>{children}</YouVersionContext.Provider>
-    );
-  };
-
   beforeEach(() => {
-    vi.resetAllMocks();
-
     vi.mocked(LanguagesClient).mockImplementation(function () {
       const mockClient: Partial<LanguagesClient> = { getLanguages: vi.fn() };
       return mockClient;
@@ -50,9 +40,9 @@ describe('useLanguagesClient', () => {
     });
 
     it('should throw error when appKey is missing', () => {
-      const wrapper = createWrapper({
-        appKey: '',
-      });
+      const wrapper = ({ children }: { children: ReactNode }) => (
+        <YouVersionContext.Provider value={{ appKey: '' }}>{children}</YouVersionContext.Provider>
+      );
 
       expect(() => renderHook(() => useLanguagesClient(), { wrapper })).toThrow(
         'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
@@ -62,23 +52,17 @@ describe('useLanguagesClient', () => {
 
   describe('client creation', () => {
     it('should create LanguagesClient with correct ApiClient config', () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       renderHook(() => useLanguagesClient(), { wrapper });
 
       expect(ApiClient).toHaveBeenCalledWith({
-        appKey: mockAppKey,
+        appKey: 'test-app-key',
       });
       expect(LanguagesClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
     });
 
     it('should memoize LanguagesClient instance', () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { rerender } = renderHook(() => useLanguagesClient(), { wrapper });
 
       rerender();
@@ -87,7 +71,7 @@ describe('useLanguagesClient', () => {
     });
 
     it('should create new LanguagesClient when context values change', () => {
-      let currentAppKey = mockAppKey;
+      let currentAppKey = 'test-app-key';
 
       const wrapper = ({ children }: { children: ReactNode }) => (
         <YouVersionContext.Provider

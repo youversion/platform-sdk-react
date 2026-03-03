@@ -1,8 +1,6 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { ReactNode } from 'react';
+import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useLanguages } from './useLanguages';
-import { YouVersionContext } from './context';
 import {
   type LanguagesClient,
   type Collection,
@@ -10,11 +8,11 @@ import {
   type GetLanguagesOptions,
 } from '@youversion/platform-core';
 import { useLanguagesClient } from './useLanguageClient';
+import { createYVWrapper } from './test/utils';
 
 vi.mock('./useLanguageClient');
 
 describe('useLanguages', () => {
-  const mockAppKey = 'test-app-key';
   const mockGetLanguages = vi.fn();
 
   const mockLanguages: Collection<Language> = {
@@ -59,15 +57,7 @@ describe('useLanguages', () => {
     next_page_token: null,
   };
 
-  const createWrapper = (contextValue: { appKey: string }) => {
-    return ({ children }: { children: ReactNode }) => (
-      <YouVersionContext.Provider value={contextValue}>{children}</YouVersionContext.Provider>
-    );
-  };
-
   beforeEach(() => {
-    vi.resetAllMocks();
-
     mockGetLanguages.mockResolvedValue(mockLanguages);
 
     const mockClient: Partial<LanguagesClient> = { getLanguages: mockGetLanguages };
@@ -76,10 +66,7 @@ describe('useLanguages', () => {
 
   describe('fetching languages', () => {
     it('should fetch languages without country filter', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useLanguages(), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -89,15 +76,12 @@ describe('useLanguages', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetLanguages).toHaveBeenCalledWith({});
-      expect(result.current.languages).toEqual(mockLanguages);
+      expect.soft(mockGetLanguages).toHaveBeenCalledWith({});
+      expect.soft(result.current.languages).toEqual(mockLanguages);
     });
 
     it('should fetch languages with provided country', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useLanguages({ country: 'US' }), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -107,15 +91,12 @@ describe('useLanguages', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetLanguages).toHaveBeenCalledWith({ country: 'US' });
-      expect(result.current.languages).toEqual(mockLanguages);
+      expect.soft(mockGetLanguages).toHaveBeenCalledWith({ country: 'US' });
+      expect.soft(result.current.languages).toEqual(mockLanguages);
     });
 
     it('should fetch languages with all options', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const options: GetLanguagesOptions = {
         country: 'US',
         page_size: 10,
@@ -128,15 +109,12 @@ describe('useLanguages', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetLanguages).toHaveBeenCalledWith(options);
-      expect(result.current.languages).toEqual(mockLanguages);
+      expect.soft(mockGetLanguages).toHaveBeenCalledWith(options);
+      expect.soft(result.current.languages).toEqual(mockLanguages);
     });
 
     it('should refetch when options change', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(({ options }) => useLanguages(options), {
         wrapper,
         initialProps: { options: { country: 'US' } },
@@ -154,15 +132,12 @@ describe('useLanguages', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetLanguages).toHaveBeenCalledTimes(2);
-      expect(mockGetLanguages).toHaveBeenLastCalledWith({ country: 'ES' });
+      expect.soft(mockGetLanguages).toHaveBeenCalledTimes(2);
+      expect.soft(mockGetLanguages).toHaveBeenLastCalledWith({ country: 'ES' });
     });
 
     it('should not fetch when enabled is false', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useLanguages({ country: 'US' }, { enabled: false }), {
         wrapper,
       });
@@ -171,17 +146,14 @@ describe('useLanguages', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetLanguages).not.toHaveBeenCalled();
-      expect(result.current.languages).toBe(null);
+      expect.soft(mockGetLanguages).not.toHaveBeenCalled();
+      expect.soft(result.current.languages).toBe(null);
     });
 
     it('should handle fetch errors', async () => {
+      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch languages');
       mockGetLanguages.mockRejectedValueOnce(error);
-
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
 
       const { result } = renderHook(() => useLanguages({ country: 'US' }), { wrapper });
 
@@ -189,15 +161,12 @@ describe('useLanguages', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(result.current.error).toEqual(error);
-      expect(result.current.languages).toBe(null);
+      expect.soft(result.current.error).toEqual(error);
+      expect.soft(result.current.languages).toBe(null);
     });
 
     it('should support manual refetch', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useLanguages({ country: 'US' }), { wrapper });
 
       await waitFor(() => {
@@ -216,10 +185,7 @@ describe('useLanguages', () => {
     });
 
     it('should fetch languages with fields filter', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const options: GetLanguagesOptions = {
         fields: ['id', 'language', 'script'],
         page_size: '*',
@@ -231,15 +197,12 @@ describe('useLanguages', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetLanguages).toHaveBeenCalledWith(options);
-      expect(result.current.languages).toEqual(mockLanguages);
+      expect.soft(mockGetLanguages).toHaveBeenCalledWith(options);
+      expect.soft(result.current.languages).toEqual(mockLanguages);
     });
 
     it('should refetch when fields change', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(({ options }) => useLanguages(options), {
         wrapper,
         initialProps: { options: { fields: ['id', 'language'] } as GetLanguagesOptions },
@@ -257,8 +220,8 @@ describe('useLanguages', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetLanguages).toHaveBeenCalledTimes(2);
-      expect(mockGetLanguages).toHaveBeenLastCalledWith({
+      expect.soft(mockGetLanguages).toHaveBeenCalledTimes(2);
+      expect.soft(mockGetLanguages).toHaveBeenLastCalledWith({
         fields: ['id', 'language', 'script'],
       });
     });

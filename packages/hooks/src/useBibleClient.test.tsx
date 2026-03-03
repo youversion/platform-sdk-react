@@ -1,9 +1,10 @@
 import { renderHook } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, expect, vi, it } from 'vitest';
 import type { ReactNode } from 'react';
 import { useBibleClient } from './useBibleClient';
 import { YouVersionContext } from './context';
 import { BibleClient, ApiClient } from '@youversion/platform-core';
+import { createYVWrapper } from './test/utils';
 
 vi.mock('@youversion/platform-core', async () => {
   const actual = await vi.importActual('@youversion/platform-core');
@@ -23,27 +24,12 @@ vi.mock('@youversion/platform-core', async () => {
 });
 
 describe('useBibleClient', () => {
-  const mockAppKey = 'test-app-key';
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('should create and return a BibleClient instance when context is valid', () => {
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <YouVersionContext.Provider
-        value={{
-          appKey: mockAppKey,
-        }}
-      >
-        {children}
-      </YouVersionContext.Provider>
-    );
-
+    const wrapper = createYVWrapper();
     const { result } = renderHook(() => useBibleClient(), { wrapper });
 
     expect(ApiClient).toHaveBeenCalledWith({
-      appKey: mockAppKey,
+      appKey: 'test-app-key',
     });
     expect(BibleClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
     expect(result.current).toEqual(expect.objectContaining({ isBibleClient: true }));
@@ -57,13 +43,7 @@ describe('useBibleClient', () => {
 
   it('should throw error when appKey is missing', () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
-      <YouVersionContext.Provider
-        value={{
-          appKey: '',
-        }}
-      >
-        {children}
-      </YouVersionContext.Provider>
+      <YouVersionContext.Provider value={{ appKey: '' }}>{children}</YouVersionContext.Provider>
     );
 
     expect(() => renderHook(() => useBibleClient(), { wrapper })).toThrow(
@@ -72,16 +52,7 @@ describe('useBibleClient', () => {
   });
 
   it('should memoize the BibleClient instance', () => {
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <YouVersionContext.Provider
-        value={{
-          appKey: mockAppKey,
-        }}
-      >
-        {children}
-      </YouVersionContext.Provider>
-    );
-
+    const wrapper = createYVWrapper();
     const { result, rerender } = renderHook(() => useBibleClient(), { wrapper });
     const firstClient = result.current;
 
@@ -93,7 +64,7 @@ describe('useBibleClient', () => {
   });
 
   it('should create new BibleClient when appKey changes', () => {
-    let currentAppKey = mockAppKey;
+    let currentAppKey = 'test-app-key';
 
     const wrapper = ({ children }: { children: ReactNode }) => (
       <YouVersionContext.Provider
@@ -110,7 +81,7 @@ describe('useBibleClient', () => {
     const firstClient = result.current;
     expect(BibleClient).toHaveBeenCalledTimes(1);
     expect(ApiClient).toHaveBeenCalledWith({
-      appKey: mockAppKey,
+      appKey: 'test-app-key',
     });
 
     currentAppKey = 'new-app-key';

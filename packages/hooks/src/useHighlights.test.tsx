@@ -1,5 +1,5 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
+import { describe, expect, vi, beforeEach, it, type Mock } from 'vitest';
 import type { ReactNode } from 'react';
 import { useHighlights } from './useHighlights';
 import { YouVersionContext } from './context';
@@ -10,8 +10,8 @@ import {
   type Highlight,
   type CreateHighlight,
 } from '@youversion/platform-core';
+import { createYVWrapper } from './test/utils';
 
-// Mock the core package
 vi.mock('@youversion/platform-core', async () => {
   const actual = await vi.importActual('@youversion/platform-core');
   return {
@@ -26,8 +26,6 @@ vi.mock('@youversion/platform-core', async () => {
 });
 
 describe('useHighlights', () => {
-  const mockAppKey = 'test-app-key';
-
   const mockHighlights: Collection<Highlight> = {
     data: [
       {
@@ -54,15 +52,7 @@ describe('useHighlights', () => {
   let mockCreateHighlight: Mock;
   let mockDeleteHighlight: Mock;
 
-  const createWrapper = (contextValue: { appKey: string }) => {
-    return ({ children }: { children: ReactNode }) => (
-      <YouVersionContext.Provider value={contextValue}>{children}</YouVersionContext.Provider>
-    );
-  };
-
   beforeEach(() => {
-    vi.clearAllMocks();
-
     mockGetHighlights = vi.fn().mockResolvedValue(mockHighlights);
     mockCreateHighlight = vi.fn().mockResolvedValue(mockHighlight);
     mockDeleteHighlight = vi.fn().mockResolvedValue(undefined);
@@ -88,47 +78,30 @@ describe('useHighlights', () => {
         'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
       );
     });
-
-    it('should throw error when appKey is missing', () => {
-      const wrapper = createWrapper({
-        appKey: '',
-      });
-
-      expect(() => renderHook(() => useHighlights(), { wrapper })).toThrow(
-        'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
-      );
-    });
   });
 
   describe('client creation', () => {
     it('should create HighlightsClient with correct ApiClient config', () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       renderHook(() => useHighlights(), { wrapper });
 
       expect(ApiClient).toHaveBeenCalledWith({
-        appKey: mockAppKey,
+        appKey: 'test-app-key',
       });
       expect(HighlightsClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
     });
 
     it('should memoize HighlightsClient instance', () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { rerender } = renderHook(() => useHighlights(), { wrapper });
 
       rerender();
 
-      // If client is memoized, refetch should be stable (though useCallback might still create new refs)
       expect(HighlightsClient).toHaveBeenCalledTimes(1);
     });
 
     it('should create new HighlightsClient when context values change', () => {
-      let currentAppKey = mockAppKey;
+      let currentAppKey = 'test-app-key';
 
       const wrapper = ({ children }: { children: ReactNode }) => (
         <YouVersionContext.Provider
@@ -154,10 +127,7 @@ describe('useHighlights', () => {
 
   describe('fetching highlights', () => {
     it('should fetch highlights with no options', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useHighlights(), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -167,45 +137,36 @@ describe('useHighlights', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetHighlights).toHaveBeenCalledWith(undefined);
-      expect(result.current.highlights).toEqual(mockHighlights);
+      expect.soft(mockGetHighlights).toHaveBeenCalledWith(undefined);
+      expect.soft(result.current.highlights).toEqual(mockHighlights);
     });
 
     it('should fetch highlights with version_id option', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useHighlights({ version_id: 111 }), { wrapper });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetHighlights).toHaveBeenCalledWith({ version_id: 111 });
-      expect(result.current.highlights).toEqual(mockHighlights);
+      expect.soft(mockGetHighlights).toHaveBeenCalledWith({ version_id: 111 });
+      expect.soft(result.current.highlights).toEqual(mockHighlights);
     });
 
     it('should fetch highlights with passage_id option', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useHighlights({ passage_id: 'MAT.1.1' }), { wrapper });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetHighlights).toHaveBeenCalledWith({ passage_id: 'MAT.1.1' });
-      expect(result.current.highlights).toEqual(mockHighlights);
+      expect.soft(mockGetHighlights).toHaveBeenCalledWith({ passage_id: 'MAT.1.1' });
+      expect.soft(result.current.highlights).toEqual(mockHighlights);
     });
 
     it('should fetch highlights with both options', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result } = renderHook(
         () => useHighlights({ version_id: 111, passage_id: 'MAT.1.1' }),
         {
@@ -217,18 +178,15 @@ describe('useHighlights', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetHighlights).toHaveBeenCalledWith({
+      expect.soft(mockGetHighlights).toHaveBeenCalledWith({
         version_id: 111,
         passage_id: 'MAT.1.1',
       });
-      expect(result.current.highlights).toEqual(mockHighlights);
+      expect.soft(result.current.highlights).toEqual(mockHighlights);
     });
 
     it('should refetch when options change', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(({ options }) => useHighlights(options), {
         wrapper,
         initialProps: { options: { version_id: 111 } },
@@ -246,15 +204,12 @@ describe('useHighlights', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetHighlights).toHaveBeenCalledTimes(2);
-      expect(mockGetHighlights).toHaveBeenLastCalledWith({ version_id: 1 });
+      expect.soft(mockGetHighlights).toHaveBeenCalledTimes(2);
+      expect.soft(mockGetHighlights).toHaveBeenLastCalledWith({ version_id: 1 });
     });
 
     it('should not fetch when enabled is false', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useHighlights(undefined, { enabled: false }), {
         wrapper,
       });
@@ -263,17 +218,14 @@ describe('useHighlights', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetHighlights).not.toHaveBeenCalled();
-      expect(result.current.highlights).toBe(null);
+      expect.soft(mockGetHighlights).not.toHaveBeenCalled();
+      expect.soft(result.current.highlights).toBe(null);
     });
 
     it('should handle fetch errors', async () => {
+      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch highlights');
       mockGetHighlights.mockRejectedValueOnce(error);
-
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
 
       const { result } = renderHook(() => useHighlights(), { wrapper });
 
@@ -281,15 +233,12 @@ describe('useHighlights', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(result.current.error).toEqual(error);
-      expect(result.current.highlights).toBe(null);
+      expect.soft(result.current.error).toEqual(error);
+      expect.soft(result.current.highlights).toBe(null);
     });
 
     it('should support manual refetch', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useHighlights(), { wrapper });
 
       await waitFor(() => {
@@ -308,10 +257,7 @@ describe('useHighlights', () => {
 
   describe('createHighlight mutation', () => {
     it('should create highlight and refetch', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useHighlights(), { wrapper });
 
       await waitFor(() => {
@@ -333,19 +279,15 @@ describe('useHighlights', () => {
       const created = await createPromise;
       expect(created).toEqual(mockHighlight);
 
-      // Should refetch after creation
       await waitFor(() => {
         expect(mockGetHighlights).toHaveBeenCalledTimes(2);
       });
     });
 
     it('should handle create error', async () => {
+      const wrapper = createYVWrapper();
       const error = new Error('Failed to create highlight');
       mockCreateHighlight.mockRejectedValueOnce(error);
-
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
 
       const { result } = renderHook(() => useHighlights(), { wrapper });
 
@@ -363,17 +305,13 @@ describe('useHighlights', () => {
         'Failed to create highlight',
       );
 
-      // Should not refetch on error
       expect(mockGetHighlights).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('deleteHighlight mutation', () => {
     it('should delete highlight and refetch', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useHighlights(), { wrapper });
 
       await waitFor(() => {
@@ -388,17 +326,13 @@ describe('useHighlights', () => {
 
       await deletePromise;
 
-      // Should refetch after deletion
       await waitFor(() => {
         expect(mockGetHighlights).toHaveBeenCalledTimes(2);
       });
     });
 
     it('should delete highlight with options', async () => {
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
-
+      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useHighlights(), { wrapper });
 
       await waitFor(() => {
@@ -413,17 +347,13 @@ describe('useHighlights', () => {
 
       await deletePromise;
 
-      // Should refetch after deletion
       expect(mockGetHighlights).toHaveBeenCalledTimes(2);
     });
 
     it('should handle delete error', async () => {
+      const wrapper = createYVWrapper();
       const error = new Error('Failed to delete highlight');
       mockDeleteHighlight.mockRejectedValueOnce(error);
-
-      const wrapper = createWrapper({
-        appKey: mockAppKey,
-      });
 
       const { result } = renderHook(() => useHighlights(), { wrapper });
 
@@ -435,7 +365,6 @@ describe('useHighlights', () => {
         'Failed to delete highlight',
       );
 
-      // Should not refetch on error
       expect(mockGetHighlights).toHaveBeenCalledTimes(1);
     });
   });

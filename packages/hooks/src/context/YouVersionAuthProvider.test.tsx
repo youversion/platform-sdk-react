@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-argument */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import YouVersionAuthProvider from './YouVersionAuthProvider';
@@ -7,118 +6,10 @@ import { useYouVersionAuthContext } from './YouVersionAuthContext';
 import type { AuthConfig } from '../types/auth';
 import { createMockUserInfo, createMockAuthResult } from '../__tests__/mocks/auth';
 
-// Mock the core modules
-vi.mock('@youversion/platform-core', () => {
-  let mockInstallationId = 'auto-generated-installation-id';
-  let mockIdToken: string | null = null;
-  let mockRefreshToken: string | null = null;
-  let mockAccessToken: string | null = null;
-
-  return {
-    YouVersionAPIUsers: {
-      handleAuthCallback: vi.fn(),
-      userInfo: vi.fn(),
-      refreshTokenIfNeeded: vi.fn(),
-    },
-    YouVersionPlatformConfiguration: {
-      appKey: '',
-      get installationId() {
-        return mockInstallationId;
-      },
-      set installationId(value) {
-        if (value) mockInstallationId = value;
-      },
-      apiHost: 'test-api.example.com',
-      get idToken() {
-        return mockIdToken;
-      },
-      get refreshToken() {
-        return mockRefreshToken;
-      },
-      get accessToken() {
-        return mockAccessToken;
-      },
-      clearAuthTokens: vi.fn(() => {
-        mockIdToken = null;
-        mockRefreshToken = null;
-        mockAccessToken = null;
-      }),
-      saveAuthData: vi.fn(
-        (accessToken: string | null, refreshToken: string | null, idToken: string | null) => {
-          mockAccessToken = accessToken;
-          mockRefreshToken = refreshToken;
-          mockIdToken = idToken;
-        },
-      ),
-    },
-    YouVersionUserInfo: class YouVersionUserInfo {
-      readonly name?: string;
-      readonly userId?: string;
-      readonly email?: string;
-      readonly avatarUrlFormat?: string;
-
-      constructor(data: any) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        this.name = data.name;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        this.userId = data.id;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        this.email = data.email;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        this.avatarUrlFormat = data.avatar_url;
-      }
-
-      getAvatarUrl(width: number = 200, height: number = 200): URL | null {
-        if (!this.avatarUrlFormat) {
-          return null;
-        }
-        try {
-          let urlString = this.avatarUrlFormat;
-          urlString = urlString.replace('{width}', width.toString());
-          urlString = urlString.replace('{height}', height.toString());
-          return new URL(urlString);
-        } catch {
-          return null;
-        }
-      }
-
-      get avatarUrl(): URL | null {
-        return this.getAvatarUrl();
-      }
-    },
-    SignInWithYouVersionResult: class SignInWithYouVersionResult {
-      accessToken: string | undefined;
-      expiryDate: Date | undefined;
-      refreshToken: string | undefined;
-      idToken: string | undefined;
-      yvpUserId: string | undefined;
-      name: string | undefined;
-      profilePicture: string | undefined;
-      email: string | undefined;
-
-      constructor(props: {
-        accessToken?: string;
-        expiresIn?: number;
-        refreshToken?: string;
-        idToken?: string;
-        yvpUserId?: string;
-        name?: string;
-        profilePicture?: string;
-        email?: string;
-      }) {
-        this.accessToken = props.accessToken;
-        this.expiryDate = props.expiresIn
-          ? new Date(Date.now() + props.expiresIn * 1000)
-          : new Date();
-        this.refreshToken = props.refreshToken;
-        this.idToken = props.idToken;
-        this.yvpUserId = props.yvpUserId;
-        this.name = props.name;
-        this.profilePicture = props.profilePicture;
-        this.email = props.email;
-      }
-    },
-  };
+// Mock the core modules using shared factory
+vi.mock('@youversion/platform-core', async () => {
+  const { createGetterCoreMockFactory } = await import('../__tests__/mocks/core-mock-factory');
+  return createGetterCoreMockFactory();
 });
 
 const mockConfig: AuthConfig = {
@@ -152,8 +43,6 @@ function TestChild() {
 
 describe('YouVersionAuthProvider', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-
     // Setup window mock
     vi.stubGlobal('window', mockWindow);
     mockWindow.location.search = '';
@@ -162,11 +51,6 @@ describe('YouVersionAuthProvider', () => {
     YouVersionPlatformConfiguration.appKey = '';
     YouVersionPlatformConfiguration.apiHost = 'test-api.example.com';
     YouVersionPlatformConfiguration.clearAuthTokens();
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
-    vi.unstubAllGlobals();
   });
 
   describe('initialization', () => {
@@ -225,11 +109,10 @@ describe('YouVersionAuthProvider', () => {
   describe('OAuth callback handling', () => {
     it('should detect OAuth callback with state parameter', async () => {
       mockWindow.location.search = '?state=test-state&code=auth-code';
-      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult as any);
-      vi.mocked(YouVersionAPIUsers.userInfo).mockReturnValue(mockUserInfo as any);
+      vi.spyOn(YouVersionAPIUsers, 'userInfo').mockReturnValue(mockUserInfo);
 
       // Mock the configuration to return the id token after handleAuthCallback
-      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockImplementation(() => {
+      vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockImplementation(() => {
         YouVersionPlatformConfiguration.saveAuthData(null, null, 'test-id-token', null);
         return Promise.resolve(mockAuthResult as any);
       });
@@ -251,7 +134,7 @@ describe('YouVersionAuthProvider', () => {
 
     it('should detect OAuth callback with error parameter', async () => {
       mockWindow.location.search = '?error=access_denied&error_description=User+denied+access';
-      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult as any);
+      vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockResolvedValue(mockAuthResult);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
@@ -269,7 +152,7 @@ describe('YouVersionAuthProvider', () => {
     it('should handle callback error and set error state', async () => {
       mockWindow.location.search = '?state=test-state&code=auth-code';
       const callbackError = new Error('Callback processing failed');
-      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockRejectedValue(callbackError);
+      vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockRejectedValue(callbackError);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
@@ -286,7 +169,7 @@ describe('YouVersionAuthProvider', () => {
 
     it('should handle callback with no idToken', async () => {
       mockWindow.location.search = '?state=test-state&code=auth-code';
-      vi.mocked(YouVersionAPIUsers.handleAuthCallback).mockResolvedValue(mockAuthResult as any);
+      vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockResolvedValue(mockAuthResult);
       YouVersionPlatformConfiguration.saveAuthData(null, null, null, null);
 
       const { getByTestId } = render(
@@ -310,11 +193,11 @@ describe('YouVersionAuthProvider', () => {
       YouVersionPlatformConfiguration.saveAuthData(null, 'existing-refresh-token', null, null);
 
       // Mock refreshTokenIfNeeded to set the id token after successful refresh
-      vi.mocked(YouVersionAPIUsers.refreshTokenIfNeeded).mockImplementation(() => {
+      vi.spyOn(YouVersionAPIUsers, 'refreshTokenIfNeeded').mockImplementation(() => {
         YouVersionPlatformConfiguration.saveAuthData(null, null, 'refreshed-id-token', null);
         return Promise.resolve(true);
       });
-      vi.mocked(YouVersionAPIUsers.userInfo).mockReturnValue(mockUserInfo as any);
+      vi.spyOn(YouVersionAPIUsers, 'userInfo').mockReturnValue(mockUserInfo);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
@@ -333,7 +216,7 @@ describe('YouVersionAuthProvider', () => {
 
     it('should handle refresh token failure', async () => {
       YouVersionPlatformConfiguration.saveAuthData(null, 'existing-refresh-token', null, null);
-      vi.mocked(YouVersionAPIUsers.refreshTokenIfNeeded).mockRejectedValue(
+      vi.spyOn(YouVersionAPIUsers, 'refreshTokenIfNeeded').mockRejectedValue(
         new Error('Refresh failed'),
       );
 
@@ -352,7 +235,7 @@ describe('YouVersionAuthProvider', () => {
 
     it('should clear user when refresh token exists but no idToken after refresh', async () => {
       YouVersionPlatformConfiguration.saveAuthData(null, 'existing-refresh-token', null, null);
-      vi.mocked(YouVersionAPIUsers.refreshTokenIfNeeded).mockResolvedValue(false);
+      vi.spyOn(YouVersionAPIUsers, 'refreshTokenIfNeeded').mockResolvedValue(false);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
