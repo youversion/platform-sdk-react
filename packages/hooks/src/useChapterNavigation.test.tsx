@@ -254,15 +254,17 @@ describe('useChapterNavigation', () => {
     expect(result.current.ctx.currentBook.id).toBe('GEN');
   });
 
-  it('book without intro: navigateToPrevious from ch1 crosses to previous book', () => {
+  it('navigateToPrevious is no-op when books array is empty', () => {
+    setMockBooks([]);
+
     const { result } = renderHook(useNavWithContext, {
-      wrapper: createWrapper(exoBook, exoChapters[0]!),
+      wrapper: createWrapper(genBook, genChapters[4]!),
     });
 
     act(() => result.current.nav.navigateToPrevious());
 
+    expect(result.current.ctx.currentChapter.id).toBe('5');
     expect(result.current.ctx.currentBook.id).toBe('GEN');
-    expect(result.current.ctx.currentChapter.id).toBe('50');
   });
 
   it('currentChapterIndex is -1 when book has no chapters array', () => {
