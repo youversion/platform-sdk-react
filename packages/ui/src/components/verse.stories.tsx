@@ -167,11 +167,9 @@ export const SingleVerse: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(await canvas.findByText('Loading...')).toBeInTheDocument();
+    await expect(await canvas.findByRole('status', { name: /loading/i })).toBeInTheDocument();
 
-    void waitFor(async () => {
-      // The text loading indicates that the passages API
-      // was called and the text is being rendered.
+    await waitFor(async () => {
       await expect(await canvas.findByText(/for God so loved the world/i)).toBeInTheDocument();
     });
   },

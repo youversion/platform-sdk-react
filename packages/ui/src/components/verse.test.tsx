@@ -1,10 +1,21 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect } from 'vitest';
-import { render, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Verse } from './verse';
+import { Verse, BibleTextView, type BibleTextViewPassageState } from './verse';
+
+// BibleTextView always calls usePassage/useTheme internally (even when passageState
+// is provided), so we must mock the hooks to avoid requiring YouVersionProvider.
+vi.mock('@youversion/platform-react-hooks', async () => {
+  const actual = await vi.importActual('@youversion/platform-react-hooks');
+  return {
+    ...actual,
+    usePassage: vi.fn(() => ({ passage: null, loading: false, error: null, refetch: vi.fn() })),
+    useTheme: vi.fn(() => 'light'),
+  };
+});
 
 describe('Verse.Html - XSS Protection', () => {
   describe('DOMPurify sanitization', () => {
@@ -594,5 +605,90 @@ describe('Verse.Text', () => {
     const span = container.querySelector('span.yv\\:font-serif\\!');
     expect(span).not.toBeNull();
     expect(span?.textContent).toBe('In the beginning');
+  });
+});
+
+describe('BibleTextView - Refetch loading behavior', () => {
+  const mockPassage: BibleTextViewPassageState['passage'] = {
+    id: 'JHN.3.16',
+    content: '<p class="yv-p">For God so loved the world</p>',
+    reference: 'John 3:16',
+  };
+
+  it('should show old passage content during refetch instead of Loading...', async () => {
+    const { container } = render(
+      <BibleTextView
+        reference="JHN.3.16"
+        versionId={3034}
+        passageState={{
+          passage: mockPassage,
+          loading: true,
+          error: null,
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(container.textContent).toContain('For God so loved the world');
+      expect(container.textContent).not.toContain('Loading...');
+    });
+  });
+
+  it('should show spinner on initial load when passage is null', async () => {
+    const { container } = render(
+      <BibleTextView
+        reference="JHN.3.16"
+        versionId={3034}
+        passageState={{
+          passage: null,
+          loading: true,
+          error: null,
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(within(container).getByRole('status', { name: /loading/i })).toBeInTheDocument();
+    });
+  });
+
+  it('should apply pointer-events: none when loading with old content', async () => {
+    const { container } = render(
+      <BibleTextView
+        reference="JHN.3.16"
+        versionId={3034}
+        passageState={{
+          passage: mockPassage,
+          loading: true,
+          error: null,
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      const wrapper = container.querySelector('[data-yv-sdk]');
+      expect(wrapper).not.toBeNull();
+      expect((wrapper as HTMLElement).style.pointerEvents).toBe('none');
+    });
+  });
+
+  it('should not apply pointer-events: none when not loading', async () => {
+    const { container } = render(
+      <BibleTextView
+        reference="JHN.3.16"
+        versionId={3034}
+        passageState={{
+          passage: mockPassage,
+          loading: false,
+          error: null,
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      const wrapper = container.querySelector('[data-yv-sdk]');
+      expect(wrapper).not.toBeNull();
+      expect((wrapper as HTMLElement).style.pointerEvents).toBe('');
+    });
   });
 });

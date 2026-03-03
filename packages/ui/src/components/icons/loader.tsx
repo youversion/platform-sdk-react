@@ -3,6 +3,8 @@ import type { ComponentProps, ReactElement } from 'react';
 export function LoaderIcon(props: ComponentProps<'svg'>): ReactElement {
   return (
     <svg
+      role="status"
+      aria-label="Loading"
       width="24"
       height="24"
       viewBox="0 0 24 24"
