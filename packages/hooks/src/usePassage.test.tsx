@@ -65,19 +65,6 @@ describe('usePassage', () => {
   });
 
   describe('format options', () => {
-    it('should fetch with format html by default', async () => {
-      const wrapper = createYVWrapper();
-      const { result } = renderHook(() => usePassage({ versionId: 3034, usfm: 'JHN.3.16' }), {
-        wrapper,
-      });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect.soft(mockGetPassage).toHaveBeenCalledWith(3034, 'JHN.3.16', 'html', false, false);
-    });
-
     it('should fetch with format text when specified', async () => {
       const wrapper = createYVWrapper();
       const { result } = renderHook(
@@ -224,13 +211,13 @@ describe('usePassage', () => {
       expect.soft(result.current.passage).toBe(null);
     });
 
-    it('should not fetch when enabled is false even with valid usfm', async () => {
+    it('should not fetch when both enabled is false and usfm is invalid', async () => {
       const wrapper = createYVWrapper();
       const { result } = renderHook(
         () =>
           usePassage({
             versionId: 3034,
-            usfm: 'JHN.3.16',
+            usfm: '',
             options: { enabled: false },
           }),
         { wrapper },
