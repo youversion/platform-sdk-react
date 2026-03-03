@@ -7,7 +7,7 @@ describe('getDayOfYear', () => {
     { date: new Date(2025, 0, 1), expected: 1, label: 'Jan 1' },
     { date: new Date(2025, 0, 2), expected: 2, label: 'Jan 2' },
     { date: new Date(2025, 1, 1), expected: 32, label: 'Feb 1' },
-    { date: new Date(2025, 6, 4), expected: 184, label: 'Jul 4 (non-leap)' },
+    { date: new Date(2025, 6, 4), expected: 185, label: 'Jul 4 (non-leap)' },
     { date: new Date(2025, 11, 31), expected: 365, label: 'Dec 31 (non-leap)' },
   ])('should return $expected for $label', ({ date, expected }, { expect }) => {
     expect(getDayOfYear(date)).toBe(expected);
