@@ -1,4 +1,10 @@
-import type { BibleBook, BibleChapter, BibleVerse, BibleVersion } from '@youversion/platform-core';
+import type {
+  BibleBook,
+  BibleChapter,
+  BiblePassage,
+  BibleVerse,
+  BibleVersion,
+} from '@youversion/platform-core';
 
 /**
  * Creates a mock Bible version for testing
@@ -52,5 +58,16 @@ export const createMockVerse = (overrides?: Partial<BibleVerse>): BibleVerse => 
   id: '1',
   passage_id: 'GEN.1.1',
   title: '1',
+  ...overrides,
+});
+
+/**
+ * Creates a mock Bible passage for testing
+ * @param overrides Optional properties to override defaults
+ */
+export const createMockPassage = (overrides?: Partial<BiblePassage>): BiblePassage => ({
+  id: 'JHN.3.16',
+  content: '<p>For God so loved the world...</p>',
+  reference: 'John 3:16',
   ...overrides,
 });
