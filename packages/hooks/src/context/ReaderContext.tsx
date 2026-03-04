@@ -14,8 +14,14 @@ type ReaderContextData = {
   setVerse: (verse: BibleVerse | null) => void;
 };
 
+/**
+ * @deprecated ReaderContext will be removed in the next major version.
+ */
 export const ReaderContext = createContext<ReaderContextData | null>(null);
 
+/**
+ * @deprecated This hook will be removed in the next major version.
+ */
 export function useReaderContext(): ReaderContextData {
   const context = useContext(ReaderContext);
 

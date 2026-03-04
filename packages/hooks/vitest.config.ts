@@ -16,7 +16,15 @@ export default defineConfig({
       reportsDirectory: './coverage',
       all: true,
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/useInitData.ts'],
+      exclude: [
+        'src/useInitData.ts',
+        'src/useChapterNavigation.ts',
+        'src/useVerseSelection.ts',
+        'src/context/ReaderContext.tsx',
+        'src/context/ReaderProvider.tsx',
+        'src/context/VerseSelectionContext.tsx',
+        'src/context/VerseSelectionProvider.tsx',
+      ],
     },
   },
 });

@@ -11,6 +11,9 @@ type ReaderProviderProps = {
   currentVerse: BibleVerse | null;
 };
 
+/**
+ * @deprecated ReaderProvider will be removed in the next major version.
+ */
 export function ReaderProvider(props: PropsWithChildren<ReaderProviderProps>): React.ReactElement {
   const [currentVersion, setCurrentVersion] = useState<BibleVersion>(props.currentVersion);
   const [currentBook, setCurrentBook] = useState<BibleBook>(props.currentBook);

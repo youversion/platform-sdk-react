@@ -8,4 +8,7 @@ export type VerseSelectionContextData = {
   selectedCount: number;
 };
 
+/**
+ * @deprecated VerseSelectionContext will be removed in the next major version.
+ */
 export const VerseSelectionContext = createContext<VerseSelectionContextData | null>(null);
