@@ -22,6 +22,10 @@ interface InitData {
   chapter: BibleChapter;
 }
 
+/**
+ * @deprecated This hook will be removed in the next major version.
+ * Use `useVersion`, `useBook`, and `useChapter` directly instead.
+ */
 export function useInitData(
   { version, book, chapter }: Props = {
     version: DEFAULT.VERSION,
