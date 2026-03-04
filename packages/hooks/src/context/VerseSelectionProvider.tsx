@@ -2,7 +2,7 @@ import { type PropsWithChildren, useCallback, useState } from 'react';
 import { VerseSelectionContext } from './VerseSelectionContext';
 
 /**
- * @deprecated VerseSelectionProvider will be removed in the next major version.
+ * @deprecated No replacement needed. Remove usage. Will be removed in the next major version.
  */
 export function VerseSelectionProvider({ children }: PropsWithChildren): React.ReactElement {
   const [selectedVerseUsfms, setSelectedVerseUsfms] = useState<Set<string>>(new Set());

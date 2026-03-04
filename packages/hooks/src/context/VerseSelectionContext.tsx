@@ -9,6 +9,6 @@ export type VerseSelectionContextData = {
 };
 
 /**
- * @deprecated VerseSelectionContext will be removed in the next major version.
+ * @deprecated No replacement needed. Remove usage. Will be removed in the next major version.
  */
 export const VerseSelectionContext = createContext<VerseSelectionContextData | null>(null);

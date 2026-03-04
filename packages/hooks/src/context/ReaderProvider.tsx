@@ -12,7 +12,7 @@ type ReaderProviderProps = {
 };
 
 /**
- * @deprecated ReaderProvider will be removed in the next major version.
+ * @deprecated No replacement needed. Remove usage. Will be removed in the next major version.
  */
 export function ReaderProvider(props: PropsWithChildren<ReaderProviderProps>): React.ReactElement {
   const [currentVersion, setCurrentVersion] = useState<BibleVersion>(props.currentVersion);
