@@ -1,7 +1,7 @@
 import { createContext } from 'react';
 
 /**
- * @deprecated VerseSelectionContextData will be removed in the next major version.
+ * @deprecated No replacement needed. Remove usage. Will be removed in the next major version.
  */
 export type VerseSelectionContextData = {
   selectedVerseUsfms: Set<string>;
