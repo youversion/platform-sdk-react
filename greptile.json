@@ -16,7 +16,7 @@
         "rule": "Schema-first: All types defined in schemas/*.ts using Zod"
       },
       {
-        "scope": ["packages/**"],
+        "scope": ["packages/**", ".changeset/**"],
         "rule": "Unified versioning: All packages must maintain exact same version - never version packages independently"
       },
       {
