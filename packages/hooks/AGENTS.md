@@ -1,7 +1,7 @@
 # @youversion/platform-react-hooks
 
 ## OVERVIEW
-React integration layer providing data fetching hooks with 3 core providers: YouVersionProvider, YouVersionAuthProvider, and ReaderProvider.
+React integration layer providing data fetching hooks with 2 core providers: YouVersionProvider and YouVersionAuthProvider.
 
 **Depends on `@youversion/platform-core` for all API calls.** Hooks delegate to core clients; do not implement raw HTTP here.
 
@@ -15,11 +15,11 @@ React integration layer providing data fetching hooks with 3 core providers: You
 - `utility/` - Helper functions (useDebounce, extractTextFromHTML, extractVersesFromHTML)
 
 ## PUBLIC API
-- Data fetching hooks: useBook, useChapter, usePassage, useVersion, useVOTD, useVerse, useChapterNavigation, etc.
+- Data fetching hooks: useBook, useChapter, usePassage, useVersion, useVOTD, useVerse, etc.
 - YouVersionProvider - Core SDK configuration
 - YouVersionAuthProvider - Authentication state
-- ReaderProvider - Reading session context
 - Utility functions exported from utility/index
+
 
 ## PROVIDERS
 
@@ -30,10 +30,6 @@ React integration layer providing data fetching hooks with 3 core providers: You
 - **YouVersionAuthProvider**
   - Manages authentication state (userInfo, tokens, isLoading, error)
   - Auth hooks like `useYVAuth` depend on this provider
-
-- **ReaderProvider**
-  - Manages Bible reading session state (currentVersion, currentChapter, currentBook, currentVerse)
-  - Hooks like `useChapterNavigation` depend on this provider
 
 ## DOs / DON'Ts
 

@@ -16,6 +16,9 @@ interface UseChapterNavigationResult {
 /**
  * Provides navigation functionality for chapters across book boundaries,
  * including intro chapter support.
+ *
+ * @deprecated This hook will be removed in the next major version.
+ * Use `getAdjacentChapter` from `@youversion/platform-core` directly instead.
  */
 export function useChapterNavigation(): UseChapterNavigationResult {
   const { currentChapter, currentVersion, currentBook, setChapter, setBook } = useReaderContext();
