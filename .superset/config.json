@@ -1,0 +1,6 @@
+{
+  "setup": [
+    "pnpm i && pnpm build && cp \"$SUPERSET_ROOT_PATH/packages/ui/.env.local\" ./packages/ui/.env.local && cp \"$SUPERSET_ROOT_PATH/packages/core/.env.local\" ./packages/core/.env.local"
+  ],
+  "teardown": []
+}
