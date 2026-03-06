@@ -1,5 +1,5 @@
 import { YouVersionProvider } from '@youversion/platform-react-ui';
-import { useTheme } from '@/components/theme-provider';
+import { useTheme } from '@/components/use-theme';
 import App from './App';
 
 export default function ThemedApp() {
