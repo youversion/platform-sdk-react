@@ -5,18 +5,19 @@ import { ThemeProvider, useTheme } from '@/components/theme-provider';
 import App from './App';
 import './index.css';
 
-const appKey = import.meta.env.VITE_YVP_APP_KEY ?? '';
-const apiHost = import.meta.env.VITE_YVP_API_HOST ?? 'api.youversion.com';
-
 function ThemedApp() {
-  const { theme } = useTheme();
+  const theme = useTheme();
+  const appKey = import.meta.env.VITE_YVP_APP_KEY ?? '';
+  const apiHost = import.meta.env.VITE_YVP_API_HOST ?? 'api.youversion.com';
+  const authRedirectUrl = import.meta.env.VITE_YVP_AUTH_REDIRECT_URL ?? window.location.origin;
+
   return (
     <YouVersionProvider
       theme={theme}
       apiHost={apiHost}
       appKey={appKey}
       includeAuth
-      authRedirectUrl="http://localhost:5173"
+      authRedirectUrl={authRedirectUrl}
     >
       <App />
     </YouVersionProvider>
