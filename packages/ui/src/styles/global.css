@@ -29,7 +29,7 @@
  * Instead, preflight resets are scoped to [data-yv-sdk] below so our SDK
  * components get the reset without nuking consumer app styles.
  */
-@layer theme, base, components, utilities, yv-sdk-theme, yv-sdk-base, yv-sdk-animate, yv-sdk-utilities, yv-sdk-bible-reader;
+@layer theme, base, components, utilities, yv-sdk-theme, yv-sdk-base, yv-sdk-utilities, yv-sdk-bible-reader;
 
 @import 'tailwindcss/theme.css' layer(yv-sdk-theme) prefix(yv);
 @import 'tailwindcss/utilities.css' layer(yv-sdk-utilities) prefix(yv);
