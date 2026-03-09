@@ -8,4 +8,4 @@ Fix SDK styles overriding consumer app CSS by wrapping all styles in custom @lay
 
 Fixed a styling bug in the BibleReader.Toolbar when the user is signed in, so that the avatar button is circular versus oblong.
 
-Fixed the BibleReader.Toolbar's popover button for sign in and sign out to respect dark/light modes.
+Fixed the BibleReader.Toolbar's popover button for sign in and sign out to respect dark/light modes and to close the popover when clicked.

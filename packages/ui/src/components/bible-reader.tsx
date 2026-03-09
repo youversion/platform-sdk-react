@@ -27,7 +27,7 @@ import { InfoIcon } from './icons/info';
 import { LoaderIcon } from './icons/loader';
 import { PersonIcon } from './icons/person';
 import { Button } from './ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from './ui/popover';
 import { BibleTextView } from './verse';
 import { INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
 import { ChevronLeftIcon } from './icons/chevron-left';
@@ -306,19 +306,21 @@ function UserMenu() {
         sideOffset={16}
         showHeader={false}
       >
-        {auth.isAuthenticated ? (
-          <Button variant="secondary" className="yv:card yv:text-foreground" onClick={signOut}>
-            Sign Out
-          </Button>
-        ) : (
-          <Button
-            variant="secondary"
-            className="yv:card yv:text-foreground"
-            onClick={() => void signIn({ scopes: ['profile'] })}
-          >
-            Sign In
-          </Button>
-        )}
+        <PopoverClose asChild>
+          {auth.isAuthenticated ? (
+            <Button variant="secondary" className="yv:card yv:text-foreground" onClick={signOut}>
+              Sign Out
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              className="yv:card yv:text-foreground"
+              onClick={() => void signIn({ scopes: ['profile'] })}
+            >
+              Sign In
+            </Button>
+          )}
+        </PopoverClose>
       </PopoverContent>
     </Popover>
   );
