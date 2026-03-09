@@ -280,12 +280,13 @@ function Content() {
 
 function UserMenu() {
   const { auth, signIn, signOut, userInfo } = useYVAuth();
+  const yvContext = useContext(YouVersionContext);
 
   return (
     <Popover>
       <PopoverTrigger asChild data-testid="user-menu-trigger">
         {auth.isAuthenticated && userInfo?.avatarUrlFormat ? (
-          <Button size="icon" variant="ghost">
+          <Button size="icon" variant="outline">
             <img
               src={userInfo.getAvatarUrl(32, 32)?.toString()}
               alt={userInfo.name || 'User avatar'}
@@ -300,16 +301,18 @@ function UserMenu() {
       </PopoverTrigger>
 
       <PopoverContent
-        className="yv:rounded-[6px] yv:w-fit! yv:px-4"
+        theme={yvContext?.theme}
+        className="yv:w-fit! yv:rounded-full"
         sideOffset={16}
         showHeader={false}
       >
         {auth.isAuthenticated ? (
-          <Button className="yv:card yv:text-foreground" onClick={signOut}>
+          <Button variant="secondary" className="yv:card yv:text-foreground" onClick={signOut}>
             Sign Out
           </Button>
         ) : (
           <Button
+            variant="secondary"
             className="yv:card yv:text-foreground"
             onClick={() => void signIn({ scopes: ['profile'] })}
           >
