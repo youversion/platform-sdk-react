@@ -6,7 +6,9 @@ import {
   useVersion,
 } from '@youversion/platform-react-hooks';
 import React from 'react';
+import { AnimatedHeight } from '@/components/animated-height';
 import { BibleAppLogoLockup } from '@/components/bible-app-logo-lockup';
+import { LoaderIcon } from '@/components/icons/loader';
 import { Share } from '@/components/icons/share';
 import { Votd } from '@/components/icons/votd';
 import { Button } from '@/components/ui/button';
@@ -105,10 +107,10 @@ export function VerseOfTheDay({
   const providerTheme = useTheme();
   const theme = background || providerTheme;
 
+  const isLoading = loadingPassage || loadingVerseOfTheDay || loadingVersion;
+
   let referenceText = '';
-  if (loadingPassage || loadingVerseOfTheDay || loadingVersion) {
-    referenceText = 'Loading...';
-  } else if (errorPassage || errorVerseOfTheDay) {
+  if (errorPassage || errorVerseOfTheDay) {
     referenceText = 'Error loading verse';
   } else if (passage?.reference && version?.localized_abbreviation) {
     referenceText = `${passage?.reference} ${version?.localized_abbreviation}`;
@@ -131,7 +133,7 @@ export function VerseOfTheDay({
       data-yv-theme={theme}
       data-size={size}
       className={
-        'yv:data-[size=lg]:p-8 yv:data-[size=default]:p-4 yv:*:shrink-0 yv:font-sans yv:flex yv:flex-col yv:gap-3 yv:max-w-screen-sm yv:p-4 yv:rounded-2xl yv:bg-card'
+        'yv:data-[size=lg]:p-8 yv:data-[size=default]:p-4 yv:*:shrink-0 yv:font-sans yv:flex yv:flex-col yv:gap-3 yv:w-full yv:grow yv:max-w-md yv:p-4 yv:rounded-2xl yv:bg-card'
       }
     >
       <div className="yv:flex yv:items-center yv:gap-2 yv:text-black yv:dark:text-white">
@@ -170,18 +172,26 @@ export function VerseOfTheDay({
         ) : null}
       </div>
 
-      <div>
-        {passage ? (
-          <Verse.Html
-            ref={verseRef}
-            fontSize={size === 'default' ? 16 : 20}
-            fontFamily={size === 'default' ? 'var(--yv-font-sans)' : 'var(--yv-font-serif)'}
-            html={passage?.content || ''}
-          />
-        ) : null}
-      </div>
+      <AnimatedHeight>
+        {isLoading || !passage ? (
+          <div className="yv:flex yv:justify-center yv:py-2">
+            <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="yv:flex yv:grow yv:flex-col gap-2">
+            <Verse.Html
+              ref={verseRef}
+              fontSize={size === 'default' ? 16 : 20}
+              fontFamily={size === 'default' ? 'var(--yv-font-sans)' : 'var(--yv-font-serif)'}
+              html={passage?.content || ''}
+            />
 
-      <p className="yv:text-muted-foreground yv:font-medium yv:text-sm">{referenceText}</p>
+            <p className="yv:text-muted-foreground yv:font-medium yv:text-sm yv:mt-3">
+              {referenceText}
+            </p>
+          </div>
+        )}
+      </AnimatedHeight>
 
       {showBibleAppAttribution ? (
         <div
