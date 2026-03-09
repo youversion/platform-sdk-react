@@ -284,17 +284,19 @@ function UserMenu() {
   return (
     <Popover>
       <PopoverTrigger asChild data-testid="user-menu-trigger">
-        <Button size="sm" variant="secondary">
-          {auth.isAuthenticated && userInfo?.avatarUrlFormat ? (
+        {auth.isAuthenticated && userInfo?.avatarUrlFormat ? (
+          <Button size="icon" variant="ghost">
             <img
               src={userInfo.getAvatarUrl(32, 32)?.toString()}
               alt={userInfo.name || 'User avatar'}
               className="yv:size-full yv:rounded-full yv:object-cover"
             />
-          ) : (
+          </Button>
+        ) : (
+          <Button size="sm" variant="secondary">
             <PersonIcon className="yv:text-foreground" />
-          )}
-        </Button>
+          </Button>
+        )}
       </PopoverTrigger>
 
       <PopoverContent
