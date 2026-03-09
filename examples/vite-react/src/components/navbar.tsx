@@ -74,13 +74,11 @@ export function Navbar({ currentPage, onNavigate }: NavbarProps) {
 
         {/* Right side: auth + dark mode */}
         <div className="ml-auto flex items-center gap-2">
-          <ModeToggle />
-
           {auth.isAuthenticated ? (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground hidden sm:block">
-                {userInfo?.name || 'User'}
-              </span>
+              {userInfo?.name ? (
+                <span className="text-sm text-muted-foreground sm:block">{userInfo?.name}</span>
+              ) : null}
               <Button variant="outline" size="sm" onClick={signOut}>
                 Sign out
               </Button>
@@ -89,8 +87,11 @@ export function Navbar({ currentPage, onNavigate }: NavbarProps) {
             <YouVersionAuthButton
               size="short"
               onAuthError={(err) => console.error('Auth error:', err)}
+              scopes={['profile', 'email']}
             />
           )}
+
+          <ModeToggle />
         </div>
       </div>
     </header>
