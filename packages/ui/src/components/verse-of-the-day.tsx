@@ -185,7 +185,7 @@ export function VerseOfTheDay({
             />
           </div>
         ) : (
-          <div className="yv:flex yv:grow yv:flex-col yv:gap-2">
+          <div className="yv:flex yv:flex-col yv:gap-2">
             <Verse.Html
               ref={verseRef}
               fontSize={size === 'default' ? 16 : 20}
