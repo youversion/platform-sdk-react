@@ -27,7 +27,7 @@ import { InfoIcon } from './icons/info';
 import { LoaderIcon } from './icons/loader';
 import { PersonIcon } from './icons/person';
 import { Button } from './ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from './ui/popover';
 import { BibleTextView } from './verse';
 import { INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
 import { ChevronLeftIcon } from './icons/chevron-left';
@@ -280,40 +280,47 @@ function Content() {
 
 function UserMenu() {
   const { auth, signIn, signOut, userInfo } = useYVAuth();
+  const yvContext = useContext(YouVersionContext);
 
   return (
     <Popover>
       <PopoverTrigger asChild data-testid="user-menu-trigger">
-        <Button size="sm" variant="secondary">
-          {auth.isAuthenticated && userInfo?.avatarUrlFormat ? (
+        {auth.isAuthenticated && userInfo?.avatarUrlFormat ? (
+          <Button size="icon" variant="outline">
             <img
               src={userInfo.getAvatarUrl(32, 32)?.toString()}
               alt={userInfo.name || 'User avatar'}
               className="yv:size-full yv:rounded-full yv:object-cover"
             />
-          ) : (
+          </Button>
+        ) : (
+          <Button size="sm" variant="secondary">
             <PersonIcon className="yv:text-foreground" />
-          )}
-        </Button>
+          </Button>
+        )}
       </PopoverTrigger>
 
       <PopoverContent
-        className="yv:rounded-[6px] yv:w-fit! yv:px-4"
+        theme={yvContext?.theme}
+        className="yv:w-fit! yv:rounded-full"
         sideOffset={16}
         showHeader={false}
       >
-        {auth.isAuthenticated ? (
-          <Button className="yv:card yv:text-foreground" onClick={signOut}>
-            Sign Out
-          </Button>
-        ) : (
-          <Button
-            className="yv:card yv:text-foreground"
-            onClick={() => void signIn({ scopes: ['profile'] })}
-          >
-            Sign In
-          </Button>
-        )}
+        <PopoverClose asChild>
+          {auth.isAuthenticated ? (
+            <Button variant="secondary" className="yv:card yv:text-foreground" onClick={signOut}>
+              Sign Out
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              className="yv:card yv:text-foreground"
+              onClick={() => void signIn({ scopes: ['profile'] })}
+            >
+              Sign In
+            </Button>
+          )}
+        </PopoverClose>
       </PopoverContent>
     </Popover>
   );
