@@ -173,7 +173,7 @@ export function VerseOfTheDay({
       </div>
 
       <AnimatedHeight>
-        {isLoading || (!passage && !errorPassage && !errorVerseOfTheDay) ? (
+        {isLoading ? (
           <div
             className="yv:flex yv:justify-center yv:py-2"
             role="status"
