@@ -394,7 +394,7 @@ export const BibleTextView = ({
         data-yv-theme={currentTheme}
         role="status"
         aria-label="Loading passage"
-        className="yv:flex yv:grow yv:justify-center"
+        className="yv:flex yv:grow yv:items-center yv:justify-center"
       >
         <LoaderIcon
           className="yv:size-4 yv:animate-spin yv:text-muted-foreground"
