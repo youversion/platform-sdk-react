@@ -173,12 +173,19 @@ export function VerseOfTheDay({
       </div>
 
       <AnimatedHeight>
-        {isLoading || !passage ? (
-          <div className="yv:flex yv:justify-center yv:py-2">
-            <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
+        {isLoading || (!passage && !errorPassage && !errorVerseOfTheDay) ? (
+          <div
+            className="yv:flex yv:justify-center yv:py-2"
+            role="status"
+            aria-label="Loading verse"
+          >
+            <LoaderIcon
+              className="yv:size-4 yv:animate-spin yv:text-muted-foreground"
+              aria-hidden="true"
+            />
           </div>
         ) : (
-          <div className="yv:flex yv:grow yv:flex-col gap-2">
+          <div className="yv:flex yv:grow yv:flex-col yv:gap-2">
             <Verse.Html
               ref={verseRef}
               fontSize={size === 'default' ? 16 : 20}
