@@ -348,91 +348,98 @@ export type BibleTextViewProps = {
 /**
  * A component that renders style Bible text.
  */
-export const BibleTextView = ({
-  reference,
-  fontFamily,
-  fontSize,
-  lineHeight,
-  versionId,
-  showVerseNumbers,
-  renderNotes,
-  theme,
-  selectedVerses,
-  onVerseSelect,
-  highlightedVerses,
-  passageState,
-}: BibleTextViewProps): React.ReactElement => {
-  const providerTheme = useTheme();
-  const currentTheme = theme || providerTheme;
-
-  const hasProvidedPassageState = passageState !== undefined;
-
-  const {
-    passage: fetchedPassage,
-    loading: fetchedLoading,
-    error: fetchedError,
-  } = usePassage({
-    versionId,
-    usfm: reference,
-    include_headings: true,
-    include_notes: true,
-    options: {
-      enabled: !hasProvidedPassageState,
+export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
+  (
+    {
+      reference,
+      fontFamily,
+      fontSize,
+      lineHeight,
+      versionId,
+      showVerseNumbers,
+      renderNotes,
+      theme,
+      selectedVerses,
+      onVerseSelect,
+      highlightedVerses,
+      passageState,
     },
-  });
+    ref,
+  ): React.ReactElement => {
+    const providerTheme = useTheme();
+    const currentTheme = theme || providerTheme;
 
-  const currentPassage = hasProvidedPassageState ? passageState?.passage : fetchedPassage;
-  const currentLoading = hasProvidedPassageState
-    ? (passageState?.loading ?? false)
-    : fetchedLoading;
-  const currentError = hasProvidedPassageState ? (passageState?.error ?? null) : fetchedError;
+    const hasProvidedPassageState = passageState !== undefined;
 
-  if (currentLoading && !currentPassage) {
+    const {
+      passage: fetchedPassage,
+      loading: fetchedLoading,
+      error: fetchedError,
+    } = usePassage({
+      versionId,
+      usfm: reference,
+      include_headings: true,
+      include_notes: true,
+      options: {
+        enabled: !hasProvidedPassageState,
+      },
+    });
+
+    const currentPassage = hasProvidedPassageState ? passageState?.passage : fetchedPassage;
+    const currentLoading = hasProvidedPassageState
+      ? (passageState?.loading ?? false)
+      : fetchedLoading;
+    const currentError = hasProvidedPassageState ? (passageState?.error ?? null) : fetchedError;
+
+    if (currentLoading && !currentPassage) {
+      return (
+        <div
+          ref={ref}
+          data-yv-sdk
+          data-yv-theme={currentTheme}
+          role="status"
+          aria-label="Loading passage"
+          className="yv:flex yv:grow yv:items-center yv:justify-center"
+        >
+          <LoaderIcon
+            className="yv:size-4 yv:animate-spin yv:text-muted-foreground"
+            aria-hidden="true"
+          />
+        </div>
+      );
+    }
+
+    if (currentError) {
+      return (
+        <div ref={ref} data-yv-sdk data-yv-theme={currentTheme}>
+          <VerseUnavailableMessage />
+        </div>
+      );
+    }
+
     return (
       <div
         data-yv-sdk
         data-yv-theme={currentTheme}
-        role="status"
-        aria-label="Loading passage"
-        className="yv:flex yv:grow yv:items-center yv:justify-center"
+        className={cn(fetchedLoading || currentLoading ? 'yv:animate-pulse' : '')}
+        aria-busy={currentLoading || undefined}
+        style={currentLoading ? { pointerEvents: 'none' } : undefined}
       >
-        <LoaderIcon
-          className="yv:size-4 yv:animate-spin yv:text-muted-foreground"
-          aria-hidden="true"
+        <Verse.Html
+          ref={ref}
+          html={currentPassage?.content || ''}
+          fontFamily={fontFamily}
+          fontSize={fontSize}
+          lineHeight={lineHeight}
+          showVerseNumbers={showVerseNumbers}
+          renderNotes={renderNotes}
+          reference={currentPassage?.reference}
+          theme={currentTheme}
+          selectedVerses={selectedVerses}
+          onVerseSelect={onVerseSelect}
+          highlightedVerses={highlightedVerses}
         />
       </div>
     );
-  }
-
-  if (currentError) {
-    return (
-      <div data-yv-sdk data-yv-theme={currentTheme}>
-        <VerseUnavailableMessage />
-      </div>
-    );
-  }
-
-  return (
-    <div
-      data-yv-sdk
-      data-yv-theme={currentTheme}
-      className={cn(fetchedLoading || currentLoading ? 'yv:animate-pulse' : '')}
-      aria-busy={currentLoading || undefined}
-      style={currentLoading ? { pointerEvents: 'none' } : undefined}
-    >
-      <Verse.Html
-        html={currentPassage?.content || ''}
-        fontFamily={fontFamily}
-        fontSize={fontSize}
-        lineHeight={lineHeight}
-        showVerseNumbers={showVerseNumbers}
-        renderNotes={renderNotes}
-        reference={currentPassage?.reference}
-        theme={currentTheme}
-        selectedVerses={selectedVerses}
-        onVerseSelect={onVerseSelect}
-        highlightedVerses={highlightedVerses}
-      />
-    </div>
-  );
-};
+  },
+);

@@ -163,6 +163,7 @@ export function VerseOfTheDay({
               aria-label="Share"
               className={cn(size === 'lg' ? 'yv:translate-x-3' : 'yv:translate-x-2')}
               onClick={() => void handleShareVerse()}
+              disabled={!!(errorPassage || errorVerseOfTheDay)}
               size="icon"
               variant="ghost"
             >
@@ -187,6 +188,7 @@ export function VerseOfTheDay({
         ) : (
           <div className="yv:flex yv:flex-col yv:gap-2">
             <BibleTextView
+              ref={verseRef}
               theme={theme}
               reference={data?.passage_id || ''}
               versionId={versionId}
