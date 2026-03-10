@@ -12,7 +12,7 @@ import { LoaderIcon } from '@/components/icons/loader';
 import { Share } from '@/components/icons/share';
 import { Votd } from '@/components/icons/votd';
 import { Button } from '@/components/ui/button';
-import { Verse } from '@/components/verse';
+import { BibleTextView } from '@/components/verse';
 import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '@youversion/platform-core';
 import { cn } from '@/lib/utils';
 
@@ -186,16 +186,24 @@ export function VerseOfTheDay({
           </div>
         ) : (
           <div className="yv:flex yv:flex-col yv:gap-2">
-            <Verse.Html
-              ref={verseRef}
+            <BibleTextView
+              theme={theme}
+              reference={data?.passage_id || ''}
+              versionId={versionId}
               fontSize={size === 'default' ? 16 : 20}
               fontFamily={size === 'default' ? 'var(--yv-font-sans)' : 'var(--yv-font-serif)'}
-              html={passage?.content || ''}
+              passageState={{
+                passage,
+                loading: isLoading,
+                error: errorPassage,
+              }}
             />
 
-            <p className="yv:text-muted-foreground yv:font-medium yv:text-sm yv:mt-3">
-              {referenceText}
-            </p>
+            {errorPassage ? null : (
+              <p className="yv:text-muted-foreground yv:font-medium yv:text-sm yv:mt-3">
+                {referenceText}
+              </p>
+            )}
           </div>
         )}
       </AnimatedHeight>
