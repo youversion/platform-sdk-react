@@ -140,7 +140,7 @@ export function BibleCard({
     <section
       data-yv-sdk
       data-yv-theme={theme}
-      className="yv:flex yv:flex-col yv:grow yv:bg-card yv:p-6 yv:max-w-md yv:rounded-2xl"
+      className="yv:w-full yv:flex yv:flex-col yv:grow yv:bg-card yv:p-6 yv:max-w-md yv:rounded-2xl"
     >
       <div className="yv:flex yv:w-full yv:justify-between yv:items-center yv:mb-4">
         {passage && !passageError ? (
