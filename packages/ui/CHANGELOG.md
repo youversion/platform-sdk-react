@@ -1,5 +1,19 @@
 # @youversion/platform-react-ui
 
+## 1.20.1
+
+### Patch Changes
+
+- e895fd0: Remove shadow from VerseOfTheDay card, add loading spinner with animated height transition, and match width approach to BibleCard for consistency.
+
+  Replaced Verse.HTML in the VerseOfTheDay component with BibleTextView in favor of the baked-in error state when a Bible Verse cannot load for any reason.
+
+  BibleTextView now is now a forwardRef component, enabling users to pass in a React ref.
+
+- Updated dependencies [e895fd0]
+  - @youversion/platform-core@1.20.1
+  - @youversion/platform-react-hooks@1.20.1
+
 ## 1.20.0
 
 ### Minor Changes
