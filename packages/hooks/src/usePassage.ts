@@ -17,8 +17,8 @@ export function usePassage({
   versionId,
   usfm,
   format = 'html',
-  include_headings = false,
-  include_notes = false,
+  include_headings = true,
+  include_notes = true,
   options,
 }: usePassageProps): {
   passage: BiblePassage | null;
