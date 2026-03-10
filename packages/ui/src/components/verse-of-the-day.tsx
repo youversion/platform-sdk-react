@@ -110,14 +110,10 @@ export function VerseOfTheDay({
   const isLoading = loadingPassage || loadingVerseOfTheDay || loadingVersion;
 
   let referenceText = '';
-  if (errorPassage || errorVerseOfTheDay) {
-    referenceText = 'Error loading verse';
-  } else if (passage?.reference && version?.localized_abbreviation) {
+  if (passage?.reference && version?.localized_abbreviation) {
     referenceText = `${passage?.reference} ${version?.localized_abbreviation}`;
   } else if (passage?.reference) {
     referenceText = passage?.reference;
-  } else {
-    referenceText = 'No verse found';
   }
 
   const handleShareVerse = async () => {
@@ -201,7 +197,7 @@ export function VerseOfTheDay({
               }}
             />
 
-            {errorPassage ? null : (
+            {errorPassage || errorVerseOfTheDay ? null : (
               <p className="yv:text-muted-foreground yv:font-medium yv:text-sm yv:mt-3">
                 {referenceText}
               </p>
