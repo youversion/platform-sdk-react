@@ -197,7 +197,7 @@ export function VerseOfTheDay({
               passageState={{
                 passage,
                 loading: isLoading,
-                error: errorPassage,
+                error: errorPassage || errorVerseOfTheDay || null,
               }}
             />
 
