@@ -183,25 +183,17 @@
     // ═══════════════════════════════════════════════════════════════
     // tools/tsconfig — Shared TypeScript configuration (JSON only)
     // ═══════════════════════════════════════════════════════════════
+    // tsconfig files are consumed via "extends" references, not JS imports,
+    // so import-graph-based checks (circular, unresolved, orphan, unusedExports)
+    // are not applicable here.
     {
       "path": "tools/tsconfig",
       "followMonorepoPackages": false,
-      "circularImportsDetection": {
-        "enabled": true,
-        "ignoreTypeImports": false
-      },
-      "unresolvedImportsDetection": {
-        "enabled": true
-      },
+      "circularImportsDetection": { "enabled": false },
+      "unresolvedImportsDetection": { "enabled": false },
       "restrictedImportsDetection": { "enabled": false },
-      "orphanFilesDetection": {
-        "enabled": true,
-        "ignoreTypeImports": true
-      },
-      "unusedExportsDetection": {
-        "enabled": true,
-        "ignoreTypeExports": false
-      },
+      "orphanFilesDetection": { "enabled": false },
+      "unusedExportsDetection": { "enabled": false },
       "unusedNodeModulesDetection": {
         "enabled": true,
         "excludeModules": ["@types/**"]

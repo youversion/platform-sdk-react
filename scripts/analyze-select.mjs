@@ -409,6 +409,18 @@ if (revdep.restrictedDevDeps.length > 0) {
   console.log(`  ${green('✓')} No dev dependencies used in production`);
 }
 
+if (revdep.unusedExports.length > 0) {
+  console.log(
+    `  ${red('●')} ${bold('Unused Exports (rev-dep)')} (${revdep.unusedExports.length})`,
+  );
+  for (const item of revdep.unusedExports) {
+    console.log(`    ${dim(item.rule + '/')}${item.detail}`);
+  }
+  totalIssues += revdep.unusedExports.length;
+} else {
+  console.log(`  ${green('✓')} No unused exports (rev-dep)`);
+}
+
 console.log();
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
