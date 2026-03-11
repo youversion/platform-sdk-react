@@ -151,6 +151,7 @@
     {
       "path": "tools/eslint-config",
       "followMonorepoPackages": false,
+      "prodEntryPoints": ["index.js"],
       "circularImportsDetection": {
         "enabled": true,
         "ignoreTypeImports": false
@@ -161,8 +162,7 @@
       "restrictedImportsDetection": { "enabled": false },
       "orphanFilesDetection": {
         "enabled": true,
-        "ignoreTypeImports": true,
-        "graphExclude": ["index.js"]
+        "ignoreTypeImports": true
       },
       "unusedExportsDetection": {
         "enabled": true,

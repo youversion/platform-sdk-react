@@ -5,6 +5,7 @@ import { dirname, resolve } from 'node:path';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, '..');
+const knipBin = resolve(repoRoot, 'node_modules', '.bin', 'knip');
 const revDep = resolve(repoRoot, 'node_modules', '.bin', 'rev-dep');
 
 // ── Colors & formatting ──
@@ -18,6 +19,15 @@ const yellow = (s) => `\x1B[33m${s}\x1B[0m`;
 const magenta = (s) => `\x1B[35m${s}\x1B[0m`;
 
 const divider = () => console.log(dim('─'.repeat(60)));
+
+// ── Restore terminal on unexpected exit ──
+
+process.on('SIGINT', () => {
+  try { process.stdin.setRawMode(false); } catch {}
+  process.stdin.pause();
+  console.log('\nCancelled.');
+  process.exit(0);
+});
 
 // ── Choices (no "all" — use `pnpm analyze` for that) ──
 
@@ -179,7 +189,7 @@ if (knipWorkspaces.length > 0) {
   for (const ws of knipWorkspaces) {
     try {
       const raw = execSync(
-        `npx knip --workspace ${ws} --reporter json 2>/dev/null`,
+        `${knipBin} --workspace ${ws} --reporter json 2>/dev/null`,
         { cwd: repoRoot, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 },
       );
       const jsonLine = raw.trim().split('\n').pop();

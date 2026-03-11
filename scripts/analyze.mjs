@@ -5,6 +5,7 @@ import { dirname, resolve } from 'node:path';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, '..');
+const knipBin = resolve(repoRoot, 'node_modules', '.bin', 'knip');
 const revDep = resolve(repoRoot, 'node_modules', '.bin', 'rev-dep');
 
 // ── Colors & formatting ──
@@ -23,25 +24,32 @@ const divider = () => console.log(dim('─'.repeat(60)));
 
 console.log(`\n${bold('Analyzing Platform ⚛ React SDK Monorepo...')}\n`);
 
-// Knip (JSON output)
+// Knip (JSON output — run per workspace and merge for consistency with analyze-select)
 let knipData = { files: [], issues: [] };
-try {
-  // Knip may print info lines to stdout before JSON; grab the last line
-  const raw = execSync('npx knip --reporter json 2>/dev/null', {
-    cwd: repoRoot,
-    encoding: 'utf8',
-    maxBuffer: 10 * 1024 * 1024,
-  });
-  const jsonLine = raw.trim().split('\n').pop();
-  knipData = JSON.parse(jsonLine);
-} catch (err) {
-  // Knip exits non-zero when it finds issues but still outputs JSON
-  if (err.stdout) {
-    try {
-      const jsonLine = err.stdout.trim().split('\n').pop();
-      knipData = JSON.parse(jsonLine);
-    } catch {
-      console.log(yellow('⚠ Could not parse Knip output'));
+const knipWorkspaces = ['packages/core', 'packages/hooks', 'packages/ui'];
+
+for (const ws of knipWorkspaces) {
+  try {
+    const raw = execSync(`${knipBin} --workspace ${ws} --reporter json 2>/dev/null`, {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    const jsonLine = raw.trim().split('\n').pop();
+    const parsed = JSON.parse(jsonLine);
+    knipData.files.push(...(parsed.files || []));
+    knipData.issues.push(...(parsed.issues || []));
+  } catch (err) {
+    // Knip exits non-zero when it finds issues but still outputs JSON
+    if (err.stdout) {
+      try {
+        const jsonLine = err.stdout.trim().split('\n').pop();
+        const parsed = JSON.parse(jsonLine);
+        knipData.files.push(...(parsed.files || []));
+        knipData.issues.push(...(parsed.issues || []));
+      } catch {
+        console.log(yellow(`⚠ Could not parse Knip output for ${ws}`));
+      }
     }
   }
 }
@@ -185,13 +193,6 @@ let totalIssues = 0;
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Section 1: Architecture (rev-dep only)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-const archIssues = [
-  ...revdep.circularDeps,
-  ...revdep.restrictedImports,
-  ...revdep.unresolvedImports,
-  ...revdep.restrictedDevDeps,
-];
 
 console.log(bold(cyan('◆ Architecture & Boundaries')) + dim('  (rev-dep)'));
 divider();
