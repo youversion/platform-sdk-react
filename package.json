@@ -30,7 +30,9 @@
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "turbo build && npm exec --yes -- changeset publish",
-    "prepare": "husky"
+    "prepare": "husky",
+    "analyze": "node scripts/analyze.mjs",
+    "analyze:select": "node scripts/analyze-select.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "2.29.7",
@@ -42,6 +44,7 @@
     "knip": "5.66.3",
     "lint-staged": "16.2.5",
     "prettier": "3.6.2",
+    "rev-dep": "^2.11.0",
     "rimraf": "6.0.1",
     "tsup": "8.5.0",
     "turbo": "2.5.8",

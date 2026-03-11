@@ -1,0 +1,216 @@
+{
+  "configVersion": "1.6",
+  "$schema": "https://github.com/jayu/rev-dep/blob/master/config-schema/1.6.schema.json?raw=true",
+  "conditionNames": ["import", "default"],
+  "rules": [
+    // ═══════════════════════════════════════════════════════════════
+    // packages/core — Pure TS API clients (must stay React-free)
+    // Boundary: NO React, NO hooks, NO ui imports allowed
+    // ═══════════════════════════════════════════════════════════════
+    {
+      "path": "packages/core",
+      "followMonorepoPackages": true,
+      "prodEntryPoints": ["src/index.ts"],
+      "devEntryPoints": ["**/*.test.*", "src/__tests__/**"],
+      "circularImportsDetection": {
+        "enabled": true,
+        "ignoreTypeImports": false
+      },
+      "unresolvedImportsDetection": {
+        "enabled": true
+      },
+      "restrictedImportsDetection": {
+        "enabled": true,
+        "entryPoints": ["src/index.ts"],
+        "denyModules": [
+          "react",
+          "react-dom",
+          "@youversion/platform-react-hooks",
+          "@youversion/platform-react-ui"
+        ],
+        "ignoreTypeImports": true
+      },
+      "orphanFilesDetection": {
+        "enabled": true,
+        "ignoreTypeImports": true,
+        "graphExclude": ["**/*.test.*", "vitest.config.*"]
+      },
+      "unusedExportsDetection": {
+        "enabled": true,
+        "ignoreTypeExports": false,
+        "ignoreFiles": ["src/index.ts", "vitest.config.*"]
+      },
+      "unusedNodeModulesDetection": {
+        "enabled": true,
+        "excludeModules": ["@types/**", "@internal/**", "@vitest/**", "jsdom", "msw", "dotenv-cli", "tsup"]
+      },
+      "missingNodeModulesDetection": {
+        "enabled": true,
+        "excludeModules": ["@types/**"]
+      },
+      "devDepsUsageOnProdDetection": {
+        "enabled": true,
+        "ignoreTypeImports": true
+      }
+    },
+
+    // ═══════════════════════════════════════════════════════════════
+    // packages/hooks — React hooks layer (depends on core only)
+    // Boundary: NO ui imports allowed
+    // ═══════════════════════════════════════════════════════════════
+    {
+      "path": "packages/hooks",
+      "followMonorepoPackages": true,
+      "prodEntryPoints": ["src/index.ts"],
+      "devEntryPoints": ["**/*.test.*"],
+      "circularImportsDetection": {
+        "enabled": true,
+        "ignoreTypeImports": false
+      },
+      "unresolvedImportsDetection": {
+        "enabled": true,
+        "ignoreImports": ["react", "react-dom"]
+      },
+      "restrictedImportsDetection": {
+        "enabled": true,
+        "entryPoints": ["src/index.ts"],
+        "denyModules": [
+          "@youversion/platform-react-ui"
+        ],
+        "ignoreTypeImports": true
+      },
+      "orphanFilesDetection": {
+        "enabled": true,
+        "ignoreTypeImports": true,
+        "graphExclude": ["**/*.test.*", "src/__tests__/**", "src/test/**", "vitest.config.*", "vitest.setup.*"]
+      },
+      "unusedExportsDetection": {
+        "enabled": true,
+        "ignoreTypeExports": false,
+        "ignoreFiles": ["src/index.ts", "vitest.config.*", "src/__tests__/**", "src/test/**"]
+      },
+      "unusedNodeModulesDetection": {
+        "enabled": true,
+        "excludeModules": ["@types/**", "@internal/**", "@vitest/**", "@youversion/**", "jsdom", "@testing-library/**", "@vitejs/**"]
+      },
+      "missingNodeModulesDetection": {
+        "enabled": true,
+        "excludeModules": ["@types/**", "react", "react-dom"]
+      },
+      "devDepsUsageOnProdDetection": {
+        "enabled": true,
+        "ignoreTypeImports": true
+      }
+    },
+
+    // ═══════════════════════════════════════════════════════════════
+    // packages/ui — React components (top of the dependency stack)
+    // Imports hooks + core (types & constants) — no reverse deps
+    // ═══════════════════════════════════════════════════════════════
+    {
+      "path": "packages/ui",
+      "followMonorepoPackages": true,
+      "prodEntryPoints": ["src/index.ts"],
+      "devEntryPoints": ["**/*.test.*", "**/*.stories.*"],
+      "circularImportsDetection": {
+        "enabled": true,
+        "ignoreTypeImports": false
+      },
+      "unresolvedImportsDetection": {
+        "enabled": true,
+        "ignoreImports": ["react", "react-dom"]
+      },
+      "restrictedImportsDetection": { "enabled": false },
+      "orphanFilesDetection": {
+        "enabled": true,
+        "ignoreTypeImports": true,
+        "graphExclude": ["**/*.test.*", "**/*.stories.*", "src/test/**", ".storybook/**", "vitest.config.*", "tsup.config.*", "build-types.js", "scripts/**", "public/**"]
+      },
+      "unusedExportsDetection": {
+        "enabled": true,
+        "ignoreTypeExports": false,
+        "ignoreFiles": ["src/index.ts", "vitest.config.*", "tsup.config.*", ".storybook/**", "src/test/**"]
+      },
+      "unusedNodeModulesDetection": {
+        "enabled": true,
+        "excludeModules": ["@types/**", "@internal/**", "@vitest/**", "@youversion/**", "@storybook/**", "@testing-library/**", "@vitejs/**", "@tailwindcss/**", "jsdom", "eslint-plugin-storybook", "playwright", "tailwindcss", "tw-animate-css", "vitest-browser-react", "concurrently", "msw", "msw-storybook-addon", "storybook", "tsup"]
+      },
+      "missingNodeModulesDetection": {
+        "enabled": true,
+        "excludeModules": ["@types/**", "react", "react-dom"]
+      },
+      "devDepsUsageOnProdDetection": {
+        "enabled": true,
+        "ignoreTypeImports": true
+      }
+    },
+
+    // ═══════════════════════════════════════════════════════════════
+    // tools/eslint-config — Shared ESLint configuration
+    // ═══════════════════════════════════════════════════════════════
+    {
+      "path": "tools/eslint-config",
+      "followMonorepoPackages": false,
+      "circularImportsDetection": {
+        "enabled": true,
+        "ignoreTypeImports": false
+      },
+      "unresolvedImportsDetection": {
+        "enabled": true
+      },
+      "restrictedImportsDetection": { "enabled": false },
+      "orphanFilesDetection": {
+        "enabled": true,
+        "ignoreTypeImports": true,
+        "graphExclude": ["index.js"]
+      },
+      "unusedExportsDetection": {
+        "enabled": true,
+        "ignoreTypeExports": false,
+        "ignoreFiles": ["index.js"]
+      },
+      "unusedNodeModulesDetection": {
+        "enabled": true,
+        "excludeModules": ["@types/**"]
+      },
+      "missingNodeModulesDetection": {
+        "enabled": true,
+        "excludeModules": ["@types/**"]
+      },
+      "devDepsUsageOnProdDetection": { "enabled": false }
+    },
+
+    // ═══════════════════════════════════════════════════════════════
+    // tools/tsconfig — Shared TypeScript configuration (JSON only)
+    // ═══════════════════════════════════════════════════════════════
+    {
+      "path": "tools/tsconfig",
+      "followMonorepoPackages": false,
+      "circularImportsDetection": {
+        "enabled": true,
+        "ignoreTypeImports": false
+      },
+      "unresolvedImportsDetection": {
+        "enabled": true
+      },
+      "restrictedImportsDetection": { "enabled": false },
+      "orphanFilesDetection": {
+        "enabled": true,
+        "ignoreTypeImports": true
+      },
+      "unusedExportsDetection": {
+        "enabled": true,
+        "ignoreTypeExports": false
+      },
+      "unusedNodeModulesDetection": {
+        "enabled": true,
+        "excludeModules": ["@types/**"]
+      },
+      "missingNodeModulesDetection": {
+        "enabled": true,
+        "excludeModules": ["@types/**"]
+      },
+      "devDepsUsageOnProdDetection": { "enabled": false }
+    }
+  ]
+}
