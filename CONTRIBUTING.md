@@ -40,17 +40,17 @@ pnpm install
 
 ### Get an app key
 
-You'll need to obtain an app key from https://platform.youversion.com
+You'll need to obtain an app key from <https://platform.youversion.com>
 
 ### Set up environment variables
 
-Create an .env.local file in the `./packages/core` package and update the app key variable. 
+Create an .env.local file in the `./packages/core` package and update the app key variable.
 
 ```bash
 cp ./packages/core/.env.example ./packages/core/.env.local
 ```
 
-Create an .env.local file in the `./packages/ui` package and update the app key variable. 
+Create an .env.local file in the `./packages/ui` package and update the app key variable.
 
 ```bash
 cp ./packages/ui/.env.example ./packages/ui/.env.local
@@ -107,6 +107,27 @@ pnpm lint
 pnpm format
 ```
 
+## Dead Code & Dependency Analysis
+
+This monorepo uses [rev-dep](https://github.com/jayu/rev-dep) and [Knip](https://knip.dev) to detect dead code, enforce package boundaries, and find unused dependencies:
+
+| Capability | [rev-dep](https://github.com/jayu/rev-dep) | [Knip](https://knip.dev) |
+|------------|:-------:|:----:|
+| Package boundary enforcement | ✅ | ❌ |
+| Circular dependency detection | ✅ | ❌ |
+| Restricted imports (React in core) | ✅ | ❌ |
+| Per-package orphan files | ✅ | ✅ |
+| **Cross-package dead code** | ❌ | ✅ |
+| **Duplicate exports** | ❌ | ✅ |
+| Unused deps/devDeps | ✅ | ✅ |
+
+| Command | Description |
+|---------|-------------|
+| `pnpm analyze` | Run both tools across all packages and display a unified report |
+| `pnpm analyze:select` | Interactive picker — choose which packages to analyze |
+
+> **Tip:** Run `pnpm analyze` before opening a PR to catch dead code, boundary violations, or unused dependencies early.
+
 ### Development Environment
 
 ```bash
@@ -139,11 +160,13 @@ pnpm dev:web
 ### When to Create
 
 **Include changesets for:**
+
 - New features or bug fixes
 - Breaking changes
 - Dependency updates affecting APIs
 
 **Skip changesets for:**
+
 - Documentation
 - Internal refactoring
 - CI/CD changes

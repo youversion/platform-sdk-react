@@ -97,28 +97,6 @@ const passage = await bibleClient.getPassage(versions.data[0].id, 'JHN.3.16');
 console.log(passage.content);
 ```
 
-## Dead Code & Dependency Analysis
-
-This monorepo uses [rev-dep](https://github.com/jayu/rev-dep) and [Knip](https://knip.dev) to detect dead code, enforce package boundaries, and find unused dependencies:
-
-| Capability | [rev-dep](https://github.com/jayu/rev-dep) | [Knip](https://knip.dev) |
-|------------|:-------:|:----:|
-| Package boundary enforcement | ✅ | ❌ |
-| Circular dependency detection | ✅ | ❌ |
-| Restricted imports (React in core) | ✅ | ❌ |
-| Per-package orphan files | ✅ | ✅ |
-| **Cross-package dead code** | ❌ | ✅ |
-| **Duplicate exports** | ❌ | ✅ |
-| Unused deps/devDeps | ✅ | ✅ |
-
-| Command | Description |
-|---------|-------------|
-| `pnpm analyze` | Run both tools across all packages and display a unified report |
-| `pnpm analyze:select` | Interactive picker — choose which packages to analyze |
-
-> **Tip:** Run `pnpm analyze` before opening a PR to catch dead code, boundary violations, or unused dependencies early.
-
-
 ## Contributing
 
 > [!NOTE]
