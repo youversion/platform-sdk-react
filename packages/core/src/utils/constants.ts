@@ -5,6 +5,8 @@
  */
 export const DEFAULT_LICENSE_FREE_BIBLE_VERSION = 3034 as const;
 
+export const CANON_IDS = ['old_testament', 'new_testament', 'deuterocanon'] as const;
+
 export const BOOK_IDS = [
   'GEN',
   'EXO',
@@ -113,13 +115,13 @@ export const BOOK_IDS = [
   'LKA',
 ] as const;
 
-// Import types for BOOK_CANON - moved CANON_IDS to schemas/book.ts to avoid circular dependency
-import type { Canon, BookUsfm } from '../schemas/book';
+type CanonId = (typeof CANON_IDS)[number];
+type KnownBookUsfm = (typeof BOOK_IDS)[number];
 
 /**
  * @see https://github.com/youversion/usfm-references/blob/main/usfm_references/books.py
  */
-export const BOOK_CANON: Record<BookUsfm, Canon> = {
+export const BOOK_CANON: Record<KnownBookUsfm, CanonId> = {
   GEN: 'old_testament',
   EXO: 'old_testament',
   LEV: 'old_testament',
