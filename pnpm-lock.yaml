@@ -42,6 +42,9 @@ importers:
       prettier:
         specifier: 3.6.2
         version: 3.6.2
+      rev-dep:
+        specifier: ^2.11.0
+        version: 2.11.0
       rimraf:
         specifier: 6.0.1
         version: 6.0.1
@@ -2219,6 +2222,24 @@ packages:
 
   '@radix-ui/rect@1.1.1':
     resolution: {integrity: sha512-HPwpGIzkl28mWyZqG52jiqDJ12waP11Pa1lGoiyUkIEuMLBP0oeK/C89esbXrxsky5we7dfd8U58nm0SgAWpVw==}
+
+  '@rev-dep/darwin-arm64@2.11.0':
+    resolution: {integrity: sha512-b11MhgNoCA7fdlC4hg9qEeUzgb3rPy4+XrJKBJeVfEzqym92Tzhmu4zvkdhZlRzJMOai2jwuMjoAiCyJP5/jfg==}
+    engines: {node: '>=18'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@rev-dep/linux-x64@2.11.0':
+    resolution: {integrity: sha512-W+SuSju07C6uWZ4PN2nsvmBqucs6xNibQGiELz96CeCGkVYWv1qgslT5UlVorwrnMHhkv5IuAsK9pBnbCaSUcw==}
+    engines: {node: '>=18'}
+    cpu: [x64]
+    os: [linux]
+
+  '@rev-dep/win32-x64@2.11.0':
+    resolution: {integrity: sha512-4dcDnI2KHC3u9wd5jM4TT4MhgePJxdJlSJ49X59xHVhtqHBZVsYa3vtAJ/iTjvaf1ccFRSv6ErKMGTtXkqZ8aA==}
+    engines: {node: '>=18'}
+    cpu: [x64]
+    os: [win32]
 
   '@rolldown/pluginutils@1.0.0-beta.27':
     resolution: {integrity: sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA==}
@@ -5494,6 +5515,11 @@ packages:
     resolution: {integrity: sha512-g6QUff04oZpHs0eG5p83rFLhHeV00ug/Yf9nZM6fLeUrPguBTkTQOdpAWWspMh55TZfVQDPaN3NQJfbVRAxdIw==}
     engines: {iojs: '>=1.0.0', node: '>=0.10.0'}
 
+  rev-dep@2.11.0:
+    resolution: {integrity: sha512-sezdnoZMXCZPSDaha6aaQASsGzzTu1oIs8qDn6Z4FVt7S5MGR4swJUDWYSUXSfCnnfNnklIJ0T0iAkCIjLZodw==}
+    engines: {node: '>=18'}
+    hasBin: true
+
   rfdc@1.4.1:
     resolution: {integrity: sha512-q1b3N5QkRUWUl7iyylaaj3kOpIT0N2i9MqIEQXP73GVsN9cw3fdx8X63cEmWhJGi2PPCF23Ijp7ktmd39rawIA==}
 
@@ -8461,6 +8487,15 @@ snapshots:
       '@types/react-dom': 19.1.2(@types/react@19.1.2)
 
   '@radix-ui/rect@1.1.1': {}
+
+  '@rev-dep/darwin-arm64@2.11.0':
+    optional: true
+
+  '@rev-dep/linux-x64@2.11.0':
+    optional: true
+
+  '@rev-dep/win32-x64@2.11.0':
+    optional: true
 
   '@rolldown/pluginutils@1.0.0-beta.27': {}
 
@@ -12190,6 +12225,12 @@ snapshots:
   rettime@0.7.0: {}
 
   reusify@1.1.0: {}
+
+  rev-dep@2.11.0:
+    optionalDependencies:
+      '@rev-dep/darwin-arm64': 2.11.0
+      '@rev-dep/linux-x64': 2.11.0
+      '@rev-dep/win32-x64': 2.11.0
 
   rfdc@1.4.1: {}
 
