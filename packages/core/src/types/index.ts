@@ -1,3 +1,8 @@
+import type {
+  SignInWithYouVersionPermission,
+  SignInWithYouVersionResult,
+} from '../SignInWithYouVersionResult';
+
 // Re-export all schema-derived types from schemas
 export type { BibleVersion } from '../schemas/version';
 export type { BibleBook, BibleBookIntro, CANON } from '../schemas/book';
@@ -15,12 +20,6 @@ export type { Language } from '../schemas/language';
 export type { User } from '../schemas/user';
 export type { Highlight, CreateHighlight } from '../schemas/highlight';
 export type { Collection } from '../schemas/collection';
-
-// Re-export internal/non-API types
-import type {
-  SignInWithYouVersionPermission,
-  SignInWithYouVersionResult,
-} from '../SignInWithYouVersionResult';
 
 export interface ApiConfig {
   apiHost?: string;
