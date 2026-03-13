@@ -49,6 +49,8 @@ export type RootProps = {
   children?: ReactNode;
 };
 
+export type BibleChapterPickerRootProps = RootProps;
+
 function Root({
   book: controlledBook,
   defaultBook = '',

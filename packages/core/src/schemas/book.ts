@@ -1,11 +1,10 @@
 import { z } from 'zod';
-import { BOOK_IDS } from '../utils/constants';
+import { BOOK_IDS, CANON_IDS } from '../utils/constants';
 import { BibleChapterSchema } from './chapter';
 
-export const CanonSchema = z.enum(['old_testament', 'new_testament', 'deuterocanon']);
-export type Canon = Readonly<z.infer<typeof CanonSchema>>;
+export const CanonSchema = z.enum(CANON_IDS);
 
-export const BibleBookIntroSchema = z.object({
+const BibleBookIntroSchema = z.object({
   /** Intro identifier */
   id: z.string(),
   /** Intro passage identifier */
@@ -20,7 +19,6 @@ export const BookUsfmSchema = z.union([
   ...BOOK_IDS.map((id) => z.literal(id)),
   z.string().length(3) as z.ZodType<string & {}>,
 ]);
-export type BookUsfm = z.infer<typeof BookUsfmSchema>;
 
 export const BibleBookSchema = z.object({
   /** Book identifier (e.g., "MAT") */

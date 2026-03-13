@@ -19,7 +19,7 @@ interface MockAuthResultProps {
   email?: string;
 }
 
-export class MockYouVersionUserInfo {
+class MockYouVersionUserInfo {
   readonly name?: string;
   readonly userId?: string;
   readonly email?: string;
@@ -54,7 +54,7 @@ export class MockYouVersionUserInfo {
   }
 }
 
-export class MockSignInWithYouVersionResult {
+class MockSignInWithYouVersionResult {
   readonly accessToken: string | undefined;
   readonly expiryDate: Date | undefined;
   readonly refreshToken: string | undefined;

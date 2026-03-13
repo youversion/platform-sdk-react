@@ -1,3 +1,8 @@
+import type {
+  SignInWithYouVersionPermission,
+  SignInWithYouVersionResult,
+} from '../SignInWithYouVersionResult';
+
 // Re-export all schema-derived types from schemas
 export type { BibleVersion } from '../schemas/version';
 export type { BibleBook, BibleBookIntro, CANON } from '../schemas/book';
@@ -16,11 +21,30 @@ export type { User } from '../schemas/user';
 export type { Highlight, CreateHighlight } from '../schemas/highlight';
 export type { Collection } from '../schemas/collection';
 
-// Re-export internal/non-API types
-export type { ApiConfig } from './api-config';
-export type {
-  AuthenticationState,
-  SignInWithYouVersionPermissionValues,
-  AuthenticationScopes,
-} from './auth';
-export type { HighlightColor } from './highlight';
+export interface ApiConfig {
+  apiHost?: string;
+  appKey: string;
+  timeout?: number;
+  installationId?: string;
+  redirectUri?: string;
+}
+
+export type SignInWithYouVersionPermissionValues =
+  (typeof SignInWithYouVersionPermission)[keyof typeof SignInWithYouVersionPermission];
+
+export interface AuthenticationState {
+  readonly isAuthenticated: boolean;
+  readonly isLoading: boolean;
+  readonly accessToken: string | null;
+  readonly idToken: string | null;
+  readonly result: SignInWithYouVersionResult | null;
+  readonly error: Error | null;
+}
+
+export type AuthenticationScopes = 'profile' | 'email';
+
+export interface HighlightColor {
+  id: number;
+  color: string;
+  label: string;
+}

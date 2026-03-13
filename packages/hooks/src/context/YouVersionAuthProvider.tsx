@@ -9,7 +9,7 @@ import {
 import { YouVersionAuthContext } from './YouVersionAuthContext';
 import type { AuthConfig, AuthContextValue } from '../types/auth';
 
-export interface YouVersionAuthProviderProps {
+interface YouVersionAuthProviderProps {
   config: AuthConfig;
   children: ReactNode;
 }

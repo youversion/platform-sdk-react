@@ -3,7 +3,6 @@ import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@/lib/utils';
-import { Separator } from '@/components/ui/separator';
 
 function ItemGroup({ className, ...props }: React.ComponentProps<'div'>): React.ReactNode {
   return (
@@ -11,20 +10,6 @@ function ItemGroup({ className, ...props }: React.ComponentProps<'div'>): React.
       role="list"
       data-slot="item-group"
       className={cn('yv:group/item-group yv:flex yv:flex-col', className)}
-      {...props}
-    />
-  );
-}
-
-function ItemSeparator({
-  className,
-  ...props
-}: React.ComponentProps<typeof Separator>): React.ReactNode {
-  return (
-    <Separator
-      data-slot="item-separator"
-      orientation="horizontal"
-      className={cn('yv:my-0', className)}
       {...props}
     />
   );
@@ -143,45 +128,4 @@ function ItemDescription({ className, ...props }: React.ComponentProps<'p'>): Re
   );
 }
 
-function ItemActions({ className, ...props }: React.ComponentProps<'div'>): React.ReactNode {
-  return (
-    <div
-      data-slot="item-actions"
-      className={cn('yv:flex yv:items-center yv:gap-2', className)}
-      {...props}
-    />
-  );
-}
-
-function ItemHeader({ className, ...props }: React.ComponentProps<'div'>): React.ReactNode {
-  return (
-    <div
-      data-slot="item-header"
-      className={cn('yv:flex yv:basis-full yv:items-center yv:justify-between yv:gap-2', className)}
-      {...props}
-    />
-  );
-}
-
-function ItemFooter({ className, ...props }: React.ComponentProps<'div'>): React.ReactNode {
-  return (
-    <div
-      data-slot="item-footer"
-      className={cn('yv:flex yv:basis-full yv:items-center yv:justify-between yv:gap-2', className)}
-      {...props}
-    />
-  );
-}
-
-export {
-  Item,
-  ItemMedia,
-  ItemContent,
-  ItemActions,
-  ItemGroup,
-  ItemSeparator,
-  ItemTitle,
-  ItemDescription,
-  ItemHeader,
-  ItemFooter,
-};
+export { Item, ItemMedia, ItemContent, ItemGroup, ItemTitle, ItemDescription };

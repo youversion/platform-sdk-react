@@ -1,4 +1,9 @@
-export { BibleChapterPicker, type RootProps, type TriggerProps } from './bible-chapter-picker';
+export {
+  BibleChapterPicker,
+  type RootProps,
+  type BibleChapterPickerRootProps,
+  type TriggerProps,
+} from './bible-chapter-picker';
 export { BibleReader, type BibleReaderRootProps } from './bible-reader';
 export {
   BibleVersionPicker,
@@ -10,3 +15,5 @@ export { VerseOfTheDay, type VerseOfTheDayProps } from './verse-of-the-day';
 export { BibleTextView, type BibleTextViewProps } from './verse';
 export { BibleCard, type BibleCardProps } from './bible-card';
 export { BibleWidgetView, type BibleWidgetViewProps } from './bible-widget-view';
+export { Separator } from './ui/separator';
+export { Textarea } from './ui/textarea';

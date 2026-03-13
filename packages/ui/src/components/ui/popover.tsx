@@ -74,16 +74,10 @@ function PopoverContent({
   );
 }
 
-function PopoverAnchor({
-  ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Anchor>): React.ReactNode {
-  return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...props} />;
-}
-
 function PopoverClose({
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Close>): React.ReactNode {
   return <PopoverPrimitive.Close data-slot="popover-close" {...props} />;
 }
 
-export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor, PopoverClose };
+export { Popover, PopoverTrigger, PopoverContent, PopoverClose };

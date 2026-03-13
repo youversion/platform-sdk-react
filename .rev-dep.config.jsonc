@@ -124,11 +124,12 @@
       "orphanFilesDetection": {
         "enabled": true,
         "ignoreTypeImports": true,
-        "graphExclude": ["**/*.test.*", "**/*.stories.*", "src/test/**", ".storybook/**", "vitest.config.*", "tsup.config.*", "build-types.js", "scripts/**", "public/**"]
+        "graphExclude": ["**/*.test.*", "**/*.stories.*", "src/test/**", ".storybook/**", "vitest.config.*", "tsup.config.*", "build-types.js", "scripts/**", "public/**", "src/components/icons/**"]
       },
       "unusedExportsDetection": {
         "enabled": true,
         "ignoreTypeExports": false,
+        "ignoreExports": ["RootProps"],
         "ignoreFiles": ["src/index.ts", "vitest.config.*", "tsup.config.*", ".storybook/**", "src/test/**"]
       },
       "unusedNodeModulesDetection": {

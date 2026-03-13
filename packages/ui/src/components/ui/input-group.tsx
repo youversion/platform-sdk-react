@@ -2,9 +2,7 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 
 function InputGroup({ className, ...props }: React.ComponentProps<'div'>): React.ReactElement {
   return (
@@ -77,51 +75,6 @@ function InputGroupAddon({
   );
 }
 
-const inputGroupButtonVariants = cva('yv:text-sm yv:shadow-none yv:flex yv:gap-2 yv:items-center', {
-  variants: {
-    size: {
-      xs: 'yv:h-6 yv:gap-1 yv:px-2 yv:rounded-[calc(var(--radius)-5px)] yv:[&>svg:not([class*=size-])]:size-3.5 yv:has-[>svg]:px-2',
-      sm: 'yv:h-8 yv:px-2.5 yv:gap-1.5 yv:rounded-md yv:has-[>svg]:px-2.5',
-      'icon-xs': 'yv:size-6 yv:rounded-[calc(var(--radius)-5px)] yv:p-0 yv:has-[>svg]:p-0',
-      'icon-sm': 'yv:size-8 yv:p-0 yv:has-[>svg]:p-0',
-    },
-  },
-  defaultVariants: {
-    size: 'xs',
-  },
-});
-
-function InputGroupButton({
-  className,
-  type = 'button',
-  variant = 'ghost',
-  size = 'xs',
-  ...props
-}: Omit<React.ComponentProps<typeof Button>, 'size'> &
-  VariantProps<typeof inputGroupButtonVariants>): React.ReactElement {
-  return (
-    <Button
-      type={type}
-      data-size={size}
-      variant={variant}
-      className={cn(inputGroupButtonVariants({ size }), className)}
-      {...props}
-    />
-  );
-}
-
-function InputGroupText({ className, ...props }: React.ComponentProps<'span'>): React.ReactElement {
-  return (
-    <span
-      className={cn(
-        'yv:text-muted-foreground yv:flex yv:items-center yv:gap-2 yv:text-sm yv:[&_svg]:pointer-events-none yv:[&_svg:not([class*=size-])]:size-4',
-        className,
-      )}
-      {...props}
-    />
-  );
-}
-
 function InputGroupInput({
   className,
   ...props
@@ -138,27 +91,4 @@ function InputGroupInput({
   );
 }
 
-function InputGroupTextarea({
-  className,
-  ...props
-}: React.ComponentProps<'textarea'>): React.ReactElement {
-  return (
-    <Textarea
-      data-slot="input-group-control"
-      className={cn(
-        'yv:flex-1 yv:resize-none yv:rounded-none yv:border-0 yv:bg-transparent yv:py-3 yv:shadow-none yv:focus-visible:ring-0 yv:dark:bg-transparent',
-        className,
-      )}
-      {...props}
-    />
-  );
-}
-
-export {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupText,
-  InputGroupInput,
-  InputGroupTextarea,
-};
+export { InputGroup, InputGroupAddon, InputGroupInput };
