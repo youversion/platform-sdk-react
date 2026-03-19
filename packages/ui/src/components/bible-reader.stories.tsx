@@ -640,6 +640,53 @@ export const WithoutAuth: Story = {
 };
 
 /**
+ * Tests that the Bible version button in the toolbar shows a loading spinner
+ * initially and then transitions to showing the version abbreviation once loaded.
+ */
+export const VersionButtonLoadingStates: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    book: 'JHN',
+    chapter: '1',
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async () => {
+    // The version button should exist in the toolbar
+    const versionButton = screen.getByRole('button', { name: /change bible version/i });
+    await expect(versionButton).toBeInTheDocument();
+
+    // Initially the button should be disabled and show a spinner while loading
+    // (the LoaderIcon has role="status" and aria-label="Loading")
+    const spinner = versionButton.querySelector('[role="status"]');
+    // If the data loads fast enough the spinner may already be gone,
+    // so we just check it is either spinning OR already showing text.
+    if (spinner) {
+      await expect(versionButton).toBeDisabled();
+    }
+
+    // After loading completes, the button should show the version abbreviation (e.g. "NIV")
+    await waitFor(
+      async () => {
+        await expect(versionButton).not.toBeDisabled();
+        // Spinner should be gone
+        await expect(versionButton.querySelector('[role="status"]')).not.toBeInTheDocument();
+        // Should display the abbreviation text
+        await expect(versionButton.textContent).toMatch(/[A-Z]{2,}/);
+      },
+      { timeout: 5000 },
+    );
+  },
+};
+
+/**
  * Tests that a rich intro chapter (Joshua) renders correctly with real-world content
  * including structured sections (At a Glance, Purpose, Major Themes), italic spans,
  * bold-italic spans, and special formatting classes (imt1, imt2, is, ili, ip, etc.).
