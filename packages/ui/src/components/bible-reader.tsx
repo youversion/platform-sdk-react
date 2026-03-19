@@ -434,6 +434,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                 variant="secondary"
                 className="yv:font-bold yv:text-foreground"
                 disabled={loading}
+                aria-label={loading ? 'Loading Bible version' : 'Change Bible version'}
               >
                 {/* This div exists merely as a wrapper to minimize width layout shifting */}
                 <div className="yv:min-w-[3ch] yv:flex yv:justify-center">

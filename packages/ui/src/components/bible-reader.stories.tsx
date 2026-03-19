@@ -659,8 +659,8 @@ export const VersionButtonLoadingStates: Story = {
     </div>
   ),
   play: async () => {
-    // The version button should exist in the toolbar
-    const versionButton = screen.getByRole('button', { name: /change bible version/i });
+    // The version button should exist in the toolbar (label varies by loading state)
+    const versionButton = screen.getByRole('button', { name: /bible version/i });
     await expect(versionButton).toBeInTheDocument();
 
     // Initially the button should be disabled and show a spinner while loading
@@ -670,6 +670,8 @@ export const VersionButtonLoadingStates: Story = {
     // so we just check it is either spinning OR already showing text.
     if (spinner) {
       await expect(versionButton).toBeDisabled();
+      // aria-label should indicate loading state for screen readers
+      await expect(versionButton).toHaveAttribute('aria-label', 'Loading Bible version');
     }
 
     // After loading completes, the button should show the version abbreviation (e.g. "NIV")
@@ -678,6 +680,8 @@ export const VersionButtonLoadingStates: Story = {
         await expect(versionButton).not.toBeDisabled();
         // Spinner should be gone
         await expect(versionButton.querySelector('[role="status"]')).not.toBeInTheDocument();
+        // aria-label should switch to "Change" once loaded
+        await expect(versionButton).toHaveAttribute('aria-label', 'Change Bible version');
         // Should display the abbreviation text
         await expect(versionButton.textContent).toMatch(/[A-Z]{2,}/);
       },
