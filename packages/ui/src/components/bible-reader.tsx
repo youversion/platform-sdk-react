@@ -434,8 +434,16 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                 variant="secondary"
                 className="yv:font-bold yv:text-foreground"
                 disabled={loading}
+                aria-label={loading ? 'Loading Bible version' : 'Change Bible version'}
               >
-                {loading ? 'Loading...' : version?.localized_abbreviation || 'Select version'}
+                {/* This div exists merely as a wrapper to minimize width layout shifting */}
+                <div className="yv:min-w-[3ch] yv:flex yv:justify-center">
+                  {loading ? (
+                    <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
+                  ) : (
+                    version?.localized_abbreviation || 'Select version'
+                  )}
+                </div>
               </Button>
             )}
           </BibleVersionPicker.Trigger>

@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, screen, spyOn, userEvent, waitFor } from 'storybook/test';
+import { http, HttpResponse, delay } from 'msw';
 import { BibleReader } from './bible-reader';
 import { setupAuthenticatedUser } from '../test/utils';
 import { INTER_FONT, SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
+import mockBibles from '../test/mock-data/bibles.json';
 
 let signInMock: ReturnType<typeof fn>;
 
@@ -630,12 +632,74 @@ export const WithoutAuth: Story = {
     const chapterButton = screen.getByRole('button', { name: /change bible book and chapter/i });
     await expect(chapterButton).toBeInTheDocument();
 
-    const versionButton = screen.getByRole('button', { name: /change bible version/i });
+    const versionButton = await screen.findByRole('button', { name: /bible version/i });
     await expect(versionButton).toBeInTheDocument();
 
     // Settings should still work
     const settingsButton = screen.getByRole('button', { name: /settings/i });
     await expect(settingsButton).toBeInTheDocument();
+  },
+};
+
+/**
+ * Tests that the Bible version button in the toolbar shows a loading spinner
+ * initially and then transitions to showing the version abbreviation once loaded.
+ */
+export const VersionButtonLoadingStates: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    book: 'JHN',
+    chapter: '1',
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        // Delay the version endpoint so the loading state is reliably observable
+        http.get('*/v1/bibles/:id', async ({ params }) => {
+          await delay(1000);
+          const id = params.id as string;
+          const bible =
+            mockBibles.individual[id as keyof typeof mockBibles.individual] ??
+            mockBibles.collections.default.data.find((b) => b.id === Number(id));
+          if (bible) return HttpResponse.json(bible);
+          return new HttpResponse(null, { status: 404 });
+        }),
+      ],
+    },
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async () => {
+    // The version button should exist in the toolbar (label varies by loading state)
+    const versionButton = screen.getByRole('button', { name: /bible version/i });
+    await expect(versionButton).toBeInTheDocument();
+
+    // The delayed MSW handler guarantees the loading state is visible
+    const spinner = versionButton.querySelector('[role="status"]');
+    await expect(spinner).toBeInTheDocument();
+    await expect(versionButton).toBeDisabled();
+    await expect(versionButton).toHaveAttribute('aria-label', 'Loading Bible version');
+
+    // After loading completes, the button should show the version abbreviation (e.g. "NIV")
+    await waitFor(
+      async () => {
+        await expect(versionButton).not.toBeDisabled();
+        // Spinner should be gone
+        await expect(versionButton.querySelector('[role="status"]')).not.toBeInTheDocument();
+        // aria-label should switch to "Change" once loaded
+        await expect(versionButton).toHaveAttribute('aria-label', 'Change Bible version');
+        // Should display the abbreviation text
+        await expect(versionButton.textContent).toMatch(/[A-Z]{2,}/);
+      },
+      { timeout: 5000 },
+    );
   },
 };
 
