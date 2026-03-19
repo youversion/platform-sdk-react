@@ -435,7 +435,11 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                 className="yv:font-bold yv:text-foreground"
                 disabled={loading}
               >
-                {loading ? 'Loading...' : version?.localized_abbreviation || 'Select version'}
+                {loading ? (
+                  <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
+                ) : (
+                  version?.localized_abbreviation || 'Select version'
+                )}
               </Button>
             )}
           </BibleVersionPicker.Trigger>
