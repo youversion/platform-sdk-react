@@ -16,8 +16,22 @@ import { Footnote } from '@/components/icons/footnote';
 import { LoaderIcon } from '@/components/icons/loader';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { type FontFamily, getFootnoteMarker } from '@/lib/verse-html-utils';
+import { type FontFamily } from '@/lib/verse-html-utils';
 import { transformBibleHtmlForBrowser } from '@youversion/platform-core';
+
+const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
+
+function getFootnoteMarker(index: number): string {
+  const base = LETTERS.length;
+  if (base === 0) return String(index + 1);
+  let value = index;
+  let marker = '';
+  do {
+    marker = LETTERS[value % base] + marker;
+    value = Math.floor(value / base) - 1;
+  } while (value >= 0);
+  return marker;
+}
 
 type VerseFootnoteData = {
   verseNum: string;
@@ -102,7 +116,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
               <div
                 className="yv:mb-3 yv:font-serif yv:*:font-serif"
                 style={{ fontSize: fontSize ? `${fontSize}px` : '1.25rem' }}
-                // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML has been run through DOMPurify and is safe
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe
                 dangerouslySetInnerHTML={{ __html: verseHtml }}
               />
             </>
@@ -116,7 +130,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
                   className="yv:flex yv:gap-2 yv:text-xs yv:border-b yv:border-border yv:py-2"
                 >
                   <span className="">{marker}.</span>
-                  {/** biome-ignore lint/security/noDangerouslySetInnerHtml: HTML has been run through DOMPurify and is safe */}
+                  {/** biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe */}
                   <span dangerouslySetInnerHTML={{ __html: note }} />
                 </li>
               );
