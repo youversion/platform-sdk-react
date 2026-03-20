@@ -1,5 +1,14 @@
 # @youversion/platform-react-ui
 
+## 1.20.2
+
+### Patch Changes
+
+- dd52fbe: fix: use spinner icon instead of "Loading..." text in Bible version button
+- Updated dependencies [dd52fbe]
+  - @youversion/platform-react-hooks@1.20.2
+  - @youversion/platform-core@1.20.2
+
 ## 1.20.1
 
 ### Patch Changes
