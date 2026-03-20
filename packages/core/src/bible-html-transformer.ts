@@ -2,7 +2,7 @@ const NON_BREAKING_SPACE = '\u00A0';
 
 const FOOTNOTE_KEY_ATTR = 'data-footnote-key';
 
-const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]"»›]/;
+const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]'"»›]/;
 
 /**
  * Represents the notes extracted from a verse, including the verse HTML with footnote markers
