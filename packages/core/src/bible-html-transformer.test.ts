@@ -62,7 +62,10 @@ describe('transformBibleHtml - intro chapter footnotes', () => {
     const result = transformBibleHtml(html, createAdapters());
 
     expect(result.html).toContain('data-verse-footnote="intro-0"');
+    expect(result.html).toContain('data-verse-footnote-content=');
+    expect(result.html).toContain('Note A');
     expect(result.html).toContain('data-verse-footnote="intro-1"');
+    expect(result.html).toContain('Note B');
     expect(result.html).not.toContain('yv-n f');
   });
 
@@ -87,6 +90,8 @@ describe('transformBibleHtml - intro chapter footnotes', () => {
     expect(result.notes['1']!.verseHtml).not.toBe('');
     expect(result.notes['1']!.hasVerseContext).toBe(true);
     expect(result.notes['1']!.notes[0]).toContain('Verse note');
+    expect(result.notes['1']!.verseHtml).toContain('data-verse-footnote-content=');
+    expect(result.notes['1']!.verseHtml).toContain('Verse note');
   });
 
   it('should insert space when orphaned footnote is between two words', () => {

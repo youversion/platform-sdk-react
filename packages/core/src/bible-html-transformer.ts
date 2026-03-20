@@ -170,6 +170,7 @@ function buildVerseHtml(wrappers: Element[]): string {
       const key = fn.getAttribute(FOOTNOTE_KEY_ATTR) ?? '';
       const span = ownerDoc.createElement('span');
       span.setAttribute('data-verse-footnote', key);
+      span.setAttribute('data-verse-footnote-content', fn.innerHTML);
       fn.replaceWith(span);
     });
 
@@ -206,6 +207,7 @@ function replaceFootnotesWithAnchors(doc: Document, footnotes: Element[]): void 
 
     const anchor = doc.createElement('span');
     anchor.setAttribute('data-verse-footnote', key);
+    anchor.setAttribute('data-verse-footnote-content', fn.innerHTML);
     fn.replaceWith(anchor);
   }
 }
