@@ -358,6 +358,10 @@ export function transformBibleHtml(
  * ```
  */
 export function transformBibleHtmlForBrowser(html: string): TransformedBibleHtml {
+  if (typeof globalThis.DOMParser === 'undefined') {
+    return { html, notes: {} };
+  }
+
   return transformBibleHtml(html, {
     parseHtml: (h) => new DOMParser().parseFromString(h, 'text/html'),
     serializeHtml: (doc) => doc.body.innerHTML,
