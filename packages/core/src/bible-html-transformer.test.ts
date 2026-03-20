@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect } from 'vitest';
-import { transformBibleHtml } from './bible-html-transformer';
+import { transformBibleHtml, transformBibleHtmlForBrowser } from './bible-html-transformer';
 
 function createAdapters() {
   return {
@@ -219,42 +219,112 @@ describe('transformBibleHtml - fixIrregularTables', () => {
   });
 });
 
-describe('transformBibleHtml - rawHtml and sanitize', () => {
-  it('should return rawHtml matching the original input', () => {
-    const html = '<div><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text</div>';
+describe('transformBibleHtml - data attributes', () => {
+  it('should include data-verse-footnote attribute with verse key', () => {
+    const html = `
+      <div>
+        <div class="p">
+          <span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Verse text<span class="yv-n f"><span class="ft">Note</span></span>.
+        </div>
+      </div>
+    `;
 
     const result = transformBibleHtml(html, createAdapters());
 
-    expect(result.rawHtml).toBe(html);
+    expect(result.html).toContain('data-verse-footnote="1"');
   });
 
-  it('should call sanitize when provided', () => {
-    const html = '<div>Test</div>';
-    let sanitized = false;
+  it('should include data-verse-footnote-content attribute with footnote HTML', () => {
+    const html = `
+      <div>
+        <div class="p">
+          <span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Verse text<span class="yv-n f"><span class="ft">See Rashi</span></span>.
+        </div>
+      </div>
+    `;
 
-    transformBibleHtml(html, {
-      ...createAdapters(),
-      sanitize: (h) => {
-        sanitized = true;
-        return h;
-      },
-    });
+    const result = transformBibleHtml(html, createAdapters());
 
-    expect(sanitized).toBe(true);
+    expect(result.html).toContain('data-verse-footnote-content=');
+    expect(result.html).toContain('See Rashi');
   });
 
-  it('should not call sanitize when omitted', () => {
+  it('should preserve footnote HTML structure in data-verse-footnote-content', () => {
+    const html = `
+      <div>
+        <div class="p">
+          <span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text<span class="yv-n f"><span class="ft"><em>Emphasized</em> note</span></span>.</div>
+      </div>
+    `;
+
+    const result = transformBibleHtml(html, createAdapters());
+
+    const doc = new DOMParser().parseFromString(result.html, 'text/html');
+    const anchor = doc.querySelector('[data-verse-footnote="1"]');
+    expect(anchor).not.toBeNull();
+    const content = anchor!.getAttribute('data-verse-footnote-content');
+    expect(content).toContain('<em>');
+    expect(content).toContain('Emphasized');
+  });
+});
+
+describe('transformBibleHtmlForBrowser', () => {
+  it('should transform HTML using native DOMParser', () => {
+    const html = `
+      <div>
+        <div class="p">
+          <span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Verse text<span class="yv-n f"><span class="ft">Note</span></span>.
+        </div>
+      </div>
+    `;
+
+    const result = transformBibleHtmlForBrowser(html);
+
+    expect(result.html).toBeDefined();
+    expect(result.notes).toBeDefined();
+    expect(result.notes['1']).toBeDefined();
+    expect(result.html).toContain('data-verse-footnote="1"');
+  });
+
+  it('should return same result as transformBibleHtml with browser adapters', () => {
+    const html = `
+      <div>
+        <div class="p">
+          <span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Verse text.
+        </div>
+      </div>
+    `;
+
+    const result1 = transformBibleHtmlForBrowser(html);
+    const result2 = transformBibleHtml(html, createAdapters());
+
+    expect(result1.html).toBe(result2.html);
+    expect(result1.notes).toEqual(result2.notes);
+  });
+
+  it('should handle empty HTML', () => {
+    const result = transformBibleHtmlForBrowser('');
+
+    expect(result.html).toBeDefined();
+    expect(result.notes).toEqual({});
+  });
+});
+
+describe('transformBibleHtml - return type', () => {
+  it('should return html and notes properties', () => {
     const html = '<div>Test</div>';
-    let called = false;
+    const result = transformBibleHtml(html, createAdapters());
 
-    transformBibleHtml(html, {
-      parseHtml: (h) => {
-        called = true;
-        return new DOMParser().parseFromString(h, 'text/html');
-      },
-      serializeHtml: (doc) => doc.body.innerHTML,
-    });
+    expect(result).toHaveProperty('html');
+    expect(result).toHaveProperty('notes');
+    expect(typeof result.html).toBe('string');
+    expect(typeof result.notes).toBe('object');
+  });
 
-    expect(called).toBe(true);
+  it('should not have rawHtml property in return type', () => {
+    const html = '<div>Test</div>';
+    const result = transformBibleHtml(html, createAdapters());
+
+    expect(result).not.toHaveProperty('rawHtml');
   });
 });

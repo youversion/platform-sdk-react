@@ -12,8 +12,6 @@ import type {
   Collection,
   VOTD,
 } from './types';
-import { transformBibleHtml, type TransformBibleHtmlOptions } from './bible-html-transformer';
-import type { TransformedBiblePassage } from './schemas/passage';
 
 /**
  * Client for interacting with Bible API endpoints.
@@ -237,12 +235,18 @@ export class BibleClient {
   /**
    * Fetches a passage (range of verses) from the Bible using the passages endpoint.
    * This is the new API format that returns HTML-formatted content.
+   *
+   * Note: The HTML returned from the API contains inline footnote content that should
+   * be transformed before rendering. Use `transformBibleHtml()` or
+   * `transformBibleHtmlForBrowser()` to clean up the HTML and extract footnotes.
+   *
    * @param versionId The version ID.
    * @param usfm The USFM reference (e.g., "JHN.3.1-2", "GEN.1", "JHN.3.16").
    * @param format The format to return ("html" or "text", default: "html").
    * @param include_headings Whether to include headings in the content.
    * @param include_notes Whether to include notes in the content.
    * @returns The requested BiblePassage object with HTML content.
+   *
    * @example
    * ```ts
    * // Get a single verse
@@ -253,33 +257,19 @@ export class BibleClient {
    *
    * // Get an entire chapter
    * const chapter = await bibleClient.getPassage(3034, "GEN.1");
+   *
+   * // Transform HTML before rendering
+   * const passage = await bibleClient.getPassage(3034, "JHN.3.16", "html", true, true);
+   * const transformed = transformBibleHtmlForBrowser(passage.content);
    * ```
    */
-  async getPassage(
-    versionId: number,
-    usfm: string,
-    format?: 'html' | 'text',
-    include_headings?: boolean,
-    include_notes?: boolean,
-  ): Promise<BiblePassage>;
-
-  async getPassage(
-    versionId: number,
-    usfm: string,
-    format: 'html',
-    include_headings: boolean | undefined,
-    include_notes: boolean | undefined,
-    transform: TransformBibleHtmlOptions,
-  ): Promise<TransformedBiblePassage>;
-
   async getPassage(
     versionId: number,
     usfm: string,
     format: 'html' | 'text' = 'html',
     include_headings?: boolean,
     include_notes?: boolean,
-    transform?: TransformBibleHtmlOptions,
-  ): Promise<BiblePassage | TransformedBiblePassage> {
+  ): Promise<BiblePassage> {
     BibleClient.versionIdSchema.parse(versionId);
     if (include_headings !== undefined) {
       BibleClient.booleanSchema.parse(include_headings);
@@ -296,22 +286,7 @@ export class BibleClient {
     if (include_notes !== undefined) {
       params.include_notes = include_notes;
     }
-    const passage = await this.client.get<BiblePassage>(
-      `/v1/bibles/${versionId}/passages/${usfm}`,
-      params,
-    );
-
-    if (transform && format === 'html') {
-      const result = transformBibleHtml(passage.content, transform);
-      return {
-        ...passage,
-        content: result.html,
-        rawContent: passage.content,
-        notes: result.notes,
-      };
-    }
-
-    return passage;
+    return this.client.get<BiblePassage>(`/v1/bibles/${versionId}/passages/${usfm}`, params);
   }
 
   /**

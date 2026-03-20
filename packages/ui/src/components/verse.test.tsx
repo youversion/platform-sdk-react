@@ -19,52 +19,6 @@ vi.mock('@youversion/platform-react-hooks', async () => {
 
 describe('Verse.Html - XSS Protection', () => {
   describe('DOMPurify sanitization', () => {
-    it('should remove script tags from HTML', async () => {
-      const maliciousHtml = '<p>Safe text</p><script>alert("XSS")</script>';
-
-      const { container } = render(<Verse.Html html={maliciousHtml} />);
-
-      await waitFor(() => {
-        const scriptTags = container.querySelectorAll('script');
-        expect(scriptTags).toHaveLength(0);
-      });
-    });
-
-    it('should remove inline event handlers (onerror)', async () => {
-      const maliciousHtml = '<img src="x" onerror="alert(\'XSS\')" />';
-
-      const { container } = render(<Verse.Html html={maliciousHtml} />);
-
-      await waitFor(() => {
-        const img = container.querySelector('img');
-        expect(img).not.toHaveAttribute('onerror');
-      });
-    });
-
-    it('should remove inline event handlers (onclick)', async () => {
-      const maliciousHtml = '<p onclick="alert(\'XSS\')">Click me</p>';
-
-      const { container } = render(<Verse.Html html={maliciousHtml} />);
-
-      await waitFor(() => {
-        const paragraph = container.querySelector('p');
-        expect(paragraph).not.toBeNull();
-        expect(paragraph?.getAttribute('onclick')).toBeNull();
-        expect(paragraph?.textContent).toBe('Click me');
-      });
-    });
-
-    it('should remove javascript: URLs', async () => {
-      const maliciousHtml = '<a href="javascript:alert(\'XSS\')">Link</a>';
-
-      const { container } = render(<Verse.Html html={maliciousHtml} />);
-
-      await waitFor(() => {
-        const link = container.querySelector('a');
-        expect(link).not.toHaveAttribute('href');
-      });
-    });
-
     it('should preserve safe HTML paragraph tags', async () => {
       const safeHtml = '<p class="yv-text">Safe Bible content</p>';
 

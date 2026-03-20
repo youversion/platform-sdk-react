@@ -16,12 +16,8 @@ import { Footnote } from '@/components/icons/footnote';
 import { LoaderIcon } from '@/components/icons/loader';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import {
-  type FontFamily,
-  getFootnoteMarker,
-  transformBibleHtml,
-  type VerseNotes,
-} from '@/lib/verse-html-utils';
+import { type FontFamily, getFootnoteMarker } from '@/lib/verse-html-utils';
+import { transformBibleHtmlForBrowser, type VerseNotes } from '@youversion/platform-core';
 
 type TransformedBibleHtml = {
   html: string;
@@ -295,7 +291,10 @@ export const Verse = {
       }: VerseHtmlProps,
       ref,
     ): ReactNode => {
-      const transformedData = useMemo<TransformedBibleHtml>(() => transformBibleHtml(html), [html]);
+      const transformedData = useMemo<TransformedBibleHtml>(
+        () => transformBibleHtmlForBrowser(html),
+        [html],
+      );
       const providerTheme = useTheme();
       const currentTheme = theme || providerTheme;
 

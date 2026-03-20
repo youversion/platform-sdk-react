@@ -2,23 +2,40 @@ const NON_BREAKING_SPACE = '\u00A0';
 
 const FOOTNOTE_KEY_ATTR = 'data-footnote-key';
 
-const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]'"»›]/;
+const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]"»›]/;
 
+/**
+ * Represents the notes extracted from a verse, including the verse HTML with footnote markers
+ * and the array of footnote content strings.
+ */
 export type VerseNotes = {
+  /** The verse HTML with footnote markers replaced by data attributes */
   verseHtml: string;
+  /** Array of footnote HTML content strings */
   notes: string[];
+  /** Whether the footnote is attached to a verse (true) or is an orphaned intro footnote (false) */
   hasVerseContext: boolean;
 };
 
+/**
+ * Options for transforming Bible HTML. Requires DOM adapter functions
+ * to parse and serialize HTML, making the transformer runtime-agnostic.
+ */
 export type TransformBibleHtmlOptions = {
+  /** Parses an HTML string into a DOM Document */
   parseHtml: (html: string) => Document;
+  /** Serializes a Document back to an HTML string */
   serializeHtml: (doc: Document) => string;
-  sanitize?: (html: string) => string;
 };
 
+/**
+ * The result of transforming Bible HTML, containing the cleaned HTML
+ * and extracted footnote data.
+ */
 export type TransformedBibleHtml = {
+  /** The transformed HTML with footnotes replaced by marker elements */
   html: string;
-  rawHtml: string;
+  /** Extracted footnote data keyed by verse number or intro key */
   notes: Record<string, VerseNotes>;
 };
 
@@ -288,13 +305,32 @@ function fixIrregularTables(doc: Document): void {
   });
 }
 
+/**
+ * Transforms Bible HTML by cleaning up verse structure, extracting footnotes,
+ * and replacing them with invisible portal anchors.
+ *
+ * @param html - The raw Bible HTML from the YouVersion API
+ * @param options - DOM adapter options for parsing and serializing HTML
+ * @returns The transformed HTML and extracted footnote data
+ *
+ * @example
+ * ```ts
+ * import { transformBibleHtml } from '@youversion/platform-core';
+ *
+ * const result = transformBibleHtml(rawHtml, {
+ *   parseHtml: (html) => new DOMParser().parseFromString(html, 'text/html'),
+ *   serializeHtml: (doc) => doc.body.innerHTML,
+ * });
+ *
+ * console.log(result.html);  // Clean HTML with footnote anchors
+ * console.log(result.notes); // Extracted footnote data
+ * ```
+ */
 export function transformBibleHtml(
   html: string,
   options: TransformBibleHtmlOptions,
 ): TransformedBibleHtml {
-  const rawHtml = html;
-  const sanitizedHtml = options.sanitize ? options.sanitize(html) : html;
-  const doc = options.parseHtml(sanitizedHtml);
+  const doc = options.parseHtml(html);
 
   wrapVerseContent(doc);
   assignFootnoteKeys(doc);
@@ -303,5 +339,75 @@ export function transformBibleHtml(
   fixIrregularTables(doc);
 
   const transformedHtml = options.serializeHtml(doc);
-  return { html: transformedHtml, rawHtml, notes };
+  return { html: transformedHtml, notes };
+}
+
+/**
+ * Transforms Bible HTML for browser environments using the native DOMParser API.
+ *
+ * @param html - The raw Bible HTML from the YouVersion API
+ * @returns The transformed HTML and extracted footnote data
+ *
+ * @example
+ * ```ts
+ * import { transformBibleHtmlForBrowser } from '@youversion/platform-core';
+ *
+ * const result = transformBibleHtmlForBrowser(rawHtml);
+ * console.log(result.html);  // Clean HTML with footnote anchors
+ * console.log(result.notes); // Extracted footnote data
+ * ```
+ */
+export function transformBibleHtmlForBrowser(html: string): TransformedBibleHtml {
+  return transformBibleHtml(html, {
+    parseHtml: (h) => new DOMParser().parseFromString(h, 'text/html'),
+    serializeHtml: (doc) => doc.body.innerHTML,
+  });
+}
+
+/**
+ * Minimal type definition for linkedom's DOMParser.
+ * linkedom is an optional dependency for Node.js environments.
+ */
+interface LinkedomModule {
+  DOMParser: new () => {
+    parseFromString(html: string, mimeType: string): Document;
+  };
+}
+
+/**
+ * Transforms Bible HTML for Node.js environments using linkedom.
+ *
+ * @requires linkedom - Install with `npm install linkedom`
+ * @throws Error if linkedom is not installed
+ *
+ * @example
+ * ```ts
+ * // First: npm install linkedom
+ * import { transformBibleHtmlForNode } from '@youversion/platform-core';
+ *
+ * const result = transformBibleHtmlForNode(rawHtml);
+ * console.log(result.html);  // Clean HTML with footnote anchors
+ * console.log(result.notes); // Extracted footnote data
+ * ```
+ */
+export function transformBibleHtmlForNode(html: string): TransformedBibleHtml {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const linkedom = require('linkedom') as LinkedomModule;
+    const { DOMParser } = linkedom;
+
+    return transformBibleHtml(html, {
+      parseHtml: (h: string) => new DOMParser().parseFromString(h, 'text/html'),
+      serializeHtml: (doc: Document) => doc.body.innerHTML,
+    });
+  } catch {
+    throw new Error(
+      'transformBibleHtmlForNode requires linkedom to be installed.\n' +
+        'Install it with: npm install linkedom\n' +
+        'Or: bun install linkedom\n' +
+        'Or: yarn add linkedom\n' +
+        'Or: pnpm add linkedom\n' +
+        'Then try again.',
+    );
+  }
 }
