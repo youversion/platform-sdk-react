@@ -369,24 +369,16 @@ export function transformBibleHtmlForBrowser(html: string): TransformedBibleHtml
 }
 
 /**
- * Minimal type definition for linkedom's DOMParser.
- * linkedom is an optional dependency for Node.js environments.
- */
-interface LinkedomModule {
-  DOMParser: new () => {
-    parseFromString(html: string, mimeType: string): Document;
-  };
-}
-
-/**
  * Transforms Bible HTML for Node.js environments using linkedom.
  *
- * @requires linkedom - Install with `npm install linkedom`
- * @throws Error if linkedom is not installed
+ * linkedom requires HTML to be wrapped in body tags for `doc.body.innerHTML`
+ * to work correctly, so this function handles that wrapping automatically.
+ *
+ * @param html - The raw Bible HTML from the YouVersion API
+ * @returns The transformed HTML and extracted footnote data
  *
  * @example
  * ```ts
- * // First: npm install linkedom
  * import { transformBibleHtmlForNode } from '@youversion/platform-core';
  *
  * const result = transformBibleHtmlForNode(rawHtml);
@@ -395,23 +387,14 @@ interface LinkedomModule {
  * ```
  */
 export function transformBibleHtmlForNode(html: string): TransformedBibleHtml {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const linkedom = require('linkedom') as LinkedomModule;
-    const { DOMParser } = linkedom;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { DOMParser } = require('linkedom') as {
+    DOMParser: new () => { parseFromString(html: string, type: string): Document };
+  };
 
-    return transformBibleHtml(html, {
-      parseHtml: (h: string) => new DOMParser().parseFromString(h, 'text/html'),
-      serializeHtml: (doc: Document) => doc.body.innerHTML,
-    });
-  } catch {
-    throw new Error(
-      'transformBibleHtmlForNode requires linkedom to be installed.\n' +
-        'Install it with: npm install linkedom\n' +
-        'Or: bun install linkedom\n' +
-        'Or: yarn add linkedom\n' +
-        'Or: pnpm add linkedom\n' +
-        'Then try again.',
-    );
-  }
+  return transformBibleHtml(html, {
+    parseHtml: (h: string) =>
+      new DOMParser().parseFromString(`<html><body>${h}</body></html>`, 'text/html'),
+    serializeHtml: (doc: Document) => doc.body.innerHTML,
+  });
 }

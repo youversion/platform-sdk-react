@@ -44,6 +44,7 @@
     "vitest": "4.0.4"
   },
   "dependencies": {
+    "linkedom": "^0.18.12",
     "zod": "4.1.12"
   }
 }
