@@ -207,7 +207,8 @@ function assignFootnoteKeys(doc: Document): void {
 
 function replaceFootnotesWithAnchors(doc: Document, footnotes: Element[]): void {
   for (const fn of footnotes) {
-    const key = fn.getAttribute(FOOTNOTE_KEY_ATTR)!;
+    const key = fn.getAttribute(FOOTNOTE_KEY_ATTR);
+    if (!key) continue;
 
     const prev = fn.previousSibling;
     const next = fn.nextSibling;
@@ -235,7 +236,8 @@ function extractNotesFromWrappedHtml(doc: Document): Record<string, VerseNotes> 
 
   const footnotesByKey = new Map<string, Element[]>();
   for (const fn of footnotes) {
-    const key = fn.getAttribute(FOOTNOTE_KEY_ATTR)!;
+    const key = fn.getAttribute(FOOTNOTE_KEY_ATTR);
+    if (!key) continue;
     let arr = footnotesByKey.get(key);
     if (!arr) {
       arr = [];
