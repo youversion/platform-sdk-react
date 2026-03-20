@@ -12,6 +12,8 @@ import type {
   Collection,
   VOTD,
 } from './types';
+import { transformBibleHtml, type TransformBibleHtmlOptions } from './bible-html-transformer';
+import type { TransformedBiblePassage } from './schemas/passage';
 
 /**
  * Client for interacting with Bible API endpoints.
@@ -256,10 +258,28 @@ export class BibleClient {
   async getPassage(
     versionId: number,
     usfm: string,
+    format?: 'html' | 'text',
+    include_headings?: boolean,
+    include_notes?: boolean,
+  ): Promise<BiblePassage>;
+
+  async getPassage(
+    versionId: number,
+    usfm: string,
+    format: 'html',
+    include_headings: boolean | undefined,
+    include_notes: boolean | undefined,
+    transform: TransformBibleHtmlOptions,
+  ): Promise<TransformedBiblePassage>;
+
+  async getPassage(
+    versionId: number,
+    usfm: string,
     format: 'html' | 'text' = 'html',
     include_headings?: boolean,
     include_notes?: boolean,
-  ): Promise<BiblePassage> {
+    transform?: TransformBibleHtmlOptions,
+  ): Promise<BiblePassage | TransformedBiblePassage> {
     BibleClient.versionIdSchema.parse(versionId);
     if (include_headings !== undefined) {
       BibleClient.booleanSchema.parse(include_headings);
@@ -276,7 +296,22 @@ export class BibleClient {
     if (include_notes !== undefined) {
       params.include_notes = include_notes;
     }
-    return this.client.get<BiblePassage>(`/v1/bibles/${versionId}/passages/${usfm}`, params);
+    const passage = await this.client.get<BiblePassage>(
+      `/v1/bibles/${versionId}/passages/${usfm}`,
+      params,
+    );
+
+    if (transform && format === 'html') {
+      const result = transformBibleHtml(passage.content, transform);
+      return {
+        ...passage,
+        content: result.html,
+        rawContent: passage.content,
+        notes: result.notes,
+      };
+    }
+
+    return passage;
   }
 
   /**

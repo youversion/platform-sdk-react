@@ -15,3 +15,10 @@ export * from './YouVersionPlatformConfiguration';
 export * from './types';
 export * from './utils/constants';
 export { getAdjacentChapter } from './getAdjacentChapter';
+export {
+  transformBibleHtml,
+  type VerseNotes,
+  type TransformBibleHtmlOptions,
+  type TransformedBibleHtml,
+} from './bible-html-transformer';
+export type { TransformedBiblePassage } from './schemas/passage';

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { VerseNotes } from '../bible-html-transformer';
 
 export const BiblePassageSchema = z.object({
   /** Passage identifier (e.g., "MAT.1.1") */
@@ -10,3 +11,10 @@ export const BiblePassageSchema = z.object({
 });
 
 export type BiblePassage = Readonly<z.infer<typeof BiblePassageSchema>>;
+
+export type TransformedBiblePassage = BiblePassage & {
+  /** Original untransformed HTML content from the API */
+  rawContent: string;
+  /** Extracted footnote data keyed by verse number or intro key */
+  notes: Record<string, VerseNotes>;
+};
