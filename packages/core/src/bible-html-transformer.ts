@@ -5,19 +5,6 @@ const FOOTNOTE_KEY_ATTR = 'data-footnote-key';
 const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]'"»›]/;
 
 /**
- * Represents the notes extracted from a verse, including the verse HTML with footnote markers
- * and the array of footnote content strings.
- */
-export type VerseNotes = {
-  /** The verse HTML with footnote markers replaced by data attributes */
-  verseHtml: string;
-  /** Array of footnote HTML content strings */
-  notes: string[];
-  /** Whether the footnote is attached to a verse (true) or is an orphaned intro footnote (false) */
-  hasVerseContext: boolean;
-};
-
-/**
  * Options for transforming Bible HTML. Requires DOM adapter functions
  * to parse and serialize HTML, making the transformer runtime-agnostic.
  */
@@ -29,14 +16,18 @@ export type TransformBibleHtmlOptions = {
 };
 
 /**
- * The result of transforming Bible HTML, containing the cleaned HTML
- * and extracted footnote data.
+ * The result of transforming Bible HTML.
+ *
+ * The returned HTML is self-contained — footnote data is embedded as attributes:
+ * - `data-verse-footnote="KEY"` marks the footnote position
+ * - `data-verse-footnote-content="HTML"` contains the footnote's inner HTML
+ *
+ * Consumers can access verse context by walking up from a footnote anchor
+ * to `.closest('.yv-v[v]')`.
  */
 export type TransformedBibleHtml = {
   /** The transformed HTML with footnotes replaced by marker elements */
   html: string;
-  /** Extracted footnote data keyed by verse number or intro key */
-  notes: Record<string, VerseNotes>;
 };
 
 function wrapVerseContent(doc: Document): void {
@@ -170,33 +161,6 @@ function wrapVerseContent(doc: Document): void {
   verseMarkers.forEach(processVerseMarker);
 }
 
-function buildVerseHtml(wrappers: Element[]): string {
-  const parts: string[] = [];
-
-  for (let i = 0; i < wrappers.length; i++) {
-    if (i > 0) parts.push(' ');
-
-    const clone = wrappers[i]!.cloneNode(true) as Element;
-    const ownerDoc = wrappers[i]!.ownerDocument;
-
-    clone.querySelectorAll('.yv-h, .yv-vlbl').forEach((el) => {
-      el.remove();
-    });
-
-    clone.querySelectorAll('.yv-n.f').forEach((fn) => {
-      const key = fn.getAttribute(FOOTNOTE_KEY_ATTR) ?? '';
-      const span = ownerDoc.createElement('span');
-      span.setAttribute('data-verse-footnote', key);
-      span.setAttribute('data-verse-footnote-content', fn.innerHTML);
-      fn.replaceWith(span);
-    });
-
-    parts.push(clone.innerHTML);
-  }
-
-  return parts.join('');
-}
-
 function assignFootnoteKeys(doc: Document): void {
   let introIdx = 0;
   doc.querySelectorAll('.yv-n.f').forEach((fn) => {
@@ -228,46 +192,6 @@ function replaceFootnotesWithAnchors(doc: Document, footnotes: Element[]): void 
     anchor.setAttribute('data-verse-footnote-content', fn.innerHTML);
     fn.replaceWith(anchor);
   }
-}
-
-function extractNotesFromWrappedHtml(doc: Document): Record<string, VerseNotes> {
-  const footnotes = Array.from(doc.querySelectorAll('.yv-n.f'));
-  if (!footnotes.length) return {};
-
-  const footnotesByKey = new Map<string, Element[]>();
-  for (const fn of footnotes) {
-    const key = fn.getAttribute(FOOTNOTE_KEY_ATTR);
-    if (!key) continue;
-    let arr = footnotesByKey.get(key);
-    if (!arr) {
-      arr = [];
-      footnotesByKey.set(key, arr);
-    }
-    arr.push(fn);
-  }
-
-  const wrappersByVerse = new Map<string, Element[]>();
-  doc.querySelectorAll('.yv-v[v]').forEach((el) => {
-    const verseNum = el.getAttribute('v');
-    if (!verseNum) return;
-    const arr = wrappersByVerse.get(verseNum);
-    if (arr) arr.push(el);
-    else wrappersByVerse.set(verseNum, [el]);
-  });
-
-  const notes: Record<string, VerseNotes> = {};
-  for (const [key, fns] of footnotesByKey) {
-    const wrappers = wrappersByVerse.get(key);
-    notes[key] = {
-      verseHtml: wrappers ? buildVerseHtml(wrappers) : '',
-      notes: fns.map((fn) => fn.innerHTML),
-      hasVerseContext: !!wrappers,
-    };
-  }
-
-  replaceFootnotesWithAnchors(doc, footnotes);
-
-  return notes;
 }
 
 function addNbspToVerseLabels(doc: Document): void {
@@ -309,11 +233,18 @@ function fixIrregularTables(doc: Document): void {
 
 /**
  * Transforms Bible HTML by cleaning up verse structure, extracting footnotes,
- * and replacing them with invisible portal anchors.
+ * and replacing them with self-contained anchor elements.
+ *
+ * Footnote data is embedded directly in the HTML via attributes:
+ * - `data-verse-footnote="KEY"` — the footnote key (verse number or `intro-N`)
+ * - `data-verse-footnote-content="HTML"` — the footnote's inner HTML content
+ *
+ * Verse context is available by walking up from a footnote anchor:
+ * `anchor.closest('.yv-v[v]')` returns the verse wrapper (null for intro footnotes).
  *
  * @param html - The raw Bible HTML from the YouVersion API
  * @param options - DOM adapter options for parsing and serializing HTML
- * @returns The transformed HTML and extracted footnote data
+ * @returns The transformed HTML
  *
  * @example
  * ```ts
@@ -324,8 +255,7 @@ function fixIrregularTables(doc: Document): void {
  *   serializeHtml: (doc) => doc.body.innerHTML,
  * });
  *
- * console.log(result.html);  // Clean HTML with footnote anchors
- * console.log(result.notes); // Extracted footnote data
+ * console.log(result.html); // Clean HTML with self-contained footnote anchors
  * ```
  */
 export function transformBibleHtml(
@@ -336,32 +266,26 @@ export function transformBibleHtml(
 
   wrapVerseContent(doc);
   assignFootnoteKeys(doc);
-  const notes = extractNotesFromWrappedHtml(doc);
+
+  const footnotes = Array.from(doc.querySelectorAll('.yv-n.f'));
+  replaceFootnotesWithAnchors(doc, footnotes);
+
   addNbspToVerseLabels(doc);
   fixIrregularTables(doc);
 
   const transformedHtml = options.serializeHtml(doc);
-  return { html: transformedHtml, notes };
+  return { html: transformedHtml };
 }
 
 /**
  * Transforms Bible HTML for browser environments using the native DOMParser API.
  *
  * @param html - The raw Bible HTML from the YouVersion API
- * @returns The transformed HTML and extracted footnote data
- *
- * @example
- * ```ts
- * import { transformBibleHtmlForBrowser } from '@youversion/platform-core';
- *
- * const result = transformBibleHtmlForBrowser(rawHtml);
- * console.log(result.html);  // Clean HTML with footnote anchors
- * console.log(result.notes); // Extracted footnote data
- * ```
+ * @returns The transformed HTML
  */
 export function transformBibleHtmlForBrowser(html: string): TransformedBibleHtml {
   if (typeof globalThis.DOMParser === 'undefined') {
-    return { html, notes: {} };
+    return { html };
   }
 
   return transformBibleHtml(html, {
@@ -377,16 +301,7 @@ export function transformBibleHtmlForBrowser(html: string): TransformedBibleHtml
  * to work correctly, so this function handles that wrapping automatically.
  *
  * @param html - The raw Bible HTML from the YouVersion API
- * @returns The transformed HTML and extracted footnote data
- *
- * @example
- * ```ts
- * import { transformBibleHtmlForNode } from '@youversion/platform-core';
- *
- * const result = transformBibleHtmlForNode(rawHtml);
- * console.log(result.html);  // Clean HTML with footnote anchors
- * console.log(result.notes); // Extracted footnote data
- * ```
+ * @returns The transformed HTML
  */
 export function transformBibleHtmlForNode(html: string): TransformedBibleHtml {
   // eslint-disable-next-line @typescript-eslint/no-require-imports

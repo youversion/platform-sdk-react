@@ -12,7 +12,7 @@ function createAdapters() {
 }
 
 describe('transformBibleHtml - intro chapter footnotes', () => {
-  it('should return notes keyed by "intro-0", "intro-1" for orphaned footnotes', () => {
+  it('should create data-verse-footnote anchors with intro keys for orphaned footnotes', () => {
     const html = `
       <div>
         <div class="ip">Some intro text<span class="yv-n f"><span class="ft">First note</span></span> and more text<span class="yv-n f"><span class="ft">Second note</span></span>.</div>
@@ -21,25 +21,12 @@ describe('transformBibleHtml - intro chapter footnotes', () => {
 
     const result = transformBibleHtml(html, createAdapters());
 
-    expect(result.notes['intro-0']).toBeDefined();
-    expect(result.notes['intro-1']).toBeDefined();
-    expect(Object.keys(result.notes)).toHaveLength(2);
+    expect(result.html).toContain('data-verse-footnote="intro-0"');
+    expect(result.html).toContain('data-verse-footnote="intro-1"');
+    expect(result.html).not.toContain('yv-n f');
   });
 
-  it('should set verseHtml to empty string for intro footnotes', () => {
-    const html = `
-      <div>
-        <div class="ip">Text with a<span class="yv-n f"><span class="ft">A footnote</span></span> note.</div>
-      </div>
-    `;
-
-    const result = transformBibleHtml(html, createAdapters());
-
-    expect(result.notes['intro-0']!.verseHtml).toBe('');
-    expect(result.notes['intro-0']!.hasVerseContext).toBe(false);
-  });
-
-  it('should extract correct note content for intro footnotes', () => {
+  it('should preserve footnote content in data-verse-footnote-content attribute', () => {
     const html = `
       <div>
         <div class="ip">Text<span class="yv-n f"><span class="ft">See Rashi</span></span> more.</div>
@@ -48,25 +35,8 @@ describe('transformBibleHtml - intro chapter footnotes', () => {
 
     const result = transformBibleHtml(html, createAdapters());
 
-    expect(result.notes['intro-0']!.notes).toHaveLength(1);
-    expect(result.notes['intro-0']!.notes[0]).toContain('See Rashi');
-  });
-
-  it('should create data-verse-footnote anchors with intro keys in the output HTML', () => {
-    const html = `
-      <div>
-        <div class="ip">Before<span class="yv-n f"><span class="ft">Note A</span></span> after<span class="yv-n f"><span class="ft">Note B</span></span>.</div>
-      </div>
-    `;
-
-    const result = transformBibleHtml(html, createAdapters());
-
-    expect(result.html).toContain('data-verse-footnote="intro-0"');
     expect(result.html).toContain('data-verse-footnote-content=');
-    expect(result.html).toContain('Note A');
-    expect(result.html).toContain('data-verse-footnote="intro-1"');
-    expect(result.html).toContain('Note B');
-    expect(result.html).not.toContain('yv-n f');
+    expect(result.html).toContain('See Rashi');
   });
 
   it('should not interfere with regular verse footnotes when mixed', () => {
@@ -81,17 +51,10 @@ describe('transformBibleHtml - intro chapter footnotes', () => {
 
     const result = transformBibleHtml(html, createAdapters());
 
-    expect(result.notes['intro-0']).toBeDefined();
-    expect(result.notes['intro-0']!.verseHtml).toBe('');
-    expect(result.notes['intro-0']!.hasVerseContext).toBe(false);
-    expect(result.notes['intro-0']!.notes[0]).toContain('Intro note');
-
-    expect(result.notes['1']).toBeDefined();
-    expect(result.notes['1']!.verseHtml).not.toBe('');
-    expect(result.notes['1']!.hasVerseContext).toBe(true);
-    expect(result.notes['1']!.notes[0]).toContain('Verse note');
-    expect(result.notes['1']!.verseHtml).toContain('data-verse-footnote-content=');
-    expect(result.notes['1']!.verseHtml).toContain('Verse note');
+    expect(result.html).toContain('data-verse-footnote="intro-0"');
+    expect(result.html).toContain('data-verse-footnote="1"');
+    expect(result.html).toContain('Intro note');
+    expect(result.html).toContain('Verse note');
   });
 
   it('should insert space when orphaned footnote is between two words', () => {
@@ -281,8 +244,6 @@ describe('transformBibleHtmlForBrowser', () => {
     const result = transformBibleHtmlForBrowser(html);
 
     expect(result.html).toBeDefined();
-    expect(result.notes).toBeDefined();
-    expect(result.notes['1']).toBeDefined();
     expect(result.html).toContain('data-verse-footnote="1"');
   });
 
@@ -299,32 +260,29 @@ describe('transformBibleHtmlForBrowser', () => {
     const result2 = transformBibleHtml(html, createAdapters());
 
     expect(result1.html).toBe(result2.html);
-    expect(result1.notes).toEqual(result2.notes);
   });
 
   it('should handle empty HTML', () => {
     const result = transformBibleHtmlForBrowser('');
 
     expect(result.html).toBeDefined();
-    expect(result.notes).toEqual({});
   });
 });
 
 describe('transformBibleHtml - return type', () => {
-  it('should return html and notes properties', () => {
+  it('should return html property', () => {
     const html = '<div>Test</div>';
     const result = transformBibleHtml(html, createAdapters());
 
     expect(result).toHaveProperty('html');
-    expect(result).toHaveProperty('notes');
     expect(typeof result.html).toBe('string');
-    expect(typeof result.notes).toBe('object');
   });
 
-  it('should not have rawHtml property in return type', () => {
+  it('should not have notes or rawHtml properties', () => {
     const html = '<div>Test</div>';
     const result = transformBibleHtml(html, createAdapters());
 
+    expect(result).not.toHaveProperty('notes');
     expect(result).not.toHaveProperty('rawHtml');
   });
 });

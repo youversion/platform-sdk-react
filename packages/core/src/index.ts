@@ -19,7 +19,6 @@ export {
   transformBibleHtml,
   transformBibleHtmlForBrowser,
   transformBibleHtmlForNode,
-  type VerseNotes,
   type TransformBibleHtmlOptions,
   type TransformedBibleHtml,
 } from './bible-html-transformer';
