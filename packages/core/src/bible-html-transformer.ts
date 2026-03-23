@@ -355,6 +355,14 @@ export function transformBibleHtml(
  *
  * @param html - The raw Bible HTML from the YouVersion API
  * @returns The transformed HTML
+ *
+ * @example
+ * ```ts
+ * import { transformBibleHtmlForBrowser } from '@youversion/platform-core/browser';
+ *
+ * const result = transformBibleHtmlForBrowser(rawHtml);
+ * console.log(result.html); // Clean HTML with self-contained footnote anchors
+ * ```
  */
 export function transformBibleHtmlForBrowser(html: string): TransformedBibleHtml {
   if (typeof globalThis.DOMParser === 'undefined') {
