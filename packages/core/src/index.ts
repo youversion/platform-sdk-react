@@ -18,7 +18,6 @@ export { getAdjacentChapter } from './getAdjacentChapter';
 export {
   transformBibleHtml,
   transformBibleHtmlForBrowser,
-  transformBibleHtmlForNode,
   type TransformBibleHtmlOptions,
   type TransformedBibleHtml,
 } from './bible-html-transformer';

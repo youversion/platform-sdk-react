@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 import { describe, it, expect } from 'vitest';
-import { transformBibleHtmlForNode } from './bible-html-transformer';
+import { transformBibleHtmlForNode } from './bible-html-transformer-node';
 
 describe('transformBibleHtmlForNode', () => {
   it('should transform HTML using linkedom', () => {
