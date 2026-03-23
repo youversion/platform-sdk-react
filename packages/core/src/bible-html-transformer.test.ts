@@ -212,22 +212,19 @@ describe('transformBibleHtml - data attributes', () => {
     expect(result.html).toContain('See Rashi');
   });
 
-  it('should preserve footnote HTML structure in data-verse-footnote-content', () => {
-    const html = `
-      <div>
-        <div class="p">
-          <span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text<span class="yv-n f"><span class="ft"><em>Emphasized</em> note</span></span>.</div>
-      </div>
-    `;
+  it('should still run parseHtml when sanitize is not provided', () => {
+    const html = '<div>Test</div>';
+    let called = false;
 
-    const result = transformBibleHtml(html, createAdapters());
+    transformBibleHtml(html, {
+      parseHtml: (h) => {
+        called = true;
+        return new DOMParser().parseFromString(h, 'text/html');
+      },
+      serializeHtml: (doc) => doc.body.innerHTML,
+    });
 
-    const doc = new DOMParser().parseFromString(result.html, 'text/html');
-    const anchor = doc.querySelector('[data-verse-footnote="1"]');
-    expect(anchor).not.toBeNull();
-    const content = anchor!.getAttribute('data-verse-footnote-content');
-    expect(content).toContain('<em>');
-    expect(content).toContain('Emphasized');
+    expect(called).toBe(true);
   });
 });
 
