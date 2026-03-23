@@ -119,4 +119,33 @@ describe('transformBibleHtmlForNode', () => {
     expect(result).not.toHaveProperty('notes');
     expect(typeof result.html).toBe('string');
   });
+
+  it('should remove script tags entirely', () => {
+    const html = '<p>Safe text</p><script>alert("XSS")</script>';
+    const result = transformBibleHtmlForNode(html);
+
+    expect(result.html).not.toContain('script');
+    expect(result.html).not.toContain('alert');
+    expect(result.html).toContain('Safe text');
+  });
+
+  it('should strip event handler attributes', () => {
+    const html = '<p onclick="alert(\'XSS\')">Click me</p>';
+    const result = transformBibleHtmlForNode(html);
+
+    expect(result.html).not.toContain('onclick');
+    expect(result.html).toContain('Click me');
+  });
+
+  it('should preserve safe Bible HTML through linkedom', () => {
+    const html = `
+      <div class="p">
+        <span class="wj">Jesus said</span>
+      </div>
+    `;
+    const result = transformBibleHtmlForNode(html);
+
+    expect(result.html).toContain('class="wj"');
+    expect(result.html).toContain('Jesus said');
+  });
 });

@@ -286,3 +286,121 @@ describe('transformBibleHtml - return type', () => {
     expect(result).not.toHaveProperty('rawHtml');
   });
 });
+
+describe('transformBibleHtml - sanitization', () => {
+  it('should remove script tags entirely', () => {
+    const html = '<p>Safe text</p><script>alert("XSS")</script>';
+    const result = transformBibleHtml(html, createAdapters());
+
+    expect(result.html).not.toContain('script');
+    expect(result.html).not.toContain('alert');
+    expect(result.html).toContain('Safe text');
+  });
+
+  it('should remove img tags (not in allowlist)', () => {
+    const html = '<p>Text</p><img src="x" onerror="alert(\'XSS\')" />';
+    const result = transformBibleHtml(html, createAdapters());
+
+    expect(result.html).not.toContain('img');
+    expect(result.html).not.toContain('onerror');
+    expect(result.html).toContain('Text');
+  });
+
+  it('should strip onclick attribute but preserve element and text', () => {
+    const html = '<p onclick="alert(\'XSS\')">Click me</p>';
+    const result = transformBibleHtml(html, createAdapters());
+
+    expect(result.html).not.toContain('onclick');
+    expect(result.html).toContain('<p>');
+    expect(result.html).toContain('Click me');
+  });
+
+  it('should unwrap anchor tags (not in allowlist) preserving text', () => {
+    const html = '<p><a href="javascript:alert(\'XSS\')">Link</a></p>';
+    const result = transformBibleHtml(html, createAdapters());
+
+    expect(result.html).not.toContain('<a');
+    expect(result.html).not.toContain('href');
+    expect(result.html).toContain('Link');
+  });
+
+  it('should remove svg tags entirely', () => {
+    const html = '<p>Text</p><svg onload="alert(1)"><circle></circle></svg>';
+    const result = transformBibleHtml(html, createAdapters());
+
+    expect(result.html).not.toContain('svg');
+    expect(result.html).not.toContain('onload');
+    expect(result.html).not.toContain('circle');
+    expect(result.html).toContain('Text');
+  });
+
+  it('should strip style attribute from allowed tags', () => {
+    const html = '<div style="background:url(javascript:alert(1))">text</div>';
+    const result = transformBibleHtml(html, createAdapters());
+
+    expect(result.html).not.toContain('style');
+    expect(result.html).toContain('<div>');
+    expect(result.html).toContain('text');
+  });
+
+  it('should preserve safe Bible HTML with allowed tags, classes, and attributes', () => {
+    const html = `
+      <div class="p">
+        <span class="wj">Jesus said</span>
+      </div>
+      <table><tr><td colspan="2">Cell</td></tr></table>
+    `;
+    const result = transformBibleHtml(html, createAdapters());
+
+    expect(result.html).toContain('class="p"');
+    expect(result.html).toContain('class="wj"');
+    expect(result.html).toContain('colspan="2"');
+    expect(result.html).toContain('<table>');
+  });
+
+  it('should unwrap unknown custom elements preserving text', () => {
+    const html = '<p><custom-element>text</custom-element></p>';
+    const result = transformBibleHtml(html, createAdapters());
+
+    expect(result.html).not.toContain('custom-element');
+    expect(result.html).toContain('text');
+  });
+
+  it('should remove iframe tags entirely', () => {
+    const html = '<p>Text</p><iframe src="https://evil.com"></iframe>';
+    const result = transformBibleHtml(html, createAdapters());
+
+    expect(result.html).not.toContain('iframe');
+    expect(result.html).toContain('Text');
+  });
+
+  it('should preserve data-* attributes', () => {
+    const html = '<div data-slot="verse-container" data-custom="value">Content</div>';
+    const result = transformBibleHtml(html, createAdapters());
+
+    expect(result.html).toContain('data-slot="verse-container"');
+    expect(result.html).toContain('data-custom="value"');
+  });
+
+  it('should preserve dir attribute for RTL support', () => {
+    const html = '<div dir="rtl"><p class="p">Hebrew text</p></div>';
+    const result = transformBibleHtml(html, createAdapters());
+
+    expect(result.html).toContain('dir="rtl"');
+  });
+});
+
+describe('transformBibleHtmlForBrowser - DOMParser fallback', () => {
+  it('should throw when DOMParser is unavailable', () => {
+    const original = globalThis.DOMParser;
+    try {
+      // @ts-expect-error - intentionally removing DOMParser
+      globalThis.DOMParser = undefined;
+      expect(() => transformBibleHtmlForBrowser('<p>test</p>')).toThrow(
+        'DOMParser is required to transform Bible HTML in browser environments',
+      );
+    } finally {
+      globalThis.DOMParser = original;
+    }
+  });
+});

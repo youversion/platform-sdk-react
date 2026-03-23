@@ -4,6 +4,78 @@ const FOOTNOTE_KEY_ATTR = 'data-footnote-key';
 
 const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]'"»›]/;
 
+const ALLOWED_TAGS = new Set([
+  'DIV',
+  'P',
+  'SPAN',
+  'SUP',
+  'SUB',
+  'EM',
+  'STRONG',
+  'I',
+  'B',
+  'SMALL',
+  'BR',
+  'SECTION',
+  'TABLE',
+  'THEAD',
+  'TBODY',
+  'TR',
+  'TD',
+  'TH',
+]);
+
+const DROP_ENTIRELY_TAGS = new Set([
+  'SCRIPT',
+  'STYLE',
+  'IFRAME',
+  'OBJECT',
+  'EMBED',
+  'SVG',
+  'MATH',
+  'FORM',
+  'INPUT',
+  'BUTTON',
+  'TEXTAREA',
+  'SELECT',
+  'TEMPLATE',
+  'LINK',
+  'META',
+  'BASE',
+  'NOSCRIPT',
+]);
+
+const ALLOWED_ATTRS = new Set(['class', 'v', 'colspan', 'rowspan', 'dir']);
+
+function sanitizeBibleHtmlDocument(doc: Document): void {
+  const root = doc.body ?? doc.documentElement;
+  for (const el of Array.from(root.querySelectorAll('*'))) {
+    const tag = el.tagName;
+
+    if (DROP_ENTIRELY_TAGS.has(tag)) {
+      el.remove();
+      continue;
+    }
+
+    if (!ALLOWED_TAGS.has(tag)) {
+      el.replaceWith(...Array.from(el.childNodes));
+      continue;
+    }
+
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+      if (name.startsWith('on')) {
+        el.removeAttribute(attr.name);
+        continue;
+      }
+
+      if (!ALLOWED_ATTRS.has(name) && !name.startsWith('data-')) {
+        el.removeAttribute(attr.name);
+      }
+    }
+  }
+}
+
 /**
  * Options for transforming Bible HTML. Requires DOM adapter functions
  * to parse and serialize HTML, making the transformer runtime-agnostic.
@@ -264,6 +336,7 @@ export function transformBibleHtml(
 ): TransformedBibleHtml {
   const doc = options.parseHtml(html);
 
+  sanitizeBibleHtmlDocument(doc);
   wrapVerseContent(doc);
   assignFootnoteKeys(doc);
 
@@ -285,7 +358,7 @@ export function transformBibleHtml(
  */
 export function transformBibleHtmlForBrowser(html: string): TransformedBibleHtml {
   if (typeof globalThis.DOMParser === 'undefined') {
-    return { html };
+    throw new Error('DOMParser is required to transform Bible HTML in browser environments');
   }
 
   return transformBibleHtml(html, {
