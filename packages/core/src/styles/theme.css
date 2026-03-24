@@ -1,6 +1,6 @@
 /* Colors sourced from YV Brand Library in Figma */
 
-:root {
+[data-yv-sdk] {
   /* Brand colors */
   --yv-red: oklch(from #ff3d4d l c h);
   --yv-red-dark-mode: oklch(from #f04c59 l c h);
@@ -107,42 +107,42 @@
   --yv-sidebar-accent-foreground: var(--yv-gray-50);
   --yv-sidebar-border: var(--yv-gray-15);
   --yv-sidebar-ring: var(--yv-blue-30);
-}
 
-[data-yv-theme='dark'] {
-  /* Brand colors - Dark theme */
-  --yv-background: var(--yv-gray-50);
-  --yv-foreground: var(--yv-white);
-  --yv-card: var(--yv-gray-45);
-  --yv-card-foreground: var(--yv-white);
-  --yv-popover: var(--yv-gray-48);
-  --yv-popover-foreground: var(--yv-white);
-  --yv-primary: var(--yv-red-dark-mode);
-  --yv-primary-foreground: var(--yv-white);
-  --yv-secondary: var(--yv-warm-neutral-dm);
-  --yv-secondary-foreground: var(--yv-white);
-  --yv-muted: var(--yv-gray-40);
-  --yv-muted-foreground: var(--yv-gray-10);
-  --yv-accent: var(--yv-gray-30);
-  --yv-accent-foreground: var(--yv-gray-2);
-  --yv-destructive: var(--yv-red);
-  --yv-destructive-foreground: var(--yv-white);
-  --yv-border: var(--yv-gray-35);
-  --yv-input: var(--yv-gray-40);
-  --yv-ring: var(--yv-blue-30-dm);
-  --yv-chart-1: var(--yv-blue-30-dm);
-  --yv-chart-2: var(--yv-green-30-dm);
-  --yv-chart-3: var(--yv-purple-30-dm);
-  --yv-chart-4: var(--yv-orange-30-dm);
-  --yv-chart-5: var(--yv-magenta-30-dm);
-  --yv-sidebar: var(--yv-gray-48);
-  --yv-sidebar-foreground: var(--yv-white);
-  --yv-sidebar-primary: var(--yv-teal-30-dm);
-  --yv-sidebar-primary-foreground: var(--yv-white);
-  --yv-sidebar-accent: var(--yv-gray-40);
-  --yv-sidebar-accent-foreground: var(--yv-white);
-  --yv-sidebar-border: var(--yv-gray-35);
-  --yv-sidebar-ring: var(--yv-blue-30-dm);
+  &[data-yv-theme='dark'] {
+    /* Brand colors - Dark theme */
+    --yv-background: var(--yv-gray-50);
+    --yv-foreground: var(--yv-white);
+    --yv-card: var(--yv-gray-45);
+    --yv-card-foreground: var(--yv-white);
+    --yv-popover: var(--yv-gray-48);
+    --yv-popover-foreground: var(--yv-white);
+    --yv-primary: var(--yv-red-dark-mode);
+    --yv-primary-foreground: var(--yv-white);
+    --yv-secondary: var(--yv-warm-neutral-dm);
+    --yv-secondary-foreground: var(--yv-white);
+    --yv-muted: var(--yv-gray-40);
+    --yv-muted-foreground: var(--yv-gray-10);
+    --yv-accent: var(--yv-gray-30);
+    --yv-accent-foreground: var(--yv-gray-2);
+    --yv-destructive: var(--yv-red);
+    --yv-destructive-foreground: var(--yv-white);
+    --yv-border: var(--yv-gray-35);
+    --yv-input: var(--yv-gray-40);
+    --yv-ring: var(--yv-blue-30-dm);
+    --yv-chart-1: var(--yv-blue-30-dm);
+    --yv-chart-2: var(--yv-green-30-dm);
+    --yv-chart-3: var(--yv-purple-30-dm);
+    --yv-chart-4: var(--yv-orange-30-dm);
+    --yv-chart-5: var(--yv-magenta-30-dm);
+    --yv-sidebar: var(--yv-gray-48);
+    --yv-sidebar-foreground: var(--yv-white);
+    --yv-sidebar-primary: var(--yv-teal-30-dm);
+    --yv-sidebar-primary-foreground: var(--yv-white);
+    --yv-sidebar-accent: var(--yv-gray-40);
+    --yv-sidebar-accent-foreground: var(--yv-white);
+    --yv-sidebar-border: var(--yv-gray-35);
+    --yv-sidebar-ring: var(--yv-blue-30-dm);
+  }
 }
 
 /*
