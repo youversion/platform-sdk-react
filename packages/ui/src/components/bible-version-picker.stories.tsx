@@ -22,7 +22,7 @@ function getStoredRecentVersions(): StoredRecentVersion[] {
 }
 
 const withLayout = (Story: React.ComponentType) => (
-  <div className="yv:h-screen yv:flex yv:justify-center yv:items-end yv:p-12">
+  <div data-yv-sdk className="yv:h-screen yv:flex yv:justify-center yv:items-end yv:p-12">
     <Story />
   </div>
 );

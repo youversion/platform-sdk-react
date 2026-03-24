@@ -10,7 +10,7 @@ const meta = {
     layout: 'centered',
   },
   render: (args) => (
-    <div className="yv:h-screen yv:w-screen yv:flex yv:justify-center yv:items-center yv:bg-background">
+    <div className="yv:h-screen yv:w-screen yv:flex yv:justify-center yv:items-center">
       <BibleCard {...args} />
     </div>
   ),
