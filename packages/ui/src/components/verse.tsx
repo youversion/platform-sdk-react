@@ -65,7 +65,7 @@ function getVerseHtmlFromDom(container: HTMLElement, verseNum: string): string {
     const clone = wrapper.cloneNode(true) as Element;
     clone.querySelectorAll('.yv-h, .yv-vlbl').forEach((el) => el.remove());
     clone.querySelectorAll('[data-verse-footnote]').forEach((anchor) => {
-      const sup = document.createElement('sup');
+      const sup = wrapper.ownerDocument.createElement('sup');
       sup.className = 'yv:text-muted-foreground';
       sup.textContent = getFootnoteMarker(noteIdx++);
       anchor.replaceWith(sup);
