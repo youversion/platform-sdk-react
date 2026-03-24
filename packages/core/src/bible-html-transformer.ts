@@ -45,7 +45,7 @@ const DROP_ENTIRELY_TAGS = new Set([
   'NOSCRIPT',
 ]);
 
-const ALLOWED_ATTRS = new Set(['class', 'v', 'colspan', 'rowspan', 'dir']);
+const ALLOWED_ATTRS = new Set(['class', 'v', 'colspan', 'rowspan', 'dir', 'usfm']);
 
 function sanitizeBibleHtmlDocument(doc: Document): void {
   const root = doc.body ?? doc.documentElement;
