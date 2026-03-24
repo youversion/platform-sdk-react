@@ -17,7 +17,7 @@ highlights.ts                # HighlightsClient - user highlights
 YouVersionAPI.ts             # Base YouVersion API client
 SignInWithYouVersionPKCE.ts  # PKCE auth implementation
 StorageStrategy.ts           # Storage interface (SessionStorage, MemoryStorage)
-bible-html-transformer.ts    # Runtime-agnostic transformer with browser wrapper
+bible-html-transformer.ts    # Runtime-agnostic transformer (also contains browser convenience fn)
 bible-html-transformer-server.ts # Server convenience wrapper (uses linkedom)
 browser.ts                   # Browser entry point
 server.ts                    # Server entry point
