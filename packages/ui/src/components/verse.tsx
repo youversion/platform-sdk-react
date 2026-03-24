@@ -17,7 +17,7 @@ import { LoaderIcon } from '@/components/icons/loader';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { type FontFamily } from '@/lib/verse-html-utils';
-import { transformBibleHtmlForBrowser } from '@youversion/platform-core';
+import { transformBibleHtml } from '@youversion/platform-core/browser';
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
 
@@ -348,7 +348,7 @@ export const Verse = {
       }: VerseHtmlProps,
       ref,
     ): ReactNode => {
-      const transformedHtml = useMemo(() => transformBibleHtmlForBrowser(html).html, [html]);
+      const transformedHtml = useMemo(() => transformBibleHtml(html).html, [html]);
       const providerTheme = useTheme();
       const currentTheme = theme || providerTheme;
 

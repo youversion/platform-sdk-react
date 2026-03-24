@@ -17,7 +17,6 @@ export * from './utils/constants';
 export { getAdjacentChapter } from './getAdjacentChapter';
 export {
   transformBibleHtml,
-  transformBibleHtmlForBrowser,
   type TransformBibleHtmlOptions,
   type TransformedBibleHtml,
 } from './bible-html-transformer';

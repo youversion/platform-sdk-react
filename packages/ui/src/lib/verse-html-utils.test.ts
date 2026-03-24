@@ -2,9 +2,9 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect } from 'vitest';
-import { transformBibleHtmlForBrowser } from '@youversion/platform-core';
+import { transformBibleHtml } from '@youversion/platform-core/browser';
 
-describe('transformBibleHtmlForBrowser - intro chapter footnotes', () => {
+describe('transformBibleHtml - intro chapter footnotes', () => {
   it('should create data-verse-footnote anchors with intro keys for orphaned footnotes', () => {
     const html = `
       <div>
@@ -12,7 +12,7 @@ describe('transformBibleHtmlForBrowser - intro chapter footnotes', () => {
       </div>
     `;
 
-    const result = transformBibleHtmlForBrowser(html);
+    const result = transformBibleHtml(html);
 
     expect(result.html).toContain('data-verse-footnote="intro-0"');
     expect(result.html).toContain('data-verse-footnote="intro-1"');
@@ -26,7 +26,7 @@ describe('transformBibleHtmlForBrowser - intro chapter footnotes', () => {
       </div>
     `;
 
-    const result = transformBibleHtmlForBrowser(html);
+    const result = transformBibleHtml(html);
 
     expect(result.html).toContain('data-verse-footnote-content=');
     expect(result.html).toContain('A footnote');
@@ -39,7 +39,7 @@ describe('transformBibleHtmlForBrowser - intro chapter footnotes', () => {
       </div>
     `;
 
-    const result = transformBibleHtmlForBrowser(html);
+    const result = transformBibleHtml(html);
 
     expect(result.html).toContain('See Rashi');
   });
@@ -54,7 +54,7 @@ describe('transformBibleHtmlForBrowser - intro chapter footnotes', () => {
       </div>
     `;
 
-    const result = transformBibleHtmlForBrowser(html);
+    const result = transformBibleHtml(html);
 
     expect(result.html).toContain('data-verse-footnote="intro-0"');
     expect(result.html).toContain('data-verse-footnote="1"');
@@ -69,7 +69,7 @@ describe('transformBibleHtmlForBrowser - intro chapter footnotes', () => {
       </div>
     `;
 
-    const result = transformBibleHtmlForBrowser(html);
+    const result = transformBibleHtml(html);
 
     expect(result.html).toContain('overcome ');
     expect(result.html).not.toMatch(/overcome<span data-verse-footnote/);
@@ -82,7 +82,7 @@ describe('transformBibleHtmlForBrowser - intro chapter footnotes', () => {
       </div>
     `;
 
-    const result = transformBibleHtmlForBrowser(html);
+    const result = transformBibleHtml(html);
 
     expect(result.html).not.toContain('overcome .');
   });
