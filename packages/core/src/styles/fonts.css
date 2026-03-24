@@ -1,4 +1,7 @@
-/* Warning: if you import this file in a CSS */
+/**
+  * Note: If you import this CSS file into another CSS file, you cannot
+  * import this into a layer since @import is not supported inside layers
+  */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap');
 
 :root {
