@@ -205,7 +205,7 @@
   kbd,
   samp,
   pre {
-    font-family: var(--yv-font-mono);
+    font-family: var(--yv-font-sans);
     font-size: 1em;
   }
 
