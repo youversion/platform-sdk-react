@@ -1,7 +1,7 @@
 # @youversion/platform-core
 
 ## OVERVIEW
-Foundation package providing pure TypeScript API clients for YouVersion services with zero React dependencies.
+Foundation package providing pure TypeScript API clients for YouVersion services with zero React dependencies. Also provides framework-agnostic browser CSS (design tokens, preflight reset, Bible reader typography) so any web platform can render Bible content with proper styling.
 
 **Related packages:**
 - For React hooks wrapping these clients → see `packages/hooks/AGENTS.md`
@@ -10,6 +10,11 @@ Foundation package providing pure TypeScript API clients for YouVersion services
 ## STRUCTURE
 ```
 schemas/                     # Zod schemas for all data types (schema-first design)
+styles/                      # Browser CSS (exported via ./browser/styles/*)
+  fonts.css                  # Google Fonts import (Inter, Source Serif 4)
+  theme.css                  # --yv-* design tokens on :root, dark mode, scoped preflight
+  bible-reader.css           # USFM/Bible typography for [data-slot='yv-bible-renderer']
+  index.css                  # Barrel: imports fonts + theme + bible-reader
 client.ts                    # ApiClient - main HTTP client
 bible.ts                     # BibleClient - Bible data operations
 languages.ts                 # LanguagesClient - language data
@@ -25,6 +30,8 @@ index.ts                     # Main entry point (runtime-agnostic)
 ```
 
 ## PUBLIC API
+
+### TypeScript (`@youversion/platform-core`)
 - `ApiClient`: Main HTTP client with auth handling
 - `BibleClient`: Fetch Bibles, chapters, verses, versions
 - `LanguagesClient`: Get available languages
@@ -34,18 +41,20 @@ index.ts                     # Main entry point (runtime-agnostic)
 - `transformBibleHtml`: Runtime-agnostic Bible HTML transformer (requires DOM adapters)
 - `TransformBibleHtmlOptions`: Options for DOM parsing and serialization
 
+### Browser CSS (`@youversion/platform-core/browser/styles/*`)
+- `index.css`: All-in-one import (fonts + theme + bible-reader)
+- `theme.css`: `--yv-*` design tokens on `:root` + dark mode (`[data-yv-theme='dark']`) + scoped preflight
+- `bible-reader.css`: USFM typography for `[data-slot='yv-bible-renderer']` or `[data-yv-sdk-bible-reader]`
+- `fonts.css`: Google Fonts import (Inter, Source Serif 4)
+
 ## DOs / DON'Ts
 
-✅ Do: Keep this package **framework-agnostic** (no React, no environment-specific dependencies in main export)
-✅ Do: Provide pure, runtime-agnostic functions as the main export
-✅ Do: Use environment-specific entry points (`/browser`, `/server`) for convenience wrappers
+✅ Do: Keep this package **framework-agnostic**, but if you must target server or browser, those files must export from `/server` or `/browser`
 ✅ Do: Define all input/output types in `schemas/` using Zod; schemas are the single source of truth
 ✅ Do: Reuse `YouVersionAPI` base client for new service clients
 ✅ Do: Parse API responses with Zod schemas for validation
 
-❌ Don't: Import React or React-specific APIs
-❌ Don't: Bundle linkedom in browser builds (use `/server` entry point for server-side code)
-❌ Don't: Include environment-specific code in the default entry point
+❌ Don't: Import React, `window`, `document`, or browser storage APIs, but if you must target the browser, those files must export from `/browser`
 ❌ Don't: Bypass Zod validation for API responses
 ❌ Don't: Implement UI, hooks, or React state here
 
@@ -112,6 +121,8 @@ This architecture keeps the main export truly runtime-agnostic while providing e
 - Storage: Abstract via StorageStrategy interface
 - Auth: PKCE flow with pluggable storage backends
 - Error handling: Zod validation for all API responses
+- Browser CSS: Plain CSS only (no Tailwind, no preprocessors), served from `src/styles/` without a build step
+- Two export namespaces: `"."` for TS (framework-agnostic), `"./browser"` for browser environments, and `"./server` for server environments
 
 ## TESTING
 

@@ -25,6 +25,7 @@
       "import": "./dist/browser.js",
       "require": "./dist/browser.cjs"
     },
+    "./browser/styles/*": "./src/styles/*",
     "./server": {
       "types": "./dist/server.d.ts",
       "import": "./dist/server.js",

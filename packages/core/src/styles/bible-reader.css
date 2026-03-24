@@ -1,8 +1,12 @@
-/* #region Bible Reader */
-[data-slot='yv-bible-renderer'] {
+[data-slot='yv-bible-renderer'],
+[data-yv-sdk-bible-reader] {
   /* Makes it where cascading styles from the parent app do not affect the bible reader */
   all: unset;
   display: block;
+
+  width: 100%;
+  /* This helps readability and is a standard max width for text */
+  max-width: 65ch;
 
   --font-sans: 'Inter', sans-serif;
   --font-serif: 'Source Serif 4', serif;
@@ -24,7 +28,7 @@
   /* Inherit typography from root instead of forcing a fixed size on every element.
      This allows em-based sizing in headings/poetry to cascade properly to children. */
   & * {
-    font-family: inherit;
+    font-family: var(--yv-reader-font-family);
     font-size: inherit;
     line-height: inherit;
     margin: 0;
@@ -36,7 +40,7 @@
   }
 
   /* We want to make sure that the paragraph is not too wide */
-  @apply yv:*:w-full yv:text-foreground yv:*:max-w-lg;
+  color: var(--yv-foreground);
 
   /* Hide metadata and navigation classes */
   & .id, /* \id - File identification */
@@ -84,7 +88,7 @@
   }
 
   &[data-show-verse-numbers='false'] .yv-vlbl {
-    @apply yv:hidden;
+    display: none;
   }
 
   & .yv-vlbl {
@@ -1037,9 +1041,11 @@
     display: inline;
   }
 
-  /* \add - Translator addition — Bold + Italic */
+  /**
+    * \add - Translator addition — Italic
+    * {@see https://docs.usfm.bible/usfm/latest/char/features/add.html}
+    */
   & .add {
-    font-weight: bold;
     font-style: italic;
   }
 
@@ -1512,4 +1518,3 @@
     text-align: right;
   }
 }
-/* #endregion */
