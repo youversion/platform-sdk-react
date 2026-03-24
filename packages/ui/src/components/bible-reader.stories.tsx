@@ -677,9 +677,8 @@ export const VersionButtonLoadingStates: Story = {
     </div>
   ),
   play: async () => {
-    // The version button should exist in the toolbar (label varies by loading state)
-    const versionButton = screen.getByRole('button', { name: /bible version/i });
-    await expect(versionButton).toBeInTheDocument();
+    // Wait for the toolbar to mount, then capture the button in loading state
+    const versionButton = await screen.findByRole('button', { name: /bible version/i });
 
     // The delayed MSW handler guarantees the loading state is visible
     const spinner = versionButton.querySelector('[role="status"]');

@@ -17,6 +17,11 @@ highlights.ts                # HighlightsClient - user highlights
 YouVersionAPI.ts             # Base YouVersion API client
 SignInWithYouVersionPKCE.ts  # PKCE auth implementation
 StorageStrategy.ts           # Storage interface (SessionStorage, MemoryStorage)
+bible-html-transformer.ts    # Runtime-agnostic transformer (also contains browser convenience fn)
+bible-html-transformer-server.ts # Server convenience wrapper (uses linkedom)
+browser.ts                   # Browser entry point
+server.ts                    # Server entry point
+index.ts                     # Main entry point (runtime-agnostic)
 ```
 
 ## PUBLIC API
@@ -26,17 +31,57 @@ StorageStrategy.ts           # Storage interface (SessionStorage, MemoryStorage)
 - `HighlightsClient`: Manage user highlights
 - `SignInWithYouVersionPKCE()`: PKCE auth flow function
 - `SessionStorage`, `MemoryStorage`: Storage strategies
+- `transformBibleHtml`: Runtime-agnostic Bible HTML transformer (requires DOM adapters)
+- `TransformBibleHtmlOptions`: Options for DOM parsing and serialization
 
 ## DOs / DON'Ts
 
-✅ Do: Keep this package **framework-agnostic** (no React, no DOM, no browser-only APIs)
+✅ Do: Keep this package **framework-agnostic** (no React, no environment-specific dependencies in main export)
+✅ Do: Provide pure, runtime-agnostic functions as the main export
+✅ Do: Use environment-specific entry points (`/browser`, `/server`) for convenience wrappers
 ✅ Do: Define all input/output types in `schemas/` using Zod; schemas are the single source of truth
 ✅ Do: Reuse `YouVersionAPI` base client for new service clients
 ✅ Do: Parse API responses with Zod schemas for validation
 
-❌ Don't: Import React, `window`, `document`, or browser storage APIs directly
+❌ Don't: Import React or React-specific APIs
+❌ Don't: Bundle linkedom in browser builds (use `/server` entry point for server-side code)
+❌ Don't: Include environment-specific code in the default entry point
 ❌ Don't: Bypass Zod validation for API responses
 ❌ Don't: Implement UI, hooks, or React state here
+
+## ENVIRONMENT-SPECIFIC EXPORTS
+
+The Bible HTML transformer provides both a runtime-agnostic core and environment-specific convenience wrappers:
+
+- `@youversion/platform-core` → Runtime-agnostic `transformBibleHtml` (requires DOM adapters)
+- `@youversion/platform-core/browser` → Browser convenience wrapper (uses native DOMParser)
+- `@youversion/platform-core/server` → Server convenience wrapper (uses linkedom)
+
+**Examples:**
+
+```ts
+// Runtime-agnostic (works anywhere with custom adapters)
+import { transformBibleHtml } from '@youversion/platform-core';
+
+const result = transformBibleHtml(html, {
+  parseHtml: (h) => new DOMParser().parseFromString(h, 'text/html'),
+  serializeHtml: (doc) => doc.body.innerHTML,
+});
+
+// Browser convenience (uses native DOMParser)
+import { transformBibleHtml } from '@youversion/platform-core/browser';
+
+const result = transformBibleHtml(html);
+
+// Server convenience (uses linkedom, requires: npm install linkedom)
+import { transformBibleHtml } from '@youversion/platform-core/server';
+
+const result = transformBibleHtml(html);
+```
+
+**Why separate entry points?**
+
+This architecture keeps the main export truly runtime-agnostic while providing ergonomic convenience wrappers for common environments. The separate `/browser` and `/server` entry points ensure optimal bundle sizes - linkedom won't be bundled in browser builds.
 
 ## ADDING A NEW ENDPOINT OR CLIENT
 

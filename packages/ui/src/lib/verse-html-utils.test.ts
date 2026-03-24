@@ -2,10 +2,10 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect } from 'vitest';
-import { transformBibleHtml } from './verse-html-utils';
+import { transformBibleHtml } from '@youversion/platform-core/browser';
 
 describe('transformBibleHtml - intro chapter footnotes', () => {
-  it('should return notes keyed by "intro-0", "intro-1" for orphaned footnotes', () => {
+  it('should create data-verse-footnote anchors with intro keys for orphaned footnotes', () => {
     const html = `
       <div>
         <div class="ip">Some intro text<span class="yv-n f"><span class="ft">First note</span></span> and more text<span class="yv-n f"><span class="ft">Second note</span></span>.</div>
@@ -14,12 +14,12 @@ describe('transformBibleHtml - intro chapter footnotes', () => {
 
     const result = transformBibleHtml(html);
 
-    expect(result.notes['intro-0']).toBeDefined();
-    expect(result.notes['intro-1']).toBeDefined();
-    expect(Object.keys(result.notes)).toHaveLength(2);
+    expect(result.html).toContain('data-verse-footnote="intro-0"');
+    expect(result.html).toContain('data-verse-footnote="intro-1"');
+    expect(result.html).not.toContain('yv-n f');
   });
 
-  it('should set verseHtml to empty string for intro footnotes', () => {
+  it('should preserve footnote content in data-verse-footnote-content', () => {
     const html = `
       <div>
         <div class="ip">Text with a<span class="yv-n f"><span class="ft">A footnote</span></span> note.</div>
@@ -28,8 +28,8 @@ describe('transformBibleHtml - intro chapter footnotes', () => {
 
     const result = transformBibleHtml(html);
 
-    expect(result.notes['intro-0']!.verseHtml).toBe('');
-    expect(result.notes['intro-0']!.hasVerseContext).toBe(false);
+    expect(result.html).toContain('data-verse-footnote-content=');
+    expect(result.html).toContain('A footnote');
   });
 
   it('should extract correct note content for intro footnotes', () => {
@@ -41,22 +41,7 @@ describe('transformBibleHtml - intro chapter footnotes', () => {
 
     const result = transformBibleHtml(html);
 
-    expect(result.notes['intro-0']!.notes).toHaveLength(1);
-    expect(result.notes['intro-0']!.notes[0]).toContain('See Rashi');
-  });
-
-  it('should create data-verse-footnote anchors with intro keys in the output HTML', () => {
-    const html = `
-      <div>
-        <div class="ip">Before<span class="yv-n f"><span class="ft">Note A</span></span> after<span class="yv-n f"><span class="ft">Note B</span></span>.</div>
-      </div>
-    `;
-
-    const result = transformBibleHtml(html);
-
-    expect(result.html).toContain('data-verse-footnote="intro-0"');
-    expect(result.html).toContain('data-verse-footnote="intro-1"');
-    expect(result.html).not.toContain('yv-n f');
+    expect(result.html).toContain('See Rashi');
   });
 
   it('should not interfere with regular verse footnotes when mixed', () => {
@@ -71,15 +56,10 @@ describe('transformBibleHtml - intro chapter footnotes', () => {
 
     const result = transformBibleHtml(html);
 
-    expect(result.notes['intro-0']).toBeDefined();
-    expect(result.notes['intro-0']!.verseHtml).toBe('');
-    expect(result.notes['intro-0']!.hasVerseContext).toBe(false);
-    expect(result.notes['intro-0']!.notes[0]).toContain('Intro note');
-
-    expect(result.notes['1']).toBeDefined();
-    expect(result.notes['1']!.verseHtml).not.toBe('');
-    expect(result.notes['1']!.hasVerseContext).toBe(true);
-    expect(result.notes['1']!.notes[0]).toContain('Verse note');
+    expect(result.html).toContain('data-verse-footnote="intro-0"');
+    expect(result.html).toContain('data-verse-footnote="1"');
+    expect(result.html).toContain('Intro note');
+    expect(result.html).toContain('Verse note');
   });
 
   it('should insert space when orphaned footnote is between two words', () => {

@@ -235,12 +235,18 @@ export class BibleClient {
   /**
    * Fetches a passage (range of verses) from the Bible using the passages endpoint.
    * This is the new API format that returns HTML-formatted content.
+   *
+   * Note: The HTML returned from the API contains inline footnote content that should
+   * be transformed before rendering. Use `transformBibleHtml()` or
+   * `transformBibleHtmlForBrowser()` to clean up the HTML and extract footnotes.
+   *
    * @param versionId The version ID.
    * @param usfm The USFM reference (e.g., "JHN.3.1-2", "GEN.1", "JHN.3.16").
    * @param format The format to return ("html" or "text", default: "html").
    * @param include_headings Whether to include headings in the content.
    * @param include_notes Whether to include notes in the content.
    * @returns The requested BiblePassage object with HTML content.
+   *
    * @example
    * ```ts
    * // Get a single verse
@@ -251,6 +257,10 @@ export class BibleClient {
    *
    * // Get an entire chapter
    * const chapter = await bibleClient.getPassage(3034, "GEN.1");
+   *
+   * // Transform HTML before rendering
+   * const passage = await bibleClient.getPassage(3034, "JHN.3.16", "html", true, true);
+   * const transformed = transformBibleHtmlForBrowser(passage.content);
    * ```
    */
   async getPassage(

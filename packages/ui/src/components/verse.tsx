@@ -16,21 +16,29 @@ import { Footnote } from '@/components/icons/footnote';
 import { LoaderIcon } from '@/components/icons/loader';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import {
-  type FontFamily,
-  getFootnoteMarker,
-  transformBibleHtml,
-  type VerseNotes,
-} from '@/lib/verse-html-utils';
+import { type FontFamily } from '@/lib/verse-html-utils';
+import { transformBibleHtml } from '@youversion/platform-core/browser';
 
-type TransformedBibleHtml = {
-  html: string;
-  notes: Record<string, VerseNotes>;
-};
+const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
 
-type VerseFootnotePlaceholder = {
+function getFootnoteMarker(index: number): string {
+  const base = LETTERS.length;
+  if (base === 0) return String(index + 1);
+  let value = index;
+  let marker = '';
+  do {
+    marker = LETTERS[value % base] + marker;
+    value = Math.floor(value / base) - 1;
+  } while (value >= 0);
+  return marker;
+}
+
+type VerseFootnoteData = {
   verseNum: string;
   el: Element;
+  notes: string[];
+  verseHtml: string;
+  hasVerseContext: boolean;
 };
 
 type PassageResult = ReturnType<typeof usePassage>;
@@ -41,20 +49,50 @@ export type BibleTextViewPassageState = {
   error: PassageResult['error'];
 };
 
+/**
+ * Builds verse HTML for the footnote popover by cloning verse wrappers from the live DOM.
+ * Strips headings and verse labels, replaces footnote anchors with superscript markers.
+ */
+function getVerseHtmlFromDom(container: HTMLElement, verseNum: string): string {
+  const wrappers = container.querySelectorAll(`.yv-v[v="${verseNum}"]`);
+  if (!wrappers.length) return '';
+
+  const parts: string[] = [];
+  let noteIdx = 0;
+
+  wrappers.forEach((wrapper, i) => {
+    if (i > 0) parts.push(' ');
+    const clone = wrapper.cloneNode(true) as Element;
+    clone.querySelectorAll('.yv-h, .yv-vlbl').forEach((el) => el.remove());
+    clone.querySelectorAll('[data-verse-footnote]').forEach((anchor) => {
+      const sup = wrapper.ownerDocument.createElement('sup');
+      sup.className = 'yv:text-muted-foreground';
+      sup.textContent = getFootnoteMarker(noteIdx++);
+      anchor.replaceWith(sup);
+    });
+    parts.push(clone.innerHTML);
+  });
+
+  return parts.join('');
+}
+
 const VerseFootnoteButton = memo(function VerseFootnoteButton({
   verseNum,
-  verseNotes,
+  notes,
+  verseHtml,
+  hasVerseContext,
   reference,
   fontSize,
   theme,
 }: {
   verseNum: string;
-  verseNotes: VerseNotes;
+  notes: string[];
+  verseHtml: string;
+  hasVerseContext: boolean;
   reference?: string;
   fontSize?: number;
   theme: 'light' | 'dark';
 }) {
-  const { hasVerseContext } = verseNotes;
   const verseReference = reference ? `${reference}:${verseNum}` : `Verse ${verseNum}`;
   return (
     <Popover>
@@ -78,13 +116,13 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
               <div
                 className="yv:mb-3 yv:font-serif yv:*:font-serif"
                 style={{ fontSize: fontSize ? `${fontSize}px` : '1.25rem' }}
-                // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML has been run through DOMPurify and is safe
-                dangerouslySetInnerHTML={{ __html: verseNotes.verseHtml }}
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe
+                dangerouslySetInnerHTML={{ __html: verseHtml }}
               />
             </>
           )}
           <ul className="yv:list-none yv:p-0 yv:m-0 yv:space-y-1">
-            {verseNotes.notes.map((note, index) => {
+            {notes.map((note, index) => {
               const marker = getFootnoteMarker(index);
               return (
                 <li
@@ -92,7 +130,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
                   className="yv:flex yv:gap-2 yv:text-xs yv:border-b yv:border-border yv:py-2"
                 >
                   <span className="">{marker}.</span>
-                  {/** biome-ignore lint/security/noDangerouslySetInnerHtml: HTML has been run through DOMPurify and is safe */}
+                  {/** biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe */}
                   <span dangerouslySetInnerHTML={{ __html: note }} />
                 </li>
               );
@@ -127,7 +165,6 @@ function VerseUnavailableMessage(): React.ReactElement {
 
 function BibleTextHtml({
   html,
-  notes,
   reference,
   fontSize,
   theme,
@@ -136,7 +173,6 @@ function BibleTextHtml({
   highlightedVerses = {},
 }: {
   html: string;
-  notes: Record<string, VerseNotes>;
   reference?: string;
   fontSize?: number;
   theme?: 'light' | 'dark';
@@ -145,23 +181,40 @@ function BibleTextHtml({
   highlightedVerses?: Record<number, boolean>;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
-  const [placeholders, setPlaceholders] = useState<VerseFootnotePlaceholder[]>([]);
+  const [footnoteData, setFootnoteData] = useState<VerseFootnoteData[]>([]);
   const providerTheme = useTheme();
   const currentTheme = theme || providerTheme;
 
-  // Set innerHTML manually so the DOM nodes persist across renders
-  // (portals need stable element references).
+  // Set innerHTML and extract footnote data from the DOM.
+  // Portals need stable element references, so we set innerHTML manually.
   useLayoutEffect(() => {
     if (!contentRef.current) return;
     contentRef.current.innerHTML = html;
 
     const anchors = contentRef.current.querySelectorAll('[data-verse-footnote]');
-    const result: VerseFootnotePlaceholder[] = [];
+
+    // First pass: collect all notes per verse key
+    const notesByKey = new Map<string, string[]>();
     anchors.forEach((el) => {
       const verseNum = el.getAttribute('data-verse-footnote');
-      if (verseNum) result.push({ verseNum, el });
+      if (!verseNum) return;
+      const content = el.getAttribute('data-verse-footnote-content') || '';
+      const existing = notesByKey.get(verseNum);
+      if (existing) existing.push(content);
+      else notesByKey.set(verseNum, [content]);
     });
-    setPlaceholders(result);
+
+    // Second pass: create one entry per anchor (each anchor gets its own portal)
+    const result: VerseFootnoteData[] = [];
+    anchors.forEach((el) => {
+      const verseNum = el.getAttribute('data-verse-footnote');
+      if (!verseNum) return;
+      const allNotes = notesByKey.get(verseNum) || [];
+      const hasVerseContext = el.closest('.yv-v[v]') !== null;
+      const verseHtml = hasVerseContext ? getVerseHtmlFromDom(contentRef.current!, verseNum) : '';
+      result.push({ verseNum, el, notes: allNotes, verseHtml, hasVerseContext });
+    });
+    setFootnoteData(result);
   }, [html]);
 
   // Toggle selected/highlighted classes on verse wrappers.
@@ -192,21 +245,21 @@ function BibleTextHtml({
   return (
     <>
       <div ref={contentRef} onClick={handleClick} />
-      {placeholders.map(({ verseNum, el }, index) => {
-        const verseNotes = notes[verseNum];
-        if (!verseNotes) return null;
-        return createPortal(
+      {footnoteData.map(({ verseNum, el, notes, verseHtml, hasVerseContext }, index) =>
+        createPortal(
           <VerseFootnoteButton
             verseNum={verseNum}
-            verseNotes={verseNotes}
+            notes={notes}
+            verseHtml={verseHtml}
+            hasVerseContext={hasVerseContext}
             reference={reference}
             fontSize={fontSize}
             theme={currentTheme}
           />,
           el,
           `${verseNum}-${index}`,
-        );
-      })}
+        ),
+      )}
     </>
   );
 }
@@ -295,7 +348,13 @@ export const Verse = {
       }: VerseHtmlProps,
       ref,
     ): ReactNode => {
-      const transformedData = useMemo<TransformedBibleHtml>(() => transformBibleHtml(html), [html]);
+      // transformBibleHtml uses the browser's native DOMParser, which doesn't
+      // exist during SSR. Return raw html on the server; the client-side
+      // useLayoutEffect in BibleTextHtml will handle it after hydration.
+      const transformedHtml = useMemo(
+        () => (typeof window === 'undefined' ? html : transformBibleHtml(html).html),
+        [html],
+      );
       const providerTheme = useTheme();
       const currentTheme = theme || providerTheme;
 
@@ -315,8 +374,7 @@ export const Verse = {
           data-selectable={onVerseSelect ? 'true' : 'false'}
         >
           <BibleTextHtml
-            html={transformedData.html}
-            notes={transformedData.notes}
+            html={transformedHtml}
             reference={reference}
             fontSize={fontSize}
             theme={currentTheme}

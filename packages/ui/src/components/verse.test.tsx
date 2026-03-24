@@ -18,7 +18,7 @@ vi.mock('@youversion/platform-react-hooks', async () => {
 });
 
 describe('Verse.Html - XSS Protection', () => {
-  describe('DOMPurify sanitization', () => {
+  describe('sanitization', () => {
     it('should remove script tags from HTML', async () => {
       const maliciousHtml = '<p>Safe text</p><script>alert("XSS")</script>';
 
@@ -37,7 +37,7 @@ describe('Verse.Html - XSS Protection', () => {
 
       await waitFor(() => {
         const img = container.querySelector('img');
-        expect(img).not.toHaveAttribute('onerror');
+        expect(img).toBeNull();
       });
     });
 
@@ -61,10 +61,12 @@ describe('Verse.Html - XSS Protection', () => {
 
       await waitFor(() => {
         const link = container.querySelector('a');
-        expect(link).not.toHaveAttribute('href');
+        expect(link).toBeNull();
       });
     });
+  });
 
+  describe('safe HTML preservation', () => {
     it('should preserve safe HTML paragraph tags', async () => {
       const safeHtml = '<p class="yv-text">Safe Bible content</p>';
 
