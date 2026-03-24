@@ -128,24 +128,26 @@ function wrapVerseContent(doc: Document): void {
   ): void {
     if (!startParagraph) return;
 
-    let currentP: Element | null = startParagraph.nextElementSibling;
+    let currentParagraph: Element | null = startParagraph.nextElementSibling;
 
-    while (currentP && currentP !== endParagraph) {
+    while (currentParagraph && currentParagraph !== endParagraph) {
       const isHeading =
-        currentP.classList.contains('yv-h') ||
-        currentP.matches('.s1, .s2, .s3, .s4, .ms, .ms1, .ms2, .ms3, .ms4, .mr, .sp, .sr, .qa, .r');
+        currentParagraph.classList.contains('yv-h') ||
+        currentParagraph.matches(
+          '.s1, .s2, .s3, .s4, .ms, .ms1, .ms2, .ms3, .ms4, .mr, .sp, .sr, .qa, .r',
+        );
       if (isHeading) {
-        currentP = currentP.nextElementSibling;
+        currentParagraph = currentParagraph.nextElementSibling;
         continue;
       }
 
-      if (currentP.querySelector('.yv-v[v]')) break;
+      if (currentParagraph.querySelector('.yv-v[v]')) break;
 
-      if (currentP.classList.contains('p') || currentP.tagName === 'P') {
-        wrapParagraphContent(doc, currentP, verseNum);
+      if (currentParagraph.classList.contains('p') || currentParagraph.tagName === 'P') {
+        wrapParagraphContent(doc, currentParagraph, verseNum);
       }
 
-      currentP = currentP.nextElementSibling;
+      currentParagraph = currentParagraph.nextElementSibling;
     }
   }
 
