@@ -348,7 +348,13 @@ export const Verse = {
       }: VerseHtmlProps,
       ref,
     ): ReactNode => {
-      const transformedHtml = useMemo(() => transformBibleHtml(html).html, [html]);
+      // transformBibleHtml uses the browser's native DOMParser, which doesn't
+      // exist during SSR. Return raw html on the server; the client-side
+      // useLayoutEffect in BibleTextHtml will handle it after hydration.
+      const transformedHtml = useMemo(
+        () => (typeof window === 'undefined' ? html : transformBibleHtml(html).html),
+        [html],
+      );
       const providerTheme = useTheme();
       const currentTheme = theme || providerTheme;
 
