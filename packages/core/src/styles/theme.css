@@ -108,6 +108,10 @@
   --yv-sidebar-border: var(--yv-gray-15);
   --yv-sidebar-ring: var(--yv-blue-30);
 
+  --yv-font-sans: 'Inter', sans-serif;
+  --yv-font-serif: 'Source Serif 4', serif;
+  --yv-reader-font-family: var(--yv-font-serif), var(--yv-font-sans);
+
   &[data-yv-theme='dark'] {
     /* Brand colors - Dark theme */
     --yv-background: var(--yv-gray-50);

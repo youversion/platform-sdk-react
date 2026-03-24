@@ -3,9 +3,3 @@
   * import this into a layer since @import is not supported inside layers
   */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap');
-
-:root {
-  --yv-font-sans: 'Inter', sans-serif;
-  --yv-font-serif: 'Source Serif 4', serif;
-  --yv-reader-font-family: var(--yv-font-serif), var(--yv-font-sans);
-}
