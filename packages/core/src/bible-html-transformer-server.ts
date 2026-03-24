@@ -1,3 +1,5 @@
+import { DOMParser } from 'linkedom';
+
 import {
   transformBibleHtml as transformBibleHtmlWithAdapters,
   type TransformedBibleHtml,
@@ -24,20 +26,12 @@ import {
  * ```
  */
 export function transformBibleHtml(html: string): TransformedBibleHtml {
-  let DOMParser: new () => { parseFromString(html: string, type: string): Document };
-
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    ({ DOMParser } = require('linkedom') as { DOMParser: typeof DOMParser });
-  } catch {
-    throw new Error(
-      'linkedom is required for transformBibleHtml in server environments. Install it with: npm install linkedom',
-    );
-  }
-
   return transformBibleHtmlWithAdapters(html, {
     parseHtml: (h: string) =>
-      new DOMParser().parseFromString(`<html><body>${h}</body></html>`, 'text/html'),
+      new DOMParser().parseFromString(
+        `<html><body>${h}</body></html>`,
+        'text/html',
+      ) as unknown as Document,
     serializeHtml: (doc: Document) => doc.body.innerHTML,
   });
 }
