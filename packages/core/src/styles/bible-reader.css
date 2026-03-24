@@ -8,7 +8,6 @@
   /* This helps readability and is a standard max width for text */
   max-width: 65ch;
 
-  --yv-reader-font-family: var(--yv-font-serif), var(--yv-font-sans);
   --yv-reader-font-size: 20px;
   --yv-reader-line-height: 1.625;
 

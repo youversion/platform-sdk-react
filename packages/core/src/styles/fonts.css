@@ -7,4 +7,5 @@
 :root {
   --yv-font-sans: 'Inter', sans-serif;
   --yv-font-serif: 'Source Serif 4', serif;
+  --yv-reader-font-family: var(--yv-font-serif), var(--yv-font-sans);
 }
