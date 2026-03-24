@@ -231,7 +231,7 @@ function Content() {
             <LoaderIcon className="yv:size-6 yv:animate-spin yv:text-muted-foreground" />
           )}
         </span>
-        <span className="yv:font-serif yv:leading-none yv:block yv:text-[2.5rem] yv:font-normal">
+        <span className="yv:font-serif yv:leading-none yv:block yv:text-[2.5rem] yv:font-normal yv:tabular-nums">
           {chapterLabel || chapter || '-'}
         </span>
       </h1>
@@ -390,7 +390,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                 <Button
                   size="lg"
                   variant="secondary"
-                  className="yv:w-full yv:font-bold yv:text-foreground"
+                  className="yv:w-full yv:font-bold yv:text-foreground yv:tabular-nums"
                   disabled={loading}
                   aria-label="Change Bible book and chapter"
                 >
