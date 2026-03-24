@@ -16,6 +16,7 @@
   font-family: var(--yv-reader-font-family);
   font-size: var(--yv-reader-font-size);
   line-height: var(--yv-reader-line-height);
+  color: var(--yv-foreground);
 
   /* Disable text selection and tap highlights on mobile */
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
@@ -36,9 +37,6 @@
     -webkit-user-select: none;
     user-select: none;
   }
-
-  /* We want to make sure that the paragraph is not too wide */
-  color: var(--yv-foreground);
 
   /* Hide metadata and navigation classes */
   & .id, /* \id - File identification */
