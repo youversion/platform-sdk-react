@@ -2,7 +2,7 @@ const NON_BREAKING_SPACE = '\u00A0';
 
 const FOOTNOTE_KEY_ATTR = 'data-footnote-key';
 
-const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]'"»›]/;
+const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]'"'»›]/;
 
 const ALLOWED_TAGS = new Set([
   'DIV',
