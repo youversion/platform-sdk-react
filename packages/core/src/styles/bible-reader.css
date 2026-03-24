@@ -8,9 +8,7 @@
   /* This helps readability and is a standard max width for text */
   max-width: 65ch;
 
-  --font-sans: 'Inter', sans-serif;
-  --font-serif: 'Source Serif 4', serif;
-  --yv-reader-font-family: var(--font-serif), var(--font-sans);
+  --yv-reader-font-family: var(--yv-font-serif), var(--yv-font-sans);
   --yv-reader-font-size: 20px;
   --yv-reader-line-height: 1.625;
 
@@ -92,7 +90,7 @@
   }
 
   & .yv-vlbl {
-    font-family: var(--font-sans);
+    font-family: var(--yv-font-sans);
   }
 
   /* \f - Footnote container (YouVersion wrapper) */
