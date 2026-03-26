@@ -15,6 +15,7 @@ import { ExclamationCircle } from '@/components/icons/exclamation-circle';
 import { Footnote } from '@/components/icons/footnote';
 import { LoaderIcon } from '@/components/icons/loader';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { getBibleTextErrorMessage } from '@/lib/bible-text-error';
 import { cn } from '@/lib/utils';
 import { type FontFamily } from '@/lib/verse-html-utils';
 import { transformBibleHtml } from '@youversion/platform-core/browser';
@@ -142,13 +143,11 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   );
 });
 
-const VERSE_UNAVAILABLE_MESSAGE = 'Your previously selected Bible verse is unavailable.';
-
 /**
  * Displays a verse-unavailable error message with a circular exclamation
  * icon and descriptive text.
  */
-function VerseUnavailableMessage(): React.ReactElement {
+function VerseUnavailableMessage({ message }: { message: string }): React.ReactElement {
   return (
     <div
       role="alert"
@@ -156,9 +155,7 @@ function VerseUnavailableMessage(): React.ReactElement {
       className="yv:flex yv:items-center yv:justify-center yv:gap-2.5 yv:px-3 yv:py-2.5 yv:text-foreground"
     >
       <ExclamationCircle className="yv:size-5 yv:shrink-0 yv:text-foreground" />
-      <p className="yv:m-0 yv:text-[13px] yv:font-medium yv:leading-tight">
-        {VERSE_UNAVAILABLE_MESSAGE}
-      </p>
+      <p className="yv:m-0 yv:text-[13px] yv:font-medium yv:leading-tight">{message}</p>
     </div>
   );
 }
@@ -470,7 +467,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
     if (currentError) {
       return (
         <div ref={ref} data-yv-sdk data-yv-theme={currentTheme}>
-          <VerseUnavailableMessage />
+          <VerseUnavailableMessage message={getBibleTextErrorMessage(currentError)} />
         </div>
       );
     }
