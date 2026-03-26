@@ -1,6 +1,6 @@
 {
   "name": "@youversion/platform-core",
-  "version": "1.21.0",
+  "version": "1.22.0",
   "type": "module",
   "publishConfig": {
     "access": "public",

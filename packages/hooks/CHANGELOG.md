@@ -1,5 +1,16 @@
 # @youversion/platform-react-hooks
 
+## 1.22.0
+
+### Minor Changes
+
+- ff14f28: We've moved our theme, fonts, and Bible CSS from the React package into our core JS package to make it more framework agnostic so that consumers using any web framework can include our CSS without the React peer dependency.
+
+### Patch Changes
+
+- Updated dependencies [ff14f28]
+  - @youversion/platform-core@1.22.0
+
 ## 1.21.0
 
 ### Patch Changes
