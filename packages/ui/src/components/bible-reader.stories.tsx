@@ -153,7 +153,7 @@ export const DarkTheme: Story = {
     theme: 'dark',
   },
   render: (args) => (
-    <div className="yv:h-screen yv:bg-background">
+    <div data-yv-sdk className="yv:h-screen">
       <BibleReader.Root {...args}>
         <BibleReader.Content />
         <BibleReader.Toolbar />
@@ -175,7 +175,7 @@ export const CustomStyling: Story = {
     showVerseNumbers: false,
   },
   render: (args) => (
-    <div className="yv:h-screen yv:bg-background">
+    <div data-yv-sdk className="yv:h-screen">
       <BibleReader.Root {...args}>
         <BibleReader.Toolbar border="bottom" />
         <BibleReader.Content />
@@ -205,7 +205,7 @@ export const FontSizeOutOfRange: Story = {
     showVerseNumbers: false,
   },
   render: (args) => (
-    <div className="yv:h-screen yv:bg-background">
+    <div data-yv-sdk className="yv:h-screen">
       <BibleReader.Root {...args}>
         <BibleReader.Toolbar border="bottom" />
         <BibleReader.Content />
@@ -235,7 +235,7 @@ export const RealAPI: Story = {
     },
   },
   render: (args) => (
-    <div className="yv:h-screen yv:bg-background yv:dark">
+    <div data-yv-sdk className="yv:h-screen">
       <BibleReader.Root {...args}>
         <BibleReader.Content />
         <BibleReader.Toolbar />
@@ -252,7 +252,7 @@ export const FootnotesPersistAfterFontSizeChange: Story = {
     chapter: '1',
   },
   render: (args) => (
-    <div className="yv:h-screen yv:bg-background">
+    <div data-yv-sdk className="yv:h-screen">
       <BibleReader.Root {...args}>
         <BibleReader.Content />
         <BibleReader.Toolbar />
@@ -318,7 +318,7 @@ export const ThemeOverridesProvider: Story = {
     theme: 'dark',
   },
   render: (args) => (
-    <div className="yv:h-screen yv:bg-background">
+    <div data-yv-sdk className="yv:h-screen">
       <BibleReader.Root {...args}>
         <BibleReader.Content />
         <BibleReader.Toolbar />
@@ -366,7 +366,7 @@ export const SignInFlow: Story = {
     chapter: '1',
   },
   render: (args) => (
-    <div className="yv:h-screen yv:bg-background">
+    <div data-yv-sdk className="yv:h-screen">
       <BibleReader.Root {...args}>
         <BibleReader.Content />
         <BibleReader.Toolbar />
@@ -413,7 +413,7 @@ export const SignOutFlow: Story = {
     });
   },
   render: (args) => (
-    <div className="yv:h-screen yv:bg-background">
+    <div data-yv-sdk className="yv:h-screen">
       <BibleReader.Root {...args}>
         <BibleReader.Content />
         <BibleReader.Toolbar />
@@ -467,7 +467,7 @@ export const AuthenticatedWithAvatar: Story = {
     });
   },
   render: (args) => (
-    <div className="yv:h-screen yv:bg-background">
+    <div data-yv-sdk className="yv:h-screen">
       <BibleReader.Root {...args}>
         <BibleReader.Content />
         <BibleReader.Toolbar />
@@ -507,7 +507,7 @@ export const LoadsSavedPreferencesFromLocalStorage: Story = {
     localStorage.setItem('youversion-platform:reader:font-family', SOURCE_SERIF_FONT);
   },
   render: (args) => (
-    <div className="yv:h-screen yv:bg-background">
+    <div data-yv-sdk className="yv:h-screen">
       <BibleReader.Root {...args}>
         <BibleReader.Content />
         <BibleReader.Toolbar />
@@ -560,7 +560,7 @@ export const AuthenticatedWithoutAvatar: Story = {
     await setupAuthenticatedUser();
   },
   render: (args) => (
-    <div className="yv:h-screen yv:bg-background">
+    <div data-yv-sdk className="yv:h-screen">
       <BibleReader.Root {...args}>
         <BibleReader.Content />
         <BibleReader.Toolbar />
@@ -603,7 +603,7 @@ export const WithoutAuth: Story = {
     includeAuth: false,
   },
   render: (args) => (
-    <div className="yv:h-screen yv:bg-background">
+    <div data-yv-sdk className="yv:h-screen">
       <BibleReader.Root {...args}>
         <BibleReader.Content />
         <BibleReader.Toolbar />
@@ -669,7 +669,7 @@ export const VersionButtonLoadingStates: Story = {
     },
   },
   render: (args) => (
-    <div className="yv:h-screen yv:bg-background">
+    <div data-yv-sdk className="yv:h-screen">
       <BibleReader.Root {...args}>
         <BibleReader.Content />
         <BibleReader.Toolbar />
@@ -716,7 +716,7 @@ export const JoshuaIntroChapter: Story = {
     chapter: 'INTRO',
   },
   render: (args) => (
-    <div className="yv:h-screen yv:bg-background">
+    <div data-yv-sdk className="yv:h-screen">
       <BibleReader.Root {...args}>
         <BibleReader.Content />
         <BibleReader.Toolbar />
