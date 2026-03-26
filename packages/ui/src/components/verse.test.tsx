@@ -785,7 +785,7 @@ describe('BibleTextView - Error messaging', () => {
         passageState={{
           passage: null,
           loading: false,
-          error: createError('Failed to fetch'),
+          error: createError('Unexpected connection state'),
         }}
       />,
     );
@@ -846,6 +846,26 @@ describe('BibleTextView - Error messaging', () => {
           passage: null,
           loading: false,
           error: createError('Request failed with status 503', 503),
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByRole('alert')).toHaveTextContent(
+        'The Bible service is having trouble right now. Please try again in a moment.',
+      );
+    });
+  });
+
+  it('should prioritize 5xx errors over "not found" text in the message', async () => {
+    const { getByRole } = render(
+      <BibleTextView
+        reference="JHN.3.16"
+        versionId={3034}
+        passageState={{
+          passage: null,
+          loading: false,
+          error: createError('Upstream dependency not found while handling request', 503),
         }}
       />,
     );

@@ -36,12 +36,16 @@ export function getBibleTextErrorMessage(error: BibleTextError): string {
     return FORBIDDEN_MESSAGE;
   }
 
-  if (status === 404 || message.includes('not found')) {
-    return PASSAGE_NOT_FOUND_MESSAGE;
-  }
-
   if (status === 429) {
     return RATE_LIMITED_MESSAGE;
+  }
+
+  if (status !== undefined && status >= 500) {
+    return SERVER_ERROR_MESSAGE;
+  }
+
+  if (status === 404 || message.includes('not found')) {
+    return PASSAGE_NOT_FOUND_MESSAGE;
   }
 
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
@@ -50,10 +54,6 @@ export function getBibleTextErrorMessage(error: BibleTextError): string {
 
   if (isUnreachableServerError(message)) {
     return UNREACHABLE_SERVER_MESSAGE;
-  }
-
-  if (status !== undefined && status >= 500) {
-    return SERVER_ERROR_MESSAGE;
   }
 
   return GENERIC_ERROR_MESSAGE;
