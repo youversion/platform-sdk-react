@@ -11,19 +11,19 @@
     "url": "https://github.com/youversion/platform-sdk-react",
     "directory": "packages/hooks"
   },
-  "main": "./dist/index.js",
+  "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.js"
+      "require": "./dist/index.cjs"
     }
   },
   "scripts": {
-    "dev": "tsc --watch",
-    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "build": "tsup src/index.ts --format cjs,esm --dts",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -46,6 +46,7 @@
     "@vitest/coverage-v8": "4.0.4",
     "eslint": "9.38.0",
     "jsdom": "27.0.1",
+    "tsup": "8.5.0",
     "typescript": "5.9.3",
     "vitest": "4.0.4"
   }
