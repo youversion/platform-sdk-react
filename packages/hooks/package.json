@@ -22,7 +22,7 @@
     }
   },
   "scripts": {
-    "dev": "tsup src/index.ts --format cjs,esm --watch",
+    "dev": "tsup src/index.ts --format cjs,esm --watch --dts",
     "build:js": "tsup src/index.ts --format cjs,esm",
     "build:types": "tsc -p tsconfig.build.json",
     "build": "pnpm build:js && pnpm build:types",
