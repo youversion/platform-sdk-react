@@ -5,6 +5,7 @@ const SvgComponent = (props: SVGProps<SVGSVGElement>): React.ReactElement => (
   <svg
     width={106}
     height={24}
+    viewBox="0 0 106 24"
     {...props}
     xmlns="http://www.w3.org/2000/svg"
     fill="none"
