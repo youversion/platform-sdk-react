@@ -209,7 +209,7 @@ export function VerseOfTheDay({
       {showBibleAppAttribution ? (
         <div
           className={
-            'yv:grid yv:grid-cols-1 yv:mt-4 yv:justify-between yv:items-center yv:gap-2 yv:w-full yv:text-black yv:dark:text-white'
+            'yv:grid yv:grid-cols-1 yv:mt-4 yv:justify-between yv:items-center yv:gap-2 yv:w-full'
           }
         >
           <BibleAppLogoLockup data-slot="attribution" className="yv:justify-self-end" />
