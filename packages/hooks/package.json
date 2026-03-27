@@ -1,6 +1,6 @@
 {
   "name": "@youversion/platform-react-hooks",
-  "version": "1.22.0",
+  "version": "1.22.1",
   "description": "React hooks for accessing YouVersion Platform APIs with automatic loading/error states.",
   "license": "Apache-2.0",
   "type": "module",
