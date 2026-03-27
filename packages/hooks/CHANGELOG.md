@@ -1,5 +1,15 @@
 # @youversion/platform-react-hooks
 
+## 1.22.1
+
+### Patch Changes
+
+- b8b5cf0: Fixed hooks package bundling to produce proper CJS and ESM outputs, resolving import failures in strict ESM runtimes like Deno.
+- 2a64020: Updated the Bible App logo on the BibleCard and VerseOfTheDay React components to the latest designs.
+- Updated dependencies [b8b5cf0]
+- Updated dependencies [2a64020]
+  - @youversion/platform-core@1.22.1
+
 ## 1.22.0
 
 ### Minor Changes
