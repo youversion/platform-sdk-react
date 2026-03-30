@@ -1,6 +1,8 @@
 {
   "name": "@youversion/platform-core",
-  "version": "1.22.0",
+  "version": "1.22.1",
+  "description": "A type-safe TypeScript SDK for accessing the YouVersion Platform APIs. Get Bible content and build Bible-based applications.",
+  "license": "Apache-2.0",
   "type": "module",
   "publishConfig": {
     "access": "public",
