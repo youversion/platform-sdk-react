@@ -1,5 +1,14 @@
 # @youversion/platform-react-ui
 
+## 1.22.2
+
+### Patch Changes
+
+- 203a28b: fix(ui): show specific Bible passage error messages
+- Updated dependencies [203a28b]
+  - @youversion/platform-react-hooks@1.22.2
+  - @youversion/platform-core@1.22.2
+
 ## 1.22.1
 
 ### Patch Changes
