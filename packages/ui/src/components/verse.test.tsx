@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Verse, BibleTextView, type BibleTextViewPassageState } from './verse';
@@ -691,6 +691,189 @@ describe('BibleTextView - Refetch loading behavior', () => {
       const wrapper = container.querySelector('[data-yv-sdk]');
       expect(wrapper).not.toBeNull();
       expect((wrapper as HTMLElement).style.pointerEvents).toBe('');
+    });
+  });
+});
+
+describe('BibleTextView - Error messaging', () => {
+  const originalNavigator = globalThis.navigator;
+
+  function createError(message: string, status?: number): Error {
+    return Object.assign(new Error(message), status === undefined ? {} : { status });
+  }
+
+  afterEach(() => {
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: originalNavigator,
+    });
+  });
+
+  it('should show a passage-specific message for 404 errors', async () => {
+    const { getByRole } = render(
+      <BibleTextView
+        reference="PRO.30.1"
+        versionId={2530}
+        passageState={{
+          passage: null,
+          loading: false,
+          error: createError('Bible passage PRO.30.1 for version 2530 not found', 404),
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByRole('alert')).toHaveTextContent(
+        "This passage isn't available in the selected Bible version.",
+      );
+    });
+  });
+
+  it('should show an app key message for 401 errors', async () => {
+    const { getByRole } = render(
+      <BibleTextView
+        reference="JHN.3.16"
+        versionId={3034}
+        passageState={{
+          passage: null,
+          loading: false,
+          error: createError('Request failed with status 401', 401),
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByRole('alert')).toHaveTextContent(
+        "This Bible content couldn't be loaded because the app key is missing or invalid.",
+      );
+    });
+  });
+
+  it('should show a forbidden message for 403 errors', async () => {
+    const { getByRole } = render(
+      <BibleTextView
+        reference="JHN.3.16"
+        versionId={3034}
+        passageState={{
+          passage: null,
+          loading: false,
+          error: createError('Request failed with status 403', 403),
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByRole('alert')).toHaveTextContent(
+        "This app isn't allowed to access this Bible content.",
+      );
+    });
+  });
+
+  it('should show an offline message when navigator reports offline', async () => {
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: {
+        ...originalNavigator,
+        onLine: false,
+      },
+    });
+
+    const { getByRole } = render(
+      <BibleTextView
+        reference="JHN.3.16"
+        versionId={3034}
+        passageState={{
+          passage: null,
+          loading: false,
+          error: createError('Unexpected connection state'),
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByRole('alert')).toHaveTextContent(
+        "The Bible server couldn't be reached. Check your connection and try again.",
+      );
+    });
+  });
+
+  it('should show an unreachable-server message for request timeouts', async () => {
+    const { getByRole } = render(
+      <BibleTextView
+        reference="JHN.3.16"
+        versionId={3034}
+        passageState={{
+          passage: null,
+          loading: false,
+          error: createError('Request timeout after 10000ms'),
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByRole('alert')).toHaveTextContent(
+        "The Bible server couldn't be reached. Check your connection and try again.",
+      );
+    });
+  });
+
+  it('should show a rate-limit message for 429 errors', async () => {
+    const { getByRole } = render(
+      <BibleTextView
+        reference="JHN.3.16"
+        versionId={3034}
+        passageState={{
+          passage: null,
+          loading: false,
+          error: createError('Request failed with status 429', 429),
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByRole('alert')).toHaveTextContent(
+        'The Bible service is receiving too many requests right now. Please wait a moment and try again.',
+      );
+    });
+  });
+
+  it('should show a service message for 5xx errors', async () => {
+    const { getByRole } = render(
+      <BibleTextView
+        reference="JHN.3.16"
+        versionId={3034}
+        passageState={{
+          passage: null,
+          loading: false,
+          error: createError('Request failed with status 503', 503),
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByRole('alert')).toHaveTextContent(
+        'The Bible service is having trouble right now. Please try again in a moment.',
+      );
+    });
+  });
+
+  it('should prioritize 5xx errors over "not found" text in the message', async () => {
+    const { getByRole } = render(
+      <BibleTextView
+        reference="JHN.3.16"
+        versionId={3034}
+        passageState={{
+          passage: null,
+          loading: false,
+          error: createError('Upstream dependency not found while handling request', 503),
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByRole('alert')).toHaveTextContent(
+        'The Bible service is having trouble right now. Please try again in a moment.',
+      );
     });
   });
 });

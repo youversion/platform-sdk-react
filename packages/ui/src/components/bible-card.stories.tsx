@@ -163,7 +163,7 @@ export const Error: Story = {
     await waitFor(async () => {
       await expect(canvas.getByRole('heading', { level: 2, name: /error/i })).toBeInTheDocument();
       const errorMessages = canvas.getAllByText(
-        'Your previously selected Bible verse is unavailable.',
+        'The Bible service is having trouble right now. Please try again in a moment.',
       );
       await expect(errorMessages.length).toBeGreaterThan(0);
     });
