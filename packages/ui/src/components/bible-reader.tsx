@@ -377,13 +377,13 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
           <BibleChapterPicker.Trigger>
             {({ chapterLabel, currentBook, loading }) => (
               <div
-                className="yv:grid yv:grid-cols-[auto_minmax(0,1fr)_auto]
- yv:justify-start yv:grid-rows-1 yv:overflow-hidden yv:rounded-full yv:min-w-0 yv:bg-muted yv:text-muted-foreground yv:hover:bg-muted/80"
+                className="yv:grid yv:grid-cols-[auto_1fr_auto]
+ yv:justify-start yv:grid-rows-1 yv:overflow-hidden yv:rounded-full yv:min-w-30 yv:bg-muted yv:text-muted-foreground yv:hover:bg-muted/80"
               >
                 <Button
-                  className="yv:group yv:place-self-center yv:size-9 yv:touch-hitbox"
+                  className="yv:min-w-0 yv:group yv:place-self-center yv:max-size-9 yv:touch-hitbox"
                   size="icon"
-                  variant="secondary"
+                  variant="ghost"
                   disabled={!canNavigatePrevious}
                   aria-label="Previous chapter"
                   onClick={(e) => {
@@ -400,7 +400,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                 <Button
                   size="lg"
                   variant="secondary"
-                  className="yv:px-0 yv:min-w-0 yv:font-bold yv:text-foreground"
+                  className="yv:px-0 yv:font-bold yv:text-foreground yv:min-w-[5ch]"
                   disabled={loading}
                   aria-label="Change Bible book and chapter"
                 >
@@ -408,8 +408,12 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                     <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
                   ) : (
                     <>
-                      <span className="yv:truncate">{currentBook?.title || 'Select'}</span>
-                      <span className="yv:tabular-nums">{chapterLabel || ''}</span>
+                      <span className="yv:min-w-[3ch] yv:truncate">
+                        {currentBook?.title || 'Select'}
+                      </span>
+                      <span className="yv:tabular-nums yv:min-w-[1ch] yv:truncate">
+                        {chapterLabel || ''}
+                      </span>
                     </>
                   )}
                 </Button>
@@ -422,9 +426,9 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                       setChapter(nextResult.chapterId);
                     }
                   }}
-                  className="yv:group yv:place-self-center yv:size-9 yv:touch-hitbox"
+                  className="yv:min-w-0 yv:group yv:place-self-center yv:size-9 yv:touch-hitbox"
                   size="icon"
-                  variant="secondary"
+                  variant="ghost"
                   disabled={!canNavigateNext}
                   aria-label="Next chapter"
                 >
@@ -445,7 +449,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
               <Button
                 size="lg"
                 variant="secondary"
-                className="yv:font-bold yv:text-foreground"
+                className="yv:min-w-[calc(0.25rem*4*2+3ch)] yv:px-4 yv:font-bold yv:text-foreground"
                 disabled={loading}
                 aria-label={loading ? 'Loading Bible version' : 'Change Bible version'}
               >
@@ -454,7 +458,9 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                   {loading ? (
                     <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
                   ) : (
-                    version?.localized_abbreviation || 'Select version'
+                    <span className="yv:truncate">
+                      {version?.localized_abbreviation || 'Select version'}
+                    </span>
                   )}
                 </div>
               </Button>
