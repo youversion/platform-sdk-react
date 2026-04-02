@@ -4,4 +4,4 @@
 '@youversion/platform-react-ui': patch
 ---
 
-fix(ui): prevent popovers from overflowing viewport on small screens
+Fixed some UI bugs that caused the Bible Reader toolbar and its popovers to overflow past the width of the screen on mobile.
