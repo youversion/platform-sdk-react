@@ -489,12 +489,13 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                   A
                 </Button>
               </div>
+
               <div className="yv:grid yv:grid-cols-2">
                 <Button
                   className={cn(
-                    'yv:group yv:dark:bg-muted yv:rounded-r-none yv:dark:border-border yv:rounded-l-[8px] yv:h-auto',
+                    'yv:group yv:dark:bg-muted yv:rounded-r-none yv:border-r-0.5 yv:dark:border-border yv:rounded-l-[8px] yv:h-auto',
                     currentFontFamily === INTER_FONT
-                      ? 'yv:bg-black yv:dark:bg-inherit yv:text-white yv:hover:text-white yv:hover:bg-black/80'
+                      ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
                       : '',
                   )}
                   onClick={() => setCurrentFontFamily(INTER_FONT)}
@@ -511,14 +512,14 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                     >
                       Font
                     </span>
-                    <span className="yv:text-xl">Inter</span>
+                    <span className="yv:sm:text-xl yv:text-base">Inter</span>
                   </div>
                 </Button>
                 <Button
                   className={cn(
-                    'yv:group yv:dark:bg-muted yv:rounded-l-none yv:rounded-r-[8px] yv:h-auto',
+                    'yv:group yv:dark:bg-muted yv:border-l-0.5 yv:rounded-l-none yv:rounded-r-[8px] yv:h-auto',
                     currentFontFamily === SOURCE_SERIF_FONT
-                      ? 'yv:bg-black yv:dark:bg-inherit yv:text-white yv:hover:text-white yv:hover:bg-black/80'
+                      ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
                       : '',
                   )}
                   onClick={() => setCurrentFontFamily(SOURCE_SERIF_FONT)}
@@ -535,7 +536,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                     >
                       Font
                     </span>
-                    <span className="yv:text-xl yv:font-serif">Source Serif</span>
+                    <span className="yv:sm:text-xl yv:text-base yv:font-serif">Source Serif</span>
                   </div>
                 </Button>
               </div>
