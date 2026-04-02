@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 1.22.2
+
+### Patch Changes
+
+- 203a28b: fix(ui): show specific Bible passage error messages
+
 ## 1.22.1
 
 ### Patch Changes
