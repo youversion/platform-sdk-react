@@ -1,5 +1,4 @@
 import i18next, { type i18n as I18nInstance } from 'i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
 import { initReactI18next } from 'react-i18next';
 import en from './locales/en.json';
 
@@ -11,16 +10,13 @@ export const resources = {
 
 const i18n: I18nInstance = i18next.createInstance();
 
-void i18n
-  .use(LanguageDetector)
-  .use(initReactI18next)
-  .init({
-    resources,
-    defaultNS,
-    fallbackLng: 'en',
-    interpolation: {
-      escapeValue: false, // React already escapes
-    },
-  });
+void i18n.use(initReactI18next).init({
+  resources,
+  defaultNS,
+  fallbackLng: 'en',
+  interpolation: {
+    escapeValue: false, // React already escapes
+  },
+});
 
 export default i18n;
