@@ -62,6 +62,14 @@
     "react-dom": ">=19.1.0 <20.0.0",
     "react-i18next": ">=17.0.0"
   },
+  "peerDependenciesMeta": {
+    "i18next": {
+      "optional": true
+    },
+    "react-i18next": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@internal/eslint-config": "workspace:*",
     "@internal/tsconfig": "workspace:*",

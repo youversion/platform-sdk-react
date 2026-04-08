@@ -10,13 +10,18 @@ export const resources = {
 
 const i18n: I18nInstance = i18next.createInstance();
 
-void i18n.use(initReactI18next).init({
-  resources,
-  defaultNS,
-  fallbackLng: 'en',
-  interpolation: {
-    escapeValue: false, // React already escapes
-  },
-});
+i18n
+  .use(initReactI18next)
+  .init({
+    resources,
+    defaultNS,
+    fallbackLng: 'en',
+    interpolation: {
+      escapeValue: false, // React already escapes
+    },
+  })
+  .catch((err: unknown) => {
+    console.error('[youversion-sdk] i18n initialization failed:', err);
+  });
 
 export default i18n;
