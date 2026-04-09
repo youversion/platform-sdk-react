@@ -16,7 +16,7 @@ export default defineConfig({
   // Always bundle workspace packages to avoid resolution issues
   noExternal: ['@youversion/platform-core'],
   // Consumers provide these:
-  external: ['react', 'react/jsx-runtime', 'react-dom'],
+  external: ['react', 'react/jsx-runtime', 'react-dom', 'i18next', 'react-i18next'],
   dts: false, // types come from `tsc` + API Extractor
   // Embed built Tailwind CSS as a global constant for runtime injection
   // Users don't need to manually import the CSS file
