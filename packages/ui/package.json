@@ -64,10 +64,10 @@
   },
   "peerDependenciesMeta": {
     "i18next": {
-      "optional": true
+      "optional": false
     },
     "react-i18next": {
-      "optional": true
+      "optional": false
     }
   },
   "devDependencies": {
