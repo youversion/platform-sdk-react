@@ -541,10 +541,10 @@ export const LoadsSavedPreferencesFromLocalStorage: Story = {
     });
 
     const sourceSerifButton = screen.getByRole('button', { name: /source serif/i });
-    await expect(sourceSerifButton).toHaveClass('yv:bg-black');
+    await expect(sourceSerifButton).toHaveClass('yv:bg-primary');
 
     const interButton = screen.getByRole('button', { name: /inter/i });
-    await expect(interButton).not.toHaveClass('yv:bg-black');
+    await expect(interButton).not.toHaveClass('yv:bg-primary');
   },
 };
 

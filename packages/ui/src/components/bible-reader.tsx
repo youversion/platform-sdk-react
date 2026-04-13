@@ -351,13 +351,20 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
   return (
     <section
       className={cn(
-        'yv:flex yv:justify-center yv:gap-2 yv:p-4 yv:bg-background yv:border-border',
+        'yv:flex yv:justify-center yv:gap-2 yv:p-4 yv:bg-background yv:border-border yv:max-w-screen yv:overflow-x-hidden',
         border === 'top' && 'yv:border-t',
         border === 'bottom' && 'yv:border-b',
       )}
     >
-      <div className={cn('yv:flex yv:grow yv:w-full yv:items-center yv:max-w-lg yv:gap-3')}>
-        {!!yvContext?.authEnabled && <UserMenu />}
+      <div
+        className={cn(
+          'yv:grid yv:w-full yv:items-center yv:sm:max-w-lg yv:max-w-[calc(100vw-2rem)] yv:gap-3',
+          yvContext?.authEnabled
+            ? 'yv:grid-cols-[auto_1fr_auto_auto]'
+            : 'yv:grid-cols-[1fr_auto_auto]',
+        )}
+      >
+        {yvContext?.authEnabled && <UserMenu />}
 
         <BibleChapterPicker.Root
           book={book}
@@ -369,11 +376,14 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
         >
           <BibleChapterPicker.Trigger>
             {({ chapterLabel, currentBook, loading }) => (
-              <div className="yv:relative yv:grow">
+              <div
+                className="yv:grid yv:grid-cols-[auto_1fr_auto]
+ yv:justify-start yv:grid-rows-1 yv:overflow-hidden yv:rounded-full yv:min-w-30 yv:bg-muted yv:text-muted-foreground yv:hover:bg-muted/80"
+              >
                 <Button
-                  className="yv:group yv:absolute yv:place-self-center yv:top-0 yv:bottom-0 yv:left-4 yv:z-10 yv:size-6! yv:-translate-x-2 yv:touch-hitbox"
+                  className="yv:min-w-0 yv:group yv:place-self-center yv:max-size-9 yv:touch-hitbox"
                   size="icon"
-                  variant="secondary"
+                  variant="ghost"
                   disabled={!canNavigatePrevious}
                   aria-label="Previous chapter"
                   onClick={(e) => {
@@ -390,14 +400,21 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                 <Button
                   size="lg"
                   variant="secondary"
-                  className="yv:w-full yv:font-bold yv:text-foreground yv:tabular-nums"
+                  className="yv:px-0 yv:font-bold yv:text-foreground yv:min-w-[5ch]"
                   disabled={loading}
                   aria-label="Change Bible book and chapter"
                 >
                   {loading ? (
                     <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
                   ) : (
-                    `${currentBook?.title || 'Select'} ${chapterLabel || ''}`
+                    <>
+                      <span className="yv:min-w-[3ch] yv:truncate">
+                        {currentBook?.title || 'Select'}
+                      </span>
+                      <span className="yv:tabular-nums yv:min-w-[1ch] yv:truncate">
+                        {chapterLabel || ''}
+                      </span>
+                    </>
                   )}
                 </Button>
 
@@ -409,9 +426,9 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                       setChapter(nextResult.chapterId);
                     }
                   }}
-                  className="yv:group yv:absolute yv:place-self-center yv:top-0 yv:bottom-0 yv:right-4 yv:z-10 yv:size-6! yv:translate-x-2 yv:touch-hitbox"
+                  className="yv:min-w-0 yv:group yv:place-self-center yv:size-9 yv:touch-hitbox"
                   size="icon"
-                  variant="secondary"
+                  variant="ghost"
                   disabled={!canNavigateNext}
                   aria-label="Next chapter"
                 >
@@ -432,7 +449,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
               <Button
                 size="lg"
                 variant="secondary"
-                className="yv:font-bold yv:text-foreground"
+                className="yv:min-w-[calc(0.25rem*4*2+3ch)] yv:px-4 yv:font-bold yv:text-foreground"
                 disabled={loading}
                 aria-label={loading ? 'Loading Bible version' : 'Change Bible version'}
               >
@@ -441,7 +458,9 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                   {loading ? (
                     <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
                   ) : (
-                    version?.localized_abbreviation || 'Select version'
+                    <span className="yv:truncate">
+                      {version?.localized_abbreviation || 'Select version'}
+                    </span>
                   )}
                 </div>
               </Button>
@@ -489,12 +508,13 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                   A
                 </Button>
               </div>
+
               <div className="yv:grid yv:grid-cols-2">
                 <Button
                   className={cn(
-                    'yv:group yv:dark:bg-muted yv:rounded-r-none yv:dark:border-border yv:rounded-l-[8px] yv:h-auto',
+                    'yv:group yv:dark:bg-muted yv:rounded-r-none yv:border-r-0.5 yv:dark:border-border yv:rounded-l-[8px] yv:h-auto',
                     currentFontFamily === INTER_FONT
-                      ? 'yv:bg-black yv:dark:bg-inherit yv:text-white yv:hover:text-white yv:hover:bg-black/80'
+                      ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
                       : '',
                   )}
                   onClick={() => setCurrentFontFamily(INTER_FONT)}
@@ -511,14 +531,14 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                     >
                       Font
                     </span>
-                    <span className="yv:text-xl">Inter</span>
+                    <span className="yv:sm:text-xl yv:text-base">Inter</span>
                   </div>
                 </Button>
                 <Button
                   className={cn(
-                    'yv:group yv:dark:bg-muted yv:rounded-l-none yv:rounded-r-[8px] yv:h-auto',
+                    'yv:group yv:dark:bg-muted yv:border-l-0.5 yv:rounded-l-none yv:rounded-r-[8px] yv:h-auto',
                     currentFontFamily === SOURCE_SERIF_FONT
-                      ? 'yv:bg-black yv:dark:bg-inherit yv:text-white yv:hover:text-white yv:hover:bg-black/80'
+                      ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
                       : '',
                   )}
                   onClick={() => setCurrentFontFamily(SOURCE_SERIF_FONT)}
@@ -535,7 +555,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
                     >
                       Font
                     </span>
-                    <span className="yv:text-xl yv:font-serif">Source Serif</span>
+                    <span className="yv:sm:text-xl yv:text-base yv:font-serif">Source Serif</span>
                   </div>
                 </Button>
               </div>
