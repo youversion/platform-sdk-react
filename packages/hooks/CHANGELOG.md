@@ -1,5 +1,13 @@
 # @youversion/platform-react-hooks
 
+## 1.22.3
+
+### Patch Changes
+
+- 7eaf380: Fixed some UI bugs that caused the Bible Reader toolbar and its popovers to overflow past the width of the screen on mobile.
+- Updated dependencies [7eaf380]
+  - @youversion/platform-core@1.22.3
+
 ## 1.22.2
 
 ### Patch Changes
