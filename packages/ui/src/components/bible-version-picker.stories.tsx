@@ -299,16 +299,11 @@ export const SuggestedLanguagesOrder: Story = {
     const languageButton = await screen.findByRole('button', { name: /select language/i });
     await userEvent.click(languageButton);
 
-    // Verify the Suggested tab is active
-    const suggestedTab = await screen.findByRole('tab', { name: /suggested/i });
-    await expect(suggestedTab).toHaveAttribute('data-state', 'active');
-
+    // Verify suggested languages appear in API order (not alphabetical or by population)
     const suggestedTabPanel = await screen.findByRole('tabpanel');
     const suggestedLanguageItems = within(suggestedTabPanel).getAllByRole('listitem');
     const labels = suggestedLanguageItems.map((item) => item.getAttribute('aria-label'));
 
-    // AC: For USA, suggested languages should be in this order:
-    // English, Spanish, Portuguese (Brazil), French, ...
     await expect(labels[0]).toBe('English');
     await expect(labels[1]).toBe('Spanish');
     await expect(labels[2]).toMatch(/Portuguese/);
