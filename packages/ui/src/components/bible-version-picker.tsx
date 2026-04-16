@@ -269,6 +269,11 @@ function Root({
     page_size: '*',
   });
 
+  // Suggested languages = browser preference languages first, then API country
+  // languages (via country:'zz' which detects country by IP). Both lists are
+  // filtered to only languages that have at least one Bible version (uniqueLanguages).
+  // The API's order is preserved for country languages; browser order is preserved
+  // for user languages. Duplicates are removed (first occurrence wins).
   const suggestedLanguages = useMemo(() => {
     // Extract language codes from browser (e.g., 'en-US' -> 'en')
     // Map over userLanguageCodes to preserve browser preference order

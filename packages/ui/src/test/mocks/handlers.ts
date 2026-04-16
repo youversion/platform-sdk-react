@@ -90,7 +90,17 @@ export const globalHandlers = [
   }),
 
   // Languages - extended data for version picker
-  http.get('*/v1/languages', () => {
+  // When country=zz, return languages in the API's preferred order for the user's region
+  http.get('*/v1/languages', ({ request }) => {
+    const url = new URL(request.url);
+    const country = url.searchParams.get('country');
+    if (country === 'zz') {
+      const countryOrder = ['en', 'es', 'pt', 'fr', 'ko'];
+      const ordered = countryOrder
+        .map((id) => mockLanguages.data.find((l: { id: string }) => l.id === id))
+        .filter(Boolean);
+      return HttpResponse.json({ data: ordered, next_page_token: null });
+    }
     return HttpResponse.json(mockLanguages);
   }),
 
