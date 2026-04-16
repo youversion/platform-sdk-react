@@ -270,8 +270,6 @@ function Root({
   });
 
   const suggestedLanguages = useMemo(() => {
-    const countryLanguagesIds = countryLanguages?.data?.map((language) => language.id) || [];
-
     // Extract language codes from browser (e.g., 'en-US' -> 'en')
     // Map over userLanguageCodes to preserve browser preference order
     const userLanguageCodes = (typeof navigator !== 'undefined' ? navigator.languages : []).map(
@@ -281,14 +279,12 @@ function Root({
       .map((code) => uniqueLanguages.find((language) => language.id === code))
       .filter((language) => language !== undefined);
 
-    const filteredCountryLanguages = uniqueLanguages.filter((language) =>
-      countryLanguagesIds.includes(language.id),
-    );
-    const sortedCountryLanguages = filteredCountryLanguages.sort(
-      (a, b) => (b.speaking_population || 0) - (a.speaking_population || 0),
+    const uniqueLanguageIds = new Set(uniqueLanguages.map((l) => l.id));
+    const orderedCountryLanguages = (countryLanguages?.data ?? []).filter((language) =>
+      uniqueLanguageIds.has(language.id),
     );
 
-    const combined = [...userLanguages, ...sortedCountryLanguages];
+    const combined = [...userLanguages, ...orderedCountryLanguages];
 
     return [...new Map(combined.map((lang) => [lang.id, lang])).values()];
   }, [uniqueLanguages, countryLanguages]);
