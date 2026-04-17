@@ -6,6 +6,8 @@ import {
   useVersion,
 } from '@youversion/platform-react-hooks';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 import { AnimatedHeight } from '@/components/animated-height';
 import { BibleAppLogoLockup } from '@/components/bible-app-logo-lockup';
 import { LoaderIcon } from '@/components/icons/loader';
@@ -89,6 +91,7 @@ export function VerseOfTheDay({
   showBibleAppAttribution = true,
   size = 'default',
 }: VerseOfTheDayProps): React.ReactElement {
+  const { t } = useTranslation(undefined, { i18n });
   const day = React.useMemo(() => dayOfYear || getDayOfYear(new Date()), [dayOfYear]);
   const verseRef = React.useRef<HTMLDivElement>(null);
   const { data, loading: loadingVerseOfTheDay, error: errorVerseOfTheDay } = useVerseOfTheDay(day);
@@ -147,7 +150,7 @@ export function VerseOfTheDay({
               'trim-both yv:line-clamp-1 yv:text-muted-foreground yv:uppercase yv:text-xs yv:font-medium yv:select-none'
             }
           >
-            Verse of The Day
+            {t('verseOfTheDay')}
           </p>
         </div>
         {showShareButton ? (
