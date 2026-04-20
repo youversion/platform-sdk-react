@@ -17,6 +17,9 @@ export default defineConfig({
     projects: [
       // Unit tests project
       defineProject({
+        // __YV_STYLES__ is normally injected by tsup at build time (see tsup.config.ts).
+        // Tests run against source files directly, so we define it as empty here
+        // to prevent ReferenceError when <YvStyles /> renders during tests.
         define: {
           __YV_STYLES__: '""',
         },
