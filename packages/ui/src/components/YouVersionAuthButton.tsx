@@ -5,6 +5,7 @@ import { useYVAuth, useTheme } from '@youversion/platform-react-hooks';
 import { Button } from '../components/ui/button';
 import { YouVersionLogo } from './icons/youversion-logo';
 import { cn } from '../lib/utils';
+import { YvStyles } from '../lib/yv-styles';
 
 interface SignInAuthProps {
   /**
@@ -178,12 +179,50 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
 
     if (size === 'icon') {
       return (
+        <>
+          <YvStyles />
+          <Button
+            {...props}
+            data-yv-sdk
+            data-yv-theme={theme}
+            className={cn(
+              'yv:shadow-none yv:p-3 yv:h-auto yv:w-fit',
+              variant === 'outline' ? 'yv:border' : 'yv:border-none',
+              theme === 'light' ? 'yv:text-black' : 'yv:text-white',
+              className,
+            )}
+            disabled={buttonLoading ? true : (disabled ?? false)}
+            ref={ref}
+            onClick={(e) => void handleClick(e)}
+            size="icon"
+            style={{
+              ...(radius === 'rectangular'
+                ? ({
+                    '--yv-radius': '0.65rem',
+                  } as React.CSSProperties)
+                : {}),
+              borderColor: theme === 'light' ? 'var(--yv-gray-15)' : 'var(--yv-gray-35)',
+              borderWidth: '1px',
+            }}
+            variant={'default'}
+          >
+            {buttonLoading ? loadingSpinner : null}
+            <YouVersionLogo />
+            <span className="yv:sr-only">{buttonText}</span>
+          </Button>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <YvStyles />
         <Button
           {...props}
           data-yv-sdk
           data-yv-theme={theme}
           className={cn(
-            'yv:shadow-none yv:p-3 yv:h-auto yv:w-fit',
+            'yv:relative yv:shadow-none yv:w-fit',
             variant === 'outline' ? 'yv:border' : 'yv:border-none',
             theme === 'light' ? 'yv:text-black' : 'yv:text-white',
             className,
@@ -191,7 +230,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
           disabled={buttonLoading ? true : (disabled ?? false)}
           ref={ref}
           onClick={(e) => void handleClick(e)}
-          size="icon"
+          size="lg"
           style={{
             ...(radius === 'rectangular'
               ? ({
@@ -205,41 +244,9 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
         >
           {buttonLoading ? loadingSpinner : null}
           <YouVersionLogo />
-          <span className="yv:sr-only">{buttonText}</span>
+          {buttonText}
         </Button>
-      );
-    }
-
-    return (
-      <Button
-        {...props}
-        data-yv-sdk
-        data-yv-theme={theme}
-        className={cn(
-          'yv:relative yv:shadow-none yv:w-fit',
-          variant === 'outline' ? 'yv:border' : 'yv:border-none',
-          theme === 'light' ? 'yv:text-black' : 'yv:text-white',
-          className,
-        )}
-        disabled={buttonLoading ? true : (disabled ?? false)}
-        ref={ref}
-        onClick={(e) => void handleClick(e)}
-        size="lg"
-        style={{
-          ...(radius === 'rectangular'
-            ? ({
-                '--yv-radius': '0.65rem',
-              } as React.CSSProperties)
-            : {}),
-          borderColor: theme === 'light' ? 'var(--yv-gray-15)' : 'var(--yv-gray-35)',
-          borderWidth: '1px',
-        }}
-        variant={'default'}
-      >
-        {buttonLoading ? loadingSpinner : null}
-        <YouVersionLogo />
-        {buttonText}
-      </Button>
+      </>
     );
   },
 );

@@ -11,8 +11,8 @@ Complete UI layer with many Bible components: BibleTextView, VerseOfTheDay, Bibl
 ```
 components/            # Public Bible components (exported)
 components/ui/         # Internal Radix primitives (not exported)
-lib/                   # Utilities (injectStyles, utils)
-src/index.ts           # Entry point with style injection side effect
+lib/                   # Utilities (yv-styles, utils)
+src/index.ts           # Entry point (re-exports components, types, hooks)
 ```
 
 ## PUBLIC API
@@ -32,7 +32,7 @@ src/index.ts           # Entry point with style injection side effect
 
 ❌ Don't: Make raw network requests from UI components
 ❌ Don't: Import from `@youversion/platform-core` directly (except re-exports in index.ts)
-❌ Don't: Add global CSS files; all styling goes through Tailwind build and `injectStyles`
+❌ Don't: Add global CSS files; all styling goes through Tailwind build and `<YvStyles />`
 ❌ Don't: Use unprefixed Tailwind classes (causes collisions in consumer apps)
 
 ## CONVENTIONS
@@ -42,9 +42,10 @@ src/index.ts           # Entry point with style injection side effect
 - tsup for bundling, tsc for type declarations
 
 ## STYLING
-**Auto-injected on import**: `src/index.ts` calls `injectStyles()` on module load
-- CSS embedded as `__YV_STYLES__` constant via tsup define (no separate CSS file)
-- Built Tailwind CSS: `dist/tailwind.css` → injected as JS string at build time
+**React 19 `<style precedence>`**: Each public component renders `<YvStyles />` (from `src/lib/yv-styles.tsx`) which outputs a `<style href="yv-sdk-styles" precedence="yv-sdk">` element. React handles hoisting to `<head>`, deduplication, SSR streaming, and Suspense integration.
+- CSS embedded as `__YV_STYLES__` constant via tsup define
+- Built Tailwind CSS: `dist/tailwind.css` → embedded as JS string at build time
+- Static CSS also available via `import '@youversion/platform-react-ui/styles.css'` for non-React consumers
 - Each component includes a `data-yv-sdk` attribute on its root element for style scoping (consumers don't need to add this)
 - Tailwind CSS classes must be prefixed with `yv:` to prevent class naming collision when someone uses our components in their app. For example, `mt-4` becomes `yv:mt-4`
 - Light/dark mode via CSS variables (`[data-yv-sdk]`)
@@ -168,6 +169,6 @@ From repo root, `pnpm build` runs Turbo which builds in order:
 3. `@youversion/platform-react-ui` (build:css → build:js → build:types)
 
 ## CRITICAL
-- **Side effect**: importing package injects styles automatically
+- **No module side effects**: styles are rendered via React 19 `<style precedence>` in each component's render tree
 - Never skip build:css step (styles required for __YV_STYLES__ constant)
 - Always rebuild after CSS changes

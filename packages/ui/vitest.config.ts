@@ -17,6 +17,9 @@ export default defineConfig({
     projects: [
       // Unit tests project
       defineProject({
+        define: {
+          __YV_STYLES__: '""',
+        },
         resolve: {
           alias: {
             '@': path.join(dirname, 'src'),

@@ -1,10 +1,5 @@
 // React SDK main entry point
 
-import { injectStyles } from './lib/inject-styles';
-
-// Inject styles on import
-injectStyles();
-
 export * from './components';
 export * from './types';
 
