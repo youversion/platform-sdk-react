@@ -22,10 +22,18 @@ async function getHtmlAdapters(): Promise<TransformBibleHtmlOptions> {
       serializeHtml: (doc) => doc.body.innerHTML,
     };
   }
-  const { DOMParser } = await import('linkedom');
+  let linkedom;
+  try {
+    linkedom = await import('linkedom');
+  } catch {
+    throw new Error(
+      'Server-side HTML transformation requires "linkedom". ' +
+        'Install it as a dependency or pass format: "text" to skip transformation.',
+    );
+  }
   return {
     parseHtml: (h) =>
-      new DOMParser().parseFromString(
+      new linkedom.DOMParser().parseFromString(
         `<html><body>${h}</body></html>`,
         'text/html',
       ) as unknown as Document,

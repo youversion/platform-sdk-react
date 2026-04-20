@@ -340,12 +340,12 @@ export function transformBibleHtml(
 ): TransformedBibleHtml {
   const doc = options.parseHtml(html);
 
-  // Already transformed — return as-is
+  sanitizeBibleHtmlDocument(doc);
+
+  // Already transformed — skip structural transforms
   if (doc.querySelector(`[${TRANSFORMED_ATTR}]`)) {
     return { html: options.serializeHtml(doc) };
   }
-
-  sanitizeBibleHtmlDocument(doc);
   wrapVerseContent(doc);
   assignFootnoteKeys(doc);
 
