@@ -94,7 +94,7 @@ export const globalHandlers = [
   http.get('*/v1/languages', ({ request }) => {
     const url = new URL(request.url);
     const country = url.searchParams.get('country');
-    if (country === 'zz') {
+    if (country?.toUpperCase() === 'ZZ') {
       const countryOrder = ['en', 'es', 'pt', 'fr', 'ko'];
       const ordered = countryOrder
         .map((id) => mockLanguages.data.find((l: { id: string }) => l.id === id))
