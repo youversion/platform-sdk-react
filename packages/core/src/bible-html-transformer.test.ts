@@ -308,7 +308,7 @@ describe('transformBibleHtml - sanitization', () => {
     const result = transformBibleHtml(html, createAdapters());
 
     expect(result.html).not.toContain('onclick');
-    expect(result.html).toContain('<p>');
+    expect(result.html).toContain('<p');
     expect(result.html).toContain('Click me');
   });
 
@@ -336,7 +336,7 @@ describe('transformBibleHtml - sanitization', () => {
     const result = transformBibleHtml(html, createAdapters());
 
     expect(result.html).not.toContain('style');
-    expect(result.html).toContain('<div>');
+    expect(result.html).toContain('<div');
     expect(result.html).toContain('text');
   });
 
@@ -384,6 +384,34 @@ describe('transformBibleHtml - sanitization', () => {
     const result = transformBibleHtml(html, createAdapters());
 
     expect(result.html).toContain('dir="rtl"');
+  });
+});
+
+describe('transformBibleHtml - idempotency', () => {
+  it('should add data-yv-transformed marker after transforming', () => {
+    const html =
+      '<div><div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text.</div></div>';
+    const result = transformBibleHtml(html, createAdapters());
+
+    expect(result.html).toContain('data-yv-transformed');
+  });
+
+  it('should short-circuit when HTML is already transformed', () => {
+    const html =
+      '<div><div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text.</div></div>';
+    const first = transformBibleHtml(html, createAdapters());
+    const second = transformBibleHtml(first.html, createAdapters());
+
+    expect(second.html).toBe(first.html);
+  });
+
+  it('should produce identical output when transformed twice (idempotent)', () => {
+    const html =
+      '<div><div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Verse text<span class="yv-n f"><span class="ft">A note</span></span>.</div></div>';
+    const first = transformBibleHtml(html, createAdapters());
+    const second = transformBibleHtml(first.html, createAdapters());
+
+    expect(second.html).toBe(first.html);
   });
 });
 

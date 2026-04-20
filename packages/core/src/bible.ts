@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { ApiClient } from './client';
+import { transformBibleHtml, type TransformBibleHtmlOptions } from './bible-html-transformer';
 import { BibleVersionSchema } from './schemas';
 import type {
   BibleBook,
@@ -12,6 +13,25 @@ import type {
   Collection,
   VOTD,
 } from './types';
+
+async function getHtmlAdapters(): Promise<TransformBibleHtmlOptions> {
+  if (typeof globalThis.DOMParser !== 'undefined') {
+    return {
+      parseHtml: (h) =>
+        new globalThis.DOMParser().parseFromString(h, 'text/html') as unknown as Document,
+      serializeHtml: (doc) => doc.body.innerHTML,
+    };
+  }
+  const { DOMParser } = await import('linkedom');
+  return {
+    parseHtml: (h) =>
+      new DOMParser().parseFromString(
+        `<html><body>${h}</body></html>`,
+        'text/html',
+      ) as unknown as Document,
+    serializeHtml: (doc) => doc.body.innerHTML,
+  };
+}
 
 /**
  * Client for interacting with Bible API endpoints.
@@ -234,18 +254,18 @@ export class BibleClient {
 
   /**
    * Fetches a passage (range of verses) from the Bible using the passages endpoint.
-   * This is the new API format that returns HTML-formatted content.
    *
-   * Note: The HTML returned from the API contains inline footnote content that should
-   * be transformed before rendering. Use `transformBibleHtml()` or
-   * `transformBibleHtmlForBrowser()` to clean up the HTML and extract footnotes.
+   * When format is "html" (the default), the returned content is automatically
+   * sanitized and transformed — verse content is wrapped for CSS targeting,
+   * footnotes are extracted into data attributes, and verse labels get
+   * non-breaking spaces. No manual call to `transformBibleHtml` is needed.
    *
    * @param versionId The version ID.
    * @param usfm The USFM reference (e.g., "JHN.3.1-2", "GEN.1", "JHN.3.16").
    * @param format The format to return ("html" or "text", default: "html").
    * @param include_headings Whether to include headings in the content.
    * @param include_notes Whether to include notes in the content.
-   * @returns The requested BiblePassage object with HTML content.
+   * @returns The requested BiblePassage object.
    *
    * @example
    * ```ts
@@ -258,9 +278,8 @@ export class BibleClient {
    * // Get an entire chapter
    * const chapter = await bibleClient.getPassage(3034, "GEN.1");
    *
-   * // Transform HTML before rendering
-   * const passage = await bibleClient.getPassage(3034, "JHN.3.16", "html", true, true);
-   * const transformed = transformBibleHtmlForBrowser(passage.content);
+   * // Get plain text (no transformation applied)
+   * const text = await bibleClient.getPassage(3034, "JHN.3.16", "text");
    * ```
    */
   async getPassage(
@@ -286,7 +305,18 @@ export class BibleClient {
     if (include_notes !== undefined) {
       params.include_notes = include_notes;
     }
-    return this.client.get<BiblePassage>(`/v1/bibles/${versionId}/passages/${usfm}`, params);
+    const passage = await this.client.get<BiblePassage>(
+      `/v1/bibles/${versionId}/passages/${usfm}`,
+      params,
+    );
+
+    if (format === 'html') {
+      const adapters = await getHtmlAdapters();
+      const { html } = transformBibleHtml(passage.content, adapters);
+      return { ...passage, content: html };
+    }
+
+    return passage;
   }
 
   /**

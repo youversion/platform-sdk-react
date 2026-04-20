@@ -2,6 +2,8 @@ const NON_BREAKING_SPACE = '\u00A0';
 
 const FOOTNOTE_KEY_ATTR = 'data-footnote-key';
 
+const TRANSFORMED_ATTR = 'data-yv-transformed';
+
 const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]'"'»›]/;
 
 const ALLOWED_TAGS = new Set([
@@ -338,6 +340,11 @@ export function transformBibleHtml(
 ): TransformedBibleHtml {
   const doc = options.parseHtml(html);
 
+  // Already transformed — return as-is
+  if (doc.querySelector(`[${TRANSFORMED_ATTR}]`)) {
+    return { html: options.serializeHtml(doc) };
+  }
+
   sanitizeBibleHtmlDocument(doc);
   wrapVerseContent(doc);
   assignFootnoteKeys(doc);
@@ -347,6 +354,10 @@ export function transformBibleHtml(
 
   addNbspToVerseLabels(doc);
   fixIrregularTables(doc);
+
+  // Mark as transformed for idempotency
+  const root = doc.body?.firstElementChild ?? doc.body;
+  root?.setAttribute(TRANSFORMED_ATTR, '');
 
   const transformedHtml = options.serializeHtml(doc);
   return { html: transformedHtml };
