@@ -13,6 +13,9 @@ const config: StorybookConfig = {
   framework: '@storybook/react-vite',
   staticDirs: ['../public'], // This is for Storybook mock service worker
   viteFinal: (config) => {
+    // YvStyles reads __YV_STYLES__ at render time; Storybook already loads
+    // CSS via `import '../dist/tailwind.css'` in preview.tsx, so empty string is fine.
+    config.define = { ...config.define, __YV_STYLES__: '""' };
     config.resolve = {
       ...config.resolve,
       alias: {
