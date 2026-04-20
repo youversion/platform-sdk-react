@@ -269,6 +269,48 @@ export const SuggestedLanguagesTabs: Story = {
   },
 };
 
+export const SuggestedLanguagesOrder: Story = {
+  args: {
+    versionId: 111,
+  },
+  tags: ['integration'],
+  beforeEach: () => {
+    const originalLanguages = navigator.languages;
+    Object.defineProperty(navigator, 'languages', {
+      value: ['en-US'],
+      configurable: true,
+    });
+
+    return () => {
+      Object.defineProperty(navigator, 'languages', {
+        value: originalLanguages,
+        configurable: true,
+      });
+    };
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Open popover
+    const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
+    await userEvent.click(trigger);
+
+    // Open language selection
+    const languageButton = await screen.findByRole('button', { name: /select language/i });
+    await userEvent.click(languageButton);
+
+    // Verify suggested languages appear in API order (not alphabetical or by population)
+    const suggestedTabPanel = await screen.findByRole('tabpanel');
+    const suggestedLanguageItems = within(suggestedTabPanel).getAllByRole('listitem');
+    const labels = suggestedLanguageItems.map((item) => item.getAttribute('aria-label'));
+
+    await expect(labels[0]).toBe('English');
+    await expect(labels[1]).toBe('Spanish');
+    await expect(labels[2]).toMatch(/Portuguese/);
+    await expect(labels[3]).toBe('French');
+  },
+};
+
 export const InteractiveVersionSearch: Story = {
   args: {
     versionId: 111,
