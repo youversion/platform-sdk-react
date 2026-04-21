@@ -40,7 +40,7 @@ const preview: Preview = {
         items: [
           { value: 'light', title: 'Light', icon: 'sun' },
           { value: 'dark', title: 'Dark', icon: 'moon' },
-          { value: 'system', title: 'System', icon: 'monitor' },
+          { value: 'system', title: 'System', icon: 'browser' },
         ],
         dynamicTitle: true,
       },
