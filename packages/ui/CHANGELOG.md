@@ -1,5 +1,21 @@
 # @youversion/platform-react-ui
 
+## 1.23.0
+
+### Minor Changes
+
+- ad87585: Add i18next internationalization support with one extractable string ("Verse of The Day"). Adds i18next and react-i18next as dependencies. The SDK creates an isolated i18next instance (no global singleton mutation) and falls back to English by default.
+
+### Patch Changes
+
+- fda3609: fix(ui): preserve API order for suggested languages in BibleVersionPicker
+- c47ab70: chore(ui): upgrade Storybook to 10.3.5 and bump MSW deps
+- Updated dependencies [ad87585]
+- Updated dependencies [fda3609]
+- Updated dependencies [c47ab70]
+  - @youversion/platform-core@1.23.0
+  - @youversion/platform-react-hooks@1.23.0
+
 ## 1.22.3
 
 ### Patch Changes
