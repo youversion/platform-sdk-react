@@ -4,7 +4,7 @@
 
 ### Minor Changes
 
-- ad87585: Add i18next internationalization support with one extractable string ("Verse of The Day"). i18next and react-i18next are optional peer dependencies so existing consumers are unaffected. The SDK creates an isolated i18next instance (no global singleton mutation) and falls back to English by default.
+- ad87585: Add i18next internationalization support with one extractable string ("Verse of The Day"). Adds i18next and react-i18next as dependencies. The SDK creates an isolated i18next instance (no global singleton mutation) and falls back to English by default.
 
 ### Patch Changes
 
