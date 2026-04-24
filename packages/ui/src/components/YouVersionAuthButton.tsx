@@ -5,7 +5,6 @@ import { useYVAuth, useTheme } from '@youversion/platform-react-hooks';
 import { Button } from '../components/ui/button';
 import { YouVersionLogo } from './icons/youversion-logo';
 import { cn } from '../lib/utils';
-import { YvStyles } from '../lib/yv-styles';
 
 interface SignInAuthProps {
   /**
@@ -180,7 +179,6 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
     if (size === 'icon') {
       return (
         <>
-          <YvStyles />
           <Button
             {...props}
             data-yv-sdk
@@ -216,7 +214,6 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
 
     return (
       <>
-        <YvStyles />
         <Button
           {...props}
           data-yv-sdk

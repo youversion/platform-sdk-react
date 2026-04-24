@@ -29,7 +29,6 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from './ui/input-group';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from './ui/item';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { YvStyles } from '@/lib/yv-styles';
 
 export const RECENT_VERSIONS_KEY = 'youversion-platform:picker:recent-versions';
 const MAX_RECENT_VERSIONS = 3;
@@ -319,7 +318,6 @@ function Root({
 
   return (
     <>
-      <YvStyles />
       <BibleVersionPickerContext.Provider value={contextValue}>
         <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
           {children}

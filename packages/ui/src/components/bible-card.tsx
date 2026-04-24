@@ -7,7 +7,6 @@ import { useState, useEffect } from 'react';
 import { SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
 import { LoaderIcon } from './icons/loader';
 import { AnimatedHeight } from './animated-height';
-import { YvStyles } from '@/lib/yv-styles';
 
 function useDelayedLoading(loading: boolean, delay = 250): boolean {
   const [showSpinner, setShowSpinner] = useState(false);
@@ -139,7 +138,6 @@ export function BibleCard({
 
   return (
     <>
-      <YvStyles />
       <section
         data-yv-sdk
         data-yv-theme={theme}

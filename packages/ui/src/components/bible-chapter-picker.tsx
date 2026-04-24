@@ -16,7 +16,6 @@ import { Button } from './ui/button';
 import { Popover, PopoverTrigger, PopoverContent, PopoverClose } from './ui/popover';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/accordion';
 import { InputGroup, InputGroupInput, InputGroupAddon } from './ui/input-group';
-import { YvStyles } from '@/lib/yv-styles';
 
 type BibleChapterPickerContextType = {
   book: string;
@@ -136,7 +135,6 @@ function Root({
 
   return (
     <>
-      <YvStyles />
       <Popover>
         <BibleChapterPickerContext.Provider
           value={{

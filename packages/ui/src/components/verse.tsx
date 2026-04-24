@@ -18,7 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { getBibleTextErrorMessage } from '@/lib/bible-text-error';
 import { cn } from '@/lib/utils';
 import { type FontFamily } from '@/lib/verse-html-utils';
-import { YvStyles } from '@/lib/yv-styles';
+
 import { transformBibleHtml } from '@youversion/platform-core/browser';
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
@@ -450,7 +450,6 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
     if (currentLoading && !currentPassage) {
       return (
         <>
-          <YvStyles />
           <div
             ref={ref}
             data-yv-sdk
@@ -471,7 +470,6 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
     if (currentError) {
       return (
         <>
-          <YvStyles />
           <div ref={ref} data-yv-sdk data-yv-theme={currentTheme}>
             <VerseUnavailableMessage message={getBibleTextErrorMessage(currentError)} />
           </div>
@@ -481,7 +479,6 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
 
     return (
       <>
-        <YvStyles />
         <div
           data-yv-sdk
           data-yv-theme={currentTheme}

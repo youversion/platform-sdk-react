@@ -15,7 +15,9 @@ export {
 } from '@youversion/platform-core';
 
 export {
-  YouVersionProvider,
+  YouVersionProvider as BaseYouVersionProvider,
   useYVAuth,
   type UseYVAuthReturn,
 } from '@youversion/platform-react-hooks';
+
+export { YouVersionProvider } from './components/YouVersionProvider';

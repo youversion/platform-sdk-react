@@ -17,7 +17,6 @@ import { Button } from '@/components/ui/button';
 import { BibleTextView } from '@/components/verse';
 import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '@youversion/platform-core';
 import { cn } from '@/lib/utils';
-import { YvStyles } from '@/lib/yv-styles';
 
 export type VerseOfTheDayProps = {
   /**
@@ -129,7 +128,6 @@ export function VerseOfTheDay({
 
   return (
     <>
-      <YvStyles />
       <section
         data-yv-sdk
         data-yv-theme={theme}

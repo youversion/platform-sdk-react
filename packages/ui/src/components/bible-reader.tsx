@@ -32,7 +32,6 @@ import { BibleTextView } from './verse';
 import { INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
 import { ChevronLeftIcon } from './icons/chevron-left';
 import { ChevronRightIcon } from './icons/chevron-right';
-import { YvStyles } from '@/lib/yv-styles';
 
 type BibleReaderContextType = {
   book: string;
@@ -176,7 +175,6 @@ function Root({
 
   return (
     <BibleReaderContext.Provider value={contextValue}>
-      <YvStyles />
       <div
         data-yv-sdk
         data-yv-theme={theme}
