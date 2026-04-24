@@ -23,7 +23,9 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "scripts": {
     "build:types": "tsc -p tsconfig.build.json",
     "build:js": "tsup",
