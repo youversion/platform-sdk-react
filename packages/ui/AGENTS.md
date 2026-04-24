@@ -42,7 +42,7 @@ src/index.ts           # Entry point (re-exports components, types, hooks)
 - tsup for bundling, tsc for type declarations
 
 ## STYLING
-**React 19 `<style precedence>`**: Each public component renders `<YvStyles />` (from `src/lib/yv-styles.tsx`) which outputs a `<style href="yv-sdk-styles" precedence="yv-sdk">` element. React handles hoisting to `<head>`, deduplication, SSR streaming, and Suspense integration.
+**React 19 `<style precedence>`**: The `YouVersionProvider` wrapper (in `src/components/YouVersionProvider.tsx`) renders `<YvStyles />` once, which outputs a `<style href="yv-sdk-styles" precedence="yv-sdk">` element. React handles hoisting to `<head>`, deduplication, SSR streaming, and Suspense integration. Individual components do NOT render `<YvStyles />` — it's centralized in the provider.
 - CSS embedded as `__YV_STYLES__` constant via tsup define
 - Built Tailwind CSS: `dist/tailwind.css` → embedded as JS string at build time
 - Static CSS also available via `import '@youversion/platform-react-ui/styles.css'` for non-React consumers
@@ -169,6 +169,6 @@ From repo root, `pnpm build` runs Turbo which builds in order:
 3. `@youversion/platform-react-ui` (build:css → build:js → build:types)
 
 ## CRITICAL
-- **No module side effects**: styles are rendered via React 19 `<style precedence>` in each component's render tree
+- **No module side effects**: styles are rendered via React 19 `<style precedence>` in the `YouVersionProvider` wrapper
 - Never skip build:css step (styles required for __YV_STYLES__ constant)
 - Always rebuild after CSS changes

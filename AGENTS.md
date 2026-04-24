@@ -98,7 +98,7 @@ pnpm --filter @youversion/platform-react-ui build
 
 **React 19.1.2 exact pinning**: pnpm overrides lock all React packages to exact version
 
-**Tailwind CSS injection**: Auto-injected as JS constant via tsup define (no build step needed by consumers)
+**Tailwind CSS injection**: Built CSS embedded as JS constant via tsup define, rendered by `YouVersionProvider` using React 19 `<style precedence>` (no build step needed by consumers)
 
 **Changeset workflow**: pnpm changeset → pnpm version-packages → pnpm release
 
