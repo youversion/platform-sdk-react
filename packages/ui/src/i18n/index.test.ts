@@ -9,7 +9,11 @@ describe('i18n instance', () => {
   it('resolves keys from the English bundle once initialized', async () => {
     if (!i18n.isInitialized) {
       await new Promise<void>((resolve) => {
-        i18n.on('initialized', () => resolve());
+        const handler = () => {
+          i18n.off('initialized', handler);
+          resolve();
+        };
+        i18n.on('initialized', handler);
       });
     }
     expect(i18n.t('verseOfTheDay')).toBe(en.verseOfTheDay);
