@@ -449,59 +449,53 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
 
     if (currentLoading && !currentPassage) {
       return (
-        <>
-          <div
-            ref={ref}
-            data-yv-sdk
-            data-yv-theme={currentTheme}
-            role="status"
-            aria-label="Loading passage"
-            className="yv:flex yv:grow yv:items-center yv:justify-center"
-          >
-            <LoaderIcon
-              className="yv:size-4 yv:animate-spin yv:text-muted-foreground"
-              aria-hidden="true"
-            />
-          </div>
-        </>
+        <div
+          ref={ref}
+          data-yv-sdk
+          data-yv-theme={currentTheme}
+          role="status"
+          aria-label="Loading passage"
+          className="yv:flex yv:grow yv:items-center yv:justify-center"
+        >
+          <LoaderIcon
+            className="yv:size-4 yv:animate-spin yv:text-muted-foreground"
+            aria-hidden="true"
+          />
+        </div>
       );
     }
 
     if (currentError) {
       return (
-        <>
-          <div ref={ref} data-yv-sdk data-yv-theme={currentTheme}>
-            <VerseUnavailableMessage message={getBibleTextErrorMessage(currentError)} />
-          </div>
-        </>
+        <div ref={ref} data-yv-sdk data-yv-theme={currentTheme}>
+          <VerseUnavailableMessage message={getBibleTextErrorMessage(currentError)} />
+        </div>
       );
     }
 
     return (
-      <>
-        <div
-          data-yv-sdk
-          data-yv-theme={currentTheme}
-          className={cn(fetchedLoading || currentLoading ? 'yv:animate-pulse' : '')}
-          aria-busy={currentLoading || undefined}
-          style={currentLoading ? { pointerEvents: 'none' } : undefined}
-        >
-          <Verse.Html
-            ref={ref}
-            html={currentPassage?.content || ''}
-            fontFamily={fontFamily}
-            fontSize={fontSize}
-            lineHeight={lineHeight}
-            showVerseNumbers={showVerseNumbers}
-            renderNotes={renderNotes}
-            reference={currentPassage?.reference}
-            theme={currentTheme}
-            selectedVerses={selectedVerses}
-            onVerseSelect={onVerseSelect}
-            highlightedVerses={highlightedVerses}
-          />
-        </div>
-      </>
+      <div
+        data-yv-sdk
+        data-yv-theme={currentTheme}
+        className={cn(fetchedLoading || currentLoading ? 'yv:animate-pulse' : '')}
+        aria-busy={currentLoading || undefined}
+        style={currentLoading ? { pointerEvents: 'none' } : undefined}
+      >
+        <Verse.Html
+          ref={ref}
+          html={currentPassage?.content || ''}
+          fontFamily={fontFamily}
+          fontSize={fontSize}
+          lineHeight={lineHeight}
+          showVerseNumbers={showVerseNumbers}
+          renderNotes={renderNotes}
+          reference={currentPassage?.reference}
+          theme={currentTheme}
+          selectedVerses={selectedVerses}
+          onVerseSelect={onVerseSelect}
+          highlightedVerses={highlightedVerses}
+        />
+      </div>
     );
   },
 );

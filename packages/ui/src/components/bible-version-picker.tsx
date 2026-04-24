@@ -317,13 +317,11 @@ function Root({
   };
 
   return (
-    <>
-      <BibleVersionPickerContext.Provider value={contextValue}>
-        <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-          {children}
-        </Popover>
-      </BibleVersionPickerContext.Provider>
-    </>
+    <BibleVersionPickerContext.Provider value={contextValue}>
+      <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+        {children}
+      </Popover>
+    </BibleVersionPickerContext.Provider>
   );
 }
 
