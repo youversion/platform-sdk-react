@@ -543,6 +543,20 @@ describe('BibleClient', () => {
       expect(passage.content).not.toContain('data-yv-transformed');
     });
 
+    it('should skip transformation when transform is false', async () => {
+      const passage = await bibleClient.getPassage(
+        111,
+        'GEN.1.1',
+        'html',
+        undefined,
+        undefined,
+        false,
+      );
+
+      expect(passage.content).toContain('<div');
+      expect(passage.content).not.toContain('data-yv-transformed');
+    });
+
     it('should fetch a passage with include_headings', async () => {
       const passage = await bibleClient.getPassage(111, 'ROM.1', 'html', true);
 

@@ -273,6 +273,11 @@ export class BibleClient {
    * @param format The format to return ("html" or "text", default: "html").
    * @param include_headings Whether to include headings in the content.
    * @param include_notes Whether to include notes in the content.
+   * @param transform Whether to auto-transform HTML content (default: `true`).
+   *   Set to `false` to receive the original, untransformed HTML from the API.
+   *   Raw HTML is sufficient for simple display (e.g., verse-of-the-day) where
+   *   verse-level interactivity like highlighting or footnote popovers isn't
+   *   needed. Also avoids the `linkedom` dependency on the server.
    * @returns The requested BiblePassage object.
    *
    * @example
@@ -288,6 +293,9 @@ export class BibleClient {
    *
    * // Get plain text (no transformation applied)
    * const text = await bibleClient.getPassage(3034, "JHN.3.16", "text");
+   *
+   * // Get raw, untransformed HTML (no linkedom needed on server)
+   * const raw = await bibleClient.getPassage(3034, "JHN.3.16", "html", undefined, undefined, false);
    * ```
    */
   async getPassage(
@@ -296,6 +304,7 @@ export class BibleClient {
     format: 'html' | 'text' = 'html',
     include_headings?: boolean,
     include_notes?: boolean,
+    transform?: boolean,
   ): Promise<BiblePassage> {
     BibleClient.versionIdSchema.parse(versionId);
     if (include_headings !== undefined) {
@@ -318,7 +327,7 @@ export class BibleClient {
       params,
     );
 
-    if (format === 'html') {
+    if (format === 'html' && transform !== false) {
       const adapters = await getHtmlAdapters();
       const { html } = transformBibleHtml(passage.content, adapters);
       return { ...passage, content: html };
