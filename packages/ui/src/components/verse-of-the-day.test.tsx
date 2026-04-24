@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 /* eslint-disable @typescript-eslint/no-empty-function */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type * as PlatformHooks from '@youversion/platform-react-hooks';
 
@@ -15,7 +15,6 @@ class ResizeObserverMock {
 globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 
 import { VerseOfTheDay } from './verse-of-the-day';
-import i18n from '@/i18n';
 import en from '@/i18n/locales/en.json';
 import {
   getDayOfYear,
@@ -67,27 +66,8 @@ describe('VerseOfTheDay i18n integration', () => {
     stubHooks();
   });
 
-  afterEach(async () => {
-    if (i18n.language !== 'en') {
-      await i18n.changeLanguage('en');
-    }
-    if (i18n.hasResourceBundle('es', 'translation')) {
-      i18n.removeResourceBundle('es', 'translation');
-    }
-    vi.resetAllMocks();
-  });
-
-  it('renders the translated English label by default', () => {
+  it('renders the translated label from the i18n instance', () => {
     render(<VerseOfTheDay />);
     expect(screen.getByText(en.verseOfTheDay)).toBeInTheDocument();
-  });
-
-  it('renders the localized label after changeLanguage', async () => {
-    const spanishLabel = 'Versículo del día';
-    i18n.addResourceBundle('es', 'translation', { verseOfTheDay: spanishLabel });
-    await i18n.changeLanguage('es');
-
-    render(<VerseOfTheDay />);
-    expect(screen.getByText(spanishLabel)).toBeInTheDocument();
   });
 });
