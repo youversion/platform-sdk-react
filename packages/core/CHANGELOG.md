@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 1.23.1
+
+### Patch Changes
+
+- 48a86d2: fix(core): decode JWT payload claims as UTF-8 to prevent mojibake in non-ASCII user names.
+
 ## 1.23.0
 
 ### Minor Changes
