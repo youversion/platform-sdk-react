@@ -222,8 +222,11 @@ export class YouVersionAPIUsers {
     try {
       if (base64) {
         const data = atob(base64);
+        // atob() returns a byte string (Latin-1); decode bytes as UTF-8 before JSON.parse.
+        const bytes = Uint8Array.from(data, (char) => char.charCodeAt(0));
+        const decodedPayload = new TextDecoder('utf-8').decode(bytes);
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-        return JSON.parse(data);
+        return JSON.parse(decodedPayload);
       } else {
         return {};
       }
