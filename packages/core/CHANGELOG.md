@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 1.23.2
+
+### Patch Changes
+
+- da88c10: Tolerate runtimes without `crypto.randomUUID` by falling back to a non-secure timestamp+random installation id.
+
 ## 1.23.1
 
 ### Patch Changes
