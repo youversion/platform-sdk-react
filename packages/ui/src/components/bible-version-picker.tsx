@@ -10,6 +10,7 @@ import {
 } from '@youversion/platform-react-hooks';
 import {
   createContext,
+  type ReactElement,
   type ReactNode,
   useCallback,
   useContext,
@@ -51,14 +52,11 @@ function saveRecentVersions(versions: RecentVersion[]): void {
   localStorage.setItem(RECENT_VERSIONS_KEY, JSON.stringify(versions));
 }
 
-// Displays a version abbreviation (e.g., "NIV", "KJV2") centered within a fixed-size icon.
-// Dynamically scales the font size to fit the text within the container with padding.
 function VersionAbbreviationIcon({ text }: { text: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const prefixRef = useRef<HTMLDivElement>(null);
   const [prefixSize, setPrefixSize] = useState(20);
 
-  // Split abbreviation into letters and numbers (e.g., "KJV2" → "KJV", "2")
   const match = /^(.+?)(\d+)$/.exec(text) || [];
   const prefix = match[1] || text;
   const digits = match[2];
@@ -68,20 +66,17 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
     const prefixElement = prefixRef.current;
     if (!container || !prefixElement) return;
 
-    // Calculate the maximum font size that fits the text within container bounds
     const calculateSize = (element: HTMLElement | null) => {
       if (!element) return 20;
 
       const containerWidth = container.offsetWidth;
       const containerHeight = container.offsetHeight;
-      // Target 70% of width for horizontal padding, max 40% height for vertical spacing
       const targetWidth = containerWidth * 0.7;
       const maxHeight = containerHeight * 0.4;
 
       let currentSize = 20;
       let ratio = 1;
 
-      // Iteratively converge on the optimal size (5 iterations sufficient for convergence)
       for (let i = 0; i < 5; i++) {
         element.style.fontSize = `${currentSize}px`;
         const currentWidth = element.scrollWidth;
@@ -90,13 +85,11 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
         if (currentWidth > 0) {
           const widthRatio = targetWidth / currentWidth;
           const heightRatio = maxHeight / currentHeight;
-          // Use the more restrictive constraint (width or height)
           ratio = Math.min(widthRatio, heightRatio);
           currentSize = currentSize * ratio;
         }
       }
 
-      // Ensure minimum readable size of 12px
       return Math.max(12, currentSize);
     };
 
@@ -105,7 +98,6 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
       setPrefixSize(newPrefixSize);
     };
 
-    // Recalculate when container size changes (e.g., window resize, theme switch)
     const resizeObserver = new ResizeObserver(updateSizes);
     resizeObserver.observe(container);
     updateSizes();
@@ -132,80 +124,22 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
   );
 }
 
-type BibleVersionPickerContextType = {
+export type BibleVersionPickerContentProps = {
   versionId: number;
-  setVersionId: (versionId: number) => void;
-  background: 'light' | 'dark';
-  side: 'top' | 'right' | 'bottom' | 'left';
-  languages: Pick<Language, 'id' | 'display_names' | 'speaking_population'>[];
-  totalLanguages: number;
-  selectedLanguageId: string;
-  setSelectedLanguageId: (id: string) => void;
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
-  suggestedLanguages: Pick<Language, 'id' | 'display_names'>[];
-  filteredVersions: BibleVersion[];
-  isLanguagesOpen: boolean;
-  setIsLanguagesOpen: (open: boolean) => void;
-  recentVersions: RecentVersion[];
-  addRecentVersion: (version: RecentVersion) => void;
-  isPopoverOpen: boolean;
-  setIsPopoverOpen: (open: boolean) => void;
-  versionsLoading: boolean;
-};
-
-const BibleVersionPickerContext = createContext<BibleVersionPickerContextType | null>(null);
-
-function useBibleVersionPickerContext() {
-  const context = useContext(BibleVersionPickerContext);
-  if (!context) {
-    throw new Error('BibleVersionPicker components must be used within BibleVersionPicker.Root');
-  }
-  return context;
-}
-
-export type RootProps = {
-  versionId: number;
-  onVersionChange?: (versionId: number) => void;
+  onSelectVersion: (versionId: number) => void;
   background?: 'light' | 'dark';
-  side?: 'top' | 'right' | 'bottom' | 'left';
-  children?: ReactNode;
 };
 
-function Root({
-  versionId: controlledVersionId,
-  onVersionChange,
-  background,
-  side = 'top',
-  children,
-}: RootProps) {
-  const [versionId, setVersionIdState] = useControllableState({
-    prop: controlledVersionId,
-    defaultProp: controlledVersionId,
-    onChange: onVersionChange,
-  });
-
-  const providerTheme = useTheme();
-  const theme = background || providerTheme;
-
+export function BibleVersionPickerContent({
+  versionId,
+  onSelectVersion,
+}: BibleVersionPickerContentProps): ReactElement {
   const [selectedLanguageId, setSelectedLanguageId] = useState(
     (typeof navigator !== 'undefined' && navigator.languages[0]?.split('-')[0]) || 'en',
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [isLanguagesOpen, setIsLanguagesOpen] = useState(false);
   const [recentVersions, setRecentVersions] = useState<RecentVersion[]>(getRecentVersions);
-  const [isPopoverOpen, setIsPopoverOpenRaw] = useState(false);
-
-  const setIsPopoverOpen = useCallback(
-    (open: boolean) => {
-      setIsPopoverOpenRaw(open);
-      if (!open) {
-        setSearchQuery('');
-        setIsLanguagesOpen(false);
-      }
-    },
-    [setSearchQuery],
-  );
 
   const addRecentVersion = useCallback((version: RecentVersion) => {
     setRecentVersions((prev) => {
@@ -262,21 +196,13 @@ function Root({
     return [];
   }, [languages, versionsLanguageInfo?.data, getLanguageDisplayName]);
 
-  // pass zz to get the country languages based on IP Address
   const { languages: countryLanguages } = useLanguages({
     country: 'zz',
     fields: ['id', 'display_names'],
     page_size: '*',
   });
 
-  // Suggested languages = browser preference languages first, then API country
-  // languages (via country:'zz' which detects country by IP). Both lists are
-  // filtered to only languages that have at least one Bible version (uniqueLanguages).
-  // The API's order is preserved for country languages; browser order is preserved
-  // for user languages. Duplicates are removed (first occurrence wins).
   const suggestedLanguages = useMemo(() => {
-    // Extract language codes from browser (e.g., 'en-US' -> 'en')
-    // Map over userLanguageCodes to preserve browser preference order
     const userLanguageCodes = (typeof navigator !== 'undefined' ? navigator.languages : []).map(
       (code) => code.split('-')[0]?.toLowerCase(),
     );
@@ -294,90 +220,6 @@ function Root({
     return [...new Map(combined.map((lang) => [lang.id, lang])).values()];
   }, [uniqueLanguages, countryLanguages]);
 
-  const contextValue: BibleVersionPickerContextType = {
-    versionId,
-    setVersionId: setVersionIdState,
-    background: theme,
-    side,
-    languages: uniqueLanguages,
-    totalLanguages: uniqueLanguages.length || 0,
-    selectedLanguageId,
-    setSelectedLanguageId,
-    searchQuery,
-    setSearchQuery,
-    suggestedLanguages,
-    filteredVersions,
-    isLanguagesOpen,
-    setIsLanguagesOpen,
-    recentVersions,
-    addRecentVersion,
-    isPopoverOpen,
-    setIsPopoverOpen,
-    versionsLoading,
-  };
-
-  return (
-    <BibleVersionPickerContext.Provider value={contextValue}>
-      <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-        {children}
-      </Popover>
-    </BibleVersionPickerContext.Provider>
-  );
-}
-
-export type BibleVersionPickerTriggerProps = Omit<
-  React.ComponentProps<typeof PopoverTrigger>,
-  'children'
-> & {
-  children?:
-    | React.ReactNode
-    | ((props: { version: BibleVersion | null; loading: boolean }) => React.ReactNode);
-};
-
-function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTriggerProps) {
-  const { versionId, background } = useBibleVersionPickerContext();
-  const { version, loading } = useVersion(versionId);
-
-  const content =
-    typeof children === 'function'
-      ? children({ version, loading })
-      : children || (
-          <Button variant={'secondary'} className="yv:cursor-pointer yv:font-bold yv:text-base">
-            {version?.localized_abbreviation || 'Select'}
-          </Button>
-        );
-
-  return (
-    <PopoverTrigger data-yv-sdk data-yv-theme={background} asChild={asChild} {...props}>
-      {content}
-    </PopoverTrigger>
-  );
-}
-
-function Content() {
-  const {
-    searchQuery,
-    setSearchQuery,
-    filteredVersions,
-    versionId,
-    setVersionId,
-    background,
-    side,
-    setIsLanguagesOpen,
-    isLanguagesOpen,
-    totalLanguages,
-    selectedLanguageId,
-    setSelectedLanguageId,
-    recentVersions,
-    addRecentVersion,
-    suggestedLanguages,
-    languages,
-    setIsPopoverOpen,
-    versionsLoading,
-  } = useBibleVersionPickerContext();
-  const providerTheme = useTheme();
-  const theme = background || providerTheme;
-
   const filteredRecentVersions = useMemo(() => {
     if (!searchQuery.trim()) return recentVersions;
     const query = searchQuery.trim().toLowerCase();
@@ -388,7 +230,7 @@ function Content() {
         v.abbreviation?.toLowerCase().includes(query),
     );
   }, [recentVersions, searchQuery]);
-  // Fetch the selected language details (may not be in the paginated languages list)
+
   const { language: selectedLanguage } = useLanguage(selectedLanguageId);
 
   const handleSelectLanguage = (languageId: string) => {
@@ -397,7 +239,7 @@ function Content() {
   };
 
   const handleSelectVersion = (version: BibleVersion | RecentVersion) => {
-    setVersionId(version.id);
+    onSelectVersion(version.id);
     addRecentVersion({
       id: version.id,
       title: version.title,
@@ -405,55 +247,43 @@ function Content() {
       abbreviation: version.abbreviation,
     });
     setIsLanguagesOpen(false);
-    setIsPopoverOpen(false);
   };
 
-  function LanguagePicker() {
-    return (
-      <Button
-        aria-label="Select language"
-        className="yv:ml-auto yv:bg-card yv:border yv:border-transparent yv:hover:bg-card yv:hover:border-border yv:max-w-40"
-        size="sm"
-        onClick={() => setIsLanguagesOpen(true)}
-        variant="secondary"
-      >
-        <GlobeIcon className="yv:size-4" />
-        <span className="yv:text-sm yv:font-medium yv:truncate">
-          {selectedLanguage?.display_names?.en || selectedLanguage?.language}
-        </span>
-        <Badge
-          variant="secondary"
-          className="yv:h-5 yv:min-w-5 yv:rounded-full yv:px-1 yv:font-mono yv:tabular-nums"
-        >
-          {versionsLoading ? (
-            <LoaderIcon className="yv:size-3 yv:animate-spin" />
-          ) : (
-            filteredVersions.length + filteredRecentVersions.length
-          )}
-        </Badge>
-      </Button>
-    );
-  }
-
   return (
-    <PopoverContent
-      sideOffset={16}
-      className="yv:h-[66svh]"
-      heading="Bible Versions"
-      headerChild={<LanguagePicker />}
-      theme={theme}
-      side={side}
-    >
-      {/* Versions View */}
+    <>
       <div
-        className={`yv:overflow-y-auto yv:h-full yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center ${
+        className={`yv:h-full yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center ${
           isLanguagesOpen
             ? 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
             : 'yv:opacity-100 yv:pointer-events-auto yv:blur-none yv:scale-100'
         }`}
       >
+        <div className="yv:flex yv:items-center yv:gap-2 yv:px-4 yv:py-1">
+          <Button
+            aria-label="Select language"
+            className="yv:ml-auto yv:bg-card yv:border yv:border-transparent yv:hover:bg-card yv:hover:border-border yv:max-w-40"
+            size="sm"
+            onClick={() => setIsLanguagesOpen(true)}
+            variant="secondary"
+          >
+            <GlobeIcon className="yv:size-4" />
+            <span className="yv:text-sm yv:font-medium yv:truncate">
+              {selectedLanguage?.display_names?.en || selectedLanguage?.language}
+            </span>
+            <Badge
+              variant="secondary"
+              className="yv:h-5 yv:min-w-5 yv:rounded-full yv:px-1 yv:font-mono yv:tabular-nums"
+            >
+              {versionsLoading ? (
+                <LoaderIcon className="yv:size-3 yv:animate-spin" />
+              ) : (
+                filteredVersions.length + filteredRecentVersions.length
+              )}
+            </Badge>
+          </Button>
+        </div>
+
         <div className="yv:flex-1 yv:overflow-y-auto yv:py-2">
-          {/* Recent Versions */}
           {filteredRecentVersions.length > 0 && (
             <>
               <h2 className="yv:px-4 yv:py-2 yv:text-lg yv:font-bold">Recently Used Versions</h2>
@@ -493,7 +323,6 @@ function Content() {
               </ItemGroup>
             </>
           )}
-          {/* All Versions */}
           {filteredVersions.length > 0 ? (
             <ItemGroup data-testid="version-list">
               <h3 className="yv:px-4 yv:py-2 yv:font-bold">All Versions</h3>
@@ -557,7 +386,6 @@ function Content() {
         </section>
       </div>
 
-      {/* Languages View */}
       <div
         className={`yv:h-full yv:absolute yv:inset-0 yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center ${
           isLanguagesOpen
@@ -587,7 +415,7 @@ function Content() {
               Suggested
             </TabsTrigger>
             <TabsTrigger className="yv:p-0" value="all">
-              All ({totalLanguages})
+              All ({uniqueLanguages.length})
             </TabsTrigger>
           </TabsList>
 
@@ -637,7 +465,7 @@ function Content() {
           <TabsContent value="all" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
             <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">All Languages</h3>
             <ItemGroup className="yv:gap-1">
-              {languages.map((language) => (
+              {uniqueLanguages.map((language) => (
                 <Item
                   key={language.id}
                   className={cn(
@@ -670,6 +498,163 @@ function Content() {
           </TabsContent>
         </Tabs>
       </div>
+    </>
+  );
+}
+
+type BibleVersionPickerContextType = {
+  versionId: number;
+  setVersionId: (versionId: number) => void;
+  background: 'light' | 'dark';
+  side: 'top' | 'right' | 'bottom' | 'left';
+  onContentClick?: (props: BibleVersionPickerContentProps) => void;
+  isPopoverOpen: boolean;
+  setIsPopoverOpen: (open: boolean) => void;
+  openCount: number;
+};
+
+const BibleVersionPickerContext = createContext<BibleVersionPickerContextType | null>(null);
+
+function useBibleVersionPickerContext() {
+  const context = useContext(BibleVersionPickerContext);
+  if (!context) {
+    throw new Error('BibleVersionPicker components must be used within BibleVersionPicker.Root');
+  }
+  return context;
+}
+
+export type RootProps = {
+  versionId: number;
+  onVersionChange?: (versionId: number) => void;
+  background?: 'light' | 'dark';
+  side?: 'top' | 'right' | 'bottom' | 'left';
+  onContentClick?: (props: BibleVersionPickerContentProps) => void;
+  children?: ReactNode;
+};
+
+function Root({
+  versionId: controlledVersionId,
+  onVersionChange,
+  background,
+  side = 'top',
+  onContentClick,
+  children,
+}: RootProps) {
+  const [versionId, setVersionIdState] = useControllableState({
+    prop: controlledVersionId,
+    defaultProp: controlledVersionId,
+    onChange: onVersionChange,
+  });
+
+  const providerTheme = useTheme();
+  const theme = background || providerTheme;
+
+  const [isPopoverOpen, setIsPopoverOpenRaw] = useState(false);
+  const [openCount, setOpenCount] = useState(0);
+
+  const setIsPopoverOpen = useCallback((open: boolean) => {
+    setIsPopoverOpenRaw(open);
+    if (open) setOpenCount((c) => c + 1);
+  }, []);
+
+  const contextValue: BibleVersionPickerContextType = {
+    versionId,
+    setVersionId: setVersionIdState,
+    background: theme,
+    side,
+    onContentClick,
+    isPopoverOpen,
+    setIsPopoverOpen,
+    openCount,
+  };
+
+  if (onContentClick) {
+    return (
+      <BibleVersionPickerContext.Provider value={contextValue}>
+        {children}
+      </BibleVersionPickerContext.Provider>
+    );
+  }
+
+  return (
+    <BibleVersionPickerContext.Provider value={contextValue}>
+      <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+        {children}
+      </Popover>
+    </BibleVersionPickerContext.Provider>
+  );
+}
+
+export type BibleVersionPickerTriggerProps = Omit<
+  React.ComponentProps<typeof PopoverTrigger>,
+  'children'
+> & {
+  children?:
+    | React.ReactNode
+    | ((props: { version: BibleVersion | null; loading: boolean }) => React.ReactNode);
+};
+
+function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTriggerProps) {
+  const { versionId, background, onContentClick, setVersionId } = useBibleVersionPickerContext();
+  const { version, loading } = useVersion(versionId);
+
+  const content =
+    typeof children === 'function'
+      ? children({ version, loading })
+      : children || (
+          <Button variant={'secondary'} className="yv:cursor-pointer yv:font-bold yv:text-base">
+            {version?.localized_abbreviation || 'Select'}
+          </Button>
+        );
+
+  if (onContentClick) {
+    const contentProps: BibleVersionPickerContentProps = {
+      versionId,
+      onSelectVersion: (id) => setVersionId(id),
+      background,
+    };
+    return (
+      <div
+        data-yv-sdk
+        data-yv-theme={background}
+        onClick={() => onContentClick(contentProps)}
+        className="yv:inline-flex yv:cursor-pointer"
+      >
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <PopoverTrigger data-yv-sdk data-yv-theme={background} asChild={asChild} {...props}>
+      {content}
+    </PopoverTrigger>
+  );
+}
+
+function Content() {
+  const { versionId, setVersionId, background, side, onContentClick, setIsPopoverOpen, openCount } =
+    useBibleVersionPickerContext();
+
+  if (onContentClick) return null;
+
+  return (
+    <PopoverContent
+      sideOffset={16}
+      className="yv:h-[66svh]"
+      heading="Bible Versions"
+      theme={background}
+      side={side}
+    >
+      <BibleVersionPickerContent
+        key={openCount}
+        versionId={versionId}
+        onSelectVersion={(id) => {
+          setVersionId(id);
+          setIsPopoverOpen(false);
+        }}
+        background={background}
+      />
     </PopoverContent>
   );
 }

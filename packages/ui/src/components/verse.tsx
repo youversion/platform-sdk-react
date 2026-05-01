@@ -77,6 +77,56 @@ function getVerseHtmlFromDom(container: HTMLElement, verseNum: string): string {
   return parts.join('');
 }
 
+export type FootnoteContentProps = {
+  verseNum: string;
+  notes: string[];
+  verseHtml: string;
+  hasVerseContext: boolean;
+  reference?: string;
+  fontSize?: number;
+};
+
+export function FootnoteContent({
+  verseNum,
+  notes,
+  verseHtml,
+  hasVerseContext,
+  reference,
+  fontSize,
+}: FootnoteContentProps): React.ReactElement {
+  const verseReference = reference ? `${reference}:${verseNum}` : `Verse ${verseNum}`;
+  return (
+    <div className="yv:p-3 yv:overflow-y-auto yv:max-h-[33svh]">
+      {hasVerseContext && (
+        <>
+          <div className="yv:font-bold yv:mb-2">{verseReference}</div>
+          <div
+            className="yv:mb-3 yv:font-serif yv:*:font-serif"
+            style={{ fontSize: fontSize ? `${fontSize}px` : '1.25rem' }}
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe
+            dangerouslySetInnerHTML={{ __html: verseHtml }}
+          />
+        </>
+      )}
+      <ul className="yv:list-none yv:p-0 yv:m-0 yv:space-y-1">
+        {notes.map((note, index) => {
+          const marker = getFootnoteMarker(index);
+          return (
+            <li
+              key={marker}
+              className="yv:flex yv:gap-2 yv:text-xs yv:border-b yv:border-border yv:py-2"
+            >
+              <span className="">{marker}.</span>
+              {/** biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe */}
+              <span dangerouslySetInnerHTML={{ __html: note }} />
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 const VerseFootnoteButton = memo(function VerseFootnoteButton({
   verseNum,
   notes,
@@ -85,6 +135,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   reference,
   fontSize,
   theme,
+  onFootnoteContentClick,
 }: {
   verseNum: string;
   notes: string[];
@@ -93,8 +144,31 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   reference?: string;
   fontSize?: number;
   theme: 'light' | 'dark';
+  onFootnoteContentClick?: (props: FootnoteContentProps) => void;
 }) {
-  const verseReference = reference ? `${reference}:${verseNum}` : `Verse ${verseNum}`;
+  if (onFootnoteContentClick) {
+    return (
+      <button
+        type="button"
+        data-yv-sdk
+        data-yv-theme={theme}
+        className="yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1! yv:text-(--yv-gray-20)"
+        onClick={() =>
+          onFootnoteContentClick({
+            verseNum,
+            notes,
+            verseHtml,
+            hasVerseContext,
+            reference,
+            fontSize,
+          })
+        }
+      >
+        <Footnote className="yv:size-[1.5em]" />
+      </button>
+    );
+  }
+
   return (
     <Popover>
       <PopoverTrigger data-yv-sdk data-yv-theme={theme} asChild>
@@ -110,34 +184,14 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
         heading="Footnotes"
         theme={theme}
       >
-        <div className="yv:p-3 yv:overflow-y-auto yv:max-h-[33svh]">
-          {hasVerseContext && (
-            <>
-              <div className="yv:font-bold yv:mb-2">{verseReference}</div>
-              <div
-                className="yv:mb-3 yv:font-serif yv:*:font-serif"
-                style={{ fontSize: fontSize ? `${fontSize}px` : '1.25rem' }}
-                // biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe
-                dangerouslySetInnerHTML={{ __html: verseHtml }}
-              />
-            </>
-          )}
-          <ul className="yv:list-none yv:p-0 yv:m-0 yv:space-y-1">
-            {notes.map((note, index) => {
-              const marker = getFootnoteMarker(index);
-              return (
-                <li
-                  key={marker}
-                  className="yv:flex yv:gap-2 yv:text-xs yv:border-b yv:border-border yv:py-2"
-                >
-                  <span className="">{marker}.</span>
-                  {/** biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe */}
-                  <span dangerouslySetInnerHTML={{ __html: note }} />
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+        <FootnoteContent
+          verseNum={verseNum}
+          notes={notes}
+          verseHtml={verseHtml}
+          hasVerseContext={hasVerseContext}
+          reference={reference}
+          fontSize={fontSize}
+        />
       </PopoverContent>
     </Popover>
   );
@@ -168,6 +222,7 @@ function BibleTextHtml({
   selectedVerses = [],
   onVerseSelect,
   highlightedVerses = {},
+  onFootnoteContentClick,
 }: {
   html: string;
   reference?: string;
@@ -176,6 +231,7 @@ function BibleTextHtml({
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
   highlightedVerses?: Record<number, boolean>;
+  onFootnoteContentClick?: (props: FootnoteContentProps) => void;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [footnoteData, setFootnoteData] = useState<VerseFootnoteData[]>([]);
@@ -252,6 +308,7 @@ function BibleTextHtml({
             reference={reference}
             fontSize={fontSize}
             theme={currentTheme}
+            onFootnoteContentClick={onFootnoteContentClick}
           />,
           el,
           `${verseNum}-${index}`,
@@ -291,6 +348,7 @@ type VerseHtmlProps = {
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
   highlightedVerses?: Record<number, boolean>;
+  onFootnoteContentClick?: (props: FootnoteContentProps) => void;
 };
 
 /**
@@ -342,6 +400,7 @@ export const Verse = {
         selectedVerses,
         onVerseSelect,
         highlightedVerses,
+        onFootnoteContentClick,
       }: VerseHtmlProps,
       ref,
     ): ReactNode => {
@@ -378,6 +437,7 @@ export const Verse = {
             selectedVerses={selectedVerses}
             onVerseSelect={onVerseSelect}
             highlightedVerses={highlightedVerses}
+            onFootnoteContentClick={onFootnoteContentClick}
           />
         </section>
       );
@@ -398,6 +458,7 @@ export type BibleTextViewProps = {
   onVerseSelect?: (verses: number[]) => void;
   highlightedVerses?: Record<number, boolean>;
   passageState?: Partial<BibleTextViewPassageState>;
+  onFootnoteContentClick?: (props: FootnoteContentProps) => void;
 };
 
 /**
@@ -418,6 +479,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
       onVerseSelect,
       highlightedVerses,
       passageState,
+      onFootnoteContentClick,
     },
     ref,
   ): React.ReactElement => {
@@ -493,6 +555,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
           selectedVerses={selectedVerses}
           onVerseSelect={onVerseSelect}
           highlightedVerses={highlightedVerses}
+          onFootnoteContentClick={onFootnoteContentClick}
         />
       </div>
     );

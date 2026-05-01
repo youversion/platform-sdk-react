@@ -5,6 +5,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  type ReactElement,
   type ReactNode,
 } from 'react';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
@@ -13,9 +14,151 @@ import { type BibleBook } from '@youversion/platform-core';
 import { InfoIcon } from './icons/info';
 import { SearchIcon } from './icons/search';
 import { Button } from './ui/button';
-import { Popover, PopoverTrigger, PopoverContent, PopoverClose } from './ui/popover';
+import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/accordion';
 import { InputGroup, InputGroupInput, InputGroupAddon } from './ui/input-group';
+
+export type BibleChapterPickerContentProps = {
+  versionId: number;
+  defaultBook?: string;
+  onSelectChapter: (bookId: string, chapterId: string) => void;
+  background?: 'light' | 'dark';
+};
+
+export function BibleChapterPickerContent({
+  versionId,
+  defaultBook,
+  onSelectChapter,
+}: BibleChapterPickerContentProps): ReactElement {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedBook, setExpandedBook] = useState<string | null>(defaultBook || null);
+  const bookElementsRef = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const { books } = useBooks(versionId);
+
+  const filteredBooks = useMemo(() => {
+    if (!books?.data) return null;
+    if (searchQuery.trim() === '') return books.data;
+    return books.data.filter((book) =>
+      book.title?.toLowerCase().includes(searchQuery.toLowerCase()),
+    );
+  }, [books?.data, searchQuery]);
+
+  useEffect(() => {
+    if (!expandedBook) return;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      if (!controller.signal.aborted) {
+        bookElementsRef.current[expandedBook]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      }
+    }, 200);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
+  }, [expandedBook]);
+
+  const handleChapterClick = (bookId: string, passageId: string) => {
+    const chapterId = passageId.split('.').pop() || '';
+    if (chapterId && bookId) {
+      onSelectChapter(bookId, chapterId);
+      setSearchQuery('');
+    }
+  };
+
+  return (
+    <>
+      <Accordion
+        className="yv:relative yv:overflow-y-auto yv:bg-background yv:px-6"
+        type="single"
+        collapsible
+        defaultValue={defaultBook || 'GEN'}
+        onValueChange={setExpandedBook}
+      >
+        {filteredBooks && filteredBooks.length > 0 ? (
+          filteredBooks.map((bookItem) => (
+            <AccordionItem
+              className="yv:border-b yv:border-border"
+              key={bookItem.id}
+              value={bookItem.id}
+              id={bookItem.id}
+              ref={(node) => {
+                if (node) {
+                  bookElementsRef.current[bookItem.id] = node;
+                } else {
+                  delete bookElementsRef.current[bookItem.id];
+                }
+              }}
+            >
+              <AccordionTrigger className="yv:rounded-none">{bookItem.title}</AccordionTrigger>
+              <AccordionContent>
+                {bookItem.chapters && bookItem.chapters.length > 0 ? (
+                  <div className="yv:grid yv:grid-cols-5 yv:gap-2">
+                    {bookItem.intro?.id && bookItem.intro?.passage_id ? (
+                      <Button
+                        key={`${bookItem.id}-${bookItem.intro.passage_id}`}
+                        variant="secondary"
+                        size="icon"
+                        className="yv:aspect-square yv:w-full yv:h-full yv:flex yv:items-center yv:justify-center yv:rounded-[4px]"
+                        onClick={() =>
+                          handleChapterClick(bookItem.id, bookItem.intro?.passage_id || '')
+                        }
+                      >
+                        <InfoIcon />
+                      </Button>
+                    ) : null}
+                    {bookItem.chapters.map((chapterRef) => {
+                      const chapterId = chapterRef.passage_id.split('.').pop() || '';
+                      return (
+                        <Button
+                          key={`${bookItem.id}-${chapterRef.passage_id}`}
+                          variant="secondary"
+                          size="icon"
+                          className="yv:aspect-square yv:w-full yv:h-full yv:flex yv:items-center yv:justify-center yv:rounded-[4px]"
+                          onClick={() => handleChapterClick(bookItem.id, chapterRef.passage_id)}
+                        >
+                          {chapterId}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="yv:w-full yv:flex yv:items-center yv:justify-center yv:py-4 yv:text-muted-foreground yv:text-sm">
+                    No chapters available
+                  </div>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          ))
+        ) : (
+          <div className="yv:w-full yv:h-full yv:flex yv:items-center yv:justify-center yv:py-4 yv:text-center yv:text-balance yv:text-muted-foreground yv:text-sm">
+            We're sorry, there are no Bible results for this search.
+          </div>
+        )}
+      </Accordion>
+
+      <section className="yv:bg-muted yv:border-s yv:border-muted yv:p-4 yv:w-full">
+        <InputGroup className="yv:rounded-3xl yv:bg-background yv:shadow-none yv:border-border">
+          <InputGroupInput
+            tabIndex={1}
+            type="text"
+            placeholder="Search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <InputGroupAddon align="inline-start">
+            <SearchIcon className="yv:size-5 yv:text-muted-foreground" />
+          </InputGroupAddon>
+        </InputGroup>
+      </section>
+    </>
+  );
+}
 
 type BibleChapterPickerContextType = {
   book: string;
@@ -24,7 +167,10 @@ type BibleChapterPickerContextType = {
   setChapter: (chapter: string) => void;
   versionId: number;
   background: 'light' | 'dark';
-  scrollToCurrentBook: () => void;
+  defaultBook: string;
+  onContentClick?: (props: BibleChapterPickerContentProps) => void;
+  isPopoverOpen: boolean;
+  setIsPopoverOpen: (open: boolean) => void;
 };
 
 const BibleChapterPickerContext = createContext<BibleChapterPickerContextType | null>(null);
@@ -46,6 +192,7 @@ export type RootProps = {
   onChapterChange?: (chapter: string) => void;
   versionId: number;
   background?: 'light' | 'dark';
+  onContentClick?: (props: BibleChapterPickerContentProps) => void;
   children?: ReactNode;
 };
 
@@ -60,6 +207,7 @@ function Root({
   onChapterChange,
   versionId,
   background,
+  onContentClick,
   children,
 }: RootProps) {
   const [book, setBook] = useControllableState({
@@ -77,170 +225,33 @@ function Root({
   const providerTheme = useTheme();
   const theme = background || providerTheme;
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [expandedBook, setExpandedBook] = useState<string | null>(book || null);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-  const { books } = useBooks(versionId);
+  const contextValue: BibleChapterPickerContextType = {
+    book,
+    chapter,
+    setBook,
+    setChapter,
+    versionId,
+    background: theme,
+    defaultBook,
+    onContentClick,
+    isPopoverOpen,
+    setIsPopoverOpen,
+  };
 
-  const filteredBooks = useMemo(() => {
-    if (!books?.data) return null;
-    if (searchQuery.trim() === '') return books.data;
-    return books.data.filter((book) =>
-      book.title?.toLowerCase().includes(searchQuery.toLowerCase()),
+  if (onContentClick) {
+    return (
+      <BibleChapterPickerContext.Provider value={contextValue}>
+        {children}
+      </BibleChapterPickerContext.Provider>
     );
-  }, [books?.data, searchQuery]);
-
-  const bookElementsRef = useRef<Record<string, HTMLDivElement | null>>({});
-
-  const scrollToCurrentBook = () => {
-    if (book) {
-      setExpandedBook(book);
-      setTimeout(() => {
-        bookElementsRef.current[book]?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        });
-      }, 200);
-    }
-  };
-
-  // When an accordion is expanded, scroll that book into view
-  useEffect(() => {
-    if (!expandedBook) return;
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      if (!controller.signal.aborted) {
-        bookElementsRef.current[expandedBook]?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        });
-      }
-    }, 200);
-
-    return () => {
-      controller.abort();
-      clearTimeout(timeoutId);
-    };
-  }, [expandedBook]);
-
-  const handleChapterButtonClick = (bookId: string, passageId: string) => {
-    const chapterId = passageId.split('.').pop() || '';
-    if (chapterId && bookId) {
-      setBook(bookId);
-      setChapter(chapterId);
-      setSearchQuery('');
-    }
-  };
+  }
 
   return (
-    <Popover>
-      <BibleChapterPickerContext.Provider
-        value={{
-          book,
-          chapter,
-          setBook,
-          setChapter,
-          versionId,
-          background: theme,
-          scrollToCurrentBook,
-        }}
-      >
+    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+      <BibleChapterPickerContext.Provider value={contextValue}>
         {children}
-
-        {/* data-yv-sdk for styles is needed because the popover gets rendered outside of the providers scope **/}
-        <PopoverContent sideOffset={16} heading="Books" theme={theme} side="top">
-          <Accordion
-            className="yv:relative yv:overflow-y-auto yv:bg-background yv:px-6"
-            type="single"
-            collapsible
-            defaultValue={defaultBook || book || 'GEN'}
-            onValueChange={setExpandedBook}
-          >
-            {filteredBooks && filteredBooks.length > 0 ? (
-              filteredBooks.map((bookItem) => (
-                <AccordionItem
-                  className="yv:border-b yv:border-border"
-                  key={bookItem.id}
-                  value={bookItem.id}
-                  id={bookItem.id}
-                  ref={(node) => {
-                    if (node) {
-                      bookElementsRef.current[bookItem.id] = node;
-                    } else {
-                      delete bookElementsRef.current[bookItem.id];
-                    }
-                  }}
-                >
-                  <AccordionTrigger className="yv:rounded-none">{bookItem.title}</AccordionTrigger>
-                  <AccordionContent>
-                    {bookItem.chapters && bookItem.chapters.length > 0 ? (
-                      <div className="yv:grid yv:grid-cols-5 yv:gap-2">
-                        {bookItem.intro?.id && bookItem.intro?.passage_id ? (
-                          <PopoverClose asChild key={`${bookItem.id}-${bookItem.intro.passage_id}`}>
-                            <Button
-                              variant="secondary"
-                              size="icon"
-                              className="yv:aspect-square yv:w-full yv:h-full yv:flex yv:items-center yv:justify-center yv:rounded-[4px]"
-                              onClick={() =>
-                                handleChapterButtonClick(
-                                  bookItem.id,
-                                  bookItem.intro?.passage_id || '',
-                                )
-                              }
-                            >
-                              <InfoIcon />
-                            </Button>
-                          </PopoverClose>
-                        ) : null}
-                        {bookItem.chapters.map((chapterRef) => {
-                          const chapterId = chapterRef.passage_id.split('.').pop() || '';
-                          return (
-                            <PopoverClose asChild key={`${bookItem.id}-${chapterRef.passage_id}`}>
-                              <Button
-                                variant="secondary"
-                                size="icon"
-                                className="yv:aspect-square yv:w-full yv:h-full yv:flex yv:items-center yv:justify-center yv:rounded-[4px]"
-                                onClick={() =>
-                                  handleChapterButtonClick(bookItem.id, chapterRef.passage_id)
-                                }
-                              >
-                                {chapterId}
-                              </Button>
-                            </PopoverClose>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="yv:w-full yv:flex yv:items-center yv:justify-center yv:py-4 yv:text-muted-foreground yv:text-sm">
-                        No chapters available
-                      </div>
-                    )}
-                  </AccordionContent>
-                </AccordionItem>
-              ))
-            ) : (
-              <div className="yv:w-full yv:h-full yv:flex yv:items-center yv:justify-center yv:py-4 yv:text-center yv:text-balance yv:text-muted-foreground yv:text-sm">
-                We're sorry, there are no Bible results for this search.
-              </div>
-            )}
-          </Accordion>
-
-          <section className="yv:bg-muted yv:border-s yv:border-muted yv:p-4 yv:w-full">
-            <InputGroup className="yv:rounded-3xl yv:bg-background yv:shadow-none yv:border-border">
-              <InputGroupInput
-                tabIndex={1}
-                type="text"
-                placeholder="Search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <InputGroupAddon align="inline-start">
-                <SearchIcon className="yv:size-5 yv:text-muted-foreground" />
-              </InputGroupAddon>
-            </InputGroup>
-          </section>
-        </PopoverContent>
       </BibleChapterPickerContext.Provider>
     </Popover>
   );
@@ -261,7 +272,7 @@ export type TriggerProps = Omit<React.ComponentProps<typeof PopoverTrigger>, 'ch
 };
 
 function Trigger({ asChild = true, children, ...props }: TriggerProps) {
-  const { book, chapter, background, versionId, scrollToCurrentBook } =
+  const { book, chapter, background, versionId, defaultBook, setBook, setChapter, onContentClick } =
     useBibleChapterPickerContext();
   const { books, loading } = useBooks(versionId);
   const providerTheme = useTheme();
@@ -282,17 +293,63 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
       ? children({ book, chapter, chapterLabel, currentBook, loading })
       : children || <Button variant="secondary">{buttonText}</Button>;
 
+  if (onContentClick) {
+    const contentProps: BibleChapterPickerContentProps = {
+      versionId,
+      defaultBook: defaultBook || book || undefined,
+      onSelectChapter: (bookId, chapterId) => {
+        setBook(bookId);
+        setChapter(chapterId);
+      },
+      background: theme,
+    };
+    return (
+      <div
+        data-yv-sdk
+        data-yv-theme={theme}
+        onClick={() => onContentClick(contentProps)}
+        className="yv:inline-flex yv:cursor-pointer"
+      >
+        {content}
+      </div>
+    );
+  }
+
   return (
-    <PopoverTrigger
-      data-yv-sdk
-      data-yv-theme={theme}
-      asChild={asChild}
-      onClick={scrollToCurrentBook}
-      {...props}
-    >
+    <PopoverTrigger data-yv-sdk data-yv-theme={theme} asChild={asChild} {...props}>
       {content}
     </PopoverTrigger>
   );
 }
 
-export const BibleChapterPicker = Object.assign({}, { Root, Trigger });
+function Content() {
+  const {
+    book,
+    setBook,
+    setChapter,
+    versionId,
+    background,
+    defaultBook,
+    onContentClick,
+    setIsPopoverOpen,
+  } = useBibleChapterPickerContext();
+
+  if (onContentClick) return null;
+
+  return (
+    <PopoverContent sideOffset={16} heading="Books" theme={background} side="top">
+      <BibleChapterPickerContent
+        versionId={versionId}
+        defaultBook={defaultBook || book || undefined}
+        onSelectChapter={(bookId, chapterId) => {
+          setBook(bookId);
+          setChapter(chapterId);
+          setIsPopoverOpen(false);
+        }}
+        background={background}
+      />
+    </PopoverContent>
+  );
+}
+
+export const BibleChapterPicker = Object.assign({}, { Root, Trigger, Content });

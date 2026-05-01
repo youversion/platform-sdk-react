@@ -23,6 +23,7 @@ const meta = {
             versionId={args.versionId}
           >
             <BibleChapterPicker.Trigger />
+            <BibleChapterPicker.Content />
           </BibleChapterPicker.Root>
         </div>
       );
