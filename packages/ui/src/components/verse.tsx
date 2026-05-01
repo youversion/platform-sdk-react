@@ -41,6 +41,56 @@ export type FootnoteData = {
   reference?: string;
 };
 
+export type FootnoteContentProps = FootnoteData & {
+  fontSize?: number;
+  theme?: 'light' | 'dark';
+};
+
+export function FootnoteContent({
+  verseNum,
+  notes,
+  verseHtml,
+  reference,
+  fontSize,
+  theme,
+}: FootnoteContentProps): React.ReactElement {
+  const verseReference = reference ? `${reference}:${verseNum}` : `Verse ${verseNum}`;
+  const hasVerseContext = verseHtml.length > 0;
+
+  return (
+    <div data-yv-sdk data-yv-theme={theme}>
+      <div className="yv:p-3 yv:overflow-y-auto yv:bg-background yv:text-foreground">
+        {hasVerseContext && (
+          <>
+            <div className="yv:font-bold yv:mb-2">{verseReference}</div>
+            <div
+              className="yv:mb-3 yv:font-serif yv:*:font-serif"
+              style={{ fontSize: fontSize ? `${fontSize}px` : '1.25rem' }}
+              // biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe
+              dangerouslySetInnerHTML={{ __html: verseHtml }}
+            />
+          </>
+        )}
+        <ul className="yv:list-none yv:p-0 yv:m-0 yv:space-y-1">
+          {notes.map((note, index) => {
+            const marker = getFootnoteMarker(index);
+            return (
+              <li
+                key={marker}
+                className="yv:flex yv:gap-2 yv:text-xs yv:border-b yv:border-border yv:py-2"
+              >
+                <span>{marker}.</span>
+                {/** biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe */}
+                <span dangerouslySetInnerHTML={{ __html: note }} />
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 type VerseFootnoteData = {
   verseNum: string;
   el: Element;
