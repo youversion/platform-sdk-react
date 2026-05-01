@@ -34,6 +34,13 @@ function getFootnoteMarker(index: number): string {
   return marker;
 }
 
+export type FootnoteData = {
+  verseNum: string;
+  notes: string[];
+  verseHtml: string;
+  reference?: string;
+};
+
 type VerseFootnoteData = {
   verseNum: string;
   el: Element;
@@ -85,6 +92,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   reference,
   fontSize,
   theme,
+  onFootnotePress,
 }: {
   verseNum: string;
   notes: string[];
@@ -93,7 +101,20 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   reference?: string;
   fontSize?: number;
   theme: 'light' | 'dark';
+  onFootnotePress?: (data: FootnoteData) => void;
 }) {
+  if (onFootnotePress) {
+    return (
+      <button
+        type="button"
+        className="yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1! yv:text-(--yv-gray-20)"
+        onClick={() => onFootnotePress({ verseNum, notes, verseHtml, reference })}
+      >
+        <Footnote className="yv:size-[1.5em]" />
+      </button>
+    );
+  }
+
   const verseReference = reference ? `${reference}:${verseNum}` : `Verse ${verseNum}`;
   return (
     <Popover>
@@ -168,6 +189,7 @@ function BibleTextHtml({
   selectedVerses = [],
   onVerseSelect,
   highlightedVerses = {},
+  onFootnotePress,
 }: {
   html: string;
   reference?: string;
@@ -176,6 +198,7 @@ function BibleTextHtml({
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
   highlightedVerses?: Record<number, boolean>;
+  onFootnotePress?: (data: FootnoteData) => void;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [footnoteData, setFootnoteData] = useState<VerseFootnoteData[]>([]);
@@ -252,6 +275,7 @@ function BibleTextHtml({
             reference={reference}
             fontSize={fontSize}
             theme={currentTheme}
+            onFootnotePress={onFootnotePress}
           />,
           el,
           `${verseNum}-${index}`,
@@ -291,6 +315,7 @@ type VerseHtmlProps = {
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
   highlightedVerses?: Record<number, boolean>;
+  onFootnotePress?: (data: FootnoteData) => void;
 };
 
 /**
@@ -342,6 +367,7 @@ export const Verse = {
         selectedVerses,
         onVerseSelect,
         highlightedVerses,
+        onFootnotePress,
       }: VerseHtmlProps,
       ref,
     ): ReactNode => {
@@ -378,6 +404,7 @@ export const Verse = {
             selectedVerses={selectedVerses}
             onVerseSelect={onVerseSelect}
             highlightedVerses={highlightedVerses}
+            onFootnotePress={onFootnotePress}
           />
         </section>
       );
@@ -398,6 +425,7 @@ export type BibleTextViewProps = {
   onVerseSelect?: (verses: number[]) => void;
   highlightedVerses?: Record<number, boolean>;
   passageState?: Partial<BibleTextViewPassageState>;
+  onFootnotePress?: (data: FootnoteData) => void;
 };
 
 /**
@@ -418,6 +446,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
       onVerseSelect,
       highlightedVerses,
       passageState,
+      onFootnotePress,
     },
     ref,
   ): React.ReactElement => {
@@ -493,6 +522,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
           selectedVerses={selectedVerses}
           onVerseSelect={onVerseSelect}
           highlightedVerses={highlightedVerses}
+          onFootnotePress={onFootnotePress}
         />
       </div>
     );

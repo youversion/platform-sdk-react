@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Verse, BibleTextView, type BibleTextViewPassageState } from './verse';
+import { Verse, BibleTextView, type BibleTextViewPassageState, type FootnoteData } from './verse';
 
 // BibleTextView always calls usePassage/useTheme internally (even when passageState
 // is provided), so we must mock the hooks to avoid requiring YouVersionProvider.
@@ -875,5 +875,120 @@ describe('BibleTextView - Error messaging', () => {
         'The Bible service is having trouble right now. Please try again in a moment.',
       );
     });
+  });
+});
+
+describe('Verse.Html - onFootnotePress callback', () => {
+  const htmlWithFootnote = `
+    <div class="p">
+      <span class="yv-v" v="5"></span><span class="yv-vlbl">5</span>The light shines in the darkness<span class="yv-n f"><span class="fr">1:5 </span><span class="ft">Or understood</span></span>.
+    </div>
+  `;
+
+  it('should call onFootnotePress with correct FootnoteData when clicked', async () => {
+    const onFootnotePress = vi.fn();
+
+    const { container } = render(
+      <Verse.Html
+        html={htmlWithFootnote}
+        renderNotes={true}
+        reference="JHN.1"
+        onFootnotePress={onFootnotePress}
+      />,
+    );
+
+    const button = await waitFor(() => {
+      const btn = container.querySelector('[data-verse-footnote="5"] button');
+      expect(btn).not.toBeNull();
+      return btn as HTMLButtonElement;
+    });
+
+    await userEvent.click(button);
+
+    expect(onFootnotePress).toHaveBeenCalledTimes(1);
+    const data = onFootnotePress.mock.calls[0]![0] as FootnoteData;
+    expect(data.verseNum).toBe('5');
+    expect(data.notes).toHaveLength(1);
+    expect(data.notes[0]).toContain('Or understood');
+    expect(data.reference).toBe('JHN.1');
+    expect(typeof data.verseHtml).toBe('string');
+  });
+
+  it('should NOT render a Popover when onFootnotePress is provided', async () => {
+    const onFootnotePress = vi.fn();
+
+    const { container } = render(
+      <Verse.Html
+        html={htmlWithFootnote}
+        renderNotes={true}
+        reference="JHN.1"
+        onFootnotePress={onFootnotePress}
+      />,
+    );
+
+    const button = await waitFor(() => {
+      const btn = container.querySelector('[data-verse-footnote="5"] button');
+      expect(btn).not.toBeNull();
+      return btn as HTMLButtonElement;
+    });
+
+    await userEvent.click(button);
+
+    // No popover should appear
+    const popover = document.body.querySelector('[role="dialog"]');
+    expect(popover).toBeNull();
+  });
+
+  it('should still render Popover when onFootnotePress is NOT provided', async () => {
+    const { container } = render(
+      <Verse.Html html={htmlWithFootnote} renderNotes={true} reference="JHN.1" />,
+    );
+
+    const button = await waitFor(() => {
+      const btn = container.querySelector('[data-verse-footnote="5"] button');
+      expect(btn).not.toBeNull();
+      return btn as HTMLButtonElement;
+    });
+
+    await userEvent.click(button);
+
+    await waitFor(() => {
+      const popover = document.body.querySelector('[role="dialog"]');
+      expect(popover).not.toBeNull();
+    });
+  });
+});
+
+describe('BibleTextView - onFootnotePress callback', () => {
+  const mockPassage: BibleTextViewPassageState['passage'] = {
+    id: 'JHN.1',
+    content: `<div class="p"><span class="yv-v" v="5"></span><span class="yv-vlbl">5</span>The light shines<span class="yv-n f"><span class="fr">1:5 </span><span class="ft">Or understood</span></span>.</div>`,
+    reference: 'JHN.1',
+  };
+
+  it('should call onFootnotePress when provided via BibleTextView', async () => {
+    const onFootnotePress = vi.fn();
+
+    const { container } = render(
+      <BibleTextView
+        reference="JHN.1"
+        versionId={3034}
+        passageState={{ passage: mockPassage, loading: false, error: null }}
+        onFootnotePress={onFootnotePress}
+      />,
+    );
+
+    const button = await waitFor(() => {
+      const btn = container.querySelector('[data-verse-footnote="5"] button');
+      expect(btn).not.toBeNull();
+      return btn as HTMLButtonElement;
+    });
+
+    await userEvent.click(button);
+
+    expect(onFootnotePress).toHaveBeenCalledTimes(1);
+    const data = onFootnotePress.mock.calls[0]![0] as FootnoteData;
+    expect(data.verseNum).toBe('5');
+    expect(data.reference).toBe('JHN.1');
   });
 });
