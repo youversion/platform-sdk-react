@@ -22,7 +22,10 @@ export class YouVersionPlatformConfiguration {
       return existingId;
     }
 
-    const newId = crypto.randomUUID();
+    const newId =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `yvp-${new Date().toISOString()}-${Math.random().toString(36).slice(2, 10)}`;
     localStorage.setItem('x-yvp-installation-id', newId);
     return newId;
   }

@@ -58,31 +58,28 @@ export function YouVersionProvider(
   const { appKey, apiHost = 'api.youversion.com', includeAuth, theme = 'light', children } = props;
   const resolvedTheme = useResolvedTheme(theme);
 
-  // Syncing appKey and apiHost to YouVersionPlatformConfiguration
-  // so that this can be in sync with any other code that uses
-  // the YouVersionPlatformConfiguration, of which a lot of our
-  // core package uses this configuration.
+  // Sync props to YouVersionPlatformConfiguration so any code that reads the
+  // static config (e.g. core's auth/PKCE flows, called from user actions) sees
+  // the same values. Children that read via context get the prop directly
+  // below, so they don't depend on this effect having run yet.
   useEffect(() => {
     YouVersionPlatformConfiguration.appKey = appKey;
     YouVersionPlatformConfiguration.apiHost = apiHost;
   }, [appKey, apiHost]);
 
-  if (includeAuth) {
-    const { authRedirectUrl } = props;
+  const contextValue = {
+    appKey,
+    apiHost,
+    installationId: YouVersionPlatformConfiguration.installationId,
+    theme: resolvedTheme,
+    authEnabled: !!includeAuth,
+  };
 
-    // Installation ID gets set automatically by YouVersionPlatformConfiguration
+  if (includeAuth) {
     return (
-      <YouVersionContext.Provider
-        value={{
-          appKey,
-          apiHost,
-          installationId: YouVersionPlatformConfiguration.installationId,
-          theme: resolvedTheme,
-          authEnabled: !!includeAuth,
-        }}
-      >
+      <YouVersionContext.Provider value={contextValue}>
         <Suspense>
-          <AuthProvider config={{ appKey, apiHost, redirectUri: authRedirectUrl }}>
+          <AuthProvider config={{ appKey, apiHost, redirectUri: props.authRedirectUrl }}>
             {children}
           </AuthProvider>
         </Suspense>
@@ -90,18 +87,5 @@ export function YouVersionProvider(
     );
   }
 
-  // Installation ID gets set automatically by YouVersionPlatformConfiguration
-  return (
-    <YouVersionContext.Provider
-      value={{
-        appKey,
-        apiHost,
-        installationId: YouVersionPlatformConfiguration.installationId,
-        theme: resolvedTheme,
-        authEnabled: !!includeAuth,
-      }}
-    >
-      {children}
-    </YouVersionContext.Provider>
-  );
+  return <YouVersionContext.Provider value={contextValue}>{children}</YouVersionContext.Provider>;
 }
