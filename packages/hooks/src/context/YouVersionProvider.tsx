@@ -9,7 +9,6 @@ interface YouVersionProviderPropsBase {
   children: ReactNode;
   appKey: string;
   apiHost?: string;
-  installationId?: string;
   theme?: 'light' | 'dark' | 'system';
 }
 
@@ -56,14 +55,7 @@ function useResolvedTheme(theme: 'light' | 'dark' | 'system'): 'light' | 'dark' 
 export function YouVersionProvider(
   props: PropsWithChildren<YouVersionProviderPropsWithAuth | YouVersionProviderPropsWithoutAuth>,
 ): React.ReactElement {
-  const {
-    appKey,
-    apiHost = 'api.youversion.com',
-    installationId,
-    includeAuth,
-    theme = 'light',
-    children,
-  } = props;
+  const { appKey, apiHost = 'api.youversion.com', includeAuth, theme = 'light', children } = props;
   const resolvedTheme = useResolvedTheme(theme);
 
   // Sync props to YouVersionPlatformConfiguration so any code that reads the
@@ -73,15 +65,12 @@ export function YouVersionProvider(
   useEffect(() => {
     YouVersionPlatformConfiguration.appKey = appKey;
     YouVersionPlatformConfiguration.apiHost = apiHost;
-    if (installationId) {
-      YouVersionPlatformConfiguration.installationId = installationId;
-    }
-  }, [appKey, apiHost, installationId]);
+  }, [appKey, apiHost]);
 
   const contextValue = {
     appKey,
     apiHost,
-    installationId: installationId ?? YouVersionPlatformConfiguration.installationId,
+    installationId: YouVersionPlatformConfiguration.installationId,
     theme: resolvedTheme,
     authEnabled: !!includeAuth,
   };
