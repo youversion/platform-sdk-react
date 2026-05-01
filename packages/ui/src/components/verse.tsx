@@ -156,6 +156,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   if (onFootnotePress) {
     return (
       <button
+        aria-label="Footnote"
         type="button"
         className="yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1! yv:text-(--yv-gray-20)"
         onClick={() => onFootnotePress({ verseNum, notes, verseHtml, reference })}
@@ -170,6 +171,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
     <Popover>
       <PopoverTrigger data-yv-sdk data-yv-theme={theme} asChild>
         <button
+          aria-label="Footnote"
           type="button"
           className="yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1! yv:text-(--yv-gray-20)"
         >
