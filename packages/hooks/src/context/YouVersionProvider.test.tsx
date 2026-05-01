@@ -15,7 +15,7 @@ describe('YouVersionProvider', () => {
     YouVersionPlatformConfiguration.installationId = null;
   });
 
-  it('falls back to a generated id when no prop is provided', () => {
+  it('provides a non-null installationId via context', () => {
     render(
       <YouVersionProvider appKey="test">
         <ContextReader />
