@@ -1,5 +1,13 @@
 # @youversion/platform-react-ui
 
+## 1.23.2
+
+### Patch Changes
+
+- Updated dependencies [da88c10]
+  - @youversion/platform-core@1.23.2
+  - @youversion/platform-react-hooks@1.23.2
+
 ## 1.23.1
 
 ### Patch Changes
