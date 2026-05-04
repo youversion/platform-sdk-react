@@ -1,5 +1,16 @@
 # @youversion/platform-react-ui
 
+## 1.24.0
+
+### Minor Changes
+
+- 2d26bf0: Add `onFootnotePress` callback prop to `BibleTextView`, `Verse.Html`, and `BibleReader.Root`. When provided, suppresses the Radix popover and calls the callback with a serializable `FootnoteData` payload. Export `FootnoteContent` component for rendering footnote data standalone (e.g. inside an Expo DOM component). Exports new `FootnoteData` and `FootnoteContentProps` types.
+
+### Patch Changes
+
+- @youversion/platform-core@1.24.0
+- @youversion/platform-react-hooks@1.24.0
+
 ## 1.23.2
 
 ### Patch Changes
