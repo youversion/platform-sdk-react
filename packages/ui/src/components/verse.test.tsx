@@ -911,7 +911,7 @@ describe('Verse.Html - onFootnotePress callback', () => {
     expect(data.notes).toHaveLength(1);
     expect(data.notes[0]).toContain('Or understood');
     expect(data.reference).toBe('JHN.1');
-    expect(typeof data.verseHtml).toBe('string');
+    expect(data.verseHtml).toContain('The light shines');
   });
 
   it('should NOT render a Popover when onFootnotePress is provided', async () => {
