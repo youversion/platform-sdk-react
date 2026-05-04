@@ -22,21 +22,19 @@ async function getHtmlAdapters(): Promise<TransformBibleHtmlOptions> {
       serializeHtml: (doc) => doc.body.innerHTML,
     };
   }
-  let linkedom;
+  let jsdom;
   try {
-    linkedom = await import('linkedom');
+    jsdom = await import('jsdom');
   } catch {
     throw new Error(
-      'Server-side HTML transformation requires "linkedom". ' +
-        'Install it as a dependency or pass format: "text" to skip transformation.',
+      'Server-side HTML transformation requires "jsdom". ' +
+        'Install it as a dependency or pass transform: false to skip transformation.',
     );
   }
   return {
     parseHtml: (h) =>
-      new linkedom.DOMParser().parseFromString(
-        `<html><body>${h}</body></html>`,
-        'text/html',
-      ) as unknown as Document,
+      new jsdom.JSDOM(`<!DOCTYPE html><html><body>${h}</body></html>`).window
+        .document as unknown as Document,
     serializeHtml: (doc) => doc.body.innerHTML,
   };
 }
@@ -277,7 +275,7 @@ export class BibleClient {
    *   Set to `false` to receive the original, untransformed HTML from the API.
    *   Raw HTML is sufficient for simple display (e.g., verse-of-the-day) where
    *   verse-level interactivity like highlighting or footnote popovers isn't
-   *   needed. Also avoids the `linkedom` dependency on the server.
+   *   needed. Also avoids the `jsdom` dependency on the server.
    * @returns The requested BiblePassage object.
    *
    * @example
@@ -294,7 +292,7 @@ export class BibleClient {
    * // Get plain text (no transformation applied)
    * const text = await bibleClient.getPassage(3034, "JHN.3.16", "text");
    *
-   * // Get raw, untransformed HTML (no linkedom needed on server)
+   * // Get raw, untransformed HTML (no jsdom needed on server)
    * const raw = await bibleClient.getPassage(3034, "JHN.3.16", "html", undefined, undefined, false);
    * ```
    */

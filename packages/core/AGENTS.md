@@ -23,7 +23,7 @@ YouVersionAPI.ts             # Base YouVersion API client
 SignInWithYouVersionPKCE.ts  # PKCE auth implementation
 StorageStrategy.ts           # Storage interface (SessionStorage, MemoryStorage)
 bible-html-transformer.ts    # Runtime-agnostic transformer (also contains browser convenience fn)
-bible-html-transformer-server.ts # Server convenience wrapper (uses linkedom)
+bible-html-transformer-server.ts # Server convenience wrapper (uses jsdom)
 browser.ts                   # Browser entry point
 server.ts                    # Server entry point
 index.ts                     # Main entry point (runtime-agnostic)
@@ -64,7 +64,7 @@ The Bible HTML transformer provides both a runtime-agnostic core and environment
 
 - `@youversion/platform-core` → Runtime-agnostic `transformBibleHtml` (requires DOM adapters)
 - `@youversion/platform-core/browser` → Browser convenience wrapper (uses native DOMParser)
-- `@youversion/platform-core/server` → Server convenience wrapper (uses linkedom)
+- `@youversion/platform-core/server` → Server convenience wrapper (uses jsdom)
 
 **Examples:**
 
@@ -82,7 +82,7 @@ import { transformBibleHtml } from '@youversion/platform-core/browser';
 
 const result = transformBibleHtml(html);
 
-// Server convenience (uses linkedom, requires: npm install linkedom)
+// Server convenience (uses jsdom, requires: npm install jsdom)
 import { transformBibleHtml } from '@youversion/platform-core/server';
 
 const result = transformBibleHtml(html);
@@ -90,7 +90,7 @@ const result = transformBibleHtml(html);
 
 **Why separate entry points?**
 
-This architecture keeps the main export truly runtime-agnostic while providing ergonomic convenience wrappers for common environments. The separate `/browser` and `/server` entry points ensure optimal bundle sizes - linkedom won't be bundled in browser builds.
+This architecture keeps the main export truly runtime-agnostic while providing ergonomic convenience wrappers for common environments. The separate `/browser` and `/server` entry points ensure optimal bundle sizes - jsdom won't be bundled in browser builds.
 
 ## ADDING A NEW ENDPOINT OR CLIENT
 

@@ -47,6 +47,7 @@
   "devDependencies": {
     "@internal/eslint-config": "workspace:*",
     "@internal/tsconfig": "workspace:*",
+    "@types/jsdom": "^28.0.1",
     "@vitest/coverage-v8": "4.0.4",
     "dotenv-cli": "7.4.2",
     "eslint": "9.38.0",
@@ -57,10 +58,10 @@
     "vitest": "4.0.4"
   },
   "peerDependencies": {
-    "linkedom": "^0.18.12"
+    "jsdom": "^24.0.0"
   },
   "peerDependenciesMeta": {
-    "linkedom": {
+    "jsdom": {
       "optional": true
     }
   },
