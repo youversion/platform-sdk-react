@@ -44,6 +44,7 @@ export type FootnoteData = {
 export type FootnoteContentProps = FootnoteData & {
   fontSize?: number;
   theme?: 'light' | 'dark';
+  hasVerseContext?: boolean;
 };
 
 export function FootnoteContent({
@@ -53,14 +54,15 @@ export function FootnoteContent({
   reference,
   fontSize,
   theme,
+  hasVerseContext,
 }: FootnoteContentProps): React.ReactElement {
   const verseReference = reference ? `${reference}:${verseNum}` : `Verse ${verseNum}`;
-  const hasVerseContext = verseHtml.length > 0;
+  const showVerseContext = hasVerseContext ?? verseHtml.length > 0;
 
   return (
     <div data-yv-sdk data-yv-theme={theme}>
       <div className="yv:p-3 yv:overflow-y-auto yv:bg-background yv:text-foreground">
-        {hasVerseContext && (
+        {showVerseContext && (
           <>
             <div className="yv:font-bold yv:mb-2">{verseReference}</div>
             <div
@@ -166,7 +168,6 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
     );
   }
 
-  const verseReference = reference ? `${reference}:${verseNum}` : `Verse ${verseNum}`;
   return (
     <Popover>
       <PopoverTrigger data-yv-sdk data-yv-theme={theme} asChild>
@@ -183,33 +184,16 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
         heading="Footnotes"
         theme={theme}
       >
-        <div className="yv:p-3 yv:overflow-y-auto yv:max-h-[33svh]">
-          {hasVerseContext && (
-            <>
-              <div className="yv:font-bold yv:mb-2">{verseReference}</div>
-              <div
-                className="yv:mb-3 yv:font-serif yv:*:font-serif"
-                style={{ fontSize: fontSize ? `${fontSize}px` : '1.25rem' }}
-                // biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe
-                dangerouslySetInnerHTML={{ __html: verseHtml }}
-              />
-            </>
-          )}
-          <ul className="yv:list-none yv:p-0 yv:m-0 yv:space-y-1">
-            {notes.map((note, index) => {
-              const marker = getFootnoteMarker(index);
-              return (
-                <li
-                  key={marker}
-                  className="yv:flex yv:gap-2 yv:text-xs yv:border-b yv:border-border yv:py-2"
-                >
-                  <span className="">{marker}.</span>
-                  {/** biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe */}
-                  <span dangerouslySetInnerHTML={{ __html: note }} />
-                </li>
-              );
-            })}
-          </ul>
+        <div className="yv:max-h-[33svh] yv:overflow-y-auto">
+          <FootnoteContent
+            verseNum={verseNum}
+            notes={notes}
+            verseHtml={verseHtml}
+            hasVerseContext={hasVerseContext}
+            reference={reference}
+            fontSize={fontSize}
+            theme={theme}
+          />
         </div>
       </PopoverContent>
     </Popover>
