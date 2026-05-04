@@ -28,7 +28,7 @@ import { LoaderIcon } from './icons/loader';
 import { PersonIcon } from './icons/person';
 import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from './ui/popover';
-import { BibleTextView } from './verse';
+import { BibleTextView, type FootnoteData } from './verse';
 import { INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
 import { ChevronLeftIcon } from './icons/chevron-left';
 import { ChevronRightIcon } from './icons/chevron-right';
@@ -49,6 +49,7 @@ type BibleReaderContextType = {
   lineHeight?: number;
   showVerseNumbers: boolean;
   background: 'light' | 'dark';
+  onFootnotePress?: (data: FootnoteData) => void;
 };
 
 const BibleReaderContext = createContext<BibleReaderContextType | null>(null);
@@ -76,6 +77,7 @@ export type RootProps = {
   lineHeight?: number;
   showVerseNumbers?: boolean;
   background?: 'light' | 'dark';
+  onFootnotePress?: (data: FootnoteData) => void;
   children?: ReactNode;
 };
 
@@ -98,6 +100,7 @@ function Root({
   lineHeight,
   showVerseNumbers = true,
   background,
+  onFootnotePress,
   children,
 }: RootProps) {
   const [book, setBook] = useControllableState({
@@ -171,6 +174,7 @@ function Root({
     lineHeight,
     showVerseNumbers,
     background: theme,
+    onFootnotePress,
   };
 
   return (
@@ -197,6 +201,7 @@ function Content() {
     currentFontFamily,
     lineHeight,
     showVerseNumbers,
+    onFootnotePress,
   } = useBibleReaderContext();
   const { version } = useVersion(versionId);
 
@@ -251,6 +256,7 @@ function Content() {
           lineHeight={lineHeight}
           showVerseNumbers={showVerseNumbers}
           theme={background}
+          onFootnotePress={onFootnotePress}
         />
       )}
 
