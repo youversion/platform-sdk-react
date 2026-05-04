@@ -17,7 +17,7 @@
       },
       {
         "scope": ["packages/**", ".changeset/**"],
-        "rule": "Unified versioning: All packages must maintain exact same version - never version packages independently. This change will happen automatically any time a single package is updated via changeset."
+        "rule": "Unified versioning: All packages must maintain exact same version. This change will happen automatically any time a single package is updated via changeset."
       },
       {
         "scope": ["packages/core/src/**"],
