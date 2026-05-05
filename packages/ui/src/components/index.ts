@@ -3,6 +3,8 @@ export {
   type RootProps,
   type BibleChapterPickerRootProps,
   type TriggerProps,
+  type BibleChapterPickerContentProps,
+  type BibleChapterPickerPressData,
 } from './bible-chapter-picker';
 export { BibleReader, type BibleReaderRootProps } from './bible-reader';
 export {
