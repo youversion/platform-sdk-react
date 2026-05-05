@@ -281,9 +281,7 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
 
 function Content({ onRequestClose }: BibleChapterPickerContentProps) {
   const {
-    book,
     background,
-    defaultBook,
     filteredBooks,
     expandedBook,
     setExpandedBook,
@@ -310,8 +308,7 @@ function Content({ onRequestClose }: BibleChapterPickerContentProps) {
         className="yv:relative yv:overflow-y-auto yv:bg-background yv:px-6"
         type="single"
         collapsible
-        defaultValue={defaultBook || book || 'GEN'}
-        value={expandedBook ?? undefined}
+        value={expandedBook ?? ''}
         onValueChange={(value) => setExpandedBook(value || null)}
       >
         {filteredBooks && filteredBooks.length > 0 ? (
