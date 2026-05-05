@@ -282,7 +282,6 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
 
 function Content({ onRequestClose }: BibleChapterPickerContentProps) {
   const {
-    background,
     filteredBooks,
     expandedBook,
     setExpandedBook,
@@ -304,7 +303,7 @@ function Content({ onRequestClose }: BibleChapterPickerContentProps) {
   };
 
   return (
-    <div data-yv-sdk data-yv-theme={background}>
+    <>
       <Accordion
         className="yv:relative yv:overflow-y-auto yv:bg-background yv:px-6"
         type="single"
@@ -384,7 +383,7 @@ function Content({ onRequestClose }: BibleChapterPickerContentProps) {
           </InputGroupAddon>
         </InputGroup>
       </section>
-    </div>
+    </>
   );
 }
 
