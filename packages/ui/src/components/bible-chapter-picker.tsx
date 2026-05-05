@@ -129,10 +129,13 @@ function Root({
     if (book) {
       setExpandedBook(book);
       setTimeout(() => {
-        bookElementsRef.current[book]?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        });
+        const element = bookElementsRef.current[book];
+        if (element && typeof element.scrollIntoView === 'function') {
+          element.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          });
+        }
       }, 200);
     }
   };
@@ -144,10 +147,13 @@ function Root({
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
       if (!controller.signal.aborted) {
-        bookElementsRef.current[expandedBook]?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        });
+        const element = bookElementsRef.current[expandedBook];
+        if (element && typeof element.scrollIntoView === 'function') {
+          element.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          });
+        }
       }
     }, 200);
 
@@ -238,10 +244,9 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
 
   const handlePress = (event: React.MouseEvent<HTMLButtonElement>) => {
     props.onClick?.(event);
+    scrollToCurrentBook();
     if (onChapterPickerPress) {
       onChapterPickerPress({ book, chapter, versionId });
-    } else {
-      scrollToCurrentBook();
     }
   };
 
@@ -282,6 +287,8 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
 
 function Content({ onRequestClose }: BibleChapterPickerContentProps) {
   const {
+    book,
+    defaultBook,
     filteredBooks,
     expandedBook,
     setExpandedBook,
@@ -308,7 +315,8 @@ function Content({ onRequestClose }: BibleChapterPickerContentProps) {
         className="yv:relative yv:overflow-y-auto yv:bg-background yv:px-6"
         type="single"
         collapsible
-        value={expandedBook ?? ''}
+        defaultValue={defaultBook || book || 'GEN'}
+        value={expandedBook ?? undefined}
         onValueChange={(value) => setExpandedBook(value || null)}
       >
         {filteredBooks && filteredBooks.length > 0 ? (
