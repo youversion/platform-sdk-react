@@ -238,9 +238,10 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
 
   const handlePress = (event: React.MouseEvent<HTMLButtonElement>) => {
     props.onClick?.(event);
-    scrollToCurrentBook();
     if (onChapterPickerPress) {
       onChapterPickerPress({ book, chapter, versionId });
+    } else {
+      scrollToCurrentBook();
     }
   };
 
