@@ -1,5 +1,16 @@
 # @youversion/platform-react-ui
 
+## 1.25.0
+
+### Minor Changes
+
+- e5a8681: Export `BibleChapterPicker.Content` for standalone rendering and add `onChapterPickerPress` to intercept trigger presses (e.g. to render picker content in a native bottom sheet instead of a popover).
+
+### Patch Changes
+
+- @youversion/platform-core@1.25.0
+- @youversion/platform-react-hooks@1.25.0
+
 ## 1.24.0
 
 ### Minor Changes
