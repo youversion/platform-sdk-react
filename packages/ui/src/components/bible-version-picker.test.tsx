@@ -364,7 +364,7 @@ describe('BibleVersionPicker', () => {
       expect(onRequestClose).toHaveBeenCalledTimes(1);
     });
 
-    it('language trigger calls custom click handler without opening default language view', async () => {
+    it('language trigger calls custom click handler without preventing default behavior', async () => {
       const user = userEvent.setup();
       const onClick = vi.fn();
 
@@ -372,13 +372,29 @@ describe('BibleVersionPicker', () => {
       render(
         <BibleVersionPicker.Root versionId={111} onVersionPickerPress={vi.fn()}>
           <BibleVersionPickerLanguageTrigger onClick={onClick} />
-          <BibleVersionPicker.Content open />
         </BibleVersionPicker.Root>,
       );
 
       await user.click(screen.getByRole('button', { name: /select language/i }));
 
       expect(onClick).toHaveBeenCalledTimes(1);
+    });
+
+    it('language trigger does not open default language view when click is prevented', async () => {
+      const user = userEvent.setup();
+
+      setupDefaultMocks();
+      render(
+        <BibleVersionPicker.Root versionId={111}>
+          <BibleVersionPicker.Trigger />
+          <BibleVersionPickerLanguageTrigger onClick={(event) => event.preventDefault()} />
+          <BibleVersionPicker.Content />
+        </BibleVersionPicker.Root>,
+      );
+
+      await user.click(screen.getByRole('button', { name: 'NIV' }));
+      await user.click(screen.getAllByRole('button', { name: /select language/i })[0]!);
+
       expect(screen.queryByText('All Languages')).not.toBeInTheDocument();
     });
 

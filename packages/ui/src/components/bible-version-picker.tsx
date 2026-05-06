@@ -431,7 +431,8 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
  *
  * `onClick` is a DOM-local event handler. Expo DOM wrappers should expose a
  * top-level async native action prop and call it from an internal `onClick`
- * adapter instead of passing native callbacks through as React event handlers.
+ * adapter that calls `event.preventDefault()` instead of passing native
+ * callbacks through as React event handlers.
  */
 export function BibleVersionPickerLanguageTrigger({
   'aria-label': ariaLabel = 'Select language',
@@ -464,7 +465,7 @@ export function BibleVersionPickerLanguageTrigger({
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     onClick?.(event);
-    if (!onClick && !event.defaultPrevented) {
+    if (!event.defaultPrevented) {
       setIsLanguagesOpen(true);
     }
   };
