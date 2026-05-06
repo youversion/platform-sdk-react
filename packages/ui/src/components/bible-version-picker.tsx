@@ -426,7 +426,13 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
   );
 }
 
-/** @internal Advanced composition surface for SDK integrations. */
+/**
+ * @internal Advanced composition surface for SDK integrations.
+ *
+ * `onClick` is a DOM-local event handler. Expo DOM wrappers should expose a
+ * top-level async native action prop and call it from an internal `onClick`
+ * adapter instead of passing native callbacks through as React event handlers.
+ */
 export function BibleVersionPickerLanguageTrigger({
   'aria-label': ariaLabel = 'Select language',
   className,
@@ -709,7 +715,12 @@ function LanguagePanel({ onRequestClose }: BibleLanguagePickerContentProps = {})
   );
 }
 
-/** @internal Advanced composition surface for SDK integrations. */
+/**
+ * @internal Advanced composition surface for SDK integrations.
+ *
+ * Expo DOM wrappers should compose this content inside the `'use dom'` file and
+ * expose only serializable props plus top-level async native actions to native.
+ */
 export function BibleLanguagePickerContent({
   open,
   onRequestClose,
