@@ -16,7 +16,9 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
+  type ReactElement,
 } from 'react';
 import { cn } from '@/lib/utils';
 import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, getAdjacentChapter } from '@youversion/platform-core';
@@ -84,6 +86,32 @@ export type RootProps = {
 const MIN_FONT_SIZE = 12;
 const MAX_FONT_SIZE = 20;
 const DEFAULT_FONT_SIZE = 16;
+const FONT_SIZE_STEP = 2;
+
+export type BibleThemeSettingsValues = {
+  fontSize: number;
+  fontFamily: FontFamily;
+};
+
+export type BibleThemeSettingsData = BibleThemeSettingsValues & {
+  minFontSize: number;
+  maxFontSize: number;
+  onFontIncreased: () => BibleThemeSettingsValues;
+  onFontDecreased: () => BibleThemeSettingsValues;
+  onFontSelected: (fontFamily: FontFamily) => BibleThemeSettingsValues;
+};
+
+export type BibleThemeSettingsContentProps = {
+  fontSize: number;
+  fontFamily: FontFamily;
+  onFontSelected: (fontFamily: FontFamily) => void;
+  onFontIncreased: () => void;
+  onFontDecreased: () => void;
+};
+
+function clampFontSize(fontSize: number): number {
+  return Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, fontSize));
+}
 
 function Root({
   book: controlledBook,
@@ -332,7 +360,98 @@ function UserMenu() {
   );
 }
 
-function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
+export function BibleThemeSettingsContent({
+  fontSize,
+  fontFamily,
+  onFontSelected,
+  onFontIncreased,
+  onFontDecreased,
+}: BibleThemeSettingsContentProps): ReactElement {
+  return (
+    <div data-yv-sdk className="yv:flex yv:flex-col yv:gap-4 yv:p-4">
+      <div className="yv:grid yv:grid-cols-2">
+        <Button
+          className="yv:text-xs yv:text-black yv:dark:text-muted-foreground yv:rounded-l-[8px] yv:rounded-r-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
+          onClick={onFontDecreased}
+          size="lg"
+          variant="secondary"
+          data-testid="decrease-font-size"
+          aria-disabled={fontSize <= MIN_FONT_SIZE}
+        >
+          A
+        </Button>
+        <Button
+          className="yv:text-3xl yv:text-black yv:dark:text-muted-foreground yv:rounded-r-[8px] yv:rounded-l-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
+          onClick={onFontIncreased}
+          size="lg"
+          variant="secondary"
+          data-testid="increase-font-size"
+          aria-disabled={fontSize >= MAX_FONT_SIZE}
+        >
+          A
+        </Button>
+      </div>
+
+      <div className="yv:grid yv:grid-cols-2">
+        <Button
+          className={cn(
+            'yv:group yv:dark:bg-muted yv:rounded-r-none yv:border-r-0.5 yv:dark:border-border yv:rounded-l-[8px] yv:h-auto',
+            fontFamily === INTER_FONT
+              ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
+              : '',
+          )}
+          onClick={() => onFontSelected(INTER_FONT)}
+          variant="outline"
+        >
+          <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
+            <span
+              className={cn(
+                'yv:text-xs yv:text-muted-foreground',
+                fontFamily === INTER_FONT
+                  ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
+                  : '',
+              )}
+            >
+              Font
+            </span>
+            <span className="yv:sm:text-xl yv:text-base">Inter</span>
+          </div>
+        </Button>
+        <Button
+          className={cn(
+            'yv:group yv:dark:bg-muted yv:border-l-0.5 yv:rounded-l-none yv:rounded-r-[8px] yv:h-auto',
+            fontFamily === SOURCE_SERIF_FONT
+              ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
+              : '',
+          )}
+          onClick={() => onFontSelected(SOURCE_SERIF_FONT)}
+          variant="outline"
+        >
+          <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
+            <span
+              className={cn(
+                'yv:text-xs yv:text-muted-foreground',
+                fontFamily === SOURCE_SERIF_FONT
+                  ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
+                  : '',
+              )}
+            >
+              Font
+            </span>
+            <span className="yv:sm:text-xl yv:text-base yv:font-serif">Source Serif</span>
+          </div>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export type BibleReaderToolbarProps = {
+  border?: 'top' | 'bottom';
+  onOpenBibleThemeSettings?: (data: BibleThemeSettingsData) => void;
+};
+
+function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolbarProps) {
   const {
     book,
     chapter,
@@ -344,10 +463,65 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
     booksLoading,
     currentFontFamily,
     setCurrentFontFamily,
+    currentFontSize,
     setCurrentFontSize,
     background,
   } = useBibleReaderContext();
   const yvContext = useContext(YouVersionContext);
+  const settingsValuesRef = useRef<BibleThemeSettingsValues>({
+    fontSize: currentFontSize,
+    fontFamily: currentFontFamily,
+  });
+
+  settingsValuesRef.current = {
+    fontSize: currentFontSize,
+    fontFamily: currentFontFamily,
+  };
+
+  const applySettings = (settings: BibleThemeSettingsValues): BibleThemeSettingsValues => {
+    const nextSettings = {
+      fontSize: clampFontSize(settings.fontSize),
+      fontFamily: settings.fontFamily,
+    };
+
+    settingsValuesRef.current = nextSettings;
+    setCurrentFontSize(nextSettings.fontSize);
+    setCurrentFontFamily(nextSettings.fontFamily);
+
+    return nextSettings;
+  };
+
+  const handleFontIncreased = (): BibleThemeSettingsValues => {
+    const settings = settingsValuesRef.current;
+    return applySettings({
+      ...settings,
+      fontSize: settings.fontSize + FONT_SIZE_STEP,
+    });
+  };
+
+  const handleFontDecreased = (): BibleThemeSettingsValues => {
+    const settings = settingsValuesRef.current;
+    return applySettings({
+      ...settings,
+      fontSize: settings.fontSize - FONT_SIZE_STEP,
+    });
+  };
+
+  const handleFontSelected = (fontFamily: FontFamily): BibleThemeSettingsValues => {
+    return applySettings({
+      ...settingsValuesRef.current,
+      fontFamily,
+    });
+  };
+
+  const buildBibleThemeSettingsPayload = (): BibleThemeSettingsData => ({
+    ...settingsValuesRef.current,
+    minFontSize: MIN_FONT_SIZE,
+    maxFontSize: MAX_FONT_SIZE,
+    onFontIncreased: handleFontIncreased,
+    onFontDecreased: handleFontDecreased,
+    onFontSelected: handleFontSelected,
+  });
 
   const prevResult = getAdjacentChapter(booksData, book, chapter, 'previous');
   const nextResult = getAdjacentChapter(booksData, book, chapter, 'next');
@@ -475,99 +649,34 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
           <BibleVersionPicker.Content />
         </BibleVersionPicker.Root>
 
-        <Popover>
-          <PopoverTrigger asChild aria-label="Settings">
-            <Button size="sm" variant="secondary">
-              <GearIcon className="yv:text-foreground" />
-            </Button>
-          </PopoverTrigger>
+        {onOpenBibleThemeSettings ? (
+          <Button
+            size="sm"
+            variant="secondary"
+            aria-label="Settings"
+            onClick={() => onOpenBibleThemeSettings(buildBibleThemeSettingsPayload())}
+          >
+            <GearIcon className="yv:text-foreground" />
+          </Button>
+        ) : (
+          <Popover>
+            <PopoverTrigger asChild aria-label="Settings">
+              <Button size="sm" variant="secondary">
+                <GearIcon className="yv:text-foreground" />
+              </Button>
+            </PopoverTrigger>
 
-          <PopoverContent sideOffset={16} heading="Reader Settings" theme={background}>
-            <div className="yv:flex yv:flex-col yv:gap-4 yv:p-4">
-              <div className="yv:grid yv:grid-cols-2">
-                <Button
-                  className="yv:text-xs yv:text-black yv:dark:text-muted-foreground yv:rounded-l-[8px] yv:rounded-r-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
-                  onClick={() =>
-                    setCurrentFontSize((prev) => {
-                      if (prev > MIN_FONT_SIZE) return prev - 2;
-                      return prev;
-                    })
-                  }
-                  size="lg"
-                  variant="secondary"
-                  data-testid="decrease-font-size"
-                >
-                  A
-                </Button>
-                <Button
-                  className="yv:text-3xl yv:text-black yv:dark:text-muted-foreground yv:rounded-r-[8px] yv:rounded-l-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
-                  onClick={() =>
-                    setCurrentFontSize((prev) => {
-                      if (prev < MAX_FONT_SIZE) return prev + 2;
-                      return prev;
-                    })
-                  }
-                  size="lg"
-                  variant="secondary"
-                  data-testid="increase-font-size"
-                >
-                  A
-                </Button>
-              </div>
-
-              <div className="yv:grid yv:grid-cols-2">
-                <Button
-                  className={cn(
-                    'yv:group yv:dark:bg-muted yv:rounded-r-none yv:border-r-0.5 yv:dark:border-border yv:rounded-l-[8px] yv:h-auto',
-                    currentFontFamily === INTER_FONT
-                      ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
-                      : '',
-                  )}
-                  onClick={() => setCurrentFontFamily(INTER_FONT)}
-                  variant="outline"
-                >
-                  <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
-                    <span
-                      className={cn(
-                        'yv:text-xs yv:text-muted-foreground',
-                        currentFontFamily === INTER_FONT
-                          ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
-                          : '',
-                      )}
-                    >
-                      Font
-                    </span>
-                    <span className="yv:sm:text-xl yv:text-base">Inter</span>
-                  </div>
-                </Button>
-                <Button
-                  className={cn(
-                    'yv:group yv:dark:bg-muted yv:border-l-0.5 yv:rounded-l-none yv:rounded-r-[8px] yv:h-auto',
-                    currentFontFamily === SOURCE_SERIF_FONT
-                      ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
-                      : '',
-                  )}
-                  onClick={() => setCurrentFontFamily(SOURCE_SERIF_FONT)}
-                  variant="outline"
-                >
-                  <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
-                    <span
-                      className={cn(
-                        'yv:text-xs yv:text-muted-foreground',
-                        currentFontFamily === SOURCE_SERIF_FONT
-                          ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
-                          : '',
-                      )}
-                    >
-                      Font
-                    </span>
-                    <span className="yv:sm:text-xl yv:text-base yv:font-serif">Source Serif</span>
-                  </div>
-                </Button>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
+            <PopoverContent sideOffset={16} heading="Reader Settings" theme={background}>
+              <BibleThemeSettingsContent
+                fontSize={currentFontSize}
+                fontFamily={currentFontFamily}
+                onFontDecreased={handleFontDecreased}
+                onFontIncreased={handleFontIncreased}
+                onFontSelected={handleFontSelected}
+              />
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
     </section>
   );

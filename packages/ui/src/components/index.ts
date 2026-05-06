@@ -6,7 +6,15 @@ export {
   type BibleChapterPickerContentProps,
   type BibleChapterPickerPressData,
 } from './bible-chapter-picker';
-export { BibleReader, type BibleReaderRootProps } from './bible-reader';
+export {
+  BibleReader,
+  BibleThemeSettingsContent,
+  type BibleReaderRootProps,
+  type BibleReaderToolbarProps,
+  type BibleThemeSettingsData,
+  type BibleThemeSettingsContentProps,
+  type BibleThemeSettingsValues,
+} from './bible-reader';
 export {
   BibleVersionPicker,
   type BibleVersionPickerRootProps,
