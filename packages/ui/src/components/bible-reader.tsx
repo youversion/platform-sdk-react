@@ -468,12 +468,12 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
     background,
   } = useBibleReaderContext();
   const yvContext = useContext(YouVersionContext);
-  const settingsValuesRef = useRef<BibleThemeSettingsValues>({
+  const themesSettingsValuesRef = useRef<BibleThemeSettingsValues>({
     fontSize: currentFontSize,
     fontFamily: currentFontFamily,
   });
 
-  settingsValuesRef.current = {
+  themesSettingsValuesRef.current = {
     fontSize: currentFontSize,
     fontFamily: currentFontFamily,
   };
@@ -486,7 +486,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
       fontFamily: themeSettings.fontFamily,
     };
 
-    settingsValuesRef.current = nextThemeSettings;
+    themesSettingsValuesRef.current = nextThemeSettings;
     setCurrentFontSize(nextThemeSettings.fontSize);
     setCurrentFontFamily(nextThemeSettings.fontFamily);
 
@@ -494,7 +494,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
   };
 
   const handleFontIncreased = (): BibleThemeSettingsValues => {
-    const settings = settingsValuesRef.current;
+    const settings = themesSettingsValuesRef.current;
     return applyThemeSettings({
       ...settings,
       fontSize: settings.fontSize + FONT_SIZE_STEP,
@@ -502,7 +502,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
   };
 
   const handleFontDecreased = (): BibleThemeSettingsValues => {
-    const settings = settingsValuesRef.current;
+    const settings = themesSettingsValuesRef.current;
     return applyThemeSettings({
       ...settings,
       fontSize: settings.fontSize - FONT_SIZE_STEP,
@@ -511,13 +511,13 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
 
   const handleFontSelected = (fontFamily: FontFamily): BibleThemeSettingsValues => {
     return applyThemeSettings({
-      ...settingsValuesRef.current,
+      ...themesSettingsValuesRef.current,
       fontFamily,
     });
   };
 
   const buildBibleThemeSettingsPayload = (): BibleThemeSettingsData => ({
-    ...settingsValuesRef.current,
+    ...themesSettingsValuesRef.current,
     minFontSize: MIN_FONT_SIZE,
     maxFontSize: MAX_FONT_SIZE,
     onFontIncreased: handleFontIncreased,
