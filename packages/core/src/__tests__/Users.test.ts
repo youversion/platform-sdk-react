@@ -333,6 +333,23 @@ describe('YouVersionAPIUsers', () => {
       expect(result).toEqual(payload);
     });
 
+    it('should decode UTF-8 characters from JWT payload', () => {
+      const payload = {
+        sub: '123',
+        name: 'Marcônio Романов',
+      };
+      const base64UrlPayload = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+      const token = `header.${base64UrlPayload}.signature`;
+      const binaryPayload = Buffer.from(base64UrlPayload, 'base64url').toString('latin1');
+
+      vi.mocked(atob).mockReturnValue(binaryPayload);
+
+      // @ts-expect-error - accessing private method for testing
+      const result = YouVersionAPIUsers.decodeJWT(token);
+
+      expect(result).toEqual(payload);
+    });
+
     it('should return empty object for invalid token format', () => {
       // @ts-expect-error - accessing private method for testing
       const result = YouVersionAPIUsers.decodeJWT('invalid.token');

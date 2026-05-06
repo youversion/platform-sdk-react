@@ -1,5 +1,46 @@
 # @youversion/platform-react-hooks
 
+## 1.25.0
+
+### Patch Changes
+
+- @youversion/platform-core@1.25.0
+
+## 1.24.0
+
+### Patch Changes
+
+- @youversion/platform-core@1.24.0
+
+## 1.23.2
+
+### Patch Changes
+
+- Updated dependencies [da88c10]
+  - @youversion/platform-core@1.23.2
+
+## 1.23.1
+
+### Patch Changes
+
+- Updated dependencies [48a86d2]
+  - @youversion/platform-core@1.23.1
+
+## 1.23.0
+
+### Minor Changes
+
+- ad87585: Add i18next internationalization support with one extractable string ("Verse of The Day"). Adds i18next and react-i18next as dependencies. The SDK creates an isolated i18next instance (no global singleton mutation) and falls back to English by default.
+
+### Patch Changes
+
+- fda3609: fix(ui): preserve API order for suggested languages in BibleVersionPicker
+- c47ab70: chore(ui): upgrade Storybook to 10.3.5 and bump MSW deps
+- Updated dependencies [ad87585]
+- Updated dependencies [fda3609]
+- Updated dependencies [c47ab70]
+  - @youversion/platform-core@1.23.0
+
 ## 1.22.3
 
 ### Patch Changes

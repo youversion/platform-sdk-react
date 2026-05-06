@@ -1,5 +1,32 @@
 # @youversion/platform-core
 
+## 1.25.0
+
+## 1.24.0
+
+## 1.23.2
+
+### Patch Changes
+
+- da88c10: Tolerate runtimes without `crypto.randomUUID` by falling back to a non-secure timestamp+random installation id.
+
+## 1.23.1
+
+### Patch Changes
+
+- 48a86d2: fix(core): decode JWT payload claims as UTF-8 to prevent mojibake in non-ASCII user names.
+
+## 1.23.0
+
+### Minor Changes
+
+- ad87585: Add i18next internationalization support with one extractable string ("Verse of The Day"). Adds i18next as a dependency. The SDK creates an isolated i18next instance (no global singleton mutation) and falls back to English by default.
+
+### Patch Changes
+
+- fda3609: fix(ui): preserve API order for suggested languages in BibleVersionPicker
+- c47ab70: chore(ui): upgrade Storybook to 10.3.5 and bump MSW deps
+
 ## 1.22.3
 
 ### Patch Changes
