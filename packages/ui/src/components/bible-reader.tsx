@@ -478,22 +478,24 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
     fontFamily: currentFontFamily,
   };
 
-  const applySettings = (settings: BibleThemeSettingsValues): BibleThemeSettingsValues => {
-    const nextSettings = {
-      fontSize: clampFontSize(settings.fontSize),
-      fontFamily: settings.fontFamily,
+  const applyThemeSettings = (
+    themeSettings: BibleThemeSettingsValues,
+  ): BibleThemeSettingsValues => {
+    const nextThemeSettings = {
+      fontSize: clampFontSize(themeSettings.fontSize),
+      fontFamily: themeSettings.fontFamily,
     };
 
-    settingsValuesRef.current = nextSettings;
-    setCurrentFontSize(nextSettings.fontSize);
-    setCurrentFontFamily(nextSettings.fontFamily);
+    settingsValuesRef.current = nextThemeSettings;
+    setCurrentFontSize(nextThemeSettings.fontSize);
+    setCurrentFontFamily(nextThemeSettings.fontFamily);
 
-    return nextSettings;
+    return nextThemeSettings;
   };
 
   const handleFontIncreased = (): BibleThemeSettingsValues => {
     const settings = settingsValuesRef.current;
-    return applySettings({
+    return applyThemeSettings({
       ...settings,
       fontSize: settings.fontSize + FONT_SIZE_STEP,
     });
@@ -501,14 +503,14 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
 
   const handleFontDecreased = (): BibleThemeSettingsValues => {
     const settings = settingsValuesRef.current;
-    return applySettings({
+    return applyThemeSettings({
       ...settings,
       fontSize: settings.fontSize - FONT_SIZE_STEP,
     });
   };
 
   const handleFontSelected = (fontFamily: FontFamily): BibleThemeSettingsValues => {
-    return applySettings({
+    return applyThemeSettings({
       ...settingsValuesRef.current,
       fontFamily,
     });
