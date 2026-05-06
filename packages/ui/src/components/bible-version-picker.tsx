@@ -9,7 +9,10 @@ import {
   useVersions,
 } from '@youversion/platform-react-hooks';
 import {
+  cloneElement,
   createContext,
+  isValidElement,
+  type MouseEvent,
   type ReactNode,
   useCallback,
   useContext,
@@ -152,6 +155,7 @@ type BibleVersionPickerContextType = {
   isPopoverOpen: boolean;
   setIsPopoverOpen: (open: boolean) => void;
   versionsLoading: boolean;
+  onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
 };
 
 const BibleVersionPickerContext = createContext<BibleVersionPickerContextType | null>(null);
@@ -167,16 +171,44 @@ function useBibleVersionPickerContext() {
 export type RootProps = {
   versionId: number;
   onVersionChange?: (versionId: number) => void;
+  languageId?: string;
+  defaultLanguageId?: string;
+  onLanguageChange?: (languageId: string) => void;
   background?: 'light' | 'dark';
   side?: 'top' | 'right' | 'bottom' | 'left';
+  onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
   children?: ReactNode;
 };
+
+export type BibleVersionPickerPressData = {
+  versionId: number;
+  languageId: string;
+};
+
+export type BibleVersionPickerContentProps = {
+  open?: boolean;
+  onRequestClose?: () => void;
+};
+
+export type BibleLanguagePickerContentProps = {
+  open?: boolean;
+  onRequestClose?: () => void;
+};
+
+export type BibleVersionPickerLanguageTriggerProps = Omit<
+  React.ComponentProps<typeof Button>,
+  'children'
+>;
 
 function Root({
   versionId: controlledVersionId,
   onVersionChange,
+  languageId: controlledLanguageId,
+  defaultLanguageId,
+  onLanguageChange,
   background,
   side = 'top',
+  onVersionPickerPress,
   children,
 }: RootProps) {
   const [versionId, setVersionIdState] = useControllableState({
@@ -188,9 +220,15 @@ function Root({
   const providerTheme = useTheme();
   const theme = background || providerTheme;
 
-  const [selectedLanguageId, setSelectedLanguageId] = useState(
-    (typeof navigator !== 'undefined' && navigator.languages[0]?.split('-')[0]) || 'en',
-  );
+  const fallbackLanguageId =
+    defaultLanguageId ||
+    (typeof navigator !== 'undefined' && navigator.languages[0]?.split('-')[0]) ||
+    'en';
+  const [selectedLanguageId, setSelectedLanguageId] = useControllableState({
+    prop: controlledLanguageId,
+    defaultProp: fallbackLanguageId,
+    onChange: onLanguageChange,
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [isLanguagesOpen, setIsLanguagesOpen] = useState(false);
   const [recentVersions, setRecentVersions] = useState<RecentVersion[]>(getRecentVersions);
@@ -314,7 +352,16 @@ function Root({
     isPopoverOpen,
     setIsPopoverOpen,
     versionsLoading,
+    onVersionPickerPress,
   };
+
+  if (onVersionPickerPress) {
+    return (
+      <BibleVersionPickerContext.Provider value={contextValue}>
+        {children}
+      </BibleVersionPickerContext.Provider>
+    );
+  }
 
   return (
     <BibleVersionPickerContext.Provider value={contextValue}>
@@ -335,7 +382,8 @@ export type BibleVersionPickerTriggerProps = Omit<
 };
 
 function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTriggerProps) {
-  const { versionId, background } = useBibleVersionPickerContext();
+  const { versionId, selectedLanguageId, background, onVersionPickerPress } =
+    useBibleVersionPickerContext();
   const { version, loading } = useVersion(versionId);
 
   const content =
@@ -347,6 +395,30 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
           </Button>
         );
 
+  const handlePress = (event: MouseEvent<HTMLButtonElement>) => {
+    props.onClick?.(event);
+    if (!event.defaultPrevented) {
+      onVersionPickerPress?.({ versionId, languageId: selectedLanguageId });
+    }
+  };
+
+  if (onVersionPickerPress) {
+    if (asChild && isValidElement<Record<string, unknown>>(content)) {
+      return cloneElement(content, {
+        'data-yv-sdk': true,
+        'data-yv-theme': background,
+        ...props,
+        onClick: handlePress,
+      });
+    }
+
+    return (
+      <button type="button" data-yv-sdk data-yv-theme={background} {...props} onClick={handlePress}>
+        {content}
+      </button>
+    );
+  }
+
   return (
     <PopoverTrigger data-yv-sdk data-yv-theme={background} asChild={asChild} {...props}>
       {content}
@@ -354,30 +426,23 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
   );
 }
 
-function Content() {
+/** @internal Advanced composition surface for SDK integrations. */
+export function BibleVersionPickerLanguageTrigger({
+  'aria-label': ariaLabel = 'Select language',
+  className,
+  onClick,
+  size = 'sm',
+  variant = 'secondary',
+  ...props
+}: BibleVersionPickerLanguageTriggerProps): React.ReactElement {
   const {
-    searchQuery,
-    setSearchQuery,
     filteredVersions,
-    versionId,
-    setVersionId,
-    background,
-    side,
     setIsLanguagesOpen,
-    isLanguagesOpen,
-    totalLanguages,
     selectedLanguageId,
-    setSelectedLanguageId,
     recentVersions,
-    addRecentVersion,
-    suggestedLanguages,
-    languages,
-    setIsPopoverOpen,
+    searchQuery,
     versionsLoading,
   } = useBibleVersionPickerContext();
-  const providerTheme = useTheme();
-  const theme = background || providerTheme;
-
   const filteredRecentVersions = useMemo(() => {
     if (!searchQuery.trim()) return recentVersions;
     const query = searchQuery.trim().toLowerCase();
@@ -391,10 +456,72 @@ function Content() {
   // Fetch the selected language details (may not be in the paginated languages list)
   const { language: selectedLanguage } = useLanguage(selectedLanguageId);
 
-  const handleSelectLanguage = (languageId: string) => {
-    setSelectedLanguageId(languageId);
-    setIsLanguagesOpen(false);
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    onClick?.(event);
+    if (!onClick && !event.defaultPrevented) {
+      setIsLanguagesOpen(true);
+    }
   };
+
+  return (
+    <Button
+      aria-label={ariaLabel}
+      className={cn(
+        'yv:ml-auto yv:bg-card yv:border yv:border-transparent yv:hover:bg-card yv:hover:border-border yv:max-w-40',
+        className,
+      )}
+      size={size}
+      onClick={handleClick}
+      variant={variant}
+      {...props}
+    >
+      <GlobeIcon className="yv:size-4" />
+      <span className="yv:text-sm yv:font-medium yv:truncate">
+        {selectedLanguage?.display_names?.en || selectedLanguage?.language}
+      </span>
+      <Badge
+        variant="secondary"
+        className="yv:h-5 yv:min-w-5 yv:rounded-full yv:px-1 yv:font-mono yv:tabular-nums"
+      >
+        {versionsLoading ? (
+          <LoaderIcon className="yv:size-3 yv:animate-spin" />
+        ) : (
+          filteredVersions.length + filteredRecentVersions.length
+        )}
+      </Badge>
+    </Button>
+  );
+}
+
+function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) {
+  const {
+    searchQuery,
+    setSearchQuery,
+    filteredVersions,
+    versionId,
+    setVersionId,
+    recentVersions,
+    addRecentVersion,
+    versionsLoading,
+    background,
+    side,
+    isLanguagesOpen,
+    setIsLanguagesOpen,
+    setIsPopoverOpen,
+    onVersionPickerPress,
+  } = useBibleVersionPickerContext();
+  const wasOpenRef = useRef(open ?? false);
+
+  const filteredRecentVersions = useMemo(() => {
+    if (!searchQuery.trim()) return recentVersions;
+    const query = searchQuery.trim().toLowerCase();
+    return recentVersions.filter(
+      (v) =>
+        v.title?.toLowerCase().includes(query) ||
+        v.localized_abbreviation?.toLowerCase().includes(query) ||
+        v.abbreviation?.toLowerCase().includes(query),
+    );
+  }, [recentVersions, searchQuery]);
 
   const handleSelectVersion = (version: BibleVersion | RecentVersion) => {
     setVersionId(version.id);
@@ -404,102 +531,66 @@ function Content() {
       localized_abbreviation: version.localized_abbreviation,
       abbreviation: version.abbreviation,
     });
-    setIsLanguagesOpen(false);
-    setIsPopoverOpen(false);
+    setSearchQuery('');
+    onRequestClose?.();
   };
 
-  function LanguagePicker() {
+  useEffect(() => {
+    if (wasOpenRef.current && open === false) {
+      setSearchQuery('');
+      setIsLanguagesOpen(false);
+    }
+    wasOpenRef.current = open ?? false;
+  }, [open, setIsLanguagesOpen, setSearchQuery]);
+
+  if (!onVersionPickerPress && open === undefined && !onRequestClose) {
     return (
-      <Button
-        aria-label="Select language"
-        className="yv:ml-auto yv:bg-card yv:border yv:border-transparent yv:hover:bg-card yv:hover:border-border yv:max-w-40"
-        size="sm"
-        onClick={() => setIsLanguagesOpen(true)}
-        variant="secondary"
+      <PopoverContent
+        sideOffset={16}
+        className="yv:h-[66svh]"
+        heading="Bible Versions"
+        headerChild={<BibleVersionPickerLanguageTrigger />}
+        theme={background}
+        side={side}
       >
-        <GlobeIcon className="yv:size-4" />
-        <span className="yv:text-sm yv:font-medium yv:truncate">
-          {selectedLanguage?.display_names?.en || selectedLanguage?.language}
-        </span>
-        <Badge
-          variant="secondary"
-          className="yv:h-5 yv:min-w-5 yv:rounded-full yv:px-1 yv:font-mono yv:tabular-nums"
+        <div
+          className={`yv:h-full yv:min-h-0 ${
+            isLanguagesOpen
+              ? 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
+              : 'yv:opacity-100 yv:pointer-events-auto yv:blur-none yv:scale-100'
+          }`}
         >
-          {versionsLoading ? (
-            <LoaderIcon className="yv:size-3 yv:animate-spin" />
-          ) : (
-            filteredVersions.length + filteredRecentVersions.length
-          )}
-        </Badge>
-      </Button>
+          <Content onRequestClose={() => setIsPopoverOpen(false)} />
+        </div>
+        <div
+          className={`yv:h-full yv:absolute yv:inset-0 ${
+            isLanguagesOpen
+              ? 'yv:opacity-100 yv:pointer-events-auto yv:blur-none yv:scale-100'
+              : 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
+          }`}
+        >
+          <LanguagePanel onRequestClose={() => setIsLanguagesOpen(false)} />
+        </div>
+      </PopoverContent>
     );
   }
 
   return (
-    <PopoverContent
-      sideOffset={16}
-      className="yv:h-[66svh]"
-      heading="Bible Versions"
-      headerChild={<LanguagePicker />}
-      theme={theme}
-      side={side}
+    <div
+      className="yv:overflow-y-auto yv:h-full yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center"
+      data-yv-sdk
+      data-yv-theme={background}
     >
       {/* Versions View */}
-      <div
-        className={`yv:overflow-y-auto yv:h-full yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center ${
-          isLanguagesOpen
-            ? 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
-            : 'yv:opacity-100 yv:pointer-events-auto yv:blur-none yv:scale-100'
-        }`}
-      >
-        <div className="yv:flex-1 yv:overflow-y-auto yv:py-2">
-          {/* Recent Versions */}
-          {filteredRecentVersions.length > 0 && (
-            <>
-              <h2 className="yv:px-4 yv:py-2 yv:text-lg yv:font-bold">Recently Used Versions</h2>
-              <ItemGroup data-testid="recent-version-list">
-                {filteredRecentVersions.map((version) => (
-                  <Item
-                    key={`recent-${version.id}`}
-                    className={cn(
-                      'yv:hover:bg-muted yv:rounded-[8px]',
-                      versionId === version.id ? 'yv:bg-muted' : '',
-                    )}
-                    size="sm"
-                    variant="default"
-                    role="listitem"
-                    asChild
-                    aria-label={version.title}
-                  >
-                    <button
-                      type="button"
-                      className="yv:w-full"
-                      onClick={() => handleSelectVersion(version)}
-                    >
-                      <ItemMedia
-                        variant="icon"
-                        className="yv:rounded-[8px] yv:size-12 yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center"
-                      >
-                        <VersionAbbreviationIcon text={version.localized_abbreviation} />
-                      </ItemMedia>
-                      <ItemContent>
-                        <ItemTitle className="yv:line-clamp-2 yv:text-left">
-                          {version.title}
-                        </ItemTitle>
-                      </ItemContent>
-                    </button>
-                  </Item>
-                ))}
-              </ItemGroup>
-            </>
-          )}
-          {/* All Versions */}
-          {filteredVersions.length > 0 ? (
-            <ItemGroup data-testid="version-list">
-              <h3 className="yv:px-4 yv:py-2 yv:font-bold">All Versions</h3>
-              {filteredVersions.map((version: BibleVersion) => (
+      <div className="yv:flex-1 yv:overflow-y-auto yv:py-2">
+        {/* Recent Versions */}
+        {filteredRecentVersions.length > 0 && (
+          <>
+            <h2 className="yv:px-4 yv:py-2 yv:text-lg yv:font-bold">Recently Used Versions</h2>
+            <ItemGroup data-testid="recent-version-list">
+              {filteredRecentVersions.map((version) => (
                 <Item
-                  key={version.id}
+                  key={`recent-${version.id}`}
                   className={cn(
                     'yv:hover:bg-muted yv:rounded-[8px]',
                     versionId === version.id ? 'yv:bg-muted' : '',
@@ -530,18 +621,56 @@ function Content() {
                 </Item>
               ))}
             </ItemGroup>
-          ) : versionsLoading ? (
-            <div className="yv:w-full yv:flex yv:items-center yv:justify-center yv:py-8 yv:text-center yv:text-muted-foreground yv:text-sm">
-              <LoaderIcon className="yv:size-6 yv:animate-spin yv:text-muted-foreground" />
-            </div>
-          ) : !filteredRecentVersions.length ? (
-            <div className="yv:w-full yv:flex yv:items-center yv:justify-center yv:py-8 yv:text-center yv:text-muted-foreground yv:text-sm">
-              No versions found
-            </div>
-          ) : null}
-        </div>
+          </>
+        )}
+        {/* All Versions */}
+        {filteredVersions.length > 0 ? (
+          <ItemGroup data-testid="version-list">
+            <h3 className="yv:px-4 yv:py-2 yv:font-bold">All Versions</h3>
+            {filteredVersions.map((version: BibleVersion) => (
+              <Item
+                key={version.id}
+                className={cn(
+                  'yv:hover:bg-muted yv:rounded-[8px]',
+                  versionId === version.id ? 'yv:bg-muted' : '',
+                )}
+                size="sm"
+                variant="default"
+                role="listitem"
+                asChild
+                aria-label={version.title}
+              >
+                <button
+                  type="button"
+                  className="yv:w-full"
+                  onClick={() => handleSelectVersion(version)}
+                >
+                  <ItemMedia
+                    variant="icon"
+                    className="yv:rounded-[8px] yv:size-12 yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center"
+                  >
+                    <VersionAbbreviationIcon text={version.localized_abbreviation} />
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle className="yv:line-clamp-2 yv:text-left">{version.title}</ItemTitle>
+                  </ItemContent>
+                </button>
+              </Item>
+            ))}
+          </ItemGroup>
+        ) : versionsLoading ? (
+          <div className="yv:w-full yv:flex yv:items-center yv:justify-center yv:py-8 yv:text-center yv:text-muted-foreground yv:text-sm">
+            <LoaderIcon className="yv:size-6 yv:animate-spin yv:text-muted-foreground" />
+          </div>
+        ) : !filteredRecentVersions.length ? (
+          <div className="yv:w-full yv:flex yv:items-center yv:justify-center yv:py-8 yv:text-center yv:text-muted-foreground yv:text-sm">
+            No versions found
+          </div>
+        ) : null}
+      </div>
 
-        <section className="yv:bg-muted yv:border-s yv:border-muted yv:p-4">
+      <section className="yv:bg-muted yv:border-s yv:border-muted yv:p-4">
+        <div className="yv:grid yv:grid-cols-[1fr_auto] yv:gap-2">
           <InputGroup className="yv:bg-background yv:shadow-none yv:border-border">
             <InputGroupInput
               tabIndex={1}
@@ -554,123 +683,150 @@ function Content() {
               <SearchIcon className="yv:size-5 yv:text-muted-foreground" />
             </InputGroupAddon>
           </InputGroup>
-        </section>
-      </div>
+        </div>
+      </section>
+    </div>
+  );
+}
 
-      {/* Languages View */}
-      <div
-        className={`yv:h-full yv:absolute yv:inset-0 yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center ${
-          isLanguagesOpen
-            ? 'yv:opacity-100 yv:pointer-events-auto yv:blur-none yv:scale-100'
-            : 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
-        }`}
-      >
-        <section className="yv:bg-muted yv:px-2 yv:py-3 yv:w-full yv:rounded-t-2xl yv:border-b yv:border-border yv:grid yv:grid-cols-[auto_1fr] yv:gap-2 yv:items-center">
-          <Button
-            onClick={() => setIsLanguagesOpen(false)}
-            variant="ghost"
-            size="icon"
-            className="yv:w-8 yv:h-8 yv:text-muted-foreground"
-          >
-            <ArrowLeftIcon className="yv:size-4" />
-            <span className="yv:sr-only">Close Language selector</span>
-          </Button>
-          <h2 className="yv:font-bold yv:text-base">Select Language</h2>
-        </section>
-
-        <Tabs
-          className="yv:mt-4 yv:gap-4 yv:flex-1 yv:min-h-0 yv:flex yv:flex-col"
-          defaultValue="suggested"
+function LanguagePanel({ onRequestClose }: BibleLanguagePickerContentProps = {}) {
+  return (
+    <div className="yv:h-full yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center">
+      <section className="yv:bg-muted yv:px-2 yv:py-3 yv:w-full yv:rounded-t-2xl yv:border-b yv:border-border yv:grid yv:grid-cols-[auto_1fr] yv:gap-2 yv:items-center">
+        <Button
+          onClick={onRequestClose}
+          variant="ghost"
+          size="icon"
+          className="yv:w-8 yv:h-8 yv:text-muted-foreground"
         >
-          <TabsList className="yv:mx-4 yv:w-[calc(100%-4*var(--spacing))]">
-            <TabsTrigger className="yv:p-0" value="suggested">
-              Suggested
-            </TabsTrigger>
-            <TabsTrigger className="yv:p-0" value="all">
-              All ({totalLanguages})
-            </TabsTrigger>
-          </TabsList>
+          <ArrowLeftIcon className="yv:size-4" />
+          <span className="yv:sr-only">Close Language selector</span>
+        </Button>
+        <h2 className="yv:font-bold yv:text-base">Select Language</h2>
+      </section>
+      <BibleLanguagePickerContent onRequestClose={onRequestClose} />
+    </div>
+  );
+}
 
-          <TabsContent value="suggested" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
-            {suggestedLanguages.length > 0 ? (
-              <>
-                <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">Regional</h3>
-                <ItemGroup className="yv:gap-1">
-                  {suggestedLanguages.map((suggestedLanguage) => (
-                    <Item
-                      key={suggestedLanguage.id}
-                      className={cn(
-                        'yv:hover:bg-muted yv:rounded-[8px] yv:px-4',
-                        selectedLanguageId === suggestedLanguage.id ? 'yv:bg-muted' : '',
-                      )}
-                      size="sm"
-                      role="listitem"
-                      aria-label={suggestedLanguage.display_names?.en}
-                      asChild
-                    >
-                      <Button
-                        className="yv:w-full yv:h-auto"
-                        onClick={() => handleSelectLanguage(suggestedLanguage.id)}
-                        type="button"
-                        variant="ghost"
-                      >
-                        <ItemContent className="yv:flex yv:flex-row yv:justify-between yv:items-center">
-                          <ItemTitle className="yv:text-start yv:line-clamp-2 yv:min-w-0 yv:flex-1 yv:truncate">
-                            {suggestedLanguage.display_names?.en}
-                          </ItemTitle>
-                          <ItemDescription className="yv:shrink-0">
-                            {suggestedLanguage.display_names?.[suggestedLanguage.id]}
-                          </ItemDescription>
-                        </ItemContent>
-                      </Button>
-                    </Item>
-                  ))}
-                </ItemGroup>
-              </>
-            ) : (
-              <p className="yv:px-4 yv:py-8 yv:text-center yv:text-muted-foreground">
-                No regional languages available
-              </p>
-            )}
-          </TabsContent>
+/** @internal Advanced composition surface for SDK integrations. */
+export function BibleLanguagePickerContent({
+  open,
+  onRequestClose,
+}: BibleLanguagePickerContentProps = {}): React.ReactElement {
+  const {
+    totalLanguages,
+    selectedLanguageId,
+    setSelectedLanguageId,
+    suggestedLanguages,
+    languages,
+    background,
+  } = useBibleVersionPickerContext();
 
-          <TabsContent value="all" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
-            <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">All Languages</h3>
-            <ItemGroup className="yv:gap-1">
-              {languages.map((language) => (
-                <Item
-                  key={language.id}
-                  className={cn(
-                    'yv:hover:bg-muted yv:rounded-[8px] yv:px-4',
-                    selectedLanguageId === language.id ? 'yv:bg-muted' : '',
-                  )}
-                  size="sm"
-                  role="listitem"
-                  aria-label={language.display_names?.en}
-                  asChild
-                >
-                  <Button
-                    className="yv:w-full yv:h-auto"
-                    onClick={() => handleSelectLanguage(language.id)}
-                    type="button"
-                    variant="ghost"
+  const handleSelectLanguage = (languageId: string) => {
+    setSelectedLanguageId(languageId);
+    onRequestClose?.();
+  };
+
+  return (
+    <div
+      className="yv:h-full yv:flex yv:flex-col"
+      data-yv-sdk
+      data-yv-theme={background}
+      data-open={open}
+    >
+      <Tabs
+        className="yv:mt-4 yv:gap-4 yv:flex-1 yv:min-h-0 yv:flex yv:flex-col"
+        defaultValue="suggested"
+      >
+        <TabsList className="yv:mx-4 yv:w-[calc(100%-4*var(--spacing)*2)]">
+          <TabsTrigger className="yv:p-0" value="suggested">
+            Suggested
+          </TabsTrigger>
+          <TabsTrigger className="yv:p-0" value="all">
+            All ({totalLanguages})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="suggested" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
+          {suggestedLanguages.length > 0 ? (
+            <>
+              <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">Regional</h3>
+              <ItemGroup className="yv:gap-1">
+                {suggestedLanguages.map((suggestedLanguage) => (
+                  <Item
+                    key={suggestedLanguage.id}
+                    className={cn(
+                      'yv:hover:bg-muted yv:rounded-[8px] yv:px-4',
+                      selectedLanguageId === suggestedLanguage.id ? 'yv:bg-muted' : '',
+                    )}
+                    size="sm"
+                    role="listitem"
+                    aria-label={suggestedLanguage.display_names?.en}
+                    asChild
                   >
-                    <ItemContent className="yv:flex yv:flex-row yv:justify-between yv:items-center">
-                      <ItemTitle className="yv:text-start yv:line-clamp-2 yv:truncate yv:min-w-0 yv:max-w-2/3 yv:flex-1">
-                        {language.display_names?.en}
-                      </ItemTitle>
-                      <ItemDescription className="yv:text-end yv:shrink-0 yv:max-w-1/3">
-                        {language.display_names?.[language.id]}
-                      </ItemDescription>
-                    </ItemContent>
-                  </Button>
-                </Item>
-              ))}
-            </ItemGroup>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </PopoverContent>
+                    <Button
+                      className="yv:w-full yv:h-auto"
+                      onClick={() => handleSelectLanguage(suggestedLanguage.id)}
+                      type="button"
+                      variant="ghost"
+                    >
+                      <ItemContent className="yv:flex yv:flex-row yv:justify-between yv:items-center">
+                        <ItemTitle className="yv:text-start yv:line-clamp-2 yv:min-w-0 yv:flex-1 yv:truncate">
+                          {suggestedLanguage.display_names?.en}
+                        </ItemTitle>
+                        <ItemDescription className="yv:shrink-0">
+                          {suggestedLanguage.display_names?.[suggestedLanguage.id]}
+                        </ItemDescription>
+                      </ItemContent>
+                    </Button>
+                  </Item>
+                ))}
+              </ItemGroup>
+            </>
+          ) : (
+            <p className="yv:px-4 yv:py-8 yv:text-center yv:text-muted-foreground">
+              No regional languages available
+            </p>
+          )}
+        </TabsContent>
+
+        <TabsContent value="all" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
+          <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">All Languages</h3>
+          <ItemGroup className="yv:gap-1">
+            {languages.map((language) => (
+              <Item
+                key={language.id}
+                className={cn(
+                  'yv:hover:bg-muted yv:rounded-[8px] yv:px-4',
+                  selectedLanguageId === language.id ? 'yv:bg-muted' : '',
+                )}
+                size="sm"
+                role="listitem"
+                aria-label={language.display_names?.en}
+                asChild
+              >
+                <Button
+                  className="yv:w-full yv:h-auto"
+                  onClick={() => handleSelectLanguage(language.id)}
+                  type="button"
+                  variant="ghost"
+                >
+                  <ItemContent className="yv:flex yv:flex-row yv:justify-between yv:items-center">
+                    <ItemTitle className="yv:text-start yv:line-clamp-2 yv:truncate yv:min-w-0 yv:max-w-2/3 yv:flex-1">
+                      {language.display_names?.en}
+                    </ItemTitle>
+                    <ItemDescription className="yv:text-end yv:shrink-0 yv:max-w-1/3">
+                      {language.display_names?.[language.id]}
+                    </ItemDescription>
+                  </ItemContent>
+                </Button>
+              </Item>
+            ))}
+          </ItemGroup>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
 

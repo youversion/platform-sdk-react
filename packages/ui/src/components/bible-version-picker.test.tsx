@@ -14,7 +14,12 @@ class ResizeObserverMock {
 }
 globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 
-import { BibleVersionPicker, RECENT_VERSIONS_KEY } from './bible-version-picker';
+import {
+  BibleLanguagePickerContent,
+  BibleVersionPicker,
+  BibleVersionPickerLanguageTrigger,
+  RECENT_VERSIONS_KEY,
+} from './bible-version-picker';
 import {
   useVersions,
   useVersion,
@@ -23,7 +28,7 @@ import {
   useFilteredVersions,
   useTheme,
 } from '@youversion/platform-react-hooks';
-import type { BibleVersion } from '@youversion/platform-core';
+import type { BibleVersion, Language } from '@youversion/platform-core';
 
 vi.mock('@youversion/platform-react-hooks');
 
@@ -50,6 +55,21 @@ const mockVersions: BibleVersion[] = [
   },
 ];
 
+const mockLanguages: Language[] = [
+  {
+    id: 'en',
+    language: 'English',
+    display_names: { en: 'English' },
+    speaking_population: 1500000000,
+  },
+  {
+    id: 'es',
+    language: 'Spanish',
+    display_names: { en: 'Spanish', es: 'Español' },
+    speaking_population: 500000000,
+  },
+];
+
 function setupDefaultMocks({
   versionsLoading = false,
   filteredVersions = mockVersions,
@@ -71,12 +91,15 @@ function setupDefaultMocks({
     refetch: vi.fn(),
   });
 
-  vi.mocked(useLanguages).mockReturnValue({
-    languages: { data: [], next_page_token: null },
+  vi.mocked(useLanguages).mockImplementation((params: Parameters<typeof useLanguages>[0]) => ({
+    languages: {
+      data: params && 'country' in params ? [mockLanguages[0]!] : mockLanguages,
+      next_page_token: null,
+    },
     loading: false,
     error: null,
     refetch: vi.fn(),
-  });
+  }));
 
   vi.mocked(useLanguage).mockReturnValue({
     language: { id: 'en', display_names: { en: 'English' }, language: 'English' },
@@ -217,6 +240,168 @@ describe('BibleVersionPicker', () => {
           screen.getByRole('listitem', { name: /new living translation/i }),
         ).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('onVersionPickerPress override', () => {
+    it('calls onVersionPickerPress with { versionId, languageId } when Trigger is clicked', async () => {
+      const user = userEvent.setup();
+      const onVersionPickerPress = vi.fn();
+
+      setupDefaultMocks();
+      render(
+        <BibleVersionPicker.Root versionId={111} onVersionPickerPress={onVersionPickerPress}>
+          <BibleVersionPicker.Trigger />
+        </BibleVersionPicker.Root>,
+      );
+
+      await user.click(screen.getByRole('button'));
+
+      expect(onVersionPickerPress).toHaveBeenCalledTimes(1);
+      expect(onVersionPickerPress).toHaveBeenCalledWith({
+        versionId: 111,
+        languageId: 'en',
+      });
+    });
+
+    it('does NOT render popover content when onVersionPickerPress is provided', () => {
+      setupDefaultMocks();
+      render(
+        <BibleVersionPicker.Root versionId={111} onVersionPickerPress={vi.fn()}>
+          <BibleVersionPicker.Trigger />
+        </BibleVersionPicker.Root>,
+      );
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(screen.queryByPlaceholderText('Search')).not.toBeInTheDocument();
+    });
+
+    it('uses controlled languageId in onVersionPickerPress payload', async () => {
+      const user = userEvent.setup();
+      const onVersionPickerPress = vi.fn();
+
+      setupDefaultMocks();
+      render(
+        <BibleVersionPicker.Root
+          versionId={111}
+          languageId="es"
+          onVersionPickerPress={onVersionPickerPress}
+        >
+          <BibleVersionPicker.Trigger />
+        </BibleVersionPicker.Root>,
+      );
+
+      await user.click(screen.getByRole('button'));
+
+      expect(onVersionPickerPress).toHaveBeenCalledWith({
+        versionId: 111,
+        languageId: 'es',
+      });
+    });
+
+    it('does not call onVersionPickerPress when trigger click is prevented', async () => {
+      const user = userEvent.setup();
+      const onVersionPickerPress = vi.fn();
+
+      setupDefaultMocks();
+      render(
+        <BibleVersionPicker.Root versionId={111} onVersionPickerPress={onVersionPickerPress}>
+          <BibleVersionPicker.Trigger onClick={(event) => event.preventDefault()} />
+        </BibleVersionPicker.Root>,
+      );
+
+      await user.click(screen.getByRole('button'));
+
+      expect(onVersionPickerPress).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('standalone content', () => {
+    it('renders version content and calls onRequestClose after version selection', async () => {
+      const user = userEvent.setup();
+      const onVersionChange = vi.fn();
+      const onRequestClose = vi.fn();
+
+      setupDefaultMocks();
+      render(
+        <BibleVersionPicker.Root
+          versionId={111}
+          onVersionChange={onVersionChange}
+          onVersionPickerPress={vi.fn()}
+        >
+          <BibleVersionPicker.Content onRequestClose={onRequestClose} />
+        </BibleVersionPicker.Root>,
+      );
+
+      await user.click(screen.getByRole('listitem', { name: /new living translation/i }));
+
+      expect(onVersionChange).toHaveBeenCalledWith(206);
+      expect(onRequestClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('renders language content and calls onRequestClose after language selection', async () => {
+      const user = userEvent.setup();
+      const onLanguageChange = vi.fn();
+      const onRequestClose = vi.fn();
+
+      setupDefaultMocks();
+      render(
+        <BibleVersionPicker.Root
+          versionId={111}
+          defaultLanguageId="es"
+          onLanguageChange={onLanguageChange}
+          onVersionPickerPress={vi.fn()}
+        >
+          <BibleLanguagePickerContent onRequestClose={onRequestClose} />
+        </BibleVersionPicker.Root>,
+      );
+
+      expect(screen.queryByText('Select Language')).not.toBeInTheDocument();
+      expect(screen.getByText('Suggested')).toBeInTheDocument();
+      await user.click(screen.getByRole('listitem', { name: /english/i }));
+
+      expect(onLanguageChange).toHaveBeenCalledWith('en');
+      expect(onRequestClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('language trigger calls custom click handler without opening default language view', async () => {
+      const user = userEvent.setup();
+      const onClick = vi.fn();
+
+      setupDefaultMocks();
+      render(
+        <BibleVersionPicker.Root versionId={111} onVersionPickerPress={vi.fn()}>
+          <BibleVersionPickerLanguageTrigger onClick={onClick} />
+          <BibleVersionPicker.Content open />
+        </BibleVersionPicker.Root>,
+      );
+
+      await user.click(screen.getByRole('button', { name: /select language/i }));
+
+      expect(onClick).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText('All Languages')).not.toBeInTheDocument();
+    });
+
+    it('open=false clears version search for pre-warmed standalone content', async () => {
+      const user = userEvent.setup();
+
+      setupDefaultMocks();
+      const { rerender } = render(
+        <BibleVersionPicker.Root versionId={111} onVersionPickerPress={vi.fn()}>
+          <BibleVersionPicker.Content open />
+        </BibleVersionPicker.Root>,
+      );
+
+      await user.type(screen.getByPlaceholderText('Search'), 'nlt');
+      expect(screen.getByPlaceholderText('Search')).toHaveValue('nlt');
+
+      rerender(
+        <BibleVersionPicker.Root versionId={111} onVersionPickerPress={vi.fn()}>
+          <BibleVersionPicker.Content open={false} />
+        </BibleVersionPicker.Root>,
+      );
+
+      expect(screen.getByPlaceholderText('Search')).toHaveValue('');
     });
   });
 });
