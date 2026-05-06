@@ -102,6 +102,7 @@ export type BibleThemeSettingsData = BibleThemeSettingsValues & {
 };
 
 export type BibleThemeSettingsContentProps = {
+  theme: 'light' | 'dark';
   fontSize: number;
   fontFamily: FontFamily;
   onFontSelected: (fontFamily: FontFamily) => void;
@@ -361,6 +362,7 @@ function UserMenu() {
 }
 
 export function BibleThemeSettingsContent({
+  theme,
   fontSize,
   fontFamily,
   onFontSelected,
@@ -368,7 +370,7 @@ export function BibleThemeSettingsContent({
   onFontDecreased,
 }: BibleThemeSettingsContentProps): ReactElement {
   return (
-    <div data-yv-sdk className="yv:flex yv:flex-col yv:gap-4 yv:p-4">
+    <div data-yv-sdk data-yv-theme={theme} className="yv:flex yv:flex-col yv:gap-4 yv:p-4">
       <div className="yv:grid yv:grid-cols-2">
         <Button
           className="yv:text-xs yv:text-black yv:dark:text-muted-foreground yv:rounded-l-[8px] yv:rounded-r-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
@@ -670,6 +672,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
 
             <PopoverContent sideOffset={16} heading="Reader Settings" theme={background}>
               <BibleThemeSettingsContent
+                theme={background}
                 fontSize={currentFontSize}
                 fontFamily={currentFontFamily}
                 onFontDecreased={handleFontDecreased}
