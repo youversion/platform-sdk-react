@@ -227,7 +227,12 @@ function Root({
     onChange: onFontFamilyChange,
   });
 
+  const didHydrateThemeSettingsRef = useRef(false);
+
   useLayoutEffect(() => {
+    if (didHydrateThemeSettingsRef.current) return;
+    didHydrateThemeSettingsRef.current = true;
+
     if (!isFontSizeControlled) {
       const savedFontSize = localStorage.getItem('youversion-platform:reader:font-size');
       if (savedFontSize) {
