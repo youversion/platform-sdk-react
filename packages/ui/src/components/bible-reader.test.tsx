@@ -6,6 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import type { BibleBook, BibleVersion, Language } from '@youversion/platform-core';
 import {
   useBooks,
@@ -16,8 +17,15 @@ import {
   useVersion,
   useVersions,
 } from '@youversion/platform-react-hooks';
-import { BibleReader, type BibleThemeSettingsData } from './bible-reader';
-import { INTER_FONT, SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
+import {
+  BibleReader,
+  clampBibleReaderFontSize,
+  createBibleThemeSettingsContentHandlers,
+  nextBibleReaderFontSizeDown,
+  nextBibleReaderFontSizeUp,
+  type BibleThemeSettingsSnapshot,
+} from './bible-reader';
+import { INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
 
 class ResizeObserverMock {
   observe() {}
@@ -97,6 +105,47 @@ function setupDefaultMocks() {
   vi.mocked(useFilteredVersions).mockReturnValue([]);
 }
 
+describe('BibleReader font helpers', () => {
+  it('clamps font size to reader bounds', () => {
+    expect(clampBibleReaderFontSize(8)).toBe(12);
+    expect(clampBibleReaderFontSize(30)).toBe(20);
+    expect(clampBibleReaderFontSize(16)).toBe(16);
+  });
+
+  it('steps up and down with clamping at bounds', () => {
+    expect(nextBibleReaderFontSizeUp(16)).toBe(18);
+    expect(nextBibleReaderFontSizeUp(20)).toBe(20);
+    expect(nextBibleReaderFontSizeDown(18)).toBe(16);
+    expect(nextBibleReaderFontSizeDown(12)).toBe(12);
+  });
+});
+
+describe('createBibleThemeSettingsContentHandlers', () => {
+  it('updates font size and family via host-owned setters', () => {
+    let fontSize = 16;
+    let fontFamily: FontFamily = SOURCE_SERIF_FONT;
+    const setFontSize = vi.fn((n: number) => {
+      fontSize = n;
+    });
+    const setFontFamily = vi.fn((f: FontFamily) => {
+      fontFamily = f;
+    });
+
+    const handlers = createBibleThemeSettingsContentHandlers({
+      getFontSize: () => fontSize,
+      getFontFamily: () => fontFamily,
+      setFontSize,
+      setFontFamily,
+    });
+
+    handlers.onFontIncreased();
+    expect(setFontSize).toHaveBeenCalledWith(18);
+
+    handlers.onFontSelected(INTER_FONT);
+    expect(setFontFamily).toHaveBeenCalledWith(INTER_FONT);
+  });
+});
+
 describe('BibleReader theme settings', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -128,7 +177,7 @@ describe('BibleReader theme settings', () => {
     });
   });
 
-  it('calls onOpenBibleThemeSettings with current settings/actions and skips popover content', async () => {
+  it('calls onOpenBibleThemeSettings with a serializable snapshot and skips popover content', async () => {
     const user = userEvent.setup();
     const onOpenBibleThemeSettings = vi.fn();
 
@@ -149,56 +198,66 @@ describe('BibleReader theme settings', () => {
     expect(onOpenBibleThemeSettings).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('Reader Settings')).not.toBeInTheDocument();
 
-    const data = onOpenBibleThemeSettings.mock.calls[0]![0] as BibleThemeSettingsData;
-    expect(data).toMatchObject({
+    const snapshot = onOpenBibleThemeSettings.mock.calls[0]![0] as BibleThemeSettingsSnapshot;
+    expect(snapshot).toEqual({
       fontSize: 18,
       fontFamily: INTER_FONT,
       minFontSize: 12,
       maxFontSize: 20,
     });
-    expect(data.onFontIncreased).toEqual(expect.any(Function));
-    expect(data.onFontDecreased).toEqual(expect.any(Function));
-    expect(data.onFontSelected).toEqual(expect.any(Function));
   });
 
-  it('returns next settings when override actions update SDK-owned state', async () => {
+  it('applies font updates via controlled props using snapshot and exported font math', async () => {
     const user = userEvent.setup();
-    const onOpenBibleThemeSettings = vi.fn();
+    const onOpen = vi.fn();
 
-    render(
-      <BibleReader.Root defaultVersionId={3034} defaultBook="JHN" defaultChapter="1">
-        <BibleReader.Toolbar onOpenBibleThemeSettings={onOpenBibleThemeSettings} />
-      </BibleReader.Root>,
-    );
+    function ControlledHost() {
+      const [fontSize, setFontSize] = useState(16);
+      const [fontFamily, setFontFamily] = useState<FontFamily>(SOURCE_SERIF_FONT);
+
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              const snap = onOpen.mock.calls[0]?.[0] as BibleThemeSettingsSnapshot | undefined;
+              if (snap) {
+                setFontSize(nextBibleReaderFontSizeDown(snap.fontSize));
+                setFontFamily(INTER_FONT);
+              }
+            }}
+          >
+            simulate-native-apply
+          </button>
+          <BibleReader.Root
+            defaultVersionId={3034}
+            defaultBook="JHN"
+            defaultChapter="1"
+            fontSize={fontSize}
+            fontFamily={fontFamily}
+            onFontSizeChange={setFontSize}
+            onFontFamilyChange={setFontFamily}
+          >
+            <BibleReader.Toolbar onOpenBibleThemeSettings={onOpen} />
+          </BibleReader.Root>
+        </>
+      );
+    }
+
+    render(<ControlledHost />);
 
     await user.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
 
-    const data = onOpenBibleThemeSettings.mock.calls[0]![0] as BibleThemeSettingsData;
-
-    expect(data.onFontIncreased()).toEqual({
-      fontSize: 18,
-      fontFamily: SOURCE_SERIF_FONT,
-    });
-    expect(data.onFontIncreased()).toEqual({
-      fontSize: 20,
-      fontFamily: SOURCE_SERIF_FONT,
-    });
-    expect(data.onFontIncreased()).toEqual({
-      fontSize: 20,
-      fontFamily: SOURCE_SERIF_FONT,
-    });
-    expect(data.onFontDecreased()).toEqual({
-      fontSize: 18,
-      fontFamily: SOURCE_SERIF_FONT,
-    });
-    expect(data.onFontSelected(INTER_FONT)).toEqual({
-      fontSize: 18,
-      fontFamily: INTER_FONT,
-    });
-
+    await user.click(screen.getByRole('button', { name: 'simulate-native-apply' }));
     await waitFor(() => {
-      expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('18');
-      expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(INTER_FONT);
+      expect(localStorage.getItem('youversion-platform:reader:font-size')).toBeNull();
+      expect(localStorage.getItem('youversion-platform:reader:font-family')).toBeNull();
     });
+
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    const nextSnap = onOpen.mock.calls[1]![0] as BibleThemeSettingsSnapshot;
+    expect(nextSnap.fontSize).toBe(14);
+    expect(nextSnap.fontFamily).toBe(INTER_FONT);
   });
 });

@@ -7,12 +7,17 @@ export {
   type BibleChapterPickerPressData,
 } from './bible-chapter-picker';
 export {
+  BIBLE_READER_FONT,
   BibleReader,
   BibleThemeSettingsContent,
+  clampBibleReaderFontSize,
+  createBibleThemeSettingsContentHandlers,
+  nextBibleReaderFontSizeDown,
+  nextBibleReaderFontSizeUp,
   type BibleReaderRootProps,
   type BibleReaderToolbarProps,
-  type BibleThemeSettingsData,
   type BibleThemeSettingsContentProps,
+  type BibleThemeSettingsSnapshot,
   type BibleThemeSettingsValues,
 } from './bible-reader';
 export {

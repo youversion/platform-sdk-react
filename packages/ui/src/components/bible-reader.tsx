@@ -17,7 +17,6 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
-  useState,
   type ReactElement,
 } from 'react';
 import { cn } from '@/lib/utils';
@@ -74,8 +73,14 @@ export type RootProps = {
   versionId?: number;
   defaultVersionId?: number;
   onVersionChange?: (versionId: number) => void;
-  fontFamily?: FontFamily;
+  /** Controlled font size; omit with `defaultFontSize` for uncontrolled (persists via localStorage on web). */
   fontSize?: number;
+  defaultFontSize?: number;
+  onFontSizeChange?: (fontSize: number) => void;
+  /** Controlled font family; omit with `defaultFontFamily` for uncontrolled (persists via localStorage on web). */
+  fontFamily?: FontFamily;
+  defaultFontFamily?: FontFamily;
+  onFontFamilyChange?: (fontFamily: FontFamily) => void;
   lineHeight?: number;
   showVerseNumbers?: boolean;
   background?: 'light' | 'dark';
@@ -83,22 +88,28 @@ export type RootProps = {
   children?: ReactNode;
 };
 
-const MIN_FONT_SIZE = 12;
-const MAX_FONT_SIZE = 20;
-const DEFAULT_FONT_SIZE = 16;
-const FONT_SIZE_STEP = 2;
+/** Bounds and defaults for reader typography (stable across Web and Expo DOM hosts). */
+export const BIBLE_READER_FONT = {
+  MIN: 12,
+  MAX: 20,
+  DEFAULT: 16,
+  STEP: 2,
+} as const;
+
+const MIN_FONT_SIZE = BIBLE_READER_FONT.MIN;
+const MAX_FONT_SIZE = BIBLE_READER_FONT.MAX;
+const DEFAULT_FONT_SIZE = BIBLE_READER_FONT.DEFAULT;
+const FONT_SIZE_STEP = BIBLE_READER_FONT.STEP;
 
 export type BibleThemeSettingsValues = {
   fontSize: number;
   fontFamily: FontFamily;
 };
 
-export type BibleThemeSettingsData = BibleThemeSettingsValues & {
+/** Serializable settings state for `onOpenBibleThemeSettings` (Expo DOM / native-safe). */
+export type BibleThemeSettingsSnapshot = BibleThemeSettingsValues & {
   minFontSize: number;
   maxFontSize: number;
-  onFontIncreased: () => BibleThemeSettingsValues;
-  onFontDecreased: () => BibleThemeSettingsValues;
-  onFontSelected: (fontFamily: FontFamily) => BibleThemeSettingsValues;
 };
 
 export type BibleThemeSettingsContentProps = {
@@ -110,8 +121,49 @@ export type BibleThemeSettingsContentProps = {
   onFontDecreased: () => void;
 };
 
-function clampFontSize(fontSize: number): number {
+export function clampBibleReaderFontSize(fontSize: number): number {
   return Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, fontSize));
+}
+
+/** Initial / seeded font size: out-of-range values fall back to default (matches legacy reader behavior). */
+function normalizeReaderFontSizeForInitial(size: number): number {
+  if (size > MAX_FONT_SIZE || size < MIN_FONT_SIZE) {
+    return DEFAULT_FONT_SIZE;
+  }
+  return size;
+}
+
+export function nextBibleReaderFontSizeUp(current: number): number {
+  return clampBibleReaderFontSize(current + FONT_SIZE_STEP);
+}
+
+export function nextBibleReaderFontSizeDown(current: number): number {
+  return clampBibleReaderFontSize(current - FONT_SIZE_STEP);
+}
+
+/**
+ * Builds the three handler props for {@link BibleThemeSettingsContent} from host-owned font state.
+ * Use this on the same side as `setFontSize` / `setFontFamily` (e.g. React Native before passing
+ * **top-level** props into a `BibleThemeSettingsContent` Expo DOM wrapper). Expo allows functions as
+ * top-level DOM props; do not nest these inside a {@link BibleThemeSettingsSnapshot}.
+ */
+export function createBibleThemeSettingsContentHandlers(options: {
+  getFontSize: () => number;
+  getFontFamily: () => FontFamily;
+  setFontSize: (size: number) => void;
+  setFontFamily: (fontFamily: FontFamily) => void;
+}): Pick<BibleThemeSettingsContentProps, 'onFontIncreased' | 'onFontDecreased' | 'onFontSelected'> {
+  return {
+    onFontIncreased: () => {
+      options.setFontSize(nextBibleReaderFontSizeUp(options.getFontSize()));
+    },
+    onFontDecreased: () => {
+      options.setFontSize(nextBibleReaderFontSizeDown(options.getFontSize()));
+    },
+    onFontSelected: (fontFamily) => {
+      options.setFontFamily(fontFamily);
+    },
+  };
 }
 
 function Root({
@@ -124,8 +176,12 @@ function Root({
   versionId: controlledVersionId,
   defaultVersionId = DEFAULT_LICENSE_FREE_BIBLE_VERSION,
   onVersionChange,
-  fontFamily = SOURCE_SERIF_FONT,
-  fontSize = DEFAULT_FONT_SIZE,
+  fontSize: fontSizeProp,
+  defaultFontSize = DEFAULT_FONT_SIZE,
+  onFontSizeChange,
+  fontFamily: fontFamilyProp,
+  defaultFontFamily = SOURCE_SERIF_FONT,
+  onFontFamilyChange,
   lineHeight,
   showVerseNumbers = true,
   background,
@@ -150,36 +206,64 @@ function Root({
     onChange: onVersionChange,
   });
 
-  const validatedFontSize =
-    fontSize > MAX_FONT_SIZE || fontSize < MIN_FONT_SIZE ? DEFAULT_FONT_SIZE : fontSize;
+  const validatedDefaultFontSize =
+    defaultFontSize > MAX_FONT_SIZE || defaultFontSize < MIN_FONT_SIZE
+      ? DEFAULT_FONT_SIZE
+      : defaultFontSize;
 
-  const [currentFontSize, setCurrentFontSize] = useState(validatedFontSize);
-  const [currentFontFamily, setCurrentFontFamily] = useState(fontFamily);
+  const isFontSizeControlled = onFontSizeChange !== undefined;
+  const isFontFamilyControlled = onFontFamilyChange !== undefined;
 
-  // Load saved preferences from localStorage before paint (avoids flash of default values)
+  const defaultPropFontSize = normalizeReaderFontSizeForInitial(
+    fontSizeProp ?? validatedDefaultFontSize,
+  );
+
+  const [currentFontSize, setCurrentFontSize] = useControllableState({
+    prop: isFontSizeControlled ? fontSizeProp : undefined,
+    defaultProp: defaultPropFontSize,
+    onChange: onFontSizeChange,
+  });
+
+  const defaultPropFontFamily = fontFamilyProp ?? defaultFontFamily;
+
+  const [currentFontFamily, setCurrentFontFamily] = useControllableState({
+    prop: isFontFamilyControlled ? fontFamilyProp : undefined,
+    defaultProp: defaultPropFontFamily,
+    onChange: onFontFamilyChange,
+  });
+
+  // Load saved preferences from localStorage before paint (uncontrolled axis only; avoids flash of defaults)
   useLayoutEffect(() => {
-    const savedFontSize = localStorage.getItem('youversion-platform:reader:font-size');
-    if (savedFontSize) {
-      const parsed = parseInt(savedFontSize);
-      if (parsed >= MIN_FONT_SIZE && parsed <= MAX_FONT_SIZE) {
-        setCurrentFontSize(parsed);
+    if (!isFontSizeControlled) {
+      const savedFontSize = localStorage.getItem('youversion-platform:reader:font-size');
+      if (savedFontSize) {
+        const parsed = parseInt(savedFontSize);
+        if (parsed >= MIN_FONT_SIZE && parsed <= MAX_FONT_SIZE) {
+          setCurrentFontSize(parsed);
+        }
       }
     }
 
-    const savedFontFamily = localStorage.getItem('youversion-platform:reader:font-family');
-    if (savedFontFamily) {
-      setCurrentFontFamily(savedFontFamily);
+    if (!isFontFamilyControlled) {
+      const savedFontFamily = localStorage.getItem('youversion-platform:reader:font-family');
+      if (savedFontFamily) {
+        setCurrentFontFamily(savedFontFamily);
+      }
     }
-  }, []);
+  }, [isFontFamilyControlled, isFontSizeControlled, setCurrentFontFamily, setCurrentFontSize]);
 
-  // Save preferences to localStorage when they change
+  // Save preferences to localStorage when they change (uncontrolled axis only)
   useEffect(() => {
-    localStorage.setItem('youversion-platform:reader:font-size', currentFontSize.toString());
-  }, [currentFontSize]);
+    if (!isFontSizeControlled) {
+      localStorage.setItem('youversion-platform:reader:font-size', currentFontSize.toString());
+    }
+  }, [currentFontSize, isFontSizeControlled]);
 
   useEffect(() => {
-    localStorage.setItem('youversion-platform:reader:font-family', currentFontFamily);
-  }, [currentFontFamily]);
+    if (!isFontFamilyControlled) {
+      localStorage.setItem('youversion-platform:reader:font-family', currentFontFamily);
+    }
+  }, [currentFontFamily, isFontFamilyControlled]);
 
   const providerTheme = useTheme();
   const theme = background || providerTheme;
@@ -450,7 +534,7 @@ export function BibleThemeSettingsContent({
 
 export type BibleReaderToolbarProps = {
   border?: 'top' | 'bottom';
-  onOpenBibleThemeSettings?: (data: BibleThemeSettingsData) => void;
+  onOpenBibleThemeSettings?: (snapshot: BibleThemeSettingsSnapshot) => void;
 };
 
 function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolbarProps) {
@@ -484,7 +568,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
     themeSettings: BibleThemeSettingsValues,
   ): BibleThemeSettingsValues => {
     const nextThemeSettings = {
-      fontSize: clampFontSize(themeSettings.fontSize),
+      fontSize: clampBibleReaderFontSize(themeSettings.fontSize),
       fontFamily: themeSettings.fontFamily,
     };
 
@@ -499,7 +583,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
     const settings = themesSettingsValuesRef.current;
     return applyThemeSettings({
       ...settings,
-      fontSize: settings.fontSize + FONT_SIZE_STEP,
+      fontSize: nextBibleReaderFontSizeUp(settings.fontSize),
     });
   };
 
@@ -507,7 +591,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
     const settings = themesSettingsValuesRef.current;
     return applyThemeSettings({
       ...settings,
-      fontSize: settings.fontSize - FONT_SIZE_STEP,
+      fontSize: nextBibleReaderFontSizeDown(settings.fontSize),
     });
   };
 
@@ -518,13 +602,10 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
     });
   };
 
-  const buildBibleThemeSettingsPayload = (): BibleThemeSettingsData => ({
+  const buildBibleThemeSettingsSnapshot = (): BibleThemeSettingsSnapshot => ({
     ...themesSettingsValuesRef.current,
     minFontSize: MIN_FONT_SIZE,
     maxFontSize: MAX_FONT_SIZE,
-    onFontIncreased: handleFontIncreased,
-    onFontDecreased: handleFontDecreased,
-    onFontSelected: handleFontSelected,
   });
 
   const prevResult = getAdjacentChapter(booksData, book, chapter, 'previous');
@@ -560,10 +641,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
         >
           <BibleChapterPicker.Trigger>
             {({ chapterLabel, currentBook, loading }) => (
-              <div
-                className="yv:grid yv:grid-cols-[auto_1fr_auto]
- yv:justify-start yv:grid-rows-1 yv:overflow-hidden yv:rounded-full yv:min-w-30 yv:bg-muted yv:text-muted-foreground yv:hover:bg-muted/80"
-              >
+              <div className="yv:grid yv:grid-cols-[auto_1fr_auto] yv:justify-start yv:grid-rows-1 yv:overflow-hidden yv:rounded-full yv:min-w-30 yv:bg-muted yv:text-muted-foreground yv:hover:bg-muted/80">
                 <Button
                   className="yv:min-w-0 yv:group yv:place-self-center yv:max-size-9 yv:touch-hitbox"
                   size="icon"
@@ -658,7 +736,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
             size="sm"
             variant="secondary"
             aria-label="Settings"
-            onClick={() => onOpenBibleThemeSettings(buildBibleThemeSettingsPayload())}
+            onClick={() => onOpenBibleThemeSettings(buildBibleThemeSettingsSnapshot())}
           >
             <GearIcon className="yv:text-foreground" />
           </Button>
