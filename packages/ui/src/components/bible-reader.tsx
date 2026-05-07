@@ -73,11 +73,9 @@ export type RootProps = {
   versionId?: number;
   defaultVersionId?: number;
   onVersionChange?: (versionId: number) => void;
-  /** Controlled font size; omit with `defaultFontSize` for uncontrolled (persists via localStorage on web). */
   fontSize?: number;
   defaultFontSize?: number;
   onFontSizeChange?: (fontSize: number) => void;
-  /** Controlled font family; omit with `defaultFontFamily` for uncontrolled (persists via localStorage on web). */
   fontFamily?: FontFamily;
   defaultFontFamily?: FontFamily;
   onFontFamilyChange?: (fontFamily: FontFamily) => void;
@@ -88,7 +86,6 @@ export type RootProps = {
   children?: ReactNode;
 };
 
-/** Bounds and defaults for reader typography (stable across Web and Expo DOM hosts). */
 export const BIBLE_READER_FONT = {
   MIN: 12,
   MAX: 20,
@@ -106,7 +103,6 @@ export type BibleThemeSettingsValues = {
   fontFamily: FontFamily;
 };
 
-/** Serializable settings state for `onOpenBibleThemeSettings` (Expo DOM / native-safe). */
 export type BibleThemeSettingsSnapshot = BibleThemeSettingsValues & {
   minFontSize: number;
   maxFontSize: number;
@@ -125,8 +121,7 @@ export function clampBibleReaderFontSize(fontSize: number): number {
   return Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, fontSize));
 }
 
-/** Initial / seeded font size: out-of-range values fall back to default (matches legacy reader behavior). */
-function normalizeReaderFontSizeForInitial(size: number): number {
+function normalizeReaderFontSizeForInitialization(size: number): number {
   if (size > MAX_FONT_SIZE || size < MIN_FONT_SIZE) {
     return DEFAULT_FONT_SIZE;
   }
@@ -214,7 +209,7 @@ function Root({
   const isFontSizeControlled = onFontSizeChange !== undefined;
   const isFontFamilyControlled = onFontFamilyChange !== undefined;
 
-  const defaultPropFontSize = normalizeReaderFontSizeForInitial(
+  const defaultPropFontSize = normalizeReaderFontSizeForInitialization(
     fontSizeProp ?? validatedDefaultFontSize,
   );
 
@@ -232,7 +227,6 @@ function Root({
     onChange: onFontFamilyChange,
   });
 
-  // Load saved preferences from localStorage before paint (uncontrolled axis only; avoids flash of defaults)
   useLayoutEffect(() => {
     if (!isFontSizeControlled) {
       const savedFontSize = localStorage.getItem('youversion-platform:reader:font-size');
@@ -252,7 +246,6 @@ function Root({
     }
   }, [isFontFamilyControlled, isFontSizeControlled, setCurrentFontFamily, setCurrentFontSize]);
 
-  // Save preferences to localStorage when they change (uncontrolled axis only)
   useEffect(() => {
     if (!isFontSizeControlled) {
       localStorage.setItem('youversion-platform:reader:font-size', currentFontSize.toString());
