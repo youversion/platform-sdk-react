@@ -141,6 +141,9 @@ describe('createBibleThemeSettingsContentHandlers', () => {
     handlers.onFontIncreased();
     expect(setFontSize).toHaveBeenCalledWith(18);
 
+    handlers.onFontDecreased();
+    expect(setFontSize).toHaveBeenLastCalledWith(16);
+
     handlers.onFontSelected(INTER_FONT);
     expect(setFontFamily).toHaveBeenCalledWith(INTER_FONT);
   });
