@@ -460,6 +460,7 @@ export function BibleThemeSettingsContent({
           size="lg"
           variant="secondary"
           data-testid="decrease-font-size"
+          disabled={fontSize <= MIN_FONT_SIZE}
           aria-disabled={fontSize <= MIN_FONT_SIZE}
         >
           A
@@ -470,6 +471,7 @@ export function BibleThemeSettingsContent({
           size="lg"
           variant="secondary"
           data-testid="increase-font-size"
+          disabled={fontSize >= MAX_FONT_SIZE}
           aria-disabled={fontSize >= MAX_FONT_SIZE}
         >
           A
