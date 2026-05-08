@@ -114,16 +114,16 @@ export const Default: Story = {
     await userEvent.click(increaseFontButton);
     await expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('18');
     await userEvent.click(increaseFontButton);
-    await userEvent.click(increaseFontButton);
     await expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('20');
+    await expect(increaseFontButton).toBeDisabled();
 
     await userEvent.click(decreaseFontButton);
     await userEvent.click(decreaseFontButton);
     await expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('16');
     await userEvent.click(decreaseFontButton);
     await userEvent.click(decreaseFontButton);
-    await userEvent.click(decreaseFontButton);
     await expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('12');
+    await expect(decreaseFontButton).toBeDisabled();
 
     const interButton = screen.getByRole('button', { name: /inter/i });
     const sourceSerifButton = screen.getByRole('button', { name: /source serif/i });

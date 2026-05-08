@@ -16,7 +16,8 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
-  useState,
+  useRef,
+  type ReactElement,
 } from 'react';
 import { cn } from '@/lib/utils';
 import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, getAdjacentChapter } from '@youversion/platform-core';
@@ -72,8 +73,12 @@ export type RootProps = {
   versionId?: number;
   defaultVersionId?: number;
   onVersionChange?: (versionId: number) => void;
-  fontFamily?: FontFamily;
   fontSize?: number;
+  defaultFontSize?: number;
+  onFontSizeChange?: (fontSize: number) => void;
+  fontFamily?: FontFamily;
+  defaultFontFamily?: FontFamily;
+  onFontFamilyChange?: (fontFamily: FontFamily) => void;
   lineHeight?: number;
   showVerseNumbers?: boolean;
   background?: 'light' | 'dark';
@@ -81,9 +86,80 @@ export type RootProps = {
   children?: ReactNode;
 };
 
-const MIN_FONT_SIZE = 12;
-const MAX_FONT_SIZE = 20;
-const DEFAULT_FONT_SIZE = 16;
+export const BIBLE_READER_FONT = {
+  MIN: 12,
+  MAX: 20,
+  DEFAULT: 16,
+  STEP: 2,
+} as const;
+
+const MIN_FONT_SIZE = BIBLE_READER_FONT.MIN;
+const MAX_FONT_SIZE = BIBLE_READER_FONT.MAX;
+const DEFAULT_FONT_SIZE = BIBLE_READER_FONT.DEFAULT;
+const FONT_SIZE_STEP = BIBLE_READER_FONT.STEP;
+
+export type BibleThemeSettingsValues = {
+  fontSize: number;
+  fontFamily: FontFamily;
+};
+
+export type BibleThemeSettingsSnapshot = BibleThemeSettingsValues & {
+  minFontSize: number;
+  maxFontSize: number;
+};
+
+export type BibleThemeSettingsContentProps = {
+  theme: 'light' | 'dark';
+  fontSize: number;
+  fontFamily: FontFamily;
+  onFontSelected: (fontFamily: FontFamily) => void;
+  onFontIncreased: () => void;
+  onFontDecreased: () => void;
+};
+
+export function clampBibleReaderFontSize(fontSize: number): number {
+  return Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, fontSize));
+}
+
+function normalizeReaderFontSizeForInitialization(size: number): number {
+  if (size > MAX_FONT_SIZE || size < MIN_FONT_SIZE) {
+    return DEFAULT_FONT_SIZE;
+  }
+  return size;
+}
+
+export function nextBibleReaderFontSizeUp(current: number): number {
+  return clampBibleReaderFontSize(current + FONT_SIZE_STEP);
+}
+
+export function nextBibleReaderFontSizeDown(current: number): number {
+  return clampBibleReaderFontSize(current - FONT_SIZE_STEP);
+}
+
+/**
+ * Builds the three handler props for {@link BibleThemeSettingsContent} from host-owned font state.
+ * Use this on the same side as `setFontSize` / `setFontFamily` (e.g. React Native before passing
+ * **top-level** props into a `BibleThemeSettingsContent` Expo DOM wrapper). Expo allows functions as
+ * top-level DOM props; do not nest these inside a {@link BibleThemeSettingsSnapshot}.
+ */
+export function createBibleThemeSettingsContentHandlers(options: {
+  getFontSize: () => number;
+  getFontFamily: () => FontFamily;
+  setFontSize: (size: number) => void;
+  setFontFamily: (fontFamily: FontFamily) => void;
+}): Pick<BibleThemeSettingsContentProps, 'onFontIncreased' | 'onFontDecreased' | 'onFontSelected'> {
+  return {
+    onFontIncreased: () => {
+      options.setFontSize(nextBibleReaderFontSizeUp(options.getFontSize()));
+    },
+    onFontDecreased: () => {
+      options.setFontSize(nextBibleReaderFontSizeDown(options.getFontSize()));
+    },
+    onFontSelected: (fontFamily) => {
+      options.setFontFamily(fontFamily);
+    },
+  };
+}
 
 function Root({
   book: controlledBook,
@@ -95,8 +171,12 @@ function Root({
   versionId: controlledVersionId,
   defaultVersionId = DEFAULT_LICENSE_FREE_BIBLE_VERSION,
   onVersionChange,
-  fontFamily = SOURCE_SERIF_FONT,
-  fontSize = DEFAULT_FONT_SIZE,
+  fontSize: fontSizeProp,
+  defaultFontSize = DEFAULT_FONT_SIZE,
+  onFontSizeChange,
+  fontFamily: fontFamilyProp,
+  defaultFontFamily = SOURCE_SERIF_FONT,
+  onFontFamilyChange,
   lineHeight,
   showVerseNumbers = true,
   background,
@@ -121,36 +201,67 @@ function Root({
     onChange: onVersionChange,
   });
 
-  const validatedFontSize =
-    fontSize > MAX_FONT_SIZE || fontSize < MIN_FONT_SIZE ? DEFAULT_FONT_SIZE : fontSize;
+  const validatedDefaultFontSize =
+    defaultFontSize > MAX_FONT_SIZE || defaultFontSize < MIN_FONT_SIZE
+      ? DEFAULT_FONT_SIZE
+      : defaultFontSize;
 
-  const [currentFontSize, setCurrentFontSize] = useState(validatedFontSize);
-  const [currentFontFamily, setCurrentFontFamily] = useState(fontFamily);
+  const isFontSizeControlled = onFontSizeChange !== undefined;
+  const isFontFamilyControlled = onFontFamilyChange !== undefined;
 
-  // Load saved preferences from localStorage before paint (avoids flash of default values)
+  const defaultPropFontSize = normalizeReaderFontSizeForInitialization(
+    fontSizeProp ?? validatedDefaultFontSize,
+  );
+
+  const [currentFontSize, setCurrentFontSize] = useControllableState({
+    prop: isFontSizeControlled ? fontSizeProp : undefined,
+    defaultProp: defaultPropFontSize,
+    onChange: onFontSizeChange,
+  });
+
+  const defaultPropFontFamily = fontFamilyProp ?? defaultFontFamily;
+
+  const [currentFontFamily, setCurrentFontFamily] = useControllableState({
+    prop: isFontFamilyControlled ? fontFamilyProp : undefined,
+    defaultProp: defaultPropFontFamily,
+    onChange: onFontFamilyChange,
+  });
+
+  const didHydrateThemeSettingsRef = useRef(false);
+
   useLayoutEffect(() => {
-    const savedFontSize = localStorage.getItem('youversion-platform:reader:font-size');
-    if (savedFontSize) {
-      const parsed = parseInt(savedFontSize);
-      if (parsed >= MIN_FONT_SIZE && parsed <= MAX_FONT_SIZE) {
-        setCurrentFontSize(parsed);
+    if (didHydrateThemeSettingsRef.current) return;
+    didHydrateThemeSettingsRef.current = true;
+
+    if (!isFontSizeControlled) {
+      const savedFontSize = localStorage.getItem('youversion-platform:reader:font-size');
+      if (savedFontSize) {
+        const parsed = parseInt(savedFontSize);
+        if (parsed >= MIN_FONT_SIZE && parsed <= MAX_FONT_SIZE) {
+          setCurrentFontSize(parsed);
+        }
       }
     }
 
-    const savedFontFamily = localStorage.getItem('youversion-platform:reader:font-family');
-    if (savedFontFamily) {
-      setCurrentFontFamily(savedFontFamily);
+    if (!isFontFamilyControlled) {
+      const savedFontFamily = localStorage.getItem('youversion-platform:reader:font-family');
+      if (savedFontFamily) {
+        setCurrentFontFamily(savedFontFamily);
+      }
     }
-  }, []);
-
-  // Save preferences to localStorage when they change
-  useEffect(() => {
-    localStorage.setItem('youversion-platform:reader:font-size', currentFontSize.toString());
-  }, [currentFontSize]);
+  }, [isFontFamilyControlled, isFontSizeControlled, setCurrentFontFamily, setCurrentFontSize]);
 
   useEffect(() => {
-    localStorage.setItem('youversion-platform:reader:font-family', currentFontFamily);
-  }, [currentFontFamily]);
+    if (!isFontSizeControlled) {
+      localStorage.setItem('youversion-platform:reader:font-size', currentFontSize.toString());
+    }
+  }, [currentFontSize, isFontSizeControlled]);
+
+  useEffect(() => {
+    if (!isFontFamilyControlled) {
+      localStorage.setItem('youversion-platform:reader:font-family', currentFontFamily);
+    }
+  }, [currentFontFamily, isFontFamilyControlled]);
 
   const providerTheme = useTheme();
   const theme = background || providerTheme;
@@ -332,7 +443,101 @@ function UserMenu() {
   );
 }
 
-function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
+export function BibleThemeSettingsContent({
+  theme,
+  fontSize,
+  fontFamily,
+  onFontSelected,
+  onFontIncreased,
+  onFontDecreased,
+}: BibleThemeSettingsContentProps): ReactElement {
+  return (
+    <div data-yv-sdk data-yv-theme={theme} className="yv:flex yv:flex-col yv:gap-4 yv:p-4">
+      <div className="yv:grid yv:grid-cols-2">
+        <Button
+          className="yv:text-xs yv:text-black yv:dark:text-muted-foreground yv:rounded-l-[8px] yv:rounded-r-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
+          onClick={onFontDecreased}
+          size="lg"
+          variant="secondary"
+          data-testid="decrease-font-size"
+          disabled={fontSize <= MIN_FONT_SIZE}
+          aria-disabled={fontSize <= MIN_FONT_SIZE}
+        >
+          A
+        </Button>
+        <Button
+          className="yv:text-3xl yv:text-black yv:dark:text-muted-foreground yv:rounded-r-[8px] yv:rounded-l-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
+          onClick={onFontIncreased}
+          size="lg"
+          variant="secondary"
+          data-testid="increase-font-size"
+          disabled={fontSize >= MAX_FONT_SIZE}
+          aria-disabled={fontSize >= MAX_FONT_SIZE}
+        >
+          A
+        </Button>
+      </div>
+
+      <div className="yv:grid yv:grid-cols-2">
+        <Button
+          className={cn(
+            'yv:group yv:dark:bg-muted yv:rounded-r-none yv:border-r-0.5 yv:dark:border-border yv:rounded-l-[8px] yv:h-auto',
+            fontFamily === INTER_FONT
+              ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
+              : '',
+          )}
+          onClick={() => onFontSelected(INTER_FONT)}
+          variant="outline"
+        >
+          <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
+            <span
+              className={cn(
+                'yv:text-xs yv:text-muted-foreground',
+                fontFamily === INTER_FONT
+                  ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
+                  : '',
+              )}
+            >
+              Font
+            </span>
+            <span className="yv:sm:text-xl yv:text-base">Inter</span>
+          </div>
+        </Button>
+        <Button
+          className={cn(
+            'yv:group yv:dark:bg-muted yv:border-l-0.5 yv:rounded-l-none yv:rounded-r-[8px] yv:h-auto',
+            fontFamily === SOURCE_SERIF_FONT
+              ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
+              : '',
+          )}
+          onClick={() => onFontSelected(SOURCE_SERIF_FONT)}
+          variant="outline"
+        >
+          <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
+            <span
+              className={cn(
+                'yv:text-xs yv:text-muted-foreground',
+                fontFamily === SOURCE_SERIF_FONT
+                  ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
+                  : '',
+              )}
+            >
+              Font
+            </span>
+            <span className="yv:sm:text-xl yv:text-base yv:font-serif">Source Serif</span>
+          </div>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export type BibleReaderToolbarProps = {
+  border?: 'top' | 'bottom';
+  onOpenBibleThemeSettings?: (snapshot: BibleThemeSettingsSnapshot) => void;
+};
+
+function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolbarProps) {
   const {
     book,
     chapter,
@@ -344,10 +549,64 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
     booksLoading,
     currentFontFamily,
     setCurrentFontFamily,
+    currentFontSize,
     setCurrentFontSize,
     background,
   } = useBibleReaderContext();
   const yvContext = useContext(YouVersionContext);
+  const themesSettingsValuesRef = useRef<BibleThemeSettingsValues>({
+    fontSize: currentFontSize,
+    fontFamily: currentFontFamily,
+  });
+
+  themesSettingsValuesRef.current = {
+    fontSize: currentFontSize,
+    fontFamily: currentFontFamily,
+  };
+
+  const applyThemeSettings = (
+    themeSettings: BibleThemeSettingsValues,
+  ): BibleThemeSettingsValues => {
+    const nextThemeSettings = {
+      fontSize: clampBibleReaderFontSize(themeSettings.fontSize),
+      fontFamily: themeSettings.fontFamily,
+    };
+
+    themesSettingsValuesRef.current = nextThemeSettings;
+    setCurrentFontSize(nextThemeSettings.fontSize);
+    setCurrentFontFamily(nextThemeSettings.fontFamily);
+
+    return nextThemeSettings;
+  };
+
+  const handleFontIncreased = (): BibleThemeSettingsValues => {
+    const settings = themesSettingsValuesRef.current;
+    return applyThemeSettings({
+      ...settings,
+      fontSize: nextBibleReaderFontSizeUp(settings.fontSize),
+    });
+  };
+
+  const handleFontDecreased = (): BibleThemeSettingsValues => {
+    const settings = themesSettingsValuesRef.current;
+    return applyThemeSettings({
+      ...settings,
+      fontSize: nextBibleReaderFontSizeDown(settings.fontSize),
+    });
+  };
+
+  const handleFontSelected = (fontFamily: FontFamily): BibleThemeSettingsValues => {
+    return applyThemeSettings({
+      ...themesSettingsValuesRef.current,
+      fontFamily,
+    });
+  };
+
+  const buildBibleThemeSettingsSnapshot = (): BibleThemeSettingsSnapshot => ({
+    ...themesSettingsValuesRef.current,
+    minFontSize: MIN_FONT_SIZE,
+    maxFontSize: MAX_FONT_SIZE,
+  });
 
   const prevResult = getAdjacentChapter(booksData, book, chapter, 'previous');
   const nextResult = getAdjacentChapter(booksData, book, chapter, 'next');
@@ -382,10 +641,7 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
         >
           <BibleChapterPicker.Trigger>
             {({ chapterLabel, currentBook, loading }) => (
-              <div
-                className="yv:grid yv:grid-cols-[auto_1fr_auto]
- yv:justify-start yv:grid-rows-1 yv:overflow-hidden yv:rounded-full yv:min-w-30 yv:bg-muted yv:text-muted-foreground yv:hover:bg-muted/80"
-              >
+              <div className="yv:grid yv:grid-cols-[auto_1fr_auto] yv:justify-start yv:grid-rows-1 yv:overflow-hidden yv:rounded-full yv:min-w-30 yv:bg-muted yv:text-muted-foreground yv:hover:bg-muted/80">
                 <Button
                   className="yv:min-w-0 yv:group yv:place-self-center yv:max-size-9 yv:touch-hitbox"
                   size="icon"
@@ -475,99 +731,35 @@ function Toolbar({ border = 'top' }: { border?: 'top' | 'bottom' }) {
           <BibleVersionPicker.Content />
         </BibleVersionPicker.Root>
 
-        <Popover>
-          <PopoverTrigger asChild aria-label="Settings">
-            <Button size="sm" variant="secondary">
-              <GearIcon className="yv:text-foreground" />
-            </Button>
-          </PopoverTrigger>
+        {onOpenBibleThemeSettings ? (
+          <Button
+            size="sm"
+            variant="secondary"
+            aria-label="Settings"
+            onClick={() => onOpenBibleThemeSettings(buildBibleThemeSettingsSnapshot())}
+          >
+            <GearIcon className="yv:text-foreground" />
+          </Button>
+        ) : (
+          <Popover>
+            <PopoverTrigger asChild aria-label="Settings">
+              <Button size="sm" variant="secondary">
+                <GearIcon className="yv:text-foreground" />
+              </Button>
+            </PopoverTrigger>
 
-          <PopoverContent sideOffset={16} heading="Reader Settings" theme={background}>
-            <div className="yv:flex yv:flex-col yv:gap-4 yv:p-4">
-              <div className="yv:grid yv:grid-cols-2">
-                <Button
-                  className="yv:text-xs yv:text-black yv:dark:text-muted-foreground yv:rounded-l-[8px] yv:rounded-r-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
-                  onClick={() =>
-                    setCurrentFontSize((prev) => {
-                      if (prev > MIN_FONT_SIZE) return prev - 2;
-                      return prev;
-                    })
-                  }
-                  size="lg"
-                  variant="secondary"
-                  data-testid="decrease-font-size"
-                >
-                  A
-                </Button>
-                <Button
-                  className="yv:text-3xl yv:text-black yv:dark:text-muted-foreground yv:rounded-r-[8px] yv:rounded-l-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
-                  onClick={() =>
-                    setCurrentFontSize((prev) => {
-                      if (prev < MAX_FONT_SIZE) return prev + 2;
-                      return prev;
-                    })
-                  }
-                  size="lg"
-                  variant="secondary"
-                  data-testid="increase-font-size"
-                >
-                  A
-                </Button>
-              </div>
-
-              <div className="yv:grid yv:grid-cols-2">
-                <Button
-                  className={cn(
-                    'yv:group yv:dark:bg-muted yv:rounded-r-none yv:border-r-0.5 yv:dark:border-border yv:rounded-l-[8px] yv:h-auto',
-                    currentFontFamily === INTER_FONT
-                      ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
-                      : '',
-                  )}
-                  onClick={() => setCurrentFontFamily(INTER_FONT)}
-                  variant="outline"
-                >
-                  <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
-                    <span
-                      className={cn(
-                        'yv:text-xs yv:text-muted-foreground',
-                        currentFontFamily === INTER_FONT
-                          ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
-                          : '',
-                      )}
-                    >
-                      Font
-                    </span>
-                    <span className="yv:sm:text-xl yv:text-base">Inter</span>
-                  </div>
-                </Button>
-                <Button
-                  className={cn(
-                    'yv:group yv:dark:bg-muted yv:border-l-0.5 yv:rounded-l-none yv:rounded-r-[8px] yv:h-auto',
-                    currentFontFamily === SOURCE_SERIF_FONT
-                      ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
-                      : '',
-                  )}
-                  onClick={() => setCurrentFontFamily(SOURCE_SERIF_FONT)}
-                  variant="outline"
-                >
-                  <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
-                    <span
-                      className={cn(
-                        'yv:text-xs yv:text-muted-foreground',
-                        currentFontFamily === SOURCE_SERIF_FONT
-                          ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
-                          : '',
-                      )}
-                    >
-                      Font
-                    </span>
-                    <span className="yv:sm:text-xl yv:text-base yv:font-serif">Source Serif</span>
-                  </div>
-                </Button>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
+            <PopoverContent sideOffset={16} heading="Reader Settings" theme={background}>
+              <BibleThemeSettingsContent
+                theme={background}
+                fontSize={currentFontSize}
+                fontFamily={currentFontFamily}
+                onFontDecreased={handleFontDecreased}
+                onFontIncreased={handleFontIncreased}
+                onFontSelected={handleFontSelected}
+              />
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
     </section>
   );
