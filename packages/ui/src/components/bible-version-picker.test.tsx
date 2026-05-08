@@ -398,6 +398,32 @@ describe('BibleVersionPicker', () => {
       expect(screen.queryByText('All Languages')).not.toBeInTheDocument();
     });
 
+    it('bounds and animates the default language view inside the popover content', async () => {
+      const user = userEvent.setup();
+
+      setupDefaultMocks();
+      renderPicker();
+
+      await openPicker();
+      await user.click(screen.getByRole('button', { name: /select language/i }));
+
+      expect(screen.getByRole('heading', { name: /select language/i })).toBeInTheDocument();
+
+      const dialog = screen.getByRole('dialog');
+      const viewport = dialog.querySelector('.yv\\:relative.yv\\:min-h-0.yv\\:overflow-hidden');
+      expect(viewport).not.toBeNull();
+
+      const animatedPanels = dialog.querySelectorAll(
+        '.yv\\:transition-all.yv\\:duration-300.yv\\:ease-out',
+      );
+      expect(animatedPanels).toHaveLength(2);
+
+      const languagePanel = screen
+        .getByRole('heading', { name: /select language/i })
+        .closest('.yv\\:h-full.yv\\:min-h-0.yv\\:overflow-hidden');
+      expect(languagePanel).not.toBeNull();
+    });
+
     it('open=false clears version search for pre-warmed standalone content', async () => {
       const user = userEvent.setup();
 

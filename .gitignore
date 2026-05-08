@@ -73,5 +73,6 @@ storybook-static
 !.yarn/versions
 .yarn/install-state.gz
 
-.opencode/plans
-.superset/*
+.opencode/
+.superset/
+.codex/
