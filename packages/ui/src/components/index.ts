@@ -22,8 +22,14 @@ export {
 } from './bible-reader';
 export {
   BibleVersionPicker,
+  BibleLanguagePickerContent,
+  BibleVersionPickerLanguageTrigger,
   type BibleVersionPickerRootProps,
   type BibleVersionPickerTriggerProps,
+  type BibleVersionPickerPressData,
+  type BibleVersionPickerContentProps,
+  type BibleLanguagePickerContentProps,
+  type BibleVersionPickerLanguageTriggerProps,
 } from './bible-version-picker';
 export { YouVersionAuthButton, type YouVersionAuthButtonProps } from './YouVersionAuthButton';
 export { VerseOfTheDay, type VerseOfTheDayProps } from './verse-of-the-day';
