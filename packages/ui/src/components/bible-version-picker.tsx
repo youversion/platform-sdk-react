@@ -572,7 +572,9 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
         headerChild={
           <BibleVersionPickerLanguageTrigger
             disabled={isLanguagesOpen}
-            style={isLanguagesOpen ? { visibility: 'hidden' } : {}}
+            style={
+              isLanguagesOpen ? { visibility: 'hidden', opacity: 0, pointerEvents: 'none' } : {}
+            }
           />
         }
         theme={background}
