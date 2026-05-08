@@ -1,5 +1,17 @@
 # @youversion/platform-react-ui
 
+## 1.26.0
+
+### Minor Changes
+
+- 7a0a468: Add advanced Bible version picker composition surfaces for Expo DOM integrations.
+- d77c19e: Expose `BibleThemeSettingsContent` and add optional `onOpenBibleThemeSettings` on `BibleReader.Toolbar` with a **serializable** `BibleThemeSettingsSnapshot` payload for Expo DOM hosts. Export `BIBLE_READER_FONT`, `clampBibleReaderFontSize`, `nextBibleReaderFontSizeUp`, and `nextBibleReaderFontSizeDown` so native can apply edits without closure payloads. Add optional controlled typography on `BibleReader.Root` via `fontSize`/`fontFamily` with `onFontSizeChange`/`onFontFamilyChange` (and `defaultFontSize` / `defaultFontFamily` for defaults).
+
+### Patch Changes
+
+- @youversion/platform-core@1.26.0
+- @youversion/platform-react-hooks@1.26.0
+
 ## 1.25.0
 
 ### Minor Changes
