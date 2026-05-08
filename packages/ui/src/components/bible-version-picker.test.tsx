@@ -419,7 +419,7 @@ describe('BibleVersionPicker', () => {
       expect(animatedPanels).toHaveLength(2);
 
       const languagePanel = screen
-        .getByRole('heading', { name: /select language/i })
+        .getByRole('tab', { name: /suggested/i })
         .closest('.yv\\:h-full.yv\\:min-h-0.yv\\:overflow-hidden');
       expect(languagePanel).not.toBeNull();
     });
