@@ -151,7 +151,9 @@ export const InteractiveLanguageSelection: Story = {
 
     // Click language button
     const languageButton = await screen.findByRole('button', { name: /select language/i });
-    await expect(languageButton).toHaveTextContent('English');
+    await waitFor(async () => {
+      await expect(languageButton).toHaveTextContent('English');
+    });
     await userEvent.click(languageButton);
 
     // Verify language list is visible
@@ -168,7 +170,6 @@ export const InteractiveLanguageSelection: Story = {
         await screen.findByRole('button', { name: /select language/i }),
       ).toHaveTextContent(/korean/i);
     });
-    await userEvent.click(languageButton);
   },
 };
 
