@@ -1,7 +1,8 @@
 import { readFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const dist = resolve(import.meta.dirname, '..', 'dist');
+const dist = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const errors = [];
 
 const cssPath = resolve(dist, 'tailwind.css');
