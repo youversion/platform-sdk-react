@@ -5,6 +5,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { act } from 'react';
 import { YouVersionProvider } from '@/components/YouVersionProvider';
 
 vi.mock('@youversion/platform-react-hooks', () => {
@@ -28,7 +29,7 @@ describe('Style injection via YouVersionProvider', () => {
     const styles = document.head.querySelectorAll<HTMLStyleElement>('style[data-precedence="yv-sdk"]');
     expect(styles).toHaveLength(1);
     expect(styles[0]!.getAttribute('data-precedence')).toBe('yv-sdk');
-    expect(styles[0]!.textContent).toBeDefined();
+    expect(styles[0]!.textContent).toBe('');
     expect(document.body.querySelector('[data-testid="child"]')?.textContent).toBe('hello');
   });
 
@@ -41,14 +42,18 @@ describe('Style injection via YouVersionProvider', () => {
     const root1 = createRoot(container1);
     const root2 = createRoot(container2);
 
-    root1.render(<YouVersionProvider appKey="test-1">{null}</YouVersionProvider>);
-    root2.render(<YouVersionProvider appKey="test-2">{null}</YouVersionProvider>);
+    act(() => {
+      root1.render(<YouVersionProvider appKey="test-1">{null}</YouVersionProvider>);
+      root2.render(<YouVersionProvider appKey="test-2">{null}</YouVersionProvider>);
+    });
 
     const styles = document.head.querySelectorAll('style[data-precedence="yv-sdk"]');
     expect(styles.length).toBe(1);
 
-    root1.unmount();
-    root2.unmount();
+    act(() => {
+      root1.unmount();
+      root2.unmount();
+    });
     container1.remove();
     container2.remove();
   });

@@ -15,11 +15,11 @@ if (!existsSync(jsPath)) {
 } else {
   const js = readFileSync(jsPath, 'utf-8');
 
-  if (!js.includes('href: "yv-sdk-styles"')) {
+  if (!/href:\s*"yv-sdk-styles"/.test(js)) {
     errors.push('dist/index.js missing style href — YvStyles component not in bundle');
   }
 
-  if (!js.includes('precedence: "yv-sdk"')) {
+  if (!/precedence:\s*"yv-sdk"/.test(js)) {
     errors.push('dist/index.js missing style precedence — React 19 integration not in bundle');
   }
 
