@@ -555,28 +555,50 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
       <PopoverContent
         sideOffset={16}
         className="yv:h-[66svh]"
-        heading="Bible Versions"
-        headerChild={<BibleVersionPickerLanguageTrigger />}
+        heading={isLanguagesOpen ? 'Select Language' : 'Bible Versions'}
+        headerLeading={
+          isLanguagesOpen ? (
+            <Button
+              onClick={() => setIsLanguagesOpen(false)}
+              variant="ghost"
+              size="icon"
+              className="yv:w-6 yv:h-6 yv:text-muted-foreground"
+            >
+              <ArrowLeftIcon className="yv:size-5" />
+              <span className="yv:sr-only">Back to Bible versions</span>
+            </Button>
+          ) : null
+        }
+        headerChild={
+          <BibleVersionPickerLanguageTrigger
+            disabled={isLanguagesOpen}
+            style={
+              isLanguagesOpen ? { visibility: 'hidden', opacity: 0, pointerEvents: 'none' } : {}
+            }
+          />
+        }
         theme={background}
         side={side}
       >
-        <div
-          className={`yv:h-full yv:min-h-0 ${
-            isLanguagesOpen
-              ? 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
-              : 'yv:opacity-100 yv:pointer-events-auto yv:blur-none yv:scale-100'
-          }`}
-        >
-          <Content onRequestClose={() => setIsPopoverOpen(false)} />
-        </div>
-        <div
-          className={`yv:h-full yv:absolute yv:inset-0 ${
-            isLanguagesOpen
-              ? 'yv:opacity-100 yv:pointer-events-auto yv:blur-none yv:scale-100'
-              : 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
-          }`}
-        >
-          <LanguagePanel onRequestClose={() => setIsLanguagesOpen(false)} />
+        <div className="yv:relative yv:min-h-0 yv:overflow-hidden">
+          <div
+            className={`yv:h-full yv:min-h-0 yv:overflow-hidden yv:transition-all yv:duration-300 yv:ease-out yv:motion-reduce:transition-none ${
+              isLanguagesOpen
+                ? 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
+                : 'yv:opacity-100 yv:pointer-events-auto yv:blur-none yv:scale-100'
+            }`}
+          >
+            <Content onRequestClose={() => setIsPopoverOpen(false)} />
+          </div>
+          <div
+            className={`yv:h-full yv:min-h-0 yv:overflow-hidden yv:absolute yv:inset-0 yv:transition-all yv:duration-300 yv:ease-out yv:motion-reduce:transition-none ${
+              isLanguagesOpen
+                ? 'yv:opacity-100 yv:pointer-events-auto yv:blur-none yv:scale-100'
+                : 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
+            }`}
+          >
+            <LanguagePanel onRequestClose={() => setIsLanguagesOpen(false)} />
+          </div>
         </div>
       </PopoverContent>
     );
@@ -698,20 +720,10 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
 
 function LanguagePanel({ onRequestClose }: BibleLanguagePickerContentProps = {}) {
   return (
-    <div className="yv:h-full yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center">
-      <section className="yv:bg-muted yv:px-2 yv:py-3 yv:w-full yv:rounded-t-2xl yv:border-b yv:border-border yv:grid yv:grid-cols-[auto_1fr] yv:gap-2 yv:items-center">
-        <Button
-          onClick={onRequestClose}
-          variant="ghost"
-          size="icon"
-          className="yv:w-8 yv:h-8 yv:text-muted-foreground"
-        >
-          <ArrowLeftIcon className="yv:size-4" />
-          <span className="yv:sr-only">Close Language selector</span>
-        </Button>
-        <h2 className="yv:font-bold yv:text-base">Select Language</h2>
-      </section>
-      <BibleLanguagePickerContent onRequestClose={onRequestClose} />
+    <div className="yv:h-full yv:min-h-0 yv:overflow-hidden yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center">
+      <div className="yv:flex-1 yv:min-h-0 yv:overflow-hidden">
+        <BibleLanguagePickerContent onRequestClose={onRequestClose} />
+      </div>
     </div>
   );
 }
@@ -742,7 +754,7 @@ export function BibleLanguagePickerContent({
 
   return (
     <div
-      className="yv:h-full yv:flex yv:flex-col"
+      className="yv:h-full yv:min-h-0 yv:overflow-hidden yv:flex yv:flex-col"
       data-yv-sdk
       data-yv-theme={background}
       data-open={open}
