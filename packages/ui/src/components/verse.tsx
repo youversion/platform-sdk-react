@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { getBibleTextErrorMessage } from '@/lib/bible-text-error';
 import { cn } from '@/lib/utils';
 import { type FontFamily } from '@/lib/verse-html-utils';
+
 import { transformBibleHtml } from '@youversion/platform-core/browser';
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz';

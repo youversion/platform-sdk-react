@@ -1,10 +1,5 @@
 // React SDK main entry point
 
-import { injectStyles } from './lib/inject-styles';
-
-// Inject styles on import
-injectStyles();
-
 export * from './components';
 export * from './types';
 
@@ -20,7 +15,9 @@ export {
 } from '@youversion/platform-core';
 
 export {
-  YouVersionProvider,
+  YouVersionProvider as BaseYouVersionProvider,
   useYVAuth,
   type UseYVAuthReturn,
 } from '@youversion/platform-react-hooks';
+
+export { YouVersionProvider } from './components/YouVersionProvider';
