@@ -21,7 +21,7 @@ import {
 } from 'react';
 import { cn } from '@/lib/utils';
 import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, getAdjacentChapter } from '@youversion/platform-core';
-import { BibleChapterPicker } from './bible-chapter-picker';
+import { BibleChapterPicker, type BibleChapterPickerPressData } from './bible-chapter-picker';
 import { BibleVersionPicker } from './bible-version-picker';
 import { GearIcon } from './icons/gear';
 import { InfoIcon } from './icons/info';
@@ -51,6 +51,7 @@ type BibleReaderContextType = {
   showVerseNumbers: boolean;
   background: 'light' | 'dark';
   onFootnotePress?: (data: FootnoteData) => void;
+  onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
 };
 
 const BibleReaderContext = createContext<BibleReaderContextType | null>(null);
@@ -83,6 +84,7 @@ export type RootProps = {
   showVerseNumbers?: boolean;
   background?: 'light' | 'dark';
   onFootnotePress?: (data: FootnoteData) => void;
+  onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
   children?: ReactNode;
 };
 
@@ -181,6 +183,7 @@ function Root({
   showVerseNumbers = true,
   background,
   onFootnotePress,
+  onChapterPickerPress,
   children,
 }: RootProps) {
   const [book, setBook] = useControllableState({
@@ -286,6 +289,7 @@ function Root({
     showVerseNumbers,
     background: theme,
     onFootnotePress,
+    onChapterPickerPress,
   };
 
   return (
@@ -552,6 +556,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
     currentFontSize,
     setCurrentFontSize,
     background,
+    onChapterPickerPress,
   } = useBibleReaderContext();
   const yvContext = useContext(YouVersionContext);
   const themesSettingsValuesRef = useRef<BibleThemeSettingsValues>({
@@ -638,6 +643,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
           onChapterChange={setChapter}
           versionId={versionId}
           background={background}
+          onChapterPickerPress={onChapterPickerPress}
         >
           <BibleChapterPicker.Trigger>
             {({ chapterLabel, currentBook, loading }) => (

@@ -27,8 +27,14 @@ export interface BibleChapterPickerPressData {
   versionId: number;
 }
 
+export type BibleChapterPickerSelectData = Pick<
+  BibleChapterPickerPressData,
+  'book' | 'chapter' | 'versionId'
+>;
+
 export type BibleChapterPickerContentProps = {
   onRequestClose?: () => void;
+  onSelect?: (data: BibleChapterPickerSelectData) => void;
 };
 
 type BibleChapterPickerContextType = {
@@ -285,7 +291,7 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
   );
 }
 
-function Content({ onRequestClose }: BibleChapterPickerContentProps) {
+function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
   const {
     book,
     defaultBook,
@@ -297,6 +303,7 @@ function Content({ onRequestClose }: BibleChapterPickerContentProps) {
     registerBookElement,
     setBook,
     setChapter,
+    versionId,
   } = useBibleChapterPickerContext();
 
   const handleChapterButtonClick = (bookId: string, passageId: string) => {
@@ -305,6 +312,7 @@ function Content({ onRequestClose }: BibleChapterPickerContentProps) {
       setBook(bookId);
       setChapter(chapterId);
       setSearchQuery('');
+      onSelect?.({ book: bookId, chapter: chapterId, versionId });
       onRequestClose?.();
     }
   };

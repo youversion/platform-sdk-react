@@ -4,7 +4,7 @@
 // We stub ResizeObserver for jsdom (used by Radix/@floating-ui). The stub methods are intentionally no-ops.
 /* eslint-disable @typescript-eslint/no-empty-function */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 // ResizeObserver is used by @floating-ui/dom (Radix Popover)
@@ -16,6 +16,7 @@ class ResizeObserverMock {
 globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 
 import { BibleChapterPicker } from './bible-chapter-picker';
+import type { BibleChapterPickerSelectData } from './bible-chapter-picker';
 import { useBooks, useTheme } from '@youversion/platform-react-hooks';
 import type { BibleBook } from '@youversion/platform-core';
 
@@ -113,5 +114,87 @@ describe('BibleChapterPicker - default popover mode', () => {
 
     expect(await screen.findByText('Books')).toBeInTheDocument();
     expect(await screen.findByPlaceholderText('Search')).toBeInTheDocument();
+  });
+});
+
+describe('BibleChapterPicker.Content onSelect', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaultMocks();
+  });
+
+  it('calls onSelect with { book, chapter, versionId } when a normal chapter is clicked (with onChapterPickerPress)', async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+
+    render(
+      <BibleChapterPicker.Root
+        versionId={3034}
+        book="GEN"
+        chapter="1"
+        onChapterPickerPress={vi.fn()}
+      >
+        <BibleChapterPicker.Trigger />
+        <BibleChapterPicker.Content onSelect={onSelect} />
+      </BibleChapterPicker.Root>,
+    );
+
+    await user.click(screen.getByText('2'));
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    const payload = onSelect.mock.calls[0]![0] as BibleChapterPickerSelectData;
+    expect(payload).toEqual({
+      book: 'GEN',
+      chapter: '2',
+      versionId: 3034,
+    });
+  });
+
+  it('calls onSelect when intro chapter is clicked (with onChapterPickerPress)', async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+
+    render(
+      <BibleChapterPicker.Root
+        versionId={3034}
+        book="GEN"
+        chapter="1"
+        onChapterPickerPress={vi.fn()}
+      >
+        <BibleChapterPicker.Trigger />
+        <BibleChapterPicker.Content onSelect={onSelect} />
+      </BibleChapterPicker.Root>,
+    );
+
+    const introButton = screen
+      .getAllByRole('button')
+      .find((b) => b.querySelector('svg') && !b.textContent?.trim());
+    if (introButton) await user.click(introButton);
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith({
+      book: 'GEN',
+      chapter: 'INTRO',
+      versionId: 3034,
+    });
+  });
+
+  it('preserves default popover behavior when onSelect is not provided', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <BibleChapterPicker.Root versionId={3034} book="GEN" chapter="1">
+        <BibleChapterPicker.Trigger />
+      </BibleChapterPicker.Root>,
+    );
+
+    await user.click(screen.getByRole('button'));
+    expect(await screen.findByText('Books')).toBeInTheDocument();
+
+    await user.click(screen.getByText('2'));
+
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText('Search')).not.toBeInTheDocument();
+    });
   });
 });
