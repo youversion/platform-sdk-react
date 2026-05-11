@@ -10,9 +10,8 @@ function getTheme(value: unknown): 'light' | 'dark' | 'system' {
 
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { StorybookEnvCheck } from '../src/test/StorybookEnvCheck';
-import { YouVersionProvider } from '@youversion/platform-react-hooks';
+import { YouVersionProvider } from '../src/components/YouVersionProvider';
 import { globalHandlers } from '../src/test/mocks/handlers';
-import '../dist/tailwind.css';
 
 const THEME_BACKGROUNDS: Record<string, string> = {
   light: '#ffffff',
