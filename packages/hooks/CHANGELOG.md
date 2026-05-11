@@ -1,5 +1,16 @@
 # @youversion/platform-react-hooks
 
+## 1.27.0
+
+### Minor Changes
+
+- 8ba253e: Replace module-level injectStyles() side effect with React 19 style precedence hoisting via YouVersionProvider. Add static CSS export at @youversion/platform-react-ui/styles.css for non-React consumers.
+
+### Patch Changes
+
+- Updated dependencies [8ba253e]
+  - @youversion/platform-core@1.27.0
+
 ## 1.26.1
 
 ### Patch Changes
