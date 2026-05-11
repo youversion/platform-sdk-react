@@ -1,5 +1,13 @@
 # @youversion/platform-react-ui
 
+## 1.26.1
+
+### Patch Changes
+
+- c1b9968: Fixed a UI bug on the `BibleVersionPicker` component where switching to the language picker view would result in the scrollable contents overflowing off of the view container.
+  - @youversion/platform-core@1.26.1
+  - @youversion/platform-react-hooks@1.26.1
+
 ## 1.26.0
 
 ### Minor Changes
