@@ -1,5 +1,19 @@
 # @youversion/platform-react-ui
 
+## 1.28.0
+
+### Minor Changes
+
+- 0286f7f: Add `onSelect` callback to `BibleChapterPicker.Content` and `onChapterPickerPress` to `BibleReader.Root`
+  - `BibleChapterPickerSelectData` type exported for `onSelect` payload
+  - `onSelect` prop on `Content` fires after internal state updates, before `onRequestClose`
+  - `onChapterPickerPress` prop on `BibleReader.Root` threaded through context to `Toolbar`, suppressing default popover when provided
+
+### Patch Changes
+
+- @youversion/platform-core@1.28.0
+- @youversion/platform-react-hooks@1.28.0
+
 ## 1.27.0
 
 ### Minor Changes
