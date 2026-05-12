@@ -27,10 +27,7 @@ export interface BibleChapterPickerPressData {
   versionId: number;
 }
 
-export type BibleChapterPickerSelectData = Pick<
-  BibleChapterPickerPressData,
-  'book' | 'chapter' | 'versionId'
->;
+export type BibleChapterPickerSelectData = BibleChapterPickerPressData;
 
 export type BibleChapterPickerContentProps = {
   onRequestClose?: () => void;
@@ -345,6 +342,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
                         key={`${bookItem.id}-${bookItem.intro.passage_id}`}
                         variant="secondary"
                         size="icon"
+                        data-testid="intro-chapter-button"
                         className="yv:aspect-square yv:w-full yv:h-full yv:flex yv:items-center yv:justify-center yv:rounded-[4px]"
                         onClick={() =>
                           handleChapterButtonClick(bookItem.id, bookItem.intro?.passage_id || '')

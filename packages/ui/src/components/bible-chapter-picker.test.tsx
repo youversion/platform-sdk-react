@@ -166,10 +166,8 @@ describe('BibleChapterPicker.Content onSelect', () => {
       </BibleChapterPicker.Root>,
     );
 
-    const introButton = screen
-      .getAllByRole('button')
-      .find((b) => b.querySelector('svg') && !b.textContent?.trim());
-    if (introButton) await user.click(introButton);
+    const introButton = screen.getByTestId('intro-chapter-button');
+    await user.click(introButton);
 
     expect(onSelect).toHaveBeenCalledTimes(1);
     expect(onSelect).toHaveBeenCalledWith({
