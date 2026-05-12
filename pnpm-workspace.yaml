@@ -6,8 +6,6 @@ packages:
   # that gets bundled directly into the SDK packages
 
 minimumReleaseAge: 4320 # 3-day cooldown — supply-chain attack mitigation
-minimumReleaseAgeExclude:
-  - "@youversion/*"
 
 overrides:
   react: "19.1.2"
