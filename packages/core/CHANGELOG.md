@@ -1,5 +1,7 @@
 # @youversion/platform-core
 
+## 1.28.0
+
 ## 1.27.0
 
 ### Minor Changes
