@@ -4,3 +4,18 @@ packages:
   - "tools/*"
   # Note: shared/ is intentionally not a package - it contains source code
   # that gets bundled directly into the SDK packages
+
+minimumReleaseAge: 4320 # 3-day cooldown — supply-chain attack mitigation
+minimumReleaseAgeExclude:
+  - "@youversion/*"
+
+overrides:
+  react: "19.1.2"
+  react-dom: "19.1.2"
+  "@types/react": "19.1.2"
+  "@types/react-dom": "19.1.2"
+  vite: ">=5.4.21"
+allowBuilds:
+  '@parcel/watcher': true
+  esbuild: true
+  msw: true

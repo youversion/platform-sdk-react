@@ -2,10 +2,10 @@
   "name": "youversion-sdk-monorepo",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@9.0.0",
+  "packageManager": "pnpm@11.1.1+sha512.d1fdf5f73c617b64fa1a56a81c3c8dfe0e966e33a6010aa256b517ae77be21d93e05affc0de1a83b0e4f29d569f68b446ae8f068cd7247c0bb3df0fb4d7bdf9a",
   "engines": {
     "node": ">=20.0.0",
-    "pnpm": ">=9.0.0"
+    "pnpm": ">=11.0.0"
   },
   "workspaces": [
     "packages/*"
@@ -36,10 +36,12 @@
   },
   "devDependencies": {
     "@changesets/cli": "2.29.7",
+    "@internal/eslint-config": "workspace:*",
     "@eslint/eslintrc": "3.3.1",
     "@microsoft/api-extractor": "7.53.1",
     "@types/node": "24.9.1",
     "eslint": "9.38.0",
+    "eslint-plugin-storybook": "10.3.5",
     "husky": "9.1.7",
     "knip": "5.66.3",
     "lint-staged": "16.2.5",
@@ -49,14 +51,5 @@
     "tsup": "8.5.0",
     "turbo": "2.5.8",
     "typescript": "5.9.3"
-  },
-  "pnpm": {
-    "overrides": {
-      "react": "19.1.2",
-      "react-dom": "19.1.2",
-      "@types/react": "19.1.2",
-      "@types/react-dom": "19.1.2",
-      "vite": ">=5.4.21"
-    }
   }
 }
