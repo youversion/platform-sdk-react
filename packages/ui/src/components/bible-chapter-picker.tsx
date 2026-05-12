@@ -27,8 +27,11 @@ export interface BibleChapterPickerPressData {
   versionId: number;
 }
 
+export type BibleChapterPickerSelectData = BibleChapterPickerPressData;
+
 export type BibleChapterPickerContentProps = {
   onRequestClose?: () => void;
+  onSelect?: (data: BibleChapterPickerSelectData) => void;
 };
 
 type BibleChapterPickerContextType = {
@@ -285,7 +288,7 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
   );
 }
 
-function Content({ onRequestClose }: BibleChapterPickerContentProps) {
+function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
   const {
     book,
     defaultBook,
@@ -297,6 +300,7 @@ function Content({ onRequestClose }: BibleChapterPickerContentProps) {
     registerBookElement,
     setBook,
     setChapter,
+    versionId,
   } = useBibleChapterPickerContext();
 
   const handleChapterButtonClick = (bookId: string, passageId: string) => {
@@ -305,6 +309,7 @@ function Content({ onRequestClose }: BibleChapterPickerContentProps) {
       setBook(bookId);
       setChapter(chapterId);
       setSearchQuery('');
+      onSelect?.({ book: bookId, chapter: chapterId, versionId });
       onRequestClose?.();
     }
   };
@@ -337,6 +342,7 @@ function Content({ onRequestClose }: BibleChapterPickerContentProps) {
                         key={`${bookItem.id}-${bookItem.intro.passage_id}`}
                         variant="secondary"
                         size="icon"
+                        data-testid="intro-chapter-button"
                         className="yv:aspect-square yv:w-full yv:h-full yv:flex yv:items-center yv:justify-center yv:rounded-[4px]"
                         onClick={() =>
                           handleChapterButtonClick(bookItem.id, bookItem.intro?.passage_id || '')

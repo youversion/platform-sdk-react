@@ -2,6 +2,7 @@ export {
   BibleChapterPicker,
   type RootProps,
   type BibleChapterPickerRootProps,
+  type BibleChapterPickerSelectData,
   type TriggerProps,
   type BibleChapterPickerContentProps,
   type BibleChapterPickerPressData,
