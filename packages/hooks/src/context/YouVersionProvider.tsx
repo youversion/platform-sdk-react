@@ -73,11 +73,16 @@ export function YouVersionProvider(
   const resolvedTheme = useResolvedTheme(theme);
 
   // Stable identity so memoized consumers (hooks that build ApiClient) don't
-  // rebuild when the parent re-renders with an inline object literal.
+  // rebuild when the parent re-renders with an inline object literal. Sort
+  // entries before serialising so key-insertion-order differences don't
+  // invalidate the memo for headers that are semantically identical.
+  const additionalHeadersKey = additionalHeaders
+    ? JSON.stringify(Object.entries(additionalHeaders).sort(([a], [b]) => a.localeCompare(b)))
+    : null;
   const stableAdditionalHeaders = useMemo(
     () => additionalHeaders,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(additionalHeaders ?? null)],
+    [additionalHeadersKey],
   );
 
   // Sync props to YouVersionPlatformConfiguration so any code that reads the

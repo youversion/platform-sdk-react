@@ -23,9 +23,11 @@ if (!version || typeof version !== 'string') {
 }
 
 const source = readFileSync(versionFilePath, 'utf8');
+// Pass a replacer function so `$&`, `$'`, `` $` ``, and `$n` sequences in
+// `version` (unlikely in semver, but possible) aren't interpreted by replace().
 const stamped = source.replace(
   /export const SDK_VERSION = '[^']*';/,
-  `export const SDK_VERSION = '${version}';`,
+  () => `export const SDK_VERSION = '${version}';`,
 );
 
 if (stamped === source) {

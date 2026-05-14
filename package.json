@@ -29,7 +29,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "turbo build && npm exec --yes -- changeset publish",
+    "release": "node scripts/stamp-sdk-version.mjs && turbo build --force && npm exec --yes -- changeset publish",
     "prepare": "husky",
     "analyze": "node scripts/analyze.mjs",
     "analyze:select": "node scripts/analyze-select.mjs"
