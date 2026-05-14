@@ -37,9 +37,10 @@ export function useHighlights(
         appKey: context.appKey,
         apiHost: context.apiHost,
         installationId: context.installationId,
+        additionalHeaders: context.additionalHeaders,
       }),
     );
-  }, [context?.apiHost, context?.appKey, context?.installationId]);
+  }, [context?.apiHost, context?.appKey, context?.installationId, context?.additionalHeaders]);
 
   const { data, loading, error, refetch } = useApiData<Collection<Highlight>>(
     () => highlightsClient.getHighlights(options),

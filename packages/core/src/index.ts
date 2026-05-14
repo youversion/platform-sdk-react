@@ -20,3 +20,4 @@ export {
   type TransformBibleHtmlOptions,
   type TransformedBibleHtml,
 } from './bible-html-transformer';
+export * from './version';

@@ -96,6 +96,30 @@ describe('useBibleClient', () => {
     });
   });
 
+  it('should pass additionalHeaders from context into ApiClient config', () => {
+    const additionalHeaders = { 'X-YVP-Sdk': 'ReactNativeSDK=1.2.3' };
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <YouVersionContext.Provider
+        value={{
+          appKey: mockAppKey,
+          additionalHeaders,
+        }}
+      >
+        {children}
+      </YouVersionContext.Provider>
+    );
+
+    renderHook(() => useBibleClient(), { wrapper });
+
+    expect(ApiClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appKey: mockAppKey,
+        additionalHeaders,
+      }),
+    );
+  });
+
   it('should throw error when appKey is null', () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <YouVersionContext.Provider
