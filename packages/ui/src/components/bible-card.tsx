@@ -1,4 +1,5 @@
 import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hooks';
+import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '@youversion/platform-core';
 import { BibleTextView } from './verse';
 import { BibleAppLogoLockup } from './bible-app-logo-lockup';
 import { BibleVersionPicker, type BibleVersionPickerPressData } from './bible-version-picker';
@@ -118,12 +119,10 @@ function BibleCardFooter({ copyright }: { copyright?: string | null }): React.Re
   );
 }
 
-const DEFAULT_VERSION_ID = 3034;
-
 export function BibleCard({
   reference,
   versionId: controlledVersionId,
-  defaultVersionId = DEFAULT_VERSION_ID,
+  defaultVersionId = DEFAULT_LICENSE_FREE_BIBLE_VERSION,
   onVersionChange,
   background,
   showVersionPicker = false,
