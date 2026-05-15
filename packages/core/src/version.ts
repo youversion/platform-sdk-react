@@ -1,12 +1,14 @@
-// SDK_VERSION is replaced by the release workflow with the precise published
-// version before publishing to npm. Local/non-release builds keep "Dev" so the
-// data lake can distinguish them from real release traffic.
-export const SDK_VERSION = 'Dev';
+// SDK_VERSION is injected by tsup during build using the version from package.json.
+// It contains the exact published version on release builds. In development/test,
+// it falls back to "Dev" if not defined by the bundler.
+declare const SDK_VERSION: string;
+
+const resolvedSdkVersion = typeof SDK_VERSION !== 'undefined' ? SDK_VERSION : 'Dev';
 
 export const SDK_NAME = 'ReactSDK';
 
 export const SDK_VERSION_HEADER_NAME = 'X-YVP-Sdk';
 
 export function buildSdkVersionHeaderValue(): string {
-  return `${SDK_NAME}=${SDK_VERSION}`;
+  return `${SDK_NAME}=${resolvedSdkVersion}`;
 }
