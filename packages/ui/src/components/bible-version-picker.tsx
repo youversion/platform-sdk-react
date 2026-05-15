@@ -543,7 +543,11 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
     wasOpenRef.current = open ?? false;
   }, [open, setIsLanguagesOpen, setSearchQuery]);
 
-  if (!onVersionPickerPress && open === undefined && !onRequestClose) {
+  if (onVersionPickerPress && open === undefined && !onRequestClose) {
+    return null;
+  }
+
+  if (open === undefined && !onRequestClose) {
     return (
       <PopoverContent
         sideOffset={16}
