@@ -1,5 +1,22 @@
 # @youversion/platform-react-ui
 
+## 1.29.0
+
+### Minor Changes
+
+- 8b5bf45: Add `onVersionPickerPress` escape-hatch prop to `BibleReader.Root` and `BibleCard`, and make `BibleCard.versionId` controllable.
+  - `BibleReader.Root` accepts `onVersionPickerPress?: (data: BibleVersionPickerPressData) => void`, threaded through context to Toolbar and then to the internal `BibleVersionPicker.Root` — suppresses the default popover when provided
+  - `BibleCard` accepts `onVersionPickerPress`, `defaultVersionId`, and `onVersionChange`; `versionId` is now optional and uses `useControllableState` for controlled/uncontrolled support
+  - `BibleVersionPicker.Root` guards `isPopoverOpen` state when escape hatch is active, moves `filteredRecentVersions` to context to eliminate duplication between `Content` and `BibleVersionPickerLanguageTrigger`
+  - `BibleChapterPicker.Root` guards `isPopoverOpen` state when `onChapterPickerPress` is active
+  - `BibleWidgetView` kept as a deprecated alias for `BibleCard`
+  - `BibleVersionPickerPressData` type exported: `{ versionId: number; languageId: string }`
+
+### Patch Changes
+
+- @youversion/platform-core@1.29.0
+- @youversion/platform-react-hooks@1.29.0
+
 ## 1.28.0
 
 ### Minor Changes
