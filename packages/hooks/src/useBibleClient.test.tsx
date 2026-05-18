@@ -102,7 +102,7 @@ describe('useBibleClient', () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <YouVersionContext.Provider
         value={{
-          appKey: mockAppKey,
+          appKey: 'test-app-key',
           additionalHeaders,
         }}
       >
@@ -114,7 +114,7 @@ describe('useBibleClient', () => {
 
     expect(ApiClient).toHaveBeenCalledWith(
       expect.objectContaining({
-        appKey: mockAppKey,
+        appKey: 'test-app-key',
         additionalHeaders,
       }),
     );
