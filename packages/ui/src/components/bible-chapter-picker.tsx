@@ -104,7 +104,8 @@ function Root({
   const providerTheme = useTheme();
   const theme = background || providerTheme;
 
-  const [isPopoverOpen, setIsPopoverOpenRaw] = useState(false);
+  const [isPopoverOpenRaw, setIsPopoverOpenRaw] = useState(false);
+  const isPopoverOpen = onChapterPickerPress ? false : isPopoverOpenRaw;
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedBook, setExpandedBook] = useState<string | null>(book || null);
 
@@ -167,6 +168,7 @@ function Root({
   }, [expandedBook]);
 
   const setIsPopoverOpen = (open: boolean) => {
+    if (onChapterPickerPress) return;
     setIsPopoverOpenRaw(open);
     if (!open) {
       setSearchQuery('');

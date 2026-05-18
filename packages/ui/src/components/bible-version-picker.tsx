@@ -148,6 +148,7 @@ type BibleVersionPickerContextType = {
   setSearchQuery: (query: string) => void;
   suggestedLanguages: Pick<Language, 'id' | 'display_names'>[];
   filteredVersions: BibleVersion[];
+  filteredRecentVersions: RecentVersion[];
   isLanguagesOpen: boolean;
   setIsLanguagesOpen: (open: boolean) => void;
   recentVersions: RecentVersion[];
@@ -232,17 +233,19 @@ function Root({
   const [searchQuery, setSearchQuery] = useState('');
   const [isLanguagesOpen, setIsLanguagesOpen] = useState(false);
   const [recentVersions, setRecentVersions] = useState<RecentVersion[]>(getRecentVersions);
-  const [isPopoverOpen, setIsPopoverOpenRaw] = useState(false);
+  const [isPopoverOpenRaw, setIsPopoverOpenRaw] = useState(false);
+  const isPopoverOpen = onVersionPickerPress ? false : isPopoverOpenRaw;
 
   const setIsPopoverOpen = useCallback(
     (open: boolean) => {
+      if (onVersionPickerPress) return;
       setIsPopoverOpenRaw(open);
       if (!open) {
         setSearchQuery('');
         setIsLanguagesOpen(false);
       }
     },
-    [setSearchQuery],
+    [setSearchQuery, onVersionPickerPress],
   );
 
   const addRecentVersion = useCallback((version: RecentVersion) => {
@@ -270,6 +273,17 @@ function Root({
     selectedLanguageId,
     recentVersions,
   );
+
+  const filteredRecentVersions = useMemo(() => {
+    if (!searchQuery.trim()) return recentVersions;
+    const query = searchQuery.trim().toLowerCase();
+    return recentVersions.filter(
+      (v) =>
+        v.title?.toLowerCase().includes(query) ||
+        v.localized_abbreviation?.toLowerCase().includes(query) ||
+        v.abbreviation?.toLowerCase().includes(query),
+    );
+  }, [recentVersions, searchQuery]);
 
   const getLanguageDisplayName = useCallback(
     (language: Pick<Language, 'id' | 'display_names'>) => {
@@ -345,6 +359,7 @@ function Root({
     setSearchQuery,
     suggestedLanguages,
     filteredVersions,
+    filteredRecentVersions,
     isLanguagesOpen,
     setIsLanguagesOpen,
     recentVersions,
@@ -444,22 +459,11 @@ export function BibleVersionPickerLanguageTrigger({
 }: BibleVersionPickerLanguageTriggerProps): React.ReactElement {
   const {
     filteredVersions,
+    filteredRecentVersions,
     setIsLanguagesOpen,
     selectedLanguageId,
-    recentVersions,
-    searchQuery,
     versionsLoading,
   } = useBibleVersionPickerContext();
-  const filteredRecentVersions = useMemo(() => {
-    if (!searchQuery.trim()) return recentVersions;
-    const query = searchQuery.trim().toLowerCase();
-    return recentVersions.filter(
-      (v) =>
-        v.title?.toLowerCase().includes(query) ||
-        v.localized_abbreviation?.toLowerCase().includes(query) ||
-        v.abbreviation?.toLowerCase().includes(query),
-    );
-  }, [recentVersions, searchQuery]);
   // Fetch the selected language details (may not be in the paginated languages list)
   const { language: selectedLanguage } = useLanguage(selectedLanguageId);
 
@@ -505,9 +509,9 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
     searchQuery,
     setSearchQuery,
     filteredVersions,
+    filteredRecentVersions,
     versionId,
     setVersionId,
-    recentVersions,
     addRecentVersion,
     versionsLoading,
     background,
@@ -518,17 +522,6 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
     onVersionPickerPress,
   } = useBibleVersionPickerContext();
   const wasOpenRef = useRef(open ?? false);
-
-  const filteredRecentVersions = useMemo(() => {
-    if (!searchQuery.trim()) return recentVersions;
-    const query = searchQuery.trim().toLowerCase();
-    return recentVersions.filter(
-      (v) =>
-        v.title?.toLowerCase().includes(query) ||
-        v.localized_abbreviation?.toLowerCase().includes(query) ||
-        v.abbreviation?.toLowerCase().includes(query),
-    );
-  }, [recentVersions, searchQuery]);
 
   const handleSelectVersion = (version: BibleVersion | RecentVersion) => {
     setVersionId(version.id);
@@ -550,7 +543,11 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
     wasOpenRef.current = open ?? false;
   }, [open, setIsLanguagesOpen, setSearchQuery]);
 
-  if (!onVersionPickerPress && open === undefined && !onRequestClose) {
+  if (onVersionPickerPress && open === undefined && !onRequestClose) {
+    return null;
+  }
+
+  if (open === undefined && !onRequestClose) {
     return (
       <PopoverContent
         sideOffset={16}

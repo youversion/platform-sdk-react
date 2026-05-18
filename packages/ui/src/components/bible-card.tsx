@@ -1,9 +1,11 @@
 import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hooks';
+import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '@youversion/platform-core';
 import { BibleTextView } from './verse';
 import { BibleAppLogoLockup } from './bible-app-logo-lockup';
-import { BibleVersionPicker } from './bible-version-picker';
+import { BibleVersionPicker, type BibleVersionPickerPressData } from './bible-version-picker';
 import { Button } from './ui/button';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import { SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
 import { LoaderIcon } from './icons/loader';
 import { AnimatedHeight } from './animated-height';
@@ -29,9 +31,12 @@ type VersionResult = ReturnType<typeof useVersion>;
 
 export type BibleCardProps = {
   reference: string;
-  versionId: number;
+  versionId?: number;
+  defaultVersionId?: number;
+  onVersionChange?: (versionId: number) => void;
   background?: 'light' | 'dark';
   showVersionPicker?: boolean;
+  onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
 };
 
 function BibleCardHeaderError(): React.ReactNode {
@@ -62,16 +67,19 @@ function BibleCardVersionPicker({
   versionId,
   onVersionChange,
   theme,
+  onVersionPickerPress,
 }: {
   versionId: number;
   onVersionChange: (id: number) => void;
   theme: 'light' | 'dark';
+  onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
 }): React.ReactNode {
   return (
     <BibleVersionPicker.Root
       onVersionChange={onVersionChange}
       versionId={versionId}
       background={theme}
+      onVersionPickerPress={onVersionPickerPress}
     >
       <BibleVersionPicker.Trigger aria-label="Change Bible version">
         {({ version, loading }) => (
@@ -113,11 +121,23 @@ function BibleCardFooter({ copyright }: { copyright?: string | null }): React.Re
 
 export function BibleCard({
   reference,
-  versionId,
+  versionId: controlledVersionId,
+  defaultVersionId = DEFAULT_LICENSE_FREE_BIBLE_VERSION,
+  onVersionChange,
   background,
   showVersionPicker = false,
+  onVersionPickerPress,
 }: BibleCardProps): React.ReactNode {
-  const [versionNum, setVersionNum] = useState(versionId);
+  // Controlled only when both versionId + onVersionChange are provided.
+  // versionId alone seeds uncontrolled state, preserving backwards compatibility
+  // with consumers who use the version picker without an onChange handler.
+  const isControlled = controlledVersionId !== undefined && onVersionChange !== undefined;
+
+  const [versionNum, setVersionNum] = useControllableState({
+    prop: isControlled ? controlledVersionId : undefined,
+    defaultProp: isControlled ? defaultVersionId : (controlledVersionId ?? defaultVersionId),
+    onChange: onVersionChange,
+  });
   const { version } = useVersion(versionNum);
   const {
     passage,
@@ -161,6 +181,7 @@ export function BibleCard({
             versionId={versionNum}
             onVersionChange={setVersionNum}
             theme={theme}
+            onVersionPickerPress={onVersionPickerPress}
           />
         ) : null}
       </div>

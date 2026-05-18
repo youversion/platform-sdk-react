@@ -22,7 +22,7 @@ import {
 import { cn } from '@/lib/utils';
 import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, getAdjacentChapter } from '@youversion/platform-core';
 import { BibleChapterPicker, type BibleChapterPickerPressData } from './bible-chapter-picker';
-import { BibleVersionPicker } from './bible-version-picker';
+import { BibleVersionPicker, type BibleVersionPickerPressData } from './bible-version-picker';
 import { GearIcon } from './icons/gear';
 import { InfoIcon } from './icons/info';
 import { LoaderIcon } from './icons/loader';
@@ -52,6 +52,7 @@ type BibleReaderContextType = {
   background: 'light' | 'dark';
   onFootnotePress?: (data: FootnoteData) => void;
   onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
+  onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
 };
 
 const BibleReaderContext = createContext<BibleReaderContextType | null>(null);
@@ -85,6 +86,7 @@ export type RootProps = {
   background?: 'light' | 'dark';
   onFootnotePress?: (data: FootnoteData) => void;
   onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
+  onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
   children?: ReactNode;
 };
 
@@ -184,6 +186,7 @@ function Root({
   background,
   onFootnotePress,
   onChapterPickerPress,
+  onVersionPickerPress,
   children,
 }: RootProps) {
   const [book, setBook] = useControllableState({
@@ -290,6 +293,7 @@ function Root({
     background: theme,
     onFootnotePress,
     onChapterPickerPress,
+    onVersionPickerPress,
   };
 
   return (
@@ -557,6 +561,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
     setCurrentFontSize,
     background,
     onChapterPickerPress,
+    onVersionPickerPress,
   } = useBibleReaderContext();
   const yvContext = useContext(YouVersionContext);
   const themesSettingsValuesRef = useRef<BibleThemeSettingsValues>({
@@ -711,6 +716,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
           versionId={versionId}
           onVersionChange={setVersionId}
           background={background}
+          onVersionPickerPress={onVersionPickerPress}
         >
           <BibleVersionPicker.Trigger aria-label="Change Bible version">
             {({ version, loading }) => (
