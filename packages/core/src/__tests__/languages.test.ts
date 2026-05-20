@@ -62,7 +62,7 @@ describe('LanguagesClient', () => {
     });
 
     it('should normalize lowercase country codes to uppercase', async () => {
-      const getSpy = vi.spyOn(apiClient, 'get');
+      using getSpy = vi.spyOn(apiClient, 'get');
 
       await languagesClient.getLanguages({ country: 'us', page_size: 5 });
 
@@ -70,7 +70,6 @@ describe('LanguagesClient', () => {
         '/v1/languages',
         expect.objectContaining({ country: 'US' }),
       );
-      getSpy.mockRestore();
     });
 
     it('should fetch languages with valid fields filter', async () => {

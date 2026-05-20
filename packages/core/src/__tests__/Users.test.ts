@@ -193,7 +193,7 @@ describe('YouVersionAPIUsers', () => {
       );
 
       // Mock YouVersionPlatformConfiguration.saveAuthData
-      const saveAuthDataSpy = vi.spyOn(YouVersionPlatformConfiguration, 'saveAuthData');
+      using saveAuthDataSpy = vi.spyOn(YouVersionPlatformConfiguration, 'saveAuthData');
 
       const result = await YouVersionAPIUsers.handleAuthCallback();
 
@@ -217,8 +217,6 @@ describe('YouVersionAPIUsers', () => {
         '',
         'https://example.com/callback',
       );
-
-      saveAuthDataSpy.mockRestore();
     });
 
     it('should handle token exchange failure', async () => {
@@ -395,13 +393,11 @@ describe('YouVersionAPIUsers', () => {
 
   describe('signOut', () => {
     it('should call setAccessToken with null', () => {
-      const setAccessTokenSpy = vi.spyOn(YouVersionPlatformConfiguration, 'clearAuthTokens');
+      using setAccessTokenSpy = vi.spyOn(YouVersionPlatformConfiguration, 'clearAuthTokens');
 
       YouVersionAPIUsers.signOut();
 
       expect(setAccessTokenSpy).toHaveBeenCalled();
-
-      setAccessTokenSpy.mockRestore();
     });
   });
 
@@ -527,7 +523,7 @@ describe('YouVersionAPIUsers', () => {
 
       mockFetch.mockResolvedValue(mockResponse);
 
-      const saveAuthDataSpy = vi.spyOn(YouVersionPlatformConfiguration, 'saveAuthData');
+      using saveAuthDataSpy = vi.spyOn(YouVersionPlatformConfiguration, 'saveAuthData');
 
       const result = await YouVersionAPIUsers.refreshTokens();
 
@@ -567,8 +563,6 @@ describe('YouVersionAPIUsers', () => {
         existingIdToken,
         expect.any(Date),
       );
-
-      saveAuthDataSpy.mockRestore();
     });
 
     it('should handle refresh token request failure', async () => {
@@ -707,14 +701,12 @@ describe('YouVersionAPIUsers', () => {
         statusText: 'Unauthorized',
       });
 
-      const clearAuthTokensSpy = vi.spyOn(YouVersionPlatformConfiguration, 'clearAuthTokens');
+      using clearAuthTokensSpy = vi.spyOn(YouVersionPlatformConfiguration, 'clearAuthTokens');
 
       const result = await YouVersionAPIUsers.refreshTokenIfNeeded();
 
       expect(result).toBe(false);
       expect(clearAuthTokensSpy).toHaveBeenCalled();
-
-      clearAuthTokensSpy.mockRestore();
     });
   });
 });

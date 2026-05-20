@@ -125,7 +125,7 @@ describe('SessionStorageStrategy', () => {
       // @ts-expect-error - Testing undefined sessionStorage
       delete global.sessionStorage;
 
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      using consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
       const strategy = new SessionStorageStrategy();
 
@@ -139,7 +139,6 @@ describe('SessionStorageStrategy', () => {
       expect(() => strategy.removeItem('test')).not.toThrow();
       expect(() => strategy.clear()).not.toThrow();
 
-      consoleSpy.mockRestore();
       global.sessionStorage = originalSessionStorage;
     });
   });

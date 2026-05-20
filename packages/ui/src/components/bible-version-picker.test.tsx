@@ -158,7 +158,7 @@ describe('BibleVersionPicker', () => {
           abbreviation: 'NIV',
         },
       ];
-      const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key) => {
+      using _getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key) => {
         if (key === RECENT_VERSIONS_KEY) return JSON.stringify(recentVersions);
         return null;
       });
@@ -175,8 +175,6 @@ describe('BibleVersionPicker', () => {
       });
 
       expect(screen.queryByText('No versions found')).toBeNull();
-
-      getItemSpy.mockRestore();
     });
 
     it('should show spinner in badge when versions are loading', async () => {
