@@ -7,8 +7,13 @@ const meta = {
   title: 'Components/VerseOfTheDay',
   component: VerseOfTheDay,
   parameters: {
-    layout: 'centered',
+    layout: 'fullscreen',
   },
+  render: (args) => (
+    <div className="yv:w-full">
+      <VerseOfTheDay {...args} />
+    </div>
+  ),
   tags: ['autodocs'],
   argTypes: {
     background: {
@@ -82,6 +87,50 @@ export const Default: Story = {
     await expect(callArgs).toHaveProperty('text');
     await expect(callArgs?.text).toContain('For I am about to do something new');
     await expect(callArgs?.text).toContain('Isaiah 43:19 NIV');
+  },
+};
+
+export const WideContainer: Story = {
+  args: {
+    versionId: 111,
+    showSunIcon: true,
+    showBibleAppAttribution: true,
+    showShareButton: true,
+    size: 'default',
+  },
+  tags: ['integration'],
+  parameters: {
+    layout: 'fullscreen',
+  },
+  render: (args) => (
+    <div className="yv:p-8" style={{ width: 900 }}>
+      <VerseOfTheDay {...args} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(
+      await canvas.findByText(/for I am about to do something new/i),
+    ).toBeInTheDocument();
+
+    const card = canvasElement.querySelector('section[data-yv-sdk][data-yv-theme]');
+    const contentGroup = canvasElement.querySelector('section[data-yv-sdk][data-yv-theme] > div');
+    const bibleText = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+
+    await expect(card).not.toBeNull();
+    await expect(contentGroup).not.toBeNull();
+    await expect(bibleText).not.toBeNull();
+
+    const cardRect = card?.getBoundingClientRect();
+    const contentGroupRect = contentGroup?.getBoundingClientRect();
+    const leftWhitespace = (contentGroupRect?.left ?? 0) - (cardRect?.left ?? 0);
+    const rightWhitespace = (cardRect?.right ?? 0) - (contentGroupRect?.right ?? 0);
+
+    await expect(cardRect?.width ?? 0).toBeGreaterThan(800);
+    await expect(contentGroupRect?.width ?? 0).toBeLessThanOrEqual(600);
+    await expect(bibleText?.getBoundingClientRect().width ?? 0).toBeLessThanOrEqual(600);
+    await expect(Math.abs(leftWhitespace - rightWhitespace)).toBeLessThanOrEqual(1);
   },
 };
 

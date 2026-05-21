@@ -7,10 +7,10 @@ const meta = {
   title: 'Components/BibleCard',
   component: BibleCard,
   parameters: {
-    layout: 'centered',
+    layout: 'fullscreen',
   },
   render: (args) => (
-    <div className="yv:h-screen yv:w-screen yv:flex yv:justify-center yv:items-center">
+    <div className="yv:w-full">
       <BibleCard {...args} />
     </div>
   ),
