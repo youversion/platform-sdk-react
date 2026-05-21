@@ -164,5 +164,7 @@ describe('BibleCard - onFootnotePress callback', () => {
     const data = onFootnotePress.mock.calls[0]![0] as FootnoteData;
     expect(data.verseNum).toBe('5');
     expect(data.reference).toBe('JHN.1');
+    expect(data.notes).toHaveLength(1);
+    expect(data.notes[0]).toContain('Or understood');
   });
 });
