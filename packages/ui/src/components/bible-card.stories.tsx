@@ -44,6 +44,50 @@ export const Default: Story = {
     versionId: 111,
   },
 };
+
+export const WideContainer: Story = {
+  args: {
+    reference: 'LUK.1.39-45',
+    versionId: 111,
+  },
+  tags: ['integration'],
+  parameters: {
+    layout: 'fullscreen',
+  },
+  render: (args) => (
+    <div className="yv:p-8" style={{ width: 900 }}>
+      <BibleCard {...args} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(async () => {
+      await expect(canvas.getByText(/at that time mary got ready/i)).toBeInTheDocument();
+    });
+
+    const card = canvasElement.querySelector('section[data-yv-sdk][data-yv-theme]');
+    const contentGroup = canvasElement.querySelector('section[data-yv-sdk][data-yv-theme] > div');
+    const bibleText = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+
+    await expect(card).not.toBeNull();
+    await expect(contentGroup).not.toBeNull();
+    await expect(bibleText).not.toBeNull();
+
+    const cardWidth = card?.getBoundingClientRect().width ?? 0;
+    const contentGroupRect = contentGroup?.getBoundingClientRect();
+    const cardRect = card?.getBoundingClientRect();
+    const leftWhitespace = (contentGroupRect?.left ?? 0) - (cardRect?.left ?? 0);
+    const rightWhitespace = (cardRect?.right ?? 0) - (contentGroupRect?.right ?? 0);
+    const bibleTextWidth = bibleText?.getBoundingClientRect().width ?? 0;
+
+    await expect(cardWidth).toBeGreaterThan(800);
+    await expect(contentGroupRect?.width ?? 0).toBeLessThanOrEqual(600);
+    await expect(bibleTextWidth).toBeLessThanOrEqual(600);
+    await expect(Math.abs(leftWhitespace - rightWhitespace)).toBeLessThanOrEqual(1);
+  },
+};
+
 export const DarkMode: Story = {
   args: {
     reference: 'LUK.1.39-45',

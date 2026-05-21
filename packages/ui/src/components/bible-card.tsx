@@ -160,48 +160,50 @@ export function BibleCard({
     <section
       data-yv-sdk
       data-yv-theme={theme}
-      className="yv:w-full yv:flex yv:flex-col yv:grow yv:bg-card yv:p-6 yv:max-w-md yv:rounded-2xl"
+      className="yv:w-full yv:flex yv:flex-col yv:grow yv:bg-card yv:p-6 yv:rounded-2xl"
     >
-      <div className="yv:flex yv:w-full yv:justify-between yv:items-center yv:mb-4">
-        {passage && !passageError ? (
-          <div className="yv:grow yv:flex yv:items-center yv:gap-1.5">
-            <BibleCardHeaderReference passage={passage} version={version} />
-            {showSpinner ? (
-              <LoaderIcon className="yv:size-3 yv:animate-spin yv:text-muted-foreground" />
-            ) : null}
-          </div>
-        ) : passageError ? (
-          <BibleCardHeaderError />
-        ) : (
-          <LoaderIcon className="yv:size-3 yv:animate-spin yv:text-muted-foreground" />
-        )}
+      <div style={{ width: '100%', maxWidth: 600, marginInline: 'auto' }}>
+        <div className="yv:flex yv:w-full yv:justify-between yv:items-center yv:mb-4">
+          {passage && !passageError ? (
+            <div className="yv:grow yv:flex yv:items-center yv:gap-1.5">
+              <BibleCardHeaderReference passage={passage} version={version} />
+              {showSpinner ? (
+                <LoaderIcon className="yv:size-3 yv:animate-spin yv:text-muted-foreground" />
+              ) : null}
+            </div>
+          ) : passageError ? (
+            <BibleCardHeaderError />
+          ) : (
+            <LoaderIcon className="yv:size-3 yv:animate-spin yv:text-muted-foreground" />
+          )}
 
-        {showVersionPicker && !passageError ? (
-          <BibleCardVersionPicker
-            versionId={versionNum}
-            onVersionChange={setVersionNum}
+          {showVersionPicker && !passageError ? (
+            <BibleCardVersionPicker
+              versionId={versionNum}
+              onVersionChange={setVersionNum}
+              theme={theme}
+              onVersionPickerPress={onVersionPickerPress}
+            />
+          ) : null}
+        </div>
+
+        <AnimatedHeight>
+          <BibleTextView
             theme={theme}
-            onVersionPickerPress={onVersionPickerPress}
+            fontSize={16}
+            fontFamily={SOURCE_SERIF_FONT}
+            reference={reference}
+            versionId={versionNum}
+            passageState={{
+              passage,
+              loading: passageLoading,
+              error: passageError,
+            }}
           />
-        ) : null}
+        </AnimatedHeight>
+
+        <BibleCardFooter copyright={!passageError ? version?.copyright : null} />
       </div>
-
-      <AnimatedHeight>
-        <BibleTextView
-          theme={theme}
-          fontSize={16}
-          fontFamily={SOURCE_SERIF_FONT}
-          reference={reference}
-          versionId={versionNum}
-          passageState={{
-            passage,
-            loading: passageLoading,
-            error: passageError,
-          }}
-        />
-      </AnimatedHeight>
-
-      <BibleCardFooter copyright={!passageError ? version?.copyright : null} />
     </section>
   );
 }
