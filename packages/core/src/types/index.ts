@@ -27,6 +27,13 @@ export interface ApiConfig {
   timeout?: number;
   installationId?: string;
   redirectUri?: string;
+  /**
+   * Extra HTTP headers merged into every request. Values here override the
+   * SDK's built-in headers when keys collide — useful for wrappers (e.g. the
+   * React Native Expo SDK) that need to replace `X-YVP-Sdk` with their own
+   * identifier.
+   */
+  additionalHeaders?: Record<string, string>;
 }
 
 export type SignInWithYouVersionPermissionValues =
