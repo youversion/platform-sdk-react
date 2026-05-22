@@ -160,10 +160,9 @@ export function BibleCard({
     <section
       data-yv-sdk
       data-yv-theme={theme}
-      className="yv:w-full yv:flex yv:flex-col yv:grow yv:bg-card yv:p-6 yv:rounded-2xl"
-      style={{ boxSizing: 'border-box' }}
+      className="yv:w-full yv:flex yv:flex-col yv:grow yv:bg-card yv:p-6 yv:rounded-2xl yv:box-border"
     >
-      <div style={{ width: '100%', maxWidth: 600, marginInline: 'auto' }}>
+      <div className="yv:card-content">
         <div className="yv:flex yv:w-full yv:justify-between yv:items-center yv:mb-4">
           {passage && !passageError ? (
             <div className="yv:grow yv:flex yv:items-center yv:gap-1.5">

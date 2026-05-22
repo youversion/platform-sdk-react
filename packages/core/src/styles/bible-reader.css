@@ -5,6 +5,7 @@
   display: block;
 
   width: 100%;
+  max-width: var(--yv-reader-max-width, 65ch);
 
   --yv-reader-font-size: 20px;
   --yv-reader-line-height: 1.625;

@@ -129,14 +129,13 @@ describe('BibleCard - Delayed spinner', () => {
 
     const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
     const card = container.querySelector('section');
-    const contentGroup = container.querySelector('section > div[style*="max-width"]');
+    const contentGroup = container.querySelector('section > div');
     const bibleTextView = container.querySelector('[data-slot="yv-bible-renderer"]')?.parentElement;
 
     expect(card).toHaveClass('yv:w-full');
     expect(card).not.toHaveClass('yv:max-w-md');
-    expect(card!.style.boxSizing).toBe('border-box');
-    expect((contentGroup as HTMLElement).style.maxWidth).toBe('600px');
-    expect((contentGroup as HTMLElement).style.marginInline).toBe('auto');
+    expect(card).toHaveClass('yv:box-border');
+    expect(contentGroup).toHaveClass('yv:card-content');
     expect(bibleTextView).not.toHaveClass('yv:max-w-[600px]');
   });
 });

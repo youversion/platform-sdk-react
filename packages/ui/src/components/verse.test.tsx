@@ -636,35 +636,6 @@ describe('BibleTextView - Refetch loading behavior', () => {
     });
   });
 
-  it('should not set layout width on BibleTextView', async () => {
-    const { container } = render(
-      <BibleTextView
-        reference="JHN.3.16"
-        versionId={3034}
-        passageState={{
-          passage: mockPassage,
-          loading: false,
-          error: null,
-        }}
-      />,
-    );
-
-    await waitFor(() => {
-      const wrapper = container.querySelector('[data-yv-sdk]');
-      expect((wrapper as HTMLElement).style.width).toBe('');
-      expect((wrapper as HTMLElement).style.maxWidth).toBe('');
-    });
-  });
-
-  it('should leave Verse.Html without a text width class', async () => {
-    const { container } = render(<Verse.Html html={mockPassage.content} />);
-
-    await waitFor(() => {
-      const section = container.querySelector('section[data-slot="yv-bible-renderer"]');
-      expect((section as HTMLElement).style.maxWidth).toBe('');
-    });
-  });
-
   it('should show spinner on initial load when passage is null', async () => {
     const { container } = render(
       <BibleTextView
