@@ -1,5 +1,7 @@
 import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hooks';
 import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '@youversion/platform-core';
+import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 import { BibleTextView, type FootnoteData } from './verse';
 import { BibleAppLogoLockup } from './bible-app-logo-lockup';
 import { BibleVersionPicker, type BibleVersionPickerPressData } from './bible-version-picker';
@@ -41,10 +43,11 @@ export type BibleCardProps = {
 };
 
 function BibleCardHeaderError(): React.ReactNode {
+  const { t } = useTranslation(undefined, { i18n });
   return (
     <div className="yv:flex yv:flex-col yv:gap-2" role="alert" aria-live="polite">
       <h2 className="yv:font-bold yv:tracking-widest yv:text-xs yv:uppercase yv:text-foreground">
-        Error
+        {t('errorHeading')}
       </h2>
     </div>
   );
@@ -75,6 +78,7 @@ function BibleCardVersionPicker({
   theme: 'light' | 'dark';
   onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
 }): React.ReactNode {
+  const { t } = useTranslation(undefined, { i18n });
   return (
     <BibleVersionPicker.Root
       onVersionChange={onVersionChange}
@@ -82,7 +86,7 @@ function BibleCardVersionPicker({
       background={theme}
       onVersionPickerPress={onVersionPickerPress}
     >
-      <BibleVersionPicker.Trigger aria-label="Change Bible version">
+      <BibleVersionPicker.Trigger aria-label={t('changeBibleVersionAriaLabel')}>
         {({ version, loading }) => (
           <Button
             variant="secondary"
@@ -96,7 +100,7 @@ function BibleCardVersionPicker({
                 aria-hidden="true"
               />
             ) : (
-              version?.localized_abbreviation || 'Select version'
+              version?.localized_abbreviation || t('selectVersion')
             )}
           </Button>
         )}

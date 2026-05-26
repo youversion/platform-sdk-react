@@ -1,10 +1,14 @@
 import type { ComponentProps, ReactElement } from 'react';
+import i18n from '@/i18n';
 
-export function LoaderIcon(props: ComponentProps<'svg'>): ReactElement {
+export function LoaderIcon({
+  'aria-label': ariaLabel,
+  ...props
+}: ComponentProps<'svg'>): ReactElement {
   return (
     <svg
       role="status"
-      aria-label="Loading"
+      aria-label={ariaLabel ?? i18n.t('loading')}
       width="24"
       height="24"
       viewBox="0 0 24 24"
