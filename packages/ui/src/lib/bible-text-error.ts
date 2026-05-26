@@ -31,7 +31,7 @@ export function getBibleTextErrorMessage(error: BibleTextError, t: TFunction): s
   }
 
   if (status !== undefined && status >= 500) {
-    return t('serverErrorError');
+    return t('serverError');
   }
 
   if (status === 404 || message.includes('not found')) {

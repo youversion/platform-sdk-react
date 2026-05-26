@@ -1,14 +1,17 @@
 import type { ComponentProps, ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 
 export function LoaderIcon({
   'aria-label': ariaLabel,
   ...props
 }: ComponentProps<'svg'>): ReactElement {
+  const { t } = useTranslation(undefined, { i18n });
+
   return (
     <svg
       role="status"
-      aria-label={ariaLabel ?? i18n.t('loading')}
+      aria-label={ariaLabel ?? t('loading')}
       width="24"
       height="24"
       viewBox="0 0 24 24"

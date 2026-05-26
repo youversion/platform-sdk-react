@@ -54,12 +54,12 @@ async function share({
   title,
   text,
   url,
-  errorMessage = i18n.t('unableToShare'),
+  errorMessage,
 }: {
   title?: string;
   text: string;
   url?: string;
-  errorMessage?: string;
+  errorMessage: string;
 }) {
   if (navigator.share) {
     try {

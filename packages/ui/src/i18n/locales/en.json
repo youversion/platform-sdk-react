@@ -53,6 +53,6 @@
   "forbiddenError": "This app isn't allowed to access this Bible content.",
   "unreachableServerError": "The Bible server couldn't be reached. Check your connection and try again.",
   "rateLimitedError": "The Bible service is receiving too many requests right now. Please wait a moment and try again.",
-  "serverErrorError": "The Bible service is having trouble right now. Please try again in a moment.",
+  "serverError": "The Bible service is having trouble right now. Please try again in a moment.",
   "genericPassageError": "We couldn't load this Bible passage. Please try again."
 }
