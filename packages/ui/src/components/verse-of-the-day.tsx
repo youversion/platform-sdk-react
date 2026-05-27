@@ -50,7 +50,17 @@ export type VerseOfTheDayProps = {
   size?: 'default' | 'lg';
 };
 
-async function share({ title, text, url }: { title?: string; text: string; url?: string }) {
+async function share({
+  title,
+  text,
+  url,
+  errorMessage,
+}: {
+  title?: string;
+  text: string;
+  url?: string;
+  errorMessage: string;
+}) {
   if (navigator.share) {
     try {
       await navigator.share({
@@ -63,7 +73,7 @@ async function share({ title, text, url }: { title?: string; text: string; url?:
     }
   } else if (navigator.clipboard) {
     navigator.clipboard.writeText(text).catch(() => {
-      alert('Unable to share. Please try again.');
+      alert(errorMessage);
     });
   }
 }
@@ -122,7 +132,7 @@ export function VerseOfTheDay({
   const handleShareVerse = async () => {
     if (verseRef.current) {
       const text = verseRef.current.innerText + '\n\n' + referenceText;
-      await share({ text });
+      await share({ text, errorMessage: t('unableToShare') });
     }
   };
 
@@ -159,7 +169,7 @@ export function VerseOfTheDay({
             className="yv:col-start-2 yv:row-span-2 yv:row-start-1 yv:self-start yv:justify-self-end"
           >
             <Button
-              aria-label="Share"
+              aria-label={t('shareAriaLabel')}
               className={cn(size === 'lg' ? 'yv:translate-x-3' : 'yv:translate-x-2')}
               onClick={() => void handleShareVerse()}
               disabled={!!(errorPassage || errorVerseOfTheDay)}
@@ -177,7 +187,7 @@ export function VerseOfTheDay({
           <div
             className="yv:flex yv:justify-center yv:py-2"
             role="status"
-            aria-label="Loading verse"
+            aria-label={t('loadingVerseAriaLabel')}
           >
             <LoaderIcon
               className="yv:size-4 yv:animate-spin yv:text-muted-foreground"
