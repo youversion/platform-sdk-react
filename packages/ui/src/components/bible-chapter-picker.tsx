@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 import {
   cloneElement,
   createContext,
@@ -89,6 +91,7 @@ function Root({
   onChapterPickerPress,
   children,
 }: RootProps) {
+  const { t } = useTranslation(undefined, { i18n });
   const [book, setBook] = useControllableState({
     prop: controlledBook,
     defaultProp: defaultBook,
@@ -203,7 +206,7 @@ function Root({
         {children}
 
         {/* data-yv-sdk for styles is needed because the popover gets rendered outside of the providers scope **/}
-        <PopoverContent sideOffset={16} heading="Books" theme={theme} side="top">
+        <PopoverContent sideOffset={16} heading={t('booksHeading')} theme={theme} side="top">
           <Content onRequestClose={() => setIsPopoverOpen(false)} />
         </PopoverContent>
       </BibleChapterPickerContext.Provider>
@@ -226,6 +229,7 @@ export type TriggerProps = Omit<React.ComponentProps<typeof PopoverTrigger>, 'ch
 };
 
 function Trigger({ asChild = true, children, ...props }: TriggerProps) {
+  const { t } = useTranslation(undefined, { i18n });
   const { book, chapter, background, versionId, scrollToCurrentBook, onChapterPickerPress } =
     useBibleChapterPickerContext();
   const { books, loading } = useBooks(versionId);
@@ -239,8 +243,8 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
     chapterLabel = currentBook.intro.title;
   }
   const buttonText = loading
-    ? 'Loading...'
-    : `${currentBook?.title || 'Select a chapter'}${chapterLabel ? ` ${chapterLabel}` : ''}`;
+    ? t('loadingEllipsis')
+    : `${currentBook?.title || t('selectChapter')}${chapterLabel ? ` ${chapterLabel}` : ''}`;
 
   const content =
     typeof children === 'function'
@@ -291,6 +295,7 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
 }
 
 function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
+  const { t } = useTranslation(undefined, { i18n });
   const {
     book,
     defaultBook,
@@ -372,7 +377,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
                   </div>
                 ) : (
                   <div className="yv:w-full yv:flex yv:items-center yv:justify-center yv:py-4 yv:text-muted-foreground yv:text-sm">
-                    No chapters available
+                    {t('noChaptersAvailable')}
                   </div>
                 )}
               </AccordionContent>
@@ -380,7 +385,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
           ))
         ) : (
           <div className="yv:w-full yv:h-full yv:flex yv:items-center yv:justify-center yv:py-4 yv:text-center yv:text-balance yv:text-muted-foreground yv:text-sm">
-            We're sorry, there are no Bible results for this search.
+            {t('noBibleSearchResults')}
           </div>
         )}
       </Accordion>
@@ -390,7 +395,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
           <InputGroupInput
             tabIndex={1}
             type="text"
-            placeholder="Search"
+            placeholder={t('searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />

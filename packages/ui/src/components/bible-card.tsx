@@ -1,6 +1,8 @@
 import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hooks';
 import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '@youversion/platform-core';
-import { BibleTextView } from './verse';
+import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
+import { BibleTextView, type FootnoteData } from './verse';
 import { BibleAppLogoLockup } from './bible-app-logo-lockup';
 import { BibleVersionPicker, type BibleVersionPickerPressData } from './bible-version-picker';
 import { Button } from './ui/button';
@@ -37,13 +39,15 @@ export type BibleCardProps = {
   background?: 'light' | 'dark';
   showVersionPicker?: boolean;
   onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
+  onFootnotePress?: (data: FootnoteData) => void;
 };
 
 function BibleCardHeaderError(): React.ReactNode {
+  const { t } = useTranslation(undefined, { i18n });
   return (
     <div className="yv:flex yv:flex-col yv:gap-2" role="alert" aria-live="polite">
       <h2 className="yv:font-bold yv:tracking-widest yv:text-xs yv:uppercase yv:text-foreground">
-        Error
+        {t('errorHeading')}
       </h2>
     </div>
   );
@@ -74,6 +78,7 @@ function BibleCardVersionPicker({
   theme: 'light' | 'dark';
   onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
 }): React.ReactNode {
+  const { t } = useTranslation(undefined, { i18n });
   return (
     <BibleVersionPicker.Root
       onVersionChange={onVersionChange}
@@ -81,7 +86,7 @@ function BibleCardVersionPicker({
       background={theme}
       onVersionPickerPress={onVersionPickerPress}
     >
-      <BibleVersionPicker.Trigger aria-label="Change Bible version">
+      <BibleVersionPicker.Trigger aria-label={t('changeBibleVersionAriaLabel')}>
         {({ version, loading }) => (
           <Button
             variant="secondary"
@@ -95,7 +100,7 @@ function BibleCardVersionPicker({
                 aria-hidden="true"
               />
             ) : (
-              version?.localized_abbreviation || 'Select version'
+              version?.localized_abbreviation || t('selectVersion')
             )}
           </Button>
         )}
@@ -127,6 +132,7 @@ export function BibleCard({
   background,
   showVersionPicker = false,
   onVersionPickerPress,
+  onFootnotePress,
 }: BibleCardProps): React.ReactNode {
   // Controlled only when both versionId + onVersionChange are provided.
   // versionId alone seeds uncontrolled state, preserving backwards compatibility
@@ -199,6 +205,7 @@ export function BibleCard({
               loading: passageLoading,
               error: passageError,
             }}
+            onFootnotePress={onFootnotePress}
           />
         </AnimatedHeight>
 
