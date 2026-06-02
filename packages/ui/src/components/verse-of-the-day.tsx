@@ -18,6 +18,17 @@ import { BibleTextView } from '@/components/verse';
 import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '@youversion/platform-core';
 import { cn } from '@/lib/utils';
 
+export type VerseOfTheDayShareData = {
+  /** Full share body: verse text, blank line, then reference (same as Web Share `text`). */
+  text: string;
+  /** Human-readable reference line, e.g. "John 3:16 NIV". */
+  reference: string;
+  /** Verse body only (DOM `innerText`), without the reference line. */
+  verseText: string;
+  /** Optional deep link; not populated today. */
+  url?: string;
+};
+
 export type VerseOfTheDayProps = {
   /**
    * Sets the background color of the Verse Of the Day component.
@@ -44,11 +55,26 @@ export type VerseOfTheDayProps = {
    */
   showShareButton?: boolean;
   /**
+   * When provided, called on share button click with serializable share data.
+   * Suppresses the default Web Share API / clipboard flow. Use for React Native
+   * or Expo DOM hosts that forward the payload across the native bridge.
+   */
+  onShare?: (data: VerseOfTheDayShareData) => void | Promise<void>;
+  /**
    * The size of the card. Changing this will change the
    * size of the card and the font size of the text.
    */
   size?: 'default' | 'lg';
 };
+
+function buildVerseOfTheDayShareData(
+  verseEl: HTMLElement,
+  referenceText: string,
+): VerseOfTheDayShareData {
+  const verseText = verseEl.innerText;
+  const text = referenceText ? `${verseText}\n\n${referenceText}` : verseText;
+  return { text, reference: referenceText, verseText };
+}
 
 async function share({
   title,
@@ -99,6 +125,7 @@ export function VerseOfTheDay({
   showSunIcon = true,
   showShareButton = true,
   showBibleAppAttribution = true,
+  onShare,
   size = 'default',
 }: VerseOfTheDayProps): React.ReactElement {
   const { t } = useTranslation(undefined, { i18n });
@@ -130,10 +157,19 @@ export function VerseOfTheDay({
   }
 
   const handleShareVerse = async () => {
-    if (verseRef.current) {
-      const text = verseRef.current.innerText + '\n\n' + referenceText;
-      await share({ text, errorMessage: t('unableToShare') });
+    if (!verseRef.current) {
+      return;
     }
+    const shareData = buildVerseOfTheDayShareData(verseRef.current, referenceText);
+    if (onShare) {
+      try {
+        await onShare(shareData);
+      } catch {
+        // Silently fail — mirror navigator.share dismiss/cancel in share()
+      }
+      return;
+    }
+    await share({ text: shareData.text, errorMessage: t('unableToShare') });
   };
 
   return (
