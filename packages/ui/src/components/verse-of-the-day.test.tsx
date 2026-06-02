@@ -70,4 +70,15 @@ describe('VerseOfTheDay i18n integration', () => {
     render(<VerseOfTheDay />);
     expect(screen.getByText(en.verseOfTheDay)).toBeInTheDocument();
   });
+
+  it('lets the card fill its container while centering the content group', () => {
+    const { container } = render(<VerseOfTheDay />);
+    const card = container.querySelector('section');
+    const contentGroup = container.querySelector('section > div');
+
+    expect(card).toHaveClass('yv:w-full');
+    expect(card).not.toHaveClass('yv:max-w-md');
+    expect(card).toHaveClass('yv:box-border');
+    expect(contentGroup).toHaveClass('yv:card-content');
+  });
 });
