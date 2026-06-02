@@ -1,5 +1,17 @@
 # @youversion/platform-react-ui
 
+## 1.31.0
+
+### Minor Changes
+
+- 789892f: Center card content within full-width BibleCard and VerseOfTheDay layouts.
+- b5f42ff: Add optional `onShare` and `VerseOfTheDayShareData` to `VerseOfTheDay` for native host share flows.
+
+### Patch Changes
+
+- @youversion/platform-core@1.31.0
+- @youversion/platform-react-hooks@1.31.0
+
 ## 1.30.0
 
 ### Minor Changes

@@ -117,3 +117,9 @@ layer(yv-sdk-fonts);
     z-index: 9999;
   }
 }
+
+@utility card-content {
+  width: 100%;
+  max-width: 600px;
+  margin-inline: auto;
+}

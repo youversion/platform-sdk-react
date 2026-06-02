@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import type { BibleVersion, Language } from '@youversion/platform-core';
 import {
@@ -397,6 +399,7 @@ export type BibleVersionPickerTriggerProps = Omit<
 };
 
 function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTriggerProps) {
+  const { t } = useTranslation(undefined, { i18n });
   const { versionId, selectedLanguageId, background, onVersionPickerPress } =
     useBibleVersionPickerContext();
   const { version, loading } = useVersion(versionId);
@@ -406,7 +409,7 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
       ? children({ version, loading })
       : children || (
           <Button variant={'secondary'} className="yv:cursor-pointer yv:font-bold yv:text-base">
-            {version?.localized_abbreviation || 'Select'}
+            {version?.localized_abbreviation || t('select')}
           </Button>
         );
 
@@ -450,13 +453,14 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
  * callbacks through as React event handlers.
  */
 export function BibleVersionPickerLanguageTrigger({
-  'aria-label': ariaLabel = 'Select language',
+  'aria-label': ariaLabel,
   className,
   onClick,
   size = 'sm',
   variant = 'secondary',
   ...props
 }: BibleVersionPickerLanguageTriggerProps): React.ReactElement {
+  const { t } = useTranslation(undefined, { i18n });
   const {
     filteredVersions,
     filteredRecentVersions,
@@ -476,7 +480,7 @@ export function BibleVersionPickerLanguageTrigger({
 
   return (
     <Button
-      aria-label={ariaLabel}
+      aria-label={ariaLabel ?? t('selectLanguageAriaLabel')}
       className={cn(
         'yv:ml-auto yv:bg-card yv:border yv:border-transparent yv:hover:bg-card yv:hover:border-border yv:max-w-40',
         className,
@@ -505,6 +509,7 @@ export function BibleVersionPickerLanguageTrigger({
 }
 
 function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) {
+  const { t } = useTranslation(undefined, { i18n });
   const {
     searchQuery,
     setSearchQuery,
@@ -552,7 +557,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
       <PopoverContent
         sideOffset={16}
         className="yv:h-[66svh]"
-        heading={isLanguagesOpen ? 'Select Language' : 'Bible Versions'}
+        heading={isLanguagesOpen ? t('selectLanguageHeading') : t('bibleVersionsHeading')}
         headerLeading={
           isLanguagesOpen ? (
             <Button
@@ -562,7 +567,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
               className="yv:w-6 yv:h-6 yv:text-muted-foreground"
             >
               <ArrowLeftIcon className="yv:size-5" />
-              <span className="yv:sr-only">Back to Bible versions</span>
+              <span className="yv:sr-only">{t('backToBibleVersionsAriaLabel')}</span>
             </Button>
           ) : null
         }
@@ -612,7 +617,9 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
         {/* Recent Versions */}
         {filteredRecentVersions.length > 0 && (
           <>
-            <h2 className="yv:px-4 yv:py-2 yv:text-lg yv:font-bold">Recently Used Versions</h2>
+            <h2 className="yv:px-4 yv:py-2 yv:text-lg yv:font-bold">
+              {t('recentlyUsedVersionsHeading')}
+            </h2>
             <ItemGroup data-testid="recent-version-list">
               {filteredRecentVersions.map((version) => (
                 <Item
@@ -652,7 +659,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
         {/* All Versions */}
         {filteredVersions.length > 0 ? (
           <ItemGroup data-testid="version-list">
-            <h3 className="yv:px-4 yv:py-2 yv:font-bold">All Versions</h3>
+            <h3 className="yv:px-4 yv:py-2 yv:font-bold">{t('allVersionsHeading')}</h3>
             {filteredVersions.map((version: BibleVersion) => (
               <Item
                 key={version.id}
@@ -690,7 +697,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
           </div>
         ) : !filteredRecentVersions.length ? (
           <div className="yv:w-full yv:flex yv:items-center yv:justify-center yv:py-8 yv:text-center yv:text-muted-foreground yv:text-sm">
-            No versions found
+            {t('noVersionsFound')}
           </div>
         ) : null}
       </div>
@@ -701,7 +708,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
             <InputGroupInput
               tabIndex={1}
               type="text"
-              placeholder="Search"
+              placeholder={t('searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             ></InputGroupInput>
@@ -735,6 +742,7 @@ export function BibleLanguagePickerContent({
   open,
   onRequestClose,
 }: BibleLanguagePickerContentProps = {}): React.ReactElement {
+  const { t } = useTranslation(undefined, { i18n });
   const {
     totalLanguages,
     selectedLanguageId,
@@ -762,17 +770,19 @@ export function BibleLanguagePickerContent({
       >
         <TabsList className="yv:mx-4 yv:w-[calc(100%-4*var(--spacing)*2)]">
           <TabsTrigger className="yv:p-0" value="suggested">
-            Suggested
+            {t('suggestedTab')}
           </TabsTrigger>
           <TabsTrigger className="yv:p-0" value="all">
-            All ({totalLanguages})
+            {t('allLanguagesTab', { count: totalLanguages })}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="suggested" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
           {suggestedLanguages.length > 0 ? (
             <>
-              <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">Regional</h3>
+              <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">
+                {t('regionalHeading')}
+              </h3>
               <ItemGroup className="yv:gap-1">
                 {suggestedLanguages.map((suggestedLanguage) => (
                   <Item
@@ -807,13 +817,15 @@ export function BibleLanguagePickerContent({
             </>
           ) : (
             <p className="yv:px-4 yv:py-8 yv:text-center yv:text-muted-foreground">
-              No regional languages available
+              {t('noRegionalLanguagesAvailable')}
             </p>
           )}
         </TabsContent>
 
         <TabsContent value="all" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
-          <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">All Languages</h3>
+          <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">
+            {t('allLanguagesHeading')}
+          </h3>
           <ItemGroup className="yv:gap-1">
             {languages.map((language) => (
               <Item

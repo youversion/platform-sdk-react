@@ -3,6 +3,7 @@ import { initReactI18next } from 'react-i18next';
 import en from './locales/en.json';
 
 const defaultNS = 'translation';
+const BRAND_NAME = 'YouVersion';
 
 export const resources = {
   en: { [defaultNS]: en },
@@ -18,6 +19,9 @@ i18n
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false, // React already escapes
+      defaultVariables: {
+        brandName: BRAND_NAME,
+      },
     },
   })
   .catch((err: unknown) => {
