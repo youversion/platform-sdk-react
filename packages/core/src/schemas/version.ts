@@ -12,8 +12,8 @@ export const BibleVersionSchema = z.object({
   copyright: z.string().nullable().optional(),
   /** Bible information text */
   info: z.string().nullable().optional(),
-  /** Publisher URL */
-  publisher_url: z.url().nullable().optional(),
+  /** Publisher URL (may be an empty string when not provided) */
+  publisher_url: z.string().nullable().optional(),
   /** Language tag (e.g., "en") */
   language_tag: z.string(),
   /** Localized abbreviation */
