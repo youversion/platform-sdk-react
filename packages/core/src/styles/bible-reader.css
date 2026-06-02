@@ -5,8 +5,7 @@
   display: block;
 
   width: 100%;
-  /* This helps readability and is a standard max width for text */
-  max-width: 65ch;
+  max-width: var(--yv-reader-max-width, 65ch);
 
   --yv-reader-font-size: 20px;
   --yv-reader-line-height: 1.625;
