@@ -151,6 +151,27 @@ describe('VerseOfTheDay - share', () => {
     });
   });
 
+  it('does not surface unhandled rejection when onShare rejects', async () => {
+    const user = userEvent.setup();
+    const onShare = vi.fn().mockRejectedValue(new Error('User dismissed'));
+    const unhandledRejections: unknown[] = [];
+    const onUnhandledRejection = (event: PromiseRejectionEvent): void => {
+      unhandledRejections.push(event.reason);
+    };
+    window.addEventListener('unhandledrejection', onUnhandledRejection);
+
+    try {
+      render(<VerseOfTheDay onShare={onShare} />);
+      await user.click(screen.getByRole('button', { name: en.shareAriaLabel }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(onShare).toHaveBeenCalledTimes(1);
+      expect(unhandledRejections).toHaveLength(0);
+    } finally {
+      window.removeEventListener('unhandledrejection', onUnhandledRejection);
+    }
+  });
+
   it('does not call navigator.share or clipboard when onShare is provided', async () => {
     const user = userEvent.setup();
     const onShare = vi.fn();

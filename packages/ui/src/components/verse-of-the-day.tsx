@@ -162,7 +162,11 @@ export function VerseOfTheDay({
     }
     const shareData = buildVerseOfTheDayShareData(verseRef.current, referenceText);
     if (onShare) {
-      await onShare(shareData);
+      try {
+        await onShare(shareData);
+      } catch {
+        // Silently fail — mirror navigator.share dismiss/cancel in share()
+      }
       return;
     }
     await share({ text: shareData.text, errorMessage: t('unableToShare') });
