@@ -2,7 +2,14 @@ import { z } from 'zod';
 
 /** A playable video or audio source. */
 export const VideoPlaybackSourceSchema = z.object({
-  /** URL for the playable video or audio source. */
+  /**
+   * URL for the playable video or audio source.
+   *
+   * Intentionally `z.string()`, not `z.url()`: the spec types video source URLs
+   * as plain strings (no `format: uri`, unlike `FontSource.url`), and playback
+   * URLs such as HLS manifests / CDN assets shouldn't be constrained by strict
+   * URL validation.
+   */
   url: z.string(),
   /** Source format. */
   format: z.enum(['hls', 'webm', 'mp4', 'mp3']),
