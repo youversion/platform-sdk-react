@@ -1,5 +1,11 @@
 # @youversion/platform-react-hooks
 
+## 1.31.0
+
+### Patch Changes
+
+- @youversion/platform-core@1.31.0
+
 ## 1.30.0
 
 ### Minor Changes
