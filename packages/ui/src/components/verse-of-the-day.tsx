@@ -160,15 +160,12 @@ export function VerseOfTheDay({
     if (!verseRef.current) {
       return;
     }
-    const { text, reference, verseText } = buildVerseOfTheDayShareData(
-      verseRef.current,
-      referenceText,
-    );
+    const shareData = buildVerseOfTheDayShareData(verseRef.current, referenceText);
     if (onShare) {
-      await onShare({ text, reference, verseText });
+      await onShare(shareData);
       return;
     }
-    await share({ text, errorMessage: t('unableToShare') });
+    await share({ text: shareData.text, errorMessage: t('unableToShare') });
   };
 
   return (
