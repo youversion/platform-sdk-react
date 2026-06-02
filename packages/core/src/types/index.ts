@@ -49,7 +49,6 @@ export interface AuthenticationState {
   readonly isAuthenticated: boolean;
   readonly isLoading: boolean;
   readonly accessToken: string | null;
-  readonly idToken: string | null;
   readonly result: SignInWithYouVersionResult | null;
   readonly error: Error | null;
 }

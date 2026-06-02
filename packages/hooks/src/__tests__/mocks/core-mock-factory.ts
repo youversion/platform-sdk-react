@@ -78,20 +78,16 @@ class MockSignInWithYouVersionResult {
 
 interface MockConfiguration {
   accessToken: string | null;
-  idToken: string | null;
   refreshToken: string | null;
+  storedUserInfo: MockUserInfoData | null;
   appKey: string;
   apiHost: string;
   installationId: string | null;
   clearAuthTokens: MockedFunction<() => void>;
   saveAuthData: MockedFunction<
-    (
-      accessToken: string | null,
-      refreshToken: string | null,
-      idToken: string | null,
-      installationId: string | null,
-    ) => void
+    (accessToken: string | null, refreshToken: string | null, expiryDate: Date | null) => void
   >;
+  saveUserInfo: MockedFunction<(userInfo: MockUserInfoData | null) => void>;
 }
 
 interface SimpleCoreMockFactory {
@@ -99,6 +95,7 @@ interface SimpleCoreMockFactory {
     signIn: MockedFunction<typeof YouVersionAPIUsers.signIn>;
     handleAuthCallback: MockedFunction<typeof YouVersionAPIUsers.handleAuthCallback>;
     userInfo: MockedFunction<typeof YouVersionAPIUsers.userInfo>;
+    getStoredUserInfo: MockedFunction<typeof YouVersionAPIUsers.getStoredUserInfo>;
     refreshTokenIfNeeded: MockedFunction<typeof YouVersionAPIUsers.refreshTokenIfNeeded>;
   };
   YouVersionPlatformConfiguration: MockConfiguration;
@@ -111,19 +108,21 @@ interface GetterCoreMockFactory {
   YouVersionAPIUsers: {
     handleAuthCallback: MockedFunction<typeof YouVersionAPIUsers.handleAuthCallback>;
     userInfo: MockedFunction<typeof YouVersionAPIUsers.userInfo>;
+    getStoredUserInfo: MockedFunction<typeof YouVersionAPIUsers.getStoredUserInfo>;
     refreshTokenIfNeeded: MockedFunction<typeof YouVersionAPIUsers.refreshTokenIfNeeded>;
   };
   YouVersionPlatformConfiguration: {
     appKey: string;
     installationId: string;
     apiHost: string;
-    readonly idToken: string | null;
     readonly refreshToken: string | null;
     readonly accessToken: string | null;
+    readonly storedUserInfo: MockUserInfoData | null;
     clearAuthTokens: MockedFunction<() => void>;
     saveAuthData: MockedFunction<
-      (accessToken: string | null, refreshToken: string | null, idToken: string | null) => void
+      (accessToken: string | null, refreshToken: string | null, expiryDate: Date | null) => void
     >;
+    saveUserInfo: MockedFunction<(userInfo: MockUserInfoData | null) => void>;
   };
   YouVersionUserInfo: typeof MockYouVersionUserInfo;
   SignInWithYouVersionResult: typeof MockSignInWithYouVersionResult;
@@ -132,29 +131,25 @@ interface GetterCoreMockFactory {
 export function createSimpleCoreMockFactory(): SimpleCoreMockFactory {
   const mockConfiguration: MockConfiguration = {
     accessToken: null,
-    idToken: null,
     refreshToken: null,
+    storedUserInfo: null,
     appKey: '',
     apiHost: 'test-api.example.com',
     installationId: null,
     clearAuthTokens: vi.fn(() => {
       mockConfiguration.accessToken = null;
-      mockConfiguration.idToken = null;
       mockConfiguration.refreshToken = null;
+      mockConfiguration.storedUserInfo = null;
     }),
     saveAuthData: vi.fn(
-      (
-        accessToken: string | null,
-        refreshToken: string | null,
-        idToken: string | null,
-        installationId: string | null,
-      ) => {
+      (accessToken: string | null, refreshToken: string | null, _expiryDate: Date | null) => {
         mockConfiguration.accessToken = accessToken;
         mockConfiguration.refreshToken = refreshToken;
-        mockConfiguration.idToken = idToken;
-        mockConfiguration.installationId = installationId;
       },
     ),
+    saveUserInfo: vi.fn((userInfo: MockUserInfoData | null) => {
+      mockConfiguration.storedUserInfo = userInfo;
+    }),
   };
 
   return {
@@ -162,6 +157,7 @@ export function createSimpleCoreMockFactory(): SimpleCoreMockFactory {
       signIn: vi.fn(),
       handleAuthCallback: vi.fn(),
       userInfo: vi.fn(),
+      getStoredUserInfo: vi.fn(),
       refreshTokenIfNeeded: vi.fn(),
     },
     YouVersionPlatformConfiguration: mockConfiguration,
@@ -179,14 +175,17 @@ export function createSimpleCoreMockFactory(): SimpleCoreMockFactory {
 
 export function createGetterCoreMockFactory(): GetterCoreMockFactory {
   let mockInstallationId = 'auto-generated-installation-id';
-  let mockIdToken: string | null = null;
   let mockRefreshToken: string | null = null;
   let mockAccessToken: string | null = null;
+  let mockStoredUserInfo: MockUserInfoData | null = null;
 
   return {
     YouVersionAPIUsers: {
       handleAuthCallback: vi.fn(),
       userInfo: vi.fn(),
+      getStoredUserInfo: vi.fn(() =>
+        mockStoredUserInfo ? new MockYouVersionUserInfo(mockStoredUserInfo) : null,
+      ),
       refreshTokenIfNeeded: vi.fn(),
     },
     YouVersionPlatformConfiguration: {
@@ -198,27 +197,29 @@ export function createGetterCoreMockFactory(): GetterCoreMockFactory {
         if (value) mockInstallationId = value;
       },
       apiHost: 'test-api.example.com',
-      get idToken() {
-        return mockIdToken;
-      },
       get refreshToken() {
         return mockRefreshToken;
       },
       get accessToken() {
         return mockAccessToken;
       },
+      get storedUserInfo() {
+        return mockStoredUserInfo;
+      },
       clearAuthTokens: vi.fn(() => {
-        mockIdToken = null;
         mockRefreshToken = null;
         mockAccessToken = null;
+        mockStoredUserInfo = null;
       }),
       saveAuthData: vi.fn(
-        (accessToken: string | null, refreshToken: string | null, idToken: string | null) => {
+        (accessToken: string | null, refreshToken: string | null, _expiryDate: Date | null) => {
           mockAccessToken = accessToken;
           mockRefreshToken = refreshToken;
-          mockIdToken = idToken;
         },
       ),
+      saveUserInfo: vi.fn((userInfo: MockUserInfoData | null) => {
+        mockStoredUserInfo = userInfo;
+      }),
     },
     YouVersionUserInfo: MockYouVersionUserInfo,
     SignInWithYouVersionResult: MockSignInWithYouVersionResult,

@@ -37,10 +37,10 @@ export default function YouVersionAuthProvider({
         if (isOAuthCallback) {
           try {
             const result = await YouVersionAPIUsers.handleAuthCallback();
-            if (result && YouVersionPlatformConfiguration.idToken) {
-              const info = YouVersionAPIUsers.userInfo(YouVersionPlatformConfiguration.idToken);
+            if (result) {
+              // handleAuthCallback persists the decoded profile; read it back.
               if (!mounted) return;
-              setUserInfo(info);
+              setUserInfo(YouVersionAPIUsers.getStoredUserInfo());
             }
           } catch (err) {
             if (!mounted) return;
@@ -51,16 +51,11 @@ export default function YouVersionAuthProvider({
           const refreshToken = YouVersionPlatformConfiguration.refreshToken;
           if (refreshToken) {
             try {
-              await YouVersionAPIUsers.refreshTokenIfNeeded();
-              const idToken = YouVersionPlatformConfiguration.idToken;
-              if (idToken) {
-                const info = YouVersionAPIUsers.userInfo(idToken);
-                if (!mounted) return;
-                setUserInfo(info);
-              } else {
-                if (!mounted) return;
-                setUserInfo(null);
-              }
+              // refreshTokenIfNeeded clears tokens (and the stored profile)
+              // when the session has expired and cannot be refreshed.
+              const refreshed = await YouVersionAPIUsers.refreshTokenIfNeeded();
+              if (!mounted) return;
+              setUserInfo(refreshed ? YouVersionAPIUsers.getStoredUserInfo() : null);
             } catch {
               if (!mounted) return;
               setUserInfo(null);

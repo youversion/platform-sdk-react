@@ -192,8 +192,9 @@ describe('YouVersionAPIUsers', () => {
         }),
       );
 
-      // Mock YouVersionPlatformConfiguration.saveAuthData
+      // Mock YouVersionPlatformConfiguration persistence
       const saveAuthDataSpy = vi.spyOn(YouVersionPlatformConfiguration, 'saveAuthData');
+      const saveUserInfoSpy = vi.spyOn(YouVersionPlatformConfiguration, 'saveUserInfo');
 
       const result = await YouVersionAPIUsers.handleAuthCallback();
 
@@ -204,8 +205,22 @@ describe('YouVersionAPIUsers', () => {
       expect(result?.name).toBe('John Doe');
       expect(result?.email).toBe('john@example.com');
 
-      // Verify saveAuthData was called
-      expect(saveAuthDataSpy).toHaveBeenCalled();
+      // Verify saveAuthData was called with tokens only (no id token persisted)
+      expect(saveAuthDataSpy).toHaveBeenCalledWith(
+        'access-token-123',
+        'refresh-token-456',
+        expect.any(Date),
+      );
+
+      // Verify the decoded profile was persisted instead of the id token
+      expect(saveUserInfoSpy).toHaveBeenCalledWith({
+        id: '1234567890',
+        name: 'John Doe',
+        email: 'john@example.com',
+        avatar_url: 'https://example.com/avatar.jpg',
+      });
+
+      saveUserInfoSpy.mockRestore();
 
       // Verify cleanup
       expect(mocks.localStorage.removeItem).toHaveBeenCalledWith('youversion-auth-code-verifier');
@@ -463,24 +478,11 @@ describe('YouVersionAPIUsers', () => {
     it('should throw error when no refresh token available', async () => {
       mocks.localStorage.getItem.mockImplementation((key: string) => {
         if (key === 'refreshToken') return null;
-        if (key === 'idToken') return 'id-token-123';
         return null;
       });
 
       await expect(YouVersionAPIUsers.refreshTokens()).rejects.toThrow(
-        'No refresh token or id token available',
-      );
-    });
-
-    it('should throw error when no id token available', async () => {
-      mocks.localStorage.getItem.mockImplementation((key: string) => {
-        if (key === 'refreshToken') return 'refresh-token-123';
-        if (key === 'idToken') return null;
-        return null;
-      });
-
-      await expect(YouVersionAPIUsers.refreshTokens()).rejects.toThrow(
-        'No refresh token or id token available',
+        'No refresh token available',
       );
     });
 
@@ -489,7 +491,6 @@ describe('YouVersionAPIUsers', () => {
 
       mocks.localStorage.getItem.mockImplementation((key: string) => {
         if (key === 'refreshToken') return 'refresh-token-123';
-        if (key === 'idToken') return 'id-token-123';
         return null;
       });
 
@@ -498,10 +499,9 @@ describe('YouVersionAPIUsers', () => {
       );
     });
 
-    it('should successfully refresh tokens and preserve existing id_token', async () => {
+    it('should successfully rotate the access and refresh tokens', async () => {
       const originalAccessToken = 'old-access-token';
       const originalRefreshToken = 'old-refresh-token';
-      const existingIdToken = 'existing-id-token';
 
       const mockRefreshResponse = {
         access_token: 'new-access-token',
@@ -520,7 +520,6 @@ describe('YouVersionAPIUsers', () => {
 
       mocks.localStorage.getItem.mockImplementation((key: string) => {
         if (key === 'refreshToken') return originalRefreshToken;
-        if (key === 'idToken') return existingIdToken;
         if (key === 'accessToken') return originalAccessToken;
         return null;
       });
@@ -528,6 +527,7 @@ describe('YouVersionAPIUsers', () => {
       mockFetch.mockResolvedValue(mockResponse);
 
       const saveAuthDataSpy = vi.spyOn(YouVersionPlatformConfiguration, 'saveAuthData');
+      const saveUserInfoSpy = vi.spyOn(YouVersionPlatformConfiguration, 'saveUserInfo');
 
       const result = await YouVersionAPIUsers.refreshTokens();
 
@@ -539,8 +539,8 @@ describe('YouVersionAPIUsers', () => {
       expect(result?.refreshToken).toBe('new-refresh-token');
       expect(result?.refreshToken).not.toBe(originalRefreshToken);
 
-      // Assert that id_token is preserved (same as original)
-      expect(result?.idToken).toBe(existingIdToken);
+      // The id token is never carried through a refresh
+      expect(result?.idToken).toBeUndefined();
 
       // Verify the refresh token request was made correctly
       expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -560,15 +560,18 @@ describe('YouVersionAPIUsers', () => {
       const body = new URLSearchParams(bodyText);
       expect(body.get('grant_type')).toBe('refresh_token');
 
-      // Verify saveAuthData was called with new tokens but existing id_token
+      // Verify saveAuthData was called with the rotated tokens only
       expect(saveAuthDataSpy).toHaveBeenCalledWith(
         'new-access-token',
         'new-refresh-token',
-        existingIdToken,
         expect.any(Date),
       );
 
+      // The stored profile is left untouched by a refresh
+      expect(saveUserInfoSpy).not.toHaveBeenCalled();
+
       saveAuthDataSpy.mockRestore();
+      saveUserInfoSpy.mockRestore();
     });
 
     it('should handle refresh token request failure', async () => {

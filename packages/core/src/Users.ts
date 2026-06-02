@@ -117,13 +117,22 @@ export class YouVersionAPIUsers {
       // Extract user info from ID token
       const result = this.extractSignInResult(tokens);
 
-      // Store tokens in configuration
+      // Store tokens in configuration. The ID token is intentionally not
+      // persisted — it is only used here to derive the user profile below.
       YouVersionPlatformConfiguration.saveAuthData(
         result.accessToken || null,
         result.refreshToken || null,
-        result.idToken || null,
         result.expiryDate || null,
       );
+
+      // Persist the decoded user profile so it survives reloads without
+      // retaining the ID token itself.
+      YouVersionPlatformConfiguration.saveUserInfo({
+        id: result.yvpUserId,
+        name: result.name,
+        email: result.email,
+        avatar_url: result.profilePicture,
+      });
 
       // Clean up localStorage
       localStorage.removeItem('youversion-auth-code-verifier');
@@ -284,6 +293,18 @@ export class YouVersionAPIUsers {
   }
 
   /**
+   * Returns the user profile that was persisted at sign-in, or `null` if the
+   * user is not signed in (or the stored profile is missing/invalid).
+   *
+   * This reads the decoded profile from storage rather than re-decoding the ID
+   * token, which is never persisted.
+   */
+  static getStoredUserInfo(): YouVersionUserInfo | null {
+    const stored = YouVersionPlatformConfiguration.storedUserInfo;
+    return stored ? new YouVersionUserInfo(stored) : null;
+  }
+
+  /**
    * Refreshes the access token using the stored refresh token.
    *
    * @returns Promise<SignInWithYouVersionResult | null> - New tokens if refresh succeeds, null otherwise
@@ -292,10 +313,9 @@ export class YouVersionAPIUsers {
   static async refreshTokens(): Promise<SignInWithYouVersionResult | null> {
     const refreshToken = YouVersionPlatformConfiguration.refreshToken;
     const appKey = YouVersionPlatformConfiguration.appKey;
-    const existingIdToken = YouVersionPlatformConfiguration.idToken;
 
-    if (!refreshToken || !existingIdToken) {
-      throw new Error('No refresh token or id token available');
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
     }
 
     if (!appKey) {
@@ -335,19 +355,18 @@ export class YouVersionAPIUsers {
         token_type: string;
       };
 
-      // Create result with new tokens but preserve user info
+      // Create result with new tokens. The persisted user profile is left
+      // untouched — refreshing only rotates the access/refresh tokens.
       const result = new SignInWithYouVersionResult({
         accessToken: tokens.access_token,
         expiresIn: tokens.expires_in,
         refreshToken: tokens.refresh_token,
-        idToken: existingIdToken,
       });
 
       // Store updated tokens
       YouVersionPlatformConfiguration.saveAuthData(
         result.accessToken || null,
         result.refreshToken || null,
-        result.idToken || null,
         result.expiryDate || null,
       );
 
