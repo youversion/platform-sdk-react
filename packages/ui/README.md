@@ -41,6 +41,18 @@ function App() {
 }
 ```
 
+## Styling
+
+All component CSS is automatically injected when you wrap your app with `YouVersionProvider` — no extra imports or build steps needed. Under the hood, it uses React 19's [`<style precedence>`](https://react.dev/reference/react-dom/components/style) to hoist styles into `<head>` with built-in deduplication and SSR/Suspense support.
+
+**Non-React or manual CSS import:**
+
+```tsx
+import '@youversion/platform-react-ui/styles.css';
+```
+
+All component classes are prefixed with `yv:` to avoid collisions with your app's styles. Override design tokens with CSS variables on `[data-yv-sdk]` (see [Custom CSS variables](#custom-css-variables)).
+
 ## Theming
 
 Set the theme via the `YouVersionProvider`'s `theme` prop. Defaults to `'light'`.

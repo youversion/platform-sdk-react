@@ -20,6 +20,7 @@ function PopoverTrigger({
 function PopoverContent({
   className,
   children,
+  headerLeading,
   headerChild,
   align = 'center',
   heading,
@@ -29,7 +30,8 @@ function PopoverContent({
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content> & {
   showHeader?: boolean;
-  heading?: string;
+  heading?: React.ReactNode;
+  headerLeading?: React.ReactNode;
   headerChild?: React.ReactNode;
   theme?: 'light' | 'dark';
 }): React.ReactNode {
@@ -53,8 +55,11 @@ function PopoverContent({
             className={cn([
               'yv:bg-muted yv:py-3 yv:rounded-t-2xl yv:px-4 yv:border-b yv:border-border yv:grid yv:grid-cols-[1fr_auto] yv:justify-between yv:items-center yv:gap-2',
               headerChild ? 'yv:grid-cols-[1fr_auto_auto]' : '',
+              headerLeading ? 'yv:grid-cols-[auto_1fr_auto]' : '',
+              headerLeading && headerChild ? 'yv:grid-cols-[auto_1fr_auto_auto]' : '',
             ])}
           >
+            {headerLeading}
             <h2 className="yv:font-bold yv:text-base">{heading}</h2>
             {headerChild}
             <PopoverClose asChild>

@@ -1,6 +1,6 @@
 {
   "name": "@youversion/platform-react-ui",
-  "version": "1.25.0",
+  "version": "1.32.0",
   "description": "Pre-built React components for Bible applications with styling included.",
   "license": "Apache-2.0",
   "type": "module",
@@ -11,7 +11,8 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
-    }
+    },
+    "./styles.css": "./dist/tailwind.css"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -29,7 +30,8 @@
     "build:types": "tsc -p tsconfig.build.json",
     "build:js": "tsup",
     "build:css": "tailwindcss -i src/styles/global.css -o dist/tailwind.css --minify",
-    "build": "pnpm build:css && pnpm build:js && pnpm build:types",
+    "verify:styles": "node scripts/verify-styles.js",
+    "build": "pnpm build:css && pnpm build:js && pnpm verify:styles && pnpm build:types",
     "dev": "concurrently \"tailwindcss -i src/styles/global.css -o dist/tailwind.css --watch\" \"NODE_ENV=development tsup --watch\"",
     "test": "vitest run --project unit",
     "test:watch": "vitest --project unit",

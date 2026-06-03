@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 import { usePassage, useTheme } from '@youversion/platform-react-hooks';
 import {
   forwardRef,
@@ -18,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { getBibleTextErrorMessage } from '@/lib/bible-text-error';
 import { cn } from '@/lib/utils';
 import { type FontFamily } from '@/lib/verse-html-utils';
+
 import { transformBibleHtml } from '@youversion/platform-core/browser';
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
@@ -56,7 +59,8 @@ export function FootnoteContent({
   theme,
   hasVerseContext,
 }: FootnoteContentProps): React.ReactElement {
-  const verseReference = reference ? `${reference}:${verseNum}` : `Verse ${verseNum}`;
+  const { t } = useTranslation(undefined, { i18n });
+  const verseReference = reference ? `${reference}:${verseNum}` : t('verseLabel', { verseNum });
   const showVerseContext = hasVerseContext ?? verseHtml.length > 0;
 
   return (
@@ -155,10 +159,12 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   theme: 'light' | 'dark';
   onFootnotePress?: (data: FootnoteData) => void;
 }) {
+  const { t } = useTranslation(undefined, { i18n });
+
   if (onFootnotePress) {
     return (
       <button
-        aria-label="Footnote"
+        aria-label={t('footnoteAriaLabel')}
         type="button"
         className="yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1! yv:text-(--yv-gray-20)"
         onClick={() => onFootnotePress({ verseNum, notes, verseHtml, reference })}
@@ -172,7 +178,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
     <Popover>
       <PopoverTrigger data-yv-sdk data-yv-theme={theme} asChild>
         <button
-          aria-label="Footnote"
+          aria-label={t('footnoteAriaLabel')}
           type="button"
           className="yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1! yv:text-(--yv-gray-20)"
         >
@@ -181,7 +187,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
       </PopoverTrigger>
       <PopoverContent
         className="yv:flex yv:flex-col yv:bg-background yv:p-0 yv:sm:w-sm yv:overflow-none yv:rounded-2xl yv:border-0 yv:shadow-lg"
-        heading="Footnotes"
+        heading={t('footnotesHeading')}
         theme={theme}
       >
         <div className="yv:max-h-[33svh] yv:overflow-y-auto">
@@ -485,6 +491,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
     },
     ref,
   ): React.ReactElement => {
+    const { t } = useTranslation(undefined, { i18n });
     const providerTheme = useTheme();
     const currentTheme = theme || providerTheme;
 
@@ -517,7 +524,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
           data-yv-sdk
           data-yv-theme={currentTheme}
           role="status"
-          aria-label="Loading passage"
+          aria-label={t('loadingPassageAriaLabel')}
           className="yv:flex yv:grow yv:items-center yv:justify-center"
         >
           <LoaderIcon
@@ -531,7 +538,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
     if (currentError) {
       return (
         <div ref={ref} data-yv-sdk data-yv-theme={currentTheme}>
-          <VerseUnavailableMessage message={getBibleTextErrorMessage(currentError)} />
+          <VerseUnavailableMessage message={getBibleTextErrorMessage(currentError, t)} />
         </div>
       );
     }

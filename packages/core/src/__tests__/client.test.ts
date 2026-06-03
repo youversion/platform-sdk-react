@@ -128,6 +128,83 @@ describe('ApiClient', () => {
     });
   });
 
+  describe('default headers', () => {
+    it('should send X-YVP-Sdk header with ReactSDK identifier on every request', async () => {
+      let receivedHeader: string | null = null;
+      server.use(
+        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
+          receivedHeader = request.headers.get('x-yvp-sdk');
+          return HttpResponse.json({});
+        }),
+      );
+
+      await apiClient.get('/test');
+
+      expect(receivedHeader).toMatch(/^ReactSDK=.+$/);
+    });
+
+    it('should send X-YVP-App-Key header on every request', async () => {
+      let receivedAppKey: string | null = null;
+      server.use(
+        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
+          receivedAppKey = request.headers.get('x-yvp-app-key');
+          return HttpResponse.json({});
+        }),
+      );
+
+      await apiClient.get('/test');
+
+      expect(receivedAppKey).toBe('test-app');
+    });
+  });
+
+  describe('additionalHeaders', () => {
+    it('should send caller-supplied headers in addition to the built-in ones', async () => {
+      const client = new ApiClient({
+        apiHost: 'test_placeholder.youversion.com',
+        appKey: 'test-app',
+        additionalHeaders: { 'X-Custom': 'hello' },
+      });
+
+      let receivedCustom: string | null = null;
+      let receivedAppKey: string | null = null;
+      server.use(
+        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
+          receivedCustom = request.headers.get('x-custom');
+          receivedAppKey = request.headers.get('x-yvp-app-key');
+          return HttpResponse.json({});
+        }),
+      );
+
+      await client.get('/test');
+
+      expect(receivedCustom).toBe('hello');
+      expect(receivedAppKey).toBe('test-app');
+    });
+
+    it('should let additionalHeaders override the built-in X-YVP-Sdk header', async () => {
+      // Mirrors how a React Native Expo wrapper would replace the web SDK's
+      // identifier with its own.
+      const client = new ApiClient({
+        apiHost: 'test_placeholder.youversion.com',
+        appKey: 'test-app',
+        additionalHeaders: { 'X-YVP-Sdk': 'ReactNativeSDK=1.2.3' },
+      });
+
+      let receivedSdk: string | null = null;
+      server.use(
+        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
+          receivedSdk = request.headers.get('x-yvp-sdk');
+          return HttpResponse.json({});
+        }),
+      );
+
+      await client.get('/test');
+
+      expect(receivedSdk).toBe('ReactNativeSDK=1.2.3');
+    });
+  });
+
   describe('post', () => {
     it('should make POST request and return data', async () => {
       server.use(

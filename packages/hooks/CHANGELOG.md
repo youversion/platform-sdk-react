@@ -1,5 +1,68 @@
 # @youversion/platform-react-hooks
 
+## 1.32.0
+
+### Patch Changes
+
+- Updated dependencies [ead1c34]
+  - @youversion/platform-core@1.32.0
+
+## 1.31.0
+
+### Patch Changes
+
+- @youversion/platform-core@1.31.0
+
+## 1.30.0
+
+### Minor Changes
+
+- 02c2330: Add `X-YVP-Sdk` header to every API call and let consumers override headers
+  - New `X-YVP-Sdk: ReactSDK={version}` header sent on every request alongside `X-YVP-App-Key`. The version is imported directly from `packages/core/package.json` and inlined by the bundler at build time.
+  - `SDK_VERSION`, `SDK_NAME`, and `SDK_VERSION_HEADER_NAME` exported from `@youversion/platform-core`.
+  - `ApiConfig` gains an optional `additionalHeaders` map that is merged into every request. Keys here override the SDK's built-in headers, so wrappers (e.g. the React Native Expo SDK) can replace `X-YVP-Sdk` with their own identifier.
+  - `YouVersionProvider` gains an `additionalHeaders` prop that flows through context to every hook-built `ApiClient`.
+
+### Patch Changes
+
+- Updated dependencies [02c2330]
+  - @youversion/platform-core@1.30.0
+
+## 1.29.0
+
+### Patch Changes
+
+- @youversion/platform-core@1.29.0
+
+## 1.28.0
+
+### Patch Changes
+
+- @youversion/platform-core@1.28.0
+
+## 1.27.0
+
+### Minor Changes
+
+- 8ba253e: Replace module-level injectStyles() side effect with React 19 style precedence hoisting via YouVersionProvider. Add static CSS export at @youversion/platform-react-ui/styles.css for non-React consumers.
+
+### Patch Changes
+
+- Updated dependencies [8ba253e]
+  - @youversion/platform-core@1.27.0
+
+## 1.26.1
+
+### Patch Changes
+
+- @youversion/platform-core@1.26.1
+
+## 1.26.0
+
+### Patch Changes
+
+- @youversion/platform-core@1.26.0
+
 ## 1.25.0
 
 ### Patch Changes

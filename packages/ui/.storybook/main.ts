@@ -1,6 +1,15 @@
 import type { StorybookConfig } from '@storybook/react-vite';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { readFileSync, existsSync } from 'fs';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Embed real CSS into __YV_STYLES__ — same pattern as tsup.config.ts.
+// This ensures Storybook tests the actual <YvStyles /> code path with
+// real CSS content, not a workaround import.
+const cssPath = resolve(__dirname, '../dist/tailwind.css');
+const yvStyles = existsSync(cssPath) ? JSON.stringify(readFileSync(cssPath, 'utf-8')) : '""';
 
 const config: StorybookConfig = {
   stories: ['../src/**/*.mdx', '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
@@ -13,6 +22,7 @@ const config: StorybookConfig = {
   framework: '@storybook/react-vite',
   staticDirs: ['../public'], // This is for Storybook mock service worker
   viteFinal: (config) => {
+    config.define = { ...config.define, __YV_STYLES__: yvStyles };
     config.resolve = {
       ...config.resolve,
       alias: {

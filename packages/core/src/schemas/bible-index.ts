@@ -4,6 +4,14 @@ import { BookUsfmSchema, CanonSchema } from './book';
 const BibleIndexVerseSchema = z.object({
   /** Verse identifier */
   id: z.string(),
+  /**
+   * Passage identifier (e.g., "GEN.1.1").
+   *
+   * The API always returns this, but it's typed as optional to avoid a breaking
+   * change for consumers who construct these objects (e.g. test fixtures/mocks).
+   * TODO(next-major): make this required.
+   */
+  passage_id: z.string().optional(),
   /** Verse title */
   title: z.string(),
 });
@@ -13,6 +21,14 @@ export type BibleIndexVerse = Readonly<z.infer<typeof BibleIndexVerseSchema>>;
 const BibleIndexChapterSchema = z.object({
   /** Chapter identifier */
   id: z.string(),
+  /**
+   * Passage identifier (e.g., "GEN.1").
+   *
+   * The API always returns this, but it's typed as optional to avoid a breaking
+   * change for consumers who construct these objects (e.g. test fixtures/mocks).
+   * TODO(next-major): make this required.
+   */
+  passage_id: z.string().optional(),
   /** Chapter title */
   title: z.string(),
   /** Array of verses in this chapter */
@@ -20,6 +36,17 @@ const BibleIndexChapterSchema = z.object({
 });
 
 export type BibleIndexChapter = Readonly<z.infer<typeof BibleIndexChapterSchema>>;
+
+const BibleIndexBookIntroSchema = z.object({
+  /** Intro identifier (e.g., "INTRO") */
+  id: z.string(),
+  /** Passage identifier (e.g., "GEN.INTRO") */
+  passage_id: z.string(),
+  /** Intro title */
+  title: z.string(),
+});
+
+export type BibleIndexBookIntro = Readonly<z.infer<typeof BibleIndexBookIntroSchema>>;
 
 const BibleIndexBookSchema = z.object({
   /** Book identifier */
@@ -34,6 +61,8 @@ const BibleIndexBookSchema = z.object({
   canon: CanonSchema,
   /** Array of chapters in this book */
   chapters: z.array(BibleIndexChapterSchema),
+  /** Intro metadata (optional) */
+  intro: BibleIndexBookIntroSchema.optional(),
 });
 
 export type BibleIndexBook = Readonly<z.infer<typeof BibleIndexBookSchema>>;

@@ -19,7 +19,8 @@ export function useLanguagesClient(): LanguagesClient {
         appKey: context.appKey,
         apiHost: context.apiHost,
         installationId: context.installationId,
+        additionalHeaders: context.additionalHeaders,
       }),
     );
-  }, [context?.apiHost, context?.appKey, context?.installationId]);
+  }, [context?.apiHost, context?.appKey, context?.installationId, context?.additionalHeaders]);
 }
