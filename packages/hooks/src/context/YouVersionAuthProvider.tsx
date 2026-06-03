@@ -1,28 +1,46 @@
 'use client';
 
-import React, { useEffect, useState, type ReactNode } from 'react';
 import {
   YouVersionAPIUsers,
   YouVersionPlatformConfiguration,
-  type YouVersionUserInfo,
+  YouVersionUserInfo,
+  type YouVersionUserInfoJSON,
 } from '@youversion/platform-core';
-import { YouVersionAuthContext } from './YouVersionAuthContext';
+import React, { useEffect, useState, type ReactNode } from 'react';
 import type { AuthConfig, AuthContextValue } from '../types/auth';
+import { YouVersionAuthContext } from './YouVersionAuthContext';
 
 interface YouVersionAuthProviderProps {
   config: AuthConfig;
+  /**
+   * Host-controlled auth state. When provided (including `null`), the host owns
+   * sign-in (e.g. the React Native Expo SDK signs in natively and passes the
+   * resulting profile down). In that mode the web token/OAuth init is skipped and
+   * this value drives `userInfo`/`isAuthenticated`. Leave `undefined` for the
+   * default web-managed flow.
+   */
+  userInfo?: YouVersionUserInfoJSON | null;
   children: ReactNode;
 }
 
 export default function YouVersionAuthProvider({
   config,
+  userInfo: controlledUserInfo,
   children,
 }: YouVersionAuthProviderProps): React.ReactElement {
+  const isHostControlled = controlledUserInfo !== undefined;
   const [userInfo, setUserInfo] = useState<YouVersionUserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    if (!isHostControlled) return;
+    setUserInfo(controlledUserInfo ? new YouVersionUserInfo(controlledUserInfo) : null);
+    setIsLoading(false);
+  }, [isHostControlled, controlledUserInfo]);
+
+  useEffect(() => {
+    if (isHostControlled) return;
     let mounted = true;
     const initAuth = async () => {
       // Set configuration
