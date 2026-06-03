@@ -46,6 +46,5 @@ export {
   type FootnoteContentProps,
 } from './verse';
 export { BibleCard, type BibleCardProps } from './bible-card';
-export { BibleWidgetView, type BibleWidgetViewProps } from './bible-widget-view';
 export { Separator } from './ui/separator';
 export { Textarea } from './ui/textarea';
