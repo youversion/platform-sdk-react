@@ -39,6 +39,6 @@ These had zero consumers. Removed from `@youversion/platform-react-hooks`:
 - `ReaderProvider`, `ReaderContext`, `useReaderContext` — no replacement.
 - `DEFAULT` (the `{ VERSION, BOOK, CHAPTER }` constant exported alongside `useInitData`) was removed with it. If you relied on it, inline the values or use `DEFAULT_LICENSE_FREE_BIBLE_VERSION` from `@youversion/platform-core` for the version.
 
-**4. `BibleIndex` — `passage_id` is now required (type-only)**
+**4. `BibleIndex` — `passage_id` is now required**
 
-`passage_id` on `BibleIndexChapter` and `BibleIndexVerse` is no longer optional. The API has always returned it; this only affects callers who construct these objects in TypeScript (e.g. test fixtures or mocks). Add `passage_id` to any such literals. `BibleIndexBook.intro` remains optional.
+`passage_id` on `BibleIndexChapter` and `BibleIndexVerse` is no longer optional. The API has always returned it; the Zod schema now enforces this at runtime as well, so consumers who relied on the optional field in mock/fixture objects must add `passage_id` to any such literals. `BibleIndexBook.intro` remains optional.
