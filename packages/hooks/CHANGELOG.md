@@ -1,5 +1,12 @@
 # @youversion/platform-react-hooks
 
+## 1.32.0
+
+### Patch Changes
+
+- Updated dependencies [ead1c34]
+  - @youversion/platform-core@1.32.0
+
 ## 1.31.0
 
 ### Patch Changes
