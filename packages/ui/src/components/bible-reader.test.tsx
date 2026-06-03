@@ -264,3 +264,38 @@ describe('BibleReader theme settings', () => {
     expect(nextSnap.fontFamily).toBe(INTER_FONT);
   });
 });
+
+describe('BibleReader Toolbar - onChapterPickerPress', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaultMocks();
+  });
+
+  it('calls onChapterPickerPress from Root when chapter nav button is clicked and hides popover', async () => {
+    const user = userEvent.setup();
+    const onChapterPickerPress = vi.fn();
+
+    render(
+      <BibleReader.Root
+        defaultVersionId={3034}
+        defaultBook="JHN"
+        defaultChapter="1"
+        onChapterPickerPress={onChapterPickerPress}
+      >
+        <BibleReader.Toolbar />
+      </BibleReader.Root>,
+    );
+
+    const chapterButton = screen.getByRole('button', { name: 'Change Bible book and chapter' });
+    await user.click(chapterButton);
+
+    expect(onChapterPickerPress).toHaveBeenCalledTimes(1);
+    expect(onChapterPickerPress).toHaveBeenCalledWith({
+      book: 'JHN',
+      chapter: '1',
+      versionId: 3034,
+    });
+
+    expect(screen.queryByPlaceholderText('Search')).not.toBeInTheDocument();
+  });
+});

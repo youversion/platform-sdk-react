@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import {
   useBooks,
@@ -21,8 +23,8 @@ import {
 } from 'react';
 import { cn } from '@/lib/utils';
 import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, getAdjacentChapter } from '@youversion/platform-core';
-import { BibleChapterPicker } from './bible-chapter-picker';
-import { BibleVersionPicker } from './bible-version-picker';
+import { BibleChapterPicker, type BibleChapterPickerPressData } from './bible-chapter-picker';
+import { BibleVersionPicker, type BibleVersionPickerPressData } from './bible-version-picker';
 import { GearIcon } from './icons/gear';
 import { InfoIcon } from './icons/info';
 import { LoaderIcon } from './icons/loader';
@@ -51,6 +53,8 @@ type BibleReaderContextType = {
   showVerseNumbers: boolean;
   background: 'light' | 'dark';
   onFootnotePress?: (data: FootnoteData) => void;
+  onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
+  onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
 };
 
 const BibleReaderContext = createContext<BibleReaderContextType | null>(null);
@@ -83,6 +87,8 @@ export type RootProps = {
   showVerseNumbers?: boolean;
   background?: 'light' | 'dark';
   onFootnotePress?: (data: FootnoteData) => void;
+  onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
+  onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
   children?: ReactNode;
 };
 
@@ -181,6 +187,8 @@ function Root({
   showVerseNumbers = true,
   background,
   onFootnotePress,
+  onChapterPickerPress,
+  onVersionPickerPress,
   children,
 }: RootProps) {
   const [book, setBook] = useControllableState({
@@ -286,6 +294,8 @@ function Root({
     showVerseNumbers,
     background: theme,
     onFootnotePress,
+    onChapterPickerPress,
+    onVersionPickerPress,
   };
 
   return (
@@ -302,6 +312,7 @@ function Root({
 }
 
 function Content() {
+  const { t } = useTranslation(undefined, { i18n });
   const {
     background,
     book,
@@ -353,10 +364,8 @@ function Content() {
       </h1>
 
       {chapterUnavailable ? (
-        // This copy was taken from bible.com (e.g. https://www.bible.com/bible/4253/ACT.INTRO1.AFV)
         <p className="yv:text-center yv:text-balance yv:text-muted-foreground">
-          This chapter is not available in this version. Please choose a different chapter or
-          version.
+          {t('chapterUnavailable')}
         </p>
       ) : (
         <BibleTextView
@@ -386,7 +395,7 @@ function Content() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <InfoIcon className="yv:size-4" /> Learn More
+              <InfoIcon className="yv:size-4" /> {t('learnMore')}
             </a>
           ) : null}
         </footer>
@@ -396,6 +405,7 @@ function Content() {
 }
 
 function UserMenu() {
+  const { t } = useTranslation(undefined, { i18n });
   const { auth, signIn, signOut, userInfo } = useYVAuth();
   const yvContext = useContext(YouVersionContext);
 
@@ -406,7 +416,7 @@ function UserMenu() {
           <Button size="icon" variant="outline">
             <img
               src={userInfo.getAvatarUrl(32, 32)?.toString()}
-              alt={userInfo.name || 'User avatar'}
+              alt={userInfo.name || t('userAvatarAlt')}
               className="yv:size-full yv:rounded-full yv:object-cover"
             />
           </Button>
@@ -426,7 +436,7 @@ function UserMenu() {
         <PopoverClose asChild>
           {auth.isAuthenticated ? (
             <Button variant="secondary" className="yv:card yv:text-foreground" onClick={signOut}>
-              Sign Out
+              {t('signOut')}
             </Button>
           ) : (
             <Button
@@ -434,7 +444,7 @@ function UserMenu() {
               className="yv:card yv:text-foreground"
               onClick={() => void signIn({ scopes: ['profile'] })}
             >
-              Sign In
+              {t('signIn')}
             </Button>
           )}
         </PopoverClose>
@@ -451,6 +461,7 @@ export function BibleThemeSettingsContent({
   onFontIncreased,
   onFontDecreased,
 }: BibleThemeSettingsContentProps): ReactElement {
+  const { t } = useTranslation(undefined, { i18n });
   return (
     <div data-yv-sdk data-yv-theme={theme} className="yv:flex yv:flex-col yv:gap-4 yv:p-4">
       <div className="yv:grid yv:grid-cols-2">
@@ -498,9 +509,9 @@ export function BibleThemeSettingsContent({
                   : '',
               )}
             >
-              Font
+              {t('fontLabel')}
             </span>
-            <span className="yv:sm:text-xl yv:text-base">Inter</span>
+            <span className="yv:sm:text-xl yv:text-base">{t('interFontName')}</span>
           </div>
         </Button>
         <Button
@@ -522,9 +533,11 @@ export function BibleThemeSettingsContent({
                   : '',
               )}
             >
-              Font
+              {t('fontLabel')}
             </span>
-            <span className="yv:sm:text-xl yv:text-base yv:font-serif">Source Serif</span>
+            <span className="yv:sm:text-xl yv:text-base yv:font-serif">
+              {t('sourceSerifFontName')}
+            </span>
           </div>
         </Button>
       </div>
@@ -538,6 +551,7 @@ export type BibleReaderToolbarProps = {
 };
 
 function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolbarProps) {
+  const { t } = useTranslation(undefined, { i18n });
   const {
     book,
     chapter,
@@ -552,6 +566,8 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
     currentFontSize,
     setCurrentFontSize,
     background,
+    onChapterPickerPress,
+    onVersionPickerPress,
   } = useBibleReaderContext();
   const yvContext = useContext(YouVersionContext);
   const themesSettingsValuesRef = useRef<BibleThemeSettingsValues>({
@@ -638,6 +654,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
           onChapterChange={setChapter}
           versionId={versionId}
           background={background}
+          onChapterPickerPress={onChapterPickerPress}
         >
           <BibleChapterPicker.Trigger>
             {({ chapterLabel, currentBook, loading }) => (
@@ -647,7 +664,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
                   size="icon"
                   variant="ghost"
                   disabled={!canNavigatePrevious}
-                  aria-label="Previous chapter"
+                  aria-label={t('previousChapterAriaLabel')}
                   onClick={(e) => {
                     e.stopPropagation();
                     if (prevResult) {
@@ -664,14 +681,14 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
                   variant="secondary"
                   className="yv:px-0 yv:font-bold yv:text-foreground yv:min-w-[5ch]"
                   disabled={loading}
-                  aria-label="Change Bible book and chapter"
+                  aria-label={t('changeBibleBookAndChapterAriaLabel')}
                 >
                   {loading ? (
                     <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
                   ) : (
                     <>
                       <span className="yv:min-w-[3ch] yv:truncate">
-                        {currentBook?.title || 'Select'}
+                        {currentBook?.title || t('select')}
                       </span>
                       <span className="yv:tabular-nums yv:min-w-[1ch] yv:truncate">
                         {chapterLabel || ''}
@@ -692,7 +709,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
                   size="icon"
                   variant="ghost"
                   disabled={!canNavigateNext}
-                  aria-label="Next chapter"
+                  aria-label={t('nextChapterAriaLabel')}
                 >
                   <ChevronRightIcon className="yv:transition-transform yv:duration-100 yv:group-active:translate-y-px" />
                 </Button>
@@ -705,15 +722,18 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
           versionId={versionId}
           onVersionChange={setVersionId}
           background={background}
+          onVersionPickerPress={onVersionPickerPress}
         >
-          <BibleVersionPicker.Trigger aria-label="Change Bible version">
+          <BibleVersionPicker.Trigger aria-label={t('changeBibleVersionAriaLabel')}>
             {({ version, loading }) => (
               <Button
                 size="lg"
                 variant="secondary"
                 className="yv:min-w-[calc(0.25rem*4*2+3ch)] yv:px-4 yv:font-bold yv:text-foreground"
                 disabled={loading}
-                aria-label={loading ? 'Loading Bible version' : 'Change Bible version'}
+                aria-label={
+                  loading ? t('loadingBibleVersionAriaLabel') : t('changeBibleVersionAriaLabel')
+                }
               >
                 {/* This div exists merely as a wrapper to minimize width layout shifting */}
                 <div className="yv:min-w-[3ch] yv:flex yv:justify-center">
@@ -721,7 +741,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
                     <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
                   ) : (
                     <span className="yv:truncate">
-                      {version?.localized_abbreviation || 'Select version'}
+                      {version?.localized_abbreviation || t('selectVersion')}
                     </span>
                   )}
                 </div>
@@ -735,20 +755,20 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
           <Button
             size="sm"
             variant="secondary"
-            aria-label="Settings"
+            aria-label={t('settingsAriaLabel')}
             onClick={() => onOpenBibleThemeSettings(buildBibleThemeSettingsSnapshot())}
           >
             <GearIcon className="yv:text-foreground" />
           </Button>
         ) : (
           <Popover>
-            <PopoverTrigger asChild aria-label="Settings">
+            <PopoverTrigger asChild aria-label={t('settingsAriaLabel')}>
               <Button size="sm" variant="secondary">
                 <GearIcon className="yv:text-foreground" />
               </Button>
             </PopoverTrigger>
 
-            <PopoverContent sideOffset={16} heading="Reader Settings" theme={background}>
+            <PopoverContent sideOffset={16} heading={t('readerSettingsHeading')} theme={background}>
               <BibleThemeSettingsContent
                 theme={background}
                 fontSize={currentFontSize}

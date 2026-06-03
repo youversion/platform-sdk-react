@@ -1,4 +1,6 @@
 import React, { useMemo } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
+import i18n from '@/i18n';
 import { LoaderIcon } from './icons/loader';
 import { type AuthenticationScopes } from '@youversion/platform-core';
 import { useYVAuth, useTheme } from '@youversion/platform-react-hooks';
@@ -126,6 +128,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
     const { signIn, signOut, auth } = useYVAuth();
     const providerTheme = useTheme();
     const theme = background || providerTheme;
+    const { t } = useTranslation(undefined, { i18n });
 
     const handleClick = async (e: React.MouseEvent<HTMLButtonElement>): Promise<void> => {
       e.preventDefault();
@@ -158,19 +161,27 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
       const isSignOut = mode === 'signOut' || (mode === 'auto' && auth.isAuthenticated);
 
       if (size === 'short') {
-        return isSignOut ? 'Sign out' : 'Sign in';
+        return isSignOut ? t('signOut') : t('signIn');
       }
 
       return isSignOut ? (
         <div className="yv:font-normal">
-          Sign out of <span className="yv:font-bold">YouVersion</span>
+          <Trans
+            i18nKey="signOutOfYouVersion"
+            i18n={i18n}
+            components={{ bold: <span className="yv:font-bold" /> }}
+          />
         </div>
       ) : (
         <div className="yv:font-normal">
-          Sign in with <span className="yv:font-bold">YouVersion</span>
+          <Trans
+            i18nKey="signInWithYouVersion"
+            i18n={i18n}
+            components={{ bold: <span className="yv:font-bold" /> }}
+          />
         </div>
       );
-    }, [mode, auth.isAuthenticated, size, text]);
+    }, [mode, auth.isAuthenticated, size, text, t]);
 
     const loadingSpinner = (
       <LoaderIcon className="yv:z-20 yv:absolute yv:left-1/2 yv:top-1/2 yv:animate-spin yv:-translate-x-1/2 yv:-translate-y-1/2 yv:fill-primary-foreground yv:text-primary" />

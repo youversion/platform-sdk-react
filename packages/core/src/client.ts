@@ -1,4 +1,5 @@
 import type { ApiConfig } from './types';
+import { SDK_VERSION_HEADER_NAME, buildSdkVersionHeaderValue } from './version';
 
 type PrimitiveQueryParam = string | number | boolean;
 type QueryParams = Record<string, PrimitiveQueryParam | PrimitiveQueryParam[]>;
@@ -34,6 +35,8 @@ export class ApiClient {
       'Content-Type': 'application/json',
       'X-YVP-App-Key': this.config.appKey,
       'X-YVP-Installation-Id': this.config.installationId || 'web-sdk-default',
+      [SDK_VERSION_HEADER_NAME]: buildSdkVersionHeaderValue(),
+      ...config.additionalHeaders,
     };
   }
 

@@ -2,6 +2,7 @@ export {
   BibleChapterPicker,
   type RootProps,
   type BibleChapterPickerRootProps,
+  type BibleChapterPickerSelectData,
   type TriggerProps,
   type BibleChapterPickerContentProps,
   type BibleChapterPickerPressData,
@@ -32,7 +33,11 @@ export {
   type BibleVersionPickerLanguageTriggerProps,
 } from './bible-version-picker';
 export { YouVersionAuthButton, type YouVersionAuthButtonProps } from './YouVersionAuthButton';
-export { VerseOfTheDay, type VerseOfTheDayProps } from './verse-of-the-day';
+export {
+  VerseOfTheDay,
+  type VerseOfTheDayProps,
+  type VerseOfTheDayShareData,
+} from './verse-of-the-day';
 export {
   BibleTextView,
   type BibleTextViewProps,

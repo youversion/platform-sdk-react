@@ -1,5 +1,73 @@
 # @youversion/platform-react-ui
 
+## 1.32.0
+
+### Patch Changes
+
+- Updated dependencies [ead1c34]
+  - @youversion/platform-core@1.32.0
+  - @youversion/platform-react-hooks@1.32.0
+
+## 1.31.0
+
+### Minor Changes
+
+- 789892f: Center card content within full-width BibleCard and VerseOfTheDay layouts.
+- b5f42ff: Add optional `onShare` and `VerseOfTheDayShareData` to `VerseOfTheDay` for native host share flows.
+
+### Patch Changes
+
+- @youversion/platform-core@1.31.0
+- @youversion/platform-react-hooks@1.31.0
+
+## 1.30.0
+
+### Minor Changes
+
+- 3758009: Add optional `onFootnotePress` callback to `BibleCard` for custom footnote handling (same pattern as `BibleReader`).
+- 02c2330: Add `X-YVP-Sdk` header to every API call and let consumers override headers
+  - New `X-YVP-Sdk: ReactSDK={version}` header sent on every request alongside `X-YVP-App-Key`. The version is imported directly from `packages/core/package.json` and inlined by the bundler at build time.
+  - `SDK_VERSION`, `SDK_NAME`, and `SDK_VERSION_HEADER_NAME` exported from `@youversion/platform-core`.
+  - `ApiConfig` gains an optional `additionalHeaders` map that is merged into every request. Keys here override the SDK's built-in headers, so wrappers (e.g. the React Native Expo SDK) can replace `X-YVP-Sdk` with their own identifier.
+  - `YouVersionProvider` gains an `additionalHeaders` prop that flows through context to every hook-built `ApiClient`.
+
+### Patch Changes
+
+- Updated dependencies [02c2330]
+  - @youversion/platform-core@1.30.0
+  - @youversion/platform-react-hooks@1.30.0
+
+## 1.29.0
+
+### Minor Changes
+
+- 8b5bf45: Add `onVersionPickerPress` escape-hatch prop to `BibleReader.Root` and `BibleCard`, and make `BibleCard.versionId` controllable.
+  - `BibleReader.Root` accepts `onVersionPickerPress?: (data: BibleVersionPickerPressData) => void`, threaded through context to Toolbar and then to the internal `BibleVersionPicker.Root` — suppresses the default popover when provided
+  - `BibleCard` accepts `onVersionPickerPress`, `defaultVersionId`, and `onVersionChange`; `versionId` is now optional and uses `useControllableState` for controlled/uncontrolled support
+  - `BibleVersionPicker.Root` guards `isPopoverOpen` state when escape hatch is active, moves `filteredRecentVersions` to context to eliminate duplication between `Content` and `BibleVersionPickerLanguageTrigger`
+  - `BibleChapterPicker.Root` guards `isPopoverOpen` state when `onChapterPickerPress` is active
+  - `BibleWidgetView` kept as a deprecated alias for `BibleCard`
+  - `BibleVersionPickerPressData` type exported: `{ versionId: number; languageId: string }`
+
+### Patch Changes
+
+- @youversion/platform-core@1.29.0
+- @youversion/platform-react-hooks@1.29.0
+
+## 1.28.0
+
+### Minor Changes
+
+- 0286f7f: Add `onSelect` callback to `BibleChapterPicker.Content` and `onChapterPickerPress` to `BibleReader.Root`
+  - `BibleChapterPickerSelectData` type exported for `onSelect` payload
+  - `onSelect` prop on `Content` fires after internal state updates, before `onRequestClose`
+  - `onChapterPickerPress` prop on `BibleReader.Root` threaded through context to `Toolbar`, suppressing default popover when provided
+
+### Patch Changes
+
+- @youversion/platform-core@1.28.0
+- @youversion/platform-react-hooks@1.28.0
+
 ## 1.27.0
 
 ### Minor Changes

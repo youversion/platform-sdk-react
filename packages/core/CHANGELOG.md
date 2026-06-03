@@ -1,5 +1,30 @@
 # @youversion/platform-core
 
+## 1.32.0
+
+### Minor Changes
+
+- ead1c34: Sync core schemas/types with the latest OpenAPI spec:
+  - Add `passage_id` (optional) to `BibleIndexChapter` and `BibleIndexVerse`, and an optional `intro` to `BibleIndexBook` (new `BibleIndexBookIntro` type). `passage_id` is typed optional to stay non-breaking for consumers who construct these objects; it will become required in the next major.
+  - Relax `BibleVersion.publisher_url` to a plain string (the API may return an empty string).
+  - Add new public resource types: `Organization`/`OrganizationAddress`, `Video`/`VideoPlaybackSource`/`VideoThumbnail`, `Font`/`FontVariant`/`FontSource`, `License`, and `AppSummary`.
+
+## 1.31.0
+
+## 1.30.0
+
+### Minor Changes
+
+- 02c2330: Add `X-YVP-Sdk` header to every API call and let consumers override headers
+  - New `X-YVP-Sdk: ReactSDK={version}` header sent on every request alongside `X-YVP-App-Key`. The version is imported directly from `packages/core/package.json` and inlined by the bundler at build time.
+  - `SDK_VERSION`, `SDK_NAME`, and `SDK_VERSION_HEADER_NAME` exported from `@youversion/platform-core`.
+  - `ApiConfig` gains an optional `additionalHeaders` map that is merged into every request. Keys here override the SDK's built-in headers, so wrappers (e.g. the React Native Expo SDK) can replace `X-YVP-Sdk` with their own identifier.
+  - `YouVersionProvider` gains an `additionalHeaders` prop that flows through context to every hook-built `ApiClient`.
+
+## 1.29.0
+
+## 1.28.0
+
 ## 1.27.0
 
 ### Minor Changes
