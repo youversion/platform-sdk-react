@@ -441,12 +441,14 @@ function Content() {
           {showLoadingOverlay ? (
             <div
               role="status"
-              aria-live="polite"
               aria-label={t('loadingPassageAriaLabel')}
               className="yv:pointer-events-none yv:absolute yv:inset-0"
             >
+              {/* top-[50vh] (viewport-relative) keeps the spinner centered in the scrollport.
+                  top-1/2 would resolve to 50% of the tall passage container and strand the
+                  spinner off-screen when scrolled (e.g. on version changes). */}
               <LoaderIcon
-                className="yv:sticky yv:top-1/2 yv:mx-auto yv:block yv:size-6 yv:-translate-y-1/2 yv:animate-spin yv:text-muted-foreground"
+                className="yv:sticky yv:top-[50vh] yv:mx-auto yv:block yv:size-6 yv:-translate-y-1/2 yv:animate-spin yv:text-muted-foreground"
                 aria-hidden="true"
               />
             </div>
