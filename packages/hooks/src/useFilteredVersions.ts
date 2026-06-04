@@ -9,7 +9,7 @@ function getVersionSortTitle(version: BibleVersion): string {
 }
 
 function compareVersionsAlphabetically(a: BibleVersion, b: BibleVersion): number {
-  const byTitle = getVersionSortTitle(a).localeCompare(getVersionSortTitle(b), undefined, {
+  const byTitle = getVersionSortTitle(a).localeCompare(getVersionSortTitle(b), 'en', {
     sensitivity: 'base',
   });
   return byTitle !== 0 ? byTitle : a.id - b.id;
