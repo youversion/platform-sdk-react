@@ -1,9 +1,6 @@
-export interface YouVersionUserInfoJSON {
-  name?: string;
-  id?: string;
-  avatar_url?: string;
-  email?: string;
-}
+import type { YouVersionUserInfoJSON } from './schemas/user-info';
+
+export type { YouVersionUserInfoJSON };
 
 export class YouVersionUserInfo {
   readonly name?: string;

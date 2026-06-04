@@ -37,7 +37,6 @@ export const createMockAuthResult = (
   return new SignInWithYouVersionResult({
     ...mockUserInfo,
     accessToken: 'access-token',
-    idToken: 'id-token',
     refreshToken: 'refresh-token',
     expiresIn: 3600,
     yvpUserId: 'test-yvp-user-id',

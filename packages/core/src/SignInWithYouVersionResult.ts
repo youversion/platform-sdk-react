@@ -10,7 +10,6 @@ type SignInWithYouVersionResultProps = {
   accessToken?: string;
   expiresIn?: number;
   refreshToken?: string;
-  idToken?: string;
   yvpUserId?: string;
   name?: string;
   profilePicture?: string;
@@ -20,7 +19,6 @@ export class SignInWithYouVersionResult {
   public readonly accessToken: string | undefined;
   public readonly expiryDate: Date | undefined;
   public readonly refreshToken: string | undefined;
-  public readonly idToken: string | undefined;
   public readonly yvpUserId: string | undefined;
   public readonly name: string | undefined;
   public readonly profilePicture: string | undefined;
@@ -30,7 +28,6 @@ export class SignInWithYouVersionResult {
     accessToken,
     expiresIn,
     refreshToken,
-    idToken,
     yvpUserId,
     name,
     profilePicture,
@@ -39,7 +36,6 @@ export class SignInWithYouVersionResult {
     this.accessToken = accessToken;
     this.expiryDate = expiresIn ? new Date(Date.now() + expiresIn * 1000) : new Date();
     this.refreshToken = refreshToken;
-    this.idToken = idToken;
     this.yvpUserId = yvpUserId;
     this.name = name;
     this.profilePicture = profilePicture;

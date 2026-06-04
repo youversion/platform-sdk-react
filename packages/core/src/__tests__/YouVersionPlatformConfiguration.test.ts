@@ -47,7 +47,7 @@ describe('YouVersionPlatformConfiguration', () => {
     // Reset all static properties
     YouVersionPlatformConfiguration.appKey = null;
     YouVersionPlatformConfiguration.installationId = null;
-    YouVersionPlatformConfiguration.saveAuthData(null, null, null, null);
+    YouVersionPlatformConfiguration.clearAuthTokens();
     YouVersionPlatformConfiguration.apiHost = envApiHost;
   });
 
@@ -115,10 +115,10 @@ describe('YouVersionPlatformConfiguration', () => {
       expect(YouVersionPlatformConfiguration.accessToken).toBeNull();
 
       const token = 'test-access-token';
-      YouVersionPlatformConfiguration.saveAuthData(token, null, null, null);
+      YouVersionPlatformConfiguration.saveAuthData(token, null, null);
       expect(YouVersionPlatformConfiguration.accessToken).toBe(token);
 
-      YouVersionPlatformConfiguration.saveAuthData(null, null, null, null);
+      YouVersionPlatformConfiguration.saveAuthData(null, null, null);
       expect(YouVersionPlatformConfiguration.accessToken).toBeNull();
     });
 
@@ -126,10 +126,10 @@ describe('YouVersionPlatformConfiguration', () => {
       expect(YouVersionPlatformConfiguration.refreshToken).toBeNull();
 
       const refreshToken = 'test-refresh-token';
-      YouVersionPlatformConfiguration.saveAuthData(null, refreshToken, null, null);
+      YouVersionPlatformConfiguration.saveAuthData(null, refreshToken, null);
       expect(YouVersionPlatformConfiguration.refreshToken).toBe(refreshToken);
 
-      YouVersionPlatformConfiguration.saveAuthData(null, null, null, null);
+      YouVersionPlatformConfiguration.saveAuthData(null, null, null);
       expect(YouVersionPlatformConfiguration.refreshToken).toBeNull();
     });
 
@@ -137,53 +137,46 @@ describe('YouVersionPlatformConfiguration', () => {
       expect(YouVersionPlatformConfiguration.tokenExpiryDate).toBeNull();
 
       const expiryDate = new Date('2024-12-31T23:59:59Z');
-      YouVersionPlatformConfiguration.saveAuthData(null, null, null, expiryDate);
+      YouVersionPlatformConfiguration.saveAuthData(null, null, expiryDate);
       expect(YouVersionPlatformConfiguration.tokenExpiryDate).toEqual(expiryDate);
 
-      YouVersionPlatformConfiguration.saveAuthData(null, null, null, null);
+      YouVersionPlatformConfiguration.saveAuthData(null, null, null);
       expect(YouVersionPlatformConfiguration.tokenExpiryDate).toBeNull();
     });
 
-    it('should save all auth data together', () => {
+    it('should never persist the id token', () => {
       const accessToken = 'test-access-token';
       const refreshToken = 'test-refresh-token';
-      const idToken = 'test-id-token';
       const expiryDate = new Date('2024-12-31T23:59:59Z');
 
-      YouVersionPlatformConfiguration.saveAuthData(accessToken, refreshToken, idToken, expiryDate);
+      YouVersionPlatformConfiguration.saveAuthData(accessToken, refreshToken, expiryDate);
 
       expect(YouVersionPlatformConfiguration.accessToken).toBe(accessToken);
       expect(YouVersionPlatformConfiguration.refreshToken).toBe(refreshToken);
-      expect(YouVersionPlatformConfiguration.idToken).toBe(idToken);
       expect(YouVersionPlatformConfiguration.tokenExpiryDate).toEqual(expiryDate);
+      expect(mockSetItem).not.toHaveBeenCalledWith('idToken', expect.anything());
+      expect(mockStorage.idToken).toBeUndefined();
     });
 
     it('should handle partial updates without affecting other tokens', () => {
       // Set up initial state
       const initialAccess = 'initial-access';
       const initialRefresh = 'initial-refresh';
-      const initialIdToken = 'initial-id-token';
       const initialExpiry = new Date('2024-01-01T00:00:00Z');
-      YouVersionPlatformConfiguration.saveAuthData(
-        initialAccess,
-        initialRefresh,
-        initialIdToken,
-        initialExpiry,
-      );
+      YouVersionPlatformConfiguration.saveAuthData(initialAccess, initialRefresh, initialExpiry);
 
       // Update only access token
       const newAccess = 'new-access-token';
-      YouVersionPlatformConfiguration.saveAuthData(newAccess, null, null, null);
+      YouVersionPlatformConfiguration.saveAuthData(newAccess, null, null);
 
       expect(YouVersionPlatformConfiguration.accessToken).toBe(newAccess);
       expect(YouVersionPlatformConfiguration.refreshToken).toBeNull();
-      expect(YouVersionPlatformConfiguration.idToken).toBeNull();
       expect(YouVersionPlatformConfiguration.tokenExpiryDate).toBeNull();
     });
 
     it('should properly serialize and deserialize dates', () => {
       const originalDate = new Date('2024-06-15T14:30:45.123Z');
-      YouVersionPlatformConfiguration.saveAuthData(null, null, null, originalDate);
+      YouVersionPlatformConfiguration.saveAuthData(null, null, originalDate);
 
       const retrievedDate = YouVersionPlatformConfiguration.tokenExpiryDate;
       expect(retrievedDate).toEqual(originalDate);
@@ -193,62 +186,95 @@ describe('YouVersionPlatformConfiguration', () => {
     it('should call localStorage methods correctly', () => {
       const accessToken = 'test-access';
       const refreshToken = 'test-refresh';
-      const idToken = 'test-id';
       const expiryDate = new Date('2024-12-31T23:59:59Z');
 
-      YouVersionPlatformConfiguration.saveAuthData(accessToken, refreshToken, idToken, expiryDate);
+      YouVersionPlatformConfiguration.saveAuthData(accessToken, refreshToken, expiryDate);
 
       expect(mockSetItem).toHaveBeenCalledWith('accessToken', accessToken);
       expect(mockSetItem).toHaveBeenCalledWith('refreshToken', refreshToken);
-      expect(mockSetItem).toHaveBeenCalledWith('idToken', idToken);
       expect(mockSetItem).toHaveBeenCalledWith('expiryDate', expiryDate.toISOString());
     });
 
     it('should call removeItem when tokens are null', () => {
       // First set some values
-      YouVersionPlatformConfiguration.saveAuthData('access', 'refresh', 'id-token', new Date());
+      YouVersionPlatformConfiguration.saveAuthData('access', 'refresh', new Date());
 
       // Clear the mock calls
       mockRemoveItem.mockClear();
 
       // Now set to null
-      YouVersionPlatformConfiguration.saveAuthData(null, null, null, null);
+      YouVersionPlatformConfiguration.saveAuthData(null, null, null);
 
       expect(mockRemoveItem).toHaveBeenCalledWith('accessToken');
       expect(mockRemoveItem).toHaveBeenCalledWith('refreshToken');
-      expect(mockRemoveItem).toHaveBeenCalledWith('idToken');
       expect(mockRemoveItem).toHaveBeenCalledWith('expiryDate');
     });
   });
 
+  describe('user info persistence', () => {
+    it('should save and retrieve the decoded user profile', () => {
+      expect(YouVersionPlatformConfiguration.storedUserInfo).toBeNull();
+
+      const userInfo = {
+        id: 'user-123',
+        name: 'John Doe',
+        email: 'john@example.com',
+        avatar_url: 'https://example.com/avatar.jpg',
+      };
+      YouVersionPlatformConfiguration.saveUserInfo(userInfo);
+
+      expect(mockSetItem).toHaveBeenCalledWith('userInfo', JSON.stringify(userInfo));
+      expect(YouVersionPlatformConfiguration.storedUserInfo).toEqual(userInfo);
+    });
+
+    it('should remove the stored profile when passed null', () => {
+      YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-123', name: 'John Doe' });
+      YouVersionPlatformConfiguration.saveUserInfo(null);
+
+      expect(mockRemoveItem).toHaveBeenCalledWith('userInfo');
+      expect(YouVersionPlatformConfiguration.storedUserInfo).toBeNull();
+    });
+
+    it('should return null when the stored profile is malformed JSON', () => {
+      mockStorage.userInfo = 'not-json{';
+      expect(YouVersionPlatformConfiguration.storedUserInfo).toBeNull();
+    });
+
+    it('should return null when the stored profile fails schema validation', () => {
+      mockStorage.userInfo = JSON.stringify({ id: 42 });
+      expect(YouVersionPlatformConfiguration.storedUserInfo).toBeNull();
+    });
+  });
+
   describe('clearAuthTokens', () => {
-    it('should clear all auth tokens', () => {
+    it('should clear all auth tokens and the stored profile', () => {
       // Set up initial auth data
       const accessToken = 'test-access-token';
       const refreshToken = 'test-refresh-token';
-      const idToken = 'test-id-token';
       const expiryDate = new Date('2024-12-31T23:59:59Z');
-      YouVersionPlatformConfiguration.saveAuthData(accessToken, refreshToken, idToken, expiryDate);
+      YouVersionPlatformConfiguration.saveAuthData(accessToken, refreshToken, expiryDate);
+      YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-123', name: 'John Doe' });
 
       // Verify data is set
       expect(YouVersionPlatformConfiguration.accessToken).toBe(accessToken);
       expect(YouVersionPlatformConfiguration.refreshToken).toBe(refreshToken);
-      expect(YouVersionPlatformConfiguration.idToken).toBe(idToken);
       expect(YouVersionPlatformConfiguration.tokenExpiryDate).toEqual(expiryDate);
+      expect(YouVersionPlatformConfiguration.storedUserInfo).not.toBeNull();
 
       // Clear all tokens
       YouVersionPlatformConfiguration.clearAuthTokens();
 
-      // Verify all tokens are null
+      // Verify all tokens and the profile are null
       expect(YouVersionPlatformConfiguration.accessToken).toBeNull();
       expect(YouVersionPlatformConfiguration.refreshToken).toBeNull();
-      expect(YouVersionPlatformConfiguration.idToken).toBeNull();
       expect(YouVersionPlatformConfiguration.tokenExpiryDate).toBeNull();
+      expect(YouVersionPlatformConfiguration.storedUserInfo).toBeNull();
     });
 
-    it('should call removeItem for all token types', () => {
+    it('should call removeItem for all token types and the profile', () => {
       // Set up some auth data first
-      YouVersionPlatformConfiguration.saveAuthData('access', 'refresh', 'id-token', new Date());
+      YouVersionPlatformConfiguration.saveAuthData('access', 'refresh', new Date());
+      YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-123' });
 
       // Clear mock calls
       mockRemoveItem.mockClear();
@@ -256,18 +282,18 @@ describe('YouVersionPlatformConfiguration', () => {
       // Clear auth tokens
       YouVersionPlatformConfiguration.clearAuthTokens();
 
-      // Verify removeItem was called for each token type
+      // Verify removeItem was called for each token type and the profile
       expect(mockRemoveItem).toHaveBeenCalledWith('accessToken');
       expect(mockRemoveItem).toHaveBeenCalledWith('refreshToken');
-      expect(mockRemoveItem).toHaveBeenCalledWith('idToken');
       expect(mockRemoveItem).toHaveBeenCalledWith('expiryDate');
+      expect(mockRemoveItem).toHaveBeenCalledWith('userInfo');
     });
 
     it('should work when no tokens are previously set', () => {
       // Ensure clean state
       expect(YouVersionPlatformConfiguration.accessToken).toBeNull();
       expect(YouVersionPlatformConfiguration.refreshToken).toBeNull();
-      expect(YouVersionPlatformConfiguration.idToken).toBeNull();
+      expect(YouVersionPlatformConfiguration.storedUserInfo).toBeNull();
       expect(YouVersionPlatformConfiguration.tokenExpiryDate).toBeNull();
 
       // Should not throw when clearing empty state
@@ -278,7 +304,7 @@ describe('YouVersionPlatformConfiguration', () => {
       // State should remain null
       expect(YouVersionPlatformConfiguration.accessToken).toBeNull();
       expect(YouVersionPlatformConfiguration.refreshToken).toBeNull();
-      expect(YouVersionPlatformConfiguration.idToken).toBeNull();
+      expect(YouVersionPlatformConfiguration.storedUserInfo).toBeNull();
       expect(YouVersionPlatformConfiguration.tokenExpiryDate).toBeNull();
     });
   });
