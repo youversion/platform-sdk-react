@@ -12,7 +12,6 @@ interface MockAuthResultProps {
   accessToken?: string;
   expiresIn?: number;
   refreshToken?: string;
-  idToken?: string;
   yvpUserId?: string;
   name?: string;
   profilePicture?: string;
@@ -58,7 +57,6 @@ class MockSignInWithYouVersionResult {
   readonly accessToken: string | undefined;
   readonly expiryDate: Date | undefined;
   readonly refreshToken: string | undefined;
-  readonly idToken: string | undefined;
   readonly yvpUserId: string | undefined;
   readonly name: string | undefined;
   readonly profilePicture: string | undefined;
@@ -68,7 +66,6 @@ class MockSignInWithYouVersionResult {
     this.accessToken = props.accessToken;
     this.expiryDate = props.expiresIn ? new Date(Date.now() + props.expiresIn * 1000) : new Date();
     this.refreshToken = props.refreshToken;
-    this.idToken = props.idToken;
     this.yvpUserId = props.yvpUserId;
     this.name = props.name;
     this.profilePicture = props.profilePicture;

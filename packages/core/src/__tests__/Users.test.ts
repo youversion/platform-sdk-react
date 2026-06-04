@@ -539,9 +539,6 @@ describe('YouVersionAPIUsers', () => {
       expect(result?.refreshToken).toBe('new-refresh-token');
       expect(result?.refreshToken).not.toBe(originalRefreshToken);
 
-      // The id token is never carried through a refresh
-      expect(result?.idToken).toBeUndefined();
-
       // Verify the refresh token request was made correctly
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(mockFetch).toHaveBeenCalledWith(

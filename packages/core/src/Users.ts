@@ -146,7 +146,7 @@ export class YouVersionAPIUsers {
 
       return result;
     } catch (error) {
-      // Clean up on error
+      YouVersionPlatformConfiguration.clearAuthTokens();
       localStorage.removeItem('youversion-auth-code-verifier');
       localStorage.removeItem('youversion-auth-redirect-uri');
       localStorage.removeItem('youversion-auth-state');
@@ -193,7 +193,6 @@ export class YouVersionAPIUsers {
       accessToken: tokens.access_token,
       expiresIn: tokens.expires_in,
       refreshToken: tokens.refresh_token,
-      idToken: tokens.id_token,
       yvpUserId: idClaims.sub as string,
       name: idClaims.name as string,
       profilePicture: idClaims.profile_picture as string,
@@ -301,7 +300,10 @@ export class YouVersionAPIUsers {
    */
   static getStoredUserInfo(): YouVersionUserInfo | null {
     const stored = YouVersionPlatformConfiguration.storedUserInfo;
-    return stored ? new YouVersionUserInfo(stored) : null;
+    if (!stored?.id) {
+      return null;
+    }
+    return new YouVersionUserInfo(stored);
   }
 
   /**
