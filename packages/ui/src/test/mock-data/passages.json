@@ -63,5 +63,11 @@
     "content": "<div><div class=\"p\"><span class=\"yv-v\" v=\"51\"></span><span class=\"yv-vlbl\">51</span>He then added, <span class=\"wj\">\"Very truly I tell you,</span><span class=\"yv-n f\"><span class=\"fr\">1:51 </span><span class=\"ft\">The Greek is plural.</span></span> <span class=\"wj\">you</span><span class=\"yv-n f\"><span class=\"fr\">1:51 </span><span class=\"ft\">The Greek is plural.</span></span> <span class=\"wj\">will see 'heaven open, and the angels of God ascending and descending on'</span><span class=\"yv-n f\"><span class=\"fr\">1:51 </span><span class=\"ft\"><span class=\"ref\" usfm=\"GEN.28.12\">Gen. 28:12</span></span></span> <span class=\"wj\">the Son of Man.\"</span></div></div>",
     "bible_id": 111,
     "reference": "John 1:51"
+  },
+  "JHN.2": {
+    "id": "JHN.2",
+    "content": "<div><div class=\"p\"><span class=\"yv-v\" v=\"1\"></span><span class=\"yv-vlbl\">1</span>On the third day a wedding took place at Cana in Galilee.</div></div>",
+    "bible_id": 111,
+    "reference": "John 2"
   }
 }

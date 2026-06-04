@@ -703,6 +703,70 @@ export const VersionButtonLoadingStates: Story = {
 };
 
 /**
+ * Tests that navigating to the next chapter shows a content spinner instead of stale
+ * chapter text while the new passage loads.
+ */
+export const ChapterChangeLoadingSpinner: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    book: 'JHN',
+    chapter: '1',
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('*/v1/bibles/111/passages/JHN.2', async () => {
+          await delay(1000);
+          return HttpResponse.json({
+            id: 'JHN.2',
+            content:
+              '<div><div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>On the third day a wedding took place at Cana in Galilee.</div></div>',
+            reference: 'John 2',
+          });
+        }),
+      ],
+    },
+  },
+  render: (args) => (
+    <div data-yv-sdk className="yv:h-screen">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async () => {
+    await waitFor(
+      async () => {
+        await expect(screen.getByText(/In the beginning was the Word/i)).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    const nextChapterButton = screen.getByRole('button', { name: /next chapter/i });
+    await expect(nextChapterButton).toBeEnabled();
+    await userEvent.click(nextChapterButton);
+
+    await waitFor(async () => {
+      await expect(screen.getByRole('status', { name: /loading passage/i })).toBeInTheDocument();
+    });
+    await expect(screen.queryByText(/In the beginning was the Word/i)).not.toBeInTheDocument();
+
+    await waitFor(
+      async () => {
+        await expect(
+          screen.getByText(/On the third day a wedding took place at Cana in Galilee/i),
+        ).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    await expect(nextChapterButton).toBeEnabled();
+  },
+};
+
+/**
  * Tests that a rich intro chapter (Joshua) renders correctly with real-world content
  * including structured sections (At a Glance, Purpose, Major Themes), italic spans,
  * bold-italic spans, and special formatting classes (imt1, imt2, is, ili, ip, etc.).

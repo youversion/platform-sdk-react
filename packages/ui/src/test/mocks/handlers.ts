@@ -42,6 +42,10 @@ export const globalHandlers = [
     return HttpResponse.json(mockPassages['JHN.1']);
   }),
 
+  http.get('*/v1/bibles/111/passages/JHN.2', () => {
+    return HttpResponse.json(mockPassages['JHN.2']);
+  }),
+
   http.get('*/v1/bibles/111/passages/JHN.1.51', () => {
     return HttpResponse.json(mockPassages['JHN.1.51']);
   }),

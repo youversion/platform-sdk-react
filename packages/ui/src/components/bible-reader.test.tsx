@@ -7,12 +7,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import type { BibleBook, BibleVersion, Language } from '@youversion/platform-core';
+import type { BibleBook, BiblePassage, BibleVersion, Language } from '@youversion/platform-core';
 import {
   useBooks,
   useFilteredVersions,
   useLanguage,
   useLanguages,
+  usePassage,
   useTheme,
   useVersion,
   useVersions,
@@ -34,6 +35,27 @@ class ResizeObserverMock {
 }
 globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, value: string) => {
+      store[key] = value;
+    },
+    removeItem: (key: string) => {
+      delete store[key];
+    },
+    clear: () => {
+      store = {};
+    },
+  };
+})();
+
+Object.defineProperty(globalThis, 'localStorage', {
+  value: localStorageMock,
+  writable: true,
+});
+
 vi.mock('@youversion/platform-react-hooks', async () => {
   const actual = await vi.importActual('@youversion/platform-react-hooks');
   return {
@@ -45,8 +67,21 @@ vi.mock('@youversion/platform-react-hooks', async () => {
     useTheme: vi.fn(),
     useVersion: vi.fn(),
     useVersions: vi.fn(),
+    usePassage: vi.fn(),
   };
 });
+
+const mockPassageChapter1: BiblePassage = {
+  id: 'JHN.1',
+  content: '<p class="yv-p">Chapter one opening words</p>',
+  reference: 'John 1',
+};
+
+const mockPassageChapter2: BiblePassage = {
+  id: 'JHN.2',
+  content: '<p class="yv-p">Chapter two opening words</p>',
+  reference: 'John 2',
+};
 
 const mockBooks: BibleBook[] = [
   {
@@ -71,6 +106,13 @@ const mockVersion = {
 } as BibleVersion;
 
 function setupDefaultMocks() {
+  localStorage.clear();
+  vi.mocked(usePassage).mockReturnValue({
+    passage: null,
+    loading: false,
+    error: null,
+    refetch: vi.fn(),
+  });
   vi.mocked(useTheme).mockReturnValue('light');
   vi.mocked(useBooks).mockReturnValue({
     books: { data: [...mockBooks], next_page_token: null },
@@ -152,7 +194,6 @@ describe('createBibleThemeSettingsContentHandlers', () => {
 describe('BibleReader theme settings', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    localStorage.clear();
     setupDefaultMocks();
   });
 
@@ -297,5 +338,84 @@ describe('BibleReader Toolbar - onChapterPickerPress', () => {
     });
 
     expect(screen.queryByPlaceholderText('Search')).not.toBeInTheDocument();
+  });
+});
+
+describe('BibleReader Content - chapter loading', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaultMocks();
+  });
+
+  function renderContent(chapter: string) {
+    return render(
+      <BibleReader.Root defaultVersionId={3034} defaultBook="JHN" defaultChapter={chapter}>
+        <BibleReader.Content />
+      </BibleReader.Root>,
+    );
+  }
+
+  it('shows a spinner on initial load when passage is null', () => {
+    vi.mocked(usePassage).mockReturnValue({
+      passage: null,
+      loading: true,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderContent('1');
+
+    expect(screen.getByRole('status', { name: /loading passage/i })).toBeInTheDocument();
+    expect(screen.queryByText('Chapter one opening words')).not.toBeInTheDocument();
+  });
+
+  it('shows a spinner instead of stale text during chapter change', () => {
+    vi.mocked(usePassage).mockReturnValue({
+      passage: mockPassageChapter1,
+      loading: true,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderContent('2');
+
+    expect(screen.getByRole('status', { name: /loading passage/i })).toBeInTheDocument();
+    expect(screen.queryByText('Chapter one opening words')).not.toBeInTheDocument();
+    expect(screen.queryByText('Chapter two opening words')).not.toBeInTheDocument();
+  });
+
+  it('renders passage text when the loaded passage matches the requested chapter', async () => {
+    vi.mocked(usePassage).mockReturnValue({
+      passage: mockPassageChapter2,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderContent('2');
+
+    await waitFor(() => {
+      expect(screen.getByText('Chapter two opening words')).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('status', { name: /loading passage/i })).not.toBeInTheDocument();
+  });
+
+  it('shows chapter unavailable message without passage content or spinner', () => {
+    vi.mocked(usePassage).mockReturnValue({
+      passage: null,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderContent('99');
+
+    expect(screen.getByText(/this chapter is not available in this version/i)).toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: /loading passage/i })).not.toBeInTheDocument();
+    expect(usePassage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: { enabled: false },
+      }),
+    );
   });
 });

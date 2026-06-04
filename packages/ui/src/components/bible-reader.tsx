@@ -5,6 +5,7 @@ import i18n from '@/i18n';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import {
   useBooks,
+  usePassage,
   useTheme,
   useVersion,
   useYVAuth,
@@ -346,6 +347,25 @@ function Content() {
     chapterLabel = bookData.intro.title;
   }
 
+  const {
+    passage,
+    loading: passageLoading,
+    error: passageError,
+  } = usePassage({
+    versionId,
+    usfm: usfmReference,
+    include_headings: true,
+    include_notes: true,
+    options: { enabled: !chapterUnavailable },
+  });
+
+  const isPassageCurrent = !passageLoading && passage?.id === usfmReference;
+  const passageState = {
+    passage: isPassageCurrent ? passage : null,
+    loading: !isPassageCurrent && !passageError && (passageLoading || passage !== null),
+    error: passageError,
+  };
+
   return (
     <main className="yv:*:max-w-lg yv:flex yv:flex-col yv:items-center yv:gap-6 yv:overflow-y-auto yv:px-6 yv:max-sm:px-4 yv:py-12 yv:h-full">
       <h1 className="yv:flex yv:gap-2 yv:flex-col yv:justify-center yv:items-center yv:text-muted-foreground yv:font-medium">
@@ -376,6 +396,7 @@ function Content() {
           lineHeight={lineHeight}
           showVerseNumbers={showVerseNumbers}
           theme={background}
+          passageState={passageState}
           onFootnotePress={onFootnotePress}
         />
       )}
