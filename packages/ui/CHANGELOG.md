@@ -1,5 +1,88 @@
 # @youversion/platform-react-ui
 
+## 2.0.0
+
+### Major Changes
+
+- b8309a4: Stop persisting the ID token and harden the auth flow against stale/exposed state.
+
+  The ID token is now decoded once at sign-in to derive the user profile and then
+  discarded — only the decoded profile is persisted (validated with Zod on read),
+  so it survives reloads without keeping the signed token in `localStorage`. The
+  stored profile is cleared on sign-out and when a session expires and cannot be
+  refreshed.
+
+  Additional hardening:
+  - The raw ID token is no longer attached to the sign-in result. It is decoded
+    transiently at sign-in to derive the profile and then discarded, so callback
+    consumers can no longer read it from memory.
+  - `YouVersionAPIUsers.getStoredUserInfo()` now returns `null` when the persisted
+    profile has no `id`, so a tampered or empty stored profile cannot present as a
+    signed-in user with an empty profile.
+  - `YouVersionAPIUsers.handleAuthCallback()` now clears persisted tokens and the
+    stored profile if an error is thrown after they were written, so a failed
+    callback cannot leave the user looking authenticated.
+
+  **Breaking changes:**
+  - `AuthenticationState.idToken` has been removed. Components that read
+    `auth.idToken` from `useYVAuth()` should no longer rely on it; use `userInfo`
+    for profile data.
+  - `SignInWithYouVersionResult.idToken` has been removed. The result returned by
+    `handleAuthCallback()` (and `processCallback()` in `useYVAuth`) no longer
+    exposes the ID token; use `userInfo`/`yvpUserId` for profile data.
+  - `YouVersionPlatformConfiguration.saveAuthData(accessToken, refreshToken, expiryDate)`
+    no longer accepts an `idToken` argument.
+  - `YouVersionPlatformConfiguration.idToken` getter has been removed. The decoded
+    profile is available via `YouVersionPlatformConfiguration.storedUserInfo` (or
+    `YouVersionAPIUsers.getStoredUserInfo()`).
+  - `YouVersionAPIUsers.refreshTokens()` no longer requires a stored ID token.
+
+- 52aa3b4: Remove deprecated APIs and tighten `BibleIndex` types (breaking changes).
+
+  This major release removes APIs that were previously marked `@deprecated`, plus one type-only tightening. Migration steps below.
+
+  **1. `YouVersionAuthButton` — removed the `redirectUrl` prop**
+
+  Set the OAuth callback URL once on the provider instead. The per-call `signIn({ redirectUrl })` escape hatch in `useYVAuth` is unchanged.
+
+  ```diff
+  - <YouVersionProvider appKey="...">
+  -   <YouVersionAuthButton redirectUrl="https://myapp.com/callback" />
+  + <YouVersionProvider appKey="..." authRedirectUrl="https://myapp.com/callback">
+  +   <YouVersionAuthButton />
+    </YouVersionProvider>
+  ```
+
+  **2. `BibleWidgetView` — removed**
+
+  The deprecated alias is gone. Use `BibleCard` / `BibleCardProps` (same component, renamed).
+
+  ```diff
+  - import { BibleWidgetView, type BibleWidgetViewProps } from '@youversion/platform-react-ui';
+  + import { BibleCard, type BibleCardProps } from '@youversion/platform-react-ui';
+  ```
+
+  **3. Unused hooks and contexts — removed**
+
+  These had zero consumers. Removed from `@youversion/platform-react-hooks`:
+  - `useInitData` — use `useVersion`, `useBook`, and `useChapter` directly.
+  - `useChapterNavigation` — use `getAdjacentChapter` from `@youversion/platform-core`.
+  - `useVerseSelection`, `VerseSelectionProvider`, `VerseSelectionContext` — no replacement; handle verse selection via your own props/callbacks.
+  - `ReaderProvider`, `ReaderContext`, `useReaderContext` — no replacement.
+  - `DEFAULT` (the `{ VERSION, BOOK, CHAPTER }` constant exported alongside `useInitData`) was removed with it. If you relied on it, inline the values or use `DEFAULT_LICENSE_FREE_BIBLE_VERSION` from `@youversion/platform-core` for the version.
+
+  **4. `BibleIndex` — `passage_id` is now required**
+
+  `passage_id` on `BibleIndexChapter` and `BibleIndexVerse` is no longer optional. The API has always returned it; the Zod schema now enforces this at runtime as well, so consumers who relied on the optional field in mock/fixture objects must add `passage_id` to any such literals. `BibleIndexBook.intro` remains optional.
+
+### Patch Changes
+
+- Updated dependencies [b8309a4]
+- Updated dependencies [52aa3b4]
+- Updated dependencies [97b9b6b]
+  - @youversion/platform-core@2.0.0
+  - @youversion/platform-react-hooks@2.0.0
+
 ## 1.32.0
 
 ### Patch Changes
