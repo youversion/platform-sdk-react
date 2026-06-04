@@ -544,29 +544,47 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
       );
     }
 
+    // While the next chapter loads, usePassage keeps returning the previous
+    // passage. Fade it in place behind a spinner rather than clearing it (which
+    // would flash the layout). The spinner is sticky so it stays centered in view
+    // on long chapters.
     return (
-      <div
-        data-yv-sdk
-        data-yv-theme={currentTheme}
-        className={cn(fetchedLoading || currentLoading ? 'yv:animate-pulse' : '')}
-        aria-busy={currentLoading || undefined}
-        style={currentLoading ? { pointerEvents: 'none' } : undefined}
-      >
-        <Verse.Html
-          ref={ref}
-          html={currentPassage?.content || ''}
-          fontFamily={fontFamily}
-          fontSize={fontSize}
-          lineHeight={lineHeight}
-          showVerseNumbers={showVerseNumbers}
-          renderNotes={renderNotes}
-          reference={currentPassage?.reference}
-          theme={currentTheme}
-          selectedVerses={selectedVerses}
-          onVerseSelect={onVerseSelect}
-          highlightedVerses={highlightedVerses}
-          onFootnotePress={onFootnotePress}
-        />
+      <div data-yv-sdk data-yv-theme={currentTheme} className="yv:relative">
+        <div
+          className={cn('yv:transition-opacity yv:duration-300', currentLoading && 'yv:opacity-40')}
+          aria-busy={currentLoading || undefined}
+          style={currentLoading ? { pointerEvents: 'none' } : undefined}
+        >
+          <Verse.Html
+            ref={ref}
+            html={currentPassage?.content || ''}
+            fontFamily={fontFamily}
+            fontSize={fontSize}
+            lineHeight={lineHeight}
+            showVerseNumbers={showVerseNumbers}
+            renderNotes={renderNotes}
+            reference={currentPassage?.reference}
+            theme={currentTheme}
+            selectedVerses={selectedVerses}
+            onVerseSelect={onVerseSelect}
+            highlightedVerses={highlightedVerses}
+            onFootnotePress={onFootnotePress}
+          />
+        </div>
+        {currentLoading && (
+          <div
+            role="status"
+            aria-label={t('loadingPassageAriaLabel')}
+            className="yv:pointer-events-none yv:absolute yv:inset-0"
+          >
+            <div className="yv:sticky yv:top-1/2 yv:flex yv:-translate-y-1/2 yv:justify-center">
+              <LoaderIcon
+                className="yv:size-8 yv:animate-spin yv:text-muted-foreground"
+                aria-hidden="true"
+              />
+            </div>
+          </div>
+        )}
       </div>
     );
   },

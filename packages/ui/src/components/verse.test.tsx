@@ -668,7 +668,7 @@ describe('BibleTextView - Refetch loading behavior', () => {
     );
 
     await waitFor(() => {
-      const wrapper = container.querySelector('[data-yv-sdk]');
+      const wrapper = container.querySelector('[aria-busy="true"]');
       expect(wrapper).not.toBeNull();
       expect((wrapper as HTMLElement).style.pointerEvents).toBe('none');
     });
