@@ -15,12 +15,14 @@ export async function setupAuthenticatedUser(
     '@youversion/platform-core'
   );
 
-  YouVersionPlatformConfiguration.saveAuthData(
-    'mock-access-token',
-    'mock-refresh-token',
-    'mock-id-token',
-    null,
-  );
+  YouVersionPlatformConfiguration.saveAuthData('mock-access-token', 'mock-refresh-token', null);
+
+  YouVersionPlatformConfiguration.saveUserInfo({
+    id: options.id ?? 'mock-user-id',
+    name: options.name ?? 'Test User',
+    email: options.email ?? 'test@example.com',
+    avatar_url: options.avatarUrl ?? undefined,
+  });
 
   const mockUserInfo = new YouVersionUserInfo({
     id: options.id ?? 'mock-user-id',
@@ -29,8 +31,8 @@ export async function setupAuthenticatedUser(
     avatar_url: options.avatarUrl ?? undefined,
   });
 
-  spyOn(YouVersionAPIUsers, 'refreshTokenIfNeeded').mockResolvedValue(false);
-  spyOn(YouVersionAPIUsers, 'userInfo').mockReturnValue(mockUserInfo);
+  spyOn(YouVersionAPIUsers, 'refreshTokenIfNeeded').mockResolvedValue(true);
+  spyOn(YouVersionAPIUsers, 'getStoredUserInfo').mockReturnValue(mockUserInfo);
 
   return mockUserInfo;
 }

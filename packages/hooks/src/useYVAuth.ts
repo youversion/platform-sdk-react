@@ -122,10 +122,9 @@ export function useYVAuth(): UseYVAuthReturn {
     if (typeof window !== 'undefined') {
       return {
         accessToken: YouVersionPlatformConfiguration.accessToken,
-        idToken: YouVersionPlatformConfiguration.idToken,
       };
     }
-    return { accessToken: null, idToken: null };
+    return { accessToken: null };
   }, []);
 
   // Sign in function
@@ -159,11 +158,10 @@ export function useYVAuth(): UseYVAuthReturn {
       isAuthenticated,
       isLoading,
       accessToken: authTokens.accessToken,
-      idToken: authTokens.idToken,
       result: null,
       error,
     }),
-    [isAuthenticated, isLoading, authTokens.accessToken, authTokens.idToken, error],
+    [isAuthenticated, isLoading, authTokens.accessToken, error],
   );
 
   // Sign out function
