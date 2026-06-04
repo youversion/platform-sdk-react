@@ -1,10 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, screen, spyOn, userEvent, waitFor } from 'storybook/test';
+import { expect, fn, screen, spyOn, userEvent, waitFor, within } from 'storybook/test';
 import { http, HttpResponse, delay } from 'msw';
 import { BibleReader } from './bible-reader';
 import { setupAuthenticatedUser } from '../test/utils';
 import { INTER_FONT, SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
 import mockBibles from '../test/mock-data/bibles.json';
+import mockPassages from '../test/mock-data/passages.json';
+import { globalHandlers } from '../test/mocks/handlers';
 
 let signInMock: ReturnType<typeof fn>;
 
@@ -710,21 +712,18 @@ export const ChapterChangeLoadingSpinner: Story = {
   tags: ['integration'],
   args: {
     defaultVersionId: 111,
-    book: 'JHN',
-    chapter: '1',
+    defaultBook: 'JHN',
+    defaultChapter: '1',
   },
   parameters: {
     msw: {
+      // Story-level handlers replace preview defaults; keep globals and override JHN.2 with a delay.
       handlers: [
         http.get('*/v1/bibles/111/passages/JHN.2', async () => {
           await delay(1000);
-          return HttpResponse.json({
-            id: 'JHN.2',
-            content:
-              '<div><div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>On the third day a wedding took place at Cana in Galilee.</div></div>',
-            reference: 'John 2',
-          });
+          return HttpResponse.json(mockPassages['JHN.2']);
         }),
+        ...globalHandlers,
       ],
     },
   },
@@ -736,27 +735,37 @@ export const ChapterChangeLoadingSpinner: Story = {
       </BibleReader.Root>
     </div>
   ),
-  play: async () => {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
     await waitFor(
       async () => {
-        await expect(screen.getByText(/In the beginning was the Word/i)).toBeInTheDocument();
+        await expect(canvas.getByText(/In the beginning was the Word/i)).toBeInTheDocument();
       },
       { timeout: 5000 },
     );
 
-    const nextChapterButton = screen.getByRole('button', { name: /next chapter/i });
-    await expect(nextChapterButton).toBeEnabled();
+    const nextChapterButton = canvas.getByRole('button', { name: /next chapter/i });
+    await waitFor(
+      async () => {
+        await expect(nextChapterButton).toBeEnabled();
+      },
+      { timeout: 5000 },
+    );
     await userEvent.click(nextChapterButton);
 
-    await waitFor(async () => {
-      await expect(screen.getByRole('status', { name: /loading passage/i })).toBeInTheDocument();
-    });
-    await expect(screen.queryByText(/In the beginning was the Word/i)).not.toBeInTheDocument();
+    await waitFor(
+      async () => {
+        await expect(canvas.getByRole('status', { name: /loading passage/i })).toBeInTheDocument();
+        await expect(canvas.queryByText(/In the beginning was the Word/i)).not.toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
 
     await waitFor(
       async () => {
         await expect(
-          screen.getByText(/On the third day a wedding took place at Cana in Galilee/i),
+          canvas.getByText(/On the third day a wedding took place at Cana in Galilee/i),
         ).toBeInTheDocument();
       },
       { timeout: 5000 },
