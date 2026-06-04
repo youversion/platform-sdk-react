@@ -31,9 +31,6 @@ const meta = {
       .mockName('YouVersionAPIUsers.signIn');
   },
   args: {
-    ...(import.meta.env.STORYBOOK_AUTH_REDIRECT_URL && {
-      redirectUrl: import.meta.env.STORYBOOK_AUTH_REDIRECT_URL,
-    }),
     onAuthError: fn(),
     mode: 'auto',
   },
