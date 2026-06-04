@@ -5,6 +5,7 @@ import { BibleReader } from './bible-reader';
 import { setupAuthenticatedUser } from '../test/utils';
 import { INTER_FONT, SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
 import mockBibles from '../test/mock-data/bibles.json';
+import { globalHandlers } from '../test/mocks/handlers';
 
 let signInMock: ReturnType<typeof fn>;
 
@@ -792,5 +793,99 @@ export const JoshuaIntroChapter: Story = {
       // Should NOT show a verse reference like "Joshua :intro-0"
       await expect(popover?.textContent).not.toContain('intro-0');
     });
+  },
+};
+
+/**
+ * Changing chapters keeps the previous chapter's text on screen, dims it, and floats a
+ * spinner over it (after a short delay) while the next chapter loads — instead of
+ * pulsing stale text or flashing a blank spinner. Verifies:
+ * - stale text stays mounted during the refetch (no content flash)
+ * - the dim + spinner appear only after the delay on a genuinely slow fetch
+ * - the overlay clears and the new chapter renders once loaded
+ * - scroll resets to the top on chapter change
+ */
+export const ChapterChangeLoadingOverlay: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        // Delay every passage fetch so the refetch overlay is reliably observable.
+        // Listed before globalHandlers so it wins for version 111 passages.
+        http.get('*/v1/bibles/111/passages/:usfm', async ({ params }) => {
+          await delay(800);
+          const usfm = params.usfm as string;
+          return HttpResponse.json({
+            id: usfm,
+            content: `<div class="p"><span class="verse">Passage text for ${usfm}.</span></div>`,
+            reference: usfm,
+          });
+        }),
+        ...globalHandlers,
+      ],
+    },
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    // Initial chapter (JHN.1) finishes loading.
+    await waitFor(
+      async () => {
+        const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(renderer?.textContent).toContain('JHN.1');
+      },
+      { timeout: 5000 },
+    );
+
+    // Move to the next chapter.
+    const nextButton = screen.getByRole('button', { name: /next chapter/i });
+    await userEvent.click(nextButton);
+
+    // Stale text stays mounted immediately after the change — no flash to blank.
+    const rendererAfterClick = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+    await expect(rendererAfterClick?.textContent).toContain('JHN.1');
+
+    // After the delay, the dim + spinner overlay appear over the still-mounted stale text.
+    await waitFor(
+      async () => {
+        const overlay = canvasElement.querySelector('[aria-label="Loading passage"]');
+        await expect(overlay).toBeInTheDocument();
+        await expect(overlay).toHaveAttribute('role', 'status');
+        // Stale text is dimmed (not pulsing) while loading.
+        await expect(canvasElement.querySelector('[class*="opacity-40"]')).toBeInTheDocument();
+        // ...and is still the previous chapter's text underneath the overlay.
+        const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(renderer?.textContent).toContain('JHN.1');
+      },
+      { timeout: 2000 },
+    );
+
+    // Once the next chapter loads, the overlay clears and the new text renders.
+    await waitFor(
+      async () => {
+        const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(renderer?.textContent).toContain('JHN.2');
+        await expect(
+          canvasElement.querySelector('[aria-label="Loading passage"]'),
+        ).not.toBeInTheDocument();
+        await expect(canvasElement.querySelector('[class*="opacity-40"]')).not.toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    // Scroll reset to the top on chapter change.
+    const scroller = canvasElement.querySelector('main');
+    await expect(scroller?.scrollTop).toBe(0);
   },
 };
