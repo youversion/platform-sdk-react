@@ -63,7 +63,6 @@ describe('useYVAuth', () => {
       expect(result.current).not.toBeNull();
       expect(result.current.auth.isAuthenticated).toBe(false);
       expect(result.current.auth.accessToken).toBe(null);
-      expect(result.current.auth.idToken).toBe(null);
       expect(result.current.userInfo).toBe(null);
     });
 
@@ -219,11 +218,10 @@ describe('useYVAuth', () => {
 
   describe('auth state', () => {
     it('should derive correct auth state from configuration', async () => {
-      YouVersionPlatformConfiguration.saveAuthData('access-token', null, 'id-token', null);
+      YouVersionPlatformConfiguration.saveAuthData('access-token', null, null);
       const { result } = await renderAuthHook();
 
       expect(result.current.auth.accessToken).toBe('access-token');
-      expect(result.current.auth.idToken).toBe('id-token');
     });
   });
 

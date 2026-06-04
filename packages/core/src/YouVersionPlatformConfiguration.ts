@@ -1,5 +1,9 @@
+import { YouVersionUserInfoJSONSchema, type YouVersionUserInfoJSON } from './schemas/user-info';
+
 /**
- * Security Note: Tokens are stored in localStorage for persistence.
+ * Security Note: Tokens and the decoded user profile are stored in localStorage
+ * for persistence. The ID token itself is never persisted — it is decoded once at
+ * sign-in to derive the user profile and then discarded.
  * Ensure your application follows XSS prevention best practices:
  * - Sanitize user input
  * - Use Content Security Policy headers
@@ -33,7 +37,6 @@ export class YouVersionPlatformConfiguration {
   public static saveAuthData(
     accessToken: string | null,
     refreshToken: string | null,
-    idToken: string | null,
     expiryDate: Date | null,
   ): void {
     if (accessToken !== null) {
@@ -48,12 +51,6 @@ export class YouVersionPlatformConfiguration {
       localStorage.removeItem('refreshToken');
     }
 
-    if (idToken !== null) {
-      localStorage.setItem('idToken', idToken);
-    } else {
-      localStorage.removeItem('idToken');
-    }
-
     if (expiryDate !== null) {
       localStorage.setItem('expiryDate', expiryDate.toISOString());
     } else {
@@ -61,8 +58,21 @@ export class YouVersionPlatformConfiguration {
     }
   }
 
+  /**
+   * Persists the decoded user profile derived from the ID token at sign-in.
+   * Pass `null` to remove any stored profile.
+   */
+  public static saveUserInfo(userInfo: YouVersionUserInfoJSON | null): void {
+    if (userInfo !== null) {
+      localStorage.setItem('userInfo', JSON.stringify(userInfo));
+    } else {
+      localStorage.removeItem('userInfo');
+    }
+  }
+
   public static clearAuthTokens(): void {
-    this.saveAuthData(null, null, null, null);
+    this.saveAuthData(null, null, null);
+    this.saveUserInfo(null);
   }
 
   public static get accessToken(): string | null {
@@ -73,8 +83,23 @@ export class YouVersionPlatformConfiguration {
     return localStorage.getItem('refreshToken');
   }
 
-  public static get idToken(): string | null {
-    return localStorage.getItem('idToken');
+  /**
+   * Returns the persisted user profile, validated against the expected schema.
+   * Returns `null` when nothing is stored or the stored value is malformed.
+   */
+  public static get storedUserInfo(): YouVersionUserInfoJSON | null {
+    const raw = localStorage.getItem('userInfo');
+    if (!raw) {
+      return null;
+    }
+
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      const result = YouVersionUserInfoJSONSchema.safeParse(parsed);
+      return result.success ? result.data : null;
+    } catch {
+      return null;
+    }
   }
 
   public static get tokenExpiryDate(): Date | null {
