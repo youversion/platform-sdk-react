@@ -76,12 +76,36 @@ const mockVersions: BibleVersion[] = [
   },
 ];
 
+const sortedMockVersions: BibleVersion[] = [
+  mockVersions[0]!,
+  mockVersions[4]!,
+  mockVersions[1]!,
+  mockVersions[3]!,
+  mockVersions[2]!,
+];
+
+const shuffledMockVersions: BibleVersion[] = [
+  mockVersions[4]!,
+  mockVersions[2]!,
+  mockVersions[0]!,
+  mockVersions[3]!,
+  mockVersions[1]!,
+];
+
+function expectAlphabeticalOrder(versions: BibleVersion[]): void {
+  const titles = versions.map((v) => v.localized_title || v.title);
+  const sortedTitles = [...titles].sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: 'base' }),
+  );
+  expect(titles).toEqual(sortedTitles);
+}
+
 describe('useFilteredVersions', () => {
   describe('language filtering', () => {
     it('should return all versions when language is "*"', () => {
       const { result } = renderHook(() => useFilteredVersions(mockVersions, '', '*'));
 
-      expect(result.current).toEqual(mockVersions);
+      expect(result.current).toEqual(sortedMockVersions);
       expect(result.current).toHaveLength(5);
     });
 
@@ -117,13 +141,13 @@ describe('useFilteredVersions', () => {
     it('should return all versions when search term is empty', () => {
       const { result } = renderHook(() => useFilteredVersions(mockVersions, '', '*'));
 
-      expect(result.current).toEqual(mockVersions);
+      expect(result.current).toEqual(sortedMockVersions);
     });
 
     it('should return all versions when search term is whitespace only', () => {
       const { result } = renderHook(() => useFilteredVersions(mockVersions, '   ', '*'));
 
-      expect(result.current).toEqual(mockVersions);
+      expect(result.current).toEqual(sortedMockVersions);
     });
 
     it('should filter by title', () => {
@@ -202,7 +226,7 @@ describe('useFilteredVersions', () => {
     it('should not exclude any versions when recentVersions is undefined', () => {
       const { result } = renderHook(() => useFilteredVersions(mockVersions, '', '*', undefined));
 
-      expect(result.current).toEqual(mockVersions);
+      expect(result.current).toEqual(sortedMockVersions);
       expect(result.current).toHaveLength(5);
     });
 
@@ -237,7 +261,7 @@ describe('useFilteredVersions', () => {
     it('should not exclude any versions when recentVersions is empty array', () => {
       const { result } = renderHook(() => useFilteredVersions(mockVersions, '', '*', []));
 
-      expect(result.current).toEqual(mockVersions);
+      expect(result.current).toEqual(sortedMockVersions);
       expect(result.current).toHaveLength(5);
     });
 
@@ -253,6 +277,83 @@ describe('useFilteredVersions', () => {
       // "Version" matches KJV and NIV, but NIV is excluded as a recent version
       expect(result.current).toHaveLength(1);
       expect(result.current[0]?.title).toBe('King James Version');
+    });
+  });
+
+  describe('alphabetical sorting', () => {
+    it('should sort all versions alphabetically regardless of input order', () => {
+      const { result } = renderHook(() => useFilteredVersions(shuffledMockVersions, '', '*'));
+
+      expect(result.current).toEqual(sortedMockVersions);
+      expectAlphabeticalOrder(result.current);
+    });
+
+    it('should sort search results alphabetically', () => {
+      const { result } = renderHook(() =>
+        useFilteredVersions(shuffledMockVersions, 'Version', '*'),
+      );
+
+      expect(result.current).toHaveLength(2);
+      expect(result.current[0]?.title).toBe('King James Version');
+      expect(result.current[1]?.title).toBe('New International Version');
+      expectAlphabeticalOrder(result.current);
+    });
+
+    it('should sort remaining versions alphabetically after excluding recent versions', () => {
+      const recentVersions = [
+        { id: 1, title: 'King James Version', localized_abbreviation: 'KJV' },
+      ];
+
+      const { result } = renderHook(() =>
+        useFilteredVersions(shuffledMockVersions, '', '*', recentVersions),
+      );
+
+      expect(result.current).toHaveLength(4);
+      expect(result.current.find((v) => v.id === 1)).toBeUndefined();
+      expect(result.current).toEqual(sortedMockVersions.filter((v) => v.id !== 1));
+      expectAlphabeticalOrder(result.current);
+    });
+
+    it('should sort by localized_title when it differs from title', () => {
+      const versions: BibleVersion[] = [
+        {
+          ...mockVersions[0]!,
+          id: 10,
+          title: 'Zulu Title',
+          localized_title: 'Alpha Localized',
+        },
+        {
+          ...mockVersions[1]!,
+          id: 11,
+          title: 'Alpha Title',
+          localized_title: 'Zulu Localized',
+        },
+      ];
+
+      const { result } = renderHook(() => useFilteredVersions(versions, '', '*'));
+
+      expect(result.current.map((v) => v.id)).toEqual([10, 11]);
+    });
+
+    it('should fall back to title when localized_title is missing', () => {
+      const versions: BibleVersion[] = [
+        {
+          ...mockVersions[0]!,
+          id: 20,
+          title: 'Beta Title',
+          localized_title: undefined as unknown as string,
+        },
+        {
+          ...mockVersions[1]!,
+          id: 21,
+          title: 'Alpha Title',
+          localized_title: undefined as unknown as string,
+        },
+      ];
+
+      const { result } = renderHook(() => useFilteredVersions(versions, '', '*'));
+
+      expect(result.current.map((v) => v.id)).toEqual([21, 20]);
     });
   });
 
