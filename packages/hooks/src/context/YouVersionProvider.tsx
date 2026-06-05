@@ -3,7 +3,10 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { YouVersionContext } from './YouVersionContext';
-import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
+import {
+  YouVersionPlatformConfiguration,
+  type YouVersionUserInfoJSON,
+} from '@youversion/platform-core';
 
 interface YouVersionProviderPropsBase {
   children: ReactNode;
@@ -22,6 +25,12 @@ interface YouVersionProviderPropsBase {
 interface YouVersionProviderPropsWithAuth extends YouVersionProviderPropsBase {
   authRedirectUrl: string;
   includeAuth: true;
+  /**
+   * Host-controlled auth state. When provided (including `null`), the host owns
+   * sign-in and this profile drives the in-app auth UI instead of the web
+   * token/OAuth flow. Used by the React Native Expo SDK to surface native sign-in.
+   */
+  userInfo?: YouVersionUserInfoJSON | null;
 }
 
 interface YouVersionProviderPropsWithoutAuth extends YouVersionProviderPropsBase {
@@ -107,7 +116,10 @@ export function YouVersionProvider(
     return (
       <YouVersionContext.Provider value={contextValue}>
         <Suspense>
-          <AuthProvider config={{ appKey, apiHost, redirectUri: props.authRedirectUrl }}>
+          <AuthProvider
+            config={{ appKey, apiHost, redirectUri: props.authRedirectUrl }}
+            userInfo={props.userInfo}
+          >
             {children}
           </AuthProvider>
         </Suspense>

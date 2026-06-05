@@ -55,6 +55,8 @@ type BibleReaderContextType = {
   onFootnotePress?: (data: FootnoteData) => void;
   onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
   onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
+  onSignInPress?: () => void;
+  onSignOutPress?: () => void;
 };
 
 const BibleReaderContext = createContext<BibleReaderContextType | null>(null);
@@ -89,6 +91,8 @@ export type RootProps = {
   onFootnotePress?: (data: FootnoteData) => void;
   onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
   onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
+  onSignInPress?: () => void;
+  onSignOutPress?: () => void;
   children?: ReactNode;
 };
 
@@ -189,6 +193,8 @@ function Root({
   onFootnotePress,
   onChapterPickerPress,
   onVersionPickerPress,
+  onSignInPress,
+  onSignOutPress,
   children,
 }: RootProps) {
   const [book, setBook] = useControllableState({
@@ -296,6 +302,8 @@ function Root({
     onFootnotePress,
     onChapterPickerPress,
     onVersionPickerPress,
+    onSignInPress,
+    onSignOutPress,
   };
 
   return (
@@ -408,6 +416,24 @@ function UserMenu() {
   const { t } = useTranslation(undefined, { i18n });
   const { auth, signIn, signOut, userInfo } = useYVAuth();
   const yvContext = useContext(YouVersionContext);
+  const { onSignInPress, onSignOutPress } = useBibleReaderContext();
+
+  // Prefer host-supplied native actions (e.g. the Expo DOM wrapper bridges these to
+  // native PKCE sign-in). Fall back to the Web SDK's own auth for pure-web usage.
+  const handleSignIn = () => {
+    if (onSignInPress) {
+      onSignInPress();
+    } else {
+      void signIn({ scopes: ['profile'] });
+    }
+  };
+  const handleSignOut = () => {
+    if (onSignOutPress) {
+      onSignOutPress();
+    } else {
+      void signOut();
+    }
+  };
 
   return (
     <Popover>
@@ -435,14 +461,18 @@ function UserMenu() {
       >
         <PopoverClose asChild>
           {auth.isAuthenticated ? (
-            <Button variant="secondary" className="yv:card yv:text-foreground" onClick={signOut}>
+            <Button
+              variant="secondary"
+              className="yv:card yv:text-foreground"
+              onClick={handleSignOut}
+            >
               {t('signOut')}
             </Button>
           ) : (
             <Button
               variant="secondary"
               className="yv:card yv:text-foreground"
-              onClick={() => void signIn({ scopes: ['profile'] })}
+              onClick={handleSignIn}
             >
               {t('signIn')}
             </Button>

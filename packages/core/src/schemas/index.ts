@@ -14,3 +14,4 @@ export * from './verse';
 export * from './video';
 export * from './votd';
 export * from './user';
+export * from './user-info';

@@ -15,11 +15,6 @@ interface SignInAuthProps {
    */
   onAuthError?: (error: Error) => void;
   scopes?: AuthenticationScopes[];
-  /**
-   * The URL to redirect to after authentication.
-   * @deprecated Use `authRedirectUrl` on `YouVersionProvider` instead. This prop will be removed in a future version.
-   */
-  redirectUrl?: string;
 }
 
 export interface YouVersionAuthButtonProps
@@ -117,7 +112,6 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
       mode,
       scopes = [],
       radius = 'rounded',
-      redirectUrl,
       size = 'default',
       text,
       variant = 'default',
@@ -142,7 +136,6 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
           signOut();
         } else {
           await signIn({
-            redirectUrl,
             scopes,
           });
         }
