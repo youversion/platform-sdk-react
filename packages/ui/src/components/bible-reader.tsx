@@ -351,9 +351,8 @@ function Content() {
     return !inChapters && !isIntro;
   }, [bookData, chapter]);
 
-  // Drive the passage fetch from the reader (rather than letting BibleTextView fetch
-  // internally) so we can own the loading treatment without touching BibleTextView.
-  // Args mirror BibleTextView's internal fetch so the cache key matches.
+  // Own the passage fetch here (instead of BibleTextView) to control the loading
+  // treatment. Args mirror BibleTextView's internal fetch so the cache key matches.
   const {
     passage,
     loading: passageLoading,
@@ -366,16 +365,10 @@ function Content() {
     options: { enabled: !chapterUnavailable },
   });
 
-  // A refetch is when we already have a passage on screen (e.g. changing chapter) and
-  // are loading the next one. The previous chapter's text stays mounted underneath.
   const isRefetching = !chapterUnavailable && passageLoading && passage !== null;
-  // Gate the dim + spinner behind a short delay so fast/cached swaps stay instant and
-  // only genuinely slow fetches surface loading UI.
   const showLoadingOverlay = useDelayedLoading(isRefetching);
 
-  // Reset scroll to the top of the reader when the chapter (or book) changes, so a new
-  // chapter always starts at the top and the loading spinner is reliably in view.
-  // Version-only changes intentionally preserve the current scroll position.
+  // Version-only changes intentionally preserve scroll position.
   const scrollContainerRef = useRef<HTMLElement>(null);
   useEffect(() => {
     scrollContainerRef.current?.scrollTo({ top: 0 });
@@ -429,9 +422,6 @@ function Content() {
               onFootnotePress={onFootnotePress}
               passageState={{
                 passage,
-                // Suppress BibleTextView's own pulse during a refetch; the reader owns
-                // the dim + spinner. On first load (no stale passage) pass through the
-                // real loading state so BibleTextView shows its centered spinner.
                 loading: isRefetching ? false : passageLoading,
                 error: passageError,
               }}

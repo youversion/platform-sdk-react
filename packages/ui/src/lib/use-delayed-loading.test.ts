@@ -21,7 +21,6 @@ describe('useDelayedLoading', () => {
       initialProps: { loading: true },
     });
 
-    // Advance less than the delay, then "resolve" the load.
     act(() => {
       vi.advanceTimersByTime(200);
     });
@@ -31,7 +30,6 @@ describe('useDelayedLoading', () => {
     act(() => {
       vi.advanceTimersByTime(500);
     });
-    // Never flashed the spinner for a sub-threshold load.
     expect(result.current).toBe(false);
   });
 
