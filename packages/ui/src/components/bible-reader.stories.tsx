@@ -5,6 +5,7 @@ import { BibleReader } from './bible-reader';
 import { setupAuthenticatedUser } from '../test/utils';
 import { INTER_FONT, SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
 import mockBibles from '../test/mock-data/bibles.json';
+import { globalHandlers } from '../test/mocks/handlers';
 
 let signInMock: ReturnType<typeof fn>;
 
@@ -792,5 +793,80 @@ export const JoshuaIntroChapter: Story = {
       // Should NOT show a verse reference like "Joshua :intro-0"
       await expect(popover?.textContent).not.toContain('intro-0');
     });
+  },
+};
+
+export const ChapterChangeLoadingOverlay: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('*/v1/bibles/111/passages/:usfm', async ({ params }) => {
+          await delay(800);
+          const usfm = params.usfm as string;
+          return HttpResponse.json({
+            id: usfm,
+            content: `<div class="p"><span class="verse">Passage text for ${usfm}.</span></div>`,
+            reference: usfm,
+          });
+        }),
+        ...globalHandlers,
+      ],
+    },
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(
+      async () => {
+        const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(renderer?.textContent).toContain('JHN.1');
+      },
+      { timeout: 5000 },
+    );
+
+    const nextButton = screen.getByRole('button', { name: /next chapter/i });
+    await userEvent.click(nextButton);
+
+    const rendererAfterClick = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+    await expect(rendererAfterClick?.textContent).toContain('JHN.1');
+
+    await waitFor(
+      async () => {
+        const overlay = canvasElement.querySelector('[aria-label="Loading passage"]');
+        await expect(overlay).toBeInTheDocument();
+        await expect(overlay).toHaveAttribute('role', 'status');
+        await expect(canvasElement.querySelector('[class*="opacity-40"]')).toBeInTheDocument();
+        const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(renderer?.textContent).toContain('JHN.1');
+      },
+      { timeout: 2000 },
+    );
+
+    await waitFor(
+      async () => {
+        const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(renderer?.textContent).toContain('JHN.2');
+        await expect(
+          canvasElement.querySelector('[aria-label="Loading passage"]'),
+        ).not.toBeInTheDocument();
+        await expect(canvasElement.querySelector('[class*="opacity-40"]')).not.toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    const scroller = canvasElement.querySelector('main');
+    await expect(scroller?.scrollTop).toBe(0);
   },
 };

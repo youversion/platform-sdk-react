@@ -5,6 +5,7 @@ import i18n from '@/i18n';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import {
   useBooks,
+  usePassage,
   useTheme,
   useVersion,
   useYVAuth,
@@ -22,6 +23,7 @@ import {
   type ReactElement,
 } from 'react';
 import { cn } from '@/lib/utils';
+import { useDelayedLoading } from '@/lib/use-delayed-loading';
 import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, getAdjacentChapter } from '@youversion/platform-core';
 import { BibleChapterPicker, type BibleChapterPickerPressData } from './bible-chapter-picker';
 import { BibleVersionPicker, type BibleVersionPickerPressData } from './bible-version-picker';
@@ -349,13 +351,39 @@ function Content() {
     return !inChapters && !isIntro;
   }, [bookData, chapter]);
 
+  // Own the passage fetch here (instead of BibleTextView) to control the loading
+  // treatment. Args mirror BibleTextView's internal fetch so the cache key matches.
+  const {
+    passage,
+    loading: passageLoading,
+    error: passageError,
+  } = usePassage({
+    versionId,
+    usfm: usfmReference,
+    include_headings: true,
+    include_notes: true,
+    options: { enabled: !chapterUnavailable },
+  });
+
+  const isRefetching = !chapterUnavailable && passageLoading && passage !== null;
+  const showLoadingOverlay = useDelayedLoading(isRefetching);
+
+  // Version-only changes intentionally preserve scroll position.
+  const scrollContainerRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    scrollContainerRef.current?.scrollTo({ top: 0 });
+  }, [book, chapter]);
+
   let chapterLabel: string = bookData?.chapters?.find((ch) => ch.id === chapter)?.title || chapter;
   if (bookData?.intro && chapter === bookData?.intro.id) {
     chapterLabel = bookData.intro.title;
   }
 
   return (
-    <main className="yv:*:max-w-lg yv:flex yv:flex-col yv:items-center yv:gap-6 yv:overflow-y-auto yv:px-6 yv:max-sm:px-4 yv:py-12 yv:h-full">
+    <main
+      ref={scrollContainerRef}
+      className="yv:*:max-w-lg yv:flex yv:flex-col yv:items-center yv:gap-6 yv:overflow-y-auto yv:px-6 yv:max-sm:px-4 yv:py-12 yv:h-full"
+    >
       <h1 className="yv:flex yv:gap-2 yv:flex-col yv:justify-center yv:items-center yv:text-muted-foreground yv:font-medium">
         <span
           className={cn(
@@ -376,16 +404,46 @@ function Content() {
           {t('chapterUnavailable')}
         </p>
       ) : (
-        <BibleTextView
-          reference={usfmReference}
-          versionId={versionId}
-          fontFamily={currentFontFamily}
-          fontSize={currentFontSize}
-          lineHeight={lineHeight}
-          showVerseNumbers={showVerseNumbers}
-          theme={background}
-          onFootnotePress={onFootnotePress}
-        />
+        <div className="yv:relative yv:w-full">
+          <div
+            className={cn(
+              'yv:transition-opacity yv:duration-150 yv:motion-reduce:transition-none',
+              showLoadingOverlay ? 'yv:opacity-40' : 'yv:opacity-100',
+            )}
+          >
+            <BibleTextView
+              reference={usfmReference}
+              versionId={versionId}
+              fontFamily={currentFontFamily}
+              fontSize={currentFontSize}
+              lineHeight={lineHeight}
+              showVerseNumbers={showVerseNumbers}
+              theme={background}
+              onFootnotePress={onFootnotePress}
+              passageState={{
+                passage,
+                loading: isRefetching ? false : passageLoading,
+                error: passageError,
+              }}
+            />
+          </div>
+
+          {showLoadingOverlay ? (
+            <div
+              role="status"
+              aria-label={t('loadingPassageAriaLabel')}
+              className="yv:pointer-events-none yv:absolute yv:inset-0"
+            >
+              {/* top-[50vh] (viewport-relative) keeps the spinner centered in the scrollport.
+                  top-1/2 would resolve to 50% of the tall passage container and strand the
+                  spinner off-screen when scrolled (e.g. on version changes). */}
+              <LoaderIcon
+                className="yv:sticky yv:top-[50vh] yv:mx-auto yv:block yv:size-6 yv:-translate-y-1/2 yv:animate-spin yv:text-muted-foreground"
+                aria-hidden="true"
+              />
+            </div>
+          ) : null}
+        </div>
       )}
 
       {version?.copyright && (
