@@ -1,8 +1,12 @@
 'use client';
 
-import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
+import { useDelayedLoading } from '@/lib/use-delayed-loading';
+import { cn } from '@/lib/utils';
+import { INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
+import type { BibleBook } from '@youversion/platform-core';
+import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, getAdjacentChapter } from '@youversion/platform-core';
 import {
   useBooks,
   usePassage,
@@ -11,32 +15,28 @@ import {
   useYVAuth,
   YouVersionContext,
 } from '@youversion/platform-react-hooks';
-import type { BibleBook } from '@youversion/platform-core';
-import {
+import React, {
   createContext,
-  type ReactNode,
   useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   type ReactElement,
+  type ReactNode,
 } from 'react';
-import { cn } from '@/lib/utils';
-import { useDelayedLoading } from '@/lib/use-delayed-loading';
-import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, getAdjacentChapter } from '@youversion/platform-core';
+import { useTranslation } from 'react-i18next';
 import { BibleChapterPicker, type BibleChapterPickerPressData } from './bible-chapter-picker';
 import { BibleVersionPicker, type BibleVersionPickerPressData } from './bible-version-picker';
+import { ChevronLeftIcon } from './icons/chevron-left';
+import { ChevronRightIcon } from './icons/chevron-right';
 import { GearIcon } from './icons/gear';
 import { InfoIcon } from './icons/info';
 import { LoaderIcon } from './icons/loader';
 import { PersonIcon } from './icons/person';
 import { Button } from './ui/button';
-import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from './ui/popover';
+import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from './ui/popover';
 import { BibleTextView, type FootnoteData } from './verse';
-import { INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
-import { ChevronLeftIcon } from './icons/chevron-left';
-import { ChevronRightIcon } from './icons/chevron-right';
 
 type BibleReaderContextType = {
   book: string;
@@ -51,7 +51,8 @@ type BibleReaderContextType = {
   setCurrentFontFamily: React.Dispatch<React.SetStateAction<FontFamily>>;
   currentFontSize: number;
   setCurrentFontSize: React.Dispatch<React.SetStateAction<number>>;
-  lineHeight?: number;
+  currentLineSpacing: number;
+  setCurrentLineSpacing: React.Dispatch<React.SetStateAction<number>>;
   showVerseNumbers: boolean;
   background: 'light' | 'dark';
   onFootnotePress?: (data: FootnoteData) => void;
@@ -87,7 +88,9 @@ export type RootProps = {
   fontFamily?: FontFamily;
   defaultFontFamily?: FontFamily;
   onFontFamilyChange?: (fontFamily: FontFamily) => void;
-  lineHeight?: number;
+  lineSpacing?: number;
+  defaultLineSpacing?: number;
+  onChangeLineSpacing?: (size: number) => void;
   showVerseNumbers?: boolean;
   background?: 'light' | 'dark';
   onFootnotePress?: (data: FootnoteData) => void;
@@ -105,6 +108,12 @@ export const BIBLE_READER_FONT = {
   STEP: 2,
 } as const;
 
+export const BIBLE_READER_SPACING = {
+  SM: 1.45,
+  DEFAULT: 1.7,
+  LG: 2.0,
+} as const;
+
 const MIN_FONT_SIZE = BIBLE_READER_FONT.MIN;
 const MAX_FONT_SIZE = BIBLE_READER_FONT.MAX;
 const DEFAULT_FONT_SIZE = BIBLE_READER_FONT.DEFAULT;
@@ -113,6 +122,7 @@ const FONT_SIZE_STEP = BIBLE_READER_FONT.STEP;
 export type BibleThemeSettingsValues = {
   fontSize: number;
   fontFamily: FontFamily;
+  lineSpacing: number;
 };
 
 export type BibleThemeSettingsSnapshot = BibleThemeSettingsValues & {
@@ -124,9 +134,11 @@ export type BibleThemeSettingsContentProps = {
   theme: 'light' | 'dark';
   fontSize: number;
   fontFamily: FontFamily;
+  lineSpacing: number;
   onFontSelected: (fontFamily: FontFamily) => void;
   onFontIncreased: () => void;
   onFontDecreased: () => void;
+  onChangeLineSpacing: () => void;
 };
 
 export function clampBibleReaderFontSize(fontSize: number): number {
@@ -148,6 +160,28 @@ export function nextBibleReaderFontSizeDown(current: number): number {
   return clampBibleReaderFontSize(current - FONT_SIZE_STEP);
 }
 
+export function changeBibleReaderLineSpacing(current: number): number {
+  switch (current) {
+    case BIBLE_READER_SPACING.DEFAULT:
+      return BIBLE_READER_SPACING.LG;
+    case BIBLE_READER_SPACING.LG:
+      return BIBLE_READER_SPACING.SM;
+    default:
+      return BIBLE_READER_SPACING.DEFAULT;
+  }
+}
+
+function lineSpacingButtonGapClass(lineSpacing: number): string {
+  switch (lineSpacing) {
+    case BIBLE_READER_SPACING.SM:
+      return 'yv:gap-1';
+    case BIBLE_READER_SPACING.LG:
+      return 'yv:gap-2';
+    default:
+      return 'yv:gap-1.5';
+  }
+}
+
 /**
  * Builds the three handler props for {@link BibleThemeSettingsContent} from host-owned font state.
  * Use this on the same side as `setFontSize` / `setFontFamily` (e.g. React Native before passing
@@ -159,7 +193,12 @@ export function createBibleThemeSettingsContentHandlers(options: {
   getFontFamily: () => FontFamily;
   setFontSize: (size: number) => void;
   setFontFamily: (fontFamily: FontFamily) => void;
-}): Pick<BibleThemeSettingsContentProps, 'onFontIncreased' | 'onFontDecreased' | 'onFontSelected'> {
+  getLineSpacing: () => number;
+  setLineSpacing: (size: number) => void;
+}): Pick<
+  BibleThemeSettingsContentProps,
+  'onFontIncreased' | 'onFontDecreased' | 'onFontSelected' | 'onChangeLineSpacing'
+> {
   return {
     onFontIncreased: () => {
       options.setFontSize(nextBibleReaderFontSizeUp(options.getFontSize()));
@@ -169,6 +208,9 @@ export function createBibleThemeSettingsContentHandlers(options: {
     },
     onFontSelected: (fontFamily) => {
       options.setFontFamily(fontFamily);
+    },
+    onChangeLineSpacing: () => {
+      options.setLineSpacing(changeBibleReaderLineSpacing(options.getLineSpacing()));
     },
   };
 }
@@ -189,7 +231,9 @@ function Root({
   fontFamily: fontFamilyProp,
   defaultFontFamily = SOURCE_SERIF_FONT,
   onFontFamilyChange,
-  lineHeight,
+  lineSpacing: lineSpacingProp,
+  defaultLineSpacing = BIBLE_READER_SPACING.DEFAULT,
+  onChangeLineSpacing,
   showVerseNumbers = true,
   background,
   onFootnotePress,
@@ -224,6 +268,7 @@ function Root({
 
   const isFontSizeControlled = onFontSizeChange !== undefined;
   const isFontFamilyControlled = onFontFamilyChange !== undefined;
+  const isLineSpacingControlled = onChangeLineSpacing !== undefined;
 
   const defaultPropFontSize = normalizeReaderFontSizeForInitialization(
     fontSizeProp ?? validatedDefaultFontSize,
@@ -241,6 +286,12 @@ function Root({
     prop: isFontFamilyControlled ? fontFamilyProp : undefined,
     defaultProp: defaultPropFontFamily,
     onChange: onFontFamilyChange,
+  });
+
+  const [currentLineSpacing, setCurrentLineSpacing] = useControllableState({
+    prop: isLineSpacingControlled ? lineSpacingProp : undefined,
+    defaultProp: defaultLineSpacing,
+    onChange: onChangeLineSpacing,
   });
 
   const didHydrateThemeSettingsRef = useRef(false);
@@ -265,7 +316,24 @@ function Root({
         setCurrentFontFamily(savedFontFamily);
       }
     }
-  }, [isFontFamilyControlled, isFontSizeControlled, setCurrentFontFamily, setCurrentFontSize]);
+
+    if (!isLineSpacingControlled) {
+      const savedLineSpacing = localStorage.getItem('youversion-platform:reader:line-spacing');
+      if (savedLineSpacing) {
+        const parsed = parseFloat(savedLineSpacing);
+        if (Object.values(BIBLE_READER_SPACING).some((spacing) => spacing === parsed)) {
+          setCurrentLineSpacing(parsed);
+        }
+      }
+    }
+  }, [
+    isFontFamilyControlled,
+    isFontSizeControlled,
+    setCurrentFontFamily,
+    setCurrentFontSize,
+    isLineSpacingControlled,
+    setCurrentLineSpacing,
+  ]);
 
   useEffect(() => {
     if (!isFontSizeControlled) {
@@ -278,6 +346,15 @@ function Root({
       localStorage.setItem('youversion-platform:reader:font-family', currentFontFamily);
     }
   }, [currentFontFamily, isFontFamilyControlled]);
+
+  useEffect(() => {
+    if (!isLineSpacingControlled) {
+      localStorage.setItem(
+        'youversion-platform:reader:line-spacing',
+        currentLineSpacing.toString(),
+      );
+    }
+  }, [currentLineSpacing, isLineSpacingControlled]);
 
   const providerTheme = useTheme();
   const theme = background || providerTheme;
@@ -298,7 +375,8 @@ function Root({
     setCurrentFontFamily,
     currentFontSize,
     setCurrentFontSize,
-    lineHeight,
+    currentLineSpacing,
+    setCurrentLineSpacing,
     showVerseNumbers,
     background: theme,
     onFootnotePress,
@@ -331,7 +409,7 @@ function Content() {
     booksData,
     currentFontSize,
     currentFontFamily,
-    lineHeight,
+    currentLineSpacing,
     showVerseNumbers,
     onFootnotePress,
   } = useBibleReaderContext();
@@ -416,7 +494,7 @@ function Content() {
               versionId={versionId}
               fontFamily={currentFontFamily}
               fontSize={currentFontSize}
-              lineHeight={lineHeight}
+              lineHeight={currentLineSpacing}
               showVerseNumbers={showVerseNumbers}
               theme={background}
               onFootnotePress={onFootnotePress}
@@ -545,35 +623,54 @@ export function BibleThemeSettingsContent({
   theme,
   fontSize,
   fontFamily,
+  lineSpacing,
   onFontSelected,
   onFontIncreased,
   onFontDecreased,
+  onChangeLineSpacing,
 }: BibleThemeSettingsContentProps): ReactElement {
   const { t } = useTranslation(undefined, { i18n });
   return (
     <div data-yv-sdk data-yv-theme={theme} className="yv:flex yv:flex-col yv:gap-4 yv:p-4">
-      <div className="yv:grid yv:grid-cols-2">
+      <div className="yv:flex yv:justify-between yv:items-stretch yv:gap-4">
+        <div className="yv:flex yv:flex-1">
+          <Button
+            className="yv:flex-1 yv:text-xs yv:text-black yv:dark:text-muted-foreground yv:rounded-l-[8px] yv:rounded-r-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
+            onClick={onFontDecreased}
+            size="lg"
+            variant="secondary"
+            data-testid="decrease-font-size"
+            disabled={fontSize <= MIN_FONT_SIZE}
+            aria-disabled={fontSize <= MIN_FONT_SIZE}
+            aria-label="Decrease font size"
+          >
+            A
+          </Button>
+          <Button
+            className="yv:flex-1 yv:text-3xl yv:text-black yv:dark:text-muted-foreground yv:rounded-r-[8px] yv:rounded-l-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
+            onClick={onFontIncreased}
+            size="lg"
+            variant="secondary"
+            data-testid="increase-font-size"
+            disabled={fontSize >= MAX_FONT_SIZE}
+            aria-disabled={fontSize >= MAX_FONT_SIZE}
+            aria-label="Increase font size"
+          >
+            A
+          </Button>
+        </div>
         <Button
-          className="yv:text-xs yv:text-black yv:dark:text-muted-foreground yv:rounded-l-[8px] yv:rounded-r-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
-          onClick={onFontDecreased}
-          size="lg"
+          className="yv:h-auto yv:border yv:border-white yv:dark:border-border yv:rounded-[8px]"
           variant="secondary"
-          data-testid="decrease-font-size"
-          disabled={fontSize <= MIN_FONT_SIZE}
-          aria-disabled={fontSize <= MIN_FONT_SIZE}
+          data-testid="line-spacing"
+          onClick={onChangeLineSpacing}
+          aria-label="Change line spacing"
         >
-          A
-        </Button>
-        <Button
-          className="yv:text-3xl yv:text-black yv:dark:text-muted-foreground yv:rounded-r-[8px] yv:rounded-l-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
-          onClick={onFontIncreased}
-          size="lg"
-          variant="secondary"
-          data-testid="increase-font-size"
-          disabled={fontSize >= MAX_FONT_SIZE}
-          aria-disabled={fontSize >= MAX_FONT_SIZE}
-        >
-          A
+          <div className={cn('yv:flex yv:flex-col', lineSpacingButtonGapClass(lineSpacing))}>
+            <span className="yv:h-0.5 yv:w-8 yv:bg-current"></span>
+            <span className="yv:h-0.5 yv:w-8 yv:bg-current"></span>
+            <span className="yv:h-0.5 yv:w-8 yv:bg-current"></span>
+          </div>
         </Button>
       </div>
 
@@ -653,6 +750,8 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
     setCurrentFontFamily,
     currentFontSize,
     setCurrentFontSize,
+    currentLineSpacing,
+    setCurrentLineSpacing,
     background,
     onChapterPickerPress,
     onVersionPickerPress,
@@ -661,11 +760,13 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
   const themesSettingsValuesRef = useRef<BibleThemeSettingsValues>({
     fontSize: currentFontSize,
     fontFamily: currentFontFamily,
+    lineSpacing: currentLineSpacing,
   });
 
   themesSettingsValuesRef.current = {
     fontSize: currentFontSize,
     fontFamily: currentFontFamily,
+    lineSpacing: currentLineSpacing,
   };
 
   const applyThemeSettings = (
@@ -674,11 +775,13 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
     const nextThemeSettings = {
       fontSize: clampBibleReaderFontSize(themeSettings.fontSize),
       fontFamily: themeSettings.fontFamily,
+      lineSpacing: themeSettings.lineSpacing,
     };
 
     themesSettingsValuesRef.current = nextThemeSettings;
     setCurrentFontSize(nextThemeSettings.fontSize);
     setCurrentFontFamily(nextThemeSettings.fontFamily);
+    setCurrentLineSpacing(nextThemeSettings.lineSpacing);
 
     return nextThemeSettings;
   };
@@ -703,6 +806,14 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
     return applyThemeSettings({
       ...themesSettingsValuesRef.current,
       fontFamily,
+    });
+  };
+
+  const handleLineSpacingChange = (): BibleThemeSettingsValues => {
+    const settings = themesSettingsValuesRef.current;
+    return applyThemeSettings({
+      ...settings,
+      lineSpacing: changeBibleReaderLineSpacing(settings.lineSpacing),
     });
   };
 
@@ -861,9 +972,11 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
                 theme={background}
                 fontSize={currentFontSize}
                 fontFamily={currentFontFamily}
+                lineSpacing={currentLineSpacing}
                 onFontDecreased={handleFontDecreased}
                 onFontIncreased={handleFontIncreased}
                 onFontSelected={handleFontSelected}
+                onChangeLineSpacing={handleLineSpacingChange}
               />
             </PopoverContent>
           </Popover>

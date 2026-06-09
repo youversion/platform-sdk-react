@@ -42,10 +42,10 @@ const meta: Meta<typeof BibleReader.Root> = {
       control: { type: 'range', min: 8, max: 24, step: 1 },
       description: 'Font size in pixels',
     },
-    lineHeight: {
+    lineSpacing: {
       control: 'select',
-      options: [1.4, 1.6, 1.8, 2.0],
-      description: 'Line height multiplier',
+      options: [1.45, 1.7, 2.0],
+      description: 'Line spacing (line-height multiplier)',
     },
     fontFamily: {
       control: 'select',
@@ -72,7 +72,7 @@ export const Default: Story = {
   tags: ['integration'],
   args: {
     defaultVersionId: 111,
-    lineHeight: 1.6,
+    lineSpacing: 1.7,
     fontFamily: "'Inter', sans-serif",
     showVerseNumbers: true,
   },
@@ -146,7 +146,7 @@ export const DarkTheme: Story = {
   args: {
     defaultVersionId: 111,
     fontSize: 16,
-    lineHeight: 1.6,
+    lineSpacing: 1.7,
     fontFamily: "'Inter', sans-serif",
     showVerseNumbers: true,
   },
@@ -171,7 +171,7 @@ export const CustomStyling: Story = {
   args: {
     defaultVersionId: 111,
     fontSize: 18,
-    lineHeight: 2.0,
+    lineSpacing: 2.0,
     fontFamily: "'Nunito Sans', sans-serif",
     showVerseNumbers: false,
   },
@@ -201,7 +201,7 @@ export const FontSizeOutOfRange: Story = {
   args: {
     defaultVersionId: 111,
     fontSize: 28,
-    lineHeight: 2.0,
+    lineSpacing: 2.0,
     fontFamily: "'Nunito Sans', sans-serif",
     showVerseNumbers: false,
   },
