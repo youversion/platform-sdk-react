@@ -91,6 +91,12 @@ export type RootProps = {
   lineSpacing?: number;
   defaultLineSpacing?: number;
   onChangeLineSpacing?: (size: number) => void;
+  /**
+   * @deprecated Use `defaultLineSpacing` (uncontrolled) or `lineSpacing` +
+   * `onChangeLineSpacing` (controlled) instead. When provided, this is used as
+   * the initial line spacing. Will be removed in the next major version.
+   */
+  lineHeight?: number;
   showVerseNumbers?: boolean;
   background?: 'light' | 'dark';
   onFootnotePress?: (data: FootnoteData) => void;
@@ -232,8 +238,9 @@ function Root({
   defaultFontFamily = SOURCE_SERIF_FONT,
   onFontFamilyChange,
   lineSpacing: lineSpacingProp,
-  defaultLineSpacing = BIBLE_READER_SPACING.DEFAULT,
+  defaultLineSpacing,
   onChangeLineSpacing,
+  lineHeight,
   showVerseNumbers = true,
   background,
   onFootnotePress,
@@ -288,9 +295,12 @@ function Root({
     onChange: onFontFamilyChange,
   });
 
+  const resolvedDefaultLineSpacing =
+    defaultLineSpacing ?? lineHeight ?? BIBLE_READER_SPACING.DEFAULT;
+
   const [currentLineSpacing, setCurrentLineSpacing] = useControllableState({
     prop: isLineSpacingControlled ? lineSpacingProp : undefined,
-    defaultProp: defaultLineSpacing,
+    defaultProp: resolvedDefaultLineSpacing,
     onChange: onChangeLineSpacing,
   });
 

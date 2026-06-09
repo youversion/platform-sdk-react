@@ -1,11 +1,11 @@
-import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, screen, spyOn, userEvent, waitFor } from 'storybook/test';
-import { http, HttpResponse, delay } from 'msw';
-import { BibleReader } from './bible-reader';
-import { setupAuthenticatedUser } from '../test/utils';
 import { INTER_FONT, SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { delay, http, HttpResponse } from 'msw';
+import { expect, fn, screen, spyOn, userEvent, waitFor } from 'storybook/test';
 import mockBibles from '../test/mock-data/bibles.json';
 import { globalHandlers } from '../test/mocks/handlers';
+import { setupAuthenticatedUser } from '../test/utils';
+import { BibleReader } from './bible-reader';
 
 let signInMock: ReturnType<typeof fn>;
 
@@ -107,7 +107,7 @@ export const Default: Story = {
     });
 
     const fontButtons = screen.getAllByRole('button', { name: /font/i });
-    await expect(fontButtons.length).toBe(2);
+    await expect(fontButtons.length).toBe(4);
 
     const decreaseFontButton = screen.getByTestId('decrease-font-size');
     const increaseFontButton = screen.getByTestId('increase-font-size');

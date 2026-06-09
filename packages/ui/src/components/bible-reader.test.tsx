@@ -138,7 +138,7 @@ describe('createBibleThemeSettingsContentHandlers', () => {
   it('updates font size, family, and line spacing via host-owned setters', () => {
     let fontSize = 16;
     let fontFamily: FontFamily = SOURCE_SERIF_FONT;
-    let lineSpacing = BIBLE_READER_SPACING.DEFAULT;
+    let lineSpacing: number = BIBLE_READER_SPACING.DEFAULT;
     const setFontSize = vi.fn((n: number) => {
       fontSize = n;
     });
