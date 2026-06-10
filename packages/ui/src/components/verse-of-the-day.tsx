@@ -191,7 +191,7 @@ export function VerseOfTheDay({
               <Votd className="yv:shrink-0 yv:h-10 yv:w-10" />
             </div>
           ) : null}
-          <div className="yv:grow yv:grid">
+          <div className="yv:grow yv:flex yv:flex-col">
             <p
               className={
                 'trim-both yv:line-clamp-1 yv:text-muted-foreground yv:uppercase yv:text-xs yv:font-medium yv:select-none'
@@ -199,6 +199,11 @@ export function VerseOfTheDay({
             >
               {t('verseOfTheDay')}
             </p>
+            {referenceText && !errorPassage && !errorVerseOfTheDay ? (
+              <p className="yv:text-black yv:dark:text-white yv:font-medium yv:text-sm">
+                {referenceText}
+              </p>
+            ) : null}
           </div>
           {showShareButton ? (
             <div
@@ -232,27 +237,20 @@ export function VerseOfTheDay({
               />
             </div>
           ) : (
-            <div className="yv:flex yv:flex-col yv:gap-2">
-              <BibleTextView
-                ref={verseRef}
-                theme={theme}
-                reference={data?.passage_id || ''}
-                versionId={versionId}
-                fontSize={size === 'default' ? 16 : 20}
-                fontFamily={size === 'default' ? 'var(--yv-font-sans)' : 'var(--yv-font-serif)'}
-                passageState={{
-                  passage,
-                  loading: isLoading,
-                  error: errorPassage || errorVerseOfTheDay || null,
-                }}
-              />
-
-              {errorPassage || errorVerseOfTheDay ? null : (
-                <p className="yv:text-muted-foreground yv:font-medium yv:text-sm yv:mt-3">
-                  {referenceText}
-                </p>
-              )}
-            </div>
+            <BibleTextView
+              ref={verseRef}
+              theme={theme}
+              reference={data?.passage_id || ''}
+              versionId={versionId}
+              fontSize={size === 'default' ? 16 : 20}
+              fontFamily={size === 'default' ? 'var(--yv-font-sans)' : 'var(--yv-font-serif)'}
+              showVerseNumbers={false}
+              passageState={{
+                passage,
+                loading: isLoading,
+                error: errorPassage || errorVerseOfTheDay || null,
+              }}
+            />
           )}
         </AnimatedHeight>
 
