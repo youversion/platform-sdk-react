@@ -1,11 +1,11 @@
-import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, screen, spyOn, userEvent, waitFor } from 'storybook/test';
-import { http, HttpResponse, delay } from 'msw';
-import { BibleReader } from './bible-reader';
-import { setupAuthenticatedUser } from '../test/utils';
 import { INTER_FONT, SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { delay, http, HttpResponse } from 'msw';
+import { expect, fn, screen, spyOn, userEvent, waitFor } from 'storybook/test';
 import mockBibles from '../test/mock-data/bibles.json';
 import { globalHandlers } from '../test/mocks/handlers';
+import { setupAuthenticatedUser } from '../test/utils';
+import { BibleReader } from './bible-reader';
 
 let signInMock: ReturnType<typeof fn>;
 
@@ -42,10 +42,10 @@ const meta: Meta<typeof BibleReader.Root> = {
       control: { type: 'range', min: 8, max: 24, step: 1 },
       description: 'Font size in pixels',
     },
-    lineHeight: {
+    lineSpacing: {
       control: 'select',
-      options: [1.4, 1.6, 1.8, 2.0],
-      description: 'Line height multiplier',
+      options: [1.45, 1.7, 2.0],
+      description: 'Line spacing (line-height multiplier)',
     },
     fontFamily: {
       control: 'select',
@@ -72,7 +72,7 @@ export const Default: Story = {
   tags: ['integration'],
   args: {
     defaultVersionId: 111,
-    lineHeight: 1.6,
+    lineSpacing: 1.7,
     fontFamily: "'Inter', sans-serif",
     showVerseNumbers: true,
   },
@@ -107,7 +107,7 @@ export const Default: Story = {
     });
 
     const fontButtons = screen.getAllByRole('button', { name: /font/i });
-    await expect(fontButtons.length).toBe(2);
+    await expect(fontButtons.length).toBe(4);
 
     const decreaseFontButton = screen.getByTestId('decrease-font-size');
     const increaseFontButton = screen.getByTestId('increase-font-size');
@@ -146,7 +146,7 @@ export const DarkTheme: Story = {
   args: {
     defaultVersionId: 111,
     fontSize: 16,
-    lineHeight: 1.6,
+    lineSpacing: 1.7,
     fontFamily: "'Inter', sans-serif",
     showVerseNumbers: true,
   },
@@ -171,7 +171,7 @@ export const CustomStyling: Story = {
   args: {
     defaultVersionId: 111,
     fontSize: 18,
-    lineHeight: 2.0,
+    lineSpacing: 2.0,
     fontFamily: "'Nunito Sans', sans-serif",
     showVerseNumbers: false,
   },
@@ -201,7 +201,7 @@ export const FontSizeOutOfRange: Story = {
   args: {
     defaultVersionId: 111,
     fontSize: 28,
-    lineHeight: 2.0,
+    lineSpacing: 2.0,
     fontFamily: "'Nunito Sans', sans-serif",
     showVerseNumbers: false,
   },
