@@ -184,6 +184,7 @@ export function BibleCard({
             fontFamily={SOURCE_SERIF_FONT}
             reference={reference}
             versionId={versionNum}
+            showVerseNumbers={false}
             passageState={{
               passage,
               loading: passageLoading,
