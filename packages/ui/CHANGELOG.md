@@ -1,5 +1,26 @@
 # @youversion/platform-react-ui
 
+## 2.1.0
+
+### Minor Changes
+
+- 5b40719: Add a cycling line spacing setting to BibleReader
+
+  The Bible theme settings panel now includes a line spacing control that cycles
+  through three presets (small `1.45`, default `1.7`, large `2.0`) on each press.
+  The selection persists to `localStorage` when uncontrolled.
+
+  `BibleReader.Root` gains `lineSpacing`, `defaultLineSpacing`, and
+  `onChangeLineSpacing` props for controlled/uncontrolled usage. The existing
+  `lineHeight` prop is deprecated but still honored as the initial line spacing,
+  so this change is backward compatible; it will be removed in the next major.
+
+### Patch Changes
+
+- f2c83cf: VerseOfTheDay now shows the Bible reference directly under the "Verse of the Day" label in foreground text instead of below the verse body. BibleCard and VerseOfTheDay no longer display inline verse numbers in passage text.
+  - @youversion/platform-core@2.1.0
+  - @youversion/platform-react-hooks@2.1.0
+
 ## 2.0.1
 
 ### Patch Changes
