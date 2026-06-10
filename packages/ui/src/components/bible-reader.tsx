@@ -677,9 +677,9 @@ export function BibleThemeSettingsContent({
           aria-label="Change line spacing"
         >
           <div className={cn('yv:flex yv:flex-col', lineSpacingButtonGapClass(lineSpacing))}>
-            <span className="yv:h-0.5 yv:w-8 yv:bg-current"></span>
-            <span className="yv:h-0.5 yv:w-8 yv:bg-current"></span>
-            <span className="yv:h-0.5 yv:w-8 yv:bg-current"></span>
+            <span className="yv:h-0.5 yv:w-8 yv:bg-black yv:dark:bg-current"></span>
+            <span className="yv:h-0.5 yv:w-8 yv:bg-black yv:dark:bg-current"></span>
+            <span className="yv:h-0.5 yv:w-8 yv:bg-black yv:dark:bg-current"></span>
           </div>
         </Button>
       </div>
