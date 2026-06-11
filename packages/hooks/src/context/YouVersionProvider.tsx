@@ -79,6 +79,18 @@ export function YouVersionProvider(
     additionalHeaders,
     children,
   } = props;
+
+  // Fail loudly on a missing/empty app key. Without this the SDK renders an
+  // empty shell and only surfaces errors in the console — see YPE-1565. The UI
+  // package's provider catches this earlier and renders a styled message
+  // instead; this throw is the baseline guarantee for hooks-only consumers.
+  if (!appKey?.trim()) {
+    throw new Error(
+      'YouVersionProvider: a non-empty "appKey" is required. If you load it from an ' +
+        'environment variable, make sure it is set and restart your dev server.',
+    );
+  }
+
   const resolvedTheme = useResolvedTheme(theme);
 
   // Stable identity so memoized consumers (hooks that build ApiClient) don't

@@ -50,6 +50,8 @@
   "sunIconTitle": "Sun",
   "passageNotFoundError": "This passage isn't available in the selected Bible version.",
   "invalidAppKeyError": "This Bible content couldn't be loaded because the app key is missing or invalid.",
+  "missingAppKeyHeading": "Missing app key",
+  "missingAppKeyBody": "Pass a valid \"appKey\" to YouVersionProvider. If you're loading it from an environment variable, make sure it's set and restart your dev server.",
   "forbiddenError": "This app isn't allowed to access this Bible content.",
   "unreachableServerError": "The Bible server couldn't be reached. Check your connection and try again.",
   "rateLimitedError": "The Bible service is receiving too many requests right now. Please wait a moment and try again.",
