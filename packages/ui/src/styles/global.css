@@ -46,7 +46,9 @@ layer(yv-sdk-fonts);
 @import 'tw-animate-css';
 
 /* Aktiv Grotesk App — YouVersion brand font (Book/Chapter picker). Served from prod CDN.
-   Declared at top level (not in a cascade layer) — @font-face is not subject to @layer. */
+   Declared at top level (not in a cascade layer) — @font-face is not subject to @layer.
+   CSP: consumers with a strict font-src must allowlist storage.googleapis.com (see README
+   "Content Security Policy"), else this falls back to --yv-font-sans. */
 @font-face {
   font-family: 'Aktiv Grotesk App';
   font-style: normal;
