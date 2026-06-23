@@ -8,6 +8,8 @@ export * from './useVersion';
 export * from './utility/useDebounce';
 export * from './useVersions';
 export * from './useFilteredVersions';
+export * from './useOrganization';
+export * from './useOrganizationClient';
 export * from './context';
 export * from './utility';
 export * from './useBibleClient';

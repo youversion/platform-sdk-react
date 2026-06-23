@@ -1,0 +1,26 @@
+{
+  "05a9aa40-37b6-4e34-b9f1-a443fa4b1fff": {
+    "id": "05a9aa40-37b6-4e34-b9f1-a443fa4b1fff",
+    "name": "Biblica",
+    "primary_language": "en",
+    "website_url": "https://www.biblica.com"
+  },
+  "798d8fa4-f640-4155-8cfb-fa91d1d8a06c": {
+    "id": "798d8fa4-f640-4155-8cfb-fa91d1d8a06c",
+    "name": "The Lockman Foundation",
+    "primary_language": "en",
+    "website_url": "https://www.lockman.org"
+  },
+  "f2ac19b4-768c-4564-acaf-f28724235ad0": {
+    "id": "f2ac19b4-768c-4564-acaf-f28724235ad0",
+    "name": "Artists for Israel International",
+    "primary_language": "en",
+    "website_url": "https://www.afii.org"
+  },
+  "f819451a-bc31-4037-b4bd-0c4aa00fe0f6": {
+    "id": "f819451a-bc31-4037-b4bd-0c4aa00fe0f6",
+    "name": "Cambridge University Press",
+    "primary_language": "en",
+    "website_url": "https://www.cambridge.org/bibles"
+  }
+}

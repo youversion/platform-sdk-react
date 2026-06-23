@@ -4,8 +4,20 @@ import { mockChapters } from '../mock-data/chapters';
 import mockPassages from '../mock-data/passages.json';
 import mockBibles from '../mock-data/bibles.json';
 import mockLanguages from '../mock-data/languages.json';
+import mockOrganizations from '../mock-data/organizations.json';
 
 export const globalHandlers = [
+  // Organization (publisher) lookup for the version picker
+  http.get('*/v1/organizations/:id', ({ params }) => {
+    const id = params.id as string;
+    const organization = mockOrganizations[id as keyof typeof mockOrganizations];
+
+    if (organization) {
+      return HttpResponse.json(organization);
+    }
+
+    return new HttpResponse(null, { status: 404 });
+  }),
   // Specific Bible passages
   http.get('*/v1/bibles/111/passages/LUK.1.39-45', () => {
     return HttpResponse.json(mockPassages['LUK.1.39-45.NIV']);
