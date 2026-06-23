@@ -22,7 +22,6 @@ export function MissingAppKey({
       data-yv-sdk
       data-yv-theme={theme}
       role="alert"
-      aria-live="polite"
       className="yv:flex yv:items-start yv:gap-2.5 yv:p-4 yv:bg-background yv:text-foreground"
     >
       <ExclamationCircle className="yv:size-5 yv:shrink-0 yv:text-foreground" aria-hidden="true" />
