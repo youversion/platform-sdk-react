@@ -6,6 +6,7 @@ import {
   useFilteredVersions,
   useLanguage,
   useLanguages,
+  useOrganization,
   useTheme,
   useVersion,
   useVersions,
@@ -38,7 +39,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 export const RECENT_VERSIONS_KEY = 'youversion-platform:picker:recent-versions';
 const MAX_RECENT_VERSIONS = 3;
 
-type RecentVersion = Pick<BibleVersion, 'id' | 'title' | 'localized_abbreviation' | 'abbreviation'>;
+type RecentVersion = Pick<
+  BibleVersion,
+  'id' | 'title' | 'localized_abbreviation' | 'abbreviation' | 'organization_id'
+>;
 
 function getRecentVersions(): RecentVersion[] {
   if (typeof window === 'undefined') return [];
@@ -54,6 +58,19 @@ function getRecentVersions(): RecentVersion[] {
 function saveRecentVersions(versions: RecentVersion[]): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(RECENT_VERSIONS_KEY, JSON.stringify(versions));
+}
+
+// Displays the publisher (organization) name for a version when available.
+// Renders nothing while loading or when no organization is associated, so the
+// title stays vertically centered for versions without a known publisher.
+function VersionPublisherName({ organizationId }: { organizationId?: string | null }) {
+  const { organization } = useOrganization(organizationId ?? '');
+
+  if (!organization?.name) return null;
+
+  return (
+    <ItemDescription className="yv:line-clamp-1 yv:text-left">{organization.name}</ItemDescription>
+  );
 }
 
 // Displays a version abbreviation (e.g., "NIV", "KJV2") centered within a fixed-size icon.
@@ -123,7 +140,7 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
   return (
     <div
       ref={containerRef}
-      className="yv:flex yv:flex-col yv:w-full yv:h-full yv:px-2 yv:font-serif yv:leading-none yv:font-bold yv:items-center yv:justify-center"
+      className="yv:flex yv:flex-col yv:w-full yv:h-full yv:px-1.5 yv:font-serif yv:leading-[1.03] yv:font-bold yv:text-foreground yv:items-center yv:justify-center"
     >
       <div ref={prefixRef} className="yv:whitespace-nowrap" style={{ fontSize: `${prefixSize}px` }}>
         {prefix}
@@ -535,6 +552,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
       title: version.title,
       localized_abbreviation: version.localized_abbreviation,
       abbreviation: version.abbreviation,
+      organization_id: version.organization_id,
     });
     setSearchQuery('');
     onRequestClose?.();
@@ -641,11 +659,12 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
                   >
                     <ItemMedia
                       variant="icon"
-                      className="yv:rounded-[8px] yv:size-12 yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center"
+                      className="yv:rounded-md yv:size-16 yv:bg-secondary yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center"
                     >
                       <VersionAbbreviationIcon text={version.localized_abbreviation} />
                     </ItemMedia>
                     <ItemContent>
+                      <VersionPublisherName organizationId={version.organization_id} />
                       <ItemTitle className="yv:line-clamp-2 yv:text-left">
                         {version.title}
                       </ItemTitle>
@@ -680,11 +699,12 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
                 >
                   <ItemMedia
                     variant="icon"
-                    className="yv:rounded-[8px] yv:size-12 yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center"
+                    className="yv:rounded-md yv:size-16 yv:bg-secondary yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center"
                   >
                     <VersionAbbreviationIcon text={version.localized_abbreviation} />
                   </ItemMedia>
                   <ItemContent>
+                    <VersionPublisherName organizationId={version.organization_id} />
                     <ItemTitle className="yv:line-clamp-2 yv:text-left">{version.title}</ItemTitle>
                   </ItemContent>
                 </button>
