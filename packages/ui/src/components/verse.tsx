@@ -195,9 +195,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
 }) {
   const { t } = useTranslation(undefined, { i18n });
 
-  // On a highlight fill the default light-gray marker loses contrast. Switch to
-  // --yv-foreground (dark in light mode, light in dark mode) so the icon stays
-  // AA-legible over every highlight color in both themes.
+  // On a highlight fill the default light-gray marker loses contrast
   const iconClassName = cn(
     'yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1!',
     isHighlighted ? 'yv:text-muted-foreground' : 'yv:text-(--yv-gray-20)',

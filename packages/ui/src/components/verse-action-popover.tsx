@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FC } from 'react';
+import { useEffect, useMemo, useRef, useState, type FC } from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
@@ -118,7 +118,10 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   // when reversing direction, so it never jumps directly top↔bottom.
   const [dockEdge, setDockEdge] = useState<'top' | 'bottom' | null>(null);
   useEffect(() => {
-    if (!open || !anchorElement || !scrollRoot || typeof IntersectionObserver === 'undefined') {
+    // Closing: leave dockEdge as-is so the frozen snapshot (below) animates out
+    // in place. The prior effect's cleanup already disconnected the observer.
+    if (!open) return;
+    if (!anchorElement || !scrollRoot || typeof IntersectionObserver === 'undefined') {
       setDockEdge(null);
       return;
     }
@@ -197,9 +200,26 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
     ...colorsToApply.map((color) => ({ color, showX: false, key: `${color}-apply` })),
   ];
 
+  // Snapshot of everything the Content renders. While open we keep it fresh; the
+  // moment `open` flips false (apply / outside-click) the parent clears the
+  // selection and anchor synchronously, so without this the still-animating bar
+  // would lose its anchor (jump to a fallback position) and flash the empty
+  // layout. Freezing the last snapshot lets it simply fade out where it was.
+  const dockSide: 'top' | 'bottom' = docked ? dockedSide : 'bottom';
+  const live = {
+    virtualRef,
+    side: dockSide,
+    sideOffset: docked ? 24 : 20,
+    showCaret: !docked,
+    colorCircles,
+  };
+  const frozenView = useRef(live);
+  if (open) frozenView.current = live;
+  const view = open ? live : frozenView.current;
+
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}>
-      <PopoverPrimitive.Anchor virtualRef={virtualRef} />
+      <PopoverPrimitive.Anchor virtualRef={view.virtualRef} />
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
           role="dialog"
@@ -215,8 +235,8 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
               event.preventDefault();
             }
           }}
-          side={docked ? dockedSide : 'bottom'}
-          sideOffset={docked ? 24 : 20}
+          side={view.side}
+          sideOffset={view.sideOffset}
           align="center"
           className={cn(
             'yv:bg-card yv:text-popover-foreground',
@@ -241,7 +261,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
         >
           {/* Caret — matches the card background in both themes, pointing at the
               verse. Hidden when docked: the bar is no longer tied to a verse. */}
-          {!docked && (
+          {view.showCaret && (
             <svg
               className="yv:text-card yv:absolute yv:-top-[16px] yv:left-1/2 yv:-translate-x-1/2"
               width="33"
@@ -260,7 +280,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
             role="group"
             aria-label={t('highlightColorsAriaLabel')}
           >
-            {colorCircles.map(({ color, showX, key }) => (
+            {view.colorCircles.map(({ color, showX, key }) => (
               <ColorCircle
                 key={key}
                 color={color}
