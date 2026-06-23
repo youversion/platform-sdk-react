@@ -486,7 +486,7 @@ function Content() {
       const raw = localStorage.getItem(highlightsStorageKey);
       if (raw) data = JSON.parse(raw) as Record<string, string>;
     } catch {
-      data = {};
+      // Ignore (unavailable or malformed storage).
     }
     setHighlightStore(data);
   }, [highlightsStorageKey]);
@@ -605,9 +605,7 @@ function Content() {
 
   function handleCopy() {
     const text = buildSelectionText();
-    if (text && typeof navigator !== 'undefined') {
-      void navigator.clipboard?.writeText(text);
-    }
+    if (text) void navigator.clipboard?.writeText(text);
     closeAndClearSelection();
   }
 

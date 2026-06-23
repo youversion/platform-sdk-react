@@ -27,8 +27,8 @@ type VerseActionPopoverProps = {
   highlightedVerses: Record<number, string>;
   anchorElement?: HTMLElement | null;
   /**
-   * The reader's scroll container. When provided, the bar docks to the bottom of
-   * this element once the anchored verse scrolls out of view, so the actions stay
+   * The reader's scroll container. When provided, the bar docks to the edge of
+   * this element that the anchored verse scrolls out through, so the actions stay
    * reachable instead of leaving with the verse. Omit for a purely anchored bar.
    */
   scrollRoot?: HTMLElement | null;

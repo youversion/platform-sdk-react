@@ -16,7 +16,6 @@ const LEFT_DOUBLE_QUOTE = '“';
 const RIGHT_DOUBLE_QUOTE = '”';
 const ELLIPSIS_GAP = ' ... ';
 
-/** Sorts ascending and de-duplicates. */
 function normalizeVerses(verses: number[]): number[] {
   return [...new Set(verses)].sort((a, b) => a - b);
 }
