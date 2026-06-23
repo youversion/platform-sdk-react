@@ -41,6 +41,8 @@
   "noChaptersAvailable": "Aucun chapitre disponible",
   "noBibleSearchResults": "Nous sommes désolés, aucun résultat biblique n'a été trouvé pour cette recherche.",
   "noVersionsFound": "Aucune version trouvée",
+  "noLanguageSearchResults": "Nous sommes désolés, aucun résultat n'a été trouvé pour cette recherche.",
+  "languageSearchAriaLabel": "Rechercher des langues",
   "noRegionalLanguagesAvailable": "Aucune langue régionale disponible",
   "suggestedTab": "Suggéré",
   "allLanguagesTab": "Tout ({{count}})",

@@ -312,6 +312,39 @@ export const SuggestedLanguagesOrder: Story = {
   },
 };
 
+export const LanguageSearch: Story = {
+  args: {
+    versionId: 111,
+  },
+  tags: ['integration'],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
+    await userEvent.click(trigger);
+
+    const languageButton = await screen.findByRole('button', { name: /select language/i });
+    await userEvent.click(languageButton);
+
+    const languageSearchInput = screen.getByRole('textbox', { name: /search languages/i });
+    await userEvent.type(languageSearchInput, 'Korean', { delay: 50 });
+
+    await expect(screen.queryByRole('tab', { name: /suggested/i })).not.toBeInTheDocument();
+    await expect(screen.queryByRole('tab', { name: /all/i })).not.toBeInTheDocument();
+
+    const results = await screen.findByTestId('language-search-results');
+    await expect(within(results).getAllByRole('listitem')).toHaveLength(1);
+    await expect(within(results).getByRole('listitem', { name: /korean/i })).toBeInTheDocument();
+
+    await userEvent.clear(languageSearchInput);
+    await userEvent.type(languageSearchInput, 'Koreanea', { delay: 50 });
+
+    await expect(
+      screen.getByText("We're sorry, there are no results for this search."),
+    ).toBeInTheDocument();
+  },
+};
+
 export const InteractiveVersionSearch: Story = {
   args: {
     versionId: 111,

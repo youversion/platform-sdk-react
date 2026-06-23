@@ -56,6 +56,24 @@ function saveRecentVersions(versions: RecentVersion[]): void {
   localStorage.setItem(RECENT_VERSIONS_KEY, JSON.stringify(versions));
 }
 
+type LanguageListItem = Pick<Language, 'id' | 'display_names'> & {
+  language?: string;
+};
+
+function filterLanguagesBySearch(languages: LanguageListItem[], query: string): LanguageListItem[] {
+  const trimmedQuery = query.trim().toLowerCase();
+  if (!trimmedQuery) return languages;
+
+  return languages.filter((language) => {
+    if (language.id.toLowerCase().includes(trimmedQuery)) return true;
+    if (language.language?.toLowerCase().includes(trimmedQuery)) return true;
+
+    return Object.values(language.display_names ?? {}).some((name) =>
+      name.toLowerCase().includes(trimmedQuery),
+    );
+  });
+}
+
 // Displays a version abbreviation (e.g., "NIV", "KJV2") centered within a fixed-size icon.
 // Dynamically scales the font size to fit the text within the container with padding.
 function VersionAbbreviationIcon({ text }: { text: string }) {
@@ -148,6 +166,11 @@ type BibleVersionPickerContextType = {
   setSelectedLanguageId: (id: string) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  languageSearchQuery: string;
+  setLanguageSearchQuery: (query: string) => void;
+  filteredLanguages: LanguageListItem[];
+  closeLanguagePanel: () => void;
+  resetLanguageSearch: () => void;
   suggestedLanguages: Pick<Language, 'id' | 'display_names'>[];
   filteredVersions: BibleVersion[];
   filteredRecentVersions: RecentVersion[];
@@ -233,10 +256,20 @@ function Root({
     onChange: onLanguageChange,
   });
   const [searchQuery, setSearchQuery] = useState('');
+  const [languageSearchQuery, setLanguageSearchQuery] = useState('');
   const [isLanguagesOpen, setIsLanguagesOpen] = useState(false);
   const [recentVersions, setRecentVersions] = useState<RecentVersion[]>(getRecentVersions);
   const [isPopoverOpenRaw, setIsPopoverOpenRaw] = useState(false);
   const isPopoverOpen = onVersionPickerPress ? false : isPopoverOpenRaw;
+
+  const resetLanguageSearch = useCallback(() => {
+    setLanguageSearchQuery('');
+  }, []);
+
+  const closeLanguagePanel = useCallback(() => {
+    setLanguageSearchQuery('');
+    setIsLanguagesOpen(false);
+  }, []);
 
   const setIsPopoverOpen = useCallback(
     (open: boolean) => {
@@ -244,10 +277,11 @@ function Root({
       setIsPopoverOpenRaw(open);
       if (!open) {
         setSearchQuery('');
+        setLanguageSearchQuery('');
         setIsLanguagesOpen(false);
       }
     },
-    [setSearchQuery, onVersionPickerPress],
+    [onVersionPickerPress],
   );
 
   const addRecentVersion = useCallback((version: RecentVersion) => {
@@ -348,6 +382,8 @@ function Root({
     return [...new Map(combined.map((lang) => [lang.id, lang])).values()];
   }, [uniqueLanguages, countryLanguages]);
 
+  const filteredLanguages = filterLanguagesBySearch(uniqueLanguages, languageSearchQuery);
+
   const contextValue: BibleVersionPickerContextType = {
     versionId,
     setVersionId: setVersionIdState,
@@ -359,6 +395,11 @@ function Root({
     setSelectedLanguageId,
     searchQuery,
     setSearchQuery,
+    languageSearchQuery,
+    setLanguageSearchQuery,
+    filteredLanguages,
+    closeLanguagePanel,
+    resetLanguageSearch,
     suggestedLanguages,
     filteredVersions,
     filteredRecentVersions,
@@ -524,6 +565,8 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
     isLanguagesOpen,
     setIsLanguagesOpen,
     setIsPopoverOpen,
+    closeLanguagePanel,
+    resetLanguageSearch,
     onVersionPickerPress,
   } = useBibleVersionPickerContext();
   const wasOpenRef = useRef(open ?? false);
@@ -543,10 +586,11 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
   useEffect(() => {
     if (wasOpenRef.current && open === false) {
       setSearchQuery('');
+      resetLanguageSearch();
       setIsLanguagesOpen(false);
     }
     wasOpenRef.current = open ?? false;
-  }, [open, setIsLanguagesOpen, setSearchQuery]);
+  }, [open, resetLanguageSearch, setIsLanguagesOpen, setSearchQuery]);
 
   if (onVersionPickerPress && open === undefined && !onRequestClose) {
     return null;
@@ -561,7 +605,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
         headerLeading={
           isLanguagesOpen ? (
             <Button
-              onClick={() => setIsLanguagesOpen(false)}
+              onClick={closeLanguagePanel}
               variant="ghost"
               size="icon"
               className="yv:w-6 yv:h-6 yv:text-muted-foreground"
@@ -599,7 +643,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
                 : 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
             }`}
           >
-            <LanguagePanel onRequestClose={() => setIsLanguagesOpen(false)} />
+            <LanguagePanel onRequestClose={closeLanguagePanel} />
           </div>
         </div>
       </PopoverContent>
@@ -732,6 +776,45 @@ function LanguagePanel({ onRequestClose }: BibleLanguagePickerContentProps = {})
   );
 }
 
+function LanguageRow({
+  language,
+  selectedLanguageId,
+  onSelect,
+}: {
+  language: LanguageListItem;
+  selectedLanguageId: string;
+  onSelect: (languageId: string) => void;
+}) {
+  return (
+    <Item
+      className={cn(
+        'yv:hover:bg-muted yv:rounded-[8px] yv:px-4',
+        selectedLanguageId === language.id ? 'yv:bg-muted' : '',
+      )}
+      size="sm"
+      role="listitem"
+      aria-label={language.display_names?.en}
+      asChild
+    >
+      <Button
+        className="yv:w-full yv:h-auto"
+        onClick={() => onSelect(language.id)}
+        type="button"
+        variant="ghost"
+      >
+        <ItemContent className="yv:flex yv:flex-row yv:justify-between yv:items-center">
+          <ItemTitle className="yv:text-start yv:line-clamp-2 yv:truncate yv:min-w-0 yv:max-w-2/3 yv:flex-1">
+            {language.display_names?.en}
+          </ItemTitle>
+          <ItemDescription className="yv:text-end yv:shrink-0 yv:max-w-1/3">
+            {language.display_names?.[language.id]}
+          </ItemDescription>
+        </ItemContent>
+      </Button>
+    </Item>
+  );
+}
+
 /**
  * @internal Advanced composition surface for SDK integrations.
  *
@@ -749,11 +832,18 @@ export function BibleLanguagePickerContent({
     setSelectedLanguageId,
     suggestedLanguages,
     languages,
+    filteredLanguages,
+    languageSearchQuery,
+    setLanguageSearchQuery,
+    resetLanguageSearch,
     background,
   } = useBibleVersionPickerContext();
 
+  const isSearching = languageSearchQuery.trim().length > 0;
+
   const handleSelectLanguage = (languageId: string) => {
     setSelectedLanguageId(languageId);
+    resetLanguageSearch();
     onRequestClose?.();
   };
 
@@ -764,101 +854,98 @@ export function BibleLanguagePickerContent({
       data-yv-theme={background}
       data-open={open}
     >
-      <Tabs
-        className="yv:mt-4 yv:gap-4 yv:flex-1 yv:min-h-0 yv:flex yv:flex-col"
-        defaultValue="suggested"
-      >
-        <TabsList className="yv:mx-4 yv:w-[calc(100%-4*var(--spacing)*2)]">
-          <TabsTrigger className="yv:p-0" value="suggested">
-            {t('suggestedTab')}
-          </TabsTrigger>
-          <TabsTrigger className="yv:p-0" value="all">
-            {t('allLanguagesTab', { count: totalLanguages })}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="suggested" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
-          {suggestedLanguages.length > 0 ? (
-            <>
-              <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">
-                {t('regionalHeading')}
-              </h3>
-              <ItemGroup className="yv:gap-1">
-                {suggestedLanguages.map((suggestedLanguage) => (
-                  <Item
-                    key={suggestedLanguage.id}
-                    className={cn(
-                      'yv:hover:bg-muted yv:rounded-[8px] yv:px-4',
-                      selectedLanguageId === suggestedLanguage.id ? 'yv:bg-muted' : '',
-                    )}
-                    size="sm"
-                    role="listitem"
-                    aria-label={suggestedLanguage.display_names?.en}
-                    asChild
-                  >
-                    <Button
-                      className="yv:w-full yv:h-auto"
-                      onClick={() => handleSelectLanguage(suggestedLanguage.id)}
-                      type="button"
-                      variant="ghost"
-                    >
-                      <ItemContent className="yv:flex yv:flex-row yv:justify-between yv:items-center">
-                        <ItemTitle className="yv:text-start yv:line-clamp-2 yv:min-w-0 yv:flex-1 yv:truncate">
-                          {suggestedLanguage.display_names?.en}
-                        </ItemTitle>
-                        <ItemDescription className="yv:shrink-0">
-                          {suggestedLanguage.display_names?.[suggestedLanguage.id]}
-                        </ItemDescription>
-                      </ItemContent>
-                    </Button>
-                  </Item>
-                ))}
-              </ItemGroup>
-            </>
+      {isSearching ? (
+        <div className="yv:mt-4 yv:flex-1 yv:min-h-0 yv:overflow-y-auto">
+          {filteredLanguages.length > 0 ? (
+            <ItemGroup className="yv:gap-1" data-testid="language-search-results">
+              {filteredLanguages.map((language) => (
+                <LanguageRow
+                  key={language.id}
+                  language={language}
+                  onSelect={handleSelectLanguage}
+                  selectedLanguageId={selectedLanguageId}
+                />
+              ))}
+            </ItemGroup>
           ) : (
-            <p className="yv:px-4 yv:py-8 yv:text-center yv:text-muted-foreground">
-              {t('noRegionalLanguagesAvailable')}
+            <p className="yv:px-4 yv:py-8 yv:text-center yv:text-muted-foreground yv:text-sm">
+              {t('noLanguageSearchResults')}
             </p>
           )}
-        </TabsContent>
+        </div>
+      ) : (
+        <Tabs
+          className="yv:mt-4 yv:gap-4 yv:flex-1 yv:min-h-0 yv:flex yv:flex-col"
+          defaultValue="suggested"
+        >
+          <TabsList className="yv:mx-4 yv:w-[calc(100%-4*var(--spacing)*2)]">
+            <TabsTrigger className="yv:p-0" value="suggested">
+              {t('suggestedTab')}
+            </TabsTrigger>
+            <TabsTrigger className="yv:p-0" value="all">
+              {t('allLanguagesTab', { count: totalLanguages })}
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="all" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
-          <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">
-            {t('allLanguagesHeading')}
-          </h3>
-          <ItemGroup className="yv:gap-1">
-            {languages.map((language) => (
-              <Item
-                key={language.id}
-                className={cn(
-                  'yv:hover:bg-muted yv:rounded-[8px] yv:px-4',
-                  selectedLanguageId === language.id ? 'yv:bg-muted' : '',
-                )}
-                size="sm"
-                role="listitem"
-                aria-label={language.display_names?.en}
-                asChild
-              >
-                <Button
-                  className="yv:w-full yv:h-auto"
-                  onClick={() => handleSelectLanguage(language.id)}
-                  type="button"
-                  variant="ghost"
-                >
-                  <ItemContent className="yv:flex yv:flex-row yv:justify-between yv:items-center">
-                    <ItemTitle className="yv:text-start yv:line-clamp-2 yv:truncate yv:min-w-0 yv:max-w-2/3 yv:flex-1">
-                      {language.display_names?.en}
-                    </ItemTitle>
-                    <ItemDescription className="yv:text-end yv:shrink-0 yv:max-w-1/3">
-                      {language.display_names?.[language.id]}
-                    </ItemDescription>
-                  </ItemContent>
-                </Button>
-              </Item>
-            ))}
-          </ItemGroup>
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="suggested" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
+            {suggestedLanguages.length > 0 ? (
+              <>
+                <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">
+                  {t('regionalHeading')}
+                </h3>
+                <ItemGroup className="yv:gap-1">
+                  {suggestedLanguages.map((suggestedLanguage) => (
+                    <LanguageRow
+                      key={suggestedLanguage.id}
+                      language={suggestedLanguage}
+                      onSelect={handleSelectLanguage}
+                      selectedLanguageId={selectedLanguageId}
+                    />
+                  ))}
+                </ItemGroup>
+              </>
+            ) : (
+              <p className="yv:px-4 yv:py-8 yv:text-center yv:text-muted-foreground">
+                {t('noRegionalLanguagesAvailable')}
+              </p>
+            )}
+          </TabsContent>
+
+          <TabsContent value="all" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
+            <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">
+              {t('allLanguagesHeading')}
+            </h3>
+            <ItemGroup className="yv:gap-1">
+              {languages.map((language) => (
+                <LanguageRow
+                  key={language.id}
+                  language={language}
+                  onSelect={handleSelectLanguage}
+                  selectedLanguageId={selectedLanguageId}
+                />
+              ))}
+            </ItemGroup>
+          </TabsContent>
+        </Tabs>
+      )}
+
+      <section className="yv:bg-muted yv:border-s yv:border-muted yv:p-4">
+        <div className="yv:grid yv:grid-cols-[1fr_auto] yv:gap-2">
+          <InputGroup className="yv:bg-background yv:shadow-none yv:border-border">
+            <InputGroupInput
+              aria-label={t('languageSearchAriaLabel')}
+              tabIndex={1}
+              type="text"
+              placeholder={t('searchPlaceholder')}
+              value={languageSearchQuery}
+              onChange={(e) => setLanguageSearchQuery(e.target.value)}
+            />
+            <InputGroupAddon>
+              <SearchIcon className="yv:size-5 yv:text-muted-foreground" />
+            </InputGroupAddon>
+          </InputGroup>
+        </div>
+      </section>
     </div>
   );
 }
