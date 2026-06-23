@@ -703,6 +703,7 @@ function Content() {
             selectedVerses={selectedVerses}
             highlightedVerses={highlightedVerses}
             anchorElement={anchorElement}
+            scrollRoot={scrollContainerRef.current}
             onHighlight={handleHighlight}
             onClearHighlight={handleClearHighlight}
             onCopy={handleCopy}

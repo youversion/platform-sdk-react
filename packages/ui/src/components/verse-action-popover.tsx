@@ -1,4 +1,4 @@
-import { useMemo, type FC } from 'react';
+import { useEffect, useMemo, useState, type FC } from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
@@ -26,6 +26,12 @@ type VerseActionPopoverProps = {
   selectedVerses: number[];
   highlightedVerses: Record<number, string>;
   anchorElement?: HTMLElement | null;
+  /**
+   * The reader's scroll container. When provided, the bar docks to the bottom of
+   * this element once the anchored verse scrolls out of view, so the actions stay
+   * reachable instead of leaving with the verse. Omit for a purely anchored bar.
+   */
+  scrollRoot?: HTMLElement | null;
   onHighlight: (color: string) => void;
   onClearHighlight: (color: string) => void;
   onCopy: () => void;
@@ -96,6 +102,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   selectedVerses,
   highlightedVerses,
   anchorElement,
+  scrollRoot,
   onHighlight,
   onClearHighlight,
   onCopy,
@@ -104,10 +111,75 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
 }) => {
   const { t } = useTranslation(undefined, { i18n });
 
-  const virtualRef = useMemo(
+  // When the anchored verse scrolls out of the container, dock the bar to the
+  // edge it exited through: scroll down (verse leaves the top) → dock top; scroll
+  // up (verse leaves the bottom) → dock bottom. `null` = anchored (verse visible,
+  // or docking disabled). The bar always passes through the visible/anchored state
+  // when reversing direction, so it never jumps directly top↔bottom.
+  const [dockEdge, setDockEdge] = useState<'top' | 'bottom' | null>(null);
+  useEffect(() => {
+    if (!open || !anchorElement || !scrollRoot || typeof IntersectionObserver === 'undefined') {
+      setDockEdge(null);
+      return;
+    }
+    // The just-tapped verse is on screen, so start anchored and let the observer
+    // flip us to docked only after the user scrolls it away.
+    setDockEdge(null);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[entries.length - 1];
+        if (!entry) return;
+        if (entry.isIntersecting) {
+          setDockEdge(null);
+          return;
+        }
+        // Off-screen: figure out which edge it exited through. rootBounds is
+        // populated because we pass an explicit root.
+        const rootTop = entry.rootBounds?.top ?? scrollRoot.getBoundingClientRect().top;
+        setDockEdge(entry.boundingClientRect.bottom <= rootTop ? 'top' : 'bottom');
+      },
+      { root: scrollRoot, threshold: 0 },
+    );
+    observer.observe(anchorElement);
+    return () => observer.disconnect();
+  }, [open, anchorElement, scrollRoot]);
+
+  const anchorRef = useMemo(
     () => (anchorElement ? { current: anchorElement as Measurable } : undefined),
     [anchorElement],
   );
+
+  // A virtual anchor pinned to the top- or bottom-center of the scroll container,
+  // in viewport coordinates. Read live so it stays put as the reader scrolls.
+  const dockedRef = useMemo(() => {
+    if (!scrollRoot || !dockEdge) return undefined;
+    return {
+      current: {
+        getBoundingClientRect: () => {
+          const r = scrollRoot.getBoundingClientRect();
+          const cx = r.left + r.width / 2;
+          const y = dockEdge === 'top' ? r.top : r.bottom;
+          return {
+            x: cx,
+            y,
+            left: cx,
+            right: cx,
+            top: y,
+            bottom: y,
+            width: 0,
+            height: 0,
+            toJSON: () => ({}),
+          } as DOMRect;
+        },
+      },
+    };
+  }, [scrollRoot, dockEdge]);
+
+  const docked = Boolean(dockedRef);
+  const virtualRef = docked ? dockedRef : anchorRef;
+  // Top-edge anchor → render below it (side bottom); bottom-edge anchor → render
+  // above it (side top). Both place the bar just inside the reader edge.
+  const dockedSide = dockEdge === 'top' ? 'bottom' : 'top';
 
   const activeColors = HIGHLIGHT_COLORS.filter((c) => activeHighlights.has(c));
   const highlightedVerseCount = selectedVerses.filter((v) => highlightedVerses[v]).length;
@@ -143,8 +215,8 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
               event.preventDefault();
             }
           }}
-          side="bottom"
-          sideOffset={20}
+          side={docked ? dockedSide : 'bottom'}
+          sideOffset={docked ? 24 : 20}
           align="center"
           className={cn(
             'yv:bg-card yv:text-popover-foreground',
@@ -158,6 +230,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
             'yv:data-[state=closed]:fade-out-0 yv:data-[state=open]:fade-in-0',
             'yv:data-[state=closed]:zoom-out-95 yv:data-[state=open]:zoom-in-95',
             'yv:data-[side=bottom]:slide-in-from-top-2',
+            'yv:data-[side=top]:slide-in-from-bottom-2',
           )}
           style={
             {
@@ -166,18 +239,21 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
             } as React.CSSProperties
           }
         >
-          {/* Caret — matches the card background in both themes, pointing at the verse. */}
-          <svg
-            className="yv:text-card yv:absolute yv:-top-[16px] yv:left-1/2 yv:-translate-x-1/2"
-            width="33"
-            height="17"
-            viewBox="0 0 33 17"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
-          >
-            <path d="M16.0215 0L32.0429 16.5H0L16.0215 0Z" fill="currentColor" />
-          </svg>
+          {/* Caret — matches the card background in both themes, pointing at the
+              verse. Hidden when docked: the bar is no longer tied to a verse. */}
+          {!docked && (
+            <svg
+              className="yv:text-card yv:absolute yv:-top-[16px] yv:left-1/2 yv:-translate-x-1/2"
+              width="33"
+              height="17"
+              viewBox="0 0 33 17"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path d="M16.0215 0L32.0429 16.5H0L16.0215 0Z" fill="currentColor" />
+            </svg>
+          )}
 
           <div
             className="yv:flex yv:items-center yv:gap-2"

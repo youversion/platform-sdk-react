@@ -386,6 +386,9 @@ export const FootnotePopoverThemeDark: Story = {
 
 function VerseSelectionDemo(props: BibleTextViewProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
+  // Captured as state (not a ref) so the popover's docking observer re-subscribes
+  // once the scroll container mounts.
+  const [scrollEl, setScrollEl] = React.useState<HTMLElement | null>(null);
   const [selectedVerses, setSelectedVerses] = React.useState<number[]>([]);
   const [highlightedVerses, setHighlightedVerses] = React.useState<Record<number, string>>({});
   const [popoverOpen, setPopoverOpen] = React.useState(false);
@@ -505,7 +508,7 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
         </Button>
       </div>
 
-      <div className="yv:h-full yv:overflow-y-auto">
+      <div ref={setScrollEl} className="yv:h-full yv:overflow-y-auto">
         <BibleTextView
           renderNotes={true}
           {...props}
@@ -522,6 +525,7 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
         selectedVerses={selectedVerses}
         highlightedVerses={highlightedVerses}
         anchorElement={anchorElement}
+        scrollRoot={scrollEl}
         onHighlight={handleHighlight}
         onClearHighlight={handleClearHighlight}
         onCopy={handleCopy}
