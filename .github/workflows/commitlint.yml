@@ -1,0 +1,47 @@
+name: Commitlint
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  commitlint:
+    name: Lint Commit Messages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Use the current tip of origin/main as the lower bound rather than the
+      # PR's recorded base SHA. The recorded base SHA goes stale as soon as
+      # main moves forward, which causes the lint range to include commits that
+      # have already been merged-and-linted. Anchoring at origin/main only ever
+      # lints new commits authored on this branch since the most recent merge
+      # from main. See docs/release-hardening-plan.md (AC6).
+      - name: Resolve current main
+        id: main
+        run: |
+          set -euo pipefail
+          git fetch origin main:refs/remotes/origin/main --depth=1 || \
+            git fetch --unshallow origin main:refs/remotes/origin/main
+          main_sha=$(git rev-parse origin/main)
+          echo "sha=${main_sha}" >> "$GITHUB_OUTPUT"
+          echo "Linting against origin/main = ${main_sha}"
+
+      - name: Lint commits
+        run: pnpm exec commitlint --from ${{ steps.main.outputs.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
