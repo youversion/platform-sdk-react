@@ -45,6 +45,10 @@ export {
   FootnoteContent,
   type FootnoteContentProps,
 } from './verse';
+// NOTE: the popover's `HighlightColor` (a hex-string union) is intentionally not
+// re-exported here — core already exports a different `HighlightColor` (the API's
+// { id, color, label } shape). Import it from './verse-action-popover' if needed.
+export { VerseActionPopover, HIGHLIGHT_COLORS } from './verse-action-popover';
 export { BibleCard, type BibleCardProps } from './bible-card';
 export { Separator } from './ui/separator';
 export { Textarea } from './ui/textarea';

@@ -2,7 +2,9 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import React from 'react';
 
-import { type BibleTextViewProps, BibleTextView, Verse } from './verse';
+import { type BibleTextViewProps, BibleTextView, Verse, getCleanVerseText } from './verse';
+import { VerseActionPopover } from './verse-action-popover';
+import { buildVerseShareText } from '@/lib/verse-share';
 import { Button } from './ui/button';
 import { XIcon } from '@/components/icons/x';
 
@@ -383,33 +385,107 @@ export const FootnotePopoverThemeDark: Story = {
 };
 
 function VerseSelectionDemo(props: BibleTextViewProps) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
   const [selectedVerses, setSelectedVerses] = React.useState<number[]>([]);
-  const [highlightedVerses, setHighlightedVerses] = React.useState<Record<number, boolean>>({});
+  const [highlightedVerses, setHighlightedVerses] = React.useState<Record<number, string>>({});
+  const [popoverOpen, setPopoverOpen] = React.useState(false);
+  const [anchorElement, setAnchorElement] = React.useState<HTMLElement | null>(null);
+  const lastSelectionRef = React.useRef<number[]>([]);
 
-  const handleHighlight = () => {
-    setHighlightedVerses((prev) => {
-      const next = { ...prev };
-      for (const verse of selectedVerses) {
-        next[verse] = true;
-      }
-      return next;
-    });
+  const activeHighlights = React.useMemo(
+    () =>
+      new Set(
+        selectedVerses
+          .map((verse) => highlightedVerses[verse])
+          .filter((color): color is string => Boolean(color)),
+      ),
+    [selectedVerses, highlightedVerses],
+  );
+
+  const closeAndClear = () => {
+    setPopoverOpen(false);
     setSelectedVerses([]);
+    setAnchorElement(null);
+    lastSelectionRef.current = [];
   };
 
-  const handleClearHighlights = () => {
+  const handleVerseSelect = (verses: number[]) => {
+    const added = verses.find((verse) => !lastSelectionRef.current.includes(verse));
+    lastSelectionRef.current = verses;
+    setSelectedVerses(verses);
+    if (verses.length === 0) {
+      setPopoverOpen(false);
+      setAnchorElement(null);
+      return;
+    }
+    const anchorVerse = added ?? Math.max(...verses);
+    const wrappers = containerRef.current?.querySelectorAll(`.yv-v[v="${anchorVerse}"]`);
+    const anchor = wrappers?.[wrappers.length - 1];
+    setAnchorElement(anchor instanceof HTMLElement ? anchor : null);
+    setPopoverOpen(true);
+  };
+
+  const handleHighlight = (color: string) => {
+    setHighlightedVerses((prev) => {
+      const next = { ...prev };
+      for (const verse of selectedVerses) next[verse] = color;
+      return next;
+    });
+    closeAndClear();
+  };
+
+  const handleClearHighlight = (color: string) => {
     setHighlightedVerses((prev) => {
       const next = { ...prev };
       for (const verse of selectedVerses) {
-        delete next[verse];
+        if (next[verse] === color) delete next[verse];
       }
       return next;
     });
-    setSelectedVerses([]);
+    const hasRemaining = selectedVerses.some((verse) => {
+      const current = highlightedVerses[verse];
+      return current && current !== color;
+    });
+    if (!hasRemaining) closeAndClear();
+  };
+
+  const buildText = () => {
+    const container = containerRef.current;
+    if (!container) return '';
+    const textByVerse: Record<number, string> = {};
+    for (const verse of selectedVerses) textByVerse[verse] = getCleanVerseText(container, verse);
+    return buildVerseShareText({
+      verses: selectedVerses,
+      textByVerse,
+      bookName: 'John',
+      chapter: 1,
+      versionAbbreviation: 'NIV',
+    });
+  };
+
+  const handleCopy = () => {
+    void navigator.clipboard?.writeText(buildText());
+    closeAndClear();
+  };
+
+  const handleShare = () => {
+    const text = buildText();
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      navigator
+        .share({ text })
+        .then(() => closeAndClear())
+        .catch(() => {
+          // Cancelled or failed — keep open.
+        });
+      return;
+    }
+    void navigator.clipboard?.writeText(text);
+    closeAndClear();
   };
 
   return (
     <div
+      ref={containerRef}
       data-yv-sdk
       className="yv:grid yv:grid-rows-[auto_1fr] yv:gap-4 yv:max-w-lg yv:h-svh yv:max-h-svh yv:overflow-hidden"
     >
@@ -418,27 +494,11 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
           Selected: {selectedVerses.length > 0 ? selectedVerses.join(', ') : 'None'}
         </p>
         <Button
-          onClick={handleHighlight}
-          disabled={!selectedVerses.length}
-          variant="outline"
-          size="sm"
-        >
-          Highlight
-        </Button>
-        <Button
-          onClick={handleClearHighlights}
-          disabled={!selectedVerses.length}
-          variant="outline"
-          size="sm"
-        >
-          Clear
-        </Button>
-        <Button
           disabled={!selectedVerses.length}
           type="button"
           size="icon"
           variant="outline"
-          onClick={() => setSelectedVerses([])}
+          onClick={closeAndClear}
           className="yv:text-primary"
         >
           <XIcon className="yv:size-4" />
@@ -450,10 +510,23 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
           renderNotes={true}
           {...props}
           selectedVerses={selectedVerses}
-          onVerseSelect={setSelectedVerses}
+          onVerseSelect={handleVerseSelect}
           highlightedVerses={highlightedVerses}
         />
       </div>
+
+      <VerseActionPopover
+        open={popoverOpen && selectedVerses.length > 0}
+        onOpenChange={(open) => (open ? setPopoverOpen(true) : closeAndClear())}
+        activeHighlights={activeHighlights}
+        selectedVerses={selectedVerses}
+        highlightedVerses={highlightedVerses}
+        anchorElement={anchorElement}
+        onHighlight={handleHighlight}
+        onClearHighlight={handleClearHighlight}
+        onCopy={handleCopy}
+        onShare={handleShare}
+      />
     </div>
   );
 }
