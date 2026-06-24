@@ -197,7 +197,7 @@ describe('BibleChapterPicker.Content onSelect', () => {
   });
 });
 
-describe('BibleChapterPicker - typography (matches Figma: Aktiv Grotesk App)', () => {
+describe('BibleChapterPicker - typography (matches Figma sizing; sans inherited)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupDefaultMocks();
@@ -224,7 +224,7 @@ describe('BibleChapterPicker - typography (matches Figma: Aktiv Grotesk App)', (
     );
   }
 
-  it('book row uses Aktiv 16px, regular collapsed and bold when expanded', () => {
+  it('book row uses 16px, regular collapsed and bold when expanded', () => {
     renderContent();
 
     // GEN is the default-expanded book (book="GEN").

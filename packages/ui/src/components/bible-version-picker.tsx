@@ -155,7 +155,7 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
   return (
     <div
       ref={containerRef}
-      className="yv:flex yv:flex-col yv:w-full yv:h-full yv:px-1.5 yv:font-untitled-serif! yv:[&_*]:font-untitled-serif! yv:leading-[1.03] yv:font-bold yv:text-foreground yv:items-center yv:justify-center"
+      className="yv:flex yv:flex-col yv:w-full yv:h-full yv:px-1.5 yv:font-serif! yv:[&_*]:font-serif! yv:leading-[1.03] yv:font-bold yv:text-foreground yv:items-center yv:justify-center"
     >
       <div ref={prefixRef} className="yv:whitespace-nowrap" style={{ fontSize: `${prefixSize}px` }}>
         {prefix}

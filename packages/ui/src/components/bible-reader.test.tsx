@@ -28,7 +28,7 @@ import {
   nextBibleReaderFontSizeUp,
   type BibleThemeSettingsSnapshot,
 } from './bible-reader';
-import { AKTIV_FONT, INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
+import { INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
 
 class ResizeObserverMock {
   observe() {}
@@ -206,9 +206,9 @@ describe('BibleReader theme settings', () => {
       expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('18');
     });
 
-    await user.click(screen.getByRole('button', { name: /aktiv/i }));
+    await user.click(screen.getByRole('button', { name: /inter/i }));
     await waitFor(() => {
-      expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(AKTIV_FONT);
+      expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(INTER_FONT);
     });
   });
 
