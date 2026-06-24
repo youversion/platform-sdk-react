@@ -1,4 +1,9 @@
-import { INTER_FONT, SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
+import {
+  AKTIV_FONT,
+  INTER_FONT,
+  SOURCE_SERIF_FONT,
+  UNTITLED_SERIF_FONT,
+} from '@/lib/verse-html-utils';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { delay, http, HttpResponse } from 'msw';
 import { expect, fn, screen, spyOn, userEvent, waitFor } from 'storybook/test';
@@ -49,7 +54,7 @@ const meta: Meta<typeof BibleReader.Root> = {
     },
     fontFamily: {
       control: 'select',
-      options: [SOURCE_SERIF_FONT, INTER_FONT, "'Georgia', serif", "'Nunito Sans', sans-serif"],
+      options: [UNTITLED_SERIF_FONT, AKTIV_FONT, INTER_FONT, SOURCE_SERIF_FONT],
       description: 'Font family',
     },
     showVerseNumbers: {
@@ -73,7 +78,7 @@ export const Default: Story = {
   args: {
     defaultVersionId: 111,
     lineSpacing: 1.7,
-    fontFamily: "'Inter', sans-serif",
+    fontFamily: AKTIV_FONT,
     showVerseNumbers: true,
   },
   render: (args) => (
@@ -126,16 +131,16 @@ export const Default: Story = {
     await expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('12');
     await expect(decreaseFontButton).toBeDisabled();
 
-    const interButton = screen.getByRole('button', { name: /inter/i });
-    const sourceSerifButton = screen.getByRole('button', { name: /source serif/i });
+    const aktivButton = screen.getByRole('button', { name: /aktiv/i });
+    const untitledSerifButton = screen.getByRole('button', { name: /untitled serif/i });
 
-    await userEvent.click(sourceSerifButton);
+    await userEvent.click(untitledSerifButton);
     await expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(
-      SOURCE_SERIF_FONT,
+      UNTITLED_SERIF_FONT,
     );
 
-    await userEvent.click(interButton);
-    await expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(INTER_FONT);
+    await userEvent.click(aktivButton);
+    await expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(AKTIV_FONT);
   },
 };
 
@@ -147,7 +152,7 @@ export const DarkTheme: Story = {
     defaultVersionId: 111,
     fontSize: 16,
     lineSpacing: 1.7,
-    fontFamily: "'Inter', sans-serif",
+    fontFamily: AKTIV_FONT,
     showVerseNumbers: true,
   },
   globals: {
@@ -172,7 +177,7 @@ export const CustomStyling: Story = {
     defaultVersionId: 111,
     fontSize: 18,
     lineSpacing: 2.0,
-    fontFamily: "'Nunito Sans', sans-serif",
+    fontFamily: UNTITLED_SERIF_FONT,
     showVerseNumbers: false,
   },
   render: (args) => (
@@ -202,7 +207,7 @@ export const FontSizeOutOfRange: Story = {
     defaultVersionId: 111,
     fontSize: 28,
     lineSpacing: 2.0,
-    fontFamily: "'Nunito Sans', sans-serif",
+    fontFamily: UNTITLED_SERIF_FONT,
     showVerseNumbers: false,
   },
   render: (args) => (
@@ -505,7 +510,7 @@ export const LoadsSavedPreferencesFromLocalStorage: Story = {
     localStorage.clear();
     // Pre-populate localStorage with saved preferences
     localStorage.setItem('youversion-platform:reader:font-size', '18');
-    localStorage.setItem('youversion-platform:reader:font-family', SOURCE_SERIF_FONT);
+    localStorage.setItem('youversion-platform:reader:font-family', UNTITLED_SERIF_FONT);
   },
   render: (args) => (
     <div data-yv-sdk className="yv:h-screen">
@@ -530,7 +535,7 @@ export const LoadsSavedPreferencesFromLocalStorage: Story = {
     )!;
     await expect(verseContainer.style.getPropertyValue('--yv-reader-font-size')).toBe('18px');
     await expect(verseContainer.style.getPropertyValue('--yv-reader-font-family')).toBe(
-      SOURCE_SERIF_FONT,
+      UNTITLED_SERIF_FONT,
     );
 
     // Open settings and verify the correct font family button is active
@@ -541,11 +546,11 @@ export const LoadsSavedPreferencesFromLocalStorage: Story = {
       await expect(await screen.findByText('Reader Settings')).toBeInTheDocument();
     });
 
-    const sourceSerifButton = screen.getByRole('button', { name: /source serif/i });
-    await expect(sourceSerifButton).toHaveClass('yv:bg-primary');
+    const untitledSerifButton = screen.getByRole('button', { name: /untitled serif/i });
+    await expect(untitledSerifButton).toHaveClass('yv:bg-primary');
 
-    const interButton = screen.getByRole('button', { name: /inter/i });
-    await expect(interButton).not.toHaveClass('yv:bg-primary');
+    const aktivButton = screen.getByRole('button', { name: /aktiv/i });
+    await expect(aktivButton).not.toHaveClass('yv:bg-primary');
   },
 };
 

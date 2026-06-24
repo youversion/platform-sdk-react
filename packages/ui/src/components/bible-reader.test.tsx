@@ -13,6 +13,7 @@ import {
   useFilteredVersions,
   useLanguage,
   useLanguages,
+  useOrganizations,
   useTheme,
   useVersion,
   useVersions,
@@ -27,7 +28,7 @@ import {
   nextBibleReaderFontSizeUp,
   type BibleThemeSettingsSnapshot,
 } from './bible-reader';
-import { INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
+import { AKTIV_FONT, INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
 
 class ResizeObserverMock {
   observe() {}
@@ -44,6 +45,7 @@ vi.mock('@youversion/platform-react-hooks', async () => {
     useFilteredVersions: vi.fn(),
     useLanguage: vi.fn(),
     useLanguages: vi.fn(),
+    useOrganizations: vi.fn(),
     useTheme: vi.fn(),
     useVersion: vi.fn(),
     useVersions: vi.fn(),
@@ -105,6 +107,7 @@ function setupDefaultMocks() {
     refetch: vi.fn(),
   });
   vi.mocked(useFilteredVersions).mockReturnValue([]);
+  vi.mocked(useOrganizations).mockReturnValue({ organizations: new Map() });
 }
 
 describe('BibleReader font helpers', () => {
@@ -203,9 +206,9 @@ describe('BibleReader theme settings', () => {
       expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('18');
     });
 
-    await user.click(screen.getByRole('button', { name: /inter/i }));
+    await user.click(screen.getByRole('button', { name: /aktiv/i }));
     await waitFor(() => {
-      expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(INTER_FONT);
+      expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(AKTIV_FONT);
     });
   });
 

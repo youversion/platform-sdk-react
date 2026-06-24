@@ -26,7 +26,7 @@ import {
   useLanguages,
   useLanguage,
   useFilteredVersions,
-  useOrganization,
+  useOrganizations,
   useTheme,
 } from '@youversion/platform-react-hooks';
 import type { BibleVersion, Language, Organization } from '@youversion/platform-core';
@@ -148,12 +148,9 @@ function setupDefaultMocks({
 
   vi.mocked(useFilteredVersions).mockReturnValue(filteredVersions);
 
-  vi.mocked(useOrganization).mockImplementation((organizationId: string) => ({
-    organization: organizationId === mockOrganization.id ? mockOrganization : null,
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-  }));
+  vi.mocked(useOrganizations).mockReturnValue({
+    organizations: new Map([[mockOrganization.id, mockOrganization]]),
+  });
 
   vi.mocked(useTheme).mockReturnValue('light');
 }
