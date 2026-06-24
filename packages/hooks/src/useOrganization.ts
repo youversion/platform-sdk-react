@@ -2,7 +2,7 @@
 
 import { useApiData, type UseApiDataOptions } from './useApiData';
 import { type Organization } from '@youversion/platform-core';
-import { useOrganizationsClient } from './useOrganizationClient';
+import { useOrganizationsClient } from './useOrganizationsClient';
 
 export function useOrganization(
   organizationId: string,
