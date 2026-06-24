@@ -839,6 +839,7 @@ export function BibleLanguagePickerContent({
     background,
   } = useBibleVersionPickerContext();
 
+  const [languageTab, setLanguageTab] = useState('suggested');
   const isSearching = languageSearchQuery.trim().length > 0;
 
   const handleSelectLanguage = (languageId: string) => {
@@ -876,7 +877,8 @@ export function BibleLanguagePickerContent({
       ) : (
         <Tabs
           className="yv:mt-4 yv:gap-4 yv:flex-1 yv:min-h-0 yv:flex yv:flex-col"
-          defaultValue="suggested"
+          value={languageTab}
+          onValueChange={setLanguageTab}
         >
           <TabsList className="yv:mx-4 yv:w-[calc(100%-4*var(--spacing)*2)]">
             <TabsTrigger className="yv:p-0" value="suggested">

@@ -537,6 +537,20 @@ describe('BibleVersionPicker', () => {
       expect(getLanguageSearchInput()).toHaveValue('');
     });
 
+    it('preserves the selected tab after clearing language search', async () => {
+      const user = userEvent.setup();
+
+      setupDefaultMocks();
+      renderPicker();
+      await openLanguagePanel();
+
+      await user.click(screen.getByRole('tab', { name: /all/i }));
+      await user.type(getLanguageSearchInput(), 'span');
+      await user.clear(getLanguageSearchInput());
+
+      expect(screen.getByRole('tab', { name: /all/i })).toHaveAttribute('aria-selected', 'true');
+    });
+
     it('calls onLanguageChange and clears search after selecting a filtered language', async () => {
       const user = userEvent.setup();
       const onLanguageChange = vi.fn();
