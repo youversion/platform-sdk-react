@@ -1,6 +1,8 @@
 {
   "verseOfTheDay": "Verse of The Day",
   "shareAriaLabel": "Share",
+  "noLanguageSearchResults": "We're sorry, there are no results for this search.",
+  "languageSearchAriaLabel": "Search languages",
   "loadingVerseAriaLabel": "Loading verse",
   "loadingPassageAriaLabel": "Loading passage",
   "loadingBibleVersionAriaLabel": "Loading Bible version",
