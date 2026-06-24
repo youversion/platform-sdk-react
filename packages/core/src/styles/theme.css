@@ -108,8 +108,11 @@
   --yv-sidebar-border: var(--yv-gray-15);
   --yv-sidebar-ring: var(--yv-blue-30);
 
-  --yv-font-sans: 'Inter', sans-serif;
-  --yv-font-serif: 'Source Serif 4', serif;
+  /* YouVersion brand fonts (loaded via @font-face in the UI package's global.css,
+     served from the prod CDN). Inter / Source Serif 4 remain as graceful fallbacks
+     if the brand woff2 files fail to load (e.g. a consumer's strict font-src CSP). */
+  --yv-font-sans: 'Aktiv Grotesk App', 'Inter', sans-serif;
+  --yv-font-serif: 'Untitled Serif', 'Source Serif 4', serif;
   --yv-reader-font-family: var(--yv-font-serif), var(--yv-font-sans);
 
   &[data-yv-theme='dark'] {

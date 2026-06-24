@@ -3,7 +3,7 @@
 import i18n from '@/i18n';
 import { useDelayedLoading } from '@/lib/use-delayed-loading';
 import { cn } from '@/lib/utils';
-import { INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
+import { AKTIV_FONT, UNTITLED_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import type { BibleBook } from '@youversion/platform-core';
 import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, getAdjacentChapter } from '@youversion/platform-core';
@@ -235,7 +235,7 @@ function Root({
   defaultFontSize = DEFAULT_FONT_SIZE,
   onFontSizeChange,
   fontFamily: fontFamilyProp,
-  defaultFontFamily = SOURCE_SERIF_FONT,
+  defaultFontFamily = UNTITLED_SERIF_FONT,
   onFontFamilyChange,
   lineSpacing: lineSpacingProp,
   defaultLineSpacing,
@@ -688,42 +688,42 @@ export function BibleThemeSettingsContent({
         <Button
           className={cn(
             'yv:group yv:dark:bg-muted yv:rounded-r-none yv:border-r-0.5 yv:dark:border-border yv:rounded-l-[8px] yv:h-auto',
-            fontFamily === INTER_FONT
+            fontFamily === AKTIV_FONT
               ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
               : '',
           )}
-          onClick={() => onFontSelected(INTER_FONT)}
+          onClick={() => onFontSelected(AKTIV_FONT)}
           variant="outline"
         >
           <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
             <span
               className={cn(
                 'yv:text-xs yv:text-muted-foreground',
-                fontFamily === INTER_FONT
+                fontFamily === AKTIV_FONT
                   ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
                   : '',
               )}
             >
               {t('fontLabel')}
             </span>
-            <span className="yv:sm:text-xl yv:text-base">{t('interFontName')}</span>
+            <span className="yv:sm:text-xl yv:text-base">{t('aktivFontName')}</span>
           </div>
         </Button>
         <Button
           className={cn(
             'yv:group yv:dark:bg-muted yv:border-l-0.5 yv:rounded-l-none yv:rounded-r-[8px] yv:h-auto',
-            fontFamily === SOURCE_SERIF_FONT
+            fontFamily === UNTITLED_SERIF_FONT
               ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
               : '',
           )}
-          onClick={() => onFontSelected(SOURCE_SERIF_FONT)}
+          onClick={() => onFontSelected(UNTITLED_SERIF_FONT)}
           variant="outline"
         >
           <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
             <span
               className={cn(
                 'yv:text-xs yv:text-muted-foreground',
-                fontFamily === SOURCE_SERIF_FONT
+                fontFamily === UNTITLED_SERIF_FONT
                   ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
                   : '',
               )}
@@ -731,7 +731,7 @@ export function BibleThemeSettingsContent({
               {t('fontLabel')}
             </span>
             <span className="yv:sm:text-xl yv:text-base yv:font-serif">
-              {t('sourceSerifFontName')}
+              {t('untitledSerifFontName')}
             </span>
           </div>
         </Button>
