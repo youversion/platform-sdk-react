@@ -2,10 +2,10 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useOrganization } from './useOrganization';
 import { type Organization, type OrganizationsClient } from '@youversion/platform-core';
-import { useOrganizationsClient } from './useOrganizationClient';
+import { useOrganizationsClient } from './useOrganizationsClient';
 import { createYVWrapper } from './test/utils';
 
-vi.mock('./useOrganizationClient');
+vi.mock('./useOrganizationsClient');
 
 describe('useOrganization', () => {
   const mockGetOrganization = vi.fn();
