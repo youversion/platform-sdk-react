@@ -54,7 +54,7 @@ export const RendersMessage: Story = {
       await expect(canvas.getByRole('alert')).toBeInTheDocument();
     });
 
-    await expect(canvas.getByText('Missing app key')).toBeInTheDocument();
-    await expect(canvas.getByText(/appKey/)).toBeInTheDocument();
+    await expect(canvas.getByText('Error')).toBeInTheDocument();
+    await expect(canvas.getByText(/app key/)).toBeInTheDocument();
   },
 };

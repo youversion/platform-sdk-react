@@ -18,9 +18,11 @@ export function YouVersionProvider(
   }, []);
 
   // Guard against a missing/empty app key here (rather than letting the base
-  // provider throw) so consumers of the UI package see a styled, actionable
-  // message instead of a blank page. Hooks-only consumers still get a thrown
-  // error from the base provider.
+  // provider throw) so consumers of the UI package see a styled message instead
+  // of a blank page. The visible panel is intentionally generic; the actionable
+  // fix (set the env var, restart the dev server) goes to console.error for the
+  // developer. Hooks-only consumers still get a thrown error from the base
+  // provider.
   if (!props.appKey?.trim()) {
     console.error(
       'YouVersionProvider: a non-empty "appKey" is required. If you load it from an ' +

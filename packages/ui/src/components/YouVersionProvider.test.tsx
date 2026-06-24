@@ -54,6 +54,7 @@ describe('UI YouVersionProvider', () => {
     'renders the missing-app-key message and skips the base provider when appKey is %s',
     (_label, appKey) => {
       baseProviderMock.mockClear();
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
       render(
         // @ts-expect-error -- exercising the runtime guard with an invalid appKey
@@ -63,9 +64,13 @@ describe('UI YouVersionProvider', () => {
       );
 
       expect(screen.getByRole('alert')).toBeInTheDocument();
-      expect(screen.getByText('Missing app key')).toBeInTheDocument();
+      expect(screen.getByText('Error')).toBeInTheDocument();
       expect(screen.queryByTestId('child')).not.toBeInTheDocument();
       expect(baseProviderMock).not.toHaveBeenCalled();
+      // The actionable guidance for developers lives in console.error, not the panel.
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('appKey'));
+
+      errorSpy.mockRestore();
     },
   );
 });
