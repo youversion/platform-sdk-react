@@ -50,8 +50,6 @@
   "sunIconTitle": "Dom",
   "passageNotFoundError": "Este pasaje no está disponible en la versión de la Biblia seleccionada.",
   "invalidAppKeyError": "Este contenido bíblico no se pudo cargar porque la clave de la aplicación falta o no es válida.",
-  "missingAppKeyHeading": "Falta la clave de la aplicación",
-  "missingAppKeyBody": "Proporciona una «appKey» válida a YouVersionProvider. Si la cargas desde una variable de entorno, asegúrate de que esté definida y reinicia tu servidor de desarrollo.",
   "forbiddenError": "Esta aplicación no tiene permiso para acceder a este contenido bíblico.",
   "unreachableServerError": "No se pudo conectar con el servidor de la Biblia. Verifica tu conexión e inténtalo de nuevo.",
   "rateLimitedError": "El servicio de la Biblia está recibiendo demasiadas solicitudes en este momento. Por favor, espera un momento e inténtalo de nuevo.",

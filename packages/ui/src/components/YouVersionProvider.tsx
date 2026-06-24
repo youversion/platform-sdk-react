@@ -22,6 +22,11 @@ export function YouVersionProvider(
   // message instead of a blank page. Hooks-only consumers still get a thrown
   // error from the base provider.
   if (!props.appKey?.trim()) {
+    console.error(
+      'YouVersionProvider: a non-empty "appKey" is required. If you load it from an ' +
+        'environment variable, make sure it is set and restart your dev server.',
+    );
+
     return (
       <>
         <YvStyles />

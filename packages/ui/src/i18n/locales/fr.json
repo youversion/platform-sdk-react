@@ -50,8 +50,6 @@
   "sunIconTitle": "Dim",
   "passageNotFoundError": "Ce passage n'est pas disponible dans la version de la Bible sélectionnée.",
   "invalidAppKeyError": "Ce contenu biblique n'a pas pu être chargé car la clé d'application est manquante ou invalide.",
-  "missingAppKeyHeading": "Clé d'application manquante",
-  "missingAppKeyBody": "Fournissez une « appKey » valide à YouVersionProvider. Si vous la chargez depuis une variable d'environnement, assurez-vous qu'elle est définie et redémarrez votre serveur de développement.",
   "forbiddenError": "Cette application n'est pas autorisée à accéder à ce contenu biblique.",
   "unreachableServerError": "Le serveur de la Bible n'a pas pu être atteint. Vérifiez votre connexion et réessayez.",
   "rateLimitedError": "Le service de la Bible reçoit trop de requêtes en ce moment. Veuillez patienter un moment et réessayer.",
