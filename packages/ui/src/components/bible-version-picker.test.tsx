@@ -78,22 +78,28 @@ const mockLanguages: Language[] = [
 
 function setupDefaultMocks({
   versionsLoading = false,
+  languagesLoading = false,
+  versionsLanguageInfoLoading = false,
   filteredVersions = mockVersions,
 }: {
   versionsLoading?: boolean;
+  languagesLoading?: boolean;
+  versionsLanguageInfoLoading?: boolean;
   filteredVersions?: BibleVersion[];
 } = {}) {
   vi.mocked(useVersions).mockImplementation((languageId) => {
     if (languageId === '*') {
       return {
-        versions: {
-          data: mockLanguages.map((language) => ({
-            id: language.id === 'en' ? 111 : language.id === 'es' ? 222 : 333,
-            language_tag: language.id,
-          })),
-          next_page_token: null,
-        },
-        loading: false,
+        versions: versionsLanguageInfoLoading
+          ? null
+          : {
+              data: mockLanguages.map((language) => ({
+                id: language.id === 'en' ? 111 : language.id === 'es' ? 222 : 333,
+                language_tag: language.id,
+              })),
+              next_page_token: null,
+            },
+        loading: versionsLanguageInfoLoading,
         error: null,
         refetch: vi.fn(),
       } as unknown as ReturnType<typeof useVersions>;
@@ -115,11 +121,13 @@ function setupDefaultMocks({
   });
 
   vi.mocked(useLanguages).mockImplementation((params: Parameters<typeof useLanguages>[0]) => ({
-    languages: {
-      data: params && 'country' in params ? [mockLanguages[0]!] : mockLanguages,
-      next_page_token: null,
-    },
-    loading: false,
+    languages: languagesLoading
+      ? null
+      : {
+          data: params && 'country' in params ? [mockLanguages[0]!] : mockLanguages,
+          next_page_token: null,
+        },
+    loading: languagesLoading,
     error: null,
     refetch: vi.fn(),
   }));
@@ -519,6 +527,26 @@ describe('BibleVersionPicker', () => {
         screen.getByText("We're sorry, there are no results for this search."),
       ).toBeInTheDocument();
       expect(screen.queryByTestId('language-search-results')).not.toBeInTheDocument();
+    });
+
+    it('shows loading state instead of empty results while languages are loading', async () => {
+      const user = userEvent.setup();
+
+      setupDefaultMocks({ languagesLoading: true });
+      renderPicker();
+      await openLanguagePanel();
+
+      await user.type(getLanguageSearchInput(), 'span');
+
+      expect(
+        screen.queryByText("We're sorry, there are no results for this search."),
+      ).not.toBeInTheDocument();
+      expect(
+        screen
+          .getByRole('textbox', { name: /search languages/i })
+          .closest('[data-yv-sdk]')
+          ?.querySelector('.yv\\:animate-spin'),
+      ).toBeInTheDocument();
     });
 
     it('clears language search when navigating back to bible versions', async () => {

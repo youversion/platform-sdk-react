@@ -169,6 +169,7 @@ type BibleVersionPickerContextType = {
   languageSearchQuery: string;
   setLanguageSearchQuery: (query: string) => void;
   filteredLanguages: LanguageListItem[];
+  isLoadingLanguages: boolean;
   closeLanguagePanel: () => void;
   resetLanguageSearch: () => void;
   suggestedLanguages: Pick<Language, 'id' | 'display_names'>[];
@@ -293,16 +294,21 @@ function Root({
     });
   }, []);
 
-  const { languages } = useLanguages({
+  const { languages, loading: languagesLoading } = useLanguages({
     fields: ['id', 'display_names', 'speaking_population'],
     page_size: '*',
   });
 
   const { versions, loading: versionsLoading } = useVersions(selectedLanguageId);
-  const { versions: versionsLanguageInfo } = useVersions('*', undefined, {
-    fields: ['id', 'language_tag'],
-    page_size: '*',
-  });
+  const { versions: versionsLanguageInfo, loading: versionsLanguageInfoLoading } = useVersions(
+    '*',
+    undefined,
+    {
+      fields: ['id', 'language_tag'],
+      page_size: '*',
+    },
+  );
+  const isLoadingLanguages = languagesLoading || versionsLanguageInfoLoading;
   const filteredVersions = useFilteredVersions(
     versions?.data || [],
     searchQuery,
@@ -398,6 +404,7 @@ function Root({
     languageSearchQuery,
     setLanguageSearchQuery,
     filteredLanguages,
+    isLoadingLanguages,
     closeLanguagePanel,
     resetLanguageSearch,
     suggestedLanguages,
@@ -836,6 +843,7 @@ export function BibleLanguagePickerContent({
     languageSearchQuery,
     setLanguageSearchQuery,
     resetLanguageSearch,
+    isLoadingLanguages,
     background,
   } = useBibleVersionPickerContext();
 
@@ -857,7 +865,11 @@ export function BibleLanguagePickerContent({
     >
       {isSearching ? (
         <div className="yv:mt-4 yv:flex-1 yv:min-h-0 yv:overflow-y-auto">
-          {filteredLanguages.length > 0 ? (
+          {isLoadingLanguages ? (
+            <div className="yv:flex yv:flex-1 yv:items-center yv:justify-center yv:py-8">
+              <LoaderIcon className="yv:size-6 yv:animate-spin yv:text-muted-foreground" />
+            </div>
+          ) : filteredLanguages.length > 0 ? (
             <ItemGroup className="yv:gap-1" data-testid="language-search-results">
               {filteredLanguages.map((language) => (
                 <LanguageRow
