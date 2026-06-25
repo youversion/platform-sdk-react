@@ -716,7 +716,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
                   >
                     <ItemMedia
                       variant="icon"
-                      className="yv:rounded-md yv:size-16 yv:bg-secondary yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center"
+                      className="yv:rounded-[8px] yv:size-16 yv:bg-secondary yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center"
                     >
                       <VersionAbbreviationIcon text={version.localized_abbreviation} />
                     </ItemMedia>
@@ -756,7 +756,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
                 >
                   <ItemMedia
                     variant="icon"
-                    className="yv:rounded-md yv:size-16 yv:bg-secondary yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center"
+                    className="yv:rounded-[8px] yv:size-16 yv:bg-secondary yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center"
                   >
                     <VersionAbbreviationIcon text={version.localized_abbreviation} />
                   </ItemMedia>
