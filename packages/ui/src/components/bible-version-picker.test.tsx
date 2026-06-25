@@ -316,9 +316,9 @@ describe('BibleVersionPicker', () => {
       const row = await screen.findByRole('listitem', { name: /new international version/i });
       const media = row.querySelector('[data-slot="item-media"]');
       expect(media).not.toBeNull();
-      // tile: 64px square, 6px radius, warm-neutral fill, themed border
+      // tile: 64px square, 8px radius, warm-neutral fill, themed border
       expect(media!.className).toContain('yv:size-16');
-      expect(media!.className).toContain('yv:rounded-md');
+      expect(media!.className).toContain('yv:rounded-[8px]');
       expect(media!.className).toContain('yv:bg-secondary');
       expect(media!.className).toContain('yv:border-border');
       expect(media!.textContent).toContain('NIV');
@@ -392,7 +392,7 @@ describe('BibleVersionPicker', () => {
       expect(media).not.toBeNull();
       expect(media!.className).toContain('yv:size-16');
       expect(media!.className).toContain('yv:bg-secondary');
-      expect(media!.className).toContain('yv:rounded-md');
+      expect(media!.className).toContain('yv:rounded-[8px]');
       localStorage.clear();
     });
   });
