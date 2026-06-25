@@ -498,6 +498,38 @@ describe('BibleVersionPicker', () => {
 
       expect(getVersionSearchInput()).toHaveValue('');
     });
+
+    it('open=false clears language search for pre-warmed standalone content', async () => {
+      const user = userEvent.setup();
+
+      setupDefaultMocks();
+      const rootProps = { versionId: 111, onVersionPickerPress: vi.fn() };
+      const { rerender } = render(
+        <BibleVersionPicker.Root {...rootProps}>
+          <BibleLanguagePickerContent open />
+        </BibleVersionPicker.Root>,
+      );
+
+      await user.type(getLanguageSearchInput(), 'span');
+      expect(getLanguageSearchInput()).toHaveValue('span');
+      expect(screen.queryByRole('tab', { name: /suggested/i })).not.toBeInTheDocument();
+
+      rerender(
+        <BibleVersionPicker.Root {...rootProps}>
+          <BibleLanguagePickerContent open={false} />
+        </BibleVersionPicker.Root>,
+      );
+
+      expect(getLanguageSearchInput()).toHaveValue('');
+
+      rerender(
+        <BibleVersionPicker.Root {...rootProps}>
+          <BibleLanguagePickerContent open />
+        </BibleVersionPicker.Root>,
+      );
+
+      expect(screen.getByRole('tab', { name: /suggested/i })).toBeInTheDocument();
+    });
   });
 
   describe('language search', () => {

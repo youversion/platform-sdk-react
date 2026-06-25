@@ -849,6 +849,17 @@ export function BibleLanguagePickerContent({
   } = useBibleVersionPickerContext();
 
   const [languageTab, setLanguageTab] = useState('suggested');
+  const wasOpenRef = useRef(open ?? false);
+
+  // RN standalone/Expo integrations keep this content mounted and toggle `open`;
+  // reset search so reopening starts on suggested/all tabs, not stale results.
+  useEffect(() => {
+    if (wasOpenRef.current && open === false) {
+      resetLanguageSearch();
+    }
+    wasOpenRef.current = open ?? false;
+  }, [open, resetLanguageSearch]);
+
   const isSearching = languageSearchQuery.trim().length > 0;
 
   const handleSelectLanguage = (languageId: string) => {
