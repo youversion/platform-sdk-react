@@ -358,7 +358,7 @@ export const InteractiveVersionSearch: Story = {
     await userEvent.click(trigger);
 
     // Type in search
-    const searchInput = screen.getByPlaceholderText('Search');
+    const searchInput = screen.getByRole('textbox', { name: /search bible versions/i });
     await userEvent.type(searchInput, 'NIV', { delay: 50 });
 
     // Verify search is working (versions should be filtered)
@@ -457,7 +457,7 @@ export const SearchResetsAfterSelection: Story = {
     await userEvent.click(trigger);
 
     // Type in search
-    const searchInput = screen.getByPlaceholderText('Search');
+    const searchInput = screen.getByRole('textbox', { name: /search bible versions/i });
     await userEvent.type(searchInput, 'Amplified', { delay: 50 });
     await expect(searchInput).toHaveValue('Amplified');
 
@@ -470,7 +470,7 @@ export const SearchResetsAfterSelection: Story = {
     await userEvent.click(updatedTrigger);
 
     // Verify search input is cleared
-    const resetSearchInput = screen.getByPlaceholderText('Search');
+    const resetSearchInput = screen.getByRole('textbox', { name: /search bible versions/i });
     await expect(resetSearchInput).toHaveValue('');
   },
 };
@@ -504,7 +504,7 @@ export const RecentVersionsSearchFilter: Story = {
     ).toBeInTheDocument();
 
     // Search for "ASV"
-    const searchInput = screen.getByPlaceholderText('Search');
+    const searchInput = screen.getByRole('textbox', { name: /search bible versions/i });
     await userEvent.type(searchInput, 'ASV', { delay: 50 });
 
     // Verify only ASV appears in recent versions after filtering

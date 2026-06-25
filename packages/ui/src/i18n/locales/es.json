@@ -43,6 +43,7 @@
   "noVersionsFound": "No se encontraron versiones",
   "noLanguageSearchResults": "Lo sentimos, no hay resultados para esta búsqueda.",
   "languageSearchAriaLabel": "Buscar idiomas",
+  "versionSearchAriaLabel": "Buscar versiones de la Biblia",
   "noRegionalLanguagesAvailable": "No hay idiomas regionales disponibles",
   "suggestedTab": "Sugerido",
   "allLanguagesTab": "Todos ({{count}})",

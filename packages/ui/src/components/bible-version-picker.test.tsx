@@ -169,6 +169,10 @@ function getLanguageSearchInput() {
   return screen.getByRole('textbox', { name: /search languages/i });
 }
 
+function getVersionSearchInput() {
+  return screen.getByRole('textbox', { name: /search bible versions/i });
+}
+
 describe('BibleVersionPicker', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -483,8 +487,8 @@ describe('BibleVersionPicker', () => {
         </BibleVersionPicker.Root>,
       );
 
-      await user.type(screen.getByPlaceholderText('Search'), 'nlt');
-      expect(screen.getByPlaceholderText('Search')).toHaveValue('nlt');
+      await user.type(getVersionSearchInput(), 'nlt');
+      expect(getVersionSearchInput()).toHaveValue('nlt');
 
       rerender(
         <BibleVersionPicker.Root versionId={111} onVersionPickerPress={vi.fn()}>
@@ -492,7 +496,7 @@ describe('BibleVersionPicker', () => {
         </BibleVersionPicker.Root>,
       );
 
-      expect(screen.getByPlaceholderText('Search')).toHaveValue('');
+      expect(getVersionSearchInput()).toHaveValue('');
     });
   });
 

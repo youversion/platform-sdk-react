@@ -757,6 +757,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
         <div className="yv:grid yv:grid-cols-[1fr_auto] yv:gap-2">
           <InputGroup className="yv:bg-background yv:shadow-none yv:border-border">
             <InputGroupInput
+              aria-label={t('versionSearchAriaLabel')}
               tabIndex={1}
               type="text"
               placeholder={t('searchPlaceholder')}
