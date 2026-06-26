@@ -27,21 +27,26 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Use the current tip of origin/main as the lower bound rather than the
-      # PR's recorded base SHA. The recorded base SHA goes stale as soon as
-      # main moves forward, which causes the lint range to include commits that
-      # have already been merged-and-linted. Anchoring at origin/main only ever
-      # lints new commits authored on this branch since the most recent merge
-      # from main. See docs/release-hardening-plan.md (AC6).
-      - name: Resolve current main
-        id: main
+      # Lint only the commits this branch adds, using the merge-base with the
+      # live origin/main as the lower bound (not the PR's recorded base SHA,
+      # which goes stale as main moves forward). The merge-base is robust even
+      # when the branch is behind main: it always resolves to the point where
+      # this branch diverged, so the range is exactly the new commits.
+      #
+      # main MUST be fetched with full history (no --depth). A shallow fetch
+      # hides the merge-base, so `git log <main>..HEAD` can no longer exclude
+      # shared history and the range balloons to include unrelated historical
+      # commits. See docs/release-hardening-plan.md (AC6).
+      - name: Resolve lint range
+        id: range
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          git fetch origin main:refs/remotes/origin/main --depth=1 || \
-            git fetch --unshallow origin main:refs/remotes/origin/main
-          main_sha=$(git rev-parse origin/main)
-          echo "sha=${main_sha}" >> "$GITHUB_OUTPUT"
-          echo "Linting against origin/main = ${main_sha}"
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          base=$(git merge-base origin/main "$HEAD_SHA")
+          echo "base=${base}" >> "$GITHUB_OUTPUT"
+          echo "Linting ${base}..${HEAD_SHA}"
 
       - name: Lint commits
-        run: pnpm exec commitlint --from ${{ steps.main.outputs.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+        run: pnpm exec commitlint --from ${{ steps.range.outputs.base }} --to ${{ github.event.pull_request.head.sha }} --verbose
