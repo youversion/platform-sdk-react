@@ -105,6 +105,30 @@ describe('VerseOfTheDay i18n integration', () => {
     expect(card).toHaveClass('yv:box-border');
     expect(contentGroup).toHaveClass('yv:card-content');
   });
+
+  it('renders the reference under the label in the header, not below the verse text', () => {
+    const { container } = render(<VerseOfTheDay />);
+    const reference = screen.getByText(MOCK_REFERENCE);
+    const bibleRenderer = container.querySelector('[data-slot="yv-bible-renderer"]');
+    const label = screen.getByText(en.verseOfTheDay);
+
+    expect(reference).toHaveClass('yv:text-black');
+    expect(reference).not.toHaveClass('yv:text-muted-foreground');
+    expect(
+      label.compareDocumentPosition(reference) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(bibleRenderer).not.toBeNull();
+    expect(
+      bibleRenderer!.compareDocumentPosition(reference) & Node.DOCUMENT_POSITION_PRECEDING,
+    ).toBeTruthy();
+  });
+
+  it('hides inline verse numbers in the bible renderer', () => {
+    const { container } = render(<VerseOfTheDay />);
+    const bibleRenderer = container.querySelector('[data-slot="yv-bible-renderer"]');
+
+    expect(bibleRenderer).toHaveAttribute('data-show-verse-numbers', 'false');
+  });
 });
 
 describe('VerseOfTheDay - share', () => {

@@ -1,10 +1,11 @@
-import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, screen, spyOn, userEvent, waitFor } from 'storybook/test';
-import { http, HttpResponse, delay } from 'msw';
-import { BibleReader } from './bible-reader';
-import { setupAuthenticatedUser } from '../test/utils';
 import { INTER_FONT, SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { delay, http, HttpResponse } from 'msw';
+import { expect, fn, screen, spyOn, userEvent, waitFor } from 'storybook/test';
 import mockBibles from '../test/mock-data/bibles.json';
+import { globalHandlers } from '../test/mocks/handlers';
+import { setupAuthenticatedUser } from '../test/utils';
+import { BibleReader } from './bible-reader';
 
 let signInMock: ReturnType<typeof fn>;
 
@@ -41,10 +42,10 @@ const meta: Meta<typeof BibleReader.Root> = {
       control: { type: 'range', min: 8, max: 24, step: 1 },
       description: 'Font size in pixels',
     },
-    lineHeight: {
+    lineSpacing: {
       control: 'select',
-      options: [1.4, 1.6, 1.8, 2.0],
-      description: 'Line height multiplier',
+      options: [1.45, 1.7, 2.0],
+      description: 'Line spacing (line-height multiplier)',
     },
     fontFamily: {
       control: 'select',
@@ -71,7 +72,7 @@ export const Default: Story = {
   tags: ['integration'],
   args: {
     defaultVersionId: 111,
-    lineHeight: 1.6,
+    lineSpacing: 1.7,
     fontFamily: "'Inter', sans-serif",
     showVerseNumbers: true,
   },
@@ -106,7 +107,7 @@ export const Default: Story = {
     });
 
     const fontButtons = screen.getAllByRole('button', { name: /font/i });
-    await expect(fontButtons.length).toBe(2);
+    await expect(fontButtons.length).toBe(4);
 
     const decreaseFontButton = screen.getByTestId('decrease-font-size');
     const increaseFontButton = screen.getByTestId('increase-font-size');
@@ -145,7 +146,7 @@ export const DarkTheme: Story = {
   args: {
     defaultVersionId: 111,
     fontSize: 16,
-    lineHeight: 1.6,
+    lineSpacing: 1.7,
     fontFamily: "'Inter', sans-serif",
     showVerseNumbers: true,
   },
@@ -170,7 +171,7 @@ export const CustomStyling: Story = {
   args: {
     defaultVersionId: 111,
     fontSize: 18,
-    lineHeight: 2.0,
+    lineSpacing: 2.0,
     fontFamily: "'Nunito Sans', sans-serif",
     showVerseNumbers: false,
   },
@@ -200,7 +201,7 @@ export const FontSizeOutOfRange: Story = {
   args: {
     defaultVersionId: 111,
     fontSize: 28,
-    lineHeight: 2.0,
+    lineSpacing: 2.0,
     fontFamily: "'Nunito Sans', sans-serif",
     showVerseNumbers: false,
   },
@@ -792,5 +793,80 @@ export const JoshuaIntroChapter: Story = {
       // Should NOT show a verse reference like "Joshua :intro-0"
       await expect(popover?.textContent).not.toContain('intro-0');
     });
+  },
+};
+
+export const ChapterChangeLoadingOverlay: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('*/v1/bibles/111/passages/:usfm', async ({ params }) => {
+          await delay(800);
+          const usfm = params.usfm as string;
+          return HttpResponse.json({
+            id: usfm,
+            content: `<div class="p"><span class="verse">Passage text for ${usfm}.</span></div>`,
+            reference: usfm,
+          });
+        }),
+        ...globalHandlers,
+      ],
+    },
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(
+      async () => {
+        const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(renderer?.textContent).toContain('JHN.1');
+      },
+      { timeout: 5000 },
+    );
+
+    const nextButton = screen.getByRole('button', { name: /next chapter/i });
+    await userEvent.click(nextButton);
+
+    const rendererAfterClick = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+    await expect(rendererAfterClick?.textContent).toContain('JHN.1');
+
+    await waitFor(
+      async () => {
+        const overlay = canvasElement.querySelector('[aria-label="Loading passage"]');
+        await expect(overlay).toBeInTheDocument();
+        await expect(overlay).toHaveAttribute('role', 'status');
+        await expect(canvasElement.querySelector('[class*="opacity-40"]')).toBeInTheDocument();
+        const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(renderer?.textContent).toContain('JHN.1');
+      },
+      { timeout: 2000 },
+    );
+
+    await waitFor(
+      async () => {
+        const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(renderer?.textContent).toContain('JHN.2');
+        await expect(
+          canvasElement.querySelector('[aria-label="Loading passage"]'),
+        ).not.toBeInTheDocument();
+        await expect(canvasElement.querySelector('[class*="opacity-40"]')).not.toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    const scroller = canvasElement.querySelector('main');
+    await expect(scroller?.scrollTop).toBe(0);
   },
 };

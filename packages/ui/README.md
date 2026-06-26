@@ -53,6 +53,18 @@ import '@youversion/platform-react-ui/styles.css';
 
 All component classes are prefixed with `yv:` to avoid collisions with your app's styles. Override design tokens with CSS variables on `[data-yv-sdk]` (see [Custom CSS variables](#custom-css-variables)).
 
+### Content Security Policy
+
+The SDK loads webfonts from external origins. If your app sets a strict `Content-Security-Policy`, allowlist these hosts so fonts aren't blocked (without them, components fall back to a system sans-serif):
+
+```
+font-src  https://fonts.gstatic.com https://storage.googleapis.com;
+style-src https://fonts.googleapis.com;
+```
+
+- `fonts.gstatic.com` / `fonts.googleapis.com` — Inter and Source Serif (base typography)
+- `storage.googleapis.com` — Aktiv Grotesk App, the brand font used by `BibleChapterPicker`
+
 ## Theming
 
 Set the theme via the `YouVersionProvider`'s `theme` prop. Defaults to `'light'`.
