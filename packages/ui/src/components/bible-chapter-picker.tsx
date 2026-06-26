@@ -340,7 +340,9 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
               id={bookItem.id}
               ref={(node) => registerBookElement(bookItem.id, node)}
             >
-              <AccordionTrigger className="yv:rounded-none">{bookItem.title}</AccordionTrigger>
+              <AccordionTrigger className="yv:rounded-none yv:font-aktiv yv:text-base yv:font-normal yv:leading-normal yv:text-foreground yv:data-[state=open]:font-bold">
+                {bookItem.title}
+              </AccordionTrigger>
               <AccordionContent>
                 {bookItem.chapters && bookItem.chapters.length > 0 ? (
                   <div className="yv:grid yv:grid-cols-5 yv:gap-2">
@@ -365,7 +367,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
                           key={`${bookItem.id}-${chapterRef.passage_id}`}
                           variant="secondary"
                           size="icon"
-                          className="yv:aspect-square yv:w-full yv:h-full yv:flex yv:items-center yv:justify-center yv:rounded-[4px]"
+                          className="yv:aspect-square yv:w-full yv:h-full yv:flex yv:items-center yv:justify-center yv:rounded-[4px] yv:font-aktiv yv:text-base yv:font-bold yv:leading-none yv:text-foreground"
                           onClick={() =>
                             handleChapterButtonClick(bookItem.id, chapterRef.passage_id)
                           }
@@ -396,6 +398,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
             tabIndex={1}
             type="text"
             placeholder={t('searchPlaceholder')}
+            className="yv:font-aktiv yv:text-base yv:leading-normal"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
