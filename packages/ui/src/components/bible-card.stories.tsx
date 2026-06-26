@@ -137,7 +137,9 @@ export const WithVersionPicker: Story = {
     });
 
     // Search for Amplified Bible
-    const searchInput = within(await screen.findByRole('dialog')).getByPlaceholderText('Search');
+    const searchInput = within(await screen.findByRole('dialog')).getByRole('textbox', {
+      name: /search bible versions/i,
+    });
     await userEvent.type(searchInput, 'amplified bible');
 
     await waitFor(async () => {
