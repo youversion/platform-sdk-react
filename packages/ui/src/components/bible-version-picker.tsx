@@ -6,6 +6,7 @@ import {
   useFilteredVersions,
   useLanguage,
   useLanguages,
+  useOrganizations,
   useTheme,
   useVersion,
   useVersions,
@@ -38,7 +39,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 export const RECENT_VERSIONS_KEY = 'youversion-platform:picker:recent-versions';
 const MAX_RECENT_VERSIONS = 3;
 
-type RecentVersion = Pick<BibleVersion, 'id' | 'title' | 'localized_abbreviation' | 'abbreviation'>;
+type RecentVersion = Pick<
+  BibleVersion,
+  'id' | 'title' | 'localized_abbreviation' | 'abbreviation' | 'organization_id'
+>;
 
 function getRecentVersions(): RecentVersion[] {
   if (typeof window === 'undefined') return [];
@@ -72,6 +76,16 @@ function filterLanguagesBySearch(languages: LanguageListItem[], query: string): 
       name.toLowerCase().includes(trimmedQuery),
     );
   });
+}
+
+// Displays the publisher (organization) name for a version when available.
+// The name is resolved once at the list level (see Content) and passed in, so
+// rows sharing a publisher don't each fire their own request. Renders nothing
+// when no name is known, so the title stays vertically centered.
+function VersionPublisherName({ name }: { name?: string | null }) {
+  if (!name) return null;
+
+  return <ItemDescription className="yv:line-clamp-1 yv:text-left">{name}</ItemDescription>;
 }
 
 // Displays a version abbreviation (e.g., "NIV", "KJV2") centered within a fixed-size icon.
@@ -141,7 +155,7 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
   return (
     <div
       ref={containerRef}
-      className="yv:flex yv:flex-col yv:w-full yv:h-full yv:px-2 yv:font-serif yv:leading-none yv:font-bold yv:items-center yv:justify-center"
+      className="yv:flex yv:flex-col yv:w-full yv:h-full yv:px-1.5 yv:font-serif! yv:[&_*]:font-serif! yv:leading-[1.03] yv:font-bold yv:text-foreground yv:items-center yv:justify-center"
     >
       <div ref={prefixRef} className="yv:whitespace-nowrap" style={{ fontSize: `${prefixSize}px` }}>
         {prefix}
@@ -578,6 +592,15 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
   } = useBibleVersionPickerContext();
   const wasOpenRef = useRef(open ?? false);
 
+  // Resolve publisher names once for the whole list, deduped by organization id,
+  // instead of mounting a fetching hook per row (avoids N+1 requests).
+  const { organizations } = useOrganizations([
+    ...filteredRecentVersions.map((version) => version.organization_id),
+    ...filteredVersions.map((version) => version.organization_id),
+  ]);
+  const publisherName = (organizationId?: string | null) =>
+    organizationId ? (organizations.get(organizationId)?.name ?? null) : null;
+
   const handleSelectVersion = (version: BibleVersion | RecentVersion) => {
     setVersionId(version.id);
     addRecentVersion({
@@ -585,6 +608,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
       title: version.title,
       localized_abbreviation: version.localized_abbreviation,
       abbreviation: version.abbreviation,
+      organization_id: version.organization_id,
     });
     setSearchQuery('');
     onRequestClose?.();
@@ -692,11 +716,12 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
                   >
                     <ItemMedia
                       variant="icon"
-                      className="yv:rounded-[8px] yv:size-12 yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center"
+                      className="yv:rounded-[8px] yv:size-16 yv:bg-secondary yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center"
                     >
                       <VersionAbbreviationIcon text={version.localized_abbreviation} />
                     </ItemMedia>
                     <ItemContent>
+                      <VersionPublisherName name={publisherName(version.organization_id)} />
                       <ItemTitle className="yv:line-clamp-2 yv:text-left">
                         {version.title}
                       </ItemTitle>
@@ -731,11 +756,12 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
                 >
                   <ItemMedia
                     variant="icon"
-                    className="yv:rounded-[8px] yv:size-12 yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center"
+                    className="yv:rounded-[8px] yv:size-16 yv:bg-secondary yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center"
                   >
                     <VersionAbbreviationIcon text={version.localized_abbreviation} />
                   </ItemMedia>
                   <ItemContent>
+                    <VersionPublisherName name={publisherName(version.organization_id)} />
                     <ItemTitle className="yv:line-clamp-2 yv:text-left">{version.title}</ItemTitle>
                   </ItemContent>
                 </button>

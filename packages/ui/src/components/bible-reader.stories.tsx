@@ -49,7 +49,7 @@ const meta: Meta<typeof BibleReader.Root> = {
     },
     fontFamily: {
       control: 'select',
-      options: [SOURCE_SERIF_FONT, INTER_FONT, "'Georgia', serif", "'Nunito Sans', sans-serif"],
+      options: [SOURCE_SERIF_FONT, INTER_FONT],
       description: 'Font family',
     },
     showVerseNumbers: {
@@ -73,7 +73,7 @@ export const Default: Story = {
   args: {
     defaultVersionId: 111,
     lineSpacing: 1.7,
-    fontFamily: "'Inter', sans-serif",
+    fontFamily: INTER_FONT,
     showVerseNumbers: true,
   },
   render: (args) => (
@@ -147,7 +147,7 @@ export const DarkTheme: Story = {
     defaultVersionId: 111,
     fontSize: 16,
     lineSpacing: 1.7,
-    fontFamily: "'Inter', sans-serif",
+    fontFamily: INTER_FONT,
     showVerseNumbers: true,
   },
   globals: {
@@ -172,7 +172,7 @@ export const CustomStyling: Story = {
     defaultVersionId: 111,
     fontSize: 18,
     lineSpacing: 2.0,
-    fontFamily: "'Nunito Sans', sans-serif",
+    fontFamily: SOURCE_SERIF_FONT,
     showVerseNumbers: false,
   },
   render: (args) => (
@@ -202,7 +202,7 @@ export const FontSizeOutOfRange: Story = {
     defaultVersionId: 111,
     fontSize: 28,
     lineSpacing: 2.0,
-    fontFamily: "'Nunito Sans', sans-serif",
+    fontFamily: SOURCE_SERIF_FONT,
     showVerseNumbers: false,
   },
   render: (args) => (
