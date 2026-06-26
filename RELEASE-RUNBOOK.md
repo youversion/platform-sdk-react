@@ -27,14 +27,19 @@ If `$VERSION` is on the registry for all packages that should have shipped, the 
 
 **Recovery.**
 
-- **All packages on registry, but workflow failed.** No re-publish needed. Verify the git tag was pushed (`git ls-remote origin "refs/tags/$VERSION"`) and the GitHub release was created (`gh release view "$VERSION"`). If either is missing, create them manually:
+- **All packages on registry, but workflow failed.** No re-publish needed. Changesets tags and releases **per package** — `@youversion/platform-core@$VERSION`, `@youversion/platform-react-hooks@$VERSION`, `@youversion/platform-react-ui@$VERSION` — not a single bare `$VERSION` tag. Verify each tag was pushed and each GitHub release exists, and create any that are missing:
   ```bash
-  git tag "$VERSION" && git push origin "$VERSION"
-  gh release create "$VERSION" --notes-file CHANGELOG-entry.md  # or whatever the changesets-generated body was
+  for p in @youversion/platform-core @youversion/platform-react-hooks @youversion/platform-react-ui; do
+    tag="${p}@${VERSION}"
+    git ls-remote --exit-code origin "refs/tags/${tag}" >/dev/null 2>&1 \
+      || { git tag "$tag" && git push origin "$tag"; }
+    gh release view "$tag" >/dev/null 2>&1 \
+      || gh release create "$tag" --notes-file CHANGELOG-entry.md  # changesets-generated body for that package
+  done
   ```
 - **Some packages on registry, others not.** Re-run the workflow. Changesets-action will skip the published packages (it reads the registry before publishing each) and retry the rest. If a specific package keeps failing, see #3 or #4.
 
-**Expected end state.** All three packages at `$VERSION` on npm, tag pushed, GitHub release created.
+**Expected end state.** All three packages at `$VERSION` on npm, with a matching `<pkg>@$VERSION` tag and GitHub release each.
 
 ---
 
@@ -200,35 +205,36 @@ Repeat for `…-react-hooks` and `…-core`.
 
 ## 9. Rogue tag (tag on origin without a matching release / publish)
 
-**Symptom.** A git tag for `$VERSION` exists on origin, but one or more of: the GitHub release is missing, the npm packages were never published, or the tag points at the wrong commit. Usually the tail of a run that died after the tag push but before (or during) publish — the inverse of #1, where the registry landed but the tag didn't.
+**Symptom.** A Changesets tag (`<pkg>@$VERSION`, e.g. `@youversion/platform-core@$VERSION`) exists on origin, but one or more of: the GitHub release is missing, the npm packages were never published, or the tag points at the wrong commit. Usually the tail of a run that died after the tag push but before (or during) publish — the inverse of #1, where the registry landed but the tags didn't.
 
-**Why it happens.** Changesets-action pushes the version-bump commit and tag as part of merging the "Version Packages" PR, then publishes. If the job is killed between those steps, or a tag was pushed by hand during a manual recovery, the tag can outlive the work it was supposed to mark.
+**Why it happens.** Changesets-action pushes the version-bump commit and the per-package tags as part of merging the "Version Packages" PR, then publishes. If the job is killed between those steps, or a tag was pushed by hand during a manual recovery, a tag can outlive the work it was supposed to mark. Note the tags are **per package** — not a single bare `$VERSION` — so a partial failure can leave some package tags present and others missing.
 
 **State check.**
 
 ```bash
-# What does origin have, and where does the tag point?
-git ls-remote origin "refs/tags/$VERSION"
-git rev-parse "$VERSION^{commit}" 2>/dev/null        # local view, if fetched
-gh release view "$VERSION" >/dev/null 2>&1 && echo "release exists" || echo "no release"
-
-# Is the version actually on npm?
+# What does origin have, where does each tag point, and is each version on npm?
 for p in @youversion/platform-core @youversion/platform-react-hooks @youversion/platform-react-ui; do
-  npm view "${p}@${VERSION}" version 2>/dev/null || echo "  $p NOT on npm"
+  tag="${p}@${VERSION}"
+  echo "== ${tag} =="
+  git ls-remote origin "refs/tags/${tag}" || echo "  no tag on origin"
+  git rev-parse "${tag}^{commit}" 2>/dev/null || echo "  not fetched locally"
+  gh release view "${tag}" >/dev/null 2>&1 && echo "  release exists" || echo "  no release"
+  npm view "${tag}" version 2>/dev/null || echo "  NOT on npm"
 done
 ```
 
 **Recovery.**
 
-- **Tag is correct, but release / publish are missing.** Leave the tag. Re-run the release workflow — `changesets/action` will publish the packages that aren't on the registry yet. If the GitHub release is still missing afterward, create it from the tag: `gh release create "$VERSION" --notes-file <changesets-body>`.
-- **Tag points at the wrong commit, or was pushed for a version that should never have shipped.** Delete it on both sides, then let the normal flow re-create it:
+- **Tag is correct, but release / publish are missing.** Leave the tag. Re-run the release workflow — `changesets/action` will publish the packages that aren't on the registry yet. If a GitHub release is still missing afterward, create it from the tag: `gh release create "<pkg>@$VERSION" --notes-file <changesets-body>`.
+- **A tag points at the wrong commit, or was pushed for a version that should never have shipped.** Delete that package's tag on both sides, then let the normal flow re-create it:
   ```bash
-  git push origin ":refs/tags/$VERSION"   # delete remote tag
-  git tag -d "$VERSION"                    # delete local tag
+  tag="@youversion/platform-core@${VERSION}"   # repeat per affected package
+  git push origin ":refs/tags/${tag}"          # delete remote tag
+  git tag -d "${tag}"                          # delete local tag
   ```
-  Only delete a tag if the corresponding version is **not** on npm. If npm already has `$VERSION`, deleting the tag desyncs git from the registry — instead, re-point the tag at the published commit and keep it.
+  Only delete a tag if that package's version is **not** on npm. If npm already has `<pkg>@$VERSION`, deleting the tag desyncs git from the registry — instead, re-point the tag at the published commit and keep it.
 
-**Expected end state.** Either the tag is deleted (because that version never shipped) or it points at the published commit and has a matching GitHub release + npm versions.
+**Expected end state.** For every package: either the tag is deleted (because that version never shipped) or it points at the published commit and has a matching GitHub release + npm version.
 
 ---
 

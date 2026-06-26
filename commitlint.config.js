@@ -19,7 +19,7 @@
 // rather than Kotlin's `module.exports`.
 export default {
   extends: ['@commitlint/config-conventional'],
-  ignores: [(message) => /^chore: version packages/i.test(message)],
+  ignores: [(message) => /^chore: version packages(?:\r?\n|$)/i.test(message)],
   parserPreset: {
     parserOpts: {
       // Optional "YPE-1234: " or "YPE-1234 - " prefix, then the standard
