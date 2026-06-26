@@ -371,18 +371,19 @@ describe('BibleVersionPicker', () => {
     });
 
     it('applies the same tile styling to recent-version rows', async () => {
-      localStorage.clear();
-      localStorage.setItem(
-        RECENT_VERSIONS_KEY,
-        JSON.stringify([
-          {
-            id: 111,
-            title: 'New International Version',
-            localized_abbreviation: 'NIV',
-            abbreviation: 'NIV',
-          },
-        ]),
+      vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
+        key === RECENT_VERSIONS_KEY
+          ? JSON.stringify([
+              {
+                id: 111,
+                title: 'New International Version',
+                localized_abbreviation: 'NIV',
+                abbreviation: 'NIV',
+              },
+            ])
+          : null,
       );
+
       setupDefaultMocks({ versionsLoading: false, filteredVersions: mockVersions });
       renderPicker();
       await openPicker();
@@ -393,7 +394,6 @@ describe('BibleVersionPicker', () => {
       expect(media!.className).toContain('yv:size-16');
       expect(media!.className).toContain('yv:bg-secondary');
       expect(media!.className).toContain('yv:rounded-[8px]');
-      localStorage.clear();
     });
   });
 
