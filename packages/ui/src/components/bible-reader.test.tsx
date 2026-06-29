@@ -13,6 +13,7 @@ import {
   useFilteredVersions,
   useLanguage,
   useLanguages,
+  useOrganizations,
   useTheme,
   useVersion,
   useVersions,
@@ -44,6 +45,7 @@ vi.mock('@youversion/platform-react-hooks', async () => {
     useFilteredVersions: vi.fn(),
     useLanguage: vi.fn(),
     useLanguages: vi.fn(),
+    useOrganizations: vi.fn(),
     useTheme: vi.fn(),
     useVersion: vi.fn(),
     useVersions: vi.fn(),
@@ -105,6 +107,7 @@ function setupDefaultMocks() {
     refetch: vi.fn(),
   });
   vi.mocked(useFilteredVersions).mockReturnValue([]);
+  vi.mocked(useOrganizations).mockReturnValue({ organizations: new Map() });
 }
 
 describe('BibleReader font helpers', () => {

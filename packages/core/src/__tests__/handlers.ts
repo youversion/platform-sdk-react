@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw';
 import type { Collection, Highlight, Language } from '../types';
 import { mockLanguages } from './MockLanguages';
 import { mockVersions, mockVersionKJV } from './MockVersions';
+import { mockOrganizations } from './MockOrganizations';
 import { mockBibleGenesis, mockBibleBooks } from './MockBibles';
 import { mockChapterGenesis1, mockGenesisChapters } from './MockChapters';
 import { mockGen1Verse1, mockGen1Verses } from './MockVerses';
@@ -22,6 +23,17 @@ if (!apiHost) {
 }
 
 export const handlers = [
+  // Organizations endpoints
+  http.get(`https://${apiHost}/v1/organizations/:organizationId`, ({ params }) => {
+    const { organizationId } = params;
+    const organization = mockOrganizations.find((org) => org.id === organizationId);
+
+    if (!organization) {
+      return new HttpResponse(null, { status: 404 });
+    }
+
+    return HttpResponse.json(organization);
+  }),
   // Languages endpoints
   http.get(`https://${apiHost}/v1/languages/:languageId`, ({ params }) => {
     const { languageId } = params;
