@@ -26,9 +26,10 @@ import {
   useLanguages,
   useLanguage,
   useFilteredVersions,
+  useOrganizations,
   useTheme,
 } from '@youversion/platform-react-hooks';
-import type { BibleVersion, Language } from '@youversion/platform-core';
+import type { BibleVersion, Language, Organization } from '@youversion/platform-core';
 
 vi.mock('@youversion/platform-react-hooks');
 
@@ -42,6 +43,7 @@ const mockVersions: BibleVersion[] = [
     language_tag: 'en',
     books: ['GEN', 'EXO'],
     youversion_deep_link: 'https://bible.com/versions/111',
+    organization_id: '05a9aa40-37b6-4e34-b9f1-a443fa4b1fff',
   },
   {
     id: 206,
@@ -54,6 +56,11 @@ const mockVersions: BibleVersion[] = [
     youversion_deep_link: 'https://bible.com/versions/206',
   },
 ];
+
+const mockOrganization: Organization = {
+  id: '05a9aa40-37b6-4e34-b9f1-a443fa4b1fff',
+  name: 'Biblica',
+};
 
 const mockLanguages: Language[] = [
   {
@@ -140,6 +147,10 @@ function setupDefaultMocks({
   } as ReturnType<typeof useLanguage>);
 
   vi.mocked(useFilteredVersions).mockReturnValue(filteredVersions);
+
+  vi.mocked(useOrganizations).mockReturnValue({
+    organizations: new Map([[mockOrganization.id, mockOrganization]]),
+  });
 
   vi.mocked(useTheme).mockReturnValue('light');
 }
@@ -293,6 +304,96 @@ describe('BibleVersionPicker', () => {
           screen.getByRole('listitem', { name: /new living translation/i }),
         ).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('abbreviation tile', () => {
+    it('renders the abbreviation tile with the Figma media styling', async () => {
+      setupDefaultMocks({ versionsLoading: false, filteredVersions: mockVersions });
+      renderPicker();
+      await openPicker();
+
+      const row = await screen.findByRole('listitem', { name: /new international version/i });
+      const media = row.querySelector('[data-slot="item-media"]');
+      expect(media).not.toBeNull();
+      // tile: 64px square, 8px radius, warm-neutral fill, themed border
+      expect(media!.className).toContain('yv:size-16');
+      expect(media!.className).toContain('yv:rounded-[8px]');
+      expect(media!.className).toContain('yv:bg-secondary');
+      expect(media!.className).toContain('yv:border-border');
+      expect(media!.textContent).toContain('NIV');
+    });
+
+    it('splits a trailing-digit abbreviation onto a second line', async () => {
+      setupDefaultMocks({
+        versionsLoading: false,
+        filteredVersions: [
+          {
+            ...mockVersions[0]!,
+            id: 1995,
+            title: 'New American Standard Bible',
+            localized_abbreviation: 'NASB1995',
+            abbreviation: 'NASB1995',
+          },
+        ],
+      });
+      renderPicker();
+      await openPicker();
+
+      const row = await screen.findByRole('listitem', { name: /new american standard bible/i });
+      const media = row.querySelector('[data-slot="item-media"]');
+      expect(media).not.toBeNull();
+      // prefix + digits render as separate lines, not the raw concatenation
+      const lines = Array.from(media!.querySelectorAll('div > div')).map((n) => n.textContent);
+      expect(lines).toContain('NASB');
+      expect(lines).toContain('1995');
+    });
+
+    it('renders the publisher name above the version title when available', async () => {
+      setupDefaultMocks({ versionsLoading: false, filteredVersions: mockVersions });
+      renderPicker();
+      await openPicker();
+
+      const row = await screen.findByRole('listitem', { name: /new international version/i });
+      const description = row.querySelector('[data-slot="item-description"]');
+      expect(description).not.toBeNull();
+      expect(description!.textContent).toBe('Biblica');
+    });
+
+    it('omits the publisher name when the version has no organization', async () => {
+      setupDefaultMocks({ versionsLoading: false, filteredVersions: mockVersions });
+      renderPicker();
+      await openPicker();
+
+      const row = await screen.findByRole('listitem', { name: /new living translation/i });
+      const description = row.querySelector('[data-slot="item-description"]');
+      expect(description).toBeNull();
+    });
+
+    it('applies the same tile styling to recent-version rows', async () => {
+      vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
+        key === RECENT_VERSIONS_KEY
+          ? JSON.stringify([
+              {
+                id: 111,
+                title: 'New International Version',
+                localized_abbreviation: 'NIV',
+                abbreviation: 'NIV',
+              },
+            ])
+          : null,
+      );
+
+      setupDefaultMocks({ versionsLoading: false, filteredVersions: mockVersions });
+      renderPicker();
+      await openPicker();
+
+      const recentList = await screen.findByTestId('recent-version-list');
+      const media = recentList.querySelector('[data-slot="item-media"]');
+      expect(media).not.toBeNull();
+      expect(media!.className).toContain('yv:size-16');
+      expect(media!.className).toContain('yv:bg-secondary');
+      expect(media!.className).toContain('yv:rounded-[8px]');
     });
   });
 
