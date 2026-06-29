@@ -25,7 +25,6 @@
   "interFontName": "Inter",
   "sourceSerifFontName": "Source Serif",
   "searchPlaceholder": "Search",
-  "booksHeading": "Books",
   "backToBibleVersionsAriaLabel": "Back to Bible versions",
   "bibleVersionsHeading": "Bible Versions",
   "selectLanguageHeading": "Select Language",
@@ -43,9 +42,6 @@
   "noChaptersAvailable": "No chapters available",
   "noBibleSearchResults": "We're sorry, there are no Bible results for this search.",
   "noVersionsFound": "No versions found",
-  "noLanguageSearchResults": "We're sorry, there are no results for this search.",
-  "languageSearchAriaLabel": "Search languages",
-  "versionSearchAriaLabel": "Search Bible versions",
   "noRegionalLanguagesAvailable": "No regional languages available",
   "suggestedTab": "Suggested",
   "allLanguagesTab": "All ({{count}})",
@@ -59,5 +55,6 @@
   "unreachableServerError": "The Bible server couldn't be reached. Check your connection and try again.",
   "rateLimitedError": "The Bible service is receiving too many requests right now. Please wait a moment and try again.",
   "serverError": "The Bible service is having trouble right now. Please try again in a moment.",
-  "genericPassageError": "We couldn't load this Bible passage. Please try again."
+  "genericPassageError": "We couldn't load this Bible passage. Please try again.",
+  "booksHeading": "Books"
 }
