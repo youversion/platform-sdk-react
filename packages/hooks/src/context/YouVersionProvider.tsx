@@ -71,6 +71,28 @@ function useResolvedTheme(theme: 'light' | 'dark' | 'system'): 'light' | 'dark' 
 export function YouVersionProvider(
   props: PropsWithChildren<YouVersionProviderPropsWithAuth | YouVersionProviderPropsWithoutAuth>,
 ): React.ReactElement {
+  // Fail loudly on a missing/empty app key. Without this the SDK renders an
+  // empty shell and only surfaces errors in the console — see YPE-1565. The UI
+  // package's provider catches this earlier and renders a styled message
+  // instead; this throw is the baseline guarantee for hooks-only consumers.
+  //
+  // The guard lives in this thin wrapper so the hook-bearing implementation is
+  // never entered with an invalid key. Keeping the throw out of the component
+  // that calls hooks avoids any hook-order inconsistency if a mounted provider
+  // ever transitions between a valid and an empty appKey.
+  if (!props.appKey?.trim()) {
+    throw new Error(
+      'YouVersionProvider: a non-empty "appKey" is required. If you load it from an ' +
+        'environment variable, make sure it is set and restart your dev server.',
+    );
+  }
+
+  return <YouVersionProviderInner {...props} />;
+}
+
+function YouVersionProviderInner(
+  props: PropsWithChildren<YouVersionProviderPropsWithAuth | YouVersionProviderPropsWithoutAuth>,
+): React.ReactElement {
   const {
     appKey,
     apiHost = 'api.youversion.com',
@@ -79,17 +101,6 @@ export function YouVersionProvider(
     additionalHeaders,
     children,
   } = props;
-
-  // Fail loudly on a missing/empty app key. Without this the SDK renders an
-  // empty shell and only surfaces errors in the console — see YPE-1565. The UI
-  // package's provider catches this earlier and renders a styled message
-  // instead; this throw is the baseline guarantee for hooks-only consumers.
-  if (!appKey?.trim()) {
-    throw new Error(
-      'YouVersionProvider: a non-empty "appKey" is required. If you load it from an ' +
-        'environment variable, make sure it is set and restart your dev server.',
-    );
-  }
 
   const resolvedTheme = useResolvedTheme(theme);
 
