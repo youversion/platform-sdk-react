@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { formatVerseNumbers, joinVerseTexts, buildVerseShareText } from './verse-share';
+import {
+  formatVerseNumbers,
+  joinVerseTexts,
+  buildVerseReference,
+  buildVerseShareText,
+} from './verse-share';
 
 describe('formatVerseNumbers', () => {
   it('renders a single verse', () => {
@@ -34,6 +39,30 @@ describe('joinVerseTexts', () => {
 
   it('trims each verse before joining', () => {
     expect(joinVerseTexts([1, 2], { 1: '  First.  ', 2: '  Second.  ' })).toBe('First. Second.');
+  });
+});
+
+describe('buildVerseReference', () => {
+  it('formats book, chapter, collapsed verses, and version', () => {
+    expect(
+      buildVerseReference({
+        bookName: 'John',
+        chapter: '1',
+        verses: [1, 2, 3],
+        versionAbbreviation: 'NIV',
+      }),
+    ).toBe('John 1:1-3 NIV');
+  });
+
+  it('omits the version abbreviation when empty', () => {
+    expect(
+      buildVerseReference({
+        bookName: 'Genesis',
+        chapter: 1,
+        verses: [1],
+        versionAbbreviation: '',
+      }),
+    ).toBe('Genesis 1:1');
   });
 });
 

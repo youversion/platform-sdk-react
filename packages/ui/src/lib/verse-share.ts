@@ -72,6 +72,29 @@ export function joinVerseTexts(
   return out.trim();
 }
 
+/**
+ * Builds the reference line: `Book Chapter:verses VERSION`
+ * (e.g. `John 1:1-3 NIV`). The version abbreviation is dropped when empty.
+ */
+export function buildVerseReference({
+  bookName,
+  chapter,
+  verses,
+  versionAbbreviation,
+}: {
+  bookName: string;
+  chapter: string | number;
+  verses: number[];
+  versionAbbreviation: string;
+}): string {
+  return [
+    `${bookName} ${chapter}:${formatVerseNumbers(verses)}`.trim(),
+    versionAbbreviation.trim(),
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
+
 export type BuildVerseShareTextOptions = {
   verses: number[];
   textByVerse: Record<number, string>;
@@ -92,12 +115,7 @@ export function buildVerseShareText({
   versionAbbreviation,
 }: BuildVerseShareTextOptions): string {
   const body = joinVerseTexts(verses, textByVerse);
-  const reference = [
-    `${bookName} ${chapter}:${formatVerseNumbers(verses)}`.trim(),
-    versionAbbreviation.trim(),
-  ]
-    .filter(Boolean)
-    .join(' ');
+  const reference = buildVerseReference({ bookName, chapter, verses, versionAbbreviation });
 
   return `${LEFT_DOUBLE_QUOTE}${body}${RIGHT_DOUBLE_QUOTE}\n\n${reference}`;
 }

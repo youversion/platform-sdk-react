@@ -39,7 +39,7 @@ import { Button } from './ui/button';
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from './ui/popover';
 import { VerseActionPopover } from './verse-action-popover';
 import { BibleTextView, getCleanVerseText, type FootnoteData } from './verse';
-import { buildVerseShareText } from '@/lib/verse-share';
+import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
 
 type BibleReaderContextType = {
   book: string;
@@ -63,6 +63,27 @@ type BibleReaderContextType = {
   onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
   onSignInPress?: () => void;
   onSignOutPress?: () => void;
+  onCopy?: (data: BibleReaderShareData) => void | Promise<void>;
+  onShare?: (data: BibleReaderShareData) => void | Promise<void>;
+};
+
+/**
+ * Serializable payload handed to the `onCopy` / `onShare` overrides. Mirrors
+ * `VerseOfTheDayShareData` so React Native / Expo DOM hosts can forward verse
+ * selections across the native bridge.
+ */
+export type BibleReaderShareData = {
+  /** Full body: curly-quoted verse text, a blank line, then the reference. */
+  text: string;
+  /** Reference line only, e.g. `John 1:1-3 NIV`. */
+  reference: string;
+  /** Verse text only (no reference line), gaps joined with ` ... `. */
+  verseText: string;
+  /** Selected verse numbers, ascending and de-duplicated. */
+  verses: number[];
+  book: string;
+  chapter: string;
+  versionId: number;
 };
 
 const BibleReaderContext = createContext<BibleReaderContextType | null>(null);
@@ -107,6 +128,16 @@ export type RootProps = {
   onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
   onSignInPress?: () => void;
   onSignOutPress?: () => void;
+  /**
+   * Called on Copy with the selection payload. When provided, suppresses the
+   * default `navigator.clipboard` write — use for React Native / Expo hosts.
+   */
+  onCopy?: (data: BibleReaderShareData) => void | Promise<void>;
+  /**
+   * Called on Share with the selection payload. When provided, suppresses the
+   * default Web Share / clipboard flow — use for React Native / Expo hosts.
+   */
+  onShare?: (data: BibleReaderShareData) => void | Promise<void>;
   children?: ReactNode;
 };
 
@@ -251,6 +282,8 @@ function Root({
   onVersionPickerPress,
   onSignInPress,
   onSignOutPress,
+  onCopy,
+  onShare,
   children,
 }: RootProps) {
   const [book, setBook] = useControllableState({
@@ -397,6 +430,8 @@ function Root({
     onVersionPickerPress,
     onSignInPress,
     onSignOutPress,
+    onCopy,
+    onShare,
   };
 
   return (
@@ -425,6 +460,8 @@ function Content() {
     currentLineSpacing,
     showVerseNumbers,
     onFootnotePress,
+    onCopy,
+    onShare,
   } = useBibleReaderContext();
   const { version } = useVersion(versionId);
 
@@ -478,6 +515,16 @@ function Content() {
   const [highlightStore, setHighlightStore] = useState<Record<string, string>>({});
 
   const highlightsStorageKey = `youversion-platform:highlights:${versionId}`;
+
+  // Clear the store synchronously (during render) the moment the version key
+  // changes. The load effect below runs *after* paint, so without this the
+  // previous version's highlights would paint over the new text for one frame —
+  // their `${book}.${chapter}.N` keys collide with the new version's verses.
+  const [loadedHighlightsKey, setLoadedHighlightsKey] = useState(highlightsStorageKey);
+  if (loadedHighlightsKey !== highlightsStorageKey) {
+    setLoadedHighlightsKey(highlightsStorageKey);
+    setHighlightStore({});
+  }
 
   // Load this version's highlights when the version changes (client-only).
   useEffect(() => {
@@ -587,31 +634,65 @@ function Content() {
     if (!hasRemaining) closeAndClearSelection();
   }
 
-  function buildSelectionText(): string {
+  function buildSelectionShareData(): BibleReaderShareData | null {
     const container = readerRef.current;
-    if (!container) return '';
+    if (!container) return null;
     const textByVerse: Record<number, string> = {};
     for (const verse of selectedVerses) {
       textByVerse[verse] = getCleanVerseText(container, verse);
     }
-    return buildVerseShareText({
-      verses: selectedVerses,
-      textByVerse,
-      bookName: bookData?.title ?? book,
+    const bookName = bookData?.title ?? book;
+    const versionAbbreviation = version?.localized_abbreviation ?? '';
+    return {
+      text: buildVerseShareText({
+        verses: selectedVerses,
+        textByVerse,
+        bookName,
+        chapter,
+        versionAbbreviation,
+      }),
+      reference: buildVerseReference({
+        bookName,
+        chapter,
+        verses: selectedVerses,
+        versionAbbreviation,
+      }),
+      verseText: joinVerseTexts(selectedVerses, textByVerse),
+      verses: [...new Set(selectedVerses)].sort((a, b) => a - b),
+      book,
       chapter,
-      versionAbbreviation: version?.localized_abbreviation ?? '',
-    });
+      versionId,
+    };
   }
 
   function handleCopy() {
-    const text = buildSelectionText();
-    if (text) void navigator.clipboard?.writeText(text);
+    const data = buildSelectionShareData();
+    if (onCopy) {
+      if (data) {
+        void Promise.resolve(onCopy(data)).catch(() => {
+          // Host rejected — mirror the silent failure of navigator.clipboard.
+        });
+      }
+      closeAndClearSelection();
+      return;
+    }
+    if (data?.text) void navigator.clipboard?.writeText(data.text);
     closeAndClearSelection();
   }
 
   function handleShare() {
-    const text = buildSelectionText();
-    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+    const data = buildSelectionShareData();
+    if (onShare) {
+      if (data) {
+        void Promise.resolve(onShare(data)).catch(() => {
+          // Host rejected or cancelled — mirror the silent navigator.share dismiss.
+        });
+      }
+      closeAndClearSelection();
+      return;
+    }
+    const text = data?.text ?? '';
+    if (text && typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       navigator
         .share({ text })
         .then(() => closeAndClearSelection())

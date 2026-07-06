@@ -16,6 +16,7 @@ export {
   nextBibleReaderFontSizeDown,
   nextBibleReaderFontSizeUp,
   type BibleReaderRootProps,
+  type BibleReaderShareData,
   type BibleReaderToolbarProps,
   type BibleThemeSettingsContentProps,
   type BibleThemeSettingsSnapshot,
