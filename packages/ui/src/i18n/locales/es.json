@@ -54,5 +54,11 @@
   "unreachableServerError": "No se pudo conectar con el servidor de la Biblia. Verifica tu conexión e inténtalo de nuevo.",
   "rateLimitedError": "El servicio de la Biblia está recibiendo demasiadas solicitudes en este momento. Por favor, espera un momento e inténtalo de nuevo.",
   "serverError": "El servicio de la Biblia está teniendo problemas en este momento. Por favor, inténtalo de nuevo en un momento.",
-  "genericPassageError": "No pudimos cargar este pasaje bíblico. Por favor, inténtalo de nuevo."
+  "genericPassageError": "No pudimos cargar este pasaje bíblico. Por favor, inténtalo de nuevo.",
+  "copy": "Copiar",
+  "share": "Compartir",
+  "verseActionsAriaLabel": "Acciones del versículo",
+  "highlightColorsAriaLabel": "Colores de resaltado",
+  "applyHighlightAriaLabel": "Aplicar resaltado",
+  "clearHighlightAriaLabel": "Quitar resaltado"
 }
