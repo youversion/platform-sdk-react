@@ -26,4 +26,19 @@ describe('YouVersionProvider', () => {
     expect(id).toBeTruthy();
     expect(id).not.toBe('none');
   });
+
+  it.each([
+    ['undefined', undefined],
+    ['empty string', ''],
+    ['whitespace only', '   '],
+  ])('throws when appKey is %s', (_label, appKey) => {
+    expect(() =>
+      render(
+        // @ts-expect-error -- exercising the runtime guard with an invalid appKey
+        <YouVersionProvider appKey={appKey}>
+          <ContextReader />
+        </YouVersionProvider>,
+      ),
+    ).toThrow(/non-empty "appKey" is required/);
+  });
 });
