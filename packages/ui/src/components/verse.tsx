@@ -140,6 +140,38 @@ function getVerseHtmlFromDom(container: HTMLElement, verseNum: string): string {
   return parts.join('');
 }
 
+/** Verse highlight fill = the highlight hex at 35% opacity, behind the text (per Figma). */
+const HIGHLIGHT_FILL_OPACITY = 0.35;
+
+/** Converts a 6-digit hex (no `#`) to an `rgba()` string at the given alpha. */
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/**
+ * Extracts clean prose for a verse from the rendered DOM: concatenates every
+ * `.yv-v[v="N"]` wrapper (a verse can span multiple, e.g. poetry) with verse
+ * numbers (`.yv-vlbl`), headings (`.yv-h`), and footnote markers
+ * (`[data-verse-footnote]`) stripped. Used to build Copy / Share text.
+ */
+export function getCleanVerseText(container: HTMLElement, verseNum: number): string {
+  const wrappers = container.querySelectorAll(`.yv-v[v="${verseNum}"]`);
+  if (!wrappers.length) return '';
+
+  const parts: string[] = [];
+  wrappers.forEach((wrapper) => {
+    const clone = wrapper.cloneNode(true) as Element;
+    clone.querySelectorAll('.yv-h, .yv-vlbl, [data-verse-footnote]').forEach((el) => el.remove());
+    const text = (clone.textContent || '').trim();
+    if (text) parts.push(text);
+  });
+
+  return parts.join(' ').replace(/\s+/g, ' ').trim();
+}
+
 const VerseFootnoteButton = memo(function VerseFootnoteButton({
   verseNum,
   notes,
@@ -149,6 +181,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   fontSize,
   theme,
   onFootnotePress,
+  isHighlighted,
 }: {
   verseNum: string;
   notes: string[];
@@ -158,15 +191,22 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   fontSize?: number;
   theme: 'light' | 'dark';
   onFootnotePress?: (data: FootnoteData) => void;
+  isHighlighted?: boolean;
 }) {
   const { t } = useTranslation(undefined, { i18n });
+
+  // On a highlight fill the default light-gray marker loses contrast
+  const iconClassName = cn(
+    'yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1!',
+    isHighlighted ? 'yv:text-muted-foreground' : 'yv:text-(--yv-gray-20)',
+  );
 
   if (onFootnotePress) {
     return (
       <button
         aria-label={t('footnoteAriaLabel')}
         type="button"
-        className="yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1! yv:text-(--yv-gray-20)"
+        className={iconClassName}
         onClick={() => onFootnotePress({ verseNum, notes, verseHtml, reference })}
       >
         <Footnote className="yv:size-[1.5em]" />
@@ -177,11 +217,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   return (
     <Popover>
       <PopoverTrigger data-yv-sdk data-yv-theme={theme} asChild>
-        <button
-          aria-label={t('footnoteAriaLabel')}
-          type="button"
-          className="yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1! yv:text-(--yv-gray-20)"
-        >
+        <button aria-label={t('footnoteAriaLabel')} type="button" className={iconClassName}>
           <Footnote className="yv:size-[1.5em]" />
         </button>
       </PopoverTrigger>
@@ -239,7 +275,7 @@ function BibleTextHtml({
   theme?: 'light' | 'dark';
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
-  highlightedVerses?: Record<number, boolean>;
+  highlightedVerses?: Record<number, string>;
   onFootnotePress?: (data: FootnoteData) => void;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
@@ -279,13 +315,18 @@ function BibleTextHtml({
     setFootnoteData(result);
   }, [html]);
 
-  // Toggle selected/highlighted classes on verse wrappers.
+  // Toggle selection underline + paint highlight fills on verse wrappers.
+  // A verse can map to multiple `.yv-v[v="N"]` wrappers; each is painted so the
+  // highlight reads as one solid block across line/paragraph breaks.
   useLayoutEffect(() => {
     if (!contentRef.current) return;
     contentRef.current.querySelectorAll('.yv-v[v]').forEach((el) => {
       const verseNum = parseInt(el.getAttribute('v') || '0', 10);
       el.classList.toggle('yv-v-selected', selectedVerses.includes(verseNum));
-      el.classList.toggle('yv-v-highlighted', !!highlightedVerses[verseNum]);
+      const color = highlightedVerses[verseNum];
+      (el as HTMLElement).style.backgroundColor = color
+        ? hexToRgba(color, HIGHLIGHT_FILL_OPACITY)
+        : '';
     });
   }, [html, selectedVerses, highlightedVerses]);
 
@@ -318,6 +359,7 @@ function BibleTextHtml({
             fontSize={fontSize}
             theme={currentTheme}
             onFootnotePress={onFootnotePress}
+            isHighlighted={Boolean(highlightedVerses[Number(verseNum)])}
           />,
           el,
           `${verseNum}-${index}`,
@@ -356,7 +398,7 @@ type VerseHtmlProps = {
   theme?: 'light' | 'dark';
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
-  highlightedVerses?: Record<number, boolean>;
+  highlightedVerses?: Record<number, string>;
   onFootnotePress?: (data: FootnoteData) => void;
 };
 
@@ -465,7 +507,7 @@ export type BibleTextViewProps = {
   theme?: 'light' | 'dark';
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
-  highlightedVerses?: Record<number, boolean>;
+  highlightedVerses?: Record<number, string>;
   passageState?: Partial<BibleTextViewPassageState>;
   onFootnotePress?: (data: FootnoteData) => void;
 };

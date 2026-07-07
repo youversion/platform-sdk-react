@@ -22,6 +22,7 @@ import React, {
   useLayoutEffect,
   useMemo,
   useRef,
+  useState,
   type ReactElement,
   type ReactNode,
 } from 'react';
@@ -36,7 +37,9 @@ import { LoaderIcon } from './icons/loader';
 import { PersonIcon } from './icons/person';
 import { Button } from './ui/button';
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from './ui/popover';
-import { BibleTextView, type FootnoteData } from './verse';
+import { VerseActionPopover } from './verse-action-popover';
+import { BibleTextView, getCleanVerseText, type FootnoteData } from './verse';
+import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
 
 type BibleReaderContextType = {
   book: string;
@@ -60,6 +63,27 @@ type BibleReaderContextType = {
   onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
   onSignInPress?: () => void;
   onSignOutPress?: () => void;
+  onCopy?: (data: BibleReaderShareData) => void | Promise<void>;
+  onShare?: (data: BibleReaderShareData) => void | Promise<void>;
+};
+
+/**
+ * Serializable payload handed to the `onCopy` / `onShare` overrides. Mirrors
+ * `VerseOfTheDayShareData` so React Native / Expo DOM hosts can forward verse
+ * selections across the native bridge.
+ */
+export type BibleReaderShareData = {
+  /** Full body: curly-quoted verse text, a blank line, then the reference. */
+  text: string;
+  /** Reference line only, e.g. `John 1:1-3 NIV`. */
+  reference: string;
+  /** Verse text only (no reference line), gaps joined with ` ... `. */
+  verseText: string;
+  /** Selected verse numbers, ascending and de-duplicated. */
+  verses: number[];
+  book: string;
+  chapter: string;
+  versionId: number;
 };
 
 const BibleReaderContext = createContext<BibleReaderContextType | null>(null);
@@ -104,6 +128,16 @@ export type RootProps = {
   onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
   onSignInPress?: () => void;
   onSignOutPress?: () => void;
+  /**
+   * Called on Copy with the selection payload. When provided, suppresses the
+   * default `navigator.clipboard` write — use for React Native / Expo hosts.
+   */
+  onCopy?: (data: BibleReaderShareData) => void | Promise<void>;
+  /**
+   * Called on Share with the selection payload. When provided, suppresses the
+   * default Web Share / clipboard flow — use for React Native / Expo hosts.
+   */
+  onShare?: (data: BibleReaderShareData) => void | Promise<void>;
   children?: ReactNode;
 };
 
@@ -248,6 +282,8 @@ function Root({
   onVersionPickerPress,
   onSignInPress,
   onSignOutPress,
+  onCopy,
+  onShare,
   children,
 }: RootProps) {
   const [book, setBook] = useControllableState({
@@ -394,6 +430,8 @@ function Root({
     onVersionPickerPress,
     onSignInPress,
     onSignOutPress,
+    onCopy,
+    onShare,
   };
 
   return (
@@ -422,6 +460,8 @@ function Content() {
     currentLineSpacing,
     showVerseNumbers,
     onFootnotePress,
+    onCopy,
+    onShare,
   } = useBibleReaderContext();
   const { version } = useVersion(versionId);
 
@@ -462,6 +502,221 @@ function Content() {
     scrollContainerRef.current?.scrollTo({ top: 0 });
   }, [book, chapter]);
 
+  // ---- Verse selection + highlights ------------------------------------------
+  // Selection is ephemeral; highlights persist to localStorage only for now
+  // (ADR-001) in the future `highlight` API shape: keyed by full passage_id USFM
+  // and scoped by versionId/bible_id (ADR-002). The reader DOM ref lets us anchor
+  // the popover and pull clean verse text for Copy / Share.
+  const readerRef = useRef<HTMLDivElement>(null);
+  const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null);
+  const lastSelectionRef = useRef<number[]>([]);
+  const [highlightStore, setHighlightStore] = useState<Record<string, string>>({});
+
+  const highlightsStorageKey = `youversion-platform:highlights:${versionId}`;
+
+  // Clear the store synchronously (during render) the moment the version key
+  // changes. The load effect below runs *after* paint, so without this the
+  // previous version's highlights would paint over the new text for one frame —
+  // their `${book}.${chapter}.N` keys collide with the new version's verses.
+  const [loadedHighlightsKey, setLoadedHighlightsKey] = useState(highlightsStorageKey);
+  if (loadedHighlightsKey !== highlightsStorageKey) {
+    setLoadedHighlightsKey(highlightsStorageKey);
+    setHighlightStore({});
+  }
+
+  // Load this version's highlights when the version changes (client-only).
+  useEffect(() => {
+    let data: Record<string, string> = {};
+    try {
+      const raw = localStorage.getItem(highlightsStorageKey);
+      if (raw) data = JSON.parse(raw) as Record<string, string>;
+    } catch {
+      // Ignore (unavailable or malformed storage).
+    }
+    setHighlightStore(data);
+  }, [highlightsStorageKey]);
+
+  // Navigating away (book/chapter/version) drops the selection — those verses no
+  // longer exist on screen (ADR-007).
+  useEffect(() => {
+    setSelectedVerses([]);
+    setPopoverOpen(false);
+    setAnchorElement(null);
+    lastSelectionRef.current = [];
+  }, [book, chapter, versionId]);
+
+  // Derive the visible chapter's highlights (verse number → hex) from the store.
+  const chapterPrefix = `${book}.${chapter}.`;
+  const highlightedVerses = useMemo(() => {
+    const map: Record<number, string> = {};
+    for (const [passageId, color] of Object.entries(highlightStore)) {
+      if (!passageId.startsWith(chapterPrefix)) continue;
+      const verseNum = parseInt(passageId.slice(chapterPrefix.length), 10);
+      if (verseNum) map[verseNum] = color;
+    }
+    return map;
+  }, [highlightStore, chapterPrefix]);
+
+  // Distinct colors present in the current selection → drives the X (remove) circles.
+  const activeHighlights = useMemo(
+    () =>
+      new Set(
+        selectedVerses
+          .map((verse) => highlightedVerses[verse])
+          .filter((color): color is string => Boolean(color)),
+      ),
+    [selectedVerses, highlightedVerses],
+  );
+
+  function persistHighlights(next: Record<string, string>) {
+    try {
+      localStorage.setItem(highlightsStorageKey, JSON.stringify(next));
+    } catch {
+      // Ignore (private mode / quota exceeded).
+    }
+  }
+
+  function closeAndClearSelection() {
+    setPopoverOpen(false);
+    setSelectedVerses([]);
+    setAnchorElement(null);
+    lastSelectionRef.current = [];
+  }
+
+  function handleVerseSelect(verses: number[]) {
+    const added = verses.find((verse) => !lastSelectionRef.current.includes(verse));
+    lastSelectionRef.current = verses;
+    setSelectedVerses(verses);
+
+    if (verses.length === 0) {
+      setPopoverOpen(false);
+      setAnchorElement(null);
+      return;
+    }
+
+    // Anchor to the most recently tapped verse (falls back to the last by number
+    // when a verse was removed), using its final wrapper so the caret sits at the
+    // verse's visual bottom.
+    const anchorVerse = added ?? Math.max(...verses);
+    const wrappers = readerRef.current?.querySelectorAll(`.yv-v[v="${anchorVerse}"]`);
+    const anchor = wrappers?.[wrappers.length - 1];
+    setAnchorElement(anchor instanceof HTMLElement ? anchor : null);
+    setPopoverOpen(true);
+  }
+
+  function handleHighlight(color: string) {
+    const next = { ...highlightStore };
+    for (const verse of selectedVerses) {
+      next[`${book}.${chapter}.${verse}`] = color;
+    }
+    setHighlightStore(next);
+    persistHighlights(next);
+    closeAndClearSelection();
+  }
+
+  function handleClearHighlight(color: string) {
+    const next = { ...highlightStore };
+    for (const verse of selectedVerses) {
+      const passageId = `${book}.${chapter}.${verse}`;
+      if (next[passageId] === color) delete next[passageId];
+    }
+    setHighlightStore(next);
+    persistHighlights(next);
+
+    // Multiple colors active → keep open so the user can remove others (AC 8a);
+    // last color removed → dismiss (AC 8).
+    const hasRemaining = selectedVerses.some((verse) => {
+      const current = highlightedVerses[verse];
+      return current && current !== color;
+    });
+    if (!hasRemaining) closeAndClearSelection();
+  }
+
+  function buildSelectionShareData(): BibleReaderShareData | null {
+    const container = readerRef.current;
+    if (!container) return null;
+    const textByVerse: Record<number, string> = {};
+    for (const verse of selectedVerses) {
+      textByVerse[verse] = getCleanVerseText(container, verse);
+    }
+    const bookName = bookData?.title ?? book;
+    const versionAbbreviation = version?.localized_abbreviation ?? '';
+    return {
+      text: buildVerseShareText({
+        verses: selectedVerses,
+        textByVerse,
+        bookName,
+        chapter,
+        versionAbbreviation,
+      }),
+      reference: buildVerseReference({
+        bookName,
+        chapter,
+        verses: selectedVerses,
+        versionAbbreviation,
+      }),
+      verseText: joinVerseTexts(selectedVerses, textByVerse),
+      verses: [...new Set(selectedVerses)].sort((a, b) => a - b),
+      book,
+      chapter,
+      versionId,
+    };
+  }
+
+  function handleCopy() {
+    const data = buildSelectionShareData();
+    if (onCopy) {
+      if (data) {
+        void Promise.resolve(onCopy(data)).catch(() => {
+          // Host rejected — mirror the silent failure of navigator.clipboard.
+        });
+      }
+      closeAndClearSelection();
+      return;
+    }
+    if (data?.text) void navigator.clipboard?.writeText(data.text);
+    closeAndClearSelection();
+  }
+
+  function handleShare() {
+    const data = buildSelectionShareData();
+    if (onShare) {
+      if (data) {
+        void Promise.resolve(onShare(data)).catch(() => {
+          // Host rejected or cancelled — mirror the silent navigator.share dismiss.
+        });
+      }
+      closeAndClearSelection();
+      return;
+    }
+    const text = data?.text ?? '';
+    if (text && typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      navigator
+        .share({ text })
+        .then(() => closeAndClearSelection())
+        .catch(() => {
+          // Cancelled or failed — keep the popover open (AC 4).
+        });
+      return;
+    }
+    // No Web Share support (e.g. most desktop browsers) — fall back to clipboard.
+    if (text && typeof navigator !== 'undefined') {
+      void navigator.clipboard?.writeText(text);
+    }
+    closeAndClearSelection();
+  }
+
+  function handlePopoverOpenChange(open: boolean) {
+    if (open) {
+      setPopoverOpen(true);
+      return;
+    }
+    // Outside click / Escape closes and clears (ADR-007).
+    closeAndClearSelection();
+  }
+
   let chapterLabel: string = bookData?.chapters?.find((ch) => ch.id === chapter)?.title || chapter;
   if (bookData?.intro && chapter === bookData?.intro.id) {
     chapterLabel = bookData.intro.title;
@@ -500,6 +755,7 @@ function Content() {
             )}
           >
             <BibleTextView
+              ref={readerRef}
               reference={usfmReference}
               versionId={versionId}
               fontFamily={currentFontFamily}
@@ -508,6 +764,9 @@ function Content() {
               showVerseNumbers={showVerseNumbers}
               theme={background}
               onFootnotePress={onFootnotePress}
+              selectedVerses={selectedVerses}
+              onVerseSelect={handleVerseSelect}
+              highlightedVerses={highlightedVerses}
               passageState={{
                 passage,
                 loading: isRefetching ? false : passageLoading,
@@ -515,6 +774,21 @@ function Content() {
               }}
             />
           </div>
+
+          <VerseActionPopover
+            open={popoverOpen && selectedVerses.length > 0}
+            onOpenChange={handlePopoverOpenChange}
+            activeHighlights={activeHighlights}
+            selectedVerses={selectedVerses}
+            highlightedVerses={highlightedVerses}
+            anchorElement={anchorElement}
+            scrollRoot={scrollContainerRef.current}
+            onHighlight={handleHighlight}
+            onClearHighlight={handleClearHighlight}
+            onCopy={handleCopy}
+            onShare={handleShare}
+            theme={background}
+          />
 
           {showLoadingOverlay ? (
             <div
