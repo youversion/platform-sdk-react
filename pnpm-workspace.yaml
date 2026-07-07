@@ -7,6 +7,17 @@ packages:
 
 minimumReleaseAge: 4320 # 3-day cooldown — supply-chain attack mitigation
 
+# Migrated from .npmrc — pnpm 11 only reads auth/registry settings from .npmrc,
+# all other settings must live here (https://pnpm.io/blog/releases/11.0).
+autoInstallPeers: true
+strictPeerDependencies: false
+# Hoist eslint, prettier, and @types/* to the root node_modules so editor
+# tooling and scripts can resolve them (pnpm 11 default publicHoistPattern is []).
+publicHoistPattern:
+  - "*eslint*"
+  - "*prettier*"
+  - "@types/*"
+
 overrides:
   react: "19.1.2"
   react-dom: "19.1.2"
