@@ -107,6 +107,18 @@ layer(yv-sdk-fonts);
   }
 }
 
+/* Verse selection — an underline under the selected verse's text. Sits in the
+   bible-reader layer alongside the `.yv-v` verse structure. Highlight fills are
+   applied as inline styles in verse.tsx (per-verse color), so they aren't here. */
+@layer yv-sdk-bible-reader {
+  [data-yv-sdk] .yv-v-selected {
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 2px;
+    text-decoration-color: var(--yv-foreground);
+  }
+}
+
 @utility touch-hitbox {
   position: relative;
 

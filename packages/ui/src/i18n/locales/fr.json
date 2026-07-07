@@ -54,5 +54,11 @@
   "unreachableServerError": "Le serveur de la Bible n'a pas pu être atteint. Vérifiez votre connexion et réessayez.",
   "rateLimitedError": "Le service de la Bible reçoit trop de requêtes en ce moment. Veuillez patienter un moment et réessayer.",
   "serverError": "Le service de la Bible rencontre des difficultés en ce moment. Veuillez réessayer dans un moment.",
-  "genericPassageError": "Nous n'avons pas pu charger ce passage biblique. Veuillez réessayer."
+  "genericPassageError": "Nous n'avons pas pu charger ce passage biblique. Veuillez réessayer.",
+  "copy": "Copier",
+  "share": "Partager",
+  "verseActionsAriaLabel": "Actions du verset",
+  "highlightColorsAriaLabel": "Couleurs de surlignage",
+  "applyHighlightAriaLabel": "Appliquer le surlignage",
+  "clearHighlightAriaLabel": "Supprimer le surlignage"
 }
