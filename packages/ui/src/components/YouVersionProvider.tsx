@@ -23,12 +23,20 @@ export function YouVersionProvider(
   // fix (set the env var, restart the dev server) goes to console.error for the
   // developer. Hooks-only consumers still get a thrown error from the base
   // provider.
-  if (!props.appKey?.trim()) {
-    console.error(
-      'YouVersionProvider: a non-empty "appKey" is required. If you load it from an ' +
-        'environment variable, make sure it is set and restart your dev server.',
-    );
+  const missingAppKey = !props.appKey?.trim();
 
+  // Log from an effect (not the render body) so the guidance is emitted once per
+  // state change instead of on every re-render and twice under Strict Mode.
+  useEffect(() => {
+    if (missingAppKey) {
+      console.error(
+        'YouVersionProvider: a non-empty "appKey" is required. If you load it from an ' +
+          'environment variable, make sure it is set and restart your dev server.',
+      );
+    }
+  }, [missingAppKey]);
+
+  if (missingAppKey) {
     return (
       <>
         <YvStyles />
