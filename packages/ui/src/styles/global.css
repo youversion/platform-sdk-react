@@ -45,26 +45,10 @@ layer(yv-sdk-fonts);
 @import '@youversion/platform-core/browser/styles/bible-reader.css' layer(yv-sdk-bible-reader);
 @import 'tw-animate-css';
 
-/* Aktiv Grotesk App — YouVersion brand font (Book/Chapter picker). Served from prod CDN.
-   Declared at top level (not in a cascade layer) — @font-face is not subject to @layer.
-   CSP: consumers with a strict font-src must allowlist storage.googleapis.com (see README
-   "Content Security Policy"), else this falls back to --yv-font-sans. */
-@font-face {
-  font-family: 'Aktiv Grotesk App';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('https://storage.googleapis.com/cdn-youversion-com/fonts/aktiv-grotesk/AktivGrotesk_A_Rg.woff2')
-    format('woff2');
-}
-@font-face {
-  font-family: 'Aktiv Grotesk App';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('https://storage.googleapis.com/cdn-youversion-com/fonts/aktiv-grotesk/AktivGrotesk_A_Bd.woff2')
-    format('woff2');
-}
+/* Brand fonts (Aktiv Grotesk App / Untitled Serif @font-face) removed pending licensing —
+   see docs/adr/0001-revert-brand-fonts-pending-licensing.md. Sans/serif now resolve to
+   Inter / Source Serif 4 (loaded via the Google Fonts @import above). Brand-font
+   implementation parked on branch feat/youversion-brand-fonts. */
 
 /* #region shadcn UI theme */
 @custom-variant dark (&:is([data-yv-sdk][data-yv-theme='dark'] *));
@@ -72,14 +56,10 @@ layer(yv-sdk-fonts);
 @layer yv-sdk-theme {
   [data-yv-sdk] {
     @theme inline {
+      /* Brand fonts reverted to Inter / Source Serif 4 pending licensing — see
+         docs/adr/0001-revert-brand-fonts-pending-licensing.md. */
       --font-sans: 'Inter', sans-serif;
       --font-serif: 'Source Serif 4', serif;
-      /* Aktiv Grotesk App — YouVersion brand font for Book/Chapter picker (CDN @font-face above).
-         Falls back to --yv-font-sans (Inter) if the woff2 fails to load.
-         NOTE: must use --yv-font-sans (a real runtime var), NOT --font-sans — the latter is
-         declared via `@theme inline` and is inlined into utilities, so it is not emitted as a
-         runtime custom property; referencing var(--font-sans) here would invalidate the value. */
-      --font-aktiv: 'Aktiv Grotesk App', var(--yv-font-sans);
       --color-background: var(--yv-background);
       --color-foreground: var(--yv-foreground);
       --color-card: var(--yv-card);

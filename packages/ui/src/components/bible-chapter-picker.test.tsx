@@ -197,7 +197,7 @@ describe('BibleChapterPicker.Content onSelect', () => {
   });
 });
 
-describe('BibleChapterPicker - typography (matches Figma: Aktiv Grotesk App)', () => {
+describe('BibleChapterPicker - typography (matches Figma sizing; sans inherited)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupDefaultMocks();
@@ -224,13 +224,13 @@ describe('BibleChapterPicker - typography (matches Figma: Aktiv Grotesk App)', (
     );
   }
 
-  it('book row uses Aktiv 16px, regular collapsed and bold when expanded', () => {
+  it('book row uses 16px, regular collapsed and bold when expanded', () => {
     renderContent();
 
     // GEN is the default-expanded book (book="GEN").
     const genesisTrigger = findAccordionTrigger(/Genesis/i);
     expect(genesisTrigger).toBeDefined();
-    expect(genesisTrigger).toHaveClass('yv:font-aktiv', 'yv:text-base', 'yv:font-normal');
+    expect(genesisTrigger).toHaveClass('yv:text-base', 'yv:font-normal');
     expect(genesisTrigger).toHaveAttribute('data-state', 'open');
     expect(genesisTrigger).toHaveClass('yv:data-[state=open]:font-bold');
   });
@@ -240,12 +240,12 @@ describe('BibleChapterPicker - typography (matches Figma: Aktiv Grotesk App)', (
 
     const chapterButton = screen.getByText('2').closest('button');
     expect(chapterButton).not.toBeNull();
-    expect(chapterButton).toHaveClass('yv:font-aktiv', 'yv:text-base', 'yv:font-bold');
+    expect(chapterButton).toHaveClass('yv:text-base', 'yv:font-bold');
   });
 
   it('search input uses Aktiv 16px', () => {
     renderContent();
 
-    expect(screen.getByPlaceholderText('Search')).toHaveClass('yv:font-aktiv', 'yv:text-base');
+    expect(screen.getByPlaceholderText('Search')).toHaveClass('yv:text-base');
   });
 });

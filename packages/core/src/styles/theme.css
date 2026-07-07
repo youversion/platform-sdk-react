@@ -108,6 +108,9 @@
   --yv-sidebar-border: var(--yv-gray-15);
   --yv-sidebar-ring: var(--yv-blue-30);
 
+  /* Brand fonts (Aktiv Grotesk App / Untitled Serif) reverted to Inter / Source
+     Serif 4 pending licensing — see docs/adr/0001-revert-brand-fonts-pending-licensing.md.
+     Brand-font implementation parked on branch feat/youversion-brand-fonts. */
   --yv-font-sans: 'Inter', sans-serif;
   --yv-font-serif: 'Source Serif 4', serif;
   --yv-reader-font-family: var(--yv-font-serif), var(--yv-font-sans);

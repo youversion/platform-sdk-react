@@ -312,6 +312,39 @@ export const SuggestedLanguagesOrder: Story = {
   },
 };
 
+export const LanguageSearch: Story = {
+  args: {
+    versionId: 111,
+  },
+  tags: ['integration'],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
+    await userEvent.click(trigger);
+
+    const languageButton = await screen.findByRole('button', { name: /select language/i });
+    await userEvent.click(languageButton);
+
+    const languageSearchInput = screen.getByRole('textbox', { name: /search languages/i });
+    await userEvent.type(languageSearchInput, 'Korean', { delay: 50 });
+
+    await expect(screen.queryByRole('tab', { name: /suggested/i })).not.toBeInTheDocument();
+    await expect(screen.queryByRole('tab', { name: /all/i })).not.toBeInTheDocument();
+
+    const results = await screen.findByTestId('language-search-results');
+    await expect(within(results).getAllByRole('listitem')).toHaveLength(1);
+    await expect(within(results).getByRole('listitem', { name: /korean/i })).toBeInTheDocument();
+
+    await userEvent.clear(languageSearchInput);
+    await userEvent.type(languageSearchInput, 'Koreanea', { delay: 50 });
+
+    await expect(
+      screen.getByText("We're sorry, there are no results for this search."),
+    ).toBeInTheDocument();
+  },
+};
+
 export const InteractiveVersionSearch: Story = {
   args: {
     versionId: 111,
@@ -325,7 +358,7 @@ export const InteractiveVersionSearch: Story = {
     await userEvent.click(trigger);
 
     // Type in search
-    const searchInput = screen.getByPlaceholderText('Search');
+    const searchInput = screen.getByRole('textbox', { name: /search bible versions/i });
     await userEvent.type(searchInput, 'NIV', { delay: 50 });
 
     // Verify search is working (versions should be filtered)
@@ -424,7 +457,7 @@ export const SearchResetsAfterSelection: Story = {
     await userEvent.click(trigger);
 
     // Type in search
-    const searchInput = screen.getByPlaceholderText('Search');
+    const searchInput = screen.getByRole('textbox', { name: /search bible versions/i });
     await userEvent.type(searchInput, 'Amplified', { delay: 50 });
     await expect(searchInput).toHaveValue('Amplified');
 
@@ -437,7 +470,7 @@ export const SearchResetsAfterSelection: Story = {
     await userEvent.click(updatedTrigger);
 
     // Verify search input is cleared
-    const resetSearchInput = screen.getByPlaceholderText('Search');
+    const resetSearchInput = screen.getByRole('textbox', { name: /search bible versions/i });
     await expect(resetSearchInput).toHaveValue('');
   },
 };
@@ -471,7 +504,7 @@ export const RecentVersionsSearchFilter: Story = {
     ).toBeInTheDocument();
 
     // Search for "ASV"
-    const searchInput = screen.getByPlaceholderText('Search');
+    const searchInput = screen.getByRole('textbox', { name: /search bible versions/i });
     await userEvent.type(searchInput, 'ASV', { delay: 50 });
 
     // Verify only ASV appears in recent versions after filtering
