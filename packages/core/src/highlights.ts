@@ -5,6 +5,7 @@ import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfigurati
 import {
   HighlightCollectionWireSchema,
   HighlightWireSchema,
+  RecentHighlightColorsWireSchema,
   toHighlight,
 } from './schemas/highlight';
 
@@ -140,6 +141,13 @@ export class HighlightsClient {
       this.authHeaders(lat),
     );
 
+    // The API returns 204 (empty body) when the passage has no highlights,
+    // which is the common case. Treat it as an empty collection rather than a
+    // parse failure.
+    if (response === '' || response == null) {
+      return { data: [], next_page_token: null };
+    }
+
     const parsed = HighlightCollectionWireSchema.safeParse(response);
     if (!parsed.success) {
       throw new Error(`Unexpected highlights API response: ${parsed.error.message}`);
@@ -149,6 +157,33 @@ export class HighlightsClient {
       data: parsed.data.data.map(toHighlight),
       next_page_token: parsed.data.next_page_token ?? null,
     };
+  }
+
+  /**
+   * Fetches the user's recently used highlight colors, followed by the default
+   * colors, as hex strings (no `#`). Useful for building a color picker.
+   * Requires OAuth with read_highlights scope.
+   * @param lat Optional long access token. If not provided, retrieves from YouVersionPlatformConfiguration.
+   * @returns An ordered list of hex color strings.
+   */
+  async getRecentColors(lat?: string): Promise<string[]> {
+    const response = await this.client.get<unknown>(
+      `/v1/highlights/recent-colors`,
+      undefined,
+      this.authHeaders(lat),
+    );
+
+    // The API returns 204 (empty body) when there is nothing to return.
+    if (response === '' || response == null) {
+      return [];
+    }
+
+    const parsed = RecentHighlightColorsWireSchema.safeParse(response);
+    if (!parsed.success) {
+      throw new Error(`Unexpected highlights API response: ${parsed.error.message}`);
+    }
+
+    return parsed.data.data.map((entry) => entry.color);
   }
 
   /**
@@ -171,7 +206,9 @@ export class HighlightsClient {
         highlight: {
           bible_id: data.version_id,
           passage_id: data.passage_id,
-          color: data.color,
+          // The API only accepts lowercase hex; normalize so a caller-supplied
+          // uppercase color doesn't get rejected server-side.
+          color: data.color.toLowerCase(),
         },
       },
       undefined,

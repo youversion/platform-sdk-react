@@ -73,6 +73,19 @@ describe('HighlightsClient', () => {
       ).rejects.toThrow('Passage ID must be a non-empty string');
     });
 
+    it('returns an empty collection when the API responds 204 (no highlights)', async () => {
+      server.use(
+        http.get(`https://${apiHost}/v1/highlights`, () => new HttpResponse(null, { status: 204 })),
+      );
+
+      const highlights = await highlightsClient.getHighlights(
+        { version_id: 111, passage_id: 'MAT.1' },
+        'test-token',
+      );
+
+      expect(highlights).toEqual({ data: [], next_page_token: null });
+    });
+
     it('throws a helpful error when the API response is malformed', async () => {
       server.use(
         http.get(`https://${apiHost}/v1/highlights`, () =>
@@ -83,6 +96,43 @@ describe('HighlightsClient', () => {
       await expect(
         highlightsClient.getHighlights({ version_id: 111, passage_id: 'MAT.1' }, 'token'),
       ).rejects.toThrow('Unexpected highlights API response');
+    });
+  });
+
+  describe('getRecentColors', () => {
+    it('returns the ordered list of hex colors with Bearer auth', async () => {
+      const fetchSpy = vi.spyOn(global, 'fetch');
+
+      const colors = await highlightsClient.getRecentColors('test-token');
+
+      expect(colors).toEqual(['fffe00', '5dff79']);
+
+      const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+      expect(url).toContain('/v1/highlights/recent-colors');
+      expect((init.headers as Record<string, string>).Authorization).toBe('Bearer test-token');
+    });
+
+    it('returns an empty list when the API responds 204', async () => {
+      server.use(
+        http.get(
+          `https://${apiHost}/v1/highlights/recent-colors`,
+          () => new HttpResponse(null, { status: 204 }),
+        ),
+      );
+
+      await expect(highlightsClient.getRecentColors('test-token')).resolves.toEqual([]);
+    });
+
+    it('throws a helpful error when the API response is malformed', async () => {
+      server.use(
+        http.get(`https://${apiHost}/v1/highlights/recent-colors`, () =>
+          HttpResponse.json({ data: [{ not_a_color: true }] }),
+        ),
+      );
+
+      await expect(highlightsClient.getRecentColors('test-token')).rejects.toThrow(
+        'Unexpected highlights API response',
+      );
     });
   });
 
@@ -118,13 +168,22 @@ describe('HighlightsClient', () => {
       expect(highlight).toEqual({ version_id: 111, passage_id: 'MAT.1.1', color: 'fffe00' });
     });
 
-    it('accepts uppercase hex colors round-tripped through the wire schema', async () => {
+    it('normalizes an uppercase color to lowercase on the wire (API is lowercase-only)', async () => {
+      let capturedBody: { highlight: { color: string } } | undefined;
+      server.use(
+        http.post(`https://${apiHost}/v1/highlights`, async ({ request }) => {
+          capturedBody = (await request.json()) as { highlight: { color: string } };
+          return HttpResponse.json(capturedBody.highlight, { status: 201 });
+        }),
+      );
+
       const highlight = await highlightsClient.createHighlight(
         { version_id: 111, passage_id: 'MAT.1.1', color: 'FFC66F' },
         'test-token',
       );
 
-      expect(highlight).toEqual({ version_id: 111, passage_id: 'MAT.1.1', color: 'FFC66F' });
+      expect(capturedBody?.highlight.color).toBe('ffc66f');
+      expect(highlight).toEqual({ version_id: 111, passage_id: 'MAT.1.1', color: 'ffc66f' });
     });
 
     it('validates input before making a request', async () => {

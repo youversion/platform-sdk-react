@@ -9,4 +9,7 @@ Fix `HighlightsClient` to match the live highlights API contract. The client pre
 - Query/body fields now use the API's `bible_id` naming on the wire (the SDK keeps `version_id` in its public types and maps at the boundary)
 - `createHighlight` now sends the required `{ request_id, highlight: { ... } }` envelope (`request_id` is a unique per-request id the API requires)
 - `getHighlights` now requires `version_id` and `passage_id` (verse or chapter USFM), and `deleteHighlight` requires `version_id`, matching the API's required parameters; `useHighlights` options are updated accordingly
+- `getHighlights` now treats a `204` (no highlights for the passage) as an empty collection instead of throwing
+- `createHighlight` normalizes `color` to lowercase before sending, since the API accepts lowercase hex only
+- Added `getRecentColors()` (`GET /v1/highlights/recent-colors`) to `HighlightsClient` and exposed it from `useHighlights` for building color pickers
 - API responses are validated with Zod and mapped from the wire shape

@@ -54,17 +54,20 @@ describe('useHighlights', () => {
   let mockGetHighlights: Mock;
   let mockCreateHighlight: Mock;
   let mockDeleteHighlight: Mock;
+  let mockGetRecentColors: Mock;
 
   beforeEach(() => {
     mockGetHighlights = vi.fn().mockResolvedValue(mockHighlights);
     mockCreateHighlight = vi.fn().mockResolvedValue(mockHighlight);
     mockDeleteHighlight = vi.fn().mockResolvedValue(undefined);
+    mockGetRecentColors = vi.fn().mockResolvedValue(['fffe00', '5dff79']);
 
     (HighlightsClient as unknown as ReturnType<typeof vi.fn>).mockImplementation(function () {
       return {
         getHighlights: mockGetHighlights,
         createHighlight: mockCreateHighlight,
         deleteHighlight: mockDeleteHighlight,
+        getRecentColors: mockGetRecentColors,
       };
     });
 
@@ -309,6 +312,20 @@ describe('useHighlights', () => {
       );
 
       expect(mockGetHighlights).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getRecentColors', () => {
+    it('delegates to the client and returns the color list', async () => {
+      const wrapper = createYVWrapper();
+      const { result } = renderHook(() => useHighlights(defaultOptions), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      await expect(result.current.getRecentColors()).resolves.toEqual(['fffe00', '5dff79']);
+      expect(mockGetRecentColors).toHaveBeenCalledTimes(1);
     });
   });
 });
