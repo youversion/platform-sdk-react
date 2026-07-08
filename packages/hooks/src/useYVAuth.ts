@@ -6,6 +6,7 @@ import {
   type SignInWithYouVersionResult,
   type YouVersionUserInfo,
   type AuthenticationScopes,
+  type SignInWithYouVersionPermissionValues,
 } from '@youversion/platform-core';
 import { useYouVersionAuthContext } from './context/YouVersionAuthContext';
 
@@ -14,7 +15,11 @@ export interface UseYVAuthReturn {
   auth: AuthenticationState;
 
   // Actions
-  signIn: (params?: { redirectUrl?: string; scopes?: AuthenticationScopes[] }) => Promise<void>;
+  signIn: (params?: {
+    redirectUrl?: string;
+    scopes?: AuthenticationScopes[];
+    permissions?: SignInWithYouVersionPermissionValues[];
+  }) => Promise<void>;
   signOut: () => void;
 
   // Callback processing (for callback page) - caches user info
@@ -129,15 +134,19 @@ export function useYVAuth(): UseYVAuthReturn {
 
   // Sign in function
   const signIn = useCallback(
-    async (params?: { redirectUrl?: string; scopes?: AuthenticationScopes[] }) => {
+    async (params?: {
+      redirectUrl?: string;
+      scopes?: AuthenticationScopes[];
+      permissions?: SignInWithYouVersionPermissionValues[];
+    }) => {
       const url = params?.redirectUrl ?? redirectUri;
       if (!url) {
         throw new Error(
           'redirectUrl is required. Provide it via signIn params or configure redirectUri in the auth provider.',
         );
       }
-      if (params?.scopes) {
-        await YouVersionAPIUsers.signIn(url, params.scopes);
+      if (params?.scopes || params?.permissions) {
+        await YouVersionAPIUsers.signIn(url, params.scopes, params.permissions);
       } else {
         await YouVersionAPIUsers.signIn(url);
       }
