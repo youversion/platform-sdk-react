@@ -43,6 +43,10 @@ export function useHighlights(
     );
   }, [context?.apiHost, context?.appKey, context?.installationId, context?.additionalHeaders]);
 
+  // The dep array keys on the primitive fields of `options` rather than the
+  // object reference, so an inline `{ version_id, passage_id }` literal doesn't
+  // force a refetch on every render. If `GetHighlightsOptions` gains more
+  // fields that should trigger refetches, add them to this array too.
   const { data, loading, error, refetch } = useApiData<Collection<Highlight>>(
     () => highlightsClient.getHighlights(options),
     [highlightsClient, options.version_id, options.passage_id],
