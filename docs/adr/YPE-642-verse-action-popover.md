@@ -174,3 +174,37 @@ Selection is always enabled in BibleReader (no opt-out prop for now; YAGNI).
   (SSR) says prefer `useEffect`. Pre-existing; clean up while here.
 - #131 leftovers to handle: replace the old verse-selection Storybook story +
   remove demo highlight CSS; add a changeset.
+
+## As-built addendum — YPE-1034 (Highlights API wiring)
+
+**ADR-001 (localStorage only) is superseded.** The follow-up ticket it named
+landed: highlights now sync via the Highlights API for signed-in readers, and
+the localStorage store is removed entirely.
+
+- **Persistence:** `bible-reader.tsx` `Content` no longer owns a
+  localStorage-backed `highlightStore` / `persistHighlights`. The
+  `youversion-platform:highlights:<versionId>` key is gone and is never written.
+  Highlight state now lives in the new `lib/use-reader-highlights.ts` hook.
+- **Signed in:** `useReaderHighlights` fetches via `useHighlights` (chapter-scoped
+  `GET /v1/highlights`), and apply/remove call `createHighlight` /
+  `deleteHighlight` optimistically per verse. The server is the source of truth —
+  the store is rebuilt from the fetched collection, filtered to the current
+  `version_id` + chapter prefix so a stale mid-refetch collection can't leak
+  another scope's colors (this replaces ADR-001's version-keyed reset guard).
+- **Signed out (interim):** highlights are ephemeral session state — applied to
+  the in-memory store, never persisted, no API calls. This is a placeholder: the
+  not-signed-in / permission state machine (a later ticket) will replace it with
+  a pending-highlight → sign-in flow that defers the highlight until the
+  `highlights` permission is granted. ADR-002's API-shaped model made this swap
+  mechanical, as intended.
+- **Auth read:** `useReaderHighlights` reads sign-in state via the raw
+  `YouVersionAuthContext` (now exported from `@youversion/platform-react-hooks`)
+  rather than `useYVAuth()`, which throws when no auth provider is mounted — the
+  reader must keep working for consumers who don't enable auth.
+- **Permission at sign-in:** the reader's `handleSignIn` (and the example navbar
+  button) request `permissions: ['highlights']` so the token is actually granted
+  highlights access. This is a data-exchange **permission**
+  (`requested_permissions[]`), not an OIDC scope — see the corrected
+  `HighlightsClient` docs.
+- **Out of scope (unchanged):** failure/revert UX (optimistic + `console.error`
+  only) and `getRecentColors` (popover keeps its hardcoded colors).
