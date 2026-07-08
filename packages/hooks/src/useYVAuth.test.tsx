@@ -110,7 +110,11 @@ describe('useYVAuth', () => {
         await result.current.signIn({ redirectUrl });
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(redirectUrl);
+      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(
+        redirectUrl,
+        undefined,
+        undefined,
+      );
     });
 
     it('should call YouVersionAPIUsers.signIn exactly once with scopes', async () => {
@@ -139,7 +143,11 @@ describe('useYVAuth', () => {
       });
 
       expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledTimes(1);
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(redirectUrl);
+      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(
+        redirectUrl,
+        undefined,
+        undefined,
+      );
     });
 
     it('should throw error when signIn fails', async () => {
@@ -162,7 +170,11 @@ describe('useYVAuth', () => {
         await result.current.signIn();
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith('http://test.example.com');
+      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(
+        'http://test.example.com',
+        undefined,
+        undefined,
+      );
     });
 
     it('should use redirectUri from provider with scopes when redirectUrl is not passed', async () => {

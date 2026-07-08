@@ -145,11 +145,7 @@ export function useYVAuth(): UseYVAuthReturn {
           'redirectUrl is required. Provide it via signIn params or configure redirectUri in the auth provider.',
         );
       }
-      if (params?.scopes || params?.permissions) {
-        await YouVersionAPIUsers.signIn(url, params.scopes, params.permissions);
-      } else {
-        await YouVersionAPIUsers.signIn(url);
-      }
+      await YouVersionAPIUsers.signIn(url, params?.scopes, params?.permissions);
       // Note: This will redirect, so code after this won't execute
     },
     [redirectUri],
