@@ -30,9 +30,12 @@ export type DeleteHighlightOptions = {
 
 /**
  * Client for interacting with Highlights API endpoints.
- * Note: All endpoints require OAuth authentication with appropriate scopes
- * (`read_highlights` / `write_highlights`), passed as an
- * `Authorization: Bearer <token>` header.
+ * Note: All endpoints require an OAuth access token passed as an
+ * `Authorization: Bearer <token>` header, and the user must have granted the
+ * `highlights` data-exchange permission at sign-in. That permission is
+ * requested via the `requested_permissions[]` authorize param (see
+ * `SignInWithYouVersionPermission`) — it is NOT an OIDC scope and never appears
+ * in the token's `scope`. A token without it yields 403/404 from these routes.
  */
 export class HighlightsClient {
   private client: ApiClient;
@@ -125,7 +128,7 @@ export class HighlightsClient {
   /**
    * Fetches a collection of highlights for a user.
    * The response will return a color per verse without ranges.
-   * Requires OAuth with read_highlights scope.
+   * Requires the `highlights` permission (see class note).
    * @param options Query parameters scoping the fetch. `version_id` and `passage_id`
    *   (verse or chapter USFM, e.g. "JHN.3") are both required by the API.
    * @param lat Optional long access token. If not provided, retrieves from YouVersionPlatformConfiguration.
@@ -162,7 +165,7 @@ export class HighlightsClient {
   /**
    * Fetches the user's recently used highlight colors, followed by the default
    * colors, as hex strings (no `#`). Useful for building a color picker.
-   * Requires OAuth with read_highlights scope.
+   * Requires the `highlights` permission (see class note).
    * @param lat Optional long access token. If not provided, retrieves from YouVersionPlatformConfiguration.
    * @returns An ordered list of hex color strings.
    */
@@ -189,7 +192,7 @@ export class HighlightsClient {
   /**
    * Creates or updates a highlight on a passage.
    * Verse ranges may be used in the passage_id attribute.
-   * Requires OAuth with write_highlights scope.
+   * Requires the `highlights` permission (see class note).
    * @param data The highlight data to create or update.
    * @param lat Optional long access token. If not provided, retrieves from YouVersionPlatformConfiguration.
    * @returns The created or updated Highlight object.
@@ -225,7 +228,7 @@ export class HighlightsClient {
 
   /**
    * Clears highlights for a passage.
-   * Requires OAuth with write_highlights scope.
+   * Requires the `highlights` permission (see class note).
    * @param passageId The passage identifier (USFM format, e.g., "MAT.1.1" or "MAT.1.1-5").
    * @param options Query parameters; `version_id` is required by the API (sent as `bible_id`).
    * @param lat Optional long access token. If not provided, retrieves from YouVersionPlatformConfiguration.
