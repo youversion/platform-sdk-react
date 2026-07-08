@@ -3,7 +3,11 @@ import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ModeToggle } from '@/components/mode-toggle';
-import { useYVAuth, YouVersionAuthButton } from '@youversion/platform-react-ui';
+import {
+  SignInWithYouVersionPermission,
+  useYVAuth,
+  YouVersionAuthButton,
+} from '@youversion/platform-react-ui';
 import type { Page } from '@/App';
 
 const navItems: { label: string; page: Page }[] = [
@@ -88,6 +92,7 @@ export function Navbar({ currentPage, onNavigate }: NavbarProps) {
               size="short"
               onAuthError={(err) => console.error('Auth error:', err)}
               scopes={['profile', 'email']}
+              permissions={[SignInWithYouVersionPermission.highlights]}
             />
           )}
 
