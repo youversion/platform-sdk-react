@@ -118,6 +118,15 @@ describe('HighlightsClient', () => {
       expect(highlight).toEqual({ version_id: 111, passage_id: 'MAT.1.1', color: 'fffe00' });
     });
 
+    it('accepts uppercase hex colors round-tripped through the wire schema', async () => {
+      const highlight = await highlightsClient.createHighlight(
+        { version_id: 111, passage_id: 'MAT.1.1', color: 'FFC66F' },
+        'test-token',
+      );
+
+      expect(highlight).toEqual({ version_id: 111, passage_id: 'MAT.1.1', color: 'FFC66F' });
+    });
+
     it('validates input before making a request', async () => {
       await expect(
         highlightsClient.createHighlight(

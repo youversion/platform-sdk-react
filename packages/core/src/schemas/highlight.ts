@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
-const HEX_COLOR_REGEX = /^[0-9a-f]{6}$/;
+// Case-insensitive: the API may echo colors in any case, and the client's input
+// validator accepts both, so response parsing must not reject uppercase hex.
+const HEX_COLOR_REGEX = /^[0-9a-f]{6}$/i;
 
 /**
  * Wire format used by the highlights API (`/v1/highlights`), which names the

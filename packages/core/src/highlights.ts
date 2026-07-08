@@ -108,8 +108,10 @@ export class HighlightsClient {
   }
 
   /**
-   * Generates a UUID for idempotent create retries (the API requires a
-   * `request_id` on every create).
+   * Generates a unique `request_id` for a create call, which the API requires on
+   * every create. Note: a new id is minted per call, so this does not by itself
+   * make caller-level retries idempotent — reuse the same id across retries of a
+   * single logical create if end-to-end idempotency is needed.
    */
   private generateRequestId(): string {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
