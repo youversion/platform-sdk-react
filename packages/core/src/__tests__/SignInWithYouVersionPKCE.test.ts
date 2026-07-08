@@ -216,6 +216,53 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
       expect(scope).toBe('openid');
     });
 
+    it('should send requested permissions as requested_permissions[] params, not scopes', async () => {
+      const redirectURL = new URL('https://example.com/callback');
+
+      const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
+        'test-app-key',
+        redirectURL,
+        ['profile', 'email'],
+        ['highlights'],
+      );
+
+      const params = new URLSearchParams(result.url.search);
+
+      // Permission rides alongside scopes as a separate param
+      expect(params.getAll('requested_permissions[]')).toEqual(['highlights']);
+      // ...and is NOT folded into the OIDC scope value
+      expect(params.get('scope')).not.toContain('highlights');
+      // Raw query string uses the encoded array-bracket syntax the API expects
+      expect(result.url.search).toContain('requested_permissions%5B%5D=highlights');
+    });
+
+    it('should support multiple requested permissions', async () => {
+      const redirectURL = new URL('https://example.com/callback');
+
+      const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
+        'test-app-key',
+        redirectURL,
+        ['profile'],
+        ['highlights', 'votd'],
+      );
+
+      const params = new URLSearchParams(result.url.search);
+      expect(params.getAll('requested_permissions[]')).toEqual(['highlights', 'votd']);
+    });
+
+    it('should omit requested_permissions[] when no permissions are requested', async () => {
+      const redirectURL = new URL('https://example.com/callback');
+
+      const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
+        'test-app-key',
+        redirectURL,
+        ['profile'],
+      );
+
+      const params = new URLSearchParams(result.url.search);
+      expect(params.getAll('requested_permissions[]')).toEqual([]);
+    });
+
     it('should not duplicate openid if already present', async () => {
       const redirectURL = new URL('https://example.com/callback');
 
