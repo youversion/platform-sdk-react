@@ -63,6 +63,24 @@ describe('HighlightsClient', () => {
       );
     });
 
+    it('requires an explicit lat when localStorage is unavailable (SSR/Node)', async () => {
+      // In an environment without `localStorage` there is no ambient token, so
+      // the implicit fallback throws and callers must pass `lat` explicitly.
+      vi.stubGlobal('localStorage', undefined);
+
+      await expect(
+        highlightsClient.getHighlights({ version_id: 111, passage_id: 'MAT.1' }),
+      ).rejects.toThrow(
+        'Authentication required. Please provide a token or sign in before accessing highlights.',
+      );
+
+      const highlights = await highlightsClient.getHighlights(
+        { version_id: 111, passage_id: 'MAT.1' },
+        'explicit-token',
+      );
+      expect(highlights.data).toHaveLength(2);
+    });
+
     it('validates version_id and passage_id before making a request', async () => {
       await expect(
         highlightsClient.getHighlights({ version_id: 0, passage_id: 'MAT.1' }, 'token'),
