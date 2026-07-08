@@ -1,4 +1,4 @@
-import type { AuthenticationScopes } from './types';
+import type { AuthenticationScopes, SignInWithYouVersionPermissionValues } from './types';
 import { YouVersionUserInfo } from './YouVersionUserInfo';
 import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
 import { SignInWithYouVersionPKCEAuthorizationRequestBuilder } from './SignInWithYouVersionPKCE';
@@ -11,11 +11,17 @@ export class YouVersionAPIUsers {
    * This function authenticates the user with YouVersion.
    * The function redirects to the YouVersion authorization URL and expects the callback to be handled separately.
    *
-   * @param scopes - The scopes given to the authentication call.
    * @param redirectURL - The URL to redirect back to after authentication.
+   * @param scopes - The OIDC scopes given to the authentication call (e.g. `profile`, `email`).
+   * @param permissions - YouVersion data-exchange permissions to request (e.g. `highlights`).
+   *   These are sent as `requested_permissions[]` params, separate from OIDC scopes.
    * @throws An error if authentication fails or configuration is invalid.
    */
-  static async signIn(redirectURL: string, scopes?: AuthenticationScopes[]): Promise<void> {
+  static async signIn(
+    redirectURL: string,
+    scopes?: AuthenticationScopes[],
+    permissions?: SignInWithYouVersionPermissionValues[],
+  ): Promise<void> {
     const appKey = YouVersionPlatformConfiguration.appKey;
     if (!appKey) {
       throw new Error('YouVersionPlatformConfiguration.appKey must be set before calling signIn');
@@ -25,6 +31,7 @@ export class YouVersionAPIUsers {
       appKey,
       new URL(redirectURL),
       scopes,
+      permissions,
     );
 
     // Store auth data for callback handler

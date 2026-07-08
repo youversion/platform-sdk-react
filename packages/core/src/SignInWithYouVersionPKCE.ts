@@ -1,5 +1,5 @@
 import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
-import type { AuthenticationScopes } from './types';
+import type { AuthenticationScopes, SignInWithYouVersionPermissionValues } from './types';
 
 type SignInWithYouVersionPKCEParameters = {
   readonly codeVerifier: string;
@@ -17,6 +17,7 @@ export class SignInWithYouVersionPKCEAuthorizationRequestBuilder {
     appKey: string,
     redirectURL: URL,
     scopes?: AuthenticationScopes[],
+    permissions?: SignInWithYouVersionPermissionValues[],
   ): Promise<SignInWithYouVersionPKCEAuthorizationRequest> {
     const codeVerifier = this.randomURLSafeString(32);
     const codeChallenge = await this.codeChallenge(codeVerifier);
@@ -30,7 +31,7 @@ export class SignInWithYouVersionPKCEAuthorizationRequestBuilder {
       nonce,
     };
 
-    const url = this.authorizeURL(appKey, redirectURL, parameters, scopes);
+    const url = this.authorizeURL(appKey, redirectURL, parameters, scopes, permissions);
 
     return { url, parameters };
   }
@@ -40,6 +41,7 @@ export class SignInWithYouVersionPKCEAuthorizationRequestBuilder {
     redirectURL: URL,
     parameters: SignInWithYouVersionPKCEParameters,
     scopes?: AuthenticationScopes[],
+    permissions?: SignInWithYouVersionPermissionValues[],
   ): URL {
     const components = new URL(`https://${YouVersionPlatformConfiguration.apiHost}/auth/authorize`);
 
@@ -64,6 +66,14 @@ export class SignInWithYouVersionPKCEAuthorizationRequestBuilder {
     const scopeValue = this.scopeValue(scopes || []);
     if (scopeValue) {
       queryParams.set('scope', scopeValue);
+    }
+
+    // YouVersion data-exchange permissions (e.g. `highlights`) are intentionally
+    // NOT OIDC scopes. They ride alongside the standard scopes as a repeatable
+    // `requested_permissions[]` query param and are authorized via a separate
+    // per-app ACL rather than the token's scope claim.
+    for (const permission of permissions ?? []) {
+      queryParams.append('requested_permissions[]', permission);
     }
 
     components.search = queryParams.toString();
