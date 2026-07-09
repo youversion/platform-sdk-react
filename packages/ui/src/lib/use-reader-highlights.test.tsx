@@ -183,3 +183,42 @@ describe('useReaderHighlights (auth transitions)', () => {
     expect(result.current.highlightsByPassageId).toEqual({});
   });
 });
+
+describe('useReaderHighlights (signed out)', () => {
+  // No wrapper: `useContext(YouVersionAuthContext)` is null, so `isSignedIn` is
+  // false and highlights stay ephemeral (never persisted to the API).
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockServerHighlights([]);
+  });
+
+  it('disables the fetch when there is no signed-in user', () => {
+    renderHook(() => useReaderHighlights(JHN3));
+    expect(useHighlightsMock).toHaveBeenCalledWith(
+      { version_id: 111, passage_id: 'JHN.3' },
+      { enabled: false },
+    );
+  });
+
+  it('applyHighlight paints ephemerally without calling createHighlight', () => {
+    const { result } = renderHook(() => useReaderHighlights(JHN3));
+
+    act(() => result.current.applyHighlight([16, 17], 'ffff00'));
+
+    expect(createHighlight).not.toHaveBeenCalled();
+    expect(result.current.highlightsByPassageId).toEqual({
+      'JHN.3.16': 'ffff00',
+      'JHN.3.17': 'ffff00',
+    });
+  });
+
+  it('removeHighlight clears ephemerally without calling deleteHighlight', () => {
+    const { result } = renderHook(() => useReaderHighlights(JHN3));
+
+    act(() => result.current.applyHighlight([16], 'ffff00'));
+    act(() => result.current.removeHighlight([16], 'ffff00'));
+
+    expect(deleteHighlight).not.toHaveBeenCalled();
+    expect(result.current.highlightsByPassageId).toEqual({});
+  });
+});
