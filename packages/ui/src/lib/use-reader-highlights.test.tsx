@@ -21,7 +21,7 @@ import { useReaderHighlights } from './use-reader-highlights';
 type Highlight = { version_id: number; passage_id: string; color: string };
 
 const signedIn = {
-  userInfo: { id: 'user-1' },
+  userInfo: { userId: 'user-1' },
   setUserInfo: () => {},
   isLoading: false,
   error: null,
@@ -132,7 +132,7 @@ describe('useReaderHighlights (signed in)', () => {
 describe('useReaderHighlights (auth transitions)', () => {
   function authValue(userId: string | null): ContextType<typeof YouVersionAuthContext> {
     return {
-      userInfo: userId ? { id: userId } : null,
+      userInfo: userId ? { userId } : null,
       setUserInfo: () => {},
       isLoading: false,
       error: null,
