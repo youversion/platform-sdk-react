@@ -176,11 +176,25 @@ describe('useReaderHighlights (auth transitions)', () => {
     const { result, setUser } = renderWithAuth('user-1');
     expect(result.current.highlightsByPassageId).toEqual({ 'JHN.3.16': 'ffff00' });
 
-    // user-2 signs in but the (mocked) fetch hasn't resolved for them yet.
-    mockServerHighlights([]);
+    // user-2 signs in but the fetch hasn't refetched for them: `useHighlights`
+    // still returns user-1's collection (same reference). It must NOT be painted.
     act(() => setUser('user-2'));
 
     expect(result.current.highlightsByPassageId).toEqual({});
+  });
+
+  it("adopts the new user's highlights once their fetch resolves", () => {
+    mockServerHighlights([{ version_id: 111, passage_id: 'JHN.3.16', color: 'ffff00' }]);
+
+    const { result, setUser } = renderWithAuth('user-1');
+    act(() => setUser('user-2'));
+    expect(result.current.highlightsByPassageId).toEqual({});
+
+    // Fresh collection for user-2 (new reference) is trusted and painted.
+    mockServerHighlights([{ version_id: 111, passage_id: 'JHN.3.19', color: 'aabbcc' }]);
+    act(() => setUser('user-2'));
+
+    expect(result.current.highlightsByPassageId).toEqual({ 'JHN.3.19': 'aabbcc' });
   });
 });
 

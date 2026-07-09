@@ -59,9 +59,11 @@ export function useReaderHighlights({
   // user's server-backed highlights until the next navigation/remount.
   const scopeKey = `${userId ?? 'signed-out'}:${versionId}:${chapterPassageId}`;
   const [loadedScopeKey, setLoadedScopeKey] = useState(scopeKey);
+  const [staleHighlights, setStaleHighlights] = useState<typeof highlights>(null);
   if (loadedScopeKey !== scopeKey) {
     setLoadedScopeKey(scopeKey);
     setOptimisticStore({});
+    setStaleHighlights(highlights);
   }
 
   // Server is source of truth when signed in. Rebuild the store from the fetched
@@ -69,6 +71,7 @@ export function useReaderHighlights({
   // after a scope change) can never leak another version's/chapter's entries.
   useEffect(() => {
     if (!isSignedIn || !highlights) return;
+    if (highlights === staleHighlights) return;
     const next: Record<string, string> = {};
     for (const highlight of highlights.data) {
       if (highlight.version_id !== versionId) continue;
@@ -76,7 +79,7 @@ export function useReaderHighlights({
       next[highlight.passage_id] = highlight.color.toLowerCase();
     }
     setOptimisticStore(next);
-  }, [isSignedIn, highlights, versionId, chapterPrefix]);
+  }, [isSignedIn, highlights, staleHighlights, versionId, chapterPrefix]);
 
   const applyHighlight = useCallback(
     (verses: number[], color: string) => {
