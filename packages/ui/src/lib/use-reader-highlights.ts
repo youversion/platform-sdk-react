@@ -46,7 +46,7 @@ export function useReaderHighlights({
   );
 
   // Optimistic, client-side view of the current scope's highlights.
-  const [store, setStore] = useState<Record<string, string>>({});
+  const [optimisticStore, setOptimisticStore] = useState<Record<string, string>>({});
 
   // Clear synchronously (during render) the moment the scope key changes, so the
   // previous version's colors for a shared passage_id (e.g. "JHN.3.16") can't
@@ -55,7 +55,7 @@ export function useReaderHighlights({
   const [loadedScopeKey, setLoadedScopeKey] = useState(scopeKey);
   if (loadedScopeKey !== scopeKey) {
     setLoadedScopeKey(scopeKey);
-    setStore({});
+    setOptimisticStore({});
   }
 
   // Server is source of truth when signed in. Rebuild the store from the fetched
@@ -69,12 +69,12 @@ export function useReaderHighlights({
       if (!highlight.passage_id.startsWith(chapterPrefix)) continue;
       next[highlight.passage_id] = highlight.color;
     }
-    setStore(next);
+    setOptimisticStore(next);
   }, [isSignedIn, highlights, versionId, chapterPrefix]);
 
   const applyHighlight = useCallback(
     (verses: number[], color: string) => {
-      setStore((prev) => {
+      setOptimisticStore((prev) => {
         const next = { ...prev };
         for (const verse of verses) next[`${chapterPrefix}${verse}`] = color;
         return next;
@@ -98,10 +98,10 @@ export function useReaderHighlights({
       // may invoke twice in StrictMode.
       const cleared = verses
         .map((verse) => `${chapterPrefix}${verse}`)
-        .filter((passageId) => store[passageId] === color);
+        .filter((passageId) => optimisticStore[passageId] === color);
       if (cleared.length === 0) return;
 
-      setStore((prev) => {
+      setOptimisticStore((prev) => {
         const next = { ...prev };
         for (const passageId of cleared) delete next[passageId];
         return next;
@@ -111,8 +111,8 @@ export function useReaderHighlights({
         deleteHighlight(passageId, { version_id: versionId }).catch(console.error);
       }
     },
-    [store, isSignedIn, versionId, chapterPrefix, deleteHighlight],
+    [optimisticStore, isSignedIn, versionId, chapterPrefix, deleteHighlight],
   );
 
-  return { highlightsByPassageId: store, applyHighlight, removeHighlight };
+  return { highlightsByPassageId: optimisticStore, applyHighlight, removeHighlight };
 }
