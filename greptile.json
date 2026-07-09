@@ -30,6 +30,18 @@
       {
         "scope": ["packages/ui/src/**"],
         "rule": "Auto-injected styles: index.ts calls injectStyles() on module load"
+      },
+      {
+        "scope": ["packages/ui/src/components/**"],
+        "rule": "No hardcoded user-facing strings: use t() or Trans/i18nKey for aria-label, title, placeholder, alt, and visible copy. ESLint i18next/no-literal-string enforces this."
+      },
+      {
+        "scope": ["packages/ui/src/i18n/locales/en.json"],
+        "rule": "English locale keys are synced from platform-localization (sources/common/en.json react.* namespace). Add new strings upstream, not by hand-editing en.json alone."
+      },
+      {
+        "scope": ["packages/ui/src/i18n/locales/fr.json", "packages/ui/src/i18n/locales/es.json"],
+        "rule": "Do not hand-edit fr.json or es.json — they are owned by platform-localization and synced via Crowdin distribute-react.yml (chore/localization-sync-react-* PRs)."
       }
     ],
     "files": [
@@ -37,6 +49,11 @@
         "scope": ["*"],
         "path": "docs/review-guidelines.md",
         "description": "Comprehensive review checklist for all pull requests"
+      },
+      {
+        "scope": ["packages/ui/**"],
+        "path": "docs/i18n-guidelines.md",
+        "description": "Localization workflow: platform-localization source, Crowdin, and downstream sync"
       }
     ]
   }

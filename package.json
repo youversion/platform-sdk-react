@@ -32,7 +32,8 @@
     "release": "turbo build && npm exec --yes -- changeset publish",
     "prepare": "husky",
     "analyze": "node scripts/analyze.mjs",
-    "analyze:select": "node scripts/analyze-select.mjs"
+    "analyze:select": "node scripts/analyze-select.mjs",
+    "check:i18n": "node scripts/check-i18n-parity.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "2.29.7",

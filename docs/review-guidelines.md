@@ -82,6 +82,14 @@ When conducting code reviews, AI agents should systematically evaluate the follo
 - Are pre-commit hooks passing?
 - Are changeset entries created for user-facing changes?
 
+### Internationalization (i18n)
+- Are user-facing strings routed through `t()` or `Trans` / `i18nKey` — not hardcoded in JSX?
+- Are new English keys added in **platform-localization** (`sources/common/en.json`, `react.*` namespace), not only in this repo?
+- Are `fr.json` / `es.json` left untouched (synced upstream via Crowdin → `distribute-react.yml`)?
+- Do interpolation tokens (`{{name}}`) match across locale files once translations exist?
+- Does `pnpm check:i18n` pass (warnings for missing fr/es keys are acceptable until upstream sync)?
+- See [i18n-guidelines.md](./i18n-guidelines.md) for the full workflow.
+
 ### Accessibility
 - Are ARIA attributes properly implemented?
 - Is keyboard navigation fully supported?
