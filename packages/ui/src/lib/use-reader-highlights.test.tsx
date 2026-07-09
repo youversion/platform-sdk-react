@@ -77,6 +77,19 @@ describe('useReaderHighlights (signed in)', () => {
     });
   });
 
+  it('normalizes server highlight colors to lowercase so removeHighlight matches popover palette', () => {
+    mockServerHighlights([{ version_id: 111, passage_id: 'JHN.3.16', color: 'FFFF00' }]);
+
+    const { result } = renderHook(() => useReaderHighlights(JHN3), { wrapper });
+    expect(result.current.highlightsByPassageId).toEqual({ 'JHN.3.16': 'ffff00' });
+
+    // Popover emits lowercase palette values; removal must match the normalized store.
+    act(() => result.current.removeHighlight([16], 'ffff00'));
+
+    expect(deleteHighlight).toHaveBeenCalledWith('JHN.3.16', { version_id: 111 });
+    expect(result.current.highlightsByPassageId).toEqual({});
+  });
+
   it('applyHighlight posts one createHighlight per verse with USFM passage_id and optimistically paints', () => {
     const { result } = renderHook(() => useReaderHighlights(JHN3), { wrapper });
 

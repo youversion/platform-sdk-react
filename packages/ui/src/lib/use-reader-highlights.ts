@@ -35,7 +35,7 @@ export function useReaderHighlights({
   chapter,
 }: UseReaderHighlightsArgs): UseReaderHighlightsResult {
   const authContext = useContext(YouVersionAuthContext);
-  const userId = authContext?.userInfo?.id ?? null;
+  const userId = authContext?.userInfo?.userId ?? null;
   const isSignedIn = !!authContext?.userInfo;
 
   const chapterPassageId = `${book}.${chapter}`;
@@ -71,7 +71,7 @@ export function useReaderHighlights({
     for (const highlight of highlights.data) {
       if (highlight.version_id !== versionId) continue;
       if (!highlight.passage_id.startsWith(chapterPrefix)) continue;
-      next[highlight.passage_id] = highlight.color;
+      next[highlight.passage_id] = highlight.color.toLowerCase();
     }
     setOptimisticStore(next);
   }, [isSignedIn, highlights, versionId, chapterPrefix]);
