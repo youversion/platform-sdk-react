@@ -26,8 +26,10 @@ type UseReaderHighlightsResult = {
  * working for consumers who don't enable auth.
  *
  * Failure UX is intentionally out of scope: mutations apply optimistically and
- * log on error (no revert/toast). The subsequent refetch inside `useHighlights`
- * reconciles the store against the server (source of truth).
+ * log on error (no revert/toast). Reconciliation against the server (source of
+ * truth) happens via refetch — `useHighlights` refetches on a successful
+ * mutation, and on failure we refetch here so the optimistic store can't stay
+ * permanently out of sync until the next navigation.
  */
 export function useReaderHighlights({
   versionId,
@@ -41,7 +43,7 @@ export function useReaderHighlights({
   const chapterPassageId = `${book}.${chapter}`;
   const chapterPrefix = `${chapterPassageId}.`;
 
-  const { highlights, createHighlight, deleteHighlight } = useHighlights(
+  const { highlights, createHighlight, deleteHighlight, refetch } = useHighlights(
     { version_id: versionId, passage_id: chapterPassageId },
     { enabled: isSignedIn },
   );
@@ -89,10 +91,15 @@ export function useReaderHighlights({
           version_id: versionId,
           passage_id: `${chapterPrefix}${verse}`,
           color,
-        }).catch(console.error);
+        }).catch((error) => {
+          console.error(error);
+          // Success already refetches inside `useHighlights`; on failure we
+          // reconcile the optimistic store against the server here.
+          refetch();
+        });
       }
     },
-    [isSignedIn, versionId, chapterPrefix, createHighlight],
+    [isSignedIn, versionId, chapterPrefix, createHighlight, refetch],
   );
 
   const removeHighlight = useCallback(
@@ -112,10 +119,15 @@ export function useReaderHighlights({
       });
       if (!isSignedIn) return;
       for (const passageId of cleared) {
-        deleteHighlight(passageId, { version_id: versionId }).catch(console.error);
+        deleteHighlight(passageId, { version_id: versionId }).catch((error) => {
+          console.error(error);
+          // Success already refetches inside `useHighlights`; on failure we
+          // reconcile the optimistic store against the server here.
+          refetch();
+        });
       }
     },
-    [optimisticStore, isSignedIn, versionId, chapterPrefix, deleteHighlight],
+    [optimisticStore, isSignedIn, versionId, chapterPrefix, deleteHighlight, refetch],
   );
 
   return { highlightsByPassageId: optimisticStore, applyHighlight, removeHighlight };
