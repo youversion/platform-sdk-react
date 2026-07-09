@@ -35,6 +35,7 @@ export function useReaderHighlights({
   chapter,
 }: UseReaderHighlightsArgs): UseReaderHighlightsResult {
   const authContext = useContext(YouVersionAuthContext);
+  const userId = authContext?.userInfo?.id ?? null;
   const isSignedIn = !!authContext?.userInfo;
 
   const chapterPassageId = `${book}.${chapter}`;
@@ -50,8 +51,11 @@ export function useReaderHighlights({
 
   // Clear synchronously (during render) the moment the scope key changes, so the
   // previous version's colors for a shared passage_id (e.g. "JHN.3.16") can't
-  // paint over the new scope for one frame before the fetch resolves.
-  const scopeKey = `${versionId}:${chapterPassageId}`;
+  // paint over the new scope for one frame before the fetch resolves. The user
+  // identity is part of the key: signing out (userId -> null) or switching users
+  // resets the store immediately, so one reader can't keep painting another
+  // user's server-backed highlights until the next navigation/remount.
+  const scopeKey = `${userId ?? 'signed-out'}:${versionId}:${chapterPassageId}`;
   const [loadedScopeKey, setLoadedScopeKey] = useState(scopeKey);
   if (loadedScopeKey !== scopeKey) {
     setLoadedScopeKey(scopeKey);

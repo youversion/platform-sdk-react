@@ -115,3 +115,58 @@ describe('useReaderHighlights (signed in)', () => {
     expect(result.current.highlightsByPassageId).toEqual({ 'JHN.3.17': 'aabbcc' });
   });
 });
+
+describe('useReaderHighlights (auth transitions)', () => {
+  function authValue(userId: string | null): ContextType<typeof YouVersionAuthContext> {
+    return {
+      userInfo: userId ? { id: userId } : null,
+      setUserInfo: () => {},
+      isLoading: false,
+      error: null,
+    } as unknown as ContextType<typeof YouVersionAuthContext>;
+  }
+
+  // Wrapper reads the current auth from a mutable ref so a `rerender` can flip
+  // the signed-in user (or sign out) without remounting the hook.
+  function renderWithAuth(initialUserId: string | null) {
+    let auth = authValue(initialUserId);
+    const dynamicWrapper = ({ children }: { children: ReactNode }) =>
+      createElement(YouVersionAuthContext.Provider, { value: auth }, children);
+    const utils = renderHook(() => useReaderHighlights(JHN3), { wrapper: dynamicWrapper });
+    const setUser = (userId: string | null) => {
+      auth = authValue(userId);
+      utils.rerender();
+    };
+    return { ...utils, setUser };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    createHighlight.mockResolvedValue({});
+    deleteHighlight.mockResolvedValue(undefined);
+  });
+
+  it('clears the store when the reader signs out (userId -> null)', () => {
+    mockServerHighlights([{ version_id: 111, passage_id: 'JHN.3.16', color: 'ffff00' }]);
+
+    const { result, setUser } = renderWithAuth('user-1');
+    expect(result.current.highlightsByPassageId).toEqual({ 'JHN.3.16': 'ffff00' });
+
+    act(() => setUser(null));
+
+    expect(result.current.highlightsByPassageId).toEqual({});
+  });
+
+  it("clears the previous user's highlights when a different user signs in", () => {
+    mockServerHighlights([{ version_id: 111, passage_id: 'JHN.3.16', color: 'ffff00' }]);
+
+    const { result, setUser } = renderWithAuth('user-1');
+    expect(result.current.highlightsByPassageId).toEqual({ 'JHN.3.16': 'ffff00' });
+
+    // user-2 signs in but the (mocked) fetch hasn't resolved for them yet.
+    mockServerHighlights([]);
+    act(() => setUser('user-2'));
+
+    expect(result.current.highlightsByPassageId).toEqual({});
+  });
+});
