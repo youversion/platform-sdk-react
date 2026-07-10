@@ -6,7 +6,7 @@ import {
   readPendingHighlight,
   stashPendingHighlight,
 } from '@/lib/pending-highlight';
-import { buildPassageIds } from '@/lib/usfm-ranges';
+import { collapseVerseRuns, type VerseRun } from '@/lib/usfm-ranges';
 import {
   useHighlightAuthActions,
   useHighlights,
@@ -59,6 +59,20 @@ export type UseBibleReaderHighlightsReturn = {
  * means "optimistically applied", `null` means "optimistically removed".
  */
 type HighlightOverlay = Record<number, string | null>;
+
+/** The range USFM for one contiguous run: `{2,3} -> "JHN.3.2-3"`, `{5,5} -> "JHN.3.5"`. */
+function runToPassageId(book: string, chapter: string, run: VerseRun): string {
+  return run.start === run.end
+    ? `${book}.${chapter}.${run.start}`
+    : `${book}.${chapter}.${run.start}-${run.end}`;
+}
+
+/** Expands a contiguous run back into its verse numbers: `{2,4} -> [2,3,4]`. */
+function versesInRun(run: VerseRun): number[] {
+  const verses: number[] = [];
+  for (let verse = run.start; verse <= run.end; verse++) verses.push(verse);
+  return verses;
+}
 
 /**
  * The error type this hook's write boundary converts to. Core clients throw;
@@ -375,31 +389,56 @@ export function useBibleReaderHighlights({
 
   const runApply = useCallback(
     async (color: string, verses: number[], token: object) => {
+      // One POST per contiguous run, but track each run's outcome separately:
+      // a batch can partially succeed (run A lands, run B fails), and the two
+      // halves need opposite treatment below.
+      const runs = collapseVerseRuns(verses);
       const results = await Promise.all(
-        buildPassageIds(book, chapter, verses).map((passageId) =>
+        runs.map((run) =>
           Result.tryPromise({
             try: () =>
-              createHighlightRef.current({ version_id: versionId, passage_id: passageId, color }),
-            catch: (cause) => new BibleReaderHighlightError('apply', passageId, cause),
+              createHighlightRef.current({
+                version_id: versionId,
+                passage_id: runToPassageId(book, chapter, run),
+                color,
+              }),
+            catch: (cause) =>
+              new BibleReaderHighlightError('apply', runToPassageId(book, chapter, run), cause),
           }),
         ),
       );
 
-      const failures = results.filter(Result.isError).map((r) => r.error);
-      if (failures.length === 0) {
-        for (const verse of verses) {
+      // Per-sub-write settlement: succeeded runs register for reconciliation
+      // (their overlay holds until a fetch reflects the write); only verses
+      // whose OWN run failed are reverted. Reverting the whole batch on a
+      // partial failure would erase highlights that are already persisted
+      // server-side until the next fetch.
+      const failures: BibleReaderHighlightError[] = [];
+      const failedVerses: number[] = [];
+      runs.forEach((run, index) => {
+        const result = results[index];
+        if (result === undefined) return; // unreachable: results maps 1:1 from runs
+        const runVerses = versesInRun(run);
+        if (Result.isError(result)) {
+          failures.push(result.error);
+          failedVerses.push(...runVerses);
+          return;
+        }
+        for (const verse of runVerses) {
           if (writeIntentRef.current.get(verse) === token) {
             pendingReconcileRef.current.set(verse, { op: 'apply', color });
           }
         }
-        // One GET for the whole batch; the reconcile effect retires the overlay
-        // entries once this fetch (or a later one) reflects the write.
-        refetchRef.current();
-        return;
-      }
+      });
+
+      // Exactly one GET per batch, success or not: with per-write auto-refetch
+      // gone (Fix 3), this is what reconciles partial successes to server truth.
+      refetchRef.current();
+
+      if (failures.length === 0) return;
 
       logWriteFailures(failures, color);
-      revertOwned(verses, token);
+      revertOwned(failedVerses, token);
 
       if (failures.some(isPermissionError)) {
         // Server says the permission is gone (or never applied): invalidate the
@@ -439,20 +478,33 @@ export function useBibleReaderHighlights({
         }),
       );
 
-      const failures = results.filter(Result.isError).map((r) => r.error);
-      if (failures.length === 0) {
-        for (const verse of verses) {
-          if (writeIntentRef.current.get(verse) === token) {
-            pendingReconcileRef.current.set(verse, { op: 'remove', color });
-          }
+      // Per-sub-write settlement (see runApply): verses whose DELETE succeeded
+      // register for reconciliation and stay un-painted; only verses whose own
+      // DELETE failed revert to highlighted. Reverting the whole batch would
+      // resurrect ghosts — verses already deleted server-side rendering
+      // highlighted from the stale snapshot.
+      const failures: BibleReaderHighlightError[] = [];
+      const failedVerses: number[] = [];
+      verses.forEach((verse, index) => {
+        const result = results[index];
+        if (result === undefined) return; // unreachable: results maps 1:1 from verses
+        if (Result.isError(result)) {
+          failures.push(result.error);
+          failedVerses.push(verse);
+          return;
         }
-        // Single GET for the whole (possibly multi-verse) removal.
-        refetchRef.current();
-        return;
-      }
+        if (writeIntentRef.current.get(verse) === token) {
+          pendingReconcileRef.current.set(verse, { op: 'remove', color });
+        }
+      });
+
+      // Exactly one GET per batch, success or not (reconciles partial successes).
+      refetchRef.current();
+
+      if (failures.length === 0) return;
 
       logWriteFailures(failures, color);
-      revertOwned(verses, token);
+      revertOwned(failedVerses, token);
 
       if (failures.some(isPermissionError)) {
         authActionsRef.current.invalidateHighlightsPermission();
@@ -606,40 +658,60 @@ export function useBibleReaderHighlights({
     }
 
     void enqueueWrite(async () => {
+      const runs = collapseVerseRuns(pending.verses);
       const results = await Promise.all(
-        buildPassageIds(pending.book, pending.chapter, pending.verses).map((passageId) =>
+        runs.map((run) =>
           Result.tryPromise({
             try: () =>
               createHighlightRef.current({
                 version_id: pending.versionId,
-                passage_id: passageId,
+                passage_id: runToPassageId(pending.book, pending.chapter, run),
                 color: pending.color,
               }),
-            catch: (cause) => new BibleReaderHighlightError('apply', passageId, cause),
+            catch: (cause) =>
+              new BibleReaderHighlightError(
+                'apply',
+                runToPassageId(pending.book, pending.chapter, run),
+                cause,
+              ),
           }),
         ),
       );
-      const failures = results.filter(Result.isError).map((r) => r.error);
-      if (failures.length === 0) {
-        if (token) {
-          for (const verse of pending.verses) {
-            if (writeIntentRef.current.get(verse) === token) {
-              pendingReconcileRef.current.set(verse, { op: 'apply', color: pending.color });
-            }
+
+      // Per-sub-write settlement, mirroring runApply: succeeded runs register
+      // for reconciliation, only failed runs' verses revert, and the batch
+      // always ends in exactly one refetch so partial successes reconcile to
+      // server truth. (Reconcile/revert only apply when the return landed on
+      // the pending highlight's own scope — that's when `token` exists.)
+      const failures: BibleReaderHighlightError[] = [];
+      const failedVerses: number[] = [];
+      runs.forEach((run, index) => {
+        const result = results[index];
+        if (result === undefined) return; // unreachable: results maps 1:1 from runs
+        const runVerses = versesInRun(run);
+        if (Result.isError(result)) {
+          failures.push(result.error);
+          failedVerses.push(...runVerses);
+          return;
+        }
+        if (!token) return;
+        for (const verse of runVerses) {
+          if (writeIntentRef.current.get(verse) === token) {
+            pendingReconcileRef.current.set(verse, { op: 'apply', color: pending.color });
           }
         }
-        // Pull the server's copy of the just-granted highlight; the reconcile
-        // effect retires the overlay once the GET reflects it.
-        refetchRef.current();
-        return;
-      }
+      });
+
+      refetchRef.current();
+
+      if (failures.length === 0) return;
       // DEFERRED: this resume-path failure only logs + reverts. The pending
       // highlight was already cleared before enqueueing, so a 401 here loses
       // the intent instead of keep-pending + re-prompt like runApply does.
       // Rare window (grant just succeeded); follow-up: route resume-write
       // failures through runApply's failure handling.
       logWriteFailures(failures, pending.color);
-      if (token) revertOwned(pending.verses, token);
+      if (token) revertOwned(failedVerses, token);
     });
   }, [
     flagOn,
