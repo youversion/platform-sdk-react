@@ -146,7 +146,7 @@ export function useBibleReaderHighlights({
   } = useHighlightAuthActions();
 
   const chapterUsfm = `${book}.${chapter}`;
-  const { highlights, createHighlight, deleteHighlight, getRecentColors } = useHighlights(
+  const { highlights, createHighlight, deleteHighlight, getRecentColors, refetch } = useHighlights(
     { version_id: versionId, passage_id: chapterUsfm },
     { enabled: live },
   );
@@ -190,6 +190,17 @@ export function useBibleReaderHighlights({
     };
   }, [live]);
 
+  // Writes that settled successfully but whose optimistic overlay is held until
+  // a fetch REFLECTS the write. Maps verse → what we wrote:
+  //   { op: 'apply', color }  — reflected when the GET shows the verse in `color`
+  //   { op: 'remove', color } — reflected when the GET no longer shows `color`
+  // Until a fetch reflects the write the overlay wins, so read-after-write lag
+  // (staging slowness, prod read replicas) can't flicker a highlight out then
+  // back (apply) or resurrect a removed one (remove). See the reconcile effect.
+  const pendingReconcileRef = useRef<Map<number, { op: 'apply' | 'remove'; color: string }>>(
+    new Map(),
+  );
+
   // Drop the optimistic overlay synchronously (during render) the moment the
   // scope changes, so an in-flight overlay never paints over another
   // chapter's or version's verses — their verse numbers collide.
@@ -198,6 +209,11 @@ export function useBibleReaderHighlights({
   if (loadedOverlayScope !== overlayScope) {
     setLoadedOverlayScope(overlayScope);
     setOverlay({});
+    // Verse numbers collide across scopes, so any write awaiting reconciliation
+    // in the old chapter/version must not retire (or hold) an overlay entry in
+    // the new one. This is also the escape hatch that stops a never-converging
+    // write from pinning the overlay forever: navigating away drops it.
+    pendingReconcileRef.current = new Map();
   }
 
   const highlightedVerses = useMemo(() => {
@@ -230,21 +246,45 @@ export function useBibleReaderHighlights({
   const highlightedVersesRef = useRef(highlightedVerses);
   highlightedVersesRef.current = highlightedVerses;
 
-  // Verses whose write settled successfully and are awaiting the post-write
-  // refetch. Once fresh data lands, their overlay entries are dropped so the
-  // server's truth wins again — otherwise a successful write's overlay entry
-  // would mask every later server-side change to that verse (another device,
-  // another tab) until navigation.
-  const confirmedVersesRef = useRef<Set<number>>(new Set());
-
+  // Reconcile the optimistic overlay against freshly fetched server truth.
+  // A pending write's overlay entry is retired ONLY once the fetch reflects that
+  // write (apply → the verse shows the written color; remove → the verse no
+  // longer shows the removed color). Until then the overlay wins, so a GET that
+  // lands before the write is visible server-side (read-after-write lag) leaves
+  // the user's highlight painted instead of flickering it out and back.
+  //
+  // A retired entry drops its overlay slot so server truth renders again —
+  // otherwise a write's overlay would mask every later server-side change to
+  // that verse (another device/tab) until navigation. Entries the server never
+  // converges on are released by the reset paths (scope change clears this map +
+  // the overlay; sign-out drops fetched data), never by a timer.
   useEffect(() => {
-    if (confirmedVersesRef.current.size === 0) return;
-    const confirmed = confirmedVersesRef.current;
-    confirmedVersesRef.current = new Set();
+    if (pendingReconcileRef.current.size === 0) return;
+
+    // Server truth for this scope, parsed exactly like `highlightedVerses`.
+    const serverColors = new Map<number, string>();
+    const versePrefix = `${chapterUsfm}.`;
+    for (const highlight of highlights?.data ?? []) {
+      if (highlight.version_id !== versionId) continue;
+      if (!highlight.passage_id.startsWith(versePrefix)) continue;
+      const verse = parseInt(highlight.passage_id.slice(versePrefix.length), 10);
+      if (verse > 0) serverColors.set(verse, highlight.color.toLowerCase());
+    }
+
+    const retired: number[] = [];
+    for (const [verse, entry] of pendingReconcileRef.current) {
+      const serverColor = serverColors.get(verse);
+      const reflected =
+        entry.op === 'apply' ? serverColor === entry.color : serverColor !== entry.color;
+      if (reflected) retired.push(verse);
+    }
+    if (retired.length === 0) return;
+
+    for (const verse of retired) pendingReconcileRef.current.delete(verse);
     setOverlay((current) => {
       let changed = false;
       const next = { ...current };
-      for (const verse of confirmed) {
+      for (const verse of retired) {
         if (verse in next) {
           delete next[verse];
           changed = true;
@@ -252,7 +292,7 @@ export function useBibleReaderHighlights({
       }
       return changed ? next : current;
     });
-  }, [highlights]);
+  }, [highlights, chapterUsfm, versionId]);
 
   const patchOverlay = useCallback((verses: number[], value: string | null) => {
     setOverlay((current) => {
@@ -270,7 +310,14 @@ export function useBibleReaderHighlights({
 
   const claimVerses = useCallback((verses: number[]): object => {
     const token = {};
-    for (const verse of verses) writeIntentRef.current.set(verse, token);
+    for (const verse of verses) {
+      writeIntentRef.current.set(verse, token);
+      // A newer write supersedes any older reconciliation still pending for this
+      // verse: drop the stale expectation so the reconcile effect can't retire
+      // (or hold) the fresh optimistic overlay against the old write's target.
+      // The new write re-registers its own expectation when it settles.
+      pendingReconcileRef.current.delete(verse);
+    }
     return token;
   }, []);
 
@@ -303,6 +350,10 @@ export function useBibleReaderHighlights({
   scopeRef.current = { versionId, book, chapter };
   const createHighlightRef = useRef(createHighlight);
   createHighlightRef.current = createHighlight;
+  // One refetch per settled batch (Fix 3): the hooks layer no longer refetches
+  // per write, so a multi-run apply / multi-verse remove issues a single GET.
+  const refetchRef = useRef(refetch);
+  refetchRef.current = refetch;
   const authActionsRef = useRef({
     invalidateHighlightsPermission,
     startDataExchangeForHighlights,
@@ -337,8 +388,13 @@ export function useBibleReaderHighlights({
       const failures = results.filter(Result.isError).map((r) => r.error);
       if (failures.length === 0) {
         for (const verse of verses) {
-          if (writeIntentRef.current.get(verse) === token) confirmedVersesRef.current.add(verse);
+          if (writeIntentRef.current.get(verse) === token) {
+            pendingReconcileRef.current.set(verse, { op: 'apply', color });
+          }
         }
+        // One GET for the whole batch; the reconcile effect retires the overlay
+        // entries once this fetch (or a later one) reflects the write.
+        refetchRef.current();
         return;
       }
 
@@ -369,20 +425,29 @@ export function useBibleReaderHighlights({
 
   const runRemove = useCallback(
     async (color: string, verses: number[], token: object) => {
+      // DELETE per verse, NOT per contiguous run (Fix 4): the API stores
+      // highlights per verse and returned a non-2xx for range delete on staging
+      // (e.g. `JHN.1.2-3`), so a range passage-id would throw and leave the
+      // removal un-persisted. POST/apply still collapses to ranges — that works.
       const results = await Promise.all(
-        buildPassageIds(book, chapter, verses).map((passageId) =>
-          Result.tryPromise({
+        verses.map((verse) => {
+          const passageId = `${book}.${chapter}.${verse}`;
+          return Result.tryPromise({
             try: () => deleteHighlight(passageId, { version_id: versionId }),
             catch: (cause) => new BibleReaderHighlightError('remove', passageId, cause),
-          }),
-        ),
+          });
+        }),
       );
 
       const failures = results.filter(Result.isError).map((r) => r.error);
       if (failures.length === 0) {
         for (const verse of verses) {
-          if (writeIntentRef.current.get(verse) === token) confirmedVersesRef.current.add(verse);
+          if (writeIntentRef.current.get(verse) === token) {
+            pendingReconcileRef.current.set(verse, { op: 'remove', color });
+          }
         }
+        // Single GET for the whole (possibly multi-verse) removal.
+        refetchRef.current();
         return;
       }
 
@@ -558,9 +623,14 @@ export function useBibleReaderHighlights({
       if (failures.length === 0) {
         if (token) {
           for (const verse of pending.verses) {
-            if (writeIntentRef.current.get(verse) === token) confirmedVersesRef.current.add(verse);
+            if (writeIntentRef.current.get(verse) === token) {
+              pendingReconcileRef.current.set(verse, { op: 'apply', color: pending.color });
+            }
           }
         }
+        // Pull the server's copy of the just-granted highlight; the reconcile
+        // effect retires the overlay once the GET reflects it.
+        refetchRef.current();
         return;
       }
       // DEFERRED: this resume-path failure only logs + reverts. The pending

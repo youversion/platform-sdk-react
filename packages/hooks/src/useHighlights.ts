@@ -54,21 +54,21 @@ export function useHighlights(
     },
   );
 
+  // NOTE: these mutations intentionally do NOT auto-refetch. A single logical
+  // apply/remove can fan out into several writes (one per contiguous run for
+  // apply, one per verse for delete); auto-refetching per call would issue a
+  // GET per write. Callers coalesce instead — issue the batch, then `refetch()`
+  // once after it settles. The seam hook (`useBibleReaderHighlights`) is the
+  // sole consumer and does exactly that.
   const createHighlight = useCallback(
-    async (data: CreateHighlight): Promise<Highlight> => {
-      const result = await highlightsClient.createHighlight(data);
-      refetch();
-      return result;
-    },
-    [highlightsClient, refetch],
+    (data: CreateHighlight): Promise<Highlight> => highlightsClient.createHighlight(data),
+    [highlightsClient],
   );
 
   const deleteHighlight = useCallback(
-    async (passageId: string, deleteOptions: DeleteHighlightOptions): Promise<void> => {
-      await highlightsClient.deleteHighlight(passageId, deleteOptions);
-      refetch();
-    },
-    [highlightsClient, refetch],
+    (passageId: string, deleteOptions: DeleteHighlightOptions): Promise<void> =>
+      highlightsClient.deleteHighlight(passageId, deleteOptions),
+    [highlightsClient],
   );
 
   return {

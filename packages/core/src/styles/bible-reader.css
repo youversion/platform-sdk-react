@@ -123,6 +123,20 @@
     display: inline;
   }
 
+  /* Fade highlight fills in/out instead of popping. The fill is painted as an
+     inline `background-color` on `.yv-v[v]` (see verse.tsx); transitioning only
+     that property animates apply/remove without touching the selection
+     underline (text-decoration) and without any layout shift. */
+  & .yv-v {
+    transition: background-color 250ms ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    & .yv-v {
+      transition: none;
+    }
+  }
+
   /* Only show pointer cursor when verses are selectable */
   &[data-selectable='true'] .yv-v,
   &[data-selectable='true'] .verse {
