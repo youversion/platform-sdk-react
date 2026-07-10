@@ -467,4 +467,138 @@ describe('VerseActionPopover', () => {
       expect(applyButtons).toHaveLength(5);
     });
   });
+
+  // jsdom serializes an inline `#hex` background to `rgb(r, g, b)`, so compare in
+  // that space: read the swatch's computed background and expect hexes as rgb.
+  function swatchColor(btn: Element): string {
+    return (btn as HTMLElement).style.backgroundColor;
+  }
+  function asRgb(hex: string): string {
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  function applyButtons() {
+    return screen
+      .getAllByRole('button')
+      .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
+  }
+
+  function clearButtons() {
+    return screen
+      .getAllByRole('button')
+      .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear'));
+  }
+
+  describe('Recent colors', () => {
+    it('renders recent colors in server order (no reordering)', () => {
+      const recentColors = ['00d6ff', 'ff0000', '5dff79', '123abc'];
+      render(<VerseActionPopover {...defaultProps} recentColors={recentColors} />);
+
+      const colors = applyButtons().map(swatchColor);
+      expect(colors).toEqual(['00d6ff', 'ff0000', '5dff79', '123abc'].map(asRgb));
+    });
+
+    it('dedupes recent colors first-occurrence-wins and normalizes case / leading #', () => {
+      const recentColors = ['#00D6FF', '00d6ff', 'FF0000', 'ff0000'];
+      render(<VerseActionPopover {...defaultProps} recentColors={recentColors} />);
+
+      const colors = applyButtons().map(swatchColor);
+      expect(colors).toEqual(['00d6ff', 'ff0000'].map(asRgb));
+    });
+
+    it('drops entries that are not 6-digit hex', () => {
+      const recentColors = ['00d6ff', 'nothex', 'fff', '12345g', 'ffc66f'];
+      render(<VerseActionPopover {...defaultProps} recentColors={recentColors} />);
+
+      const colors = applyButtons().map(swatchColor);
+      expect(colors).toEqual(['00d6ff', 'ffc66f'].map(asRgb));
+    });
+
+    it('falls back to the default palette when recent colors are null/empty', () => {
+      const { rerender } = render(<VerseActionPopover {...defaultProps} recentColors={null} />);
+      expect(applyButtons().map(swatchColor)).toEqual([...HIGHLIGHT_COLORS].map(asRgb));
+
+      // An all-invalid list collapses to empty → same palette fallback.
+      rerender(<VerseActionPopover {...defaultProps} recentColors={['zzz', 'nothex']} />);
+      expect(applyButtons().map(swatchColor)).toEqual([...HIGHLIGHT_COLORS].map(asRgb));
+    });
+
+    it('applies a recent color that is not in the default palette', () => {
+      const onHighlight = vi.fn();
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          recentColors={['abcdef']}
+          onHighlight={onHighlight}
+        />,
+      );
+
+      fireEvent.click(applyButtons()[0]!);
+      expect(onHighlight).toHaveBeenCalledWith('abcdef');
+    });
+
+    it('shows a remove circle for an active color absent from the palette', () => {
+      // The verse is highlighted `abcdef`, but recents no longer include it.
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          recentColors={['00d6ff', '5dff79']}
+          activeHighlights={new Set(['abcdef'])}
+          selectedVerses={[1]}
+          highlightedVerses={{ 1: 'abcdef' }}
+        />,
+      );
+
+      const removes = clearButtons();
+      expect(removes).toHaveLength(1);
+      expect(swatchColor(removes[0]!)).toBe(asRgb('abcdef'));
+    });
+  });
+
+  describe('Active swatch checkmark', () => {
+    // The checkmark path (Swift #179) starts at these coords — asserts we render
+    // the check, not the old X.
+    const CHECK_PATH_PREFIX = 'M19.6627';
+
+    it('renders a checkmark (not an X) on the active/remove swatch', () => {
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          activeHighlights={new Set<HighlightColor>([HIGHLIGHT_COLORS[0]])}
+          selectedVerses={[1]}
+          highlightedVerses={{ 1: HIGHLIGHT_COLORS[0] }}
+        />,
+      );
+
+      const removeButton = screen.getByRole('button', { name: /Clear highlight/ });
+      const path = removeButton.querySelector('svg path');
+      expect(path?.getAttribute('d')).toContain(CHECK_PATH_PREFIX);
+    });
+
+    it('apply swatches render no icon', () => {
+      render(<VerseActionPopover {...defaultProps} />);
+      applyButtons().forEach((btn) => {
+        expect(btn.querySelector('svg')).toBeNull();
+      });
+    });
+
+    it('tapping the checkmark swatch still removes the highlight', () => {
+      const onClearHighlight = vi.fn();
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          activeHighlights={new Set<HighlightColor>([HIGHLIGHT_COLORS[0]])}
+          selectedVerses={[1]}
+          highlightedVerses={{ 1: HIGHLIGHT_COLORS[0] }}
+          onClearHighlight={onClearHighlight}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /Clear highlight/ }));
+      expect(onClearHighlight).toHaveBeenCalledWith(HIGHLIGHT_COLORS[0]);
+    });
+  });
 });

@@ -146,6 +146,18 @@ Selection is always enabled in BibleReader (no opt-out prop for now; YAGNI).
 - Tunable; swap to a ring/bg later if Figma says otherwise.
 
 ## As-built notes (deviations from the design above)
+- **ADR-005 active-swatch icon (YPE-1034 PR3):** the 24px **X** on active/remove
+  swatches was replaced with a 24px **checkmark** (`icons/check`), matching iOS
+  (platform-sdk-swift #179). Same Text/Everdark (`--yv-gray-50` = `#121212`,
+  theme-invariant) fill and identical behavior — tapping still removes the
+  highlight; the swatch's `Clear highlight` aria-label is unchanged.
+- **Recent colors (YPE-1034 PR3):** when highlights are live (flag on + auth
+  provider + signed in) the color row renders the server's recent-colors list
+  (recently used first, then defaults) in server order, deduped, and
+  horizontally scrollable if it overflows. It falls back to the hardcoded
+  `HIGHLIGHT_COLORS` palette whenever recents are unavailable (flag off, no auth
+  provider, signed out, fetch pending or failed). `HighlightColor` was widened
+  from the five-literal union to `string` since recents can be any hex.
 - **ADR-004 revised:** selection + highlights live in `Content`, **not** Root
   context. Copy/Share/anchor all need the rendered verse DOM (which lives in
   Content), so Root ownership would fragment the feature. BibleTextView stays

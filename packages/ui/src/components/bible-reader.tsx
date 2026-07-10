@@ -518,6 +518,7 @@ function Content() {
 
   const {
     highlightedVerses,
+    recentColors,
     apply: applyHighlight,
     remove: removeHighlight,
     permissionDialogOpen,
@@ -744,6 +745,7 @@ function Content() {
             activeHighlights={activeHighlights}
             selectedVerses={selectedVerses}
             highlightedVerses={highlightedVerses}
+            recentColors={recentColors}
             anchorElement={anchorElement}
             scrollRoot={scrollContainerRef.current}
             onHighlight={handleHighlight}
