@@ -230,7 +230,13 @@ export class HighlightsClient {
   /**
    * Clears highlights for a passage.
    * Requires OAuth with write_highlights scope.
-   * @param passageId The passage identifier (USFM format, e.g., "MAT.1.1" or "MAT.1.1-5").
+   *
+   * UNVERIFIED / likely unsupported: passing a verse RANGE (e.g. "MAT.1.1-5")
+   * returned a non-2xx from staging (observed with `JHN.1.2-3`), even though the
+   * API stores highlights per verse and POST accepts ranges. Until the API team
+   * confirms range delete, callers should send one DELETE per verse passage-id
+   * (e.g. "MAT.1.1"). See YPE-1034.
+   * @param passageId The passage identifier (single-verse USFM, e.g., "MAT.1.1").
    * @param options Query parameters; `version_id` is required by the API (sent as `bible_id`).
    * @param lat Optional long access token. If not provided, retrieves from YouVersionPlatformConfiguration.
    * @returns Promise that resolves when highlights are deleted (204 response).

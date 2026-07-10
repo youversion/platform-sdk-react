@@ -213,6 +213,8 @@ describe('useBibleReaderHighlights — apply', () => {
       passage_id: 'JHN.3.20',
       color: 'fffe00',
     });
+    // Two POSTs (two runs) but a SINGLE coalesced refetch for the batch (Fix 3).
+    expect(mocked.refetch).toHaveBeenCalledTimes(1);
   });
 
   it('reverts the optimistic overlay and logs when the write fails', async () => {
@@ -242,8 +244,8 @@ describe('useBibleReaderHighlights — apply', () => {
   });
 });
 
-describe('useBibleReaderHighlights — overlay confirmation', () => {
-  it('drops the optimistic entry once the post-write refetch lands, so server truth wins', async () => {
+describe('useBibleReaderHighlights — overlay reconciliation (Fix 2)', () => {
+  it('holds the overlay until a fetch REFLECTS the write, then retires it to server truth', async () => {
     const mocked = mockUseHighlights();
 
     const { result, rerender } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
@@ -263,23 +265,62 @@ describe('useBibleReaderHighlights — overlay confirmation', () => {
       await Promise.resolve();
     });
 
-    // The post-write refetch lands with different server truth for that verse
-    // (e.g. another device re-colored it between our POST and the GET).
+    // The post-write GET lands but does NOT yet contain the write (read-after-
+    // write lag). The overlay must WIN — no flicker out and back.
+    mockUseHighlights({ highlights: makeCollection([]) });
+    rerender();
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+
+    // A later GET reflects the write (verse present in the written color).
+    mockUseHighlights({
+      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+    });
+    rerender();
+    await waitFor(() => {
+      expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    });
+
+    // Prove the overlay entry was retired: with the entry gone, server truth now
+    // drives the verse, so clearing it server-side un-paints it.
+    mockUseHighlights({ highlights: makeCollection([]) });
+    rerender();
+    await waitFor(() => {
+      expect(result.current.highlightedVerses).toEqual({});
+    });
+  });
+
+  it('holds the overlay when the server converges on a DIFFERENT color (overlay wins until navigation)', async () => {
+    const mocked = mockUseHighlights();
+
+    const { result, rerender } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: AuthWrapper,
+    });
+
+    act(() => {
+      result.current.apply('fffe00', [16]);
+    });
+    await waitFor(() => {
+      expect(mocked.createHighlight).toHaveBeenCalledTimes(1);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // A GET returns the verse in a color that is NOT what we wrote. That doesn't
+    // reflect our write, so the overlay is held rather than snapping to it.
     mockUseHighlights({
       highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: '00d6ff' }]),
     });
     rerender();
-
-    // Without confirmation-clearing, the stale overlay entry would keep
-    // rendering fffe00 until navigation.
-    await waitFor(() => {
-      expect(result.current.highlightedVerses).toEqual({ 16: '00d6ff' });
+    await act(async () => {
+      await Promise.resolve();
     });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
   });
 });
 
 describe('useBibleReaderHighlights — remove', () => {
-  it('removes optimistically and DELETEs only verses rendered in that color, as ranges', async () => {
+  it('removes optimistically and DELETEs one passage-id per verse (never a range)', async () => {
     const mocked = mockUseHighlights({
       highlights: makeCollection([
         { version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' },
@@ -299,10 +340,15 @@ describe('useBibleReaderHighlights — remove', () => {
     // Optimistic: yellow verses gone immediately, green untouched.
     expect(result.current.highlightedVerses).toEqual({ 18: '5dff79' });
 
+    // Contiguous [16,17] must NOT collapse to `JHN.3.16-17` — range delete is
+    // unsupported server-side (Fix 4). One DELETE per verse instead.
     await waitFor(() => {
-      expect(mocked.deleteHighlight).toHaveBeenCalledTimes(1);
+      expect(mocked.deleteHighlight).toHaveBeenCalledTimes(2);
     });
-    expect(mocked.deleteHighlight).toHaveBeenCalledWith('JHN.3.16-17', { version_id: 111 });
+    expect(mocked.deleteHighlight).toHaveBeenCalledWith('JHN.3.16', { version_id: 111 });
+    expect(mocked.deleteHighlight).toHaveBeenCalledWith('JHN.3.17', { version_id: 111 });
+    // The whole removal coalesces into a single refetch (Fix 3).
+    expect(mocked.refetch).toHaveBeenCalledTimes(1);
   });
 
   it('reverts the optimistic removal and logs when the delete fails', async () => {
