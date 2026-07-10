@@ -134,7 +134,8 @@ describe('useBibleReaderHighlights — auth guarding', () => {
     });
     expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
 
-    // Sign out: useApiData keeps its stale data, so the hook itself must gate.
+    // Sign out: the mock still returns fetched data (like a not-yet-cleared
+    // cache would), so this pins the hook's own render gate.
     signedIn = false;
     rerender();
     expect(result.current.highlightedVerses).toEqual({});
@@ -226,6 +227,42 @@ describe('useBibleReaderHighlights — apply', () => {
       expect.objectContaining({ passageId: 'JHN.3.16-17' }),
     );
     consoleError.mockRestore();
+  });
+});
+
+describe('useBibleReaderHighlights — overlay confirmation', () => {
+  it('drops the optimistic entry once the post-write refetch lands, so server truth wins', async () => {
+    const mocked = mockUseHighlights();
+
+    const { result, rerender } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: AuthWrapper,
+    });
+
+    act(() => {
+      result.current.apply('fffe00', [16]);
+    });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+
+    // Let the write settle successfully.
+    await waitFor(() => {
+      expect(mocked.createHighlight).toHaveBeenCalledTimes(1);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // The post-write refetch lands with different server truth for that verse
+    // (e.g. another device re-colored it between our POST and the GET).
+    mockUseHighlights({
+      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: '00d6ff' }]),
+    });
+    rerender();
+
+    // Without confirmation-clearing, the stale overlay entry would keep
+    // rendering fffe00 until navigation.
+    await waitFor(() => {
+      expect(result.current.highlightedVerses).toEqual({ 16: '00d6ff' });
+    });
   });
 });
 
