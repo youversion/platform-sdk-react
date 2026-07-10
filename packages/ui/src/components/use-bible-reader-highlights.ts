@@ -4,7 +4,7 @@ import { isHighlightsLive } from '@/lib/feature-flags';
 import { buildPassageIds } from '@/lib/usfm-ranges';
 import { useHighlights, YouVersionAuthContext } from '@youversion/platform-react-hooks';
 import { Result } from 'better-result';
-import { useCallback, useContext, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 export type UseBibleReaderHighlightsOptions = {
   versionId: number;
@@ -99,8 +99,9 @@ export function useBibleReaderHighlights({
   }
 
   const highlightedVerses = useMemo(() => {
-    // `useApiData` keeps its last data when disabled, so gate on `live` here
-    // too: sign-out must un-render highlights immediately, not eventually.
+    // Gate on `live` here too (useApiData also clears data when disabled):
+    // sign-out or flag-off must render nothing this very render, including
+    // any optimistic overlay entries still in state.
     if (!live) return {};
 
     const map: Record<number, string> = {};
@@ -127,6 +128,30 @@ export function useBibleReaderHighlights({
   const highlightedVersesRef = useRef(highlightedVerses);
   highlightedVersesRef.current = highlightedVerses;
 
+  // Verses whose write settled successfully and are awaiting the post-write
+  // refetch. Once fresh data lands, their overlay entries are dropped so the
+  // server's truth wins again — otherwise a successful write's overlay entry
+  // would mask every later server-side change to that verse (another device,
+  // another tab) until navigation.
+  const confirmedVersesRef = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (confirmedVersesRef.current.size === 0) return;
+    const confirmed = confirmedVersesRef.current;
+    confirmedVersesRef.current = new Set();
+    setOverlay((current) => {
+      let changed = false;
+      const next = { ...current };
+      for (const verse of confirmed) {
+        if (verse in next) {
+          delete next[verse];
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, [highlights]);
+
   const patchOverlay = useCallback((verses: number[], value: string | null) => {
     setOverlay((current) => {
       const next = { ...current };
@@ -146,6 +171,21 @@ export function useBibleReaderHighlights({
     });
   }, []);
 
+  // Known concurrency windows at this apply/remove boundary. Deliberately not
+  // closed in PR 1 — a real per-verse operation queue is PR 2 territory:
+  //
+  // - Apply then remove the same verse while the POST is still in flight: the
+  //   DELETE can reach the server before the create commits, leaving a
+  //   server-side highlight that renders as removed until the next refetch or
+  //   navigation repaints it.
+  // - Two overlapping writes touching the same verses: the loser's
+  //   snapshot-based failure revert can transiently clobber the winner's
+  //   optimistic entry (rendering converges once the post-write refetch
+  //   lands, since useApiData is latest-wins).
+  //
+  // The confirmed-verse clearing above narrows both windows — a settled
+  // write's overlay entry stops shadowing server truth as soon as fresh data
+  // arrives — but does not close them.
   const apply = useCallback(
     (color: string, verses: number[]) => {
       if (!live || verses.length === 0) return;
@@ -170,7 +210,12 @@ export function useBibleReaderHighlights({
         );
 
         const failures = results.filter(Result.isError);
-        if (failures.length === 0) return;
+        if (failures.length === 0) {
+          // Hand the verses to the confirmed set: the refetch createHighlight
+          // triggered will clear their overlay entries when its data lands.
+          for (const verse of verses) confirmedVersesRef.current.add(verse);
+          return;
+        }
         for (const failure of failures) {
           console.error(
             `[YouVersion SDK] Failed to apply highlight (version ${versionId}, ` +
@@ -212,7 +257,10 @@ export function useBibleReaderHighlights({
         );
 
         const failures = results.filter(Result.isError);
-        if (failures.length === 0) return;
+        if (failures.length === 0) {
+          for (const verse of targetVerses) confirmedVersesRef.current.add(verse);
+          return;
+        }
         for (const failure of failures) {
           console.error(
             `[YouVersion SDK] Failed to remove highlight (version ${versionId}, ` +
