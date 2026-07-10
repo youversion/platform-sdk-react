@@ -158,6 +158,12 @@ export function useBibleReaderHighlights({
   // means "use the default palette": the feature is inert, or the fetch is still
   // pending or failed. Recent colors are user-global (not per chapter/version),
   // so they're fetched on the `live` edge only — never per navigation or per tap.
+  //
+  // DEFERRED (accepted for dark launch): an account switch WITHOUT an
+  // intervening sign-out (userInfo A → userInfo B while `live` stays true)
+  // never re-runs this effect, so user A's recents stay rendered for user B.
+  // Hosts normally sign out between users, which drops recents via the `!live`
+  // branch. Follow-up: key the fetch on the user identity as well as `live`.
   const [recentColors, setRecentColors] = useState<string[] | null>(null);
   const getRecentColorsRef = useRef(getRecentColors);
   getRecentColorsRef.current = getRecentColors;

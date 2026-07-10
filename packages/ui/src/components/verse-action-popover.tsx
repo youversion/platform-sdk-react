@@ -331,7 +331,13 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
           <div
             // Recent colors can be a long list — let the row scroll horizontally
             // (capped to the viewport) instead of stretching the pill off-screen.
-            className="yv:flex yv:items-center yv:gap-2 yv:max-w-[70vw] yv:overflow-x-auto"
+            // `overflow-x: auto` forces `overflow-y` out of `visible` too (CSS
+            // spec), which would clip the swatches' focus ring (ring-2 +
+            // offset-2 ≈ 4px outside the 32px circle) and hover scale-110
+            // overpaint. The 6px padding gives that overpaint room inside the
+            // scroll box; the matching negative margin cancels it back out of
+            // the pill's layout so visual spacing is unchanged.
+            className="yv:flex yv:items-center yv:gap-2 yv:max-w-[70vw] yv:overflow-x-auto yv:p-1.5 yv:-m-1.5"
             role="group"
             aria-label={t('highlightColorsAriaLabel')}
           >

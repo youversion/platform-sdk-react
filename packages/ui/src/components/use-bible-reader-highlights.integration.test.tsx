@@ -114,16 +114,24 @@ describe('useBibleReaderHighlights — recent colors', () => {
     });
   }
 
-  it('fetches recent colors once the feature is live and exposes them', async () => {
+  it('fetches recent colors when auth resolves after mount (signed-out → signed-in flip)', async () => {
     stubHighlights();
     const getRecentColors = vi
       .spyOn(HighlightsClient.prototype, 'getRecentColors')
       .mockResolvedValue(['00d6ff', 'ff0000', '5dff79']);
 
-    signedIn = true;
-    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+    // Mount signed out — mirrors YouVersionAuthProvider, which initializes
+    // userInfo to null and resolves the session asynchronously. The production
+    // edge is always this flip, never a synchronously-signed-in mount.
+    const { result, rerender } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
       wrapper: Providers,
     });
+
+    expect(getRecentColors).not.toHaveBeenCalled();
+    expect(result.current.recentColors).toBeNull();
+
+    signedIn = true;
+    rerender();
 
     await waitFor(() => {
       expect(result.current.recentColors).toEqual(['00d6ff', 'ff0000', '5dff79']);
