@@ -7,13 +7,22 @@ PR_AUTHOR="${PR_AUTHOR:-}"
 HEAD_REF="${HEAD_REF:-}"
 ACTOR="${ACTOR:-}"
 
-LOCALIZATION_SYNC_BOT="app/platform-localization-pr-bot"
+LOCALIZATION_SYNC_BOT_APP="app/platform-localization-pr-bot"
+LOCALIZATION_SYNC_BOT_USER="platform-localization-pr-bot[bot]"
 LOCALE_PATH_PREFIX="packages/ui/src/i18n/locales/"
 FAILURE_MSG="Locale files are owned by platform-localization. Add strings upstream; do not edit packages/ui/src/i18n/locales/ in feature PRs. See docs/i18n-guidelines.md"
 
+is_sync_bot_author() {
+  [[ "$PR_AUTHOR" == "$LOCALIZATION_SYNC_BOT_APP" \
+    || "$PR_AUTHOR" == "$LOCALIZATION_SYNC_BOT_USER" ]]
+}
+
+is_sync_branch() {
+  [[ "$HEAD_REF" =~ ^chore/localization-sync-react- ]]
+}
+
 is_allowed_sync_pr() {
-  [[ "$PR_AUTHOR" == "$LOCALIZATION_SYNC_BOT" ]] \
-    && [[ "$HEAD_REF" =~ ^chore/localization-sync-react- ]]
+  is_sync_bot_author && is_sync_branch
 }
 
 if is_allowed_sync_pr; then
