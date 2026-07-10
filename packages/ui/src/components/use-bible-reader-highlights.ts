@@ -82,7 +82,14 @@ function extractStatus(error: unknown): number | undefined {
   return undefined;
 }
 
-/** A 401/403 means the app lost (or never had) the highlights permission. */
+/**
+ * A 401/403 means the app lost (or never had) the highlights permission.
+ *
+ * DEFERRED (accepted for dark launch): a 401 from an *expired token* (not a
+ * missing permission) also lands here and misroutes to the permission
+ * re-prompt instead of a token refresh / re-auth. Follow-up: distinguish
+ * auth-expiry from permission-denied at this boundary.
+ */
 function isPermissionError(error: unknown): boolean {
   const status = extractStatus(error);
   return status === 401 || status === 403;
@@ -341,6 +348,10 @@ export function useBibleReaderHighlights({
 
       if (failures.some(isPermissionError)) {
         authActionsRef.current.invalidateHighlightsPermission();
+        // DEFERRED: a remove failure has no pending highlight, so the dialog's
+        // post-grant resume is a no-op — the user grants and nothing visibly
+        // happens. Follow-up: don't re-prompt on remove failures (invalidating
+        // the cache above is enough; the next apply re-enters the flow).
         setPermissionDialogOpen(true);
       }
     },
@@ -438,10 +449,19 @@ export function useBibleReaderHighlights({
   useEffect(() => {
     if (!flagOn || !hasAuthProvider) return;
 
-    let dataExchangeStatus: 'granted' | 'cancel' | 'failure' | null = null;
     if (!dataExchangeConsumedRef.current) {
       dataExchangeConsumedRef.current = true;
-      dataExchangeStatus = consumeDataExchangeReturnRef.current()?.status ?? null;
+      const returned = consumeDataExchangeReturnRef.current();
+      // Act on a decline/failure the moment the return is consumed — BEFORE the
+      // auth gate below. The shipped YouVersionAuthProvider hydrates the session
+      // asynchronously, so this effect's first run after a redirect return is
+      // always unauthenticated; if the status only lived in a local across that
+      // flip, the discard would be lost and the dialog the user just declined
+      // would re-open. Discarding here runs exactly once and needs no session:
+      // a decline means the intent is dead regardless of who ends up signed in.
+      if (returned && returned.status !== 'granted') {
+        clearPendingHighlight();
+      }
     }
 
     const pending = readPendingHighlight();
@@ -451,13 +471,10 @@ export function useBibleReaderHighlights({
     if (!isAuthenticated) return;
 
     if (!hasHighlightsPermissionRef.current()) {
-      // Explicit cancel/failure from a data-exchange return → discard.
-      if (dataExchangeStatus === 'cancel' || dataExchangeStatus === 'failure') {
-        clearPendingHighlight();
-        return;
-      }
       // Signed in but the permission was not granted (e.g. one-fell-swoop
       // sign-in that returned without it) → offer the data-exchange grant.
+      // A cancelled/failed data-exchange return never reaches here: its pending
+      // highlight was discarded at consume time above.
       // NOTE: this replaces the state-machine's automatic sign-in→data-exchange
       // hop with a confirm prompt, to avoid an unattended redirect loop on load.
       setPermissionDialogOpen(true);
@@ -503,6 +520,11 @@ export function useBibleReaderHighlights({
         }
         return;
       }
+      // DEFERRED: this resume-path failure only logs + reverts. The pending
+      // highlight was already cleared before enqueueing, so a 401 here loses
+      // the intent instead of keep-pending + re-prompt like runApply does.
+      // Rare window (grant just succeeded); follow-up: route resume-write
+      // failures through runApply's failure handling.
       logWriteFailures(failures, pending.color);
       if (token) revertOwned(pending.verses, token);
     });

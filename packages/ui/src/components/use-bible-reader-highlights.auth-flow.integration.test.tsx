@@ -176,8 +176,8 @@ describe('highlight auth flow — just-in-time (signed in, no permission)', () =
 });
 
 describe('highlight auth flow — data-exchange return', () => {
-  it('applies the pending highlight on a granted return', async () => {
-    signedIn = true;
+  it('applies the pending highlight on a granted return (async session hydration)', async () => {
+    signedIn = false;
     setLocation(
       'https://host.example/read?data_exchange_status=granted&granted_permissions=highlights',
     );
@@ -197,7 +197,13 @@ describe('highlight auth flow — data-exchange return', () => {
       .spyOn(HighlightsClient.prototype, 'createHighlight')
       .mockResolvedValue({ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' });
 
-    renderHook(() => useBibleReaderHighlights(options), { wrapper: Providers });
+    const { rerender } = renderHook(() => useBibleReaderHighlights(options), {
+      wrapper: Providers,
+    });
+
+    // The session resolves after mount, as the shipped provider does.
+    signedIn = true;
+    rerender();
 
     await waitFor(() => {
       expect(createHighlight).toHaveBeenCalledWith({
@@ -210,8 +216,12 @@ describe('highlight auth flow — data-exchange return', () => {
     expect(readPendingHighlight()).toBeNull();
   });
 
-  it('discards the pending highlight on a cancelled return', async () => {
-    signedIn = true;
+  it('discards pending on a cancelled return and does not re-open the dialog (async session hydration)', async () => {
+    // Mount signed OUT: the shipped YouVersionAuthProvider hydrates userInfo
+    // asynchronously, so the first effect run after a redirect return is always
+    // unauthenticated. The cancel discard must survive that flip — consuming
+    // the status on run 1 and acting on it on run 2 is the bug this pins.
+    signedIn = false;
     setLocation('https://host.example/read?data_exchange_status=cancel');
     sessionStorage.setItem(
       'youversion-platform:pending-highlight',
@@ -226,11 +236,48 @@ describe('highlight auth flow — data-exchange return', () => {
     );
     const createHighlight = vi.spyOn(HighlightsClient.prototype, 'createHighlight');
 
-    renderHook(() => useBibleReaderHighlights(options), { wrapper: Providers });
+    const { result, rerender } = renderHook(() => useBibleReaderHighlights(options), {
+      wrapper: Providers,
+    });
+
+    // The session resolves after mount.
+    signedIn = true;
+    rerender();
 
     await waitFor(() => {
       expect(readPendingHighlight()).toBeNull();
     });
+    expect(result.current.permissionDialogOpen).toBe(false);
+    expect(createHighlight).not.toHaveBeenCalled();
+  });
+
+  it('discards pending on a failure return and does not re-open the dialog (async session hydration)', async () => {
+    signedIn = false;
+    setLocation('https://host.example/read?data_exchange_status=something-unexpected');
+    sessionStorage.setItem(
+      'youversion-platform:pending-highlight',
+      JSON.stringify({
+        verses: [16],
+        color: 'fffe00',
+        versionId: 111,
+        book: 'JHN',
+        chapter: '3',
+        timestamp: Date.now(),
+      }),
+    );
+    const createHighlight = vi.spyOn(HighlightsClient.prototype, 'createHighlight');
+
+    const { result, rerender } = renderHook(() => useBibleReaderHighlights(options), {
+      wrapper: Providers,
+    });
+
+    signedIn = true;
+    rerender();
+
+    await waitFor(() => {
+      expect(readPendingHighlight()).toBeNull();
+    });
+    expect(result.current.permissionDialogOpen).toBe(false);
     expect(createHighlight).not.toHaveBeenCalled();
   });
 });
