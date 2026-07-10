@@ -20,6 +20,8 @@ const uiSrcDir = resolve(repoRoot, 'packages/ui/src');
 
 const TRANSLATION_LOCALES = ['fr', 'es'];
 const INTERPOLATION_TOKEN_RE = /\{\{(\w+)\}\}/g;
+// Matches literal-string args to any function named `t` (not i18next-specific).
+// Dynamic keys (templates/vars) and non-i18n `t()` helpers can false-pos/neg.
 const T_CALL_RE = /\bt\(\s*['"]([^'"]+)['"]/g;
 const I18N_KEY_RE = /i18nKey\s*=\s*['"]([^'"]+)['"]/g;
 
