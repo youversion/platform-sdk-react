@@ -1,8 +1,17 @@
 'use client';
 
 import { isHighlightsLive } from '@/lib/feature-flags';
+import {
+  clearPendingHighlight,
+  readPendingHighlight,
+  stashPendingHighlight,
+} from '@/lib/pending-highlight';
 import { buildPassageIds } from '@/lib/usfm-ranges';
-import { useHighlights, YouVersionAuthContext } from '@youversion/platform-react-hooks';
+import {
+  useHighlightAuthActions,
+  useHighlights,
+  YouVersionAuthContext,
+} from '@youversion/platform-react-hooks';
 import { Result } from 'better-result';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -15,10 +24,27 @@ export type UseBibleReaderHighlightsOptions = {
 export type UseBibleReaderHighlightsReturn = {
   /** Verse number → hex color (lowercase, no `#`) for the current chapter. */
   highlightedVerses: Record<number, string>;
-  /** Highlights the given verses in `color`. Bridge-safe: primitives only. */
-  apply: (color: string, verses: number[]) => void;
+  /**
+   * Highlights the given verses in `color`. Bridge-safe: primitives only.
+   * When the user has a session and the highlights permission this writes
+   * optimistically (`'applied'`); otherwise it stashes a pending highlight and
+   * enters the highlight auth flow (`'flow'` — sign-in redirect or the
+   * permission confirm dialog). Returns `'noop'` when highlighting is inert
+   * (flag off, no verses, or no auth provider). The caller uses the outcome to
+   * decide whether to keep the verse selection: `'flow'` keeps it so cancelling
+   * the dialog leaves the selection and popover intact.
+   */
+  apply: (color: string, verses: number[]) => 'applied' | 'flow' | 'noop';
   /** Clears the given verses that are currently highlighted in `color`. */
   remove: (color: string, verses: number[]) => void;
+  /** Whether the just-in-time permission confirm dialog is open. */
+  permissionDialogOpen: boolean;
+  /** Controlled open-change for the permission confirm dialog. */
+  onPermissionDialogOpenChange: (open: boolean) => void;
+  /** User accepted the dialog → start the data-exchange grant (full-page redirect). */
+  confirmPermissionDialog: () => void;
+  /** User declined/dismissed the dialog → discard the pending highlight. */
+  cancelPermissionDialog: () => void;
 };
 
 /**
@@ -46,12 +72,20 @@ class BibleReaderHighlightError extends Error {
   }
 }
 
-function snapshotOverlay(overlay: HighlightOverlay, verses: number[]): HighlightOverlay {
-  const snapshot: HighlightOverlay = {};
-  for (const verse of verses) {
-    if (verse in overlay) snapshot[verse] = overlay[verse] as string | null;
+/** Pulls an HTTP status off a thrown ApiClient error (possibly wrapped). */
+function extractStatus(error: unknown): number | undefined {
+  if (error instanceof BibleReaderHighlightError) return extractStatus(error.cause);
+  if (typeof error === 'object' && error !== null && 'status' in error) {
+    const status = (error as { status?: unknown }).status;
+    return typeof status === 'number' ? status : undefined;
   }
-  return snapshot;
+  return undefined;
+}
+
+/** A 401/403 means the app lost (or never had) the highlights permission. */
+function isPermissionError(error: unknown): boolean {
+  const status = extractStatus(error);
+  return status === 401 || status === 403;
 }
 
 /**
@@ -62,11 +96,17 @@ function snapshotOverlay(overlay: HighlightOverlay, verses: number[]): Highlight
  * in-memory optimistic overlay. There is no local persistence (ADR-001 in
  * docs/adr/YPE-1034-highlights-server-only.md).
  *
- * Everything is gated on `isHighlightsLive() && isAuthenticated`: while the
- * dark-launch flag is off, or the user has no session, the hook is inert — no
- * fetches, no writes, an empty rendered map. Failures in this PR get a
- * `console.error` and an overlay revert only; toasts and 401/403 handling are
- * PR 2.
+ * Rendering and fetching are gated on `isHighlightsLive() && isAuthenticated`.
+ * Writing additionally requires the `highlights` permission; when it (or the
+ * session) is missing, a color tap stashes a pending highlight and enters the
+ * highlight auth flow instead — one-fell-swoop sign-in when signed out, or the
+ * just-in-time permission confirm dialog → data-exchange grant when signed in.
+ *
+ * Apply/remove writes are serialized through a single FIFO promise chain so a
+ * later operation can never race an earlier one to the server (e.g. a DELETE
+ * overtaking an in-flight POST for the same verse). A per-verse ownership token
+ * guarantees a failed write only reverts verses no newer operation has claimed,
+ * so overlapping writes settle to the last-issued operation's state.
  */
 export function useBibleReaderHighlights({
   versionId,
@@ -74,11 +114,22 @@ export function useBibleReaderHighlights({
   chapter,
 }: UseBibleReaderHighlightsOptions): UseBibleReaderHighlightsReturn {
   // Read the auth context directly instead of `useYVAuth`, which throws when
-  // the consumer never mounted an auth provider. No provider and signed out
-  // are the same state here: no fetch, no writes, nothing rendered.
+  // the consumer never mounted an auth provider. With no provider we keep the
+  // PR 1 posture: no fetch, no writes, and a color tap never enters the auth
+  // flow (there is no auth to run) — copy/share still work.
   const authContext = useContext(YouVersionAuthContext);
+  const hasAuthProvider = authContext !== null;
   const isAuthenticated = Boolean(authContext?.userInfo);
-  const live = isHighlightsLive() && isAuthenticated;
+  const flagOn = isHighlightsLive();
+  const live = flagOn && isAuthenticated;
+
+  const {
+    hasHighlightsPermission,
+    invalidateHighlightsPermission,
+    consumeDataExchangeReturn,
+    startSignInForHighlights,
+    startDataExchangeForHighlights,
+  } = useHighlightAuthActions();
 
   const chapterUsfm = `${book}.${chapter}`;
   const { highlights, createHighlight, deleteHighlight } = useHighlights(
@@ -87,38 +138,16 @@ export function useBibleReaderHighlights({
   );
 
   const [overlay, setOverlay] = useState<HighlightOverlay>({});
+  const [permissionDialogOpen, setPermissionDialogOpen] = useState(false);
 
-  // Verses whose write settled successfully and are awaiting the post-write
-  // refetch. Once fresh data lands, the drain effect below drops their overlay
-  // entries so the server's truth wins again — otherwise a successful write's
-  // overlay entry would mask every later server-side change to that verse
-  // (another device, another tab) until navigation.
-  //
-  // The set is scoped to the current version+chapter: verse numbers only mean
-  // something within one scope. Both settle paths capture the scope at write
-  // start (`scopeAtWrite`) and act only if it still matches `overlayScopeRef`
-  // when they run — a success enrolls its verses here, a failure reverts the
-  // optimistic overlay — and the set is also cleared on scope change alongside
-  // the overlay reset below. Without those guards a slow write from the
-  // previous chapter could touch a verse number that now belongs to the new
-  // chapter's optimistic entry (enroll-then-drain, or a snapshot-absent revert
-  // that deletes it). Same-scope write races are documented at the apply/remove
-  // boundary and deferred to PR 2.
-  const confirmedVersesRef = useRef<Set<number>>(new Set());
-
-  // Drop the optimistic overlay (and the now-meaningless confirmed set)
-  // synchronously during render the moment the scope changes, so an in-flight
-  // overlay never paints over another chapter's or version's verses — their
-  // verse numbers collide. `overlayScopeRef` mirrors the current scope so the
-  // async write callbacks can compare it at settle time.
+  // Drop the optimistic overlay synchronously (during render) the moment the
+  // scope changes, so an in-flight overlay never paints over another
+  // chapter's or version's verses — their verse numbers collide.
   const overlayScope = `${versionId}:${chapterUsfm}`;
-  const overlayScopeRef = useRef(overlayScope);
-  overlayScopeRef.current = overlayScope;
   const [loadedOverlayScope, setLoadedOverlayScope] = useState(overlayScope);
   if (loadedOverlayScope !== overlayScope) {
     setLoadedOverlayScope(overlayScope);
     setOverlay({});
-    confirmedVersesRef.current = new Set();
   }
 
   const highlightedVerses = useMemo(() => {
@@ -144,15 +173,20 @@ export function useBibleReaderHighlights({
     return map;
   }, [live, highlights, overlay, chapterUsfm, versionId]);
 
-  // Refs so `apply` / `remove` can snapshot current state without re-memoizing
-  // on every overlay/fetch change.
+  // Refs so callbacks can snapshot current state without re-memoizing on every
+  // overlay/fetch change.
   const overlayRef = useRef(overlay);
   overlayRef.current = overlay;
   const highlightedVersesRef = useRef(highlightedVerses);
   highlightedVersesRef.current = highlightedVerses;
 
-  // When the post-write refetch lands, drain the confirmed verses' overlay
-  // entries so the server's truth wins again (see `confirmedVersesRef` above).
+  // Verses whose write settled successfully and are awaiting the post-write
+  // refetch. Once fresh data lands, their overlay entries are dropped so the
+  // server's truth wins again — otherwise a successful write's overlay entry
+  // would mask every later server-side change to that verse (another device,
+  // another tab) until navigation.
+  const confirmedVersesRef = useRef<Set<number>>(new Set());
+
   useEffect(() => {
     if (confirmedVersesRef.current.size === 0) return;
     const confirmed = confirmedVersesRef.current;
@@ -178,132 +212,340 @@ export function useBibleReaderHighlights({
     });
   }, []);
 
-  const revertOverlay = useCallback((verses: number[], snapshot: HighlightOverlay) => {
+  // Per-verse ownership: each write claims its verses with a fresh token. A
+  // failed write only reverts (drops the optimistic entry, letting server truth
+  // show) verses it still owns — if a newer write re-claimed a verse, the newer
+  // write owns its final state. This closes the "loser clobbers winner" window.
+  const writeIntentRef = useRef<Map<number, object>>(new Map());
+
+  const claimVerses = useCallback((verses: number[]): object => {
+    const token = {};
+    for (const verse of verses) writeIntentRef.current.set(verse, token);
+    return token;
+  }, []);
+
+  const revertOwned = useCallback((verses: number[], token: object) => {
     setOverlay((current) => {
+      let changed = false;
       const next = { ...current };
       for (const verse of verses) {
-        if (verse in snapshot) next[verse] = snapshot[verse] as string | null;
-        else delete next[verse];
+        if (writeIntentRef.current.get(verse) === token && verse in next) {
+          delete next[verse];
+          changed = true;
+        }
       }
-      return next;
+      return changed ? next : current;
     });
   }, []);
 
-  // Known concurrency windows at this apply/remove boundary. Deliberately not
-  // closed in PR 1 — a real per-verse operation queue is PR 2 territory:
-  //
-  // - Apply then remove the same verse while the POST is still in flight: the
-  //   DELETE can reach the server before the create commits, leaving a
-  //   server-side highlight that renders as removed until the next refetch or
-  //   navigation repaints it.
-  // - Two overlapping writes touching the same verses: the loser's
-  //   snapshot-based failure revert can transiently clobber the winner's
-  //   optimistic entry (rendering converges once the post-write refetch
-  //   lands, since useApiData is latest-wins).
-  //
-  // The confirmed-verse clearing above narrows both windows — a settled
-  // write's overlay entry stops shadowing server truth as soon as fresh data
-  // arrives — but does not close them.
+  // Single FIFO promise chain serializing every apply/remove write. `.then` on
+  // both fulfil and reject keeps the chain alive past a failed operation.
+  const writeQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+  const enqueueWrite = useCallback((task: () => Promise<void>) => {
+    const run = writeQueueRef.current.then(task, task);
+    writeQueueRef.current = run;
+    return run;
+  }, []);
+
+  // Stable refs for values the queued tasks and the resume effect read, so those
+  // callbacks don't need to re-create on every render.
+  const scopeRef = useRef({ versionId, book, chapter });
+  scopeRef.current = { versionId, book, chapter };
+  const createHighlightRef = useRef(createHighlight);
+  createHighlightRef.current = createHighlight;
+  const authActionsRef = useRef({
+    invalidateHighlightsPermission,
+    startDataExchangeForHighlights,
+  });
+  authActionsRef.current = { invalidateHighlightsPermission, startDataExchangeForHighlights };
+
+  const logWriteFailures = useCallback(
+    (failures: BibleReaderHighlightError[], color: string) => {
+      for (const failure of failures) {
+        console.error(
+          `[YouVersion SDK] Failed to ${failure.operation} highlight (version ${versionId}, ` +
+            `passage ${failure.passageId}, color ${color})`,
+          failure,
+        );
+      }
+    },
+    [versionId],
+  );
+
+  const runApply = useCallback(
+    async (color: string, verses: number[], token: object) => {
+      const results = await Promise.all(
+        buildPassageIds(book, chapter, verses).map((passageId) =>
+          Result.tryPromise({
+            try: () =>
+              createHighlightRef.current({ version_id: versionId, passage_id: passageId, color }),
+            catch: (cause) => new BibleReaderHighlightError('apply', passageId, cause),
+          }),
+        ),
+      );
+
+      const failures = results.filter(Result.isError).map((r) => r.error);
+      if (failures.length === 0) {
+        for (const verse of verses) {
+          if (writeIntentRef.current.get(verse) === token) confirmedVersesRef.current.add(verse);
+        }
+        return;
+      }
+
+      logWriteFailures(failures, color);
+      revertOwned(verses, token);
+
+      if (failures.some(isPermissionError)) {
+        // Server says the permission is gone (or never applied): invalidate the
+        // optimistic cache, keep this highlight as pending, and re-prompt.
+        authActionsRef.current.invalidateHighlightsPermission();
+        const scope = scopeRef.current;
+        stashPendingHighlight({
+          verses,
+          color,
+          versionId: scope.versionId,
+          book: scope.book,
+          chapter: scope.chapter,
+          timestamp: Date.now(),
+        });
+        setPermissionDialogOpen(true);
+      } else {
+        // Network / 5xx: overlay already reverted; drop any pending intent.
+        clearPendingHighlight();
+      }
+    },
+    [book, chapter, versionId, logWriteFailures, revertOwned],
+  );
+
+  const runRemove = useCallback(
+    async (color: string, verses: number[], token: object) => {
+      const results = await Promise.all(
+        buildPassageIds(book, chapter, verses).map((passageId) =>
+          Result.tryPromise({
+            try: () => deleteHighlight(passageId, { version_id: versionId }),
+            catch: (cause) => new BibleReaderHighlightError('remove', passageId, cause),
+          }),
+        ),
+      );
+
+      const failures = results.filter(Result.isError).map((r) => r.error);
+      if (failures.length === 0) {
+        for (const verse of verses) {
+          if (writeIntentRef.current.get(verse) === token) confirmedVersesRef.current.add(verse);
+        }
+        return;
+      }
+
+      logWriteFailures(failures, color);
+      revertOwned(verses, token);
+
+      if (failures.some(isPermissionError)) {
+        authActionsRef.current.invalidateHighlightsPermission();
+        setPermissionDialogOpen(true);
+      }
+    },
+    [book, chapter, versionId, deleteHighlight, logWriteFailures, revertOwned],
+  );
+
   const apply = useCallback(
-    (color: string, verses: number[]) => {
-      if (!live || verses.length === 0) return;
+    (color: string, verses: number[]): 'applied' | 'flow' | 'noop' => {
+      if (!flagOn || verses.length === 0 || !hasAuthProvider) return 'noop';
 
       const normalizedColor = color.toLowerCase();
-      const scopeAtWrite = overlayScopeRef.current;
-      const snapshot = snapshotOverlay(overlayRef.current, verses);
-      patchOverlay(verses, normalizedColor);
 
-      void (async () => {
-        const results = await Promise.all(
-          buildPassageIds(book, chapter, verses).map((passageId) =>
-            Result.tryPromise({
-              try: () =>
-                createHighlight({
-                  version_id: versionId,
-                  passage_id: passageId,
-                  color: normalizedColor,
-                }),
-              catch: (cause) => new BibleReaderHighlightError('apply', passageId, cause),
-            }),
-          ),
-        );
+      // Authorized write: optimistic paint now, serialized POST behind the queue.
+      if (isAuthenticated && hasHighlightsPermission()) {
+        const token = claimVerses(verses);
+        patchOverlay(verses, normalizedColor);
+        void enqueueWrite(() => runApply(normalizedColor, verses, token));
+        return 'applied';
+      }
 
-        const failures = results.filter(Result.isError);
-        if (failures.length === 0) {
-          // Hand the verses to the confirmed set: the refetch createHighlight
-          // triggered will clear their overlay entries when its data lands. Only
-          // enroll if we're still in the scope that issued the write — otherwise
-          // these verse numbers now belong to a different chapter's overlay.
-          if (overlayScopeRef.current === scopeAtWrite) {
-            for (const verse of verses) confirmedVersesRef.current.add(verse);
-          }
-          return;
-        }
-        for (const failure of failures) {
-          console.error(
-            `[YouVersion SDK] Failed to apply highlight (version ${versionId}, ` +
-              `passage ${failure.error.passageId}, color ${normalizedColor})`,
-            failure.error,
-          );
-        }
-        // Partial failures revert the whole optimistic batch; the refetch that
-        // any successful create triggered repaints the server's truth. Gate on
-        // scope like the success path: if we've since navigated away, the reset
-        // already wiped this overlay and the snapshot's absent entries would
-        // otherwise `delete` the new scope's optimistic verses.
-        if (overlayScopeRef.current === scopeAtWrite) revertOverlay(verses, snapshot);
-      })();
+      // Enter the highlight auth flow: stash the intent so it survives a redirect
+      // round-trip (sign-in) or resumes after the confirm dialog's grant.
+      stashPendingHighlight({
+        verses,
+        color: normalizedColor,
+        versionId,
+        book,
+        chapter,
+        timestamp: Date.now(),
+      });
+
+      if (!isAuthenticated) {
+        // One-fell-swoop: full-page redirect to sign-in requesting `highlights`.
+        void startSignInForHighlights().catch((error) => {
+          console.error('[YouVersion SDK] Failed to start sign-in for highlights', error);
+          clearPendingHighlight();
+        });
+        return 'flow';
+      }
+
+      // Signed in, permission missing → just-in-time confirm dialog.
+      setPermissionDialogOpen(true);
+      return 'flow';
     },
-    [live, book, chapter, versionId, createHighlight, patchOverlay, revertOverlay],
+    [
+      flagOn,
+      hasAuthProvider,
+      isAuthenticated,
+      hasHighlightsPermission,
+      claimVerses,
+      patchOverlay,
+      enqueueWrite,
+      runApply,
+      versionId,
+      book,
+      chapter,
+      startSignInForHighlights,
+    ],
   );
 
   const remove = useCallback(
     (color: string, verses: number[]) => {
+      // Removal only ever touches highlights already on screen, so it needs no
+      // auth-flow branch: without a live authenticated session there is nothing
+      // rendered to remove.
       if (!live || verses.length === 0) return;
 
-      // Only clear verses currently rendered in this color — that's the
-      // popover's per-color X semantics. (The DELETE endpoint clears any color
-      // in the range, so the passage ids must not span other colors.)
+      // Only clear verses currently rendered in this color — that's the popover's
+      // per-color X semantics. (The DELETE endpoint clears any color in the
+      // range, so the passage ids must not span other colors.)
       const normalizedColor = color.toLowerCase();
       const rendered = highlightedVersesRef.current;
       const targetVerses = verses.filter((verse) => rendered[verse] === normalizedColor);
       if (targetVerses.length === 0) return;
 
-      const scopeAtWrite = overlayScopeRef.current;
-      const snapshot = snapshotOverlay(overlayRef.current, targetVerses);
+      const token = claimVerses(targetVerses);
       patchOverlay(targetVerses, null);
-
-      void (async () => {
-        const results = await Promise.all(
-          buildPassageIds(book, chapter, targetVerses).map((passageId) =>
-            Result.tryPromise({
-              try: () => deleteHighlight(passageId, { version_id: versionId }),
-              catch: (cause) => new BibleReaderHighlightError('remove', passageId, cause),
-            }),
-          ),
-        );
-
-        const failures = results.filter(Result.isError);
-        if (failures.length === 0) {
-          // Only enroll if still in the scope that issued the write (see `apply`).
-          if (overlayScopeRef.current === scopeAtWrite) {
-            for (const verse of targetVerses) confirmedVersesRef.current.add(verse);
-          }
-          return;
-        }
-        for (const failure of failures) {
-          console.error(
-            `[YouVersion SDK] Failed to remove highlight (version ${versionId}, ` +
-              `passage ${failure.error.passageId}, color ${normalizedColor})`,
-            failure.error,
-          );
-        }
-        // Gate on scope like the success path (see `apply`).
-        if (overlayScopeRef.current === scopeAtWrite) revertOverlay(targetVerses, snapshot);
-      })();
+      void enqueueWrite(() => runRemove(normalizedColor, targetVerses, token));
     },
-    [live, book, chapter, versionId, deleteHighlight, patchOverlay, revertOverlay],
+    [live, claimVerses, patchOverlay, enqueueWrite, runRemove],
   );
 
-  return { highlightedVerses, apply, remove };
+  // ---- Resume after an auth round-trip --------------------------------------
+  // Runs on mount and whenever the session flips authenticated. Consumes a
+  // data-exchange return once (reconciling the permission cache + cleaning the
+  // URL), then resolves any pending highlight: apply it when the permission is
+  // now granted, discard it on an explicit cancel/failure, or re-prompt when the
+  // user came back signed in but still without the permission.
+  const dataExchangeConsumedRef = useRef(false);
+  const consumeDataExchangeReturnRef = useRef(consumeDataExchangeReturn);
+  consumeDataExchangeReturnRef.current = consumeDataExchangeReturn;
+  const hasHighlightsPermissionRef = useRef(hasHighlightsPermission);
+  hasHighlightsPermissionRef.current = hasHighlightsPermission;
+
+  useEffect(() => {
+    if (!flagOn || !hasAuthProvider) return;
+
+    let dataExchangeStatus: 'granted' | 'cancel' | 'failure' | null = null;
+    if (!dataExchangeConsumedRef.current) {
+      dataExchangeConsumedRef.current = true;
+      dataExchangeStatus = consumeDataExchangeReturnRef.current()?.status ?? null;
+    }
+
+    const pending = readPendingHighlight();
+    if (!pending) return;
+
+    // Sign-in is still resolving the session — wait for the authenticated flip.
+    if (!isAuthenticated) return;
+
+    if (!hasHighlightsPermissionRef.current()) {
+      // Explicit cancel/failure from a data-exchange return → discard.
+      if (dataExchangeStatus === 'cancel' || dataExchangeStatus === 'failure') {
+        clearPendingHighlight();
+        return;
+      }
+      // Signed in but the permission was not granted (e.g. one-fell-swoop
+      // sign-in that returned without it) → offer the data-exchange grant.
+      // NOTE: this replaces the state-machine's automatic sign-in→data-exchange
+      // hop with a confirm prompt, to avoid an unattended redirect loop on load.
+      setPermissionDialogOpen(true);
+      return;
+    }
+
+    // Permission granted: apply the pending highlight. Write to its own scope so
+    // a return that lands on a different chapter still persists it; paint the
+    // optimistic overlay only when it matches what's on screen.
+    clearPendingHighlight();
+    const scope = scopeRef.current;
+    const matchesCurrent =
+      pending.versionId === scope.versionId &&
+      pending.book === scope.book &&
+      pending.chapter === scope.chapter;
+
+    let token: object | null = null;
+    if (matchesCurrent) {
+      token = claimVerses(pending.verses);
+      patchOverlay(pending.verses, pending.color);
+    }
+
+    void enqueueWrite(async () => {
+      const results = await Promise.all(
+        buildPassageIds(pending.book, pending.chapter, pending.verses).map((passageId) =>
+          Result.tryPromise({
+            try: () =>
+              createHighlightRef.current({
+                version_id: pending.versionId,
+                passage_id: passageId,
+                color: pending.color,
+              }),
+            catch: (cause) => new BibleReaderHighlightError('apply', passageId, cause),
+          }),
+        ),
+      );
+      const failures = results.filter(Result.isError).map((r) => r.error);
+      if (failures.length === 0) {
+        if (token) {
+          for (const verse of pending.verses) {
+            if (writeIntentRef.current.get(verse) === token) confirmedVersesRef.current.add(verse);
+          }
+        }
+        return;
+      }
+      logWriteFailures(failures, pending.color);
+      if (token) revertOwned(pending.verses, token);
+    });
+  }, [
+    flagOn,
+    hasAuthProvider,
+    isAuthenticated,
+    claimVerses,
+    patchOverlay,
+    enqueueWrite,
+    revertOwned,
+    logWriteFailures,
+  ]);
+
+  const onPermissionDialogOpenChange = useCallback((open: boolean) => {
+    setPermissionDialogOpen(open);
+    // Dismissing via outside-click / Escape is a decline: discard the pending
+    // highlight but leave the verse selection untouched (the caller owns it).
+    if (!open) clearPendingHighlight();
+  }, []);
+
+  const confirmPermissionDialog = useCallback(() => {
+    setPermissionDialogOpen(false);
+    // The pending highlight is already stashed; the data-exchange redirect will
+    // round-trip and the resume effect applies it on return.
+    void startDataExchangeForHighlights().catch((error) => {
+      console.error('[YouVersion SDK] Failed to start data exchange for highlights', error);
+      clearPendingHighlight();
+    });
+  }, [startDataExchangeForHighlights]);
+
+  const cancelPermissionDialog = useCallback(() => {
+    setPermissionDialogOpen(false);
+    clearPendingHighlight();
+  }, []);
+
+  return {
+    highlightedVerses,
+    apply,
+    remove,
+    permissionDialogOpen,
+    onPermissionDialogOpenChange,
+    confirmPermissionDialog,
+    cancelPermissionDialog,
+  };
 }

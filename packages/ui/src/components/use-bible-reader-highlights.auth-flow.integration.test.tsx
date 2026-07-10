@@ -1,0 +1,334 @@
+/**
+ * @vitest-environment jsdom
+ *
+ * Integration coverage for the highlight auth flow state machine (YPE-1034 PR2)
+ * through the REAL `useHighlights` + `useHighlightAuthActions` hooks. Nothing
+ * from the hooks package is module-mocked; only the core clients' network
+ * methods (`HighlightsClient` / `DataExchangeClient` prototypes) and the sign-in
+ * redirect are stubbed at the boundary — the same discipline that caught PR 1's
+ * worst bug.
+ */
+import { act, renderHook, waitFor } from '@testing-library/react';
+import {
+  DataExchangeClient,
+  HighlightsClient,
+  YouVersionAPIUsers,
+  YouVersionPlatformConfiguration,
+  type YouVersionUserInfo,
+} from '@youversion/platform-core';
+import { YouVersionAuthContext, YouVersionContext } from '@youversion/platform-react-hooks';
+import type { ReactNode } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
+import { readPendingHighlight } from '@/lib/pending-highlight';
+import { useBibleReaderHighlights } from './use-bible-reader-highlights';
+
+const mockUserInfo = { id: 'user-1', name: 'Test User' } as unknown as YouVersionUserInfo;
+
+let signedIn = false;
+
+function Providers({ children }: { children: ReactNode }) {
+  return (
+    <YouVersionContext.Provider value={{ appKey: 'test-app-key', apiHost: 'api.example.com' }}>
+      <YouVersionAuthContext.Provider
+        value={{
+          userInfo: signedIn ? mockUserInfo : null,
+          setUserInfo: vi.fn(),
+          isLoading: false,
+          error: null,
+          redirectUri: 'https://host.example/callback',
+        }}
+      >
+        {children}
+      </YouVersionAuthContext.Provider>
+    </YouVersionContext.Provider>
+  );
+}
+
+const options = { versionId: 111, book: 'JHN', chapter: '3' };
+
+function setLocation(href: string) {
+  const url = new URL(href);
+  Object.defineProperty(window, 'location', {
+    value: { href: url.href, search: url.search, origin: url.origin, pathname: url.pathname },
+    writable: true,
+    configurable: true,
+  });
+}
+
+function httpError(status: number): Error {
+  return Object.assign(new Error(`HTTP ${status}`), { status });
+}
+
+beforeEach(() => {
+  vi.restoreAllMocks();
+  localStorage.clear();
+  sessionStorage.clear();
+  signedIn = false;
+  setHighlightsLive(true);
+  setLocation('https://host.example/read');
+  vi.spyOn(window.history, 'replaceState').mockImplementation(vi.fn());
+  vi.spyOn(HighlightsClient.prototype, 'getHighlights').mockResolvedValue({
+    data: [],
+    next_page_token: null,
+  });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  setHighlightsLive(HIGHLIGHTS_LIVE);
+  localStorage.clear();
+  sessionStorage.clear();
+});
+
+describe('highlight auth flow — one-fell-swoop (signed out)', () => {
+  it('color tap stashes pending, starts sign-in with highlights, then applies on granted return', async () => {
+    const signIn = vi.spyOn(YouVersionAPIUsers, 'signIn').mockResolvedValue(undefined);
+    const createHighlight = vi
+      .spyOn(HighlightsClient.prototype, 'createHighlight')
+      .mockResolvedValue({ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' });
+
+    const { result, rerender } = renderHook(() => useBibleReaderHighlights(options), {
+      wrapper: Providers,
+    });
+
+    // Signed out color tap → auth flow, not a write.
+    act(() => {
+      expect(result.current.apply('FFFE00', [16])).toBe('flow');
+    });
+
+    const pending = readPendingHighlight();
+    expect(pending).toMatchObject({ verses: [16], color: 'fffe00', versionId: 111, chapter: '3' });
+    expect(signIn).toHaveBeenCalledWith(
+      'https://host.example/callback',
+      ['profile'],
+      ['highlights'],
+    );
+    expect(createHighlight).not.toHaveBeenCalled();
+
+    // Simulate the granted return: handleAuthCallback would have persisted the
+    // granted permission; the session then resolves authenticated.
+    YouVersionPlatformConfiguration.saveGrantedPermissions(['highlights']);
+    signedIn = true;
+    rerender();
+
+    await waitFor(() => {
+      expect(createHighlight).toHaveBeenCalledWith({
+        version_id: 111,
+        passage_id: 'JHN.3.16',
+        color: 'fffe00',
+      });
+    });
+    // Pending consumed (the write is the proof it applied; the post-write
+    // refetch here returns empty server truth, so the optimistic overlay clears).
+    expect(readPendingHighlight()).toBeNull();
+  });
+});
+
+describe('highlight auth flow — just-in-time (signed in, no permission)', () => {
+  beforeEach(() => {
+    signedIn = true;
+  });
+
+  it('opens the confirm dialog and stashes pending; confirm starts data exchange', async () => {
+    const updateToken = vi
+      .spyOn(DataExchangeClient.prototype, 'updateToken')
+      .mockResolvedValue('dx-token');
+    const createHighlight = vi.spyOn(HighlightsClient.prototype, 'createHighlight');
+
+    const { result } = renderHook(() => useBibleReaderHighlights(options), { wrapper: Providers });
+
+    act(() => {
+      expect(result.current.apply('fffe00', [16])).toBe('flow');
+    });
+
+    expect(result.current.permissionDialogOpen).toBe(true);
+    expect(readPendingHighlight()).toMatchObject({ verses: [16], color: 'fffe00' });
+    expect(createHighlight).not.toHaveBeenCalled();
+
+    await act(async () => {
+      result.current.confirmPermissionDialog();
+      await Promise.resolve();
+    });
+
+    expect(updateToken).toHaveBeenCalledWith(['highlights']);
+    await waitFor(() => {
+      expect(window.location.href).toContain('https://api.example.com/data-exchange');
+    });
+    // Pending survives the redirect so the resume effect can apply it on return.
+    expect(readPendingHighlight()).not.toBeNull();
+  });
+
+  it('declining the dialog discards only the pending highlight', () => {
+    const { result } = renderHook(() => useBibleReaderHighlights(options), { wrapper: Providers });
+
+    act(() => {
+      result.current.apply('fffe00', [16]);
+    });
+    expect(readPendingHighlight()).not.toBeNull();
+
+    act(() => {
+      result.current.cancelPermissionDialog();
+    });
+    expect(result.current.permissionDialogOpen).toBe(false);
+    expect(readPendingHighlight()).toBeNull();
+  });
+});
+
+describe('highlight auth flow — data-exchange return', () => {
+  it('applies the pending highlight on a granted return', async () => {
+    signedIn = true;
+    setLocation(
+      'https://host.example/read?data_exchange_status=granted&granted_permissions=highlights',
+    );
+    // Pre-stash a pending highlight as the confirm path would have.
+    sessionStorage.setItem(
+      'youversion-platform:pending-highlight',
+      JSON.stringify({
+        verses: [16],
+        color: 'fffe00',
+        versionId: 111,
+        book: 'JHN',
+        chapter: '3',
+        timestamp: Date.now(),
+      }),
+    );
+    const createHighlight = vi
+      .spyOn(HighlightsClient.prototype, 'createHighlight')
+      .mockResolvedValue({ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' });
+
+    renderHook(() => useBibleReaderHighlights(options), { wrapper: Providers });
+
+    await waitFor(() => {
+      expect(createHighlight).toHaveBeenCalledWith({
+        version_id: 111,
+        passage_id: 'JHN.3.16',
+        color: 'fffe00',
+      });
+    });
+    expect(YouVersionPlatformConfiguration.hasPermission('highlights')).toBe(true);
+    expect(readPendingHighlight()).toBeNull();
+  });
+
+  it('discards the pending highlight on a cancelled return', async () => {
+    signedIn = true;
+    setLocation('https://host.example/read?data_exchange_status=cancel');
+    sessionStorage.setItem(
+      'youversion-platform:pending-highlight',
+      JSON.stringify({
+        verses: [16],
+        color: 'fffe00',
+        versionId: 111,
+        book: 'JHN',
+        chapter: '3',
+        timestamp: Date.now(),
+      }),
+    );
+    const createHighlight = vi.spyOn(HighlightsClient.prototype, 'createHighlight');
+
+    renderHook(() => useBibleReaderHighlights(options), { wrapper: Providers });
+
+    await waitFor(() => {
+      expect(readPendingHighlight()).toBeNull();
+    });
+    expect(createHighlight).not.toHaveBeenCalled();
+  });
+});
+
+describe('highlight auth flow — write failure routing', () => {
+  beforeEach(() => {
+    signedIn = true;
+    YouVersionPlatformConfiguration.saveGrantedPermissions(['highlights']);
+  });
+
+  it('401 invalidates the permission cache, keeps pending, and re-prompts', async () => {
+    vi.spyOn(console, 'error').mockImplementation(vi.fn());
+    vi.spyOn(HighlightsClient.prototype, 'createHighlight').mockRejectedValue(httpError(401));
+
+    const { result } = renderHook(() => useBibleReaderHighlights(options), { wrapper: Providers });
+
+    act(() => {
+      expect(result.current.apply('fffe00', [16])).toBe('applied');
+    });
+
+    await waitFor(() => {
+      expect(result.current.permissionDialogOpen).toBe(true);
+    });
+    // Cache invalidated (server truth wins), overlay reverted, pending KEPT.
+    expect(YouVersionPlatformConfiguration.hasPermission('highlights')).toBe(false);
+    expect(result.current.highlightedVerses).toEqual({});
+    expect(readPendingHighlight()).toMatchObject({ verses: [16], color: 'fffe00' });
+  });
+
+  it('5xx reverts the overlay, logs, and discards pending without re-prompting', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(vi.fn());
+    vi.spyOn(HighlightsClient.prototype, 'createHighlight').mockRejectedValue(httpError(500));
+
+    const { result } = renderHook(() => useBibleReaderHighlights(options), { wrapper: Providers });
+
+    act(() => {
+      result.current.apply('fffe00', [16]);
+    });
+
+    await waitFor(() => {
+      expect(result.current.highlightedVerses).toEqual({});
+    });
+    expect(result.current.permissionDialogOpen).toBe(false);
+    expect(readPendingHighlight()).toBeNull();
+    expect(YouVersionPlatformConfiguration.hasPermission('highlights')).toBe(true);
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to apply highlight'),
+      expect.anything(),
+    );
+  });
+});
+
+describe('highlight auth flow — operation queue', () => {
+  beforeEach(() => {
+    signedIn = true;
+    YouVersionPlatformConfiguration.saveGrantedPermissions(['highlights']);
+  });
+
+  it('serializes overlapping apply→remove so DELETE never overtakes the in-flight POST', async () => {
+    const order: string[] = [];
+    let releaseCreate!: () => void;
+    const createGate = new Promise<void>((resolve) => {
+      releaseCreate = resolve;
+    });
+
+    vi.spyOn(HighlightsClient.prototype, 'createHighlight').mockImplementation(async () => {
+      order.push('create:start');
+      await createGate;
+      order.push('create:end');
+      return { version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' };
+    });
+    vi.spyOn(HighlightsClient.prototype, 'deleteHighlight').mockImplementation(async () => {
+      order.push('delete:start');
+      await Promise.resolve();
+    });
+
+    const { result } = renderHook(() => useBibleReaderHighlights(options), { wrapper: Providers });
+
+    // Apply then immediately remove the same verse.
+    act(() => {
+      result.current.apply('fffe00', [16]);
+    });
+    act(() => {
+      result.current.remove('fffe00', [16]);
+    });
+
+    // Optimistic: last-issued (remove) wins the visual state.
+    expect(result.current.highlightedVerses).toEqual({});
+
+    // The DELETE must not start until the POST has fully settled.
+    await waitFor(() => expect(order).toContain('create:start'));
+    expect(order).not.toContain('delete:start');
+
+    releaseCreate();
+
+    await waitFor(() => expect(order).toContain('delete:start'));
+    expect(order).toEqual(['create:start', 'create:end', 'delete:start']);
+    // Settles to the last-issued operation's state.
+    expect(result.current.highlightedVerses).toEqual({});
+  });
+});

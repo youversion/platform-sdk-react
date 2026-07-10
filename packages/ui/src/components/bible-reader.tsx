@@ -40,6 +40,7 @@ import { Button } from './ui/button';
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from './ui/popover';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
 import { VerseActionPopover } from './verse-action-popover';
+import { HighlightPermissionDialog } from './highlight-permission-dialog';
 import { BibleTextView, getCleanVerseText, type FootnoteData } from './verse';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
 
@@ -520,6 +521,10 @@ function Content() {
     highlightedVerses,
     apply: applyHighlight,
     remove: removeHighlight,
+    permissionDialogOpen,
+    onPermissionDialogOpenChange,
+    confirmPermissionDialog,
+    cancelPermissionDialog,
   } = useBibleReaderHighlights({ versionId, book, chapter });
 
   // Navigating away (book/chapter/version) drops the selection — those verses no
@@ -571,7 +576,12 @@ function Content() {
   }
 
   function handleHighlight(color: string) {
-    applyHighlight(color, selectedVerses);
+    const outcome = applyHighlight(color, selectedVerses);
+    // Entering the auth flow (sign-in redirect or the permission confirm dialog)
+    // keeps the verse selection and popover intact so a cancel leaves the reader
+    // exactly where it was (YPE-1034 decision 7). An immediate apply — or an
+    // inert no-op — clears as before.
+    if (outcome === 'flow') return;
     closeAndClearSelection();
   }
 
@@ -741,6 +751,14 @@ function Content() {
             onClearHighlight={handleClearHighlight}
             onCopy={handleCopy}
             onShare={handleShare}
+            theme={background}
+          />
+
+          <HighlightPermissionDialog
+            open={permissionDialogOpen}
+            onOpenChange={onPermissionDialogOpenChange}
+            onConfirm={confirmPermissionDialog}
+            onCancel={cancelPermissionDialog}
             theme={background}
           />
 

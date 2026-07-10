@@ -4,7 +4,10 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { Collection, Highlight } from '@youversion/platform-core';
 import { useHighlights, YouVersionAuthContext } from '@youversion/platform-react-hooks';
-import type { YouVersionUserInfo } from '@youversion/platform-core';
+import {
+  YouVersionPlatformConfiguration,
+  type YouVersionUserInfo,
+} from '@youversion/platform-core';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
@@ -68,12 +71,20 @@ const defaultOptions = { versionId: 111, book: 'JHN', chapter: '3' };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
+  sessionStorage.clear();
   signedIn = true;
   setHighlightsLive(true);
+  // These tests exercise the authorized-write path, so seed the optimistic
+  // permission cache. The auth-flow branches (missing session/permission) have
+  // their own dedicated coverage.
+  YouVersionPlatformConfiguration.saveGrantedPermissions(['highlights']);
 });
 
 afterEach(() => {
   setHighlightsLive(HIGHLIGHTS_LIVE);
+  localStorage.clear();
+  sessionStorage.clear();
 });
 
 describe('useBibleReaderHighlights — flag off (dark launch)', () => {
