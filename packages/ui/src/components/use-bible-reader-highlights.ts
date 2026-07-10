@@ -25,6 +25,13 @@ export type UseBibleReaderHighlightsReturn = {
   /** Verse number → hex color (lowercase, no `#`) for the current chapter. */
   highlightedVerses: Record<number, string>;
   /**
+   * The user's recent highlight colors (recently used first, then defaults) as
+   * hex strings, or `null` when unavailable — highlights off, no session, or the
+   * fetch hasn't resolved / failed. The color row falls back to its default
+   * palette while this is `null`. Server-ordered; not normalized here.
+   */
+  recentColors: string[] | null;
+  /**
    * Highlights the given verses in `color`. Bridge-safe: primitives only.
    * When the user has a session and the highlights permission this writes
    * optimistically (`'applied'`); otherwise it stashes a pending highlight and
@@ -139,13 +146,43 @@ export function useBibleReaderHighlights({
   } = useHighlightAuthActions();
 
   const chapterUsfm = `${book}.${chapter}`;
-  const { highlights, createHighlight, deleteHighlight } = useHighlights(
+  const { highlights, createHighlight, deleteHighlight, getRecentColors } = useHighlights(
     { version_id: versionId, passage_id: chapterUsfm },
     { enabled: live },
   );
 
   const [overlay, setOverlay] = useState<HighlightOverlay>({});
   const [permissionDialogOpen, setPermissionDialogOpen] = useState(false);
+
+  // The user's recent highlight colors, fetched once the feature is live. `null`
+  // means "use the default palette": the feature is inert, or the fetch is still
+  // pending or failed. Recent colors are user-global (not per chapter/version),
+  // so they're fetched on the `live` edge only — never per navigation or per tap.
+  const [recentColors, setRecentColors] = useState<string[] | null>(null);
+  const getRecentColorsRef = useRef(getRecentColors);
+  getRecentColorsRef.current = getRecentColors;
+  useEffect(() => {
+    if (!live) {
+      // Sign-out / flag-off must drop recents synchronously-ish so the row falls
+      // back to the palette rather than showing another session's colors.
+      setRecentColors(null);
+      return;
+    }
+    let cancelled = false;
+    getRecentColorsRef
+      .current()
+      .then((colors) => {
+        if (!cancelled) setRecentColors(colors);
+      })
+      .catch(() => {
+        // A failed/forbidden fetch is non-fatal: keep `null` so the row renders
+        // the default palette. (Signed-in-without-permission 403s land here.)
+        if (!cancelled) setRecentColors(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [live]);
 
   // Drop the optimistic overlay synchronously (during render) the moment the
   // scope changes, so an in-flight overlay never paints over another
@@ -563,6 +600,7 @@ export function useBibleReaderHighlights({
 
   return {
     highlightedVerses,
+    recentColors,
     apply,
     remove,
     permissionDialogOpen,
