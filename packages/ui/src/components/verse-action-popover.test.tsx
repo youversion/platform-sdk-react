@@ -601,4 +601,21 @@ describe('VerseActionPopover', () => {
       expect(onClearHighlight).toHaveBeenCalledWith(HIGHLIGHT_COLORS[0]);
     });
   });
+
+  describe('Color row overflow', () => {
+    it('scrolls horizontally with bleed room so the focus ring is not clipped', () => {
+      render(<VerseActionPopover {...defaultProps} />);
+
+      const colorGroup = screen.getByRole('group', { name: 'Highlight colors' });
+      const classes = colorGroup.className;
+
+      expect(classes).toContain('yv:overflow-x-auto');
+      // `overflow-x: auto` forces overflow-y out of `visible`, so the container
+      // MUST pair it with padding (+ compensating negative margin) or the
+      // swatches' focus-visible ring and hover scale get clipped. Guard the
+      // pairing, not the exact pixel values.
+      expect(classes).toMatch(/yv:p-[\d.]+/);
+      expect(classes).toMatch(/yv:-m-[\d.]+/);
+    });
+  });
 });
