@@ -289,7 +289,7 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
     expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
   });
 
-  it('apply: once a GET reflects the write, server truth renders', async () => {
+  it('apply: once a GET reflects the write, the overlay retires and server truth renders', async () => {
     const getHighlights = vi
       .spyOn(HighlightsClient.prototype, 'getHighlights')
       .mockResolvedValueOnce(collection([]))
@@ -313,6 +313,148 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
     await waitFor(() => {
       expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
     });
+
+    // Distinguish retired-overlay from still-masking-overlay (both render
+    // fffe00 above): the server now reports verse 16 in a DIFFERENT color, and
+    // a write to another verse triggers the next fetch. If verse 16's entry
+    // were still pending, its overlay would keep masking with fffe00; retired,
+    // the server's color must render.
+    getHighlights.mockResolvedValue(
+      collection([
+        { version_id: 111, passage_id: 'JHN.3.16', color: '00d6ff' },
+        { version_id: 111, passage_id: 'JHN.3.20', color: 'fffe00' },
+      ]),
+    );
+    act(() => {
+      result.current.apply('fffe00', [20]);
+    });
+    await waitFor(() => expect(getHighlights).toHaveBeenCalledTimes(3));
+    await waitFor(() => {
+      expect(result.current.highlightedVerses).toEqual({ 16: '00d6ff', 20: 'fffe00' });
+    });
+  });
+
+  it('apply partial failure: succeeded run stays painted, failed run reverts, one refetch (regression)', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(vi.fn());
+    // Post-write GET reflects the run that succeeded server-side ([2,3]).
+    const getHighlights = vi
+      .spyOn(HighlightsClient.prototype, 'getHighlights')
+      .mockResolvedValueOnce(collection([]))
+      .mockResolvedValue(
+        collection([
+          { version_id: 111, passage_id: 'JHN.3.2', color: 'fffe00' },
+          { version_id: 111, passage_id: 'JHN.3.3', color: 'fffe00' },
+        ]),
+      );
+    const createHighlight = vi
+      .spyOn(HighlightsClient.prototype, 'createHighlight')
+      .mockImplementation((data) => {
+        if (data.passage_id === 'JHN.3.5') return Promise.reject(new Error('network down'));
+        return Promise.resolve({ version_id: 111, passage_id: data.passage_id, color: data.color });
+      });
+
+    const { result } = mountFlipped();
+    await waitFor(() => expect(getHighlights).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      result.current.apply('fffe00', [2, 3, 5]);
+    });
+    // Optimistic: all three painted.
+    expect(result.current.highlightedVerses).toEqual({ 2: 'fffe00', 3: 'fffe00', 5: 'fffe00' });
+
+    await waitFor(() => expect(createHighlight).toHaveBeenCalledTimes(2));
+    // The refetch still fires despite the failure — exactly one for the batch.
+    await waitFor(() => expect(getHighlights).toHaveBeenCalledTimes(2));
+
+    // Succeeded run [2,3] stays painted (reconciled to server truth); failed
+    // run [5] reverted. Before this fix the WHOLE batch reverted with no
+    // refetch, erasing the persisted 2-3 until the next navigation/write.
+    await waitFor(() => {
+      expect(result.current.highlightedVerses).toEqual({ 2: 'fffe00', 3: 'fffe00' });
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(getHighlights).toHaveBeenCalledTimes(2);
+    consoleError.mockRestore();
+  });
+
+  it('remove partial failure: no ghosts — succeeded DELETEs stay un-painted, failed one reverts (regression)', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(vi.fn());
+    // Server starts with [2,3,4] green; the post-batch GET is a stale snapshot
+    // that still contains all three (read-after-write lag on the deletes).
+    const getHighlights = vi.spyOn(HighlightsClient.prototype, 'getHighlights').mockResolvedValue(
+      collection([
+        { version_id: 111, passage_id: 'JHN.3.2', color: '5dff79' },
+        { version_id: 111, passage_id: 'JHN.3.3', color: '5dff79' },
+        { version_id: 111, passage_id: 'JHN.3.4', color: '5dff79' },
+      ]),
+    );
+    const deleteHighlight = vi
+      .spyOn(HighlightsClient.prototype, 'deleteHighlight')
+      .mockImplementation((passageId) => {
+        if (passageId === 'JHN.3.3') return Promise.reject(new Error('network down'));
+        return Promise.resolve(undefined);
+      });
+
+    const { result } = mountFlipped();
+    await waitFor(() =>
+      expect(result.current.highlightedVerses).toEqual({
+        2: '5dff79',
+        3: '5dff79',
+        4: '5dff79',
+      }),
+    );
+
+    act(() => {
+      result.current.remove('5dff79', [2, 3, 4]);
+    });
+    expect(result.current.highlightedVerses).toEqual({});
+
+    await waitFor(() => expect(deleteHighlight).toHaveBeenCalledTimes(3));
+    // One refetch despite the failure.
+    await waitFor(() => expect(getHighlights).toHaveBeenCalledTimes(2));
+
+    // Verses 2 and 4 were deleted server-side: their remove overlay holds
+    // against the stale snapshot (no ghosts). Verse 3's DELETE failed: it
+    // reverts and renders highlighted again from the fetched data.
+    await waitFor(() => {
+      expect(result.current.highlightedVerses).toEqual({ 3: '5dff79' });
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(getHighlights).toHaveBeenCalledTimes(2);
+    consoleError.mockRestore();
+  });
+
+  it('apply total failure: everything reverts and the batch still refetches exactly once', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(vi.fn());
+    const getHighlights = vi
+      .spyOn(HighlightsClient.prototype, 'getHighlights')
+      .mockResolvedValue(collection([]));
+    vi.spyOn(HighlightsClient.prototype, 'createHighlight').mockRejectedValue(
+      new Error('network down'),
+    );
+
+    const { result } = mountFlipped();
+    await waitFor(() => expect(getHighlights).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      result.current.apply('fffe00', [16, 17]);
+    });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00', 17: 'fffe00' });
+
+    await waitFor(() => {
+      expect(result.current.highlightedVerses).toEqual({});
+    });
+    // The batch refetch fires on the all-fail path too — and only once.
+    await waitFor(() => expect(getHighlights).toHaveBeenCalledTimes(2));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(getHighlights).toHaveBeenCalledTimes(2);
+    consoleError.mockRestore();
   });
 
   it('remove: overlay wins when the post-delete GET still contains the removed row (lag)', async () => {
