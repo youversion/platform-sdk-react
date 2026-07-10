@@ -12,16 +12,8 @@ LOCALE_PATH_PREFIX="packages/ui/src/i18n/locales/"
 FAILURE_MSG="Locale files are owned by platform-localization. Add strings upstream; do not edit packages/ui/src/i18n/locales/ in feature PRs. See docs/i18n-guidelines.md"
 
 is_allowed_sync_pr() {
-  if [[ "$ACTOR" == "github-actions[bot]" ]]; then
-    return 0
-  fi
-  if [[ "$PR_AUTHOR" == "$LOCALIZATION_SYNC_BOT" ]]; then
-    return 0
-  fi
-  if [[ "$HEAD_REF" =~ ^chore/localization-sync-react- ]]; then
-    return 0
-  fi
-  return 1
+  [[ "$PR_AUTHOR" == "$LOCALIZATION_SYNC_BOT" ]] \
+    && [[ "$HEAD_REF" =~ ^chore/localization-sync-react- ]]
 }
 
 if is_allowed_sync_pr; then
