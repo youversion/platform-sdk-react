@@ -79,7 +79,6 @@ export function useApiData<T>(
       // the deps change or the component unmounts.
       requestSeqRef.current++;
     };
-    // @eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, enabled]);
 
   return { data, loading, error, refetch };
