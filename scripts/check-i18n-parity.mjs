@@ -3,10 +3,11 @@
  * i18n parity checker for @youversion/platform-react-ui locale bundles.
  *
  * Hard-fail (exit 1): invalid JSON, t()/i18nKey references missing from en.json,
- * orphan en.json keys unused in UI source, interpolation token mismatches.
+ * extra fr/es keys not in en.json, interpolation token mismatches.
  *
- * Warn-only (exit 0): en.json keys missing from fr/es — those locale files are
- * owned upstream by platform-localization and synced via Crowdin / distribute-react.yml.
+ * Warn-only (exit 0): en.json keys missing from fr/es (upstream Crowdin sync),
+ * orphan en.json keys unused in UI source (static scan misses dynamic t() patterns;
+ * add intentional dynamic keys to ORPHAN_KEY_ALLOWLIST).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -21,6 +22,12 @@ const TRANSLATION_LOCALES = ['fr', 'es'];
 const INTERPOLATION_TOKEN_RE = /\{\{(\w+)\}\}/g;
 const T_CALL_RE = /\bt\(\s*['"]([^'"]+)['"]/g;
 const I18N_KEY_RE = /i18nKey\s*=\s*['"]([^'"]+)['"]/g;
+
+/** Keys referenced only via dynamic t(`prefix_${x}`) patterns; static scan cannot detect them. */
+const ORPHAN_KEY_ALLOWLIST = new Set([
+  // 'action_create',
+  // 'action_delete',
+]);
 
 const bold = (s) => `\x1B[1m${s}\x1B[0m`;
 const dim = (s) => `\x1B[2m${s}\x1B[0m`;
@@ -153,8 +160,8 @@ for (const [key, locations] of usedKeys) {
 }
 
 for (const key of enKeys) {
-  if (!usedKeys.has(key)) {
-    errors.push(`Orphan key "${key}" in en.json is not referenced by t() or i18nKey in UI source`);
+  if (!usedKeys.has(key) && !ORPHAN_KEY_ALLOWLIST.has(key)) {
+    warnings.push(`Orphan key "${key}" in en.json is not referenced by t() or i18nKey in UI source`);
   }
 }
 
@@ -196,6 +203,13 @@ function reportAndExit() {
         '\n  Note: fr/es locale files are owned by platform-localization and synced via Crowdin → distribute-react.yml (chore/localization-sync-react-* PRs). Missing translation keys are expected until upstream sync lands.\n',
       ),
     );
+    if (warnings.some((w) => w.startsWith('Orphan key'))) {
+      console.log(
+        dim(
+          '\n  Note: Orphan-key warnings use a static scan of t("...") and i18nKey="..." literals. Dynamic keys (e.g. t(`action_${type}`)) are not detected — add them to ORPHAN_KEY_ALLOWLIST in scripts/check-i18n-parity.mjs if intentional.\n',
+        ),
+      );
+    }
   }
 
   if (errors.length > 0) {

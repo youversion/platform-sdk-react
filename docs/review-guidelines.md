@@ -87,7 +87,7 @@ When conducting code reviews, AI agents should systematically evaluate the follo
 - Are new English keys added in **platform-localization** (`sources/common/en.json`, `react.*` namespace), not only in this repo?
 - Are `fr.json` / `es.json` left untouched (synced upstream via Crowdin → `distribute-react.yml`)?
 - Do interpolation tokens (`{{name}}`) match across locale files once translations exist?
-- Does `pnpm check:i18n` pass (warnings for missing fr/es keys are acceptable until upstream sync)?
+- Does `pnpm check:i18n` pass (warnings for missing fr/es keys and orphan en keys are acceptable until upstream sync or intentional dynamic-key allowlisting)?
 - See [i18n-guidelines.md](./i18n-guidelines.md) for the full workflow.
 
 ### Accessibility

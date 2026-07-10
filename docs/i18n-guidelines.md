@@ -49,8 +49,9 @@ Never hardcode user-facing text in JSX attributes (`aria-label`, `title`, `place
 ## Local checks
 
 ```bash
-# Parity: en key usage, orphan keys, interpolation tokens (hard fail)
-# Missing fr/es keys: warn only (upstream-owned)
+# Hard fail: missing en keys, extra fr/es keys, interpolation tokens
+# Warn only: missing fr/es keys (upstream-owned), orphan en keys (unused in static scan)
+# Dynamic t(`prefix_${x}`) keys: add to ORPHAN_KEY_ALLOWLIST in scripts/check-i18n-parity.mjs
 pnpm check:i18n
 
 # Hardcoded string lint (components only)
