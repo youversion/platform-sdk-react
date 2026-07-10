@@ -7,6 +7,15 @@ export {
   type GetHighlightsOptions,
   type DeleteHighlightOptions,
 } from './highlights';
+export {
+  DataExchangeClient,
+  buildDataExchangeUrl,
+  parseDataExchangeCallback,
+  handleDataExchangeCallback,
+  type DataExchangeStatus,
+  type DataExchangeCallbackResult,
+} from './data-exchange';
+export { parseGrantedPermissions } from './permissions';
 export * from './StorageStrategy';
 export * from './Users';
 export * from './YouVersionUserInfo';

@@ -60,5 +60,9 @@
   "verseActionsAriaLabel": "Acciones del versículo",
   "highlightColorsAriaLabel": "Colores de resaltado",
   "applyHighlightAriaLabel": "Aplicar resaltado",
-  "clearHighlightAriaLabel": "Quitar resaltado"
+  "clearHighlightAriaLabel": "Quitar resaltado",
+  "highlightPermissionTitle": "¿Permitir que esta aplicación guarde resaltados con YouVersion?",
+  "highlightPermissionBody": "YouVersion te pedirá que concedas acceso antes de poder guardar los resaltados.",
+  "highlightPermissionCancel": "Cancelar",
+  "highlightPermissionContinue": "Continuar"
 }

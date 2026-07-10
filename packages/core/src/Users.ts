@@ -3,6 +3,7 @@ import { YouVersionUserInfo } from './YouVersionUserInfo';
 import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
 import { SignInWithYouVersionPKCEAuthorizationRequestBuilder } from './SignInWithYouVersionPKCE';
 import { SignInWithYouVersionResult } from './SignInWithYouVersionResult';
+import { parseGrantedPermissions } from './permissions';
 
 export class YouVersionAPIUsers {
   /**
@@ -123,6 +124,17 @@ export class YouVersionAPIUsers {
 
       // Extract user info from ID token
       const result = this.extractSignInResult(tokens);
+
+      // Surface + persist the data-exchange permissions the server granted. The
+      // server echoes them as `granted_permissions` on the callback URL (comma-
+      // or space-separated, param may repeat). This seeds the optimistic
+      // permission cache so a one-fell-swoop sign-in that requested `highlights`
+      // can apply a pending highlight on return without a probe round-trip.
+      const grantedPermissions = parseGrantedPermissions(urlParams);
+      result.permissions = grantedPermissions;
+      if (grantedPermissions.length > 0) {
+        YouVersionPlatformConfiguration.saveGrantedPermissions(grantedPermissions);
+      }
 
       // Store tokens in configuration. The ID token is intentionally not
       // persisted — it is only used here to derive the user profile below.

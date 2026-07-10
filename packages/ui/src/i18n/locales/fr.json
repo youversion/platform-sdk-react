@@ -60,5 +60,9 @@
   "verseActionsAriaLabel": "Actions du verset",
   "highlightColorsAriaLabel": "Couleurs de surlignage",
   "applyHighlightAriaLabel": "Appliquer le surlignage",
-  "clearHighlightAriaLabel": "Supprimer le surlignage"
+  "clearHighlightAriaLabel": "Supprimer le surlignage",
+  "highlightPermissionTitle": "Autoriser cette application à enregistrer les surlignages avec YouVersion ?",
+  "highlightPermissionBody": "YouVersion vous demandera d'accorder l'accès avant que les surlignages puissent être enregistrés.",
+  "highlightPermissionCancel": "Annuler",
+  "highlightPermissionContinue": "Continuer"
 }

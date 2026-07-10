@@ -63,5 +63,9 @@
   "verseActionsAriaLabel": "Verse actions",
   "highlightColorsAriaLabel": "Highlight colors",
   "applyHighlightAriaLabel": "Apply highlight",
-  "clearHighlightAriaLabel": "Clear highlight"
+  "clearHighlightAriaLabel": "Clear highlight",
+  "highlightPermissionTitle": "Allow this app to save highlights with YouVersion?",
+  "highlightPermissionBody": "YouVersion will ask you to grant access before highlights can be saved.",
+  "highlightPermissionCancel": "Cancel",
+  "highlightPermissionContinue": "Continue"
 }
