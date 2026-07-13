@@ -2,7 +2,10 @@ import React, { useMemo } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import i18n from '@/i18n';
 import { LoaderIcon } from './icons/loader';
-import { type AuthenticationScopes } from '@youversion/platform-core';
+import {
+  type AuthenticationScopes,
+  type SignInWithYouVersionPermissionValues,
+} from '@youversion/platform-core';
 import { useYVAuth, useTheme } from '@youversion/platform-react-hooks';
 import { Button } from '../components/ui/button';
 import { YouVersionLogo } from './icons/youversion-logo';
@@ -15,6 +18,11 @@ interface SignInAuthProps {
    */
   onAuthError?: (error: Error) => void;
   scopes?: AuthenticationScopes[];
+  /**
+   * YouVersion data-exchange permissions to request at sign-in (e.g. `highlights`).
+   * These are distinct from OIDC `scopes` and are sent as `requested_permissions[]`.
+   */
+  permissions?: SignInWithYouVersionPermissionValues[];
 }
 
 export interface YouVersionAuthButtonProps
@@ -111,6 +119,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
       onClick,
       mode,
       scopes = [],
+      permissions,
       radius = 'rounded',
       size = 'default',
       text,
@@ -137,6 +146,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
         } else {
           await signIn({
             scopes,
+            permissions,
           });
         }
       } catch (error) {
