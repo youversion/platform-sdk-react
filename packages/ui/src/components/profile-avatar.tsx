@@ -33,7 +33,7 @@ export function ProfileAvatar({
   return (
     <Avatar
       aria-label={name?.trim() || undefined}
-      className={cn(imageLoaded && 'yv:bg-(--yv-gray-10) yv:p-[3px]', className)}
+      className={cn(src && imageLoaded && 'yv:bg-(--yv-gray-10) yv:p-[3px]', className)}
       {...props}
     >
       {src ? (
