@@ -22,3 +22,4 @@ export {
   type TransformedBibleHtml,
 } from './bible-html-transformer';
 export * from './version';
+export * from './web-storage';

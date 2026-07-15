@@ -30,6 +30,7 @@ import {
   useTheme,
 } from '@youversion/platform-react-hooks';
 import type { BibleVersion, Language, Organization } from '@youversion/platform-core';
+import { simulateUnavailableLocalStorage } from '../test/unavailable-storage';
 
 vi.mock('@youversion/platform-react-hooks');
 
@@ -304,6 +305,24 @@ describe('BibleVersionPicker', () => {
           screen.getByRole('listitem', { name: /new living translation/i }),
         ).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('unavailable storage', () => {
+    it('opens and selects a version without crashing when localStorage is unusable', async () => {
+      const restoreStorage = simulateUnavailableLocalStorage();
+
+      try {
+        setupDefaultMocks({ versionsLoading: false, filteredVersions: mockVersions });
+        renderPicker();
+        await openPicker();
+
+        const item = await screen.findByRole('listitem', { name: /new living translation/i });
+        // Selecting persists recents; without a usable store it must no-op.
+        await userEvent.click(item);
+      } finally {
+        restoreStorage();
+      }
     });
   });
 

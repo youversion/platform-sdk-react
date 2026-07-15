@@ -6,7 +6,11 @@ import { cn } from '@/lib/utils';
 import { INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import type { BibleBook } from '@youversion/platform-core';
-import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, getAdjacentChapter } from '@youversion/platform-core';
+import {
+  DEFAULT_LICENSE_FREE_BIBLE_VERSION,
+  getAdjacentChapter,
+  getLocalStorage,
+} from '@youversion/platform-core';
 import {
   useBooks,
   usePassage,
@@ -346,8 +350,13 @@ function Root({
     if (didHydrateThemeSettingsRef.current) return;
     didHydrateThemeSettingsRef.current = true;
 
+    // Without a usable store (SSR, Node's undefined experimental localStorage)
+    // there is nothing persisted to hydrate; keep the prop/default values.
+    const storage = getLocalStorage();
+    if (!storage) return;
+
     if (!isFontSizeControlled) {
-      const savedFontSize = localStorage.getItem('youversion-platform:reader:font-size');
+      const savedFontSize = storage.getItem('youversion-platform:reader:font-size');
       if (savedFontSize) {
         const parsed = parseInt(savedFontSize);
         if (parsed >= MIN_FONT_SIZE && parsed <= MAX_FONT_SIZE) {
@@ -357,14 +366,14 @@ function Root({
     }
 
     if (!isFontFamilyControlled) {
-      const savedFontFamily = localStorage.getItem('youversion-platform:reader:font-family');
+      const savedFontFamily = storage.getItem('youversion-platform:reader:font-family');
       if (savedFontFamily) {
         setCurrentFontFamily(savedFontFamily);
       }
     }
 
     if (!isLineSpacingControlled) {
-      const savedLineSpacing = localStorage.getItem('youversion-platform:reader:line-spacing');
+      const savedLineSpacing = storage.getItem('youversion-platform:reader:line-spacing');
       if (savedLineSpacing) {
         const parsed = parseFloat(savedLineSpacing);
         if (Object.values(BIBLE_READER_SPACING).some((spacing) => spacing === parsed)) {
@@ -383,19 +392,22 @@ function Root({
 
   useEffect(() => {
     if (!isFontSizeControlled) {
-      localStorage.setItem('youversion-platform:reader:font-size', currentFontSize.toString());
+      getLocalStorage()?.setItem(
+        'youversion-platform:reader:font-size',
+        currentFontSize.toString(),
+      );
     }
   }, [currentFontSize, isFontSizeControlled]);
 
   useEffect(() => {
     if (!isFontFamilyControlled) {
-      localStorage.setItem('youversion-platform:reader:font-family', currentFontFamily);
+      getLocalStorage()?.setItem('youversion-platform:reader:font-family', currentFontFamily);
     }
   }, [currentFontFamily, isFontFamilyControlled]);
 
   useEffect(() => {
     if (!isLineSpacingControlled) {
-      localStorage.setItem(
+      getLocalStorage()?.setItem(
         'youversion-platform:reader:line-spacing',
         currentLineSpacing.toString(),
       );
@@ -530,7 +542,7 @@ function Content() {
   useEffect(() => {
     let data: Record<string, string> = {};
     try {
-      const raw = localStorage.getItem(highlightsStorageKey);
+      const raw = getLocalStorage()?.getItem(highlightsStorageKey);
       if (raw) data = JSON.parse(raw) as Record<string, string>;
     } catch {
       // Ignore (unavailable or malformed storage).
@@ -572,7 +584,7 @@ function Content() {
 
   function persistHighlights(next: Record<string, string>) {
     try {
-      localStorage.setItem(highlightsStorageKey, JSON.stringify(next));
+      getLocalStorage()?.setItem(highlightsStorageKey, JSON.stringify(next));
     } catch {
       // Ignore (private mode / quota exceeded).
     }
