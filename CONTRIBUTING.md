@@ -24,8 +24,8 @@ The following sections are intended for internal team members contributing to th
 
 ## Prerequisites
 
-- Node.js >= 20.0.0
-- pnpm >= 9.0.0
+- Node.js >= 22.13.0 (we develop and test on Node 24 LTS)
+- pnpm >= 11.0.0
 
 ### Setup
 

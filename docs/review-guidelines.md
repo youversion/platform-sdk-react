@@ -72,7 +72,7 @@ When conducting code reviews, AI agents should systematically evaluate the follo
 - Is backward compatibility maintained where expected?
 - Are deprecated APIs avoided?
 - Are peer dependencies properly defined for the published packages?
-- Is the minimum Node.js version (>= 20.0.0) respected?
+- Is the minimum Node.js version (>= 22.13.0) respected?
 
 ### Build System and Tooling
 - Do changes work with the Turbo build cache?
