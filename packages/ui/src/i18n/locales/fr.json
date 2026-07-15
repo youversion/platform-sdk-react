@@ -61,8 +61,17 @@
   "highlightColorsAriaLabel": "Couleurs de surlignage",
   "applyHighlightAriaLabel": "Appliquer le surlignage",
   "clearHighlightAriaLabel": "Supprimer le surlignage",
-  "highlightPermissionTitle": "Autoriser cette application à enregistrer les surlignages avec YouVersion ?",
-  "highlightPermissionBody": "YouVersion vous demandera d'accorder l'accès avant que les surlignages puissent être enregistrés.",
-  "highlightPermissionCancel": "Annuler",
-  "highlightPermissionContinue": "Continuer"
+  "dataExchangeHighlightsQuestion": "Autoriser cette application à enregistrer les surlignages avec YouVersion ?",
+  "dataExchangeHighlightsExplanation": "YouVersion vous demandera d'accorder l'accès avant que les surlignages puissent être enregistrés.",
+  "dataExchangeContinue": "Continuer",
+  "genericCancel": "Annuler",
+  "signInIntroducing": "DÉCOUVREZ",
+  "signInParagraph": "{{appName}} souhaite se connecter à votre compte de l'application YouVersion Bible. Cela lui permettra de voir votre activité dans l'application Bible et d'interagir avec elle. Souhaitez-vous continuer ?",
+  "signInYesButton": "Oui, avec plaisir",
+  "signInNoButton": "Non, merci",
+  "signOutQuestion": "Êtes-vous sûr de vouloir vous déconnecter de YouVersion ?",
+  "signOutExplanation": "Vous devrez vous reconnecter pour accéder à vos surlignages.",
+  "signOutPendingHighlightsQuestion": "Enregistrer vos surlignages ?",
+  "signOutPendingHighlightsExplanation": "Certains de vos surlignages n'ont pas encore été enregistrés et seront perdus si vous vous déconnectez. Voulez-vous vous déconnecter quand même ?",
+  "signOutPendingHighlightsConfirm": "Se déconnecter quand même"
 }

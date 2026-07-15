@@ -5,6 +5,7 @@ import {
   DataExchangeClient,
   buildDataExchangeUrl,
   parseDataExchangeCallback,
+  handleDataExchangeCallback,
 } from '../data-exchange';
 import { server } from './setup';
 
@@ -104,5 +105,57 @@ describe('parseDataExchangeCallback', () => {
       status: 'failure',
       grantedPermissions: [],
     });
+  });
+});
+
+describe('handleDataExchangeCallback URL cleanup', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  function stubLocation(href: string): ReturnType<typeof vi.fn> {
+    const replaceState = vi.fn();
+    const url = new URL(href);
+    vi.stubGlobal('window', {
+      location: { href, search: url.search },
+      history: { replaceState },
+    });
+    return replaceState;
+  }
+
+  it('strips only the data-exchange params, preserving app params and the hash', () => {
+    const replaceState = stubLocation(
+      'https://app.example.com/read?tab=notes&ref=abc&data_exchange_status=granted&granted_permissions=highlights#section',
+    );
+
+    const result = handleDataExchangeCallback();
+    expect(result).toEqual({ status: 'granted', grantedPermissions: ['highlights'] });
+
+    expect(replaceState).toHaveBeenCalledTimes(1);
+    const cleaned = new URL(replaceState.mock.calls[0]![2] as string);
+    expect(cleaned.searchParams.get('tab')).toBe('notes');
+    expect(cleaned.searchParams.get('ref')).toBe('abc');
+    expect(cleaned.searchParams.has('data_exchange_status')).toBe(false);
+    expect(cleaned.searchParams.has('granted_permissions')).toBe(false);
+    expect(cleaned.hash).toBe('#section');
+  });
+
+  it('leaves no dangling "?" when only exchange params were present', () => {
+    const replaceState = stubLocation(
+      'https://app.example.com/read?data_exchange_status=granted&granted_permissions=highlights',
+    );
+
+    handleDataExchangeCallback();
+
+    const cleanedUrl = replaceState.mock.calls[0]![2] as string;
+    expect(cleanedUrl).toBe('https://app.example.com/read');
+    expect(cleanedUrl).not.toContain('?');
+  });
+
+  it('returns null and does not touch history when the URL is not a data-exchange return', () => {
+    const replaceState = stubLocation('https://app.example.com/read?tab=notes');
+    expect(handleDataExchangeCallback()).toBeNull();
+    expect(replaceState).not.toHaveBeenCalled();
   });
 });

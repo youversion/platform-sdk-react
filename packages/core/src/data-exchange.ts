@@ -94,6 +94,13 @@ export function buildDataExchangeUrl(
   return url.toString();
 }
 
+/**
+ * The query params the data-exchange flow appends to the callback URL (parsed by
+ * {@link parseDataExchangeCallback}). {@link handleDataExchangeCallback} strips
+ * exactly these on cleanup, leaving any unrelated app params untouched.
+ */
+const DATA_EXCHANGE_CALLBACK_PARAMS = ['data_exchange_status', 'granted_permissions'] as const;
+
 export type DataExchangeStatus = 'granted' | 'cancel' | 'failure';
 
 export type DataExchangeCallbackResult = {
@@ -122,6 +129,9 @@ export function parseDataExchangeCallback(search: string): DataExchangeCallbackR
  * cache with the server-reported `granted_permissions`, then strips the query
  * params (mirroring the sign-in callback cleanup). Returns the parsed result, or
  * `null` when the current URL is not a data-exchange return.
+ *
+ * Cleanup surgically removes only the data-exchange params, preserving any
+ * unrelated app query params and the hash fragment.
  */
 export function handleDataExchangeCallback(): DataExchangeCallbackResult | null {
   if (typeof window === 'undefined') return null;
@@ -133,7 +143,9 @@ export function handleDataExchangeCallback(): DataExchangeCallbackResult | null 
   }
 
   const cleanUrl = new URL(window.location.href);
-  cleanUrl.search = '';
+  for (const param of DATA_EXCHANGE_CALLBACK_PARAMS) {
+    cleanUrl.searchParams.delete(param);
+  }
   window.history.replaceState({}, '', cleanUrl.toString());
 
   return result;

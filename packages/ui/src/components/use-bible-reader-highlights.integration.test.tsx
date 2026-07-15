@@ -58,6 +58,8 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
   setHighlightsLive(HIGHLIGHTS_LIVE);
+  localStorage.clear();
+  sessionStorage.clear();
 });
 
 describe('useBibleReaderHighlights — real useHighlights/useApiData', () => {
@@ -257,6 +259,9 @@ describe('useBibleReaderHighlights — recent colors', () => {
 describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => {
   function mountFlipped() {
     localStorage.clear();
+    // The permission cache is user-scoped: persist a matching userInfo so the
+    // seeded grant is readable (the auth provider does this at sign-in).
+    YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-1', name: 'Test User' });
     YouVersionPlatformConfiguration.saveGrantedPermissions(['highlights']);
     const view = renderHook(() => useBibleReaderHighlights(defaultOptions), { wrapper: Providers });
     signedIn = true;

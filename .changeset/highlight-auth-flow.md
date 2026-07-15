@@ -10,8 +10,10 @@ Add the highlight auth flow: a color tap in BibleReader without a session or the
 - **Hooks**: new `useHighlightAuthActions` exposing the one-fell-swoop sign-in (requesting `highlights`), the just-in-time data-exchange redirect, the permission-cache reads/invalidation, and the data-exchange return handler.
 - **UI**: `useBibleReaderHighlights` now runs the state machine — pending highlights persist to `sessionStorage` (~10-minute expiry) to survive the redirect round-trip and apply automatically on a granted return; a just-in-time permission confirm dialog (`HighlightPermissionDialog`, copy matched to the native SDK) gates the data-exchange grant. Write failures route by status: 401/403 invalidates the cache, keeps the pending highlight, and re-prompts; 5xx/network reverts the optimistic overlay and discards. Apply/remove writes are serialized through a FIFO queue with per-verse ownership so overlapping operations settle to the last-issued state. Copy/share-only behavior when no auth provider is configured is unchanged.
 
-Deferred follow-ups (documented at each code site in `use-bible-reader-highlights.ts`, accepted for dark launch):
+Deferred follow-ups (documented at each code site in `bible-reader-highlights-machine.ts`, accepted for dark launch):
 
 1. A 401 from an expired token (not a missing permission) misroutes to the permission re-prompt; follow-up is distinguishing auth-expiry from permission-denied at the `isPermissionError` boundary.
 2. A failure while applying a resumed pending highlight only logs + reverts (the pending intent was cleared before the write), so a 401 there loses the highlight instead of keep-pending + re-prompt; follow-up is routing resume-write failures through the standard apply failure handling.
-3. A 401/403 on `remove` opens the permission dialog with no pending highlight, so the post-grant resume is a no-op; follow-up is not re-prompting on remove failures.
+3. ~~A 401/403 on `remove` opens the permission dialog with no pending highlight.~~ Resolved in the PR-288 xstate rewrite: a remove failure now invalidates the cache without re-prompting.
+
+Note: the signed-out one-fell-swoop redirect described above is superseded by the sign-in dialog introduced in the PR-288 xstate rewrite (see the separate changeset) — a signed-out color tap now opens a dialog before OAuth launches.

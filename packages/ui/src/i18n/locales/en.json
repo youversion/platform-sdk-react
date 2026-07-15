@@ -68,8 +68,17 @@
   "increaseFontSizeAriaLabel": "Increase font size",
   "changeLineSpacingAriaLabel": "Change line spacing",
   "closeAriaLabel": "Close",
-  "highlightPermissionTitle": "Allow this app to save highlights with YouVersion?",
-  "highlightPermissionBody": "YouVersion will ask you to grant access before highlights can be saved.",
-  "highlightPermissionCancel": "Cancel",
-  "highlightPermissionContinue": "Continue"
+  "dataExchangeHighlightsQuestion": "Allow this app to save highlights with YouVersion?",
+  "dataExchangeHighlightsExplanation": "YouVersion will ask you to grant access before highlights can be saved.",
+  "dataExchangeContinue": "Continue",
+  "genericCancel": "Cancel",
+  "signInIntroducing": "INTRODUCING",
+  "signInParagraph": "{{appName}} wants to connect to your YouVersion Bible App account. This will allow them to see and interact with your Bible App activity. Would you like to proceed?",
+  "signInYesButton": "Yes Please",
+  "signInNoButton": "No Thanks",
+  "signOutQuestion": "Are you sure you want to sign out from YouVersion?",
+  "signOutExplanation": "You'll need to sign in again to access your highlights.",
+  "signOutPendingHighlightsQuestion": "Save your highlights?",
+  "signOutPendingHighlightsExplanation": "Some of your highlights haven't been saved yet, and they will be lost if you sign out. Do you want to sign out anyway?",
+  "signOutPendingHighlightsConfirm": "Sign out anyway"
 }

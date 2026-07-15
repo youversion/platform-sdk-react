@@ -57,19 +57,19 @@ export const HighlightPermissionDialog: FC<HighlightPermissionDialogProps> = ({
         >
           <div className="yv:flex yv:flex-col yv:gap-2">
             <DialogPrimitive.Title className="yv:text-lg yv:font-bold yv:text-balance">
-              {t('highlightPermissionTitle')}
+              {t('dataExchangeHighlightsQuestion')}
             </DialogPrimitive.Title>
             <DialogPrimitive.Description className="yv:text-sm yv:text-muted-foreground yv:text-balance">
-              {t('highlightPermissionBody')}
+              {t('dataExchangeHighlightsExplanation')}
             </DialogPrimitive.Description>
           </div>
 
           <div className="yv:flex yv:justify-end yv:gap-2">
             <Button variant="secondary" onClick={onCancel}>
-              {t('highlightPermissionCancel')}
+              {t('genericCancel')}
             </Button>
             <Button variant="default" onClick={onConfirm}>
-              {t('highlightPermissionContinue')}
+              {t('dataExchangeContinue')}
             </Button>
           </div>
         </DialogPrimitive.Content>

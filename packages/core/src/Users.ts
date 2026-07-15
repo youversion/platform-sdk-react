@@ -125,6 +125,24 @@ export class YouVersionAPIUsers {
       // Extract user info from ID token
       const result = this.extractSignInResult(tokens);
 
+      // Store tokens in configuration. The ID token is intentionally not
+      // persisted — it is only used here to derive the user profile below.
+      YouVersionPlatformConfiguration.saveAuthData(
+        result.accessToken || null,
+        result.refreshToken || null,
+        result.expiryDate || null,
+      );
+
+      // Persist the decoded user profile so it survives reloads without
+      // retaining the ID token itself. This must happen before the permission
+      // cache is seeded below, since grants are scoped to the current user.
+      YouVersionPlatformConfiguration.saveUserInfo({
+        id: result.yvpUserId,
+        name: result.name,
+        email: result.email,
+        avatar_url: result.profilePicture,
+      });
+
       // Surface + persist the data-exchange permissions the server granted. The
       // server echoes them as `granted_permissions` on the callback URL (comma-
       // or space-separated, param may repeat). This seeds the optimistic
@@ -135,23 +153,6 @@ export class YouVersionAPIUsers {
       if (grantedPermissions.length > 0) {
         YouVersionPlatformConfiguration.saveGrantedPermissions(grantedPermissions);
       }
-
-      // Store tokens in configuration. The ID token is intentionally not
-      // persisted — it is only used here to derive the user profile below.
-      YouVersionPlatformConfiguration.saveAuthData(
-        result.accessToken || null,
-        result.refreshToken || null,
-        result.expiryDate || null,
-      );
-
-      // Persist the decoded user profile so it survives reloads without
-      // retaining the ID token itself.
-      YouVersionPlatformConfiguration.saveUserInfo({
-        id: result.yvpUserId,
-        name: result.name,
-        email: result.email,
-        avatar_url: result.profilePicture,
-      });
 
       // Clean up localStorage
       localStorage.removeItem('youversion-auth-code-verifier');

@@ -41,8 +41,11 @@ import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from './ui/popo
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
 import { VerseActionPopover } from './verse-action-popover';
 import { HighlightPermissionDialog } from './highlight-permission-dialog';
+import { SignInDialog } from './sign-in-dialog';
 import { BibleTextView, getCleanVerseText, type FootnoteData } from './verse';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
+import { isHighlightsLive } from '@/lib/feature-flags';
+import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 
 type BibleReaderContextType = {
   book: string;
@@ -526,7 +529,18 @@ function Content() {
     onPermissionDialogOpenChange,
     confirmPermissionDialog,
     cancelPermissionDialog,
+    signInDialogOpen,
+    confirmSignInDialog,
+    cancelSignInDialog,
   } = useBibleReaderHighlights({ versionId, book, chapter });
+
+  // The color row / clear-highlight affordances only render when the highlights
+  // feature is live (dark-launch flag). Copy / Share are always available.
+  const highlightsEnabled = isHighlightsLive();
+  // Copy shown to the sign-in dialog. Falls back to a neutral label when the
+  // integrator hasn't set `YouVersionPlatformConfiguration.appName`.
+  const signInAppName = YouVersionPlatformConfiguration.appName ?? 'This app';
+  const signInPromptMessage = YouVersionPlatformConfiguration.signInPromptMessage;
 
   // Navigating away (book/chapter/version) drops the selection — those verses no
   // longer exist on screen (ADR-007).
@@ -747,6 +761,7 @@ function Content() {
             selectedVerses={selectedVerses}
             highlightedVerses={highlightedVerses}
             recentColors={recentColors}
+            highlightsEnabled={highlightsEnabled}
             anchorElement={anchorElement}
             scrollRoot={scrollContainerRef.current}
             onHighlight={handleHighlight}
@@ -761,6 +776,18 @@ function Content() {
             onOpenChange={onPermissionDialogOpenChange}
             onConfirm={confirmPermissionDialog}
             onCancel={cancelPermissionDialog}
+            theme={background}
+          />
+
+          <SignInDialog
+            open={signInDialogOpen}
+            onOpenChange={(open) => {
+              if (!open) cancelSignInDialog();
+            }}
+            appName={signInAppName}
+            promptMessage={signInPromptMessage}
+            onConfirm={confirmSignInDialog}
+            onDecline={cancelSignInDialog}
             theme={background}
           />
 

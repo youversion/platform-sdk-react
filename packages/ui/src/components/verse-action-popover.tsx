@@ -70,6 +70,12 @@ type VerseActionPopoverProps = {
    * back to the palette. The list is normalized and deduped internally.
    */
   recentColors?: string[] | null;
+  /**
+   * Whether the highlights UI is available. When `false` (the `HIGHLIGHTS_LIVE`
+   * dark-launch flag is off) the color row and the remove (checkmark) circles are
+   * hidden entirely — only Copy / Share remain. Defaults to `true`.
+   */
+  highlightsEnabled?: boolean;
   onHighlight: (color: string) => void;
   onClearHighlight: (color: string) => void;
   onCopy: () => void;
@@ -144,6 +150,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   anchorElement,
   scrollRoot,
   recentColors,
+  highlightsEnabled = true,
   onHighlight,
   onClearHighlight,
   onCopy,
@@ -328,32 +335,38 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
             </svg>
           )}
 
-          <div
-            // Recent colors can be a long list — let the row scroll horizontally
-            // (capped to the viewport) instead of stretching the pill off-screen.
-            // `overflow-x: auto` forces `overflow-y` out of `visible` too (CSS
-            // spec), which would clip the swatches' focus ring (ring-2 +
-            // offset-2 ≈ 4px outside the 32px circle) and hover scale-110
-            // overpaint. The 6px padding gives that overpaint room inside the
-            // scroll box; the matching negative margin cancels it back out of
-            // the pill's layout so visual spacing is unchanged.
-            className="yv:flex yv:items-center yv:gap-2 yv:max-w-[70vw] yv:overflow-x-auto yv:p-1.5 yv:-m-1.5"
-            role="group"
-            aria-label={t('highlightColorsAriaLabel')}
-          >
-            {view.colorCircles.map(({ color, showRemove, key }) => (
-              <ColorCircle
-                key={key}
-                color={color}
-                showRemove={showRemove}
-                label={showRemove ? t('clearHighlightAriaLabel') : t('applyHighlightAriaLabel')}
-                onClick={() => (showRemove ? onClearHighlight(color) : onHighlight(color))}
-              />
-            ))}
-          </div>
+          {/* Highlights UI is hidden entirely when the feature is off (flag off):
+              only Copy / Share remain. */}
+          {highlightsEnabled && (
+            <>
+              <div
+                // Recent colors can be a long list — let the row scroll horizontally
+                // (capped to the viewport) instead of stretching the pill off-screen.
+                // `overflow-x: auto` forces `overflow-y` out of `visible` too (CSS
+                // spec), which would clip the swatches' focus ring (ring-2 +
+                // offset-2 ≈ 4px outside the 32px circle) and hover scale-110
+                // overpaint. The 6px padding gives that overpaint room inside the
+                // scroll box; the matching negative margin cancels it back out of
+                // the pill's layout so visual spacing is unchanged.
+                className="yv:flex yv:items-center yv:gap-2 yv:max-w-[70vw] yv:overflow-x-auto yv:p-1.5 yv:-m-1.5"
+                role="group"
+                aria-label={t('highlightColorsAriaLabel')}
+              >
+                {view.colorCircles.map(({ color, showRemove, key }) => (
+                  <ColorCircle
+                    key={key}
+                    color={color}
+                    showRemove={showRemove}
+                    label={showRemove ? t('clearHighlightAriaLabel') : t('applyHighlightAriaLabel')}
+                    onClick={() => (showRemove ? onClearHighlight(color) : onHighlight(color))}
+                  />
+                ))}
+              </div>
 
-          {/* Separator */}
-          <div className="yv:w-px yv:h-8 yv:bg-border" aria-hidden="true" />
+              {/* Separator */}
+              <div className="yv:w-px yv:h-8 yv:bg-border" aria-hidden="true" />
+            </>
+          )}
 
           <div className="yv:flex yv:items-center yv:gap-1">
             <ActionButton

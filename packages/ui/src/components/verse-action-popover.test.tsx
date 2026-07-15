@@ -602,6 +602,35 @@ describe('VerseActionPopover', () => {
     });
   });
 
+  describe('Highlights disabled (flag off)', () => {
+    it('hides the color row and remove circles but keeps Copy / Share', () => {
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          highlightsEnabled={false}
+          activeHighlights={new Set<HighlightColor>([HIGHLIGHT_COLORS[0]])}
+          selectedVerses={[1]}
+          highlightedVerses={{ 1: HIGHLIGHT_COLORS[0] }}
+        />,
+      );
+
+      // No color group, no apply circles, no remove circles.
+      expect(screen.queryByRole('group', { name: 'Highlight colors' })).toBeNull();
+      expect(applyButtons()).toHaveLength(0);
+      expect(clearButtons()).toHaveLength(0);
+
+      // Copy / Share remain.
+      expect(screen.getByText('Copy')).toBeTruthy();
+      expect(screen.getByText('Share')).toBeTruthy();
+    });
+
+    it('still shows the color row by default (highlightsEnabled defaults to true)', () => {
+      render(<VerseActionPopover {...defaultProps} />);
+      expect(screen.getByRole('group', { name: 'Highlight colors' })).toBeTruthy();
+      expect(applyButtons()).toHaveLength(5);
+    });
+  });
+
   describe('Color row overflow', () => {
     it('scrolls horizontally with bleed room so the focus ring is not clipped', () => {
       render(<VerseActionPopover {...defaultProps} />);

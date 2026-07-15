@@ -76,9 +76,11 @@ beforeEach(() => {
   sessionStorage.clear();
   signedIn = true;
   setHighlightsLive(true);
-  // These tests exercise the authorized-write path, so seed the optimistic
-  // permission cache. The auth-flow branches (missing session/permission) have
-  // their own dedicated coverage.
+  // The permission cache is user-scoped, so it only takes effect once a matching
+  // userInfo is persisted (the auth provider does this at sign-in). Seed both so
+  // the authorized-write path is exercised. The auth-flow branches (missing
+  // session/permission) have their own dedicated coverage.
+  YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-1', name: 'Test User' });
   YouVersionPlatformConfiguration.saveGrantedPermissions(['highlights']);
 });
 
@@ -316,6 +318,55 @@ describe('useBibleReaderHighlights — overlay reconciliation (Fix 2)', () => {
       await Promise.resolve();
     });
     expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+  });
+});
+
+describe('useBibleReaderHighlights — vapor bug (removed highlight resurrection)', () => {
+  // Regression for the staging "vapor" report: a deleted highlight reappears for
+  // a split second, then disappears. Root cause: the reconcile step retired a
+  // REMOVE overlay entry as soon as any fetch reflected the removal; a later
+  // response from a stale read replica that still contained the highlight then
+  // had nothing suppressing it, so the verse repainted until the next fetch.
+  it('a stale fetch after a settled+reflected DELETE does not resurrect the removed highlight', async () => {
+    const mocked = mockUseHighlights({
+      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+    });
+
+    const { result, rerender } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: AuthWrapper,
+    });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+
+    act(() => {
+      result.current.remove('fffe00', [16]);
+    });
+    // Optimistic removal.
+    expect(result.current.highlightedVerses).toEqual({});
+
+    await waitFor(() => {
+      expect(mocked.deleteHighlight).toHaveBeenCalledTimes(1);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Fetch A reflects the removal (server no longer shows the color).
+    mockUseHighlights({ highlights: makeCollection([]) });
+    rerender();
+    expect(result.current.highlightedVerses).toEqual({});
+
+    // Fetch B is a STALE read replica that still contains the removed highlight.
+    // The removal overlay must be HELD so the highlight does not resurrect.
+    mockUseHighlights({
+      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+    });
+    rerender();
+    expect(result.current.highlightedVerses).toEqual({});
+
+    // Fetch C is consistent again (still removed) — no flicker at any point.
+    mockUseHighlights({ highlights: makeCollection([]) });
+    rerender();
+    expect(result.current.highlightedVerses).toEqual({});
   });
 });
 
