@@ -85,8 +85,10 @@ type WriteOp = {
   paint: boolean;
   /**
    * Whether a 401/403 should keep the pending highlight + re-prompt. `true` for a
-   * user-initiated apply; `false` for a remove (invalidate only — no re-prompt,
-   * fixing the old deferred wart) and for a resume-applied pending highlight.
+   * user-initiated apply and for a resume-applied pending highlight (both re-stash
+   * + re-open the permission dialog so the original tap is never silently lost);
+   * `false` for a remove (invalidate only — no re-prompt, fixing the old deferred
+   * wart, since with no pending highlight a re-prompt's resume was a no-op).
    */
   reprompt: boolean;
 };
@@ -567,10 +569,12 @@ export const bibleReaderHighlightsMachine = setup({
           scope,
           token,
           paint,
-          // A resume-write failure only logs + reverts (the pending intent was
-          // already consumed). Documented deferred follow-up: route resume-write
-          // failures through the standard apply failure handling.
-          reprompt: false,
+          // Resume-applied writes route through the SAME failure handling as a
+          // user-initiated apply: a 401/403 re-stashes the pending highlight (from
+          // the op's own scope, so a cross-scope return still re-prompts on the
+          // right passage) and re-opens the permission dialog, rather than silently
+          // dropping the user's original color tap.
+          reprompt: true,
         };
         enqueue.raise({ type: 'ENQUEUE', op });
       }

@@ -262,6 +262,58 @@ describe('highlight auth flow — data-exchange return', () => {
     expect(readPendingHighlights()).toEqual([]);
   });
 
+  it('re-stashes pending and re-prompts when the resumed write fails 401 (async session hydration)', async () => {
+    // Same granted-return path as above, but the resumed POST comes back 401.
+    // The user's original color tap must NOT be silently lost: the pending is
+    // re-stashed (from the op's own scope), the permission cache is invalidated,
+    // and the permission dialog re-opens — the same handling as a user apply.
+    vi.spyOn(console, 'error').mockImplementation(vi.fn());
+    signedIn = false;
+    setLocation(
+      'https://host.example/read?data_exchange_status=granted&granted_permissions=highlights',
+    );
+    sessionStorage.setItem(
+      'youversion-platform:pending-highlight',
+      JSON.stringify({
+        verses: [16],
+        color: 'fffe00',
+        versionId: 111,
+        book: 'JHN',
+        chapter: '3',
+        timestamp: Date.now(),
+      }),
+    );
+    const createHighlight = vi
+      .spyOn(HighlightsClient.prototype, 'createHighlight')
+      .mockRejectedValue(httpError(401));
+
+    const { result, rerender } = renderHook(() => useBibleReaderHighlights(options), {
+      wrapper: Providers,
+    });
+
+    signedIn = true;
+    rerender();
+
+    await waitFor(() => {
+      expect(result.current.permissionDialogOpen).toBe(true);
+    });
+    // The resumed write was attempted, then failed.
+    expect(createHighlight).toHaveBeenCalledWith({
+      version_id: 111,
+      passage_id: 'JHN.3.16',
+      color: 'fffe00',
+    });
+    // Server truth wins: cache invalidated, and the pending is re-stashed from the
+    // op's own scope so a post-grant confirm can resume it.
+    expect(YouVersionPlatformConfiguration.hasPermission('highlights')).toBe(false);
+    expect(readPendingHighlight()).toMatchObject({
+      verses: [16],
+      color: 'fffe00',
+      versionId: 111,
+      chapter: '3',
+    });
+  });
+
   it('discards pending on a cancelled return and does not re-open the dialog (async session hydration)', async () => {
     // Mount signed OUT: the shipped YouVersionAuthProvider hydrates userInfo
     // asynchronously, so the first effect run after a redirect return is always
