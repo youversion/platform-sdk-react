@@ -62,10 +62,11 @@ export class HighlightsClient {
       return lat;
     }
     // The implicit token fallback reads from `YouVersionPlatformConfiguration`,
-    // which is backed by browser `localStorage` and safely returns `null` in
-    // any environment without a usable store (Node.js tests, SSR): server-side
+    // which is backed by browser `localStorage`. In any environment without it
+    // (Node.js tests, SSR) there is intentionally no ambient token: server-side
     // callers must pass `lat` explicitly rather than relying on this fallback.
-    const token = YouVersionPlatformConfiguration.accessToken;
+    const token =
+      typeof localStorage === 'undefined' ? null : YouVersionPlatformConfiguration.accessToken;
     if (!token) {
       throw new Error(
         'Authentication required. Please provide a token or sign in before accessing highlights.',

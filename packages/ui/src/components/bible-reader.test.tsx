@@ -28,7 +28,6 @@ import {
   nextBibleReaderFontSizeUp,
   type BibleThemeSettingsSnapshot,
 } from './bible-reader';
-import { simulateUnavailableLocalStorage } from '../test/unavailable-storage';
 import { INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
 
 class ResizeObserverMock {
@@ -211,29 +210,6 @@ describe('BibleReader theme settings', () => {
     await waitFor(() => {
       expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(INTER_FONT);
     });
-  });
-
-  it('renders and updates settings without crashing when localStorage is unavailable', async () => {
-    const restoreStorage = simulateUnavailableLocalStorage();
-
-    try {
-      const user = userEvent.setup();
-
-      render(
-        <BibleReader.Root defaultVersionId={3034} defaultBook="JHN" defaultChapter="1">
-          <BibleReader.Toolbar />
-        </BibleReader.Root>,
-      );
-
-      await user.click(screen.getByRole('button', { name: 'Settings' }));
-      expect(await screen.findByText('Reader Settings')).toBeInTheDocument();
-
-      // Settings still update in memory; the write to storage is skipped.
-      await user.click(screen.getByTestId('increase-font-size'));
-      expect(screen.getByTestId('increase-font-size')).toBeInTheDocument();
-    } finally {
-      restoreStorage();
-    }
   });
 
   it('cycles line spacing and resizes the line-spacing button icon gap on click', async () => {

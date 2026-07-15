@@ -1,5 +1,3 @@
-import { getSessionStorage } from './web-storage';
-
 /**
  * Abstract storage strategy for auth-related data (callbacks, return URLs).
  * Implementations can use different mechanisms (sessionStorage, memory, etc.)
@@ -28,24 +26,32 @@ export interface StorageStrategy {
  */
 export class SessionStorageStrategy implements StorageStrategy {
   setItem(key: string, value: string): void {
-    const storage = getSessionStorage();
-    if (!storage) {
+    if (typeof sessionStorage === 'undefined') {
       console.warn('SessionStorage is not available in this environment');
       return;
     }
-    storage.setItem(key, value);
+    sessionStorage.setItem(key, value);
   }
 
   getItem(key: string): string | null {
-    return getSessionStorage()?.getItem(key) ?? null;
+    if (typeof sessionStorage === 'undefined') {
+      return null;
+    }
+    return sessionStorage.getItem(key);
   }
 
   removeItem(key: string): void {
-    getSessionStorage()?.removeItem(key);
+    if (typeof sessionStorage === 'undefined') {
+      return;
+    }
+    sessionStorage.removeItem(key);
   }
 
   clear(): void {
-    getSessionStorage()?.clear();
+    if (typeof sessionStorage === 'undefined') {
+      return;
+    }
+    sessionStorage.clear();
   }
 }
 

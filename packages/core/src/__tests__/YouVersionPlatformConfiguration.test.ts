@@ -108,38 +108,6 @@ describe('YouVersionPlatformConfiguration', () => {
       expect(mockRandomUUID).toHaveBeenCalled();
       expect(YouVersionPlatformConfiguration.installationId).toBe(mockUUID);
     });
-
-    it('should generate an in-memory id when no usable storage exists', () => {
-      // Simulate Node >= 26 without --localstorage-file: the `localStorage`
-      // global exists but evaluates to undefined (on both the global object
-      // and, in vitest jsdom, `window`, which can alias it).
-      const windowDescriptor = Object.getOwnPropertyDescriptor(window, 'localStorage');
-      vi.stubGlobal('localStorage', undefined);
-      Object.defineProperty(window, 'localStorage', {
-        configurable: true,
-        get: () => undefined,
-      });
-
-      try {
-        YouVersionPlatformConfiguration.installationId = null;
-
-        const id = YouVersionPlatformConfiguration.installationId;
-        expect(id).toBeTruthy();
-        // Stable for the session via the in-memory cache.
-        expect(YouVersionPlatformConfiguration.installationId).toBe(id);
-      } finally {
-        // Restore the window descriptor first: when `window` aliases the
-        // global object the last write wins, and the mock stub must win.
-        if (windowDescriptor) {
-          Object.defineProperty(window, 'localStorage', windowDescriptor);
-        }
-        vi.stubGlobal('localStorage', {
-          getItem: mockGetItem,
-          setItem: mockSetItem,
-          removeItem: mockRemoveItem,
-        });
-      }
-    });
   });
 
   describe('saveAuthData', () => {
