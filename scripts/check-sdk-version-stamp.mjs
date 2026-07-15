@@ -45,15 +45,29 @@ try {
   process.exit(1);
 }
 
+// A stamped (publish) build folds `isPublishBuild` to `true`; a dev build folds
+// it to `false`. We assert the *positive* stamp is present rather than merely
+// checking the dev marker is absent: if the build tooling ever inlines or
+// minifies the constant away (renaming/removing `isPublishBuild`), neither
+// literal survives, and an absence-only check would silently pass a `-dev`
+// build. Requiring the positive stamp fails *closed* in that case — a loud,
+// fixable publish abort instead of shipping dev-tagged telemetry to partners.
 const DEV_MARKER = /isPublishBuild\s*=\s*false/;
+const STAMP_MARKER = /isPublishBuild\s*=\s*true/;
 
 const unstamped = [];
+const unverifiable = [];
 let sawVersionCode = false;
 
 for (const file of bundleFiles) {
   const content = readFileSync(join(distDir, file), 'utf8');
-  if (content.includes('SDK_VERSION')) sawVersionCode = true;
-  if (DEV_MARKER.test(content)) unstamped.push(file);
+  if (!content.includes('SDK_VERSION')) continue;
+  sawVersionCode = true;
+  if (DEV_MARKER.test(content)) {
+    unstamped.push(file);
+  } else if (!STAMP_MARKER.test(content)) {
+    unverifiable.push(file);
+  }
 }
 
 if (!sawVersionCode) {
@@ -69,6 +83,16 @@ if (unstamped.length > 0) {
     `check-sdk-version-stamp: ${packageDir} would publish an unstamped (-dev) X-YVP-Sdk header.\n` +
       `Affected files: ${unstamped.join(', ')}\n` +
       `Publish via a build with YVP_PUBLISH_BUILD=true (core's prepublishOnly does this).`,
+  );
+  process.exit(1);
+}
+
+if (unverifiable.length > 0) {
+  console.error(
+    `check-sdk-version-stamp: could not confirm the X-YVP-Sdk stamp in ${packageDir}/dist.\n` +
+      `Affected files: ${unverifiable.join(', ')}\n` +
+      `Version code is present but neither the stamped nor dev marker was found — the build ` +
+      `output shape likely changed (e.g. minify/inline was enabled). Update this guard before publishing.`,
   );
   process.exit(1);
 }
