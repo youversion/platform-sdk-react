@@ -633,7 +633,12 @@ export const bibleReaderHighlightsMachine = setup({
         // deferred wart is fixed here): with no pending highlight, a re-prompt's
         // post-grant resume was a no-op. The next apply re-enters the flow.
       } else if (op.kind === 'apply' && op.reprompt) {
-        // Network / 5xx on a user apply: overlay already reverted; drop pending.
+        // Network / 5xx: overlay already reverted; drop pending. INTENTIONAL for
+        // resumed writes too — transient failures consume the intent uniformly
+        // (the user is authed now; a re-tap just works, and the failure surfaces
+        // via the snackbar, YPE-3873). Re-stashing instead would auto-apply the
+        // highlight on a later mount within the pending TTL with no user action,
+        // which is worse than asking for one more tap.
         enqueue(() => clearPendingHighlight());
       }
     }),
