@@ -1,4 +1,5 @@
 import { YouVersionUserInfoJSONSchema, type YouVersionUserInfoJSON } from './schemas/user-info';
+import { getLocalStorage } from './web-storage';
 
 /**
  * Security Note: Tokens and the decoded user profile are stored in localStorage
@@ -17,11 +18,12 @@ export class YouVersionPlatformConfiguration {
   private static _expiryDateKey: string | null = null;
 
   private static getOrSetInstallationId(): string {
-    if (typeof window === 'undefined') {
+    const storage = getLocalStorage();
+    if (typeof window === 'undefined' || !storage) {
       return '';
     }
 
-    const existingId = localStorage.getItem('x-yvp-installation-id');
+    const existingId = storage.getItem('x-yvp-installation-id');
     if (existingId) {
       return existingId;
     }
@@ -30,7 +32,7 @@ export class YouVersionPlatformConfiguration {
       typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
         : `yvp-${new Date().toISOString()}-${Math.random().toString(36).slice(2, 10)}`;
-    localStorage.setItem('x-yvp-installation-id', newId);
+    storage.setItem('x-yvp-installation-id', newId);
     return newId;
   }
 
@@ -39,22 +41,27 @@ export class YouVersionPlatformConfiguration {
     refreshToken: string | null,
     expiryDate: Date | null,
   ): void {
+    const storage = getLocalStorage();
+    if (!storage) {
+      return;
+    }
+
     if (accessToken !== null) {
-      localStorage.setItem('accessToken', accessToken);
+      storage.setItem('accessToken', accessToken);
     } else {
-      localStorage.removeItem('accessToken');
+      storage.removeItem('accessToken');
     }
 
     if (refreshToken !== null) {
-      localStorage.setItem('refreshToken', refreshToken);
+      storage.setItem('refreshToken', refreshToken);
     } else {
-      localStorage.removeItem('refreshToken');
+      storage.removeItem('refreshToken');
     }
 
     if (expiryDate !== null) {
-      localStorage.setItem('expiryDate', expiryDate.toISOString());
+      storage.setItem('expiryDate', expiryDate.toISOString());
     } else {
-      localStorage.removeItem('expiryDate');
+      storage.removeItem('expiryDate');
     }
   }
 
@@ -63,10 +70,15 @@ export class YouVersionPlatformConfiguration {
    * Pass `null` to remove any stored profile.
    */
   public static saveUserInfo(userInfo: YouVersionUserInfoJSON | null): void {
+    const storage = getLocalStorage();
+    if (!storage) {
+      return;
+    }
+
     if (userInfo !== null) {
-      localStorage.setItem('userInfo', JSON.stringify(userInfo));
+      storage.setItem('userInfo', JSON.stringify(userInfo));
     } else {
-      localStorage.removeItem('userInfo');
+      storage.removeItem('userInfo');
     }
   }
 
@@ -76,11 +88,11 @@ export class YouVersionPlatformConfiguration {
   }
 
   public static get accessToken(): string | null {
-    return localStorage.getItem('accessToken');
+    return getLocalStorage()?.getItem('accessToken') ?? null;
   }
 
   public static get refreshToken(): string | null {
-    return localStorage.getItem('refreshToken');
+    return getLocalStorage()?.getItem('refreshToken') ?? null;
   }
 
   /**
@@ -88,7 +100,7 @@ export class YouVersionPlatformConfiguration {
    * Returns `null` when nothing is stored or the stored value is malformed.
    */
   public static get storedUserInfo(): YouVersionUserInfoJSON | null {
-    const raw = localStorage.getItem('userInfo');
+    const raw = getLocalStorage()?.getItem('userInfo');
     if (!raw) {
       return null;
     }
@@ -103,7 +115,7 @@ export class YouVersionPlatformConfiguration {
   }
 
   public static get tokenExpiryDate(): Date | null {
-    const dateString = localStorage.getItem('expiryDate');
+    const dateString = getLocalStorage()?.getItem('expiryDate');
     return dateString ? new Date(dateString) : null;
   }
 

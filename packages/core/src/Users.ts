@@ -3,6 +3,7 @@ import { YouVersionUserInfo } from './YouVersionUserInfo';
 import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
 import { SignInWithYouVersionPKCEAuthorizationRequestBuilder } from './SignInWithYouVersionPKCE';
 import { SignInWithYouVersionResult } from './SignInWithYouVersionResult';
+import { getLocalStorage } from './web-storage';
 
 export class YouVersionAPIUsers {
   /**
@@ -27,6 +28,13 @@ export class YouVersionAPIUsers {
       throw new Error('YouVersionPlatformConfiguration.appKey must be set before calling signIn');
     }
 
+    const storage = getLocalStorage();
+    if (!storage) {
+      throw new Error(
+        'Sign In with YouVersion requires localStorage, which is not available in this environment',
+      );
+    }
+
     const authorizationRequest = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
       appKey,
       new URL(redirectURL),
@@ -35,15 +43,12 @@ export class YouVersionAPIUsers {
     );
 
     // Store auth data for callback handler
-    localStorage.setItem(
-      'youversion-auth-code-verifier',
-      authorizationRequest.parameters.codeVerifier,
-    );
+    storage.setItem('youversion-auth-code-verifier', authorizationRequest.parameters.codeVerifier);
     const redirectUrlString = redirectURL.toString().endsWith('/')
       ? redirectURL.toString().slice(0, -1)
       : redirectURL.toString();
-    localStorage.setItem('youversion-auth-redirect-uri', redirectUrlString);
-    localStorage.setItem('youversion-auth-state', authorizationRequest.parameters.state);
+    storage.setItem('youversion-auth-redirect-uri', redirectUrlString);
+    storage.setItem('youversion-auth-state', authorizationRequest.parameters.state);
 
     // Simple redirect to authorization URL
     window.location.href = authorizationRequest.url.toString();
@@ -76,8 +81,15 @@ export class YouVersionAPIUsers {
       throw new Error(`OAuth authentication failed: ${errorDescription}`);
     }
 
+    const storage = getLocalStorage();
+    if (!storage) {
+      throw new Error(
+        'Sign In with YouVersion requires localStorage, which is not available in this environment',
+      );
+    }
+
     // Verify state parameter
-    const storedState = localStorage.getItem('youversion-auth-state');
+    const storedState = storage.getItem('youversion-auth-state');
     if (state !== storedState) {
       throw new Error('Invalid state parameter - possible CSRF attack');
     }
@@ -89,8 +101,8 @@ export class YouVersionAPIUsers {
     }
 
     // Get stored auth data
-    const codeVerifier = localStorage.getItem('youversion-auth-code-verifier');
-    const redirectUri = localStorage.getItem('youversion-auth-redirect-uri');
+    const codeVerifier = storage.getItem('youversion-auth-code-verifier');
+    const redirectUri = storage.getItem('youversion-auth-redirect-uri');
 
     if (!code || !codeVerifier || !redirectUri) {
       throw new Error('Missing required authentication parameters');
@@ -142,9 +154,9 @@ export class YouVersionAPIUsers {
       });
 
       // Clean up localStorage
-      localStorage.removeItem('youversion-auth-code-verifier');
-      localStorage.removeItem('youversion-auth-redirect-uri');
-      localStorage.removeItem('youversion-auth-state');
+      storage.removeItem('youversion-auth-code-verifier');
+      storage.removeItem('youversion-auth-redirect-uri');
+      storage.removeItem('youversion-auth-state');
 
       // Clean up URL
       const cleanUrl = new URL(window.location.href);
@@ -154,9 +166,9 @@ export class YouVersionAPIUsers {
       return result;
     } catch (error) {
       YouVersionPlatformConfiguration.clearAuthTokens();
-      localStorage.removeItem('youversion-auth-code-verifier');
-      localStorage.removeItem('youversion-auth-redirect-uri');
-      localStorage.removeItem('youversion-auth-state');
+      storage.removeItem('youversion-auth-code-verifier');
+      storage.removeItem('youversion-auth-redirect-uri');
+      storage.removeItem('youversion-auth-state');
       throw error;
     }
   }
