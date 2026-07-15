@@ -18,12 +18,16 @@ export class YouVersionPlatformConfiguration {
   private static _expiryDateKey: string | null = null;
 
   private static getOrSetInstallationId(): string {
-    const storage = getLocalStorage();
-    if (typeof window === 'undefined' || !storage) {
+    if (typeof window === 'undefined') {
       return '';
     }
 
-    const existingId = storage.getItem('x-yvp-installation-id');
+    // Storage may be unusable (e.g. Node's experimental `localStorage` global
+    // that is `undefined` without `--localstorage-file`). The installation id
+    // is still generated; it just lives in memory (via the `_installationId`
+    // cache) instead of persisting across sessions.
+    const storage = getLocalStorage();
+    const existingId = storage?.getItem('x-yvp-installation-id');
     if (existingId) {
       return existingId;
     }
@@ -32,7 +36,7 @@ export class YouVersionPlatformConfiguration {
       typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
         : `yvp-${new Date().toISOString()}-${Math.random().toString(36).slice(2, 10)}`;
-    storage.setItem('x-yvp-installation-id', newId);
+    storage?.setItem('x-yvp-installation-id', newId);
     return newId;
   }
 
