@@ -8,7 +8,7 @@
   - `@youversion/platform-react-ui` (UI components)
 - Language: TypeScript
 - Test runner: Vitest
-- Node: >= 24.0.0
+- Node: >= 22.13.0 (pnpm 11 floor); we develop and test on Node 24 LTS
 - Package manager: pnpm >= 11.0.0 (no npm/yarn)
 
 ## WHERE TO MAKE CHANGES
@@ -49,7 +49,7 @@ tools/         Shared configs (TS, ESLint)
 
 ```bash
 # Setup
-pnpm install              # Requires pnpm >= 11.0.0, Node >= 24.0.0
+pnpm install              # Requires pnpm >= 11.0.0, Node >= 22.13.0 (tested on Node 24 LTS)
 
 # Build
 pnpm build               # Turbo builds all in dependency order
@@ -119,7 +119,7 @@ pnpm --filter @youversion/platform-react-ui build
 - Pre-commit hooks fail if typecheck or lint fails
 
 ### Environment
-- **Node.js requirement**: Minimum version 24.0.0 required
+- **Node.js requirement**: Minimum version 22.13.0 required (pnpm 11 requires Node >= 22.13); we develop and test on Node 24 LTS, which is what CI runs
 - **React version**: Do not change React dependencies; pnpm overrides (in `pnpm-workspace.yaml`) enforce 19.1.2
 - **Package manager**: Do not use npm/yarn; only pnpm supported
 - **Supply-chain protection**: `minimumReleaseAge: 4320` (3-day cooldown) in `pnpm-workspace.yaml` — `pnpm install` will reject packages published < 3 days ago. Override with `--force` if needed urgently. Workspace packages (`workspace:*`) are inherently excluded as they aren't fetched from the registry.
