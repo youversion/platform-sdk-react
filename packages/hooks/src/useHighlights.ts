@@ -1,9 +1,8 @@
 'use client';
 
 import { useMemo, useCallback } from 'react';
-import { useContext } from 'react';
-import { YouVersionContext } from './context';
-import { HighlightsClient, ApiClient } from '@youversion/platform-core';
+import { HighlightsClient } from '@youversion/platform-core';
+import { useApiClient } from './internal/useApiClient';
 import { useApiData, type UseApiDataOptions } from './useApiData';
 import {
   type GetHighlightsOptions,
@@ -24,23 +23,9 @@ export function useHighlights(
   createHighlight: (data: CreateHighlight) => Promise<Highlight>;
   deleteHighlight: (passageId: string, deleteOptions: DeleteHighlightOptions) => Promise<void>;
 } {
-  const context = useContext(YouVersionContext);
+  const apiClient = useApiClient();
 
-  const highlightsClient = useMemo(() => {
-    if (!context?.appKey) {
-      throw new Error(
-        'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
-      );
-    }
-    return new HighlightsClient(
-      new ApiClient({
-        appKey: context.appKey,
-        apiHost: context.apiHost,
-        installationId: context.installationId,
-        additionalHeaders: context.additionalHeaders,
-      }),
-    );
-  }, [context?.apiHost, context?.appKey, context?.installationId, context?.additionalHeaders]);
+  const highlightsClient = useMemo(() => new HighlightsClient(apiClient), [apiClient]);
 
   // The dep array keys on the primitive fields of `options` rather than the
   // object reference, so an inline `{ version_id, passage_id }` literal doesn't

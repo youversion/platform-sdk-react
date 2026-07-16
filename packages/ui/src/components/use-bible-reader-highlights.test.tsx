@@ -138,6 +138,28 @@ describe('useBibleReaderHighlights — auth guarding', () => {
     expect(mocked.createHighlight).not.toHaveBeenCalled();
   });
 
+  it('is non-interactive with no auth provider, even with the flag on (inert color row)', () => {
+    mockUseHighlights();
+
+    // Flag on but no auth provider: the machine is disabled, so a color tap can
+    // never do anything. The color-swatch row must not render — this flag is
+    // what BibleReader ANDs with the feature flag to hide it.
+    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions));
+    expect(result.current.highlightsInteractive).toBe(false);
+  });
+
+  it('is interactive when an auth provider is mounted (flag on), even signed out', () => {
+    mockUseHighlights();
+    signedIn = false;
+
+    // Signed out but with an auth provider present: a tap still enters the
+    // sign-in flow, so the row stays interactive.
+    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: AuthWrapper,
+    });
+    expect(result.current.highlightsInteractive).toBe(true);
+  });
+
   it('clears rendered highlights immediately when the user signs out', () => {
     mockUseHighlights({
       highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),

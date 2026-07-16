@@ -3,6 +3,7 @@
 import { isHighlightsLive } from '@/lib/feature-flags';
 import {
   bibleReaderHighlightsMachine,
+  scopesEqual,
   selectHighlightedVerses,
   type HighlightScope,
   type HighlightServices,
@@ -45,6 +46,15 @@ export type UseBibleReaderHighlightsReturn = {
   apply: (color: string, verses: number[]) => 'applied' | 'flow' | 'noop';
   /** Clears the given verses that are currently highlighted in `color`. */
   remove: (color: string, verses: number[]) => void;
+  /**
+   * Whether highlighting can actually function in this mount — i.e. a
+   * `YouVersionAuthProvider` is present so a color tap can enter the auth flow
+   * and writes can reach the API. `false` for copy/share-only integrators (no
+   * auth provider), where the machine sits in `disabled` and taps resolve to
+   * `noop`. The caller ANDs this with the feature flag to decide whether to
+   * render the (otherwise inert) color-swatch row.
+   */
+  highlightsInteractive: boolean;
   /** Whether the just-in-time permission confirm dialog is open. */
   permissionDialogOpen: boolean;
   /** Controlled open-change for the permission confirm dialog. */
@@ -171,10 +181,24 @@ export function useBibleReaderHighlights({
 
   // Parse the fetch into server truth and forward it whenever it changes. The
   // machine reconciles the optimistic overlay against it.
-  const serverColors = useMemo(
-    () => parseServerColors(highlights, versionId, chapterUsfm),
-    [highlights, versionId, chapterUsfm],
-  );
+  //
+  // `useApiData` swaps `highlights` for a fresh object on every refetch, even
+  // when the content is byte-identical. Parsing off that identity would mint a
+  // new `serverColors` each time and cascade a new `highlightedVerses` reference
+  // → a chapter-wide verse-style re-sweep (verse.tsx keys a useLayoutEffect on
+  // it). Hold the prior parsed reference when the content is unchanged so the
+  // downstream memos stay reference-stable across no-op refetches. (This is
+  // separate from `lastSentServerColorsRef`, which dedups machine sends.)
+  const parsedServerColorsRef = useRef<ServerColors | null>(null);
+  const serverColors = useMemo(() => {
+    const parsed = parseServerColors(highlights, versionId, chapterUsfm);
+    const previous = parsedServerColorsRef.current;
+    if (previous !== null && serverColorsEqual(previous, parsed)) {
+      return previous;
+    }
+    parsedServerColorsRef.current = parsed;
+    return parsed;
+  }, [highlights, versionId, chapterUsfm]);
   const lastSentServerColorsRef = useRef<ServerColors | null>(null);
   useEffect(() => {
     if (
@@ -199,7 +223,7 @@ export function useBibleReaderHighlights({
     // machine scope still points at the old chapter, so the overlay is skipped
     // and the new chapter renders from server truth alone — verse numbers
     // collide across chapters.
-    if (!scopesMatch(machineScope, scope)) return { ...serverColors };
+    if (!scopesEqual(machineScope, scope)) return { ...serverColors };
     return selectHighlightedVerses(serverColors, overlay);
   }, [live, serverColors, overlay, machineScope, scope]);
 
@@ -277,12 +301,14 @@ export function useBibleReaderHighlights({
   return {
     highlightedVerses,
     recentColors,
+    // Interactivity mirrors the machine's enabled/disabled gate: with no auth
+    // provider the machine is inert and the color row must not render. The flag
+    // is ANDed in by the caller. (`live` also folds in `isAuthenticated`, which
+    // we intentionally exclude here — a signed-out tap still enters the sign-in
+    // flow, so the row stays interactive.)
+    highlightsInteractive: hasAuthProvider,
     permissionDialogOpen,
     signInDialogOpen,
     ...api,
   };
-}
-
-function scopesMatch(a: HighlightScope, b: HighlightScope): boolean {
-  return a.versionId === b.versionId && a.book === b.book && a.chapter === b.chapter;
 }

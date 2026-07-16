@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { ApiClient } from './client';
 import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
+import { resolveAuthToken } from './auth-token';
 import { parseGrantedPermissions } from './permissions';
 
 /**
@@ -35,15 +36,7 @@ export class DataExchangeClient {
    * (no `localStorage`) must pass `lat` explicitly.
    */
   private getAuthToken(lat?: string): string {
-    if (lat) return lat;
-    const token =
-      typeof localStorage === 'undefined' ? null : YouVersionPlatformConfiguration.accessToken;
-    if (!token) {
-      throw new Error(
-        'Authentication required. Please provide a token or sign in before requesting a data exchange.',
-      );
-    }
-    return token;
+    return resolveAuthToken(lat, 'requesting a data exchange');
   }
 
   /**

@@ -50,6 +50,7 @@ import {
   stashPendingHighlight,
   type PendingHighlight,
 } from '@/lib/pending-highlight';
+import { getHttpStatus } from '@youversion/platform-core';
 import { Result } from 'better-result';
 import { assign, enqueueActions, fromPromise, setup } from 'xstate';
 
@@ -75,14 +76,6 @@ type WriteOp = {
   token: object;
   /** Whether the optimistic overlay was painted for this op (owns its verses). */
   paint: boolean;
-  /**
-   * Whether a 401/403 should keep the pending highlight + re-prompt. `true` for a
-   * user-initiated apply and for a resume-applied pending highlight (both re-stash
-   * + re-open the permission dialog so the original tap is never silently lost);
-   * `false` for a remove (invalidate only — no re-prompt, fixing the old deferred
-   * wart, since with no pending highlight a re-prompt's resume was a no-op).
-   */
-  reprompt: boolean;
 };
 
 type WriteResult = {
@@ -193,14 +186,14 @@ function versesInRun(run: VerseRun): number[] {
   return verses;
 }
 
-/** Pulls an HTTP status off a thrown ApiClient error (possibly wrapped). */
+/**
+ * Pulls an HTTP status off a thrown ApiClient error (possibly wrapped in our own
+ * `BibleReaderHighlightError`). Defers to core's `getHttpStatus` for the actual
+ * status contract so the error shape stays owned by the client layer.
+ */
 function extractStatus(error: unknown): number | undefined {
-  if (error instanceof BibleReaderHighlightError) return extractStatus(error.cause);
-  if (typeof error === 'object' && error !== null && 'status' in error) {
-    const status = (error as { status?: unknown }).status;
-    return typeof status === 'number' ? status : undefined;
-  }
-  return undefined;
+  if (error instanceof BibleReaderHighlightError) return getHttpStatus(error.cause);
+  return getHttpStatus(error);
 }
 
 /**
@@ -237,7 +230,7 @@ function opToPending(op: WriteOp): PendingHighlight {
   };
 }
 
-function scopesEqual(a: HighlightScope, b: HighlightScope): boolean {
+export function scopesEqual(a: HighlightScope, b: HighlightScope): boolean {
   return a.versionId === b.versionId && a.book === b.book && a.chapter === b.chapter;
 }
 
@@ -343,6 +336,7 @@ export const bibleReaderHighlightsMachine = setup({
     scopeIsDifferent: ({ context, event }) =>
       event.type === 'SCOPE_CHANGED' && !scopesEqual(context.scope, event.scope),
     queueHasWork: ({ context }) => context.queue.length > 0,
+    signedOut: ({ context }) => !context.isAuthenticated,
 
     // ── TAP_COLOR fork ──
     tapInert: ({ event }) => event.type === 'TAP_COLOR' && event.verses.length === 0,
@@ -468,7 +462,6 @@ export const bibleReaderHighlightsMachine = setup({
         scope: context.scope,
         token,
         paint: true,
-        reprompt: true,
       };
       enqueue.raise({ type: 'ENQUEUE', op });
     }),
@@ -520,7 +513,6 @@ export const bibleReaderHighlightsMachine = setup({
         scope: context.scope,
         token,
         paint: true,
-        reprompt: false,
       };
       enqueue.raise({ type: 'ENQUEUE', op });
     }),
@@ -554,6 +546,12 @@ export const bibleReaderHighlightsMachine = setup({
           return { writeIntent, reconcile, overlay };
         });
       }
+      // Resume-applied writes route through the SAME failure handling as a
+      // user-initiated apply: a 401/403 re-stashes the pending highlight (from
+      // the op's own scope, so a cross-scope return still re-prompts on the
+      // right passage) and re-opens the permission dialog, rather than silently
+      // dropping the user's original color tap. Being an `apply` is what earns
+      // that re-prompt at the consumer site (see `settleWrite`).
       const op: WriteOp = {
         kind: 'apply',
         color: pending.color,
@@ -561,12 +559,6 @@ export const bibleReaderHighlightsMachine = setup({
         scope,
         token,
         paint,
-        // Resume-applied writes route through the SAME failure handling as a
-        // user-initiated apply: a 401/403 re-stashes the pending highlight (from
-        // the op's own scope, so a cross-scope return still re-prompts on the
-        // right passage) and re-opens the permission dialog, rather than silently
-        // dropping the user's original color tap.
-        reprompt: true,
       };
       enqueue.raise({ type: 'ENQUEUE', op });
     }),
@@ -624,15 +616,18 @@ export const bibleReaderHighlightsMachine = setup({
         enqueue(({ context: current }) =>
           current.services.current.invalidateHighlightsPermission(),
         );
-        if (op.kind === 'apply' && op.reprompt) {
+        // Only an apply keeps the pending highlight + re-prompts: a user apply
+        // and a resume-applied pending both re-stash + re-open the permission
+        // dialog so the original tap is never silently lost. Removes deliberately
+        // don't re-prompt (fixing the old deferred wart): with no pending
+        // highlight, a re-prompt's post-grant resume was a no-op — invalidate the
+        // cache only, and the next apply re-enters the flow.
+        if (op.kind === 'apply') {
           // Keep this highlight pending and re-prompt the just-in-time dialog.
           enqueue(() => stashPendingHighlight(opToPending(op)));
           enqueue.raise({ type: 'PERMISSION_LOST' });
         }
-        // Remove failures invalidate the cache but never re-prompt (the old
-        // deferred wart is fixed here): with no pending highlight, a re-prompt's
-        // post-grant resume was a no-op. The next apply re-enters the flow.
-      } else if (op.kind === 'apply' && op.reprompt) {
+      } else if (op.kind === 'apply') {
         // Network / 5xx: overlay already reverted; drop pending. INTENTIONAL for
         // resumed writes too — transient failures consume the intent uniformly
         // (the user is authed now; a re-tap just works, and the failure surfaces
@@ -750,6 +745,14 @@ export const bibleReaderHighlightsMachine = setup({
               },
             },
             permissionDialog: {
+              // The host can sign the user out while this dialog is open. A
+              // confirm would then start a data exchange that rejects
+              // unauthenticated, so route back to idle and drop the pending
+              // intent as soon as the sign-out lands (assignAuth on the root
+              // AUTH_CHANGED updates isAuthenticated, then this always fires).
+              // permissionDialog is only ever entered while authenticated, so
+              // this guard never misfires on entry.
+              always: [{ guard: 'signedOut', target: 'idle', actions: 'clearPending' }],
               on: {
                 CONFIRM_PERMISSION: { target: 'idle', actions: 'startDataExchange' },
                 CANCEL_PERMISSION: { target: 'idle', actions: 'clearPending' },
