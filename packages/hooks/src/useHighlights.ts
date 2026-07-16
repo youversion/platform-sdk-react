@@ -23,7 +23,6 @@ export function useHighlights(
   refetch: () => void;
   createHighlight: (data: CreateHighlight) => Promise<Highlight>;
   deleteHighlight: (passageId: string, deleteOptions: DeleteHighlightOptions) => Promise<void>;
-  getRecentColors: () => Promise<string[]>;
 } {
   const context = useContext(YouVersionContext);
 
@@ -72,11 +71,6 @@ export function useHighlights(
     [highlightsClient, refetch],
   );
 
-  const getRecentColors = useCallback(
-    (): Promise<string[]> => highlightsClient.getRecentColors(),
-    [highlightsClient],
-  );
-
   return {
     highlights: data,
     loading,
@@ -84,6 +78,5 @@ export function useHighlights(
     refetch,
     createHighlight,
     deleteHighlight,
-    getRecentColors,
   };
 }

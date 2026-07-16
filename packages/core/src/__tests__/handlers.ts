@@ -123,15 +123,6 @@ export const handlers = [
     });
   }),
 
-  http.get(`https://${apiHost}/v1/highlights/recent-colors`, ({ request }) => {
-    const authError = requireBearerAuth(request);
-    if (authError) return authError;
-
-    return HttpResponse.json({
-      data: [{ color: 'fffe00' }, { color: '5dff79' }],
-    });
-  }),
-
   http.post(`https://${apiHost}/v1/highlights`, async ({ request }) => {
     const authError = requireBearerAuth(request);
     if (authError) return authError;

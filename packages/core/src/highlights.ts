@@ -5,7 +5,6 @@ import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfigurati
 import {
   HighlightCollectionWireSchema,
   HighlightWireSchema,
-  RecentHighlightColorsWireSchema,
   toHighlight,
 } from './schemas/highlight';
 
@@ -161,33 +160,6 @@ export class HighlightsClient {
       data: parsed.data.data.map(toHighlight),
       next_page_token: parsed.data.next_page_token ?? null,
     };
-  }
-
-  /**
-   * Fetches the user's recently used highlight colors, followed by the default
-   * colors, as hex strings (no `#`). Useful for building a color picker.
-   * Requires OAuth with read_highlights scope.
-   * @param lat Optional long access token. If not provided, retrieves from YouVersionPlatformConfiguration.
-   * @returns An ordered list of hex color strings.
-   */
-  async getRecentColors(lat?: string): Promise<string[]> {
-    const response = await this.client.get<unknown>(
-      `/v1/highlights/recent-colors`,
-      undefined,
-      this.authHeaders(lat),
-    );
-
-    // The API returns 204 (empty body) when there is nothing to return.
-    if (response === '' || response == null) {
-      return [];
-    }
-
-    const parsed = RecentHighlightColorsWireSchema.safeParse(response);
-    if (!parsed.success) {
-      throw new Error(`Unexpected highlights API response: ${parsed.error.message}`);
-    }
-
-    return parsed.data.data.map((entry) => entry.color);
   }
 
   /**
