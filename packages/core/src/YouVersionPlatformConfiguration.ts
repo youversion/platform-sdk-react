@@ -76,6 +76,7 @@ export class YouVersionPlatformConfiguration {
     this.saveAuthData(null, null, null);
     this.saveUserInfo(null);
     this.clearGrantedPermissions();
+    this.clearDataExchangeInitiator();
   }
 
   /**
@@ -173,6 +174,42 @@ export class YouVersionPlatformConfiguration {
   public static clearGrantedPermissions(): void {
     if (typeof localStorage === 'undefined') return;
     localStorage.removeItem(this.grantedPermissionsKey);
+  }
+
+  /**
+   * The id of the user who initiated the pending data-exchange redirect.
+   *
+   * The just-in-time data-exchange flow is fire-and-forget: it full-page
+   * redirects to a hosted consent page and the grant comes back on the return
+   * URL. If a different user signs in on another tab before the redirect
+   * returns, the grant would otherwise be saved under whoever is signed in when
+   * the callback loads. Recording the initiating user here lets the callback
+   * verify the same user is still signed in before honoring the grant.
+   */
+  private static readonly dataExchangeInitiatorKey = 'youversion-platform:data-exchange-initiator';
+
+  /**
+   * Records the current user as the initiator of a data-exchange redirect.
+   * No-ops when signed out — the just-in-time flow only starts authenticated
+   * (minting the token requires an access token), so a missing initiator on
+   * return is treated as untrusted by {@link dataExchangeInitiator}'s consumer.
+   */
+  public static saveDataExchangeInitiator(): void {
+    if (typeof localStorage === 'undefined') return;
+    const userId = this.currentUserId;
+    if (!userId) return;
+    localStorage.setItem(this.dataExchangeInitiatorKey, userId);
+  }
+
+  /** The initiating user's id for the pending data exchange, or `null`. */
+  public static get dataExchangeInitiator(): string | null {
+    if (typeof localStorage === 'undefined') return null;
+    return localStorage.getItem(this.dataExchangeInitiatorKey);
+  }
+
+  public static clearDataExchangeInitiator(): void {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.removeItem(this.dataExchangeInitiatorKey);
   }
 
   /** Optimistic check against the permission cache. Server 401/403 still wins. */

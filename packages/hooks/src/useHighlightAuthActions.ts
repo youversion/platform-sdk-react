@@ -88,6 +88,10 @@ export function useHighlightAuthActions(): {
       throw new Error('YouVersion context is required to start a data exchange.');
     }
     const token = await dataExchangeClient.updateToken([HIGHLIGHTS_PERMISSION]);
+    // Record who started the flow so the callback only saves the grant if the
+    // same user is still signed in when it returns (guards against a different
+    // user signing in on another tab mid-redirect).
+    YouVersionPlatformConfiguration.saveDataExchangeInitiator();
     if (typeof window !== 'undefined') {
       window.location.href = buildDataExchangeUrl(token, context.appKey, context.apiHost);
     }
