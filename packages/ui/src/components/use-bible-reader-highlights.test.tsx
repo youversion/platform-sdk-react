@@ -41,7 +41,6 @@ function mockUseHighlights(
       color: 'fffe00',
     }),
     deleteHighlight: vi.fn().mockResolvedValue(undefined),
-    getRecentColors: vi.fn().mockResolvedValue([]),
     ...overrides,
   };
   vi.mocked(useHighlights).mockReturnValue(value);

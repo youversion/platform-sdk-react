@@ -15,7 +15,7 @@ import {
   YouVersionAuthContext,
 } from '@youversion/platform-react-hooks';
 import { useActorRef, useSelector } from '@xstate/react';
-import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef } from 'react';
 
 export type UseBibleReaderHighlightsOptions = {
   versionId: number;
@@ -26,13 +26,6 @@ export type UseBibleReaderHighlightsOptions = {
 export type UseBibleReaderHighlightsReturn = {
   /** Verse number → hex color (lowercase, no `#`) for the current chapter. */
   highlightedVerses: Record<number, string>;
-  /**
-   * The user's recent highlight colors (recently used first, then defaults) as
-   * hex strings, or `null` when unavailable — highlights off, no session, or the
-   * fetch hasn't resolved / failed. The color row falls back to its default
-   * palette while this is `null`. Server-ordered; not normalized here.
-   */
-  recentColors: string[] | null;
   /**
    * Highlights the given verses in `color`. Bridge-safe: primitives only.
    * When the user has a session and the highlights permission this writes
@@ -135,7 +128,7 @@ export function useBibleReaderHighlights({
   } = useHighlightAuthActions();
 
   const chapterUsfm = `${book}.${chapter}`;
-  const { highlights, createHighlight, deleteHighlight, getRecentColors, refetch } = useHighlights(
+  const { highlights, createHighlight, deleteHighlight, refetch } = useHighlights(
     { version_id: versionId, passage_id: chapterUsfm },
     { enabled: live },
   );
@@ -227,36 +220,6 @@ export function useBibleReaderHighlights({
     return selectHighlightedVerses(serverColors, overlay);
   }, [live, serverColors, overlay, machineScope, scope]);
 
-  // ── Recent colors (independent of the machine; fetched on the live edge) ─────
-  // `null` means "use the default palette": the feature is inert, or the fetch
-  // is still pending or failed. Recent colors are user-global (not per
-  // chapter/version), so they're fetched on the `live` edge only.
-  //
-  // DEFERRED (accepted for dark launch): an account switch WITHOUT an
-  // intervening sign-out never re-runs this effect, so user A's recents stay
-  // rendered for user B. Hosts normally sign out between users.
-  const [recentColors, setRecentColors] = useState<string[] | null>(null);
-  const getRecentColorsRef = useRef(getRecentColors);
-  getRecentColorsRef.current = getRecentColors;
-  useEffect(() => {
-    if (!live) {
-      setRecentColors(null);
-      return;
-    }
-    let cancelled = false;
-    getRecentColorsRef
-      .current()
-      .then((colors) => {
-        if (!cancelled) setRecentColors(colors);
-      })
-      .catch(() => {
-        if (!cancelled) setRecentColors(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [live]);
-
   // ── Dialog state + commands ─────────────────────────────────────────────────
   const signInDialogOpen = useSelector(actorRef, (state) =>
     state.matches({ enabled: { flow: 'signInDialog' } }),
@@ -300,7 +263,6 @@ export function useBibleReaderHighlights({
 
   return {
     highlightedVerses,
-    recentColors,
     // Interactivity mirrors the machine's enabled/disabled gate: with no auth
     // provider the machine is inert and the color row must not render. The flag
     // is ANDed in by the caller. (`live` also folds in `isAuthenticated`, which

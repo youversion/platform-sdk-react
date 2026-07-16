@@ -522,7 +522,6 @@ function Content() {
 
   const {
     highlightedVerses,
-    recentColors,
     highlightsInteractive,
     apply: applyHighlight,
     remove: removeHighlight,
@@ -764,7 +763,6 @@ function Content() {
             activeHighlights={activeHighlights}
             selectedVerses={selectedVerses}
             highlightedVerses={highlightedVerses}
-            recentColors={recentColors}
             highlightsEnabled={highlightsEnabled}
             anchorElement={anchorElement}
             scrollRoot={scrollContainerRef.current}

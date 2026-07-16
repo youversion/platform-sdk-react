@@ -10,45 +10,14 @@ import { CheckIcon } from './icons/check';
 type Measurable = { getBoundingClientRect: () => DOMRect };
 
 /**
- * Default highlight palette, as 6-digit lowercase hex (no `#`) so it maps 1:1
- * onto the API `highlight.color` field (/^[0-9a-f]{6}$/). Order is the canonical
- * apply order: yellow, green, blue, orange, pink. Hardcoded to match the
- * YouVersion iOS app exactly. Used as the fallback whenever the server's recent
- * colors are unavailable (highlights off, signed out, fetch pending or failed).
+ * Highlight colors, as 6-digit lowercase hex (no `#`) so they map 1:1 onto the
+ * API `highlight.color` field (/^[0-9a-f]{6}$/). Order is the canonical apply
+ * order: yellow, green, blue, orange, pink. Hardcoded to match the YouVersion
+ * iOS app exactly.
  */
 export const HIGHLIGHT_COLORS = ['fffe00', '5dff79', '00d6ff', 'ffc66f', 'ff95ef'] as const;
 
-/**
- * A highlight color: any 6-digit lowercase hex without `#`. Widened from the
- * five-literal palette union (YPE-1034 PR3) because the server's recent-colors
- * list can contain arbitrary hexes, not just the default palette. Loosening,
- * not breaking — every prior value is still assignable.
- */
-export type HighlightColor = string;
-
-/** 6-digit lowercase hex, no `#` — the on-wire / renderable color form. */
-const HEX6_COLOR = /^[0-9a-f]{6}$/;
-
-/**
- * Resolves the color row's palette. Given the server's recent colors (recently
- * used first, then defaults — already server-ordered), normalizes each entry
- * (lowercase, strip a leading `#`), drops anything that isn't a 6-digit hex, and
- * dedupes first-occurrence-wins WITHOUT reordering (server order is the truth).
- * Falls back to {@link HIGHLIGHT_COLORS} whenever recents are absent or nothing
- * survives normalization.
- */
-function resolvePalette(recentColors: string[] | null | undefined): readonly string[] {
-  if (!recentColors || recentColors.length === 0) return HIGHLIGHT_COLORS;
-  const seen = new Set<string>();
-  const palette: string[] = [];
-  for (const raw of recentColors) {
-    const color = raw.trim().toLowerCase().replace(/^#/, '');
-    if (!HEX6_COLOR.test(color) || seen.has(color)) continue;
-    seen.add(color);
-    palette.push(color);
-  }
-  return palette.length > 0 ? palette : HIGHLIGHT_COLORS;
-}
+export type HighlightColor = (typeof HIGHLIGHT_COLORS)[number];
 
 type VerseActionPopoverProps = {
   open: boolean;
@@ -63,13 +32,6 @@ type VerseActionPopoverProps = {
    * reachable instead of leaving with the verse. Omit for a purely anchored bar.
    */
   scrollRoot?: HTMLElement | null;
-  /**
-   * The server's recent highlight colors (recently used first, then defaults),
-   * as hex strings. When present the color row renders these instead of the
-   * hardcoded {@link HIGHLIGHT_COLORS} palette; `null`/`undefined`/empty falls
-   * back to the palette. The list is normalized and deduped internally.
-   */
-  recentColors?: string[] | null;
   /**
    * Whether the highlights UI is available. When `false` (the `HIGHLIGHTS_LIVE`
    * dark-launch flag is off) the color row and the remove (checkmark) circles are
@@ -96,7 +58,7 @@ function ColorCircle({ color, showRemove, label, onClick }: ColorCircleProps) {
       type="button"
       onClick={onClick}
       className={cn(
-        'yv:size-8 yv:shrink-0 yv:rounded-full yv:flex yv:items-center yv:justify-center',
+        'yv:size-8 yv:rounded-full yv:flex yv:items-center yv:justify-center',
         'yv:transition-transform yv:hover:scale-110',
         'yv:focus-visible:outline-none yv:focus-visible:ring-2 yv:focus-visible:ring-ring yv:focus-visible:ring-offset-2',
       )}
@@ -149,7 +111,6 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   highlightedVerses,
   anchorElement,
   scrollRoot,
-  recentColors,
   highlightsEnabled = true,
   onHighlight,
   onClearHighlight,
@@ -232,29 +193,17 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   // above it (side top). Both place the bar just inside the reader edge.
   const dockedSide = dockEdge === 'top' ? 'bottom' : 'top';
 
-  // The color row renders the server's recent colors when available, else the
-  // default palette. Both are treated identically below — server order is the
-  // only ordering, never re-sorted here.
-  const palette = resolvePalette(recentColors);
-
-  // Remove (checkmark) circles: every distinct active color, ordered by palette
-  // position, with any active color NOT in the palette (a hex the user applied
-  // earlier that has since dropped off recents) kept after in selection order —
-  // so a highlight is always removable even once its color leaves the palette.
-  const activeColors = [
-    ...palette.filter((c) => activeHighlights.has(c)),
-    ...[...activeHighlights].filter((c) => !palette.includes(c)),
-  ];
+  const activeColors = HIGHLIGHT_COLORS.filter((c) => activeHighlights.has(c));
   const highlightedVerseCount = selectedVerses.filter((v) => highlightedVerses[v]).length;
   const unHighlightedCount = selectedVerses.length - highlightedVerseCount;
-  const allColorsActive = palette.every((c) => activeHighlights.has(c));
+  const allColorsActive = activeHighlights.size === HIGHLIGHT_COLORS.length;
   const showAllApplyColors =
     !allColorsActive && (unHighlightedCount > 0 || activeHighlights.size > 1);
   const colorsToApply = showAllApplyColors
-    ? palette
-    : palette.filter((c) => !activeHighlights.has(c));
+    ? HIGHLIGHT_COLORS
+    : HIGHLIGHT_COLORS.filter((c) => !activeHighlights.has(c));
 
-  // Remove (checkmark) circles come first, then apply circles in palette order.
+  // Remove (checkmark) circles come first, then apply circles in canonical order.
   const colorCircles = [
     ...activeColors.map((color) => ({ color, showRemove: true, key: `${color}-clear` })),
     ...colorsToApply.map((color) => ({ color, showRemove: false, key: `${color}-apply` })),
@@ -340,15 +289,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
           {highlightsEnabled && (
             <>
               <div
-                // Recent colors can be a long list — let the row scroll horizontally
-                // (capped to the viewport) instead of stretching the pill off-screen.
-                // `overflow-x: auto` forces `overflow-y` out of `visible` too (CSS
-                // spec), which would clip the swatches' focus ring (ring-2 +
-                // offset-2 ≈ 4px outside the 32px circle) and hover scale-110
-                // overpaint. The 6px padding gives that overpaint room inside the
-                // scroll box; the matching negative margin cancels it back out of
-                // the pill's layout so visual spacing is unchanged.
-                className="yv:flex yv:items-center yv:gap-2 yv:max-w-[70vw] yv:overflow-x-auto yv:p-1.5 yv:-m-1.5"
+                className="yv:flex yv:items-center yv:gap-2"
                 role="group"
                 aria-label={t('highlightColorsAriaLabel')}
               >
