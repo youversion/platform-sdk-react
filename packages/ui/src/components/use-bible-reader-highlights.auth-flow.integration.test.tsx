@@ -222,6 +222,37 @@ describe('highlight auth flow — just-in-time (signed in, no permission)', () =
     expect(result.current.permissionDialogOpen).toBe(false);
     expect(readPendingHighlights()).toEqual([]);
   });
+
+  it('closes the dialog and clears pending when the host signs the user out mid-flow', () => {
+    const updateToken = vi
+      .spyOn(DataExchangeClient.prototype, 'updateToken')
+      .mockResolvedValue('dx-token');
+
+    const { result, rerender } = renderHook(() => useBibleReaderHighlights(options), {
+      wrapper: Providers,
+    });
+
+    act(() => {
+      result.current.apply('fffe00', [16]);
+    });
+    expect(result.current.permissionDialogOpen).toBe(true);
+    expect(readPendingHighlight()).not.toBeNull();
+
+    // The host signs the user out while the confirm dialog is still open. A
+    // confirm now would start a data exchange that rejects unauthenticated, so
+    // the flow must route back out of the dialog and drop the pending intent.
+    signedIn = false;
+    rerender();
+
+    expect(result.current.permissionDialogOpen).toBe(false);
+    expect(readPendingHighlight()).toBeNull();
+
+    // A confirm after the auto-close is a no-op: no data exchange is started.
+    act(() => {
+      result.current.confirmPermissionDialog();
+    });
+    expect(updateToken).not.toHaveBeenCalled();
+  });
 });
 
 describe('highlight auth flow — data-exchange return', () => {

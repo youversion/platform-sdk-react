@@ -7,6 +7,19 @@ type RequestData = Record<string, string | number | boolean | object>;
 type RequestHeaders = Record<string, string>;
 
 /**
+ * Returns the HTTP status code attached to an error thrown by an API client,
+ * or undefined when the error did not come from an HTTP response (network
+ * failure, timeout, validation error). This is the supported way to branch on
+ * status codes; the error's internal shape is not part of the public API.
+ */
+export function getHttpStatus(error: unknown): number | undefined {
+  if (error instanceof Error && 'status' in error && typeof error.status === 'number') {
+    return error.status;
+  }
+  return undefined;
+}
+
+/**
  * ApiClient is a lightweight HTTP client for interacting with the API using fetch.
  * It provides convenient methods for GET and POST requests with typed responses.
  */

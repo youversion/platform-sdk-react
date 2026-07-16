@@ -2,7 +2,6 @@
 
 import { useCallback, useContext, useMemo } from 'react';
 import {
-  ApiClient,
   DataExchangeClient,
   buildDataExchangeUrl,
   handleDataExchangeCallback,
@@ -13,6 +12,7 @@ import {
 } from '@youversion/platform-core';
 import { YouVersionContext } from './context';
 import { YouVersionAuthContext } from './context/YouVersionAuthContext';
+import { useApiClient } from './internal/useApiClient';
 
 const HIGHLIGHTS_PERMISSION = SignInWithYouVersionPermission.highlights;
 
@@ -65,17 +65,11 @@ export function useHighlightAuthActions(): {
   const authContext = useContext(YouVersionAuthContext);
   const redirectUri = authContext?.redirectUri;
 
-  const dataExchangeClient = useMemo(() => {
-    if (!context?.appKey) return null;
-    return new DataExchangeClient(
-      new ApiClient({
-        appKey: context.appKey,
-        apiHost: context.apiHost,
-        installationId: context.installationId,
-        additionalHeaders: context.additionalHeaders,
-      }),
-    );
-  }, [context?.appKey, context?.apiHost, context?.installationId, context?.additionalHeaders]);
+  const apiClient = useApiClient({ optional: true });
+  const dataExchangeClient = useMemo(
+    () => (apiClient ? new DataExchangeClient(apiClient) : null),
+    [apiClient],
+  );
 
   const startSignInForHighlights = useCallback(
     async (redirectUrl?: string) => {

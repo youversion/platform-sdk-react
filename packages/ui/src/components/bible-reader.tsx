@@ -522,6 +522,7 @@ function Content() {
 
   const {
     highlightedVerses,
+    highlightsInteractive,
     apply: applyHighlight,
     remove: removeHighlight,
     permissionDialogOpen,
@@ -534,8 +535,11 @@ function Content() {
   } = useBibleReaderHighlights({ versionId, book, chapter });
 
   // The color row / clear-highlight affordances only render when the highlights
-  // feature is live (dark-launch flag). Copy / Share are always available.
-  const highlightsEnabled = isHighlightsLive();
+  // feature is live (dark-launch flag) AND can actually function. Without a
+  // YouVersionAuthProvider mounted the machine is inert (taps resolve to noop),
+  // so the swatch row would be dead — hide it for copy/share-only integrators.
+  // Copy / Share are always available.
+  const highlightsEnabled = isHighlightsLive() && highlightsInteractive;
   // Copy shown to the sign-in dialog. Falls back to a neutral label when the
   // integrator hasn't set `YouVersionPlatformConfiguration.appName`.
   const signInAppName = YouVersionPlatformConfiguration.appName ?? t('signInAppNameFallback');

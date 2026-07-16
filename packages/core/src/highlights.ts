@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { ApiClient } from './client';
 import type { Collection, Highlight, CreateHighlight } from './types';
-import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
+import { resolveAuthToken } from './auth-token';
 import {
   HighlightCollectionWireSchema,
   HighlightWireSchema,
@@ -57,21 +57,7 @@ export class HighlightsClient {
    * @throws Error if no token is available.
    */
   private getAuthToken(lat?: string): string {
-    if (lat) {
-      return lat;
-    }
-    // The implicit token fallback reads from `YouVersionPlatformConfiguration`,
-    // which is backed by browser `localStorage`. In any environment without it
-    // (Node.js tests, SSR) there is intentionally no ambient token: server-side
-    // callers must pass `lat` explicitly rather than relying on this fallback.
-    const token =
-      typeof localStorage === 'undefined' ? null : YouVersionPlatformConfiguration.accessToken;
-    if (!token) {
-      throw new Error(
-        'Authentication required. Please provide a token or sign in before accessing highlights.',
-      );
-    }
-    return token;
+    return resolveAuthToken(lat, 'accessing highlights');
   }
 
   private authHeaders(lat?: string): Record<string, string> {
