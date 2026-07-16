@@ -117,43 +117,6 @@ describe('HighlightsClient', () => {
     });
   });
 
-  describe('getRecentColors', () => {
-    it('returns the ordered list of hex colors with Bearer auth', async () => {
-      const fetchSpy = vi.spyOn(global, 'fetch');
-
-      const colors = await highlightsClient.getRecentColors('test-token');
-
-      expect(colors).toEqual(['fffe00', '5dff79']);
-
-      const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
-      expect(url).toContain('/v1/highlights/recent-colors');
-      expect((init.headers as Record<string, string>).Authorization).toBe('Bearer test-token');
-    });
-
-    it('returns an empty list when the API responds 204', async () => {
-      server.use(
-        http.get(
-          `https://${apiHost}/v1/highlights/recent-colors`,
-          () => new HttpResponse(null, { status: 204 }),
-        ),
-      );
-
-      await expect(highlightsClient.getRecentColors('test-token')).resolves.toEqual([]);
-    });
-
-    it('throws a helpful error when the API response is malformed', async () => {
-      server.use(
-        http.get(`https://${apiHost}/v1/highlights/recent-colors`, () =>
-          HttpResponse.json({ data: [{ not_a_color: true }] }),
-        ),
-      );
-
-      await expect(highlightsClient.getRecentColors('test-token')).rejects.toThrow(
-        'Unexpected highlights API response',
-      );
-    });
-  });
-
   describe('createHighlight', () => {
     it('POSTs the enveloped body ({ request_id, highlight: { bible_id, ... } })', async () => {
       let capturedBody: unknown;

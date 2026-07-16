@@ -27,16 +27,6 @@ export const HighlightCollectionWireSchema = z.object({
 
 export type HighlightCollectionWire = z.infer<typeof HighlightCollectionWireSchema>;
 
-/**
- * Wire format for `GET /v1/highlights/recent-colors`, a collection of hex color
- * strings (recently used followed by default colors).
- */
-export const RecentHighlightColorsWireSchema = z.object({
-  data: z.array(z.object({ color: z.string().regex(HEX_COLOR_REGEX) })),
-});
-
-export type RecentHighlightColorsWire = z.infer<typeof RecentHighlightColorsWireSchema>;
-
 const _HighlightSchema = z.object({
   /** Bible version identifier (sent to / received from the API as `bible_id`) */
   version_id: z.number().int().positive(),
