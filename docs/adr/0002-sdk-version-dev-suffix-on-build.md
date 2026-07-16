@@ -41,11 +41,15 @@ Mechanism (`packages/core`):
   bundle, where `process` is undefined).
 - `prepublishOnly` sets `YVP_PUBLISH_BUILD=true`, so every `npm publish`
   produces a stamped build; any other build stays `-dev`.
-- A publish guard (`scripts/check-sdk-version-stamp.mjs`) fails the publish if
-  the built artifact still contains the `-dev` marker. It keys off the folded
-  `isPublishBuild = false` constant, not a `-dev` string match, because the
-  compiled ternary keeps the `-dev` suffix in its (dead) else branch in every
-  build.
+- A publish guard (`scripts/check-sdk-version-stamp.mjs`) aborts the publish
+  unless the artifact carries the folded `isPublishBuild = true` stamp. It
+  asserts that positive stamp rather than matching `-dev` for two reasons. A
+  `-dev` string match would false-positive, because the compiled ternary keeps
+  the suffix in its (dead) else branch in every build. And checking only that
+  `isPublishBuild = false` is absent would fail **open**: if build tooling ever
+  minified the constant away, neither literal would survive and a dev build
+  would sail through. Requiring the stamp fails closed instead — a build whose
+  channel cannot be confirmed aborts the publish.
 
 `@youversion/platform-react-ui` bundles core (`noExternal`), so it inherits the
 stamp from the core dist it bundles; its `prepublishOnly` runs the same guard.
@@ -73,6 +77,11 @@ came from, where bare `Dev` does not) and makes the telemetry filter a simple
   change (now `-dev`).
 - Publishing outside the `prepublishOnly` lifecycle (e.g. a raw `tsup` build then
   manual `npm publish`) is caught by the guard and aborts.
+- Enabling `minify` (or `minifyIdentifiers`) in either tsup config will trip the
+  guard: the `isPublishBuild` literal no longer survives, so the stamp cannot be
+  confirmed and the publish aborts until the guard is taught the new output
+  shape. That is the intended trade — a loud, fixable abort beats silently
+  tagging partner traffic as `-dev`.
 - `prepublishOnly` uses POSIX inline env syntax (`YVP_PUBLISH_BUILD=true ...`).
   Publishing from Windows would need `cross-env`; CI (Linux) and maintainers
   (macOS) are unaffected.
