@@ -6,7 +6,7 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/", "lib/**"],
-      "env": ["NODE_ENV"],
+      "env": ["NODE_ENV", "YVP_PUBLISH_BUILD"],
       "cache": true
     },
     "dev": {

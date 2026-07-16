@@ -35,8 +35,9 @@
     }
   },
   "scripts": {
-    "dev": "tsup src/index.ts src/browser.ts src/server.ts --format cjs,esm --dts --watch",
-    "build": "tsup src/index.ts src/browser.ts src/server.ts --format cjs,esm --dts",
+    "dev": "tsup --watch",
+    "build": "tsup",
+    "prepublishOnly": "YVP_PUBLISH_BUILD=true pnpm build && node ../../scripts/check-sdk-version-stamp.mjs core",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "dotenv -e .env.local -- vitest run",
