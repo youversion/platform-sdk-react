@@ -7,9 +7,25 @@ import {
   parseDataExchangeCallback,
   handleDataExchangeCallback,
 } from '../data-exchange';
+import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfiguration';
 import { server } from './setup';
 
 const apiHost = process.env.YVP_API_HOST;
+
+/**
+ * Stubs `window` with a location parsed from `href` plus a spyable
+ * `history.replaceState`. `localStorage` is left as the test polyfill so
+ * {@link YouVersionPlatformConfiguration} reads/writes real (mock) storage.
+ */
+function stubLocation(href: string): ReturnType<typeof vi.fn> {
+  const replaceState = vi.fn();
+  const url = new URL(href);
+  vi.stubGlobal('window', {
+    location: { href, search: url.search },
+    history: { replaceState },
+  });
+  return replaceState;
+}
 
 describe('DataExchangeClient.updateToken', () => {
   let client: DataExchangeClient;
@@ -109,20 +125,19 @@ describe('parseDataExchangeCallback', () => {
 });
 
 describe('handleDataExchangeCallback URL cleanup', () => {
+  beforeEach(() => {
+    // A signed-in user who is also the flow initiator, so a `granted` return is
+    // honored and these tests can focus on URL cleanup.
+    YouVersionPlatformConfiguration.clearAuthTokens();
+    YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-a', name: 'A' });
+    YouVersionPlatformConfiguration.saveDataExchangeInitiator();
+  });
+
   afterEach(() => {
+    YouVersionPlatformConfiguration.clearAuthTokens();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
-
-  function stubLocation(href: string): ReturnType<typeof vi.fn> {
-    const replaceState = vi.fn();
-    const url = new URL(href);
-    vi.stubGlobal('window', {
-      location: { href, search: url.search },
-      history: { replaceState },
-    });
-    return replaceState;
-  }
 
   it('strips only the data-exchange params, preserving app params and the hash', () => {
     const replaceState = stubLocation(
@@ -157,5 +172,76 @@ describe('handleDataExchangeCallback URL cleanup', () => {
     const replaceState = stubLocation('https://app.example.com/read?tab=notes');
     expect(handleDataExchangeCallback()).toBeNull();
     expect(replaceState).not.toHaveBeenCalled();
+  });
+});
+
+describe('handleDataExchangeCallback grant safety (initiating user)', () => {
+  const GRANTED_URL =
+    'https://app.example.com/read?data_exchange_status=granted&granted_permissions=highlights';
+
+  beforeEach(() => {
+    YouVersionPlatformConfiguration.clearAuthTokens();
+  });
+
+  afterEach(() => {
+    YouVersionPlatformConfiguration.clearAuthTokens();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('saves the grant when the initiating user is still signed in on return', () => {
+    YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-a', name: 'A' });
+    YouVersionPlatformConfiguration.saveDataExchangeInitiator();
+
+    stubLocation(GRANTED_URL);
+    const result = handleDataExchangeCallback();
+
+    expect(result).toEqual({ status: 'granted', grantedPermissions: ['highlights'] });
+    expect(YouVersionPlatformConfiguration.grantedPermissions).toContain('highlights');
+    // Consumed on return so it cannot authorize a later, unrelated callback.
+    expect(YouVersionPlatformConfiguration.dataExchangeInitiator).toBeNull();
+  });
+
+  it('discards the grant when a different user signed in mid-redirect', () => {
+    // User A initiates the flow...
+    YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-a', name: 'A' });
+    YouVersionPlatformConfiguration.saveDataExchangeInitiator();
+    // ...then user B signs in on another tab before the redirect returns.
+    YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-b', name: 'B' });
+
+    const replaceState = stubLocation(GRANTED_URL);
+    const result = handleDataExchangeCallback();
+
+    // Grant is not honored; the result degrades to a failed exchange.
+    expect(result).toEqual({ status: 'failure', grantedPermissions: [] });
+
+    // Cache untouched for the signed-in user (B)...
+    expect(YouVersionPlatformConfiguration.grantedPermissions).toEqual([]);
+    // ...and for the initiating user (A) once they sign back in.
+    YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-a', name: 'A' });
+    expect(YouVersionPlatformConfiguration.grantedPermissions).toEqual([]);
+
+    // URL cleanup still happens on mismatch.
+    expect(replaceState).toHaveBeenCalledTimes(1);
+    const cleaned = new URL(replaceState.mock.calls[0]![2] as string);
+    expect(cleaned.searchParams.has('data_exchange_status')).toBe(false);
+    expect(cleaned.searchParams.has('granted_permissions')).toBe(false);
+  });
+
+  it('discards the grant when no initiator was recorded (legacy pending state)', () => {
+    // Signed-in user, but no initiator was ever stored for this return.
+    YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-a', name: 'A' });
+
+    const replaceState = stubLocation(GRANTED_URL);
+    const result = handleDataExchangeCallback();
+
+    expect(result).toEqual({ status: 'failure', grantedPermissions: [] });
+    expect(YouVersionPlatformConfiguration.grantedPermissions).toEqual([]);
+
+    // URL cleanup still happens.
+    expect(replaceState).toHaveBeenCalledTimes(1);
+    const cleaned = new URL(replaceState.mock.calls[0]![2] as string);
+    expect(cleaned.searchParams.has('data_exchange_status')).toBe(false);
+    expect(cleaned.searchParams.has('granted_permissions')).toBe(false);
   });
 });

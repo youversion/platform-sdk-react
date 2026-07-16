@@ -121,14 +121,42 @@ export function parseDataExchangeCallback(search: string): DataExchangeCallbackR
  *
  * Cleanup surgically removes only the data-exchange params, preserving any
  * unrelated app query params and the hash fragment.
+ *
+ * Grant safety: the just-in-time data-exchange flow is a fire-and-forget
+ * full-page redirect, so the user signed in when this callback loads is not
+ * guaranteed to be the one who started the flow (e.g. user B signs in on another
+ * tab mid-redirect). The grant is only saved when the initiator recorded at
+ * {@link YouVersionPlatformConfiguration.saveDataExchangeInitiator} still matches
+ * the current user. Any mismatch — a different user, or a missing initiator (a
+ * legacy pending state or a return we did not originate) — fails closed: the
+ * grant is discarded and the result is downgraded to a `failure` so callers
+ * re-prompt instead of proceeding as granted. Dropping a legitimate grant is
+ * harmless — it just re-prompts — whereas saving one for the wrong user is not.
+ *
+ * The sign-in callback (see `Users.ts`) needs no such check: it derives the user
+ * profile from the same ID token that carries `granted_permissions`, so the
+ * grant is inherently bound to the correct user.
  */
 export function handleDataExchangeCallback(): DataExchangeCallbackResult | null {
   if (typeof window === 'undefined') return null;
-  const result = parseDataExchangeCallback(window.location.search);
-  if (!result) return null;
+  const parsed = parseDataExchangeCallback(window.location.search);
+  if (!parsed) return null;
 
-  if (result.status === 'granted' && result.grantedPermissions.length > 0) {
-    YouVersionPlatformConfiguration.saveGrantedPermissions(result.grantedPermissions);
+  // Read and clear the initiator up front so a stale value can never authorize a
+  // later, unrelated return.
+  const initiator = YouVersionPlatformConfiguration.dataExchangeInitiator;
+  YouVersionPlatformConfiguration.clearDataExchangeInitiator();
+
+  let result = parsed;
+  if (parsed.status === 'granted' && parsed.grantedPermissions.length > 0) {
+    const currentUserId = YouVersionPlatformConfiguration.storedUserInfo?.id ?? null;
+    if (initiator && currentUserId && initiator === currentUserId) {
+      YouVersionPlatformConfiguration.saveGrantedPermissions(parsed.grantedPermissions);
+    } else {
+      // Initiator missing or a different user is signed in: discard the grant
+      // and degrade to a failed exchange.
+      result = { status: 'failure', grantedPermissions: [] };
+    }
   }
 
   const cleanUrl = new URL(window.location.href);

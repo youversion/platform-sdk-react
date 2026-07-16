@@ -261,6 +261,9 @@ describe('highlight auth flow — data-exchange return', () => {
     setLocation(
       'https://host.example/read?data_exchange_status=granted&granted_permissions=highlights',
     );
+    // Record the initiator as the redirect leg would have — the callback only
+    // saves a grant for the user who started the exchange.
+    YouVersionPlatformConfiguration.saveDataExchangeInitiator();
     // Pre-stash a pending highlight as the confirm path would have.
     stashPendingHighlight({
       verses: [16],
@@ -303,6 +306,8 @@ describe('highlight auth flow — data-exchange return', () => {
     setLocation(
       'https://host.example/read?data_exchange_status=granted&granted_permissions=highlights',
     );
+    // Record the initiator as the redirect leg would have (see test above).
+    YouVersionPlatformConfiguration.saveDataExchangeInitiator();
     sessionStorage.setItem(
       'youversion-platform:pending-highlight',
       JSON.stringify({
