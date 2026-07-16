@@ -264,6 +264,9 @@ importers:
       i18next:
         specifier: ^26.0.0
         version: 26.0.4(typescript@5.9.3)
+      radix-ui:
+        specifier: ^1.4.3
+        version: 1.4.3(@types/react-dom@19.1.2(@types/react@19.1.2))(@types/react@19.1.2)(react-dom@19.1.2(react@19.1.2))(react@19.1.2)
       react:
         specifier: 19.1.2
         version: 19.1.2
