@@ -928,7 +928,7 @@ export function BibleThemeSettingsContent({
             data-testid="decrease-font-size"
             disabled={fontSize <= MIN_FONT_SIZE}
             aria-disabled={fontSize <= MIN_FONT_SIZE}
-            aria-label="Decrease font size"
+            aria-label={t('decreaseFontSizeAriaLabel')}
           >
             A
           </Button>
@@ -940,7 +940,7 @@ export function BibleThemeSettingsContent({
             data-testid="increase-font-size"
             disabled={fontSize >= MAX_FONT_SIZE}
             aria-disabled={fontSize >= MAX_FONT_SIZE}
-            aria-label="Increase font size"
+            aria-label={t('increaseFontSizeAriaLabel')}
           >
             A
           </Button>
@@ -950,7 +950,7 @@ export function BibleThemeSettingsContent({
           variant="secondary"
           data-testid="line-spacing"
           onClick={onChangeLineSpacing}
-          aria-label="Change line spacing"
+          aria-label={t('changeLineSpacingAriaLabel')}
         >
           <div className={cn('yv:flex yv:flex-col', lineSpacingButtonGapClass(lineSpacing))}>
             <span className="yv:h-0.5 yv:w-8 yv:bg-black yv:dark:bg-current"></span>

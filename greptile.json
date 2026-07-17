@@ -30,6 +30,14 @@
       {
         "scope": ["packages/ui/src/**"],
         "rule": "Auto-injected styles: index.ts calls injectStyles() on module load"
+      },
+      {
+        "scope": ["packages/ui/src/components/**"],
+        "rule": "No hardcoded user-facing strings: use t() or Trans/i18nKey for aria-label, title, placeholder, alt, and visible copy. ESLint i18next/no-literal-string enforces this."
+      },
+      {
+        "scope": ["packages/ui/src/i18n/locales/**"],
+        "rule": "Locale JSON is upstream-owned (platform-localization). CI locale-ownership job fails feature PRs that edit packages/ui/src/i18n/locales/. Add English in sources/common/en.json (react.*); fr/es arrive via Crowdin sync PRs (chore/localization-sync-react-*)."
       }
     ],
     "files": [
@@ -37,6 +45,11 @@
         "scope": ["*"],
         "path": "docs/review-guidelines.md",
         "description": "Comprehensive review checklist for all pull requests"
+      },
+      {
+        "scope": ["packages/ui/**"],
+        "path": "docs/i18n-guidelines.md",
+        "description": "Localization workflow: platform-localization source, Crowdin, and downstream sync"
       }
     ]
   }
