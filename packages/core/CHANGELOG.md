@@ -1,5 +1,31 @@
 # @youversion/platform-core
 
+## 2.3.0
+
+### Minor Changes
+
+- d6ab2d5: Fix `HighlightsClient` to match the live highlights API contract. The client previously sent requests the API rejects on every call (401/400), so highlights could never be fetched, created, or deleted.
+  - Auth token is now sent as an `Authorization: Bearer <token>` header instead of a `lat` query parameter
+  - Query/body fields now use the API's `bible_id` naming on the wire (the SDK keeps `version_id` in its public types and maps at the boundary)
+  - `createHighlight` now sends the required `{ request_id, highlight: { ... } }` envelope (`request_id` is a unique per-request id the API requires)
+  - `getHighlights` now requires `version_id` and `passage_id` (verse or chapter USFM), and `deleteHighlight` requires `version_id`, matching the API's required parameters; `useHighlights` options are updated accordingly
+  - `getHighlights` now treats a `204` (no highlights for the passage) as an empty collection instead of throwing
+  - `createHighlight` normalizes `color` to lowercase before sending, since the API accepts lowercase hex only
+  - API responses are validated with Zod and mapped from the wire shape
+
+- 683c123: Allow requesting YouVersion data-exchange permissions (e.g. `highlights`) at sign-in. These are intentionally not OIDC scopes: they ride alongside the standard `scope` param as repeatable `requested_permissions[]` query params on the authorize URL and are authorized via a separate per-app ACL rather than the token's scope claim.
+  - `YouVersionAPIUsers.signIn(redirectURL, scopes?, permissions?)` and the underlying PKCE authorization request builder now accept a `permissions` array typed as `SignInWithYouVersionPermissionValues[]`.
+  - `useYVAuth().signIn({ permissions })` forwards them from React.
+  - `<YouVersionAuthButton permissions={['highlights']} />` requests them from the sign-in button.
+
+  Scopes and permissions are separate arguments; existing calls that only pass scopes are unaffected.
+
+### Patch Changes
+
+- fb7ac35: Tag the `X-YVP-Sdk` header with a `-dev` suffix for non-published builds so platform telemetry can separate internal YouVersion dev-time traffic from published partner traffic.
+
+  Published builds report the real version (`ReactSDK=2.2.0`); builds from source, dev, or tests report `ReactSDK=2.2.0-dev`. The version is stamped at build time via `YVP_PUBLISH_BUILD` (set by each package's `prepublishOnly`), and a publish guard aborts the release if an unstamped `-dev` build would ship. Published header values are otherwise unchanged, and consumers can still override `X-YVP-Sdk` via `additionalHeaders`.
+
 ## 2.2.0
 
 ### Minor Changes

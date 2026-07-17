@@ -433,7 +433,7 @@ export const SignOutFlow: Story = {
     const userMenuTrigger = screen.getByTestId('user-menu-trigger');
 
     await waitFor(async () => {
-      const avatar = userMenuTrigger.querySelector('img');
+      const avatar = userMenuTrigger.querySelector('[data-slot="avatar"]');
       await expect(avatar).toBeInTheDocument();
     });
 
@@ -464,7 +464,7 @@ export const AuthenticatedWithAvatar: Story = {
   beforeEach: async () => {
     localStorage.clear();
     await setupAuthenticatedUser({
-      avatarUrl: 'https://example.com/avatar/{width}/{height}.jpg',
+      avatarUrl: 'https://notion-avatar.app/image/avatar-1.jpg',
     });
   },
   render: (args) => (
@@ -486,10 +486,11 @@ export const AuthenticatedWithAvatar: Story = {
 
     const userMenuTrigger = screen.getByTestId('user-menu-trigger');
 
+    // Radix only renders the <img> once it loads successfully.
     await waitFor(async () => {
       const avatar = userMenuTrigger.querySelector('img');
       await expect(avatar).toBeInTheDocument();
-      await expect(avatar?.getAttribute('src')).toContain('example.com/avatar');
+      await expect(avatar?.getAttribute('src')).toContain('notion-avatar.app/image/avatar-1.jpg');
     });
   },
 };
@@ -578,7 +579,13 @@ export const AuthenticatedWithoutAvatar: Story = {
     );
 
     const userMenuTrigger = screen.getByTestId('user-menu-trigger');
+    // No image URL → initials fallback ("Test User" → "TU") inside the avatar circle.
     await expect(userMenuTrigger.querySelector('img')).not.toBeInTheDocument();
+    await waitFor(async () => {
+      const fallback = userMenuTrigger.querySelector('[data-slot="avatar-fallback"]');
+      await expect(fallback).toBeInTheDocument();
+      await expect(fallback).toHaveTextContent('TU');
+    });
 
     await userEvent.click(userMenuTrigger);
 

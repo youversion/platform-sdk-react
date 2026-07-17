@@ -8,8 +8,8 @@
   - `@youversion/platform-react-ui` (UI components)
 - Language: TypeScript
 - Test runner: Vitest
-- Node: >= 20.0.0
-- Package manager: pnpm >= 9.0.0 (no npm/yarn)
+- Node: >= 22.13.0 (pnpm 11 floor); we develop and test on Node 24 LTS
+- Package manager: pnpm >= 11.0.0 (no npm/yarn)
 
 ## WHERE TO MAKE CHANGES
 
@@ -49,7 +49,7 @@ tools/         Shared configs (TS, ESLint)
 
 ```bash
 # Setup
-pnpm install              # Requires pnpm >= 9.0.0, Node >= 20.0.0
+pnpm install              # Requires pnpm >= 11.0.0, Node >= 22.13.0 (tested on Node 24 LTS)
 
 # Build
 pnpm build               # Turbo builds all in dependency order
@@ -119,9 +119,11 @@ pnpm --filter @youversion/platform-react-ui build
 - Pre-commit hooks fail if typecheck or lint fails
 
 ### Environment
-- **Node.js requirement**: Minimum version 20.0.0 required
-- **React version**: Do not change React dependencies; pnpm overrides enforce 19.1.2
+- **Node.js requirement**: Minimum version 22.13.0 required (pnpm 11 requires Node >= 22.13); we develop and test on Node 24 LTS, which is what CI runs
+- **React version**: Do not change React dependencies; pnpm overrides (in `pnpm-workspace.yaml`) enforce 19.1.2
 - **Package manager**: Do not use npm/yarn; only pnpm supported
+- **Supply-chain protection**: `minimumReleaseAge: 4320` (3-day cooldown) in `pnpm-workspace.yaml` — `pnpm install` will reject packages published < 3 days ago. Override with `--force` if needed urgently. Workspace packages (`workspace:*`) are inherently excluded as they aren't fetched from the registry.
+- **pnpm 11 breaking changes**: Overrides moved from `package.json` → `pnpm-workspace.yaml`; build scripts require `allowBuilds` approval; `@internal/eslint-config` and `eslint-plugin-storybook` must be root devDependencies for resolution
 
 ### Package Boundaries (FOR AGENTS)
 - **Core must remain React-free** – do not import React or DOM APIs in `packages/core`
@@ -139,8 +141,8 @@ pnpm --filter @youversion/platform-react-ui build
 ❌ Don't assume shared source directory (each package self-contained)
 ❌ Don't use API Extractor (listed but not actually used)
 ❌ Don't expect consistent build tools (core: tsup, hooks: tsc only, ui: tsup + tsc)
-❌ Don't modify React version (exact 19.1.2 enforced via pnpm overrides)
-❌ Don't use npm/yarn (only pnpm >= 9.0.0 supported)
+❌ Don't modify React version (exact 19.1.2 enforced via pnpm overrides in `pnpm-workspace.yaml`)
+❌ Don't use npm/yarn (only pnpm >= 11.0.0 supported)
 ❌ Don't break unified versioning (all packages versioned together)
 
 ## MORE DETAIL PER PACKAGE

@@ -1,5 +1,37 @@
 # @youversion/platform-react-ui
 
+## 2.3.0
+
+### Minor Changes
+
+- ab38fb5: Surface a clear error when `YouVersionProvider` is given a missing or empty `appKey` instead of rendering a blank page. The UI provider now renders a styled "Missing app key" message, and the hooks provider throws a descriptive error for hooks-only consumers.
+- fc054c6: Add `ProfileAvatar` component with initials fallback (YPE-3648). Signed-in users without a profile image now see their initials ("Cam Anderson" → "CA", "Cher" → "C") in a bordered circle instead of a broken avatar; loaded photos get a 3px gray ring per design. `BibleReader`'s user menu now uses `ProfileAvatar` for all authenticated states, and the component is exported for direct use.
+- 683c123: Allow requesting YouVersion data-exchange permissions (e.g. `highlights`) at sign-in. These are intentionally not OIDC scopes: they ride alongside the standard `scope` param as repeatable `requested_permissions[]` query params on the authorize URL and are authorized via a separate per-app ACL rather than the token's scope claim.
+  - `YouVersionAPIUsers.signIn(redirectURL, scopes?, permissions?)` and the underlying PKCE authorization request builder now accept a `permissions` array typed as `SignInWithYouVersionPermissionValues[]`.
+  - `useYVAuth().signIn({ permissions })` forwards them from React.
+  - `<YouVersionAuthButton permissions={['highlights']} />` requests them from the sign-in button.
+
+  Scopes and permissions are separate arguments; existing calls that only pass scopes are unaffected.
+
+- af37b90: Add a verse action popover to `BibleReader`. Tapping verses selects them (shown with an underline) and opens a popover anchored to the last-selected verse with five highlight colors, Copy, and Share. Highlights apply a translucent fill, persist to `localStorage` per Bible version (shaped like the future highlight API), and can be removed individually. Copy/Share output mirrors bible.com formatting: the verse text in curly quotes, gaps in a non-contiguous selection joined with `...`, followed by the `Book Chapter:verses VERSION` reference. Share uses the Web Share API and falls back to copying where it isn't available.
+
+  `BibleReader` also accepts optional `onCopy` / `onShare` props. When provided, they receive the structured selection payload and suppress the default Web Share / clipboard flow, so React Native / Expo hosts can forward it across the native bridge (mirrors `VerseOfTheDay`'s `onShare`).
+
+  Note: `BibleTextViewProps.highlightedVerses` changed from `Record<number, boolean>` to `Record<number, string>` (verse number → highlight hex). This prop was never wired into shipped usage, so no released consumer is affected; the bump stays `minor`.
+
+### Patch Changes
+
+- fb7ac35: Tag the `X-YVP-Sdk` header with a `-dev` suffix for non-published builds so platform telemetry can separate internal YouVersion dev-time traffic from published partner traffic.
+
+  Published builds report the real version (`ReactSDK=2.2.0`); builds from source, dev, or tests report `ReactSDK=2.2.0-dev`. The version is stamped at build time via `YVP_PUBLISH_BUILD` (set by each package's `prepublishOnly`), and a publish guard aborts the release if an unstamped `-dev` build would ship. Published header values are otherwise unchanged, and consumers can still override `X-YVP-Sdk` via `additionalHeaders`.
+
+- Updated dependencies [d6ab2d5]
+- Updated dependencies [ab38fb5]
+- Updated dependencies [683c123]
+- Updated dependencies [fb7ac35]
+  - @youversion/platform-core@2.3.0
+  - @youversion/platform-react-hooks@2.3.0
+
 ## 2.2.0
 
 ### Minor Changes

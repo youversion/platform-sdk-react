@@ -1,6 +1,6 @@
 {
   "name": "@youversion/platform-core",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "A type-safe TypeScript SDK for accessing the YouVersion Platform APIs. Get Bible content and build Bible-based applications.",
   "license": "Apache-2.0",
   "type": "module",
@@ -35,8 +35,9 @@
     }
   },
   "scripts": {
-    "dev": "tsup src/index.ts src/browser.ts src/server.ts --format cjs,esm --dts --watch",
-    "build": "tsup src/index.ts src/browser.ts src/server.ts --format cjs,esm --dts",
+    "dev": "tsup --watch",
+    "build": "tsup",
+    "prepublishOnly": "YVP_PUBLISH_BUILD=true pnpm build && node ../../scripts/check-sdk-version-stamp.mjs core",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "dotenv -e .env.local -- vitest run",
