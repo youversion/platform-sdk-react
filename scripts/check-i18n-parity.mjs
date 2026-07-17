@@ -19,7 +19,8 @@ const localesDir = resolve(repoRoot, 'packages/ui/src/i18n/locales');
 const uiSrcDir = resolve(repoRoot, 'packages/ui/src');
 
 const TRANSLATION_LOCALES = ['fr', 'es'];
-const INTERPOLATION_TOKEN_RE = /\{\{(\w+)\}\}/g;
+// i18next allows whitespace and formatter args: {{ count }}, {{count, number}}
+const INTERPOLATION_TOKEN_RE = /\{\{\s*(\w+)[^}]*\}\}/g;
 // Matches literal-string args to any function named `t` (not i18next-specific).
 // Dynamic keys (templates/vars) and non-i18n `t()` helpers can false-pos/neg.
 const T_CALL_RE = /\bt\(\s*['"]([^'"]+)['"]/g;
@@ -155,7 +156,7 @@ const enKeys = Object.keys(en);
 const usedKeys = collectUsedKeys();
 
 for (const [key, locations] of usedKeys) {
-  if (!(key in en)) {
+  if (!Object.hasOwn(en, key)) {
     const locList = [...new Set(locations)].join(', ');
     errors.push(`Key "${key}" used in source but missing from en.json (${locList})`);
   }
@@ -186,7 +187,7 @@ for (const locale of TRANSLATION_LOCALES) {
   }
 
   for (const key of localeKeys) {
-    if (!(key in en)) {
+    if (!Object.hasOwn(en, key)) {
       errors.push(`Extra key "${key}" in ${locale}.json is not present in en.json`);
     }
   }

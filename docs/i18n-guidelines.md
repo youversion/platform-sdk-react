@@ -60,7 +60,7 @@ pnpm lint
 
 ## CI
 
-- **locale-ownership** job fails PRs that touch `packages/ui/src/i18n/locales/**` unless the PR is an automated sync from platform-localization (`chore/localization-sync-react-*` branch and `app/platform-localization-pr-bot` author). Add English strings upstream in platform-localization instead.
+- **locale-ownership** job fails PRs that touch `packages/ui/src/i18n/locales/**` unless the PR is an automated sync from platform-localization (`chore/localization-sync-react-*` branch and `platform-localization-pr-bot[bot]` author). Add English strings upstream in platform-localization instead.
 - **i18n-check** job runs `pnpm check:i18n` on every PR.
 - **Lint** job runs ESLint with `eslint-plugin-i18next` scoped to `packages/ui/src/components/**` (excluding `*.test.*` and `*.stories.*`).
 
