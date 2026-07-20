@@ -1,3 +1,4 @@
+import { expandPassageId } from '@/lib/highlight-projection';
 import { INTER_FONT, SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { Highlight } from '@youversion/platform-core';
@@ -841,7 +842,24 @@ export const Controlled: Story = {
   ),
 };
 
-/** True when a stored highlight entry is covered by an intent's verses. */
+/**
+ * Splits a stored highlight into per-verse entries so it can be matched
+ * against an intent's per-verse `passageIds`. API data may hold range USFMs
+ * (`JHN.1.3-5`); matching those as opaque strings would silently miss, and a
+ * partial removal (one verse out of a range) must split the range, not drop
+ * it. Unexpandable ids pass through untouched.
+ */
+const toPerVerse = (h: Highlight): Highlight[] => {
+  const expanded = expandPassageId(h.passage_id);
+  if (!expanded) return [h];
+  return expanded.verses.map((verse) => ({
+    version_id: h.version_id,
+    passage_id: `${expanded.book}.${expanded.chapter}.${verse}`,
+    color: h.color,
+  }));
+};
+
+/** True when a per-verse stored entry is covered by an intent's verses. */
 const matchesIntent = (h: Highlight, intent: BibleReaderHighlightIntent) =>
   h.version_id === intent.versionId && intent.passageIds.includes(h.passage_id);
 
@@ -863,22 +881,21 @@ export const ControlledFakeHost: Story = {
     onHighlightRemove: fn(),
   },
   render: function FakeHostStory(args: BibleReaderRootProps) {
-    // The host's own highlight store, kept per-verse so remove intents (always
-    // per-verse `passageIds`) match entries directly. A real native host owns
-    // this in its data layer (with the API, cache, and optimism behind it);
-    // the reader only ever sees the resulting array.
+    // The host's own highlight store. A real native host owns this in its data
+    // layer (with the API, cache, and optimism behind it); the reader only ever
+    // sees the resulting array. Seeded with a range USFM on purpose — API data
+    // can hold ranges, and intents are per-verse, so every write normalizes the
+    // store through `toPerVerse` before matching.
     const [highlights, setHighlights] = useState<Highlight[]>([
       { version_id: 111, passage_id: 'JHN.1.1', color: 'fffe00' },
-      { version_id: 111, passage_id: 'JHN.1.3', color: '5dff79' },
-      { version_id: 111, passage_id: 'JHN.1.4', color: '5dff79' },
-      { version_id: 111, passage_id: 'JHN.1.5', color: '5dff79' },
+      { version_id: 111, passage_id: 'JHN.1.3-5', color: '5dff79' },
     ]);
 
     const handleApply = (intent: BibleReaderHighlightIntent) => {
       args.onHighlightApply?.(intent);
       setHighlights((prev) => [
         // Replace any existing entry for these verses (last write wins).
-        ...prev.filter((h) => !matchesIntent(h, intent)),
+        ...prev.flatMap(toPerVerse).filter((h) => !matchesIntent(h, intent)),
         ...intent.passageIds.map((passage_id) => ({
           version_id: intent.versionId,
           passage_id,
@@ -889,7 +906,7 @@ export const ControlledFakeHost: Story = {
 
     const handleRemove = (intent: BibleReaderHighlightIntent) => {
       args.onHighlightRemove?.(intent);
-      setHighlights((prev) => prev.filter((h) => !matchesIntent(h, intent)));
+      setHighlights((prev) => prev.flatMap(toPerVerse).filter((h) => !matchesIntent(h, intent)));
     };
 
     return (
