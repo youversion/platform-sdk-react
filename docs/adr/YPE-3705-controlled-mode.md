@@ -45,6 +45,13 @@ notification would be a different event under a different name).
 
 ## Rejected alternatives
 
+- **Fully headless reader (pure projection for everything)** — would require
+  the host to supply passage HTML, books, and version metadata as props,
+  tripling the bridge surface for app-key catalog data that isn't user data.
+  The pure-presentational layer already exists below (`BibleTextView`); the
+  epic's goal is native ownership of *user data and tokens*, so only the
+  highlight slice becomes a pure projection while the reader keeps fetching
+  content.
 - **Explicit mode prop** — a second axis that can contradict the data;
   presence-of-prop is the established controlled/uncontrolled idiom.
 - **Chapter-scoped `Record<number, string>` prop** — loses the identity fields
