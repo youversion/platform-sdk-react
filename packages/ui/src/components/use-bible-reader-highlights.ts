@@ -95,13 +95,14 @@ export function useBibleReaderHighlights({
   // (another device, another tab) until navigation.
   //
   // The set is scoped to the current version+chapter: verse numbers only mean
-  // something within one scope. Two things keep it honest: (1) a write enrolls
-  // its verses here only if the scope captured at write start still matches
-  // when the write settles (see `apply` / `remove`), and (2) the set is cleared
-  // on scope change alongside the overlay reset below. Without that gate a slow
-  // write from the previous chapter could enroll a verse number that now
-  // belongs to the new chapter's optimistic entry, and the drain effect would
-  // erase it. Same-scope write races are documented at the apply/remove
+  // something within one scope. Both settle paths capture the scope at write
+  // start (`scopeAtWrite`) and act only if it still matches `overlayScopeRef`
+  // when they run — a success enrolls its verses here, a failure reverts the
+  // optimistic overlay — and the set is also cleared on scope change alongside
+  // the overlay reset below. Without those guards a slow write from the
+  // previous chapter could touch a verse number that now belongs to the new
+  // chapter's optimistic entry (enroll-then-drain, or a snapshot-absent revert
+  // that deletes it). Same-scope write races are documented at the apply/remove
   // boundary and deferred to PR 2.
   const confirmedVersesRef = useRef<Set<number>>(new Set());
 
@@ -246,8 +247,11 @@ export function useBibleReaderHighlights({
           );
         }
         // Partial failures revert the whole optimistic batch; the refetch that
-        // any successful create triggered repaints the server's truth.
-        revertOverlay(verses, snapshot);
+        // any successful create triggered repaints the server's truth. Gate on
+        // scope like the success path: if we've since navigated away, the reset
+        // already wiped this overlay and the snapshot's absent entries would
+        // otherwise `delete` the new scope's optimistic verses.
+        if (overlayScopeRef.current === scopeAtWrite) revertOverlay(verses, snapshot);
       })();
     },
     [live, book, chapter, versionId, createHighlight, patchOverlay, revertOverlay],
@@ -294,7 +298,8 @@ export function useBibleReaderHighlights({
             failure.error,
           );
         }
-        revertOverlay(targetVerses, snapshot);
+        // Gate on scope like the success path (see `apply`).
+        if (overlayScopeRef.current === scopeAtWrite) revertOverlay(targetVerses, snapshot);
       })();
     },
     [live, book, chapter, versionId, deleteHighlight, patchOverlay, revertOverlay],

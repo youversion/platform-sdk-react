@@ -413,4 +413,60 @@ describe('useBibleReaderHighlights — scope changes', () => {
 
     expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
   });
+
+  it("does not revert the new scope's optimistic overlay when a previous scope's write fails", async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(vi.fn());
+
+    // Chapter 3's create is deferred so it can fail AFTER we navigate away.
+    let rejectPrevWrite: (reason?: unknown) => void = vi.fn();
+    const prevWrite = new Promise((_resolve, reject) => {
+      rejectPrevWrite = reject;
+    });
+    mockUseHighlights({
+      createHighlight: vi.fn().mockReturnValue(prevWrite),
+    });
+
+    const { result, rerender } = renderHook(
+      (props: { versionId: number; book: string; chapter: string }) =>
+        useBibleReaderHighlights(props),
+      { wrapper: AuthWrapper, initialProps: defaultOptions },
+    );
+
+    // Highlight JHN.3.16 — write is in flight (deferred, will fail later).
+    act(() => {
+      result.current.apply('fffe00', [16]);
+    });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+
+    // Navigate to JHN.4: the overlay resets. This chapter gets its own
+    // never-settling write so its optimistic entry survives on its own terms.
+    mockUseHighlights({
+      createHighlight: vi.fn().mockReturnValue(new Promise<never>(vi.fn())),
+    });
+    rerender({ versionId: 111, book: 'JHN', chapter: '4' });
+    expect(result.current.highlightedVerses).toEqual({});
+
+    // Highlight JHN.4.16 — same verse number, different chapter.
+    act(() => {
+      result.current.apply('fffe00', [16]);
+    });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+
+    // Chapter 3's stale write finally fails. Its snapshot ({}) lacks verse 16,
+    // so an ungated revert would `delete` JHN.4.16's optimistic entry. The
+    // scope gate skips the revert since we've left that scope.
+    await act(async () => {
+      rejectPrevWrite(new Error('network down'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    // The failure is still logged unconditionally.
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to apply highlight'),
+      expect.objectContaining({ passageId: 'JHN.3.16' }),
+    );
+    consoleError.mockRestore();
+  });
 });
