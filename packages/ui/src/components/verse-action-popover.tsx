@@ -11,9 +11,9 @@ type Measurable = { getBoundingClientRect: () => DOMRect };
 
 /**
  * Highlight colors, as 6-digit lowercase hex (no `#`) so they map 1:1 onto the
- * future API `highlight.color` field (/^[0-9a-f]{6}$/). Order is the canonical
- * apply order: yellow, green, blue, orange, pink. Hardcoded to match the
- * YouVersion iOS app exactly.
+ * API `highlight.color` field (/^[0-9a-f]{6}$/). Order is the canonical apply
+ * order: yellow, green, blue, orange, pink. Hardcoded to match the YouVersion
+ * iOS app exactly.
  */
 export const HIGHLIGHT_COLORS = ['fffe00', '5dff79', '00d6ff', 'ffc66f', 'ff95ef'] as const;
 
@@ -32,6 +32,12 @@ type VerseActionPopoverProps = {
    * reachable instead of leaving with the verse. Omit for a purely anchored bar.
    */
   scrollRoot?: HTMLElement | null;
+  /**
+   * Whether the highlights UI is available. When `false` (the `HIGHLIGHTS_LIVE`
+   * dark-launch flag is off) the color row and the remove (checkmark) circles are
+   * hidden entirely — only Copy / Share remain. Defaults to `true`.
+   */
+  highlightsEnabled?: boolean;
   onHighlight: (color: string) => void;
   onClearHighlight: (color: string) => void;
   onCopy: () => void;
@@ -103,6 +109,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   highlightedVerses,
   anchorElement,
   scrollRoot,
+  highlightsEnabled = true,
   onHighlight,
   onClearHighlight,
   onCopy,
@@ -275,24 +282,30 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
             </svg>
           )}
 
-          <div
-            className="yv:flex yv:items-center yv:gap-2"
-            role="group"
-            aria-label={t('highlightColorsAriaLabel')}
-          >
-            {view.colorCircles.map(({ color, showX, key }) => (
-              <ColorCircle
-                key={key}
-                color={color}
-                showX={showX}
-                label={showX ? t('clearHighlightAriaLabel') : t('applyHighlightAriaLabel')}
-                onClick={() => (showX ? onClearHighlight(color) : onHighlight(color))}
-              />
-            ))}
-          </div>
+          {/* Highlights UI is hidden entirely when the feature is off (flag off):
+              only Copy / Share remain. */}
+          {highlightsEnabled && (
+            <>
+              <div
+                className="yv:flex yv:items-center yv:gap-2"
+                role="group"
+                aria-label={t('highlightColorsAriaLabel')}
+              >
+                {view.colorCircles.map(({ color, showX, key }) => (
+                  <ColorCircle
+                    key={key}
+                    color={color}
+                    showX={showX}
+                    label={showX ? t('clearHighlightAriaLabel') : t('applyHighlightAriaLabel')}
+                    onClick={() => (showX ? onClearHighlight(color) : onHighlight(color))}
+                  />
+                ))}
+              </div>
 
-          {/* Separator */}
-          <div className="yv:w-px yv:h-8 yv:bg-border" aria-hidden="true" />
+              {/* Separator */}
+              <div className="yv:w-px yv:h-8 yv:bg-border" aria-hidden="true" />
+            </>
+          )}
 
           <div className="yv:flex yv:items-center yv:gap-1">
             <ActionButton

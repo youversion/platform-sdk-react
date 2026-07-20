@@ -198,6 +198,11 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
           data-yv-theme={theme}
           className={cn(
             'yv:shadow-none yv:p-3 yv:h-auto yv:w-fit',
+            // The YV brand button is a neutral surface (white in light, dark in
+            // dark) with its own text/logo color set below — pin the background
+            // explicitly so it doesn't inherit the `default` variant's
+            // `bg-primary`, which would render the logo unreadable.
+            'yv:bg-background yv:hover:bg-background/90',
             variant === 'outline' ? 'yv:border' : 'yv:border-none',
             theme === 'light' ? 'yv:text-black' : 'yv:text-white',
             className,
@@ -231,6 +236,9 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
         data-yv-theme={theme}
         className={cn(
           'yv:relative yv:shadow-none yv:w-fit',
+          // Pin the neutral brand surface so the button doesn't inherit the
+          // `default` variant's `bg-primary` (see the icon branch above).
+          'yv:bg-background yv:hover:bg-background/90',
           variant === 'outline' ? 'yv:border' : 'yv:border-none',
           theme === 'light' ? 'yv:text-black' : 'yv:text-white',
           className,

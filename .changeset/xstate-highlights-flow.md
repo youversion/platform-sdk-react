@@ -1,0 +1,12 @@
+---
+'@youversion/platform-react-ui': patch
+---
+
+Rewrite the BibleReader highlights flow as an explicit xstate v5 statechart (YPE-1034 / PR-288, still behind the internal `HIGHLIGHTS_LIVE` flag). `useBibleReaderHighlights` is now a thin adapter over `bibleReaderHighlightsMachine`; the machine (authored with `setup()` and named guards/actions/actors, so it is Stately-visualizable) owns the whole flow — optimistic overlay, serialized writes with per-verse ownership, reconcile, the auth flow, and the resume-on-return path. A mermaid statechart lives in `docs/highlight-flow-statechart.md`. All previously-shipped invariants are preserved (writes serialized, per-verse ownership tokens, per-sub-write settlement, apply collapses to ranges / remove DELETEs per verse, one refetch per settled batch, scope-change drops the overlay, `live` gates rendering/fetching).
+
+Behavior changes:
+
+- **Sign-in dialog first (signed out):** a signed-out color tap now opens a `SignInDialog` (introducing the app, with an optional integrator prompt) instead of redirecting to OAuth immediately. Confirm launches the sign-in redirect requesting `highlights`; decline/dismiss discards the pending highlight and keeps the verse selection. The dialog's `appName` comes from `YouVersionPlatformConfiguration.appName` (falling back to "This app") and its prompt from `signInPromptMessage`. The hook return gains `signInDialogOpen`, `confirmSignInDialog`, and `cancelSignInDialog`.
+- **Flag-off hides the highlights UI:** when `HIGHLIGHTS_LIVE` is off, `VerseActionPopover` hides the color row and the remove (checkmark) circles entirely via a new `highlightsEnabled` prop — only Copy / Share remain. Previously the row still rendered while taps were inert.
+- **"Vapor" fix:** a deleted highlight no longer briefly reappears when a stale read-replica fetch lands after the delete settled. The reconcile step no longer retires remove-overlay entries; a removed verse is held until a reset path (scope change, sign-out, or a newer write). Apply-side convergence is unchanged. This matches the already-accepted trade-off (a concurrent same-verse edit from another device renders stale until navigation or the next write).
+- **Remove-failure no longer re-prompts:** a 401/403 on a remove invalidates the permission cache but no longer opens the permission dialog (there is no pending highlight to resume), resolving a documented deferred wart.

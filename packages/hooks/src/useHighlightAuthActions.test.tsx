@@ -44,6 +44,8 @@ describe('useHighlightAuthActions', () => {
   });
 
   it('reads and invalidates the highlights permission cache', () => {
+    // The permission cache is scoped to the signed-in user, so establish one.
+    YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-1' });
     const { result } = renderHook(() => useHighlightAuthActions(), { wrapper });
 
     expect(result.current.hasHighlightsPermission()).toBe(false);

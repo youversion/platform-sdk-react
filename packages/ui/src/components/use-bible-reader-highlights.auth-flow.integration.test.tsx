@@ -66,6 +66,10 @@ beforeEach(() => {
   sessionStorage.clear();
   signedIn = false;
   setHighlightsLive(true);
+  // The permission cache is user-scoped: persist a matching userInfo (as the
+  // auth provider does at sign-in) so granted permissions are readable. This
+  // alone grants nothing — the cache stays empty until a grant lands.
+  YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-1', name: 'Test User' });
   setLocation('https://host.example/read');
   vi.spyOn(window.history, 'replaceState').mockImplementation(vi.fn());
   vi.spyOn(HighlightsClient.prototype, 'getHighlights').mockResolvedValue({
@@ -82,35 +86,46 @@ afterEach(() => {
 });
 
 describe('highlight auth flow — one-fell-swoop (signed out)', () => {
-  it('color tap stashes pending, starts sign-in with highlights, then applies on granted return', async () => {
+  it('color tap opens the sign-in dialog and stashes pending; confirm starts sign-in; granted return applies', async () => {
     const signIn = vi.spyOn(YouVersionAPIUsers, 'signIn').mockResolvedValue(undefined);
     const createHighlight = vi
       .spyOn(HighlightsClient.prototype, 'createHighlight')
       .mockResolvedValue({ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' });
 
-    const { result, rerender } = renderHook(() => useBibleReaderHighlights(options), {
+    const { result, unmount } = renderHook(() => useBibleReaderHighlights(options), {
       wrapper: Providers,
     });
 
-    // Signed out color tap → auth flow, not a write.
+    // NEW BEHAVIOR (PR-288): a signed-out color tap opens the sign-in dialog
+    // instead of redirecting immediately. It stashes the pending intent and does
+    // NOT launch OAuth until the user confirms.
     act(() => {
       expect(result.current.apply('FFFE00', [16])).toBe('flow');
     });
 
+    expect(result.current.signInDialogOpen).toBe(true);
     const pending = readPendingHighlight();
     expect(pending).toMatchObject({ verses: [16], color: 'fffe00', versionId: 111, chapter: '3' });
+    expect(signIn).not.toHaveBeenCalled();
+    expect(createHighlight).not.toHaveBeenCalled();
+
+    // Confirm → launch the full-page sign-in redirect requesting `highlights`.
+    act(() => {
+      result.current.confirmSignInDialog();
+    });
     expect(signIn).toHaveBeenCalledWith(
       'https://host.example/callback',
       ['profile'],
       ['highlights'],
     );
-    expect(createHighlight).not.toHaveBeenCalled();
 
-    // Simulate the granted return: handleAuthCallback would have persisted the
-    // granted permission; the session then resolves authenticated.
+    // The confirm triggers a full-page redirect; simulate the reload on the
+    // granted return — a fresh mount, now signed in with the permission granted
+    // and the pending highlight still in sessionStorage.
+    unmount();
     YouVersionPlatformConfiguration.saveGrantedPermissions(['highlights']);
     signedIn = true;
-    rerender();
+    renderHook(() => useBibleReaderHighlights(options), { wrapper: Providers });
 
     await waitFor(() => {
       expect(createHighlight).toHaveBeenCalledWith({
@@ -119,9 +134,43 @@ describe('highlight auth flow — one-fell-swoop (signed out)', () => {
         color: 'fffe00',
       });
     });
-    // Pending consumed (the write is the proof it applied; the post-write
-    // refetch here returns empty server truth, so the optimistic overlay clears).
+    // Pending consumed (the write is the proof it applied).
     expect(readPendingHighlight()).toBeNull();
+  });
+});
+
+describe('highlight auth flow — sign-in dialog (signed out)', () => {
+  it('a color tap opens the sign-in dialog and stashes pending without launching OAuth', () => {
+    const signIn = vi.spyOn(YouVersionAPIUsers, 'signIn').mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useBibleReaderHighlights(options), { wrapper: Providers });
+
+    act(() => {
+      expect(result.current.apply('fffe00', [16])).toBe('flow');
+    });
+
+    expect(result.current.signInDialogOpen).toBe(true);
+    expect(readPendingHighlight()).toMatchObject({ verses: [16], color: 'fffe00' });
+    expect(signIn).not.toHaveBeenCalled();
+  });
+
+  it('declining the sign-in dialog discards the pending highlight and does not sign in', () => {
+    const signIn = vi.spyOn(YouVersionAPIUsers, 'signIn').mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useBibleReaderHighlights(options), { wrapper: Providers });
+
+    act(() => {
+      result.current.apply('fffe00', [16]);
+    });
+    expect(result.current.signInDialogOpen).toBe(true);
+    expect(readPendingHighlight()).not.toBeNull();
+
+    act(() => {
+      result.current.cancelSignInDialog();
+    });
+    expect(result.current.signInDialogOpen).toBe(false);
+    expect(readPendingHighlight()).toBeNull();
+    expect(signIn).not.toHaveBeenCalled();
   });
 });
 
