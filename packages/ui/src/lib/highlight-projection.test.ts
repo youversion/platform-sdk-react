@@ -75,6 +75,22 @@ describe('deriveHighlightedVerses', () => {
     expect(map).toEqual({ 16: 'fffe00', 18: '5dff79', 19: '5dff79' });
   });
 
+  it('ignores colors outside allowedColors, matching case-insensitively', () => {
+    const map = deriveHighlightedVerses(
+      [highlight(111, 'JHN.3.16', 'abcdef'), highlight(111, 'JHN.3.17', 'FFFE00')],
+      111,
+      'JHN',
+      '3',
+      ['fffe00'],
+    );
+    expect(map).toEqual({ 17: 'fffe00' });
+  });
+
+  it('accepts any color when allowedColors is omitted', () => {
+    const map = deriveHighlightedVerses([highlight(111, 'JHN.3.16', 'abcdef')], 111, 'JHN', '3');
+    expect(map).toEqual({ 16: 'abcdef' });
+  });
+
   it('ignores entries for other versions', () => {
     const map = deriveHighlightedVerses([highlight(222, 'JHN.3.16', 'fffe00')], 111, 'JHN', '3');
     expect(map).toEqual({});

@@ -38,7 +38,7 @@ import { PersonIcon } from './icons/person';
 import { ProfileAvatar } from './profile-avatar';
 import { Button } from './ui/button';
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from './ui/popover';
-import { VerseActionPopover } from './verse-action-popover';
+import { HIGHLIGHT_COLORS, VerseActionPopover } from './verse-action-popover';
 import { BibleTextView, getCleanVerseText, type FootnoteData } from './verse';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
 import { deriveHighlightedVerses } from '@/lib/highlight-projection';
@@ -198,6 +198,10 @@ export type RootProps = {
    * self-contained across renders is unsupported (dev warning). `[]` means
    * "controlled, nothing highlighted"; leaving the prop off means
    * self-contained.
+   *
+   * Entries whose color is outside the reader's five built-in swatches are
+   * ignored — the verse-action popover can only offer removal for its own
+   * palette, so an unmanageable color must not paint.
    */
   highlights?: Highlight[];
   /**
@@ -674,7 +678,7 @@ function Content() {
   const chapterPrefix = `${book}.${chapter}.`;
   const highlightedVerses = useMemo(() => {
     if (isHighlightsControlled) {
-      return deriveHighlightedVerses(highlights ?? [], versionId, book, chapter);
+      return deriveHighlightedVerses(highlights ?? [], versionId, book, chapter, HIGHLIGHT_COLORS);
     }
     const map: Record<number, string> = {};
     for (const [passageId, color] of Object.entries(highlightStore)) {

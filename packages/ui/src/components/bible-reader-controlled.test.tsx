@@ -224,6 +224,17 @@ describe('BibleReader controlled mode - pure projection', () => {
     }
   });
 
+  it('ignores entries with colors outside the built-in swatches (no un-removable paint)', () => {
+    const highlights: Highlight[] = [
+      { version_id: 111, passage_id: 'JHN.1.1', color: 'abcdef' },
+      { version_id: 111, passage_id: 'JHN.1.2', color: YELLOW },
+    ];
+    const { container } = renderReader({ highlights });
+
+    expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
+  });
+
   it('re-projects when the highlights prop changes (host round-trip)', () => {
     const { container, rerender } = renderReader({ highlights: [] });
     expect(getVerseEl(container, 1).style.backgroundColor).toBe('');

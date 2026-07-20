@@ -51,20 +51,27 @@ export function expandPassageId(passageId: string): ExpandedPassageId | null {
  * carries its full identity, so stale host data can never mispaint. Range
  * passage ids are expanded per verse. Colors are normalized to lowercase (the
  * API accepts uppercase at the boundary). Later entries win on collisions.
+ *
+ * When `allowedColors` is given, entries with any other color are ignored too:
+ * the verse-action popover can only offer removal for its own swatches, so a
+ * color the reader can't manage must not paint (it would be un-removable).
  */
 export function deriveHighlightedVerses(
   highlights: readonly Highlight[],
   versionId: number,
   book: string,
   chapter: string,
+  allowedColors?: readonly string[],
 ): Record<number, string> {
   const map: Record<number, string> = {};
   for (const { version_id, passage_id, color } of highlights) {
     if (version_id !== versionId) continue;
+    const normalizedColor = color.toLowerCase();
+    if (allowedColors && !allowedColors.includes(normalizedColor)) continue;
     const expanded = expandPassageId(passage_id);
     if (!expanded || expanded.book !== book || expanded.chapter !== chapter) continue;
     for (const verse of expanded.verses) {
-      map[verse] = color.toLowerCase();
+      map[verse] = normalizedColor;
     }
   }
   return map;
