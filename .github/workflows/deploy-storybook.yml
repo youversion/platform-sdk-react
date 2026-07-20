@@ -1,0 +1,62 @@
+name: Deploy Storybook
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/ui/**'
+      - 'packages/core/**'
+      - 'packages/hooks/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/deploy-storybook.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deployment at a time; don't cancel an in-flight deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Build Storybook
+        run: cd packages/ui && pnpm build-storybook
+        env:
+          # App keys are public application identity, not secrets; this one is
+          # kept in Actions secrets only for convenience alongside CI config.
+          STORYBOOK_YOUVERSION_APP_KEY: ${{ secrets.STORYBOOK_YOUVERSION_APP_KEY }}
+          STORYBOOK_AUTH_REDIRECT_URL: https://youversion.github.io/platform-sdk-react/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: packages/ui/storybook-static
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
