@@ -7,6 +7,7 @@ import {
   HighlightsClient,
   ApiClient,
   type Collection,
+  type GetHighlightsOptions,
   type Highlight,
   type CreateHighlight,
 } from '@youversion/platform-core';
@@ -26,6 +27,8 @@ vi.mock('@youversion/platform-core', async () => {
 });
 
 describe('useHighlights', () => {
+  const defaultOptions: GetHighlightsOptions = { version_id: 111, passage_id: 'MAT.1' };
+
   const mockHighlights: Collection<Highlight> = {
     data: [
       {
@@ -74,7 +77,7 @@ describe('useHighlights', () => {
 
   describe('context validation', () => {
     it('should throw error when context is not provided', () => {
-      expect(() => renderHook(() => useHighlights())).toThrow(
+      expect(() => renderHook(() => useHighlights(defaultOptions))).toThrow(
         'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
       );
     });
@@ -83,7 +86,7 @@ describe('useHighlights', () => {
   describe('client creation', () => {
     it('should create HighlightsClient with correct ApiClient config', () => {
       const wrapper = createYVWrapper();
-      renderHook(() => useHighlights(), { wrapper });
+      renderHook(() => useHighlights(defaultOptions), { wrapper });
 
       expect(ApiClient).toHaveBeenCalledWith({
         appKey: 'test-app-key',
@@ -93,7 +96,7 @@ describe('useHighlights', () => {
 
     it('should memoize HighlightsClient instance', () => {
       const wrapper = createYVWrapper();
-      const { rerender } = renderHook(() => useHighlights(), { wrapper });
+      const { rerender } = renderHook(() => useHighlights(defaultOptions), { wrapper });
 
       rerender();
 
@@ -113,7 +116,7 @@ describe('useHighlights', () => {
         </YouVersionContext.Provider>
       );
 
-      const { rerender } = renderHook(() => useHighlights(), { wrapper });
+      const { rerender } = renderHook(() => useHighlights(defaultOptions), { wrapper });
 
       expect(HighlightsClient).toHaveBeenCalledTimes(1);
 
@@ -126,9 +129,9 @@ describe('useHighlights', () => {
   });
 
   describe('fetching highlights', () => {
-    it('should fetch highlights with no options', async () => {
+    it('should fetch highlights with the provided options', async () => {
       const wrapper = createYVWrapper();
-      const { result } = renderHook(() => useHighlights(), { wrapper });
+      const { result } = renderHook(() => useHighlights(defaultOptions), { wrapper });
 
       expect(result.current.loading).toBe(true);
       expect(result.current.highlights).toBe(null);
@@ -137,51 +140,7 @@ describe('useHighlights', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetHighlights).toHaveBeenCalledWith(undefined);
-      expect.soft(result.current.highlights).toEqual(mockHighlights);
-    });
-
-    it('should fetch highlights with version_id option', async () => {
-      const wrapper = createYVWrapper();
-      const { result } = renderHook(() => useHighlights({ version_id: 111 }), { wrapper });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect.soft(mockGetHighlights).toHaveBeenCalledWith({ version_id: 111 });
-      expect.soft(result.current.highlights).toEqual(mockHighlights);
-    });
-
-    it('should fetch highlights with passage_id option', async () => {
-      const wrapper = createYVWrapper();
-      const { result } = renderHook(() => useHighlights({ passage_id: 'MAT.1.1' }), { wrapper });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect.soft(mockGetHighlights).toHaveBeenCalledWith({ passage_id: 'MAT.1.1' });
-      expect.soft(result.current.highlights).toEqual(mockHighlights);
-    });
-
-    it('should fetch highlights with both options', async () => {
-      const wrapper = createYVWrapper();
-      const { result } = renderHook(
-        () => useHighlights({ version_id: 111, passage_id: 'MAT.1.1' }),
-        {
-          wrapper,
-        },
-      );
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect.soft(mockGetHighlights).toHaveBeenCalledWith({
-        version_id: 111,
-        passage_id: 'MAT.1.1',
-      });
+      expect.soft(mockGetHighlights).toHaveBeenCalledWith(defaultOptions);
       expect.soft(result.current.highlights).toEqual(mockHighlights);
     });
 
@@ -189,7 +148,7 @@ describe('useHighlights', () => {
       const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(({ options }) => useHighlights(options), {
         wrapper,
-        initialProps: { options: { version_id: 111 } },
+        initialProps: { options: defaultOptions },
       });
 
       await waitFor(() => {
@@ -198,19 +157,22 @@ describe('useHighlights', () => {
 
       expect(mockGetHighlights).toHaveBeenCalledTimes(1);
 
-      rerender({ options: { version_id: 1 } });
+      rerender({ options: { version_id: 1, passage_id: 'JHN.3' } });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
       expect.soft(mockGetHighlights).toHaveBeenCalledTimes(2);
-      expect.soft(mockGetHighlights).toHaveBeenLastCalledWith({ version_id: 1 });
+      expect.soft(mockGetHighlights).toHaveBeenLastCalledWith({
+        version_id: 1,
+        passage_id: 'JHN.3',
+      });
     });
 
     it('should not fetch when enabled is false', async () => {
       const wrapper = createYVWrapper();
-      const { result } = renderHook(() => useHighlights(undefined, { enabled: false }), {
+      const { result } = renderHook(() => useHighlights(defaultOptions, { enabled: false }), {
         wrapper,
       });
 
@@ -227,7 +189,7 @@ describe('useHighlights', () => {
       const error = new Error('Failed to fetch highlights');
       mockGetHighlights.mockRejectedValueOnce(error);
 
-      const { result } = renderHook(() => useHighlights(), { wrapper });
+      const { result } = renderHook(() => useHighlights(defaultOptions), { wrapper });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -239,7 +201,7 @@ describe('useHighlights', () => {
 
     it('should support manual refetch', async () => {
       const wrapper = createYVWrapper();
-      const { result } = renderHook(() => useHighlights(), { wrapper });
+      const { result } = renderHook(() => useHighlights(defaultOptions), { wrapper });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -258,7 +220,7 @@ describe('useHighlights', () => {
   describe('createHighlight mutation', () => {
     it('should create highlight and refetch', async () => {
       const wrapper = createYVWrapper();
-      const { result } = renderHook(() => useHighlights(), { wrapper });
+      const { result } = renderHook(() => useHighlights(defaultOptions), { wrapper });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -289,7 +251,7 @@ describe('useHighlights', () => {
       const error = new Error('Failed to create highlight');
       mockCreateHighlight.mockRejectedValueOnce(error);
 
-      const { result } = renderHook(() => useHighlights(), { wrapper });
+      const { result } = renderHook(() => useHighlights(defaultOptions), { wrapper });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -312,28 +274,7 @@ describe('useHighlights', () => {
   describe('deleteHighlight mutation', () => {
     it('should delete highlight and refetch', async () => {
       const wrapper = createYVWrapper();
-      const { result } = renderHook(() => useHighlights(), { wrapper });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      const deletePromise = result.current.deleteHighlight('MAT.1.1');
-
-      await waitFor(() => {
-        expect(mockDeleteHighlight).toHaveBeenCalledWith('MAT.1.1', undefined);
-      });
-
-      await deletePromise;
-
-      await waitFor(() => {
-        expect(mockGetHighlights).toHaveBeenCalledTimes(2);
-      });
-    });
-
-    it('should delete highlight with options', async () => {
-      const wrapper = createYVWrapper();
-      const { result } = renderHook(() => useHighlights(), { wrapper });
+      const { result } = renderHook(() => useHighlights(defaultOptions), { wrapper });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -347,7 +288,9 @@ describe('useHighlights', () => {
 
       await deletePromise;
 
-      expect(mockGetHighlights).toHaveBeenCalledTimes(2);
+      await waitFor(() => {
+        expect(mockGetHighlights).toHaveBeenCalledTimes(2);
+      });
     });
 
     it('should handle delete error', async () => {
@@ -355,13 +298,13 @@ describe('useHighlights', () => {
       const error = new Error('Failed to delete highlight');
       mockDeleteHighlight.mockRejectedValueOnce(error);
 
-      const { result } = renderHook(() => useHighlights(), { wrapper });
+      const { result } = renderHook(() => useHighlights(defaultOptions), { wrapper });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
-      await expect(result.current.deleteHighlight('MAT.1.1')).rejects.toThrow(
+      await expect(result.current.deleteHighlight('MAT.1.1', { version_id: 111 })).rejects.toThrow(
         'Failed to delete highlight',
       );
 

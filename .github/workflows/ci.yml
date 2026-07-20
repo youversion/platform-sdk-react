@@ -1,12 +1,10 @@
 name: CI
 
 # Node policy (see docs/release-hardening-decisions.md, Decision 3):
-# PR/CI jobs run on Node 20 on purpose — the low end of the supported range
-# (package.json engines.node >=20) — so we catch anything that would break a
-# consumer on the oldest Node we claim to support. The Release workflow runs a
-# newer Node deliberately (see release.yml); the split is intentional, not an
-# oversight. New dev-deps MUST support engines.node >=20, or the floor is
-# raised as a deliberate decision — never silently.
+# CI runs Node 24 LTS across the board. The consumer floor is engines.node
+# >=22.13 (pnpm 11 requires it). New dev-deps MUST support that floor, or it
+# gets raised as a deliberate decision — never lowered silently to escape a
+# dependency constraint.
 
 on:
   push:
@@ -19,6 +17,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  locale-ownership:
+    name: Locale Ownership
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Block manual locale edits
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          ACTOR: ${{ github.actor }}
+        run: bash .github/scripts/check-locale-ownership.sh
+
+  i18n-check:
+    name: i18n Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run i18n parity check
+        run: pnpm check:i18n
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -28,13 +67,11 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9.0.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -52,13 +89,11 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9.0.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -78,13 +113,11 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9.0.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -144,13 +177,11 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9.0.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           cache: 'pnpm'
 
       - name: Install dependencies

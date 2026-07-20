@@ -72,7 +72,7 @@ When conducting code reviews, AI agents should systematically evaluate the follo
 - Is backward compatibility maintained where expected?
 - Are deprecated APIs avoided?
 - Are peer dependencies properly defined for the published packages?
-- Is the minimum Node.js version (>= 20.0.0) respected?
+- Is the minimum Node.js version (>= 22.13.0) respected?
 
 ### Build System and Tooling
 - Do changes work with the Turbo build cache?
@@ -81,6 +81,14 @@ When conducting code reviews, AI agents should systematically evaluate the follo
 - Do lint and format commands pass successfully?
 - Are pre-commit hooks passing?
 - Are changeset entries created for user-facing changes?
+
+### Internationalization (i18n)
+- Are user-facing strings routed through `t()` or `Trans` / `i18nKey` — not hardcoded in JSX?
+- Are new English keys added in **platform-localization** (`sources/common/en.json`, `react.*` namespace), not only in this repo?
+- Are `fr.json` / `es.json` left untouched (synced upstream via Crowdin → `distribute-react.yml`)?
+- Do interpolation tokens (`{{name}}`) match across locale files once translations exist?
+- Does `pnpm check:i18n` pass (warnings for missing fr/es keys and orphan en keys are acceptable until upstream sync or intentional dynamic-key allowlisting)?
+- See [i18n-guidelines.md](./i18n-guidelines.md) for the full workflow.
 
 ### Accessibility
 - Are ARIA attributes properly implemented?

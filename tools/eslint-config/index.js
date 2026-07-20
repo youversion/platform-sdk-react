@@ -2,6 +2,7 @@ import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
+import i18nextPlugin from 'eslint-plugin-i18next';
 import prettierConfig from 'eslint-config-prettier';
 
 const typescriptFiles = ['**/*.ts', '**/*.tsx', '**/*.mts', '**/*.cts'];
@@ -39,6 +40,28 @@ export default tseslint.config(
       parserOptions: {
         allowDefaultProject: true,
       },
+    },
+  },
+
+  // i18next: forbid hardcoded user-facing strings in UI components
+  {
+    name: 'internal/i18next',
+    files: ['packages/ui/src/components/**/*.tsx'],
+    ignores: ['**/*.test.tsx', '**/*.stories.tsx'],
+    plugins: {
+      i18next: i18nextPlugin,
+    },
+    rules: {
+      'i18next/no-literal-string': [
+        'error',
+        {
+          framework: 'react',
+          mode: 'jsx-only',
+          'jsx-attributes': {
+            include: ['aria-label', 'title', 'placeholder', 'alt'],
+          },
+        },
+      ],
     },
   },
 

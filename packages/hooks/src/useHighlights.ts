@@ -14,7 +14,7 @@ import {
 } from '@youversion/platform-core';
 
 export function useHighlights(
-  options?: GetHighlightsOptions,
+  options: GetHighlightsOptions,
   apiOptions?: UseApiDataOptions,
 ): {
   highlights: Collection<Highlight> | null;
@@ -22,7 +22,7 @@ export function useHighlights(
   error: Error | null;
   refetch: () => void;
   createHighlight: (data: CreateHighlight) => Promise<Highlight>;
-  deleteHighlight: (passageId: string, deleteOptions?: DeleteHighlightOptions) => Promise<void>;
+  deleteHighlight: (passageId: string, deleteOptions: DeleteHighlightOptions) => Promise<void>;
 } {
   const context = useContext(YouVersionContext);
 
@@ -42,9 +42,13 @@ export function useHighlights(
     );
   }, [context?.apiHost, context?.appKey, context?.installationId, context?.additionalHeaders]);
 
+  // The dep array keys on the primitive fields of `options` rather than the
+  // object reference, so an inline `{ version_id, passage_id }` literal doesn't
+  // force a refetch on every render. If `GetHighlightsOptions` gains more
+  // fields that should trigger refetches, add them to this array too.
   const { data, loading, error, refetch } = useApiData<Collection<Highlight>>(
     () => highlightsClient.getHighlights(options),
-    [highlightsClient, options?.version_id, options?.passage_id],
+    [highlightsClient, options.version_id, options.passage_id],
     {
       enabled: apiOptions?.enabled !== false,
     },
@@ -60,7 +64,7 @@ export function useHighlights(
   );
 
   const deleteHighlight = useCallback(
-    async (passageId: string, deleteOptions?: DeleteHighlightOptions): Promise<void> => {
+    async (passageId: string, deleteOptions: DeleteHighlightOptions): Promise<void> => {
       await highlightsClient.deleteHighlight(passageId, deleteOptions);
       refetch();
     },

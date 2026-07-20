@@ -1,5 +1,7 @@
 import * as React from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
+import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 import { Button } from './button';
 import { XIcon } from '../icons/x';
 
@@ -35,6 +37,8 @@ function PopoverContent({
   headerChild?: React.ReactNode;
   theme?: 'light' | 'dark';
 }): React.ReactNode {
+  const { t } = useTranslation(undefined, { i18n });
+
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
@@ -69,7 +73,7 @@ function PopoverContent({
                 className="yv:w-6 yv:h-6 yv:text-muted-foreground"
               >
                 <XIcon className="yv:size-5" />
-                <span className="yv:sr-only">Close</span>
+                <span className="yv:sr-only">{t('closeAriaLabel')}</span>
               </Button>
             </PopoverClose>
           </section>

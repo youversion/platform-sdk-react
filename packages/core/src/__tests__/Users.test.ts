@@ -79,6 +79,26 @@ describe('YouVersionAPIUsers', () => {
 
       vi.restoreAllMocks();
     });
+
+    it('should forward requested permissions to the authorize URL', async () => {
+      vi.spyOn(crypto, 'getRandomValues').mockImplementation((array: ArrayBufferView) => {
+        if (array instanceof Uint8Array) {
+          for (let i = 0; i < array.length; i++) {
+            array[i] = i;
+          }
+        }
+        return array;
+      });
+
+      vi.spyOn(crypto.subtle, 'digest').mockResolvedValue(new Uint8Array(32).buffer);
+      mocks.btoa.mockReturnValue('mockBase64Value');
+
+      await YouVersionAPIUsers.signIn('https://example.com/callback', ['profile'], ['highlights']);
+
+      expect(mocks.window.location.href).toContain('requested_permissions%5B%5D=highlights');
+
+      vi.restoreAllMocks();
+    });
   });
 
   describe('handleAuthCallback', () => {
