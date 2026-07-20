@@ -117,11 +117,16 @@ pnpm --filter @youversion/platform-react-ui build
 - Changesets required for ALL version bumps (even patches)
 - **Unified versioning**: All packages must share exact same version - never version packages independently
 - Pre-commit hooks fail if typecheck or lint fails
+- **Every PR must include a changeset** — CI (`.github/workflows/changeset.yml`) fails a PR that adds none. For a genuine no-release change (CI/docs/tooling), add an intentional empty changeset: `pnpm changeset --empty`. A missing changeset is what caused the 2026-07-17 release failure.
+
+### Commits & PRs
+- **PR titles must be Conventional Commits** — the PR title becomes the squash-merge commit on `main` and is linted by `.github/workflows/pr-title.yml`. Ticket refs (e.g. `YPE-1234`) go in the **branch name** and PR body, not the title.
+- The per-commit husky/commitlint hook is an optional local dev aid; the PR title is the real gate.
 
 ### Environment
-- **Node.js requirement**: Minimum version 20.0.0 required
+- **Node.js requirement**: Minimum version 20.0.0 required. New dev-deps must support `engines.node >=20`; don't raise the consumer Node floor without a deliberate decision. CI/PR jobs run Node 20 (the floor) on purpose; the Release workflow runs a newer Node deliberately — the split is intentional (see `docs/release-hardening-decisions.md`, Decision 3).
 - **React version**: Do not change React dependencies; pnpm overrides enforce 19.1.2
-- **Package manager**: Do not use npm/yarn; only pnpm supported
+- **Package manager**: Do not use npm/yarn; only pnpm supported. Git hooks prefer `corepack pnpm ...` (repo-pinned pnpm regardless of PATH) and fall back to `pnpm` where corepack isn't available (Node 25+ no longer bundles corepack). Keep the corepack-preferred/pnpm-fallback shape; don't hard-code bare `pnpm` only.
 
 ### Package Boundaries (FOR AGENTS)
 - **Core must remain React-free** – do not import React or DOM APIs in `packages/core`

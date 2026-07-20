@@ -30,6 +30,22 @@
       {
         "scope": ["packages/ui/src/**"],
         "rule": "Auto-injected styles: index.ts calls injectStyles() on module load"
+      },
+      {
+        "scope": ["*"],
+        "rule": "Conventional PR titles: the PR title must follow Conventional Commits because it becomes the squash-merge commit on main. Ticket references like YPE-1234 belong in the branch name and PR body, not the title. See docs/release-hardening-decisions.md (Decision 1)."
+      },
+      {
+        "scope": [".husky/**"],
+        "rule": "Git hooks should invoke the package manager via `corepack pnpm ...` when corepack is available (so the repo-pinned pnpm runs regardless of PATH), falling back to `pnpm` where corepack isn't present (Node 25+ no longer bundles it). See docs/release-hardening-decisions.md (Decision 2)."
+      },
+      {
+        "scope": ["package.json", "packages/**/package.json"],
+        "rule": "New devDependencies must support the consumer engines.node floor (>=20). Do not raise the Node floor without a deliberate decision. See docs/release-hardening-decisions.md (Decision 3)."
+      },
+      {
+        "scope": ["*"],
+        "rule": "Every PR must include a changeset. For a genuine no-release change (CI, docs, tooling) add an intentional empty changeset via `pnpm changeset --empty`. See docs/release-hardening-decisions.md (Decision 4)."
       }
     ],
     "files": [

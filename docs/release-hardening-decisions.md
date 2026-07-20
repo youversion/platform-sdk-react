@@ -1,55 +1,74 @@
 # Release Hardening — Open Decisions (YPE-2486)
 
-**Status:** 🟡 Blocked. [PR #268](https://github.com/youversion/platform-sdk-react/pull/268) does not land until the decisions below are made. Some need @davidfedor.
+**Status:** 🟢 All three review decisions made — [PR #268](https://github.com/youversion/platform-sdk-react/pull/268) is unblocked; remaining work is implementing the guardrails. Decisions 1 & 2 ruled by jhampton (2026-07-01), concurred by davidfedor (2026-07-14); Decision 3 ruled by davidfedor (2026-07-14). Decision 4 (changeset-per-PR gate) added 2026-07-20 after a live release failure.
 
-Review feedback (jhampton, `CHANGES_REQUESTED`, 2026-06-29) raised three items that are **decisions, not bugs**. Decide each deliberately, then pin it two ways:
+Review feedback (jhampton, `CHANGES_REQUESTED`, 2026-06-29) raised three items that are **decisions, not bugs**. Each gets pinned two ways once decided:
 
 - **Deterministic** — code/config (`commitlint.config.js`, workflows, `package.json`, hooks).
-- **Semi-deterministic** — [`.greptile/rules.md`](https://www.greptile.com/docs/code-review/custom-standards), `AGENTS.md`.
-
-Update each decision's status as it lands.
+- **Semi-deterministic** — [`greptile.json`](https://www.greptile.com/docs/code-review/custom-standards) (`customContext.rules`), `AGENTS.md`.
 
 ---
 
-## Decision 1 — Commit-lint subject model 🔴
+## Decision 1 — Commit-lint subject model 🟢 Decided (jhampton, 2026-07-01; davidfedor concurred 2026-07-14)
 
-**Problem.** [`commitlint.config.js`](../commitlint.config.js) allows a leading `YPE-####` prefix, then enforces strict conventional. Wrong assumption: external contributors don't open PRs with a ticket number (it's added to the PR title later), and much of the repo's own history fails strict conventional anyway (e.g. `YPE-1146 - Prep React SDK...`, `Add Language detection...`).
+**Ruling.** Enforce conventional commits. Ticket refs live in **branch names** (Jira parses those) and the PR body — not the commit title. We squash-merge, so the **PR title is the landing commit** and must be conventional.
 
-**Options.**
-1. **Lint the PR title, not commits** (squash-merge makes the title the commit). Ticket can be added to the title post-acceptance; contributors aren't blocked mid-branch.
-2. **Keep per-commit linting, relaxed** — drop the prefix parser, loosen `subject-case`.
-3. **Strict per-commit as-is** — most consistent, most friction, contradicts "ticket added later."
+**Rationale — checked per jhampton's "check my math".** In the Swift SDK, conventional commits drive changelog + version math. **This repo does not work that way:**
+- Changelog = `@changesets/cli/changelog`, generated from `.changeset/*.md` summaries.
+- Version bump = the level declared in each changeset (`patch`/`minor`/`major`) + the fixed group.
+- No semantic-release / conventional-changelog tooling.
 
-**Recommend:** Option 1. **Decides:** @davidfedor.
-**Pin:** PR-title lint job in `commitlint.yml`; drop/trim the parser in `commitlint.config.js`; note the convention in `.greptile/rules.md` + `AGENTS.md`.
+So commit titles **don't** feed the changelog or version here — Changesets does. Enforcing conventional commits is still correct, but for **consistency, cross-SDK parity, and clean history** — not changelog/version correctness. Document it this way so no one later assumes commits drive the changelog.
 
----
-
-## Decision 2 — Package-manager lane 🔴
-
-**Problem.** The [`commit-msg`](../.husky/commit-msg) hook runs bare `pnpm exec` — uses whatever pnpm is on PATH, not the pinned `pnpm@9.0.0`. A newer global pnpm fails commits. The repo also never states/enforces that it's a pnpm workspace.
-
-**Options.**
-1. **pnpm + Corepack** — `corepack pnpm exec` in hooks (activates the pinned version); README rationale; optional CI guard.
-2. **pnpm, no Corepack** — document it, rely on `engines`/`packageManager`; mismatch can still bite locally.
-3. **Pure node** — not viable; the repo uses `workspace:*` (pnpm-only).
-
-**Recommend:** Option 1. **Decides:** @davidfedor (approve README rationale).
-**Pin:** `corepack pnpm exec` in hooks + optional CI check; README "Package Manager" section; `.greptile/rules.md` flag for bare `pnpm exec` in hooks.
+**Implementation.**
+- Deterministic: plain `@commitlint/config-conventional`; **remove** the `YPE-####` prefix parser from [`commitlint.config.js`](../commitlint.config.js); lint the **PR title** (becomes the squash commit, e.g. `amannn/action-semantic-pull-request`); keep the per-commit husky hook as an optional dev aid.
+- Semi-deterministic: `greptile.json` + `AGENTS.md` — PR titles must be conventional; tickets belong in the branch name / PR body.
 
 ---
 
-## Decision 3 — Node-version policy 🟠
+## Decision 2 — Package-manager lane 🟢 Decided (jhampton, 2026-07-01; davidfedor concurred 2026-07-14, deferring to the daily release dev)
 
-**Problem.** Versions are inconsistent: CI/commitlint on Node 20, release on Node 24, `engines.node >=20`. The commitlint break is already fixed (pinned to v19, Node ≥18, commit `98a3a86`) but there's no stated policy.
+**Ruling.** Option 1 — pnpm + Corepack. The lane is already pnpm (`workspace:*` is pnpm-only); enforce the pinned version and document why.
+
+**Deferred knock-on.** Corepack is deprecated but supported **through Node 24**. The "what replaces Corepack" call is deferred until the ecosystem settles (Corepack team, Node/Bun/Deno); revisit before moving off Node 24 — file a follow-up ticket.
+
+**Implementation.**
+- Deterministic: `corepack pnpm exec` in [`.husky/`](../.husky) hooks; optional CI "verify package manager" step; keep `packageManager`/`engines` pins.
+- Semi-deterministic: `README.md` "Package Manager" section (the rationale); `greptile.json` flag for bare `pnpm exec` in hooks.
+
+---
+
+## Decision 3 — Node-version policy 🟢 Decided (davidfedor, 2026-07-14)
+
+**Problem.** Versions are inconsistent: CI/commitlint on Node 20, release on Node 24, `engines.node >=20`. The commitlint break is already fixed (pinned to v19, Node ≥18, commit `98a3a86`), but there's no stated policy. Note Decision 2 ties us to Corepack **through Node 24**.
+
+**Ruling.** Split by audience instead of forcing one number (Option 3 — per-workflow + documented):
+- **Consumers** (developers merely using the SDK): keep `engines.node` at `>=20` — support decently far back. Do **not** raise the floor; there's been no pushback, so no change until there's a concrete reason.
+- **Contributors / CI**: a fairly-recent Node is fine. The existing split (CI/commitlint on 20, release on 24) stays; document *why* rather than standardizing everything to one version.
+
+**Rationale.** Raising the consumer floor taxes SDK users for a contributor-side convenience. The split already works and is reversible (davidfedor: "not a one-way door").
+
+**Guardrail (kept from the Option 1 analysis).** New dev-deps must support the consumer `engines.node` (`>=20`), or the floor gets bumped **deliberately**, not silently. This is exactly what bit us: `@commitlint/*@21` required Node ≥22.12 while CI ran 20 (fixed by down-pinning to `19.8.1`, `98a3a86`). Without the guardrail the next such dep silently reopens this.
+
+**Implementation.**
+- Deterministic: document the per-workflow Node versions in `release.yml`/`ci.yml`/`commitlint.yml` (comment the intent); keep `engines.node >=20`.
+- Semi-deterministic: `AGENTS.md` + `greptile.json` — "new dev-deps must support `engines.node`; don't raise the consumer floor without a decision."
+
+---
+
+## Decision 4 — Enforce a changeset per PR 🟠 New (surfaced by the 2026-07-17 release failure)
+
+**Incident.** [#282](https://github.com/youversion/platform-sdk-react/pull/282) (`chore: localization protection`, merged `833aa47`) landed with **no changeset**. With nothing to version, the [Release run](https://github.com/youversion/platform-sdk-react/actions/runs/29616967518) took the publish path and tried to re-publish the already-live 2.3.0 → `E403 — cannot publish over previously published versions: 2.3.0`. No release was lost and nothing on npm was corrupted, but the pipeline stays red until a fresh version ships. Fixed forward by [#292](https://github.com/youversion/platform-sdk-react/pull/292) (adds the missing changeset → 2.3.1).
+
+**Root cause.** The changesets action branches on whether unconsumed `.changeset/*.md` files exist: present → open a "version packages" PR; absent → run publish. A PR merged without a changeset silently routes main into a no-op publish that collides on the current version. Note the trap: #282 was a `chore:` that still touched publishable `packages/ui` source, so it genuinely needed a release — "chore" is not a safe signal for "no changeset needed." This reinforces Decision 1's finding that **changesets are load-bearing** here (they drive changelog + version), so a missing one is a release break, not a style nit.
 
 **Options.**
-1. **Standardize on Node 20** across CI/hooks; new dev-deps must support it.
-2. **Raise floor to Node 22** — bigger blast radius (consumers, contributors).
-3. **Per-workflow, documented** — allow release to differ, write down why.
+1. **CI hard gate** — a PR job running `pnpm changeset status --since=origin/main` that fails when no changeset is present; no-release PRs opt out deliberately with an empty changeset (`pnpm changeset --empty`).
+2. **Changesets bot** — the GitHub app posts a comment + status check when a PR has no changeset (better UX, softer gate).
+3. **Both** — bot for contributor UX, CI check as the enforced gate.
 
-**Recommend:** Option 1. **Decides:** team.
-**Pin:** align `node-version` across `ci.yml`/`commitlint.yml`/`release.yml`; `AGENTS.md` note "new dev-deps must support `engines.node`."
+**Recommend:** Option 1 (deterministic hard gate); add the bot later for UX if wanted. **Decides:** team.
+**Pin:** a "changeset required" job in the PR workflow; `greptile.json` + `AGENTS.md` note "every PR needs a changeset — use `pnpm changeset --empty` for genuine no-release changes (CI/docs/tooling)."
 
 ---
 
@@ -64,7 +83,8 @@ Update each decision's status as it lands.
 
 ## Next
 
-1. Decide 1–3 (consult @davidfedor).
-2. Implement deterministic guardrails.
-3. Add `.greptile/rules.md` + `AGENTS.md` rules.
-4. Update [`release-hardening-plan.md`](./release-hardening-plan.md), then unblock PR #268.
+1. Implement deterministic guardrails for all three decisions (all decided — ready now).
+2. Add the "changeset required" CI gate (Decision 4).
+3. Add `greptile.json` + `AGENTS.md` rules.
+4. File the Corepack-successor follow-up ticket (Decision 2).
+5. Update [`release-hardening-plan.md`](./release-hardening-plan.md); PR #268 is unblocked — push the guardrail commits and take it out of draft.
