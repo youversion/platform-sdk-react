@@ -8,8 +8,24 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import type { BibleBook, BiblePassage, BibleVersion, Highlight } from '@youversion/platform-core';
-import { useBooks, usePassage, useTheme, useVersion } from '@youversion/platform-react-hooks';
+import type {
+  BibleBook,
+  BiblePassage,
+  BibleVersion,
+  Highlight,
+  Language,
+} from '@youversion/platform-core';
+import {
+  useBooks,
+  useFilteredVersions,
+  useLanguage,
+  useLanguages,
+  useOrganizations,
+  usePassage,
+  useTheme,
+  useVersion,
+  useVersions,
+} from '@youversion/platform-react-hooks';
 import { BibleReader, type BibleReaderRootProps } from './bible-reader';
 import { HIGHLIGHT_COLORS } from './verse-action-popover';
 
@@ -31,9 +47,14 @@ vi.mock('@youversion/platform-react-hooks', async () => {
   return {
     ...actual,
     useBooks: vi.fn(),
+    useFilteredVersions: vi.fn(),
+    useLanguage: vi.fn(),
+    useLanguages: vi.fn(),
+    useOrganizations: vi.fn(),
     usePassage: vi.fn(),
     useTheme: vi.fn(),
     useVersion: vi.fn(),
+    useVersions: vi.fn(),
   };
 });
 
@@ -95,14 +116,41 @@ function setupDefaultMocks() {
     error: null,
     refetch: vi.fn(),
   });
+  vi.mocked(useLanguages).mockReturnValue({
+    languages: { data: [] as Language[], next_page_token: null },
+    loading: false,
+    error: null,
+    refetch: vi.fn(),
+  });
+  vi.mocked(useLanguage).mockReturnValue({
+    language: { id: 'en', language: 'English', display_names: { en: 'English' } } as Language,
+    loading: false,
+    error: null,
+    refetch: vi.fn(),
+  });
+  vi.mocked(useVersions).mockReturnValue({
+    versions: { data: [], next_page_token: null },
+    loading: false,
+    error: null,
+    refetch: vi.fn(),
+  });
+  vi.mocked(useFilteredVersions).mockReturnValue([]);
+  vi.mocked(useOrganizations).mockReturnValue({ organizations: new Map() });
+}
+
+// Toolbar is mounted alongside Content so the adversarial surface (chapter /
+// version pickers, settings) is present in every test.
+function readerJsx(props: Partial<BibleReaderRootProps> = {}) {
+  return (
+    <BibleReader.Root defaultVersionId={111} defaultBook="JHN" defaultChapter="1" {...props}>
+      <BibleReader.Content />
+      <BibleReader.Toolbar />
+    </BibleReader.Root>
+  );
 }
 
 function renderReader(props: Partial<BibleReaderRootProps> = {}) {
-  return render(
-    <BibleReader.Root defaultVersionId={111} defaultBook="JHN" defaultChapter="1" {...props}>
-      <BibleReader.Content />
-    </BibleReader.Root>,
-  );
+  return render(readerJsx(props));
 }
 
 function getVerseEl(container: HTMLElement, verse: number): HTMLElement {
@@ -181,14 +229,7 @@ describe('BibleReader controlled mode - pure projection', () => {
     expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
 
     rerender(
-      <BibleReader.Root
-        defaultVersionId={111}
-        defaultBook="JHN"
-        defaultChapter="1"
-        highlights={[{ version_id: 111, passage_id: 'JHN.1.1', color: YELLOW }]}
-      >
-        <BibleReader.Content />
-      </BibleReader.Root>,
+      readerJsx({ highlights: [{ version_id: 111, passage_id: 'JHN.1.1', color: YELLOW }] }),
     );
     expect(getVerseEl(container, 1).style.backgroundColor).toBe(fillFor(YELLOW));
   });
@@ -261,6 +302,43 @@ describe('BibleReader controlled mode - events', () => {
     expect(onVerseSelect).toHaveBeenCalledTimes(4);
   });
 
+  it('emits onVerseSelect([]) when a color tap clears the selection', async () => {
+    const onVerseSelect = vi.fn();
+    const { container } = renderReader({
+      highlights: [],
+      onVerseSelect,
+      onHighlightApply: vi.fn(),
+    });
+
+    selectVerse(container, 1);
+    await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
+    onVerseSelect.mockClear();
+
+    fireEvent.click(getApplyButtons()[0]!);
+    expect(onVerseSelect).toHaveBeenCalledTimes(1);
+    expect(onVerseSelect).toHaveBeenCalledWith(selection([]));
+  });
+
+  it('emits onVerseSelect([]) when navigation clears the selection', async () => {
+    const onVerseSelect = vi.fn();
+    const { container } = renderReader({ highlights: [], onVerseSelect });
+
+    selectVerse(container, 1);
+    onVerseSelect.mockClear();
+
+    fireEvent.click(screen.getByRole('button', { name: /next chapter/i }));
+
+    await waitFor(() => expect(onVerseSelect).toHaveBeenCalledTimes(1));
+    // Payload carries the new location and an empty selection.
+    expect(onVerseSelect).toHaveBeenCalledWith({
+      versionId: 111,
+      book: 'JHN',
+      chapter: '2',
+      verses: [],
+      passageIds: [],
+    });
+  });
+
   it('emits onVerseSelect in self-contained mode too', () => {
     const onVerseSelect = vi.fn();
     const { container } = renderReader({ onVerseSelect });
@@ -295,17 +373,7 @@ describe('BibleReader controlled mode - events', () => {
       { version_id: 111, passage_id: 'JHN.1.2', color: GREEN },
     ];
     const rerenderWith = (next: Highlight[]) =>
-      rerender(
-        <BibleReader.Root
-          defaultVersionId={111}
-          defaultBook="JHN"
-          defaultChapter="1"
-          highlights={next}
-          onHighlightRemove={onHighlightRemove}
-        >
-          <BibleReader.Content />
-        </BibleReader.Root>,
-      );
+      rerender(readerJsx({ highlights: next, onHighlightRemove }));
     const { container, rerender } = renderReader({ highlights, onHighlightRemove });
 
     selectVerse(container, 1);
@@ -388,11 +456,7 @@ describe('BibleReader controlled mode - latching', () => {
     });
     expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(GREEN));
 
-    rerender(
-      <BibleReader.Root defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
-        <BibleReader.Content />
-      </BibleReader.Root>,
-    );
+    rerender(readerJsx());
 
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('latched at first mount'));
     // Transient undefined renders as "no highlights" — not the localStorage store.
@@ -405,14 +469,7 @@ describe('BibleReader controlled mode - latching', () => {
     expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
 
     rerender(
-      <BibleReader.Root
-        defaultVersionId={111}
-        defaultBook="JHN"
-        defaultChapter="1"
-        highlights={[{ version_id: 111, passage_id: 'JHN.1.1', color: YELLOW }]}
-      >
-        <BibleReader.Content />
-      </BibleReader.Root>,
+      readerJsx({ highlights: [{ version_id: 111, passage_id: 'JHN.1.1', color: YELLOW }] }),
     );
 
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('latched at first mount'));

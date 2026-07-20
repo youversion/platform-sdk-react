@@ -201,9 +201,11 @@ export type RootProps = {
    */
   highlights?: Highlight[];
   /**
-   * Called on every verse selection change with the selection payload
-   * (`verses: []` when the selection is cleared by deselecting). Fires in both
-   * controlled and self-contained modes — it is an observation, not a request.
+   * Called on every verse selection change with the selection payload —
+   * `verses: []` whenever a non-empty selection clears, whether by
+   * deselecting, after a highlight/copy/share action, on popover dismiss, or
+   * on navigation. Fires in both controlled and self-contained modes — it is
+   * an observation, not a request.
    */
   onVerseSelect?: (selection: BibleReaderVerseSelection) => void;
   /**
@@ -659,13 +661,21 @@ function Content() {
     setHighlightStore(data);
   }, [highlightsStorageKey, isHighlightsControlled]);
 
+  // Latest onVerseSelect without making it an effect dependency (an inline
+  // handler would otherwise re-clear the selection every render).
+  const onVerseSelectRef = useRef(onVerseSelect);
+  onVerseSelectRef.current = onVerseSelect;
+
   // Navigating away (book/chapter/version) drops the selection — those verses no
-  // longer exist on screen (ADR-007).
+  // longer exist on screen (ADR-007). Observing hosts hear the clear.
   useEffect(() => {
     setSelectedVerses([]);
     setPopoverOpen(false);
     setAnchorElement(null);
-    lastSelectionRef.current = [];
+    if (lastSelectionRef.current.length > 0) {
+      lastSelectionRef.current = [];
+      onVerseSelectRef.current?.({ versionId, book, chapter, verses: [], passageIds: [] });
+    }
   }, [book, chapter, versionId]);
 
   // Derive the visible chapter's highlights (verse number → hex): in
@@ -708,7 +718,12 @@ function Content() {
     setPopoverOpen(false);
     setSelectedVerses([]);
     setAnchorElement(null);
-    lastSelectionRef.current = [];
+    // Clearing a non-empty selection is a selection change: observing hosts
+    // hear `verses: []` (the deselect-tap path emits via handleVerseSelect).
+    if (lastSelectionRef.current.length > 0) {
+      lastSelectionRef.current = [];
+      onVerseSelect?.(buildVerseSelection([]));
+    }
   }
 
   /** Builds the serializable selection payload (verses ascending, de-duped). */

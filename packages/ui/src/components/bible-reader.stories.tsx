@@ -841,6 +841,10 @@ export const Controlled: Story = {
   ),
 };
 
+/** True when a stored highlight entry is covered by an intent's verses. */
+const matchesIntent = (h: Highlight, intent: BibleReaderHighlightIntent) =>
+  h.version_id === intent.versionId && intent.passageIds.includes(h.passage_id);
+
 /**
  * Controlled mode with a stateful fake host that echoes `onHighlightApply` /
  * `onHighlightRemove` back into the `highlights` prop — the executable
@@ -874,9 +878,7 @@ export const ControlledFakeHost: Story = {
       args.onHighlightApply?.(intent);
       setHighlights((prev) => [
         // Replace any existing entry for these verses (last write wins).
-        ...prev.filter(
-          (h) => !(h.version_id === intent.versionId && intent.passageIds.includes(h.passage_id)),
-        ),
+        ...prev.filter((h) => !matchesIntent(h, intent)),
         ...intent.passageIds.map((passage_id) => ({
           version_id: intent.versionId,
           passage_id,
@@ -887,11 +889,7 @@ export const ControlledFakeHost: Story = {
 
     const handleRemove = (intent: BibleReaderHighlightIntent) => {
       args.onHighlightRemove?.(intent);
-      setHighlights((prev) =>
-        prev.filter(
-          (h) => !(h.version_id === intent.versionId && intent.passageIds.includes(h.passage_id)),
-        ),
-      );
+      setHighlights((prev) => prev.filter((h) => !matchesIntent(h, intent)));
     };
 
     return (
