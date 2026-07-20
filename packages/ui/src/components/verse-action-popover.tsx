@@ -5,7 +5,7 @@ import i18n from '@/i18n';
 import { cn } from '../lib/utils';
 import { BoxStackIcon } from './icons/box-stack';
 import { BoxArrowUpIcon } from './icons/box-arrow-up';
-import { XIcon } from './icons/x';
+import { CheckIcon } from './icons/check';
 
 type Measurable = { getBoundingClientRect: () => DOMRect };
 
@@ -47,12 +47,12 @@ type VerseActionPopoverProps = {
 
 type ColorCircleProps = {
   color: string;
-  showX: boolean;
+  showRemove: boolean;
   label: string;
   onClick: () => void;
 };
 
-function ColorCircle({ color, showX, label, onClick }: ColorCircleProps) {
+function ColorCircle({ color, showRemove, label, onClick }: ColorCircleProps) {
   return (
     <button
       type="button"
@@ -70,9 +70,11 @@ function ColorCircle({ color, showX, label, onClick }: ColorCircleProps) {
       }}
       aria-label={label}
     >
-      {/* Active/remove swatch: a 24px X in the Text/Everdark color (always dark,
-          regardless of theme) on the solid color circle. */}
-      {showX && <XIcon className="yv:size-6 yv:text-(--yv-gray-50)" />}
+      {/* Active/remove swatch: a 24px checkmark in the Text/Everdark color
+          (always dark, regardless of theme) on the solid color circle. Matches
+          iOS (platform-sdk-swift #179), which swapped the earlier X for a check.
+          Tapping it still removes the highlight — icon-only change. */}
+      {showRemove && <CheckIcon className="yv:size-6 yv:text-(--yv-gray-50)" />}
     </button>
   );
 }
@@ -201,10 +203,10 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
     ? HIGHLIGHT_COLORS
     : HIGHLIGHT_COLORS.filter((c) => !activeHighlights.has(c));
 
-  // X (remove) circles come first, then apply circles in canonical order.
+  // Remove (checkmark) circles come first, then apply circles in canonical order.
   const colorCircles = [
-    ...activeColors.map((color) => ({ color, showX: true, key: `${color}-clear` })),
-    ...colorsToApply.map((color) => ({ color, showX: false, key: `${color}-apply` })),
+    ...activeColors.map((color) => ({ color, showRemove: true, key: `${color}-clear` })),
+    ...colorsToApply.map((color) => ({ color, showRemove: false, key: `${color}-apply` })),
   ];
 
   // Snapshot of everything the Content renders. While open we keep it fresh; the
@@ -291,13 +293,13 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                 role="group"
                 aria-label={t('highlightColorsAriaLabel')}
               >
-                {view.colorCircles.map(({ color, showX, key }) => (
+                {view.colorCircles.map(({ color, showRemove, key }) => (
                   <ColorCircle
                     key={key}
                     color={color}
-                    showX={showX}
-                    label={showX ? t('clearHighlightAriaLabel') : t('applyHighlightAriaLabel')}
-                    onClick={() => (showX ? onClearHighlight(color) : onHighlight(color))}
+                    showRemove={showRemove}
+                    label={showRemove ? t('clearHighlightAriaLabel') : t('applyHighlightAriaLabel')}
+                    onClick={() => (showRemove ? onClearHighlight(color) : onHighlight(color))}
                   />
                 ))}
               </div>
