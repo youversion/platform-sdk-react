@@ -1,6 +1,6 @@
 # Release Hardening — Open Decisions (YPE-2486)
 
-**Status:** 🟢 All three review decisions made — [PR #268](https://github.com/youversion/platform-sdk-react/pull/268) is unblocked; remaining work is implementing the guardrails. Decisions 1 & 2 ruled by jhampton (2026-07-01), concurred by davidfedor (2026-07-14); Decision 3 ruled by davidfedor (2026-07-14). Decision 4 (changeset-per-PR gate) added 2026-07-20 after a live release failure.
+**Status:** 🟢 All decisions settled; guardrails implemented on [PR #268](https://github.com/youversion/platform-sdk-react/pull/268) — remaining work is merging current `main` and aligning to its pnpm 11 / Node 24 toolchain. Decisions 1 & 2 ruled by jhampton (2026-07-01), concurred by davidfedor (2026-07-14). Decision 3 was resolved by main's pnpm 11 upgrade — floor recorded at `>=22.13` (2026-07-20), superseding David's earlier keep-at-`>=20` ruling. Decision 4 (changeset-per-PR gate) added 2026-07-20 after a live release failure.
 
 Review feedback (jhampton, `CHANGES_REQUESTED`, 2026-06-29) raised three items that are **decisions, not bugs**. Each gets pinned two ways once decided:
 
@@ -38,21 +38,19 @@ So commit titles **don't** feed the changelog or version here — Changesets doe
 
 ---
 
-## Decision 3 — Node-version policy 🟢 Decided (davidfedor, 2026-07-14)
+## Decision 3 — Node-version policy 🟢 Resolved by main (pnpm 11 upgrade; floor recorded at 22.13, 2026-07-20)
 
-**Problem.** Versions are inconsistent: CI/commitlint on Node 20, release on Node 24, `engines.node >=20`. The commitlint break is already fixed (pinned to v19, Node ≥18, commit `98a3a86`), but there's no stated policy. Note Decision 2 ties us to Corepack **through Node 24**.
+**Problem (original).** Versions were inconsistent: CI/commitlint on Node 20, release on Node 24, `engines.node >=20`, with no stated policy.
 
-**Ruling.** Split by audience instead of forcing one number (Option 3 — per-workflow + documented):
-- **Consumers** (developers merely using the SDK): keep `engines.node` at `>=20` — support decently far back. Do **not** raise the floor; there's been no pushback, so no change until there's a concrete reason.
-- **Contributors / CI**: a fairly-recent Node is fine. The existing split (CI/commitlint on 20, release on 24) stays; document *why* rather than standardizing everything to one version.
+**What changed.** While this branch was open, `main` upgraded to **pnpm 11**, which requires **Node >=22.13**. As part of that upgrade main raised the published `engines.node` from `>=20` to `>=22.13`, moved the React overrides into `pnpm-workspace.yaml`, added a supply-chain cooldown (`minimumReleaseAge`), and standardized **CI on Node 24** across the board. The Node-20-vs-24 split this decision was originally about no longer exists.
 
-**Rationale.** Raising the consumer floor taxes SDK users for a contributor-side convenience. The split already works and is reversible (davidfedor: "not a one-way door").
+**Outcome (recorded 2026-07-20).** Accept main's direction: **consumer floor is `engines.node >=22.13`**, toolchain is pnpm 11, CI is Node 24. This supersedes davidfedor's 2026-07-14 audience-split ruling ("keep the consumer floor at `>=20`") — the pnpm 11 upgrade is exactly the "good reason to require something new" he left the door open for, and reverting to `>=20` would mean giving up pnpm 11. We are not moving backwards for the sake of a pre-upgrade decision.
 
-**Guardrail (kept from the Option 1 analysis).** New dev-deps must support the consumer `engines.node` (`>=20`), or the floor gets bumped **deliberately**, not silently. This is exactly what bit us: `@commitlint/*@21` required Node ≥22.12 while CI ran 20 (fixed by down-pinning to `19.8.1`, `98a3a86`). Without the guardrail the next such dep silently reopens this.
+**Guardrail (retained, re-based to the new floor).** New dev-deps must support `engines.node >=22.13`, or the floor gets bumped **deliberately**, not silently. (The old `@commitlint/*@21`-needs-Node-≥22.12 break that motivated this is now moot on Node 24.)
 
 **Implementation.**
-- Deterministic: document the per-workflow Node versions in `release.yml`/`ci.yml`/`commitlint.yml` (comment the intent); keep `engines.node >=20`.
-- Semi-deterministic: `AGENTS.md` + `greptile.json` — "new dev-deps must support `engines.node`; don't raise the consumer floor without a decision."
+- Deterministic: align the release-hardening branch to main — `engines.node >=22.13`, pnpm 11, Node 24 in CI; correct the earlier Node-20 workflow comments.
+- Semi-deterministic: `AGENTS.md` + `greptile.json` — "new dev-deps must support `engines.node` (>=22.13); don't lower the floor to escape a dep constraint without a decision."
 
 ---
 
