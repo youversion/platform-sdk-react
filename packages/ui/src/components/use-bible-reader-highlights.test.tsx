@@ -357,4 +357,60 @@ describe('useBibleReaderHighlights — scope changes', () => {
     rerender({ versionId: 111, book: 'JHN', chapter: '4' });
     expect(result.current.highlightedVerses).toEqual({});
   });
+
+  it("does not drain the new scope's optimistic overlay when a previous scope's write settles", async () => {
+    // Chapter 3's create is deferred so it can settle AFTER we navigate away.
+    let resolvePrevWrite: (value: unknown) => void = vi.fn();
+    const prevWrite = new Promise((resolve) => {
+      resolvePrevWrite = resolve;
+    });
+    mockUseHighlights({
+      createHighlight: vi.fn().mockReturnValue(prevWrite),
+    });
+
+    const { result, rerender } = renderHook(
+      (props: { versionId: number; book: string; chapter: string }) =>
+        useBibleReaderHighlights(props),
+      { wrapper: AuthWrapper, initialProps: defaultOptions },
+    );
+
+    // Highlight JHN.3.16 — write is in flight (deferred, has not settled).
+    act(() => {
+      result.current.apply('fffe00', [16]);
+    });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+
+    // Navigate to JHN.4: the overlay resets. Give this chapter its own
+    // never-settling write so its optimistic entry survives on its own terms.
+    mockUseHighlights({
+      createHighlight: vi.fn().mockReturnValue(new Promise<never>(vi.fn())),
+    });
+    rerender({ versionId: 111, book: 'JHN', chapter: '4' });
+    expect(result.current.highlightedVerses).toEqual({});
+
+    // Highlight JHN.4.16 — same verse number, different chapter.
+    act(() => {
+      result.current.apply('fffe00', [16]);
+    });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+
+    // Chapter 3's stale write finally settles. It must NOT enroll verse 16 in
+    // the confirmed set, because we have since left its scope.
+    await act(async () => {
+      resolvePrevWrite({ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+
+    // A refetch lands for JHN.4 (new `highlights` identity fires the drain
+    // effect). A leaked cross-scope confirmation would erase JHN.4.16 here.
+    mockUseHighlights({
+      createHighlight: vi.fn().mockReturnValue(new Promise<never>(vi.fn())),
+      highlights: makeCollection([]),
+    });
+    rerender({ versionId: 111, book: 'JHN', chapter: '4' });
+
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+  });
 });

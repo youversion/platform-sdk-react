@@ -49,7 +49,7 @@ class BibleReaderHighlightError extends Error {
 function snapshotOverlay(overlay: HighlightOverlay, verses: number[]): HighlightOverlay {
   const snapshot: HighlightOverlay = {};
   for (const verse of verses) {
-    if (verse in overlay) snapshot[verse] = overlay[verse]!;
+    if (verse in overlay) snapshot[verse] = overlay[verse] as string | null;
   }
   return snapshot;
 }
@@ -88,14 +88,36 @@ export function useBibleReaderHighlights({
 
   const [overlay, setOverlay] = useState<HighlightOverlay>({});
 
-  // Drop the optimistic overlay synchronously (during render) the moment the
-  // scope changes, so an in-flight overlay never paints over another
-  // chapter's or version's verses — their verse numbers collide.
+  // Verses whose write settled successfully and are awaiting the post-write
+  // refetch. Once fresh data lands, the drain effect below drops their overlay
+  // entries so the server's truth wins again — otherwise a successful write's
+  // overlay entry would mask every later server-side change to that verse
+  // (another device, another tab) until navigation.
+  //
+  // The set is scoped to the current version+chapter: verse numbers only mean
+  // something within one scope. Two things keep it honest: (1) a write enrolls
+  // its verses here only if the scope captured at write start still matches
+  // when the write settles (see `apply` / `remove`), and (2) the set is cleared
+  // on scope change alongside the overlay reset below. Without that gate a slow
+  // write from the previous chapter could enroll a verse number that now
+  // belongs to the new chapter's optimistic entry, and the drain effect would
+  // erase it. Same-scope write races are documented at the apply/remove
+  // boundary and deferred to PR 2.
+  const confirmedVersesRef = useRef<Set<number>>(new Set());
+
+  // Drop the optimistic overlay (and the now-meaningless confirmed set)
+  // synchronously during render the moment the scope changes, so an in-flight
+  // overlay never paints over another chapter's or version's verses — their
+  // verse numbers collide. `overlayScopeRef` mirrors the current scope so the
+  // async write callbacks can compare it at settle time.
   const overlayScope = `${versionId}:${chapterUsfm}`;
+  const overlayScopeRef = useRef(overlayScope);
+  overlayScopeRef.current = overlayScope;
   const [loadedOverlayScope, setLoadedOverlayScope] = useState(overlayScope);
   if (loadedOverlayScope !== overlayScope) {
     setLoadedOverlayScope(overlayScope);
     setOverlay({});
+    confirmedVersesRef.current = new Set();
   }
 
   const highlightedVerses = useMemo(() => {
@@ -128,13 +150,8 @@ export function useBibleReaderHighlights({
   const highlightedVersesRef = useRef(highlightedVerses);
   highlightedVersesRef.current = highlightedVerses;
 
-  // Verses whose write settled successfully and are awaiting the post-write
-  // refetch. Once fresh data lands, their overlay entries are dropped so the
-  // server's truth wins again — otherwise a successful write's overlay entry
-  // would mask every later server-side change to that verse (another device,
-  // another tab) until navigation.
-  const confirmedVersesRef = useRef<Set<number>>(new Set());
-
+  // When the post-write refetch lands, drain the confirmed verses' overlay
+  // entries so the server's truth wins again (see `confirmedVersesRef` above).
   useEffect(() => {
     if (confirmedVersesRef.current.size === 0) return;
     const confirmed = confirmedVersesRef.current;
@@ -164,7 +181,7 @@ export function useBibleReaderHighlights({
     setOverlay((current) => {
       const next = { ...current };
       for (const verse of verses) {
-        if (verse in snapshot) next[verse] = snapshot[verse]!;
+        if (verse in snapshot) next[verse] = snapshot[verse] as string | null;
         else delete next[verse];
       }
       return next;
@@ -191,6 +208,7 @@ export function useBibleReaderHighlights({
       if (!live || verses.length === 0) return;
 
       const normalizedColor = color.toLowerCase();
+      const scopeAtWrite = overlayScopeRef.current;
       const snapshot = snapshotOverlay(overlayRef.current, verses);
       patchOverlay(verses, normalizedColor);
 
@@ -212,8 +230,12 @@ export function useBibleReaderHighlights({
         const failures = results.filter(Result.isError);
         if (failures.length === 0) {
           // Hand the verses to the confirmed set: the refetch createHighlight
-          // triggered will clear their overlay entries when its data lands.
-          for (const verse of verses) confirmedVersesRef.current.add(verse);
+          // triggered will clear their overlay entries when its data lands. Only
+          // enroll if we're still in the scope that issued the write — otherwise
+          // these verse numbers now belong to a different chapter's overlay.
+          if (overlayScopeRef.current === scopeAtWrite) {
+            for (const verse of verses) confirmedVersesRef.current.add(verse);
+          }
           return;
         }
         for (const failure of failures) {
@@ -243,6 +265,7 @@ export function useBibleReaderHighlights({
       const targetVerses = verses.filter((verse) => rendered[verse] === normalizedColor);
       if (targetVerses.length === 0) return;
 
+      const scopeAtWrite = overlayScopeRef.current;
       const snapshot = snapshotOverlay(overlayRef.current, targetVerses);
       patchOverlay(targetVerses, null);
 
@@ -258,7 +281,10 @@ export function useBibleReaderHighlights({
 
         const failures = results.filter(Result.isError);
         if (failures.length === 0) {
-          for (const verse of targetVerses) confirmedVersesRef.current.add(verse);
+          // Only enroll if still in the scope that issued the write (see `apply`).
+          if (overlayScopeRef.current === scopeAtWrite) {
+            for (const verse of targetVerses) confirmedVersesRef.current.add(verse);
+          }
           return;
         }
         for (const failure of failures) {
