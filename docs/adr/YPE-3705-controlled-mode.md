@@ -12,8 +12,8 @@ highlight data, auth, and persistence natively; the epic's goal is keeping the
 **user token** out of the WebView. Bible *content* fetching is app-key catalog
 traffic and is unchanged.
 
-The reader therefore has two postures for its highlight slice (see
-`CONTEXT.md`): **self-contained** (YPE-1034 — the reader fetches and writes
+The reader therefore has two postures for its highlight slice:
+**self-contained** (YPE-1034 — the reader fetches and writes
 highlights through the SDK's own auth session) and **controlled** (this ADR —
 the host passes `highlights: Highlight[]` into `BibleReader.Root` and receives
 intent events; presence of the prop selects the posture, latched at first
@@ -66,8 +66,11 @@ notification would be a different event under a different name).
   unconditionally `true` in controlled mode.
 - The render-map derivation reuses/parallels `parseServerColors` (same
   filter-and-project job, prop-fed instead of fetch-fed).
-- `CONTEXT.md`: both branches create it; merge the glossaries (entries here are
-  written to be word-compatible with #288's).
+- `CONTEXT.md` arrives with #288 (its glossary already defines "Controlled
+  mode" as planned): graduate that entry to decided and add a "Highlight
+  intent" entry (the reader's request that a highlight be applied/removed —
+  always intent, never completed fact; intent and fact are deliberately never
+  given the same name).
 
 ## Out of scope
 
