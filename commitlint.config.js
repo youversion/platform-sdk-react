@@ -1,34 +1,21 @@
 // Commit message linting for the React SDK.
 //
-// Ported from platform-sdk-kotlin's working setup, with two React-specific
-// adaptations:
+// We squash-merge, so the landing commit on main is the PR title. The real
+// gate is the PR-title lint job (.github/workflows/pr-title.yml); this
+// per-commit config stays as an optional local dev aid via the husky
+// commit-msg hook. See docs/release-hardening-decisions.md (Decision 1).
 //
-//   1. The release commit. Kotlin uses semantic-release, whose bot emits
-//      "chore(release): ...". This repo uses Changesets, whose release commit
-//      subject is "chore: version packages" (see .github/workflows/release.yml).
-//      We ignore that subject so the bot's own commit never fails the lint
-//      range on a workflow re-run.
+// Titles are plain Conventional Commits — no ticket prefix. Ticket references
+// (YPE-1234) live in the branch name and PR body, not the title.
 //
-//   2. The ticket prefix. About half of this repo's history leads with a
-//      YouVersion ticket id, e.g. "YPE-1234: feat(ui): ..." or
-//      "YPE-1234 - feat(ui): ...". We allow an optional leading ticket
-//      reference before the conventional type/scope/subject so the team's
-//      existing convention keeps passing.
+// The Changesets release commit subject is "chore: version packages" (see
+// .github/workflows/release.yml); we ignore it so the bot's own commit never
+// fails the lint range on a workflow re-run.
 //
-// This repo is ESM ("type": "module"), so the config uses `export default`
-// rather than Kotlin's `module.exports`.
+// This repo is ESM ("type": "module"), so the config uses `export default`.
 export default {
   extends: ['@commitlint/config-conventional'],
   ignores: [(message) => /^chore: version packages(?:\r?\n|$)/i.test(message)],
-  parserPreset: {
-    parserOpts: {
-      // Optional "YPE-1234: " or "YPE-1234 - " prefix, then the standard
-      // conventional header. Capture groups after the optional prefix must stay
-      // aligned with headerCorrespondence below.
-      headerPattern: /^(?:YPE-\d+(?:: | - ))?(\w+)(?:\(([^)]*)\))?(!)?: (.+)$/,
-      headerCorrespondence: ['type', 'scope', 'breaking', 'subject'],
-    },
-  },
   rules: {
     'body-max-line-length': [0, 'always'],
     'footer-max-line-length': [0, 'always'],
