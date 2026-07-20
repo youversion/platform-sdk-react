@@ -1,5 +1,13 @@
 name: CI
 
+# Node policy (see docs/release-hardening-decisions.md, Decision 3):
+# PR/CI jobs run on Node 20 on purpose — the low end of the supported range
+# (package.json engines.node >=20) — so we catch anything that would break a
+# consumer on the oldest Node we claim to support. The Release workflow runs a
+# newer Node deliberately (see release.yml); the split is intentional, not an
+# oversight. New dev-deps MUST support engines.node >=20, or the floor is
+# raised as a deliberate decision — never silently.
+
 on:
   push:
     branches:

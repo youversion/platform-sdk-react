@@ -32,6 +32,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
+          # Release runs a newer Node than CI on purpose. This only affects the
+          # publish toolchain, not what consumers must run (engines.node >=20 is
+          # unchanged). See docs/release-hardening-decisions.md (Decision 3).
           node-version: 24
           cache: 'pnpm'
 

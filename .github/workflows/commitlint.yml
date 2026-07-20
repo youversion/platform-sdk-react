@@ -21,6 +21,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
+          # Node 20 = the low end of the supported range (engines.node >=20).
+          # commitlint is pinned to 19.x, which supports Node >=18, so this is
+          # compatible. See docs/release-hardening-decisions.md (Decision 3).
           node-version: 20
           cache: 'pnpm'
 
