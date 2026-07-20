@@ -15,7 +15,11 @@
 // This repo is ESM ("type": "module"), so the config uses `export default`.
 export default {
   extends: ['@commitlint/config-conventional'],
-  ignores: [(message) => /^chore: version packages(?:\r?\n|$)/i.test(message)],
+  ignores: [
+    (message) => /^chore: version packages(?:\r?\n|$)/i.test(message),
+    // Merge commits are auto-generated and not authored conventional commits.
+    (message) => message.startsWith('Merge '),
+  ],
   rules: {
     'body-max-line-length': [0, 'always'],
     'footer-max-line-length': [0, 'always'],
