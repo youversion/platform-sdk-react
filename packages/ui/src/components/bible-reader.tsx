@@ -5,7 +5,7 @@ import { useDelayedLoading } from '@/lib/use-delayed-loading';
 import { cn } from '@/lib/utils';
 import { INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
-import type { BibleBook } from '@youversion/platform-core';
+import type { BibleBook, Highlight } from '@youversion/platform-core';
 import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, getAdjacentChapter } from '@youversion/platform-core';
 import {
   useBooks,
@@ -41,6 +41,7 @@ import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from './ui/popo
 import { VerseActionPopover } from './verse-action-popover';
 import { BibleTextView, getCleanVerseText, type FootnoteData } from './verse';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
+import { deriveHighlightedVerses } from '@/lib/highlight-projection';
 
 type BibleReaderContextType = {
   book: string;
@@ -66,6 +67,45 @@ type BibleReaderContextType = {
   onSignOutPress?: () => void;
   onCopy?: (data: BibleReaderShareData) => void | Promise<void>;
   onShare?: (data: BibleReaderShareData) => void | Promise<void>;
+  highlights?: Highlight[];
+  isHighlightsControlled: boolean;
+  onVerseSelect?: (selection: BibleReaderVerseSelection) => void;
+  onHighlightApply?: (intent: BibleReaderHighlightIntent) => void;
+  onHighlightRemove?: (intent: BibleReaderHighlightIntent) => void;
+};
+
+/**
+ * Serializable payload describing the reader's current verse selection.
+ * Bridge-safe primitives only, so React Native / Expo DOM hosts can forward it
+ * across the native bridge. `passageIds` is deliberately redundant with
+ * `book`/`chapter`/`verses` (always per-verse, never ranges): native hosts feed
+ * the API without USFM string-building; analytics reads `verses` without USFM
+ * parsing.
+ */
+export type BibleReaderVerseSelection = {
+  /** Matches `Highlight.version_id`. */
+  versionId: number;
+  /** USFM book code, e.g. `'JHN'`. */
+  book: string;
+  /** Chapter id, e.g. `'3'`. */
+  chapter: string;
+  /** Selected verse numbers, ascending and de-duplicated. `[]` on clear. */
+  verses: number[];
+  /** Per-verse USFM ids, e.g. `['JHN.3.16', 'JHN.3.17']`. Never ranges. */
+  passageIds: string[];
+};
+
+/**
+ * Serializable payload handed to `onHighlightApply` / `onHighlightRemove` in
+ * controlled mode. An intent is a request, not a fact: the reader paints
+ * nothing until the host round-trips an updated `highlights` prop.
+ */
+export type BibleReaderHighlightIntent = BibleReaderVerseSelection & {
+  /**
+   * 6-character lowercase hex, no `#`. For `onHighlightRemove`, the color
+   * being cleared.
+   */
+  color: string;
 };
 
 /**
@@ -86,6 +126,11 @@ export type BibleReaderShareData = {
   chapter: string;
   versionId: number;
 };
+
+// `process` is not typed in this browser-targeting build. Consumers' bundlers
+// statically replace `process.env.NODE_ENV`; the `typeof` guard keeps
+// unbundled browser environments (no `process` global) safe at runtime.
+declare const process: { env: { NODE_ENV?: string } };
 
 const BibleReaderContext = createContext<BibleReaderContextType | null>(null);
 
@@ -139,6 +184,39 @@ export type RootProps = {
    * default Web Share / clipboard flow — use for React Native / Expo hosts.
    */
   onShare?: (data: BibleReaderShareData) => void | Promise<void>;
+  /**
+   * Host-supplied highlights in the core API shape (`{ version_id, passage_id,
+   * color }`). Presence of this prop puts the reader's highlight slice in
+   * **controlled mode**: the reader renders highlights purely from this prop
+   * (filtered by the displayed version and chapter, range USFMs like
+   * `'JHN.3.16-18'` expanded per verse) and performs no highlight persistence
+   * of any kind — no network calls, no localStorage, no auth surface. Color
+   * taps emit {@link onHighlightApply} / {@link onHighlightRemove} instead of
+   * painting; nothing paints until the host round-trips an updated prop.
+   *
+   * The mode is latched at first mount: flipping between controlled and
+   * self-contained across renders is unsupported (dev warning). `[]` means
+   * "controlled, nothing highlighted"; leaving the prop off means
+   * self-contained.
+   */
+  highlights?: Highlight[];
+  /**
+   * Called on every verse selection change with the selection payload
+   * (`verses: []` when the selection is cleared by deselecting). Fires in both
+   * controlled and self-contained modes — it is an observation, not a request.
+   */
+  onVerseSelect?: (selection: BibleReaderVerseSelection) => void;
+  /**
+   * Controlled mode only: called when the user taps a highlight color, with
+   * the intent payload. Ignored (never called) in self-contained mode.
+   */
+  onHighlightApply?: (intent: BibleReaderHighlightIntent) => void;
+  /**
+   * Controlled mode only: called when the user taps a clear (X) circle, scoped
+   * to the selected verses currently showing that color. Ignored (never
+   * called) in self-contained mode.
+   */
+  onHighlightRemove?: (intent: BibleReaderHighlightIntent) => void;
   children?: ReactNode;
 };
 
@@ -285,8 +363,33 @@ function Root({
   onSignOutPress,
   onCopy,
   onShare,
+  highlights,
+  onVerseSelect,
+  onHighlightApply,
+  onHighlightRemove,
   children,
 }: RootProps) {
+  // Controlled mode is latched at first mount (presence of the `highlights`
+  // prop). Flipping controlled <-> self-contained across renders is
+  // unsupported: once controlled, a transient `undefined` renders as "no
+  // highlights" and never re-enables the self-contained localStorage store.
+  const isHighlightsControlledRef = useRef(highlights !== undefined);
+  const isHighlightsControlled = isHighlightsControlledRef.current;
+  const didWarnHighlightsModeFlipRef = useRef(false);
+  if (
+    typeof process !== 'undefined' &&
+    process.env.NODE_ENV !== 'production' &&
+    (highlights !== undefined) !== isHighlightsControlled &&
+    !didWarnHighlightsModeFlipRef.current
+  ) {
+    didWarnHighlightsModeFlipRef.current = true;
+    console.warn(
+      `BibleReader.Root: the \`highlights\` prop switched from ${
+        isHighlightsControlled ? 'present to absent' : 'absent to present'
+      } after mount. The highlight mode (controlled vs self-contained) is latched at first mount and will not change. Pass \`highlights\` (use \`[]\` for "nothing highlighted") on every render for controlled mode, or never pass it for self-contained mode.`,
+    );
+  }
+
   const [book, setBook] = useControllableState({
     prop: controlledBook,
     defaultProp: defaultBook,
@@ -433,6 +536,11 @@ function Root({
     onSignOutPress,
     onCopy,
     onShare,
+    highlights: isHighlightsControlled ? highlights : undefined,
+    isHighlightsControlled,
+    onVerseSelect,
+    onHighlightApply,
+    onHighlightRemove,
   };
 
   return (
@@ -463,6 +571,11 @@ function Content() {
     onFootnotePress,
     onCopy,
     onShare,
+    highlights,
+    isHighlightsControlled,
+    onVerseSelect,
+    onHighlightApply,
+    onHighlightRemove,
   } = useBibleReaderContext();
   const { version } = useVersion(versionId);
 
@@ -504,10 +617,13 @@ function Content() {
   }, [book, chapter]);
 
   // ---- Verse selection + highlights ------------------------------------------
-  // Selection is ephemeral; highlights persist to localStorage only for now
-  // (ADR-001) in the future `highlight` API shape: keyed by full passage_id USFM
-  // and scoped by versionId/bible_id (ADR-002). The reader DOM ref lets us anchor
-  // the popover and pull clean verse text for Copy / Share.
+  // Selection is ephemeral; in self-contained mode highlights persist to
+  // localStorage only for now (ADR-001) in the future `highlight` API shape:
+  // keyed by full passage_id USFM and scoped by versionId/bible_id (ADR-002).
+  // In controlled mode (YPE-3705) the store is never read or written: the
+  // render map derives purely from the host's `highlights` prop, and color /
+  // clear taps emit intents instead of mutating anything. The reader DOM ref
+  // lets us anchor the popover and pull clean verse text for Copy / Share.
   const readerRef = useRef<HTMLDivElement>(null);
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -522,13 +638,17 @@ function Content() {
   // previous version's highlights would paint over the new text for one frame —
   // their `${book}.${chapter}.N` keys collide with the new version's verses.
   const [loadedHighlightsKey, setLoadedHighlightsKey] = useState(highlightsStorageKey);
-  if (loadedHighlightsKey !== highlightsStorageKey) {
+  if (!isHighlightsControlled && loadedHighlightsKey !== highlightsStorageKey) {
     setLoadedHighlightsKey(highlightsStorageKey);
     setHighlightStore({});
   }
 
   // Load this version's highlights when the version changes (client-only).
+  // Controlled mode never touches the store: the localStorage key is neither
+  // read nor written, so YPE-1034's store deletion is a no-op for controlled
+  // hosts.
   useEffect(() => {
+    if (isHighlightsControlled) return;
     let data: Record<string, string> = {};
     try {
       const raw = localStorage.getItem(highlightsStorageKey);
@@ -537,7 +657,7 @@ function Content() {
       // Ignore (unavailable or malformed storage).
     }
     setHighlightStore(data);
-  }, [highlightsStorageKey]);
+  }, [highlightsStorageKey, isHighlightsControlled]);
 
   // Navigating away (book/chapter/version) drops the selection — those verses no
   // longer exist on screen (ADR-007).
@@ -548,9 +668,14 @@ function Content() {
     lastSelectionRef.current = [];
   }, [book, chapter, versionId]);
 
-  // Derive the visible chapter's highlights (verse number → hex) from the store.
+  // Derive the visible chapter's highlights (verse number → hex): in
+  // controlled mode purely from the host's `highlights` prop, otherwise from
+  // the localStorage-backed store.
   const chapterPrefix = `${book}.${chapter}.`;
   const highlightedVerses = useMemo(() => {
+    if (isHighlightsControlled) {
+      return deriveHighlightedVerses(highlights ?? [], versionId, book, chapter);
+    }
     const map: Record<number, string> = {};
     for (const [passageId, color] of Object.entries(highlightStore)) {
       if (!passageId.startsWith(chapterPrefix)) continue;
@@ -558,7 +683,7 @@ function Content() {
       if (verseNum) map[verseNum] = color;
     }
     return map;
-  }, [highlightStore, chapterPrefix]);
+  }, [isHighlightsControlled, highlights, versionId, book, chapter, highlightStore, chapterPrefix]);
 
   // Distinct colors present in the current selection → drives the X (remove) circles.
   const activeHighlights = useMemo(
@@ -586,10 +711,25 @@ function Content() {
     lastSelectionRef.current = [];
   }
 
+  /** Builds the serializable selection payload (verses ascending, de-duped). */
+  function buildVerseSelection(verses: number[]): BibleReaderVerseSelection {
+    const sorted = [...new Set(verses)].sort((a, b) => a - b);
+    return {
+      versionId,
+      book,
+      chapter,
+      verses: sorted,
+      passageIds: sorted.map((verse) => `${book}.${chapter}.${verse}`),
+    };
+  }
+
   function handleVerseSelect(verses: number[]) {
     const added = verses.find((verse) => !lastSelectionRef.current.includes(verse));
     lastSelectionRef.current = verses;
     setSelectedVerses(verses);
+
+    // Observation, not a request: fires in both modes, `[]` on clear.
+    onVerseSelect?.(buildVerseSelection(verses));
 
     if (verses.length === 0) {
       setPopoverOpen(false);
@@ -608,6 +748,13 @@ function Content() {
   }
 
   function handleHighlight(color: string) {
+    if (isHighlightsControlled) {
+      // Pure projection: emit the intent and paint nothing — the highlight
+      // appears only when the host round-trips an updated `highlights` prop.
+      onHighlightApply?.({ ...buildVerseSelection(selectedVerses), color });
+      closeAndClearSelection();
+      return;
+    }
     const next = { ...highlightStore };
     for (const verse of selectedVerses) {
       next[`${book}.${chapter}.${verse}`] = color;
@@ -618,13 +765,22 @@ function Content() {
   }
 
   function handleClearHighlight(color: string) {
-    const next = { ...highlightStore };
-    for (const verse of selectedVerses) {
-      const passageId = `${book}.${chapter}.${verse}`;
-      if (next[passageId] === color) delete next[passageId];
+    if (isHighlightsControlled) {
+      // Scope the intent to the selected verses currently showing this color
+      // (per the prop-derived map).
+      const versesToClear = selectedVerses.filter((verse) => highlightedVerses[verse] === color);
+      if (versesToClear.length > 0) {
+        onHighlightRemove?.({ ...buildVerseSelection(versesToClear), color });
+      }
+    } else {
+      const next = { ...highlightStore };
+      for (const verse of selectedVerses) {
+        const passageId = `${book}.${chapter}.${verse}`;
+        if (next[passageId] === color) delete next[passageId];
+      }
+      setHighlightStore(next);
+      persistHighlights(next);
     }
-    setHighlightStore(next);
-    persistHighlights(next);
 
     // Multiple colors active → keep open so the user can remove others (AC 8a);
     // last color removed → dismiss (AC 8).

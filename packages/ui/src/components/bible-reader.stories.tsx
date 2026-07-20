@@ -1,11 +1,17 @@
 import { INTER_FONT, SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { Highlight } from '@youversion/platform-core';
 import { delay, http, HttpResponse } from 'msw';
+import { useState } from 'react';
 import { expect, fn, screen, spyOn, userEvent, waitFor } from 'storybook/test';
 import mockBibles from '../test/mock-data/bibles.json';
 import { globalHandlers } from '../test/mocks/handlers';
 import { setupAuthenticatedUser } from '../test/utils';
-import { BibleReader } from './bible-reader';
+import {
+  BibleReader,
+  type BibleReaderHighlightIntent,
+  type BibleReaderRootProps,
+} from './bible-reader';
 
 let signInMock: ReturnType<typeof fn>;
 
@@ -800,6 +806,107 @@ export const JoshuaIntroChapter: Story = {
       // Should NOT show a verse reference like "Joshua :intro-0"
       await expect(popover?.textContent).not.toContain('intro-0');
     });
+  },
+};
+
+/**
+ * Controlled mode (YPE-3705): the host supplies highlight data via the
+ * `highlights` prop (core API shape, including range USFMs) and receives
+ * intent events; the reader performs no highlight persistence. Tweak the
+ * `highlights` arg and watch the paint follow; select verses and tap colors to
+ * see `onVerseSelect` / `onHighlightApply` / `onHighlightRemove` in the
+ * Actions panel. Note: taps paint nothing here — there is no host echoing the
+ * intents back (see `ControlledFakeHost` for the round-trip).
+ */
+export const Controlled: Story = {
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+    highlights: [
+      { version_id: 111, passage_id: 'JHN.1.1', color: 'fffe00' },
+      { version_id: 111, passage_id: 'JHN.1.3-5', color: '5dff79' },
+    ],
+    onVerseSelect: fn(),
+    onHighlightApply: fn(),
+    onHighlightRemove: fn(),
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+};
+
+/**
+ * Controlled mode with a stateful fake host that echoes `onHighlightApply` /
+ * `onHighlightRemove` back into the `highlights` prop — the executable
+ * reference implementation of the round-trip contract for native hosts
+ * (RN Expo, YPE-3710). Selecting verses and tapping a color paints only via
+ * the prop update; tapping an X circle un-paints the same way.
+ */
+export const ControlledFakeHost: Story = {
+  name: 'Controlled (fake host)',
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+    onVerseSelect: fn(),
+    onHighlightApply: fn(),
+    onHighlightRemove: fn(),
+  },
+  render: function FakeHostStory(args: BibleReaderRootProps) {
+    // The host's own highlight store, kept per-verse so remove intents (always
+    // per-verse `passageIds`) match entries directly. A real native host owns
+    // this in its data layer (with the API, cache, and optimism behind it);
+    // the reader only ever sees the resulting array.
+    const [highlights, setHighlights] = useState<Highlight[]>([
+      { version_id: 111, passage_id: 'JHN.1.1', color: 'fffe00' },
+      { version_id: 111, passage_id: 'JHN.1.3', color: '5dff79' },
+      { version_id: 111, passage_id: 'JHN.1.4', color: '5dff79' },
+      { version_id: 111, passage_id: 'JHN.1.5', color: '5dff79' },
+    ]);
+
+    const handleApply = (intent: BibleReaderHighlightIntent) => {
+      args.onHighlightApply?.(intent);
+      setHighlights((prev) => [
+        // Replace any existing entry for these verses (last write wins).
+        ...prev.filter(
+          (h) => !(h.version_id === intent.versionId && intent.passageIds.includes(h.passage_id)),
+        ),
+        ...intent.passageIds.map((passage_id) => ({
+          version_id: intent.versionId,
+          passage_id,
+          color: intent.color,
+        })),
+      ]);
+    };
+
+    const handleRemove = (intent: BibleReaderHighlightIntent) => {
+      args.onHighlightRemove?.(intent);
+      setHighlights((prev) =>
+        prev.filter(
+          (h) => !(h.version_id === intent.versionId && intent.passageIds.includes(h.passage_id)),
+        ),
+      );
+    };
+
+    return (
+      <div className="yv:h-screen yv:bg-background">
+        <BibleReader.Root
+          {...args}
+          highlights={highlights}
+          onHighlightApply={handleApply}
+          onHighlightRemove={handleRemove}
+        >
+          <BibleReader.Content />
+          <BibleReader.Toolbar />
+        </BibleReader.Root>
+      </div>
+    );
   },
 };
 
