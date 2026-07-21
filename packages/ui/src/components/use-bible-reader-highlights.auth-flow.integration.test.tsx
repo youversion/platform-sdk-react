@@ -20,7 +20,7 @@ import { YouVersionAuthContext, YouVersionContext } from '@youversion/platform-r
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
-import { readPendingHighlight } from '@/lib/pending-highlight';
+import { readPendingHighlights } from '@/lib/pending-highlight';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
 
 const mockUserInfo = { id: 'user-1', name: 'Test User' } as unknown as YouVersionUserInfo;
@@ -104,7 +104,7 @@ describe('highlight auth flow — one-fell-swoop (signed out)', () => {
     });
 
     expect(result.current.signInDialogOpen).toBe(true);
-    const pending = readPendingHighlight();
+    const pending = readPendingHighlights()[0];
     expect(pending).toMatchObject({ verses: [16], color: 'fffe00', versionId: 111, chapter: '3' });
     expect(signIn).not.toHaveBeenCalled();
     expect(createHighlight).not.toHaveBeenCalled();
@@ -135,7 +135,7 @@ describe('highlight auth flow — one-fell-swoop (signed out)', () => {
       });
     });
     // Pending consumed (the write is the proof it applied).
-    expect(readPendingHighlight()).toBeNull();
+    expect(readPendingHighlights()).toEqual([]);
   });
 });
 
@@ -150,7 +150,7 @@ describe('highlight auth flow — sign-in dialog (signed out)', () => {
     });
 
     expect(result.current.signInDialogOpen).toBe(true);
-    expect(readPendingHighlight()).toMatchObject({ verses: [16], color: 'fffe00' });
+    expect(readPendingHighlights()[0]).toMatchObject({ verses: [16], color: 'fffe00' });
     expect(signIn).not.toHaveBeenCalled();
   });
 
@@ -163,13 +163,13 @@ describe('highlight auth flow — sign-in dialog (signed out)', () => {
       result.current.apply('fffe00', [16]);
     });
     expect(result.current.signInDialogOpen).toBe(true);
-    expect(readPendingHighlight()).not.toBeNull();
+    expect(readPendingHighlights()).not.toHaveLength(0);
 
     act(() => {
       result.current.cancelSignInDialog();
     });
     expect(result.current.signInDialogOpen).toBe(false);
-    expect(readPendingHighlight()).toBeNull();
+    expect(readPendingHighlights()).toEqual([]);
     expect(signIn).not.toHaveBeenCalled();
   });
 });
@@ -192,7 +192,7 @@ describe('highlight auth flow — just-in-time (signed in, no permission)', () =
     });
 
     expect(result.current.permissionDialogOpen).toBe(true);
-    expect(readPendingHighlight()).toMatchObject({ verses: [16], color: 'fffe00' });
+    expect(readPendingHighlights()[0]).toMatchObject({ verses: [16], color: 'fffe00' });
     expect(createHighlight).not.toHaveBeenCalled();
 
     await act(async () => {
@@ -205,7 +205,7 @@ describe('highlight auth flow — just-in-time (signed in, no permission)', () =
       expect(window.location.href).toContain('https://api.example.com/data-exchange');
     });
     // Pending survives the redirect so the resume effect can apply it on return.
-    expect(readPendingHighlight()).not.toBeNull();
+    expect(readPendingHighlights()).not.toHaveLength(0);
   });
 
   it('declining the dialog discards only the pending highlight', () => {
@@ -214,13 +214,13 @@ describe('highlight auth flow — just-in-time (signed in, no permission)', () =
     act(() => {
       result.current.apply('fffe00', [16]);
     });
-    expect(readPendingHighlight()).not.toBeNull();
+    expect(readPendingHighlights()).not.toHaveLength(0);
 
     act(() => {
       result.current.cancelPermissionDialog();
     });
     expect(result.current.permissionDialogOpen).toBe(false);
-    expect(readPendingHighlight()).toBeNull();
+    expect(readPendingHighlights()).toEqual([]);
   });
 });
 
@@ -233,14 +233,16 @@ describe('highlight auth flow — data-exchange return', () => {
     // Pre-stash a pending highlight as the confirm path would have.
     sessionStorage.setItem(
       'youversion-platform:pending-highlight',
-      JSON.stringify({
-        verses: [16],
-        color: 'fffe00',
-        versionId: 111,
-        book: 'JHN',
-        chapter: '3',
-        timestamp: Date.now(),
-      }),
+      JSON.stringify([
+        {
+          verses: [16],
+          color: 'fffe00',
+          versionId: 111,
+          book: 'JHN',
+          chapter: '3',
+          timestamp: Date.now(),
+        },
+      ]),
     );
     const createHighlight = vi
       .spyOn(HighlightsClient.prototype, 'createHighlight')
@@ -262,7 +264,7 @@ describe('highlight auth flow — data-exchange return', () => {
       });
     });
     expect(YouVersionPlatformConfiguration.hasPermission('highlights')).toBe(true);
-    expect(readPendingHighlight()).toBeNull();
+    expect(readPendingHighlights()).toEqual([]);
   });
 
   it('discards pending on a cancelled return and does not re-open the dialog (async session hydration)', async () => {
@@ -274,14 +276,16 @@ describe('highlight auth flow — data-exchange return', () => {
     setLocation('https://host.example/read?data_exchange_status=cancel');
     sessionStorage.setItem(
       'youversion-platform:pending-highlight',
-      JSON.stringify({
-        verses: [16],
-        color: 'fffe00',
-        versionId: 111,
-        book: 'JHN',
-        chapter: '3',
-        timestamp: Date.now(),
-      }),
+      JSON.stringify([
+        {
+          verses: [16],
+          color: 'fffe00',
+          versionId: 111,
+          book: 'JHN',
+          chapter: '3',
+          timestamp: Date.now(),
+        },
+      ]),
     );
     const createHighlight = vi.spyOn(HighlightsClient.prototype, 'createHighlight');
 
@@ -294,7 +298,7 @@ describe('highlight auth flow — data-exchange return', () => {
     rerender();
 
     await waitFor(() => {
-      expect(readPendingHighlight()).toBeNull();
+      expect(readPendingHighlights()).toEqual([]);
     });
     expect(result.current.permissionDialogOpen).toBe(false);
     expect(createHighlight).not.toHaveBeenCalled();
@@ -305,14 +309,16 @@ describe('highlight auth flow — data-exchange return', () => {
     setLocation('https://host.example/read?data_exchange_status=something-unexpected');
     sessionStorage.setItem(
       'youversion-platform:pending-highlight',
-      JSON.stringify({
-        verses: [16],
-        color: 'fffe00',
-        versionId: 111,
-        book: 'JHN',
-        chapter: '3',
-        timestamp: Date.now(),
-      }),
+      JSON.stringify([
+        {
+          verses: [16],
+          color: 'fffe00',
+          versionId: 111,
+          book: 'JHN',
+          chapter: '3',
+          timestamp: Date.now(),
+        },
+      ]),
     );
     const createHighlight = vi.spyOn(HighlightsClient.prototype, 'createHighlight');
 
@@ -324,7 +330,7 @@ describe('highlight auth flow — data-exchange return', () => {
     rerender();
 
     await waitFor(() => {
-      expect(readPendingHighlight()).toBeNull();
+      expect(readPendingHighlights()).toEqual([]);
     });
     expect(result.current.permissionDialogOpen).toBe(false);
     expect(createHighlight).not.toHaveBeenCalled();
@@ -353,7 +359,7 @@ describe('highlight auth flow — write failure routing', () => {
     // Cache invalidated (server truth wins), overlay reverted, pending KEPT.
     expect(YouVersionPlatformConfiguration.hasPermission('highlights')).toBe(false);
     expect(result.current.highlightedVerses).toEqual({});
-    expect(readPendingHighlight()).toMatchObject({ verses: [16], color: 'fffe00' });
+    expect(readPendingHighlights()[0]).toMatchObject({ verses: [16], color: 'fffe00' });
   });
 
   it('5xx reverts the overlay, logs, and discards pending without re-prompting', async () => {
@@ -370,7 +376,7 @@ describe('highlight auth flow — write failure routing', () => {
       expect(result.current.highlightedVerses).toEqual({});
     });
     expect(result.current.permissionDialogOpen).toBe(false);
-    expect(readPendingHighlight()).toBeNull();
+    expect(readPendingHighlights()).toEqual([]);
     expect(YouVersionPlatformConfiguration.hasPermission('highlights')).toBe(true);
     expect(consoleError).toHaveBeenCalledWith(
       expect.stringContaining('Failed to apply highlight'),

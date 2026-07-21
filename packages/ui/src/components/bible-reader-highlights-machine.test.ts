@@ -10,12 +10,19 @@
  */
 import { createActor } from 'xstate';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { peekPendingHighlights, readPendingHighlights } from '@/lib/pending-highlight';
 import {
   bibleReaderHighlightsMachine,
   type HighlightScope,
   type HighlightServices,
   type HighlightServicesRef,
 } from './bible-reader-highlights-machine';
+
+const STORAGE_KEY = 'youversion-platform:pending-highlight';
+
+function httpError(status: number): Error {
+  return Object.assign(new Error(`HTTP ${status}`), { status });
+}
 
 type Deferred = { promise: Promise<unknown>; resolve: (value?: unknown) => void };
 function deferred(): Deferred {
@@ -155,6 +162,80 @@ describe('bibleReaderHighlightsMachine — writeIntent lifecycle', () => {
     const afterB = actor.getSnapshot().context;
     expect(afterB.writeIntent.has(16)).toBe(false);
     expect(afterB.reconcile.get(16)).toEqual({ op: 'apply', color: '00ff00' });
+    actor.stop();
+  });
+});
+
+describe('bibleReaderHighlightsMachine — pending stash on lost permission', () => {
+  it('preserves BOTH intents when two queued apply writes each lose permission', async () => {
+    // The exact review scenario: tap color A on verses 1-3, then color B on 4-6
+    // before the first write settles; both 401. A single-slot stash would let the
+    // second settle overwrite the first, losing color A after the re-grant.
+    const createHighlight = vi.fn().mockRejectedValue(httpError(401));
+    const { ref, refetch } = makeServices({ createHighlight });
+    const actor = startMachine(ref);
+    vi.spyOn(console, 'error').mockImplementation(vi.fn());
+
+    // Both taps issued before either write settles: A is writing, B is queued.
+    actor.send({ type: 'TAP_COLOR', color: 'AAAAAA', verses: [1, 2, 3] });
+    actor.send({ type: 'TAP_COLOR', color: 'BBBBBB', verses: [4, 5, 6] });
+
+    await waitFor(actor, () => refetch.mock.calls.length === 2);
+
+    const stash = peekPendingHighlights();
+    expect(stash).toHaveLength(2);
+    // Verse-level ordering deterministic: first-queued (A) first.
+    expect(stash[0]).toMatchObject({ verses: [1, 2, 3], color: 'aaaaaa' });
+    expect(stash[1]).toMatchObject({ verses: [4, 5, 6], color: 'bbbbbb' });
+    actor.stop();
+  });
+
+  it('re-applies every stashed entry after a restart with permission granted', async () => {
+    // Two entries survived a data-exchange redirect; on the granted return the
+    // machine restarts and must resume ALL of them, not just the last.
+    const now = Date.now();
+    sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          verses: [1, 2, 3],
+          color: 'aaaaaa',
+          versionId: 111,
+          book: 'JHN',
+          chapter: '3',
+          timestamp: now,
+        },
+        {
+          verses: [4, 5, 6],
+          color: 'bbbbbb',
+          versionId: 111,
+          book: 'JHN',
+          chapter: '3',
+          timestamp: now,
+        },
+      ]),
+    );
+    const createHighlight = vi.fn().mockResolvedValue(undefined);
+    const { ref } = makeServices({ createHighlight });
+    const actor = startMachine(ref);
+
+    await waitFor(actor, () => createHighlight.mock.calls.length === 2);
+
+    const passages = createHighlight.mock.calls.map(
+      (call) => (call[0] as { passage_id: string }).passage_id,
+    );
+    expect(passages).toEqual(['JHN.3.1-3', 'JHN.3.4-6']);
+    // Both colors painted in the same-scope overlay.
+    expect(actor.getSnapshot().context.overlay).toEqual({
+      1: 'aaaaaa',
+      2: 'aaaaaa',
+      3: 'aaaaaa',
+      4: 'bbbbbb',
+      5: 'bbbbbb',
+      6: 'bbbbbb',
+    });
+    // Pending consumed once resumed.
+    expect(readPendingHighlights()).toEqual([]);
     actor.stop();
   });
 });

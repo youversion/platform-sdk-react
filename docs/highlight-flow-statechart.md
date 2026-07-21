@@ -31,6 +31,13 @@ out → `signInDialog`; signed in without the permission → `permissionDialog`.
 Both dialog paths stash a pending highlight (10-min `sessionStorage` TTL) so the
 intent survives the full-page redirect and resumes on a granted return.
 
+The stash is a **list**, not a single slot: a fresh tap replaces it, but a queued
+optimistic write that loses permission (401/403) _appends_ its intent with
+verse-level last-wins. Two writes queued in different colors can each 401, and
+both intents must survive the re-grant — a single slot would let the second
+overwrite the first. On resume, `applyPendingHighlight` re-applies every live
+entry (each to its own scope, first-to-last); entries never overlap on verses.
+
 ```mermaid
 stateDiagram-v2
   [*] --> booting

@@ -45,9 +45,10 @@
  */
 import { collapseVerseRuns, type VerseRun } from '@/lib/usfm-ranges';
 import {
+  appendPendingHighlight,
   clearPendingHighlight,
-  peekPendingHighlight,
-  readPendingHighlight,
+  peekPendingHighlights,
+  readPendingHighlights,
   stashPendingHighlight,
   type PendingHighlight,
 } from '@/lib/pending-highlight';
@@ -385,14 +386,15 @@ export const bibleReaderHighlightsMachine = setup({
     // ── resume fork ──
     // Guards must be pure, so they PEEK (never clear expired/malformed entries);
     // the clear-on-expiry/consume side effect stays in the actions/consume paths.
-    noPending: () => peekPendingHighlight() === null,
-    pendingNotAuthed: ({ context }) => peekPendingHighlight() !== null && !context.isAuthenticated,
+    noPending: () => peekPendingHighlights().length === 0,
+    pendingNotAuthed: ({ context }) =>
+      peekPendingHighlights().length > 0 && !context.isAuthenticated,
     pendingAuthedHasPermission: ({ context }) =>
-      peekPendingHighlight() !== null &&
+      peekPendingHighlights().length > 0 &&
       context.isAuthenticated &&
       context.services.current.hasHighlightsPermission(),
     pendingAuthedNoPermission: ({ context }) =>
-      peekPendingHighlight() !== null &&
+      peekPendingHighlights().length > 0 &&
       context.isAuthenticated &&
       !context.services.current.hasHighlightsPermission(),
   },
@@ -542,39 +544,43 @@ export const bibleReaderHighlightsMachine = setup({
     }),
 
     /**
-     * Apply a pending highlight after a granted return. Writes to the PENDING's
-     * own scope even if the user returned on a different chapter; only paints the
-     * overlay when that scope matches what is on screen.
+     * Apply every pending highlight after a granted return. Each entry writes to
+     * its OWN scope even if the user returned on a different chapter; an entry
+     * only paints the overlay when its scope matches what is on screen. Entries
+     * are enqueued first-to-last so verse-level ordering is deterministic; they
+     * never overlap on verses (append's last-wins merge guarantees it).
      */
     applyPendingHighlight: enqueueActions(({ enqueue, context }) => {
-      const pending = readPendingHighlight();
-      if (!pending) return;
+      const pendings = readPendingHighlights();
+      if (pendings.length === 0) return;
       clearPendingHighlight();
-      const scope: HighlightScope = {
-        versionId: pending.versionId,
-        book: pending.book,
-        chapter: pending.chapter,
-      };
-      const paint = scopesEqual(scope, context.scope);
-      const token = {};
-      if (paint) {
-        enqueue.assign(({ context: current }) =>
-          claimVerses(current, pending.verses, token, pending.color),
-        );
+      for (const pending of pendings) {
+        const scope: HighlightScope = {
+          versionId: pending.versionId,
+          book: pending.book,
+          chapter: pending.chapter,
+        };
+        const paint = scopesEqual(scope, context.scope);
+        const token = {};
+        if (paint) {
+          enqueue.assign(({ context: current }) =>
+            claimVerses(current, pending.verses, token, pending.color),
+          );
+        }
+        const op: WriteOp = {
+          kind: 'apply',
+          color: pending.color,
+          verses: pending.verses,
+          scope,
+          token,
+          paint,
+          // A resume-write failure only logs + reverts (the pending intent was
+          // already consumed). Documented deferred follow-up: route resume-write
+          // failures through the standard apply failure handling.
+          reprompt: false,
+        };
+        enqueue.raise({ type: 'ENQUEUE', op });
       }
-      const op: WriteOp = {
-        kind: 'apply',
-        color: pending.color,
-        verses: pending.verses,
-        scope,
-        token,
-        paint,
-        // A resume-write failure only logs + reverts (the pending intent was
-        // already consumed). Documented deferred follow-up: route resume-write
-        // failures through the standard apply failure handling.
-        reprompt: false,
-      };
-      enqueue.raise({ type: 'ENQUEUE', op });
     }),
 
     enqueueOp: assign(({ context, event }) => {
@@ -639,7 +645,9 @@ export const bibleReaderHighlightsMachine = setup({
         );
         if (op.kind === 'apply' && op.reprompt) {
           // Keep this highlight pending and re-prompt the just-in-time dialog.
-          enqueue(() => stashPendingHighlight(opToPending(op)));
+          // Append (not replace): a sibling batch that already lost permission may
+          // hold a different color/verses, and both intents must survive the grant.
+          enqueue(() => appendPendingHighlight(opToPending(op)));
           enqueue.raise({ type: 'PERMISSION_LOST' });
         }
         // Remove failures invalidate the cache but never re-prompt (the old
