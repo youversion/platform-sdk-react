@@ -3,6 +3,7 @@ import { YouVersionUserInfo } from './YouVersionUserInfo';
 import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
 import { SignInWithYouVersionPKCEAuthorizationRequestBuilder } from './SignInWithYouVersionPKCE';
 import { SignInWithYouVersionResult } from './SignInWithYouVersionResult';
+import { parseGrantedPermissions } from './permissions';
 
 export class YouVersionAPIUsers {
   /**
@@ -121,6 +122,12 @@ export class YouVersionAPIUsers {
         token_type: string;
       };
 
+      // Parse the data-exchange permissions the server granted. The server
+      // echoes them as `granted_permissions` on the callback URL (comma- or
+      // space-separated, param may repeat). Used below to seed the optimistic
+      // permission cache — the single source of truth for granted permissions.
+      const grantedPermissions = parseGrantedPermissions(urlParams);
+
       // Extract user info from ID token
       const result = this.extractSignInResult(tokens);
 
@@ -133,13 +140,21 @@ export class YouVersionAPIUsers {
       );
 
       // Persist the decoded user profile so it survives reloads without
-      // retaining the ID token itself.
+      // retaining the ID token itself. This must happen before the permission
+      // cache is seeded below, since grants are scoped to the current user.
       YouVersionPlatformConfiguration.saveUserInfo({
         id: result.yvpUserId,
         name: result.name,
         email: result.email,
         avatar_url: result.profilePicture,
       });
+
+      // Persist the granted permissions into the optimistic permission cache so
+      // a one-fell-swoop sign-in that requested `highlights` can apply a pending
+      // highlight on return without a probe round-trip.
+      if (grantedPermissions.length > 0) {
+        YouVersionPlatformConfiguration.saveGrantedPermissions(grantedPermissions);
+      }
 
       // Clean up localStorage
       localStorage.removeItem('youversion-auth-code-verifier');

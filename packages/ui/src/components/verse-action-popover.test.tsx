@@ -467,4 +467,39 @@ describe('VerseActionPopover', () => {
       expect(applyButtons).toHaveLength(5);
     });
   });
+
+  function applyButtons() {
+    return screen
+      .getAllByRole('button')
+      .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
+  }
+
+  function clearButtons() {
+    return screen
+      .getAllByRole('button')
+      .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear'));
+  }
+
+  describe('Highlights disabled (flag off)', () => {
+    it('hides the color row and remove circles but keeps Copy / Share', () => {
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          highlightsEnabled={false}
+          activeHighlights={new Set<HighlightColor>([HIGHLIGHT_COLORS[0]])}
+          selectedVerses={[1]}
+          highlightedVerses={{ 1: HIGHLIGHT_COLORS[0] }}
+        />,
+      );
+
+      // No color group, no apply circles, no remove circles.
+      expect(screen.queryByRole('group', { name: 'Highlight colors' })).toBeNull();
+      expect(applyButtons()).toHaveLength(0);
+      expect(clearButtons()).toHaveLength(0);
+
+      // Copy / Share remain.
+      expect(screen.getByText('Copy')).toBeTruthy();
+      expect(screen.getByText('Share')).toBeTruthy();
+    });
+  });
 });
