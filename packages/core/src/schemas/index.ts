@@ -3,6 +3,7 @@ export * from './bible-index';
 export * from './book';
 export * from './chapter';
 export * from './collection';
+export * from './data-exchange';
 export * from './font';
 export * from './highlight';
 export * from './language';

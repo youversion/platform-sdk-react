@@ -17,6 +17,7 @@ export * from './useBibleClient';
 export * from './usePassage';
 export * from './useVOTD';
 export * from './useHighlights';
+export * from './useHighlightAuthActions';
 export * from './useLanguages';
 export * from './useLanguage';
 export * from './useTheme';

@@ -344,4 +344,30 @@ describe('YouVersionPlatformConfiguration', () => {
       expect(firstId).toBe(mockUUID);
     });
   });
+
+  describe('signInPromptMessage', () => {
+    it('should default to undefined and get/set the value', () => {
+      expect(YouVersionPlatformConfiguration.signInPromptMessage).toBeUndefined();
+
+      YouVersionPlatformConfiguration.signInPromptMessage = 'Save your highlights across devices.';
+      expect(YouVersionPlatformConfiguration.signInPromptMessage).toBe(
+        'Save your highlights across devices.',
+      );
+
+      YouVersionPlatformConfiguration.signInPromptMessage = undefined;
+      expect(YouVersionPlatformConfiguration.signInPromptMessage).toBeUndefined();
+    });
+  });
+
+  describe('appName', () => {
+    it('should default to undefined and get/set the value', () => {
+      expect(YouVersionPlatformConfiguration.appName).toBeUndefined();
+
+      YouVersionPlatformConfiguration.appName = 'Acme Bible';
+      expect(YouVersionPlatformConfiguration.appName).toBe('Acme Bible');
+
+      YouVersionPlatformConfiguration.appName = undefined;
+      expect(YouVersionPlatformConfiguration.appName).toBeUndefined();
+    });
+  });
 });
