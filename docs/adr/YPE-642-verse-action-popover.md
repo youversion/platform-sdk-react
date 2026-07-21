@@ -30,6 +30,9 @@ gone.** #131's `VerseActionPopover` (correct AC logic, tested, already uses Radi
 ## Decisions (ADRs)
 
 ### ADR-001 — localStorage only this PR
+> **Superseded** by [YPE-1034 ADR-001](./YPE-1034-highlights-server-only.md):
+> highlights are server-only; the localStorage store is removed.
+
 Highlights persist client-side only. Server sync is a **separate ticket**.
 No network, no API client this PR.
 

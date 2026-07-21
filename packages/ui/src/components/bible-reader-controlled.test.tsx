@@ -18,6 +18,7 @@ import type {
 import {
   useBooks,
   useFilteredVersions,
+  useHighlights,
   useLanguage,
   useLanguages,
   useOrganizations,
@@ -36,6 +37,30 @@ class ResizeObserverMock {
 }
 globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 
+// jsdom under this Node version refuses localStorage for opaque origins
+// (`SecurityError`). Theme-settings hydration in Root reads it on mount, so
+// provide an in-memory stub for the suite.
+const memoryStore = new Map<string, string>();
+const localStorageMock: Storage = {
+  get length() {
+    return memoryStore.size;
+  },
+  clear: () => memoryStore.clear(),
+  getItem: (key) => memoryStore.get(key) ?? null,
+  setItem: (key, value) => {
+    memoryStore.set(key, String(value));
+  },
+  removeItem: (key) => {
+    memoryStore.delete(key);
+  },
+  key: (index) => [...memoryStore.keys()][index] ?? null,
+};
+Object.defineProperty(globalThis, 'localStorage', {
+  value: localStorageMock,
+  configurable: true,
+  writable: true,
+});
+
 // jsdom does not implement Element#scrollTo (BibleReader.Content scrolls to
 // top on chapter change).
 if (!Element.prototype.scrollTo) {
@@ -48,6 +73,7 @@ vi.mock('@youversion/platform-react-hooks', async () => {
     ...actual,
     useBooks: vi.fn(),
     useFilteredVersions: vi.fn(),
+    useHighlights: vi.fn(),
     useLanguage: vi.fn(),
     useLanguages: vi.fn(),
     useOrganizations: vi.fn(),
@@ -115,6 +141,17 @@ function setupDefaultMocks() {
     loading: false,
     error: null,
     refetch: vi.fn(),
+  });
+  // Self-contained path is inert in these tests (controlled mode owns the
+  // surface). Keep useHighlights stubbed so Content can mount without a
+  // YouVersionProvider.
+  vi.mocked(useHighlights).mockReturnValue({
+    highlights: { data: [], next_page_token: null },
+    loading: false,
+    error: null,
+    refetch: vi.fn(),
+    createHighlight: vi.fn(),
+    deleteHighlight: vi.fn(),
   });
   vi.mocked(useLanguages).mockReturnValue({
     languages: { data: [] as Language[], next_page_token: null },
@@ -425,19 +462,10 @@ describe('BibleReader controlled mode - events', () => {
     await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
     fireEvent.click(getApplyButtons()[0]!);
 
-    // Self-contained behavior unchanged: paints and persists locally.
-    await waitFor(() => {
-      expect(getVerseEl(container, 1).style.backgroundColor).toBe(fillFor(YELLOW));
-    });
-    expect(localStorage.getItem('youversion-platform:highlights:111')).toBe(
-      JSON.stringify({ 'JHN.1.1': YELLOW }),
-    );
-
-    // Clear it through the popover's X circle.
-    selectVerse(container, 1);
-    await waitFor(() => expect(getClearButtons()).toHaveLength(1));
-    fireEvent.click(getClearButtons()[0]!);
-
+    // Self-contained path owns the write (via useBibleReaderHighlights). With
+    // HIGHLIGHTS_LIVE off the row is inert — no paint — and the controlled
+    // intent callbacks must never fire.
+    expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
     expect(onHighlightApply).not.toHaveBeenCalled();
     expect(onHighlightRemove).not.toHaveBeenCalled();
   });
@@ -454,14 +482,7 @@ describe('BibleReader controlled mode - latching', () => {
     warnSpy.mockRestore();
   });
 
-  it('stays controlled when highlights flips to undefined: warns, renders no highlights, never reads the store', () => {
-    // Seed the store: if the reader ever fell back to self-contained mode,
-    // this entry would paint.
-    localStorage.setItem(
-      'youversion-platform:highlights:111',
-      JSON.stringify({ 'JHN.1.1': YELLOW }),
-    );
-
+  it('stays controlled when highlights flips to undefined: warns and renders no highlights', () => {
     const { container, rerender } = renderReader({
       highlights: [{ version_id: 111, passage_id: 'JHN.1.2', color: GREEN }],
     });
@@ -470,7 +491,7 @@ describe('BibleReader controlled mode - latching', () => {
     rerender(readerJsx());
 
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('latched at first mount'));
-    // Transient undefined renders as "no highlights" — not the localStorage store.
+    // Transient undefined renders as "no highlights" — still controlled.
     expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
     expect(getVerseEl(container, 2).style.backgroundColor).toBe('');
   });
@@ -487,18 +508,15 @@ describe('BibleReader controlled mode - latching', () => {
     expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
   });
 
-  it('treats [] as controlled (store never read) while undefined means self-contained (store read)', () => {
-    localStorage.setItem(
-      'youversion-platform:highlights:111',
-      JSON.stringify({ 'JHN.1.1': YELLOW }),
-    );
-
+  it('treats [] as controlled while undefined means self-contained', () => {
     const controlled = renderReader({ highlights: [] });
     expect(getVerseEl(controlled.container, 1).style.backgroundColor).toBe('');
     controlled.unmount();
 
+    // Self-contained with HIGHLIGHTS_LIVE off: also empty, but the mode is
+    // latched (a later highlights prop would be ignored — covered above).
     const selfContained = renderReader();
-    expect(getVerseEl(selfContained.container, 1).style.backgroundColor).toBe(fillFor(YELLOW));
+    expect(getVerseEl(selfContained.container, 1).style.backgroundColor).toBe('');
     expect(warnSpy).not.toHaveBeenCalled();
   });
 });
