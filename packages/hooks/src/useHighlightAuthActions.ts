@@ -16,6 +16,20 @@ import { YouVersionAuthContext } from './context/YouVersionAuthContext';
 
 const HIGHLIGHTS_PERMISSION = SignInWithYouVersionPermission.highlights;
 
+/** Optimistic cache read; a 401/403 on a write is still the ultimate check. */
+const hasHighlightsPermission = () =>
+  YouVersionPlatformConfiguration.hasPermission(HIGHLIGHTS_PERMISSION);
+
+/** Drops the cached `highlights` grant so the next attempt re-prompts. */
+const invalidateHighlightsPermission = () =>
+  YouVersionPlatformConfiguration.removeGrantedPermission(HIGHLIGHTS_PERMISSION);
+
+/**
+ * Reconciles the permission cache from a data-exchange return and cleans the
+ * URL. Returns the parsed return (or `null` when this load is not one).
+ */
+const consumeDataExchangeReturn = () => handleDataExchangeCallback();
+
 /**
  * The two-path auth actions the highlight auth flow (YPE-1034) needs, plus the
  * permission-cache reads. Kept UI-agnostic: it returns primitives the seam hook
@@ -62,18 +76,6 @@ export function useHighlightAuthActions(): {
       }),
     );
   }, [context?.appKey, context?.apiHost, context?.installationId, context?.additionalHeaders]);
-
-  const hasHighlightsPermission = useCallback(
-    () => YouVersionPlatformConfiguration.hasPermission(HIGHLIGHTS_PERMISSION),
-    [],
-  );
-
-  const invalidateHighlightsPermission = useCallback(
-    () => YouVersionPlatformConfiguration.removeGrantedPermission(HIGHLIGHTS_PERMISSION),
-    [],
-  );
-
-  const consumeDataExchangeReturn = useCallback(() => handleDataExchangeCallback(), []);
 
   const startSignInForHighlights = useCallback(
     async (redirectUrl?: string) => {

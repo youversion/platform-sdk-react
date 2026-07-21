@@ -7,23 +7,6 @@ const Dialog = DialogPrimitive.Root;
 const DialogTitle = DialogPrimitive.Title;
 const DialogDescription = DialogPrimitive.Description;
 
-function DialogOverlay({
-  className,
-  ...props
-}: React.ComponentProps<typeof DialogPrimitive.Overlay>): React.ReactElement {
-  return (
-    <DialogPrimitive.Overlay
-      className={cn(
-        'yv:fixed yv:inset-0 yv:z-50 yv:bg-black/50',
-        'yv:data-[state=open]:animate-in yv:data-[state=closed]:animate-out',
-        'yv:data-[state=closed]:fade-out-0 yv:data-[state=open]:fade-in-0',
-        className,
-      )}
-      {...props}
-    />
-  );
-}
-
 type DialogContentProps = React.ComponentProps<typeof DialogPrimitive.Content> & {
   theme?: 'light' | 'dark';
 };
@@ -43,7 +26,13 @@ function DialogContent({
 }: DialogContentProps): React.ReactElement {
   return (
     <DialogPrimitive.Portal>
-      <DialogOverlay />
+      <DialogPrimitive.Overlay
+        className={cn(
+          'yv:fixed yv:inset-0 yv:z-50 yv:bg-black/50',
+          'yv:data-[state=open]:animate-in yv:data-[state=closed]:animate-out',
+          'yv:data-[state=closed]:fade-out-0 yv:data-[state=open]:fade-in-0',
+        )}
+      />
       <DialogPrimitive.Content
         data-yv-sdk
         data-yv-theme={theme}
@@ -65,4 +54,4 @@ function DialogContent({
   );
 }
 
-export { Dialog, DialogOverlay, DialogContent, DialogTitle, DialogDescription };
+export { Dialog, DialogContent, DialogTitle, DialogDescription };

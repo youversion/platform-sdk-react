@@ -118,7 +118,7 @@ export function appendPendingHighlight(pending: PendingHighlight, now: number = 
   for (const entry of existing) {
     const remaining = entry.verses.filter((verse) => !claimedVerses.has(verse));
     if (remaining.length === 0) continue;
-    merged.push(remaining.length === entry.verses.length ? entry : { ...entry, verses: remaining });
+    merged.push({ ...entry, verses: remaining });
   }
   merged.push(pending);
   writeEntries(merged);

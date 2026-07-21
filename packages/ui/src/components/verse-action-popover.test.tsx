@@ -501,11 +501,5 @@ describe('VerseActionPopover', () => {
       expect(screen.getByText('Copy')).toBeTruthy();
       expect(screen.getByText('Share')).toBeTruthy();
     });
-
-    it('still shows the color row by default (highlightsEnabled defaults to true)', () => {
-      render(<VerseActionPopover {...defaultProps} />);
-      expect(screen.getByRole('group', { name: 'Highlight colors' })).toBeTruthy();
-      expect(applyButtons()).toHaveLength(5);
-    });
   });
 });

@@ -61,7 +61,7 @@ export class DataExchangeClient {
 
     const response = await this.client.post<unknown>(
       `/data-exchange/token`,
-      { requested_permissions: [...permissions].sort() },
+      { requested_permissions: permissions },
       { 'app-key': appKey },
       { Authorization: `Bearer ${this.getAuthToken(lat)}` },
     );

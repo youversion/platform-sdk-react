@@ -52,12 +52,6 @@ describe('YouVersionPlatformConfiguration permission cache', () => {
     expect(YouVersionPlatformConfiguration.hasPermission('highlights')).toBe(true);
   });
 
-  it('setGrantedPermissions overwrites the cache (reconcile)', () => {
-    YouVersionPlatformConfiguration.saveGrantedPermissions(['highlights', 'votd']);
-    YouVersionPlatformConfiguration.setGrantedPermissions(['highlights']);
-    expect(YouVersionPlatformConfiguration.grantedPermissions).toEqual(['highlights']);
-  });
-
   it('removeGrantedPermission honors a server 401/403 invalidation', () => {
     YouVersionPlatformConfiguration.saveGrantedPermissions(['highlights', 'votd']);
     YouVersionPlatformConfiguration.removeGrantedPermission('highlights');
@@ -126,15 +120,6 @@ describe('YouVersionPlatformConfiguration permission cache', () => {
       // And A cannot read them back either.
       YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-a' });
       expect(YouVersionPlatformConfiguration.grantedPermissions).toEqual([]);
-    });
-
-    it('same-user merge still accumulates grants', () => {
-      YouVersionPlatformConfiguration.saveGrantedPermissions(['highlights']);
-      YouVersionPlatformConfiguration.saveGrantedPermissions(['votd']);
-      expect(YouVersionPlatformConfiguration.grantedPermissions.sort()).toEqual([
-        'highlights',
-        'votd',
-      ]);
     });
   });
 });

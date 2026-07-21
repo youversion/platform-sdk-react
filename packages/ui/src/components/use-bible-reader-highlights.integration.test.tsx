@@ -208,7 +208,7 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
   });
 
   it('apply partial failure: succeeded run stays painted, failed run reverts, one refetch (regression)', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(vi.fn());
+    vi.spyOn(console, 'error').mockImplementation(vi.fn());
     // Post-write GET reflects the run that succeeded server-side ([2,3]).
     const getHighlights = vi
       .spyOn(HighlightsClient.prototype, 'getHighlights')
@@ -249,11 +249,10 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
       await Promise.resolve();
     });
     expect(getHighlights).toHaveBeenCalledTimes(2);
-    consoleError.mockRestore();
   });
 
   it('remove partial failure: no ghosts — succeeded DELETEs stay un-painted, failed one reverts (regression)', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(vi.fn());
+    vi.spyOn(console, 'error').mockImplementation(vi.fn());
     // Server starts with [2,3,4] green; the post-batch GET is a stale snapshot
     // that still contains all three (read-after-write lag on the deletes).
     const getHighlights = vi.spyOn(HighlightsClient.prototype, 'getHighlights').mockResolvedValue(
@@ -298,11 +297,10 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
       await Promise.resolve();
     });
     expect(getHighlights).toHaveBeenCalledTimes(2);
-    consoleError.mockRestore();
   });
 
   it('apply total failure: everything reverts and the batch still refetches exactly once', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(vi.fn());
+    vi.spyOn(console, 'error').mockImplementation(vi.fn());
     const getHighlights = vi
       .spyOn(HighlightsClient.prototype, 'getHighlights')
       .mockResolvedValue(collection([]));
@@ -327,7 +325,6 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
       await Promise.resolve();
     });
     expect(getHighlights).toHaveBeenCalledTimes(2);
-    consoleError.mockRestore();
   });
 
   it('remove: overlay wins when the post-delete GET still contains the removed row (lag)', async () => {
@@ -358,7 +355,7 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
   });
 
   it('apply: a genuine write failure reverts the optimistic overlay', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(vi.fn());
+    vi.spyOn(console, 'error').mockImplementation(vi.fn());
     vi.spyOn(HighlightsClient.prototype, 'getHighlights').mockResolvedValue(collection([]));
     vi.spyOn(HighlightsClient.prototype, 'createHighlight').mockRejectedValue(
       new Error('network down'),
@@ -378,7 +375,6 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
     await waitFor(() => {
       expect(result.current.highlightedVerses).toEqual({});
     });
-    consoleError.mockRestore();
   });
 
   it('apply of [2,3,5] POSTs two runs but issues exactly one refetch (Fix 3)', async () => {

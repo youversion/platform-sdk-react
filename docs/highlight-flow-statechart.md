@@ -95,15 +95,7 @@ guards re-route. `HIGHLIGHTS_UPDATED` also runs the overlay reconcile.)_
 
 ## The "vapor" fix
 
-Reported on staging: a deleted highlight reappears for a split second, then
-disappears. Root cause (confirmed): the reconcile step retired a REMOVE overlay
-entry as soon as any fetch reflected the removal; a later response from a stale
-read replica that still contained the highlight then had nothing suppressing it,
-so the verse repainted until the next fetch cleared it.
-
-Fix: `reconcileOverlay` never retires remove-overlay entries — a removed verse's
-optimistic `null` is held until a reset path (scope change, sign-out, or a newer
-write re-claiming the verse). Apply entries still retire on reflection, keeping
-the tested apply-convergence behavior. This is exactly the PR's already-accepted
-trade-off: a concurrent same-verse edit from another device renders stale until
-navigation or the next write on this client.
+See the "vapor" fix block comment at the top of
+`packages/ui/src/components/bible-reader-highlights-machine.ts` for the root
+cause, fix, and trade-off — that comment sits next to `reconcileOverlay` and is
+the single source of truth for this rationale.

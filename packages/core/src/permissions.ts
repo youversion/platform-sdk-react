@@ -19,8 +19,7 @@ export function parseGrantedPermissions(params: URLSearchParams): string[] {
   const seen = new Set<string>();
   for (const value of params.getAll('granted_permissions')) {
     for (const part of value.split(/[,\s]+/)) {
-      const trimmed = part.trim();
-      if (trimmed) seen.add(trimmed);
+      if (part) seen.add(part);
     }
   }
   return [...seen];

@@ -122,14 +122,14 @@ export class YouVersionAPIUsers {
         token_type: string;
       };
 
-      // Surface the data-exchange permissions the server granted. The server
+      // Parse the data-exchange permissions the server granted. The server
       // echoes them as `granted_permissions` on the callback URL (comma- or
-      // space-separated, param may repeat). Parsed before constructing the
-      // result so `permissions` can stay readonly (passed via the constructor).
+      // space-separated, param may repeat). Used below to seed the optimistic
+      // permission cache — the single source of truth for granted permissions.
       const grantedPermissions = parseGrantedPermissions(urlParams);
 
       // Extract user info from ID token
-      const result = this.extractSignInResult(tokens, grantedPermissions);
+      const result = this.extractSignInResult(tokens);
 
       // Store tokens in configuration. The ID token is intentionally not
       // persisted — it is only used here to derive the user profile below.
@@ -201,17 +201,14 @@ export class YouVersionAPIUsers {
   /**
    * Extracts sign-in result from token response
    */
-  private static extractSignInResult(
-    tokens: {
-      access_token: string;
-      expires_in: number;
-      id_token: string;
-      refresh_token: string;
-      scope: string;
-      token_type: string;
-    },
-    permissions: string[] = [],
-  ): SignInWithYouVersionResult {
+  private static extractSignInResult(tokens: {
+    access_token: string;
+    expires_in: number;
+    id_token: string;
+    refresh_token: string;
+    scope: string;
+    token_type: string;
+  }): SignInWithYouVersionResult {
     const idClaims = this.decodeJWT(tokens.id_token);
 
     const resultData = {
@@ -222,7 +219,6 @@ export class YouVersionAPIUsers {
       name: idClaims.name as string,
       profilePicture: idClaims.profile_picture as string,
       email: idClaims.email as string,
-      permissions,
     };
 
     return new SignInWithYouVersionResult(resultData);

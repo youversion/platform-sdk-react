@@ -2,7 +2,7 @@
 '@youversion/platform-react-ui': patch
 ---
 
-Rewrite the BibleReader highlights flow as an explicit xstate v5 statechart (YPE-1034 / PR-288, still behind the internal `HIGHLIGHTS_LIVE` flag). `useBibleReaderHighlights` is now a thin adapter over `bibleReaderHighlightsMachine`; the machine (authored with `setup()` and named guards/actions/actors, so it is Stately-visualizable) owns the whole flow — optimistic overlay, serialized writes with per-verse ownership, reconcile, the auth flow, and the resume-on-return path. A mermaid statechart lives in `docs/highlight-flow-statechart.md`. All previously-shipped invariants are preserved (writes serialized, per-verse ownership tokens, per-sub-write settlement, apply collapses to ranges / remove DELETEs per verse, one refetch per settled batch, scope-change drops the overlay, `live` gates rendering/fetching).
+Rewrite the BibleReader highlights flow as an explicit xstate v5 statechart (YPE-1034 / PR-288, still behind the internal `HIGHLIGHTS_LIVE` flag). `useBibleReaderHighlights` is now a thin adapter over `bibleReaderHighlightsMachine`; the machine (authored with `setup()` and named guards/actions/actors, so it is Stately-visualizable) owns the whole flow — optimistic overlay, serialized writes with per-verse ownership, reconcile, the auth flow, and the resume-on-return path. A mermaid statechart lives in `docs/highlight-flow-statechart.md`. All previously-shipped invariants are preserved.
 
 Behavior changes:
 

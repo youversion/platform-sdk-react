@@ -85,8 +85,6 @@ beforeEach(() => {
 
 afterEach(() => {
   setHighlightsLive(HIGHLIGHTS_LIVE);
-  localStorage.clear();
-  sessionStorage.clear();
 });
 
 describe('useBibleReaderHighlights — flag off (dark launch)', () => {

@@ -20,7 +20,7 @@ import { YouVersionAuthContext, YouVersionContext } from '@youversion/platform-r
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
-import { readPendingHighlights } from '@/lib/pending-highlight';
+import { readPendingHighlights, stashPendingHighlight } from '@/lib/pending-highlight';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
 
 const mockUserInfo = { id: 'user-1', name: 'Test User' } as unknown as YouVersionUserInfo;
@@ -231,19 +231,14 @@ describe('highlight auth flow — data-exchange return', () => {
       'https://host.example/read?data_exchange_status=granted&granted_permissions=highlights',
     );
     // Pre-stash a pending highlight as the confirm path would have.
-    sessionStorage.setItem(
-      'youversion-platform:pending-highlight',
-      JSON.stringify([
-        {
-          verses: [16],
-          color: 'fffe00',
-          versionId: 111,
-          book: 'JHN',
-          chapter: '3',
-          timestamp: Date.now(),
-        },
-      ]),
-    );
+    stashPendingHighlight({
+      verses: [16],
+      color: 'fffe00',
+      versionId: 111,
+      book: 'JHN',
+      chapter: '3',
+      timestamp: Date.now(),
+    });
     const createHighlight = vi
       .spyOn(HighlightsClient.prototype, 'createHighlight')
       .mockResolvedValue({ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' });
@@ -274,19 +269,14 @@ describe('highlight auth flow — data-exchange return', () => {
     // the status on run 1 and acting on it on run 2 is the bug this pins.
     signedIn = false;
     setLocation('https://host.example/read?data_exchange_status=cancel');
-    sessionStorage.setItem(
-      'youversion-platform:pending-highlight',
-      JSON.stringify([
-        {
-          verses: [16],
-          color: 'fffe00',
-          versionId: 111,
-          book: 'JHN',
-          chapter: '3',
-          timestamp: Date.now(),
-        },
-      ]),
-    );
+    stashPendingHighlight({
+      verses: [16],
+      color: 'fffe00',
+      versionId: 111,
+      book: 'JHN',
+      chapter: '3',
+      timestamp: Date.now(),
+    });
     const createHighlight = vi.spyOn(HighlightsClient.prototype, 'createHighlight');
 
     const { result, rerender } = renderHook(() => useBibleReaderHighlights(options), {
@@ -307,19 +297,14 @@ describe('highlight auth flow — data-exchange return', () => {
   it('discards pending on a failure return and does not re-open the dialog (async session hydration)', async () => {
     signedIn = false;
     setLocation('https://host.example/read?data_exchange_status=something-unexpected');
-    sessionStorage.setItem(
-      'youversion-platform:pending-highlight',
-      JSON.stringify([
-        {
-          verses: [16],
-          color: 'fffe00',
-          versionId: 111,
-          book: 'JHN',
-          chapter: '3',
-          timestamp: Date.now(),
-        },
-      ]),
-    );
+    stashPendingHighlight({
+      verses: [16],
+      color: 'fffe00',
+      versionId: 111,
+      book: 'JHN',
+      chapter: '3',
+      timestamp: Date.now(),
+    });
     const createHighlight = vi.spyOn(HighlightsClient.prototype, 'createHighlight');
 
     const { result, rerender } = renderHook(() => useBibleReaderHighlights(options), {

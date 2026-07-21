@@ -149,19 +149,6 @@ export class YouVersionPlatformConfiguration {
     this.writeStoredGrants(userId, [...merged]);
   }
 
-  /**
-   * Replaces the current user's cached grants wholesale with exactly
-   * `permissions` (de-duplicated), discarding whatever was cached before.
-   * Unlike {@link saveGrantedPermissions}, which merges, this is a full
-   * overwrite for callers holding the authoritative set. No-ops when signed out.
-   */
-  public static setGrantedPermissions(permissions: string[]): void {
-    if (typeof localStorage === 'undefined') return;
-    const userId = this.currentUserId;
-    if (!userId) return;
-    this.writeStoredGrants(userId, [...new Set(permissions)]);
-  }
-
   /** Drops a single permission from the cache — used to honor a server 401/403. */
   public static removeGrantedPermission(permission: string): void {
     if (typeof localStorage === 'undefined') return;

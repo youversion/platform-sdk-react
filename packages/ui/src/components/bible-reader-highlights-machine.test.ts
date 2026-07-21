@@ -10,15 +10,17 @@
  */
 import { createActor } from 'xstate';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { peekPendingHighlights, readPendingHighlights } from '@/lib/pending-highlight';
+import {
+  appendPendingHighlight,
+  peekPendingHighlights,
+  readPendingHighlights,
+} from '@/lib/pending-highlight';
 import {
   bibleReaderHighlightsMachine,
   type HighlightScope,
   type HighlightServices,
   type HighlightServicesRef,
 } from './bible-reader-highlights-machine';
-
-const STORAGE_KEY = 'youversion-platform:pending-highlight';
 
 function httpError(status: number): Error {
   return Object.assign(new Error(`HTTP ${status}`), { status });
@@ -63,18 +65,6 @@ function startMachine(ref: HighlightServicesRef, scope: HighlightScope = scopeJH
   return actor;
 }
 
-async function waitFor(
-  actor: ReturnType<typeof startMachine>,
-  predicate: (snapshot: ReturnType<typeof actor.getSnapshot>) => boolean,
-  timeoutMs = 1000,
-): Promise<void> {
-  const start = Date.now();
-  while (!predicate(actor.getSnapshot())) {
-    if (Date.now() - start > timeoutMs) throw new Error('waitFor timed out');
-    await new Promise((resolve) => setTimeout(resolve, 5));
-  }
-}
-
 afterEach(() => {
   vi.restoreAllMocks();
   localStorage.clear();
@@ -90,7 +80,7 @@ describe('bibleReaderHighlightsMachine — writeIntent lifecycle', () => {
     // Claimed synchronously before the write settles.
     expect(actor.getSnapshot().context.writeIntent.get(16)).toBeDefined();
 
-    await waitFor(actor, () => refetch.mock.calls.length > 0);
+    await vi.waitFor(() => expect(refetch).toHaveBeenCalled());
 
     const ctx = actor.getSnapshot().context;
     expect(ctx.writeIntent.has(16)).toBe(false);
@@ -105,7 +95,7 @@ describe('bibleReaderHighlightsMachine — writeIntent lifecycle', () => {
     const actor = startMachine(ref);
 
     actor.send({ type: 'TAP_COLOR', color: 'FFFE00', verses: [16] });
-    await waitFor(actor, () => createHighlight.mock.calls.length > 0);
+    await vi.waitFor(() => expect(createHighlight).toHaveBeenCalled());
     expect(actor.getSnapshot().context.overlay).toEqual({ 16: 'fffe00' });
 
     // Navigate to a new chapter while the old-scope write is still in flight.
@@ -115,7 +105,7 @@ describe('bibleReaderHighlightsMachine — writeIntent lifecycle', () => {
 
     // The old-scope (JHN.3) write settles after the scope change.
     pending.resolve(undefined);
-    await waitFor(actor, () => refetch.mock.calls.length > 0);
+    await vi.waitFor(() => expect(refetch).toHaveBeenCalled());
 
     // Verse 16 in the NEW scope must be untouched by the JHN.3 write.
     const ctx = actor.getSnapshot().context;
@@ -136,7 +126,7 @@ describe('bibleReaderHighlightsMachine — writeIntent lifecycle', () => {
 
     // Write A: apply red to verse 16 (goes in flight).
     actor.send({ type: 'TAP_COLOR', color: 'FF0000', verses: [16] });
-    await waitFor(actor, () => createHighlight.mock.calls.length === 1);
+    await vi.waitFor(() => expect(createHighlight).toHaveBeenCalledTimes(1));
     const claimA = actor.getSnapshot().context.writeIntent.get(16);
     expect(claimA).toBeDefined();
 
@@ -149,16 +139,16 @@ describe('bibleReaderHighlightsMachine — writeIntent lifecycle', () => {
 
     // A settles: it must not delete B's claim or reconcile verse 16.
     first.resolve(undefined);
-    await waitFor(actor, () => refetch.mock.calls.length === 1);
+    await vi.waitFor(() => expect(refetch).toHaveBeenCalledTimes(1));
     const afterA = actor.getSnapshot().context;
     expect(afterA.writeIntent.get(16)).toBe(claimB);
     expect(afterA.reconcile.has(16)).toBe(false);
     expect(afterA.overlay).toEqual({ 16: '00ff00' });
 
     // B settles: it cleans up its own claim and registers its reconcile entry.
-    await waitFor(actor, () => createHighlight.mock.calls.length === 2);
+    await vi.waitFor(() => expect(createHighlight).toHaveBeenCalledTimes(2));
     second.resolve(undefined);
-    await waitFor(actor, () => refetch.mock.calls.length === 2);
+    await vi.waitFor(() => expect(refetch).toHaveBeenCalledTimes(2));
     const afterB = actor.getSnapshot().context;
     expect(afterB.writeIntent.has(16)).toBe(false);
     expect(afterB.reconcile.get(16)).toEqual({ op: 'apply', color: '00ff00' });
@@ -180,7 +170,7 @@ describe('bibleReaderHighlightsMachine — pending stash on lost permission', ()
     actor.send({ type: 'TAP_COLOR', color: 'AAAAAA', verses: [1, 2, 3] });
     actor.send({ type: 'TAP_COLOR', color: 'BBBBBB', verses: [4, 5, 6] });
 
-    await waitFor(actor, () => refetch.mock.calls.length === 2);
+    await vi.waitFor(() => expect(refetch).toHaveBeenCalledTimes(2));
 
     const stash = peekPendingHighlights();
     expect(stash).toHaveLength(2);
@@ -205,7 +195,7 @@ describe('bibleReaderHighlightsMachine — pending stash on lost permission', ()
     actor.send({ type: 'TAP_COLOR', color: 'AAAAAA', verses: [1, 2, 3] });
     actor.send({ type: 'TAP_COLOR', color: 'BBBBBB', verses: [4, 5, 6] });
 
-    await waitFor(actor, () => refetch.mock.calls.length === 2);
+    await vi.waitFor(() => expect(refetch).toHaveBeenCalledTimes(2));
 
     const stash = peekPendingHighlights();
     expect(stash).toHaveLength(1);
@@ -219,32 +209,33 @@ describe('bibleReaderHighlightsMachine — pending stash on lost permission', ()
     // Two entries survived a data-exchange redirect; on the granted return the
     // machine restarts and must resume ALL of them, not just the last.
     const now = Date.now();
-    sessionStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify([
-        {
-          verses: [1, 2, 3],
-          color: 'aaaaaa',
-          versionId: 111,
-          book: 'JHN',
-          chapter: '3',
-          timestamp: now,
-        },
-        {
-          verses: [4, 5, 6],
-          color: 'bbbbbb',
-          versionId: 111,
-          book: 'JHN',
-          chapter: '3',
-          timestamp: now,
-        },
-      ]),
+    appendPendingHighlight(
+      {
+        verses: [1, 2, 3],
+        color: 'aaaaaa',
+        versionId: 111,
+        book: 'JHN',
+        chapter: '3',
+        timestamp: now,
+      },
+      now,
+    );
+    appendPendingHighlight(
+      {
+        verses: [4, 5, 6],
+        color: 'bbbbbb',
+        versionId: 111,
+        book: 'JHN',
+        chapter: '3',
+        timestamp: now,
+      },
+      now,
     );
     const createHighlight = vi.fn().mockResolvedValue(undefined);
     const { ref } = makeServices({ createHighlight });
     const actor = startMachine(ref);
 
-    await waitFor(actor, () => createHighlight.mock.calls.length === 2);
+    await vi.waitFor(() => expect(createHighlight).toHaveBeenCalledTimes(2));
 
     const passages = createHighlight.mock.calls.map(
       (call) => (call[0] as { passage_id: string }).passage_id,

@@ -8,7 +8,7 @@
  * statically analyzable / Stately-visualizable — no anonymous inline logic where
  * a named implementation is possible.
  *
- * Statechart shape (see docs/adr / CONTEXT.md for the mermaid diagram):
+ * Statechart shape (see docs/highlight-flow-statechart.md for the mermaid diagram):
  *
  *   booting ─(always)─▶ disabled | enabled
  *   disabled  ── flag off OR no auth provider: fully inert (no fetch, writes,
@@ -43,7 +43,7 @@
  * the brief, applied only to the remove side (removes can never resurrect),
  * leaving the tested apply-convergence behavior untouched.
  */
-import { collapseVerseRuns, type VerseRun } from '@/lib/usfm-ranges';
+import { collapseVerseRuns, formatPassageId, type VerseRun } from '@/lib/usfm-ranges';
 import {
   appendPendingHighlight,
   clearPendingHighlight,
@@ -185,13 +185,6 @@ export class BibleReaderHighlightError extends Error {
   }
 }
 
-/** The range USFM for one contiguous run: `{2,3} -> "JHN.3.2-3"`, `{5,5} -> "JHN.3.5"`. */
-function runToPassageId(book: string, chapter: string, run: VerseRun): string {
-  return run.start === run.end
-    ? `${book}.${chapter}.${run.start}`
-    : `${book}.${chapter}.${run.start}-${run.end}`;
-}
-
 /** Expands a contiguous run back into its verse numbers: `{2,4} -> [2,3,4]`. */
 function versesInRun(run: VerseRun): number[] {
   const verses: number[] = [];
@@ -308,13 +301,13 @@ const processWrite = fromPromise<WriteResult, { services: HighlightServicesRef; 
             try: () =>
               svc.createHighlight({
                 version_id: op.scope.versionId,
-                passage_id: runToPassageId(op.scope.book, op.scope.chapter, run),
+                passage_id: formatPassageId(op.scope.book, op.scope.chapter, run),
                 color: op.color,
               }),
             catch: (cause) =>
               new BibleReaderHighlightError(
                 'apply',
-                runToPassageId(op.scope.book, op.scope.chapter, run),
+                formatPassageId(op.scope.book, op.scope.chapter, run),
                 cause,
               ),
           }),
