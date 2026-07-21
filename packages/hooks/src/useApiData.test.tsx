@@ -5,22 +5,6 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { useApiData, type UseApiDataOptions } from './useApiData';
 
-type Deferred<T> = {
-  promise: Promise<T>;
-  resolve: (value: T) => void;
-  reject: (reason: unknown) => void;
-};
-
-function createDeferred<T>(): Deferred<T> {
-  let resolve!: (value: T) => void;
-  let reject!: (reason: unknown) => void;
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-  return { promise, resolve, reject };
-}
-
 describe('useApiData — enabled transitions', () => {
   it('fetches when enabled flips from false to true with unchanged deps', async () => {
     const fetchFn = vi.fn().mockResolvedValue('payload');
@@ -68,9 +52,9 @@ describe('useApiData — enabled transitions', () => {
 
 describe('useApiData — stale responses (latest wins)', () => {
   it('ignores a stale refetch response that resolves after a newer fetch', async () => {
-    const deferreds: Deferred<string>[] = [];
+    const deferreds: PromiseWithResolvers<string>[] = [];
     const fetchFn = vi.fn(() => {
-      const deferred = createDeferred<string>();
+      const deferred = Promise.withResolvers<string>();
       deferreds.push(deferred);
       return deferred.promise;
     });
@@ -112,9 +96,9 @@ describe('useApiData — stale responses (latest wins)', () => {
   });
 
   it('ignores a stale error from an invalidated request', async () => {
-    const deferreds: Deferred<string>[] = [];
+    const deferreds: PromiseWithResolvers<string>[] = [];
     const fetchFn = vi.fn(() => {
-      const deferred = createDeferred<string>();
+      const deferred = Promise.withResolvers<string>();
       deferreds.push(deferred);
       return deferred.promise;
     });

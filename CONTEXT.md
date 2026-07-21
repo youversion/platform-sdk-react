@@ -39,45 +39,11 @@ the verse action popover. Never persisted; cleared on navigation.
 
 ## Self-contained mode
 
-The default `BibleReader` posture (YPE-1034): the reader fetches and writes
-highlights itself through the SDK's own auth session. The color row is
-always offered; tapping a color when the user lacks a session or the
-highlights permission enters the highlight auth flow (July 9 2026 sync,
-superseding the earlier hide-when-signed-out idea).
-
-## Highlights permission
-
-The per-app grant that authorizes highlight reads/writes for a user. It is
-**not an OIDC scope**: it travels as `requested_permissions[]=highlights`
-alongside `scope` at authorize time (PR #280) and is granted via a data
-exchange consent. Permissions are open-ended strings, never enums (more
-arrive later, e.g. verse notes). The **server is the source of truth** for
-whether it is granted; any client-side permission cache is optimistic only.
-
-## Pending highlight
-
-The user's stashed highlight intent (verses + color + timestamp) while the
-highlight auth flow is in flight. Survives a redirect round-trip via
-sessionStorage; expires stale (~10 min) so an abandoned round-trip can
-never apply a highlight during a later sign-in. Discarded on decline,
-cancel, or failure.
-
-## Highlight auth flow
-
-The state machine (see the React Web auth state machine doc) that turns a
-color tap into an applied highlight across two user paths: one-fell-swoop
-(sign-in requesting the highlights permission together) and just-in-time
-(already signed in, permission confirm dialog → data exchange grant).
-Cancellation at any point keeps the verse selection intact and discards
-only the pending highlight.
-
-## Controlled mode
-
-A planned `BibleReader` posture (YPE-3705): the host application supplies
-rendered highlights as data and receives highlight-intent events, and the
-reader makes no highlight network calls. The host owns auth, persistence,
-and conflict rules. Used by native hosts (RN Expo SDK) embedding the web
-reader.
+The `BibleReader` posture (YPE-1034): the reader fetches and writes
+highlights itself through the SDK's own auth session. Highlight behavior is
+gated on the internal `HIGHLIGHTS_LIVE` dark-launch flag and an
+authenticated user — while the flag is off or the user has no session, the
+reader is inert: no fetches, no writes, nothing rendered from the API.
 
 ## Verse action popover
 

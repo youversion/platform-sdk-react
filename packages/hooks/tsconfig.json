@@ -1,6 +1,7 @@
 {
   "extends": "@internal/tsconfig/react.json",
   "compilerOptions": {
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "outDir": "dist",
     "rootDir": ".",
     "baseUrl": ".",
