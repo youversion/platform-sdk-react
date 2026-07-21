@@ -653,10 +653,13 @@ export const bibleReaderHighlightsMachine = setup({
         // Remove failures invalidate the cache but never re-prompt (the old
         // deferred wart is fixed here): with no pending highlight, a re-prompt's
         // post-grant resume was a no-op. The next apply re-enters the flow.
-      } else if (op.kind === 'apply' && op.reprompt) {
-        // Network / 5xx on a user apply: overlay already reverted; drop pending.
-        enqueue(() => clearPendingHighlight());
       }
+      // Network / 5xx must NOT clear the stash: a user apply that reaches the
+      // queue via `startApplyWrite` never stashed anything of its own, so there
+      // is nothing here to drop — and any entries present belong to a sibling
+      // batch that lost permission moments earlier and must survive the grant.
+      // (Tap-flow stashes can't linger past this point either: they are followed
+      // by a full-page redirect, and dialog cancel/decline run `clearPending`.)
     }),
 
     // ── Dialog side effects (fire-and-forget redirects, matching the hook) ──

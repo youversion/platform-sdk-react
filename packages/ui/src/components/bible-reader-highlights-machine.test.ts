@@ -190,6 +190,31 @@ describe('bibleReaderHighlightsMachine — pending stash on lost permission', ()
     actor.stop();
   });
 
+  it('keeps a sibling’s stashed intent when a later write fails with a network/5xx error', async () => {
+    // Write 1 (color A) 401s and stashes; write 2 (color B) then fails 5xx. The
+    // 5xx path must NOT clear the stash — write 2 never stashed anything of its
+    // own, and write 1's intent must survive to resume after the re-grant.
+    const createHighlight = vi
+      .fn()
+      .mockRejectedValueOnce(httpError(401))
+      .mockRejectedValueOnce(httpError(500));
+    const { ref, refetch } = makeServices({ createHighlight });
+    const actor = startMachine(ref);
+    vi.spyOn(console, 'error').mockImplementation(vi.fn());
+
+    actor.send({ type: 'TAP_COLOR', color: 'AAAAAA', verses: [1, 2, 3] });
+    actor.send({ type: 'TAP_COLOR', color: 'BBBBBB', verses: [4, 5, 6] });
+
+    await waitFor(actor, () => refetch.mock.calls.length === 2);
+
+    const stash = peekPendingHighlights();
+    expect(stash).toHaveLength(1);
+    expect(stash[0]).toMatchObject({ verses: [1, 2, 3], color: 'aaaaaa' });
+    // The 5xx write's verses were never stashed.
+    expect(stash.some((entry) => entry.verses.includes(4))).toBe(false);
+    actor.stop();
+  });
+
   it('re-applies every stashed entry after a restart with permission granted', async () => {
     // Two entries survived a data-exchange redirect; on the granted return the
     // machine restarts and must resume ALL of them, not just the last.
