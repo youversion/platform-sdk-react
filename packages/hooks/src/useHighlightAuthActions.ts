@@ -89,11 +89,12 @@ export function useHighlightAuthActions(): {
     if (!dataExchangeClient || !context?.appKey) {
       throw new Error('YouVersion context is required to start a data exchange.');
     }
-    const token = await dataExchangeClient.updateToken([HIGHLIGHTS_PERMISSION]);
-    // Record who started the flow so the callback only saves the grant if the
-    // same user is still signed in when it returns (guards against a different
-    // user signing in on another tab mid-redirect).
+    // Record the initiator BEFORE minting the token. A mid-await user switch
+    // (another tab) must not stamp the new session as the initiator — that
+    // would let the callback honor a grant the new user never consented to.
+    // Saving first fails closed on mismatch instead.
     YouVersionPlatformConfiguration.saveDataExchangeInitiator();
+    const token = await dataExchangeClient.updateToken([HIGHLIGHTS_PERMISSION]);
     if (typeof window !== 'undefined') {
       window.location.href = buildDataExchangeUrl(token, context.appKey, context.apiHost);
     }

@@ -560,6 +560,8 @@ export const bibleReaderHighlightsMachine = setup({
         // right passage) and re-opens the permission dialog, rather than silently
         // dropping the user's original color tap. Being an `apply` is what earns
         // that re-prompt at the consumer site (see `settleWrite`).
+        // The clear above already dropped the intent for network/5xx — settle
+        // must not clear again (sibling permission-lost entries may be present).
         const op: WriteOp = {
           kind: 'apply',
           color: pending.color,
@@ -584,7 +586,7 @@ export const bibleReaderHighlightsMachine = setup({
      * reconciliation (overlay holds until a fetch reflects the write), failed
      * verses revert (only if still owned by this op's token), exactly one refetch
      * fires, and failures route by status (401/403 → invalidate + maybe re-prompt;
-     * network/5xx → discard pending).
+     * network/5xx → revert overlay only).
      */
     settleWrite: enqueueActions(({ enqueue, event }) => {
       // Wired only to the processWrite `onDone`; the done event is the actor's
@@ -645,15 +647,14 @@ export const bibleReaderHighlightsMachine = setup({
           enqueue(() => appendPendingHighlight(opToPending(op)));
           enqueue.raise({ type: 'PERMISSION_LOST' });
         }
-      } else if (op.kind === 'apply') {
-        // Network / 5xx: overlay already reverted; drop pending. INTENTIONAL for
-        // resumed writes too — transient failures consume the intent uniformly
-        // (the user is authed now; a re-tap just works, and the failure surfaces
-        // via the snackbar, YPE-3873). Re-stashing instead would auto-apply the
-        // highlight on a later mount within the pending TTL with no user action,
-        // which is worse than asking for one more tap.
-        enqueue(() => clearPendingHighlight());
       }
+      // Network / 5xx must NOT clear the stash: a user apply that reaches the
+      // queue via `startApplyWrite` never stashed anything of its own, so there
+      // is nothing here to drop — and any entries present belong to a sibling
+      // batch that lost permission moments earlier and must survive the grant.
+      // Resume-applied writes already consumed their pending at
+      // `applyPendingHighlight` enqueue time (intentional 5xx intent-drop), so
+      // a blunt clear here would only risk wiping those siblings.
     }),
 
     // ── Dialog side effects (fire-and-forget redirects, matching the hook) ──

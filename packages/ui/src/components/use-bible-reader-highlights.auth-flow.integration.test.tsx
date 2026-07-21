@@ -236,7 +236,7 @@ describe('highlight auth flow — just-in-time (signed in, no permission)', () =
       result.current.apply('fffe00', [16]);
     });
     expect(result.current.permissionDialogOpen).toBe(true);
-    expect(readPendingHighlight()).not.toBeNull();
+    expect(readPendingHighlights()).toHaveLength(1);
 
     // The host signs the user out while the confirm dialog is still open. A
     // confirm now would start a data exchange that rejects unauthenticated, so
@@ -245,7 +245,7 @@ describe('highlight auth flow — just-in-time (signed in, no permission)', () =
     rerender();
 
     expect(result.current.permissionDialogOpen).toBe(false);
-    expect(readPendingHighlight()).toBeNull();
+    expect(readPendingHighlights()).toEqual([]);
 
     // A confirm after the auto-close is a no-op: no data exchange is started.
     act(() => {
@@ -308,17 +308,14 @@ describe('highlight auth flow — data-exchange return', () => {
     );
     // Record the initiator as the redirect leg would have (see test above).
     YouVersionPlatformConfiguration.saveDataExchangeInitiator();
-    sessionStorage.setItem(
-      'youversion-platform:pending-highlight',
-      JSON.stringify({
-        verses: [16],
-        color: 'fffe00',
-        versionId: 111,
-        book: 'JHN',
-        chapter: '3',
-        timestamp: Date.now(),
-      }),
-    );
+    stashPendingHighlight({
+      verses: [16],
+      color: 'fffe00',
+      versionId: 111,
+      book: 'JHN',
+      chapter: '3',
+      timestamp: Date.now(),
+    });
     const createHighlight = vi
       .spyOn(HighlightsClient.prototype, 'createHighlight')
       .mockRejectedValue(httpError(401));
@@ -342,7 +339,7 @@ describe('highlight auth flow — data-exchange return', () => {
     // Server truth wins: cache invalidated, and the pending is re-stashed from the
     // op's own scope so a post-grant confirm can resume it.
     expect(YouVersionPlatformConfiguration.hasPermission('highlights')).toBe(false);
-    expect(readPendingHighlight()).toMatchObject({
+    expect(readPendingHighlights()[0]).toMatchObject({
       verses: [16],
       color: 'fffe00',
       versionId: 111,
