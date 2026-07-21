@@ -122,8 +122,14 @@ export class YouVersionAPIUsers {
         token_type: string;
       };
 
+      // Surface the data-exchange permissions the server granted. The server
+      // echoes them as `granted_permissions` on the callback URL (comma- or
+      // space-separated, param may repeat). Parsed before constructing the
+      // result so `permissions` can stay readonly (passed via the constructor).
+      const grantedPermissions = parseGrantedPermissions(urlParams);
+
       // Extract user info from ID token
-      const result = this.extractSignInResult(tokens);
+      const result = this.extractSignInResult(tokens, grantedPermissions);
 
       // Store tokens in configuration. The ID token is intentionally not
       // persisted — it is only used here to derive the user profile below.
@@ -143,13 +149,9 @@ export class YouVersionAPIUsers {
         avatar_url: result.profilePicture,
       });
 
-      // Surface + persist the data-exchange permissions the server granted. The
-      // server echoes them as `granted_permissions` on the callback URL (comma-
-      // or space-separated, param may repeat). This seeds the optimistic
-      // permission cache so a one-fell-swoop sign-in that requested `highlights`
-      // can apply a pending highlight on return without a probe round-trip.
-      const grantedPermissions = parseGrantedPermissions(urlParams);
-      result.permissions = grantedPermissions;
+      // Persist the granted permissions into the optimistic permission cache so
+      // a one-fell-swoop sign-in that requested `highlights` can apply a pending
+      // highlight on return without a probe round-trip.
       if (grantedPermissions.length > 0) {
         YouVersionPlatformConfiguration.saveGrantedPermissions(grantedPermissions);
       }
@@ -199,14 +201,17 @@ export class YouVersionAPIUsers {
   /**
    * Extracts sign-in result from token response
    */
-  private static extractSignInResult(tokens: {
-    access_token: string;
-    expires_in: number;
-    id_token: string;
-    refresh_token: string;
-    scope: string;
-    token_type: string;
-  }): SignInWithYouVersionResult {
+  private static extractSignInResult(
+    tokens: {
+      access_token: string;
+      expires_in: number;
+      id_token: string;
+      refresh_token: string;
+      scope: string;
+      token_type: string;
+    },
+    permissions: string[] = [],
+  ): SignInWithYouVersionResult {
     const idClaims = this.decodeJWT(tokens.id_token);
 
     const resultData = {
@@ -217,6 +222,7 @@ export class YouVersionAPIUsers {
       name: idClaims.name as string,
       profilePicture: idClaims.profile_picture as string,
       email: idClaims.email as string,
+      permissions,
     };
 
     return new SignInWithYouVersionResult(resultData);

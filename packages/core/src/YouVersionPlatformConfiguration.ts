@@ -150,9 +150,10 @@ export class YouVersionPlatformConfiguration {
   }
 
   /**
-   * Replaces the cache with exactly `permissions` for the current user (used to
-   * reconcile the cache with the authoritative set the server returns on a
-   * data-exchange grant). No-ops when signed out.
+   * Replaces the current user's cached grants wholesale with exactly
+   * `permissions` (de-duplicated), discarding whatever was cached before.
+   * Unlike {@link saveGrantedPermissions}, which merges, this is a full
+   * overwrite for callers holding the authoritative set. No-ops when signed out.
    */
   public static setGrantedPermissions(permissions: string[]): void {
     if (typeof localStorage === 'undefined') return;

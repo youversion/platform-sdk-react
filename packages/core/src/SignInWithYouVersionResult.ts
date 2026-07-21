@@ -29,7 +29,7 @@ export class SignInWithYouVersionResult {
    * (parsed from `granted_permissions` on the callback). Empty when the callback
    * carried none. Additive: existing consumers can ignore it.
    */
-  public permissions: string[];
+  public readonly permissions: string[];
 
   constructor({
     accessToken,

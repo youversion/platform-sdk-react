@@ -538,7 +538,7 @@ function Content() {
   const highlightsEnabled = isHighlightsLive();
   // Copy shown to the sign-in dialog. Falls back to a neutral label when the
   // integrator hasn't set `YouVersionPlatformConfiguration.appName`.
-  const signInAppName = YouVersionPlatformConfiguration.appName ?? 'This app';
+  const signInAppName = YouVersionPlatformConfiguration.appName ?? t('signInAppNameFallback');
   const signInPromptMessage = YouVersionPlatformConfiguration.signInPromptMessage;
 
   // Navigating away (book/chapter/version) drops the selection — those verses no

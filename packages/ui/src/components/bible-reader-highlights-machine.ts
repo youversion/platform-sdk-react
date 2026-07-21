@@ -390,13 +390,19 @@ export const bibleReaderHighlightsMachine = setup({
     resetForScopeChange: assign(({ event }) => {
       if (event.type !== 'SCOPE_CHANGED') return {};
       // Verse numbers collide across scopes: drop the overlay + reconcile
-      // expectations synchronously. In-flight writes carry their own scope and
-      // still settle correctly. This is also the escape hatch for a
+      // expectations synchronously, and clear writeIntent so a stale-scope write
+      // settling after this change can't pass its `writeIntent.get(verse) ===
+      // token` ownership check and pollute the new scope's reconcile/overlay
+      // under a colliding verse number. In-flight writes carry their own scope
+      // and still refetch on settle; a resume-write re-paints via
+      // `applyPendingHighlight` (which sets its own intent) so nothing relies on
+      // the old intents surviving. This is also the escape hatch for a
       // never-converging write — navigating away releases it.
       return {
         scope: event.scope,
         overlay: {},
         reconcile: new Map<number, ReconcileEntry>(),
+        writeIntent: new Map<number, object>(),
       };
     }),
 
@@ -591,17 +597,23 @@ export const bibleReaderHighlightsMachine = setup({
       enqueue.assign(({ context: current }) => {
         const overlay = { ...current.overlay };
         const reconcile = new Map(current.reconcile);
+        const writeIntent = new Map(current.writeIntent);
         for (const verse of succeededVerses) {
           if (current.writeIntent.get(verse) === op.token) {
             reconcile.set(verse, { op: op.kind, color: op.color });
+            // Settled writes release their claim so intents can't accumulate
+            // until sign-out. A newer op has already re-claimed the verse (its
+            // token differs), so the guard leaves that fresher claim intact.
+            writeIntent.delete(verse);
           }
         }
         for (const verse of failedVerses) {
-          if (current.writeIntent.get(verse) === op.token && verse in overlay) {
-            delete overlay[verse];
+          if (current.writeIntent.get(verse) === op.token) {
+            if (verse in overlay) delete overlay[verse];
+            writeIntent.delete(verse);
           }
         }
-        return { overlay, reconcile };
+        return { overlay, reconcile, writeIntent };
       });
 
       // Exactly one GET per settled batch, success or failure — this is what
