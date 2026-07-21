@@ -41,8 +41,12 @@ import { Button } from './ui/button';
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from './ui/popover';
 import { VerseActionPopover } from './verse-action-popover';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
+import { HighlightPermissionDialog } from './highlight-permission-dialog';
+import { SignInDialog } from './sign-in-dialog';
 import { BibleTextView, getCleanVerseText, type FootnoteData } from './verse';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
+import { isHighlightsLive } from '@/lib/feature-flags';
+import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 
 type BibleReaderContextType = {
   book: string;
@@ -635,6 +639,13 @@ function Content() {
     highlightedVerses,
     apply: applyHighlight,
     remove: removeHighlight,
+    permissionDialogOpen,
+    onPermissionDialogOpenChange,
+    confirmPermissionDialog,
+    cancelPermissionDialog,
+    signInDialogOpen,
+    confirmSignInDialog,
+    cancelSignInDialog,
   } = useBibleReaderHighlights({
     versionId,
     book,
@@ -647,6 +658,15 @@ function Content() {
         }
       : undefined,
   });
+
+  // Color row is interactive when self-contained is live, or always in
+  // controlled mode (YPE-3705: controlled bypasses HIGHLIGHTS_LIVE). Copy /
+  // Share are always available.
+  const highlightsEnabled = isHighlightsControlled || isHighlightsLive();
+  // Copy shown to the sign-in dialog. Falls back to a neutral label when the
+  // integrator hasn't set `YouVersionPlatformConfiguration.appName`.
+  const signInAppName = YouVersionPlatformConfiguration.appName ?? t('signInAppNameFallback');
+  const signInPromptMessage = YouVersionPlatformConfiguration.signInPromptMessage;
 
   // Read via ref in the navigation effect so an inline callback prop doesn't
   // retrigger it every render.
@@ -724,7 +744,12 @@ function Content() {
   }
 
   function handleHighlight(color: string) {
-    applyHighlight(color, selectedVerses);
+    const outcome = applyHighlight(color, selectedVerses);
+    // Entering the auth flow (sign-in redirect or the permission confirm dialog)
+    // keeps the verse selection and popover intact so a cancel leaves the reader
+    // exactly where it was (YPE-1034 decision 7). An immediate apply — or an
+    // inert no-op — clears as before.
+    if (outcome === 'flow') return;
     closeAndClearSelection();
   }
 
@@ -890,12 +915,33 @@ function Content() {
             activeHighlights={activeHighlights}
             selectedVerses={selectedVerses}
             highlightedVerses={highlightedVerses}
+            highlightsEnabled={highlightsEnabled}
             anchorElement={anchorElement}
             scrollRoot={scrollContainerRef.current}
             onHighlight={handleHighlight}
             onClearHighlight={handleClearHighlight}
             onCopy={handleCopy}
             onShare={handleShare}
+            theme={background}
+          />
+
+          <HighlightPermissionDialog
+            open={permissionDialogOpen}
+            onOpenChange={onPermissionDialogOpenChange}
+            onConfirm={confirmPermissionDialog}
+            onCancel={cancelPermissionDialog}
+            theme={background}
+          />
+
+          <SignInDialog
+            open={signInDialogOpen}
+            onOpenChange={(open) => {
+              if (!open) cancelSignInDialog();
+            }}
+            appName={signInAppName}
+            promptMessage={signInPromptMessage}
+            onConfirm={confirmSignInDialog}
+            onDecline={cancelSignInDialog}
             theme={background}
           />
 

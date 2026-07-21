@@ -459,12 +459,11 @@ describe('BibleReader controlled mode - events', () => {
     const { container } = renderReader({ onHighlightApply, onHighlightRemove });
 
     selectVerse(container, 1);
-    await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
-    fireEvent.click(getApplyButtons()[0]!);
-
-    // Self-contained path owns the write (via useBibleReaderHighlights). With
-    // HIGHLIGHTS_LIVE off the row is inert — no paint — and the controlled
-    // intent callbacks must never fire.
+    // Self-contained with HIGHLIGHTS_LIVE off: the color row is hidden entirely
+    // (`highlightsEnabled` from PR-288). Copy/Share still open the popover.
+    // Controlled intent callbacks must never fire.
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
+    expect(getApplyButtons()).toHaveLength(0);
     expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
     expect(onHighlightApply).not.toHaveBeenCalled();
     expect(onHighlightRemove).not.toHaveBeenCalled();

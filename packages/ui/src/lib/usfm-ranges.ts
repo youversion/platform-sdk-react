@@ -31,11 +31,19 @@ export function collapseVerseRuns(verses: number[]): VerseRun[] {
 }
 
 /**
+ * The range USFM for one contiguous run:
+ * `("JHN", "3", {2,3}) -> "JHN.3.2-3"`, `("JHN", "3", {5,5}) -> "JHN.3.5"`.
+ */
+export function formatPassageId(book: string, chapter: string, run: VerseRun): string {
+  return run.start === run.end
+    ? `${book}.${chapter}.${run.start}`
+    : `${book}.${chapter}.${run.start}-${run.end}`;
+}
+
+/**
  * Builds one passage-id USFM per contiguous run:
  * `("JHN", "3", [16,17,18,20]) -> ["JHN.3.16-18", "JHN.3.20"]`.
  */
 export function buildPassageIds(book: string, chapter: string, verses: number[]): string[] {
-  return collapseVerseRuns(verses).map(({ start, end }) =>
-    start === end ? `${book}.${chapter}.${start}` : `${book}.${chapter}.${start}-${end}`,
-  );
+  return collapseVerseRuns(verses).map((run) => formatPassageId(book, chapter, run));
 }

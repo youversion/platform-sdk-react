@@ -69,3 +69,28 @@ round-trips an updated `highlights` prop.
 
 The floating action bar (YPE-642) that appears over a verse selection,
 offering highlight colors, copy, and share.
+
+## Highlights permission
+
+The data-exchange permission (`highlights`) an app must hold before it can
+read or write a user's highlights. Permissions are open-ended strings, not
+enums — more arrive later — and the server reports the ones a user granted
+back to the app via `granted_permissions` on the sign-in and data-exchange
+callbacks (YPE-1034).
+
+## Highlight auth flow
+
+The flow (YPE-1034) that turns a color tap into an applied highlight when the
+reader is not yet authorized. A tap forks: authorized writes optimistically;
+signed out opens the sign-in dialog; signed in without the **highlights
+permission** opens the just-in-time permission dialog. Consent routes through
+a full-page data-exchange redirect and resumes on return.
+
+## Pending highlight
+
+A user's stashed highlight intent (verses, color, scope) held in
+`sessionStorage` while the **highlight auth flow** is in flight (YPE-1034). It
+survives the full-page redirect round-trip and expires (~10 min) so an
+abandoned round-trip can never silently apply a highlight during a much later
+sign-in. It is intent, not highlight data (highlights stay server-only,
+ADR-001); discarded on decline, cancel, failure, or successful apply.

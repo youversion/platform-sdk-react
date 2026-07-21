@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildPassageIds, collapseVerseRuns } from './usfm-ranges';
+import { buildPassageIds, collapseVerseRuns, formatPassageId } from './usfm-ranges';
 
 describe('collapseVerseRuns', () => {
   it('returns an empty list for no verses', () => {
@@ -42,5 +42,15 @@ describe('buildPassageIds', () => {
 
   it('returns an empty list for an empty selection', () => {
     expect(buildPassageIds('JHN', '3', [])).toEqual([]);
+  });
+});
+
+describe('formatPassageId', () => {
+  it('emits a single-verse USFM when start equals end', () => {
+    expect(formatPassageId('JHN', '3', { start: 5, end: 5 })).toBe('JHN.3.5');
+  });
+
+  it('emits a range USFM when start differs from end', () => {
+    expect(formatPassageId('JHN', '3', { start: 2, end: 3 })).toBe('JHN.3.2-3');
   });
 });
