@@ -38,6 +38,7 @@ import { PersonIcon } from './icons/person';
 import { ProfileAvatar } from './profile-avatar';
 import { Button } from './ui/button';
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from './ui/popover';
+import { useBibleReaderHighlights } from './use-bible-reader-highlights';
 import { VerseActionPopover } from './verse-action-popover';
 import { BibleTextView, getCleanVerseText, type FootnoteData } from './verse';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
@@ -504,40 +505,22 @@ function Content() {
   }, [book, chapter]);
 
   // ---- Verse selection + highlights ------------------------------------------
-  // Selection is ephemeral; highlights persist to localStorage only for now
-  // (ADR-001) in the future `highlight` API shape: keyed by full passage_id USFM
-  // and scoped by versionId/bible_id (ADR-002). The reader DOM ref lets us anchor
-  // the popover and pull clean verse text for Copy / Share.
+  // Selection is ephemeral (ADR-007 in YPE-642). Highlights are server-only
+  // account data (ADR-001 in YPE-1034): fetched and written through
+  // useBibleReaderHighlights, dark-launched behind the internal HIGHLIGHTS_LIVE
+  // flag. The reader DOM ref lets us anchor the popover and pull clean verse
+  // text for Copy / Share.
   const readerRef = useRef<HTMLDivElement>(null);
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null);
   const lastSelectionRef = useRef<number[]>([]);
-  const [highlightStore, setHighlightStore] = useState<Record<string, string>>({});
 
-  const highlightsStorageKey = `youversion-platform:highlights:${versionId}`;
-
-  // Clear the store synchronously (during render) the moment the version key
-  // changes. The load effect below runs *after* paint, so without this the
-  // previous version's highlights would paint over the new text for one frame —
-  // their `${book}.${chapter}.N` keys collide with the new version's verses.
-  const [loadedHighlightsKey, setLoadedHighlightsKey] = useState(highlightsStorageKey);
-  if (loadedHighlightsKey !== highlightsStorageKey) {
-    setLoadedHighlightsKey(highlightsStorageKey);
-    setHighlightStore({});
-  }
-
-  // Load this version's highlights when the version changes (client-only).
-  useEffect(() => {
-    let data: Record<string, string> = {};
-    try {
-      const raw = localStorage.getItem(highlightsStorageKey);
-      if (raw) data = JSON.parse(raw) as Record<string, string>;
-    } catch {
-      // Ignore (unavailable or malformed storage).
-    }
-    setHighlightStore(data);
-  }, [highlightsStorageKey]);
+  const {
+    highlightedVerses,
+    apply: applyHighlight,
+    remove: removeHighlight,
+  } = useBibleReaderHighlights({ versionId, book, chapter });
 
   // Navigating away (book/chapter/version) drops the selection — those verses no
   // longer exist on screen (ADR-007).
@@ -547,18 +530,6 @@ function Content() {
     setAnchorElement(null);
     lastSelectionRef.current = [];
   }, [book, chapter, versionId]);
-
-  // Derive the visible chapter's highlights (verse number → hex) from the store.
-  const chapterPrefix = `${book}.${chapter}.`;
-  const highlightedVerses = useMemo(() => {
-    const map: Record<number, string> = {};
-    for (const [passageId, color] of Object.entries(highlightStore)) {
-      if (!passageId.startsWith(chapterPrefix)) continue;
-      const verseNum = parseInt(passageId.slice(chapterPrefix.length), 10);
-      if (verseNum) map[verseNum] = color;
-    }
-    return map;
-  }, [highlightStore, chapterPrefix]);
 
   // Distinct colors present in the current selection → drives the X (remove) circles.
   const activeHighlights = useMemo(
@@ -570,14 +541,6 @@ function Content() {
       ),
     [selectedVerses, highlightedVerses],
   );
-
-  function persistHighlights(next: Record<string, string>) {
-    try {
-      localStorage.setItem(highlightsStorageKey, JSON.stringify(next));
-    } catch {
-      // Ignore (private mode / quota exceeded).
-    }
-  }
 
   function closeAndClearSelection() {
     setPopoverOpen(false);
@@ -608,26 +571,16 @@ function Content() {
   }
 
   function handleHighlight(color: string) {
-    const next = { ...highlightStore };
-    for (const verse of selectedVerses) {
-      next[`${book}.${chapter}.${verse}`] = color;
-    }
-    setHighlightStore(next);
-    persistHighlights(next);
+    applyHighlight(color, selectedVerses);
     closeAndClearSelection();
   }
 
   function handleClearHighlight(color: string) {
-    const next = { ...highlightStore };
-    for (const verse of selectedVerses) {
-      const passageId = `${book}.${chapter}.${verse}`;
-      if (next[passageId] === color) delete next[passageId];
-    }
-    setHighlightStore(next);
-    persistHighlights(next);
+    removeHighlight(color, selectedVerses);
 
     // Multiple colors active → keep open so the user can remove others (AC 8a);
-    // last color removed → dismiss (AC 8).
+    // last color removed → dismiss (AC 8). `highlightedVerses` still holds the
+    // pre-removal snapshot here — the optimistic overlay lands next render.
     const hasRemaining = selectedVerses.some((verse) => {
       const current = highlightedVerses[verse];
       return current && current !== color;
