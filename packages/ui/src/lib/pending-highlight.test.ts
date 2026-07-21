@@ -4,11 +4,14 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   clearPendingHighlight,
+  peekPendingHighlight,
   PENDING_HIGHLIGHT_TTL_MS,
   readPendingHighlight,
   stashPendingHighlight,
   type PendingHighlight,
 } from './pending-highlight';
+
+const STORAGE_KEY = 'youversion-platform:pending-highlight';
 
 const base: PendingHighlight = {
   verses: [16, 17],
@@ -62,5 +65,28 @@ describe('pending-highlight', () => {
     stashPendingHighlight(base);
     clearPendingHighlight();
     expect(readPendingHighlight(base.timestamp)).toBeNull();
+  });
+
+  describe('peekPendingHighlight', () => {
+    it('round-trips a live entry without mutating storage', () => {
+      stashPendingHighlight(base);
+      expect(peekPendingHighlight(base.timestamp)).toEqual(base);
+      // Still present: peek never clears.
+      expect(sessionStorage.getItem(STORAGE_KEY)).not.toBeNull();
+    });
+
+    it('returns null for an expired entry AND leaves storage untouched', () => {
+      stashPendingHighlight(base);
+      const expiredNow = base.timestamp + PENDING_HIGHLIGHT_TTL_MS + 1;
+      expect(peekPendingHighlight(expiredNow)).toBeNull();
+      // Untouched: the raw entry is still there (unlike readPendingHighlight).
+      expect(sessionStorage.getItem(STORAGE_KEY)).not.toBeNull();
+    });
+
+    it('returns null for a malformed entry AND leaves storage untouched', () => {
+      sessionStorage.setItem(STORAGE_KEY, '{broken');
+      expect(peekPendingHighlight()).toBeNull();
+      expect(sessionStorage.getItem(STORAGE_KEY)).toBe('{broken');
+    });
   });
 });

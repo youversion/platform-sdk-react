@@ -3,6 +3,7 @@
 import { isHighlightsLive } from '@/lib/feature-flags';
 import {
   bibleReaderHighlightsMachine,
+  scopesEqual,
   selectHighlightedVerses,
   type HighlightScope,
   type HighlightServices,
@@ -125,9 +126,10 @@ export function useBibleReaderHighlights({
 
   // A stable ref bag of the live SDK service closures. Passed once to the machine
   // via `input`; the machine reads `.current` at call time so it always sees the
-  // latest closures without re-spawning.
-  const servicesRef = useRef<HighlightServices>(null as unknown as HighlightServices);
-  servicesRef.current = {
+  // latest closures without re-spawning. The ref is initialized with the first
+  // render's services and then kept current each render (the "latest ref"
+  // pattern) so freshness holds without a null-hole or re-spawn.
+  const services: HighlightServices = {
     createHighlight,
     deleteHighlight,
     refetch,
@@ -137,6 +139,8 @@ export function useBibleReaderHighlights({
     startSignInForHighlights,
     startDataExchangeForHighlights,
   };
+  const servicesRef = useRef(services);
+  servicesRef.current = services;
 
   const scope: HighlightScope = useMemo(
     () => ({ versionId, book, chapter }),
@@ -192,7 +196,7 @@ export function useBibleReaderHighlights({
     // machine scope still points at the old chapter, so the overlay is skipped
     // and the new chapter renders from server truth alone — verse numbers
     // collide across chapters.
-    if (!scopesMatch(machineScope, scope)) return { ...serverColors };
+    if (!scopesEqual(machineScope, scope)) return { ...serverColors };
     return selectHighlightedVerses(serverColors, overlay);
   }, [live, serverColors, overlay, machineScope, scope]);
 
@@ -243,8 +247,4 @@ export function useBibleReaderHighlights({
     signInDialogOpen,
     ...api,
   };
-}
-
-function scopesMatch(a: HighlightScope, b: HighlightScope): boolean {
-  return a.versionId === b.versionId && a.book === b.book && a.chapter === b.chapter;
 }

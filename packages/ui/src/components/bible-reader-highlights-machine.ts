@@ -46,16 +46,23 @@
 import { collapseVerseRuns, type VerseRun } from '@/lib/usfm-ranges';
 import {
   clearPendingHighlight,
+  peekPendingHighlight,
   readPendingHighlight,
   stashPendingHighlight,
   type PendingHighlight,
 } from '@/lib/pending-highlight';
 import { Result } from 'better-result';
-import { assign, enqueueActions, fromPromise, setup } from 'xstate';
+import { assign, enqueueActions, fromPromise, setup, type DoneActorEvent } from 'xstate';
 
 // ── Domain types ────────────────────────────────────────────────────────────
 
 export type HighlightScope = { versionId: number; book: string; chapter: string };
+
+/**
+ * The data-exchange return statuses. Mirrors core's `DataExchangeStatus` (UI
+ * must not import core directly — see the package boundary rules).
+ */
+type DataExchangeStatus = 'granted' | 'cancel' | 'failure';
 
 /** Verse number → hex color for the current scope, parsed from the fetch. */
 export type ServerColors = Record<number, string>;
@@ -105,7 +112,7 @@ export type HighlightServices = {
   refetch: () => void;
   hasHighlightsPermission: () => boolean;
   invalidateHighlightsPermission: () => void;
-  consumeDataExchangeReturn: () => { status: string } | null;
+  consumeDataExchangeReturn: () => { status: DataExchangeStatus } | null;
   startSignInForHighlights: () => Promise<void>;
   startDataExchangeForHighlights: () => Promise<void>;
 };
@@ -235,8 +242,31 @@ function opToPending(op: WriteOp): PendingHighlight {
   };
 }
 
-function scopesEqual(a: HighlightScope, b: HighlightScope): boolean {
+export function scopesEqual(a: HighlightScope, b: HighlightScope): boolean {
   return a.versionId === b.versionId && a.book === b.book && a.chapter === b.chapter;
+}
+
+/**
+ * Claims a set of verses for a write: stamps each with the op's ownership
+ * `token`, drops any pending reconciliation (a newer write supersedes it), and
+ * paints the optimistic overlay (`color` for an apply, `null` for a remove).
+ * Shared by every write entry point so the claim shape stays in one place.
+ */
+function claimVerses(
+  context: Pick<HighlightsContext, 'writeIntent' | 'reconcile' | 'overlay'>,
+  verses: number[],
+  token: object,
+  color: string | null,
+): Pick<HighlightsContext, 'writeIntent' | 'reconcile' | 'overlay'> {
+  const writeIntent = new Map(context.writeIntent);
+  const reconcile = new Map(context.reconcile);
+  const overlay = { ...context.overlay };
+  for (const verse of verses) {
+    writeIntent.set(verse, token);
+    reconcile.delete(verse);
+    overlay[verse] = color;
+  }
+  return { writeIntent, reconcile, overlay };
 }
 
 /** The rendered verse→color map: server truth with the optimistic overlay applied. */
@@ -353,14 +383,16 @@ export const bibleReaderHighlightsMachine = setup({
       event.type === 'TAP_COLOR' && event.verses.length > 0 && !context.isAuthenticated,
 
     // ── resume fork ──
-    noPending: () => readPendingHighlight() === null,
-    pendingNotAuthed: ({ context }) => readPendingHighlight() !== null && !context.isAuthenticated,
+    // Guards must be pure, so they PEEK (never clear expired/malformed entries);
+    // the clear-on-expiry/consume side effect stays in the actions/consume paths.
+    noPending: () => peekPendingHighlight() === null,
+    pendingNotAuthed: ({ context }) => peekPendingHighlight() !== null && !context.isAuthenticated,
     pendingAuthedHasPermission: ({ context }) =>
-      readPendingHighlight() !== null &&
+      peekPendingHighlight() !== null &&
       context.isAuthenticated &&
       context.services.current.hasHighlightsPermission(),
     pendingAuthedNoPermission: ({ context }) =>
-      readPendingHighlight() !== null &&
+      peekPendingHighlight() !== null &&
       context.isAuthenticated &&
       !context.services.current.hasHighlightsPermission(),
   },
@@ -451,20 +483,10 @@ export const bibleReaderHighlightsMachine = setup({
       const color = event.color.toLowerCase();
       const verses = event.verses;
       const token = {};
-      enqueue.assign(({ context: current }) => {
-        const writeIntent = new Map(current.writeIntent);
-        const reconcile = new Map(current.reconcile);
-        const overlay = { ...current.overlay };
-        for (const verse of verses) {
-          writeIntent.set(verse, token);
-          // A newer write supersedes any older reconciliation still pending for
-          // this verse, so the reconcile effect can't retire/hold the fresh
-          // overlay against the old write's target.
-          reconcile.delete(verse);
-          overlay[verse] = color;
-        }
-        return { writeIntent, reconcile, overlay, lastTapOutcome: 'applied' as TapOutcome };
-      });
+      enqueue.assign(({ context: current }) => ({
+        ...claimVerses(current, verses, token, color),
+        lastTapOutcome: 'applied' as TapOutcome,
+      }));
       const op: WriteOp = {
         kind: 'apply',
         color,
@@ -506,17 +528,7 @@ export const bibleReaderHighlightsMachine = setup({
       if (targetVerses.length === 0) return;
 
       const token = {};
-      enqueue.assign(({ context: current }) => {
-        const writeIntent = new Map(current.writeIntent);
-        const reconcile = new Map(current.reconcile);
-        const overlay = { ...current.overlay };
-        for (const verse of targetVerses) {
-          writeIntent.set(verse, token);
-          reconcile.delete(verse);
-          overlay[verse] = null;
-        }
-        return { writeIntent, reconcile, overlay };
-      });
+      enqueue.assign(({ context: current }) => claimVerses(current, targetVerses, token, null));
       const op: WriteOp = {
         kind: 'remove',
         color,
@@ -546,17 +558,9 @@ export const bibleReaderHighlightsMachine = setup({
       const paint = scopesEqual(scope, context.scope);
       const token = {};
       if (paint) {
-        enqueue.assign(({ context: current }) => {
-          const writeIntent = new Map(current.writeIntent);
-          const reconcile = new Map(current.reconcile);
-          const overlay = { ...current.overlay };
-          for (const verse of pending.verses) {
-            writeIntent.set(verse, token);
-            reconcile.delete(verse);
-            overlay[verse] = pending.color;
-          }
-          return { writeIntent, reconcile, overlay };
-        });
+        enqueue.assign(({ context: current }) =>
+          claimVerses(current, pending.verses, token, pending.color),
+        );
       }
       const op: WriteOp = {
         kind: 'apply',
@@ -588,10 +592,11 @@ export const bibleReaderHighlightsMachine = setup({
      * network/5xx → discard pending).
      */
     settleWrite: enqueueActions(({ enqueue, event }) => {
-      // Wired only to the processWrite `onDone`; the done event carries `output`
-      // but is not part of the public event union, so read it via a cast.
+      // Wired only to the processWrite `onDone`; the done event is the actor's
+      // `DoneActorEvent`, which is not part of the machine's public event union,
+      // so bridge through `unknown` to read its `output`.
       const { op, failures, failedVerses, succeededVerses } = (
-        event as unknown as { output: WriteResult }
+        event as unknown as DoneActorEvent<WriteResult>
       ).output;
 
       enqueue.assign(({ context: current }) => {

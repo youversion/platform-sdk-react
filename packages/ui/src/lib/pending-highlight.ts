@@ -63,6 +63,42 @@ export function stashPendingHighlight(pending: PendingHighlight): void {
 }
 
 /**
+ * Reads the raw stored entry, classifying it as a live value, absent, or `stale`
+ * (missing, malformed, or expired — all treated as absent). Never touches
+ * storage; callers decide whether a stale entry should be cleared.
+ */
+function readStoredPending(now: number): { value: PendingHighlight | null; stale: boolean } {
+  const store = getSessionStorage();
+  if (!store) return { value: null, stale: false };
+  const raw = store.getItem(STORAGE_KEY);
+  if (!raw) return { value: null, stale: false };
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { value: null, stale: true };
+  }
+
+  if (!isPendingHighlight(parsed)) return { value: null, stale: true };
+  if (now - parsed.timestamp > PENDING_HIGHLIGHT_TTL_MS) return { value: null, stale: true };
+
+  return { value: parsed, stale: false };
+}
+
+/**
+ * Non-mutating read of the pending highlight, or `null` when there is none, it
+ * is malformed, or it has expired. Unlike {@link readPendingHighlight} this
+ * NEVER clears storage, so it is safe to call from pure contexts (e.g. xstate
+ * guards) that must not produce side effects.
+ *
+ * @param now Injectable clock for tests; defaults to `Date.now()`.
+ */
+export function peekPendingHighlight(now: number = Date.now()): PendingHighlight | null {
+  return readStoredPending(now).value;
+}
+
+/**
  * Reads the pending highlight, or `null` when there is none, it is malformed, or
  * it has expired. Expired / malformed entries are cleared as a side effect so a
  * stale intent can't linger.
@@ -70,30 +106,9 @@ export function stashPendingHighlight(pending: PendingHighlight): void {
  * @param now Injectable clock for tests; defaults to `Date.now()`.
  */
 export function readPendingHighlight(now: number = Date.now()): PendingHighlight | null {
-  const store = getSessionStorage();
-  if (!store) return null;
-  const raw = store.getItem(STORAGE_KEY);
-  if (!raw) return null;
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    clearPendingHighlight();
-    return null;
-  }
-
-  if (!isPendingHighlight(parsed)) {
-    clearPendingHighlight();
-    return null;
-  }
-
-  if (now - parsed.timestamp > PENDING_HIGHLIGHT_TTL_MS) {
-    clearPendingHighlight();
-    return null;
-  }
-
-  return parsed;
+  const { value, stale } = readStoredPending(now);
+  if (stale) clearPendingHighlight();
+  return value;
 }
 
 /** Discards the pending highlight. Safe to call when there is none. */

@@ -1,10 +1,9 @@
 import type { FC } from 'react';
-import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
-import { cn } from '../lib/utils';
 import { YouVersionLogo } from './icons/youversion-logo';
 import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 
 type SignInDialogProps = {
   open: boolean;
@@ -43,57 +42,41 @@ export const SignInDialog: FC<SignInDialogProps> = ({
   const { t } = useTranslation(undefined, { i18n });
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay
-          className={cn(
-            'yv:fixed yv:inset-0 yv:z-50 yv:bg-black/50',
-            'yv:data-[state=open]:animate-in yv:data-[state=closed]:animate-out',
-            'yv:data-[state=closed]:fade-out-0 yv:data-[state=open]:fade-in-0',
-          )}
-        />
-        <DialogPrimitive.Content
-          data-yv-sdk
-          data-yv-theme={theme}
-          className={cn(
-            'yv:fixed yv:left-1/2 yv:top-1/2 yv:z-50 yv:-translate-x-1/2 yv:-translate-y-1/2',
-            'yv:w-[calc(100vw-2rem)] yv:max-w-sm',
-            'yv:bg-card yv:text-foreground',
-            'yv:rounded-2xl yv:p-6 yv:shadow-lg',
-            'yv:flex yv:flex-col yv:items-center yv:gap-4 yv:text-center',
-            'yv:data-[state=open]:animate-in yv:data-[state=closed]:animate-out',
-            'yv:data-[state=closed]:fade-out-0 yv:data-[state=open]:fade-in-0',
-            'yv:data-[state=closed]:zoom-out-95 yv:data-[state=open]:zoom-in-95',
-          )}
-          onEscapeKeyDown={onDecline}
-        >
-          <div className="yv:flex yv:flex-col yv:items-center yv:gap-3">
-            <DialogPrimitive.Title className="yv:text-xs yv:font-semibold yv:uppercase yv:tracking-widest yv:text-muted-foreground">
-              {t('signInIntroducing')}
-            </DialogPrimitive.Title>
-            <YouVersionLogo aria-label={t('youVersionPlatformLogoAriaLabel')} className="yv:size-14" />
-          </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        theme={theme}
+        className="yv:flex yv:flex-col yv:items-center yv:gap-4 yv:text-center"
+        onEscapeKeyDown={onDecline}
+      >
+        <div className="yv:flex yv:flex-col yv:items-center yv:gap-3">
+          <DialogTitle className="yv:text-xs yv:font-semibold yv:uppercase yv:tracking-widest yv:text-muted-foreground">
+            {t('signInIntroducing')}
+          </DialogTitle>
+          <YouVersionLogo
+            aria-label={t('youVersionPlatformLogoAriaLabel')}
+            className="yv:size-14"
+          />
+        </div>
 
-          {promptMessage ? (
-            <p className="yv:text-sm yv:font-medium yv:italic yv:text-foreground yv:text-balance">
-              &ldquo;{promptMessage}&rdquo;
-            </p>
-          ) : null}
+        {promptMessage ? (
+          <p className="yv:text-sm yv:font-medium yv:italic yv:text-foreground yv:text-balance">
+            &ldquo;{promptMessage}&rdquo;
+          </p>
+        ) : null}
 
-          <DialogPrimitive.Description className="yv:text-sm yv:text-muted-foreground yv:text-balance">
-            {t('signInParagraph', { appName })}
-          </DialogPrimitive.Description>
+        <DialogDescription className="yv:text-sm yv:text-muted-foreground yv:text-balance">
+          {t('signInParagraph', { appName })}
+        </DialogDescription>
 
-          <div className="yv:flex yv:w-full yv:flex-col yv:gap-2">
-            <Button variant="default" className="yv:w-full yv:rounded-full" onClick={onConfirm}>
-              {t('signInYesButton')}
-            </Button>
-            <Button variant="ghost" className="yv:w-full yv:rounded-full" onClick={onDecline}>
-              {t('signInNoButton')}
-            </Button>
-          </div>
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+        <div className="yv:flex yv:w-full yv:flex-col yv:gap-2">
+          <Button variant="default" className="yv:w-full yv:rounded-full" onClick={onConfirm}>
+            {t('signInYesButton')}
+          </Button>
+          <Button variant="ghost" className="yv:w-full yv:rounded-full" onClick={onDecline}>
+            {t('signInNoButton')}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
