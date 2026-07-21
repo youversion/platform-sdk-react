@@ -14,6 +14,9 @@ node_modules
 
 # Testing
 coverage
+# Coverage badge scratch dirs (badge JSON lives on the `badges` branch, not main)
+.coverage/
+coverage-output/
 
 # Turbo
 .turbo

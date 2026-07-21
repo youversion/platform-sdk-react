@@ -126,41 +126,60 @@ jobs:
           YVP_API_HOST: ${{ secrets.YVP_API_HOST }}
           YVP_APP_KEY: ${{ secrets.YVP_APP_KEY }}
 
-      - name: Generate coverage badges JSON
+      - name: Build coverage badge JSON for shields.io
         if: github.ref == 'refs/heads/main'
         run: |
-          mkdir -p .coverage
+          # Write badge artifacts to a scratch dir, never into main's tree.
+          mkdir -p coverage-output
 
-          # Core coverage
           # Core coverage
           if [ -f packages/core/coverage/coverage-summary.json ]; then
             CORE_PCT=$(jq '.total.lines.pct' packages/core/coverage/coverage-summary.json)
             CORE_COLOR=$(node -e "const p=$CORE_PCT; console.log(p >= 80 ? 'brightgreen' : p >= 60 ? 'yellow' : 'red')")
-            echo "{\"schemaVersion\":1,\"label\":\"core coverage\",\"message\":\"${CORE_PCT}%\",\"color\":\"${CORE_COLOR}\"}" > .coverage/core.json
+            echo "{\"schemaVersion\":1,\"label\":\"core coverage\",\"message\":\"${CORE_PCT}%\",\"color\":\"${CORE_COLOR}\"}" > coverage-output/core.json
           fi
 
           # Hooks coverage
           if [ -f packages/hooks/coverage/coverage-summary.json ]; then
             HOOKS_PCT=$(jq '.total.lines.pct' packages/hooks/coverage/coverage-summary.json)
             HOOKS_COLOR=$(node -e "const p=$HOOKS_PCT; console.log(p >= 80 ? 'brightgreen' : p >= 60 ? 'yellow' : 'red')")
-            echo "{\"schemaVersion\":1,\"label\":\"hooks coverage\",\"message\":\"${HOOKS_PCT}%\",\"color\":\"${HOOKS_COLOR}\"}" > .coverage/hooks.json
+            echo "{\"schemaVersion\":1,\"label\":\"hooks coverage\",\"message\":\"${HOOKS_PCT}%\",\"color\":\"${HOOKS_COLOR}\"}" > coverage-output/hooks.json
           fi
 
           # UI coverage
           if [ -f packages/ui/coverage/coverage-summary.json ]; then
             UI_PCT=$(jq '.total.lines.pct' packages/ui/coverage/coverage-summary.json)
             UI_COLOR=$(node -e "const p=$UI_PCT; console.log(p >= 80 ? 'brightgreen' : p >= 60 ? 'yellow' : 'red')")
-            echo "{\"schemaVersion\":1,\"label\":\"ui coverage\",\"message\":\"${UI_PCT}%\",\"color\":\"${UI_COLOR}\"}" > .coverage/ui.json
+            echo "{\"schemaVersion\":1,\"label\":\"ui coverage\",\"message\":\"${UI_PCT}%\",\"color\":\"${UI_COLOR}\"}" > coverage-output/ui.json
           fi
 
-      - name: Commit coverage badges
+      - name: Publish coverage badges to badges branch
         if: github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add .coverage/
-          git diff --staged --quiet || git commit -m "chore: update coverage badges [skip ci]"
-          git push
+          # Store badge JSON on a dedicated orphan `badges` branch so it never
+          # pollutes main's history. Self-seeds the branch on first run.
+          REMOTE_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          WORK_DIR="$(mktemp -d)"
+
+          if git ls-remote --exit-code --heads "$REMOTE_URL" badges >/dev/null 2>&1; then
+            git clone --depth 1 --branch badges --single-branch "$REMOTE_URL" "$WORK_DIR"
+          else
+            # Branch doesn't exist yet: start a fresh orphan history.
+            git init -q "$WORK_DIR"
+            git -C "$WORK_DIR" checkout -q --orphan badges
+          fi
+
+          cp coverage-output/*.json "$WORK_DIR"/
+          git -C "$WORK_DIR" config user.email "github-actions[bot]@users.noreply.github.com"
+          git -C "$WORK_DIR" config user.name "github-actions[bot]"
+          git -C "$WORK_DIR" add -A
+          # Skip the commit/push entirely when nothing changed.
+          if ! git -C "$WORK_DIR" diff --staged --quiet; then
+            git -C "$WORK_DIR" commit -m "chore: update coverage badges"
+            git -C "$WORK_DIR" push "$REMOTE_URL" HEAD:badges
+          fi
 
   build:
     name: Build
