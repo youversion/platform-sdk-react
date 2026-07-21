@@ -81,5 +81,6 @@
   "signOutPendingHighlightsQuestion": "Save your highlights?",
   "signOutPendingHighlightsExplanation": "Some of your highlights haven't been saved yet, and they will be lost if you sign out. Do you want to sign out anyway?",
   "signOutPendingHighlightsConfirm": "Sign out anyway",
-  "youVersionPlatformLogoAriaLabel": "YouVersion Platform"
+  "youVersionPlatformLogoAriaLabel": "YouVersion Platform",
+  "signInAppNameFallback": "This app"
 }
