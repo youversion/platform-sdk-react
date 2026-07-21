@@ -21,7 +21,17 @@ export function useHighlights(
   loading: boolean;
   error: Error | null;
   refetch: () => void;
+  /**
+   * Creates a highlight. Intentionally does NOT auto-refetch: a single logical
+   * apply can fan out into several writes, so callers must call `refetch()` once
+   * after their write batch settles. See the NOTE in the hook body for the why.
+   */
   createHighlight: (data: CreateHighlight) => Promise<Highlight>;
+  /**
+   * Deletes a highlight. Intentionally does NOT auto-refetch: callers must call
+   * `refetch()` once after their write batch settles. See the NOTE in the hook
+   * body for the why.
+   */
   deleteHighlight: (passageId: string, deleteOptions: DeleteHighlightOptions) => Promise<void>;
 } {
   const context = useContext(YouVersionContext);
