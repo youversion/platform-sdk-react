@@ -1,7 +1,7 @@
-import { z } from 'zod';
 import type { ApiClient } from './client';
 import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
 import { parseGrantedPermissions } from './permissions';
+import { DataExchangeTokenResponseSchema } from './schemas/data-exchange';
 
 /**
  * Data exchange is YouVersion's just-in-time permission grant flow: a signed-in
@@ -17,10 +17,6 @@ import { parseGrantedPermissions } from './permissions';
  *
  * Mirrors the Swift SDK's `YouVersionAPI.DataExchange` contract.
  */
-
-const DataExchangeTokenResponseSchema = z.object({
-  token: z.string().min(1),
-});
 
 export class DataExchangeClient {
   private client: ApiClient;
