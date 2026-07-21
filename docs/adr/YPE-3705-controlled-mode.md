@@ -61,23 +61,24 @@ notification would be a different event under a different name).
 - **Machine-level controlled state** — controlled mode wants the machine
   provably inert; that is an enable guard, not a statechart region.
 - **Stacking on PR #288** — would gate the RN epic on #288's merge date; built
-  in parallel on `main` instead, with the re-seat documented below.
+  in parallel on `main` instead. The re-seat onto the shared adapter has since
+  landed (see below).
 
-## PR #288 integration rules (for whoever merges second)
+## Integration with the self-contained path (landed)
 
-- The controlled branch moves from `Content` into the `useBibleReaderHighlights`
-  adapter: a `controlled` input; when set, the `useHighlights` fetch stays
-  `enabled: false`, and the machine's enable guard keeps it in `disabled` (the
-  machine never spawns activity — assert this in tests).
-- Controlled mode bypasses `isHighlightsLive()`; `highlightsInteractive` is
-  unconditionally `true` in controlled mode.
-- The render-map derivation reuses/parallels `parseServerColors` (same
-  filter-and-project job, prop-fed instead of fetch-fed).
-- `CONTEXT.md` arrives with #288 (its glossary already defines "Controlled
-  mode" as planned): graduate that entry to decided and add a "Highlight
-  intent" entry (the reader's request that a highlight be applied/removed —
-  always intent, never completed fact; intent and fact are deliberately never
-  given the same name).
+Controlled mode is seated in the `useBibleReaderHighlights` adapter (the
+reader's single seam onto highlights, shared with YPE-1034's self-contained
+path) via a `controlled` input, latched by `Root` at first mount:
+
+- When `controlled` is set, the `useHighlights` fetch stays `enabled: false`
+  and the adapter performs no writes and keeps no optimistic overlay —
+  controlled mode is a pure projection of the host's highlights
+  (`deriveHighlightedVerses`) plus intent forwarding from `apply`/`remove`.
+- Controlled mode bypasses `isHighlightsLive()` — the dark-launch flag gates
+  only the self-contained server path, so the color row stays interactive and
+  the controlled prop surface ships while self-contained remains dark.
+- The glossary (`CONTEXT.md`) defines "Controlled mode" and "Highlight
+  intent"; intent and fact are deliberately never given the same name.
 
 ## Out of scope
 
