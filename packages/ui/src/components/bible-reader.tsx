@@ -1,6 +1,7 @@
 'use client';
 
 import i18n from '@/i18n';
+import { IS_PRODUCTION } from '@/lib/constants';
 import { useDelayedLoading } from '@/lib/use-delayed-loading';
 import { cn } from '@/lib/utils';
 import { INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
@@ -127,11 +128,6 @@ export type BibleReaderShareData = {
   versionId: number;
 };
 
-// `process` is not typed in this browser-targeting build. Consumers' bundlers
-// statically replace `process.env.NODE_ENV`; the `typeof` guard keeps
-// unbundled browser environments (no `process` global) safe at runtime.
-declare const process: { env: { NODE_ENV?: string } };
-
 const BibleReaderContext = createContext<BibleReaderContextType | null>(null);
 
 function useBibleReaderContext() {
@@ -210,6 +206,10 @@ export type RootProps = {
    * deselecting, after a highlight/copy/share action, on popover dismiss, or
    * on navigation. Fires in both controlled and self-contained modes — it is
    * an observation, not a request.
+   *
+   * A clear fired by navigation carries the *destination* book/chapter/version
+   * (the selection cleared because the reader moved there). Treat `verses: []`
+   * as "no selection anywhere" rather than keying off its location fields.
    */
   onVerseSelect?: (selection: BibleReaderVerseSelection) => void;
   /**
@@ -381,8 +381,7 @@ function Root({
   const isHighlightsControlled = isHighlightsControlledRef.current;
   const didWarnHighlightsModeFlipRef = useRef(false);
   if (
-    typeof process !== 'undefined' &&
-    process.env.NODE_ENV !== 'production' &&
+    !IS_PRODUCTION &&
     (highlights !== undefined) !== isHighlightsControlled &&
     !didWarnHighlightsModeFlipRef.current
   ) {
@@ -681,10 +680,12 @@ function Content() {
     setPopoverOpen(false);
     setSelectedVerses([]);
     setAnchorElement(null);
-    // The deselect-tap path emits its own `[]` via handleVerseSelect.
+    // The deselect-tap path emits its own `[]` via handleVerseSelect. Read via
+    // ref: async callers (navigator.share().then) capture this closure, and a
+    // host-swapped callback must not go stale on that path.
     if (lastSelectionRef.current.length > 0) {
       lastSelectionRef.current = [];
-      onVerseSelect?.(buildVerseSelection([]));
+      onVerseSelectRef.current?.(buildVerseSelection([]));
     }
   }
 
