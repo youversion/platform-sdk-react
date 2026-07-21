@@ -2,6 +2,8 @@
 
 A demo app showcasing `@youversion/platform-react-ui` components.
 
+**Hosted demo:** https://youversion.github.io/platform-sdk-react/
+
 ## Setup
 
 ```bash
