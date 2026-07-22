@@ -7,6 +7,12 @@ import type { ComponentProps, ReactElement } from 'react';
  */
 type YouVersionPlatformLogoProps = ComponentProps<'svg'> & {
   theme?: 'light' | 'dark';
+  /**
+   * Localized accessible label for the wordmark (rendered with `role="img"`).
+   * Required with no default so callers must supply a translated string rather
+   * than shipping a hardcoded English label.
+   */
+  'aria-label': string;
 };
 
 const FILL = {
@@ -22,14 +28,7 @@ export function YouVersionPlatformLogo({
   ...props
 }: YouVersionPlatformLogoProps): ReactElement {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 238 20"
-      fill="none"
-      role="img"
-      aria-label="YouVersion Platform"
-      {...props}
-    >
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 238 20" fill="none" role="img" {...props}>
       <path d={WORDMARK_PATH} fill={FILL[theme]} />
     </svg>
   );
