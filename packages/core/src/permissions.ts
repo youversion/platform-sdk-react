@@ -14,9 +14,29 @@
  * The param may repeat and each value may pack several permissions separated by
  * a comma or whitespace (mirrors the Swift SDK's split on `,`/` `). Returns a
  * de-duplicated list, order-preserving on first appearance.
+ *
+ * The YouVersion auth server encodes the request/response permission lists using
+ * PHP/Rails-style bracket-array notation (observed live as `requested_permissions[]`
+ * in the hosted consent redirect it builds). `URLSearchParams` treats
+ * `granted_permissions[]` (and indexed `granted_permissions[0]`) as keys distinct
+ * from bare `granted_permissions`, so we accept every `granted_permissions`,
+ * `granted_permissions[]`, and `granted_permissions[<n>]` key. This keeps the
+ * reader symmetric with what the server emits; a plain `granted_permissions` still
+ * works unchanged.
  */
 export function parseGrantedPermissions(params: URLSearchParams): string[] {
-  return mergePermissionValues(params.getAll('granted_permissions'));
+  const values: string[] = [];
+  for (const [key, value] of params) {
+    if (isGrantedPermissionsKey(key)) {
+      values.push(value);
+    }
+  }
+  return mergePermissionValues(values);
+}
+
+/** Matches `granted_permissions`, `granted_permissions[]`, or `granted_permissions[<index>]`. */
+function isGrantedPermissionsKey(key: string): boolean {
+  return key === 'granted_permissions' || /^granted_permissions\[\d*\]$/.test(key);
 }
 
 /**

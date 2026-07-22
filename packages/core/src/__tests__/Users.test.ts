@@ -364,6 +364,83 @@ describe('YouVersionAPIUsers', () => {
       saveGrantedPermissionsSpy.mockRestore();
     });
 
+    it('persists highlights when the final callback echoes granted_permissions[] (server bracket notation)', async () => {
+      // Models the real one-shot return: the hosted /auth/consent flow redirects
+      // straight to the app with the code AND the grant echo, and the server
+      // encodes that echo with bracket-array notation (as seen live on the
+      // outbound `requested_permissions[]`). The token scope does NOT carry the
+      // data-exchange `highlights` permission, so the URL echo is the only signal.
+      const mockTokens = {
+        access_token: 'access-token-123',
+        expires_in: 3600,
+        id_token:
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJwcm9maWxlX3BpY3R1cmUiOiJodHRwczovL2V4YW1wbGUuY29tL2F2YXRhci5qcGcifQ.invalid-signature',
+        refresh_token: 'refresh-token-456',
+        scope: 'profile openid',
+        token_type: 'Bearer',
+      };
+
+      mocks.window.location.search =
+        '?state=test-state&code=auth-code&granted_permissions%5B%5D=highlights';
+      mocks.window.location.href =
+        'https://example.com/callback?state=test-state&code=auth-code&granted_permissions%5B%5D=highlights';
+
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
+        switch (key) {
+          case 'youversion-auth-state':
+            return 'test-state';
+          case 'youversion-auth-code-verifier':
+            return 'code-verifier-123';
+          case 'youversion-auth-redirect-uri':
+            return 'https://example.com/callback';
+          default:
+            return null;
+        }
+      });
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: vi.fn().mockResolvedValue(JSON.stringify(mockTokens)),
+      });
+
+      vi.mocked(atob).mockReturnValue(
+        JSON.stringify({
+          sub: '1234567890',
+          name: 'John Doe',
+          email: 'john@example.com',
+        }),
+      );
+
+      const saveGrantedPermissionsSpy = vi.spyOn(
+        YouVersionPlatformConfiguration,
+        'saveGrantedPermissions',
+      );
+
+      await YouVersionAPIUsers.handleAuthCallback();
+
+      expect(saveGrantedPermissionsSpy).toHaveBeenCalledWith(['highlights']);
+      saveGrantedPermissionsSpy.mockRestore();
+    });
+
+    it('stashes bracket-array granted_permissions[] from the pre-code OAuth hop', async () => {
+      mocks.window.location.href =
+        'https://example.com/callback?state=test-state&granted_permissions%5B%5D=highlights';
+      mocks.window.location.search = '?state=test-state&granted_permissions%5B%5D=highlights';
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
+        if (key === 'youversion-auth-state') return 'test-state';
+        return null;
+      });
+
+      await expect(YouVersionAPIUsers.handleAuthCallback()).resolves.toBeNull();
+
+      expect(mocks.localStorage.setItem).toHaveBeenCalledWith(
+        'youversion-auth-pending-granted-permissions',
+        JSON.stringify({ state: 'test-state', permissions: ['highlights'] }),
+      );
+    });
+
     it('discards stashed early grants bound to a different OAuth state', async () => {
       const mockTokens = {
         access_token: 'access-token-123',
