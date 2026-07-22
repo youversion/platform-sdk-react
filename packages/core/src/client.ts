@@ -126,8 +126,14 @@ export class ApiClient {
 
       const contentType = response.headers.get('content-type');
       if (contentType?.includes('application/json')) {
-        const data = (await response.json()) as T;
-        return data;
+        // A successful (2xx) response can legitimately carry an EMPTY body even
+        // with a JSON content-type — most notably a DELETE that returns
+        // `200 application/json` with no payload. `response.json()` throws
+        // "Unexpected end of JSON input" on an empty body, which would surface a
+        // successful write as a failure (e.g. deleteHighlight rejecting on a
+        // real delete). Read as text first and treat an empty body as "no data".
+        const text = await response.text();
+        return text ? (JSON.parse(text) as T) : (undefined as T);
       } else {
         const text = await response.text();
         return text as unknown as T;
