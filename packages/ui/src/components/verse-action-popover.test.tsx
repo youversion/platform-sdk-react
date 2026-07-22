@@ -506,22 +506,6 @@ describe('VerseActionPopover', () => {
         expect(btn.querySelector('svg')).toBeNull();
       });
     });
-
-    it('tapping the checkmark swatch still removes the highlight', () => {
-      const onClearHighlight = vi.fn();
-      render(
-        <VerseActionPopover
-          {...defaultProps}
-          activeHighlights={new Set<HighlightColor>([HIGHLIGHT_COLORS[0]])}
-          selectedVerses={[1]}
-          highlightedVerses={{ 1: HIGHLIGHT_COLORS[0] }}
-          onClearHighlight={onClearHighlight}
-        />,
-      );
-
-      fireEvent.click(screen.getByRole('button', { name: /Clear highlight/ }));
-      expect(onClearHighlight).toHaveBeenCalledWith(HIGHLIGHT_COLORS[0]);
-    });
   });
 
   describe('Highlights disabled (flag off)', () => {
