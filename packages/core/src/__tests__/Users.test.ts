@@ -99,6 +99,28 @@ describe('YouVersionAPIUsers', () => {
 
       vi.restoreAllMocks();
     });
+
+    it('clears any stale pre-code granted-permissions stash from a prior abandoned flow', async () => {
+      vi.spyOn(crypto, 'getRandomValues').mockImplementation((array: ArrayBufferView) => {
+        if (array instanceof Uint8Array) {
+          for (let i = 0; i < array.length; i++) {
+            array[i] = i;
+          }
+        }
+        return array;
+      });
+
+      vi.spyOn(crypto.subtle, 'digest').mockResolvedValue(new Uint8Array(32).buffer);
+      mocks.btoa.mockReturnValue('mockBase64Value');
+
+      await YouVersionAPIUsers.signIn('https://example.com/callback');
+
+      expect(mocks.localStorage.removeItem).toHaveBeenCalledWith(
+        'youversion-auth-pending-granted-permissions',
+      );
+
+      vi.restoreAllMocks();
+    });
   });
 
   describe('handleAuthCallback', () => {

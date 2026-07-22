@@ -51,6 +51,10 @@ export class YouVersionAPIUsers {
       : redirectURL.toString();
     localStorage.setItem('youversion-auth-redirect-uri', redirectUrlString);
     localStorage.setItem('youversion-auth-state', authorizationRequest.parameters.state);
+    // Clear any stash left by a prior abandoned flow (it's only ever produced later,
+    // during the callback pre-code hop, and never needs to survive a new signIn).
+    // Otherwise a previous user's abandoned grants could leak into this flow.
+    localStorage.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
 
     // Simple redirect to authorization URL
     window.location.href = authorizationRequest.url.toString();
