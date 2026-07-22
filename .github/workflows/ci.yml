@@ -99,8 +99,6 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -127,66 +125,70 @@ jobs:
           YVP_APP_KEY: ${{ secrets.YVP_APP_KEY }}
 
       - name: Build coverage badge JSON for shields.io
-        if: github.ref == 'refs/heads/main'
         run: |
-          # Write badge artifacts to a scratch dir, never into main's tree.
+          # Build one shields.io endpoint JSON per package into a scratch dir.
           mkdir -p coverage-output
+          for pkg in core hooks ui; do
+            summary="packages/$pkg/coverage/coverage-summary.json"
+            # Fail loudly rather than silently skip: a missing summary must not
+            # let a stale badge stand in for the current run.
+            if [ ! -f "$summary" ]; then
+              echo "Missing coverage summary: $summary" >&2
+              exit 1
+            fi
+            PCT=$(jq '.total.lines.pct' "$summary")
+            COLOR=$(node -e "const p=$PCT; console.log(p >= 80 ? 'brightgreen' : p >= 60 ? 'yellow' : 'red')")
+            echo "{\"schemaVersion\":1,\"label\":\"$pkg coverage\",\"message\":\"${PCT}%\",\"color\":\"${COLOR}\"}" > "coverage-output/$pkg.json"
+          done
 
-          # Core coverage
-          if [ -f packages/core/coverage/coverage-summary.json ]; then
-            CORE_PCT=$(jq '.total.lines.pct' packages/core/coverage/coverage-summary.json)
-            CORE_COLOR=$(node -e "const p=$CORE_PCT; console.log(p >= 80 ? 'brightgreen' : p >= 60 ? 'yellow' : 'red')")
-            echo "{\"schemaVersion\":1,\"label\":\"core coverage\",\"message\":\"${CORE_PCT}%\",\"color\":\"${CORE_COLOR}\"}" > coverage-output/core.json
-          fi
+      - name: Upload coverage badge artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-badges
+          path: coverage-output/
+          if-no-files-found: ignore
 
-          # Hooks coverage
-          if [ -f packages/hooks/coverage/coverage-summary.json ]; then
-            HOOKS_PCT=$(jq '.total.lines.pct' packages/hooks/coverage/coverage-summary.json)
-            HOOKS_COLOR=$(node -e "const p=$HOOKS_PCT; console.log(p >= 80 ? 'brightgreen' : p >= 60 ? 'yellow' : 'red')")
-            echo "{\"schemaVersion\":1,\"label\":\"hooks coverage\",\"message\":\"${HOOKS_PCT}%\",\"color\":\"${HOOKS_COLOR}\"}" > coverage-output/hooks.json
-          fi
+  # Publish the coverage badge JSON to a dedicated `badges` branch so it never
+  # lands in main's history. Runs only on main; auth is handled by actions/checkout
+  # (the workflow token, never baked into a URL).
+  publish-coverage-badges:
+    name: Publish coverage badges
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out badges branch
+        uses: actions/checkout@v5
+        with:
+          ref: badges
+          path: badges-branch
 
-          # UI coverage
-          if [ -f packages/ui/coverage/coverage-summary.json ]; then
-            UI_PCT=$(jq '.total.lines.pct' packages/ui/coverage/coverage-summary.json)
-            UI_COLOR=$(node -e "const p=$UI_PCT; console.log(p >= 80 ? 'brightgreen' : p >= 60 ? 'yellow' : 'red')")
-            echo "{\"schemaVersion\":1,\"label\":\"ui coverage\",\"message\":\"${UI_PCT}%\",\"color\":\"${UI_COLOR}\"}" > coverage-output/ui.json
-          fi
+      - name: Download coverage badge artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-badges
+          path: coverage-output
 
-      - name: Publish coverage badges to badges branch
-        if: github.ref == 'refs/heads/main'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit coverage badges to badges branch
+        working-directory: badges-branch
         run: |
-          # Store badge JSON on a dedicated orphan `badges` branch so it never
-          # pollutes main's history. Self-seeds the branch on first run.
-          REMOTE_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          WORK_DIR="$(mktemp -d)"
-
-          if git ls-remote --exit-code --heads "$REMOTE_URL" badges >/dev/null 2>&1; then
-            git clone --depth 1 --branch badges --single-branch "$REMOTE_URL" "$WORK_DIR"
-          else
-            # Branch doesn't exist yet: start a fresh orphan history.
-            git init -q "$WORK_DIR"
-            git -C "$WORK_DIR" checkout -q --orphan badges
-          fi
-
-          # nullglob so a run that produced no badge JSON doesn't fail on a literal glob.
           shopt -s nullglob
-          badges=(coverage-output/*.json)
+          badges=(../coverage-output/*.json)
           if [ ${#badges[@]} -eq 0 ]; then
             echo "No coverage badge JSON was produced; nothing to publish."
             exit 0
           fi
-          cp "${badges[@]}" "$WORK_DIR"/
-          git -C "$WORK_DIR" config user.email "github-actions[bot]@users.noreply.github.com"
-          git -C "$WORK_DIR" config user.name "github-actions[bot]"
-          git -C "$WORK_DIR" add -A
-          # Skip the commit/push entirely when nothing changed.
-          if ! git -C "$WORK_DIR" diff --staged --quiet; then
-            git -C "$WORK_DIR" commit -m "chore: update coverage badges"
-            git -C "$WORK_DIR" push "$REMOTE_URL" HEAD:badges
-          fi
+          # Replace the whole set so a package that produced no summary this run
+          # drops its badge instead of showing stale coverage.
+          rm -f ./*.json
+          cp "${badges[@]}" .
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --staged --quiet || git commit -m "chore: update coverage badges"
+          git push
 
   build:
     name: Build
