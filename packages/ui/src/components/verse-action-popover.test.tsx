@@ -524,6 +524,65 @@ describe('VerseActionPopover', () => {
     });
   });
 
+  describe('Swatch fill preview (theme-aware)', () => {
+    // The first apply swatch (no active highlights) is the first canonical color,
+    // yellow `fffe00` → rgb(255, 254, 0).
+    function firstApplySwatch() {
+      return applyButtons()[0]!;
+    }
+
+    it('paints swatches at full opacity in light mode (matches the applied fill)', () => {
+      render(<VerseActionPopover {...defaultProps} theme="light" />);
+      const bg = firstApplySwatch().style.backgroundColor;
+      // Full-strength: never the dimmed dark-mode alpha.
+      expect(bg).not.toContain('0.3');
+      expect(bg).toBeTruthy();
+    });
+
+    it('dims swatches to the dark-mode alpha (0.3) in dark mode', () => {
+      render(<VerseActionPopover {...defaultProps} theme="dark" />);
+      // Same 0.3 alpha the applied highlight paints in dark mode (verse.tsx).
+      expect(firstApplySwatch().style.backgroundColor).toBe('rgba(255, 254, 0, 0.3)');
+    });
+
+    it('uses a dark inner stroke in light mode and a light one in dark mode', () => {
+      const { unmount } = render(<VerseActionPopover {...defaultProps} theme="light" />);
+      expect(firstApplySwatch().style.border).toContain('rgba(18, 18, 18, 0.2)');
+      unmount();
+
+      render(<VerseActionPopover {...defaultProps} theme="dark" />);
+      expect(firstApplySwatch().style.border).toContain('rgba(255, 255, 255, 0.2)');
+    });
+
+    it('keeps the active-swatch checkmark legible on the dimmed dark-mode fill', () => {
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          theme="dark"
+          activeHighlights={new Set<HighlightColor>([HIGHLIGHT_COLORS[0]])}
+          selectedVerses={[1]}
+          highlightedVerses={{ 1: HIGHLIGHT_COLORS[0] }}
+        />,
+      );
+      const check = screen.getByRole('button', { name: /Clear highlight/ }).querySelector('svg');
+      expect(check?.getAttribute('class')).toContain('yv:text-white');
+    });
+
+    it('keeps the light-mode checkmark in the Text/Everdark color', () => {
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          theme="light"
+          activeHighlights={new Set<HighlightColor>([HIGHLIGHT_COLORS[0]])}
+          selectedVerses={[1]}
+          highlightedVerses={{ 1: HIGHLIGHT_COLORS[0] }}
+        />,
+      );
+      const check = screen.getByRole('button', { name: /Clear highlight/ }).querySelector('svg');
+      expect(check?.getAttribute('class')).toContain('yv:text-(--yv-gray-50)');
+    });
+  });
+
   describe('Highlights disabled (flag off)', () => {
     it('hides the color row and remove circles but keeps Copy / Share', () => {
       render(

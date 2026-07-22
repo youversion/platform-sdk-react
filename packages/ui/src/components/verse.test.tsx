@@ -1,6 +1,8 @@
 /**
  * @vitest-environment jsdom
  */
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -677,6 +679,46 @@ describe('Verse.Html - Highlight fill (theme-aware, Swift parity)', () => {
       const label = container.querySelector<HTMLElement>('.yv-v[v="1"] .yv-vlbl');
       expect(label!.style.color).toBe('');
     });
+  });
+});
+
+describe('Verse.Html - Rounded highlight fill (static structural CSS)', () => {
+  // The rounded corners / clone / padding are structural styles that live in the
+  // core stylesheet (`bible-reader.css`), not the imperative paint path (which
+  // only sets colors). They are applied to the base `.yv-v` rule so they are
+  // STATIC — present whether or not a verse is highlighted — which is what keeps
+  // applying/removing a fill from reflowing text (no layout shift). jsdom doesn't
+  // load that external sheet, so we assert against the CSS source directly.
+  // Resolve from cwd so it works whether the suite runs from the ui package
+  // (the filtered command) or the repo root (turbo).
+  const cssPath = [
+    resolve(process.cwd(), '../core/src/styles/bible-reader.css'),
+    resolve(process.cwd(), 'packages/core/src/styles/bible-reader.css'),
+  ].find((p) => existsSync(p));
+  if (!cssPath) throw new Error('Could not locate core bible-reader.css');
+  const css = readFileSync(cssPath, 'utf8');
+
+  // The base `.yv-v` rule (identified by its background-color transition), not the
+  // `.yv-v.yv-v-highlighted` demo rule.
+  const baseRule = Array.from(css.matchAll(/&\s*\.yv-v\s*\{([^}]*)\}/g))
+    .map((m) => m[1]!)
+    .find((body) => body.includes('transition: background-color'));
+
+  it('defines the base .yv-v rule with the fade transition', () => {
+    expect(baseRule).toBeDefined();
+  });
+
+  it('rounds the corners statically (4px) on the base rule', () => {
+    expect(baseRule).toContain('border-radius: 4px');
+  });
+
+  it('adds static 2px inline padding so a fill never causes reflow', () => {
+    expect(baseRule).toContain('padding-inline: 2px');
+  });
+
+  it('clones the box decoration so wrapped line fragments get their own rounded ends', () => {
+    expect(baseRule).toContain('box-decoration-break: clone');
+    expect(baseRule).toContain('-webkit-box-decoration-break: clone');
   });
 });
 

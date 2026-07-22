@@ -169,6 +169,19 @@ Selection is always enabled in BibleReader (no opt-out prop for now; YAGNI).
   inherited color. Both the fill and the label color are set/cleared in the same
   imperative `useLayoutEffect` paint path, which now reads the reader's theme
   (`theme` prop, falling back to the provider's `useTheme()`).
+- **ADR-005 rounded fills (web-native divergence, user-approved 2026-07-22):** the
+  Swift SDK paints square highlight fills; the web reader instead rounds them —
+  `border-radius: 4px`, `box-decoration-break: clone` (so each wrapped line
+  fragment gets its own rounded ends), and `2px` inline padding. These are set
+  **statically** on every `.yv-v` (not just highlighted verses) in
+  `bible-reader.css`, so applying/removing a fill only toggles `background-color`:
+  no padding appears or disappears, so there is no reflow or layout shift and the
+  250ms fade stays smooth. Structural styles live in CSS (not the imperative paint
+  path, which only sets colors). Additionally, the verse-action popover color
+  swatches preview the applied fill: dark mode dims each swatch to the same `0.3`
+  alpha (`HIGHLIGHT_FILL_OPACITY_DARK`) via `hexToRgba` from `verse.tsx`, with the
+  active-swatch checkmark switched to white and the inner stroke flipped to a light
+  `rgba(255,255,255,0.2)` so the dimmed circle stays legible on the dark popover.
 - **Verse-tap vs outside-click:** ADR-007 says outside-click clears selection,
   but Radix treats a *second verse tap* as an outside-click too. The popover's
   `onInteractOutside` calls `preventDefault()` when the target is inside

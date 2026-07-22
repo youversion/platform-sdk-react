@@ -146,14 +146,14 @@ function getVerseHtmlFromDom(container: HTMLElement, verseNum: string): string {
  * fades it so the fill sits behind the text without overpowering it. See
  * `docs/adr/YPE-642-verse-action-popover.md` (ADR-005 as-built).
  */
-const HIGHLIGHT_FILL_OPACITY_LIGHT = 1.0;
-const HIGHLIGHT_FILL_OPACITY_DARK = 0.3;
+export const HIGHLIGHT_FILL_OPACITY_LIGHT = 1.0;
+export const HIGHLIGHT_FILL_OPACITY_DARK = 0.3;
 
 /** Verse-number label color over a dark-mode highlight fill, for legibility (Swift parity). */
 const HIGHLIGHT_DARK_LABEL_COLOR = '#ffffff';
 
 /** Converts a 6-digit hex (no `#`) to an `rgba()` string at the given alpha. */
-function hexToRgba(hex: string, alpha: number): string {
+export function hexToRgba(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(0, 2), 16);
   const g = parseInt(hex.slice(2, 4), 16);
   const b = parseInt(hex.slice(4, 6), 16);

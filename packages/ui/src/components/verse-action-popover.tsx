@@ -6,6 +6,7 @@ import { cn } from '../lib/utils';
 import { BoxStackIcon } from './icons/box-stack';
 import { BoxArrowUpIcon } from './icons/box-arrow-up';
 import { CheckIcon } from './icons/check';
+import { hexToRgba, HIGHLIGHT_FILL_OPACITY_DARK } from './verse';
 
 type Measurable = { getBoundingClientRect: () => DOMRect };
 
@@ -50,9 +51,20 @@ type ColorCircleProps = {
   showRemove: boolean;
   label: string;
   onClick: () => void;
+  theme: 'light' | 'dark';
 };
 
-function ColorCircle({ color, showRemove, label, onClick }: ColorCircleProps) {
+function ColorCircle({ color, showRemove, label, onClick, theme }: ColorCircleProps) {
+  const isDark = theme === 'dark';
+  // Preview the fill the way it will actually paint: full-strength in light mode,
+  // faded to the dark-mode alpha in dark mode (mirrors the applied-highlight
+  // treatment in verse.tsx). Light mode keeps the bare `#hex` so it serializes as
+  // a solid swatch.
+  const backgroundColor = isDark ? hexToRgba(color, HIGHLIGHT_FILL_OPACITY_DARK) : `#${color}`;
+  // Inner border matches the Figma "highlight stroke" (#121212 @ 20%), giving
+  // pale swatches definition on the light popover. On the dark popover a dark
+  // stroke would vanish against the dimmed fill, so flip it to a light stroke.
+  const border = isDark ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(18, 18, 18, 0.2)';
   return (
     <button
       type="button"
@@ -62,19 +74,18 @@ function ColorCircle({ color, showRemove, label, onClick }: ColorCircleProps) {
         'yv:transition-transform yv:hover:scale-110',
         'yv:focus-visible:outline-none yv:focus-visible:ring-2 yv:focus-visible:ring-ring yv:focus-visible:ring-offset-2',
       )}
-      // Inner border matches the Figma "highlight stroke" (#121212 @ 20%), giving
-      // pale swatches definition on the light popover.
-      style={{
-        backgroundColor: `#${color}`,
-        border: '1px solid rgba(18, 18, 18, 0.2)',
-      }}
+      style={{ backgroundColor, border }}
       aria-label={label}
     >
-      {/* Active/remove swatch: a 24px checkmark in the Text/Everdark color
-          (always dark, regardless of theme) on the solid color circle. Matches
+      {/* Active/remove swatch: a 24px checkmark on the solid color circle. Matches
           iOS (platform-sdk-swift #179), which swapped the earlier X for a check.
-          Tapping it still removes the highlight — icon-only change. */}
-      {showRemove && <CheckIcon className="yv:size-6 yv:text-(--yv-gray-50)" />}
+          Light mode uses Text/Everdark; dark mode dims the fill, so the check goes
+          white to stay legible. Tapping it still removes the highlight. */}
+      {showRemove && (
+        <CheckIcon
+          className={cn('yv:size-6', isDark ? 'yv:text-white' : 'yv:text-(--yv-gray-50)')}
+        />
+      )}
     </button>
   );
 }
@@ -298,6 +309,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                     key={key}
                     color={color}
                     showRemove={showRemove}
+                    theme={theme}
                     label={showRemove ? t('clearHighlightAriaLabel') : t('applyHighlightAriaLabel')}
                     onClick={() => (showRemove ? onClearHighlight(color) : onHighlight(color))}
                   />
