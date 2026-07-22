@@ -171,7 +171,14 @@ jobs:
             git -C "$WORK_DIR" checkout -q --orphan badges
           fi
 
-          cp coverage-output/*.json "$WORK_DIR"/
+          # nullglob so a run that produced no badge JSON doesn't fail on a literal glob.
+          shopt -s nullglob
+          badges=(coverage-output/*.json)
+          if [ ${#badges[@]} -eq 0 ]; then
+            echo "No coverage badge JSON was produced; nothing to publish."
+            exit 0
+          fi
+          cp "${badges[@]}" "$WORK_DIR"/
           git -C "$WORK_DIR" config user.email "github-actions[bot]@users.noreply.github.com"
           git -C "$WORK_DIR" config user.name "github-actions[bot]"
           git -C "$WORK_DIR" add -A
