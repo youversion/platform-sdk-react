@@ -587,6 +587,99 @@ describe('Verse.Html - Intro Chapter Footnotes', () => {
   });
 });
 
+describe('Verse.Html - Highlight fill (theme-aware, Swift parity)', () => {
+  const highlightHtml = `
+    <div class="p">
+      <span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>In the beginning was the Word.
+    </div>
+  `;
+
+  it('paints the fill at full opacity in light mode', async () => {
+    const { container } = render(
+      <Verse.Html html={highlightHtml} theme="light" highlightedVerses={{ 1: 'fffe00' }} />,
+    );
+
+    await waitFor(() => {
+      const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
+      expect(verse).not.toBeNull();
+      // rgba(255, 254, 0, 1) — jsdom serializes full alpha as rgb().
+      expect(verse!.style.backgroundColor).toBe('rgb(255, 254, 0)');
+    });
+  });
+
+  it('paints the fill at 0.3 alpha in dark mode', async () => {
+    const { container } = render(
+      <Verse.Html html={highlightHtml} theme="dark" highlightedVerses={{ 1: 'fffe00' }} />,
+    );
+
+    await waitFor(() => {
+      const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
+      expect(verse).not.toBeNull();
+      expect(verse!.style.backgroundColor).toBe('rgba(255, 254, 0, 0.3)');
+    });
+  });
+
+  it('renders the verse label white over a dark-mode highlight', async () => {
+    const { container } = render(
+      <Verse.Html html={highlightHtml} theme="dark" highlightedVerses={{ 1: 'fffe00' }} />,
+    );
+
+    await waitFor(() => {
+      const label = container.querySelector<HTMLElement>('.yv-v[v="1"] .yv-vlbl');
+      expect(label).not.toBeNull();
+      expect(label!.style.color).toBe('rgb(255, 255, 255)');
+    });
+  });
+
+  it('leaves the verse label color untouched in light mode', async () => {
+    const { container } = render(
+      <Verse.Html html={highlightHtml} theme="light" highlightedVerses={{ 1: 'fffe00' }} />,
+    );
+
+    await waitFor(() => {
+      const label = container.querySelector<HTMLElement>('.yv-v[v="1"] .yv-vlbl');
+      expect(label).not.toBeNull();
+      expect(label!.style.color).toBe('');
+    });
+  });
+
+  it('does not paint a white label on an unhighlighted verse in dark mode', async () => {
+    const { container } = render(
+      <Verse.Html html={highlightHtml} theme="dark" highlightedVerses={{}} />,
+    );
+
+    await waitFor(() => {
+      const label = container.querySelector<HTMLElement>('.yv-v[v="1"] .yv-vlbl');
+      expect(label).not.toBeNull();
+      expect(label!.style.color).toBe('');
+      const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
+      expect(verse!.style.backgroundColor).toBe('');
+    });
+  });
+
+  it('clears both the fill and the white label when a dark-mode highlight is removed', async () => {
+    const { container, rerender } = render(
+      <Verse.Html html={highlightHtml} theme="dark" highlightedVerses={{ 1: 'fffe00' }} />,
+    );
+
+    await waitFor(() => {
+      const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
+      expect(verse!.style.backgroundColor).toBe('rgba(255, 254, 0, 0.3)');
+      const label = container.querySelector<HTMLElement>('.yv-v[v="1"] .yv-vlbl');
+      expect(label!.style.color).toBe('rgb(255, 255, 255)');
+    });
+
+    rerender(<Verse.Html html={highlightHtml} theme="dark" highlightedVerses={{}} />);
+
+    await waitFor(() => {
+      const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
+      expect(verse!.style.backgroundColor).toBe('');
+      const label = container.querySelector<HTMLElement>('.yv-v[v="1"] .yv-vlbl');
+      expect(label!.style.color).toBe('');
+    });
+  });
+});
+
 describe('Verse.Text', () => {
   it('should render verse with number and text (default size)', () => {
     const { container } = render(<Verse.Text number={1} text="In the beginning" />);

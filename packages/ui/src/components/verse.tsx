@@ -140,8 +140,17 @@ function getVerseHtmlFromDom(container: HTMLElement, verseNum: string): string {
   return parts.join('');
 }
 
-/** Verse highlight fill = the highlight hex at 35% opacity, behind the text (per Figma). */
-const HIGHLIGHT_FILL_OPACITY = 0.35;
+/**
+ * Verse highlight fill opacity, matched to the Swift SDK (cross-SDK parity is the
+ * UX baseline). Light mode paints the highlight hex at full strength; dark mode
+ * fades it so the fill sits behind the text without overpowering it. See
+ * `docs/adr/YPE-642-verse-action-popover.md` (ADR-005 as-built).
+ */
+const HIGHLIGHT_FILL_OPACITY_LIGHT = 1.0;
+const HIGHLIGHT_FILL_OPACITY_DARK = 0.3;
+
+/** Verse-number label color over a dark-mode highlight fill, for legibility (Swift parity). */
+const HIGHLIGHT_DARK_LABEL_COLOR = '#ffffff';
 
 /** Converts a 6-digit hex (no `#`) to an `rgba()` string at the given alpha. */
 function hexToRgba(hex: string, alpha: number): string {
@@ -318,17 +327,27 @@ function BibleTextHtml({
   // Toggle selection underline + paint highlight fills on verse wrappers.
   // A verse can map to multiple `.yv-v[v="N"]` wrappers; each is painted so the
   // highlight reads as one solid block across line/paragraph breaks.
+  // Theme-aware fill opacity mirrors the Swift SDK: full strength in light mode,
+  // faded in dark mode. In dark mode a highlighted verse's number label renders
+  // white so it stays legible over the fill; both are cleared on removal.
   useLayoutEffect(() => {
     if (!contentRef.current) return;
+    const isDark = currentTheme === 'dark';
+    const fillOpacity = isDark ? HIGHLIGHT_FILL_OPACITY_DARK : HIGHLIGHT_FILL_OPACITY_LIGHT;
     contentRef.current.querySelectorAll('.yv-v[v]').forEach((el) => {
       const verseNum = parseInt(el.getAttribute('v') || '0', 10);
       el.classList.toggle('yv-v-selected', selectedVerses.includes(verseNum));
       const color = highlightedVerses[verseNum];
-      (el as HTMLElement).style.backgroundColor = color
-        ? hexToRgba(color, HIGHLIGHT_FILL_OPACITY)
-        : '';
+      const isHighlighted = Boolean(color);
+      (el as HTMLElement).style.backgroundColor = color ? hexToRgba(color, fillOpacity) : '';
+      // Mirror the backgroundColor clear: set white in dark mode when highlighted,
+      // otherwise reset to '' so unhighlighted labels keep their inherited color.
+      el.querySelectorAll('.yv-vlbl').forEach((label) => {
+        (label as HTMLElement).style.color =
+          isDark && isHighlighted ? HIGHLIGHT_DARK_LABEL_COLOR : '';
+      });
     });
-  }, [html, selectedVerses, highlightedVerses]);
+  }, [html, selectedVerses, highlightedVerses, currentTheme]);
 
   // Not wrapped in useCallback — this component is not memoized, so the
   // handler always captures the latest selectedVerses via closure.

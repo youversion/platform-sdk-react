@@ -25,7 +25,7 @@ gone.** #131's `VerseActionPopover` (correct AC logic, tested, already uses Radi
 | **Remove circle (X)** | Color button that clears an existing highlight. |
 | **Anchor** | DOM element the popover triangle points at — the last-selected verse's `.yv-v` element. |
 | **Swatch** | The full-saturation color shown in the circle. |
-| **Fill** | The faded (~20-30% alpha) background painted on the verse. |
+| **Fill** | The color background painted on the verse (Swift-parity opacity: full in light mode, faded in dark mode). |
 
 ## Decisions (ADRs)
 
@@ -89,8 +89,9 @@ palette is hardcoded here too. Simpler than mapping to tokens.
 - Lowercased to satisfy the API `color` pattern `/^[0-9a-f]{6}$/`.
 - **Swatch** (circle) = `#<hex>` solid + a `1px #121212 @ 20%` inner stroke
   (applies to all swatches).
-- **Fill** (verse) = the hex at **35% opacity** behind the text
-  (`rgba(<hex>, 0.35)`, `HIGHLIGHT_FILL_OPACITY` in `verse.tsx`).
+- **Fill** (verse) = the hex behind the text, at a **theme-aware opacity** matching
+  the Swift SDK (see as-built note below). Superseded the original flat 35%
+  ("per Figma") value.
 - **Active/remove swatch** = the solid color circle with a **24px X icon** in the
   Text/Everdark color (`--yv-gray-50` = `#121212`, theme-invariant) — replaces the
   old stroke-based selected indicator.
@@ -155,9 +156,19 @@ Selection is always enabled in BibleReader (no opt-out prop for now; YAGNI).
   context. Copy/Share/anchor all need the rendered verse DOM (which lives in
   Content), so Root ownership would fragment the feature. BibleTextView stays
   presentational. No new Root props — smaller API surface.
-- **ADR-005 mechanism:** fill uses `rgba(r,g,b,0.25)` (computed from the stored
+- **ADR-005 mechanism:** fill uses `rgba(r,g,b,<alpha>)` (computed from the stored
   hex in `verse.tsx` `hexToRgba`), not `color-mix`. Same alpha-composite result,
   zero browser-support caveats.
+- **ADR-005 fill opacity revised (Swift parity, user decision 2026-07-22):** the
+  original flat `0.35` ("per Figma") is replaced by theme-aware opacity to match the
+  Swift SDK, the cross-SDK UX baseline: **light mode `1.0`, dark mode `0.3`**
+  (`HIGHLIGHT_FILL_OPACITY_LIGHT` / `HIGHLIGHT_FILL_OPACITY_DARK` in `verse.tsx`,
+  mirroring Swift's `darkMode ? 0.3 : 1.0`). Additionally, in dark mode a highlighted
+  verse's number label (`.yv-vlbl`) is painted **white** so it stays legible over the
+  fill (Swift `BibleTextView+Rendering.swift`); unhighlighted labels keep their
+  inherited color. Both the fill and the label color are set/cleared in the same
+  imperative `useLayoutEffect` paint path, which now reads the reader's theme
+  (`theme` prop, falling back to the provider's `useTheme()`).
 - **Verse-tap vs outside-click:** ADR-007 says outside-click clears selection,
   but Radix treats a *second verse tap* as an outside-click too. The popover's
   `onInteractOutside` calls `preventDefault()` when the target is inside
