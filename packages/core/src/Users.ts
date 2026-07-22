@@ -3,7 +3,13 @@ import { YouVersionUserInfo } from './YouVersionUserInfo';
 import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
 import { SignInWithYouVersionPKCEAuthorizationRequestBuilder } from './SignInWithYouVersionPKCE';
 import { SignInWithYouVersionResult } from './SignInWithYouVersionResult';
-import { parseGrantedPermissions } from './permissions';
+import { parseGrantedPermissions, parsePermissionList } from './permissions';
+
+/** Stash key for `granted_permissions` seen on the pre-code OAuth hop. */
+const PENDING_GRANTED_PERMISSIONS_KEY = 'youversion-auth-pending-granted-permissions';
+
+/** OIDC scopes that must not be stored in the data-exchange permission cache. */
+const OIDC_SCOPES = new Set(['openid', 'profile', 'email', 'offline_access']);
 
 export class YouVersionAPIUsers {
   /**
@@ -15,7 +21,7 @@ export class YouVersionAPIUsers {
    * @param redirectURL - The URL to redirect back to after authentication.
    * @param scopes - The OIDC scopes given to the authentication call (e.g. `profile`, `email`).
    * @param permissions - YouVersion data-exchange permissions to request (e.g. `highlights`).
-   *   These are sent as `requested_permissions[]` params, separate from OIDC scopes.
+   *   These are sent as a comma-joined `requested_permissions` param, separate from OIDC scopes.
    * @throws An error if authentication fails or configuration is invalid.
    */
   static async signIn(
@@ -84,9 +90,17 @@ export class YouVersionAPIUsers {
     }
 
     // If we don't have a code, this might be the first callback with user data
-    // We need to redirect to the server callback to get the authorization code
+    // We need to redirect to the server callback to get the authorization code.
+    // Stash any granted_permissions from this hop first — Swift keeps the original
+    // callback URL for grants, but the web flow navigates away to /auth/callback
+    // and the final redirect with `code` may omit them.
     if (!code && state) {
+      const earlyGrants = parseGrantedPermissions(urlParams);
+      if (earlyGrants.length > 0) {
+        localStorage.setItem(PENDING_GRANTED_PERMISSIONS_KEY, earlyGrants.join(','));
+      }
       this.obtainLocation(window.location.href, state);
+      return null;
     }
 
     // Get stored auth data
@@ -122,11 +136,20 @@ export class YouVersionAPIUsers {
         token_type: string;
       };
 
-      // Parse the data-exchange permissions the server granted. The server
-      // echoes them as `granted_permissions` on the callback URL (comma- or
-      // space-separated, param may repeat). Used below to seed the optimistic
-      // permission cache — the single source of truth for granted permissions.
-      const grantedPermissions = parseGrantedPermissions(urlParams);
+      // Match Swift: union grants from (1) this URL, (2) stashed pre-code hop,
+      // (3) token scope — then drop OIDC scopes before seeding the data-exchange
+      // permission cache.
+      const stashedGrants = parsePermissionList(
+        localStorage.getItem(PENDING_GRANTED_PERMISSIONS_KEY),
+      );
+      localStorage.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
+      const grantedPermissions = [
+        ...new Set([
+          ...parseGrantedPermissions(urlParams),
+          ...stashedGrants,
+          ...parsePermissionList(tokens.scope),
+        ]),
+      ].filter((permission) => !OIDC_SCOPES.has(permission));
 
       // Extract user info from ID token
       const result = this.extractSignInResult(tokens);
@@ -160,6 +183,7 @@ export class YouVersionAPIUsers {
       localStorage.removeItem('youversion-auth-code-verifier');
       localStorage.removeItem('youversion-auth-redirect-uri');
       localStorage.removeItem('youversion-auth-state');
+      localStorage.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
 
       // Clean up URL
       const cleanUrl = new URL(window.location.href);
@@ -172,6 +196,7 @@ export class YouVersionAPIUsers {
       localStorage.removeItem('youversion-auth-code-verifier');
       localStorage.removeItem('youversion-auth-redirect-uri');
       localStorage.removeItem('youversion-auth-state');
+      localStorage.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
       throw error;
     }
   }

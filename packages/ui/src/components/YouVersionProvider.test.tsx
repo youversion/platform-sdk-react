@@ -46,6 +46,29 @@ describe('UI YouVersionProvider', () => {
     expect(lastCall?.additionalHeaders).toBeUndefined();
   });
 
+  it('mirrors appName and signInPromptMessage onto the UI-bundled config', async () => {
+    const { YouVersionPlatformConfiguration } = await import('@youversion/platform-core');
+    YouVersionPlatformConfiguration.appName = undefined;
+    YouVersionPlatformConfiguration.signInPromptMessage = undefined;
+
+    render(
+      <YouVersionProvider
+        appKey="test-key"
+        appName="SDK Demo"
+        signInPromptMessage="Save your highlights to your YouVersion account."
+      >
+        <div data-testid="child">hello</div>
+      </YouVersionProvider>,
+    );
+
+    await vi.waitFor(() => {
+      expect(YouVersionPlatformConfiguration.appName).toBe('SDK Demo');
+      expect(YouVersionPlatformConfiguration.signInPromptMessage).toBe(
+        'Save your highlights to your YouVersion account.',
+      );
+    });
+  });
+
   it.each([
     ['undefined', undefined],
     ['empty string', ''],

@@ -69,11 +69,12 @@ export class SignInWithYouVersionPKCEAuthorizationRequestBuilder {
     }
 
     // YouVersion data-exchange permissions (e.g. `highlights`) are intentionally
-    // NOT OIDC scopes. They ride alongside the standard scopes as a repeatable
-    // `requested_permissions[]` query param and are authorized via a separate
-    // per-app ACL rather than the token's scope claim.
-    for (const permission of permissions ?? []) {
-      queryParams.append('requested_permissions[]', permission);
+    // NOT OIDC scopes. They ride alongside `scope` as a single comma-joined
+    // `requested_permissions` query param (Swift/Kotlin wire format) and are
+    // authorized via a separate per-app ACL rather than the token's scope claim.
+    const permissionsValue = [...(permissions ?? [])].filter(Boolean).sort().join(',');
+    if (permissionsValue) {
+      queryParams.set('requested_permissions', permissionsValue);
     }
 
     components.search = queryParams.toString();

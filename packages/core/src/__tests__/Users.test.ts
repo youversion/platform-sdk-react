@@ -95,7 +95,7 @@ describe('YouVersionAPIUsers', () => {
 
       await YouVersionAPIUsers.signIn('https://example.com/callback', ['profile'], ['highlights']);
 
-      expect(mocks.window.location.href).toContain('requested_permissions%5B%5D=highlights');
+      expect(mocks.window.location.href).toContain('requested_permissions=highlights');
 
       vi.restoreAllMocks();
     });
@@ -145,12 +145,32 @@ describe('YouVersionAPIUsers', () => {
         return null;
       });
 
-      // In test environment, the redirect continues execution, so expect the eventual error
-      await expect(YouVersionAPIUsers.handleAuthCallback()).rejects.toThrow();
+      // obtainLocation navigates away; we return null so we don't fall through
+      // into the code-exchange path without a code.
+      await expect(YouVersionAPIUsers.handleAuthCallback()).resolves.toBeNull();
 
-      // Verify that the redirect was attempted
       expect(mocks.window.location.href).toBe(
         'https://api.youversion.com/auth/callback?state=test-state',
+      );
+    });
+
+    it('stashes granted_permissions from the pre-code OAuth hop', async () => {
+      mocks.window.location.href =
+        'https://example.com/callback?state=test-state&granted_permissions=highlights';
+      mocks.window.location.search = '?state=test-state&granted_permissions=highlights';
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
+        if (key === 'youversion-auth-state') return 'test-state';
+        return null;
+      });
+
+      await expect(YouVersionAPIUsers.handleAuthCallback()).resolves.toBeNull();
+
+      expect(mocks.localStorage.setItem).toHaveBeenCalledWith(
+        'youversion-auth-pending-granted-permissions',
+        'highlights',
+      );
+      expect(mocks.window.location.href).toBe(
+        'https://api.youversion.com/auth/callback?state=test-state&granted_permissions=highlights',
       );
     });
 
@@ -215,6 +235,10 @@ describe('YouVersionAPIUsers', () => {
       // Mock YouVersionPlatformConfiguration persistence
       const saveAuthDataSpy = vi.spyOn(YouVersionPlatformConfiguration, 'saveAuthData');
       const saveUserInfoSpy = vi.spyOn(YouVersionPlatformConfiguration, 'saveUserInfo');
+      const saveGrantedPermissionsSpy = vi.spyOn(
+        YouVersionPlatformConfiguration,
+        'saveGrantedPermissions',
+      );
 
       const result = await YouVersionAPIUsers.handleAuthCallback();
 
@@ -240,12 +264,19 @@ describe('YouVersionAPIUsers', () => {
         avatar_url: 'https://example.com/avatar.jpg',
       });
 
+      // Token scope seeds the permission cache (OIDC scopes filtered out)
+      expect(saveGrantedPermissionsSpy).toHaveBeenCalledWith(['bibles', 'highlights']);
+
       saveUserInfoSpy.mockRestore();
+      saveGrantedPermissionsSpy.mockRestore();
 
       // Verify cleanup
       expect(mocks.localStorage.removeItem).toHaveBeenCalledWith('youversion-auth-code-verifier');
       expect(mocks.localStorage.removeItem).toHaveBeenCalledWith('youversion-auth-redirect-uri');
       expect(mocks.localStorage.removeItem).toHaveBeenCalledWith('youversion-auth-state');
+      expect(mocks.localStorage.removeItem).toHaveBeenCalledWith(
+        'youversion-auth-pending-granted-permissions',
+      );
 
       expect(mocks.window.history.replaceState).toHaveBeenCalledWith(
         {},
@@ -254,6 +285,61 @@ describe('YouVersionAPIUsers', () => {
       );
 
       saveAuthDataSpy.mockRestore();
+    });
+
+    it('unions stashed early grants with token scope when final URL omits them', async () => {
+      const mockTokens = {
+        access_token: 'access-token-123',
+        expires_in: 3600,
+        id_token:
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJwcm9maWxlX3BpY3R1cmUiOiJodHRwczovL2V4YW1wbGUuY29tL2F2YXRhci5qcGcifQ.invalid-signature',
+        refresh_token: 'refresh-token-456',
+        scope: 'openid profile email',
+        token_type: 'Bearer',
+      };
+
+      mocks.window.location.search = '?state=test-state&code=auth-code';
+      mocks.window.location.href = 'https://example.com/callback?state=test-state&code=auth-code';
+
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
+        switch (key) {
+          case 'youversion-auth-state':
+            return 'test-state';
+          case 'youversion-auth-code-verifier':
+            return 'code-verifier-123';
+          case 'youversion-auth-redirect-uri':
+            return 'https://example.com/callback';
+          case 'youversion-auth-pending-granted-permissions':
+            return 'highlights';
+          default:
+            return null;
+        }
+      });
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: vi.fn().mockResolvedValue(JSON.stringify(mockTokens)),
+      });
+
+      vi.mocked(atob).mockReturnValue(
+        JSON.stringify({
+          sub: '1234567890',
+          name: 'John Doe',
+          email: 'john@example.com',
+        }),
+      );
+
+      const saveGrantedPermissionsSpy = vi.spyOn(
+        YouVersionPlatformConfiguration,
+        'saveGrantedPermissions',
+      );
+
+      await YouVersionAPIUsers.handleAuthCallback();
+
+      expect(saveGrantedPermissionsSpy).toHaveBeenCalledWith(['highlights']);
+      saveGrantedPermissionsSpy.mockRestore();
     });
 
     it('should handle token exchange failure', async () => {

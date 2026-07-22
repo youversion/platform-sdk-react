@@ -16,8 +16,21 @@
  * de-duplicated list, order-preserving on first appearance.
  */
 export function parseGrantedPermissions(params: URLSearchParams): string[] {
+  return mergePermissionValues(params.getAll('granted_permissions'));
+}
+
+/**
+ * Splits a permission list string the way Swift's `permissions(from:)` does
+ * (comma or whitespace). Used for token `scope` and stashed grant lists.
+ */
+export function parsePermissionList(value: string | null | undefined): string[] {
+  if (!value) return [];
+  return mergePermissionValues([value]);
+}
+
+function mergePermissionValues(values: string[]): string[] {
   const seen = new Set<string>();
-  for (const value of params.getAll('granted_permissions')) {
+  for (const value of values) {
     for (const part of value.split(/[,\s]+/)) {
       if (part) seen.add(part);
     }
