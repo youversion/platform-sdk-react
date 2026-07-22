@@ -13,14 +13,14 @@ const OIDC_SCOPES = new Set(['openid', 'profile', 'email', 'offline_access']);
 
 type PendingGrantedPermissionsStash = {
   state: string;
-  permissions: string;
+  permissions: string[];
 };
 
 /** Persist early grants bound to the OAuth `state` that produced them. */
 const stashPendingGrantedPermissions = (state: string, permissions: string[]): void => {
   const payload: PendingGrantedPermissionsStash = {
     state,
-    permissions: permissions.join(','),
+    permissions,
   };
   localStorage.setItem(PENDING_GRANTED_PERMISSIONS_KEY, JSON.stringify(payload));
 };
@@ -40,9 +40,9 @@ const readPendingGrantedPermissions = (state: string): string[] => {
       parsed &&
       typeof parsed === 'object' &&
       parsed.state === state &&
-      typeof parsed.permissions === 'string'
+      Array.isArray(parsed.permissions)
     ) {
-      return parsePermissionList(parsed.permissions);
+      return parsed.permissions.filter((permission) => typeof permission === 'string');
     }
   } catch {
     // Legacy plain comma-list (no state binding) — discard.

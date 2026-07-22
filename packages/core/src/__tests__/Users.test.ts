@@ -189,7 +189,7 @@ describe('YouVersionAPIUsers', () => {
 
       expect(mocks.localStorage.setItem).toHaveBeenCalledWith(
         'youversion-auth-pending-granted-permissions',
-        JSON.stringify({ state: 'test-state', permissions: 'highlights' }),
+        JSON.stringify({ state: 'test-state', permissions: ['highlights'] }),
       );
       expect(mocks.window.location.href).toBe(
         'https://api.youversion.com/auth/callback?state=test-state&granted_permissions=highlights',
@@ -332,7 +332,7 @@ describe('YouVersionAPIUsers', () => {
           case 'youversion-auth-redirect-uri':
             return 'https://example.com/callback';
           case 'youversion-auth-pending-granted-permissions':
-            return JSON.stringify({ state: 'test-state', permissions: 'highlights' });
+            return JSON.stringify({ state: 'test-state', permissions: ['highlights'] });
           default:
             return null;
         }
@@ -387,7 +387,7 @@ describe('YouVersionAPIUsers', () => {
           case 'youversion-auth-redirect-uri':
             return 'https://example.com/callback';
           case 'youversion-auth-pending-granted-permissions':
-            return JSON.stringify({ state: 'other-flow-state', permissions: 'highlights' });
+            return JSON.stringify({ state: 'other-flow-state', permissions: ['highlights'] });
           default:
             return null;
         }
