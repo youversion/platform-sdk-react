@@ -19,7 +19,7 @@ src/index.ts           # Entry point (re-exports components, types, hooks)
 - Components exported from `src/components/`
 - Re-exports from `@youversion/platform-core`:
   - `SignInWithYouVersionPermission`, `SignInWithYouVersionResult`, `YouVersionAPIUsers`
-  - `ApiConfig`, `AuthenticationState` types
+  - `ApiConfig`, `AuthenticationState`, `Highlight` types
 - Re-exports from `@youversion/platform-react-hooks`:
   - `YouVersionProvider`, `useYVAuth`, `UseYVAuthReturn` type
 

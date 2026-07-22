@@ -45,6 +45,26 @@ gated on the internal `HIGHLIGHTS_LIVE` dark-launch flag and an
 authenticated user — while the flag is off or the user has no session, the
 reader is inert: no fetches, no writes, nothing rendered from the API.
 
+## Controlled mode
+
+The alternate `BibleReader` posture (YPE-3705): the host owns highlight
+data, auth, and persistence (e.g. a React Native / Expo DOM host keeping
+the user token out of the WebView). The host passes `highlights:
+Highlight[]` into `BibleReader.Root` and receives highlight intents; the
+reader is a pure projection — no API calls, no local persistence, no
+sign-in surface. Presence of the prop selects the posture (latched at
+first mount). Controlled mode bypasses `HIGHLIGHTS_LIVE`: the color row
+is always interactive so the public prop surface can ship while
+self-contained stays dark.
+
+## Highlight intent
+
+The reader's request that a highlight be applied or removed
+(`onHighlightApply` / `onHighlightRemove`). Always an intent, never a
+completed fact — intent and fact are deliberately never given the same
+name. In controlled mode the highlight appears only when the host
+round-trips an updated `highlights` prop.
+
 ## Verse action popover
 
 The floating action bar (YPE-642) that appears over a verse selection,
