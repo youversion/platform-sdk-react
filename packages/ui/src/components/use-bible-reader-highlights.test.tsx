@@ -576,3 +576,96 @@ describe('useBibleReaderHighlights — scope changes', () => {
     consoleError.mockRestore();
   });
 });
+
+describe('useBibleReaderHighlights — controlled mode (YPE-3705)', () => {
+  it('keeps the fetch disabled and projects from the host prop, even with the flag off', () => {
+    setHighlightsLive(false);
+    const mocked = mockUseHighlights({
+      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: '00d6ff' }]),
+    });
+
+    const { result } = renderHook(
+      () =>
+        useBibleReaderHighlights({
+          ...defaultOptions,
+          controlled: {
+            highlights: [
+              { version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' },
+              { version_id: 111, passage_id: 'JHN.3.17-18', color: '5dff79' },
+              { version_id: 111, passage_id: 'JHN.3.1', color: 'abcdef' }, // outside palette
+            ],
+          },
+        }),
+      { wrapper: AuthWrapper },
+    );
+
+    expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
+      { version_id: 111, passage_id: 'JHN.3' },
+      { enabled: false },
+    );
+    expect(mocked.createHighlight).not.toHaveBeenCalled();
+    expect(result.current.highlightedVerses).toEqual({
+      16: 'fffe00',
+      17: '5dff79',
+      18: '5dff79',
+    });
+  });
+
+  it('emits apply/remove intents with no optimistic paint and no network', () => {
+    const onApply = vi.fn();
+    const onRemove = vi.fn();
+    const mocked = mockUseHighlights();
+
+    const { result, rerender } = renderHook(
+      ({ highlights }: { highlights: Highlight[] }) =>
+        useBibleReaderHighlights({
+          ...defaultOptions,
+          controlled: { highlights, onApply, onRemove },
+        }),
+      {
+        wrapper: AuthWrapper,
+        initialProps: {
+          highlights: [{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }],
+        },
+      },
+    );
+
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+
+    act(() => {
+      result.current.apply('5dff79', [17, 18]);
+    });
+    // Pure projection: paint waits for the host round-trip.
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(onApply).toHaveBeenCalledTimes(1);
+    expect(onApply).toHaveBeenCalledWith({
+      versionId: 111,
+      book: 'JHN',
+      chapter: '3',
+      verses: [17, 18],
+      passageIds: ['JHN.3.17', 'JHN.3.18'],
+      color: '5dff79',
+    });
+    expect(mocked.createHighlight).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.remove('fffe00', [16, 17]);
+    });
+    expect(onRemove).toHaveBeenCalledTimes(1);
+    expect(onRemove).toHaveBeenCalledWith({
+      versionId: 111,
+      book: 'JHN',
+      chapter: '3',
+      verses: [16],
+      passageIds: ['JHN.3.16'],
+      color: 'fffe00',
+    });
+    expect(mocked.deleteHighlight).not.toHaveBeenCalled();
+    // Still no optimistic un-paint.
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+
+    // Host round-trip.
+    rerender({ highlights: [] });
+    expect(result.current.highlightedVerses).toEqual({});
+  });
+});
