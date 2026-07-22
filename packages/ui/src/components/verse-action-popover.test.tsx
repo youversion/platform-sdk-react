@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { VerseActionPopover, HIGHLIGHT_COLORS, type HighlightColor } from './verse-action-popover';
 
 describe('VerseActionPopover', () => {
@@ -44,6 +44,27 @@ describe('VerseActionPopover', () => {
         // Swatches render via theme tokens (var(--yv-*-30-dm)), with a hex fallback.
         expect(bgColor).toMatch(/^(#[a-fA-F0-9]{6}|rgb\(.*\)|var\(--.*\))$/);
       });
+    });
+  });
+
+  describe('AC1b: Initial focus on open', () => {
+    // The bar opens from a mouse/tap on non-focusable verse text. If Radix
+    // autofocused the first swatch, Chromium would treat that programmatic focus
+    // as keyboard-like and paint a stray `:focus-visible` ring on the swatch. We
+    // redirect initial focus to the (non-tabbable) content element instead, so
+    // the ring only appears once the user actually Tabs to a swatch.
+    it('moves initial focus to the popover content, not the first swatch', async () => {
+      render(<VerseActionPopover {...defaultProps} />);
+
+      const dialog = screen.getByRole('dialog');
+      const firstSwatch = screen
+        .getAllByRole('button')
+        .find((btn) => btn.getAttribute('aria-label')?.includes('Apply'))!;
+
+      await waitFor(() => {
+        expect(document.activeElement).toBe(dialog);
+      });
+      expect(document.activeElement).not.toBe(firstSwatch);
     });
   });
 

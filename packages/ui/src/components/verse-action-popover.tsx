@@ -131,6 +131,15 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
 }) => {
   const { t } = useTranslation(undefined, { i18n });
 
+  // On open, Radix's FocusScope would autofocus the first swatch. Because the bar
+  // opens from a mouse/tap on non-focusable verse text, Chromium treats that
+  // delayed programmatic focus as keyboard-like and paints a `:focus-visible`
+  // ring on the swatch — a stray ring the user never asked for. Redirect the
+  // initial focus to the content container instead (see `onOpenAutoFocus`): focus
+  // still enters the popover (Escape closes; screen readers announce the dialog),
+  // but the ring only appears once the user actually Tabs to a swatch.
+  const contentRef = useRef<HTMLDivElement>(null);
+
   // When the anchored verse scrolls out of the container, dock the bar to the
   // edge it exited through: scroll down (verse leaves the top) → dock top; scroll
   // up (verse leaves the bottom) → dock bottom. `null` = anchored (verse visible,
@@ -242,10 +251,20 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
       <PopoverPrimitive.Anchor virtualRef={view.virtualRef} />
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
+          ref={contentRef}
           role="dialog"
           aria-label={t('verseActionsAriaLabel')}
+          tabIndex={-1}
           data-yv-sdk
           data-yv-theme={theme}
+          onOpenAutoFocus={(event) => {
+            // Keep focus contained in the popover but off the first swatch: land
+            // it on the (non-tabbable) content element so no `:focus-visible` ring
+            // shows on pointer-open. The first Tab still moves to the first swatch,
+            // and because Tab is keyboard modality the ring correctly appears then.
+            event.preventDefault();
+            contentRef.current?.focus({ preventScroll: true });
+          }}
           onInteractOutside={(event) => {
             // Tapping another verse modifies the selection — it should re-anchor
             // the popover, not dismiss it. Only a tap truly outside the reader
