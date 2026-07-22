@@ -102,4 +102,16 @@ describe('useHighlightAuthActions', () => {
     await pending;
     expect(window.location.href).toContain('token=dx-token');
   });
+
+  it('clears the data-exchange initiator when token mint fails', async () => {
+    YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-1' });
+    vi.spyOn(DataExchangeClient.prototype, 'updateToken').mockRejectedValue(
+      new Error('mint failed'),
+    );
+
+    const { result } = renderHook(() => useHighlightAuthActions(), { wrapper });
+
+    await expect(result.current.startDataExchangeForHighlights()).rejects.toThrow('mint failed');
+    expect(YouVersionPlatformConfiguration.dataExchangeInitiator).toBeNull();
+  });
 });

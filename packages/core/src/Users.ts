@@ -11,6 +11,45 @@ const PENDING_GRANTED_PERMISSIONS_KEY = 'youversion-auth-pending-granted-permiss
 /** OIDC scopes that must not be stored in the data-exchange permission cache. */
 const OIDC_SCOPES = new Set(['openid', 'profile', 'email', 'offline_access']);
 
+type PendingGrantedPermissionsStash = {
+  state: string;
+  permissions: string;
+};
+
+/** Persist early grants bound to the OAuth `state` that produced them. */
+const stashPendingGrantedPermissions = (state: string, permissions: string[]): void => {
+  const payload: PendingGrantedPermissionsStash = {
+    state,
+    permissions: permissions.join(','),
+  };
+  localStorage.setItem(PENDING_GRANTED_PERMISSIONS_KEY, JSON.stringify(payload));
+};
+
+/**
+ * Read early grants only when they were stashed for this OAuth `state`.
+ * Mismatched or legacy unbound values are discarded (fail closed).
+ */
+const readPendingGrantedPermissions = (state: string): string[] => {
+  const raw = localStorage.getItem(PENDING_GRANTED_PERMISSIONS_KEY);
+  localStorage.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw) as PendingGrantedPermissionsStash;
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      parsed.state === state &&
+      typeof parsed.permissions === 'string'
+    ) {
+      return parsePermissionList(parsed.permissions);
+    }
+  } catch {
+    // Legacy plain comma-list (no state binding) — discard.
+  }
+  return [];
+};
+
 export class YouVersionAPIUsers {
   /**
    * Presents the YouVersion login flow to the user and returns the login result upon completion.
@@ -55,6 +94,8 @@ export class YouVersionAPIUsers {
     // during the callback pre-code hop, and never needs to survive a new signIn).
     // Otherwise a previous user's abandoned grants could leak into this flow.
     localStorage.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
+    // Same hygiene for an abandoned just-in-time data-exchange initiator.
+    YouVersionPlatformConfiguration.clearDataExchangeInitiator();
 
     // Simple redirect to authorization URL
     window.location.href = authorizationRequest.url.toString();
@@ -101,7 +142,7 @@ export class YouVersionAPIUsers {
     if (!code && state) {
       const earlyGrants = parseGrantedPermissions(urlParams);
       if (earlyGrants.length > 0) {
-        localStorage.setItem(PENDING_GRANTED_PERMISSIONS_KEY, earlyGrants.join(','));
+        stashPendingGrantedPermissions(state, earlyGrants);
       }
       this.obtainLocation(window.location.href, state);
       return null;
@@ -142,11 +183,9 @@ export class YouVersionAPIUsers {
 
       // Match Swift: union grants from (1) this URL, (2) stashed pre-code hop,
       // (3) token scope — then drop OIDC scopes before seeding the data-exchange
-      // permission cache.
-      const stashedGrants = parsePermissionList(
-        localStorage.getItem(PENDING_GRANTED_PERMISSIONS_KEY),
-      );
-      localStorage.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
+      // permission cache. Stash is state-bound so a leftover from another flow
+      // cannot seed this user's optimistic permission cache.
+      const stashedGrants = state ? readPendingGrantedPermissions(state) : [];
       const grantedPermissions = [
         ...new Set([
           ...parseGrantedPermissions(urlParams),

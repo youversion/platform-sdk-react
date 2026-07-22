@@ -189,7 +189,7 @@ describe('YouVersionAPIUsers', () => {
 
       expect(mocks.localStorage.setItem).toHaveBeenCalledWith(
         'youversion-auth-pending-granted-permissions',
-        'highlights',
+        JSON.stringify({ state: 'test-state', permissions: 'highlights' }),
       );
       expect(mocks.window.location.href).toBe(
         'https://api.youversion.com/auth/callback?state=test-state&granted_permissions=highlights',
@@ -332,7 +332,7 @@ describe('YouVersionAPIUsers', () => {
           case 'youversion-auth-redirect-uri':
             return 'https://example.com/callback';
           case 'youversion-auth-pending-granted-permissions':
-            return 'highlights';
+            return JSON.stringify({ state: 'test-state', permissions: 'highlights' });
           default:
             return null;
         }
@@ -361,6 +361,116 @@ describe('YouVersionAPIUsers', () => {
       await YouVersionAPIUsers.handleAuthCallback();
 
       expect(saveGrantedPermissionsSpy).toHaveBeenCalledWith(['highlights']);
+      saveGrantedPermissionsSpy.mockRestore();
+    });
+
+    it('discards stashed early grants bound to a different OAuth state', async () => {
+      const mockTokens = {
+        access_token: 'access-token-123',
+        expires_in: 3600,
+        id_token:
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJwcm9maWxlX3BpY3R1cmUiOiJodHRwczovL2V4YW1wbGUuY29tL2F2YXRhci5qcGcifQ.invalid-signature',
+        refresh_token: 'refresh-token-456',
+        scope: 'openid profile email',
+        token_type: 'Bearer',
+      };
+
+      mocks.window.location.search = '?state=test-state&code=auth-code';
+      mocks.window.location.href = 'https://example.com/callback?state=test-state&code=auth-code';
+
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
+        switch (key) {
+          case 'youversion-auth-state':
+            return 'test-state';
+          case 'youversion-auth-code-verifier':
+            return 'code-verifier-123';
+          case 'youversion-auth-redirect-uri':
+            return 'https://example.com/callback';
+          case 'youversion-auth-pending-granted-permissions':
+            return JSON.stringify({ state: 'other-flow-state', permissions: 'highlights' });
+          default:
+            return null;
+        }
+      });
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: vi.fn().mockResolvedValue(JSON.stringify(mockTokens)),
+      });
+
+      vi.mocked(atob).mockReturnValue(
+        JSON.stringify({
+          sub: '1234567890',
+          name: 'John Doe',
+          email: 'john@example.com',
+        }),
+      );
+
+      const saveGrantedPermissionsSpy = vi.spyOn(
+        YouVersionPlatformConfiguration,
+        'saveGrantedPermissions',
+      );
+
+      await YouVersionAPIUsers.handleAuthCallback();
+
+      expect(saveGrantedPermissionsSpy).not.toHaveBeenCalled();
+      saveGrantedPermissionsSpy.mockRestore();
+    });
+
+    it('discards legacy unbound pre-code grant stash (plain comma list)', async () => {
+      const mockTokens = {
+        access_token: 'access-token-123',
+        expires_in: 3600,
+        id_token:
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJwcm9maWxlX3BpY3R1cmUiOiJodHRwczovL2V4YW1wbGUuY29tL2F2YXRhci5qcGcifQ.invalid-signature',
+        refresh_token: 'refresh-token-456',
+        scope: 'openid profile email',
+        token_type: 'Bearer',
+      };
+
+      mocks.window.location.search = '?state=test-state&code=auth-code';
+      mocks.window.location.href = 'https://example.com/callback?state=test-state&code=auth-code';
+
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
+        switch (key) {
+          case 'youversion-auth-state':
+            return 'test-state';
+          case 'youversion-auth-code-verifier':
+            return 'code-verifier-123';
+          case 'youversion-auth-redirect-uri':
+            return 'https://example.com/callback';
+          case 'youversion-auth-pending-granted-permissions':
+            return 'highlights';
+          default:
+            return null;
+        }
+      });
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: vi.fn().mockResolvedValue(JSON.stringify(mockTokens)),
+      });
+
+      vi.mocked(atob).mockReturnValue(
+        JSON.stringify({
+          sub: '1234567890',
+          name: 'John Doe',
+          email: 'john@example.com',
+        }),
+      );
+
+      const saveGrantedPermissionsSpy = vi.spyOn(
+        YouVersionPlatformConfiguration,
+        'saveGrantedPermissions',
+      );
+
+      await YouVersionAPIUsers.handleAuthCallback();
+
+      expect(saveGrantedPermissionsSpy).not.toHaveBeenCalled();
       saveGrantedPermissionsSpy.mockRestore();
     });
 

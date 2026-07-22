@@ -94,9 +94,16 @@ export function useHighlightAuthActions(): {
     // would let the callback honor a grant the new user never consented to.
     // Saving first fails closed on mismatch instead.
     YouVersionPlatformConfiguration.saveDataExchangeInitiator();
-    const token = await dataExchangeClient.updateToken([HIGHLIGHTS_PERMISSION]);
-    if (typeof window !== 'undefined') {
-      window.location.href = buildDataExchangeUrl(token, context.appKey, context.apiHost);
+    try {
+      const token = await dataExchangeClient.updateToken([HIGHLIGHTS_PERMISSION]);
+      if (typeof window !== 'undefined') {
+        window.location.href = buildDataExchangeUrl(token, context.appKey, context.apiHost);
+      }
+    } catch (error) {
+      // Mint/redirect aborted — drop the initiator so a later unrelated
+      // `granted` return cannot ride this abandoned attempt.
+      YouVersionPlatformConfiguration.clearDataExchangeInitiator();
+      throw error;
     }
   }, [dataExchangeClient, context?.appKey, context?.apiHost]);
 
