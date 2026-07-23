@@ -185,7 +185,13 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   // below) and scrolls horizontally when it overflows. Track which edges have
   // hidden content so we can fade only those edges, hinting there's more to
   // scroll toward. Recomputed on scroll and on resize/content changes.
-  const swatchRowRef = useRef<HTMLDivElement>(null);
+  //
+  // The node is held in state (set via a callback ref) rather than a plain ref
+  // so the measuring effect is keyed on the element's actual mount/unmount.
+  // Radix's Portal/Presence commits the Content DOM in a deferred pass, so on
+  // the `open` flip the element isn't attached yet — an effect keyed on `open`
+  // alone would run against a null ref and never re-run to wire up the listener.
+  const [swatchRow, setSwatchRow] = useState<HTMLDivElement | null>(null);
   const [scrollFade, setScrollFade] = useState<ScrollFade>({ start: false, end: false });
 
   // When the anchored verse scrolls out of the container, dock the bar to the
@@ -294,12 +300,12 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   if (open) frozenView.current = live;
   const view = open ? live : frozenView.current;
 
-  // Measure the swatch row's overflow and keep the fade in sync. The row only
-  // exists while the popover is open with highlights enabled, so re-run when
-  // either flips or when the number of swatches changes the content width.
+  // Measure the swatch row's overflow and keep the fade in sync. Keyed on the
+  // state-held node so it (re)attaches the listener the moment Radix commits the
+  // row into the DOM, and on the swatch count so a content-width change re-measures.
   const swatchCount = view.colorCircles.length;
   useEffect(() => {
-    const el = swatchRowRef.current;
+    const el = swatchRow;
     if (!el) {
       setScrollFade({ start: false, end: false });
       return;
@@ -323,7 +329,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
       el.removeEventListener('scroll', update);
       observer?.disconnect();
     };
-  }, [open, highlightsEnabled, swatchCount]);
+  }, [swatchRow, swatchCount]);
 
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -366,8 +372,11 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
             'yv:flex yv:items-center yv:gap-3',
             // Never wider than the viewport (minus collision padding). When the
             // swatch row can't fit, it scrolls inside instead of overflowing the
-            // screen. Radix sets this var on the positioned content.
-            'yv:max-w-(--radix-popover-content-available-width)',
+            // screen. Radix sets `--radix-popover-content-available-width`, but
+            // only recomputes it on reposition — it goes stale on a plain window
+            // resize. `min()` with a live `100vw` term keeps the cap honest when
+            // the viewport shrinks under an open popover (24px = 2×collisionPadding).
+            'yv:max-w-[min(var(--radix-popover-content-available-width),calc(100vw-24px))]',
             'yv:z-50 yv:outline-hidden',
             'yv:overflow-visible yv:relative',
             'yv:origin-(--radix-popover-content-transform-origin)',
@@ -405,7 +414,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
           {highlightsEnabled && (
             <>
               <div
-                ref={swatchRowRef}
+                ref={setSwatchRow}
                 // `min-w-0` lets this flex child actually shrink below its
                 // content size so `overflow-x-auto` engages instead of widening
                 // the pill. `py-1 -my-1` gives the hover:scale-110 swatches

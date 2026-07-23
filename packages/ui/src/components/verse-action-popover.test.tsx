@@ -598,10 +598,15 @@ describe('VerseActionPopover', () => {
     // swatches and grow the pill past the viewport, cutting content off with no
     // way to reach it. The pill is now capped to the viewport and the swatch row
     // scrolls horizontally inside it.
-    it('caps the popover content to the Radix available width', () => {
+    it('caps the popover content to the min of the Radix available width and the live viewport', () => {
       render(<VerseActionPopover {...defaultProps} />);
       const dialog = screen.getByRole('dialog');
-      expect(dialog.className).toContain('yv:max-w-(--radix-popover-content-available-width)');
+      // The `min(..., calc(100vw-24px))` term is what keeps the cap honest when
+      // the viewport shrinks under an open popover — Radix's own var goes stale
+      // on a plain window resize.
+      expect(dialog.className).toContain(
+        'yv:max-w-[min(var(--radix-popover-content-available-width),calc(100vw-24px))]',
+      );
     });
 
     it('makes the swatch row horizontally scrollable with a hidden scrollbar', () => {
@@ -620,6 +625,49 @@ describe('VerseActionPopover', () => {
         .getAllByRole('button')
         .find((btn) => btn.getAttribute('aria-label')?.includes('Apply'))!;
       expect(applyButton.className).toContain('yv:shrink-0');
+    });
+
+    // Regression guard for the live-browser defect: the scroll listener must be
+    // wired to the swatch row's actual mount. Radix's Portal/Presence commits
+    // the Content DOM in a deferred pass, so an effect keyed on `open` runs
+    // against a still-null ref and never re-runs — no listener, no fade. Keying
+    // the effect on the state-held node (callback ref) fixes it. jsdom has no
+    // layout, so we fake overflow metrics and drive a real scroll event: the
+    // mask only appears if the handler is actually attached and firing. This
+    // test is red against the pre-fix wiring (listener never attached).
+    it('engages the edge-fade mask on scroll once the row overflows', () => {
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          activeHighlights={new Set<HighlightColor>(HIGHLIGHT_COLORS)}
+          selectedVerses={[1, 2, 3, 4, 5]}
+          highlightedVerses={{
+            1: HIGHLIGHT_COLORS[0],
+            2: HIGHLIGHT_COLORS[1],
+            3: HIGHLIGHT_COLORS[2],
+            4: HIGHLIGHT_COLORS[3],
+            5: HIGHLIGHT_COLORS[4],
+          }}
+        />,
+      );
+      const swatchRow = screen.getByRole('group', { name: 'Highlight colors' });
+
+      // No layout in jsdom → no mask at rest.
+      expect(swatchRow.getAttribute('style') ?? '').not.toContain('linear-gradient');
+
+      // Fake an overflowing row scrolled to the middle, then fire a real scroll
+      // event. Only an attached handler will read these and apply the mask.
+      Object.defineProperty(swatchRow, 'scrollWidth', { configurable: true, value: 500 });
+      Object.defineProperty(swatchRow, 'clientWidth', { configurable: true, value: 200 });
+      Object.defineProperty(swatchRow, 'scrollLeft', {
+        configurable: true,
+        writable: true,
+        value: 120,
+      });
+      fireEvent.scroll(swatchRow);
+
+      // Both edges have hidden content → a two-sided fade mask is applied.
+      expect(swatchRow.getAttribute('style') ?? '').toContain('linear-gradient');
     });
   });
 
