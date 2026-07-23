@@ -13,8 +13,13 @@ type RequestHeaders = Record<string, string>;
  * status codes; the error's internal shape is not part of the public API.
  */
 export function getHttpStatus(error: unknown): number | undefined {
-  if (error instanceof Error && 'status' in error && typeof error.status === 'number') {
-    return error.status;
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    typeof (error as { status: unknown }).status === 'number'
+  ) {
+    return (error as { status: number }).status;
   }
   return undefined;
 }

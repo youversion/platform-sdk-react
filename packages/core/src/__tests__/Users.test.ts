@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { YouVersionAPIUsers } from '../Users';
+import { YouVersionAPIUsers, __resetAuthCallbackDedupeForTests } from '../Users';
 import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfiguration';
 import { YouVersionUserInfo } from '../YouVersionUserInfo';
 import { setupBrowserMocks, cleanupBrowserMocks } from './mocks/browser';
@@ -11,6 +11,11 @@ describe('YouVersionAPIUsers', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // The code-exchange dedupe map is module-scoped and persists across test
+    // cases within this file (it only resets on page reload in production).
+    // Clear it so tests reusing `code=auth-code` don't see a prior exchange.
+    __resetAuthCallbackDedupeForTests();
 
     // Setup global mocks
     mocks = setupBrowserMocks();
@@ -582,6 +587,91 @@ describe('YouVersionAPIUsers', () => {
       expect(mocks.localStorage.removeItem).toHaveBeenCalledWith('youversion-auth-code-verifier');
       expect(mocks.localStorage.removeItem).toHaveBeenCalledWith('youversion-auth-redirect-uri');
       expect(mocks.localStorage.removeItem).toHaveBeenCalledWith('youversion-auth-state');
+    });
+
+    it('dedupes concurrent callbacks for the same code (one exchange, grants survive)', async () => {
+      const mockTokens = {
+        access_token: 'access-token-123',
+        expires_in: 3600,
+        id_token:
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJwcm9maWxlX3BpY3R1cmUiOiJodHRwczovL2V4YW1wbGUuY29tL2F2YXRhci5qcGcifQ.invalid-signature',
+        refresh_token: 'refresh-token-456',
+        scope: 'highlights openid',
+        token_type: 'Bearer',
+      };
+
+      mocks.window.location.search = '?state=test-state&code=auth-code';
+      mocks.window.location.href = 'https://example.com/callback?state=test-state&code=auth-code';
+
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
+        switch (key) {
+          case 'youversion-auth-state':
+            return 'test-state';
+          case 'youversion-auth-code-verifier':
+            return 'code-verifier-123';
+          case 'youversion-auth-redirect-uri':
+            return 'https://example.com/callback';
+          default:
+            return null;
+        }
+      });
+
+      // A second token request for the same single-use code would 400 on the
+      // server. Model that: first fetch succeeds, any subsequent fetch fails.
+      let tokenRequestCount = 0;
+      mockFetch.mockImplementation(() => {
+        tokenRequestCount += 1;
+        if (tokenRequestCount === 1) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            text: vi.fn().mockResolvedValue(JSON.stringify(mockTokens)),
+          });
+        }
+        return Promise.resolve({ ok: false, status: 400, statusText: 'Bad Request' });
+      });
+
+      vi.mocked(atob).mockReturnValue(
+        JSON.stringify({
+          sub: '1234567890',
+          name: 'John Doe',
+          email: 'john@example.com',
+          profile_picture: 'https://example.com/avatar.jpg',
+        }),
+      );
+
+      const clearAuthTokensSpy = vi.spyOn(YouVersionPlatformConfiguration, 'clearAuthTokens');
+      const saveGrantedPermissionsSpy = vi.spyOn(
+        YouVersionPlatformConfiguration,
+        'saveGrantedPermissions',
+      );
+
+      // Two concurrent invocations, as StrictMode's double-mount produces.
+      const [first, second] = await Promise.all([
+        YouVersionAPIUsers.handleAuthCallback(),
+        YouVersionAPIUsers.handleAuthCallback(),
+      ]);
+
+      // A repeat sequential call this page load must also reuse the exchange.
+      const third = await YouVersionAPIUsers.handleAuthCallback();
+
+      // Exactly one token request was made despite three callback invocations.
+      expect(tokenRequestCount).toBe(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      // All callers observe the same successful result.
+      expect(first).toBeTruthy();
+      expect(first?.accessToken).toBe('access-token-123');
+      expect(second).toBe(first);
+      expect(third).toBe(first);
+
+      // The destructive catch path never ran, so the seeded grants survive.
+      expect(clearAuthTokensSpy).not.toHaveBeenCalled();
+      expect(saveGrantedPermissionsSpy).toHaveBeenCalledWith(['highlights']);
+
+      clearAuthTokensSpy.mockRestore();
+      saveGrantedPermissionsSpy.mockRestore();
     });
   });
 

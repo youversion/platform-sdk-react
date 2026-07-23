@@ -16,6 +16,23 @@ type PendingGrantedPermissionsStash = {
   permissions: string[];
 };
 
+/**
+ * Dedupe map for in-flight/settled code-for-token exchanges, keyed by the
+ * single-use authorization `code`. Under React StrictMode the auth init effect
+ * double-invokes and both runs call {@link YouVersionAPIUsers.handleAuthCallback}
+ * with the same `code` still in the URL; without deduping, the second exchange
+ * 400s (single-use code already spent) and its catch path clears the tokens and
+ * granted-permissions cache the first run just seeded. Entries are kept after
+ * settlement — a code is single-use per page load, and a failed exchange must
+ * not be retried — and module state resets naturally on reload.
+ */
+const inFlightCodeExchanges = new Map<string, Promise<SignInWithYouVersionResult>>();
+
+/** Test-only: clears the code-exchange dedupe map between test cases. */
+export function __resetAuthCallbackDedupeForTests(): void {
+  inFlightCodeExchanges.clear();
+}
+
 /** Persist early grants bound to the OAuth `state` that produced them. */
 const stashPendingGrantedPermissions = (state: string, permissions: string[]): void => {
   const payload: PendingGrantedPermissionsStash = {
@@ -156,6 +173,34 @@ export class YouVersionAPIUsers {
       throw new Error('Missing required authentication parameters');
     }
 
+    // Dedupe concurrent/repeated exchanges of this single-use code (e.g. the
+    // StrictMode double-invocation) so only one token request is ever made and
+    // no duplicate-400 catch path can wipe the grants the winning run seeded.
+    // The synchronous get/set here (before the first await inside the exchange)
+    // makes the check re-entrancy safe.
+    const existingExchange = inFlightCodeExchanges.get(code);
+    if (existingExchange) {
+      return existingExchange;
+    }
+
+    const exchange = this.exchangeCodeForTokens(code, codeVerifier, redirectUri, state, urlParams);
+    inFlightCodeExchanges.set(code, exchange);
+    return exchange;
+  }
+
+  /**
+   * Exchanges a single-use authorization `code` for tokens, persists the
+   * resulting session/profile/grants, and returns the sign-in result. Callers
+   * must dedupe by `code` (see {@link inFlightCodeExchanges}); on failure the
+   * partial session is cleared and the error rethrown.
+   */
+  private static async exchangeCodeForTokens(
+    code: string,
+    codeVerifier: string,
+    redirectUri: string,
+    state: string | null,
+    urlParams: URLSearchParams,
+  ): Promise<SignInWithYouVersionResult> {
     try {
       // Exchange authorization code for tokens
       const tokenRequest = SignInWithYouVersionPKCEAuthorizationRequestBuilder.tokenURLRequest(
