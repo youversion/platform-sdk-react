@@ -64,12 +64,14 @@ describe('YouVersionAPIUsers', () => {
   function setupCallbackFlow({
     scope,
     pendingGrant,
+    requestedGrant,
     search = STANDARD_CALLBACK_SEARCH,
     href = STANDARD_CALLBACK_HREF,
     profile = DEFAULT_CALLBACK_PROFILE,
   }: {
     scope: string;
     pendingGrant?: string;
+    requestedGrant?: string;
     search?: string;
     href?: string;
     profile?: Record<string, unknown>;
@@ -87,6 +89,8 @@ describe('YouVersionAPIUsers', () => {
           return 'https://example.com/callback';
         case 'youversion-auth-pending-granted-permissions':
           return pendingGrant ?? null;
+        case 'youversion-auth-requested-permissions':
+          return requestedGrant ?? null;
         default:
           return null;
       }
@@ -187,6 +191,43 @@ describe('YouVersionAPIUsers', () => {
 
       expect(mocks.localStorage.removeItem).toHaveBeenCalledWith(
         'youversion-auth-pending-granted-permissions',
+      );
+    });
+
+    it('clears any stale requested-permissions stash from a prior abandoned flow', async () => {
+      stubSignInCrypto();
+
+      await YouVersionAPIUsers.signIn('https://example.com/callback');
+
+      expect(mocks.localStorage.removeItem).toHaveBeenCalledWith(
+        'youversion-auth-requested-permissions',
+      );
+    });
+
+    it('stashes the requested data-exchange permissions bound to the OAuth state', async () => {
+      stubSignInCrypto();
+
+      await YouVersionAPIUsers.signIn('https://example.com/callback', ['profile'], ['highlights']);
+
+      // The stash is keyed by the generated state; assert the payload shape and
+      // that the requested permissions (not the OIDC scopes) are what's stored.
+      const requestedCall = mocks.localStorage.setItem.mock.calls.find(
+        (args: unknown[]) => args[0] === 'youversion-auth-requested-permissions',
+      ) as [string, string] | undefined;
+      expect(requestedCall).toBeTruthy();
+      const stored = JSON.parse(requestedCall![1]) as { state: string; permissions: string[] };
+      expect(stored.permissions).toEqual(['highlights']);
+      expect(typeof stored.state).toBe('string');
+    });
+
+    it('does not stash requested permissions when none are requested', async () => {
+      stubSignInCrypto();
+
+      await YouVersionAPIUsers.signIn('https://example.com/callback', ['profile']);
+
+      expect(mocks.localStorage.setItem).not.toHaveBeenCalledWith(
+        'youversion-auth-requested-permissions',
+        expect.any(String),
       );
     });
   });
@@ -422,6 +463,64 @@ describe('YouVersionAPIUsers', () => {
       await YouVersionAPIUsers.handleAuthCallback();
 
       expect(saveGrantedPermissionsSpy).not.toHaveBeenCalled();
+      saveGrantedPermissionsSpy.mockRestore();
+    });
+
+    it('seeds the requested permission when the server returns no grant echo (the live web-flow shape)', async () => {
+      // The exact captured failure (2026-07-23): signIn requested `highlights`,
+      // consent was granted, but the callback carries no `granted_permissions`
+      // and the token scope is only `profile openid`. Sources (1)-(3) are all
+      // empty; only the optimistic requested-permissions seed keeps `highlights`.
+      setupCallbackFlow({
+        scope: 'profile openid',
+        requestedGrant: JSON.stringify({ state: 'test-state', permissions: ['highlights'] }),
+      });
+
+      const saveGrantedPermissionsSpy = vi.spyOn(
+        YouVersionPlatformConfiguration,
+        'saveGrantedPermissions',
+      );
+
+      await YouVersionAPIUsers.handleAuthCallback();
+
+      expect(saveGrantedPermissionsSpy).toHaveBeenCalledWith(['highlights']);
+      saveGrantedPermissionsSpy.mockRestore();
+    });
+
+    it('discards a requested-permissions stash bound to a different OAuth state (fail closed)', async () => {
+      setupCallbackFlow({
+        scope: 'profile openid',
+        requestedGrant: JSON.stringify({ state: 'other-flow-state', permissions: ['highlights'] }),
+      });
+
+      const saveGrantedPermissionsSpy = vi.spyOn(
+        YouVersionPlatformConfiguration,
+        'saveGrantedPermissions',
+      );
+
+      await YouVersionAPIUsers.handleAuthCallback();
+
+      expect(saveGrantedPermissionsSpy).not.toHaveBeenCalled();
+      saveGrantedPermissionsSpy.mockRestore();
+    });
+
+    it('unions the requested-permissions seed with a server echo without duplicating', async () => {
+      // If the server ever does echo the grant, the Set union must not double it.
+      setupCallbackFlow({
+        scope: 'profile openid',
+        search: '?state=test-state&code=auth-code&granted_permissions=highlights',
+        href: 'https://example.com/callback?state=test-state&code=auth-code&granted_permissions=highlights',
+        requestedGrant: JSON.stringify({ state: 'test-state', permissions: ['highlights'] }),
+      });
+
+      const saveGrantedPermissionsSpy = vi.spyOn(
+        YouVersionPlatformConfiguration,
+        'saveGrantedPermissions',
+      );
+
+      await YouVersionAPIUsers.handleAuthCallback();
+
+      expect(saveGrantedPermissionsSpy).toHaveBeenCalledWith(['highlights']);
       saveGrantedPermissionsSpy.mockRestore();
     });
 

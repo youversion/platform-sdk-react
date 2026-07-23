@@ -8,13 +8,25 @@ import { parseGrantedPermissions, parsePermissionList } from './permissions';
 /** Stash key for `granted_permissions` seen on the pre-code OAuth hop. */
 const PENDING_GRANTED_PERMISSIONS_KEY = 'youversion-auth-pending-granted-permissions';
 
+/**
+ * Stash key for the data-exchange permissions REQUESTED at `signIn` (e.g.
+ * `highlights`), bound to the OAuth `state`. Seeded optimistically into the
+ * granted cache on callback because the web flow returns no grant echo — see
+ * the union in {@link YouVersionAPIUsers.exchangeCodeForTokens}.
+ */
+const REQUESTED_PERMISSIONS_KEY = 'youversion-auth-requested-permissions';
+
 /** OIDC scopes that must not be stored in the data-exchange permission cache. */
 const OIDC_SCOPES = new Set(['openid', 'profile', 'email', 'offline_access']);
 
-type PendingGrantedPermissionsStash = {
+type StatePermissionsStash = {
   state: string;
   permissions: string[];
 };
+
+type PendingGrantedPermissionsStash = StatePermissionsStash;
+
+type RequestedPermissionsStash = StatePermissionsStash;
 
 /**
  * Dedupe map for in-flight/settled code-for-token exchanges, keyed by the
@@ -87,6 +99,41 @@ const readPendingGrantedPermissions = (state: string): string[] => {
   return [];
 };
 
+/** Persist the requested data-exchange permissions bound to the OAuth `state`. */
+const stashRequestedPermissions = (state: string, permissions: string[]): void => {
+  const payload: RequestedPermissionsStash = {
+    state,
+    permissions,
+  };
+  localStorage.setItem(REQUESTED_PERMISSIONS_KEY, JSON.stringify(payload));
+};
+
+/**
+ * Read the requested permissions only when they were stashed for this OAuth
+ * `state`. Mismatched or malformed values are discarded (fail closed), mirroring
+ * {@link readPendingGrantedPermissions}.
+ */
+const readRequestedPermissions = (state: string): string[] => {
+  const raw = localStorage.getItem(REQUESTED_PERMISSIONS_KEY);
+  localStorage.removeItem(REQUESTED_PERMISSIONS_KEY);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw) as RequestedPermissionsStash;
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      parsed.state === state &&
+      Array.isArray(parsed.permissions)
+    ) {
+      return parsed.permissions.filter((permission) => typeof permission === 'string');
+    }
+  } catch {
+    // Malformed stash — discard.
+  }
+  return [];
+};
+
 export class YouVersionAPIUsers {
   /**
    * Presents the YouVersion login flow to the user and returns the login result upon completion.
@@ -131,8 +178,18 @@ export class YouVersionAPIUsers {
     // during the callback pre-code hop, and never needs to survive a new signIn).
     // Otherwise a previous user's abandoned grants could leak into this flow.
     localStorage.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
+    // Same hygiene for a stale requested-permissions stash from an abandoned flow.
+    localStorage.removeItem(REQUESTED_PERMISSIONS_KEY);
     // Same hygiene for an abandoned just-in-time data-exchange initiator.
     YouVersionPlatformConfiguration.clearDataExchangeInitiator();
+
+    // Stash the REQUESTED data-exchange permissions (not the OIDC scopes) bound
+    // to this OAuth `state`. On the web flow the server returns no grant echo
+    // (no URL param, no token scope) for these, so the callback seeds them
+    // optimistically from here — see exchangeCodeForTokens. Empty/absent → no stash.
+    if (permissions && permissions.length > 0) {
+      stashRequestedPermissions(authorizationRequest.parameters.state, permissions);
+    }
 
     // Simple redirect to authorization URL
     window.location.href = authorizationRequest.url.toString();
@@ -250,12 +307,25 @@ export class YouVersionAPIUsers {
       // (3) token scope — then drop OIDC scopes before seeding the data-exchange
       // permission cache. Stash is state-bound so a leftover from another flow
       // cannot seed this user's optimistic permission cache.
+      //
+      // (4) is the optimistic seed of the permissions REQUESTED at signIn. On the
+      // web flow the auth server returns ZERO grant evidence for data-exchange
+      // permissions after consent — captured live 2026-07-23, the pre-code hop
+      // carried only `state`, the code hop `scope="profile openid"`, and the token
+      // body `scope: "profile openid"` — so sources (1)-(3) are all empty and the
+      // machine would re-prompt right after sign-in. Seeding the request is
+      // self-correcting: a 401/403 on the first write drops the permission
+      // (removeGrantedPermission) and the machine's PERMISSION_LOST path re-prompts.
+      // Same fail-closed state binding as the granted stash; a Set union means a
+      // future server echo never double-counts.
       const stashedGrants = state ? readPendingGrantedPermissions(state) : [];
+      const requestedGrants = state ? readRequestedPermissions(state) : [];
       const grantedPermissions = [
         ...new Set([
           ...parseGrantedPermissions(urlParams),
           ...stashedGrants,
           ...parsePermissionList(tokens.scope),
+          ...requestedGrants,
         ]),
       ].filter((permission) => !OIDC_SCOPES.has(permission));
 
@@ -292,6 +362,7 @@ export class YouVersionAPIUsers {
       localStorage.removeItem('youversion-auth-redirect-uri');
       localStorage.removeItem('youversion-auth-state');
       localStorage.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
+      localStorage.removeItem(REQUESTED_PERMISSIONS_KEY);
 
       // Clean up URL
       const cleanUrl = new URL(window.location.href);
@@ -305,6 +376,7 @@ export class YouVersionAPIUsers {
       localStorage.removeItem('youversion-auth-redirect-uri');
       localStorage.removeItem('youversion-auth-state');
       localStorage.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
+      localStorage.removeItem(REQUESTED_PERMISSIONS_KEY);
       throw error;
     }
   }
