@@ -6,8 +6,97 @@ import { setupBrowserMocks, cleanupBrowserMocks } from './mocks/browser';
 
 const mockFetch = vi.fn();
 
+// Shared JWT fixture (HS256 header + `{sub,name,iat,email,profile_picture}`
+// payload + invalid signature) reused across the token-exchange tests.
+const MOCK_ID_TOKEN =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJwcm9maWxlX3BpY3R1cmUiOiJodHRwczovL2V4YW1wbGUuY29tL2F2YXRhci5qcGcifQ.invalid-signature';
+
+/** Builds the token payload the /auth/token exchange returns; only `scope` varies per test. */
+function makeTokens(scope: string) {
+  return {
+    access_token: 'access-token-123',
+    expires_in: 3600,
+    id_token: MOCK_ID_TOKEN,
+    refresh_token: 'refresh-token-456',
+    scope,
+    token_type: 'Bearer',
+  };
+}
+
 describe('YouVersionAPIUsers', () => {
   let mocks: ReturnType<typeof setupBrowserMocks>;
+
+  const STANDARD_CALLBACK_SEARCH = '?state=test-state&code=auth-code';
+  const STANDARD_CALLBACK_HREF = 'https://example.com/callback?state=test-state&code=auth-code';
+  const DEFAULT_CALLBACK_PROFILE = {
+    sub: '1234567890',
+    name: 'John Doe',
+    email: 'john@example.com',
+  };
+
+  /**
+   * Stubs the crypto primitives (`getRandomValues`, `subtle.digest`, `btoa`)
+   * that the PKCE `signIn` flow needs to build a deterministic authorize URL.
+   */
+  function stubSignInCrypto() {
+    vi.spyOn(crypto, 'getRandomValues').mockImplementation((array: ArrayBufferView) => {
+      if (array instanceof Uint8Array) {
+        for (let i = 0; i < array.length; i++) {
+          array[i] = i;
+        }
+      }
+      return array;
+    });
+
+    vi.spyOn(crypto.subtle, 'digest').mockResolvedValue(new Uint8Array(32).buffer);
+    mocks.btoa.mockReturnValue('mockBase64Value');
+  }
+
+  /**
+   * Wires up the shared handleAuthCallback token-exchange setup: callback URL,
+   * localStorage reads (state/verifier/redirect-uri + optional pending grant),
+   * a successful token response for `scope`, and the decoded JWT profile.
+   */
+  function setupCallbackFlow({
+    scope,
+    pendingGrant,
+    search = STANDARD_CALLBACK_SEARCH,
+    href = STANDARD_CALLBACK_HREF,
+    profile = DEFAULT_CALLBACK_PROFILE,
+  }: {
+    scope: string;
+    pendingGrant?: string;
+    search?: string;
+    href?: string;
+    profile?: Record<string, unknown>;
+  }) {
+    mocks.window.location.search = search;
+    mocks.window.location.href = href;
+
+    mocks.localStorage.getItem.mockImplementation((key: string) => {
+      switch (key) {
+        case 'youversion-auth-state':
+          return 'test-state';
+        case 'youversion-auth-code-verifier':
+          return 'code-verifier-123';
+        case 'youversion-auth-redirect-uri':
+          return 'https://example.com/callback';
+        case 'youversion-auth-pending-granted-permissions':
+          return pendingGrant ?? null;
+        default:
+          return null;
+      }
+    });
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      text: vi.fn().mockResolvedValue(JSON.stringify(makeTokens(scope))),
+    });
+
+    vi.mocked(atob).mockReturnValue(JSON.stringify(profile));
+  }
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -40,6 +129,12 @@ describe('YouVersionAPIUsers', () => {
   });
 
   describe('signIn', () => {
+    afterEach(() => {
+      // Restore the crypto spies here so restoration still happens even when an
+      // assertion throws mid-test.
+      vi.restoreAllMocks();
+    });
+
     it('should throw error when appKey is not set', async () => {
       YouVersionPlatformConfiguration.appKey = null;
 
@@ -49,17 +144,7 @@ describe('YouVersionAPIUsers', () => {
     });
 
     it('should create authorization request and redirect on successful signIn', async () => {
-      vi.spyOn(crypto, 'getRandomValues').mockImplementation((array: ArrayBufferView) => {
-        if (array instanceof Uint8Array) {
-          for (let i = 0; i < array.length; i++) {
-            array[i] = i;
-          }
-        }
-        return array;
-      });
-
-      vi.spyOn(crypto.subtle, 'digest').mockResolvedValue(new Uint8Array(32).buffer);
-      mocks.btoa.mockReturnValue('mockBase64Value');
+      stubSignInCrypto();
 
       const redirectURL = 'https://example.com/callback';
 
@@ -81,50 +166,24 @@ describe('YouVersionAPIUsers', () => {
 
       // Verify redirect occurred
       expect(mocks.window.location.href).toContain('https://api.youversion.com/auth/authorize');
-
-      vi.restoreAllMocks();
     });
 
     it('should forward requested permissions to the authorize URL', async () => {
-      vi.spyOn(crypto, 'getRandomValues').mockImplementation((array: ArrayBufferView) => {
-        if (array instanceof Uint8Array) {
-          for (let i = 0; i < array.length; i++) {
-            array[i] = i;
-          }
-        }
-        return array;
-      });
-
-      vi.spyOn(crypto.subtle, 'digest').mockResolvedValue(new Uint8Array(32).buffer);
-      mocks.btoa.mockReturnValue('mockBase64Value');
+      stubSignInCrypto();
 
       await YouVersionAPIUsers.signIn('https://example.com/callback', ['profile'], ['highlights']);
 
       expect(mocks.window.location.href).toContain('requested_permissions=highlights');
-
-      vi.restoreAllMocks();
     });
 
     it('clears any stale pre-code granted-permissions stash from a prior abandoned flow', async () => {
-      vi.spyOn(crypto, 'getRandomValues').mockImplementation((array: ArrayBufferView) => {
-        if (array instanceof Uint8Array) {
-          for (let i = 0; i < array.length; i++) {
-            array[i] = i;
-          }
-        }
-        return array;
-      });
-
-      vi.spyOn(crypto.subtle, 'digest').mockResolvedValue(new Uint8Array(32).buffer);
-      mocks.btoa.mockReturnValue('mockBase64Value');
+      stubSignInCrypto();
 
       await YouVersionAPIUsers.signIn('https://example.com/callback');
 
       expect(mocks.localStorage.removeItem).toHaveBeenCalledWith(
         'youversion-auth-pending-granted-permissions',
       );
-
-      vi.restoreAllMocks();
     });
   });
 
@@ -214,50 +273,10 @@ describe('YouVersionAPIUsers', () => {
     });
 
     it('should successfully exchange code for tokens', async () => {
-      const mockTokens = {
-        access_token: 'access-token-123',
-        expires_in: 3600,
-        id_token:
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJwcm9maWxlX3BpY3R1cmUiOiJodHRwczovL2V4YW1wbGUuY29tL2F2YXRhci5qcGcifQ.invalid-signature',
-        refresh_token: 'refresh-token-456',
+      setupCallbackFlow({
         scope: 'bibles highlights openid',
-        token_type: 'Bearer',
-      };
-
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        statusText: 'OK',
-        text: vi.fn().mockResolvedValue(JSON.stringify(mockTokens)),
-      };
-
-      mocks.window.location.search = '?state=test-state&code=auth-code';
-      mocks.window.location.href = 'https://example.com/callback?state=test-state&code=auth-code';
-
-      mocks.localStorage.getItem.mockImplementation((key: string) => {
-        switch (key) {
-          case 'youversion-auth-state':
-            return 'test-state';
-          case 'youversion-auth-code-verifier':
-            return 'code-verifier-123';
-          case 'youversion-auth-redirect-uri':
-            return 'https://example.com/callback';
-          default:
-            return null;
-        }
+        profile: { ...DEFAULT_CALLBACK_PROFILE, profile_picture: 'https://example.com/avatar.jpg' },
       });
-
-      mockFetch.mockResolvedValue(mockResponse);
-
-      // Mock atob for JWT decoding
-      vi.mocked(atob).mockReturnValue(
-        JSON.stringify({
-          sub: '1234567890',
-          name: 'John Doe',
-          email: 'john@example.com',
-          profile_picture: 'https://example.com/avatar.jpg',
-        }),
-      );
 
       // Mock YouVersionPlatformConfiguration persistence
       const saveAuthDataSpy = vi.spyOn(YouVersionPlatformConfiguration, 'saveAuthData');
@@ -315,48 +334,10 @@ describe('YouVersionAPIUsers', () => {
     });
 
     it('unions stashed early grants with token scope when final URL omits them', async () => {
-      const mockTokens = {
-        access_token: 'access-token-123',
-        expires_in: 3600,
-        id_token:
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJwcm9maWxlX3BpY3R1cmUiOiJodHRwczovL2V4YW1wbGUuY29tL2F2YXRhci5qcGcifQ.invalid-signature',
-        refresh_token: 'refresh-token-456',
+      setupCallbackFlow({
         scope: 'openid profile email',
-        token_type: 'Bearer',
-      };
-
-      mocks.window.location.search = '?state=test-state&code=auth-code';
-      mocks.window.location.href = 'https://example.com/callback?state=test-state&code=auth-code';
-
-      mocks.localStorage.getItem.mockImplementation((key: string) => {
-        switch (key) {
-          case 'youversion-auth-state':
-            return 'test-state';
-          case 'youversion-auth-code-verifier':
-            return 'code-verifier-123';
-          case 'youversion-auth-redirect-uri':
-            return 'https://example.com/callback';
-          case 'youversion-auth-pending-granted-permissions':
-            return JSON.stringify({ state: 'test-state', permissions: ['highlights'] });
-          default:
-            return null;
-        }
+        pendingGrant: JSON.stringify({ state: 'test-state', permissions: ['highlights'] }),
       });
-
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        statusText: 'OK',
-        text: vi.fn().mockResolvedValue(JSON.stringify(mockTokens)),
-      });
-
-      vi.mocked(atob).mockReturnValue(
-        JSON.stringify({
-          sub: '1234567890',
-          name: 'John Doe',
-          email: 'john@example.com',
-        }),
-      );
 
       const saveGrantedPermissionsSpy = vi.spyOn(
         YouVersionPlatformConfiguration,
@@ -375,48 +356,11 @@ describe('YouVersionAPIUsers', () => {
       // encodes that echo with bracket-array notation (as seen live on the
       // outbound `requested_permissions[]`). The token scope does NOT carry the
       // data-exchange `highlights` permission, so the URL echo is the only signal.
-      const mockTokens = {
-        access_token: 'access-token-123',
-        expires_in: 3600,
-        id_token:
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJwcm9maWxlX3BpY3R1cmUiOiJodHRwczovL2V4YW1wbGUuY29tL2F2YXRhci5qcGcifQ.invalid-signature',
-        refresh_token: 'refresh-token-456',
+      setupCallbackFlow({
         scope: 'profile openid',
-        token_type: 'Bearer',
-      };
-
-      mocks.window.location.search =
-        '?state=test-state&code=auth-code&granted_permissions%5B%5D=highlights';
-      mocks.window.location.href =
-        'https://example.com/callback?state=test-state&code=auth-code&granted_permissions%5B%5D=highlights';
-
-      mocks.localStorage.getItem.mockImplementation((key: string) => {
-        switch (key) {
-          case 'youversion-auth-state':
-            return 'test-state';
-          case 'youversion-auth-code-verifier':
-            return 'code-verifier-123';
-          case 'youversion-auth-redirect-uri':
-            return 'https://example.com/callback';
-          default:
-            return null;
-        }
+        search: '?state=test-state&code=auth-code&granted_permissions%5B%5D=highlights',
+        href: 'https://example.com/callback?state=test-state&code=auth-code&granted_permissions%5B%5D=highlights',
       });
-
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        statusText: 'OK',
-        text: vi.fn().mockResolvedValue(JSON.stringify(mockTokens)),
-      });
-
-      vi.mocked(atob).mockReturnValue(
-        JSON.stringify({
-          sub: '1234567890',
-          name: 'John Doe',
-          email: 'john@example.com',
-        }),
-      );
 
       const saveGrantedPermissionsSpy = vi.spyOn(
         YouVersionPlatformConfiguration,
@@ -447,48 +391,10 @@ describe('YouVersionAPIUsers', () => {
     });
 
     it('discards stashed early grants bound to a different OAuth state', async () => {
-      const mockTokens = {
-        access_token: 'access-token-123',
-        expires_in: 3600,
-        id_token:
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJwcm9maWxlX3BpY3R1cmUiOiJodHRwczovL2V4YW1wbGUuY29tL2F2YXRhci5qcGcifQ.invalid-signature',
-        refresh_token: 'refresh-token-456',
+      setupCallbackFlow({
         scope: 'openid profile email',
-        token_type: 'Bearer',
-      };
-
-      mocks.window.location.search = '?state=test-state&code=auth-code';
-      mocks.window.location.href = 'https://example.com/callback?state=test-state&code=auth-code';
-
-      mocks.localStorage.getItem.mockImplementation((key: string) => {
-        switch (key) {
-          case 'youversion-auth-state':
-            return 'test-state';
-          case 'youversion-auth-code-verifier':
-            return 'code-verifier-123';
-          case 'youversion-auth-redirect-uri':
-            return 'https://example.com/callback';
-          case 'youversion-auth-pending-granted-permissions':
-            return JSON.stringify({ state: 'other-flow-state', permissions: ['highlights'] });
-          default:
-            return null;
-        }
+        pendingGrant: JSON.stringify({ state: 'other-flow-state', permissions: ['highlights'] }),
       });
-
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        statusText: 'OK',
-        text: vi.fn().mockResolvedValue(JSON.stringify(mockTokens)),
-      });
-
-      vi.mocked(atob).mockReturnValue(
-        JSON.stringify({
-          sub: '1234567890',
-          name: 'John Doe',
-          email: 'john@example.com',
-        }),
-      );
 
       const saveGrantedPermissionsSpy = vi.spyOn(
         YouVersionPlatformConfiguration,
@@ -502,48 +408,7 @@ describe('YouVersionAPIUsers', () => {
     });
 
     it('discards legacy unbound pre-code grant stash (plain comma list)', async () => {
-      const mockTokens = {
-        access_token: 'access-token-123',
-        expires_in: 3600,
-        id_token:
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJwcm9maWxlX3BpY3R1cmUiOiJodHRwczovL2V4YW1wbGUuY29tL2F2YXRhci5qcGcifQ.invalid-signature',
-        refresh_token: 'refresh-token-456',
-        scope: 'openid profile email',
-        token_type: 'Bearer',
-      };
-
-      mocks.window.location.search = '?state=test-state&code=auth-code';
-      mocks.window.location.href = 'https://example.com/callback?state=test-state&code=auth-code';
-
-      mocks.localStorage.getItem.mockImplementation((key: string) => {
-        switch (key) {
-          case 'youversion-auth-state':
-            return 'test-state';
-          case 'youversion-auth-code-verifier':
-            return 'code-verifier-123';
-          case 'youversion-auth-redirect-uri':
-            return 'https://example.com/callback';
-          case 'youversion-auth-pending-granted-permissions':
-            return 'highlights';
-          default:
-            return null;
-        }
-      });
-
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        statusText: 'OK',
-        text: vi.fn().mockResolvedValue(JSON.stringify(mockTokens)),
-      });
-
-      vi.mocked(atob).mockReturnValue(
-        JSON.stringify({
-          sub: '1234567890',
-          name: 'John Doe',
-          email: 'john@example.com',
-        }),
-      );
+      setupCallbackFlow({ scope: 'openid profile email', pendingGrant: 'highlights' });
 
       const saveGrantedPermissionsSpy = vi.spyOn(
         YouVersionPlatformConfiguration,
@@ -590,30 +455,9 @@ describe('YouVersionAPIUsers', () => {
     });
 
     it('dedupes concurrent callbacks for the same code (one exchange, grants survive)', async () => {
-      const mockTokens = {
-        access_token: 'access-token-123',
-        expires_in: 3600,
-        id_token:
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJwcm9maWxlX3BpY3R1cmUiOiJodHRwczovL2V4YW1wbGUuY29tL2F2YXRhci5qcGcifQ.invalid-signature',
-        refresh_token: 'refresh-token-456',
+      setupCallbackFlow({
         scope: 'highlights openid',
-        token_type: 'Bearer',
-      };
-
-      mocks.window.location.search = '?state=test-state&code=auth-code';
-      mocks.window.location.href = 'https://example.com/callback?state=test-state&code=auth-code';
-
-      mocks.localStorage.getItem.mockImplementation((key: string) => {
-        switch (key) {
-          case 'youversion-auth-state':
-            return 'test-state';
-          case 'youversion-auth-code-verifier':
-            return 'code-verifier-123';
-          case 'youversion-auth-redirect-uri':
-            return 'https://example.com/callback';
-          default:
-            return null;
-        }
+        profile: { ...DEFAULT_CALLBACK_PROFILE, profile_picture: 'https://example.com/avatar.jpg' },
       });
 
       // A second token request for the same single-use code would 400 on the
@@ -626,20 +470,11 @@ describe('YouVersionAPIUsers', () => {
             ok: true,
             status: 200,
             statusText: 'OK',
-            text: vi.fn().mockResolvedValue(JSON.stringify(mockTokens)),
+            text: vi.fn().mockResolvedValue(JSON.stringify(makeTokens('highlights openid'))),
           });
         }
         return Promise.resolve({ ok: false, status: 400, statusText: 'Bad Request' });
       });
-
-      vi.mocked(atob).mockReturnValue(
-        JSON.stringify({
-          sub: '1234567890',
-          name: 'John Doe',
-          email: 'john@example.com',
-          profile_picture: 'https://example.com/avatar.jpg',
-        }),
-      );
 
       const clearAuthTokensSpy = vi.spyOn(YouVersionPlatformConfiguration, 'clearAuthTokens');
       const saveGrantedPermissionsSpy = vi.spyOn(

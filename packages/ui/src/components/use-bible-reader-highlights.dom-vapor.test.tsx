@@ -9,52 +9,24 @@
  * background-color mutation. A one-frame resurrection that only shows up as an
  * imperative repaint — not in the hook's returned map — is caught here.
  */
-import { StrictMode, useEffect, useRef, useState } from 'react';
+import { StrictMode, useEffect, useState } from 'react';
 import { act, render, waitFor } from '@testing-library/react';
 import {
   HighlightsClient,
   YouVersionPlatformConfiguration,
   type Collection,
   type Highlight,
-  type YouVersionUserInfo,
 } from '@youversion/platform-core';
-import { YouVersionAuthContext, YouVersionContext } from '@youversion/platform-react-hooks';
-import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
+import { collection, Providers } from '@/test/highlights-test-utils';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
 import { Verse } from './verse';
-
-function collection(data: Highlight[]): Collection<Highlight> {
-  return { data, next_page_token: null };
-}
-
-const mockUserInfo = { id: 'user-1', name: 'Test User' } as unknown as YouVersionUserInfo;
-
-function Providers({ children }: { children: ReactNode }) {
-  return (
-    <YouVersionContext.Provider value={{ appKey: 'test-app-key' }}>
-      <YouVersionAuthContext.Provider
-        value={{ userInfo: mockUserInfo, setUserInfo: vi.fn(), isLoading: false, error: null }}
-      >
-        {children}
-      </YouVersionAuthContext.Provider>
-    </YouVersionContext.Provider>
-  );
-}
 
 const options = { versionId: 111, book: 'JHN', chapter: '1' };
 const CHAPTER_HTML =
   '<p class="yv-p"><span class="yv-v" v="2"><sup class="yv-vlbl">2</sup>' +
   '<span class="yv-txt">In the beginning was the Word.</span></span></p>';
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((r) => {
-    resolve = r;
-  });
-  return { promise, resolve };
-}
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -74,7 +46,6 @@ afterEach(() => {
 
 function Reader({ removeRef }: { removeRef: { current: (() => void) | null } }) {
   const [selected, setSelected] = useState<number[]>([2]);
-  const sectionRef = useRef<HTMLDivElement>(null);
   const api = useBibleReaderHighlights(options);
   useEffect(() => {
     removeRef.current = () => {
@@ -87,7 +58,6 @@ function Reader({ removeRef }: { removeRef: { current: (() => void) | null } }) 
   });
   return (
     <Verse.Html
-      ref={sectionRef}
       html={CHAPTER_HTML}
       selectedVerses={selected}
       highlightedVerses={api.highlightedVerses}
@@ -99,11 +69,13 @@ function Reader({ removeRef }: { removeRef: { current: (() => void) | null } }) 
 describe('vapor flash — real Verse.Html DOM paint (MutationObserver on style)', () => {
   it('the verse-2 background is never repainted to yellow after the optimistic unpaint', async () => {
     const withRow = () => collection([{ version_id: 111, passage_id: 'JHN.1.2', color: 'fffe00' }]);
-    const held = deferred<Collection<Highlight>>();
+    // The post-remove refetch is held unresolved to widen the settle→response
+    // window the live flash lives in; it never settles.
+    const heldRefetch = new Promise<Collection<Highlight>>(vi.fn());
     let removed = false;
     const getHighlights = vi
       .spyOn(HighlightsClient.prototype, 'getHighlights')
-      .mockImplementation(() => (removed ? held.promise : Promise.resolve(withRow())));
+      .mockImplementation(() => (removed ? heldRefetch : Promise.resolve(withRow())));
     const deleteHighlight = vi
       .spyOn(HighlightsClient.prototype, 'deleteHighlight')
       // Real network gap: settle lands on a macrotask, well after the optimistic

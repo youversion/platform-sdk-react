@@ -4,6 +4,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionProvider } from '@/components/YouVersionProvider';
 
 const baseProviderMock =
@@ -46,8 +47,7 @@ describe('UI YouVersionProvider', () => {
     expect(lastCall?.additionalHeaders).toBeUndefined();
   });
 
-  it('mirrors appName and signInPromptMessage onto the UI-bundled config', async () => {
-    const { YouVersionPlatformConfiguration } = await import('@youversion/platform-core');
+  it('mirrors appName and signInPromptMessage onto the UI-bundled config', () => {
     YouVersionPlatformConfiguration.appName = undefined;
     YouVersionPlatformConfiguration.signInPromptMessage = undefined;
 
@@ -61,12 +61,10 @@ describe('UI YouVersionProvider', () => {
       </YouVersionProvider>,
     );
 
-    await vi.waitFor(() => {
-      expect(YouVersionPlatformConfiguration.appName).toBe('SDK Demo');
-      expect(YouVersionPlatformConfiguration.signInPromptMessage).toBe(
-        'Save your highlights to your YouVersion account.',
-      );
-    });
+    expect(YouVersionPlatformConfiguration.appName).toBe('SDK Demo');
+    expect(YouVersionPlatformConfiguration.signInPromptMessage).toBe(
+      'Save your highlights to your YouVersion account.',
+    );
   });
 
   it.each([

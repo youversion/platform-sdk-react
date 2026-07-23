@@ -27,16 +27,11 @@
 export function parseGrantedPermissions(params: URLSearchParams): string[] {
   const values: string[] = [];
   for (const [key, value] of params) {
-    if (isGrantedPermissionsKey(key)) {
+    if (/^granted_permissions(\[\d*\])?$/.test(key)) {
       values.push(value);
     }
   }
   return mergePermissionValues(values);
-}
-
-/** Matches `granted_permissions`, `granted_permissions[]`, or `granted_permissions[<index>]`. */
-function isGrantedPermissionsKey(key: string): boolean {
-  return key === 'granted_permissions' || /^granted_permissions\[\d*\]$/.test(key);
 }
 
 /**

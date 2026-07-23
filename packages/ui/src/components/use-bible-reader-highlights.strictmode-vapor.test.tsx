@@ -14,8 +14,7 @@
  *   4. Source is initial-fetch server truth, never an in-session apply.
  *
  * We record every committed `highlightedVerses` (the value verse.tsx paints
- * from) plus the machineScope/scope equality, so a resurrection frame and its
- * cause are both captured.
+ * from), so a resurrection frame is captured.
  */
 import { StrictMode, useState, useEffect } from 'react';
 import { act, render, waitFor } from '@testing-library/react';
@@ -24,46 +23,13 @@ import {
   YouVersionPlatformConfiguration,
   type Collection,
   type Highlight,
-  type YouVersionUserInfo,
 } from '@youversion/platform-core';
-import { YouVersionAuthContext, YouVersionContext } from '@youversion/platform-react-hooks';
-import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
+import { collection, Providers } from '@/test/highlights-test-utils';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
 
-function collection(data: Highlight[]): Collection<Highlight> {
-  return { data, next_page_token: null };
-}
-
-const mockUserInfo = { id: 'user-1', name: 'Test User' } as unknown as YouVersionUserInfo;
-
-function Providers({ children }: { children: ReactNode }) {
-  return (
-    <YouVersionContext.Provider value={{ appKey: 'test-app-key' }}>
-      <YouVersionAuthContext.Provider
-        value={{
-          userInfo: mockUserInfo,
-          setUserInfo: vi.fn(),
-          isLoading: false,
-          error: null,
-        }}
-      >
-        {children}
-      </YouVersionAuthContext.Provider>
-    </YouVersionContext.Provider>
-  );
-}
-
 const options = { versionId: 111, book: 'JHN', chapter: '1' };
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((r) => {
-    resolve = r;
-  });
-  return { promise, resolve };
-}
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -82,20 +48,18 @@ afterEach(() => {
   sessionStorage.clear();
 });
 
-type Frame = { hv: Record<number, string>; scopeMatch: boolean };
-
 /** Harness mirroring BibleReader: a selection state cleared right after remove. */
 function Harness({
   frames,
   removeRef,
 }: {
-  frames: Frame[];
+  frames: Record<number, string>[];
   removeRef: { current: (() => void) | null };
 }) {
   const [selected, setSelected] = useState<number[]>([2]);
   const api = useBibleReaderHighlights(options);
   // Record the exact value verse.tsx would paint from, each committed render.
-  frames.push({ hv: api.highlightedVerses, scopeMatch: true });
+  frames.push(api.highlightedVerses);
   // Expose the popover "remove" action: remove + close/clear selection, exactly
   // as BibleReader.handleClearHighlight → closeAndClearSelection does.
   useEffect(() => {
@@ -114,16 +78,18 @@ describe('vapor flash — StrictMode + server-truth remove + selection-clear + h
     // mount fetch resolves server truth (verse 2) and the settle refetch stays
     // unresolved to widen the settle→response window the live repaint lives in.
     const withRow = () => collection([{ version_id: 111, passage_id: 'JHN.1.2', color: 'fffe00' }]);
-    const getDeferred = deferred<Collection<Highlight>>();
+    // The post-remove refetch is held unresolved to widen the settle→response
+    // window the live repaint lives in; it never settles.
+    const heldRefetch = new Promise<Collection<Highlight>>(vi.fn());
     let removed = false;
     const getHighlights = vi
       .spyOn(HighlightsClient.prototype, 'getHighlights')
-      .mockImplementation(() => (removed ? getDeferred.promise : Promise.resolve(withRow())));
+      .mockImplementation(() => (removed ? heldRefetch : Promise.resolve(withRow())));
     const deleteHighlight = vi
       .spyOn(HighlightsClient.prototype, 'deleteHighlight')
       .mockResolvedValue(undefined);
 
-    const frames: Frame[] = [];
+    const frames: Record<number, string>[] = [];
     const removeRef: { current: (() => void) | null } = { current: null };
 
     render(
@@ -136,7 +102,7 @@ describe('vapor flash — StrictMode + server-truth remove + selection-clear + h
 
     // Wait for server truth to render verse 2 highlighted.
     await waitFor(() => {
-      expect(frames.at(-1)?.hv).toEqual({ 2: 'fffe00' });
+      expect(frames.at(-1)).toEqual({ 2: 'fffe00' });
     });
     const mountFetches = getHighlights.mock.calls.length;
 
@@ -158,7 +124,7 @@ describe('vapor flash — StrictMode + server-truth remove + selection-clear + h
     });
 
     const window = frames.slice(startFrame);
-    const resurrected = window.filter((f) => f.hv[2] === 'fffe00');
+    const resurrected = window.filter((f) => f[2] === 'fffe00');
     expect(
       resurrected,
       `verse 2 resurrected in ${resurrected.length}/${window.length} frame(s): ` +

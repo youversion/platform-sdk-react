@@ -14,16 +14,14 @@ import {
   HighlightsClient,
   YouVersionAPIUsers,
   YouVersionPlatformConfiguration,
-  type YouVersionUserInfo,
 } from '@youversion/platform-core';
 import { YouVersionAuthContext, YouVersionContext } from '@youversion/platform-react-hooks';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
 import { readPendingHighlights, stashPendingHighlight } from '@/lib/pending-highlight';
+import { mockUserInfo } from '@/test/highlights-test-utils';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
-
-const mockUserInfo = { id: 'user-1', name: 'Test User' } as unknown as YouVersionUserInfo;
 
 let signedIn = false;
 

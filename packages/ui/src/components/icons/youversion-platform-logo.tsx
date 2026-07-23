@@ -1,9 +1,8 @@
 import type { ComponentProps, ReactElement } from 'react';
 
 /**
- * YouVersion Platform wordmark — matches Swift
- * `YouVersionPlatformLogo.imageset` (light + dark fills kept in
- * `src/assets/youversion-platform-logo/`).
+ * YouVersion Platform wordmark — matches the Swift SDK's
+ * `YouVersionPlatformLogo.imageset` (light + dark fills).
  */
 type YouVersionPlatformLogoProps = ComponentProps<'svg'> & {
   theme?: 'light' | 'dark';

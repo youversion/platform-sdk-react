@@ -4,13 +4,11 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { Collection, Highlight } from '@youversion/platform-core';
 import { useHighlights, YouVersionAuthContext } from '@youversion/platform-react-hooks';
-import {
-  YouVersionPlatformConfiguration,
-  type YouVersionUserInfo,
-} from '@youversion/platform-core';
+import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
+import { mockUserInfo } from '@/test/highlights-test-utils';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
 
 vi.mock('@youversion/platform-react-hooks', async () => {
@@ -20,8 +18,6 @@ vi.mock('@youversion/platform-react-hooks', async () => {
     useHighlights: vi.fn(),
   };
 });
-
-const mockUserInfo = { id: 'user-1', name: 'Test User' } as unknown as YouVersionUserInfo;
 
 function makeCollection(data: Highlight[]): Collection<Highlight> {
   return { data, next_page_token: null };

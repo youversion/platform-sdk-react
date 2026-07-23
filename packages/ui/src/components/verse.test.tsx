@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, waitFor, within } from '@testing-library/react';
@@ -689,14 +689,12 @@ describe('Verse.Html - Rounded highlight fill (static structural CSS)', () => {
   // STATIC — present whether or not a verse is highlighted — which is what keeps
   // applying/removing a fill from reflowing text (no layout shift). jsdom doesn't
   // load that external sheet, so we assert against the CSS source directly.
-  // Resolve from cwd so it works whether the suite runs from the ui package
-  // (the filtered command) or the repo root (turbo).
-  const cssPath = [
-    resolve(process.cwd(), '../core/src/styles/bible-reader.css'),
-    resolve(process.cwd(), 'packages/core/src/styles/bible-reader.css'),
-  ].find((p) => existsSync(p));
-  if (!cssPath) throw new Error('Could not locate core bible-reader.css');
-  const css = readFileSync(cssPath, 'utf8');
+  // Resolve relative to this file so it works whether the suite runs from the ui
+  // package (the filtered command) or the repo root (turbo).
+  const css = readFileSync(
+    resolve(import.meta.dirname, '../../../core/src/styles/bible-reader.css'),
+    'utf8',
+  );
 
   // The base `.yv-v` rule (identified by its background-color transition), not the
   // `.yv-v.yv-v-highlighted` demo rule.
