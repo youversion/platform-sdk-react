@@ -126,19 +126,17 @@ jobs:
 
       - name: Build coverage badge JSON for shields.io
         run: |
-          # Build one shields.io endpoint JSON per package into a scratch dir.
           mkdir -p coverage-output
           for pkg in core hooks ui; do
             summary="packages/$pkg/coverage/coverage-summary.json"
-            # Fail loudly rather than silently skip: a missing summary must not
-            # let a stale badge stand in for the current run.
             if [ ! -f "$summary" ]; then
               echo "Missing coverage summary: $summary" >&2
               exit 1
             fi
-            PCT=$(jq '.total.lines.pct' "$summary")
-            COLOR=$(node -e "const p=$PCT; console.log(p >= 80 ? 'brightgreen' : p >= 60 ? 'yellow' : 'red')")
-            echo "{\"schemaVersion\":1,\"label\":\"$pkg coverage\",\"message\":\"${PCT}%\",\"color\":\"${COLOR}\"}" > "coverage-output/$pkg.json"
+            pct=$(jq '.total.lines.pct' "$summary")
+            color=$(node -e "const p=$pct; console.log(p >= 80 ? 'brightgreen' : p >= 60 ? 'yellow' : 'red')")
+            jq -n --arg label "$pkg coverage" --arg message "$pct%" --arg color "$color" \
+              '{schemaVersion: 1, label: $label, message: $message, color: $color}' > "coverage-output/$pkg.json"
           done
 
       - name: Upload coverage badge artifacts
@@ -146,11 +144,8 @@ jobs:
         with:
           name: coverage-badges
           path: coverage-output/
-          if-no-files-found: ignore
 
-  # Publish the coverage badge JSON to a dedicated `badges` branch so it never
-  # lands in main's history. Runs only on main; auth is handled by actions/checkout
-  # (the workflow token, never baked into a URL).
+  # Coverage badges live on an orphan `badges` branch, out of main's history.
   publish-coverage-badges:
     name: Publish coverage badges
     needs: test
@@ -174,16 +169,9 @@ jobs:
       - name: Commit coverage badges to badges branch
         working-directory: badges-branch
         run: |
-          shopt -s nullglob
-          badges=(../coverage-output/*.json)
-          if [ ${#badges[@]} -eq 0 ]; then
-            echo "No coverage badge JSON was produced; nothing to publish."
-            exit 0
-          fi
-          # Replace the whole set so a package that produced no summary this run
-          # drops its badge instead of showing stale coverage.
+          # Replace the full set so a dropped package's stale badge can't linger.
           rm -f ./*.json
-          cp "${badges[@]}" .
+          cp ../coverage-output/*.json .
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
