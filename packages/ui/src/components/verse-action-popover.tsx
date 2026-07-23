@@ -6,7 +6,7 @@ import { cn } from '../lib/utils';
 import { BoxStackIcon } from './icons/box-stack';
 import { BoxArrowUpIcon } from './icons/box-arrow-up';
 import { CheckIcon } from './icons/check';
-import { hexToRgba, HIGHLIGHT_FILL_OPACITY } from './verse';
+import { hexToRgba, HIGHLIGHT_FILL_OPACITY_DARK } from './verse';
 
 type Measurable = { getBoundingClientRect: () => DOMRect };
 
@@ -97,12 +97,11 @@ type ColorCircleProps = {
 
 function ColorCircle({ color, showRemove, label, onClick, theme }: ColorCircleProps) {
   const isDark = theme === 'dark';
-  // Preview the fill the way it will actually paint. Fills now render at
-  // HIGHLIGHT_FILL_OPACITY in both themes (2026-07-23 product decision), so the
-  // swatch composites that same alpha over the popover card background in both
-  // modes rather than showing a solid `#hex` in light mode. The border below
-  // keeps pale swatches visible against the card.
-  const backgroundColor = hexToRgba(color, HIGHLIGHT_FILL_OPACITY);
+  // Preview the fill the way it will actually paint: full-strength in light mode,
+  // faded to the dark-mode alpha in dark mode (mirrors the applied-highlight
+  // treatment in verse.tsx). Light mode keeps the bare `#hex` so it serializes as
+  // a solid swatch.
+  const backgroundColor = isDark ? hexToRgba(color, HIGHLIGHT_FILL_OPACITY_DARK) : `#${color}`;
   // Inner border matches the Figma "highlight stroke" (#121212 @ 20%), giving
   // pale swatches definition on the light popover. On the dark popover a dark
   // stroke would vanish against the dimmed fill, so flip it to a light stroke.
@@ -121,9 +120,8 @@ function ColorCircle({ color, showRemove, label, onClick, theme }: ColorCirclePr
     >
       {/* Active/remove swatch: a 24px checkmark on the solid color circle. Matches
           iOS (platform-sdk-swift #179), which swapped the earlier X for a check.
-          Both modes dim the fill; over it the check is Text/Everdark in light mode
-          and white in dark mode for legibility. Tapping it still removes the
-          highlight. */}
+          Light mode uses Text/Everdark; dark mode dims the fill, so the check goes
+          white to stay legible. Tapping it still removes the highlight. */}
       {showRemove && (
         <CheckIcon
           className={cn('yv:size-6', isDark ? 'yv:text-white' : 'yv:text-(--yv-gray-50)')}

@@ -141,20 +141,13 @@ function getVerseHtmlFromDom(container: HTMLElement, verseNum: string): string {
 }
 
 /**
- * Verse highlight fill opacity, applied uniformly in both light and dark mode.
- *
- * Per a product decision (product design, 2026-07-23), fills render at 30%
- * opacity in both themes. The palette hexes are saturated, and full-strength
- * light-mode fills read as harsh, so light mode now matches dark at 0.3. This
- * intentionally diverges from the Swift SDK, which still paints light-mode fills
- * at full strength (1.0); the divergence stands until Swift catches up.
- *
- * Scope: the standard palette is the only highlight fill source today, so this
- * single opacity governs every fill. If a non-palette fill source is added
- * later, revisit whether it should share this value. See
- * `docs/adr/YPE-642-verse-action-popover.md`.
+ * Verse highlight fill opacity, matched to the Swift SDK (cross-SDK parity is the
+ * UX baseline). Light mode paints the highlight hex at full strength; dark mode
+ * fades it so the fill sits behind the text without overpowering it. See
+ * `docs/adr/YPE-642-verse-action-popover.md` (ADR-005 as-built).
  */
-export const HIGHLIGHT_FILL_OPACITY = 0.3;
+export const HIGHLIGHT_FILL_OPACITY_LIGHT = 1.0;
+export const HIGHLIGHT_FILL_OPACITY_DARK = 0.3;
 
 /** Converts a 6-digit hex (no `#`) to an `rgba()` string at the given alpha. */
 export function hexToRgba(hex: string, alpha: number): string {
@@ -333,20 +326,19 @@ function BibleTextHtml({
   // Toggle selection underline + paint highlight fills on verse wrappers.
   // A verse can map to multiple `.yv-v[v="N"]` wrappers; each is painted so the
   // highlight reads as one solid block across line/paragraph breaks.
-  // Fill opacity is a single value (HIGHLIGHT_FILL_OPACITY) in both themes per
-  // the 2026-07-23 product decision. A highlighted verse's number label inherits
-  // the body text color so it stays legible over the fill; both are cleared on
-  // removal.
+  // Theme-aware fill opacity mirrors the Swift SDK: full strength in light mode,
+  // faded in dark mode. In dark mode a highlighted verse's number label renders
+  // white so it stays legible over the fill; both are cleared on removal.
   useLayoutEffect(() => {
     if (!contentRef.current) return;
+    const isDark = currentTheme === 'dark';
+    const fillOpacity = isDark ? HIGHLIGHT_FILL_OPACITY_DARK : HIGHLIGHT_FILL_OPACITY_LIGHT;
     contentRef.current.querySelectorAll('.yv-v[v]').forEach((el) => {
       const verseNum = parseInt(el.getAttribute('v') || '0', 10);
       el.classList.toggle('yv-v-selected', selectedVerses.includes(verseNum));
       const color = highlightedVerses[verseNum];
       const isHighlighted = Boolean(color);
-      (el as HTMLElement).style.backgroundColor = color
-        ? hexToRgba(color, HIGHLIGHT_FILL_OPACITY)
-        : '';
+      (el as HTMLElement).style.backgroundColor = color ? hexToRgba(color, fillOpacity) : '';
       // Over a highlight fill the muted label color clashes with saturated fills,
       // so the label inherits the verse body text color instead — the reader's
       // main text color in light mode, white/near-white in dark mode. Setting
@@ -358,7 +350,7 @@ function BibleTextHtml({
         (label as HTMLElement).style.color = isHighlighted ? 'inherit' : '';
       });
     });
-  }, [html, selectedVerses, highlightedVerses]);
+  }, [html, selectedVerses, highlightedVerses, currentTheme]);
 
   // Not wrapped in useCallback — this component is not memoized, so the
   // handler always captures the latest selectedVerses via closure.

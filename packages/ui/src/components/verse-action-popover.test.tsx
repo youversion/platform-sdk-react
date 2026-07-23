@@ -46,9 +46,8 @@ describe('VerseActionPopover', () => {
       expect(applyButtons).toHaveLength(5);
       applyButtons.forEach((btn) => {
         const bgColor = btn.style.backgroundColor;
-        // Swatches preview the applied fill at 0.3 alpha, which jsdom serializes
-        // as `rgba(...)`; keep the hex/rgb/token forms accepted as well.
-        expect(bgColor).toMatch(/^(#[a-fA-F0-9]{6}|rgba?\(.*\)|var\(--.*\))$/);
+        // Swatches render via theme tokens (var(--yv-*-30-dm)), with a hex fallback.
+        expect(bgColor).toMatch(/^(#[a-fA-F0-9]{6}|rgb\(.*\)|var\(--.*\))$/);
       });
     });
   });
@@ -535,22 +534,24 @@ describe('VerseActionPopover', () => {
     });
   });
 
-  describe('Swatch fill preview', () => {
+  describe('Swatch fill preview (theme-aware)', () => {
     // The first apply swatch (no active highlights) is the first canonical color,
     // yellow `fffe00` → rgb(255, 254, 0).
     function firstApplySwatch() {
       return applyButtons()[0]!;
     }
 
-    it('paints swatches at 0.3 alpha in light mode (matches the applied fill)', () => {
+    it('paints swatches at full opacity in light mode (matches the applied fill)', () => {
       render(<VerseActionPopover {...defaultProps} theme="light" />);
-      // Light mode now previews the dimmed fill too (2026-07-23 product decision).
-      expect(firstApplySwatch().style.backgroundColor).toBe('rgba(255, 254, 0, 0.3)');
+      const bg = firstApplySwatch().style.backgroundColor;
+      // Full-strength: never the dimmed dark-mode alpha.
+      expect(bg).not.toContain('0.3');
+      expect(bg).toBeTruthy();
     });
 
-    it('paints swatches at 0.3 alpha in dark mode (matches the applied fill)', () => {
+    it('dims swatches to the dark-mode alpha (0.3) in dark mode', () => {
       render(<VerseActionPopover {...defaultProps} theme="dark" />);
-      // Same 0.3 alpha the applied highlight paints in both themes (verse.tsx).
+      // Same 0.3 alpha the applied highlight paints in dark mode (verse.tsx).
       expect(firstApplySwatch().style.backgroundColor).toBe('rgba(255, 254, 0, 0.3)');
     });
 

@@ -202,15 +202,15 @@ function selectVerse(container: HTMLElement, verse: number) {
 }
 
 /**
- * Color the reader paints for a highlight fill. Fills render at 0.3 opacity in
- * both light and dark mode (2026-07-23 product decision); jsdom serializes the
- * partial alpha to `rgba(...)`.
+ * Color the reader paints for a highlight fill. These tests run in light mode
+ * (theme mocked to 'light'), where the fill is full opacity (Swift parity);
+ * jsdom serializes a fully opaque color to `rgb(...)`.
  */
 function fillFor(hex: string): string {
   const r = parseInt(hex.slice(0, 2), 16);
   const g = parseInt(hex.slice(2, 4), 16);
   const b = parseInt(hex.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, 0.3)`;
+  return `rgb(${r}, ${g}, ${b})`;
 }
 
 function getApplyButtons() {

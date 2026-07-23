@@ -195,15 +195,6 @@ Selection is always enabled in BibleReader (no opt-out prop for now; YAGNI).
   wiring), `verse.stories.tsx` (VerseSelection story now drives the real
   popover), i18n (en/fr/es), `global.css` (selection underline). The `@oddbird`
   polyfill was never reintroduced — the popover anchors via Radix `virtualRef`.
-- **ADR-005 fill opacity amended (product decision 2026-07-23):** the theme-aware
-  `1.0` light / `0.3` dark split documented above is superseded. Fills now render at
-  a single `0.3` opacity in **both** themes (`HIGHLIGHT_FILL_OPACITY` in `verse.tsx`,
-  replacing the `_LIGHT`/`_DARK` pair). The saturated palette hexes read as harsh at
-  full strength in light mode, so light mode was dropped to match dark. This
-  intentionally diverges from the Swift SDK (which still paints `1.0` in light) until
-  Swift catches up. The verse-action popover swatches now preview this dimmed fill in
-  both modes as well. The dark-mode label recolor described above was already
-  generalized to `inherit` in both themes (commit ba6e5fe); that behavior is unchanged.
 
 ## Build-time risks (not blocking design, flag for implementation)
 - **Footnote color break** (Notion): even post structure-fix, `<sup>`/footnote
