@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { VerseActionPopover, HIGHLIGHT_COLORS, type HighlightColor } from './verse-action-popover';
+import {
+  VerseActionPopover,
+  HIGHLIGHT_COLORS,
+  computeScrollFade,
+  type HighlightColor,
+} from './verse-action-popover';
 
 describe('VerseActionPopover', () => {
   const defaultProps = {
@@ -585,6 +590,80 @@ describe('VerseActionPopover', () => {
       );
       const check = screen.getByRole('button', { name: /Clear highlight/ }).querySelector('svg');
       expect(check?.getAttribute('class')).toContain('yv:text-(--yv-gray-50)');
+    });
+  });
+
+  describe('Viewport width cap + scrollable swatch row', () => {
+    // Mobile bug: several verses with different highlight colors accumulate many
+    // swatches and grow the pill past the viewport, cutting content off with no
+    // way to reach it. The pill is now capped to the viewport and the swatch row
+    // scrolls horizontally inside it.
+    it('caps the popover content to the Radix available width', () => {
+      render(<VerseActionPopover {...defaultProps} />);
+      const dialog = screen.getByRole('dialog');
+      expect(dialog.className).toContain('yv:max-w-(--radix-popover-content-available-width)');
+    });
+
+    it('makes the swatch row horizontally scrollable with a hidden scrollbar', () => {
+      render(<VerseActionPopover {...defaultProps} />);
+      const swatchRow = screen.getByRole('group', { name: 'Highlight colors' });
+      expect(swatchRow.className).toContain('yv:overflow-x-auto');
+      expect(swatchRow.className).toContain('yv:scrollbar-hide');
+      // `min-w-0` is what lets the flex child shrink so overflow-x engages
+      // instead of the pill just growing wider.
+      expect(swatchRow.className).toContain('yv:min-w-0');
+    });
+
+    it('keeps swatches from squishing when the row is capped', () => {
+      render(<VerseActionPopover {...defaultProps} />);
+      const applyButton = screen
+        .getAllByRole('button')
+        .find((btn) => btn.getAttribute('aria-label')?.includes('Apply'))!;
+      expect(applyButton.className).toContain('yv:shrink-0');
+    });
+  });
+
+  describe('computeScrollFade (edge-fade toggle logic)', () => {
+    // jsdom has no layout, so exercise the pure helper with mocked scroll
+    // metrics rather than asserting rendered pixels.
+    it('fades neither edge when the row fits (no overflow)', () => {
+      expect(computeScrollFade({ scrollLeft: 0, scrollWidth: 200, clientWidth: 200 })).toEqual({
+        start: false,
+        end: false,
+      });
+    });
+
+    it('fades only the end edge when scrolled fully to the start', () => {
+      expect(computeScrollFade({ scrollLeft: 0, scrollWidth: 500, clientWidth: 200 })).toEqual({
+        start: false,
+        end: true,
+      });
+    });
+
+    it('fades both edges when scrolled somewhere in the middle', () => {
+      expect(computeScrollFade({ scrollLeft: 120, scrollWidth: 500, clientWidth: 200 })).toEqual({
+        start: true,
+        end: true,
+      });
+    });
+
+    it('fades only the start edge when scrolled fully to the end', () => {
+      expect(computeScrollFade({ scrollLeft: 300, scrollWidth: 500, clientWidth: 200 })).toEqual({
+        start: true,
+        end: false,
+      });
+    });
+
+    it('tolerates sub-pixel slack at both bounds', () => {
+      // Half a pixel shy of each bound still counts as "at the edge".
+      expect(computeScrollFade({ scrollLeft: 0.5, scrollWidth: 500, clientWidth: 200 })).toEqual({
+        start: false,
+        end: true,
+      });
+      expect(computeScrollFade({ scrollLeft: 299.5, scrollWidth: 500, clientWidth: 200 })).toEqual({
+        start: true,
+        end: false,
+      });
     });
   });
 

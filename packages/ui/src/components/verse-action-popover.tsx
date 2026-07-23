@@ -20,6 +20,47 @@ export const HIGHLIGHT_COLORS = ['fffe00', '5dff79', '00d6ff', 'ffc66f', 'ff95ef
 
 export type HighlightColor = (typeof HIGHLIGHT_COLORS)[number];
 
+/** Width, in px, of the fade applied at each overflowing edge of the swatch row. */
+const SCROLL_FADE_PX = 20;
+
+type ScrollMetrics = { scrollLeft: number; scrollWidth: number; clientWidth: number };
+type ScrollFade = { start: boolean; end: boolean };
+
+/**
+ * Decide which edges of a horizontally scrollable row should fade. A fade only
+ * appears on an edge that has hidden content in that direction, so a row that
+ * fits (or is scrolled fully to one end) shows no fade on the exhausted side.
+ * Pure so it can be unit-tested without layout (jsdom reports zero sizes).
+ * Assumes LTR positive `scrollLeft`.
+ */
+export function computeScrollFade({
+  scrollLeft,
+  scrollWidth,
+  clientWidth,
+}: ScrollMetrics): ScrollFade {
+  const maxScroll = scrollWidth - clientWidth;
+  // Sub-pixel slack: rounding in real browsers can leave scrollLeft a hair off
+  // its bound, which would otherwise flicker a fade at a fully-scrolled edge.
+  const slack = 1;
+  if (maxScroll <= slack) return { start: false, end: false };
+  return {
+    start: scrollLeft > slack,
+    end: scrollLeft < maxScroll - slack,
+  };
+}
+
+/**
+ * Build the `mask-image` that fades the overflowing edge(s). Returns `undefined`
+ * when neither edge fades so the element carries no mask at all (nothing to hint).
+ */
+function scrollFadeMask({ start, end }: ScrollFade): React.CSSProperties | undefined {
+  if (!start && !end) return undefined;
+  const left = start ? 'transparent' : '#000';
+  const right = end ? 'transparent' : '#000';
+  const mask = `linear-gradient(to right, ${left} 0, #000 ${SCROLL_FADE_PX}px, #000 calc(100% - ${SCROLL_FADE_PX}px), ${right} 100%)`;
+  return { maskImage: mask, WebkitMaskImage: mask };
+}
+
 type VerseActionPopoverProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -70,7 +111,7 @@ function ColorCircle({ color, showRemove, label, onClick, theme }: ColorCirclePr
       type="button"
       onClick={onClick}
       className={cn(
-        'yv:size-8 yv:rounded-full yv:flex yv:items-center yv:justify-center',
+        'yv:size-8 yv:shrink-0 yv:rounded-full yv:flex yv:items-center yv:justify-center',
         'yv:transition-transform yv:hover:scale-110',
         'yv:focus-visible:outline-none yv:focus-visible:ring-2 yv:focus-visible:ring-ring yv:focus-visible:ring-offset-2',
       )}
@@ -139,6 +180,13 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   // still enters the popover (Escape closes; screen readers announce the dialog),
   // but the ring only appears once the user actually Tabs to a swatch.
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // The swatch row is capped to the viewport width (see the Content max-width
+  // below) and scrolls horizontally when it overflows. Track which edges have
+  // hidden content so we can fade only those edges, hinting there's more to
+  // scroll toward. Recomputed on scroll and on resize/content changes.
+  const swatchRowRef = useRef<HTMLDivElement>(null);
+  const [scrollFade, setScrollFade] = useState<ScrollFade>({ start: false, end: false });
 
   // When the anchored verse scrolls out of the container, dock the bar to the
   // edge it exited through: scroll down (verse leaves the top) → dock top; scroll
@@ -246,6 +294,37 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   if (open) frozenView.current = live;
   const view = open ? live : frozenView.current;
 
+  // Measure the swatch row's overflow and keep the fade in sync. The row only
+  // exists while the popover is open with highlights enabled, so re-run when
+  // either flips or when the number of swatches changes the content width.
+  const swatchCount = view.colorCircles.length;
+  useEffect(() => {
+    const el = swatchRowRef.current;
+    if (!el) {
+      setScrollFade({ start: false, end: false });
+      return;
+    }
+    const update = () =>
+      setScrollFade(
+        computeScrollFade({
+          scrollLeft: el.scrollLeft,
+          scrollWidth: el.scrollWidth,
+          clientWidth: el.clientWidth,
+        }),
+      );
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    let observer: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(update);
+      observer.observe(el);
+    }
+    return () => {
+      el.removeEventListener('scroll', update);
+      observer?.disconnect();
+    };
+  }, [open, highlightsEnabled, swatchCount]);
+
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <PopoverPrimitive.Anchor virtualRef={view.virtualRef} />
@@ -277,11 +356,18 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
           side={view.side}
           sideOffset={view.sideOffset}
           align="center"
+          // Keep the pill off the screen edges; this also shrinks Radix's
+          // `--radix-popover-content-available-width`, which we cap to below.
+          collisionPadding={12}
           className={cn(
             'yv:bg-card yv:text-popover-foreground',
             'yv:rounded-full yv:drop-shadow-[0px_4.8432px_20px_rgba(0,0,0,0.19)]',
             'yv:px-4 yv:py-2',
             'yv:flex yv:items-center yv:gap-3',
+            // Never wider than the viewport (minus collision padding). When the
+            // swatch row can't fit, it scrolls inside instead of overflowing the
+            // screen. Radix sets this var on the positioned content.
+            'yv:max-w-(--radix-popover-content-available-width)',
             'yv:z-50 yv:outline-hidden',
             'yv:overflow-visible yv:relative',
             'yv:origin-(--radix-popover-content-transform-origin)',
@@ -319,7 +405,15 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
           {highlightsEnabled && (
             <>
               <div
-                className="yv:flex yv:items-center yv:gap-2"
+                ref={swatchRowRef}
+                // `min-w-0` lets this flex child actually shrink below its
+                // content size so `overflow-x-auto` engages instead of widening
+                // the pill. `py-1 -my-1` gives the hover:scale-110 swatches
+                // vertical breathing room inside the (now-clipping) scroll box
+                // without shifting the row's resting position. Scrollbar hidden;
+                // the edge fade signals there's more to scroll.
+                className="yv:flex yv:items-center yv:gap-2 yv:min-w-0 yv:overflow-x-auto yv:scrollbar-hide yv:py-1 yv:-my-1"
+                style={scrollFadeMask(scrollFade)}
                 role="group"
                 aria-label={t('highlightColorsAriaLabel')}
               >
@@ -335,12 +429,14 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                 ))}
               </div>
 
-              {/* Separator */}
-              <div className="yv:w-px yv:h-8 yv:bg-border" aria-hidden="true" />
+              {/* Separator — never shrinks, so only the swatch row scrolls. */}
+              <div className="yv:w-px yv:h-8 yv:shrink-0 yv:bg-border" aria-hidden="true" />
             </>
           )}
 
-          <div className="yv:flex yv:items-center yv:gap-1">
+          {/* Copy / Share stay pinned and fully visible; only the swatch row
+              scrolls when space is tight. */}
+          <div className="yv:flex yv:items-center yv:gap-1 yv:shrink-0">
             <ActionButton
               icon={<BoxStackIcon className="yv:size-5" />}
               label={t('copy')}

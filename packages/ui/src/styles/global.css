@@ -142,3 +142,14 @@ layer(yv-sdk-fonts);
   max-width: 600px;
   margin-inline: auto;
 }
+
+/* Hide the scrollbar on horizontally scrollable rows (e.g. the verse-action
+   popover's swatch row) while keeping the element scrollable via touch/wheel/
+   keyboard. Firefox uses scrollbar-width; WebKit/Blink use the pseudo-element. */
+@utility scrollbar-hide {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
