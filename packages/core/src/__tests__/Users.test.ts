@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { YouVersionAPIUsers, __resetAuthCallbackDedupeForTests } from '../Users';
+import {
+  YouVersionAPIUsers,
+  __resetAuthCallbackDedupeForTests,
+  __resetTokenRefreshDedupeForTests,
+} from '../Users';
 import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfiguration';
 import { YouVersionUserInfo } from '../YouVersionUserInfo';
 import { setupBrowserMocks, cleanupBrowserMocks } from './mocks/browser';
@@ -887,6 +891,9 @@ describe('YouVersionAPIUsers', () => {
   describe('refreshTokenIfNeeded', () => {
     beforeEach(() => {
       vi.clearAllMocks();
+      // The in-flight refresh slot is module-scoped; clear it so a leftover
+      // promise from a prior case can't be shared into this one.
+      __resetTokenRefreshDedupeForTests();
     });
 
     it('should return true when token is not expired', async () => {
@@ -955,6 +962,103 @@ describe('YouVersionAPIUsers', () => {
       expect(clearAuthTokensSpy).toHaveBeenCalled();
 
       clearAuthTokensSpy.mockRestore();
+    });
+
+    it('shares one refresh across concurrent callers so a duplicate cannot wipe the session', async () => {
+      const pastDate = new Date(Date.now() - 10 * 60 * 1000);
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
+        if (key === 'expiryDate') return pastDate.toISOString();
+        if (key === 'refreshToken') return 'refresh-token-123';
+        if (key === 'idToken') return 'id-token-123';
+        return null;
+      });
+
+      // The refresh token is single-use: the first request succeeds; any second
+      // request for the same token 400s on the server. If both concurrent
+      // callers spent it, the loser's failure would clear the session.
+      let refreshRequestCount = 0;
+      mockFetch.mockImplementation(() => {
+        refreshRequestCount += 1;
+        if (refreshRequestCount === 1) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: vi.fn().mockResolvedValue({
+              access_token: 'new-access-token',
+              expires_in: 3600,
+              refresh_token: 'new-refresh-token',
+              scope: 'bibles highlights openid',
+              token_type: 'Bearer',
+            }),
+          });
+        }
+        return Promise.resolve({ ok: false, status: 400, statusText: 'Bad Request' });
+      });
+
+      const clearAuthTokensSpy = vi.spyOn(YouVersionPlatformConfiguration, 'clearAuthTokens');
+      const saveAuthDataSpy = vi.spyOn(YouVersionPlatformConfiguration, 'saveAuthData');
+
+      // Two concurrent invocations, as StrictMode's double-mount produces.
+      const [first, second] = await Promise.all([
+        YouVersionAPIUsers.refreshTokenIfNeeded(),
+        YouVersionAPIUsers.refreshTokenIfNeeded(),
+      ]);
+
+      // Exactly one refresh network call despite two concurrent callers.
+      expect(refreshRequestCount).toBe(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      // Both callers resolve true off the single shared refresh.
+      expect(first).toBe(true);
+      expect(second).toBe(true);
+
+      // The destructive clear never ran, so tokens and grants survive; the
+      // rotated tokens were persisted exactly once.
+      expect(clearAuthTokensSpy).not.toHaveBeenCalled();
+      expect(saveAuthDataSpy).toHaveBeenCalledTimes(1);
+      expect(saveAuthDataSpy).toHaveBeenCalledWith(
+        'new-access-token',
+        'new-refresh-token',
+        expect.any(Date),
+      );
+
+      clearAuthTokensSpy.mockRestore();
+      saveAuthDataSpy.mockRestore();
+    });
+
+    it('clears the shared slot so a later refresh performs a new network call', async () => {
+      const pastDate = new Date(Date.now() - 10 * 60 * 1000);
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
+        if (key === 'expiryDate') return pastDate.toISOString();
+        if (key === 'refreshToken') return 'refresh-token-123';
+        if (key === 'idToken') return 'id-token-123';
+        return null;
+      });
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: vi.fn().mockResolvedValue({
+          access_token: 'new-access-token',
+          expires_in: 3600,
+          refresh_token: 'new-refresh-token',
+          scope: 'bibles highlights openid',
+          token_type: 'Bearer',
+        }),
+      });
+
+      // First refresh settles, clearing the in-flight slot.
+      const firstResult = await YouVersionAPIUsers.refreshTokenIfNeeded();
+      expect(firstResult).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      // A later call (token still expired) is not merged into the settled
+      // refresh; it performs a fresh network call.
+      const secondResult = await YouVersionAPIUsers.refreshTokenIfNeeded();
+      expect(secondResult).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
   });
 });

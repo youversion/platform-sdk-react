@@ -33,6 +33,26 @@ export function __resetAuthCallbackDedupeForTests(): void {
   inFlightCodeExchanges.clear();
 }
 
+/**
+ * In-flight token refresh shared across concurrent callers. There is only ever
+ * one refresh token, so a single slot suffices (no keying needed). Under React
+ * StrictMode the auth init effect double-invokes and both runs call
+ * {@link YouVersionAPIUsers.refreshTokenIfNeeded} while the token reads expired;
+ * without sharing, both spend the same single-use refresh token and the loser's
+ * failure runs {@link YouVersionPlatformConfiguration.clearAuthTokens}, wiping
+ * the session and granted-permissions cache the winner just re-established.
+ *
+ * Unlike the code-exchange map, this slot is CLEARED once settled: a later,
+ * genuine refresh (e.g. the token expiring an hour on) must be able to run.
+ * Sharing applies only to calls that overlap in time.
+ */
+let inFlightRefresh: Promise<boolean> | null = null;
+
+/** Test-only: clears the shared in-flight refresh between test cases. */
+export function __resetTokenRefreshDedupeForTests(): void {
+  inFlightRefresh = null;
+}
+
 /** Persist early grants bound to the OAuth `state` that produced them. */
 const stashPendingGrantedPermissions = (state: string, permissions: string[]): void => {
   const payload: PendingGrantedPermissionsStash = {
@@ -541,6 +561,36 @@ export class YouVersionAPIUsers {
       return true; // Token is still valid
     }
 
+    // Share one refresh across overlapping callers so a duplicate (e.g. the
+    // StrictMode double-invocation) can't spend the single-use refresh token a
+    // second time and wipe the session on its failure. The get/set here is
+    // synchronous before the first await, so the check is re-entrancy safe.
+    const existingRefresh = inFlightRefresh;
+    if (existingRefresh) {
+      return existingRefresh;
+    }
+
+    const refresh = this.performTokenRefresh();
+    inFlightRefresh = refresh;
+
+    try {
+      return await refresh;
+    } finally {
+      // Clear the slot once settled so a later, genuine refresh can run. Guard
+      // against clobbering a newer refresh that a subsequent call may have set.
+      if (inFlightRefresh === refresh) {
+        inFlightRefresh = null;
+      }
+    }
+  }
+
+  /**
+   * Performs a single token refresh, clearing the session exactly once on
+   * failure. Callers must share this via {@link inFlightRefresh} so a duplicate
+   * refresh never runs concurrently; a shared failure clears tokens once and
+   * resolves false for every caller awaiting it.
+   */
+  private static async performTokenRefresh(): Promise<boolean> {
     try {
       const result = await this.refreshTokens();
       return !!result;
