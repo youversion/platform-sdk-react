@@ -121,8 +121,9 @@ function ColorCircle({ color, showRemove, label, onClick, theme }: ColorCirclePr
     >
       {/* Active/remove swatch: a 24px checkmark on the solid color circle. Matches
           iOS (platform-sdk-swift #179), which swapped the earlier X for a check.
-          Light mode uses Text/Everdark; dark mode dims the fill, so the check goes
-          white to stay legible. Tapping it still removes the highlight. */}
+          Both modes dim the fill; over it the check is Text/Everdark in light mode
+          and white in dark mode for legibility. Tapping it still removes the
+          highlight. */}
       {showRemove && (
         <CheckIcon
           className={cn('yv:size-6', isDark ? 'yv:text-white' : 'yv:text-(--yv-gray-50)')}
