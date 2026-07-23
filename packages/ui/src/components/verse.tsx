@@ -149,9 +149,6 @@ function getVerseHtmlFromDom(container: HTMLElement, verseNum: string): string {
 export const HIGHLIGHT_FILL_OPACITY_LIGHT = 1.0;
 export const HIGHLIGHT_FILL_OPACITY_DARK = 0.3;
 
-/** Verse-number label color over a dark-mode highlight fill, for legibility (Swift parity). */
-const HIGHLIGHT_DARK_LABEL_COLOR = '#ffffff';
-
 /** Converts a 6-digit hex (no `#`) to an `rgba()` string at the given alpha. */
 export function hexToRgba(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(0, 2), 16);
@@ -204,10 +201,12 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
 }) {
   const { t } = useTranslation(undefined, { i18n });
 
-  // On a highlight fill the default light-gray marker loses contrast
+  // Over a highlight fill the muted gray marker clashes with saturated fills, so
+  // it inherits the verse body text color (matching the recolored verse label);
+  // otherwise it keeps its default muted-gray marker color.
   const iconClassName = cn(
     'yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1!',
-    isHighlighted ? 'yv:text-muted-foreground' : 'yv:text-(--yv-gray-20)',
+    isHighlighted ? 'yv:text-inherit' : 'yv:text-(--yv-gray-20)',
   );
 
   if (onFootnotePress) {
@@ -340,11 +339,15 @@ function BibleTextHtml({
       const color = highlightedVerses[verseNum];
       const isHighlighted = Boolean(color);
       (el as HTMLElement).style.backgroundColor = color ? hexToRgba(color, fillOpacity) : '';
-      // Mirror the backgroundColor clear: set white in dark mode when highlighted,
-      // otherwise reset to '' so unhighlighted labels keep their inherited color.
+      // Over a highlight fill the muted label color clashes with saturated fills,
+      // so the label inherits the verse body text color instead — the reader's
+      // main text color in light mode, white/near-white in dark mode. Setting
+      // `inherit` in both modes preserves the prior dark-mode-white behavior while
+      // fixing the light-mode gray-on-fill clash. Unhighlighted labels reset to ''
+      // so they keep their CSS muted color. Deliberate divergence from the Swift
+      // SDK, which only recolors the label in dark mode.
       el.querySelectorAll('.yv-vlbl').forEach((label) => {
-        (label as HTMLElement).style.color =
-          isDark && isHighlighted ? HIGHLIGHT_DARK_LABEL_COLOR : '';
+        (label as HTMLElement).style.color = isHighlighted ? 'inherit' : '';
       });
     });
   }, [html, selectedVerses, highlightedVerses, currentTheme]);
