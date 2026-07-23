@@ -596,7 +596,7 @@ describe('Verse.Html - Highlight fill (theme-aware, Swift parity)', () => {
     </div>
   `;
 
-  it('paints the fill at full opacity in light mode', async () => {
+  it('paints the fill at 0.3 alpha in light mode', async () => {
     const { container } = render(
       <Verse.Html html={highlightHtml} theme="light" highlightedVerses={{ 1: 'fffe00' }} />,
     );
@@ -604,8 +604,8 @@ describe('Verse.Html - Highlight fill (theme-aware, Swift parity)', () => {
     await waitFor(() => {
       const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
       expect(verse).not.toBeNull();
-      // rgba(255, 254, 0, 1) — jsdom serializes full alpha as rgb().
-      expect(verse!.style.backgroundColor).toBe('rgb(255, 254, 0)');
+      // Light mode now matches dark at 0.3 alpha (2026-07-23 product decision).
+      expect(verse!.style.backgroundColor).toBe('rgba(255, 254, 0, 0.3)');
     });
   });
 

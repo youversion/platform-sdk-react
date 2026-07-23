@@ -6,7 +6,7 @@ import { cn } from '../lib/utils';
 import { BoxStackIcon } from './icons/box-stack';
 import { BoxArrowUpIcon } from './icons/box-arrow-up';
 import { CheckIcon } from './icons/check';
-import { hexToRgba, HIGHLIGHT_FILL_OPACITY_DARK } from './verse';
+import { hexToRgba, HIGHLIGHT_FILL_OPACITY } from './verse';
 
 type Measurable = { getBoundingClientRect: () => DOMRect };
 
@@ -97,11 +97,12 @@ type ColorCircleProps = {
 
 function ColorCircle({ color, showRemove, label, onClick, theme }: ColorCircleProps) {
   const isDark = theme === 'dark';
-  // Preview the fill the way it will actually paint: full-strength in light mode,
-  // faded to the dark-mode alpha in dark mode (mirrors the applied-highlight
-  // treatment in verse.tsx). Light mode keeps the bare `#hex` so it serializes as
-  // a solid swatch.
-  const backgroundColor = isDark ? hexToRgba(color, HIGHLIGHT_FILL_OPACITY_DARK) : `#${color}`;
+  // Preview the fill the way it will actually paint. Fills now render at
+  // HIGHLIGHT_FILL_OPACITY in both themes (2026-07-23 product decision), so the
+  // swatch composites that same alpha over the popover card background in both
+  // modes rather than showing a solid `#hex` in light mode. The border below
+  // keeps pale swatches visible against the card.
+  const backgroundColor = hexToRgba(color, HIGHLIGHT_FILL_OPACITY);
   // Inner border matches the Figma "highlight stroke" (#121212 @ 20%), giving
   // pale swatches definition on the light popover. On the dark popover a dark
   // stroke would vanish against the dimmed fill, so flip it to a light stroke.
