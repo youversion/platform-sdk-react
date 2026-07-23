@@ -467,4 +467,67 @@ describe('VerseActionPopover', () => {
       expect(applyButtons).toHaveLength(5);
     });
   });
+
+  function applyButtons() {
+    return screen
+      .getAllByRole('button')
+      .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
+  }
+
+  function clearButtons() {
+    return screen
+      .getAllByRole('button')
+      .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear'));
+  }
+
+  describe('Active swatch checkmark', () => {
+    // The checkmark path (Swift #179) starts at these coords — asserts we render
+    // the check, not the old X.
+    const CHECK_PATH_PREFIX = 'M19.6627';
+
+    it('renders a checkmark (not an X) on the active/remove swatch', () => {
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          activeHighlights={new Set<HighlightColor>([HIGHLIGHT_COLORS[0]])}
+          selectedVerses={[1]}
+          highlightedVerses={{ 1: HIGHLIGHT_COLORS[0] }}
+        />,
+      );
+
+      const removeButton = screen.getByRole('button', { name: /Clear highlight/ });
+      const path = removeButton.querySelector('svg path');
+      expect(path?.getAttribute('d')).toContain(CHECK_PATH_PREFIX);
+    });
+
+    it('apply swatches render no icon', () => {
+      render(<VerseActionPopover {...defaultProps} />);
+      applyButtons().forEach((btn) => {
+        expect(btn.querySelector('svg')).toBeNull();
+      });
+    });
+  });
+
+  describe('Highlights disabled (flag off)', () => {
+    it('hides the color row and remove circles but keeps Copy / Share', () => {
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          highlightsEnabled={false}
+          activeHighlights={new Set<HighlightColor>([HIGHLIGHT_COLORS[0]])}
+          selectedVerses={[1]}
+          highlightedVerses={{ 1: HIGHLIGHT_COLORS[0] }}
+        />,
+      );
+
+      // No color group, no apply circles, no remove circles.
+      expect(screen.queryByRole('group', { name: 'Highlight colors' })).toBeNull();
+      expect(applyButtons()).toHaveLength(0);
+      expect(clearButtons()).toHaveLength(0);
+
+      // Copy / Share remain.
+      expect(screen.getByText('Copy')).toBeTruthy();
+      expect(screen.getByText('Share')).toBeTruthy();
+    });
+  });
 });

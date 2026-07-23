@@ -4,7 +4,10 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { Collection, Highlight } from '@youversion/platform-core';
 import { useHighlights, YouVersionAuthContext } from '@youversion/platform-react-hooks';
-import type { YouVersionUserInfo } from '@youversion/platform-core';
+import {
+  YouVersionPlatformConfiguration,
+  type YouVersionUserInfo,
+} from '@youversion/platform-core';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
@@ -68,8 +71,16 @@ const defaultOptions = { versionId: 111, book: 'JHN', chapter: '3' };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
+  sessionStorage.clear();
   signedIn = true;
   setHighlightsLive(true);
+  // The permission cache is user-scoped, so it only takes effect once a matching
+  // userInfo is persisted (the auth provider does this at sign-in). Seed both so
+  // the authorized-write path is exercised. The auth-flow branches (missing
+  // session/permission) have their own dedicated coverage.
+  YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-1', name: 'Test User' });
+  YouVersionPlatformConfiguration.saveGrantedPermissions(['highlights']);
 });
 
 afterEach(() => {
@@ -201,6 +212,8 @@ describe('useBibleReaderHighlights — apply', () => {
       passage_id: 'JHN.3.20',
       color: 'fffe00',
     });
+    // Two POSTs (two runs) but a SINGLE coalesced refetch for the batch (Fix 3).
+    expect(mocked.refetch).toHaveBeenCalledTimes(1);
   });
 
   it('reverts the optimistic overlay and logs when the write fails', async () => {
@@ -230,8 +243,8 @@ describe('useBibleReaderHighlights — apply', () => {
   });
 });
 
-describe('useBibleReaderHighlights — overlay confirmation', () => {
-  it('drops the optimistic entry once the post-write refetch lands, so server truth wins', async () => {
+describe('useBibleReaderHighlights — overlay reconciliation (Fix 2)', () => {
+  it('holds the overlay until a fetch REFLECTS the write, then retires it to server truth', async () => {
     const mocked = mockUseHighlights();
 
     const { result, rerender } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
@@ -251,23 +264,111 @@ describe('useBibleReaderHighlights — overlay confirmation', () => {
       await Promise.resolve();
     });
 
-    // The post-write refetch lands with different server truth for that verse
-    // (e.g. another device re-colored it between our POST and the GET).
+    // The post-write GET lands but does NOT yet contain the write (read-after-
+    // write lag). The overlay must WIN — no flicker out and back.
+    mockUseHighlights({ highlights: makeCollection([]) });
+    rerender();
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+
+    // A later GET reflects the write (verse present in the written color).
+    mockUseHighlights({
+      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+    });
+    rerender();
+    await waitFor(() => {
+      expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    });
+
+    // Prove the overlay entry was retired: with the entry gone, server truth now
+    // drives the verse, so clearing it server-side un-paints it.
+    mockUseHighlights({ highlights: makeCollection([]) });
+    rerender();
+    await waitFor(() => {
+      expect(result.current.highlightedVerses).toEqual({});
+    });
+  });
+
+  it('holds the overlay when the server converges on a DIFFERENT color (overlay wins until navigation)', async () => {
+    const mocked = mockUseHighlights();
+
+    const { result, rerender } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: AuthWrapper,
+    });
+
+    act(() => {
+      result.current.apply('fffe00', [16]);
+    });
+    await waitFor(() => {
+      expect(mocked.createHighlight).toHaveBeenCalledTimes(1);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // A GET returns the verse in a color that is NOT what we wrote. That doesn't
+    // reflect our write, so the overlay is held rather than snapping to it.
     mockUseHighlights({
       highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: '00d6ff' }]),
     });
     rerender();
-
-    // Without confirmation-clearing, the stale overlay entry would keep
-    // rendering fffe00 until navigation.
-    await waitFor(() => {
-      expect(result.current.highlightedVerses).toEqual({ 16: '00d6ff' });
+    await act(async () => {
+      await Promise.resolve();
     });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+  });
+});
+
+describe('useBibleReaderHighlights — vapor bug (removed highlight resurrection)', () => {
+  // Regression for the staging "vapor" report: a deleted highlight reappears for
+  // a split second, then disappears. Root cause: the reconcile step retired a
+  // REMOVE overlay entry as soon as any fetch reflected the removal; a later
+  // response from a stale read replica that still contained the highlight then
+  // had nothing suppressing it, so the verse repainted until the next fetch.
+  it('a stale fetch after a settled+reflected DELETE does not resurrect the removed highlight', async () => {
+    const mocked = mockUseHighlights({
+      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+    });
+
+    const { result, rerender } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: AuthWrapper,
+    });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+
+    act(() => {
+      result.current.remove('fffe00', [16]);
+    });
+    // Optimistic removal.
+    expect(result.current.highlightedVerses).toEqual({});
+
+    await waitFor(() => {
+      expect(mocked.deleteHighlight).toHaveBeenCalledTimes(1);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Fetch A reflects the removal (server no longer shows the color).
+    mockUseHighlights({ highlights: makeCollection([]) });
+    rerender();
+    expect(result.current.highlightedVerses).toEqual({});
+
+    // Fetch B is a STALE read replica that still contains the removed highlight.
+    // The removal overlay must be HELD so the highlight does not resurrect.
+    mockUseHighlights({
+      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+    });
+    rerender();
+    expect(result.current.highlightedVerses).toEqual({});
+
+    // Fetch C is consistent again (still removed) — no flicker at any point.
+    mockUseHighlights({ highlights: makeCollection([]) });
+    rerender();
+    expect(result.current.highlightedVerses).toEqual({});
   });
 });
 
 describe('useBibleReaderHighlights — remove', () => {
-  it('removes optimistically and DELETEs only verses rendered in that color, as ranges', async () => {
+  it('removes optimistically and DELETEs one passage-id per verse (never a range)', async () => {
     const mocked = mockUseHighlights({
       highlights: makeCollection([
         { version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' },
@@ -287,10 +388,15 @@ describe('useBibleReaderHighlights — remove', () => {
     // Optimistic: yellow verses gone immediately, green untouched.
     expect(result.current.highlightedVerses).toEqual({ 18: '5dff79' });
 
+    // Contiguous [16,17] must NOT collapse to `JHN.3.16-17` — range delete is
+    // unsupported server-side (Fix 4). One DELETE per verse instead.
     await waitFor(() => {
-      expect(mocked.deleteHighlight).toHaveBeenCalledTimes(1);
+      expect(mocked.deleteHighlight).toHaveBeenCalledTimes(2);
     });
-    expect(mocked.deleteHighlight).toHaveBeenCalledWith('JHN.3.16-17', { version_id: 111 });
+    expect(mocked.deleteHighlight).toHaveBeenCalledWith('JHN.3.16', { version_id: 111 });
+    expect(mocked.deleteHighlight).toHaveBeenCalledWith('JHN.3.17', { version_id: 111 });
+    // The whole removal coalesces into a single refetch (Fix 3).
+    expect(mocked.refetch).toHaveBeenCalledTimes(1);
   });
 
   it('reverts the optimistic removal and logs when the delete fails', async () => {
@@ -468,5 +574,98 @@ describe('useBibleReaderHighlights — scope changes', () => {
       expect.objectContaining({ passageId: 'JHN.3.16' }),
     );
     consoleError.mockRestore();
+  });
+});
+
+describe('useBibleReaderHighlights — controlled mode (YPE-3705)', () => {
+  it('keeps the fetch disabled and projects from the host prop, even with the flag off', () => {
+    setHighlightsLive(false);
+    const mocked = mockUseHighlights({
+      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: '00d6ff' }]),
+    });
+
+    const { result } = renderHook(
+      () =>
+        useBibleReaderHighlights({
+          ...defaultOptions,
+          controlled: {
+            highlights: [
+              { version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' },
+              { version_id: 111, passage_id: 'JHN.3.17-18', color: '5dff79' },
+              { version_id: 111, passage_id: 'JHN.3.1', color: 'abcdef' }, // outside palette
+            ],
+          },
+        }),
+      { wrapper: AuthWrapper },
+    );
+
+    expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
+      { version_id: 111, passage_id: 'JHN.3' },
+      { enabled: false },
+    );
+    expect(mocked.createHighlight).not.toHaveBeenCalled();
+    expect(result.current.highlightedVerses).toEqual({
+      16: 'fffe00',
+      17: '5dff79',
+      18: '5dff79',
+    });
+  });
+
+  it('emits apply/remove intents with no optimistic paint and no network', () => {
+    const onApply = vi.fn();
+    const onRemove = vi.fn();
+    const mocked = mockUseHighlights();
+
+    const { result, rerender } = renderHook(
+      ({ highlights }: { highlights: Highlight[] }) =>
+        useBibleReaderHighlights({
+          ...defaultOptions,
+          controlled: { highlights, onApply, onRemove },
+        }),
+      {
+        wrapper: AuthWrapper,
+        initialProps: {
+          highlights: [{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }],
+        },
+      },
+    );
+
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+
+    act(() => {
+      result.current.apply('5dff79', [17, 18]);
+    });
+    // Pure projection: paint waits for the host round-trip.
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(onApply).toHaveBeenCalledTimes(1);
+    expect(onApply).toHaveBeenCalledWith({
+      versionId: 111,
+      book: 'JHN',
+      chapter: '3',
+      verses: [17, 18],
+      passageIds: ['JHN.3.17', 'JHN.3.18'],
+      color: '5dff79',
+    });
+    expect(mocked.createHighlight).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.remove('fffe00', [16, 17]);
+    });
+    expect(onRemove).toHaveBeenCalledTimes(1);
+    expect(onRemove).toHaveBeenCalledWith({
+      versionId: 111,
+      book: 'JHN',
+      chapter: '3',
+      verses: [16],
+      passageIds: ['JHN.3.16'],
+      color: 'fffe00',
+    });
+    expect(mocked.deleteHighlight).not.toHaveBeenCalled();
+    // Still no optimistic un-paint.
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+
+    // Host round-trip.
+    rerender({ highlights: [] });
+    expect(result.current.highlightedVerses).toEqual({});
   });
 });

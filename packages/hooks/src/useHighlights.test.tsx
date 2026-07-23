@@ -218,13 +218,15 @@ describe('useHighlights', () => {
   });
 
   describe('createHighlight mutation', () => {
-    it('should create highlight and refetch', async () => {
+    it('should create highlight WITHOUT auto-refetching (callers coalesce refetches)', async () => {
       const wrapper = createYVWrapper();
       const { result } = renderHook(() => useHighlights(defaultOptions), { wrapper });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
+      // The mount fetch.
+      expect(mockGetHighlights).toHaveBeenCalledTimes(1);
 
       const createData: CreateHighlight = {
         version_id: 111,
@@ -241,6 +243,13 @@ describe('useHighlights', () => {
       const created = await createPromise;
       expect(created).toEqual(mockHighlight);
 
+      // No implicit GET after the write — the mount fetch is still the only one.
+      // A batching caller issues one refetch() after the whole batch settles.
+      await Promise.resolve();
+      expect(mockGetHighlights).toHaveBeenCalledTimes(1);
+
+      // An explicit refetch still works and issues exactly one GET.
+      result.current.refetch();
       await waitFor(() => {
         expect(mockGetHighlights).toHaveBeenCalledTimes(2);
       });
@@ -272,13 +281,14 @@ describe('useHighlights', () => {
   });
 
   describe('deleteHighlight mutation', () => {
-    it('should delete highlight and refetch', async () => {
+    it('should delete highlight WITHOUT auto-refetching (callers coalesce refetches)', async () => {
       const wrapper = createYVWrapper();
       const { result } = renderHook(() => useHighlights(defaultOptions), { wrapper });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
+      expect(mockGetHighlights).toHaveBeenCalledTimes(1);
 
       const deletePromise = result.current.deleteHighlight('MAT.1.1', { version_id: 111 });
 
@@ -288,9 +298,9 @@ describe('useHighlights', () => {
 
       await deletePromise;
 
-      await waitFor(() => {
-        expect(mockGetHighlights).toHaveBeenCalledTimes(2);
-      });
+      // No implicit GET after the delete.
+      await Promise.resolve();
+      expect(mockGetHighlights).toHaveBeenCalledTimes(1);
     });
 
     it('should handle delete error', async () => {
