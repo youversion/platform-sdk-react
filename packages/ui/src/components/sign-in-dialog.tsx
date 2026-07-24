@@ -1,7 +1,7 @@
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
-import { YouVersionLogo } from './icons/youversion-logo';
+import { YouVersionPlatformLogo } from './icons/youversion-platform-logo';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 
@@ -52,9 +52,10 @@ export const SignInDialog: FC<SignInDialogProps> = ({
           <DialogTitle className="yv:text-xs yv:font-semibold yv:uppercase yv:tracking-widest yv:text-muted-foreground">
             {t('signInIntroducing')}
           </DialogTitle>
-          <YouVersionLogo
+          <YouVersionPlatformLogo
+            theme={theme}
             aria-label={t('youVersionPlatformLogoAriaLabel')}
-            className="yv:size-14"
+            className="yv:h-4 yv:w-[11.875rem]"
           />
         </div>
 

@@ -216,7 +216,7 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
       expect(scope).toBe('openid');
     });
 
-    it('should send requested permissions as requested_permissions[] params, not scopes', async () => {
+    it('should send requested permissions as requested_permissions (comma-joined), not scopes', async () => {
       const redirectURL = new URL('https://example.com/callback');
 
       const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
@@ -228,15 +228,14 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
 
       const params = new URLSearchParams(result.url.search);
 
-      // Permission rides alongside scopes as a separate param
-      expect(params.getAll('requested_permissions[]')).toEqual(['highlights']);
+      // Permission rides alongside scopes as a separate param (Swift wire format)
+      expect(params.get('requested_permissions')).toBe('highlights');
+      expect(params.getAll('requested_permissions[]')).toEqual([]);
       // ...and is NOT folded into the OIDC scope value
       expect(params.get('scope')).not.toContain('highlights');
-      // Raw query string uses the encoded array-bracket syntax the API expects
-      expect(result.url.search).toContain('requested_permissions%5B%5D=highlights');
     });
 
-    it('should support multiple requested permissions', async () => {
+    it('should support multiple requested permissions as a sorted comma-joined value', async () => {
       const redirectURL = new URL('https://example.com/callback');
 
       const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
@@ -247,10 +246,10 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
       );
 
       const params = new URLSearchParams(result.url.search);
-      expect(params.getAll('requested_permissions[]')).toEqual(['highlights', 'votd']);
+      expect(params.get('requested_permissions')).toBe('highlights,votd');
     });
 
-    it('should omit requested_permissions[] when no permissions are requested', async () => {
+    it('should omit requested_permissions when no permissions are requested', async () => {
       const redirectURL = new URL('https://example.com/callback');
 
       const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
@@ -260,7 +259,7 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
       );
 
       const params = new URLSearchParams(result.url.search);
-      expect(params.getAll('requested_permissions[]')).toEqual([]);
+      expect(params.get('requested_permissions')).toBeNull();
     });
 
     it('should not duplicate openid if already present', async () => {

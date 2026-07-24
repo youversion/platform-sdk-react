@@ -26,6 +26,42 @@ describe('parseGrantedPermissions', () => {
   it('returns [] when the param is absent', () => {
     expect(parseGrantedPermissions(new URLSearchParams('state=x'))).toEqual([]);
   });
+
+  // The auth server encodes permission lists with PHP/Rails bracket-array
+  // notation (observed live as `requested_permissions[]` on the consent
+  // redirect it builds). The grant echo on the return uses the same shape, and
+  // `URLSearchParams` treats it as a distinct key from bare
+  // `granted_permissions`. See parseGrantedPermissions for the full contract.
+  it('parses the bracket-array key the server emits (granted_permissions[])', () => {
+    const params = new URLSearchParams('granted_permissions%5B%5D=highlights');
+    expect(parseGrantedPermissions(params)).toEqual(['highlights']);
+  });
+
+  it('unions repeated bracket-array entries', () => {
+    const params = new URLSearchParams(
+      'granted_permissions%5B%5D=highlights&granted_permissions%5B%5D=votd',
+    );
+    expect(parseGrantedPermissions(params)).toEqual(['highlights', 'votd']);
+  });
+
+  it('parses indexed bracket-array keys (granted_permissions[0])', () => {
+    const params = new URLSearchParams(
+      'granted_permissions%5B0%5D=highlights&granted_permissions%5B1%5D=votd',
+    );
+    expect(parseGrantedPermissions(params)).toEqual(['highlights', 'votd']);
+  });
+
+  it('unions bare and bracket-array forms together', () => {
+    const params = new URLSearchParams(
+      'granted_permissions=highlights&granted_permissions%5B%5D=votd',
+    );
+    expect(parseGrantedPermissions(params)).toEqual(['highlights', 'votd']);
+  });
+
+  it('ignores unrelated keys that merely start with granted_permissions', () => {
+    const params = new URLSearchParams('granted_permissions_extra=nope');
+    expect(parseGrantedPermissions(params)).toEqual([]);
+  });
 });
 
 describe('YouVersionPlatformConfiguration permission cache', () => {

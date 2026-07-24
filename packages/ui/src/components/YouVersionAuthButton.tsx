@@ -20,7 +20,7 @@ interface SignInAuthProps {
   scopes?: AuthenticationScopes[];
   /**
    * YouVersion data-exchange permissions to request at sign-in (e.g. `highlights`).
-   * These are distinct from OIDC `scopes` and are sent as `requested_permissions[]`.
+   * These are distinct from OIDC `scopes` and are sent as `requested_permissions`.
    */
   permissions?: SignInWithYouVersionPermissionValues[];
 }

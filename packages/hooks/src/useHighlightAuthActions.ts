@@ -2,7 +2,6 @@
 
 import { useCallback, useContext, useMemo } from 'react';
 import {
-  ApiClient,
   DataExchangeClient,
   buildDataExchangeUrl,
   handleDataExchangeCallback,
@@ -13,6 +12,7 @@ import {
 } from '@youversion/platform-core';
 import { YouVersionContext } from './context';
 import { YouVersionAuthContext } from './context/YouVersionAuthContext';
+import { useApiClient } from './internal/useApiClient';
 
 const HIGHLIGHTS_PERMISSION = SignInWithYouVersionPermission.highlights;
 
@@ -65,17 +65,11 @@ export function useHighlightAuthActions(): {
   const authContext = useContext(YouVersionAuthContext);
   const redirectUri = authContext?.redirectUri;
 
-  const dataExchangeClient = useMemo(() => {
-    if (!context?.appKey) return null;
-    return new DataExchangeClient(
-      new ApiClient({
-        appKey: context.appKey,
-        apiHost: context.apiHost,
-        installationId: context.installationId,
-        additionalHeaders: context.additionalHeaders,
-      }),
-    );
-  }, [context?.appKey, context?.apiHost, context?.installationId, context?.additionalHeaders]);
+  const apiClient = useApiClient({ optional: true });
+  const dataExchangeClient = useMemo(
+    () => (apiClient ? new DataExchangeClient(apiClient) : null),
+    [apiClient],
+  );
 
   const startSignInForHighlights = useCallback(
     async (redirectUrl?: string) => {
@@ -95,9 +89,21 @@ export function useHighlightAuthActions(): {
     if (!dataExchangeClient || !context?.appKey) {
       throw new Error('YouVersion context is required to start a data exchange.');
     }
-    const token = await dataExchangeClient.updateToken([HIGHLIGHTS_PERMISSION]);
-    if (typeof window !== 'undefined') {
-      window.location.href = buildDataExchangeUrl(token, context.appKey, context.apiHost);
+    // Record the initiator BEFORE minting the token. A mid-await user switch
+    // (another tab) must not stamp the new session as the initiator — that
+    // would let the callback honor a grant the new user never consented to.
+    // Saving first fails closed on mismatch instead.
+    YouVersionPlatformConfiguration.saveDataExchangeInitiator();
+    try {
+      const token = await dataExchangeClient.updateToken([HIGHLIGHTS_PERMISSION]);
+      if (typeof window !== 'undefined') {
+        window.location.href = buildDataExchangeUrl(token, context.appKey, context.apiHost);
+      }
+    } catch (error) {
+      // Mint/redirect aborted — drop the initiator so a later unrelated
+      // `granted` return cannot ride this abandoned attempt.
+      YouVersionPlatformConfiguration.clearDataExchangeInitiator();
+      throw error;
     }
   }, [dataExchangeClient, context?.appKey, context?.apiHost]);
 

@@ -1,4 +1,4 @@
-export { ApiClient } from './client';
+export { ApiClient, getHttpStatus } from './client';
 export { BibleClient } from './bible';
 export { LanguagesClient, type GetLanguagesOptions } from './languages';
 export { OrganizationsClient } from './organizations';

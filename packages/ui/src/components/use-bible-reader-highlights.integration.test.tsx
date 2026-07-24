@@ -9,42 +9,18 @@
  * mount never fetched highlights at all.
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
-import {
-  HighlightsClient,
-  YouVersionPlatformConfiguration,
-  type Collection,
-  type Highlight,
-  type YouVersionUserInfo,
-} from '@youversion/platform-core';
-import { YouVersionAuthContext, YouVersionContext } from '@youversion/platform-react-hooks';
+import { HighlightsClient, YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
+import { collection, mockUserInfo, Providers as BaseProviders } from '@/test/highlights-test-utils';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
-
-function collection(data: Highlight[]): Collection<Highlight> {
-  return { data, next_page_token: null };
-}
-
-const mockUserInfo = { id: 'user-1', name: 'Test User' } as unknown as YouVersionUserInfo;
 
 let signedIn = false;
 
+// Signed-in state flips between rerenders; the wrapper re-reads `signedIn`.
 function Providers({ children }: { children: ReactNode }) {
-  return (
-    <YouVersionContext.Provider value={{ appKey: 'test-app-key' }}>
-      <YouVersionAuthContext.Provider
-        value={{
-          userInfo: signedIn ? mockUserInfo : null,
-          setUserInfo: vi.fn(),
-          isLoading: false,
-          error: null,
-        }}
-      >
-        {children}
-      </YouVersionAuthContext.Provider>
-    </YouVersionContext.Provider>
-  );
+  return <BaseProviders userInfo={signedIn ? mockUserInfo : null}>{children}</BaseProviders>;
 }
 
 const defaultOptions = { versionId: 111, book: 'JHN', chapter: '3' };

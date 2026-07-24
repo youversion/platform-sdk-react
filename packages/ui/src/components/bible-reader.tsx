@@ -637,6 +637,7 @@ function Content() {
 
   const {
     highlightedVerses,
+    highlightsInteractive,
     apply: applyHighlight,
     remove: removeHighlight,
     permissionDialogOpen,
@@ -659,10 +660,11 @@ function Content() {
       : undefined,
   });
 
-  // Color row is interactive when self-contained is live, or always in
-  // controlled mode (YPE-3705: controlled bypasses HIGHLIGHTS_LIVE). Copy /
-  // Share are always available.
-  const highlightsEnabled = isHighlightsControlled || isHighlightsLive();
+  // Color row: controlled mode always shows it (YPE-3705 bypasses HIGHLIGHTS_LIVE).
+  // Self-contained needs the live flag AND an auth provider — without a provider
+  // the machine is inert (taps noop), so hide dead swatches for copy/share-only.
+  // Copy / Share are always available.
+  const highlightsEnabled = isHighlightsControlled || (isHighlightsLive() && highlightsInteractive);
   // Copy shown to the sign-in dialog. Falls back to a neutral label when the
   // integrator hasn't set `YouVersionPlatformConfiguration.appName`.
   const signInAppName = YouVersionPlatformConfiguration.appName ?? t('signInAppNameFallback');

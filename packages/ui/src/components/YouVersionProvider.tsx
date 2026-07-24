@@ -1,4 +1,5 @@
 import React, { type ComponentProps, useEffect } from 'react';
+import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionProvider as BaseYouVersionProvider } from '@youversion/platform-react-hooks';
 import { syncBrowserLanguageFromNavigator } from '@/i18n';
 import { YvStyles } from '@/lib/yv-styles';
@@ -16,6 +17,14 @@ export function YouVersionProvider(
   useEffect(() => {
     syncBrowserLanguageFromNavigator();
   }, []);
+
+  // UI tsup inlines `@youversion/platform-core`, so this singleton is a different
+  // copy from the one hooks syncs. BibleReader reads appName / signInPromptMessage
+  // from *this* copy — keep it in sync with the provider props.
+  useEffect(() => {
+    YouVersionPlatformConfiguration.appName = props.appName;
+    YouVersionPlatformConfiguration.signInPromptMessage = props.signInPromptMessage;
+  }, [props.appName, props.signInPromptMessage]);
 
   // Guard against a missing/empty app key here (rather than letting the base
   // provider throw) so consumers of the UI package see a styled message instead

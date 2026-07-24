@@ -14,16 +14,14 @@ import {
   HighlightsClient,
   YouVersionAPIUsers,
   YouVersionPlatformConfiguration,
-  type YouVersionUserInfo,
 } from '@youversion/platform-core';
 import { YouVersionAuthContext, YouVersionContext } from '@youversion/platform-react-hooks';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
 import { readPendingHighlights, stashPendingHighlight } from '@/lib/pending-highlight';
+import { mockUserInfo } from '@/test/highlights-test-utils';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
-
-const mockUserInfo = { id: 'user-1', name: 'Test User' } as unknown as YouVersionUserInfo;
 
 let signedIn = false;
 
@@ -222,6 +220,37 @@ describe('highlight auth flow — just-in-time (signed in, no permission)', () =
     expect(result.current.permissionDialogOpen).toBe(false);
     expect(readPendingHighlights()).toEqual([]);
   });
+
+  it('closes the dialog and clears pending when the host signs the user out mid-flow', () => {
+    const updateToken = vi
+      .spyOn(DataExchangeClient.prototype, 'updateToken')
+      .mockResolvedValue('dx-token');
+
+    const { result, rerender } = renderHook(() => useBibleReaderHighlights(options), {
+      wrapper: Providers,
+    });
+
+    act(() => {
+      result.current.apply('fffe00', [16]);
+    });
+    expect(result.current.permissionDialogOpen).toBe(true);
+    expect(readPendingHighlights()).toHaveLength(1);
+
+    // The host signs the user out while the confirm dialog is still open. A
+    // confirm now would start a data exchange that rejects unauthenticated, so
+    // the flow must route back out of the dialog and drop the pending intent.
+    signedIn = false;
+    rerender();
+
+    expect(result.current.permissionDialogOpen).toBe(false);
+    expect(readPendingHighlights()).toEqual([]);
+
+    // A confirm after the auto-close is a no-op: no data exchange is started.
+    act(() => {
+      result.current.confirmPermissionDialog();
+    });
+    expect(updateToken).not.toHaveBeenCalled();
+  });
 });
 
 describe('highlight auth flow — data-exchange return', () => {
@@ -230,6 +259,9 @@ describe('highlight auth flow — data-exchange return', () => {
     setLocation(
       'https://host.example/read?data_exchange_status=granted&granted_permissions=highlights',
     );
+    // Record the initiator as the redirect leg would have — the callback only
+    // saves a grant for the user who started the exchange.
+    YouVersionPlatformConfiguration.saveDataExchangeInitiator();
     // Pre-stash a pending highlight as the confirm path would have.
     stashPendingHighlight({
       verses: [16],
@@ -260,6 +292,57 @@ describe('highlight auth flow — data-exchange return', () => {
     });
     expect(YouVersionPlatformConfiguration.hasPermission('highlights')).toBe(true);
     expect(readPendingHighlights()).toEqual([]);
+  });
+
+  it('re-stashes pending and re-prompts when the resumed write fails 401 (async session hydration)', async () => {
+    // Same granted-return path as above, but the resumed POST comes back 401.
+    // The user's original color tap must NOT be silently lost: the pending is
+    // re-stashed (from the op's own scope), the permission cache is invalidated,
+    // and the permission dialog re-opens — the same handling as a user apply.
+    vi.spyOn(console, 'error').mockImplementation(vi.fn());
+    signedIn = false;
+    setLocation(
+      'https://host.example/read?data_exchange_status=granted&granted_permissions=highlights',
+    );
+    // Record the initiator as the redirect leg would have (see test above).
+    YouVersionPlatformConfiguration.saveDataExchangeInitiator();
+    stashPendingHighlight({
+      verses: [16],
+      color: 'fffe00',
+      versionId: 111,
+      book: 'JHN',
+      chapter: '3',
+      timestamp: Date.now(),
+    });
+    const createHighlight = vi
+      .spyOn(HighlightsClient.prototype, 'createHighlight')
+      .mockRejectedValue(httpError(401));
+
+    const { result, rerender } = renderHook(() => useBibleReaderHighlights(options), {
+      wrapper: Providers,
+    });
+
+    signedIn = true;
+    rerender();
+
+    await waitFor(() => {
+      expect(result.current.permissionDialogOpen).toBe(true);
+    });
+    // The resumed write was attempted, then failed.
+    expect(createHighlight).toHaveBeenCalledWith({
+      version_id: 111,
+      passage_id: 'JHN.3.16',
+      color: 'fffe00',
+    });
+    // Server truth wins: cache invalidated, and the pending is re-stashed from the
+    // op's own scope so a post-grant confirm can resume it.
+    expect(YouVersionPlatformConfiguration.hasPermission('highlights')).toBe(false);
+    expect(readPendingHighlights()[0]).toMatchObject({
+      verses: [16],
+      color: 'fffe00',
+      versionId: 111,
+      chapter: '3',
+    });
   });
 
   it('discards pending on a cancelled return and does not re-open the dialog (async session hydration)', async () => {
