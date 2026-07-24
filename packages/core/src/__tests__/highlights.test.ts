@@ -215,5 +215,20 @@ describe('HighlightsClient', () => {
         highlightsClient.deleteHighlight('MAT.1.1', { version_id: 0 }, 'token'),
       ).rejects.toThrow('Version ID must be a positive integer');
     });
+
+    // Regression (YPE-1034 "vapor" flash): a successful DELETE that returns
+    // `200 application/json` with an EMPTY body must RESOLVE, not reject.
+    // `response.json()` throws "Unexpected end of JSON input" on an empty body;
+    // that rejection made the optimistic-removal overlay revert (settleWrite's
+    // failure path) and the removed highlight reappeared until the next refetch.
+    it('resolves when a successful DELETE returns 200 application/json with an empty body', async () => {
+      vi.spyOn(global, 'fetch').mockResolvedValue(
+        new Response('', { status: 200, headers: { 'content-type': 'application/json' } }),
+      );
+
+      await expect(
+        highlightsClient.deleteHighlight('MAT.1.1', { version_id: 111 }, 'token'),
+      ).resolves.toBeUndefined();
+    });
   });
 });

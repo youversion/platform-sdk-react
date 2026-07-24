@@ -17,6 +17,7 @@ export default function ThemedApp() {
       appKey={appKey ?? ''}
       includeAuth
       authRedirectUrl={authRedirectUrl}
+      appName="SDK Demo"
     >
       <App />
     </YouVersionProvider>

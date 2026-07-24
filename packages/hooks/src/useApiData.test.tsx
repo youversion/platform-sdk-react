@@ -138,6 +138,47 @@ describe('useApiData — existing behavior', () => {
     expect(result.current.data).toBeNull();
   });
 
+  it('keeps a stable refetch identity across re-renders with an inline fetchFn', async () => {
+    // Callers pass a fresh inline arrow every render; refetch must not churn.
+    const { result, rerender } = renderHook(
+      ({ scope }: { scope: string }) => useApiData(() => Promise.resolve(scope), ['stable-dep']),
+      { initialProps: { scope: 'a' } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.data).toBe('a');
+    });
+
+    const firstRefetch = result.current.refetch;
+    rerender({ scope: 'b' });
+    rerender({ scope: 'c' });
+
+    expect(result.current.refetch).toBe(firstRefetch);
+  });
+
+  it('refetch uses the latest inline fetchFn after re-renders', async () => {
+    // The ref must hold the newest closure so a refetch reflects current props.
+    const { result, rerender } = renderHook(
+      ({ scope }: { scope: string }) => useApiData(() => Promise.resolve(scope), ['stable-dep']),
+      { initialProps: { scope: 'a' } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.data).toBe('a');
+    });
+
+    // Deps unchanged, so no effect-driven refetch; only the closure updates.
+    rerender({ scope: 'b' });
+
+    act(() => {
+      result.current.refetch();
+    });
+
+    await waitFor(() => {
+      expect(result.current.data).toBe('b');
+    });
+  });
+
   it('refetches on demand', async () => {
     const fetchFn = vi.fn().mockResolvedValueOnce('first').mockResolvedValueOnce('second');
 

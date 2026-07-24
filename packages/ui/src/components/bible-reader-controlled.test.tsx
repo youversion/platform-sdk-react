@@ -201,12 +201,16 @@ function selectVerse(container: HTMLElement, verse: number) {
   fireEvent.click(getVerseEl(container, verse));
 }
 
-/** rgba() string the reader paints for a highlight fill (0.35 alpha). */
+/**
+ * Color the reader paints for a highlight fill. These tests run in light mode
+ * (theme mocked to 'light'), where the fill is full opacity (Swift parity);
+ * jsdom serializes a fully opaque color to `rgb(...)`.
+ */
 function fillFor(hex: string): string {
   const r = parseInt(hex.slice(0, 2), 16);
   const g = parseInt(hex.slice(2, 4), 16);
   const b = parseInt(hex.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, 0.35)`;
+  return `rgb(${r}, ${g}, ${b})`;
 }
 
 function getApplyButtons() {

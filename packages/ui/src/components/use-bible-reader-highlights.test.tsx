@@ -4,13 +4,11 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { Collection, Highlight } from '@youversion/platform-core';
 import { useHighlights, YouVersionAuthContext } from '@youversion/platform-react-hooks';
-import {
-  YouVersionPlatformConfiguration,
-  type YouVersionUserInfo,
-} from '@youversion/platform-core';
+import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
+import { mockUserInfo } from '@/test/highlights-test-utils';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
 
 vi.mock('@youversion/platform-react-hooks', async () => {
@@ -20,8 +18,6 @@ vi.mock('@youversion/platform-react-hooks', async () => {
     useHighlights: vi.fn(),
   };
 });
-
-const mockUserInfo = { id: 'user-1', name: 'Test User' } as unknown as YouVersionUserInfo;
 
 function makeCollection(data: Highlight[]): Collection<Highlight> {
   return { data, next_page_token: null };
@@ -133,6 +129,28 @@ describe('useBibleReaderHighlights — auth guarding', () => {
       result.current.apply('fffe00', [16]);
     });
     expect(mocked.createHighlight).not.toHaveBeenCalled();
+  });
+
+  it('is non-interactive with no auth provider, even with the flag on (inert color row)', () => {
+    mockUseHighlights();
+
+    // Flag on but no auth provider: the machine is disabled, so a color tap can
+    // never do anything. The color-swatch row must not render — this flag is
+    // what BibleReader ANDs with the feature flag to hide it.
+    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions));
+    expect(result.current.highlightsInteractive).toBe(false);
+  });
+
+  it('is interactive when an auth provider is mounted (flag on), even signed out', () => {
+    mockUseHighlights();
+    signedIn = false;
+
+    // Signed out but with an auth provider present: a tap still enters the
+    // sign-in flow, so the row stays interactive.
+    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: AuthWrapper,
+    });
+    expect(result.current.highlightsInteractive).toBe(true);
   });
 
   it('clears rendered highlights immediately when the user signs out', () => {

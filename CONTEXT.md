@@ -78,6 +78,15 @@ enums — more arrive later — and the server reports the ones a user granted
 back to the app via `granted_permissions` on the sign-in and data-exchange
 callbacks (YPE-1034).
 
+## Sign-in prompt message
+
+Optional integrator-owned pitch line shown on the **sign-in dialog**
+(`YouVersionPlatformConfiguration.signInPromptMessage`). Hidden when unset;
+the SDK does not ship a default (Swift parity). Distinct from localized SDK
+copy (`signIn.paragraph`, buttons, etc.).
+_Avoid_: app message, integrator message (informal); `signIn.appMessage`
+(unused Swift stub key)
+
 ## Highlight auth flow
 
 The flow (YPE-1034) that turns a color tap into an applied highlight when the

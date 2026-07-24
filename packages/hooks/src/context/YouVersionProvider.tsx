@@ -14,6 +14,20 @@ interface YouVersionProviderPropsBase {
   apiHost?: string;
   theme?: 'light' | 'dark' | 'system';
   /**
+   * Integrator display name for the sign-in dialog body copy. Synced onto
+   * `YouVersionPlatformConfiguration.appName`. The UI package also mirrors this
+   * onto its bundled core copy (tsup `noExternal`), so pass it via
+   * `YouVersionProvider` props — do not set the config from a separate
+   * `@youversion/platform-core` import when consuming `@youversion/platform-react-ui`.
+   */
+  appName?: string;
+  /**
+   * Optional pitch line for the sign-in dialog. Synced onto
+   * `YouVersionPlatformConfiguration.signInPromptMessage` (and mirrored by the
+   * UI provider onto its bundled core copy — same dual-instance caveat as `appName`).
+   */
+  signInPromptMessage?: string;
+  /**
    * Extra HTTP headers to add to every API call made through hooks created by
    * this provider. Values here override the SDK's built-in headers when keys
    * collide — useful for wrappers (e.g. the React Native Expo SDK) that need
@@ -99,6 +113,8 @@ function YouVersionProviderInner(
     includeAuth,
     theme = 'light',
     additionalHeaders,
+    appName,
+    signInPromptMessage,
     children,
   } = props;
 
@@ -124,7 +140,9 @@ function YouVersionProviderInner(
   useEffect(() => {
     YouVersionPlatformConfiguration.appKey = appKey;
     YouVersionPlatformConfiguration.apiHost = apiHost;
-  }, [appKey, apiHost]);
+    YouVersionPlatformConfiguration.appName = appName;
+    YouVersionPlatformConfiguration.signInPromptMessage = signInPromptMessage;
+  }, [appKey, apiHost, appName, signInPromptMessage]);
 
   const contextValue = {
     appKey,

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { StrictMode } from 'react';
 import { render } from '@testing-library/react';
 import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import YouVersionAuthProvider from './YouVersionAuthProvider';
@@ -160,6 +161,35 @@ describe('YouVersionAuthProvider', () => {
         expect(getByTestId('is-loading')).toHaveTextContent('false');
         expect(getByTestId('user-info')).toHaveTextContent('null');
       });
+    });
+
+    it('tolerates the StrictMode double-invocation without a spurious error', async () => {
+      // The init effect has no re-entrancy guard, so under StrictMode it runs
+      // twice and calls handleAuthCallback twice. The real fix is the core-layer
+      // dedupe (see packages/core Users.test.ts); here we only assert the
+      // provider effect tolerates the double-invocation and still resolves to an
+      // authenticated, error-free state.
+      mockWindow.location.search = '?state=test-state&code=auth-code';
+      vi.spyOn(YouVersionAPIUsers, 'getStoredUserInfo').mockReturnValue(mockUserInfo);
+      vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockResolvedValue(mockAuthResult);
+
+      const { getByTestId } = render(
+        <StrictMode>
+          <YouVersionAuthProvider config={mockConfig}>
+            <TestChild />
+          </YouVersionAuthProvider>
+        </StrictMode>,
+      );
+
+      await vi.waitFor(() => {
+        expect(getByTestId('is-loading')).toHaveTextContent('false');
+      });
+
+      // The effect double-invoked (this is the condition the bug depended on).
+      expect(vi.mocked(YouVersionAPIUsers).handleAuthCallback).toHaveBeenCalledTimes(2);
+      // Final state is authenticated with no error surfaced.
+      expect(getByTestId('user-info')).toHaveTextContent(JSON.stringify(mockUserInfo));
+      expect(getByTestId('error')).toHaveTextContent('null');
     });
 
     it('should leave user null when no profile was stored during callback', async () => {

@@ -1,16 +1,118 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { YouVersionAPIUsers } from '../Users';
+import {
+  YouVersionAPIUsers,
+  __resetAuthCallbackDedupeForTests,
+  __resetTokenRefreshDedupeForTests,
+} from '../Users';
 import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfiguration';
 import { YouVersionUserInfo } from '../YouVersionUserInfo';
 import { setupBrowserMocks, cleanupBrowserMocks } from './mocks/browser';
 
 const mockFetch = vi.fn();
 
+// Shared JWT fixture (HS256 header + `{sub,name,iat,email,profile_picture}`
+// payload + invalid signature) reused across the token-exchange tests.
+const MOCK_ID_TOKEN =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJwcm9maWxlX3BpY3R1cmUiOiJodHRwczovL2V4YW1wbGUuY29tL2F2YXRhci5qcGcifQ.invalid-signature';
+
+/** Builds the token payload the /auth/token exchange returns; only `scope` varies per test. */
+function makeTokens(scope: string) {
+  return {
+    access_token: 'access-token-123',
+    expires_in: 3600,
+    id_token: MOCK_ID_TOKEN,
+    refresh_token: 'refresh-token-456',
+    scope,
+    token_type: 'Bearer',
+  };
+}
+
 describe('YouVersionAPIUsers', () => {
   let mocks: ReturnType<typeof setupBrowserMocks>;
 
+  const STANDARD_CALLBACK_SEARCH = '?state=test-state&code=auth-code';
+  const STANDARD_CALLBACK_HREF = 'https://example.com/callback?state=test-state&code=auth-code';
+  const DEFAULT_CALLBACK_PROFILE = {
+    sub: '1234567890',
+    name: 'John Doe',
+    email: 'john@example.com',
+  };
+
+  /**
+   * Stubs the crypto primitives (`getRandomValues`, `subtle.digest`, `btoa`)
+   * that the PKCE `signIn` flow needs to build a deterministic authorize URL.
+   */
+  function stubSignInCrypto() {
+    vi.spyOn(crypto, 'getRandomValues').mockImplementation((array: ArrayBufferView) => {
+      if (array instanceof Uint8Array) {
+        for (let i = 0; i < array.length; i++) {
+          array[i] = i;
+        }
+      }
+      return array;
+    });
+
+    vi.spyOn(crypto.subtle, 'digest').mockResolvedValue(new Uint8Array(32).buffer);
+    mocks.btoa.mockReturnValue('mockBase64Value');
+  }
+
+  /**
+   * Wires up the shared handleAuthCallback token-exchange setup: callback URL,
+   * localStorage reads (state/verifier/redirect-uri + optional pending grant),
+   * a successful token response for `scope`, and the decoded JWT profile.
+   */
+  function setupCallbackFlow({
+    scope,
+    pendingGrant,
+    requestedGrant,
+    search = STANDARD_CALLBACK_SEARCH,
+    href = STANDARD_CALLBACK_HREF,
+    profile = DEFAULT_CALLBACK_PROFILE,
+  }: {
+    scope: string;
+    pendingGrant?: string;
+    requestedGrant?: string;
+    search?: string;
+    href?: string;
+    profile?: Record<string, unknown>;
+  }) {
+    mocks.window.location.search = search;
+    mocks.window.location.href = href;
+
+    mocks.localStorage.getItem.mockImplementation((key: string) => {
+      switch (key) {
+        case 'youversion-auth-state':
+          return 'test-state';
+        case 'youversion-auth-code-verifier':
+          return 'code-verifier-123';
+        case 'youversion-auth-redirect-uri':
+          return 'https://example.com/callback';
+        case 'youversion-auth-pending-granted-permissions':
+          return pendingGrant ?? null;
+        case 'youversion-auth-requested-permissions':
+          return requestedGrant ?? null;
+        default:
+          return null;
+      }
+    });
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      text: vi.fn().mockResolvedValue(JSON.stringify(makeTokens(scope))),
+    });
+
+    vi.mocked(atob).mockReturnValue(JSON.stringify(profile));
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // The code-exchange dedupe map is module-scoped and persists across test
+    // cases within this file (it only resets on page reload in production).
+    // Clear it so tests reusing `code=auth-code` don't see a prior exchange.
+    __resetAuthCallbackDedupeForTests();
 
     // Setup global mocks
     mocks = setupBrowserMocks();
@@ -35,6 +137,12 @@ describe('YouVersionAPIUsers', () => {
   });
 
   describe('signIn', () => {
+    afterEach(() => {
+      // Restore the crypto spies here so restoration still happens even when an
+      // assertion throws mid-test.
+      vi.restoreAllMocks();
+    });
+
     it('should throw error when appKey is not set', async () => {
       YouVersionPlatformConfiguration.appKey = null;
 
@@ -44,17 +152,7 @@ describe('YouVersionAPIUsers', () => {
     });
 
     it('should create authorization request and redirect on successful signIn', async () => {
-      vi.spyOn(crypto, 'getRandomValues').mockImplementation((array: ArrayBufferView) => {
-        if (array instanceof Uint8Array) {
-          for (let i = 0; i < array.length; i++) {
-            array[i] = i;
-          }
-        }
-        return array;
-      });
-
-      vi.spyOn(crypto.subtle, 'digest').mockResolvedValue(new Uint8Array(32).buffer);
-      mocks.btoa.mockReturnValue('mockBase64Value');
+      stubSignInCrypto();
 
       const redirectURL = 'https://example.com/callback';
 
@@ -76,28 +174,61 @@ describe('YouVersionAPIUsers', () => {
 
       // Verify redirect occurred
       expect(mocks.window.location.href).toContain('https://api.youversion.com/auth/authorize');
-
-      vi.restoreAllMocks();
     });
 
     it('should forward requested permissions to the authorize URL', async () => {
-      vi.spyOn(crypto, 'getRandomValues').mockImplementation((array: ArrayBufferView) => {
-        if (array instanceof Uint8Array) {
-          for (let i = 0; i < array.length; i++) {
-            array[i] = i;
-          }
-        }
-        return array;
-      });
-
-      vi.spyOn(crypto.subtle, 'digest').mockResolvedValue(new Uint8Array(32).buffer);
-      mocks.btoa.mockReturnValue('mockBase64Value');
+      stubSignInCrypto();
 
       await YouVersionAPIUsers.signIn('https://example.com/callback', ['profile'], ['highlights']);
 
-      expect(mocks.window.location.href).toContain('requested_permissions%5B%5D=highlights');
+      expect(mocks.window.location.href).toContain('requested_permissions=highlights');
+    });
 
-      vi.restoreAllMocks();
+    it('clears any stale pre-code granted-permissions stash from a prior abandoned flow', async () => {
+      stubSignInCrypto();
+
+      await YouVersionAPIUsers.signIn('https://example.com/callback');
+
+      expect(mocks.localStorage.removeItem).toHaveBeenCalledWith(
+        'youversion-auth-pending-granted-permissions',
+      );
+    });
+
+    it('clears any stale requested-permissions stash from a prior abandoned flow', async () => {
+      stubSignInCrypto();
+
+      await YouVersionAPIUsers.signIn('https://example.com/callback');
+
+      expect(mocks.localStorage.removeItem).toHaveBeenCalledWith(
+        'youversion-auth-requested-permissions',
+      );
+    });
+
+    it('stashes the requested data-exchange permissions bound to the OAuth state', async () => {
+      stubSignInCrypto();
+
+      await YouVersionAPIUsers.signIn('https://example.com/callback', ['profile'], ['highlights']);
+
+      // The stash is keyed by the generated state; assert the payload shape and
+      // that the requested permissions (not the OIDC scopes) are what's stored.
+      const requestedCall = mocks.localStorage.setItem.mock.calls.find(
+        (args: unknown[]) => args[0] === 'youversion-auth-requested-permissions',
+      ) as [string, string] | undefined;
+      expect(requestedCall).toBeTruthy();
+      const stored = JSON.parse(requestedCall![1]) as { state: string; permissions: string[] };
+      expect(stored.permissions).toEqual(['highlights']);
+      expect(typeof stored.state).toBe('string');
+    });
+
+    it('does not stash requested permissions when none are requested', async () => {
+      stubSignInCrypto();
+
+      await YouVersionAPIUsers.signIn('https://example.com/callback', ['profile']);
+
+      expect(mocks.localStorage.setItem).not.toHaveBeenCalledWith(
+        'youversion-auth-requested-permissions',
+        expect.any(String),
+      );
     });
   });
 
@@ -145,12 +276,32 @@ describe('YouVersionAPIUsers', () => {
         return null;
       });
 
-      // In test environment, the redirect continues execution, so expect the eventual error
-      await expect(YouVersionAPIUsers.handleAuthCallback()).rejects.toThrow();
+      // obtainLocation navigates away; we return null so we don't fall through
+      // into the code-exchange path without a code.
+      await expect(YouVersionAPIUsers.handleAuthCallback()).resolves.toBeNull();
 
-      // Verify that the redirect was attempted
       expect(mocks.window.location.href).toBe(
         'https://api.youversion.com/auth/callback?state=test-state',
+      );
+    });
+
+    it('stashes granted_permissions from the pre-code OAuth hop', async () => {
+      mocks.window.location.href =
+        'https://example.com/callback?state=test-state&granted_permissions=highlights';
+      mocks.window.location.search = '?state=test-state&granted_permissions=highlights';
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
+        if (key === 'youversion-auth-state') return 'test-state';
+        return null;
+      });
+
+      await expect(YouVersionAPIUsers.handleAuthCallback()).resolves.toBeNull();
+
+      expect(mocks.localStorage.setItem).toHaveBeenCalledWith(
+        'youversion-auth-pending-granted-permissions',
+        JSON.stringify({ state: 'test-state', permissions: ['highlights'] }),
+      );
+      expect(mocks.window.location.href).toBe(
+        'https://api.youversion.com/auth/callback?state=test-state&granted_permissions=highlights',
       );
     });
 
@@ -167,54 +318,18 @@ describe('YouVersionAPIUsers', () => {
     });
 
     it('should successfully exchange code for tokens', async () => {
-      const mockTokens = {
-        access_token: 'access-token-123',
-        expires_in: 3600,
-        id_token:
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJwcm9maWxlX3BpY3R1cmUiOiJodHRwczovL2V4YW1wbGUuY29tL2F2YXRhci5qcGcifQ.invalid-signature',
-        refresh_token: 'refresh-token-456',
+      setupCallbackFlow({
         scope: 'bibles highlights openid',
-        token_type: 'Bearer',
-      };
-
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        statusText: 'OK',
-        text: vi.fn().mockResolvedValue(JSON.stringify(mockTokens)),
-      };
-
-      mocks.window.location.search = '?state=test-state&code=auth-code';
-      mocks.window.location.href = 'https://example.com/callback?state=test-state&code=auth-code';
-
-      mocks.localStorage.getItem.mockImplementation((key: string) => {
-        switch (key) {
-          case 'youversion-auth-state':
-            return 'test-state';
-          case 'youversion-auth-code-verifier':
-            return 'code-verifier-123';
-          case 'youversion-auth-redirect-uri':
-            return 'https://example.com/callback';
-          default:
-            return null;
-        }
+        profile: { ...DEFAULT_CALLBACK_PROFILE, profile_picture: 'https://example.com/avatar.jpg' },
       });
-
-      mockFetch.mockResolvedValue(mockResponse);
-
-      // Mock atob for JWT decoding
-      vi.mocked(atob).mockReturnValue(
-        JSON.stringify({
-          sub: '1234567890',
-          name: 'John Doe',
-          email: 'john@example.com',
-          profile_picture: 'https://example.com/avatar.jpg',
-        }),
-      );
 
       // Mock YouVersionPlatformConfiguration persistence
       const saveAuthDataSpy = vi.spyOn(YouVersionPlatformConfiguration, 'saveAuthData');
       const saveUserInfoSpy = vi.spyOn(YouVersionPlatformConfiguration, 'saveUserInfo');
+      const saveGrantedPermissionsSpy = vi.spyOn(
+        YouVersionPlatformConfiguration,
+        'saveGrantedPermissions',
+      );
 
       const result = await YouVersionAPIUsers.handleAuthCallback();
 
@@ -240,12 +355,19 @@ describe('YouVersionAPIUsers', () => {
         avatar_url: 'https://example.com/avatar.jpg',
       });
 
+      // Token scope seeds the permission cache (OIDC scopes filtered out)
+      expect(saveGrantedPermissionsSpy).toHaveBeenCalledWith(['bibles', 'highlights']);
+
       saveUserInfoSpy.mockRestore();
+      saveGrantedPermissionsSpy.mockRestore();
 
       // Verify cleanup
       expect(mocks.localStorage.removeItem).toHaveBeenCalledWith('youversion-auth-code-verifier');
       expect(mocks.localStorage.removeItem).toHaveBeenCalledWith('youversion-auth-redirect-uri');
       expect(mocks.localStorage.removeItem).toHaveBeenCalledWith('youversion-auth-state');
+      expect(mocks.localStorage.removeItem).toHaveBeenCalledWith(
+        'youversion-auth-pending-granted-permissions',
+      );
 
       expect(mocks.window.history.replaceState).toHaveBeenCalledWith(
         {},
@@ -254,6 +376,152 @@ describe('YouVersionAPIUsers', () => {
       );
 
       saveAuthDataSpy.mockRestore();
+    });
+
+    it('unions stashed early grants with token scope when final URL omits them', async () => {
+      setupCallbackFlow({
+        scope: 'openid profile email',
+        pendingGrant: JSON.stringify({ state: 'test-state', permissions: ['highlights'] }),
+      });
+
+      const saveGrantedPermissionsSpy = vi.spyOn(
+        YouVersionPlatformConfiguration,
+        'saveGrantedPermissions',
+      );
+
+      await YouVersionAPIUsers.handleAuthCallback();
+
+      expect(saveGrantedPermissionsSpy).toHaveBeenCalledWith(['highlights']);
+      saveGrantedPermissionsSpy.mockRestore();
+    });
+
+    it('persists highlights when the final callback echoes granted_permissions[] (server bracket notation)', async () => {
+      // Models the real one-shot return: the hosted /auth/consent flow redirects
+      // straight to the app with the code AND the grant echo, and the server
+      // encodes that echo with bracket-array notation (as seen live on the
+      // outbound `requested_permissions[]`). The token scope does NOT carry the
+      // data-exchange `highlights` permission, so the URL echo is the only signal.
+      setupCallbackFlow({
+        scope: 'profile openid',
+        search: '?state=test-state&code=auth-code&granted_permissions%5B%5D=highlights',
+        href: 'https://example.com/callback?state=test-state&code=auth-code&granted_permissions%5B%5D=highlights',
+      });
+
+      const saveGrantedPermissionsSpy = vi.spyOn(
+        YouVersionPlatformConfiguration,
+        'saveGrantedPermissions',
+      );
+
+      await YouVersionAPIUsers.handleAuthCallback();
+
+      expect(saveGrantedPermissionsSpy).toHaveBeenCalledWith(['highlights']);
+      saveGrantedPermissionsSpy.mockRestore();
+    });
+
+    it('stashes bracket-array granted_permissions[] from the pre-code OAuth hop', async () => {
+      mocks.window.location.href =
+        'https://example.com/callback?state=test-state&granted_permissions%5B%5D=highlights';
+      mocks.window.location.search = '?state=test-state&granted_permissions%5B%5D=highlights';
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
+        if (key === 'youversion-auth-state') return 'test-state';
+        return null;
+      });
+
+      await expect(YouVersionAPIUsers.handleAuthCallback()).resolves.toBeNull();
+
+      expect(mocks.localStorage.setItem).toHaveBeenCalledWith(
+        'youversion-auth-pending-granted-permissions',
+        JSON.stringify({ state: 'test-state', permissions: ['highlights'] }),
+      );
+    });
+
+    it('discards stashed early grants bound to a different OAuth state', async () => {
+      setupCallbackFlow({
+        scope: 'openid profile email',
+        pendingGrant: JSON.stringify({ state: 'other-flow-state', permissions: ['highlights'] }),
+      });
+
+      const saveGrantedPermissionsSpy = vi.spyOn(
+        YouVersionPlatformConfiguration,
+        'saveGrantedPermissions',
+      );
+
+      await YouVersionAPIUsers.handleAuthCallback();
+
+      expect(saveGrantedPermissionsSpy).not.toHaveBeenCalled();
+      saveGrantedPermissionsSpy.mockRestore();
+    });
+
+    it('discards legacy unbound pre-code grant stash (plain comma list)', async () => {
+      setupCallbackFlow({ scope: 'openid profile email', pendingGrant: 'highlights' });
+
+      const saveGrantedPermissionsSpy = vi.spyOn(
+        YouVersionPlatformConfiguration,
+        'saveGrantedPermissions',
+      );
+
+      await YouVersionAPIUsers.handleAuthCallback();
+
+      expect(saveGrantedPermissionsSpy).not.toHaveBeenCalled();
+      saveGrantedPermissionsSpy.mockRestore();
+    });
+
+    it('seeds the requested permission when the server returns no grant echo (the live web-flow shape)', async () => {
+      // The exact captured failure (2026-07-23): signIn requested `highlights`,
+      // consent was granted, but the callback carries no `granted_permissions`
+      // and the token scope is only `profile openid`. Sources (1)-(3) are all
+      // empty; only the optimistic requested-permissions seed keeps `highlights`.
+      setupCallbackFlow({
+        scope: 'profile openid',
+        requestedGrant: JSON.stringify({ state: 'test-state', permissions: ['highlights'] }),
+      });
+
+      const saveGrantedPermissionsSpy = vi.spyOn(
+        YouVersionPlatformConfiguration,
+        'saveGrantedPermissions',
+      );
+
+      await YouVersionAPIUsers.handleAuthCallback();
+
+      expect(saveGrantedPermissionsSpy).toHaveBeenCalledWith(['highlights']);
+      saveGrantedPermissionsSpy.mockRestore();
+    });
+
+    it('discards a requested-permissions stash bound to a different OAuth state (fail closed)', async () => {
+      setupCallbackFlow({
+        scope: 'profile openid',
+        requestedGrant: JSON.stringify({ state: 'other-flow-state', permissions: ['highlights'] }),
+      });
+
+      const saveGrantedPermissionsSpy = vi.spyOn(
+        YouVersionPlatformConfiguration,
+        'saveGrantedPermissions',
+      );
+
+      await YouVersionAPIUsers.handleAuthCallback();
+
+      expect(saveGrantedPermissionsSpy).not.toHaveBeenCalled();
+      saveGrantedPermissionsSpy.mockRestore();
+    });
+
+    it('unions the requested-permissions seed with a server echo without duplicating', async () => {
+      // If the server ever does echo the grant, the Set union must not double it.
+      setupCallbackFlow({
+        scope: 'profile openid',
+        search: '?state=test-state&code=auth-code&granted_permissions=highlights',
+        href: 'https://example.com/callback?state=test-state&code=auth-code&granted_permissions=highlights',
+        requestedGrant: JSON.stringify({ state: 'test-state', permissions: ['highlights'] }),
+      });
+
+      const saveGrantedPermissionsSpy = vi.spyOn(
+        YouVersionPlatformConfiguration,
+        'saveGrantedPermissions',
+      );
+
+      await YouVersionAPIUsers.handleAuthCallback();
+
+      expect(saveGrantedPermissionsSpy).toHaveBeenCalledWith(['highlights']);
+      saveGrantedPermissionsSpy.mockRestore();
     });
 
     it('should handle token exchange failure', async () => {
@@ -287,6 +555,61 @@ describe('YouVersionAPIUsers', () => {
       expect(mocks.localStorage.removeItem).toHaveBeenCalledWith('youversion-auth-code-verifier');
       expect(mocks.localStorage.removeItem).toHaveBeenCalledWith('youversion-auth-redirect-uri');
       expect(mocks.localStorage.removeItem).toHaveBeenCalledWith('youversion-auth-state');
+    });
+
+    it('dedupes concurrent callbacks for the same code (one exchange, grants survive)', async () => {
+      setupCallbackFlow({
+        scope: 'highlights openid',
+        profile: { ...DEFAULT_CALLBACK_PROFILE, profile_picture: 'https://example.com/avatar.jpg' },
+      });
+
+      // A second token request for the same single-use code would 400 on the
+      // server. Model that: first fetch succeeds, any subsequent fetch fails.
+      let tokenRequestCount = 0;
+      mockFetch.mockImplementation(() => {
+        tokenRequestCount += 1;
+        if (tokenRequestCount === 1) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            text: vi.fn().mockResolvedValue(JSON.stringify(makeTokens('highlights openid'))),
+          });
+        }
+        return Promise.resolve({ ok: false, status: 400, statusText: 'Bad Request' });
+      });
+
+      const clearAuthTokensSpy = vi.spyOn(YouVersionPlatformConfiguration, 'clearAuthTokens');
+      const saveGrantedPermissionsSpy = vi.spyOn(
+        YouVersionPlatformConfiguration,
+        'saveGrantedPermissions',
+      );
+
+      // Two concurrent invocations, as StrictMode's double-mount produces.
+      const [first, second] = await Promise.all([
+        YouVersionAPIUsers.handleAuthCallback(),
+        YouVersionAPIUsers.handleAuthCallback(),
+      ]);
+
+      // A repeat sequential call this page load must also reuse the exchange.
+      const third = await YouVersionAPIUsers.handleAuthCallback();
+
+      // Exactly one token request was made despite three callback invocations.
+      expect(tokenRequestCount).toBe(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      // All callers observe the same successful result.
+      expect(first).toBeTruthy();
+      expect(first?.accessToken).toBe('access-token-123');
+      expect(second).toBe(first);
+      expect(third).toBe(first);
+
+      // The destructive catch path never ran, so the seeded grants survive.
+      expect(clearAuthTokensSpy).not.toHaveBeenCalled();
+      expect(saveGrantedPermissionsSpy).toHaveBeenCalledWith(['highlights']);
+
+      clearAuthTokensSpy.mockRestore();
+      saveGrantedPermissionsSpy.mockRestore();
     });
   });
 
@@ -667,6 +990,9 @@ describe('YouVersionAPIUsers', () => {
   describe('refreshTokenIfNeeded', () => {
     beforeEach(() => {
       vi.clearAllMocks();
+      // The in-flight refresh slot is module-scoped; clear it so a leftover
+      // promise from a prior case can't be shared into this one.
+      __resetTokenRefreshDedupeForTests();
     });
 
     it('should return true when token is not expired', async () => {
@@ -735,6 +1061,103 @@ describe('YouVersionAPIUsers', () => {
       expect(clearAuthTokensSpy).toHaveBeenCalled();
 
       clearAuthTokensSpy.mockRestore();
+    });
+
+    it('shares one refresh across concurrent callers so a duplicate cannot wipe the session', async () => {
+      const pastDate = new Date(Date.now() - 10 * 60 * 1000);
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
+        if (key === 'expiryDate') return pastDate.toISOString();
+        if (key === 'refreshToken') return 'refresh-token-123';
+        if (key === 'idToken') return 'id-token-123';
+        return null;
+      });
+
+      // The refresh token is single-use: the first request succeeds; any second
+      // request for the same token 400s on the server. If both concurrent
+      // callers spent it, the loser's failure would clear the session.
+      let refreshRequestCount = 0;
+      mockFetch.mockImplementation(() => {
+        refreshRequestCount += 1;
+        if (refreshRequestCount === 1) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: vi.fn().mockResolvedValue({
+              access_token: 'new-access-token',
+              expires_in: 3600,
+              refresh_token: 'new-refresh-token',
+              scope: 'bibles highlights openid',
+              token_type: 'Bearer',
+            }),
+          });
+        }
+        return Promise.resolve({ ok: false, status: 400, statusText: 'Bad Request' });
+      });
+
+      const clearAuthTokensSpy = vi.spyOn(YouVersionPlatformConfiguration, 'clearAuthTokens');
+      const saveAuthDataSpy = vi.spyOn(YouVersionPlatformConfiguration, 'saveAuthData');
+
+      // Two concurrent invocations, as StrictMode's double-mount produces.
+      const [first, second] = await Promise.all([
+        YouVersionAPIUsers.refreshTokenIfNeeded(),
+        YouVersionAPIUsers.refreshTokenIfNeeded(),
+      ]);
+
+      // Exactly one refresh network call despite two concurrent callers.
+      expect(refreshRequestCount).toBe(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      // Both callers resolve true off the single shared refresh.
+      expect(first).toBe(true);
+      expect(second).toBe(true);
+
+      // The destructive clear never ran, so tokens and grants survive; the
+      // rotated tokens were persisted exactly once.
+      expect(clearAuthTokensSpy).not.toHaveBeenCalled();
+      expect(saveAuthDataSpy).toHaveBeenCalledTimes(1);
+      expect(saveAuthDataSpy).toHaveBeenCalledWith(
+        'new-access-token',
+        'new-refresh-token',
+        expect.any(Date),
+      );
+
+      clearAuthTokensSpy.mockRestore();
+      saveAuthDataSpy.mockRestore();
+    });
+
+    it('clears the shared slot so a later refresh performs a new network call', async () => {
+      const pastDate = new Date(Date.now() - 10 * 60 * 1000);
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
+        if (key === 'expiryDate') return pastDate.toISOString();
+        if (key === 'refreshToken') return 'refresh-token-123';
+        if (key === 'idToken') return 'id-token-123';
+        return null;
+      });
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: vi.fn().mockResolvedValue({
+          access_token: 'new-access-token',
+          expires_in: 3600,
+          refresh_token: 'new-refresh-token',
+          scope: 'bibles highlights openid',
+          token_type: 'Bearer',
+        }),
+      });
+
+      // First refresh settles, clearing the in-flight slot.
+      const firstResult = await YouVersionAPIUsers.refreshTokenIfNeeded();
+      expect(firstResult).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      // A later call (token still expired) is not merged into the settled
+      // refresh; it performs a fresh network call.
+      const secondResult = await YouVersionAPIUsers.refreshTokenIfNeeded();
+      expect(secondResult).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
   });
 });
