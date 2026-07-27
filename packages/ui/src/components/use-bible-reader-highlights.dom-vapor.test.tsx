@@ -18,12 +18,12 @@ import {
   type Highlight,
 } from '@youversion/platform-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
 import { collection, Providers } from '@/test/highlights-test-utils';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
 import { Verse } from './verse';
 
-const options = { versionId: 111, book: 'JHN', chapter: '1' };
+/** Opted in: every suite here exercises the self-contained server path. */
+const options = { versionId: 111, book: 'JHN', chapter: '1', enableHighlights: true };
 const CHAPTER_HTML =
   '<p class="yv-p"><span class="yv-v" v="2"><sup class="yv-vlbl">2</sup>' +
   '<span class="yv-txt">In the beginning was the Word.</span></span></p>';
@@ -32,14 +32,12 @@ beforeEach(() => {
   vi.restoreAllMocks();
   localStorage.clear();
   sessionStorage.clear();
-  setHighlightsLive(true);
   YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-1', name: 'Test User' });
   YouVersionPlatformConfiguration.saveGrantedPermissions(['highlights']);
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
-  setHighlightsLive(HIGHLIGHTS_LIVE);
   localStorage.clear();
   sessionStorage.clear();
 });

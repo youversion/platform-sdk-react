@@ -11,8 +11,9 @@
  * Statechart shape (see docs/highlight-flow-statechart.md for the mermaid diagram):
  *
  *   booting ─(always)─▶ disabled | enabled
- *   disabled  ── flag off OR no auth provider: fully inert (no fetch, writes,
- *                dialogs). Color taps resolve to `noop`.
+ *   disabled  ── host has not opted in (`enableHighlights`) OR no auth provider:
+ *                fully inert (no fetch, writes, dialogs). Color taps resolve to
+ *                `noop`.
  *   enabled   ── parallel { flow, writer }
  *     flow region  (the auth/dialog flow)
  *       resuming ─ consume the data-exchange return once, then route on the
@@ -118,7 +119,12 @@ export type HighlightServicesRef = { current: HighlightServices };
 export type HighlightsMachineInput = {
   services: HighlightServicesRef;
   scope: HighlightScope;
-  flagOn: boolean;
+  /**
+   * The host's opt-in to the self-contained server path (`BibleReader.Root`'s
+   * `enableHighlights` prop). Always `false` in controlled mode, which keeps the
+   * machine provably inert.
+   */
+  enableHighlights: boolean;
   hasAuthProvider: boolean;
   isAuthenticated: boolean;
 };
@@ -128,7 +134,7 @@ export type TapOutcome = 'applied' | 'flow' | 'noop';
 type HighlightsContext = {
   services: HighlightServicesRef;
   scope: HighlightScope;
-  flagOn: boolean;
+  enableHighlights: boolean;
   hasAuthProvider: boolean;
   isAuthenticated: boolean;
   serverColors: ServerColors;
@@ -146,7 +152,7 @@ export type HighlightsEvent =
   | { type: 'REMOVE'; color: string; verses: number[] }
   | {
       type: 'AUTH_CHANGED';
-      flagOn: boolean;
+      enableHighlights: boolean;
       hasAuthProvider: boolean;
       isAuthenticated: boolean;
     }
@@ -355,8 +361,8 @@ export const bibleReaderHighlightsMachine = setup({
   },
   actors: { processWrite },
   guards: {
-    isEnabledNow: ({ context }) => context.flagOn && context.hasAuthProvider,
-    isDisabledNow: ({ context }) => !context.flagOn || !context.hasAuthProvider,
+    isEnabledNow: ({ context }) => context.enableHighlights && context.hasAuthProvider,
+    isDisabledNow: ({ context }) => !context.enableHighlights || !context.hasAuthProvider,
     scopeIsDifferent: ({ context, event }) =>
       event.type === 'SCOPE_CHANGED' && !scopesEqual(context.scope, event.scope),
     queueHasWork: ({ context }) => context.queue.length > 0,
@@ -393,7 +399,7 @@ export const bibleReaderHighlightsMachine = setup({
     assignAuth: assign(({ event }) => {
       if (event.type !== 'AUTH_CHANGED') return {};
       return {
-        flagOn: event.flagOn,
+        enableHighlights: event.enableHighlights,
         hasAuthProvider: event.hasAuthProvider,
         isAuthenticated: event.isAuthenticated,
       };
@@ -677,7 +683,7 @@ export const bibleReaderHighlightsMachine = setup({
   context: ({ input }) => ({
     services: input.services,
     scope: input.scope,
-    flagOn: input.flagOn,
+    enableHighlights: input.enableHighlights,
     hasAuthProvider: input.hasAuthProvider,
     isAuthenticated: input.isAuthenticated,
     serverColors: {},
@@ -702,7 +708,7 @@ export const bibleReaderHighlightsMachine = setup({
     },
 
     disabled: {
-      // Flag off or no auth provider: fully inert. Taps resolve to noop; removes
+      // Not opted in or no auth provider: fully inert. Taps resolve to noop; removes
       // are ignored. Copy/share (owned by the caller) are unaffected.
       always: [{ guard: 'isEnabledNow', target: 'enabled' }],
       on: {

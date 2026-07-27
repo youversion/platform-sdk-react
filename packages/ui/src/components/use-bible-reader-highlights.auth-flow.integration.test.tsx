@@ -18,7 +18,6 @@ import {
 import { YouVersionAuthContext, YouVersionContext } from '@youversion/platform-react-hooks';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
 import { readPendingHighlights, stashPendingHighlight } from '@/lib/pending-highlight';
 import { mockUserInfo } from '@/test/highlights-test-utils';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
@@ -43,7 +42,8 @@ function Providers({ children }: { children: ReactNode }) {
   );
 }
 
-const options = { versionId: 111, book: 'JHN', chapter: '3' };
+/** Opted in: every suite here exercises the self-contained server path. */
+const options = { versionId: 111, book: 'JHN', chapter: '3', enableHighlights: true };
 
 function setLocation(href: string) {
   const url = new URL(href);
@@ -63,7 +63,6 @@ beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   signedIn = false;
-  setHighlightsLive(true);
   // The permission cache is user-scoped: persist a matching userInfo (as the
   // auth provider does at sign-in) so granted permissions are readable. This
   // alone grants nothing — the cache stays empty until a grant lands.
@@ -78,7 +77,6 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  setHighlightsLive(HIGHLIGHTS_LIVE);
   localStorage.clear();
   sessionStorage.clear();
 });

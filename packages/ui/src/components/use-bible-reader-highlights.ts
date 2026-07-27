@@ -1,6 +1,5 @@
 'use client';
 
-import { isHighlightsLive } from '@/lib/feature-flags';
 import { deriveHighlightedVerses } from '@/lib/highlight-projection';
 import type { Highlight } from '@youversion/platform-core';
 import {
@@ -49,6 +48,12 @@ export type UseBibleReaderHighlightsOptions = {
   versionId: number;
   book: string;
   chapter: string;
+  /**
+   * Host opt-in to the self-contained server path. Defaults to `false`: without
+   * it there is no fetch, no writes, no dialogs, and nothing painted. Ignored
+   * when `controlled` is set — handing over highlight data is its own opt-in.
+   */
+  enableHighlights?: boolean;
   /** Presence selects controlled mode (latched by the caller at first mount). */
   controlled?: ControlledHighlightsInput;
 };
@@ -61,10 +66,10 @@ export type UseBibleReaderHighlightsReturn = {
    * When the user has a session and the highlights permission this writes
    * optimistically (`'applied'`); otherwise it opens the sign-in dialog (signed
    * out) or the just-in-time permission dialog (signed in, no permission) and
-   * returns `'flow'`. Returns `'noop'` when highlighting is inert (flag off, no
-   * verses, or no auth provider). The caller uses the outcome to decide whether
-   * to keep the verse selection: `'flow'` keeps it so cancelling the dialog
-   * leaves the selection and popover intact.
+   * returns `'flow'`. Returns `'noop'` when highlighting is inert (host has not
+   * opted in, no verses, or no auth provider). The caller uses the outcome to
+   * decide whether to keep the verse selection: `'flow'` keeps it so cancelling
+   * the dialog leaves the selection and popover intact.
    *
    * In controlled mode always emits an intent (no paint) and returns
    * `'applied'` so the caller clears the selection as usual.
@@ -77,10 +82,18 @@ export type UseBibleReaderHighlightsReturn = {
    * `YouVersionAuthProvider` is present so a color tap can enter the auth flow
    * and writes can reach the API. `false` for copy/share-only integrators (no
    * auth provider), where the machine sits in `disabled` and taps resolve to
-   * `noop`. The caller ANDs this with the feature flag to decide whether to
-   * render the (otherwise inert) color-swatch row.
+   * `noop`. This is the auth axis only — see {@link highlightsAvailable} for
+   * the composed gate.
    */
   highlightsInteractive: boolean;
+  /**
+   * Whether the self-contained highlight path is actually live in this mount:
+   * the host opted in AND an auth provider is present. Same expression as the
+   * machine's `isEnabledNow` guard, so the color row and the statechart
+   * provably agree. Always `false` in controlled mode (which gates the row on
+   * the mode latch instead). Callers must not re-derive this.
+   */
+  highlightsAvailable: boolean;
   /** Whether the just-in-time permission confirm dialog is open. */
   permissionDialogOpen: boolean;
   /** Controlled open-change for the permission confirm dialog. */
@@ -148,27 +161,28 @@ function buildHighlightIntent(
  * BibleReader's seam onto highlights (YPE-1034 self-contained + YPE-3705 controlled).
  *
  * **Self-contained:** a THIN adapter over `bibleReaderHighlightsMachine` (PR-288):
- * it reads auth + flag + fetched highlights from React and feeds them to the
- * machine as events, exposes the machine's dialog states + write commands, and
- * derives the rendered verse map. All flow/write logic (optimistic overlay,
- * serialized writes, per-verse ownership, reconcile, auth flow, the vapor fix)
- * lives in the machine; see that file for the invariants and the statechart.
- * Rendering and fetching are gated on `isHighlightsLive() && isAuthenticated`.
- * With no auth provider the reader keeps the PR-1 posture: no fetch, no writes,
- * and a color tap never enters the auth flow — copy/share still work.
+ * it reads auth + the host's opt-in + fetched highlights from React and feeds
+ * them to the machine as events, exposes the machine's dialog states + write
+ * commands, and derives the rendered verse map. All flow/write logic (optimistic
+ * overlay, serialized writes, per-verse ownership, reconcile, auth flow, the
+ * vapor fix) lives in the machine; see that file for the invariants and the
+ * statechart. Rendering and fetching are gated on
+ * `enableHighlights && isAuthenticated`. Without the opt-in, or with no auth
+ * provider, the reader keeps the PR-1 posture: no fetch, no writes, and a color
+ * tap never enters the auth flow — copy/share still work.
  *
  * **Controlled:** when `controlled` is set, the fetch stays disabled, the
- * machine is kept inert (`flagOn: false` — an enable guard, not a statechart
- * region), the render map is a pure projection of the host's `highlights` (via
- * `deriveHighlightedVerses`), and `apply` / `remove` emit intents with no
- * optimistic paint. Controlled mode bypasses `isHighlightsLive` — the color
- * row stays interactive so the public prop surface can ship while
- * self-contained remains dark (YPE-3705 ADR).
+ * machine is kept inert (`enableHighlights: false` — an enable guard, not a
+ * statechart region), the render map is a pure projection of the host's
+ * `highlights` (via `deriveHighlightedVerses`), and `apply` / `remove` emit
+ * intents with no optimistic paint. Controlled mode ignores `enableHighlights`
+ * — passing `highlights` is itself the opt-in (YPE-3705 ADR).
  */
 export function useBibleReaderHighlights({
   versionId,
   book,
   chapter,
+  enableHighlights = false,
   controlled,
 }: UseBibleReaderHighlightsOptions): UseBibleReaderHighlightsReturn {
   const isControlled = controlled !== undefined;
@@ -180,9 +194,9 @@ export function useBibleReaderHighlights({
   const hasAuthProvider = authContext !== null;
   const isAuthenticated = Boolean(authContext?.userInfo);
   // Controlled mode keeps the machine disabled (provably inert) and never hits
-  // the network — the dark-launch flag only gates the self-contained server path.
-  const flagOn = !isControlled && isHighlightsLive();
-  const live = flagOn && isAuthenticated;
+  // the network — the host's opt-in only gates the self-contained server path.
+  const optedIn = !isControlled && enableHighlights;
+  const live = optedIn && isAuthenticated;
 
   const {
     hasHighlightsPermission,
@@ -230,7 +244,7 @@ export function useBibleReaderHighlights({
     input: {
       services: servicesRef,
       scope,
-      flagOn,
+      enableHighlights: optedIn,
       hasAuthProvider,
       isAuthenticated,
     },
@@ -238,8 +252,13 @@ export function useBibleReaderHighlights({
 
   // ── Feed React-owned inputs to the machine ──────────────────────────────────
   useEffect(() => {
-    actorRef.send({ type: 'AUTH_CHANGED', flagOn, hasAuthProvider, isAuthenticated });
-  }, [actorRef, flagOn, hasAuthProvider, isAuthenticated]);
+    actorRef.send({
+      type: 'AUTH_CHANGED',
+      enableHighlights: optedIn,
+      hasAuthProvider,
+      isAuthenticated,
+    });
+  }, [actorRef, optedIn, hasAuthProvider, isAuthenticated]);
 
   useEffect(() => {
     actorRef.send({ type: 'SCOPE_CHANGED', scope });
@@ -294,8 +313,8 @@ export function useBibleReaderHighlights({
       );
     }
 
-    // Gate on `live`: sign-out or flag-off must render nothing this very render,
-    // including optimistic overlay entries still in the machine.
+    // Gate on `live`: sign-out or a withdrawn opt-in must render nothing this
+    // very render, including optimistic overlay entries still in the machine.
     if (!live) return {};
     // Only apply the overlay when the machine's scope matches the current one.
     // On a synchronous scope change (before the SCOPE_CHANGED effect runs) the
@@ -392,12 +411,14 @@ export function useBibleReaderHighlights({
 
   return {
     highlightedVerses,
-    // Interactivity mirrors the machine's enabled/disabled gate: with no auth
-    // provider the machine is inert and the color row must not render. The flag
-    // is ANDed in by the caller. (`live` also folds in `isAuthenticated`, which
-    // we intentionally exclude here — a signed-out tap still enters the sign-in
-    // flow, so the row stays interactive.)
+    // The auth axis on its own: with no auth provider the machine is inert and
+    // the color row must not render. (`live` also folds in `isAuthenticated`,
+    // which we intentionally exclude here — a signed-out tap still enters the
+    // sign-in flow, so the row stays interactive.)
     highlightsInteractive: hasAuthProvider,
+    // The composed gate, identical to the machine's `isEnabledNow`. The caller
+    // renders the color row off this instead of re-deriving the opt-in.
+    highlightsAvailable: optedIn && hasAuthProvider,
     permissionDialogOpen,
     signInDialogOpen,
     ...api,

@@ -25,17 +25,16 @@ import {
   type Highlight,
 } from '@youversion/platform-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
 import { collection, Providers } from '@/test/highlights-test-utils';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
 
-const options = { versionId: 111, book: 'JHN', chapter: '1' };
+/** Opted in: every suite here exercises the self-contained server path. */
+const options = { versionId: 111, book: 'JHN', chapter: '1', enableHighlights: true };
 
 beforeEach(() => {
   vi.restoreAllMocks();
   localStorage.clear();
   sessionStorage.clear();
-  setHighlightsLive(true);
   // Signed-in-from-first-render: server truth arrives via the initial fetch.
   YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-1', name: 'Test User' });
   YouVersionPlatformConfiguration.saveGrantedPermissions(['highlights']);
@@ -43,7 +42,6 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  setHighlightsLive(HIGHLIGHTS_LIVE);
   localStorage.clear();
   sessionStorage.clear();
 });

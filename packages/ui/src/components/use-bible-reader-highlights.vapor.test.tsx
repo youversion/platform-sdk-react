@@ -18,7 +18,6 @@ import {
 } from '@youversion/platform-core';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
 import {
   collection,
   deferred,
@@ -34,17 +33,16 @@ function Providers({ children }: { children: ReactNode }) {
   return <BaseProviders userInfo={signedIn ? mockUserInfo : null}>{children}</BaseProviders>;
 }
 
-const defaultOptions = { versionId: 111, book: 'JHN', chapter: '3' };
+/** Opted in: every suite here exercises the self-contained server path. */
+const defaultOptions = { versionId: 111, book: 'JHN', chapter: '3', enableHighlights: true };
 
 beforeEach(() => {
   vi.restoreAllMocks();
   signedIn = false;
-  setHighlightsLive(true);
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
-  setHighlightsLive(HIGHLIGHTS_LIVE);
   localStorage.clear();
   sessionStorage.clear();
 });

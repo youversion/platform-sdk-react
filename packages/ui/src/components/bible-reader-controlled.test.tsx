@@ -463,9 +463,10 @@ describe('BibleReader controlled mode - events', () => {
     const { container } = renderReader({ onHighlightApply, onHighlightRemove });
 
     selectVerse(container, 1);
-    // Self-contained with HIGHLIGHTS_LIVE off: the color row is hidden entirely
-    // (`highlightsEnabled` from PR-288). Copy/Share still open the popover.
-    // Controlled intent callbacks must never fire.
+    // Self-contained with no `enableHighlights` opt-in and no auth provider
+    // mounted: the color row is hidden entirely (`highlightsEnabled` from
+    // PR-288). Copy/Share still open the popover. Controlled intent callbacks
+    // must never fire.
     await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
     expect(getApplyButtons()).toHaveLength(0);
     expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
@@ -516,8 +517,9 @@ describe('BibleReader controlled mode - latching', () => {
     expect(getVerseEl(controlled.container, 1).style.backgroundColor).toBe('');
     controlled.unmount();
 
-    // Self-contained with HIGHLIGHTS_LIVE off: also empty, but the mode is
-    // latched (a later highlights prop would be ignored — covered above).
+    // Self-contained with no `enableHighlights` opt-in and no auth provider:
+    // also empty, but the mode is latched (a later highlights prop would be
+    // ignored — covered above).
     const selfContained = renderReader();
     expect(getVerseEl(selfContained.container, 1).style.backgroundColor).toBe('');
     expect(warnSpy).not.toHaveBeenCalled();

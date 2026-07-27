@@ -4,19 +4,22 @@
 // We stub ResizeObserver for jsdom (used by Radix/@floating-ui). The stub methods are intentionally no-ops.
 /* eslint-disable @typescript-eslint/no-empty-function */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
-import type { BibleBook, BibleVersion, Language } from '@youversion/platform-core';
+import { useState, type ReactNode } from 'react';
+import type { BibleBook, BiblePassage, BibleVersion, Language } from '@youversion/platform-core';
 import {
   useBooks,
   useFilteredVersions,
+  useHighlights,
   useLanguage,
   useLanguages,
   useOrganizations,
+  usePassage,
   useTheme,
   useVersion,
   useVersions,
+  YouVersionAuthContext,
 } from '@youversion/platform-react-hooks';
 import {
   BIBLE_READER_SPACING,
@@ -26,9 +29,11 @@ import {
   createBibleThemeSettingsContentHandlers,
   nextBibleReaderFontSizeDown,
   nextBibleReaderFontSizeUp,
+  type BibleReaderRootProps,
   type BibleThemeSettingsSnapshot,
 } from './bible-reader';
 import { INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
+import { mockUserInfo } from '@/test/highlights-test-utils';
 
 class ResizeObserverMock {
   observe() {}
@@ -37,15 +42,23 @@ class ResizeObserverMock {
 }
 globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 
+// jsdom does not implement Element#scrollTo (BibleReader.Content scrolls to
+// top on chapter change).
+if (!Element.prototype.scrollTo) {
+  Element.prototype.scrollTo = () => {};
+}
+
 vi.mock('@youversion/platform-react-hooks', async () => {
   const actual = await vi.importActual('@youversion/platform-react-hooks');
   return {
     ...actual,
     useBooks: vi.fn(),
     useFilteredVersions: vi.fn(),
+    useHighlights: vi.fn(),
     useLanguage: vi.fn(),
     useLanguages: vi.fn(),
     useOrganizations: vi.fn(),
+    usePassage: vi.fn(),
     useTheme: vi.fn(),
     useVersion: vi.fn(),
     useVersions: vi.fn(),
@@ -74,8 +87,34 @@ const mockVersion = {
   language_tag: 'en',
 } as BibleVersion;
 
+// Same shape as the real passages API mock data: `.yv-v` markers that the
+// Bible HTML transformer expands into per-verse wrappers.
+const mockPassage: BiblePassage = {
+  id: 'JHN.1',
+  content:
+    '<div><div class="p">' +
+    '<span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>In the beginning was the Word. ' +
+    '<span class="yv-v" v="2"></span><span class="yv-vlbl">2</span>He was with God in the beginning.' +
+    '</div></div>',
+  reference: 'John 1',
+};
+
 function setupDefaultMocks() {
   vi.mocked(useTheme).mockReturnValue('light');
+  vi.mocked(usePassage).mockReturnValue({
+    passage: mockPassage,
+    loading: false,
+    error: null,
+    refetch: vi.fn(),
+  });
+  vi.mocked(useHighlights).mockReturnValue({
+    highlights: { data: [], next_page_token: null },
+    loading: false,
+    error: null,
+    refetch: vi.fn(),
+    createHighlight: vi.fn(),
+    deleteHighlight: vi.fn(),
+  });
   vi.mocked(useBooks).mockReturnValue({
     books: { data: [...mockBooks], next_page_token: null },
     loading: false,
@@ -374,5 +413,86 @@ describe('BibleReader Toolbar - onChapterPickerPress', () => {
     });
 
     expect(screen.queryByPlaceholderText('Search')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * The public opt-in contract on `BibleReader.Root`. Every case renders inside an
+ * auth provider, so the auth axis is held constant and `enableHighlights` is the
+ * only thing being measured.
+ */
+describe('BibleReader.Root — highlights opt-in', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    setupDefaultMocks();
+  });
+
+  function AuthWrapper({ children }: { children: ReactNode }) {
+    return (
+      <YouVersionAuthContext.Provider
+        value={{ userInfo: mockUserInfo, setUserInfo: vi.fn(), isLoading: false, error: null }}
+      >
+        {children}
+      </YouVersionAuthContext.Provider>
+    );
+  }
+
+  function renderReader(props: Partial<BibleReaderRootProps> = {}) {
+    return render(
+      <AuthWrapper>
+        <BibleReader.Root defaultVersionId={3034} defaultBook="JHN" defaultChapter="1" {...props}>
+          <BibleReader.Content />
+        </BibleReader.Root>
+      </AuthWrapper>,
+    );
+  }
+
+  function selectVerse(container: HTMLElement, verse: number) {
+    const els = container.querySelectorAll<HTMLElement>(`.yv-v[v="${verse}"]`);
+    const el = els[els.length - 1];
+    if (!el) throw new Error(`Verse ${verse} not rendered`);
+    fireEvent.click(el);
+  }
+
+  function getApplyButtons() {
+    return screen
+      .getAllByRole('button')
+      .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
+  }
+
+  it('renders no color row and disables the fetch when the prop is omitted', async () => {
+    const { container } = renderReader();
+
+    expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
+      { version_id: 3034, passage_id: 'JHN.1' },
+      { enabled: false },
+    );
+
+    selectVerse(container, 1);
+    // Copy / Share still open the popover — they never depended on highlights.
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
+    expect(getApplyButtons()).toHaveLength(0);
+  });
+
+  it('renders no color row and disables the fetch when enableHighlights={false}', async () => {
+    const { container } = renderReader({ enableHighlights: false });
+
+    expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
+      { version_id: 3034, passage_id: 'JHN.1' },
+      { enabled: false },
+    );
+
+    selectVerse(container, 1);
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
+    expect(getApplyButtons()).toHaveLength(0);
+  });
+
+  it('renders the color row when the host opts in', async () => {
+    const { container } = renderReader({ enableHighlights: true });
+
+    selectVerse(container, 1);
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
+    expect(getApplyButtons()).toHaveLength(5);
   });
 });

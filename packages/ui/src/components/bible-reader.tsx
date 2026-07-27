@@ -45,7 +45,6 @@ import { HighlightPermissionDialog } from './highlight-permission-dialog';
 import { SignInDialog } from './sign-in-dialog';
 import { BibleTextView, getCleanVerseText, type FootnoteData } from './verse';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
-import { isHighlightsLive } from '@/lib/feature-flags';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 
 type BibleReaderContextType = {
@@ -74,6 +73,8 @@ type BibleReaderContextType = {
   onShare?: (data: BibleReaderShareData) => void | Promise<void>;
   highlights?: Highlight[];
   isHighlightsControlled: boolean;
+  /** Already resolved against the mode latch: always `false` when controlled. */
+  enableHighlights: boolean;
   onVerseSelect?: (selection: BibleReaderVerseSelection) => void;
   onHighlightApply?: (intent: BibleReaderHighlightIntent) => void;
   onHighlightRemove?: (intent: BibleReaderHighlightIntent) => void;
@@ -204,6 +205,21 @@ export type RootProps = {
    * palette, so an unmanageable color must not paint.
    */
   highlights?: Highlight[];
+  /**
+   * Opt in to server-backed highlights (**self-contained mode**). Defaults to
+   * `false`: without it the reader renders no highlight swatch row, makes no
+   * `/v1/highlights` requests, opens no consent dialogs, and can never initiate
+   * a sign-in or data-exchange redirect. Copy, Share, and verse selection are
+   * unaffected either way.
+   *
+   * Requires an auth-enabled provider — `YouVersionProvider` with `includeAuth`
+   * and `authRedirectUrl`. With the opt-in but no auth provider the reader stays
+   * inert (and warns in development).
+   *
+   * Ignored in **controlled mode**: passing {@link highlights} is itself the
+   * opt-in.
+   */
+  enableHighlights?: boolean;
   /**
    * Called on every verse selection change with the selection payload —
    * `verses: []` whenever a non-empty selection clears, whether by
@@ -374,6 +390,7 @@ function Root({
   onCopy,
   onShare,
   highlights,
+  enableHighlights = false,
   onVerseSelect,
   onHighlightApply,
   onHighlightRemove,
@@ -545,6 +562,9 @@ function Root({
     onShare,
     highlights: isHighlightsControlled ? highlights : undefined,
     isHighlightsControlled,
+    // Controlled mode can never light the self-contained path, whatever the
+    // host passes here.
+    enableHighlights: isHighlightsControlled ? false : enableHighlights,
     onVerseSelect,
     onHighlightApply,
     onHighlightRemove,
@@ -580,6 +600,7 @@ function Content() {
     onShare,
     highlights,
     isHighlightsControlled,
+    enableHighlights,
     onVerseSelect,
     onHighlightApply,
     onHighlightRemove,
@@ -626,8 +647,8 @@ function Content() {
   // ---- Verse selection + highlights ------------------------------------------
   // Selection is ephemeral (ADR-007 in YPE-642). Highlights come from
   // useBibleReaderHighlights: host-supplied in controlled mode (YPE-3705), or
-  // server-only account data in self-contained mode (YPE-1034 ADR-001),
-  // dark-launched behind HIGHLIGHTS_LIVE. The reader DOM ref anchors the
+  // server-only account data in self-contained mode (YPE-1034 ADR-001), which
+  // the host opts into with `enableHighlights`. The reader DOM ref anchors the
   // popover and supplies clean verse text for Copy / Share.
   const readerRef = useRef<HTMLDivElement>(null);
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
@@ -637,7 +658,7 @@ function Content() {
 
   const {
     highlightedVerses,
-    highlightsInteractive,
+    highlightsAvailable,
     apply: applyHighlight,
     remove: removeHighlight,
     permissionDialogOpen,
@@ -651,6 +672,7 @@ function Content() {
     versionId,
     book,
     chapter,
+    enableHighlights,
     controlled: isHighlightsControlled
       ? {
           highlights: highlights ?? [],
@@ -660,11 +682,12 @@ function Content() {
       : undefined,
   });
 
-  // Color row: controlled mode always shows it (YPE-3705 bypasses HIGHLIGHTS_LIVE).
-  // Self-contained needs the live flag AND an auth provider — without a provider
-  // the machine is inert (taps noop), so hide dead swatches for copy/share-only.
+  // Color row: controlled mode always shows it (YPE-3705 — the `highlights` prop
+  // is its own opt-in). Self-contained shows it only when the seam says the
+  // server path is live (host opted in AND an auth provider is mounted) —
+  // without both the machine is inert (taps noop), so dead swatches stay hidden.
   // Copy / Share are always available.
-  const highlightsEnabled = isHighlightsControlled || (isHighlightsLive() && highlightsInteractive);
+  const highlightsEnabled = isHighlightsControlled || highlightsAvailable;
   // Copy shown to the sign-in dialog. Falls back to a neutral label when the
   // integrator hasn't set `YouVersionPlatformConfiguration.appName`.
   const signInAppName = YouVersionPlatformConfiguration.appName ?? t('signInAppNameFallback');

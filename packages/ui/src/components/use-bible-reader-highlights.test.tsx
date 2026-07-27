@@ -6,8 +6,7 @@ import type { Collection, Highlight } from '@youversion/platform-core';
 import { useHighlights, YouVersionAuthContext } from '@youversion/platform-react-hooks';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import type { ReactNode } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockUserInfo } from '@/test/highlights-test-utils';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
 
@@ -63,14 +62,14 @@ function AuthWrapper({ children }: { children: ReactNode }) {
   );
 }
 
-const defaultOptions = { versionId: 111, book: 'JHN', chapter: '3' };
+/** Opted in: the self-contained server path is what this suite measures. */
+const defaultOptions = { versionId: 111, book: 'JHN', chapter: '3', enableHighlights: true };
 
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
   sessionStorage.clear();
   signedIn = true;
-  setHighlightsLive(true);
   // The permission cache is user-scoped, so it only takes effect once a matching
   // userInfo is persisted (the auth provider does this at sign-in). Seed both so
   // the authorized-write path is exercised. The auth-flow branches (missing
@@ -79,27 +78,27 @@ beforeEach(() => {
   YouVersionPlatformConfiguration.saveGrantedPermissions(['highlights']);
 });
 
-afterEach(() => {
-  setHighlightsLive(HIGHLIGHTS_LIVE);
-});
-
-describe('useBibleReaderHighlights — flag off (dark launch)', () => {
+/**
+ * The shipped default. A host that says nothing about highlights gets a reader
+ * that is provably inert on them, even signed in with the grant already cached.
+ */
+describe('useBibleReaderHighlights — not opted in (default)', () => {
   it('is fully inert: fetch disabled, empty map, writes are no-ops', () => {
-    setHighlightsLive(false);
     const mocked = mockUseHighlights({
       highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
     });
 
-    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
-      wrapper: AuthWrapper,
-    });
+    const { result } = renderHook(
+      () => useBibleReaderHighlights({ ...defaultOptions, enableHighlights: false }),
+      { wrapper: AuthWrapper },
+    );
 
     // The fetch gate is `enabled: false` — useApiData skips the request entirely.
     expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
       { version_id: 111, passage_id: 'JHN.3' },
       { enabled: false },
     );
-    // Even stale fetched data must not render while the flag is off.
+    // Even stale fetched data must not render without the opt-in.
     expect(result.current.highlightedVerses).toEqual({});
 
     act(() => {
@@ -109,6 +108,32 @@ describe('useBibleReaderHighlights — flag off (dark launch)', () => {
     expect(mocked.createHighlight).not.toHaveBeenCalled();
     expect(mocked.deleteHighlight).not.toHaveBeenCalled();
     expect(result.current.highlightedVerses).toEqual({});
+  });
+
+  it('reports the color row as unavailable, even with an auth provider mounted', () => {
+    mockUseHighlights();
+
+    const { result } = renderHook(
+      () => useBibleReaderHighlights({ ...defaultOptions, enableHighlights: false }),
+      { wrapper: AuthWrapper },
+    );
+
+    expect(result.current.highlightsAvailable).toBe(false);
+  });
+
+  it('defaults to off when `enableHighlights` is omitted entirely', () => {
+    mockUseHighlights();
+
+    const { result } = renderHook(
+      () => useBibleReaderHighlights({ versionId: 111, book: 'JHN', chapter: '3' }),
+      { wrapper: AuthWrapper },
+    );
+
+    expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
+      { version_id: 111, passage_id: 'JHN.3' },
+      { enabled: false },
+    );
+    expect(result.current.highlightsAvailable).toBe(false);
   });
 });
 
@@ -131,17 +156,18 @@ describe('useBibleReaderHighlights — auth guarding', () => {
     expect(mocked.createHighlight).not.toHaveBeenCalled();
   });
 
-  it('is non-interactive with no auth provider, even with the flag on (inert color row)', () => {
+  it('is non-interactive with no auth provider, even when opted in (inert color row)', () => {
     mockUseHighlights();
 
-    // Flag on but no auth provider: the machine is disabled, so a color tap can
-    // never do anything. The color-swatch row must not render — this flag is
-    // what BibleReader ANDs with the feature flag to hide it.
+    // Opted in but no auth provider: the machine is disabled, so a color tap can
+    // never do anything. `highlightsAvailable` is what BibleReader renders the
+    // color-swatch row off, and it must be false here.
     const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions));
     expect(result.current.highlightsInteractive).toBe(false);
+    expect(result.current.highlightsAvailable).toBe(false);
   });
 
-  it('is interactive when an auth provider is mounted (flag on), even signed out', () => {
+  it('is interactive when an auth provider is mounted (opted in), even signed out', () => {
     mockUseHighlights();
     signedIn = false;
 
@@ -151,6 +177,7 @@ describe('useBibleReaderHighlights — auth guarding', () => {
       wrapper: AuthWrapper,
     });
     expect(result.current.highlightsInteractive).toBe(true);
+    expect(result.current.highlightsAvailable).toBe(true);
   });
 
   it('clears rendered highlights immediately when the user signs out', () => {
@@ -468,7 +495,7 @@ describe('useBibleReaderHighlights — scope changes', () => {
     });
 
     const { result, rerender } = renderHook(
-      (props: { versionId: number; book: string; chapter: string }) =>
+      (props: { versionId: number; book: string; chapter: string; enableHighlights: boolean }) =>
         useBibleReaderHighlights(props),
       { wrapper: AuthWrapper, initialProps: defaultOptions },
     );
@@ -478,7 +505,7 @@ describe('useBibleReaderHighlights — scope changes', () => {
     });
     expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
 
-    rerender({ versionId: 111, book: 'JHN', chapter: '4' });
+    rerender({ ...defaultOptions, chapter: '4' });
     expect(result.current.highlightedVerses).toEqual({});
   });
 
@@ -493,7 +520,7 @@ describe('useBibleReaderHighlights — scope changes', () => {
     });
 
     const { result, rerender } = renderHook(
-      (props: { versionId: number; book: string; chapter: string }) =>
+      (props: { versionId: number; book: string; chapter: string; enableHighlights: boolean }) =>
         useBibleReaderHighlights(props),
       { wrapper: AuthWrapper, initialProps: defaultOptions },
     );
@@ -509,7 +536,7 @@ describe('useBibleReaderHighlights — scope changes', () => {
     mockUseHighlights({
       createHighlight: vi.fn().mockReturnValue(new Promise<never>(vi.fn())),
     });
-    rerender({ versionId: 111, book: 'JHN', chapter: '4' });
+    rerender({ ...defaultOptions, chapter: '4' });
     expect(result.current.highlightedVerses).toEqual({});
 
     // Highlight JHN.4.16 — same verse number, different chapter.
@@ -533,7 +560,7 @@ describe('useBibleReaderHighlights — scope changes', () => {
       createHighlight: vi.fn().mockReturnValue(new Promise<never>(vi.fn())),
       highlights: makeCollection([]),
     });
-    rerender({ versionId: 111, book: 'JHN', chapter: '4' });
+    rerender({ ...defaultOptions, chapter: '4' });
 
     expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
   });
@@ -551,7 +578,7 @@ describe('useBibleReaderHighlights — scope changes', () => {
     });
 
     const { result, rerender } = renderHook(
-      (props: { versionId: number; book: string; chapter: string }) =>
+      (props: { versionId: number; book: string; chapter: string; enableHighlights: boolean }) =>
         useBibleReaderHighlights(props),
       { wrapper: AuthWrapper, initialProps: defaultOptions },
     );
@@ -567,7 +594,7 @@ describe('useBibleReaderHighlights — scope changes', () => {
     mockUseHighlights({
       createHighlight: vi.fn().mockReturnValue(new Promise<never>(vi.fn())),
     });
-    rerender({ versionId: 111, book: 'JHN', chapter: '4' });
+    rerender({ ...defaultOptions, chapter: '4' });
     expect(result.current.highlightedVerses).toEqual({});
 
     // Highlight JHN.4.16 — same verse number, different chapter.
@@ -596,8 +623,9 @@ describe('useBibleReaderHighlights — scope changes', () => {
 });
 
 describe('useBibleReaderHighlights — controlled mode (YPE-3705)', () => {
-  it('keeps the fetch disabled and projects from the host prop, even with the flag off', () => {
-    setHighlightsLive(false);
+  // `defaultOptions` carries `enableHighlights: true`, so this also pins that
+  // controlled mode ignores the opt-in: it neither needs it nor is changed by it.
+  it('keeps the fetch disabled and projects from the host prop, ignoring the opt-in', () => {
     const mocked = mockUseHighlights({
       highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: '00d6ff' }]),
     });

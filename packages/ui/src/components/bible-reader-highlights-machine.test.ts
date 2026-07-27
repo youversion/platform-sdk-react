@@ -59,7 +59,13 @@ const scopeJHN4: HighlightScope = { versionId: 111, book: 'JHN', chapter: '4' };
 
 function startMachine(ref: HighlightServicesRef, scope: HighlightScope = scopeJHN3) {
   const actor = createActor(bibleReaderHighlightsMachine, {
-    input: { services: ref, scope, flagOn: true, hasAuthProvider: true, isAuthenticated: true },
+    input: {
+      services: ref,
+      scope,
+      enableHighlights: true,
+      hasAuthProvider: true,
+      isAuthenticated: true,
+    },
   });
   actor.start();
   return actor;
