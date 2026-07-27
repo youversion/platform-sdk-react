@@ -811,6 +811,110 @@ export const JoshuaIntroChapter: Story = {
 };
 
 /**
+ * Self-contained mode: the host opts in with `enableHighlights` and the reader
+ * owns the whole round-trip through the SDK's own auth session — fetch,
+ * optimistic paint, consent, and writes. Requires an auth-enabled provider.
+ *
+ * Seeded here with an authenticated user *and* the `highlights` data-exchange
+ * grant, so a tap goes straight to the write path instead of the just-in-time
+ * permission dialog. The MSW handlers return two pre-existing highlights on the
+ * first two verses of the chapter, which paint on load.
+ */
+export const SelfContained: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+    enableHighlights: true,
+    onVerseSelect: fn(),
+  },
+  beforeEach: async () => {
+    localStorage.clear();
+    await setupAuthenticatedUser();
+    // `setupAuthenticatedUser` seeds the session, not the grant — without this
+    // the first tap lands in the permission dialog rather than a write.
+    const { YouVersionPlatformConfiguration } = await import('@youversion/platform-core');
+    YouVersionPlatformConfiguration.saveGrantedPermissions(['highlights']);
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const versesFor = (verse: number) =>
+      canvasElement.querySelectorAll<HTMLElement>(`.yv-v[v="${verse}"]`);
+
+    await waitFor(
+      async () => {
+        await expect(versesFor(3).length).toBeGreaterThan(0);
+      },
+      { timeout: 5000 },
+    );
+
+    // Fetched server highlights paint with no interaction at all.
+    await waitFor(
+      async () => {
+        await expect(versesFor(1)[0]?.style.backgroundColor).toMatch(/255,\s*254,\s*0/);
+      },
+      { timeout: 5000 },
+    );
+
+    // Selecting a verse opens the action bar — with the swatch row, which only
+    // renders because the host opted in.
+    await userEvent.click(versesFor(3)[0]!);
+
+    const swatchRow = await screen.findByRole('group', { name: /highlight colors/i });
+    await expect(swatchRow).toBeInTheDocument();
+
+    // Canonical apply order: yellow, green, blue, orange, pink. Tap blue.
+    const applyButtons = screen.getAllByRole('button', { name: /apply highlight/i });
+    await expect(applyButtons.length).toBe(5);
+    await userEvent.click(applyButtons[2]!);
+
+    // Optimistic paint lands immediately and survives the POST settling.
+    await waitFor(
+      async () => {
+        await expect(versesFor(3)[0]?.style.backgroundColor).toMatch(/0,\s*214,\s*255/);
+      },
+      { timeout: 5000 },
+    );
+  },
+};
+
+/**
+ * The shipped default: no `enableHighlights`, so the reader is inert on
+ * highlights even inside an auth-enabled provider with a signed-in user. The
+ * verse action bar offers Copy and Share only — no swatch row, no
+ * `/v1/highlights` traffic, no consent dialogs, no redirects.
+ */
+export const SelfContainedNotOptedIn: Story = {
+  name: 'Self-contained (not opted in)',
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+    onVerseSelect: fn(),
+  },
+  beforeEach: async () => {
+    localStorage.clear();
+    await setupAuthenticatedUser();
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+};
+
+/**
  * Controlled mode (YPE-3705): the host supplies highlight data via the
  * `highlights` prop (core API shape, including range USFMs) and receives
  * intent events; the reader performs no highlight persistence. Tweak the

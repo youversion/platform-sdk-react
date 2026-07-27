@@ -410,8 +410,8 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
             </svg>
           )}
 
-          {/* Highlights UI is hidden entirely when the feature is off (flag off):
-              only Copy / Share remain. */}
+          {/* Highlights UI is hidden entirely when the feature is off (host has
+              not opted in, or no auth provider): only Copy / Share remain. */}
           {highlightsEnabled && (
             <>
               <div

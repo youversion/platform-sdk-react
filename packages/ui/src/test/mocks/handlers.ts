@@ -7,6 +7,69 @@ import mockLanguages from '../mock-data/languages.json';
 import mockOrganizations from '../mock-data/organizations.json';
 
 export const globalHandlers = [
+  // Highlights. Only a reader that opted in via `enableHighlights` (and has an
+  // authenticated user) ever reaches these — self-contained highlights are off
+  // by default, so every other story is unaffected. Shapes mirror
+  // `packages/core/src/__tests__/handlers.ts`: `bible_id` on the wire, an
+  // enveloped POST body, and a 204 on delete.
+  http.get('*/v1/highlights', ({ request }) => {
+    const url = new URL(request.url);
+    const bibleId = Number(url.searchParams.get('bible_id'));
+    const passageId = url.searchParams.get('passage_id');
+    if (!bibleId || !passageId) {
+      return HttpResponse.json(
+        { error: 'invalid_request', error_description: 'bible_id and passage_id are required' },
+        { status: 400 },
+      );
+    }
+
+    // Two pre-existing server highlights on the first two verses of whatever
+    // chapter is being read, so a story can show fetched highlights painting on
+    // load without any interaction.
+    return HttpResponse.json({
+      data: [
+        { bible_id: bibleId, passage_id: `${passageId}.1`, color: 'fffe00' },
+        { bible_id: bibleId, passage_id: `${passageId}.2`, color: '5dff79' },
+      ],
+    });
+  }),
+
+  http.post('*/v1/highlights', async ({ request }) => {
+    const body = (await request.json()) as {
+      request_id?: string;
+      highlight?: { bible_id?: number; passage_id?: string; color?: string };
+    };
+    if (
+      !body.request_id ||
+      !body.highlight?.bible_id ||
+      !body.highlight.passage_id ||
+      !body.highlight.color
+    ) {
+      return HttpResponse.json(
+        {
+          error: 'invalid_request',
+          error_description:
+            'Body must be { request_id, highlight: { bible_id, passage_id, color } }',
+        },
+        { status: 400 },
+      );
+    }
+
+    return HttpResponse.json(body.highlight, { status: 201 });
+  }),
+
+  http.delete('*/v1/highlights/:passageId', ({ request }) => {
+    const url = new URL(request.url);
+    if (!url.searchParams.get('bible_id')) {
+      return HttpResponse.json(
+        { error: 'invalid_request', error_description: 'bible_id is required' },
+        { status: 400 },
+      );
+    }
+
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   // Organization (publisher) lookup for the version picker
   http.get('*/v1/organizations/:id', ({ params }) => {
     const id = params.id as string;

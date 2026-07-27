@@ -37,11 +37,13 @@ notification would be a different event under a different name).
   highlight appears when the host round-trips an updated prop. The native data
   layer (YPE-3708) is the only optimistic layer — two optimistic layers cannot
   agree on failure semantics, and only the host knows whether a write succeeded.
-- **Controlled mode bypasses the `HIGHLIGHTS_LIVE` dark-launch flag** (a
-  PR #288 concept). The flag strictly means "is the self-contained server path
-  live"; the color row is always interactive in controlled mode. Consequence:
-  the controlled prop surface is public released API while self-contained
-  stays dark.
+- **Controlled mode bypasses the self-contained enablement gate.** That gate
+  strictly means "is the self-contained server path live"; the color row is
+  always interactive in controlled mode. At the time of this ADR the gate was
+  an internal dark-launch flag (a PR #288 concept), so the controlled prop
+  surface shipped as public released API while self-contained stayed dark. It is
+  now the host's `enableHighlights` opt-in (see the note below); the bypass is
+  unchanged.
 
 ## Rejected alternatives
 
@@ -74,11 +76,26 @@ path) via a `controlled` input, latched by `Root` at first mount:
   and the adapter performs no writes and keeps no optimistic overlay —
   controlled mode is a pure projection of the host's highlights
   (`deriveHighlightedVerses`) plus intent forwarding from `apply`/`remove`.
-- Controlled mode bypasses `isHighlightsLive()` — the dark-launch flag gates
-  only the self-contained server path, so the color row stays interactive and
-  the controlled prop surface ships while self-contained remains dark.
+- Controlled mode bypasses `enableHighlights` — the opt-in gates only the
+  self-contained server path, so the color row stays interactive for a
+  controlled host regardless of it.
 - The glossary (`CONTEXT.md`) defines "Controlled mode" and "Highlight
   intent"; intent and fact are deliberately never given the same name.
+
+## Superseded: the dark-launch flag (2026-07)
+
+The dark-launch flag module `packages/ui/src/lib/feature-flags.ts` — exporting
+`HIGHLIGHTS_LIVE`, `isHighlightsLive()`, and `setHighlightsLive()` — is deleted.
+The self-contained path is now gated on `enableHighlights`, an optional boolean
+on `BibleReader.Root` that defaults to `false`. The flag's stated purpose ("flip
+here to launch") was satisfied and superseded by a host-owned opt-in: the host
+decides per reader instead of an unreachable module constant deciding for
+everyone, and the SDK reads the answer once — through the
+`useBibleReaderHighlights` seam — rather than in two places.
+Keeping both would have meant two gates for one question, with an SDK constant
+able to silently override a host's explicit request.
+
+This ADR's decisions stand as written; only the referent of "the gate" changed.
 
 ## Out of scope
 

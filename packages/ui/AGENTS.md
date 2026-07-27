@@ -80,6 +80,8 @@ src/index.ts           # Entry point (re-exports components, types, hooks)
   fontFamily="Inter"
   showVerseNumbers={true}
   background="light"           // or "dark"
+  enableHighlights             // opt in to server-backed highlights (default off;
+                               // requires YouVersionProvider with includeAuth)
 >
   <BibleReader.Content />
   <BibleReader.Toolbar />

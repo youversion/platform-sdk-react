@@ -40,10 +40,22 @@ the verse action popover. Never persisted; cleared on navigation.
 ## Self-contained mode
 
 The `BibleReader` posture (YPE-1034): the reader fetches and writes
-highlights itself through the SDK's own auth session. Highlight behavior is
-gated on the internal `HIGHLIGHTS_LIVE` dark-launch flag and an
-authenticated user — while the flag is off or the user has no session, the
-reader is inert: no fetches, no writes, nothing rendered from the API.
+highlights itself through the SDK's own auth session. Gated on the host's
+**highlights opt-in** (`enableHighlights`) plus an auth-enabled provider,
+and the fetch additionally on an authenticated user — without the opt-in,
+or with no auth provider, the reader is inert: no swatch row, no fetches,
+no writes, no consent dialogs, nothing rendered from the API.
+
+## Highlights opt-in
+
+The host's explicit request for self-contained highlights: the
+`enableHighlights` prop on `BibleReader.Root`, default `false`. It is the
+single gate on the self-contained path — the SDK holds no second switch of
+its own (it replaced an internal dark-launch flag, now deleted). Ignored in
+**controlled mode**, where passing `highlights` is itself the opt-in.
+_Avoid_: highlights flag, dark-launch flag (gone); `highlightsEnabled`
+(the internal verse-action-popover prop, which means "the color row is
+visible" and is also true in controlled mode)
 
 ## Controlled mode
 
@@ -53,9 +65,8 @@ the user token out of the WebView). The host passes `highlights:
 Highlight[]` into `BibleReader.Root` and receives highlight intents; the
 reader is a pure projection — no API calls, no local persistence, no
 sign-in surface. Presence of the prop selects the posture (latched at
-first mount). Controlled mode bypasses `HIGHLIGHTS_LIVE`: the color row
-is always interactive so the public prop surface can ship while
-self-contained stays dark.
+first mount). Controlled mode bypasses the **highlights opt-in**: the
+color row is always interactive, and `enableHighlights` is ignored.
 
 ## Highlight intent
 

@@ -3,8 +3,10 @@
 The BibleReader highlights flow is an [xstate v5](https://stately.ai/docs) state
 machine: [`packages/ui/src/components/bible-reader-highlights-machine.ts`](../packages/ui/src/components/bible-reader-highlights-machine.ts).
 `useBibleReaderHighlights` is a thin adapter that feeds React-owned inputs (auth,
-the `HIGHLIGHTS_LIVE` flag, the fetched highlights, the scope) into the machine
-as events and reads back the dialog states + the rendered verse map.
+the host's `enableHighlights` opt-in, the fetched highlights, the scope) into the
+machine as events and reads back the dialog states + the rendered verse map. The
+opt-in reaches the machine as its `enableHighlights` input/context field, which
+pairs with `hasAuthProvider` in the `isEnabledNow` guard.
 
 The machine is authored with `setup()` and named guards/actions/actors so it is
 statically analyzable — paste the source into the [Stately visualizer](https://stately.ai/viz)
@@ -13,7 +15,8 @@ to explore it interactively.
 ## States and events
 
 - **`booting`** → routes to `disabled` or `enabled` from the initial input.
-- **`disabled`** — the flag is off **or** no auth provider is mounted. Fully
+- **`disabled`** — the host did not opt in (`enableHighlights` is false, the
+  default) **or** no auth provider is mounted. Fully
   inert: no fetch, no writes, no dialogs. A color tap resolves to `noop`.
 - **`enabled`** — a parallel state with two independent regions:
   - **`flow`** — the auth / dialog flow.
@@ -41,8 +44,8 @@ entry (each to its own scope, first-to-last); entries never overlap on verses.
 ```mermaid
 stateDiagram-v2
   [*] --> booting
-  booting --> disabled: flag off / no provider
-  booting --> enabled: flag on & provider
+  booting --> disabled: not opted in / no provider
+  booting --> enabled: opted in & provider
 
   disabled --> enabled: AUTH_CHANGED (enabled)
   enabled --> disabled: AUTH_CHANGED (disabled)
