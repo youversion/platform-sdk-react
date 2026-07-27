@@ -458,9 +458,14 @@ describe('BibleReader controlled mode - events', () => {
   });
 
   it('ignores onHighlightApply / onHighlightRemove in self-contained mode', async () => {
+    // Exactly the misconfiguration the Root dev warning names, so swallow it
+    // here and assert it fired rather than letting it leak into test output.
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const onHighlightApply = vi.fn();
     const onHighlightRemove = vi.fn();
     const { container } = renderReader({ onHighlightApply, onHighlightRemove });
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('will never be called'));
+    warnSpy.mockRestore();
 
     selectVerse(container, 1);
     // Self-contained with no `enableHighlights` opt-in and no auth provider

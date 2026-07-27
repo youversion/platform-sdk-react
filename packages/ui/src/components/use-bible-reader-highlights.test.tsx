@@ -163,7 +163,6 @@ describe('useBibleReaderHighlights — auth guarding', () => {
     // never do anything. `highlightsAvailable` is what BibleReader renders the
     // color-swatch row off, and it must be false here.
     const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions));
-    expect(result.current.highlightsInteractive).toBe(false);
     expect(result.current.highlightsAvailable).toBe(false);
   });
 
@@ -176,7 +175,6 @@ describe('useBibleReaderHighlights — auth guarding', () => {
     const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
       wrapper: AuthWrapper,
     });
-    expect(result.current.highlightsInteractive).toBe(true);
     expect(result.current.highlightsAvailable).toBe(true);
   });
 

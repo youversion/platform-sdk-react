@@ -3,7 +3,7 @@
  */
 // We stub ResizeObserver for jsdom (used by Radix/@floating-ui). The stub methods are intentionally no-ops.
 /* eslint-disable @typescript-eslint/no-empty-function */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState, type ReactNode } from 'react';
@@ -47,6 +47,16 @@ globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserv
 if (!Element.prototype.scrollTo) {
   Element.prototype.scrollTo = () => {};
 }
+
+// Dev-only warnings gate on `!IS_PRODUCTION`. A live getter lets a test flip the
+// build posture without reimporting the reader; `false` matches the real value
+// under vitest, so every other suite in this file sees today's behavior.
+const constantsMock = vi.hoisted(() => ({ isProduction: false }));
+vi.mock('@/lib/constants', () => ({
+  get IS_PRODUCTION() {
+    return constantsMock.isProduction;
+  },
+}));
 
 vi.mock('@youversion/platform-react-hooks', async () => {
   const actual = await vi.importActual('@youversion/platform-react-hooks');
@@ -421,6 +431,24 @@ describe('BibleReader Toolbar - onChapterPickerPress', () => {
  * auth provider, so the auth axis is held constant and `enableHighlights` is the
  * only thing being measured.
  */
+function AuthWrapper({ children }: { children: ReactNode }) {
+  return (
+    <YouVersionAuthContext.Provider
+      value={{ userInfo: mockUserInfo, setUserInfo: vi.fn(), isLoading: false, error: null }}
+    >
+      {children}
+    </YouVersionAuthContext.Provider>
+  );
+}
+
+function readerJsx(props: Partial<BibleReaderRootProps> = {}) {
+  return (
+    <BibleReader.Root defaultVersionId={3034} defaultBook="JHN" defaultChapter="1" {...props}>
+      <BibleReader.Content />
+    </BibleReader.Root>
+  );
+}
+
 describe('BibleReader.Root — highlights opt-in', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -428,24 +456,8 @@ describe('BibleReader.Root — highlights opt-in', () => {
     setupDefaultMocks();
   });
 
-  function AuthWrapper({ children }: { children: ReactNode }) {
-    return (
-      <YouVersionAuthContext.Provider
-        value={{ userInfo: mockUserInfo, setUserInfo: vi.fn(), isLoading: false, error: null }}
-      >
-        {children}
-      </YouVersionAuthContext.Provider>
-    );
-  }
-
   function renderReader(props: Partial<BibleReaderRootProps> = {}) {
-    return render(
-      <AuthWrapper>
-        <BibleReader.Root defaultVersionId={3034} defaultBook="JHN" defaultChapter="1" {...props}>
-          <BibleReader.Content />
-        </BibleReader.Root>
-      </AuthWrapper>,
-    );
+    return render(<AuthWrapper>{readerJsx(props)}</AuthWrapper>);
   }
 
   function selectVerse(container: HTMLElement, verse: number) {
@@ -494,5 +506,94 @@ describe('BibleReader.Root — highlights opt-in', () => {
     selectVerse(container, 1);
     await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
     expect(getApplyButtons()).toHaveLength(5);
+  });
+});
+
+describe('BibleReader.Root — misconfiguration warnings', () => {
+  let warnSpy: MockInstance;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    setupDefaultMocks();
+    constantsMock.isProduction = false;
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+    constantsMock.isProduction = false;
+  });
+
+  /** Count only our own warnings, so an unrelated React warning can't skew a count. */
+  function warningsMatching(needle: string) {
+    return warnSpy.mock.calls.filter(
+      (args) => typeof args[0] === 'string' && args[0].includes(needle),
+    );
+  }
+
+  const NO_AUTH = 'no YouVersion auth provider is mounted';
+  const ORPHANED_CALLBACK = 'will never be called';
+
+  it('warns once when enableHighlights is set with no auth provider, and still renders', () => {
+    const { container, rerender } = render(readerJsx({ enableHighlights: true }));
+
+    expect(warningsMatching(NO_AUTH)).toHaveLength(1);
+    expect(warningsMatching(NO_AUTH)[0]![0]).toContain('includeAuth');
+
+    rerender(readerJsx({ enableHighlights: true }));
+    rerender(readerJsx({ enableHighlights: true }));
+    expect(warningsMatching(NO_AUTH)).toHaveLength(1);
+
+    // Inert, not broken: the chapter still renders.
+    expect(container.querySelectorAll('.yv-v').length).toBeGreaterThan(0);
+  });
+
+  it('does not warn when enableHighlights has an auth provider', () => {
+    render(<AuthWrapper>{readerJsx({ enableHighlights: true })}</AuthWrapper>);
+
+    expect(warningsMatching(NO_AUTH)).toHaveLength(0);
+  });
+
+  it('does not warn about auth when the host never opted in', () => {
+    render(readerJsx());
+
+    expect(warningsMatching(NO_AUTH)).toHaveLength(0);
+  });
+
+  it('warns once for intent callbacks passed in self-contained mode', () => {
+    const onHighlightApply = vi.fn();
+    const { rerender } = render(<AuthWrapper>{readerJsx({ onHighlightApply })}</AuthWrapper>);
+
+    expect(warningsMatching(ORPHANED_CALLBACK)).toHaveLength(1);
+    expect(warningsMatching(ORPHANED_CALLBACK)[0]![0]).toContain('onHighlightApply');
+
+    rerender(<AuthWrapper>{readerJsx({ onHighlightApply })}</AuthWrapper>);
+    expect(warningsMatching(ORPHANED_CALLBACK)).toHaveLength(1);
+  });
+
+  it('warns for onHighlightRemove alone in self-contained mode', () => {
+    render(<AuthWrapper>{readerJsx({ onHighlightRemove: vi.fn() })}</AuthWrapper>);
+
+    expect(warningsMatching(ORPHANED_CALLBACK)).toHaveLength(1);
+    expect(warningsMatching(ORPHANED_CALLBACK)[0]![0]).toContain('onHighlightRemove');
+  });
+
+  it('does not warn for intent callbacks in controlled mode', () => {
+    render(
+      <AuthWrapper>
+        {readerJsx({ highlights: [], onHighlightApply: vi.fn(), onHighlightRemove: vi.fn() })}
+      </AuthWrapper>,
+    );
+
+    expect(warningsMatching(ORPHANED_CALLBACK)).toHaveLength(0);
+  });
+
+  it('stays silent in production builds', () => {
+    constantsMock.isProduction = true;
+
+    render(readerJsx({ enableHighlights: true, onHighlightApply: vi.fn() }));
+
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 });

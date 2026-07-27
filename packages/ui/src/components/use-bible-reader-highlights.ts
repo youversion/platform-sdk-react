@@ -78,20 +78,18 @@ export type UseBibleReaderHighlightsReturn = {
   /** Clears the given verses that are currently highlighted in `color`. */
   remove: (color: string, verses: number[]) => void;
   /**
-   * Whether highlighting can actually function in this mount — i.e. a
-   * `YouVersionAuthProvider` is present so a color tap can enter the auth flow
-   * and writes can reach the API. `false` for copy/share-only integrators (no
-   * auth provider), where the machine sits in `disabled` and taps resolve to
-   * `noop`. This is the auth axis only — see {@link highlightsAvailable} for
-   * the composed gate.
-   */
-  highlightsInteractive: boolean;
-  /**
    * Whether the self-contained highlight path is actually live in this mount:
-   * the host opted in AND an auth provider is present. Same expression as the
-   * machine's `isEnabledNow` guard, so the color row and the statechart
-   * provably agree. Always `false` in controlled mode (which gates the row on
-   * the mode latch instead). Callers must not re-derive this.
+   * the host opted in (`enableHighlights`) AND a `YouVersionAuthProvider` is
+   * present so a color tap can enter the auth flow and writes can reach the
+   * API. `false` for copy/share-only integrators, where the machine sits in
+   * `disabled` and taps resolve to `noop`.
+   *
+   * Deliberately excludes `isAuthenticated` — a signed-out tap still enters the
+   * sign-in flow, so the row stays interactive. Same expression as the machine's
+   * `isEnabledNow` guard, so the color row and the statechart provably agree.
+   * Always `false` in controlled mode (which gates the row on the mode latch
+   * instead). This is the seam's single enablement output; callers must not
+   * re-derive it.
    */
   highlightsAvailable: boolean;
   /** Whether the just-in-time permission confirm dialog is open. */
@@ -411,13 +409,10 @@ export function useBibleReaderHighlights({
 
   return {
     highlightedVerses,
-    // The auth axis on its own: with no auth provider the machine is inert and
-    // the color row must not render. (`live` also folds in `isAuthenticated`,
-    // which we intentionally exclude here — a signed-out tap still enters the
-    // sign-in flow, so the row stays interactive.)
-    highlightsInteractive: hasAuthProvider,
-    // The composed gate, identical to the machine's `isEnabledNow`. The caller
-    // renders the color row off this instead of re-deriving the opt-in.
+    // The one enablement output, identical to the machine's `isEnabledNow`. The
+    // caller renders the color row off this instead of re-deriving the opt-in.
+    // (`live` also folds in `isAuthenticated`, which we intentionally exclude
+    // here — a signed-out tap still enters the sign-in flow.)
     highlightsAvailable: optedIn && hasAuthProvider,
     permissionDialogOpen,
     signInDialogOpen,

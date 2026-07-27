@@ -414,6 +414,22 @@ function Root({
     );
   }
 
+  // Intent callbacks only fire in controlled mode. Passed without `highlights`
+  // they are silently dead — the most expensive failure mode for an integrator,
+  // so say so once in development.
+  const didWarnOrphanedIntentCallbacksRef = useRef(false);
+  if (
+    !IS_PRODUCTION &&
+    !isHighlightsControlled &&
+    (onHighlightApply !== undefined || onHighlightRemove !== undefined) &&
+    !didWarnOrphanedIntentCallbacksRef.current
+  ) {
+    didWarnOrphanedIntentCallbacksRef.current = true;
+    console.warn(
+      `BibleReader.Root: \`${onHighlightApply !== undefined ? 'onHighlightApply' : 'onHighlightRemove'}\` was passed without a \`highlights\` prop, so this reader is in self-contained mode and the callback will never be called. Pass \`highlights\` (use \`[]\` for "nothing highlighted") to run in controlled mode, or drop the callback and opt into server-backed highlights with \`enableHighlights\`.`,
+    );
+  }
+
   const [book, setBook] = useControllableState({
     prop: controlledBook,
     defaultProp: defaultBook,
@@ -681,6 +697,25 @@ function Content() {
         }
       : undefined,
   });
+
+  // Opting in without an auth provider leaves highlights inert: no swatch row,
+  // no requests, no dialogs. Reads the seam's `highlightsAvailable` rather than
+  // reaching for the auth context a second time — with `enableHighlights` true
+  // it reduces to exactly "is an auth provider mounted". Controlled mode can't
+  // reach here: the context value forces `enableHighlights` to `false` when the
+  // mode latch is set.
+  const didWarnHighlightsNoAuthRef = useRef(false);
+  if (
+    !IS_PRODUCTION &&
+    enableHighlights &&
+    !highlightsAvailable &&
+    !didWarnHighlightsNoAuthRef.current
+  ) {
+    didWarnHighlightsNoAuthRef.current = true;
+    console.warn(
+      'BibleReader: `enableHighlights` is set but no YouVersion auth provider is mounted, so highlights stay inert — no color swatch row, no highlight requests, no consent dialogs. Wrap the reader in `YouVersionProvider` with `includeAuth` and `authRedirectUrl`, or remove `enableHighlights`.',
+    );
+  }
 
   // Color row: controlled mode always shows it (YPE-3705 — the `highlights` prop
   // is its own opt-in). Self-contained shows it only when the seam says the
