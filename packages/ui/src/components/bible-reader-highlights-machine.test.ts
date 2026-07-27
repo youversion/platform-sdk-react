@@ -261,3 +261,107 @@ describe('bibleReaderHighlightsMachine — pending stash on lost permission', ()
     actor.stop();
   });
 });
+
+describe('bibleReaderHighlightsMachine — withdrawing the opt-in', () => {
+  /**
+   * `enableHighlights` is deliberately NOT latched, so a host can turn highlights
+   * off mid-session. Leaving `enabled` stops the `writer.writing` invoke, so an
+   * in-flight write can never settle — `settleWrite`/`shiftQueue` don't run and
+   * the op stays at `queue[0]`. Without clearing it, re-entering `enabled` hits
+   * `writer.idle.always → queueHasWork` and re-sends a request whose first
+   * execution may already have reached the server.
+   */
+  it('does not replay an in-flight write when the opt-in is withdrawn and restored', async () => {
+    const pending = deferred();
+    const createHighlight = vi.fn().mockReturnValue(pending.promise);
+    const { ref } = makeServices({ createHighlight });
+    const actor = startMachine(ref);
+
+    actor.send({ type: 'TAP_COLOR', color: 'FFFE00', verses: [16] });
+    await vi.waitFor(() => expect(createHighlight).toHaveBeenCalledTimes(1));
+    expect(actor.getSnapshot().context.overlay).toEqual({ 16: 'fffe00' });
+
+    // Host withdraws the opt-in while the POST is in flight. Still signed in, so
+    // the old sign-out-only reset would not have fired.
+    actor.send({
+      type: 'AUTH_CHANGED',
+      enableHighlights: false,
+      hasAuthProvider: true,
+      isAuthenticated: true,
+    });
+    expect(actor.getSnapshot().matches('disabled')).toBe(true);
+    expect(actor.getSnapshot().context.queue).toEqual([]);
+    expect(actor.getSnapshot().context.overlay).toEqual({});
+    expect(actor.getSnapshot().context.writeIntent.size).toBe(0);
+
+    // Host restores it.
+    actor.send({
+      type: 'AUTH_CHANGED',
+      enableHighlights: true,
+      hasAuthProvider: true,
+      isAuthenticated: true,
+    });
+    expect(actor.getSnapshot().matches('enabled')).toBe(true);
+
+    // The stale op must not be re-sent. Server truth arrives via the refetch the
+    // adapter fires when `live` flips back on.
+    await Promise.resolve();
+    expect(createHighlight).toHaveBeenCalledTimes(1);
+    actor.stop();
+  });
+
+  it('clears queued (not yet started) writes when the opt-in is withdrawn', async () => {
+    const first = deferred();
+    const createHighlight = vi.fn().mockReturnValue(first.promise);
+    const { ref } = makeServices({ createHighlight });
+    const actor = startMachine(ref);
+
+    // Two taps. `shiftQueue` only runs when a write settles, so the in-flight op
+    // stays at `queue[0]` and the second waits behind it: length 2.
+    actor.send({ type: 'TAP_COLOR', color: 'FFFE00', verses: [16] });
+    await vi.waitFor(() => expect(createHighlight).toHaveBeenCalledTimes(1));
+    actor.send({ type: 'TAP_COLOR', color: '5DFF79', verses: [17] });
+    expect(actor.getSnapshot().context.queue.length).toBe(2);
+
+    actor.send({
+      type: 'AUTH_CHANGED',
+      enableHighlights: false,
+      hasAuthProvider: true,
+      isAuthenticated: true,
+    });
+    actor.send({
+      type: 'AUTH_CHANGED',
+      enableHighlights: true,
+      hasAuthProvider: true,
+      isAuthenticated: true,
+    });
+
+    await Promise.resolve();
+    expect(createHighlight).toHaveBeenCalledTimes(1);
+    expect(actor.getSnapshot().context.queue).toEqual([]);
+    actor.stop();
+  });
+
+  it('still clears write state on sign-out while the opt-in stays on', async () => {
+    const pending = deferred();
+    const createHighlight = vi.fn().mockReturnValue(pending.promise);
+    const { ref } = makeServices({ createHighlight });
+    const actor = startMachine(ref);
+
+    actor.send({ type: 'TAP_COLOR', color: 'FFFE00', verses: [16] });
+    await vi.waitFor(() => expect(createHighlight).toHaveBeenCalledTimes(1));
+
+    // Sign-out keeps the machine in `enabled` (a tap must still reach the
+    // sign-in dialog), so this path is separate from going disabled.
+    actor.send({
+      type: 'AUTH_CHANGED',
+      enableHighlights: true,
+      hasAuthProvider: true,
+      isAuthenticated: false,
+    });
+    expect(actor.getSnapshot().matches('enabled')).toBe(true);
+    expect(actor.getSnapshot().context.overlay).toEqual({});
+    expect(actor.getSnapshot().context.queue).toEqual([]);
+    actor.stop();
+  });
+});

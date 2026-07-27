@@ -405,9 +405,29 @@ export const bibleReaderHighlightsMachine = setup({
       };
     }),
 
-    /** Sign-out / going disabled must not leave a stale overlay to resurface later. */
-    resetWriteStateIfSignedOut: assign(({ event }) => {
-      if (event.type !== 'AUTH_CHANGED' || event.isAuthenticated) return {};
+    /**
+     * Sign-out or going disabled must not leave stale write state to resurface
+     * later. Two distinct triggers, deliberately unioned here:
+     *
+     * 1. **Sign-out** (`!isAuthenticated`). The machine STAYS in `enabled` — a
+     *    signed-out tap must still reach the sign-in dialog — so nothing else
+     *    would drop the overlay.
+     * 2. **Going disabled** (`!enableHighlights || !hasAuthProvider`, i.e.
+     *    `isDisabledNow`). `enableHighlights` is not latched, so a host can
+     *    withdraw the opt-in mid-write. Leaving `enabled` stops the
+     *    `writer.writing` invoke, so an in-flight write can never settle:
+     *    `settleWrite`/`shiftQueue` never run and the op stays at `queue[0]`.
+     *    Re-entering `enabled` would hit `writer.idle.always → queueHasWork` and
+     *    re-send a request whose first execution may already have reached the
+     *    server — a duplicate POST, or a DELETE against an already-deleted
+     *    highlight. Dropping the queue is strictly safer than replaying it: the
+     *    refetch that fires when the adapter's `live` flips back on brings
+     *    server truth either way.
+     */
+    resetWriteStateIfInert: assign(({ event }) => {
+      if (event.type !== 'AUTH_CHANGED') return {};
+      const goingDisabled = !event.enableHighlights || !event.hasAuthProvider;
+      if (event.isAuthenticated && !goingDisabled) return {};
       return {
         overlay: {},
         reconcile: new Map<number, ReconcileEntry>(),
@@ -697,7 +717,7 @@ export const bibleReaderHighlightsMachine = setup({
   // These three inputs update context regardless of the active state; state
   // moves are driven by `always` guards that read the freshly-assigned context.
   on: {
-    AUTH_CHANGED: { actions: ['assignAuth', 'resetWriteStateIfSignedOut'] },
+    AUTH_CHANGED: { actions: ['assignAuth', 'resetWriteStateIfInert'] },
     HIGHLIGHTS_UPDATED: { actions: 'reconcileOverlay' },
     SCOPE_CHANGED: { guard: 'scopeIsDifferent', actions: 'resetForScopeChange' },
   },

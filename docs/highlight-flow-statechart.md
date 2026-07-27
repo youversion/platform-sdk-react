@@ -18,6 +18,23 @@ to explore it interactively.
 - **`disabled`** — the host did not opt in (`enableHighlights` is false, the
   default) **or** no auth provider is mounted. Fully
   inert: no fetch, no writes, no dialogs. A color tap resolves to `noop`.
+
+  Entering `disabled` **drops all write state** (`overlay`, `reconcile`,
+  `writeIntent`, and the `queue`) via `resetWriteStateIfInert`. `enableHighlights`
+  is not latched, so a host can withdraw the opt-in mid-write; leaving `enabled`
+  stops the `writer.writing` invoke, so that write can never settle and its op
+  would otherwise sit at `queue[0]`. Re-entering `enabled` would then hit
+  `writer.idle.always → queueHasWork` and re-send a request whose first execution
+  may already have reached the server. Dropping the queue is strictly safer than
+  replaying it — the refetch that fires when the adapter's `live` flips back on
+  brings server truth either way. The same action also fires on **sign-out**,
+  which does *not* leave `enabled` (a signed-out tap must still reach the sign-in
+  dialog), so nothing else would clear the overlay there.
+
+  Note the asymmetry with the **pending highlight** stash, which is deliberately
+  *not* cleared: a queued write is work the host just cancelled, while a stashed
+  intent is a user action awaiting a redirect round-trip, with its own 10-minute
+  TTL.
 - **`enabled`** — a parallel state with two independent regions:
   - **`flow`** — the auth / dialog flow.
     - `resuming` consumes the data-exchange return exactly once, then routes on
