@@ -1,10 +1,18 @@
-import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, screen, spyOn, userEvent, waitFor } from 'storybook/test';
-import { http, HttpResponse, delay } from 'msw';
-import { BibleReader } from './bible-reader';
-import { setupAuthenticatedUser } from '../test/utils';
+import { expandPassageId } from '@/lib/highlight-projection';
 import { INTER_FONT, SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { Highlight } from '@youversion/platform-core';
+import { delay, http, HttpResponse } from 'msw';
+import { useState } from 'react';
+import { expect, fn, screen, spyOn, userEvent, waitFor } from 'storybook/test';
 import mockBibles from '../test/mock-data/bibles.json';
+import { globalHandlers } from '../test/mocks/handlers';
+import { setupAuthenticatedUser } from '../test/utils';
+import {
+  BibleReader,
+  type BibleReaderHighlightIntent,
+  type BibleReaderRootProps,
+} from './bible-reader';
 
 let signInMock: ReturnType<typeof fn>;
 
@@ -41,14 +49,14 @@ const meta: Meta<typeof BibleReader.Root> = {
       control: { type: 'range', min: 8, max: 24, step: 1 },
       description: 'Font size in pixels',
     },
-    lineHeight: {
+    lineSpacing: {
       control: 'select',
-      options: [1.4, 1.6, 1.8, 2.0],
-      description: 'Line height multiplier',
+      options: [1.45, 1.7, 2.0],
+      description: 'Line spacing (line-height multiplier)',
     },
     fontFamily: {
       control: 'select',
-      options: [SOURCE_SERIF_FONT, INTER_FONT, "'Georgia', serif", "'Nunito Sans', sans-serif"],
+      options: [SOURCE_SERIF_FONT, INTER_FONT],
       description: 'Font family',
     },
     showVerseNumbers: {
@@ -71,8 +79,8 @@ export const Default: Story = {
   tags: ['integration'],
   args: {
     defaultVersionId: 111,
-    lineHeight: 1.6,
-    fontFamily: "'Inter', sans-serif",
+    lineSpacing: 1.7,
+    fontFamily: INTER_FONT,
     showVerseNumbers: true,
   },
   render: (args) => (
@@ -106,7 +114,7 @@ export const Default: Story = {
     });
 
     const fontButtons = screen.getAllByRole('button', { name: /font/i });
-    await expect(fontButtons.length).toBe(2);
+    await expect(fontButtons.length).toBe(4);
 
     const decreaseFontButton = screen.getByTestId('decrease-font-size');
     const increaseFontButton = screen.getByTestId('increase-font-size');
@@ -145,8 +153,8 @@ export const DarkTheme: Story = {
   args: {
     defaultVersionId: 111,
     fontSize: 16,
-    lineHeight: 1.6,
-    fontFamily: "'Inter', sans-serif",
+    lineSpacing: 1.7,
+    fontFamily: INTER_FONT,
     showVerseNumbers: true,
   },
   globals: {
@@ -170,8 +178,8 @@ export const CustomStyling: Story = {
   args: {
     defaultVersionId: 111,
     fontSize: 18,
-    lineHeight: 2.0,
-    fontFamily: "'Nunito Sans', sans-serif",
+    lineSpacing: 2.0,
+    fontFamily: SOURCE_SERIF_FONT,
     showVerseNumbers: false,
   },
   render: (args) => (
@@ -200,8 +208,8 @@ export const FontSizeOutOfRange: Story = {
   args: {
     defaultVersionId: 111,
     fontSize: 28,
-    lineHeight: 2.0,
-    fontFamily: "'Nunito Sans', sans-serif",
+    lineSpacing: 2.0,
+    fontFamily: SOURCE_SERIF_FONT,
     showVerseNumbers: false,
   },
   render: (args) => (
@@ -432,7 +440,7 @@ export const SignOutFlow: Story = {
     const userMenuTrigger = screen.getByTestId('user-menu-trigger');
 
     await waitFor(async () => {
-      const avatar = userMenuTrigger.querySelector('img');
+      const avatar = userMenuTrigger.querySelector('[data-slot="avatar"]');
       await expect(avatar).toBeInTheDocument();
     });
 
@@ -463,7 +471,7 @@ export const AuthenticatedWithAvatar: Story = {
   beforeEach: async () => {
     localStorage.clear();
     await setupAuthenticatedUser({
-      avatarUrl: 'https://example.com/avatar/{width}/{height}.jpg',
+      avatarUrl: 'https://notion-avatar.app/image/avatar-1.jpg',
     });
   },
   render: (args) => (
@@ -485,10 +493,11 @@ export const AuthenticatedWithAvatar: Story = {
 
     const userMenuTrigger = screen.getByTestId('user-menu-trigger');
 
+    // Radix only renders the <img> once it loads successfully.
     await waitFor(async () => {
       const avatar = userMenuTrigger.querySelector('img');
       await expect(avatar).toBeInTheDocument();
-      await expect(avatar?.getAttribute('src')).toContain('example.com/avatar');
+      await expect(avatar?.getAttribute('src')).toContain('notion-avatar.app/image/avatar-1.jpg');
     });
   },
 };
@@ -577,7 +586,13 @@ export const AuthenticatedWithoutAvatar: Story = {
     );
 
     const userMenuTrigger = screen.getByTestId('user-menu-trigger');
+    // No image URL → initials fallback ("Test User" → "TU") inside the avatar circle.
     await expect(userMenuTrigger.querySelector('img')).not.toBeInTheDocument();
+    await waitFor(async () => {
+      const fallback = userMenuTrigger.querySelector('[data-slot="avatar-fallback"]');
+      await expect(fallback).toBeInTheDocument();
+      await expect(fallback).toHaveTextContent('TU');
+    });
 
     await userEvent.click(userMenuTrigger);
 
@@ -792,5 +807,195 @@ export const JoshuaIntroChapter: Story = {
       // Should NOT show a verse reference like "Joshua :intro-0"
       await expect(popover?.textContent).not.toContain('intro-0');
     });
+  },
+};
+
+/**
+ * Controlled mode (YPE-3705): the host supplies highlight data via the
+ * `highlights` prop (core API shape, including range USFMs) and receives
+ * intent events; the reader performs no highlight persistence. Tweak the
+ * `highlights` arg and watch the paint follow; select verses and tap colors to
+ * see `onVerseSelect` / `onHighlightApply` / `onHighlightRemove` in the
+ * Actions panel. Note: taps paint nothing here — there is no host echoing the
+ * intents back (see `ControlledFakeHost` for the round-trip).
+ */
+export const Controlled: Story = {
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+    highlights: [
+      { version_id: 111, passage_id: 'JHN.1.1', color: 'fffe00' },
+      { version_id: 111, passage_id: 'JHN.1.3-5', color: '5dff79' },
+    ],
+    onVerseSelect: fn(),
+    onHighlightApply: fn(),
+    onHighlightRemove: fn(),
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+};
+
+/**
+ * Splits a stored highlight into per-verse entries so it can be matched
+ * against an intent's per-verse `passageIds`. API data may hold range USFMs
+ * (`JHN.1.3-5`); matching those as opaque strings would silently miss, and a
+ * partial removal (one verse out of a range) must split the range, not drop
+ * it. Unexpandable ids pass through untouched.
+ */
+const toPerVerse = (h: Highlight): Highlight[] => {
+  const expanded = expandPassageId(h.passage_id);
+  if (!expanded) return [h];
+  return expanded.verses.map((verse) => ({
+    version_id: h.version_id,
+    passage_id: `${expanded.book}.${expanded.chapter}.${verse}`,
+    color: h.color,
+  }));
+};
+
+/** True when a per-verse stored entry is covered by an intent's verses. */
+const matchesIntent = (h: Highlight, intent: BibleReaderHighlightIntent) =>
+  h.version_id === intent.versionId && intent.passageIds.includes(h.passage_id);
+
+/**
+ * Controlled mode with a stateful fake host that echoes `onHighlightApply` /
+ * `onHighlightRemove` back into the `highlights` prop — the executable
+ * reference implementation of the round-trip contract for native hosts
+ * (RN Expo, YPE-3710). Selecting verses and tapping a color paints only via
+ * the prop update; tapping an X circle un-paints the same way.
+ */
+export const ControlledFakeHost: Story = {
+  name: 'Controlled (fake host)',
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+    onVerseSelect: fn(),
+    onHighlightApply: fn(),
+    onHighlightRemove: fn(),
+  },
+  render: function FakeHostStory(args: BibleReaderRootProps) {
+    // The host's own highlight store. A real native host owns this in its data
+    // layer (with the API, cache, and optimism behind it); the reader only ever
+    // sees the resulting array. Seeded with a range USFM on purpose — API data
+    // can hold ranges, and intents are per-verse, so every write normalizes the
+    // store through `toPerVerse` before matching.
+    const [highlights, setHighlights] = useState<Highlight[]>([
+      { version_id: 111, passage_id: 'JHN.1.1', color: 'fffe00' },
+      { version_id: 111, passage_id: 'JHN.1.3-5', color: '5dff79' },
+    ]);
+
+    const handleApply = (intent: BibleReaderHighlightIntent) => {
+      args.onHighlightApply?.(intent);
+      setHighlights((prev) => [
+        // Replace any existing entry for these verses (last write wins).
+        ...prev.flatMap(toPerVerse).filter((h) => !matchesIntent(h, intent)),
+        ...intent.passageIds.map((passage_id) => ({
+          version_id: intent.versionId,
+          passage_id,
+          color: intent.color,
+        })),
+      ]);
+    };
+
+    const handleRemove = (intent: BibleReaderHighlightIntent) => {
+      args.onHighlightRemove?.(intent);
+      setHighlights((prev) => prev.flatMap(toPerVerse).filter((h) => !matchesIntent(h, intent)));
+    };
+
+    return (
+      <div className="yv:h-screen yv:bg-background">
+        <BibleReader.Root
+          {...args}
+          highlights={highlights}
+          onHighlightApply={handleApply}
+          onHighlightRemove={handleRemove}
+        >
+          <BibleReader.Content />
+          <BibleReader.Toolbar />
+        </BibleReader.Root>
+      </div>
+    );
+  },
+};
+
+export const ChapterChangeLoadingOverlay: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('*/v1/bibles/111/passages/:usfm', async ({ params }) => {
+          await delay(800);
+          const usfm = params.usfm as string;
+          return HttpResponse.json({
+            id: usfm,
+            content: `<div class="p"><span class="verse">Passage text for ${usfm}.</span></div>`,
+            reference: usfm,
+          });
+        }),
+        ...globalHandlers,
+      ],
+    },
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(
+      async () => {
+        const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(renderer?.textContent).toContain('JHN.1');
+      },
+      { timeout: 5000 },
+    );
+
+    const nextButton = screen.getByRole('button', { name: /next chapter/i });
+    await userEvent.click(nextButton);
+
+    const rendererAfterClick = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+    await expect(rendererAfterClick?.textContent).toContain('JHN.1');
+
+    await waitFor(
+      async () => {
+        const overlay = canvasElement.querySelector('[aria-label="Loading passage"]');
+        await expect(overlay).toBeInTheDocument();
+        await expect(overlay).toHaveAttribute('role', 'status');
+        await expect(canvasElement.querySelector('[class*="opacity-40"]')).toBeInTheDocument();
+        const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(renderer?.textContent).toContain('JHN.1');
+      },
+      { timeout: 2000 },
+    );
+
+    await waitFor(
+      async () => {
+        const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(renderer?.textContent).toContain('JHN.2');
+        await expect(
+          canvasElement.querySelector('[aria-label="Loading passage"]'),
+        ).not.toBeInTheDocument();
+        await expect(canvasElement.querySelector('[class*="opacity-40"]')).not.toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    const scroller = canvasElement.querySelector('main');
+    await expect(scroller?.scrollTop).toBe(0);
   },
 };

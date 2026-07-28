@@ -1,7 +1,10 @@
 ![image](/assets/github-react-sdk-banner.png)
 
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
-![Node.js >= 20.0.0](https://img.shields.io/badge/Node.js-%3E%3D%2020.0.0-339933?logo=node.js&logoColor=white)
+![Node.js >= 22.13](https://img.shields.io/badge/Node.js-%3E%3D%2022.13-339933?logo=node.js&logoColor=white)
+![Core coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/youversion/platform-sdk-react/badges/core.json)
+![Hooks coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/youversion/platform-sdk-react/badges/hooks.json)
+![UI coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/youversion/platform-sdk-react/badges/ui.json)
 
 # YouVersion Platform React SDK
 

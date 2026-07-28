@@ -6,7 +6,14 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/", "lib/**"],
-      "env": ["NODE_ENV"],
+      "env": [
+        "NODE_ENV",
+        "YVP_PUBLISH_BUILD",
+        "VITE_BASE_PATH",
+        "VITE_YVP_APP_KEY",
+        "VITE_YVP_API_HOST",
+        "VITE_YVP_AUTH_REDIRECT_URL"
+      ],
       "cache": true
     },
     "dev": {

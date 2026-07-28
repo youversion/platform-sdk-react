@@ -1,7 +1,8 @@
 import { http, HttpResponse } from 'msw';
-import type { Collection, Highlight, Language } from '../types';
+import type { Collection, Language } from '../types';
 import { mockLanguages } from './MockLanguages';
 import { mockVersions, mockVersionKJV } from './MockVersions';
+import { mockOrganizations } from './MockOrganizations';
 import { mockBibleGenesis, mockBibleBooks } from './MockBibles';
 import { mockChapterGenesis1, mockGenesisChapters } from './MockChapters';
 import { mockGen1Verse1, mockGen1Verses } from './MockVerses';
@@ -21,7 +22,29 @@ if (!apiHost) {
   throw new Error('YVP_API_HOST environment variable must be set to run handler tests.');
 }
 
+/** Mirrors the live API's 401 when no `Authorization: Bearer` header is sent. */
+function requireBearerAuth(request: Request): Response | null {
+  if (request.headers.get('Authorization')?.startsWith('Bearer ')) {
+    return null;
+  }
+  return HttpResponse.json(
+    { error: 'invalid_request', error_description: 'Missing or invalid Bearer token' },
+    { status: 401 },
+  );
+}
+
 export const handlers = [
+  // Organizations endpoints
+  http.get(`https://${apiHost}/v1/organizations/:organizationId`, ({ params }) => {
+    const { organizationId } = params;
+    const organization = mockOrganizations.find((org) => org.id === organizationId);
+
+    if (!organization) {
+      return new HttpResponse(null, { status: 404 });
+    }
+
+    return HttpResponse.json(organization);
+  }),
   // Languages endpoints
   http.get(`https://${apiHost}/v1/languages/:languageId`, ({ params }) => {
     const { languageId } = params;
@@ -75,38 +98,70 @@ export const handlers = [
     return HttpResponse.json(response);
   }),
 
-  // Highlights endpoints
+  // Highlights endpoints. These handlers intentionally enforce the documented
+  // API contract (Bearer auth, `bible_id` naming, enveloped POST body) so the
+  // client cannot drift from it without tests failing.
   http.get(`https://${apiHost}/v1/highlights`, ({ request }) => {
+    const authError = requireBearerAuth(request);
+    if (authError) return authError;
+
     const url = new URL(request.url);
-    const bibleId = url.searchParams.get('version_id');
+    const bibleId = url.searchParams.get('bible_id');
     const passageId = url.searchParams.get('passage_id');
+    if (!bibleId || !passageId) {
+      return HttpResponse.json(
+        { error: 'invalid_request', error_description: 'bible_id and passage_id are required' },
+        { status: 400 },
+      );
+    }
 
-    const highlights: Collection<Highlight> = {
+    return HttpResponse.json({
       data: [
-        {
-          version_id: bibleId ? Number(bibleId) : 111,
-          passage_id: passageId || 'MAT.1.1',
-          color: 'fffe00',
-        },
-        {
-          version_id: bibleId ? Number(bibleId) : 111,
-          passage_id: passageId || 'MAT.1.2',
-          color: '5dff79',
-        },
+        { bible_id: Number(bibleId), passage_id: `${passageId}.1`, color: 'fffe00' },
+        { bible_id: Number(bibleId), passage_id: `${passageId}.2`, color: '5dff79' },
       ],
-      next_page_token: null,
-    };
-
-    return HttpResponse.json(highlights);
+    });
   }),
 
   http.post(`https://${apiHost}/v1/highlights`, async ({ request }) => {
-    const body = (await request.json()) as Highlight;
+    const authError = requireBearerAuth(request);
+    if (authError) return authError;
 
-    return HttpResponse.json(body, { status: 201 });
+    const body = (await request.json()) as {
+      request_id?: string;
+      highlight?: { bible_id?: number; passage_id?: string; color?: string };
+    };
+    if (
+      !body.request_id ||
+      !body.highlight?.bible_id ||
+      !body.highlight.passage_id ||
+      !body.highlight.color
+    ) {
+      return HttpResponse.json(
+        {
+          error: 'invalid_request',
+          error_description:
+            'Body must be { request_id, highlight: { bible_id, passage_id, color } }',
+        },
+        { status: 400 },
+      );
+    }
+
+    return HttpResponse.json(body.highlight, { status: 201 });
   }),
 
-  http.delete(`https://${apiHost}/v1/highlights/:passageId`, () => {
+  http.delete(`https://${apiHost}/v1/highlights/:passageId`, ({ request }) => {
+    const authError = requireBearerAuth(request);
+    if (authError) return authError;
+
+    const url = new URL(request.url);
+    if (!url.searchParams.get('bible_id')) {
+      return HttpResponse.json(
+        { error: 'invalid_request', error_description: 'bible_id is required' },
+        { status: 400 },
+      );
+    }
+
     return new HttpResponse(null, { status: 204 });
   }),
 

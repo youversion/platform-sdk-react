@@ -45,12 +45,19 @@ layer(yv-sdk-fonts);
 @import '@youversion/platform-core/browser/styles/bible-reader.css' layer(yv-sdk-bible-reader);
 @import 'tw-animate-css';
 
+/* Brand fonts (Aktiv Grotesk App / Untitled Serif @font-face) removed pending licensing —
+   see docs/adr/0001-revert-brand-fonts-pending-licensing.md. Sans/serif now resolve to
+   Inter / Source Serif 4 (loaded via the Google Fonts @import above). Brand-font
+   implementation parked on branch feat/youversion-brand-fonts. */
+
 /* #region shadcn UI theme */
 @custom-variant dark (&:is([data-yv-sdk][data-yv-theme='dark'] *));
 
 @layer yv-sdk-theme {
   [data-yv-sdk] {
     @theme inline {
+      /* Brand fonts reverted to Inter / Source Serif 4 pending licensing — see
+         docs/adr/0001-revert-brand-fonts-pending-licensing.md. */
       --font-sans: 'Inter', sans-serif;
       --font-serif: 'Source Serif 4', serif;
       --color-background: var(--yv-background);
@@ -100,6 +107,18 @@ layer(yv-sdk-fonts);
   }
 }
 
+/* Verse selection — an underline under the selected verse's text. Sits in the
+   bible-reader layer alongside the `.yv-v` verse structure. Highlight fills are
+   applied as inline styles in verse.tsx (per-verse color), so they aren't here. */
+@layer yv-sdk-bible-reader {
+  [data-yv-sdk] .yv-v-selected {
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 2px;
+    text-decoration-color: var(--yv-foreground);
+  }
+}
+
 @utility touch-hitbox {
   position: relative;
 
@@ -122,4 +141,15 @@ layer(yv-sdk-fonts);
   width: 100%;
   max-width: 600px;
   margin-inline: auto;
+}
+
+/* Hide the scrollbar on horizontally scrollable rows (e.g. the verse-action
+   popover's swatch row) while keeping the element scrollable via touch/wheel/
+   keyboard. Firefox uses scrollbar-width; WebKit/Blink use the pseudo-element. */
+@utility scrollbar-hide {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }

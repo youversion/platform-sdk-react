@@ -6,6 +6,7 @@ import {
   type SignInWithYouVersionResult,
   type YouVersionUserInfo,
   type AuthenticationScopes,
+  type SignInWithYouVersionPermissionValues,
 } from '@youversion/platform-core';
 import { useYouVersionAuthContext } from './context/YouVersionAuthContext';
 
@@ -14,7 +15,11 @@ export interface UseYVAuthReturn {
   auth: AuthenticationState;
 
   // Actions
-  signIn: (params?: { redirectUrl?: string; scopes?: AuthenticationScopes[] }) => Promise<void>;
+  signIn: (params?: {
+    redirectUrl?: string;
+    scopes?: AuthenticationScopes[];
+    permissions?: SignInWithYouVersionPermissionValues[];
+  }) => Promise<void>;
   signOut: () => void;
 
   // Callback processing (for callback page) - caches user info
@@ -122,26 +127,25 @@ export function useYVAuth(): UseYVAuthReturn {
     if (typeof window !== 'undefined') {
       return {
         accessToken: YouVersionPlatformConfiguration.accessToken,
-        idToken: YouVersionPlatformConfiguration.idToken,
       };
     }
-    return { accessToken: null, idToken: null };
+    return { accessToken: null };
   }, []);
 
   // Sign in function
   const signIn = useCallback(
-    async (params?: { redirectUrl?: string; scopes?: AuthenticationScopes[] }) => {
+    async (params?: {
+      redirectUrl?: string;
+      scopes?: AuthenticationScopes[];
+      permissions?: SignInWithYouVersionPermissionValues[];
+    }) => {
       const url = params?.redirectUrl ?? redirectUri;
       if (!url) {
         throw new Error(
           'redirectUrl is required. Provide it via signIn params or configure redirectUri in the auth provider.',
         );
       }
-      if (params?.scopes) {
-        await YouVersionAPIUsers.signIn(url, params.scopes);
-      } else {
-        await YouVersionAPIUsers.signIn(url);
-      }
+      await YouVersionAPIUsers.signIn(url, params?.scopes, params?.permissions);
       // Note: This will redirect, so code after this won't execute
     },
     [redirectUri],
@@ -159,11 +163,10 @@ export function useYVAuth(): UseYVAuthReturn {
       isAuthenticated,
       isLoading,
       accessToken: authTokens.accessToken,
-      idToken: authTokens.idToken,
       result: null,
       error,
     }),
-    [isAuthenticated, isLoading, authTokens.accessToken, authTokens.idToken, error],
+    [isAuthenticated, isLoading, authTokens.accessToken, error],
   );
 
   // Sign out function

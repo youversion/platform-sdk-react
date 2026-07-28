@@ -1,5 +1,145 @@
 # @youversion/platform-core
 
+## 2.4.0
+
+### Patch Changes
+
+- 71e4c1a: Fix one-shot sign-in dropping the `highlights` grant when the auth server echoes it back with PHP/Rails bracket-array notation (`granted_permissions[]=highlights`).
+
+  `parseGrantedPermissions` read only the bare `granted_permissions` key, but `URLSearchParams` treats `granted_permissions[]` (and indexed `granted_permissions[0]`) as distinct keys. The server demonstrably uses this bracket notation for the analogous outbound `requested_permissions[]` param it builds on the hosted consent redirect, so a return echo in the same shape was silently discarded — leaving the permission cache empty and re-prompting the just-in-time data-exchange consent after a completed sign-in. The parser now accepts `granted_permissions`, `granted_permissions[]`, and `granted_permissions[<index>]`, keeping it symmetric with the server's encoding. Purely additive: bare `granted_permissions` and all user/state-scoping and fail-closed protections are unchanged.
+
+- 71e4c1a: BibleReader highlights are now real, server-backed YouVersion highlights, with a built-in sign-in and permission flow so a reader's highlights persist to their YouVersion account.
+
+  **Important: previous releases accidentally shipped a demo-only, localStorage-based highlights implementation in BibleReader. It stored highlights only in the local browser and never synced to the reader's YouVersion account. That implementation has been removed and replaced by the server-backed highlights described here.** These highlights are live in this release and enabled by default.
+  - Server-backed highlights in BibleReader: tap verses, pick a color, and highlights persist to the reader's YouVersion account instead of the local browser.
+  - Built-in sign-in dialog and just-in-time `highlights` permission flow: a highlight tap while signed out opens a sign-in dialog; a missing `highlights` permission triggers the YouVersion data-exchange consent flow, and the pending highlight is applied automatically once consent is granted (surviving the redirect round-trip).
+  - New `BibleReader` props `appName` and `signInPromptMessage` for the sign-in dialog (Swift SDK parity): `appName` names your app in the dialog, and `signInPromptMessage` shows an optional integrator pitch (hidden when unset).
+  - Optimistic UI: color taps apply and remove instantly while writes settle in the background, with automatic revert on network/5xx failures and a re-prompt on auth failures (401/403).
+  - Behavior change in `useHighlights`: `createHighlight` and `deleteHighlight` no longer auto-refetch. Direct consumers must now call `refetch()` themselves after their mutations settle; the BibleReader flow coordinates this for you (batching a set of verse writes into a single refetch).
+  - New exports: `YouVersionAuthContext` from `@youversion/platform-react-hooks` (the no-throw alternative to `useYVAuth` for components that must tolerate a missing auth provider), and a re-export of the `Highlight` type from `@youversion/platform-react-ui`.
+  - The active color swatch now shows a checkmark (24px `icons/check`) instead of an X, matching the Bible app; tapping it still removes the highlight.
+  - Highlight-flow reliability fixes surfaced by staging: the previously invisible primary button in the permission dialog now uses the correct `bg-primary` / `text-primary-foreground` pairing (it resolved to white-on-white in light mode); the optimistic overlay is retired only once a refetch actually reflects the write, so highlights no longer flicker out and back under read-after-write lag; removes now send one DELETE per verse (range DELETE is unsupported by the API), while applies still collapse contiguous verses into range USFMs; and highlight fills now fade their background color (~250ms, disabled under `prefers-reduced-motion`) instead of popping in.
+  - Fix: the core `ApiClient` now treats empty-body 2xx JSON responses as success with no data. Previously a successful highlight delete (a 200 with an empty body) was misread as a failure, briefly flashing the removed highlight back before it disappeared.
+  - Fix: duplicate processing of the same OAuth callback (e.g. the double-invoked auth init effect under React StrictMode) can no longer clear a just-granted `highlights` permission. The code-for-token exchange is now deduped by authorization code, so a repeated callback shares the one exchange instead of firing a second request whose failure would wipe the freshly seeded grant and re-prompt for permission.
+  - Fix: a one-shot `highlights` sign-in no longer re-prompts for permission when the auth server omits the grant echo. On the web flow the server returns no `granted_permissions` on the callback and no data-exchange scope on the token, so nothing seeded the permission cache and the flow immediately re-prompted after consent. The permissions requested at sign-in are now stashed (bound to the OAuth `state`) and seeded optimistically on return; the seed is self-correcting because a 401/403 on the first write drops the permission and re-prompts.
+  - Fix: concurrent token refreshes (e.g. the double-invoked auth init effect under React StrictMode) now share a single in-flight refresh, so a losing duplicate can no longer spend the single-use refresh token a second time and wipe the session on its failure.
+  - Fix: verse labels and footnote icons now inherit the surrounding text color over highlight fills instead of being painted with the fill color, keeping them legible on highlighted verses.
+  - Theme-aware highlight rendering: highlight fills render at full opacity in light mode and 30 percent opacity in dark mode, matching the Swift SDK; verse numbers over dark-mode highlights render white. Highlight fills now have subtly rounded corners, with each wrapped line fragment getting its own rounded ends so a multi-line highlight no longer cuts off square at the wrap. The verse-action popover color swatches preview the real fill: in dark mode they show the same dimmed color a highlight will apply. Opening the popover with a mouse or touch no longer flashes a focus ring on the first swatch; keyboard navigation still shows a clearly visible focus ring.
+
+## 2.3.0
+
+### Minor Changes
+
+- d6ab2d5: Fix `HighlightsClient` to match the live highlights API contract. The client previously sent requests the API rejects on every call (401/400), so highlights could never be fetched, created, or deleted.
+  - Auth token is now sent as an `Authorization: Bearer <token>` header instead of a `lat` query parameter
+  - Query/body fields now use the API's `bible_id` naming on the wire (the SDK keeps `version_id` in its public types and maps at the boundary)
+  - `createHighlight` now sends the required `{ request_id, highlight: { ... } }` envelope (`request_id` is a unique per-request id the API requires)
+  - `getHighlights` now requires `version_id` and `passage_id` (verse or chapter USFM), and `deleteHighlight` requires `version_id`, matching the API's required parameters; `useHighlights` options are updated accordingly
+  - `getHighlights` now treats a `204` (no highlights for the passage) as an empty collection instead of throwing
+  - `createHighlight` normalizes `color` to lowercase before sending, since the API accepts lowercase hex only
+  - API responses are validated with Zod and mapped from the wire shape
+
+- 683c123: Allow requesting YouVersion data-exchange permissions (e.g. `highlights`) at sign-in. These are intentionally not OIDC scopes: they ride alongside the standard `scope` param as repeatable `requested_permissions[]` query params on the authorize URL and are authorized via a separate per-app ACL rather than the token's scope claim.
+  - `YouVersionAPIUsers.signIn(redirectURL, scopes?, permissions?)` and the underlying PKCE authorization request builder now accept a `permissions` array typed as `SignInWithYouVersionPermissionValues[]`.
+  - `useYVAuth().signIn({ permissions })` forwards them from React.
+  - `<YouVersionAuthButton permissions={['highlights']} />` requests them from the sign-in button.
+
+  Scopes and permissions are separate arguments; existing calls that only pass scopes are unaffected.
+
+### Patch Changes
+
+- fb7ac35: Tag the `X-YVP-Sdk` header with a `-dev` suffix for non-published builds so platform telemetry can separate internal YouVersion dev-time traffic from published partner traffic.
+
+  Published builds report the real version (`ReactSDK=2.2.0`); builds from source, dev, or tests report `ReactSDK=2.2.0-dev`. The version is stamped at build time via `YVP_PUBLISH_BUILD` (set by each package's `prepublishOnly`), and a publish guard aborts the release if an unstamped `-dev` build would ship. Published header values are otherwise unchanged, and consumers can still override `X-YVP-Sdk` via `additionalHeaders`.
+
+## 2.2.0
+
+### Minor Changes
+
+- 0d184fc: Update the Bible Version picker to match the latest Reader SDK Figma design, adding publisher names and refreshing the abbreviation tile.
+  - `@youversion/platform-core`: New `OrganizationsClient` with `getOrganization(organizationId)` for fetching an organization by its UUID (`GET /v1/organizations/{id}`), validated against the existing `OrganizationSchema`. Design tokens use Inter (`--yv-font-sans`) and Source Serif 4 (`--yv-font-serif`); the YouVersion brand fonts (Aktiv Grotesk App / Untitled Serif) are reverted pending licensing — see `docs/adr/0001-revert-brand-fonts-pending-licensing.md`.
+  - `@youversion/platform-react-hooks`: New `useOrganization(organizationId)` hook (plus `useOrganizationsClient`) following the standard `useApiData` pattern. Fetching is skipped when the id is empty. Also adds `useOrganizations(organizationIds)`, which resolves many organizations at once, deduplicated by id, so a list of versions sharing publishers only fetches each organization once.
+  - `@youversion/platform-react-ui`: `BibleVersionPicker` now renders the publisher name above the version title for versions that have an `organization_id` (rows without an associated organization render the title only), and recently used versions persist `organization_id` so they display the publisher too. Publisher names are resolved once at the list level via `useOrganizations` instead of per row, avoiding N+1 requests when many versions share a publisher. The `VersionAbbreviationIcon` tile now renders as a 64px square with a 6px radius, warm-neutral (`secondary`) fill, themed border, and serif typography (Source Serif 4) using the foreground text color; recent-version and all-version rows share the same tile styling, and long or trailing-digit abbreviations (e.g. `NASB1995` → `NASB` / `1995`) stay readable without overflowing. Brand fonts (Aktiv Grotesk App / Untitled Serif) are reverted to Inter / Source Serif 4 pending licensing; the brand-font implementation is parked on branch `feat/youversion-brand-fonts`.
+
+## 2.1.0
+
+## 2.0.1
+
+## 2.0.0
+
+### Major Changes
+
+- b8309a4: Stop persisting the ID token and harden the auth flow against stale/exposed state.
+
+  The ID token is now decoded once at sign-in to derive the user profile and then
+  discarded — only the decoded profile is persisted (validated with Zod on read),
+  so it survives reloads without keeping the signed token in `localStorage`. The
+  stored profile is cleared on sign-out and when a session expires and cannot be
+  refreshed.
+
+  Additional hardening:
+  - The raw ID token is no longer attached to the sign-in result. It is decoded
+    transiently at sign-in to derive the profile and then discarded, so callback
+    consumers can no longer read it from memory.
+  - `YouVersionAPIUsers.getStoredUserInfo()` now returns `null` when the persisted
+    profile has no `id`, so a tampered or empty stored profile cannot present as a
+    signed-in user with an empty profile.
+  - `YouVersionAPIUsers.handleAuthCallback()` now clears persisted tokens and the
+    stored profile if an error is thrown after they were written, so a failed
+    callback cannot leave the user looking authenticated.
+
+  **Breaking changes:**
+  - `AuthenticationState.idToken` has been removed. Components that read
+    `auth.idToken` from `useYVAuth()` should no longer rely on it; use `userInfo`
+    for profile data.
+  - `SignInWithYouVersionResult.idToken` has been removed. The result returned by
+    `handleAuthCallback()` (and `processCallback()` in `useYVAuth`) no longer
+    exposes the ID token; use `userInfo`/`yvpUserId` for profile data.
+  - `YouVersionPlatformConfiguration.saveAuthData(accessToken, refreshToken, expiryDate)`
+    no longer accepts an `idToken` argument.
+  - `YouVersionPlatformConfiguration.idToken` getter has been removed. The decoded
+    profile is available via `YouVersionPlatformConfiguration.storedUserInfo` (or
+    `YouVersionAPIUsers.getStoredUserInfo()`).
+  - `YouVersionAPIUsers.refreshTokens()` no longer requires a stored ID token.
+
+- 52aa3b4: Remove deprecated APIs and tighten `BibleIndex` types (breaking changes).
+
+  This major release removes APIs that were previously marked `@deprecated`, plus one type-only tightening. Migration steps below.
+
+  **1. `YouVersionAuthButton` — removed the `redirectUrl` prop**
+
+  Set the OAuth callback URL once on the provider instead. The per-call `signIn({ redirectUrl })` escape hatch in `useYVAuth` is unchanged.
+
+  ```diff
+  - <YouVersionProvider appKey="...">
+  -   <YouVersionAuthButton redirectUrl="https://myapp.com/callback" />
+  + <YouVersionProvider appKey="..." authRedirectUrl="https://myapp.com/callback">
+  +   <YouVersionAuthButton />
+    </YouVersionProvider>
+  ```
+
+  **2. `BibleWidgetView` — removed**
+
+  The deprecated alias is gone. Use `BibleCard` / `BibleCardProps` (same component, renamed).
+
+  ```diff
+  - import { BibleWidgetView, type BibleWidgetViewProps } from '@youversion/platform-react-ui';
+  + import { BibleCard, type BibleCardProps } from '@youversion/platform-react-ui';
+  ```
+
+  **3. Unused hooks and contexts — removed**
+
+  These had zero consumers. Removed from `@youversion/platform-react-hooks`:
+  - `useInitData` — use `useVersion`, `useBook`, and `useChapter` directly.
+  - `useChapterNavigation` — use `getAdjacentChapter` from `@youversion/platform-core`.
+  - `useVerseSelection`, `VerseSelectionProvider`, `VerseSelectionContext` — no replacement; handle verse selection via your own props/callbacks.
+  - `ReaderProvider`, `ReaderContext`, `useReaderContext` — no replacement.
+  - `DEFAULT` (the `{ VERSION, BOOK, CHAPTER }` constant exported alongside `useInitData`) was removed with it. If you relied on it, inline the values or use `DEFAULT_LICENSE_FREE_BIBLE_VERSION` from `@youversion/platform-core` for the version.
+
+  **4. `BibleIndex` — `passage_id` is now required**
+
+  `passage_id` on `BibleIndexChapter` and `BibleIndexVerse` is no longer optional. The API has always returned it; the Zod schema now enforces this at runtime as well, so consumers who relied on the optional field in mock/fixture objects must add `passage_id` to any such literals. `BibleIndexBook.intro` remains optional.
+
 ## 1.32.0
 
 ### Minor Changes

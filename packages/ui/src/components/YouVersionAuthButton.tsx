@@ -2,7 +2,10 @@ import React, { useMemo } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import i18n from '@/i18n';
 import { LoaderIcon } from './icons/loader';
-import { type AuthenticationScopes } from '@youversion/platform-core';
+import {
+  type AuthenticationScopes,
+  type SignInWithYouVersionPermissionValues,
+} from '@youversion/platform-core';
 import { useYVAuth, useTheme } from '@youversion/platform-react-hooks';
 import { Button } from '../components/ui/button';
 import { YouVersionLogo } from './icons/youversion-logo';
@@ -16,10 +19,10 @@ interface SignInAuthProps {
   onAuthError?: (error: Error) => void;
   scopes?: AuthenticationScopes[];
   /**
-   * The URL to redirect to after authentication.
-   * @deprecated Use `authRedirectUrl` on `YouVersionProvider` instead. This prop will be removed in a future version.
+   * YouVersion data-exchange permissions to request at sign-in (e.g. `highlights`).
+   * These are distinct from OIDC `scopes` and are sent as `requested_permissions`.
    */
-  redirectUrl?: string;
+  permissions?: SignInWithYouVersionPermissionValues[];
 }
 
 export interface YouVersionAuthButtonProps
@@ -116,8 +119,8 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
       onClick,
       mode,
       scopes = [],
+      permissions,
       radius = 'rounded',
-      redirectUrl,
       size = 'default',
       text,
       variant = 'default',
@@ -142,8 +145,8 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
           signOut();
         } else {
           await signIn({
-            redirectUrl,
             scopes,
+            permissions,
           });
         }
       } catch (error) {
@@ -195,6 +198,11 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
           data-yv-theme={theme}
           className={cn(
             'yv:shadow-none yv:p-3 yv:h-auto yv:w-fit',
+            // The YV brand button is a neutral surface (white in light, dark in
+            // dark) with its own text/logo color set below — pin the background
+            // explicitly so it doesn't inherit the `default` variant's
+            // `bg-primary`, which would render the logo unreadable.
+            'yv:bg-background yv:hover:bg-background/90',
             variant === 'outline' ? 'yv:border' : 'yv:border-none',
             theme === 'light' ? 'yv:text-black' : 'yv:text-white',
             className,
@@ -228,6 +236,9 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
         data-yv-theme={theme}
         className={cn(
           'yv:relative yv:shadow-none yv:w-fit',
+          // Pin the neutral brand surface so the button doesn't inherit the
+          // `default` variant's `bg-primary` (see the icon branch above).
+          'yv:bg-background yv:hover:bg-background/90',
           variant === 'outline' ? 'yv:border' : 'yv:border-none',
           theme === 'light' ? 'yv:text-black' : 'yv:text-white',
           className,

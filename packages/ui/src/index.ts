@@ -12,6 +12,9 @@ export {
   // Authentication
   type ApiConfig,
   type AuthenticationState,
+
+  // Highlights (the shape of BibleReader.Root's controlled `highlights` prop)
+  type Highlight,
 } from '@youversion/platform-core';
 
 export {

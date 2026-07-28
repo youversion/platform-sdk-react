@@ -4,14 +4,8 @@ import { BookUsfmSchema, CanonSchema } from './book';
 const BibleIndexVerseSchema = z.object({
   /** Verse identifier */
   id: z.string(),
-  /**
-   * Passage identifier (e.g., "GEN.1.1").
-   *
-   * The API always returns this, but it's typed as optional to avoid a breaking
-   * change for consumers who construct these objects (e.g. test fixtures/mocks).
-   * TODO(next-major): make this required.
-   */
-  passage_id: z.string().optional(),
+  /** Passage identifier (e.g., "GEN.1.1"). */
+  passage_id: z.string(),
   /** Verse title */
   title: z.string(),
 });
@@ -21,14 +15,8 @@ export type BibleIndexVerse = Readonly<z.infer<typeof BibleIndexVerseSchema>>;
 const BibleIndexChapterSchema = z.object({
   /** Chapter identifier */
   id: z.string(),
-  /**
-   * Passage identifier (e.g., "GEN.1").
-   *
-   * The API always returns this, but it's typed as optional to avoid a breaking
-   * change for consumers who construct these objects (e.g. test fixtures/mocks).
-   * TODO(next-major): make this required.
-   */
-  passage_id: z.string().optional(),
+  /** Passage identifier (e.g., "GEN.1"). */
+  passage_id: z.string(),
   /** Chapter title */
   title: z.string(),
   /** Array of verses in this chapter */

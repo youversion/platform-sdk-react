@@ -196,3 +196,56 @@ describe('BibleChapterPicker.Content onSelect', () => {
     });
   });
 });
+
+describe('BibleChapterPicker - typography (matches Figma sizing; sans inherited)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaultMocks();
+  });
+
+  function findAccordionTrigger(name: RegExp): HTMLElement | undefined {
+    return screen
+      .queryAllByRole('button', { name })
+      .find((button) => button.getAttribute('data-slot') === 'accordion-trigger');
+  }
+
+  // Render Content inline (onChapterPickerPress path renders children without the popover portal).
+  function renderContent() {
+    render(
+      <BibleChapterPicker.Root
+        versionId={3034}
+        book="GEN"
+        chapter="1"
+        onChapterPickerPress={vi.fn()}
+      >
+        <BibleChapterPicker.Trigger />
+        <BibleChapterPicker.Content />
+      </BibleChapterPicker.Root>,
+    );
+  }
+
+  it('book row uses 16px, regular collapsed and bold when expanded', () => {
+    renderContent();
+
+    // GEN is the default-expanded book (book="GEN").
+    const genesisTrigger = findAccordionTrigger(/Genesis/i);
+    expect(genesisTrigger).toBeDefined();
+    expect(genesisTrigger).toHaveClass('yv:text-base', 'yv:font-normal');
+    expect(genesisTrigger).toHaveAttribute('data-state', 'open');
+    expect(genesisTrigger).toHaveClass('yv:data-[state=open]:font-bold');
+  });
+
+  it('chapter number buttons use Aktiv 16px bold', () => {
+    renderContent();
+
+    const chapterButton = screen.getByText('2').closest('button');
+    expect(chapterButton).not.toBeNull();
+    expect(chapterButton).toHaveClass('yv:text-base', 'yv:font-bold');
+  });
+
+  it('search input uses Aktiv 16px', () => {
+    renderContent();
+
+    expect(screen.getByPlaceholderText('Search')).toHaveClass('yv:text-base');
+  });
+});

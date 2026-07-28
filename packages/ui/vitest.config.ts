@@ -14,6 +14,11 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     passWithNoTests: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json-summary'],
+      reportsDirectory: './coverage',
+    },
     projects: [
       // Unit tests project
       defineProject({

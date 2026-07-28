@@ -3,13 +3,30 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { YouVersionContext } from './YouVersionContext';
-import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
+import {
+  YouVersionPlatformConfiguration,
+  type YouVersionUserInfoJSON,
+} from '@youversion/platform-core';
 
 interface YouVersionProviderPropsBase {
   children: ReactNode;
   appKey: string;
   apiHost?: string;
   theme?: 'light' | 'dark' | 'system';
+  /**
+   * Integrator display name for the sign-in dialog body copy. Synced onto
+   * `YouVersionPlatformConfiguration.appName`. The UI package also mirrors this
+   * onto its bundled core copy (tsup `noExternal`), so pass it via
+   * `YouVersionProvider` props — do not set the config from a separate
+   * `@youversion/platform-core` import when consuming `@youversion/platform-react-ui`.
+   */
+  appName?: string;
+  /**
+   * Optional pitch line for the sign-in dialog. Synced onto
+   * `YouVersionPlatformConfiguration.signInPromptMessage` (and mirrored by the
+   * UI provider onto its bundled core copy — same dual-instance caveat as `appName`).
+   */
+  signInPromptMessage?: string;
   /**
    * Extra HTTP headers to add to every API call made through hooks created by
    * this provider. Values here override the SDK's built-in headers when keys
@@ -22,6 +39,12 @@ interface YouVersionProviderPropsBase {
 interface YouVersionProviderPropsWithAuth extends YouVersionProviderPropsBase {
   authRedirectUrl: string;
   includeAuth: true;
+  /**
+   * Host-controlled auth state. When provided (including `null`), the host owns
+   * sign-in and this profile drives the in-app auth UI instead of the web
+   * token/OAuth flow. Used by the React Native Expo SDK to surface native sign-in.
+   */
+  userInfo?: YouVersionUserInfoJSON | null;
 }
 
 interface YouVersionProviderPropsWithoutAuth extends YouVersionProviderPropsBase {
@@ -62,14 +85,39 @@ function useResolvedTheme(theme: 'light' | 'dark' | 'system'): 'light' | 'dark' 
 export function YouVersionProvider(
   props: PropsWithChildren<YouVersionProviderPropsWithAuth | YouVersionProviderPropsWithoutAuth>,
 ): React.ReactElement {
+  // Fail loudly on a missing/empty app key. Without this the SDK renders an
+  // empty shell and only surfaces errors in the console — see YPE-1565. The UI
+  // package's provider catches this earlier and renders a styled message
+  // instead; this throw is the baseline guarantee for hooks-only consumers.
+  //
+  // The guard lives in this thin wrapper so the hook-bearing implementation is
+  // never entered with an invalid key. Keeping the throw out of the component
+  // that calls hooks avoids any hook-order inconsistency if a mounted provider
+  // ever transitions between a valid and an empty appKey.
+  if (!props.appKey?.trim()) {
+    throw new Error(
+      'YouVersionProvider: a non-empty "appKey" is required. If you load it from an ' +
+        'environment variable, make sure it is set and restart your dev server.',
+    );
+  }
+
+  return <YouVersionProviderInner {...props} />;
+}
+
+function YouVersionProviderInner(
+  props: PropsWithChildren<YouVersionProviderPropsWithAuth | YouVersionProviderPropsWithoutAuth>,
+): React.ReactElement {
   const {
     appKey,
     apiHost = 'api.youversion.com',
     includeAuth,
     theme = 'light',
     additionalHeaders,
+    appName,
+    signInPromptMessage,
     children,
   } = props;
+
   const resolvedTheme = useResolvedTheme(theme);
 
   // Stable identity so memoized consumers (hooks that build ApiClient) don't
@@ -92,7 +140,9 @@ export function YouVersionProvider(
   useEffect(() => {
     YouVersionPlatformConfiguration.appKey = appKey;
     YouVersionPlatformConfiguration.apiHost = apiHost;
-  }, [appKey, apiHost]);
+    YouVersionPlatformConfiguration.appName = appName;
+    YouVersionPlatformConfiguration.signInPromptMessage = signInPromptMessage;
+  }, [appKey, apiHost, appName, signInPromptMessage]);
 
   const contextValue = {
     appKey,
@@ -107,7 +157,10 @@ export function YouVersionProvider(
     return (
       <YouVersionContext.Provider value={contextValue}>
         <Suspense>
-          <AuthProvider config={{ appKey, apiHost, redirectUri: props.authRedirectUrl }}>
+          <AuthProvider
+            config={{ appKey, apiHost, redirectUri: props.authRedirectUrl }}
+            userInfo={props.userInfo}
+          >
             {children}
           </AuthProvider>
         </Suspense>

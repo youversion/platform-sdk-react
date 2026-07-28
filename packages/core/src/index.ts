@@ -1,11 +1,21 @@
-export { ApiClient } from './client';
+export { ApiClient, getHttpStatus } from './client';
 export { BibleClient } from './bible';
 export { LanguagesClient, type GetLanguagesOptions } from './languages';
+export { OrganizationsClient } from './organizations';
 export {
   HighlightsClient,
   type GetHighlightsOptions,
   type DeleteHighlightOptions,
 } from './highlights';
+export {
+  DataExchangeClient,
+  buildDataExchangeUrl,
+  parseDataExchangeCallback,
+  handleDataExchangeCallback,
+  type DataExchangeStatus,
+  type DataExchangeCallbackResult,
+} from './data-exchange';
+export { parseGrantedPermissions } from './permissions';
 export * from './StorageStrategy';
 export * from './Users';
 export * from './YouVersionUserInfo';

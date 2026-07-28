@@ -1,6 +1,8 @@
 /**
  * @vitest-environment jsdom
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -584,6 +586,191 @@ describe('Verse.Html - Intro Chapter Footnotes', () => {
       expect(listItems?.length).toBe(1);
       expect(listItems?.[0]?.textContent).toContain('A scholarly note');
     });
+  });
+});
+
+describe('Verse.Html - Highlight fill (theme-aware, Swift parity)', () => {
+  const highlightHtml = `
+    <div class="p">
+      <span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>In the beginning was the Word.
+    </div>
+  `;
+
+  it('paints the fill at full opacity in light mode', async () => {
+    const { container } = render(
+      <Verse.Html html={highlightHtml} theme="light" highlightedVerses={{ 1: 'fffe00' }} />,
+    );
+
+    await waitFor(() => {
+      const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
+      expect(verse).not.toBeNull();
+      // rgba(255, 254, 0, 1) — jsdom serializes full alpha as rgb().
+      expect(verse!.style.backgroundColor).toBe('rgb(255, 254, 0)');
+    });
+  });
+
+  it('paints the fill at 0.3 alpha in dark mode', async () => {
+    const { container } = render(
+      <Verse.Html html={highlightHtml} theme="dark" highlightedVerses={{ 1: 'fffe00' }} />,
+    );
+
+    await waitFor(() => {
+      const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
+      expect(verse).not.toBeNull();
+      expect(verse!.style.backgroundColor).toBe('rgba(255, 254, 0, 0.3)');
+    });
+  });
+
+  it('makes the verse label inherit the body text color over a dark-mode highlight', async () => {
+    const { container } = render(
+      <Verse.Html html={highlightHtml} theme="dark" highlightedVerses={{ 1: 'fffe00' }} />,
+    );
+
+    await waitFor(() => {
+      const label = container.querySelector<HTMLElement>('.yv-v[v="1"] .yv-vlbl');
+      expect(label).not.toBeNull();
+      // `inherit` resolves to the verse body text color, which is white/near-white
+      // in dark mode — preserving the prior explicit-white behavior.
+      expect(label!.style.color).toBe('inherit');
+    });
+  });
+
+  it('makes the verse label inherit the body text color over a light-mode highlight', async () => {
+    const { container } = render(
+      <Verse.Html html={highlightHtml} theme="light" highlightedVerses={{ 1: 'fffe00' }} />,
+    );
+
+    await waitFor(() => {
+      const label = container.querySelector<HTMLElement>('.yv-v[v="1"] .yv-vlbl');
+      expect(label).not.toBeNull();
+      // Over a light-mode fill the muted gray label now matches the body text
+      // color instead of clashing with saturated fills.
+      expect(label!.style.color).toBe('inherit');
+    });
+  });
+
+  it('leaves the verse label color untouched on an unhighlighted verse (light mode)', async () => {
+    const { container } = render(
+      <Verse.Html html={highlightHtml} theme="light" highlightedVerses={{}} />,
+    );
+
+    await waitFor(() => {
+      const label = container.querySelector<HTMLElement>('.yv-v[v="1"] .yv-vlbl');
+      expect(label).not.toBeNull();
+      expect(label!.style.color).toBe('');
+    });
+  });
+
+  it('leaves the verse label color untouched on an unhighlighted verse (dark mode)', async () => {
+    const { container } = render(
+      <Verse.Html html={highlightHtml} theme="dark" highlightedVerses={{}} />,
+    );
+
+    await waitFor(() => {
+      const label = container.querySelector<HTMLElement>('.yv-v[v="1"] .yv-vlbl');
+      expect(label).not.toBeNull();
+      expect(label!.style.color).toBe('');
+      const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
+      expect(verse!.style.backgroundColor).toBe('');
+    });
+  });
+
+  it('clears both the fill and the label recolor when a highlight is removed', async () => {
+    const { container, rerender } = render(
+      <Verse.Html html={highlightHtml} theme="dark" highlightedVerses={{ 1: 'fffe00' }} />,
+    );
+
+    await waitFor(() => {
+      const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
+      expect(verse!.style.backgroundColor).toBe('rgba(255, 254, 0, 0.3)');
+      const label = container.querySelector<HTMLElement>('.yv-v[v="1"] .yv-vlbl');
+      expect(label!.style.color).toBe('inherit');
+    });
+
+    rerender(<Verse.Html html={highlightHtml} theme="dark" highlightedVerses={{}} />);
+
+    await waitFor(() => {
+      const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
+      expect(verse!.style.backgroundColor).toBe('');
+      const label = container.querySelector<HTMLElement>('.yv-v[v="1"] .yv-vlbl');
+      expect(label!.style.color).toBe('');
+    });
+  });
+});
+
+describe('Verse.Html - Footnote icon color over highlight fills', () => {
+  const footnoteHtml = `
+    <div class="p">
+      <span class="yv-v" v="5"></span><span class="yv-vlbl">5</span>The light shines<span class="yv-n f"><span class="fr">1:5 </span><span class="ft">Or understood</span></span> on.
+    </div>
+  `;
+
+  it('makes the footnote icon inherit the body text color over a highlight fill', async () => {
+    const { container } = render(
+      <Verse.Html html={footnoteHtml} theme="light" highlightedVerses={{ 5: 'fffe00' }} />,
+    );
+
+    const btn = await waitFor(() => {
+      const b = container.querySelector<HTMLElement>('[data-verse-footnote="5"] button');
+      expect(b).not.toBeNull();
+      return b!;
+    });
+
+    expect(btn.className).toContain('yv:text-inherit');
+    expect(btn.className).not.toContain('yv:text-(--yv-gray-20)');
+  });
+
+  it('keeps the footnote icon muted-gray on an unhighlighted verse', async () => {
+    const { container } = render(
+      <Verse.Html html={footnoteHtml} theme="light" highlightedVerses={{}} />,
+    );
+
+    const btn = await waitFor(() => {
+      const b = container.querySelector<HTMLElement>('[data-verse-footnote="5"] button');
+      expect(b).not.toBeNull();
+      return b!;
+    });
+
+    expect(btn.className).toContain('yv:text-(--yv-gray-20)');
+    expect(btn.className).not.toContain('yv:text-inherit');
+  });
+});
+
+describe('Verse.Html - Rounded highlight fill (static structural CSS)', () => {
+  // The rounded corners / clone / padding are structural styles that live in the
+  // core stylesheet (`bible-reader.css`), not the imperative paint path (which
+  // only sets colors). They are applied to the base `.yv-v` rule so they are
+  // STATIC — present whether or not a verse is highlighted — which is what keeps
+  // applying/removing a fill from reflowing text (no layout shift). jsdom doesn't
+  // load that external sheet, so we assert against the CSS source directly.
+  // Resolve relative to this file so it works whether the suite runs from the ui
+  // package (the filtered command) or the repo root (turbo).
+  const css = readFileSync(
+    resolve(import.meta.dirname, '../../../core/src/styles/bible-reader.css'),
+    'utf8',
+  );
+
+  // The base `.yv-v` rule (identified by its background-color transition), not the
+  // `.yv-v.yv-v-highlighted` demo rule.
+  const baseRule = Array.from(css.matchAll(/&\s*\.yv-v\s*\{([^}]*)\}/g))
+    .map((m) => m[1]!)
+    .find((body) => body.includes('transition: background-color'));
+
+  it('defines the base .yv-v rule with the fade transition', () => {
+    expect(baseRule).toBeDefined();
+  });
+
+  it('rounds the corners statically (4px) on the base rule', () => {
+    expect(baseRule).toContain('border-radius: 4px');
+  });
+
+  it('adds static 2px inline padding so a fill never causes reflow', () => {
+    expect(baseRule).toContain('padding-inline: 2px');
+  });
+
+  it('clones the box decoration so wrapped line fragments get their own rounded ends', () => {
+    expect(baseRule).toContain('box-decoration-break: clone');
+    expect(baseRule).toContain('-webkit-box-decoration-break: clone');
   });
 });
 

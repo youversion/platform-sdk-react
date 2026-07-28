@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll } from 'vitest';
-import { ApiClient } from '../client';
+import { ApiClient, getHttpStatus } from '../client';
 import { http, HttpResponse } from 'msw';
 import { server } from './setup';
 
@@ -242,5 +242,28 @@ describe('ApiClient', () => {
         body: { data: 'test' },
       });
     });
+  });
+});
+
+describe('getHttpStatus', () => {
+  it('reads the status off an Error with a numeric status', () => {
+    const error = Object.assign(new Error('nope'), { status: 403 });
+    expect(getHttpStatus(error)).toBe(403);
+  });
+
+  it('reads the status off a thrown plain object', () => {
+    expect(getHttpStatus({ status: 401 })).toBe(401);
+  });
+
+  it('returns undefined for objects without a numeric status', () => {
+    expect(getHttpStatus({ status: '500' })).toBeUndefined();
+    expect(getHttpStatus(new Error('network'))).toBeUndefined();
+  });
+
+  it('returns undefined for null and non-object values', () => {
+    expect(getHttpStatus(null)).toBeUndefined();
+    expect(getHttpStatus(undefined)).toBeUndefined();
+    expect(getHttpStatus(404)).toBeUndefined();
+    expect(getHttpStatus('401')).toBeUndefined();
   });
 });

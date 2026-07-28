@@ -1,26 +1,37 @@
 import { z } from 'zod';
 import type { ApiClient } from './client';
 import type { Collection, Highlight, CreateHighlight } from './types';
-import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
+import { resolveAuthToken } from './auth-token';
+import {
+  HighlightCollectionWireSchema,
+  HighlightWireSchema,
+  toHighlight,
+} from './schemas/highlight';
 
 /**
  * Options for getting highlights.
+ * The API requires both a Bible version and a passage scope.
  */
 export type GetHighlightsOptions = {
-  version_id?: number;
-  passage_id?: string;
+  /** Bible version identifier (sent to the API as `bible_id`). */
+  version_id: number;
+  /** Passage identifier in verse or chapter USFM format (e.g., "JHN.3" or "JHN.3.16"). */
+  passage_id: string;
 };
 
 /**
  * Options for deleting highlights.
  */
 export type DeleteHighlightOptions = {
-  version_id?: number;
+  /** Bible version identifier (sent to the API as `bible_id`). */
+  version_id: number;
 };
 
 /**
  * Client for interacting with Highlights API endpoints.
- * Note: All endpoints require OAuth authentication with appropriate scopes.
+ * Note: All endpoints require OAuth authentication with appropriate scopes
+ * (`read_highlights` / `write_highlights`), passed as an
+ * `Authorization: Bearer <token>` header.
  */
 export class HighlightsClient {
   private client: ApiClient;
@@ -46,16 +57,11 @@ export class HighlightsClient {
    * @throws Error if no token is available.
    */
   private getAuthToken(lat?: string): string {
-    if (lat) {
-      return lat;
-    }
-    const token = YouVersionPlatformConfiguration.accessToken;
-    if (!token) {
-      throw new Error(
-        'Authentication required. Please provide a token or sign in before accessing highlights.',
-      );
-    }
-    return token;
+    return resolveAuthToken(lat, 'accessing highlights');
+  }
+
+  private authHeaders(lat?: string): Record<string, string> {
+    return { Authorization: `Bearer ${this.getAuthToken(lat)}` };
   }
 
   private validateVersionId(value: number): void {
@@ -92,33 +98,54 @@ export class HighlightsClient {
   }
 
   /**
+   * Generates a unique `request_id` for a create call, which the API requires on
+   * every create. Note: a new id is minted per call, so this does not by itself
+   * make caller-level retries idempotent — reuse the same id across retries of a
+   * single logical create if end-to-end idempotency is needed.
+   */
+  private generateRequestId(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+    // Extremely old runtimes only; uniqueness (not randomness quality) is what matters here.
+    return `yvp-${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 10)}`;
+  }
+
+  /**
    * Fetches a collection of highlights for a user.
    * The response will return a color per verse without ranges.
    * Requires OAuth with read_highlights scope.
-   * @param options Query parameters for filtering highlights.
+   * @param options Query parameters scoping the fetch. `version_id` and `passage_id`
+   *   (verse or chapter USFM, e.g. "JHN.3") are both required by the API.
    * @param lat Optional long access token. If not provided, retrieves from YouVersionPlatformConfiguration.
    * @returns A collection of Highlight objects.
    */
-  async getHighlights(
-    options?: GetHighlightsOptions,
-    lat?: string,
-  ): Promise<Collection<Highlight>> {
-    const token = this.getAuthToken(lat);
-    const params: Record<string, string | number> = {
-      lat: token,
+  async getHighlights(options: GetHighlightsOptions, lat?: string): Promise<Collection<Highlight>> {
+    this.validateVersionId(options.version_id);
+    this.validatePassageId(options.passage_id);
+
+    const response = await this.client.get<unknown>(
+      `/v1/highlights`,
+      { bible_id: options.version_id, passage_id: options.passage_id },
+      this.authHeaders(lat),
+    );
+
+    // The API returns 204 (empty body) when the passage has no highlights,
+    // which is the common case. Treat it as an empty collection rather than a
+    // parse failure.
+    if (response === '' || response == null) {
+      return { data: [], next_page_token: null };
+    }
+
+    const parsed = HighlightCollectionWireSchema.safeParse(response);
+    if (!parsed.success) {
+      throw new Error(`Unexpected highlights API response: ${parsed.error.message}`);
+    }
+
+    return {
+      data: parsed.data.data.map(toHighlight),
+      next_page_token: parsed.data.next_page_token ?? null,
     };
-
-    if (options?.version_id !== undefined) {
-      this.validateVersionId(options.version_id);
-      params.version_id = options.version_id;
-    }
-
-    if (options?.passage_id !== undefined) {
-      this.validatePassageId(options.passage_id);
-      params.passage_id = options.passage_id;
-    }
-
-    return this.client.get<Collection<Highlight>>(`/v1/highlights`, params);
   }
 
   /**
@@ -134,36 +161,56 @@ export class HighlightsClient {
     this.validatePassageId(data.passage_id);
     this.validateColor(data.color);
 
-    const token = this.getAuthToken(lat);
+    const response = await this.client.post<unknown>(
+      `/v1/highlights`,
+      {
+        request_id: this.generateRequestId(),
+        highlight: {
+          bible_id: data.version_id,
+          passage_id: data.passage_id,
+          // The API only accepts lowercase hex; normalize so a caller-supplied
+          // uppercase color doesn't get rejected server-side.
+          color: data.color.toLowerCase(),
+        },
+      },
+      undefined,
+      this.authHeaders(lat),
+    );
 
-    return this.client.post<Highlight>(`/v1/highlights`, data, { lat: token });
+    const parsed = HighlightWireSchema.safeParse(response);
+    if (!parsed.success) {
+      throw new Error(`Unexpected highlights API response: ${parsed.error.message}`);
+    }
+
+    return toHighlight(parsed.data);
   }
 
   /**
    * Clears highlights for a passage.
    * Requires OAuth with write_highlights scope.
-   * @param passageId The passage identifier (USFM format, e.g., "MAT.1.1" or "MAT.1.1-5").
-   * @param options Optional query parameters including bible_id.
+   *
+   * UNVERIFIED / likely unsupported: passing a verse RANGE (e.g. "MAT.1.1-5")
+   * returned a non-2xx from staging (observed with `JHN.1.2-3`), even though the
+   * API stores highlights per verse and POST accepts ranges. Until the API team
+   * confirms range delete, callers should send one DELETE per verse passage-id
+   * (e.g. "MAT.1.1"). See YPE-1034.
+   * @param passageId The passage identifier (single-verse USFM, e.g., "MAT.1.1").
+   * @param options Query parameters; `version_id` is required by the API (sent as `bible_id`).
    * @param lat Optional long access token. If not provided, retrieves from YouVersionPlatformConfiguration.
    * @returns Promise that resolves when highlights are deleted (204 response).
    */
   async deleteHighlight(
     passageId: string,
-    options?: DeleteHighlightOptions,
+    options: DeleteHighlightOptions,
     lat?: string,
   ): Promise<void> {
     this.validatePassageId(passageId);
+    this.validateVersionId(options.version_id);
 
-    const token = this.getAuthToken(lat);
-    const params: Record<string, string | number> = {
-      lat: token,
-    };
-
-    if (options?.version_id !== undefined) {
-      this.validateVersionId(options.version_id);
-      params.version_id = options.version_id;
-    }
-
-    await this.client.delete<void>(`/v1/highlights/${passageId}`, params);
+    await this.client.delete<void>(
+      `/v1/highlights/${encodeURIComponent(passageId)}`,
+      { bible_id: options.version_id },
+      this.authHeaders(lat),
+    );
   }
 }

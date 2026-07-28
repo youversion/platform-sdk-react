@@ -13,12 +13,15 @@ import {
   useFilteredVersions,
   useLanguage,
   useLanguages,
+  useOrganizations,
   useTheme,
   useVersion,
   useVersions,
 } from '@youversion/platform-react-hooks';
 import {
+  BIBLE_READER_SPACING,
   BibleReader,
+  changeBibleReaderLineSpacing,
   clampBibleReaderFontSize,
   createBibleThemeSettingsContentHandlers,
   nextBibleReaderFontSizeDown,
@@ -42,6 +45,7 @@ vi.mock('@youversion/platform-react-hooks', async () => {
     useFilteredVersions: vi.fn(),
     useLanguage: vi.fn(),
     useLanguages: vi.fn(),
+    useOrganizations: vi.fn(),
     useTheme: vi.fn(),
     useVersion: vi.fn(),
     useVersions: vi.fn(),
@@ -103,6 +107,7 @@ function setupDefaultMocks() {
     refetch: vi.fn(),
   });
   vi.mocked(useFilteredVersions).mockReturnValue([]);
+  vi.mocked(useOrganizations).mockReturnValue({ organizations: new Map() });
 }
 
 describe('BibleReader font helpers', () => {
@@ -118,17 +123,34 @@ describe('BibleReader font helpers', () => {
     expect(nextBibleReaderFontSizeDown(18)).toBe(16);
     expect(nextBibleReaderFontSizeDown(12)).toBe(12);
   });
+
+  it('cycles line spacing DEFAULT -> LG -> SM -> DEFAULT', () => {
+    expect(changeBibleReaderLineSpacing(BIBLE_READER_SPACING.DEFAULT)).toBe(
+      BIBLE_READER_SPACING.LG,
+    );
+    expect(changeBibleReaderLineSpacing(BIBLE_READER_SPACING.LG)).toBe(BIBLE_READER_SPACING.SM);
+    expect(changeBibleReaderLineSpacing(BIBLE_READER_SPACING.SM)).toBe(
+      BIBLE_READER_SPACING.DEFAULT,
+    );
+    // Any unknown value falls back to DEFAULT
+    expect(changeBibleReaderLineSpacing(99)).toBe(BIBLE_READER_SPACING.DEFAULT);
+  });
 });
 
 describe('createBibleThemeSettingsContentHandlers', () => {
-  it('updates font size and family via host-owned setters', () => {
+  it('updates font size, family, and line spacing via host-owned setters', () => {
     let fontSize = 16;
     let fontFamily: FontFamily = SOURCE_SERIF_FONT;
+    let lineSpacing: number = BIBLE_READER_SPACING.DEFAULT;
     const setFontSize = vi.fn((n: number) => {
       fontSize = n;
     });
     const setFontFamily = vi.fn((f: FontFamily) => {
       fontFamily = f;
+    });
+    const setLineSpacing = vi.fn((n: number) => {
+      lineSpacing = n;
+      return n;
     });
 
     const handlers = createBibleThemeSettingsContentHandlers({
@@ -136,6 +158,8 @@ describe('createBibleThemeSettingsContentHandlers', () => {
       getFontFamily: () => fontFamily,
       setFontSize,
       setFontFamily,
+      getLineSpacing: () => lineSpacing,
+      setLineSpacing,
     });
 
     handlers.onFontIncreased();
@@ -146,6 +170,14 @@ describe('createBibleThemeSettingsContentHandlers', () => {
 
     handlers.onFontSelected(INTER_FONT);
     expect(setFontFamily).toHaveBeenCalledWith(INTER_FONT);
+
+    // Cycles DEFAULT -> LG -> SM -> DEFAULT
+    handlers.onChangeLineSpacing();
+    expect(setLineSpacing).toHaveBeenLastCalledWith(BIBLE_READER_SPACING.LG);
+    handlers.onChangeLineSpacing();
+    expect(setLineSpacing).toHaveBeenLastCalledWith(BIBLE_READER_SPACING.SM);
+    handlers.onChangeLineSpacing();
+    expect(setLineSpacing).toHaveBeenLastCalledWith(BIBLE_READER_SPACING.DEFAULT);
   });
 });
 
@@ -180,6 +212,50 @@ describe('BibleReader theme settings', () => {
     });
   });
 
+  it('cycles line spacing and resizes the line-spacing button icon gap on click', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <BibleReader.Root defaultVersionId={3034} defaultBook="JHN" defaultChapter="1">
+        <BibleReader.Toolbar />
+      </BibleReader.Root>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(await screen.findByText('Reader Settings')).toBeInTheDocument();
+
+    // The icon's gap container is the only <div> inside the line-spacing button.
+    const gapClasses = () =>
+      (screen.getByTestId('line-spacing').querySelector('div')?.className ?? '').split(/\s+/);
+
+    // Starts at DEFAULT spacing (1.7) -> medium gap.
+    await waitFor(() => {
+      expect(localStorage.getItem('youversion-platform:reader:line-spacing')).toBe('1.7');
+    });
+    expect(gapClasses()).toContain('yv:gap-1.5');
+
+    // DEFAULT -> LG (2.0) -> widest gap.
+    await user.click(screen.getByTestId('line-spacing'));
+    await waitFor(() => {
+      expect(localStorage.getItem('youversion-platform:reader:line-spacing')).toBe('2');
+    });
+    expect(gapClasses()).toContain('yv:gap-2');
+
+    // LG -> SM (1.45) -> tightest gap.
+    await user.click(screen.getByTestId('line-spacing'));
+    await waitFor(() => {
+      expect(localStorage.getItem('youversion-platform:reader:line-spacing')).toBe('1.45');
+    });
+    expect(gapClasses()).toContain('yv:gap-1');
+
+    // SM -> DEFAULT (1.7) -> back to medium gap.
+    await user.click(screen.getByTestId('line-spacing'));
+    await waitFor(() => {
+      expect(localStorage.getItem('youversion-platform:reader:line-spacing')).toBe('1.7');
+    });
+    expect(gapClasses()).toContain('yv:gap-1.5');
+  });
+
   it('calls onOpenBibleThemeSettings with a serializable snapshot and skips popover content', async () => {
     const user = userEvent.setup();
     const onOpenBibleThemeSettings = vi.fn();
@@ -205,6 +281,7 @@ describe('BibleReader theme settings', () => {
     expect(snapshot).toEqual({
       fontSize: 18,
       fontFamily: INTER_FONT,
+      lineSpacing: BIBLE_READER_SPACING.DEFAULT,
       minFontSize: 12,
       maxFontSize: 20,
     });

@@ -140,6 +140,20 @@ describe('BibleCard - Delayed spinner', () => {
     expect(contentGroup).toHaveClass('yv:card-content');
     expect(bibleTextView).not.toHaveClass('yv:max-w-[600px]');
   });
+
+  it('should hide inline verse numbers in the bible renderer', () => {
+    vi.mocked(usePassage).mockReturnValue({
+      passage: mockPassage,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
+    const bibleRenderer = container.querySelector('[data-slot="yv-bible-renderer"]');
+
+    expect(bibleRenderer).toHaveAttribute('data-show-verse-numbers', 'false');
+  });
 });
 
 describe('BibleCard - onFootnotePress callback', () => {

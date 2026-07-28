@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { StrictMode } from 'react';
 import { render } from '@testing-library/react';
 import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import YouVersionAuthProvider from './YouVersionAuthProvider';
@@ -109,13 +110,8 @@ describe('YouVersionAuthProvider', () => {
   describe('OAuth callback handling', () => {
     it('should detect OAuth callback with state parameter', async () => {
       mockWindow.location.search = '?state=test-state&code=auth-code';
-      vi.spyOn(YouVersionAPIUsers, 'userInfo').mockReturnValue(mockUserInfo);
-
-      // Mock the configuration to return the id token after handleAuthCallback
-      vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockImplementation(() => {
-        YouVersionPlatformConfiguration.saveAuthData(null, null, 'test-id-token', null);
-        return Promise.resolve(mockAuthResult as any);
-      });
+      vi.spyOn(YouVersionAPIUsers, 'getStoredUserInfo').mockReturnValue(mockUserInfo);
+      vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockResolvedValue(mockAuthResult);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
@@ -128,7 +124,7 @@ describe('YouVersionAuthProvider', () => {
       });
 
       expect(vi.mocked(YouVersionAPIUsers).handleAuthCallback).toHaveBeenCalled();
-      expect(vi.mocked(YouVersionAPIUsers).userInfo).toHaveBeenCalledWith('test-id-token');
+      expect(vi.mocked(YouVersionAPIUsers).getStoredUserInfo).toHaveBeenCalled();
       expect(getByTestId('user-info')).toHaveTextContent(JSON.stringify(mockUserInfo));
     });
 
@@ -167,10 +163,39 @@ describe('YouVersionAuthProvider', () => {
       });
     });
 
-    it('should handle callback with no idToken', async () => {
+    it('tolerates the StrictMode double-invocation without a spurious error', async () => {
+      // The init effect has no re-entrancy guard, so under StrictMode it runs
+      // twice and calls handleAuthCallback twice. The real fix is the core-layer
+      // dedupe (see packages/core Users.test.ts); here we only assert the
+      // provider effect tolerates the double-invocation and still resolves to an
+      // authenticated, error-free state.
+      mockWindow.location.search = '?state=test-state&code=auth-code';
+      vi.spyOn(YouVersionAPIUsers, 'getStoredUserInfo').mockReturnValue(mockUserInfo);
+      vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockResolvedValue(mockAuthResult);
+
+      const { getByTestId } = render(
+        <StrictMode>
+          <YouVersionAuthProvider config={mockConfig}>
+            <TestChild />
+          </YouVersionAuthProvider>
+        </StrictMode>,
+      );
+
+      await vi.waitFor(() => {
+        expect(getByTestId('is-loading')).toHaveTextContent('false');
+      });
+
+      // The effect double-invoked (this is the condition the bug depended on).
+      expect(vi.mocked(YouVersionAPIUsers).handleAuthCallback).toHaveBeenCalledTimes(2);
+      // Final state is authenticated with no error surfaced.
+      expect(getByTestId('user-info')).toHaveTextContent(JSON.stringify(mockUserInfo));
+      expect(getByTestId('error')).toHaveTextContent('null');
+    });
+
+    it('should leave user null when no profile was stored during callback', async () => {
       mockWindow.location.search = '?state=test-state&code=auth-code';
       vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockResolvedValue(mockAuthResult);
-      YouVersionPlatformConfiguration.saveAuthData(null, null, null, null);
+      vi.spyOn(YouVersionAPIUsers, 'getStoredUserInfo').mockReturnValue(null);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
@@ -182,22 +207,18 @@ describe('YouVersionAuthProvider', () => {
         expect(getByTestId('is-loading')).toHaveTextContent('false');
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).userInfo).not.toHaveBeenCalled();
+      expect(vi.mocked(YouVersionAPIUsers).getStoredUserInfo).toHaveBeenCalled();
       expect(getByTestId('user-info')).toHaveTextContent('null');
     });
   });
 
   describe('existing token handling', () => {
-    it('should refresh token when refresh token exists', async () => {
+    it('should rehydrate stored user when refresh succeeds', async () => {
       // Set up refresh token before mounting component
-      YouVersionPlatformConfiguration.saveAuthData(null, 'existing-refresh-token', null, null);
+      YouVersionPlatformConfiguration.saveAuthData(null, 'existing-refresh-token', null);
 
-      // Mock refreshTokenIfNeeded to set the id token after successful refresh
-      vi.spyOn(YouVersionAPIUsers, 'refreshTokenIfNeeded').mockImplementation(() => {
-        YouVersionPlatformConfiguration.saveAuthData(null, null, 'refreshed-id-token', null);
-        return Promise.resolve(true);
-      });
-      vi.spyOn(YouVersionAPIUsers, 'userInfo').mockReturnValue(mockUserInfo);
+      vi.spyOn(YouVersionAPIUsers, 'refreshTokenIfNeeded').mockResolvedValue(true);
+      vi.spyOn(YouVersionAPIUsers, 'getStoredUserInfo').mockReturnValue(mockUserInfo);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
@@ -210,12 +231,12 @@ describe('YouVersionAuthProvider', () => {
       });
 
       expect(vi.mocked(YouVersionAPIUsers).refreshTokenIfNeeded).toHaveBeenCalled();
-      expect(vi.mocked(YouVersionAPIUsers).userInfo).toHaveBeenCalledWith('refreshed-id-token');
+      expect(vi.mocked(YouVersionAPIUsers).getStoredUserInfo).toHaveBeenCalled();
       expect(getByTestId('user-info')).toHaveTextContent(JSON.stringify(mockUserInfo));
     });
 
     it('should handle refresh token failure', async () => {
-      YouVersionPlatformConfiguration.saveAuthData(null, 'existing-refresh-token', null, null);
+      YouVersionPlatformConfiguration.saveAuthData(null, 'existing-refresh-token', null);
       vi.spyOn(YouVersionAPIUsers, 'refreshTokenIfNeeded').mockRejectedValue(
         new Error('Refresh failed'),
       );
@@ -233,9 +254,10 @@ describe('YouVersionAuthProvider', () => {
       expect(getByTestId('user-info')).toHaveTextContent('null');
     });
 
-    it('should clear user when refresh token exists but no idToken after refresh', async () => {
-      YouVersionPlatformConfiguration.saveAuthData(null, 'existing-refresh-token', null, null);
+    it('should clear user when the session expires and cannot be refreshed', async () => {
+      YouVersionPlatformConfiguration.saveAuthData(null, 'existing-refresh-token', null);
       vi.spyOn(YouVersionAPIUsers, 'refreshTokenIfNeeded').mockResolvedValue(false);
+      const getStoredUserInfoSpy = vi.spyOn(YouVersionAPIUsers, 'getStoredUserInfo');
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
@@ -247,6 +269,7 @@ describe('YouVersionAuthProvider', () => {
         expect(getByTestId('is-loading')).toHaveTextContent('false');
       });
 
+      expect(getStoredUserInfoSpy).not.toHaveBeenCalled();
       expect(getByTestId('user-info')).toHaveTextContent('null');
     });
   });

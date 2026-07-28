@@ -2,8 +2,9 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionProvider } from '@/components/YouVersionProvider';
 
 const baseProviderMock =
@@ -45,4 +46,52 @@ describe('UI YouVersionProvider', () => {
     expect(lastCall?.appKey).toBe('test-key');
     expect(lastCall?.additionalHeaders).toBeUndefined();
   });
+
+  it('mirrors appName and signInPromptMessage onto the UI-bundled config', () => {
+    YouVersionPlatformConfiguration.appName = undefined;
+    YouVersionPlatformConfiguration.signInPromptMessage = undefined;
+
+    render(
+      <YouVersionProvider
+        appKey="test-key"
+        appName="SDK Demo"
+        signInPromptMessage="Save your highlights to your YouVersion account."
+      >
+        <div data-testid="child">hello</div>
+      </YouVersionProvider>,
+    );
+
+    expect(YouVersionPlatformConfiguration.appName).toBe('SDK Demo');
+    expect(YouVersionPlatformConfiguration.signInPromptMessage).toBe(
+      'Save your highlights to your YouVersion account.',
+    );
+  });
+
+  it.each([
+    ['undefined', undefined],
+    ['empty string', ''],
+    ['whitespace only', '   '],
+  ])(
+    'renders the missing-app-key message and skips the base provider when appKey is %s',
+    (_label, appKey) => {
+      baseProviderMock.mockClear();
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      render(
+        // @ts-expect-error -- exercising the runtime guard with an invalid appKey
+        <YouVersionProvider appKey={appKey}>
+          <div data-testid="child">hello</div>
+        </YouVersionProvider>,
+      );
+
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(screen.getByText('Error')).toBeInTheDocument();
+      expect(screen.queryByTestId('child')).not.toBeInTheDocument();
+      expect(baseProviderMock).not.toHaveBeenCalled();
+      // The actionable guidance for developers lives in console.error, not the panel.
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('appKey'));
+
+      errorSpy.mockRestore();
+    },
+  );
 });

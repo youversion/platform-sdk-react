@@ -129,6 +129,33 @@
     display: inline;
   }
 
+  /* Fade highlight fills in/out instead of popping. The fill is painted as an
+     inline `background-color` on `.yv-v[v]` (see verse.tsx); transitioning only
+     that property animates apply/remove without touching the selection
+     underline (text-decoration) and without any layout shift.
+
+     The rounded-corner + padding + box-decoration-break styles are deliberately
+     STATIC (applied to every `.yv-v`, highlighted or not). Keeping them off the
+     highlight state means applying/removing a fill only changes
+     `background-color` — the 2px inline padding never appears or disappears, so
+     text never reflows and the 250ms fade stays smooth. `box-decoration-break:
+     clone` gives each wrapped line fragment its own rounded ends and padding
+     instead of a single hard cut at the wrap. This is a web-native divergence
+     from the Swift SDK's square fills (user-approved 2026-07-22). */
+  & .yv-v {
+    border-radius: 4px;
+    padding-inline: 2px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    transition: background-color 250ms ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    & .yv-v {
+      transition: none;
+    }
+  }
+
   /* Only show pointer cursor when verses are selectable */
   &[data-selectable='true'] .yv-v,
   &[data-selectable='true'] .verse {

@@ -140,6 +140,44 @@ function getVerseHtmlFromDom(container: HTMLElement, verseNum: string): string {
   return parts.join('');
 }
 
+/**
+ * Verse highlight fill opacity, matched to the Swift SDK (cross-SDK parity is the
+ * UX baseline). Light mode paints the highlight hex at full strength; dark mode
+ * fades it so the fill sits behind the text without overpowering it. See
+ * `docs/adr/YPE-642-verse-action-popover.md` (ADR-005 as-built).
+ */
+export const HIGHLIGHT_FILL_OPACITY_LIGHT = 1.0;
+export const HIGHLIGHT_FILL_OPACITY_DARK = 0.3;
+
+/** Converts a 6-digit hex (no `#`) to an `rgba()` string at the given alpha. */
+export function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/**
+ * Extracts clean prose for a verse from the rendered DOM: concatenates every
+ * `.yv-v[v="N"]` wrapper (a verse can span multiple, e.g. poetry) with verse
+ * numbers (`.yv-vlbl`), headings (`.yv-h`), and footnote markers
+ * (`[data-verse-footnote]`) stripped. Used to build Copy / Share text.
+ */
+export function getCleanVerseText(container: HTMLElement, verseNum: number): string {
+  const wrappers = container.querySelectorAll(`.yv-v[v="${verseNum}"]`);
+  if (!wrappers.length) return '';
+
+  const parts: string[] = [];
+  wrappers.forEach((wrapper) => {
+    const clone = wrapper.cloneNode(true) as Element;
+    clone.querySelectorAll('.yv-h, .yv-vlbl, [data-verse-footnote]').forEach((el) => el.remove());
+    const text = (clone.textContent || '').trim();
+    if (text) parts.push(text);
+  });
+
+  return parts.join(' ').replace(/\s+/g, ' ').trim();
+}
+
 const VerseFootnoteButton = memo(function VerseFootnoteButton({
   verseNum,
   notes,
@@ -149,6 +187,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   fontSize,
   theme,
   onFootnotePress,
+  isHighlighted,
 }: {
   verseNum: string;
   notes: string[];
@@ -158,15 +197,24 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   fontSize?: number;
   theme: 'light' | 'dark';
   onFootnotePress?: (data: FootnoteData) => void;
+  isHighlighted?: boolean;
 }) {
   const { t } = useTranslation(undefined, { i18n });
+
+  // Over a highlight fill the muted gray marker clashes with saturated fills, so
+  // it inherits the verse body text color (matching the recolored verse label);
+  // otherwise it keeps its default muted-gray marker color.
+  const iconClassName = cn(
+    'yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1!',
+    isHighlighted ? 'yv:text-inherit' : 'yv:text-(--yv-gray-20)',
+  );
 
   if (onFootnotePress) {
     return (
       <button
         aria-label={t('footnoteAriaLabel')}
         type="button"
-        className="yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1! yv:text-(--yv-gray-20)"
+        className={iconClassName}
         onClick={() => onFootnotePress({ verseNum, notes, verseHtml, reference })}
       >
         <Footnote className="yv:size-[1.5em]" />
@@ -177,11 +225,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   return (
     <Popover>
       <PopoverTrigger data-yv-sdk data-yv-theme={theme} asChild>
-        <button
-          aria-label={t('footnoteAriaLabel')}
-          type="button"
-          className="yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1! yv:text-(--yv-gray-20)"
-        >
+        <button aria-label={t('footnoteAriaLabel')} type="button" className={iconClassName}>
           <Footnote className="yv:size-[1.5em]" />
         </button>
       </PopoverTrigger>
@@ -239,7 +283,7 @@ function BibleTextHtml({
   theme?: 'light' | 'dark';
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
-  highlightedVerses?: Record<number, boolean>;
+  highlightedVerses?: Record<number, string>;
   onFootnotePress?: (data: FootnoteData) => void;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
@@ -279,15 +323,34 @@ function BibleTextHtml({
     setFootnoteData(result);
   }, [html]);
 
-  // Toggle selected/highlighted classes on verse wrappers.
+  // Toggle selection underline + paint highlight fills on verse wrappers.
+  // A verse can map to multiple `.yv-v[v="N"]` wrappers; each is painted so the
+  // highlight reads as one solid block across line/paragraph breaks.
+  // Theme-aware fill opacity mirrors the Swift SDK: full strength in light mode,
+  // faded in dark mode. In dark mode a highlighted verse's number label renders
+  // white so it stays legible over the fill; both are cleared on removal.
   useLayoutEffect(() => {
     if (!contentRef.current) return;
+    const isDark = currentTheme === 'dark';
+    const fillOpacity = isDark ? HIGHLIGHT_FILL_OPACITY_DARK : HIGHLIGHT_FILL_OPACITY_LIGHT;
     contentRef.current.querySelectorAll('.yv-v[v]').forEach((el) => {
       const verseNum = parseInt(el.getAttribute('v') || '0', 10);
       el.classList.toggle('yv-v-selected', selectedVerses.includes(verseNum));
-      el.classList.toggle('yv-v-highlighted', !!highlightedVerses[verseNum]);
+      const color = highlightedVerses[verseNum];
+      const isHighlighted = Boolean(color);
+      (el as HTMLElement).style.backgroundColor = color ? hexToRgba(color, fillOpacity) : '';
+      // Over a highlight fill the muted label color clashes with saturated fills,
+      // so the label inherits the verse body text color instead — the reader's
+      // main text color in light mode, white/near-white in dark mode. Setting
+      // `inherit` in both modes preserves the prior dark-mode-white behavior while
+      // fixing the light-mode gray-on-fill clash. Unhighlighted labels reset to ''
+      // so they keep their CSS muted color. Deliberate divergence from the Swift
+      // SDK, which only recolors the label in dark mode.
+      el.querySelectorAll('.yv-vlbl').forEach((label) => {
+        (label as HTMLElement).style.color = isHighlighted ? 'inherit' : '';
+      });
     });
-  }, [html, selectedVerses, highlightedVerses]);
+  }, [html, selectedVerses, highlightedVerses, currentTheme]);
 
   // Not wrapped in useCallback — this component is not memoized, so the
   // handler always captures the latest selectedVerses via closure.
@@ -318,6 +381,7 @@ function BibleTextHtml({
             fontSize={fontSize}
             theme={currentTheme}
             onFootnotePress={onFootnotePress}
+            isHighlighted={Boolean(highlightedVerses[Number(verseNum)])}
           />,
           el,
           `${verseNum}-${index}`,
@@ -356,7 +420,7 @@ type VerseHtmlProps = {
   theme?: 'light' | 'dark';
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
-  highlightedVerses?: Record<number, boolean>;
+  highlightedVerses?: Record<number, string>;
   onFootnotePress?: (data: FootnoteData) => void;
 };
 
@@ -464,7 +528,7 @@ export type BibleTextViewProps = {
   theme?: 'light' | 'dark';
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
-  highlightedVerses?: Record<number, boolean>;
+  highlightedVerses?: Record<number, string>;
   passageState?: Partial<BibleTextViewPassageState>;
   onFootnotePress?: (data: FootnoteData) => void;
 };

@@ -7,6 +7,24 @@ type RequestData = Record<string, string | number | boolean | object>;
 type RequestHeaders = Record<string, string>;
 
 /**
+ * Returns the HTTP status code attached to an error thrown by an API client,
+ * or undefined when the error did not come from an HTTP response (network
+ * failure, timeout, validation error). This is the supported way to branch on
+ * status codes; the error's internal shape is not part of the public API.
+ */
+export function getHttpStatus(error: unknown): number | undefined {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    typeof (error as { status: unknown }).status === 'number'
+  ) {
+    return (error as { status: number }).status;
+  }
+  return undefined;
+}
+
+/**
  * ApiClient is a lightweight HTTP client for interacting with the API using fetch.
  * It provides convenient methods for GET and POST requests with typed responses.
  */
@@ -113,8 +131,14 @@ export class ApiClient {
 
       const contentType = response.headers.get('content-type');
       if (contentType?.includes('application/json')) {
-        const data = (await response.json()) as T;
-        return data;
+        // A successful (2xx) response can legitimately carry an EMPTY body even
+        // with a JSON content-type — most notably a DELETE that returns
+        // `200 application/json` with no payload. `response.json()` throws
+        // "Unexpected end of JSON input" on an empty body, which would surface a
+        // successful write as a failure (e.g. deleteHighlight rejecting on a
+        // real delete). Read as text first and treat an empty body as "no data".
+        const text = await response.text();
+        return text ? (JSON.parse(text) as T) : (undefined as T);
       } else {
         const text = await response.text();
         return text as unknown as T;
@@ -151,13 +175,20 @@ export class ApiClient {
    * @param path - The API endpoint path (relative to baseURL).
    * @param data - Optional request body data to send.
    * @param params - Optional query parameters to include in the request.
+   * @param headers - Optional headers merged over the default headers.
    * @returns A promise resolving to the response data of type T.
    */
-  async post<T>(path: string, data?: RequestData, params?: QueryParams): Promise<T> {
+  async post<T>(
+    path: string,
+    data?: RequestData,
+    params?: QueryParams,
+    headers?: RequestHeaders,
+  ): Promise<T> {
     const url = `${this.baseURL}${path}${this.buildQueryString(params)}`;
     return this.request<T>(url, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
+      headers,
     });
   }
 
@@ -167,12 +198,14 @@ export class ApiClient {
    * @typeParam T - The expected response type.
    * @param path - The API endpoint path (relative to baseURL).
    * @param params - Optional query parameters to include in the request.
+   * @param headers - Optional headers merged over the default headers.
    * @returns A promise resolving to the response data of type T (may be empty for 204 responses).
    */
-  async delete<T>(path: string, params?: QueryParams): Promise<T> {
+  async delete<T>(path: string, params?: QueryParams, headers?: RequestHeaders): Promise<T> {
     const url = `${this.baseURL}${path}${this.buildQueryString(params)}`;
     return this.request<T>(url, {
       method: 'DELETE',
+      headers,
     });
   }
 }
