@@ -3,6 +3,7 @@ import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionProvider as BaseYouVersionProvider } from '@youversion/platform-react-hooks';
 import { syncBrowserLanguageFromNavigator } from '@/i18n';
 import { YvStyles } from '@/lib/yv-styles';
+import { YvFonts } from '@/lib/yv-fonts';
 import { MissingAppKey } from '@/components/missing-app-key';
 
 function resolveTheme(theme: 'light' | 'dark' | 'system' = 'light'): 'light' | 'dark' {
@@ -57,6 +58,9 @@ export function YouVersionProvider(
   return (
     <BaseYouVersionProvider {...props}>
       <YvStyles />
+      {/* Only in this branch — the missing-app-key guard above has no key, and
+          without a key the gated Fonts API request would 401. */}
+      <YvFonts appKey={props.appKey} apiHost={props.apiHost} />
       {props.children}
     </BaseYouVersionProvider>
   );
