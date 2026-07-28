@@ -105,8 +105,6 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -132,40 +130,58 @@ jobs:
           YVP_API_HOST: ${{ secrets.YVP_API_HOST }}
           YVP_APP_KEY: ${{ secrets.YVP_APP_KEY }}
 
-      - name: Generate coverage badges JSON
-        if: github.ref == 'refs/heads/main'
+      - name: Build coverage badge JSON for shields.io
         run: |
-          mkdir -p .coverage
+          mkdir -p coverage-output
+          for pkg in core hooks ui; do
+            summary="packages/$pkg/coverage/coverage-summary.json"
+            if [ ! -f "$summary" ]; then
+              echo "Missing coverage summary: $summary" >&2
+              exit 1
+            fi
+            pct=$(jq '.total.lines.pct' "$summary")
+            color=$(node -e "const p=$pct; console.log(p >= 80 ? 'brightgreen' : p >= 60 ? 'yellow' : 'red')")
+            jq -n --arg label "$pkg coverage" --arg message "$pct%" --arg color "$color" \
+              '{schemaVersion: 1, label: $label, message: $message, color: $color}' > "coverage-output/$pkg.json"
+          done
 
-          # Core coverage
-          # Core coverage
-          if [ -f packages/core/coverage/coverage-summary.json ]; then
-            CORE_PCT=$(jq '.total.lines.pct' packages/core/coverage/coverage-summary.json)
-            CORE_COLOR=$(node -e "const p=$CORE_PCT; console.log(p >= 80 ? 'brightgreen' : p >= 60 ? 'yellow' : 'red')")
-            echo "{\"schemaVersion\":1,\"label\":\"core coverage\",\"message\":\"${CORE_PCT}%\",\"color\":\"${CORE_COLOR}\"}" > .coverage/core.json
-          fi
+      - name: Upload coverage badge artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-badges
+          path: coverage-output/
 
-          # Hooks coverage
-          if [ -f packages/hooks/coverage/coverage-summary.json ]; then
-            HOOKS_PCT=$(jq '.total.lines.pct' packages/hooks/coverage/coverage-summary.json)
-            HOOKS_COLOR=$(node -e "const p=$HOOKS_PCT; console.log(p >= 80 ? 'brightgreen' : p >= 60 ? 'yellow' : 'red')")
-            echo "{\"schemaVersion\":1,\"label\":\"hooks coverage\",\"message\":\"${HOOKS_PCT}%\",\"color\":\"${HOOKS_COLOR}\"}" > .coverage/hooks.json
-          fi
+  # Coverage badges live on an orphan `badges` branch, out of main's history.
+  publish-coverage-badges:
+    name: Publish coverage badges
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out badges branch
+        uses: actions/checkout@v5
+        with:
+          ref: badges
+          path: badges-branch
 
-          # UI coverage
-          if [ -f packages/ui/coverage/coverage-summary.json ]; then
-            UI_PCT=$(jq '.total.lines.pct' packages/ui/coverage/coverage-summary.json)
-            UI_COLOR=$(node -e "const p=$UI_PCT; console.log(p >= 80 ? 'brightgreen' : p >= 60 ? 'yellow' : 'red')")
-            echo "{\"schemaVersion\":1,\"label\":\"ui coverage\",\"message\":\"${UI_PCT}%\",\"color\":\"${UI_COLOR}\"}" > .coverage/ui.json
-          fi
+      - name: Download coverage badge artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-badges
+          path: coverage-output
 
-      - name: Commit coverage badges
-        if: github.ref == 'refs/heads/main'
+      - name: Commit coverage badges to badges branch
+        working-directory: badges-branch
         run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add .coverage/
-          git diff --staged --quiet || git commit -m "chore: update coverage badges [skip ci]"
+          # Replace the full set so a dropped package's stale badge can't linger.
+          rm -f ./*.json
+          cp ../coverage-output/*.json .
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --staged --quiet || git commit -m "chore: update coverage badges"
           git push
 
   build:

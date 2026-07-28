@@ -140,11 +140,17 @@ function getVerseHtmlFromDom(container: HTMLElement, verseNum: string): string {
   return parts.join('');
 }
 
-/** Verse highlight fill = the highlight hex at 35% opacity, behind the text (per Figma). */
-const HIGHLIGHT_FILL_OPACITY = 0.35;
+/**
+ * Verse highlight fill opacity, matched to the Swift SDK (cross-SDK parity is the
+ * UX baseline). Light mode paints the highlight hex at full strength; dark mode
+ * fades it so the fill sits behind the text without overpowering it. See
+ * `docs/adr/YPE-642-verse-action-popover.md` (ADR-005 as-built).
+ */
+export const HIGHLIGHT_FILL_OPACITY_LIGHT = 1.0;
+export const HIGHLIGHT_FILL_OPACITY_DARK = 0.3;
 
 /** Converts a 6-digit hex (no `#`) to an `rgba()` string at the given alpha. */
-function hexToRgba(hex: string, alpha: number): string {
+export function hexToRgba(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(0, 2), 16);
   const g = parseInt(hex.slice(2, 4), 16);
   const b = parseInt(hex.slice(4, 6), 16);
@@ -195,10 +201,12 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
 }) {
   const { t } = useTranslation(undefined, { i18n });
 
-  // On a highlight fill the default light-gray marker loses contrast
+  // Over a highlight fill the muted gray marker clashes with saturated fills, so
+  // it inherits the verse body text color (matching the recolored verse label);
+  // otherwise it keeps its default muted-gray marker color.
   const iconClassName = cn(
     'yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1!',
-    isHighlighted ? 'yv:text-muted-foreground' : 'yv:text-(--yv-gray-20)',
+    isHighlighted ? 'yv:text-inherit' : 'yv:text-(--yv-gray-20)',
   );
 
   if (onFootnotePress) {
@@ -318,17 +326,31 @@ function BibleTextHtml({
   // Toggle selection underline + paint highlight fills on verse wrappers.
   // A verse can map to multiple `.yv-v[v="N"]` wrappers; each is painted so the
   // highlight reads as one solid block across line/paragraph breaks.
+  // Theme-aware fill opacity mirrors the Swift SDK: full strength in light mode,
+  // faded in dark mode. In dark mode a highlighted verse's number label renders
+  // white so it stays legible over the fill; both are cleared on removal.
   useLayoutEffect(() => {
     if (!contentRef.current) return;
+    const isDark = currentTheme === 'dark';
+    const fillOpacity = isDark ? HIGHLIGHT_FILL_OPACITY_DARK : HIGHLIGHT_FILL_OPACITY_LIGHT;
     contentRef.current.querySelectorAll('.yv-v[v]').forEach((el) => {
       const verseNum = parseInt(el.getAttribute('v') || '0', 10);
       el.classList.toggle('yv-v-selected', selectedVerses.includes(verseNum));
       const color = highlightedVerses[verseNum];
-      (el as HTMLElement).style.backgroundColor = color
-        ? hexToRgba(color, HIGHLIGHT_FILL_OPACITY)
-        : '';
+      const isHighlighted = Boolean(color);
+      (el as HTMLElement).style.backgroundColor = color ? hexToRgba(color, fillOpacity) : '';
+      // Over a highlight fill the muted label color clashes with saturated fills,
+      // so the label inherits the verse body text color instead — the reader's
+      // main text color in light mode, white/near-white in dark mode. Setting
+      // `inherit` in both modes preserves the prior dark-mode-white behavior while
+      // fixing the light-mode gray-on-fill clash. Unhighlighted labels reset to ''
+      // so they keep their CSS muted color. Deliberate divergence from the Swift
+      // SDK, which only recolors the label in dark mode.
+      el.querySelectorAll('.yv-vlbl').forEach((label) => {
+        (label as HTMLElement).style.color = isHighlighted ? 'inherit' : '';
+      });
     });
-  }, [html, selectedVerses, highlightedVerses]);
+  }, [html, selectedVerses, highlightedVerses, currentTheme]);
 
   // Not wrapped in useCallback — this component is not memoized, so the
   // handler always captures the latest selectedVerses via closure.

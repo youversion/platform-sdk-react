@@ -30,6 +30,15 @@ export function useApiData<T>(
   // previous chapter) resolving after a newer fetch must not overwrite it.
   const requestSeqRef = useRef(0);
 
+  // Hold the (typically inline) `fetchFn` in a ref, refreshed every render, so
+  // it can stay out of `fetchData`'s deps below. Otherwise a new closure each
+  // render would churn `fetchData` — and therefore `refetch` — identity every
+  // render. `fetchData` reads the ref only when a fetch actually starts, and
+  // the ref is updated during render before any effect runs, so a dep-change
+  // fetch still uses the latest `fetchFn`.
+  const fetchFnRef = useRef(fetchFn);
+  fetchFnRef.current = fetchFn;
+
   const fetchData = useCallback(() => {
     const requestSeq = ++requestSeqRef.current;
 
@@ -47,7 +56,8 @@ export function useApiData<T>(
     setLoading(true);
     setError(null);
 
-    fetchFn()
+    fetchFnRef
+      .current()
       .then((result) => {
         if (requestSeq === requestSeqRef.current) {
           setData(result);
@@ -63,7 +73,7 @@ export function useApiData<T>(
           setLoading(false);
         }
       });
-  }, [fetchFn, enabled]);
+  }, [enabled]);
 
   const refetch = useCallback(() => {
     fetchData();

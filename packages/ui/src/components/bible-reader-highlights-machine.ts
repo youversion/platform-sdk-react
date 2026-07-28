@@ -52,6 +52,7 @@ import {
   stashPendingHighlight,
   type PendingHighlight,
 } from '@/lib/pending-highlight';
+import { getHttpStatus } from '@youversion/platform-core';
 import { Result } from 'better-result';
 import { assign, enqueueActions, fromPromise, setup, type DoneActorEvent } from 'xstate';
 
@@ -83,12 +84,6 @@ type WriteOp = {
   token: object;
   /** Whether the optimistic overlay was painted for this op (owns its verses). */
   paint: boolean;
-  /**
-   * Whether a 401/403 should keep the pending highlight + re-prompt. `true` for a
-   * user-initiated apply; `false` for a remove (invalidate only — no re-prompt,
-   * fixing the old deferred wart) and for a resume-applied pending highlight.
-   */
-  reprompt: boolean;
 };
 
 type WriteResult = {
@@ -192,14 +187,14 @@ function versesInRun(run: VerseRun): number[] {
   return verses;
 }
 
-/** Pulls an HTTP status off a thrown ApiClient error (possibly wrapped). */
+/**
+ * Pulls an HTTP status off a thrown ApiClient error (possibly wrapped in our own
+ * `BibleReaderHighlightError`). Defers to core's `getHttpStatus` for the actual
+ * status contract so the error shape stays owned by the client layer.
+ */
 function extractStatus(error: unknown): number | undefined {
-  if (error instanceof BibleReaderHighlightError) return extractStatus(error.cause);
-  if (typeof error === 'object' && error !== null && 'status' in error) {
-    const status = (error as { status?: unknown }).status;
-    return typeof status === 'number' ? status : undefined;
-  }
-  return undefined;
+  if (error instanceof BibleReaderHighlightError) return getHttpStatus(error.cause);
+  return getHttpStatus(error);
 }
 
 /**
@@ -365,6 +360,7 @@ export const bibleReaderHighlightsMachine = setup({
     scopeIsDifferent: ({ context, event }) =>
       event.type === 'SCOPE_CHANGED' && !scopesEqual(context.scope, event.scope),
     queueHasWork: ({ context }) => context.queue.length > 0,
+    signedOut: ({ context }) => !context.isAuthenticated,
 
     // ── TAP_COLOR fork ──
     tapInert: ({ event }) => event.type === 'TAP_COLOR' && event.verses.length === 0,
@@ -489,7 +485,6 @@ export const bibleReaderHighlightsMachine = setup({
         scope: context.scope,
         token,
         paint: true,
-        reprompt: true,
       };
       enqueue.raise({ type: 'ENQUEUE', op });
     }),
@@ -531,7 +526,6 @@ export const bibleReaderHighlightsMachine = setup({
         scope: context.scope,
         token,
         paint: true,
-        reprompt: false,
       };
       enqueue.raise({ type: 'ENQUEUE', op });
     }),
@@ -560,6 +554,14 @@ export const bibleReaderHighlightsMachine = setup({
             claimVerses(current, pending.verses, token, pending.color),
           );
         }
+        // Resume-applied writes route through the SAME failure handling as a
+        // user-initiated apply: a 401/403 re-stashes the pending highlight (from
+        // the op's own scope, so a cross-scope return still re-prompts on the
+        // right passage) and re-opens the permission dialog, rather than silently
+        // dropping the user's original color tap. Being an `apply` is what earns
+        // that re-prompt at the consumer site (see `settleWrite`).
+        // The clear above already dropped the intent for network/5xx — settle
+        // must not clear again (sibling permission-lost entries may be present).
         const op: WriteOp = {
           kind: 'apply',
           color: pending.color,
@@ -567,10 +569,6 @@ export const bibleReaderHighlightsMachine = setup({
           scope,
           token,
           paint,
-          // A resume-write failure only logs + reverts (the pending intent was
-          // already consumed). Documented deferred follow-up: route resume-write
-          // failures through the standard apply failure handling.
-          reprompt: false,
         };
         enqueue.raise({ type: 'ENQUEUE', op });
       }
@@ -588,7 +586,7 @@ export const bibleReaderHighlightsMachine = setup({
      * reconciliation (overlay holds until a fetch reflects the write), failed
      * verses revert (only if still owned by this op's token), exactly one refetch
      * fires, and failures route by status (401/403 → invalidate + maybe re-prompt;
-     * network/5xx → discard pending).
+     * network/5xx → revert overlay only).
      */
     settleWrite: enqueueActions(({ enqueue, event }) => {
       // Wired only to the processWrite `onDone`; the done event is the actor's
@@ -636,23 +634,27 @@ export const bibleReaderHighlightsMachine = setup({
         enqueue(({ context: current }) =>
           current.services.current.invalidateHighlightsPermission(),
         );
-        if (op.kind === 'apply' && op.reprompt) {
+        // Only an apply keeps the pending highlight + re-prompts: a user apply
+        // and a resume-applied pending both re-stash + re-open the permission
+        // dialog so the original tap is never silently lost. Removes deliberately
+        // don't re-prompt (fixing the old deferred wart): with no pending
+        // highlight, a re-prompt's post-grant resume was a no-op — invalidate the
+        // cache only, and the next apply re-enters the flow.
+        if (op.kind === 'apply') {
           // Keep this highlight pending and re-prompt the just-in-time dialog.
           // Append (not replace): a sibling batch that already lost permission may
           // hold a different color/verses, and both intents must survive the grant.
           enqueue(() => appendPendingHighlight(opToPending(op)));
           enqueue.raise({ type: 'PERMISSION_LOST' });
         }
-        // Remove failures invalidate the cache but never re-prompt (the old
-        // deferred wart is fixed here): with no pending highlight, a re-prompt's
-        // post-grant resume was a no-op. The next apply re-enters the flow.
       }
       // Network / 5xx must NOT clear the stash: a user apply that reaches the
       // queue via `startApplyWrite` never stashed anything of its own, so there
       // is nothing here to drop — and any entries present belong to a sibling
       // batch that lost permission moments earlier and must survive the grant.
-      // (Tap-flow stashes can't linger past this point either: they are followed
-      // by a full-page redirect, and dialog cancel/decline run `clearPending`.)
+      // Resume-applied writes already consumed their pending at
+      // `applyPendingHighlight` enqueue time (intentional 5xx intent-drop), so
+      // a blunt clear here would only risk wiping those siblings.
     }),
 
     // ── Dialog side effects (fire-and-forget redirects, matching the hook) ──
@@ -762,6 +764,14 @@ export const bibleReaderHighlightsMachine = setup({
               },
             },
             permissionDialog: {
+              // The host can sign the user out while this dialog is open. A
+              // confirm would then start a data exchange that rejects
+              // unauthenticated, so route back to idle and drop the pending
+              // intent as soon as the sign-out lands (assignAuth on the root
+              // AUTH_CHANGED updates isAuthenticated, then this always fires).
+              // permissionDialog is only ever entered while authenticated, so
+              // this guard never misfires on entry.
+              always: [{ guard: 'signedOut', target: 'idle', actions: 'clearPending' }],
               on: {
                 CONFIRM_PERMISSION: { target: 'idle', actions: 'startDataExchange' },
                 CANCEL_PERMISSION: { target: 'idle', actions: 'clearPending' },

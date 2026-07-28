@@ -3,7 +3,7 @@
  * While `false`, the reader's highlight color row is inert: no fetches, no
  * writes, nothing rendered from the API. Flip here to launch.
  */
-export const HIGHLIGHTS_LIVE = false;
+export const HIGHLIGHTS_LIVE = true;
 
 let highlightsLive = HIGHLIGHTS_LIVE;
 
