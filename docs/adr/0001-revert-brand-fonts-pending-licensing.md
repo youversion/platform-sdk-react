@@ -4,7 +4,14 @@ Date: 2026-06-24
 
 ## Status
 
-Accepted
+Accepted. **Superseded in part** by
+[ADR-0003](0003-adopt-untitled-serif-via-fonts-api.md) (2026-07-28), for **Untitled
+Serif only**: the foundry granted permission directly and the font now loads from the
+gated `/v1/fonts/1/stylesheet` endpoint, so both re-introduction conditions below are
+met for that face. The **Aktiv Grotesk revert stands** — no licence path has been
+resolved and the sans stack remains `'Inter', sans-serif`. The finding that the woff2
+sits at a public, unauthenticated CDN URL is also unchanged; ADR-0003 records why that
+is accepted rather than claiming it was fixed.
 
 ## Context
 
