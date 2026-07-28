@@ -48,8 +48,17 @@ describe('resolveBrowserLanguage', () => {
     expect(resolveBrowserLanguage(['tr-TR', 'tr'], supportedLngs, fallbackLng)).toBe('tr');
   });
 
-  it('maps regional Chinese tags to zh', () => {
-    expect(resolveBrowserLanguage(['zh-CN', 'zh'], supportedLngs, fallbackLng)).toBe('zh');
+  it('maps Traditional Chinese tags to zh', () => {
+    expect(resolveBrowserLanguage(['zh-TW', 'zh'], supportedLngs, fallbackLng)).toBe('zh');
+    expect(resolveBrowserLanguage(['zh-HK'], supportedLngs, fallbackLng)).toBe('zh');
+    expect(resolveBrowserLanguage(['zh-Hant', 'zh'], supportedLngs, fallbackLng)).toBe('zh');
+    expect(resolveBrowserLanguage(['zh-Hant-TW'], supportedLngs, fallbackLng)).toBe('zh');
+  });
+
+  it('does not map Simplified Chinese tags to Traditional zh', () => {
+    expect(resolveBrowserLanguage(['zh-CN', 'zh'], supportedLngs, fallbackLng)).toBe('en');
+    expect(resolveBrowserLanguage(['zh-Hans', 'zh'], supportedLngs, fallbackLng)).toBe('en');
+    expect(resolveBrowserLanguage(['zh'], supportedLngs, fallbackLng)).toBe('en');
   });
 
   it('falls back to en for unsupported browser languages', () => {
@@ -157,7 +166,19 @@ describe('i18n instance', () => {
     expect(i18n.t('verseOfTheDay')).toBe(tr.verseOfTheDay);
   });
 
-  it('uses Chinese strings when the browser prefers zh-CN', async () => {
+  it('uses Traditional Chinese strings when the browser prefers zh-TW', async () => {
+    vi.stubGlobal('navigator', {
+      language: 'zh-TW',
+      languages: ['zh-TW', 'zh'],
+    });
+    vi.resetModules();
+
+    const i18n = await loadI18n();
+    expect(i18n.language).toBe('zh');
+    expect(i18n.t('verseOfTheDay')).toBe(zh.verseOfTheDay);
+  });
+
+  it('falls back to English for Simplified Chinese browser languages', async () => {
     vi.stubGlobal('navigator', {
       language: 'zh-CN',
       languages: ['zh-CN', 'zh'],
@@ -165,8 +186,8 @@ describe('i18n instance', () => {
     vi.resetModules();
 
     const i18n = await loadI18n();
-    expect(i18n.language).toBe('zh');
-    expect(i18n.t('verseOfTheDay')).toBe(zh.verseOfTheDay);
+    expect(i18n.language).toBe('en');
+    expect(i18n.t('verseOfTheDay')).toBe(en.verseOfTheDay);
   });
 
   it('falls back to English for unsupported browser languages', async () => {

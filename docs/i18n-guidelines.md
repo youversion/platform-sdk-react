@@ -7,7 +7,7 @@ User-facing strings in `@youversion/platform-react-ui` must go through i18next. 
 | What | Where |
 |------|-------|
 | English strings (canonical) | [`platform-localization/sources/common/en.json`](https://github.com/youversion/platform-localization) — `react.*` namespace |
-| React locale bundles (this repo) | `packages/ui/src/i18n/locales/{en,es,fr,ko,tr,zh}.json` |
+| React locale bundles (this repo) | `packages/ui/src/i18n/locales/{en,es,fr,ko,tr,zh}.json` (`zh` = Traditional Chinese) |
 | Translation workflow | Crowdin (upload on merge, weekly download) |
 | Downstream sync | `platform-localization` → **Distribute React Localization** (`distribute-react.yml`) → `chore/localization-sync-react-*` PRs |
 
@@ -21,6 +21,7 @@ See [platform-localization README](https://github.com/youversion/platform-locali
 4. **Do not hand-edit translation locale JSON in this repo** (`es`/`fr`/`ko`/`tr`/`zh`) — they are synced from `dist/react/*.json` via `distribute-react.yml`.
 5. After translations are approved in Crowdin and the sync PR merges here, keys appear in the translation locale files.
 6. **New locales** must also be registered in `packages/ui/src/i18n/index.ts` (`resources`) and listed in `scripts/check-i18n-parity.mjs` (`TRANSLATION_LOCALES`).
+7. **Chinese:** upstream `zh.json` is Traditional Chinese. Browser detection only selects it for `zh-Hant` / `zh-TW` / `zh-HK` / `zh-MO` — Simplified tags (`zh-CN`, `zh-Hans`, …) fall back to English until a Simplified bundle ships.
 
 To import existing React keys into platform-localization for the first time:
 

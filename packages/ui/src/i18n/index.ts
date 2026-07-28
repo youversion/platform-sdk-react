@@ -19,6 +19,7 @@ export const resources = {
   fr: { [defaultNS]: fr },
   ko: { [defaultNS]: ko },
   tr: { [defaultNS]: tr },
+  /** Traditional Chinese (upstream `zh.json`). Selected only for zh-Hant / zh-TW / zh-HK / zh-MO. */
   zh: { [defaultNS]: zh },
 } as const;
 
