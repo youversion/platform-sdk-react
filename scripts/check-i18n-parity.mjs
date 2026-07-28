@@ -3,9 +3,9 @@
  * i18n parity checker for @youversion/platform-react-ui locale bundles.
  *
  * Hard-fail (exit 1): invalid JSON, t()/i18nKey references missing from en.json,
- * extra fr/es keys not in en.json, interpolation token mismatches.
+ * extra translation-locale keys not in en.json, interpolation token mismatches.
  *
- * Warn-only (exit 0): en.json keys missing from fr/es (upstream Crowdin sync),
+ * Warn-only (exit 0): en.json keys missing from translation locales (upstream Crowdin sync),
  * orphan en.json keys unused in UI source (static scan misses dynamic t() patterns;
  * add intentional dynamic keys to ORPHAN_KEY_ALLOWLIST).
  */
@@ -18,7 +18,7 @@ const repoRoot = resolve(scriptDir, '..');
 const localesDir = resolve(repoRoot, 'packages/ui/src/i18n/locales');
 const uiSrcDir = resolve(repoRoot, 'packages/ui/src');
 
-const TRANSLATION_LOCALES = ['fr', 'es'];
+const TRANSLATION_LOCALES = ['es', 'fr', 'ko', 'tr', 'zh'];
 // i18next allows whitespace and formatter args: {{ count }}, {{count, number}}
 const INTERPOLATION_TOKEN_RE = /\{\{\s*(\w+)[^}]*\}\}/g;
 // Matches literal-string args to any function named `t` (not i18next-specific).
@@ -203,7 +203,7 @@ function reportAndExit() {
     }
     console.log(
       dim(
-        '\n  Note: fr/es locale files are owned by platform-localization and synced via Crowdin → distribute-react.yml (chore/localization-sync-react-* PRs). Missing translation keys are expected until upstream sync lands.\n',
+        '\n  Note: translation locale files (es/fr/ko/tr/zh) are owned by platform-localization and synced via Crowdin → distribute-react.yml (chore/localization-sync-react-* PRs). Missing translation keys are expected until upstream sync lands.\n',
       ),
     );
     if (warnings.some((w) => w.startsWith('Orphan key'))) {

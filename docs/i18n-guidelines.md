@@ -7,7 +7,7 @@ User-facing strings in `@youversion/platform-react-ui` must go through i18next. 
 | What | Where |
 |------|-------|
 | English strings (canonical) | [`platform-localization/sources/common/en.json`](https://github.com/youversion/platform-localization) — `react.*` namespace |
-| React locale bundles (this repo) | `packages/ui/src/i18n/locales/{en,fr,es}.json` |
+| React locale bundles (this repo) | `packages/ui/src/i18n/locales/{en,es,fr,ko,tr,zh}.json` |
 | Translation workflow | Crowdin (upload on merge, weekly download) |
 | Downstream sync | `platform-localization` → **Distribute React Localization** (`distribute-react.yml`) → `chore/localization-sync-react-*` PRs |
 
@@ -18,8 +18,9 @@ See [platform-localization README](https://github.com/youversion/platform-locali
 1. **Edit English in platform-localization** — add keys under the `react.*` prefix in `sources/common/en.json`.
 2. Run `npm run generate && npm run validate` in platform-localization.
 3. Open a PR there; after merge, Crowdin upload runs automatically.
-4. **Do not hand-edit `fr.json` or `es.json` in this repo** — they are synced from `dist/react/*.json` via `distribute-react.yml`.
-5. After translations are approved in Crowdin and the sync PR merges here, keys appear in `fr.json` / `es.json`.
+4. **Do not hand-edit translation locale JSON in this repo** (`es`/`fr`/`ko`/`tr`/`zh`) — they are synced from `dist/react/*.json` via `distribute-react.yml`.
+5. After translations are approved in Crowdin and the sync PR merges here, keys appear in the translation locale files.
+6. **New locales** must also be registered in `packages/ui/src/i18n/index.ts` (`resources`) and listed in `scripts/check-i18n-parity.mjs` (`TRANSLATION_LOCALES`).
 
 To import existing React keys into platform-localization for the first time:
 
@@ -49,8 +50,8 @@ Never hardcode user-facing text in JSX attributes (`aria-label`, `title`, `place
 ## Local checks
 
 ```bash
-# Hard fail: missing en keys, extra fr/es keys, interpolation tokens
-# Warn only: missing fr/es keys (upstream-owned), orphan en keys (unused in static scan)
+# Hard fail: missing en keys, extra translation-locale keys, interpolation tokens
+# Warn only: missing translation keys (upstream-owned), orphan en keys (unused in static scan)
 # Dynamic t(`prefix_${x}`) keys: add to ORPHAN_KEY_ALLOWLIST in scripts/check-i18n-parity.mjs
 pnpm check:i18n
 
@@ -68,4 +69,4 @@ pnpm lint
 
 - Flat camelCase keys in locale JSON (e.g. `shareAriaLabel`, `verseOfTheDay`).
 - In platform-localization source, prefix with `react.` (e.g. `react.shareAriaLabel`).
-- Interpolation tokens use `{{tokenName}}` and must match across en/fr/es once translations land.
+- Interpolation tokens use `{{tokenName}}` and must match across en and translation locales once translations land.
