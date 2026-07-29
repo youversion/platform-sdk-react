@@ -33,7 +33,8 @@
     "prepare": "husky",
     "analyze": "node scripts/analyze.mjs",
     "analyze:select": "node scripts/analyze-select.mjs",
-    "check:i18n": "node scripts/check-i18n-parity.mjs"
+    "check:i18n": "node scripts/check-i18n-parity.mjs",
+    "test:ci-scripts": "bash .github/scripts/check-locale-ownership.test.sh"
   },
   "devDependencies": {
     "@changesets/cli": "2.29.7",
