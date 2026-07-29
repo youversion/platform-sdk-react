@@ -21,6 +21,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Test the locale ownership gate
+        run: bash .github/scripts/check-locale-ownership.test.sh
+
       - name: Block manual locale edits
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
