@@ -689,6 +689,103 @@ describe('BibleReader selection payload - reference and shareData', () => {
     expect(lastShareData(onVerseSelect).reference).toBe('JHN 1:3 NIV');
   });
 
+  it('re-emits the live selection when the book title resolves after it was made', async () => {
+    vi.mocked(useBooks).mockReturnValue({
+      books: null,
+      loading: true,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    const onVerseSelect = verseSelectSpy();
+    const props = { highlights: [], onVerseSelect, verseActions: 'none' as const };
+    const { container, rerender } = renderReader(props);
+
+    selectVerse(container, 3);
+    expect(lastSelection(onVerseSelect).reference).toBe('JHN 1:3');
+
+    // useBooks resolves while verse 3 is still selected.
+    vi.mocked(useBooks).mockReturnValue({
+      books: { data: [...mockBooks], next_page_token: null },
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    rerender(readerJsx(props));
+
+    await waitFor(() => expect(lastSelection(onVerseSelect).reference).toBe('John 1:3'));
+    // The refreshed payload is otherwise the same selection, shareData included.
+    expect(onVerseSelect).toHaveBeenLastCalledWith(selection([3]));
+    expect(getVerseEl(container, 3).classList.contains('yv-v-selected')).toBe(true);
+  });
+
+  it('re-emits the live selection when the version abbreviation resolves after it was made', async () => {
+    vi.mocked(useVersion).mockReturnValue({
+      version: null,
+      loading: true,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    const onVerseSelect = verseSelectSpy();
+    const props = { highlights: [], onVerseSelect, verseActions: 'none' as const };
+    const { container, rerender } = renderReader(props);
+
+    selectVerse(container, 1);
+    // No version yet: the copy/share reference carries no abbreviation.
+    expect(lastShareData(onVerseSelect).reference).toBe('John 1:1');
+
+    vi.mocked(useVersion).mockReturnValue({
+      version: mockVersion,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    rerender(readerJsx(props));
+
+    await waitFor(() => expect(lastShareData(onVerseSelect).reference).toBe('John 1:1 NIV'));
+    expect(onVerseSelect).toHaveBeenLastCalledWith(selection([1]));
+  });
+
+  it('does not re-emit when metadata resolves with no selection live', async () => {
+    vi.mocked(useBooks).mockReturnValue({
+      books: null,
+      loading: true,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    const onVerseSelect = verseSelectSpy();
+    const props = { highlights: [], onVerseSelect };
+    const { rerender } = renderReader(props);
+
+    vi.mocked(useBooks).mockReturnValue({
+      books: { data: [...mockBooks], next_page_token: null },
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    rerender(readerJsx(props));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(onVerseSelect).not.toHaveBeenCalled();
+  });
+
+  it('does not re-emit on a re-render once the metadata is settled (default path unchanged)', async () => {
+    const onVerseSelect = verseSelectSpy();
+    const props = { highlights: [], onVerseSelect };
+    const { container, rerender } = renderReader(props);
+
+    selectVerse(container, 2);
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
+    expect(onVerseSelect).toHaveBeenCalledTimes(1);
+
+    rerender(readerJsx(props));
+
+    expect(onVerseSelect).toHaveBeenCalledTimes(1);
+    expect(onVerseSelect).toHaveBeenLastCalledWith(selection([2]));
+  });
+
   it('carries shareData matching what onCopy produces for the same selection', async () => {
     const onVerseSelect = verseSelectSpy();
     const onCopy: CopyMock = vi.fn<(data: BibleReaderShareData) => void>();

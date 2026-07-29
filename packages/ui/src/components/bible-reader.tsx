@@ -107,7 +107,8 @@ export type BibleReaderVerseSelection = {
    * code above is not human-readable.
    *
    * Falls back to the USFM book code (`HEB 11:4`) until `useBooks` resolves the
-   * book title. `''` on clear.
+   * book title; when it resolves while the selection is still live, the reader
+   * re-emits that selection with the localized reference. `''` on clear.
    *
    * Deliberately different from `shareData.reference`, which keeps the version
    * abbreviation (`Hebrews 11:4 BSB`) because copied text needs it. Do not
@@ -242,6 +243,11 @@ export type RootProps = {
    * A clear fired by navigation carries the *destination* book/chapter/version
    * (the selection cleared because the reader moved there). Treat `verses: []`
    * as "no selection anywhere" rather than keying off its location fields.
+   *
+   * Also re-fires with the **same** `verses` when the localized book title or
+   * version abbreviation resolves while a selection is live, so `reference` /
+   * `shareData` don't stay on their fallbacks. Treat the payload as the current
+   * state of the selection, not as one event per user action.
    */
   onVerseSelect?: (selection: BibleReaderVerseSelection) => void;
   /**
@@ -818,6 +824,31 @@ function Content() {
       shareData: sorted.length === 0 ? null : buildSelectionShareData(sorted),
     };
   }
+
+  // The payload's localized fields (`reference`, `shareData`) are a snapshot of
+  // `useBooks` / `useVersion`, which can resolve *after* a selection is made —
+  // that payload carries the USFM book code and no version abbreviation. Re-emit
+  // the live selection once the metadata lands so a host owning the verse-action
+  // UI isn't stuck showing `HEB 11:4` until the user selects again.
+  //
+  // Both refs seed from the mount values, so the first effect run is never an
+  // emit. Navigation clears the selection in the effect above (declared first,
+  // so it runs first), which makes the empty-selection guard here catch a
+  // book/version change before it can re-emit a dead selection.
+  const buildVerseSelectionRef = useRef(buildVerseSelection);
+  buildVerseSelectionRef.current = buildVerseSelection;
+  const bookTitle = bookData?.title;
+  const versionAbbreviation = version?.localized_abbreviation;
+  const lastEmittedMetadataRef = useRef({ bookTitle, versionAbbreviation });
+  useEffect(() => {
+    const emitted = lastEmittedMetadataRef.current;
+    if (emitted.bookTitle === bookTitle && emitted.versionAbbreviation === versionAbbreviation) {
+      return;
+    }
+    lastEmittedMetadataRef.current = { bookTitle, versionAbbreviation };
+    if (lastSelectionRef.current.length === 0) return;
+    onVerseSelectRef.current?.(buildVerseSelectionRef.current(lastSelectionRef.current));
+  }, [bookTitle, versionAbbreviation]);
 
   function handleVerseSelect(verses: number[]) {
     const added = verses.find((verse) => !lastSelectionRef.current.includes(verse));
