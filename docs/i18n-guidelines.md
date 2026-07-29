@@ -9,7 +9,7 @@ User-facing strings in `@youversion/platform-react-ui` must go through i18next. 
 | English strings (canonical) | [`platform-localization/sources/common/en.json`](https://github.com/youversion/platform-localization) — `react.*` namespace |
 | React locale bundles (this repo) | `packages/ui/src/i18n/locales/{en,fr,es}.json` |
 | Translation workflow | Crowdin (upload on merge, weekly download) |
-| Downstream sync | `platform-localization` → **Distribute React Localization** (`distribute-react.yml`) → `chore/localization-sync-react-*` PRs |
+| Downstream sync | `platform-localization` → **Distribute React Localization** (`distribute-react.yml`) → PRs authored by `platform-localization-pr-bot[bot]` (currently on the reused `chore/localization-sync-react` branch) |
 
 See [platform-localization README](https://github.com/youversion/platform-localization/blob/main/README.md) and [distribution docs](https://github.com/youversion/platform-localization/blob/main/docs/distribution.md) for the full pipeline.
 
@@ -56,11 +56,14 @@ pnpm check:i18n
 
 # Hardcoded string lint (components only)
 pnpm lint
+
+# Locale ownership gate self-test (bash only, no install required)
+pnpm test:ci-scripts
 ```
 
 ## CI
 
-- **locale-ownership** job fails PRs that touch `packages/ui/src/i18n/locales/**` unless the PR is an automated sync from platform-localization (`chore/localization-sync-react-*` branch and `platform-localization-pr-bot[bot]` author). Add English strings upstream in platform-localization instead.
+- **locale-ownership** job fails PRs that touch `packages/ui/src/i18n/locales/**` unless the PR author is `platform-localization-pr-bot[bot]`, the localization sync App. The branch name is deliberately not part of the check — upstream owns it and has changed it before ([ADR 0003](./adr/0003-locale-ownership-gate-keys-on-pr-author.md)). Add English strings upstream in platform-localization instead.
 - **i18n-check** job runs `pnpm check:i18n` on every PR.
 - **Lint** job runs ESLint with `eslint-plugin-i18next` scoped to `packages/ui/src/components/**` (excluding `*.test.*` and `*.stories.*`).
 

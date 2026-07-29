@@ -37,7 +37,7 @@
       },
       {
         "scope": ["packages/ui/src/i18n/locales/**"],
-        "rule": "Locale JSON is upstream-owned (platform-localization). CI locale-ownership job fails feature PRs that edit packages/ui/src/i18n/locales/. Add English in sources/common/en.json (react.*); fr/es arrive via Crowdin sync PRs (chore/localization-sync-react-*)."
+        "rule": "Locale JSON is upstream-owned (platform-localization). CI locale-ownership job fails any PR that edits packages/ui/src/i18n/locales/ unless its author is platform-localization-pr-bot[bot]. The branch name is deliberately not part of the check (see docs/adr/0003-locale-ownership-gate-keys-on-pr-author.md). Add English in sources/common/en.json (react.*); translations arrive via Crowdin sync PRs."
       }
     ],
     "files": [
