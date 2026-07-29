@@ -6,7 +6,16 @@
 // localStorage traffic), intent events, and mode latching.
 // We stub ResizeObserver for jsdom (used by Radix/@floating-ui). The stub methods are intentionally no-ops.
 /* eslint-disable @typescript-eslint/no-empty-function */
-import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type Mock,
+  type MockInstance,
+} from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type {
   BibleBook,
@@ -27,8 +36,14 @@ import {
   useVersion,
   useVersions,
 } from '@youversion/platform-react-hooks';
-import { BibleReader, type BibleReaderRootProps } from './bible-reader';
+import {
+  BibleReader,
+  type BibleReaderRootProps,
+  type BibleReaderShareData,
+  type BibleReaderVerseSelection,
+} from './bible-reader';
 import { HIGHLIGHT_COLORS } from './verse-action-popover';
+import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
 
 class ResizeObserverMock {
   observe() {}
@@ -225,13 +240,79 @@ function getClearButtons() {
     .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear'));
 }
 
+/** Clean verse text the reader extracts from `mockPassage` for each verse. */
+const VERSE_TEXT: Record<number, string> = {
+  1: 'In the beginning was the Word.',
+  2: 'He was with God in the beginning.',
+  3: 'Through him all things were made.',
+};
+
+/**
+ * The `shareData` the reader now attaches to every non-empty selection.
+ * Composed with the same `verse-share` helpers the popover's Copy / Share have
+ * always used (they have their own unit tests) — what this pins is *which*
+ * verses and *which* text end up on the selection payload.
+ */
+const shareDataFor = (verses: number[]): BibleReaderShareData | null => {
+  if (verses.length === 0) return null;
+  const sorted = [...verses].sort((a, b) => a - b);
+  const textByVerse = Object.fromEntries(sorted.map((verse) => [verse, VERSE_TEXT[verse] ?? '']));
+  const shared = { bookName: 'John', chapter: '1', versionAbbreviation: 'NIV' };
+  return {
+    text: buildVerseShareText({ verses: sorted, textByVerse, ...shared }),
+    reference: buildVerseReference({ verses: sorted, ...shared }),
+    verseText: joinVerseTexts(sorted, textByVerse),
+    verses: sorted,
+    book: 'JHN',
+    chapter: '1',
+    versionId: 111,
+  };
+};
+
+/** The `onVerseSelect` payload. */
 const selection = (verses: number[]) => ({
+  ...intent(verses),
+  reference:
+    verses.length === 0
+      ? ''
+      : buildVerseReference({
+          bookName: 'John',
+          chapter: '1',
+          verses: [...verses].sort((a, b) => a - b),
+          versionAbbreviation: '',
+        }),
+  shareData: shareDataFor(verses),
+});
+
+/**
+ * The `onHighlightApply` / `onHighlightRemove` payload — deliberately without
+ * `reference` / `shareData`: an intent addresses the data layer.
+ */
+const intent = (verses: number[]) => ({
   versionId: 111,
   book: 'JHN',
   chapter: '1',
   verses,
   passageIds: verses.map((verse) => `JHN.1.${verse}`),
 });
+
+type VerseSelectMock = Mock<(selection: BibleReaderVerseSelection) => void>;
+type CopyMock = Mock<(data: BibleReaderShareData) => void>;
+
+const verseSelectSpy = (): VerseSelectMock =>
+  vi.fn<(selection: BibleReaderVerseSelection) => void>();
+
+function lastSelection(mock: VerseSelectMock): BibleReaderVerseSelection {
+  const payload = mock.mock.lastCall?.[0];
+  if (!payload) throw new Error('onVerseSelect was never called');
+  return payload;
+}
+
+function lastShareData(mock: VerseSelectMock): BibleReaderShareData {
+  const { shareData } = lastSelection(mock);
+  if (!shareData) throw new Error('selection carried no shareData');
+  return shareData;
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -388,6 +469,8 @@ describe('BibleReader controlled mode - events', () => {
       chapter: '2',
       verses: [],
       passageIds: [],
+      reference: '',
+      shareData: null,
     });
   });
 
@@ -409,7 +492,7 @@ describe('BibleReader controlled mode - events', () => {
     fireEvent.click(getApplyButtons()[0]!);
 
     expect(onHighlightApply).toHaveBeenCalledTimes(1);
-    expect(onHighlightApply).toHaveBeenCalledWith({ ...selection([1, 3]), color: YELLOW });
+    expect(onHighlightApply).toHaveBeenCalledWith({ ...intent([1, 3]), color: YELLOW });
 
     // Selection cleared per existing popover behavior.
     await waitFor(() => {
@@ -436,7 +519,7 @@ describe('BibleReader controlled mode - events', () => {
 
     fireEvent.click(getClearButtons()[0]!);
     expect(onHighlightRemove).toHaveBeenCalledTimes(1);
-    expect(onHighlightRemove).toHaveBeenLastCalledWith({ ...selection([1]), color: YELLOW });
+    expect(onHighlightRemove).toHaveBeenLastCalledWith({ ...intent([1]), color: YELLOW });
 
     // Green still showing on a selected verse -> popover stays open (AC 8a).
     expect(screen.getByRole('dialog')).toBeTruthy();
@@ -449,7 +532,7 @@ describe('BibleReader controlled mode - events', () => {
 
     fireEvent.click(getClearButtons()[0]!);
     expect(onHighlightRemove).toHaveBeenCalledTimes(2);
-    expect(onHighlightRemove).toHaveBeenLastCalledWith({ ...selection([2]), color: GREEN });
+    expect(onHighlightRemove).toHaveBeenLastCalledWith({ ...intent([2]), color: GREEN });
 
     // Last active color removed -> popover dismisses (AC 8).
     await waitFor(() => {
@@ -521,5 +604,188 @@ describe('BibleReader controlled mode - latching', () => {
     const selfContained = renderReader();
     expect(getVerseEl(selfContained.container, 1).style.backgroundColor).toBe('');
     expect(warnSpy).not.toHaveBeenCalled();
+  });
+});
+
+// ── Host-owned verse actions ────────────────────────────────────────────────
+// `verseActions` + `clearSelectionSignal` let a host (RN Expo DOM, YPE-2894)
+// render its own verse-action UI. Every case below has a sibling asserting the
+// default is unchanged — every existing consumer is on the default.
+
+describe('BibleReader verseActions', () => {
+  it('renders the popover by default (unchanged behavior)', async () => {
+    const { container } = renderReader({ highlights: [] });
+
+    selectVerse(container, 1);
+
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
+    expect(getApplyButtons().length).toBeGreaterThan(0);
+  });
+
+  it('renders the popover for an explicit verseActions="popover"', async () => {
+    const { container } = renderReader({ highlights: [], verseActions: 'popover' });
+
+    selectVerse(container, 1);
+
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
+  });
+
+  it('renders no verse-action UI with verseActions="none", while selection still works', () => {
+    const onVerseSelect = verseSelectSpy();
+    const { container } = renderReader({
+      highlights: [{ version_id: 111, passage_id: 'JHN.1.2', color: GREEN }],
+      verseActions: 'none',
+      onVerseSelect,
+    });
+
+    selectVerse(container, 1);
+
+    // Nothing renders over the passage.
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(getApplyButtons()).toHaveLength(0);
+    expect(getClearButtons()).toHaveLength(0);
+
+    // The verse is still selected in the text, highlights still project from
+    // the prop, and the host still hears about it.
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(GREEN));
+    expect(onVerseSelect).toHaveBeenCalledWith(selection([1]));
+
+    // And it stays absent as the selection grows.
+    selectVerse(container, 3);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(onVerseSelect).toHaveBeenLastCalledWith(selection([1, 3]));
+  });
+});
+
+describe('BibleReader selection payload - reference and shareData', () => {
+  it('carries the localized reference without the version abbreviation', () => {
+    const onVerseSelect = verseSelectSpy();
+    const { container } = renderReader({ highlights: [], onVerseSelect });
+
+    selectVerse(container, 1);
+    selectVerse(container, 2);
+
+    // Label: book title, no version. Copied text: version retained. The two
+    // are deliberately different.
+    expect(lastSelection(onVerseSelect).reference).toBe('John 1:1-2');
+    expect(lastShareData(onVerseSelect).reference).toBe('John 1:1-2 NIV');
+  });
+
+  it('falls back to the USFM book code until useBooks resolves', () => {
+    vi.mocked(useBooks).mockReturnValue({
+      books: null,
+      loading: true,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    const onVerseSelect = verseSelectSpy();
+    const { container } = renderReader({ highlights: [], onVerseSelect });
+
+    selectVerse(container, 3);
+
+    expect(lastSelection(onVerseSelect).reference).toBe('JHN 1:3');
+    expect(lastShareData(onVerseSelect).reference).toBe('JHN 1:3 NIV');
+  });
+
+  it('carries shareData matching what onCopy produces for the same selection', async () => {
+    const onVerseSelect = verseSelectSpy();
+    const onCopy: CopyMock = vi.fn<(data: BibleReaderShareData) => void>();
+    const { container } = renderReader({ highlights: [], onVerseSelect, onCopy });
+
+    selectVerse(container, 1);
+    selectVerse(container, 3);
+    const selectionShareData = lastShareData(onVerseSelect);
+
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /copy/i }));
+
+    expect(onCopy).toHaveBeenCalledTimes(1);
+    expect(onCopy.mock.lastCall?.[0]).toEqual(selectionShareData);
+    // Non-contiguous selection: gap joined with ' ... ', reference collapsed.
+    expect(selectionShareData.reference).toBe('John 1:1,3 NIV');
+    expect(selectionShareData.verseText).toBe(
+      'In the beginning was the Word. ... Through him all things were made.',
+    );
+  });
+
+  it('reports reference "" and shareData null on clear', () => {
+    const onVerseSelect = verseSelectSpy();
+    const { container } = renderReader({ highlights: [], onVerseSelect });
+
+    selectVerse(container, 1);
+    selectVerse(container, 1);
+
+    expect(onVerseSelect).toHaveBeenLastCalledWith(selection([]));
+    const payload = lastSelection(onVerseSelect);
+    expect(payload.reference).toBe('');
+    expect(payload.shareData).toBeNull();
+  });
+});
+
+describe('BibleReader clearSelectionSignal', () => {
+  it('clears the selection when the signal changes and emits verses: []', async () => {
+    const onVerseSelect = vi.fn();
+    const props = { highlights: [], onVerseSelect, verseActions: 'none' as const };
+    const { container, rerender } = renderReader({ ...props, clearSelectionSignal: 0 });
+
+    selectVerse(container, 1);
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
+    onVerseSelect.mockClear();
+
+    rerender(readerJsx({ ...props, clearSelectionSignal: 1 }));
+
+    await waitFor(() =>
+      expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(false),
+    );
+    expect(onVerseSelect).toHaveBeenCalledTimes(1);
+    expect(onVerseSelect).toHaveBeenCalledWith(selection([]));
+  });
+
+  it('also closes the built-in popover', async () => {
+    const props = { highlights: [] };
+    const { container, rerender } = renderReader({ ...props, clearSelectionSignal: 3 });
+
+    selectVerse(container, 2);
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
+
+    rerender(readerJsx({ ...props, clearSelectionSignal: 4 }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('does not clear on mount', () => {
+    const onVerseSelect = vi.fn();
+    renderReader({ highlights: [], onVerseSelect, clearSelectionSignal: 7 });
+
+    expect(onVerseSelect).not.toHaveBeenCalled();
+  });
+
+  it('does not clear when the signal is unchanged across a re-render', () => {
+    const onVerseSelect = vi.fn();
+    const props = { highlights: [], onVerseSelect, clearSelectionSignal: 2 };
+    const { container, rerender } = renderReader(props);
+
+    selectVerse(container, 1);
+    onVerseSelect.mockClear();
+
+    rerender(readerJsx(props));
+
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
+    expect(onVerseSelect).not.toHaveBeenCalled();
+  });
+
+  it('is inert when the host never passes it', () => {
+    const onVerseSelect = vi.fn();
+    const props = { highlights: [], onVerseSelect };
+    const { container, rerender } = renderReader(props);
+
+    selectVerse(container, 1);
+    onVerseSelect.mockClear();
+    rerender(readerJsx(props));
+
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
+    expect(onVerseSelect).not.toHaveBeenCalled();
   });
 });

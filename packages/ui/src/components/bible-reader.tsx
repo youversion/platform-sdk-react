@@ -77,6 +77,8 @@ type BibleReaderContextType = {
   onVerseSelect?: (selection: BibleReaderVerseSelection) => void;
   onHighlightApply?: (intent: BibleReaderHighlightIntent) => void;
   onHighlightRemove?: (intent: BibleReaderHighlightIntent) => void;
+  verseActions: 'popover' | 'none';
+  clearSelectionSignal?: number;
 };
 
 /**
@@ -98,14 +100,40 @@ export type BibleReaderVerseSelection = {
   verses: number[];
   /** Per-verse USFM ids, e.g. `['JHN.3.16', 'JHN.3.17']`. Never ranges. */
   passageIds: string[];
+  /**
+   * Localized display reference **without** the version abbreviation, e.g.
+   * `Hebrews 11:4`. For a host that renders its own verse-action UI (see
+   * {@link RootProps.verseActions}) this is the label to show; the USFM `book`
+   * code above is not human-readable.
+   *
+   * Falls back to the USFM book code (`HEB 11:4`) until `useBooks` resolves the
+   * book title. `''` on clear.
+   *
+   * Deliberately different from `shareData.reference`, which keeps the version
+   * abbreviation (`Hebrews 11:4 BSB`) because copied text needs it. Do not
+   * "fix" one to match the other.
+   */
+  reference: string;
+  /**
+   * The same payload the popover's Copy / Share buttons produce, so a host
+   * owning the verse-action UI can run copy/share without a popover press.
+   * `null` on clear (and if the reader's DOM is not mounted).
+   */
+  shareData: BibleReaderShareData | null;
 };
 
 /**
  * Serializable payload handed to `onHighlightApply` / `onHighlightRemove` in
  * controlled mode. An intent is a request, not a fact: the reader paints
  * nothing until the host round-trips an updated `highlights` prop.
+ *
+ * `reference` / `shareData` are deliberately omitted: an intent is addressed to
+ * the data layer, which needs identity and colour only.
  */
-export type BibleReaderHighlightIntent = BibleReaderVerseSelection & {
+export type BibleReaderHighlightIntent = Omit<
+  BibleReaderVerseSelection,
+  'reference' | 'shareData'
+> & {
   /**
    * 6-character lowercase hex, no `#`. For `onHighlightRemove`, the color
    * being cleared.
@@ -227,6 +255,35 @@ export type RootProps = {
    * called) in self-contained mode.
    */
   onHighlightRemove?: (intent: BibleReaderHighlightIntent) => void;
+  /**
+   * Which verse-action UI the reader renders over a selection.
+   *
+   * - `'popover'` (default) renders the built-in {@link VerseActionPopover} —
+   *   today's behavior, unchanged.
+   * - `'none'` renders **no** verse-action UI while keeping everything else
+   *   intact: verses still select and paint, {@link onVerseSelect} still fires
+   *   (with `reference` and `shareData` populated), highlight intents still
+   *   reach {@link onHighlightApply} / {@link onHighlightRemove}, and Copy /
+   *   Share payloads are still built. Use it when the host owns the action UI
+   *   — e.g. a React Native host presenting a native bottom sheet, where a
+   *   second in-WebView popover would stack on top of it.
+   *
+   * With `'none'` the host also owns clearing the selection; see
+   * {@link clearSelectionSignal}.
+   */
+  verseActions?: 'popover' | 'none';
+  /**
+   * Clears the current verse selection from outside the reader. Any change to
+   * this value runs the reader's own "close and clear" path, emitting
+   * {@link onVerseSelect} with `verses: []`. The value at mount is the
+   * baseline, so mounting never clears.
+   *
+   * A monotonically incremented counter rather than an imperative `ref` handle
+   * because Expo DOM components accept only serializable props — a ref cannot
+   * cross that bridge. Pairs with `verseActions="none"`, where nothing inside
+   * the reader can clear the selection any more.
+   */
+  clearSelectionSignal?: number;
   children?: ReactNode;
 };
 
@@ -377,6 +434,8 @@ function Root({
   onVerseSelect,
   onHighlightApply,
   onHighlightRemove,
+  verseActions = 'popover',
+  clearSelectionSignal,
   children,
 }: RootProps) {
   // Latched at first mount: a transient `undefined` on a controlled reader must
@@ -548,6 +607,8 @@ function Root({
     onVerseSelect,
     onHighlightApply,
     onHighlightRemove,
+    verseActions,
+    clearSelectionSignal,
   };
 
   return (
@@ -583,6 +644,8 @@ function Content() {
     onVerseSelect,
     onHighlightApply,
     onHighlightRemove,
+    verseActions,
+    clearSelectionSignal,
   } = useBibleReaderContext();
   const { version } = useVersion(versionId);
 
@@ -683,7 +746,15 @@ function Content() {
     setAnchorElement(null);
     if (lastSelectionRef.current.length > 0) {
       lastSelectionRef.current = [];
-      onVerseSelectRef.current?.({ versionId, book, chapter, verses: [], passageIds: [] });
+      onVerseSelectRef.current?.({
+        versionId,
+        book,
+        chapter,
+        verses: [],
+        passageIds: [],
+        reference: '',
+        shareData: null,
+      });
     }
   }, [book, chapter, versionId]);
 
@@ -711,6 +782,19 @@ function Content() {
     }
   }
 
+  // `clearSelectionSignal` is a host-owned command, not state: any change runs
+  // the same close-and-clear path an outside click would. Read the handler via a
+  // ref so the effect fires on the signal alone (the handler is re-created every
+  // render). The ref seeds from the mount value, so mounting is never a clear.
+  const closeAndClearSelectionRef = useRef(closeAndClearSelection);
+  closeAndClearSelectionRef.current = closeAndClearSelection;
+  const lastClearSelectionSignalRef = useRef(clearSelectionSignal);
+  useEffect(() => {
+    if (lastClearSelectionSignalRef.current === clearSelectionSignal) return;
+    lastClearSelectionSignalRef.current = clearSelectionSignal;
+    closeAndClearSelectionRef.current();
+  }, [clearSelectionSignal]);
+
   /** Builds the serializable selection payload (verses ascending, de-duped). */
   function buildVerseSelection(verses: number[]): BibleReaderVerseSelection {
     const sorted = [...new Set(verses)].sort((a, b) => a - b);
@@ -720,6 +804,18 @@ function Content() {
       chapter,
       verses: sorted,
       passageIds: sorted.map((verse) => `${book}.${chapter}.${verse}`),
+      // The label a host renders over its own verse-action UI. No version
+      // abbreviation here — that belongs to copied text, not to a title.
+      reference:
+        sorted.length === 0
+          ? ''
+          : buildVerseReference({
+              bookName: bookData?.title ?? book,
+              chapter,
+              verses: sorted,
+              versionAbbreviation: '',
+            }),
+      shareData: sorted.length === 0 ? null : buildSelectionShareData(sorted),
     };
   }
 
@@ -770,18 +866,24 @@ function Content() {
     if (!hasRemaining) closeAndClearSelection();
   }
 
-  function buildSelectionShareData(): BibleReaderShareData | null {
+  /**
+   * `verses` is a parameter rather than a read of `selectedVerses` because
+   * `buildVerseSelection` runs inside the click handler that *sets* the new
+   * selection — reading state there would build the payload for the previous
+   * one.
+   */
+  function buildSelectionShareData(verses: number[]): BibleReaderShareData | null {
     const container = readerRef.current;
     if (!container) return null;
     const textByVerse: Record<number, string> = {};
-    for (const verse of selectedVerses) {
+    for (const verse of verses) {
       textByVerse[verse] = getCleanVerseText(container, verse);
     }
     const bookName = bookData?.title ?? book;
     const versionAbbreviation = version?.localized_abbreviation ?? '';
     return {
       text: buildVerseShareText({
-        verses: selectedVerses,
+        verses,
         textByVerse,
         bookName,
         chapter,
@@ -790,11 +892,11 @@ function Content() {
       reference: buildVerseReference({
         bookName,
         chapter,
-        verses: selectedVerses,
+        verses,
         versionAbbreviation,
       }),
-      verseText: joinVerseTexts(selectedVerses, textByVerse),
-      verses: [...new Set(selectedVerses)].sort((a, b) => a - b),
+      verseText: joinVerseTexts(verses, textByVerse),
+      verses: [...new Set(verses)].sort((a, b) => a - b),
       book,
       chapter,
       versionId,
@@ -802,7 +904,7 @@ function Content() {
   }
 
   function handleCopy() {
-    const data = buildSelectionShareData();
+    const data = buildSelectionShareData(selectedVerses);
     if (onCopy) {
       if (data) {
         void Promise.resolve(onCopy(data)).catch(() => {
@@ -817,7 +919,7 @@ function Content() {
   }
 
   function handleShare() {
-    const data = buildSelectionShareData();
+    const data = buildSelectionShareData(selectedVerses);
     if (onShare) {
       if (data) {
         void Promise.resolve(onShare(data)).catch(() => {
@@ -911,21 +1013,27 @@ function Content() {
             />
           </div>
 
-          <VerseActionPopover
-            open={popoverOpen && selectedVerses.length > 0}
-            onOpenChange={handlePopoverOpenChange}
-            activeHighlights={activeHighlights}
-            selectedVerses={selectedVerses}
-            highlightedVerses={highlightedVerses}
-            highlightsEnabled={highlightsEnabled}
-            anchorElement={anchorElement}
-            scrollRoot={scrollContainerRef.current}
-            onHighlight={handleHighlight}
-            onClearHighlight={handleClearHighlight}
-            onCopy={handleCopy}
-            onShare={handleShare}
-            theme={background}
-          />
+          {/* `verseActions="none"`: the host renders its own action UI (e.g. a
+              native bottom sheet), so the built-in popover must not mount at
+              all — two action surfaces would stack. Selection, painting, and
+              every payload above are untouched. */}
+          {verseActions !== 'none' && (
+            <VerseActionPopover
+              open={popoverOpen && selectedVerses.length > 0}
+              onOpenChange={handlePopoverOpenChange}
+              activeHighlights={activeHighlights}
+              selectedVerses={selectedVerses}
+              highlightedVerses={highlightedVerses}
+              highlightsEnabled={highlightsEnabled}
+              anchorElement={anchorElement}
+              scrollRoot={scrollContainerRef.current}
+              onHighlight={handleHighlight}
+              onClearHighlight={handleClearHighlight}
+              onCopy={handleCopy}
+              onShare={handleShare}
+              theme={background}
+            />
+          )}
 
           <HighlightPermissionDialog
             open={permissionDialogOpen}
