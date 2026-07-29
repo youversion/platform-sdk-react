@@ -14,8 +14,8 @@ export interface YvFontsProps {
 }
 
 /**
- * Loads the YouVersion brand serif (Untitled Serif) from the gated Fonts API
- * stylesheet endpoint.
+ * Loads the YouVersion brand serif (Untitled Serif) from the Fonts API stylesheet
+ * endpoint, which requires an app key.
  *
  * Sibling to `<YvStyles />` and the SDK's first runtime-value-dependent
  * stylesheet: the URL needs the app key, which is only known at render time, so
@@ -25,6 +25,13 @@ export interface YvFontsProps {
  * by `href`, so multiple providers still yield one link. `@font-face` is not
  * subject to `@layer`, so cascade position is irrelevant here — `precedence` is
  * only there to opt into the hoist + dedupe.
+ *
+ * Caveat: React also suspends the component that renders a `precedence` stylesheet
+ * while the sheet loads. `yv-fonts.test.tsx` verifies that a plain synchronous
+ * mount still commits its children; a mount inside a transition (a Next.js App
+ * Router client navigation, say) is not covered by that test and may hold the
+ * commit until the request settles. Errors settle too, so the worst case is added
+ * latency, not a hang.
  */
 export function YvFonts({
   appKey,

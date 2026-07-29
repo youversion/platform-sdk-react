@@ -66,7 +66,7 @@ style-src https://fonts.googleapis.com https://api.youversion.com;
 - `api.youversion.com` — the Fonts API stylesheet (`/v1/fonts/1/stylesheet`), which `YouVersionProvider` requests with your app key
 - `cdn.youversion.com` — the Untitled Serif woff2 files that stylesheet points at
 
-Untitled Serif is YouVersion's brand serif and the SDK's default serif face. There is no prop to turn it off. If these hosts are blocked, serif text falls back to Source Serif 4 with no layout break — the stack is `'Untitled Serif', 'Source Serif 4', serif` and the fonts use `font-display: swap`. If you load Untitled Serif yourself, your copy is used; the stack names it first regardless of who fetched it.
+Untitled Serif is YouVersion's brand serif and the SDK's default serif face. There is no prop to turn it off. If these hosts are blocked, serif text falls back to Source Serif 4 with no layout break — the stack is `'Untitled Serif', 'Source Serif 4', serif`. If you load Untitled Serif yourself, your copy is used; the stack names it first regardless of who fetched it.
 
 ## Theming
 

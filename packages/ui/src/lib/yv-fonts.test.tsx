@@ -7,6 +7,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react';
 import { YouVersionProvider } from '@/components/YouVersionProvider';
+import { YvFonts } from '@/lib/yv-fonts';
 
 vi.mock('@youversion/platform-react-hooks', () => {
   function PassthroughProvider({ children }: { children: React.ReactNode }) {
@@ -47,7 +48,9 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
 
     // React can suspend a commit on <link rel="stylesheet" precedence> until the
     // sheet loads, and jsdom never fires `load` for it. Assert children still
-    // commit, so mounting the provider can't blank or hang a consumer's tree.
+    // commit, so a plain synchronous mount can't blank a consumer's tree. This
+    // covers the sync path only — a mount inside a transition is not exercised
+    // here; see the caveat in yv-fonts.tsx.
     expect(document.body.querySelector('[data-testid="child"]')?.textContent).toBe('hello');
   });
 
@@ -76,8 +79,10 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
   });
 
   it('renders no font <link> when the app key is missing', () => {
-    // The missing-app-key branch renders <YvStyles /> alone — no key, no font.
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    // A whitespace-only key trips the provider's missing-app-key guard, which
+    // renders <YvStyles /> alone — <YvFonts /> is never reached. YvFonts' own
+    // guard is covered separately below.
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     const before = fontLinks().length;
 
     render(
@@ -87,6 +92,7 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
     );
 
     expect(fontLinks()).toHaveLength(before);
+    consoleError.mockRestore();
   });
 
   it('deduplicates the font <link> when multiple providers are rendered', () => {
@@ -111,5 +117,22 @@ describe('Font stylesheet injection via YouVersionProvider', () => {
     });
     container1.remove();
     container2.remove();
+  });
+});
+
+// The provider guard means YvFonts is normally only reached with a real key, so
+// its own defensive guard needs direct coverage — otherwise a regression there
+// would only surface as a 401 in a consumer's network tab.
+describe('YvFonts', () => {
+  it.each([
+    ['undefined', undefined],
+    ['empty', ''],
+    ['whitespace-only', '   '],
+  ])('renders nothing for an %s app key', (_label, appKey) => {
+    const before = fontLinks().length;
+
+    render(<YvFonts appKey={appKey} />);
+
+    expect(fontLinks()).toHaveLength(before);
   });
 });
