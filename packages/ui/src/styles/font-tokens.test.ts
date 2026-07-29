@@ -56,9 +56,8 @@ describe('serif font token (core theme.css ↔ ui global.css)', () => {
 });
 
 describe('sans font token (core theme.css ↔ ui global.css)', () => {
-  // Aktiv Grotesk App is still reverted — see
-  // docs/adr/0001-revert-brand-fonts-pending-licensing.md. Guarded here so the
-  // sans stack can't drift alongside the serif change either.
+  // The sans stack is unchanged by the serif work. Guarded here so it can't drift
+  // alongside the serif change either.
   it('keeps the two duplicate declarations byte-identical on Inter', () => {
     const coreSans = extractStack(themeCss, '--yv-font-sans');
     const uiSans = extractStack(globalCss, '--font-sans');

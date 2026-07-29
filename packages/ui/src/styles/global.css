@@ -50,10 +50,8 @@ layer(yv-sdk-fonts);
    build time. It is loaded instead by <YvFonts /> (src/lib/yv-fonts.tsx), rendered from
    YouVersionProvider, from the gated /v1/fonts/1/stylesheet endpoint. See
    docs/adr/0003-adopt-untitled-serif-via-fonts-api.md.
-   Aktiv Grotesk App remains reverted pending licensing — see
-   docs/adr/0001-revert-brand-fonts-pending-licensing.md; that implementation is parked
-   on branch feat/youversion-brand-fonts. Sans stays Inter, and Source Serif 4 (Google
-   Fonts @import above) stays loaded as the serif fallback. */
+   Sans stays Inter, and Source Serif 4 (Google Fonts @import above) stays loaded as the
+   serif fallback. */
 
 /* #region shadcn UI theme */
 @custom-variant dark (&:is([data-yv-sdk][data-yv-theme='dark'] *));
@@ -63,8 +61,6 @@ layer(yv-sdk-fonts);
     @theme inline {
       /* Untitled Serif is the brand serif, loaded from the gated Fonts API stylesheet
          endpoint by <YvFonts /> — see docs/adr/0003-adopt-untitled-serif-via-fonts-api.md.
-         Aktiv Grotesk App remains reverted pending licensing
-         (docs/adr/0001-revert-brand-fonts-pending-licensing.md), so sans stays Inter.
          NOTE: the serif stack is duplicated verbatim in
          packages/core/src/styles/theme.css (--yv-font-serif). It cannot be an alias:
          core can't import Tailwind, and @theme inline values are inlined into utilities

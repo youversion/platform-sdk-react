@@ -5,27 +5,20 @@ Date: 2026-07-28
 ## Status
 
 Accepted. Supersedes [ADR-0001](0001-revert-brand-fonts-pending-licensing.md) **in
-part** — for Untitled Serif only. ADR-0001's Aktiv Grotesk revert stands unchanged.
+part** — for Untitled Serif only.
 
 ## Context
 
-ADR-0001 reverted both YouVersion brand fonts and set two conditions for bringing one
-back: cleared licensing, and loading through the `/v1/fonts/{font_id}/stylesheet`
-endpoint rather than a hardcoded `@font-face`.
+ADR-0001 reverted the SDK's brand fonts and set one condition for bringing one back:
+load it through the `/v1/fonts/{font_id}/stylesheet` endpoint rather than a hardcoded
+`@font-face`, so the SDK never ships or hosts the file itself.
 
-Untitled Serif now meets both:
+Untitled Serif meets that condition. `GET /v1/fonts/1/stylesheet` accepts the app key as
+either an `X-YVP-App-Key` header or an `?app_key=` query parameter, and returns `401`
+without one.
 
-- **Licensing is cleared for Untitled Serif**, on the condition that the SDK does not
-  ship or host the font file itself — it must be served by the Fonts API, which requires
-  an app key. Licensing details are tracked internally; this ADR records only what that
-  means for the code.
-- **The endpoint exists and works.** `GET /v1/fonts/1/stylesheet` accepts the app key as
-  either an `X-YVP-App-Key` header or an `?app_key=` query parameter, and returns `401`
-  without one.
-
-Aktiv Grotesk is unchanged — no licence path, so the sans stack stays
-`'Inter', sans-serif`. This is a serif-only change, and the parked implementation on
-`feat/youversion-brand-fonts` remains parked.
+The sans stack is unchanged and stays `'Inter', sans-serif` — this is a serif-only
+change.
 
 YPE-1350 (BibleReader renders Untitled Serif) and YPE-1910 (`--yv-font-serif` becomes
 `Untitled Serif → Source Serif 4 → serif`, covering `BibleText` and the Bible card, not
