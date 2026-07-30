@@ -255,8 +255,9 @@ function checkLocalesAreRegistered() {
   const generated = readFileSync(generatedResourcesPath, 'utf8');
 
   for (const locale of translationLocales) {
-    const quoted = JSON.stringify(locale);
-    if (!generated.includes(`${quoted}: { [defaultNS]: locale`)) {
+    // Match the import path rather than a specific key quoting style so Prettier
+    // stripping unnecessary quotes (en vs "en") does not false-fail registration.
+    if (!generated.includes(`./locales/${locale}.json`)) {
       errors.push(
         `Locale "${locale}.json" is not registered in resources.generated.ts — run \`pnpm generate:i18n\` so browser-language detection can select it`,
       );

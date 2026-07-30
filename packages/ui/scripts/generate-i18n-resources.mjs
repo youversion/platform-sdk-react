@@ -28,6 +28,15 @@ const locales = localeFiles
     return a.localeCompare(b);
   });
 
+/** Quote object keys only when the locale is not a valid JS identifier (e.g. pt-BR). */
+function formatLocaleKey(locale) {
+  if (/^[A-Za-z_$][\w$]*$/.test(locale)) {
+    return locale;
+  }
+  // Match Prettier singleQuote so generate:i18n output stays commit-stable.
+  return `'${locale.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+}
+
 const imports = locales
   .map((locale, index) => `import locale${index} from './locales/${locale}.json';`)
   .join('\n');
@@ -35,7 +44,7 @@ const imports = locales
 const resourceEntries = locales
   .map(
     (locale, index) =>
-      `  ${JSON.stringify(locale)}: { [defaultNS]: locale${index} },`,
+      `  ${formatLocaleKey(locale)}: { [defaultNS]: locale${index} },`,
   )
   .join('\n');
 
