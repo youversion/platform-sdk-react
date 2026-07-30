@@ -28,6 +28,18 @@ To import existing React keys into platform-localization for the first time:
 npm run import:react -- /path/to/platform-sdk-react/packages/ui/src/i18n/locales/en.json
 ```
 
+## Adding a new locale
+
+When platform-localization adds a new translation locale and the sync PR lands a new JSON file under `packages/ui/src/i18n/locales/`:
+
+1. **Do not hand-edit `packages/ui/src/i18n/index.ts`** — it imports from the generated resources file; locale registration is handled by the generator, not manual imports.
+2. **Do not hand-edit `resources.generated.ts`** — it is auto-generated.
+3. Run `pnpm generate:i18n` from the repo root (or `pnpm --filter @youversion/platform-react-ui generate:i18n`).
+4. Commit the updated `packages/ui/src/i18n/resources.generated.ts` alongside the new locale JSON.
+5. Run `pnpm check:i18n` — CI will fail if the generated file is stale.
+
+The generator discovers all `*.json` files in `locales/`, requires `en.json`, sorts locales with `en` first then alphabetically, and emits static imports for the tsup bundle.
+
 ## Using strings in components
 
 Use `useTranslation` + `t()` for simple strings and `Trans` with `i18nKey` for rich markup:

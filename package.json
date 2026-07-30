@@ -33,6 +33,7 @@
     "prepare": "husky",
     "analyze": "node scripts/analyze.mjs",
     "analyze:select": "node scripts/analyze-select.mjs",
+    "generate:i18n": "pnpm --filter @youversion/platform-react-ui generate:i18n",
     "check:i18n": "node scripts/check-i18n-parity.mjs",
     "test:ci-scripts": "bash .github/scripts/check-locale-ownership.test.sh"
   },

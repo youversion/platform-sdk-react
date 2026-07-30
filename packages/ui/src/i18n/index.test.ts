@@ -3,12 +3,28 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import en from './locales/en.json';
-import es from './locales/es.json';
-import fr from './locales/fr.json';
 import { getBrowserLanguages, resolveBrowserLanguage } from './detectLanguage';
+import { resources, supportedLngs } from './resources.generated';
 
-const supportedLngs = ['en', 'fr', 'es'] as const;
 const fallbackLng = 'en';
+
+function getLanguageBase(tag: string): string {
+  const base = tag.split('-')[0];
+  if (!base) {
+    throw new Error(`Invalid language tag: ${tag}`);
+  }
+  return base;
+}
+
+function getUnsupportedLanguageTag(): string {
+  const candidates = ['de-DE', 'de', 'ja-JP', 'zh-CN', 'pt-BR', 'xx-XX'];
+  for (const tag of candidates) {
+    if (!supportedLngs.includes(getLanguageBase(tag))) {
+      return tag;
+    }
+  }
+  throw new Error('Could not find an unsupported language tag for fallback test');
+}
 
 async function loadI18n() {
   const { default: i18n } = await import('./index');
@@ -25,20 +41,25 @@ async function loadI18n() {
 }
 
 describe('resolveBrowserLanguage', () => {
-  it('maps regional English tags to en', () => {
-    expect(resolveBrowserLanguage(['en-US', 'en'], supportedLngs, fallbackLng)).toBe('en');
-  });
-
-  it('maps regional French tags to fr', () => {
-    expect(resolveBrowserLanguage(['fr-FR', 'fr'], supportedLngs, fallbackLng)).toBe('fr');
-  });
-
-  it('maps regional Spanish tags to es', () => {
-    expect(resolveBrowserLanguage(['es-MX', 'es'], supportedLngs, fallbackLng)).toBe('es');
+  it.each(
+    supportedLngs.map((lng) => ({
+      lng,
+      tags:
+        lng === 'en' ? (['en-US', 'en'] as const) : ([`${lng}-${lng.toUpperCase()}`, lng] as const),
+    })),
+  )('maps regional $lng tags to $lng', ({ lng, tags }) => {
+    expect(resolveBrowserLanguage([...tags], supportedLngs, fallbackLng)).toBe(lng);
   });
 
   it('falls back to en for unsupported browser languages', () => {
-    expect(resolveBrowserLanguage(['de-DE', 'de'], supportedLngs, fallbackLng)).toBe('en');
+    const unsupported = getUnsupportedLanguageTag();
+    expect(
+      resolveBrowserLanguage(
+        [unsupported, getLanguageBase(unsupported)],
+        supportedLngs,
+        fallbackLng,
+      ),
+    ).toBe('en');
   });
 
   it('falls back to en when browser languages are unavailable', () => {
@@ -46,9 +67,15 @@ describe('resolveBrowserLanguage', () => {
   });
 
   it('uses the first supported language in the preference list', () => {
-    expect(resolveBrowserLanguage(['de-DE', 'fr-FR', 'en-US'], supportedLngs, fallbackLng)).toBe(
-      'fr',
-    );
+    const unsupported = getUnsupportedLanguageTag();
+    const firstSupported = supportedLngs.find((lng) => lng !== 'en') ?? 'en';
+    expect(
+      resolveBrowserLanguage(
+        [unsupported, `${firstSupported}-FR`, 'en-US'],
+        supportedLngs,
+        fallbackLng,
+      ),
+    ).toBe(firstSupported);
   });
 });
 
@@ -82,46 +109,30 @@ describe('i18n instance', () => {
     vi.resetModules();
   });
 
-  it('resolves keys from the English bundle when browser language is en-US', async () => {
+  it.each(
+    supportedLngs.map((lng) => ({
+      lng,
+      browserTags:
+        lng === 'en' ? (['en-US'] as const) : ([`${lng}-${lng.toUpperCase()}`, lng] as const),
+    })),
+  )('uses $lng strings when the browser prefers $lng', async ({ lng, browserTags }) => {
     vi.stubGlobal('navigator', {
-      language: 'en-US',
-      languages: ['en-US'],
+      language: browserTags[0],
+      languages: [...browserTags],
     });
     vi.resetModules();
 
     const i18n = await loadI18n();
-    expect(i18n.language).toBe('en');
-    expect(i18n.t('verseOfTheDay')).toBe(en.verseOfTheDay);
-  });
-
-  it('uses French strings when the browser prefers fr-FR', async () => {
-    vi.stubGlobal('navigator', {
-      language: 'fr-FR',
-      languages: ['fr-FR', 'fr'],
-    });
-    vi.resetModules();
-
-    const i18n = await loadI18n();
-    expect(i18n.language).toBe('fr');
-    expect(i18n.t('verseOfTheDay')).toBe(fr.verseOfTheDay);
-  });
-
-  it('uses Spanish strings when the browser prefers es-MX', async () => {
-    vi.stubGlobal('navigator', {
-      language: 'es-MX',
-      languages: ['es-MX', 'es'],
-    });
-    vi.resetModules();
-
-    const i18n = await loadI18n();
-    expect(i18n.language).toBe('es');
-    expect(i18n.t('verseOfTheDay')).toBe(es.verseOfTheDay);
+    const localeStrings = resources[lng as keyof typeof resources].translation;
+    expect(i18n.language).toBe(lng);
+    expect(i18n.t('verseOfTheDay')).toBe(localeStrings.verseOfTheDay);
   });
 
   it('falls back to English for unsupported browser languages', async () => {
+    const unsupported = getUnsupportedLanguageTag();
     vi.stubGlobal('navigator', {
-      language: 'de-DE',
-      languages: ['de-DE', 'de'],
+      language: unsupported,
+      languages: [unsupported, getLanguageBase(unsupported)],
     });
     vi.resetModules();
 

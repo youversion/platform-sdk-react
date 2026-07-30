@@ -3,22 +3,32 @@
  * i18n parity checker for @youversion/platform-react-ui locale bundles.
  *
  * Hard-fail (exit 1): invalid JSON, t()/i18nKey references missing from en.json,
- * extra fr/es keys not in en.json, interpolation token mismatches.
+ * extra translation locale keys not in en.json, interpolation token mismatches,
+ * stale resources.generated.ts (run pnpm generate:i18n).
  *
- * Warn-only (exit 0): en.json keys missing from fr/es (upstream Crowdin sync),
+ * Warn-only (exit 0): en.json keys missing from translation locales (upstream Crowdin sync),
  * orphan en.json keys unused in UI source (static scan misses dynamic t() patterns;
  * add intentional dynamic keys to ORPHAN_KEY_ALLOWLIST).
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, '..');
 const localesDir = resolve(repoRoot, 'packages/ui/src/i18n/locales');
 const uiSrcDir = resolve(repoRoot, 'packages/ui/src');
+const generatedResourcesPath = resolve(repoRoot, 'packages/ui/src/i18n/resources.generated.ts');
+const generateScriptPath = resolve(repoRoot, 'packages/ui/scripts/generate-i18n-resources.mjs');
 
-const TRANSLATION_LOCALES = ['fr', 'es'];
+function discoverTranslationLocales() {
+  return readdirSync(localesDir)
+    .filter((file) => file.endsWith('.json') && file !== 'en.json')
+    .map((file) => file.replace(/\.json$/, ''))
+    .sort((a, b) => a.localeCompare(b));
+}
+
 // i18next allows whitespace and formatter args: {{ count }}, {{count, number}}
 const INTERPOLATION_TOKEN_RE = /\{\{\s*(\w+)[^}]*\}\}/g;
 // Matches literal-string args to any function named `t` (not i18next-specific).
@@ -53,6 +63,35 @@ function loadLocale(filename) {
     }
     errors.push(`Unable to read ${relative(repoRoot, filePath)}: ${err.message}`);
     return null;
+  }
+}
+
+function checkGeneratedResourcesDrift() {
+  const before = existsSync(generatedResourcesPath)
+    ? readFileSync(generatedResourcesPath, 'utf8')
+    : null;
+
+  const result = spawnSync(process.execPath, [generateScriptPath], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+
+  if (result.status !== 0) {
+    const detail = (result.stderr || result.stdout || '').trim();
+    errors.push(
+      `Failed to run generate-i18n-resources.mjs${detail ? `: ${detail}` : ''}`,
+    );
+    return;
+  }
+
+  const after = readFileSync(generatedResourcesPath, 'utf8');
+  if (before !== after) {
+    if (before !== null) {
+      writeFileSync(generatedResourcesPath, before, 'utf8');
+    }
+    errors.push(
+      `${relative(repoRoot, generatedResourcesPath)} is out of date. Run \`pnpm generate:i18n\` and commit the updated file.`,
+    );
   }
 }
 
@@ -143,9 +182,13 @@ function collectUsedKeys() {
 
 console.log(`\n${bold('Checking i18n parity...')}\n`);
 
+checkGeneratedResourcesDrift();
+
+const translationLocales = discoverTranslationLocales();
+
 const en = loadLocale('en.json');
 const localeBundles = Object.fromEntries(
-  TRANSLATION_LOCALES.map((locale) => [locale, loadLocale(`${locale}.json`)]),
+  translationLocales.map((locale) => [locale, loadLocale(`${locale}.json`)]),
 );
 
 if (!en) {
@@ -168,7 +211,7 @@ for (const key of enKeys) {
   }
 }
 
-for (const locale of TRANSLATION_LOCALES) {
+for (const locale of translationLocales) {
   const bundle = localeBundles[locale];
   if (!bundle) {
     continue;
@@ -203,7 +246,7 @@ function reportAndExit() {
     }
     console.log(
       dim(
-        '\n  Note: fr/es locale files are owned by platform-localization and synced via Crowdin → distribute-react.yml (PRs authored by platform-localization-pr-bot[bot]). Missing translation keys are expected until upstream sync lands.\n',
+        '\n  Note: Translation locale files (other than en.json) are owned by platform-localization and synced via Crowdin → distribute-react.yml (PRs authored by platform-localization-pr-bot[bot]). Missing translation keys are expected until upstream sync lands.\n',
       ),
     );
     if (warnings.some((w) => w.startsWith('Orphan key'))) {
