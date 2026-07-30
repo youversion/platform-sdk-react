@@ -30,6 +30,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
+          # Node 24 LTS, matching CI. Consumer floor is engines.node >=22.13
+          # (pnpm 11). See docs/release-hardening-decisions.md (Decision 3).
           node-version: 24
           cache: 'pnpm'
 

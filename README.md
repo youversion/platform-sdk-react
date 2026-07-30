@@ -105,6 +105,20 @@ console.log(passage.content);
 > [!NOTE]
 > We are not yet accepting pull requests from external contributors, though we intend to do so in the future. In the meantime, we welcome you to use the SDK, report bugs via [GitHub Issues](https://github.com/youversion/platform-sdk-react/issues), and share feedback. See [CONTRIBUTING.md](./CONTRIBUTING.md) for more details.
 
+### Package manager
+
+This is a pnpm workspace — the `workspace:*` dependencies between packages are a pnpm feature, so npm and yarn are not supported. The required pnpm version is pinned in `package.json` via `packageManager` (and `engines.pnpm`).
+
+The Git hooks prefer [Corepack](https://nodejs.org/api/corepack.html) (`corepack pnpm ...`) so a newer global pnpm on your PATH can't change how commits are linted or staged files are formatted, and fall back to plain `pnpm` where corepack isn't present.
+
+To get the pinned-pnpm guarantee, enable Corepack once:
+
+```bash
+corepack enable
+```
+
+Note: **Node 25+ no longer bundles Corepack** — on newer Node, install it first (`npm install -g corepack`) or just rely on the `pnpm` fallback with a locally-installed pnpm that satisfies `engines.pnpm`. See [docs/release-hardening-decisions.md](./docs/release-hardening-decisions.md) (Decision 2) for the rationale and the plan to revisit once Corepack's successor settles.
+
 ## License
 
 This SDK is licensed under [Apache 2.0](./LICENSE). 

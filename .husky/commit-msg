@@ -3,7 +3,7 @@
 # available — Node 25+ no longer bundles it, and nvm/global-pnpm setups may lack
 # it. See docs/release-hardening-decisions.md (Decision 2).
 if command -v corepack >/dev/null 2>&1; then
-  corepack pnpm lint-staged
+  corepack pnpm exec commitlint --edit "$1"
 else
-  pnpm lint-staged
+  pnpm exec commitlint --edit "$1"
 fi
