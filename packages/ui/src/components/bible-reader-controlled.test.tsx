@@ -657,28 +657,55 @@ describe('BibleReader verseActions', () => {
     expect(onVerseSelect).toHaveBeenLastCalledWith(selection([1, 3]));
   });
 
-  it('emits no highlight intents with verseActions="none" (the host drives the highlights prop)', () => {
-    const onHighlightApply = vi.fn();
-    const onHighlightRemove = vi.fn();
-    const { container } = renderReader({
-      highlights: [{ version_id: 111, passage_id: 'JHN.1.2', color: GREEN }],
-      verseActions: 'none',
-      onHighlightApply,
-      onHighlightRemove,
+  it('emits no highlight intents with verseActions="none" (the host drives the highlights prop)', async () => {
+    const highlights = [{ version_id: 111, passage_id: 'JHN.1.2', color: GREEN }];
+
+    // Control arm. Selecting a verse never emits an intent on its own — a
+    // swatch has to be clicked — so prove the popover arm fires both callbacks
+    // first. Without this the negative assertions below would pass in either
+    // mode and lock nothing.
+    const popoverApply = vi.fn();
+    const popoverRemove = vi.fn();
+    const popover = renderReader({
+      highlights,
+      onHighlightApply: popoverApply,
+      onHighlightRemove: popoverRemove,
     });
 
-    // Select an unhighlighted verse and a highlighted one — in popover mode
-    // these are exactly the states that offer Apply and Clear.
+    selectVerse(popover.container, 1);
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
+    fireEvent.click(getApplyButtons()[0]!);
+    expect(popoverApply).toHaveBeenCalledTimes(1);
+
+    // Applying clears the selection; re-select the green verse to reach Clear.
+    selectVerse(popover.container, 2);
+    await waitFor(() => expect(getClearButtons().length).toBeGreaterThan(0));
+    fireEvent.click(getClearButtons()[0]!);
+    expect(popoverRemove).toHaveBeenCalledTimes(1);
+
+    popover.unmount();
+
+    // Treatment arm: identical props and script, `verseActions="none"`. The
+    // popover is the only trigger for an intent, so there is nothing to click
+    // and neither callback can fire. A host in this mode paints by updating
+    // `highlights` — the docs on `verseActions` say so, this holds them honest.
+    const noneApply = vi.fn();
+    const noneRemove = vi.fn();
+    const { container } = renderReader({
+      highlights,
+      verseActions: 'none',
+      onHighlightApply: noneApply,
+      onHighlightRemove: noneRemove,
+    });
+
     selectVerse(container, 1);
     selectVerse(container, 2);
 
-    // The popover is the only trigger for an intent, and it never mounts here.
-    // A host in this mode paints by updating `highlights`, not by handling
-    // intents; the docs on `verseActions` say so, and this holds them honest.
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(getApplyButtons()).toHaveLength(0);
     expect(getClearButtons()).toHaveLength(0);
-    expect(onHighlightApply).not.toHaveBeenCalled();
-    expect(onHighlightRemove).not.toHaveBeenCalled();
+    expect(noneApply).not.toHaveBeenCalled();
+    expect(noneRemove).not.toHaveBeenCalled();
   });
 });
 
