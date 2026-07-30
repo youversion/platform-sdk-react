@@ -4,6 +4,9 @@ import { getBrowserLanguages, resolveBrowserLanguage } from './detectLanguage';
 import en from './locales/en.json';
 import fr from './locales/fr.json';
 import es from './locales/es.json';
+import ko from './locales/ko.json';
+import tr from './locales/tr.json';
+import zh from './locales/zh.json';
 
 const defaultNS = 'translation';
 const BRAND_NAME = 'YouVersion';
@@ -14,6 +17,9 @@ export const resources = {
   en: { [defaultNS]: en },
   fr: { [defaultNS]: fr },
   es: { [defaultNS]: es },
+  ko: { [defaultNS]: ko },
+  tr: { [defaultNS]: tr },
+  zh: { [defaultNS]: zh },
 } as const;
 
 export const supportedLngs = Object.keys(resources);

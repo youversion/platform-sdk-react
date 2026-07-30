@@ -3,9 +3,9 @@
  * i18n parity checker for @youversion/platform-react-ui locale bundles.
  *
  * Hard-fail (exit 1): invalid JSON, t()/i18nKey references missing from en.json,
- * extra fr/es keys not in en.json, interpolation token mismatches.
+ * extra translation keys not in en.json, interpolation token mismatches.
  *
- * Warn-only (exit 0): en.json keys missing from fr/es (upstream Crowdin sync),
+ * Warn-only (exit 0): en.json keys missing from a translation bundle (upstream Crowdin sync),
  * orphan en.json keys unused in UI source (static scan misses dynamic t() patterns;
  * add intentional dynamic keys to ORPHAN_KEY_ALLOWLIST).
  */
@@ -18,7 +18,11 @@ const repoRoot = resolve(scriptDir, '..');
 const localesDir = resolve(repoRoot, 'packages/ui/src/i18n/locales');
 const uiSrcDir = resolve(repoRoot, 'packages/ui/src');
 
-const TRANSLATION_LOCALES = ['fr', 'es'];
+/** Every non-English bundle in the locales dir, so upstream-added locales are checked automatically. */
+const TRANSLATION_LOCALES = readdirSync(localesDir)
+  .filter((file) => file.endsWith('.json') && file !== 'en.json')
+  .map((file) => file.replace(/\.json$/, ''))
+  .sort();
 // i18next allows whitespace and formatter args: {{ count }}, {{count, number}}
 const INTERPOLATION_TOKEN_RE = /\{\{\s*(\w+)[^}]*\}\}/g;
 // Matches literal-string args to any function named `t` (not i18next-specific).
@@ -193,7 +197,26 @@ for (const locale of TRANSLATION_LOCALES) {
   }
 }
 
+checkLocalesAreRegistered();
+
 reportAndExit();
+
+/**
+ * A synced bundle is dead weight until `i18n/index.ts` imports it into `resources`,
+ * since `supportedLngs` (and therefore browser-language detection) derives from that map.
+ */
+function checkLocalesAreRegistered() {
+  const indexPath = resolve(uiSrcDir, 'i18n/index.ts');
+  const source = readFileSync(indexPath, 'utf8');
+
+  for (const locale of TRANSLATION_LOCALES) {
+    if (!source.includes(`./locales/${locale}.json`)) {
+      errors.push(
+        `Locale "${locale}.json" is not registered in i18n/index.ts — add it to the resources map or browser-language detection will never select it`,
+      );
+    }
+  }
+}
 
 function reportAndExit() {
   if (warnings.length > 0) {
@@ -203,7 +226,7 @@ function reportAndExit() {
     }
     console.log(
       dim(
-        '\n  Note: fr/es locale files are owned by platform-localization and synced via Crowdin → distribute-react.yml (PRs authored by platform-localization-pr-bot[bot]). Missing translation keys are expected until upstream sync lands.\n',
+        '\n  Note: non-English locale files are owned by platform-localization and synced via Crowdin → distribute-react.yml (PRs authored by platform-localization-pr-bot[bot]). Missing translation keys are expected until upstream sync lands.\n',
       ),
     );
     if (warnings.some((w) => w.startsWith('Orphan key'))) {
