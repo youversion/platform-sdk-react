@@ -12,4 +12,4 @@ Swap the SDK's serif face from Source Serif 4 to **Untitled Serif**, YouVersion'
 - **The BibleReader's default font changes** from Source Serif 4 to Untitled Serif, and the font picker button now reads "Untitled" instead of "Source Serif". Readers whose saved preference is the old Source Serif stack are migrated on load, so the picker still shows serif as active. Any other `fontFamily` value you pass or persist is left untouched.
 - The internal `SOURCE_SERIF_FONT` constant is deprecated (retained for that migration) and `sourceSerifFontName` is gone from the SDK's private locale files. Neither is part of the public API; nothing is removed or retyped.
 
-See `docs/adr/0003-adopt-untitled-serif-via-fonts-api.md` for the delivery rationale.
+See `docs/adr/0004-adopt-untitled-serif-via-fonts-api.md` for the delivery rationale.

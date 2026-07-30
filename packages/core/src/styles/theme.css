@@ -109,7 +109,7 @@
   --yv-sidebar-ring: var(--yv-blue-30);
 
   /* Untitled Serif is the brand serif, loaded from the gated Fonts API stylesheet
-     endpoint — see docs/adr/0003-adopt-untitled-serif-via-fonts-api.md. Source Serif 4
+     endpoint — see docs/adr/0004-adopt-untitled-serif-via-fonts-api.md. Source Serif 4
      (Google Fonts) stays in the stack as the fallback, so a host that never loads
      Untitled Serif sees no regression.
      NOTE: the serif stack is duplicated verbatim in packages/ui/src/styles/global.css

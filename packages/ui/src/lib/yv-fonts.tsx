@@ -2,7 +2,7 @@ import React from 'react';
 
 /**
  * Untitled Serif — font_id 1 / slug 'untitled-serif'.
- * See docs/adr/0003-adopt-untitled-serif-via-fonts-api.md.
+ * See docs/adr/0004-adopt-untitled-serif-via-fonts-api.md.
  */
 const UNTITLED_SERIF_FONT_ID = 1;
 

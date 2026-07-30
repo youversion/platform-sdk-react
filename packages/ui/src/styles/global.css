@@ -49,7 +49,7 @@ layer(yv-sdk-fonts);
    consumer's app key, which this file cannot know — it is frozen into __YV_STYLES__ at
    build time. It is loaded instead by <YvFonts /> (src/lib/yv-fonts.tsx), rendered from
    YouVersionProvider, from the gated /v1/fonts/1/stylesheet endpoint. See
-   docs/adr/0003-adopt-untitled-serif-via-fonts-api.md.
+   docs/adr/0004-adopt-untitled-serif-via-fonts-api.md.
    Sans stays Inter, and Source Serif 4 (Google Fonts @import above) stays loaded as the
    serif fallback. */
 
@@ -60,7 +60,7 @@ layer(yv-sdk-fonts);
   [data-yv-sdk] {
     @theme inline {
       /* Untitled Serif is the brand serif, loaded from the gated Fonts API stylesheet
-         endpoint by <YvFonts /> — see docs/adr/0003-adopt-untitled-serif-via-fonts-api.md.
+         endpoint by <YvFonts /> — see docs/adr/0004-adopt-untitled-serif-via-fonts-api.md.
          NOTE: the serif stack is duplicated verbatim in
          packages/core/src/styles/theme.css (--yv-font-serif). It cannot be an alias:
          core can't import Tailwind, and @theme inline values are inlined into utilities

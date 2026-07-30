@@ -5,7 +5,7 @@ Date: 2026-06-24
 ## Status
 
 Accepted. **Superseded in part** by
-[ADR-0003](0003-adopt-untitled-serif-via-fonts-api.md) (2026-07-28), for **Untitled
+[ADR-0004](0004-adopt-untitled-serif-via-fonts-api.md) (2026-07-28), for **Untitled
 Serif only**: it now loads from the `/v1/fonts/1/stylesheet` endpoint, which is the
 condition below. The sans stack is unchanged and stays `'Inter', sans-serif`.
 

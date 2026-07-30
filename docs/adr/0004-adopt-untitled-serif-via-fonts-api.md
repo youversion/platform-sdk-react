@@ -1,4 +1,4 @@
-# 3. Adopt Untitled Serif via the Fonts API stylesheet endpoint
+# 4. Adopt Untitled Serif via the Fonts API stylesheet endpoint
 
 Date: 2026-07-28
 
