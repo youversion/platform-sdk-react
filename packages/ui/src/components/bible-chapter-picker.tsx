@@ -44,11 +44,11 @@ type BibleChapterPickerContextType = {
   versionId: number;
   background: 'light' | 'dark';
   scrollToCurrentBook: () => void;
-  defaultBook: string;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  expandedBook: string | null;
-  setExpandedBook: (bookId: string | null) => void;
+  /** The currently expanded book id. `''` means no book is expanded. */
+  expandedBook: string;
+  setExpandedBook: (bookId: string) => void;
   filteredBooks: BibleBook[] | null;
   registerBookElement: (bookId: string, node: HTMLDivElement | null) => void;
   onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
@@ -110,7 +110,9 @@ function Root({
   const [isPopoverOpenRaw, setIsPopoverOpenRaw] = useState(false);
   const isPopoverOpen = onChapterPickerPress ? false : isPopoverOpenRaw;
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedBook, setExpandedBook] = useState<string | null>(book || null);
+  // Non-nullable so the Accordion below stays controlled for its whole lifetime.
+  // `''` means collapsed; passing `undefined` would flip Radix back to uncontrolled.
+  const [expandedBook, setExpandedBook] = useState<string>(book || 'GEN');
 
   const { books } = useBooks(versionId);
 
@@ -186,7 +188,6 @@ function Root({
     versionId,
     background: theme,
     scrollToCurrentBook,
-    defaultBook,
     searchQuery,
     setSearchQuery,
     expandedBook,
@@ -297,8 +298,6 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
 function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
   const { t } = useTranslation(undefined, { i18n });
   const {
-    book,
-    defaultBook,
     filteredBooks,
     expandedBook,
     setExpandedBook,
@@ -327,9 +326,8 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
         className="yv:relative yv:overflow-y-auto yv:bg-background yv:px-6"
         type="single"
         collapsible
-        defaultValue={defaultBook || book || 'GEN'}
-        value={expandedBook ?? undefined}
-        onValueChange={(value) => setExpandedBook(value || null)}
+        value={expandedBook}
+        onValueChange={setExpandedBook}
       >
         {filteredBooks && filteredBooks.length > 0 ? (
           filteredBooks.map((bookItem) => (

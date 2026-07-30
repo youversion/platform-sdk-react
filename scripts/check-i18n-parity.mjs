@@ -203,7 +203,7 @@ function reportAndExit() {
     }
     console.log(
       dim(
-        '\n  Note: fr/es locale files are owned by platform-localization and synced via Crowdin → distribute-react.yml (chore/localization-sync-react-* PRs). Missing translation keys are expected until upstream sync lands.\n',
+        '\n  Note: fr/es locale files are owned by platform-localization and synced via Crowdin → distribute-react.yml (PRs authored by platform-localization-pr-bot[bot]). Missing translation keys are expected until upstream sync lands.\n',
       ),
     );
     if (warnings.some((w) => w.startsWith('Orphan key'))) {

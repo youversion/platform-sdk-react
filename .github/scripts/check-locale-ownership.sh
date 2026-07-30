@@ -11,16 +11,15 @@ LOCALIZATION_SYNC_BOT_USER="platform-localization-pr-bot[bot]"
 LOCALE_PATH_PREFIX="packages/ui/src/i18n/locales/"
 FAILURE_MSG="Locale files are owned by platform-localization. Add strings upstream; do not edit packages/ui/src/i18n/locales/ in feature PRs. See docs/i18n-guidelines.md"
 
-is_sync_bot_author() {
-  [[ "$PR_AUTHOR" == "$LOCALIZATION_SYNC_BOT_USER" ]]
-}
-
-is_sync_branch() {
-  [[ "$HEAD_REF" =~ ^chore/localization-sync-react- ]]
-}
-
+# Provenance is decided by PR author alone. The head branch is named by the same
+# automation whose identity the author check verifies, so gating on it adds no
+# forgery resistance — only a second string two repos must keep in sync by hand.
+# That coupling is exactly what broke on 2026-07-28. This is an accident
+# guardrail, not a security boundary: for `pull_request` events the workflow and
+# this script come from the PR's merge ref, so a PR can edit its own gate.
+# See docs/adr/0003-locale-ownership-gate-keys-on-pr-author.md
 is_allowed_sync_pr() {
-  is_sync_bot_author && is_sync_branch
+  [[ "$PR_AUTHOR" == "$LOCALIZATION_SYNC_BOT_USER" ]]
 }
 
 if is_allowed_sync_pr; then
@@ -41,4 +40,7 @@ echo "Changed locale files:"
 echo "$changed_files"
 echo ""
 echo "$FAILURE_MSG"
+echo ""
+echo "PR author:   ${PR_AUTHOR:-<unset>} (an automated sync is authored by ${LOCALIZATION_SYNC_BOT_USER})"
+echo "Head branch: ${HEAD_REF:-<unset>}"
 exit 1
