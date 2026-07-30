@@ -16,7 +16,10 @@ class ResizeObserverMock {
 globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 
 import { BibleChapterPicker } from './bible-chapter-picker';
-import type { BibleChapterPickerSelectData } from './bible-chapter-picker';
+import type {
+  BibleChapterPickerRootProps,
+  BibleChapterPickerSelectData,
+} from './bible-chapter-picker';
 import { useBooks, useTheme } from '@youversion/platform-react-hooks';
 import type { BibleBook } from '@youversion/platform-core';
 
@@ -35,6 +38,17 @@ const mockBooks: BibleBook[] = [
       { id: '2', title: '2', passage_id: 'GEN.2' },
     ],
   },
+  {
+    id: 'EXO',
+    title: 'Exodus',
+    full_title: 'The Second Book of Moses, Commonly Called Exodus',
+    canon: 'old_testament',
+    abbreviation: 'Exo',
+    chapters: [
+      { id: '1', title: '1', passage_id: 'EXO.1' },
+      { id: '2', title: '2', passage_id: 'EXO.2' },
+    ],
+  },
 ];
 
 function setupDefaultMocks() {
@@ -45,6 +59,28 @@ function setupDefaultMocks() {
     error: null,
     refetch: vi.fn(),
   });
+}
+
+function findAccordionTrigger(name: RegExp): HTMLElement | undefined {
+  return screen
+    .queryAllByRole('button', { name })
+    .find((button) => button.getAttribute('data-slot') === 'accordion-trigger');
+}
+
+// Render Content inline (onChapterPickerPress path renders children without the popover portal).
+function renderContent(props: Partial<BibleChapterPickerRootProps> = {}) {
+  render(
+    <BibleChapterPicker.Root
+      versionId={3034}
+      book="GEN"
+      chapter="1"
+      onChapterPickerPress={vi.fn()}
+      {...props}
+    >
+      <BibleChapterPicker.Trigger />
+      <BibleChapterPicker.Content />
+    </BibleChapterPicker.Root>,
+  );
 }
 
 describe('BibleChapterPicker - onChapterPickerPress override', () => {
@@ -203,27 +239,6 @@ describe('BibleChapterPicker - typography (matches Figma sizing; sans inherited)
     setupDefaultMocks();
   });
 
-  function findAccordionTrigger(name: RegExp): HTMLElement | undefined {
-    return screen
-      .queryAllByRole('button', { name })
-      .find((button) => button.getAttribute('data-slot') === 'accordion-trigger');
-  }
-
-  // Render Content inline (onChapterPickerPress path renders children without the popover portal).
-  function renderContent() {
-    render(
-      <BibleChapterPicker.Root
-        versionId={3034}
-        book="GEN"
-        chapter="1"
-        onChapterPickerPress={vi.fn()}
-      >
-        <BibleChapterPicker.Trigger />
-        <BibleChapterPicker.Content />
-      </BibleChapterPicker.Root>,
-    );
-  }
-
   it('book row uses 16px, regular collapsed and bold when expanded', () => {
     renderContent();
 
@@ -247,5 +262,71 @@ describe('BibleChapterPicker - typography (matches Figma sizing; sans inherited)
     renderContent();
 
     expect(screen.getByPlaceholderText('Search')).toHaveClass('yv:text-base');
+  });
+});
+
+describe('BibleChapterPicker - accordion expand/collapse', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaultMocks();
+  });
+
+  // Scenario A: the selected book is expanded on mount; one click must close it.
+  it('collapses the initially expanded book on the first click', async () => {
+    const user = userEvent.setup();
+    renderContent();
+
+    expect(findAccordionTrigger(/Genesis/i)).toHaveAttribute('data-state', 'open');
+
+    await user.click(findAccordionTrigger(/Genesis/i)!);
+
+    expect(findAccordionTrigger(/Genesis/i)).toHaveAttribute('data-state', 'closed');
+  });
+
+  // Scenario B: collapsing a book other than the selected one must not re-open the selected book.
+  it('collapses a different expanded book on the first click without re-opening the selected book', async () => {
+    const user = userEvent.setup();
+    renderContent();
+
+    await user.click(findAccordionTrigger(/Exodus/i)!);
+
+    expect(findAccordionTrigger(/Genesis/i)).toHaveAttribute('data-state', 'closed');
+    expect(findAccordionTrigger(/Exodus/i)).toHaveAttribute('data-state', 'open');
+
+    await user.click(findAccordionTrigger(/Exodus/i)!);
+
+    expect(findAccordionTrigger(/Exodus/i)).toHaveAttribute('data-state', 'closed');
+    expect(findAccordionTrigger(/Genesis/i)).toHaveAttribute('data-state', 'closed');
+  });
+
+  // Scenario C: with no book selected, an expanded book must still close on the first click.
+  it('collapses an expanded book on the first click when no book prop is provided', async () => {
+    const user = userEvent.setup();
+    renderContent({ book: undefined });
+
+    await user.click(findAccordionTrigger(/Exodus/i)!);
+    expect(findAccordionTrigger(/Exodus/i)).toHaveAttribute('data-state', 'open');
+
+    await user.click(findAccordionTrigger(/Exodus/i)!);
+
+    expect(findAccordionTrigger(/Exodus/i)).toHaveAttribute('data-state', 'closed');
+  });
+
+  it('never flips the accordion between controlled and uncontrolled', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const user = userEvent.setup();
+    renderContent();
+
+    // Full expand/collapse sequence across both books.
+    await user.click(findAccordionTrigger(/Genesis/i)!);
+    await user.click(findAccordionTrigger(/Exodus/i)!);
+    await user.click(findAccordionTrigger(/Exodus/i)!);
+    await user.click(findAccordionTrigger(/Genesis/i)!);
+
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('changing from controlled to uncontrolled'),
+    );
+
+    warnSpy.mockRestore();
   });
 });
