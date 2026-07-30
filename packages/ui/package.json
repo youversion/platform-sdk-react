@@ -37,11 +37,11 @@
     "test": "pnpm generate:i18n && vitest run --project unit",
     "test:watch": "pnpm generate:i18n && vitest --project unit",
     "test:coverage": "pnpm generate:i18n && vitest run --project unit --coverage",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "pnpm generate:i18n && tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "prepublishOnly": "YVP_PUBLISH_BUILD=true pnpm --filter @youversion/platform-core build && pnpm build && node ../../scripts/check-sdk-version-stamp.mjs ui",
-    "storybook": "concurrently \"tailwindcss -i src/styles/global.css -o dist/tailwind.css --watch\" \"storybook dev -p 6006\"",
-    "build-storybook": "storybook build",
+    "storybook": "pnpm generate:i18n && concurrently \"tailwindcss -i src/styles/global.css -o dist/tailwind.css --watch\" \"storybook dev -p 6006\"",
+    "build-storybook": "pnpm generate:i18n && storybook build",
     "test:integration": "vitest run"
   },
   "dependencies": {
