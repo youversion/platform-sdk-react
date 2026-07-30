@@ -17,10 +17,34 @@ function getLanguageBase(tag: string): string {
   return base;
 }
 
+/** True when resolveBrowserLanguage would select this tag against supportedLngs. */
+function isLanguageSupported(tag: string): boolean {
+  const supportedLower = new Map(supportedLngs.map((lng) => [lng.toLowerCase(), lng] as const));
+  const lower = tag.toLowerCase();
+  if (supportedLower.has(lower)) {
+    return true;
+  }
+  return supportedLower.has(getLanguageBase(lower));
+}
+
+/**
+ * Browser preference tags that should resolve to `lng`.
+ * Region-qualified locales (e.g. pt-BR) must not append another region.
+ */
+function preferenceTagsFor(lng: string): readonly string[] {
+  if (lng.includes('-')) {
+    return [lng.toLowerCase(), lng];
+  }
+  if (lng === 'en') {
+    return ['en-US', 'en'];
+  }
+  return [`${lng}-${lng.toUpperCase()}`, lng];
+}
+
 function getUnsupportedLanguageTag(): string {
   const candidates = ['de-DE', 'de', 'ja-JP', 'zh-CN', 'pt-BR', 'xx-XX'];
   for (const tag of candidates) {
-    if (!supportedLngs.includes(getLanguageBase(tag))) {
+    if (!isLanguageSupported(tag)) {
       return tag;
     }
   }
@@ -45,11 +69,23 @@ describe('resolveBrowserLanguage', () => {
   it.each(
     supportedLngs.map((lng) => ({
       lng,
-      tags:
-        lng === 'en' ? (['en-US', 'en'] as const) : ([`${lng}-${lng.toUpperCase()}`, lng] as const),
+      tags: preferenceTagsFor(lng),
     })),
   )('maps regional $lng tags to $lng', ({ lng, tags }) => {
     expect(resolveBrowserLanguage([...tags], supportedLngs, fallbackLng)).toBe(lng);
+  });
+
+  it('matches region-qualified supported locales exactly', () => {
+    const supported = ['en', 'pt-BR'] as const;
+    expect(resolveBrowserLanguage(['pt-BR'], supported, fallbackLng)).toBe('pt-BR');
+    expect(resolveBrowserLanguage(['pt-br'], supported, fallbackLng)).toBe('pt-BR');
+    expect(resolveBrowserLanguage(['pt-PT', 'pt-BR'], supported, fallbackLng)).toBe('pt-BR');
+  });
+
+  it('does not map a bare language to an unrelated region-qualified locale', () => {
+    const supported = ['en', 'pt-BR'] as const;
+    expect(resolveBrowserLanguage(['pt'], supported, fallbackLng)).toBe('en');
+    expect(resolveBrowserLanguage(['pt-PT'], supported, fallbackLng)).toBe('en');
   });
 
   it('falls back to en for unsupported browser languages', () => {
@@ -70,9 +106,12 @@ describe('resolveBrowserLanguage', () => {
   it('uses the first supported language in the preference list', () => {
     const unsupported = getUnsupportedLanguageTag();
     const firstSupported = supportedLngs.find((lng) => lng !== 'en') ?? 'en';
+    const regionalPreference = firstSupported.includes('-')
+      ? firstSupported
+      : `${firstSupported}-FR`;
     expect(
       resolveBrowserLanguage(
-        [unsupported, `${firstSupported}-FR`, 'en-US'],
+        [unsupported, regionalPreference, 'en-US'],
         supportedLngs,
         fallbackLng,
       ),
@@ -113,8 +152,7 @@ describe('i18n instance', () => {
   it.each(
     supportedLngs.map((lng) => ({
       lng,
-      browserTags:
-        lng === 'en' ? (['en-US'] as const) : ([`${lng}-${lng.toUpperCase()}`, lng] as const),
+      browserTags: preferenceTagsFor(lng),
     })),
   )('uses $lng strings when the browser prefers $lng', async ({ lng, browserTags }) => {
     vi.stubGlobal('navigator', {
