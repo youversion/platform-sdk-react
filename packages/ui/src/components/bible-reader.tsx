@@ -252,13 +252,16 @@ export type RootProps = {
   onVerseSelect?: (selection: BibleReaderVerseSelection) => void;
   /**
    * Controlled mode only: called when the user taps a highlight color, with
-   * the intent payload. Ignored (never called) in self-contained mode.
+   * the intent payload. Ignored (never called) in self-contained mode, or with
+   * `verseActions="none"` — the built-in popover is the only trigger, so a
+   * host owning the action UI drives highlights via the `highlights` prop.
    */
   onHighlightApply?: (intent: BibleReaderHighlightIntent) => void;
   /**
    * Controlled mode only: called when the user taps a clear (X) circle, scoped
    * to the selected verses currently showing that color. Ignored (never
-   * called) in self-contained mode.
+   * called) in self-contained mode, or with `verseActions="none"` (see
+   * {@link onHighlightApply}).
    */
   onHighlightRemove?: (intent: BibleReaderHighlightIntent) => void;
   /**
@@ -267,10 +270,16 @@ export type RootProps = {
    * - `'popover'` (default) renders the built-in {@link VerseActionPopover} —
    *   today's behavior, unchanged.
    * - `'none'` renders **no** verse-action UI while keeping everything else
-   *   intact: verses still select and paint, {@link onVerseSelect} still fires
-   *   (with `reference` and `shareData` populated), highlight intents still
-   *   reach {@link onHighlightApply} / {@link onHighlightRemove}, and Copy /
-   *   Share payloads are still built. Use it when the host owns the action UI
+   *   intact: verses still select and paint, and {@link onVerseSelect} still
+   *   fires with `reference` and `shareData` populated, so the host can render
+   *   its own label and run copy / share itself.
+   *
+   *   Highlight intents are the exception: the built-in popover is their only
+   *   trigger, so {@link onHighlightApply} / {@link onHighlightRemove} do
+   *   **not** fire in this mode. A host owning the action UI drives highlights
+   *   by updating the `highlights` prop directly.
+   *
+   *   Use it when the host owns the action UI
    *   — e.g. a React Native host presenting a native bottom sheet, where a
    *   second in-WebView popover would stack on top of it.
    *

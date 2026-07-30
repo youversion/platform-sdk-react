@@ -656,6 +656,30 @@ describe('BibleReader verseActions', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(onVerseSelect).toHaveBeenLastCalledWith(selection([1, 3]));
   });
+
+  it('emits no highlight intents with verseActions="none" (the host drives the highlights prop)', () => {
+    const onHighlightApply = vi.fn();
+    const onHighlightRemove = vi.fn();
+    const { container } = renderReader({
+      highlights: [{ version_id: 111, passage_id: 'JHN.1.2', color: GREEN }],
+      verseActions: 'none',
+      onHighlightApply,
+      onHighlightRemove,
+    });
+
+    // Select an unhighlighted verse and a highlighted one — in popover mode
+    // these are exactly the states that offer Apply and Clear.
+    selectVerse(container, 1);
+    selectVerse(container, 2);
+
+    // The popover is the only trigger for an intent, and it never mounts here.
+    // A host in this mode paints by updating `highlights`, not by handling
+    // intents; the docs on `verseActions` say so, and this holds them honest.
+    expect(getApplyButtons()).toHaveLength(0);
+    expect(getClearButtons()).toHaveLength(0);
+    expect(onHighlightApply).not.toHaveBeenCalled();
+    expect(onHighlightRemove).not.toHaveBeenCalled();
+  });
 });
 
 describe('BibleReader selection payload - reference and shareData', () => {
