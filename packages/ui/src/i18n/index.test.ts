@@ -52,18 +52,6 @@ describe('resolveBrowserLanguage', () => {
     expect(resolveBrowserLanguage([...tags], supportedLngs, fallbackLng)).toBe(lng);
   });
 
-  it('maps regional Korean tags to ko', () => {
-    expect(resolveBrowserLanguage(['ko-KR', 'ko'], supportedLngs, fallbackLng)).toBe('ko');
-  });
-
-  it('maps regional Turkish tags to tr', () => {
-    expect(resolveBrowserLanguage(['tr-TR', 'tr'], supportedLngs, fallbackLng)).toBe('tr');
-  });
-
-  it('maps regional Chinese tags to zh', () => {
-    expect(resolveBrowserLanguage(['zh-TW', 'zh'], supportedLngs, fallbackLng)).toBe('zh');
-  });
-
   it('falls back to en for unsupported browser languages', () => {
     const unsupported = getUnsupportedLanguageTag();
     expect(
@@ -141,42 +129,6 @@ describe('i18n instance', () => {
     expect(i18n.t('verseOfTheDay')).toBe(localeStrings.verseOfTheDay);
   });
 
-  it('uses Korean strings when the browser prefers ko-KR', async () => {
-    vi.stubGlobal('navigator', {
-      language: 'ko-KR',
-      languages: ['ko-KR', 'ko'],
-    });
-    vi.resetModules();
-
-    const i18n = await loadI18n();
-    expect(i18n.language).toBe('ko');
-    expect(i18n.t('verseOfTheDay')).toBe(ko.verseOfTheDay);
-  });
-
-  it('uses Turkish strings when the browser prefers tr-TR', async () => {
-    vi.stubGlobal('navigator', {
-      language: 'tr-TR',
-      languages: ['tr-TR', 'tr'],
-    });
-    vi.resetModules();
-
-    const i18n = await loadI18n();
-    expect(i18n.language).toBe('tr');
-    expect(i18n.t('verseOfTheDay')).toBe(tr.verseOfTheDay);
-  });
-
-  it('uses Chinese strings when the browser prefers zh-TW', async () => {
-    vi.stubGlobal('navigator', {
-      language: 'zh-TW',
-      languages: ['zh-TW', 'zh'],
-    });
-    vi.resetModules();
-
-    const i18n = await loadI18n();
-    expect(i18n.language).toBe('zh');
-    expect(i18n.t('verseOfTheDay')).toBe(zh.verseOfTheDay);
-  });
-
   it('falls back to the English string for keys a translation bundle is missing', async () => {
     vi.stubGlobal('navigator', {
       language: 'ko-KR',
@@ -185,15 +137,16 @@ describe('i18n instance', () => {
     vi.resetModules();
 
     const i18n = await loadI18n();
-    expect(ko).not.toHaveProperty('untitledSerifFontName');
+    const koStrings = resources.ko.translation;
+    expect(koStrings).not.toHaveProperty('untitledSerifFontName');
     expect(i18n.t('untitledSerifFontName')).toBe(en.untitledSerifFontName);
   });
 
-  it('registers every locale bundle shipped in the package', async () => {
+  it('re-exports supportedLngs from generated resources', async () => {
     vi.resetModules();
 
     const { supportedLngs: registered } = await import('./index');
-    expect([...registered].sort()).toEqual(['en', 'es', 'fr', 'ko', 'tr', 'zh']);
+    expect(registered).toEqual(supportedLngs);
   });
 
   it('falls back to English for unsupported browser languages', async () => {

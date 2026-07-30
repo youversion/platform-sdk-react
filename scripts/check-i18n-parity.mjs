@@ -241,17 +241,24 @@ checkLocalesAreRegistered();
 reportAndExit();
 
 /**
- * A synced bundle is dead weight until `i18n/index.ts` imports it into `resources`,
- * since `supportedLngs` (and therefore browser-language detection) derives from that map.
+ * A synced bundle is dead weight until resources.generated.ts includes it,
+ * since supportedLngs (and browser-language detection) derives from that map.
  */
 function checkLocalesAreRegistered() {
-  const indexPath = resolve(uiSrcDir, 'i18n/index.ts');
-  const source = readFileSync(indexPath, 'utf8');
+  if (!existsSync(generatedResourcesPath)) {
+    errors.push(
+      `${relative(repoRoot, generatedResourcesPath)} is missing. Run \`pnpm generate:i18n\`.`,
+    );
+    return;
+  }
 
-  for (const locale of TRANSLATION_LOCALES) {
-    if (!source.includes(`./locales/${locale}.json`)) {
+  const generated = readFileSync(generatedResourcesPath, 'utf8');
+
+  for (const locale of translationLocales) {
+    const quoted = JSON.stringify(locale);
+    if (!generated.includes(`${quoted}: { [defaultNS]: locale`)) {
       errors.push(
-        `Locale "${locale}.json" is not registered in i18n/index.ts — add it to the resources map or browser-language detection will never select it`,
+        `Locale "${locale}.json" is not registered in resources.generated.ts — run \`pnpm generate:i18n\` so browser-language detection can select it`,
       );
     }
   }

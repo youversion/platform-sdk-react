@@ -3,6 +3,9 @@
 import locale0 from './locales/en.json';
 import locale1 from './locales/es.json';
 import locale2 from './locales/fr.json';
+import locale3 from './locales/ko.json';
+import locale4 from './locales/tr.json';
+import locale5 from './locales/zh.json';
 
 const defaultNS = 'translation';
 
@@ -10,6 +13,9 @@ export const resources = {
   en: { [defaultNS]: locale0 },
   es: { [defaultNS]: locale1 },
   fr: { [defaultNS]: locale2 },
+  ko: { [defaultNS]: locale3 },
+  tr: { [defaultNS]: locale4 },
+  zh: { [defaultNS]: locale5 },
 } as const;
 
 export const supportedLngs = Object.keys(resources);
