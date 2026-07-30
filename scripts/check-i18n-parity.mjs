@@ -236,7 +236,26 @@ for (const locale of translationLocales) {
   }
 }
 
+checkLocalesAreRegistered();
+
 reportAndExit();
+
+/**
+ * A synced bundle is dead weight until `i18n/index.ts` imports it into `resources`,
+ * since `supportedLngs` (and therefore browser-language detection) derives from that map.
+ */
+function checkLocalesAreRegistered() {
+  const indexPath = resolve(uiSrcDir, 'i18n/index.ts');
+  const source = readFileSync(indexPath, 'utf8');
+
+  for (const locale of TRANSLATION_LOCALES) {
+    if (!source.includes(`./locales/${locale}.json`)) {
+      errors.push(
+        `Locale "${locale}.json" is not registered in i18n/index.ts — add it to the resources map or browser-language detection will never select it`,
+      );
+    }
+  }
+}
 
 function reportAndExit() {
   if (warnings.length > 0) {

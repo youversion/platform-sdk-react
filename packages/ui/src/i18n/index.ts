@@ -5,6 +5,7 @@ import { resources, supportedLngs } from './resources.generated';
 
 export { resources, supportedLngs };
 
+
 const defaultNS = 'translation';
 const BRAND_NAME = 'YouVersion';
 /** Used when a key/locale is missing or browser language is unsupported — not the active UI language. */

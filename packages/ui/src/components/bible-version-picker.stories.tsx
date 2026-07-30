@@ -6,6 +6,7 @@ import { http, HttpResponse, delay } from 'msw';
 import { BookOpenIcon } from './icons/book-open';
 import { Button } from './ui/button';
 import { RECENT_VERSIONS_KEY } from './bible-version-picker';
+import i18n from '@/i18n';
 
 type StoredRecentVersion = {
   id: number;
@@ -197,6 +198,13 @@ export const SuggestedLanguagesTabs: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+
+    // The ko-KR stub above exists to drive the *suggested languages* list, but
+    // YouVersionProvider also syncs the SDK's own UI language from
+    // navigator.languages on mount — and we ship a Korean bundle. Pin the UI back
+    // to English (after mount, so the provider effect has already run) so the
+    // assertions below can match English labels.
+    await i18n.changeLanguage('en');
 
     // Open popover
     const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
