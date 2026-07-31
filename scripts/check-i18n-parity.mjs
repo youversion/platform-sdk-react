@@ -71,6 +71,9 @@ function checkGeneratedResourcesDrift() {
     ? readFileSync(generatedResourcesPath, 'utf8')
     : null;
 
+  // When resources.generated.ts is absent, running the generator creates it as a side-effect,
+  // then we still report drift (exit 1). Intentional: the file should exist in the committed tree;
+  // CI fails either way. A subsequent local run passes once the file matches.
   const result = spawnSync(process.execPath, [generateScriptPath], {
     cwd: repoRoot,
     encoding: 'utf8',
