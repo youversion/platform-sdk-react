@@ -1,6 +1,6 @@
 {
   "name": "@youversion/platform-react-ui",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "Pre-built React components for Bible applications with styling included.",
   "license": "Apache-2.0",
   "type": "module",
