@@ -1,0 +1,45 @@
+name: Changeset
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  require-changeset:
+    name: Require Changeset
+    runs-on: ubuntu-latest
+    # The Changesets "version packages" PR (branch changeset-release/main)
+    # consumes changesets and legitimately contains none — exempt it.
+    if: github.head_ref != 'changeset-release/main'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # Fail the PR unless it adds a changeset. Every PR needs one; for a genuine
+      # no-release change (CI, docs, tooling) add an intentional empty changeset
+      # with `pnpm changeset --empty`, which still writes a .changeset/*.md file
+      # and satisfies this gate. See docs/release-hardening-decisions.md (Decision 4).
+      #
+      # We check for an added changeset file directly rather than using
+      # `changeset status --since`: in the pinned @changesets/cli that command
+      # exits 0 even when no changeset exists, so it cannot gate.
+      - name: Require a changeset
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          base=$(git merge-base origin/main "$HEAD_SHA")
+          changed=$(git diff --name-only --diff-filter=d "$base".."$HEAD_SHA" -- .changeset \
+            | grep -E '\.changeset/.+\.md$' \
+            | grep -vE '\.changeset/README\.md$' || true)
+          if [ -z "$changed" ]; then
+            echo "::error::No changeset found on this PR. Run 'pnpm changeset' to describe the release, or 'pnpm changeset --empty' for a no-release change (CI/docs/tooling)."
+            exit 1
+          fi
+          echo "Changeset(s) detected:"
+          echo "$changed"
