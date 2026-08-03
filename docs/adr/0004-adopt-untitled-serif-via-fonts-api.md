@@ -79,7 +79,7 @@ and no `useFonts` hook are built.
 'api.youversion.com'`) so staging environments keep working.
 
 **3. Reader picker (YPE-1350).** `UNTITLED_SERIF_FONT` becomes the reader's default font
-family and the right-hand picker button, labelled **"Untitled"** per the ticket's
+family and the right-hand picker button, labelled **"Untitled Serif"** per the ticket's
 explicit wording. `SOURCE_SERIF_FONT` stays exported as `@deprecated` solely so the
 hydration path can recognize it: a reader who chose serif before this shipped has the
 old stack in `localStorage`, and without mapping it forward they would hydrate to a
