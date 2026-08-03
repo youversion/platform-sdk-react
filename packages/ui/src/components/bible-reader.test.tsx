@@ -28,7 +28,12 @@ import {
   nextBibleReaderFontSizeUp,
   type BibleThemeSettingsSnapshot,
 } from './bible-reader';
-import { INTER_FONT, SOURCE_SERIF_FONT, type FontFamily } from '@/lib/verse-html-utils';
+import {
+  INTER_FONT,
+  SOURCE_SERIF_FONT,
+  UNTITLED_SERIF_FONT,
+  type FontFamily,
+} from '@/lib/verse-html-utils';
 
 class ResizeObserverMock {
   observe() {}
@@ -140,7 +145,7 @@ describe('BibleReader font helpers', () => {
 describe('createBibleThemeSettingsContentHandlers', () => {
   it('updates font size, family, and line spacing via host-owned setters', () => {
     let fontSize = 16;
-    let fontFamily: FontFamily = SOURCE_SERIF_FONT;
+    let fontFamily: FontFamily = UNTITLED_SERIF_FONT;
     let lineSpacing: number = BIBLE_READER_SPACING.DEFAULT;
     const setFontSize = vi.fn((n: number) => {
       fontSize = n;
@@ -170,6 +175,9 @@ describe('createBibleThemeSettingsContentHandlers', () => {
 
     handlers.onFontSelected(INTER_FONT);
     expect(setFontFamily).toHaveBeenCalledWith(INTER_FONT);
+
+    handlers.onFontSelected(UNTITLED_SERIF_FONT);
+    expect(setFontFamily).toHaveBeenLastCalledWith(UNTITLED_SERIF_FONT);
 
     // Cycles DEFAULT -> LG -> SM -> DEFAULT
     handlers.onChangeLineSpacing();
@@ -207,6 +215,50 @@ describe('BibleReader theme settings', () => {
     });
 
     await user.click(screen.getByRole('button', { name: /inter/i }));
+    await waitFor(() => {
+      expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(INTER_FONT);
+    });
+
+    await user.click(screen.getByRole('button', { name: /untitled/i }));
+    await waitFor(() => {
+      expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(
+        UNTITLED_SERIF_FONT,
+      );
+    });
+  });
+
+  it('migrates the legacy Source Serif preference to Untitled Serif on hydrate', async () => {
+    const user = userEvent.setup();
+
+    localStorage.setItem('youversion-platform:reader:font-family', SOURCE_SERIF_FONT);
+
+    render(
+      <BibleReader.Root defaultVersionId={3034} defaultBook="JHN" defaultChapter="1">
+        <BibleReader.Toolbar />
+      </BibleReader.Root>,
+    );
+
+    await waitFor(() => {
+      expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(
+        UNTITLED_SERIF_FONT,
+      );
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(await screen.findByText('Reader Settings')).toBeInTheDocument();
+
+    expect(screen.getByRole('button', { name: /untitled/i }).className).toContain('yv:bg-primary');
+  });
+
+  it('leaves a non-legacy stored font family untouched on hydrate', async () => {
+    localStorage.setItem('youversion-platform:reader:font-family', INTER_FONT);
+
+    render(
+      <BibleReader.Root defaultVersionId={3034} defaultBook="JHN" defaultChapter="1">
+        <BibleReader.Toolbar />
+      </BibleReader.Root>,
+    );
+
     await waitFor(() => {
       expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(INTER_FONT);
     });
@@ -293,7 +345,7 @@ describe('BibleReader theme settings', () => {
 
     function ControlledHost() {
       const [fontSize, setFontSize] = useState(16);
-      const [fontFamily, setFontFamily] = useState<FontFamily>(SOURCE_SERIF_FONT);
+      const [fontFamily, setFontFamily] = useState<FontFamily>(UNTITLED_SERIF_FONT);
 
       return (
         <>

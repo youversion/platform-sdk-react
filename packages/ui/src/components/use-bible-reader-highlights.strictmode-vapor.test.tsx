@@ -116,8 +116,13 @@ describe('vapor flash — StrictMode + server-truth remove + selection-clear + h
 
     // Let the DELETE settle (fires the held refetch) and flush microtasks —
     // this is the window the live repro repaints in (before any GET response).
-    await waitFor(() => expect(deleteHighlight).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(getHighlights.mock.calls.length).toBeGreaterThan(mountFetches));
+    // These two waits are synchronization gates, not the assertions under test;
+    // the uncontrolled REMOVE → xstate → deleteHighlight path can be starved past
+    // the default 1s window on a loaded CI runner, so give the gates headroom.
+    await waitFor(() => expect(deleteHighlight).toHaveBeenCalledTimes(1), { timeout: 5000 });
+    await waitFor(() => expect(getHighlights.mock.calls.length).toBeGreaterThan(mountFetches), {
+      timeout: 5000,
+    });
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();

@@ -250,7 +250,7 @@ describe('BibleChapterPicker - typography (matches Figma sizing; sans inherited)
     expect(genesisTrigger).toHaveClass('yv:data-[state=open]:font-bold');
   });
 
-  it('chapter number buttons use Aktiv 16px bold', () => {
+  it('chapter number buttons render at 16px bold', () => {
     renderContent();
 
     const chapterButton = screen.getByText('2').closest('button');
@@ -258,7 +258,7 @@ describe('BibleChapterPicker - typography (matches Figma sizing; sans inherited)
     expect(chapterButton).toHaveClass('yv:text-base', 'yv:font-bold');
   });
 
-  it('search input uses Aktiv 16px', () => {
+  it('search input renders at 16px', () => {
     renderContent();
 
     expect(screen.getByPlaceholderText('Search')).toHaveClass('yv:text-base');

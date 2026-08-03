@@ -1,5 +1,5 @@
 import { expandPassageId } from '@/lib/highlight-projection';
-import { INTER_FONT, SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
+import { INTER_FONT, SOURCE_SERIF_FONT, UNTITLED_SERIF_FONT } from '@/lib/verse-html-utils';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { Highlight } from '@youversion/platform-core';
 import { delay, http, HttpResponse } from 'msw';
@@ -56,7 +56,7 @@ const meta: Meta<typeof BibleReader.Root> = {
     },
     fontFamily: {
       control: 'select',
-      options: [SOURCE_SERIF_FONT, INTER_FONT],
+      options: [UNTITLED_SERIF_FONT, INTER_FONT],
       description: 'Font family',
     },
     showVerseNumbers: {
@@ -134,11 +134,11 @@ export const Default: Story = {
     await expect(decreaseFontButton).toBeDisabled();
 
     const interButton = screen.getByRole('button', { name: /inter/i });
-    const sourceSerifButton = screen.getByRole('button', { name: /source serif/i });
+    const untitledSerifButton = screen.getByRole('button', { name: /untitled/i });
 
-    await userEvent.click(sourceSerifButton);
+    await userEvent.click(untitledSerifButton);
     await expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(
-      SOURCE_SERIF_FONT,
+      UNTITLED_SERIF_FONT,
     );
 
     await userEvent.click(interButton);
@@ -179,7 +179,7 @@ export const CustomStyling: Story = {
     defaultVersionId: 111,
     fontSize: 18,
     lineSpacing: 2.0,
-    fontFamily: SOURCE_SERIF_FONT,
+    fontFamily: UNTITLED_SERIF_FONT,
     showVerseNumbers: false,
   },
   render: (args) => (
@@ -209,7 +209,7 @@ export const FontSizeOutOfRange: Story = {
     defaultVersionId: 111,
     fontSize: 28,
     lineSpacing: 2.0,
-    fontFamily: SOURCE_SERIF_FONT,
+    fontFamily: UNTITLED_SERIF_FONT,
     showVerseNumbers: false,
   },
   render: (args) => (
@@ -511,7 +511,9 @@ export const LoadsSavedPreferencesFromLocalStorage: Story = {
   },
   beforeEach: () => {
     localStorage.clear();
-    // Pre-populate localStorage with saved preferences
+    // Pre-populate localStorage with saved preferences. The font family is the
+    // legacy Source Serif stack, so this story also covers the hydrate-time
+    // migration to Untitled Serif.
     localStorage.setItem('youversion-platform:reader:font-size', '18');
     localStorage.setItem('youversion-platform:reader:font-family', SOURCE_SERIF_FONT);
   },
@@ -537,8 +539,12 @@ export const LoadsSavedPreferencesFromLocalStorage: Story = {
       '[data-slot="yv-bible-renderer"]',
     )!;
     await expect(verseContainer.style.getPropertyValue('--yv-reader-font-size')).toBe('18px');
+    // The legacy Source Serif value seeded above is migrated forward on hydrate.
     await expect(verseContainer.style.getPropertyValue('--yv-reader-font-family')).toBe(
-      SOURCE_SERIF_FONT,
+      UNTITLED_SERIF_FONT,
+    );
+    await expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(
+      UNTITLED_SERIF_FONT,
     );
 
     // Open settings and verify the correct font family button is active
@@ -549,8 +555,8 @@ export const LoadsSavedPreferencesFromLocalStorage: Story = {
       await expect(await screen.findByText('Reader Settings')).toBeInTheDocument();
     });
 
-    const sourceSerifButton = screen.getByRole('button', { name: /source serif/i });
-    await expect(sourceSerifButton).toHaveClass('yv:bg-primary');
+    const untitledSerifButton = screen.getByRole('button', { name: /untitled/i });
+    await expect(untitledSerifButton).toHaveClass('yv:bg-primary');
 
     const interButton = screen.getByRole('button', { name: /inter/i });
     await expect(interButton).not.toHaveClass('yv:bg-primary');

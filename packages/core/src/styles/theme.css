@@ -108,11 +108,14 @@
   --yv-sidebar-border: var(--yv-gray-15);
   --yv-sidebar-ring: var(--yv-blue-30);
 
-  /* Brand fonts (Aktiv Grotesk App / Untitled Serif) reverted to Inter / Source
-     Serif 4 pending licensing — see docs/adr/0001-revert-brand-fonts-pending-licensing.md.
-     Brand-font implementation parked on branch feat/youversion-brand-fonts. */
+  /* Untitled Serif is the brand serif, loaded from the gated Fonts API stylesheet
+     endpoint — see docs/adr/0004-adopt-untitled-serif-via-fonts-api.md. Source Serif 4
+     (Google Fonts) stays in the stack as the fallback, so a host that never loads
+     Untitled Serif sees no regression.
+     NOTE: the serif stack is duplicated verbatim in packages/ui/src/styles/global.css
+     (@theme inline, --font-serif). Edit both together — font-tokens.test.ts guards drift. */
   --yv-font-sans: 'Inter', sans-serif;
-  --yv-font-serif: 'Source Serif 4', serif;
+  --yv-font-serif: 'Untitled Serif', 'Source Serif 4', serif;
   --yv-reader-font-family: var(--yv-font-serif), var(--yv-font-sans);
 
   &[data-yv-theme='dark'] {
