@@ -28,16 +28,17 @@ To import existing React keys into platform-localization for the first time:
 npm run import:react -- /path/to/platform-sdk-react/packages/ui/src/i18n/locales/en.json
 ```
 
-## Adding a new language
+## Adding a new locale
 
-A sync PR only drops the bundle in `locales/`. The bundle is inert until it is registered:
+When platform-localization adds a new translation locale and the sync PR lands a new JSON file under `packages/ui/src/i18n/locales/`:
 
-1. Import it in `packages/ui/src/i18n/index.ts` and add it to the `resources` map. `supportedLngs` — and therefore browser-language detection — derives from that map, so an unregistered bundle never renders.
-2. Add coverage in `packages/ui/src/i18n/index.test.ts` for the new tag.
+1. **Do not hand-edit `packages/ui/src/i18n/index.ts`** — it imports from the generated resources file; locale registration is handled by the generator, not manual imports.
+2. **Do not hand-edit `resources.generated.ts`** — it is auto-generated.
+3. Run `pnpm generate:i18n` from the repo root (or `pnpm --filter @youversion/platform-react-ui generate:i18n`).
+4. Commit the updated `packages/ui/src/i18n/resources.generated.ts` alongside the new locale JSON.
+5. Run `pnpm check:i18n` — CI will fail if the generated file is stale.
 
-`pnpm check:i18n` hard-fails on any locale file missing from `resources`, so this cannot silently regress. Keys a bundle has not translated yet fall back to English per key.
-
-Integration tests pin `navigator.languages` to English in `packages/ui/.storybook/vitest.setup.ts`; story play functions assert English copy, and without the pin a dev machine preferring a shipped locale would render that bundle instead.
+The generator discovers all `*.json` files in `locales/`, requires `en.json`, sorts locales with `en` first then alphabetically, and emits static imports for the tsup bundle.
 
 ## Using strings in components
 
