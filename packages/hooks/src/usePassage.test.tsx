@@ -46,7 +46,25 @@ describe('usePassage', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetPassage).toHaveBeenCalledWith(3034, 'JHN.3.16', 'html', false, false);
+      expect
+        .soft(mockGetPassage)
+        .toHaveBeenCalledWith(3034, 'JHN.3.16', 'html', false, false, true);
+    });
+
+    it('should forward transform: false so callers can opt out of HTML transformation', async () => {
+      const wrapper = createYVWrapper();
+      const { result } = renderHook(
+        () => usePassage({ versionId: 3034, usfm: 'JHN.3.16', transform: false }),
+        { wrapper },
+      );
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect
+        .soft(mockGetPassage)
+        .toHaveBeenCalledWith(3034, 'JHN.3.16', 'html', false, false, false);
     });
   });
 
@@ -76,7 +94,9 @@ describe('usePassage', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetPassage).toHaveBeenCalledWith(3034, 'JHN.3.16', 'text', false, false);
+      expect
+        .soft(mockGetPassage)
+        .toHaveBeenCalledWith(3034, 'JHN.3.16', 'text', false, false, true);
     });
   });
 
@@ -92,7 +112,7 @@ describe('usePassage', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetPassage).toHaveBeenCalledWith(3034, 'JHN.3.16', 'html', true, false);
+      expect.soft(mockGetPassage).toHaveBeenCalledWith(3034, 'JHN.3.16', 'html', true, false, true);
     });
 
     it('should pass include_notes=true', async () => {
@@ -106,7 +126,7 @@ describe('usePassage', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetPassage).toHaveBeenCalledWith(3034, 'JHN.3.16', 'html', false, true);
+      expect.soft(mockGetPassage).toHaveBeenCalledWith(3034, 'JHN.3.16', 'html', false, true, true);
     });
 
     it('should pass all options combined', async () => {
@@ -127,7 +147,7 @@ describe('usePassage', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetPassage).toHaveBeenCalledWith(3034, 'JHN.3', 'text', true, true);
+      expect.soft(mockGetPassage).toHaveBeenCalledWith(3034, 'JHN.3', 'text', true, true, true);
     });
   });
 
@@ -139,8 +159,8 @@ describe('usePassage', () => {
           usePassage({ versionId: val as number, usfm: 'JHN.3.16' }),
         initial: { val: 1 },
         updated: { val: 3034 },
-        expectedInitial: [1, 'JHN.3.16', 'html', false, false],
-        expectedUpdated: [3034, 'JHN.3.16', 'html', false, false],
+        expectedInitial: [1, 'JHN.3.16', 'html', false, false, true],
+        expectedUpdated: [3034, 'JHN.3.16', 'html', false, false, true],
       },
       {
         param: 'usfm',
@@ -148,8 +168,8 @@ describe('usePassage', () => {
           usePassage({ versionId: 3034, usfm: val as string }),
         initial: { val: 'JHN.3.16' },
         updated: { val: 'GEN.1.1' },
-        expectedInitial: [3034, 'JHN.3.16', 'html', false, false],
-        expectedUpdated: [3034, 'GEN.1.1', 'html', false, false],
+        expectedInitial: [3034, 'JHN.3.16', 'html', false, false, true],
+        expectedUpdated: [3034, 'GEN.1.1', 'html', false, false, true],
       },
       {
         param: 'format',
@@ -157,8 +177,8 @@ describe('usePassage', () => {
           usePassage({ versionId: 3034, usfm: 'JHN.3.16', format: val as 'html' | 'text' }),
         initial: { val: 'html' },
         updated: { val: 'text' },
-        expectedInitial: [3034, 'JHN.3.16', 'html', false, false],
-        expectedUpdated: [3034, 'JHN.3.16', 'text', false, false],
+        expectedInitial: [3034, 'JHN.3.16', 'html', false, false, true],
+        expectedUpdated: [3034, 'JHN.3.16', 'text', false, false, true],
       },
     ])(
       'should refetch when $param changes',
