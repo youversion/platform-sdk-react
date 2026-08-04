@@ -51,10 +51,13 @@ export async function resolveHtmlAdapters(): Promise<TransformBibleHtmlOptions> 
   let linkedom: { DOMParser: DomParserConstructor };
   try {
     linkedom = await import('linkedom');
-  } catch {
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
     throw new Error(
       'Server-side HTML transformation requires "linkedom". ' +
-        'Install it as a dependency or pass transform: false to skip transformation.',
+        'Install it as a dependency or pass transform: false to skip transformation. ' +
+        `Original error: ${detail}`,
+      { cause: err },
     );
   }
 
