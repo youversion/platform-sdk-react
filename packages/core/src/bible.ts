@@ -24,6 +24,8 @@ async function getHtmlAdapters(): Promise<TransformBibleHtmlOptions> {
   }
   let jsdom;
   try {
+    // Literal dynamic import is fine in Node. Client bundlers must not pull
+    // jsdom into browser graphs — see package.json "browser": { "jsdom": false }.
     jsdom = await import('jsdom');
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);

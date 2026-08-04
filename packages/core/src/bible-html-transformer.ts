@@ -342,10 +342,14 @@ export function transformBibleHtml(
 
   sanitizeBibleHtmlDocument(doc);
 
-  // Already transformed — skip structural transforms
-  if (doc.querySelector(`[${TRANSFORMED_ATTR}]`)) {
+  // Only trust the marker on the transform root. A nested/untrusted
+  // data-yv-transformed (preserved by data-* allowlist) must not skip
+  // verse wrapping or footnote extraction.
+  const root = doc.body?.firstElementChild ?? doc.body;
+  if (root?.hasAttribute(TRANSFORMED_ATTR)) {
     return { html: options.serializeHtml(doc) };
   }
+
   wrapVerseContent(doc);
   assignFootnoteKeys(doc);
 
@@ -356,8 +360,8 @@ export function transformBibleHtml(
   fixIrregularTables(doc);
 
   // Mark as transformed for idempotency
-  const root = doc.body?.firstElementChild ?? doc.body;
-  root?.setAttribute(TRANSFORMED_ATTR, '');
+  const markedRoot = doc.body?.firstElementChild ?? doc.body;
+  markedRoot?.setAttribute(TRANSFORMED_ATTR, '');
 
   const transformedHtml = options.serializeHtml(doc);
   return { html: transformedHtml };

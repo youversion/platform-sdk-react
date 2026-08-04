@@ -308,8 +308,8 @@ describe('transformBibleHtml - sanitization', () => {
     const result = transformBibleHtml(html, createAdapters());
 
     expect(result.html).not.toContain('onclick');
-    expect(result.html).toContain('<p');
-    expect(result.html).toContain('Click me');
+    // Tag-boundary match so we don't accept a false positive like `<pre`.
+    expect(result.html).toMatch(/<p(?:\s[^>]*)?>Click me<\/p>/);
   });
 
   it('should unwrap anchor tags (not in allowlist) preserving text', () => {
@@ -412,6 +412,15 @@ describe('transformBibleHtml - idempotency', () => {
     const second = transformBibleHtml(first.html, createAdapters());
 
     expect(second.html).toBe(first.html);
+  });
+
+  it('should not short-circuit on untrusted nested data-yv-transformed', () => {
+    const html =
+      '<div><span data-yv-transformed></span><div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text<span class="yv-n f"><span class="ft">A note</span></span>.</div></div>';
+    const result = transformBibleHtml(html, createAdapters());
+
+    expect(result.html).toContain('data-verse-footnote');
+    expect(result.html).toMatch(/^<div\b[^>]*\bdata-yv-transformed\b/);
   });
 });
 

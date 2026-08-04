@@ -90,7 +90,7 @@ const result = transformBibleHtml(html);
 
 **Why separate entry points?**
 
-This architecture keeps the main export truly runtime-agnostic while providing ergonomic convenience wrappers for common environments. The separate `/browser` and `/server` entry points ensure optimal bundle sizes - jsdom won't be bundled in browser builds.
+This architecture keeps the main export truly runtime-agnostic while providing ergonomic convenience wrappers for common environments. The separate `/browser` and `/server` entry points ensure optimal bundle sizes. `package.json` also maps `"browser": { "jsdom": false }` so Vite/Rollup client builds stub jsdom even when the main entry's dynamic `import('jsdom')` is present (Node-only path; browsers use native `DOMParser`).
 
 ## ADDING A NEW ENDPOINT OR CLIENT
 
