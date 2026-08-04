@@ -352,7 +352,7 @@ describe('transformBibleHtml - sanitization', () => {
     expect(result.html).toContain('class="p"');
     expect(result.html).toContain('class="wj"');
     expect(result.html).toContain('colspan="2"');
-    expect(result.html).toContain('<table>');
+    expect(result.html).toMatch(/<table(?:\s[^>]*)?>/);
   });
 
   it('should unwrap unknown custom elements preserving text', () => {
@@ -421,6 +421,31 @@ describe('transformBibleHtml - idempotency', () => {
 
     expect(result.html).toContain('data-verse-footnote');
     expect(result.html).toMatch(/^<div\b[^>]*\bdata-yv-transformed\b/);
+  });
+
+  it('should transform raw siblings when only the first top-level element is marked', () => {
+    const raw =
+      '<div class="p"><span class="yv-v" v="2"></span><span class="yv-vlbl">2</span>Second<span class="yv-n f"><span class="ft">Sibling note</span></span>.</div>';
+    const transformed = transformBibleHtml(
+      '<div><div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>First.</div></div>',
+      createAdapters(),
+    );
+
+    const result = transformBibleHtml(transformed.html + raw, createAdapters());
+
+    expect(result.html).toContain('data-verse-footnote');
+    expect(result.html).toContain('Sibling note');
+  });
+
+  it('should mark every top-level element so a multi-root fragment stays idempotent', () => {
+    const html =
+      '<div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>One.</div>' +
+      '<div class="p"><span class="yv-v" v="2"></span><span class="yv-vlbl">2</span>Two.</div>';
+    const first = transformBibleHtml(html, createAdapters());
+    const second = transformBibleHtml(first.html, createAdapters());
+
+    expect(first.html.match(/data-yv-transformed/g)).toHaveLength(2);
+    expect(second.html).toBe(first.html);
   });
 });
 

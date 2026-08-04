@@ -49,6 +49,10 @@ const DROP_ENTIRELY_TAGS = new Set([
 
 const ALLOWED_ATTRS = new Set(['class', 'v', 'colspan', 'rowspan', 'dir', 'usfm']);
 
+function topLevelElements(doc: Document): Element[] {
+  return doc.body ? Array.from(doc.body.children) : [];
+}
+
 function sanitizeBibleHtmlDocument(doc: Document): void {
   const root = doc.body ?? doc.documentElement;
   for (const el of Array.from(root.querySelectorAll('*'))) {
@@ -342,11 +346,12 @@ export function transformBibleHtml(
 
   sanitizeBibleHtmlDocument(doc);
 
-  // Only trust the marker on the transform root. A nested/untrusted
-  // data-yv-transformed (preserved by data-* allowlist) must not skip
-  // verse wrapping or footnote extraction.
-  const root = doc.body?.firstElementChild ?? doc.body;
-  if (root?.hasAttribute(TRANSFORMED_ATTR)) {
+  // Only trust the marker when every top-level element carries it. A nested or
+  // partially-marked fragment (transformed HTML concatenated with raw HTML, or
+  // an untrusted data-yv-transformed preserved by the data-* allowlist) must
+  // still run verse wrapping and footnote extraction.
+  const roots = topLevelElements(doc);
+  if (roots.length > 0 && roots.every((el) => el.hasAttribute(TRANSFORMED_ATTR))) {
     return { html: options.serializeHtml(doc) };
   }
 
@@ -359,9 +364,11 @@ export function transformBibleHtml(
   addNbspToVerseLabels(doc);
   fixIrregularTables(doc);
 
-  // Mark as transformed for idempotency
-  const markedRoot = doc.body?.firstElementChild ?? doc.body;
-  markedRoot?.setAttribute(TRANSFORMED_ATTR, '');
+  // Mark every top-level element so a later re-transform can tell the whole
+  // fragment came from here, not just its first sibling.
+  for (const el of topLevelElements(doc)) {
+    el.setAttribute(TRANSFORMED_ATTR, '');
+  }
 
   const transformedHtml = options.serializeHtml(doc);
   return { html: transformedHtml };
