@@ -1,5 +1,37 @@
 # @youversion/platform-react-ui
 
+## 2.5.0
+
+### Minor Changes
+
+- abc1877: `BibleReader` can now hand verse actions to the host (YPE-2894). Three additive changes; **every default is unchanged**, so existing consumers see identical behavior.
+  - New `BibleReader.Root` prop `verseActions?: 'popover' | 'none'`. `'popover'` is the default and renders the built-in `VerseActionPopover` exactly as before. `'none'` renders no verse-action UI at all while keeping everything else intact — verses still select and paint, `onVerseSelect` still fires with `reference` and `shareData` populated, and the Copy / Share payload is still built. Highlight intents are the exception: the built-in popover is their only trigger, so `onHighlightApply` / `onHighlightRemove` do **not** fire in this mode — a host owning the action UI drives highlights by updating the `highlights` prop directly. Use it when the host owns the action UI (a React Native host presenting a native bottom sheet, where a second in-WebView popover would stack on top of it).
+  - New `BibleReader.Root` prop `clearSelectionSignal?: number`. Any change to the value clears the current verse selection from outside the reader, emitting `onVerseSelect` with `verses: []`. The value at mount is the baseline, so mounting never clears. It is a counter rather than an imperative `ref` handle because Expo DOM components accept only serializable props. Needed with `verseActions="none"`, where nothing inside the reader clears the selection any more.
+  - `BibleReaderVerseSelection` (the `onVerseSelect` payload) gains two fields: `reference`, the localized display reference **without** the version abbreviation (`Hebrews 11:4`, falling back to the USFM book code until `useBooks` resolves, `''` on clear), and `shareData`, the same `BibleReaderShareData` the popover's Copy / Share buttons produce (`null` on clear). `reference` and `shareData.reference` deliberately differ — copied text keeps the version (`Hebrews 11:4 BSB`), a UI label does not. When the localized book title or version abbreviation resolves while a selection is live, the reader re-emits `onVerseSelect` with the same `verses` and the refreshed fields, so a host never sticks on the fallback: treat the payload as the current state of the selection, not as one event per user action.
+
+  `BibleReaderHighlightIntent` is unchanged: it no longer spreads the full selection type, so intents still carry identity and color only.
+
+- 514a642: Register the Korean, Turkish, and Chinese locale bundles in the i18n resource map so browser-language detection can select them. Previously the synced bundles shipped unreferenced, and those browsers fell back to English. `pnpm check:i18n` now fails when a locale file is not registered.
+- 0a1c880: Swap the SDK's serif face from Source Serif 4 to **Untitled Serif**, YouVersion's brand serif, delivered from the YouVersion Fonts API (YPE-1350, YPE-1910).
+  - The serif stack is now `'Untitled Serif', 'Source Serif 4', serif` in both token declarations (`--yv-font-serif` in core, `--font-serif` in the UI theme), so every serif surface follows: BibleReader body text, the Bible card, `BibleText`, the version-picker abbreviation tile, footnotes, chapter headings, and the `lg` Verse of the Day card. Untitled Serif is named first, so a host that loads its own copy takes priority regardless of who fetched it.
+  - `YouVersionProvider` now loads the font for you. It renders a hoisted `<link rel="stylesheet">` to `https://api.youversion.com/v1/fonts/1/stylesheet`, using the app key you already supply — **a new outbound request** to `api.youversion.com`, plus woff2 fetches from `cdn.youversion.com`. No new prop and no setup; there is no opt-out. No font file ships in any package.
+  - **Strict CSP consumers:** allowlist `https://api.youversion.com` in `style-src` and `https://cdn.youversion.com` in `font-src`. If they are blocked, serif text falls back to Source Serif 4 (still loaded from Google Fonts) with no layout break.
+  - **The BibleReader's default font changes** from Source Serif 4 to Untitled Serif, and the font picker button now reads "Untitled Serif" instead of "Source Serif". Readers whose saved preference is the old Source Serif stack are migrated on load, so the picker still shows serif as active. Any other `fontFamily` value you pass or persist is left untouched.
+  - The internal `SOURCE_SERIF_FONT` constant is deprecated (retained for that migration). The picker now reads a new `untitledSerifFontName` locale key; the old `sourceSerifFontName` key is retired in a follow-up sync. Neither is part of the public API; nothing is removed or retyped.
+
+  See `docs/adr/0004-adopt-untitled-serif-via-fonts-api.md` for the delivery rationale.
+
+### Patch Changes
+
+- 1da7184: Automate UI locale registration from locale JSON files via `generate:i18n`, and run generation before build, typecheck, Storybook, and test commands so new languages stay in sync without hand-editing the resource map.
+- 0253e33: Fix BibleChapterPicker requiring two taps to collapse an expanded book. The book
+  accordion now stays controlled for its whole lifetime instead of flipping to
+  uncontrolled when a book is collapsed.
+- 514a642: Sync localization from platform-localization (c9c01e1): add Korean (ko), Turkish (tr), Chinese (zh); update 1 keys in en.
+- Updated dependencies [0a1c880]
+  - @youversion/platform-core@2.5.0
+  - @youversion/platform-react-hooks@2.5.0
+
 ## 2.4.0
 
 ### Minor Changes

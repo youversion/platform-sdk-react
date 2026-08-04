@@ -2,6 +2,8 @@
 
 This guide is for project maintainers who need to set up publishing infrastructure or troubleshoot release issues.
 
+> **Hit something not covered here?** [`RELEASE-RUNBOOK.md`](./RELEASE-RUNBOOK.md) catalogues specific failure modes (EPUBLISHCONFLICT-after-success, transient registry 5xx, provenance attestation failure, expired `NPM_TOKEN`, OTP/2FA, `workspace:*` not rewritten, peer-dep skew, dist-tag drift) with concrete state-check and recovery commands.
+
 ## How Publishing Works
 
 The repository uses [Changesets](https://github.com/changesets/changesets) with GitHub Actions for automated publishing.
@@ -52,6 +54,10 @@ Required packages:
 - Stronger security via short-lived tokens
 - Automatic provenance generation
 - Audit trail of all publishes
+
+### `NPM_TOKEN` fallback (token type matters)
+
+The workflow keeps `NPM_TOKEN` as a fallback for any package where Trusted Publishing isn't configured yet. If you set one, generate it as an **Automation token** — not a Publish or personal-user token. Automation tokens explicitly bypass npm's 2FA-on-publish, which CI cannot satisfy. A Publish token will fail every publish with `EOTP` / "need a one-time password" (see [`RELEASE-RUNBOOK.md` §5](./RELEASE-RUNBOOK.md#5-otp--2fa-error-class-wrong-token-type)). Remove `NPM_TOKEN` once all three packages are on Trusted Publishing.
 
 ## Troubleshooting
 

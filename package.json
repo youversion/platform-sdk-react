@@ -33,11 +33,14 @@
     "prepare": "husky",
     "analyze": "node scripts/analyze.mjs",
     "analyze:select": "node scripts/analyze-select.mjs",
+    "generate:i18n": "pnpm --filter @youversion/platform-react-ui generate:i18n",
     "check:i18n": "node scripts/check-i18n-parity.mjs",
     "test:ci-scripts": "bash .github/scripts/check-locale-ownership.test.sh"
   },
   "devDependencies": {
     "@changesets/cli": "2.29.7",
+    "@commitlint/cli": "19.8.1",
+    "@commitlint/config-conventional": "19.8.1",
     "@internal/eslint-config": "workspace:*",
     "@eslint/eslintrc": "3.3.1",
     "@microsoft/api-extractor": "7.53.1",

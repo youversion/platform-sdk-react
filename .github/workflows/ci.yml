@@ -1,5 +1,11 @@
 name: CI
 
+# Node policy (see docs/release-hardening-decisions.md, Decision 3):
+# CI runs Node 24 LTS across the board. The consumer floor is engines.node
+# >=22.13 (pnpm 11 requires it). New dev-deps MUST support that floor, or it
+# gets raised as a deliberate decision — never lowered silently to escape a
+# dependency constraint.
+
 on:
   push:
     branches:

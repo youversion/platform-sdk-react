@@ -1,0 +1,22 @@
+name: PR Title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  lint-pr-title:
+    name: Lint PR Title
+    runs-on: ubuntu-latest
+    steps:
+      # We squash-merge, so the PR title becomes the landing commit on main and
+      # must be Conventional Commits. Ticket references (YPE-1234) belong in the
+      # branch name / PR body, not the title. This is the real commit-format
+      # gate; the per-commit husky/commitlint hook is only a local dev aid.
+      # See docs/release-hardening-decisions.md (Decision 1).
+      - uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

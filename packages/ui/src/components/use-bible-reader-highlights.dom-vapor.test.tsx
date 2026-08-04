@@ -113,8 +113,14 @@ describe('vapor flash — real Verse.Html DOM paint (MutationObserver on style)'
       removeRef.current?.();
     });
 
-    await waitFor(() => expect(deleteHighlight).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(getHighlights.mock.calls.length).toBeGreaterThan(mountFetches));
+    // These two waits are synchronization gates, not the assertions under test
+    // (that's the paint-ordering check below). The uncontrolled REMOVE → xstate
+    // transition → deleteHighlight invocation can be starved past the default
+    // 1s window on a loaded CI runner, so give the gates explicit headroom.
+    await waitFor(() => expect(deleteHighlight).toHaveBeenCalledTimes(1), { timeout: 5000 });
+    await waitFor(() => expect(getHighlights.mock.calls.length).toBeGreaterThan(mountFetches), {
+      timeout: 5000,
+    });
     await act(async () => {
       await new Promise((r) => setTimeout(r, 20));
     });

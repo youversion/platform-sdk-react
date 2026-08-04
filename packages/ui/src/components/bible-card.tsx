@@ -7,7 +7,7 @@ import { BibleAppLogoLockup } from './bible-app-logo-lockup';
 import { BibleVersionPicker, type BibleVersionPickerPressData } from './bible-version-picker';
 import { Button } from './ui/button';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
-import { SOURCE_SERIF_FONT } from '@/lib/verse-html-utils';
+import { UNTITLED_SERIF_FONT } from '@/lib/verse-html-utils';
 import { useDelayedLoading } from '@/lib/use-delayed-loading';
 import { LoaderIcon } from './icons/loader';
 import { AnimatedHeight } from './animated-height';
@@ -181,7 +181,7 @@ export function BibleCard({
           <BibleTextView
             theme={theme}
             fontSize={16}
-            fontFamily={SOURCE_SERIF_FONT}
+            fontFamily={UNTITLED_SERIF_FONT}
             reference={reference}
             versionId={versionNum}
             showVerseNumbers={false}

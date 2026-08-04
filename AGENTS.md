@@ -117,11 +117,16 @@ pnpm --filter @youversion/platform-react-ui build
 - Changesets required for ALL version bumps (even patches)
 - **Unified versioning**: All packages must share exact same version - never version packages independently
 - Pre-commit hooks fail if typecheck or lint fails
+- **Every PR must include a changeset** — CI (`.github/workflows/changeset.yml`) fails a PR that adds none. For a genuine no-release change (CI/docs/tooling), add an intentional empty changeset: `pnpm changeset --empty`. A missing changeset is what caused the 2026-07-17 release failure.
+
+### Commits & PRs
+- **PR titles must be Conventional Commits** — the PR title becomes the squash-merge commit on `main` and is linted by `.github/workflows/pr-title.yml`. Ticket refs (e.g. `YPE-1234`) go in the **branch name** and PR body, not the title.
+- The per-commit husky/commitlint hook is an optional local dev aid; the PR title is the real gate.
 
 ### Environment
-- **Node.js requirement**: Minimum version 22.13.0 required (pnpm 11 requires Node >= 22.13); we develop and test on Node 24 LTS, which is what CI runs
+- **Node.js requirement**: Minimum version 22.13.0 required (pnpm 11 requires Node >= 22.13); we develop and test on Node 24 LTS, which is what CI runs. New dev-deps must support `engines.node >=22.13`; don't lower the floor to escape a dependency constraint without a deliberate decision (see `docs/release-hardening-decisions.md`, Decision 3).
 - **React version**: Do not change React dependencies; pnpm overrides (in `pnpm-workspace.yaml`) enforce 19.1.2
-- **Package manager**: Do not use npm/yarn; only pnpm supported
+- **Package manager**: Do not use npm/yarn; only pnpm supported. Git hooks prefer `corepack pnpm ...` (repo-pinned pnpm regardless of PATH) and fall back to `pnpm` where corepack isn't available (Node 25+ no longer bundles corepack). Keep the corepack-preferred/pnpm-fallback shape; don't hard-code bare `pnpm` only.
 - **Supply-chain protection**: `minimumReleaseAge: 4320` (3-day cooldown) in `pnpm-workspace.yaml` — `pnpm install` will reject packages published < 3 days ago. Override with `--force` if needed urgently. Workspace packages (`workspace:*`) are inherently excluded as they aren't fetched from the registry.
 - **pnpm 11 breaking changes**: Overrides moved from `package.json` → `pnpm-workspace.yaml`; build scripts require `allowBuilds` approval; `@internal/eslint-config` and `eslint-plugin-storybook` must be root devDependencies for resolution
 
