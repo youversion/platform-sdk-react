@@ -9,7 +9,9 @@ Complete UI layer with many Bible components: BibleTextView, VerseOfTheDay, Bibl
 
 The public API is whatever `src/index.ts` exports, including its re-exports from
 core and hooks. Public components live in `src/components/`; `src/components/ui/`
-holds internal Radix primitives that are deliberately **not** exported.
+holds internal Radix primitives that are deliberately **not** exported. The two
+exceptions are `Separator` and `Textarea`, which `src/components/index.ts` does
+export — treat those two as public API and breaking-change territory.
 
 ## DOs / DON'Ts
 
