@@ -6,10 +6,6 @@
   - `@youversion/platform-core` (pure TS API clients)
   - `@youversion/platform-react-hooks` (React hooks layer)
   - `@youversion/platform-react-ui` (UI components)
-- Language: TypeScript
-- Test runner: Vitest
-- Node: >= 22.13.0 (pnpm 11 floor); we develop and test on Node 24 LTS
-- Package manager: pnpm >= 11.0.0 (no npm/yarn)
 
 ## WHERE TO MAKE CHANGES
 
@@ -20,91 +16,8 @@
 - **New visual components / styling / UX**
   → Implement in `packages/ui` using hooks from `@youversion/platform-react-hooks`
 
-**Rule of thumb:**
-- Core = network + types (no React)
-- Hooks = React logic/state around core
-- UI = components and styling around hooks
-
-## DEPENDENCY GRAPH
-
-```
-@youversion/platform-core  →  @youversion/platform-react-hooks  →  @youversion/platform-react-ui
-      (pure TS)                      (React hooks)                      (React components)
-```
-
-- Do not introduce reverse dependencies
-- Do not import UI or hooks from core
-- Do not import UI from hooks
-
-## STRUCTURE
-```
-packages/
-  core/        @youversion/platform-core (API clients, utilities)
-  hooks/       @youversion/platform-react-hooks (React hooks)
-  ui/          @youversion/platform-react-ui (UI components)
-tools/         Shared configs (TS, ESLint)
-```
-
-## COMMANDS
-
-```bash
-# Setup
-pnpm install              # Requires pnpm >= 11.0.0, Node >= 22.13.0 (tested on Node 24 LTS)
-
-# Build
-pnpm build               # Turbo builds all in dependency order
-pnpm build:core          # Build core only
-pnpm build:hooks         # Build hooks only
-pnpm build:react         # Build UI only
-
-# Development
-pnpm dev:web             # Start UI dev server with hot reload
-pnpm test                # Run tests sequentially across all packages
-pnpm test:watch          # Watch mode for all packages
-pnpm test:coverage       # Coverage reports for all packages
-
-# Quality
-pnpm lint                # ESLint all packages
-pnpm typecheck           # Type check all packages
-pnpm format              # Format all code
-
-# Release
-pnpm changeset           # Create changeset entry
-pnpm version-packages    # Apply changesets to versions
-pnpm release             # Build + publish all packages
-```
-
-## PER-PACKAGE COMMANDS
-
-```bash
-# Core
-pnpm --filter @youversion/platform-core test
-pnpm --filter @youversion/platform-core build
-
-# Hooks
-pnpm --filter @youversion/platform-react-hooks test
-pnpm --filter @youversion/platform-react-hooks build
-
-# UI
-pnpm --filter @youversion/platform-react-ui test
-pnpm --filter @youversion/platform-react-ui build
-```
-
-## KEY PATTERNS
-
-**Unified versioning**: All 3 packages share exact same version, always released together
-
-**Build order enforced by Turbo**: core → hooks → ui (dependency chain)
-
-**React 19.1.2 exact pinning**: pnpm overrides lock all React packages to exact version
-
-**Tailwind CSS injection**: Built CSS embedded as JS constant via tsup define, rendered by `YouVersionProvider` using React 19 `<style precedence>` (no build step needed by consumers)
-
-**Changeset workflow**: pnpm changeset → pnpm version-packages → pnpm release
-
-**Trusted publishing**: OIDC-based npm publishing (no tokens)
-
-**Pre-commit**: Husky + lint-staged runs ESLint + Prettier on staged files
+The dependency chain runs one way: core → hooks → ui. Never introduce a reverse
+dependency.
 
 ## CRITICAL GOTCHAS
 
@@ -112,12 +25,16 @@ pnpm --filter @youversion/platform-react-ui build
 - Always rebuild dependent packages after modifying core or hooks
 - Turbo build cache can skip changes - run `turbo build --force` if needed
 - Workspace protocol: use `workspace:*` in package.json dependencies
+- **Build tools differ per package**: core uses tsup, hooks uses tsc only, ui uses tsup + tsc. Don't assume one build shape across the monorepo.
+- **API Extractor is listed but not actually used** — don't wire anything to it
+- Each package is self-contained; there is no shared source directory
 
 ### Versioning & Release
 - Changesets required for ALL version bumps (even patches)
 - **Unified versioning**: All packages must share exact same version - never version packages independently
 - Pre-commit hooks fail if typecheck or lint fails
 - **Every PR must include a changeset** — CI (`.github/workflows/changeset.yml`) fails a PR that adds none. For a genuine no-release change (CI/docs/tooling), add an intentional empty changeset: `pnpm changeset --empty`. A missing changeset is what caused the 2026-07-17 release failure.
+- **Trusted publishing**: npm publish is OIDC-based, no tokens involved
 
 ### Commits & PRs
 - **PR titles must be Conventional Commits** — the PR title becomes the squash-merge commit on `main` and is linted by `.github/workflows/pr-title.yml`. Ticket refs (e.g. `YPE-1234`) go in the **branch name** and PR body, not the title.
@@ -134,21 +51,10 @@ pnpm --filter @youversion/platform-react-ui build
 - **Core must remain React-free** – do not import React or DOM APIs in `packages/core`
 - **Hooks should not duplicate core logic** – call core clients instead of re-implementing HTTP
 - **UI should not talk to the network directly** – always use hooks/core
+- **Tailwind CSS injection**: built CSS is embedded as a JS constant via tsup `define` and rendered by `YouVersionProvider` through React 19 `<style precedence>`. Consumers need no build step.
 
 ### Testing
-- One change in a package could break something in another package, so we want to make sure that all tests are passing across the packages before code gets pushed
-
-### When Stuck
-- Ask clarifying questions
-
-## ANTI-PATTERNS
-
-❌ Don't assume shared source directory (each package self-contained)
-❌ Don't use API Extractor (listed but not actually used)
-❌ Don't expect consistent build tools (core: tsup, hooks: tsc only, ui: tsup + tsc)
-❌ Don't modify React version (exact 19.1.2 enforced via pnpm overrides in `pnpm-workspace.yaml`)
-❌ Don't use npm/yarn (only pnpm >= 11.0.0 supported)
-❌ Don't break unified versioning (all packages versioned together)
+- One change in a package could break something in another package, so run the full test suite across all packages before pushing
 
 ## MORE DETAIL PER PACKAGE
 
