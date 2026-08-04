@@ -1,4 +1,0 @@
-name = "platform-core-linkedom-smoke"
-main = "worker.mjs"
-compatibility_date = "2025-05-01"
-compatibility_flags = ["nodejs_compat"]
