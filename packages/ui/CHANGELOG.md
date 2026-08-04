@@ -1,5 +1,16 @@
 # @youversion/platform-react-ui
 
+## 2.5.1
+
+### Patch Changes
+
+- 9a2b3e9: Fix secondary buttons rendering their label in the muted text color, which made active controls read as disabled. The `secondary` variant now pairs `bg-muted` with the normal foreground color in both light and dark themes. This is most visible on the BibleCard version picker button, and also affects the secondary buttons in BibleReader, BibleChapterPicker, BibleVersionPicker, and the highlight permission dialog.
+- 9c2e8e4: Remove the divider lines between book rows in `BibleChapterPicker` to match the current design. Row padding and tap targets are unchanged.
+- f6b98da: Sync localization from platform-localization (ac750ac): update 31 keys in es, tr.
+- b592e72: Fix the version count badge in the version picker's language trigger rendering with a monospace, slashed-zero font. The badge now inherits the picker's font and keeps `tabular-nums` for stable digit widths.
+  - @youversion/platform-core@2.5.1
+  - @youversion/platform-react-hooks@2.5.1
+
 ## 2.5.0
 
 ### Minor Changes
