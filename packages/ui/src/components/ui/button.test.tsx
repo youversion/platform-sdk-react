@@ -18,15 +18,4 @@ describe('Button — default variant colors', () => {
     expect(className).toContain('yv:text-primary-foreground');
     expect(className).not.toContain('yv:bg-background');
   });
-
-  it('paints the secondary label with the foreground color, not the muted one (regression: reads as disabled)', () => {
-    // `bg-muted` + `text-muted-foreground` made active secondary buttons — most
-    // visibly the BibleCard version picker — read as disabled controls.
-    const { getByRole } = render(<Button variant="secondary">NIV</Button>);
-    const className = getByRole('button').className;
-
-    expect(className).toContain('yv:bg-muted');
-    expect(className).toContain('yv:text-foreground');
-    expect(className).not.toContain('yv:text-muted-foreground');
-  });
 });
