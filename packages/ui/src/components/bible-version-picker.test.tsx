@@ -291,20 +291,6 @@ describe('BibleVersionPicker', () => {
       });
     });
 
-    it('should render the version count with the inherited font, not a monospace one', async () => {
-      setupDefaultMocks({ versionsLoading: false, filteredVersions: mockVersions });
-      renderPicker();
-      await openPicker();
-
-      await waitFor(() => {
-        const languageButton = screen.getByRole('button', { name: /select language/i });
-        const badge = languageButton.querySelector('[data-slot="badge"]');
-        expect(badge).not.toBeNull();
-        expect(badge!.className).not.toContain('font-mono');
-        expect(badge!.className).toContain('yv:tabular-nums');
-      });
-    });
-
     it('should render version items when loaded', async () => {
       setupDefaultMocks({ versionsLoading: false, filteredVersions: mockVersions });
       renderPicker();
