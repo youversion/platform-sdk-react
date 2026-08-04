@@ -15,7 +15,7 @@ and is exported via `./browser/styles/*`.
 
 ✅ Do: Keep this package **framework-agnostic**, but if you must target server or browser, those files must export from `/server` or `/browser`
 ✅ Do: Define all input/output types in `schemas/` using Zod; schemas are the single source of truth
-✅ Do: Reuse `YouVersionAPI` base client for new service clients
+✅ Do: Compose `ApiClient` in new service clients; take it as a constructor argument
 ✅ Do: Parse API responses with Zod schemas for validation
 
 ❌ Don't: Import React, `window`, `document`, or browser storage APIs, but if you must target the browser, those files must export from `/browser`
@@ -40,8 +40,11 @@ See `docs/adding-a-core-endpoint.md`.
 ## HTTP & CONFIGURATION
 
 - HTTP client: Native `fetch` API
-- Base client: `YouVersionAPI` handles base URL, headers, auth tokens
-- All clients extend or compose `YouVersionAPI` for consistent HTTP behavior
+- Base client: `ApiClient` (`src/client.ts`) handles base URL, timeout, default
+  headers, and response handling
+- Every domain client composes `ApiClient` for consistent HTTP behavior
+- `YouVersionAPI` is a separate static header helper, not a base client. Do not
+  build a new client on it.
 
 ## CONVENTIONS
 - Schema-first: All types defined in schemas/*.ts using Zod
