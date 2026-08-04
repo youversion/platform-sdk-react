@@ -558,7 +558,7 @@ export function BibleVersionPickerLanguageTrigger({
       </span>
       <Badge
         variant="secondary"
-        className="yv:h-5 yv:min-w-5 yv:rounded-full yv:px-1 yv:font-mono yv:tabular-nums"
+        className="yv:h-5 yv:min-w-5 yv:rounded-full yv:px-1 yv:tabular-nums"
       >
         {versionsLoading ? (
           <LoaderIcon className="yv:size-3 yv:animate-spin" />

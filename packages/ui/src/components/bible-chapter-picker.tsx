@@ -332,7 +332,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
         {filteredBooks && filteredBooks.length > 0 ? (
           filteredBooks.map((bookItem) => (
             <AccordionItem
-              className="yv:border-b yv:border-border"
+              className="yv:border-b-0"
               key={bookItem.id}
               value={bookItem.id}
               id={bookItem.id}

@@ -79,10 +79,7 @@ function BibleCardVersionPicker({
             data-yv-theme={theme}
           >
             {loading ? (
-              <LoaderIcon
-                className="yv:size-4 yv:animate-spin yv:text-muted-foreground"
-                aria-hidden="true"
-              />
+              <LoaderIcon className="yv:size-4 yv:animate-spin" aria-hidden="true" />
             ) : (
               version?.localized_abbreviation || t('selectVersion')
             )}
