@@ -1,5 +1,3 @@
-import { createDomParserAdapters } from './bible-html-adapters';
-
 const NON_BREAKING_SPACE = '\u00A0';
 
 const FOOTNOTE_KEY_ATTR = 'data-footnote-key';
@@ -380,5 +378,12 @@ export function transformBibleHtml(
  * ```
  */
 export function transformBibleHtmlForBrowser(html: string): TransformedBibleHtml {
-  return transformBibleHtml(html, createDomParserAdapters());
+  if (typeof globalThis.DOMParser === 'undefined') {
+    throw new Error('DOMParser is required to transform Bible HTML in browser environments');
+  }
+
+  return transformBibleHtml(html, {
+    parseHtml: (h) => new DOMParser().parseFromString(h, 'text/html'),
+    serializeHtml: (doc) => doc.body.innerHTML,
+  });
 }

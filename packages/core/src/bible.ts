@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import type { ApiClient } from './client';
-import { resolveHtmlAdapters } from './bible-html-adapters';
-import { transformBibleHtml } from './bible-html-transformer';
+import { transformBibleHtml, type TransformBibleHtmlOptions } from './bible-html-transformer';
 import { BibleVersionSchema } from './schemas';
 import type {
   BibleBook,
@@ -14,6 +13,34 @@ import type {
   Collection,
   VOTD,
 } from './types';
+
+async function getHtmlAdapters(): Promise<TransformBibleHtmlOptions> {
+  if (typeof globalThis.DOMParser !== 'undefined') {
+    return {
+      parseHtml: (h) =>
+        new globalThis.DOMParser().parseFromString(h, 'text/html') as unknown as Document,
+      serializeHtml: (doc) => doc.body.innerHTML,
+    };
+  }
+  let jsdom;
+  try {
+    jsdom = await import('jsdom');
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      'Server-side HTML transformation requires "jsdom". ' +
+        'Install it as a dependency or pass transform: false to skip transformation. ' +
+        `Original error: ${detail}`,
+      { cause: err },
+    );
+  }
+  return {
+    parseHtml: (h) =>
+      new jsdom.JSDOM(`<!DOCTYPE html><html><body>${h}</body></html>`).window
+        .document as unknown as Document,
+    serializeHtml: (doc) => doc.body.innerHTML,
+  };
+}
 
 /**
  * Client for interacting with Bible API endpoints.
@@ -251,7 +278,7 @@ export class BibleClient {
    *   Set to `false` to receive the original, untransformed HTML from the API.
    *   Raw HTML is sufficient for simple display (e.g., verse-of-the-day) where
    *   verse-level interactivity like highlighting or footnote popovers isn't
-   *   needed. Also avoids the `linkedom` dependency on the server.
+   *   needed. Also avoids the `jsdom` dependency on the server.
    * @returns The requested BiblePassage object.
    *
    * @example
@@ -268,7 +295,7 @@ export class BibleClient {
    * // Get plain text (no transformation applied)
    * const text = await bibleClient.getPassage(3034, "JHN.3.16", "text");
    *
-   * // Get raw, untransformed HTML (no linkedom needed on server)
+   * // Get raw, untransformed HTML (no jsdom needed on server)
    * const raw = await bibleClient.getPassage(3034, "JHN.3.16", "html", undefined, undefined, false);
    * ```
    */
@@ -302,7 +329,7 @@ export class BibleClient {
     );
 
     if (format === 'html' && transform !== false) {
-      const adapters = await resolveHtmlAdapters();
+      const adapters = await getHtmlAdapters();
       const { html } = transformBibleHtml(passage.content, adapters);
       return { ...passage, content: html };
     }
