@@ -330,3 +330,32 @@ describe('BibleChapterPicker - accordion expand/collapse', () => {
     warnSpy.mockRestore();
   });
 });
+
+describe('BibleChapterPicker - book list styling', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaultMocks();
+  });
+
+  it('renders book rows without divider lines', () => {
+    const { container } = render(
+      <BibleChapterPicker.Root
+        versionId={3034}
+        book="GEN"
+        chapter="1"
+        onChapterPickerPress={vi.fn()}
+      >
+        <BibleChapterPicker.Trigger />
+        <BibleChapterPicker.Content />
+      </BibleChapterPicker.Root>,
+    );
+
+    const bookRows = container.querySelectorAll('[data-slot="accordion-item"]');
+
+    expect(bookRows.length).toBe(mockBooks.length);
+    bookRows.forEach((row) => {
+      expect(row).toHaveClass('yv:border-b-0');
+      expect(row).not.toHaveClass('yv:border-b');
+    });
+  });
+});
