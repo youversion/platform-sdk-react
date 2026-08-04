@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 import { transformBibleHtml } from './bible-html-transformer-server';
 
 describe('transformBibleHtml', () => {
-  it('should transform HTML using jsdom', () => {
+  it('should transform HTML using linkedom', () => {
     const html = `
       <div>
         <div class="p">
@@ -58,7 +58,7 @@ describe('transformBibleHtml', () => {
 
     const result = transformBibleHtml(html);
 
-    // jsdom may serialize attributes in different order than browsers
+    // linkedom may serialize attributes in different order than browsers
     expect(result.html).toContain('class="yv-v"');
     expect(result.html).toContain('v="1"');
     expect(result.html).toContain('v="2"');
@@ -77,7 +77,7 @@ describe('transformBibleHtml', () => {
 
     const result = transformBibleHtml(html);
 
-    // jsdom may encode non-breaking space as &nbsp; instead of the raw character
+    // linkedom may encode non-breaking space as &#160; instead of the raw character
     expect(result.html).toMatch(/1(\u00A0|&#160;|&nbsp;)/);
   });
 
@@ -137,7 +137,7 @@ describe('transformBibleHtml', () => {
     expect(result.html).toContain('Click me');
   });
 
-  it('should preserve safe Bible HTML through jsdom', () => {
+  it('should preserve safe Bible HTML through linkedom', () => {
     const html = `
       <div class="p">
         <span class="wj">Jesus said</span>
@@ -147,5 +147,29 @@ describe('transformBibleHtml', () => {
 
     expect(result.html).toContain('class="wj"');
     expect(result.html).toContain('Jesus said');
+  });
+
+  it('table rows and colspan survive browser reparse without server <tbody>', async () => {
+    // linkedom does not inject <tbody>; browsers/jsdom do. Consumers that set
+    // server HTML via dangerouslySetInnerHTML must still see repaired tables.
+    const html = `
+      <div>
+        <table>
+          <tr><td>alone</td></tr>
+          <tr><td>a</td><td>b</td></tr>
+        </table>
+      </div>
+    `;
+
+    const server = transformBibleHtml(html);
+    expect(server.html.toLowerCase()).not.toContain('<tbody');
+
+    // jsdom stands in for a browser HTML parser (still a test-only dep).
+    const { JSDOM } = await import('jsdom');
+    const browserDoc = new JSDOM(server.html).window.document;
+    expect(browserDoc.querySelectorAll('table tr').length).toBe(2);
+    const firstCell = browserDoc.querySelector('table tr td');
+    expect(firstCell?.getAttribute('colspan')).toBe('2');
+    expect(browserDoc.querySelectorAll('table tr')[1]?.querySelectorAll('td').length).toBe(2);
   });
 });

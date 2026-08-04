@@ -1,15 +1,19 @@
-import { JSDOM } from 'jsdom';
+import { DOMParser } from 'linkedom';
 
+import { createLinkedomAdapters } from './bible-html-adapters';
 import {
   transformBibleHtml as transformBibleHtmlWithAdapters,
   type TransformedBibleHtml,
 } from './bible-html-transformer';
 
 /**
- * Transforms Bible HTML for server environments using jsdom.
+ * Transforms Bible HTML for server / edge environments using linkedom.
  *
- * Import from `@youversion/platform-core/server` to avoid bundling jsdom
+ * Import from `@youversion/platform-core/server` to avoid bundling linkedom
  * in client-side builds.
+ *
+ * linkedom requires HTML to be wrapped in body tags for `doc.body.innerHTML`
+ * to work correctly; the shared adapters handle that wrapping.
  *
  * @param html - The raw Bible HTML from the YouVersion API
  * @returns The transformed HTML
@@ -23,9 +27,5 @@ import {
  * ```
  */
 export function transformBibleHtml(html: string): TransformedBibleHtml {
-  return transformBibleHtmlWithAdapters(html, {
-    parseHtml: (h: string) =>
-      new JSDOM(`<!DOCTYPE html><html><body>${h}</body></html>`).window.document,
-    serializeHtml: (doc: Document) => doc.body.innerHTML,
-  });
+  return transformBibleHtmlWithAdapters(html, createLinkedomAdapters(DOMParser));
 }

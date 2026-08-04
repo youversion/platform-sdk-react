@@ -181,6 +181,28 @@ jobs:
           git diff --staged --quiet || git commit -m "chore: update coverage badges"
           git push
 
+  workerd-linkedom:
+    name: Workerd linkedom smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run linkedom inside workerd
+        run: pnpm --filter @youversion/platform-core test:workerd
+
   build:
     name: Build
     runs-on: ubuntu-latest

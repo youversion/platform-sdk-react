@@ -43,7 +43,8 @@
     "test": "dotenv -e .env.local -- vitest run",
     "test:integration": "INTEGRATION_TESTS=true dotenv -e .env.local -- vitest run",
     "test:watch": "dotenv -e .env.local -- vitest",
-    "test:coverage": "dotenv -e .env.local -- vitest run --coverage"
+    "test:coverage": "dotenv -e .env.local -- vitest run --coverage",
+    "test:workerd": "node ./scripts/workerd-linkedom-smoke.mjs"
   },
   "devDependencies": {
     "@internal/eslint-config": "workspace:*",
@@ -53,16 +54,17 @@
     "dotenv-cli": "7.4.2",
     "eslint": "9.38.0",
     "jsdom": "24.0.0",
+    "linkedom": "0.18.13",
     "msw": "2.11.6",
     "tsup": "8.5.0",
     "typescript": "5.9.3",
     "vitest": "4.0.4"
   },
   "peerDependencies": {
-    "jsdom": "^24.0.0"
+    "linkedom": ">=0.18.12"
   },
   "peerDependenciesMeta": {
-    "jsdom": {
+    "linkedom": {
       "optional": true
     }
   },

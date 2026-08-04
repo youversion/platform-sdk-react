@@ -80,3 +80,4 @@ storybook-static
 .opencode/
 .superset/
 .codex/
+packages/core/scripts/workerd-smoke/.wrangler/
