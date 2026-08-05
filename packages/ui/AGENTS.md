@@ -7,21 +7,11 @@ Complete UI layer with many Bible components: BibleTextView, VerseOfTheDay, Bibl
 - For lower-level API clients → see `packages/core/AGENTS.md`
 - For React hooks without UI → see `packages/hooks/AGENTS.md`
 
-## STRUCTURE
-```
-components/            # Public Bible components (exported)
-components/ui/         # Internal Radix primitives (not exported)
-lib/                   # Utilities (yv-styles, utils)
-src/index.ts           # Entry point (re-exports components, types, hooks)
-```
-
-## PUBLIC API
-- Components exported from `src/components/`
-- Re-exports from `@youversion/platform-core`:
-  - `SignInWithYouVersionPermission`, `SignInWithYouVersionResult`, `YouVersionAPIUsers`
-  - `ApiConfig`, `AuthenticationState`, `Highlight` types
-- Re-exports from `@youversion/platform-react-hooks`:
-  - `YouVersionProvider`, `useYVAuth`, `UseYVAuthReturn` type
+The public API is whatever `src/index.ts` exports, including its re-exports from
+core and hooks. Public components live in `src/components/`; `src/components/ui/`
+holds internal Radix primitives that are deliberately **not** exported. The two
+exceptions are `Separator` and `Textarea`, which `src/components/index.ts` does
+export — treat those two as public API and breaking-change territory.
 
 ## DOs / DON'Ts
 
@@ -51,124 +41,18 @@ src/index.ts           # Entry point (re-exports components, types, hooks)
 - Light/dark mode via CSS variables (`[data-yv-sdk]`)
 - Use semantic theme tokens (`yv:text-muted-foreground`, `yv:bg-destructive`) instead of arbitrary color values
 
-### Usage Examples
+## REFERENCES
 
-```tsx
-// BibleTextView - Display a Bible verse
-<BibleTextView reference="JHN.3.16" versionId={3034} />
-```
-
-```tsx
-// VerseOfTheDay - Daily verse card with optional features
-<VerseOfTheDay
-  versionId={3034}              // Berean Standard Bible
-  showSunIcon={true}
-  showShareButton={true}
-  showBibleAppAttribution={true}
-  size="default"               // or "lg"
-/>
-```
-
-```tsx
-// BibleReader - Full reading experience (compound component)
-<BibleReader.Root
-  versionId={3034}
-  book="JHN"
-  chapter="1"
-  fontSize={16}
-  lineHeight={1.6}
-  fontFamily="Inter"
-  showVerseNumbers={true}
-  background="light"           // or "dark"
->
-  <BibleReader.Content />
-  <BibleReader.Toolbar />
-</BibleReader.Root>
-```
-
-```tsx
-// BibleChapterPicker - Book and chapter selection (controlled component)
-function MyComponent() {
-  const [book, setBook] = useState('GEN');
-  const [chapter, setChapter] = useState('1');
-
-  return (
-    <BibleChapterPicker.Root
-      versionId={3034}
-      book={book}
-      onBookChange={setBook}
-      chapter={chapter}
-      onChapterChange={setChapter}
-      background="light"
-    >
-      <BibleChapterPicker.Trigger />
-    </BibleChapterPicker.Root>
-  );
-}
-```
-
-```tsx
-// BibleVersionPicker - Bible version selection (controlled component)
-function MyComponent() {
-  const [versionId, setVersionId] = useState(3034);
-
-  return (
-    <BibleVersionPicker.Root
-      versionId={versionId}
-      onVersionChange={setVersionId}
-      background="light"
-      side="top"               // popover position: "top" | "right" | "bottom" | "left"
-    >
-      <BibleVersionPicker.Trigger />
-      <BibleVersionPicker.Content />
-    </BibleVersionPicker.Root>
-  );
-}
-```
-
-```tsx
-// BibleCard - Embeddable Bible passage card (formerly BibleWidgetView)
-<BibleCard
-  reference="JHN.3.16-17"      // USFM format: "BOOK.CHAPTER.VERSE" or range
-  versionId={3034}
-  showVersionPicker={true}
-  background="light"
-/>
-```
-
-```tsx
-// YouVersionAuthButton - Sign in/out with YouVersion
-<YouVersionAuthButton
-  redirectUrl="https://example.com/callback"
-  onAuthError={(error) => console.error(error)}
-  mode="auto"                  // "signIn" | "signOut" | "auto"
-  size="default"               // "default" | "short" | "icon"
-  variant="default"            // "default" | "outline"
-  radius="rounded"             // "rounded" | "rectangular"
-  background="light"
-/>
-```
+Storybook stories are the live reference for every component's props and states.
+`examples/vite-react` at the repo root shows integration in a real app. Both are
+type-checked; prefer them over any prose description of a component's API.
 
 ## TESTING
 - **Prefer Storybook** for UI component tests using the `play` function
-- All Storybook tests with a play function need to have a `tags: ['integration']`
-- Run integration tests: `pnpm test:integration`
-- Vitest + jsdom for unit tests (`*.test.tsx`)
-- Test setup: `src/test/setup.ts`
-
-## BUILD ORDER
-```bash
-pnpm build:css    # Tailwind build + strip-layers.js
-pnpm build:js     # tsup bundling with __YV_STYLES__ injection
-pnpm build:types  # tsc declarations
-```
-
-From repo root, `pnpm build` runs Turbo which builds in order:
-1. `@youversion/platform-core`
-2. `@youversion/platform-react-hooks`
-3. `@youversion/platform-react-ui` (build:css → build:js → build:types)
+- Every Storybook test with a play function needs `tags: ['integration']`
+- Vitest + jsdom for unit tests (`*.test.tsx`); setup is `src/test/setup.ts`
 
 ## CRITICAL
 - **No module side effects**: styles are rendered via React 19 `<style precedence>` in the `YouVersionProvider` wrapper
-- Never skip build:css step (styles required for __YV_STYLES__ constant)
+- **Build sub-steps are order-dependent**: `build:css` (Tailwind + `strip-layers.js`) → `build:js` (tsup, injects `__YV_STYLES__`) → `build:types`. Never skip `build:css` — without it the `__YV_STYLES__` constant is empty.
 - Always rebuild after CSS changes

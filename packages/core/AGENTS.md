@@ -51,7 +51,7 @@ index.ts                     # Main entry point (runtime-agnostic)
 
 ✅ Do: Keep this package **framework-agnostic**, but if you must target server or browser, those files must export from `/server` or `/browser`
 ✅ Do: Define all input/output types in `schemas/` using Zod; schemas are the single source of truth
-✅ Do: Reuse `YouVersionAPI` base client for new service clients
+✅ Do: Compose `ApiClient` in new service clients; take it as a constructor argument
 ✅ Do: Parse API responses with Zod schemas for validation
 
 ❌ Don't: Import React, `window`, `document`, or browser storage APIs, but if you must target the browser, those files must export from `/browser`
@@ -60,7 +60,7 @@ index.ts                     # Main entry point (runtime-agnostic)
 
 ## ENVIRONMENT-SPECIFIC EXPORTS
 
-The Bible HTML transformer provides both a runtime-agnostic core and environment-specific convenience wrappers:
+Three entry points, deliberately separate:
 
 - `@youversion/platform-core` → Runtime-agnostic `transformBibleHtml` (requires DOM adapters)
 - `@youversion/platform-core/browser` → Browser convenience wrapper (uses native DOMParser)
@@ -94,26 +94,16 @@ This architecture keeps the main export truly runtime-agnostic while providing e
 
 ## ADDING A NEW ENDPOINT OR CLIENT
 
-1. **Define types** in `schemas/` using Zod:
-   - Request payload schema
-   - Response schema
-2. **Extend or add a client**:
-   - Prefer extending existing clients (e.g., `BibleClient`) when the endpoint logically belongs there
-   - Otherwise, create `xyz.ts` with a new `XyzClient` that composes `YouVersionAPI`
-3. **Wire validation**:
-   - Parse API responses with the corresponding Zod schema
-   - Throw or return typed errors on validation failure
-4. **Export from public API**:
-   - Expose the new client/types from the main entry file so consumers can import them
-5. **Add tests**:
-   - Unit tests with MSW for mock responses
-   - Optional integration tests guarded by `INTEGRATION_TESTS=true`
+See `docs/adding-a-core-endpoint.md`.
 
 ## HTTP & CONFIGURATION
 
 - HTTP client: Native `fetch` API
-- Base client: `YouVersionAPI` handles base URL, headers, auth tokens
-- All clients extend or compose `YouVersionAPI` for consistent HTTP behavior
+- Base client: `ApiClient` (`src/client.ts`) handles base URL, timeout, default
+  headers, and response handling
+- Every domain client composes `ApiClient` for consistent HTTP behavior
+- `YouVersionAPI` is a separate static header helper, not a base client. Do not
+  build a new client on it.
 
 ## CONVENTIONS
 - Schema-first: All types defined in schemas/*.ts using Zod
@@ -126,10 +116,6 @@ This architecture keeps the main export truly runtime-agnostic while providing e
 
 ## TESTING
 
-- Run tests: `pnpm --filter @youversion/platform-core test`
-- Framework: Vitest with Node environment
 - Mocking: MSW for API endpoints
-- Integration tests:
-  - Guarded by `INTEGRATION_TESTS=true`
-  - Only run in CI or when explicitly needed; default to mocked tests
-- Coverage: @vitest/coverage-v8
+- Integration tests are guarded by `INTEGRATION_TESTS=true`. They run in CI or on
+  demand only — default to mocked tests.
