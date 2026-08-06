@@ -1,0 +1,3 @@
+# Raw Tailwind output, before scripts/scope-selectors.mjs gates it on
+# [data-yv-sdk]. Kept out of dist/ so the ungated sheet can never be published.
+.cache/

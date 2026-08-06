@@ -24,9 +24,22 @@ if (!existsSync(jsPath)) {
     errors.push('dist/index.js missing style precedence — React 19 integration not in bundle');
   }
 
-  if (!js.includes('@layer yv-sdk-styles')) {
+  // Proves two things at once: __YV_STYLES__ holds real CSS rather than the
+  // empty-string fallback tsup substitutes when dist/tailwind.css is absent, and
+  // that build:css:scope ran. Only scope-selectors.mjs emits this string.
+  if (!js.includes(':is([data-yv-sdk],[data-yv-sdk] *)')) {
     errors.push(
-      'dist/index.js missing actual CSS content — __YV_STYLES__ was not replaced with real CSS',
+      'dist/index.js has no gated selectors — __YV_STYLES__ is empty or build:css:scope did not run',
+    );
+  }
+
+  // The `yv-sdk-` prefix is deliberate. Tailwind emits `@layer properties` on
+  // its own for the @property fallback, regardless of our directives, and that
+  // block only sets --tw-* custom properties. Asserting on `@layer` alone would
+  // fail on Tailwind's own output.
+  if (/@layer yv-sdk-/.test(js)) {
+    errors.push(
+      "SDK CSS is still layered — layered rules lose to a consumer's unlayered CSS at any specificity",
     );
   }
 }

@@ -5,16 +5,27 @@
  * is actively trying to break it, measures the damage, and asserts on the
  * measurement.
  *
- * There are two leak channels and they close in two separate phases. The
- * inheritance channel is closed: `inheritedTypography` must now report zero on
- * every component. The direct-match channel is still open, because SDK rules
- * still sit in `yv-sdk-*` cascade layers and unlayered consumer CSS outranks
- * every layer at any specificity. Phase 4 closes it and the remaining assertions
- * tighten to zero.
+ * Both leak channels are now closed, so four of the five hostile groups must
+ * report zero on every component:
+ *
+ * - `inheritedTypography` closed when `theme.css` started pinning the whole
+ *   inherited set on `[data-yv-sdk]`. Inheritance cannot be stopped by cascade
+ *   rank, only by declaring the property.
+ * - `preflight`, `bareElements` and `aggressiveReset` closed when SDK CSS left
+ *   its `yv-sdk-*` cascade layers and every selector gained a
+ *   `:is([data-yv-sdk], [data-yv-sdk] *)` gate. The gate adds 0,1,0, which beats
+ *   a bare element selector at 0,0,1 and a universal selector at 0,0,0.
+ *
+ * `important` is the documented residual. No light-DOM technique outranks a
+ * consumer `!important` declaration that targets our elements, and the override
+ * policy treats it as out of contract. It is asserted, not ignored: a component
+ * that renders a `<button>` must still leak under that group, because the day it
+ * stops the fixture has gone stale.
  *
  * These stories are also the visual evidence. Open one in Storybook and the
- * component should still look wrong, just less wrong than before. A fixture that
- * produces a diff but still looks fine is measuring the wrong properties.
+ * component should now look right, under CSS built to break it.
+ *
+ * See docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md.
  */
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor } from 'storybook/test';
@@ -146,18 +157,30 @@ function isolationStory(config: IsolationStoryConfig): Story {
       const root = await config.ready(canvasElement);
       const report = await measureLeaks(config.label, root);
 
-      // Phase 3 gate. `inheritedTypography` sets nine properties on `body` and
-      // matches no SDK element, so everything it moves arrived by inheritance.
-      // Zero here means `theme.css` now pins the whole inherited set on
-      // `[data-yv-sdk]` and the host has nothing left to reach.
+      // The inheritance channel. Nine properties on `body`, matching no SDK
+      // element, so everything this group moves arrived by inheritance. Zero
+      // means `theme.css` pins the whole inherited set on `[data-yv-sdk]`.
       await expect(report.byGroup.inheritedTypography).toEqual([]);
 
-      // The direct-match channel is still open, and this is what proves the
-      // fixture still bites. Preflight is unlayered and the SDK's equivalents
-      // are not, so its box-model and form-control rules win outright. Which
-      // properties move depends on what the component renders, so the assertion
-      // is on the count. Phase 4 flips this group to zero.
-      await expect(report.byGroup.preflight.length).toBeGreaterThan(0);
+      // The direct-match channel, one adversary per specificity band:
+      // `aggressiveReset` at 0,0,0, `bareElements` and `preflight` at 0,0,1.
+      // The gate puts every SDK rule at 0,1,0 or better, so all three lose.
+      await expect(report.byGroup.aggressiveReset).toEqual([]);
+      await expect(report.byGroup.bareElements).toEqual([]);
+      await expect(report.byGroup.preflight).toEqual([]);
+
+      // The residual. `important` targets `button` only, so the expectation is
+      // read off the rendered DOM rather than hand-maintained per story: a
+      // component with a button must leak, one without must not. Asserting the
+      // leak is what keeps the fixture honest — if it ever drops to zero, the
+      // rule stopped matching and the group is measuring nothing.
+      const rendersButton = root.matches('button') || root.querySelector('button') !== null;
+
+      if (rendersButton) {
+        await expect(report.byGroup.important.length).toBeGreaterThan(0);
+      } else {
+        await expect(report.byGroup.important).toEqual([]);
+      }
     },
   };
 }
@@ -427,3 +450,57 @@ export const TextareaInHostileHost: Story = isolationStory({
   ),
   ready: (canvasElement) => findIn(canvasElement, '[data-yv-sdk]'),
 });
+
+/** The one consumer override the README promises, as a consumer would write it. */
+const CONSUMER_TOKEN_OVERRIDE = `
+[data-yv-sdk] {
+  --yv-primary: rgb(255, 0, 255);
+}
+`;
+
+const OVERRIDDEN_PRIMARY = 'rgb(255, 0, 255)';
+
+/**
+ * The other half of the guarantee: theming still works.
+ *
+ * Gating every selector raised SDK specificity, and a change that walls the
+ * consumer out of their own theme would be a regression, not a fix. The token
+ * block in `theme.css` is `[data-yv-sdk]` at 0,1,0 and a consumer's override is
+ * the identical selector at the identical weight, so the tie resolves on source
+ * order — and the consumer's sheet always loads after ours.
+ *
+ * `yv:bg-primary` is the whole chain in one class. `@theme inline` compiles it
+ * to `background-color: var(--yv-primary)` rather than to a frozen literal,
+ * which is what lets a runtime token override reach a build-time utility.
+ *
+ * Hostile CSS is off here on purpose. This story measures one channel.
+ */
+export const ConsumerTokenOverrideStillApplies: Story = {
+  parameters: { hostileHost: [] },
+  render: () => (
+    <div data-yv-sdk className="yv:p-12">
+      <div data-testid="primary-swatch" className="yv:size-16 yv:bg-primary" />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const swatch = await findIn(canvasElement, '[data-testid="primary-swatch"]');
+
+    // Without this, a token that never resolved would pass the assertion below
+    // by accident.
+    await expect(getComputedStyle(swatch).backgroundColor).not.toBe(OVERRIDDEN_PRIMARY);
+
+    const style = document.createElement('style');
+    style.textContent = CONSUMER_TOKEN_OVERRIDE;
+    document.head.appendChild(style);
+
+    try {
+      // waitFor, not a bare read: changing a token starts any transition on
+      // background-color, and the first frame reports an interpolated value.
+      await waitFor(async () => {
+        await expect(getComputedStyle(swatch).backgroundColor).toBe(OVERRIDDEN_PRIMARY);
+      });
+    } finally {
+      style.remove();
+    }
+  },
+};

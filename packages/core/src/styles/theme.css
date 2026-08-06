@@ -156,11 +156,21 @@
 }
 
 /*
-  * :where() is a CSS pseudo-class that drops the specificity of
-  * everything inside it to zero (0,0,0,0). The selectors still
-  * match, but they never win a specificity fight. This is desired.
+  * No :where() here, on purpose.
+  *
+  * This block used to read `:where([data-yv-sdk])`, which drops everything
+  * inside it to specificity 0,0,0. The selectors matched but never won, so a
+  * consumer's bare `button {}` at 0,0,1 beat the whole reset. That was the
+  * right call while SDK CSS sat in `yv-sdk-*` cascade layers and was meant to
+  * lose. It is the wrong call now.
+  *
+  * The plain attribute selector gives every rule below 0,1,0 or better, and the
+  * attribute gate means these rules can never match DOM the SDK did not render.
+  * Protection of the host app moved from cascade rank to territory.
+  *
+  * See docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md.
   */
-:where([data-yv-sdk]) {
+[data-yv-sdk] {
   *,
   ::after,
   ::before,
@@ -168,6 +178,19 @@
   ::file-selector-button {
     font: inherit;
     font-family: var(--yv-font-sans);
+    /*
+     * `color: inherit` is here for the same reason as `font: inherit`, and it is
+     * not in Tailwind's preflight.
+     *
+     * Pinning `color` on the SDK root stops a consumer's `body { color: … }`,
+     * because that value only ever arrives by inheritance. It does nothing about
+     * a consumer's `ul { color: … }`, which matches an SDK element directly and
+     * so replaces the inherited value outright, whatever the root declares.
+     * Declaring `color` on every descendant is what closes that. At 0,1,0 it
+     * outranks any bare element selector, and `inherit` means the SDK's own
+     * colour cascade flows through untouched.
+     */
+    color: inherit;
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -191,6 +214,19 @@
    * `direction` is deliberately absent: bible-reader.css handles RTL, and
    * `text-align: start` is direction-aware. See YPE-4113.
    */
+  /*
+   * The box model, repeated for the marked element itself.
+   *
+   * The block above is `[data-yv-sdk] *`, which reaches every descendant and
+   * misses the root. A consumer's `* { box-sizing: content-box }` does not miss
+   * it, so without these four the SDK root is the one element in the subtree a
+   * universal reset can still move.
+   */
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0 solid;
+
   font-family: var(--yv-font-sans);
   line-height: 1.5;
   color: var(--yv-foreground);

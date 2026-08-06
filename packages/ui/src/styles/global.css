@@ -1,48 +1,53 @@
 /*
- * Tailwind v4 CSS Layer Strategy
- * ==============================
- * All SDK styles are wrapped in custom @layer directives (yv-sdk-*) so that
- * they sit below unlayered author styles in the CSS cascade. This prevents
- * our SDK from overriding consumer CSS.
+ * Style isolation by territory, not by cascade rank
+ * =================================================
+ * SDK CSS is UNLAYERED, and every SDK selector is gated on `[data-yv-sdk]`.
  *
- * LAYER ORDER IS CRITICAL. We declare Tailwind v4's standard layer names
- * (theme, base, components, utilities) BEFORE our yv-sdk-* layers. Each
- * public component renders a React 19 <style href="yv-sdk-styles"
- * precedence="yv-sdk"> element which React hoists to <head>, deduplicates,
- * and includes in SSR-streamed HTML. This establishes the document's layer
- * order before the consumer's Tailwind can. This ensures:
+ * There is no @layer declaration here on purpose. Cascade layers were the old
+ * strategy: SDK rules sat in `yv-sdk-*` layers below the consumer's unlayered
+ * author CSS, so the consumer always won. That protected the consumer, and it
+ * also guaranteed the reverse leak — a bare consumer `button {}` beat every
+ * `yv:`-prefixed SDK utility, at any specificity, because unlayered CSS
+ * outranks every named layer (CSS Cascade 5 §6.1).
  *
- *   1. Consumer Tailwind layers (theme/base/utilities) = LOW priority
- *   2. SDK layers (yv-sdk-*)                           = MEDIUM priority
- *   3. Consumer unlayered author CSS                   = HIGH priority (always wins)
+ * The replacement is structural. `scripts/scope-selectors.mjs` runs after the
+ * Tailwind build and rewrites every selector in the compiled sheet:
  *
- * Without the standard Tailwind names here, the consumer's Tailwind would
- * declare them AFTER ours, giving consumer layers higher priority and causing
- * their resets/utilities to bleed into SDK components.
+ *   .yv\:mt-4  →  :is([data-yv-sdk], [data-yv-sdk] *).yv\:mt-4
+ *
+ * That does two things at once. Outbound, SDK CSS cannot match DOM the SDK did
+ * not render, which is a stronger guarantee than losing the cascade. Inbound,
+ * `:is()` takes the specificity of its most specific argument, so every rule
+ * gains exactly 0,1,0 and beats a consumer's bare element selectors.
+ *
+ * The script fails the build if any selector reaches `dist/tailwind.css`
+ * ungated. That check, not this comment, is the guarantee.
+ *
+ * Consumer customization is unchanged and still supported: `--yv-*` token
+ * overrides on `[data-yv-sdk]` tie our token block at 0,1,0 and win on source
+ * order. Consumer CSS reaching into SDK internals is not supported.
  *
  * The `prefix(yv)` ensures all Tailwind classes use a `yv:` prefix to avoid
  * collisions with consumer Tailwind setups.
  *
- * Reference: https://developer.mozilla.org/en-US/docs/Web/CSS/@layer
+ * See docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md.
  *
  * NOTE: We intentionally do NOT import 'tailwindcss/preflight.css' globally.
  * Instead, a simplified preflight CSS reset exists in
  * @youversion/platform-core/browser/styles/theme.css so our SDK components
  * get the benefits of a reset without nuking consumer app styles.
  */
-@layer theme, base, components, utilities, yv-sdk-fonts, yv-sdk-styles, yv-sdk-theme, yv-sdk-utilities, yv-sdk-bible-reader;
 
 /**
   * Why do this versus importing @youversion/platform-core/browser/styles/fonts.css?
-  * It's because you cannot nest @import inside a @layer block directly, of which that
-  * file has an @import in it, so since we're using layers, we have to do it this way.
+  * That file contains an @import of its own, and an @import can only appear at the
+  * top of a stylesheet. Inlining the URL here keeps it in a legal position.
   */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap')
-layer(yv-sdk-fonts);
-@import '@youversion/platform-core/browser/styles/theme.css' layer(yv-sdk-styles);
-@import 'tailwindcss/theme.css' layer(yv-sdk-theme) prefix(yv);
-@import 'tailwindcss/utilities.css' layer(yv-sdk-utilities) prefix(yv);
-@import '@youversion/platform-core/browser/styles/bible-reader.css' layer(yv-sdk-bible-reader);
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap');
+@import '@youversion/platform-core/browser/styles/theme.css';
+@import 'tailwindcss/theme.css' prefix(yv);
+@import 'tailwindcss/utilities.css' prefix(yv);
+@import '@youversion/platform-core/browser/styles/bible-reader.css';
 @import 'tw-animate-css';
 
 /* Untitled Serif has no @font-face here on purpose. Its stylesheet URL needs the
@@ -56,75 +61,71 @@ layer(yv-sdk-fonts);
 /* #region shadcn UI theme */
 @custom-variant dark (&:is([data-yv-sdk][data-yv-theme='dark'] *));
 
-@layer yv-sdk-theme {
-  [data-yv-sdk] {
-    @theme inline {
-      /* Untitled Serif is the brand serif, loaded from the gated Fonts API stylesheet
-         endpoint by <YvFonts /> — see docs/adr/0004-adopt-untitled-serif-via-fonts-api.md.
-         NOTE: the serif stack is duplicated verbatim in
-         packages/core/src/styles/theme.css (--yv-font-serif). It cannot be an alias:
-         core can't import Tailwind, and @theme inline values are inlined into utilities
-         rather than emitted as runtime custom properties. Edit both together —
-         font-tokens.test.ts guards drift. */
-      --font-sans: 'Inter', sans-serif;
-      --font-serif: 'Untitled Serif', 'Source Serif 4', serif;
-      --color-background: var(--yv-background);
-      --color-foreground: var(--yv-foreground);
-      --color-card: var(--yv-card);
-      --color-card-foreground: var(--yv-card-foreground);
-      --color-popover: var(--yv-popover);
-      --color-popover-foreground: var(--yv-popover-foreground);
-      --color-primary: var(--yv-primary);
-      --color-primary-foreground: var(--yv-primary-foreground);
-      --color-secondary: var(--yv-secondary);
-      --color-secondary-foreground: var(--yv-secondary-foreground);
-      --color-muted: var(--yv-muted);
-      --color-muted-foreground: var(--yv-muted-foreground);
-      --color-accent: var(--yv-accent);
-      --color-accent-foreground: var(--yv-accent-foreground);
-      --color-destructive: var(--yv-destructive);
-      --color-destructive-foreground: var(--yv-destructive-foreground);
-      --color-border: var(--yv-border);
-      --color-input: var(--yv-input);
-      --color-ring: var(--yv-ring);
-      --color-chart-1: var(--yv-chart-1);
-      --color-chart-2: var(--yv-chart-2);
-      --color-chart-3: var(--yv-chart-3);
-      --color-chart-4: var(--yv-chart-4);
-      --color-chart-5: var(--yv-chart-5);
-      --radius-sm: calc(var(--yv-radius) - 4px);
-      --radius-md: calc(var(--yv-radius) - 2px);
-      --radius-lg: var(--yv-radius);
-      --radius-xl: calc(var(--yv-radius) + 4px);
-      --color-sidebar: var(--yv-sidebar);
-      --color-sidebar-foreground: var(--yv-sidebar-foreground);
-      --color-sidebar-primary: var(--yv-sidebar-primary);
-      --color-sidebar-primary-foreground: var(--yv-sidebar-primary-foreground);
-      --color-sidebar-accent: var(--yv-sidebar-accent);
-      --color-sidebar-accent-foreground: var(--yv-sidebar-accent-foreground);
-      --color-sidebar-border: var(--yv-sidebar-border);
-      --color-sidebar-ring: var(--yv-sidebar-ring);
-    }
+[data-yv-sdk] {
+  @theme inline {
+    /* Untitled Serif is the brand serif, loaded from the gated Fonts API stylesheet
+       endpoint by <YvFonts /> — see docs/adr/0004-adopt-untitled-serif-via-fonts-api.md.
+       NOTE: the serif stack is duplicated verbatim in
+       packages/core/src/styles/theme.css (--yv-font-serif). It cannot be an alias:
+       core can't import Tailwind, and @theme inline values are inlined into utilities
+       rather than emitted as runtime custom properties. Edit both together —
+       font-tokens.test.ts guards drift. */
+    --font-sans: 'Inter', sans-serif;
+    --font-serif: 'Untitled Serif', 'Source Serif 4', serif;
+    --color-background: var(--yv-background);
+    --color-foreground: var(--yv-foreground);
+    --color-card: var(--yv-card);
+    --color-card-foreground: var(--yv-card-foreground);
+    --color-popover: var(--yv-popover);
+    --color-popover-foreground: var(--yv-popover-foreground);
+    --color-primary: var(--yv-primary);
+    --color-primary-foreground: var(--yv-primary-foreground);
+    --color-secondary: var(--yv-secondary);
+    --color-secondary-foreground: var(--yv-secondary-foreground);
+    --color-muted: var(--yv-muted);
+    --color-muted-foreground: var(--yv-muted-foreground);
+    --color-accent: var(--yv-accent);
+    --color-accent-foreground: var(--yv-accent-foreground);
+    --color-destructive: var(--yv-destructive);
+    --color-destructive-foreground: var(--yv-destructive-foreground);
+    --color-border: var(--yv-border);
+    --color-input: var(--yv-input);
+    --color-ring: var(--yv-ring);
+    --color-chart-1: var(--yv-chart-1);
+    --color-chart-2: var(--yv-chart-2);
+    --color-chart-3: var(--yv-chart-3);
+    --color-chart-4: var(--yv-chart-4);
+    --color-chart-5: var(--yv-chart-5);
+    --radius-sm: calc(var(--yv-radius) - 4px);
+    --radius-md: calc(var(--yv-radius) - 2px);
+    --radius-lg: var(--yv-radius);
+    --radius-xl: calc(var(--yv-radius) + 4px);
+    --color-sidebar: var(--yv-sidebar);
+    --color-sidebar-foreground: var(--yv-sidebar-foreground);
+    --color-sidebar-primary: var(--yv-sidebar-primary);
+    --color-sidebar-primary-foreground: var(--yv-sidebar-primary-foreground);
+    --color-sidebar-accent: var(--yv-sidebar-accent);
+    --color-sidebar-accent-foreground: var(--yv-sidebar-accent-foreground);
+    --color-sidebar-border: var(--yv-sidebar-border);
+    --color-sidebar-ring: var(--yv-sidebar-ring);
   }
 }
 /* #endregion */
 
-@layer yv-sdk-utilities {
-  .trim-both {
-    text-box-trim: trim-both;
-  }
+/* `.trim-both` carries no `yv:` prefix because it is hand-written rather than
+   generated. scope-selectors.mjs gates it like every other rule. */
+.trim-both {
+  text-box-trim: trim-both;
 }
 
-/* Verse selection — an underline under the selected verse's text. Sits in the
-   bible-reader layer alongside the `.yv-v` verse structure. Highlight fills are
-   applied as inline styles in verse.tsx (per-verse color), so they aren't here. */
-@layer yv-sdk-bible-reader {
-  [data-yv-sdk] .yv-v-selected {
-    text-decoration-line: underline;
-    text-decoration-thickness: 2px;
-    text-underline-offset: 2px;
-    text-decoration-color: var(--yv-foreground);
-  }
+/* Verse selection — an underline under the selected verse's text. Sits alongside
+   the `.yv-v` verse structure from bible-reader.css. Highlight fills are applied
+   as inline styles in verse.tsx (per-verse color), so they aren't here. */
+[data-yv-sdk] .yv-v-selected {
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--yv-foreground);
 }
 
 @utility touch-hitbox {
