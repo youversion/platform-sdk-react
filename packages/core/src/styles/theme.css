@@ -174,7 +174,34 @@
     border: 0 solid;
   }
 
+  /*
+   * Inherited properties, pinned on the SDK root.
+   *
+   * A consumer's `body { letter-spacing: .5em }` never matches an SDK element,
+   * so no amount of specificity or cascade rank stops it. The value arrives by
+   * inheritance, and inheritance only applies where the element itself declares
+   * nothing. Declaring each property here is what closes that channel. It works
+   * at zero specificity for exactly the same reason: there is no competing
+   * declaration to lose to.
+   *
+   * Every element carrying `data-yv-sdk` re-establishes the whole set, so
+   * portalled surfaces (popovers, dialogs) that inherit straight from
+   * `document.body` are covered too.
+   *
+   * `direction` is deliberately absent: bible-reader.css handles RTL, and
+   * `text-align: start` is direction-aware. See YPE-4113.
+   */
+  font-family: var(--yv-font-sans);
   line-height: 1.5;
+  color: var(--yv-foreground);
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-align: start;
+  text-transform: none;
+  text-indent: 0;
+  white-space: normal;
+  text-shadow: none;
+  font-variant: normal;
   -webkit-text-size-adjust: 100%;
   tab-size: 4;
   -webkit-tap-highlight-color: transparent;

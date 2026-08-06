@@ -3,12 +3,18 @@
  *
  * Every story here renders one exported component inside a page whose global CSS
  * is actively trying to break it, measures the damage, and asserts on the
- * measurement. The assertions currently document the leak that exists today.
- * Later phases tighten them until they assert zero.
+ * measurement.
+ *
+ * There are two leak channels and they close in two separate phases. The
+ * inheritance channel is closed: `inheritedTypography` must now report zero on
+ * every component. The direct-match channel is still open, because SDK rules
+ * still sit in `yv-sdk-*` cascade layers and unlayered consumer CSS outranks
+ * every layer at any specificity. Phase 4 closes it and the remaining assertions
+ * tighten to zero.
  *
  * These stories are also the visual evidence. Open one in Storybook and the
- * component should look wrong. A fixture that produces a diff but still looks
- * fine is measuring the wrong properties.
+ * component should still look wrong, just less wrong than before. A fixture that
+ * produces a diff but still looks fine is measuring the wrong properties.
  */
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor } from 'storybook/test';
@@ -29,48 +35,8 @@ import { VerseOfTheDay } from './verse-of-the-day';
 import { YouVersionAuthButton } from './YouVersionAuthButton';
 import { ALL_HOSTILE_GROUPS, injectHostileCss, removeHostileCss } from '../test/hostile-host';
 import type { HostileGroup } from '../test/hostile-host';
-import {
-  diffSnapshots,
-  formatLeakReport,
-  leakedProperties,
-  snapshotComputedStyles,
-} from '../test/style-diff';
+import { diffSnapshots, formatLeakReport, snapshotComputedStyles } from '../test/style-diff';
 import type { StyleLeak, StyleSnapshot } from '../test/style-diff';
-
-/**
- * Properties every component leaks today, one per leak channel.
- *
- * `font-family` arrives by inheritance from the host `body`, because the SDK
- * reset sets a font on descendants of `[data-yv-sdk]` but not on the marked
- * element itself. `box-sizing` and `padding-top` arrive by direct match, because
- * the SDK's rules sit in a cascade layer and unlayered author CSS outranks every
- * layer no matter its specificity.
- *
- * Phase 3 removes the inherited ones. Phase 4 removes the direct-match ones.
- */
-const KNOWN_LEAKED_PROPERTIES = ['box-sizing', 'font-family', 'padding-top'];
-
-/**
- * The inheritance channel for a component whose root already pins `font-family`.
- *
- * `VerseOfTheDay` is the only exported component whose root carries
- * `yv:font-sans` (`verse-of-the-day.tsx:181`), so the host `body` font cannot
- * reach it. Every other inherited property still gets through, which is the
- * point: pinning one font by hand is not isolation. Phase 3 pins the whole set
- * for every component and this override goes away.
- */
-const LEAKED_PROPERTIES_WITH_PINNED_FONT = ['box-sizing', 'letter-spacing', 'padding-top'];
-
-/**
- * The inheritance channel on its own, for the three leaf components.
- *
- * `ProfileAvatar`, `Separator` and `Textarea` are small enough that the
- * box-model channel has almost nowhere to land: `bareElements` targets
- * `button, a, p, ul, input`, and none of the three renders one. What does reach
- * them is everything the host `body` sets and the SDK does not, which is the
- * channel Phase 3 closes.
- */
-const INHERITED_ONLY_LEAKS = ['color', 'font-family', 'letter-spacing'];
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -159,23 +125,39 @@ type IsolationStoryConfig = {
    * is consumer DOM, and reporting leaks on it would be a false positive.
    */
   ready: (canvasElement: HTMLElement) => Promise<Element>;
-  /** Defaults to {@link KNOWN_LEAKED_PROPERTIES}. */
-  expectedLeaks?: string[];
 };
 
 type Story = StoryObj<Meta>;
 
+/**
+ * Assertions are per group, never on the combined total.
+ *
+ * Groups can cancel each other. `preflight` sets `box-sizing: border-box` on
+ * `*` and `aggressiveReset` sets `content-box` on `*`, so with both injected the
+ * later sheet wins and the value lands back where it started. `Separator`
+ * measures zero combined leaks for exactly that reason while `preflight` alone
+ * still moves it. Reading the combined total would call that component isolated,
+ * which it is not.
+ */
 function isolationStory(config: IsolationStoryConfig): Story {
-  const expected = config.expectedLeaks ?? KNOWN_LEAKED_PROPERTIES;
-
   return {
     render: config.render,
     play: async ({ canvasElement }) => {
       const root = await config.ready(canvasElement);
       const report = await measureLeaks(config.label, root);
 
-      await expect(report.total.length).toBeGreaterThan(0);
-      await expect(leakedProperties(report.total)).toEqual(expect.arrayContaining(expected));
+      // Phase 3 gate. `inheritedTypography` sets nine properties on `body` and
+      // matches no SDK element, so everything it moves arrived by inheritance.
+      // Zero here means `theme.css` now pins the whole inherited set on
+      // `[data-yv-sdk]` and the host has nothing left to reach.
+      await expect(report.byGroup.inheritedTypography).toEqual([]);
+
+      // The direct-match channel is still open, and this is what proves the
+      // fixture still bites. Preflight is unlayered and the SDK's equivalents
+      // are not, so its box-model and form-control rules win outright. Which
+      // properties move depends on what the component renders, so the assertion
+      // is on the count. Phase 4 flips this group to zero.
+      await expect(report.byGroup.preflight.length).toBeGreaterThan(0);
     },
   };
 }
@@ -222,7 +204,6 @@ export const BibleCardInHostileHost: Story = isolationStory({
 
 export const VerseOfTheDayInHostileHost: Story = isolationStory({
   label: 'VerseOfTheDay',
-  expectedLeaks: LEAKED_PROPERTIES_WITH_PINNED_FONT,
   render: () => (
     <div className="yv:w-full yv:p-8">
       <VerseOfTheDay versionId={111} showSunIcon showBibleAppAttribution showShareButton />
@@ -419,7 +400,6 @@ export const YouVersionAuthButtonInHostileHost: Story = isolationStory({
 
 export const ProfileAvatarInHostileHost: Story = isolationStory({
   label: 'ProfileAvatar',
-  expectedLeaks: INHERITED_ONLY_LEAKS,
   render: () => (
     <div className="yv:p-12">
       <ProfileAvatar name="Cam Anderson" className="yv:size-16" />
@@ -430,7 +410,6 @@ export const ProfileAvatarInHostileHost: Story = isolationStory({
 
 export const SeparatorInHostileHost: Story = isolationStory({
   label: 'Separator',
-  expectedLeaks: INHERITED_ONLY_LEAKS,
   render: () => (
     <div className="yv:w-full yv:p-12">
       <Separator />
@@ -441,7 +420,6 @@ export const SeparatorInHostileHost: Story = isolationStory({
 
 export const TextareaInHostileHost: Story = isolationStory({
   label: 'Textarea',
-  expectedLeaks: INHERITED_ONLY_LEAKS,
   render: () => (
     <div className="yv:w-full yv:p-12">
       <Textarea defaultValue="For God so loved the world." />
