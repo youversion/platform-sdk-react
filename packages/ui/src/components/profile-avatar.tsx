@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useTheme } from '@youversion/platform-react-hooks';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -29,10 +30,17 @@ export function ProfileAvatar({
   ...props
 }: ProfileAvatarProps): React.ReactNode {
   const initial = getInitials(name);
+  const theme = useTheme();
   const [imageLoaded, setImageLoaded] = React.useState(false);
   return (
     <Avatar
       aria-label={name?.trim() || undefined}
+      // `yv:bg-(--yv-gray-10)` below reads a token that is only declared under
+      // `[data-yv-sdk]`, so the root has to carry the scope attribute itself.
+      // `{...props}` stays last: a caller inside a differently-themed scope
+      // (see `bible-reader.tsx` `UserMenu`) overrides `data-yv-theme`.
+      data-yv-sdk=""
+      data-yv-theme={theme}
       className={cn(src && imageLoaded && 'yv:bg-(--yv-gray-10) yv:p-[3px]', className)}
       {...props}
     >

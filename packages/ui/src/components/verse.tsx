@@ -60,11 +60,15 @@ export function FootnoteContent({
   hasVerseContext,
 }: FootnoteContentProps): React.ReactElement {
   const { t } = useTranslation(undefined, { i18n });
+  const providerTheme = useTheme();
   const verseReference = reference ? `${reference}:${verseNum}` : t('verseLabel', { verseNum });
   const showVerseContext = hasVerseContext ?? verseHtml.length > 0;
 
   return (
-    <div data-yv-sdk data-yv-theme={theme}>
+    // The root has to name a theme, not just the scope. `[data-yv-sdk]`
+    // re-declares the light `--yv-*` tokens, so omitting `data-yv-theme` here
+    // forced `yv:bg-background` to light no matter what the caller wanted.
+    <div data-yv-sdk data-yv-theme={theme ?? providerTheme}>
       <div className="yv:p-3 yv:overflow-y-auto yv:bg-background yv:text-foreground">
         {showVerseContext && (
           <>

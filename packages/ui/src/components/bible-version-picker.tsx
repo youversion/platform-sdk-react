@@ -524,6 +524,7 @@ export function BibleVersionPickerLanguageTrigger({
 }: BibleVersionPickerLanguageTriggerProps): React.ReactElement {
   const { t } = useTranslation(undefined, { i18n });
   const {
+    background,
     filteredVersions,
     filteredRecentVersions,
     setIsLanguagesOpen,
@@ -543,6 +544,11 @@ export function BibleVersionPickerLanguageTrigger({
   return (
     <Button
       aria-label={ariaLabel ?? t('selectLanguageAriaLabel')}
+      // A public export whose root is a plain `Button`, so nothing above it is
+      // guaranteed to be SDK DOM. Take the theme from the picker context rather
+      // than the provider: `Root` lets a caller override it with `background`.
+      data-yv-sdk=""
+      data-yv-theme={background}
       className={cn(
         'yv:ml-auto yv:bg-card yv:border yv:border-transparent yv:hover:bg-card yv:hover:border-border yv:max-w-40',
         className,

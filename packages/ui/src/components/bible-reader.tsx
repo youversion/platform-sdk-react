@@ -1152,7 +1152,7 @@ function UserMenu() {
   const { t } = useTranslation(undefined, { i18n });
   const { auth, signIn, signOut, userInfo } = useYVAuth();
   const yvContext = useContext(YouVersionContext);
-  const { onSignInPress, onSignOutPress } = useBibleReaderContext();
+  const { background, onSignInPress, onSignOutPress } = useBibleReaderContext();
 
   // Prefer host-supplied native actions (e.g. the Expo DOM wrapper bridges these to
   // native PKCE sign-in). Fall back to the Web SDK's own auth for pure-web usage.
@@ -1180,6 +1180,11 @@ function UserMenu() {
               name={userInfo?.name}
               src={userInfo?.getAvatarUrl(32, 32)?.toString()}
               aria-label={userInfo?.name || t('userAvatarAlt')}
+              // ProfileAvatar stamps `data-yv-sdk`, which re-declares the
+              // `--yv-*` tokens on itself. The reader's `background` can differ
+              // from the provider theme, so hand it the reader's theme or the
+              // avatar would flip back to light tokens inside a dark reader.
+              data-yv-theme={background}
               className="yv:size-full"
             />
           </Button>

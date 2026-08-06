@@ -20,6 +20,9 @@ import { BibleCard } from './bible-card';
 import { BibleChapterPicker } from './bible-chapter-picker';
 import { BibleReader, BibleThemeSettingsContent } from './bible-reader';
 import { BibleVersionPicker } from './bible-version-picker';
+import { ProfileAvatar } from './profile-avatar';
+import { Separator } from './ui/separator';
+import { Textarea } from './ui/textarea';
 import { BibleTextView, FootnoteContent } from './verse';
 import { VerseActionPopover } from './verse-action-popover';
 import { VerseOfTheDay } from './verse-of-the-day';
@@ -57,6 +60,17 @@ const KNOWN_LEAKED_PROPERTIES = ['box-sizing', 'font-family', 'padding-top'];
  * for every component and this override goes away.
  */
 const LEAKED_PROPERTIES_WITH_PINNED_FONT = ['box-sizing', 'letter-spacing', 'padding-top'];
+
+/**
+ * The inheritance channel on its own, for the three leaf components.
+ *
+ * `ProfileAvatar`, `Separator` and `Textarea` are small enough that the
+ * box-model channel has almost nowhere to land: `bareElements` targets
+ * `button, a, p, ul, input`, and none of the three renders one. What does reach
+ * them is everything the host `body` sets and the SDK does not, which is the
+ * channel Phase 3 closes.
+ */
+const INHERITED_ONLY_LEAKS = ['color', 'font-family', 'letter-spacing'];
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -401,4 +415,37 @@ export const YouVersionAuthButtonInHostileHost: Story = isolationStory({
     await findIn(canvasElement, 'button');
     return findIn(canvasElement, '[data-yv-sdk]');
   },
+});
+
+export const ProfileAvatarInHostileHost: Story = isolationStory({
+  label: 'ProfileAvatar',
+  expectedLeaks: INHERITED_ONLY_LEAKS,
+  render: () => (
+    <div className="yv:p-12">
+      <ProfileAvatar name="Cam Anderson" className="yv:size-16" />
+    </div>
+  ),
+  ready: (canvasElement) => findIn(canvasElement, '[data-yv-sdk]'),
+});
+
+export const SeparatorInHostileHost: Story = isolationStory({
+  label: 'Separator',
+  expectedLeaks: INHERITED_ONLY_LEAKS,
+  render: () => (
+    <div className="yv:w-full yv:p-12">
+      <Separator />
+    </div>
+  ),
+  ready: (canvasElement) => findIn(canvasElement, '[data-yv-sdk]'),
+});
+
+export const TextareaInHostileHost: Story = isolationStory({
+  label: 'Textarea',
+  expectedLeaks: INHERITED_ONLY_LEAKS,
+  render: () => (
+    <div className="yv:w-full yv:p-12">
+      <Textarea defaultValue="For God so loved the world." />
+    </div>
+  ),
+  ready: (canvasElement) => findIn(canvasElement, '[data-yv-sdk]'),
 });
