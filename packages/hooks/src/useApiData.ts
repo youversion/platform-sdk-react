@@ -1,9 +1,27 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  backoffMs,
+  DEFAULT_MAX_RETRIES,
+  DEFAULT_RETRY_BUDGET_MS,
+  isRetryableRequestError,
+} from './internal/retry-policy';
 
 export type UseApiDataOptions = {
   enabled?: boolean;
+  /**
+   * Retry a failed request automatically. Defaults to `true`.
+   *
+   * A retryable failure (timeout, transport failure, 429, 5xx) gets up to
+   * {@link DEFAULT_MAX_RETRIES} extra attempts within a
+   * {@link DEFAULT_RETRY_BUDGET_MS} wall clock, whichever runs out first.
+   * `loading` stays `true` for the whole chain.
+   *
+   * Set `false` for a poll or a fire-and-forget read that owns its own
+   * cadence and should fail fast instead.
+   */
+  retry?: boolean;
 };
 
 type UseApiDataResult<T> = {
@@ -18,7 +36,7 @@ export function useApiData<T>(
   deps: React.DependencyList,
   options: UseApiDataOptions = {},
 ): UseApiDataResult<T> {
-  const { enabled = true } = options;
+  const { enabled = true, retry = true } = options;
 
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,24 +74,43 @@ export function useApiData<T>(
     setLoading(true);
     setError(null);
 
-    fetchFnRef
-      .current()
-      .then((result) => {
-        if (requestSeq === requestSeqRef.current) {
+    // One wall clock for the whole chain, started here rather than per attempt.
+    const startedAt = Date.now();
+
+    const isCurrent = (): boolean => requestSeq === requestSeqRef.current;
+
+    // `loading` deliberately stays true across the whole chain: it settles only
+    // on success or on final failure, never between attempts, so the two-tier
+    // spinner in the reader does not flicker while a retry is pending.
+    const attempt = (attemptIndex: number): void => {
+      fetchFnRef
+        .current()
+        .then((result) => {
+          if (!isCurrent()) return;
           setData(result);
-        }
-      })
-      .catch((err) => {
-        if (requestSeq === requestSeqRef.current) {
-          setError(err as Error);
-        }
-      })
-      .finally(() => {
-        if (requestSeq === requestSeqRef.current) {
           setLoading(false);
-        }
-      });
-  }, [enabled]);
+        })
+        .catch((err: unknown) => {
+          if (!isCurrent()) return;
+
+          const budgetLeft = Date.now() - startedAt < DEFAULT_RETRY_BUDGET_MS;
+          const attemptsLeft = attemptIndex < DEFAULT_MAX_RETRIES;
+
+          if (retry && attemptsLeft && budgetLeft && isRetryableRequestError(err)) {
+            setTimeout(() => {
+              // Re-check: the chapter may have changed during the backoff.
+              if (isCurrent()) attempt(attemptIndex + 1);
+            }, backoffMs(attemptIndex));
+            return;
+          }
+
+          setError(err as Error);
+          setLoading(false);
+        });
+    };
+
+    attempt(0);
+  }, [enabled, retry]);
 
   const refetch = useCallback(() => {
     fetchData();

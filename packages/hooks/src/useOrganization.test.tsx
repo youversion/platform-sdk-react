@@ -4,6 +4,7 @@ import { useOrganization } from './useOrganization';
 import { type Organization, type OrganizationsClient } from '@youversion/platform-core';
 import { useOrganizationsClient } from './useOrganizationsClient';
 import { createYVWrapper } from './test/utils';
+import { createFinalError } from './__tests__/mocks/errors';
 
 vi.mock('./useOrganizationsClient');
 
@@ -98,7 +99,7 @@ describe('useOrganization', () => {
   describe('error handling', () => {
     it('should handle fetch errors', async () => {
       const wrapper = createYVWrapper();
-      const error = new Error('Failed to fetch organization');
+      const error = createFinalError('Failed to fetch organization');
       mockGetOrganization.mockRejectedValueOnce(error);
 
       const { result } = renderHook(() => useOrganization('798d8fa4-f640-4155-8cfb-fa91d1d8a06c'), {

@@ -9,6 +9,7 @@ import {
 } from '@youversion/platform-core';
 import { useLanguagesClient } from './useLanguageClient';
 import { createYVWrapper } from './test/utils';
+import { createFinalError } from './__tests__/mocks/errors';
 
 vi.mock('./useLanguageClient');
 
@@ -152,7 +153,7 @@ describe('useLanguages', () => {
 
     it('should handle fetch errors', async () => {
       const wrapper = createYVWrapper();
-      const error = new Error('Failed to fetch languages');
+      const error = createFinalError('Failed to fetch languages');
       mockGetLanguages.mockRejectedValueOnce(error);
 
       const { result } = renderHook(() => useLanguages({ country: 'US' }), { wrapper });

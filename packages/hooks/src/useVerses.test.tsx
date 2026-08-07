@@ -4,6 +4,7 @@ import { useVerses } from './useVerses';
 import { type BibleClient, type BibleVerse, type Collection } from '@youversion/platform-core';
 import { useBibleClient } from './useBibleClient';
 import { createYVWrapper } from './test/utils';
+import { createFinalError } from './__tests__/mocks/errors';
 
 vi.mock('./useBibleClient');
 
@@ -100,7 +101,7 @@ describe('useVerses', () => {
 
     it('should handle fetch errors', async () => {
       const wrapper = createYVWrapper();
-      const error = new Error('Failed to fetch verses');
+      const error = createFinalError('Failed to fetch verses');
       mockGetVerses.mockRejectedValueOnce(error);
 
       const { result } = renderHook(() => useVerses(1, 'MAT', 1), { wrapper });

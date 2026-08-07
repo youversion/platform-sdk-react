@@ -5,6 +5,7 @@ import { useVerseOfTheDay } from './useVOTD';
 import { YouVersionContext } from './context';
 import { BibleClient, ApiClient, type VOTD } from '@youversion/platform-core';
 import { createYVWrapper } from './test/utils';
+import { createFinalError } from './__tests__/mocks/errors';
 
 vi.mock('@youversion/platform-core', async () => {
   const actual = await vi.importActual('@youversion/platform-core');
@@ -189,7 +190,7 @@ describe('useVerseOfTheDay', () => {
 
     it('should handle fetch errors', async () => {
       const wrapper = createYVWrapper();
-      const error = new Error('Failed to fetch VOTD');
+      const error = createFinalError('Failed to fetch VOTD');
       mockGetVOTD.mockRejectedValueOnce(error);
 
       const { result } = renderHook(() => useVerseOfTheDay(1), { wrapper });

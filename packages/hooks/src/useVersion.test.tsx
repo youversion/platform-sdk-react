@@ -4,6 +4,7 @@ import { useVersion } from './useVersion';
 import { type BibleClient, type BibleVersion } from '@youversion/platform-core';
 import { useBibleClient } from './useBibleClient';
 import { createYVWrapper } from './test/utils';
+import { createFinalError } from './__tests__/mocks/errors';
 
 vi.mock('./useBibleClient');
 
@@ -141,7 +142,7 @@ describe('useVersion', () => {
   describe('error handling', () => {
     it('should handle fetch errors', async () => {
       const wrapper = createYVWrapper();
-      const error = new Error('Failed to fetch version');
+      const error = createFinalError('Failed to fetch version');
       mockGetVersion.mockRejectedValueOnce(error);
 
       const { result } = renderHook(() => useVersion(111), { wrapper });
@@ -156,7 +157,7 @@ describe('useVersion', () => {
 
     it('should clear error on successful refetch', async () => {
       const wrapper = createYVWrapper();
-      const error = new Error('Failed to fetch version');
+      const error = createFinalError('Failed to fetch version');
       mockGetVersion.mockRejectedValueOnce(error).mockResolvedValueOnce(mockVersion);
 
       const { result } = renderHook(() => useVersion(111), { wrapper });

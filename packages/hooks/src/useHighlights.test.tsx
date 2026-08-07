@@ -12,6 +12,7 @@ import {
   type CreateHighlight,
 } from '@youversion/platform-core';
 import { createYVWrapper } from './test/utils';
+import { createFinalError } from './__tests__/mocks/errors';
 
 vi.mock('@youversion/platform-core', async () => {
   const actual = await vi.importActual('@youversion/platform-core');
@@ -186,7 +187,7 @@ describe('useHighlights', () => {
 
     it('should handle fetch errors', async () => {
       const wrapper = createYVWrapper();
-      const error = new Error('Failed to fetch highlights');
+      const error = createFinalError('Failed to fetch highlights');
       mockGetHighlights.mockRejectedValueOnce(error);
 
       const { result } = renderHook(() => useHighlights(defaultOptions), { wrapper });

@@ -5,6 +5,7 @@ import { type BibleClient } from '@youversion/platform-core';
 import { useBibleClient } from './useBibleClient';
 import { createYVWrapper } from './test/utils';
 import { createMockPassage } from './__tests__/mocks/bibles';
+import { createFinalError } from './__tests__/mocks/errors';
 
 vi.mock('./useBibleClient');
 
@@ -235,7 +236,7 @@ describe('usePassage', () => {
   describe('error handling', () => {
     it('should surface fetch errors', async () => {
       const wrapper = createYVWrapper();
-      const error = new Error('Failed to fetch passage');
+      const error = createFinalError('Failed to fetch passage');
       mockGetPassage.mockRejectedValueOnce(error);
 
       const { result } = renderHook(() => usePassage({ versionId: 3034, usfm: 'JHN.3.16' }), {
@@ -252,7 +253,7 @@ describe('usePassage', () => {
 
     it('should clear error on successful refetch', async () => {
       const wrapper = createYVWrapper();
-      const error = new Error('Failed to fetch passage');
+      const error = createFinalError('Failed to fetch passage');
       mockGetPassage.mockRejectedValueOnce(error).mockResolvedValueOnce(mockPassage);
 
       const { result } = renderHook(() => usePassage({ versionId: 3034, usfm: 'JHN.3.16' }), {

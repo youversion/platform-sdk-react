@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useLanguage } from './useLanguage';
 import { type LanguagesClient } from '@youversion/platform-core';
 import { useLanguagesClient } from './useLanguageClient';
+import { createFinalError } from './__tests__/mocks/errors';
 
 vi.mock('./useLanguageClient');
 
@@ -80,7 +81,7 @@ describe('useLanguage', () => {
     });
 
     it('should handle fetch errors', async () => {
-      const error = new Error('Failed to fetch language');
+      const error = createFinalError('Failed to fetch language');
       mockGetLanguage.mockRejectedValueOnce(error);
 
       const { result } = renderHook(() => useLanguage('en'));

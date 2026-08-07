@@ -5,6 +5,7 @@ import { type BibleClient, type BibleBook, type Collection } from '@youversion/p
 import { useBibleClient } from './useBibleClient';
 import { createYVWrapper } from './test/utils';
 import { createMockBook } from './__tests__/mocks/bibles';
+import { createFinalError } from './__tests__/mocks/errors';
 
 vi.mock('./useBibleClient');
 
@@ -87,7 +88,7 @@ describe('useBooks', () => {
 
     it('should handle fetch errors', async () => {
       const wrapper = createYVWrapper();
-      const error = new Error('Failed to fetch books');
+      const error = createFinalError('Failed to fetch books');
       mockGetBooks.mockRejectedValueOnce(error);
 
       const { result } = renderHook(() => useBooks(111), { wrapper });
@@ -102,7 +103,7 @@ describe('useBooks', () => {
 
     it('should clear error on successful refetch', async () => {
       const wrapper = createYVWrapper();
-      const error = new Error('Failed to fetch books');
+      const error = createFinalError('Failed to fetch books');
       mockGetBooks.mockRejectedValueOnce(error).mockResolvedValueOnce(mockBooks);
 
       const { result } = renderHook(() => useBooks(111), { wrapper });
