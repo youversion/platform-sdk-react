@@ -544,9 +544,10 @@ export function BibleVersionPickerLanguageTrigger({
   return (
     <Button
       aria-label={ariaLabel ?? t('selectLanguageAriaLabel')}
-      // A public export whose root is a plain `Button`, so nothing above it is
-      // guaranteed to be SDK DOM. Take the theme from the picker context rather
-      // than the provider: `Root` lets a caller override it with `background`.
+      // A public export whose root is a plain `Button`, so no element above it
+      // is guaranteed to be SDK DOM. The theme comes from the picker context,
+      // and not from the provider, because `Root` lets a caller override it
+      // with `background`.
       data-yv-sdk=""
       data-yv-theme={background}
       className={cn(

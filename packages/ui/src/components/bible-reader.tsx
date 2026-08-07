@@ -1180,10 +1180,10 @@ function UserMenu() {
               name={userInfo?.name}
               src={userInfo?.getAvatarUrl(32, 32)?.toString()}
               aria-label={userInfo?.name || t('userAvatarAlt')}
-              // ProfileAvatar stamps `data-yv-sdk`, which re-declares the
-              // `--yv-*` tokens on itself. The reader's `background` can differ
-              // from the provider theme, so hand it the reader's theme or the
-              // avatar would flip back to light tokens inside a dark reader.
+              // ProfileAvatar stamps `data-yv-sdk`, which declares the `--yv-*`
+              // tokens again on itself. The reader `background` can differ from
+              // the provider theme. Pass the reader theme here, or the avatar
+              // returns to the light tokens inside a dark reader.
               data-yv-theme={background}
               className="yv:size-full"
             />

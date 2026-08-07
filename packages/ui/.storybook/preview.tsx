@@ -16,10 +16,11 @@ import { injectHostileCss, removeHostileCss, resolveHostileGroups } from '../src
 import type { HostileGroup } from '../src/test/hostile-host';
 
 /**
- * Opt-in adversarial host CSS, set per story as `parameters.hostileHost`.
+ * Hostile host CSS, per story, through `parameters.hostileHost`.
  *
- * `'all'` injects every group; an array injects only the groups named. Leaving
- * the parameter off injects nothing, so every pre-existing story is untouched.
+ * `'all'` injects every group. An array injects only the named groups. Without
+ * the parameter, the decorator injects nothing, and every earlier story is
+ * unchanged.
  */
 type HostileHostParameter = HostileGroup[] | 'all' | undefined;
 
@@ -78,19 +79,20 @@ const preview: Preview = {
         };
       }, [theme]);
 
-      // A string key, not the array, so the effect does not re-run every render.
+      // A string key, not the array, so the effect does not run again on every
+      // render.
       const hostileKey = getHostileGroups(context.parameters).join(',');
 
-      // Layout effect, not effect: the SDK's <style precedence="yv-sdk"> tag is
-      // in <head> by commit time, so appending here always lands after it. That
-      // is the source order a real consumer app produces.
+      // Layout effect, not effect. The SDK `<style precedence="yv-sdk">` tag is
+      // in <head> by commit time, so an append here always lands after it. That
+      // is the source order that a real consumer app produces.
       useLayoutEffect(() => {
         if (hostileKey === '') return undefined;
         injectHostileCss(hostileKey.split(',') as HostileGroup[]);
 
-        // removeHostileCss, not the cleanup that injectHostileCss returns: a
-        // play function re-injects while measuring, and those tags belong to
-        // nobody. Anything left behind would follow the next story into the
+        // removeHostileCss, and not the cleanup function that injectHostileCss
+        // returns. A play function injects again during a measurement, and those
+        // tags have no owner. A tag left behind follows the next story into the
         // same iframe.
         return removeHostileCss;
       }, [hostileKey]);

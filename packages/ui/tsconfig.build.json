@@ -19,8 +19,8 @@
     }
   },
   "include": ["src", "index.d.ts"],
-  // src/test holds fixtures and harnesses that only tests and stories import.
-  // It ships no public type, and it is written against the browser lib that the
-  // test tsconfig provides rather than the narrower lib this build declares.
+  // src/test holds fixtures and harnesses that only the tests and the stories
+  // import. It ships no public type. It is written against the browser lib from
+  // the test tsconfig, and not against the narrower lib of this build.
   "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.stories.ts", "**/*.stories.tsx", "src/test"]
 }

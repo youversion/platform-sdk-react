@@ -16,9 +16,9 @@ function Separator({
     <SeparatorPrimitive.Root
       data-slot="separator"
       // Separator is exported from the package root, so it can be the outermost
-      // SDK element on the page. It carries the scope attribute itself rather
-      // than relying on an SDK ancestor. `{...props}` stays last so a caller
-      // inside a differently-themed scope can override `data-yv-theme`.
+      // SDK element on the page. It carries the gate attribute itself, and does
+      // not depend on an SDK ancestor. `{...props}` stays last, so a caller
+      // inside a scope with another theme can override `data-yv-theme`.
       data-yv-sdk=""
       data-yv-theme={theme}
       decorative={decorative}

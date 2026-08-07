@@ -35,10 +35,10 @@ export function ProfileAvatar({
   return (
     <Avatar
       aria-label={name?.trim() || undefined}
-      // `yv:bg-(--yv-gray-10)` below reads a token that is only declared under
-      // `[data-yv-sdk]`, so the root has to carry the scope attribute itself.
-      // `{...props}` stays last: a caller inside a differently-themed scope
-      // (see `bible-reader.tsx` `UserMenu`) overrides `data-yv-theme`.
+      // `yv:bg-(--yv-gray-10)` below reads a token that only `[data-yv-sdk]`
+      // declares, so the root must carry the gate attribute itself.
+      // `{...props}` stays last. A caller inside a scope with another theme
+      // (see `UserMenu` in `bible-reader.tsx`) thus overrides `data-yv-theme`.
       data-yv-sdk=""
       data-yv-theme={theme}
       className={cn(src && imageLoaded && 'yv:bg-(--yv-gray-10) yv:p-[3px]', className)}

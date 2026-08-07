@@ -1,29 +1,29 @@
 /**
  * Hostile-host regression stories.
  *
- * Every story here renders one exported component inside a page whose global CSS
- * is actively trying to break it, measures the damage, and asserts on the
- * measurement.
+ * Each story renders one exported component in a page whose global CSS tries to
+ * break it. The story then measures the damage, and asserts on the measurement.
  *
- * Both leak channels are now closed, so four of the five hostile groups must
- * report zero on every component:
+ * Both leak channels are closed now. Four of the five hostile groups must report
+ * zero on every component:
  *
- * - `inheritedTypography` closed when `theme.css` started pinning the whole
- *   inherited set on `[data-yv-sdk]`. Inheritance cannot be stopped by cascade
- *   rank, only by declaring the property.
+ * - `inheritedTypography` closed when `theme.css` started to declare the whole
+ *   inherited set on `[data-yv-sdk]`. Cascade rank cannot stop inheritance. Only
+ *   a declaration of the property can stop it.
  * - `preflight`, `bareElements` and `aggressiveReset` closed when SDK CSS left
- *   its `yv-sdk-*` cascade layers and every selector gained a
- *   `:is([data-yv-sdk], [data-yv-sdk] *)` gate. The gate adds 0,1,0, which beats
- *   a bare element selector at 0,0,1 and a universal selector at 0,0,0.
+ *   its `yv-sdk-*` cascade layers, and every selector gained a
+ *   `:is([data-yv-sdk], [data-yv-sdk] *)` gate. The gate adds 0,1,0. That
+ *   overrides a bare element selector at 0,0,1, and a universal selector at
+ *   0,0,0.
  *
- * `important` is the documented residual. No light-DOM technique outranks a
- * consumer `!important` declaration that targets our elements, and the override
- * policy treats it as out of contract. It is asserted, not ignored: a component
- * that renders a `<button>` must still leak under that group, because the day it
- * stops the fixture has gone stale.
+ * `important` is the recorded residual. No light-DOM technique overrides a
+ * consumer `!important` declaration that targets our elements. The override
+ * policy treats such a declaration as out of contract. The stories assert on
+ * this residual. A component that renders a `<button>` must still leak under
+ * that group. On the day that the leak stops, the fixture is stale.
  *
- * These stories are also the visual evidence. Open one in Storybook and the
- * component should now look right, under CSS built to break it.
+ * These stories are also the visual evidence. Open one in Storybook. The
+ * component now looks correct, under CSS built to break it.
  *
  * See docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md.
  */
@@ -57,13 +57,13 @@ const SETTLE_INTERVAL_MS = 100;
 const SETTLE_MAX_ATTEMPTS = 30;
 
 /**
- * Snapshots once the subtree stops moving.
+ * Takes a snapshot after the subtree becomes stable.
  *
- * Adding or removing a stylesheet starts every CSS transition the new values
- * touch, and SDK components transition colour and spacing. A snapshot taken a
- * frame later catches interpolated values, which then show up as leaks that no
- * amount of scoping would fix. Polling until two consecutive reads agree is what
- * separates a real leak from an animation frame.
+ * A new or a removed stylesheet starts every CSS transition that the new values
+ * touch, and SDK components transition color and spacing. A snapshot taken one
+ * frame later reads interpolated values, which then appear as leaks that no
+ * amount of scoping corrects. This function polls until two reads in a row
+ * agree, which separates a real leak from an animation frame.
  */
 async function stableSnapshot(root: Element): Promise<StyleSnapshot> {
   let previous = snapshotComputedStyles(root);
@@ -85,7 +85,7 @@ async function stableSnapshot(root: Element): Promise<StyleSnapshot> {
 type LeakReport = {
   /** Leaks under every hostile group at once. */
   total: StyleLeak[];
-  /** Leaks attributable to each group on its own. The residual report reads this. */
+  /** Leaks from each group on its own. The residual report reads this record. */
   byGroup: Record<HostileGroup, StyleLeak[]>;
 };
 
@@ -93,13 +93,13 @@ type LeakReport = {
  * Measures how far the host CSS moves a rendered subtree.
  *
  * Hostile CSS is document-global, so a clean tree and a hostile tree cannot
- * coexist. The harness separates them in time instead of in space: it strips the
- * hostile styles, snapshots, then re-adds them one group at a time and snapshots
- * again. Measuring the same nodes throughout is what makes the structural path
- * keys line up.
+ * exist together. The harness separates them in time, not in space. It removes
+ * the hostile styles and takes a snapshot. Then it adds them back one group at a
+ * time, and takes another snapshot. The structural path keys line up because the
+ * harness measures the same nodes every time.
  *
- * Leaves every group injected on the way out, so the story stays visibly broken
- * for manual inspection.
+ * The function leaves every group injected at the end, so the story stays
+ * visibly broken for a manual inspection.
  */
 async function measureLeaks(label: string, root: Element): Promise<LeakReport> {
   removeHostileCss();
@@ -131,9 +131,9 @@ type IsolationStoryConfig = {
   label: string;
   render: () => ReactElement;
   /**
-   * Waits for the component to finish loading, then returns the element to
-   * snapshot. Return the SDK's own root, never the Storybook canvas: the canvas
-   * is consumer DOM, and reporting leaks on it would be a false positive.
+   * Waits for the component to finish its load, then returns the element to
+   * snapshot. Return the SDK root, never the Storybook canvas. The canvas is
+   * consumer DOM, and a leak report on it is a false positive.
    */
   ready: (canvasElement: HTMLElement) => Promise<Element>;
 };
@@ -141,14 +141,14 @@ type IsolationStoryConfig = {
 type Story = StoryObj<Meta>;
 
 /**
- * Assertions are per group, never on the combined total.
+ * The assertions are per group, never on the combined total.
  *
  * Groups can cancel each other. `preflight` sets `box-sizing: border-box` on
- * `*` and `aggressiveReset` sets `content-box` on `*`, so with both injected the
- * later sheet wins and the value lands back where it started. `Separator`
- * measures zero combined leaks for exactly that reason while `preflight` alone
- * still moves it. Reading the combined total would call that component isolated,
- * which it is not.
+ * `*`, and `aggressiveReset` sets `content-box` on `*`. With both groups
+ * injected, the later sheet wins, and the value returns to its start value.
+ * `Separator` measures zero combined leaks for that reason, and `preflight`
+ * alone still moves it. A read of the combined total calls that component
+ * isolated, and it is not.
  */
 function isolationStory(config: IsolationStoryConfig): Story {
   return {
@@ -157,23 +157,24 @@ function isolationStory(config: IsolationStoryConfig): Story {
       const root = await config.ready(canvasElement);
       const report = await measureLeaks(config.label, root);
 
-      // The inheritance channel. Nine properties on `body`, matching no SDK
-      // element, so everything this group moves arrived by inheritance. Zero
-      // means `theme.css` pins the whole inherited set on `[data-yv-sdk]`.
+      // The inheritance channel. Nine properties on `body`, and none of them
+      // match an SDK element. Everything that this group moves thus arrived by
+      // inheritance. Zero means that `theme.css` declares the whole inherited
+      // set on `[data-yv-sdk]`.
       await expect(report.byGroup.inheritedTypography).toEqual([]);
 
-      // The direct-match channel, one adversary per specificity band:
-      // `aggressiveReset` at 0,0,0, `bareElements` and `preflight` at 0,0,1.
-      // The gate puts every SDK rule at 0,1,0 or better, so all three lose.
+      // The direct-match channel, with one adversary per specificity band:
+      // `aggressiveReset` at 0,0,0, and `bareElements` and `preflight` at 0,0,1.
+      // The gate puts every SDK rule at 0,1,0 or higher, so all three lose.
       await expect(report.byGroup.aggressiveReset).toEqual([]);
       await expect(report.byGroup.bareElements).toEqual([]);
       await expect(report.byGroup.preflight).toEqual([]);
 
-      // The residual. `important` targets `button` only, so the expectation is
-      // read off the rendered DOM rather than hand-maintained per story: a
-      // component with a button must leak, one without must not. Asserting the
-      // leak is what keeps the fixture honest — if it ever drops to zero, the
-      // rule stopped matching and the group is measuring nothing.
+      // The residual. `important` targets `button` only. The expectation thus
+      // comes from the rendered DOM, and not from a per-story list. A component
+      // with a button must leak. A component without one must not. The assertion
+      // keeps the fixture honest. If the leak count drops to zero, the rule no
+      // longer matches, and the group measures nothing.
       const rendersButton = root.matches('button') || root.querySelector('button') !== null;
 
       if (rendersButton) {
@@ -204,7 +205,7 @@ const meta = {
   title: 'Style Isolation/Hostile Host',
   parameters: {
     layout: 'fullscreen',
-    // Every story in this file runs inside an adversarial page.
+    // Every story in this file runs inside a hostile page.
     hostileHost: 'all',
   },
   tags: ['integration'],
@@ -246,7 +247,7 @@ export const BibleTextViewInHostileHost: Story = isolationStory({
     </div>
   ),
   ready: async (canvasElement) => {
-    // The footnote buttons are what `bareElements` targets, so wait for one.
+    // `bareElements` targets the footnote buttons. Wait for one of them.
     await findIn(canvasElement, 'button');
     return findIn(canvasElement, '[data-yv-sdk]');
   },
@@ -271,7 +272,7 @@ export const FootnoteContentInHostileHost: Story = isolationStory({
 function VerseActionPopoverHarness(): ReactElement {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const noop = useRef(() => {
-    /* the harness measures layout, not behaviour */
+    /* the harness measures layout, not behavior */
   }).current;
 
   return (
@@ -296,7 +297,7 @@ function VerseActionPopoverHarness(): ReactElement {
 export const VerseActionPopoverInHostileHost: Story = isolationStory({
   label: 'VerseActionPopover',
   render: () => <VerseActionPopoverHarness />,
-  // Portalled to document.body, so the canvas cannot reach it.
+  // The popover renders into document.body, so the canvas cannot reach it.
   ready: () => findIn(document.body, '[data-yv-sdk][role="dialog"]'),
 });
 
@@ -322,8 +323,8 @@ function ChapterPickerHarness(): ReactElement {
 export const BibleChapterPickerInHostileHost: Story = isolationStory({
   label: 'BibleChapterPicker',
   render: () => <ChapterPickerHarness />,
-  // The closed trigger is two elements. Open the picker so the measurement sees
-  // the book list, which is where nearly all of the picker's DOM lives.
+  // The closed trigger is two elements. Open the picker, so that the measurement
+  // includes the book list. Almost all of the picker DOM is in that list.
   ready: async (canvasElement) => {
     await userEvent.click(await findIn(canvasElement, 'button'));
     await findIn(document.body, '[data-slot="accordion-trigger"]');
@@ -347,7 +348,7 @@ function VersionPickerHarness(): ReactElement {
 export const BibleVersionPickerInHostileHost: Story = isolationStory({
   label: 'BibleVersionPicker',
   render: () => <VersionPickerHarness />,
-  // Same reasoning as the chapter picker: measure the open list, not the trigger.
+  // Same reason as the chapter picker: measure the open list, not the trigger.
   ready: async (canvasElement) => {
     await userEvent.click(await findIn(canvasElement, 'button'));
     await findIn(document.body, '[data-testid="version-list"] [role="listitem"]');
@@ -380,7 +381,7 @@ export const BibleReaderInHostileHost: Story = isolationStory({
 
 function ThemeSettingsHarness(): ReactElement {
   const noop = useRef(() => {
-    /* the harness measures layout, not behaviour */
+    /* the harness measures layout, not behavior */
   }).current;
 
   return (
@@ -451,7 +452,7 @@ export const TextareaInHostileHost: Story = isolationStory({
   ready: (canvasElement) => findIn(canvasElement, '[data-yv-sdk]'),
 });
 
-/** The one consumer override the README promises, as a consumer would write it. */
+/** The one consumer override that the README promises, in the form a consumer writes. */
 const CONSUMER_TOKEN_OVERRIDE = `
 [data-yv-sdk] {
   --yv-primary: rgb(255, 0, 255);
@@ -461,17 +462,17 @@ const CONSUMER_TOKEN_OVERRIDE = `
 const OVERRIDDEN_PRIMARY = 'rgb(255, 0, 255)';
 
 /**
- * The other half of the guarantee: theming still works.
+ * The other half of the guarantee: the theme still works.
  *
- * Gating every selector raised SDK specificity, and a change that walls the
- * consumer out of their own theme would be a regression, not a fix. The token
- * block in `theme.css` is `[data-yv-sdk]` at 0,1,0 and a consumer's override is
- * the identical selector at the identical weight, so the tie resolves on source
- * order — and the consumer's sheet always loads after ours.
+ * The gate on every selector raised SDK specificity. A change that walls the
+ * consumer out of their own theme is a regression, not a fix. The token block in
+ * `theme.css` is `[data-yv-sdk]` at 0,1,0, and a consumer override is the same
+ * selector at the same weight. The tie thus resolves on source order, and the
+ * consumer sheet always loads after ours.
  *
  * `yv:bg-primary` is the whole chain in one class. `@theme inline` compiles it
- * to `background-color: var(--yv-primary)` rather than to a frozen literal,
- * which is what lets a runtime token override reach a build-time utility.
+ * to `background-color: var(--yv-primary)`, and not to a frozen literal. That is
+ * what lets a runtime token override reach a build-time utility.
  *
  * Hostile CSS is off here on purpose. This story measures one channel.
  */
@@ -485,8 +486,8 @@ export const ConsumerTokenOverrideStillApplies: Story = {
   play: async ({ canvasElement }) => {
     const swatch = await findIn(canvasElement, '[data-testid="primary-swatch"]');
 
-    // Without this, a token that never resolved would pass the assertion below
-    // by accident.
+    // Without this assertion, a token that never resolved passes the next
+    // assertion by accident.
     await expect(getComputedStyle(swatch).backgroundColor).not.toBe(OVERRIDDEN_PRIMARY);
 
     const style = document.createElement('style');
@@ -494,7 +495,7 @@ export const ConsumerTokenOverrideStillApplies: Story = {
     document.head.appendChild(style);
 
     try {
-      // waitFor, not a bare read: changing a token starts any transition on
+      // waitFor, not a direct read. A change to a token starts any transition on
       // background-color, and the first frame reports an interpolated value.
       await waitFor(async () => {
         await expect(getComputedStyle(swatch).backgroundColor).toBe(OVERRIDDEN_PRIMARY);

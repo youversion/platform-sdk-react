@@ -16,7 +16,7 @@ import {
   type StyleSnapshot,
 } from './style-diff';
 
-/** Builds a snapshot by hand, so the diff logic is tested without a browser. */
+/** Makes a snapshot by hand. The diff logic is then testable without a browser. */
 function snapshot(entries: Record<string, Record<string, string>>): StyleSnapshot {
   return new Map(Object.entries(entries));
 }

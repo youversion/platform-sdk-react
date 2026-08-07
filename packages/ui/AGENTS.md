@@ -43,25 +43,26 @@ export — treat those two as public API and breaking-change territory.
 
 ### Style isolation (`data-yv-sdk`)
 
-Every SDK selector is rewritten at build time to `:is([data-yv-sdk], [data-yv-sdk] *)`.
-A rule only applies inside a subtree stamped with that attribute. See
+The build rewrites every SDK selector to `:is([data-yv-sdk], [data-yv-sdk] *)`.
+A rule applies only inside a subtree that carries that attribute. See
 [ADR-0005](../../docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md).
 
-- **Every new exported component must put `data-yv-sdk` on its root element.**
-  Without the attribute the component renders with no SDK styling at all.
-- Consumers never add the attribute. Components add it themselves.
-- Internal primitives in `src/components/ui/` are deliberately unstamped. They
-  always render inside a stamped public component, and stamping them again would
-  do nothing.
-- SDK CSS is unlayered on purpose. Unlayered author CSS beats every named layer
-  regardless of specificity, so a layer can never win against a consumer's
-  ordinary rules.
+- **Put `data-yv-sdk` on the root element of every new exported component.**
+  Without the attribute, the component renders with no SDK styling.
+- Consumers never add the attribute. The components add it themselves.
+- Internal primitives in `src/components/ui/` carry no attribute, on purpose.
+  They always render inside a stamped public component, and a second stamp does
+  nothing.
+- SDK CSS is in no layer, on purpose. Author CSS in no layer overrides every
+  named layer at any specificity, so layered SDK rules always lose to a
+  consumer's ordinary rules.
 - `packages/core/src/styles/theme.css` declares the inherited properties
   (`font`, `color`, `box-sizing`, `margin`, `padding`, `border`) on the root and
-  on descendants. Gating alone does not stop inheritance from consumer DOM.
-- Consumer `!important` still wins. That residual is measured in
-  [docs/style-isolation-residual-leak.md](../../docs/style-isolation-residual-leak.md).
-- The regression harness is `src/components/style-isolation.stories.tsx` with
+  on the descendants. The gate alone does not stop inheritance from consumer DOM.
+- A consumer `!important` rule still overrides ours.
+  [docs/style-isolation-residual-leak.md](../../docs/style-isolation-residual-leak.md)
+  measures that residual.
+- The regression harness is `src/components/style-isolation.stories.tsx`, with
   `src/test/hostile-host.ts` and `src/test/style-diff.ts`. Add a story there when
   you add an exported component.
 
@@ -79,18 +80,19 @@ type-checked; prefer them over any prose description of a component's API.
 ## CRITICAL
 - **No module side effects**: styles are rendered via React 19 `<style precedence>` in the `YouVersionProvider` wrapper
 - **Build sub-steps are order-dependent**. The chain is:
-  1. `build:css` — Tailwind CLI, `src/styles/global.css` → `.cache/tailwind.raw.css`
-  2. `build:css:scope` — `scripts/scope-selectors.mjs`, gates every selector, writes `dist/tailwind.css`
-  3. `build:js` — tsup, injects `dist/tailwind.css` as the `__YV_STYLES__` constant
-  4. `verify:styles` — `scripts/verify-styles.js`, fails the build if the gate is missing or a `@layer yv-sdk-*` block survived
-  5. `build:types` — tsc declarations
+  1. `build:css`: Tailwind CLI, `src/styles/global.css` to `.cache/tailwind.raw.css`
+  2. `build:css:scope`: `scripts/scope-selectors.mjs`, adds the gate to every selector, writes `dist/tailwind.css`
+  3. `build:js`: tsup, injects `dist/tailwind.css` as the `__YV_STYLES__` constant
+  4. `verify:styles`: `scripts/verify-styles.js`, fails the build if the gate is absent or a `@layer yv-sdk-*` block remains
+  5. `build:types`: tsc declarations
 
-  Skip `build:css` and `__YV_STYLES__` is empty. Skip `build:css:scope` and the
-  bundle ships ungated CSS, which `verify:styles` then rejects.
-- **`dev` and `storybook` must keep all three watchers.** Tailwind watches into
-  `.cache/tailwind.raw.css`, and `scope-selectors.mjs --watch` gates it into
-  `dist/tailwind.css`. Point Tailwind's watcher straight at `dist/tailwind.css`
-  and it overwrites the gated file with ungated output on the next content rescan.
-  A dev server started before this chain existed keeps doing exactly that until
-  you restart it.
+  If you skip `build:css`, `__YV_STYLES__` is empty. If you skip
+  `build:css:scope`, the bundle ships CSS without the gate, and `verify:styles`
+  rejects it.
+- **Keep all three watchers in `dev` and `storybook`.** Tailwind writes
+  `.cache/tailwind.raw.css`, and `scope-selectors.mjs --watch` adds the gate and
+  writes `dist/tailwind.css`. If you point the Tailwind watcher at
+  `dist/tailwind.css`, it overwrites the gated file with ungated output on the
+  next content rescan. A dev server started before this chain existed continues
+  to do this until you restart it.
 - Always rebuild after CSS changes

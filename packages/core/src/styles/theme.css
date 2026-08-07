@@ -158,14 +158,14 @@
 /*
   * No :where() here, on purpose.
   *
-  * This block used to read `:where([data-yv-sdk])`, which drops everything
-  * inside it to specificity 0,0,0. The selectors matched but never won, so a
-  * consumer's bare `button {}` at 0,0,1 beat the whole reset. That was the
-  * right call while SDK CSS sat in `yv-sdk-*` cascade layers and was meant to
-  * lose. It is the wrong call now.
+  * This block used to read `:where([data-yv-sdk])`. `:where()` drops everything
+  * inside it to specificity 0,0,0. The selectors matched, and they never won, so
+  * a consumer bare `button {}` rule at 0,0,1 overrode the whole reset. That was
+  * correct while SDK CSS sat in `yv-sdk-*` cascade layers and had to lose. It is
+  * wrong now.
   *
-  * The plain attribute selector gives every rule below 0,1,0 or better, and the
-  * attribute gate means these rules can never match DOM the SDK did not render.
+  * The plain attribute selector gives every rule below 0,1,0 or higher. The gate
+  * also means that these rules can never match DOM that the SDK did not render.
   * Protection of the host app moved from cascade rank to territory.
   *
   * See docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md.
@@ -180,15 +180,15 @@
     font-family: var(--yv-font-sans);
     /*
      * `color: inherit` is here for the same reason as `font: inherit`, and it is
-     * not in Tailwind's preflight.
+     * not in the Tailwind preflight.
      *
-     * Pinning `color` on the SDK root stops a consumer's `body { color: … }`,
-     * because that value only ever arrives by inheritance. It does nothing about
-     * a consumer's `ul { color: … }`, which matches an SDK element directly and
-     * so replaces the inherited value outright, whatever the root declares.
-     * Declaring `color` on every descendant is what closes that. At 0,1,0 it
-     * outranks any bare element selector, and `inherit` means the SDK's own
-     * colour cascade flows through untouched.
+     * A `color` declaration on the SDK root stops a consumer `body { color: … }`
+     * rule, because that value arrives only by inheritance. It does nothing
+     * about a consumer `ul { color: … }` rule. That rule matches an SDK element
+     * directly, so it replaces the inherited value, whatever the root declares.
+     * A `color` declaration on every descendant closes that channel. At 0,1,0 it
+     * overrides any bare element selector, and `inherit` lets the SDK color
+     * cascade flow through unchanged.
      */
     color: inherit;
     box-sizing: border-box;
@@ -198,35 +198,35 @@
   }
 
   /*
-   * Inherited properties, pinned on the SDK root.
-   *
-   * A consumer's `body { letter-spacing: .5em }` never matches an SDK element,
-   * so no amount of specificity or cascade rank stops it. The value arrives by
-   * inheritance, and inheritance only applies where the element itself declares
-   * nothing. Declaring each property here is what closes that channel. It works
-   * at zero specificity for exactly the same reason: there is no competing
-   * declaration to lose to.
-   *
-   * Every element carrying `data-yv-sdk` re-establishes the whole set, so
-   * portalled surfaces (popovers, dialogs) that inherit straight from
-   * `document.body` are covered too.
-   *
-   * `direction` is deliberately absent: bible-reader.css handles RTL, and
-   * `text-align: start` is direction-aware. See YPE-4113.
-   */
-  /*
    * The box model, repeated for the marked element itself.
    *
    * The block above is `[data-yv-sdk] *`, which reaches every descendant and
-   * misses the root. A consumer's `* { box-sizing: content-box }` does not miss
-   * it, so without these four the SDK root is the one element in the subtree a
-   * universal reset can still move.
+   * misses the root. A consumer `* { box-sizing: content-box }` rule does not
+   * miss the root. Without these four declarations, the SDK root is the one
+   * element in the subtree that a universal reset can still move.
    */
   box-sizing: border-box;
   margin: 0;
   padding: 0;
   border: 0 solid;
 
+  /*
+   * Inherited properties, declared on the SDK root.
+   *
+   * A consumer `body { letter-spacing: .5em }` rule never matches an SDK
+   * element, so no specificity and no cascade rank stops it. The value arrives
+   * by inheritance, and inheritance applies only where the element declares
+   * nothing itself. A declaration of each property here closes that channel. It
+   * works at zero specificity for the same reason: no other declaration is
+   * present to lose to.
+   *
+   * Every element with `data-yv-sdk` declares the whole set again. Portalled
+   * surfaces (popovers, dialogs) inherit direct from `document.body`, and this
+   * block covers them too.
+   *
+   * `direction` is absent on purpose. bible-reader.css handles RTL, and
+   * `text-align: start` follows the direction. See YPE-4113.
+   */
   font-family: var(--yv-font-sans);
   line-height: 1.5;
   color: var(--yv-foreground);

@@ -2,26 +2,28 @@
  * Computed-style diff harness.
  *
  * "The component looks wrong" is not a test result. This module turns that
- * judgement into a number: snapshot every tracked computed property on every
- * element of an SDK subtree, do it once clean and once under hostile host CSS,
- * and report the exact (element, property) pairs that moved.
+ * judgment into a number. It reads every tracked computed property on every
+ * element of an SDK subtree. It does that once clean, and once under hostile
+ * host CSS. Then it reports the exact (element, property) pairs that moved.
  *
- * The output is the residual-leak report YPE-4113 asks for, and the same numbers
- * are the pass/fail gate for the later isolation phases.
+ * The output is the residual-leak report that YPE-4113 asks for. The same
+ * numbers are the pass/fail gate for the later isolation phases.
  */
 
 /**
- * The properties the report watches.
+ * The properties that the report watches.
  *
- * Longhands only. A shorthand like `padding` reads back as a single string in
- * some engines and as an empty string in others, and the phase gates name
- * individual sides (`padding-top`). Every entry here is either a box-model
- * property a consumer reset can move, a typography property a consumer `body`
- * rule can inherit into us, or a colour.
+ * Longhands only. A shorthand such as `padding` reads back as one string in some
+ * engines, and as an empty string in others. The phase gates also name
+ * individual sides (`padding-top`). Each entry here is one of three kinds:
  *
- * Deliberately excluded: `transform` and `opacity`, which `tw-animate-css`
- * animates. Sampling either one mid-animation produces a leak that is really
- * just a timing artefact.
+ * - A box-model property that a consumer reset can move.
+ * - A typography property that a consumer `body` rule can inherit into us.
+ * - A color.
+ *
+ * Two properties are absent on purpose: `transform` and `opacity`.
+ * `tw-animate-css` animates both. A sample taken during an animation reports a
+ * leak that is only a timing artifact.
  */
 export const TRACKED_PROPERTIES = [
   // Box model
@@ -56,7 +58,7 @@ export const TRACKED_PROPERTIES = [
   'white-space',
   'text-decoration-line',
   'list-style-type',
-  // Colour
+  // Color
   'color',
   'background-color',
 ] as const;
@@ -70,12 +72,12 @@ export type StyleSnapshot = Map<string, Record<string, string>>;
 const IGNORED_TAGS = new Set(['SCRIPT', 'STYLE', 'LINK', 'META', 'TEMPLATE']);
 
 /**
- * A path that identifies an element by where it sits, not by what it is called.
+ * A path that identifies an element by its position, not by its name.
  *
- * Class names change between a clean and a hostile render is not the worry;
- * the worry is that any identity based on styling would be circular. Tag name
- * plus same-tag sibling index is stable as long as the DOM shape is stable,
- * which is exactly the condition under which a diff is meaningful.
+ * Class names do change between a clean render and a hostile render. That is not
+ * the worry. The worry is that any identity based on styling is circular. A tag
+ * name plus a same-tag sibling index is stable while the DOM shape is stable.
+ * A diff is meaningful under that same condition only.
  *
  * @example `div > ul > li[2] > button`
  */
@@ -98,11 +100,11 @@ function pathOf(element: Element, parentPath: string | null): string {
 }
 
 /**
- * Reads every tracked property on `root` and its descendants.
+ * Reads every tracked property on `root` and on its descendants.
  *
- * Call this against the SDK subtree, not against the Storybook canvas. The
- * canvas root is consumer DOM, and the SDK makes no promise about it, so
- * including it would report a false positive on every run.
+ * Call this function against the SDK subtree, not against the Storybook canvas.
+ * The canvas root is consumer DOM, and the SDK makes no promise about it. A
+ * snapshot that holds the canvas root reports a false positive on every run.
  */
 export function snapshotComputedStyles(root: Element): StyleSnapshot {
   const snapshot: StyleSnapshot = new Map();
@@ -138,10 +140,9 @@ export type StyleLeak = {
 /**
  * Compares two snapshots of the same subtree.
  *
- * Paths present in only one snapshot are skipped rather than reported. A
- * missing path means the DOM shape changed between the two renders, which is a
- * harness problem, not a style leak, and reporting it as a leak would bury the
- * real findings.
+ * A path that is in one snapshot only is skipped, not reported. A missing path
+ * means that the DOM shape changed between the two renders. That is a harness
+ * error, not a style leak, and a report of it hides the real findings.
  */
 export function diffSnapshots(clean: StyleSnapshot, hostile: StyleSnapshot): StyleLeak[] {
   const leaks: StyleLeak[] = [];
@@ -164,12 +165,12 @@ export function diffSnapshots(clean: StyleSnapshot, hostile: StyleSnapshot): Sty
   return leaks;
 }
 
-/** The distinct property names in a leak set, sorted. Test assertions read this. */
+/** The distinct property names in a leak set, sorted. The tests assert on this list. */
 export function leakedProperties(leaks: StyleLeak[]): string[] {
   return [...new Set(leaks.map((leak) => leak.property))].sort();
 }
 
-/** Leak counts per property, highest first. The residual report reads this. */
+/** Leak counts per property, highest count first. The residual report reads this list. */
 export function summarizeLeaks(leaks: StyleLeak[]): { property: string; count: number }[] {
   const counts = new Map<string, number>();
 
@@ -183,10 +184,10 @@ export function summarizeLeaks(leaks: StyleLeak[]): { property: string; count: n
 }
 
 /**
- * Renders a leak set as a table for the console.
+ * Formats a leak set as a table for the console.
  *
- * The residual report is read by a human deciding whether to ship Shadow DOM,
- * so the harness prints findings rather than only asserting on them.
+ * A person reads the residual report to decide whether to ship shadow DOM. The
+ * harness thus prints the findings, and does not only assert on them.
  */
 export function formatLeakReport(label: string, leaks: StyleLeak[]): string {
   if (leaks.length === 0) return `${label}: no leaks`;

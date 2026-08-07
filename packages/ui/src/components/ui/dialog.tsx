@@ -27,9 +27,9 @@ function DialogContent({
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
-        // The overlay is portalled to `document.body`, so it has no SDK
-        // ancestor to inherit the scope from. Without the attribute it loses
-        // its backdrop once utilities are scoped to `[data-yv-sdk]`.
+        // The overlay renders into `document.body`, so it has no SDK ancestor
+        // to inherit the gate from. Without the attribute, it loses its
+        // backdrop once every utility is gated on `[data-yv-sdk]`.
         data-yv-sdk
         data-yv-theme={theme}
         className={cn(

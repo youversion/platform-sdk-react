@@ -4,14 +4,13 @@
 /**
  * Every exported component carries `data-yv-sdk` on its root.
  *
- * The whole style-isolation fix keys on that attribute: once the SDK's
- * utilities are scoped to `[data-yv-sdk]`, a component that forgets it loses
- * all of its styling rather than degrading gracefully. That failure is quiet -
- * the component still renders, just unstyled - so it needs a test rather than a
- * review convention.
+ * The whole style-isolation fix keys on that attribute. SDK utilities apply only
+ * inside `[data-yv-sdk]`. A component without the attribute thus loses all of
+ * its styling. That failure is quiet, because the component still renders. A
+ * test catches it. A review convention does not.
  *
- * The list of cases is checked against `./index.ts` itself. Adding an export
- * without adding a case here fails the suite instead of silently skipping it.
+ * The list of cases is compared with `./index.ts` itself. A new export without a
+ * new case here fails the suite, and the suite does not skip it.
  */
 /* eslint-disable @typescript-eslint/no-empty-function */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -19,8 +18,8 @@ import { render } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import type { BibleBook, BiblePassage, BibleVersion, Language } from '@youversion/platform-core';
 
-// Radix Popover (via @floating-ui/dom) and VersionAbbreviationIcon both observe
-// element size; jsdom ships no ResizeObserver.
+// Radix Popover (through @floating-ui/dom) and VersionAbbreviationIcon both
+// observe element size. jsdom has no ResizeObserver.
 class ResizeObserverMock {
   observe() {}
   unobserve() {}
@@ -28,9 +27,9 @@ class ResizeObserverMock {
 }
 globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 
-// jsdom under this Node version refuses localStorage for opaque origins
-// (`SecurityError`). BibleReader.Root and the version picker both read it on
-// mount, so hand the suite an in-memory stand-in.
+// jsdom on this Node version refuses localStorage for an opaque origin
+// (`SecurityError`). BibleReader.Root and the version picker both read
+// localStorage on mount. The suite thus gets an in-memory replacement.
 const memoryStore = new Map<string, string>();
 Object.defineProperty(globalThis, 'localStorage', {
   configurable: true,
@@ -55,9 +54,9 @@ if (!Element.prototype.scrollTo) {
   Element.prototype.scrollTo = () => {};
 }
 
-// Only the data hooks are stubbed. `useTheme` and the providers stay real,
-// because the attribute under test is written from the resolved theme and a
-// mocked provider would hide a regression in that wiring.
+// Only the data hooks are mocked. `useTheme` and the providers stay real,
+// because the attribute under test comes from the resolved theme. A mocked
+// provider hides a regression in that path.
 vi.mock('@youversion/platform-react-hooks', async () => {
   const actual = await vi.importActual('@youversion/platform-react-hooks');
   return {
@@ -212,7 +211,7 @@ function setupHookMocks(): void {
 
 const noop = () => {};
 
-/** Props that satisfy `VerseActionPopover` without exercising its behaviour. */
+/** Props that satisfy `VerseActionPopover`, with no test of its behavior. */
 const verseActionPopoverProps = {
   open: true,
   onOpenChange: noop,
@@ -229,17 +228,17 @@ const verseActionPopoverProps = {
 type RenderCase = {
   render: () => ReactElement;
   /**
-   * Where the component's own root lands. Defaults to the first element in the
-   * render container. Portalled components mount to `document.body`, so they
-   * name the root by selector instead.
+   * Where the root of the component lands. The default is the first element in
+   * the render container. A portalled component mounts to `document.body`, so
+   * that case names its root by a selector.
    */
   rootSelector?: string;
 };
 
 /**
- * One case per exported component. Compound exports render the sub-component
- * that owns the root element; components that need a context render inside the
- * provider that supplies it.
+ * One case per exported component. A compound export renders the sub-component
+ * that owns the root element. A component that needs a context renders inside
+ * the provider that supplies the context.
  */
 const RENDER_CASES: Record<string, RenderCase> = {
   BibleCard: {
@@ -324,7 +323,7 @@ const RENDER_CASES: Record<string, RenderCase> = {
   },
   VerseActionPopover: {
     render: () => <VerseActionPopover {...verseActionPopoverProps} />,
-    // Radix portals the content to document.body, so the container is empty.
+    // Radix renders the content into document.body, so the container is empty.
     rootSelector: '[role="dialog"]',
   },
   VerseOfTheDay: {
@@ -336,9 +335,9 @@ const RENDER_CASES: Record<string, RenderCase> = {
 };
 
 /**
- * Value exports that are not components. Listed rather than detected, so a new
- * component whose name happens to look like a helper still fails the coverage
- * check below.
+ * Value exports that are not components. This list is written by hand, and not
+ * detected. A new component with a name that looks like a helper name thus still
+ * fails the coverage check below.
  */
 const NON_COMPONENT_EXPORTS = new Set([
   'BIBLE_READER_FONT',
@@ -387,9 +386,9 @@ describe('scope attribute', () => {
 
     expect(root, `${name} rendered nothing to assert on`).not.toBeNull();
     expect(root).toHaveAttribute('data-yv-sdk');
-    // The token block on `[data-yv-sdk]` re-declares the light `--yv-*` values,
-    // so a scoped element inside a dark scope has to restate its theme or it
-    // silently reverts to light.
+    // The token block on `[data-yv-sdk]` declares the light `--yv-*` values
+    // again. A gated element inside a dark scope must thus restate its theme,
+    // or it returns to light without a warning.
     expect(root).toHaveAttribute('data-yv-theme');
   });
 });

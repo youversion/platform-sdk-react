@@ -3,29 +3,30 @@
  * =================================================
  * SDK CSS is UNLAYERED, and every SDK selector is gated on `[data-yv-sdk]`.
  *
- * There is no @layer declaration here on purpose. Cascade layers were the old
- * strategy: SDK rules sat in `yv-sdk-*` layers below the consumer's unlayered
- * author CSS, so the consumer always won. That protected the consumer, and it
- * also guaranteed the reverse leak — a bare consumer `button {}` beat every
- * `yv:`-prefixed SDK utility, at any specificity, because unlayered CSS
- * outranks every named layer (CSS Cascade 5 §6.1).
+ * There is no @layer declaration here, on purpose. Cascade layers were the old
+ * strategy. SDK rules sat in `yv-sdk-*` layers, below the unlayered author CSS
+ * of the consumer, so the consumer always won. That protected the consumer, and
+ * it also guaranteed the leak in the other direction. A bare consumer
+ * `button {}` rule overrode every `yv:`-prefixed SDK utility, at any
+ * specificity, because unlayered CSS overrides every named layer (CSS Cascade 5
+ * §6.1).
  *
  * The replacement is structural. `scripts/scope-selectors.mjs` runs after the
- * Tailwind build and rewrites every selector in the compiled sheet:
+ * Tailwind build, and rewrites every selector in the compiled sheet:
  *
  *   .yv\:mt-4  →  :is([data-yv-sdk], [data-yv-sdk] *).yv\:mt-4
  *
- * That does two things at once. Outbound, SDK CSS cannot match DOM the SDK did
- * not render, which is a stronger guarantee than losing the cascade. Inbound,
- * `:is()` takes the specificity of its most specific argument, so every rule
- * gains exactly 0,1,0 and beats a consumer's bare element selectors.
+ * That does two things at once. Outbound, SDK CSS cannot match DOM that the SDK
+ * did not render, which is a stronger guarantee than a loss in the cascade.
+ * Inbound, `:is()` takes the specificity of its most specific argument, so every
+ * rule gains exactly 0,1,0 and overrides a consumer bare element selector.
  *
- * The script fails the build if any selector reaches `dist/tailwind.css`
- * ungated. That check, not this comment, is the guarantee.
+ * The script fails the build when one selector reaches `dist/tailwind.css`
+ * without the gate. That check, and not this comment, is the guarantee.
  *
- * Consumer customization is unchanged and still supported: `--yv-*` token
- * overrides on `[data-yv-sdk]` tie our token block at 0,1,0 and win on source
- * order. Consumer CSS reaching into SDK internals is not supported.
+ * Consumer customization is unchanged and still supported. A `--yv-*` token
+ * override on `[data-yv-sdk]` ties our token block at 0,1,0, and wins on source
+ * order. Consumer CSS that reaches into SDK internals is not supported.
  *
  * The `prefix(yv)` ensures all Tailwind classes use a `yv:` prefix to avoid
  * collisions with consumer Tailwind setups.
@@ -40,8 +41,8 @@
 
 /**
   * Why do this versus importing @youversion/platform-core/browser/styles/fonts.css?
-  * That file contains an @import of its own, and an @import can only appear at the
-  * top of a stylesheet. Inlining the URL here keeps it in a legal position.
+  * That file has an @import of its own, and an @import can only be at the top of
+  * a stylesheet. The URL here is inline, which keeps it in a legal position.
   */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap');
 @import '@youversion/platform-core/browser/styles/theme.css';
@@ -112,15 +113,16 @@
 }
 /* #endregion */
 
-/* `.trim-both` carries no `yv:` prefix because it is hand-written rather than
-   generated. scope-selectors.mjs gates it like every other rule. */
+/* `.trim-both` has no `yv:` prefix, because a person wrote it and Tailwind did
+   not generate it. scope-selectors.mjs adds the gate to it, as it does to every
+   other rule. */
 .trim-both {
   text-box-trim: trim-both;
 }
 
-/* Verse selection — an underline under the selected verse's text. Sits alongside
-   the `.yv-v` verse structure from bible-reader.css. Highlight fills are applied
-   as inline styles in verse.tsx (per-verse color), so they aren't here. */
+/* Verse selection: an underline under the text of the selected verse. It sits
+   with the `.yv-v` verse structure from bible-reader.css. Highlight fills are
+   inline styles in verse.tsx (one color per verse), so they are not here. */
 [data-yv-sdk] .yv-v-selected {
   text-decoration-line: underline;
   text-decoration-thickness: 2px;

@@ -57,33 +57,36 @@ All component classes are prefixed with `yv:` to avoid collisions with your app'
 
 **Our styles stay inside our components. Your styles stay outside them.**
 
-Every SDK rule is scoped to elements marked `data-yv-sdk`. Components add that
-attribute themselves, so nothing in the SDK stylesheet can reach your markup. In
-the other direction, your global CSS no longer reshapes ours. A reset like
-`* { box-sizing: content-box }` or a rule like `button { padding: 1rem }` used to
-change how our components looked. It does not anymore.
+Every SDK rule applies only to elements marked `data-yv-sdk`. The components add
+that attribute themselves, so no rule in the SDK stylesheet can reach your
+markup. In the other direction, your global CSS no longer changes ours. A reset
+such as `* { box-sizing: content-box }`, or a rule such as
+`button { padding: 1rem }`, changed the appearance of our components before. It
+does not change them now.
 
-Two consequences are worth knowing before you upgrade:
+Read these two points before you upgrade:
 
-- **Styling SDK internals is not supported and no longer works.** If you target
-  our elements from your stylesheet, expect your rule to lose. Class names,
-  `data-slot` values, and DOM structure are all internal and change without a
-  major version.
-- **`!important` still wins.** The cascade puts `!important` above everything
-  else. A rule such as `button { padding: 2rem !important }` in your global CSS
-  will reshape our buttons. We measure exactly which ones in
-  [the residual-leak report](https://github.com/youversion/platform-sdk-react/blob/main/docs/style-isolation-residual-leak.md).
+- **You cannot style SDK internals, and we never supported it.** If you target
+  our elements from your stylesheet, our rule overrides yours. Class names,
+  `data-slot` values and DOM structure are internal. They change without a major
+  version.
+- **`!important` still overrides our rules.** The cascade puts `!important` above
+  all normal declarations. A rule such as `button { padding: 2rem !important }`
+  in your global CSS changes our buttons. The
+  [residual-leak report](https://github.com/youversion/platform-sdk-react/blob/main/docs/style-isolation-residual-leak.md)
+  measures which buttons change.
 
-To change how components look, use the supported paths:
+To change the appearance of the components, use a supported path:
 
 - **Design tokens.** Set `--yv-*` variables on `[data-yv-sdk]`. See
   [Custom CSS variables](#custom-css-variables).
-- **Theme.** Use the `theme` prop on `YouVersionProvider` and the `background`
-  prop on individual components. See [Theming](#theming).
-- **Ask us.** If you need something the tokens do not cover,
+- **Theme.** Use the `theme` prop on `YouVersionProvider`, or the `background`
+  prop on an individual component. See [Theming](#theming).
+- **Ask us.** If the tokens do not cover what you need,
   [open an issue](https://github.com/youversion/platform-sdk-react/issues).
 
-Full rationale: [ADR-0005](https://github.com/youversion/platform-sdk-react/blob/main/docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md).
+For the full rationale, read
+[ADR-0005](https://github.com/youversion/platform-sdk-react/blob/main/docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md).
 
 ### Content Security Policy
 

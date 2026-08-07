@@ -6,17 +6,17 @@ import { scopeCss } from '../../scripts/scope-selectors.mjs';
  * Covers the post-build selector rewrite that is the whole style-isolation
  * guarantee.
  *
- * The build already fails on a non-empty `ungated` list, so these tests are not
- * the safety net — they are the specification. They pin the shape of the gate,
- * the four cases that must be left alone, and the constructs a naive string
- * rewrite would corrupt: escaped class names, `@keyframes`, `@property`, and
- * nested `&` rules.
+ * The build already fails on a non-empty `ungated` list. These tests are thus
+ * not the safety net. They are the specification. They pin the shape of the
+ * gate, and the four cases that stay unchanged. They also pin the constructs
+ * that a plain string rewrite corrupts: escaped class names, `@keyframes`,
+ * `@property`, and nested `&` rules.
  *
  * See YPE-4113 and docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md.
  */
 const GATE = ':is([data-yv-sdk], [data-yv-sdk] *)';
 
-/** Rewrites `source` and fails the test if anything survived ungated. */
+/** Rewrites `source`. The test fails when one selector has no gate. */
 function scope(source: string): string {
   const { code, ungated } = scopeCss(source);
   expect(ungated, 'every selector must be gated after the rewrite').toEqual([]);
@@ -24,14 +24,14 @@ function scope(source: string): string {
 }
 
 describe('scopeCss', () => {
-  describe('gates selectors that could otherwise match consumer DOM', () => {
+  describe('gates selectors that can otherwise match consumer DOM', () => {
     it('prepends the gate to a class selector', () => {
       expect(scope('.card { color: red }')).toContain(`${GATE}.card`);
     });
 
     it('keeps a leading type selector first, because :is(…)a is invalid CSS', () => {
       // A compound selector must start with its type selector. `:is(…)button`
-      // parses as nothing; `button:is(…)` is what the browser accepts.
+      // parses as nothing. The browser accepts `button:is(…)`.
       expect(scope('button { padding: 0 }')).toContain(`button${GATE}`);
     });
 
@@ -51,8 +51,8 @@ describe('scopeCss', () => {
     });
 
     it('gates the universal selector', () => {
-      // `*:is(…)` and `:is(…)` are the same selector, and Lightning CSS drops
-      // the redundant `*`. What matters is that the gate is there.
+      // `*:is(…)` and `:is(…)` are the same selector, and Lightning CSS removes
+      // the unnecessary `*`. The gate is what matters.
       const code = scope('*, ::before { --tw-x: 1 }');
       expect(code).toContain(GATE);
       expect(code).not.toMatch(/(^|\})\s*\*/);
@@ -77,8 +77,9 @@ describe('scopeCss', () => {
     });
 
     it('leaves :root and :host, which only carry --yv-* variables', () => {
-      // Scoping these would work — every portal re-stamps the attribute — but it
-      // adds risk for no gain. They render nothing and every name is namespaced.
+      // A gate on these two works, because every portal stamps the attribute
+      // again. It adds risk and gives no gain. They render nothing, and every
+      // name has the `--yv-*` namespace.
       const code = scope(':root, :host { --yv-font-sans: Inter }');
       expect(code).not.toContain(GATE);
       expect(code).toContain(':root');
@@ -94,7 +95,7 @@ describe('scopeCss', () => {
   describe('rejects a partial gate', () => {
     it('re-gates :is() when only one branch is scoped', () => {
       // `:is([data-yv-sdk], .card)` reaches consumer DOM through its second
-      // branch, so it is not a gate. Every branch has to be scoped, not some.
+      // branch. It is thus not a gate. Every branch needs the gate, not some.
       const code = scope(':is([data-yv-sdk], .card) { color: red }');
       expect(code).toContain(GATE);
     });
@@ -105,7 +106,7 @@ describe('scopeCss', () => {
     });
   });
 
-  describe('does not corrupt constructs a string rewrite would', () => {
+  describe('does not corrupt the constructs that a string rewrite corrupts', () => {
     it('preserves escaped class names', () => {
       const code = scope('.yv\\:mt-4 { margin-top: 1rem }');
       expect(code).toContain(`${GATE}.yv\\:mt-4`);
@@ -116,7 +117,7 @@ describe('scopeCss', () => {
       expect(code).toContain(`${GATE}.yv\\:hover\\:underline:hover`);
     });
 
-    it('leaves @keyframes alone — keyframe selectors are not selectors', () => {
+    it('leaves @keyframes alone, because keyframe selectors are not selectors', () => {
       const code = scope('@keyframes yv-spin { from { opacity: 0 } to { opacity: 1 } }');
       expect(code).toContain('@keyframes yv-spin');
       expect(code).not.toContain(GATE);
@@ -149,8 +150,8 @@ describe('scopeCss', () => {
     });
 
     it('gates rules inside a cascade layer Tailwind emits on its own', () => {
-      // Tailwind writes `@layer properties` for the @property fallback whether or
-      // not we ask for layers, so the rewrite has to reach inside one.
+      // Tailwind writes `@layer properties` for the @property fallback, whatever
+      // our directives say. The rewrite must thus reach inside a layer block.
       const code = scope('@layer properties { .card { --tw-x: 1 } }');
       expect(code).toContain(`${GATE}.card`);
     });
@@ -158,8 +159,8 @@ describe('scopeCss', () => {
 
   describe('flattens CSS nesting before gating', () => {
     it('expands a nested & rule into a complete selector', () => {
-      // Gating `&:before` in place would produce `:is(…)&:before`, which is
-      // nonsense. Flattening first is what makes the visitor safe.
+      // A gate on `&:before` in place produces `:is(…)&:before`, which is
+      // invalid. The flatten pass first is what makes the visitor safe.
       const code = scope('.touch-hitbox { position: relative; &:before { content: "" } }');
       expect(code).toContain(`${GATE}.touch-hitbox`);
       expect(code).not.toContain('&');
@@ -188,9 +189,9 @@ describe('scopeCss', () => {
     });
 
     it('adds exactly 0,1,0 of specificity, so relative order inside the SDK is unchanged', () => {
-      // Every rule gains the same single attribute selector. `:is()` takes the
-      // specificity of its most specific argument, and both branches of the gate
-      // are one attribute selector.
+      // Every rule gains the same one attribute selector. `:is()` takes the
+      // specificity of its most specific argument, and each branch of the gate
+      // holds one attribute selector.
       const code = scope('.a { color: red } .b .c { color: blue }');
       expect(code.match(/:is\(\[data-yv-sdk\], \[data-yv-sdk] \*\)/g)).toHaveLength(2);
     });

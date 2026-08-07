@@ -4,57 +4,61 @@ Date: 2026-08-06
 
 ## Status
 
-Accepted. Supersedes the cascade-layer strategy introduced in `bcfb868` (v1.20.0).
+Accepted. This decision replaces the cascade-layer strategy from `bcfb868`
+(v1.20.0).
 
 ## Context
 
-A partner drops `BibleTextView` into their app. Their `button { padding: 1rem }`
-reshapes our version picker trigger. Their `body { font-family: Comic Sans }`
-bleeds into our verse text. The partner sees a broken Bible experience and has no
-supported way to fix it. YPE-4113 is the spike that closes this.
+A partner puts `BibleTextView` into their app. Their `button { padding: 1rem }`
+changes the shape of our version picker trigger. Their
+`body { font-family: Comic Sans }` changes our verse text. The partner sees a
+broken Bible experience and has no supported way to correct it. Ticket YPE-4113
+covers this problem.
 
-### This decision has flipped three times already
+### This decision changed three times before
 
 | Date | Commit | Version | Position |
 | --- | --- | --- | --- |
-| 2026-01-09 | `8e3a672` | 0.10.1 | Added `scripts/strip-layers.js`. SDK CSS out of all layers. |
+| 2026-01-09 | `8e3a672` | 0.10.1 | Added `scripts/strip-layers.js`. SDK CSS in no layer. |
 | 2026-01-13 | `694325f` | 1.6.2 | "Opt out of CSS layers." Deleted `strip-layers.js`. |
-| 2026-03-09 | `bcfb868` | 1.20.0 | Re-adopted layers, written into `global.css` source. |
+| 2026-03-09 | `bcfb868` | 1.20.0 | Used layers again, written into `global.css` source. |
 
-Only the changelog records the last reversal. This ADR exists so there is not a
-fourth one by accident.
+Only the changelog records the last change. This ADR exists to prevent a fourth
+change by accident.
 
-### Why layers can never win
+### Why cascade layers cannot work
 
-`global.css:33` declared nine layers and put every SDK rule in a `yv-sdk-*` one.
-CSS Cascade 5 [§6.1](https://www.w3.org/TR/css-cascade-5/#cascade-sort) states
-that any declaration not assigned to a layer joins an implicit final layer, and
-that layer order is compared **before** specificity.
-[MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/@layer) puts it plainly:
+`global.css:33` declared nine layers and put every SDK rule into a `yv-sdk-*`
+layer. CSS Cascade 5 [§6.1](https://www.w3.org/TR/css-cascade-5/#cascade-sort)
+states two facts. A declaration that is in no layer joins an implicit final
+layer. The browser compares layer order **before** specificity.
+[MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/@layer) says it plainly:
 "Styles that are not defined in a layer always override styles declared in named
 and anonymous layers."
 
-So a consumer's unlayered `button {}` at 0,0,1 beat every `yv:` utility, at any
-specificity. That was not a bug in the layer setup. It was the layer setup
-working as designed. `bcfb868` chose it deliberately to stop SDK styles
-overriding consumer CSS, and it guaranteed the reverse leak in the same move.
+A consumer `button {}` rule in no layer, at 0,0,1, thus overrides every `yv:`
+utility at any specificity. This was not a fault in the layer setup. The layer
+setup worked as designed. `bcfb868` chose layers on purpose, to stop SDK styles
+from overriding consumer CSS. The same choice guaranteed the leak in the other
+direction.
 
-### Two leak channels, not one
+### Two channels for a leak, not one
 
-| Channel | Example | Why it wins |
+| Channel | Example | Why it overrides the SDK rule |
 | --- | --- | --- |
-| Direct match | `button { padding: 1rem }` hits our button | Unlayered beats layered at any specificity |
-| Inheritance | `body { color: green }` flows into our text | The SDK never declared `color`, so inheritance applies |
+| Direct match | `button { padding: 1rem }` matches our button | CSS in no layer overrides layered CSS at any specificity |
+| Inheritance | `body { color: green }` flows into our text | The SDK declares no `color`, so the value is inherited |
 
 The second channel is independent of the cascade. An inherited value applies
-wherever the element declares nothing. No amount of specificity or layer rank
-changes that. Only a declaration does.
+where the element declares nothing. Specificity and layer order do not change
+this. Only a declaration changes it.
 
 ## Decision
 
-### 1. Unlayered SDK CSS, with every selector gated on `[data-yv-sdk]`
+### 1. SDK CSS in no layer, with a `[data-yv-sdk]` gate on every selector
 
-Stop protecting the consumer with cascade rank. Protect them with territory.
+Do not protect the consumer with cascade order. Protect the consumer with the
+DOM subtree.
 
 ```css
 /* before */
@@ -68,79 +72,78 @@ Stop protecting the consumer with cascade rank. Protect them with territory.
 exactly 0,1,0. The compound form matches the marked root and its descendants in
 one selector.
 
-This fixes both directions at once:
+This corrects both directions at the same time:
 
-- **Outbound.** SDK CSS cannot match DOM the SDK did not render. That is a
-  structural guarantee, not a cascade-priority bet, and it is stronger than what
-  layers gave the consumer.
-- **Inbound.** Inside an SDK subtree, every SDK rule sits at 0,1,0 or better and
-  beats a consumer's bare element selectors at 0,0,1 and universal selectors at
+- **Outbound.** SDK CSS cannot match DOM that the SDK did not render. This is a
+  structural guarantee, not a bet on cascade order. It is stronger than the
+  protection that layers gave the consumer.
+- **Inbound.** Inside an SDK subtree, every SDK rule is at 0,1,0 or more. It thus
+  overrides a consumer element selector at 0,0,1 and a universal selector at
   0,0,0.
 
-The rewrite happens after the Tailwind build, in
-`packages/ui/scripts/scope-selectors.mjs`. Tailwind v4 has no native equivalent:
-`prefix(yv)` only renames classes, `@import "tailwindcss" important` takes no
-selector argument, and v3's `important: '#app'` has no v4 successor. Wrapping the
-import in a selector is disclaimed by Adam Wathan as working "mostly by
+The rewrite runs after the Tailwind build, in
+`packages/ui/scripts/scope-selectors.mjs`. Tailwind v4 has no equivalent
+function. `prefix(yv)` only renames classes. `@import "tailwindcss" important`
+takes no selector argument. The v3 option `important: '#app'` has no v4
+replacement. Adam Wathan says that a selector around the import works "mostly by
 coincidence"
-([discussion #13779](https://github.com/tailwindlabs/tailwindcss/discussions/13779)),
-and it provably breaks: flattened, it emits `[data-yv-sdk] :root`, which can never
-match.
+([discussion #13779](https://github.com/tailwindlabs/tailwindcss/discussions/13779)).
+It also breaks: after the nesting is flattened it emits `[data-yv-sdk] :root`,
+which can never match.
 
-The script uses Lightning CSS rather than a regex or `postcss-prefix-selector`.
-Its `Selector` visitor is a typed structural API, so it cannot mangle an escaped
-class name like `.yv\:mt-4`. `@keyframes`, `@font-face` and `@property` produce no
-`Selector` nodes, so they are skipped by construction. It flattens CSS nesting,
-which matters because `bible-reader.css` and `@utility touch-hitbox` emit nested
-`&` rules that a naive prefixer would corrupt. `postcss-prefix-selector@2.1.1` was
-rejected after testing against this repo's real output: it rewrites `:host` into
-`[data-yv-sdk] :host`, which can never match, silently dropping every theme
-variable.
+The script uses Lightning CSS, not a regular expression and not
+`postcss-prefix-selector`. Its `Selector` visitor is a typed structural API, so
+it cannot corrupt an escaped class name such as `.yv\:mt-4`. `@keyframes`,
+`@font-face` and `@property` produce no `Selector` nodes, so the script skips
+them by construction. The script also flattens CSS nesting. Flattening is
+necessary because `bible-reader.css` and `@utility touch-hitbox` emit nested `&`
+rules, which a simple prefixer corrupts. We tested `postcss-prefix-selector@2.1.1`
+against the real output of this repo and rejected it. It rewrites `:host` into
+`[data-yv-sdk] :host`, which can never match, and thus removes every theme
+variable without a warning.
 
-`:root` and `:host` stay ungated. Those rules define only `--yv-*` custom
+`:root` and `:host` keep no gate. Those rules declare only `--yv-*` custom
 properties. They render nothing and cannot collide.
 
-The script re-parses its own output and fails the build on any ungated selector.
-That check, not a comment or a string match, is the guarantee.
-`scripts/verify-styles.js` adds two more gates: `dist/index.js` must contain
-`:is([data-yv-sdk],[data-yv-sdk] *)`, and it must not contain `@layer yv-sdk-`.
-The second assertion names the `yv-sdk-` prefix on purpose. Tailwind emits
-`@layer properties` on its own for the `@property` fallback, regardless of our
-directives.
+The script parses its own output again and fails the build on any selector
+without a gate. That check is the guarantee, not a comment and not a string
+match. `scripts/verify-styles.js` adds two more checks. `dist/index.js` must
+contain `:is([data-yv-sdk],[data-yv-sdk] *)`, and it must not contain
+`@layer yv-sdk-`. The second check names the `yv-sdk-` prefix on purpose.
+Tailwind emits `@layer properties` by itself for the `@property` fallback,
+whatever our directives say.
 
-### 2. Declare the inherited properties, and close the holes gating cannot reach
+### 2. Declare the inherited properties, and close the holes that the gate cannot reach
 
-Gating raises specificity. It does nothing about a property the SDK never
-declares. Three edits to `packages/core/src/styles/theme.css` close that class of
-hole:
+The gate increases specificity. It does nothing about a property that the SDK
+never declares. Three changes to `packages/core/src/styles/theme.css` close that
+class of hole:
 
-1. **Drop the `:where()`.** The reset block was `:where([data-yv-sdk])` at 0,0,0,
-   which a bare `button {}` beat. It is now `[data-yv-sdk]`.
-2. **Pin the inherited set on the SDK root**: `font-family`, `color`,
+1. **Remove the `:where()`.** The reset block was `:where([data-yv-sdk])` at
+   0,0,0, which a bare `button {}` overrides. It is now `[data-yv-sdk]`.
+2. **Declare the inherited set on the SDK root**: `font-family`, `color`,
    `letter-spacing`, `word-spacing`, `text-align`, `text-transform`,
    `text-indent`, `white-space`, `text-shadow`, `font-variant`. Every element
-   carrying `data-yv-sdk` re-establishes the whole set, so portalled surfaces
-   that inherit straight from `document.body` are covered. `direction` is left
-   alone: `bible-reader.css` handles RTL, and `text-align: start` is
-   direction-aware.
+   with `data-yv-sdk` declares the full set again, so portalled surfaces that
+   inherit directly from `document.body` are covered too. `direction` is not in
+   the set: `bible-reader.css` controls RTL, and `text-align: start` follows the
+   direction.
 3. **Add `color: inherit` to the descendant block, and the box model to the
-   root.** These two were found by the harness, not by the plan. Pinning `color`
-   on the root stops `body { color: … }`, because that value only arrives by
-   inheritance. It does nothing about `ul { color: #f0f }`, which matches an SDK
-   element directly. The descendant block is `[data-yv-sdk] *`, which misses the
-   marked element, but a consumer's `* { box-sizing: content-box }` does not miss
-   it.
+   root.** The harness found these two, not the plan. `color` on the root stops
+   `body { color: … }`, because that value arrives only by inheritance. It does
+   nothing about `ul { color: #f0f }`, which matches an SDK element directly. The
+   descendant block is `[data-yv-sdk] *`, which does not match the marked
+   element. A consumer `* { box-sizing: content-box }` rule does match it.
 
-`revert-layer` was considered and rejected. Per CSS Cascade 5 §7 it rolls a
-property back to the layer below, or to the previous origin when there is none.
-For an inherited property the UA origin declares nothing, so the rolled-back
-value is the inherited value, which is the consumer's `body` rule.
-`revert-layer` undoes rules that target our elements. It does not stop inherited
-bleed.
+We considered `revert-layer` and rejected it. CSS Cascade 5 §7 returns a property
+to the layer below, or to the previous origin when no layer is below. For an
+inherited property the UA origin declares nothing. The returned value is thus the
+inherited value, which is the consumer `body` rule. `revert-layer` removes rules
+that target our elements. It does not stop inherited values.
 
-### 3. `@scope` rejected, without testing
+### 3. `@scope` rejected, without a test
 
-`@scope` scopes the rules written inside it. It does not block inbound styles.
+`@scope` limits the rules written inside it. It does not block inbound styles.
 [MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/@scope) is explicit:
 "while `@scope` allows you to isolate the application of selectors to specific DOM
 subtrees, it does not completely isolate the applied styles to within those
@@ -149,118 +152,119 @@ by children (for example `color` or `font-family`) will still be inherited,
 beyond any set scope limit."
 
 [CSS Cascade 6 §2.5.3](https://www.w3.org/TR/css-cascade-6/#scope-nesting)
-constrains only the selectors in the block. A stylesheet elsewhere in the
-document stays free to match elements inside a scoped subtree. Scope proximity is
-a cascade criterion that ranks *below* specificity, so it cannot win a fight the
-gate does not already win.
+limits only the selectors in the block. A stylesheet elsewhere in the document
+can still match elements inside a scoped subtree. Scope proximity is a cascade
+criterion below specificity, so it cannot decide a comparison that the gate does
+not decide already.
 
-`@scope` would give us what `:is([data-yv-sdk], [data-yv-sdk] *)` already gives
-us, minus the specificity, plus a Baseline "newly available" (December 2025)
-dependency. There is nothing to test.
+`@scope` gives what `:is([data-yv-sdk], [data-yv-sdk] *)` gives already, without
+the specificity. It also adds a dependency with Baseline status "newly available"
+(December 2025). There is nothing to test.
 
-### 4. Shadow DOM not adopted. The trigger condition, fixed before the numbers existed
+### 4. Shadow DOM not adopted. The condition, fixed before the numbers existed
 
-**Recommend shadow DOM if and only if the residual leak includes rules that do
-not use `!important`.**
+**If the residual leak includes rules that do not use `!important`, recommend
+shadow DOM. If it does not, do not recommend shadow DOM.**
 
-A consumer writing `!important` against our elements is making an explicit,
-deliberate choice. Treat that as out of contract. The threshold was written into
-the design discussion before the harness produced a single number, so the
-recommendation cannot be retrofitted to the answer.
+A consumer who writes `!important` against our elements makes an explicit choice.
+We treat that choice as out of contract. The design discussion recorded this
+condition before the harness produced one number. The recommendation thus cannot
+be adjusted to fit the answer.
 
-**Measured result: the residual is 100 percent `!important`.**
+**Measured result: 100 percent of the residual uses `!important`.**
 `docs/style-isolation-residual-leak.md` has the numbers. Four of the five hostile
-groups report zero leaks on all thirteen hostile-host stories. The only surviving
-leaks come from two consumer declarations, both `!important`, both targeting
-`button`: 880 leaks on 155 buttons across 8 components. Zero non-`!important`
-rules survive.
+groups report zero leaks on all thirteen hostile-host stories. The remaining
+leaks come from two consumer declarations. Both use `!important` and both target
+`button`: 880 leaks on 155 buttons in 8 components. No rule without `!important`
+gets through.
 
-The threshold is not met. Shadow DOM is not adopted.
+The condition is not met. We do not adopt shadow DOM.
 
-The tradeoffs it would have carried, all evidenced during the research:
+Shadow DOM has these costs, all found during the research:
 
-| Tradeoff | Evidence |
+| Cost | Evidence |
 | --- | --- |
-| Radix portals mount to `document.body`, outside the shadow root | `popover.tsx:43`, `dialog.tsx:28`; no `container` prop anywhere in the repo |
-| Radix `FocusScope` breaks at the boundary; `document.activeElement` returns the host | [radix-ui/primitives#3353](https://github.com/radix-ui/primitives/issues/3353), open |
-| `aria-hidden` hides open dropdown content from the a11y tree | [radix-ui/primitives#1772](https://github.com/radix-ui/primitives/issues/1772), open |
-| Dismissable-layer outside-click misreads `event.target` as the host | [radix-ui/primitives#2433](https://github.com/radix-ui/primitives/pull/2433), open, "Needs Investigation" |
-| Font and colour inheritance still pierce the boundary | [MDN, "Using shadow DOM"](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM); top-level shadow elements inherit from the host |
-| React 19 `<style precedence>` hoisting inside a shadow root is undocumented | No React doc covers it; `facebook/react#21728` is a type change only |
+| Radix portals mount to `document.body`, outside the shadow root | `popover.tsx:43`, `dialog.tsx:28`. No `container` prop anywhere in the repo |
+| Radix `FocusScope` breaks at the boundary. `document.activeElement` returns the host | [radix-ui/primitives#3353](https://github.com/radix-ui/primitives/issues/3353), open |
+| `aria-hidden` hides open dropdown content from the accessibility tree | [radix-ui/primitives#1772](https://github.com/radix-ui/primitives/issues/1772), open |
+| Dismissable-layer outside-click reads `event.target` as the host | [radix-ui/primitives#2433](https://github.com/radix-ui/primitives/pull/2433), open, "Needs Investigation" |
+| Font and color values still cross the boundary by inheritance | [MDN, "Using shadow DOM"](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM). Top-level shadow elements inherit from the host |
+| React 19 `<style precedence>` hoisting inside a shadow root is undocumented | No React document covers it. `facebook/react#21728` is a type change only |
 | Tailwind v4 does not target shadow DOM | Tailwind Labs, [discussion #15556](https://github.com/tailwindlabs/tailwindcss/discussions/15556): "Shadow dom has other issues around `@property` which we rely on in v4" |
 | Layer order is per encapsulation context | CSS Cascade 5 [§6.4.3](https://www.w3.org/TR/css-cascade-5/#layer-ordering) |
-| Theming moves per root | Tokens are declared on `[data-yv-sdk]` and re-stamped per portal today |
+| Theming moves per root | Tokens are declared on `[data-yv-sdk]` and stamped again per portal today |
 
-Note the third row against the fifth. Shadow DOM would not have closed the
-inheritance channel either. It blocks selector matching, not inheritance, so
-`theme.css` would still need every declaration in decision 2.
+Compare the third row with the fifth. Shadow DOM does not close the inheritance
+channel either. It blocks selector matching, not inheritance, so `theme.css`
+still needs every declaration in decision 2.
 
 ### 5. No consumer opt-out
 
-There is no `styleIsolation` prop on `YouVersionProvider`. Customization is
-`--yv-*` design tokens plus component props, which is what YPE-4113 decided.
+`YouVersionProvider` has no `styleIsolation` prop. Customization is `--yv-*`
+design tokens plus component props, which is what YPE-4113 decided.
 
-An opt-out would reintroduce the ambiguity this ADR closes, double the surface we
-test, and keep the leaky path alive forever. This matches `<YvStyles />` and
-`<YvFonts />`, neither of which has one. ADR-0004 records the same choice for the
-same reason. Adding a prop later is non-breaking if a real partner reports a real
-break.
+An opt-out returns the ambiguity that this ADR closes. It also doubles the
+surface we test and keeps the leaky path available forever. `<YvStyles />` and
+`<YvFonts />` have no opt-out either. ADR-0004 records the same choice for the
+same reason. We can add a prop later without a breaking change, if a real partner
+reports a real break.
 
 ## Consequences
 
-- **Every exported component now renders as designed under adversarial global
-  CSS.** Thirteen hostile-host stories in
+- **Every exported component now renders as designed under hostile global CSS.**
+  Thirteen hostile-host stories in
   `packages/ui/src/components/style-isolation.stories.tsx` measure 32 computed
-  properties on every element of the subtree and fail CI if the leak reopens.
+  properties on every element of the subtree. They fail CI if the leak returns.
 
-- **This is a breaking change, and it ships as a major.** Token overrides
-  survive: a consumer's `[data-yv-sdk] { --yv-primary: … }` ties our token block
-  at 0,1,0 and wins on source order, and
-  `ConsumerTokenOverrideStillApplies` asserts it. What breaks is any consumer
-  overriding an SDK *declaration* with their own CSS. That was never supported,
-  but it has worked since `bcfb868`, and someone is relying on it.
+- **This is a breaking change, and it ships as a major version.** Token overrides
+  continue to work. A consumer `[data-yv-sdk] { --yv-primary: … }` rule has the
+  same 0,1,0 specificity as our token block and wins on source order.
+  `ConsumerTokenOverrideStillApplies` asserts this. What breaks is consumer CSS
+  that overrides an SDK *declaration*. We never supported it, but it has worked
+  since `bcfb868`, and someone depends on it.
 
-- **`dist/tailwind.css` grew 15.7 percent raw and 3.2 percent gzipped**: 97,402
-  bytes to 112,665, 13,369 gzipped to 13,800. The gate is one repeated
-  33-character string in 462 places, so gzip removes nearly all of it. Selector
-  count, `@property` count and `@keyframes` count are identical before and after,
-  so no rule was lost.
+- **`dist/tailwind.css` is 15.7 percent larger raw and 3.2 percent larger
+  gzipped**: 97,402 bytes to 112,665, and 13,369 gzipped to 13,800. The gate is
+  one 33-character string in 462 places, so gzip removes almost all of it.
+  Selector count, `@property` count and `@keyframes` count are the same before
+  and after, so no rule was lost.
 
-- **The build chain gained a step.** `build:css` now writes
-  `.cache/tailwind.raw.css`, and `build:css:scope` rewrites it into
-  `dist/tailwind.css`. Raw, ungated Tailwind output never reaches `dist/`, which
-  is what gets published. `dev` and `storybook` run the scope script in `--watch`
-  alongside the Tailwind watcher.
+- **The build chain has one more step.** `build:css` now writes
+  `.cache/tailwind.raw.css`, and `build:css:scope` rewrites that file into
+  `dist/tailwind.css`. Tailwind output without the gate never reaches `dist/`,
+  which is what we publish. `dev` and `storybook` run the scope script with
+  `--watch`, next to the Tailwind watcher.
 
 - **A component without `data-yv-sdk` now loses all of its styling.** The
-  attribute went from a scoping convenience to a hard requirement.
+  attribute changed from a scoping convenience into a requirement.
   `packages/ui/src/components/scope-attribute.test.tsx` renders every export and
-  fails on a missing attribute. It also fails on an export it does not know
-  about, so a new component cannot slip through by being unlisted.
+  fails on a missing attribute. It also fails on an export that it does not list,
+  so a new component cannot pass unnoticed.
 
-- **Every stamp has to name a theme, and it has to be the enclosing scope's
-  theme.** `theme.css` declares the light tokens on the bare `[data-yv-sdk]`
-  selector with dark as a nested override. An element that gains `data-yv-sdk`
-  inside a dark scope re-declares the light tokens on itself and reverts. This is
-  why `ui/button.tsx` is deliberately not stamped: `Button` has no local theme in
-  scope, `useTheme()` returns the provider theme, and `BibleReader.Root` resolves
-  its own from `background`. Auditing all 31 call sites is a separate change.
-  `Button` is safe unstamped because it is not exported and always sits inside a
-  stamped ancestor, which the gate's descendant arm covers.
+- **Every stamp must name a theme, and the theme must be the theme of the
+  enclosing scope.** `theme.css` declares the light tokens on the bare
+  `[data-yv-sdk]` selector, with dark as a nested override. An element that gets
+  `data-yv-sdk` inside a dark scope declares the light tokens on itself again and
+  returns to light.
 
-- **Specificity inside the SDK climbed uniformly.** All 642 utility rules gained
-  the same 0,1,0, so relative order among utilities is unchanged. Hand-written
-  rules in `global.css` and `bible-reader.css` did shift relative to utilities.
-  The integration suite is the only check on that, and it covers computed
-  properties rather than visual fidelity.
+- **`ui/button.tsx` has no stamp, on purpose.** `Button` has no local theme in
+  scope. `useTheme()` returns the provider theme, and `BibleReader.Root` resolves
+  its own theme from `background`. An audit of all 31 call sites is a separate
+  change. `Button` is safe without a stamp. It is not exported, and it always
+  sits inside a stamped ancestor, which the descendant arm of the gate covers.
 
-- **A consumer `!important` rule still reaches our components**, and now that is
-  written down with numbers rather than assumed.
+- **Specificity inside the SDK increased uniformly.** All 642 utility rules
+  gained the same 0,1,0, so the relative order among utilities is unchanged.
+  Hand-written rules in `global.css` and `bible-reader.css` did move relative to
+  the utilities. The integration suite is the only check on that, and it covers
+  computed properties rather than visual fidelity.
+
+- **A consumer `!important` rule still reaches our components.** That fact now
+  has numbers instead of an assumption.
   `docs/style-isolation-residual-leak.md` names the rules and the components.
-  `packages/ui/README.md` tells consumers the same thing in their language.
+  `packages/ui/README.md` tells consumers the same thing in their own language.
 
-- **The reversal, if it is ever needed, is not small.** Restoring layers means
-  restoring the `@layer` declaration, the five `layer(...)` modifiers, the
-  `:where()` in `theme.css`, and deleting the scope script and its build step.
-  The 13 hostile-host stories would go red first, which is the point of keeping
-  them.
+- **A reversal is not a small change.** To restore layers, restore three things:
+  the `@layer` declaration, the five `layer(...)` modifiers, and the `:where()`
+  in `theme.css`. Then delete the scope script and its build step. The 13
+  hostile-host stories fail first, which is why we keep them.

@@ -1,36 +1,35 @@
 /**
- * Hostile-host fixture - adversarial global CSS a consuming app might ship.
+ * Hostile-host fixture: the global CSS that a consuming app can ship.
  *
- * The SDK promises that a partner can drop Bible components into any app and get
- * the components we designed. This file is the adversary that proves it. Each
- * group is a separate `<style>` element so the residual-leak report can name
- * which class of consumer rule still bleeds through, rather than reporting one
- * undifferentiated blob.
+ * The SDK promises that a partner can put Bible components into any app and get
+ * the components we designed. This file is the test of that promise. Each group
+ * is a separate `<style>` element. The residual-leak report can thus name the
+ * class of consumer rule that still leaks, and not one undifferentiated block.
  *
- * The groups come straight from the YPE-4113 acceptance criteria:
+ * The groups come from the YPE-4113 acceptance criteria:
  *
  * | Group                 | What it models                                       |
  * | --------------------- | ---------------------------------------------------- |
- * | `preflight`           | A consumer running Tailwind v4 with Preflight on     |
+ * | `preflight`           | A consumer that runs Tailwind v4 with Preflight on   |
  * | `bareElements`        | Hand-written element selectors (`button {}`, `p {}`)  |
  * | `aggressiveReset`     | A `*` reset                                          |
  * | `inheritedTypography` | Typography set on `body` and inherited downward      |
- * | `important`           | `!important` overrides - the unsupported tail        |
+ * | `important`           | `!important` overrides, which we do not support      |
  *
- * Injection order matters. Every group is appended to `document.head` *after*
- * the SDK's `<style precedence="yv-sdk">` tag, so a source-order tie resolves
- * the way it would in a real consumer app: in the consumer's favour.
+ * The injection order matters. Every group is appended to `document.head`
+ * *after* the SDK's `<style precedence="yv-sdk">` tag. A tie on source order
+ * thus resolves as it does in a real consumer app, in the consumer's favor.
  */
 
 /**
- * Tailwind v4 Preflight, as a consumer actually ships it.
+ * Tailwind v4 Preflight, in the form that a consumer ships.
  *
- * This is `tailwindcss@4.1.15`'s `preflight.css` after the Tailwind CLI has
- * resolved its build-time `--theme()` calls. The on-disk source is not usable
- * here: a browser drops `font-family: --theme(...)` as invalid, so injecting the
- * raw file would silently under-test the font-family channel.
+ * This is the `preflight.css` of `tailwindcss@4.1.15`, after the Tailwind CLI
+ * resolved its build-time `--theme()` calls. The source file on disk is not
+ * usable here. A browser drops `font-family: --theme(...)` as invalid. The raw
+ * file thus under-tests the font-family channel, and gives no warning.
  *
- * Regenerate with:
+ * To generate the file again:
  *   echo '@import "tailwindcss/preflight.css";' > in.css
  *   npx tailwindcss -i in.css -o out.css
  */
@@ -173,8 +172,9 @@ button, input:where([type='button'], [type='reset'], [type='submit']), ::file-se
 `;
 
 /**
- * Bare element selectors - the leak the ticket names first. Specificity 0,0,1,
- * unlayered, and today that beats every `yv:`-prefixed SDK utility.
+ * Bare element selectors, the leak that the ticket names first. Specificity
+ * 0,0,1, in no layer. Before the gate existed, these rules overrode every
+ * `yv:`-prefixed SDK utility.
  */
 const BARE_ELEMENTS = `
 button, a, p, ul, input {
@@ -196,8 +196,8 @@ a {
 `;
 
 /**
- * The universal reset. Two declarations only, both of which the SDK's own reset
- * also sets - so after the cascade fix this group must produce zero leaks.
+ * The universal reset. It has two declarations, and the SDK's own reset sets
+ * both of them. After the cascade fix, this group must produce zero leaks.
  */
 const AGGRESSIVE_RESET = `
 * {
@@ -207,9 +207,9 @@ const AGGRESSIVE_RESET = `
 `;
 
 /**
- * Typography on `body`. Nothing here matches an SDK element directly; every
- * value arrives by inheritance, which is why cascade rank cannot stop it. Each
- * property listed here is one the SDK currently declines to declare.
+ * Typography on `body`. Nothing here matches an SDK element directly. Every
+ * value arrives by inheritance, which is why cascade order cannot stop it. Each
+ * property here is one that the SDK did not declare before this change.
  */
 const INHERITED_TYPOGRAPHY = `
 body {
@@ -226,10 +226,10 @@ body {
 `;
 
 /**
- * The residual tail. No light-DOM technique stops a consumer `!important` rule
- * that targets our elements, and the override policy treats it as out of
- * contract. Kept in the fixture so the residual report can measure it instead of
- * guessing at it.
+ * The residual. No light-DOM technique stops a consumer `!important` rule that
+ * targets our elements, and the override policy treats such a rule as out of
+ * contract. It stays in the fixture so the residual report can measure it
+ * instead of estimating it.
  */
 const IMPORTANT = `
 button {
@@ -248,20 +248,20 @@ export const HOSTILE_GROUPS = {
 
 export type HostileGroup = keyof typeof HOSTILE_GROUPS;
 
-/** Marks every `<style>` this module owns, so cleanup never touches the SDK's. */
+/** Marks every `<style>` element this module owns, so cleanup never removes the SDK's. */
 export const HOSTILE_STYLE_ATTRIBUTE = 'data-yv-hostile-host';
 
 export const ALL_HOSTILE_GROUPS = Object.keys(HOSTILE_GROUPS) as HostileGroup[];
 
-/** Widens the `'all'` shorthand into the explicit group list. */
+/** Expands the `'all'` value into the explicit group list. */
 export function resolveHostileGroups(groups: HostileGroup[] | 'all'): HostileGroup[] {
   return groups === 'all' ? [...ALL_HOSTILE_GROUPS] : [...groups];
 }
 
 /**
- * Appends one `<style>` per group to `document.head`, after the SDK's tag.
+ * Appends one `<style>` element per group to `document.head`, after the SDK tag.
  *
- * @returns a cleanup function that removes only the tags this call added.
+ * @returns a cleanup function that removes only the tags that this call added.
  */
 export function injectHostileCss(groups: HostileGroup[] | 'all'): () => void {
   const added: HTMLStyleElement[] = [];
@@ -270,8 +270,8 @@ export function injectHostileCss(groups: HostileGroup[] | 'all'): () => void {
     const style = document.createElement('style');
     style.setAttribute(HOSTILE_STYLE_ATTRIBUTE, group);
     style.textContent = HOSTILE_GROUPS[group];
-    // appendChild, not prepend: the SDK's precedence-hoisted tag is already in
-    // <head>, and a real consumer's sheet loads after it.
+    // appendChild, not prepend. The precedence-hoisted SDK tag is in <head>
+    // already, and a real consumer sheet loads after it.
     document.head.appendChild(style);
     added.push(style);
   }
@@ -282,9 +282,9 @@ export function injectHostileCss(groups: HostileGroup[] | 'all'): () => void {
 }
 
 /**
- * Removes every hostile `<style>` in the document, whoever added it. The
- * measurement harness needs a clean baseline it can trust, and a story that
- * unmounted mid-flight could otherwise leave a tag behind.
+ * Removes every hostile `<style>` element in the document, whichever code added
+ * it. The measurement harness needs a clean baseline it can trust, and a story
+ * that unmounted during a run can leave a tag behind.
  */
 export function removeHostileCss(): void {
   for (const style of document.querySelectorAll(`style[${HOSTILE_STYLE_ATTRIBUTE}]`)) {

@@ -3,26 +3,27 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 /**
- * Guards the inherited-property pins on the SDK root.
+ * Guards the inherited-property declarations on the SDK root.
  *
- * A consumer's `body { font-family: … }` does not match any SDK element, so the
- * cascade cannot be used to fight it. The value arrives by inheritance, and
- * inheritance only applies where the element declares nothing itself. Declaring
- * each of these properties on `[data-yv-sdk]` is the whole fix, and dropping one
- * silently reopens the leak for that property alone. No test that renders a
- * component would notice unless it happened to check that exact property.
+ * A consumer `body { font-family: … }` rule matches no SDK element, so the
+ * cascade cannot fight it. The value arrives by inheritance, and inheritance
+ * applies only where the element declares nothing itself. A declaration of each
+ * of these properties on `[data-yv-sdk]` is the whole fix. The removal of one
+ * declaration opens the leak again for that one property, without a warning. No
+ * test that renders a component finds that, unless the test reads that exact
+ * property.
  *
- * This reads the CSS source off disk rather than computed styles, following
- * `packages/ui/src/styles/font-tokens.test.ts`. Neither jsdom nor node loads a
- * stylesheet, so the source text is the only thing available to assert against.
- * The hostile-host integration stories in `packages/ui` are what prove the
- * declarations actually work in a browser.
+ * This test reads the CSS source from disk, and not the computed styles. It
+ * follows `packages/ui/src/styles/font-tokens.test.ts`. Neither jsdom nor node
+ * loads a stylesheet, so the source text is the only available evidence. The
+ * hostile-host integration stories in `packages/ui` prove that the declarations
+ * work in a browser.
  *
  * See YPE-4113.
  */
 const themeCss = readFileSync(resolve(import.meta.dirname, './theme.css'), 'utf8');
 
-/** Every property the SDK root must declare so the host cannot inherit into us. */
+/** Every property that the SDK root must declare, so the host cannot inherit into us. */
 const PINNED_INHERITED_PROPERTIES = [
   'color',
   'font-family',
@@ -44,8 +45,8 @@ function stripComments(css: string): string {
 /**
  * Returns the body of the first `{ … }` block that opens at or after `from`.
  *
- * Counts braces rather than using a regex, because the reset block contains
- * nested rules and a non-greedy match would stop at the first inner `}`.
+ * This function counts braces, and does not use a regular expression. The reset
+ * block holds nested rules, and a non-greedy match stops at the first inner `}`.
  */
 function blockBodyAt(css: string, from: number): string {
   const open = css.indexOf('{', from);
@@ -63,7 +64,7 @@ function blockBodyAt(css: string, from: number): string {
   throw new Error('theme.css has an unbalanced rule body');
 }
 
-/** Drops nested rules, leaving only the declarations that apply to the element itself. */
+/** Removes the nested rules. Only the declarations on the element itself remain. */
 function ownDeclarations(body: string): string {
   let depth = 0;
   let out = '';
@@ -78,12 +79,12 @@ function ownDeclarations(body: string): string {
 }
 
 /**
- * The reset block, whichever selector form it currently uses.
+ * The reset block, in whichever selector form it now uses.
  *
  * `theme.css` has two top-level `[data-yv-sdk]` rules: the token block and the
- * reset. The reset is the one that resets the box model, so `box-sizing` is what
- * tells them apart. The selector itself is matched loosely because Phase 4 of
- * YPE-4113 drops the `:where()` wrapper, and this test should survive that.
+ * reset block. The reset block resets the box model, so `box-sizing` tells the
+ * two apart. The selector match is loose because Phase 4 of YPE-4113 removes the
+ * `:where()` wrapper, and this test must survive that change.
  */
 function findResetBlock(): string {
   const css = stripComments(themeCss);
@@ -101,21 +102,21 @@ describe('[data-yv-sdk] inherited-property reset', () => {
   const declarations = ownDeclarations(findResetBlock());
 
   it.each(PINNED_INHERITED_PROPERTIES)('declares %s on the SDK root', (property) => {
-    // Anchored on `;` or `{`/start so `font-family` cannot satisfy a check for a
-    // property that only appears as a substring of another.
+    // The pattern anchors on `;` or on the start of a line. A property name that
+    // is part of another name thus cannot satisfy the wrong case.
     const declared = new RegExp(`(?:^|;)\\s*${property}\\s*:`, 'm').test(declarations);
     expect(declared, `theme.css must declare \`${property}\` on [data-yv-sdk]`).toBe(true);
   });
 
   it('leaves direction to the host, so RTL content still works', () => {
-    // bible-reader.css handles `[dir='rtl']`, and `text-align: start` is
-    // direction-aware. Pinning `direction: ltr` here would break Hebrew and
-    // Arabic Bibles, so its absence is deliberate rather than an oversight.
+    // bible-reader.css handles `[dir='rtl']`, and `text-align: start` follows
+    // the direction. A `direction: ltr` declaration here breaks Hebrew and
+    // Arabic Bibles. The absence of that declaration is on purpose.
     expect(/(?:^|;)\s*direction\s*:/m.test(declarations)).toBe(false);
   });
 
   it('resolves color from the theme token, not a literal', () => {
-    // A literal would not flip with `data-yv-theme='dark'`.
+    // A literal value does not change with `data-yv-theme='dark'`.
     expect(declarations).toMatch(/(?:^|;)\s*color:\s*var\(--yv-foreground\)/m);
   });
 });

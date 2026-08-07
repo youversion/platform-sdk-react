@@ -1,26 +1,27 @@
 #!/usr/bin/env node
 /**
- * Gates every selector in the compiled SDK stylesheet on `[data-yv-sdk]`.
+ * Adds a `[data-yv-sdk]` gate to every selector in the compiled SDK stylesheet.
  *
  *   .yv\:mt-4  →  :is([data-yv-sdk], [data-yv-sdk] *).yv\:mt-4
  *
  * This is the whole style-isolation guarantee, and it replaces the `yv-sdk-*`
- * cascade layers. Layers made SDK rules lose to a consumer's unlayered CSS,
- * which protected the consumer and guaranteed the reverse leak. Gating protects
- * both directions: SDK CSS cannot match DOM the SDK did not render, and inside
- * an SDK subtree `:is()` adds exactly 0,1,0 so our rules beat bare element
- * selectors.
+ * cascade layers. Layered SDK rules lost to a consumer's unlayered CSS. That
+ * protected the consumer and guaranteed the leak in the other direction. The
+ * gate protects both directions. SDK CSS cannot match DOM that the SDK did not
+ * render. Inside an SDK subtree, `:is()` adds exactly 0,1,0, so our rules
+ * override bare element selectors.
  *
- * Lightning CSS rather than a regex or postcss-prefix-selector, for three
- * reasons. Its `Selector` visitor is a typed structural API, so it cannot mangle
- * an escaped class name like `.yv\:mt-4`. `@keyframes`, `@font-face` and
- * `@property` produce no `Selector` nodes, so they are skipped by construction
- * rather than by an exclusion list. And it flattens CSS nesting, which is what
- * makes the visitor safe: `bible-reader.css` and `@utility touch-hitbox` both
- * emit nested `&` rules, and prefixing a nested selector would corrupt it.
- * `postcss-prefix-selector@2.1.1` was rejected outright — it rewrites `:host`
- * into `[data-yv-sdk] :host`, which can never match, silently dropping every
- * theme variable.
+ * The script uses Lightning CSS, not a regular expression and not
+ * postcss-prefix-selector, for three reasons. Its `Selector` visitor is a typed
+ * structural API, so it cannot corrupt an escaped class name such as
+ * `.yv\:mt-4`. `@keyframes`, `@font-face` and `@property` produce no `Selector`
+ * nodes, so the script skips them by construction rather than by an exclusion
+ * list. It also flattens CSS nesting, which is what makes the visitor safe:
+ * `bible-reader.css` and `@utility touch-hitbox` both emit nested `&` rules, and
+ * a prefix on a nested selector corrupts it. We rejected
+ * `postcss-prefix-selector@2.1.1`. It rewrites `:host` into
+ * `[data-yv-sdk] :host`, which can never match, and thus removes every theme
+ * variable without a warning.
  *
  * Usage:
  *   node scripts/scope-selectors.mjs [--minify] [--watch] [--in=PATH] [--out=PATH]
@@ -35,33 +36,35 @@ import { Features, transform } from 'lightningcss';
 const SCOPE_ATTRIBUTE = 'data-yv-sdk';
 
 /**
- * Attributes that already constrain a selector to SDK-rendered DOM.
+ * Attributes that already limit a selector to SDK-rendered DOM.
  *
- * `data-yv-sdk-bible-reader` is matched by `bible-reader.css:1-2` and set
- * nowhere in the repo today. It stays a valid gate: it is a documented public
- * hook for non-React consumers who render Bible HTML themselves, and treating
- * it as ungated would fail the build for a rule that is already safe.
+ * `bible-reader.css:1-2` matches `data-yv-sdk-bible-reader`, and nothing in the
+ * repo sets it today. It stays a valid gate. It is a documented public hook for
+ * non-React consumers who render Bible HTML themselves. A build failure for a
+ * rule that is already safe helps nobody.
  */
 const GATE_ATTRIBUTES = new Set([SCOPE_ATTRIBUTE, 'data-yv-sdk-bible-reader']);
 
-/** `[data-slot='yv-bible-renderer']` is the attribute/value pair `verse.tsx` stamps. */
+/** `[data-slot='yv-bible-renderer']` is the attribute and value that `verse.tsx` stamps. */
 const GATE_ATTRIBUTE_VALUES = new Map([['data-slot', 'yv-bible-renderer']]);
 
 /**
- * Pseudo-classes whose argument lists can carry the gate on the selector's
- * behalf. `:not()` is absent because a gate inside a negation is the opposite of
- * a gate, and `:has()` is absent because `.foo:has([data-yv-sdk])` matches
- * consumer DOM.
+ * Pseudo-classes whose argument list can carry the gate for the selector.
+ *
+ * `:not()` is absent, because a gate inside a negation is the opposite of a
+ * gate. `:has()` is absent, because `.foo:has([data-yv-sdk])` matches consumer
+ * DOM.
  */
 const GATE_BEARING_PSEUDO_CLASSES = new Set(['is', 'where', 'any']);
 
 /**
- * Selectors left alone.
+ * Selectors that keep no gate.
  *
- * `:root` and `:host` carry Tailwind's theme variables, every one of them
- * `--yv-*` namespaced. They declare nothing that renders and cannot collide, so
- * gating them would add risk for no measurable gain. Flip this only if we ever
- * need a strict "the SDK writes nothing at document root" guarantee.
+ * `:root` and `:host` carry Tailwind's theme variables, and every one of those
+ * variables has the `--yv-*` namespace. They declare nothing that renders and
+ * cannot collide, so a gate adds risk and gives no measurable gain. Change this
+ * in one case only: we need a strict guarantee that the SDK writes nothing at
+ * the document root.
  */
 const UNSCOPED_PSEUDO_CLASSES = new Set(['root', 'host']);
 
@@ -83,7 +86,7 @@ const COMBINATORS = {
   'deep-descendant': ' /deep/ ',
 };
 
-/** A fresh `:is([data-yv-sdk], [data-yv-sdk] *)` node. */
+/** A new `:is([data-yv-sdk], [data-yv-sdk] *)` node. */
 function scopeGate() {
   const attribute = { type: 'attribute', namespace: null, name: SCOPE_ATTRIBUTE, operation: null };
 
@@ -119,8 +122,8 @@ function hasScopeGate(components) {
       Array.isArray(component.selectors) &&
       component.selectors.length > 0
     ) {
-      // Every branch, not some: `:is([data-yv-sdk], .card)` still reaches
-      // consumer DOM through its second branch.
+      // Every branch, not some branches. `:is([data-yv-sdk], .card)` still
+      // reaches consumer DOM through its second branch.
       return component.selectors.every(hasScopeGate);
     }
 
@@ -141,12 +144,12 @@ function isAllowed(components) {
 }
 
 /**
- * Inserts the gate into the selector's first compound.
+ * Puts the gate into the first compound of the selector.
  *
- * The gate goes at position 0 unless a type or universal selector is already
- * there — `:is(…)a` is invalid CSS, `a:is(…)` is not. Gating the first compound
- * is enough for the whole selector: anything the rest of it matches is a
- * descendant of an element that is already inside the SDK subtree.
+ * The gate goes at position 0, unless a type or universal selector is there
+ * already. `:is(…)a` is invalid CSS, and `a:is(…)` is valid. A gate on the first
+ * compound is enough for the whole selector. Anything that the rest of the
+ * selector matches is a descendant of an element inside the SDK subtree.
  */
 function gateSelector(components) {
   if (isAllowed(components)) return components;
@@ -187,17 +190,18 @@ function formatComponent(component) {
   }
 }
 
-/** Best-effort selector text, used only in the build-failure message. */
+/** Approximate selector text, used only in the build-failure message. */
 function formatSelector(components) {
   return components.map(formatComponent).join('');
 }
 
 /**
- * Re-parses the rewritten CSS and collects every selector that is still free to
+ * Parses the rewritten CSS again and collects every selector that can still
  * match consumer DOM.
  *
- * This is the real guarantee. A string check for `:is([data-yv-sdk]` proves the
- * script ran; only a re-parse proves it left nothing behind.
+ * This is the real guarantee. A string search for `:is([data-yv-sdk]` proves
+ * that the script ran. Only a second parse proves that the script left nothing
+ * behind.
  */
 function findUngatedSelectors(code, filename) {
   const ungated = [];
@@ -217,22 +221,22 @@ function findUngatedSelectors(code, filename) {
 }
 
 /**
- * Rewrites `source` so no selector can match outside `[data-yv-sdk]`.
+ * Rewrites `source` so that no selector can match outside `[data-yv-sdk]`.
  *
  * @param {string} source Compiled Tailwind CSS.
  * @param {{ minify?: boolean, filename?: string }} [options]
  * @returns {{ code: string, ungated: string[] }} The rewritten CSS, and every
- *   selector that survived the rewrite still ungated. A non-empty `ungated`
- *   list is a build failure, not a warning.
+ *   selector that has no gate after the rewrite. A non-empty `ungated` list is a
+ *   build failure, not a warning.
  */
 export function scopeCss(source, options = {}) {
   const { minify = false, filename = 'tailwind.css' } = options;
 
-  // Pass 1: flatten nesting. `bible-reader.css` nests rules under
+  // Pass 1: flatten the nesting. `bible-reader.css` nests rules under
   // `[data-slot='yv-bible-renderer']` with `&`, and `@utility touch-hitbox`
-  // emits a nested `&:before`. A visitor running against those would see a
-  // partial selector and prefix it into nonsense. After flattening, every
-  // selector the visitor sees is a complete one.
+  // emits a nested `&:before`. A visitor that runs against those sees a partial
+  // selector and prefixes it into an invalid one. After the flattening, the
+  // visitor sees only complete selectors.
   const { code: flattened } = transform({
     filename,
     code: Buffer.from(source),
@@ -240,7 +244,7 @@ export function scopeCss(source, options = {}) {
     minify: false,
   });
 
-  // Pass 2: gate.
+  // Pass 2: add the gate.
   const { code: gated } = transform({
     filename,
     code: flattened,
@@ -248,7 +252,7 @@ export function scopeCss(source, options = {}) {
     visitor: { Selector: gateSelector },
   });
 
-  // Pass 3: verify.
+  // Pass 3: check the result.
   return { code: gated.toString(), ungated: findUngatedSelectors(gated, filename) };
 }
 
@@ -278,10 +282,10 @@ function parseArguments(argv) {
   };
 }
 
-/** @returns {boolean} whether the rewrite produced a publishable stylesheet. */
+/** @returns {boolean} true when the rewrite produced a publishable stylesheet. */
 function runOnce({ input, output, minify }) {
   if (!existsSync(input)) {
-    console.error(`❌ ${input} is missing — did build:css run?`);
+    console.error(`❌ ${input} is missing. Run build:css first.`);
     return false;
   }
 
@@ -312,8 +316,8 @@ function main() {
     return;
   }
 
-  // Watch the directory rather than the file: the Tailwind CLI replaces its
-  // output, and a file watch does not survive a replace on every platform.
+  // Watch the directory, not the file. The Tailwind CLI replaces its output
+  // file, and a file watch does not survive a replacement on every platform.
   let pending;
   watch(dirname(options.input), (_event, filename) => {
     if (filename && !options.input.endsWith(filename)) return;
