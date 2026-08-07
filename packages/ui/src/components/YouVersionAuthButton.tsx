@@ -10,6 +10,7 @@ import { useYVAuth, useTheme } from '@youversion/platform-react-hooks';
 import { Button } from '../components/ui/button';
 import { YouVersionLogo } from './icons/youversion-logo';
 import { cn } from '../lib/utils';
+import { withShadowIsolation } from '../lib/shadow-isolation';
 
 interface SignInAuthProps {
   /**
@@ -109,7 +110,7 @@ export interface YouVersionAuthButtonProps
  * <YouVersionAuthButton scopes={['profile']}/>
  *
  */
-export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersionAuthButtonProps>(
+const YouVersionAuthButtonImpl = React.forwardRef<HTMLButtonElement, YouVersionAuthButtonProps>(
   (
     {
       background,
@@ -266,4 +267,13 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
   },
 );
 
-YouVersionAuthButton.displayName = 'YouVersionAuthButton';
+YouVersionAuthButtonImpl.displayName = 'YouVersionAuthButtonImpl';
+
+/**
+ * Automatically rendered in a Shadow DOM so host-page selectors cannot style
+ * the button's internal DOM. No consumer wrapper or opt-in flag is required.
+ */
+export const YouVersionAuthButton = withShadowIsolation(
+  YouVersionAuthButtonImpl,
+  'YouVersionAuthButton',
+);
