@@ -316,6 +316,8 @@ function main() {
     return;
   }
 
+  mkdirSync(dirname(options.input), { recursive: true });
+
   // Watch the directory, not the file. The Tailwind CLI replaces its output
   // file, and a file watch does not survive a replacement on every platform.
   let pending;
