@@ -12,14 +12,16 @@ export function withShadowIsolation<P extends object, T>(
   Implementation: ForwardRefExoticComponent<PropsWithoutRef<P> & RefAttributes<T>>,
   displayName: string,
 ): ForwardRefExoticComponent<PropsWithoutRef<P> & RefAttributes<T>> {
-  const Isolated = forwardRef<T, P>((props, ref) => (
-    <ShadowRootHost>
-      {createElement(Implementation, {
-        ...(props as P),
-        ref,
-      } as unknown as PropsWithoutRef<P> & RefAttributes<T>)}
-    </ShadowRootHost>
-  ));
+  const Isolated = forwardRef<T, P>((props, ref) => {
+    const implementationProps: PropsWithoutRef<P> & RefAttributes<T> = {
+      ...props,
+      ref,
+    };
+
+    return (
+      <ShadowRootHost>{createElement(Implementation, implementationProps)}</ShadowRootHost>
+    );
+  });
   Isolated.displayName = displayName;
   return Isolated;
 }
