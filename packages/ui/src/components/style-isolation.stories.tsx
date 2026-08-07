@@ -19,6 +19,10 @@
  *   reverses for important declarations, and unlayered-important ranks last, so
  *   a layered important SDK rule beats both. Importance also outranks
  *   specificity, which is why the id selector at 1,0,1 loses too.
+ * - `remRebase` closed when the build started to convert every `rem` length in
+ *   the sheet to `px`, and `src/styles/global.css` started to declare a
+ *   `font-size` on the SDK root. That leak is in the unit and in inheritance,
+ *   not in the cascade, so no selector, layer or `!important` could reach it.
  *
  * These stories are also the visual evidence. Open one in Storybook. The
  * component now looks correct, under CSS built to break it.
@@ -183,6 +187,17 @@ function isolationStory(config: IsolationStoryConfig): Story {
       // a layered important declaration, and neither used to.
       await expect(report.byGroup.important).toEqual([]);
       await expect(report.byGroup.highSpecificity).toEqual([]);
+
+      // The unit channel. `html { font-size: 62.5% }` rescales every `rem` in
+      // the document, and no selector can stop it: `rem` resolves against the
+      // document root. Zero means the build converted the sheet's `rem` lengths
+      // to `px`, and that the SDK root declares its own `font-size`.
+      await expect(report.byGroup.remRebase).toEqual([]);
+
+      // The positive control for `remRebase`. A root font-size that never
+      // applied would make the zero above meaningless. `measureLeaks` leaves
+      // every group injected, so the fixture is in place here.
+      await expect(getComputedStyle(document.documentElement).fontSize).toBe('10px');
 
       // The positive control for the two groups above. Both fixtures target
       // `button`, so on a component with no button they measure zero for the

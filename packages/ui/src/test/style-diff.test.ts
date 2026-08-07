@@ -193,6 +193,7 @@ describe('consumer-host groups', () => {
       'inheritedTypography',
       'important',
       'highSpecificity',
+      'remRebase',
     ]);
   });
 

@@ -16,6 +16,7 @@
  * | `inheritedTypography` | Typography set on `body` and inherited downward      |
  * | `important`           | `!important` overrides                               |
  * | `highSpecificity`     | An id selector, at 1,0,1                             |
+ * | `remRebase`           | A root font-size that rescales every `rem`           |
  *
  * The injection order matters. Every group is appended to `document.head`
  * *after* the SDK's `<style precedence="yv-sdk">` tag. A tie on source order
@@ -269,6 +270,30 @@ const HIGH_SPECIFICITY = `
 }
 `;
 
+/**
+ * The "62.5% trick": a root font-size that rescales every `rem` in the document.
+ *
+ * This group attacks the unit, not the cascade. `rem` resolves against the
+ * *document root* element, so no selector, no layer and no `!important` on an
+ * SDK rule can change what a `rem` in that rule means. A host that writes
+ * `html { font-size: 62.5% }` makes `1rem` equal `10px`, and every `rem` length
+ * the SDK ships shrinks by 37.5 percent.
+ *
+ * The trick is common. It lets an author write `1.6rem` for 16px. Tailwind v4
+ * emits `rem` for nearly all spacing and typography, so the SDK sheet was full
+ * of the unit.
+ *
+ * The fix is in the build, not in this file:
+ * `scripts/scope-selectors.mjs` converts every `rem` length in the compiled
+ * sheet to `px` at 1rem = 16px. See
+ * docs/adr/0007-convert-rem-to-px-in-the-sdk-sheet.md.
+ */
+const REM_REBASE = `
+html {
+  font-size: 62.5%;
+}
+`;
+
 export const CONSUMER_CSS_GROUPS = {
   preflight: PREFLIGHT,
   bareElements: BARE_ELEMENTS,
@@ -276,6 +301,7 @@ export const CONSUMER_CSS_GROUPS = {
   inheritedTypography: INHERITED_TYPOGRAPHY,
   important: IMPORTANT,
   highSpecificity: HIGH_SPECIFICITY,
+  remRebase: REM_REBASE,
 } satisfies Record<string, string>;
 
 export type ConsumerCssGroup = keyof typeof CONSUMER_CSS_GROUPS;
