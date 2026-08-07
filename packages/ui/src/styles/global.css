@@ -16,19 +16,19 @@
  *
  *   .yv\:mt-4
  *     →  :is([data-yv-sdk],
- *            [data-yv-sdk] *:not([data-yv-slot], [data-yv-slot] *)).yv\:mt-4
+ *            [data-yv-sdk] *:where(:not([data-yv-slot], [data-yv-slot] *))
+ *           ).yv\:mt-4
  *
  * That does two things at once. Outbound, SDK CSS cannot match DOM that the SDK
  * did not render, which is a stronger guarantee than a loss in the cascade.
  * Inbound, `:is()` takes the specificity of its most specific argument, so every
- * rule gains exactly 0,2,0 and overrides a consumer bare element selector.
+ * rule gains exactly 0,1,0 and overrides a consumer bare element selector.
  *
- * The `:not()` is the consumer-slot boundary. A consumer's `children` render
- * inside our subtree, so the gate matched them too. An element stamped
+ * The `:where(:not(…))` is the consumer-slot boundary. A consumer's `children`
+ * render inside our subtree, so the gate matched them too. An element stamped
  * `data-yv-slot`, and everything under it, is consumer territory, and SDK
- * selectors stop there. `:not()` also takes the specificity of its most specific
- * argument, so the rise from 0,1,0 to 0,2,0 is uniform across the sheet and no
- * relative order changes. See
+ * selectors stop there. `:where()` contributes no specificity, so the boundary
+ * changes what the sheet matches and nothing about what it wins. See
  * docs/adr/0008-stop-sdk-css-at-consumer-slots.md.
  *
  * The script fails the build when one selector reaches `dist/tailwind.css`
@@ -72,14 +72,16 @@
 
 /* #region shadcn UI theme */
 /* This variant already carries the gate, so scope-selectors.mjs leaves it alone.
-   That means the slot exclusion has to be written here by hand, and it is not
-   optional. Without it a `dark:` utility stays at 0,3,0 while every base utility
-   rises to 0,3,0 with the slot exclusion, the two tie, and dark mode is decided
-   by source order. With it the dark variant is 0,4,0 and keeps its old one-step
-   margin over the base utility. It also stops dark-mode declarations at consumer
-   slots, which is the point of the change.
+   That means the slot exclusion is written here by hand, and the build check
+   requires it: the variant reaches past a `[data-yv-sdk]` compound.
+   The `:where()` is what keeps the margin over a base utility intact. A base
+   utility is 0,2,0 (gate 0,1,0 plus the class) and a `dark:` utility is 0,3,0
+   (the class plus this 0,2,0 `:is()`), exactly as before the slot work. A bare
+   `:not()` here and in the gate would push both up a step and preserve the
+   margin too, but it would also lift the unlayered half of the sheet over
+   ordinary consumer CSS — see the ADR. `:where()` adds nothing on either side.
    See docs/adr/0008-stop-sdk-css-at-consumer-slots.md. */
-@custom-variant dark (&:is([data-yv-sdk][data-yv-theme='dark'] *:not([data-yv-slot], [data-yv-slot] *)));
+@custom-variant dark (&:is([data-yv-sdk][data-yv-theme='dark'] *:where(:not([data-yv-slot], [data-yv-slot] *))));
 
 [data-yv-sdk] {
   @theme inline {
@@ -165,7 +167,7 @@
    The rule carries the gate already, so scope-selectors.mjs does not rewrite it,
    and the slot exclusion is hand-written. The build check rejects the rule
    without it. */
-[data-yv-sdk] .yv-v-selected:not([data-yv-slot], [data-yv-slot] *) {
+[data-yv-sdk] .yv-v-selected:where(:not([data-yv-slot], [data-yv-slot] *)) {
   text-decoration-line: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 2px;

@@ -28,12 +28,15 @@ if (!existsSync(jsPath)) {
   // empty string that tsup substitutes when dist/tailwind.css is absent. And
   // build:css:scope ran, because only scope-selectors.mjs emits this string.
   //
-  // The `:not()` is the slot boundary, and it is part of the literal on purpose.
-  // A build that emitted the older gate without it would ship a sheet that
-  // restyles consumer `children`, and a check for the older gate alone would
-  // pass. Lightning CSS drops the redundant `*` before the `:not()`.
+  // The `:where(:not(…))` is the slot boundary, and it is part of the literal on
+  // purpose. A build that emitted the older gate without it would ship a sheet
+  // that restyles consumer `children`, and a check for the older gate alone
+  // would pass. The `:where()` keeps the gate at 0,1,0. Lightning CSS drops the
+  // redundant `*` before it.
   // See docs/adr/0008-stop-sdk-css-at-consumer-slots.md.
-  if (!js.includes(':is([data-yv-sdk],[data-yv-sdk] :not([data-yv-slot],[data-yv-slot] *))')) {
+  if (
+    !js.includes(':is([data-yv-sdk],[data-yv-sdk] :where(:not([data-yv-slot],[data-yv-slot] *)))')
+  ) {
     errors.push(
       'dist/index.js has no gated selectors. __YV_STYLES__ is empty, or build:css:scope did not run',
     );

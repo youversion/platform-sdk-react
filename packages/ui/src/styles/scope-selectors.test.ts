@@ -22,17 +22,19 @@ import { scopeCss } from '../../scripts/scope-selectors.mjs';
  * The gate, as Lightning CSS prints it.
  *
  * The descendant arm carries the slot exclusion, which is what stops SDK CSS at
- * consumer content. Lightning CSS drops the redundant `*` before the `:not()`,
- * so the printed arm is `[data-yv-sdk] :not(…)`, not `[data-yv-sdk] *:not(…)`.
- * The two are the same selector.
+ * consumer content. It sits inside `:where()` so it costs no specificity.
+ * Lightning CSS drops the redundant `*` before it, so the printed arm is
+ * `[data-yv-sdk] :where(…)`, not `[data-yv-sdk] *:where(…)`. The two are the
+ * same selector.
  */
-const GATE = ':is([data-yv-sdk], [data-yv-sdk] :not([data-yv-slot], [data-yv-slot] *))';
+const GATE = ':is([data-yv-sdk], [data-yv-sdk] :where(:not([data-yv-slot], [data-yv-slot] *)))';
 
 /** The same gate, without the spaces that the minifier removes. */
-const MINIFIED_GATE = ':is([data-yv-sdk],[data-yv-sdk] :not([data-yv-slot],[data-yv-slot] *))';
+const MINIFIED_GATE =
+  ':is([data-yv-sdk],[data-yv-sdk] :where(:not([data-yv-slot],[data-yv-slot] *)))';
 
 /** The exclusion on its own, for a hand-written selector that carries the gate already. */
-const SLOT_EXCLUSION = ':not([data-yv-slot], [data-yv-slot] *)';
+const SLOT_EXCLUSION = ':where(:not([data-yv-slot], [data-yv-slot] *))';
 
 /** Rewrites `source`. The test fails when the rewrite left anything unsafe. */
 function scope(source: string): string {
@@ -136,8 +138,27 @@ describe('scopeCss', () => {
       // The whole point of the change. A consumer's `children` render inside our
       // subtree, and the old `[data-yv-sdk] *` arm matched every one of them.
       expect(scope('.card { color: red }')).toContain(
-        ':is([data-yv-sdk], [data-yv-sdk] :not([data-yv-slot], [data-yv-slot] *))',
+        ':is([data-yv-sdk], [data-yv-sdk] :where(:not([data-yv-slot], [data-yv-slot] *)))',
       );
+    });
+
+    it('costs no specificity, because the exclusion sits inside :where()', () => {
+      // A bare `:not()` would take the specificity of its most specific
+      // argument and lift every rule in the sheet by 0,1,0. Measured, that
+      // lifted the unlayered half of the sheet over ordinary consumer CSS and
+      // made consumer content outside a slot worse off than before the change.
+      const code = scope('.card { color: red }');
+      expect(code).toContain(':where(:not([data-yv-slot], [data-yv-slot] *))');
+      expect(code).not.toContain('*:not([data-yv-slot]');
+    });
+
+    it('accepts a bare :not() exclusion in a hand-written selector', () => {
+      // It excludes the same elements. It pays 0,1,0 to do it, which is why the
+      // shipped form does not, but it is not a structural fault.
+      const { problems } = scopeCss(
+        '[data-yv-sdk] .yv-v-selected:not([data-yv-slot], [data-yv-slot] *) { color: red }',
+      );
+      expect(problems).toEqual([]);
     });
 
     it('reports a hand-written gated selector that has no slot exclusion', () => {
@@ -429,11 +450,12 @@ describe('scopeCss', () => {
       expect(code).toBe(`@layer yv;@layer yv{${MINIFIED_GATE}.card{color:red!important}}`);
     });
 
-    it('adds exactly 0,2,0 of specificity, so relative order inside the SDK is unchanged', () => {
-      // Every rule gains the same gate. `:is()` and `:not()` each take the
-      // specificity of their most specific argument. The gate's second branch is
-      // one attribute plus a `:not()` holding one attribute, so the gain is
-      // 0,2,0, and it is the same 0,2,0 for every rule in the sheet.
+    it('adds exactly 0,1,0 of specificity, so relative order inside the SDK is unchanged', () => {
+      // Every rule gains the same gate. `:is()` takes the specificity of its
+      // most specific argument, which is one attribute. The slot exclusion sits
+      // inside `:where()` and contributes zero, so the gain is 0,1,0 — the same
+      // 0,1,0 the gate cost before the slot boundary existed, for every rule in
+      // the sheet.
       const code = scope('.a { color: red } .b .c { color: blue }');
       const gates = code.split(GATE).length - 1;
       expect(gates).toBe(2);

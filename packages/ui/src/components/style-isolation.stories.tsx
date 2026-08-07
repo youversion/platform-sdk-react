@@ -11,7 +11,7 @@
  *   a declaration of the property can stop it.
  * - `preflight`, `bareElements` and `aggressiveReset` closed when SDK CSS left
  *   its `yv-sdk-*` cascade layers, and every selector gained a
- *   `:is([data-yv-sdk], [data-yv-sdk] …)` gate. The gate adds 0,2,0. That
+ *   `:is([data-yv-sdk], [data-yv-sdk] …)` gate. The gate adds 0,1,0. That
  *   overrides a bare element selector at 0,0,1, and a universal selector at
  *   0,0,0.
  * - `important` and `highSpecificity` closed when the sheet moved into a
@@ -606,7 +606,11 @@ export const ConsumerTokenOverrideStillApplies: Story = {
  * The answer is `data-yv-slot`. An SDK component stamps it on the element that
  * holds consumer content, and the gate stops there:
  *
- *   :is([data-yv-sdk], [data-yv-sdk] *:not([data-yv-slot], [data-yv-slot] *))
+ *   :is([data-yv-sdk],
+ *       [data-yv-sdk] *:where(:not([data-yv-slot], [data-yv-slot] *)))
+ *
+ * The exclusion sits inside `:where()`, which contributes no specificity. The
+ * boundary changes what the sheet matches and nothing about what it wins.
  *
  * The baseline is a placement, not a sheet state. See `diffPlacements` in
  * `src/test/style-diff.ts` for why, and `CONSUMER_CONTENT_CSS` in

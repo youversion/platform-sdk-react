@@ -16,16 +16,17 @@
  *
  *      .yv\:mt-4
  *        →  :is([data-yv-sdk],
- *               [data-yv-sdk] *:not([data-yv-slot], [data-yv-slot] *)).yv\:mt-4
+ *               [data-yv-sdk] *:where(:not([data-yv-slot], [data-yv-slot] *))
+ *              ).yv\:mt-4
  *
  *    The gate is the outbound guarantee. SDK CSS cannot match DOM that the SDK
  *    did not render, and it stops again at a `data-yv-slot` element, which is
  *    where an SDK component renders consumer `children` or render-prop output.
- *    Inside an SDK subtree, `:is()` adds exactly 0,2,0: 0,1,0 for the attribute
- *    and 0,1,0 for the `:not()`, which takes the specificity of its most
- *    specific argument. So our rules still override bare element selectors. The
- *    rise from 0,1,0 to 0,2,0 is uniform across every rule in the sheet, so the
- *    relative order among SDK rules is unchanged.
+ *    Inside an SDK subtree, `:is()` adds exactly 0,1,0, for the attribute. The
+ *    slot exclusion sits inside `:where()`, which contributes zero, so the
+ *    boundary changes what the sheet *matches* and nothing about what it wins.
+ *    Our rules still override bare element selectors, and no consumer rule that
+ *    used to beat an SDK declaration stops doing so.
  *    See docs/adr/0008-stop-sdk-css-at-consumer-slots.md.
  *
  * 2. It splits every rule in two, by property, and ships the halves differently.
@@ -166,32 +167,50 @@ const COMBINATORS = {
 };
 
 /**
- * A new `:not([data-yv-slot], [data-yv-slot] *)` node.
+ * A new `:where(:not([data-yv-slot], [data-yv-slot] *))` node.
  *
- * Two branches, not one. `[data-yv-slot]` alone would exclude the slot element
- * and then restyle every one of its children, which is the whole of the consumer
- * content. `:not()` takes the specificity of its most specific argument, and
- * both branches are 0,1,0, so the node adds 0,1,0 and no more.
+ * Two branches inside the `:not()`, not one. `[data-yv-slot]` alone would
+ * exclude the slot element and then restyle every one of its children, which is
+ * the whole of the consumer content.
+ *
+ * The `:where()` wrapper is what keeps the gate at 0,1,0. A bare `:not()` takes
+ * the specificity of its most specific argument, so it would add 0,1,0 of its
+ * own and lift every SDK rule to 0,2,0. That is not free: `font-size`,
+ * `background-color` and `border-*-width` ship in the *unlayered, normal* half
+ * of the sheet, and a uniform rise lifts those declarations above an ordinary
+ * consumer rule at 0,1,0. Measured on the harness: consumer content that is not
+ * in a slot went from 255 leaks to 416. `:where()` contributes zero, so the
+ * exclusion changes what matches without changing what wins.
+ * See docs/adr/0008-stop-sdk-css-at-consumer-slots.md.
  */
 function slotExclusion() {
   const attribute = { type: 'attribute', namespace: null, name: SLOT_ATTRIBUTE, operation: null };
 
   return {
     type: 'pseudo-class',
-    kind: 'not',
+    kind: 'where',
     selectors: [
-      [attribute],
-      [attribute, { type: 'combinator', value: 'descendant' }, { type: 'universal' }],
+      [
+        {
+          type: 'pseudo-class',
+          kind: 'not',
+          selectors: [
+            [attribute],
+            [attribute, { type: 'combinator', value: 'descendant' }, { type: 'universal' }],
+          ],
+        },
+      ],
     ],
   };
 }
 
 /**
- * A new `:is([data-yv-sdk], [data-yv-sdk] *:not([data-yv-slot], [data-yv-slot] *))` node.
+ * A new `:is([data-yv-sdk], [data-yv-sdk] *:where(:not([data-yv-slot], [data-yv-slot] *)))`
+ * node.
  *
  * The first branch is the SDK root itself, which no consumer slot can be. The
  * second branch is everything under it *except* a slot and a slot's descendants.
- * Lightning CSS prints `[data-yv-sdk] :not(…)` for the second branch: it drops
+ * Lightning CSS prints `[data-yv-sdk] :where(…)` for the second branch: it drops
  * the redundant `*`, and the two forms are the same selector at the same
  * specificity.
  */
@@ -256,9 +275,27 @@ function isAllowed(components) {
   return hasScopeGate(components) || isUnscopedByDesign(components);
 }
 
-/** True when `component` is exactly `:not([data-yv-slot], [data-yv-slot] *)`. */
+/**
+ * True when `component` is exactly `:where(:not([data-yv-slot], [data-yv-slot] *))`.
+ *
+ * A bare `:not([data-yv-slot], [data-yv-slot] *)` also passes. It excludes the
+ * same elements. It costs 0,1,0 to do it, which is the whole reason the shipped
+ * form wraps it in `:where()`, but a hand-written selector that pays that cost
+ * is still correct about what it matches, so the check accepts it.
+ */
 function isSlotExclusion(component) {
-  if (component.type !== 'pseudo-class' || component.kind !== 'not') return false;
+  if (component.type !== 'pseudo-class') return false;
+
+  if (component.kind === 'where') {
+    return (
+      Array.isArray(component.selectors) &&
+      component.selectors.length === 1 &&
+      component.selectors[0].length === 1 &&
+      isSlotExclusion(component.selectors[0][0])
+    );
+  }
+
+  if (component.kind !== 'not') return false;
   if (!Array.isArray(component.selectors) || component.selectors.length !== 2) return false;
 
   const isSlotAttribute = (node) =>
@@ -1236,7 +1273,7 @@ function verifyOutput(code, filename, exemptAlreadyImportant = new Set()) {
   if (slotLeaks.size > 0) {
     problems.push(
       `${String(slotLeaks.size)} selector(s) reach past a [${SCOPE_ATTRIBUTE}] element without ` +
-        `stopping at a slot. Add :not([${SLOT_ATTRIBUTE}], [${SLOT_ATTRIBUTE}] *) to the ` +
+        `stopping at a slot. Add :where(:not([${SLOT_ATTRIBUTE}], [${SLOT_ATTRIBUTE}] *)) to the ` +
         `subject compound: ${[...slotLeaks].sort().join(', ')}`,
     );
   }

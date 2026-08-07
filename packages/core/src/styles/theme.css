@@ -172,7 +172,7 @@
   */
 
 /*
-  * Every descendant rule below carries `:not([data-yv-slot], [data-yv-slot] *)`.
+  * Every descendant rule below carries `:where(:not([data-yv-slot], [data-yv-slot] *))`.
   *
   * `[data-yv-sdk]` means "the SDK rendered this subtree". That is also true of
   * consumer `children` and render-prop output, because an SDK component renders
@@ -184,9 +184,14 @@
   * The exclusion goes on the *subject* compound, which is the element the rule
   * styles. `[data-yv-sdk]:not(…) a` excludes the wrong element.
   *
-  * `:not()` takes the specificity of its most specific argument, so each rule
-  * gains exactly 0,1,0. The gain is the same for every rule here and for every
-  * rule the build gates, so no relative order changes.
+  * The `:where()` wrapper is what makes the exclusion free. A bare `:not()`
+  * takes the specificity of its most specific argument, so it would add 0,1,0 to
+  * every rule here. `:where()` contributes zero. That matters because the rise
+  * would also lift the *unlayered, normal* half of the sheet — `font-size`,
+  * `background-color`, `border-*-width` — above an ordinary consumer rule at
+  * 0,1,0, and restyle consumer content harder anywhere a slot is missing.
+  * Measured: 255 leaks to 416. So the exclusion changes what matches and nothing
+  * about what wins.
   *
   * This file ships two ways: compiled into the UI sheet through
   * `packages/ui/scripts/scope-selectors.mjs`, and unprocessed as
@@ -199,11 +204,11 @@
   * See docs/adr/0008-stop-sdk-css-at-consumer-slots.md.
   */
 [data-yv-sdk] {
-  *:not([data-yv-slot], [data-yv-slot] *),
-  *:not([data-yv-slot], [data-yv-slot] *)::after,
-  *:not([data-yv-slot], [data-yv-slot] *)::before,
-  *:not([data-yv-slot], [data-yv-slot] *)::backdrop,
-  *:not([data-yv-slot], [data-yv-slot] *)::file-selector-button {
+  *:where(:not([data-yv-slot], [data-yv-slot] *)),
+  *:where(:not([data-yv-slot], [data-yv-slot] *))::after,
+  *:where(:not([data-yv-slot], [data-yv-slot] *))::before,
+  *:where(:not([data-yv-slot], [data-yv-slot] *))::backdrop,
+  *:where(:not([data-yv-slot], [data-yv-slot] *))::file-selector-button {
     font: inherit;
     font-family: var(--yv-font-sans);
     /*
@@ -270,102 +275,102 @@
   tab-size: 4;
   -webkit-tap-highlight-color: transparent;
 
-  hr:not([data-yv-slot], [data-yv-slot] *) {
+  hr:where(:not([data-yv-slot], [data-yv-slot] *)) {
     height: 0;
     color: inherit;
     border-top-width: 1px;
   }
 
-  abbr:not([data-yv-slot], [data-yv-slot] *):where([title]) {
+  abbr:where(:not([data-yv-slot], [data-yv-slot] *)):where([title]) {
     -webkit-text-decoration: underline dotted;
     text-decoration: underline dotted;
   }
 
-  h1:not([data-yv-slot], [data-yv-slot] *),
-  h2:not([data-yv-slot], [data-yv-slot] *),
-  h3:not([data-yv-slot], [data-yv-slot] *),
-  h4:not([data-yv-slot], [data-yv-slot] *),
-  h5:not([data-yv-slot], [data-yv-slot] *),
-  h6:not([data-yv-slot], [data-yv-slot] *) {
+  h1:where(:not([data-yv-slot], [data-yv-slot] *)),
+  h2:where(:not([data-yv-slot], [data-yv-slot] *)),
+  h3:where(:not([data-yv-slot], [data-yv-slot] *)),
+  h4:where(:not([data-yv-slot], [data-yv-slot] *)),
+  h5:where(:not([data-yv-slot], [data-yv-slot] *)),
+  h6:where(:not([data-yv-slot], [data-yv-slot] *)) {
     font-size: inherit;
     font-weight: inherit;
   }
 
-  a:not([data-yv-slot], [data-yv-slot] *) {
+  a:where(:not([data-yv-slot], [data-yv-slot] *)) {
     color: inherit;
     -webkit-text-decoration: inherit;
     text-decoration: inherit;
   }
 
-  b:not([data-yv-slot], [data-yv-slot] *),
-  strong:not([data-yv-slot], [data-yv-slot] *) {
+  b:where(:not([data-yv-slot], [data-yv-slot] *)),
+  strong:where(:not([data-yv-slot], [data-yv-slot] *)) {
     font-weight: bolder;
   }
 
-  code:not([data-yv-slot], [data-yv-slot] *),
-  kbd:not([data-yv-slot], [data-yv-slot] *),
-  samp:not([data-yv-slot], [data-yv-slot] *),
-  pre:not([data-yv-slot], [data-yv-slot] *) {
+  code:where(:not([data-yv-slot], [data-yv-slot] *)),
+  kbd:where(:not([data-yv-slot], [data-yv-slot] *)),
+  samp:where(:not([data-yv-slot], [data-yv-slot] *)),
+  pre:where(:not([data-yv-slot], [data-yv-slot] *)) {
     font-family: var(--yv-font-sans);
     font-size: 1em;
   }
 
-  small:not([data-yv-slot], [data-yv-slot] *) {
+  small:where(:not([data-yv-slot], [data-yv-slot] *)) {
     font-size: 80%;
   }
 
-  sub:not([data-yv-slot], [data-yv-slot] *),
-  sup:not([data-yv-slot], [data-yv-slot] *) {
+  sub:where(:not([data-yv-slot], [data-yv-slot] *)),
+  sup:where(:not([data-yv-slot], [data-yv-slot] *)) {
     font-size: 75%;
     line-height: 0;
     position: relative;
     vertical-align: baseline;
   }
 
-  sub:not([data-yv-slot], [data-yv-slot] *) {
+  sub:where(:not([data-yv-slot], [data-yv-slot] *)) {
     bottom: -0.25em;
   }
 
-  sup:not([data-yv-slot], [data-yv-slot] *) {
+  sup:where(:not([data-yv-slot], [data-yv-slot] *)) {
     top: -0.5em;
   }
 
-  table:not([data-yv-slot], [data-yv-slot] *) {
+  table:where(:not([data-yv-slot], [data-yv-slot] *)) {
     text-indent: 0;
     border-color: inherit;
     border-collapse: collapse;
   }
 
-  ol:not([data-yv-slot], [data-yv-slot] *),
-  ul:not([data-yv-slot], [data-yv-slot] *),
-  menu:not([data-yv-slot], [data-yv-slot] *) {
+  ol:where(:not([data-yv-slot], [data-yv-slot] *)),
+  ul:where(:not([data-yv-slot], [data-yv-slot] *)),
+  menu:where(:not([data-yv-slot], [data-yv-slot] *)) {
     list-style: none;
   }
 
-  img:not([data-yv-slot], [data-yv-slot] *),
-  svg:not([data-yv-slot], [data-yv-slot] *),
-  video:not([data-yv-slot], [data-yv-slot] *),
-  canvas:not([data-yv-slot], [data-yv-slot] *),
-  audio:not([data-yv-slot], [data-yv-slot] *),
-  iframe:not([data-yv-slot], [data-yv-slot] *),
-  embed:not([data-yv-slot], [data-yv-slot] *),
-  object:not([data-yv-slot], [data-yv-slot] *) {
+  img:where(:not([data-yv-slot], [data-yv-slot] *)),
+  svg:where(:not([data-yv-slot], [data-yv-slot] *)),
+  video:where(:not([data-yv-slot], [data-yv-slot] *)),
+  canvas:where(:not([data-yv-slot], [data-yv-slot] *)),
+  audio:where(:not([data-yv-slot], [data-yv-slot] *)),
+  iframe:where(:not([data-yv-slot], [data-yv-slot] *)),
+  embed:where(:not([data-yv-slot], [data-yv-slot] *)),
+  object:where(:not([data-yv-slot], [data-yv-slot] *)) {
     display: block;
     vertical-align: middle;
   }
 
-  img:not([data-yv-slot], [data-yv-slot] *),
-  video:not([data-yv-slot], [data-yv-slot] *) {
+  img:where(:not([data-yv-slot], [data-yv-slot] *)),
+  video:where(:not([data-yv-slot], [data-yv-slot] *)) {
     max-width: 100%;
     height: auto;
   }
 
-  button:not([data-yv-slot], [data-yv-slot] *),
-  input:not([data-yv-slot], [data-yv-slot] *),
-  select:not([data-yv-slot], [data-yv-slot] *),
-  optgroup:not([data-yv-slot], [data-yv-slot] *),
-  textarea:not([data-yv-slot], [data-yv-slot] *),
-  *:not([data-yv-slot], [data-yv-slot] *)::file-selector-button {
+  button:where(:not([data-yv-slot], [data-yv-slot] *)),
+  input:where(:not([data-yv-slot], [data-yv-slot] *)),
+  select:where(:not([data-yv-slot], [data-yv-slot] *)),
+  optgroup:where(:not([data-yv-slot], [data-yv-slot] *)),
+  textarea:where(:not([data-yv-slot], [data-yv-slot] *)),
+  *:where(:not([data-yv-slot], [data-yv-slot] *))::file-selector-button {
     font: inherit;
     font-family: var(--yv-font-sans);
     font-feature-settings: inherit;
@@ -377,25 +382,25 @@
     opacity: 1;
   }
 
-  *:not([data-yv-slot], [data-yv-slot] *)::placeholder {
+  *:where(:not([data-yv-slot], [data-yv-slot] *))::placeholder {
     opacity: 1;
   }
 
-  textarea:not([data-yv-slot], [data-yv-slot] *) {
+  textarea:where(:not([data-yv-slot], [data-yv-slot] *)) {
     resize: vertical;
   }
 
-  button:not([data-yv-slot], [data-yv-slot] *),
-  input:not([data-yv-slot], [data-yv-slot] *):where(
+  button:where(:not([data-yv-slot], [data-yv-slot] *)),
+  input:where(:not([data-yv-slot], [data-yv-slot] *)):where(
       [type='button'],
       [type='reset'],
       [type='submit']
     ),
-  *:not([data-yv-slot], [data-yv-slot] *)::file-selector-button {
+  *:where(:not([data-yv-slot], [data-yv-slot] *))::file-selector-button {
     appearance: button;
   }
 
-  [hidden]:not([data-yv-slot], [data-yv-slot] *):where(:not([hidden='until-found'])) {
+  [hidden]:where(:not([data-yv-slot], [data-yv-slot] *)):where(:not([hidden='until-found'])) {
     display: none !important;
   }
 }

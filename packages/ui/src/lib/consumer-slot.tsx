@@ -10,7 +10,8 @@ import type { ReactElement, ReactNode } from 'react';
  * the layered-`!important` change those declarations were important too.
  *
  * The gate arm is now
- * `[data-yv-sdk] *:not([data-yv-slot], [data-yv-slot] *)`. Wrapping consumer
+ * `[data-yv-sdk] *:where(:not([data-yv-slot], [data-yv-slot] *))`. Wrapping
+ * consumer
  * content in this component puts `data-yv-slot` on the boundary, and no SDK
  * selector matches the wrapper or anything under it.
  *
