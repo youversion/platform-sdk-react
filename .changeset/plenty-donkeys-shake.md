@@ -21,7 +21,17 @@ color; line-height }` block, `button { padding: 2rem !important }` and
 `#app button { padding: 1rem }` all changed the appearance of SDK components
 before. None of them change it now. A regression harness in
 `packages/ui/src/components/style-isolation.stories.tsx` measures every component
-against six host-CSS fixtures and asserts zero leaks on all of them.
+against seven host-CSS fixtures and asserts zero leaks on all of them.
+
+**Your root font size no longer scales SDK components.** A host page with
+`html { font-size: 62.5% }` used to shrink every SDK size by 37.5 percent,
+because a `rem` resolves against the document root and no selector or layer can
+stop that. The build now converts every `rem` in the sheet to `px` at
+1rem = 16px, and the SDK root declares `font-size: 16px`. The trade-off is that
+SDK text no longer grows with a reader's raised browser default font size.
+Browser zoom is unaffected. To scale the SDK on purpose, override
+`[data-yv-sdk] { font-size }` — it stays outside the layer for that reason — or
+pass a component's `fontSize` prop.
 
 **What breaks.** Any consumer CSS that overrides an SDK declaration.
 
@@ -51,5 +61,6 @@ property.
 3. Open an issue if neither path covers your case.
 
 For the rationale and the rejected alternatives (`@scope` and shadow DOM), read
-`docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md` and
-`docs/adr/0006-layer-and-importantize-the-sdk-sheet.md`.
+`docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md`,
+`docs/adr/0006-layer-and-importantize-the-sdk-sheet.md` and
+`docs/adr/0007-convert-rem-to-px-in-the-sdk-sheet.md`.

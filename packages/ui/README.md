@@ -64,7 +64,7 @@ such as `* { box-sizing: content-box }`, or a rule such as
 `button { padding: 1rem }`, changed the appearance of our components before. It
 does not change them now.
 
-Read these three points before you upgrade:
+Read these four points before you upgrade:
 
 - **You cannot style SDK internals, and we never supported it.** If you target
   our elements from your stylesheet, our rule overrides yours. Class names,
@@ -83,6 +83,12 @@ Read these three points before you upgrade:
   animations set them at runtime. The
   [residual-leak report](https://github.com/youversion/platform-sdk-react/blob/main/docs/style-isolation-residual-leak.md)
   has the full list and the reason for each one.
+- **Your root font size no longer scales our components.** A page with
+  `html { font-size: 62.5% }` used to shrink every SDK size by 37.5 percent. Our
+  stylesheet now ships `px` instead of `rem`, and our root declares
+  `font-size: 16px`. Browser zoom still works. If you want our components to
+  scale with your type size, set `[data-yv-sdk] { font-size: … }` — that
+  property is one of the ones we leave to you.
 
 To change the appearance of the components, use a supported path:
 
@@ -95,8 +101,10 @@ To change the appearance of the components, use a supported path:
 
 For the full rationale, read
 [ADR-0005](https://github.com/youversion/platform-sdk-react/blob/main/docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md)
+,
+[ADR-0006](https://github.com/youversion/platform-sdk-react/blob/main/docs/adr/0006-layer-and-importantize-the-sdk-sheet.md)
 and
-[ADR-0006](https://github.com/youversion/platform-sdk-react/blob/main/docs/adr/0006-layer-and-importantize-the-sdk-sheet.md).
+[ADR-0007](https://github.com/youversion/platform-sdk-react/blob/main/docs/adr/0007-convert-rem-to-px-in-the-sdk-sheet.md).
 
 ### Content Security Policy
 

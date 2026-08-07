@@ -3,11 +3,12 @@
 Date: 2026-08-07 (supersedes the 2026-08-06 measurement)
 Ticket: YPE-4113
 Decision records: [ADR-0005](adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md),
-[ADR-0006](adr/0006-layer-and-importantize-the-sdk-sheet.md)
+[ADR-0006](adr/0006-layer-and-importantize-the-sdk-sheet.md),
+[ADR-0007](adr/0007-convert-rem-to-px-in-the-sdk-sheet.md)
 
 ## Conclusion
 
-**No consumer rule in the fixture reaches an SDK component. All six groups
+**No consumer rule in the fixture reaches an SDK component. All seven groups
 report zero leaks on all fifteen components.**
 
 The previous version of this report named two rules that got through:
@@ -20,6 +21,17 @@ button { border-radius: 0 !important }     /* reached 65 of those 155 */
 ADR-0006 closed both. The SDK sheet now ships in `@layer yv` with `!important`
 on every non-exempt declaration, and a layered important declaration outranks an
 unlayered important one at any specificity.
+
+A third rule was found after that, and it is a different class of leak:
+
+```css
+html { font-size: 62.5% }                  /* shrank every SDK size by 37.5% */
+```
+
+This one is not in the cascade at all. A `rem` resolves against the document
+root element, so no selector, layer or `!important` reaches it. ADR-0007 closed
+it by converting every `rem` in the sheet to `px` at build time, and by giving
+the SDK root an explicit `font-size`.
 
 **Do not adopt shadow DOM.** ADR-0005 set one condition: a residual that
 includes rules without `!important`. There was never such a residual, and now
@@ -39,11 +51,11 @@ computed properties on every element of the SDK subtree. It then adds one
 consumer CSS group at a time and records the properties again. Each (element,
 property) pair with a changed value is one leak.
 
-The run captured for this report: 43 test files, 541 tests, all passed.
+The run captured for this report: 43 test files, 548 tests, all passed.
 
 | Path | What it is |
 | --- | --- |
-| `packages/ui/src/test/consumer-host.ts` | The six consumer CSS groups |
+| `packages/ui/src/test/consumer-host.ts` | The seven consumer CSS groups |
 | `packages/ui/src/test/style-diff.ts` | The 32 tracked properties and the diff |
 | `packages/ui/src/components/style-isolation.stories.tsx` | 16 stories, one per component plus the token-override check |
 
@@ -53,8 +65,9 @@ leak on every run.
 
 ## Result by consumer CSS group
 
-"Before" is the same fifteen-story harness run against the ADR-0005 sheet, on
-2026-08-07. The four zero groups were zero before and after.
+"Before" is the same fifteen-story harness run against the sheet that preceded
+the fix, on 2026-08-07. For the first six groups that is the ADR-0005 sheet; for
+`remRebase` it is the ADR-0006 sheet. The four zero groups were zero throughout.
 
 | Group | What it models | Before | After |
 | --- | --- | --- | --- |
@@ -64,6 +77,7 @@ leak on every run.
 | `inheritedTypography` | `body { font-family; color; line-height; letter-spacing; word-spacing; text-align; text-transform; text-indent; white-space }` | 0 | **0** |
 | `important` | `button { border-radius: 0 !important; padding: 2rem !important }` | 944 | **0** |
 | `highSpecificity` | `#yv-consumer-host-root button { padding: 1.5rem; margin: 1.25rem; border-radius: 0 }` | 1,570 | **0** |
+| `remRebase` | `html { font-size: 62.5% }` | 2,098 | **0** |
 
 Zero means zero on every component, not an average.
 
@@ -74,32 +88,39 @@ and that the `important` style tag is still in the document. Without that
 positive control, a zero could mean "the fixture stopped matching" rather than
 "the SDK held".
 
+`remRebase` has its own positive control, for the same reason. The harness
+injects into `document.head`, so a story could plausibly read zero because the
+rule never reached the document root. Each story asserts
+`getComputedStyle(document.documentElement).fontSize === '10px'` alongside the
+leak count.
+
 ## The residual, by component
 
-| Component | Before: `important` | Before: `highSpecificity` | After, both |
-| --- | --- | --- | --- |
-| `BibleChapterPicker` | 496 | 876 | **0** |
-| `BibleVersionPicker` | 144 | 216 | **0** |
-| `BibleReader` | 92 | 149 | **0** |
-| `VerseActionPopover` | 56 | 84 | **0** |
-| `BibleLanguagePickerContent` | 56 | 84 | **0** |
-| `BibleTextView` | 44 | 77 | **0** |
-| `BibleThemeSettingsContent` | 32 | 48 | **0** |
-| `VerseOfTheDay` | 8 | 12 | **0** |
-| `YouVersionAuthButton` | 8 | 12 | **0** |
-| `BibleVersionPickerLanguageTrigger` | 8 | 12 | **0** |
-| `BibleCard` | 0 | 0 | **0** |
-| `FootnoteContent` | 0 | 0 | **0** |
-| `ProfileAvatar` | 0 | 0 | **0** |
-| `Separator` | 0 | 0 | **0** |
-| `Textarea` | 0 | 0 | **0** |
+| Component | Before: `important` | Before: `highSpecificity` | Before: `remRebase` | After, all three |
+| --- | --- | --- | --- | --- |
+| `BibleChapterPicker` | 496 | 876 | 1,044 | **0** |
+| `BibleVersionPicker` | 144 | 216 | 408 | **0** |
+| `BibleReader` | 92 | 149 | 119 | **0** |
+| `VerseActionPopover` | 56 | 84 | 66 | **0** |
+| `BibleLanguagePickerContent` | 56 | 84 | 117 | **0** |
+| `BibleTextView` | 44 | 77 | 13 | **0** |
+| `BibleThemeSettingsContent` | 32 | 48 | 62 | **0** |
+| `VerseOfTheDay` | 8 | 12 | 87 | **0** |
+| `YouVersionAuthButton` | 8 | 12 | 42 | **0** |
+| `BibleVersionPickerLanguageTrigger` | 8 | 12 | 20 | **0** |
+| `BibleCard` | 0 | 0 | 69 | **0** |
+| `FootnoteContent` | 0 | 0 | 35 | **0** |
+| `ProfileAvatar` | 0 | 0 | 4 | **0** |
+| `Separator` | 0 | 0 | 2 | **0** |
+| `Textarea` | 0 | 0 | 10 | **0** |
 
-The five components that measured zero before render no `<button>`. Both
-fixture rules target `button`.
+The five components that measured zero on the first two groups render no
+`<button>`, and both of those fixture rules target `button`. `remRebase` reaches
+every component, because every component ships `rem` sizes.
 
 ## What still gets through
 
-Two things. Both are deliberate, and neither is in the fixture.
+Three things. All are deliberate, and none is in the fixture.
 
 ### 1. A consumer rule that is `!important` and in a layer declared before `yv`
 
@@ -139,24 +160,47 @@ The list and the reason for each family are in
 The trade is explicit: a working popover and a working animation, at the price
 of a consumer being able to override the properties that make them work.
 
+### 3. The root font size, on purpose
+
+`[data-yv-sdk] { font-size: 16px }` is a `font-size` declaration, so it is
+exempt by the rule above. It stays unlayered and normal at 0,1,0, and a consumer
+rule beats it.
+
+That is the design. It is the one way a consumer can make the SDK scale with
+their own type size, now that the sheet ships `px`.
+
+The cost is an accessibility one and it is stated plainly in
+[ADR-0007](adr/0007-convert-rem-to-px-in-the-sdk-sheet.md): the SDK no longer
+grows when a reader raises their **browser's** default font size. Browser zoom
+still works, because zoom scales `px`. A consumer who needs type scaling has
+four supported paths: override `[data-yv-sdk] { font-size }`, raise a `--yv-*`
+size token, pass a component's `fontSize` prop, or open an issue.
+
 ## Keeping this report accurate
 
-Every group is asserted, not only recorded. The two former leak groups now
-assert zero, and every story that renders a button also asserts that the fixture
-still matches it. A zero that comes from a non-matching fixture fails the story.
+Every group is asserted, not only recorded. The three former leak groups now
+assert zero, and each carries its own positive control: a button story asserts
+the fixture still matches the button, and `remRebase` asserts the document root
+really reads `10px`. A zero that comes from a non-matching fixture fails the
+story.
 
-Three build-time checks back the harness up, in
+The build-time checks back the harness up, in
 `packages/ui/scripts/scope-selectors.mjs` and `scripts/verify-styles.js`. They
 fail the build on an ungated selector, a non-exempt declaration that is not
 important, an exempt declaration that is important, an `!important` inside a
 `@keyframes` body, a `@keyframes` animating a property missing from the
-exemption list, a missing or misplaced `@layer yv` block, and a `dist/index.js`
-without `@layer yv{`.
+exemption list, a surviving `rem` length, a missing or misplaced `@layer yv`
+block, and a `dist/index.js` without `@layer yv{`.
 
 **Not covered by any automated check:** popover and dialog *placement*, and
 enter/exit animation *appearance*. The harness compares computed styles on a
 settled DOM; it does not watch a transition run or read a popper's final
 position against its trigger. A manual Storybook pass covers those.
+
+**Also not covered by the build check:** a `rem` written in an inline `style`
+prop. The check reads the compiled sheet, and an inline style is not in it.
+Write `px` in a `style` prop. The harness catches one that slips through, as a
+`remRebase` leak.
 
 To produce the numbers in this file again, run the commands at the top of this
 report. Then read the per-group counts that each story writes to the console.
