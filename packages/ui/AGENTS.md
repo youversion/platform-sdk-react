@@ -45,7 +45,8 @@ export — treat those two as public API and breaking-change territory.
 
 The build rewrites every SDK selector to `:is([data-yv-sdk], [data-yv-sdk] *)`.
 A rule applies only inside a subtree that carries that attribute. See
-[ADR-0005](../../docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md).
+[ADR-0005](../../docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md) and
+[ADR-0006](../../docs/adr/0006-layer-and-importantize-the-sdk-sheet.md).
 
 - **Put `data-yv-sdk` on the root element of every new exported component.**
   Without the attribute, the component renders with no SDK styling.
@@ -57,15 +58,25 @@ A rule applies only inside a subtree that carries that attribute. See
   ancestor (for example Radix Dialog Overlay/Content into `document.body`), it
   MUST stamp `data-yv-sdk` (and `data-yv-theme` when theme applies). See
   `src/components/ui/dialog.tsx`.
-- SDK CSS is in no layer, on purpose. Author CSS in no layer overrides every
-  named layer at any specificity, so layered SDK rules always lose to a
-  consumer's ordinary rules.
+- **The sheet ships in two halves, split by property.** Every property on the
+  exemption list in `scripts/scope-selectors.mjs` stays unlayered and normal.
+  Everything else goes into `@layer yv` and gets `!important`. Layer order
+  reverses for important declarations and ranks unlayered last, so the layered
+  half beats a consumer `!important` rule at any specificity. The unlayered half
+  keeps its pre-ADR-0006 cascade position, because a layered *normal*
+  declaration would lose to ordinary consumer CSS.
+- **Never importantize a property something sets at runtime.** An author
+  `!important` outranks the inline `style` attribute and the CSS animation
+  origin. Radix positions poppers inline; our keyframes animate `opacity`,
+  `transform`, `height` and `filter`. Add to `EXEMPT_PROPERTIES` with a reason,
+  never to "be safe". `!important` inside `@keyframes` is invalid CSS.
 - `packages/core/src/styles/theme.css` declares the inherited properties
   (`font`, `color`, `box-sizing`, `margin`, `padding`, `border`) on the root and
   on the descendants. The gate alone does not stop inheritance from consumer DOM.
-- A consumer `!important` rule still overrides ours.
+- Two residuals remain: a consumer rule that is `!important` *and* in a layer
+  declared before `yv`, and the exempt properties.
   [docs/style-isolation-residual-leak.md](../../docs/style-isolation-residual-leak.md)
-  measures that residual.
+  records both.
 - The regression harness is `src/components/style-isolation.stories.tsx`, with
   `src/test/consumer-host.ts` and `src/test/style-diff.ts`. Add a story there when
   you add an exported component.
@@ -85,9 +96,15 @@ type-checked; prefer them over any prose description of a component's API.
 - **No module side effects**: styles are rendered via React 19 `<style precedence>` in the `YouVersionProvider` wrapper
 - **Build sub-steps are order-dependent**. The chain is:
   1. `build:css`: Tailwind CLI, `src/styles/global.css` to `.cache/tailwind.raw.css`
-  2. `build:css:scope`: `scripts/scope-selectors.mjs`, adds the gate to every selector, writes `dist/tailwind.css`
+  2. `build:css:scope`: `scripts/scope-selectors.mjs`, adds the gate to every
+     selector, splits the sheet into the unlayered exempt half and the
+     `@layer yv` important half, writes `dist/tailwind.css`. It re-parses its own
+     output and fails on an ungated selector, a non-exempt normal declaration, an
+     exempt important declaration, an `!important` inside `@keyframes`, a
+     `@keyframes` animating a property missing from the exemption list, or a
+     missing or misplaced `@layer yv` block.
   3. `build:js`: tsup, injects `dist/tailwind.css` as the `__YV_STYLES__` constant
-  4. `verify:styles`: `scripts/verify-styles.js`, fails the build if the gate is absent or a `@layer yv-sdk-*` block remains
+  4. `verify:styles`: `scripts/verify-styles.js`, fails the build if the gate is absent, if `@layer yv{` is absent, or if a `@layer yv-sdk-*` block remains
   5. `build:types`: tsc declarations
 
   If you skip `build:css`, `__YV_STYLES__` is empty. If you skip

@@ -64,17 +64,25 @@ such as `* { box-sizing: content-box }`, or a rule such as
 `button { padding: 1rem }`, changed the appearance of our components before. It
 does not change them now.
 
-Read these two points before you upgrade:
+Read these three points before you upgrade:
 
 - **You cannot style SDK internals, and we never supported it.** If you target
   our elements from your stylesheet, our rule overrides yours. Class names,
   `data-slot` values and DOM structure are internal. They change without a major
   version.
-- **`!important` still overrides our rules.** The cascade puts `!important` above
-  all normal declarations. A rule such as `button { padding: 2rem !important }`
-  in your global CSS changes our buttons. The
+- **`!important` no longer overrides our rules, and neither does an id.** The
+  SDK stylesheet ships in a cascade layer named `yv`, and its declarations carry
+  `!important`. For important declarations the cascade reverses layer order and
+  ranks unlayered CSS last, so `button { padding: 2rem !important }` in your
+  global CSS no longer changes our buttons. `#app button { padding: 1rem }` does
+  not either — importance is sorted above specificity.
+- **A short list of properties is still yours to change.** We leave `position`,
+  `top`/`left`/`right`/`bottom`, `z-index`, `transform`, `opacity`,
+  `animation-*`, `transition-*`, `font-size`, `background-color`, `border-*` and
+  every `--*` custom property out of the layer, because our popovers and
+  animations set them at runtime. The
   [residual-leak report](https://github.com/youversion/platform-sdk-react/blob/main/docs/style-isolation-residual-leak.md)
-  measures which buttons change.
+  has the full list and the reason for each one.
 
 To change the appearance of the components, use a supported path:
 
@@ -86,7 +94,9 @@ To change the appearance of the components, use a supported path:
   [open an issue](https://github.com/youversion/platform-sdk-react/issues).
 
 For the full rationale, read
-[ADR-0005](https://github.com/youversion/platform-sdk-react/blob/main/docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md).
+[ADR-0005](https://github.com/youversion/platform-sdk-react/blob/main/docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md)
+and
+[ADR-0006](https://github.com/youversion/platform-sdk-react/blob/main/docs/adr/0006-layer-and-importantize-the-sdk-sheet.md).
 
 ### Content Security Policy
 

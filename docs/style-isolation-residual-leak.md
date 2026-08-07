@@ -1,44 +1,49 @@
 # Residual-leak report: SDK components under consumer host CSS
 
-Date: 2026-08-06
+Date: 2026-08-07 (supersedes the 2026-08-06 measurement)
 Ticket: YPE-4113
-Decision record: [ADR-0005](adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md)
+Decision records: [ADR-0005](adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md),
+[ADR-0006](adr/0006-layer-and-importantize-the-sdk-sheet.md)
 
 ## Conclusion
 
-**Two consumer declarations still reach SDK components. Both use `!important`.
-No other rule reaches them.**
+**No consumer rule in the fixture reaches an SDK component. All six groups
+report zero leaks on all fifteen components.**
+
+The previous version of this report named two rules that got through:
 
 ```css
-button { padding: 2rem !important }        /* reaches 155 buttons */
-button { border-radius: 0 !important }     /* reaches 65 of those 155 */
+button { padding: 2rem !important }        /* reached 155 buttons */
+button { border-radius: 0 !important }     /* reached 65 of those 155 */
 ```
 
-Every rule in the fixture without `!important` reports zero leaks on every
-component. **Do not adopt shadow DOM.** ADR-0005 sets one condition for shadow
-DOM: a residual that includes rules without `!important`. There is no such
-residual.
+ADR-0006 closed both. The SDK sheet now ships in `@layer yv` with `!important`
+on every non-exempt declaration, and a layered important declaration outranks an
+unlayered important one at any specificity.
+
+**Do not adopt shadow DOM.** ADR-0005 set one condition: a residual that
+includes rules without `!important`. There was never such a residual, and now
+there is no measured residual of either kind.
 
 ## How we produced these numbers
 
 The harness is in the repo and runs in CI.
 
 ```bash
-pnpm --filter @youversion/platform-react-ui build:css
-pnpm --filter @youversion/platform-react-ui build:css:scope
+pnpm turbo build --filter=@youversion/platform-react-ui
 pnpm --filter @youversion/platform-react-ui test:integration
 ```
 
 Each story renders one component. It removes all consumer CSS and records 32
-computed properties on every element of the SDK subtree. It then adds one consumer
-CSS group at a time and records the properties again. Each (element, property) pair
-with a changed value is one leak.
+computed properties on every element of the SDK subtree. It then adds one
+consumer CSS group at a time and records the properties again. Each (element,
+property) pair with a changed value is one leak.
 
-The run captured for this report: 43 test files, 523 tests, all passed.
+The run captured for this report: 43 test files, 541 tests, all passed.
 
 | Path | What it is |
 | --- | --- |
-| `packages/ui/src/test/consumer-host.ts` | The five consumer CSS groups |
+| `packages/ui/src/test/consumer-host.ts` | The six consumer CSS groups |
 | `packages/ui/src/test/style-diff.ts` | The 32 tracked properties and the diff |
 | `packages/ui/src/components/style-isolation.stories.tsx` | 16 stories, one per component plus the token-override check |
 
@@ -48,157 +53,110 @@ leak on every run.
 
 ## Result by consumer CSS group
 
-Totals below are from the 2026-08-06 run (13 consumer-host stories). Two
-stories were added later for `BibleVersionPickerLanguageTrigger` and
-`BibleLanguagePickerContent`; re-run the harness to fold them into these
-totals.
+"Before" is the same fifteen-story harness run against the ADR-0005 sheet, on
+2026-08-07. The four zero groups were zero before and after.
 
-| Group | What it models | Leaks |
-| --- | --- | --- |
-| `preflight` | A consumer running Tailwind v4 Preflight | **0** |
-| `bareElements` | `button, a, p, ul, input { padding; margin; color; font-size; border; border-radius }` | **0** |
-| `aggressiveReset` | `* { box-sizing: content-box; margin: 0 }` | **0** |
-| `inheritedTypography` | `body { font-family; color; line-height; letter-spacing; word-spacing; text-align; text-transform; text-indent; white-space }` | **0** |
-| `important` | `button { border-radius: 0 !important; padding: 2rem !important }` | **880** |
+| Group | What it models | Before | After |
+| --- | --- | --- | --- |
+| `preflight` | A consumer running Tailwind v4 Preflight | 0 | **0** |
+| `bareElements` | `button, a, p, ul, input { padding; margin; color; font-size; border; border-radius }` | 0 | **0** |
+| `aggressiveReset` | `* { box-sizing: content-box; margin: 0 }` | 0 | **0** |
+| `inheritedTypography` | `body { font-family; color; line-height; letter-spacing; word-spacing; text-align; text-transform; text-indent; white-space }` | 0 | **0** |
+| `important` | `button { border-radius: 0 !important; padding: 2rem !important }` | 944 | **0** |
+| `highSpecificity` | `#yv-consumer-host-root button { padding: 1.5rem; margin: 1.25rem; border-radius: 0 }` | 1,570 | **0** |
 
 Zero means zero on every component, not an average.
 
+The id in `highSpecificity` goes on `document.body`, so the rule reaches
+Radix-portalled DOM as well as the in-tree subtree. Every story that renders a
+`<button>` also asserts that the button matches `#yv-consumer-host-root button`
+and that the `important` style tag is still in the document. Without that
+positive control, a zero could mean "the fixture stopped matching" rather than
+"the SDK held".
+
 ## The residual, by component
 
-The 880 leaks are 155 elements times the properties that changed on each one.
-
-| Component | Leaks | Elements hit | Elements not hit |
+| Component | Before: `important` | Before: `highSpecificity` | After, both |
 | --- | --- | --- | --- |
-| `BibleChapterPicker` | 496 | 95 buttons | every non-button element |
-| `BibleVersionPicker` | 144 | 18 buttons | every non-button element |
-| `BibleVersionPickerLanguageTrigger` | _(story added after measurement; re-run harness)_ | language trigger button | — |
-| `BibleLanguagePickerContent` | _(story added after measurement; re-run harness)_ | language rows / tab triggers | — |
-| `BibleReader` | 92 | 17 buttons | every non-button element |
-| `VerseActionPopover` | 56 | 7 buttons | every non-button element |
-| `BibleTextView` | 44 | 11 buttons | every non-button element |
-| `BibleThemeSettingsContent` | 32 | 5 buttons | every non-button element |
-| `VerseOfTheDay` | 8 | 1 button | every non-button element |
-| `YouVersionAuthButton` | 8 | 1 button | every non-button element |
-| `BibleCard` | 0 | renders no `<button>` | all |
-| `FootnoteContent` | 0 | renders no `<button>` | all |
-| `ProfileAvatar` | 0 | renders no `<button>` | all |
-| `Separator` | 0 | renders no `<button>` | all |
-| `Textarea` | 0 | renders no `<button>` | all |
+| `BibleChapterPicker` | 496 | 876 | **0** |
+| `BibleVersionPicker` | 144 | 216 | **0** |
+| `BibleReader` | 92 | 149 | **0** |
+| `VerseActionPopover` | 56 | 84 | **0** |
+| `BibleLanguagePickerContent` | 56 | 84 | **0** |
+| `BibleTextView` | 44 | 77 | **0** |
+| `BibleThemeSettingsContent` | 32 | 48 | **0** |
+| `VerseOfTheDay` | 8 | 12 | **0** |
+| `YouVersionAuthButton` | 8 | 12 | **0** |
+| `BibleVersionPickerLanguageTrigger` | 8 | 12 | **0** |
+| `BibleCard` | 0 | 0 | **0** |
+| `FootnoteContent` | 0 | 0 | **0** |
+| `ProfileAvatar` | 0 | 0 | **0** |
+| `Separator` | 0 | 0 | **0** |
+| `Textarea` | 0 | 0 | **0** |
 
-The eight components render 155 `<button>` elements in total. All 155 leak. No
-element that is not a `<button>` leaks anywhere. The residual is exactly the
-selector that the consumer wrote, and nothing more.
+The five components that measured zero before render no `<button>`. Both
+fixture rules target `button`.
 
-## The residual, by rule and by element
+## What still gets through
 
-### `button { padding: 2rem !important }`
+Two things. Both are deliberate, and neither is in the fixture.
 
-This rule reaches all 155 buttons, on all four sides. It causes 620 of the 880
-leaks.
+### 1. A consumer rule that is `!important` and in a layer declared before `yv`
 
-| Component | Element | Clean padding | Under the rule |
-| --- | --- | --- | --- |
-| `BibleChapterPicker` | 66 book accordion triggers (`[data-slot="accordion-trigger"]`, for example "1 Chronicles") | `16px 0` | `32px` |
-| `BibleChapterPicker` | 28 chapter number buttons (`[data-slot="button"]`, "1" through "28") | `0` | `32px` |
-| `BibleChapterPicker` | popover close button | `0` | `32px` |
-| `BibleVersionPicker` | 14 version rows (`[data-slot="item"]`, for example `aria-label="New International Version 2011"`) | `12px 16px` | `32px` |
-| `BibleVersionPicker` | 2 tab triggers (`[data-slot="tabs-trigger"]`, "Suggested" and "All (5)") and the popover close button | `0` | `32px` |
-| `BibleVersionPicker` | language trigger (`aria-label="Select language"`) | `0 10px` | `32px` |
-| `BibleReader` | toolbar: previous chapter, next chapter, "Change Bible book and chapter", "Change Bible version", Settings, `[data-testid="user-menu-trigger"]` | `0`, `0 10px`, `0 16px` | `32px` |
-| `BibleReader` | 11 footnote triggers (`[data-slot="popover-trigger"]`, `aria-label="Footnote"`) | `0` | `32px` |
-| `BibleTextView` | 11 footnote triggers (`[data-slot="popover-trigger"]`, `aria-label="Footnote"`) | `0` | `32px` |
-| `VerseActionPopover` | 5 highlight swatches (`aria-label="Apply highlight"`) | `0` | `32px` |
-| `VerseActionPopover` | Copy, Share | `4px 8px` | `32px` |
-| `BibleThemeSettingsContent` | `[data-testid="decrease-font-size"]`, `[data-testid="increase-font-size"]`, `[data-testid="line-spacing"]` | `8px 16px` | `32px` |
-| `BibleThemeSettingsContent` | 2 font buttons ("Inter", "Untitled Serif") | `8px 24px` | `32px` |
-| `VerseOfTheDay` | share button (`aria-label="Share"`) | `0` | `32px` |
-| `YouVersionAuthButton` | the sign-in button itself ("Sign in with YouVersion") | `0 16px` | `32px` |
+```css
+@layer theirs, yv;                      /* their layer declared first */
+@layer theirs { button { padding: 2rem !important } }
+```
 
-### `button { border-radius: 0 !important }`
+For important declarations the layer order reverses, so the layer declared
+*first* wins. A consumer who writes this has read the cascade specification and
+decided to override us. That is a supported way to opt out, not a leak. It costs
+them a `@layer` declaration in a fixed order, which no consumer writes by
+accident.
 
-This rule reaches 65 of the 155 buttons, on all four corners. It causes 260 of
-the 880 leaks.
+We do not close this. Closing it would need a layer declared before every layer
+a consumer might name, which is not expressible.
 
-The other 90 buttons compute to `0px` already. The rule matches them and changes
-nothing. The 66 book accordion triggers in the chapter picker are most of that
-group.
+### 2. The exempt properties
 
-| Component | Element | Clean radius | Under the rule |
-| --- | --- | --- | --- |
-| `BibleChapterPicker` | 28 chapter number buttons | `4px` | `0px` |
-| `BibleChapterPicker` | popover close button | `30px` | `0px` |
-| `BibleVersionPicker` | all 18 buttons (version rows, tab triggers, close, language trigger) | `8px` | `0px` |
-| `BibleReader` | 6 toolbar buttons | `30px` | `0px` |
-| `VerseActionPopover` | 5 highlight swatches | fully round (`3.35544e+07px`) | `0px` |
-| `VerseActionPopover` | Copy, Share | `30px` | `0px` |
-| `BibleThemeSettingsContent` | 3 icon buttons | `8px` | `0px` |
-| `VerseOfTheDay` | share button | `30px` | `0px` |
-| `YouVersionAuthButton` | the sign-in button | `30px` | `0px` |
+`packages/ui/scripts/scope-selectors.mjs` keeps a property exemption list.
+Those declarations stay unlayered and normal, which is exactly the cascade
+position they had before ADR-0006. A consumer rule that targets one of them,
+with `!important` or at higher specificity, still wins.
 
-`BibleTextView` is not in this table. Its 11 footnote triggers are square
-already, so only their padding changes.
+The list and the reason for each family are in
+[ADR-0006](adr/0006-layer-and-importantize-the-sdk-sheet.md). In summary:
 
-## What a partner sees
+| Family | Why it cannot be important |
+| --- | --- |
+| `opacity`, `transform`, `height`, `filter` | Animated by a `@keyframes` in this sheet. An important cascaded declaration outranks the animation origin and freezes the animation |
+| The rest of the transform pipeline | Composes with `transform` at runtime |
+| `animation-*`, `transition-*` | Radix `Presence` writes `animation-fill-mode` inline to hold an exit frame |
+| `position`, `top`/`right`/`bottom`/`left`, `inset-*`, `z-index`, `min-width`, `visibility`, `pointer-events` | Radix and floating-ui write these inline to place a popper. An author `!important` outranks the inline `style` attribute |
+| `font-size`, `background-color`, `border-*` and their shorthands | SDK components write these inline. Preflight and `theme.css` compile into this sheet and would beat our own components |
+| Every `--*` custom property | A consumer `[data-yv-sdk] { --yv-primary: … }` override must keep winning. This is the documented customization path |
 
-A partner who ships `button { padding: 2rem !important }` in their global CSS
-gets:
-
-- A chapter picker with 66 book rows and 28 chapter tiles, each one 64px taller
-  than designed, inside a popover sized for the original.
-- Footnote markers in Bible text that are 64px squares instead of inline glyphs.
-- A sign-in button and a Verse of the Day share button with square corners.
-
-The components still render. They do not look like the components we designed.
-
-## Why no light-DOM technique corrects this
-
-The CSS cascade sorts `!important` author declarations above normal author
-declarations, before it compares specificity
-([CSS Cascade 5 §6.1](https://www.w3.org/TR/css-cascade-5/#cascade-sort)). The
-`:is([data-yv-sdk], [data-yv-sdk] *)` gate raises SDK rules from 0,1,0 to 0,2,0
-and above. That decides every comparison between normal declarations in our
-favor, and it decides nothing here.
-
-Three options exist, and two are worse than the leak:
-
-1. **Mark every SDK declaration `!important`.** This wins here and loses the next
-   time. It removes every legitimate escape hatch and makes our own internal
-   overrides unreasonable. A consumer `!important` rule still ties and wins on
-   source order, because their sheet loads after ours.
-2. **Shadow DOM.** This closes the leak. A document stylesheet does not match
-   inside a shadow tree at all, with or without `!important`. The costs are in
-   ADR-0005 and they are large. Radix portals mount outside the root.
-   `FocusScope`, `aria-hidden` and dismissable-layer all break at the boundary.
-   React 19 `<style precedence>` hoisting into a shadow root is undocumented.
-   Tailwind Labs state that v4 does not target shadow DOM, because v4 depends on
-   `@property`.
-3. **Treat the leak as out of contract.** A consumer who writes `!important`
-   against SDK elements makes an explicit choice to override us.
-
-## Recommendation
-
-**Do not adopt shadow DOM.**
-
-ADR-0005 fixed the condition before the harness produced a number: recommend
-shadow DOM only if the residual includes rules that do not use `!important`. The
-residual is 880 leaks, and all 880 come from two `!important` declarations. Every
-group without `!important` reports zero.
-
-The condition is not met, and the result is not close to it. Option 3 is the
-answer, and `packages/ui/README.md` now states it to consumers in their own
-language.
-
-If a real partner reports a real break from a rule that does not use
-`!important`, read this decision again. The harness measures that case. Add their rule to
-`CONSUMER_CSS_GROUPS`, run the suite, and read the number.
+The trade is explicit: a working popover and a working animation, at the price
+of a consumer being able to override the properties that make them work.
 
 ## Keeping this report accurate
 
-The `important` group is asserted, not only recorded. Each story reads the
-rendered DOM. A component with a `<button>` must leak under that group, and a
-component without a `<button>` must report zero. If the leak drops to zero and
-the fixture did not change, the rule stopped matching and the measurement is
-stale.
+Every group is asserted, not only recorded. The two former leak groups now
+assert zero, and every story that renders a button also asserts that the fixture
+still matches it. A zero that comes from a non-matching fixture fails the story.
+
+Three build-time checks back the harness up, in
+`packages/ui/scripts/scope-selectors.mjs` and `scripts/verify-styles.js`. They
+fail the build on an ungated selector, a non-exempt declaration that is not
+important, an exempt declaration that is important, an `!important` inside a
+`@keyframes` body, a `@keyframes` animating a property missing from the
+exemption list, a missing or misplaced `@layer yv` block, and a `dist/index.js`
+without `@layer yv{`.
+
+**Not covered by any automated check:** popover and dialog *placement*, and
+enter/exit animation *appearance*. The harness compares computed styles on a
+settled DOM; it does not watch a transition run or read a popper's final
+position against its trigger. A manual Storybook pass covers those.
 
 To produce the numbers in this file again, run the commands at the top of this
 report. Then read the per-group counts that each story writes to the console.

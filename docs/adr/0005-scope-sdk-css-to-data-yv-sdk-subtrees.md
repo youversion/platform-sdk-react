@@ -7,6 +7,14 @@ Date: 2026-08-06
 Accepted. This decision replaces the cascade-layer strategy from `bcfb868`
 (v1.20.0).
 
+Amended 2026-08-07 by
+[ADR-0006](0006-layer-and-importantize-the-sdk-sheet.md). The
+`:is([data-yv-sdk], [data-yv-sdk] *)` gate below is unchanged and still carries
+the outbound guarantee. Two statements below are superseded: the sheet is no
+longer in no layer, and a consumer `!important` rule no longer reaches our
+components. ADR-0006 has the cascade math and the property exemption list. The
+sections marked **Superseded** name what changed.
+
 ## Context
 
 A partner puts `BibleTextView` into their app. Their `button { padding: 1rem }`
@@ -56,6 +64,12 @@ this. Only a declaration changes it.
 ## Decision
 
 ### 1. SDK CSS in no layer, with a `[data-yv-sdk]` gate on every selector
+
+> **Superseded in part by ADR-0006.** The gate stands. "In no layer" now holds
+> only for the exempt half of the sheet. Everything else ships in `@layer yv`
+> and is `!important`. The reasoning below — that a layered *normal* declaration
+> loses to unlayered consumer CSS — is correct, and it is why ADR-0006 splits
+> the sheet by property instead of layering all of it.
 
 Do not protect the consumer with cascade order. Protect the consumer with the
 DOM subtree.
@@ -163,6 +177,10 @@ the specificity. It also adds a dependency with Baseline status "newly available
 
 ### 4. Shadow DOM not adopted. The condition, fixed before the numbers existed
 
+> **Still not adopted, and the condition is now moot.** ADR-0006 closed the
+> `!important` residual as well, so there is no measured residual of either
+> kind. The costs table below is unchanged and still applies.
+
 **If the residual leak includes rules that do not use `!important`, recommend
 shadow DOM. If it does not, do not recommend shadow DOM.**
 
@@ -259,10 +277,12 @@ reports a real break.
   the utilities. The integration suite is the only check on that, and it covers
   computed properties rather than visual fidelity.
 
-- **A consumer `!important` rule still reaches our components.** That fact now
-  has numbers instead of an assumption.
-  `docs/style-isolation-residual-leak.md` names the rules and the components.
-  `packages/ui/README.md` tells consumers the same thing in their own language.
+- ~~**A consumer `!important` rule still reaches our components.**~~ True when
+  this ADR was written, and closed by
+  [ADR-0006](0006-layer-and-importantize-the-sdk-sheet.md) on 2026-08-07. The
+  measurement that made the case is in this repo's history;
+  `docs/style-isolation-residual-leak.md` now records the two residuals that
+  remain.
 
 - **A reversal is not a small change.** To restore layers, restore three things:
   the `@layer` declaration, the five `layer(...)` modifiers, and the `:where()`
