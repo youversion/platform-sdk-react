@@ -192,6 +192,7 @@ describe('consumer-host groups', () => {
       'aggressiveReset',
       'inheritedTypography',
       'important',
+      'highSpecificity',
     ]);
   });
 

@@ -14,7 +14,8 @@
  * | `bareElements`        | Hand-written element selectors (`button {}`, `p {}`)  |
  * | `aggressiveReset`     | A `*` reset                                          |
  * | `inheritedTypography` | Typography set on `body` and inherited downward      |
- * | `important`           | `!important` overrides, which we do not support      |
+ * | `important`           | `!important` overrides                               |
+ * | `highSpecificity`     | An id selector, at 1,0,1                             |
  *
  * The injection order matters. Every group is appended to `document.head`
  * *after* the SDK's `<style precedence="yv-sdk">` tag. A tie on source order
@@ -226,15 +227,45 @@ body {
 `;
 
 /**
- * The residual. No light-DOM technique stops a consumer `!important` rule that
- * targets our elements, and the override policy treats such a rule as out of
- * contract. It stays in the fixture so the residual report can measure it
- * instead of estimating it.
+ * `!important`, unlayered. This group used to be the recorded residual.
+ *
+ * It is not one any more. The SDK sheet ships inside a declared `@layer yv`, and
+ * every non-exempt declaration in it is important. CSS Cascade 5 §6.1 reverses
+ * layer order for important declarations and ranks unlayered-important *last*,
+ * so a layered important SDK rule beats this one. The group stays, because it is
+ * the measurement that proves the claim.
  */
 const IMPORTANT = `
 button {
   border-radius: 0 !important;
   padding: 2rem !important;
+}
+`;
+
+/**
+ * The id that the `highSpecificity` group targets, placed on `document.body`.
+ *
+ * A story asserts that `#${CONSUMER_HOST_ROOT_ID} button` really matches a
+ * rendered button before it asserts zero leaks. A zero-leak assertion against a
+ * selector that matches nothing passes for the wrong reason, and would keep
+ * passing after the isolation broke.
+ *
+ * The id sits on `document.body`, not on `#storybook-root`. Radix portals the
+ * popovers and dialogs straight into `document.body`, and a fixture that cannot
+ * reach the portalled DOM tests half of the components.
+ */
+export const CONSUMER_HOST_ROOT_ID = 'yv-consumer-host-root';
+
+/**
+ * An id selector, at 1,0,1. The gate only adds 0,1,0, so specificity alone loses
+ * here. Importance is what wins, because the cascade compares importance before
+ * specificity.
+ */
+const HIGH_SPECIFICITY = `
+#${CONSUMER_HOST_ROOT_ID} button {
+  padding: 1.5rem;
+  margin: 1.25rem;
+  border-radius: 0;
 }
 `;
 
@@ -244,6 +275,7 @@ export const CONSUMER_CSS_GROUPS = {
   aggressiveReset: AGGRESSIVE_RESET,
   inheritedTypography: INHERITED_TYPOGRAPHY,
   important: IMPORTANT,
+  highSpecificity: HIGH_SPECIFICITY,
 } satisfies Record<string, string>;
 
 export type ConsumerCssGroup = keyof typeof CONSUMER_CSS_GROUPS;
@@ -258,13 +290,37 @@ export function resolveConsumerCssGroups(groups: ConsumerCssGroup[] | 'all'): Co
   return groups === 'all' ? [...ALL_CONSUMER_CSS_GROUPS] : [...groups];
 }
 
+/** The page's own body id, so the harness can hand it back. */
+let previousBodyId: string | null = null;
+
+/** Puts `CONSUMER_HOST_ROOT_ID` on `document.body`, so `highSpecificity` matches. */
+function claimBodyId(): void {
+  if (document.body.id === CONSUMER_HOST_ROOT_ID) return;
+  previousBodyId = document.body.id;
+  document.body.id = CONSUMER_HOST_ROOT_ID;
+}
+
+/** Hands the body id back. An id the harness did not set is left alone. */
+function releaseBodyId(): void {
+  if (document.body.id !== CONSUMER_HOST_ROOT_ID) return;
+  document.body.id = previousBodyId ?? '';
+  previousBodyId = null;
+}
+
 /**
  * Appends one `<style>` element per group to `document.head`, after the SDK tag.
+ *
+ * The id goes on `document.body` for every call, not only for the
+ * `highSpecificity` group. An id on its own selects nothing and inherits
+ * nothing, so it cannot move a measurement. Setting it unconditionally keeps the
+ * DOM identical across the clean snapshot and every group snapshot, which is the
+ * condition the diff depends on.
  *
  * @returns a cleanup function that removes only the tags that this call added.
  */
 export function injectConsumerCss(groups: ConsumerCssGroup[] | 'all'): () => void {
   const added: HTMLStyleElement[] = [];
+  claimBodyId();
 
   for (const group of resolveConsumerCssGroups(groups)) {
     const style = document.createElement('style');
@@ -285,9 +341,18 @@ export function injectConsumerCss(groups: ConsumerCssGroup[] | 'all'): () => voi
  * Removes every consumer CSS `<style>` element in the document, whichever code
  * added it. The measurement harness needs a clean baseline it can trust, and a
  * story that unmounted during a run can leave a tag behind.
+ *
+ * The body id stays. `measureLeaks` calls this between groups, and a body id
+ * that came and went would change the DOM under the diff.
  */
 export function removeConsumerCss(): void {
   for (const style of document.querySelectorAll(`style[${CONSUMER_HOST_STYLE_ATTRIBUTE}]`)) {
     style.remove();
   }
+}
+
+/** Undoes everything `injectConsumerCss` did, including the body id. */
+export function resetConsumerHost(): void {
+  removeConsumerCss();
+  releaseBodyId();
 }

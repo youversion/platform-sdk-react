@@ -4,8 +4,7 @@
  * Each story renders one exported component in a page whose global CSS tries to
  * break it. The story then measures the damage, and asserts on the measurement.
  *
- * Both leak channels are closed now. Four of the five consumer CSS groups must report
- * zero on every component:
+ * Every consumer CSS group must now report zero on every component:
  *
  * - `inheritedTypography` closed when `theme.css` started to declare the whole
  *   inherited set on `[data-yv-sdk]`. Cascade rank cannot stop inheritance. Only
@@ -15,17 +14,17 @@
  *   `:is([data-yv-sdk], [data-yv-sdk] *)` gate. The gate adds 0,1,0. That
  *   overrides a bare element selector at 0,0,1, and a universal selector at
  *   0,0,0.
- *
- * `important` is the recorded residual. No light-DOM technique overrides a
- * consumer `!important` declaration that targets our elements. The override
- * policy treats such a declaration as out of contract. The stories assert on
- * this residual. A component that renders a `<button>` must still leak under
- * that group. On the day that the leak stops, the fixture is stale.
+ * - `important` and `highSpecificity` closed when the sheet moved into a
+ *   declared `@layer yv` and its declarations became `!important`. Layer order
+ *   reverses for important declarations, and unlayered-important ranks last, so
+ *   a layered important SDK rule beats both. Importance also outranks
+ *   specificity, which is why the id selector at 1,0,1 loses too.
  *
  * These stories are also the visual evidence. Open one in Storybook. The
  * component now looks correct, under CSS built to break it.
  *
- * See docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md.
+ * See docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md and
+ * docs/adr/0006-layer-and-importantize-the-sdk-sheet.md.
  */
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor } from 'storybook/test';
@@ -50,6 +49,7 @@ import { VerseOfTheDay } from './verse-of-the-day';
 import { YouVersionAuthButton } from './YouVersionAuthButton';
 import {
   ALL_CONSUMER_CSS_GROUPS,
+  CONSUMER_HOST_ROOT_ID,
   injectConsumerCss,
   removeConsumerCss,
 } from '../test/consumer-host';
@@ -178,17 +178,24 @@ function isolationStory(config: IsolationStoryConfig): Story {
       await expect(report.byGroup.bareElements).toEqual([]);
       await expect(report.byGroup.preflight).toEqual([]);
 
-      // The residual. `important` targets `button` only. The expectation thus
-      // comes from the rendered DOM, and not from a per-story list. A component
-      // with a button must leak. A component without one must not. The assertion
-      // keeps the fixture honest. If the leak count drops to zero, the rule no
-      // longer matches, and the group measures nothing.
-      const rendersButton = root.matches('button') || root.querySelector('button') !== null;
+      // The two channels that specificity alone cannot win. `important` is
+      // 0,0,1 and important. `highSpecificity` is 1,0,1 and normal. Both lose to
+      // a layered important declaration, and neither used to.
+      await expect(report.byGroup.important).toEqual([]);
+      await expect(report.byGroup.highSpecificity).toEqual([]);
 
-      if (rendersButton) {
-        await expect(report.byGroup.important.length).toBeGreaterThan(0);
-      } else {
-        await expect(report.byGroup.important).toEqual([]);
+      // The positive control for the two groups above. Both fixtures target
+      // `button`, so on a component with no button they measure zero for the
+      // uninteresting reason. Assert that the selectors really match before
+      // reading the zero as a result. `measureLeaks` leaves every group
+      // injected, so the body id is in place here.
+      const button = root.matches('button') ? root : root.querySelector('button');
+
+      if (button) {
+        await expect(button.matches(`#${CONSUMER_HOST_ROOT_ID} button`)).toBe(true);
+        await expect(document.querySelector(`style[data-yv-consumer-host="important"]`)).not.toBe(
+          null,
+        );
       }
     },
   };

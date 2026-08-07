@@ -14,7 +14,7 @@ import { YouVersionProvider } from '../src/components/YouVersionProvider';
 import { globalHandlers } from '../src/test/mocks/handlers';
 import {
   injectConsumerCss,
-  removeConsumerCss,
+  resetConsumerHost,
   resolveConsumerCssGroups,
 } from '../src/test/consumer-host';
 import type { ConsumerCssGroup } from '../src/test/consumer-host';
@@ -96,11 +96,11 @@ const preview: Preview = {
         if (consumerKey === '') return undefined;
         injectConsumerCss(consumerKey.split(',') as ConsumerCssGroup[]);
 
-        // removeConsumerCss, and not the cleanup function that injectConsumerCss
+        // resetConsumerHost, and not the cleanup function that injectConsumerCss
         // returns. A play function injects again during a measurement, and those
         // tags have no owner. A tag left behind follows the next story into the
-        // same iframe.
-        return removeConsumerCss;
+        // same iframe, and so does the body id that `highSpecificity` targets.
+        return resetConsumerHost;
       }, [consumerKey]);
 
       const includeAuth = context.parameters.includeAuth !== false;
