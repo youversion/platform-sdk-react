@@ -40,7 +40,7 @@ The run captured for this report: 43 test files, 523 tests, all passed.
 | --- | --- |
 | `packages/ui/src/test/hostile-host.ts` | The five hostile CSS groups |
 | `packages/ui/src/test/style-diff.ts` | The 32 tracked properties and the diff |
-| `packages/ui/src/components/style-isolation.stories.tsx` | 14 stories, one per component plus the token-override check |
+| `packages/ui/src/components/style-isolation.stories.tsx` | 16 stories, one per component plus the token-override check |
 
 The measured root is always the SDK's own element, never the Storybook canvas.
 The canvas is consumer DOM. A count that includes the canvas reports a false
@@ -48,7 +48,10 @@ leak on every run.
 
 ## Result by hostile group
 
-Totals for all 13 hostile-host stories.
+Totals below are from the 2026-08-06 run (13 hostile-host stories). Two
+stories were added later for `BibleVersionPickerLanguageTrigger` and
+`BibleLanguagePickerContent`; re-run the harness to fold them into these
+totals.
 
 | Group | What it models | Leaks |
 | --- | --- | --- |
@@ -68,6 +71,8 @@ The 880 leaks are 155 elements times the properties that changed on each one.
 | --- | --- | --- | --- |
 | `BibleChapterPicker` | 496 | 95 buttons | every non-button element |
 | `BibleVersionPicker` | 144 | 18 buttons | every non-button element |
+| `BibleVersionPickerLanguageTrigger` | _(story added after measurement; re-run harness)_ | language trigger button | — |
+| `BibleLanguagePickerContent` | _(story added after measurement; re-run harness)_ | language rows / tab triggers | — |
 | `BibleReader` | 92 | 17 buttons | every non-button element |
 | `VerseActionPopover` | 56 | 7 buttons | every non-button element |
 | `BibleTextView` | 44 | 11 buttons | every non-button element |

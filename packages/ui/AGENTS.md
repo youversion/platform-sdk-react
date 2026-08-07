@@ -51,8 +51,12 @@ A rule applies only inside a subtree that carries that attribute. See
   Without the attribute, the component renders with no SDK styling.
 - Consumers never add the attribute. The components add it themselves.
 - Internal primitives in `src/components/ui/` carry no attribute, on purpose.
-  They always render inside a stamped public component, and a second stamp does
-  nothing.
+  They normally render inside a stamped public component, and a second stamp
+  does nothing.
+- **Portal exception:** when a `ui/` primitive portals outside every stamped
+  ancestor (for example Radix Dialog Overlay/Content into `document.body`), it
+  MUST stamp `data-yv-sdk` (and `data-yv-theme` when theme applies). See
+  `src/components/ui/dialog.tsx`.
 - SDK CSS is in no layer, on purpose. Author CSS in no layer overrides every
   named layer at any specificity, so layered SDK rules always lose to a
   consumer's ordinary rules.

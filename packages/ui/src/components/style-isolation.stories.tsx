@@ -36,7 +36,11 @@ import { INTER_FONT } from '@/lib/verse-html-utils';
 import { BibleCard } from './bible-card';
 import { BibleChapterPicker } from './bible-chapter-picker';
 import { BibleReader, BibleThemeSettingsContent } from './bible-reader';
-import { BibleVersionPicker } from './bible-version-picker';
+import {
+  BibleLanguagePickerContent,
+  BibleVersionPicker,
+  BibleVersionPickerLanguageTrigger,
+} from './bible-version-picker';
 import { ProfileAvatar } from './profile-avatar';
 import { Separator } from './ui/separator';
 import { Textarea } from './ui/textarea';
@@ -353,6 +357,52 @@ export const BibleVersionPickerInHostileHost: Story = isolationStory({
     await userEvent.click(await findIn(canvasElement, 'button'));
     await findIn(document.body, '[data-testid="version-list"] [role="listitem"]');
     return findIn(document.body, '[data-slot="popover-content"][data-yv-sdk]');
+  },
+});
+
+function VersionPickerLanguageTriggerHarness(): ReactElement {
+  const [versionId, setVersionId] = useState(111);
+
+  return (
+    <div className="yv:flex yv:justify-center yv:p-12">
+      <BibleVersionPicker.Root versionId={versionId} onVersionChange={setVersionId}>
+        <BibleVersionPickerLanguageTrigger />
+      </BibleVersionPicker.Root>
+    </div>
+  );
+}
+
+export const BibleVersionPickerLanguageTriggerInHostileHost: Story = isolationStory({
+  label: 'BibleVersionPickerLanguageTrigger',
+  render: () => <VersionPickerLanguageTriggerHarness />,
+  // The trigger is itself a stamped public root (`button[data-yv-sdk]`).
+  ready: (canvasElement) => findIn(canvasElement, 'button[data-yv-sdk]'),
+});
+
+function LanguagePickerContentHarness(): ReactElement {
+  const [versionId, setVersionId] = useState(111);
+
+  return (
+    <div className="yv:flex yv:justify-center yv:p-12">
+      <BibleVersionPicker.Root versionId={versionId} onVersionChange={setVersionId}>
+        <BibleLanguagePickerContent open />
+      </BibleVersionPicker.Root>
+    </div>
+  );
+}
+
+export const BibleLanguagePickerContentInHostileHost: Story = isolationStory({
+  label: 'BibleLanguagePickerContent',
+  render: () => <LanguagePickerContentHarness />,
+  // Standalone content stays in the tree; search `document.body` anyway so a
+  // portal mount still resolves. Wait for a language row (or the tabs when the
+  // suggested list is empty) before measuring.
+  ready: async () => {
+    await findIn(
+      document.body,
+      '[data-yv-sdk][data-open] [role="listitem"], [data-yv-sdk][data-open] [role="tab"]',
+    );
+    return findIn(document.body, '[data-yv-sdk][data-open]');
   },
 });
 
