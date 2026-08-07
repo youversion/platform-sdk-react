@@ -5,6 +5,13 @@ import { expect, waitFor } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { YouVersionAuthButton } from './YouVersionAuthButton';
 
+/**
+ * Focused architectural POC coverage. These stories answer two questions:
+ * whether a literal global `button {}` rule can change an automatically
+ * isolated SDK button, and whether the document-bound constructed stylesheet
+ * works when a shadow host mounts in a same-origin iframe. Package-wide hostile
+ * vectors and component-specific behavior are deliberately deferred.
+ */
 const HOSTILE_CSS = `
   button {
     appearance: none !important;
@@ -34,6 +41,24 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+function buttonStyleSnapshot(button: HTMLButtonElement) {
+  const styles = getComputedStyle(button);
+  return {
+    appearance: styles.appearance,
+    backgroundColor: styles.backgroundColor,
+    borderTopColor: styles.borderTopColor,
+    borderTopStyle: styles.borderTopStyle,
+    borderTopWidth: styles.borderTopWidth,
+    color: styles.color,
+    display: styles.display,
+    fontFamily: styles.fontFamily,
+    fontSize: styles.fontSize,
+    lineHeight: styles.lineHeight,
+    padding: styles.padding,
+    textTransform: styles.textTransform,
+  };
+}
+
 export const HostileGlobalButtonRule: Story = {
   tags: ['integration'],
   render: () => (
@@ -45,32 +70,45 @@ export const HostileGlobalButtonRule: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
+    const control = await waitFor(() => {
+      const element = canvasElement.querySelector<HTMLButtonElement>(
+        '[data-testid="host-control"]',
+      );
+      if (!element) throw new Error('host control not rendered');
+      return element;
+    });
+    const host = await waitFor(() => {
+      const element = canvasElement.querySelector<HTMLElement>('[data-yv-shadow-host]');
+      if (!element?.shadowRoot) throw new Error('shadow root not attached');
+      return element;
+    });
+    const sdkButton = await waitFor(() => {
+      const element = host.shadowRoot?.querySelector<HTMLButtonElement>(
+        '[data-testid="sdk-button"]',
+      );
+      if (!element) throw new Error('SDK button not rendered');
+      return element;
+    });
+
+    const sdkBaseline = buttonStyleSnapshot(sdkButton);
+    // Guard against a false positive where an unstyled browser-default button
+    // also happens not to equal the hostile values below.
+    void expect(sdkBaseline.display).toBe('flex');
+    void expect(sdkBaseline.fontFamily).toContain('Inter');
+
     const style = document.createElement('style');
     style.textContent = HOSTILE_CSS;
-    document.head.append(style);
 
     try {
-      const control = await waitFor(() => {
-        const element = canvasElement.querySelector<HTMLElement>('[data-testid="host-control"]');
-        if (!element) throw new Error('host control not rendered');
-        return element;
-      });
-      const host = await waitFor(() => {
-        const element = canvasElement.querySelector<HTMLElement>('[data-yv-shadow-host]');
-        if (!element?.shadowRoot) throw new Error('shadow root not attached');
-        return element;
-      });
-      const sdkButton = await waitFor(() => {
-        const element = host.shadowRoot?.querySelector<HTMLElement>('[data-testid="sdk-button"]');
-        if (!element) throw new Error('SDK button not rendered');
-        return element;
-      });
+      document.head.append(style);
+
       await waitFor(() => {
         void expect(getComputedStyle(control).backgroundColor).toBe('rgb(185, 28, 28)');
       });
-      void expect(getComputedStyle(sdkButton).backgroundColor).not.toBe('rgb(185, 28, 28)');
-      void expect(getComputedStyle(sdkButton).borderTopWidth).not.toBe('10px');
-      void expect(getComputedStyle(sdkButton).fontSize).not.toBe('32px');
+
+      // The complete relevant style snapshot—not merely a few negative values—
+      // must remain identical to the pre-attack SDK baseline.
+      void expect(buttonStyleSnapshot(sdkButton)).toEqual(sdkBaseline);
     } finally {
       style.remove();
     }
@@ -97,10 +135,12 @@ export const SameOriginIframeDocument: Story = {
       );
 
       await waitFor(() => {
-        const host = iframe.contentDocument?.querySelector<HTMLElement>('[data-yv-shadow-host]');
-        const content = host?.shadowRoot?.querySelector('[data-testid="iframe-content"]');
+        const host = iframe.contentDocument?.querySelector<HTMLDivElement>('[data-yv-shadow-host]');
+        const shadowRoot = host?.shadowRoot;
+        const content = shadowRoot?.querySelector('[data-testid="iframe-content"]');
         if (!content) throw new Error('iframe shadow content not mounted');
         void expect(host?.ownerDocument).toBe(iframe.contentDocument);
+        void expect(shadowRoot?.adoptedStyleSheets).toHaveLength(1);
       });
     } finally {
       root.unmount();
