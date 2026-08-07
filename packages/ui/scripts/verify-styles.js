@@ -33,13 +33,26 @@ if (!existsSync(jsPath)) {
     );
   }
 
-  // The `yv-sdk-` prefix is deliberate. Tailwind emits `@layer properties` by
-  // itself for the @property fallback, whatever our directives say, and that
-  // block sets only --tw-* custom properties. A check for `@layer` alone fails
-  // the build on Tailwind's own output.
+  // The sheet ships inside one declared `@layer yv`. Together with the
+  // `!important` pass in scope-selectors.mjs, that is what beats a consumer's
+  // important and high-specificity rules: CSS Cascade 5 reverses layer order for
+  // important declarations, and ranks unlayered-important last.
+  if (!/@layer yv\{/.test(js)) {
+    errors.push(
+      'dist/index.js has no `@layer yv{` wrapper. Without the layer, the !important pass ' +
+        'in build:css:scope loses to an unlayered consumer !important rule',
+    );
+  }
+
+  // The `yv-sdk-` prefix is deliberate, and this check is not the one above.
+  // `yv-sdk-*` was a set of *priority sub-layers* that we deleted; nothing may
+  // bring them back. A check for `@layer` alone would also fail on Tailwind's
+  // own `@layer properties` block, which it emits for the @property fallback
+  // whatever our directives say.
   if (/@layer yv-sdk-/.test(js)) {
     errors.push(
-      "SDK CSS is still layered. Layered rules lose to a consumer's unlayered CSS at any specificity",
+      'SDK CSS uses the deleted `yv-sdk-*` priority sub-layers. The sheet ships in one ' +
+        '`@layer yv` block instead',
     );
   }
 }

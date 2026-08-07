@@ -3,23 +3,26 @@ import { describe, expect, it } from 'vitest';
 import { scopeCss } from '../../scripts/scope-selectors.mjs';
 
 /**
- * Covers the post-build selector rewrite that is the whole style-isolation
- * guarantee.
+ * Covers the post-build rewrite that is the whole style-isolation guarantee.
  *
- * The build already fails on a non-empty `ungated` list. These tests are thus
- * not the safety net. They are the specification. They pin the shape of the
- * gate, and the four cases that stay unchanged. They also pin the constructs
- * that a plain string rewrite corrupts: escaped class names, `@keyframes`,
- * `@property`, and nested `&` rules.
+ * The build already fails on a non-empty `ungated` or `problems` list. These
+ * tests are thus not the safety net. They are the specification. They pin the
+ * shape of the gate, the four cases that stay unchanged, the split into a
+ * `@layer yv` half and an unlayered half, and which properties may not become
+ * `!important`. They also pin the constructs that a plain string rewrite
+ * corrupts: escaped class names, `@keyframes`, `@property`, and nested `&`
+ * rules.
  *
- * See YPE-4113 and docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md.
+ * See YPE-4113, docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md and
+ * docs/adr/0006-layer-and-importantize-the-sdk-sheet.md.
  */
 const GATE = ':is([data-yv-sdk], [data-yv-sdk] *)';
 
-/** Rewrites `source`. The test fails when one selector has no gate. */
+/** Rewrites `source`. The test fails when the rewrite left anything unsafe. */
 function scope(source: string): string {
-  const { code, ungated } = scopeCss(source);
+  const { code, ungated, problems } = scopeCss(source);
   expect(ungated, 'every selector must be gated after the rewrite').toEqual([]);
+  expect(problems, 'the rewrite must leave no structural fault').toEqual([]);
   return code;
 }
 
@@ -182,10 +185,132 @@ describe('scopeCss', () => {
     });
   });
 
+  describe('splits the sheet into a layered half and an unlayered half', () => {
+    it('declares the layer first, then opens it, and closes it at the end', () => {
+      const code = scope('.card { color: red }');
+      expect(code).toMatch(/^@layer yv;\s*@layer yv \{/);
+      expect(code.trimEnd().endsWith('}')).toBe(true);
+    });
+
+    it('uses the bare name `yv`, never a yv-sdk-* sub-layer', () => {
+      // `verify-styles.js` fails the build on `@layer yv-sdk-`. Those were the
+      // priority sub-layers that this change replaced.
+      expect(scope('.card { color: red }')).not.toContain('@layer yv-sdk-');
+    });
+
+    it('emits one rule into both halves when it holds both kinds of property', () => {
+      // The two halves hold disjoint property sets, so they never compete with
+      // each other, and the split costs nothing in the SDK's own cascade.
+      const { code } = scopeCss('.card { color: red; position: absolute }', { minify: true });
+      expect(code).toBe(
+        '@layer yv;' +
+          ':is([data-yv-sdk],[data-yv-sdk] *).card{position:absolute}' +
+          '@layer yv{:is([data-yv-sdk],[data-yv-sdk] *).card{color:red!important}}',
+      );
+    });
+
+    it('opens no layer at all when every declaration is exempt', () => {
+      // A layered normal declaration loses to an unlayered consumer one at any
+      // specificity. Exempt properties must thus stay outside the layer.
+      const code = scope(':root { --yv-primary: red }');
+      expect(code).not.toContain('@layer yv {');
+      expect(code).toContain('@layer yv;');
+    });
+
+    it("leaves Tailwind's own @layer properties where Tailwind put it", () => {
+      // Tailwind emits `@layer properties` for the @property fallback whatever
+      // our directives say. Its body is all `--tw-*` custom properties, which
+      // are exempt as a family, so the whole block lands in the unlayered half
+      // with the cascade position Tailwind shipped.
+      const code = scope('@layer properties { .card { --tw-x: 1 } }');
+      expect(code).toContain('@layer properties');
+      expect(code).not.toContain('@layer yv {');
+    });
+
+    it('carries a conditional wrapper into whichever half needs it', () => {
+      const { code } = scopeCss('@media (min-width: 40rem) { .card { color: red; top: 0 } }', {
+        minify: true,
+      });
+      expect(code).toContain(
+        '@media (width>=40rem){:is([data-yv-sdk],[data-yv-sdk] *).card{top:0}}',
+      );
+      expect(code).toContain(
+        '@layer yv{@media (width>=40rem){:is([data-yv-sdk],[data-yv-sdk] *).card{color:red!important}}}',
+      );
+    });
+
+    it('keeps @import above the layer block, where the parser needs it', () => {
+      // `@import` must precede every rule. A bare `@layer <name>;` statement is
+      // one of the two things allowed before it.
+      const code = scope("@import 'https://example.test/f.css'; .card { color: red }");
+      expect(code.indexOf('@import')).toBeLessThan(code.indexOf('@layer yv {'));
+      expect(code.indexOf('@layer yv;')).toBeLessThan(code.indexOf('@import'));
+    });
+
+    it('does not cut an @import at a semicolon inside its quoted URL', () => {
+      // The Google Fonts URL carries `wght@400;700`. A `[^;]*;` scan splits the
+      // sheet in the middle of the string and produces unparsable CSS.
+      const code = scope('@import "https://fonts.test/x?w=400;700"; .card { color: red }');
+      expect(code).toContain('@import "https://fonts.test/x?w=400;700"');
+    });
+  });
+
+  describe('marks declarations !important', () => {
+    it('importantizes an ordinary declaration', () => {
+      expect(scope('.card { color: red }')).toContain('color: red !important');
+    });
+
+    it('leaves a keyframe-animated property alone, or the animation freezes', () => {
+      // An important cascaded declaration outranks the animation origin. An
+      // important `opacity` holds every fade at its declared value.
+      const code = scope('.card { opacity: .5; transform: none; height: 2px; filter: none }');
+      expect(code).not.toContain('!important');
+    });
+
+    it('leaves the properties Radix writes inline, or the popover cannot be placed', () => {
+      const code = scope('.card { position: absolute; left: 0; top: 0; z-index: 50 }');
+      expect(code).not.toContain('!important');
+    });
+
+    it('leaves custom properties alone, so a --yv-* token override still wins', () => {
+      const code = scope(':root { --yv-primary: red }');
+      expect(code).not.toContain('!important');
+    });
+
+    it('leaves a shorthand alone when one of its longhands is exempt', () => {
+      // `font: inherit !important` freezes `font-size`, which verse.tsx sets
+      // inline. Same story for `background` and `background-color`.
+      const code = scope('.card { font: inherit; background: none }');
+      expect(code).not.toContain('!important');
+    });
+
+    it('never puts !important inside a @keyframes body, where it is invalid CSS', () => {
+      const code = scope('@keyframes fade { from { opacity: 0 } to { opacity: 1 } }');
+      expect(code).not.toContain('!important');
+    });
+
+    it('keeps an author-written !important on an exempt property', () => {
+      // `yv:h-6!` in verse-of-the-day.tsx writes `height: … !important` by hand.
+      // The pass neither strips it nor moves it into the layer.
+      const { code, problems } = scopeCss('.card { height: 1.5rem !important }');
+      expect(problems).toEqual([]);
+      expect(code).toContain('!important');
+      expect(code).not.toContain('@layer yv {');
+    });
+
+    it('reports a keyframe-animated property that is missing from the exemption list', () => {
+      // The guard that keeps the list from falling behind the animations.
+      const { problems } = scopeCss('@keyframes grow { to { width: 10px } } .a { color: red }');
+      expect(problems.join('\n')).toContain('width');
+    });
+  });
+
   describe('output shape', () => {
     it('minifies when asked', () => {
       const { code } = scopeCss('.card { color: red }', { minify: true });
-      expect(code).toBe(':is([data-yv-sdk],[data-yv-sdk] *).card{color:red}');
+      expect(code).toBe(
+        '@layer yv;@layer yv{:is([data-yv-sdk],[data-yv-sdk] *).card{color:red!important}}',
+      );
     });
 
     it('adds exactly 0,1,0 of specificity, so relative order inside the SDK is unchanged', () => {

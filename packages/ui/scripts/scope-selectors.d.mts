@@ -20,6 +20,13 @@ export interface ScopeCssResult {
    * `code`. A non-empty list is a build failure.
    */
   ungated: string[];
+  /**
+   * Everything else the second parse rejected: a missing `@layer yv` wrapper, a
+   * non-exempt declaration that is not important, `!important` inside a
+   * `@keyframes` body, or a keyframe-animated property that is not exempt. A
+   * non-empty list is a build failure.
+   */
+  problems: string[];
 }
 
 export declare function scopeCss(source: string, options?: ScopeCssOptions): ScopeCssResult;
