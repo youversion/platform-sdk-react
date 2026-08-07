@@ -8,7 +8,7 @@ Scope all SDK CSS to `data-yv-sdk` subtrees, so the global CSS of a host app
 cannot change SDK components.
 
 Every SDK selector now carries the gate
-`:is([data-yv-sdk], [data-yv-sdk] *:not([data-yv-slot], [data-yv-slot] *))`.
+`:is([data-yv-sdk], [data-yv-sdk] *:where(:not([data-yv-slot], [data-yv-slot] *)))`.
 The stylesheet then ships in two halves: everything on a property exemption list
 stays unlayered and normal, and every other declaration goes into a cascade layer
 named `yv` and carries `!important`. `theme.css` also declares the inherited
@@ -45,7 +45,7 @@ pass a component's `fontSize` prop.
 
 - Rules that target SDK internals (our class names, `data-slot` values or DOM
   structure) now lose the cascade. SDK rules gained specificity: the gate adds
-  `0,2,0` on its own.
+  `0,1,0` on its own, on top of whatever the rule already had.
 - Rules that depend on inheritance into SDK components now lose. The SDK declares
   those properties itself.
 - **Rules that use `!important` now lose too.** For important declarations the

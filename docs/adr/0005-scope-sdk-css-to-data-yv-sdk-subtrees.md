@@ -17,10 +17,12 @@ sections marked **Superseded** name what changed.
 
 Amended again 2026-08-07 by
 [ADR-0008](0008-stop-sdk-css-at-consumer-slots.md). The gate's descendant arm is
-now `[data-yv-sdk] *:not([data-yv-slot], [data-yv-slot] *)`, so SDK CSS stops at
-consumer content the SDK only passed through. The gate therefore adds 0,2,0, not
-0,1,0. Every literal gate string below is the pre-0008 form. Read it as an
-outline of the mechanism, not as the shipped selector.
+now `[data-yv-sdk] *:where(:not([data-yv-slot], [data-yv-slot] *))`, so SDK CSS
+stops at consumer content the SDK only passed through. The gate still adds
+0,1,0: the exclusion sits inside `:where()`, which contributes nothing, so every
+specificity claim below still holds. Every literal gate string below is the
+pre-0008 form. Read it as an outline of the mechanism, not as the shipped
+selector.
 
 ## Context
 

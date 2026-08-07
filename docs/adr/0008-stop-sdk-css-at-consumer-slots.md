@@ -74,37 +74,44 @@ is consumer territory. No SDK selector matches it.
 The gate's descendant arm becomes:
 
 ```css
-:is([data-yv-sdk], [data-yv-sdk] *:not([data-yv-slot], [data-yv-slot] *))
+:is([data-yv-sdk], [data-yv-sdk] *:where(:not([data-yv-slot], [data-yv-slot] *)))
 ```
 
 Three parts ship together.
 
 1. `packages/ui/scripts/scope-selectors.mjs` emits the new arm.
-2. `packages/core/src/styles/theme.css` writes the same `:not()` by hand on
-   every descendant selector. The script skips those selectors, because they
-   carry the gate already.
+2. `packages/core/src/styles/theme.css` writes the same `:where(:not(…))` by
+   hand on every descendant selector. The script skips those selectors, because
+   they carry the gate already.
 3. `packages/ui/src/lib/consumer-slot.tsx` exports `ConsumerSlot`, a
    `<span data-yv-slot style="display: contents">`. `display: contents`
    generates no box, so stamping a slot never changes layout.
 
 The `dark` custom variant in `packages/ui/src/styles/global.css` carries the
-gate itself and is also hand-written. It needs the exclusion for a second
-reason, below.
+gate itself, so its exclusion is hand-written too.
 
 ### Specificity
 
-`:is()` and `:not()` each take the specificity of their most specific argument.
-The new arm holds one attribute selector plus a `:not()` holding one attribute
-selector, so the gate adds 0,2,0 where it used to add 0,1,0.
+The exclusion sits inside `:where()`, which contributes no specificity. The gate
+still adds exactly 0,1,0, for the `[data-yv-sdk]` attribute. Nothing in the sheet
+changes rank — not against another SDK rule, and not against a consumer rule.
 
-The rise is uniform. Every gated rule gains the same 0,1,0, so no rule in the
-sheet changes rank against another rule in the sheet.
+That placement was chosen after measuring the alternative. A bare `:not()` takes
+the specificity of its most specific argument, so it would have raised the gate
+to 0,2,0 uniformly. Uniform is not harmless. The sheet ships in two halves
+(ADR-0006), and the unlayered half carries **normal** declarations whose only
+defence is specificity. Raising the gate lifted `font-size`, `background-color`
+and the `border-*-width` longhands above an ordinary consumer rule at 0,1,0, and
+consumer content that is not in a slot went from 255 leaks to **416** — worse
+than before the slot work. `:where()` restores the pre-change math exactly while
+keeping the boundary.
 
-One selector had to move with it by hand. The `dark` variant compiles to
-`:is([data-yv-sdk][data-yv-theme='dark'] *)` and the script does not rewrite it.
-Left alone it would have stayed at 0,3,0 while every base utility rose to 0,3,0,
-tying dark mode with light mode and letting source order decide. With the
-exclusion it is 0,4,0 and keeps its old one-step margin.
+The `dark` variant needed no compensation as a result. It compiles to
+`:is([data-yv-sdk][data-yv-theme='dark'] *)`, which the script does not rewrite.
+A base utility is 0,2,0 (gate plus class) and a `dark:` utility is 0,3,0 (class
+plus that 0,2,0 `:is()`), the same one-step margin as before. Its exclusion is
+there because the build check requires every gated selector to carry one, not to
+hold a specificity balance.
 
 ## Consequences
 
@@ -122,21 +129,18 @@ happens to the same markup anywhere else in a page. A consumer who wants
 different values declares them, and now nothing of ours overrides the
 declaration.
 
-### Content that is not in a slot is restyled harder than before
-
-This is the cost, and it is measured. The same 0,1,0 rise that keeps the sheet
-internally consistent also lifts the SDK's **normal** declarations — the ones on
-`EXEMPT_PROPERTIES`, which stay unlayered — above a consumer rule at 0,1,0.
+### Content that is not in a slot is exactly as it was
 
 The harness has a positive control that renders the same fixture with no slot.
-It went from 255 leaks to 416. The new properties are `font-size`,
-`font-style`, `font-weight` and the four `border-*-width` longhands, all of which
-`theme.css` sets through `font: inherit` and `border: 0 solid`, and all of which
-are exempt and therefore normal.
+It reads 255, the number it read before this change. The boundary takes content
+out of the sheet's reach when it is stamped, and leaves everything else where it
+was. Nothing got worse.
 
-The fix for a consumer hitting this is to stamp a slot. `ConsumerSlot` does it
-for the sites listed below; a consumer can put `data-yv-slot` on their own
-wrapper anywhere else.
+That is a property of `:where()`, and it is the reason the placement matters. The
+first version of this change used a bare `:not()` and pushed the same control to
+416. The fix for a consumer hitting the 255 is to stamp a slot. `ConsumerSlot`
+does it for the sites listed below; a consumer can put `data-yv-slot` on their
+own wrapper anywhere else.
 
 ### Three sites cannot be stamped
 
@@ -166,13 +170,11 @@ records it.
 
 ## Alternatives considered
 
-**`:where(:not(…))` instead of `:not(…)`.** `:where()` contributes no
-specificity, so the gate would have stayed at 0,1,0 and unslotted consumer
-content would not have been restyled harder. It was not taken, because the
-uniform 0,2,0 also strengthens the forward direction the SDK is graded on, and
-because a boundary that is invisible to specificity is harder to reason about
-when reading a compiled selector. The trade is recorded here so it can be
-revisited with the 416 number in hand.
+**A bare `:not(…)`, without the `:where()`.** Shipped first, then reverted. It is
+easier to read in a compiled selector, and the uniform 0,2,0 rise strengthens the
+forward direction the SDK is graded on. It also cost 161 extra leaks on consumer
+content outside a slot, which is a regression against the behaviour this ADR set
+out to improve. The measurement decided it.
 
 **Shadow DOM.** Rejected in ADR-0005 for reasons that have not changed. It also
 does not help here: consumer `children` passed into a shadow root through a slot

@@ -44,9 +44,11 @@ export — treat those two as public API and breaking-change territory.
 ### Style isolation (`data-yv-sdk`)
 
 The build rewrites every SDK selector to
-`:is([data-yv-sdk], [data-yv-sdk] *:not([data-yv-slot], [data-yv-slot] *))`.
+`:is([data-yv-sdk], [data-yv-sdk] *:where(:not([data-yv-slot], [data-yv-slot] *)))`.
 A rule applies only inside a subtree that carries `data-yv-sdk`, and it stops at
-any element that carries `data-yv-slot`. See
+any element that carries `data-yv-slot`. The `:where()` keeps the gate at 0,1,0,
+so the boundary changes what the sheet matches and nothing about what it wins.
+See
 [ADR-0005](../../docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md),
 [ADR-0006](../../docs/adr/0006-layer-and-importantize-the-sdk-sheet.md),
 [ADR-0007](../../docs/adr/0007-convert-rem-to-px-in-the-sdk-sheet.md) and
@@ -66,10 +68,12 @@ any element that carries `data-yv-slot`. See
 - The slot boundary stops selector matching. It does not stop inheritance, and
   it is not meant to. Slot content inherits `color`, `font-size` and the rest
   from its SDK ancestors, the way any content inherits from where it sits.
-- A hand-written gated selector writes its own `:not([data-yv-slot],
-  [data-yv-slot] *)`. The rewrite skips a selector that already carries the gate,
-  so `src/styles/global.css` and `packages/core/src/styles/theme.css` do it
-  themselves. The build fails when one of them loses the exclusion.
+- A hand-written gated selector writes its own `:where(:not([data-yv-slot],
+  [data-yv-slot] *))`. The rewrite skips a selector that already carries the
+  gate, so `src/styles/global.css` and `packages/core/src/styles/theme.css` do it
+  themselves. The build fails when one of them loses the exclusion. Keep the
+  `:where()`: a bare `:not()` adds 0,1,0, and a rise there lifts the unlayered
+  half of the sheet over ordinary consumer CSS. ADR-0008 has the measurement.
 - Consumers never add the attribute. The components add it themselves.
 - Internal primitives in `src/components/ui/` carry no attribute, on purpose.
   They normally render inside a stamped public component, and a second stamp

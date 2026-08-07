@@ -149,10 +149,13 @@ is not part of the comparison.
 | `BibleReader.Root` children, in a `data-yv-slot` wrapper | 255 | **0** |
 | `BibleChapterPicker.Trigger` children | 68 | **0** |
 | `BibleVersionPicker.Trigger` children | 68 | **0** |
-| `BibleReader.Root` children, no slot (positive control) | 255 | 416 |
+| `BibleReader.Root` children, no slot (positive control) | 255 | 255 |
 
-The last row is the positive control, and it went the other way. See residual 4
-below.
+The last row is the positive control. It has to stay non-zero, or the harness is
+measuring nothing. It also has to stay at 255: content the SDK still reaches must
+not be reached *harder* than before. That is what the `:where()` in the gate
+buys, and the first version of ADR-0008 got it wrong — a bare `:not()` put this
+row at 416. See residual 4 below.
 
 ## What still gets through
 
@@ -222,19 +225,21 @@ Three sites render consumer content and cannot be stamped:
 | `BibleChapterPicker.Trigger` with `asChild` | `asChild` merges our props onto the consumer's own element. There is no element left to wrap |
 | `BibleVersionPicker.Trigger` with `asChild` | Same |
 
-Content at those sites is now restyled *harder* than before ADR-0008, and the
-number is above: the no-slot control went from 255 leaks to 416. The gate's rise
-from 0,1,0 to 0,2,0 lifted the SDK's normal declarations — the exempt ones, which
-stay unlayered — above a consumer rule at 0,1,0. The new properties are
-`font-size`, `font-style`, `font-weight` and the four `border-*-width` longhands,
-which `theme.css` sets through `font: inherit` and `border: 0 solid`.
+Content at those sites is restyled exactly as it was before ADR-0008: the
+no-slot control reads 255, the number it read before. The slot boundary sits
+inside `:where()`, so it costs no specificity and moves nothing it does not
+match.
 
-The fix is one attribute. A consumer wraps their content in an element with
-`data-yv-slot`, and the count returns to zero. The harness story
+That placement was measured, not assumed. A bare `:not()` raises the gate to
+0,2,0, which lifts the SDK's normal declarations — the exempt ones, which stay
+unlayered — above a consumer rule at 0,1,0. The first version of ADR-0008 shipped
+that form and put this control at 416, adding `font-size`, `font-style`,
+`font-weight` and the four `border-*-width` longhands that `theme.css` sets
+through `font: inherit` and `border: 0 solid`. `:where()` closes it.
+
+The fix for the 255 is one attribute. A consumer wraps their content in an
+element with `data-yv-slot`, and the count returns to zero. The harness story
 `BibleReaderConsumerSlot` does exactly that.
-
-ADR-0008 records the alternative that would have avoided the rise,
-`:where(:not(…))`, and why it was not taken.
 
 ### 5. A selector whose subject sits past the gate compound
 

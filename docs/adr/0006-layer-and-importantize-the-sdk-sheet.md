@@ -11,10 +11,12 @@ Accepted. This decision extends
 Amended 2026-08-07 by
 [ADR-0008](0008-stop-sdk-css-at-consumer-slots.md), which added a slot exclusion
 to the gate's descendant arm. Every gate literal below is the pre-0008 form. The
-split into a layered important half and an unlayered normal half is unchanged.
-One consequence of 0008 belongs to this decision: the exempt half is normal, so
-its rank against consumer CSS is decided by specificity, and the gate's rise from
-0,1,0 to 0,2,0 moved it up. ADR-0008 has the number.
+split into a layered important half and an unlayered normal half is unchanged,
+and so is every specificity number below: 0008 puts its exclusion inside
+`:where()`, which costs nothing. That placement is a consequence of this
+decision. The exempt half is normal, so its rank against consumer CSS is decided
+by specificity alone, and a gate that gained 0,1,0 would have moved it up.
+ADR-0008 has the measurement that made the call.
 
 ## Context
 
