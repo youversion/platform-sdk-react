@@ -45,6 +45,16 @@ layer(yv-sdk-fonts);
 @import '@youversion/platform-core/browser/styles/bible-reader.css' layer(yv-sdk-bible-reader);
 @import 'tw-animate-css';
 
+/* The light-DOM shadow host remains selectable by the consumer page. Prevent
+   hostile host-page rules from generating content around the isolated SDK UI.
+   For !important declarations on a shadow host, the shadow-tree declaration
+   outranks an outer author declaration by design. */
+:host::before,
+:host::after {
+  content: none !important;
+  display: none !important;
+}
+
 /* Untitled Serif has no @font-face here on purpose. Its stylesheet URL needs the
    consumer's app key, which this file cannot know — it is frozen into __YV_STYLES__ at
    build time. It is loaded instead by <YvFonts /> (src/lib/yv-fonts.tsx), rendered from

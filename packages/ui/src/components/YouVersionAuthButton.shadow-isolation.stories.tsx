@@ -22,6 +22,14 @@ const HOSTILE_CSS = `
     padding: 40px !important;
     text-transform: uppercase !important;
   }
+
+  [data-yv-shadow-host]::before,
+  [data-yv-shadow-host]::after,
+  [data-host-pseudo-control]::before {
+    content: "HOSTILE" !important;
+    display: block !important;
+    background: red !important;
+  }
 `;
 
 const meta = {
@@ -63,7 +71,7 @@ export const HostileGlobalButtonRule: Story = {
   tags: ['integration'],
   render: () => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-      <button type="button" data-testid="host-control">
+      <button type="button" data-testid="host-control" data-host-pseudo-control>
         Host control
       </button>
       <YouVersionAuthButton data-testid="sdk-button" />
@@ -104,7 +112,13 @@ export const HostileGlobalButtonRule: Story = {
 
       await waitFor(() => {
         void expect(getComputedStyle(control).backgroundColor).toBe('rgb(185, 28, 28)');
+        void expect(getComputedStyle(control, '::before').content).toBe('"HOSTILE"');
       });
+
+      void expect(getComputedStyle(host, '::before').content).toBe('none');
+      void expect(getComputedStyle(host, '::before').display).toBe('none');
+      void expect(getComputedStyle(host, '::after').content).toBe('none');
+      void expect(getComputedStyle(host, '::after').display).toBe('none');
 
       // The complete relevant style snapshot—not merely a few negative values—
       // must remain identical to the pre-attack SDK baseline.

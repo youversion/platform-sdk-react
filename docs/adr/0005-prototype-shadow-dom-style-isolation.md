@@ -26,6 +26,9 @@ created in the top-level document cannot be adopted by a shadow root rendered in
 a same-origin iframe. Browsers without constructable stylesheets receive a
 `<style>` element in the root. The light-DOM host gets an inline-important box
 reset; an inner, unreachable wrapper resets inherited standard properties.
+The shadow stylesheet also suppresses `::before` and `::after` on the
+light-DOM host with shadow-context important declarations, preventing host-page
+CSS from injecting generated content around the isolated component.
 Because that reset removes the light-DOM font inheritance the button previously
 relied on, the implementation now applies its intended `font-sans` utility
 explicitly.
@@ -44,8 +47,9 @@ document-wide `@font-face` limitation.
 - Constructed stylesheets are created per owner document, so mounting the shadow
   host in a same-origin iframe does not cause a cross-document adoption error.
 
-The focused Chromium tests verify a global hostile `button` selector, iframe
-mounting, and existing interactions. The unit tests verify Strict Mode and the
+The focused Chromium tests verify a global hostile `button` selector, hostile
+generated content on the light-DOM host, iframe mounting, and existing
+interactions. The unit tests verify Strict Mode and the
 light-DOM host reset. The remaining hostile vectors are available for manual
 inspection on the demo page.
 
