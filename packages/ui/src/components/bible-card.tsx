@@ -175,7 +175,11 @@ export function BibleCard({
             <LoaderIcon className="yv:size-3 yv:animate-spin yv:text-muted-foreground" />
           )}
 
-          {showVersionPicker && !passageError ? (
+          {/*
+            The picker stays available during an error. A 404 means the passage
+            is not in the selected version, so switching versions is the fix.
+          */}
+          {showVersionPicker ? (
             <BibleCardVersionPicker
               versionId={versionNum}
               onVersionChange={setVersionNum}

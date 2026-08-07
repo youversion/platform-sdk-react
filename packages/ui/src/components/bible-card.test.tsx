@@ -6,8 +6,17 @@ import { render, act, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BibleCard } from './bible-card';
 import type { FootnoteData } from './verse';
-import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hooks';
-import type { BiblePassage, BibleVersion } from '@youversion/platform-core';
+import {
+  useFilteredVersions,
+  useLanguage,
+  useLanguages,
+  useOrganizations,
+  usePassage,
+  useTheme,
+  useVersion,
+  useVersions,
+} from '@youversion/platform-react-hooks';
+import type { BiblePassage, BibleVersion, Language } from '@youversion/platform-core';
 
 vi.mock('@youversion/platform-react-hooks');
 
@@ -202,6 +211,41 @@ describe('BibleCard - Error state', () => {
     const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
 
     expect(within(container).queryByRole('status')).toBeNull();
+  });
+
+  it('should keep the version picker usable so a bad version can be swapped', () => {
+    // The version picker mounts its own hook tree. The file-level auto-mock
+    // returns undefined for each one, so give them values here.
+    vi.mocked(useLanguages).mockReturnValue({
+      languages: { data: [] as Language[], next_page_token: null },
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    vi.mocked(useLanguage).mockReturnValue({
+      language: { id: 'en', language: 'English', display_names: { en: 'English' } } as Language,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    vi.mocked(useVersions).mockReturnValue({
+      versions: { data: [], next_page_token: null },
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    vi.mocked(useFilteredVersions).mockReturnValue([]);
+    vi.mocked(useOrganizations).mockReturnValue({ organizations: new Map() });
+
+    const { container } = render(
+      <BibleCard reference="JHN.3.16" versionId={3034} showVersionPicker />,
+    );
+
+    const picker = within(container).getByRole('button', { name: /change bible version/i });
+
+    expect(picker).toBeInTheDocument();
+    expect(picker).toBeEnabled();
+    expect(picker).toHaveTextContent('BSB');
   });
 });
 

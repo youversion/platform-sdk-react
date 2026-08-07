@@ -186,6 +186,7 @@ export const Error: Story = {
   args: {
     reference: 'LUK.1.39-45',
     versionId: 111,
+    showVersionPicker: true,
   },
   tags: ['integration'],
   parameters: {
@@ -217,5 +218,15 @@ export const Error: Story = {
     await expect(alerts[0]).toHaveTextContent(
       'The Bible service is having trouble right now. Please try again in a moment.',
     );
+
+    // The picker is the in-card recovery path: a 404 is fixed by switching versions.
+    const versionPickerButton = await canvas.findByRole('button', {
+      name: /change bible version/i,
+    });
+
+    await waitFor(async () => {
+      await expect(versionPickerButton).toBeEnabled();
+      await expect(versionPickerButton).toHaveTextContent(/NIV/i);
+    });
   },
 };
