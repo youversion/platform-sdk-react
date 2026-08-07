@@ -130,6 +130,7 @@ export function BibleCard({
     passage,
     loading: passageLoading,
     error: passageError,
+    refetch: refetchPassage,
   } = usePassage({
     versionId: versionNum,
     usfm: reference,
@@ -186,6 +187,7 @@ export function BibleCard({
               passage,
               loading: passageLoading,
               error: passageError,
+              onRetry: refetchPassage,
             }}
             onFootnotePress={onFootnotePress}
           />

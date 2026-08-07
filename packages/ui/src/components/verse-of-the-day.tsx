@@ -131,11 +131,17 @@ export function VerseOfTheDay({
   const { t } = useTranslation(undefined, { i18n });
   const day = React.useMemo(() => dayOfYear || getDayOfYear(new Date()), [dayOfYear]);
   const verseRef = React.useRef<HTMLDivElement>(null);
-  const { data, loading: loadingVerseOfTheDay, error: errorVerseOfTheDay } = useVerseOfTheDay(day);
+  const {
+    data,
+    loading: loadingVerseOfTheDay,
+    error: errorVerseOfTheDay,
+    refetch: refetchVerseOfTheDay,
+  } = useVerseOfTheDay(day);
   const {
     passage,
     loading: loadingPassage,
     error: errorPassage,
+    refetch: refetchPassage,
   } = usePassage({
     versionId,
     usfm: data?.passage_id || '',
@@ -148,6 +154,11 @@ export function VerseOfTheDay({
   const theme = background || providerTheme;
 
   const isLoading = loadingPassage || loadingVerseOfTheDay || loadingVersion;
+
+  // The passage fetch is gated behind the verse-of-the-day response, so a VOTD
+  // failure is the one that has to be retried first; retrying the passage while
+  // `data.passage_id` is missing would do nothing.
+  const onRetry = errorVerseOfTheDay ? refetchVerseOfTheDay : refetchPassage;
 
   let referenceText = '';
   if (passage?.reference && version?.localized_abbreviation) {
@@ -249,6 +260,7 @@ export function VerseOfTheDay({
                 passage,
                 loading: isLoading,
                 error: errorPassage || errorVerseOfTheDay || null,
+                onRetry,
               }}
             />
           )}

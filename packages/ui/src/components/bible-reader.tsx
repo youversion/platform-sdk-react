@@ -695,6 +695,7 @@ function Content() {
     passage,
     loading: passageLoading,
     error: passageError,
+    refetch: refetchPassage,
   } = usePassage({
     versionId,
     usfm: usfmReference,
@@ -1060,6 +1061,7 @@ function Content() {
                 passage,
                 loading: isRefetching ? false : passageLoading,
                 error: passageError,
+                onRetry: refetchPassage,
               }}
             />
           </div>

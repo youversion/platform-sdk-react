@@ -58,6 +58,7 @@
   "rateLimitedError": "The Bible service is receiving too many requests right now. Please wait a moment and try again.",
   "serverError": "The Bible service is having trouble right now. Please try again in a moment.",
   "genericPassageError": "We couldn't load this Bible passage. Please try again.",
+  "retryButton": "Try again",
   "copy": "Copy",
   "share": "Share",
   "verseActionsAriaLabel": "Verse actions",

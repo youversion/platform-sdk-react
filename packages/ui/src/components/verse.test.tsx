@@ -1065,6 +1065,113 @@ describe('BibleTextView - Error messaging', () => {
   });
 });
 
+describe('BibleTextView - Retry affordance', () => {
+  function createError(message: string, status?: number): Error {
+    return Object.assign(new Error(message), status === undefined ? {} : { status });
+  }
+
+  it('should render a retry button for a retryable error', async () => {
+    const { getByRole } = render(
+      <BibleTextView
+        reference="JHN.3.16"
+        versionId={3034}
+        passageState={{
+          passage: null,
+          loading: false,
+          error: createError('Request timeout after 10000ms'),
+          onRetry: vi.fn(),
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    });
+  });
+
+  it('should call onRetry when the retry button is clicked', async () => {
+    const onRetry = vi.fn();
+    const user = userEvent.setup();
+
+    const { getByRole } = render(
+      <BibleTextView
+        reference="JHN.3.16"
+        versionId={3034}
+        passageState={{
+          passage: null,
+          loading: false,
+          error: createError('Request failed with status 503', 503),
+          onRetry,
+        }}
+      />,
+    );
+
+    const retryButton = await waitFor(() => getByRole('button', { name: 'Try again' }));
+    await user.click(retryButton);
+
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not render a retry button for a 401', async () => {
+    const { getByRole, queryByRole } = render(
+      <BibleTextView
+        reference="JHN.3.16"
+        versionId={3034}
+        passageState={{
+          passage: null,
+          loading: false,
+          error: createError('Request failed with status 401', 401),
+          onRetry: vi.fn(),
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByRole('alert')).toBeInTheDocument();
+    });
+    expect(queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+  });
+
+  it('should not render a retry button for a 404', async () => {
+    const { getByRole, queryByRole } = render(
+      <BibleTextView
+        reference="PRO.30.1"
+        versionId={2530}
+        passageState={{
+          passage: null,
+          loading: false,
+          error: createError('Bible passage PRO.30.1 for version 2530 not found', 404),
+          onRetry: vi.fn(),
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByRole('alert')).toBeInTheDocument();
+    });
+    expect(queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+  });
+
+  it('should not render a retry button when the caller supplies no onRetry', async () => {
+    const { getByRole, queryByRole } = render(
+      <BibleTextView
+        reference="JHN.3.16"
+        versionId={3034}
+        passageState={{
+          passage: null,
+          loading: false,
+          error: createError('Request failed with status 503', 503),
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByRole('alert')).toBeInTheDocument();
+    });
+    expect(queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+  });
+});
+
 describe('Verse.Html - onFootnotePress callback', () => {
   const htmlWithFootnote = `
     <div class="p">

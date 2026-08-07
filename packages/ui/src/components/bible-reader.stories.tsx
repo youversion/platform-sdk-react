@@ -3,6 +3,7 @@ import { INTER_FONT, SOURCE_SERIF_FONT, UNTITLED_SERIF_FONT } from '@/lib/verse-
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { Highlight } from '@youversion/platform-core';
 import { delay, http, HttpResponse } from 'msw';
+import { getWorker } from 'msw-storybook-addon';
 import { useState } from 'react';
 import { expect, fn, screen, spyOn, userEvent, waitFor } from 'storybook/test';
 import mockBibles from '../test/mock-data/bibles.json';
@@ -928,6 +929,72 @@ export const ControlledFakeHost: Story = {
         </BibleReader.Root>
       </div>
     );
+  },
+};
+
+/**
+ * A 503 on the passage endpoint is retryable, so the error message carries a
+ * "Try again" button. The play function swaps the handler for a good response
+ * and asserts the click recovers the reader — the user-visible path out of the
+ * dead end reported in YPE-4735.
+ */
+export const PassageErrorRetry: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('*/v1/bibles/111/passages/:usfm', () =>
+          HttpResponse.json({ message: 'Service unavailable' }, { status: 503 }),
+        ),
+        ...globalHandlers,
+      ],
+    },
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const alert = await screen.findByRole('alert', {}, { timeout: 5000 });
+    await expect(alert).toHaveTextContent(
+      'The Bible service is having trouble right now. Please try again in a moment.',
+    );
+
+    const retryButton = await screen.findByRole('button', { name: /try again/i });
+
+    // Swap the failing handler for a good one. `use` prepends a runtime handler,
+    // so it wins over the story's own parameters.msw handlers.
+    getWorker().use(
+      http.get('*/v1/bibles/111/passages/:usfm', ({ params }) => {
+        const usfm = params.usfm as string;
+        return HttpResponse.json({
+          id: usfm,
+          content: `<div class="p"><span class="verse">Recovered passage for ${usfm}.</span></div>`,
+          reference: usfm,
+        });
+      }),
+    );
+
+    await userEvent.click(retryButton);
+
+    await waitFor(
+      async () => {
+        const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(renderer?.textContent).toContain('Recovered passage for JHN.1');
+      },
+      { timeout: 5000 },
+    );
+
+    await expect(screen.queryByRole('button', { name: /try again/i })).not.toBeInTheDocument();
   },
 };
 

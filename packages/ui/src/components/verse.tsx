@@ -16,8 +16,9 @@ import { createPortal } from 'react-dom';
 import { ExclamationCircle } from '@/components/icons/exclamation-circle';
 import { Footnote } from '@/components/icons/footnote';
 import { LoaderIcon } from '@/components/icons/loader';
+import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { getBibleTextErrorMessage } from '@/lib/bible-text-error';
+import { getBibleTextErrorMessage, isRetryableBibleTextError } from '@/lib/bible-text-error';
 import { cn } from '@/lib/utils';
 import { type FontFamily } from '@/lib/verse-html-utils';
 
@@ -111,6 +112,11 @@ export type BibleTextViewPassageState = {
   passage: PassageResult['passage'];
   loading: PassageResult['loading'];
   error: PassageResult['error'];
+  /**
+   * Retries the fetch that produced `error`. Supplied by the caller that owns
+   * the fetch; `BibleTextView` falls back to its own `usePassage` refetch.
+   */
+  onRetry: PassageResult['refetch'];
 };
 
 /**
@@ -253,8 +259,20 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
 /**
  * Displays a verse-unavailable error message with a circular exclamation
  * icon and descriptive text.
+ *
+ * `onRetry` is only supplied for failures a retry can fix (see
+ * `isRetryableBibleTextError`). When it is absent the message is final and no
+ * button renders.
  */
-function VerseUnavailableMessage({ message }: { message: string }): React.ReactElement {
+function VerseUnavailableMessage({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry?: () => void;
+}): React.ReactElement {
+  const { t } = useTranslation(undefined, { i18n });
+
   return (
     <div
       role="alert"
@@ -263,6 +281,18 @@ function VerseUnavailableMessage({ message }: { message: string }): React.ReactE
     >
       <ExclamationCircle className="yv:size-5 yv:shrink-0 yv:text-foreground" />
       <p className="yv:m-0 yv:text-[13px] yv:font-medium yv:leading-tight">{message}</p>
+      {onRetry ? (
+        // Sized down from the `sm` default so the label sits on the message's
+        // 13px line rather than adding a second row to the alert.
+        <Button
+          variant="link"
+          size="sm"
+          onClick={onRetry}
+          className="yv:h-auto yv:shrink-0 yv:px-0 yv:text-[13px] yv:leading-tight"
+        >
+          {t('retryButton')}
+        </Button>
+      ) : null}
     </div>
   );
 }
@@ -566,6 +596,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
       passage: fetchedPassage,
       loading: fetchedLoading,
       error: fetchedError,
+      refetch: fetchedRefetch,
     } = usePassage({
       versionId,
       usfm: reference,
@@ -581,6 +612,10 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
       ? (passageState?.loading ?? false)
       : fetchedLoading;
     const currentError = hasProvidedPassageState ? (passageState?.error ?? null) : fetchedError;
+    // Same resolution rule as passage/loading/error: the caller that owns the
+    // fetch owns the retry. A caller that supplies passageState but no onRetry
+    // gets no button, which is the pre-existing behavior.
+    const currentRetry = hasProvidedPassageState ? passageState?.onRetry : fetchedRefetch;
 
     if (currentLoading && !currentPassage) {
       return (
@@ -603,7 +638,10 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
     if (currentError) {
       return (
         <div ref={ref} data-yv-sdk data-yv-theme={currentTheme}>
-          <VerseUnavailableMessage message={getBibleTextErrorMessage(currentError, t)} />
+          <VerseUnavailableMessage
+            message={getBibleTextErrorMessage(currentError, t)}
+            onRetry={isRetryableBibleTextError(currentError) ? currentRetry : undefined}
+          />
         </div>
       );
     }
