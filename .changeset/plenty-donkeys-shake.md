@@ -7,7 +7,8 @@
 Scope all SDK CSS to `data-yv-sdk` subtrees, so the global CSS of a host app
 cannot change SDK components.
 
-Every SDK selector now carries the gate `:is([data-yv-sdk], [data-yv-sdk] *)`.
+Every SDK selector now carries the gate
+`:is([data-yv-sdk], [data-yv-sdk] *:not([data-yv-slot], [data-yv-slot] *))`.
 The stylesheet then ships in two halves: everything on a property exemption list
 stays unlayered and normal, and every other declaration goes into a cascade layer
 named `yv` and carries `!important`. `theme.css` also declares the inherited
@@ -23,6 +24,13 @@ before. None of them change it now. A regression harness in
 `packages/ui/src/components/style-isolation.stories.tsx` measures every component
 against seven host-CSS fixtures and asserts zero leaks on all of them.
 
+**Your own content inside an SDK component keeps your styling.** Content you
+pass as `children` or as a render prop is wrapped in an element marked
+`data-yv-slot`, and no SDK rule matches inside it. Inheritance still applies:
+your content inherits `color`, `font-size` and the rest from where it sits.
+`BibleReader.Root` children and a picker `Trigger` rendered with `asChild` do
+not get the wrapper — add `data-yv-slot` to your own element there.
+
 **Your root font size no longer scales SDK components.** A host page with
 `html { font-size: 62.5% }` used to shrink every SDK size by 37.5 percent,
 because a `rem` resolves against the document root and no selector or layer can
@@ -36,8 +44,8 @@ pass a component's `fontSize` prop.
 **What breaks.** Any consumer CSS that overrides an SDK declaration.
 
 - Rules that target SDK internals (our class names, `data-slot` values or DOM
-  structure) now lose the cascade. SDK rules gained specificity, from `0,1,0` to
-  `0,2,0` and above.
+  structure) now lose the cascade. SDK rules gained specificity: the gate adds
+  `0,2,0` on its own.
 - Rules that depend on inheritance into SDK components now lose. The SDK declares
   those properties itself.
 - **Rules that use `!important` now lose too.** For important declarations the
@@ -62,5 +70,6 @@ property.
 
 For the rationale and the rejected alternatives (`@scope` and shadow DOM), read
 `docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md`,
-`docs/adr/0006-layer-and-importantize-the-sdk-sheet.md` and
-`docs/adr/0007-convert-rem-to-px-in-the-sdk-sheet.md`.
+`docs/adr/0006-layer-and-importantize-the-sdk-sheet.md`,
+`docs/adr/0007-convert-rem-to-px-in-the-sdk-sheet.md` and
+`docs/adr/0008-stop-sdk-css-at-consumer-slots.md`.

@@ -6,7 +6,15 @@ Date: 2026-08-07
 
 Accepted. This decision extends
 [ADR-0005](0005-scope-sdk-css-to-data-yv-sdk-subtrees.md). The
-`:is([data-yv-sdk], [data-yv-sdk] *)` gate from that decision is unchanged.
+`:is([data-yv-sdk], [data-yv-sdk] *)` gate from that decision is unchanged here.
+
+Amended 2026-08-07 by
+[ADR-0008](0008-stop-sdk-css-at-consumer-slots.md), which added a slot exclusion
+to the gate's descendant arm. Every gate literal below is the pre-0008 form. The
+split into a layered important half and an unlayered normal half is unchanged.
+One consequence of 0008 belongs to this decision: the exempt half is normal, so
+its rank against consumer CSS is decided by specificity, and the gate's rise from
+0,1,0 to 0,2,0 moved it up. ADR-0008 has the number.
 
 ## Context
 

@@ -4,12 +4,16 @@ Date: 2026-08-07 (supersedes the 2026-08-06 measurement)
 Ticket: YPE-4113
 Decision records: [ADR-0005](adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md),
 [ADR-0006](adr/0006-layer-and-importantize-the-sdk-sheet.md),
-[ADR-0007](adr/0007-convert-rem-to-px-in-the-sdk-sheet.md)
+[ADR-0007](adr/0007-convert-rem-to-px-in-the-sdk-sheet.md),
+[ADR-0008](adr/0008-stop-sdk-css-at-consumer-slots.md)
 
 ## Conclusion
 
 **No consumer rule in the fixture reaches an SDK component. All seven groups
 report zero leaks on all fifteen components.**
+
+**And no SDK rule reaches consumer content in a slot.** That is the reverse
+direction, added by ADR-0008 and measured further down this report.
 
 The previous version of this report named two rules that got through:
 
@@ -57,7 +61,7 @@ The run captured for this report: 43 test files, 548 tests, all passed.
 | --- | --- |
 | `packages/ui/src/test/consumer-host.ts` | The seven consumer CSS groups |
 | `packages/ui/src/test/style-diff.ts` | The 32 tracked properties and the diff |
-| `packages/ui/src/components/style-isolation.stories.tsx` | 16 stories, one per component plus the token-override check |
+| `packages/ui/src/components/style-isolation.stories.tsx` | 20 stories: one per component, the token-override check, and four reverse-direction stories |
 
 The measured root is always the SDK's own element, never the Storybook canvas.
 The canvas is consumer DOM. A count that includes the canvas reports a false
@@ -118,9 +122,41 @@ The five components that measured zero on the first two groups render no
 `<button>`, and both of those fixture rules target `button`. `remRebase` reaches
 every component, because every component ships `rem` sizes.
 
+## The reverse direction: SDK CSS reaching into consumer content
+
+An SDK component that renders `children`, or render-prop output, puts the
+consumer's own markup inside a `[data-yv-sdk]` subtree. Until ADR-0008 the gate
+matched all of it, and `theme.css` reset and recolored it.
+
+### The baseline
+
+This direction needs a different baseline from the one above. The forward
+direction removes the consumer sheet. The reverse direction cannot remove the SDK
+sheet, because that would also remove every value consumer content legitimately
+**inherits**, and inheritance is not a leak.
+
+So the baseline is a placement. The harness renders the same consumer markup
+twice in one document, with the SDK sheet present for both: once with no
+`[data-yv-sdk]` ancestor, once inside an SDK component's consumer slot. A
+difference between the two is SDK CSS matching consumer DOM, and nothing else.
+The fixture declares all 32 tracked properties on every element, so inheritance
+is not part of the comparison.
+
+### Result
+
+| Placement | Before | After |
+| --- | --- | --- |
+| `BibleReader.Root` children, in a `data-yv-slot` wrapper | 255 | **0** |
+| `BibleChapterPicker.Trigger` children | 68 | **0** |
+| `BibleVersionPicker.Trigger` children | 68 | **0** |
+| `BibleReader.Root` children, no slot (positive control) | 255 | 416 |
+
+The last row is the positive control, and it went the other way. See residual 4
+below.
+
 ## What still gets through
 
-Three things. All are deliberate, and none is in the fixture.
+Five things. All are deliberate, and none is in the forward fixture.
 
 ### 1. A consumer rule that is `!important` and in a layer declared before `yv`
 
@@ -176,6 +212,41 @@ still works, because zoom scales `px`. A consumer who needs type scaling has
 four supported paths: override `[data-yv-sdk] { font-size }`, raise a `--yv-*`
 size token, pass a component's `fontSize` prop, or open an issue.
 
+### 4. Consumer content that is not in a slot
+
+Three sites render consumer content and cannot be stamped:
+
+| Site | Why |
+| --- | --- |
+| `BibleReader.Root` children | One stamped `div` holds SDK compound children (`Toolbar`, `Content`) and consumer children together. A slot around all of them switches off the styling the SDK children need |
+| `BibleChapterPicker.Trigger` with `asChild` | `asChild` merges our props onto the consumer's own element. There is no element left to wrap |
+| `BibleVersionPicker.Trigger` with `asChild` | Same |
+
+Content at those sites is now restyled *harder* than before ADR-0008, and the
+number is above: the no-slot control went from 255 leaks to 416. The gate's rise
+from 0,1,0 to 0,2,0 lifted the SDK's normal declarations — the exempt ones, which
+stay unlayered — above a consumer rule at 0,1,0. The new properties are
+`font-size`, `font-style`, `font-weight` and the four `border-*-width` longhands,
+which `theme.css` sets through `font: inherit` and `border: 0 solid`.
+
+The fix is one attribute. A consumer wraps their content in an element with
+`data-yv-slot`, and the count returns to zero. The harness story
+`BibleReaderConsumerSlot` does exactly that.
+
+ADR-0008 records the alternative that would have avoided the rise,
+`:where(:not(…))`, and why it was not taken.
+
+### 5. A selector whose subject sits past the gate compound
+
+The build check reads `data-yv-sdk` where it appears literally in a compound. A
+Tailwind variant such as `.yv\:space-y-4 > :not(:last-child)` carries the gate on
+its *first* compound, and its subject is a later one. The check does not fire,
+and such a rule can still match the slot wrapper element the SDK renders.
+
+It cannot reach the consumer's own elements below the wrapper, because a child
+combinator does not go that deep. The reverse harness measures the outcome, and
+it reads zero on all three slotted placements.
+
 ## Keeping this report accurate
 
 Every group is asserted, not only recorded. The three former leak groups now
@@ -186,7 +257,8 @@ story.
 
 The build-time checks back the harness up, in
 `packages/ui/scripts/scope-selectors.mjs` and `scripts/verify-styles.js`. They
-fail the build on an ungated selector, a non-exempt declaration that is not
+fail the build on an ungated selector, a gated selector that reaches past the
+gate without a slot exclusion, a non-exempt declaration that is not
 important, an exempt declaration that is important, an `!important` inside a
 `@keyframes` body, a `@keyframes` animating a property missing from the
 exemption list, a surviving `rem` length, a missing or misplaced `@layer yv`

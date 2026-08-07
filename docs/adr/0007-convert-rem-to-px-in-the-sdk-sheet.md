@@ -8,7 +8,13 @@ Accepted. This decision extends
 [ADR-0005](0005-scope-sdk-css-to-data-yv-sdk-subtrees.md) and
 [ADR-0006](0006-layer-and-importantize-the-sdk-sheet.md). The
 `:is([data-yv-sdk], [data-yv-sdk] *)` gate and the layered-important split are
-both unchanged.
+both unchanged here.
+
+Amended 2026-08-07 by
+[ADR-0008](0008-stop-sdk-css-at-consumer-slots.md), which added a slot exclusion
+to the gate's descendant arm. The rem-to-px conversion is unchanged. The root
+`font-size: 16px` on `[data-yv-sdk]` is unchanged, and it still reaches consumer
+slot content, because it reaches it by inheritance rather than by matching.
 
 ## Context
 

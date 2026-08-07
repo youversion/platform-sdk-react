@@ -15,6 +15,13 @@ longer in no layer, and a consumer `!important` rule no longer reaches our
 components. ADR-0006 has the cascade math and the property exemption list. The
 sections marked **Superseded** name what changed.
 
+Amended again 2026-08-07 by
+[ADR-0008](0008-stop-sdk-css-at-consumer-slots.md). The gate's descendant arm is
+now `[data-yv-sdk] *:not([data-yv-slot], [data-yv-slot] *)`, so SDK CSS stops at
+consumer content the SDK only passed through. The gate therefore adds 0,2,0, not
+0,1,0. Every literal gate string below is the pre-0008 form. Read it as an
+outline of the mechanism, not as the shipped selector.
+
 ## Context
 
 A partner puts `BibleTextView` into their app. Their `button { padding: 1rem }`

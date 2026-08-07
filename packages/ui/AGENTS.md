@@ -43,14 +43,33 @@ export — treat those two as public API and breaking-change territory.
 
 ### Style isolation (`data-yv-sdk`)
 
-The build rewrites every SDK selector to `:is([data-yv-sdk], [data-yv-sdk] *)`.
-A rule applies only inside a subtree that carries that attribute. See
+The build rewrites every SDK selector to
+`:is([data-yv-sdk], [data-yv-sdk] *:not([data-yv-slot], [data-yv-slot] *))`.
+A rule applies only inside a subtree that carries `data-yv-sdk`, and it stops at
+any element that carries `data-yv-slot`. See
 [ADR-0005](../../docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md),
-[ADR-0006](../../docs/adr/0006-layer-and-importantize-the-sdk-sheet.md) and
-[ADR-0007](../../docs/adr/0007-convert-rem-to-px-in-the-sdk-sheet.md).
+[ADR-0006](../../docs/adr/0006-layer-and-importantize-the-sdk-sheet.md),
+[ADR-0007](../../docs/adr/0007-convert-rem-to-px-in-the-sdk-sheet.md) and
+[ADR-0008](../../docs/adr/0008-stop-sdk-css-at-consumer-slots.md).
 
 - **Put `data-yv-sdk` on the root element of every new exported component.**
   Without the attribute, the component renders with no SDK styling.
+- **Wrap consumer content in `ConsumerSlot`.** Any place a component renders a
+  consumer's `children` or render-prop output inside a stamped subtree is a
+  slot. `ConsumerSlot` (`src/lib/consumer-slot.tsx`) is a
+  `<span data-yv-slot style="display: contents">`, so it adds no box and changes
+  no layout. Wrap only content the consumer supplied. A stamp on our own default
+  markup switches off the styling that markup asks for.
+- **Do not force a slot onto an `asChild` path.** `asChild` merges our props onto
+  the consumer's own element, so a wrapper would change the rendered DOM shape.
+  Those sites ship unstamped, and ADR-0008 lists them.
+- The slot boundary stops selector matching. It does not stop inheritance, and
+  it is not meant to. Slot content inherits `color`, `font-size` and the rest
+  from its SDK ancestors, the way any content inherits from where it sits.
+- A hand-written gated selector writes its own `:not([data-yv-slot],
+  [data-yv-slot] *)`. The rewrite skips a selector that already carries the gate,
+  so `src/styles/global.css` and `packages/core/src/styles/theme.css` do it
+  themselves. The build fails when one of them loses the exclusion.
 - Consumers never add the attribute. The components add it themselves.
 - Internal primitives in `src/components/ui/` carry no attribute, on purpose.
   They normally render inside a stamped public component, and a second stamp
@@ -83,14 +102,17 @@ A rule applies only inside a subtree that carries that attribute. See
 - **Write `px` in an inline `style` prop, not `rem`.** An inline style never
   passes through the build, so the rebase cannot reach it. The `remRebase`
   harness group is the backstop.
-- Three residuals remain: a consumer rule that is `!important` *and* in a layer
-  declared before `yv`, the exempt properties, and the root `font-size` we leave
-  overridable on purpose.
+- Residuals remain, and
   [docs/style-isolation-residual-leak.md](../../docs/style-isolation-residual-leak.md)
-  records all three.
+  records them: a consumer rule that is `!important` *and* in a layer declared
+  before `yv`, the exempt properties, the root `font-size` we leave overridable
+  on purpose, the three slot sites that cannot be stamped, and one selector shape
+  that can still reach a slot wrapper.
 - The regression harness is `src/components/style-isolation.stories.tsx`, with
-  `src/test/consumer-host.ts` and `src/test/style-diff.ts`. Add a story there when
-  you add an exported component.
+  `src/test/consumer-host.ts` and `src/test/style-diff.ts`. It runs in two
+  directions. Add a consumer-host story when you add an exported component, and a
+  reverse story when that component renders consumer `children` or render-prop
+  output.
 
 ## REFERENCES
 
@@ -111,7 +133,8 @@ type-checked; prefer them over any prose description of a component's API.
      selector, converts every `rem` length to `px`, splits the sheet into the
      unlayered exempt half and the `@layer yv` important half, writes
      `dist/tailwind.css`. It re-parses its own output and fails on an ungated
-     selector, a non-exempt normal declaration, an exempt important declaration,
+     selector, a gated selector that reaches past the gate without a slot
+     exclusion, a non-exempt normal declaration, an exempt important declaration,
      an `!important` inside `@keyframes`, a `@keyframes` animating a property
      missing from the exemption list, a surviving `rem` length, or a missing or
      misplaced `@layer yv` block.

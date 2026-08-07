@@ -64,7 +64,7 @@ such as `* { box-sizing: content-box }`, or a rule such as
 `button { padding: 1rem }`, changed the appearance of our components before. It
 does not change them now.
 
-Read these four points before you upgrade:
+Read these five points before you upgrade:
 
 - **You cannot style SDK internals, and we never supported it.** If you target
   our elements from your stylesheet, our rule overrides yours. Class names,
@@ -83,6 +83,14 @@ Read these four points before you upgrade:
   animations set them at runtime. The
   [residual-leak report](https://github.com/youversion/platform-sdk-react/blob/main/docs/style-isolation-residual-leak.md)
   has the full list and the reason for each one.
+- **Your own content inside our components keeps your styling.** When you pass
+  `children` or a render prop into an SDK component, we wrap it in an element
+  marked `data-yv-slot`. No SDK rule matches inside that wrapper, so our reset
+  and our type styles leave your markup alone. Inheritance still works the
+  normal way: your content inherits `color`, `font-size` and the rest from where
+  it sits, because a selector boundary does not stop inheritance. Two places do
+  not get the wrapper — `BibleReader.Root` children, and a picker `Trigger` you
+  render with `asChild`. Add `data-yv-slot` to your own wrapper element there.
 - **Your root font size no longer scales our components.** A page with
   `html { font-size: 62.5% }` used to shrink every SDK size by 37.5 percent. Our
   stylesheet now ships `px` instead of `rem`, and our root declares
@@ -103,8 +111,10 @@ For the full rationale, read
 [ADR-0005](https://github.com/youversion/platform-sdk-react/blob/main/docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md)
 ,
 [ADR-0006](https://github.com/youversion/platform-sdk-react/blob/main/docs/adr/0006-layer-and-importantize-the-sdk-sheet.md)
+,
+[ADR-0007](https://github.com/youversion/platform-sdk-react/blob/main/docs/adr/0007-convert-rem-to-px-in-the-sdk-sheet.md)
 and
-[ADR-0007](https://github.com/youversion/platform-sdk-react/blob/main/docs/adr/0007-convert-rem-to-px-in-the-sdk-sheet.md).
+[ADR-0008](https://github.com/youversion/platform-sdk-react/blob/main/docs/adr/0008-stop-sdk-css-at-consumer-slots.md).
 
 ### Content Security Policy
 
