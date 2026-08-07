@@ -206,12 +206,16 @@ export const Error: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
+    // The header slot carries the "Error" label; the body block is the one alert.
     await waitFor(async () => {
       await expect(canvas.getByRole('heading', { level: 2, name: /error/i })).toBeInTheDocument();
-      const errorMessages = canvas.getAllByText(
-        'The Bible service is having trouble right now. Please try again in a moment.',
-      );
-      await expect(errorMessages.length).toBeGreaterThan(0);
     });
+
+    const alerts = canvas.getAllByRole('alert');
+
+    await expect(alerts).toHaveLength(1);
+    await expect(alerts[0]).toHaveTextContent(
+      'The Bible service is having trouble right now. Please try again in a moment.',
+    );
   },
 };

@@ -251,17 +251,20 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
 });
 
 /**
- * Displays a verse-unavailable error message with a circular exclamation
- * icon and descriptive text.
+ * Displays a verse-unavailable error message as one alert region: a circular
+ * exclamation icon and the status-aware message.
+ *
+ * The "Error" label lives in the BibleCard header slot, not here, so this block
+ * stays a single sentence. `role="alert"` already implies an assertive live
+ * region, so no `aria-live` is set, and the icon is hidden from screen readers.
  */
 function VerseUnavailableMessage({ message }: { message: string }): React.ReactElement {
   return (
     <div
       role="alert"
-      aria-live="polite"
       className="yv:flex yv:items-center yv:justify-center yv:gap-2.5 yv:px-3 yv:py-2.5 yv:text-foreground"
     >
-      <ExclamationCircle className="yv:size-5 yv:shrink-0 yv:text-foreground" />
+      <ExclamationCircle className="yv:size-5 yv:shrink-0 yv:text-foreground" aria-hidden="true" />
       <p className="yv:m-0 yv:text-[13px] yv:font-medium yv:leading-tight">{message}</p>
     </div>
   );

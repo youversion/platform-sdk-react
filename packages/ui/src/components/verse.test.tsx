@@ -1044,6 +1044,34 @@ describe('BibleTextView - Error messaging', () => {
     });
   });
 
+  it('should render one alert region with a hidden icon and no heading line', async () => {
+    const { getAllByRole, getByRole } = render(
+      <BibleTextView
+        reference="JHN.3.16"
+        versionId={3034}
+        passageState={{
+          passage: null,
+          loading: false,
+          error: createError('Request failed with status 503', 503),
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByRole('alert')).toHaveTextContent(
+        'The Bible service is having trouble right now. Please try again in a moment.',
+      );
+    });
+
+    const alert = getByRole('alert');
+
+    expect(getAllByRole('alert')).toHaveLength(1);
+    expect(alert).not.toHaveAttribute('aria-live');
+    expect(alert.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    // Standalone BibleTextView has no header slot, so no "Error" label renders.
+    expect(alert).not.toHaveTextContent('Error');
+  });
+
   it('should prioritize 5xx errors over "not found" text in the message', async () => {
     const { getByRole } = render(
       <BibleTextView

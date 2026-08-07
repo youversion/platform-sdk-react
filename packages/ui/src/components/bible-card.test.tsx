@@ -156,6 +156,55 @@ describe('BibleCard - Delayed spinner', () => {
   });
 });
 
+describe('BibleCard - Error state', () => {
+  function createError(message: string, status?: number): Error {
+    return Object.assign(new Error(message), status === undefined ? {} : { status });
+  }
+
+  beforeEach(() => {
+    vi.mocked(useTheme).mockReturnValue('light');
+    vi.mocked(useVersion).mockReturnValue({
+      version: mockVersion,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    vi.mocked(usePassage).mockReturnValue({
+      passage: null,
+      loading: false,
+      error: createError('Request failed with status 503', 503),
+      refetch: vi.fn(),
+    });
+  });
+
+  it('should render exactly one alert region', () => {
+    const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
+
+    expect(within(container).getAllByRole('alert')).toHaveLength(1);
+  });
+
+  it('should show the status message in that one alert region', () => {
+    const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
+    const alert = within(container).getByRole('alert');
+
+    expect(alert).toHaveTextContent(
+      'The Bible service is having trouble right now. Please try again in a moment.',
+    );
+  });
+
+  it('should render the error heading in the header slot', () => {
+    const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
+
+    expect(within(container).getByRole('heading', { level: 2 })).toHaveTextContent('Error');
+  });
+
+  it('should not render a loading spinner while an error is set', () => {
+    const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
+
+    expect(within(container).queryByRole('status')).toBeNull();
+  });
+});
+
 describe('BibleCard - onFootnotePress callback', () => {
   const mockPassageWithFootnote: BiblePassage = {
     id: 'JHN.1',
