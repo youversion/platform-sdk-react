@@ -162,28 +162,32 @@ export function HostileCssPage() {
         </fieldset>
       </section>
 
-      <div className="hostile-zone grid gap-8 md:grid-cols-2">
+      <div className="grid gap-8 md:grid-cols-2">
         <section className="flex flex-col gap-5 rounded-lg border border-dashed p-5">
           <h2 className="text-sm font-semibold">LIGHT DOM — SHOULD BE AFFECTED</h2>
-          <button type="button">Plain host-app button</button>
-          <p>Plain host text for inherited-property attacks.</p>
-          <div data-host-box-witness className="rounded border p-3">
-            Host-box witness — this should disappear during the host attack.
+          <div className="hostile-zone flex flex-col gap-5">
+            <button type="button">Plain host-app button</button>
+            <p>Plain host text for inherited-property attacks.</p>
+            <div data-host-box-witness className="rounded border p-3">
+              Host-box witness — this should disappear during the host attack.
+            </div>
+            <div data-host-pseudo-witness className="rounded border p-3">
+              Pseudo-element witness — generated content should appear above this text.
+            </div>
+            <p style={{ fontFamily: 'Inter, sans-serif' }}>
+              Host text requesting Inter for the font-face collision.
+            </p>
           </div>
-          <div data-host-pseudo-witness className="rounded border p-3">
-            Pseudo-element witness — generated content should appear above this text.
-          </div>
-          <p style={{ fontFamily: 'Inter, sans-serif' }}>
-            Host text requesting Inter for the font-face collision.
-          </p>
         </section>
 
         <section className="flex flex-col gap-5 rounded-lg border p-5">
           <h2 className="text-sm font-semibold">SDK POC — SHOULD RESIST</h2>
-          <YouVersionAuthButton
-            size="short"
-            onAuthError={(error) => console.error('Auth error:', error)}
-          />
+          <div className="hostile-zone">
+            <YouVersionAuthButton
+              size="short"
+              onAuthError={(error) => console.error('Auth error:', error)}
+            />
+          </div>
           <p className="text-sm text-muted-foreground">
             Other SDK components are intentionally absent: automatic isolation has not been rolled
             out to them on this POC branch.
