@@ -113,6 +113,25 @@
 }
 /* #endregion */
 
+/* The SDK root anchors its own font size.
+
+   theme.css declares `font-family`, `line-height` and the rest of the inherited
+   text properties on this element, but not `font-size`. Without this rule the
+   root inherits the consumer's `body` font size, and every SDK component grows
+   or shrinks with it. The build converts the sheet's `rem` lengths to `px`, so
+   the sheet itself no longer tracks the document root, but inheritance is a
+   second channel and needs its own answer.
+
+   16px, because that is the browser default and the value the rem rebase uses.
+   `font-size` is on EXEMPT_PROPERTIES, so this declaration stays unlayered and
+   normal at 0,1,0. A consumer who wants the SDK to scale can still override it,
+   and that is the escape hatch for a reader who needs larger text.
+
+   See docs/adr/0007-convert-rem-to-px-in-the-sdk-sheet.md. */
+[data-yv-sdk] {
+  font-size: 16px;
+}
+
 /* `.trim-both` has no `yv:` prefix, because a person wrote it and Tailwind did
    not generate it. scope-selectors.mjs adds the gate to it, as it does to every
    other rule. */

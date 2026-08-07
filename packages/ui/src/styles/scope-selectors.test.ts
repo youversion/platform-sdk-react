@@ -228,14 +228,16 @@ describe('scopeCss', () => {
     });
 
     it('carries a conditional wrapper into whichever half needs it', () => {
+      // 40rem arrives as 640px, because the rem rebase reaches into the media
+      // query too. See the `rem` describe block below for why that is correct.
       const { code } = scopeCss('@media (min-width: 40rem) { .card { color: red; top: 0 } }', {
         minify: true,
       });
       expect(code).toContain(
-        '@media (width>=40rem){:is([data-yv-sdk],[data-yv-sdk] *).card{top:0}}',
+        '@media (width>=640px){:is([data-yv-sdk],[data-yv-sdk] *).card{top:0}}',
       );
       expect(code).toContain(
-        '@layer yv{@media (width>=40rem){:is([data-yv-sdk],[data-yv-sdk] *).card{color:red!important}}}',
+        '@layer yv{@media (width>=640px){:is([data-yv-sdk],[data-yv-sdk] *).card{color:red!important}}}',
       );
     });
 
@@ -302,6 +304,63 @@ describe('scopeCss', () => {
       // The guard that keeps the list from falling behind the animations.
       const { problems } = scopeCss('@keyframes grow { to { width: 10px } } .a { color: red }');
       expect(problems.join('\n')).toContain('width');
+    });
+  });
+
+  describe('converts every rem length to px', () => {
+    // A `rem` resolves against the document root element. A host page with
+    // `html { font-size: 62.5% }` therefore shrinks every `rem` the SDK ships
+    // by 37.5 percent, and no selector, layer or `!important` reaches that.
+    // 1rem = 16px is the browser default, so the sheet keeps the size it had.
+    // See docs/adr/0007-convert-rem-to-px-in-the-sdk-sheet.md.
+
+    it('rebases a plain declaration', () => {
+      expect(scope('.a { padding: 0.25rem }')).toContain('padding: 4px');
+    });
+
+    it('rebases a custom property value', () => {
+      // The value a `var()` later resolves to. Miss this one and the rebase
+      // means nothing, because the theme ships its sizes as tokens.
+      expect(scope(':root { --yv-radius: 2rem }')).toContain('--yv-radius: 32px');
+    });
+
+    it('rebases inside calc() and inside a var() fallback', () => {
+      const code = scope('.a { width: calc(100% - 1rem); height: var(--x, 0.5rem) }');
+      expect(code).toContain('calc(100% - 16px)');
+      expect(code).toContain('var(--x, 8px)');
+    });
+
+    it('rebases a media query condition', () => {
+      // Safe, and for a different reason than the rest. Media Queries Level 4
+      // resolves a relative unit in a query against the *initial* value of
+      // `font-size`, not the root element's computed value, so a host
+      // `html { font-size }` never moved these breakpoints anyway. 16px is
+      // that initial value at browser defaults.
+      expect(scope('@media (min-width: 40rem) { .a { color: red } }')).toContain('width >= 640px');
+    });
+
+    it('rebases inside a @keyframes frame', () => {
+      const code = scope('@keyframes slide { to { transform: translateX(1rem) } }');
+      expect(code).toContain('translateX(16px)');
+    });
+
+    it('leaves a class name that contains the string rem alone', () => {
+      // `.rem` is a real class in bible-reader.css, and Tailwind escapes an
+      // arbitrary value into the selector. Both are names, not lengths.
+      const code = scope('.rem { color: red } .yv\\:text-\\[0\\.5rem\\] { font-size: 0.5rem }');
+      expect(code).toContain('.rem');
+      expect(code).toContain('.yv\\:text-\\[0\\.5rem\\]');
+      expect(code).toContain('font-size: 8px');
+    });
+
+    it('reports no surviving rem, which is the guard that fails the build', () => {
+      // `verifyOutput` re-parses the result and pushes a problem for every
+      // `rem` it still finds. The guard fires if someone removes or reorders
+      // the rebase pass. No input can make it fire while the pass is in place,
+      // because the pass and the guard read the same lengths, so this asserts
+      // the clean side.
+      const { problems } = scopeCss('.a { padding: 1rem; --x: 2rem }');
+      expect(problems).toEqual([]);
     });
   });
 

@@ -75,7 +75,12 @@ export function FootnoteContent({
             <div className="yv:font-bold yv:mb-2">{verseReference}</div>
             <div
               className="yv:mb-3 yv:font-serif yv:*:font-serif"
-              style={{ fontSize: fontSize ? `${fontSize}px` : '1.25rem' }}
+              // px, not rem. An inline style never passes through
+              // scope-selectors.mjs, so the rem rebase cannot reach it, and a
+              // host `html { font-size }` would rescale it. 20px is 1.25rem at
+              // the browser default. See
+              // docs/adr/0007-convert-rem-to-px-in-the-sdk-sheet.md.
+              style={{ fontSize: fontSize ? `${fontSize}px` : '20px' }}
               // biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe
               dangerouslySetInnerHTML={{ __html: verseHtml }}
             />

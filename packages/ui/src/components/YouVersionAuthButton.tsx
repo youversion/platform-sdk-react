@@ -212,9 +212,11 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
           onClick={(e) => void handleClick(e)}
           size="icon"
           style={{
+            // px, not rem. An inline style skips scope-selectors.mjs, so the rem
+            // rebase cannot reach it. 10.4px is 0.65rem at the browser default.
             ...(radius === 'rectangular'
               ? ({
-                  '--yv-radius': '0.65rem',
+                  '--yv-radius': '10.4px',
                 } as React.CSSProperties)
               : {}),
             borderColor: theme === 'light' ? 'var(--yv-gray-15)' : 'var(--yv-gray-35)',
@@ -248,9 +250,11 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
         onClick={(e) => void handleClick(e)}
         size="lg"
         style={{
+          // px, not rem. An inline style skips scope-selectors.mjs, so the rem
+          // rebase cannot reach it. 10.4px is 0.65rem at the browser default.
           ...(radius === 'rectangular'
             ? ({
-                '--yv-radius': '0.65rem',
+                '--yv-radius': '10.4px',
               } as React.CSSProperties)
             : {}),
           borderColor: theme === 'light' ? 'var(--yv-gray-15)' : 'var(--yv-gray-35)',

@@ -2,6 +2,16 @@
 /**
  * Hardens the compiled SDK stylesheet in three ways.
  *
+ * 0. It converts every `rem` length to `px` at 1rem = 16px.
+ *
+ *      padding: .25rem  →  padding: 4px
+ *
+ *    This one is not a cascade fix, because the leak it closes is not in the
+ *    cascade. A `rem` resolves against the *document root* element, so a host
+ *    page with `html { font-size: 62.5% }` shrinks every `rem` the SDK ships by
+ *    37.5 percent. No selector, no layer and no `!important` can reach that. The
+ *    unit has to go. See docs/adr/0007-convert-rem-to-px-in-the-sdk-sheet.md.
+ *
  * 1. It adds a `[data-yv-sdk]` gate to every selector.
  *
  *      .yv\:mt-4  →  :is([data-yv-sdk], [data-yv-sdk] *).yv\:mt-4
@@ -62,7 +72,8 @@
  *   node scripts/scope-selectors.mjs [--minify] [--watch] [--in=PATH] [--out=PATH]
  *
  * See docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md,
- * docs/adr/0006-layer-and-importantize-the-sdk-sheet.md and YPE-4113.
+ * docs/adr/0006-layer-and-importantize-the-sdk-sheet.md,
+ * docs/adr/0007-convert-rem-to-px-in-the-sdk-sheet.md and YPE-4113.
  */
 import { existsSync, mkdirSync, readFileSync, watch, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -239,6 +250,62 @@ function formatComponent(component) {
 /** Approximate selector text, used only in the build-failure message. */
 function formatSelector(components) {
   return components.map(formatComponent).join('');
+}
+
+/* -------------------------------------------------------------------------- */
+/* Root font size                                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The pixel value that one `rem` becomes.
+ *
+ * 16 is the initial value of `font-size`, which is what `medium` computes to in
+ * every major browser at its default settings. It is therefore the value a
+ * `rem` already had for a host that never touched the root font size, so the
+ * conversion changes nothing for that host. It only removes the SDK's response
+ * to a host that did touch it.
+ */
+const ROOT_FONT_SIZE_PX = 16;
+
+/**
+ * Rewrites one `rem` length as the `px` length it means at a 16px root.
+ *
+ * Lightning CSS calls this for every length in the sheet, and only for lengths.
+ * A selector is never a length, so `.yv\:text-\[0\.5rem\]` and the `.rem` class
+ * in `bible-reader.css` are untouched. That is the whole reason this pass uses a
+ * visitor and not a text pass: the string `rem` appears in both.
+ *
+ * The `Length` visitor is not affected by the `var()` round-trip bug that forces
+ * `splitByImportance` into text surgery. That bug is in the `Declaration`
+ * visitor. A length inside `var(--x, 0 0 1rem #000)` converts correctly, and so
+ * does a length inside `calc()`, inside a `@keyframes` body, inside a `--yv-*`
+ * custom property and inside a media query condition.
+ *
+ * Four places deserve their own note:
+ *
+ *   - **Custom properties.** `--yv-spacing: .25rem` becomes `4px`. This is where
+ *     most of the win is. Tailwind writes almost every spacing utility as
+ *     `calc(var(--yv-spacing) * 4)`, so one token carries hundreds of rules.
+ *   - **`calc()` and `var()` fallbacks.** Converted in place. A `calc()` that
+ *     mixes units, such as `calc(100vw - 2rem)`, keeps its shape and loses only
+ *     the `rem` term.
+ *   - **Media query conditions.** A `rem` in a media query never tracked the root
+ *     element to begin with. Media Queries 4 §1.3 says relative units in a query
+ *     resolve against the *initial* value of `font-size`, so that a declaration
+ *     can never change which query matches. Converting at 16px is therefore
+ *     exact for a reader on browser defaults. It is not exact for a reader who
+ *     raised the browser's default font size, whose breakpoints stop moving with
+ *     it. ADR-0007 records that.
+ *   - **`@keyframes`.** Converted like any other declaration. A frame is not a
+ *     cascaded declaration, so nothing here interacts with the exemption list.
+ *
+ * @param {{ unit: string, value: number }} length
+ * @returns {{ unit: string, value: number } | undefined} The replacement, or
+ *   `undefined` to keep the length as it is.
+ */
+function rebaseLength(length) {
+  if (length.unit !== 'rem') return undefined;
+  return { unit: 'px', value: length.value * ROOT_FONT_SIZE_PX };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -935,7 +1002,7 @@ function findLayerProblems(code) {
  *
  * This is the real guarantee. A string search proves that the script ran. Only
  * a second parse proves that the script left nothing behind. The build has no
- * browser, so these five checks stand in for what a person would otherwise have
+ * browser, so these six checks stand in for what a person would otherwise have
  * to look for by hand:
  *
  *   1. Every selector carries the gate.
@@ -946,9 +1013,18 @@ function findLayerProblems(code) {
  *      `importantizeCss` safe.
  *   4. No `@keyframes` body holds `!important`, where it is invalid CSS.
  *   5. The whole sheet sits inside one `@layer yv` block.
+ *   6. No `rem` length survives anywhere, so the host's root font size cannot
+ *      rescale the sheet.
  *
  * A `@keyframes` that animates a property missing from `EXEMPT_PROPERTIES` is a
- * sixth failure, and it is the one that keeps the list from falling behind.
+ * seventh failure, and it is the one that keeps the list from falling behind.
+ *
+ * Check 6 reads every length the parser produces, which covers a declaration
+ * value, a custom property value, a `calc()` operand, a `var()` fallback, a
+ * media query condition and a `@keyframes` frame. It does not read the string
+ * `rem` inside a selector, and it must not: `.yv\:text-\[0\.5rem\]` is a class
+ * name, and `.rem` is a class `bible-reader.css` declares. Both are names, not
+ * lengths, and both are correct as they are.
  *
  * @returns {{ ungated: string[], problems: string[] }}
  */
@@ -958,6 +1034,7 @@ function verifyOutput(code, filename, exemptAlreadyImportant = new Set()) {
   const wronglyImportant = new Set();
   const importantKeyframes = new Set();
   const unexemptAnimated = new Set();
+  const survivingRem = new Set();
 
   // A throw here is the point: it means the layer wrap produced CSS that no
   // longer parses, and that must never reach `dist/`.
@@ -968,6 +1045,12 @@ function verifyOutput(code, filename, exemptAlreadyImportant = new Set()) {
     visitor: {
       Selector(components) {
         if (!isAllowed(components)) ungated.push(formatSelector(components));
+      },
+      Length(length) {
+        // Read only. The rebase already happened in pass 3; this walk exists to
+        // catch the length that pass missed.
+        if (length.unit === 'rem') survivingRem.add(`${String(length.value)}rem`);
+        return undefined;
       },
       Rule: {
         style(rule) {
@@ -1032,6 +1115,13 @@ function verifyOutput(code, filename, exemptAlreadyImportant = new Set()) {
         `animation: ${[...unexemptAnimated].sort().join(', ')}`,
     );
   }
+  if (survivingRem.size > 0) {
+    problems.push(
+      `${String(survivingRem.size)} \`rem\` length(s) survived the rebase, and a ` +
+        `host \`html { font-size }\` would rescale them: ` +
+        [...survivingRem].sort().join(', '),
+    );
+  }
 
   return { ungated: [...new Set(ungated)], problems };
 }
@@ -1070,10 +1160,20 @@ export function scopeCss(source, options = {}) {
     visitor: { Selector: gateSelector },
   });
 
-  // Pass 3: print the final sheet.
-  const { code: printed } = transform({ filename, code: gated, minify });
+  // Pass 3: convert every `rem` length to `px`. Separate from pass 2 so that a
+  // failure names one job. The two visitors never see the same node anyway: one
+  // walks selectors, the other walks lengths.
+  const { code: rebased } = transform({
+    filename,
+    code: gated,
+    minify: false,
+    visitor: { Length: rebaseLength },
+  });
 
-  // Pass 4: split the sheet by property, mark the layered half important, and
+  // Pass 4: print the final sheet.
+  const { code: printed } = transform({ filename, code: rebased, minify });
+
+  // Pass 5: split the sheet by property, mark the layered half important, and
   // join the two halves. Both steps are text edits, and both run after the last
   // print. Lightning CSS cannot express either one: see `splitByImportance` for
   // the visitor limitation and `assembleSheet` for the dropped `@layer yv;`.
@@ -1083,7 +1183,7 @@ export function scopeCss(source, options = {}) {
   );
   const code = assembleSheet(layered, unlayered, minify);
 
-  // Pass 5: check the result.
+  // Pass 6: check the result.
   return { code, ...verifyOutput(code, filename, exemptAlreadyImportant) };
 }
 
