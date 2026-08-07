@@ -309,6 +309,94 @@ export type ConsumerCssGroup = keyof typeof CONSUMER_CSS_GROUPS;
 /** Marks every `<style>` element this module owns, so cleanup never removes the SDK's. */
 export const CONSUMER_HOST_STYLE_ATTRIBUTE = 'data-yv-consumer-host';
 
+/* -------------------------------------------------------------------------- */
+/* Reverse direction: consumer content inside an SDK subtree                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The class a consumer puts on content they pass into an SDK component.
+ *
+ * The seven groups above measure one direction: consumer CSS reaching into SDK
+ * DOM. This class measures the other direction: SDK CSS reaching into consumer
+ * DOM that an SDK component renders as `children` or as render-prop output.
+ */
+export const CONSUMER_CONTENT_CLASS = 'yv-consumer-content';
+
+/** Marks the `<style>` element that holds `CONSUMER_CONTENT_CSS`. */
+export const CONSUMER_CONTENT_STYLE_ATTRIBUTE = 'data-yv-consumer-content';
+
+/**
+ * A consumer's own styling for their own content, declared on every element.
+ *
+ * Every one of the 32 entries in `TRACKED_PROPERTIES` appears here, on the
+ * content root and on every descendant of it. That is deliberate, and it is what
+ * makes a zero achievable.
+ *
+ * Inheritance is not a leak. An SDK component declares `font-size`, `color` and
+ * `font-family` on its own root, and a child inherits them. A consumer's content
+ * placed anywhere else in their page inherits from its ancestors in exactly the
+ * same way. The slot boundary stops *selector matching*; it does not, and should
+ * not, stop inheritance. So this fixture declares every tracked property
+ * outright, which closes the inheritance channel and leaves only the channel
+ * under test.
+ *
+ * Specificity is 0,1,0 on both selectors, and the tag is appended after the SDK
+ * sheet. So an SDK rule that still matches this content wins only by being
+ * important, or by being more specific than 0,1,0. Both are leaks.
+ *
+ * The values are arbitrary but distinct per side, so a shorthand that collapses
+ * (for example `border-width: 6px 2px 3px 4px`) cannot hide a difference. The
+ * top border width is 6px and not 1px on purpose: `theme.css` declares
+ * `hr { border-top-width: 1px }`, and a matching value would hide that rule.
+ */
+export const CONSUMER_CONTENT_CSS = `
+.${CONSUMER_CONTENT_CLASS},
+.${CONSUMER_CONTENT_CLASS} * {
+  box-sizing: content-box;
+  padding: 3px 5px 7px 9px;
+  margin: 11px 13px 15px 17px;
+  border-width: 6px 2px 3px 4px;
+  border-style: dotted;
+  border-color: rgb(0, 0, 255);
+  border-radius: 1px 2px 3px 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: 300;
+  font-style: italic;
+  line-height: 21px;
+  letter-spacing: 2px;
+  word-spacing: 3px;
+  text-align: right;
+  text-transform: lowercase;
+  text-indent: 4px;
+  white-space: pre-line;
+  text-decoration-line: overline;
+  list-style-type: square;
+  color: rgb(1, 2, 3);
+  background-color: rgb(4, 5, 6);
+}
+`;
+
+/**
+ * Appends `CONSUMER_CONTENT_CSS` to `document.head`, after the SDK tag.
+ *
+ * `removeConsumerCss` does not remove this tag. The two fixtures answer
+ * different questions and the reverse-direction stories inject no host groups at
+ * all, so they never need to come and go together.
+ *
+ * @returns a cleanup function that removes only the tag this call added.
+ */
+export function injectConsumerContentCss(): () => void {
+  const style = document.createElement('style');
+  style.setAttribute(CONSUMER_CONTENT_STYLE_ATTRIBUTE, '');
+  style.textContent = CONSUMER_CONTENT_CSS;
+  document.head.appendChild(style);
+
+  return () => {
+    style.remove();
+  };
+}
+
 export const ALL_CONSUMER_CSS_GROUPS = Object.keys(CONSUMER_CSS_GROUPS) as ConsumerCssGroup[];
 
 /** Expands the `'all'` value into the explicit group list. */

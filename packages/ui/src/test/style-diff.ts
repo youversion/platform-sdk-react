@@ -165,6 +165,47 @@ export function diffSnapshots(clean: StyleSnapshot, consumer: StyleSnapshot): St
   return leaks;
 }
 
+/**
+ * Compares the same markup rendered in two places in one document.
+ *
+ * This is the reverse direction, and it needs a different baseline from
+ * `diffSnapshots`. The forward direction asks "did consumer CSS move SDK DOM",
+ * and it answers by removing the consumer sheet. The reverse direction asks "did
+ * SDK CSS move consumer DOM", and it cannot answer by removing the SDK sheet.
+ * Removing it would also remove every SDK declaration that a consumer's content
+ * legitimately *inherits*, and inheritance is not a leak: content dropped
+ * anywhere in a page inherits from its ancestors.
+ *
+ * So the baseline is a placement, not a sheet state. The harness renders the
+ * same consumer markup twice in the same document, with the SDK sheet present
+ * for both:
+ *
+ *   - `outside`: in the page, with no `[data-yv-sdk]` ancestor.
+ *   - `inside`: in an SDK component's consumer slot.
+ *
+ * A difference is then SDK CSS matching consumer DOM, and nothing else. The
+ * fixture in `consumer-host.ts` declares every tracked property on every element
+ * of the markup, which removes the inheritance channel from the comparison.
+ *
+ * @throws when the two snapshots hold different paths. Here the two subtrees are
+ *   the same markup, so a mismatch is a harness error and must not be skipped
+ *   quietly the way `diffSnapshots` skips it.
+ */
+export function diffPlacements(outside: StyleSnapshot, inside: StyleSnapshot): StyleLeak[] {
+  const outsidePaths = [...outside.keys()].sort();
+  const insidePaths = [...inside.keys()].sort();
+
+  if (outsidePaths.join('|') !== insidePaths.join('|')) {
+    throw new Error(
+      `The two placements rendered different DOM, so the diff means nothing.\n` +
+        `  outside: ${outsidePaths.join(', ')}\n` +
+        `  inside:  ${insidePaths.join(', ')}`,
+    );
+  }
+
+  return diffSnapshots(outside, inside);
+}
+
 /** The distinct property names in a leak set, sorted. The tests assert on this list. */
 export function leakedProperties(leaks: StyleLeak[]): string[] {
   return [...new Set(leaks.map((leak) => leak.property))].sort();

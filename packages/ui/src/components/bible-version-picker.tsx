@@ -24,6 +24,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { ConsumerSlot } from '@/lib/consumer-slot';
 import { cn } from '@/lib/utils';
 import { ArrowLeftIcon } from './icons/arrow-left';
 import { GlobeIcon } from './icons/globe';
@@ -466,6 +467,10 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
     useBibleVersionPickerContext();
   const { version, loading } = useVersion(versionId);
 
+  // `children` here is consumer content, and the fallback Button is ours. Only
+  // the first gets a slot: stamping our own Button would switch off the styling
+  // it is asking for.
+  const fromConsumer = typeof children === 'function' || Boolean(children);
   const content =
     typeof children === 'function'
       ? children({ version, loading })
@@ -474,6 +479,11 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
             {version?.localized_abbreviation || t('select')}
           </Button>
         );
+
+  // `asChild` merges our props onto the consumer's own element, so there is no
+  // element left to wrap without changing the rendered DOM. Those two paths ship
+  // unstamped and are recorded in docs/adr/0008-stop-sdk-css-at-consumer-slots.md.
+  const slotted = fromConsumer ? <ConsumerSlot>{content}</ConsumerSlot> : content;
 
   const handlePress = (event: MouseEvent<HTMLButtonElement>) => {
     props.onClick?.(event);
@@ -494,14 +504,14 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
 
     return (
       <button type="button" data-yv-sdk data-yv-theme={background} {...props} onClick={handlePress}>
-        {content}
+        {slotted}
       </button>
     );
   }
 
   return (
     <PopoverTrigger data-yv-sdk data-yv-theme={background} asChild={asChild} {...props}>
-      {content}
+      {asChild ? content : slotted}
     </PopoverTrigger>
   );
 }

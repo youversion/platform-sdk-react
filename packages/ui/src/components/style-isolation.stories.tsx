@@ -11,7 +11,7 @@
  *   a declaration of the property can stop it.
  * - `preflight`, `bareElements` and `aggressiveReset` closed when SDK CSS left
  *   its `yv-sdk-*` cascade layers, and every selector gained a
- *   `:is([data-yv-sdk], [data-yv-sdk] *)` gate. The gate adds 0,1,0. That
+ *   `:is([data-yv-sdk], [data-yv-sdk] …)` gate. The gate adds 0,2,0. That
  *   overrides a bare element selector at 0,0,1, and a universal selector at
  *   0,0,0.
  * - `important` and `highSpecificity` closed when the sheet moved into a
@@ -32,7 +32,7 @@
  */
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor } from 'storybook/test';
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 
 import { INTER_FONT } from '@/lib/verse-html-utils';
@@ -53,12 +53,19 @@ import { VerseOfTheDay } from './verse-of-the-day';
 import { YouVersionAuthButton } from './YouVersionAuthButton';
 import {
   ALL_CONSUMER_CSS_GROUPS,
+  CONSUMER_CONTENT_CLASS,
   CONSUMER_HOST_ROOT_ID,
+  injectConsumerContentCss,
   injectConsumerCss,
   removeConsumerCss,
 } from '../test/consumer-host';
 import type { ConsumerCssGroup } from '../test/consumer-host';
-import { diffSnapshots, formatLeakReport, snapshotComputedStyles } from '../test/style-diff';
+import {
+  diffPlacements,
+  diffSnapshots,
+  formatLeakReport,
+  snapshotComputedStyles,
+} from '../test/style-diff';
 import type { StyleLeak, StyleSnapshot } from '../test/style-diff';
 
 function wait(ms: number): Promise<void> {
@@ -581,3 +588,241 @@ export const ConsumerTokenOverrideStillApplies: Story = {
     }
   },
 };
+
+/* -------------------------------------------------------------------------- */
+/* Reverse direction: SDK CSS reaching into consumer content                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The other direction, and the one nothing measured before.
+ *
+ * Every story above asks whether consumer CSS moves SDK DOM. These stories ask
+ * whether SDK CSS moves consumer DOM. An SDK component that renders `children`
+ * or render-prop output puts consumer markup inside a `[data-yv-sdk]` subtree,
+ * where the old `[data-yv-sdk] *` arm matched it. `theme.css` then recolored it
+ * and reset its box model, and after the layered-important change those
+ * declarations carried `!important` as well.
+ *
+ * The answer is `data-yv-slot`. An SDK component stamps it on the element that
+ * holds consumer content, and the gate stops there:
+ *
+ *   :is([data-yv-sdk], [data-yv-sdk] *:not([data-yv-slot], [data-yv-slot] *))
+ *
+ * The baseline is a placement, not a sheet state. See `diffPlacements` in
+ * `src/test/style-diff.ts` for why, and `CONSUMER_CONTENT_CSS` in
+ * `src/test/consumer-host.ts` for how the inheritance channel is closed. The
+ * short version: a slot child that declares nothing still inherits `font-size`,
+ * `color` and `font-family` from its SDK ancestors. That is normal CSS, it
+ * happens to consumer content anywhere else in their page too, and it is not a
+ * leak. The slot boundary stops selector matching only.
+ *
+ * See docs/adr/0008-stop-sdk-css-at-consumer-slots.md.
+ */
+
+/** Injects the consumer's own sheet, so the story is also correct to look at. */
+function ConsumerContentStyles(): null {
+  useLayoutEffect(() => injectConsumerContentCss(), []);
+  return null;
+}
+
+/**
+ * Consumer markup, block level.
+ *
+ * Every element here is one that `theme.css` names: `h1`-`h6`, `a`, `b`/`strong`,
+ * `code`, `small`, `sub`/`sup`, `table`, `ol`/`ul`, `hr`, `button`, `input` and
+ * `textarea`. A fixture of plain `div`s would only exercise the `*` rule and
+ * would call the rest of the reset isolated without testing it.
+ */
+function ConsumerBlockContent({ testId }: { testId: string }): ReactElement {
+  return (
+    <div className={CONSUMER_CONTENT_CLASS} data-testid={testId}>
+      <h2>Consumer heading</h2>
+      <p>
+        Consumer copy with <strong>strong</strong>, <em>emphasis</em>, <code>code</code>,{' '}
+        <small>small</small>, <sub>sub</sub>, <sup>sup</sup> and{' '}
+        <a href="#consumer-content">a link</a>.
+      </p>
+      <ul>
+        <li>First consumer item</li>
+        <li>Second consumer item</li>
+      </ul>
+      <table>
+        <tbody>
+          <tr>
+            <td>Consumer cell</td>
+          </tr>
+        </tbody>
+      </table>
+      <hr />
+      <button type="button">Consumer button</button>
+      <input readOnly value="Consumer input" />
+      <textarea readOnly value="Consumer textarea" />
+    </div>
+  );
+}
+
+/**
+ * Consumer markup, phrasing content only.
+ *
+ * The trigger slots render inside a `<button>`. An `<a>`, a nested `<button>` or
+ * a `<div>` there is invalid HTML, and the two placements would then not hold
+ * the same DOM.
+ */
+function ConsumerPhrasingContent({ testId }: { testId: string }): ReactElement {
+  return (
+    <span className={CONSUMER_CONTENT_CLASS} data-testid={testId}>
+      <strong>Consumer strong</strong>
+      <em>Consumer emphasis</em>
+      <code>Consumer code</code>
+      <small>Consumer small</small>
+      <span>Consumer span</span>
+    </span>
+  );
+}
+
+const OUTSIDE_TEST_ID = 'reverse-outside';
+const INSIDE_TEST_ID = 'reverse-inside';
+
+type ReverseStoryConfig = {
+  /** Names the component in the console report. */
+  label: string;
+  render: () => ReactElement;
+  /** Waits for the SDK component around the slot to finish its load. */
+  ready?: () => Promise<unknown>;
+  /**
+   * The positive control sets this. A story that measures zero proves nothing
+   * unless another story, run the same way, measures more than zero.
+   */
+  expectLeaks?: boolean;
+};
+
+function reverseStory(config: ReverseStoryConfig): Story {
+  return {
+    // No host CSS. This direction measures the SDK sheet, and a hostile consumer
+    // sheet on top of it would only add noise the story does not assert on.
+    parameters: { consumerHost: [] },
+    render: config.render,
+    play: async () => {
+      if (config.ready) await config.ready();
+
+      const outside = await findIn(document.body, `[data-testid="${OUTSIDE_TEST_ID}"]`);
+      const inside = await findIn(document.body, `[data-testid="${INSIDE_TEST_ID}"]`);
+
+      // The placements have to be what their names say, or the diff is between
+      // two copies of the same thing and reads zero for the wrong reason.
+      await expect(outside.closest('[data-yv-sdk]')).toBe(null);
+      await expect(inside.closest('[data-yv-sdk]')).not.toBe(null);
+
+      const leaks = diffPlacements(await stableSnapshot(outside), await stableSnapshot(inside));
+      console.info(formatLeakReport(`${config.label} (reverse)`, leaks));
+
+      if (config.expectLeaks) {
+        await expect(leaks.length).toBeGreaterThan(0);
+        return;
+      }
+
+      // The slot boundary has to exist before a zero means anything.
+      await expect(inside.closest('[data-yv-slot]')).not.toBe(null);
+      await expect(leaks).toEqual([]);
+    },
+  };
+}
+
+/**
+ * `BibleReader.Root` renders SDK compound children and consumer children into
+ * the same stamped `<div>`. The SDK cannot stamp that container as a slot: it
+ * would strip the styling from `BibleReader.Content` and `BibleReader.Toolbar`.
+ * So the slot here is the consumer's own, and `data-yv-slot` is a documented
+ * opt-in. This story is that documentation, executed.
+ */
+function BibleReaderSlotHarness(): ReactElement {
+  return (
+    <div>
+      <ConsumerContentStyles />
+      <ConsumerBlockContent testId={OUTSIDE_TEST_ID} />
+      <BibleReader.Root defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
+        <div data-yv-slot>
+          <ConsumerBlockContent testId={INSIDE_TEST_ID} />
+        </div>
+      </BibleReader.Root>
+    </div>
+  );
+}
+
+export const BibleReaderConsumerSlot: Story = reverseStory({
+  label: 'BibleReader.Root children',
+  render: () => <BibleReaderSlotHarness />,
+});
+
+/** The same markup in the same place, with no `data-yv-slot` on it. */
+function BibleReaderUnmarkedHarness(): ReactElement {
+  return (
+    <div>
+      <ConsumerContentStyles />
+      <ConsumerBlockContent testId={OUTSIDE_TEST_ID} />
+      <BibleReader.Root defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
+        <ConsumerBlockContent testId={INSIDE_TEST_ID} />
+      </BibleReader.Root>
+    </div>
+  );
+}
+
+/**
+ * The positive control. Consumer content with no slot marker still takes the SDK
+ * reset, by design: the gate cannot tell it apart from SDK DOM. A zero here
+ * would mean the harness measures nothing.
+ */
+export const BibleReaderUnmarkedConsumerContentStillLeaks: Story = reverseStory({
+  label: 'BibleReader.Root children, unmarked',
+  render: () => <BibleReaderUnmarkedHarness />,
+  expectLeaks: true,
+});
+
+function ChapterPickerSlotHarness(): ReactElement {
+  const [book, setBook] = useState('MAT');
+  const [chapter, setChapter] = useState('5');
+
+  return (
+    <div>
+      <ConsumerContentStyles />
+      <ConsumerPhrasingContent testId={OUTSIDE_TEST_ID} />
+      <BibleChapterPicker.Root
+        book={book}
+        onBookChange={setBook}
+        chapter={chapter}
+        onChapterChange={setChapter}
+        versionId={111}
+      >
+        <BibleChapterPicker.Trigger asChild={false}>
+          <ConsumerPhrasingContent testId={INSIDE_TEST_ID} />
+        </BibleChapterPicker.Trigger>
+      </BibleChapterPicker.Root>
+    </div>
+  );
+}
+
+export const BibleChapterPickerTriggerConsumerSlot: Story = reverseStory({
+  label: 'BibleChapterPicker.Trigger children',
+  render: () => <ChapterPickerSlotHarness />,
+});
+
+function VersionPickerSlotHarness(): ReactElement {
+  const [versionId, setVersionId] = useState(111);
+
+  return (
+    <div>
+      <ConsumerContentStyles />
+      <ConsumerPhrasingContent testId={OUTSIDE_TEST_ID} />
+      <BibleVersionPicker.Root versionId={versionId} onVersionChange={setVersionId}>
+        <BibleVersionPicker.Trigger asChild={false}>
+          <ConsumerPhrasingContent testId={INSIDE_TEST_ID} />
+        </BibleVersionPicker.Trigger>
+      </BibleVersionPicker.Root>
+    </div>
+  );
+}
+
+export const BibleVersionPickerTriggerConsumerSlot: Story = reverseStory({
+  label: 'BibleVersionPicker.Trigger children',
+  render: () => <VersionPickerSlotHarness />,
+});

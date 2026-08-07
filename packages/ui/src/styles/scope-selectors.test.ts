@@ -13,10 +13,26 @@ import { scopeCss } from '../../scripts/scope-selectors.mjs';
  * corrupts: escaped class names, `@keyframes`, `@property`, and nested `&`
  * rules.
  *
- * See YPE-4113, docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md and
- * docs/adr/0006-layer-and-importantize-the-sdk-sheet.md.
+ * See YPE-4113, docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md,
+ * docs/adr/0006-layer-and-importantize-the-sdk-sheet.md and
+ * docs/adr/0008-stop-sdk-css-at-consumer-slots.md.
  */
-const GATE = ':is([data-yv-sdk], [data-yv-sdk] *)';
+
+/**
+ * The gate, as Lightning CSS prints it.
+ *
+ * The descendant arm carries the slot exclusion, which is what stops SDK CSS at
+ * consumer content. Lightning CSS drops the redundant `*` before the `:not()`,
+ * so the printed arm is `[data-yv-sdk] :not(…)`, not `[data-yv-sdk] *:not(…)`.
+ * The two are the same selector.
+ */
+const GATE = ':is([data-yv-sdk], [data-yv-sdk] :not([data-yv-slot], [data-yv-slot] *))';
+
+/** The same gate, without the spaces that the minifier removes. */
+const MINIFIED_GATE = ':is([data-yv-sdk],[data-yv-sdk] :not([data-yv-slot],[data-yv-slot] *))';
+
+/** The exclusion on its own, for a hand-written selector that carries the gate already. */
+const SLOT_EXCLUSION = ':not([data-yv-slot], [data-yv-slot] *)';
 
 /** Rewrites `source`. The test fails when the rewrite left anything unsafe. */
 function scope(source: string): string {
@@ -64,9 +80,13 @@ describe('scopeCss', () => {
 
   describe('leaves selectors that are already safe', () => {
     it('leaves a selector that already names [data-yv-sdk]', () => {
-      const code = scope('[data-yv-sdk] .yv-v-selected { text-decoration-line: underline }');
+      // A hand-written gated selector writes its own slot exclusion. The build
+      // rejects it without one — see the `stops at consumer slots` block.
+      const code = scope(
+        `[data-yv-sdk] .yv-v-selected${SLOT_EXCLUSION} { text-decoration-line: underline }`,
+      );
       expect(code).not.toContain(GATE);
-      expect(code).toContain('[data-yv-sdk] .yv-v-selected');
+      expect(code).toContain(`[data-yv-sdk] .yv-v-selected${SLOT_EXCLUSION}`);
     });
 
     it('leaves the Bible renderer slot', () => {
@@ -90,7 +110,9 @@ describe('scopeCss', () => {
     });
 
     it('leaves a gate carried inside :is()', () => {
-      const code = scope("[data-yv-sdk]:is([data-yv-theme='dark']) .x { color: red }");
+      const code = scope(
+        `[data-yv-sdk]:is([data-yv-theme='dark']) .x${SLOT_EXCLUSION} { color: red }`,
+      );
       expect(code).not.toContain(GATE);
     });
   });
@@ -106,6 +128,45 @@ describe('scopeCss', () => {
     it('does not treat a gate inside :not() as a gate', () => {
       const code = scope(':not([data-yv-sdk]) { color: red }');
       expect(code).toContain(GATE);
+    });
+  });
+
+  describe('stops at consumer slots', () => {
+    it('excludes a slot, and everything under it, from the gate', () => {
+      // The whole point of the change. A consumer's `children` render inside our
+      // subtree, and the old `[data-yv-sdk] *` arm matched every one of them.
+      expect(scope('.card { color: red }')).toContain(
+        ':is([data-yv-sdk], [data-yv-sdk] :not([data-yv-slot], [data-yv-slot] *))',
+      );
+    });
+
+    it('reports a hand-written gated selector that has no slot exclusion', () => {
+      // `src/styles/global.css` and `packages/core/src/styles/theme.css` write
+      // their own gate, so the rewrite skips them. This check is what keeps the
+      // two halves of the boundary in step.
+      const { problems } = scopeCss('[data-yv-sdk] .yv-v-selected { color: red }');
+      expect(problems).toHaveLength(1);
+      expect(problems[0]).toContain('data-yv-slot');
+    });
+
+    it('reports a missing exclusion inside an :is() branch', () => {
+      // The `dark` custom variant lives in exactly this position.
+      const { problems } = scopeCss(
+        "&:is([data-yv-sdk][data-yv-theme='dark'] *) { color: red }".replace('&', '.x'),
+      );
+      expect(problems).toHaveLength(1);
+    });
+
+    it('accepts a hand-written gated selector that carries the exclusion', () => {
+      const { problems } = scopeCss(`[data-yv-sdk] .yv-v-selected${SLOT_EXCLUSION} { color: red }`);
+      expect(problems).toEqual([]);
+    });
+
+    it('wants the exclusion on the subject, not on the gate compound', () => {
+      // `[data-yv-sdk]:not(…) a` excludes the wrong element and still restyles
+      // the consumer's link.
+      const { problems } = scopeCss(`[data-yv-sdk]${SLOT_EXCLUSION} a { color: red }`);
+      expect(problems).toHaveLength(1);
     });
   });
 
@@ -204,8 +265,8 @@ describe('scopeCss', () => {
       const { code } = scopeCss('.card { color: red; position: absolute }', { minify: true });
       expect(code).toBe(
         '@layer yv;' +
-          ':is([data-yv-sdk],[data-yv-sdk] *).card{position:absolute}' +
-          '@layer yv{:is([data-yv-sdk],[data-yv-sdk] *).card{color:red!important}}',
+          `${MINIFIED_GATE}.card{position:absolute}` +
+          `@layer yv{${MINIFIED_GATE}.card{color:red!important}}`,
       );
     });
 
@@ -233,11 +294,9 @@ describe('scopeCss', () => {
       const { code } = scopeCss('@media (min-width: 40rem) { .card { color: red; top: 0 } }', {
         minify: true,
       });
+      expect(code).toContain(`@media (width>=640px){${MINIFIED_GATE}.card{top:0}}`);
       expect(code).toContain(
-        '@media (width>=640px){:is([data-yv-sdk],[data-yv-sdk] *).card{top:0}}',
-      );
-      expect(code).toContain(
-        '@layer yv{@media (width>=640px){:is([data-yv-sdk],[data-yv-sdk] *).card{color:red!important}}}',
+        `@layer yv{@media (width>=640px){${MINIFIED_GATE}.card{color:red!important}}}`,
       );
     });
 
@@ -367,17 +426,17 @@ describe('scopeCss', () => {
   describe('output shape', () => {
     it('minifies when asked', () => {
       const { code } = scopeCss('.card { color: red }', { minify: true });
-      expect(code).toBe(
-        '@layer yv;@layer yv{:is([data-yv-sdk],[data-yv-sdk] *).card{color:red!important}}',
-      );
+      expect(code).toBe(`@layer yv;@layer yv{${MINIFIED_GATE}.card{color:red!important}}`);
     });
 
-    it('adds exactly 0,1,0 of specificity, so relative order inside the SDK is unchanged', () => {
-      // Every rule gains the same one attribute selector. `:is()` takes the
-      // specificity of its most specific argument, and each branch of the gate
-      // holds one attribute selector.
+    it('adds exactly 0,2,0 of specificity, so relative order inside the SDK is unchanged', () => {
+      // Every rule gains the same gate. `:is()` and `:not()` each take the
+      // specificity of their most specific argument. The gate's second branch is
+      // one attribute plus a `:not()` holding one attribute, so the gain is
+      // 0,2,0, and it is the same 0,2,0 for every rule in the sheet.
       const code = scope('.a { color: red } .b .c { color: blue }');
-      expect(code.match(/:is\(\[data-yv-sdk\], \[data-yv-sdk] \*\)/g)).toHaveLength(2);
+      const gates = code.split(GATE).length - 1;
+      expect(gates).toBe(2);
     });
   });
 });

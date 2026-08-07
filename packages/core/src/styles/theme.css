@@ -170,12 +170,40 @@
   *
   * See docs/adr/0005-scope-sdk-css-to-data-yv-sdk-subtrees.md.
   */
+
+/*
+  * Every descendant rule below carries `:not([data-yv-slot], [data-yv-slot] *)`.
+  *
+  * `[data-yv-sdk]` means "the SDK rendered this subtree". That is also true of
+  * consumer `children` and render-prop output, because an SDK component renders
+  * them inside its own stamped root. Without the exclusion, this reset recolors
+  * and re-boxes content the SDK only passed through — and since ADR-0006 it does
+  * that with `!important`. `data-yv-slot` marks the element that holds consumer
+  * content, and the reset stops there.
+  *
+  * The exclusion goes on the *subject* compound, which is the element the rule
+  * styles. `[data-yv-sdk]:not(…) a` excludes the wrong element.
+  *
+  * `:not()` takes the specificity of its most specific argument, so each rule
+  * gains exactly 0,1,0. The gain is the same for every rule here and for every
+  * rule the build gates, so no relative order changes.
+  *
+  * This file ships two ways: compiled into the UI sheet through
+  * `packages/ui/scripts/scope-selectors.mjs`, and unprocessed as
+  * `@youversion/platform-core/browser/styles/theme.css`. The script cannot add
+  * the exclusion here, because these selectors already carry the gate and it
+  * skips them. So the exclusion is hand-written, and `SLOT_ATTRIBUTE` in that
+  * script is the other half. Keep the two in sync. The script's re-parse pass
+  * fails the build if a selector here loses its exclusion.
+  *
+  * See docs/adr/0008-stop-sdk-css-at-consumer-slots.md.
+  */
 [data-yv-sdk] {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
+  *:not([data-yv-slot], [data-yv-slot] *),
+  *:not([data-yv-slot], [data-yv-slot] *)::after,
+  *:not([data-yv-slot], [data-yv-slot] *)::before,
+  *:not([data-yv-slot], [data-yv-slot] *)::backdrop,
+  *:not([data-yv-slot], [data-yv-slot] *)::file-selector-button {
     font: inherit;
     font-family: var(--yv-font-sans);
     /*
@@ -200,8 +228,8 @@
   /*
    * The box model, repeated for the marked element itself.
    *
-   * The block above is `[data-yv-sdk] *`, which reaches every descendant and
-   * misses the root. A consumer `* { box-sizing: content-box }` rule does not
+   * The block above matches descendants only, and misses the root. A consumer
+   * `* { box-sizing: content-box }` rule does not
    * miss the root. Without these four declarations, the SDK root is the one
    * element in the subtree that a universal reset can still move.
    */
@@ -242,102 +270,102 @@
   tab-size: 4;
   -webkit-tap-highlight-color: transparent;
 
-  hr {
+  hr:not([data-yv-slot], [data-yv-slot] *) {
     height: 0;
     color: inherit;
     border-top-width: 1px;
   }
 
-  abbr:where([title]) {
+  abbr:not([data-yv-slot], [data-yv-slot] *):where([title]) {
     -webkit-text-decoration: underline dotted;
     text-decoration: underline dotted;
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
+  h1:not([data-yv-slot], [data-yv-slot] *),
+  h2:not([data-yv-slot], [data-yv-slot] *),
+  h3:not([data-yv-slot], [data-yv-slot] *),
+  h4:not([data-yv-slot], [data-yv-slot] *),
+  h5:not([data-yv-slot], [data-yv-slot] *),
+  h6:not([data-yv-slot], [data-yv-slot] *) {
     font-size: inherit;
     font-weight: inherit;
   }
 
-  a {
+  a:not([data-yv-slot], [data-yv-slot] *) {
     color: inherit;
     -webkit-text-decoration: inherit;
     text-decoration: inherit;
   }
 
-  b,
-  strong {
+  b:not([data-yv-slot], [data-yv-slot] *),
+  strong:not([data-yv-slot], [data-yv-slot] *) {
     font-weight: bolder;
   }
 
-  code,
-  kbd,
-  samp,
-  pre {
+  code:not([data-yv-slot], [data-yv-slot] *),
+  kbd:not([data-yv-slot], [data-yv-slot] *),
+  samp:not([data-yv-slot], [data-yv-slot] *),
+  pre:not([data-yv-slot], [data-yv-slot] *) {
     font-family: var(--yv-font-sans);
     font-size: 1em;
   }
 
-  small {
+  small:not([data-yv-slot], [data-yv-slot] *) {
     font-size: 80%;
   }
 
-  sub,
-  sup {
+  sub:not([data-yv-slot], [data-yv-slot] *),
+  sup:not([data-yv-slot], [data-yv-slot] *) {
     font-size: 75%;
     line-height: 0;
     position: relative;
     vertical-align: baseline;
   }
 
-  sub {
+  sub:not([data-yv-slot], [data-yv-slot] *) {
     bottom: -0.25em;
   }
 
-  sup {
+  sup:not([data-yv-slot], [data-yv-slot] *) {
     top: -0.5em;
   }
 
-  table {
+  table:not([data-yv-slot], [data-yv-slot] *) {
     text-indent: 0;
     border-color: inherit;
     border-collapse: collapse;
   }
 
-  ol,
-  ul,
-  menu {
+  ol:not([data-yv-slot], [data-yv-slot] *),
+  ul:not([data-yv-slot], [data-yv-slot] *),
+  menu:not([data-yv-slot], [data-yv-slot] *) {
     list-style: none;
   }
 
-  img,
-  svg,
-  video,
-  canvas,
-  audio,
-  iframe,
-  embed,
-  object {
+  img:not([data-yv-slot], [data-yv-slot] *),
+  svg:not([data-yv-slot], [data-yv-slot] *),
+  video:not([data-yv-slot], [data-yv-slot] *),
+  canvas:not([data-yv-slot], [data-yv-slot] *),
+  audio:not([data-yv-slot], [data-yv-slot] *),
+  iframe:not([data-yv-slot], [data-yv-slot] *),
+  embed:not([data-yv-slot], [data-yv-slot] *),
+  object:not([data-yv-slot], [data-yv-slot] *) {
     display: block;
     vertical-align: middle;
   }
 
-  img,
-  video {
+  img:not([data-yv-slot], [data-yv-slot] *),
+  video:not([data-yv-slot], [data-yv-slot] *) {
     max-width: 100%;
     height: auto;
   }
 
-  button,
-  input,
-  select,
-  optgroup,
-  textarea,
-  ::file-selector-button {
+  button:not([data-yv-slot], [data-yv-slot] *),
+  input:not([data-yv-slot], [data-yv-slot] *),
+  select:not([data-yv-slot], [data-yv-slot] *),
+  optgroup:not([data-yv-slot], [data-yv-slot] *),
+  textarea:not([data-yv-slot], [data-yv-slot] *),
+  *:not([data-yv-slot], [data-yv-slot] *)::file-selector-button {
     font: inherit;
     font-family: var(--yv-font-sans);
     font-feature-settings: inherit;
@@ -349,21 +377,25 @@
     opacity: 1;
   }
 
-  ::placeholder {
+  *:not([data-yv-slot], [data-yv-slot] *)::placeholder {
     opacity: 1;
   }
 
-  textarea {
+  textarea:not([data-yv-slot], [data-yv-slot] *) {
     resize: vertical;
   }
 
-  button,
-  input:where([type='button'], [type='reset'], [type='submit']),
-  ::file-selector-button {
+  button:not([data-yv-slot], [data-yv-slot] *),
+  input:not([data-yv-slot], [data-yv-slot] *):where(
+      [type='button'],
+      [type='reset'],
+      [type='submit']
+    ),
+  *:not([data-yv-slot], [data-yv-slot] *)::file-selector-button {
     appearance: button;
   }
 
-  [hidden]:where(:not([hidden='until-found'])) {
+  [hidden]:not([data-yv-slot], [data-yv-slot] *):where(:not([hidden='until-found'])) {
     display: none !important;
   }
 }

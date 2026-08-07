@@ -14,11 +14,19 @@
  *
  * 1. It adds a `[data-yv-sdk]` gate to every selector.
  *
- *      .yv\:mt-4  →  :is([data-yv-sdk], [data-yv-sdk] *).yv\:mt-4
+ *      .yv\:mt-4
+ *        →  :is([data-yv-sdk],
+ *               [data-yv-sdk] *:not([data-yv-slot], [data-yv-slot] *)).yv\:mt-4
  *
  *    The gate is the outbound guarantee. SDK CSS cannot match DOM that the SDK
- *    did not render. Inside an SDK subtree, `:is()` adds exactly 0,1,0, so our
- *    rules override bare element selectors.
+ *    did not render, and it stops again at a `data-yv-slot` element, which is
+ *    where an SDK component renders consumer `children` or render-prop output.
+ *    Inside an SDK subtree, `:is()` adds exactly 0,2,0: 0,1,0 for the attribute
+ *    and 0,1,0 for the `:not()`, which takes the specificity of its most
+ *    specific argument. So our rules still override bare element selectors. The
+ *    rise from 0,1,0 to 0,2,0 is uniform across every rule in the sheet, so the
+ *    relative order among SDK rules is unchanged.
+ *    See docs/adr/0008-stop-sdk-css-at-consumer-slots.md.
  *
  * 2. It splits every rule in two, by property, and ships the halves differently.
  *
@@ -83,6 +91,20 @@ import { Features, transform } from 'lightningcss';
 const SCOPE_ATTRIBUTE = 'data-yv-sdk';
 
 /**
+ * The attribute that marks an element as holding consumer content.
+ *
+ * `data-yv-sdk` says "the SDK rendered this subtree". That is true of consumer
+ * `children` and render-prop output too, because an SDK component renders them
+ * inside its own stamped root. The gate alone therefore restyles content the SDK
+ * only passed through. `data-yv-slot` is the boundary that ends the subtree
+ * again: the element itself and everything under it is the consumer's.
+ *
+ * The same exclusion is hand-written in `packages/core/src/styles/theme.css`,
+ * which ships unprocessed as well as through this script. Keep the two in sync.
+ */
+const SLOT_ATTRIBUTE = 'data-yv-slot';
+
+/**
  * The cascade layer that holds the whole SDK sheet.
  *
  * The name is `yv`, not `yv-sdk-something`. It is one layer, not a set of them.
@@ -143,7 +165,36 @@ const COMBINATORS = {
   'deep-descendant': ' /deep/ ',
 };
 
-/** A new `:is([data-yv-sdk], [data-yv-sdk] *)` node. */
+/**
+ * A new `:not([data-yv-slot], [data-yv-slot] *)` node.
+ *
+ * Two branches, not one. `[data-yv-slot]` alone would exclude the slot element
+ * and then restyle every one of its children, which is the whole of the consumer
+ * content. `:not()` takes the specificity of its most specific argument, and
+ * both branches are 0,1,0, so the node adds 0,1,0 and no more.
+ */
+function slotExclusion() {
+  const attribute = { type: 'attribute', namespace: null, name: SLOT_ATTRIBUTE, operation: null };
+
+  return {
+    type: 'pseudo-class',
+    kind: 'not',
+    selectors: [
+      [attribute],
+      [attribute, { type: 'combinator', value: 'descendant' }, { type: 'universal' }],
+    ],
+  };
+}
+
+/**
+ * A new `:is([data-yv-sdk], [data-yv-sdk] *:not([data-yv-slot], [data-yv-slot] *))` node.
+ *
+ * The first branch is the SDK root itself, which no consumer slot can be. The
+ * second branch is everything under it *except* a slot and a slot's descendants.
+ * Lightning CSS prints `[data-yv-sdk] :not(…)` for the second branch: it drops
+ * the redundant `*`, and the two forms are the same selector at the same
+ * specificity.
+ */
 function scopeGate() {
   const attribute = { type: 'attribute', namespace: null, name: SCOPE_ATTRIBUTE, operation: null };
 
@@ -152,7 +203,12 @@ function scopeGate() {
     kind: 'is',
     selectors: [
       [attribute],
-      [attribute, { type: 'combinator', value: 'descendant' }, { type: 'universal' }],
+      [
+        attribute,
+        { type: 'combinator', value: 'descendant' },
+        { type: 'universal' },
+        slotExclusion(),
+      ],
     ],
   };
 }
@@ -198,6 +254,89 @@ function isUnscopedByDesign(components) {
 
 function isAllowed(components) {
   return hasScopeGate(components) || isUnscopedByDesign(components);
+}
+
+/** True when `component` is exactly `:not([data-yv-slot], [data-yv-slot] *)`. */
+function isSlotExclusion(component) {
+  if (component.type !== 'pseudo-class' || component.kind !== 'not') return false;
+  if (!Array.isArray(component.selectors) || component.selectors.length !== 2) return false;
+
+  const isSlotAttribute = (node) =>
+    node?.type === 'attribute' && node.name === SLOT_ATTRIBUTE && !node.operation;
+
+  const [own, descendants] = component.selectors;
+
+  return (
+    own.length === 1 &&
+    isSlotAttribute(own[0]) &&
+    descendants.length === 3 &&
+    isSlotAttribute(descendants[0]) &&
+    descendants[1]?.type === 'combinator' &&
+    descendants[1].value === 'descendant' &&
+    descendants[2]?.type === 'universal'
+  );
+}
+
+/** Splits a complex selector into its compounds, dropping the combinators. */
+function compoundsOf(components) {
+  const compounds = [[]];
+
+  for (const component of components) {
+    if (component.type === 'combinator') compounds.push([]);
+    else compounds[compounds.length - 1].push(component);
+  }
+
+  return compounds;
+}
+
+/**
+ * Reports every selector that reaches past a `[data-yv-sdk]` element and does
+ * not stop at a slot.
+ *
+ * The rule is on the *subject* compound, which is the one after the last
+ * combinator. That is the element the rule styles. `[data-yv-sdk]:not(…) a`
+ * excludes the wrong element and still restyles the consumer's link.
+ *
+ * A branch of `:is()` or `:where()` is a complex selector in its own right, so
+ * the walk recurses into one. That is where the injected gate lives, and where
+ * the `dark` custom variant in `src/styles/global.css` lives.
+ *
+ * Known limit: the check reads the `data-yv-sdk` attribute where it appears
+ * literally in a compound. It does not fire for a Tailwind variant whose subject
+ * sits past the gate compound, such as `.yv\:space-y-4 > :not(:last-child)`,
+ * where the gate is inside an `:is()` on the *first* compound. Those selectors
+ * can still reach the slot wrapper the SDK renders. They cannot reach the
+ * consumer's own elements below it, because a child combinator does not go that
+ * deep, and the reverse-direction harness measures the result.
+ * See docs/style-isolation-residual-leak.md.
+ *
+ * @returns {string[]} the offending selectors, approximately formatted.
+ */
+function findSlotLeaks(components) {
+  const leaks = [];
+  const compounds = compoundsOf(components);
+  const subject = compounds[compounds.length - 1] ?? [];
+
+  const bearsScope = (compound) =>
+    compound.some((component) => component.type === 'attribute' && component.name === SCOPE_ATTRIBUTE);
+
+  if (compounds.slice(0, -1).some(bearsScope) && !subject.some(isSlotExclusion)) {
+    leaks.push(formatSelector(components));
+  }
+
+  for (const compound of compounds) {
+    for (const component of compound) {
+      if (
+        component.type === 'pseudo-class' &&
+        GATE_BEARING_PSEUDO_CLASSES.has(component.kind) &&
+        Array.isArray(component.selectors)
+      ) {
+        for (const branch of component.selectors) leaks.push(...findSlotLeaks(branch));
+      }
+    }
+  }
+
+  return leaks;
 }
 
 /**
@@ -1002,10 +1141,12 @@ function findLayerProblems(code) {
  *
  * This is the real guarantee. A string search proves that the script ran. Only
  * a second parse proves that the script left nothing behind. The build has no
- * browser, so these six checks stand in for what a person would otherwise have
+ * browser, so these seven checks stand in for what a person would otherwise have
  * to look for by hand:
  *
  *   1. Every selector carries the gate.
+ *   1a. Every selector that reaches past a `[data-yv-sdk]` element stops at a
+ *      slot, so consumer `children` keep the consumer's own styling.
  *   2. Every non-exempt declaration is important, so no ordinary consumer rule
  *      outranks it.
  *   3. No exempt declaration is important, so nothing froze an animation or
@@ -1030,6 +1171,7 @@ function findLayerProblems(code) {
  */
 function verifyOutput(code, filename, exemptAlreadyImportant = new Set()) {
   const ungated = [];
+  const slotLeaks = new Set();
   const unimportant = new Set();
   const wronglyImportant = new Set();
   const importantKeyframes = new Set();
@@ -1045,6 +1187,7 @@ function verifyOutput(code, filename, exemptAlreadyImportant = new Set()) {
     visitor: {
       Selector(components) {
         if (!isAllowed(components)) ungated.push(formatSelector(components));
+        for (const leak of findSlotLeaks(components)) slotLeaks.add(leak);
       },
       Length(length) {
         // Read only. The rebase already happened in pass 3; this walk exists to
@@ -1090,6 +1233,13 @@ function verifyOutput(code, filename, exemptAlreadyImportant = new Set()) {
 
   const problems = findLayerProblems(code);
 
+  if (slotLeaks.size > 0) {
+    problems.push(
+      `${String(slotLeaks.size)} selector(s) reach past a [${SCOPE_ATTRIBUTE}] element without ` +
+        `stopping at a slot. Add :not([${SLOT_ATTRIBUTE}], [${SLOT_ATTRIBUTE}] *) to the ` +
+        `subject compound: ${[...slotLeaks].sort().join(', ')}`,
+    );
+  }
   if (unimportant.size > 0) {
     problems.push(
       `${String(unimportant.size)} non-exempt propert(ies) are not important: ` +

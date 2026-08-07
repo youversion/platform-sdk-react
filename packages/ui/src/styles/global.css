@@ -14,15 +14,26 @@
  * The replacement is structural. `scripts/scope-selectors.mjs` runs after the
  * Tailwind build, and rewrites every selector in the compiled sheet:
  *
- *   .yv\:mt-4  →  :is([data-yv-sdk], [data-yv-sdk] *).yv\:mt-4
+ *   .yv\:mt-4
+ *     →  :is([data-yv-sdk],
+ *            [data-yv-sdk] *:not([data-yv-slot], [data-yv-slot] *)).yv\:mt-4
  *
  * That does two things at once. Outbound, SDK CSS cannot match DOM that the SDK
  * did not render, which is a stronger guarantee than a loss in the cascade.
  * Inbound, `:is()` takes the specificity of its most specific argument, so every
- * rule gains exactly 0,1,0 and overrides a consumer bare element selector.
+ * rule gains exactly 0,2,0 and overrides a consumer bare element selector.
+ *
+ * The `:not()` is the consumer-slot boundary. A consumer's `children` render
+ * inside our subtree, so the gate matched them too. An element stamped
+ * `data-yv-slot`, and everything under it, is consumer territory, and SDK
+ * selectors stop there. `:not()` also takes the specificity of its most specific
+ * argument, so the rise from 0,1,0 to 0,2,0 is uniform across the sheet and no
+ * relative order changes. See
+ * docs/adr/0008-stop-sdk-css-at-consumer-slots.md.
  *
  * The script fails the build when one selector reaches `dist/tailwind.css`
- * without the gate. That check, and not this comment, is the guarantee.
+ * without the gate, or with a gate that has no slot exclusion. Those checks, and
+ * not this comment, are the guarantee.
  *
  * Consumer customization is unchanged and still supported. A `--yv-*` token
  * override on `[data-yv-sdk]` ties our token block at 0,1,0, and wins on source
@@ -60,7 +71,15 @@
    serif fallback. */
 
 /* #region shadcn UI theme */
-@custom-variant dark (&:is([data-yv-sdk][data-yv-theme='dark'] *));
+/* This variant already carries the gate, so scope-selectors.mjs leaves it alone.
+   That means the slot exclusion has to be written here by hand, and it is not
+   optional. Without it a `dark:` utility stays at 0,3,0 while every base utility
+   rises to 0,3,0 with the slot exclusion, the two tie, and dark mode is decided
+   by source order. With it the dark variant is 0,4,0 and keeps its old one-step
+   margin over the base utility. It also stops dark-mode declarations at consumer
+   slots, which is the point of the change.
+   See docs/adr/0008-stop-sdk-css-at-consumer-slots.md. */
+@custom-variant dark (&:is([data-yv-sdk][data-yv-theme='dark'] *:not([data-yv-slot], [data-yv-slot] *)));
 
 [data-yv-sdk] {
   @theme inline {
@@ -141,8 +160,12 @@
 
 /* Verse selection: an underline under the text of the selected verse. It sits
    with the `.yv-v` verse structure from bible-reader.css. Highlight fills are
-   inline styles in verse.tsx (one color per verse), so they are not here. */
-[data-yv-sdk] .yv-v-selected {
+   inline styles in verse.tsx (one color per verse), so they are not here.
+
+   The rule carries the gate already, so scope-selectors.mjs does not rewrite it,
+   and the slot exclusion is hand-written. The build check rejects the rule
+   without it. */
+[data-yv-sdk] .yv-v-selected:not([data-yv-slot], [data-yv-slot] *) {
   text-decoration-line: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 2px;

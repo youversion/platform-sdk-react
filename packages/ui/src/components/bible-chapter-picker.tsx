@@ -16,6 +16,7 @@ import {
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import { useBooks, useTheme } from '@youversion/platform-react-hooks';
 import { type BibleBook } from '@youversion/platform-core';
+import { ConsumerSlot } from '@/lib/consumer-slot';
 import { InfoIcon } from './icons/info';
 import { SearchIcon } from './icons/search';
 import { Button } from './ui/button';
@@ -247,10 +248,19 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
     ? t('loadingEllipsis')
     : `${currentBook?.title || t('selectChapter')}${chapterLabel ? ` ${chapterLabel}` : ''}`;
 
+  // `children` here is consumer content, and the fallback Button is ours. Only
+  // the first gets a slot: stamping our own Button would switch off the styling
+  // it is asking for.
+  const fromConsumer = typeof children === 'function' || Boolean(children);
   const content =
     typeof children === 'function'
       ? children({ book, chapter, chapterLabel, currentBook, loading })
       : children || <Button variant="secondary">{buttonText}</Button>;
+
+  // `asChild` merges our props onto the consumer's own element, so there is no
+  // element left to wrap without changing the rendered DOM. Those two paths ship
+  // unstamped and are recorded in docs/adr/0008-stop-sdk-css-at-consumer-slots.md.
+  const slotted = fromConsumer ? <ConsumerSlot>{content}</ConsumerSlot> : content;
 
   const handlePress = (event: React.MouseEvent<HTMLButtonElement>) => {
     props.onClick?.(event);
@@ -272,7 +282,7 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
 
     return (
       <button type="button" data-yv-sdk data-yv-theme={theme} {...props} onClick={handlePress}>
-        {content}
+        {slotted}
       </button>
     );
   }
@@ -290,7 +300,7 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
       {...props}
       onClick={handleOpenPopover}
     >
-      {content}
+      {asChild ? content : slotted}
     </PopoverTrigger>
   );
 }
