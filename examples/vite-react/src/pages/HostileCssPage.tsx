@@ -73,6 +73,22 @@ const HOSTILE_VECTORS: HostileVector[] = [
 }`,
   },
   {
+    key: 'host-pseudo-elements',
+    label: 'Shadow-host pseudo-elements',
+    expectation: 'The witness gains generated content; the SDK host should not.',
+    example: '[data-yv-shadow-host]::before { content: … !important }',
+    css: `
+.hostile-zone [data-yv-shadow-host]::before,
+.hostile-zone [data-yv-shadow-host]::after,
+.hostile-zone [data-host-pseudo-witness]::before {
+  content: 'HOSTILE' !important;
+  display: block !important;
+  background: #b91c1c !important;
+  color: #fff !important;
+  padding: 8px !important;
+}`,
+  },
+  {
     key: 'font-face',
     label: '@font-face family collision (known limitation)',
     expectation:
@@ -96,6 +112,7 @@ export function HostileCssPage() {
     inherited: false,
     'universal-important': false,
     'shadow-host': false,
+    'host-pseudo-elements': false,
     'font-face': false,
   });
 
@@ -152,6 +169,9 @@ export function HostileCssPage() {
           <p>Plain host text for inherited-property attacks.</p>
           <div data-host-box-witness className="rounded border p-3">
             Host-box witness — this should disappear during the host attack.
+          </div>
+          <div data-host-pseudo-witness className="rounded border p-3">
+            Pseudo-element witness — generated content should appear above this text.
           </div>
           <p style={{ fontFamily: 'Inter, sans-serif' }}>
             Host text requesting Inter for the font-face collision.

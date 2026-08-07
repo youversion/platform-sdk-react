@@ -50,7 +50,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function buttonStyleSnapshot(button: HTMLButtonElement) {
-  const styles = getComputedStyle(button);
+  const ownerWindow = button.ownerDocument.defaultView;
+  if (!ownerWindow) throw new Error('button owner window not available');
+  const styles = ownerWindow.getComputedStyle(button);
   return {
     appearance: styles.appearance,
     backgroundColor: styles.backgroundColor,
@@ -78,6 +80,10 @@ export const HostileGlobalButtonRule: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
+    const ownerDocument = canvasElement.ownerDocument;
+    const ownerWindow = ownerDocument.defaultView;
+    if (!ownerWindow) throw new Error('story owner window not available');
+
     const control = await waitFor(() => {
       const element = canvasElement.querySelector<HTMLButtonElement>(
         '[data-testid="host-control"]',
@@ -104,21 +110,21 @@ export const HostileGlobalButtonRule: Story = {
     void expect(sdkBaseline.display).toBe('flex');
     void expect(sdkBaseline.fontFamily).toContain('Inter');
 
-    const style = document.createElement('style');
+    const style = ownerDocument.createElement('style');
     style.textContent = HOSTILE_CSS;
 
     try {
-      document.head.append(style);
+      ownerDocument.head.append(style);
 
       await waitFor(() => {
-        void expect(getComputedStyle(control).backgroundColor).toBe('rgb(185, 28, 28)');
-        void expect(getComputedStyle(control, '::before').content).toBe('"HOSTILE"');
+        void expect(ownerWindow.getComputedStyle(control).backgroundColor).toBe('rgb(185, 28, 28)');
+        void expect(ownerWindow.getComputedStyle(control, '::before').content).toBe('"HOSTILE"');
       });
 
-      void expect(getComputedStyle(host, '::before').content).toBe('none');
-      void expect(getComputedStyle(host, '::before').display).toBe('none');
-      void expect(getComputedStyle(host, '::after').content).toBe('none');
-      void expect(getComputedStyle(host, '::after').display).toBe('none');
+      void expect(ownerWindow.getComputedStyle(host, '::before').content).toBe('none');
+      void expect(ownerWindow.getComputedStyle(host, '::before').display).toBe('none');
+      void expect(ownerWindow.getComputedStyle(host, '::after').content).toBe('none');
+      void expect(ownerWindow.getComputedStyle(host, '::after').display).toBe('none');
 
       // The complete relevant style snapshot—not merely a few negative values—
       // must remain identical to the pre-attack SDK baseline.

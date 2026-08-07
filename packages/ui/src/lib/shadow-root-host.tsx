@@ -44,7 +44,7 @@ interface ShadowRootHostProps {
 }
 
 /** @internal Proof-of-concept primitive; not part of the public API. */
-export function ShadowRootHost({ children }: ShadowRootHostProps): React.ReactNode {
+export function ShadowRootHost({ children }: ShadowRootHostProps): ReactNode {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [shadowRoot, setShadowRoot] = useState<ShadowRoot | null>(null);
   const [needsStyleFallback, setNeedsStyleFallback] = useState(false);
