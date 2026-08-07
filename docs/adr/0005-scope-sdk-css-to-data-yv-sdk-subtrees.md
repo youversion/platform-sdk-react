@@ -172,8 +172,8 @@ condition before the harness produced one number. The recommendation thus cannot
 be adjusted to fit the answer.
 
 **Measured result: 100 percent of the residual uses `!important`.**
-`docs/style-isolation-residual-leak.md` has the numbers. Four of the five hostile
-groups report zero leaks on all thirteen hostile-host stories. The remaining
+`docs/style-isolation-residual-leak.md` has the numbers. Four of the five consumer CSS
+groups report zero leaks on all thirteen consumer-host stories. The remaining
 leaks come from two consumer declarations. Both use `!important` and both target
 `button`: 880 leaks on 155 buttons in 8 components. No rule without `!important`
 gets through.
@@ -211,8 +211,8 @@ reports a real break.
 
 ## Consequences
 
-- **Every exported component now renders as designed under hostile global CSS.**
-  Thirteen hostile-host stories in
+- **Every exported component now renders as designed under consumer global CSS.**
+  Thirteen consumer-host stories in
   `packages/ui/src/components/style-isolation.stories.tsx` measure 32 computed
   properties on every element of the subtree. They fail CI if the leak returns.
 
@@ -267,4 +267,4 @@ reports a real break.
 - **A reversal is not a small change.** To restore layers, restore three things:
   the `@layer` declaration, the five `layer(...)` modifiers, and the `:where()`
   in `theme.css`. Then delete the scope script and its build step. The 13
-  hostile-host stories fail first, which is why we keep them.
+  consumer-host stories fail first, which is why we keep them.

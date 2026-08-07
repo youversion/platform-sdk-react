@@ -1,4 +1,4 @@
-# Residual-leak report: SDK components under hostile host CSS
+# Residual-leak report: SDK components under consumer host CSS
 
 Date: 2026-08-06
 Ticket: YPE-4113
@@ -29,16 +29,16 @@ pnpm --filter @youversion/platform-react-ui build:css:scope
 pnpm --filter @youversion/platform-react-ui test:integration
 ```
 
-Each story renders one component. It removes all hostile CSS and records 32
-computed properties on every element of the SDK subtree. It then adds one hostile
-group at a time and records the properties again. Each (element, property) pair
+Each story renders one component. It removes all consumer CSS and records 32
+computed properties on every element of the SDK subtree. It then adds one consumer
+CSS group at a time and records the properties again. Each (element, property) pair
 with a changed value is one leak.
 
 The run captured for this report: 43 test files, 523 tests, all passed.
 
 | Path | What it is |
 | --- | --- |
-| `packages/ui/src/test/hostile-host.ts` | The five hostile CSS groups |
+| `packages/ui/src/test/consumer-host.ts` | The five consumer CSS groups |
 | `packages/ui/src/test/style-diff.ts` | The 32 tracked properties and the diff |
 | `packages/ui/src/components/style-isolation.stories.tsx` | 16 stories, one per component plus the token-override check |
 
@@ -46,9 +46,9 @@ The measured root is always the SDK's own element, never the Storybook canvas.
 The canvas is consumer DOM. A count that includes the canvas reports a false
 leak on every run.
 
-## Result by hostile group
+## Result by consumer CSS group
 
-Totals below are from the 2026-08-06 run (13 hostile-host stories). Two
+Totals below are from the 2026-08-06 run (13 consumer-host stories). Two
 stories were added later for `BibleVersionPickerLanguageTrigger` and
 `BibleLanguagePickerContent`; re-run the harness to fold them into these
 totals.
@@ -190,7 +190,7 @@ language.
 
 If a real partner reports a real break from a rule that does not use
 `!important`, read this decision again. The harness measures that case. Add their rule to
-`HOSTILE_GROUPS`, run the suite, and read the number.
+`CONSUMER_CSS_GROUPS`, run the suite, and read the number.
 
 ## Keeping this report accurate
 

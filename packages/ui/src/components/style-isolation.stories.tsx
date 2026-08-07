@@ -1,10 +1,10 @@
 /**
- * Hostile-host regression stories.
+ * Consumer-host regression stories.
  *
  * Each story renders one exported component in a page whose global CSS tries to
  * break it. The story then measures the damage, and asserts on the measurement.
  *
- * Both leak channels are closed now. Four of the five hostile groups must report
+ * Both leak channels are closed now. Four of the five consumer CSS groups must report
  * zero on every component:
  *
  * - `inheritedTypography` closed when `theme.css` started to declare the whole
@@ -48,8 +48,12 @@ import { BibleTextView, FootnoteContent } from './verse';
 import { VerseActionPopover } from './verse-action-popover';
 import { VerseOfTheDay } from './verse-of-the-day';
 import { YouVersionAuthButton } from './YouVersionAuthButton';
-import { ALL_HOSTILE_GROUPS, injectHostileCss, removeHostileCss } from '../test/hostile-host';
-import type { HostileGroup } from '../test/hostile-host';
+import {
+  ALL_CONSUMER_CSS_GROUPS,
+  injectConsumerCss,
+  removeConsumerCss,
+} from '../test/consumer-host';
+import type { ConsumerCssGroup } from '../test/consumer-host';
 import { diffSnapshots, formatLeakReport, snapshotComputedStyles } from '../test/style-diff';
 import type { StyleLeak, StyleSnapshot } from '../test/style-diff';
 
@@ -87,42 +91,42 @@ async function stableSnapshot(root: Element): Promise<StyleSnapshot> {
 }
 
 type LeakReport = {
-  /** Leaks under every hostile group at once. */
+  /** Leaks under every consumer CSS group at once. */
   total: StyleLeak[];
   /** Leaks from each group on its own. The residual report reads this record. */
-  byGroup: Record<HostileGroup, StyleLeak[]>;
+  byGroup: Record<ConsumerCssGroup, StyleLeak[]>;
 };
 
 /**
  * Measures how far the host CSS moves a rendered subtree.
  *
- * Hostile CSS is document-global, so a clean tree and a hostile tree cannot
+ * Consumer CSS is document-global, so a clean tree and a consumer tree cannot
  * exist together. The harness separates them in time, not in space. It removes
- * the hostile styles and takes a snapshot. Then it adds them back one group at a
- * time, and takes another snapshot. The structural path keys line up because the
- * harness measures the same nodes every time.
+ * the consumer styles and takes a snapshot. Then it adds them back one consumer
+ * CSS group at a time, and takes another snapshot. The structural path keys line
+ * up because the harness measures the same nodes every time.
  *
  * The function leaves every group injected at the end, so the story stays
  * visibly broken for a manual inspection.
  */
 async function measureLeaks(label: string, root: Element): Promise<LeakReport> {
-  removeHostileCss();
+  removeConsumerCss();
   const clean = await stableSnapshot(root);
 
-  const byGroup = {} as Record<HostileGroup, StyleLeak[]>;
+  const byGroup = {} as Record<ConsumerCssGroup, StyleLeak[]>;
 
-  for (const group of ALL_HOSTILE_GROUPS) {
-    removeHostileCss();
-    const cleanup = injectHostileCss([group]);
+  for (const group of ALL_CONSUMER_CSS_GROUPS) {
+    removeConsumerCss();
+    const cleanup = injectConsumerCss([group]);
     byGroup[group] = diffSnapshots(clean, await stableSnapshot(root));
     cleanup();
   }
 
-  removeHostileCss();
-  injectHostileCss('all');
+  removeConsumerCss();
+  injectConsumerCss('all');
   const total = diffSnapshots(clean, await stableSnapshot(root));
 
-  const perGroup = ALL_HOSTILE_GROUPS.map(
+  const perGroup = ALL_CONSUMER_CSS_GROUPS.map(
     (group) => `  ${group}: ${byGroup[group].length} leak(s)`,
   ).join('\n');
   console.info(`${formatLeakReport(label, total)}\nby group:\n${perGroup}`);
@@ -206,18 +210,18 @@ async function findIn(scope: ParentNode, selector: string): Promise<Element> {
 }
 
 const meta = {
-  title: 'Style Isolation/Hostile Host',
+  title: 'Style Isolation/Consumer Host',
   parameters: {
     layout: 'fullscreen',
-    // Every story in this file runs inside a hostile page.
-    hostileHost: 'all',
+    // Every story in this file runs inside a consumer page.
+    consumerHost: 'all',
   },
   tags: ['integration'],
 } satisfies Meta;
 
 export default meta;
 
-export const BibleCardInHostileHost: Story = isolationStory({
+export const BibleCardInConsumerHost: Story = isolationStory({
   label: 'BibleCard',
   render: () => (
     <div className="yv:w-full yv:p-8">
@@ -230,7 +234,7 @@ export const BibleCardInHostileHost: Story = isolationStory({
   },
 });
 
-export const VerseOfTheDayInHostileHost: Story = isolationStory({
+export const VerseOfTheDayInConsumerHost: Story = isolationStory({
   label: 'VerseOfTheDay',
   render: () => (
     <div className="yv:w-full yv:p-8">
@@ -243,7 +247,7 @@ export const VerseOfTheDayInHostileHost: Story = isolationStory({
   },
 });
 
-export const BibleTextViewInHostileHost: Story = isolationStory({
+export const BibleTextViewInConsumerHost: Story = isolationStory({
   label: 'BibleTextView',
   render: () => (
     <div className="yv:w-full yv:p-8">
@@ -257,7 +261,7 @@ export const BibleTextViewInHostileHost: Story = isolationStory({
   },
 });
 
-export const FootnoteContentInHostileHost: Story = isolationStory({
+export const FootnoteContentInConsumerHost: Story = isolationStory({
   label: 'FootnoteContent',
   render: () => (
     <div className="yv:w-full yv:p-8">
@@ -298,7 +302,7 @@ function VerseActionPopoverHarness(): ReactElement {
   );
 }
 
-export const VerseActionPopoverInHostileHost: Story = isolationStory({
+export const VerseActionPopoverInConsumerHost: Story = isolationStory({
   label: 'VerseActionPopover',
   render: () => <VerseActionPopoverHarness />,
   // The popover renders into document.body, so the canvas cannot reach it.
@@ -324,7 +328,7 @@ function ChapterPickerHarness(): ReactElement {
   );
 }
 
-export const BibleChapterPickerInHostileHost: Story = isolationStory({
+export const BibleChapterPickerInConsumerHost: Story = isolationStory({
   label: 'BibleChapterPicker',
   render: () => <ChapterPickerHarness />,
   // The closed trigger is two elements. Open the picker, so that the measurement
@@ -349,7 +353,7 @@ function VersionPickerHarness(): ReactElement {
   );
 }
 
-export const BibleVersionPickerInHostileHost: Story = isolationStory({
+export const BibleVersionPickerInConsumerHost: Story = isolationStory({
   label: 'BibleVersionPicker',
   render: () => <VersionPickerHarness />,
   // Same reason as the chapter picker: measure the open list, not the trigger.
@@ -372,7 +376,7 @@ function VersionPickerLanguageTriggerHarness(): ReactElement {
   );
 }
 
-export const BibleVersionPickerLanguageTriggerInHostileHost: Story = isolationStory({
+export const BibleVersionPickerLanguageTriggerInConsumerHost: Story = isolationStory({
   label: 'BibleVersionPickerLanguageTrigger',
   render: () => <VersionPickerLanguageTriggerHarness />,
   // The trigger is itself a stamped public root (`button[data-yv-sdk]`).
@@ -391,7 +395,7 @@ function LanguagePickerContentHarness(): ReactElement {
   );
 }
 
-export const BibleLanguagePickerContentInHostileHost: Story = isolationStory({
+export const BibleLanguagePickerContentInConsumerHost: Story = isolationStory({
   label: 'BibleLanguagePickerContent',
   render: () => <LanguagePickerContentHarness />,
   // Standalone content stays in the tree; search `document.body` anyway so a
@@ -406,7 +410,7 @@ export const BibleLanguagePickerContentInHostileHost: Story = isolationStory({
   },
 });
 
-export const BibleReaderInHostileHost: Story = isolationStory({
+export const BibleReaderInConsumerHost: Story = isolationStory({
   label: 'BibleReader',
   render: () => (
     <div className="yv:h-screen yv:bg-background">
@@ -450,7 +454,7 @@ function ThemeSettingsHarness(): ReactElement {
   );
 }
 
-export const BibleThemeSettingsContentInHostileHost: Story = isolationStory({
+export const BibleThemeSettingsContentInConsumerHost: Story = isolationStory({
   label: 'BibleThemeSettingsContent',
   render: () => <ThemeSettingsHarness />,
   ready: async (canvasElement) => {
@@ -459,7 +463,7 @@ export const BibleThemeSettingsContentInHostileHost: Story = isolationStory({
   },
 });
 
-export const YouVersionAuthButtonInHostileHost: Story = isolationStory({
+export const YouVersionAuthButtonInConsumerHost: Story = isolationStory({
   label: 'YouVersionAuthButton',
   render: () => (
     <div className="yv:p-12">
@@ -472,7 +476,7 @@ export const YouVersionAuthButtonInHostileHost: Story = isolationStory({
   },
 });
 
-export const ProfileAvatarInHostileHost: Story = isolationStory({
+export const ProfileAvatarInConsumerHost: Story = isolationStory({
   label: 'ProfileAvatar',
   render: () => (
     <div className="yv:p-12">
@@ -482,7 +486,7 @@ export const ProfileAvatarInHostileHost: Story = isolationStory({
   ready: (canvasElement) => findIn(canvasElement, '[data-yv-sdk]'),
 });
 
-export const SeparatorInHostileHost: Story = isolationStory({
+export const SeparatorInConsumerHost: Story = isolationStory({
   label: 'Separator',
   render: () => (
     <div className="yv:w-full yv:p-12">
@@ -492,7 +496,7 @@ export const SeparatorInHostileHost: Story = isolationStory({
   ready: (canvasElement) => findIn(canvasElement, '[data-yv-sdk]'),
 });
 
-export const TextareaInHostileHost: Story = isolationStory({
+export const TextareaInConsumerHost: Story = isolationStory({
   label: 'Textarea',
   render: () => (
     <div className="yv:w-full yv:p-12">
@@ -524,10 +528,10 @@ const OVERRIDDEN_PRIMARY = 'rgb(255, 0, 255)';
  * to `background-color: var(--yv-primary)`, and not to a frozen literal. That is
  * what lets a runtime token override reach a build-time utility.
  *
- * Hostile CSS is off here on purpose. This story measures one channel.
+ * Consumer CSS is off here on purpose. This story measures one channel.
  */
 export const ConsumerTokenOverrideStillApplies: Story = {
-  parameters: { hostileHost: [] },
+  parameters: { consumerHost: [] },
   render: () => (
     <div data-yv-sdk className="yv:p-12">
       <div data-testid="primary-swatch" className="yv:size-16 yv:bg-primary" />

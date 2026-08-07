@@ -16,7 +16,7 @@ import { resolve } from 'node:path';
  * This test reads the CSS source from disk, and not the computed styles. It
  * follows `packages/ui/src/styles/font-tokens.test.ts`. Neither jsdom nor node
  * loads a stylesheet, so the source text is the only available evidence. The
- * hostile-host integration stories in `packages/ui` prove that the declarations
+ * consumer-host integration stories in `packages/ui` prove that the declarations
  * work in a browser.
  *
  * See YPE-4113.

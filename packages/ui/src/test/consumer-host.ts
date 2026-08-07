@@ -1,5 +1,5 @@
 /**
- * Hostile-host fixture: the global CSS that a consuming app can ship.
+ * Consumer-host fixture: the global CSS that a consuming app can ship.
  *
  * The SDK promises that a partner can put Bible components into any app and get
  * the components we designed. This file is the test of that promise. Each group
@@ -238,7 +238,7 @@ button {
 }
 `;
 
-export const HOSTILE_GROUPS = {
+export const CONSUMER_CSS_GROUPS = {
   preflight: PREFLIGHT,
   bareElements: BARE_ELEMENTS,
   aggressiveReset: AGGRESSIVE_RESET,
@@ -246,16 +246,16 @@ export const HOSTILE_GROUPS = {
   important: IMPORTANT,
 } satisfies Record<string, string>;
 
-export type HostileGroup = keyof typeof HOSTILE_GROUPS;
+export type ConsumerCssGroup = keyof typeof CONSUMER_CSS_GROUPS;
 
 /** Marks every `<style>` element this module owns, so cleanup never removes the SDK's. */
-export const HOSTILE_STYLE_ATTRIBUTE = 'data-yv-hostile-host';
+export const CONSUMER_HOST_STYLE_ATTRIBUTE = 'data-yv-consumer-host';
 
-export const ALL_HOSTILE_GROUPS = Object.keys(HOSTILE_GROUPS) as HostileGroup[];
+export const ALL_CONSUMER_CSS_GROUPS = Object.keys(CONSUMER_CSS_GROUPS) as ConsumerCssGroup[];
 
 /** Expands the `'all'` value into the explicit group list. */
-export function resolveHostileGroups(groups: HostileGroup[] | 'all'): HostileGroup[] {
-  return groups === 'all' ? [...ALL_HOSTILE_GROUPS] : [...groups];
+export function resolveConsumerCssGroups(groups: ConsumerCssGroup[] | 'all'): ConsumerCssGroup[] {
+  return groups === 'all' ? [...ALL_CONSUMER_CSS_GROUPS] : [...groups];
 }
 
 /**
@@ -263,13 +263,13 @@ export function resolveHostileGroups(groups: HostileGroup[] | 'all'): HostileGro
  *
  * @returns a cleanup function that removes only the tags that this call added.
  */
-export function injectHostileCss(groups: HostileGroup[] | 'all'): () => void {
+export function injectConsumerCss(groups: ConsumerCssGroup[] | 'all'): () => void {
   const added: HTMLStyleElement[] = [];
 
-  for (const group of resolveHostileGroups(groups)) {
+  for (const group of resolveConsumerCssGroups(groups)) {
     const style = document.createElement('style');
-    style.setAttribute(HOSTILE_STYLE_ATTRIBUTE, group);
-    style.textContent = HOSTILE_GROUPS[group];
+    style.setAttribute(CONSUMER_HOST_STYLE_ATTRIBUTE, group);
+    style.textContent = CONSUMER_CSS_GROUPS[group];
     // appendChild, not prepend. The precedence-hoisted SDK tag is in <head>
     // already, and a real consumer sheet loads after it.
     document.head.appendChild(style);
@@ -282,12 +282,12 @@ export function injectHostileCss(groups: HostileGroup[] | 'all'): () => void {
 }
 
 /**
- * Removes every hostile `<style>` element in the document, whichever code added
- * it. The measurement harness needs a clean baseline it can trust, and a story
- * that unmounted during a run can leave a tag behind.
+ * Removes every consumer CSS `<style>` element in the document, whichever code
+ * added it. The measurement harness needs a clean baseline it can trust, and a
+ * story that unmounted during a run can leave a tag behind.
  */
-export function removeHostileCss(): void {
-  for (const style of document.querySelectorAll(`style[${HOSTILE_STYLE_ATTRIBUTE}]`)) {
+export function removeConsumerCss(): void {
+  for (const style of document.querySelectorAll(`style[${CONSUMER_HOST_STYLE_ATTRIBUTE}]`)) {
     style.remove();
   }
 }

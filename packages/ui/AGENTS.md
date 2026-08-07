@@ -67,7 +67,7 @@ A rule applies only inside a subtree that carries that attribute. See
   [docs/style-isolation-residual-leak.md](../../docs/style-isolation-residual-leak.md)
   measures that residual.
 - The regression harness is `src/components/style-isolation.stories.tsx`, with
-  `src/test/hostile-host.ts` and `src/test/style-diff.ts`. Add a story there when
+  `src/test/consumer-host.ts` and `src/test/style-diff.ts`. Add a story there when
   you add an exported component.
 
 ## REFERENCES

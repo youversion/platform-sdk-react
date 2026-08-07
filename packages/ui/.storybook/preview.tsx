@@ -12,21 +12,27 @@ import { initialize, mswLoader } from 'msw-storybook-addon';
 import { StorybookEnvCheck } from '../src/test/StorybookEnvCheck';
 import { YouVersionProvider } from '../src/components/YouVersionProvider';
 import { globalHandlers } from '../src/test/mocks/handlers';
-import { injectHostileCss, removeHostileCss, resolveHostileGroups } from '../src/test/hostile-host';
-import type { HostileGroup } from '../src/test/hostile-host';
+import {
+  injectConsumerCss,
+  removeConsumerCss,
+  resolveConsumerCssGroups,
+} from '../src/test/consumer-host';
+import type { ConsumerCssGroup } from '../src/test/consumer-host';
 
 /**
- * Hostile host CSS, per story, through `parameters.hostileHost`.
+ * Consumer host CSS, per story, through `parameters.consumerHost`.
  *
  * `'all'` injects every group. An array injects only the named groups. Without
  * the parameter, the decorator injects nothing, and every earlier story is
  * unchanged.
  */
-type HostileHostParameter = HostileGroup[] | 'all' | undefined;
+type ConsumerHostParameter = ConsumerCssGroup[] | 'all' | undefined;
 
-function getHostileGroups(parameters: { hostileHost?: HostileHostParameter }): HostileGroup[] {
-  const value = parameters.hostileHost;
-  return value === undefined ? [] : resolveHostileGroups(value);
+function getConsumerCssGroups(parameters: {
+  consumerHost?: ConsumerHostParameter;
+}): ConsumerCssGroup[] {
+  const value = parameters.consumerHost;
+  return value === undefined ? [] : resolveConsumerCssGroups(value);
 }
 
 const THEME_BACKGROUNDS: Record<string, string> = {
@@ -81,21 +87,21 @@ const preview: Preview = {
 
       // A string key, not the array, so the effect does not run again on every
       // render.
-      const hostileKey = getHostileGroups(context.parameters).join(',');
+      const consumerKey = getConsumerCssGroups(context.parameters).join(',');
 
       // Layout effect, not effect. The SDK `<style precedence="yv-sdk">` tag is
       // in <head> by commit time, so an append here always lands after it. That
       // is the source order that a real consumer app produces.
       useLayoutEffect(() => {
-        if (hostileKey === '') return undefined;
-        injectHostileCss(hostileKey.split(',') as HostileGroup[]);
+        if (consumerKey === '') return undefined;
+        injectConsumerCss(consumerKey.split(',') as ConsumerCssGroup[]);
 
-        // removeHostileCss, and not the cleanup function that injectHostileCss
+        // removeConsumerCss, and not the cleanup function that injectConsumerCss
         // returns. A play function injects again during a measurement, and those
         // tags have no owner. A tag left behind follows the next story into the
         // same iframe.
-        return removeHostileCss;
-      }, [hostileKey]);
+        return removeConsumerCss;
+      }, [consumerKey]);
 
       const includeAuth = context.parameters.includeAuth !== false;
       const requiredEnvVars = includeAuth

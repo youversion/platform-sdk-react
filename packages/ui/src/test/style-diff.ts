@@ -3,7 +3,7 @@
  *
  * "The component looks wrong" is not a test result. This module turns that
  * judgment into a number. It reads every tracked computed property on every
- * element of an SDK subtree. It does that once clean, and once under hostile
+ * element of an SDK subtree. It does that once clean, and once under consumer
  * host CSS. Then it reports the exact (element, property) pairs that moved.
  *
  * The output is the residual-leak report that YPE-4113 asks for. The same
@@ -74,7 +74,7 @@ const IGNORED_TAGS = new Set(['SCRIPT', 'STYLE', 'LINK', 'META', 'TEMPLATE']);
 /**
  * A path that identifies an element by its position, not by its name.
  *
- * Class names do change between a clean render and a hostile render. That is not
+ * Class names do change between a clean render and a consumer render. That is not
  * the worry. The worry is that any identity based on styling is circular. A tag
  * name plus a same-tag sibling index is stable while the DOM shape is stable.
  * A diff is meaningful under that same condition only.
@@ -134,7 +134,7 @@ export type StyleLeak = {
   path: string;
   property: string;
   clean: string;
-  hostile: string;
+  consumer: string;
 };
 
 /**
@@ -144,21 +144,21 @@ export type StyleLeak = {
  * means that the DOM shape changed between the two renders. That is a harness
  * error, not a style leak, and a report of it hides the real findings.
  */
-export function diffSnapshots(clean: StyleSnapshot, hostile: StyleSnapshot): StyleLeak[] {
+export function diffSnapshots(clean: StyleSnapshot, consumer: StyleSnapshot): StyleLeak[] {
   const leaks: StyleLeak[] = [];
 
   for (const [path, cleanValues] of clean) {
-    const hostileValues = hostile.get(path);
-    if (!hostileValues) continue;
+    const consumerValues = consumer.get(path);
+    if (!consumerValues) continue;
 
     for (const property of Object.keys(cleanValues)) {
       const cleanValue = cleanValues[property];
-      const hostileValue = hostileValues[property];
+      const consumerValue = consumerValues[property];
 
-      if (hostileValue === undefined) continue;
-      if (cleanValue === hostileValue) continue;
+      if (consumerValue === undefined) continue;
+      if (cleanValue === consumerValue) continue;
 
-      leaks.push({ path, property, clean: cleanValue ?? '', hostile: hostileValue });
+      leaks.push({ path, property, clean: cleanValue ?? '', consumer: consumerValue });
     }
   }
 
