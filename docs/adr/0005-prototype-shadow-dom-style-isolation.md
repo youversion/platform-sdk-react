@@ -8,6 +8,12 @@ Host applications can apply unlayered global rules such as `button { ... }` or
 Tailwind v3 preflight to SDK markup. Unlayered author CSS outranks the SDK's
 layered CSS, so selector specificity alone cannot guarantee isolation.
 
+Resets, stronger selectors, `!important`, cascade layers, and `@scope` all
+continue participating in the host document's cascade. They can reduce
+accidental conflicts but cannot prevent an outside selector from matching SDK
+internals. Shadow DOM was selected because it creates a browser-enforced
+selector boundary.
+
 ## Prototype
 
 `YouVersionAuthButton` automatically creates an open shadow root and renders its
@@ -47,19 +53,20 @@ document-wide `@font-face` limitation.
 - Constructed stylesheets are created per owner document, so mounting the shadow
   host in a same-origin iframe does not cause a cross-document adoption error.
 
-The focused Chromium tests verify a global hostile `button` selector, hostile
-generated content on the light-DOM host, iframe mounting, and existing
-interactions. The unit tests verify Strict Mode and the
-light-DOM host reset. The remaining hostile vectors are available for manual
-inspection on the demo page.
+Focused Chromium stories verify hostile button rules, host-generated
+pseudo-content, existing interactions, and mounting in a same-origin iframe.
+Unit tests verify Strict Mode behavior and the inline-important host reset. The
+remaining hostile vectors are available for manual inspection on the demo page.
 
 ## Compatibility impact
 
 Although the React props API is unchanged, the rendered DOM structure is not.
 Consumers that query or style internal light-DOM markup must instead account for
-the shadow root. The client-effect mount also changes first-paint and server
-rendering behavior. This is therefore represented as a breaking change rather
-than an implementation detail.
+the shadow root. Because the prototype attaches the shadow root in `useEffect`,
+server output contains an empty host. The button appears after hydration, and
+its forwarded ref becomes available later than it did previously. This is
+therefore represented as a breaking change rather than an implementation
+detail.
 
 ## Deliberately deferred
 
@@ -70,6 +77,9 @@ than an implementation detail.
 - A package-wide custom-property audit. `all: initial` does not reset custom
   properties; the larger investigation branch tested redeclaring Tailwind v4's
   generated theme tokens on the protected internal wrapper.
+- A deliberate inheritance policy for writing direction and future custom
+  properties. Some host values may be intentional localization inputs, while
+  SDK-owned visual tokens need shadow-local defaults.
 - Host `@font-face` rules, which are not scoped by Shadow DOM.
 - Ancestor layout constraints, which Shadow DOM cannot isolate.
 - Event retargeting, nested-root behavior, and a supported consumer customization
