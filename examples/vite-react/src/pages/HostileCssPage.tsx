@@ -5,6 +5,7 @@ interface HostileVector {
   key: string;
   label: string;
   expectation: string;
+  example: string;
   css: string;
 }
 
@@ -13,6 +14,7 @@ const HOSTILE_VECTORS: HostileVector[] = [
     key: 'type-selectors',
     label: 'Type selectors',
     expectation: 'The plain button changes; the SDK button should not.',
+    example: 'button { … }',
     css: `
 .hostile-zone button,
 .hostile-zone [role='button'] {
@@ -30,6 +32,7 @@ const HOSTILE_VECTORS: HostileVector[] = [
     key: 'inherited',
     label: 'Inherited properties',
     expectation: 'Host text changes; the SDK button should retain its typography.',
+    example: '.hostile-zone { font-family: … }',
     css: `
 .hostile-zone {
   color: #d600d6 !important;
@@ -46,6 +49,7 @@ const HOSTILE_VECTORS: HostileVector[] = [
     key: 'universal-important',
     label: 'Universal selector with !important',
     expectation: 'Every reachable host element changes; shadow internals should not.',
+    example: '* { … !important }',
     css: `
 .hostile-zone * {
   color: #d600d6 !important;
@@ -58,6 +62,7 @@ const HOSTILE_VECTORS: HostileVector[] = [
     key: 'shadow-host',
     label: 'Shadow-host box attack',
     expectation: 'The witness disappears; the SDK host should remain usable.',
+    example: '[data-yv-shadow-host] { display: none !important }',
     css: `
 .hostile-zone [data-yv-shadow-host],
 .hostile-zone [data-host-box-witness] {
@@ -72,6 +77,7 @@ const HOSTILE_VECTORS: HostileVector[] = [
     label: '@font-face family collision (known limitation)',
     expectation:
       'Registers a document-level Inter collision that can reach the shadow tree; the visible result depends on locally installed fonts.',
+    example: "@font-face { font-family: 'Inter'; … }",
     css: `
 @font-face {
   font-family: 'Inter';
@@ -115,18 +121,26 @@ export function HostileCssPage() {
         <fieldset className="mt-5 flex flex-col gap-3">
           <legend className="mb-2 font-medium">Hostile stylesheet vectors</legend>
           {HOSTILE_VECTORS.map((vector) => (
-            <label key={vector.key} className="flex items-start gap-3 text-sm">
-              <input
-                className="mt-1"
-                type="checkbox"
-                checked={enabled[vector.key] ?? false}
-                onChange={() => toggle(vector.key)}
-              />
-              <span>
-                <span className="font-medium">{vector.label}</span>
-                <span className="block text-muted-foreground">{vector.expectation}</span>
-              </span>
-            </label>
+            <div
+              key={vector.key}
+              className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <label className="flex items-start gap-3 text-sm">
+                <input
+                  className="mt-1"
+                  type="checkbox"
+                  checked={enabled[vector.key] ?? false}
+                  onChange={() => toggle(vector.key)}
+                />
+                <span>
+                  <span className="font-medium">{vector.label}</span>
+                  <span className="block text-muted-foreground">{vector.expectation}</span>
+                </span>
+              </label>
+              <code className="w-fit max-w-full overflow-x-auto whitespace-nowrap rounded bg-muted px-2 py-1 text-xs">
+                {vector.example}
+              </code>
+            </div>
           ))}
         </fieldset>
       </section>
