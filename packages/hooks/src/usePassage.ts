@@ -10,6 +10,12 @@ type usePassageProps = {
   format?: 'html' | 'text';
   include_headings?: boolean;
   include_notes?: boolean;
+  /**
+   * Whether to auto-transform HTML content (default: `true`). Set to `false`
+   * to receive the original, untransformed HTML from the API — useful when
+   * running outside a DOM environment without the optional `jsdom` peer.
+   */
+  transform?: boolean;
   options?: UseApiDataOptions;
 };
 
@@ -19,6 +25,7 @@ export function usePassage({
   format = 'html',
   include_headings = false,
   include_notes = false,
+  transform = true,
   options,
 }: usePassageProps): {
   passage: BiblePassage | null;
@@ -32,8 +39,9 @@ export function usePassage({
   const isValidUsfm = Boolean(usfm) && usfm !== 'undefined' && usfm !== 'null';
 
   const { data, loading, error, refetch } = useApiData<BiblePassage>(
-    () => bibleClient.getPassage(versionId, usfm, format, include_headings, include_notes),
-    [bibleClient, versionId, usfm, format, include_headings, include_notes],
+    () =>
+      bibleClient.getPassage(versionId, usfm, format, include_headings, include_notes, transform),
+    [bibleClient, versionId, usfm, format, include_headings, include_notes, transform],
     { enabled: options?.enabled !== false && isValidUsfm },
   );
 

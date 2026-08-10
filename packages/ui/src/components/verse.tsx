@@ -477,9 +477,8 @@ export const Verse = {
       }: VerseHtmlProps,
       ref,
     ): ReactNode => {
-      // transformBibleHtml uses the browser's native DOMParser, which doesn't
-      // exist during SSR. Return raw html on the server; the client-side
-      // useLayoutEffect in BibleTextHtml will handle it after hydration.
+      // SSR safety: DOMParser doesn't exist during server render.
+      // Idempotent — already-transformed HTML from getPassage is a no-op.
       const transformedHtml = useMemo(
         () => (typeof window === 'undefined' ? html : transformBibleHtml(html).html),
         [html],

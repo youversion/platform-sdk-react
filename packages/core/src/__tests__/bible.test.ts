@@ -507,18 +507,16 @@ describe('BibleClient', () => {
   });
 
   describe('getPassage', () => {
-    it('should fetch a passage for a verse', async () => {
+    it('should fetch a passage for a verse and auto-transform HTML', async () => {
       const passage = await bibleClient.getPassage(111, 'GEN.1.1');
 
       const { success } = BiblePassageSchema.safeParse(passage);
       expect(success).toBe(true);
 
-      expect(passage).toEqual({
-        id: 'GEN.1.1',
-        content:
-          '<div><div class="pi"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>In the beginning God created the heavens and the earth. </div></div>',
-        reference: 'Genesis 1:1',
-      });
+      expect(passage.id).toBe('GEN.1.1');
+      expect(passage.reference).toBe('Genesis 1:1');
+      expect(passage.content).toContain('data-yv-transformed');
+      expect(passage.content).toContain('In the beginning God created');
     });
 
     it('should fetch a passage for a chapter', async () => {
@@ -534,13 +532,29 @@ describe('BibleClient', () => {
     it('should fetch a passage with html format by default', async () => {
       const passage = await bibleClient.getPassage(111, 'GEN.1.1');
 
-      expect(passage.content).toContain('<div>');
+      expect(passage.content).toContain('<div');
+      expect(passage.content).toContain('data-yv-transformed');
     });
 
-    it('should fetch a passage with text format', async () => {
+    it('should not transform text format', async () => {
       const passage = await bibleClient.getPassage(111, 'GEN.1.1', 'text');
 
       expect(passage.content).not.toContain('<div>');
+      expect(passage.content).not.toContain('data-yv-transformed');
+    });
+
+    it('should skip transformation when transform is false', async () => {
+      const passage = await bibleClient.getPassage(
+        111,
+        'GEN.1.1',
+        'html',
+        undefined,
+        undefined,
+        false,
+      );
+
+      expect(passage.content).toContain('<div');
+      expect(passage.content).not.toContain('data-yv-transformed');
     });
 
     it('should fetch a passage with include_headings', async () => {
@@ -548,14 +562,15 @@ describe('BibleClient', () => {
 
       expect(passage.id).toBe('ROM.1');
       expect(passage.content).toContain('yv-h');
-      expect(passage.content).not.toContain('yv-n');
+      expect(passage.content).not.toContain('data-verse-footnote');
     });
 
-    it('should fetch a passage with include_notes', async () => {
+    it('should fetch a passage with include_notes and transform footnotes', async () => {
       const passage = await bibleClient.getPassage(111, 'ROM.1', 'html', undefined, true);
 
       expect(passage.id).toBe('ROM.1');
-      expect(passage.content).toContain('yv-n');
+      // Footnotes are transformed into data-verse-footnote anchors
+      expect(passage.content).toContain('data-verse-footnote');
       expect(passage.content).not.toContain('yv-h');
     });
 
@@ -563,7 +578,7 @@ describe('BibleClient', () => {
       const passage = await bibleClient.getPassage(111, 'ROM.1', 'html', true, true);
 
       expect(passage.id).toBe('ROM.1');
-      expect(passage.content).toContain('yv-n');
+      expect(passage.content).toContain('data-verse-footnote');
       expect(passage.content).toContain('yv-h');
     });
 

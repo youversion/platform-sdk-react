@@ -7,9 +7,45 @@ Foundation package providing pure TypeScript API clients for YouVersion services
 - For React hooks wrapping these clients → see `packages/hooks/AGENTS.md`
 - For pre-built UI components → see `packages/ui/AGENTS.md`
 
-The public API is whatever `src/index.ts`, `src/browser.ts`, and `src/server.ts`
-export. Read those rather than a list here. Browser CSS ships from `src/styles/`
-and is exported via `./browser/styles/*`.
+## STRUCTURE
+```
+schemas/                     # Zod schemas for all data types (schema-first design)
+styles/                      # Browser CSS (exported via ./browser/styles/*)
+  fonts.css                  # Google Fonts import (Inter, Source Serif 4)
+  theme.css                  # --yv-* design tokens on :root, dark mode, scoped preflight
+  bible-reader.css           # USFM/Bible typography for [data-slot='yv-bible-renderer']
+  index.css                  # Barrel: imports fonts + theme + bible-reader
+client.ts                    # ApiClient - main HTTP client
+bible.ts                     # BibleClient - Bible data operations
+languages.ts                 # LanguagesClient - language data
+highlights.ts                # HighlightsClient - user highlights
+YouVersionAPI.ts             # Base YouVersion API client
+SignInWithYouVersionPKCE.ts  # PKCE auth implementation
+StorageStrategy.ts           # Storage interface (SessionStorage, MemoryStorage)
+bible-html-transformer.ts    # Runtime-agnostic transformer (also contains browser convenience fn)
+bible-html-transformer-server.ts # Server convenience wrapper (uses jsdom)
+browser.ts                   # Browser entry point
+server.ts                    # Server entry point
+index.ts                     # Main entry point (runtime-agnostic)
+```
+
+## PUBLIC API
+
+### TypeScript (`@youversion/platform-core`)
+- `ApiClient`: Main HTTP client with auth handling
+- `BibleClient`: Fetch Bibles, chapters, verses, versions
+- `LanguagesClient`: Get available languages
+- `HighlightsClient`: Manage user highlights
+- `SignInWithYouVersionPKCE()`: PKCE auth flow function
+- `SessionStorage`, `MemoryStorage`: Storage strategies
+- `transformBibleHtml`: Runtime-agnostic Bible HTML transformer (requires DOM adapters)
+- `TransformBibleHtmlOptions`: Options for DOM parsing and serialization
+
+### Browser CSS (`@youversion/platform-core/browser/styles/*`)
+- `index.css`: All-in-one import (fonts + theme + bible-reader)
+- `theme.css`: `--yv-*` design tokens on `:root` + dark mode (`[data-yv-theme='dark']`) + scoped preflight
+- `bible-reader.css`: USFM typography for `[data-slot='yv-bible-renderer']` or `[data-yv-sdk-bible-reader]`
+- `fonts.css`: Google Fonts import (Inter, Source Serif 4)
 
 ## DOs / DON'Ts
 
@@ -26,12 +62,35 @@ and is exported via `./browser/styles/*`.
 
 Three entry points, deliberately separate:
 
-- `@youversion/platform-core` → runtime-agnostic `transformBibleHtml`, requires DOM adapters
-- `@youversion/platform-core/browser` → convenience wrapper using native `DOMParser`
-- `@youversion/platform-core/server` → convenience wrapper using `linkedom`
+- `@youversion/platform-core` → Runtime-agnostic `transformBibleHtml` (requires DOM adapters)
+- `@youversion/platform-core/browser` → Browser convenience wrapper (uses native DOMParser)
+- `@youversion/platform-core/server` → Server convenience wrapper (uses jsdom)
 
-The split keeps the main export runtime-agnostic and keeps `linkedom` out of
-browser bundles. New DOM-touching code follows the same pattern.
+**Examples:**
+
+```ts
+// Runtime-agnostic (works anywhere with custom adapters)
+import { transformBibleHtml } from '@youversion/platform-core';
+
+const result = transformBibleHtml(html, {
+  parseHtml: (h) => new DOMParser().parseFromString(h, 'text/html'),
+  serializeHtml: (doc) => doc.body.innerHTML,
+});
+
+// Browser convenience (uses native DOMParser)
+import { transformBibleHtml } from '@youversion/platform-core/browser';
+
+const result = transformBibleHtml(html);
+
+// Server convenience (uses jsdom, requires: npm install jsdom)
+import { transformBibleHtml } from '@youversion/platform-core/server';
+
+const result = transformBibleHtml(html);
+```
+
+**Why separate entry points?**
+
+This architecture keeps the main export truly runtime-agnostic while providing ergonomic convenience wrappers for common environments. The separate `/browser` and `/server` entry points ensure optimal bundle sizes. `package.json` also maps `"browser": { "jsdom": false }` so Vite/Rollup client builds stub jsdom even when the main entry's dynamic `import('jsdom')` is present (Node-only path; browsers use native `DOMParser`).
 
 ## ADDING A NEW ENDPOINT OR CLIENT
 

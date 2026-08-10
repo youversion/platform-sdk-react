@@ -308,8 +308,8 @@ describe('transformBibleHtml - sanitization', () => {
     const result = transformBibleHtml(html, createAdapters());
 
     expect(result.html).not.toContain('onclick');
-    expect(result.html).toContain('<p>');
-    expect(result.html).toContain('Click me');
+    // Tag-boundary match so we don't accept a false positive like `<pre`.
+    expect(result.html).toMatch(/<p(?:\s[^>]*)?>Click me<\/p>/);
   });
 
   it('should unwrap anchor tags (not in allowlist) preserving text', () => {
@@ -336,7 +336,7 @@ describe('transformBibleHtml - sanitization', () => {
     const result = transformBibleHtml(html, createAdapters());
 
     expect(result.html).not.toContain('style');
-    expect(result.html).toContain('<div>');
+    expect(result.html).toContain('<div');
     expect(result.html).toContain('text');
   });
 
@@ -352,7 +352,7 @@ describe('transformBibleHtml - sanitization', () => {
     expect(result.html).toContain('class="p"');
     expect(result.html).toContain('class="wj"');
     expect(result.html).toContain('colspan="2"');
-    expect(result.html).toContain('<table>');
+    expect(result.html).toMatch(/<table(?:\s[^>]*)?>/);
   });
 
   it('should unwrap unknown custom elements preserving text', () => {
@@ -384,6 +384,68 @@ describe('transformBibleHtml - sanitization', () => {
     const result = transformBibleHtml(html, createAdapters());
 
     expect(result.html).toContain('dir="rtl"');
+  });
+});
+
+describe('transformBibleHtml - idempotency', () => {
+  it('should add data-yv-transformed marker after transforming', () => {
+    const html =
+      '<div><div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text.</div></div>';
+    const result = transformBibleHtml(html, createAdapters());
+
+    expect(result.html).toContain('data-yv-transformed');
+  });
+
+  it('should short-circuit when HTML is already transformed', () => {
+    const html =
+      '<div><div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text.</div></div>';
+    const first = transformBibleHtml(html, createAdapters());
+    const second = transformBibleHtml(first.html, createAdapters());
+
+    expect(second.html).toBe(first.html);
+  });
+
+  it('should produce identical output when transformed twice (idempotent)', () => {
+    const html =
+      '<div><div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Verse text<span class="yv-n f"><span class="ft">A note</span></span>.</div></div>';
+    const first = transformBibleHtml(html, createAdapters());
+    const second = transformBibleHtml(first.html, createAdapters());
+
+    expect(second.html).toBe(first.html);
+  });
+
+  it('should not short-circuit on untrusted nested data-yv-transformed', () => {
+    const html =
+      '<div><span data-yv-transformed></span><div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text<span class="yv-n f"><span class="ft">A note</span></span>.</div></div>';
+    const result = transformBibleHtml(html, createAdapters());
+
+    expect(result.html).toContain('data-verse-footnote');
+    expect(result.html).toMatch(/^<div\b[^>]*\bdata-yv-transformed\b/);
+  });
+
+  it('should transform raw siblings when only the first top-level element is marked', () => {
+    const raw =
+      '<div class="p"><span class="yv-v" v="2"></span><span class="yv-vlbl">2</span>Second<span class="yv-n f"><span class="ft">Sibling note</span></span>.</div>';
+    const transformed = transformBibleHtml(
+      '<div><div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>First.</div></div>',
+      createAdapters(),
+    );
+
+    const result = transformBibleHtml(transformed.html + raw, createAdapters());
+
+    expect(result.html).toContain('data-verse-footnote');
+    expect(result.html).toContain('Sibling note');
+  });
+
+  it('should mark every top-level element so a multi-root fragment stays idempotent', () => {
+    const html =
+      '<div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>One.</div>' +
+      '<div class="p"><span class="yv-v" v="2"></span><span class="yv-vlbl">2</span>Two.</div>';
+    const first = transformBibleHtml(html, createAdapters());
+    const second = transformBibleHtml(first.html, createAdapters());
+
+    expect(first.html.match(/data-yv-transformed/g)).toHaveLength(2);
+    expect(second.html).toBe(first.html);
   });
 });
 

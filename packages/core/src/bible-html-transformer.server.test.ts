@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 import { transformBibleHtml } from './bible-html-transformer-server';
 
 describe('transformBibleHtml', () => {
-  it('should transform HTML using linkedom', () => {
+  it('should transform HTML using jsdom', () => {
     const html = `
       <div>
         <div class="p">
@@ -58,7 +58,7 @@ describe('transformBibleHtml', () => {
 
     const result = transformBibleHtml(html);
 
-    // linkedom may serialize attributes in different order than browsers
+    // jsdom may serialize attributes in different order than browsers
     expect(result.html).toContain('class="yv-v"');
     expect(result.html).toContain('v="1"');
     expect(result.html).toContain('v="2"');
@@ -77,8 +77,8 @@ describe('transformBibleHtml', () => {
 
     const result = transformBibleHtml(html);
 
-    // linkedom encodes non-breaking space as &#160; instead of the raw character
-    expect(result.html).toMatch(/1(\u00A0|&#160;)/);
+    // jsdom may encode non-breaking space as &nbsp; instead of the raw character
+    expect(result.html).toMatch(/1(\u00A0|&#160;|&nbsp;)/);
   });
 
   it('should handle intro chapter footnotes', () => {
@@ -137,7 +137,7 @@ describe('transformBibleHtml', () => {
     expect(result.html).toContain('Click me');
   });
 
-  it('should preserve safe Bible HTML through linkedom', () => {
+  it('should preserve safe Bible HTML through jsdom', () => {
     const html = `
       <div class="p">
         <span class="wj">Jesus said</span>

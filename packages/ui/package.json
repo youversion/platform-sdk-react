@@ -18,6 +18,9 @@
   "module": "./dist/index.js",
   "style": "./dist/tailwind.css",
   "types": "./dist/index.d.ts",
+  "browser": {
+    "jsdom": false
+  },
   "files": [
     "dist",
     "README.md",
