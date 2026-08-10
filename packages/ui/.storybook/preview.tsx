@@ -8,6 +8,16 @@ function getTheme(value: unknown): 'light' | 'dark' | 'system' {
   return 'light';
 }
 
+/**
+ * Per-request timeout for the provider, in milliseconds. Set
+ * `parameters.providerTimeout` in a story that needs requests to give up
+ * quickly — a hanging-endpoint story would otherwise wait out the SDK's
+ * 10-second default on every attempt.
+ */
+function getProviderTimeout(value: unknown): number | undefined {
+  return typeof value === 'number' ? value : undefined;
+}
+
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { StorybookEnvCheck } from '../src/test/StorybookEnvCheck';
 import { YouVersionProvider } from '../src/components/YouVersionProvider';
@@ -63,6 +73,7 @@ const preview: Preview = {
         };
       }, [theme]);
 
+      const providerTimeout = getProviderTimeout(context.parameters.providerTimeout);
       const includeAuth = context.parameters.includeAuth !== false;
       const requiredEnvVars = includeAuth
         ? ['STORYBOOK_YOUVERSION_APP_KEY', 'STORYBOOK_AUTH_REDIRECT_URL']
@@ -77,6 +88,7 @@ const preview: Preview = {
               apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
               includeAuth={true}
               theme={getTheme(context.globals.theme)}
+              timeout={providerTimeout}
             >
               <Story />
             </YouVersionProvider>
@@ -90,6 +102,7 @@ const preview: Preview = {
             appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || ''}
             apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
             theme={getTheme(context.globals.theme)}
+            timeout={providerTimeout}
           >
             <Story />
           </YouVersionProvider>

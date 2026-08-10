@@ -4,6 +4,7 @@ import type { PropsWithChildren, ReactNode } from 'react';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { YouVersionContext } from './YouVersionContext';
 import {
+  ApiClient,
   YouVersionPlatformConfiguration,
   type YouVersionUserInfoJSON,
 } from '@youversion/platform-core';
@@ -34,6 +35,18 @@ interface YouVersionProviderPropsBase {
    * to replace `X-YVP-Sdk` with their own identifier.
    */
   additionalHeaders?: Record<string, string>;
+  /**
+   * Per-request timeout in milliseconds. Defaults to 10000.
+   *
+   * A request that gets no response within this window is aborted and rejects
+   * with `Request timeout after {timeout}ms`. Raise it for integrators on slow
+   * networks; lower it to surface a failure sooner.
+   *
+   * Note that the automatic retry in `useApiData` keeps a fixed 20-second wall
+   * clock. A timeout at or above that figure leaves no room for a retry, which
+   * is the SDK's pre-retry, single-shot behavior.
+   */
+  timeout?: number;
 }
 
 interface YouVersionProviderPropsWithAuth extends YouVersionProviderPropsBase {
@@ -115,6 +128,7 @@ function YouVersionProviderInner(
     additionalHeaders,
     appName,
     signInPromptMessage,
+    timeout,
     children,
   } = props;
 
@@ -144,13 +158,35 @@ function YouVersionProviderInner(
     YouVersionPlatformConfiguration.signInPromptMessage = signInPromptMessage;
   }, [appKey, apiHost, appName, signInPromptMessage]);
 
+  const installationId = YouVersionPlatformConfiguration.installationId;
+
+  // One ApiClient for the whole tree. It has to be built here, not in
+  // useApiClient: ApiClient deduplicates concurrent GETs through a private
+  // per-instance map, and a useMemo inside useApiClient runs once per hook
+  // instance, so every sibling component would get its own map and its own
+  // duplicate request. Rebuilt only when a value the client is configured
+  // with changes.
+  const apiClient = useMemo(
+    () =>
+      new ApiClient({
+        appKey,
+        apiHost,
+        installationId,
+        additionalHeaders: stableAdditionalHeaders,
+        timeout,
+      }),
+    [appKey, apiHost, installationId, stableAdditionalHeaders, timeout],
+  );
+
   const contextValue = {
     appKey,
     apiHost,
-    installationId: YouVersionPlatformConfiguration.installationId,
+    installationId,
     theme: resolvedTheme,
     authEnabled: !!includeAuth,
     additionalHeaders: stableAdditionalHeaders,
+    timeout,
+    apiClient,
   };
 
   if (includeAuth) {

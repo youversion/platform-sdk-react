@@ -53,6 +53,21 @@ class MockYouVersionUserInfo {
   }
 }
 
+/**
+ * `YouVersionProvider` constructs one `ApiClient` and puts it on the context, so
+ * every core mock that replaces the whole module has to export a constructible
+ * `ApiClient` — otherwise any test rendering the provider dies with
+ * "ApiClient is not a constructor". These tests exercise auth, not HTTP, so the
+ * stub only needs to be `new`-able and to hold its config.
+ */
+class MockApiClient {
+  readonly config: Record<string, unknown>;
+
+  constructor(config: Record<string, unknown>) {
+    this.config = config;
+  }
+}
+
 class MockSignInWithYouVersionResult {
   readonly accessToken: string | undefined;
   readonly expiryDate: Date | undefined;
@@ -99,6 +114,7 @@ interface SimpleCoreMockFactory {
   SignInWithYouVersionPermission: Record<string, string>;
   YouVersionUserInfo: typeof MockYouVersionUserInfo;
   SignInWithYouVersionResult: typeof MockSignInWithYouVersionResult;
+  ApiClient: typeof MockApiClient;
 }
 
 interface GetterCoreMockFactory {
@@ -123,6 +139,7 @@ interface GetterCoreMockFactory {
   };
   YouVersionUserInfo: typeof MockYouVersionUserInfo;
   SignInWithYouVersionResult: typeof MockSignInWithYouVersionResult;
+  ApiClient: typeof MockApiClient;
 }
 
 export function createSimpleCoreMockFactory(): SimpleCoreMockFactory {
@@ -167,6 +184,7 @@ export function createSimpleCoreMockFactory(): SimpleCoreMockFactory {
     },
     YouVersionUserInfo: MockYouVersionUserInfo,
     SignInWithYouVersionResult: MockSignInWithYouVersionResult,
+    ApiClient: MockApiClient,
   };
 }
 
@@ -220,5 +238,6 @@ export function createGetterCoreMockFactory(): GetterCoreMockFactory {
     },
     YouVersionUserInfo: MockYouVersionUserInfo,
     SignInWithYouVersionResult: MockSignInWithYouVersionResult,
+    ApiClient: MockApiClient,
   };
 }

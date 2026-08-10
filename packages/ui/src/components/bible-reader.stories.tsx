@@ -1066,6 +1066,81 @@ export const PassageRetriesAutomatically: Story = {
   },
 };
 
+/**
+ * The reported failure, end to end: the passage request is dispatched and never
+ * answered. The abort timer fires, the retry chain spends its attempts, the
+ * user gets a "Try again" button, and clicking it recovers the reader.
+ *
+ * `providerTimeout` drops the request timeout to 1500ms (the preview decorator
+ * reads it), so the whole retry budget completes in seconds rather than the
+ * 30-plus seconds the 10-second default would take.
+ */
+export const PassageHangsThenRecovers: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+  },
+  parameters: {
+    providerTimeout: 1500,
+    msw: {
+      handlers: [
+        http.get('*/v1/bibles/111/passages/:usfm', async () => {
+          await delay('infinite');
+          return HttpResponse.json({});
+        }),
+        ...globalHandlers,
+      ],
+    },
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    // Three attempts at 1500ms each, plus jittered backoff of up to 500ms and
+    // 1500ms between them. Worst case is a little over 6.5 seconds.
+    const retryButton = await screen.findByRole(
+      'button',
+      { name: /try again/i },
+      { timeout: 15000 },
+    );
+
+    const alert = await screen.findByRole('alert');
+    await expect(alert).toHaveTextContent(
+      "The Bible server couldn't be reached. Check your connection and try again.",
+    );
+
+    getWorker().use(
+      http.get('*/v1/bibles/111/passages/:usfm', ({ params }) => {
+        const usfm = params.usfm as string;
+        return HttpResponse.json({
+          id: usfm,
+          content: `<div class="p"><span class="verse">Recovered passage for ${usfm}.</span></div>`,
+          reference: usfm,
+        });
+      }),
+    );
+
+    await userEvent.click(retryButton);
+
+    await waitFor(
+      async () => {
+        const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(renderer?.textContent).toContain('Recovered passage for JHN.1');
+      },
+      { timeout: 5000 },
+    );
+
+    await expect(screen.queryByRole('button', { name: /try again/i })).not.toBeInTheDocument();
+  },
+};
+
 export const ChapterChangeLoadingOverlay: Story = {
   tags: ['integration'],
   args: {

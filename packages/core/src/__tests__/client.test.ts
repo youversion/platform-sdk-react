@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll, vi } from 'vitest';
 import { ApiClient, getHttpStatus } from '../client';
-import { http, HttpResponse } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 import { server } from './setup';
 
 // We always want this test to hit msw since this is only testing
@@ -125,6 +125,214 @@ describe('ApiClient', () => {
       });
 
       expect(result).toEqual({ params: ['one', 'two'] });
+    });
+  });
+
+  describe('in-flight GET deduplication', () => {
+    it('should issue one request when two GETs for the same URL overlap', async () => {
+      let requestCount = 0;
+      server.use(
+        http.get('https://test_placeholder.youversion.com/books', async () => {
+          requestCount += 1;
+          await delay(20);
+          return HttpResponse.json({ message: 'shared' });
+        }),
+      );
+
+      const [first, second] = await Promise.all([
+        apiClient.get<{ message: string }>('/books'),
+        apiClient.get<{ message: string }>('/books'),
+      ]);
+
+      expect(requestCount).toBe(1);
+      expect(first).toEqual({ message: 'shared' });
+      expect(second).toEqual({ message: 'shared' });
+    });
+
+    it('should not share a request between two GETs with different query parameters', async () => {
+      let requestCount = 0;
+      server.use(
+        http.get('https://test_placeholder.youversion.com/books', async ({ request }) => {
+          requestCount += 1;
+          await delay(20);
+          const url = new URL(request.url);
+          return HttpResponse.json({ param: url.searchParams.get('param') });
+        }),
+      );
+
+      const [first, second] = await Promise.all([
+        apiClient.get<{ param: string }>('/books', { param: 'one' }),
+        apiClient.get<{ param: string }>('/books', { param: 'two' }),
+      ]);
+
+      expect(requestCount).toBe(2);
+      expect(first).toEqual({ param: 'one' });
+      expect(second).toEqual({ param: 'two' });
+    });
+
+    it('should not share a request between two GETs with different Authorization headers', async () => {
+      const seenTokens: (string | null)[] = [];
+      server.use(
+        http.get('https://test_placeholder.youversion.com/highlights', async ({ request }) => {
+          seenTokens.push(request.headers.get('authorization'));
+          await delay(20);
+          return HttpResponse.json({ token: request.headers.get('authorization') });
+        }),
+      );
+
+      const [first, second] = await Promise.all([
+        apiClient.get<{ token: string }>('/highlights', undefined, {
+          Authorization: 'Bearer user-a',
+        }),
+        apiClient.get<{ token: string }>('/highlights', undefined, {
+          Authorization: 'Bearer user-b',
+        }),
+      ]);
+
+      expect(seenTokens).toHaveLength(2);
+      expect(seenTokens).toContain('Bearer user-a');
+      expect(seenTokens).toContain('Bearer user-b');
+      expect(first).toEqual({ token: 'Bearer user-a' });
+      expect(second).toEqual({ token: 'Bearer user-b' });
+    });
+
+    it('should issue a second request for a GET made after the first one settled', async () => {
+      let requestCount = 0;
+      server.use(
+        http.get('https://test_placeholder.youversion.com/books', () => {
+          requestCount += 1;
+          return HttpResponse.json({ count: requestCount });
+        }),
+      );
+
+      // Sharing is in-flight only. Once the first promise settles its entry is
+      // gone, so a later GET hits the network again — this is not a cache.
+      const first = await apiClient.get<{ count: number }>('/books');
+      const second = await apiClient.get<{ count: number }>('/books');
+
+      expect(requestCount).toBe(2);
+      expect(first).toEqual({ count: 1 });
+      expect(second).toEqual({ count: 2 });
+    });
+
+    it('should share a rejection with every caller waiting on it', async () => {
+      let requestCount = 0;
+      server.use(
+        http.get('https://test_placeholder.youversion.com/books', async () => {
+          requestCount += 1;
+          await delay(20);
+          return HttpResponse.json({ message: 'nope' }, { status: 503 });
+        }),
+      );
+
+      const [first, second] = await Promise.allSettled([
+        apiClient.get('/books'),
+        apiClient.get('/books'),
+      ]);
+
+      expect(requestCount).toBe(1);
+      expect(first.status).toBe('rejected');
+      expect(second.status).toBe('rejected');
+      expect(getHttpStatus((first as PromiseRejectedResult).reason)).toBe(503);
+      expect(getHttpStatus((second as PromiseRejectedResult).reason)).toBe(503);
+    });
+
+    it('should not deduplicate POST requests', async () => {
+      let requestCount = 0;
+      server.use(
+        http.post('https://test_placeholder.youversion.com/highlights', async () => {
+          requestCount += 1;
+          await delay(20);
+          return HttpResponse.json({ ok: true });
+        }),
+      );
+
+      await Promise.all([
+        apiClient.post('/highlights', { color: 'fffe00' }),
+        apiClient.post('/highlights', { color: 'fffe00' }),
+      ]);
+
+      expect(requestCount).toBe(2);
+    });
+  });
+
+  describe('request timeout', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should abort and reject when a dispatched request is never answered', async () => {
+      server.use(
+        http.get('https://test_placeholder.youversion.com/hangs', async () => {
+          await delay('infinite');
+          return HttpResponse.json({});
+        }),
+      );
+
+      vi.useFakeTimers();
+
+      // Capture the rejection before advancing so nothing is ever unhandled.
+      const settled = apiClient.get('/hangs').catch((error: unknown) => error);
+
+      await vi.advanceTimersByTimeAsync(10_000);
+
+      const error = await settled;
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe('Request timeout after 10000ms');
+    });
+
+    it('should report the configured timeout rather than the default', async () => {
+      server.use(
+        http.get('https://test_placeholder.youversion.com/hangs', async () => {
+          await delay('infinite');
+          return HttpResponse.json({});
+        }),
+      );
+
+      const client = new ApiClient({
+        apiHost: 'test_placeholder.youversion.com',
+        appKey: 'test-app',
+        timeout: 2000,
+      });
+
+      vi.useFakeTimers();
+
+      const settled = client.get('/hangs').catch((error: unknown) => error);
+
+      await vi.advanceTimersByTimeAsync(2000);
+
+      const error = await settled;
+      expect((error as Error).message).toBe('Request timeout after 2000ms');
+    });
+
+    it('should keep the request pending until the timeout elapses', async () => {
+      server.use(
+        http.get('https://test_placeholder.youversion.com/hangs', async () => {
+          await delay('infinite');
+          return HttpResponse.json({});
+        }),
+      );
+
+      const client = new ApiClient({
+        apiHost: 'test_placeholder.youversion.com',
+        appKey: 'test-app',
+        timeout: 2000,
+      });
+
+      vi.useFakeTimers();
+
+      let settled = false;
+      const pending = client.get('/hangs').catch((error: unknown) => {
+        settled = true;
+        return error;
+      });
+
+      await vi.advanceTimersByTimeAsync(1999);
+      expect(settled).toBe(false);
+
+      await vi.advanceTimersByTimeAsync(1);
+      await pending;
+      expect(settled).toBe(true);
     });
   });
 

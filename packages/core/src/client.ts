@@ -35,6 +35,13 @@ export class ApiClient {
   public config: ApiConfig;
 
   /**
+   * GET requests currently in flight, keyed by URL plus the per-call headers.
+   * An entry is removed as soon as its promise settles, so this shares
+   * concurrency and never caches a result.
+   */
+  private inFlight = new Map<string, Promise<unknown>>();
+
+  /**
    * Creates an instance of ApiClient.
    *
    * @param config - The API configuration object containing baseUrl, timeout, and appKey.
@@ -153,19 +160,60 @@ export class ApiClient {
   }
 
   /**
+   * Builds the deduplication key for a GET request.
+   *
+   * The per-call headers are part of the key, not just the URL. Highlights GETs
+   * carry a Bearer token, and two different users must never share one promise.
+   * Header names are lowercased and sorted so two semantically identical header
+   * objects produce one key.
+   */
+  private dedupeKey(url: string, headers?: RequestHeaders): string {
+    if (!headers) return url;
+
+    const entries = Object.entries(headers)
+      .map(([name, value]): [string, string] => [name.toLowerCase(), value])
+      .sort(([a], [b]) => a.localeCompare(b));
+
+    if (entries.length === 0) return url;
+
+    return `${url}\u0000${JSON.stringify(entries)}`;
+  }
+
+  /**
    * Sends a GET request to the specified API path with optional query parameters.
+   *
+   * Concurrent GETs for the same URL and headers share a single request: the
+   * second caller receives the promise the first one is already waiting on. The
+   * entry is dropped when that promise settles, so a later GET issues a fresh
+   * request — this is in-flight sharing, not a response cache. One consequence
+   * to be aware of: a shared rejection reaches every caller, so siblings fail
+   * together rather than independently.
+   *
+   * `post` and `delete` are deliberately not deduplicated. Only GET is
+   * idempotent.
    *
    * @typeParam T - The expected response type.
    * @param path - The API endpoint path (relative to baseURL).
    * @param params - Optional query parameters to include in the request.
+   * @param headers - Optional headers merged over the default headers.
    * @returns A promise resolving to the response data of type T.
    */
   async get<T>(path: string, params?: QueryParams, headers?: RequestHeaders): Promise<T> {
     const url = `${this.baseURL}${path}${this.buildQueryString(params)}`;
-    return this.request<T>(url, {
+    const key = this.dedupeKey(url, headers);
+
+    const existing = this.inFlight.get(key);
+    if (existing) return existing as Promise<T>;
+
+    const promise = this.request<T>(url, {
       method: 'GET',
       headers,
+    }).finally(() => {
+      this.inFlight.delete(key);
     });
+
+    this.inFlight.set(key, promise);
+    return promise;
   }
 
   /**
