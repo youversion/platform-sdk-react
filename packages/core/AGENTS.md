@@ -46,6 +46,25 @@ See `docs/adding-a-core-endpoint.md`.
 - `YouVersionAPI` is a separate static header helper, not a base client. Do not
   build a new client on it.
 
+### In-flight GET deduplication
+
+`ApiClient.get` shares one request between concurrent callers. A second `get`
+for a key already in flight receives the promise the first caller is waiting on.
+The key is the built URL plus the per-call headers, lowercased and sorted, so two
+users with different Bearer tokens never share a promise.
+
+- `post` and `delete` are **not** deduplicated. Only GET is idempotent.
+- The map entry is deleted when the promise settles. This shares concurrency; it
+  never caches a result. A GET issued after the first settles sends a new
+  request.
+- A shared rejection reaches every caller. Siblings fail together rather than
+  independently. That is an accepted consequence, pinned by a test.
+- The map is a **private per-instance field, by design**. Sharing therefore
+  depends on callers holding one client. A module-level or static map was
+  rejected: it would share in-flight state across independently configured
+  clients and break test isolation. In React, `YouVersionProvider` owns the one
+  client; see `packages/hooks/AGENTS.md`.
+
 ## CONVENTIONS
 - Schema-first: All types defined in schemas/*.ts using Zod
 - Zero React: Pure TypeScript, no React dependencies
