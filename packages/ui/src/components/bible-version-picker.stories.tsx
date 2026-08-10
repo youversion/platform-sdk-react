@@ -3,6 +3,9 @@ import { BibleVersionPicker, type RootProps } from './bible-version-picker';
 import { useState } from 'react';
 import { screen, userEvent, within, expect, waitFor } from 'storybook/test';
 import { http, HttpResponse, delay } from 'msw';
+import { getWorker } from 'msw-storybook-addon';
+import mockBibles from '../test/mock-data/bibles.json';
+import { globalHandlers } from '../test/mocks/handlers';
 import { BookOpenIcon } from './icons/book-open';
 import { Button } from './ui/button';
 import { RECENT_VERSIONS_KEY } from './bible-version-picker';
@@ -96,6 +99,89 @@ export const Loading: Story = {
         }),
       ],
     },
+  },
+};
+
+/**
+ * Paths of the picker's *list* requests, in order. `/v1/bibles/111` and
+ * `/v1/languages/en` look up one record each and are deliberately excluded.
+ */
+let listRequestPaths: string[] = [];
+
+/**
+ * The language and version lists live inside the popover, so the picker leaves
+ * them unfetched until the user opens it once (YPE-4735). A closed picker on a
+ * cold `BibleReader` mount used to cost four requests.
+ *
+ * The latch is sticky: closing the popover does not un-enable the hooks, because
+ * `useApiData` clears `data` when `enabled` goes true -> false and the list would
+ * blank out on every close.
+ */
+export const ListsDeferUntilOpened: Story = {
+  args: {
+    versionId: 111,
+    side: 'top',
+  },
+  tags: ['integration'],
+  parameters: {
+    msw: {
+      handlers: [
+        // Hold the list back long enough to see the panel's own loading state.
+        http.get('*/v1/bibles', async () => {
+          await delay(1000);
+          return HttpResponse.json(mockBibles.collections.default);
+        }),
+        ...globalHandlers,
+      ],
+    },
+  },
+  beforeEach: () => {
+    listRequestPaths = [];
+
+    const worker = getWorker();
+    const listener = ({ request }: { request: Request; requestId: string }) => {
+      const { pathname } = new URL(request.url);
+      if (pathname === '/v1/bibles' || pathname === '/v1/languages') {
+        listRequestPaths.push(pathname);
+      }
+    };
+
+    worker.events.on('request:start', listener);
+    return () => {
+      worker.events.removeListener('request:start', listener);
+    };
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // The trigger renders its abbreviation from its own single-version lookup,
+    // so it is readable without any list data.
+    const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
+    await expect(listRequestPaths).toEqual([]);
+
+    await userEvent.click(trigger);
+    const dialog = await screen.findByRole('dialog');
+    await expect(dialog).toBeInTheDocument();
+
+    // The delayed handler is still pending here. The panel has to show its
+    // spinner, not the empty state, while the first fetch is in flight.
+    await expect(screen.queryByTestId('version-list')).not.toBeInTheDocument();
+    await expect(screen.queryByText('No versions found')).not.toBeInTheDocument();
+
+    await screen.findByTestId('version-list', undefined, { timeout: 10_000 });
+    const requestsAfterOpen = listRequestPaths.length;
+    await expect(requestsAfterOpen).toBeGreaterThan(0);
+
+    // Close and reopen. The lists stay enabled, so the data survives and no
+    // second round of requests goes out.
+    await userEvent.keyboard('{Escape}');
+    await waitFor(async () => {
+      await expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    await userEvent.click(trigger);
+    await expect(await screen.findByTestId('version-list')).toBeInTheDocument();
+    await expect(listRequestPaths.length).toBe(requestsAfterOpen);
   },
 };
 

@@ -277,6 +277,19 @@ function Root({
   const [isPopoverOpenRaw, setIsPopoverOpenRaw] = useState(false);
   const isPopoverOpen = onVersionPickerPress ? false : isPopoverOpenRaw;
 
+  // The language and version lists are only ever read inside the popover, so
+  // they stay unfetched until the user opens it once. That takes four requests
+  // off the Bible Reader's cold mount (YPE-4735).
+  //
+  // The latch is sticky on purpose. `useApiData` clears `data` to `null` when
+  // `enabled` flips true -> false, so a latch that reset on close would blank
+  // the picker every time it closed.
+  const [hasOpenedPopover, setHasOpenedPopover] = useState(false);
+  // Host-driven mode never opens a popover, because `Root` returns below without
+  // one. The context it publishes still feeds the host's own composition, so the
+  // lists stay eager on that branch.
+  const listsEnabled = hasOpenedPopover || !!onVersionPickerPress;
+
   const resetLanguageSearch = useCallback(() => {
     setLanguageSearchQuery('');
   }, []);
@@ -290,6 +303,7 @@ function Root({
     (open: boolean) => {
       if (onVersionPickerPress) return;
       setIsPopoverOpenRaw(open);
+      if (open) setHasOpenedPopover(true);
       if (!open) {
         setSearchQuery('');
         setLanguageSearchQuery('');
@@ -308,21 +322,44 @@ function Root({
     });
   }, []);
 
-  const { languages, loading: languagesLoading } = useLanguages({
-    fields: ['id', 'display_names', 'speaking_population'],
+  const {
+    languages,
+    loading: languagesFetching,
+    error: languagesError,
+  } = useLanguages(
+    {
+      fields: ['id', 'display_names', 'speaking_population'],
+      page_size: '*',
+    },
+    { enabled: listsEnabled },
+  );
+
+  const {
+    versions,
+    loading: versionsFetching,
+    error: versionsError,
+  } = useVersions(selectedLanguageId, undefined, { enabled: listsEnabled });
+  const {
+    versions: versionsLanguageInfo,
+    loading: versionsLanguageInfoFetching,
+    error: versionsLanguageInfoError,
+  } = useVersions('*', undefined, {
+    enabled: listsEnabled,
+    fields: ['id', 'language_tag'],
     page_size: '*',
   });
 
-  const { versions, loading: versionsLoading } = useVersions(selectedLanguageId);
-  const { versions: versionsLanguageInfo, loading: versionsLanguageInfoLoading } = useVersions(
-    '*',
-    undefined,
-    {
-      fields: ['id', 'language_tag'],
-      page_size: '*',
-    },
-  );
-  const isLoadingLanguages = languagesLoading || versionsLanguageInfoLoading;
+  // `enabled` flips true on open, but the request does not start until the
+  // effect runs, so the raw `loading` flag is false for a frame. Treat "enabled
+  // with nothing fetched yet" as loading, or the list flashes its empty state
+  // before its spinner.
+  const isPending = (data: unknown, fetching: boolean, error: Error | null) =>
+    fetching || (listsEnabled && data === null && error === null);
+
+  const versionsLoading = isPending(versions, versionsFetching, versionsError);
+  const isLoadingLanguages =
+    isPending(languages, languagesFetching, languagesError) ||
+    isPending(versionsLanguageInfo, versionsLanguageInfoFetching, versionsLanguageInfoError);
   const filteredVersions = useFilteredVersions(
     versions?.data || [],
     searchQuery,
@@ -371,11 +408,14 @@ function Root({
   }, [languages, versionsLanguageInfo?.data, getLanguageDisplayName]);
 
   // pass zz to get the country languages based on IP Address
-  const { languages: countryLanguages } = useLanguages({
-    country: 'zz',
-    fields: ['id', 'display_names'],
-    page_size: '*',
-  });
+  const { languages: countryLanguages } = useLanguages(
+    {
+      country: 'zz',
+      fields: ['id', 'display_names'],
+      page_size: '*',
+    },
+    { enabled: listsEnabled },
+  );
 
   // Suggested languages = browser preference languages first, then API country
   // languages (via country:'zz' which detects country by IP). Both lists are

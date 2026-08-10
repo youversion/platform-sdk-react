@@ -1141,6 +1141,71 @@ export const PassageHangsThenRecovers: Story = {
   },
 };
 
+/** Every `/v1/` path the worker saw, in order. Reset by the story's `beforeEach`. */
+let mountRequestPaths: string[] = [];
+
+/**
+ * A cold `BibleReader` mount asks the API for three things: the version, its
+ * book list, and the passage. Nothing else.
+ *
+ * Before YPE-4735 the same mount issued nine requests. In-flight deduplication
+ * in `ApiClient` collapsed the duplicate `useBooks` and `useVersion` call sites,
+ * and the version picker now defers its language and version lists until the
+ * user opens the popover.
+ *
+ * This is the only place the count is observable, because it needs the real
+ * client, the real hooks, and MSW running together.
+ */
+export const MountRequestCount: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+  },
+  beforeEach: () => {
+    mountRequestPaths = [];
+
+    const worker = getWorker();
+    const listener = ({ request }: { request: Request; requestId: string }) => {
+      const { pathname } = new URL(request.url);
+      if (pathname.startsWith('/v1/')) mountRequestPaths.push(pathname);
+    };
+
+    worker.events.on('request:start', listener);
+    return () => {
+      worker.events.removeListener('request:start', listener);
+    };
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(
+      async () => {
+        const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(renderer).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    // A request the render did not wait on would still be in flight here, so
+    // give the mount a beat to finish before counting.
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    await expect([...mountRequestPaths].sort()).toEqual([
+      '/v1/bibles/111',
+      '/v1/bibles/111/books',
+      '/v1/bibles/111/passages/JHN.1',
+    ]);
+  },
+};
+
 export const ChapterChangeLoadingOverlay: Story = {
   tags: ['integration'],
   args: {
