@@ -17,6 +17,8 @@ export default defineConfig({
   entry: ['src/index.ts', 'src/browser.ts', 'src/server.ts'],
   format: ['cjs', 'esm'],
   dts: true,
+  // Keep Node-only peer out of published bundles; loaded at runtime on server.
+  external: ['jsdom'],
   env: {
     YVP_PUBLISH_BUILD: isPublishBuild ? 'true' : '',
   },

@@ -89,6 +89,12 @@
     font-family: var(--yv-font-sans);
   }
 
+  /* When content hasn't been JS-transformed, add spacing after verse labels via CSS.
+     Transformed HTML already has a \u00A0 inserted by addNbspToVerseLabels(). */
+  &:not(:has([data-yv-transformed])) .yv-vlbl::after {
+    content: "\00A0";
+  }
+
   /* \f - Footnote container (YouVersion wrapper) */
   & .yv-n {
     display: none;

@@ -2,6 +2,8 @@ const NON_BREAKING_SPACE = '\u00A0';
 
 const FOOTNOTE_KEY_ATTR = 'data-footnote-key';
 
+const TRANSFORMED_ATTR = 'data-yv-transformed';
+
 const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]'"'»›]/;
 
 const ALLOWED_TAGS = new Set([
@@ -46,6 +48,10 @@ const DROP_ENTIRELY_TAGS = new Set([
 ]);
 
 const ALLOWED_ATTRS = new Set(['class', 'v', 'colspan', 'rowspan', 'dir', 'usfm']);
+
+function topLevelElements(doc: Document): Element[] {
+  return doc.body ? Array.from(doc.body.children) : [];
+}
 
 function sanitizeBibleHtmlDocument(doc: Document): void {
   const root = doc.body ?? doc.documentElement;
@@ -339,6 +345,16 @@ export function transformBibleHtml(
   const doc = options.parseHtml(html);
 
   sanitizeBibleHtmlDocument(doc);
+
+  // Only trust the marker when every top-level element carries it. A nested or
+  // partially-marked fragment (transformed HTML concatenated with raw HTML, or
+  // an untrusted data-yv-transformed preserved by the data-* allowlist) must
+  // still run verse wrapping and footnote extraction.
+  const roots = topLevelElements(doc);
+  if (roots.length > 0 && roots.every((el) => el.hasAttribute(TRANSFORMED_ATTR))) {
+    return { html: options.serializeHtml(doc) };
+  }
+
   wrapVerseContent(doc);
   assignFootnoteKeys(doc);
 
@@ -347,6 +363,12 @@ export function transformBibleHtml(
 
   addNbspToVerseLabels(doc);
   fixIrregularTables(doc);
+
+  // Mark every top-level element so a later re-transform can tell the whole
+  // fragment came from here, not just its first sibling.
+  for (const el of topLevelElements(doc)) {
+    el.setAttribute(TRANSFORMED_ATTR, '');
+  }
 
   const transformedHtml = options.serializeHtml(doc);
   return { html: transformedHtml };

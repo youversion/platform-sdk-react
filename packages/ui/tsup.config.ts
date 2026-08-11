@@ -20,8 +20,9 @@ export default defineConfig({
   // building here, and why the env var is scoped to that command alone. See
   // packages/core/tsup.config.ts.
   noExternal: ['@youversion/platform-core'],
-  // Consumers provide these:
-  external: ['react', 'react/jsx-runtime', 'react-dom'],
+  // Consumers provide these. jsdom is Node-only (optional peer of platform-core);
+  // never inline it into the UI browser bundle.
+  external: ['react', 'react/jsx-runtime', 'react-dom', 'jsdom'],
   dts: false, // types come from `tsc` + API Extractor
   // Embed built Tailwind CSS as a global constant for runtime injection
   // Users don't need to manually import the CSS file
