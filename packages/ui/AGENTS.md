@@ -21,7 +21,12 @@ export — treat those two as public API and breaking-change territory.
 ✅ Do: Use semantic theme tokens (`yv:text-muted-foreground`, `yv:bg-destructive`) instead of arbitrary colors
 
 ❌ Don't: Make raw network requests from UI components
-❌ Don't: Import from `@youversion/platform-core` directly (except re-exports in index.ts)
+❌ Don't: Re-implement core logic here — import types and runtime-agnostic helpers from
+   `@youversion/platform-core` (e.g. `Highlight`, `getSessionStorage`, `transformBibleHtml`)
+   rather than hand-rolling a UI-local copy. Data fetching still goes through
+   `@youversion/platform-react-hooks`, never a core API client called from a component.
+   Note that `src/types.ts` star-exports core, so anything in core's `"."` entry is already
+   public API of this package — adding a core export is a public-surface change here too.
 ❌ Don't: Add global CSS files; all styling goes through Tailwind build and `<YvStyles />`
 ❌ Don't: Use unprefixed Tailwind classes (causes collisions in consumer apps)
 
