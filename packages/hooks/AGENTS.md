@@ -54,6 +54,14 @@ signature.
 
 ## TESTING
 
-- Mock object factories live in `__tests__/mocks`. This package does **not** use
-  MSW — hooks delegate HTTP to core, so core owns the request mocking.
-- Wrap hooks in the real provider in tests so they see the same context as in the app.
+Follow root `AGENTS.md` Testing (Kent-style musts). This package’s flavors:
+
+| Flavor | Use when | Avoid when |
+| --- | --- | --- |
+| Pure unit | Utilities (`extractTextFromHTML`, etc.) | Needs React providers |
+| Hook + provider + factories | Hook state, cache, auth, refetch against stubbed core clients | Re-testing core HTTP/Zod parsing |
+
+- Run: `pnpm --filter @youversion/platform-react-hooks test`
+- Framework: Vitest (jsdom) + React Testing Library
+- Mock object factories live in `__tests__/mocks`. This package does **not** use MSW — core owns request mocking
+- Wrap hooks in the real provider so they see the same context as in the app; build ready-to-run wrappers via factories, not `beforeEach`
