@@ -334,7 +334,14 @@ export class YouVersionAPIUsers {
       return existingExchange;
     }
 
-    const exchange = this.exchangeCodeForTokens(code, codeVerifier, redirectUri, state, urlParams);
+    const exchange = this.exchangeCodeForTokens(
+      code,
+      codeVerifier,
+      redirectUri,
+      state,
+      urlParams,
+      storage,
+    );
     inFlightCodeExchanges.set(code, exchange);
     return exchange;
   }
@@ -344,6 +351,12 @@ export class YouVersionAPIUsers {
    * resulting session/profile/grants, and returns the sign-in result. Callers
    * must dedupe by `code` (see {@link inFlightCodeExchanges}); on failure the
    * partial session is cleared and the error rethrown.
+   *
+   * `storage` is the store the caller already resolved via
+   * {@link requireLocalStorage}, threaded in rather than re-resolved: the
+   * handoff values read here were written to that store, and one policy for
+   * the whole callback path keeps a mid-flow change in the global from
+   * silently reading somewhere else (or nowhere).
    */
   private static async exchangeCodeForTokens(
     code: string,
@@ -351,8 +364,8 @@ export class YouVersionAPIUsers {
     redirectUri: string,
     state: string | null,
     urlParams: URLSearchParams,
+    storage: Storage,
   ): Promise<SignInWithYouVersionResult> {
-    const storage = getLocalStorage();
     try {
       // Exchange authorization code for tokens
       const tokenRequest = SignInWithYouVersionPKCEAuthorizationRequestBuilder.tokenURLRequest(
