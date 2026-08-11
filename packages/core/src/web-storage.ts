@@ -42,30 +42,29 @@ function resolveStorage(read: () => Storage | undefined | null): Storage | null 
 }
 
 /**
- * Returns a usable `localStorage` implementation, or `null` when none exists.
+ * Returns a usable store for the named Web Storage area, or `null`.
  *
  * `window` and `globalThis` are the same object in browsers and jsdom, but they
  * can diverge where a DOM is grafted onto a separate `window` (SSR shims, some
- * test harnesses) — there `window.localStorage` is the real store while the
- * global is Node's undefined-valued experimental accessor. Check `window` first
- * so those environments resolve to the store that actually works.
+ * test harnesses) — there `window[name]` is the real store while the global is
+ * Node's undefined-valued experimental accessor. Check `window` first so those
+ * environments resolve to the store that actually works.
  */
-export function getLocalStorage(): Storage | null {
+function getWebStorage(name: 'localStorage' | 'sessionStorage'): Storage | null {
   return (
-    resolveStorage(() => (typeof window !== 'undefined' ? window.localStorage : null)) ??
-    resolveStorage(() => globalThis.localStorage)
+    resolveStorage(() => (typeof window !== 'undefined' ? window[name] : null)) ??
+    resolveStorage(() => globalThis[name])
   );
 }
 
-/**
- * Returns a usable `sessionStorage` implementation, or `null` when none exists.
- * See {@link getLocalStorage} for why `window` is checked before `globalThis`.
- */
+/** Returns a usable `localStorage` implementation, or `null` when none exists. */
+export function getLocalStorage(): Storage | null {
+  return getWebStorage('localStorage');
+}
+
+/** Returns a usable `sessionStorage` implementation, or `null` when none exists. */
 export function getSessionStorage(): Storage | null {
-  return (
-    resolveStorage(() => (typeof window !== 'undefined' ? window.sessionStorage : null)) ??
-    resolveStorage(() => globalThis.sessionStorage)
-  );
+  return getWebStorage('sessionStorage');
 }
 
 /**
