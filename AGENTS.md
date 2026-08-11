@@ -92,3 +92,18 @@ Legacy tooling labels (`INTEGRATION_TESTS`, Storybook `tags: ['integration']`, `
 - `packages/core/AGENTS.md` – API clients, schemas, auth
 - `packages/hooks/AGENTS.md` – React hooks, providers
 - `packages/ui/AGENTS.md` – UI components, styling, build order
+
+## Learned User Preferences
+
+- When posting PR review comments on Cam's behalf, be concise, use https://conventionalcomments.org/, and attribute as Cursor review sent on behalf of Cam; confirm before posting when the action is unclear.
+- Prefer aligning React SDK auth/UI flows, logos, and copy with the Swift and Kotlin sister SDKs when those already define the pattern.
+- When the user shares a recording or insists on observed product behavior, re-investigate deeply rather than asserting they are wrong.
+- For local auth, highlights, and Bible demos, use `examples/vite-react` and load env vars from the monorepo root (not worktree-local envs).
+- Prefer Kent C. Dodds / kody-style testing guidance for new and edited tests (lightest falsifying flavor, fewer longer workflows); do not mass-rewrite untouched suites.
+
+## Learned Workspace Facts
+
+- Root and package `CLAUDE.md` files are symlinks to the matching `AGENTS.md` — edit `AGENTS.md` only.
+- Bible chapter HTML from the API is YVDOM; consumers need transformed HTML before display — raw YVDOM (milestone verse markers, cross-paragraph verses, mixed footnotes) is not end-user-ready.
+- Sister repos `platform-sdk-swift` and `platform-sdk-kotlin` are cross-platform references for Sign-In UI, logos, and i18n strings.
+- Highlight auth UX: unsigned-in highlight opens Sign In with a highlights reason (permission included in that flow); a separate permission dialog is only for already-signed-in users missing scope — avoid sign-in then an immediate second dialog.
