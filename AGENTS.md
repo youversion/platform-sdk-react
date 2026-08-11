@@ -95,7 +95,7 @@ Legacy tooling labels (`INTEGRATION_TESTS`, Storybook `tags: ['integration']`, `
 
 ## Learned User Preferences
 
-- When posting PR review comments on Cam's behalf, be concise, use https://conventionalcomments.org/, and attribute as Cursor review sent on behalf of Cam; confirm before posting when the action is unclear.
+- When posting PR review comments on the author's behalf, be concise, use https://conventionalcomments.org/, and attribute as a Cursor review sent on their behalf; confirm before posting when the action is unclear.
 - Prefer aligning React SDK auth/UI flows, logos, and copy with the Swift and Kotlin sister SDKs when those already define the pattern.
 - When the user shares a recording or insists on observed product behavior, re-investigate deeply rather than asserting they are wrong.
 - For local auth, highlights, and Bible demos, use `examples/vite-react` and load env vars from the monorepo root (not worktree-local envs).

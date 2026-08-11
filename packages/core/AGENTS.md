@@ -116,7 +116,7 @@ See `docs/adding-a-core-endpoint.md`.
 
 ## TESTING
 
-Follow root `AGENTS.md` Testing (Kent-style musts). This package’s flavors:
+Follow root `AGENTS.md` Testing. This package’s flavors:
 
 | Flavor | Use when | Avoid when |
 | --- | --- | --- |
