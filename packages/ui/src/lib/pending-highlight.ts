@@ -15,6 +15,8 @@
  * it is a short-lived intent record, discarded on decline, cancel, failure, or
  * successful apply.
  */
+import { getSessionStorage } from '@youversion/platform-core';
+
 export type PendingHighlight = {
   /** Verse numbers to highlight. */
   verses: number[];
@@ -34,15 +36,6 @@ const STORAGE_KEY = 'youversion-platform:pending-highlight';
 
 /** Pending entries older than this on read are treated as expired. */
 export const PENDING_HIGHLIGHT_TTL_MS = 10 * 60 * 1000;
-
-function getSessionStorage(): Storage | null {
-  try {
-    return typeof sessionStorage === 'undefined' ? null : sessionStorage;
-  } catch {
-    // Access can throw in sandboxed/blocked-storage contexts.
-    return null;
-  }
-}
 
 function isPendingHighlight(value: unknown): value is PendingHighlight {
   if (typeof value !== 'object' || value === null) return false;

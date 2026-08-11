@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
-import type { BibleVersion, Language } from '@youversion/platform-core';
+import { getLocalStorage, type BibleVersion, type Language } from '@youversion/platform-core';
 import {
   useFilteredVersions,
   useLanguage,
@@ -45,9 +45,8 @@ type RecentVersion = Pick<
 >;
 
 function getRecentVersions(): RecentVersion[] {
-  if (typeof window === 'undefined') return [];
   try {
-    const stored = localStorage.getItem(RECENT_VERSIONS_KEY);
+    const stored = getLocalStorage()?.getItem(RECENT_VERSIONS_KEY);
     const recentVersions: RecentVersion[] = stored ? (JSON.parse(stored) as RecentVersion[]) : [];
     return recentVersions;
   } catch {
@@ -56,8 +55,7 @@ function getRecentVersions(): RecentVersion[] {
 }
 
 function saveRecentVersions(versions: RecentVersion[]): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(RECENT_VERSIONS_KEY, JSON.stringify(versions));
+  getLocalStorage()?.setItem(RECENT_VERSIONS_KEY, JSON.stringify(versions));
 }
 
 type LanguageListItem = Pick<Language, 'id' | 'display_names'> & {

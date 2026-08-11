@@ -4,6 +4,21 @@ import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfigurati
 import { SignInWithYouVersionPKCEAuthorizationRequestBuilder } from './SignInWithYouVersionPKCE';
 import { SignInWithYouVersionResult } from './SignInWithYouVersionResult';
 import { parseGrantedPermissions, parsePermissionList } from './permissions';
+import { getLocalStorage } from './web-storage';
+
+/**
+ * The OAuth handoff has to survive a full-page redirect, so it cannot fall back
+ * to memory the way the fail-soft accessors do.
+ */
+const requireLocalStorage = (): Storage => {
+  const storage = getLocalStorage();
+  if (!storage) {
+    throw new Error(
+      'Sign In with YouVersion requires localStorage, which is not available in this environment',
+    );
+  }
+  return storage;
+};
 
 /** Stash key for `granted_permissions` seen on the pre-code OAuth hop. */
 const PENDING_GRANTED_PERMISSIONS_KEY = 'youversion-auth-pending-granted-permissions';
@@ -71,7 +86,7 @@ const stashPendingGrantedPermissions = (state: string, permissions: string[]): v
     state,
     permissions,
   };
-  localStorage.setItem(PENDING_GRANTED_PERMISSIONS_KEY, JSON.stringify(payload));
+  getLocalStorage()?.setItem(PENDING_GRANTED_PERMISSIONS_KEY, JSON.stringify(payload));
 };
 
 /**
@@ -79,8 +94,9 @@ const stashPendingGrantedPermissions = (state: string, permissions: string[]): v
  * Mismatched or legacy unbound values are discarded (fail closed).
  */
 const readPendingGrantedPermissions = (state: string): string[] => {
-  const raw = localStorage.getItem(PENDING_GRANTED_PERMISSIONS_KEY);
-  localStorage.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
+  const storage = getLocalStorage();
+  const raw = storage?.getItem(PENDING_GRANTED_PERMISSIONS_KEY);
+  storage?.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
   if (!raw) return [];
 
   try {
@@ -105,7 +121,7 @@ const stashRequestedPermissions = (state: string, permissions: string[]): void =
     state,
     permissions,
   };
-  localStorage.setItem(REQUESTED_PERMISSIONS_KEY, JSON.stringify(payload));
+  getLocalStorage()?.setItem(REQUESTED_PERMISSIONS_KEY, JSON.stringify(payload));
 };
 
 /**
@@ -114,8 +130,9 @@ const stashRequestedPermissions = (state: string, permissions: string[]): void =
  * {@link readPendingGrantedPermissions}.
  */
 const readRequestedPermissions = (state: string): string[] => {
-  const raw = localStorage.getItem(REQUESTED_PERMISSIONS_KEY);
-  localStorage.removeItem(REQUESTED_PERMISSIONS_KEY);
+  const storage = getLocalStorage();
+  const raw = storage?.getItem(REQUESTED_PERMISSIONS_KEY);
+  storage?.removeItem(REQUESTED_PERMISSIONS_KEY);
   if (!raw) return [];
 
   try {
@@ -157,6 +174,8 @@ export class YouVersionAPIUsers {
       throw new Error('YouVersionPlatformConfiguration.appKey must be set before calling signIn');
     }
 
+    const storage = requireLocalStorage();
+
     const authorizationRequest = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
       appKey,
       new URL(redirectURL),
@@ -165,21 +184,18 @@ export class YouVersionAPIUsers {
     );
 
     // Store auth data for callback handler
-    localStorage.setItem(
-      'youversion-auth-code-verifier',
-      authorizationRequest.parameters.codeVerifier,
-    );
+    storage.setItem('youversion-auth-code-verifier', authorizationRequest.parameters.codeVerifier);
     const redirectUrlString = redirectURL.toString().endsWith('/')
       ? redirectURL.toString().slice(0, -1)
       : redirectURL.toString();
-    localStorage.setItem('youversion-auth-redirect-uri', redirectUrlString);
-    localStorage.setItem('youversion-auth-state', authorizationRequest.parameters.state);
+    storage.setItem('youversion-auth-redirect-uri', redirectUrlString);
+    storage.setItem('youversion-auth-state', authorizationRequest.parameters.state);
     // Clear any stash left by a prior abandoned flow (it's only ever produced later,
     // during the callback pre-code hop, and never needs to survive a new signIn).
     // Otherwise a previous user's abandoned grants could leak into this flow.
-    localStorage.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
+    storage.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
     // Same hygiene for a stale requested-permissions stash from an abandoned flow.
-    localStorage.removeItem(REQUESTED_PERMISSIONS_KEY);
+    storage.removeItem(REQUESTED_PERMISSIONS_KEY);
     // Same hygiene for an abandoned just-in-time data-exchange initiator.
     YouVersionPlatformConfiguration.clearDataExchangeInitiator();
 
@@ -222,8 +238,10 @@ export class YouVersionAPIUsers {
       throw new Error(`OAuth authentication failed: ${errorDescription}`);
     }
 
+    const storage = requireLocalStorage();
+
     // Verify state parameter
-    const storedState = localStorage.getItem('youversion-auth-state');
+    const storedState = storage.getItem('youversion-auth-state');
     if (state !== storedState) {
       throw new Error('Invalid state parameter - possible CSRF attack');
     }
@@ -243,8 +261,8 @@ export class YouVersionAPIUsers {
     }
 
     // Get stored auth data
-    const codeVerifier = localStorage.getItem('youversion-auth-code-verifier');
-    const redirectUri = localStorage.getItem('youversion-auth-redirect-uri');
+    const codeVerifier = storage.getItem('youversion-auth-code-verifier');
+    const redirectUri = storage.getItem('youversion-auth-redirect-uri');
 
     if (!code || !codeVerifier || !redirectUri) {
       throw new Error('Missing required authentication parameters');
@@ -278,6 +296,7 @@ export class YouVersionAPIUsers {
     state: string | null,
     urlParams: URLSearchParams,
   ): Promise<SignInWithYouVersionResult> {
+    const storage = getLocalStorage();
     try {
       // Exchange authorization code for tokens
       const tokenRequest = SignInWithYouVersionPKCEAuthorizationRequestBuilder.tokenURLRequest(
@@ -358,11 +377,11 @@ export class YouVersionAPIUsers {
       }
 
       // Clean up localStorage
-      localStorage.removeItem('youversion-auth-code-verifier');
-      localStorage.removeItem('youversion-auth-redirect-uri');
-      localStorage.removeItem('youversion-auth-state');
-      localStorage.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
-      localStorage.removeItem(REQUESTED_PERMISSIONS_KEY);
+      storage?.removeItem('youversion-auth-code-verifier');
+      storage?.removeItem('youversion-auth-redirect-uri');
+      storage?.removeItem('youversion-auth-state');
+      storage?.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
+      storage?.removeItem(REQUESTED_PERMISSIONS_KEY);
 
       // Clean up URL
       const cleanUrl = new URL(window.location.href);
@@ -372,11 +391,11 @@ export class YouVersionAPIUsers {
       return result;
     } catch (error) {
       YouVersionPlatformConfiguration.clearAuthTokens();
-      localStorage.removeItem('youversion-auth-code-verifier');
-      localStorage.removeItem('youversion-auth-redirect-uri');
-      localStorage.removeItem('youversion-auth-state');
-      localStorage.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
-      localStorage.removeItem(REQUESTED_PERMISSIONS_KEY);
+      storage?.removeItem('youversion-auth-code-verifier');
+      storage?.removeItem('youversion-auth-redirect-uri');
+      storage?.removeItem('youversion-auth-state');
+      storage?.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
+      storage?.removeItem(REQUESTED_PERMISSIONS_KEY);
       throw error;
     }
   }

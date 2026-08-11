@@ -151,6 +151,17 @@ describe('YouVersionAPIUsers', () => {
       );
     });
 
+    it('should report the missing capability when localStorage is unusable', async () => {
+      // React Native defines `window` but no Web Storage, so the PKCE handoff has
+      // nowhere to stash the verifier — fail loudly rather than with a TypeError.
+      stubSignInCrypto();
+      vi.stubGlobal('localStorage', undefined);
+
+      await expect(YouVersionAPIUsers.signIn('https://example.com/callback')).rejects.toThrow(
+        'Sign In with YouVersion requires localStorage, which is not available in this environment',
+      );
+    });
+
     it('should create authorization request and redirect on successful signIn', async () => {
       stubSignInCrypto();
 

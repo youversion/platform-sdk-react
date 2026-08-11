@@ -31,3 +31,4 @@ export {
   type TransformedBibleHtml,
 } from './bible-html-transformer';
 export * from './version';
+export { getLocalStorage, getSessionStorage } from './web-storage';

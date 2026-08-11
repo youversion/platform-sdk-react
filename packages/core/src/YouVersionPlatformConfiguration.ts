@@ -1,4 +1,5 @@
 import { YouVersionUserInfoJSONSchema, type YouVersionUserInfoJSON } from './schemas/user-info';
+import { getLocalStorage } from './web-storage';
 
 /**
  * Security Note: Tokens and the decoded user profile are stored in localStorage
@@ -19,11 +20,15 @@ export class YouVersionPlatformConfiguration {
   private static _appName: string | undefined = undefined;
 
   private static getOrSetInstallationId(): string {
-    if (typeof window === 'undefined') {
+    const storage = getLocalStorage();
+    if (!storage) {
+      // An id that can't be persisted isn't an installation id — it would be a
+      // fresh value per process, shared by every user of an SSR server. Callers
+      // treat '' as absent and omit the header.
       return '';
     }
 
-    const existingId = localStorage.getItem('x-yvp-installation-id');
+    const existingId = storage.getItem('x-yvp-installation-id');
     if (existingId) {
       return existingId;
     }
@@ -32,7 +37,7 @@ export class YouVersionPlatformConfiguration {
       typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
         : `yvp-${new Date().toISOString()}-${Math.random().toString(36).slice(2, 10)}`;
-    localStorage.setItem('x-yvp-installation-id', newId);
+    storage.setItem('x-yvp-installation-id', newId);
     return newId;
   }
 
@@ -41,22 +46,25 @@ export class YouVersionPlatformConfiguration {
     refreshToken: string | null,
     expiryDate: Date | null,
   ): void {
+    const storage = getLocalStorage();
+    if (!storage) return;
+
     if (accessToken !== null) {
-      localStorage.setItem('accessToken', accessToken);
+      storage.setItem('accessToken', accessToken);
     } else {
-      localStorage.removeItem('accessToken');
+      storage.removeItem('accessToken');
     }
 
     if (refreshToken !== null) {
-      localStorage.setItem('refreshToken', refreshToken);
+      storage.setItem('refreshToken', refreshToken);
     } else {
-      localStorage.removeItem('refreshToken');
+      storage.removeItem('refreshToken');
     }
 
     if (expiryDate !== null) {
-      localStorage.setItem('expiryDate', expiryDate.toISOString());
+      storage.setItem('expiryDate', expiryDate.toISOString());
     } else {
-      localStorage.removeItem('expiryDate');
+      storage.removeItem('expiryDate');
     }
   }
 
@@ -65,10 +73,13 @@ export class YouVersionPlatformConfiguration {
    * Pass `null` to remove any stored profile.
    */
   public static saveUserInfo(userInfo: YouVersionUserInfoJSON | null): void {
+    const storage = getLocalStorage();
+    if (!storage) return;
+
     if (userInfo !== null) {
-      localStorage.setItem('userInfo', JSON.stringify(userInfo));
+      storage.setItem('userInfo', JSON.stringify(userInfo));
     } else {
-      localStorage.removeItem('userInfo');
+      storage.removeItem('userInfo');
     }
   }
 
@@ -103,8 +114,7 @@ export class YouVersionPlatformConfiguration {
    * malformed, or in the legacy bare-array format (which is treated as absent).
    */
   private static readStoredGrants(): { userId: string; permissions: string[] } | null {
-    if (typeof localStorage === 'undefined') return null;
-    const raw = localStorage.getItem(this.grantedPermissionsKey);
+    const raw = getLocalStorage()?.getItem(this.grantedPermissionsKey);
     if (!raw) return null;
     try {
       const parsed: unknown = JSON.parse(raw);
@@ -126,7 +136,7 @@ export class YouVersionPlatformConfiguration {
   }
 
   private static writeStoredGrants(userId: string, permissions: string[]): void {
-    localStorage.setItem(this.grantedPermissionsKey, JSON.stringify({ userId, permissions }));
+    getLocalStorage()?.setItem(this.grantedPermissionsKey, JSON.stringify({ userId, permissions }));
   }
 
   public static get grantedPermissions(): string[] {
@@ -143,7 +153,6 @@ export class YouVersionPlatformConfiguration {
    * No-ops when signed out, since grants must be scoped to a user.
    */
   public static saveGrantedPermissions(permissions: string[]): void {
-    if (typeof localStorage === 'undefined') return;
     const userId = this.currentUserId;
     if (!userId) return;
     const merged = new Set([...this.grantedPermissions, ...permissions]);
@@ -152,7 +161,6 @@ export class YouVersionPlatformConfiguration {
 
   /** Drops a single permission from the cache — used to honor a server 401/403. */
   public static removeGrantedPermission(permission: string): void {
-    if (typeof localStorage === 'undefined') return;
     const userId = this.currentUserId;
     if (!userId) return;
     const next = this.grantedPermissions.filter((entry) => entry !== permission);
@@ -160,8 +168,7 @@ export class YouVersionPlatformConfiguration {
   }
 
   public static clearGrantedPermissions(): void {
-    if (typeof localStorage === 'undefined') return;
-    localStorage.removeItem(this.grantedPermissionsKey);
+    getLocalStorage()?.removeItem(this.grantedPermissionsKey);
   }
 
   /**
@@ -183,21 +190,18 @@ export class YouVersionPlatformConfiguration {
    * return is treated as untrusted by {@link dataExchangeInitiator}'s consumer.
    */
   public static saveDataExchangeInitiator(): void {
-    if (typeof localStorage === 'undefined') return;
     const userId = this.currentUserId;
     if (!userId) return;
-    localStorage.setItem(this.dataExchangeInitiatorKey, userId);
+    getLocalStorage()?.setItem(this.dataExchangeInitiatorKey, userId);
   }
 
   /** The initiating user's id for the pending data exchange, or `null`. */
   public static get dataExchangeInitiator(): string | null {
-    if (typeof localStorage === 'undefined') return null;
-    return localStorage.getItem(this.dataExchangeInitiatorKey);
+    return getLocalStorage()?.getItem(this.dataExchangeInitiatorKey) ?? null;
   }
 
   public static clearDataExchangeInitiator(): void {
-    if (typeof localStorage === 'undefined') return;
-    localStorage.removeItem(this.dataExchangeInitiatorKey);
+    getLocalStorage()?.removeItem(this.dataExchangeInitiatorKey);
   }
 
   /** Optimistic check against the permission cache. Server 401/403 still wins. */
@@ -206,11 +210,11 @@ export class YouVersionPlatformConfiguration {
   }
 
   public static get accessToken(): string | null {
-    return localStorage.getItem('accessToken');
+    return getLocalStorage()?.getItem('accessToken') ?? null;
   }
 
   public static get refreshToken(): string | null {
-    return localStorage.getItem('refreshToken');
+    return getLocalStorage()?.getItem('refreshToken') ?? null;
   }
 
   /**
@@ -218,7 +222,7 @@ export class YouVersionPlatformConfiguration {
    * Returns `null` when nothing is stored or the stored value is malformed.
    */
   public static get storedUserInfo(): YouVersionUserInfoJSON | null {
-    const raw = localStorage.getItem('userInfo');
+    const raw = getLocalStorage()?.getItem('userInfo');
     if (!raw) {
       return null;
     }
@@ -233,7 +237,7 @@ export class YouVersionPlatformConfiguration {
   }
 
   public static get tokenExpiryDate(): Date | null {
-    const dateString = localStorage.getItem('expiryDate');
+    const dateString = getLocalStorage()?.getItem('expiryDate');
     return dateString ? new Date(dateString) : null;
   }
 
