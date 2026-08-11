@@ -51,8 +51,9 @@ Hooks use a custom React Query-like pattern via `useApiData`:
 
 - Retries a timeout, a transport failure, a 429, and a 5xx.
 - Does not retry a 401, a 403, a 404, or a `ZodError`.
-- Budget: at most `DEFAULT_MAX_RETRIES` (2) extra attempts **and** a
-  `DEFAULT_RETRY_BUDGET_MS` (20 seconds) wall clock, whichever runs out first.
+- Budget: at most `DEFAULT_MAX_RETRIES` (2) extra attempts **and** no new
+  attempt once `DEFAULT_RETRY_BUDGET_MS` (20 seconds) has elapsed, whichever
+  runs out first.
 - Backoff is jittered (`Math.random() * base`, base 500 then 1500), so a fanout
   of siblings that failed together does not retry in lockstep.
 - `loading` stays `true` for the whole chain. It settles on success or on final
@@ -67,7 +68,17 @@ Hooks use a custom React Query-like pattern via `useApiData`:
 The 20-second budget is **fixed on purpose**. It is not derived from the
 provider `timeout`. An integrator who sets `timeout` at or above 20000 gets
 single-shot behavior, which is what the SDK did before retry existed, so nothing
-regresses. Do not couple the two values.
+regresses. Do not couple the two values — deriving the budget from the timeout
+would also suppress the retry at the default 10000, which is the case the chain
+exists for.
+
+The budget gates the **start** of an attempt, not its completion. A request
+already in flight is never cut short, so a chain can finish after the budget:
+worst case `budget + one request timeout + one backoff`. A 15000 timeout can
+therefore hold `loading` true for roughly 30 seconds. Raising `timeout` above
+the default trades a longer worst-case spinner for more patience per request;
+that is the integrator's call, so the budget stays a start-gate rather than a
+hard deadline that would need an `AbortSignal` to enforce.
 
 ### One `ApiClient` per `YouVersionProvider`
 

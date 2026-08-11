@@ -14,9 +14,11 @@ export type UseApiDataOptions = {
    * Retry a failed request automatically. Defaults to `true`.
    *
    * A retryable failure (timeout, transport failure, 429, 5xx) gets up to
-   * {@link DEFAULT_MAX_RETRIES} extra attempts within a
-   * {@link DEFAULT_RETRY_BUDGET_MS} wall clock, whichever runs out first.
-   * `loading` stays `true` for the whole chain.
+   * {@link DEFAULT_MAX_RETRIES} extra attempts, and no attempt starts once
+   * {@link DEFAULT_RETRY_BUDGET_MS} has elapsed — whichever runs out first.
+   * The budget gates the *start* of an attempt, so a request already in flight
+   * still runs to its own timeout; see {@link DEFAULT_RETRY_BUDGET_MS} for the
+   * worst case. `loading` stays `true` for the whole chain.
    *
    * Set `false` for a poll or a fire-and-forget read that owns its own
    * cadence and should fail fast instead.
@@ -93,6 +95,9 @@ export function useApiData<T>(
         .catch((err: unknown) => {
           if (!isCurrent()) return;
 
+          // Gates the *start* of the next attempt. An attempt already running
+          // is never cut short, so the chain can outlast the budget by one
+          // request timeout. See DEFAULT_RETRY_BUDGET_MS.
           const budgetLeft = Date.now() - startedAt < DEFAULT_RETRY_BUDGET_MS;
           const attemptsLeft = attemptIndex < DEFAULT_MAX_RETRIES;
 

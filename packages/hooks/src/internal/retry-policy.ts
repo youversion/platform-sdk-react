@@ -6,17 +6,25 @@ import { getHttpStatus } from '@youversion/platform-core';
 export const DEFAULT_MAX_RETRIES = 2;
 
 /**
- * Wall-clock ceiling for a whole retry chain, measured from the first attempt.
+ * Wall-clock cutoff for *starting* a new attempt, measured from the first one.
  *
- * The attempt cap and this budget bound two different failure shapes. A
+ * Read the guarantee precisely: no attempt begins after the budget is spent. An
+ * attempt already in flight is not cancelled, so the chain can finish later than
+ * the budget. The worst case is `budget + one request timeout + one backoff`.
+ * With the default 10s timeout that is roughly 20s; an integrator who sets a
+ * 15s timeout can see roughly 30s of `loading` before the final error.
+ *
+ * The attempt cap and this cutoff bound two different failure shapes. A
  * transport failure at 200ms exhausts the attempt cap long before the clock. A
- * request that times out at 10s exhausts the clock after one retry. Whichever
+ * request that times out at 10s spends the clock after one retry. Whichever
  * runs out first ends the chain.
  *
  * The figure is fixed on purpose. It is not derived from the configured request
- * timeout, so an integrator who sets a timeout above 20 seconds gets
+ * timeout, so an integrator who sets a timeout at or above 20 seconds gets
  * single-shot behavior — which is exactly what the SDK did before retry
- * existed, so nothing regresses.
+ * existed, so nothing regresses. Deriving it from the timeout would also
+ * suppress the retry at the default 10s, which is the case the chain exists
+ * for; the two values stay uncoupled.
  */
 export const DEFAULT_RETRY_BUDGET_MS = 20_000;
 
