@@ -106,21 +106,36 @@ const clearOAuthHandoff = (storage: Storage | null): void => {
   removeStorageItem(storage, REQUESTED_PERMISSIONS_KEY);
 };
 
-/** Persist early grants bound to the OAuth `state` that produced them. */
-const stashPendingGrantedPermissions = (state: string, permissions: string[]): void => {
+/**
+ * Persist early grants bound to the OAuth `state` that produced them.
+ *
+ * Takes the store the caller already resolved rather than re-resolving: the
+ * callback path holds a {@link requireLocalStorage} handle, and re-reading the
+ * global here could silently write somewhere else (or nowhere).
+ *
+ * This one write is deliberately soft. It happens mid-callback, after signIn
+ * already proved the store accepts writes, and losing it costs only the grant
+ * echo — the permission cache degrades to "not granted" and the permission
+ * machine re-prompts. Failing the callback outright would turn a sign-in that
+ * can still complete into a hard error, which is strictly worse.
+ */
+const stashPendingGrantedPermissions = (
+  storage: Storage,
+  state: string,
+  permissions: string[],
+): void => {
   const payload: PendingGrantedPermissionsStash = {
     state,
     permissions,
   };
-  setStorageItem(getLocalStorage(), PENDING_GRANTED_PERMISSIONS_KEY, JSON.stringify(payload));
+  setStorageItem(storage, PENDING_GRANTED_PERMISSIONS_KEY, JSON.stringify(payload));
 };
 
 /**
  * Read early grants only when they were stashed for this OAuth `state`.
  * Mismatched or legacy unbound values are discarded (fail closed).
  */
-const readPendingGrantedPermissions = (state: string): string[] => {
-  const storage = getLocalStorage();
+const readPendingGrantedPermissions = (storage: Storage | null, state: string): string[] => {
   const raw = storage?.getItem(PENDING_GRANTED_PERMISSIONS_KEY);
   removeStorageItem(storage, PENDING_GRANTED_PERMISSIONS_KEY);
   if (!raw) return [];
@@ -141,13 +156,25 @@ const readPendingGrantedPermissions = (state: string): string[] => {
   return [];
 };
 
-/** Persist the requested data-exchange permissions bound to the OAuth `state`. */
-const stashRequestedPermissions = (state: string, permissions: string[]): void => {
+/**
+ * Persist the requested data-exchange permissions bound to the OAuth `state`.
+ *
+ * Written with {@link persistOrThrow} into the caller's resolved store: this is
+ * part of the pre-redirect handoff, and since the web flow echoes no grants, it
+ * is the ONLY evidence the callback has that these permissions were requested.
+ * Losing it would surface after the redirect as a permission re-prompt the user
+ * just consented to, so fail here, before we navigate away.
+ */
+const stashRequestedPermissions = (
+  storage: Storage,
+  state: string,
+  permissions: string[],
+): void => {
   const payload: RequestedPermissionsStash = {
     state,
     permissions,
   };
-  setStorageItem(getLocalStorage(), REQUESTED_PERMISSIONS_KEY, JSON.stringify(payload));
+  persistOrThrow(storage, REQUESTED_PERMISSIONS_KEY, JSON.stringify(payload));
 };
 
 /**
@@ -155,8 +182,7 @@ const stashRequestedPermissions = (state: string, permissions: string[]): void =
  * `state`. Mismatched or malformed values are discarded (fail closed), mirroring
  * {@link readPendingGrantedPermissions}.
  */
-const readRequestedPermissions = (state: string): string[] => {
-  const storage = getLocalStorage();
+const readRequestedPermissions = (storage: Storage | null, state: string): string[] => {
   const raw = storage?.getItem(REQUESTED_PERMISSIONS_KEY);
   removeStorageItem(storage, REQUESTED_PERMISSIONS_KEY);
   if (!raw) return [];
@@ -234,7 +260,7 @@ export class YouVersionAPIUsers {
     // (no URL param, no token scope) for these, so the callback seeds them
     // optimistically from here — see exchangeCodeForTokens. Empty/absent → no stash.
     if (permissions && permissions.length > 0) {
-      stashRequestedPermissions(authorizationRequest.parameters.state, permissions);
+      stashRequestedPermissions(storage, authorizationRequest.parameters.state, permissions);
     }
 
     // Simple redirect to authorization URL
@@ -284,7 +310,7 @@ export class YouVersionAPIUsers {
     if (!code && state) {
       const earlyGrants = parseGrantedPermissions(urlParams);
       if (earlyGrants.length > 0) {
-        stashPendingGrantedPermissions(state, earlyGrants);
+        stashPendingGrantedPermissions(storage, state, earlyGrants);
       }
       this.obtainLocation(window.location.href, state);
       return null;
@@ -367,8 +393,8 @@ export class YouVersionAPIUsers {
       // (removeGrantedPermission) and the machine's PERMISSION_LOST path re-prompts.
       // Same fail-closed state binding as the granted stash; a Set union means a
       // future server echo never double-counts.
-      const stashedGrants = state ? readPendingGrantedPermissions(state) : [];
-      const requestedGrants = state ? readRequestedPermissions(state) : [];
+      const stashedGrants = state ? readPendingGrantedPermissions(storage, state) : [];
+      const requestedGrants = state ? readRequestedPermissions(storage, state) : [];
       const grantedPermissions = [
         ...new Set([
           ...parseGrantedPermissions(urlParams),

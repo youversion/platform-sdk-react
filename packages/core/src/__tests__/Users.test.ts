@@ -247,6 +247,26 @@ describe('YouVersionAPIUsers', () => {
       expect(typeof stored.state).toBe('string');
     });
 
+    it('fails before redirecting when the requested-permissions stash cannot be written', async () => {
+      // The web flow echoes no grants, so this stash is the callback's only
+      // evidence of what was requested. A store that accepts the verifier but
+      // rejects this key (quota reached mid-call) would otherwise redirect and
+      // then re-prompt for a permission the user just consented to.
+      stubSignInCrypto();
+      mocks.localStorage.setItem.mockImplementation((key: string) => {
+        if (key === 'youversion-auth-requested-permissions') {
+          throw new Error('QuotaExceededError');
+        }
+      });
+
+      await expect(
+        YouVersionAPIUsers.signIn('https://example.com/callback', ['profile'], ['highlights']),
+      ).rejects.toThrow(
+        'Sign In with YouVersion requires localStorage, which is not available in this environment',
+      );
+      expect(mocks.window.location.href).toBe('');
+    });
+
     it('does not stash requested permissions when none are requested', async () => {
       stubSignInCrypto();
 
@@ -327,6 +347,28 @@ describe('YouVersionAPIUsers', () => {
         'youversion-auth-pending-granted-permissions',
         JSON.stringify({ state: 'test-state', permissions: ['highlights'] }),
       );
+      expect(mocks.window.location.href).toBe(
+        'https://api.youversion.com/auth/callback?state=test-state&granted_permissions=highlights',
+      );
+    });
+
+    it('still redirects when the pre-code grant stash cannot be written', async () => {
+      // Mid-callback the session is already recoverable: a rejected stash costs
+      // only the grant echo (the permission machine re-prompts), so it must not
+      // abort a sign-in that can still complete.
+      mocks.window.location.href =
+        'https://example.com/callback?state=test-state&granted_permissions=highlights';
+      mocks.window.location.search = '?state=test-state&granted_permissions=highlights';
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
+        if (key === 'youversion-auth-state') return 'test-state';
+        return null;
+      });
+      mocks.localStorage.setItem.mockImplementation(() => {
+        throw new Error('QuotaExceededError');
+      });
+
+      await expect(YouVersionAPIUsers.handleAuthCallback()).resolves.toBeNull();
+
       expect(mocks.window.location.href).toBe(
         'https://api.youversion.com/auth/callback?state=test-state&granted_permissions=highlights',
       );
