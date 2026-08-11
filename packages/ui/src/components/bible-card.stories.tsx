@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { within, expect, userEvent, screen, waitFor } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
 import { BibleCard } from './bible-card';
+import { globalHandlers } from '../test/mocks/handlers';
 
 const meta = {
   title: 'Components/BibleCard',
@@ -191,16 +192,22 @@ export const Error: Story = {
   tags: ['integration'],
   parameters: {
     msw: {
+      /*
+        A story-level `handlers` array replaces the preview-level `globalHandlers`
+        rather than merging with it, so `globalHandlers` is spread back in.
+        Without it the version picker's `useLanguages`/`useVersions` calls fall
+        through to the live API, because `onUnhandledRequest` is 'warn'.
+
+        The 500 override comes first: MSW takes the first matching handler, so it
+        wins over the successful NIV passage handler in `globalHandlers`. Version
+        1588 (AMP) is left on `globalHandlers` and still resolves, which is what
+        makes the recovery path below testable.
+      */
       handlers: [
-        http.get('*/v1/bibles/111', () => {
-          return HttpResponse.json({
-            id: 111,
-            localized_abbreviation: 'NIV',
-          });
-        }),
         http.get('*/v1/bibles/111/passages/LUK.1.39-45', () => {
           return new HttpResponse(null, { status: 500 });
         }),
+        ...globalHandlers,
       ],
     },
   },
@@ -218,6 +225,9 @@ export const Error: Story = {
     await expect(alerts[0]).toHaveTextContent(
       'The Bible service is having trouble right now. Please try again in a moment.',
     );
+    // role="alert" implies assertive. The explicit polite value holds the
+    // announcement down, so a failed load does not interrupt the reader.
+    await expect(alerts[0]).toHaveAttribute('aria-live', 'polite');
 
     // The picker is the in-card recovery path: a 404 is fixed by switching versions.
     const versionPickerButton = await canvas.findByRole('button', {
@@ -228,5 +238,32 @@ export const Error: Story = {
       await expect(versionPickerButton).toBeEnabled();
       await expect(versionPickerButton).toHaveTextContent(/NIV/i);
     });
+
+    // Walk the recovery path: switch to a version whose passage resolves.
+    await userEvent.click(versionPickerButton);
+
+    const dialog = await screen.findByRole('dialog');
+    const searchInput = within(dialog).getByRole('textbox', { name: /search bible versions/i });
+
+    await userEvent.type(searchInput, 'amplified bible');
+
+    await waitFor(async () => {
+      const versionList = within(dialog).getByTestId('version-list');
+      const versionItems = within(versionList).getAllByRole('listitem');
+      await expect(versionItems).toHaveLength(1);
+      await expect(versionItems[0]).toHaveTextContent(/amplified bible/i);
+    });
+
+    await userEvent.click(within(dialog).getByRole('listitem', { name: /amplified bible/i }));
+
+    // The error clears: no alert, and the passage replaces the "Error" heading.
+    await waitFor(async () => {
+      await expect(canvas.queryByRole('alert')).toBeNull();
+      await expect(canvas.getByText(/at that time mary got ready/i)).toBeInTheDocument();
+    });
+
+    await expect(
+      canvas.getByRole('heading', { level: 2, name: /luke 1:39-45/i }),
+    ).toHaveTextContent(/amp/i);
   },
 };

@@ -6,17 +6,9 @@ import { render, act, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BibleCard } from './bible-card';
 import type { FootnoteData } from './verse';
-import {
-  useFilteredVersions,
-  useLanguage,
-  useLanguages,
-  useOrganizations,
-  usePassage,
-  useTheme,
-  useVersion,
-  useVersions,
-} from '@youversion/platform-react-hooks';
-import type { BiblePassage, BibleVersion, Language } from '@youversion/platform-core';
+import { usePassage, useTheme, useVersion } from '@youversion/platform-react-hooks';
+import type { BiblePassage, BibleVersion } from '@youversion/platform-core';
+import { createBibleTextError as createError } from '../test/errors';
 
 vi.mock('@youversion/platform-react-hooks');
 
@@ -166,10 +158,6 @@ describe('BibleCard - Delayed spinner', () => {
 });
 
 describe('BibleCard - Error state', () => {
-  function createError(message: string, status?: number): Error {
-    return Object.assign(new Error(message), status === undefined ? {} : { status });
-  }
-
   beforeEach(() => {
     vi.mocked(useTheme).mockReturnValue('light');
     vi.mocked(useVersion).mockReturnValue({
@@ -213,40 +201,10 @@ describe('BibleCard - Error state', () => {
     expect(within(container).queryByRole('status')).toBeNull();
   });
 
-  it('should keep the version picker usable so a bad version can be swapped', () => {
-    // The version picker mounts its own hook tree. The file-level auto-mock
-    // returns undefined for each one, so give them values here.
-    vi.mocked(useLanguages).mockReturnValue({
-      languages: { data: [] as Language[], next_page_token: null },
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-    vi.mocked(useLanguage).mockReturnValue({
-      language: { id: 'en', language: 'English', display_names: { en: 'English' } } as Language,
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-    vi.mocked(useVersions).mockReturnValue({
-      versions: { data: [], next_page_token: null },
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-    vi.mocked(useFilteredVersions).mockReturnValue([]);
-    vi.mocked(useOrganizations).mockReturnValue({ organizations: new Map() });
-
-    const { container } = render(
-      <BibleCard reference="JHN.3.16" versionId={3034} showVersionPicker />,
-    );
-
-    const picker = within(container).getByRole('button', { name: /change bible version/i });
-
-    expect(picker).toBeInTheDocument();
-    expect(picker).toBeEnabled();
-    expect(picker).toHaveTextContent('BSB');
-  });
+  // The version picker staying usable during an error is covered by the `Error`
+  // story's play function. A jsdom test would have to hand-mock the five hooks
+  // that BibleVersionPicker.Root reads, which couples this file to that
+  // component's internals. See packages/ui/CLAUDE.md → TESTING.
 });
 
 describe('BibleCard - onFootnotePress callback', () => {

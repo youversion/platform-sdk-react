@@ -7,6 +7,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Verse, BibleTextView, type BibleTextViewPassageState, type FootnoteData } from './verse';
+import { createBibleTextError as createError } from '../test/errors';
 
 // BibleTextView always calls usePassage/useTheme internally (even when passageState
 // is provided), so we must mock the hooks to avoid requiring YouVersionProvider.
@@ -885,10 +886,6 @@ describe('BibleTextView - Refetch loading behavior', () => {
 describe('BibleTextView - Error messaging', () => {
   const originalNavigator = globalThis.navigator;
 
-  function createError(message: string, status?: number): Error {
-    return Object.assign(new Error(message), status === undefined ? {} : { status });
-  }
-
   afterEach(() => {
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
@@ -1044,7 +1041,7 @@ describe('BibleTextView - Error messaging', () => {
     });
   });
 
-  it('should render one alert region with a hidden icon and no heading line', async () => {
+  it('should render one polite alert region with a hidden icon and no heading line', async () => {
     const { getAllByRole, getByRole } = render(
       <BibleTextView
         reference="JHN.3.16"
@@ -1066,7 +1063,9 @@ describe('BibleTextView - Error messaging', () => {
     const alert = getByRole('alert');
 
     expect(getAllByRole('alert')).toHaveLength(1);
-    expect(alert).not.toHaveAttribute('aria-live');
+    // role="alert" implies assertive, so this attribute is what keeps the
+    // announcement polite. Removing it would be a behavior change.
+    expect(alert).toHaveAttribute('aria-live', 'polite');
     expect(alert.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
     // Standalone BibleTextView has no header slot, so no "Error" label renders.
     expect(alert).not.toHaveTextContent('Error');

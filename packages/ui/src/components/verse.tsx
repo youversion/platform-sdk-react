@@ -255,13 +255,19 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
  * exclamation icon and the status-aware message.
  *
  * The "Error" label lives in the BibleCard header slot, not here, so this block
- * stays a single sentence. `role="alert"` already implies an assertive live
- * region, so no `aria-live` is set, and the icon is hidden from screen readers.
+ * stays a single sentence.
+ *
+ * `role="alert"` implies `aria-live="assertive"`, so the explicit
+ * `aria-live="polite"` is not redundant: it holds the announcement down to
+ * polite. Keep it. `VerseOfTheDay` renders this block on page load, and an
+ * assertive announcement would interrupt whatever the screen reader is saying.
+ * The icon is decorative, so it is hidden from screen readers.
  */
 function VerseUnavailableMessage({ message }: { message: string }): React.ReactElement {
   return (
     <div
       role="alert"
+      aria-live="polite"
       className="yv:flex yv:items-center yv:justify-center yv:gap-2.5 yv:px-3 yv:py-2.5 yv:text-foreground"
     >
       <ExclamationCircle className="yv:size-5 yv:shrink-0 yv:text-foreground" aria-hidden="true" />
