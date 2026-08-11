@@ -211,6 +211,29 @@ describe('YouVersionPlatformConfiguration', () => {
       expect(mockRemoveItem).toHaveBeenCalledWith('refreshToken');
       expect(mockRemoveItem).toHaveBeenCalledWith('expiryDate');
     });
+
+    it('should report whether the tokens actually landed', () => {
+      expect(YouVersionPlatformConfiguration.saveAuthData('access', 'refresh', new Date())).toBe(
+        true,
+      );
+
+      // Safari private mode reads fine and throws on every write.
+      mockSetItem.mockImplementationOnce(() => {
+        throw new Error('QuotaExceededError');
+      });
+
+      expect(YouVersionPlatformConfiguration.saveAuthData('access', 'refresh', new Date())).toBe(
+        false,
+      );
+    });
+
+    it('should report success when only clearing, even without a store', () => {
+      vi.stubGlobal('localStorage', undefined);
+
+      expect(YouVersionPlatformConfiguration.saveAuthData(null, null, null)).toBe(true);
+
+      vi.stubGlobal('localStorage', mockLocalStorage);
+    });
   });
 
   describe('user info persistence', () => {
@@ -245,6 +268,17 @@ describe('YouVersionPlatformConfiguration', () => {
     it('should return null when the stored profile fails schema validation', () => {
       mockStorage.userInfo = JSON.stringify({ id: 42 });
       expect(YouVersionPlatformConfiguration.storedUserInfo).toBeNull();
+    });
+
+    it('should report whether the profile actually landed', () => {
+      expect(YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-123' })).toBe(true);
+
+      mockSetItem.mockImplementationOnce(() => {
+        throw new Error('QuotaExceededError');
+      });
+
+      expect(YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-123' })).toBe(false);
+      expect(YouVersionPlatformConfiguration.saveUserInfo(null)).toBe(true);
     });
   });
 

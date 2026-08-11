@@ -42,46 +42,61 @@ export class YouVersionPlatformConfiguration {
     return setStorageItem(storage, 'x-yvp-installation-id', newId) ? newId : '';
   }
 
+  /**
+   * Persists the session tokens; a `null` value clears the corresponding key.
+   *
+   * @returns `true` when every value it was asked to persist actually landed.
+   *   The session lives entirely in storage — the {@link accessToken},
+   *   {@link refreshToken}, and {@link tokenExpiryDate} getters read straight
+   *   back out of it — so a caller reporting a successful sign-in must not do
+   *   so on `false`. Clearing always reports `true`: removal is best-effort,
+   *   and every reader tolerates a value that outlived its removal.
+   */
   public static saveAuthData(
     accessToken: string | null,
     refreshToken: string | null,
     expiryDate: Date | null,
-  ): void {
+  ): boolean {
     const storage = getLocalStorage();
-    if (!storage) return;
+    let persisted = true;
 
     if (accessToken !== null) {
-      setStorageItem(storage, 'accessToken', accessToken);
+      persisted = setStorageItem(storage, 'accessToken', accessToken) && persisted;
     } else {
       removeStorageItem(storage, 'accessToken');
     }
 
     if (refreshToken !== null) {
-      setStorageItem(storage, 'refreshToken', refreshToken);
+      persisted = setStorageItem(storage, 'refreshToken', refreshToken) && persisted;
     } else {
       removeStorageItem(storage, 'refreshToken');
     }
 
     if (expiryDate !== null) {
-      setStorageItem(storage, 'expiryDate', expiryDate.toISOString());
+      persisted = setStorageItem(storage, 'expiryDate', expiryDate.toISOString()) && persisted;
     } else {
       removeStorageItem(storage, 'expiryDate');
     }
+
+    return persisted;
   }
 
   /**
    * Persists the decoded user profile derived from the ID token at sign-in.
    * Pass `null` to remove any stored profile.
+   *
+   * @returns `true` when the profile was actually persisted (or removed) — see
+   *   {@link saveAuthData} for why a caller must not ignore a `false`.
    */
-  public static saveUserInfo(userInfo: YouVersionUserInfoJSON | null): void {
+  public static saveUserInfo(userInfo: YouVersionUserInfoJSON | null): boolean {
     const storage = getLocalStorage();
-    if (!storage) return;
 
-    if (userInfo !== null) {
-      setStorageItem(storage, 'userInfo', JSON.stringify(userInfo));
-    } else {
+    if (userInfo === null) {
       removeStorageItem(storage, 'userInfo');
+      return true;
     }
+
+    return setStorageItem(storage, 'userInfo', JSON.stringify(userInfo));
   }
 
   public static clearAuthTokens(): void {

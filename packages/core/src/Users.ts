@@ -10,6 +10,14 @@ const MISSING_LOCAL_STORAGE_MESSAGE =
   'Sign In with YouVersion requires localStorage, which is not available in this environment';
 
 /**
+ * A resolvable store is not a writable one, so the two failures get separate
+ * messages: this is the one you see when the store exists and refused the write
+ * — Safari private mode's zero-byte quota, or a genuinely full one.
+ */
+const REJECTED_LOCAL_STORAGE_WRITE_MESSAGE =
+  'Sign In with YouVersion could not write to localStorage; the store rejected the write (its quota may be full, as it always is in Safari private browsing)';
+
+/**
  * The OAuth handoff has to survive a full-page redirect, so it cannot fall back
  * to memory the way the fail-soft accessors do.
  */
@@ -29,7 +37,7 @@ const requireLocalStorage = (): Storage => {
  */
 const persistOrThrow = (storage: Storage, key: string, value: string): void => {
   if (!setStorageItem(storage, key, value)) {
-    throw new Error(MISSING_LOCAL_STORAGE_MESSAGE);
+    throw new Error(REJECTED_LOCAL_STORAGE_WRITE_MESSAGE);
   }
 };
 
@@ -422,7 +430,7 @@ export class YouVersionAPIUsers {
 
       // Store tokens in configuration. The ID token is intentionally not
       // persisted — it is only used here to derive the user profile below.
-      YouVersionPlatformConfiguration.saveAuthData(
+      const tokensPersisted = YouVersionPlatformConfiguration.saveAuthData(
         result.accessToken || null,
         result.refreshToken || null,
         result.expiryDate || null,
@@ -431,12 +439,18 @@ export class YouVersionAPIUsers {
       // Persist the decoded user profile so it survives reloads without
       // retaining the ID token itself. This must happen before the permission
       // cache is seeded below, since grants are scoped to the current user.
-      YouVersionPlatformConfiguration.saveUserInfo({
+      const profilePersisted = YouVersionPlatformConfiguration.saveUserInfo({
         id: result.yvpUserId,
         name: result.name,
         email: result.email,
         avatar_url: result.profilePicture,
       });
+
+      // Every later read of the session goes back to storage, so a rejected
+      // write means there is no session to return — fail into the catch below.
+      if (!tokensPersisted || !profilePersisted) {
+        throw new Error('Sign-in succeeded but the session could not be saved to browser storage');
+      }
 
       // Persist the granted permissions into the optimistic permission cache so
       // a one-fell-swoop sign-in that requested `highlights` can apply a pending
@@ -675,12 +689,16 @@ export class YouVersionAPIUsers {
         refreshToken: tokens.refresh_token,
       });
 
-      // Store updated tokens
-      YouVersionPlatformConfiguration.saveAuthData(
+      // Store updated tokens. The rotation already spent the old refresh token,
+      // so an unpersisted result is a dead session, not a refreshed one.
+      const persisted = YouVersionPlatformConfiguration.saveAuthData(
         result.accessToken || null,
         result.refreshToken || null,
         result.expiryDate || null,
       );
+      if (!persisted) {
+        throw new Error('the rotated tokens could not be saved to browser storage');
+      }
 
       return result;
     } catch (error) {
