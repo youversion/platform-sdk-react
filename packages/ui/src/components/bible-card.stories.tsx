@@ -206,12 +206,19 @@ export const Error: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await waitFor(async () => {
-      await expect(canvas.getByRole('heading', { level: 2, name: /error/i })).toBeInTheDocument();
-      const errorMessages = canvas.getAllByText(
-        'The Bible service is having trouble right now. Please try again in a moment.',
-      );
-      await expect(errorMessages.length).toBeGreaterThan(0);
-    });
+    // A 500 is retryable, so the card spins through the whole retry chain
+    // before it settles on the error. The default 1000ms `waitFor` window
+    // expires mid-backoff; 5000ms clears the chain, matching the retryable
+    // error stories in bible-reader.stories.tsx.
+    await waitFor(
+      async () => {
+        await expect(canvas.getByRole('heading', { level: 2, name: /error/i })).toBeInTheDocument();
+        const errorMessages = canvas.getAllByText(
+          'The Bible service is having trouble right now. Please try again in a moment.',
+        );
+        await expect(errorMessages.length).toBeGreaterThan(0);
+      },
+      { timeout: 5000 },
+    );
   },
 };
