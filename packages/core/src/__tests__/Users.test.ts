@@ -303,6 +303,19 @@ describe('YouVersionAPIUsers', () => {
       );
     });
 
+    it('should report the missing capability when localStorage is unusable', async () => {
+      // Twin of the signIn case: React Native defines `window` but no Web
+      // Storage, so the callback cannot read back the state/verifier the
+      // handoff stashed — fail loudly rather than with a TypeError.
+      mocks.window.location.search = STANDARD_CALLBACK_SEARCH;
+      mocks.window.location.href = STANDARD_CALLBACK_HREF;
+      vi.stubGlobal('localStorage', undefined);
+
+      await expect(YouVersionAPIUsers.handleAuthCallback()).rejects.toThrow(
+        'Sign In with YouVersion requires localStorage, which is not available in this environment',
+      );
+    });
+
     it('should throw error when state parameter is invalid', async () => {
       mocks.window.location.search = '?state=invalid-state&code=auth-code';
       mocks.localStorage.getItem.mockImplementation((key: string) => {
