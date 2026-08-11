@@ -8,7 +8,6 @@ import { BibleCard } from './bible-card';
 import type { FootnoteData } from './verse';
 import { usePassage, useTheme, useVersion } from '@youversion/platform-react-hooks';
 import type { BiblePassage, BibleVersion } from '@youversion/platform-core';
-import { createBibleTextError as createError } from '../test/errors';
 
 vi.mock('@youversion/platform-react-hooks');
 
@@ -169,7 +168,7 @@ describe('BibleCard - Error state', () => {
     vi.mocked(usePassage).mockReturnValue({
       passage: null,
       loading: false,
-      error: createError('Request failed with status 503', 503),
+      error: Object.assign(new Error('Request failed with status 503'), { status: 503 }),
       refetch: vi.fn(),
     });
   });

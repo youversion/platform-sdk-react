@@ -7,7 +7,6 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Verse, BibleTextView, type BibleTextViewPassageState, type FootnoteData } from './verse';
-import { createBibleTextError as createError } from '../test/errors';
 
 // BibleTextView always calls usePassage/useTheme internally (even when passageState
 // is provided), so we must mock the hooks to avoid requiring YouVersionProvider.
@@ -885,6 +884,10 @@ describe('BibleTextView - Refetch loading behavior', () => {
 
 describe('BibleTextView - Error messaging', () => {
   const originalNavigator = globalThis.navigator;
+
+  function createError(message: string, status?: number): Error {
+    return Object.assign(new Error(message), status === undefined ? {} : { status });
+  }
 
   afterEach(() => {
     Object.defineProperty(globalThis, 'navigator', {
