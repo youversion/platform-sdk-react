@@ -6,7 +6,7 @@ import { render, act, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BibleCard } from './bible-card';
 import type { FootnoteData } from './verse';
-import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hooks';
+import { usePassage, useTheme, useVersion } from '@youversion/platform-react-hooks';
 import type { BiblePassage, BibleVersion } from '@youversion/platform-core';
 
 vi.mock('@youversion/platform-react-hooks');
@@ -154,6 +154,56 @@ describe('BibleCard - Delayed spinner', () => {
 
     expect(bibleRenderer).toHaveAttribute('data-show-verse-numbers', 'false');
   });
+});
+
+describe('BibleCard - Error state', () => {
+  beforeEach(() => {
+    vi.mocked(useTheme).mockReturnValue('light');
+    vi.mocked(useVersion).mockReturnValue({
+      version: mockVersion,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    vi.mocked(usePassage).mockReturnValue({
+      passage: null,
+      loading: false,
+      error: Object.assign(new Error('Request failed with status 503'), { status: 503 }),
+      refetch: vi.fn(),
+    });
+  });
+
+  it('should render exactly one alert region', () => {
+    const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
+
+    expect(within(container).getAllByRole('alert')).toHaveLength(1);
+  });
+
+  it('should show the status message in that one alert region', () => {
+    const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
+    const alert = within(container).getByRole('alert');
+
+    expect(alert).toHaveTextContent(
+      'The Bible service is having trouble right now. Please try again in a moment.',
+    );
+  });
+
+  it('should render the error heading in the header slot', () => {
+    const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
+
+    expect(within(container).getByRole('heading', { level: 2 })).toHaveTextContent('Error');
+  });
+
+  it('should not render a loading spinner while an error is set', () => {
+    const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
+
+    expect(within(container).queryByRole('status')).toBeNull();
+  });
+
+  // The version picker staying usable during an error is covered by the `Error`
+  // story's play function. A jsdom test would have to hand-mock the five hooks
+  // that BibleVersionPicker.Root reads, which couples this file to that
+  // component's internals. See packages/ui/CLAUDE.md → TESTING.
 });
 
 describe('BibleCard - onFootnotePress callback', () => {

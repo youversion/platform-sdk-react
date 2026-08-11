@@ -26,14 +26,21 @@ export type BibleCardProps = {
   onFootnotePress?: (data: FootnoteData) => void;
 };
 
+/**
+ * The "Error" label for the header slot.
+ *
+ * It matches `BibleCardHeaderReference` exactly. The card already renders an
+ * `<h2>` in this slot for the passage reference, so this injects no new heading
+ * level into the host page's outline. It carries no `role="alert"` and no
+ * `aria-live`: the body block stays the single alert region, so screen readers
+ * announce one alert.
+ */
 function BibleCardHeaderError(): React.ReactNode {
   const { t } = useTranslation(undefined, { i18n });
   return (
-    <div className="yv:flex yv:flex-col yv:gap-2" role="alert" aria-live="polite">
-      <h2 className="yv:font-bold yv:tracking-widest yv:text-xs yv:uppercase yv:text-foreground">
-        {t('errorHeading')}
-      </h2>
-    </div>
+    <h2 className="yv:font-bold yv:tracking-widest yv:text-xs yv:uppercase yv:text-foreground">
+      {t('errorHeading')}
+    </h2>
   );
 }
 
@@ -151,6 +158,10 @@ export function BibleCard({
     >
       <div className="yv:card-content">
         <div className="yv:flex yv:w-full yv:justify-between yv:items-center yv:mb-4">
+          {/*
+            The error branch stays separate rather than folding into the loading
+            branch, which would spin forever on error.
+          */}
           {passage && !passageError ? (
             <div className="yv:grow yv:flex yv:items-center yv:gap-1.5">
               <BibleCardHeaderReference passage={passage} version={version} />
@@ -164,7 +175,11 @@ export function BibleCard({
             <LoaderIcon className="yv:size-3 yv:animate-spin yv:text-muted-foreground" />
           )}
 
-          {showVersionPicker && !passageError ? (
+          {/*
+            The picker stays available during an error. A 404 means the passage
+            is not in the selected version, so switching versions is the fix.
+          */}
+          {showVersionPicker ? (
             <BibleCardVersionPicker
               versionId={versionNum}
               onVersionChange={setVersionNum}
