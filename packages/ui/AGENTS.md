@@ -59,6 +59,8 @@ Follow root `AGENTS.md` Testing (Kent-style musts). This package’s flavors:
 | Vertical smoke | Rare critical journeys that wire real hooks (e.g. highlight auth) | Re-testing core/hooks contracts |
 
 - Default: Vitest + jsdom + RTL; setup is `src/test/setup.ts`
+- Run unit/RTL: `pnpm --filter @youversion/platform-react-ui test` (`vitest --project unit` only — does **not** run Storybook play)
+- Run Storybook `play` / tagged stories: `pnpm --filter @youversion/platform-react-ui test:integration` (or from `packages/ui`: `pnpm test:integration`)
 - Storybook `play` is the higher rung — use when composition/slots matter; every play story still needs tooling tag `tags: ['integration']` (CI discovery, not a style term)
 - Assert roles/behavior, not localized copy blobs
 - Do not talk to the network from UI tests; stub hooks/providers unless writing an intentional vertical smoke
