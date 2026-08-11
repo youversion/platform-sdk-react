@@ -16,6 +16,7 @@ import {
   DEFAULT_LICENSE_FREE_BIBLE_VERSION,
   getAdjacentChapter,
   getLocalStorage,
+  setStorageItem,
 } from '@youversion/platform-core';
 import {
   useBooks,
@@ -585,7 +586,8 @@ function Root({
 
   useEffect(() => {
     if (!isFontSizeControlled) {
-      getLocalStorage()?.setItem(
+      setStorageItem(
+        getLocalStorage(),
         'youversion-platform:reader:font-size',
         currentFontSize.toString(),
       );
@@ -594,13 +596,18 @@ function Root({
 
   useEffect(() => {
     if (!isFontFamilyControlled) {
-      getLocalStorage()?.setItem('youversion-platform:reader:font-family', currentFontFamily);
+      setStorageItem(
+        getLocalStorage(),
+        'youversion-platform:reader:font-family',
+        currentFontFamily,
+      );
     }
   }, [currentFontFamily, isFontFamilyControlled]);
 
   useEffect(() => {
     if (!isLineSpacingControlled) {
-      getLocalStorage()?.setItem(
+      setStorageItem(
+        getLocalStorage(),
         'youversion-platform:reader:line-spacing',
         currentLineSpacing.toString(),
       );

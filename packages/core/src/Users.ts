@@ -4,7 +4,10 @@ import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfigurati
 import { SignInWithYouVersionPKCEAuthorizationRequestBuilder } from './SignInWithYouVersionPKCE';
 import { SignInWithYouVersionResult } from './SignInWithYouVersionResult';
 import { parseGrantedPermissions, parsePermissionList } from './permissions';
-import { getLocalStorage } from './web-storage';
+import { getLocalStorage, removeStorageItem, setStorageItem } from './web-storage';
+
+const MISSING_LOCAL_STORAGE_MESSAGE =
+  'Sign In with YouVersion requires localStorage, which is not available in this environment';
 
 /**
  * The OAuth handoff has to survive a full-page redirect, so it cannot fall back
@@ -13,11 +16,21 @@ import { getLocalStorage } from './web-storage';
 const requireLocalStorage = (): Storage => {
   const storage = getLocalStorage();
   if (!storage) {
-    throw new Error(
-      'Sign In with YouVersion requires localStorage, which is not available in this environment',
-    );
+    throw new Error(MISSING_LOCAL_STORAGE_MESSAGE);
   }
   return storage;
+};
+
+/**
+ * Writes a value the OAuth callback cannot proceed without. A resolvable store
+ * can still reject writes (Safari private mode), and silently losing the
+ * verifier here would surface after the redirect as the far more confusing
+ * "Missing required authentication parameters" — so fail now, before redirecting.
+ */
+const persistOrThrow = (storage: Storage, key: string, value: string): void => {
+  if (!setStorageItem(storage, key, value)) {
+    throw new Error(MISSING_LOCAL_STORAGE_MESSAGE);
+  }
 };
 
 /** Stash key for `granted_permissions` seen on the pre-code OAuth hop. */
@@ -80,13 +93,26 @@ export function __resetTokenRefreshDedupeForTests(): void {
   inFlightRefresh = null;
 }
 
+/**
+ * Discards everything the OAuth handoff stashed for the redirect round-trip.
+ * Cleanup only — it never throws, so it is safe on both the success and the
+ * failure path of the code exchange.
+ */
+const clearOAuthHandoff = (storage: Storage | null): void => {
+  removeStorageItem(storage, 'youversion-auth-code-verifier');
+  removeStorageItem(storage, 'youversion-auth-redirect-uri');
+  removeStorageItem(storage, 'youversion-auth-state');
+  removeStorageItem(storage, PENDING_GRANTED_PERMISSIONS_KEY);
+  removeStorageItem(storage, REQUESTED_PERMISSIONS_KEY);
+};
+
 /** Persist early grants bound to the OAuth `state` that produced them. */
 const stashPendingGrantedPermissions = (state: string, permissions: string[]): void => {
   const payload: PendingGrantedPermissionsStash = {
     state,
     permissions,
   };
-  getLocalStorage()?.setItem(PENDING_GRANTED_PERMISSIONS_KEY, JSON.stringify(payload));
+  setStorageItem(getLocalStorage(), PENDING_GRANTED_PERMISSIONS_KEY, JSON.stringify(payload));
 };
 
 /**
@@ -96,7 +122,7 @@ const stashPendingGrantedPermissions = (state: string, permissions: string[]): v
 const readPendingGrantedPermissions = (state: string): string[] => {
   const storage = getLocalStorage();
   const raw = storage?.getItem(PENDING_GRANTED_PERMISSIONS_KEY);
-  storage?.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
+  removeStorageItem(storage, PENDING_GRANTED_PERMISSIONS_KEY);
   if (!raw) return [];
 
   try {
@@ -121,7 +147,7 @@ const stashRequestedPermissions = (state: string, permissions: string[]): void =
     state,
     permissions,
   };
-  getLocalStorage()?.setItem(REQUESTED_PERMISSIONS_KEY, JSON.stringify(payload));
+  setStorageItem(getLocalStorage(), REQUESTED_PERMISSIONS_KEY, JSON.stringify(payload));
 };
 
 /**
@@ -132,7 +158,7 @@ const stashRequestedPermissions = (state: string, permissions: string[]): void =
 const readRequestedPermissions = (state: string): string[] => {
   const storage = getLocalStorage();
   const raw = storage?.getItem(REQUESTED_PERMISSIONS_KEY);
-  storage?.removeItem(REQUESTED_PERMISSIONS_KEY);
+  removeStorageItem(storage, REQUESTED_PERMISSIONS_KEY);
   if (!raw) return [];
 
   try {
@@ -184,18 +210,22 @@ export class YouVersionAPIUsers {
     );
 
     // Store auth data for callback handler
-    storage.setItem('youversion-auth-code-verifier', authorizationRequest.parameters.codeVerifier);
+    persistOrThrow(
+      storage,
+      'youversion-auth-code-verifier',
+      authorizationRequest.parameters.codeVerifier,
+    );
     const redirectUrlString = redirectURL.toString().endsWith('/')
       ? redirectURL.toString().slice(0, -1)
       : redirectURL.toString();
-    storage.setItem('youversion-auth-redirect-uri', redirectUrlString);
-    storage.setItem('youversion-auth-state', authorizationRequest.parameters.state);
+    persistOrThrow(storage, 'youversion-auth-redirect-uri', redirectUrlString);
+    persistOrThrow(storage, 'youversion-auth-state', authorizationRequest.parameters.state);
     // Clear any stash left by a prior abandoned flow (it's only ever produced later,
     // during the callback pre-code hop, and never needs to survive a new signIn).
     // Otherwise a previous user's abandoned grants could leak into this flow.
-    storage.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
+    removeStorageItem(storage, PENDING_GRANTED_PERMISSIONS_KEY);
     // Same hygiene for a stale requested-permissions stash from an abandoned flow.
-    storage.removeItem(REQUESTED_PERMISSIONS_KEY);
+    removeStorageItem(storage, REQUESTED_PERMISSIONS_KEY);
     // Same hygiene for an abandoned just-in-time data-exchange initiator.
     YouVersionPlatformConfiguration.clearDataExchangeInitiator();
 
@@ -376,12 +406,11 @@ export class YouVersionAPIUsers {
         YouVersionPlatformConfiguration.saveGrantedPermissions(grantedPermissions);
       }
 
-      // Clean up localStorage
-      storage?.removeItem('youversion-auth-code-verifier');
-      storage?.removeItem('youversion-auth-redirect-uri');
-      storage?.removeItem('youversion-auth-state');
-      storage?.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
-      storage?.removeItem(REQUESTED_PERMISSIONS_KEY);
+      // Clean up localStorage. Never throwing matters most here: the session is
+      // already persisted, so letting a store that rejects mutations (Safari
+      // private mode) escape would drop us into the catch below, which would
+      // clear the tokens a successful exchange just wrote.
+      clearOAuthHandoff(storage);
 
       // Clean up URL
       const cleanUrl = new URL(window.location.href);
@@ -391,11 +420,7 @@ export class YouVersionAPIUsers {
       return result;
     } catch (error) {
       YouVersionPlatformConfiguration.clearAuthTokens();
-      storage?.removeItem('youversion-auth-code-verifier');
-      storage?.removeItem('youversion-auth-redirect-uri');
-      storage?.removeItem('youversion-auth-state');
-      storage?.removeItem(PENDING_GRANTED_PERMISSIONS_KEY);
-      storage?.removeItem(REQUESTED_PERMISSIONS_KEY);
+      clearOAuthHandoff(storage);
       throw error;
     }
   }

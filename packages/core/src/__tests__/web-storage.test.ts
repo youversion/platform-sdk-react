@@ -1,5 +1,11 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { getLocalStorage, getSessionStorage } from '../web-storage';
+import {
+  clearStorage,
+  getLocalStorage,
+  getSessionStorage,
+  removeStorageItem,
+  setStorageItem,
+} from '../web-storage';
 
 type StorageName = 'localStorage' | 'sessionStorage';
 
@@ -102,5 +108,56 @@ describe.each([
     stubStorage(globalThis, 'window' as StorageName, () => ({ [name]: undefined }));
 
     expect(get()).toBe(globalStore);
+  });
+});
+
+/**
+ * Safari's private mode hands out a readable store with a zero-byte quota, so a
+ * store can pass the `getItem` capability check and still throw on every write.
+ */
+function writeThrowingStore(): Storage {
+  const store = fakeStore();
+  const reject = () => {
+    throw new Error('QuotaExceededError');
+  };
+  return { ...store, setItem: reject, removeItem: reject, clear: reject } as Storage;
+}
+
+describe('mutation helpers', () => {
+  it('report a successful write and persist the value', () => {
+    const store = fakeStore();
+
+    expect(setStorageItem(store, 'key', 'value')).toBe(true);
+    expect(store.getItem('key')).toBe('value');
+  });
+
+  it('report failure instead of throwing when the store rejects the write', () => {
+    expect(setStorageItem(writeThrowingStore(), 'key', 'value')).toBe(false);
+  });
+
+  it('report failure when there is no store at all', () => {
+    expect(setStorageItem(null, 'key', 'value')).toBe(false);
+  });
+
+  it('swallow a rejected removal so cleanup can never fail its caller', () => {
+    expect(() => removeStorageItem(writeThrowingStore(), 'key')).not.toThrow();
+    expect(() => removeStorageItem(null, 'key')).not.toThrow();
+  });
+
+  it('swallow a rejected clear', () => {
+    expect(() => clearStorage(writeThrowingStore())).not.toThrow();
+    expect(() => clearStorage(null)).not.toThrow();
+  });
+
+  it('removes and clears through a working store', () => {
+    const store = fakeStore();
+    store.setItem('a', '1');
+    store.setItem('b', '2');
+
+    removeStorageItem(store, 'a');
+    expect(store.getItem('a')).toBeNull();
+
+    clearStorage(store);
+    expect(store.length).toBe(0);
   });
 });

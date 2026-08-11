@@ -15,7 +15,7 @@
  * it is a short-lived intent record, discarded on decline, cancel, failure, or
  * successful apply.
  */
-import { getSessionStorage } from '@youversion/platform-core';
+import { getSessionStorage, removeStorageItem, setStorageItem } from '@youversion/platform-core';
 
 export type PendingHighlight = {
   /** Verse numbers to highlight. */
@@ -56,13 +56,9 @@ function isPendingHighlightArray(value: unknown): value is PendingHighlight[] {
 }
 
 function writeEntries(entries: PendingHighlight[]): void {
-  const store = getSessionStorage();
-  if (!store) return;
-  try {
-    store.setItem(STORAGE_KEY, JSON.stringify(entries));
-  } catch {
-    // Quota / disabled storage — nothing to do; the flow simply won't resume.
-  }
+  // A rejected write (quota / disabled storage) is tolerable here: the flow
+  // simply won't resume after the redirect.
+  setStorageItem(getSessionStorage(), STORAGE_KEY, JSON.stringify(entries));
 }
 
 /**
@@ -147,11 +143,5 @@ export function readPendingHighlights(now: number = Date.now()): PendingHighligh
 
 /** Discards all pending entries. Safe to call when there are none. */
 export function clearPendingHighlight(): void {
-  const store = getSessionStorage();
-  if (!store) return;
-  try {
-    store.removeItem(STORAGE_KEY);
-  } catch {
-    // Ignore.
-  }
+  removeStorageItem(getSessionStorage(), STORAGE_KEY);
 }

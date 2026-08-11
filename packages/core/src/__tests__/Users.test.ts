@@ -162,6 +162,22 @@ describe('YouVersionAPIUsers', () => {
       );
     });
 
+    it('should report the missing capability when the store rejects the write', async () => {
+      // Safari private mode hands out a readable store with a zero-byte quota:
+      // `getItem` works, `setItem` throws. Losing the verifier here would only
+      // surface after the redirect as "Missing required authentication
+      // parameters", so fail before navigating away.
+      stubSignInCrypto();
+      mocks.localStorage.setItem.mockImplementation(() => {
+        throw new Error('QuotaExceededError');
+      });
+
+      await expect(YouVersionAPIUsers.signIn('https://example.com/callback')).rejects.toThrow(
+        'Sign In with YouVersion requires localStorage, which is not available in this environment',
+      );
+      expect(mocks.window.location.href).toBe('');
+    });
+
     it('should create authorization request and redirect on successful signIn', async () => {
       stubSignInCrypto();
 
@@ -387,6 +403,26 @@ describe('YouVersionAPIUsers', () => {
       );
 
       saveAuthDataSpy.mockRestore();
+    });
+
+    it('keeps the new session when post-exchange cleanup cannot write to storage', async () => {
+      // A store can read fine and still throw on every mutation (Safari private
+      // mode). The tokens are already persisted by the time cleanup runs, so a
+      // throwing `removeItem` must not fall into the catch path — that would
+      // clear the session a successful exchange just established.
+      setupCallbackFlow({ scope: 'bibles openid' });
+      mocks.localStorage.removeItem.mockImplementation(() => {
+        throw new Error('QuotaExceededError');
+      });
+      const clearAuthTokensSpy = vi.spyOn(YouVersionPlatformConfiguration, 'clearAuthTokens');
+
+      const result = await YouVersionAPIUsers.handleAuthCallback();
+
+      expect(result?.accessToken).toBe('access-token-123');
+      expect(clearAuthTokensSpy).not.toHaveBeenCalled();
+      expect(mocks.window.history.replaceState).toHaveBeenCalled();
+
+      clearAuthTokensSpy.mockRestore();
     });
 
     it('unions stashed early grants with token scope when final URL omits them', async () => {

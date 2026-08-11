@@ -20,6 +20,12 @@
  * usable (has a callable `getItem`); otherwise they return `null`. Callers
  * should optional-chain (`getLocalStorage()?.getItem(key) ?? null`) so an
  * environment without storage degrades instead of crashing.
+ *
+ * A store that reads fine can still throw on WRITE — Safari's private mode gives
+ * every origin a zero-byte quota, so `getItem` works while `setItem` throws
+ * `QuotaExceededError` — so resolving a store is not enough to make a mutation
+ * safe. Mutate through {@link setStorageItem} / {@link removeStorageItem} /
+ * {@link clearStorage}, never by calling the store's methods directly.
  */
 
 function resolveStorage(read: () => Storage | undefined | null): Storage | null {
@@ -60,4 +66,44 @@ export function getSessionStorage(): Storage | null {
     resolveStorage(() => (typeof window !== 'undefined' ? window.sessionStorage : null)) ??
     resolveStorage(() => globalThis.sessionStorage)
   );
+}
+
+/**
+ * Writes a value, tolerating a store that throws on mutation (zero quota in
+ * Safari private mode, a full quota, storage disabled mid-session).
+ *
+ * @param storage A resolved store, or `null` — pass `getLocalStorage()` directly.
+ * @returns `true` when the value was actually persisted. Callers that merely
+ *   cache something can ignore it; callers that need the value to survive a
+ *   reload or redirect must not assume the write landed.
+ */
+export function setStorageItem(storage: Storage | null, key: string, value: string): boolean {
+  try {
+    storage?.setItem(key, value);
+    return storage !== null;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Removes a key, tolerating a store that throws on mutation. Cleanup is never
+ * worth failing an operation that has otherwise succeeded, so this swallows.
+ */
+export function removeStorageItem(storage: Storage | null, key: string): void {
+  try {
+    storage?.removeItem(key);
+  } catch {
+    // Nothing to do: the key stays, and every reader of it already tolerates
+    // stale or unexpected values.
+  }
+}
+
+/** Clears a store, tolerating one that throws on mutation. */
+export function clearStorage(storage: Storage | null): void {
+  try {
+    storage?.clear();
+  } catch {
+    // As with removeStorageItem — a failed clear is not worth throwing over.
+  }
 }

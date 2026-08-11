@@ -1,5 +1,5 @@
 import { YouVersionUserInfoJSONSchema, type YouVersionUserInfoJSON } from './schemas/user-info';
-import { getLocalStorage } from './web-storage';
+import { getLocalStorage, removeStorageItem, setStorageItem } from './web-storage';
 
 /**
  * Security Note: Tokens and the decoded user profile are stored in localStorage
@@ -21,10 +21,10 @@ export class YouVersionPlatformConfiguration {
 
   private static getOrSetInstallationId(): string {
     const storage = getLocalStorage();
+    // An id that can't be persisted isn't an installation id — it would be a
+    // fresh value per process, shared by every user of an SSR server. Callers
+    // treat '' as absent and omit the header.
     if (!storage) {
-      // An id that can't be persisted isn't an installation id — it would be a
-      // fresh value per process, shared by every user of an SSR server. Callers
-      // treat '' as absent and omit the header.
       return '';
     }
 
@@ -37,8 +37,9 @@ export class YouVersionPlatformConfiguration {
       typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
         : `yvp-${new Date().toISOString()}-${Math.random().toString(36).slice(2, 10)}`;
-    storage.setItem('x-yvp-installation-id', newId);
-    return newId;
+    // A store that rejects the write (Safari private mode) leaves us just as
+    // unable to persist as no store at all.
+    return setStorageItem(storage, 'x-yvp-installation-id', newId) ? newId : '';
   }
 
   public static saveAuthData(
@@ -50,21 +51,21 @@ export class YouVersionPlatformConfiguration {
     if (!storage) return;
 
     if (accessToken !== null) {
-      storage.setItem('accessToken', accessToken);
+      setStorageItem(storage, 'accessToken', accessToken);
     } else {
-      storage.removeItem('accessToken');
+      removeStorageItem(storage, 'accessToken');
     }
 
     if (refreshToken !== null) {
-      storage.setItem('refreshToken', refreshToken);
+      setStorageItem(storage, 'refreshToken', refreshToken);
     } else {
-      storage.removeItem('refreshToken');
+      removeStorageItem(storage, 'refreshToken');
     }
 
     if (expiryDate !== null) {
-      storage.setItem('expiryDate', expiryDate.toISOString());
+      setStorageItem(storage, 'expiryDate', expiryDate.toISOString());
     } else {
-      storage.removeItem('expiryDate');
+      removeStorageItem(storage, 'expiryDate');
     }
   }
 
@@ -77,9 +78,9 @@ export class YouVersionPlatformConfiguration {
     if (!storage) return;
 
     if (userInfo !== null) {
-      storage.setItem('userInfo', JSON.stringify(userInfo));
+      setStorageItem(storage, 'userInfo', JSON.stringify(userInfo));
     } else {
-      storage.removeItem('userInfo');
+      removeStorageItem(storage, 'userInfo');
     }
   }
 
@@ -136,7 +137,11 @@ export class YouVersionPlatformConfiguration {
   }
 
   private static writeStoredGrants(userId: string, permissions: string[]): void {
-    getLocalStorage()?.setItem(this.grantedPermissionsKey, JSON.stringify({ userId, permissions }));
+    setStorageItem(
+      getLocalStorage(),
+      this.grantedPermissionsKey,
+      JSON.stringify({ userId, permissions }),
+    );
   }
 
   public static get grantedPermissions(): string[] {
@@ -168,7 +173,7 @@ export class YouVersionPlatformConfiguration {
   }
 
   public static clearGrantedPermissions(): void {
-    getLocalStorage()?.removeItem(this.grantedPermissionsKey);
+    removeStorageItem(getLocalStorage(), this.grantedPermissionsKey);
   }
 
   /**
@@ -192,7 +197,7 @@ export class YouVersionPlatformConfiguration {
   public static saveDataExchangeInitiator(): void {
     const userId = this.currentUserId;
     if (!userId) return;
-    getLocalStorage()?.setItem(this.dataExchangeInitiatorKey, userId);
+    setStorageItem(getLocalStorage(), this.dataExchangeInitiatorKey, userId);
   }
 
   /** The initiating user's id for the pending data exchange, or `null`. */
@@ -201,7 +206,7 @@ export class YouVersionPlatformConfiguration {
   }
 
   public static clearDataExchangeInitiator(): void {
-    getLocalStorage()?.removeItem(this.dataExchangeInitiatorKey);
+    removeStorageItem(getLocalStorage(), this.dataExchangeInitiatorKey);
   }
 
   /** Optimistic check against the permission cache. Server 401/403 still wins. */
