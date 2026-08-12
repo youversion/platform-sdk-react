@@ -40,18 +40,22 @@ jobs:
       # On manual recovery runs, build the exact source of the latest published
       # UI package instead of current HEAD: main may have advanced past the
       # release commit, and the uploaded stylesheet must always match what is
-      # on npm. Changesets pushes a tag per published package version.
+      # on npm. The npm "latest" dist-tag is the source of truth for which
+      # version that is (git tag dates can lie: recreated tags or prereleases
+      # can carry the newest creation date); changesets pushes a matching
+      # git tag per published version.
       - name: Check out latest published UI release (manual runs)
         if: github.event_name == 'workflow_dispatch'
         run: |
           git fetch --tags --quiet origin
-          tag=$(git tag --list '@youversion/platform-react-ui@*' --sort=-creatordate | head -n 1)
-          if [ -z "$tag" ]; then
-            echo "::error::No @youversion/platform-react-ui release tag found; cannot determine which stylesheet to publish."
+          version="$(npm view @youversion/platform-react-ui version)"
+          tag="@youversion/platform-react-ui@${version}"
+          if ! git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+            echo "::error::npm latest is ${version} but tag ${tag} does not exist in this repository; cannot determine which stylesheet to publish."
             exit 1
           fi
-          echo "Building stylesheet from $tag"
-          git checkout --detach "$tag"
+          echo "Building stylesheet from ${tag} (npm latest)"
+          git checkout --detach "refs/tags/${tag}"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
