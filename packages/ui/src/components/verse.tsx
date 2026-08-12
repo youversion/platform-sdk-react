@@ -158,6 +158,17 @@ export function hexToRgba(hex: string, alpha: number): string {
 }
 
 /**
+ * Rec. 601 luma. Dark fills (e.g. `000000`) need light text in light mode;
+ * the five SDK palette colors all sit above this cutoff.
+ */
+export function isDarkHighlightHex(hex: string): boolean {
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.5;
+}
+
+/**
  * Extracts clean prose for a verse from the rendered DOM: concatenates every
  * `.yv-v[v="N"]` wrapper (a verse can span multiple, e.g. poetry) with verse
  * numbers (`.yv-vlbl`), headings (`.yv-h`), and footnote markers
@@ -347,7 +358,14 @@ function BibleTextHtml({
       el.classList.toggle('yv-v-selected', selectedVerses.includes(verseNum));
       const color = highlightedVerses[verseNum];
       const isHighlighted = Boolean(color);
-      (el as HTMLElement).style.backgroundColor = color ? hexToRgba(color, fillOpacity) : '';
+      const node = el as HTMLElement;
+      node.style.backgroundColor = color ? hexToRgba(color, fillOpacity) : '';
+      // Light mode paints fills at full strength. A dark non-palette hex
+      // (YPE-4494) would sit under the reader's dark body text and go
+      // illegible, so flip the wrapper to white; labels and footnote icons
+      // inherit it. Palette fills stay on the default foreground. Dark mode
+      // already uses light body text, so leave color unset there.
+      node.style.color = color && !isDark && isDarkHighlightHex(color) ? '#ffffff' : '';
       // Over a highlight fill the muted label color clashes with saturated fills,
       // so the label inherits the verse body text color instead — the reader's
       // main text color in light mode, white/near-white in dark mode. Setting

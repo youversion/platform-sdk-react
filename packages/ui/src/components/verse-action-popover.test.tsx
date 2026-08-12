@@ -607,6 +607,21 @@ describe('VerseActionPopover', () => {
       const check = screen.getByRole('button', { name: /Clear highlight/ }).querySelector('svg');
       expect(check?.getAttribute('class')).toContain('yv:text-(--yv-gray-50)');
     });
+
+    it('uses a white checkmark on a dark remove swatch in light mode', () => {
+      const custom = '000000';
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          theme="light"
+          activeHighlights={new Set([custom])}
+          selectedVerses={[1]}
+          highlightedVerses={{ 1: custom }}
+        />,
+      );
+      const check = screen.getByRole('button', { name: /Clear highlight/ }).querySelector('svg');
+      expect(check?.getAttribute('class')).toContain('yv:text-white');
+    });
   });
 
   describe('Viewport width cap + scrollable swatch row', () => {

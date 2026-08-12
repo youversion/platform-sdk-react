@@ -7,7 +7,7 @@ import { BoxStackIcon } from './icons/box-stack';
 import { BoxArrowUpIcon } from './icons/box-arrow-up';
 import { CheckIcon } from './icons/check';
 import { buildVerseActionSwatches } from '@/lib/highlight-colors';
-import { hexToRgba, HIGHLIGHT_FILL_OPACITY_DARK } from './verse';
+import { hexToRgba, HIGHLIGHT_FILL_OPACITY_DARK, isDarkHighlightHex } from './verse';
 
 export { HIGHLIGHT_COLORS, type HighlightColor } from '@/lib/highlight-colors';
 
@@ -117,7 +117,10 @@ function ColorCircle({ color, showRemove, label, onClick, theme }: ColorCirclePr
           white to stay legible. Tapping it still removes the highlight. */}
       {showRemove && (
         <CheckIcon
-          className={cn('yv:size-6', isDark ? 'yv:text-white' : 'yv:text-(--yv-gray-50)')}
+          className={cn(
+            'yv:size-6',
+            isDark || isDarkHighlightHex(color) ? 'yv:text-white' : 'yv:text-(--yv-gray-50)',
+          )}
         />
       )}
     </button>

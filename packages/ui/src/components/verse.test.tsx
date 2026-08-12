@@ -609,6 +609,39 @@ describe('Verse.Html - Highlight fill (theme-aware, Swift parity)', () => {
     });
   });
 
+  it('paints white verse text over a dark fill in light mode so the words stay legible', async () => {
+    const { container, rerender } = render(
+      <Verse.Html html={highlightHtml} theme="light" highlightedVerses={{ 1: '000000' }} />,
+    );
+
+    await waitFor(() => {
+      const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
+      expect(verse).not.toBeNull();
+      expect(verse!.style.backgroundColor).toBe('rgb(0, 0, 0)');
+      expect(verse!.style.color).toBe('rgb(255, 255, 255)');
+    });
+
+    rerender(<Verse.Html html={highlightHtml} theme="light" highlightedVerses={{}} />);
+
+    await waitFor(() => {
+      const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
+      expect(verse!.style.backgroundColor).toBe('');
+      expect(verse!.style.color).toBe('');
+    });
+  });
+
+  it('keeps default verse text color over a palette fill in light mode', async () => {
+    const { container } = render(
+      <Verse.Html html={highlightHtml} theme="light" highlightedVerses={{ 1: 'fffe00' }} />,
+    );
+
+    await waitFor(() => {
+      const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
+      expect(verse).not.toBeNull();
+      expect(verse!.style.color).toBe('');
+    });
+  });
+
   it('paints the fill at 0.3 alpha in dark mode', async () => {
     const { container } = render(
       <Verse.Html html={highlightHtml} theme="dark" highlightedVerses={{ 1: 'fffe00' }} />,
