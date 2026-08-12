@@ -97,7 +97,7 @@ Repository Actions secrets:
 
 - On `main` pushes, the upload steps only run when `@youversion/platform-react-ui` is among the published packages.
 - npm publishing happens before the CDN upload; a failed upload does not affect the npm release.
-- **Do not retry by re-running the failed job**: on a re-run, changesets reports nothing newly published, so the CDN steps are skipped. Instead, after fixing the issue, trigger the **Release workflow manually** (Actions → Release → "Run workflow" on `main`). Manual runs skip versioning/publishing entirely and always rebuild and upload the current stylesheet — the upload is idempotent, so this is always safe.
+- **Do not retry by re-running the failed job**: on a re-run, changesets reports nothing newly published, so the CDN steps are skipped. Instead, after fixing the issue, trigger the **Release workflow manually** (Actions → Release → "Run workflow" on `main`). Manual runs skip versioning/publishing entirely; they check out the tag of the **latest published** `@youversion/platform-react-ui` release, rebuild it, and upload its stylesheet — so the CDN always matches what's on npm even if `main` has advanced past the release commit. The upload is idempotent, so this is always safe.
 - Manual dispatches from any ref other than `main` are no-ops (job-level guard), so branch CSS can never overwrite the production stylesheet.
 
 ## Troubleshooting

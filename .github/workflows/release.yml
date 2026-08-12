@@ -8,7 +8,8 @@ on:
   # already published to npm, a job re-run cannot retry it (changesets reports
   # nothing newly published on the re-run). Instead, run this workflow manually
   # from main: the changesets step is skipped and the CDN upload always runs,
-  # publishing the freshly built stylesheet. The upload is idempotent.
+  # built from the tag of the latest published UI release so the uploaded CSS
+  # matches what is on npm. The upload is idempotent.
   # Dispatches from any ref other than main are no-ops (job-level guard below),
   # so branch CSS can never overwrite the production stylesheet.
   workflow_dispatch:
@@ -35,6 +36,22 @@ jobs:
         with:
           # This is required for changesets to access commit history
           fetch-depth: 0
+
+      # On manual recovery runs, build the exact source of the latest published
+      # UI package instead of current HEAD: main may have advanced past the
+      # release commit, and the uploaded stylesheet must always match what is
+      # on npm. Changesets pushes a tag per published package version.
+      - name: Check out latest published UI release (manual runs)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git fetch --tags --quiet origin
+          tag=$(git tag --list '@youversion/platform-react-ui@*' --sort=-creatordate | head -n 1)
+          if [ -z "$tag" ]; then
+            echo "::error::No @youversion/platform-react-ui release tag found; cannot determine which stylesheet to publish."
+            exit 1
+          fi
+          echo "Building stylesheet from $tag"
+          git checkout --detach "$tag"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
