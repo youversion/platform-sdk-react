@@ -120,6 +120,28 @@ jobs:
       - name: Publish UI stylesheet to CDN
         if: github.event_name == 'workflow_dispatch' || (steps.changesets.outputs.published == 'true' && contains(fromJSON(steps.changesets.outputs.publishedPackages).*.name, '@youversion/platform-react-ui'))
         run: |
+          # Feature-flag gate (feature.platform.sdkCssCdn, defined in the
+          # transformers flag manifest): read the prod Firebase Remote Config
+          # *server* template and only upload when the flag's value is "true".
+          # A missing parameter or "false" means CDN publishing is disabled
+          # (ship dark) — flip the value in the prod Firebase console to
+          # launch or kill without a code change. This simple check reads
+          # defaultValue only; conditional values / percentage rollouts are
+          # not evaluated. A template fetch failure fails this step (visibly)
+          # rather than guessing.
+          TOKEN="$(gcloud auth print-access-token)"
+          FLAG_VALUE="$(curl -sS --fail-with-body \
+            -H "Authorization: Bearer $TOKEN" \
+            "https://firebaseremoteconfig.googleapis.com/v1/projects/yvplatform-prod/namespaces/firebase-server/remoteConfig" \
+            | jq -r '.parameters.feature_platform_sdkCssCdn.defaultValue.value // "false"')"
+          if [ "$FLAG_VALUE" != "true" ]; then
+            echo "::notice::CDN stylesheet publishing is disabled (feature.platform.sdkCssCdn=${FLAG_VALUE} in prod Remote Config); skipping upload."
+            echo "## CDN Stylesheet :art:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Skipped: \`feature.platform.sdkCssCdn\` is \`${FLAG_VALUE}\` in the prod Remote Config server template." >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
           CSS_MAJOR_VERSION="$(tr -d '[:space:]' < packages/ui/CDN_CSS_MAJOR_VERSION)"
           test -s packages/ui/dist/tailwind.css
           gcloud storage cp packages/ui/dist/tailwind.css \
