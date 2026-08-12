@@ -17,12 +17,14 @@ const mockRemoveItem = vi.fn((key: string) => {
   delete mockStorage[key];
 });
 
-vi.stubGlobal('crypto', { randomUUID: mockRandomUUID });
-vi.stubGlobal('localStorage', {
+const mockLocalStorage = {
   getItem: mockGetItem,
   setItem: mockSetItem,
   removeItem: mockRemoveItem,
-});
+};
+
+vi.stubGlobal('crypto', { randomUUID: mockRandomUUID });
+vi.stubGlobal('localStorage', mockLocalStorage);
 
 import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfiguration';
 
@@ -209,6 +211,29 @@ describe('YouVersionPlatformConfiguration', () => {
       expect(mockRemoveItem).toHaveBeenCalledWith('refreshToken');
       expect(mockRemoveItem).toHaveBeenCalledWith('expiryDate');
     });
+
+    it('should report whether the tokens actually landed', () => {
+      expect(YouVersionPlatformConfiguration.saveAuthData('access', 'refresh', new Date())).toBe(
+        true,
+      );
+
+      // Safari private mode reads fine and throws on every write.
+      mockSetItem.mockImplementationOnce(() => {
+        throw new Error('QuotaExceededError');
+      });
+
+      expect(YouVersionPlatformConfiguration.saveAuthData('access', 'refresh', new Date())).toBe(
+        false,
+      );
+    });
+
+    it('should report success when only clearing, even without a store', () => {
+      vi.stubGlobal('localStorage', undefined);
+
+      expect(YouVersionPlatformConfiguration.saveAuthData(null, null, null)).toBe(true);
+
+      vi.stubGlobal('localStorage', mockLocalStorage);
+    });
   });
 
   describe('user info persistence', () => {
@@ -243,6 +268,17 @@ describe('YouVersionPlatformConfiguration', () => {
     it('should return null when the stored profile fails schema validation', () => {
       mockStorage.userInfo = JSON.stringify({ id: 42 });
       expect(YouVersionPlatformConfiguration.storedUserInfo).toBeNull();
+    });
+
+    it('should report whether the profile actually landed', () => {
+      expect(YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-123' })).toBe(true);
+
+      mockSetItem.mockImplementationOnce(() => {
+        throw new Error('QuotaExceededError');
+      });
+
+      expect(YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-123' })).toBe(false);
+      expect(YouVersionPlatformConfiguration.saveUserInfo(null)).toBe(true);
     });
   });
 
@@ -368,6 +404,57 @@ describe('YouVersionPlatformConfiguration', () => {
 
       YouVersionPlatformConfiguration.appName = undefined;
       expect(YouVersionPlatformConfiguration.appName).toBeUndefined();
+    });
+  });
+
+  /**
+   * React Native defines `window` (`global.window === global`) but no Web
+   * Storage, so a `typeof window` guard passes and the storage access on the
+   * next line throws. Every accessor here must degrade instead.
+   */
+  describe('without usable storage', () => {
+    beforeEach(() => {
+      vi.stubGlobal('localStorage', undefined);
+    });
+
+    afterEach(() => {
+      vi.stubGlobal('localStorage', mockLocalStorage);
+      YouVersionPlatformConfiguration.installationId = null;
+    });
+
+    it('should resolve reads to null instead of throwing', () => {
+      expect(YouVersionPlatformConfiguration.accessToken).toBeNull();
+      expect(YouVersionPlatformConfiguration.refreshToken).toBeNull();
+      expect(YouVersionPlatformConfiguration.storedUserInfo).toBeNull();
+      expect(YouVersionPlatformConfiguration.tokenExpiryDate).toBeNull();
+      expect(YouVersionPlatformConfiguration.dataExchangeInitiator).toBeNull();
+      expect(YouVersionPlatformConfiguration.grantedPermissions).toEqual([]);
+      expect(YouVersionPlatformConfiguration.hasPermission('highlights')).toBe(false);
+    });
+
+    it('should no-op writes instead of throwing', () => {
+      expect(() =>
+        YouVersionPlatformConfiguration.saveAuthData('access', 'refresh', new Date()),
+      ).not.toThrow();
+      expect(() =>
+        YouVersionPlatformConfiguration.saveUserInfo({
+          id: 'user-1',
+          name: 'Test User',
+          email: 'test@example.com',
+          avatar_url: undefined,
+        }),
+      ).not.toThrow();
+      expect(() =>
+        YouVersionPlatformConfiguration.saveGrantedPermissions(['highlights']),
+      ).not.toThrow();
+      expect(() => YouVersionPlatformConfiguration.saveDataExchangeInitiator()).not.toThrow();
+      expect(() => YouVersionPlatformConfiguration.clearAuthTokens()).not.toThrow();
+    });
+
+    it('should report no installation id rather than minting an unpersistable one', () => {
+      YouVersionPlatformConfiguration.installationId = null;
+
+      expect(YouVersionPlatformConfiguration.installationId).toBe('');
     });
   });
 });

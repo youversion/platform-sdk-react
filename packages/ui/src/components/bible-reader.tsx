@@ -12,7 +12,12 @@ import {
 } from '@/lib/verse-html-utils';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import type { BibleBook, Highlight } from '@youversion/platform-core';
-import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, getAdjacentChapter } from '@youversion/platform-core';
+import {
+  DEFAULT_LICENSE_FREE_BIBLE_VERSION,
+  getAdjacentChapter,
+  getLocalStorage,
+  setStorageItem,
+} from '@youversion/platform-core';
 import {
   useBooks,
   usePassage,
@@ -537,7 +542,7 @@ function Root({
     didHydrateThemeSettingsRef.current = true;
 
     if (!isFontSizeControlled) {
-      const savedFontSize = localStorage.getItem('youversion-platform:reader:font-size');
+      const savedFontSize = getLocalStorage()?.getItem('youversion-platform:reader:font-size');
       if (savedFontSize) {
         const parsed = parseInt(savedFontSize);
         if (parsed >= MIN_FONT_SIZE && parsed <= MAX_FONT_SIZE) {
@@ -547,7 +552,7 @@ function Root({
     }
 
     if (!isFontFamilyControlled) {
-      const savedFontFamily = localStorage.getItem('youversion-platform:reader:font-family');
+      const savedFontFamily = getLocalStorage()?.getItem('youversion-platform:reader:font-family');
       if (savedFontFamily) {
         // Readers who picked serif before Untitled Serif shipped stored the old
         // stack; map it forward so the picker still shows serif as active.
@@ -560,7 +565,9 @@ function Root({
     }
 
     if (!isLineSpacingControlled) {
-      const savedLineSpacing = localStorage.getItem('youversion-platform:reader:line-spacing');
+      const savedLineSpacing = getLocalStorage()?.getItem(
+        'youversion-platform:reader:line-spacing',
+      );
       if (savedLineSpacing) {
         const parsed = parseFloat(savedLineSpacing);
         if (Object.values(BIBLE_READER_SPACING).some((spacing) => spacing === parsed)) {
@@ -579,19 +586,28 @@ function Root({
 
   useEffect(() => {
     if (!isFontSizeControlled) {
-      localStorage.setItem('youversion-platform:reader:font-size', currentFontSize.toString());
+      setStorageItem(
+        getLocalStorage(),
+        'youversion-platform:reader:font-size',
+        currentFontSize.toString(),
+      );
     }
   }, [currentFontSize, isFontSizeControlled]);
 
   useEffect(() => {
     if (!isFontFamilyControlled) {
-      localStorage.setItem('youversion-platform:reader:font-family', currentFontFamily);
+      setStorageItem(
+        getLocalStorage(),
+        'youversion-platform:reader:font-family',
+        currentFontFamily,
+      );
     }
   }, [currentFontFamily, isFontFamilyControlled]);
 
   useEffect(() => {
     if (!isLineSpacingControlled) {
-      localStorage.setItem(
+      setStorageItem(
+        getLocalStorage(),
         'youversion-platform:reader:line-spacing',
         currentLineSpacing.toString(),
       );

@@ -1,4 +1,5 @@
 import { YouVersionUserInfoJSONSchema, type YouVersionUserInfoJSON } from './schemas/user-info';
+import { getLocalStorage, removeStorageItem, setStorageItem } from './web-storage';
 
 /**
  * Security Note: Tokens and the decoded user profile are stored in localStorage
@@ -19,11 +20,15 @@ export class YouVersionPlatformConfiguration {
   private static _appName: string | undefined = undefined;
 
   private static getOrSetInstallationId(): string {
-    if (typeof window === 'undefined') {
+    const storage = getLocalStorage();
+    // An id that can't be persisted isn't an installation id — it would be a
+    // fresh value per process, shared by every user of an SSR server. Callers
+    // treat '' as absent and omit the header.
+    if (!storage) {
       return '';
     }
 
-    const existingId = localStorage.getItem('x-yvp-installation-id');
+    const existingId = storage.getItem('x-yvp-installation-id');
     if (existingId) {
       return existingId;
     }
@@ -32,44 +37,66 @@ export class YouVersionPlatformConfiguration {
       typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
         : `yvp-${new Date().toISOString()}-${Math.random().toString(36).slice(2, 10)}`;
-    localStorage.setItem('x-yvp-installation-id', newId);
-    return newId;
+    // A store that rejects the write (Safari private mode) leaves us just as
+    // unable to persist as no store at all.
+    return setStorageItem(storage, 'x-yvp-installation-id', newId) ? newId : '';
   }
 
+  /**
+   * Persists the session tokens; a `null` value clears the corresponding key.
+   *
+   * @returns `true` when every value it was asked to persist actually landed.
+   *   The session lives entirely in storage — the {@link accessToken},
+   *   {@link refreshToken}, and {@link tokenExpiryDate} getters read straight
+   *   back out of it — so a caller reporting a successful sign-in must not do
+   *   so on `false`. Clearing always reports `true`: removal is best-effort,
+   *   and every reader tolerates a value that outlived its removal.
+   */
   public static saveAuthData(
     accessToken: string | null,
     refreshToken: string | null,
     expiryDate: Date | null,
-  ): void {
+  ): boolean {
+    const storage = getLocalStorage();
+    let persisted = true;
+
     if (accessToken !== null) {
-      localStorage.setItem('accessToken', accessToken);
+      persisted = setStorageItem(storage, 'accessToken', accessToken) && persisted;
     } else {
-      localStorage.removeItem('accessToken');
+      removeStorageItem(storage, 'accessToken');
     }
 
     if (refreshToken !== null) {
-      localStorage.setItem('refreshToken', refreshToken);
+      persisted = setStorageItem(storage, 'refreshToken', refreshToken) && persisted;
     } else {
-      localStorage.removeItem('refreshToken');
+      removeStorageItem(storage, 'refreshToken');
     }
 
     if (expiryDate !== null) {
-      localStorage.setItem('expiryDate', expiryDate.toISOString());
+      persisted = setStorageItem(storage, 'expiryDate', expiryDate.toISOString()) && persisted;
     } else {
-      localStorage.removeItem('expiryDate');
+      removeStorageItem(storage, 'expiryDate');
     }
+
+    return persisted;
   }
 
   /**
    * Persists the decoded user profile derived from the ID token at sign-in.
    * Pass `null` to remove any stored profile.
+   *
+   * @returns `true` when the profile was actually persisted (or removed) — see
+   *   {@link saveAuthData} for why a caller must not ignore a `false`.
    */
-  public static saveUserInfo(userInfo: YouVersionUserInfoJSON | null): void {
-    if (userInfo !== null) {
-      localStorage.setItem('userInfo', JSON.stringify(userInfo));
-    } else {
-      localStorage.removeItem('userInfo');
+  public static saveUserInfo(userInfo: YouVersionUserInfoJSON | null): boolean {
+    const storage = getLocalStorage();
+
+    if (userInfo === null) {
+      removeStorageItem(storage, 'userInfo');
+      return true;
     }
+
+    return setStorageItem(storage, 'userInfo', JSON.stringify(userInfo));
   }
 
   public static clearAuthTokens(): void {
@@ -103,8 +130,7 @@ export class YouVersionPlatformConfiguration {
    * malformed, or in the legacy bare-array format (which is treated as absent).
    */
   private static readStoredGrants(): { userId: string; permissions: string[] } | null {
-    if (typeof localStorage === 'undefined') return null;
-    const raw = localStorage.getItem(this.grantedPermissionsKey);
+    const raw = getLocalStorage()?.getItem(this.grantedPermissionsKey);
     if (!raw) return null;
     try {
       const parsed: unknown = JSON.parse(raw);
@@ -126,7 +152,11 @@ export class YouVersionPlatformConfiguration {
   }
 
   private static writeStoredGrants(userId: string, permissions: string[]): void {
-    localStorage.setItem(this.grantedPermissionsKey, JSON.stringify({ userId, permissions }));
+    setStorageItem(
+      getLocalStorage(),
+      this.grantedPermissionsKey,
+      JSON.stringify({ userId, permissions }),
+    );
   }
 
   public static get grantedPermissions(): string[] {
@@ -143,7 +173,6 @@ export class YouVersionPlatformConfiguration {
    * No-ops when signed out, since grants must be scoped to a user.
    */
   public static saveGrantedPermissions(permissions: string[]): void {
-    if (typeof localStorage === 'undefined') return;
     const userId = this.currentUserId;
     if (!userId) return;
     const merged = new Set([...this.grantedPermissions, ...permissions]);
@@ -152,7 +181,6 @@ export class YouVersionPlatformConfiguration {
 
   /** Drops a single permission from the cache — used to honor a server 401/403. */
   public static removeGrantedPermission(permission: string): void {
-    if (typeof localStorage === 'undefined') return;
     const userId = this.currentUserId;
     if (!userId) return;
     const next = this.grantedPermissions.filter((entry) => entry !== permission);
@@ -160,8 +188,7 @@ export class YouVersionPlatformConfiguration {
   }
 
   public static clearGrantedPermissions(): void {
-    if (typeof localStorage === 'undefined') return;
-    localStorage.removeItem(this.grantedPermissionsKey);
+    removeStorageItem(getLocalStorage(), this.grantedPermissionsKey);
   }
 
   /**
@@ -183,21 +210,18 @@ export class YouVersionPlatformConfiguration {
    * return is treated as untrusted by {@link dataExchangeInitiator}'s consumer.
    */
   public static saveDataExchangeInitiator(): void {
-    if (typeof localStorage === 'undefined') return;
     const userId = this.currentUserId;
     if (!userId) return;
-    localStorage.setItem(this.dataExchangeInitiatorKey, userId);
+    setStorageItem(getLocalStorage(), this.dataExchangeInitiatorKey, userId);
   }
 
   /** The initiating user's id for the pending data exchange, or `null`. */
   public static get dataExchangeInitiator(): string | null {
-    if (typeof localStorage === 'undefined') return null;
-    return localStorage.getItem(this.dataExchangeInitiatorKey);
+    return getLocalStorage()?.getItem(this.dataExchangeInitiatorKey) ?? null;
   }
 
   public static clearDataExchangeInitiator(): void {
-    if (typeof localStorage === 'undefined') return;
-    localStorage.removeItem(this.dataExchangeInitiatorKey);
+    removeStorageItem(getLocalStorage(), this.dataExchangeInitiatorKey);
   }
 
   /** Optimistic check against the permission cache. Server 401/403 still wins. */
@@ -206,11 +230,11 @@ export class YouVersionPlatformConfiguration {
   }
 
   public static get accessToken(): string | null {
-    return localStorage.getItem('accessToken');
+    return getLocalStorage()?.getItem('accessToken') ?? null;
   }
 
   public static get refreshToken(): string | null {
-    return localStorage.getItem('refreshToken');
+    return getLocalStorage()?.getItem('refreshToken') ?? null;
   }
 
   /**
@@ -218,7 +242,7 @@ export class YouVersionPlatformConfiguration {
    * Returns `null` when nothing is stored or the stored value is malformed.
    */
   public static get storedUserInfo(): YouVersionUserInfoJSON | null {
-    const raw = localStorage.getItem('userInfo');
+    const raw = getLocalStorage()?.getItem('userInfo');
     if (!raw) {
       return null;
     }
@@ -233,7 +257,7 @@ export class YouVersionPlatformConfiguration {
   }
 
   public static get tokenExpiryDate(): Date | null {
-    const dateString = localStorage.getItem('expiryDate');
+    const dateString = getLocalStorage()?.getItem('expiryDate');
     return dateString ? new Date(dateString) : null;
   }
 

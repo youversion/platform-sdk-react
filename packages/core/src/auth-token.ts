@@ -6,9 +6,9 @@ import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfigurati
  * they resolve the token identically.
  *
  * The implicit fallback reads from `YouVersionPlatformConfiguration`, which is
- * backed by browser `localStorage`. In any environment without it (Node.js
- * tests, SSR) there is intentionally no ambient token: server-side callers must
- * pass `lat` explicitly rather than relying on this fallback.
+ * backed by browser `localStorage` and safely resolves to `null` in any
+ * environment without a usable store (React Native, Node.js tests, SSR): those
+ * callers must pass `lat` explicitly rather than relying on this fallback.
  *
  * @param lat Optional explicit long access token.
  * @param action Human-readable action for the error message tail (e.g.
@@ -20,8 +20,7 @@ export function resolveAuthToken(lat: string | undefined, action: string): strin
   if (lat) {
     return lat;
   }
-  const token =
-    typeof localStorage === 'undefined' ? null : YouVersionPlatformConfiguration.accessToken;
+  const token = YouVersionPlatformConfiguration.accessToken;
   if (!token) {
     throw new Error(`Authentication required. Please provide a token or sign in before ${action}.`);
   }

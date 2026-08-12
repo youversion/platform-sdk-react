@@ -38,6 +38,8 @@ index.ts                     # Main entry point (runtime-agnostic)
 - `HighlightsClient`: Manage user highlights
 - `SignInWithYouVersionPKCE()`: PKCE auth flow function
 - `SessionStorage`, `MemoryStorage`: Storage strategies
+- `getLocalStorage()`, `getSessionStorage()`: Capability-checked Web Storage accessors, `null` when unusable
+- `setStorageItem()`, `removeStorageItem()`, `clearStorage()`: Throw-safe mutations for a resolved store (`setStorageItem` returns whether the write landed)
 - `transformBibleHtml`: Runtime-agnostic Bible HTML transformer (requires DOM adapters)
 - `TransformBibleHtmlOptions`: Options for DOM parsing and serialization
 
@@ -54,7 +56,7 @@ index.ts                     # Main entry point (runtime-agnostic)
 ✅ Do: Compose `ApiClient` in new service clients; take it as a constructor argument
 ✅ Do: Parse API responses with Zod schemas for validation
 
-❌ Don't: Import React, `window`, `document`, or browser storage APIs, but if you must target the browser, those files must export from `/browser`
+❌ Don't: Import React, `window`, `document`, or browser storage APIs, but if you must target the browser, those files must export from `/browser`. The one carve-out is `web-storage.ts`: auth and configuration live in the `"."` entry and need storage, so all of it goes through `getLocalStorage()`/`getSessionStorage()`, which feature-detect and return `null` off-browser. Never touch `localStorage`/`sessionStorage` directly. Resolving a store does not make a write safe (Safari private mode reads fine and throws on `setItem`), so mutate through `setStorageItem()`/`removeStorageItem()`/`clearStorage()` rather than calling the store's own methods.
 ❌ Don't: Bypass Zod validation for API responses
 ❌ Don't: Implement UI, hooks, or React state here
 

@@ -151,6 +151,34 @@ describe('YouVersionAPIUsers', () => {
       );
     });
 
+    it('should report the missing capability when localStorage is unusable', async () => {
+      // React Native defines `window` but no Web Storage, so the PKCE handoff has
+      // nowhere to stash the verifier — fail loudly rather than with a TypeError.
+      stubSignInCrypto();
+      vi.stubGlobal('localStorage', undefined);
+
+      await expect(YouVersionAPIUsers.signIn('https://example.com/callback')).rejects.toThrow(
+        'Sign In with YouVersion requires localStorage, which is not available in this environment',
+      );
+    });
+
+    it('should report the rejected write when the store refuses it', async () => {
+      // Safari private mode hands out a readable store with a zero-byte quota:
+      // `getItem` works, `setItem` throws. Losing the verifier here would only
+      // surface after the redirect as "Missing required authentication
+      // parameters", so fail before navigating away — and say the store
+      // rejected the write, not that there was no store.
+      stubSignInCrypto();
+      mocks.localStorage.setItem.mockImplementation(() => {
+        throw new Error('QuotaExceededError');
+      });
+
+      await expect(YouVersionAPIUsers.signIn('https://example.com/callback')).rejects.toThrow(
+        'Sign In with YouVersion could not write to localStorage',
+      );
+      expect(mocks.window.location.href).toBe('');
+    });
+
     it('should create authorization request and redirect on successful signIn', async () => {
       stubSignInCrypto();
 
@@ -220,6 +248,24 @@ describe('YouVersionAPIUsers', () => {
       expect(typeof stored.state).toBe('string');
     });
 
+    it('fails before redirecting when the requested-permissions stash cannot be written', async () => {
+      // The web flow echoes no grants, so this stash is the callback's only
+      // evidence of what was requested. A store that accepts the verifier but
+      // rejects this key (quota reached mid-call) would otherwise redirect and
+      // then re-prompt for a permission the user just consented to.
+      stubSignInCrypto();
+      mocks.localStorage.setItem.mockImplementation((key: string) => {
+        if (key === 'youversion-auth-requested-permissions') {
+          throw new Error('QuotaExceededError');
+        }
+      });
+
+      await expect(
+        YouVersionAPIUsers.signIn('https://example.com/callback', ['profile'], ['highlights']),
+      ).rejects.toThrow('Sign In with YouVersion could not write to localStorage');
+      expect(mocks.window.location.href).toBe('');
+    });
+
     it('does not stash requested permissions when none are requested', async () => {
       stubSignInCrypto();
 
@@ -253,6 +299,19 @@ describe('YouVersionAPIUsers', () => {
 
       await expect(YouVersionAPIUsers.handleAuthCallback()).rejects.toThrow(
         'OAuth authentication failed: server_error',
+      );
+    });
+
+    it('should report the missing capability when localStorage is unusable', async () => {
+      // Twin of the signIn case: React Native defines `window` but no Web
+      // Storage, so the callback cannot read back the state/verifier the
+      // handoff stashed — fail loudly rather than with a TypeError.
+      mocks.window.location.search = STANDARD_CALLBACK_SEARCH;
+      mocks.window.location.href = STANDARD_CALLBACK_HREF;
+      vi.stubGlobal('localStorage', undefined);
+
+      await expect(YouVersionAPIUsers.handleAuthCallback()).rejects.toThrow(
+        'Sign In with YouVersion requires localStorage, which is not available in this environment',
       );
     });
 
@@ -300,6 +359,28 @@ describe('YouVersionAPIUsers', () => {
         'youversion-auth-pending-granted-permissions',
         JSON.stringify({ state: 'test-state', permissions: ['highlights'] }),
       );
+      expect(mocks.window.location.href).toBe(
+        'https://api.youversion.com/auth/callback?state=test-state&granted_permissions=highlights',
+      );
+    });
+
+    it('still redirects when the pre-code grant stash cannot be written', async () => {
+      // Mid-callback the session is already recoverable: a rejected stash costs
+      // only the grant echo (the permission machine re-prompts), so it must not
+      // abort a sign-in that can still complete.
+      mocks.window.location.href =
+        'https://example.com/callback?state=test-state&granted_permissions=highlights';
+      mocks.window.location.search = '?state=test-state&granted_permissions=highlights';
+      mocks.localStorage.getItem.mockImplementation((key: string) => {
+        if (key === 'youversion-auth-state') return 'test-state';
+        return null;
+      });
+      mocks.localStorage.setItem.mockImplementation(() => {
+        throw new Error('QuotaExceededError');
+      });
+
+      await expect(YouVersionAPIUsers.handleAuthCallback()).resolves.toBeNull();
+
       expect(mocks.window.location.href).toBe(
         'https://api.youversion.com/auth/callback?state=test-state&granted_permissions=highlights',
       );
@@ -376,6 +457,43 @@ describe('YouVersionAPIUsers', () => {
       );
 
       saveAuthDataSpy.mockRestore();
+    });
+
+    it('keeps the new session when post-exchange cleanup cannot write to storage', async () => {
+      // A store can read fine and still throw on every mutation (Safari private
+      // mode). The tokens are already persisted by the time cleanup runs, so a
+      // throwing `removeItem` must not fall into the catch path — that would
+      // clear the session a successful exchange just established.
+      setupCallbackFlow({ scope: 'bibles openid' });
+      mocks.localStorage.removeItem.mockImplementation(() => {
+        throw new Error('QuotaExceededError');
+      });
+      const clearAuthTokensSpy = vi.spyOn(YouVersionPlatformConfiguration, 'clearAuthTokens');
+
+      const result = await YouVersionAPIUsers.handleAuthCallback();
+
+      expect(result?.accessToken).toBe('access-token-123');
+      expect(clearAuthTokensSpy).not.toHaveBeenCalled();
+      expect(mocks.window.history.replaceState).toHaveBeenCalled();
+
+      clearAuthTokensSpy.mockRestore();
+    });
+
+    it('fails the exchange when the session cannot be written to storage', async () => {
+      // The tokens are only ever read back out of storage, so a rejected write
+      // must not be reported as a successful sign-in.
+      setupCallbackFlow({ scope: 'bibles openid' });
+      mocks.localStorage.setItem.mockImplementation(() => {
+        throw new Error('QuotaExceededError');
+      });
+      const clearAuthTokensSpy = vi.spyOn(YouVersionPlatformConfiguration, 'clearAuthTokens');
+
+      await expect(YouVersionAPIUsers.handleAuthCallback()).rejects.toThrow(
+        'the session could not be saved to browser storage',
+      );
+      expect(clearAuthTokensSpy).toHaveBeenCalled();
+
+      clearAuthTokensSpy.mockRestore();
     });
 
     it('unions stashed early grants with token scope when final URL omits them', async () => {
@@ -912,6 +1030,33 @@ describe('YouVersionAPIUsers', () => {
 
       saveAuthDataSpy.mockRestore();
       saveUserInfoSpy.mockRestore();
+    });
+
+    it('should fail the refresh when the rotated tokens cannot be stored', async () => {
+      mocks.localStorage.getItem.mockImplementation((key: string) =>
+        key === 'refreshToken' ? 'refresh-token-123' : null,
+      );
+      mocks.localStorage.setItem.mockImplementation(() => {
+        throw new Error('QuotaExceededError');
+      });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: vi.fn().mockResolvedValue({
+          access_token: 'new-access-token',
+          expires_in: 3600,
+          refresh_token: 'new-refresh-token',
+          scope: 'bibles',
+          token_type: 'Bearer',
+        }),
+      });
+
+      // The server already spent the old refresh token, so an unstorable
+      // rotation is a dead session — reporting success would strand the caller.
+      await expect(YouVersionAPIUsers.refreshTokens()).rejects.toThrow(
+        'the rotated tokens could not be saved to browser storage',
+      );
     });
 
     it('should handle refresh token request failure', async () => {

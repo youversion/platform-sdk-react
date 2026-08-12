@@ -31,3 +31,10 @@ export {
   type TransformedBibleHtml,
 } from './bible-html-transformer';
 export * from './version';
+export {
+  clearStorage,
+  getLocalStorage,
+  getSessionStorage,
+  removeStorageItem,
+  setStorageItem,
+} from './web-storage';

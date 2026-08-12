@@ -123,14 +123,12 @@ export function useYVAuth(): UseYVAuthReturn {
   const isAuthenticated = !!userInfo;
 
   // Get current tokens for actions
-  const authTokens = useMemo(() => {
-    if (typeof window !== 'undefined') {
-      return {
-        accessToken: YouVersionPlatformConfiguration.accessToken,
-      };
-    }
-    return { accessToken: null };
-  }, []);
+  const authTokens = useMemo(
+    () => ({
+      accessToken: YouVersionPlatformConfiguration.accessToken,
+    }),
+    [],
+  );
 
   // Sign in function
   const signIn = useCallback(
