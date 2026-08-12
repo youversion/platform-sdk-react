@@ -82,6 +82,11 @@ path) via a `controlled` input, latched by `Root` at first mount:
 
 ## Out of scope
 
-Notes, custom colors, >5 colors (epic fast-follow); self-contained notification
-events; controlled *content* (the reader keeps fetching passages/books/versions);
-offline/write-queue concerns (native-side, YPE-3717).
+Notes; **creating** new custom apply colors (apply stays the five SDK palette
+colors — YPE-4494); self-contained notification events; controlled *content*
+(the reader keeps fetching passages/books/versions); offline/write-queue
+concerns (native-side, YPE-3717).
+
+Valid non-palette hex that already exists on the account **does** paint and can
+be cleared via the remove tray (YPE-4494) — that is not a custom-color apply
+path.

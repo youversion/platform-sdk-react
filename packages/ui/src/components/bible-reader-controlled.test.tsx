@@ -346,15 +346,17 @@ describe('BibleReader controlled mode - pure projection', () => {
     }
   });
 
-  it('ignores entries with colors outside the built-in swatches (no un-removable paint)', () => {
+  it('paints valid non-palette colors and drops invalid hex', () => {
     const highlights: Highlight[] = [
       { version_id: 111, passage_id: 'JHN.1.1', color: 'abcdef' },
-      { version_id: 111, passage_id: 'JHN.1.2', color: YELLOW },
+      { version_id: 111, passage_id: 'JHN.1.2', color: 'gggggg' },
+      { version_id: 111, passage_id: 'JHN.1.3', color: YELLOW },
     ];
     const { container } = renderReader({ highlights });
 
-    expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
-    expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
+    expect(getVerseEl(container, 1).style.backgroundColor).toBe(fillFor('abcdef'));
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe('');
+    expect(getVerseEl(container, 3).style.backgroundColor).toBe(fillFor(YELLOW));
   });
 
   it('re-projects when the highlights prop changes (host round-trip)', () => {

@@ -2,6 +2,7 @@
 
 import { isHighlightsLive } from '@/lib/feature-flags';
 import { deriveHighlightedVerses } from '@/lib/highlight-projection';
+import { isPaletteHighlightColor, normalizeHighlightHex } from '@/lib/highlight-colors';
 import type { Highlight } from '@youversion/platform-core';
 import {
   bibleReaderHighlightsMachine,
@@ -18,7 +19,6 @@ import {
 } from '@youversion/platform-react-hooks';
 import { useActorRef, useSelector } from '@xstate/react';
 import { useContext, useEffect, useMemo, useRef } from 'react';
-import { HIGHLIGHT_COLORS } from './verse-action-popover';
 
 /**
  * Bridge-safe highlight intent emitted in controlled mode. Structurally
@@ -111,8 +111,10 @@ function parseServerColors(
   for (const highlight of highlights?.data ?? []) {
     if (highlight.version_id !== versionId) continue;
     if (!highlight.passage_id.startsWith(versePrefix)) continue;
+    const normalizedColor = normalizeHighlightHex(highlight.color);
+    if (normalizedColor === null) continue;
     const verse = parseInt(highlight.passage_id.slice(versePrefix.length), 10);
-    if (verse > 0) map[verse] = highlight.color.toLowerCase();
+    if (verse > 0) map[verse] = normalizedColor;
   }
   return map;
 }
@@ -282,16 +284,8 @@ export function useBibleReaderHighlights({
   const machineScope = useSelector(actorRef, (state) => state.context.scope);
   const highlightedVerses = useMemo(() => {
     // Controlled: pure projection from the host prop — no overlay, no fetch.
-    // Colors outside the popover swatches are ignored so un-removable paint
-    // cannot appear (YPE-3705).
     if (isControlled) {
-      return deriveHighlightedVerses(
-        controlled?.highlights ?? [],
-        versionId,
-        book,
-        chapter,
-        HIGHLIGHT_COLORS,
-      );
+      return deriveHighlightedVerses(controlled?.highlights ?? [], versionId, book, chapter);
     }
 
     // Gate on `live`: sign-out or flag-off must render nothing this very render,
@@ -343,8 +337,9 @@ export function useBibleReaderHighlights({
     () => ({
       apply: (color, verses) => {
         const controlledInput = controlledRef.current;
+        if (verses.length === 0) return 'noop';
+        if (!isPaletteHighlightColor(color)) return 'noop';
         if (controlledInput !== undefined) {
-          if (verses.length === 0) return 'noop';
           // Emit intent only — no optimistic paint (YPE-3705 ADR).
           controlledInput.onApply?.(
             buildHighlightIntent(scope.versionId, scope.book, scope.chapter, color, verses),

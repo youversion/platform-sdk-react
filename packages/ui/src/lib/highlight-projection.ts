@@ -1,4 +1,5 @@
 import type { Highlight } from '@youversion/platform-core';
+import { normalizeHighlightHex } from './highlight-colors';
 
 /**
  * Defensive cap on how many verses a single range USFM may expand to. The
@@ -50,24 +51,21 @@ export function expandPassageId(passageId: string): ExpandedPassageId | null {
  * Entries for other versions, books, or chapters are ignored — every entry
  * carries its full identity, so stale host data can never mispaint. Range
  * passage ids are expanded per verse. Colors are normalized to lowercase (the
- * API accepts uppercase at the boundary). Later entries win on collisions.
- *
- * When `allowedColors` is given, entries with any other color are ignored too:
- * the verse-action popover can only offer removal for its own swatches, so a
- * color the reader can't manage must not paint (it would be un-removable).
+ * API accepts uppercase at the boundary). Invalid hex is dropped. Valid
+ * non-palette colors paint so the remove tray can clear them (YPE-4494). Later
+ * entries win on collisions.
  */
 export function deriveHighlightedVerses(
   highlights: readonly Highlight[],
   versionId: number,
   book: string,
   chapter: string,
-  allowedColors?: readonly string[],
 ): Record<number, string> {
   const map: Record<number, string> = {};
   for (const { version_id, passage_id, color } of highlights) {
     if (version_id !== versionId) continue;
-    const normalizedColor = color.toLowerCase();
-    if (allowedColors && !allowedColors.includes(normalizedColor)) continue;
+    const normalizedColor = normalizeHighlightHex(color);
+    if (normalizedColor === null) continue;
     const expanded = expandPassageId(passage_id);
     if (!expanded || expanded.book !== book || expanded.chapter !== chapter) continue;
     for (const verse of expanded.verses) {

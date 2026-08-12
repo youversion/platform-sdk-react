@@ -7,6 +7,13 @@ import {
   type HighlightColor,
 } from './verse-action-popover';
 
+function fillFor(hex: string): string {
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
 describe('VerseActionPopover', () => {
   const defaultProps = {
     open: true,
@@ -412,6 +419,22 @@ describe('VerseActionPopover', () => {
   });
 
   describe('Edge cases', () => {
+    it('shows a remove swatch for a valid non-palette color at exact hex', () => {
+      const custom = 'aabbcc';
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          activeHighlights={new Set([custom])}
+          selectedVerses={[1]}
+          highlightedVerses={{ 1: custom }}
+        />,
+      );
+
+      const removeButtons = clearButtons();
+      expect(removeButtons).toHaveLength(1);
+      expect(removeButtons[0]!.style.backgroundColor).toBe(fillFor(custom));
+    });
+
     it('should handle empty active highlights', () => {
       const activeHighlights = new Set<HighlightColor>();
 
@@ -590,6 +613,21 @@ describe('VerseActionPopover', () => {
       );
       const check = screen.getByRole('button', { name: /Clear highlight/ }).querySelector('svg');
       expect(check?.getAttribute('class')).toContain('yv:text-(--yv-gray-50)');
+    });
+
+    it('uses a white checkmark on a dark remove swatch in light mode', () => {
+      const custom = '000000';
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          theme="light"
+          activeHighlights={new Set([custom])}
+          selectedVerses={[1]}
+          highlightedVerses={{ 1: custom }}
+        />,
+      );
+      const check = screen.getByRole('button', { name: /Clear highlight/ }).querySelector('svg');
+      expect(check?.getAttribute('class')).toContain('yv:text-white');
     });
   });
 

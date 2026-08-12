@@ -238,9 +238,9 @@ export type RootProps = {
    * "controlled, nothing highlighted"; leaving the prop off means
    * self-contained.
    *
-   * Entries whose color is outside the reader's five built-in swatches are
-   * ignored — the verse-action popover can only offer removal for its own
-   * palette, so an unmanageable color must not paint.
+   * Invalid API hex is dropped from paint. Valid non-palette colors paint and
+   * appear in the remove tray at their exact hex (YPE-4494). Apply stays
+   * palette-only.
    */
   highlights?: Highlight[];
   /**
