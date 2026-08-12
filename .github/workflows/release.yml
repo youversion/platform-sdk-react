@@ -9,6 +9,8 @@ on:
   # nothing newly published on the re-run). Instead, run this workflow manually
   # from main: the changesets step is skipped and the CDN upload always runs,
   # publishing the freshly built stylesheet. The upload is idempotent.
+  # Dispatches from any ref other than main are no-ops (job-level guard below),
+  # so branch CSS can never overwrite the production stylesheet.
   workflow_dispatch:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
@@ -22,6 +24,10 @@ permissions:
 jobs:
   release:
     name: Release
+    # Only ever run against main. Pushes are already filtered by the trigger;
+    # this guards workflow_dispatch, which GitHub allows from any ref that
+    # contains the workflow file.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
