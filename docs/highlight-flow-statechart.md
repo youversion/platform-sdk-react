@@ -14,7 +14,9 @@ to explore it interactively.
 
 - **`booting`** → routes to `disabled` or `enabled` from the initial input.
 - **`disabled`** — the flag is off **or** no auth provider is mounted. Fully
-  inert: no fetch, no writes, no dialogs. A color tap resolves to `noop`.
+  inert: no fetch, no writes, no dialogs. A color tap resolves to `noop`
+  (including empty selection and non-palette apply colors — apply stays
+  palette-only; see YPE-4494).
 - **`enabled`** — a parallel state with two independent regions:
   - **`flow`** — the auth / dialog flow.
     - `resuming` consumes the data-exchange return exactly once, then routes on
@@ -26,8 +28,10 @@ to explore it interactively.
     processing one queued operation at a time so a DELETE can never overtake an
     in-flight POST for the same verse.
 
-`TAP_COLOR` forks in `flow`: authorized (`applied`) → optimistic write; signed
-out → `signInDialog`; signed in without the permission → `permissionDialog`.
+`TAP_COLOR` forks in `flow`: authorized palette color (`applied`) → optimistic
+write; signed out → `signInDialog`; signed in without the permission →
+`permissionDialog`. Non-palette colors, empty verse selection, and invalid hex
+resolve to `noop` at the machine boundary (YPE-4494).
 Both dialog paths stash a pending highlight (10-min `sessionStorage` TTL) so the
 intent survives the full-page redirect and resumes on a granted return.
 
@@ -50,6 +54,7 @@ stateDiagram-v2
   state disabled {
     note right of disabled
       TAP_COLOR → outcome "noop"
+      (inert, non-palette, empty selection)
       no fetch / writes / dialogs
     end note
   }

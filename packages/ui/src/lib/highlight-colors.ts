@@ -10,17 +10,19 @@ export type HighlightColor = (typeof HIGHLIGHT_COLORS)[number];
 
 const HIGHLIGHT_HEX_REGEX = /^[0-9a-f]{6}$/i;
 
+function stripHighlightHexPrefix(color: string): string {
+  return color.startsWith('#') ? color.slice(1) : color;
+}
+
 /** Whether `color` is a valid API highlight hex (6 digits, optional `#` stripped). */
 export function isValidHighlightHex(color: string): boolean {
-  const stripped = color.startsWith('#') ? color.slice(1) : color;
-  return HIGHLIGHT_HEX_REGEX.test(stripped);
+  return HIGHLIGHT_HEX_REGEX.test(stripHighlightHexPrefix(color));
 }
 
 /** Lowercases a valid highlight hex, or `null` when invalid. */
 export function normalizeHighlightHex(color: string): string | null {
   if (!isValidHighlightHex(color)) return null;
-  const stripped = color.startsWith('#') ? color.slice(1) : color;
-  return stripped.toLowerCase();
+  return stripHighlightHexPrefix(color).toLowerCase();
 }
 
 /** Whether `color` is one of the five SDK apply swatches (valid hex required). */
@@ -53,22 +55,28 @@ export function buildVerseActionSwatches({
   selectedVerses,
   highlightedVerses,
 }: BuildVerseActionSwatchesInput): VerseActionSwatch[] {
-  const activePalette = HIGHLIGHT_COLORS.filter((color) => activeHighlights.has(color));
-  const activeNonPalette = [...activeHighlights]
-    .map((color) => normalizeHighlightHex(color))
-    .filter((color): color is string => color !== null && !isPaletteHighlightColor(color))
+  const normalizedActive = new Set<string>();
+  for (const color of activeHighlights) {
+    const normalized = normalizeHighlightHex(color);
+    if (normalized !== null) normalizedActive.add(normalized);
+  }
+
+  const activePalette = HIGHLIGHT_COLORS.filter((color) => normalizedActive.has(color));
+  const activeNonPalette = [...normalizedActive]
+    .filter((color) => !(HIGHLIGHT_COLORS as readonly string[]).includes(color))
+    // Deterministic tray order across renders; palette colors stay in canonical order above.
     .sort();
 
   const removeColors = [...activePalette, ...activeNonPalette];
 
   const highlightedVerseCount = selectedVerses.filter((verse) => highlightedVerses[verse]).length;
   const unHighlightedCount = selectedVerses.length - highlightedVerseCount;
-  const allPaletteColorsActive = HIGHLIGHT_COLORS.every((color) => activeHighlights.has(color));
+  const allPaletteColorsActive = HIGHLIGHT_COLORS.every((color) => normalizedActive.has(color));
   const showAllApplyColors =
-    !allPaletteColorsActive && (unHighlightedCount > 0 || activeHighlights.size > 1);
+    !allPaletteColorsActive && (unHighlightedCount > 0 || normalizedActive.size > 1);
   const colorsToApply = showAllApplyColors
     ? HIGHLIGHT_COLORS
-    : HIGHLIGHT_COLORS.filter((color) => !activeHighlights.has(color));
+    : HIGHLIGHT_COLORS.filter((color) => !normalizedActive.has(color));
 
   return [
     ...removeColors.map((color) => ({ color, showRemove: true, key: `${color}-clear` })),

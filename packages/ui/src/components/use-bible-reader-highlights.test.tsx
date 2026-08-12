@@ -195,6 +195,25 @@ describe('useBibleReaderHighlights — fetched highlights', () => {
       17: '5dff79',
     });
   });
+
+  it('drops invalid hex from the fetched server path (parseServerColors)', () => {
+    mockUseHighlights({
+      highlights: makeCollection([
+        { version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' },
+        { version_id: 111, passage_id: 'JHN.3.17', color: 'gggggg' },
+        { version_id: 111, passage_id: 'JHN.3.18', color: 'aabbcc' },
+      ]),
+    });
+
+    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: AuthWrapper,
+    });
+
+    expect(result.current.highlightedVerses).toEqual({
+      16: 'fffe00',
+      18: 'aabbcc',
+    });
+  });
 });
 
 describe('useBibleReaderHighlights — apply', () => {

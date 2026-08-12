@@ -7,6 +7,13 @@ import {
   type HighlightColor,
 } from './verse-action-popover';
 
+function fillFor(hex: string): string {
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
 describe('VerseActionPopover', () => {
   const defaultProps = {
     open: true,
@@ -428,6 +435,25 @@ describe('VerseActionPopover', () => {
   });
 
   describe('Edge cases', () => {
+<<<<<<< HEAD
+=======
+    it('shows a remove swatch for a valid non-palette color at exact hex', () => {
+      const custom = 'aabbcc';
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          activeHighlights={new Set([custom])}
+          selectedVerses={[1]}
+          highlightedVerses={{ 1: custom }}
+        />,
+      );
+
+      const removeButtons = clearButtons();
+      expect(removeButtons).toHaveLength(1);
+      expect(removeButtons[0]!.style.backgroundColor).toBe(fillFor(custom));
+    });
+
+>>>>>>> 16594fe (fix(ui): address Brenden review on non-palette swatch normalization (YPE-4494))
     it('should handle empty active highlights', () => {
       const activeHighlights = new Set<HighlightColor>();
 

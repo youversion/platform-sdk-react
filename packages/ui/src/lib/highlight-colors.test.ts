@@ -89,4 +89,43 @@ describe('highlight-colors', () => {
       HIGHLIGHT_COLORS,
     );
   });
+
+  it('shows a remove swatch when non-palette covers only part of the selection (Story 10)', () => {
+    const custom = 'aabbcc';
+    const swatches = buildVerseActionSwatches({
+      activeHighlights: new Set([custom]),
+      selectedVerses: [1, 2],
+      highlightedVerses: { 1: custom },
+    });
+
+    expect(swatches.filter((swatch) => swatch.showRemove)).toEqual([
+      { color: custom, showRemove: true, key: `${custom}-clear` },
+    ]);
+  });
+
+  it('normalizes uppercase and #‑prefixed palette colors into the remove row', () => {
+    const swatches = buildVerseActionSwatches({
+      activeHighlights: new Set(['#FFFE00', '5DFF79']),
+      selectedVerses: [1, 2],
+      highlightedVerses: { 1: 'fffe00', 2: '5dff79' },
+    });
+
+    expect(swatches.filter((swatch) => swatch.showRemove).map((swatch) => swatch.color)).toEqual([
+      HIGHLIGHT_COLORS[0],
+      HIGHLIGHT_COLORS[1],
+    ]);
+  });
+
+  it('dedupes the same hex when activeHighlights carries multiple casings', () => {
+    const custom = 'aabbcc';
+    const swatches = buildVerseActionSwatches({
+      activeHighlights: new Set([custom, custom.toUpperCase()]),
+      selectedVerses: [1],
+      highlightedVerses: { 1: custom },
+    });
+
+    expect(swatches.filter((swatch) => swatch.showRemove)).toEqual([
+      { color: custom, showRemove: true, key: `${custom}-clear` },
+    ]);
+  });
 });
