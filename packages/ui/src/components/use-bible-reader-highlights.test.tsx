@@ -259,6 +259,21 @@ describe('useBibleReaderHighlights — apply', () => {
     );
     consoleError.mockRestore();
   });
+
+  it('rejects non-palette apply colors without writing', () => {
+    const mocked = mockUseHighlights();
+
+    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: AuthWrapper,
+    });
+
+    act(() => {
+      expect(result.current.apply('aabbcc', [16])).toBe('noop');
+    });
+
+    expect(result.current.highlightedVerses).toEqual({});
+    expect(mocked.createHighlight).not.toHaveBeenCalled();
+  });
 });
 
 describe('useBibleReaderHighlights — overlay reconciliation (Fix 2)', () => {
@@ -458,6 +473,33 @@ describe('useBibleReaderHighlights — remove', () => {
     expect(mocked.deleteHighlight).not.toHaveBeenCalled();
     expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
   });
+
+  it('clears valid non-palette highlights on the selected verses', async () => {
+    const custom = 'aabbcc';
+    const mocked = mockUseHighlights({
+      highlights: makeCollection([
+        { version_id: 111, passage_id: 'JHN.3.16', color: custom },
+        { version_id: 111, passage_id: 'JHN.3.17', color: 'fffe00' },
+      ]),
+    });
+
+    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: AuthWrapper,
+    });
+
+    expect(result.current.highlightedVerses).toEqual({ 16: custom, 17: 'fffe00' });
+
+    act(() => {
+      result.current.remove(custom, [16, 17]);
+    });
+
+    expect(result.current.highlightedVerses).toEqual({ 17: 'fffe00' });
+
+    await waitFor(() => {
+      expect(mocked.deleteHighlight).toHaveBeenCalledTimes(1);
+    });
+    expect(mocked.deleteHighlight).toHaveBeenCalledWith('JHN.3.16', { version_id: 111 });
+  });
 });
 
 describe('useBibleReaderHighlights — scope changes', () => {
@@ -623,6 +665,7 @@ describe('useBibleReaderHighlights — controlled mode (YPE-3705)', () => {
     );
     expect(mocked.createHighlight).not.toHaveBeenCalled();
     expect(result.current.highlightedVerses).toEqual({
+      1: 'abcdef',
       16: 'fffe00',
       17: '5dff79',
       18: '5dff79',
@@ -685,5 +728,49 @@ describe('useBibleReaderHighlights — controlled mode (YPE-3705)', () => {
     // Host round-trip.
     rerender({ highlights: [] });
     expect(result.current.highlightedVerses).toEqual({});
+  });
+
+  it('rejects non-palette apply intents in controlled mode', () => {
+    const onApply = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBibleReaderHighlights({
+        ...defaultOptions,
+        controlled: { highlights: [], onApply },
+      }),
+    );
+
+    act(() => {
+      expect(result.current.apply('aabbcc', [16])).toBe('noop');
+    });
+    expect(onApply).not.toHaveBeenCalled();
+  });
+
+  it('emits remove intents for valid non-palette colors', () => {
+    const custom = 'aabbcc';
+    const onRemove = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBibleReaderHighlights({
+        ...defaultOptions,
+        controlled: {
+          highlights: [{ version_id: 111, passage_id: 'JHN.3.16', color: custom }],
+          onRemove,
+        },
+      }),
+    );
+
+    act(() => {
+      result.current.remove(custom, [16]);
+    });
+
+    expect(onRemove).toHaveBeenCalledWith({
+      versionId: 111,
+      book: 'JHN',
+      chapter: '3',
+      verses: [16],
+      passageIds: ['JHN.3.16'],
+      color: custom,
+    });
   });
 });

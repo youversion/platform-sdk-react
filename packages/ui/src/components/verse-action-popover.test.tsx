@@ -412,6 +412,22 @@ describe('VerseActionPopover', () => {
   });
 
   describe('Edge cases', () => {
+    it('shows a remove swatch for a valid non-palette color at exact hex', () => {
+      const custom = 'aabbcc';
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          activeHighlights={new Set([custom])}
+          selectedVerses={[1]}
+          highlightedVerses={{ 1: custom }}
+        />,
+      );
+
+      const removeButtons = clearButtons();
+      expect(removeButtons).toHaveLength(1);
+      expect(removeButtons[0]!.style.backgroundColor).toBe('rgb(170, 187, 204)');
+    });
+
     it('should handle empty active highlights', () => {
       const activeHighlights = new Set<HighlightColor>();
 

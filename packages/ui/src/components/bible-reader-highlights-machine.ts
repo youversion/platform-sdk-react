@@ -44,6 +44,7 @@
  * leaving the tested apply-convergence behavior untouched.
  */
 import { collapseVerseRuns, formatPassageId, type VerseRun } from '@/lib/usfm-ranges';
+import { isPaletteHighlightColor } from '@/lib/highlight-colors';
 import {
   appendPendingHighlight,
   clearPendingHighlight,
@@ -363,14 +364,20 @@ export const bibleReaderHighlightsMachine = setup({
     signedOut: ({ context }) => !context.isAuthenticated,
 
     // ── TAP_COLOR fork ──
-    tapInert: ({ event }) => event.type === 'TAP_COLOR' && event.verses.length === 0,
+    tapInert: ({ event }) =>
+      event.type === 'TAP_COLOR' &&
+      (event.verses.length === 0 || !isPaletteHighlightColor(event.color)),
     tapCanWrite: ({ context, event }) =>
       event.type === 'TAP_COLOR' &&
       event.verses.length > 0 &&
+      isPaletteHighlightColor(event.color) &&
       context.isAuthenticated &&
       context.services.current.hasHighlightsPermission(),
     tapNeedsSignIn: ({ context, event }) =>
-      event.type === 'TAP_COLOR' && event.verses.length > 0 && !context.isAuthenticated,
+      event.type === 'TAP_COLOR' &&
+      event.verses.length > 0 &&
+      isPaletteHighlightColor(event.color) &&
+      !context.isAuthenticated,
 
     // ── resume fork ──
     // Guards must be pure, so they PEEK (never clear expired/malformed entries);
@@ -471,6 +478,7 @@ export const bibleReaderHighlightsMachine = setup({
     /** Optimistically paint + claim + enqueue a user apply (TAP_COLOR authorized path). */
     startApplyWrite: enqueueActions(({ enqueue, context, event }) => {
       if (event.type !== 'TAP_COLOR') return;
+      if (!isPaletteHighlightColor(event.color)) return;
       const color = event.color.toLowerCase();
       const verses = event.verses;
       const token = {};
@@ -497,6 +505,7 @@ export const bibleReaderHighlightsMachine = setup({
      */
     stashPendingTap: enqueueActions(({ enqueue, context, event }) => {
       if (event.type !== 'TAP_COLOR') return;
+      if (!isPaletteHighlightColor(event.color)) return;
       stashPendingHighlight({
         verses: event.verses,
         color: event.color.toLowerCase(),
@@ -542,6 +551,7 @@ export const bibleReaderHighlightsMachine = setup({
       if (pendings.length === 0) return;
       clearPendingHighlight();
       for (const pending of pendings) {
+        if (!isPaletteHighlightColor(pending.color)) continue;
         const scope: HighlightScope = {
           versionId: pending.versionId,
           book: pending.book,

@@ -124,18 +124,18 @@ describe('bibleReaderHighlightsMachine — writeIntent lifecycle', () => {
     const { ref, refetch } = makeServices({ createHighlight });
     const actor = startMachine(ref);
 
-    // Write A: apply red to verse 16 (goes in flight).
-    actor.send({ type: 'TAP_COLOR', color: 'FF0000', verses: [16] });
+    // Write A: apply pink to verse 16 (goes in flight).
+    actor.send({ type: 'TAP_COLOR', color: 'ff95ef', verses: [16] });
     await vi.waitFor(() => expect(createHighlight).toHaveBeenCalledTimes(1));
     const claimA = actor.getSnapshot().context.writeIntent.get(16);
     expect(claimA).toBeDefined();
 
     // Write B: re-claim verse 16 with green while A is still in flight (queued).
-    actor.send({ type: 'TAP_COLOR', color: '00FF00', verses: [16] });
+    actor.send({ type: 'TAP_COLOR', color: '5dff79', verses: [16] });
     const claimB = actor.getSnapshot().context.writeIntent.get(16);
     expect(claimB).toBeDefined();
     expect(claimB).not.toBe(claimA);
-    expect(actor.getSnapshot().context.overlay).toEqual({ 16: '00ff00' });
+    expect(actor.getSnapshot().context.overlay).toEqual({ 16: '5dff79' });
 
     // A settles: it must not delete B's claim or reconcile verse 16.
     first.resolve(undefined);
@@ -143,7 +143,7 @@ describe('bibleReaderHighlightsMachine — writeIntent lifecycle', () => {
     const afterA = actor.getSnapshot().context;
     expect(afterA.writeIntent.get(16)).toBe(claimB);
     expect(afterA.reconcile.has(16)).toBe(false);
-    expect(afterA.overlay).toEqual({ 16: '00ff00' });
+    expect(afterA.overlay).toEqual({ 16: '5dff79' });
 
     // B settles: it cleans up its own claim and registers its reconcile entry.
     await vi.waitFor(() => expect(createHighlight).toHaveBeenCalledTimes(2));
@@ -151,7 +151,7 @@ describe('bibleReaderHighlightsMachine — writeIntent lifecycle', () => {
     await vi.waitFor(() => expect(refetch).toHaveBeenCalledTimes(2));
     const afterB = actor.getSnapshot().context;
     expect(afterB.writeIntent.has(16)).toBe(false);
-    expect(afterB.reconcile.get(16)).toEqual({ op: 'apply', color: '00ff00' });
+    expect(afterB.reconcile.get(16)).toEqual({ op: 'apply', color: '5dff79' });
     actor.stop();
   });
 });
@@ -167,16 +167,16 @@ describe('bibleReaderHighlightsMachine — pending stash on lost permission', ()
     vi.spyOn(console, 'error').mockImplementation(vi.fn());
 
     // Both taps issued before either write settles: A is writing, B is queued.
-    actor.send({ type: 'TAP_COLOR', color: 'AAAAAA', verses: [1, 2, 3] });
-    actor.send({ type: 'TAP_COLOR', color: 'BBBBBB', verses: [4, 5, 6] });
+    actor.send({ type: 'TAP_COLOR', color: 'fffe00', verses: [1, 2, 3] });
+    actor.send({ type: 'TAP_COLOR', color: '5dff79', verses: [4, 5, 6] });
 
     await vi.waitFor(() => expect(refetch).toHaveBeenCalledTimes(2));
 
     const stash = peekPendingHighlights();
     expect(stash).toHaveLength(2);
     // Verse-level ordering deterministic: first-queued (A) first.
-    expect(stash[0]).toMatchObject({ verses: [1, 2, 3], color: 'aaaaaa' });
-    expect(stash[1]).toMatchObject({ verses: [4, 5, 6], color: 'bbbbbb' });
+    expect(stash[0]).toMatchObject({ verses: [1, 2, 3], color: 'fffe00' });
+    expect(stash[1]).toMatchObject({ verses: [4, 5, 6], color: '5dff79' });
     actor.stop();
   });
 
@@ -192,14 +192,14 @@ describe('bibleReaderHighlightsMachine — pending stash on lost permission', ()
     const actor = startMachine(ref);
     vi.spyOn(console, 'error').mockImplementation(vi.fn());
 
-    actor.send({ type: 'TAP_COLOR', color: 'AAAAAA', verses: [1, 2, 3] });
-    actor.send({ type: 'TAP_COLOR', color: 'BBBBBB', verses: [4, 5, 6] });
+    actor.send({ type: 'TAP_COLOR', color: 'fffe00', verses: [1, 2, 3] });
+    actor.send({ type: 'TAP_COLOR', color: '5dff79', verses: [4, 5, 6] });
 
     await vi.waitFor(() => expect(refetch).toHaveBeenCalledTimes(2));
 
     const stash = peekPendingHighlights();
     expect(stash).toHaveLength(1);
-    expect(stash[0]).toMatchObject({ verses: [1, 2, 3], color: 'aaaaaa' });
+    expect(stash[0]).toMatchObject({ verses: [1, 2, 3], color: 'fffe00' });
     // The 5xx write's verses were never stashed.
     expect(stash.some((entry) => entry.verses.includes(4))).toBe(false);
     actor.stop();
@@ -212,7 +212,7 @@ describe('bibleReaderHighlightsMachine — pending stash on lost permission', ()
     appendPendingHighlight(
       {
         verses: [1, 2, 3],
-        color: 'aaaaaa',
+        color: 'fffe00',
         versionId: 111,
         book: 'JHN',
         chapter: '3',
@@ -223,7 +223,7 @@ describe('bibleReaderHighlightsMachine — pending stash on lost permission', ()
     appendPendingHighlight(
       {
         verses: [4, 5, 6],
-        color: 'bbbbbb',
+        color: '5dff79',
         versionId: 111,
         book: 'JHN',
         chapter: '3',
@@ -243,12 +243,12 @@ describe('bibleReaderHighlightsMachine — pending stash on lost permission', ()
     expect(passages).toEqual(['JHN.3.1-3', 'JHN.3.4-6']);
     // Both colors painted in the same-scope overlay.
     expect(actor.getSnapshot().context.overlay).toEqual({
-      1: 'aaaaaa',
-      2: 'aaaaaa',
-      3: 'aaaaaa',
-      4: 'bbbbbb',
-      5: 'bbbbbb',
-      6: 'bbbbbb',
+      1: 'fffe00',
+      2: 'fffe00',
+      3: 'fffe00',
+      4: '5dff79',
+      5: '5dff79',
+      6: '5dff79',
     });
     // Pending consumed once resumed.
     expect(readPendingHighlights()).toEqual([]);

@@ -6,19 +6,12 @@ import { cn } from '../lib/utils';
 import { BoxStackIcon } from './icons/box-stack';
 import { BoxArrowUpIcon } from './icons/box-arrow-up';
 import { CheckIcon } from './icons/check';
+import { buildVerseActionSwatches } from '@/lib/highlight-colors';
 import { hexToRgba, HIGHLIGHT_FILL_OPACITY_DARK } from './verse';
 
+export { HIGHLIGHT_COLORS, type HighlightColor } from '@/lib/highlight-colors';
+
 type Measurable = { getBoundingClientRect: () => DOMRect };
-
-/**
- * Highlight colors, as 6-digit lowercase hex (no `#`) so they map 1:1 onto the
- * API `highlight.color` field (/^[0-9a-f]{6}$/). Order is the canonical apply
- * order: yellow, green, blue, orange, pink. Hardcoded to match the YouVersion
- * iOS app exactly.
- */
-export const HIGHLIGHT_COLORS = ['fffe00', '5dff79', '00d6ff', 'ffc66f', 'ff95ef'] as const;
-
-export type HighlightColor = (typeof HIGHLIGHT_COLORS)[number];
 
 /** Width, in px, of the fade applied at each overflowing edge of the swatch row. */
 const SCROLL_FADE_PX = 20;
@@ -267,21 +260,11 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   // above it (side top). Both place the bar just inside the reader edge.
   const dockedSide = dockEdge === 'top' ? 'bottom' : 'top';
 
-  const activeColors = HIGHLIGHT_COLORS.filter((c) => activeHighlights.has(c));
-  const highlightedVerseCount = selectedVerses.filter((v) => highlightedVerses[v]).length;
-  const unHighlightedCount = selectedVerses.length - highlightedVerseCount;
-  const allColorsActive = activeHighlights.size === HIGHLIGHT_COLORS.length;
-  const showAllApplyColors =
-    !allColorsActive && (unHighlightedCount > 0 || activeHighlights.size > 1);
-  const colorsToApply = showAllApplyColors
-    ? HIGHLIGHT_COLORS
-    : HIGHLIGHT_COLORS.filter((c) => !activeHighlights.has(c));
-
-  // Remove (checkmark) circles come first, then apply circles in canonical order.
-  const colorCircles = [
-    ...activeColors.map((color) => ({ color, showRemove: true, key: `${color}-clear` })),
-    ...colorsToApply.map((color) => ({ color, showRemove: false, key: `${color}-apply` })),
-  ];
+  const colorCircles = buildVerseActionSwatches({
+    activeHighlights,
+    selectedVerses,
+    highlightedVerses,
+  });
 
   // Snapshot of everything the Content renders. While open we keep it fresh; the
   // moment `open` flips false (apply / outside-click) the parent clears the
