@@ -67,3 +67,32 @@ jobs:
           echo "The following packages were published to NPM:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo '${{ steps.changesets.outputs.publishedPackages }}' | jq -r '.[] | "- \(.name)@\(.version)"' >> $GITHUB_STEP_SUMMARY
+
+      # When a new @youversion/platform-react-ui version is published, upload its
+      # compiled stylesheet to the cdn.youversion.com origin bucket so it is served
+      # at https://cdn.youversion.com/platform/<major>/bible.css (YPE-1733).
+      # The <major> path segment comes from packages/ui/CDN_CSS_MAJOR_VERSION and is
+      # bumped only for breaking CSS changes — see PUBLISHING.md.
+      - name: Authenticate to Google Cloud
+        if: steps.changesets.outputs.published == 'true' && contains(fromJSON(steps.changesets.outputs.publishedPackages).*.name, '@youversion/platform-react-ui')
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        if: steps.changesets.outputs.published == 'true' && contains(fromJSON(steps.changesets.outputs.publishedPackages).*.name, '@youversion/platform-react-ui')
+        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
+
+      - name: Publish UI stylesheet to CDN
+        if: steps.changesets.outputs.published == 'true' && contains(fromJSON(steps.changesets.outputs.publishedPackages).*.name, '@youversion/platform-react-ui')
+        run: |
+          CSS_MAJOR_VERSION="$(tr -d '[:space:]' < packages/ui/CDN_CSS_MAJOR_VERSION)"
+          test -s packages/ui/dist/tailwind.css
+          gcloud storage cp packages/ui/dist/tailwind.css \
+            "gs://cdn-yv-platform-prod/platform/${CSS_MAJOR_VERSION}/bible.css" \
+            --cache-control="public, max-age=300, must-revalidate" \
+            --content-type="text/css"
+          echo "## CDN Stylesheet :art:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Uploaded \`packages/ui/dist/tailwind.css\` to https://cdn.youversion.com/platform/${CSS_MAJOR_VERSION}/bible.css" >> $GITHUB_STEP_SUMMARY
