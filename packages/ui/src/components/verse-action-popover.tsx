@@ -9,6 +9,7 @@ import { CheckIcon } from './icons/check';
 import { buildVerseActionSwatches } from '@/lib/highlight-colors';
 import { hexToRgba, HIGHLIGHT_FILL_OPACITY_DARK, isDarkHighlightHex } from './verse';
 
+/** Re-export for back-compat; prefer `@/lib/highlight-colors` for new code. */
 export { HIGHLIGHT_COLORS, type HighlightColor } from '@/lib/highlight-colors';
 
 type Measurable = { getBoundingClientRect: () => DOMRect };
