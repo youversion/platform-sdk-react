@@ -118,6 +118,15 @@ See `docs/adding-a-core-endpoint.md`.
 
 ## TESTING
 
-- Mocking: MSW for API endpoints
-- Integration tests are guarded by `INTEGRATION_TESTS=true`. They run in CI or on
-  demand only — default to mocked tests.
+Follow root `AGENTS.md` Testing. This package’s flavors:
+
+| Flavor | Use when | Avoid when |
+| --- | --- | --- |
+| Pure unit | Transformers, storage, pure helpers | Needs HTTP |
+| Mocked client (MSW) | Client + Zod + error mapping against fake HTTP (default for client tests) | Hook/UI orchestration |
+| Live API (`INTEGRATION_TESTS=true`) | Tiny smoke mocks cannot falsify; CI or on-demand only | Capability-by-capability coverage |
+
+- Run: `pnpm --filter @youversion/platform-core test`
+- Framework: Vitest (Node)
+- MSW handlers/helpers: prefer shared factories under `__tests__/` (e.g. `handlers.ts`); import/call them inside each test — do not hide setup in `beforeEach`
+- Do not re-prove hook/UI orchestration here

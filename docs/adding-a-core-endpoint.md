@@ -24,8 +24,9 @@ for every input and output type.
    response.
 4. **Export from the public API** in `src/index.ts` so consumers can import the
    client and its types.
-5. **Add tests.** Unit tests with MSW for mocked responses. Integration tests are
-   optional and guarded by `INTEGRATION_TESTS=true`.
+5. **Add tests.** Prefer mocked-client (MSW) workflow tests; see
+   `packages/core/AGENTS.md` Testing. Live API smokes are optional and guarded by
+   `INTEGRATION_TESTS=true`.
 
 ## Constraints
 
