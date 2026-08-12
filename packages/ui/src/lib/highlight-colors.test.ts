@@ -7,43 +7,37 @@ import {
   normalizeHighlightHex,
 } from './highlight-colors';
 
-describe('isValidHighlightHex', () => {
-  it('accepts 6-digit lowercase and uppercase hex', () => {
+describe('highlight-colors', () => {
+  it('isValidHighlightHex accepts 6-digit lowercase and uppercase hex', () => {
     expect(isValidHighlightHex('abcdef')).toBe(true);
     expect(isValidHighlightHex('ABCDEF')).toBe(true);
     expect(isValidHighlightHex('#fffe00')).toBe(true);
   });
 
-  it('rejects invalid API colors', () => {
+  it('isValidHighlightHex rejects invalid API colors', () => {
     expect(isValidHighlightHex('gggggg')).toBe(false);
     expect(isValidHighlightHex('abc')).toBe(false);
     expect(isValidHighlightHex('1234567')).toBe(false);
     expect(isValidHighlightHex('')).toBe(false);
   });
-});
 
-describe('normalizeHighlightHex', () => {
-  it('returns lowercase hex for valid input', () => {
+  it('normalizeHighlightHex returns lowercase hex for valid input', () => {
     expect(normalizeHighlightHex('ABCDEF')).toBe('abcdef');
     expect(normalizeHighlightHex('#FFFE00')).toBe('fffe00');
   });
 
-  it('returns null for invalid input', () => {
+  it('normalizeHighlightHex returns null for invalid input', () => {
     expect(normalizeHighlightHex('not-a-color')).toBeNull();
   });
-});
 
-describe('isPaletteHighlightColor', () => {
-  it('recognizes the five SDK palette colors only', () => {
+  it('isPaletteHighlightColor recognizes the five SDK palette colors only', () => {
     expect(isPaletteHighlightColor('fffe00')).toBe(true);
     expect(isPaletteHighlightColor('FFFE00')).toBe(true);
     expect(isPaletteHighlightColor('abcdef')).toBe(false);
     expect(isPaletteHighlightColor('invalid')).toBe(false);
   });
-});
 
-describe('buildVerseActionSwatches', () => {
-  it('includes remove swatches for valid non-palette colors at exact hex', () => {
+  it('buildVerseActionSwatches includes remove swatches for valid non-palette colors at exact hex', () => {
     const custom = 'aabbcc';
     const swatches = buildVerseActionSwatches({
       activeHighlights: new Set([custom]),
@@ -58,7 +52,7 @@ describe('buildVerseActionSwatches', () => {
     );
   });
 
-  it('keeps apply swatches palette-only', () => {
+  it('buildVerseActionSwatches keeps apply swatches palette-only', () => {
     const swatches = buildVerseActionSwatches({
       activeHighlights: new Set<string>(),
       selectedVerses: [1],
@@ -69,7 +63,7 @@ describe('buildVerseActionSwatches', () => {
     expect(swatches.every((swatch) => !swatch.showRemove)).toBe(true);
   });
 
-  it('drops invalid hex from the remove row', () => {
+  it('buildVerseActionSwatches drops invalid hex from the remove row', () => {
     const swatches = buildVerseActionSwatches({
       activeHighlights: new Set(['not-valid', HIGHLIGHT_COLORS[0]]),
       selectedVerses: [1, 2],
@@ -81,7 +75,7 @@ describe('buildVerseActionSwatches', () => {
     ]);
   });
 
-  it('shows remove for every distinct valid color on a mixed selection (ANY rule)', () => {
+  it('buildVerseActionSwatches shows remove for every distinct valid color on a mixed selection (ANY rule)', () => {
     const custom = '112233';
     const swatches = buildVerseActionSwatches({
       activeHighlights: new Set([HIGHLIGHT_COLORS[0], custom]),
