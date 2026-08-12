@@ -95,8 +95,9 @@ Repository Actions secrets:
 
 ### Troubleshooting the CDN upload
 
-- The upload steps only run when `@youversion/platform-react-ui` is among the published packages.
-- npm publishing happens before the CDN upload; a failed upload does not affect the npm release. Fix the issue and re-run the failed job, or upload manually with `gcloud storage cp` if you have write access to the bucket.
+- On `main` pushes, the upload steps only run when `@youversion/platform-react-ui` is among the published packages.
+- npm publishing happens before the CDN upload; a failed upload does not affect the npm release.
+- **Do not retry by re-running the failed job**: on a re-run, changesets reports nothing newly published, so the CDN steps are skipped. Instead, after fixing the issue, trigger the **Release workflow manually** (Actions → Release → "Run workflow" on `main`). Manual runs skip versioning/publishing entirely and always rebuild and upload the current stylesheet — the upload is idempotent, so this is always safe.
 
 ## Troubleshooting
 

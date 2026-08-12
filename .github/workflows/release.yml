@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+  # Manual recovery path: if the CDN stylesheet upload fails after packages were
+  # already published to npm, a job re-run cannot retry it (changesets reports
+  # nothing newly published on the re-run). Instead, run this workflow manually
+  # from main: the changesets step is skipped and the CDN upload always runs,
+  # publishing the freshly built stylesheet. The upload is idempotent.
+  workflow_dispatch:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
@@ -45,6 +51,9 @@ jobs:
         run: pnpm build
 
       - name: Create Release Pull Request or Publish to NPM
+        # Skipped on workflow_dispatch (manual CDN re-upload) so a manual run can
+        # never version or publish packages as a side effect.
+        if: github.event_name == 'push'
         id: changesets
         uses: changesets/action@v1
         with:
@@ -73,19 +82,20 @@ jobs:
       # at https://cdn.youversion.com/platform/<major>/bible.css (YPE-1733).
       # The <major> path segment comes from packages/ui/CDN_CSS_MAJOR_VERSION and is
       # bumped only for breaking CSS changes — see PUBLISHING.md.
+      # Also runs on workflow_dispatch as the manual recovery path (see `on:` above).
       - name: Authenticate to Google Cloud
-        if: steps.changesets.outputs.published == 'true' && contains(fromJSON(steps.changesets.outputs.publishedPackages).*.name, '@youversion/platform-react-ui')
+        if: github.event_name == 'workflow_dispatch' || (steps.changesets.outputs.published == 'true' && contains(fromJSON(steps.changesets.outputs.publishedPackages).*.name, '@youversion/platform-react-ui'))
         uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
-        if: steps.changesets.outputs.published == 'true' && contains(fromJSON(steps.changesets.outputs.publishedPackages).*.name, '@youversion/platform-react-ui')
+        if: github.event_name == 'workflow_dispatch' || (steps.changesets.outputs.published == 'true' && contains(fromJSON(steps.changesets.outputs.publishedPackages).*.name, '@youversion/platform-react-ui'))
         uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
 
       - name: Publish UI stylesheet to CDN
-        if: steps.changesets.outputs.published == 'true' && contains(fromJSON(steps.changesets.outputs.publishedPackages).*.name, '@youversion/platform-react-ui')
+        if: github.event_name == 'workflow_dispatch' || (steps.changesets.outputs.published == 'true' && contains(fromJSON(steps.changesets.outputs.publishedPackages).*.name, '@youversion/platform-react-ui'))
         run: |
           CSS_MAJOR_VERSION="$(tr -d '[:space:]' < packages/ui/CDN_CSS_MAJOR_VERSION)"
           test -s packages/ui/dist/tailwind.css
