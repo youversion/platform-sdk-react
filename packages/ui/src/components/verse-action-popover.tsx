@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { cn } from '../lib/utils';
 import { BoxStackIcon } from './icons/box-stack';
-import { BoxArrowUpIcon } from './icons/box-arrow-up';
+import { Share } from './icons/share';
 import { CheckIcon } from './icons/check';
 import { buildVerseActionSwatches } from '@/lib/highlight-colors';
 import { hexToRgba, HIGHLIGHT_FILL_OPACITY_DARK, isDarkHighlightHex } from './verse';
@@ -439,7 +439,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
               onClick={onCopy}
             />
             <ActionButton
-              icon={<BoxArrowUpIcon className="yv:size-5" />}
+              icon={<Share className="yv:size-5" />}
               label={t('share')}
               onClick={onShare}
             />
