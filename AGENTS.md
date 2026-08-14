@@ -8,6 +8,7 @@ Keep this file brief. Put task-specific guidance behind a pointer.
 - Build tools differ per package: core = tsup, hooks = tsc only, ui = tsup + tsc. Don't assume one build shape.
 - API Extractor is listed but not actually used — don't wire anything to it.
 - Turbo build cache can skip changes; rebuild with `turbo build --force` when stale.
+- Rebuild dependent packages after modifying core or hooks.
 - Root and package `CLAUDE.md` files are symlinks to `AGENTS.md` — edit `AGENTS.md` only.
 - Bible chapter HTML from the API is YVDOM, not display-ready — transform before rendering.
 - Sister SDKs (`platform-sdk-swift`, `platform-sdk-kotlin`) define the Sign-In UI, logos, and i18n patterns — align with them.
