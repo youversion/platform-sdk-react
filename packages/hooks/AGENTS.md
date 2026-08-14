@@ -54,7 +54,7 @@ signature.
 
 ## TESTING
 
-Follow root `AGENTS.md` Testing. This package’s flavors:
+Follow `docs/testing.md`. This package’s flavors:
 
 | Flavor | Use when | Avoid when |
 | --- | --- | --- |
