@@ -1,5 +1,5 @@
 import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hooks';
-import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '@youversion/platform-core';
+import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, type Highlight } from '@youversion/platform-core';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { BibleTextView, type FootnoteData } from './verse';
@@ -24,6 +24,7 @@ export type BibleCardProps = {
   showVersionPicker?: boolean;
   onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
   onFootnotePress?: (data: FootnoteData) => void;
+  highlights?: Highlight[];
 };
 
 /**
@@ -121,6 +122,7 @@ export function BibleCard({
   showVersionPicker = false,
   onVersionPickerPress,
   onFootnotePress,
+  highlights,
 }: BibleCardProps): React.ReactNode {
   // Controlled only when both versionId + onVersionChange are provided.
   // versionId alone seeds uncontrolled state, preserving backwards compatibility
@@ -203,6 +205,7 @@ export function BibleCard({
               error: passageError,
             }}
             onFootnotePress={onFootnotePress}
+            highlights={highlights}
           />
         </AnimatedHeight>
 

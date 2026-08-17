@@ -193,6 +193,17 @@ export const FullChapter: Story = {
   },
 };
 
+export const PaintOnlyHighlights: Story = {
+  args: {
+    reference: 'JHN.1',
+    versionId: 111,
+    highlights: [
+      { version_id: 111, passage_id: 'JHN.1.1', color: 'fffe00' },
+      { version_id: 111, passage_id: 'JHN.1.3-5', color: '5dff79' },
+    ],
+  },
+};
+
 export const RealAPI: Story = {
   render: (args) => <DebouncedBibleTextView {...args} />,
   args: {

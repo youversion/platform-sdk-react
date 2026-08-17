@@ -17,6 +17,8 @@ globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserv
 
 import { VerseOfTheDay } from './verse-of-the-day';
 import type { VerseOfTheDayShareData } from './verse-of-the-day';
+import type { Highlight } from '@youversion/platform-core';
+import { fillFor, getVerseEl } from '@/test/highlights-test-utils';
 import en from '@/i18n/locales/en.json';
 import {
   getDayOfYear,
@@ -242,5 +244,75 @@ describe('VerseOfTheDay - share', () => {
     await user.click(shareButton);
 
     expect(onShare).not.toHaveBeenCalled();
+  });
+});
+
+describe('VerseOfTheDay - host highlights (paint-only)', () => {
+  const YELLOW = 'fffe00';
+  const GREEN = '5dff79';
+  const twoVerseHtml = `
+    <div class="p">
+      <span class="yv-v" v="16"></span><span class="yv-vlbl">16</span>For God so loved the world.
+      <span class="yv-v" v="17"></span><span class="yv-vlbl">17</span>For God did not send his Son.
+    </div>
+  `;
+  const highlight = (passage_id: string, color: string): Highlight => ({
+    version_id: 111,
+    passage_id,
+    color,
+  });
+
+  it('does not paint while the verse of the day has not resolved', () => {
+    vi.mocked(getDayOfYear).mockReturnValue(1);
+    vi.mocked(useVerseOfTheDay).mockReturnValue({
+      data: null,
+      loading: true,
+      error: null,
+      refetch: vi.fn(),
+    });
+    vi.mocked(usePassage).mockReturnValue({
+      passage: null,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    vi.mocked(useVersion).mockReturnValue({
+      version: { localized_abbreviation: 'NIV' },
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useVersion>);
+    vi.mocked(useTheme).mockReturnValue('light');
+
+    const { container } = render(
+      <VerseOfTheDay versionId={111} highlights={[highlight('JHN.3.16', YELLOW)]} />,
+    );
+
+    expect(container.querySelector('.yv-v')).toBeNull();
+  });
+
+  it("paints only the verses in today's passage", () => {
+    stubHooks({ passageContent: twoVerseHtml });
+
+    const { container } = render(
+      <VerseOfTheDay
+        versionId={111}
+        highlights={[highlight('JHN.3.16', YELLOW), highlight('JHN.3.17', GREEN)]}
+      />,
+    );
+
+    expect(getVerseEl(container, 16).style.backgroundColor).toBe(fillFor(YELLOW));
+    expect(getVerseEl(container, 17).style.backgroundColor).toBe('');
+  });
+
+  it('does not paint highlights for a different passage', () => {
+    stubHooks({ passageContent: twoVerseHtml });
+
+    const { container } = render(
+      <VerseOfTheDay versionId={111} highlights={[highlight('GEN.1.1', YELLOW)]} />,
+    );
+
+    expect(getVerseEl(container, 16).style.backgroundColor).toBe('');
+    expect(getVerseEl(container, 17).style.backgroundColor).toBe('');
   });
 });

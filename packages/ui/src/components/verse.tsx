@@ -21,7 +21,10 @@ import { getBibleTextErrorMessage } from '@/lib/bible-text-error';
 import { cn } from '@/lib/utils';
 import { type FontFamily } from '@/lib/verse-html-utils';
 
+import type { Highlight } from '@youversion/platform-core';
 import { transformBibleHtml } from '@youversion/platform-core/browser';
+import { IS_PRODUCTION } from '@/lib/constants';
+import { deriveHighlightedVerses, parseChapterScopeFromUsfm } from '@/lib/highlight-projection';
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
 
@@ -556,6 +559,7 @@ export type BibleTextViewProps = {
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
   highlightedVerses?: Record<number, string>;
+  highlights?: Highlight[];
   passageState?: Partial<BibleTextViewPassageState>;
   onFootnotePress?: (data: FootnoteData) => void;
 };
@@ -577,6 +581,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
       selectedVerses,
       onVerseSelect,
       highlightedVerses,
+      highlights,
       passageState,
       onFootnotePress,
     },
@@ -585,6 +590,48 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
     const { t } = useTranslation(undefined, { i18n });
     const providerTheme = useTheme();
     const currentTheme = theme || providerTheme;
+
+    // Latched at first mount: a transient `undefined` on a controlled view must
+    // render as "no highlights", never fall through to `highlightedVerses`.
+    const isHighlightsControlledRef = useRef(highlights !== undefined);
+    const isHighlightsControlled = isHighlightsControlledRef.current;
+    const didWarnHighlightsModeFlipRef = useRef(false);
+    if (
+      !IS_PRODUCTION &&
+      (highlights !== undefined) !== isHighlightsControlled &&
+      !didWarnHighlightsModeFlipRef.current
+    ) {
+      didWarnHighlightsModeFlipRef.current = true;
+      console.warn(
+        `BibleTextView: the \`highlights\` prop switched from ${
+          isHighlightsControlled ? 'present to absent' : 'absent to present'
+        } after mount. Highlight paint mode is latched at first mount and will not change. Pass \`highlights\` (use \`[]\` for "nothing highlighted") on every render for controlled paint, or never pass it.`,
+      );
+    }
+    const didWarnDualHighlightPropsRef = useRef(false);
+    if (
+      !IS_PRODUCTION &&
+      isHighlightsControlled &&
+      highlightedVerses !== undefined &&
+      !didWarnDualHighlightPropsRef.current
+    ) {
+      didWarnDualHighlightPropsRef.current = true;
+      console.warn(
+        'BibleTextView: both `highlights` and `highlightedVerses` were passed. `highlights` wins; `highlightedVerses` is ignored.',
+      );
+    }
+
+    const chapterScope = useMemo(() => parseChapterScopeFromUsfm(reference), [reference]);
+    const paintedVerses = useMemo(() => {
+      if (!isHighlightsControlled) return highlightedVerses ?? {};
+      if (!chapterScope) return {};
+      return deriveHighlightedVerses(
+        highlights ?? [],
+        versionId,
+        chapterScope.book,
+        chapterScope.chapter,
+      );
+    }, [isHighlightsControlled, highlights, highlightedVerses, versionId, chapterScope]);
 
     const hasProvidedPassageState = passageState !== undefined;
 
@@ -654,7 +701,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
           theme={currentTheme}
           selectedVerses={selectedVerses}
           onVerseSelect={onVerseSelect}
-          highlightedVerses={highlightedVerses}
+          highlightedVerses={paintedVerses}
           onFootnotePress={onFootnotePress}
         />
       </div>

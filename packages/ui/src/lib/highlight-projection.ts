@@ -44,6 +44,50 @@ export function expandPassageId(passageId: string): ExpandedPassageId | null {
   return { book, chapter, verses };
 }
 
+/** Book + chapter parsed from a chapter, verse, or verse-range USFM. */
+export type ChapterScope = {
+  book: string;
+  chapter: string;
+};
+
+/**
+ * Parses book + chapter from a display USFM: chapter (`JHN.3`), verse
+ * (`JHN.3.16`), or verse-range (`JHN.3.16-18`). Returns `null` when the string
+ * has no book and chapter segments.
+ *
+ * Unlike {@link expandPassageId}, this does not require a verse unit — cards
+ * and `BibleTextView` accept chapter-scope references.
+ */
+export function parseChapterScopeFromUsfm(usfm: string): ChapterScope | null {
+  const parts = usfm.split('.');
+  if (parts.length < 2) return null;
+  const [book, chapter] = parts;
+  if (!book || !chapter) return null;
+  return { book, chapter };
+}
+
+/**
+ * Keeps host highlights whose expanded verses intersect the displayed passage.
+ *
+ * Chapter-scope and other unexpandable `passage_id`s are dropped. Used by
+ * VerseOfTheDay so a host-supplied superset cannot paint verses that are not
+ * part of today's passage.
+ */
+export function filterHighlightsForPassage(
+  highlights: readonly Highlight[],
+  displayPassageId: string,
+): Highlight[] {
+  const displayed = expandPassageId(displayPassageId);
+  if (!displayed) return [];
+  const displayedVerses = new Set(displayed.verses);
+  return highlights.filter((highlight) => {
+    const expanded = expandPassageId(highlight.passage_id);
+    if (!expanded) return false;
+    if (expanded.book !== displayed.book || expanded.chapter !== displayed.chapter) return false;
+    return expanded.verses.some((verse) => displayedVerses.has(verse));
+  });
+}
+
 /**
  * Projects a host-supplied `Highlight[]` (core API shape) onto the displayed
  * chapter as the reader's internal render map (verse number -> hex color).

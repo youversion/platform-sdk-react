@@ -7,7 +7,8 @@ import userEvent from '@testing-library/user-event';
 import { BibleCard } from './bible-card';
 import type { FootnoteData } from './verse';
 import { usePassage, useTheme, useVersion } from '@youversion/platform-react-hooks';
-import type { BiblePassage, BibleVersion } from '@youversion/platform-core';
+import type { BiblePassage, BibleVersion, Highlight } from '@youversion/platform-core';
+import { fillFor, getVerseEl, MULTI_VERSE_HTML } from '@/test/highlights-test-utils';
 
 vi.mock('@youversion/platform-react-hooks');
 
@@ -250,5 +251,54 @@ describe('BibleCard - onFootnotePress callback', () => {
     expect(data.reference).toBe('JHN.1');
     expect(data.notes).toHaveLength(1);
     expect(data.notes[0]).toContain('Or understood');
+  });
+});
+
+describe('BibleCard - host highlights (paint-only)', () => {
+  const YELLOW = 'fffe00';
+  const multiVersePassage: BiblePassage = {
+    id: 'JHN.1',
+    content: MULTI_VERSE_HTML,
+    reference: 'John 1',
+  };
+  const highlights: Highlight[] = [{ version_id: 111, passage_id: 'JHN.1.2', color: YELLOW }];
+
+  it('paints matching verses and clears them when versionId no longer matches', () => {
+    vi.mocked(useTheme).mockReturnValue('light');
+    vi.mocked(useVersion).mockReturnValue({
+      version: mockVersion,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    vi.mocked(usePassage).mockReturnValue({
+      passage: multiVersePassage,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    const onVersionChange = vi.fn();
+    const { container, rerender } = render(
+      <BibleCard
+        reference="JHN.1"
+        versionId={111}
+        onVersionChange={onVersionChange}
+        highlights={highlights}
+      />,
+    );
+
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
+
+    rerender(
+      <BibleCard
+        reference="JHN.1"
+        versionId={222}
+        onVersionChange={onVersionChange}
+        highlights={highlights}
+      />,
+    );
+
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe('');
   });
 });

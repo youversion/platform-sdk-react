@@ -15,8 +15,9 @@ import { Share } from '@/components/icons/share';
 import { Votd } from '@/components/icons/votd';
 import { Button } from '@/components/ui/button';
 import { BibleTextView } from '@/components/verse';
-import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '@youversion/platform-core';
+import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, type Highlight } from '@youversion/platform-core';
 import { cn } from '@/lib/utils';
+import { filterHighlightsForPassage } from '@/lib/highlight-projection';
 
 export type VerseOfTheDayShareData = {
   /** Full share body: verse text, blank line, then reference (same as Web Share `text`). */
@@ -65,7 +66,27 @@ export type VerseOfTheDayProps = {
    * size of the card and the font size of the text.
    */
   size?: 'default' | 'lg';
+  /**
+   * When provided, paints these highlights on Verse of the Day.
+   * Use for React Native or Expo DOM hosts that already own highlight data
+   * and just need it rendered. Omit the prop for no highlights; pass `[]`
+   * for none yet. Nothing paints until today's passage is known.
+   */
+  highlights?: Highlight[];
 };
+
+function paintHighlightsForPassage(
+  highlights: Highlight[] | undefined,
+  passageId: string | undefined,
+): Highlight[] | undefined {
+  if (highlights === undefined) {
+    return undefined;
+  }
+  if (!passageId) {
+    return [];
+  }
+  return filterHighlightsForPassage(highlights, passageId);
+}
 
 function buildVerseOfTheDayShareData(
   verseEl: HTMLElement,
@@ -127,6 +148,7 @@ export function VerseOfTheDay({
   showBibleAppAttribution = true,
   onShare,
   size = 'default',
+  highlights,
 }: VerseOfTheDayProps): React.ReactElement {
   const { t } = useTranslation(undefined, { i18n });
   const day = React.useMemo(() => dayOfYear || getDayOfYear(new Date()), [dayOfYear]);
@@ -148,6 +170,8 @@ export function VerseOfTheDay({
   const theme = background || providerTheme;
 
   const isLoading = loadingPassage || loadingVerseOfTheDay || loadingVersion;
+
+  const paintHighlights = paintHighlightsForPassage(highlights, data?.passage_id);
 
   let referenceText = '';
   if (passage?.reference && version?.localized_abbreviation) {
@@ -250,6 +274,7 @@ export function VerseOfTheDay({
                 loading: isLoading,
                 error: errorPassage || errorVerseOfTheDay || null,
               }}
+              highlights={paintHighlights}
             />
           )}
         </AnimatedHeight>
