@@ -42,4 +42,22 @@ describe('ShadowRootHost', () => {
     // above still prove the other properties were set.
     expect(host?.style.getPropertyPriority('display')).toBe('important');
   });
+
+  it('gives the fallback stylesheet a stable React resource identity', () => {
+    const { container } = render(
+      <ShadowRootHost>
+        <span>content</span>
+      </ShadowRootHost>,
+    );
+
+    const style = container
+      .querySelector<HTMLElement>('[data-yv-shadow-host]')
+      ?.shadowRoot?.querySelector('style');
+
+    // jsdom does not implement constructable stylesheets, so this exercises
+    // the fallback path. React uses href + precedence to hoist and de-duplicate
+    // stylesheet resources within the shadow root.
+    expect(style?.getAttribute('data-href')).toBe('yv-sdk-shadow-styles');
+    expect(style?.getAttribute('data-precedence')).toBe('yv-sdk');
+  });
 });

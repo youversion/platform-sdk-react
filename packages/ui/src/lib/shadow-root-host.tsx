@@ -4,6 +4,8 @@ import { createPortal } from 'react-dom';
 declare const __YV_STYLES__: string;
 
 const sdkStyleSheets = new WeakMap<Document, CSSStyleSheet>();
+const SDK_SHADOW_STYLE_HREF = 'yv-sdk-shadow-styles';
+const SDK_SHADOW_STYLE_PRECEDENCE = 'yv-sdk';
 
 function getStyleSheetConstructor(root: ShadowRoot): typeof CSSStyleSheet | undefined {
   return root.ownerDocument.defaultView?.CSSStyleSheet;
@@ -70,7 +72,11 @@ export function ShadowRootHost({ children }: ShadowRootHostProps): ReactNode {
       {shadowRoot
         ? createPortal(
             <>
-              {needsStyleFallback ? <style>{__YV_STYLES__}</style> : null}
+              {needsStyleFallback ? (
+                <style href={SDK_SHADOW_STYLE_HREF} precedence={SDK_SHADOW_STYLE_PRECEDENCE}>
+                  {__YV_STYLES__}
+                </style>
+              ) : null}
               {/* Host selectors cannot reach this reset boundary. */}
               <div style={{ all: 'initial', display: 'contents' }}>{children}</div>
             </>,
