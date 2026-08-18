@@ -77,6 +77,45 @@ describe('BibleClient version filter', () => {
     const versions = await bibleClient().getVersions('en*', undefined, { page_size: 2 });
     expect(versions.data.map((version) => version.id)).toEqual([3, 4]);
 
+    const overflowPages: Record<
+      string,
+      { data: { id: number; language_tag: string }[]; next_page_token: string | null }
+    > = {
+      '': {
+        data: [
+          { id: 1, language_tag: 'en' },
+          { id: 2, language_tag: 'en' },
+          { id: 3, language_tag: 'en' },
+          { id: 4, language_tag: 'en' },
+        ],
+        next_page_token: 'p2',
+      },
+      p2: { data: [{ id: 5, language_tag: 'en' }], next_page_token: null },
+    };
+    const requestedTokens: string[] = [];
+
+    server.use(
+      http.get(`https://${apiHost}/v1/bibles`, ({ request }) => {
+        const token = new URL(request.url).searchParams.get('page_token') ?? '';
+        requestedTokens.push(token);
+        expect(token.startsWith('yv-vf1:')).toBe(false);
+        return HttpResponse.json(overflowPages[token] ?? { data: [], next_page_token: null });
+      }),
+    );
+
+    YouVersionPlatformConfiguration.permittedVersionIds = [1, 2, 3, 4, 5];
+    const firstPage = await bibleClient().getVersions('en*', undefined, { page_size: 2 });
+    expect(firstPage.data.map((version) => version.id)).toEqual([1, 2]);
+    expect(firstPage.next_page_token).toMatch(/^yv-vf1:/);
+
+    const secondPage = await bibleClient().getVersions('en*', undefined, {
+      page_size: 2,
+      page_token: firstPage.next_page_token ?? undefined,
+    });
+    expect(secondPage.data.map((version) => version.id)).toEqual([3, 4]);
+    expect(secondPage.next_page_token).toBe('p2');
+    expect(requestedTokens).toEqual(['', '']);
+
     clearFilters();
   });
 

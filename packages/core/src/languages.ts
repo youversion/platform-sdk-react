@@ -100,10 +100,6 @@ export class LanguagesClient {
       params.page_size = options.page_size;
     }
 
-    if (options.page_token !== undefined) {
-      params.page_token = options.page_token;
-    }
-
     const filterFields = fieldsNeededForLanguageFilter(options.fields);
     let pageSize = options.page_size;
     if (filterFields) {
@@ -115,7 +111,10 @@ export class LanguagesClient {
     }
 
     const fetchPage = (pageToken?: string) => {
-      const pageParams = pageToken ? { ...params, page_token: pageToken } : params;
+      const pageParams = { ...params };
+      if (pageToken) {
+        pageParams.page_token = pageToken;
+      }
       return this.client.get<Collection<Language>>(`/v1/languages`, pageParams);
     };
 
@@ -124,9 +123,10 @@ export class LanguagesClient {
     }
 
     return collectFilteredPage(
-      (pageToken) => fetchPage(pageToken ?? options.page_token),
+      fetchPage,
       (language) => isUsableLanguageTag(language.id),
       pageSize,
+      options.page_token,
     );
   }
 

@@ -68,14 +68,58 @@ export function fieldsNeededForLanguageFilter(
   return [...next];
 }
 
+/** Resume token for leftover usable rows on a server page. Never send to the API. */
+const FILTER_PAGE_CURSOR_PREFIX = 'yv-vf1:';
+
+type FilterPageCursor = {
+  t: string | null;
+  s: number;
+};
+
+function encodeFilterPageCursor(pageToken: string | null, skip: number): string {
+  return `${FILTER_PAGE_CURSOR_PREFIX}${JSON.stringify({ t: pageToken, s: skip })}`;
+}
+
+function decodeFilterPageCursor(token: string): FilterPageCursor | undefined {
+  if (!token.startsWith(FILTER_PAGE_CURSOR_PREFIX)) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(token.slice(FILTER_PAGE_CURSOR_PREFIX.length));
+    if (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      't' in parsed &&
+      's' in parsed &&
+      (parsed.t === null || typeof parsed.t === 'string') &&
+      typeof parsed.s === 'number' &&
+      Number.isInteger(parsed.s) &&
+      parsed.s >= 0
+    ) {
+      return { t: parsed.t, s: parsed.s };
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+function resolveFilterPageStart(startToken?: string): { pageToken?: string; skip: number } {
+  if (!startToken) return { skip: 0 };
+  const cursor = decodeFilterPageCursor(startToken);
+  if (!cursor) return { pageToken: startToken, skip: 0 };
+  return { pageToken: cursor.t ?? undefined, skip: cursor.s };
+}
+
 export async function collectFilteredPage<T>(
   fetchPage: (pageToken?: string) => Promise<Collection<T>>,
   isUsable: (item: T) => boolean,
   pageSize?: number | '*',
+  startToken?: string,
 ): Promise<Collection<T>> {
+  const start = resolveFilterPageStart(startToken);
+
   if (pageSize === '*') {
-    const first = await fetchPage();
-    const data = [...first.data.filter(isUsable)];
+    const first = await fetchPage(start.pageToken);
+    const data = [...first.data.filter(isUsable).slice(start.skip)];
     let token = first.next_page_token;
     while (token) {
       const next = await fetchPage(token);
@@ -85,20 +129,36 @@ export async function collectFilteredPage<T>(
     return { data, next_page_token: null, total_size: data.length };
   }
 
-  const first = await fetchPage();
+  let fetchToken = start.pageToken;
+  let skip = start.skip;
+  const first = await fetchPage(fetchToken);
   const target = typeof pageSize === 'number' ? pageSize : first.data.length;
-  const usable = [...first.data.filter(isUsable)];
-  let token = first.next_page_token;
+  const collected: T[] = [];
+  let page = first;
 
-  while (usable.length < target && token) {
-    const next = await fetchPage(token);
-    usable.push(...next.data.filter(isUsable));
-    token = next.next_page_token;
+  while (true) {
+    const usable = page.data.filter(isUsable).slice(skip);
+    const take = usable.slice(0, target - collected.length);
+    collected.push(...take);
+
+    if (usable.length > take.length) {
+      return {
+        data: collected,
+        next_page_token: encodeFilterPageCursor(fetchToken ?? null, skip + take.length),
+        total_size: first.total_size,
+      };
+    }
+
+    skip = 0;
+    if (collected.length >= target || !page.next_page_token) {
+      return {
+        data: collected,
+        next_page_token: page.next_page_token ?? null,
+        total_size: first.total_size,
+      };
+    }
+
+    fetchToken = page.next_page_token;
+    page = await fetchPage(fetchToken);
   }
-
-  return {
-    data: usable.slice(0, target),
-    next_page_token: token,
-    total_size: first.total_size,
-  };
 }

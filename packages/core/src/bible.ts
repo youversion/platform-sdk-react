@@ -147,10 +147,6 @@ export class BibleClient {
       params['fields[]'] = options.fields;
     }
 
-    if (options?.page_token) {
-      params.page_token = options.page_token;
-    }
-
     if (options?.all_available) {
       params.all_available = 'true';
     }
@@ -166,7 +162,10 @@ export class BibleClient {
     }
 
     const fetchPage = (pageToken?: string) => {
-      const pageParams = pageToken ? { ...params, page_token: pageToken } : params;
+      const pageParams = { ...params };
+      if (pageToken) {
+        pageParams.page_token = pageToken;
+      }
       return this.client.get<Collection<BibleVersion>>(`/v1/bibles`, pageParams);
     };
 
@@ -175,9 +174,10 @@ export class BibleClient {
     }
 
     return collectFilteredPage(
-      (pageToken) => fetchPage(pageToken ?? options?.page_token),
+      fetchPage,
       (version) => isUsableBibleVersion({ id: version.id, languageTag: version.language_tag }),
       pageSize,
+      options?.page_token,
     );
   }
 

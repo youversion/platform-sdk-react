@@ -114,4 +114,65 @@ describe('version filters', () => {
     expect(collected.next_page_token).toBeNull();
     clearFilters();
   });
+
+  it('resumes leftover usable rows instead of dropping them after a full page', async () => {
+    const pages: Record<string, { data: { id: number }[]; next_page_token: string | null }> = {
+      '': {
+        data: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }],
+        next_page_token: 'p2',
+      },
+      p2: { data: [{ id: 5 }], next_page_token: null },
+    };
+
+    const fetchPage = (pageToken?: string) => {
+      expect(pageToken?.startsWith('yv-vf1:')).not.toBe(true);
+      const page = pages[pageToken ?? ''];
+      return Promise.resolve(page ?? { data: [], next_page_token: null });
+    };
+
+    const first = await collectFilteredPage(fetchPage, () => true, 2);
+    expect(first.data.map((item) => item.id)).toEqual([1, 2]);
+    expect(first.next_page_token).toMatch(/^yv-vf1:/);
+
+    const second = await collectFilteredPage(
+      fetchPage,
+      () => true,
+      2,
+      first.next_page_token ?? undefined,
+    );
+    expect(second.data.map((item) => item.id)).toEqual([3, 4]);
+    expect(second.next_page_token).toBe('p2');
+
+    const third = await collectFilteredPage(
+      fetchPage,
+      () => true,
+      2,
+      second.next_page_token ?? undefined,
+    );
+    expect(third.data.map((item) => item.id)).toEqual([5]);
+    expect(third.next_page_token).toBeNull();
+  });
+
+  it('keeps leftover usable rows on the last server page', async () => {
+    const fetchPage = (pageToken?: string) => {
+      expect(pageToken).toBeUndefined();
+      return Promise.resolve({
+        data: [{ id: 1 }, { id: 2 }, { id: 3 }],
+        next_page_token: null,
+      });
+    };
+
+    const first = await collectFilteredPage(fetchPage, () => true, 2);
+    expect(first.data.map((item) => item.id)).toEqual([1, 2]);
+    expect(first.next_page_token).toMatch(/^yv-vf1:/);
+
+    const second = await collectFilteredPage(
+      fetchPage,
+      () => true,
+      2,
+      first.next_page_token ?? undefined,
+    );
+    expect(second.data.map((item) => item.id)).toEqual([3]);
+    expect(second.next_page_token).toBeNull();
+  });
 });
