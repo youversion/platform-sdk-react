@@ -8,7 +8,9 @@ import { render, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Verse, BibleTextView, type BibleTextViewPassageState, type FootnoteData } from './verse';
 import type { Highlight } from '@youversion/platform-core';
-import { fillFor, getVerseEl, MULTI_VERSE_HTML } from '@/test/highlights-test-utils';
+import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
+import { useHighlights } from '@youversion/platform-react-hooks';
+import { fillFor, getVerseEl, MULTI_VERSE_HTML, Providers } from '@/test/highlights-test-utils';
 
 // BibleTextView always calls usePassage/useTheme internally (even when passageState
 // is provided), so we must mock the hooks to avoid requiring YouVersionProvider.
@@ -18,6 +20,14 @@ vi.mock('@youversion/platform-react-hooks', async () => {
     ...actual,
     usePassage: vi.fn(() => ({ passage: null, loading: false, error: null, refetch: vi.fn() })),
     useTheme: vi.fn(() => 'light'),
+    useHighlights: vi.fn(() => ({
+      highlights: { data: [], next_page_token: null },
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+      createHighlight: vi.fn(),
+      deleteHighlight: vi.fn(),
+    })),
   };
 });
 
@@ -1302,7 +1312,7 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
     expect(getVerseEl(container, 3).style.backgroundColor).toBe(fillFor('abcdef'));
   });
 
-  it('paints nothing for an empty array or an omitted prop', () => {
+  it('paints nothing for a host empty array, and for an omitted prop when not eligible to fetch', () => {
     const empty = render(
       <BibleTextView
         reference="JHN.1"
@@ -1312,12 +1322,75 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
       />,
     );
     expect(getVerseEl(empty.container, 1).style.backgroundColor).toBe('');
+    expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ enabled: false }),
+    );
     empty.unmount();
 
     const omitted = render(
       <BibleTextView reference="JHN.1" versionId={111} passageState={passageState} />,
     );
     expect(getVerseEl(omitted.container, 1).style.backgroundColor).toBe('');
+  });
+
+  it('paints matching verses from a stubbed fetch when signed in with permission and the prop is omitted', () => {
+    vi.mocked(useHighlights).mockReturnValue({
+      highlights: { data: [highlight('JHN.1.1', YELLOW)], next_page_token: null },
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+      createHighlight: vi.fn(),
+      deleteHighlight: vi.fn(),
+    });
+    vi.mocked(useHighlights).mockClear();
+    const hasPermission = vi
+      .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
+      .mockReturnValue(true);
+
+    try {
+      const { container } = render(
+        <Providers>
+          <BibleTextView reference="JHN.1" versionId={111} passageState={passageState} />
+        </Providers>,
+      );
+
+      expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
+        { version_id: 111, passage_id: 'JHN.1' },
+        { enabled: true },
+      );
+      expect(getVerseEl(container, 1).style.backgroundColor).toBe(fillFor(YELLOW));
+      expect(getVerseEl(container, 2).style.backgroundColor).toBe('');
+    } finally {
+      hasPermission.mockRestore();
+      vi.mocked(useHighlights).mockReturnValue({
+        highlights: { data: [], next_page_token: null },
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+        createHighlight: vi.fn(),
+        deleteHighlight: vi.fn(),
+      });
+    }
+  });
+
+  it('paints highlightedVerses without fetching when the reader seam is passed', () => {
+    vi.mocked(useHighlights).mockClear();
+    const { container } = render(
+      <BibleTextView
+        reference="JHN.1"
+        versionId={111}
+        passageState={passageState}
+        highlightedVerses={{ 2: YELLOW }}
+      />,
+    );
+
+    expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ enabled: false }),
+    );
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
+    expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
   });
 
   it('latches paint mode at first mount', () => {
@@ -1342,7 +1415,7 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
       controlled.unmount();
       warn.mockClear();
 
-      const { container, rerender } = render(
+      const { container, rerender, unmount } = render(
         <BibleTextView
           reference="JHN.1"
           versionId={111}
@@ -1365,6 +1438,23 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('`highlights` prop switched'));
       expect(getVerseEl(container, 1).style.backgroundColor).toBe(fillFor(YELLOW));
       expect(getVerseEl(container, 2).style.backgroundColor).toBe('');
+      unmount();
+      warn.mockClear();
+
+      // Omit latches self-contained fetch, so a late host array is ignored.
+      const omittedThenHost = render(
+        <BibleTextView reference="JHN.1" versionId={111} passageState={passageState} />,
+      );
+      omittedThenHost.rerender(
+        <BibleTextView
+          reference="JHN.1"
+          versionId={111}
+          passageState={passageState}
+          highlights={[highlight('JHN.1.1', YELLOW)]}
+        />,
+      );
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('`highlights` prop switched'));
+      expect(getVerseEl(omittedThenHost.container, 1).style.backgroundColor).toBe('');
     } finally {
       warn.mockRestore();
     }

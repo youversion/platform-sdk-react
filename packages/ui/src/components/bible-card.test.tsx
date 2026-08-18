@@ -6,11 +6,28 @@ import { render, act, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BibleCard } from './bible-card';
 import type { FootnoteData } from './verse';
-import { usePassage, useTheme, useVersion } from '@youversion/platform-react-hooks';
+import { useHighlights, usePassage, useTheme, useVersion } from '@youversion/platform-react-hooks';
 import type { BiblePassage, BibleVersion, Highlight } from '@youversion/platform-core';
-import { fillFor, getVerseEl, MULTI_VERSE_HTML } from '@/test/highlights-test-utils';
+import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
+import { fillFor, getVerseEl, MULTI_VERSE_HTML, Providers } from '@/test/highlights-test-utils';
 
-vi.mock('@youversion/platform-react-hooks');
+vi.mock('@youversion/platform-react-hooks', async () => {
+  const actual = await vi.importActual('@youversion/platform-react-hooks');
+  return {
+    ...actual,
+    usePassage: vi.fn(),
+    useTheme: vi.fn(),
+    useVersion: vi.fn(),
+    useHighlights: vi.fn(() => ({
+      highlights: { data: [], next_page_token: null },
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+      createHighlight: vi.fn(),
+      deleteHighlight: vi.fn(),
+    })),
+  };
+});
 
 const mockPassage: BiblePassage = {
   id: 'JHN.3.16',
@@ -300,5 +317,69 @@ describe('BibleCard - host highlights (controlled mode)', () => {
     );
 
     expect(getVerseEl(container, 2).style.backgroundColor).toBe('');
+  });
+
+  it('paints from a stubbed fetch when the prop is omitted, and paints nothing for a host empty array', () => {
+    vi.mocked(useTheme).mockReturnValue('light');
+    vi.mocked(useVersion).mockReturnValue({
+      version: mockVersion,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    vi.mocked(usePassage).mockReturnValue({
+      passage: multiVersePassage,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    vi.mocked(useHighlights).mockReturnValue({
+      highlights: { data: highlights, next_page_token: null },
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+      createHighlight: vi.fn(),
+      deleteHighlight: vi.fn(),
+    });
+    vi.mocked(useHighlights).mockClear();
+    const hasPermission = vi
+      .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
+      .mockReturnValue(true);
+
+    try {
+      const omitted = render(
+        <Providers>
+          <BibleCard reference="JHN.1" versionId={111} />
+        </Providers>,
+      );
+      expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
+        { version_id: 111, passage_id: 'JHN.1' },
+        { enabled: true },
+      );
+      expect(getVerseEl(omitted.container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
+      omitted.unmount();
+
+      vi.mocked(useHighlights).mockClear();
+      const hostEmpty = render(
+        <Providers>
+          <BibleCard reference="JHN.1" versionId={111} highlights={[]} />
+        </Providers>,
+      );
+      expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
+        { version_id: 111, passage_id: 'JHN.1' },
+        { enabled: false },
+      );
+      expect(getVerseEl(hostEmpty.container, 2).style.backgroundColor).toBe('');
+    } finally {
+      hasPermission.mockRestore();
+      vi.mocked(useHighlights).mockReturnValue({
+        highlights: { data: [], next_page_token: null },
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+        createHighlight: vi.fn(),
+        deleteHighlight: vi.fn(),
+      });
+    }
   });
 });

@@ -68,13 +68,18 @@ export type VerseOfTheDayProps = {
    */
   size?: 'default' | 'lg';
   /**
-   * When provided, paints these highlights on Verse of the Day (controlled
-   * mode). Use for React Native or Expo DOM hosts that already own highlight
-   * data and just need it rendered. Mode is latched at this component's first
-   * mount, including while today's verse is still loading: omit the prop
-   * for no highlights; pass `[]` for none yet. A first render of `undefined`
-   * will never paint later data. Nothing paints until today's passage is
-   * known; overlapping ranges are clipped to that passage.
+   * When provided (including `[]`), paints these highlights on Verse of the
+   * Day (controlled mode, no fetch). Use for React Native or Expo DOM hosts
+   * that already own highlight data — pass `[]` while loading or signed out
+   * so the WebView does not fetch. Mode is latched at this component's first
+   * mount, including while today's verse is still loading. Nothing paints
+   * until today's passage is known; overlapping ranges are clipped to that
+   * passage.
+   *
+   * Omit the prop for Swift-like self-contained paint: when the user is signed
+   * in, has granted the `highlights` permission, and highlights are live,
+   * matching verses are fetched and painted. A first render of `undefined`
+   * latches self-contained (fetch when eligible), not "never paint".
    */
   highlights?: Highlight[];
 };
