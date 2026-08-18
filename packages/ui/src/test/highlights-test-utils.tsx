@@ -1,11 +1,35 @@
 import type { Collection, Highlight, YouVersionUserInfo } from '@youversion/platform-core';
-import { YouVersionAuthContext, YouVersionContext } from '@youversion/platform-react-hooks';
+import {
+  useHighlights,
+  YouVersionAuthContext,
+  YouVersionContext,
+} from '@youversion/platform-react-hooks';
 import type { ReactElement, ReactNode } from 'react';
 import { vi } from 'vitest';
 
 /** Wraps a highlight list in the paginated collection envelope the clients return. */
 export function collection(data: Highlight[]): Collection<Highlight> {
   return { data, next_page_token: null };
+}
+
+/**
+ * Ready-to-run `useHighlights` stub. Each case that needs a specific return
+ * calls this instead of writing module mock state and restoring it later.
+ */
+export function stubUseHighlights(
+  overrides: Partial<ReturnType<typeof useHighlights>> = {},
+): ReturnType<typeof useHighlights> {
+  const value: ReturnType<typeof useHighlights> = {
+    highlights: collection([]),
+    loading: false,
+    error: null,
+    refetch: vi.fn(),
+    createHighlight: vi.fn(),
+    deleteHighlight: vi.fn(),
+    ...overrides,
+  };
+  vi.mocked(useHighlights).mockReturnValue(value);
+  return value;
 }
 
 /** Multi-verse YVDOM used by controlled-mode highlight tests (`.yv-v[v]` wrappers). */

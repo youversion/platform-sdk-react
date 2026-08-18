@@ -9,7 +9,14 @@ import type { FootnoteData } from './verse';
 import { useHighlights, usePassage, useTheme, useVersion } from '@youversion/platform-react-hooks';
 import type { BiblePassage, BibleVersion, Highlight } from '@youversion/platform-core';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
-import { fillFor, getVerseEl, MULTI_VERSE_HTML, Providers } from '@/test/highlights-test-utils';
+import {
+  fillFor,
+  getVerseEl,
+  MULTI_VERSE_HTML,
+  Providers,
+  collection,
+  stubUseHighlights,
+} from '@/test/highlights-test-utils';
 
 vi.mock('@youversion/platform-react-hooks', async () => {
   const actual = await vi.importActual('@youversion/platform-react-hooks');
@@ -333,15 +340,7 @@ describe('BibleCard - host highlights (controlled mode)', () => {
       error: null,
       refetch: vi.fn(),
     });
-    vi.mocked(useHighlights).mockReturnValue({
-      highlights: { data: highlights, next_page_token: null },
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-      createHighlight: vi.fn(),
-      deleteHighlight: vi.fn(),
-    });
-    vi.mocked(useHighlights).mockClear();
+    stubUseHighlights({ highlights: collection(highlights) });
     const hasPermission = vi
       .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
       .mockReturnValue(true);
@@ -359,7 +358,7 @@ describe('BibleCard - host highlights (controlled mode)', () => {
       expect(getVerseEl(omitted.container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
       omitted.unmount();
 
-      vi.mocked(useHighlights).mockClear();
+      stubUseHighlights();
       const hostEmpty = render(
         <Providers>
           <BibleCard reference="JHN.1" versionId={111} highlights={[]} />
@@ -372,14 +371,6 @@ describe('BibleCard - host highlights (controlled mode)', () => {
       expect(getVerseEl(hostEmpty.container, 2).style.backgroundColor).toBe('');
     } finally {
       hasPermission.mockRestore();
-      vi.mocked(useHighlights).mockReturnValue({
-        highlights: { data: [], next_page_token: null },
-        loading: false,
-        error: null,
-        refetch: vi.fn(),
-        createHighlight: vi.fn(),
-        deleteHighlight: vi.fn(),
-      });
     }
   });
 });

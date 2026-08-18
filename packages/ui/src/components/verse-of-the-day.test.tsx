@@ -19,7 +19,13 @@ import { VerseOfTheDay } from './verse-of-the-day';
 import type { VerseOfTheDayShareData } from './verse-of-the-day';
 import type { Highlight } from '@youversion/platform-core';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
-import { fillFor, getVerseEl, Providers } from '@/test/highlights-test-utils';
+import {
+  fillFor,
+  getVerseEl,
+  Providers,
+  collection,
+  stubUseHighlights,
+} from '@/test/highlights-test-utils';
 import en from '@/i18n/locales/en.json';
 import {
   getDayOfYear,
@@ -393,18 +399,9 @@ describe('VerseOfTheDay - host highlights (controlled mode)', () => {
 
   it('paints from a stubbed fetch when the prop is omitted, and paints nothing for a host empty array', () => {
     stubHooks({ passageContent: twoVerseHtml });
-    vi.mocked(useHighlights).mockReturnValue({
-      highlights: {
-        data: [highlight('JHN.3.16', YELLOW), highlight('JHN.3.17', GREEN)],
-        next_page_token: null,
-      },
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-      createHighlight: vi.fn(),
-      deleteHighlight: vi.fn(),
+    stubUseHighlights({
+      highlights: collection([highlight('JHN.3.16', YELLOW), highlight('JHN.3.17', GREEN)]),
     });
-    vi.mocked(useHighlights).mockClear();
     const hasPermission = vi
       .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
       .mockReturnValue(true);
@@ -423,7 +420,7 @@ describe('VerseOfTheDay - host highlights (controlled mode)', () => {
       expect(getVerseEl(omitted.container, 17).style.backgroundColor).toBe('');
       omitted.unmount();
 
-      vi.mocked(useHighlights).mockClear();
+      stubUseHighlights();
       const hostEmpty = render(
         <Providers>
           <VerseOfTheDay versionId={111} highlights={[]} />
@@ -436,14 +433,6 @@ describe('VerseOfTheDay - host highlights (controlled mode)', () => {
       expect(getVerseEl(hostEmpty.container, 16).style.backgroundColor).toBe('');
     } finally {
       hasPermission.mockRestore();
-      vi.mocked(useHighlights).mockReturnValue({
-        highlights: { data: [], next_page_token: null },
-        loading: false,
-        error: null,
-        refetch: vi.fn(),
-        createHighlight: vi.fn(),
-        deleteHighlight: vi.fn(),
-      });
     }
   });
 });

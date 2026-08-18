@@ -7,7 +7,7 @@ import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { useHighlights } from '@youversion/platform-react-hooks';
 import { describe, expect, it, vi } from 'vitest';
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
-import { collection, Providers } from '@/test/highlights-test-utils';
+import { collection, Providers, stubUseHighlights } from '@/test/highlights-test-utils';
 import { useScriptureHighlightPaint } from './use-scripture-highlight-paint';
 
 vi.mock('@youversion/platform-react-hooks', async () => {
@@ -17,22 +17,6 @@ vi.mock('@youversion/platform-react-hooks', async () => {
     useHighlights: vi.fn(),
   };
 });
-
-function mockUseHighlights(
-  overrides: Partial<ReturnType<typeof useHighlights>> = {},
-): ReturnType<typeof useHighlights> {
-  const value: ReturnType<typeof useHighlights> = {
-    highlights: collection([]),
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-    createHighlight: vi.fn(),
-    deleteHighlight: vi.fn(),
-    ...overrides,
-  };
-  vi.mocked(useHighlights).mockReturnValue(value);
-  return value;
-}
 
 const yellowRow: Highlight = { version_id: 111, passage_id: 'JHN.1.1', color: 'fffe00' };
 const selfContainedOptions = {
@@ -47,7 +31,7 @@ const selfContainedOptions = {
 describe('useScriptureHighlightPaint', () => {
   it('fetches and paints when signed in with permission and live, and disables fetch otherwise', () => {
     const fetched: Collection<Highlight> = collection([yellowRow]);
-    mockUseHighlights({ highlights: fetched });
+    stubUseHighlights({ highlights: fetched });
     const hasPermission = vi
       .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
       .mockReturnValue(true);
@@ -115,7 +99,7 @@ describe('useScriptureHighlightPaint', () => {
   });
 
   it('paints a host array or a reader map without fetching', () => {
-    mockUseHighlights({ highlights: collection([yellowRow]) });
+    stubUseHighlights({ highlights: collection([yellowRow]) });
     const hasPermission = vi
       .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
       .mockReturnValue(true);
@@ -166,7 +150,7 @@ describe('useScriptureHighlightPaint', () => {
   });
 
   it('clips fetched and host rows to a verse-unit display passage', () => {
-    mockUseHighlights({
+    stubUseHighlights({
       highlights: collection([{ version_id: 111, passage_id: 'JHN.1.1-3', color: 'fffe00' }]),
     });
     const hasPermission = vi

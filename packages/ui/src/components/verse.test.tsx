@@ -10,7 +10,14 @@ import { Verse, BibleTextView, type BibleTextViewPassageState, type FootnoteData
 import type { Highlight } from '@youversion/platform-core';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { useHighlights } from '@youversion/platform-react-hooks';
-import { fillFor, getVerseEl, MULTI_VERSE_HTML, Providers } from '@/test/highlights-test-utils';
+import {
+  fillFor,
+  getVerseEl,
+  MULTI_VERSE_HTML,
+  Providers,
+  collection,
+  stubUseHighlights,
+} from '@/test/highlights-test-utils';
 
 // BibleTextView always calls usePassage/useTheme internally (even when passageState
 // is provided), so we must mock the hooks to avoid requiring YouVersionProvider.
@@ -1335,15 +1342,7 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
   });
 
   it('paints matching verses from a stubbed fetch when signed in with permission and the prop is omitted', () => {
-    vi.mocked(useHighlights).mockReturnValue({
-      highlights: { data: [highlight('JHN.1.1', YELLOW)], next_page_token: null },
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-      createHighlight: vi.fn(),
-      deleteHighlight: vi.fn(),
-    });
-    vi.mocked(useHighlights).mockClear();
+    stubUseHighlights({ highlights: collection([highlight('JHN.1.1', YELLOW)]) });
     const hasPermission = vi
       .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
       .mockReturnValue(true);
@@ -1363,19 +1362,11 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
       expect(getVerseEl(container, 2).style.backgroundColor).toBe('');
     } finally {
       hasPermission.mockRestore();
-      vi.mocked(useHighlights).mockReturnValue({
-        highlights: { data: [], next_page_token: null },
-        loading: false,
-        error: null,
-        refetch: vi.fn(),
-        createHighlight: vi.fn(),
-        deleteHighlight: vi.fn(),
-      });
     }
   });
 
   it('paints highlightedVerses without fetching when the reader seam is passed', () => {
-    vi.mocked(useHighlights).mockClear();
+    stubUseHighlights();
     const { container } = render(
       <BibleTextView
         reference="JHN.1"
@@ -1394,6 +1385,7 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
   });
 
   it('latches paint mode at first mount', () => {
+    stubUseHighlights();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     try {
       const controlled = render(
