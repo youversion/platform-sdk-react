@@ -24,7 +24,7 @@ import { type FontFamily } from '@/lib/verse-html-utils';
 import type { Highlight } from '@youversion/platform-core';
 import { transformBibleHtml } from '@youversion/platform-core/browser';
 import { IS_PRODUCTION } from '@/lib/constants';
-import { deriveHighlightedVerses, parseChapterScopeFromUsfm } from '@/lib/highlight-projection';
+import { chapterScopeForHighlightPaint, deriveHighlightedVerses } from '@/lib/highlight-projection';
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
 
@@ -629,18 +629,6 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
       );
     }
 
-    const chapterScope = useMemo(() => parseChapterScopeFromUsfm(reference), [reference]);
-    const paintedVerses = useMemo(() => {
-      if (!isHighlightsControlled) return highlightedVerses ?? {};
-      if (!chapterScope) return {};
-      return deriveHighlightedVerses(
-        highlights ?? [],
-        versionId,
-        chapterScope.book,
-        chapterScope.chapter,
-      );
-    }, [isHighlightsControlled, highlights, highlightedVerses, versionId, chapterScope]);
-
     const hasProvidedPassageState = passageState !== undefined;
 
     const {
@@ -662,6 +650,26 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
       ? (passageState?.loading ?? false)
       : fetchedLoading;
     const currentError = hasProvidedPassageState ? (passageState?.error ?? null) : fetchedError;
+
+    const chapterScope = useMemo(
+      () =>
+        chapterScopeForHighlightPaint({
+          renderedPassageId: currentPassage?.id,
+          requestedUsfm: reference,
+          loading: currentLoading,
+        }),
+      [currentPassage?.id, reference, currentLoading],
+    );
+    const paintedVerses = useMemo(() => {
+      if (!isHighlightsControlled) return highlightedVerses ?? {};
+      if (!chapterScope) return {};
+      return deriveHighlightedVerses(
+        highlights ?? [],
+        versionId,
+        chapterScope.book,
+        chapterScope.chapter,
+      );
+    }, [isHighlightsControlled, highlights, highlightedVerses, versionId, chapterScope]);
 
     if (currentLoading && !currentPassage) {
       return (

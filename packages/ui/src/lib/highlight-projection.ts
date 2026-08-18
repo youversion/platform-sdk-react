@@ -68,6 +68,43 @@ export function parseChapterScopeFromUsfm(usfm: string): ChapterScope | null {
 }
 
 /**
+ * Chapter scope to project host highlights onto, given the passage actually
+ * on screen vs the USFM the host just requested.
+ *
+ * `useApiData` keeps the previous passage while the next fetch is in flight,
+ * and callers like `BibleCard` keep rendering that retained HTML. Projecting
+ * against the requested USFM in that window paints destination-chapter
+ * highlights onto the old passage's same-numbered verse wrappers.
+ *
+ * When the retained passage is a different chapter, this returns that
+ * chapter so the old HTML keeps its own highlights. When it is the same
+ * chapter but still loading, this returns `null`: the retained HTML may
+ * belong to the previous version, and `BiblePassage` has no version id to
+ * confirm a match.
+ */
+export function chapterScopeForHighlightPaint(options: {
+  renderedPassageId: string | undefined;
+  requestedUsfm: string;
+  loading: boolean;
+}): ChapterScope | null {
+  const renderedScope = options.renderedPassageId
+    ? parseChapterScopeFromUsfm(options.renderedPassageId)
+    : null;
+  const requestedScope = parseChapterScopeFromUsfm(options.requestedUsfm);
+  const paintScope = renderedScope ?? requestedScope;
+  if (!paintScope) return null;
+
+  if (options.loading && renderedScope && requestedScope) {
+    const sameChapter =
+      renderedScope.book === requestedScope.book &&
+      renderedScope.chapter === requestedScope.chapter;
+    if (sameChapter) return null;
+  }
+
+  return paintScope;
+}
+
+/**
  * Keeps host highlights whose expanded verses intersect the displayed passage,
  * rewriting each kept row's `passage_id` to that intersection.
  *

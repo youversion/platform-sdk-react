@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Highlight } from '@youversion/platform-core';
 import {
+  chapterScopeForHighlightPaint,
   deriveHighlightedVerses,
   expandPassageId,
   filterHighlightsForPassage,
@@ -203,5 +204,41 @@ describe('filterHighlightsForPassage', () => {
 
   it('returns an empty list when the display USFM is not a verse unit', () => {
     expect(filterHighlightsForPassage([highlight(111, 'JHN.3.16', 'fffe00')], 'JHN.3')).toEqual([]);
+  });
+});
+
+describe('chapterScopeForHighlightPaint', () => {
+  it('projects the rendered passage while a different chapter is loading, and holds paint when the same chapter may have changed version', () => {
+    expect(
+      chapterScopeForHighlightPaint({
+        renderedPassageId: 'JHN.1',
+        requestedUsfm: 'JHN.1',
+        loading: false,
+      }),
+    ).toEqual({ book: 'JHN', chapter: '1' });
+
+    expect(
+      chapterScopeForHighlightPaint({
+        renderedPassageId: 'JHN.1',
+        requestedUsfm: 'JHN.2',
+        loading: true,
+      }),
+    ).toEqual({ book: 'JHN', chapter: '1' });
+
+    expect(
+      chapterScopeForHighlightPaint({
+        renderedPassageId: 'JHN.1',
+        requestedUsfm: 'JHN.1',
+        loading: true,
+      }),
+    ).toBeNull();
+
+    expect(
+      chapterScopeForHighlightPaint({
+        renderedPassageId: undefined,
+        requestedUsfm: 'JHN.2',
+        loading: true,
+      }),
+    ).toEqual({ book: 'JHN', chapter: '2' });
   });
 });

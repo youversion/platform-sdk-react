@@ -1369,4 +1369,60 @@ describe('BibleTextView - host highlights (paint-only)', () => {
       warn.mockRestore();
     }
   });
+
+  it('paints the retained passage while the next chapter or version is loading, not the destination', () => {
+    const jhn1 = {
+      passage: { id: 'JHN.1', content: MULTI_VERSE_HTML, reference: 'John 1' },
+      loading: false,
+      error: null,
+    };
+    const highlights = [
+      highlight('JHN.1.2', YELLOW),
+      highlight('JHN.2.2', GREEN),
+      highlight('JHN.1.2', GREEN, 222),
+    ];
+    const { container, rerender } = render(
+      <BibleTextView
+        reference="JHN.1"
+        versionId={111}
+        passageState={jhn1}
+        highlights={highlights}
+      />,
+    );
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
+
+    rerender(
+      <BibleTextView
+        reference="JHN.2"
+        versionId={111}
+        passageState={{ ...jhn1, loading: true }}
+        highlights={highlights}
+      />,
+    );
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
+
+    rerender(
+      <BibleTextView
+        reference="JHN.1"
+        versionId={222}
+        passageState={{ ...jhn1, loading: true }}
+        highlights={highlights}
+      />,
+    );
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe('');
+
+    rerender(
+      <BibleTextView
+        reference="JHN.2"
+        versionId={111}
+        passageState={{
+          passage: { id: 'JHN.2', content: MULTI_VERSE_HTML, reference: 'John 2' },
+          loading: false,
+          error: null,
+        }}
+        highlights={highlights}
+      />,
+    );
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(GREEN));
+  });
 });
