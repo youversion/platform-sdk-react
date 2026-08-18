@@ -18,6 +18,9 @@ export class YouVersionPlatformConfiguration {
   private static _expiryDateKey: string | null = null;
   private static _signInPromptMessage: string | undefined = undefined;
   private static _appName: string | undefined = undefined;
+  private static _permittedVersionIds: number[] | undefined = undefined;
+  private static _excludedVersionIds: number[] | undefined = undefined;
+  private static _permittedLanguageTags: string[] | undefined = undefined;
 
   private static getOrSetInstallationId(): string {
     const storage = getLocalStorage();
@@ -327,5 +330,49 @@ export class YouVersionPlatformConfiguration {
 
   static set appName(value: string | undefined) {
     this._appName = value;
+  }
+
+  /**
+   * Allowlist of Bible version ids the SDK offers. `undefined` is
+   * unrestricted; an **empty array permits nothing** (Swift parity — empty and
+   * unset mean different things). ANDed with {@link permittedLanguageTags}.
+   *
+   * Filters shape what the SDK offers in lists; they never block fetching or
+   * rendering a version by id (see ADR-0005). Optional; not persisted (it is
+   * supplied by configuration on each app load), and read at fetch time, so
+   * changing it affects future fetches only.
+   */
+  static get permittedVersionIds(): number[] | undefined {
+    return this._permittedVersionIds;
+  }
+
+  static set permittedVersionIds(value: number[] | undefined) {
+    this._permittedVersionIds = value;
+  }
+
+  /**
+   * Denylist of Bible version ids. Exclusion is checked first and beats
+   * permission: a version named in both lists is excluded. `undefined` or an
+   * empty array excludes nothing. Optional; not persisted.
+   */
+  static get excludedVersionIds(): number[] | undefined {
+    return this._excludedVersionIds;
+  }
+
+  static set excludedVersionIds(value: number[] | undefined) {
+    this._excludedVersionIds = value;
+  }
+
+  /**
+   * Allowlist of BCP-47 language tags. `undefined` is unrestricted; an **empty
+   * array permits nothing**. A version with no language tag fails this filter.
+   * ANDed with {@link permittedVersionIds}. Optional; not persisted.
+   */
+  static get permittedLanguageTags(): string[] | undefined {
+    return this._permittedLanguageTags;
+  }
+
+  static set permittedLanguageTags(value: string[] | undefined) {
+    this._permittedLanguageTags = value;
   }
 }

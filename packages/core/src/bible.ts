@@ -2,6 +2,8 @@ import { z } from 'zod';
 import type { ApiClient } from './client';
 import { transformBibleHtml, type TransformBibleHtmlOptions } from './bible-html-transformer';
 import { BibleVersionSchema } from './schemas';
+import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
+import { isVersionPermitted } from './version-filters';
 import type {
   BibleBook,
   BibleChapter,
@@ -42,6 +44,33 @@ async function getHtmlAdapters(): Promise<TransformBibleHtmlOptions> {
         .document as unknown as Document,
     serializeHtml: (doc) => doc.body.innerHTML,
   };
+}
+
+/**
+ * The version filters key off `id` and `language_tag`, so a caller's `fields`
+ * projection that omits them would leave the predicate nothing to match and
+ * silently reject every version. Request them back whenever the filter that
+ * needs them is active.
+ *
+ * Caveat: `page_size: '*'` accepts only 1-3 fields, so an active filter can
+ * push a maximal projection past that limit. A visible API error beats a
+ * silently empty list.
+ */
+function withFieldsRequiredByFilters(fields: (keyof BibleVersion)[]): (keyof BibleVersion)[] {
+  const required: (keyof BibleVersion)[] = [];
+
+  const { permittedVersionIds, excludedVersionIds, permittedLanguageTags } =
+    YouVersionPlatformConfiguration;
+
+  if (permittedVersionIds !== undefined || excludedVersionIds !== undefined) {
+    required.push('id');
+  }
+  if (permittedLanguageTags !== undefined) {
+    required.push('language_tag');
+  }
+
+  const missing = required.filter((field) => !fields.includes(field));
+  return missing.length > 0 ? [...fields, ...missing] : fields;
 }
 
 /**
@@ -105,6 +134,10 @@ export class BibleClient {
   /**
    * Fetches a collection of Bible versions filtered by language ranges.
    *
+   * Results also pass through the configured version filters
+   * ({@link isVersionPermitted}), so a page can come back smaller than the
+   * requested `page_size`.
+   *
    * @param language_ranges - One or more language codes or ranges to filter the versions (required).
    * @param license_id - Optional license ID to filter versions by license.
    * @returns A promise that resolves to a collection of BibleVersion objects.
@@ -135,7 +168,7 @@ export class BibleClient {
     }
 
     if (options?.fields) {
-      params['fields[]'] = options.fields;
+      params['fields[]'] = withFieldsRequiredByFilters(options.fields);
     }
 
     if (options?.page_token) {
@@ -145,7 +178,17 @@ export class BibleClient {
     if (options?.all_available) {
       params.all_available = 'true';
     }
-    return this.client.get<Collection<BibleVersion>>(`/v1/bibles`, params);
+    const collection = await this.client.get<Collection<BibleVersion>>(`/v1/bibles`, params);
+
+    // Filtering happens after the fetch, so an active filter can shrink a page
+    // below the requested `page_size`. `total_size` still reports the server's
+    // unfiltered total.
+    return {
+      ...collection,
+      data: collection.data.filter((version) =>
+        isVersionPermitted(version.id, version.language_tag),
+      ),
+    };
   }
 
   /**

@@ -2,6 +2,8 @@ import { z } from 'zod';
 import type { ApiClient } from './client';
 import type { Collection, Language } from './types';
 import { LanguageSchema } from './schemas';
+import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
+import { isLanguageTagPermitted } from './version-filters';
 
 /**
  * Options for getting languages collection.
@@ -63,6 +65,10 @@ export class LanguagesClient {
 
   /**
    * Fetches a collection of languages supported in the Platform.
+   *
+   * When `permittedLanguageTags` is configured, languages outside that
+   * allowlist are dropped from the result.
+   *
    * @param options Query parameters for pagination and filtering.
    * @returns A collection of Language objects.
    */
@@ -77,7 +83,12 @@ export class LanguagesClient {
     if (options.fields !== undefined) {
       const fieldsSchema = z.array(LanguageSchema.keyof());
       fieldsSchema.parse(options.fields);
-      params['fields[]'] = options.fields;
+      // The language filter keys off `id`; a projection that omits it would
+      // leave nothing to match and silently drop every language.
+      const needsId =
+        YouVersionPlatformConfiguration.permittedLanguageTags !== undefined &&
+        !options.fields.includes('id');
+      params['fields[]'] = needsId ? [...options.fields, 'id'] : options.fields;
     }
 
     if (options.page_size !== undefined) {
@@ -98,7 +109,16 @@ export class LanguagesClient {
       params.page_token = options.page_token;
     }
 
-    return this.client.get<Collection<Language>>(`/v1/languages`, params);
+    const collection = await this.client.get<Collection<Language>>(`/v1/languages`, params);
+
+    // Language lists are a projection of the versions the SDK offers, so a
+    // language the tag allowlist rejects is dropped here. Filtering happens
+    // after the fetch, so a page can come back smaller than `page_size`;
+    // `total_size` still reports the server's unfiltered total.
+    return {
+      ...collection,
+      data: collection.data.filter((language) => isLanguageTagPermitted(language.id)),
+    };
   }
 
   /**

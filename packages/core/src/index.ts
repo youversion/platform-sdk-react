@@ -22,6 +22,7 @@ export * from './YouVersionUserInfo';
 export * from './SignInWithYouVersionResult';
 export * from './YouVersionAPI';
 export * from './YouVersionPlatformConfiguration';
+export { isVersionPermitted } from './version-filters';
 export * from './types';
 export * from './utils/constants';
 export { getAdjacentChapter } from './getAdjacentChapter';
