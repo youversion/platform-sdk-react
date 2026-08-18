@@ -1,4 +1,4 @@
 ---
 ---
 
-Empty changeset: Cursor Cloud agent notes in AGENTS.md only. No package release.
+Empty changeset: Cursor Cloud agent notes plus AGENTS.md rightsizing. No package release.
