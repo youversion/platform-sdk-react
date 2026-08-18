@@ -131,13 +131,19 @@ jobs:
           # (ship dark) — flip the value in the prod Firebase console to
           # launch or kill without a code change. This simple check reads
           # defaultValue only; conditional values / percentage rollouts are
-          # not evaluated. A template fetch failure fails this step (visibly)
-          # rather than guessing.
+          # not evaluated. If the template fetch fails, skip the upload with
+          # a notice so npm publishes are never marked failed post-publish.
           TOKEN="$(gcloud auth print-access-token)"
-          FLAG_VALUE="$(curl -sS --fail-with-body \
+          if ! RC_TEMPLATE="$(curl -sS --fail-with-body \
             -H "Authorization: Bearer $TOKEN" \
-            "https://firebaseremoteconfig.googleapis.com/v1/projects/yvplatform-prod/namespaces/firebase-server/remoteConfig" \
-            | jq -r '.parameters.feature_platform_sdkCssCdn.defaultValue.value // "false"')"
+            "https://firebaseremoteconfig.googleapis.com/v1/projects/yvplatform-prod/namespaces/firebase-server/remoteConfig")"; then
+            echo "::notice::Unable to read prod Remote Config server template; skipping CDN stylesheet upload."
+            echo "## CDN Stylesheet :art:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Skipped: failed to fetch prod Remote Config server template for \`feature.platform.sdkCssCdn\`." >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+          FLAG_VALUE="$(echo "$RC_TEMPLATE" | jq -r '.parameters.feature_platform_sdkCssCdn.defaultValue.value // "false"')"
           if [ "$FLAG_VALUE" != "true" ]; then
             echo "::notice::CDN stylesheet publishing is disabled (feature.platform.sdkCssCdn=${FLAG_VALUE} in prod Remote Config); skipping upload."
             echo "## CDN Stylesheet :art:" >> $GITHUB_STEP_SUMMARY
@@ -146,7 +152,13 @@ jobs:
             exit 0
           fi
 
-          CSS_MAJOR_VERSION="$(tr -d '[:space:]' < packages/ui/CDN_CSS_MAJOR_VERSION)"
+          CSS_MAJOR_VERSION="1"
+          if [ -s packages/ui/CDN_CSS_MAJOR_VERSION ]; then
+            CSS_MAJOR_VERSION="$(tr -d '[:space:]' < packages/ui/CDN_CSS_MAJOR_VERSION)"
+          else
+            echo "::notice::packages/ui/CDN_CSS_MAJOR_VERSION missing or empty in this tag; defaulting CSS major to 1."
+            echo "Using fallback CSS major version \`1\` because \`packages/ui/CDN_CSS_MAJOR_VERSION\` was missing or empty." >> $GITHUB_STEP_SUMMARY
+          fi
           test -s packages/ui/dist/tailwind.css
           gcloud storage cp packages/ui/dist/tailwind.css \
             "gs://cdn-yv-platform-prod/platform/${CSS_MAJOR_VERSION}/bible.css" \

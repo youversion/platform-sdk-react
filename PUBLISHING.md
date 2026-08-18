@@ -83,6 +83,7 @@ The upload is gated by the `feature.platform.sdkCssCdn` feature flag, defined (l
 - **Ship-dark default:** the flag is `false` in prod, so merging the workflow does not start publishing to the CDN by itself.
 - **To launch (or kill) CDN publishing:** flip `feature_platform_sdkCssCdn` in the `yvplatform-prod` Firebase console's server template — no code change or deploy needed. A missing parameter evaluates as disabled.
 - When the flag is off, the release still publishes to npm normally; the CDN step logs a notice and skips the upload.
+- If the workflow cannot read the prod Remote Config template (transient outage/permission issue), the CDN step logs a notice and skips the upload instead of failing the post-publish workflow.
 - The check reads the parameter's default value only; conditional values / percentage rollouts are not evaluated.
 
 ### How the upload authenticates
@@ -108,6 +109,7 @@ Repository Actions secrets:
 - npm publishing happens before the CDN upload; a failed upload does not affect the npm release.
 - **Do not retry by re-running the failed job**: on a re-run, changesets reports nothing newly published, so the CDN steps are skipped. Instead, after fixing the issue, trigger the **Release workflow manually** (Actions → Release → "Run workflow" on `main`). Manual runs skip versioning/publishing entirely; they resolve the npm `latest` dist-tag of `@youversion/platform-react-ui`, check out the matching release tag, rebuild it, and upload its stylesheet — so the CDN always matches what's on npm even if `main` has advanced past the release commit. The upload is idempotent, so this is always safe.
 - Manual dispatches from any ref other than `main` are no-ops (job-level guard), so branch CSS can never overwrite the production stylesheet.
+- If the checked-out release tag predates `packages/ui/CDN_CSS_MAJOR_VERSION`, the workflow falls back to CSS major `1` and continues.
 
 ## Troubleshooting
 
