@@ -105,12 +105,13 @@ export function chapterScopeForHighlightPaint(options: {
 }
 
 /**
- * Keeps host highlights whose expanded verses intersect the displayed passage,
+ * Keeps highlights whose expanded verses intersect the displayed passage,
  * rewriting each kept row's `passage_id` to that intersection.
  *
- * A host range like `JHN.3.16-18` against today's `JHN.3.16` becomes
- * `JHN.3.16`, so {@link deriveHighlightedVerses} cannot paint verses that are
- * not shown. Chapter-scope and other unexpandable `passage_id`s are dropped.
+ * A range like `JHN.3.16-18` against today's `JHN.3.16` becomes `JHN.3.16`, so
+ * {@link deriveHighlightedVerses} cannot paint verses that are not shown. A
+ * gapped intersection becomes one row per contiguous run. Chapter-scope and
+ * other unexpandable `passage_id`s are dropped.
  */
 export function filterHighlightsForPassage(
   highlights: readonly Highlight[],

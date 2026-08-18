@@ -394,7 +394,10 @@ describe('VerseOfTheDay - host highlights (controlled mode)', () => {
   it('paints from a stubbed fetch when the prop is omitted, and paints nothing for a host empty array', () => {
     stubHooks({ passageContent: twoVerseHtml });
     vi.mocked(useHighlights).mockReturnValue({
-      highlights: { data: [highlight('JHN.3.16', YELLOW)], next_page_token: null },
+      highlights: {
+        data: [highlight('JHN.3.16', YELLOW), highlight('JHN.3.17', GREEN)],
+        next_page_token: null,
+      },
       loading: false,
       error: null,
       refetch: vi.fn(),
@@ -417,6 +420,7 @@ describe('VerseOfTheDay - host highlights (controlled mode)', () => {
         { enabled: true },
       );
       expect(getVerseEl(omitted.container, 16).style.backgroundColor).toBe(fillFor(YELLOW));
+      expect(getVerseEl(omitted.container, 17).style.backgroundColor).toBe('');
       omitted.unmount();
 
       vi.mocked(useHighlights).mockClear();

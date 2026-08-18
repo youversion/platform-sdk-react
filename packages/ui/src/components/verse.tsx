@@ -663,6 +663,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
       highlightedVerses,
       versionId,
       chapterScope,
+      displayPassageId: reference,
     });
 
     if (currentLoading && !currentPassage) {

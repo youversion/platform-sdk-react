@@ -41,6 +41,7 @@ const selfContainedOptions = {
   highlightedVerses: undefined as Record<number, string> | undefined,
   versionId: 111,
   chapterScope: { book: 'JHN', chapter: '1' },
+  displayPassageId: 'JHN.1',
 };
 
 describe('useScriptureHighlightPaint', () => {
@@ -129,6 +130,7 @@ describe('useScriptureHighlightPaint', () => {
             highlightedVerses: { 1: 'fffe00' },
             versionId: 111,
             chapterScope: { book: 'JHN', chapter: '1' },
+            displayPassageId: 'JHN.1',
           }),
         { wrapper: Providers },
       );
@@ -148,6 +150,7 @@ describe('useScriptureHighlightPaint', () => {
             highlightedVerses: { 3: 'abcdef' },
             versionId: 111,
             chapterScope: { book: 'JHN', chapter: '1' },
+            displayPassageId: 'JHN.1',
           }),
         { wrapper: Providers },
       );
@@ -156,6 +159,49 @@ describe('useScriptureHighlightPaint', () => {
         { enabled: false },
       );
       expect(readerSeam.result.current).toEqual({ 3: 'abcdef' });
+    } finally {
+      setHighlightsLive(HIGHLIGHTS_LIVE);
+      hasPermission.mockRestore();
+    }
+  });
+
+  it('clips fetched and host rows to a verse-unit display passage', () => {
+    mockUseHighlights({
+      highlights: collection([{ version_id: 111, passage_id: 'JHN.1.1-3', color: 'fffe00' }]),
+    });
+    const hasPermission = vi
+      .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
+      .mockReturnValue(true);
+    setHighlightsLive(true);
+
+    try {
+      const fetched = renderHook(
+        () =>
+          useScriptureHighlightPaint({
+            ...selfContainedOptions,
+            displayPassageId: 'JHN.1.1',
+          }),
+        { wrapper: Providers },
+      );
+      expect(fetched.result.current).toEqual({ 1: 'fffe00' });
+      fetched.unmount();
+
+      const controlled = renderHook(
+        () =>
+          useScriptureHighlightPaint({
+            highlights: [
+              { version_id: 111, passage_id: 'JHN.1.1-3', color: 'fffe00' },
+              { version_id: 111, passage_id: 'JHN.1.2', color: '5dff79' },
+            ],
+            isHighlightsControlled: true,
+            highlightedVerses: undefined,
+            versionId: 111,
+            chapterScope: { book: 'JHN', chapter: '1' },
+            displayPassageId: 'JHN.1.1',
+          }),
+        { wrapper: Providers },
+      );
+      expect(controlled.result.current).toEqual({ 1: 'fffe00' });
     } finally {
       setHighlightsLive(HIGHLIGHTS_LIVE);
       hasPermission.mockRestore();

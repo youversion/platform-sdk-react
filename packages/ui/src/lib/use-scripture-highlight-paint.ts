@@ -4,6 +4,8 @@ import { useHighlights, YouVersionAuthContext } from '@youversion/platform-react
 import { isHighlightsLive } from '@/lib/feature-flags';
 import {
   deriveHighlightedVerses,
+  expandPassageId,
+  filterHighlightsForPassage,
   type ChapterScope,
 } from '@/lib/highlight-projection';
 
@@ -20,7 +22,30 @@ export type UseScriptureHighlightPaintOptions = {
   versionId: number;
   /** Paint/GET scope from `chapterScopeForHighlightPaint`. */
   chapterScope: ChapterScope | null;
+  /**
+   * Surface `reference` USFM. A verse or range unit clips host and fetched
+   * rows to that passage so neighboring verses in chapter HTML do not paint.
+   * Chapter-scope references skip the clip.
+   */
+  displayPassageId: string;
 };
+
+function projectHighlights(
+  rows: readonly Highlight[],
+  versionId: number,
+  chapterScope: ChapterScope,
+  displayPassageId: string,
+): Record<number, string> {
+  const toProject = expandPassageId(displayPassageId)
+    ? filterHighlightsForPassage(rows, displayPassageId)
+    : rows;
+  return deriveHighlightedVerses(
+    toProject,
+    versionId,
+    chapterScope.book,
+    chapterScope.chapter,
+  );
+}
 
 /**
  * Verse→color map for scripture surfaces that paint highlights without a
@@ -42,6 +67,7 @@ export function useScriptureHighlightPaint({
   highlightedVerses,
   versionId,
   chapterScope,
+  displayPassageId,
 }: UseScriptureHighlightPaintOptions): Record<number, string> {
   // Read auth directly instead of `useYVAuth`, which throws without a provider.
   // No provider and signed out are the same here: no fetch, no paint from API.
@@ -55,7 +81,7 @@ export function useScriptureHighlightPaint({
     YouVersionPlatformConfiguration.hasPermission('highlights') &&
     isHighlightsLive() &&
     versionId > 0 &&
-    chapterUsfm.length > 0;
+    chapterScope !== null;
 
   const { highlights: fetchedHighlights } = useHighlights(
     { version_id: versionId, passage_id: chapterUsfm },
@@ -65,22 +91,17 @@ export function useScriptureHighlightPaint({
   return useMemo(() => {
     if (isHighlightsControlled) {
       if (!chapterScope) return {};
-      return deriveHighlightedVerses(
-        highlights ?? [],
-        versionId,
-        chapterScope.book,
-        chapterScope.chapter,
-      );
+      return projectHighlights(highlights ?? [], versionId, chapterScope, displayPassageId);
     }
     if (highlightedVerses !== undefined) {
       return highlightedVerses;
     }
     if (!canFetch || !chapterScope) return {};
-    return deriveHighlightedVerses(
+    return projectHighlights(
       fetchedHighlights?.data ?? [],
       versionId,
-      chapterScope.book,
-      chapterScope.chapter,
+      chapterScope,
+      displayPassageId,
     );
   }, [
     isHighlightsControlled,
@@ -90,5 +111,6 @@ export function useScriptureHighlightPaint({
     chapterScope,
     fetchedHighlights,
     versionId,
+    displayPassageId,
   ]);
 }

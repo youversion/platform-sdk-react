@@ -35,6 +35,10 @@ export type BibleCardProps = {
    * card fetches and paints matching verses. A first render of `undefined`
    * latches self-contained (fetch when eligible). Mode is latched at first
    * mount.
+   *
+   * Verse and range `reference`s clip host and fetched rows to that USFM, so a
+   * highlight that runs past the card does not paint extra verses. Chapter-scope
+   * references paint the whole chapter.
    */
   highlights?: Highlight[];
 };
