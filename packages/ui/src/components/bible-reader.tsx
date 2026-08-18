@@ -3,6 +3,7 @@
 import i18n from '@/i18n';
 import { IS_PRODUCTION } from '@/lib/constants';
 import { useDelayedLoading } from '@/lib/use-delayed-loading';
+import { useVersionFilterWarning } from '@/lib/use-version-filter-warning';
 import { cn } from '@/lib/utils';
 import {
   INTER_FONT,
@@ -690,6 +691,7 @@ function Content() {
     clearSelectionSignal,
   } = useBibleReaderContext();
   const { version } = useVersion(versionId);
+  useVersionFilterWarning(versionId, version?.language_tag);
 
   const bookData = useMemo(() => {
     return booksData.find((b) => b.id === book);

@@ -29,7 +29,12 @@ import {
   useOrganizations,
   useTheme,
 } from '@youversion/platform-react-hooks';
-import type { BibleVersion, Language, Organization } from '@youversion/platform-core';
+import {
+  YouVersionPlatformConfiguration,
+  type BibleVersion,
+  type Language,
+  type Organization,
+} from '@youversion/platform-core';
 
 vi.mock('@youversion/platform-react-hooks');
 
@@ -737,5 +742,82 @@ describe('BibleVersionPicker', () => {
       expect(onLanguageChange).toHaveBeenCalledWith('ko');
       expect(screen.getByRole('heading', { name: /bible versions/i })).toBeInTheDocument();
     });
+  });
+
+  it('drops an excluded version from recents at read time and leaves localStorage alone', async () => {
+    const stored = [
+      {
+        id: 111,
+        title: 'New International Version',
+        localized_abbreviation: 'NIV',
+        abbreviation: 'NIV',
+      },
+      {
+        id: 206,
+        title: 'New Living Translation',
+        localized_abbreviation: 'NLT',
+        abbreviation: 'NLT',
+      },
+    ];
+    vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
+      key === RECENT_VERSIONS_KEY ? JSON.stringify(stored) : null,
+    );
+    const setItem = vi.spyOn(window.localStorage, 'setItem');
+    YouVersionPlatformConfiguration.excludedVersionIds = [206];
+
+    setupDefaultMocks();
+    const { unmount } = renderPicker();
+    await openPicker();
+
+    // Scoped to the recents list: the hooks are stubbed here, so the all-versions
+    // list below is not the core-filtered one a real app would get.
+    const recentList = await screen.findByTestId('recent-version-list');
+    expect(within(recentList).getByText('New International Version')).toBeInTheDocument();
+    expect(within(recentList).queryByText('New Living Translation')).toBeNull();
+    expect(setItem).not.toHaveBeenCalledWith(RECENT_VERSIONS_KEY, expect.anything());
+
+    // Storage was never scrubbed, so lifting the exclusion brings the recent back.
+    unmount();
+    YouVersionPlatformConfiguration.excludedVersionIds = undefined;
+    setupDefaultMocks();
+    renderPicker();
+    await openPicker();
+
+    const restoredList = await screen.findByTestId('recent-version-list');
+    expect(within(restoredList).getByText('New Living Translation')).toBeInTheDocument();
+  });
+
+  it('judges a recent by the language tag from the versions list, not by the absent stored tag', async () => {
+    const stored = [
+      {
+        id: 111,
+        title: 'New International Version',
+        localized_abbreviation: 'NIV',
+        abbreviation: 'NIV',
+      },
+      {
+        id: 222,
+        title: 'Reina Valera 1960',
+        localized_abbreviation: 'RVR1960',
+        abbreviation: 'RVR1960',
+      },
+    ];
+    vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
+      key === RECENT_VERSIONS_KEY ? JSON.stringify(stored) : null,
+    );
+    YouVersionPlatformConfiguration.permittedLanguageTags = ['en'];
+
+    setupDefaultMocks();
+    renderPicker();
+    await openPicker();
+
+    // Stored recents carry no `language_tag`. 111 is tagged `en` in the
+    // all-languages version list; without that lookup the predicate would reject
+    // it for a missing tag. 222 is tagged `es` and is genuinely filtered out.
+    const recentList = await screen.findByTestId('recent-version-list');
+    expect(within(recentList).getByText('New International Version')).toBeInTheDocument();
+    expect(within(recentList).queryByText('Reina Valera 1960')).toBeNull();
+
+    YouVersionPlatformConfiguration.permittedLanguageTags = undefined;
   });
 });

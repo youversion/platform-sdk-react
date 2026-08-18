@@ -67,6 +67,42 @@ describe('UI YouVersionProvider', () => {
     );
   });
 
+  it('mirrors the version filters onto the UI-bundled config and forwards them to the hooks provider', () => {
+    YouVersionPlatformConfiguration.permittedVersionIds = undefined;
+    YouVersionPlatformConfiguration.excludedVersionIds = undefined;
+    YouVersionPlatformConfiguration.permittedLanguageTags = undefined;
+
+    render(
+      <YouVersionProvider
+        appKey="test-key"
+        permittedVersionIds={[111, 3034]}
+        excludedVersionIds={[206]}
+        permittedLanguageTags={['en']}
+      >
+        <div data-testid="child">hello</div>
+      </YouVersionProvider>,
+    );
+
+    // The UI bundles its own copy of core; the picker and the dev warn read
+    // this one.
+    expect(YouVersionPlatformConfiguration.permittedVersionIds).toEqual([111, 3034]);
+    expect(YouVersionPlatformConfiguration.excludedVersionIds).toEqual([206]);
+    expect(YouVersionPlatformConfiguration.permittedLanguageTags).toEqual(['en']);
+
+    // …and the hooks provider still gets the props so it can sync its own copy.
+    expect(baseProviderMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        permittedVersionIds: [111, 3034],
+        excludedVersionIds: [206],
+        permittedLanguageTags: ['en'],
+      }),
+    );
+
+    YouVersionPlatformConfiguration.permittedVersionIds = undefined;
+    YouVersionPlatformConfiguration.excludedVersionIds = undefined;
+    YouVersionPlatformConfiguration.permittedLanguageTags = undefined;
+  });
+
   it.each([
     ['undefined', undefined],
     ['empty string', ''],

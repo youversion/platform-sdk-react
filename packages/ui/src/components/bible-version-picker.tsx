@@ -3,6 +3,7 @@ import i18n from '@/i18n';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import {
   getLocalStorage,
+  isVersionPermitted,
   setStorageItem,
   type BibleVersion,
   type Language,
@@ -326,23 +327,42 @@ function Root({
     },
   );
   const isLoadingLanguages = languagesLoading || versionsLanguageInfoLoading;
+
+  // Recents are persisted, so a version the app later excludes is still in
+  // localStorage. Filter at read time rather than scrubbing storage: lifting an
+  // exclusion restores the recent (ADR-0005).
+  //
+  // The stored rows carry no `language_tag`, and `isVersionPermitted` rejects a
+  // missing tag whenever `permittedLanguageTags` is active — so look the tag up
+  // in the all-languages version list instead of guessing. That list comes from
+  // core already filtered, so a version missing from it is one the filters
+  // hide, which is the same answer the predicate gives.
+  const permittedRecentVersions = useMemo(() => {
+    const languageTagById = new Map(
+      (versionsLanguageInfo?.data ?? []).map((version) => [version.id, version.language_tag]),
+    );
+    return recentVersions.filter((version) =>
+      isVersionPermitted(version.id, languageTagById.get(version.id)),
+    );
+  }, [recentVersions, versionsLanguageInfo?.data]);
+
   const filteredVersions = useFilteredVersions(
     versions?.data || [],
     searchQuery,
     selectedLanguageId,
-    recentVersions,
+    permittedRecentVersions,
   );
 
   const filteredRecentVersions = useMemo(() => {
-    if (!searchQuery.trim()) return recentVersions;
+    if (!searchQuery.trim()) return permittedRecentVersions;
     const query = searchQuery.trim().toLowerCase();
-    return recentVersions.filter(
+    return permittedRecentVersions.filter(
       (v) =>
         v.title?.toLowerCase().includes(query) ||
         v.localized_abbreviation?.toLowerCase().includes(query) ||
         v.abbreviation?.toLowerCase().includes(query),
     );
-  }, [recentVersions, searchQuery]);
+  }, [permittedRecentVersions, searchQuery]);
 
   const getLanguageDisplayName = useCallback(
     (language: Pick<Language, 'id' | 'display_names'>) => {
@@ -429,7 +449,7 @@ function Root({
     filteredRecentVersions,
     isLanguagesOpen,
     setIsLanguagesOpen,
-    recentVersions,
+    recentVersions: permittedRecentVersions,
     addRecentVersion,
     isPopoverOpen,
     setIsPopoverOpen,

@@ -34,6 +34,34 @@ interface YouVersionProviderPropsBase {
    * to replace `X-YVP-Sdk` with their own identifier.
    */
   additionalHeaders?: Record<string, string>;
+  /**
+   * Allowlist of Bible version ids the SDK offers in its lists. `undefined` is
+   * unrestricted; an **empty array permits nothing**. ANDed with
+   * {@link YouVersionProviderPropsBase.permittedLanguageTags}.
+   *
+   * Synced onto `YouVersionPlatformConfiguration.permittedVersionIds`, which
+   * `getVersions`/`getLanguages` read at fetch time. Set-at-init: changing this
+   * mid-session affects future fetches only — lists already fetched are not
+   * re-filtered. Filters never block fetching or rendering a version by id.
+   */
+  permittedVersionIds?: number[];
+  /**
+   * Denylist of Bible version ids. Exclusion is checked first and beats
+   * permission: a version named in both lists is excluded.
+   *
+   * Synced onto `YouVersionPlatformConfiguration.excludedVersionIds`; same
+   * set-at-init caveat as `permittedVersionIds`.
+   */
+  excludedVersionIds?: number[];
+  /**
+   * Allowlist of BCP-47 language tags. `undefined` is unrestricted; an **empty
+   * array permits nothing**. ANDed with
+   * {@link YouVersionProviderPropsBase.permittedVersionIds}.
+   *
+   * Synced onto `YouVersionPlatformConfiguration.permittedLanguageTags`; same
+   * set-at-init caveat as `permittedVersionIds`.
+   */
+  permittedLanguageTags?: string[];
 }
 
 interface YouVersionProviderPropsWithAuth extends YouVersionProviderPropsBase {
@@ -82,6 +110,20 @@ function useResolvedTheme(theme: 'light' | 'dark' | 'system'): 'light' | 'dark' 
   return resolved;
 }
 
+/**
+ * Keeps an array prop referentially stable across renders so it can sit in a
+ * dependency array. Only membership matters to the version filters, so the
+ * memo key sorts a copy — `[111, 3034]` and `[3034, 111]` are the same list.
+ */
+function useStableList<T extends number | string>(list: T[] | undefined): T[] | undefined {
+  const key = list ? JSON.stringify([...list].sort()) : null;
+  return useMemo(
+    () => list,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [key],
+  );
+}
+
 export function YouVersionProvider(
   props: PropsWithChildren<YouVersionProviderPropsWithAuth | YouVersionProviderPropsWithoutAuth>,
 ): React.ReactElement {
@@ -115,6 +157,9 @@ function YouVersionProviderInner(
     additionalHeaders,
     appName,
     signInPromptMessage,
+    permittedVersionIds,
+    excludedVersionIds,
+    permittedLanguageTags,
     children,
   } = props;
 
@@ -133,6 +178,14 @@ function YouVersionProviderInner(
     [additionalHeadersKey],
   );
 
+  // Same stability problem as `additionalHeaders`: the version-filter props are
+  // arrays, so an inline literal is a new reference every render and would
+  // re-run the config sync effect each time. Membership is all the filters
+  // read, so the key sorts a copy — reordering the same ids is not a change.
+  const stablePermittedVersionIds = useStableList(permittedVersionIds);
+  const stableExcludedVersionIds = useStableList(excludedVersionIds);
+  const stablePermittedLanguageTags = useStableList(permittedLanguageTags);
+
   // Sync props to YouVersionPlatformConfiguration so any code that reads the
   // static config (e.g. core's auth/PKCE flows, called from user actions) sees
   // the same values. Children that read via context get the prop directly
@@ -142,7 +195,18 @@ function YouVersionProviderInner(
     YouVersionPlatformConfiguration.apiHost = apiHost;
     YouVersionPlatformConfiguration.appName = appName;
     YouVersionPlatformConfiguration.signInPromptMessage = signInPromptMessage;
-  }, [appKey, apiHost, appName, signInPromptMessage]);
+    YouVersionPlatformConfiguration.permittedVersionIds = stablePermittedVersionIds;
+    YouVersionPlatformConfiguration.excludedVersionIds = stableExcludedVersionIds;
+    YouVersionPlatformConfiguration.permittedLanguageTags = stablePermittedLanguageTags;
+  }, [
+    appKey,
+    apiHost,
+    appName,
+    signInPromptMessage,
+    stablePermittedVersionIds,
+    stableExcludedVersionIds,
+    stablePermittedLanguageTags,
+  ]);
 
   const contextValue = {
     appKey,

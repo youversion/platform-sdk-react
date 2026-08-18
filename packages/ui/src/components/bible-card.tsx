@@ -9,6 +9,7 @@ import { Button } from './ui/button';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import { UNTITLED_SERIF_FONT } from '@/lib/verse-html-utils';
 import { useDelayedLoading } from '@/lib/use-delayed-loading';
+import { useVersionFilterWarning } from '@/lib/use-version-filter-warning';
 import { LoaderIcon } from './icons/loader';
 import { AnimatedHeight } from './animated-height';
 
@@ -133,6 +134,7 @@ export function BibleCard({
     onChange: onVersionChange,
   });
   const { version } = useVersion(versionNum);
+  useVersionFilterWarning(versionNum, version?.language_tag);
   const {
     passage,
     loading: passageLoading,

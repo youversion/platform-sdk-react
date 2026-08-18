@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { BibleTextView } from '@/components/verse';
 import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '@youversion/platform-core';
 import { cn } from '@/lib/utils';
+import { useVersionFilterWarning } from '@/lib/use-version-filter-warning';
 
 export type VerseOfTheDayShareData = {
   /** Full share body: verse text, blank line, then reference (same as Web Share `text`). */
@@ -144,6 +145,7 @@ export function VerseOfTheDay({
     },
   });
   const { version, loading: loadingVersion } = useVersion(versionId);
+  useVersionFilterWarning(versionId, version?.language_tag);
   const providerTheme = useTheme();
   const theme = background || providerTheme;
 

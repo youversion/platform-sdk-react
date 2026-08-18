@@ -27,6 +27,23 @@ export function YouVersionProvider(
     YouVersionPlatformConfiguration.signInPromptMessage = props.signInPromptMessage;
   }, [props.appName, props.signInPromptMessage]);
 
+  // Same dual-instance problem for the version filters: the picker's recents
+  // filter and the dev-only render warning call `isVersionPermitted` from
+  // *this* copy of core, so it needs the same lists the hooks provider syncs.
+  // Set-at-init, like the props themselves: changing them affects future
+  // fetches only.
+  const permittedVersionIdsKey = JSON.stringify(props.permittedVersionIds ?? null);
+  const excludedVersionIdsKey = JSON.stringify(props.excludedVersionIds ?? null);
+  const permittedLanguageTagsKey = JSON.stringify(props.permittedLanguageTags ?? null);
+  useEffect(() => {
+    YouVersionPlatformConfiguration.permittedVersionIds = props.permittedVersionIds;
+    YouVersionPlatformConfiguration.excludedVersionIds = props.excludedVersionIds;
+    YouVersionPlatformConfiguration.permittedLanguageTags = props.permittedLanguageTags;
+    // Depend on the serialized lists, not the array identities: an inline
+    // literal is a new reference every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permittedVersionIdsKey, excludedVersionIdsKey, permittedLanguageTagsKey]);
+
   // Guard against a missing/empty app key here (rather than letting the base
   // provider throw) so consumers of the UI package see a styled message instead
   // of a blank page. The visible panel is intentionally generic; the actionable
