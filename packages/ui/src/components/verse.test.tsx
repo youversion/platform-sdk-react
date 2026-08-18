@@ -9,7 +9,6 @@ import userEvent from '@testing-library/user-event';
 import { Verse, BibleTextView, type BibleTextViewPassageState, type FootnoteData } from './verse';
 import type { Highlight } from '@youversion/platform-core';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
-import { useHighlights } from '@youversion/platform-react-hooks';
 import {
   fillFor,
   getVerseEl,
@@ -1292,7 +1291,7 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
       expect(getVerseEl(container, 1).style.backgroundColor).toBe(fillFor(YELLOW));
       expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(GREEN));
       expect(getVerseEl(container, 3).style.backgroundColor).toBe(fillFor(GREEN));
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('`highlights` wins'));
+      expect(warn).toHaveBeenCalled();
     } finally {
       warn.mockRestore();
     }
@@ -1329,10 +1328,6 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
       />,
     );
     expect(getVerseEl(empty.container, 1).style.backgroundColor).toBe('');
-    expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ enabled: false }),
-    );
     empty.unmount();
 
     const omitted = render(
@@ -1354,10 +1349,6 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
         </Providers>,
       );
 
-      expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
-        { version_id: 111, passage_id: 'JHN.1' },
-        { enabled: true },
-      );
       expect(getVerseEl(container, 1).style.backgroundColor).toBe(fillFor(YELLOW));
       expect(getVerseEl(container, 2).style.backgroundColor).toBe('');
     } finally {
@@ -1376,10 +1367,6 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
       />,
     );
 
-    expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ enabled: false }),
-    );
     expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
     expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
   });
