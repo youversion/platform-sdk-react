@@ -1,5 +1,13 @@
 # @youversion/platform-react-ui
 
+## 2.6.3
+
+### Patch Changes
+
+- 037de56: Replace the iOS-style box-arrow-up share glyph with a curved forward arrow in `VerseOfTheDay` and the verse action popover, so the share affordance reads as "share" on non-Apple platforms too.
+  - @youversion/platform-core@2.6.3
+  - @youversion/platform-react-hooks@2.6.3
+
 ## 2.6.2
 
 ### Patch Changes

@@ -54,7 +54,7 @@ type-checked; prefer them over any prose description of a component's API.
 
 ## TESTING
 
-Follow root `AGENTS.md` Testing. This package’s flavors:
+Follow `docs/testing.md`. This package’s flavors:
 
 | Flavor | Use when | Avoid when |
 | --- | --- | --- |
