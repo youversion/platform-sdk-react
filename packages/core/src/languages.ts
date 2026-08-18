@@ -2,6 +2,12 @@ import { z } from 'zod';
 import type { ApiClient } from './client';
 import type { Collection, Language } from './types';
 import { LanguageSchema } from './schemas';
+import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
+import {
+  collectFilteredPage,
+  fieldsNeededForLanguageFilter,
+  isUsableLanguageTag,
+} from './version-filters';
 
 /**
  * Options for getting languages collection.
@@ -98,7 +104,30 @@ export class LanguagesClient {
       params.page_token = options.page_token;
     }
 
-    return this.client.get<Collection<Language>>(`/v1/languages`, params);
+    const filterFields = fieldsNeededForLanguageFilter(options.fields);
+    let pageSize = options.page_size;
+    if (filterFields) {
+      params['fields[]'] = filterFields;
+      if (pageSize === '*' && filterFields.length > 3) {
+        delete params.page_size;
+        pageSize = undefined;
+      }
+    }
+
+    const fetchPage = (pageToken?: string) => {
+      const pageParams = pageToken ? { ...params, page_token: pageToken } : params;
+      return this.client.get<Collection<Language>>(`/v1/languages`, pageParams);
+    };
+
+    if (YouVersionPlatformConfiguration.permittedLanguageTags === undefined) {
+      return fetchPage(options.page_token);
+    }
+
+    return collectFilteredPage(
+      (pageToken) => fetchPage(pageToken ?? options.page_token),
+      (language) => isUsableLanguageTag(language.id),
+      pageSize,
+    );
   }
 
   /**

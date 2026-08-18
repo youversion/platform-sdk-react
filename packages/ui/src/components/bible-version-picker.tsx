@@ -3,6 +3,7 @@ import i18n from '@/i18n';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import {
   getLocalStorage,
+  isUsableBibleVersion,
   setStorageItem,
   type BibleVersion,
   type Language,
@@ -333,16 +334,33 @@ function Root({
     recentVersions,
   );
 
+  const languageTagByVersionId = useMemo(() => {
+    const tags = new Map<number, string>();
+    for (const version of versionsLanguageInfo?.data ?? []) {
+      tags.set(version.id, version.language_tag);
+    }
+    return tags;
+  }, [versionsLanguageInfo?.data]);
+
   const filteredRecentVersions = useMemo(() => {
-    if (!searchQuery.trim()) return recentVersions;
-    const query = searchQuery.trim().toLowerCase();
-    return recentVersions.filter(
-      (v) =>
-        v.title?.toLowerCase().includes(query) ||
-        v.localized_abbreviation?.toLowerCase().includes(query) ||
-        v.abbreviation?.toLowerCase().includes(query),
+    const matching = !searchQuery.trim()
+      ? recentVersions
+      : recentVersions.filter((v) => {
+          const query = searchQuery.trim().toLowerCase();
+          return (
+            v.title?.toLowerCase().includes(query) ||
+            v.localized_abbreviation?.toLowerCase().includes(query) ||
+            v.abbreviation?.toLowerCase().includes(query)
+          );
+        });
+
+    return matching.filter((version) =>
+      isUsableBibleVersion({
+        id: version.id,
+        languageTag: languageTagByVersionId.get(version.id),
+      }),
     );
-  }, [recentVersions, searchQuery]);
+  }, [recentVersions, searchQuery, languageTagByVersionId]);
 
   const getLanguageDisplayName = useCallback(
     (language: Pick<Language, 'id' | 'display_names'>) => {

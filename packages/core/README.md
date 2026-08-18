@@ -27,12 +27,21 @@ Get your App Key at [platform.youversion.com](https://platform.youversion.com/)
 ## Usage
 
 ```ts
-import { ApiClient, BibleClient } from '@youversion/platform-core';
+import {
+  ApiClient,
+  BibleClient,
+  YouVersionPlatformConfiguration,
+} from '@youversion/platform-core';
 
 const apiClient = new ApiClient({
   appKey: 'YOUR_APP_KEY',
 });
 const bibleClient = new BibleClient(apiClient);
+
+// Optional: limit which Bible versions this app may use (YPE-4657)
+YouVersionPlatformConfiguration.permittedLanguageTags = ['en'];
+YouVersionPlatformConfiguration.permittedVersionIds = [111, 3034];
+YouVersionPlatformConfiguration.excludedVersionIds = [4212];
 
 // Find available Bible versions in English
 const versions = await bibleClient.getVersions('en*');

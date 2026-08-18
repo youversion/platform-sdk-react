@@ -29,6 +29,9 @@ Get your App Key at [platform.youversion.com](https://platform.youversion.com/)
 ```tsx
 import { YouVersionProvider, usePassage } from '@youversion/platform-react-hooks';
 
+// `permittedVersionIds`, `excludedVersionIds`, and `permittedLanguageTags`
+// on the provider limit which Bible versions hooks will load.
+
 function BibleVerse() {
   const { passage, loading } = usePassage({ versionId: 3034, usfm: 'JHN.3.16' });
   if (loading) return <div>Loading...</div>;
@@ -37,7 +40,12 @@ function BibleVerse() {
 
 function App() {
   return (
-    <YouVersionProvider appKey="YOUR_APP_KEY">
+    <YouVersionProvider
+      appKey="YOUR_APP_KEY"
+      permittedVersionIds={[111, 3034]}
+      excludedVersionIds={[4212]}
+      permittedLanguageTags={['en']}
+    >
       <BibleVerse />
     </YouVersionProvider>
   );

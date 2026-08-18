@@ -34,6 +34,22 @@ interface YouVersionProviderPropsBase {
    * to replace `X-YVP-Sdk` with their own identifier.
    */
   additionalHeaders?: Record<string, string>;
+  /**
+   * Bible version ids this app may use. Unset = no restriction. `[]` permits
+   * nothing. Synced onto `YouVersionPlatformConfiguration` during render so
+   * the first child fetch sees the filter (YPE-4657).
+   */
+  permittedVersionIds?: number[];
+  /**
+   * Bible version ids this app may not use. Unset or `[]` excludes nothing.
+   * Exclusion wins over `permittedVersionIds`.
+   */
+  excludedVersionIds?: number[];
+  /**
+   * BCP 47 language tags this app may use (`en`, `zh-Hans`). Unset = no
+   * restriction. `[]` permits nothing.
+   */
+  permittedLanguageTags?: string[];
 }
 
 interface YouVersionProviderPropsWithAuth extends YouVersionProviderPropsBase {
@@ -115,8 +131,15 @@ function YouVersionProviderInner(
     additionalHeaders,
     appName,
     signInPromptMessage,
+    permittedVersionIds,
+    excludedVersionIds,
+    permittedLanguageTags,
     children,
   } = props;
+
+  YouVersionPlatformConfiguration.permittedVersionIds = permittedVersionIds;
+  YouVersionPlatformConfiguration.excludedVersionIds = excludedVersionIds;
+  YouVersionPlatformConfiguration.permittedLanguageTags = permittedLanguageTags;
 
   const resolvedTheme = useResolvedTheme(theme);
 

@@ -2,6 +2,15 @@ import { z } from 'zod';
 import type { ApiClient } from './client';
 import { transformBibleHtml, type TransformBibleHtmlOptions } from './bible-html-transformer';
 import { BibleVersionSchema } from './schemas';
+import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
+import {
+  collectFilteredPage,
+  fieldsNeededForVersionFilter,
+  isUsableBibleVersion,
+  isVersionFilterActive,
+  isVersionIdDecidablyUnusable,
+  throwUnusableBibleVersion,
+} from './version-filters';
 import type {
   BibleBook,
   BibleChapter,
@@ -145,7 +154,31 @@ export class BibleClient {
     if (options?.all_available) {
       params.all_available = 'true';
     }
-    return this.client.get<Collection<BibleVersion>>(`/v1/bibles`, params);
+
+    const filterFields = fieldsNeededForVersionFilter(options?.fields);
+    let pageSize = options?.page_size;
+    if (filterFields) {
+      params['fields[]'] = filterFields;
+      if (pageSize === '*' && filterFields.length > 3) {
+        delete params.page_size;
+        pageSize = undefined;
+      }
+    }
+
+    const fetchPage = (pageToken?: string) => {
+      const pageParams = pageToken ? { ...params, page_token: pageToken } : params;
+      return this.client.get<Collection<BibleVersion>>(`/v1/bibles`, pageParams);
+    };
+
+    if (!isVersionFilterActive()) {
+      return fetchPage(options?.page_token);
+    }
+
+    return collectFilteredPage(
+      (pageToken) => fetchPage(pageToken ?? options?.page_token),
+      (version) => isUsableBibleVersion({ id: version.id, languageTag: version.language_tag }),
+      pageSize,
+    );
   }
 
   /**
@@ -155,7 +188,23 @@ export class BibleClient {
    */
   async getVersion(id: number): Promise<BibleVersion> {
     BibleClient.versionIdSchema.parse(id);
-    return this.client.get<BibleVersion>(`/v1/bibles/${id}`);
+    if (isVersionIdDecidablyUnusable(id)) {
+      throwUnusableBibleVersion();
+    }
+    const version = await this.client.get<BibleVersion>(`/v1/bibles/${id}`);
+    if (!isUsableBibleVersion({ id: version.id, languageTag: version.language_tag })) {
+      throwUnusableBibleVersion();
+    }
+    return version;
+  }
+
+  private async assertUsableVersion(versionId: number): Promise<void> {
+    if (isVersionIdDecidablyUnusable(versionId)) {
+      throwUnusableBibleVersion();
+    }
+    if (YouVersionPlatformConfiguration.permittedLanguageTags !== undefined) {
+      await this.getVersion(versionId);
+    }
   }
 
   /**
@@ -168,6 +217,7 @@ export class BibleClient {
    */
   async getBooks(versionId: number, canon?: CANON): Promise<Collection<BibleBook>> {
     BibleClient.versionIdSchema.parse(versionId);
+    await this.assertUsableVersion(versionId);
     return this.client.get<Collection<BibleBook>>(`/v1/bibles/${versionId}/books`, {
       ...(canon && { canon }),
     });
@@ -184,6 +234,7 @@ export class BibleClient {
   async getBook(versionId: number, book: string): Promise<BibleBook> {
     BibleClient.versionIdSchema.parse(versionId);
     BibleClient.bookSchema.parse(book);
+    await this.assertUsableVersion(versionId);
     return this.client.get<BibleBook>(`/v1/bibles/${versionId}/books/${book}`);
   }
 
@@ -196,6 +247,7 @@ export class BibleClient {
   async getChapters(versionId: number, book: string): Promise<Collection<BibleChapter>> {
     BibleClient.versionIdSchema.parse(versionId);
     BibleClient.bookSchema.parse(book);
+    await this.assertUsableVersion(versionId);
     return this.client.get<Collection<BibleChapter>>(
       `/v1/bibles/${versionId}/books/${book}/chapters`,
     );
@@ -212,6 +264,7 @@ export class BibleClient {
     BibleClient.versionIdSchema.parse(versionId);
     BibleClient.bookSchema.parse(book);
     BibleClient.chapterSchema.parse(chapter);
+    await this.assertUsableVersion(versionId);
 
     return this.client.get<BibleChapter>(
       `/v1/bibles/${versionId}/books/${book}/chapters/${chapter}`,
@@ -233,6 +286,7 @@ export class BibleClient {
     BibleClient.versionIdSchema.parse(versionId);
     BibleClient.bookSchema.parse(book);
     BibleClient.chapterSchema.parse(chapter);
+    await this.assertUsableVersion(versionId);
 
     return this.client.get<Collection<BibleVerse>>(
       `/v1/bibles/${versionId}/books/${book}/chapters/${chapter}/verses`,
@@ -257,6 +311,7 @@ export class BibleClient {
     BibleClient.bookSchema.parse(book);
     BibleClient.chapterSchema.parse(chapter);
     BibleClient.verseSchema.parse(verse);
+    await this.assertUsableVersion(versionId);
 
     return this.client.get<BibleVerse>(
       `/v1/bibles/${versionId}/books/${book}/chapters/${chapter}/verses/${verse}`,
@@ -325,6 +380,7 @@ export class BibleClient {
     if (include_notes !== undefined) {
       params.include_notes = include_notes;
     }
+    await this.assertUsableVersion(versionId);
     const passage = await this.client.get<BiblePassage>(
       `/v1/bibles/${versionId}/passages/${usfm}`,
       params,
@@ -346,6 +402,7 @@ export class BibleClient {
    */
   async getIndex(versionId: number): Promise<BibleIndex> {
     BibleClient.versionIdSchema.parse(versionId);
+    await this.assertUsableVersion(versionId);
     return this.client.get<BibleIndex>(`/v1/bibles/${versionId}/index`);
   }
 
