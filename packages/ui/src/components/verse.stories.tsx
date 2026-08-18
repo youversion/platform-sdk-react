@@ -193,7 +193,7 @@ export const FullChapter: Story = {
   },
 };
 
-export const PaintOnlyHighlights: Story = {
+export const ControlledHighlights: Story = {
   args: {
     reference: 'JHN.1',
     versionId: 111,
