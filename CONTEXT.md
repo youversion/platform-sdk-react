@@ -32,6 +32,37 @@ the API boundary only.
 A highlight's fill, a 6-character lowercase hex string without `#`
 (`fff9b1`). Uppercase input is accepted and normalized at the API boundary.
 
+## Version filters
+
+The app-wide configuration triple (YPE-4657, Swift parity) that restricts
+which Bible versions the SDK offers: **permitted versions**, **excluded
+versions**, and **permitted language tags**. Filters shape what the SDK
+*offers* (version lists, language lists, the version picker); they never
+forbid fetching or rendering a version directly by id (decided in ADR-0005).
+
+## Permitted versions
+
+Allowlist of **Bible version** ids (`permittedVersionIds`). Unset means
+unrestricted. An **empty list permits nothing** — empty and unset are
+deliberately different (Swift parity). ANDed with **permitted language
+tags**: a version must pass both.
+
+## Excluded versions
+
+Denylist of **Bible version** ids (`excludedVersionIds`). Exclusion beats
+permission: a version named in both lists is excluded.
+
+## Permitted language tags
+
+Allowlist of BCP-47 language tags (`permittedLanguageTags`). Really a
+version filter: it drops versions whose language tag is not permitted.
+It is the only filter `getLanguages` applies: excluding every version in a
+language still leaves that language in the language list. The picker's
+language list is narrower, because it lists only languages that still have
+a version.
+_Avoid_: permitted language IDs (the YPE-4657 ticket text; both SDKs
+actually key on tags, not numeric ids)
+
 ## Verse selection
 
 The ephemeral set of verses the reader has tapped in `BibleReader`. Drives

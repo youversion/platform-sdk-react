@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, onTestFinished } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionProvider } from './YouVersionProvider';
 import { YouVersionContext } from './YouVersionContext';
@@ -27,10 +27,28 @@ describe('YouVersionProvider', () => {
     expect(id).not.toBe('none');
   });
 
-  it('syncs the version filter props onto the platform config, and only re-syncs when a list really changes', () => {
+  it('syncs the version filter props onto the platform config before a child can fetch, and follows the props after', () => {
+    onTestFinished(() => {
+      YouVersionPlatformConfiguration.permittedVersionIds = undefined;
+      YouVersionPlatformConfiguration.excludedVersionIds = undefined;
+      YouVersionPlatformConfiguration.permittedLanguageTags = undefined;
+    });
     YouVersionPlatformConfiguration.permittedVersionIds = undefined;
     YouVersionPlatformConfiguration.excludedVersionIds = undefined;
     YouVersionPlatformConfiguration.permittedLanguageTags = undefined;
+
+    // Core's list clients read these while *building* a request, and a child
+    // fetches from its own effect — which React runs before the provider's.
+    // Record what a child sees at that moment: if the provider synced in an
+    // effect, this would be undefined and the first fetch of a fresh mount
+    // would build against an unset config.
+    let seenByChildEffect: number[] | undefined;
+    function FetchingChild(): React.ReactElement {
+      useEffect(() => {
+        seenByChildEffect = YouVersionPlatformConfiguration.permittedVersionIds;
+      }, []);
+      return <ContextReader />;
+    }
 
     const { rerender } = render(
       <YouVersionProvider
@@ -39,35 +57,20 @@ describe('YouVersionProvider', () => {
         excludedVersionIds={[206]}
         permittedLanguageTags={['en']}
       >
-        <ContextReader />
+        <FetchingChild />
       </YouVersionProvider>,
     );
 
+    expect(seenByChildEffect).toEqual([111, 3034]);
     expect(YouVersionPlatformConfiguration.permittedVersionIds).toEqual([111, 3034]);
     expect(YouVersionPlatformConfiguration.excludedVersionIds).toEqual([206]);
     expect(YouVersionPlatformConfiguration.permittedLanguageTags).toEqual(['en']);
 
-    // A re-render with fresh-but-equal array literals must not re-run the sync
-    // effect. Overwrite the static first: if the effect re-runs, the sentinel
-    // is clobbered.
-    YouVersionPlatformConfiguration.permittedVersionIds = [999];
-    rerender(
-      <YouVersionProvider
-        appKey="test"
-        permittedVersionIds={[3034, 111]}
-        excludedVersionIds={[206]}
-        permittedLanguageTags={['en']}
-      >
-        <ContextReader />
-      </YouVersionProvider>,
-    );
-    expect(YouVersionPlatformConfiguration.permittedVersionIds).toEqual([999]);
-
-    // A changed list does sync, and dropping a prop returns that filter to
+    // A changed list syncs, and dropping a prop returns that filter to
     // unrestricted rather than leaving the previous value in place.
     rerender(
       <YouVersionProvider appKey="test" permittedVersionIds={[111]}>
-        <ContextReader />
+        <FetchingChild />
       </YouVersionProvider>,
     );
     expect(YouVersionPlatformConfiguration.permittedVersionIds).toEqual([111]);

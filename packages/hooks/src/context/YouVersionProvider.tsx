@@ -110,20 +110,6 @@ function useResolvedTheme(theme: 'light' | 'dark' | 'system'): 'light' | 'dark' 
   return resolved;
 }
 
-/**
- * Keeps an array prop referentially stable across renders so it can sit in a
- * dependency array. Only membership matters to the version filters, so the
- * memo key sorts a copy — `[111, 3034]` and `[3034, 111]` are the same list.
- */
-function useStableList<T extends number | string>(list: T[] | undefined): T[] | undefined {
-  const key = list ? JSON.stringify([...list].sort()) : null;
-  return useMemo(
-    () => list,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [key],
-  );
-}
-
 export function YouVersionProvider(
   props: PropsWithChildren<YouVersionProviderPropsWithAuth | YouVersionProviderPropsWithoutAuth>,
 ): React.ReactElement {
@@ -178,13 +164,17 @@ function YouVersionProviderInner(
     [additionalHeadersKey],
   );
 
-  // Same stability problem as `additionalHeaders`: the version-filter props are
-  // arrays, so an inline literal is a new reference every render and would
-  // re-run the config sync effect each time. Membership is all the filters
-  // read, so the key sorts a copy — reordering the same ids is not a change.
-  const stablePermittedVersionIds = useStableList(permittedVersionIds);
-  const stableExcludedVersionIds = useStableList(excludedVersionIds);
-  const stablePermittedLanguageTags = useStableList(permittedLanguageTags);
+  // The version filters are the one part of the config that has to be in place
+  // *before* children render or fetch: core's list clients read it while
+  // building a request (`getVersions` adds the fields the predicate keys off
+  // back into a caller's projection), and children fetch from their own
+  // effects, which React runs before the parent's. Syncing these in an effect
+  // would leave the first fetch after a mount building against an unset
+  // config. Assign during render instead — plain idempotent writes to a
+  // singleton, no cleanup, and the parent renders before any child.
+  YouVersionPlatformConfiguration.permittedVersionIds = permittedVersionIds;
+  YouVersionPlatformConfiguration.excludedVersionIds = excludedVersionIds;
+  YouVersionPlatformConfiguration.permittedLanguageTags = permittedLanguageTags;
 
   // Sync props to YouVersionPlatformConfiguration so any code that reads the
   // static config (e.g. core's auth/PKCE flows, called from user actions) sees
@@ -195,18 +185,7 @@ function YouVersionProviderInner(
     YouVersionPlatformConfiguration.apiHost = apiHost;
     YouVersionPlatformConfiguration.appName = appName;
     YouVersionPlatformConfiguration.signInPromptMessage = signInPromptMessage;
-    YouVersionPlatformConfiguration.permittedVersionIds = stablePermittedVersionIds;
-    YouVersionPlatformConfiguration.excludedVersionIds = stableExcludedVersionIds;
-    YouVersionPlatformConfiguration.permittedLanguageTags = stablePermittedLanguageTags;
-  }, [
-    appKey,
-    apiHost,
-    appName,
-    signInPromptMessage,
-    stablePermittedVersionIds,
-    stableExcludedVersionIds,
-    stablePermittedLanguageTags,
-  ]);
+  }, [appKey, apiHost, appName, signInPromptMessage]);
 
   const contextValue = {
     appKey,

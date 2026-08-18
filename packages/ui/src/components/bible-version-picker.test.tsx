@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 /* eslint-disable @typescript-eslint/no-empty-function */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, onTestFinished } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -763,6 +763,11 @@ describe('BibleVersionPicker', () => {
       key === RECENT_VERSIONS_KEY ? JSON.stringify(stored) : null,
     );
     const setItem = vi.spyOn(window.localStorage, 'setItem');
+    // The config is a module-level singleton: reset on finish, not after the
+    // assertions, so a failure here can't hand its filter to the next test.
+    onTestFinished(() => {
+      YouVersionPlatformConfiguration.excludedVersionIds = undefined;
+    });
     YouVersionPlatformConfiguration.excludedVersionIds = [206];
 
     setupDefaultMocks();
@@ -805,6 +810,9 @@ describe('BibleVersionPicker', () => {
     vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
       key === RECENT_VERSIONS_KEY ? JSON.stringify(stored) : null,
     );
+    onTestFinished(() => {
+      YouVersionPlatformConfiguration.permittedLanguageTags = undefined;
+    });
     YouVersionPlatformConfiguration.permittedLanguageTags = ['en'];
 
     setupDefaultMocks();
@@ -817,7 +825,5 @@ describe('BibleVersionPicker', () => {
     const recentList = await screen.findByTestId('recent-version-list');
     expect(within(recentList).getByText('New International Version')).toBeInTheDocument();
     expect(within(recentList).queryByText('Reina Valera 1960')).toBeNull();
-
-    YouVersionPlatformConfiguration.permittedLanguageTags = undefined;
   });
 });

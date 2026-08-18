@@ -44,6 +44,40 @@ function App() {
 }
 ```
 
+## Version filters
+
+Restrict which Bible versions the SDK offers with three optional `YouVersionProvider` props:
+
+```tsx
+<YouVersionProvider
+  appKey="YOUR_APP_KEY"
+  permittedVersionIds={[111, 3034]}
+  excludedVersionIds={[206]}
+  permittedLanguageTags={['en', 'es']}
+>
+  <BibleVerse />
+</YouVersionProvider>
+```
+
+| Prop | Type | Behavior |
+|------|------|----------|
+| `permittedVersionIds` | `number[]` | Allowlist of Bible version ids |
+| `excludedVersionIds` | `number[]` | Denylist of Bible version ids |
+| `permittedLanguageTags` | `string[]` | Allowlist of BCP-47 language tags (`'en'`, `'es'`), matched against each version's language tag |
+
+Semantics match the Swift SDK:
+
+- Exclusion wins. A version in both `permittedVersionIds` and `excludedVersionIds` is excluded.
+- The two allowlists are ANDed. A version must pass both to be offered.
+- Leaving a prop unset means unrestricted.
+- **An empty array permits nothing.** `permittedVersionIds={[]}` offers no versions at all. Build the list before you pass it, or leave the prop off.
+
+Filtering covers lists only: `useVersions` and `useLanguages` return filtered results. Fetching a version by id is never blocked — `usePassage({ versionId: 206 })` works even when 206 is excluded, so deep links and saved reading positions keep working when your filters change. `permittedLanguageTags` is the only filter `useLanguages` applies. The version id lists do not touch it, so excluding every version in a language still leaves that language in the results.
+
+Filtering runs after the fetch, so a page can come back smaller than the requested `page_size`, and reported totals still count unfiltered server results.
+
+Set the filters when you mount the provider. Changing them later applies to future fetches only — data already fetched is not re-filtered.
+
 ## Documentation and API Reference
 * [developers.youversion.com/sdks/react](https://developers.youversion.com/sdks/react)
 

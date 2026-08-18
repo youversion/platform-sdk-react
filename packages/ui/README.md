@@ -145,6 +145,45 @@ Individual components accept a `background` prop to override the provider theme 
 }
 ```
 
+## Version filters
+
+Restrict which Bible versions the SDK offers with three optional `YouVersionProvider` props:
+
+```tsx
+<YouVersionProvider
+  appKey="YOUR_APP_KEY"
+  permittedVersionIds={[111, 3034]}
+  excludedVersionIds={[206]}
+  permittedLanguageTags={['en', 'es']}
+>
+  <BibleVersionPicker.Root versionId={3034}>
+    <BibleVersionPicker.Trigger />
+    <BibleVersionPicker.Content />
+  </BibleVersionPicker.Root>
+</YouVersionProvider>
+```
+
+| Prop | Type | Behavior |
+|------|------|----------|
+| `permittedVersionIds` | `number[]` | Allowlist of Bible version ids |
+| `excludedVersionIds` | `number[]` | Denylist of Bible version ids |
+| `permittedLanguageTags` | `string[]` | Allowlist of BCP-47 language tags (`'en'`, `'es'`), matched against each version's language tag |
+
+Semantics match the Swift SDK:
+
+- Exclusion wins. A version in both `permittedVersionIds` and `excludedVersionIds` is excluded.
+- The two allowlists are ANDed. A version must pass both to be offered.
+- Leaving a prop unset means unrestricted.
+- **An empty array permits nothing.** `permittedVersionIds={[]}` offers no versions at all. Build the list before you pass it, or leave the prop off.
+
+### What filtering covers
+
+Filters shape the lists the SDK offers: version lists, language lists, and the version picker (including its recently-used versions). They never block fetching or rendering a version by id. `<BibleReader.Root versionId={206} />` renders 206 even when 206 is excluded, and logs a warning once per version id in development builds only. Deep links and saved reading positions keep working when your filters change.
+
+In the picker, language lists follow the versions. Exclude every version in a language and that language leaves the picker's language list, because the picker only lists languages that still have a version. `useLanguages` on its own does not do this — it filters by `permittedLanguageTags` alone.
+
+Set the filters when you mount the provider. Changing them later applies to future fetches only — lists already fetched are not re-filtered.
+
 ## Documentation and API Reference
 * [developers.youversion.com/sdks/react](https://developers.youversion.com/sdks/react)
 

@@ -24,15 +24,17 @@ function configureVersionFilters(
   YouVersionPlatformConfiguration.permittedLanguageTags = filters.permittedLanguageTags;
 }
 
+// One source for both the client and the per-test MSW overrides below, so a
+// handler can never be registered against a different host than the client calls.
+const apiHost = process.env.YVP_API_HOST || 'api.youversion.com';
+
 function createApiClient(): ApiClient {
   return new ApiClient({
-    apiHost: process.env.YVP_API_HOST || '',
+    apiHost,
     appKey: process.env.YVP_APP_KEY || '',
     installationId: 'test-installation',
   });
 }
-
-const apiHost = process.env.YVP_API_HOST || 'api.youversion.com';
 
 describe('version filters', () => {
   it('permits every version when no filters are configured', () => {
@@ -114,6 +116,59 @@ describe('version filters', () => {
     expect(requestedFields).toContain('language_tag');
     expect(requestedFields).toContain('abbreviation');
     expect(versions.data.map((version) => version.id)).toEqual([111]);
+  });
+
+  it('asks for `id` when a version id filter is active and the projection omits it', async () => {
+    configureVersionFilters({ excludedVersionIds: [999] });
+    let requestedFields: string[] = [];
+    server.use(
+      http.get(`https://${apiHost}/v1/bibles`, ({ request }) => {
+        requestedFields = new URL(request.url).searchParams.getAll('fields[]');
+        return HttpResponse.json({
+          data: [
+            { ...mockVersions[0]!, id: 111, language_tag: 'en' },
+            { ...mockVersions[0]!, id: 999, language_tag: 'en' },
+          ],
+          next_page_token: null,
+          total_size: 2,
+        });
+      }),
+    );
+    const bibleClient = new BibleClient(createApiClient());
+
+    const versions = await bibleClient.getVersions('en*', undefined, {
+      fields: ['abbreviation'],
+    });
+
+    expect(requestedFields).toContain('id');
+    // No language filter is active, so `language_tag` is not asked for.
+    expect(requestedFields).not.toContain('language_tag');
+    expect(versions.data.map((version) => version.id)).toEqual([111]);
+  });
+
+  it('asks getLanguages for `id` when the projection omits it', async () => {
+    configureVersionFilters({ permittedLanguageTags: ['en'] });
+    let requestedFields: string[] = [];
+    server.use(
+      http.get(`https://${apiHost}/v1/languages`, ({ request }) => {
+        requestedFields = new URL(request.url).searchParams.getAll('fields[]');
+        return HttpResponse.json({
+          data: [
+            { id: 'en', display_names: { en: 'English' } },
+            { id: 'es', display_names: { en: 'Spanish' } },
+          ],
+          next_page_token: null,
+          total_size: 2,
+        });
+      }),
+    );
+    const languagesClient = new LanguagesClient(createApiClient());
+
+    const languages = await languagesClient.getLanguages({ fields: ['display_names'] });
+
+    expect(requestedFields).toContain('id');
+    expect(requestedFields).toContain('display_names');
+    expect(languages.data.map((language) => language.id)).toEqual(['en']);
   });
 
   it('drops languages whose tag is not permitted from getLanguages', async () => {

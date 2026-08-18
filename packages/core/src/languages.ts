@@ -84,7 +84,10 @@ export class LanguagesClient {
       const fieldsSchema = z.array(LanguageSchema.keyof());
       fieldsSchema.parse(options.fields);
       // The language filter keys off `id`; a projection that omits it would
-      // leave nothing to match and silently drop every language.
+      // leave nothing to match and silently drop every language. Same caveat as
+      // `withFieldsRequiredByFilters` in `bible.ts`: the `page_size: '*'` guard
+      // below counts the caller's fields, so an active filter can send a fourth
+      // field and draw an API error. A visible error beats an empty list.
       const needsId =
         YouVersionPlatformConfiguration.permittedLanguageTags !== undefined &&
         !options.fields.includes('id');
@@ -111,10 +114,11 @@ export class LanguagesClient {
 
     const collection = await this.client.get<Collection<Language>>(`/v1/languages`, params);
 
-    // Language lists are a projection of the versions the SDK offers, so a
-    // language the tag allowlist rejects is dropped here. Filtering happens
-    // after the fetch, so a page can come back smaller than `page_size`;
-    // `total_size` still reports the server's unfiltered total.
+    // The tag allowlist is the only filter that applies here: the version id
+    // lists never touch languages, so a language whose every version is
+    // excluded is still listed (ADR-0005). Filtering happens after the fetch,
+    // so a page can come back smaller than `page_size`; `total_size` still
+    // reports the server's unfiltered total.
     return {
       ...collection,
       data: collection.data.filter((language) => isLanguageTagPermitted(language.id)),

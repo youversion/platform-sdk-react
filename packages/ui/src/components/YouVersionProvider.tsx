@@ -30,19 +30,15 @@ export function YouVersionProvider(
   // Same dual-instance problem for the version filters: the picker's recents
   // filter and the dev-only render warning call `isVersionPermitted` from
   // *this* copy of core, so it needs the same lists the hooks provider syncs.
-  // Set-at-init, like the props themselves: changing them affects future
-  // fetches only.
-  const permittedVersionIdsKey = JSON.stringify(props.permittedVersionIds ?? null);
-  const excludedVersionIdsKey = JSON.stringify(props.excludedVersionIds ?? null);
-  const permittedLanguageTagsKey = JSON.stringify(props.permittedLanguageTags ?? null);
-  useEffect(() => {
-    YouVersionPlatformConfiguration.permittedVersionIds = props.permittedVersionIds;
-    YouVersionPlatformConfiguration.excludedVersionIds = props.excludedVersionIds;
-    YouVersionPlatformConfiguration.permittedLanguageTags = props.permittedLanguageTags;
-    // Depend on the serialized lists, not the array identities: an inline
-    // literal is a new reference every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [permittedVersionIdsKey, excludedVersionIdsKey, permittedLanguageTagsKey]);
+  //
+  // Assigned during render, not in an effect, for the same reason the hooks
+  // provider does it: both readers run while children render or in child
+  // effects, and React runs those before the parent's effect. Plain idempotent
+  // writes to a singleton, no cleanup. Set-at-init, like the props themselves:
+  // changing them affects future fetches only.
+  YouVersionPlatformConfiguration.permittedVersionIds = props.permittedVersionIds;
+  YouVersionPlatformConfiguration.excludedVersionIds = props.excludedVersionIds;
+  YouVersionPlatformConfiguration.permittedLanguageTags = props.permittedLanguageTags;
 
   // Guard against a missing/empty app key here (rather than letting the base
   // provider throw) so consumers of the UI package see a styled message instead
