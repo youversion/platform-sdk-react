@@ -23,9 +23,8 @@ import { type FontFamily } from '@/lib/verse-html-utils';
 
 import type { Highlight } from '@youversion/platform-core';
 import { transformBibleHtml } from '@youversion/platform-core/browser';
-import { IS_PRODUCTION } from '@/lib/constants';
 import { chapterScopeForHighlightPaint } from '@/lib/highlight-projection';
-import { useHighlightsControlledLatch } from '@/lib/use-highlights-controlled-latch';
+import { useHighlightsControlledLatch, warnOnce } from '@/lib/use-highlights-controlled-latch';
 import { useScriptureHighlightPaint } from '@/lib/use-scripture-highlight-paint';
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
@@ -614,14 +613,9 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
     // `highlightedVerses` or the self-contained fetch.
     const isHighlightsControlled = useHighlightsControlledLatch(highlights, 'BibleTextView');
     const didWarnDualHighlightPropsRef = useRef(false);
-    if (
-      !IS_PRODUCTION &&
-      isHighlightsControlled &&
-      highlightedVerses !== undefined &&
-      !didWarnDualHighlightPropsRef.current
-    ) {
-      didWarnDualHighlightPropsRef.current = true;
-      console.warn(
+    if (isHighlightsControlled && highlightedVerses !== undefined) {
+      warnOnce(
+        didWarnDualHighlightPropsRef,
         'BibleTextView: both `highlights` and `highlightedVerses` were passed. `highlights` wins; `highlightedVerses` is ignored.',
       );
     }
