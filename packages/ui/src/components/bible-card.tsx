@@ -24,6 +24,13 @@ export type BibleCardProps = {
   showVersionPicker?: boolean;
   onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
   onFootnotePress?: (data: FootnoteData) => void;
+  /**
+   * When provided, paints these highlights on the card. Use for React Native
+   * or Expo DOM hosts that already own highlight data and just need it
+   * rendered. Mode is latched at first mount: pass `[]` for none yet; omit
+   * the prop for no paint-only highlights. A first render of `undefined`
+   * will never paint later data.
+   */
   highlights?: Highlight[];
 };
 

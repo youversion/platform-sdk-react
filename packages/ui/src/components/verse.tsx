@@ -559,6 +559,14 @@ export type BibleTextViewProps = {
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
   highlightedVerses?: Record<number, string>;
+  /**
+   * Host-supplied highlights in the core API shape. Presence of this prop
+   * (including `[]`) latches paint-only mode at first mount: verses are
+   * projected from this list for the displayed version and chapter. Omit the
+   * prop to keep using {@link highlightedVerses}. Pass `[]` while loading —
+   * a first render of `undefined` will never paint later data. If both props
+   * are passed, `highlights` wins.
+   */
   highlights?: Highlight[];
   passageState?: Partial<BibleTextViewPassageState>;
   onFootnotePress?: (data: FootnoteData) => void;

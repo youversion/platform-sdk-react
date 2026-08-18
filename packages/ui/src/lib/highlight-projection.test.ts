@@ -180,7 +180,7 @@ describe('filterHighlightsForPassage', () => {
     color,
   });
 
-  it('keeps rows that intersect the displayed verse and drops the rest', () => {
+  it('clips overlapping ranges to the displayed verses and drops the rest', () => {
     const kept = filterHighlightsForPassage(
       [
         highlight(111, 'JHN.3.16', 'fffe00'),
@@ -193,8 +193,12 @@ describe('filterHighlightsForPassage', () => {
     );
     expect(kept).toEqual([
       highlight(111, 'JHN.3.16', 'fffe00'),
-      highlight(111, 'JHN.3.16-18', '5dff79'),
+      highlight(111, 'JHN.3.16', '5dff79'),
     ]);
+
+    expect(
+      filterHighlightsForPassage([highlight(111, 'JHN.3.16-18', '5dff79')], 'JHN.3.16-17'),
+    ).toEqual([highlight(111, 'JHN.3.16-17', '5dff79')]);
   });
 
   it('returns an empty list when the display USFM is not a verse unit', () => {

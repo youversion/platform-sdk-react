@@ -297,7 +297,7 @@ describe('VerseOfTheDay - host highlights (paint-only)', () => {
     const { container } = render(
       <VerseOfTheDay
         versionId={111}
-        highlights={[highlight('JHN.3.16', YELLOW), highlight('JHN.3.17', GREEN)]}
+        highlights={[highlight('JHN.3.16-18', YELLOW), highlight('JHN.3.17', GREEN)]}
       />,
     );
 

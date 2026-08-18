@@ -69,8 +69,10 @@ export type VerseOfTheDayProps = {
   /**
    * When provided, paints these highlights on Verse of the Day.
    * Use for React Native or Expo DOM hosts that already own highlight data
-   * and just need it rendered. Omit the prop for no highlights; pass `[]`
-   * for none yet. Nothing paints until today's passage is known.
+   * and just need it rendered. Mode is latched at first mount: omit the prop
+   * for no highlights; pass `[]` for none yet. A first render of `undefined`
+   * will never paint later data. Nothing paints until today's passage is
+   * known; overlapping ranges are clipped to that passage.
    */
   highlights?: Highlight[];
 };

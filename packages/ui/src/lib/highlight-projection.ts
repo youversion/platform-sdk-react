@@ -1,5 +1,6 @@
 import type { Highlight } from '@youversion/platform-core';
 import { normalizeHighlightHex } from './highlight-colors';
+import { buildPassageIds } from './usfm-ranges';
 
 /**
  * Defensive cap on how many verses a single range USFM may expand to. The
@@ -67,11 +68,12 @@ export function parseChapterScopeFromUsfm(usfm: string): ChapterScope | null {
 }
 
 /**
- * Keeps host highlights whose expanded verses intersect the displayed passage.
+ * Keeps host highlights whose expanded verses intersect the displayed passage,
+ * rewriting each kept row's `passage_id` to that intersection.
  *
- * Chapter-scope and other unexpandable `passage_id`s are dropped. Used by
- * VerseOfTheDay so a host-supplied superset cannot paint verses that are not
- * part of today's passage.
+ * A host range like `JHN.3.16-18` against today's `JHN.3.16` becomes
+ * `JHN.3.16`, so {@link deriveHighlightedVerses} cannot paint verses that are
+ * not shown. Chapter-scope and other unexpandable `passage_id`s are dropped.
  */
 export function filterHighlightsForPassage(
   highlights: readonly Highlight[],
@@ -80,12 +82,18 @@ export function filterHighlightsForPassage(
   const displayed = expandPassageId(displayPassageId);
   if (!displayed) return [];
   const displayedVerses = new Set(displayed.verses);
-  return highlights.filter((highlight) => {
+  const clipped: Highlight[] = [];
+  for (const highlight of highlights) {
     const expanded = expandPassageId(highlight.passage_id);
-    if (!expanded) return false;
-    if (expanded.book !== displayed.book || expanded.chapter !== displayed.chapter) return false;
-    return expanded.verses.some((verse) => displayedVerses.has(verse));
-  });
+    if (!expanded) continue;
+    if (expanded.book !== displayed.book || expanded.chapter !== displayed.chapter) continue;
+    const verses = expanded.verses.filter((verse) => displayedVerses.has(verse));
+    if (verses.length === 0) continue;
+    for (const passage_id of buildPassageIds(displayed.book, displayed.chapter, verses)) {
+      clipped.push({ ...highlight, passage_id });
+    }
+  }
+  return clipped;
 }
 
 /**
