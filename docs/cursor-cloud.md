@@ -19,9 +19,19 @@ Get a real app key from https://platform.youversion.com. Without `VITE_YVP_APP_K
 `pnpm dev:web` is stale (it still filters a removed `nextjs` package). Start the demo with:
 
 ```bash
-pnpm --filter vite-react exec vite --host 127.0.0.1 --port 5173
+pnpm --filter vite-react dev --host 127.0.0.1 --port 5173
 ```
 
-`pnpm --filter vite-react dev -- --host 127.0.0.1` does not bind IPv4: pnpm already inserts `--`, so Vite sees `-- --host` and listens on `::1` only. `curl http://127.0.0.1:5173` then fails even though `http://localhost:5173` works.
+Do not put an extra `--` before `--host`. `pnpm --filter vite-react dev -- --host 127.0.0.1` becomes `vite -- --host 127.0.0.1`; Vite then ignores `--host` and listens on `localhost` (often `::1` only), so `curl http://127.0.0.1:5173` fails.
 
-After `pnpm build`, a real `YVP_APP_KEY` lets you call `@youversion/platform-core` from `packages/core` (dotenv loads `.env.local`) to fetch versions and a passage such as `JHN.3.16`. Auth/highlights also need a YouVersion account and a registered redirect URL (`http://localhost:5173` for the demo). Storybook is optional (`pnpm --filter @youversion/platform-react-ui storybook`, port 6006).
+`pnpm --filter vite-react exec vite --host 127.0.0.1 --port 5173` is equivalent.
+
+## Live core client
+
+After `pnpm build`, source `packages/core/.env.local` into the shell before calling `@youversion/platform-core`. Test scripts load that file via `dotenv-cli`; the runtime client does not.
+
+```bash
+set -a && . packages/core/.env.local && set +a
+```
+
+Auth/highlights also need a YouVersion account and a registered redirect URL (`http://localhost:5173` for the demo). Storybook is optional (`pnpm --filter @youversion/platform-react-ui storybook`, port 6006).
