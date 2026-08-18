@@ -119,6 +119,8 @@ describe('vapor flash — StrictMode + server-truth remove + selection-clear + h
     // These two waits are synchronization gates, not the assertions under test;
     // the uncontrolled REMOVE → xstate → deleteHighlight path can be starved past
     // the default 1s window on a loaded CI runner, so give the gates headroom.
+    // The test timeout must exceed these waitFor budgets: coverage CI otherwise
+    // kills the test at vitest's 5s default while a gate is still waiting.
     await waitFor(() => expect(deleteHighlight).toHaveBeenCalledTimes(1), { timeout: 5000 });
     await waitFor(() => expect(getHighlights.mock.calls.length).toBeGreaterThan(mountFetches), {
       timeout: 5000,
@@ -135,5 +137,5 @@ describe('vapor flash — StrictMode + server-truth remove + selection-clear + h
       `verse 2 resurrected in ${resurrected.length}/${window.length} frame(s): ` +
         JSON.stringify(window),
     ).toEqual([]);
-  });
+  }, 15_000);
 });
