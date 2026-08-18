@@ -76,7 +76,7 @@ export type VerseOfTheDayProps = {
    * until today's passage is known; overlapping ranges are clipped to that
    * passage.
    *
-   * Omit the prop for Swift-like self-contained paint: when the user is signed
+   * Omit the prop for self-contained paint: when the user is signed
    * in, has granted the `highlights` permission, and highlights are live,
    * matching verses are fetched and painted. A first render of `undefined`
    * latches self-contained (fetch when eligible), not "never paint".

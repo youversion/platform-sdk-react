@@ -30,7 +30,7 @@ export type BibleCardProps = {
    * already own highlight data — pass `[]` while loading or signed out so the
    * WebView does not fetch.
    *
-   * Omit the prop for Swift-like self-contained paint: when the user is signed
+   * Omit the prop for self-contained paint: when the user is signed
    * in, has granted the `highlights` permission, and highlights are live, the
    * card fetches and paints matching verses. A first render of `undefined`
    * latches self-contained (fetch when eligible). Mode is latched at first

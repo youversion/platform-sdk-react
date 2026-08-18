@@ -48,8 +48,8 @@ authenticated user — while the flag is off or the user has no session, the
 reader is inert: no fetches, no writes, nothing rendered from the API.
 
 On `BibleTextView`, `BibleCard`, and `VerseOfTheDay` (paint only, no
-create/delete UI) omit the `highlights` prop for the Swift-like default: when
-the user is signed in, has granted the **highlights permission**, and
+create/delete UI) omit the `highlights` prop for the self-contained default:
+when the user is signed in, has granted the **highlights permission**, and
 highlights are live, matching verses are fetched and painted. React Native /
 Expo DOM hosts that keep the token out of the WebView must not omit the prop;
 they pass `[]` or rows so the WebView never fetches.
