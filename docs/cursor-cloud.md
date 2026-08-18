@@ -28,10 +28,22 @@ Do not put an extra `--` before `--host`. `pnpm --filter vite-react dev -- --hos
 
 ## Live core client
 
-After `pnpm build`, source `packages/core/.env.local` into the shell before calling `@youversion/platform-core`. Test scripts load that file via `dotenv-cli`; the runtime client does not.
+After `pnpm build`, source `packages/core/.env.local` and pass those values into `ApiClient`. Test scripts load the file via `dotenv-cli`; the runtime client reads only the config object you give it.
 
 ```bash
 set -a && . packages/core/.env.local && set +a
+cd packages/core
+```
+
+```js
+import { ApiClient, BibleClient } from '@youversion/platform-core';
+
+const apiClient = new ApiClient({
+  appKey: process.env.YVP_APP_KEY,
+  apiHost: process.env.YVP_API_HOST,
+});
+const bibleClient = new BibleClient(apiClient);
+await bibleClient.getPassage(3034, 'JHN.3.16');
 ```
 
 Auth/highlights also need a YouVersion account and a registered redirect URL (`http://localhost:5173` for the demo). Storybook is optional (`pnpm --filter @youversion/platform-react-ui storybook`, port 6006).
