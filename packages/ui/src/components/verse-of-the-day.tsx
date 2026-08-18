@@ -79,7 +79,7 @@ export type VerseOfTheDayProps = {
   highlights?: Highlight[];
 };
 
-function paintHighlightsForPassage(
+function clipHighlightsToPassage(
   highlights: Highlight[] | undefined,
   passageId: string | undefined,
 ): Highlight[] | undefined {
@@ -181,7 +181,7 @@ export function VerseOfTheDay({
   // mount" and paint, which BibleReader.Root would ignore.
   const isHighlightsControlled = useHighlightsControlledLatch(highlights, 'VerseOfTheDay');
   const hostHighlights = isHighlightsControlled ? (highlights ?? []) : undefined;
-  const paintHighlights = paintHighlightsForPassage(hostHighlights, data?.passage_id);
+  const clippedHighlights = clipHighlightsToPassage(hostHighlights, data?.passage_id);
 
   let referenceText = '';
   if (passage?.reference && version?.localized_abbreviation) {
@@ -284,7 +284,7 @@ export function VerseOfTheDay({
                 loading: isLoading,
                 error: errorPassage || errorVerseOfTheDay || null,
               }}
-              highlights={paintHighlights}
+              highlights={clippedHighlights}
             />
           )}
         </AnimatedHeight>
