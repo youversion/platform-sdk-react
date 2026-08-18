@@ -25,6 +25,7 @@ import type { Highlight } from '@youversion/platform-core';
 import { transformBibleHtml } from '@youversion/platform-core/browser';
 import { IS_PRODUCTION } from '@/lib/constants';
 import { chapterScopeForHighlightPaint, deriveHighlightedVerses } from '@/lib/highlight-projection';
+import { useHighlightsControlledLatch } from '@/lib/use-highlights-controlled-latch';
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
 
@@ -601,21 +602,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
 
     // Latched at first mount: a transient `undefined` on a controlled view must
     // render as "no highlights", never fall through to `highlightedVerses`.
-    const isHighlightsControlledRef = useRef(highlights !== undefined);
-    const isHighlightsControlled = isHighlightsControlledRef.current;
-    const didWarnHighlightsModeFlipRef = useRef(false);
-    if (
-      !IS_PRODUCTION &&
-      (highlights !== undefined) !== isHighlightsControlled &&
-      !didWarnHighlightsModeFlipRef.current
-    ) {
-      didWarnHighlightsModeFlipRef.current = true;
-      console.warn(
-        `BibleTextView: the \`highlights\` prop switched from ${
-          isHighlightsControlled ? 'present to absent' : 'absent to present'
-        } after mount. Highlight mode is latched at first mount and will not change. Pass \`highlights\` (use \`[]\` for "nothing highlighted") on every render for controlled mode, or never pass it.`,
-      );
-    }
+    const isHighlightsControlled = useHighlightsControlledLatch(highlights, 'BibleTextView');
     const didWarnDualHighlightPropsRef = useRef(false);
     if (
       !IS_PRODUCTION &&

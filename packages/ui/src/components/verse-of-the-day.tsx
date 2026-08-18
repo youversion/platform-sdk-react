@@ -16,9 +16,9 @@ import { Votd } from '@/components/icons/votd';
 import { Button } from '@/components/ui/button';
 import { BibleTextView } from '@/components/verse';
 import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, type Highlight } from '@youversion/platform-core';
-import { IS_PRODUCTION } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { filterHighlightsForPassage } from '@/lib/highlight-projection';
+import { useHighlightsControlledLatch } from '@/lib/use-highlights-controlled-latch';
 
 export type VerseOfTheDayShareData = {
   /** Full share body: verse text, blank line, then reference (same as Web Share `text`). */
@@ -179,21 +179,7 @@ export function VerseOfTheDay({
   // delays mounting the child until load finishes; latching only there would
   // treat a highlights array that arrived during load as "present on first
   // mount" and paint, which BibleReader.Root would ignore.
-  const isHighlightsControlledRef = React.useRef(highlights !== undefined);
-  const isHighlightsControlled = isHighlightsControlledRef.current;
-  const didWarnHighlightsModeFlipRef = React.useRef(false);
-  if (
-    !IS_PRODUCTION &&
-    (highlights !== undefined) !== isHighlightsControlled &&
-    !didWarnHighlightsModeFlipRef.current
-  ) {
-    didWarnHighlightsModeFlipRef.current = true;
-    console.warn(
-      `VerseOfTheDay: the \`highlights\` prop switched from ${
-        isHighlightsControlled ? 'present to absent' : 'absent to present'
-      } after mount. Highlight mode is latched at first mount and will not change. Pass \`highlights\` (use \`[]\` for "nothing highlighted") on every render for controlled mode, or never pass it.`,
-    );
-  }
+  const isHighlightsControlled = useHighlightsControlledLatch(highlights, 'VerseOfTheDay');
   const hostHighlights = isHighlightsControlled ? (highlights ?? []) : undefined;
   const paintHighlights = paintHighlightsForPassage(hostHighlights, data?.passage_id);
 
