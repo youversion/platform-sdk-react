@@ -254,7 +254,7 @@ describe('BibleCard - onFootnotePress callback', () => {
   });
 });
 
-describe('BibleCard - host highlights (paint-only)', () => {
+describe('BibleCard - host highlights (controlled mode)', () => {
   const YELLOW = 'fffe00';
   const multiVersePassage: BiblePassage = {
     id: 'JHN.1',

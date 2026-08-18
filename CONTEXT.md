@@ -47,15 +47,17 @@ reader is inert: no fetches, no writes, nothing rendered from the API.
 
 ## Controlled mode
 
-The alternate `BibleReader` posture (YPE-3705): the host owns highlight
-data, auth, and persistence (e.g. a React Native / Expo DOM host keeping
-the user token out of the WebView). The host passes `highlights:
-Highlight[]` into `BibleReader.Root` and receives highlight intents; the
-reader is a pure projection — no API calls, no local persistence, no
-sign-in surface. Presence of the prop selects the posture (latched at
-first mount). Controlled mode bypasses `HIGHLIGHTS_LIVE`: the color row
-is always interactive so the public prop surface can ship while
-self-contained stays dark.
+The host-owned highlights posture (YPE-3705): the host passes `highlights:
+Highlight[]` and the SDK is a pure projection — no API calls, no local
+persistence. Presence of the prop selects the posture (latched at first
+mount). Used by `BibleReader.Root`, `BibleTextView`, `BibleCard`, and
+`VerseOfTheDay`.
+
+On `BibleReader.Root` the host also receives highlight intents and
+controlled mode bypasses `HIGHLIGHTS_LIVE`: the color row stays
+interactive so the public prop surface can ship while self-contained
+stays dark. `BibleTextView`, `BibleCard`, and `VerseOfTheDay` paint from
+the prop only; they have no intent surface.
 
 ## Highlight intent
 

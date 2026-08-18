@@ -8,7 +8,7 @@ export function collection(data: Highlight[]): Collection<Highlight> {
   return { data, next_page_token: null };
 }
 
-/** Multi-verse YVDOM used by paint-only highlight tests (`.yv-v[v]` wrappers). */
+/** Multi-verse YVDOM used by controlled-mode highlight tests (`.yv-v[v]` wrappers). */
 export const MULTI_VERSE_HTML = `
   <div class="p">
     <span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>In the beginning was the Word.

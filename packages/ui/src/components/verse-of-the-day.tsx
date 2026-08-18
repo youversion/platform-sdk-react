@@ -68,9 +68,9 @@ export type VerseOfTheDayProps = {
    */
   size?: 'default' | 'lg';
   /**
-   * When provided, paints these highlights on Verse of the Day.
-   * Use for React Native or Expo DOM hosts that already own highlight data
-   * and just need it rendered. Mode is latched at this component's first
+   * When provided, paints these highlights on Verse of the Day (controlled
+   * mode). Use for React Native or Expo DOM hosts that already own highlight
+   * data and just need it rendered. Mode is latched at this component's first
    * mount, including while today's verse is still loading: omit the prop
    * for no highlights; pass `[]` for none yet. A first render of `undefined`
    * will never paint later data. Nothing paints until today's passage is

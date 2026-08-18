@@ -561,7 +561,7 @@ export type BibleTextViewProps = {
   highlightedVerses?: Record<number, string>;
   /**
    * Host-supplied highlights in the core API shape. Presence of this prop
-   * (including `[]`) latches paint-only mode at first mount: verses are
+   * (including `[]`) latches **controlled mode** at first mount: verses are
    * projected from this list for the displayed version and chapter. Omit the
    * prop to keep using {@link highlightedVerses}. Pass `[]` while loading —
    * a first render of `undefined` will never paint later data. If both props
@@ -613,7 +613,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
       console.warn(
         `BibleTextView: the \`highlights\` prop switched from ${
           isHighlightsControlled ? 'present to absent' : 'absent to present'
-        } after mount. Highlight paint mode is latched at first mount and will not change. Pass \`highlights\` (use \`[]\` for "nothing highlighted") on every render for controlled paint, or never pass it.`,
+        } after mount. Highlight mode is latched at first mount and will not change. Pass \`highlights\` (use \`[]\` for "nothing highlighted") on every render for controlled mode, or never pass it.`,
       );
     }
     const didWarnDualHighlightPropsRef = useRef(false);

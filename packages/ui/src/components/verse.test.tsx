@@ -1245,7 +1245,7 @@ describe('BibleTextView - onFootnotePress callback', () => {
   });
 });
 
-describe('BibleTextView - host highlights (paint-only)', () => {
+describe('BibleTextView - host highlights (controlled mode)', () => {
   const YELLOW = 'fffe00';
   const GREEN = '5dff79';
   const passageState = {

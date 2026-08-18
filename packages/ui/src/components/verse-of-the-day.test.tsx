@@ -247,7 +247,7 @@ describe('VerseOfTheDay - share', () => {
   });
 });
 
-describe('VerseOfTheDay - host highlights (paint-only)', () => {
+describe('VerseOfTheDay - host highlights (controlled mode)', () => {
   const YELLOW = 'fffe00';
   const GREEN = '5dff79';
   const twoVerseHtml = `
