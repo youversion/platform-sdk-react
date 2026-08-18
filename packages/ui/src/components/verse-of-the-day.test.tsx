@@ -315,4 +315,69 @@ describe('VerseOfTheDay - host highlights (paint-only)', () => {
     expect(getVerseEl(container, 16).style.backgroundColor).toBe('');
     expect(getVerseEl(container, 17).style.backgroundColor).toBe('');
   });
+
+  it("latches highlights at first mount, including while today's verse is still loading", () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      vi.mocked(getDayOfYear).mockReturnValue(1);
+      vi.mocked(useVerseOfTheDay).mockReturnValue({
+        data: null,
+        loading: true,
+        error: null,
+        refetch: vi.fn(),
+      });
+      vi.mocked(usePassage).mockReturnValue({
+        passage: null,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+      });
+      vi.mocked(useVersion).mockReturnValue({
+        version: { localized_abbreviation: 'NIV' },
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useVersion>);
+      vi.mocked(useTheme).mockReturnValue('light');
+
+      const { container, rerender, unmount } = render(<VerseOfTheDay versionId={111} />);
+
+      rerender(<VerseOfTheDay versionId={111} highlights={[highlight('JHN.3.16', YELLOW)]} />);
+      stubHooks({ passageContent: twoVerseHtml });
+      rerender(<VerseOfTheDay versionId={111} highlights={[highlight('JHN.3.16', YELLOW)]} />);
+
+      expect(getVerseEl(container, 16).style.backgroundColor).toBe('');
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('`highlights` prop switched'));
+      unmount();
+      warn.mockClear();
+
+      vi.mocked(useVerseOfTheDay).mockReturnValue({
+        data: null,
+        loading: true,
+        error: null,
+        refetch: vi.fn(),
+      });
+      vi.mocked(usePassage).mockReturnValue({
+        passage: null,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+      });
+
+      const controlled = render(
+        <VerseOfTheDay versionId={111} highlights={[highlight('JHN.3.16', YELLOW)]} />,
+      );
+      stubHooks({ passageContent: twoVerseHtml });
+      controlled.rerender(
+        <VerseOfTheDay versionId={111} highlights={[highlight('JHN.3.16', YELLOW)]} />,
+      );
+      expect(getVerseEl(controlled.container, 16).style.backgroundColor).toBe(fillFor(YELLOW));
+
+      controlled.rerender(<VerseOfTheDay versionId={111} />);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('`highlights` prop switched'));
+      expect(getVerseEl(controlled.container, 16).style.backgroundColor).toBe('');
+    } finally {
+      warn.mockRestore();
+    }
+  });
 });

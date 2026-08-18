@@ -16,6 +16,7 @@ import { Votd } from '@/components/icons/votd';
 import { Button } from '@/components/ui/button';
 import { BibleTextView } from '@/components/verse';
 import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, type Highlight } from '@youversion/platform-core';
+import { IS_PRODUCTION } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { filterHighlightsForPassage } from '@/lib/highlight-projection';
 
@@ -69,7 +70,8 @@ export type VerseOfTheDayProps = {
   /**
    * When provided, paints these highlights on Verse of the Day.
    * Use for React Native or Expo DOM hosts that already own highlight data
-   * and just need it rendered. Mode is latched at first mount: omit the prop
+   * and just need it rendered. Mode is latched at this component's first
+   * mount, including while today's verse is still loading: omit the prop
    * for no highlights; pass `[]` for none yet. A first render of `undefined`
    * will never paint later data. Nothing paints until today's passage is
    * known; overlapping ranges are clipped to that passage.
@@ -173,7 +175,27 @@ export function VerseOfTheDay({
 
   const isLoading = loadingPassage || loadingVerseOfTheDay || loadingVersion;
 
-  const paintHighlights = paintHighlightsForPassage(highlights, data?.passage_id);
+  // Latched at this component's first mount, not at BibleTextView's. VOTD
+  // delays mounting the child until load finishes; latching only there would
+  // treat a highlights array that arrived during load as "present on first
+  // mount" and paint, which BibleReader.Root would ignore.
+  const isHighlightsControlledRef = React.useRef(highlights !== undefined);
+  const isHighlightsControlled = isHighlightsControlledRef.current;
+  const didWarnHighlightsModeFlipRef = React.useRef(false);
+  if (
+    !IS_PRODUCTION &&
+    (highlights !== undefined) !== isHighlightsControlled &&
+    !didWarnHighlightsModeFlipRef.current
+  ) {
+    didWarnHighlightsModeFlipRef.current = true;
+    console.warn(
+      `VerseOfTheDay: the \`highlights\` prop switched from ${
+        isHighlightsControlled ? 'present to absent' : 'absent to present'
+      } after mount. Highlight mode is latched at first mount and will not change. Pass \`highlights\` (use \`[]\` for "nothing highlighted") on every render for controlled mode, or never pass it.`,
+    );
+  }
+  const hostHighlights = isHighlightsControlled ? (highlights ?? []) : undefined;
+  const paintHighlights = paintHighlightsForPassage(hostHighlights, data?.passage_id);
 
   let referenceText = '';
   if (passage?.reference && version?.localized_abbreviation) {
