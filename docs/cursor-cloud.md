@@ -43,7 +43,7 @@ const apiClient = new ApiClient({
   apiHost: process.env.YVP_API_HOST,
 });
 const bibleClient = new BibleClient(apiClient);
-await bibleClient.getPassage(3034, 'JHN.3.16');
+await bibleClient.getPassage(3034, 'JHN.3.16', 'text');
 ```
 
 Auth/highlights also need a YouVersion account and a registered redirect URL (`http://localhost:5173` for the demo). Storybook is optional (`pnpm --filter @youversion/platform-react-ui storybook`, port 6006).
