@@ -117,8 +117,6 @@ describe('vapor flash — real Verse.Html DOM paint (MutationObserver on style)'
     // (that's the paint-ordering check below). The uncontrolled REMOVE → xstate
     // transition → deleteHighlight invocation can be starved past the default
     // 1s window on a loaded CI runner, so give the gates explicit headroom.
-    // The test timeout must exceed these waitFor budgets: coverage CI otherwise
-    // kills the test at vitest's 5s default while a gate is still waiting.
     await waitFor(() => expect(deleteHighlight).toHaveBeenCalledTimes(1), { timeout: 5000 });
     await waitFor(() => expect(getHighlights.mock.calls.length).toBeGreaterThan(mountFetches), {
       timeout: 5000,
@@ -137,5 +135,5 @@ describe('vapor flash — real Verse.Html DOM paint (MutationObserver on style)'
     ).toEqual([]);
     // Final DOM state: transparent.
     expect(verseEl()?.style.backgroundColor).toBe('');
-  }, 15_000);
+  });
 });
