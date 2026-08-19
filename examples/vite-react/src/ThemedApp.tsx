@@ -9,6 +9,7 @@ export default function ThemedApp() {
   const appKey = import.meta.env.VITE_YVP_APP_KEY;
   const apiHost = import.meta.env.VITE_YVP_API_HOST ?? 'api.youversion.com';
   const authRedirectUrl = import.meta.env.VITE_YVP_AUTH_REDIRECT_URL ?? window.location.origin;
+  const locale = import.meta.env.VITE_YVP_LOCALE?.trim() || undefined;
 
   return (
     <YouVersionProvider
@@ -18,6 +19,7 @@ export default function ThemedApp() {
       includeAuth
       authRedirectUrl={authRedirectUrl}
       appName="SDK Demo"
+      locale={locale}
     >
       <App />
     </YouVersionProvider>

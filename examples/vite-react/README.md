@@ -9,6 +9,7 @@ A demo app showcasing `@youversion/platform-react-ui` components.
 ```bash
 cp .env.example .env.local
 # Add your YouVersion App Key to .env.local
+# Optional: VITE_YVP_LOCALE and VITE_YVP_DEFAULT_LANGUAGE_ID (e.g. es)
 pnpm install
 pnpm dev
 ```
