@@ -59,6 +59,58 @@ Required packages:
 
 The workflow keeps `NPM_TOKEN` as a fallback for any package where Trusted Publishing isn't configured yet. If you set one, generate it as an **Automation token** — not a Publish or personal-user token. Automation tokens explicitly bypass npm's 2FA-on-publish, which CI cannot satisfy. A Publish token will fail every publish with `EOTP` / "need a one-time password" (see [`RELEASE-RUNBOOK.md` §5](./RELEASE-RUNBOOK.md#5-otp--2fa-error-class-wrong-token-type)). Remove `NPM_TOKEN` once all three packages are on Trusted Publishing.
 
+## CDN Stylesheet (bible.css)
+
+When the Release workflow publishes a new `@youversion/platform-react-ui` version, it also uploads the package's compiled stylesheet (`packages/ui/dist/tailwind.css`) to the YouVersion static-asset CDN, where it is served at:
+
+```
+https://cdn.youversion.com/platform/<major>/bible.css
+```
+
+This lets non-bundler consumers (e.g. server-rendered pages) link a stable stylesheet URL instead of extracting CSS from the npm package.
+
+### The CSS major version constant
+
+The `<major>` path segment is defined in **one place**: the `packages/ui/CDN_CSS_MAJOR_VERSION` file (currently `1`).
+
+- **Do not bump it for routine releases.** The file at `/platform/<major>/bible.css` is overwritten in place with each UI package release.
+- **Bump it only when the CSS changes in a breaking way** (selectors/variables/class names that existing consumers depend on are removed or behave differently). Bumping starts publishing to a new `/platform/<major+1>/bible.css` URL and leaves the old file untouched for existing consumers.
+
+### Feature flag: `feature.platform.sdkCssCdn`
+
+The upload is gated by the `feature.platform.sdkCssCdn` feature flag, defined (like all YouVersion Platform flags) in the transformers repo's `src/flags.yaml` manifest and mirrored to Firebase Remote Config. The workflow reads the **prod server template** (project `yvplatform-prod`, namespace `firebase-server`, parameter key `feature_platform_sdkCssCdn` — Remote Config keys replace dots with underscores).
+
+- **Ship-dark default:** the flag is `false` in prod, so merging the workflow does not start publishing to the CDN by itself.
+- **To launch (or kill) CDN publishing:** flip `feature_platform_sdkCssCdn` in the `yvplatform-prod` Firebase console's server template — no code change or deploy needed. A missing parameter evaluates as disabled.
+- When the flag is off, the release still publishes to npm normally; the CDN step logs a notice and skips the upload.
+- If the workflow cannot read the prod Remote Config template (transient outage/permission issue), the CDN step logs a notice and skips the upload instead of failing the post-publish workflow.
+- The check reads the parameter's default value only; conditional values / percentage rollouts are not evaluated.
+
+### How the upload authenticates
+
+The workflow uses Workload Identity Federation (OIDC) — no static GCP keys, matching how this repo publishes to npm via trusted publishing:
+
+1. `google-github-actions/auth` exchanges the GitHub Actions OIDC token through the `github-actions-pool` Workload Identity Pool in the `yvplatform-prod` GCP project.
+2. Only this repository (`youversion/platform-sdk-react`) may impersonate the dedicated service account `platform-sdk-cdn-publisher@yvplatform-prod.iam.gserviceaccount.com`.
+3. That service account can only write objects under the `platform/` prefix of the `cdn-yv-platform-prod` origin bucket (IAM condition), plus read Firebase Remote Config (`roles/cloudconfig.viewer` on `yvplatform-prod`) for the feature-flag check — nothing else.
+
+Repository Actions secrets:
+
+- `WIF_PROVIDER` — full resource name of the Workload Identity Pool provider
+- `WIF_SERVICE_ACCOUNT` — `platform-sdk-cdn-publisher@yvplatform-prod.iam.gserviceaccount.com`
+
+### Caching
+
+`bible.css` is a mutable object at a stable URL, so it is uploaded with `Cache-Control: public, max-age=300, must-revalidate`. Consumers pick up new releases within ~5 minutes.
+
+### Troubleshooting the CDN upload
+
+- On `main` pushes, the upload steps only run when `@youversion/platform-react-ui` is among the published packages.
+- npm publishing happens before the CDN upload; a failed upload does not affect the npm release.
+- **Do not retry by re-running the failed job**: on a re-run, changesets reports nothing newly published, so the CDN steps are skipped. Instead, after fixing the issue, trigger the **Release workflow manually** (Actions → Release → "Run workflow" on `main`). Manual runs skip versioning/publishing entirely; they resolve the npm `latest` dist-tag of `@youversion/platform-react-ui`, check out the matching release tag, rebuild it, and upload its stylesheet — so the CDN always matches what's on npm even if `main` has advanced past the release commit. The upload is idempotent, so this is always safe.
+- Manual dispatches from any ref other than `main` are no-ops (job-level guard), so branch CSS can never overwrite the production stylesheet.
+- If the checked-out release tag predates `packages/ui/CDN_CSS_MAJOR_VERSION`, the workflow falls back to CSS major `1` and continues.
+
 ## Troubleshooting
 
 ### "Version Packages" PR Not Created
