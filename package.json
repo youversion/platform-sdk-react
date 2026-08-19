@@ -24,7 +24,7 @@
     "test": "turbo test",
     "test:coverage": "pnpm --filter @youversion/platform-core test:coverage && pnpm --filter @youversion/platform-react-hooks test:coverage && pnpm --filter @youversion/platform-react-ui test:coverage",
     "test:watch": "turbo test:watch",
-    "lint": "oxlint",
+    "lint": "turbo build --filter=@youversion/platform-react-hooks && oxlint",
     "typecheck": "turbo typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "changeset": "changeset",
