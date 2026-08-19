@@ -53,6 +53,14 @@ const mockVersion: BibleVersion = {
   youversion_deep_link: 'https://bible.com/versions/3034',
 };
 
+const YELLOW = 'fffe00';
+const multiVersePassage: BiblePassage = {
+  id: 'JHN.1',
+  content: MULTI_VERSE_HTML,
+  reference: 'John 1',
+};
+const highlights: Highlight[] = [{ version_id: 111, passage_id: 'JHN.1.2', color: YELLOW }];
+
 describe('BibleCard - Delayed spinner', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -278,100 +286,90 @@ describe('BibleCard - onFootnotePress callback', () => {
   });
 });
 
-describe('BibleCard - host highlights (controlled mode)', () => {
-  const YELLOW = 'fffe00';
-  const multiVersePassage: BiblePassage = {
-    id: 'JHN.1',
-    content: MULTI_VERSE_HTML,
-    reference: 'John 1',
-  };
-  const highlights: Highlight[] = [{ version_id: 111, passage_id: 'JHN.1.2', color: YELLOW }];
-
-  it('paints matching verses and clears them when versionId no longer matches', () => {
-    vi.mocked(useTheme).mockReturnValue('light');
-    vi.mocked(useVersion).mockReturnValue({
-      version: mockVersion,
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-    vi.mocked(usePassage).mockReturnValue({
-      passage: multiVersePassage,
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-
-    const onVersionChange = vi.fn();
-    const { container, rerender } = render(
-      <BibleCard
-        reference="JHN.1"
-        versionId={111}
-        onVersionChange={onVersionChange}
-        highlights={highlights}
-      />,
-    );
-
-    expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
-
-    rerender(
-      <BibleCard
-        reference="JHN.1"
-        versionId={222}
-        onVersionChange={onVersionChange}
-        highlights={highlights}
-      />,
-    );
-
-    expect(getVerseEl(container, 2).style.backgroundColor).toBe('');
+it('host highlights: paints matching verses and clears them when versionId no longer matches', () => {
+  vi.mocked(useTheme).mockReturnValue('light');
+  vi.mocked(useVersion).mockReturnValue({
+    version: mockVersion,
+    loading: false,
+    error: null,
+    refetch: vi.fn(),
+  });
+  vi.mocked(usePassage).mockReturnValue({
+    passage: multiVersePassage,
+    loading: false,
+    error: null,
+    refetch: vi.fn(),
   });
 
-  it('paints from a stubbed fetch when the prop is omitted, and paints nothing for a host empty array', () => {
-    vi.mocked(useTheme).mockReturnValue('light');
-    vi.mocked(useVersion).mockReturnValue({
-      version: mockVersion,
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-    vi.mocked(usePassage).mockReturnValue({
-      passage: multiVersePassage,
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-    const restoreHighlights = stubUseHighlights({ highlights: collection(highlights) });
-    const hasPermission = vi
-      .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
-      .mockReturnValue(true);
+  const onVersionChange = vi.fn();
+  const { container, rerender } = render(
+    <BibleCard
+      reference="JHN.1"
+      versionId={111}
+      onVersionChange={onVersionChange}
+      highlights={highlights}
+    />,
+  );
 
-    try {
-      const omitted = render(
-        <Providers>
-          <BibleCard reference="JHN.1" versionId={111} />
-        </Providers>,
-      );
-      expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
-        { version_id: 111, passage_id: 'JHN.1' },
-        { enabled: true },
-      );
-      expect(getVerseEl(omitted.container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
-      omitted.unmount();
+  expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
 
-      stubUseHighlights();
-      const hostEmpty = render(
-        <Providers>
-          <BibleCard reference="JHN.1" versionId={111} highlights={[]} />
-        </Providers>,
-      );
-      expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
-        { version_id: 111, passage_id: 'JHN.1' },
-        { enabled: false },
-      );
-      expect(getVerseEl(hostEmpty.container, 2).style.backgroundColor).toBe('');
-    } finally {
-      restoreHighlights();
-      hasPermission.mockRestore();
-    }
+  rerender(
+    <BibleCard
+      reference="JHN.1"
+      versionId={222}
+      onVersionChange={onVersionChange}
+      highlights={highlights}
+    />,
+  );
+
+  expect(getVerseEl(container, 2).style.backgroundColor).toBe('');
+});
+
+it('host highlights: paints from a stubbed fetch when the prop is omitted, and paints nothing for a host empty array', () => {
+  vi.mocked(useTheme).mockReturnValue('light');
+  vi.mocked(useVersion).mockReturnValue({
+    version: mockVersion,
+    loading: false,
+    error: null,
+    refetch: vi.fn(),
   });
+  vi.mocked(usePassage).mockReturnValue({
+    passage: multiVersePassage,
+    loading: false,
+    error: null,
+    refetch: vi.fn(),
+  });
+  const restoreHighlights = stubUseHighlights({ highlights: collection(highlights) });
+  const hasPermission = vi
+    .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
+    .mockReturnValue(true);
+
+  try {
+    const omitted = render(
+      <Providers>
+        <BibleCard reference="JHN.1" versionId={111} />
+      </Providers>,
+    );
+    expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
+      { version_id: 111, passage_id: 'JHN.1' },
+      { enabled: true },
+    );
+    expect(getVerseEl(omitted.container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
+    omitted.unmount();
+
+    stubUseHighlights();
+    const hostEmpty = render(
+      <Providers>
+        <BibleCard reference="JHN.1" versionId={111} highlights={[]} />
+      </Providers>,
+    );
+    expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
+      { version_id: 111, passage_id: 'JHN.1' },
+      { enabled: false },
+    );
+    expect(getVerseEl(hostEmpty.container, 2).style.backgroundColor).toBe('');
+  } finally {
+    restoreHighlights();
+    hasPermission.mockRestore();
+  }
 });
