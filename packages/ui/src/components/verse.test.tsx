@@ -1494,4 +1494,40 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
     );
     expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(GREEN));
   });
+
+  it('clips a verse-unit reference so neighbors stay unpainted, including while another chapter loads', () => {
+    const jhn1Verse = {
+      passage: { id: 'JHN.1.2', content: MULTI_VERSE_HTML, reference: 'John 1:2' },
+      loading: false,
+      error: null,
+    };
+    const highlights = [
+      highlight('JHN.1.1-3', YELLOW),
+      highlight('JHN.1.2', GREEN),
+      highlight('JHN.2.2', YELLOW),
+    ];
+    const { container, rerender } = render(
+      <BibleTextView
+        reference="JHN.1.2"
+        versionId={111}
+        passageState={jhn1Verse}
+        highlights={highlights}
+      />,
+    );
+    expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(GREEN));
+    expect(getVerseEl(container, 3).style.backgroundColor).toBe('');
+
+    rerender(
+      <BibleTextView
+        reference="JHN.2.3"
+        versionId={111}
+        passageState={{ ...jhn1Verse, loading: true }}
+        highlights={highlights}
+      />,
+    );
+    expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(GREEN));
+    expect(getVerseEl(container, 3).style.backgroundColor).toBe('');
+  });
 });

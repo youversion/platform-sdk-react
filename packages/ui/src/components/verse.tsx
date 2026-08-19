@@ -23,7 +23,10 @@ import { type FontFamily } from '@/lib/verse-html-utils';
 
 import type { Highlight } from '@youversion/platform-core';
 import { transformBibleHtml } from '@youversion/platform-core/browser';
-import { chapterScopeForHighlightPaint } from '@/lib/highlight-projection';
+import {
+  chapterScopeForHighlightPaint,
+  clipUsfmForHighlightPaint,
+} from '@/lib/highlight-projection';
 import { useHighlightsControlledLatch, warnOnce } from '@/lib/use-highlights-controlled-latch';
 import { useScriptureHighlightPaint } from '@/lib/use-scripture-highlight-paint';
 
@@ -651,13 +654,22 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
         }),
       [currentPassage?.id, reference, currentLoading],
     );
+    const displayPassageId = useMemo(
+      () =>
+        clipUsfmForHighlightPaint({
+          requestedUsfm: reference,
+          renderedPassageId: currentPassage?.id,
+          chapterScope,
+        }),
+      [reference, currentPassage?.id, chapterScope],
+    );
     const paintedVerses = useScriptureHighlightPaint({
       highlights,
       isHighlightsControlled,
       highlightedVerses,
       versionId,
       chapterScope,
-      displayPassageId: reference,
+      displayPassageId,
     });
 
     if (currentLoading && !currentPassage) {

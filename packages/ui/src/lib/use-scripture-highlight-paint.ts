@@ -6,6 +6,7 @@ import {
   deriveHighlightedVerses,
   expandPassageId,
   filterHighlightsForPassage,
+  parseChapterScopeFromUsfm,
   type ChapterScope,
 } from '@/lib/highlight-projection';
 
@@ -23,9 +24,11 @@ export type UseScriptureHighlightPaintOptions = {
   /** Paint/GET scope from `chapterScopeForHighlightPaint`. */
   chapterScope: ChapterScope | null;
   /**
-   * Surface `reference` USFM. A verse or range unit clips host and fetched
-   * rows to that passage so neighboring verses in chapter HTML do not paint.
-   * Chapter-scope references skip the clip.
+   * Verse or range USFM to clip against. A unit in the paint chapter clips
+   * host and fetched rows so neighboring verses in chapter HTML do not paint.
+   * Chapter-scope USFMs, and a verse or range in a *different* chapter than
+   * `chapterScope`, skip the clip so retained HTML is not unpainted while
+   * the next passage loads.
    */
   displayPassageId: string;
 };
@@ -36,9 +39,16 @@ function projectHighlights(
   chapterScope: ChapterScope,
   displayPassageId: string,
 ): Record<number, string> {
-  const toProject = expandPassageId(displayPassageId)
-    ? filterHighlightsForPassage(rows, displayPassageId)
-    : rows;
+  const displayScope = parseChapterScopeFromUsfm(displayPassageId);
+  const displayMatchesPaintChapter = Boolean(
+    displayScope &&
+      displayScope.book === chapterScope.book &&
+      displayScope.chapter === chapterScope.chapter,
+  );
+  const toProject =
+    displayMatchesPaintChapter && expandPassageId(displayPassageId)
+      ? filterHighlightsForPassage(rows, displayPassageId)
+      : rows;
   return deriveHighlightedVerses(
     toProject,
     versionId,

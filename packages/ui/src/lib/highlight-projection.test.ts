@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { Highlight } from '@youversion/platform-core';
 import {
   chapterScopeForHighlightPaint,
+  clipUsfmForHighlightPaint,
   deriveHighlightedVerses,
   expandPassageId,
   filterHighlightsForPassage,
@@ -240,5 +241,57 @@ describe('chapterScopeForHighlightPaint', () => {
         loading: true,
       }),
     ).toEqual({ book: 'JHN', chapter: '2' });
+  });
+});
+
+describe('clipUsfmForHighlightPaint', () => {
+  it('clips to the requested USFM in the paint chapter, and to the rendered verse unit while another chapter loads', () => {
+    expect(
+      clipUsfmForHighlightPaint({
+        requestedUsfm: 'JHN.1.2',
+        renderedPassageId: 'JHN.1.2',
+        chapterScope: { book: 'JHN', chapter: '1' },
+      }),
+    ).toBe('JHN.1.2');
+
+    expect(
+      clipUsfmForHighlightPaint({
+        requestedUsfm: 'JHN.2.3',
+        renderedPassageId: 'JHN.1.2',
+        chapterScope: { book: 'JHN', chapter: '1' },
+      }),
+    ).toBe('JHN.1.2');
+
+    expect(
+      clipUsfmForHighlightPaint({
+        requestedUsfm: 'JHN.2.3',
+        renderedPassageId: 'JHN.1',
+        chapterScope: { book: 'JHN', chapter: '1' },
+      }),
+    ).toBe('JHN.1');
+
+    expect(
+      clipUsfmForHighlightPaint({
+        requestedUsfm: 'JHN.1',
+        renderedPassageId: 'JHN.1',
+        chapterScope: { book: 'JHN', chapter: '1' },
+      }),
+    ).toBe('JHN.1');
+
+    expect(
+      clipUsfmForHighlightPaint({
+        requestedUsfm: 'JHN.2.3',
+        renderedPassageId: undefined,
+        chapterScope: { book: 'JHN', chapter: '1' },
+      }),
+    ).toBe('JHN.1');
+
+    expect(
+      clipUsfmForHighlightPaint({
+        requestedUsfm: 'JHN.2.3',
+        renderedPassageId: 'JHN.1.2',
+        chapterScope: null,
+      }),
+    ).toBe('JHN.2.3');
   });
 });

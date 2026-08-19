@@ -186,6 +186,27 @@ describe('useScriptureHighlightPaint', () => {
         { wrapper: Providers },
       );
       expect(controlled.result.current).toEqual({ 1: 'fffe00' });
+
+      const retainedChapter = renderHook(
+        () =>
+          useScriptureHighlightPaint({
+            highlights: [
+              { version_id: 111, passage_id: 'JHN.1.1-3', color: 'fffe00' },
+              { version_id: 111, passage_id: 'JHN.1.2', color: '5dff79' },
+            ],
+            isHighlightsControlled: true,
+            highlightedVerses: undefined,
+            versionId: 111,
+            chapterScope: { book: 'JHN', chapter: '1' },
+            displayPassageId: 'JHN.2.3',
+          }),
+        { wrapper: Providers },
+      );
+      expect(retainedChapter.result.current).toEqual({
+        1: 'fffe00',
+        2: '5dff79',
+        3: 'fffe00',
+      });
     } finally {
       setHighlightsLive(HIGHLIGHTS_LIVE);
       hasPermission.mockRestore();
