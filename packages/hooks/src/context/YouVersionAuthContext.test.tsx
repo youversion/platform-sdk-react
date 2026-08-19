@@ -41,7 +41,7 @@ describe('YouVersionAuthContext', () => {
       expect(result.current.userInfo).toEqual(mockContextValue.userInfo);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBe(null);
-      expect(typeof result.current.setUserInfo).toBe('function');
+      expect(result.current.setUserInfo).toEqual(expect.any(Function));
     });
 
     it('should throw error when used outside provider', () => {

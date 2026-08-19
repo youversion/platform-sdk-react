@@ -14,9 +14,23 @@ type StoredRecentVersion = {
   localized_abbreviation: string;
 };
 
+function isStoredRecentVersion(item: StoredRecentVersion): item is StoredRecentVersion {
+  return (
+    Number.isFinite(item.id) &&
+    Object.prototype.toString.call(item.title) === '[object String]' &&
+    Object.prototype.toString.call(item.localized_abbreviation) === '[object String]'
+  );
+}
+
 function getStoredRecentVersions(): StoredRecentVersion[] {
+  const raw = localStorage.getItem(RECENT_VERSIONS_KEY);
+  if (!raw) return [];
   try {
-    return JSON.parse(localStorage.getItem(RECENT_VERSIONS_KEY) || '[]') as StoredRecentVersion[];
+    // SAFETY: JSON.parse returns any. isStoredRecentVersion checks each field
+    // before the list is used.
+    const parsed = JSON.parse(raw) as StoredRecentVersion[];
+    if (!Array.isArray(parsed) || !parsed.every(isStoredRecentVersion)) return [];
+    return parsed;
   } catch {
     return [];
   }

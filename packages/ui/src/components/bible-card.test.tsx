@@ -4,12 +4,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, act, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { requireHtmlButton } from '@/test/dom-stubs';
+import { HookOverrideProvider } from '@/test/hook-overrides';
 import { BibleCard } from './bible-card';
 import type { FootnoteData } from './verse';
-import { usePassage, useTheme, useVersion } from '@youversion/platform-react-hooks';
+import type { UsePassageResult, UseVersionResult } from '@youversion/platform-react-hooks';
 import type { BiblePassage, BibleVersion } from '@youversion/platform-core';
-
-vi.mock('@youversion/platform-react-hooks');
 
 const mockPassage: BiblePassage = {
   id: 'JHN.3.16',
@@ -28,16 +28,45 @@ const mockVersion: BibleVersion = {
   youversion_deep_link: 'https://bible.com/versions/3034',
 };
 
+function idleVersion(): UseVersionResult {
+  return {
+    version: mockVersion,
+    loading: false,
+    error: null,
+    refetch: () => undefined,
+  };
+}
+
+function passageResult(
+  overrides: Partial<UsePassageResult> & Pick<UsePassageResult, 'passage' | 'loading'>,
+): UsePassageResult {
+  return {
+    error: null,
+    refetch: () => undefined,
+    ...overrides,
+  };
+}
+
+function renderCard(
+  passage: UsePassageResult,
+  extra: { onFootnotePress?: (data: FootnoteData) => void; reference?: string } = {},
+) {
+  const { reference = 'JHN.3.16', onFootnotePress } = extra;
+  return render(
+    <HookOverrideProvider
+      overrides={{
+        useVersion: () => idleVersion(),
+        usePassage: () => passage,
+      }}
+    >
+      <BibleCard reference={reference} versionId={3034} onFootnotePress={onFootnotePress} />
+    </HookOverrideProvider>,
+  );
+}
+
 describe('BibleCard - Delayed spinner', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.mocked(useTheme).mockReturnValue('light');
-    vi.mocked(useVersion).mockReturnValue({
-      version: mockVersion,
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
   });
 
   afterEach(() => {
@@ -45,14 +74,7 @@ describe('BibleCard - Delayed spinner', () => {
   });
 
   it('should not show spinner before 250ms when refetching', () => {
-    vi.mocked(usePassage).mockReturnValue({
-      passage: mockPassage,
-      loading: true,
-      error: null,
-      refetch: vi.fn(),
-    });
-
-    const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
+    const { container } = renderCard(passageResult({ passage: mockPassage, loading: true }));
 
     act(() => {
       vi.advanceTimersByTime(100);
@@ -62,14 +84,7 @@ describe('BibleCard - Delayed spinner', () => {
   });
 
   it('should show spinner after 250ms when refetching', () => {
-    vi.mocked(usePassage).mockReturnValue({
-      passage: mockPassage,
-      loading: true,
-      error: null,
-      refetch: vi.fn(),
-    });
-
-    const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
+    const { container } = renderCard(passageResult({ passage: mockPassage, loading: true }));
 
     act(() => {
       vi.advanceTimersByTime(250);
@@ -79,14 +94,9 @@ describe('BibleCard - Delayed spinner', () => {
   });
 
   it('should hide spinner when loading completes', () => {
-    vi.mocked(usePassage).mockReturnValue({
-      passage: mockPassage,
-      loading: true,
-      error: null,
-      refetch: vi.fn(),
-    });
-
-    const { container, rerender } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
+    const { container, rerender } = renderCard(
+      passageResult({ passage: mockPassage, loading: true }),
+    );
 
     act(() => {
       vi.advanceTimersByTime(250);
@@ -94,27 +104,22 @@ describe('BibleCard - Delayed spinner', () => {
 
     expect(within(container).getByRole('status', { name: /loading/i })).toBeInTheDocument();
 
-    vi.mocked(usePassage).mockReturnValue({
-      passage: mockPassage,
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-
-    rerender(<BibleCard reference="JHN.3.16" versionId={3034} />);
+    rerender(
+      <HookOverrideProvider
+        overrides={{
+          useVersion: () => idleVersion(),
+          usePassage: () => passageResult({ passage: mockPassage, loading: false }),
+        }}
+      >
+        <BibleCard reference="JHN.3.16" versionId={3034} />
+      </HookOverrideProvider>,
+    );
 
     expect(within(container).queryByRole('status', { name: /loading/i })).toBeNull();
   });
 
   it('should show spinner on initial load (no passage yet)', () => {
-    vi.mocked(usePassage).mockReturnValue({
-      passage: null,
-      loading: true,
-      error: null,
-      refetch: vi.fn(),
-    });
-
-    const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
+    const { container } = renderCard(passageResult({ passage: null, loading: true }));
 
     expect(within(container).getAllByRole('status', { name: /loading/i }).length).toBeGreaterThan(
       0,
@@ -122,14 +127,7 @@ describe('BibleCard - Delayed spinner', () => {
   });
 
   it('should let the card fill its container while centering the content group', () => {
-    vi.mocked(usePassage).mockReturnValue({
-      passage: mockPassage,
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-
-    const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
+    const { container } = renderCard(passageResult({ passage: mockPassage, loading: false }));
     const card = container.querySelector('section');
     const contentGroup = container.querySelector('section > div');
     const bibleTextView = container.querySelector('[data-slot="yv-bible-renderer"]')?.parentElement;
@@ -142,14 +140,7 @@ describe('BibleCard - Delayed spinner', () => {
   });
 
   it('should hide inline verse numbers in the bible renderer', () => {
-    vi.mocked(usePassage).mockReturnValue({
-      passage: mockPassage,
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-
-    const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
+    const { container } = renderCard(passageResult({ passage: mockPassage, loading: false }));
     const bibleRenderer = container.querySelector('[data-slot="yv-bible-renderer"]');
 
     expect(bibleRenderer).toHaveAttribute('data-show-verse-numbers', 'false');
@@ -157,30 +148,24 @@ describe('BibleCard - Delayed spinner', () => {
 });
 
 describe('BibleCard - Error state', () => {
-  beforeEach(() => {
-    vi.mocked(useTheme).mockReturnValue('light');
-    vi.mocked(useVersion).mockReturnValue({
-      version: mockVersion,
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-    vi.mocked(usePassage).mockReturnValue({
-      passage: null,
-      loading: false,
-      error: Object.assign(new Error('Request failed with status 503'), { status: 503 }),
-      refetch: vi.fn(),
-    });
-  });
+  function renderErrorCard() {
+    return renderCard(
+      passageResult({
+        passage: null,
+        loading: false,
+        error: Object.assign(new Error('Request failed with status 503'), { status: 503 }),
+      }),
+    );
+  }
 
   it('should render exactly one alert region', () => {
-    const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
+    const { container } = renderErrorCard();
 
     expect(within(container).getAllByRole('alert')).toHaveLength(1);
   });
 
   it('should show the status message in that one alert region', () => {
-    const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
+    const { container } = renderErrorCard();
     const alert = within(container).getByRole('alert');
 
     expect(alert).toHaveTextContent(
@@ -189,13 +174,13 @@ describe('BibleCard - Error state', () => {
   });
 
   it('should render the error heading in the header slot', () => {
-    const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
+    const { container } = renderErrorCard();
 
     expect(within(container).getByRole('heading', { level: 2 })).toHaveTextContent('Error');
   });
 
   it('should not render a loading spinner while an error is set', () => {
-    const { container } = render(<BibleCard reference="JHN.3.16" versionId={3034} />);
+    const { container } = renderErrorCard();
 
     expect(within(container).queryByRole('status')).toBeNull();
   });
@@ -213,39 +198,24 @@ describe('BibleCard - onFootnotePress callback', () => {
     reference: 'JHN.1',
   };
 
-  beforeEach(() => {
-    vi.mocked(useTheme).mockReturnValue('light');
-    vi.mocked(useVersion).mockReturnValue({
-      version: mockVersion,
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-    vi.mocked(usePassage).mockReturnValue({
-      passage: mockPassageWithFootnote,
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-  });
-
   it('should call onFootnotePress when provided via BibleCard', async () => {
-    const onFootnotePress = vi.fn();
+    const onFootnotePress = vi.fn<(data: FootnoteData) => void>();
 
-    const { container } = render(
-      <BibleCard reference="JHN.1" versionId={3034} onFootnotePress={onFootnotePress} />,
+    const { container } = renderCard(
+      passageResult({ passage: mockPassageWithFootnote, loading: false }),
+      { reference: 'JHN.1', onFootnotePress },
     );
 
     const button = await waitFor(() => {
       const btn = container.querySelector('[data-verse-footnote="5"] button');
       expect(btn).not.toBeNull();
-      return btn as HTMLButtonElement;
+      return requireHtmlButton(btn);
     });
 
     await userEvent.click(button);
 
     expect(onFootnotePress).toHaveBeenCalledTimes(1);
-    const data = onFootnotePress.mock.calls[0]![0] as FootnoteData;
+    const data = onFootnotePress.mock.calls[0]![0];
     expect(data.verseNum).toBe('5');
     expect(data.reference).toBe('JHN.1');
     expect(data.notes).toHaveLength(1);

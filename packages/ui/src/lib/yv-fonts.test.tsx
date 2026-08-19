@@ -9,16 +9,6 @@ import { act } from 'react';
 import { YouVersionProvider } from '@/components/YouVersionProvider';
 import { YvFonts } from '@/lib/yv-fonts';
 
-vi.mock('@youversion/platform-react-hooks', () => {
-  function PassthroughProvider({ children }: { children: React.ReactNode }) {
-    return <>{children}</>;
-  }
-  return {
-    YouVersionProvider: PassthroughProvider,
-    useYVAuth: vi.fn(),
-  };
-});
-
 const FONT_LINK_SELECTOR = 'link[rel="stylesheet"][data-precedence="yv-sdk-fonts"]';
 
 function fontLinks(): HTMLLinkElement[] {

@@ -1,11 +1,27 @@
 import { vi } from 'vitest';
-import { SignInWithYouVersionResult, YouVersionUserInfo } from '@youversion/platform-core';
+import {
+  SignInWithYouVersionResult,
+  YouVersionUserInfo,
+  type YouVersionUserInfoJSON,
+} from '@youversion/platform-core';
+
+type MockAuthResultOverrides = {
+  accessToken?: string;
+  expiresIn?: number;
+  refreshToken?: string;
+  yvpUserId?: string;
+  name?: string;
+  profilePicture?: string;
+  email?: string;
+};
 
 /**
  * Creates a mock user info object for testing
  * @param overrides Optional properties to override the default values
  */
-export const createMockUserInfo = (overrides: Record<string, any> = {}): YouVersionUserInfo => {
+export const createMockUserInfo = (
+  overrides: Partial<YouVersionUserInfoJSON> = {},
+): YouVersionUserInfo => {
   const mockUserInfo = new YouVersionUserInfo({
     id: '123',
     name: 'John Doe',
@@ -31,7 +47,7 @@ export const createMockUserInfo = (overrides: Record<string, any> = {}): YouVers
  * @param overrides Optional properties to override the default values
  */
 export const createMockAuthResult = (
-  overrides: Record<string, unknown> = {},
+  overrides: MockAuthResultOverrides = {},
 ): SignInWithYouVersionResult => {
   const mockUserInfo = createMockUserInfo();
   return new SignInWithYouVersionResult({

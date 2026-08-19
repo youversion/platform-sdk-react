@@ -11,8 +11,9 @@ Keep this file brief. Put task-specific guidance behind a pointer.
 - Rebuild dependent packages after modifying core or hooks.
 - Root and package `CLAUDE.md` files are symlinks to `AGENTS.md` — edit `AGENTS.md` only.
 - Bible chapter HTML from the API is YVDOM, not display-ready — transform before rendering.
-- Sister SDKs (`platform-sdk-swift`, `platform-sdk-kotlin`) define the Sign-In UI, logos, and i18n patterns — align with them.
-- Local auth/highlight/Bible demos: use `examples/vite-react`, loading env vars from the monorepo root (not worktree-local envs).
+- Sister SDKs (`platform-sdk-swift`, `platform-sdk-kotlin`) define the Sign-In UI, logos, and i18n patterns — align with them. Swift is the source of truth for Bible reader typography.
+- Local auth/highlight/Bible demos: use `examples/vite-react`, loading env vars from the monorepo root (not worktree-local envs). Navbar Sign in requests only profile and email; grant highlights via the reader permission flow (tap a verse, tap a color). Highlights are per Bible version.
+- `pnpm lint` is ESLint then oxlint anti-slop. Do not suppress anti-slop rules. How to run: `CONTRIBUTING.md`.
 
 ## Guardrails
 - Dependency chain runs one way: core → hooks → ui. Never introduce a reverse dependency.
@@ -28,3 +29,10 @@ Release, versioning, or publishing: read `PUBLISHING.md`; decisions live in `doc
 
 ## Domain
 Domain terms (highlight, passage, Bible version, auth flow): read `CONTEXT.md`.
+
+## Learned User Preferences
+- When posting PR review comments, use conventionalcomments.org labels and identify as Cursor sent on behalf of Cam.
+- Prefer logical CSS properties (`margin-block-end`, `padding-inline-start`) over physical ones.
+
+## Learned Workspace Facts
+- Public Bible CSS on the CDN updates automatically on UI package release.

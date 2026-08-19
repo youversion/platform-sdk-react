@@ -49,14 +49,37 @@ type RecentVersion = Pick<
   'id' | 'title' | 'localized_abbreviation' | 'abbreviation' | 'organization_id'
 >;
 
-function getRecentVersions(): RecentVersion[] {
+type TriggerElementProps = React.HTMLAttributes<HTMLButtonElement> & {
+  'data-yv-sdk'?: boolean;
+  'data-yv-theme'?: string;
+};
+
+function isRecentVersion(item: RecentVersion): item is RecentVersion {
+  return (
+    Number.isFinite(item.id) &&
+    Object.prototype.toString.call(item.title) === '[object String]' &&
+    Object.prototype.toString.call(item.localized_abbreviation) === '[object String]' &&
+    Object.prototype.toString.call(item.abbreviation) === '[object String]'
+  );
+}
+
+function parseRecentVersions(raw: string): RecentVersion[] {
+  let parsed: RecentVersion[];
   try {
-    const stored = getLocalStorage()?.getItem(RECENT_VERSIONS_KEY);
-    const recentVersions: RecentVersion[] = stored ? (JSON.parse(stored) as RecentVersion[]) : [];
-    return recentVersions;
+    // SAFETY: JSON.parse returns any. isRecentVersion checks each field
+    // before the list is used.
+    parsed = JSON.parse(raw) as RecentVersion[];
   } catch {
     return [];
   }
+  if (!Array.isArray(parsed) || !parsed.every(isRecentVersion)) return [];
+  return parsed;
+}
+
+function getRecentVersions(): RecentVersion[] {
+  const stored = getLocalStorage()?.getItem(RECENT_VERSIONS_KEY);
+  if (!stored) return [];
+  return parseRecentVersions(stored);
 }
 
 function saveRecentVersions(versions: RecentVersion[]): void {
@@ -265,9 +288,7 @@ function Root({
   const theme = background || providerTheme;
 
   const fallbackLanguageId =
-    defaultLanguageId ||
-    (typeof navigator !== 'undefined' && navigator.languages[0]?.split('-')[0]) ||
-    'en';
+    defaultLanguageId || globalThis.navigator?.languages[0]?.split('-')[0] || 'en';
   const [selectedLanguageId, setSelectedLanguageId] = useControllableState({
     prop: controlledLanguageId,
     defaultProp: fallbackLanguageId,
@@ -388,8 +409,8 @@ function Root({
   const suggestedLanguages = useMemo(() => {
     // Extract language codes from browser (e.g., 'en-US' -> 'en')
     // Map over userLanguageCodes to preserve browser preference order
-    const userLanguageCodes = (typeof navigator !== 'undefined' ? navigator.languages : []).map(
-      (code) => code.split('-')[0]?.toLowerCase(),
+    const userLanguageCodes = (globalThis.navigator?.languages ?? []).map((code) =>
+      code.split('-')[0]?.toLowerCase(),
     );
     const userLanguages = userLanguageCodes
       .map((code) => uniqueLanguages.find((language) => language.id === code))
@@ -470,7 +491,7 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
   const { version, loading } = useVersion(versionId);
 
   const content =
-    typeof children === 'function'
+    children instanceof Function
       ? children({ version, loading })
       : children || (
           <Button variant={'secondary'} className="yv:cursor-pointer yv:font-bold yv:text-base">
@@ -486,7 +507,7 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
   };
 
   if (onVersionPickerPress) {
-    if (asChild && isValidElement<Record<string, unknown>>(content)) {
+    if (asChild && isValidElement<TriggerElementProps>(content)) {
       return cloneElement(content, {
         'data-yv-sdk': true,
         'data-yv-theme': background,

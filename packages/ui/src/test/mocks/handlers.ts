@@ -6,11 +6,17 @@ import mockBibles from '../mock-data/bibles.json';
 import mockLanguages from '../mock-data/languages.json';
 import mockOrganizations from '../mock-data/organizations.json';
 
+function pathParam(value: string | readonly string[] | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  const parts: string[] = [];
+  return parts.concat(value)[0];
+}
+
 export const globalHandlers = [
   // Organization (publisher) lookup for the version picker
   http.get('*/v1/organizations/:id', ({ params }) => {
-    const id = params.id as string;
-    const organization = mockOrganizations[id as keyof typeof mockOrganizations];
+    const id = pathParam(params.id);
+    const organization = Object.entries(mockOrganizations).find(([key]) => key === id)?.[1];
 
     if (organization) {
       return HttpResponse.json(organization);
@@ -85,11 +91,12 @@ export const globalHandlers = [
 
   // Individual Bible version lookup - dynamically finds Bible from mock data
   http.get('*/v1/bibles/:id', ({ params }) => {
-    const id = params.id as string;
+    const id = pathParam(params.id);
+    if (!id) return new HttpResponse(null, { status: 404 });
 
-    // Check individual mock data first
-    if (mockBibles.individual[id as keyof typeof mockBibles.individual]) {
-      return HttpResponse.json(mockBibles.individual[id as keyof typeof mockBibles.individual]);
+    const individual = Object.entries(mockBibles.individual).find(([key]) => key === id)?.[1];
+    if (individual) {
+      return HttpResponse.json(individual);
     }
 
     // Fall back to collections data

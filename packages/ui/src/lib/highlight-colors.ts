@@ -8,6 +8,11 @@ export const HIGHLIGHT_COLORS = ['fffe00', '5dff79', '00d6ff', 'ffc66f', 'ff95ef
 
 export type HighlightColor = (typeof HIGHLIGHT_COLORS)[number];
 
+/** Verse number → hex color for the chapter currently on screen. */
+export type HighlightedVerses = Record<number, string>;
+
+const HIGHLIGHT_COLOR_SET: ReadonlySet<string> = new Set(HIGHLIGHT_COLORS);
+
 const HIGHLIGHT_HEX_REGEX = /^[0-9a-f]{6}$/i;
 
 function stripHighlightHexPrefix(color: string): string {
@@ -29,7 +34,7 @@ export function normalizeHighlightHex(color: string): string | null {
 export function isPaletteHighlightColor(color: string): boolean {
   const normalized = normalizeHighlightHex(color);
   if (normalized === null) return false;
-  return (HIGHLIGHT_COLORS as readonly string[]).includes(normalized);
+  return HIGHLIGHT_COLOR_SET.has(normalized);
 }
 
 export type VerseActionSwatch = {
@@ -42,7 +47,7 @@ export type BuildVerseActionSwatchesInput = {
   /** Distinct valid colors on the current selection (ANY rule). */
   activeHighlights: ReadonlySet<string>;
   selectedVerses: readonly number[];
-  highlightedVerses: Readonly<Record<number, string>>;
+  highlightedVerses: Readonly<HighlightedVerses>;
 };
 
 /**
@@ -63,7 +68,7 @@ export function buildVerseActionSwatches({
 
   const activePalette = HIGHLIGHT_COLORS.filter((color) => normalizedActive.has(color));
   const activeNonPalette = [...normalizedActive]
-    .filter((color) => !(HIGHLIGHT_COLORS as readonly string[]).includes(color))
+    .filter((color) => !HIGHLIGHT_COLOR_SET.has(color))
     // Deterministic tray order across renders; palette colors stay in canonical order above.
     .sort();
 

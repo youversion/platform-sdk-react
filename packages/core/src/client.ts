@@ -1,10 +1,34 @@
+import { z } from 'zod';
 import type { ApiConfig } from './types';
 import { SDK_VERSION_HEADER_NAME, buildSdkVersionHeaderValue } from './version';
 
 type PrimitiveQueryParam = string | number | boolean;
-type QueryParams = Record<string, PrimitiveQueryParam | PrimitiveQueryParam[]>;
-type RequestData = Record<string, string | number | boolean | object>;
+type QueryParamValue = PrimitiveQueryParam | PrimitiveQueryParam[];
+type QueryParams = Record<string, QueryParamValue>;
+type JsonPrimitive = string | number | boolean;
+type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
+type RequestData = Record<string, JsonValue>;
 type RequestHeaders = Record<string, string>;
+
+const HttpStatusCarrierSchema = z.object({
+  status: z.number(),
+});
+
+const ErrorBodySchema = z.object({
+  message: z.string().optional(),
+  error: z.string().optional(),
+});
+
+export type HttpStatusSource =
+  | Error
+  | { status?: number | string }
+  | string
+  | number
+  | boolean
+  | bigint
+  | symbol
+  | null
+  | undefined;
 
 /**
  * Returns the HTTP status code attached to an error thrown by an API client,
@@ -12,16 +36,9 @@ type RequestHeaders = Record<string, string>;
  * failure, timeout, validation error). This is the supported way to branch on
  * status codes; the error's internal shape is not part of the public API.
  */
-export function getHttpStatus(error: unknown): number | undefined {
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'status' in error &&
-    typeof (error as { status: unknown }).status === 'number'
-  ) {
-    return (error as { status: number }).status;
-  }
-  return undefined;
+export function getHttpStatus(cause: unknown): number | undefined {
+  const parsed = HttpStatusCarrierSchema.safeParse(cause);
+  return parsed.success ? parsed.data.status : undefined;
 }
 
 /**
@@ -104,8 +121,10 @@ export class ApiClient {
           const errorBody = await response.text();
           if (errorBody) {
             try {
-              const errorJson = JSON.parse(errorBody) as { message?: string; error?: string };
-              const detailedMessage = errorJson.message || errorJson.error || errorBody;
+              const errorJson = ErrorBodySchema.safeParse(JSON.parse(errorBody));
+              const detailedMessage = errorJson.success
+                ? errorJson.data.message || errorJson.data.error || errorBody
+                : errorBody;
               if (isDevelopment) {
                 errorMessage = detailedMessage;
               } else {
@@ -138,10 +157,19 @@ export class ApiClient {
         // successful write as a failure (e.g. deleteHighlight rejecting on a
         // real delete). Read as text first and treat an empty body as "no data".
         const text = await response.text();
-        return text ? (JSON.parse(text) as T) : (undefined as T);
+        if (!text) {
+          // SAFETY: empty 2xx JSON bodies (DELETE 200 with no payload) are
+          // treated as undefined for the caller-owned generic T.
+          return undefined as T;
+        }
+        // SAFETY: this client only decodes JSON text. Callers own T and parse
+        // untrusted payloads with Zod at their boundary.
+        return JSON.parse(text) as T;
       } else {
         const text = await response.text();
-        return text as unknown as T;
+        // SAFETY: non-JSON 2xx bodies are returned as raw text. Callers that
+        // asked for T=string receive it; other T values are caller-owned.
+        return text as T;
       }
     } catch (error) {
       clearTimeout(timeoutId);

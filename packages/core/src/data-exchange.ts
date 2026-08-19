@@ -138,8 +138,9 @@ export function parseDataExchangeCallback(search: string): DataExchangeCallbackR
  * grant is inherently bound to the correct user.
  */
 export function handleDataExchangeCallback(): DataExchangeCallbackResult | null {
-  if (typeof window === 'undefined') return null;
-  const parsed = parseDataExchangeCallback(window.location.search);
+  const browserWindow = globalThis.window;
+  if (!browserWindow) return null;
+  const parsed = parseDataExchangeCallback(browserWindow.location.search);
   if (!parsed) return null;
 
   // Read and clear the initiator up front so a stale value can never authorize a
@@ -159,11 +160,11 @@ export function handleDataExchangeCallback(): DataExchangeCallbackResult | null 
     }
   }
 
-  const cleanUrl = new URL(window.location.href);
+  const cleanUrl = new URL(browserWindow.location.href);
   for (const param of DATA_EXCHANGE_CALLBACK_PARAMS) {
     cleanUrl.searchParams.delete(param);
   }
-  window.history.replaceState({}, '', cleanUrl.toString());
+  browserWindow.history.replaceState({}, '', cleanUrl.toString());
 
   return result;
 }

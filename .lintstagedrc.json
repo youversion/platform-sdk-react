@@ -1,15 +1,15 @@
 {
   "*.{js,jsx,ts,tsx}": ["prettier --write"],
   "packages/hooks/src/**/*.{ts,tsx}": [
-    "pnpm exec eslint --fix --no-warn-ignored --max-warnings=0",
+    "eslint --fix --no-warn-ignored --max-warnings=0",
     "prettier --write"
   ],
   "packages/core/src/**/*.{ts,tsx}": [
-    "pnpm exec eslint --fix --no-warn-ignored --max-warnings=0",
+    "eslint --fix --no-warn-ignored --max-warnings=0",
     "prettier --write"
   ],
   "packages/ui/src/**/*.{ts,tsx}": [
-    "pnpm exec eslint --fix --no-warn-ignored --max-warnings=0",
+    "eslint --fix --no-warn-ignored --max-warnings=0",
     "prettier --write"
   ],
   "*.{json,md}": ["prettier --write"]

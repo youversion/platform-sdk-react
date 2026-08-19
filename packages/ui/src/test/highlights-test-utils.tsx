@@ -1,4 +1,4 @@
-import type { Collection, Highlight, YouVersionUserInfo } from '@youversion/platform-core';
+import { YouVersionUserInfo, type Collection, type Highlight } from '@youversion/platform-core';
 import { YouVersionAuthContext, YouVersionContext } from '@youversion/platform-react-hooks';
 import type { ReactElement, ReactNode } from 'react';
 import { vi } from 'vitest';
@@ -9,10 +9,15 @@ export function collection(data: Highlight[]): Collection<Highlight> {
 }
 
 /** Minimal signed-in user the auth context needs; only `id`/`name` are read. */
-export const mockUserInfo = { id: 'user-1', name: 'Test User' } as unknown as YouVersionUserInfo;
+export const mockUserInfo = new YouVersionUserInfo({ id: 'user-1', name: 'Test User' });
+
+export type Deferred<T> = {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+};
 
 /** A promise whose resolution the test controls, so async timing is deterministic. */
-export function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+export function deferred<T>(): Deferred<T> {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((r) => {
     resolve = r;

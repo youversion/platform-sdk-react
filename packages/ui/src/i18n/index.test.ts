@@ -162,7 +162,8 @@ describe('i18n instance', () => {
     vi.resetModules();
 
     const i18n = await loadI18n();
-    const localeStrings = resources[lng as keyof typeof resources].translation;
+    const localeStrings = Object.entries(resources).find(([key]) => key === lng)?.[1]?.translation;
+    if (!localeStrings) throw new Error(`missing locale ${lng}`);
     expect(i18n.language).toBe(lng);
     expect(i18n.t('verseOfTheDay')).toBe(localeStrings.verseOfTheDay);
   });

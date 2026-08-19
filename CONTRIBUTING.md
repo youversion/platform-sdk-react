@@ -100,8 +100,11 @@ pnpm typecheck
 ### Linting and Formatting
 
 ```bash
-# Run ESLint
+# ESLint then oxlint anti-slop (CI)
 pnpm lint
+
+# Oxlint only
+pnpm lint:oxlint
 
 # Format code with Prettier
 pnpm format

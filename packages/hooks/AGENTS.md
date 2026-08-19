@@ -65,3 +65,4 @@ Follow `docs/testing.md`. This package’s flavors:
 - Framework: Vitest (jsdom) + React Testing Library
 - Mock object factories live in `__tests__/mocks`. This package does **not** use MSW — core owns request mocking
 - Wrap hooks in the real provider so they see the same context as in the app; build ready-to-run wrappers via factories, not `beforeEach`
+- UI tests that need stub hook results set `YouVersionContext.hookOverrides`. That seam is all-or-nothing for a mount: do not add or remove an override between renders of the same instance. This package’s own tests still stub core clients, not hook results.

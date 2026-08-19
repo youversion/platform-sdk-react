@@ -7,4 +7,4 @@ declare const process: { env: { NODE_ENV?: string } };
 
 /** True in production builds. Dev-only warnings gate on `!IS_PRODUCTION`. */
 export const IS_PRODUCTION =
-  typeof process === 'undefined' || process.env.NODE_ENV === 'production';
+  !('process' in globalThis) || process.env.NODE_ENV === 'production';

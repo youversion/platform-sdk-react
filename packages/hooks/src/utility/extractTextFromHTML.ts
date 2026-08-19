@@ -5,7 +5,7 @@
  * @param html - The HTML content to extract text from
  * @returns Plain text with normalized whitespace
  */
-export function extractTextFromHtml(html: string): string {
+export function extractTextFromHtml(html: string | null | undefined): string {
   if (!html) return '';
 
   const container = document.createElement('div');

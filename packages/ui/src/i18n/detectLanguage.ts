@@ -3,16 +3,16 @@
  * Returns undefined during SSR or other non-browser contexts.
  */
 export function getBrowserLanguages(): readonly string[] | undefined {
-  if (typeof navigator === 'undefined') {
+  if (!globalThis.window) {
     return undefined;
   }
 
-  if (navigator.languages && navigator.languages.length > 0) {
-    return navigator.languages;
+  if (globalThis.navigator.languages && globalThis.navigator.languages.length > 0) {
+    return globalThis.navigator.languages;
   }
 
-  if (navigator.language) {
-    return [navigator.language];
+  if (globalThis.navigator.language) {
+    return [globalThis.navigator.language];
   }
 
   return undefined;

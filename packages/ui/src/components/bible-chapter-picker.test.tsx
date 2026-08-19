@@ -5,25 +5,22 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
 
 // ResizeObserver is used by @floating-ui/dom (Radix Popover)
-class ResizeObserverMock {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
+import { installResizeObserverStub } from '@/test/dom-stubs';
+
+installResizeObserverStub();
 
 import { BibleChapterPicker } from './bible-chapter-picker';
 import type {
   BibleChapterPickerRootProps,
   BibleChapterPickerSelectData,
 } from './bible-chapter-picker';
-import { useBooks, useTheme } from '@youversion/platform-react-hooks';
+import type { HookOverrides } from '@youversion/platform-react-hooks';
 import type { BibleBook } from '@youversion/platform-core';
-
-vi.mock('@youversion/platform-react-hooks');
+import { HookOverrideProvider } from '@/test/hook-overrides';
 
 const mockBooks: BibleBook[] = [
   {
@@ -51,14 +48,19 @@ const mockBooks: BibleBook[] = [
   },
 ];
 
-function setupDefaultMocks() {
-  vi.mocked(useTheme).mockReturnValue('light');
-  vi.mocked(useBooks).mockReturnValue({
-    books: { data: [...mockBooks], next_page_token: null },
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-  });
+function defaultOverrides(): HookOverrides {
+  return {
+    useBooks: () => ({
+      books: { data: [...mockBooks], next_page_token: null },
+      loading: false,
+      error: null,
+      refetch: () => undefined,
+    }),
+  };
+}
+
+function renderWithOverrides(ui: ReactElement) {
+  return render(<HookOverrideProvider overrides={defaultOverrides()}>{ui}</HookOverrideProvider>);
 }
 
 function findAccordionTrigger(name: RegExp): HTMLElement | undefined {
@@ -69,7 +71,7 @@ function findAccordionTrigger(name: RegExp): HTMLElement | undefined {
 
 // Render Content inline (onChapterPickerPress path renders children without the popover portal).
 function renderContent(props: Partial<BibleChapterPickerRootProps> = {}) {
-  render(
+  renderWithOverrides(
     <BibleChapterPicker.Root
       versionId={3034}
       book="GEN"
@@ -86,14 +88,13 @@ function renderContent(props: Partial<BibleChapterPickerRootProps> = {}) {
 describe('BibleChapterPicker - onChapterPickerPress override', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    setupDefaultMocks();
   });
 
   it('calls onChapterPickerPress with { book, chapter, versionId } when Trigger is clicked', async () => {
     const user = userEvent.setup();
     const onChapterPickerPress = vi.fn();
 
-    render(
+    renderWithOverrides(
       <BibleChapterPicker.Root
         versionId={3034}
         book="GEN"
@@ -115,7 +116,7 @@ describe('BibleChapterPicker - onChapterPickerPress override', () => {
   });
 
   it('does NOT render popover content when onChapterPickerPress is provided', () => {
-    render(
+    renderWithOverrides(
       <BibleChapterPicker.Root
         versionId={3034}
         book="GEN"
@@ -134,13 +135,12 @@ describe('BibleChapterPicker - onChapterPickerPress override', () => {
 describe('BibleChapterPicker - default popover mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    setupDefaultMocks();
   });
 
   it('renders popover content when Trigger is clicked and no override is provided', async () => {
     const user = userEvent.setup();
 
-    render(
+    renderWithOverrides(
       <BibleChapterPicker.Root versionId={3034} book="GEN" chapter="1">
         <BibleChapterPicker.Trigger />
       </BibleChapterPicker.Root>,
@@ -156,14 +156,13 @@ describe('BibleChapterPicker - default popover mode', () => {
 describe('BibleChapterPicker.Content onSelect', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    setupDefaultMocks();
   });
 
   it('calls onSelect with { book, chapter, versionId } when a normal chapter is clicked (with onChapterPickerPress)', async () => {
     const user = userEvent.setup();
-    const onSelect = vi.fn();
+    const onSelect = vi.fn<(data: BibleChapterPickerSelectData) => void>();
 
-    render(
+    renderWithOverrides(
       <BibleChapterPicker.Root
         versionId={3034}
         book="GEN"
@@ -178,7 +177,7 @@ describe('BibleChapterPicker.Content onSelect', () => {
     await user.click(screen.getByText('2'));
 
     expect(onSelect).toHaveBeenCalledTimes(1);
-    const payload = onSelect.mock.calls[0]![0] as BibleChapterPickerSelectData;
+    const payload = onSelect.mock.calls[0]![0];
     expect(payload).toEqual({
       book: 'GEN',
       chapter: '2',
@@ -188,9 +187,9 @@ describe('BibleChapterPicker.Content onSelect', () => {
 
   it('calls onSelect when intro chapter is clicked (with onChapterPickerPress)', async () => {
     const user = userEvent.setup();
-    const onSelect = vi.fn();
+    const onSelect = vi.fn<(data: BibleChapterPickerSelectData) => void>();
 
-    render(
+    renderWithOverrides(
       <BibleChapterPicker.Root
         versionId={3034}
         book="GEN"
@@ -216,7 +215,7 @@ describe('BibleChapterPicker.Content onSelect', () => {
   it('preserves default popover behavior when onSelect is not provided', async () => {
     const user = userEvent.setup();
 
-    render(
+    renderWithOverrides(
       <BibleChapterPicker.Root versionId={3034} book="GEN" chapter="1">
         <BibleChapterPicker.Trigger />
       </BibleChapterPicker.Root>,
@@ -236,7 +235,6 @@ describe('BibleChapterPicker.Content onSelect', () => {
 describe('BibleChapterPicker - typography (matches Figma sizing; sans inherited)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    setupDefaultMocks();
   });
 
   it('book row uses 16px, regular collapsed and bold when expanded', () => {
@@ -268,7 +266,6 @@ describe('BibleChapterPicker - typography (matches Figma sizing; sans inherited)
 describe('BibleChapterPicker - accordion expand/collapse', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    setupDefaultMocks();
   });
 
   // Scenario A: the selected book is expanded on mount; one click must close it.

@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import type { Preview, ReactRenderer } from '@storybook/react-vite';
 import type { PartialStoryFn, StoryContext } from 'storybook/internal/csf';
 
-function getTheme(value: unknown): 'light' | 'dark' | 'system' {
+function getTheme(value: string | undefined): 'light' | 'dark' | 'system' {
   if (value === 'dark') return 'dark';
   if (value === 'system') return 'system';
   return 'light';
@@ -13,11 +13,11 @@ import { StorybookEnvCheck } from '../src/test/StorybookEnvCheck';
 import { YouVersionProvider } from '../src/components/YouVersionProvider';
 import { globalHandlers } from '../src/test/mocks/handlers';
 
-const THEME_BACKGROUNDS: Record<string, string> = {
+const THEME_BACKGROUNDS = {
   light: '#ffffff',
   dark: 'oklch(0.138 0.001 17.2)',
   system: '',
-};
+} as const;
 
 /*
  * Initializes MSW with global handlers

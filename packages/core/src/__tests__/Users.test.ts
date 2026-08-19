@@ -6,9 +6,10 @@ import {
 } from '../Users';
 import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfiguration';
 import { YouVersionUserInfo } from '../YouVersionUserInfo';
+import { StatePermissionsStashSchema, type IdTokenClaims } from '../schemas/auth';
 import { setupBrowserMocks, cleanupBrowserMocks } from './mocks/browser';
 
-const mockFetch = vi.fn();
+const mockFetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
 
 // Shared JWT fixture (HS256 header + `{sub,name,iat,email,profile_picture}`
 // payload + invalid signature) reused across the token-exchange tests.
@@ -74,7 +75,7 @@ describe('YouVersionAPIUsers', () => {
     requestedGrant?: string;
     search?: string;
     href?: string;
-    profile?: Record<string, unknown>;
+    profile?: IdTokenClaims;
   }) {
     mocks.window.location.search = search;
     mocks.window.location.href = href;
@@ -240,12 +241,12 @@ describe('YouVersionAPIUsers', () => {
       // The stash is keyed by the generated state; assert the payload shape and
       // that the requested permissions (not the OIDC scopes) are what's stored.
       const requestedCall = mocks.localStorage.setItem.mock.calls.find(
-        (args: unknown[]) => args[0] === 'youversion-auth-requested-permissions',
-      ) as [string, string] | undefined;
-      expect(requestedCall).toBeTruthy();
-      const stored = JSON.parse(requestedCall![1]) as { state: string; permissions: string[] };
+        (args) => args[0] === 'youversion-auth-requested-permissions',
+      );
+      expect(requestedCall).toBeDefined();
+      const stored = StatePermissionsStashSchema.parse(JSON.parse(String(requestedCall?.[1])));
       expect(stored.permissions).toEqual(['highlights']);
-      expect(typeof stored.state).toBe('string');
+      expect(stored.state.length).toBeGreaterThan(0);
     });
 
     it('fails before redirecting when the requested-permissions stash cannot be written', async () => {
@@ -1009,8 +1010,11 @@ describe('YouVersionAPIUsers', () => {
         }),
       );
 
-      const [calledRequest] = mockFetch.mock.calls[0] as [Request];
+      const calledRequest = mockFetch.mock.calls[0]?.[0];
       expect(calledRequest).toBeInstanceOf(Request);
+      if (!(calledRequest instanceof Request)) {
+        throw new Error('expected fetch to be called with a Request');
+      }
       expect(calledRequest.method).toBe('POST');
       expect(calledRequest.url).toBe('https://api.youversion.com/auth/token');
       expect(calledRequest.headers.get('content-type')).toBe('application/x-www-form-urlencoded');

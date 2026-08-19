@@ -117,7 +117,7 @@ describe('transformBibleHtml', () => {
 
     expect(result).toHaveProperty('html');
     expect(result).not.toHaveProperty('notes');
-    expect(typeof result.html).toBe('string');
+    expect(result.html).toEqual(expect.any(String));
   });
 
   it('should remove script tags entirely', () => {

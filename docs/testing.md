@@ -29,7 +29,7 @@ Do not use "integration" as a style term — choose by capability:
 
 ## Package ownership
 
-core owns HTTP+Zod+MSW; hooks own React state against stubbed clients; UI owns user-visible behavior against stubbed hooks/providers. Do not re-test a lower package's contract unless the bug is at the boundary. Rare vertical smokes (e.g. highlight auth) may climb one rung for critical journeys.
+core owns HTTP+Zod+MSW; hooks own React state against stubbed clients; UI owns user-visible behavior against stubbed hooks/providers. Stub UI hook results with `YouVersionContext.hookOverrides` (see `packages/ui/src/test/hook-overrides.tsx`), not `vi.mock`. Do not re-test a lower package's contract unless the bug is at the boundary. Rare vertical smokes (e.g. highlight auth) may climb one rung for critical journeys.
 
 ## Scope
 

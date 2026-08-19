@@ -473,7 +473,7 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
 
   const handleShare = () => {
     const text = buildText();
-    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+    if (globalThis.navigator?.share instanceof Function) {
       navigator
         .share({ text })
         .then(() => closeAndClear())

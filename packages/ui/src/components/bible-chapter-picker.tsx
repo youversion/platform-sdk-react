@@ -54,6 +54,11 @@ type BibleChapterPickerContextType = {
   onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
 };
 
+type TriggerElementProps = React.HTMLAttributes<HTMLButtonElement> & {
+  'data-yv-sdk'?: boolean;
+  'data-yv-theme'?: string;
+};
+
 const BibleChapterPickerContext = createContext<BibleChapterPickerContextType | null>(null);
 
 function useBibleChapterPickerContext() {
@@ -139,12 +144,10 @@ function Root({
       setExpandedBook(book);
       setTimeout(() => {
         const element = bookElementsRef.current[book];
-        if (element && typeof element.scrollIntoView === 'function') {
-          element.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start',
-          });
-        }
+        element?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
       }, 200);
     }
   };
@@ -157,12 +160,10 @@ function Root({
     const timeoutId = setTimeout(() => {
       if (!controller.signal.aborted) {
         const element = bookElementsRef.current[expandedBook];
-        if (element && typeof element.scrollIntoView === 'function') {
-          element.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start',
-          });
-        }
+        element?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
       }
     }, 200);
 
@@ -248,7 +249,7 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
     : `${currentBook?.title || t('selectChapter')}${chapterLabel ? ` ${chapterLabel}` : ''}`;
 
   const content =
-    typeof children === 'function'
+    children instanceof Function
       ? children({ book, chapter, chapterLabel, currentBook, loading })
       : children || <Button variant="secondary">{buttonText}</Button>;
 
@@ -261,7 +262,7 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
   };
 
   if (onChapterPickerPress) {
-    if (asChild && isValidElement<Record<string, unknown>>(content)) {
+    if (asChild && isValidElement<TriggerElementProps>(content)) {
       return cloneElement(content, {
         'data-yv-sdk': true,
         'data-yv-theme': theme,

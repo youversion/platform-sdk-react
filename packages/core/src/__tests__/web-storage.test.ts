@@ -9,39 +9,72 @@ import {
 
 type StorageName = 'localStorage' | 'sessionStorage';
 
+type WindowWithStorage = {
+  localStorage?: Storage | null;
+  sessionStorage?: Storage | null;
+};
+
 const restorers: (() => void)[] = [];
 
+class MemoryWebStorage implements Storage {
+  #entries = new Map<string, string>();
+
+  getItem(key: string): string | null {
+    return this.#entries.get(key) ?? null;
+  }
+
+  setItem(key: string, value: string): void {
+    this.#entries.set(key, value);
+  }
+
+  removeItem(key: string): void {
+    this.#entries.delete(key);
+  }
+
+  clear(): void {
+    this.#entries.clear();
+  }
+
+  key(index: number): string | null {
+    return [...this.#entries.keys()][index] ?? null;
+  }
+
+  get length(): number {
+    return this.#entries.size;
+  }
+}
+
 /**
- * Replaces `target[name]` with `read` (a getter, so the test can simulate a
- * property access that itself throws) and registers the undo.
+ * Replaces a global storage area with `read` (a getter, so the test can
+ * simulate a property access that itself throws) and registers the undo.
  */
-function stubStorage(target: object, name: StorageName, read: () => unknown): void {
-  const descriptor = Object.getOwnPropertyDescriptor(target, name);
+type MissingGetItem = {
+  getItem?: undefined;
+};
+
+function stubStorageArea(
+  name: StorageName,
+  read: () => Storage | MissingGetItem | null | undefined,
+): void {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, name);
   restorers.push(() => {
-    if (descriptor) Object.defineProperty(target, name, descriptor);
-    else delete (target as Record<string, unknown>)[name];
+    if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+    else Reflect.deleteProperty(globalThis, name);
   });
-  Object.defineProperty(target, name, { configurable: true, get: read });
+  Object.defineProperty(globalThis, name, { configurable: true, get: read });
+}
+
+function stubWindow(read: () => WindowWithStorage | typeof globalThis): void {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  restorers.push(() => {
+    if (descriptor) Object.defineProperty(globalThis, 'window', descriptor);
+    else Reflect.deleteProperty(globalThis, 'window');
+  });
+  Object.defineProperty(globalThis, 'window', { configurable: true, get: read });
 }
 
 function fakeStore(): Storage {
-  const store: Record<string, string> = {};
-  return {
-    getItem: (key: string) => store[key] ?? null,
-    setItem: (key: string, value: string) => {
-      store[key] = value;
-    },
-    removeItem: (key: string) => {
-      delete store[key];
-    },
-    clear: () => {
-      for (const key of Object.keys(store)) delete store[key];
-    },
-    key: (index: number) => Object.keys(store)[index] ?? null,
-    get length() {
-      return Object.keys(store).length;
-    },
-  } as Storage;
+  return new MemoryWebStorage();
 }
 
 afterEach(() => {
@@ -54,25 +87,25 @@ describe.each([
 ])('$name', ({ name, get }) => {
   it('returns the store when the global is usable', () => {
     const store = fakeStore();
-    stubStorage(globalThis, name, () => store);
+    stubStorageArea(name, () => store);
 
     expect(get()).toBe(store);
   });
 
   it('returns null when the global is undefined (Node without --localstorage-file)', () => {
-    stubStorage(globalThis, name, () => undefined);
+    stubStorageArea(name, () => undefined);
 
     expect(get()).toBeNull();
   });
 
   it('returns null when the global is null (Android DOM WebView)', () => {
-    stubStorage(globalThis, name, () => null);
+    stubStorageArea(name, () => null);
 
     expect(get()).toBeNull();
   });
 
   it('returns null when reading the property throws (SecurityError)', () => {
-    stubStorage(globalThis, name, () => {
+    stubStorageArea(name, () => {
       throw new Error('SecurityError: storage is disabled');
     });
 
@@ -80,7 +113,7 @@ describe.each([
   });
 
   it('returns null when the value is not a Storage (no getItem)', () => {
-    stubStorage(globalThis, name, () => ({}));
+    stubStorageArea(name, () => ({}));
 
     expect(get()).toBeNull();
   });
@@ -88,24 +121,24 @@ describe.each([
   it('returns null when `window` exists without storage (React Native)', () => {
     // In React Native `global.window === global`, so `typeof window` passes
     // while no storage exists on it.
-    stubStorage(globalThis, name, () => undefined);
-    stubStorage(globalThis, 'window' as StorageName, () => globalThis);
+    stubStorageArea(name, () => undefined);
+    stubWindow(() => globalThis);
 
     expect(get()).toBeNull();
   });
 
   it('prefers the window store when it disagrees with the global accessor', () => {
     const windowStore = fakeStore();
-    stubStorage(globalThis, name, () => undefined);
-    stubStorage(globalThis, 'window' as StorageName, () => ({ [name]: windowStore }));
+    stubStorageArea(name, () => undefined);
+    stubWindow(() => ({ [name]: windowStore }));
 
     expect(get()).toBe(windowStore);
   });
 
   it('falls back to the global accessor when window has no usable store', () => {
     const globalStore = fakeStore();
-    stubStorage(globalThis, name, () => globalStore);
-    stubStorage(globalThis, 'window' as StorageName, () => ({ [name]: undefined }));
+    stubStorageArea(name, () => globalStore);
+    stubWindow(() => ({ [name]: undefined }));
 
     expect(get()).toBe(globalStore);
   });
@@ -116,11 +149,14 @@ describe.each([
  * store can pass the `getItem` capability check and still throw on every write.
  */
 function writeThrowingStore(): Storage {
-  const store = fakeStore();
-  const reject = () => {
+  const store = new MemoryWebStorage();
+  const reject = (): never => {
     throw new Error('QuotaExceededError');
   };
-  return { ...store, setItem: reject, removeItem: reject, clear: reject } as Storage;
+  store.setItem = reject;
+  store.removeItem = reject;
+  store.clear = reject;
+  return store;
 }
 
 describe('mutation helpers', () => {

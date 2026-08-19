@@ -15,10 +15,8 @@ const BibleBookIntroSchema = z.object({
 export type BibleBookIntro = Readonly<z.infer<typeof BibleBookIntroSchema>>;
 
 // https://github.com/colinhacks/zod/discussions/4934#discussioncomment-13858053
-export const BookUsfmSchema = z.union([
-  ...BOOK_IDS.map((id) => z.literal(id)),
-  z.string().length(3) as z.ZodType<string & {}>,
-]);
+const OpenBookUsfmSchema: z.ZodType<string & {}> = z.string().length(3);
+export const BookUsfmSchema = z.union([...BOOK_IDS.map((id) => z.literal(id)), OpenBookUsfmSchema]);
 
 export const BibleBookSchema = z.object({
   /** Book identifier (e.g., "MAT") */

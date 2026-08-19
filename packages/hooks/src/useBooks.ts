@@ -1,17 +1,16 @@
 'use client';
 import { useBibleClient } from './useBibleClient';
 import { useApiData, type UseApiDataOptions } from './useApiData';
+import type { UseNamedQueryResult } from './useQueryResult';
 import type { BibleBook, Collection } from '@youversion/platform-core';
+import { useHookOverride } from './useHookOverride';
 
-export function useBooks(
-  versionId: number,
-  options?: UseApiDataOptions,
-): {
-  books: Collection<BibleBook> | null;
-  loading: boolean;
-  error: Error | null;
-  refetch: () => void;
-} {
+export type UseBooksResult = UseNamedQueryResult<'books', Collection<BibleBook>>;
+
+export function useBooks(versionId: number, options?: UseApiDataOptions): UseBooksResult {
+  const override = useHookOverride('useBooks');
+  if (override) return override(versionId, options);
+
   const bibleClient = useBibleClient();
 
   const {

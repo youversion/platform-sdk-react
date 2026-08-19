@@ -3,11 +3,11 @@ import { getAdjacentChapter } from './getAdjacentChapter';
 import type { BibleBook } from './schemas/book';
 
 function makeBook(
-  id: string,
+  id: BibleBook['id'],
   chapterCount: number,
   opts?: { hasIntro?: boolean; introInChapters?: boolean },
 ): BibleBook {
-  const chapters = [];
+  const chapters: NonNullable<BibleBook['chapters']> = [];
 
   if (opts?.introInChapters) {
     chapters.push({ id: 'INTRO', passage_id: `${id}.INTRO`, title: 'Intro' });
@@ -17,16 +17,22 @@ function makeBook(
     chapters.push({ id: i.toString(), passage_id: `${id}.${i}`, title: i.toString() });
   }
 
-  return {
+  const book: BibleBook = {
     id,
     title: id,
     full_title: id,
     canon: 'old_testament',
     chapters,
-    ...(opts?.hasIntro
-      ? { intro: { id: 'INTRO', passage_id: `${id}.INTRO`, title: 'Intro' } }
-      : {}),
-  } as BibleBook;
+  };
+
+  if (opts?.hasIntro) {
+    return {
+      ...book,
+      intro: { id: 'INTRO', passage_id: `${id}.INTRO`, title: 'Intro' },
+    };
+  }
+
+  return book;
 }
 
 const GEN = makeBook('GEN', 50, { hasIntro: true });

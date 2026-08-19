@@ -2,7 +2,9 @@
 
 import { useBibleClient } from './useBibleClient';
 import { useApiData, type UseApiDataOptions } from './useApiData';
+import type { UseNamedQueryResult } from './useQueryResult';
 import type { Collection, BibleVersion } from '@youversion/platform-core';
+import { useHookOverride } from './useHookOverride';
 
 export interface UseVersionsOptions extends UseApiDataOptions {
   /** Maximum number of results per page, or '*' for all (requires 1-3 fields) */
@@ -15,16 +17,16 @@ export interface UseVersionsOptions extends UseApiDataOptions {
   all_available?: boolean;
 }
 
+export type UseVersionsResult = UseNamedQueryResult<'versions', Collection<BibleVersion>>;
+
 export function useVersions(
   languageRanges: string | string[] = 'en',
   licenseId?: string | number,
   options?: UseVersionsOptions,
-): {
-  versions: Collection<BibleVersion> | null;
-  loading: boolean;
-  error: Error | null;
-  refetch: () => void;
-} {
+): UseVersionsResult {
+  const override = useHookOverride('useVersions');
+  if (override) return override(languageRanges, licenseId, options);
+
   const bibleClient = useBibleClient();
 
   const getVersionsOptions =

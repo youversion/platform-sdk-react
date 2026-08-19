@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { type Organization, type OrganizationsClient } from '@youversion/platform-core';
 import { useOrganizationsClient } from './useOrganizationsClient';
+import { useHookOverride } from './useHookOverride';
 
 /** Normalizes a raw id list into a unique set of non-empty, trimmed ids. */
 function toUniqueIds(ids: (string | null | undefined)[]): string[] {
@@ -32,9 +33,16 @@ async function fetchOrganizations(
  * versions that share publishers only triggers one request per unique
  * organization. Returns a Map keyed by organization id.
  */
-export function useOrganizations(organizationIds: (string | null | undefined)[]): {
+export type UseOrganizationsResult = {
   organizations: Map<string, Organization>;
-} {
+};
+
+export function useOrganizations(
+  organizationIds: (string | null | undefined)[],
+): UseOrganizationsResult {
+  const override = useHookOverride('useOrganizations');
+  if (override) return override(organizationIds);
+
   const client = useOrganizationsClient();
   const [organizations, setOrganizations] = useState<Map<string, Organization>>(new Map());
   const cacheRef = useRef<Map<string, Organization>>(new Map());

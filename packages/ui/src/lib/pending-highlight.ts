@@ -37,22 +37,50 @@ const STORAGE_KEY = 'youversion-platform:pending-highlight';
 /** Pending entries older than this on read are treated as expired. */
 export const PENDING_HIGHLIGHT_TTL_MS = 10 * 60 * 1000;
 
-function isPendingHighlight(value: unknown): value is PendingHighlight {
-  if (typeof value !== 'object' || value === null) return false;
-  const candidate = value as Record<string, unknown>;
-  return (
-    Array.isArray(candidate.verses) &&
-    candidate.verses.every((v) => typeof v === 'number') &&
-    typeof candidate.color === 'string' &&
-    typeof candidate.versionId === 'number' &&
-    typeof candidate.book === 'string' &&
-    typeof candidate.chapter === 'string' &&
-    typeof candidate.timestamp === 'number'
-  );
+type StoredPendingRead = {
+  entries: PendingHighlight[];
+  stale: boolean;
+};
+
+function isText(value: string | number | boolean | null | undefined): value is string {
+  return Object.prototype.toString.call(value) === '[object String]';
 }
 
-function isPendingHighlightArray(value: unknown): value is PendingHighlight[] {
-  return Array.isArray(value) && value.every(isPendingHighlight);
+function isFiniteNumber(value: string | number | boolean | null | undefined): value is number {
+  return Number.isFinite(value);
+}
+
+function parsePendingHighlight(item: PendingHighlight): PendingHighlight | undefined {
+  if (!Array.isArray(item.verses) || !item.verses.every(isFiniteNumber)) return undefined;
+  if (!isText(item.color) || !isText(item.book) || !isText(item.chapter)) return undefined;
+  if (!isFiniteNumber(item.versionId) || !isFiniteNumber(item.timestamp)) return undefined;
+  return {
+    verses: item.verses,
+    color: item.color,
+    versionId: item.versionId,
+    book: item.book,
+    chapter: item.chapter,
+    timestamp: item.timestamp,
+  };
+}
+
+function parsePendingHighlightList(raw: string): PendingHighlight[] | undefined {
+  let parsed: PendingHighlight[];
+  try {
+    // SAFETY: JSON.parse returns any. parsePendingHighlight checks each field
+    // before the list is used.
+    parsed = JSON.parse(raw) as PendingHighlight[];
+  } catch {
+    return undefined;
+  }
+  if (!Array.isArray(parsed)) return undefined;
+  const entries: PendingHighlight[] = [];
+  for (const item of parsed) {
+    const entry = parsePendingHighlight(item);
+    if (entry === undefined) return undefined;
+    entries.push(entry);
+  }
+  return entries;
 }
 
 function writeEntries(entries: PendingHighlight[]): void {
@@ -67,20 +95,14 @@ function writeEntries(entries: PendingHighlight[]): void {
  * a caller that mutates storage knows the persisted value needs rewriting or
  * clearing. Never touches storage; callers decide.
  */
-function readStoredPending(now: number): { entries: PendingHighlight[]; stale: boolean } {
+function readStoredPending(now: number): StoredPendingRead {
   const store = getSessionStorage();
   if (!store) return { entries: [], stale: false };
   const raw = store.getItem(STORAGE_KEY);
   if (!raw) return { entries: [], stale: false };
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return { entries: [], stale: true };
-  }
-
-  if (!isPendingHighlightArray(parsed)) return { entries: [], stale: true };
+  const parsed = parsePendingHighlightList(raw);
+  if (parsed === undefined) return { entries: [], stale: true };
 
   const live = parsed.filter((entry) => now - entry.timestamp <= PENDING_HIGHLIGHT_TTL_MS);
   // Stale when some entries expired: the persisted list no longer matches `live`.
