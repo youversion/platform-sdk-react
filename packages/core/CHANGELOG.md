@@ -1,5 +1,7 @@
 # @youversion/platform-core
 
+## 2.7.0
+
 ## 2.6.3
 
 ## 2.6.2

@@ -1,5 +1,11 @@
 # @youversion/platform-react-hooks
 
+## 2.7.0
+
+### Patch Changes
+
+- @youversion/platform-core@2.7.0
+
 ## 2.6.3
 
 ### Patch Changes
