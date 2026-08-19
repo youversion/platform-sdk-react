@@ -39,23 +39,35 @@ the verse action popover. Never persisted; cleared on navigation.
 
 ## Self-contained mode
 
-The `BibleReader` posture (YPE-1034): the reader fetches and writes
-highlights itself through the SDK's own auth session. Highlight behavior is
-gated on the internal `HIGHLIGHTS_LIVE` dark-launch flag and an
+The SDK-owned highlights posture (YPE-1034): the component fetches highlights
+itself through the SDK's own auth session.
+
+On `BibleReader` this also includes writes (color row, auth flow). Highlight
+behavior is gated on the internal `HIGHLIGHTS_LIVE` dark-launch flag and an
 authenticated user — while the flag is off or the user has no session, the
 reader is inert: no fetches, no writes, nothing rendered from the API.
 
+On `BibleTextView`, `BibleCard`, and `VerseOfTheDay` (paint only, no
+create/delete UI) omit the `highlights` prop for the self-contained default:
+when the user is signed in, has granted the **highlights permission**, and
+highlights are live, matching verses are fetched and painted. React Native /
+Expo DOM hosts that keep the token out of the WebView must not omit the prop;
+they pass `[]` or rows so the WebView never fetches.
+
 ## Controlled mode
 
-The alternate `BibleReader` posture (YPE-3705): the host owns highlight
-data, auth, and persistence (e.g. a React Native / Expo DOM host keeping
-the user token out of the WebView). The host passes `highlights:
-Highlight[]` into `BibleReader.Root` and receives highlight intents; the
-reader is a pure projection — no API calls, no local persistence, no
-sign-in surface. Presence of the prop selects the posture (latched at
-first mount). Controlled mode bypasses `HIGHLIGHTS_LIVE`: the color row
-is always interactive so the public prop surface can ship while
-self-contained stays dark.
+The host-owned highlights posture (YPE-3705): the host passes `highlights:
+Highlight[]` and the SDK is a pure projection — no API calls, no local
+persistence. Presence of the prop (including `[]`) selects the posture
+(latched at first mount). Used by `BibleReader.Root`, `BibleTextView`,
+`BibleCard`, and `VerseOfTheDay`. Omitting the prop is self-contained, not
+"never paint".
+
+On `BibleReader.Root` the host also receives highlight intents and
+controlled mode bypasses `HIGHLIGHTS_LIVE`: the color row stays
+interactive so the public prop surface can ship while self-contained
+stays dark. `BibleTextView`, `BibleCard`, and `VerseOfTheDay` paint from
+the prop only in this posture; they have no intent surface.
 
 ## Highlight intent
 

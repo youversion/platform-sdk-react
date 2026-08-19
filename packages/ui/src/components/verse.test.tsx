@@ -10,10 +10,21 @@ import userEvent from '@testing-library/user-event';
 import { requireHtmlButton, requireHtmlElement } from '@/test/dom-stubs';
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import { Verse, BibleTextView, type BibleTextViewPassageState, type FootnoteData } from './verse';
+import type { Highlight } from '@youversion/platform-core';
+import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
+import type { HookOverrides } from '@youversion/platform-react-hooks';
+import {
+  fillFor,
+  getVerseEl,
+  MULTI_VERSE_HTML,
+  collection,
+  Providers,
+  stubUseHighlights,
+} from '@/test/highlights-test-utils';
 
 // BibleTextView always calls usePassage internally (even when passageState is
 // provided). Stub the result so these tests do not need a live BibleClient.
-function render(ui: ReactElement) {
+function render(ui: ReactElement, extraOverrides?: HookOverrides) {
   return rtlRender(ui, {
     wrapper: ({ children }) => (
       <HookOverrideProvider
@@ -24,6 +35,7 @@ function render(ui: ReactElement) {
             error: null,
             refetch: () => undefined,
           }),
+          ...extraOverrides,
         }}
       >
         {children}
@@ -1252,5 +1264,286 @@ describe('BibleTextView - onFootnotePress callback', () => {
     const data = onFootnotePress.mock.calls[0]![0];
     expect(data.verseNum).toBe('5');
     expect(data.reference).toBe('JHN.1');
+  });
+});
+
+describe('BibleTextView - host highlights (controlled mode)', () => {
+  const YELLOW = 'fffe00';
+  const GREEN = '5dff79';
+  const passageState = {
+    passage: { id: 'JHN.1', content: MULTI_VERSE_HTML, reference: 'John 1' },
+    loading: false,
+    error: null,
+  };
+  const highlight = (passage_id: string, color: string, version_id = 111): Highlight => ({
+    version_id,
+    passage_id,
+    color,
+  });
+
+  it('paints from highlights, expands range USFMs, and ignores highlightedVerses', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      const { container } = render(
+        <BibleTextView
+          reference="JHN.1"
+          versionId={111}
+          passageState={passageState}
+          highlights={[highlight('JHN.1.1', YELLOW), highlight('JHN.1.2-3', GREEN)]}
+          highlightedVerses={{ 1: GREEN, 2: YELLOW }}
+        />,
+      );
+
+      expect(getVerseEl(container, 1).style.backgroundColor).toBe(fillFor(YELLOW));
+      expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(GREEN));
+      expect(getVerseEl(container, 3).style.backgroundColor).toBe(fillFor(GREEN));
+      expect(warn).toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('ignores other versions and chapters and drops invalid hex', () => {
+    const { container } = render(
+      <BibleTextView
+        reference="JHN.1"
+        versionId={111}
+        passageState={passageState}
+        highlights={[
+          highlight('JHN.1.1', YELLOW, 222),
+          highlight('JHN.2.2', YELLOW),
+          highlight('GEN.1.3', YELLOW),
+          highlight('JHN.1.2', 'gggggg'),
+          highlight('JHN.1.3', 'abcdef'),
+        ]}
+      />,
+    );
+
+    expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe('');
+    expect(getVerseEl(container, 3).style.backgroundColor).toBe(fillFor('abcdef'));
+  });
+
+  it('paints nothing for a host empty array, and for an omitted prop when not eligible to fetch', () => {
+    const empty = render(
+      <BibleTextView
+        reference="JHN.1"
+        versionId={111}
+        passageState={passageState}
+        highlights={[]}
+      />,
+    );
+    expect(getVerseEl(empty.container, 1).style.backgroundColor).toBe('');
+    empty.unmount();
+
+    const omitted = render(
+      <BibleTextView reference="JHN.1" versionId={111} passageState={passageState} />,
+    );
+    expect(getVerseEl(omitted.container, 1).style.backgroundColor).toBe('');
+  });
+
+  it('paints matching verses from a stubbed fetch when signed in with permission and the prop is omitted', () => {
+    const hasPermission = vi
+      .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
+      .mockReturnValue(true);
+    try {
+      const { container } = render(
+        <Providers
+          hookOverrides={{
+            usePassage: () => ({
+              passage: null,
+              loading: false,
+              error: null,
+              refetch: () => undefined,
+            }),
+            useHighlights: stubUseHighlights({
+              highlights: collection([highlight('JHN.1.1', YELLOW)]),
+            }),
+          }}
+        >
+          <BibleTextView reference="JHN.1" versionId={111} passageState={passageState} />
+        </Providers>,
+      );
+
+      expect(getVerseEl(container, 1).style.backgroundColor).toBe(fillFor(YELLOW));
+      expect(getVerseEl(container, 2).style.backgroundColor).toBe('');
+    } finally {
+      hasPermission.mockRestore();
+    }
+  });
+
+  it('paints highlightedVerses without fetching when the reader seam is passed', () => {
+    const { container } = render(
+      <BibleTextView
+        reference="JHN.1"
+        versionId={111}
+        passageState={passageState}
+        highlightedVerses={{ 2: YELLOW }}
+      />,
+      { useHighlights: stubUseHighlights() },
+    );
+
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
+    expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
+  });
+
+  it('latches paint mode at first mount', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      const controlled = render(
+        <BibleTextView
+          reference="JHN.1"
+          versionId={111}
+          passageState={passageState}
+          highlights={[highlight('JHN.1.1', YELLOW)]}
+        />,
+      );
+      expect(getVerseEl(controlled.container, 1).style.backgroundColor).toBe(fillFor(YELLOW));
+
+      controlled.rerender(
+        <BibleTextView reference="JHN.1" versionId={111} passageState={passageState} />,
+      );
+
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('`highlights` prop switched'));
+      expect(getVerseEl(controlled.container, 1).style.backgroundColor).toBe('');
+      controlled.unmount();
+      warn.mockClear();
+
+      const { container, rerender, unmount } = render(
+        <BibleTextView
+          reference="JHN.1"
+          versionId={111}
+          passageState={passageState}
+          highlightedVerses={{ 1: YELLOW }}
+        />,
+      );
+      expect(getVerseEl(container, 1).style.backgroundColor).toBe(fillFor(YELLOW));
+
+      rerender(
+        <BibleTextView
+          reference="JHN.1"
+          versionId={111}
+          passageState={passageState}
+          highlightedVerses={{ 1: YELLOW }}
+          highlights={[highlight('JHN.1.2', GREEN)]}
+        />,
+      );
+
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('`highlights` prop switched'));
+      expect(getVerseEl(container, 1).style.backgroundColor).toBe(fillFor(YELLOW));
+      expect(getVerseEl(container, 2).style.backgroundColor).toBe('');
+      unmount();
+      warn.mockClear();
+
+      // Omit latches self-contained fetch, so a late host array is ignored.
+      const omittedThenHost = render(
+        <BibleTextView reference="JHN.1" versionId={111} passageState={passageState} />,
+        { useHighlights: stubUseHighlights() },
+      );
+      omittedThenHost.rerender(
+        <BibleTextView
+          reference="JHN.1"
+          versionId={111}
+          passageState={passageState}
+          highlights={[highlight('JHN.1.1', YELLOW)]}
+        />,
+      );
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('`highlights` prop switched'));
+      expect(getVerseEl(omittedThenHost.container, 1).style.backgroundColor).toBe('');
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('paints the retained passage while the next chapter or version is loading, not the destination', () => {
+    const jhn1 = {
+      passage: { id: 'JHN.1', content: MULTI_VERSE_HTML, reference: 'John 1' },
+      loading: false,
+      error: null,
+    };
+    const highlights = [
+      highlight('JHN.1.2', YELLOW),
+      highlight('JHN.2.2', GREEN),
+      highlight('JHN.1.2', GREEN, 222),
+    ];
+    const { container, rerender } = render(
+      <BibleTextView
+        reference="JHN.1"
+        versionId={111}
+        passageState={jhn1}
+        highlights={highlights}
+      />,
+    );
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
+
+    rerender(
+      <BibleTextView
+        reference="JHN.2"
+        versionId={111}
+        passageState={{ ...jhn1, loading: true }}
+        highlights={highlights}
+      />,
+    );
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
+
+    rerender(
+      <BibleTextView
+        reference="JHN.1"
+        versionId={222}
+        passageState={{ ...jhn1, loading: true }}
+        highlights={highlights}
+      />,
+    );
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe('');
+
+    rerender(
+      <BibleTextView
+        reference="JHN.2"
+        versionId={111}
+        passageState={{
+          passage: { id: 'JHN.2', content: MULTI_VERSE_HTML, reference: 'John 2' },
+          loading: false,
+          error: null,
+        }}
+        highlights={highlights}
+      />,
+    );
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(GREEN));
+  });
+
+  it('clips a verse-unit reference so neighbors stay unpainted, including while another chapter loads', () => {
+    const jhn1Verse = {
+      passage: { id: 'JHN.1.2', content: MULTI_VERSE_HTML, reference: 'John 1:2' },
+      loading: false,
+      error: null,
+    };
+    const highlights = [
+      highlight('JHN.1.1-3', YELLOW),
+      highlight('JHN.1.2', GREEN),
+      highlight('JHN.2.2', YELLOW),
+    ];
+    const { container, rerender } = render(
+      <BibleTextView
+        reference="JHN.1.2"
+        versionId={111}
+        passageState={jhn1Verse}
+        highlights={highlights}
+      />,
+    );
+    expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(GREEN));
+    expect(getVerseEl(container, 3).style.backgroundColor).toBe('');
+
+    rerender(
+      <BibleTextView
+        reference="JHN.2.3"
+        versionId={111}
+        passageState={{ ...jhn1Verse, loading: true }}
+        highlights={highlights}
+      />,
+    );
+    expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(GREEN));
+    expect(getVerseEl(container, 3).style.backgroundColor).toBe('');
   });
 });

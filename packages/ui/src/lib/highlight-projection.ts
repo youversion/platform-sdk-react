@@ -1,5 +1,6 @@
 import type { Highlight } from '@youversion/platform-core';
 import { normalizeHighlightHex, type HighlightedVerses } from './highlight-colors';
+import { buildPassageIds } from './usfm-ranges';
 
 /**
  * Defensive cap on how many verses a single range USFM may expand to. The
@@ -42,6 +43,131 @@ export function expandPassageId(passageId: string): ExpandedPassageId | null {
     verses.push(verse);
   }
   return { book, chapter, verses };
+}
+
+/** Book + chapter parsed from a chapter, verse, or verse-range USFM. */
+export type ChapterScope = {
+  book: string;
+  chapter: string;
+};
+
+/**
+ * Parses book + chapter from a display USFM: chapter (`JHN.3`), verse
+ * (`JHN.3.16`), or verse-range (`JHN.3.16-18`). Returns `null` when the string
+ * has no book and chapter segments.
+ *
+ * Unlike {@link expandPassageId}, this does not require a verse unit — cards
+ * and `BibleTextView` accept chapter-scope references.
+ */
+export function parseChapterScopeFromUsfm(usfm: string): ChapterScope | null {
+  const parts = usfm.split('.');
+  if (parts.length < 2) return null;
+  const [book, chapter] = parts;
+  if (!book || !chapter) return null;
+  return { book, chapter };
+}
+
+/**
+ * Chapter scope to project host highlights onto, given the passage actually
+ * on screen vs the USFM the host just requested.
+ *
+ * `useApiData` keeps the previous passage while the next fetch is in flight,
+ * and callers like `BibleCard` keep rendering that retained HTML. Projecting
+ * against the requested USFM in that window paints destination-chapter
+ * highlights onto the old passage's same-numbered verse wrappers.
+ *
+ * When the retained passage is a different chapter, this returns that
+ * chapter so the old HTML keeps its own highlights. When it is the same
+ * chapter but still loading, this returns `null`: the retained HTML may
+ * belong to the previous version, and `BiblePassage` has no version id to
+ * confirm a match.
+ */
+export function chapterScopeForHighlightPaint(options: {
+  renderedPassageId: string | undefined;
+  requestedUsfm: string;
+  loading: boolean;
+}): ChapterScope | null {
+  const renderedScope = options.renderedPassageId
+    ? parseChapterScopeFromUsfm(options.renderedPassageId)
+    : null;
+  const requestedScope = parseChapterScopeFromUsfm(options.requestedUsfm);
+  const paintScope = renderedScope ?? requestedScope;
+  if (!paintScope) return null;
+
+  if (options.loading && renderedScope && requestedScope) {
+    const sameChapter =
+      renderedScope.book === requestedScope.book &&
+      renderedScope.chapter === requestedScope.chapter;
+    if (sameChapter) return null;
+  }
+
+  return paintScope;
+}
+
+function usfmMatchesChapter(usfm: string, chapterScope: ChapterScope): boolean {
+  const scope = parseChapterScopeFromUsfm(usfm);
+  return Boolean(
+    scope && scope.book === chapterScope.book && scope.chapter === chapterScope.chapter,
+  );
+}
+
+/**
+ * USFM to clip host and fetched rows against, given the passage still on
+ * screen vs the reference the host just requested.
+ *
+ * Steady state uses the requested USFM so a verse or range card does not
+ * paint neighbors in chapter HTML. While a *different* chapter is loading,
+ * {@link chapterScopeForHighlightPaint} keeps the retained chapter; clipping
+ * to the destination verse or range would be an empty intersection and would
+ * unpaint that HTML. Clip to the rendered passage id instead when it is in
+ * the paint chapter (a verse unit keeps the same neighbors-off clip). Fall
+ * back to the paint chapter USFM when there is no rendered id.
+ *
+ * Returns `requestedUsfm` when `chapterScope` is null; the paint hook paints
+ * nothing in that window.
+ */
+export function clipUsfmForHighlightPaint(options: {
+  requestedUsfm: string;
+  renderedPassageId: string | undefined;
+  chapterScope: ChapterScope | null;
+}): string {
+  const { requestedUsfm, renderedPassageId, chapterScope } = options;
+  if (!chapterScope) return requestedUsfm;
+  if (usfmMatchesChapter(requestedUsfm, chapterScope)) return requestedUsfm;
+  if (renderedPassageId && usfmMatchesChapter(renderedPassageId, chapterScope)) {
+    return renderedPassageId;
+  }
+  return `${chapterScope.book}.${chapterScope.chapter}`;
+}
+
+/**
+ * Keeps highlights whose expanded verses intersect the displayed passage,
+ * rewriting each kept row's `passage_id` to that intersection.
+ *
+ * A range like `JHN.3.16-18` against today's `JHN.3.16` becomes `JHN.3.16`, so
+ * {@link deriveHighlightedVerses} cannot paint verses that are not shown. A
+ * gapped intersection becomes one row per contiguous run. Chapter-scope and
+ * other unexpandable `passage_id`s are dropped.
+ */
+export function filterHighlightsForPassage(
+  highlights: readonly Highlight[],
+  displayPassageId: string,
+): Highlight[] {
+  const displayed = expandPassageId(displayPassageId);
+  if (!displayed) return [];
+  const displayedVerses = new Set(displayed.verses);
+  const clipped: Highlight[] = [];
+  for (const highlight of highlights) {
+    const expanded = expandPassageId(highlight.passage_id);
+    if (!expanded) continue;
+    if (expanded.book !== displayed.book || expanded.chapter !== displayed.chapter) continue;
+    const verses = expanded.verses.filter((verse) => displayedVerses.has(verse));
+    if (verses.length === 0) continue;
+    for (const passage_id of buildPassageIds(displayed.book, displayed.chapter, verses)) {
+      clipped.push({ ...highlight, passage_id });
+    }
+  }
+  return clipped;
 }
 
 /**

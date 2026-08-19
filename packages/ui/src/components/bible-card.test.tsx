@@ -9,7 +9,16 @@ import { HookOverrideProvider } from '@/test/hook-overrides';
 import { BibleCard } from './bible-card';
 import type { FootnoteData } from './verse';
 import type { UsePassageResult, UseVersionResult } from '@youversion/platform-react-hooks';
-import type { BiblePassage, BibleVersion } from '@youversion/platform-core';
+import type { BiblePassage, BibleVersion, Highlight } from '@youversion/platform-core';
+import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
+import {
+  fillFor,
+  getVerseEl,
+  MULTI_VERSE_HTML,
+  collection,
+  Providers,
+  stubUseHighlights,
+} from '@/test/highlights-test-utils';
 
 const mockPassage: BiblePassage = {
   id: 'JHN.3.16',
@@ -49,9 +58,21 @@ function passageResult(
 
 function renderCard(
   passage: UsePassageResult,
-  extra: { onFootnotePress?: (data: FootnoteData) => void; reference?: string } = {},
+  extra: {
+    onFootnotePress?: (data: FootnoteData) => void;
+    reference?: string;
+    versionId?: number;
+    highlights?: Highlight[];
+    onVersionChange?: (id: number) => void;
+  } = {},
 ) {
-  const { reference = 'JHN.3.16', onFootnotePress } = extra;
+  const {
+    reference = 'JHN.3.16',
+    onFootnotePress,
+    versionId = 3034,
+    highlights,
+    onVersionChange,
+  } = extra;
   return render(
     <HookOverrideProvider
       overrides={{
@@ -59,10 +80,24 @@ function renderCard(
         usePassage: () => passage,
       }}
     >
-      <BibleCard reference={reference} versionId={3034} onFootnotePress={onFootnotePress} />
+      <BibleCard
+        reference={reference}
+        versionId={versionId}
+        onFootnotePress={onFootnotePress}
+        highlights={highlights}
+        onVersionChange={onVersionChange}
+      />
     </HookOverrideProvider>,
   );
 }
+
+const YELLOW = 'fffe00';
+const multiVersePassage: BiblePassage = {
+  id: 'JHN.1',
+  content: MULTI_VERSE_HTML,
+  reference: 'John 1',
+};
+const highlights: Highlight[] = [{ version_id: 111, passage_id: 'JHN.1.2', color: YELLOW }];
 
 describe('BibleCard - Delayed spinner', () => {
   beforeEach(() => {
@@ -221,4 +256,65 @@ describe('BibleCard - onFootnotePress callback', () => {
     expect(data.notes).toHaveLength(1);
     expect(data.notes[0]).toContain('Or understood');
   });
+});
+
+it('host highlights: paints matching verses and clears them when versionId no longer matches', () => {
+  const onVersionChange = () => undefined;
+  const passage = passageResult({ passage: multiVersePassage, loading: false });
+  const { container, rerender } = renderCard(passage, {
+    reference: 'JHN.1',
+    versionId: 111,
+    highlights,
+    onVersionChange,
+  });
+
+  expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
+
+  rerender(
+    <HookOverrideProvider
+      overrides={{
+        useVersion: () => idleVersion(),
+        usePassage: () => passage,
+      }}
+    >
+      <BibleCard
+        reference="JHN.1"
+        versionId={222}
+        onVersionChange={onVersionChange}
+        highlights={highlights}
+      />
+    </HookOverrideProvider>,
+  );
+
+  expect(getVerseEl(container, 2).style.backgroundColor).toBe('');
+});
+
+it('host highlights: paints from a stubbed fetch when the prop is omitted, and paints nothing for a host empty array', () => {
+  const hasPermission = vi
+    .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
+    .mockReturnValue(true);
+  const overrides = {
+    useVersion: () => idleVersion(),
+    usePassage: () => passageResult({ passage: multiVersePassage, loading: false }),
+    useHighlights: stubUseHighlights({ highlights: collection(highlights) }),
+  };
+
+  try {
+    const omitted = render(
+      <Providers hookOverrides={overrides}>
+        <BibleCard reference="JHN.1" versionId={111} />
+      </Providers>,
+    );
+    expect(getVerseEl(omitted.container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
+    omitted.unmount();
+
+    const hostEmpty = render(
+      <Providers hookOverrides={overrides}>
+        <BibleCard reference="JHN.1" versionId={111} highlights={[]} />
+      </Providers>,
+    );
+    expect(getVerseEl(hostEmpty.container, 2).style.backgroundColor).toBe('');
+  } finally {
+    hasPermission.mockRestore();
+  }
 });

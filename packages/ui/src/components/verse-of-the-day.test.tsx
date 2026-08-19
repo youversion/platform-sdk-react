@@ -16,7 +16,15 @@ import { VerseOfTheDay } from './verse-of-the-day';
 import type { VerseOfTheDayShareData } from './verse-of-the-day';
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import en from '@/i18n/locales/en.json';
-import type { BibleVersion } from '@youversion/platform-core';
+import type { BibleVersion, Highlight } from '@youversion/platform-core';
+import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
+import {
+  fillFor,
+  getVerseEl,
+  collection,
+  Providers,
+  stubUseHighlights,
+} from '@/test/highlights-test-utils';
 
 const MOCK_VERSE_HTML = '<p class="yv-p">For God so loved the world</p>';
 const MOCK_VERSE_TEXT = 'For God so loved the world';
@@ -38,21 +46,30 @@ function stubOverrides(
     passageContent?: string;
     passageError?: Error | null;
     votdError?: Error | null;
+    votdLoading?: boolean;
+    useHighlights?: HookOverrides['useHighlights'];
   } = {},
 ): HookOverrides {
-  const { passageContent = MOCK_VERSE_HTML, passageError = null, votdError = null } = overrides;
+  const {
+    passageContent = MOCK_VERSE_HTML,
+    passageError = null,
+    votdError = null,
+    votdLoading = false,
+    useHighlights,
+  } = overrides;
 
   return {
     useVerseOfTheDay: () => ({
-      data: { day: 1, passage_id: 'JHN.3.16' },
-      loading: false,
+      data: votdLoading ? null : { day: 1, passage_id: 'JHN.3.16' },
+      loading: votdLoading,
       error: votdError,
       refetch: () => undefined,
     }),
     usePassage: () => ({
-      passage: passageError
-        ? null
-        : { id: 'JHN.3.16', reference: 'John 3:16', content: passageContent },
+      passage:
+        passageError || votdLoading
+          ? null
+          : { id: 'JHN.3.16', reference: 'John 3:16', content: passageContent },
       loading: false,
       error: passageError,
       refetch: () => undefined,
@@ -63,6 +80,7 @@ function stubOverrides(
       error: null,
       refetch: () => undefined,
     }),
+    useHighlights,
   };
 }
 
@@ -231,5 +249,151 @@ describe('VerseOfTheDay - share', () => {
     await user.click(shareButton);
 
     expect(onShare).not.toHaveBeenCalled();
+  });
+});
+
+describe('VerseOfTheDay - host highlights (controlled mode)', () => {
+  const YELLOW = 'fffe00';
+  const GREEN = '5dff79';
+  const twoVerseHtml = `
+    <div class="p">
+      <span class="yv-v" v="16"></span><span class="yv-vlbl">16</span>For God so loved the world.
+      <span class="yv-v" v="17"></span><span class="yv-vlbl">17</span>For God did not send his Son.
+    </div>
+  `;
+  const highlight = (passage_id: string, color: string): Highlight => ({
+    version_id: 111,
+    passage_id,
+    color,
+  });
+
+  it('does not paint while the verse of the day has not resolved', () => {
+    const { container } = renderVotd(
+      <VerseOfTheDay versionId={111} dayOfYear={1} highlights={[highlight('JHN.3.16', YELLOW)]} />,
+      stubOverrides({ votdLoading: true }),
+    );
+
+    expect(container.querySelector('.yv-v')).toBeNull();
+  });
+
+  it("paints only the verses in today's passage", () => {
+    const { container } = renderVotd(
+      <VerseOfTheDay
+        versionId={111}
+        dayOfYear={1}
+        highlights={[highlight('JHN.3.16-18', YELLOW), highlight('JHN.3.17', GREEN)]}
+      />,
+      stubOverrides({ passageContent: twoVerseHtml }),
+    );
+
+    expect(getVerseEl(container, 16).style.backgroundColor).toBe(fillFor(YELLOW));
+    expect(getVerseEl(container, 17).style.backgroundColor).toBe('');
+  });
+
+  it('does not paint highlights for a different passage', () => {
+    const { container } = renderVotd(
+      <VerseOfTheDay versionId={111} dayOfYear={1} highlights={[highlight('GEN.1.1', YELLOW)]} />,
+      stubOverrides({ passageContent: twoVerseHtml }),
+    );
+
+    expect(getVerseEl(container, 16).style.backgroundColor).toBe('');
+    expect(getVerseEl(container, 17).style.backgroundColor).toBe('');
+  });
+
+  it("latches highlights at first mount, including while today's verse is still loading", () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const loading = stubOverrides({ votdLoading: true });
+    const loaded = stubOverrides({ passageContent: twoVerseHtml });
+    try {
+      const { container, rerender, unmount } = renderVotd(
+        <VerseOfTheDay versionId={111} dayOfYear={1} />,
+        loading,
+      );
+
+      rerender(
+        <HookOverrideProvider overrides={loading}>
+          <VerseOfTheDay
+            versionId={111}
+            dayOfYear={1}
+            highlights={[highlight('JHN.3.16', YELLOW)]}
+          />
+        </HookOverrideProvider>,
+      );
+      rerender(
+        <HookOverrideProvider overrides={loaded}>
+          <VerseOfTheDay
+            versionId={111}
+            dayOfYear={1}
+            highlights={[highlight('JHN.3.16', YELLOW)]}
+          />
+        </HookOverrideProvider>,
+      );
+
+      expect(getVerseEl(container, 16).style.backgroundColor).toBe('');
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('`highlights` prop switched'));
+      unmount();
+      warn.mockClear();
+
+      const controlled = renderVotd(
+        <VerseOfTheDay
+          versionId={111}
+          dayOfYear={1}
+          highlights={[highlight('JHN.3.16', YELLOW)]}
+        />,
+        loading,
+      );
+      controlled.rerender(
+        <HookOverrideProvider overrides={loaded}>
+          <VerseOfTheDay
+            versionId={111}
+            dayOfYear={1}
+            highlights={[highlight('JHN.3.16', YELLOW)]}
+          />
+        </HookOverrideProvider>,
+      );
+      expect(getVerseEl(controlled.container, 16).style.backgroundColor).toBe(fillFor(YELLOW));
+
+      controlled.rerender(
+        <HookOverrideProvider overrides={loaded}>
+          <VerseOfTheDay versionId={111} dayOfYear={1} />
+        </HookOverrideProvider>,
+      );
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('`highlights` prop switched'));
+      expect(getVerseEl(controlled.container, 16).style.backgroundColor).toBe('');
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('paints from a stubbed fetch when the prop is omitted, and paints nothing for a host empty array', () => {
+    const hasPermission = vi
+      .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
+      .mockReturnValue(true);
+    const overrides = stubOverrides({
+      passageContent: twoVerseHtml,
+      useHighlights: stubUseHighlights({
+        highlights: collection([highlight('JHN.3.16', YELLOW), highlight('JHN.3.17', GREEN)]),
+      }),
+    });
+
+    try {
+      const omitted = render(
+        <Providers hookOverrides={overrides}>
+          <VerseOfTheDay versionId={111} dayOfYear={1} />
+        </Providers>,
+      );
+      expect(getVerseEl(omitted.container, 16).style.backgroundColor).toBe(fillFor(YELLOW));
+      expect(getVerseEl(omitted.container, 17).style.backgroundColor).toBe('');
+      omitted.unmount();
+
+      const hostEmpty = render(
+        <Providers hookOverrides={overrides}>
+          <VerseOfTheDay versionId={111} dayOfYear={1} highlights={[]} />
+        </Providers>,
+      );
+      expect(getVerseEl(hostEmpty.container, 16).style.backgroundColor).toBe('');
+    } finally {
+      hasPermission.mockRestore();
+    }
   });
 });

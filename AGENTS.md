@@ -30,6 +30,9 @@ Release, versioning, or publishing: read `PUBLISHING.md`; decisions live in `doc
 ## Domain
 Domain terms (highlight, passage, Bible version, auth flow): read `CONTEXT.md`.
 
+## Cursor Cloud
+Cloud VM, env files, Vite bind, or demo startup: read `docs/cursor-cloud.md`.
+
 ## Learned User Preferences
 - When posting PR review comments, use conventionalcomments.org labels. If posting on behalf of the user, identify as Cursor, an AI agent sent on behalf of Cam, in every post.
 - Prefer logical CSS properties (`margin-block-end`, `padding-inline-start`) over physical ones.

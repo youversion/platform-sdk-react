@@ -35,6 +35,10 @@ core owns HTTP+Zod+MSW; hooks own React state against stubbed clients; UI owns u
 
 Bind on new/edited tests. When touching a file, bend the cases you edit toward this style — no mass rewrite of untouched suites.
 
+## Env
+
+Missing `YVP_API_HOST` or other env files: read `docs/cursor-cloud.md`.
+
 ## Before pushing
 
 Run the full test suite across all packages — a change in one package can break another.
