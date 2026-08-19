@@ -23,10 +23,12 @@ export function getBrowserLanguages(): readonly string[] | undefined {
  * Browser BCP 47 bases that differ from our bundle code.
  * Norwegian ships as `no` from platform-localization; browsers report `nb`/`nn`.
  */
-const LANGUAGE_ALIASES = {
-  nb: 'no',
-  nn: 'no',
-} satisfies Record<string, string>;
+function languageAliasForBase(base: string): string | undefined {
+  if (base === 'nb' || base === 'nn') {
+    return 'no';
+  }
+  return undefined;
+}
 
 function localeCandidates(tag: string): readonly string[] {
   const lower = tag.toLowerCase();
@@ -34,7 +36,7 @@ function localeCandidates(tag: string): readonly string[] {
   if (!base) {
     return [lower];
   }
-  const alias = LANGUAGE_ALIASES[base];
+  const alias = languageAliasForBase(base);
   return alias ? [lower, base, alias] : [lower, base];
 }
 

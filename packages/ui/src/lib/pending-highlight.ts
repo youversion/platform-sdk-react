@@ -46,11 +46,11 @@ type JsonPrimitive = string | number | boolean | null;
 type JsonObject = { [key: string]: JsonValue };
 type JsonValue = JsonPrimitive | JsonValue[] | JsonObject;
 
-function isText(value: JsonValue): value is string {
+function isText(value: JsonValue | undefined): value is string {
   return Object.prototype.toString.call(value) === '[object String]';
 }
 
-function isFiniteNumber(value: JsonValue): value is number {
+function isFiniteNumber(value: JsonValue | undefined): value is number {
   return Object.prototype.toString.call(value) === '[object Number]' && Number.isFinite(value);
 }
 

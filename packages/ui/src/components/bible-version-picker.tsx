@@ -62,7 +62,7 @@ function isJsonObject(value: JsonValue): value is JsonObject {
   return value !== null && Object.prototype.toString.call(value) === '[object Object]';
 }
 
-function isRecentVersionText(value: JsonValue): value is string {
+function isRecentVersionText(value: JsonValue | undefined): value is string {
   return Object.prototype.toString.call(value) === '[object String]';
 }
 
