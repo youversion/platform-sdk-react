@@ -1,6 +1,7 @@
 import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 
+import { useShadowPortalContainer } from '../../lib/shadow-root-host';
 import { cn } from '../../lib/utils';
 
 const Dialog = DialogPrimitive.Root;
@@ -24,8 +25,10 @@ function DialogContent({
   children,
   ...props
 }: DialogContentProps): React.ReactElement {
+  const shadowPortalContainer = useShadowPortalContainer();
+
   return (
-    <DialogPrimitive.Portal>
+    <DialogPrimitive.Portal container={shadowPortalContainer ?? undefined}>
       <DialogPrimitive.Overlay
         className={cn(
           'yv:fixed yv:inset-0 yv:z-50 yv:bg-black/50',

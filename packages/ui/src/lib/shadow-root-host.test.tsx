@@ -60,4 +60,37 @@ describe('ShadowRootHost', () => {
     expect(style?.getAttribute('data-href')).toBe('yv-sdk-shadow-styles');
     expect(style?.getAttribute('data-precedence')).toBe('yv-sdk');
   });
+
+  it('reuses one document-level overlay root and keeps it available after unmount', () => {
+    const { unmount } = render(
+      <>
+        <ShadowRootHost>
+          <span>first</span>
+        </ShadowRootHost>
+        <ShadowRootHost>
+          <span>second</span>
+        </ShadowRootHost>
+      </>,
+    );
+
+    const overlayHosts = document.body.querySelectorAll<HTMLElement>(
+      '[data-yv-shadow-overlay-host]',
+    );
+    expect(overlayHosts).toHaveLength(1);
+
+    const overlayRoot = overlayHosts[0]?.shadowRoot;
+    expect(overlayRoot).not.toBeNull();
+
+    // jsdom does not implement constructable stylesheets, so the shared
+    // overlay root installs the direct <style> fallback.
+    expect(overlayRoot?.querySelector('style')).not.toBeNull();
+
+    unmount();
+
+    // The shared overlay root intentionally lives for the document lifetime
+    // so later isolated components can reuse it without recreating resources.
+    expect(
+      document.body.querySelectorAll('[data-yv-shadow-overlay-host]'),
+    ).toHaveLength(1);
+  });
 });

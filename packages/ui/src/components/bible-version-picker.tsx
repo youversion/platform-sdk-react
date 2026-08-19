@@ -933,7 +933,7 @@ export function BibleLanguagePickerContent({
           value={languageTab}
           onValueChange={setLanguageTab}
         >
-          <TabsList className="yv:mx-4 yv:w-[calc(100%-4*var(--spacing)*2)]">
+          <TabsList className="yv:mx-4 yv:w-[calc(100%-4*var(--yv-spacing)*2)]">
             <TabsTrigger className="yv:p-0" value="suggested">
               {t('suggestedTab')}
             </TabsTrigger>

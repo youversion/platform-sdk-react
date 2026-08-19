@@ -58,6 +58,31 @@ pseudo-content, existing interactions, and mounting in a same-origin iframe.
 Unit tests verify Strict Mode behavior and the inline-important host reset. The
 remaining hostile vectors are available for manual inspection on the demo page.
 
+## Subsequent complex-component spike
+
+A follow-up spike rendered `BibleVersionPicker` inside the prototype boundary
+without changing the picker's public export. Radix popover content is routed to
+one shared SDK overlay shadow root under `document.body`. This preserves the CSS
+boundary while allowing floating content to escape clipping and transformed
+ancestors. The overlay root is reused by isolated components and receives the
+same SDK stylesheet as component roots.
+
+Focused Chromium stories verify portal placement, SDK styling, resistance to
+host selectors, ancestor and viewport collision handling, keyboard focus,
+Escape and outside-click dismissal, and overlay reuse. Manual Chromium
+inspection also confirmed internal scrolling at constrained viewport heights.
+The same container plumbing is available to the shared Radix dialog primitive,
+with a focused isolated `SignInDialog` browser proof.
+
+This architecture introduces a separate tree scope for triggers and their
+overlays. Although Radix emits matching `aria-controls` and content IDs for the
+popover, Chromium does not resolve `ariaControlsElements` across the two shadow
+roots. This remains an explicit assistive-technology validation gate rather
+than a proven accessible relationship. Radix's development-only dialog checks
+also search for title and description IDs through `document`, so they warn for
+elements that the browser proof confirms are present in the overlay shadow
+root; real assistive-technology behavior is still unresolved.
+
 ## Compatibility impact
 
 Although the React props API is unchanged, the rendered DOM structure is not.
@@ -71,7 +96,9 @@ detail.
 ## Deliberately deferred
 
 - Rollout to all exported components.
-- Radix popover/dialog portal placement and focus management.
+- Broader Radix popover/dialog rollout and assistive-technology validation. The
+  shared overlay-root mechanism and representative Chromium focus behavior are
+  proven, but package-wide and real-AT coverage are not.
 - Form association when controls live outside their form's tree scope.
 - SSR/hydration and the first client paint.
 - A package-wide custom-property audit. `all: initial` does not reset custom
@@ -81,7 +108,10 @@ detail.
   properties. Some host values may be intentional localization inputs, while
   SDK-owned visual tokens need shadow-local defaults.
 - Host `@font-face` rules, which are not scoped by Shadow DOM.
-- Ancestor layout constraints, which Shadow DOM cannot isolate.
+- Ancestor layout constraints on the component host, which Shadow DOM cannot
+  isolate. Portalled floating content can escape ancestor clipping through the
+  shared body-level overlay root, but the host itself can still be hidden,
+  clipped, or transformed by its ancestors.
 - Event retargeting, nested-root behavior, and a supported consumer customization
   model.
 - Stylesheet construction/adoption failure recovery beyond feature fallback.
