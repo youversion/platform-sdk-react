@@ -19,17 +19,6 @@ const ErrorBodySchema = z.object({
   error: z.string().optional(),
 });
 
-export type HttpStatusSource =
-  | Error
-  | { status?: number | string }
-  | string
-  | number
-  | boolean
-  | bigint
-  | symbol
-  | null
-  | undefined;
-
 /**
  * Returns the HTTP status code attached to an error thrown by an API client,
  * or undefined when the error did not come from an HTTP response (network
