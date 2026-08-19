@@ -31,7 +31,7 @@ Release, versioning, or publishing: read `PUBLISHING.md`; decisions live in `doc
 Domain terms (highlight, passage, Bible version, auth flow): read `CONTEXT.md`.
 
 ## Learned User Preferences
-- When posting PR review comments, use conventionalcomments.org labels and identify as Cursor sent on behalf of Cam.
+- When posting PR review comments, use conventionalcomments.org labels. If posting on behalf of the user, identify as Cursor, an AI agent sent on behalf of Cam, in every post.
 - Prefer logical CSS properties (`margin-block-end`, `padding-inline-start`) over physical ones.
 
 ## Learned Workspace Facts
