@@ -81,5 +81,6 @@
   "signOutPendingHighlightsConfirm": "로그아웃 진행",
   "youVersionPlatformLogoAriaLabel": "YouVersion Platform",
   "booksHeading": "책",
-  "bibleVersionsHeading": "성경 번역본"
+  "bibleVersionsHeading": "성경 번역본",
+  "untitledSerifFontName": "Untitled Serif"
 }
