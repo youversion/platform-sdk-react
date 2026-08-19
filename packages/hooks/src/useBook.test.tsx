@@ -1,27 +1,21 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useBook } from './useBook';
-import { type BibleClient } from '@youversion/platform-core';
-import { useBibleClient } from './useBibleClient';
-import { createYVWrapper } from './test/utils';
+import { createBibleClientStub, createYVWrapper } from './test/utils';
 import { createMockBook } from './__tests__/mocks/bibles';
-
-vi.mock('./useBibleClient');
 
 describe('useBook', () => {
   const mockGetBook = vi.fn();
   const mockBook = createMockBook();
+  const bibleClient = createBibleClientStub({ getBook: mockGetBook });
+  const wrapper = createYVWrapper('test-app-key', { bibleClient });
 
   beforeEach(() => {
     mockGetBook.mockResolvedValue(mockBook);
-
-    const mockClient: Partial<BibleClient> = { getBook: mockGetBook };
-    vi.mocked(useBibleClient).mockReturnValue(mockClient as BibleClient);
   });
 
   describe('fetching book', () => {
     it('should fetch book with versionId and book params', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useBook(111, 'GEN'), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -38,28 +32,28 @@ describe('useBook', () => {
     it.each([
       {
         param: 'versionId',
-        HookFn: ({ val }: { val: number | string }) => useBook(val as number, 'GEN'),
-        initial: { val: 1 },
-        updated: { val: 111 },
+        initial: { versionId: 1, book: 'GEN' },
+        updated: { versionId: 111, book: 'GEN' },
         expectedInitial: [1, 'GEN'],
         expectedUpdated: [111, 'GEN'],
       },
       {
         param: 'book',
-        HookFn: ({ val }: { val: number | string }) => useBook(1, val as string),
-        initial: { val: 'GEN' },
-        updated: { val: 'EXO' },
+        initial: { versionId: 1, book: 'GEN' },
+        updated: { versionId: 1, book: 'EXO' },
         expectedInitial: [1, 'GEN'],
         expectedUpdated: [1, 'EXO'],
       },
     ])(
       'should refetch when $param changes',
-      async ({ HookFn, initial, updated, expectedInitial, expectedUpdated }) => {
-        const wrapper = createYVWrapper();
-        const { result, rerender } = renderHook(HookFn, {
-          wrapper,
-          initialProps: initial,
-        });
+      async ({ initial, updated, expectedInitial, expectedUpdated }) => {
+        const { result, rerender } = renderHook(
+          ({ versionId, book }: { versionId: number; book: string }) => useBook(versionId, book),
+          {
+            wrapper,
+            initialProps: initial,
+          },
+        );
 
         await waitFor(() => {
           expect(result.current.loading).toBe(false);
@@ -82,7 +76,6 @@ describe('useBook', () => {
     );
 
     it('should not fetch when enabled is false', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useBook(1, 'GEN', { enabled: false }), {
         wrapper,
       });
@@ -96,7 +89,6 @@ describe('useBook', () => {
     });
 
     it('should handle fetch errors', async () => {
-      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch book');
       mockGetBook.mockRejectedValueOnce(error);
 
@@ -111,7 +103,6 @@ describe('useBook', () => {
     });
 
     it('should clear error on successful refetch', async () => {
-      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch book');
       mockGetBook.mockRejectedValueOnce(error).mockResolvedValueOnce(mockBook);
 
@@ -137,7 +128,6 @@ describe('useBook', () => {
     });
 
     it('should support manual refetch', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useBook(1, 'GEN'), { wrapper });
 
       await waitFor(() => {

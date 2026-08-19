@@ -2,19 +2,17 @@
 
 import { useBibleClient } from './useBibleClient';
 import { useApiData, type UseApiDataOptions } from './useApiData';
+import type { UseNamedQueryResult } from './useQueryResult';
 import type { BibleVerse, Collection } from '@youversion/platform-core';
+
+export type UseVersesResult = UseNamedQueryResult<'verses', Collection<BibleVerse>>;
 
 export function useVerses(
   versionId: number,
   book: string,
   chapter: number,
   options?: UseApiDataOptions,
-): {
-  verses: Collection<BibleVerse> | null;
-  loading: boolean;
-  error: Error | null;
-  refetch: () => void;
-} {
+): UseVersesResult {
   const bibleClient = useBibleClient();
 
   const {

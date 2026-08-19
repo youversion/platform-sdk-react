@@ -4,6 +4,15 @@ import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfigurati
 import { SignInWithYouVersionPKCEAuthorizationRequestBuilder } from './SignInWithYouVersionPKCE';
 import { SignInWithYouVersionResult } from './SignInWithYouVersionResult';
 import { parseGrantedPermissions, parsePermissionList } from './permissions';
+import {
+  IdTokenClaimsSchema,
+  StatePermissionsStashSchema,
+  TokenExchangeResponseSchema,
+  TokenRefreshResponseSchema,
+  type IdTokenClaims,
+  type StatePermissionsStash,
+  type TokenExchangeResponse,
+} from './schemas/auth';
 import { getLocalStorage, removeStorageItem, setStorageItem } from './web-storage';
 
 const MISSING_LOCAL_STORAGE_MESSAGE =
@@ -54,11 +63,6 @@ const REQUESTED_PERMISSIONS_KEY = 'youversion-auth-requested-permissions';
 
 /** OIDC scopes that must not be stored in the data-exchange permission cache. */
 const OIDC_SCOPES = new Set(['openid', 'profile', 'email', 'offline_access']);
-
-type StatePermissionsStash = {
-  state: string;
-  permissions: string[];
-};
 
 type PendingGrantedPermissionsStash = StatePermissionsStash;
 
@@ -149,14 +153,9 @@ const readPendingGrantedPermissions = (storage: Storage | null, state: string): 
   if (!raw) return [];
 
   try {
-    const parsed = JSON.parse(raw) as PendingGrantedPermissionsStash;
-    if (
-      parsed &&
-      typeof parsed === 'object' &&
-      parsed.state === state &&
-      Array.isArray(parsed.permissions)
-    ) {
-      return parsed.permissions.filter((permission) => typeof permission === 'string');
+    const parsed = StatePermissionsStashSchema.safeParse(JSON.parse(raw));
+    if (parsed.success && parsed.data.state === state) {
+      return parsed.data.permissions;
     }
   } catch {
     // Legacy plain comma-list (no state binding) — discard.
@@ -196,14 +195,9 @@ const readRequestedPermissions = (storage: Storage | null, state: string): strin
   if (!raw) return [];
 
   try {
-    const parsed = JSON.parse(raw) as RequestedPermissionsStash;
-    if (
-      parsed &&
-      typeof parsed === 'object' &&
-      parsed.state === state &&
-      Array.isArray(parsed.permissions)
-    ) {
-      return parsed.permissions.filter((permission) => typeof permission === 'string');
+    const parsed = StatePermissionsStashSchema.safeParse(JSON.parse(raw));
+    if (parsed.success && parsed.data.state === state) {
+      return parsed.data.permissions;
     }
   } catch {
     // Malformed stash — discard.
@@ -390,14 +384,7 @@ export class YouVersionAPIUsers {
 
       const responseText = await response.text();
 
-      const tokens = JSON.parse(responseText) as {
-        access_token: string;
-        expires_in: number;
-        id_token: string;
-        refresh_token: string;
-        scope: string;
-        token_type: string;
-      };
+      const tokens = TokenExchangeResponseSchema.parse(JSON.parse(responseText));
 
       // Match Swift: union grants from (1) this URL, (2) stashed pre-code hop,
       // (3) token scope — then drop OIDC scopes before seeding the data-exchange
@@ -503,24 +490,17 @@ export class YouVersionAPIUsers {
   /**
    * Extracts sign-in result from token response
    */
-  private static extractSignInResult(tokens: {
-    access_token: string;
-    expires_in: number;
-    id_token: string;
-    refresh_token: string;
-    scope: string;
-    token_type: string;
-  }): SignInWithYouVersionResult {
+  private static extractSignInResult(tokens: TokenExchangeResponse): SignInWithYouVersionResult {
     const idClaims = this.decodeJWT(tokens.id_token);
 
     const resultData = {
       accessToken: tokens.access_token,
       expiresIn: tokens.expires_in,
       refreshToken: tokens.refresh_token,
-      yvpUserId: idClaims.sub as string,
-      name: idClaims.name as string,
-      profilePicture: idClaims.profile_picture as string,
-      email: idClaims.email as string,
+      yvpUserId: idClaims.sub,
+      name: idClaims.name,
+      profilePicture: idClaims.profile_picture,
+      email: idClaims.email,
     };
 
     return new SignInWithYouVersionResult(resultData);
@@ -538,7 +518,7 @@ export class YouVersionAPIUsers {
    * @private
    */
 
-  private static decodeJWT(token: string): Record<string, any> {
+  private static decodeJWT(token: string): IdTokenClaims {
     const segments = token.split('.');
 
     if (segments.length !== 3) {
@@ -557,8 +537,8 @@ export class YouVersionAPIUsers {
         // atob() returns a byte string (Latin-1); decode bytes as UTF-8 before JSON.parse.
         const bytes = Uint8Array.from(data, (char) => char.charCodeAt(0));
         const decodedPayload = new TextDecoder('utf-8').decode(bytes);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-        return JSON.parse(decodedPayload);
+        const parsed = IdTokenClaimsSchema.safeParse(JSON.parse(decodedPayload));
+        return parsed.success ? parsed.data : {};
       } else {
         return {};
       }
@@ -585,7 +565,7 @@ export class YouVersionAPIUsers {
    */
   static userInfo(idToken: string): YouVersionUserInfo {
     // Validate access token
-    if (!idToken || typeof idToken !== 'string') {
+    if (!idToken) {
       throw new Error('Invalid access token: must be a non-empty string');
     }
 
@@ -597,12 +577,11 @@ export class YouVersionAPIUsers {
         throw new Error('Invalid JWT token: Unable to decode token payload');
       }
 
-      // Map JWT claims to YouVersionUserInfo format
       const userInfoData = {
-        id: claims.sub as string,
-        name: claims.name as string,
-        avatar_url: claims.profile_picture as string,
-        email: claims.email as string,
+        id: claims.sub,
+        name: claims.name,
+        avatar_url: claims.profile_picture,
+        email: claims.email,
       };
 
       return new YouVersionUserInfo(userInfoData);
@@ -673,13 +652,7 @@ export class YouVersionAPIUsers {
         throw new Error(`Token refresh failed: ${response.status} ${response.statusText}`);
       }
 
-      const tokens = (await response.json()) as {
-        access_token: string;
-        expires_in: number;
-        refresh_token: string;
-        scope: string;
-        token_type: string;
-      };
+      const tokens = TokenRefreshResponseSchema.parse(await response.json());
 
       // Create result with new tokens. The persisted user profile is left
       // untouched — refreshing only rotates the access/refresh tokens.

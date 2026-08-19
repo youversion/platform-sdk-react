@@ -23,10 +23,8 @@ describe('extractVersesFromHTML', () => {
     const result = extractVersesFromHTML(html);
 
     expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({
-      verse: 1,
-      html: expect.stringContaining('<span class="yv-v" v="1">') as string,
-    });
+    expect(result[0]?.verse).toBe(1);
+    expect(result[0]?.html).toContain('<span class="yv-v" v="1">');
     expect(result[0]?.html).toContain('In the beginning God created');
   });
 
@@ -43,18 +41,12 @@ describe('extractVersesFromHTML', () => {
     const result = extractVersesFromHTML(html);
 
     expect(result).toHaveLength(3);
-    expect(result[0]).toEqual({
-      verse: 1,
-      html: expect.stringContaining('In the beginning') as string,
-    });
-    expect(result[1]).toEqual({
-      verse: 2,
-      html: expect.stringContaining('formless and empty') as string,
-    });
-    expect(result[2]).toEqual({
-      verse: 3,
-      html: expect.stringContaining('Let there be light') as string,
-    });
+    expect(result[0]?.verse).toBe(1);
+    expect(result[0]?.html).toContain('In the beginning');
+    expect(result[1]?.verse).toBe(2);
+    expect(result[1]?.html).toContain('formless and empty');
+    expect(result[2]?.verse).toBe(3);
+    expect(result[2]?.html).toContain('Let there be light');
   });
 
   it('should handle verses with double-digit numbers', () => {

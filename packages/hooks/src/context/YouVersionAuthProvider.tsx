@@ -47,9 +47,9 @@ export default function YouVersionAuthProvider({
       YouVersionPlatformConfiguration.appKey = config.appKey;
       YouVersionPlatformConfiguration.apiHost = config.apiHost ?? 'api.youversion.com';
 
-      if (typeof window !== 'undefined') {
+      if (globalThis.window) {
         // Check for OAuth callback
-        const urlParams = new URLSearchParams(window.location.search);
+        const urlParams = new URLSearchParams(globalThis.window.location.search);
         const isOAuthCallback = urlParams.has('state') || urlParams.has('error');
 
         if (isOAuthCallback) {
@@ -62,7 +62,7 @@ export default function YouVersionAuthProvider({
             }
           } catch (err) {
             if (!mounted) return;
-            setError(err as Error);
+            setError(err instanceof Error ? err : new Error('Auth callback failed'));
           }
         } else {
           // Check for existing token

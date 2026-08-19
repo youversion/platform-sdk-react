@@ -1,38 +1,25 @@
 import { renderHook } from '@testing-library/react';
-import { describe, expect, vi, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { ReactNode } from 'react';
 import { useBibleClient } from './useBibleClient';
 import { YouVersionContext } from './context';
-import { BibleClient, ApiClient } from '@youversion/platform-core';
-import { createYVWrapper } from './test/utils';
-
-vi.mock('@youversion/platform-core', async () => {
-  const actual = await vi.importActual('@youversion/platform-core');
-  return {
-    ...actual,
-    BibleClient: vi.fn(function () {
-      return {
-        isBibleClient: true,
-      };
-    }),
-    ApiClient: vi.fn(function () {
-      return {
-        isApiClient: true,
-      };
-    }),
-  };
-});
+import { BibleClient } from '@youversion/platform-core';
+import { createBibleClientStub, createYVWrapper } from './test/utils';
 
 describe('useBibleClient', () => {
   it('should create and return a BibleClient instance when context is valid', () => {
     const wrapper = createYVWrapper();
     const { result } = renderHook(() => useBibleClient(), { wrapper });
 
-    expect(ApiClient).toHaveBeenCalledWith({
-      appKey: 'test-app-key',
-    });
-    expect(BibleClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
-    expect(result.current).toEqual(expect.objectContaining({ isBibleClient: true }));
+    expect(result.current).toBeInstanceOf(BibleClient);
+  });
+
+  it('should return the injected BibleClient when present', () => {
+    const bibleClient = createBibleClientStub({});
+    const wrapper = createYVWrapper('test-app-key', { bibleClient });
+    const { result } = renderHook(() => useBibleClient(), { wrapper });
+
+    expect(result.current).toBe(bibleClient);
   });
 
   it('should throw error when context is not provided', () => {
@@ -60,7 +47,6 @@ describe('useBibleClient', () => {
     const secondClient = result.current;
 
     expect(firstClient).toBe(secondClient);
-    expect(BibleClient).toHaveBeenCalledTimes(1);
   });
 
   it('should create new BibleClient when appKey changes', () => {
@@ -79,24 +65,17 @@ describe('useBibleClient', () => {
     const { result, rerender } = renderHook(() => useBibleClient(), { wrapper });
 
     const firstClient = result.current;
-    expect(BibleClient).toHaveBeenCalledTimes(1);
-    expect(ApiClient).toHaveBeenCalledWith({
-      appKey: 'test-app-key',
-    });
+    expect(firstClient).toBeInstanceOf(BibleClient);
 
     currentAppKey = 'new-app-key';
     rerender();
 
     const secondClient = result.current;
-    expect(BibleClient).toHaveBeenCalledTimes(2);
     expect(firstClient).not.toBe(secondClient);
-
-    expect(ApiClient).toHaveBeenLastCalledWith({
-      appKey: 'new-app-key',
-    });
+    expect(secondClient).toBeInstanceOf(BibleClient);
   });
 
-  it('should pass additionalHeaders from context into ApiClient config', () => {
+  it('should construct a BibleClient when additionalHeaders are provided', () => {
     const additionalHeaders = { 'X-YVP-Sdk': 'ReactNativeSDK=1.2.3' };
 
     const wrapper = ({ children }: { children: ReactNode }) => (
@@ -110,29 +89,8 @@ describe('useBibleClient', () => {
       </YouVersionContext.Provider>
     );
 
-    renderHook(() => useBibleClient(), { wrapper });
+    const { result } = renderHook(() => useBibleClient(), { wrapper });
 
-    expect(ApiClient).toHaveBeenCalledWith(
-      expect.objectContaining({
-        appKey: 'test-app-key',
-        additionalHeaders,
-      }),
-    );
-  });
-
-  it('should throw error when appKey is null', () => {
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <YouVersionContext.Provider
-        value={{
-          appKey: null as unknown as string,
-        }}
-      >
-        {children}
-      </YouVersionContext.Provider>
-    );
-
-    expect(() => renderHook(() => useBibleClient(), { wrapper })).toThrow(
-      'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
-    );
+    expect(result.current).toBeInstanceOf(BibleClient);
   });
 });

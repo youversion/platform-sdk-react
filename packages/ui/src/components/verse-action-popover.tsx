@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FC } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FC } from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
@@ -12,7 +12,14 @@ import { hexToRgba, HIGHLIGHT_FILL_OPACITY_DARK, isDarkHighlightHex } from './ve
 /** Re-export for back-compat; prefer `@/lib/highlight-colors` for new code. */
 export { HIGHLIGHT_COLORS, type HighlightColor } from '@/lib/highlight-colors';
 
-type Measurable = { getBoundingClientRect: () => DOMRect };
+type PopoverMotionStyle = CSSProperties & {
+  '--tw-animate-duration'?: string;
+  '--tw-animate-easing'?: string;
+};
+
+const popoverMotionStyle: PopoverMotionStyle = {};
+popoverMotionStyle['--tw-animate-duration'] = '180ms';
+popoverMotionStyle['--tw-animate-easing'] = 'cubic-bezier(0.16, 1, 0.3, 1)';
 
 /** Width, in px, of the fade applied at each overflowing edge of the swatch row. */
 const SCROLL_FADE_PX = 20;
@@ -201,7 +208,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
     // Closing: leave dockEdge as-is so the frozen snapshot (below) animates out
     // in place. The prior effect's cleanup already disconnected the observer.
     if (!open) return;
-    if (!anchorElement || !scrollRoot || typeof IntersectionObserver === 'undefined') {
+    if (!anchorElement || !scrollRoot || !('IntersectionObserver' in globalThis)) {
       setDockEdge(null);
       return;
     }
@@ -228,7 +235,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   }, [open, anchorElement, scrollRoot]);
 
   const anchorRef = useMemo(
-    () => (anchorElement ? { current: anchorElement as Measurable } : undefined),
+    () => (anchorElement ? { current: anchorElement } : undefined),
     [anchorElement],
   );
 
@@ -242,17 +249,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
           const r = scrollRoot.getBoundingClientRect();
           const cx = r.left + r.width / 2;
           const y = dockEdge === 'top' ? r.top : r.bottom;
-          return {
-            x: cx,
-            y,
-            left: cx,
-            right: cx,
-            top: y,
-            bottom: y,
-            width: 0,
-            height: 0,
-            toJSON: () => ({}),
-          } as DOMRect;
+          return new DOMRect(cx, y, 0, 0);
         },
       },
     };
@@ -308,7 +305,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
     update();
     el.addEventListener('scroll', update, { passive: true });
     let observer: ResizeObserver | undefined;
-    if (typeof ResizeObserver !== 'undefined') {
+    if ('ResizeObserver' in globalThis) {
       observer = new ResizeObserver(update);
       observer.observe(el);
     }
@@ -341,8 +338,8 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
             // Tapping another verse modifies the selection — it should re-anchor
             // the popover, not dismiss it. Only a tap truly outside the reader
             // dismisses (which clears the selection via onOpenChange).
-            const target = event.detail.originalEvent.target as HTMLElement | null;
-            if (target?.closest('.yv-v[v]')) {
+            const target = event.detail.originalEvent.target;
+            if (target instanceof Element && target.closest('.yv-v[v]')) {
               event.preventDefault();
             }
           }}
@@ -373,12 +370,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
             'yv:data-[side=bottom]:slide-in-from-top-2',
             'yv:data-[side=top]:slide-in-from-bottom-2',
           )}
-          style={
-            {
-              '--tw-animate-duration': '180ms',
-              '--tw-animate-easing': 'cubic-bezier(0.16, 1, 0.3, 1)',
-            } as React.CSSProperties
-          }
+          style={popoverMotionStyle}
         >
           {/* Caret — matches the card background in both themes, pointing at the
               verse. Hidden when docked: the bar is no longer tied to a verse. */}

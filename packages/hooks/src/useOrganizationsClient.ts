@@ -1,10 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useContext, useMemo } from 'react';
 import { OrganizationsClient } from '@youversion/platform-core';
+import { YouVersionContext } from './context';
 import { useApiClient } from './internal/useApiClient';
 
 export function useOrganizationsClient(): OrganizationsClient {
+  const override = useContext(YouVersionContext)?.organizationsClient;
   const apiClient = useApiClient();
-  return useMemo(() => new OrganizationsClient(apiClient), [apiClient]);
+  const constructed = useMemo(() => new OrganizationsClient(apiClient), [apiClient]);
+  return override ?? constructed;
 }

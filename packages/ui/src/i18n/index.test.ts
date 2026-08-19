@@ -123,7 +123,7 @@ describe('resolveBrowserLanguage', () => {
   });
 });
 
-describe('getBrowserLanguages', () => {
+  describe('getBrowserLanguages', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -144,6 +144,23 @@ describe('getBrowserLanguages', () => {
     });
 
     expect(getBrowserLanguages()).toEqual(['es-ES']);
+  });
+
+  it('works when navigator exists without window (Node 21+)', () => {
+    vi.stubGlobal('window', undefined);
+    vi.stubGlobal('navigator', {
+      language: 'de-DE',
+      languages: ['de-DE'],
+    });
+
+    expect(getBrowserLanguages()).toEqual(['de-DE']);
+  });
+
+  it('returns undefined when window exists but navigator is missing', () => {
+    vi.stubGlobal('window', {});
+    vi.stubGlobal('navigator', undefined);
+
+    expect(getBrowserLanguages()).toBeUndefined();
   });
 });
 
@@ -166,7 +183,8 @@ describe('i18n instance', () => {
     vi.resetModules();
 
     const i18n = await loadI18n();
-    const localeStrings = resources[lng as keyof typeof resources].translation;
+    const localeStrings = Object.entries(resources).find(([key]) => key === lng)?.[1]?.translation;
+    if (!localeStrings) throw new Error(`missing locale ${lng}`);
     expect(i18n.language).toBe(lng);
     expect(i18n.t('verseOfTheDay')).toBe(localeStrings.verseOfTheDay);
   });

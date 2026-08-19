@@ -25,7 +25,7 @@ export function syncBrowserLanguageFromNavigator(): void {
 }
 
 function getInitialLanguage(): string {
-  if (typeof navigator === 'undefined') {
+  if (!globalThis.window) {
     return fallbackLng;
   }
   return resolveBrowserLanguage(getBrowserLanguages(), supportedLngs, fallbackLng);
@@ -46,7 +46,7 @@ i18n
       },
     },
   })
-  .catch((err: unknown) => {
+  .catch((err) => {
     console.error('[youversion-sdk] i18n initialization failed:', err);
   });
 

@@ -3,30 +3,21 @@
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { Collection, Highlight } from '@youversion/platform-core';
-import { useHighlights, YouVersionAuthContext } from '@youversion/platform-react-hooks';
+import { YouVersionAuthContext, type UseHighlightsResult } from '@youversion/platform-react-hooks';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
+import { HookOverrideProvider } from '@/test/hook-overrides';
 import { mockUserInfo } from '@/test/highlights-test-utils';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
-
-vi.mock('@youversion/platform-react-hooks', async () => {
-  const actual = await vi.importActual('@youversion/platform-react-hooks');
-  return {
-    ...actual,
-    useHighlights: vi.fn(),
-  };
-});
 
 function makeCollection(data: Highlight[]): Collection<Highlight> {
   return { data, next_page_token: null };
 }
 
-function mockUseHighlights(
-  overrides: Partial<ReturnType<typeof useHighlights>> = {},
-): ReturnType<typeof useHighlights> {
-  const value: ReturnType<typeof useHighlights> = {
+function defaultHighlightsResult(): UseHighlightsResult {
+  return {
     highlights: makeCollection([]),
     loading: false,
     error: null,
@@ -37,10 +28,17 @@ function mockUseHighlights(
       color: 'fffe00',
     }),
     deleteHighlight: vi.fn().mockResolvedValue(undefined),
-    ...overrides,
   };
-  vi.mocked(useHighlights).mockReturnValue(value);
-  return value;
+}
+
+let highlightsResult: UseHighlightsResult = defaultHighlightsResult();
+const useHighlightsOverride = vi.fn(() => highlightsResult);
+
+function mockUseHighlights(overrides: Partial<UseHighlightsResult> = {}): UseHighlightsResult {
+  highlightsResult = { ...defaultHighlightsResult(), ...overrides };
+  useHighlightsOverride.mockClear();
+  useHighlightsOverride.mockImplementation(() => highlightsResult);
+  return highlightsResult;
 }
 
 /**
@@ -48,18 +46,28 @@ function mockUseHighlights(
  * wrapper re-runs on `rerender()`, picking up the new value).
  */
 let signedIn = true;
+function HighlightsWrapper({ children }: { children: ReactNode }) {
+  return (
+    <HookOverrideProvider overrides={{ useHighlights: useHighlightsOverride }}>
+      {children}
+    </HookOverrideProvider>
+  );
+}
+
 function AuthWrapper({ children }: { children: ReactNode }) {
   return (
-    <YouVersionAuthContext.Provider
-      value={{
-        userInfo: signedIn ? mockUserInfo : null,
-        setUserInfo: vi.fn(),
-        isLoading: false,
-        error: null,
-      }}
-    >
-      {children}
-    </YouVersionAuthContext.Provider>
+    <HighlightsWrapper>
+      <YouVersionAuthContext.Provider
+        value={{
+          userInfo: signedIn ? mockUserInfo : null,
+          setUserInfo: vi.fn(),
+          isLoading: false,
+          error: null,
+        }}
+      >
+        {children}
+      </YouVersionAuthContext.Provider>
+    </HighlightsWrapper>
   );
 }
 
@@ -95,7 +103,7 @@ describe('useBibleReaderHighlights — flag off (dark launch)', () => {
     });
 
     // The fetch gate is `enabled: false` — useApiData skips the request entirely.
-    expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
+    expect(useHighlightsOverride).toHaveBeenCalledWith(
       { version_id: 111, passage_id: 'JHN.3' },
       { enabled: false },
     );
@@ -116,10 +124,12 @@ describe('useBibleReaderHighlights — auth guarding', () => {
   it('renders without crashing when no auth provider is mounted, treated as signed out', () => {
     const mocked = mockUseHighlights();
 
-    // No wrapper: YouVersionAuthContext is null (useYVAuth would throw here).
-    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions));
+    // No auth wrapper: YouVersionAuthContext is null (useYVAuth would throw here).
+    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: HighlightsWrapper,
+    });
 
-    expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
+    expect(useHighlightsOverride).toHaveBeenCalledWith(
       { version_id: 111, passage_id: 'JHN.3' },
       { enabled: false },
     );
@@ -137,7 +147,9 @@ describe('useBibleReaderHighlights — auth guarding', () => {
     // Flag on but no auth provider: the machine is disabled, so a color tap can
     // never do anything. The color-swatch row must not render — this flag is
     // what BibleReader ANDs with the feature flag to hide it.
-    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions));
+    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: HighlightsWrapper,
+    });
     expect(result.current.highlightsInteractive).toBe(false);
   });
 
@@ -186,7 +198,7 @@ describe('useBibleReaderHighlights — fetched highlights', () => {
       wrapper: AuthWrapper,
     });
 
-    expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
+    expect(useHighlightsOverride).toHaveBeenCalledWith(
       { version_id: 111, passage_id: 'JHN.3' },
       { enabled: true },
     );
@@ -545,7 +557,7 @@ describe('useBibleReaderHighlights — scope changes', () => {
 
   it("does not drain the new scope's optimistic overlay when a previous scope's write settles", async () => {
     // Chapter 3's create is deferred so it can settle AFTER we navigate away.
-    let resolvePrevWrite: (value: unknown) => void = vi.fn();
+    let resolvePrevWrite: (value: Highlight) => void = vi.fn();
     const prevWrite = new Promise((resolve) => {
       resolvePrevWrite = resolve;
     });
@@ -603,7 +615,7 @@ describe('useBibleReaderHighlights — scope changes', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(vi.fn());
 
     // Chapter 3's create is deferred so it can fail AFTER we navigate away.
-    let rejectPrevWrite: (reason?: unknown) => void = vi.fn();
+    let rejectPrevWrite: (reason?: Error) => void = vi.fn();
     const prevWrite = new Promise((_resolve, reject) => {
       rejectPrevWrite = reject;
     });
@@ -678,7 +690,7 @@ describe('useBibleReaderHighlights — controlled mode (YPE-3705)', () => {
       { wrapper: AuthWrapper },
     );
 
-    expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
+    expect(useHighlightsOverride).toHaveBeenCalledWith(
       { version_id: 111, passage_id: 'JHN.3' },
       { enabled: false },
     );
@@ -752,11 +764,13 @@ describe('useBibleReaderHighlights — controlled mode (YPE-3705)', () => {
   it('rejects non-palette apply intents in controlled mode', () => {
     const onApply = vi.fn();
 
-    const { result } = renderHook(() =>
-      useBibleReaderHighlights({
-        ...defaultOptions,
-        controlled: { highlights: [], onApply },
-      }),
+    const { result } = renderHook(
+      () =>
+        useBibleReaderHighlights({
+          ...defaultOptions,
+          controlled: { highlights: [], onApply },
+        }),
+      { wrapper: HighlightsWrapper },
     );
 
     act(() => {
@@ -769,14 +783,16 @@ describe('useBibleReaderHighlights — controlled mode (YPE-3705)', () => {
     const custom = 'aabbcc';
     const onRemove = vi.fn();
 
-    const { result } = renderHook(() =>
-      useBibleReaderHighlights({
-        ...defaultOptions,
-        controlled: {
-          highlights: [{ version_id: 111, passage_id: 'JHN.3.16', color: custom }],
-          onRemove,
-        },
-      }),
+    const { result } = renderHook(
+      () =>
+        useBibleReaderHighlights({
+          ...defaultOptions,
+          controlled: {
+            highlights: [{ version_id: 111, passage_id: 'JHN.3.16', color: custom }],
+            onRemove,
+          },
+        }),
+      { wrapper: HighlightsWrapper },
     );
 
     act(() => {

@@ -100,7 +100,7 @@ pnpm typecheck
 ### Linting and Formatting
 
 ```bash
-# Run ESLint
+# Oxlint (type-aware TypeScript, React hooks, i18n, anti-slop)
 pnpm lint
 
 # Format code with Prettier

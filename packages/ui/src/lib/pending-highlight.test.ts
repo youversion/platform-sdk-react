@@ -69,6 +69,17 @@ describe('pending-highlight', () => {
     expect(readPendingHighlights()).toEqual([]);
   });
 
+  it('degrades [null] without throwing', () => {
+    sessionStorage.setItem(STORAGE_KEY, '[null]');
+    expect(readPendingHighlights()).toEqual([]);
+    expect(peekPendingHighlights()).toEqual([]);
+  });
+
+  it('skips null elements but keeps valid entries', () => {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify([null, base]));
+    expect(readPendingHighlights(base.timestamp)).toEqual([base]);
+  });
+
   it('clearPendingHighlight removes every entry', () => {
     appendPendingHighlight(entry({ verses: [1] }), base.timestamp);
     appendPendingHighlight(entry({ verses: [2] }), base.timestamp);

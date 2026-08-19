@@ -39,7 +39,7 @@ const consumeDataExchangeReturn = () => handleDataExchangeCallback();
  * so it never throws when no auth provider is mounted — the seam hook treats "no
  * provider" and "signed out" the same and simply never invokes the redirects.
  */
-export function useHighlightAuthActions(): {
+export type UseHighlightAuthActionsResult = {
   /** Optimistic cache read; a 401/403 on a write is still the ultimate check. */
   hasHighlightsPermission: () => boolean;
   /** Drops the cached `highlights` grant so the next attempt re-prompts. */
@@ -60,7 +60,9 @@ export function useHighlightAuthActions(): {
    * hosted consent page for the `highlights` permission.
    */
   startDataExchangeForHighlights: () => Promise<void>;
-} {
+};
+
+export function useHighlightAuthActions(): UseHighlightAuthActionsResult {
   const context = useContext(YouVersionContext);
   const authContext = useContext(YouVersionAuthContext);
   const redirectUri = authContext?.redirectUri;
@@ -73,10 +75,7 @@ export function useHighlightAuthActions(): {
 
   const startSignInForHighlights = useCallback(
     async (redirectUrl?: string) => {
-      const url =
-        redirectUrl ??
-        redirectUri ??
-        (typeof window !== 'undefined' ? window.location.href : undefined);
+      const url = redirectUrl ?? redirectUri ?? globalThis.window?.location.href;
       if (!url) {
         throw new Error('A redirect URL is required to start sign-in for highlights.');
       }
@@ -96,8 +95,12 @@ export function useHighlightAuthActions(): {
     YouVersionPlatformConfiguration.saveDataExchangeInitiator();
     try {
       const token = await dataExchangeClient.updateToken([HIGHLIGHTS_PERMISSION]);
-      if (typeof window !== 'undefined') {
-        window.location.href = buildDataExchangeUrl(token, context.appKey, context.apiHost);
+      if (globalThis.window) {
+        globalThis.window.location.href = buildDataExchangeUrl(
+          token,
+          context.appKey,
+          context.apiHost,
+        );
       }
     } catch (error) {
       // Mint/redirect aborted — drop the initiator so a later unrelated

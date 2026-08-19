@@ -2,9 +2,16 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { ApiClient } from '../client';
 import { HighlightsClient } from '../highlights';
+import { CreateHighlightEnvelopeSchema } from '../schemas/highlight';
 import { server } from './setup';
 
 const apiHost = process.env.YVP_API_HOST;
+
+function urlFromFetchInput(input: RequestInfo | URL | undefined): string {
+  if (input instanceof Request) return input.url;
+  if (input instanceof URL) return input.href;
+  return input ?? '';
+}
 
 describe('HighlightsClient', () => {
   let apiClient: ApiClient;
@@ -48,11 +55,15 @@ describe('HighlightsClient', () => {
 
       await highlightsClient.getHighlights({ version_id: 111, passage_id: 'MAT.1' }, 'my-token');
 
-      const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+      const firstCall = fetchSpy.mock.calls[0];
+      expect(firstCall).toBeDefined();
+      const [input, init] = firstCall ?? [];
+      const url = urlFromFetchInput(input);
+      const headers = new Headers(init?.headers);
       expect(url).not.toContain('lat=');
       expect(url).toContain('bible_id=111');
       expect(url).toContain('passage_id=MAT.1');
-      expect((init.headers as Record<string, string>).Authorization).toBe('Bearer my-token');
+      expect(headers.get('Authorization')).toBe('Bearer my-token');
     });
 
     it('throws a helpful error when no token is available', async () => {
@@ -107,7 +118,7 @@ describe('HighlightsClient', () => {
     it('throws a helpful error when the API response is malformed', async () => {
       server.use(
         http.get(`https://${apiHost}/v1/highlights`, () =>
-          HttpResponse.json({ data: [{ wrong_shape: true }] }),
+          HttpResponse.json({ data: [{ missing_highlight_fields: true }] }),
         ),
       );
 
@@ -119,11 +130,11 @@ describe('HighlightsClient', () => {
 
   describe('createHighlight', () => {
     it('POSTs the enveloped body ({ request_id, highlight: { bible_id, ... } })', async () => {
-      let capturedBody: unknown;
+      let capturedBody: ReturnType<typeof CreateHighlightEnvelopeSchema.parse> | undefined;
       server.use(
         http.post(`https://${apiHost}/v1/highlights`, async ({ request }) => {
-          capturedBody = await request.json();
-          const body = capturedBody as { highlight: Record<string, unknown> };
+          const body = CreateHighlightEnvelopeSchema.parse(await request.json());
+          capturedBody = body;
           return HttpResponse.json(body.highlight, { status: 201 });
         }),
       );
@@ -133,9 +144,11 @@ describe('HighlightsClient', () => {
         'test-token',
       );
 
-      expect(capturedBody).toEqual({
-        request_id: expect.stringMatching(/.+/) as string,
-        highlight: { bible_id: 111, passage_id: 'MAT.1.1', color: 'fffe00' },
+      expect(capturedBody?.request_id.length).toBeGreaterThan(0);
+      expect(capturedBody?.highlight).toEqual({
+        bible_id: 111,
+        passage_id: 'MAT.1.1',
+        color: 'fffe00',
       });
       expect(highlight).toEqual({ version_id: 111, passage_id: 'MAT.1.1', color: 'fffe00' });
     });
@@ -150,11 +163,12 @@ describe('HighlightsClient', () => {
     });
 
     it('normalizes an uppercase color to lowercase on the wire (API is lowercase-only)', async () => {
-      let capturedBody: { highlight: { color: string } } | undefined;
+      let capturedBody: ReturnType<typeof CreateHighlightEnvelopeSchema.parse> | undefined;
       server.use(
         http.post(`https://${apiHost}/v1/highlights`, async ({ request }) => {
-          capturedBody = (await request.json()) as { highlight: { color: string } };
-          return HttpResponse.json(capturedBody.highlight, { status: 201 });
+          const body = CreateHighlightEnvelopeSchema.parse(await request.json());
+          capturedBody = body;
+          return HttpResponse.json(body.highlight, { status: 201 });
         }),
       );
 
@@ -199,11 +213,15 @@ describe('HighlightsClient', () => {
         highlightsClient.deleteHighlight('MAT.1.1', { version_id: 111 }, 'test-token'),
       ).resolves.toBeUndefined();
 
-      const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+      const firstCall = fetchSpy.mock.calls[0];
+      expect(firstCall).toBeDefined();
+      const [input, init] = firstCall ?? [];
+      const url = urlFromFetchInput(input);
+      const headers = new Headers(init?.headers);
       expect(url).toContain('/v1/highlights/MAT.1.1');
       expect(url).toContain('bible_id=111');
       expect(url).not.toContain('lat=');
-      expect((init.headers as Record<string, string>).Authorization).toBe('Bearer test-token');
+      expect(headers.get('Authorization')).toBe('Bearer test-token');
     });
 
     it('validates input before making a request', async () => {
