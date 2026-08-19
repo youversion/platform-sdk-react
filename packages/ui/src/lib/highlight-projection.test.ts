@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import type { Highlight } from '@youversion/platform-core';
-import { deriveHighlightedVerses, expandPassageId } from './highlight-projection';
+import {
+  chapterScopeForHighlightPaint,
+  clipUsfmForHighlightPaint,
+  deriveHighlightedVerses,
+  expandPassageId,
+  filterHighlightsForPassage,
+  parseChapterScopeFromUsfm,
+} from './highlight-projection';
 
 describe('expandPassageId', () => {
   it('expands a single-verse USFM', () => {
@@ -140,5 +147,151 @@ describe('deriveHighlightedVerses', () => {
 
   it('returns an empty map for an empty highlights array', () => {
     expect(deriveHighlightedVerses([], 111, 'JHN', '3')).toEqual({});
+  });
+});
+
+describe('parseChapterScopeFromUsfm', () => {
+  it('parses a chapter-scope USFM', () => {
+    expect(parseChapterScopeFromUsfm('JHN.3')).toEqual({ book: 'JHN', chapter: '3' });
+  });
+
+  it('parses a verse USFM', () => {
+    expect(parseChapterScopeFromUsfm('JHN.3.16')).toEqual({ book: 'JHN', chapter: '3' });
+  });
+
+  it('parses a verse-range USFM', () => {
+    expect(parseChapterScopeFromUsfm('JHN.3.16-18')).toEqual({ book: 'JHN', chapter: '3' });
+  });
+
+  it('parses a numbered book code', () => {
+    expect(parseChapterScopeFromUsfm('1CO.13.4-7')).toEqual({ book: '1CO', chapter: '13' });
+  });
+
+  it('returns null for malformed input', () => {
+    expect(parseChapterScopeFromUsfm('')).toBeNull();
+    expect(parseChapterScopeFromUsfm('JHN')).toBeNull();
+    expect(parseChapterScopeFromUsfm('JHN.')).toBeNull();
+    expect(parseChapterScopeFromUsfm('.3')).toBeNull();
+  });
+});
+
+describe('filterHighlightsForPassage', () => {
+  const highlight = (version_id: number, passage_id: string, color: string): Highlight => ({
+    version_id,
+    passage_id,
+    color,
+  });
+
+  it('clips overlapping ranges to the displayed verses and drops the rest', () => {
+    const kept = filterHighlightsForPassage(
+      [
+        highlight(111, 'JHN.3.16', 'fffe00'),
+        highlight(111, 'JHN.3.16-18', '5dff79'),
+        highlight(111, 'JHN.3.17', '00d6ff'),
+        highlight(111, 'JHN.4.1', 'ffc66f'),
+        highlight(111, 'JHN.3', 'ff95ef'),
+      ],
+      'JHN.3.16',
+    );
+    expect(kept).toEqual([
+      highlight(111, 'JHN.3.16', 'fffe00'),
+      highlight(111, 'JHN.3.16', '5dff79'),
+    ]);
+
+    expect(
+      filterHighlightsForPassage([highlight(111, 'JHN.3.16-18', '5dff79')], 'JHN.3.16-17'),
+    ).toEqual([highlight(111, 'JHN.3.16-17', '5dff79')]);
+  });
+
+  it('returns an empty list when the display USFM is not a verse unit', () => {
+    expect(filterHighlightsForPassage([highlight(111, 'JHN.3.16', 'fffe00')], 'JHN.3')).toEqual([]);
+  });
+});
+
+describe('chapterScopeForHighlightPaint', () => {
+  it('projects the rendered passage while a different chapter is loading, and holds paint when the same chapter may have changed version', () => {
+    expect(
+      chapterScopeForHighlightPaint({
+        renderedPassageId: 'JHN.1',
+        requestedUsfm: 'JHN.1',
+        loading: false,
+      }),
+    ).toEqual({ book: 'JHN', chapter: '1' });
+
+    expect(
+      chapterScopeForHighlightPaint({
+        renderedPassageId: 'JHN.1',
+        requestedUsfm: 'JHN.2',
+        loading: true,
+      }),
+    ).toEqual({ book: 'JHN', chapter: '1' });
+
+    expect(
+      chapterScopeForHighlightPaint({
+        renderedPassageId: 'JHN.1',
+        requestedUsfm: 'JHN.1',
+        loading: true,
+      }),
+    ).toBeNull();
+
+    expect(
+      chapterScopeForHighlightPaint({
+        renderedPassageId: undefined,
+        requestedUsfm: 'JHN.2',
+        loading: true,
+      }),
+    ).toEqual({ book: 'JHN', chapter: '2' });
+  });
+});
+
+describe('clipUsfmForHighlightPaint', () => {
+  it('clips to the requested USFM in the paint chapter, and to the rendered verse unit while another chapter loads', () => {
+    expect(
+      clipUsfmForHighlightPaint({
+        requestedUsfm: 'JHN.1.2',
+        renderedPassageId: 'JHN.1.2',
+        chapterScope: { book: 'JHN', chapter: '1' },
+      }),
+    ).toBe('JHN.1.2');
+
+    expect(
+      clipUsfmForHighlightPaint({
+        requestedUsfm: 'JHN.2.3',
+        renderedPassageId: 'JHN.1.2',
+        chapterScope: { book: 'JHN', chapter: '1' },
+      }),
+    ).toBe('JHN.1.2');
+
+    expect(
+      clipUsfmForHighlightPaint({
+        requestedUsfm: 'JHN.2.3',
+        renderedPassageId: 'JHN.1',
+        chapterScope: { book: 'JHN', chapter: '1' },
+      }),
+    ).toBe('JHN.1');
+
+    expect(
+      clipUsfmForHighlightPaint({
+        requestedUsfm: 'JHN.1',
+        renderedPassageId: 'JHN.1',
+        chapterScope: { book: 'JHN', chapter: '1' },
+      }),
+    ).toBe('JHN.1');
+
+    expect(
+      clipUsfmForHighlightPaint({
+        requestedUsfm: 'JHN.2.3',
+        renderedPassageId: undefined,
+        chapterScope: { book: 'JHN', chapter: '1' },
+      }),
+    ).toBe('JHN.1');
+
+    expect(
+      clipUsfmForHighlightPaint({
+        requestedUsfm: 'JHN.2.3',
+        renderedPassageId: 'JHN.1.2',
+        chapterScope: null,
+      }),
+    ).toBe('JHN.2.3');
   });
 });

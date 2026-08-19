@@ -1,5 +1,5 @@
 import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hooks';
-import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '@youversion/platform-core';
+import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, type Highlight } from '@youversion/platform-core';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { BibleTextView, type FootnoteData } from './verse';
@@ -24,6 +24,23 @@ export type BibleCardProps = {
   showVersionPicker?: boolean;
   onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
   onFootnotePress?: (data: FootnoteData) => void;
+  /**
+   * When provided (including `[]`), paints these highlights on the card
+   * (controlled mode, no fetch). Use for React Native or Expo DOM hosts that
+   * already own highlight data — pass `[]` while loading or signed out so the
+   * WebView does not fetch.
+   *
+   * Omit the prop for self-contained paint: when the user is signed
+   * in, has granted the `highlights` permission, and highlights are live, the
+   * card fetches and paints matching verses. A first render of `undefined`
+   * latches self-contained (fetch when eligible). Mode is latched at first
+   * mount.
+   *
+   * Verse and range `reference`s clip host and fetched rows to that USFM, so a
+   * highlight that runs past the card does not paint extra verses. Chapter-scope
+   * references paint the whole chapter.
+   */
+  highlights?: Highlight[];
 };
 
 /**
@@ -121,6 +138,7 @@ export function BibleCard({
   showVersionPicker = false,
   onVersionPickerPress,
   onFootnotePress,
+  highlights,
 }: BibleCardProps): React.ReactNode {
   // Controlled only when both versionId + onVersionChange are provided.
   // versionId alone seeds uncontrolled state, preserving backwards compatibility
@@ -203,6 +221,7 @@ export function BibleCard({
               error: passageError,
             }}
             onFootnotePress={onFootnotePress}
+            highlights={highlights}
           />
         </AnimatedHeight>
 

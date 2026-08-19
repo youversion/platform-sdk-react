@@ -15,8 +15,10 @@ import { Share } from '@/components/icons/share';
 import { Votd } from '@/components/icons/votd';
 import { Button } from '@/components/ui/button';
 import { BibleTextView } from '@/components/verse';
-import { DEFAULT_LICENSE_FREE_BIBLE_VERSION } from '@youversion/platform-core';
+import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, type Highlight } from '@youversion/platform-core';
 import { cn } from '@/lib/utils';
+import { filterHighlightsForPassage } from '@/lib/highlight-projection';
+import { useHighlightsControlledLatch } from '@/lib/use-highlights-controlled-latch';
 
 export type VerseOfTheDayShareData = {
   /** Full share body: verse text, blank line, then reference (same as Web Share `text`). */
@@ -65,7 +67,35 @@ export type VerseOfTheDayProps = {
    * size of the card and the font size of the text.
    */
   size?: 'default' | 'lg';
+  /**
+   * When provided (including `[]`), paints these highlights on Verse of the
+   * Day (controlled mode, no fetch). Use for React Native or Expo DOM hosts
+   * that already own highlight data — pass `[]` while loading or signed out
+   * so the WebView does not fetch. Mode is latched at this component's first
+   * mount, including while today's verse is still loading. Nothing paints
+   * until today's passage is known; overlapping ranges are clipped to that
+   * passage.
+   *
+   * Omit the prop for self-contained paint: when the user is signed
+   * in, has granted the `highlights` permission, and highlights are live,
+   * matching verses are fetched and painted. A first render of `undefined`
+   * latches self-contained (fetch when eligible), not "never paint".
+   */
+  highlights?: Highlight[];
 };
+
+function clipHighlightsToPassage(
+  highlights: Highlight[] | undefined,
+  passageId: string | undefined,
+): Highlight[] | undefined {
+  if (highlights === undefined) {
+    return undefined;
+  }
+  if (!passageId) {
+    return [];
+  }
+  return filterHighlightsForPassage(highlights, passageId);
+}
 
 function buildVerseOfTheDayShareData(
   verseEl: HTMLElement,
@@ -127,6 +157,7 @@ export function VerseOfTheDay({
   showBibleAppAttribution = true,
   onShare,
   size = 'default',
+  highlights,
 }: VerseOfTheDayProps): React.ReactElement {
   const { t } = useTranslation(undefined, { i18n });
   const day = React.useMemo(() => dayOfYear || getDayOfYear(new Date()), [dayOfYear]);
@@ -148,6 +179,14 @@ export function VerseOfTheDay({
   const theme = background || providerTheme;
 
   const isLoading = loadingPassage || loadingVerseOfTheDay || loadingVersion;
+
+  // Latched at this component's first mount, not at BibleTextView's. VOTD
+  // delays mounting the child until load finishes; latching only there would
+  // treat a highlights array that arrived during load as "present on first
+  // mount" and paint, which BibleReader.Root would ignore.
+  const isHighlightsControlled = useHighlightsControlledLatch(highlights, 'VerseOfTheDay');
+  const hostHighlights = isHighlightsControlled ? (highlights ?? []) : undefined;
+  const clippedHighlights = clipHighlightsToPassage(hostHighlights, data?.passage_id);
 
   let referenceText = '';
   if (passage?.reference && version?.localized_abbreviation) {
@@ -250,6 +289,7 @@ export function VerseOfTheDay({
                 loading: isLoading,
                 error: errorPassage || errorVerseOfTheDay || null,
               }}
+              highlights={clippedHighlights}
             />
           )}
         </AnimatedHeight>

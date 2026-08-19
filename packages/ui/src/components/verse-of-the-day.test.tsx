@@ -17,9 +17,19 @@ globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserv
 
 import { VerseOfTheDay } from './verse-of-the-day';
 import type { VerseOfTheDayShareData } from './verse-of-the-day';
+import type { Highlight } from '@youversion/platform-core';
+import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
+import {
+  fillFor,
+  getVerseEl,
+  Providers,
+  collection,
+  stubUseHighlights,
+} from '@/test/highlights-test-utils';
 import en from '@/i18n/locales/en.json';
 import {
   getDayOfYear,
+  useHighlights,
   usePassage,
   useTheme,
   useVerseOfTheDay,
@@ -35,6 +45,14 @@ vi.mock('@youversion/platform-react-hooks', async (importActual) => {
     useTheme: vi.fn(),
     useVerseOfTheDay: vi.fn(),
     useVersion: vi.fn(),
+    useHighlights: vi.fn(() => ({
+      highlights: { data: [], next_page_token: null },
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+      createHighlight: vi.fn(),
+      deleteHighlight: vi.fn(),
+    })),
   };
 });
 
@@ -242,5 +260,180 @@ describe('VerseOfTheDay - share', () => {
     await user.click(shareButton);
 
     expect(onShare).not.toHaveBeenCalled();
+  });
+});
+
+describe('VerseOfTheDay - host highlights (controlled mode)', () => {
+  const YELLOW = 'fffe00';
+  const GREEN = '5dff79';
+  const twoVerseHtml = `
+    <div class="p">
+      <span class="yv-v" v="16"></span><span class="yv-vlbl">16</span>For God so loved the world.
+      <span class="yv-v" v="17"></span><span class="yv-vlbl">17</span>For God did not send his Son.
+    </div>
+  `;
+  const highlight = (passage_id: string, color: string): Highlight => ({
+    version_id: 111,
+    passage_id,
+    color,
+  });
+
+  it('does not paint while the verse of the day has not resolved', () => {
+    vi.mocked(getDayOfYear).mockReturnValue(1);
+    vi.mocked(useVerseOfTheDay).mockReturnValue({
+      data: null,
+      loading: true,
+      error: null,
+      refetch: vi.fn(),
+    });
+    vi.mocked(usePassage).mockReturnValue({
+      passage: null,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    vi.mocked(useVersion).mockReturnValue({
+      version: { localized_abbreviation: 'NIV' },
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useVersion>);
+    vi.mocked(useTheme).mockReturnValue('light');
+
+    const { container } = render(
+      <VerseOfTheDay versionId={111} highlights={[highlight('JHN.3.16', YELLOW)]} />,
+    );
+
+    expect(container.querySelector('.yv-v')).toBeNull();
+  });
+
+  it("paints only the verses in today's passage", () => {
+    stubHooks({ passageContent: twoVerseHtml });
+
+    const { container } = render(
+      <VerseOfTheDay
+        versionId={111}
+        highlights={[highlight('JHN.3.16-18', YELLOW), highlight('JHN.3.17', GREEN)]}
+      />,
+    );
+
+    expect(getVerseEl(container, 16).style.backgroundColor).toBe(fillFor(YELLOW));
+    expect(getVerseEl(container, 17).style.backgroundColor).toBe('');
+  });
+
+  it('does not paint highlights for a different passage', () => {
+    stubHooks({ passageContent: twoVerseHtml });
+
+    const { container } = render(
+      <VerseOfTheDay versionId={111} highlights={[highlight('GEN.1.1', YELLOW)]} />,
+    );
+
+    expect(getVerseEl(container, 16).style.backgroundColor).toBe('');
+    expect(getVerseEl(container, 17).style.backgroundColor).toBe('');
+  });
+
+  it("latches highlights at first mount, including while today's verse is still loading", () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      vi.mocked(getDayOfYear).mockReturnValue(1);
+      vi.mocked(useVerseOfTheDay).mockReturnValue({
+        data: null,
+        loading: true,
+        error: null,
+        refetch: vi.fn(),
+      });
+      vi.mocked(usePassage).mockReturnValue({
+        passage: null,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+      });
+      vi.mocked(useVersion).mockReturnValue({
+        version: { localized_abbreviation: 'NIV' },
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useVersion>);
+      vi.mocked(useTheme).mockReturnValue('light');
+
+      const { container, rerender, unmount } = render(<VerseOfTheDay versionId={111} />);
+
+      rerender(<VerseOfTheDay versionId={111} highlights={[highlight('JHN.3.16', YELLOW)]} />);
+      stubHooks({ passageContent: twoVerseHtml });
+      rerender(<VerseOfTheDay versionId={111} highlights={[highlight('JHN.3.16', YELLOW)]} />);
+
+      expect(getVerseEl(container, 16).style.backgroundColor).toBe('');
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('`highlights` prop switched'));
+      unmount();
+      warn.mockClear();
+
+      vi.mocked(useVerseOfTheDay).mockReturnValue({
+        data: null,
+        loading: true,
+        error: null,
+        refetch: vi.fn(),
+      });
+      vi.mocked(usePassage).mockReturnValue({
+        passage: null,
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+      });
+
+      const controlled = render(
+        <VerseOfTheDay versionId={111} highlights={[highlight('JHN.3.16', YELLOW)]} />,
+      );
+      stubHooks({ passageContent: twoVerseHtml });
+      controlled.rerender(
+        <VerseOfTheDay versionId={111} highlights={[highlight('JHN.3.16', YELLOW)]} />,
+      );
+      expect(getVerseEl(controlled.container, 16).style.backgroundColor).toBe(fillFor(YELLOW));
+
+      controlled.rerender(<VerseOfTheDay versionId={111} />);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('`highlights` prop switched'));
+      expect(getVerseEl(controlled.container, 16).style.backgroundColor).toBe('');
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('paints from a stubbed fetch when the prop is omitted, and paints nothing for a host empty array', () => {
+    stubHooks({ passageContent: twoVerseHtml });
+    const restoreHighlights = stubUseHighlights({
+      highlights: collection([highlight('JHN.3.16', YELLOW), highlight('JHN.3.17', GREEN)]),
+    });
+    const hasPermission = vi
+      .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
+      .mockReturnValue(true);
+
+    try {
+      const omitted = render(
+        <Providers>
+          <VerseOfTheDay versionId={111} />
+        </Providers>,
+      );
+      expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
+        { version_id: 111, passage_id: 'JHN.3' },
+        { enabled: true },
+      );
+      expect(getVerseEl(omitted.container, 16).style.backgroundColor).toBe(fillFor(YELLOW));
+      expect(getVerseEl(omitted.container, 17).style.backgroundColor).toBe('');
+      omitted.unmount();
+
+      stubUseHighlights();
+      const hostEmpty = render(
+        <Providers>
+          <VerseOfTheDay versionId={111} highlights={[]} />
+        </Providers>,
+      );
+      expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
+        { version_id: 111, passage_id: 'JHN.3' },
+        { enabled: false },
+      );
+      expect(getVerseEl(hostEmpty.container, 16).style.backgroundColor).toBe('');
+    } finally {
+      restoreHighlights();
+      hasPermission.mockRestore();
+    }
   });
 });

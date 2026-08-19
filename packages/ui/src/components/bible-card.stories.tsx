@@ -46,6 +46,17 @@ export const Default: Story = {
   },
 };
 
+export const WithHighlights: Story = {
+  args: {
+    reference: 'LUK.1.39-45',
+    versionId: 111,
+    highlights: [
+      { version_id: 111, passage_id: 'LUK.1.39', color: 'fffe00' },
+      { version_id: 111, passage_id: 'LUK.1.41-42', color: '5dff79' },
+    ],
+  },
+};
+
 export const WideContainer: Story = {
   args: {
     reference: 'LUK.1.39-45',

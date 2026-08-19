@@ -1,8 +1,8 @@
 'use client';
 
 import i18n from '@/i18n';
-import { IS_PRODUCTION } from '@/lib/constants';
 import { useDelayedLoading } from '@/lib/use-delayed-loading';
+import { useHighlightsControlledLatch } from '@/lib/use-highlights-controlled-latch';
 import { cn } from '@/lib/utils';
 import {
   INTER_FONT,
@@ -465,21 +465,7 @@ function Root({
 }: RootProps) {
   // Latched at first mount: a transient `undefined` on a controlled reader must
   // render as "no highlights", never fall through to the self-contained path.
-  const isHighlightsControlledRef = useRef(highlights !== undefined);
-  const isHighlightsControlled = isHighlightsControlledRef.current;
-  const didWarnHighlightsModeFlipRef = useRef(false);
-  if (
-    !IS_PRODUCTION &&
-    (highlights !== undefined) !== isHighlightsControlled &&
-    !didWarnHighlightsModeFlipRef.current
-  ) {
-    didWarnHighlightsModeFlipRef.current = true;
-    console.warn(
-      `BibleReader.Root: the \`highlights\` prop switched from ${
-        isHighlightsControlled ? 'present to absent' : 'absent to present'
-      } after mount. The highlight mode (controlled vs self-contained) is latched at first mount and will not change. Pass \`highlights\` (use \`[]\` for "nothing highlighted") on every render for controlled mode, or never pass it for self-contained mode.`,
-    );
-  }
+  const isHighlightsControlled = useHighlightsControlledLatch(highlights, 'BibleReader.Root');
 
   const [book, setBook] = useControllableState({
     prop: controlledBook,
