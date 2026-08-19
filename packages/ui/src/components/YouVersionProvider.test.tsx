@@ -4,8 +4,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionProvider } from '@/components/YouVersionProvider';
+import i18n from '@/i18n';
+import en from '@/i18n/locales/en.json';
+import es from '@/i18n/locales/es.json';
 
 const baseProviderMock =
   vi.fn<(props: Record<string, unknown> & { children?: React.ReactNode }) => React.ReactElement>();
@@ -16,6 +20,11 @@ vi.mock('@youversion/platform-react-hooks', () => ({
     baseProviderMock(props),
   useYVAuth: vi.fn(),
 }));
+
+function VerseOfTheDayHeading() {
+  const { t } = useTranslation(undefined, { i18n });
+  return <p>{t('verseOfTheDay')}</p>;
+}
 
 describe('UI YouVersionProvider', () => {
   it('forwards additionalHeaders to the underlying hooks provider', () => {
@@ -94,4 +103,33 @@ describe('UI YouVersionProvider', () => {
       errorSpy.mockRestore();
     },
   );
+
+  it('uses lng for bundled copy instead of the browser language', async () => {
+    vi.stubGlobal('navigator', {
+      language: 'en-US',
+      languages: ['en-US', 'en'],
+    });
+    baseProviderMock.mockClear();
+
+    const { rerender } = render(
+      <YouVersionProvider appKey="test-key" lng="es">
+        <VerseOfTheDayHeading />
+      </YouVersionProvider>,
+    );
+
+    expect(await screen.findByText(es.verseOfTheDay)).toBeInTheDocument();
+    expect(screen.queryByText(en.verseOfTheDay)).not.toBeInTheDocument();
+    expect(baseProviderMock.mock.calls.at(-1)?.[0]).not.toHaveProperty('lng');
+
+    rerender(
+      <YouVersionProvider appKey="test-key" lng="es-MX">
+        <VerseOfTheDayHeading />
+      </YouVersionProvider>,
+    );
+
+    expect(await screen.findByText(es.verseOfTheDay)).toBeInTheDocument();
+
+    await i18n.changeLanguage('en');
+    vi.unstubAllGlobals();
+  });
 });

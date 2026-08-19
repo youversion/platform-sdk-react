@@ -58,6 +58,18 @@ const { t } = useTranslation(undefined, { i18n });
 
 Never hardcode user-facing text in JSX attributes (`aria-label`, `title`, `placeholder`, `alt`) or visible copy.
 
+## Host-set language
+
+By default the UI language follows `navigator.languages`. Pass `lng` on `YouVersionProvider` to set it explicitly — for example the React Native Expo SDK forwarding its `locale` into a WebView:
+
+```tsx
+<YouVersionProvider appKey="YOUR_APP_KEY" lng="es">
+  <VerseOfTheDay />
+</YouVersionProvider>
+```
+
+Regional tags such as `es-MX` resolve to a bundled locale (`es`). Unsupported tags fall back to English. Omit `lng` to keep browser detection. No new translation keys are needed for this; existing bundles (including Spanish `verseOfTheDay`) are used as-is.
+
 ## Local checks
 
 ```bash

@@ -41,6 +41,14 @@ function App() {
 }
 ```
 
+Optional `lng` sets bundled UI copy (Verse of the Day heading, buttons, etc.) instead of following the browser language. Regional tags like `es-MX` resolve to a bundled locale:
+
+```tsx
+<YouVersionProvider appKey="YOUR_APP_KEY" lng="es">
+  <VerseOfTheDay />
+</YouVersionProvider>
+```
+
 ## Styling
 
 All component CSS is automatically injected when you wrap your app with `YouVersionProvider` — no extra imports or build steps needed. Under the hood, it uses React 19's [`<style precedence>`](https://react.dev/reference/react-dom/components/style) to hoist styles into `<head>` with built-in deduplication and SSR/Suspense support.

@@ -199,4 +199,38 @@ describe('i18n instance', () => {
     expect(i18n.language).toBe('en');
     expect(i18n.t('verseOfTheDay')).toBe(en.verseOfTheDay);
   });
+
+  it('uses an explicit host language instead of the browser preference', async () => {
+    vi.stubGlobal('navigator', {
+      language: 'en-US',
+      languages: ['en-US', 'en'],
+    });
+    vi.resetModules();
+
+    const { default: i18n, syncUiLanguage } = await import('./index');
+    if (!i18n.isInitialized) {
+      await new Promise<void>((resolve) => {
+        const handler = () => {
+          i18n.off('initialized', handler);
+          resolve();
+        };
+        i18n.on('initialized', handler);
+      });
+    }
+
+    expect(i18n.language).toBe('en');
+    expect(i18n.t('verseOfTheDay')).toBe(en.verseOfTheDay);
+
+    syncUiLanguage('es');
+    await vi.waitFor(() => {
+      expect(i18n.language).toBe('es');
+    });
+    expect(i18n.t('verseOfTheDay')).toBe(resources.es.translation.verseOfTheDay);
+
+    syncUiLanguage('es-MX');
+    await vi.waitFor(() => {
+      expect(i18n.language).toBe('es');
+    });
+    expect(i18n.t('verseOfTheDay')).toBe(resources.es.translation.verseOfTheDay);
+  });
 });

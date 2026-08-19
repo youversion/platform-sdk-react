@@ -13,12 +13,19 @@ const fallbackLng = 'en';
 const i18n: I18nInstance = i18next.createInstance();
 
 /**
- * Applies the user's browser language when running in a browser.
- * Call from YouVersionProvider on mount — do not rely on module-load detection,
- * which runs in Node during bundling/dep optimization and locks to fallbackLng.
+ * Applies bundled UI copy for `lng` when the host provides one (BCP-47, e.g.
+ * `es` or `es-MX`). When omitted, follows `navigator.languages`.
+ *
+ * Call from YouVersionProvider — do not rely on module-load detection, which
+ * runs in Node during bundling/dep optimization and locks to fallbackLng.
  */
-export function syncBrowserLanguageFromNavigator(): void {
-  const detected = resolveBrowserLanguage(getBrowserLanguages(), supportedLngs, fallbackLng);
+export function syncUiLanguage(lng?: string): void {
+  const trimmed = lng?.trim();
+  const detected = resolveBrowserLanguage(
+    trimmed ? [trimmed] : getBrowserLanguages(),
+    supportedLngs,
+    fallbackLng,
+  );
   if (i18n.language !== detected) {
     void i18n.changeLanguage(detected);
   }
