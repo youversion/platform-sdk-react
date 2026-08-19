@@ -54,11 +54,15 @@ type TriggerElementProps = React.HTMLAttributes<HTMLButtonElement> & {
   'data-yv-theme'?: string;
 };
 
-function isRecentVersion(item: RecentVersion): item is RecentVersion {
+function isRecentVersion(item: unknown): item is RecentVersion {
+  if (item === null || Object.prototype.toString.call(item) !== '[object Object]') {
+    return false;
+  }
+  const version = item as RecentVersion;
   return (
-    Number.isFinite(item.id) &&
-    Object.prototype.toString.call(item.title) === '[object String]' &&
-    Object.prototype.toString.call(item.localized_abbreviation) === '[object String]'
+    Number.isFinite(version.id) &&
+    Object.prototype.toString.call(version.title) === '[object String]' &&
+    Object.prototype.toString.call(version.localized_abbreviation) === '[object String]'
   );
 }
 
@@ -287,7 +291,9 @@ function Root({
   const theme = background || providerTheme;
 
   const fallbackLanguageId =
-    defaultLanguageId || globalThis.navigator?.languages[0]?.split('-')[0] || 'en';
+    defaultLanguageId ||
+    globalThis.navigator?.languages?.[0]?.split('-')[0] ||
+    'en';
   const [selectedLanguageId, setSelectedLanguageId] = useControllableState({
     prop: controlledLanguageId,
     defaultProp: fallbackLanguageId,

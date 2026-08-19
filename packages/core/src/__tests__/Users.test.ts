@@ -877,6 +877,18 @@ describe('YouVersionAPIUsers', () => {
 
       expect(result).toEqual({});
     });
+
+    it('keeps valid claims when an optional claim is null (partial degrade)', () => {
+      const payload = { sub: 'u1', name: null, email: 'a@b.c' };
+      const token = 'header.payload.signature';
+
+      vi.mocked(atob).mockReturnValue(JSON.stringify(payload));
+
+      // @ts-expect-error - accessing private method for testing
+      const result = YouVersionAPIUsers.decodeJWT(token);
+
+      expect(result).toEqual({ sub: 'u1', email: 'a@b.c' });
+    });
   });
 
   describe('signOut', () => {

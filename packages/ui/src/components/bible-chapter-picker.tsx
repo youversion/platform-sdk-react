@@ -144,7 +144,7 @@ function Root({
       setExpandedBook(book);
       setTimeout(() => {
         const element = bookElementsRef.current[book];
-        element?.scrollIntoView({
+        element?.scrollIntoView?.({
           behavior: 'smooth',
           block: 'start',
         });
@@ -160,7 +160,7 @@ function Root({
     const timeoutId = setTimeout(() => {
       if (!controller.signal.aborted) {
         const element = bookElementsRef.current[expandedBook];
-        element?.scrollIntoView({
+        element?.scrollIntoView?.({
           behavior: 'smooth',
           block: 'start',
         });

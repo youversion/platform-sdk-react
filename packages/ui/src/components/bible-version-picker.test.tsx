@@ -411,6 +411,45 @@ describe('BibleVersionPicker', () => {
     });
   });
 
+  describe('recent versions storage', () => {
+    it('falls back to [] when localStorage contains [null]', async () => {
+      vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
+        key === RECENT_VERSIONS_KEY ? '[null]' : null,
+      );
+
+      expect(() => renderPicker()).not.toThrow();
+      await openPicker();
+
+      expect(screen.queryByTestId('recent-version-list')).not.toBeInTheDocument();
+    });
+
+    it('falls back to en when navigator exists but languages is missing', async () => {
+      const user = userEvent.setup();
+      const languagesDescriptor = Object.getOwnPropertyDescriptor(globalThis.navigator, 'languages');
+      Object.defineProperty(globalThis.navigator, 'languages', { value: undefined, configurable: true });
+
+      try {
+        const onVersionPickerPress = vi.fn();
+        renderWithOverrides(
+          <BibleVersionPicker.Root versionId={111} onVersionPickerPress={onVersionPickerPress}>
+            <BibleVersionPicker.Trigger />
+          </BibleVersionPicker.Root>,
+        );
+
+        await user.click(screen.getByRole('button'));
+
+        expect(onVersionPickerPress).toHaveBeenCalledWith({
+          versionId: 111,
+          languageId: 'en',
+        });
+      } finally {
+        if (languagesDescriptor) {
+          Object.defineProperty(globalThis.navigator, 'languages', languagesDescriptor);
+        }
+      }
+    });
+  });
+
   describe('onVersionPickerPress override', () => {
     it('calls onVersionPickerPress with { versionId, languageId } when Trigger is clicked', async () => {
       const user = userEvent.setup();

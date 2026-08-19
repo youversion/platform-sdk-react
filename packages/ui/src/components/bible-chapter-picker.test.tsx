@@ -326,4 +326,33 @@ describe('BibleChapterPicker - accordion expand/collapse', () => {
 
     warnSpy.mockRestore();
   });
+
+  it('does not throw when scrollIntoView is missing (jsdom)', async () => {
+    const user = userEvent.setup();
+    const scrollIntoViewDescriptor = Object.getOwnPropertyDescriptor(
+      Element.prototype,
+      'scrollIntoView',
+    );
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      value: undefined,
+      configurable: true,
+    });
+
+    try {
+      renderContent();
+
+      await expect(user.click(findAccordionTrigger(/Exodus/i)!)).resolves.toBeUndefined();
+      await expect(
+        new Promise<void>((resolve) => {
+          setTimeout(resolve, 250);
+        }),
+      ).resolves.toBeUndefined();
+    } finally {
+      if (scrollIntoViewDescriptor) {
+        Object.defineProperty(Element.prototype, 'scrollIntoView', scrollIntoViewDescriptor);
+      } else {
+        delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+      }
+    }
+  });
 });

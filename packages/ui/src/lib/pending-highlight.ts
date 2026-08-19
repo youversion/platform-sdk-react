@@ -42,25 +42,36 @@ type StoredPendingRead = {
   stale: boolean;
 };
 
-function isText(value: string | number | boolean | null | undefined): value is string {
+function isText(value: unknown): value is string {
   return Object.prototype.toString.call(value) === '[object String]';
 }
 
-function isFiniteNumber(value: string | number | boolean | null | undefined): value is number {
-  return Number.isFinite(value);
+function isFiniteNumber(value: unknown): value is number {
+  return Object.prototype.toString.call(value) === '[object Number]' && Number.isFinite(value);
 }
 
-function parsePendingHighlight(item: PendingHighlight): PendingHighlight | undefined {
-  if (!Array.isArray(item.verses) || !item.verses.every(isFiniteNumber)) return undefined;
-  if (!isText(item.color) || !isText(item.book) || !isText(item.chapter)) return undefined;
-  if (!isFiniteNumber(item.versionId) || !isFiniteNumber(item.timestamp)) return undefined;
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Object.prototype.toString.call(value) === '[object Object]';
+}
+
+function parsePendingHighlight(item: unknown): PendingHighlight | undefined {
+  if (!isPlainObject(item)) return undefined;
+  const verses = item.verses;
+  const color = item.color;
+  const book = item.book;
+  const chapter = item.chapter;
+  const versionId = item.versionId;
+  const timestamp = item.timestamp;
+  if (!Array.isArray(verses) || !verses.every(isFiniteNumber)) return undefined;
+  if (!isText(color) || !isText(book) || !isText(chapter)) return undefined;
+  if (!isFiniteNumber(versionId) || !isFiniteNumber(timestamp)) return undefined;
   return {
-    verses: item.verses,
-    color: item.color,
-    versionId: item.versionId,
-    book: item.book,
-    chapter: item.chapter,
-    timestamp: item.timestamp,
+    verses,
+    color,
+    versionId,
+    book,
+    chapter,
+    timestamp,
   };
 }
 
@@ -76,6 +87,7 @@ function parsePendingHighlightList(raw: string): PendingHighlight[] | undefined 
   if (!Array.isArray(parsed)) return undefined;
   const entries: PendingHighlight[] = [];
   for (const item of parsed) {
+    if (!isPlainObject(item)) continue;
     const entry = parsePendingHighlight(item);
     if (entry === undefined) return undefined;
     entries.push(entry);

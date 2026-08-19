@@ -16,10 +16,10 @@ export type StoredGrants = z.infer<typeof StoredGrantsSchema>;
 
 /** Claims read from an ID token for UI display. Signature is not verified here. */
 export const IdTokenClaimsSchema = z.object({
-  sub: z.string().optional(),
-  name: z.string().optional(),
-  profile_picture: z.string().optional(),
-  email: z.string().optional(),
+  sub: z.string().optional().catch(undefined),
+  name: z.string().optional().catch(undefined),
+  profile_picture: z.string().optional().catch(undefined),
+  email: z.string().optional().catch(undefined),
 });
 export type IdTokenClaims = z.infer<typeof IdTokenClaimsSchema>;
 

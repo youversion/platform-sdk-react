@@ -119,7 +119,7 @@ describe('resolveBrowserLanguage', () => {
   });
 });
 
-describe('getBrowserLanguages', () => {
+  describe('getBrowserLanguages', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -140,6 +140,23 @@ describe('getBrowserLanguages', () => {
     });
 
     expect(getBrowserLanguages()).toEqual(['es-ES']);
+  });
+
+  it('works when navigator exists without window (Node 21+)', () => {
+    vi.stubGlobal('window', undefined);
+    vi.stubGlobal('navigator', {
+      language: 'de-DE',
+      languages: ['de-DE'],
+    });
+
+    expect(getBrowserLanguages()).toEqual(['de-DE']);
+  });
+
+  it('returns undefined when window exists but navigator is missing', () => {
+    vi.stubGlobal('window', {});
+    vi.stubGlobal('navigator', undefined);
+
+    expect(getBrowserLanguages()).toBeUndefined();
   });
 });
 
