@@ -18,6 +18,12 @@ export function getBrowserLanguages(): readonly string[] | undefined {
   return undefined;
 }
 
+/** BCP 47 bases that map to a different supported locale code. */
+const LANGUAGE_ALIASES: Readonly<Record<string, string>> = {
+  nb: 'no',
+  nn: 'no',
+};
+
 /**
  * Maps browser language tags to a supported locale code.
  * Prefers the first matching language in the user's preference list.
@@ -48,6 +54,14 @@ export function resolveBrowserLanguage(
     const baseMatch = supportedLower.get(base);
     if (baseMatch) {
       return baseMatch;
+    }
+
+    const alias = LANGUAGE_ALIASES[base];
+    if (alias) {
+      const aliasMatch = supportedLower.get(alias);
+      if (aliasMatch) {
+        return aliasMatch;
+      }
     }
   }
 
