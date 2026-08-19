@@ -12,24 +12,31 @@ export function collection(data: Highlight[]): Collection<Highlight> {
   return { data, next_page_token: null };
 }
 
-/**
- * Ready-to-run `useHighlights` stub. Each case that needs a specific return
- * calls this instead of writing module mock state and restoring it later.
- */
-export function stubUseHighlights(
-  overrides: Partial<ReturnType<typeof useHighlights>> = {},
-): ReturnType<typeof useHighlights> {
-  const value: ReturnType<typeof useHighlights> = {
+function idleHighlights(): ReturnType<typeof useHighlights> {
+  return {
     highlights: collection([]),
     loading: false,
     error: null,
     refetch: vi.fn(),
     createHighlight: vi.fn(),
     deleteHighlight: vi.fn(),
-    ...overrides,
   };
-  vi.mocked(useHighlights).mockReturnValue(value);
-  return value;
+}
+
+/**
+ * Stubs the module `useHighlights` mock for this case. Call the returned
+ * restore at the end of the case so later tests do not inherit the return.
+ */
+export function stubUseHighlights(
+  overrides: Partial<ReturnType<typeof useHighlights>> = {},
+): () => void {
+  vi.mocked(useHighlights).mockReturnValue({
+    ...idleHighlights(),
+    ...overrides,
+  });
+  return () => {
+    vi.mocked(useHighlights).mockReturnValue(idleHighlights());
+  };
 }
 
 /** Multi-verse YVDOM used by controlled-mode highlight tests (`.yv-v[v]` wrappers). */

@@ -31,7 +31,7 @@ const selfContainedOptions = {
 describe('useScriptureHighlightPaint', () => {
   it('fetches and paints when signed in with permission and live, and disables fetch otherwise', () => {
     const fetched: Collection<Highlight> = collection([yellowRow]);
-    stubUseHighlights({ highlights: fetched });
+    const restoreHighlights = stubUseHighlights({ highlights: fetched });
     const hasPermission = vi
       .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
       .mockReturnValue(true);
@@ -93,13 +93,14 @@ describe('useScriptureHighlightPaint', () => {
       expect(liveOff.result.current).toEqual({});
       liveOff.unmount();
     } finally {
+      restoreHighlights();
       setHighlightsLive(HIGHLIGHTS_LIVE);
       hasPermission.mockRestore();
     }
   });
 
   it('paints a host array or a reader map without fetching', () => {
-    stubUseHighlights({ highlights: collection([yellowRow]) });
+    const restoreHighlights = stubUseHighlights({ highlights: collection([yellowRow]) });
     const hasPermission = vi
       .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
       .mockReturnValue(true);
@@ -144,13 +145,14 @@ describe('useScriptureHighlightPaint', () => {
       );
       expect(readerSeam.result.current).toEqual({ 3: 'abcdef' });
     } finally {
+      restoreHighlights();
       setHighlightsLive(HIGHLIGHTS_LIVE);
       hasPermission.mockRestore();
     }
   });
 
   it('clips fetched and host rows to a verse-unit display passage', () => {
-    stubUseHighlights({
+    const restoreHighlights = stubUseHighlights({
       highlights: collection([{ version_id: 111, passage_id: 'JHN.1.1-3', color: 'fffe00' }]),
     });
     const hasPermission = vi
@@ -208,6 +210,7 @@ describe('useScriptureHighlightPaint', () => {
         3: 'fffe00',
       });
     } finally {
+      restoreHighlights();
       setHighlightsLive(HIGHLIGHTS_LIVE);
       hasPermission.mockRestore();
     }

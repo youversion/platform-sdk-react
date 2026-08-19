@@ -340,7 +340,7 @@ describe('BibleCard - host highlights (controlled mode)', () => {
       error: null,
       refetch: vi.fn(),
     });
-    stubUseHighlights({ highlights: collection(highlights) });
+    const restoreHighlights = stubUseHighlights({ highlights: collection(highlights) });
     const hasPermission = vi
       .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
       .mockReturnValue(true);
@@ -370,6 +370,7 @@ describe('BibleCard - host highlights (controlled mode)', () => {
       );
       expect(getVerseEl(hostEmpty.container, 2).style.backgroundColor).toBe('');
     } finally {
+      restoreHighlights();
       hasPermission.mockRestore();
     }
   });

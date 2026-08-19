@@ -399,7 +399,7 @@ describe('VerseOfTheDay - host highlights (controlled mode)', () => {
 
   it('paints from a stubbed fetch when the prop is omitted, and paints nothing for a host empty array', () => {
     stubHooks({ passageContent: twoVerseHtml });
-    stubUseHighlights({
+    const restoreHighlights = stubUseHighlights({
       highlights: collection([highlight('JHN.3.16', YELLOW), highlight('JHN.3.17', GREEN)]),
     });
     const hasPermission = vi
@@ -432,6 +432,7 @@ describe('VerseOfTheDay - host highlights (controlled mode)', () => {
       );
       expect(getVerseEl(hostEmpty.container, 16).style.backgroundColor).toBe('');
     } finally {
+      restoreHighlights();
       hasPermission.mockRestore();
     }
   });

@@ -1337,7 +1337,9 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
   });
 
   it('paints matching verses from a stubbed fetch when signed in with permission and the prop is omitted', () => {
-    stubUseHighlights({ highlights: collection([highlight('JHN.1.1', YELLOW)]) });
+    const restoreHighlights = stubUseHighlights({
+      highlights: collection([highlight('JHN.1.1', YELLOW)]),
+    });
     const hasPermission = vi
       .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
       .mockReturnValue(true);
@@ -1352,27 +1354,32 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
       expect(getVerseEl(container, 1).style.backgroundColor).toBe(fillFor(YELLOW));
       expect(getVerseEl(container, 2).style.backgroundColor).toBe('');
     } finally {
+      restoreHighlights();
       hasPermission.mockRestore();
     }
   });
 
   it('paints highlightedVerses without fetching when the reader seam is passed', () => {
-    stubUseHighlights();
-    const { container } = render(
-      <BibleTextView
-        reference="JHN.1"
-        versionId={111}
-        passageState={passageState}
-        highlightedVerses={{ 2: YELLOW }}
-      />,
-    );
+    const restoreHighlights = stubUseHighlights();
+    try {
+      const { container } = render(
+        <BibleTextView
+          reference="JHN.1"
+          versionId={111}
+          passageState={passageState}
+          highlightedVerses={{ 2: YELLOW }}
+        />,
+      );
 
-    expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
-    expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
+      expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
+      expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
+    } finally {
+      restoreHighlights();
+    }
   });
 
   it('latches paint mode at first mount', () => {
-    stubUseHighlights();
+    const restoreHighlights = stubUseHighlights();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     try {
       const controlled = render(
@@ -1435,6 +1442,7 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('`highlights` prop switched'));
       expect(getVerseEl(omittedThenHost.container, 1).style.backgroundColor).toBe('');
     } finally {
+      restoreHighlights();
       warn.mockRestore();
     }
   });
