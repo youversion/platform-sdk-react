@@ -365,6 +365,26 @@ describe('BibleVersionPicker', () => {
       expect(description).toBeNull();
     });
 
+    it('still lists recent versions saved without an abbreviation field', async () => {
+      vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
+        key === RECENT_VERSIONS_KEY
+          ? JSON.stringify([
+              {
+                id: 1588,
+                title: 'Amplified Bible',
+                localized_abbreviation: 'AMP',
+              },
+            ])
+          : null,
+      );
+
+      renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
+      await openPicker();
+
+      const recentList = await screen.findByTestId('recent-version-list');
+      expect(within(recentList).getByText(/Amplified Bible/i)).toBeTruthy();
+    });
+
     it('applies the same tile styling to recent-version rows', async () => {
       vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
         key === RECENT_VERSIONS_KEY

@@ -58,8 +58,7 @@ function isRecentVersion(item: RecentVersion): item is RecentVersion {
   return (
     Number.isFinite(item.id) &&
     Object.prototype.toString.call(item.title) === '[object String]' &&
-    Object.prototype.toString.call(item.localized_abbreviation) === '[object String]' &&
-    Object.prototype.toString.call(item.abbreviation) === '[object String]'
+    Object.prototype.toString.call(item.localized_abbreviation) === '[object String]'
   );
 }
 
