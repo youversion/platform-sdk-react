@@ -47,6 +47,36 @@ describe('UI YouVersionProvider', () => {
     expect(lastCall?.additionalHeaders).toBeUndefined();
   });
 
+  it('sends Accept-Language from locale and does not forward locale to the hooks provider', () => {
+    render(
+      <YouVersionProvider appKey="test-key" locale="es-MX">
+        <div data-testid="child">hello</div>
+      </YouVersionProvider>,
+    );
+
+    const lastCall = baseProviderMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect(lastCall?.locale).toBeUndefined();
+    expect(lastCall?.additionalHeaders).toEqual({ 'Accept-Language': 'es-MX' });
+  });
+
+  it('lets additionalHeaders override Accept-Language from locale', () => {
+    render(
+      <YouVersionProvider
+        appKey="test-key"
+        locale="es"
+        additionalHeaders={{ 'Accept-Language': 'fr', 'X-Custom': '1' }}
+      >
+        <div data-testid="child">hello</div>
+      </YouVersionProvider>,
+    );
+
+    const lastCall = baseProviderMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect(lastCall?.additionalHeaders).toEqual({
+      'Accept-Language': 'fr',
+      'X-Custom': '1',
+    });
+  });
+
   it('mirrors appName and signInPromptMessage onto the UI-bundled config', () => {
     YouVersionPlatformConfiguration.appName = undefined;
     YouVersionPlatformConfiguration.signInPromptMessage = undefined;

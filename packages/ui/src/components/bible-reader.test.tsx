@@ -428,3 +428,45 @@ describe('BibleReader Toolbar - onChapterPickerPress', () => {
     expect(screen.queryByPlaceholderText('Search')).not.toBeInTheDocument();
   });
 });
+
+describe('BibleReader version picker language', () => {
+  it('seeds the version picker with defaultLanguageId instead of the browser language', () => {
+    localStorage.clear();
+    setupDefaultMocks();
+
+    render(
+      <BibleReader.Root
+        defaultVersionId={3034}
+        defaultBook="JHN"
+        defaultChapter="1"
+        defaultLanguageId="es"
+      >
+        <BibleReader.Toolbar />
+      </BibleReader.Root>,
+    );
+
+    expect(
+      vi.mocked(useVersions).mock.calls.some(([languageRanges]) => languageRanges === 'es'),
+    ).toBe(true);
+  });
+
+  it('uses a controlled languageId for the version picker', () => {
+    localStorage.clear();
+    setupDefaultMocks();
+
+    render(
+      <BibleReader.Root
+        defaultVersionId={3034}
+        defaultBook="JHN"
+        defaultChapter="1"
+        languageId="ko"
+      >
+        <BibleReader.Toolbar />
+      </BibleReader.Root>,
+    );
+
+    expect(
+      vi.mocked(useVersions).mock.calls.some(([languageRanges]) => languageRanges === 'ko'),
+    ).toBe(true);
+  });
+});
