@@ -18,11 +18,24 @@ export function getBrowserLanguages(): readonly string[] | undefined {
   return undefined;
 }
 
-/** BCP 47 bases that map to a different supported locale code. */
+/**
+ * Browser BCP 47 bases that differ from our bundle code.
+ * Norwegian ships as `no` from platform-localization; browsers report `nb`/`nn`.
+ */
 const LANGUAGE_ALIASES: Readonly<Record<string, string>> = {
   nb: 'no',
   nn: 'no',
 };
+
+function localeCandidates(tag: string): readonly string[] {
+  const lower = tag.toLowerCase();
+  const base = lower.split('-')[0];
+  if (!base) {
+    return [lower];
+  }
+  const alias = LANGUAGE_ALIASES[base];
+  return alias ? [lower, base, alias] : [lower, base];
+}
 
 /**
  * Maps browser language tags to a supported locale code.
@@ -40,27 +53,10 @@ export function resolveBrowserLanguage(
   const supportedLower = new Map(supportedLngs.map((lng) => [lng.toLowerCase(), lng] as const));
 
   for (const browserLang of browserLanguages) {
-    const lower = browserLang.toLowerCase();
-    const exactMatch = supportedLower.get(lower);
-    if (exactMatch) {
-      return exactMatch;
-    }
-
-    const base = lower.split('-')[0];
-    if (!base) {
-      continue;
-    }
-
-    const baseMatch = supportedLower.get(base);
-    if (baseMatch) {
-      return baseMatch;
-    }
-
-    const alias = LANGUAGE_ALIASES[base];
-    if (alias) {
-      const aliasMatch = supportedLower.get(alias);
-      if (aliasMatch) {
-        return aliasMatch;
+    for (const candidate of localeCandidates(browserLang)) {
+      const match = supportedLower.get(candidate);
+      if (match) {
+        return match;
       }
     }
   }
