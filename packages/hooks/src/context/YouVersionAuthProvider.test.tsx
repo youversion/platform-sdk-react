@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
 import { StrictMode } from 'react';
 import { render } from '@testing-library/react';
 import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
@@ -6,12 +6,6 @@ import YouVersionAuthProvider from './YouVersionAuthProvider';
 import { useYouVersionAuthContext } from './YouVersionAuthContext';
 import type { AuthConfig } from '../types/auth';
 import { createMockUserInfo, createMockAuthResult } from '../__tests__/mocks/auth';
-
-// Mock the core modules using shared factory
-vi.mock('@youversion/platform-core', async () => {
-  const { createGetterCoreMockFactory } = await import('../__tests__/mocks/core-mock-factory');
-  return createGetterCoreMockFactory();
-});
 
 const mockConfig: AuthConfig = {
   appKey: 'test-app-key',
@@ -43,6 +37,10 @@ function TestChild() {
 }
 
 describe('YouVersionAuthProvider', () => {
+  let handleAuthCallback: MockInstance;
+  let getStoredUserInfo: MockInstance;
+  let refreshTokenIfNeeded: MockInstance;
+
   beforeEach(() => {
     // Setup window mock
     vi.stubGlobal('window', mockWindow);
@@ -52,6 +50,17 @@ describe('YouVersionAuthProvider', () => {
     YouVersionPlatformConfiguration.appKey = '';
     YouVersionPlatformConfiguration.apiHost = 'test-api.example.com';
     YouVersionPlatformConfiguration.clearAuthTokens();
+
+    handleAuthCallback = vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockResolvedValue(null);
+    getStoredUserInfo = vi.spyOn(YouVersionAPIUsers, 'getStoredUserInfo').mockReturnValue(null);
+    refreshTokenIfNeeded = vi
+      .spyOn(YouVersionAPIUsers, 'refreshTokenIfNeeded')
+      .mockResolvedValue(false);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   describe('initialization', () => {
@@ -123,8 +132,8 @@ describe('YouVersionAuthProvider', () => {
         expect(getByTestId('is-loading')).toHaveTextContent('false');
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).handleAuthCallback).toHaveBeenCalled();
-      expect(vi.mocked(YouVersionAPIUsers).getStoredUserInfo).toHaveBeenCalled();
+      expect(handleAuthCallback).toHaveBeenCalled();
+      expect(getStoredUserInfo).toHaveBeenCalled();
       expect(getByTestId('user-info')).toHaveTextContent(JSON.stringify(mockUserInfo));
     });
 
@@ -142,7 +151,7 @@ describe('YouVersionAuthProvider', () => {
         expect(getByTestId('is-loading')).toHaveTextContent('false');
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).handleAuthCallback).toHaveBeenCalled();
+      expect(handleAuthCallback).toHaveBeenCalled();
     });
 
     it('should handle callback error and set error state', async () => {
@@ -186,7 +195,7 @@ describe('YouVersionAuthProvider', () => {
       });
 
       // The effect double-invoked (this is the condition the bug depended on).
-      expect(vi.mocked(YouVersionAPIUsers).handleAuthCallback).toHaveBeenCalledTimes(2);
+      expect(handleAuthCallback).toHaveBeenCalledTimes(2);
       // Final state is authenticated with no error surfaced.
       expect(getByTestId('user-info')).toHaveTextContent(JSON.stringify(mockUserInfo));
       expect(getByTestId('error')).toHaveTextContent('null');
@@ -207,7 +216,7 @@ describe('YouVersionAuthProvider', () => {
         expect(getByTestId('is-loading')).toHaveTextContent('false');
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).getStoredUserInfo).toHaveBeenCalled();
+      expect(getStoredUserInfo).toHaveBeenCalled();
       expect(getByTestId('user-info')).toHaveTextContent('null');
     });
   });
@@ -230,8 +239,8 @@ describe('YouVersionAuthProvider', () => {
         expect(getByTestId('is-loading')).toHaveTextContent('false');
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).refreshTokenIfNeeded).toHaveBeenCalled();
-      expect(vi.mocked(YouVersionAPIUsers).getStoredUserInfo).toHaveBeenCalled();
+      expect(refreshTokenIfNeeded).toHaveBeenCalled();
+      expect(getStoredUserInfo).toHaveBeenCalled();
       expect(getByTestId('user-info')).toHaveTextContent(JSON.stringify(mockUserInfo));
     });
 

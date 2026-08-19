@@ -1,12 +1,45 @@
 import type { ReactNode, ComponentType } from 'react';
+import type { BibleClient, LanguagesClient, OrganizationsClient } from '@youversion/platform-core';
 import { YouVersionContext } from '../context';
+
+export type YVWrapperOptions = {
+  theme?: 'light' | 'dark';
+  bibleClient?: BibleClient;
+  languagesClient?: LanguagesClient;
+  organizationsClient?: OrganizationsClient;
+};
+
+/** Builds a `BibleClient`-typed stub with only the methods the test calls. */
+export function createBibleClientStub(methods: Partial<BibleClient>): BibleClient {
+  // SAFETY: stub implements the methods under test
+  return methods as BibleClient;
+}
+
+/** Builds a `LanguagesClient`-typed stub with only the methods the test calls. */
+export function createLanguagesClientStub(methods: Partial<LanguagesClient>): LanguagesClient {
+  // SAFETY: stub implements the methods under test
+  return methods as LanguagesClient;
+}
+
+/** Builds an `OrganizationsClient`-typed stub with only the methods the test calls. */
+export function createOrganizationsClientStub(
+  methods: Partial<OrganizationsClient>,
+): OrganizationsClient {
+  // SAFETY: stub implements the methods under test
+  return methods as OrganizationsClient;
+}
 
 export const createYVWrapper = (
   appKey = 'test-app-key',
-  { theme }: { theme?: 'light' | 'dark' } = {},
+  options: YVWrapperOptions = {},
 ): ComponentType<{ children: ReactNode }> => {
+  const { theme, bibleClient, languagesClient, organizationsClient } = options;
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <YouVersionContext.Provider value={{ appKey, theme }}>{children}</YouVersionContext.Provider>
+    <YouVersionContext.Provider
+      value={{ appKey, theme, bibleClient, languagesClient, organizationsClient }}
+    >
+      {children}
+    </YouVersionContext.Provider>
   );
   return Wrapper;
 };

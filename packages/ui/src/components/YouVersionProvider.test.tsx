@@ -3,23 +3,19 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import React from 'react';
+import React, { useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
+import { YouVersionContext } from '@youversion/platform-react-hooks';
 import { YouVersionProvider } from '@/components/YouVersionProvider';
 import i18n from '@/i18n';
 import en from '@/i18n/locales/en.json';
 import es from '@/i18n/locales/es.json';
 
-const baseProviderMock =
-  vi.fn<(props: Record<string, unknown> & { children?: React.ReactNode }) => React.ReactElement>();
-baseProviderMock.mockImplementation(({ children }) => <>{children}</>);
-
-vi.mock('@youversion/platform-react-hooks', () => ({
-  YouVersionProvider: (props: Record<string, unknown> & { children?: React.ReactNode }) =>
-    baseProviderMock(props),
-  useYVAuth: vi.fn(),
-}));
+function AdditionalHeadersProbe(): React.ReactElement {
+  const headers = useContext(YouVersionContext)?.additionalHeaders;
+  return <div data-testid="headers">{headers ? JSON.stringify(headers) : 'none'}</div>;
+}
 
 function VerseOfTheDayHeading() {
   const { t } = useTranslation(undefined, { i18n });
@@ -32,28 +28,21 @@ describe('UI YouVersionProvider', () => {
 
     render(
       <YouVersionProvider appKey="test-key" additionalHeaders={additionalHeaders}>
-        <div data-testid="child">hello</div>
+        <AdditionalHeadersProbe />
       </YouVersionProvider>,
     );
 
-    expect(baseProviderMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        appKey: 'test-key',
-        additionalHeaders,
-      }),
-    );
+    expect(screen.getByTestId('headers').textContent).toBe(JSON.stringify(additionalHeaders));
   });
 
   it('omits additionalHeaders when not provided', () => {
     render(
       <YouVersionProvider appKey="test-key">
-        <div data-testid="child">hello</div>
+        <AdditionalHeadersProbe />
       </YouVersionProvider>,
     );
 
-    const lastCall = baseProviderMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
-    expect(lastCall?.appKey).toBe('test-key');
-    expect(lastCall?.additionalHeaders).toBeUndefined();
+    expect(screen.getByTestId('headers').textContent).toBe('none');
   });
 
   it('mirrors appName and signInPromptMessage onto the UI-bundled config', () => {
@@ -83,7 +72,6 @@ describe('UI YouVersionProvider', () => {
   ])(
     'renders the missing-app-key message and skips the base provider when appKey is %s',
     (_label, appKey) => {
-      baseProviderMock.mockClear();
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
       render(
@@ -96,7 +84,6 @@ describe('UI YouVersionProvider', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
       expect(screen.getByText('Error')).toBeInTheDocument();
       expect(screen.queryByTestId('child')).not.toBeInTheDocument();
-      expect(baseProviderMock).not.toHaveBeenCalled();
       // The actionable guidance for developers lives in console.error, not the panel.
       expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('appKey'));
 
@@ -109,7 +96,6 @@ describe('UI YouVersionProvider', () => {
       language: 'en-US',
       languages: ['en-US', 'en'],
     });
-    baseProviderMock.mockClear();
 
     const { rerender } = render(
       <YouVersionProvider appKey="test-key" lng="es">
@@ -119,7 +105,6 @@ describe('UI YouVersionProvider', () => {
 
     expect(await screen.findByText(es.verseOfTheDay)).toBeInTheDocument();
     expect(screen.queryByText(en.verseOfTheDay)).not.toBeInTheDocument();
-    expect(baseProviderMock.mock.calls.at(-1)?.[0]).not.toHaveProperty('lng');
 
     rerender(
       <YouVersionProvider appKey="test-key" lng="es-MX">

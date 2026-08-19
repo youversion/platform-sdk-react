@@ -88,6 +88,10 @@ describe('resolveBrowserLanguage', () => {
     expect(resolveBrowserLanguage(['pt-PT'], supported, fallbackLng)).toBe('en');
   });
 
+  it.each(['nb', 'nb-NO', 'nn', 'nn-NO'] as const)('maps Norwegian browser tag %s to no', (tag) => {
+    expect(resolveBrowserLanguage([tag], supportedLngs, fallbackLng)).toBe('no');
+  });
+
   it('falls back to en for unsupported browser languages', () => {
     const unsupported = getUnsupportedLanguageTag();
     expect(
@@ -119,7 +123,7 @@ describe('resolveBrowserLanguage', () => {
   });
 });
 
-describe('getBrowserLanguages', () => {
+  describe('getBrowserLanguages', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -140,6 +144,23 @@ describe('getBrowserLanguages', () => {
     });
 
     expect(getBrowserLanguages()).toEqual(['es-ES']);
+  });
+
+  it('works when navigator exists without window (Node 21+)', () => {
+    vi.stubGlobal('window', undefined);
+    vi.stubGlobal('navigator', {
+      language: 'de-DE',
+      languages: ['de-DE'],
+    });
+
+    expect(getBrowserLanguages()).toEqual(['de-DE']);
+  });
+
+  it('returns undefined when window exists but navigator is missing', () => {
+    vi.stubGlobal('window', {});
+    vi.stubGlobal('navigator', undefined);
+
+    expect(getBrowserLanguages()).toBeUndefined();
   });
 });
 
@@ -162,7 +183,8 @@ describe('i18n instance', () => {
     vi.resetModules();
 
     const i18n = await loadI18n();
-    const localeStrings = resources[lng as keyof typeof resources].translation;
+    const localeStrings = Object.entries(resources).find(([key]) => key === lng)?.[1]?.translation;
+    if (!localeStrings) throw new Error(`missing locale ${lng}`);
     expect(i18n.language).toBe(lng);
     expect(i18n.t('verseOfTheDay')).toBe(localeStrings.verseOfTheDay);
   });
@@ -176,8 +198,21 @@ describe('i18n instance', () => {
 
     const i18n = await loadI18n();
     const koStrings = resources.ko.translation;
-    expect(koStrings).not.toHaveProperty('untitledSerifFontName');
-    expect(i18n.t('untitledSerifFontName')).toBe(en.untitledSerifFontName);
+    expect(koStrings).not.toHaveProperty('versionSearchAriaLabel');
+    expect(i18n.t('versionSearchAriaLabel')).toBe(en.versionSearchAriaLabel);
+  });
+
+  it('uses no strings when the browser prefers nb-NO', async () => {
+    vi.stubGlobal('navigator', {
+      language: 'nb-NO',
+      languages: ['nb-NO', 'nb'],
+    });
+    vi.resetModules();
+
+    const i18n = await loadI18n();
+    const noStrings = resources.no.translation;
+    expect(i18n.language).toBe('no');
+    expect(i18n.t('verseOfTheDay')).toBe(noStrings.verseOfTheDay);
   });
 
   it('re-exports supportedLngs from generated resources', async () => {

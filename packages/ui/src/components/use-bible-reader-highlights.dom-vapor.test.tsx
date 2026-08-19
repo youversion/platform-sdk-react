@@ -82,7 +82,8 @@ describe('vapor flash — real Verse.Html DOM paint (MutationObserver on style)'
       // render commits and paints — the window the live flash lives in.
       .mockImplementation(() => new Promise<void>((r) => setTimeout(r, 5)));
 
-    const removeRef: { current: (() => void) | null } = { current: null };
+    type RemoveRef = { current: (() => void) | null };
+    const removeRef: RemoveRef = { current: null };
     const { container } = render(
       <StrictMode>
         <Providers>

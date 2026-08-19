@@ -1,14 +1,13 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useVersions } from './useVersions';
-import { type BibleClient, type Collection, type BibleVersion } from '@youversion/platform-core';
-import { useBibleClient } from './useBibleClient';
-import { createYVWrapper } from './test/utils';
-
-vi.mock('./useBibleClient');
+import { type Collection, type BibleVersion } from '@youversion/platform-core';
+import { createBibleClientStub, createYVWrapper } from './test/utils';
 
 describe('useVersions', () => {
   const mockGetVersions = vi.fn();
+  const bibleClient = createBibleClientStub({ getVersions: mockGetVersions });
+  const wrapper = createYVWrapper('test-app-key', { bibleClient });
 
   const mockVersions: Collection<BibleVersion> = {
     data: [
@@ -38,14 +37,10 @@ describe('useVersions', () => {
 
   beforeEach(() => {
     mockGetVersions.mockResolvedValue(mockVersions);
-
-    const mockClient: Partial<BibleClient> = { getVersions: mockGetVersions };
-    vi.mocked(useBibleClient).mockReturnValue(mockClient as BibleClient);
   });
 
   describe('fetching versions', () => {
     it('should fetch versions with default language range', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions(), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -60,7 +55,6 @@ describe('useVersions', () => {
     });
 
     it('should fetch versions with custom language range string', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions('es'), { wrapper });
 
       await waitFor(() => {
@@ -72,7 +66,6 @@ describe('useVersions', () => {
     });
 
     it('should fetch versions with language range array', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions(['en', 'es', 'fr']), { wrapper });
 
       await waitFor(() => {
@@ -84,7 +77,6 @@ describe('useVersions', () => {
     });
 
     it('should fetch versions with license ID', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions('en', 123), { wrapper });
 
       await waitFor(() => {
@@ -96,7 +88,6 @@ describe('useVersions', () => {
     });
 
     it('should fetch versions with string license ID', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions('en', 'license-abc'), { wrapper });
 
       await waitFor(() => {
@@ -109,7 +100,6 @@ describe('useVersions', () => {
 
   describe('fetching with options', () => {
     it('should fetch versions with page_size option', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions('en', undefined, { page_size: 10 }), {
         wrapper,
       });
@@ -127,7 +117,6 @@ describe('useVersions', () => {
     });
 
     it('should fetch versions with page_size "*" and fields', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(
         () => useVersions('en', undefined, { page_size: '*', fields: ['id', 'abbreviation'] }),
         { wrapper },
@@ -146,7 +135,6 @@ describe('useVersions', () => {
     });
 
     it('should fetch versions with page_token option', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(
         () => useVersions('en', undefined, { page_token: 'next-page-token' }),
         { wrapper },
@@ -165,7 +153,6 @@ describe('useVersions', () => {
     });
 
     it('should fetch versions with fields option', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(
         () => useVersions('en', undefined, { fields: ['id', 'title', 'abbreviation'] }),
         { wrapper },
@@ -184,7 +171,6 @@ describe('useVersions', () => {
     });
 
     it('should fetch versions with all_available option', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions('en', undefined, { all_available: true }), {
         wrapper,
       });
@@ -202,7 +188,6 @@ describe('useVersions', () => {
     });
 
     it('should fetch versions with all options combined', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(
         () =>
           useVersions('en', 456, {
@@ -229,10 +214,9 @@ describe('useVersions', () => {
 
   describe('refetch behavior', () => {
     it('should refetch when languageRanges changes', async () => {
-      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(({ lang }) => useVersions(lang), {
         wrapper,
-        initialProps: { lang: 'en' as string | string[] },
+        initialProps: { lang: 'en' satisfies string | string[] },
       });
 
       await waitFor(() => {
@@ -253,10 +237,9 @@ describe('useVersions', () => {
     });
 
     it('should refetch when languageRanges array changes', async () => {
-      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(({ lang }) => useVersions(lang), {
         wrapper,
-        initialProps: { lang: ['en', 'es'] as string | string[] },
+        initialProps: { lang: ['en', 'es'] satisfies string | string[] },
       });
 
       await waitFor(() => {
@@ -277,10 +260,9 @@ describe('useVersions', () => {
     });
 
     it('should refetch when licenseId changes', async () => {
-      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(({ license }) => useVersions('en', license), {
         wrapper,
-        initialProps: { license: 123 as string | number | undefined },
+        initialProps: { license: 123 satisfies string | number | undefined },
       });
 
       await waitFor(() => {
@@ -301,7 +283,6 @@ describe('useVersions', () => {
     });
 
     it('should refetch when page_size changes', async () => {
-      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(
         ({ options }) => useVersions('en', undefined, options),
         {
@@ -338,7 +319,6 @@ describe('useVersions', () => {
     });
 
     it('should refetch when page_token changes', async () => {
-      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(
         ({ options }) => useVersions('en', undefined, options),
         {
@@ -375,12 +355,13 @@ describe('useVersions', () => {
     });
 
     it('should refetch when fields changes', async () => {
-      const wrapper = createYVWrapper();
+      const initialFields: (keyof BibleVersion)[] = ['id'];
+      const updatedFields: (keyof BibleVersion)[] = ['id', 'title'];
       const { result, rerender } = renderHook(
         ({ options }) => useVersions('en', undefined, options),
         {
           wrapper,
-          initialProps: { options: { fields: ['id'] as (keyof BibleVersion)[] } },
+          initialProps: { options: { fields: initialFields } },
         },
       );
 
@@ -396,7 +377,7 @@ describe('useVersions', () => {
         all_available: undefined,
       });
 
-      rerender({ options: { fields: ['id', 'title'] as (keyof BibleVersion)[] } });
+      rerender({ options: { fields: updatedFields } });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -412,7 +393,6 @@ describe('useVersions', () => {
     });
 
     it('should refetch when all_available changes', async () => {
-      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(
         ({ options }) => useVersions('en', undefined, options),
         {
@@ -451,7 +431,6 @@ describe('useVersions', () => {
 
   describe('enabled option', () => {
     it('should not fetch when enabled is false', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions('en', undefined, { enabled: false }), {
         wrapper,
       });
@@ -465,7 +444,6 @@ describe('useVersions', () => {
     });
 
     it('should fetch when enabled is true', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions('en', undefined, { enabled: true }), {
         wrapper,
       });
@@ -479,7 +457,6 @@ describe('useVersions', () => {
     });
 
     it('should fetch when enabled is not specified', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions('en', undefined, { page_size: 10 }), {
         wrapper,
       });
@@ -494,7 +471,6 @@ describe('useVersions', () => {
 
   describe('error handling', () => {
     it('should handle fetch errors', async () => {
-      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch versions');
       mockGetVersions.mockRejectedValueOnce(error);
 
@@ -509,7 +485,6 @@ describe('useVersions', () => {
     });
 
     it('should clear error on successful refetch', async () => {
-      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch versions');
       mockGetVersions.mockRejectedValueOnce(error).mockResolvedValueOnce(mockVersions);
 
@@ -537,7 +512,6 @@ describe('useVersions', () => {
 
   describe('manual refetch', () => {
     it('should support manual refetch', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVersions('en'), { wrapper });
 
       await waitFor(() => {

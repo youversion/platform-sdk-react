@@ -4,38 +4,45 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, waitFor, within } from '@testing-library/react';
+import { render as rtlRender, waitFor, within } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
+import { requireHtmlButton, requireHtmlElement } from '@/test/dom-stubs';
+import { HookOverrideProvider } from '@/test/hook-overrides';
 import { Verse, BibleTextView, type BibleTextViewPassageState, type FootnoteData } from './verse';
 import type { Highlight } from '@youversion/platform-core';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
+import type { HookOverrides } from '@youversion/platform-react-hooks';
 import {
   fillFor,
   getVerseEl,
   MULTI_VERSE_HTML,
-  Providers,
   collection,
+  Providers,
   stubUseHighlights,
 } from '@/test/highlights-test-utils';
 
-// BibleTextView always calls usePassage/useTheme internally (even when passageState
-// is provided), so we must mock the hooks to avoid requiring YouVersionProvider.
-vi.mock('@youversion/platform-react-hooks', async () => {
-  const actual = await vi.importActual('@youversion/platform-react-hooks');
-  return {
-    ...actual,
-    usePassage: vi.fn(() => ({ passage: null, loading: false, error: null, refetch: vi.fn() })),
-    useTheme: vi.fn(() => 'light'),
-    useHighlights: vi.fn(() => ({
-      highlights: { data: [], next_page_token: null },
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-      createHighlight: vi.fn(),
-      deleteHighlight: vi.fn(),
-    })),
-  };
-});
+// BibleTextView always calls usePassage internally (even when passageState is
+// provided). Stub the result so these tests do not need a live BibleClient.
+function render(ui: ReactElement, extraOverrides?: HookOverrides) {
+  return rtlRender(ui, {
+    wrapper: ({ children }) => (
+      <HookOverrideProvider
+        overrides={{
+          usePassage: () => ({
+            passage: null,
+            loading: false,
+            error: null,
+            refetch: () => undefined,
+          }),
+          ...extraOverrides,
+        }}
+      >
+        {children}
+      </HookOverrideProvider>
+    ),
+  });
+}
 
 describe('Verse.Html - XSS Protection', () => {
   describe('sanitization', () => {
@@ -367,7 +374,7 @@ describe('Verse.Html - Footnotes', () => {
     const footnoteButton = await waitFor(() => {
       const button = container.querySelector('[data-verse-footnote="1"] button');
       expect(button).not.toBeNull();
-      return button as HTMLButtonElement;
+      return requireHtmlButton(button);
     });
 
     await userEvent.click(footnoteButton);
@@ -587,7 +594,7 @@ describe('Verse.Html - Intro Chapter Footnotes', () => {
     const button = await waitFor(() => {
       const btn = container.querySelector('[data-verse-footnote="intro-0"] button');
       expect(btn).not.toBeNull();
-      return btn as HTMLButtonElement;
+      return requireHtmlButton(btn);
     });
 
     await userEvent.click(button);
@@ -908,7 +915,7 @@ describe('BibleTextView - Refetch loading behavior', () => {
     await waitFor(() => {
       const wrapper = container.querySelector('[data-yv-sdk]');
       expect(wrapper).not.toBeNull();
-      expect((wrapper as HTMLElement).style.pointerEvents).toBe('none');
+      expect(requireHtmlElement(wrapper).style.pointerEvents).toBe('none');
     });
   });
 
@@ -928,7 +935,7 @@ describe('BibleTextView - Refetch loading behavior', () => {
     await waitFor(() => {
       const wrapper = container.querySelector('[data-yv-sdk]');
       expect(wrapper).not.toBeNull();
-      expect((wrapper as HTMLElement).style.pointerEvents).toBe('');
+      expect(requireHtmlElement(wrapper).style.pointerEvents).toBe('');
     });
   });
 });
@@ -1011,7 +1018,6 @@ describe('BibleTextView - Error messaging', () => {
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: {
-        ...originalNavigator,
         onLine: false,
       },
     });
@@ -1154,7 +1160,7 @@ describe('Verse.Html - onFootnotePress callback', () => {
   `;
 
   it('should call onFootnotePress with correct FootnoteData when clicked', async () => {
-    const onFootnotePress = vi.fn();
+    const onFootnotePress = vi.fn<(data: FootnoteData) => void>();
 
     const { container } = render(
       <Verse.Html
@@ -1168,13 +1174,13 @@ describe('Verse.Html - onFootnotePress callback', () => {
     const button = await waitFor(() => {
       const btn = container.querySelector('[data-verse-footnote="5"] button');
       expect(btn).not.toBeNull();
-      return btn as HTMLButtonElement;
+      return requireHtmlButton(btn);
     });
 
     await userEvent.click(button);
 
     expect(onFootnotePress).toHaveBeenCalledTimes(1);
-    const data = onFootnotePress.mock.calls[0]![0] as FootnoteData;
+    const data = onFootnotePress.mock.calls[0]![0];
     expect(data.verseNum).toBe('5');
     expect(data.notes).toHaveLength(1);
     expect(data.notes[0]).toContain('Or understood');
@@ -1183,7 +1189,7 @@ describe('Verse.Html - onFootnotePress callback', () => {
   });
 
   it('should NOT render a Popover when onFootnotePress is provided', async () => {
-    const onFootnotePress = vi.fn();
+    const onFootnotePress = vi.fn<(data: FootnoteData) => void>();
 
     const { container } = render(
       <Verse.Html
@@ -1197,7 +1203,7 @@ describe('Verse.Html - onFootnotePress callback', () => {
     const button = await waitFor(() => {
       const btn = container.querySelector('[data-verse-footnote="5"] button');
       expect(btn).not.toBeNull();
-      return btn as HTMLButtonElement;
+      return requireHtmlButton(btn);
     });
 
     await userEvent.click(button);
@@ -1215,7 +1221,7 @@ describe('Verse.Html - onFootnotePress callback', () => {
     const button = await waitFor(() => {
       const btn = container.querySelector('[data-verse-footnote="5"] button');
       expect(btn).not.toBeNull();
-      return btn as HTMLButtonElement;
+      return requireHtmlButton(btn);
     });
 
     await userEvent.click(button);
@@ -1235,7 +1241,7 @@ describe('BibleTextView - onFootnotePress callback', () => {
   };
 
   it('should call onFootnotePress when provided via BibleTextView', async () => {
-    const onFootnotePress = vi.fn();
+    const onFootnotePress = vi.fn<(data: FootnoteData) => void>();
 
     const { container } = render(
       <BibleTextView
@@ -1249,13 +1255,13 @@ describe('BibleTextView - onFootnotePress callback', () => {
     const button = await waitFor(() => {
       const btn = container.querySelector('[data-verse-footnote="5"] button');
       expect(btn).not.toBeNull();
-      return btn as HTMLButtonElement;
+      return requireHtmlButton(btn);
     });
 
     await userEvent.click(button);
 
     expect(onFootnotePress).toHaveBeenCalledTimes(1);
-    const data = onFootnotePress.mock.calls[0]![0] as FootnoteData;
+    const data = onFootnotePress.mock.calls[0]![0];
     expect(data.verseNum).toBe('5');
     expect(data.reference).toBe('JHN.1');
   });
@@ -1337,16 +1343,24 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
   });
 
   it('paints matching verses from a stubbed fetch when signed in with permission and the prop is omitted', () => {
-    const restoreHighlights = stubUseHighlights({
-      highlights: collection([highlight('JHN.1.1', YELLOW)]),
-    });
     const hasPermission = vi
       .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
       .mockReturnValue(true);
-
     try {
       const { container } = render(
-        <Providers>
+        <Providers
+          hookOverrides={{
+            usePassage: () => ({
+              passage: null,
+              loading: false,
+              error: null,
+              refetch: () => undefined,
+            }),
+            useHighlights: stubUseHighlights({
+              highlights: collection([highlight('JHN.1.1', YELLOW)]),
+            }),
+          }}
+        >
           <BibleTextView reference="JHN.1" versionId={111} passageState={passageState} />
         </Providers>,
       );
@@ -1354,32 +1368,26 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
       expect(getVerseEl(container, 1).style.backgroundColor).toBe(fillFor(YELLOW));
       expect(getVerseEl(container, 2).style.backgroundColor).toBe('');
     } finally {
-      restoreHighlights();
       hasPermission.mockRestore();
     }
   });
 
   it('paints highlightedVerses without fetching when the reader seam is passed', () => {
-    const restoreHighlights = stubUseHighlights();
-    try {
-      const { container } = render(
-        <BibleTextView
-          reference="JHN.1"
-          versionId={111}
-          passageState={passageState}
-          highlightedVerses={{ 2: YELLOW }}
-        />,
-      );
+    const { container } = render(
+      <BibleTextView
+        reference="JHN.1"
+        versionId={111}
+        passageState={passageState}
+        highlightedVerses={{ 2: YELLOW }}
+      />,
+      { useHighlights: stubUseHighlights() },
+    );
 
-      expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
-      expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
-    } finally {
-      restoreHighlights();
-    }
+    expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
+    expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
   });
 
   it('latches paint mode at first mount', () => {
-    const restoreHighlights = stubUseHighlights();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     try {
       const controlled = render(
@@ -1430,6 +1438,7 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
       // Omit latches self-contained fetch, so a late host array is ignored.
       const omittedThenHost = render(
         <BibleTextView reference="JHN.1" versionId={111} passageState={passageState} />,
+        { useHighlights: stubUseHighlights() },
       );
       omittedThenHost.rerender(
         <BibleTextView
@@ -1442,7 +1451,6 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('`highlights` prop switched'));
       expect(getVerseEl(omittedThenHost.container, 1).style.backgroundColor).toBe('');
     } finally {
-      restoreHighlights();
       warn.mockRestore();
     }
   });

@@ -90,7 +90,8 @@ describe('vapor flash — StrictMode + server-truth remove + selection-clear + h
       .mockResolvedValue(undefined);
 
     const frames: Record<number, string>[] = [];
-    const removeRef: { current: (() => void) | null } = { current: null };
+    type RemoveRef = { current: (() => void) | null };
+    const removeRef: RemoveRef = { current: null };
 
     render(
       <StrictMode>

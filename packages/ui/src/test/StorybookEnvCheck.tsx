@@ -4,9 +4,16 @@ interface StorybookEnvCheckProps {
 }
 
 function hasEnvVar(varName: string): boolean {
-  // Access env vars safely with type assertion
-  const env = import.meta.env as Record<string, string | undefined>;
-  return !!env[varName];
+  if (varName === 'STORYBOOK_YOUVERSION_APP_KEY') {
+    return Boolean(import.meta.env.STORYBOOK_YOUVERSION_APP_KEY);
+  }
+  if (varName === 'STORYBOOK_AUTH_REDIRECT_URL') {
+    return Boolean(import.meta.env.STORYBOOK_AUTH_REDIRECT_URL);
+  }
+  if (varName === 'STORYBOOK_YOUVERSION_API_HOST') {
+    return Boolean(import.meta.env.STORYBOOK_YOUVERSION_API_HOST);
+  }
+  return false;
 }
 
 export function StorybookEnvCheck({

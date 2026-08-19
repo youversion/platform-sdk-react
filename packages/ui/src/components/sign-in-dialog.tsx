@@ -61,7 +61,9 @@ export const SignInDialog: FC<SignInDialogProps> = ({
 
         {promptMessage ? (
           <p className="yv:text-sm yv:font-medium yv:italic yv:text-foreground yv:text-balance">
-            &ldquo;{promptMessage}&rdquo;
+            {'\u201c'}
+            {promptMessage}
+            {'\u201d'}
           </p>
         ) : null}
 

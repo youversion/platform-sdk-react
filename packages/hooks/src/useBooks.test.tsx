@@ -1,15 +1,14 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useBooks } from './useBooks';
-import { type BibleClient, type BibleBook, type Collection } from '@youversion/platform-core';
-import { useBibleClient } from './useBibleClient';
-import { createYVWrapper } from './test/utils';
+import { type BibleBook, type Collection } from '@youversion/platform-core';
+import { createBibleClientStub, createYVWrapper } from './test/utils';
 import { createMockBook } from './__tests__/mocks/bibles';
-
-vi.mock('./useBibleClient');
 
 describe('useBooks', () => {
   const mockGetBooks = vi.fn();
+  const bibleClient = createBibleClientStub({ getBooks: mockGetBooks });
+  const wrapper = createYVWrapper('test-app-key', { bibleClient });
 
   const mockBooks: Collection<BibleBook> = {
     data: [
@@ -26,14 +25,10 @@ describe('useBooks', () => {
 
   beforeEach(() => {
     mockGetBooks.mockResolvedValue(mockBooks);
-
-    const mockClient: Partial<BibleClient> = { getBooks: mockGetBooks };
-    vi.mocked(useBibleClient).mockReturnValue(mockClient as BibleClient);
   });
 
   describe('fetching books', () => {
     it('should fetch all books for a version', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useBooks(111), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -48,7 +43,6 @@ describe('useBooks', () => {
     });
 
     it('should refetch when versionId changes', async () => {
-      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(({ versionId }) => useBooks(versionId), {
         wrapper,
         initialProps: { versionId: 111 },
@@ -72,7 +66,6 @@ describe('useBooks', () => {
     });
 
     it('should not fetch when enabled is false', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useBooks(111, { enabled: false }), {
         wrapper,
       });
@@ -86,7 +79,6 @@ describe('useBooks', () => {
     });
 
     it('should handle fetch errors', async () => {
-      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch books');
       mockGetBooks.mockRejectedValueOnce(error);
 
@@ -101,7 +93,6 @@ describe('useBooks', () => {
     });
 
     it('should clear error on successful refetch', async () => {
-      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch books');
       mockGetBooks.mockRejectedValueOnce(error).mockResolvedValueOnce(mockBooks);
 
@@ -127,7 +118,6 @@ describe('useBooks', () => {
     });
 
     it('should support manual refetch', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useBooks(111), { wrapper });
 
       await waitFor(() => {

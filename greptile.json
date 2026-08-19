@@ -33,7 +33,7 @@
       },
       {
         "scope": ["packages/ui/src/components/**"],
-        "rule": "No hardcoded user-facing strings: use t() or Trans/i18nKey for aria-label, title, placeholder, alt, and visible copy. ESLint i18next/no-literal-string enforces this."
+        "rule": "No hardcoded user-facing strings: use t() or Trans/i18nKey for aria-label, title, placeholder, alt, and visible copy. Oxlint i18next/no-literal-string enforces this."
       },
       {
         "scope": ["packages/ui/src/i18n/locales/**"],

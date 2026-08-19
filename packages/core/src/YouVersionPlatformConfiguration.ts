@@ -1,3 +1,4 @@
+import { StoredGrantsSchema } from './schemas/auth';
 import { YouVersionUserInfoJSONSchema, type YouVersionUserInfoJSON } from './schemas/user-info';
 import { getLocalStorage, removeStorageItem, setStorageItem } from './web-storage';
 
@@ -33,10 +34,9 @@ export class YouVersionPlatformConfiguration {
       return existingId;
     }
 
-    const newId =
-      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID()
-        : `yvp-${new Date().toISOString()}-${Math.random().toString(36).slice(2, 10)}`;
+    const newId = globalThis.crypto?.randomUUID
+      ? globalThis.crypto.randomUUID()
+      : `yvp-${new Date().toISOString()}-${Math.random().toString(36).slice(2, 10)}`;
     // A store that rejects the write (Safari private mode) leaves us just as
     // unable to persist as no store at all.
     return setStorageItem(storage, 'x-yvp-installation-id', newId) ? newId : '';
@@ -133,19 +133,8 @@ export class YouVersionPlatformConfiguration {
     const raw = getLocalStorage()?.getItem(this.grantedPermissionsKey);
     if (!raw) return null;
     try {
-      const parsed: unknown = JSON.parse(raw);
-      if (typeof parsed !== 'object' || parsed === null) return null;
-      const record = parsed as Record<string, unknown>;
-      // Reject the legacy bare-array format and any other malformed shape.
-      if (typeof record.userId !== 'string' || !Array.isArray(record.permissions)) {
-        return null;
-      }
-      return {
-        userId: record.userId,
-        permissions: record.permissions.filter(
-          (entry): entry is string => typeof entry === 'string',
-        ),
-      };
+      const parsed = StoredGrantsSchema.safeParse(JSON.parse(raw));
+      return parsed.success ? parsed.data : null;
     } catch {
       return null;
     }

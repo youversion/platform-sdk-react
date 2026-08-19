@@ -3,16 +3,14 @@
 import { useApiData, type UseApiDataOptions } from './useApiData';
 import { type Organization } from '@youversion/platform-core';
 import { useOrganizationsClient } from './useOrganizationsClient';
+import type { UseNamedQueryResult } from './useQueryResult';
+
+export type UseOrganizationResult = UseNamedQueryResult<'organization', Organization>;
 
 export function useOrganization(
   organizationId: string,
   apiOptions?: UseApiDataOptions,
-): {
-  organization: Organization | null;
-  loading: boolean;
-  error: Error | null;
-  refetch: () => void;
-} {
+): UseOrganizationResult {
   const organizationsClient = useOrganizationsClient();
   const enabled = apiOptions?.enabled !== false && organizationId.trim().length > 0;
 

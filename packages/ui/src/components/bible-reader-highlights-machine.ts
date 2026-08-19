@@ -44,7 +44,7 @@
  * leaving the tested apply-convergence behavior untouched.
  */
 import { collapseVerseRuns, formatPassageId, type VerseRun } from '@/lib/usfm-ranges';
-import { isPaletteHighlightColor } from '@/lib/highlight-colors';
+import { isPaletteHighlightColor, type HighlightedVerses } from '@/lib/highlight-colors';
 import {
   appendPendingHighlight,
   clearPendingHighlight,
@@ -53,9 +53,11 @@ import {
   stashPendingHighlight,
   type PendingHighlight,
 } from '@/lib/pending-highlight';
-import { getHttpStatus } from '@youversion/platform-core';
+import { getHttpStatus, type Highlight } from '@youversion/platform-core';
 import { Result } from 'better-result';
 import { assign, enqueueActions, fromPromise, setup, type DoneActorEvent } from 'xstate';
+
+type WriteIntentToken = symbol;
 
 // ── Domain types ────────────────────────────────────────────────────────────
 
@@ -82,7 +84,7 @@ type WriteOp = {
   verses: number[];
   scope: HighlightScope;
   /** Per-verse ownership token; a failed write only reverts verses it still owns. */
-  token: object;
+  token: WriteIntentToken;
   /** Whether the optimistic overlay was painted for this op (owns its verses). */
   paint: boolean;
 };
@@ -104,7 +106,7 @@ export type HighlightServices = {
     version_id: number;
     passage_id: string;
     color: string;
-  }) => Promise<unknown>;
+  }) => Promise<Highlight>;
   deleteHighlight: (passageId: string, options: { version_id: number }) => Promise<void>;
   refetch: () => void;
   hasHighlightsPermission: () => boolean;
@@ -135,7 +137,7 @@ type HighlightsContext = {
   serverColors: ServerColors;
   overlay: HighlightOverlay;
   reconcile: Map<number, ReconcileEntry>;
-  writeIntent: Map<number, object>;
+  writeIntent: Map<number, WriteIntentToken>;
   queue: WriteOp[];
   dataExchangeConsumed: boolean;
   /** Set by the TAP_COLOR handlers so the adapter can read the synchronous outcome. */
@@ -159,6 +161,14 @@ export type HighlightsEvent =
   | { type: 'CANCEL_PERMISSION' }
   | { type: 'ENQUEUE'; op: WriteOp }
   | { type: 'PERMISSION_LOST' };
+
+type ProcessWriteDoneEvent = DoneActorEvent<WriteResult>;
+type MachineActionEvent = HighlightsEvent | ProcessWriteDoneEvent;
+
+function writeResultFromActionEvent(event: MachineActionEvent): WriteResult | undefined {
+  if (!('output' in event)) return undefined;
+  return event.output;
+}
 
 // ── Error boundary + helpers (module-level, reused by the write actor) ────────
 
@@ -193,9 +203,8 @@ function versesInRun(run: VerseRun): number[] {
  * `BibleReaderHighlightError`). Defers to core's `getHttpStatus` for the actual
  * status contract so the error shape stays owned by the client layer.
  */
-function extractStatus(error: unknown): number | undefined {
-  if (error instanceof BibleReaderHighlightError) return getHttpStatus(error.cause);
-  return getHttpStatus(error);
+function extractStatus(error: BibleReaderHighlightError): number | undefined {
+  return getHttpStatus(error.cause);
 }
 
 /**
@@ -206,7 +215,7 @@ function extractStatus(error: unknown): number | undefined {
  * instead of a token refresh / re-auth. Follow-up: distinguish auth-expiry from
  * permission-denied at this boundary.
  */
-function isPermissionError(error: unknown): boolean {
+function isPermissionError(error: BibleReaderHighlightError): boolean {
   const status = extractStatus(error);
   return status === 401 || status === 403;
 }
@@ -245,7 +254,7 @@ export function scopesEqual(a: HighlightScope, b: HighlightScope): boolean {
 function claimVerses(
   context: Pick<HighlightsContext, 'writeIntent' | 'reconcile' | 'overlay'>,
   verses: number[],
-  token: object,
+  token: WriteIntentToken,
   color: string | null,
 ): Pick<HighlightsContext, 'writeIntent' | 'reconcile' | 'overlay'> {
   const writeIntent = new Map(context.writeIntent);
@@ -263,8 +272,8 @@ function claimVerses(
 export function selectHighlightedVerses(
   serverColors: ServerColors,
   overlay: HighlightOverlay,
-): Record<number, string> {
-  const map: Record<number, string> = { ...serverColors };
+): HighlightedVerses {
+  const map: HighlightedVerses = { ...serverColors };
   for (const [verse, color] of Object.entries(overlay)) {
     if (color === null) delete map[Number(verse)];
     else map[Number(verse)] = color;
@@ -350,8 +359,11 @@ const processWrite = fromPromise<WriteResult, { services: HighlightServicesRef; 
 
 export const bibleReaderHighlightsMachine = setup({
   types: {
+    // SAFETY: xstate setup() type witness; the empty object is never read at runtime.
     context: {} as HighlightsContext,
+    // SAFETY: xstate setup() type witness; the empty object is never read at runtime.
     events: {} as HighlightsEvent,
+    // SAFETY: xstate setup() type witness; the empty object is never read at runtime.
     input: {} as HighlightsMachineInput,
   },
   actors: { processWrite },
@@ -395,7 +407,7 @@ export const bibleReaderHighlightsMachine = setup({
       !context.services.current.hasHighlightsPermission(),
   },
   actions: {
-    setOutcomeNoop: assign({ lastTapOutcome: () => 'noop' as TapOutcome }),
+    setOutcomeNoop: assign({ lastTapOutcome: () => 'noop' }),
 
     assignAuth: assign(({ event }) => {
       if (event.type !== 'AUTH_CHANGED') return {};
@@ -412,7 +424,7 @@ export const bibleReaderHighlightsMachine = setup({
       return {
         overlay: {},
         reconcile: new Map<number, ReconcileEntry>(),
-        writeIntent: new Map<number, object>(),
+        writeIntent: new Map<number, WriteIntentToken>(),
         queue: [],
       };
     }),
@@ -432,7 +444,7 @@ export const bibleReaderHighlightsMachine = setup({
         scope: event.scope,
         overlay: {},
         reconcile: new Map<number, ReconcileEntry>(),
-        writeIntent: new Map<number, object>(),
+        writeIntent: new Map<number, WriteIntentToken>(),
       };
     }),
 
@@ -481,10 +493,10 @@ export const bibleReaderHighlightsMachine = setup({
       if (!isPaletteHighlightColor(event.color)) return;
       const color = event.color.toLowerCase();
       const verses = event.verses;
-      const token = {};
+      const token = Symbol('write-intent');
       enqueue.assign(({ context: current }) => ({
         ...claimVerses(current, verses, token, color),
-        lastTapOutcome: 'applied' as TapOutcome,
+        lastTapOutcome: 'applied' as const,
       }));
       const op: WriteOp = {
         kind: 'apply',
@@ -514,7 +526,7 @@ export const bibleReaderHighlightsMachine = setup({
         chapter: context.scope.chapter,
         timestamp: Date.now(),
       });
-      enqueue.assign({ lastTapOutcome: () => 'flow' as TapOutcome });
+      enqueue.assign({ lastTapOutcome: () => 'flow' as const });
     }),
 
     /** Remove: only clear verses currently rendered in the given color. */
@@ -526,7 +538,7 @@ export const bibleReaderHighlightsMachine = setup({
       const targetVerses = event.verses.filter((verse) => rendered[verse] === color);
       if (targetVerses.length === 0) return;
 
-      const token = {};
+      const token = Symbol('write-intent');
       enqueue.assign(({ context: current }) => claimVerses(current, targetVerses, token, null));
       const op: WriteOp = {
         kind: 'remove',
@@ -558,7 +570,7 @@ export const bibleReaderHighlightsMachine = setup({
           chapter: pending.chapter,
         };
         const paint = scopesEqual(scope, context.scope);
-        const token = {};
+        const token = Symbol('write-intent');
         if (paint) {
           enqueue.assign(({ context: current }) =>
             claimVerses(current, pending.verses, token, pending.color),
@@ -599,12 +611,10 @@ export const bibleReaderHighlightsMachine = setup({
      * network/5xx → revert overlay only).
      */
     settleWrite: enqueueActions(({ enqueue, event }) => {
-      // Wired only to the processWrite `onDone`; the done event is the actor's
-      // `DoneActorEvent`, which is not part of the machine's public event union,
-      // so bridge through `unknown` to read its `output`.
-      const { op, failures, failedVerses, succeededVerses } = (
-        event as unknown as DoneActorEvent<WriteResult>
-      ).output;
+      // Wired only to the processWrite `onDone`, which delivers WriteResult via output.
+      const settled = writeResultFromActionEvent(event);
+      if (!settled) return;
+      const { op, failures, failedVerses, succeededVerses } = settled;
 
       enqueue.assign(({ context: current }) => {
         const overlay = { ...current.overlay };
@@ -669,13 +679,13 @@ export const bibleReaderHighlightsMachine = setup({
 
     // ── Dialog side effects (fire-and-forget redirects, matching the hook) ──
     startSignIn: ({ context }) => {
-      void context.services.current.startSignInForHighlights().catch((error: unknown) => {
+      void context.services.current.startSignInForHighlights().catch((error) => {
         console.error('[YouVersion SDK] Failed to start sign-in for highlights', error);
         clearPendingHighlight();
       });
     },
     startDataExchange: ({ context }) => {
-      void context.services.current.startDataExchangeForHighlights().catch((error: unknown) => {
+      void context.services.current.startDataExchangeForHighlights().catch((error) => {
         console.error('[YouVersion SDK] Failed to start data exchange for highlights', error);
         clearPendingHighlight();
       });

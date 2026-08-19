@@ -983,8 +983,8 @@ function Content() {
       return;
     }
     const text = data?.text ?? '';
-    if (text && typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-      navigator
+    if (text && globalThis.navigator?.share instanceof Function) {
+      globalThis.navigator
         .share({ text })
         .then(() => closeAndClearSelection())
         .catch(() => {
@@ -993,8 +993,8 @@ function Content() {
       return;
     }
     // No Web Share support (e.g. most desktop browsers) — fall back to clipboard.
-    if (text && typeof navigator !== 'undefined') {
-      void navigator.clipboard?.writeText(text);
+    if (text && globalThis.navigator) {
+      void globalThis.navigator.clipboard?.writeText(text);
     }
     closeAndClearSelection();
   }
@@ -1169,7 +1169,7 @@ function UserMenu() {
     if (onSignOutPress) {
       onSignOutPress();
     } else {
-      void signOut();
+      signOut();
     }
   };
 

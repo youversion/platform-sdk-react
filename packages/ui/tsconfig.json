@@ -5,10 +5,10 @@
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "outDir": "dist",
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },
+    "moduleDetection": "force",
     "types": ["vite/client", "vitest/browser"]
   },
   "include": ["src/**/*", ".storybook/**/*", "./index.d.ts"],

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { type Organization, type OrganizationsClient } from '@youversion/platform-core';
 import { useOrganizationsClient } from './useOrganizationsClient';
+import { useHookOverride } from './useHookOverride';
 
 /** Normalizes a raw id list into a unique set of non-empty, trimmed ids. */
 function toUniqueIds(ids: (string | null | undefined)[]): string[] {
@@ -32,19 +33,26 @@ async function fetchOrganizations(
  * versions that share publishers only triggers one request per unique
  * organization. Returns a Map keyed by organization id.
  */
-export function useOrganizations(organizationIds: (string | null | undefined)[]): {
+export type UseOrganizationsResult = {
   organizations: Map<string, Organization>;
-} {
+};
+
+export function useOrganizations(
+  organizationIds: (string | null | undefined)[],
+): UseOrganizationsResult {
+  const override = useHookOverride('useOrganizations');
   const client = useOrganizationsClient();
   const [organizations, setOrganizations] = useState<Map<string, Organization>>(new Map());
   const cacheRef = useRef<Map<string, Organization>>(new Map());
   const clientRef = useRef(client);
 
-  const uniqueIds = toUniqueIds(organizationIds);
+  const uniqueIds = override ? [] : toUniqueIds(organizationIds);
   // Stable dependency key so the effect only re-runs when the id set changes.
   const idsKey = uniqueIds.slice().sort().join(',');
 
   useEffect(() => {
+    if (override) return;
+
     // A new client identity (e.g. appKey/host change) invalidates the cache.
     // Handled here so there is no cross-effect ordering dependence.
     if (clientRef.current !== client) {
@@ -66,7 +74,8 @@ export function useOrganizations(organizationIds: (string | null | undefined)[])
     return () => {
       cancelled = true;
     };
-  }, [client, idsKey]);
+  }, [client, idsKey, override]);
 
+  if (override) return override(organizationIds);
   return { organizations };
 }

@@ -26,19 +26,21 @@ function httpError(status: number): Error {
   return Object.assign(new Error(`HTTP ${status}`), { status });
 }
 
-type Deferred = { promise: Promise<unknown>; resolve: (value?: unknown) => void };
+type Deferred = { promise: Promise<void>; resolve: () => void };
 function deferred(): Deferred {
-  let resolve!: (value?: unknown) => void;
-  const promise = new Promise<unknown>((res) => {
-    resolve = res as (value?: unknown) => void;
+  let resolve!: () => void;
+  const promise = new Promise<void>((res) => {
+    resolve = res;
   });
   return { promise, resolve };
 }
 
-function makeServices(overrides: Partial<HighlightServices> = {}): {
+type MachineTestServices = {
   ref: HighlightServicesRef;
   refetch: ReturnType<typeof vi.fn>;
-} {
+};
+
+function makeServices(overrides: Partial<HighlightServices> = {}): MachineTestServices {
   const refetch = vi.fn();
   const services: HighlightServices = {
     createHighlight: vi.fn().mockResolvedValue(undefined),
@@ -104,7 +106,7 @@ describe('bibleReaderHighlightsMachine — writeIntent lifecycle', () => {
     expect(actor.getSnapshot().context.writeIntent.size).toBe(0);
 
     // The old-scope (JHN.3) write settles after the scope change.
-    pending.resolve(undefined);
+    pending.resolve();
     await vi.waitFor(() => expect(refetch).toHaveBeenCalled());
 
     // Verse 16 in the NEW scope must be untouched by the JHN.3 write.
@@ -138,7 +140,7 @@ describe('bibleReaderHighlightsMachine — writeIntent lifecycle', () => {
     expect(actor.getSnapshot().context.overlay).toEqual({ 16: '5dff79' });
 
     // A settles: it must not delete B's claim or reconcile verse 16.
-    first.resolve(undefined);
+    first.resolve();
     await vi.waitFor(() => expect(refetch).toHaveBeenCalledTimes(1));
     const afterA = actor.getSnapshot().context;
     expect(afterA.writeIntent.get(16)).toBe(claimB);
@@ -147,7 +149,7 @@ describe('bibleReaderHighlightsMachine — writeIntent lifecycle', () => {
 
     // B settles: it cleans up its own claim and registers its reconcile entry.
     await vi.waitFor(() => expect(createHighlight).toHaveBeenCalledTimes(2));
-    second.resolve(undefined);
+    second.resolve();
     await vi.waitFor(() => expect(refetch).toHaveBeenCalledTimes(2));
     const afterB = actor.getSnapshot().context;
     expect(afterB.writeIntent.has(16)).toBe(false);
@@ -231,15 +233,15 @@ describe('bibleReaderHighlightsMachine — pending stash on lost permission', ()
       },
       now,
     );
-    const createHighlight = vi.fn().mockResolvedValue(undefined);
+    const createHighlight = vi
+      .fn<HighlightServices['createHighlight']>()
+      .mockImplementation(async (data) => data);
     const { ref } = makeServices({ createHighlight });
     const actor = startMachine(ref);
 
     await vi.waitFor(() => expect(createHighlight).toHaveBeenCalledTimes(2));
 
-    const passages = createHighlight.mock.calls.map(
-      (call) => (call[0] as { passage_id: string }).passage_id,
-    );
+    const passages = createHighlight.mock.calls.map(([payload]) => payload.passage_id);
     expect(passages).toEqual(['JHN.3.1-3', 'JHN.3.4-6']);
     // Both colors painted in the same-scope overlay.
     expect(actor.getSnapshot().context.overlay).toEqual({

@@ -121,7 +121,7 @@ type KnownBookUsfm = (typeof BOOK_IDS)[number];
 /**
  * @see https://github.com/youversion/usfm-references/blob/main/usfm_references/books.py
  */
-export const BOOK_CANON: Record<KnownBookUsfm, CanonId> = {
+export const BOOK_CANON = {
   GEN: 'old_testament',
   EXO: 'old_testament',
   LEV: 'old_testament',
@@ -225,4 +225,4 @@ export const BOOK_CANON: Record<KnownBookUsfm, CanonId> = {
   '4BA': 'deuterocanon',
   LAO: 'deuterocanon',
   LKA: 'new_testament', // Luke-Acts combo, treated canonically as New Testament
-};
+} satisfies Record<KnownBookUsfm, CanonId>;

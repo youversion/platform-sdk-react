@@ -31,7 +31,7 @@
 function resolveStorage(read: () => Storage | undefined | null): Storage | null {
   try {
     const storage = read();
-    if (storage && typeof storage.getItem === 'function') {
+    if (storage?.getItem instanceof Function) {
       return storage;
     }
   } catch {
@@ -52,7 +52,7 @@ function resolveStorage(read: () => Storage | undefined | null): Storage | null 
  */
 function getWebStorage(name: 'localStorage' | 'sessionStorage'): Storage | null {
   return (
-    resolveStorage(() => (typeof window !== 'undefined' ? window[name] : null)) ??
+    resolveStorage(() => (globalThis.window ? globalThis.window[name] : null)) ??
     resolveStorage(() => globalThis[name])
   );
 }

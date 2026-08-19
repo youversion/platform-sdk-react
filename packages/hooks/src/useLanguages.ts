@@ -7,16 +7,16 @@ import {
   type Language,
 } from '@youversion/platform-core';
 import { useLanguagesClient } from './useLanguageClient';
+import type { UseNamedQueryResult } from './useQueryResult';
+import { useHookOverride } from './useHookOverride';
+
+export type UseLanguagesResult = UseNamedQueryResult<'languages', Collection<Language>>;
 
 export function useLanguages(
   options: GetLanguagesOptions = {},
   apiOptions?: UseApiDataOptions,
-): {
-  languages: Collection<Language> | null;
-  loading: boolean;
-  error: Error | null;
-  refetch: () => void;
-} {
+): UseLanguagesResult {
+  const override = useHookOverride('useLanguages');
   const languagesClient = useLanguagesClient();
 
   const { data, loading, error, refetch } = useApiData<Collection<Language>>(
@@ -29,10 +29,11 @@ export function useLanguages(
       options?.page_token,
     ],
     {
-      enabled: apiOptions?.enabled !== false,
+      enabled: !override && apiOptions?.enabled !== false,
     },
   );
 
+  if (override) return override(options, apiOptions);
   return {
     languages: data,
     loading,

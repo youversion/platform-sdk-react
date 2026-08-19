@@ -2,6 +2,7 @@
 
 import { useContext } from 'react';
 import { YouVersionContext } from './context';
+import { useHookOverride } from './useHookOverride';
 
 /**
  * Hook to access the current theme from YouVersionContext
@@ -16,7 +17,9 @@ import { YouVersionContext } from './context';
  * ```
  */
 export function useTheme(): 'light' | 'dark' {
+  const override = useHookOverride('useTheme');
   const context = useContext(YouVersionContext);
+  if (override) return override();
 
   // Default to 'light' to match YouVersionProvider's default
   return context?.theme || 'light';

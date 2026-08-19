@@ -18,8 +18,8 @@ export type YouVersionProviderProps = ComponentProps<typeof BaseYouVersionProvid
 
 function resolveTheme(theme: 'light' | 'dark' | 'system' = 'light'): 'light' | 'dark' {
   if (theme !== 'system') return theme;
-  if (typeof window === 'undefined') return 'light';
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  if (!globalThis.window) return 'light';
+  return globalThis.window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 export function YouVersionProvider(props: YouVersionProviderProps): React.ReactElement {
