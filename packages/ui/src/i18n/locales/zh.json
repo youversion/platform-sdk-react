@@ -81,5 +81,6 @@
   "signOutPendingHighlightsConfirm": "仍然登出",
   "youVersionPlatformLogoAriaLabel": "YouVersion Platform",
   "booksHeading": "書卷",
-  "bibleVersionsHeading": "聖經譯本"
+  "bibleVersionsHeading": "聖經譯本",
+  "untitledSerifFontName": "無標題襯線體"
 }

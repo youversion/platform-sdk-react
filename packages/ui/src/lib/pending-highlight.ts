@@ -42,20 +42,23 @@ type StoredPendingRead = {
   stale: boolean;
 };
 
-function isText(value: unknown): value is string {
+type JsonPrimitive = string | number | boolean | null;
+type JsonObject = { [key: string]: JsonValue };
+type JsonValue = JsonPrimitive | JsonValue[] | JsonObject;
+
+function isText(value: JsonValue): value is string {
   return Object.prototype.toString.call(value) === '[object String]';
 }
 
-function isFiniteNumber(value: unknown): value is number {
+function isFiniteNumber(value: JsonValue): value is number {
   return Object.prototype.toString.call(value) === '[object Number]' && Number.isFinite(value);
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return Object.prototype.toString.call(value) === '[object Object]';
+function isJsonObject(value: JsonValue): value is JsonObject {
+  return value !== null && Object.prototype.toString.call(value) === '[object Object]';
 }
 
-function parsePendingHighlight(item: unknown): PendingHighlight | undefined {
-  if (!isPlainObject(item)) return undefined;
+function parsePendingHighlight(item: JsonObject): PendingHighlight | undefined {
   const verses = item.verses;
   const color = item.color;
   const book = item.book;
@@ -76,18 +79,18 @@ function parsePendingHighlight(item: unknown): PendingHighlight | undefined {
 }
 
 function parsePendingHighlightList(raw: string): PendingHighlight[] | undefined {
-  let parsed: PendingHighlight[];
+  let parsed: JsonValue;
   try {
     // SAFETY: JSON.parse returns any. parsePendingHighlight checks each field
     // before the list is used.
-    parsed = JSON.parse(raw) as PendingHighlight[];
+    parsed = JSON.parse(raw) as JsonValue;
   } catch {
     return undefined;
   }
   if (!Array.isArray(parsed)) return undefined;
   const entries: PendingHighlight[] = [];
   for (const item of parsed) {
-    if (!isPlainObject(item)) continue;
+    if (!isJsonObject(item)) continue;
     const entry = parsePendingHighlight(item);
     if (entry === undefined) return undefined;
     entries.push(entry);

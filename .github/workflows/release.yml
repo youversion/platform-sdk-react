@@ -4,6 +4,15 @@ on:
   push:
     branches:
       - main
+  # Manual recovery path: if the CDN stylesheet upload fails after packages were
+  # already published to npm, a job re-run cannot retry it (changesets reports
+  # nothing newly published on the re-run). Instead, run this workflow manually
+  # from main: the changesets step is skipped and the CDN upload always runs,
+  # built from the tag of the latest published UI release so the uploaded CSS
+  # matches what is on npm. The upload is idempotent.
+  # Dispatches from any ref other than main are no-ops (job-level guard below),
+  # so branch CSS can never overwrite the production stylesheet.
+  workflow_dispatch:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
@@ -16,6 +25,10 @@ permissions:
 jobs:
   release:
     name: Release
+    # Only ever run against main. Pushes are already filtered by the trigger;
+    # this guards workflow_dispatch, which GitHub allows from any ref that
+    # contains the workflow file.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,6 +36,26 @@ jobs:
         with:
           # This is required for changesets to access commit history
           fetch-depth: 0
+
+      # On manual recovery runs, build the exact source of the latest published
+      # UI package instead of current HEAD: main may have advanced past the
+      # release commit, and the uploaded stylesheet must always match what is
+      # on npm. The npm "latest" dist-tag is the source of truth for which
+      # version that is (git tag dates can lie: recreated tags or prereleases
+      # can carry the newest creation date); changesets pushes a matching
+      # git tag per published version.
+      - name: Check out latest published UI release (manual runs)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git fetch --tags --quiet origin
+          version="$(npm view @youversion/platform-react-ui version)"
+          tag="@youversion/platform-react-ui@${version}"
+          if ! git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+            echo "::error::npm latest is ${version} but tag ${tag} does not exist in this repository; cannot determine which stylesheet to publish."
+            exit 1
+          fi
+          echo "Building stylesheet from ${tag} (npm latest)"
+          git checkout --detach "refs/tags/${tag}"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -45,6 +78,9 @@ jobs:
         run: pnpm build
 
       - name: Create Release Pull Request or Publish to NPM
+        # Skipped on workflow_dispatch (manual CDN re-upload) so a manual run can
+        # never version or publish packages as a side effect.
+        if: github.event_name == 'push'
         id: changesets
         uses: changesets/action@v1
         with:
@@ -67,3 +103,67 @@ jobs:
           echo "The following packages were published to NPM:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo '${{ steps.changesets.outputs.publishedPackages }}' | jq -r '.[] | "- \(.name)@\(.version)"' >> $GITHUB_STEP_SUMMARY
+
+      # When a new @youversion/platform-react-ui version is published, upload its
+      # compiled stylesheet to the cdn.youversion.com origin bucket so it is served
+      # at https://cdn.youversion.com/platform/<major>/bible.css (YPE-1733).
+      # The <major> path segment comes from packages/ui/CDN_CSS_MAJOR_VERSION and is
+      # bumped only for breaking CSS changes — see PUBLISHING.md.
+      # Also runs on workflow_dispatch as the manual recovery path (see `on:` above).
+      - name: Authenticate to Google Cloud
+        if: github.event_name == 'workflow_dispatch' || (steps.changesets.outputs.published == 'true' && contains(fromJSON(steps.changesets.outputs.publishedPackages).*.name, '@youversion/platform-react-ui'))
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        if: github.event_name == 'workflow_dispatch' || (steps.changesets.outputs.published == 'true' && contains(fromJSON(steps.changesets.outputs.publishedPackages).*.name, '@youversion/platform-react-ui'))
+        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
+
+      - name: Publish UI stylesheet to CDN
+        if: github.event_name == 'workflow_dispatch' || (steps.changesets.outputs.published == 'true' && contains(fromJSON(steps.changesets.outputs.publishedPackages).*.name, '@youversion/platform-react-ui'))
+        run: |
+          # Feature-flag gate (feature.platform.sdkCssCdn, defined in the
+          # transformers flag manifest): read the prod Firebase Remote Config
+          # *server* template and only upload when the flag's value is "true".
+          # A missing parameter or "false" means CDN publishing is disabled
+          # (ship dark) — flip the value in the prod Firebase console to
+          # launch or kill without a code change. This simple check reads
+          # defaultValue only; conditional values / percentage rollouts are
+          # not evaluated. If the template fetch fails, skip the upload with
+          # a notice so npm publishes are never marked failed post-publish.
+          TOKEN="$(gcloud auth print-access-token)"
+          if ! RC_TEMPLATE="$(curl -sS --fail-with-body \
+            -H "Authorization: Bearer $TOKEN" \
+            "https://firebaseremoteconfig.googleapis.com/v1/projects/yvplatform-prod/namespaces/firebase-server/remoteConfig")"; then
+            echo "::notice::Unable to read prod Remote Config server template; skipping CDN stylesheet upload."
+            echo "## CDN Stylesheet :art:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Skipped: failed to fetch prod Remote Config server template for \`feature.platform.sdkCssCdn\`." >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+          FLAG_VALUE="$(echo "$RC_TEMPLATE" | jq -r '.parameters.feature_platform_sdkCssCdn.defaultValue.value // "false"')"
+          if [ "$FLAG_VALUE" != "true" ]; then
+            echo "::notice::CDN stylesheet publishing is disabled (feature.platform.sdkCssCdn=${FLAG_VALUE} in prod Remote Config); skipping upload."
+            echo "## CDN Stylesheet :art:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Skipped: \`feature.platform.sdkCssCdn\` is \`${FLAG_VALUE}\` in the prod Remote Config server template." >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          CSS_MAJOR_VERSION="1"
+          if [ -s packages/ui/CDN_CSS_MAJOR_VERSION ]; then
+            CSS_MAJOR_VERSION="$(tr -d '[:space:]' < packages/ui/CDN_CSS_MAJOR_VERSION)"
+          else
+            echo "::notice::packages/ui/CDN_CSS_MAJOR_VERSION missing or empty in this tag; defaulting CSS major to 1."
+            echo "Using fallback CSS major version \`1\` because \`packages/ui/CDN_CSS_MAJOR_VERSION\` was missing or empty." >> $GITHUB_STEP_SUMMARY
+          fi
+          test -s packages/ui/dist/tailwind.css
+          gcloud storage cp packages/ui/dist/tailwind.css \
+            "gs://cdn-yv-platform-prod/platform/${CSS_MAJOR_VERSION}/bible.css" \
+            --cache-control="public, max-age=300, must-revalidate" \
+            --content-type="text/css"
+          echo "## CDN Stylesheet :art:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Uploaded \`packages/ui/dist/tailwind.css\` to https://cdn.youversion.com/platform/${CSS_MAJOR_VERSION}/bible.css" >> $GITHUB_STEP_SUMMARY

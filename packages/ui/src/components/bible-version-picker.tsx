@@ -54,24 +54,35 @@ type TriggerElementProps = React.HTMLAttributes<HTMLButtonElement> & {
   'data-yv-theme'?: string;
 };
 
-function isRecentVersion(item: unknown): item is RecentVersion {
-  if (item === null || Object.prototype.toString.call(item) !== '[object Object]') {
+type JsonPrimitive = string | number | boolean | null;
+type JsonObject = { [key: string]: JsonValue };
+type JsonValue = JsonPrimitive | JsonValue[] | JsonObject;
+
+function isJsonObject(value: JsonValue): value is JsonObject {
+  return value !== null && Object.prototype.toString.call(value) === '[object Object]';
+}
+
+function isRecentVersionText(value: JsonValue): value is string {
+  return Object.prototype.toString.call(value) === '[object String]';
+}
+
+function isRecentVersion(item: JsonValue): item is RecentVersion {
+  if (!isJsonObject(item)) {
     return false;
   }
-  const version = item as RecentVersion;
   return (
-    Number.isFinite(version.id) &&
-    Object.prototype.toString.call(version.title) === '[object String]' &&
-    Object.prototype.toString.call(version.localized_abbreviation) === '[object String]'
+    Number.isFinite(item.id) &&
+    isRecentVersionText(item.title) &&
+    isRecentVersionText(item.localized_abbreviation)
   );
 }
 
 function parseRecentVersions(raw: string): RecentVersion[] {
-  let parsed: RecentVersion[];
+  let parsed: JsonValue;
   try {
     // SAFETY: JSON.parse returns any. isRecentVersion checks each field
     // before the list is used.
-    parsed = JSON.parse(raw) as RecentVersion[];
+    parsed = JSON.parse(raw) as JsonValue;
   } catch {
     return [];
   }

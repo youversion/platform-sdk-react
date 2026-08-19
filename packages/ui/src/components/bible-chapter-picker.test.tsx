@@ -351,7 +351,7 @@ describe('BibleChapterPicker - accordion expand/collapse', () => {
       if (scrollIntoViewDescriptor) {
         Object.defineProperty(Element.prototype, 'scrollIntoView', scrollIntoViewDescriptor);
       } else {
-        delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+        Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
       }
     }
   });
