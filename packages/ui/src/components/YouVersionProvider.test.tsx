@@ -4,13 +4,22 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React, { useContext } from 'react';
+import { useTranslation } from 'react-i18next';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionContext } from '@youversion/platform-react-hooks';
 import { YouVersionProvider } from '@/components/YouVersionProvider';
+import i18n from '@/i18n';
+import en from '@/i18n/locales/en.json';
+import es from '@/i18n/locales/es.json';
 
 function AdditionalHeadersProbe(): React.ReactElement {
   const headers = useContext(YouVersionContext)?.additionalHeaders;
   return <div data-testid="headers">{headers ? JSON.stringify(headers) : 'none'}</div>;
+}
+
+function VerseOfTheDayHeading() {
+  const { t } = useTranslation(undefined, { i18n });
+  return <p>{t('verseOfTheDay')}</p>;
 }
 
 describe('UI YouVersionProvider', () => {
@@ -109,4 +118,31 @@ describe('UI YouVersionProvider', () => {
       errorSpy.mockRestore();
     },
   );
+
+  it('uses locale for bundled copy instead of the browser language', async () => {
+    vi.stubGlobal('navigator', {
+      language: 'en-US',
+      languages: ['en-US', 'en'],
+    });
+
+    const { rerender } = render(
+      <YouVersionProvider appKey="test-key" locale="es">
+        <VerseOfTheDayHeading />
+      </YouVersionProvider>,
+    );
+
+    expect(await screen.findByText(es.verseOfTheDay)).toBeInTheDocument();
+    expect(screen.queryByText(en.verseOfTheDay)).not.toBeInTheDocument();
+
+    rerender(
+      <YouVersionProvider appKey="test-key" locale="es-MX">
+        <VerseOfTheDayHeading />
+      </YouVersionProvider>,
+    );
+
+    expect(await screen.findByText(es.verseOfTheDay)).toBeInTheDocument();
+
+    await i18n.changeLanguage('en');
+    vi.unstubAllGlobals();
+  });
 });

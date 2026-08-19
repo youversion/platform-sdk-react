@@ -1,4 +1,4 @@
-import React, { type ComponentProps, Suspense, useEffect } from 'react';
+import React, { type ComponentProps, Suspense, useEffect, useLayoutEffect } from 'react';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionProvider as BaseYouVersionProvider } from '@youversion/platform-react-hooks';
 import { syncSdkLanguage } from '@/i18n';
@@ -33,7 +33,7 @@ export function YouVersionProvider({
 }: YouVersionProviderProps): React.ReactElement {
   const normalizedLocale = locale?.trim() || undefined;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     void syncSdkLanguage(normalizedLocale);
   }, [normalizedLocale]);
 

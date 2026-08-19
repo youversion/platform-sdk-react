@@ -248,5 +248,10 @@ describe('i18n instance', () => {
 
     expect(i18n.language).toBe('fr');
     expect(i18n.t('verseOfTheDay')).toBe(resources.fr.translation.verseOfTheDay);
+
+    await syncSdkLanguage('es-MX');
+
+    expect(i18n.language).toBe('es');
+    expect(i18n.t('verseOfTheDay')).toBe(resources.es.translation.verseOfTheDay);
   });
 });

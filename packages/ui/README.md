@@ -41,6 +41,14 @@ function App() {
 }
 ```
 
+Optional `locale` sets bundled UI copy (Verse of the Day heading, buttons, etc.) and `Accept-Language` instead of following the browser language. Regional tags like `es-MX` resolve to a bundled locale. This is app language, not Bible translation language — seed the version picker with `defaultLanguageId` on `BibleReader.Root`.
+
+```tsx
+<YouVersionProvider appKey="YOUR_APP_KEY" locale="es">
+  <VerseOfTheDay />
+</YouVersionProvider>
+```
+
 ## Styling
 
 All component CSS is automatically injected when you wrap your app with `YouVersionProvider` — no extra imports or build steps needed. Under the hood, it uses React 19's [`<style precedence>`](https://react.dev/reference/react-dom/components/style) to hoist styles into `<head>` with built-in deduplication and SSR/Suspense support.
