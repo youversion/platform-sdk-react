@@ -103,13 +103,15 @@ export class ApiClient {
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
     try {
+      const headers = new Headers(this.defaultHeaders);
+      new Headers(options.headers).forEach((value, key) => {
+        headers.set(key, value);
+      });
+
       const response = await fetch(url, {
         ...options,
         signal: controller.signal,
-        headers: {
-          ...this.defaultHeaders,
-          ...options.headers,
-        },
+        headers,
       });
 
       clearTimeout(timeoutId);

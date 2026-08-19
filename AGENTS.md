@@ -5,7 +5,7 @@ Type-safe YouVersion Platform SDK monorepo (pnpm workspaces + Turborepo): `@youv
 Keep this file brief. Put task-specific guidance behind a pointer.
 
 ## Gotchas
-- Build tools differ per package: core = tsup, hooks = tsc only, ui = tsup + tsc. Don't assume one build shape.
+- JS bundles via tsup; `.d.ts` via `tsc` (TypeScript 7 has no compiler API). Don't assume one build shape.
 - API Extractor is listed but not actually used — don't wire anything to it.
 - Turbo build cache can skip changes; rebuild with `turbo build --force` when stale.
 - Rebuild dependent packages after modifying core or hooks.
@@ -13,7 +13,7 @@ Keep this file brief. Put task-specific guidance behind a pointer.
 - Bible chapter HTML from the API is YVDOM, not display-ready — transform before rendering.
 - Sister SDKs (`platform-sdk-swift`, `platform-sdk-kotlin`) define the Sign-In UI, logos, and i18n patterns — align with them. Swift is the source of truth for Bible reader typography.
 - Local auth/highlight/Bible demos: use `examples/vite-react`, loading env vars from the monorepo root (not worktree-local envs). Navbar Sign in requests only profile and email; grant highlights via the reader permission flow (tap a verse, tap a color). Highlights are per Bible version.
-- `pnpm lint` is ESLint then oxlint anti-slop. Do not suppress anti-slop rules. How to run: `CONTRIBUTING.md`.
+- `pnpm lint` is oxlint (type-aware TypeScript, React hooks, i18n, anti-slop). Do not suppress anti-slop rules. How to run: `CONTRIBUTING.md`.
 
 ## Guardrails
 - Dependency chain runs one way: core → hooks → ui. Never introduce a reverse dependency.

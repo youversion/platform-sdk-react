@@ -10,14 +10,13 @@ export type UseVerseOfTheDayResult = UseQueryResult<VOTD>;
 
 export function useVerseOfTheDay(day: number, options?: UseApiDataOptions): UseVerseOfTheDayResult {
   const override = useHookOverride('useVerseOfTheDay');
-  if (override) return override(day, options);
-
   const bibleClient = useBibleClient();
 
   const { data, loading, error, refetch } = useApiData<VOTD>(
     () => bibleClient.getVOTD(day),
     [bibleClient, day],
-    { enabled: options?.enabled !== false },
+    { enabled: !override && options?.enabled !== false },
   );
+  if (override) return override(day, options);
   return { data, loading, error, refetch };
 }

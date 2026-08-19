@@ -15,9 +15,10 @@ import type { UseVersionsOptions, UseVersionsResult } from './useVersions';
 import type { UseVerseOfTheDayResult } from './useVOTD';
 
 /**
- * Test-only replacements for data hooks. When a key is set, that hook returns
- * the override and does not call the rest of its body. Keep the override
- * present for the whole mount; do not add or remove it between renders.
+ * Test-only replacements for data hooks. When a key is set, the hook still
+ * calls its inner hooks and skips fetch with `enabled: !override`, then
+ * returns the override. Keep the override present for the whole mount; do
+ * not add or remove it between renders.
  */
 export type HookOverrides = {
   useBooks?: (versionId: number, options?: UseApiDataOptions) => UseBooksResult;

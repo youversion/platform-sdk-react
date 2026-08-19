@@ -51,7 +51,8 @@ export const createMockAuthResult = (
 ): SignInWithYouVersionResult => {
   const mockUserInfo = createMockUserInfo();
   return new SignInWithYouVersionResult({
-    ...mockUserInfo,
+    name: mockUserInfo.name,
+    email: mockUserInfo.email,
     accessToken: 'access-token',
     refreshToken: 'refresh-token',
     expiresIn: 3600,

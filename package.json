@@ -24,8 +24,7 @@
     "test": "turbo test",
     "test:coverage": "pnpm --filter @youversion/platform-core test:coverage && pnpm --filter @youversion/platform-react-hooks test:coverage && pnpm --filter @youversion/platform-react-ui test:coverage",
     "test:watch": "turbo test:watch",
-    "lint": "turbo lint && oxlint",
-    "lint:oxlint": "oxlint",
+    "lint": "oxlint",
     "typecheck": "turbo typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "changeset": "changeset",
@@ -42,13 +41,10 @@
     "@changesets/cli": "2.29.7",
     "@commitlint/cli": "19.8.1",
     "@commitlint/config-conventional": "19.8.1",
-    "@eslint/eslintrc": "3.3.1",
-    "@internal/eslint-config": "workspace:*",
     "@microsoft/api-extractor": "7.53.1",
     "@oxlint/plugins": "1.78.0",
     "@types/node": "24.9.1",
-    "eslint": "9.38.0",
-    "eslint-plugin-storybook": "10.3.5",
+    "eslint-plugin-i18next": "6.1.5",
     "husky": "9.1.7",
     "knip": "5.66.3",
     "lint-staged": "16.2.5",
@@ -58,6 +54,7 @@
     "rimraf": "6.0.1",
     "tsup": "8.5.0",
     "turbo": "2.5.8",
-    "typescript": "5.9.3"
+    "oxlint-tsgolint": "7.0.2001",
+    "typescript": "7.0.2"
   }
 }

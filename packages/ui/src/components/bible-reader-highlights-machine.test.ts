@@ -234,8 +234,8 @@ describe('bibleReaderHighlightsMachine — pending stash on lost permission', ()
       now,
     );
     const createHighlight = vi
-      .fn<(data: { version_id: number; passage_id: string; color: string }) => Promise<void>>()
-      .mockResolvedValue(undefined);
+      .fn<HighlightServices['createHighlight']>()
+      .mockImplementation(async (data) => data);
     const { ref } = makeServices({ createHighlight });
     const actor = startMachine(ref);
 

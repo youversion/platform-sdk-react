@@ -41,18 +41,18 @@ export function useOrganizations(
   organizationIds: (string | null | undefined)[],
 ): UseOrganizationsResult {
   const override = useHookOverride('useOrganizations');
-  if (override) return override(organizationIds);
-
   const client = useOrganizationsClient();
   const [organizations, setOrganizations] = useState<Map<string, Organization>>(new Map());
   const cacheRef = useRef<Map<string, Organization>>(new Map());
   const clientRef = useRef(client);
 
-  const uniqueIds = toUniqueIds(organizationIds);
+  const uniqueIds = override ? [] : toUniqueIds(organizationIds);
   // Stable dependency key so the effect only re-runs when the id set changes.
   const idsKey = uniqueIds.slice().sort().join(',');
 
   useEffect(() => {
+    if (override) return;
+
     // A new client identity (e.g. appKey/host change) invalidates the cache.
     // Handled here so there is no cross-effect ordering dependence.
     if (clientRef.current !== client) {
@@ -74,7 +74,8 @@ export function useOrganizations(
     return () => {
       cancelled = true;
     };
-  }, [client, idsKey]);
+  }, [client, idsKey, override]);
 
+  if (override) return override(organizationIds);
   return { organizations };
 }

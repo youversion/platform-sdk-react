@@ -475,9 +475,11 @@ export const Verse = {
       return (
         <span className="yv:[&>p]:inline-block">
           <sup className="yv:text-muted-foreground yv:align-super yv:text-[0.6em]">{number}</sup>
-          &nbsp;{/* This spacing is intentional */}
+          {'\u00a0'}
+          {/* This spacing is intentional */}
           <span className="yv:font-serif! yv:text-xl yv:text-primary">{text}</span>
-          &nbsp;{/* This spacing is intentional */}
+          {'\u00a0'}
+          {/* This spacing is intentional */}
         </span>
       );
     }
@@ -485,9 +487,11 @@ export const Verse = {
     return (
       <span className="yv:[&>p]:inline-block">
         <sup className="yv:text-muted-foreground yv:align-super yv:text-[0.6em]">{number}</sup>
-        &nbsp;{/* This spacing is intentional */}
+        {'\u00a0'}
+        {/* This spacing is intentional */}
         <span className="yv:text-primary">{text}</span>
-        &nbsp;{/* This spacing is intentional */}
+        {'\u00a0'}
+        {/* This spacing is intentional */}
       </span>
     );
   },

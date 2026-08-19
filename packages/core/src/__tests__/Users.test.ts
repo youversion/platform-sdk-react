@@ -11,6 +11,27 @@ import { setupBrowserMocks, cleanupBrowserMocks } from './mocks/browser';
 
 const mockFetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
 
+type TokenJson = {
+  access_token?: string;
+  expires_in?: number;
+  id_token?: string;
+  refresh_token?: string;
+  scope?: string;
+  token_type?: string;
+};
+
+function jsonResponse(body: TokenJson, status = 200, statusText = 'OK'): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    statusText,
+    headers: { 'content-type': 'application/json' },
+  });
+}
+
+function emptyResponse(status: number, statusText: string): Response {
+  return new Response(null, { status, statusText });
+}
+
 // Shared JWT fixture (HS256 header + `{sub,name,iat,email,profile_picture}`
 // payload + invalid signature) reused across the token-exchange tests.
 const MOCK_ID_TOKEN =
@@ -44,14 +65,16 @@ describe('YouVersionAPIUsers', () => {
    * that the PKCE `signIn` flow needs to build a deterministic authorize URL.
    */
   function stubSignInCrypto() {
-    vi.spyOn(crypto, 'getRandomValues').mockImplementation((array: ArrayBufferView) => {
-      if (array instanceof Uint8Array) {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = i;
+    vi.spyOn(crypto, 'getRandomValues').mockImplementation(
+      <T extends ArrayBufferView>(array: T): T => {
+        if (array instanceof Uint8Array) {
+          for (let i = 0; i < array.length; i++) {
+            array[i] = i;
+          }
         }
-      }
-      return array;
-    });
+        return array;
+      },
+    );
 
     vi.spyOn(crypto.subtle, 'digest').mockResolvedValue(new Uint8Array(32).buffer);
     mocks.btoa.mockReturnValue('mockBase64Value');
@@ -97,12 +120,7 @@ describe('YouVersionAPIUsers', () => {
       }
     });
 
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: 'OK',
-      text: vi.fn().mockResolvedValue(JSON.stringify(makeTokens(scope))),
-    });
+    mockFetch.mockResolvedValue(jsonResponse(makeTokens(scope)));
 
     vi.mocked(atob).mockReturnValue(JSON.stringify(profile));
   }
@@ -644,11 +662,7 @@ describe('YouVersionAPIUsers', () => {
     });
 
     it('should handle token exchange failure', async () => {
-      const mockResponse = {
-        ok: false,
-        status: 400,
-        statusText: 'Bad Request',
-      };
+      const mockResponse = emptyResponse(400, 'Bad Request');
 
       mocks.window.location.search = '?state=test-state&code=auth-code';
       mocks.localStorage.getItem.mockImplementation((key: string) => {
@@ -688,14 +702,9 @@ describe('YouVersionAPIUsers', () => {
       mockFetch.mockImplementation(() => {
         tokenRequestCount += 1;
         if (tokenRequestCount === 1) {
-          return Promise.resolve({
-            ok: true,
-            status: 200,
-            statusText: 'OK',
-            text: vi.fn().mockResolvedValue(JSON.stringify(makeTokens('highlights openid'))),
-          });
+          return Promise.resolve(jsonResponse(makeTokens('highlights openid')));
         }
-        return Promise.resolve({ ok: false, status: 400, statusText: 'Bad Request' });
+        return Promise.resolve(emptyResponse(400, 'Bad Request'));
       });
 
       const clearAuthTokensSpy = vi.spyOn(YouVersionPlatformConfiguration, 'clearAuthTokens');
@@ -973,12 +982,7 @@ describe('YouVersionAPIUsers', () => {
         token_type: 'Bearer',
       };
 
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        statusText: 'OK',
-        json: vi.fn().mockResolvedValue(mockRefreshResponse),
-      };
+      const mockResponse = jsonResponse(mockRefreshResponse);
 
       mocks.localStorage.getItem.mockImplementation((key: string) => {
         if (key === 'refreshToken') return originalRefreshToken;
@@ -1043,18 +1047,15 @@ describe('YouVersionAPIUsers', () => {
       mocks.localStorage.setItem.mockImplementation(() => {
         throw new Error('QuotaExceededError');
       });
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        statusText: 'OK',
-        json: vi.fn().mockResolvedValue({
+      mockFetch.mockResolvedValue(
+        jsonResponse({
           access_token: 'new-access-token',
           expires_in: 3600,
           refresh_token: 'new-refresh-token',
           scope: 'bibles',
           token_type: 'Bearer',
         }),
-      });
+      );
 
       // The server already spent the old refresh token, so an unstorable
       // rotation is a dead session — reporting success would strand the caller.
@@ -1064,11 +1065,7 @@ describe('YouVersionAPIUsers', () => {
     });
 
     it('should handle refresh token request failure', async () => {
-      const mockResponse = {
-        ok: false,
-        status: 401,
-        statusText: 'Unauthorized',
-      };
+      const mockResponse = emptyResponse(401, 'Unauthorized');
 
       mocks.localStorage.getItem.mockImplementation((key: string) => {
         if (key === 'refreshToken') return 'refresh-token-123';
@@ -1174,12 +1171,7 @@ describe('YouVersionAPIUsers', () => {
         token_type: 'Bearer',
       };
 
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        statusText: 'OK',
-        json: vi.fn().mockResolvedValue(mockRefreshResponse),
-      });
+      mockFetch.mockResolvedValue(jsonResponse(mockRefreshResponse));
 
       const result = await YouVersionAPIUsers.refreshTokenIfNeeded();
 
@@ -1196,11 +1188,7 @@ describe('YouVersionAPIUsers', () => {
         return null;
       });
 
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 401,
-        statusText: 'Unauthorized',
-      });
+      mockFetch.mockResolvedValue(emptyResponse(401, 'Unauthorized'));
 
       const clearAuthTokensSpy = vi.spyOn(YouVersionPlatformConfiguration, 'clearAuthTokens');
 
@@ -1228,20 +1216,17 @@ describe('YouVersionAPIUsers', () => {
       mockFetch.mockImplementation(() => {
         refreshRequestCount += 1;
         if (refreshRequestCount === 1) {
-          return Promise.resolve({
-            ok: true,
-            status: 200,
-            statusText: 'OK',
-            json: vi.fn().mockResolvedValue({
+          return Promise.resolve(
+            jsonResponse({
               access_token: 'new-access-token',
               expires_in: 3600,
               refresh_token: 'new-refresh-token',
               scope: 'bibles highlights openid',
               token_type: 'Bearer',
             }),
-          });
+          );
         }
-        return Promise.resolve({ ok: false, status: 400, statusText: 'Bad Request' });
+        return Promise.resolve(emptyResponse(400, 'Bad Request'));
       });
 
       const clearAuthTokensSpy = vi.spyOn(YouVersionPlatformConfiguration, 'clearAuthTokens');
@@ -1284,18 +1269,19 @@ describe('YouVersionAPIUsers', () => {
         return null;
       });
 
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        statusText: 'OK',
-        json: vi.fn().mockResolvedValue({
-          access_token: 'new-access-token',
-          expires_in: 3600,
-          refresh_token: 'new-refresh-token',
-          scope: 'bibles highlights openid',
-          token_type: 'Bearer',
-        }),
-      });
+      // A Response body can be read once. This case fetches twice, so mint a
+      // new body on each call.
+      mockFetch.mockImplementation(() =>
+        Promise.resolve(
+          jsonResponse({
+            access_token: 'new-access-token',
+            expires_in: 3600,
+            refresh_token: 'new-refresh-token',
+            scope: 'bibles highlights openid',
+            token_type: 'Bearer',
+          }),
+        ),
+      );
 
       // First refresh settles, clearing the in-flight slot.
       const firstResult = await YouVersionAPIUsers.refreshTokenIfNeeded();

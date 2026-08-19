@@ -17,8 +17,6 @@ export function useLanguages(
   apiOptions?: UseApiDataOptions,
 ): UseLanguagesResult {
   const override = useHookOverride('useLanguages');
-  if (override) return override(options, apiOptions);
-
   const languagesClient = useLanguagesClient();
 
   const { data, loading, error, refetch } = useApiData<Collection<Language>>(
@@ -31,10 +29,11 @@ export function useLanguages(
       options?.page_token,
     ],
     {
-      enabled: apiOptions?.enabled !== false,
+      enabled: !override && apiOptions?.enabled !== false,
     },
   );
 
+  if (override) return override(options, apiOptions);
   return {
     languages: data,
     loading,

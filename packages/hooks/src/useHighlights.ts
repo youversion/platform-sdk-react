@@ -34,8 +34,6 @@ export function useHighlights(
   apiOptions?: UseApiDataOptions,
 ): UseHighlightsResult {
   const override = useHookOverride('useHighlights');
-  if (override) return override(options, apiOptions);
-
   const apiClient = useApiClient();
 
   const highlightsClient = useMemo(() => new HighlightsClient(apiClient), [apiClient]);
@@ -48,7 +46,7 @@ export function useHighlights(
     () => highlightsClient.getHighlights(options),
     [highlightsClient, options.version_id, options.passage_id],
     {
-      enabled: apiOptions?.enabled !== false,
+      enabled: !override && apiOptions?.enabled !== false,
     },
   );
 
@@ -69,6 +67,7 @@ export function useHighlights(
     [highlightsClient],
   );
 
+  if (override) return override(options, apiOptions);
   return {
     highlights: data,
     loading,

@@ -9,8 +9,6 @@ export type UseBooksResult = UseNamedQueryResult<'books', Collection<BibleBook>>
 
 export function useBooks(versionId: number, options?: UseApiDataOptions): UseBooksResult {
   const override = useHookOverride('useBooks');
-  if (override) return override(versionId, options);
-
   const bibleClient = useBibleClient();
 
   const {
@@ -22,9 +20,10 @@ export function useBooks(versionId: number, options?: UseApiDataOptions): UseBoo
     () => bibleClient.getBooks(versionId),
     [bibleClient, versionId],
     {
-      enabled: options?.enabled !== false,
+      enabled: !override && options?.enabled !== false,
     },
   );
 
+  if (override) return override(versionId, options);
   return { books, loading, error, refetch };
 }

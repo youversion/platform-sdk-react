@@ -25,8 +25,6 @@ export function useVersions(
   options?: UseVersionsOptions,
 ): UseVersionsResult {
   const override = useHookOverride('useVersions');
-  if (override) return override(languageRanges, licenseId, options);
-
   const bibleClient = useBibleClient();
 
   const getVersionsOptions =
@@ -65,9 +63,10 @@ export function useVersions(
       options?.all_available,
     ],
     {
-      enabled: options?.enabled !== false,
+      enabled: !override && options?.enabled !== false,
     },
   );
 
+  if (override) return override(languageRanges, licenseId, options);
   return { versions, loading, error, refetch };
 }

@@ -10,8 +10,6 @@ export type UseVersionResult = UseNamedQueryResult<'version', BibleVersion>;
 
 export function useVersion(versionId: number, options?: UseApiDataOptions): UseVersionResult {
   const override = useHookOverride('useVersion');
-  if (override) return override(versionId, options);
-
   const bibleClient = useBibleClient();
 
   const {
@@ -20,8 +18,9 @@ export function useVersion(versionId: number, options?: UseApiDataOptions): UseV
     error,
     refetch,
   } = useApiData<BibleVersion>(() => bibleClient.getVersion(versionId), [bibleClient, versionId], {
-    enabled: options?.enabled !== false,
+    enabled: !override && options?.enabled !== false,
   });
 
+  if (override) return override(versionId, options);
   return { version, loading, error, refetch };
 }

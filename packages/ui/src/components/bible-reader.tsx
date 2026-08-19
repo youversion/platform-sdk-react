@@ -1183,7 +1183,7 @@ function UserMenu() {
     if (onSignOutPress) {
       onSignOutPress();
     } else {
-      void signOut();
+      signOut();
     }
   };
 

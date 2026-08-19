@@ -10,18 +10,17 @@ export type UseLanguageResult = UseNamedQueryResult<'language', Language>;
 
 export function useLanguage(languageId: string, apiOptions?: UseApiDataOptions): UseLanguageResult {
   const override = useHookOverride('useLanguage');
-  if (override) return override(languageId, apiOptions);
-
   const languagesClient = useLanguagesClient();
 
   const { data, loading, error, refetch } = useApiData<Language>(
     () => languagesClient.getLanguage(languageId),
     [languagesClient, languageId],
     {
-      enabled: apiOptions?.enabled !== false,
+      enabled: !override && apiOptions?.enabled !== false,
     },
   );
 
+  if (override) return override(languageId, apiOptions);
   return {
     language: data,
     loading,

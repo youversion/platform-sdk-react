@@ -42,7 +42,9 @@ const withLayout = (Story: React.ComponentType) => (
   </div>
 );
 
-const PickerWrapper = ({ versionId: initialVersionId = 111, ...props }: RootProps) => {
+type PickerWrapperProps = Omit<RootProps, 'versionId'> & { versionId?: number };
+
+const PickerWrapper = ({ versionId: initialVersionId = 111, ...props }: PickerWrapperProps) => {
   const [versionId, setVersionId] = useState(initialVersionId);
   return (
     <BibleVersionPicker.Root versionId={versionId} onVersionChange={setVersionId} {...props}>
@@ -135,7 +137,7 @@ export const WithCustomTrigger: Story = {
     versionId: 111,
   },
   render: (args) => (
-    <BibleVersionPicker.Root versionId={args.versionId} side={args.side}>
+    <BibleVersionPicker.Root versionId={args.versionId ?? 111} side={args.side}>
       <BibleVersionPicker.Trigger>
         <Button size="icon">
           <BookOpenIcon className="yv:w-4 yv:h-4" />

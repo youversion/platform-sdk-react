@@ -1006,7 +1006,6 @@ describe('BibleTextView - Error messaging', () => {
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: {
-        ...originalNavigator,
         onLine: false,
       },
     });
