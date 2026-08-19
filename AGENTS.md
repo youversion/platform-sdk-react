@@ -28,3 +28,6 @@ Release, versioning, or publishing: read `PUBLISHING.md`; decisions live in `doc
 
 ## Domain
 Domain terms (highlight, passage, Bible version, auth flow): read `CONTEXT.md`.
+
+## Cursor Cloud
+Cloud VM, env files, Vite bind, or demo startup: read `docs/cursor-cloud.md`.

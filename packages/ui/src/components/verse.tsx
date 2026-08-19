@@ -22,7 +22,14 @@ import { useVersionFilterWarning } from '@/lib/use-version-filter-warning';
 import { cn } from '@/lib/utils';
 import { type FontFamily } from '@/lib/verse-html-utils';
 
+import type { Highlight } from '@youversion/platform-core';
 import { transformBibleHtml } from '@youversion/platform-core/browser';
+import {
+  chapterScopeForHighlightPaint,
+  clipUsfmForHighlightPaint,
+} from '@/lib/highlight-projection';
+import { useHighlightsControlledLatch, warnOnce } from '@/lib/use-highlights-controlled-latch';
+import { useScriptureHighlightPaint } from '@/lib/use-scripture-highlight-paint';
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
 
@@ -557,6 +564,24 @@ export type BibleTextViewProps = {
   selectedVerses?: number[];
   onVerseSelect?: (verses: number[]) => void;
   highlightedVerses?: Record<number, string>;
+  /**
+   * Host-supplied highlights in the core API shape. Presence of this prop
+   * (including `[]`) latches **controlled mode** at first mount: verses are
+   * projected from this list and nothing is fetched. Use this for React Native
+   * or Expo DOM hosts that own highlight data (keep the token out of the
+   * WebView) — pass `[]` while loading or signed out so the WebView does not
+   * fetch.
+   *
+   * Omit the prop for **self-contained** paint: when the
+   * user is signed in, has granted the `highlights` permission, and highlights
+   * are live, matching verses are fetched and painted. A first render of
+   * `undefined` latches self-contained (fetch when eligible), not "never paint".
+   * A late `highlights` array after an omitted first render is ignored.
+   *
+   * BibleReader always passes {@link highlightedVerses} (even `{}`) and must
+   * not fetch here. If both props are passed, `highlights` wins.
+   */
+  highlights?: Highlight[];
   passageState?: Partial<BibleTextViewPassageState>;
   onFootnotePress?: (data: FootnoteData) => void;
 };
@@ -578,6 +603,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
       selectedVerses,
       onVerseSelect,
       highlightedVerses,
+      highlights,
       passageState,
       onFootnotePress,
     },
@@ -587,6 +613,17 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
     const providerTheme = useTheme();
     const currentTheme = theme || providerTheme;
     useVersionFilterWarning(versionId);
+
+    // Latched at first mount. Controlled (prop present) never falls through to
+    // `highlightedVerses` or the self-contained fetch.
+    const isHighlightsControlled = useHighlightsControlledLatch(highlights, 'BibleTextView');
+    const didWarnDualHighlightPropsRef = useRef(false);
+    if (isHighlightsControlled && highlightedVerses !== undefined) {
+      warnOnce(
+        didWarnDualHighlightPropsRef,
+        'BibleTextView: both `highlights` and `highlightedVerses` were passed. `highlights` wins; `highlightedVerses` is ignored.',
+      );
+    }
 
     const hasProvidedPassageState = passageState !== undefined;
 
@@ -609,6 +646,33 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
       ? (passageState?.loading ?? false)
       : fetchedLoading;
     const currentError = hasProvidedPassageState ? (passageState?.error ?? null) : fetchedError;
+
+    const chapterScope = useMemo(
+      () =>
+        chapterScopeForHighlightPaint({
+          renderedPassageId: currentPassage?.id,
+          requestedUsfm: reference,
+          loading: currentLoading,
+        }),
+      [currentPassage?.id, reference, currentLoading],
+    );
+    const displayPassageId = useMemo(
+      () =>
+        clipUsfmForHighlightPaint({
+          requestedUsfm: reference,
+          renderedPassageId: currentPassage?.id,
+          chapterScope,
+        }),
+      [reference, currentPassage?.id, chapterScope],
+    );
+    const paintedVerses = useScriptureHighlightPaint({
+      highlights,
+      isHighlightsControlled,
+      highlightedVerses,
+      versionId,
+      chapterScope,
+      displayPassageId,
+    });
 
     if (currentLoading && !currentPassage) {
       return (
@@ -656,7 +720,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
           theme={currentTheme}
           selectedVerses={selectedVerses}
           onVerseSelect={onVerseSelect}
-          highlightedVerses={highlightedVerses}
+          highlightedVerses={paintedVerses}
           onFootnotePress={onFootnotePress}
         />
       </div>

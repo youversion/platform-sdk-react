@@ -1,5 +1,24 @@
 # @youversion/platform-react-ui
 
+## 2.7.1
+
+### Patch Changes
+
+- Updated dependencies [4f4ce4a]
+  - @youversion/platform-core@2.7.1
+  - @youversion/platform-react-hooks@2.7.1
+
+## 2.7.0
+
+### Minor Changes
+
+- f751b5b: `BibleTextView`, `BibleCard`, and `VerseOfTheDay` now auto-paint the signed-in user's highlights from the API when the `highlights` permission is granted. Omit the prop for that self-contained path. Passing `highlights` (including `[]`) stays controlled so React Native hosts can keep the token out of the WebView.
+
+### Patch Changes
+
+- @youversion/platform-core@2.7.0
+- @youversion/platform-react-hooks@2.7.0
+
 ## 2.6.3
 
 ### Patch Changes

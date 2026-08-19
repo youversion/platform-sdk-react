@@ -148,6 +148,16 @@ export const Minimal: Story = {
   },
 };
 
+export const WithHighlights: Story = {
+  args: {
+    versionId: 111,
+    showSunIcon: true,
+    showBibleAppAttribution: true,
+    showShareButton: false,
+    highlights: [{ version_id: 111, passage_id: 'ISA.43.19', color: 'fffe00' }],
+  },
+};
+
 export const RealAPI: Story = {
   args: {
     showSunIcon: true,
