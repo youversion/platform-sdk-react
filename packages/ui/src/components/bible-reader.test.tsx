@@ -2,22 +2,13 @@
  * @vitest-environment jsdom
  */
 // We stub ResizeObserver for jsdom (used by Radix/@floating-ui). The stub methods are intentionally no-ops.
-/* eslint-disable @typescript-eslint/no-empty-function */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
-import type { BibleBook, BibleVersion, Language } from '@youversion/platform-core';
-import {
-  useBooks,
-  useFilteredVersions,
-  useLanguage,
-  useLanguages,
-  useOrganizations,
-  useTheme,
-  useVersion,
-  useVersions,
-} from '@youversion/platform-react-hooks';
+import { useState, type ReactElement } from 'react';
+import type { BibleBook, BibleVersion } from '@youversion/platform-core';
+import type { HookOverrides } from '@youversion/platform-react-hooks';
+import { HookOverrideProvider } from '@/test/hook-overrides';
 import {
   BIBLE_READER_SPACING,
   BibleReader,
@@ -35,27 +26,72 @@ import {
   type FontFamily,
 } from '@/lib/verse-html-utils';
 
-class ResizeObserverMock {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
+import { installResizeObserverStub } from '@/test/dom-stubs';
 
-vi.mock('@youversion/platform-react-hooks', async () => {
-  const actual = await vi.importActual('@youversion/platform-react-hooks');
+installResizeObserverStub();
+
+function defaultOverrides(): HookOverrides {
   return {
-    ...actual,
-    useBooks: vi.fn(),
-    useFilteredVersions: vi.fn(),
-    useLanguage: vi.fn(),
-    useLanguages: vi.fn(),
-    useOrganizations: vi.fn(),
-    useTheme: vi.fn(),
-    useVersion: vi.fn(),
-    useVersions: vi.fn(),
+    useBooks: () => ({
+      books: { data: [...mockBooks], next_page_token: null },
+      loading: false,
+      error: null,
+      refetch: () => undefined,
+    }),
+    useVersion: () => ({
+      version: mockVersion,
+      loading: false,
+      error: null,
+      refetch: () => undefined,
+    }),
+    useLanguages: () => ({
+      languages: { data: [], next_page_token: null },
+      loading: false,
+      error: null,
+      refetch: () => undefined,
+    }),
+    useLanguage: () => ({
+      language: { id: 'en', language: 'English', display_names: { en: 'English' } },
+      loading: false,
+      error: null,
+      refetch: () => undefined,
+    }),
+    useVersions: () => ({
+      versions: { data: [], next_page_token: null },
+      loading: false,
+      error: null,
+      refetch: () => undefined,
+    }),
+    useFilteredVersions: () => [],
+    useOrganizations: () => ({ organizations: new Map() }),
   };
-});
+}
+
+function renderWithOverrides(ui: ReactElement) {
+  return render(<HookOverrideProvider overrides={defaultOverrides()}>{ui}</HookOverrideProvider>);
+}
+
+function overridesRecordingVersionLanguage() {
+  const requestedLanguages: string[] = [];
+  const overrides = {
+    ...defaultOverrides(),
+    useVersions: (languageRanges?: string | string[]) => {
+      if (languageRanges !== undefined && !Array.isArray(languageRanges)) {
+        requestedLanguages.push(languageRanges);
+      }
+      return {
+        versions: { data: [], next_page_token: null },
+        loading: false,
+        error: null,
+        refetch: () => undefined,
+      };
+    },
+  } satisfies HookOverrides;
+  return {
+    requestedLanguages,
+    overrides,
+  };
+}
 
 const mockBooks: BibleBook[] = [
   {
@@ -71,49 +107,16 @@ const mockBooks: BibleBook[] = [
   },
 ];
 
-const mockVersion = {
+const mockVersion: BibleVersion = {
   id: 3034,
   localized_abbreviation: 'BSB',
   abbreviation: 'BSB',
   title: 'Berean Standard Bible',
+  localized_title: 'Berean Standard Bible',
   language_tag: 'en',
-} as BibleVersion;
-
-function setupDefaultMocks() {
-  vi.mocked(useTheme).mockReturnValue('light');
-  vi.mocked(useBooks).mockReturnValue({
-    books: { data: [...mockBooks], next_page_token: null },
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-  });
-  vi.mocked(useVersion).mockReturnValue({
-    version: mockVersion,
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-  });
-  vi.mocked(useLanguages).mockReturnValue({
-    languages: { data: [] as Language[], next_page_token: null },
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-  });
-  vi.mocked(useLanguage).mockReturnValue({
-    language: { id: 'en', language: 'English', display_names: { en: 'English' } } as Language,
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-  });
-  vi.mocked(useVersions).mockReturnValue({
-    versions: { data: [], next_page_token: null },
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-  });
-  vi.mocked(useFilteredVersions).mockReturnValue([]);
-  vi.mocked(useOrganizations).mockReturnValue({ organizations: new Map() });
-}
+  books: ['JHN'],
+  youversion_deep_link: 'https://bible.com/versions/3034',
+};
 
 describe('BibleReader font helpers', () => {
   it('clamps font size to reader bounds', () => {
@@ -193,13 +196,12 @@ describe('BibleReader theme settings', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    setupDefaultMocks();
   });
 
   it('opens the default Reader Settings popover and updates font settings', async () => {
     const user = userEvent.setup();
 
-    render(
+    renderWithOverrides(
       <BibleReader.Root defaultVersionId={3034} defaultBook="JHN" defaultChapter="1">
         <BibleReader.Toolbar />
       </BibleReader.Root>,
@@ -232,7 +234,7 @@ describe('BibleReader theme settings', () => {
 
     localStorage.setItem('youversion-platform:reader:font-family', SOURCE_SERIF_FONT);
 
-    render(
+    renderWithOverrides(
       <BibleReader.Root defaultVersionId={3034} defaultBook="JHN" defaultChapter="1">
         <BibleReader.Toolbar />
       </BibleReader.Root>,
@@ -253,7 +255,7 @@ describe('BibleReader theme settings', () => {
   it('leaves a non-legacy stored font family untouched on hydrate', async () => {
     localStorage.setItem('youversion-platform:reader:font-family', INTER_FONT);
 
-    render(
+    renderWithOverrides(
       <BibleReader.Root defaultVersionId={3034} defaultBook="JHN" defaultChapter="1">
         <BibleReader.Toolbar />
       </BibleReader.Root>,
@@ -267,7 +269,7 @@ describe('BibleReader theme settings', () => {
   it('cycles line spacing and resizes the line-spacing button icon gap on click', async () => {
     const user = userEvent.setup();
 
-    render(
+    renderWithOverrides(
       <BibleReader.Root defaultVersionId={3034} defaultBook="JHN" defaultChapter="1">
         <BibleReader.Toolbar />
       </BibleReader.Root>,
@@ -310,9 +312,9 @@ describe('BibleReader theme settings', () => {
 
   it('calls onOpenBibleThemeSettings with a serializable snapshot and skips popover content', async () => {
     const user = userEvent.setup();
-    const onOpenBibleThemeSettings = vi.fn();
+    const onOpenBibleThemeSettings = vi.fn<(snapshot: BibleThemeSettingsSnapshot) => void>();
 
-    render(
+    renderWithOverrides(
       <BibleReader.Root
         defaultVersionId={3034}
         defaultBook="JHN"
@@ -329,7 +331,7 @@ describe('BibleReader theme settings', () => {
     expect(onOpenBibleThemeSettings).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('Reader Settings')).not.toBeInTheDocument();
 
-    const snapshot = onOpenBibleThemeSettings.mock.calls[0]![0] as BibleThemeSettingsSnapshot;
+    const snapshot = onOpenBibleThemeSettings.mock.calls[0]![0];
     expect(snapshot).toEqual({
       fontSize: 18,
       fontFamily: INTER_FONT,
@@ -341,7 +343,7 @@ describe('BibleReader theme settings', () => {
 
   it('applies font updates via controlled props using snapshot and exported font math', async () => {
     const user = userEvent.setup();
-    const onOpen = vi.fn();
+    const onOpen = vi.fn<(snapshot: BibleThemeSettingsSnapshot) => void>();
 
     function ControlledHost() {
       const [fontSize, setFontSize] = useState(16);
@@ -352,7 +354,7 @@ describe('BibleReader theme settings', () => {
           <button
             type="button"
             onClick={() => {
-              const snap = onOpen.mock.calls[0]?.[0] as BibleThemeSettingsSnapshot | undefined;
+              const snap = onOpen.mock.calls[0]?.[0];
               if (snap) {
                 setFontSize(nextBibleReaderFontSizeDown(snap.fontSize));
                 setFontFamily(INTER_FONT);
@@ -376,7 +378,7 @@ describe('BibleReader theme settings', () => {
       );
     }
 
-    render(<ControlledHost />);
+    renderWithOverrides(<ControlledHost />);
 
     await user.click(screen.getByRole('button', { name: 'Settings' }));
     expect(onOpen).toHaveBeenCalledTimes(1);
@@ -388,7 +390,7 @@ describe('BibleReader theme settings', () => {
     });
 
     await user.click(screen.getByRole('button', { name: 'Settings' }));
-    const nextSnap = onOpen.mock.calls[1]![0] as BibleThemeSettingsSnapshot;
+    const nextSnap = onOpen.mock.calls[1]![0];
     expect(nextSnap.fontSize).toBe(14);
     expect(nextSnap.fontFamily).toBe(INTER_FONT);
   });
@@ -397,14 +399,13 @@ describe('BibleReader theme settings', () => {
 describe('BibleReader Toolbar - onChapterPickerPress', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    setupDefaultMocks();
   });
 
   it('calls onChapterPickerPress from Root when chapter nav button is clicked and hides popover', async () => {
     const user = userEvent.setup();
     const onChapterPickerPress = vi.fn();
 
-    render(
+    renderWithOverrides(
       <BibleReader.Root
         defaultVersionId={3034}
         defaultBook="JHN"
@@ -431,42 +432,40 @@ describe('BibleReader Toolbar - onChapterPickerPress', () => {
 
 describe('BibleReader version picker language', () => {
   it('seeds the version picker with defaultLanguageId instead of the browser language', () => {
-    localStorage.clear();
-    setupDefaultMocks();
+    const { overrides, requestedLanguages } = overridesRecordingVersionLanguage();
 
     render(
-      <BibleReader.Root
-        defaultVersionId={3034}
-        defaultBook="JHN"
-        defaultChapter="1"
-        defaultLanguageId="es"
-      >
-        <BibleReader.Toolbar />
-      </BibleReader.Root>,
+      <HookOverrideProvider overrides={overrides}>
+        <BibleReader.Root
+          defaultVersionId={3034}
+          defaultBook="JHN"
+          defaultChapter="1"
+          defaultLanguageId="es"
+        >
+          <BibleReader.Toolbar />
+        </BibleReader.Root>
+      </HookOverrideProvider>,
     );
 
-    expect(
-      vi.mocked(useVersions).mock.calls.some(([languageRanges]) => languageRanges === 'es'),
-    ).toBe(true);
+    expect(requestedLanguages.includes('es')).toBe(true);
   });
 
   it('uses a controlled languageId for the version picker', () => {
-    localStorage.clear();
-    setupDefaultMocks();
+    const { overrides, requestedLanguages } = overridesRecordingVersionLanguage();
 
     render(
-      <BibleReader.Root
-        defaultVersionId={3034}
-        defaultBook="JHN"
-        defaultChapter="1"
-        languageId="ko"
-      >
-        <BibleReader.Toolbar />
-      </BibleReader.Root>,
+      <HookOverrideProvider overrides={overrides}>
+        <BibleReader.Root
+          defaultVersionId={3034}
+          defaultBook="JHN"
+          defaultChapter="1"
+          languageId="ko"
+        >
+          <BibleReader.Toolbar />
+        </BibleReader.Root>
+      </HookOverrideProvider>,
     );
 
-    expect(
-      vi.mocked(useVersions).mock.calls.some(([languageRanges]) => languageRanges === 'ko'),
-    ).toBe(true);
+    expect(requestedLanguages.includes('ko')).toBe(true);
   });
 });

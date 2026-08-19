@@ -6,7 +6,7 @@ export function AnimatedHeight({ children }: { children: ReactNode }): React.Rea
 
   useLayoutEffect(() => {
     const el = innerRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') {
+    if (!el || !('ResizeObserver' in globalThis)) {
       setHeight('auto');
       return;
     }

@@ -1,37 +1,12 @@
 import { renderHook } from '@testing-library/react';
-import { describe, expect, vi, beforeEach, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { ReactNode } from 'react';
 import { useLanguagesClient } from './useLanguageClient';
 import { YouVersionContext } from './context';
-import { LanguagesClient, ApiClient } from '@youversion/platform-core';
-import { createYVWrapper } from './test/utils';
-
-vi.mock('@youversion/platform-core', async () => {
-  const actual = await vi.importActual('@youversion/platform-core');
-  return {
-    ...actual,
-    LanguagesClient: vi.fn(function () {
-      return {};
-    }),
-    ApiClient: vi.fn(function () {
-      return { isApiClient: true };
-    }),
-  };
-});
+import { LanguagesClient } from '@youversion/platform-core';
+import { createLanguagesClientStub, createYVWrapper } from './test/utils';
 
 describe('useLanguagesClient', () => {
-  beforeEach(() => {
-    vi.mocked(LanguagesClient).mockImplementation(function () {
-      const mockClient: Partial<LanguagesClient> = { getLanguages: vi.fn() };
-      return mockClient;
-    });
-
-    vi.mocked(ApiClient).mockImplementation(function () {
-      const mockApiClient = { isApiClient: true };
-      return mockApiClient;
-    });
-  });
-
   describe('context validation', () => {
     it('should throw error when context is not provided', () => {
       expect(() => renderHook(() => useLanguagesClient())).toThrow(
@@ -51,23 +26,29 @@ describe('useLanguagesClient', () => {
   });
 
   describe('client creation', () => {
-    it('should create LanguagesClient with correct ApiClient config', () => {
+    it('should create a LanguagesClient when context is valid', () => {
       const wrapper = createYVWrapper();
-      renderHook(() => useLanguagesClient(), { wrapper });
+      const { result } = renderHook(() => useLanguagesClient(), { wrapper });
 
-      expect(ApiClient).toHaveBeenCalledWith({
-        appKey: 'test-app-key',
-      });
-      expect(LanguagesClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
+      expect(result.current).toBeInstanceOf(LanguagesClient);
+    });
+
+    it('should return the injected LanguagesClient when present', () => {
+      const languagesClient = createLanguagesClientStub({});
+      const wrapper = createYVWrapper('test-app-key', { languagesClient });
+      const { result } = renderHook(() => useLanguagesClient(), { wrapper });
+
+      expect(result.current).toBe(languagesClient);
     });
 
     it('should memoize LanguagesClient instance', () => {
       const wrapper = createYVWrapper();
-      const { rerender } = renderHook(() => useLanguagesClient(), { wrapper });
+      const { result, rerender } = renderHook(() => useLanguagesClient(), { wrapper });
+      const firstClient = result.current;
 
       rerender();
 
-      expect(LanguagesClient).toHaveBeenCalledTimes(1);
+      expect(result.current).toBe(firstClient);
     });
 
     it('should create new LanguagesClient when context values change', () => {
@@ -83,14 +64,14 @@ describe('useLanguagesClient', () => {
         </YouVersionContext.Provider>
       );
 
-      const { rerender } = renderHook(() => useLanguagesClient(), { wrapper });
-
-      expect(LanguagesClient).toHaveBeenCalledTimes(1);
+      const { result, rerender } = renderHook(() => useLanguagesClient(), { wrapper });
+      const firstClient = result.current;
 
       currentAppKey = 'new-app-key';
       rerender();
 
-      expect(LanguagesClient).toHaveBeenCalledTimes(2);
+      expect(result.current).not.toBe(firstClient);
+      expect(result.current).toBeInstanceOf(LanguagesClient);
     });
   });
 });

@@ -8,6 +8,10 @@ import {
   handleDataExchangeCallback,
 } from '../data-exchange';
 import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfiguration';
+import {
+  DataExchangeTokenRequestSchema,
+  type DataExchangeTokenRequest,
+} from '../schemas/data-exchange';
 import { server } from './setup';
 
 const apiHost = process.env.YVP_API_HOST;
@@ -43,12 +47,12 @@ describe('DataExchangeClient.updateToken', () => {
 
   it('POSTs requested_permissions with app-key query + Bearer auth and returns the token', async () => {
     let seenAuth: string | null = null;
-    let seenBody: unknown = null;
+    let seenBody: DataExchangeTokenRequest | null = null;
     let seenUrl = '';
     server.use(
       http.post(`https://${apiHost}/data-exchange/token`, async ({ request }) => {
         seenAuth = request.headers.get('Authorization');
-        seenBody = await request.json();
+        seenBody = DataExchangeTokenRequestSchema.parse(await request.json());
         seenUrl = request.url;
         return HttpResponse.json({ token: 'dx-token-123' }, { status: 201 });
       }),
@@ -148,7 +152,7 @@ describe('handleDataExchangeCallback URL cleanup', () => {
     expect(result).toEqual({ status: 'granted', grantedPermissions: ['highlights'] });
 
     expect(replaceState).toHaveBeenCalledTimes(1);
-    const cleaned = new URL(replaceState.mock.calls[0]![2] as string);
+    const cleaned = new URL(String(replaceState.mock.calls[0]?.[2]));
     expect(cleaned.searchParams.get('tab')).toBe('notes');
     expect(cleaned.searchParams.get('ref')).toBe('abc');
     expect(cleaned.searchParams.has('data_exchange_status')).toBe(false);
@@ -163,7 +167,7 @@ describe('handleDataExchangeCallback URL cleanup', () => {
 
     handleDataExchangeCallback();
 
-    const cleanedUrl = replaceState.mock.calls[0]![2] as string;
+    const cleanedUrl = String(replaceState.mock.calls[0]?.[2]);
     expect(cleanedUrl).toBe('https://app.example.com/read');
     expect(cleanedUrl).not.toContain('?');
   });
@@ -223,7 +227,7 @@ describe('handleDataExchangeCallback grant safety (initiating user)', () => {
 
     // URL cleanup still happens on mismatch.
     expect(replaceState).toHaveBeenCalledTimes(1);
-    const cleaned = new URL(replaceState.mock.calls[0]![2] as string);
+    const cleaned = new URL(String(replaceState.mock.calls[0]?.[2]));
     expect(cleaned.searchParams.has('data_exchange_status')).toBe(false);
     expect(cleaned.searchParams.has('granted_permissions')).toBe(false);
   });
@@ -240,7 +244,7 @@ describe('handleDataExchangeCallback grant safety (initiating user)', () => {
 
     // URL cleanup still happens.
     expect(replaceState).toHaveBeenCalledTimes(1);
-    const cleaned = new URL(replaceState.mock.calls[0]![2] as string);
+    const cleaned = new URL(String(replaceState.mock.calls[0]?.[2]));
     expect(cleaned.searchParams.has('data_exchange_status')).toBe(false);
     expect(cleaned.searchParams.has('granted_permissions')).toBe(false);
   });

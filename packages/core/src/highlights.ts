@@ -27,6 +27,10 @@ export type DeleteHighlightOptions = {
   version_id: number;
 };
 
+type BearerAuthHeaders = {
+  Authorization: string;
+};
+
 /**
  * Client for interacting with Highlights API endpoints.
  * Note: All endpoints require OAuth authentication with appropriate scopes
@@ -60,7 +64,7 @@ export class HighlightsClient {
     return resolveAuthToken(lat, 'accessing highlights');
   }
 
-  private authHeaders(lat?: string): Record<string, string> {
+  private authHeaders(lat?: string): BearerAuthHeaders {
     return { Authorization: `Bearer ${this.getAuthToken(lat)}` };
   }
 
@@ -104,8 +108,8 @@ export class HighlightsClient {
    * single logical create if end-to-end idempotency is needed.
    */
   private generateRequestId(): string {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-      return crypto.randomUUID();
+    if (globalThis.crypto?.randomUUID) {
+      return globalThis.crypto.randomUUID();
     }
     // Extremely old runtimes only; uniqueness (not randomness quality) is what matters here.
     return `yvp-${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 10)}`;

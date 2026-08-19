@@ -208,14 +208,21 @@ function wrapVerseContent(doc: Document): void {
     marker.remove();
   }
 
+  function asElement(node: Node): Element | null {
+    // SAFETY: nodeType 1 is an Element. TypeScript's Node union does not narrow
+    // on nodeType, and instanceof Element fails across JSDOM/window realms.
+    return node.nodeType === 1 ? (node as Element) : null;
+  }
+
   function shouldStopCollecting(node: Node, endMarker: Element | undefined): boolean {
     if (node === endMarker) return true;
-    if (endMarker && node.nodeType === 1 && (node as Element).contains(endMarker)) return true;
+    const element = asElement(node);
+    if (endMarker && element?.contains(endMarker)) return true;
     return false;
   }
 
   function shouldSkipNode(node: Node): boolean {
-    return node.nodeType === 1 && (node as Element).classList.contains('yv-h');
+    return asElement(node)?.classList.contains('yv-h') === true;
   }
 
   function collectNodesBetweenMarkers(
@@ -389,7 +396,7 @@ export function transformBibleHtml(
  * ```
  */
 export function transformBibleHtmlForBrowser(html: string): TransformedBibleHtml {
-  if (typeof globalThis.DOMParser === 'undefined') {
+  if (!globalThis.DOMParser) {
     throw new Error('DOMParser is required to transform Bible HTML in browser environments');
   }
 

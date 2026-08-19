@@ -14,9 +14,23 @@ type StoredRecentVersion = {
   localized_abbreviation: string;
 };
 
+function isStoredRecentVersion(item: StoredRecentVersion): item is StoredRecentVersion {
+  return (
+    Number.isFinite(item.id) &&
+    Object.prototype.toString.call(item.title) === '[object String]' &&
+    Object.prototype.toString.call(item.localized_abbreviation) === '[object String]'
+  );
+}
+
 function getStoredRecentVersions(): StoredRecentVersion[] {
+  const raw = localStorage.getItem(RECENT_VERSIONS_KEY);
+  if (!raw) return [];
   try {
-    return JSON.parse(localStorage.getItem(RECENT_VERSIONS_KEY) || '[]') as StoredRecentVersion[];
+    // SAFETY: JSON.parse returns any. isStoredRecentVersion checks each field
+    // before the list is used.
+    const parsed = JSON.parse(raw) as StoredRecentVersion[];
+    if (!Array.isArray(parsed) || !parsed.every(isStoredRecentVersion)) return [];
+    return parsed;
   } catch {
     return [];
   }
@@ -28,7 +42,9 @@ const withLayout = (Story: React.ComponentType) => (
   </div>
 );
 
-const PickerWrapper = ({ versionId: initialVersionId = 111, ...props }: RootProps) => {
+type PickerWrapperProps = Omit<RootProps, 'versionId'> & { versionId?: number };
+
+const PickerWrapper = ({ versionId: initialVersionId = 111, ...props }: PickerWrapperProps) => {
   const [versionId, setVersionId] = useState(initialVersionId);
   return (
     <BibleVersionPicker.Root versionId={versionId} onVersionChange={setVersionId} {...props}>
@@ -121,7 +137,7 @@ export const WithCustomTrigger: Story = {
     versionId: 111,
   },
   render: (args) => (
-    <BibleVersionPicker.Root versionId={args.versionId} side={args.side}>
+    <BibleVersionPicker.Root versionId={args.versionId ?? 111} side={args.side}>
       <BibleVersionPicker.Trigger>
         <Button size="icon">
           <BookOpenIcon className="yv:w-4 yv:h-4" />

@@ -1,23 +1,10 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { describe, expect, vi, beforeEach, it, type Mock } from 'vitest';
+import { describe, expect, vi, beforeEach, it } from 'vitest';
 import type { ReactNode } from 'react';
 import { useVerseOfTheDay } from './useVOTD';
 import { YouVersionContext } from './context';
-import { BibleClient, ApiClient, type VOTD } from '@youversion/platform-core';
-import { createYVWrapper } from './test/utils';
-
-vi.mock('@youversion/platform-core', async () => {
-  const actual = await vi.importActual('@youversion/platform-core');
-  return {
-    ...actual,
-    BibleClient: vi.fn(function () {
-      return {};
-    }),
-    ApiClient: vi.fn(function () {
-      return { isApiClient: true };
-    }),
-  };
-});
+import { type VOTD } from '@youversion/platform-core';
+import { createBibleClientStub, createYVWrapper } from './test/utils';
 
 describe('useVerseOfTheDay', () => {
   const mockVOTD: VOTD = {
@@ -25,22 +12,13 @@ describe('useVerseOfTheDay', () => {
     passage_id: 'ISA.43.19',
   };
 
-  let mockGetVOTD: Mock;
+  const mockGetVOTD = vi.fn();
+  const bibleClient = createBibleClientStub({ getVOTD: mockGetVOTD });
+  const wrapper = createYVWrapper('test-app-key', { bibleClient });
 
   beforeEach(() => {
-    mockGetVOTD = vi.fn().mockResolvedValue(mockVOTD);
-
-    (BibleClient as unknown as ReturnType<typeof vi.fn>).mockImplementation(function () {
-      return {
-        getVOTD: mockGetVOTD,
-      };
-    });
-
-    (ApiClient as unknown as ReturnType<typeof vi.fn>).mockImplementation(function () {
-      return {
-        isApiClient: true,
-      };
-    });
+    mockGetVOTD.mockReset();
+    mockGetVOTD.mockResolvedValue(mockVOTD);
   });
 
   describe('context validation', () => {
@@ -51,63 +29,62 @@ describe('useVerseOfTheDay', () => {
     });
 
     it('should throw error when appKey is missing', () => {
-      const wrapper = createYVWrapper('');
+      const emptyWrapper = createYVWrapper('');
 
-      expect(() => renderHook(() => useVerseOfTheDay(1), { wrapper })).toThrow(
+      expect(() => renderHook(() => useVerseOfTheDay(1), { wrapper: emptyWrapper })).toThrow(
         'YouVersion context not found. Make sure your component is wrapped with YouVersionProvider and an API key is provided.',
       );
     });
   });
 
   describe('client creation', () => {
-    it('should create BibleClient with correct ApiClient config', () => {
-      const wrapper = createYVWrapper();
-      renderHook(() => useVerseOfTheDay(1), { wrapper });
+    it('should use the injected BibleClient', async () => {
+      const { result } = renderHook(() => useVerseOfTheDay(1), { wrapper });
 
-      expect(ApiClient).toHaveBeenCalledWith({
-        appKey: 'test-app-key',
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
       });
-      expect(BibleClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
+
+      expect(mockGetVOTD).toHaveBeenCalledWith(1);
     });
 
-    it('should memoize BibleClient instance', () => {
-      const wrapper = createYVWrapper();
+    it('should reuse the injected BibleClient across rerenders', async () => {
       const { result, rerender } = renderHook(() => useVerseOfTheDay(1), { wrapper });
-      const _firstRefetch = result.current.refetch;
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
 
       rerender();
-      const _secondRefetch = result.current.refetch;
 
-      expect(BibleClient).toHaveBeenCalledTimes(1);
+      expect(mockGetVOTD).toHaveBeenCalledTimes(1);
     });
 
-    it('should create new BibleClient when context values change', () => {
-      let currentAppKey = 'test-app-key';
-
-      const wrapper = ({ children }: { children: ReactNode }) => (
-        <YouVersionContext.Provider
-          value={{
-            appKey: currentAppKey,
-          }}
-        >
+    it('should fetch again when the injected client identity changes', async () => {
+      let currentClient = bibleClient;
+      const swappingWrapper = ({ children }: { children: ReactNode }) => (
+        <YouVersionContext.Provider value={{ appKey: 'test-app-key', bibleClient: currentClient }}>
           {children}
         </YouVersionContext.Provider>
       );
 
-      const { rerender } = renderHook(() => useVerseOfTheDay(1), { wrapper });
+      const { rerender } = renderHook(() => useVerseOfTheDay(1), { wrapper: swappingWrapper });
 
-      expect(BibleClient).toHaveBeenCalledTimes(1);
+      await waitFor(() => {
+        expect(mockGetVOTD).toHaveBeenCalledTimes(1);
+      });
 
-      currentAppKey = 'new-app-key';
+      currentClient = createBibleClientStub({ getVOTD: mockGetVOTD });
       rerender();
 
-      expect(BibleClient).toHaveBeenCalledTimes(2);
+      await waitFor(() => {
+        expect(mockGetVOTD).toHaveBeenCalledTimes(2);
+      });
     });
   });
 
   describe('fetching VOTD', () => {
     it('should fetch VOTD for day 1', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVerseOfTheDay(1), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -122,7 +99,6 @@ describe('useVerseOfTheDay', () => {
     });
 
     it('should fetch VOTD for day 100', async () => {
-      const wrapper = createYVWrapper();
       const mockVOTD100: VOTD = { day: 100, passage_id: 'PSA.23.1' };
       mockGetVOTD.mockResolvedValueOnce(mockVOTD100);
 
@@ -137,7 +113,6 @@ describe('useVerseOfTheDay', () => {
     });
 
     it('should fetch VOTD for day 366', async () => {
-      const wrapper = createYVWrapper();
       const mockVOTD366: VOTD = { day: 366, passage_id: 'REV.22.21' };
       mockGetVOTD.mockResolvedValueOnce(mockVOTD366);
 
@@ -152,7 +127,6 @@ describe('useVerseOfTheDay', () => {
     });
 
     it('should refetch when day changes', async () => {
-      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(({ day }) => useVerseOfTheDay(day), {
         wrapper,
         initialProps: { day: 1 },
@@ -176,7 +150,6 @@ describe('useVerseOfTheDay', () => {
     });
 
     it('should not fetch when enabled is false', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVerseOfTheDay(1, { enabled: false }), { wrapper });
 
       await waitFor(() => {
@@ -188,7 +161,6 @@ describe('useVerseOfTheDay', () => {
     });
 
     it('should handle fetch errors', async () => {
-      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch VOTD');
       mockGetVOTD.mockRejectedValueOnce(error);
 
@@ -203,7 +175,6 @@ describe('useVerseOfTheDay', () => {
     });
 
     it('should support manual refetch', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVerseOfTheDay(1), { wrapper });
 
       await waitFor(() => {

@@ -1,10 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useContext, useMemo } from 'react';
 import { BibleClient } from '@youversion/platform-core';
+import { YouVersionContext } from './context';
 import { useApiClient } from './internal/useApiClient';
 
 export function useBibleClient(): BibleClient {
+  const override = useContext(YouVersionContext)?.bibleClient;
   const apiClient = useApiClient();
-  return useMemo(() => new BibleClient(apiClient), [apiClient]);
+  const constructed = useMemo(() => new BibleClient(apiClient), [apiClient]);
+  return override ?? constructed;
 }

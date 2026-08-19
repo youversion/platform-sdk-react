@@ -16,7 +16,7 @@ const isPublishBuild = process.env.YVP_PUBLISH_BUILD === 'true';
 export default defineConfig({
   entry: ['src/index.ts', 'src/browser.ts', 'src/server.ts'],
   format: ['cjs', 'esm'],
-  dts: true,
+  dts: false, // TypeScript 7 has no compiler API; tsc emits .d.ts (see ADR 0005)
   // Keep Node-only peer out of published bundles; loaded at runtime on server.
   external: ['jsdom'],
   env: {

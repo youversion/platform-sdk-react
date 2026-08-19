@@ -1,4 +1,6 @@
 import { http, HttpResponse } from 'msw';
+import { z } from 'zod';
+import { CreateHighlightEnvelopeSchema } from '../schemas/highlight';
 import type { Collection, Language } from '../types';
 import { mockLanguages } from './MockLanguages';
 import { mockVersions, mockVersionKJV } from './MockVersions';
@@ -21,6 +23,10 @@ const apiHost = process.env.YVP_API_HOST;
 if (!apiHost) {
   throw new Error('YVP_API_HOST environment variable must be set to run handler tests.');
 }
+
+const PageCursorSchema = z.object({
+  start: z.number().optional(),
+});
 
 /** Mirrors the live API's 401 when no `Authorization: Bearer` header is sent. */
 function requireBearerAuth(request: Request): Response | null {
@@ -78,8 +84,8 @@ export const handlers = [
 
     if (pageToken) {
       try {
-        const decoded = JSON.parse(atob(pageToken)) as { start?: number };
-        start = decoded.start || 0;
+        const decoded = PageCursorSchema.safeParse(JSON.parse(atob(pageToken)));
+        start = decoded.success ? (decoded.data.start ?? 0) : 0;
       } catch {
         start = 0;
       }
@@ -127,16 +133,8 @@ export const handlers = [
     const authError = requireBearerAuth(request);
     if (authError) return authError;
 
-    const body = (await request.json()) as {
-      request_id?: string;
-      highlight?: { bible_id?: number; passage_id?: string; color?: string };
-    };
-    if (
-      !body.request_id ||
-      !body.highlight?.bible_id ||
-      !body.highlight.passage_id ||
-      !body.highlight.color
-    ) {
+    const body = CreateHighlightEnvelopeSchema.safeParse(await request.json());
+    if (!body.success) {
       return HttpResponse.json(
         {
           error: 'invalid_request',
@@ -147,7 +145,7 @@ export const handlers = [
       );
     }
 
-    return HttpResponse.json(body.highlight, { status: 201 });
+    return HttpResponse.json(body.data.highlight, { status: 201 });
   }),
 
   http.delete(`https://${apiHost}/v1/highlights/:passageId`, ({ request }) => {
@@ -177,8 +175,8 @@ export const handlers = [
 
     if (pageToken) {
       try {
-        const decoded = JSON.parse(atob(pageToken)) as { start?: number };
-        start = decoded.start || 0;
+        const decoded = PageCursorSchema.safeParse(JSON.parse(atob(pageToken)));
+        start = decoded.success ? (decoded.data.start ?? 0) : 0;
       } catch {
         start = 0;
       }
