@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 import { expect, fn, waitFor } from 'storybook/test';
+import { userEvent } from 'vitest/browser';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { globalHandlers } from '../test/mocks/handlers';
 import { SignInDialog } from './sign-in-dialog';
@@ -27,9 +28,14 @@ const meta = {
     onDecline: fn(),
   },
   render: (args) => (
-    <ShadowRootHost>
-      <SignInDialog {...args} />
-    </ShadowRootHost>
+    <>
+      <button type="button" data-testid="background-control">
+        Background control
+      </button>
+      <ShadowRootHost>
+        <SignInDialog {...args} />
+      </ShadowRootHost>
+    </>
   ),
 } satisfies Meta<typeof SignInDialog>;
 
@@ -67,5 +73,33 @@ export const UsesSharedOverlayWithFocusAndAccessibleReferences: Story = {
       const focusedElement = overlayRoot.activeElement;
       void expect(focusedElement !== null && dialog.contains(focusedElement)).toBe(true);
     });
+
+    const hiddenWrapper = canvasElement.ownerDocument.createElement('div');
+    hiddenWrapper.style.display = 'none';
+    const hiddenButton = canvasElement.ownerDocument.createElement('button');
+    hiddenButton.textContent = 'Hidden action';
+    hiddenWrapper.append(hiddenButton);
+    dialog.append(hiddenWrapper);
+
+    const dialogButtons = Array.from(
+      dialog.querySelectorAll<HTMLButtonElement>('button[data-slot="button"]'),
+    );
+    void expect(dialogButtons).toHaveLength(2);
+    const [confirmButton, declineButton] = dialogButtons;
+    if (!confirmButton || !declineButton) throw new Error('sign-in dialog actions not rendered');
+
+    confirmButton.focus();
+    await userEvent.tab();
+    void expect(overlayRoot.activeElement).toBe(declineButton);
+    await userEvent.tab();
+    await waitFor(() => expect(overlayRoot.activeElement).toBe(confirmButton));
+    await userEvent.tab({ shift: true });
+    await waitFor(() => expect(overlayRoot.activeElement).toBe(declineButton));
+
+    const backgroundControl = canvasElement.querySelector<HTMLButtonElement>(
+      '[data-testid="background-control"]',
+    );
+    if (!backgroundControl) throw new Error('background control not rendered');
+    void expect(getComputedStyle(backgroundControl).pointerEvents).toBe('none');
   },
 };

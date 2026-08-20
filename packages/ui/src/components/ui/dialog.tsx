@@ -12,6 +12,37 @@ type DialogContentProps = React.ComponentProps<typeof DialogPrimitive.Content> &
   theme?: 'light' | 'dark';
 };
 
+const TABBABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+function keepTabFocusInsideShadowDialog(event: React.KeyboardEvent<HTMLDivElement>): void {
+  if (event.defaultPrevented || event.key !== 'Tab') return;
+
+  const root = event.currentTarget.getRootNode();
+  if (!(root instanceof ShadowRoot)) return;
+
+  const tabbableElements = Array.from(
+    event.currentTarget.querySelectorAll<HTMLElement>(TABBABLE_SELECTOR),
+  ).filter((element) => element.getClientRects().length > 0);
+  const first = tabbableElements[0];
+  const last = tabbableElements.at(-1);
+  if (!first || !last) return;
+
+  if (event.shiftKey && root.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && root.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 /**
  * Shared modal chrome for the SDK's dialogs: renders the portal + overlay and a
  * centered card `Content` with the SDK's `data-yv-sdk` scope + theme attributes.
@@ -23,6 +54,7 @@ function DialogContent({
   className,
   theme = 'light',
   children,
+  onKeyDown,
   ...props
 }: DialogContentProps): React.ReactElement {
   const shadowPortalContainer = useShadowPortalContainer();
@@ -39,6 +71,10 @@ function DialogContent({
       <DialogPrimitive.Content
         data-yv-sdk
         data-yv-theme={theme}
+        onKeyDown={(event) => {
+          onKeyDown?.(event);
+          keepTabFocusInsideShadowDialog(event);
+        }}
         className={cn(
           'yv:fixed yv:left-1/2 yv:top-1/2 yv:z-50 yv:-translate-x-1/2 yv:-translate-y-1/2',
           'yv:w-[calc(100vw-2rem)] yv:max-w-sm',
