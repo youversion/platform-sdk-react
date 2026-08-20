@@ -168,9 +168,10 @@ export class BibleClient {
     const pageSize = options?.page_size;
     if (filterFields) {
       params['fields[]'] = filterFields;
-      if (pageSize === '*' && filterFields.length > 3) {
+      if (isVersionFilterActive() && pageSize === '*' && filterFields.length > 3) {
         // API rejects page_size=* with more than 3 fields. Keep pageSize='*' so
-        // collectFilteredPage still walks every server page.
+        // collectFilteredPage still walks every server page. Unfiltered *+>3
+        // stays a loud schema reject — do not drop * on that path.
         delete params.page_size;
       }
     }

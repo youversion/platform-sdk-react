@@ -188,6 +188,55 @@ describe('BibleClient version filter', () => {
     clearFilters();
   });
 
+  it('leaves unfiltered page_size=* on the wire and still rejects more than 3 fields', async () => {
+    clearFilters();
+
+    const requestedPageSizes: Array<string | null> = [];
+    server.use(
+      http.get(`https://${apiHost}/v1/bibles`, ({ request }) => {
+        requestedPageSizes.push(new URL(request.url).searchParams.get('page_size'));
+        return HttpResponse.json({ data: [{ id: 1 }], next_page_token: 'p2' });
+      }),
+      http.get(`https://${apiHost}/v1/languages`, ({ request }) => {
+        requestedPageSizes.push(new URL(request.url).searchParams.get('page_size'));
+        return HttpResponse.json({ data: [{ id: 'en', language: 'en' }], next_page_token: 'p2' });
+      }),
+    );
+
+    const versions = await bibleClient().getVersions('en*', undefined, {
+      page_size: '*',
+      fields: ['title', 'abbreviation', 'localized_title'],
+    });
+    expect(versions.data.map((version) => version.id)).toEqual([1]);
+    expect(versions.next_page_token).toBe('p2');
+
+    await expect(
+      bibleClient().getVersions('en*', undefined, {
+        page_size: '*',
+        fields: ['title', 'abbreviation', 'localized_title', 'books'],
+      }),
+    ).rejects.toThrow(/page_size/);
+
+    const languages = new LanguagesClient(
+      new ApiClient({ apiHost, appKey: 'test-app', installationId: 'test-installation' }),
+    );
+    const languagePage = await languages.getLanguages({
+      page_size: '*',
+      fields: ['language', 'text_direction', 'speaking_population'],
+    });
+    expect(languagePage.data.map((language) => language.id)).toEqual(['en']);
+    expect(languagePage.next_page_token).toBe('p2');
+
+    await expect(
+      languages.getLanguages({
+        page_size: '*',
+        fields: ['language', 'text_direction', 'speaking_population', 'id'],
+      }),
+    ).rejects.toThrow(/page_size/);
+
+    expect(requestedPageSizes).toEqual(['*', '*']);
+  });
+
   it('fetches version metadata for a language allowlist, then refuses the wrong tag', async () => {
     YouVersionPlatformConfiguration.permittedLanguageTags = ['en'];
 
