@@ -1,5 +1,20 @@
 # @youversion/platform-react-ui
 
+## 2.8.0
+
+### Minor Changes
+
+- 830d5d5: Add `permittedVersionIds`, `excludedVersionIds`, and `permittedLanguageTags` so apps can limit which Bible versions the SDK uses (YPE-4657).
+
+### Patch Changes
+
+- e9840fc: Type-aware oxlint on TypeScript 7. Data hooks skip fetch when a hook override is set, without conditional hook calls.
+- 1b0c16c: Sync localization from platform-localization (0cca3f7): add Afrikaans (af), Arabic (ar), Czech (cs), Welsh (cy), German (de), Norwegian (no), Portuguese (pt), Vietnamese (vi); update 3 keys in en, ko, zh.
+- Updated dependencies [e9840fc]
+- Updated dependencies [830d5d5]
+  - @youversion/platform-core@2.8.0
+  - @youversion/platform-react-hooks@2.8.0
+
 ## 2.7.1
 
 ### Patch Changes
