@@ -152,6 +152,42 @@ describe('BibleClient version filter', () => {
     clearFilters();
   });
 
+  it('keeps every usable language across pages when page_size is * and a filter injects fields', async () => {
+    YouVersionPlatformConfiguration.permittedLanguageTags = ['en', 'fr', 'ko'];
+
+    const firstServerPage = {
+      data: [
+        { id: 'en', language: 'en' },
+        { id: 'es', language: 'es' },
+      ],
+      next_page_token: 'p2',
+    };
+    const secondServerPage = { data: [{ id: 'fr', language: 'fr' }], next_page_token: 'p3' };
+    const thirdServerPage = { data: [{ id: 'ko', language: 'ko' }], next_page_token: null };
+
+    server.use(
+      http.get(`https://${apiHost}/v1/languages`, ({ request }) => {
+        const token = new URL(request.url).searchParams.get('page_token') ?? '';
+        if (token === 'p2') return HttpResponse.json(secondServerPage);
+        if (token === 'p3') return HttpResponse.json(thirdServerPage);
+        return HttpResponse.json(
+          token === '' ? firstServerPage : { data: [], next_page_token: null },
+        );
+      }),
+    );
+
+    const languages = new LanguagesClient(
+      new ApiClient({ apiHost, appKey: 'test-app', installationId: 'test-installation' }),
+    );
+    const filtered = await languages.getLanguages({
+      page_size: '*',
+      fields: ['language', 'text_direction', 'speaking_population'],
+    });
+    expect(filtered.data.map((language) => language.id)).toEqual(['en', 'fr', 'ko']);
+
+    clearFilters();
+  });
+
   it('fetches version metadata for a language allowlist, then refuses the wrong tag', async () => {
     YouVersionPlatformConfiguration.permittedLanguageTags = ['en'];
 
