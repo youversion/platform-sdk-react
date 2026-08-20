@@ -123,7 +123,7 @@ describe('resolveBrowserLanguage', () => {
   });
 });
 
-  describe('getBrowserLanguages', () => {
+describe('getBrowserLanguages', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });

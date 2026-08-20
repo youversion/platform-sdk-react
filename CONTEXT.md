@@ -27,6 +27,66 @@ calls this `version_id`; the highlights wire API calls the same value
 `bible_id`. The SDK name is canonical in public types; mapping happens at
 the API boundary only.
 
+A Bible version is **usable** for an app only when it satisfies the
+integrator **version filter**. An unusable id is not a Bible version this
+app may use: lists omit it, pickers omit it, restored recents omit it, and
+content fetches refuse it. The host passing `versionId` does not override
+the filter.
+
+## Version filter
+
+Integrator policy (YPE-4657) for which Bible versions this app may use,
+set on `YouVersionProvider` and stored on
+`YouVersionPlatformConfiguration` (same path as `appName` /
+`signInPromptMessage`). Three optional lists, Swift names, React `Id`
+spelling:
+
+- `permittedVersionIds` — allowlist of Bible version ids
+- `excludedVersionIds` — denylist of Bible version ids
+- `permittedLanguageTags` — allowlist of BCP 47 tags (`en`, `zh-Hans`).
+  This is `BibleVersion.language_tag` / `Language.id`, not a numeric id.
+  _Avoid_: `permittedLanguageIDs`, `permittedLanguageIds` (ticket draft;
+  Swift and this SDK both say tags)
+
+Unset (`undefined`) on a permit list means no restriction on that
+dimension. An empty permit list (`[]`) permits nothing. Unset or empty
+`excludedVersionIds` excludes nothing.
+
+A version is usable when: it is not in `excludedVersionIds`, and (if
+`permittedVersionIds` is set) its id is in that list, and (if
+`permittedLanguageTags` is set) its `language_tag` is in that list. The
+two allowlists combine with AND. Exclusion wins if an id is in both
+permit and exclude lists.
+
+`versionId: number` stays a number. Types cannot enforce the filter
+(runtime lists; `Exclude<number, 4212>` is still `number`).
+
+## Version refuse
+
+What the SDK does with an unusable Bible version (YPE-4657). One rule
+for every surface (reader, card, text, VOTD) and for core/hooks.
+
+Core throws before returning scripture (and before the network when the
+id alone decides). The error carries `status: 403` so existing UI maps
+it to `forbiddenError` ("This app isn't allowed to access this Bible
+content."). Hooks surface that `error`. UI does not throw, does not
+render an empty tree, does not swap in another version. Dev: one
+`console.warn` for a host-passed unusable `versionId`.
+
+Language-only allowlists need `language_tag`. Content methods may fetch
+version metadata once; if metadata is missing, refuse (fail closed).
+`getVersion` itself is refused when the id is already unusable without
+the tag.
+
+Filtered `getVersions` / `getLanguages` pages must not hide a usable
+row that exists on a later server page of the same query. Picker recents
+are hidden at read time; localStorage is not rewritten, so lifting the
+filter restores them.
+
+_Avoid_: picker-only policy (hide in the chooser, still render
+`versionId`); silent fallback to `DEFAULT_LICENSE_FREE_BIBLE_VERSION`;
+opening the picker as the refuse (text/VOTD have none).
+
 ## Color
 
 A highlight's fill, a 6-character lowercase hex string without `#`

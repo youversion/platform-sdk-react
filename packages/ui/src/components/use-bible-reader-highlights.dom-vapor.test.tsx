@@ -67,6 +67,8 @@ function Reader({ removeRef }: { removeRef: { current: (() => void) | null } }) 
 }
 
 describe('vapor flash — real Verse.Html DOM paint (MutationObserver on style)', () => {
+  // waitFor gates below use 5s each; the default 5s it() timeout can expire first
+  // on a loaded CI runner and hide the real assertion.
   it('the verse-2 background is never repainted to yellow after the optimistic unpaint', async () => {
     const withRow = () => collection([{ version_id: 111, passage_id: 'JHN.1.2', color: 'fffe00' }]);
     // The post-remove refetch is held unresolved to widen the settle→response
@@ -94,10 +96,13 @@ describe('vapor flash — real Verse.Html DOM paint (MutationObserver on style)'
 
     const verseEl = () => container.querySelector<HTMLElement>('.yv-v[v="2"]');
     // Wait until server truth has painted verse 2 yellow.
-    await waitFor(() => {
-      const bg = verseEl()?.style.backgroundColor ?? '';
-      expect(bg).not.toBe('');
-    });
+    await waitFor(
+      () => {
+        const bg = verseEl()?.style.backgroundColor ?? '';
+        expect(bg).not.toBe('');
+      },
+      { timeout: 5000 },
+    );
     const mountFetches = getHighlights.mock.calls.length;
 
     // Instrument: record every background-color the verse-2 wrapper takes on
@@ -136,5 +141,5 @@ describe('vapor flash — real Verse.Html DOM paint (MutationObserver on style)'
     ).toEqual([]);
     // Final DOM state: transparent.
     expect(verseEl()?.style.backgroundColor).toBe('');
-  });
+  }, 20_000);
 });

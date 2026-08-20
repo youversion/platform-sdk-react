@@ -19,6 +19,9 @@ export class YouVersionPlatformConfiguration {
   private static _expiryDateKey: string | null = null;
   private static _signInPromptMessage: string | undefined = undefined;
   private static _appName: string | undefined = undefined;
+  private static _permittedVersionIds: number[] | undefined = undefined;
+  private static _excludedVersionIds: number[] | undefined = undefined;
+  private static _permittedLanguageTags: string[] | undefined = undefined;
 
   private static getOrSetInstallationId(): string {
     const storage = getLocalStorage();
@@ -316,5 +319,41 @@ export class YouVersionPlatformConfiguration {
 
   static set appName(value: string | undefined) {
     this._appName = value;
+  }
+
+  /**
+   * Allowlist of Bible version ids this app may use. Unset = no restriction.
+   * An empty array permits nothing. See YPE-4657.
+   */
+  static get permittedVersionIds(): number[] | undefined {
+    return this._permittedVersionIds;
+  }
+
+  static set permittedVersionIds(value: number[] | undefined) {
+    this._permittedVersionIds = value;
+  }
+
+  /**
+   * Denylist of Bible version ids this app may not use. Unset or empty =
+   * exclude nothing. Exclusion wins over `permittedVersionIds`.
+   */
+  static get excludedVersionIds(): number[] | undefined {
+    return this._excludedVersionIds;
+  }
+
+  static set excludedVersionIds(value: number[] | undefined) {
+    this._excludedVersionIds = value;
+  }
+
+  /**
+   * Allowlist of BCP 47 language tags (`en`, `zh-Hans`). Unset = no
+   * restriction. An empty array permits nothing.
+   */
+  static get permittedLanguageTags(): string[] | undefined {
+    return this._permittedLanguageTags;
+  }
+
+  static set permittedLanguageTags(value: string[] | undefined) {
+    this._permittedLanguageTags = value;
   }
 }

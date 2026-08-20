@@ -21,7 +21,12 @@ export function YouVersionProvider(
 
   // UI tsup inlines `@youversion/platform-core`, so this singleton is a different
   // copy from the one hooks syncs. BibleReader reads appName / signInPromptMessage
-  // from *this* copy — keep it in sync with the provider props.
+  // and the version filter from *this* copy — keep it in sync with the provider
+  // props. Filters write during render so the first child fetch sees them.
+  YouVersionPlatformConfiguration.permittedVersionIds = props.permittedVersionIds;
+  YouVersionPlatformConfiguration.excludedVersionIds = props.excludedVersionIds;
+  YouVersionPlatformConfiguration.permittedLanguageTags = props.permittedLanguageTags;
+
   useEffect(() => {
     YouVersionPlatformConfiguration.appName = props.appName;
     YouVersionPlatformConfiguration.signInPromptMessage = props.signInPromptMessage;

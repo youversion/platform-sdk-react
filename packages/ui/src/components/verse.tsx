@@ -19,6 +19,7 @@ import { Footnote } from '@/components/icons/footnote';
 import { LoaderIcon } from '@/components/icons/loader';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { getBibleTextErrorMessage } from '@/lib/bible-text-error';
+import { useVersionFilterWarning } from '@/lib/use-version-filter-warning';
 import { cn } from '@/lib/utils';
 import { type FontFamily } from '@/lib/verse-html-utils';
 
@@ -624,6 +625,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
     const { t } = useTranslation(undefined, { i18n });
     const providerTheme = useTheme();
     const currentTheme = theme || providerTheme;
+    useVersionFilterWarning(versionId);
 
     // Latched at first mount. Controlled (prop present) never falls through to
     // `highlightedVerses` or the self-contained fetch.
