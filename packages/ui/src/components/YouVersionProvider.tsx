@@ -33,6 +33,14 @@ export function YouVersionProvider({
 }: YouVersionProviderProps): React.ReactElement {
   const normalizedLocale = locale?.trim() || undefined;
 
+  // Layout effects never run during SSR. Apply an explicit locale during render
+  // so children emit the host language in the server HTML and the first client
+  // paint matches it. When locale is omitted, wait for the layout effect so SSR
+  // stays on the English fallback instead of a request-time browser language.
+  if (normalizedLocale) {
+    void syncSdkLanguage(normalizedLocale);
+  }
+
   useLayoutEffect(() => {
     void syncSdkLanguage(normalizedLocale);
   }, [normalizedLocale]);

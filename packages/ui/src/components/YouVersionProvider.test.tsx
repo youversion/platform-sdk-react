@@ -3,6 +3,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
 import React, { useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
@@ -84,11 +85,9 @@ describe('UI YouVersionProvider', () => {
       </YouVersionProvider>,
     );
 
-    const raw = screen.getByTestId('headers').textContent;
-    expect(raw).not.toBe('none');
-    const headers = new Headers(JSON.parse(raw ?? '') as Record<string, string>);
-    expect(headers.get('Accept-Language')).toBe('fr');
-    expect(headers.get('X-Custom')).toBe('1');
+    expect(screen.getByTestId('headers').textContent).toBe(
+      JSON.stringify({ 'accept-language': 'fr', 'X-Custom': '1' }),
+    );
   });
 
   it('mirrors appName and signInPromptMessage onto the UI-bundled config', () => {
@@ -162,5 +161,20 @@ describe('UI YouVersionProvider', () => {
 
     await i18n.changeLanguage('en');
     vi.unstubAllGlobals();
+  });
+
+  it('renders locale copy during SSR without waiting for layout effects', async () => {
+    await i18n.changeLanguage('en');
+
+    const html = renderToString(
+      <YouVersionProvider appKey="test-key" locale="es">
+        <VerseOfTheDayHeading />
+      </YouVersionProvider>,
+    );
+
+    expect(html).toContain(es.verseOfTheDay);
+    expect(html).not.toContain(en.verseOfTheDay);
+
+    await i18n.changeLanguage('en');
   });
 });
