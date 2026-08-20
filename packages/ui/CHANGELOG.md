@@ -1,5 +1,16 @@
 # @youversion/platform-react-ui
 
+## 2.9.0
+
+### Minor Changes
+
+- aef57f3: Hosts can pass `locale` on `YouVersionProvider` to set SDK UI language and `Accept-Language` (including Verse of the Day copy in Expo WebViews), and `defaultLanguageId` / `languageId` on `BibleReader.Root` to seed the version picker. App locale and Bible language stay separate: `locale` does not pick a default Bible translation.
+
+### Patch Changes
+
+- @youversion/platform-core@2.9.0
+- @youversion/platform-react-hooks@2.9.0
+
 ## 2.8.0
 
 ### Minor Changes
