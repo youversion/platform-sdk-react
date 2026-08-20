@@ -50,7 +50,12 @@ function resetHost(host: HTMLDivElement): void {
 
 function getOrCreateSdkOverlayRoot(ownerDocument: Document): ShadowRoot {
   const existing = sdkOverlayRoots.get(ownerDocument);
-  if (existing?.host.isConnected) return existing;
+  if (existing) {
+    if (!existing.host.isConnected) {
+      ownerDocument.body.append(existing.host);
+    }
+    return existing;
+  }
 
   const host = ownerDocument.createElement('div');
   host.setAttribute('data-yv-shadow-overlay-host', '');
