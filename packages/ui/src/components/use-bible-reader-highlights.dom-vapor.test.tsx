@@ -95,14 +95,21 @@ describe('vapor flash — real Verse.Html DOM paint (MutationObserver on style)'
     );
 
     const verseEl = () => container.querySelector<HTMLElement>('.yv-v[v="2"]');
-    // Wait until server truth has painted verse 2 yellow.
+    // Wait until server truth has painted verse 2 yellow and the remove
+    // callback is installed. Verse.Html paints from the hook in useLayoutEffect;
+    // HIGHLIGHTS_UPDATED reaches the machine in a later useEffect. Calling
+    // remove before that send lands is a no-op (empty serverColors → no write).
     await waitFor(
       () => {
         const bg = verseEl()?.style.backgroundColor ?? '';
         expect(bg).not.toBe('');
+        expect(removeRef.current).toEqual(expect.any(Function));
       },
       { timeout: 5000 },
     );
+    await act(async () => {
+      await Promise.resolve();
+    });
     const mountFetches = getHighlights.mock.calls.length;
 
     // Instrument: record every background-color the verse-2 wrapper takes on
@@ -114,9 +121,13 @@ describe('vapor flash — real Verse.Html DOM paint (MutationObserver on style)'
     });
     observer.observe(el, { attributes: true, attributeFilter: ['style'] });
 
+    const remove = removeRef.current;
+    if (!remove) {
+      throw new Error('remove callback was not installed');
+    }
     act(() => {
       removed = true;
-      removeRef.current?.();
+      remove();
     });
 
     // These two waits are synchronization gates, not the assertions under test
