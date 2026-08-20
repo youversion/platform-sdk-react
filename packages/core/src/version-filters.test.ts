@@ -116,18 +116,17 @@ describe('version filters', () => {
   });
 
   it('resumes leftover usable rows instead of dropping them after a full page', async () => {
-    const pages: Record<string, { data: { id: number }[]; next_page_token: string | null }> = {
-      '': {
-        data: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }],
-        next_page_token: 'p2',
-      },
-      p2: { data: [{ id: 5 }], next_page_token: null },
+    const firstServerPage = {
+      data: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }],
+      next_page_token: 'p2',
     };
+    const laterServerPage = { data: [{ id: 5 }], next_page_token: null };
 
     const fetchPage = (pageToken?: string) => {
       expect(pageToken?.startsWith('yv-vf1:')).not.toBe(true);
-      const page = pages[pageToken ?? ''];
-      return Promise.resolve(page ?? { data: [], next_page_token: null });
+      if (!pageToken) return Promise.resolve(firstServerPage);
+      if (pageToken === 'p2') return Promise.resolve(laterServerPage);
+      return Promise.resolve({ data: [], next_page_token: null });
     };
 
     const first = await collectFilteredPage(fetchPage, () => true, 2);

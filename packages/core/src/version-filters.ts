@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
 import type { BibleVersion, Collection, Language } from './types';
 
@@ -71,9 +72,16 @@ export function fieldsNeededForLanguageFilter(
 /** Resume token for leftover usable rows on a server page. Never send to the API. */
 const FILTER_PAGE_CURSOR_PREFIX = 'yv-vf1:';
 
-type FilterPageCursor = {
-  t: string | null;
-  s: number;
+const FilterPageCursorSchema = z.object({
+  t: z.string().nullable(),
+  s: z.number().int().nonnegative(),
+});
+
+type FilterPageCursor = z.infer<typeof FilterPageCursorSchema>;
+
+type FilterPageStart = {
+  pageToken?: string;
+  skip: number;
 };
 
 function encodeFilterPageCursor(pageToken: string | null, skip: number): string {
@@ -83,26 +91,16 @@ function encodeFilterPageCursor(pageToken: string | null, skip: number): string 
 function decodeFilterPageCursor(token: string): FilterPageCursor | undefined {
   if (!token.startsWith(FILTER_PAGE_CURSOR_PREFIX)) return undefined;
   try {
-    const parsed: unknown = JSON.parse(token.slice(FILTER_PAGE_CURSOR_PREFIX.length));
-    if (
-      typeof parsed === 'object' &&
-      parsed !== null &&
-      't' in parsed &&
-      's' in parsed &&
-      (parsed.t === null || typeof parsed.t === 'string') &&
-      typeof parsed.s === 'number' &&
-      Number.isInteger(parsed.s) &&
-      parsed.s >= 0
-    ) {
-      return { t: parsed.t, s: parsed.s };
-    }
+    const parsed = FilterPageCursorSchema.safeParse(
+      JSON.parse(token.slice(FILTER_PAGE_CURSOR_PREFIX.length)),
+    );
+    return parsed.success ? parsed.data : undefined;
   } catch {
     return undefined;
   }
-  return undefined;
 }
 
-function resolveFilterPageStart(startToken?: string): { pageToken?: string; skip: number } {
+function resolveFilterPageStart(startToken?: string): FilterPageStart {
   if (!startToken) return { skip: 0 };
   const cursor = decodeFilterPageCursor(startToken);
   if (!cursor) return { pageToken: startToken, skip: 0 };
@@ -119,7 +117,7 @@ export async function collectFilteredPage<T>(
 
   if (pageSize === '*') {
     const first = await fetchPage(start.pageToken);
-    const data = [...first.data.filter(isUsable).slice(start.skip)];
+    const data = first.data.filter(isUsable).slice(start.skip);
     let token = first.next_page_token;
     while (token) {
       const next = await fetchPage(token);
@@ -132,7 +130,7 @@ export async function collectFilteredPage<T>(
   let fetchToken = start.pageToken;
   let skip = start.skip;
   const first = await fetchPage(fetchToken);
-  const target = typeof pageSize === 'number' ? pageSize : first.data.length;
+  const target = pageSize ?? first.data.length;
   const collected: T[] = [];
   let page = first;
 

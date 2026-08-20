@@ -46,52 +46,46 @@ describe('BibleClient version filter', () => {
     clearFilters();
     YouVersionPlatformConfiguration.permittedVersionIds = [3, 4];
 
-    const pages: Record<
-      string,
-      { data: { id: number; language_tag: string }[]; next_page_token: string | null }
-    > = {
-      '': {
-        data: [
-          { id: 1, language_tag: 'en' },
-          { id: 2, language_tag: 'en' },
-        ],
-        next_page_token: 'p2',
-      },
-      p2: {
-        data: [
-          { id: 3, language_tag: 'en' },
-          { id: 5, language_tag: 'en' },
-        ],
-        next_page_token: 'p3',
-      },
-      p3: { data: [{ id: 4, language_tag: 'en' }], next_page_token: null },
+    const firstServerPage = {
+      data: [
+        { id: 1, language_tag: 'en' },
+        { id: 2, language_tag: 'en' },
+      ],
+      next_page_token: 'p2',
     };
+    const secondServerPage = {
+      data: [
+        { id: 3, language_tag: 'en' },
+        { id: 5, language_tag: 'en' },
+      ],
+      next_page_token: 'p3',
+    };
+    const thirdServerPage = { data: [{ id: 4, language_tag: 'en' }], next_page_token: null };
 
     server.use(
       http.get(`https://${apiHost}/v1/bibles`, ({ request }) => {
         const token = new URL(request.url).searchParams.get('page_token') ?? '';
-        return HttpResponse.json(pages[token] ?? { data: [], next_page_token: null });
+        if (token === 'p2') return HttpResponse.json(secondServerPage);
+        if (token === 'p3') return HttpResponse.json(thirdServerPage);
+        return HttpResponse.json(
+          token === '' ? firstServerPage : { data: [], next_page_token: null },
+        );
       }),
     );
 
     const versions = await bibleClient().getVersions('en*', undefined, { page_size: 2 });
     expect(versions.data.map((version) => version.id)).toEqual([3, 4]);
 
-    const overflowPages: Record<
-      string,
-      { data: { id: number; language_tag: string }[]; next_page_token: string | null }
-    > = {
-      '': {
-        data: [
-          { id: 1, language_tag: 'en' },
-          { id: 2, language_tag: 'en' },
-          { id: 3, language_tag: 'en' },
-          { id: 4, language_tag: 'en' },
-        ],
-        next_page_token: 'p2',
-      },
-      p2: { data: [{ id: 5, language_tag: 'en' }], next_page_token: null },
+    const overflowFirstPage = {
+      data: [
+        { id: 1, language_tag: 'en' },
+        { id: 2, language_tag: 'en' },
+        { id: 3, language_tag: 'en' },
+        { id: 4, language_tag: 'en' },
+      ],
+      next_page_token: 'p2',
     };
+    const overflowLaterPage = { data: [{ id: 5, language_tag: 'en' }], next_page_token: null };
     const requestedTokens: string[] = [];
 
     server.use(
@@ -99,7 +93,10 @@ describe('BibleClient version filter', () => {
         const token = new URL(request.url).searchParams.get('page_token') ?? '';
         requestedTokens.push(token);
         expect(token.startsWith('yv-vf1:')).toBe(false);
-        return HttpResponse.json(overflowPages[token] ?? { data: [], next_page_token: null });
+        if (token === 'p2') return HttpResponse.json(overflowLaterPage);
+        return HttpResponse.json(
+          token === '' ? overflowFirstPage : { data: [], next_page_token: null },
+        );
       }),
     );
 
@@ -122,25 +119,27 @@ describe('BibleClient version filter', () => {
   it('keeps every usable version across pages when page_size is * and a filter injects fields', async () => {
     YouVersionPlatformConfiguration.permittedVersionIds = [3, 4, 5];
 
-    const pages: Record<
-      string,
-      { data: { id: number; title: string }[]; next_page_token: string | null }
-    > = {
-      '': {
-        data: [
-          { id: 3, title: 'Permitted first' },
-          { id: 1, title: 'Excluded' },
-        ],
-        next_page_token: 'p2',
-      },
-      p2: { data: [{ id: 4, title: 'Permitted second' }], next_page_token: 'p3' },
-      p3: { data: [{ id: 5, title: 'Permitted third' }], next_page_token: null },
+    const firstServerPage = {
+      data: [
+        { id: 3, title: 'Permitted first' },
+        { id: 1, title: 'Excluded' },
+      ],
+      next_page_token: 'p2',
     };
+    const secondServerPage = {
+      data: [{ id: 4, title: 'Permitted second' }],
+      next_page_token: 'p3',
+    };
+    const thirdServerPage = { data: [{ id: 5, title: 'Permitted third' }], next_page_token: null };
 
     server.use(
       http.get(`https://${apiHost}/v1/bibles`, ({ request }) => {
         const token = new URL(request.url).searchParams.get('page_token') ?? '';
-        return HttpResponse.json(pages[token] ?? { data: [], next_page_token: null });
+        if (token === 'p2') return HttpResponse.json(secondServerPage);
+        if (token === 'p3') return HttpResponse.json(thirdServerPage);
+        return HttpResponse.json(
+          token === '' ? firstServerPage : { data: [], next_page_token: null },
+        );
       }),
     );
 
