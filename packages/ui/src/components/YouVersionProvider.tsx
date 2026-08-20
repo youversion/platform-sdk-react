@@ -80,7 +80,12 @@ export function YouVersionProvider({
 
   let mergedHeaders = additionalHeaders;
   if (normalizedLocale) {
-    mergedHeaders = { 'Accept-Language': normalizedLocale, ...additionalHeaders };
+    const hostSetsAcceptLanguage = Object.keys(additionalHeaders ?? {}).some(
+      (key) => key.toLowerCase() === 'accept-language',
+    );
+    if (!hostSetsAcceptLanguage) {
+      mergedHeaders = { 'Accept-Language': normalizedLocale, ...additionalHeaders };
+    }
   }
 
   return (

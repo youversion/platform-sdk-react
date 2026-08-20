@@ -73,6 +73,24 @@ describe('UI YouVersionProvider', () => {
     );
   });
 
+  it('lets additionalHeaders override Accept-Language from locale regardless of header casing', () => {
+    render(
+      <YouVersionProvider
+        appKey="test-key"
+        locale="es-MX"
+        additionalHeaders={{ 'accept-language': 'fr', 'X-Custom': '1' }}
+      >
+        <AdditionalHeadersProbe />
+      </YouVersionProvider>,
+    );
+
+    const raw = screen.getByTestId('headers').textContent;
+    expect(raw).not.toBe('none');
+    const headers = new Headers(JSON.parse(raw ?? '') as Record<string, string>);
+    expect(headers.get('Accept-Language')).toBe('fr');
+    expect(headers.get('X-Custom')).toBe('1');
+  });
+
   it('mirrors appName and signInPromptMessage onto the UI-bundled config', () => {
     YouVersionPlatformConfiguration.appName = undefined;
     YouVersionPlatformConfiguration.signInPromptMessage = undefined;
