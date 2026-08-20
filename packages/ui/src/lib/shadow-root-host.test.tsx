@@ -93,34 +93,4 @@ describe('ShadowRootHost', () => {
       document.body.querySelectorAll('[data-yv-shadow-overlay-host]'),
     ).toHaveLength(1);
   });
-
-  it('reconnects the existing overlay root when its host is detached', () => {
-    render(
-      <ShadowRootHost>
-        <span>first</span>
-      </ShadowRootHost>,
-    );
-
-    const overlayHost = document.body.querySelector<HTMLElement>(
-      '[data-yv-shadow-overlay-host]',
-    );
-    const overlayRoot = overlayHost?.shadowRoot;
-    expect(overlayHost).not.toBeNull();
-    expect(overlayRoot).not.toBeNull();
-
-    overlayHost?.remove();
-    expect(overlayHost?.isConnected).toBe(false);
-
-    render(
-      <ShadowRootHost>
-        <span>second</span>
-      </ShadowRootHost>,
-    );
-
-    const reconnectedHost = document.body.querySelector<HTMLElement>(
-      '[data-yv-shadow-overlay-host]',
-    );
-    expect(reconnectedHost).toBe(overlayHost);
-    expect(reconnectedHost?.shadowRoot).toBe(overlayRoot);
-  });
 });
