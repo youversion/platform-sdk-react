@@ -152,12 +152,13 @@ export class BibleClient {
     }
 
     const filterFields = fieldsNeededForVersionFilter(options?.fields);
-    let pageSize = options?.page_size;
+    const pageSize = options?.page_size;
     if (filterFields) {
       params['fields[]'] = filterFields;
       if (pageSize === '*' && filterFields.length > 3) {
+        // API rejects page_size=* with more than 3 fields. Keep pageSize='*' so
+        // collectFilteredPage still walks every server page.
         delete params.page_size;
-        pageSize = undefined;
       }
     }
 

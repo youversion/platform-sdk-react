@@ -119,6 +119,40 @@ describe('BibleClient version filter', () => {
     clearFilters();
   });
 
+  it('keeps every usable version across pages when page_size is * and a filter injects fields', async () => {
+    YouVersionPlatformConfiguration.permittedVersionIds = [3, 4, 5];
+
+    const pages: Record<
+      string,
+      { data: { id: number; title: string }[]; next_page_token: string | null }
+    > = {
+      '': {
+        data: [
+          { id: 3, title: 'Permitted first' },
+          { id: 1, title: 'Excluded' },
+        ],
+        next_page_token: 'p2',
+      },
+      p2: { data: [{ id: 4, title: 'Permitted second' }], next_page_token: 'p3' },
+      p3: { data: [{ id: 5, title: 'Permitted third' }], next_page_token: null },
+    };
+
+    server.use(
+      http.get(`https://${apiHost}/v1/bibles`, ({ request }) => {
+        const token = new URL(request.url).searchParams.get('page_token') ?? '';
+        return HttpResponse.json(pages[token] ?? { data: [], next_page_token: null });
+      }),
+    );
+
+    const versions = await bibleClient().getVersions('en*', undefined, {
+      page_size: '*',
+      fields: ['title', 'abbreviation', 'localized_title'],
+    });
+    expect(versions.data.map((version) => version.id)).toEqual([3, 4, 5]);
+
+    clearFilters();
+  });
+
   it('fetches version metadata for a language allowlist, then refuses the wrong tag', async () => {
     YouVersionPlatformConfiguration.permittedLanguageTags = ['en'];
 
