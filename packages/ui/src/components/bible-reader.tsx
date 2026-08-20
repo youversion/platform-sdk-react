@@ -78,6 +78,9 @@ type BibleReaderContextType = {
   onFootnotePress?: (data: FootnoteData) => void;
   onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
   onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
+  languageId?: string;
+  defaultLanguageId?: string;
+  onLanguageChange?: (languageId: string) => void;
   onSignInPress?: () => void;
   onSignOutPress?: () => void;
   onCopy?: (data: BibleReaderShareData) => void | Promise<void>;
@@ -211,6 +214,22 @@ export type RootProps = {
   onFootnotePress?: (data: FootnoteData) => void;
   onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
   onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
+  /**
+   * Bible translation language for the version picker (`en`, `es`, …).
+   * Controlled when set with `onLanguageChange`.
+   *
+   * Distinct from `YouVersionProvider` `locale`, which is app UI language.
+   * Do not derive this from device locale unless the host intends the picker
+   * to open on that Bible language.
+   */
+  languageId?: string;
+  /**
+   * Uncontrolled initial Bible translation language for the version picker.
+   * Ignored when `languageId` is set. When omitted, the picker falls back to
+   * the browser language, then `en`.
+   */
+  defaultLanguageId?: string;
+  onLanguageChange?: (languageId: string) => void;
   onSignInPress?: () => void;
   onSignOutPress?: () => void;
   /**
@@ -451,6 +470,9 @@ function Root({
   onFootnotePress,
   onChapterPickerPress,
   onVersionPickerPress,
+  languageId,
+  defaultLanguageId,
+  onLanguageChange,
   onSignInPress,
   onSignOutPress,
   onCopy,
@@ -626,6 +648,9 @@ function Root({
     onFootnotePress,
     onChapterPickerPress,
     onVersionPickerPress,
+    languageId,
+    defaultLanguageId,
+    onLanguageChange,
     onSignInPress,
     onSignOutPress,
     onCopy,
@@ -1358,6 +1383,9 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
     background,
     onChapterPickerPress,
     onVersionPickerPress,
+    languageId,
+    defaultLanguageId,
+    onLanguageChange,
   } = useBibleReaderContext();
   const yvContext = useContext(YouVersionContext);
   const themesSettingsValuesRef = useRef<BibleThemeSettingsValues>({
@@ -1523,6 +1551,9 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
         <BibleVersionPicker.Root
           versionId={versionId}
           onVersionChange={setVersionId}
+          languageId={languageId}
+          defaultLanguageId={defaultLanguageId}
+          onLanguageChange={onLanguageChange}
           background={background}
           onVersionPickerPress={onVersionPickerPress}
         >

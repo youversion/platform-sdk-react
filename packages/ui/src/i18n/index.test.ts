@@ -234,4 +234,24 @@ describe('i18n instance', () => {
     expect(i18n.language).toBe('en');
     expect(i18n.t('verseOfTheDay')).toBe(en.verseOfTheDay);
   });
+
+  it('applies an explicit locale over navigator language', async () => {
+    vi.stubGlobal('navigator', {
+      language: 'en-US',
+      languages: ['en-US', 'en'],
+    });
+    vi.resetModules();
+
+    const i18n = await loadI18n();
+    const { syncSdkLanguage } = await import('./index');
+    await syncSdkLanguage('fr-FR');
+
+    expect(i18n.language).toBe('fr');
+    expect(i18n.t('verseOfTheDay')).toBe(resources.fr.translation.verseOfTheDay);
+
+    await syncSdkLanguage('es-MX');
+
+    expect(i18n.language).toBe('es');
+    expect(i18n.t('verseOfTheDay')).toBe(resources.es.translation.verseOfTheDay);
+  });
 });

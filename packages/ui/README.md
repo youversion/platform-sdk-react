@@ -41,6 +41,14 @@ function App() {
 }
 ```
 
+Optional `locale` sets bundled UI copy (Verse of the Day heading, buttons, etc.) and `Accept-Language` instead of following the browser language. Regional tags like `es-MX` resolve to a bundled locale. This is app language, not Bible translation language — seed the version picker with `defaultLanguageId` on `BibleReader.Root`.
+
+```tsx
+<YouVersionProvider appKey="YOUR_APP_KEY" locale="es">
+  <VerseOfTheDay />
+</YouVersionProvider>
+```
+
 ### Limit which Bible versions the SDK uses
 
 By default the version picker offers Bible versions in every available language. Limit that with `permittedLanguageTags`, `permittedVersionIds`, and `excludedVersionIds` on `YouVersionProvider`. A version must satisfy every list that is set. Exclusion wins if an id is in both permit and exclude lists. Unset means no restriction; an empty permit list permits nothing.

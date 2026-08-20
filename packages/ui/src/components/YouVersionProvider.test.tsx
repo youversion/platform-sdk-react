@@ -3,10 +3,12 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
 import React, { useContext } from 'react';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionContext } from '@youversion/platform-react-hooks';
 import { YouVersionProvider } from '@/components/YouVersionProvider';
+import i18n from '@/i18n';
 
 function AdditionalHeadersProbe(): React.ReactElement {
   const headers = useContext(YouVersionContext)?.additionalHeaders;
@@ -34,6 +36,50 @@ describe('UI YouVersionProvider', () => {
     );
 
     expect(screen.getByTestId('headers').textContent).toBe('none');
+  });
+
+  it('sends Accept-Language from locale', () => {
+    render(
+      <YouVersionProvider appKey="test-key" locale="es-MX">
+        <AdditionalHeadersProbe />
+      </YouVersionProvider>,
+    );
+
+    expect(screen.getByTestId('headers').textContent).toBe(
+      JSON.stringify({ 'Accept-Language': 'es-MX' }),
+    );
+  });
+
+  it('lets additionalHeaders override Accept-Language from locale', () => {
+    render(
+      <YouVersionProvider
+        appKey="test-key"
+        locale="es"
+        additionalHeaders={{ 'Accept-Language': 'fr', 'X-Custom': '1' }}
+      >
+        <AdditionalHeadersProbe />
+      </YouVersionProvider>,
+    );
+
+    expect(screen.getByTestId('headers').textContent).toBe(
+      JSON.stringify({ 'Accept-Language': 'fr', 'X-Custom': '1' }),
+    );
+  });
+
+  it('lets additionalHeaders override Accept-Language from locale regardless of header casing', () => {
+    render(
+      <YouVersionProvider
+        appKey="test-key"
+        locale="es-MX"
+        additionalHeaders={{ 'accept-language': 'fr', 'X-Custom': '1' }}
+      >
+        <AdditionalHeadersProbe />
+      </YouVersionProvider>,
+    );
+
+    expect(screen.getByTestId('headers').textContent).toBe(
+      JSON.stringify({ 'accept-language': 'fr', 'X-Custom': '1' }),
+    );
   });
 
   it('mirrors appName and signInPromptMessage onto the UI-bundled config', () => {
@@ -81,4 +127,44 @@ describe('UI YouVersionProvider', () => {
       errorSpy.mockRestore();
     },
   );
+
+  it('uses locale instead of the browser language', async () => {
+    vi.stubGlobal('navigator', {
+      language: 'en-US',
+      languages: ['en-US', 'en'],
+    });
+
+    const { rerender } = render(
+      <YouVersionProvider appKey="test-key" locale="es">
+        <div />
+      </YouVersionProvider>,
+    );
+
+    expect(i18n.language).toBe('es');
+
+    rerender(
+      <YouVersionProvider appKey="test-key" locale="es-MX">
+        <div />
+      </YouVersionProvider>,
+    );
+
+    expect(i18n.language).toBe('es');
+
+    await i18n.changeLanguage('en');
+    vi.unstubAllGlobals();
+  });
+
+  it('applies locale during SSR without waiting for layout effects', async () => {
+    await i18n.changeLanguage('en');
+
+    renderToString(
+      <YouVersionProvider appKey="test-key" locale="es">
+        <div />
+      </YouVersionProvider>,
+    );
+
+    expect(i18n.language).toBe('es');
+
+    await i18n.changeLanguage('en');
+  });
 });

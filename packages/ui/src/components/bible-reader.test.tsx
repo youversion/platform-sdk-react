@@ -71,6 +71,28 @@ function renderWithOverrides(ui: ReactElement) {
   return render(<HookOverrideProvider overrides={defaultOverrides()}>{ui}</HookOverrideProvider>);
 }
 
+function overridesRecordingVersionLanguage() {
+  const requestedLanguages: string[] = [];
+  const overrides = {
+    ...defaultOverrides(),
+    useVersions: (languageRanges?: string | string[]) => {
+      if (languageRanges !== undefined && !Array.isArray(languageRanges)) {
+        requestedLanguages.push(languageRanges);
+      }
+      return {
+        versions: { data: [], next_page_token: null },
+        loading: false,
+        error: null,
+        refetch: () => undefined,
+      };
+    },
+  } satisfies HookOverrides;
+  return {
+    requestedLanguages,
+    overrides,
+  };
+}
+
 const mockBooks: BibleBook[] = [
   {
     id: 'JHN',
@@ -405,5 +427,45 @@ describe('BibleReader Toolbar - onChapterPickerPress', () => {
     });
 
     expect(screen.queryByPlaceholderText('Search')).not.toBeInTheDocument();
+  });
+});
+
+describe('BibleReader version picker language', () => {
+  it('seeds the version picker with defaultLanguageId instead of the browser language', () => {
+    const { overrides, requestedLanguages } = overridesRecordingVersionLanguage();
+
+    render(
+      <HookOverrideProvider overrides={overrides}>
+        <BibleReader.Root
+          defaultVersionId={3034}
+          defaultBook="JHN"
+          defaultChapter="1"
+          defaultLanguageId="es"
+        >
+          <BibleReader.Toolbar />
+        </BibleReader.Root>
+      </HookOverrideProvider>,
+    );
+
+    expect(requestedLanguages.includes('es')).toBe(true);
+  });
+
+  it('uses a controlled languageId for the version picker', () => {
+    const { overrides, requestedLanguages } = overridesRecordingVersionLanguage();
+
+    render(
+      <HookOverrideProvider overrides={overrides}>
+        <BibleReader.Root
+          defaultVersionId={3034}
+          defaultBook="JHN"
+          defaultChapter="1"
+          languageId="ko"
+        >
+          <BibleReader.Toolbar />
+        </BibleReader.Root>
+      </HookOverrideProvider>,
+    );
+
+    expect(requestedLanguages.includes('ko')).toBe(true);
   });
 });
