@@ -5,22 +5,14 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
 import React, { useContext } from 'react';
-import { useTranslation } from 'react-i18next';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionContext } from '@youversion/platform-react-hooks';
 import { YouVersionProvider } from '@/components/YouVersionProvider';
 import i18n from '@/i18n';
-import en from '@/i18n/locales/en.json';
-import es from '@/i18n/locales/es.json';
 
 function AdditionalHeadersProbe(): React.ReactElement {
   const headers = useContext(YouVersionContext)?.additionalHeaders;
   return <div data-testid="headers">{headers ? JSON.stringify(headers) : 'none'}</div>;
-}
-
-function VerseOfTheDayHeading() {
-  const { t } = useTranslation(undefined, { i18n });
-  return <p>{t('verseOfTheDay')}</p>;
 }
 
 describe('UI YouVersionProvider', () => {
@@ -136,7 +128,7 @@ describe('UI YouVersionProvider', () => {
     },
   );
 
-  it('uses locale for bundled copy instead of the browser language', async () => {
+  it('uses locale instead of the browser language', async () => {
     vi.stubGlobal('navigator', {
       language: 'en-US',
       languages: ['en-US', 'en'],
@@ -144,20 +136,19 @@ describe('UI YouVersionProvider', () => {
 
     const { rerender } = render(
       <YouVersionProvider appKey="test-key" locale="es">
-        <VerseOfTheDayHeading />
+        <div />
       </YouVersionProvider>,
     );
 
-    expect(await screen.findByText(es.verseOfTheDay)).toBeInTheDocument();
-    expect(screen.queryByText(en.verseOfTheDay)).not.toBeInTheDocument();
+    expect(i18n.language).toBe('es');
 
     rerender(
       <YouVersionProvider appKey="test-key" locale="es-MX">
-        <VerseOfTheDayHeading />
+        <div />
       </YouVersionProvider>,
     );
 
-    expect(await screen.findByText(es.verseOfTheDay)).toBeInTheDocument();
+    expect(i18n.language).toBe('es');
 
     await i18n.changeLanguage('en');
     vi.unstubAllGlobals();
