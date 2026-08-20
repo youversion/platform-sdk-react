@@ -1,14 +1,13 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useVerse } from './useVerse';
-import { type BibleClient, type BibleVerse } from '@youversion/platform-core';
-import { useBibleClient } from './useBibleClient';
-import { createYVWrapper } from './test/utils';
-
-vi.mock('./useBibleClient');
+import { type BibleVerse } from '@youversion/platform-core';
+import { createBibleClientStub, createYVWrapper } from './test/utils';
 
 describe('useVerse', () => {
   const mockGetVerse = vi.fn();
+  const bibleClient = createBibleClientStub({ getVerse: mockGetVerse });
+  const wrapper = createYVWrapper('test-app-key', { bibleClient });
 
   const mockVerse: BibleVerse = {
     id: '1',
@@ -18,14 +17,10 @@ describe('useVerse', () => {
 
   beforeEach(() => {
     mockGetVerse.mockResolvedValue(mockVerse);
-
-    const mockClient: Partial<BibleClient> = { getVerse: mockGetVerse };
-    vi.mocked(useBibleClient).mockReturnValue(mockClient as BibleClient);
   });
 
   describe('fetching verse', () => {
     it('should fetch verse with all 4 parameters', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVerse(111, 'MAT', 1, 1), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -42,44 +37,44 @@ describe('useVerse', () => {
     it.each([
       {
         param: 'versionId',
-        HookFn: ({ val }: { val: number | string }) => useVerse(val as number, 'MAT', 1, 1),
-        initial: { val: 1 },
-        updated: { val: 111 },
+        initial: { versionId: 1, book: 'MAT', chapter: 1, verse: 1 },
+        updated: { versionId: 111, book: 'MAT', chapter: 1, verse: 1 },
         expectedInitial: [1, 'MAT', 1, 1],
         expectedUpdated: [111, 'MAT', 1, 1],
       },
       {
         param: 'book',
-        HookFn: ({ val }: { val: number | string }) => useVerse(1, val as string, 1, 1),
-        initial: { val: 'MAT' },
-        updated: { val: 'GEN' },
+        initial: { versionId: 1, book: 'MAT', chapter: 1, verse: 1 },
+        updated: { versionId: 1, book: 'GEN', chapter: 1, verse: 1 },
         expectedInitial: [1, 'MAT', 1, 1],
         expectedUpdated: [1, 'GEN', 1, 1],
       },
       {
         param: 'chapter',
-        HookFn: ({ val }: { val: number | string }) => useVerse(1, 'MAT', val as number, 1),
-        initial: { val: 1 },
-        updated: { val: 5 },
+        initial: { versionId: 1, book: 'MAT', chapter: 1, verse: 1 },
+        updated: { versionId: 1, book: 'MAT', chapter: 5, verse: 1 },
         expectedInitial: [1, 'MAT', 1, 1],
         expectedUpdated: [1, 'MAT', 5, 1],
       },
       {
         param: 'verse',
-        HookFn: ({ val }: { val: number | string }) => useVerse(1, 'MAT', 1, val as number),
-        initial: { val: 1 },
-        updated: { val: 10 },
+        initial: { versionId: 1, book: 'MAT', chapter: 1, verse: 1 },
+        updated: { versionId: 1, book: 'MAT', chapter: 1, verse: 10 },
         expectedInitial: [1, 'MAT', 1, 1],
         expectedUpdated: [1, 'MAT', 1, 10],
       },
     ])(
       'should refetch when $param changes',
-      async ({ HookFn, initial, updated, expectedInitial, expectedUpdated }) => {
-        const wrapper = createYVWrapper();
-        const { result, rerender } = renderHook(HookFn, {
-          wrapper,
-          initialProps: initial,
-        });
+      async ({ initial, updated, expectedInitial, expectedUpdated }) => {
+        type VerseArgs = { versionId: number; book: string; chapter: number; verse: number };
+        const { result, rerender } = renderHook(
+          ({ versionId, book, chapter, verse }: VerseArgs) =>
+            useVerse(versionId, book, chapter, verse),
+          {
+            wrapper,
+            initialProps: initial,
+          },
+        );
 
         await waitFor(() => {
           expect(result.current.loading).toBe(false);
@@ -102,7 +97,6 @@ describe('useVerse', () => {
     );
 
     it('should not fetch when enabled is false', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVerse(1, 'MAT', 1, 1, { enabled: false }), {
         wrapper,
       });
@@ -116,7 +110,6 @@ describe('useVerse', () => {
     });
 
     it('should handle fetch errors', async () => {
-      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch verse');
       mockGetVerse.mockRejectedValueOnce(error);
 
@@ -131,7 +124,6 @@ describe('useVerse', () => {
     });
 
     it('should support manual refetch', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useVerse(1, 'MAT', 1, 1), { wrapper });
 
       await waitFor(() => {

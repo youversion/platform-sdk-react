@@ -341,13 +341,13 @@ describe('useFilteredVersions', () => {
           ...mockVersions[0]!,
           id: 20,
           title: 'Beta Title',
-          localized_title: undefined as unknown as string,
+          localized_title: '',
         },
         {
           ...mockVersions[1]!,
           id: 21,
           title: 'Alpha Title',
-          localized_title: undefined as unknown as string,
+          localized_title: '',
         },
       ];
 

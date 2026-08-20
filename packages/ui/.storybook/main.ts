@@ -23,16 +23,13 @@ const config: StorybookConfig = {
   staticDirs: ['../public'], // This is for Storybook mock service worker
   viteFinal: (config) => {
     config.define = { ...config.define, __YV_STYLES__: yvStyles };
+    const existingAlias = config.resolve?.alias;
+    const srcAlias = resolve(__dirname, '../src');
     config.resolve = {
       ...config.resolve,
-      alias: {
-        ...config.resolve?.alias,
-        /**
-         * Resolve the absolute path of the @ package to the src directory.
-         * This is needed for monorepo projects.
-         */
-        '@': resolve(dirname(fileURLToPath(import.meta.url)), '../src'),
-      },
+      alias: Array.isArray(existingAlias)
+        ? [...existingAlias, { find: '@', replacement: srcAlias }]
+        : { ...existingAlias, '@': srcAlias },
     };
     /**
      * Watch the dist folder for CSS changes when Tailwind rebuilds.

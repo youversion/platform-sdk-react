@@ -44,7 +44,10 @@ function generateI18nResources() {
     });
 
   const imports = locales
-    .map((locale, index) => `import locale${index} from './locales/${locale}.json';`)
+    .map(
+      (locale, index) =>
+        `import locale${index} from './locales/${locale}.json' with { type: 'json' };`,
+    )
     .join('\n');
 
   const resourceEntries = locales

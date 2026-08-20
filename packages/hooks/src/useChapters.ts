@@ -2,18 +2,16 @@
 
 import { useBibleClient } from './useBibleClient';
 import { useApiData, type UseApiDataOptions } from './useApiData';
+import type { UseNamedQueryResult } from './useQueryResult';
 import type { BibleChapter, Collection } from '@youversion/platform-core';
+
+export type UseChaptersResult = UseNamedQueryResult<'chapters', Collection<BibleChapter>>;
 
 export function useChapters(
   versionId: number,
   book: string,
   options?: UseApiDataOptions,
-): {
-  chapters: Collection<BibleChapter> | null;
-  loading: boolean;
-  error: Error | null;
-  refetch: () => void;
-} {
+): UseChaptersResult {
   const bibleClient = useBibleClient();
 
   // Don't attempt to fetch if book is invalid

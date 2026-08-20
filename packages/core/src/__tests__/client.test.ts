@@ -43,42 +43,65 @@ describe('ApiClient', () => {
     });
   });
 
-  describe('buildQueryString', () => {
-    const buildQueryString = (params?: Parameters<ApiClient['get']>[1]) =>
-      (
-        apiClient as unknown as {
-          buildQueryString: (params?: Parameters<ApiClient['get']>[1]) => string;
-        }
-      ).buildQueryString(params);
+  describe('query string serialization', () => {
+    it('should serialize a single scalar parameter', async () => {
+      server.use(
+        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
+          return HttpResponse.json({ search: new URL(request.url).search });
+        }),
+      );
 
-    it('should serialize single scalar parameter', () => {
-      const query = buildQueryString({ param: 'value' });
-
-      expect(query).toBe('?param=value');
+      const result = await apiClient.get<{ search: string }>('/test', { param: 'value' });
+      expect(result.search).toBe('?param=value');
     });
 
-    it('should serialize an array of length 1 as repeated key', () => {
-      const query = buildQueryString({ param: ['only'] });
+    it('should serialize an array of length 1 as a repeated key', async () => {
+      server.use(
+        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
+          return HttpResponse.json({ search: new URL(request.url).search });
+        }),
+      );
 
-      expect(query).toBe('?param=only');
+      const result = await apiClient.get<{ search: string }>('/test', { param: ['only'] });
+      expect(result.search).toBe('?param=only');
     });
 
-    it('should serialize an array of length 2 as repeated keys', () => {
-      const query = buildQueryString({ param: ['one', 'two'] });
+    it('should serialize an array of length 2 as repeated keys', async () => {
+      server.use(
+        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
+          return HttpResponse.json({ search: new URL(request.url).search });
+        }),
+      );
 
-      expect(query).toBe('?param=one&param=two');
+      const result = await apiClient.get<{ search: string }>('/test', { param: ['one', 'two'] });
+      expect(result.search).toBe('?param=one&param=two');
     });
 
-    it('should serialize an array of length 3 as repeated keys', () => {
-      const query = buildQueryString({ param: ['one', 'two', 'three'] });
+    it('should serialize an array of length 3 as repeated keys', async () => {
+      server.use(
+        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
+          return HttpResponse.json({ search: new URL(request.url).search });
+        }),
+      );
 
-      expect(query).toBe('?param=one&param=two&param=three');
+      const result = await apiClient.get<{ search: string }>('/test', {
+        param: ['one', 'two', 'three'],
+      });
+      expect(result.search).toBe('?param=one&param=two&param=three');
     });
 
-    it('should handle both scalar and array parameters together', () => {
-      const query = buildQueryString({ param: 'value', list: ['one', 'two'] });
+    it('should handle both scalar and array parameters together', async () => {
+      server.use(
+        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
+          return HttpResponse.json({ search: new URL(request.url).search });
+        }),
+      );
 
-      expect(query).toBe('?param=value&list=one&list=two');
+      const result = await apiClient.get<{ search: string }>('/test', {
+        param: 'value',
+        list: ['one', 'two'],
+      });
+      expect(result.search).toBe('?param=value&list=one&list=two');
     });
   });
 

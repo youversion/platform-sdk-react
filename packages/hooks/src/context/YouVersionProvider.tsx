@@ -73,8 +73,8 @@ const AuthProvider = lazy(() => import('./YouVersionAuthProvider'));
 function useResolvedTheme(theme: 'light' | 'dark' | 'system'): 'light' | 'dark' {
   const [resolved, setResolved] = useState<'light' | 'dark'>(() => {
     if (theme !== 'system') return theme;
-    if (typeof window === 'undefined') return 'light';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (!globalThis.window) return 'light';
+    return globalThis.window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
   useEffect(() => {
@@ -83,9 +83,9 @@ function useResolvedTheme(theme: 'light' | 'dark' | 'system'): 'light' | 'dark' 
       return;
     }
 
-    if (typeof window === 'undefined') return;
+    if (!globalThis.window) return;
 
-    const mediaQueryList = window.matchMedia('(prefers-color-scheme: dark)');
+    const mediaQueryList = globalThis.window.matchMedia('(prefers-color-scheme: dark)');
     setResolved(mediaQueryList.matches ? 'dark' : 'light');
 
     const handler = (e: MediaQueryListEvent) => {

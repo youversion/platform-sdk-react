@@ -272,7 +272,7 @@ describe('transformBibleHtml - return type', () => {
     const result = transformBibleHtml(html, createAdapters());
 
     expect(result).toHaveProperty('html');
-    expect(typeof result.html).toBe('string');
+    expect(result.html).toEqual(expect.any(String));
   });
 
   it('should not have notes or rawHtml properties', () => {

@@ -1,14 +1,15 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useOrganization } from './useOrganization';
-import { type Organization, type OrganizationsClient } from '@youversion/platform-core';
-import { useOrganizationsClient } from './useOrganizationsClient';
-import { createYVWrapper } from './test/utils';
-
-vi.mock('./useOrganizationsClient');
+import { type Organization } from '@youversion/platform-core';
+import { createOrganizationsClientStub, createYVWrapper } from './test/utils';
 
 describe('useOrganization', () => {
   const mockGetOrganization = vi.fn();
+  const organizationsClient = createOrganizationsClientStub({
+    getOrganization: mockGetOrganization,
+  });
+  const wrapper = createYVWrapper('test-app-key', { organizationsClient });
 
   const mockOrganization: Organization = {
     id: '798d8fa4-f640-4155-8cfb-fa91d1d8a06c',
@@ -19,14 +20,10 @@ describe('useOrganization', () => {
 
   beforeEach(() => {
     mockGetOrganization.mockResolvedValue(mockOrganization);
-
-    const mockClient: Partial<OrganizationsClient> = { getOrganization: mockGetOrganization };
-    vi.mocked(useOrganizationsClient).mockReturnValue(mockClient as OrganizationsClient);
   });
 
   describe('fetching organization', () => {
     it('should fetch organization by ID', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useOrganization('798d8fa4-f640-4155-8cfb-fa91d1d8a06c'), {
         wrapper,
       });
@@ -43,7 +40,6 @@ describe('useOrganization', () => {
     });
 
     it('should refetch when organizationId changes', async () => {
-      const wrapper = createYVWrapper();
       const { rerender } = renderHook(({ organizationId }) => useOrganization(organizationId), {
         wrapper,
         initialProps: { organizationId: '798d8fa4-f640-4155-8cfb-fa91d1d8a06c' },
@@ -68,7 +64,6 @@ describe('useOrganization', () => {
 
   describe('enabled option', () => {
     it('should not fetch when enabled is false', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(
         () => useOrganization('798d8fa4-f640-4155-8cfb-fa91d1d8a06c', { enabled: false }),
         { wrapper },
@@ -83,7 +78,6 @@ describe('useOrganization', () => {
     });
 
     it('should not fetch when organizationId is empty', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useOrganization(''), { wrapper });
 
       await waitFor(() => {
@@ -97,7 +91,6 @@ describe('useOrganization', () => {
 
   describe('error handling', () => {
     it('should handle fetch errors', async () => {
-      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch organization');
       mockGetOrganization.mockRejectedValueOnce(error);
 
@@ -116,7 +109,6 @@ describe('useOrganization', () => {
 
   describe('manual refetch', () => {
     it('should support manual refetch', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useOrganization('798d8fa4-f640-4155-8cfb-fa91d1d8a06c'), {
         wrapper,
       });

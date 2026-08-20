@@ -23,11 +23,25 @@ import type {
   VOTD,
 } from './types';
 
+type VersionListQuery = {
+  'language_ranges[]': string[];
+  license_id?: string | number;
+  page_size?: number | '*';
+  'fields[]'?: string[];
+  page_token?: string;
+  all_available?: string;
+};
+
+type PassageQuery = {
+  format: 'html' | 'text';
+  include_headings?: boolean;
+  include_notes?: boolean;
+};
+
 async function getHtmlAdapters(): Promise<TransformBibleHtmlOptions> {
-  if (typeof globalThis.DOMParser !== 'undefined') {
+  if (globalThis.DOMParser) {
     return {
-      parseHtml: (h) =>
-        new globalThis.DOMParser().parseFromString(h, 'text/html') as unknown as Document,
+      parseHtml: (h) => new globalThis.DOMParser().parseFromString(h, 'text/html'),
       serializeHtml: (doc) => doc.body.innerHTML,
     };
   }
@@ -47,8 +61,7 @@ async function getHtmlAdapters(): Promise<TransformBibleHtmlOptions> {
   }
   return {
     parseHtml: (h) =>
-      new jsdom.JSDOM(`<!DOCTYPE html><html><body>${h}</body></html>`).window
-        .document as unknown as Document,
+      new jsdom.JSDOM(`<!DOCTYPE html><html><body>${h}</body></html>`).window.document,
     serializeHtml: (doc) => doc.body.innerHTML,
   };
 }
@@ -130,7 +143,7 @@ export class BibleClient {
       .nonempty('At least one language range is required')
       .parse(languageRangeArray);
 
-    const params: Record<string, string | number | string[]> = {
+    const params: VersionListQuery = {
       'language_ranges[]': parsedLanguageRanges,
     };
 
@@ -372,7 +385,7 @@ export class BibleClient {
     if (include_notes !== undefined) {
       BibleClient.booleanSchema.parse(include_notes);
     }
-    const params: Record<string, string | number | boolean> = {
+    const params: PassageQuery = {
       format,
     };
     if (include_headings !== undefined) {

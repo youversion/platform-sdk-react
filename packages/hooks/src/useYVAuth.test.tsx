@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { useYVAuth } from './useYVAuth';
@@ -6,12 +6,6 @@ import { YouVersionAuthContext } from './context/YouVersionAuthContext';
 import { createMockUserInfo, createMockAuthResult } from './__tests__/mocks/auth';
 import { createAuthProviderWrapper } from './__tests__/utils/test-utils';
 import type { AuthenticationScopes } from '@youversion/platform-core';
-
-// Mock the core modules using shared factory
-vi.mock('@youversion/platform-core', async () => {
-  const { createSimpleCoreMockFactory } = await import('./__tests__/mocks/core-mock-factory');
-  return createSimpleCoreMockFactory();
-});
 
 const mockUserInfo = createMockUserInfo();
 const mockAuthResult = createMockAuthResult();
@@ -41,14 +35,26 @@ const renderAuthHook = async () => {
 };
 
 describe('useYVAuth', () => {
+  let signIn: MockInstance;
+
   beforeEach(() => {
     // Setup window mock
     vi.stubGlobal('window', mockWindow);
     mockWindow.location.search = '';
 
-    // Reset configuration mocks
+    // Reset configuration
     YouVersionPlatformConfiguration.clearAuthTokens();
     YouVersionPlatformConfiguration.installationId = null;
+
+    signIn = vi.spyOn(YouVersionAPIUsers, 'signIn').mockResolvedValue(undefined);
+    vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockResolvedValue(null);
+    vi.spyOn(YouVersionAPIUsers, 'getStoredUserInfo').mockReturnValue(null);
+    vi.spyOn(YouVersionAPIUsers, 'refreshTokenIfNeeded').mockResolvedValue(false);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   describe('initialization', () => {
@@ -74,7 +80,7 @@ describe('useYVAuth', () => {
   });
 
   describe('signIn', () => {
-    it('should call YouVersionAPIUsers.signIn with correct parameters', async () => {
+    it('should call signIn with correct parameters', async () => {
       const { result } = await renderAuthHook();
       const redirectUrl = 'https://example.com/callback';
 
@@ -82,14 +88,10 @@ describe('useYVAuth', () => {
         await result.current.signIn({ redirectUrl, scopes: ['profile'] });
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(
-        redirectUrl,
-        ['profile'],
-        undefined,
-      );
+      expect(signIn).toHaveBeenCalledWith(redirectUrl, ['profile'], undefined);
     });
 
-    it('should forward requested permissions to YouVersionAPIUsers.signIn', async () => {
+    it('should forward requested permissions to signIn', async () => {
       const { result } = await renderAuthHook();
       const redirectUrl = 'https://example.com/callback';
 
@@ -97,9 +99,7 @@ describe('useYVAuth', () => {
         await result.current.signIn({ redirectUrl, permissions: ['highlights'] });
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(redirectUrl, undefined, [
-        'highlights',
-      ]);
+      expect(signIn).toHaveBeenCalledWith(redirectUrl, undefined, ['highlights']);
     });
 
     it('should call signIn with empty scopes when not provided', async () => {
@@ -110,14 +110,10 @@ describe('useYVAuth', () => {
         await result.current.signIn({ redirectUrl });
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(
-        redirectUrl,
-        undefined,
-        undefined,
-      );
+      expect(signIn).toHaveBeenCalledWith(redirectUrl, undefined, undefined);
     });
 
-    it('should call YouVersionAPIUsers.signIn exactly once with scopes', async () => {
+    it('should call signIn exactly once with scopes', async () => {
       const { result } = await renderAuthHook();
       const redirectUrl = 'https://example.com/callback';
       const scopes: AuthenticationScopes[] = ['profile', 'email'];
@@ -126,15 +122,11 @@ describe('useYVAuth', () => {
         await result.current.signIn({ redirectUrl, scopes });
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledTimes(1);
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(
-        redirectUrl,
-        scopes,
-        undefined,
-      );
+      expect(signIn).toHaveBeenCalledTimes(1);
+      expect(signIn).toHaveBeenCalledWith(redirectUrl, scopes, undefined);
     });
 
-    it('should call YouVersionAPIUsers.signIn exactly once without scopes', async () => {
+    it('should call signIn exactly once without scopes', async () => {
       const { result } = await renderAuthHook();
       const redirectUrl = 'https://example.com/callback';
 
@@ -142,12 +134,8 @@ describe('useYVAuth', () => {
         await result.current.signIn({ redirectUrl });
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledTimes(1);
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(
-        redirectUrl,
-        undefined,
-        undefined,
-      );
+      expect(signIn).toHaveBeenCalledTimes(1);
+      expect(signIn).toHaveBeenCalledWith(redirectUrl, undefined, undefined);
     });
 
     it('should throw error when signIn fails', async () => {
@@ -170,11 +158,7 @@ describe('useYVAuth', () => {
         await result.current.signIn();
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(
-        'http://test.example.com',
-        undefined,
-        undefined,
-      );
+      expect(signIn).toHaveBeenCalledWith('http://test.example.com', undefined, undefined);
     });
 
     it('should use redirectUri from provider with scopes when redirectUrl is not passed', async () => {
@@ -185,11 +169,7 @@ describe('useYVAuth', () => {
         await result.current.signIn({ scopes });
       });
 
-      expect(vi.mocked(YouVersionAPIUsers).signIn).toHaveBeenCalledWith(
-        'http://test.example.com',
-        scopes,
-        undefined,
-      );
+      expect(signIn).toHaveBeenCalledWith('http://test.example.com', scopes, undefined);
     });
   });
 

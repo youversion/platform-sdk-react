@@ -12,6 +12,7 @@
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "outDir": "dist",
+    "rootDir": "./src",
     "skipLibCheck": true,
     "stripInternal": true,
     "paths": {

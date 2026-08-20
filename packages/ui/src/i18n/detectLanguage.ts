@@ -3,7 +3,8 @@
  * Returns undefined during SSR or other non-browser contexts.
  */
 export function getBrowserLanguages(): readonly string[] | undefined {
-  if (typeof navigator === 'undefined') {
+  const navigator = globalThis.navigator;
+  if (!navigator) {
     return undefined;
   }
 
@@ -22,10 +23,12 @@ export function getBrowserLanguages(): readonly string[] | undefined {
  * Browser BCP 47 bases that differ from our bundle code.
  * Norwegian ships as `no` from platform-localization; browsers report `nb`/`nn`.
  */
-const LANGUAGE_ALIASES: Readonly<Record<string, string>> = {
-  nb: 'no',
-  nn: 'no',
-};
+function languageAliasForBase(base: string): string | undefined {
+  if (base === 'nb' || base === 'nn') {
+    return 'no';
+  }
+  return undefined;
+}
 
 function localeCandidates(tag: string): readonly string[] {
   const lower = tag.toLowerCase();
@@ -33,7 +36,7 @@ function localeCandidates(tag: string): readonly string[] {
   if (!base) {
     return [lower];
   }
-  const alias = LANGUAGE_ALIASES[base];
+  const alias = languageAliasForBase(base);
   return alias ? [lower, base, alias] : [lower, base];
 }
 
