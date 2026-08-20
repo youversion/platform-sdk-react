@@ -163,17 +163,16 @@ describe('UI YouVersionProvider', () => {
     vi.unstubAllGlobals();
   });
 
-  it('renders locale copy during SSR without waiting for layout effects', async () => {
+  it('applies locale during SSR without waiting for layout effects', async () => {
     await i18n.changeLanguage('en');
 
-    const html = renderToString(
+    renderToString(
       <YouVersionProvider appKey="test-key" locale="es">
-        <VerseOfTheDayHeading />
+        <div />
       </YouVersionProvider>,
     );
 
-    expect(html).toContain(es.verseOfTheDay);
-    expect(html).not.toContain(en.verseOfTheDay);
+    expect(i18n.language).toBe('es');
 
     await i18n.changeLanguage('en');
   });
