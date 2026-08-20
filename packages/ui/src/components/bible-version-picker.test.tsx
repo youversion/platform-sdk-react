@@ -18,11 +18,12 @@ import {
   RECENT_VERSIONS_KEY,
 } from './bible-version-picker';
 import type { HookOverrides } from '@youversion/platform-react-hooks';
-import type {
-  BibleVersion,
-  GetLanguagesOptions,
-  Language,
-  Organization,
+import {
+  YouVersionPlatformConfiguration,
+  type BibleVersion,
+  type GetLanguagesOptions,
+  type Language,
+  type Organization,
 } from '@youversion/platform-core';
 import { HookOverrideProvider } from '@/test/hook-overrides';
 
@@ -192,6 +193,9 @@ function getVersionSearchInput() {
 describe('BibleVersionPicker', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    YouVersionPlatformConfiguration.permittedVersionIds = undefined;
+    YouVersionPlatformConfiguration.excludedVersionIds = undefined;
+    YouVersionPlatformConfiguration.permittedLanguageTags = undefined;
     Object.defineProperty(window, 'localStorage', {
       value: {
         getItem: vi.fn(() => null),
@@ -408,6 +412,37 @@ describe('BibleVersionPicker', () => {
       expect(media!.className).toContain('yv:size-16');
       expect(media!.className).toContain('yv:bg-secondary');
       expect(media!.className).toContain('yv:rounded-[8px]');
+    });
+
+    it('hides excluded recent versions without rewriting localStorage', async () => {
+      const stored = [
+        {
+          id: 111,
+          title: 'New International Version',
+          localized_abbreviation: 'NIV',
+          abbreviation: 'NIV',
+        },
+        {
+          id: 206,
+          title: 'New Living Translation',
+          localized_abbreviation: 'NLT',
+          abbreviation: 'NLT',
+        },
+      ];
+      const setItem = vi.fn();
+      vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
+        key === RECENT_VERSIONS_KEY ? JSON.stringify(stored) : null,
+      );
+      vi.spyOn(window.localStorage, 'setItem').mockImplementation(setItem);
+
+      YouVersionPlatformConfiguration.excludedVersionIds = [111];
+      renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
+      await openPicker();
+
+      const recentList = await screen.findByTestId('recent-version-list');
+      expect(recentList.textContent).toContain('NLT');
+      expect(recentList.textContent).not.toContain('NIV');
+      expect(setItem).not.toHaveBeenCalled();
     });
   });
 

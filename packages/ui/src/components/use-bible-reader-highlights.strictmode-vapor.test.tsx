@@ -72,6 +72,8 @@ function Harness({
 }
 
 describe('vapor flash — StrictMode + server-truth remove + selection-clear + held refetch', () => {
+  // waitFor gates below use 5s each; the default 5s it() timeout can expire first
+  // on a loaded CI runner and hide the real assertion.
   it('never repaints verse 2 between remove-click and the (held) refetch response', async () => {
     // StrictMode double-mounts → the mount fires TWO fetches; only the
     // POST-remove refetch is the one we hold. Phase-gate the mock so every
@@ -102,9 +104,12 @@ describe('vapor flash — StrictMode + server-truth remove + selection-clear + h
     );
 
     // Wait for server truth to render verse 2 highlighted.
-    await waitFor(() => {
-      expect(frames.at(-1)).toEqual({ 2: 'fffe00' });
-    });
+    await waitFor(
+      () => {
+        expect(frames.at(-1)).toEqual({ 2: 'fffe00' });
+      },
+      { timeout: 5000 },
+    );
     const mountFetches = getHighlights.mock.calls.length;
 
     const startFrame = frames.length;
@@ -136,5 +141,5 @@ describe('vapor flash — StrictMode + server-truth remove + selection-clear + h
       `verse 2 resurrected in ${resurrected.length}/${window.length} frame(s): ` +
         JSON.stringify(window),
     ).toEqual([]);
-  });
+  }, 20_000);
 });

@@ -49,6 +49,23 @@ Optional `locale` sets bundled UI copy (Verse of the Day heading, buttons, etc.)
 </YouVersionProvider>
 ```
 
+### Limit which Bible versions the SDK uses
+
+By default the version picker offers Bible versions in every available language. Limit that with `permittedLanguageTags`, `permittedVersionIds`, and `excludedVersionIds` on `YouVersionProvider`. A version must satisfy every list that is set. Exclusion wins if an id is in both permit and exclude lists. Unset means no restriction; an empty permit list permits nothing.
+
+```tsx
+<YouVersionProvider
+  appKey="YOUR_APP_KEY"
+  permittedLanguageTags={['en']}
+  permittedVersionIds={[111, 3034]}
+  excludedVersionIds={[4212]}
+>
+  <BibleCard reference="JHN.3.16" versionId={3034} showVersionPicker />
+</YouVersionProvider>
+```
+
+Language tags are BCP 47 (`en`, `es`, `zh-Hans`). Version ids are YouVersion Bible version ids. An unusable id is refused everywhere — lists, picker, and `versionId` on reader/card/text/VOTD — and surfaces the existing forbidden error. Core-only hosts can set the same lists on `YouVersionPlatformConfiguration`.
+
 ## Styling
 
 All component CSS is automatically injected when you wrap your app with `YouVersionProvider` — no extra imports or build steps needed. Under the hood, it uses React 19's [`<style precedence>`](https://react.dev/reference/react-dom/components/style) to hoist styles into `<head>` with built-in deduplication and SSR/Suspense support.

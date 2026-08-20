@@ -5,6 +5,14 @@ import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionProvider } from './YouVersionProvider';
 import { YouVersionContext } from './YouVersionContext';
 
+function FilterReader() {
+  return (
+    <div data-testid="filters">
+      {YouVersionPlatformConfiguration.permittedVersionIds?.join(',') ?? 'none'}
+    </div>
+  );
+}
+
 function ContextReader() {
   const ctx = useContext(YouVersionContext);
   return <div data-testid="installation-id">{ctx?.installationId ?? 'none'}</div>;
@@ -13,6 +21,9 @@ function ContextReader() {
 describe('YouVersionProvider', () => {
   beforeEach(() => {
     YouVersionPlatformConfiguration.installationId = null;
+    YouVersionPlatformConfiguration.permittedVersionIds = undefined;
+    YouVersionPlatformConfiguration.excludedVersionIds = undefined;
+    YouVersionPlatformConfiguration.permittedLanguageTags = undefined;
   });
 
   it('provides a non-null installationId via context', () => {
@@ -40,5 +51,18 @@ describe('YouVersionProvider', () => {
         </YouVersionProvider>,
       ),
     ).toThrow(/non-empty "appKey" is required/);
+  });
+
+  it('writes version filters during render so the first child read sees them', () => {
+    YouVersionPlatformConfiguration.permittedVersionIds = undefined;
+
+    render(
+      <YouVersionProvider appKey="test" permittedVersionIds={[111, 3034]}>
+        <FilterReader />
+      </YouVersionProvider>,
+    );
+
+    expect(screen.getByTestId('filters').textContent).toBe('111,3034');
+    expect(YouVersionPlatformConfiguration.permittedVersionIds).toEqual([111, 3034]);
   });
 });

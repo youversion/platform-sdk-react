@@ -51,6 +51,9 @@ describe('YouVersionPlatformConfiguration', () => {
     YouVersionPlatformConfiguration.installationId = null;
     YouVersionPlatformConfiguration.clearAuthTokens();
     YouVersionPlatformConfiguration.apiHost = envApiHost;
+    YouVersionPlatformConfiguration.permittedVersionIds = undefined;
+    YouVersionPlatformConfiguration.excludedVersionIds = undefined;
+    YouVersionPlatformConfiguration.permittedLanguageTags = undefined;
   });
 
   afterEach(() => {
