@@ -31,7 +31,7 @@ function keepTabFocusInsideShadowDialog(event: React.KeyboardEvent<HTMLDivElemen
     event.currentTarget.querySelectorAll<HTMLElement>(TABBABLE_SELECTOR),
   ).filter((element) => element.getClientRects().length > 0);
   const first = tabbableElements[0];
-  const last = tabbableElements.at(-1);
+  const last = tabbableElements[tabbableElements.length - 1];
   if (!first || !last) return;
 
   if (event.shiftKey && root.activeElement === first) {
