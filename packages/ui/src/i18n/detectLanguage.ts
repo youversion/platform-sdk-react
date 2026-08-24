@@ -3,7 +3,8 @@
  * Returns undefined during SSR or other non-browser contexts.
  */
 export function getBrowserLanguages(): readonly string[] | undefined {
-  if (typeof navigator === 'undefined') {
+  const navigator = globalThis.navigator;
+  if (!navigator) {
     return undefined;
   }
 
@@ -16,6 +17,27 @@ export function getBrowserLanguages(): readonly string[] | undefined {
   }
 
   return undefined;
+}
+
+/**
+ * Browser BCP 47 bases that differ from our bundle code.
+ * Norwegian ships as `no` from platform-localization; browsers report `nb`/`nn`.
+ */
+function languageAliasForBase(base: string): string | undefined {
+  if (base === 'nb' || base === 'nn') {
+    return 'no';
+  }
+  return undefined;
+}
+
+function localeCandidates(tag: string): readonly string[] {
+  const lower = tag.toLowerCase();
+  const base = lower.split('-')[0];
+  if (!base) {
+    return [lower];
+  }
+  const alias = languageAliasForBase(base);
+  return alias ? [lower, base, alias] : [lower, base];
 }
 
 /**
@@ -34,20 +56,11 @@ export function resolveBrowserLanguage(
   const supportedLower = new Map(supportedLngs.map((lng) => [lng.toLowerCase(), lng] as const));
 
   for (const browserLang of browserLanguages) {
-    const lower = browserLang.toLowerCase();
-    const exactMatch = supportedLower.get(lower);
-    if (exactMatch) {
-      return exactMatch;
-    }
-
-    const base = lower.split('-')[0];
-    if (!base) {
-      continue;
-    }
-
-    const baseMatch = supportedLower.get(base);
-    if (baseMatch) {
-      return baseMatch;
+    for (const candidate of localeCandidates(browserLang)) {
+      const match = supportedLower.get(candidate);
+      if (match) {
+        return match;
+      }
     }
   }
 

@@ -1,8 +1,8 @@
-import type { Collection, Highlight, YouVersionUserInfo } from '@youversion/platform-core';
+import { YouVersionUserInfo, type Collection, type Highlight } from '@youversion/platform-core';
 import {
-  useHighlights,
   YouVersionAuthContext,
   YouVersionContext,
+  type HookOverrides,
 } from '@youversion/platform-react-hooks';
 import type { ReactElement, ReactNode } from 'react';
 import { vi } from 'vitest';
@@ -12,31 +12,23 @@ export function collection(data: Highlight[]): Collection<Highlight> {
   return { data, next_page_token: null };
 }
 
-function idleHighlights(): ReturnType<typeof useHighlights> {
+function idleHighlights(): ReturnType<NonNullable<HookOverrides['useHighlights']>> {
   return {
     highlights: collection([]),
     loading: false,
     error: null,
-    refetch: vi.fn(),
-    createHighlight: vi.fn(),
-    deleteHighlight: vi.fn(),
+    refetch: () => undefined,
+    createHighlight: () => Promise.reject(new Error('createHighlight not stubbed')),
+    deleteHighlight: () => Promise.resolve(),
   };
 }
 
-/**
- * Stubs the module `useHighlights` mock for this case. Call the returned
- * restore at the end of the case so later tests do not inherit the return.
- */
+/** `useHighlights` hookOverride that returns idle highlights plus any overrides. */
 export function stubUseHighlights(
-  overrides: Partial<ReturnType<typeof useHighlights>> = {},
-): () => void {
-  vi.mocked(useHighlights).mockReturnValue({
-    ...idleHighlights(),
-    ...overrides,
-  });
-  return () => {
-    vi.mocked(useHighlights).mockReturnValue(idleHighlights());
-  };
+  overrides: Partial<ReturnType<NonNullable<HookOverrides['useHighlights']>>> = {},
+): NonNullable<HookOverrides['useHighlights']> {
+  const result = { ...idleHighlights(), ...overrides };
+  return () => result;
 }
 
 /** Multi-verse YVDOM used by controlled-mode highlight tests (`.yv-v[v]` wrappers). */
@@ -67,10 +59,15 @@ export function fillFor(hex: string): string {
 }
 
 /** Minimal signed-in user the auth context needs; only `id`/`name` are read. */
-export const mockUserInfo = { id: 'user-1', name: 'Test User' } as unknown as YouVersionUserInfo;
+export const mockUserInfo = new YouVersionUserInfo({ id: 'user-1', name: 'Test User' });
+
+export type Deferred<T> = {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+};
 
 /** A promise whose resolution the test controls, so async timing is deterministic. */
-export function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+export function deferred<T>(): Deferred<T> {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((r) => {
     resolve = r;
@@ -85,12 +82,14 @@ export function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => voi
 export function Providers({
   children,
   userInfo = mockUserInfo,
+  hookOverrides,
 }: {
   children: ReactNode;
   userInfo?: YouVersionUserInfo | null;
+  hookOverrides?: HookOverrides;
 }): ReactElement {
   return (
-    <YouVersionContext.Provider value={{ appKey: 'test-app-key' }}>
+    <YouVersionContext.Provider value={{ appKey: 'test-app-key', hookOverrides }}>
       <YouVersionAuthContext.Provider
         value={{ userInfo, setUserInfo: vi.fn(), isLoading: false, error: null }}
       >

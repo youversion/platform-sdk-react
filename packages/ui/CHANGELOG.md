@@ -1,5 +1,42 @@
 # @youversion/platform-react-ui
 
+## 2.10.0
+
+### Minor Changes
+
+- c24ce71: `BibleCard` now caps its painted shell at 700px by default, or at a pixel `maxWidth`. Scripture fills that shell. Pass `maxWidth="100%"` for a full-bleed shell; that path keeps the 600px inner column, and scripture fills the column. Full-bleed hosts must pass `"100%"`. `VerseOfTheDay` and `BibleReader` are unchanged.
+
+### Patch Changes
+
+- @youversion/platform-core@2.10.0
+- @youversion/platform-react-hooks@2.10.0
+
+## 2.9.0
+
+### Minor Changes
+
+- aef57f3: Hosts can pass `locale` on `YouVersionProvider` to set SDK UI language and `Accept-Language` (including Verse of the Day copy in Expo WebViews), and `defaultLanguageId` / `languageId` on `BibleReader.Root` to seed the version picker. App locale and Bible language stay separate: `locale` does not pick a default Bible translation.
+
+### Patch Changes
+
+- @youversion/platform-core@2.9.0
+- @youversion/platform-react-hooks@2.9.0
+
+## 2.8.0
+
+### Minor Changes
+
+- 830d5d5: Add `permittedVersionIds`, `excludedVersionIds`, and `permittedLanguageTags` so apps can limit which Bible versions the SDK uses (YPE-4657).
+
+### Patch Changes
+
+- e9840fc: Type-aware oxlint on TypeScript 7. Data hooks skip fetch when a hook override is set, without conditional hook calls.
+- 1b0c16c: Sync localization from platform-localization (0cca3f7): add Afrikaans (af), Arabic (ar), Czech (cs), Welsh (cy), German (de), Norwegian (no), Portuguese (pt), Vietnamese (vi); update 3 keys in en, ko, zh.
+- Updated dependencies [e9840fc]
+- Updated dependencies [830d5d5]
+  - @youversion/platform-core@2.8.0
+  - @youversion/platform-react-hooks@2.8.0
+
 ## 2.7.1
 
 ### Patch Changes

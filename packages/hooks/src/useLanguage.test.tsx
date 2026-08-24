@@ -1,13 +1,12 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useLanguage } from './useLanguage';
-import { type LanguagesClient } from '@youversion/platform-core';
-import { useLanguagesClient } from './useLanguageClient';
-
-vi.mock('./useLanguageClient');
+import { createLanguagesClientStub, createYVWrapper } from './test/utils';
 
 describe('useLanguage', () => {
   const mockGetLanguage = vi.fn();
+  const languagesClient = createLanguagesClientStub({ getLanguage: mockGetLanguage });
+  const wrapper = createYVWrapper('test-app-key', { languagesClient });
 
   const mockLanguage = {
     id: 'en',
@@ -27,14 +26,11 @@ describe('useLanguage', () => {
 
   beforeEach(() => {
     mockGetLanguage.mockResolvedValue(mockLanguage);
-
-    const mockClient: Partial<LanguagesClient> = { getLanguage: mockGetLanguage };
-    vi.mocked(useLanguagesClient).mockReturnValue(mockClient as LanguagesClient);
   });
 
   describe('fetching language', () => {
     it('should fetch a language by id', async () => {
-      const { result } = renderHook(() => useLanguage('en'));
+      const { result } = renderHook(() => useLanguage('en'), { wrapper });
 
       expect(result.current.loading).toBe(true);
       expect(result.current.language).toBe(null);
@@ -49,6 +45,7 @@ describe('useLanguage', () => {
 
     it('should refetch when languageId changes', async () => {
       const { result, rerender } = renderHook(({ languageId }) => useLanguage(languageId), {
+        wrapper,
         initialProps: { languageId: 'en' },
       });
 
@@ -69,7 +66,7 @@ describe('useLanguage', () => {
     });
 
     it('should not fetch when enabled is false', async () => {
-      const { result } = renderHook(() => useLanguage('en', { enabled: false }));
+      const { result } = renderHook(() => useLanguage('en', { enabled: false }), { wrapper });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -83,7 +80,7 @@ describe('useLanguage', () => {
       const error = new Error('Failed to fetch language');
       mockGetLanguage.mockRejectedValueOnce(error);
 
-      const { result } = renderHook(() => useLanguage('en'));
+      const { result } = renderHook(() => useLanguage('en'), { wrapper });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -94,7 +91,7 @@ describe('useLanguage', () => {
     });
 
     it('should support manual refetch', async () => {
-      const { result } = renderHook(() => useLanguage('en'));
+      const { result } = renderHook(() => useLanguage('en'), { wrapper });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);

@@ -34,6 +34,22 @@ interface YouVersionProviderPropsBase {
    * to replace `X-YVP-Sdk` with their own identifier.
    */
   additionalHeaders?: Record<string, string>;
+  /**
+   * Bible version ids this app may use. Unset = no restriction. `[]` permits
+   * nothing. Synced onto `YouVersionPlatformConfiguration` during render so
+   * the first child fetch sees the filter (YPE-4657).
+   */
+  permittedVersionIds?: number[];
+  /**
+   * Bible version ids this app may not use. Unset or `[]` excludes nothing.
+   * Exclusion wins over `permittedVersionIds`.
+   */
+  excludedVersionIds?: number[];
+  /**
+   * BCP 47 language tags this app may use (`en`, `zh-Hans`). Unset = no
+   * restriction. `[]` permits nothing.
+   */
+  permittedLanguageTags?: string[];
 }
 
 interface YouVersionProviderPropsWithAuth extends YouVersionProviderPropsBase {
@@ -57,8 +73,8 @@ const AuthProvider = lazy(() => import('./YouVersionAuthProvider'));
 function useResolvedTheme(theme: 'light' | 'dark' | 'system'): 'light' | 'dark' {
   const [resolved, setResolved] = useState<'light' | 'dark'>(() => {
     if (theme !== 'system') return theme;
-    if (typeof window === 'undefined') return 'light';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (!globalThis.window) return 'light';
+    return globalThis.window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
   useEffect(() => {
@@ -67,9 +83,9 @@ function useResolvedTheme(theme: 'light' | 'dark' | 'system'): 'light' | 'dark' 
       return;
     }
 
-    if (typeof window === 'undefined') return;
+    if (!globalThis.window) return;
 
-    const mediaQueryList = window.matchMedia('(prefers-color-scheme: dark)');
+    const mediaQueryList = globalThis.window.matchMedia('(prefers-color-scheme: dark)');
     setResolved(mediaQueryList.matches ? 'dark' : 'light');
 
     const handler = (e: MediaQueryListEvent) => {
@@ -115,8 +131,15 @@ function YouVersionProviderInner(
     additionalHeaders,
     appName,
     signInPromptMessage,
+    permittedVersionIds,
+    excludedVersionIds,
+    permittedLanguageTags,
     children,
   } = props;
+
+  YouVersionPlatformConfiguration.permittedVersionIds = permittedVersionIds;
+  YouVersionPlatformConfiguration.excludedVersionIds = excludedVersionIds;
+  YouVersionPlatformConfiguration.permittedLanguageTags = permittedLanguageTags;
 
   const resolvedTheme = useResolvedTheme(theme);
 

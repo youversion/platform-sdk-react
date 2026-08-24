@@ -1,5 +1,5 @@
 import type { Highlight } from '@youversion/platform-core';
-import { normalizeHighlightHex } from './highlight-colors';
+import { normalizeHighlightHex, type HighlightedVerses } from './highlight-colors';
 import { buildPassageIds } from './usfm-ranges';
 
 /**
@@ -186,8 +186,8 @@ export function deriveHighlightedVerses(
   versionId: number,
   book: string,
   chapter: string,
-): Record<number, string> {
-  const map: Record<number, string> = {};
+): HighlightedVerses {
+  const map: HighlightedVerses = {};
   for (const { version_id, passage_id, color } of highlights) {
     if (version_id !== versionId) continue;
     const normalizedColor = normalizeHighlightHex(color);

@@ -1,6 +1,6 @@
 {
   "name": "@youversion/platform-core",
-  "version": "2.7.1",
+  "version": "2.10.0",
   "description": "A type-safe TypeScript SDK for accessing the YouVersion Platform APIs. Get Bible content and build Bible-based applications.",
   "license": "Apache-2.0",
   "type": "module",
@@ -39,9 +39,10 @@
   },
   "scripts": {
     "dev": "tsup --watch",
-    "build": "tsup",
+    "build:js": "tsup",
+    "build:types": "tsc -p tsconfig.build.json",
+    "build": "pnpm build:js && pnpm build:types",
     "prepublishOnly": "YVP_PUBLISH_BUILD=true pnpm build && node ../../scripts/check-sdk-version-stamp.mjs core",
-    "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "dotenv -e .env.local -- vitest run",
     "test:integration": "INTEGRATION_TESTS=true dotenv -e .env.local -- vitest run",
@@ -49,16 +50,14 @@
     "test:coverage": "dotenv -e .env.local -- vitest run --coverage"
   },
   "devDependencies": {
-    "@internal/eslint-config": "workspace:*",
     "@internal/tsconfig": "workspace:*",
     "@types/jsdom": "^28.0.1",
     "@vitest/coverage-v8": "4.0.4",
     "dotenv-cli": "7.4.2",
-    "eslint": "9.38.0",
     "jsdom": "28.1.0",
     "msw": "2.11.6",
     "tsup": "8.5.0",
-    "typescript": "5.9.3",
+    "typescript": "7.0.2",
     "vitest": "4.0.4"
   },
   "peerDependencies": {

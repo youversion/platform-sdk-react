@@ -58,6 +58,20 @@ const { t } = useTranslation(undefined, { i18n });
 
 Never hardcode user-facing text in JSX attributes (`aria-label`, `title`, `placeholder`, `alt`) or visible copy.
 
+## Host-set language
+
+By default the UI language follows `navigator.languages`. Pass `locale` on `YouVersionProvider` to set it explicitly — for example the React Native Expo SDK forwarding its provider `locale` into a WebView:
+
+```tsx
+<YouVersionProvider appKey="YOUR_APP_KEY" locale="es">
+  <VerseOfTheDay />
+</YouVersionProvider>
+```
+
+Regional tags such as `es-MX` resolve to a bundled locale (`es`). Unsupported tags fall back to English. Omit `locale` to keep browser detection. `locale` also sets `Accept-Language` on API calls unless the host already set that header.
+
+This is app locale, not Bible translation language. Seed the version picker with `defaultLanguageId` on `BibleReader.Root`. Do not map `locale` to a Bible language. No new translation keys are needed for this; existing bundles (including Spanish `verseOfTheDay`) are used as-is.
+
 ## Local checks
 
 ```bash
@@ -78,7 +92,7 @@ pnpm test:ci-scripts
 
 - **locale-ownership** job fails PRs that touch `packages/ui/src/i18n/locales/**` unless the PR author is `platform-localization-pr-bot[bot]`, the localization sync App. The branch name is deliberately not part of the check — upstream owns it and has changed it before ([ADR 0003](./adr/0003-locale-ownership-gate-keys-on-pr-author.md)). Add English strings upstream in platform-localization instead.
 - **i18n-check** job runs `pnpm check:i18n` on every PR.
-- **Lint** job runs ESLint with `eslint-plugin-i18next` scoped to `packages/ui/src/components/**` (excluding `*.test.*` and `*.stories.*`).
+- **Lint** job runs oxlint with `eslint-plugin-i18next` as a JS plugin, scoped to `packages/ui/src/components/**` (excluding `*.test.*` and `*.stories.*`).
 
 ## Key naming
 

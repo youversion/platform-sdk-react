@@ -23,4 +23,4 @@ export {
   type UseYVAuthReturn,
 } from '@youversion/platform-react-hooks';
 
-export { YouVersionProvider } from './components/YouVersionProvider';
+export { YouVersionProvider, type YouVersionProviderProps } from './components/YouVersionProvider';

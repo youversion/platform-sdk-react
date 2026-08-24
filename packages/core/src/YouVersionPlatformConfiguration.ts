@@ -1,3 +1,4 @@
+import { StoredGrantsSchema } from './schemas/auth';
 import { YouVersionUserInfoJSONSchema, type YouVersionUserInfoJSON } from './schemas/user-info';
 import { getLocalStorage, removeStorageItem, setStorageItem } from './web-storage';
 
@@ -18,6 +19,9 @@ export class YouVersionPlatformConfiguration {
   private static _expiryDateKey: string | null = null;
   private static _signInPromptMessage: string | undefined = undefined;
   private static _appName: string | undefined = undefined;
+  private static _permittedVersionIds: number[] | undefined = undefined;
+  private static _excludedVersionIds: number[] | undefined = undefined;
+  private static _permittedLanguageTags: string[] | undefined = undefined;
 
   private static getOrSetInstallationId(): string {
     const storage = getLocalStorage();
@@ -33,10 +37,9 @@ export class YouVersionPlatformConfiguration {
       return existingId;
     }
 
-    const newId =
-      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID()
-        : `yvp-${new Date().toISOString()}-${Math.random().toString(36).slice(2, 10)}`;
+    const newId = globalThis.crypto?.randomUUID
+      ? globalThis.crypto.randomUUID()
+      : `yvp-${new Date().toISOString()}-${Math.random().toString(36).slice(2, 10)}`;
     // A store that rejects the write (Safari private mode) leaves us just as
     // unable to persist as no store at all.
     return setStorageItem(storage, 'x-yvp-installation-id', newId) ? newId : '';
@@ -133,19 +136,8 @@ export class YouVersionPlatformConfiguration {
     const raw = getLocalStorage()?.getItem(this.grantedPermissionsKey);
     if (!raw) return null;
     try {
-      const parsed: unknown = JSON.parse(raw);
-      if (typeof parsed !== 'object' || parsed === null) return null;
-      const record = parsed as Record<string, unknown>;
-      // Reject the legacy bare-array format and any other malformed shape.
-      if (typeof record.userId !== 'string' || !Array.isArray(record.permissions)) {
-        return null;
-      }
-      return {
-        userId: record.userId,
-        permissions: record.permissions.filter(
-          (entry): entry is string => typeof entry === 'string',
-        ),
-      };
+      const parsed = StoredGrantsSchema.safeParse(JSON.parse(raw));
+      return parsed.success ? parsed.data : null;
     } catch {
       return null;
     }
@@ -327,5 +319,41 @@ export class YouVersionPlatformConfiguration {
 
   static set appName(value: string | undefined) {
     this._appName = value;
+  }
+
+  /**
+   * Allowlist of Bible version ids this app may use. Unset = no restriction.
+   * An empty array permits nothing. See YPE-4657.
+   */
+  static get permittedVersionIds(): number[] | undefined {
+    return this._permittedVersionIds;
+  }
+
+  static set permittedVersionIds(value: number[] | undefined) {
+    this._permittedVersionIds = value;
+  }
+
+  /**
+   * Denylist of Bible version ids this app may not use. Unset or empty =
+   * exclude nothing. Exclusion wins over `permittedVersionIds`.
+   */
+  static get excludedVersionIds(): number[] | undefined {
+    return this._excludedVersionIds;
+  }
+
+  static set excludedVersionIds(value: number[] | undefined) {
+    this._excludedVersionIds = value;
+  }
+
+  /**
+   * Allowlist of BCP 47 language tags (`en`, `zh-Hans`). Unset = no
+   * restriction. An empty array permits nothing.
+   */
+  static get permittedLanguageTags(): string[] | undefined {
+    return this._permittedLanguageTags;
+  }
+
+  static set permittedLanguageTags(value: string[] | undefined) {
+    this._permittedLanguageTags = value;
   }
 }

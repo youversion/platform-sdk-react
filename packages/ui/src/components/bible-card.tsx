@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hooks';
 import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, type Highlight } from '@youversion/platform-core';
 import { useTranslation } from 'react-i18next';
@@ -41,6 +42,18 @@ export type BibleCardProps = {
    * references paint the whole chapter.
    */
   highlights?: Highlight[];
+  /**
+   * Caps the painted `<section>` shell. A number is CSS pixels. `'100%'` fills
+   * the parent (Come and See / full-bleed) and keeps the 600px inner column.
+   * Omit for 700. Full-bleed hosts must pass `'100%'`.
+   * The section lifts the Bible renderer `65ch` measure so scripture fills
+   * that inner column.
+   */
+  maxWidth?: number | '100%';
+};
+
+type BibleCardSectionStyle = CSSProperties & {
+  '--yv-reader-max-width': 'none';
 };
 
 /**
@@ -129,6 +142,8 @@ function BibleCardFooter({ copyright }: { copyright?: string | null }): React.Re
   );
 }
 
+const BIBLE_CARD_DEFAULT_MAX_WIDTH_PX = 700;
+
 export function BibleCard({
   reference,
   versionId: controlledVersionId,
@@ -139,6 +154,7 @@ export function BibleCard({
   onVersionPickerPress,
   onFootnotePress,
   highlights,
+  maxWidth = BIBLE_CARD_DEFAULT_MAX_WIDTH_PX,
 }: BibleCardProps): React.ReactNode {
   // Controlled only when both versionId + onVersionChange are provided.
   // versionId alone seeds uncontrolled state, preserving backwards compatibility
@@ -167,14 +183,21 @@ export function BibleCard({
 
   const isRefetching = passageLoading && passage !== null;
   const showSpinner = useDelayedLoading(isRefetching);
+  const sectionStyle: BibleCardSectionStyle = {
+    maxWidth: maxWidth === '100%' ? '100%' : `${maxWidth}px`,
+    marginInline: 'auto',
+    '--yv-reader-max-width': 'none',
+  };
 
   return (
     <section
       data-yv-sdk
       data-yv-theme={theme}
       className="yv:w-full yv:flex yv:flex-col yv:grow yv:bg-card yv:p-6 yv:rounded-2xl yv:box-border"
+      style={sectionStyle}
     >
-      <div className="yv:card-content">
+      {/* Default/number: fill the shell. Keep shared card-content (600px) only for full-bleed. */}
+      <div className={maxWidth === '100%' ? 'yv:card-content' : 'yv:w-full'}>
         <div className="yv:flex yv:w-full yv:justify-between yv:items-center yv:mb-4">
           {/*
             The error branch stays separate rather than folding into the loading

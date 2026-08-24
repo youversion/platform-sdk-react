@@ -65,7 +65,7 @@ export function useApiData<T>(
       })
       .catch((err) => {
         if (requestSeq === requestSeqRef.current) {
-          setError(err as Error);
+          setError(err instanceof Error ? err : new Error('Request failed'));
         }
       })
       .finally(() => {

@@ -3,6 +3,7 @@ import i18n from '@/i18n';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import {
   getLocalStorage,
+  isUsableBibleVersion,
   setStorageItem,
   type BibleVersion,
   type Language,
@@ -49,14 +50,51 @@ type RecentVersion = Pick<
   'id' | 'title' | 'localized_abbreviation' | 'abbreviation' | 'organization_id'
 >;
 
-function getRecentVersions(): RecentVersion[] {
+type TriggerElementProps = React.HTMLAttributes<HTMLButtonElement> & {
+  'data-yv-sdk'?: boolean;
+  'data-yv-theme'?: string;
+};
+
+type JsonPrimitive = string | number | boolean | null;
+type JsonObject = { [key: string]: JsonValue };
+type JsonValue = JsonPrimitive | JsonValue[] | JsonObject;
+
+function isJsonObject(value: JsonValue): value is JsonObject {
+  return value !== null && Object.prototype.toString.call(value) === '[object Object]';
+}
+
+function isRecentVersionText(value: JsonValue | undefined): value is string {
+  return Object.prototype.toString.call(value) === '[object String]';
+}
+
+function isRecentVersion(item: JsonValue): item is RecentVersion {
+  if (!isJsonObject(item)) {
+    return false;
+  }
+  return (
+    Number.isFinite(item.id) &&
+    isRecentVersionText(item.title) &&
+    isRecentVersionText(item.localized_abbreviation)
+  );
+}
+
+function parseRecentVersions(raw: string): RecentVersion[] {
+  let parsed: JsonValue;
   try {
-    const stored = getLocalStorage()?.getItem(RECENT_VERSIONS_KEY);
-    const recentVersions: RecentVersion[] = stored ? (JSON.parse(stored) as RecentVersion[]) : [];
-    return recentVersions;
+    // SAFETY: JSON.parse returns any. isRecentVersion checks each field
+    // before the list is used.
+    parsed = JSON.parse(raw) as JsonValue;
   } catch {
     return [];
   }
+  if (!Array.isArray(parsed) || !parsed.every(isRecentVersion)) return [];
+  return parsed;
+}
+
+function getRecentVersions(): RecentVersion[] {
+  const stored = getLocalStorage()?.getItem(RECENT_VERSIONS_KEY);
+  if (!stored) return [];
+  return parseRecentVersions(stored);
 }
 
 function saveRecentVersions(versions: RecentVersion[]): void {
@@ -265,9 +303,7 @@ function Root({
   const theme = background || providerTheme;
 
   const fallbackLanguageId =
-    defaultLanguageId ||
-    (typeof navigator !== 'undefined' && navigator.languages[0]?.split('-')[0]) ||
-    'en';
+    defaultLanguageId || globalThis.navigator?.languages?.[0]?.split('-')[0] || 'en';
   const [selectedLanguageId, setSelectedLanguageId] = useControllableState({
     prop: controlledLanguageId,
     defaultProp: fallbackLanguageId,
@@ -333,16 +369,33 @@ function Root({
     recentVersions,
   );
 
+  const languageTagByVersionId = useMemo(() => {
+    const tags = new Map<number, string>();
+    for (const version of versionsLanguageInfo?.data ?? []) {
+      tags.set(version.id, version.language_tag);
+    }
+    return tags;
+  }, [versionsLanguageInfo?.data]);
+
   const filteredRecentVersions = useMemo(() => {
-    if (!searchQuery.trim()) return recentVersions;
-    const query = searchQuery.trim().toLowerCase();
-    return recentVersions.filter(
-      (v) =>
-        v.title?.toLowerCase().includes(query) ||
-        v.localized_abbreviation?.toLowerCase().includes(query) ||
-        v.abbreviation?.toLowerCase().includes(query),
+    const matching = !searchQuery.trim()
+      ? recentVersions
+      : recentVersions.filter((v) => {
+          const query = searchQuery.trim().toLowerCase();
+          return (
+            v.title?.toLowerCase().includes(query) ||
+            v.localized_abbreviation?.toLowerCase().includes(query) ||
+            v.abbreviation?.toLowerCase().includes(query)
+          );
+        });
+
+    return matching.filter((version) =>
+      isUsableBibleVersion({
+        id: version.id,
+        languageTag: languageTagByVersionId.get(version.id),
+      }),
     );
-  }, [recentVersions, searchQuery]);
+  }, [recentVersions, searchQuery, languageTagByVersionId]);
 
   const getLanguageDisplayName = useCallback(
     (language: Pick<Language, 'id' | 'display_names'>) => {
@@ -388,8 +441,8 @@ function Root({
   const suggestedLanguages = useMemo(() => {
     // Extract language codes from browser (e.g., 'en-US' -> 'en')
     // Map over userLanguageCodes to preserve browser preference order
-    const userLanguageCodes = (typeof navigator !== 'undefined' ? navigator.languages : []).map(
-      (code) => code.split('-')[0]?.toLowerCase(),
+    const userLanguageCodes = (globalThis.navigator?.languages ?? []).map((code) =>
+      code.split('-')[0]?.toLowerCase(),
     );
     const userLanguages = userLanguageCodes
       .map((code) => uniqueLanguages.find((language) => language.id === code))
@@ -470,7 +523,7 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
   const { version, loading } = useVersion(versionId);
 
   const content =
-    typeof children === 'function'
+    children instanceof Function
       ? children({ version, loading })
       : children || (
           <Button variant={'secondary'} className="yv:cursor-pointer yv:font-bold yv:text-base">
@@ -486,7 +539,7 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
   };
 
   if (onVersionPickerPress) {
-    if (asChild && isValidElement<Record<string, unknown>>(content)) {
+    if (asChild && isValidElement<TriggerElementProps>(content)) {
       return cloneElement(content, {
         'data-yv-sdk': true,
         'data-yv-theme': background,

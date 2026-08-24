@@ -300,22 +300,27 @@ describe('StorageStrategy Interface Compliance', () => {
     describe(name, () => {
       it('should implement setItem method', () => {
         const strategy = factory();
-        expect(typeof strategy.setItem).toBe('function');
+        strategy.setItem('methodKey', 'methodValue');
+        expect(strategy.getItem('methodKey')).toBe('methodValue');
       });
 
       it('should implement getItem method', () => {
         const strategy = factory();
-        expect(typeof strategy.getItem).toBe('function');
+        expect(strategy.getItem('missingKey')).toBeNull();
       });
 
       it('should implement removeItem method', () => {
         const strategy = factory();
-        expect(typeof strategy.removeItem).toBe('function');
+        strategy.setItem('removeKey', 'removeValue');
+        strategy.removeItem('removeKey');
+        expect(strategy.getItem('removeKey')).toBeNull();
       });
 
       it('should implement clear method', () => {
         const strategy = factory();
-        expect(typeof strategy.clear).toBe('function');
+        strategy.setItem('clearKey', 'clearValue');
+        strategy.clear();
+        expect(strategy.getItem('clearKey')).toBeNull();
       });
 
       it('should support complete lifecycle: set -> get -> remove', () => {

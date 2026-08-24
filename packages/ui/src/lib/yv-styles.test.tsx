@@ -1,22 +1,12 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react';
 import { YouVersionProvider } from '@/components/YouVersionProvider';
-
-vi.mock('@youversion/platform-react-hooks', () => {
-  function PassthroughProvider({ children }: { children: React.ReactNode }) {
-    return <>{children}</>;
-  }
-  return {
-    YouVersionProvider: PassthroughProvider,
-    useYVAuth: vi.fn(),
-  };
-});
 
 describe('Style injection via YouVersionProvider', () => {
   it('renders a <style> element in document.head with CSS content', () => {

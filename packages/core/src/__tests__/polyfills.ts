@@ -1,4 +1,4 @@
-class LocalStorageMock {
+class LocalStorageMock implements Storage {
   private store: Record<string, string> = {};
 
   getItem(key: string): string | null {
@@ -26,4 +26,4 @@ class LocalStorageMock {
   }
 }
 
-globalThis.localStorage = new LocalStorageMock() as Storage;
+globalThis.localStorage = new LocalStorageMock();

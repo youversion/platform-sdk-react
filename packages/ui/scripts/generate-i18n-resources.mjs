@@ -6,7 +6,7 @@
  *   node scripts/generate-i18n-resources.mjs          # one-shot (build / CI)
  *   node scripts/generate-i18n-resources.mjs --watch   # watch locale dir in dev
  */
-import { readdirSync, watch, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, renameSync, unlinkSync, watch, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -44,7 +44,10 @@ function generateI18nResources() {
     });
 
   const imports = locales
-    .map((locale, index) => `import locale${index} from './locales/${locale}.json';`)
+    .map(
+      (locale, index) =>
+        `import locale${index} from './locales/${locale}.json' with { type: 'json' };`,
+    )
     .join('\n');
 
   const resourceEntries = locales
@@ -67,8 +70,39 @@ ${resourceEntries}
 export const supportedLngs = Object.keys(resources);
 `;
 
-  writeFileSync(outputPath, content, 'utf8');
+  writeGeneratedFile(content);
   console.log(`Generated ${outputPath} (${locales.length} locales: ${locales.join(', ')})`);
+}
+
+/**
+ * Replace resources.generated.ts without truncating it in place.
+ *
+ * CI runs UI typecheck and UI build in parallel; both call this generator.
+ * writeFileSync empties the destination first, so tsc can read a zero-length
+ * module and fail with TS2305 (no exported member 'resources' / 'supportedLngs').
+ * Skip the write when content is unchanged so parallel no-op runs do not race.
+ */
+function writeGeneratedFile(content) {
+  try {
+    if (readFileSync(outputPath, 'utf8') === content) {
+      return;
+    }
+  } catch {
+    // Missing or unreadable — write a fresh copy.
+  }
+
+  const tempPath = `${outputPath}.${process.pid}.tmp`;
+  writeFileSync(tempPath, content, 'utf8');
+  try {
+    renameSync(tempPath, outputPath);
+  } catch (error) {
+    try {
+      unlinkSync(tempPath);
+    } catch {
+      // Best-effort cleanup; the rename error is the one to surface.
+    }
+    throw error;
+  }
 }
 
 function shouldRegenerate(filename) {

@@ -1,4 +1,4 @@
-import type { YouVersionUserInfoJSON } from './schemas/user-info';
+import { YouVersionUserInfoJSONSchema, type YouVersionUserInfoJSON } from './schemas/user-info';
 
 export type { YouVersionUserInfoJSON };
 
@@ -9,14 +9,15 @@ export class YouVersionUserInfo {
   readonly avatarUrlFormat?: string;
 
   constructor(data: YouVersionUserInfoJSON) {
-    if (!data || typeof data !== 'object') {
+    const parsed = YouVersionUserInfoJSONSchema.safeParse(data);
+    if (!parsed.success) {
       throw new Error('Invalid user data provided');
     }
 
-    this.name = data.name;
-    this.userId = data.id;
-    this.email = data.email;
-    this.avatarUrlFormat = data.avatar_url;
+    this.name = parsed.data.name;
+    this.userId = parsed.data.id;
+    this.email = parsed.data.email;
+    this.avatarUrlFormat = parsed.data.avatar_url;
   }
 
   getAvatarUrl(width: number = 200, height: number = 200): URL | null {

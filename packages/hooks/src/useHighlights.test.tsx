@@ -1,30 +1,16 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { describe, expect, vi, beforeEach, it, type Mock } from 'vitest';
+import { describe, expect, vi, beforeEach, afterEach, it } from 'vitest';
 import type { ReactNode } from 'react';
 import { useHighlights } from './useHighlights';
 import { YouVersionContext } from './context';
 import {
   HighlightsClient,
-  ApiClient,
   type Collection,
   type GetHighlightsOptions,
   type Highlight,
   type CreateHighlight,
 } from '@youversion/platform-core';
 import { createYVWrapper } from './test/utils';
-
-vi.mock('@youversion/platform-core', async () => {
-  const actual = await vi.importActual('@youversion/platform-core');
-  return {
-    ...actual,
-    HighlightsClient: vi.fn(function () {
-      return {};
-    }),
-    ApiClient: vi.fn(function () {
-      return { isApiClient: true };
-    }),
-  };
-});
 
 describe('useHighlights', () => {
   const defaultOptions: GetHighlightsOptions = { version_id: 111, passage_id: 'MAT.1' };
@@ -51,28 +37,25 @@ describe('useHighlights', () => {
     color: 'fffe00',
   };
 
-  let mockGetHighlights: Mock;
-  let mockCreateHighlight: Mock;
-  let mockDeleteHighlight: Mock;
+  const mockGetHighlights = vi.fn();
+  const mockCreateHighlight = vi.fn();
+  const mockDeleteHighlight = vi.fn();
 
   beforeEach(() => {
-    mockGetHighlights = vi.fn().mockResolvedValue(mockHighlights);
-    mockCreateHighlight = vi.fn().mockResolvedValue(mockHighlight);
-    mockDeleteHighlight = vi.fn().mockResolvedValue(undefined);
+    mockGetHighlights.mockReset();
+    mockCreateHighlight.mockReset();
+    mockDeleteHighlight.mockReset();
+    mockGetHighlights.mockResolvedValue(mockHighlights);
+    mockCreateHighlight.mockResolvedValue(mockHighlight);
+    mockDeleteHighlight.mockResolvedValue(undefined);
 
-    (HighlightsClient as unknown as ReturnType<typeof vi.fn>).mockImplementation(function () {
-      return {
-        getHighlights: mockGetHighlights,
-        createHighlight: mockCreateHighlight,
-        deleteHighlight: mockDeleteHighlight,
-      };
-    });
+    vi.spyOn(HighlightsClient.prototype, 'getHighlights').mockImplementation(mockGetHighlights);
+    vi.spyOn(HighlightsClient.prototype, 'createHighlight').mockImplementation(mockCreateHighlight);
+    vi.spyOn(HighlightsClient.prototype, 'deleteHighlight').mockImplementation(mockDeleteHighlight);
+  });
 
-    (ApiClient as unknown as ReturnType<typeof vi.fn>).mockImplementation(function () {
-      return {
-        isApiClient: true,
-      };
-    });
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('context validation', () => {
@@ -84,26 +67,31 @@ describe('useHighlights', () => {
   });
 
   describe('client creation', () => {
-    it('should create HighlightsClient with correct ApiClient config', () => {
+    it('should fetch through a HighlightsClient built from context', async () => {
       const wrapper = createYVWrapper();
-      renderHook(() => useHighlights(defaultOptions), { wrapper });
+      const { result } = renderHook(() => useHighlights(defaultOptions), { wrapper });
 
-      expect(ApiClient).toHaveBeenCalledWith({
-        appKey: 'test-app-key',
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
       });
-      expect(HighlightsClient).toHaveBeenCalledWith(expect.objectContaining({ isApiClient: true }));
+
+      expect(mockGetHighlights).toHaveBeenCalledWith(defaultOptions);
     });
 
-    it('should memoize HighlightsClient instance', () => {
+    it('should reuse the HighlightsClient across rerenders', async () => {
       const wrapper = createYVWrapper();
-      const { rerender } = renderHook(() => useHighlights(defaultOptions), { wrapper });
+      const { result, rerender } = renderHook(() => useHighlights(defaultOptions), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
 
       rerender();
 
-      expect(HighlightsClient).toHaveBeenCalledTimes(1);
+      expect(mockGetHighlights).toHaveBeenCalledTimes(1);
     });
 
-    it('should create new HighlightsClient when context values change', () => {
+    it('should create a new HighlightsClient when context values change', async () => {
       let currentAppKey = 'test-app-key';
 
       const wrapper = ({ children }: { children: ReactNode }) => (
@@ -118,13 +106,16 @@ describe('useHighlights', () => {
 
       const { rerender } = renderHook(() => useHighlights(defaultOptions), { wrapper });
 
-      expect(HighlightsClient).toHaveBeenCalledTimes(1);
+      await waitFor(() => {
+        expect(mockGetHighlights).toHaveBeenCalledTimes(1);
+      });
 
       currentAppKey = 'new-app-key';
-
       rerender();
 
-      expect(HighlightsClient).toHaveBeenCalledTimes(2);
+      await waitFor(() => {
+        expect(mockGetHighlights).toHaveBeenCalledTimes(2);
+      });
     });
   });
 
