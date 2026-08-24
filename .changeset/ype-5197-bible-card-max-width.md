@@ -2,4 +2,4 @@
 '@youversion/platform-react-ui': minor
 ---
 
-Add `maxWidth` to `BibleCard` so the painted shell defaults to 700px (or a pixel override). Full-bleed hosts must pass `maxWidth="100%"`; that path keeps the 600px inner column. The card lifts the Bible renderer `65ch` measure so scripture fills that column. VerseOfTheDay is unchanged.
+`BibleCard` now caps its painted shell at 700px by default, or at a pixel `maxWidth`. Scripture fills that shell. Pass `maxWidth="100%"` for a full-bleed shell; that path keeps the 600px inner column, and scripture fills the column. Full-bleed hosts must pass `"100%"`. `VerseOfTheDay` and `BibleReader` are unchanged.
