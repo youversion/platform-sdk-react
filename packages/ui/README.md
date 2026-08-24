@@ -66,6 +66,29 @@ By default the version picker offers Bible versions in every available language.
 
 Language tags are BCP 47 (`en`, `es`, `zh-Hans`). Version ids are YouVersion Bible version ids. An unusable id is refused everywhere — lists, picker, and `versionId` on reader/card/text/VOTD — and surfaces the existing forbidden error. Core-only hosts can set the same lists on `YouVersionPlatformConfiguration`.
 
+### `BibleCard` width
+
+`BibleCard` caps its painted shell at **700 px by default** — one measure that the header, scripture, and footer share, matching the Swift SDK. The card still fills a narrower host (`width: 100%`) and centers itself in a wider one. Control the cap with the optional `maxWidth` prop:
+
+| `maxWidth` | Painted shell | Inner text column |
+|------------|---------------|-------------------|
+| _omitted_ (default) | caps at 700 px | fills the shell (only the card's padding is the inset) |
+| a number, e.g. `480` | caps at that many CSS px | fills the shell |
+| `"100%"` | full-bleed — fills the parent | stays capped at 600 px so scripture keeps a column |
+
+```tsx
+{/* Default: shell caps at 700, centered on a wide host */}
+<BibleCard reference="JHN.3.16" versionId={3034} />
+
+{/* Tighter shell */}
+<BibleCard reference="JHN.3.16" versionId={3034} maxWidth={480} />
+
+{/* Full-bleed shell (the inner text column still caps at 600) */}
+<BibleCard reference="JHN.3.16" versionId={3034} maxWidth="100%" />
+```
+
+Only a number or `"100%"` is accepted. If your layout needs a full-bleed card shell, pass `maxWidth="100%"` — otherwise the shell will not grow past 700 px.
+
 ## Styling
 
 All component CSS is automatically injected when you wrap your app with `YouVersionProvider` — no extra imports or build steps needed. Under the hood, it uses React 19's [`<style precedence>`](https://react.dev/reference/react-dom/components/style) to hoist styles into `<head>` with built-in deduplication and SSR/Suspense support.

@@ -15,6 +15,13 @@ import { AnimatedHeight } from './animated-height';
 type PassageResult = ReturnType<typeof usePassage>;
 type VersionResult = ReturnType<typeof useVersion>;
 
+/**
+ * Default cap for the painted card shell, in CSS px. Matches Swift's
+ * `BibleCardView.maximumContentWidth` / `BibleReaderView.readerMaxWidth` so the
+ * React card is one 700 measure, not a 700 shell around a 600 column.
+ */
+const DEFAULT_MAX_WIDTH = 700;
+
 export type BibleCardProps = {
   reference: string;
   versionId?: number;
@@ -41,6 +48,23 @@ export type BibleCardProps = {
    * references paint the whole chapter.
    */
   highlights?: Highlight[];
+  /**
+   * Caps the painted card shell (the `<section>`). CSS-px number or `'100%'`.
+   *
+   * This is one measure, matching Swift's `BibleCardView.maximumContentWidth`:
+   * header, scripture, and footer share it, and only the card's `p-6` is the
+   * inset. The section stays `width: 100%` and is centered with
+   * `margin-inline: auto`, so it fills a narrow host and caps on a wide one.
+   *
+   * - Omit: the section caps at 700. The inner column fills the section.
+   * - Number: that value (in CSS px) caps the section. The inner column fills it.
+   * - `'100%'`: the section fills its parent (full-bleed shell). The inner text
+   *   column then stays capped at 600 so scripture does not run edge to edge.
+   *
+   * Only a number or `'100%'` is accepted — `'none'`, `'700px'`, `'65ch'`, and
+   * other strings are rejected by the type.
+   */
+  maxWidth?: number | '100%';
 };
 
 /**
@@ -139,6 +163,7 @@ export function BibleCard({
   onVersionPickerPress,
   onFootnotePress,
   highlights,
+  maxWidth,
 }: BibleCardProps): React.ReactNode {
   // Controlled only when both versionId + onVersionChange are provided.
   // versionId alone seeds uncontrolled state, preserving backwards compatibility
@@ -168,13 +193,23 @@ export function BibleCard({
   const isRefetching = passageLoading && passage !== null;
   const showSpinner = useDelayedLoading(isRefetching);
 
+  // The painted <section> owns the cap (one measure, like Swift). It stays
+  // width: 100% and is centered, so it fills a narrow host and caps on a wide
+  // one. A number is CSS px; '100%' makes the shell full-bleed.
+  const isFullBleed = maxWidth === '100%';
+  const sectionMaxWidth = maxWidth === undefined ? DEFAULT_MAX_WIDTH : maxWidth;
+  // Default / number: the inner column fills the section (only p-6 is the inset).
+  // '100%': keep the shared 600 cap so full-bleed shells keep a text column.
+  const contentClassName = isFullBleed ? 'yv:card-content' : 'yv:w-full';
+
   return (
     <section
       data-yv-sdk
       data-yv-theme={theme}
       className="yv:w-full yv:flex yv:flex-col yv:grow yv:bg-card yv:p-6 yv:rounded-2xl yv:box-border"
+      style={{ maxWidth: sectionMaxWidth, marginInline: 'auto' }}
     >
-      <div className="yv:card-content">
+      <div className={contentClassName}>
         <div className="yv:flex yv:w-full yv:justify-between yv:items-center yv:mb-4">
           {/*
             The error branch stays separate rather than folding into the loading

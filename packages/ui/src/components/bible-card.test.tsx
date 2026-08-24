@@ -64,6 +64,7 @@ function renderCard(
     versionId?: number;
     highlights?: Highlight[];
     onVersionChange?: (id: number) => void;
+    maxWidth?: number | '100%';
   } = {},
 ) {
   const {
@@ -72,6 +73,7 @@ function renderCard(
     versionId = 3034,
     highlights,
     onVersionChange,
+    maxWidth,
   } = extra;
   return render(
     <HookOverrideProvider
@@ -86,6 +88,7 @@ function renderCard(
         onFootnotePress={onFootnotePress}
         highlights={highlights}
         onVersionChange={onVersionChange}
+        maxWidth={maxWidth}
       />
     </HookOverrideProvider>,
   );
@@ -161,17 +164,58 @@ describe('BibleCard - Delayed spinner', () => {
     );
   });
 
-  it('should let the card fill its container while centering the content group', () => {
+  it('omit maxWidth: section caps at 700, inner column fills it (no 600 cap), p-6 stays', () => {
     const { container } = renderCard(passageResult({ passage: mockPassage, loading: false }));
     const card = container.querySelector('section');
     const contentGroup = container.querySelector('section > div');
     const bibleTextView = container.querySelector('[data-slot="yv-bible-renderer"]')?.parentElement;
 
+    // Section stays width: 100% and centers, but caps at Swift's 700 measure.
     expect(card).toHaveClass('yv:w-full');
     expect(card).not.toHaveClass('yv:max-w-md');
     expect(card).toHaveClass('yv:box-border');
-    expect(contentGroup).toHaveClass('yv:card-content');
+    expect(card).toHaveClass('yv:p-6');
+    expect(card).toHaveStyle({ maxWidth: '700px', marginInline: 'auto' });
+    // Inner column fills the section — no 600 cap on this path.
+    expect(contentGroup).not.toHaveClass('yv:card-content');
+    expect(contentGroup).toHaveClass('yv:w-full');
     expect(bibleTextView).not.toHaveClass('yv:max-w-[600px]');
+  });
+
+  it('maxWidth number: section caps at that px, inner column fills it (no 600 cap)', () => {
+    const { container } = renderCard(passageResult({ passage: mockPassage, loading: false }), {
+      maxWidth: 480,
+    });
+    const card = container.querySelector('section');
+    const contentGroup = container.querySelector('section > div');
+
+    expect(card).toHaveClass('yv:w-full');
+    expect(card).toHaveStyle({ maxWidth: '480px', marginInline: 'auto' });
+    expect(contentGroup).not.toHaveClass('yv:card-content');
+    expect(contentGroup).toHaveClass('yv:w-full');
+  });
+
+  it('maxWidth="100%": section fills the parent, inner column keeps the 600 cap', () => {
+    const { container } = renderCard(passageResult({ passage: mockPassage, loading: false }), {
+      maxWidth: '100%',
+    });
+    const card = container.querySelector('section');
+    const contentGroup = container.querySelector('section > div');
+
+    expect(card).toHaveClass('yv:w-full');
+    expect(card).toHaveStyle({ maxWidth: '100%', marginInline: 'auto' });
+    // Full-bleed shell keeps a 600 text column (Come and See / YPE-2573).
+    expect(contentGroup).toHaveClass('yv:card-content');
+  });
+
+  it('parent narrower than the cap: section stays 100% of that parent', () => {
+    const { container } = renderCard(passageResult({ passage: mockPassage, loading: false }), {
+      maxWidth: 480,
+    });
+    const card = container.querySelector('section');
+
+    // The cap is a ceiling; the section still fills a narrower parent.
+    expect(card).toHaveClass('yv:w-full');
   });
 
   it('should hide inline verse numbers in the bible renderer', () => {

@@ -32,6 +32,14 @@ const meta = {
       control: 'boolean',
       description: 'toggle version picker',
     },
+    maxWidth: {
+      control: 'text',
+      description:
+        'Caps the painted card shell. Omit for the default 700 px (one measure, ' +
+        'like Swift; the inner column fills that shell). Pass a number for a ' +
+        'custom px cap, or "100%" for a full-bleed shell (inner text column ' +
+        'stays capped at 600 px).',
+    },
   },
 } satisfies Meta<typeof BibleCard>;
 
@@ -80,23 +88,63 @@ export const WideContainer: Story = {
 
     const card = canvasElement.querySelector('section[data-yv-sdk][data-yv-theme]');
     const contentGroup = canvasElement.querySelector('section[data-yv-sdk][data-yv-theme] > div');
-    const bibleText = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+    const host = canvasElement.querySelector('div[style]');
 
     await expect(card).not.toBeNull();
     await expect(contentGroup).not.toBeNull();
-    await expect(bibleText).not.toBeNull();
+
+    const cardRect = card?.getBoundingClientRect();
+    const cardWidth = cardRect?.width ?? 0;
+    const contentGroupRect = contentGroup?.getBoundingClientRect();
+    const hostRect = host?.getBoundingClientRect();
+    const leftWhitespace = (cardRect?.left ?? 0) - (hostRect?.left ?? 0);
+    const rightWhitespace = (hostRect?.right ?? 0) - (cardRect?.right ?? 0);
+
+    // Default (no maxWidth): the painted shell caps at 700 (one measure, like
+    // Swift), and is centered in the wide host. The inner column fills that
+    // shell — no 600 cap on this path — so it is wider than 600.
+    await expect(cardWidth).toBeLessThanOrEqual(700);
+    await expect(cardWidth).toBeGreaterThan(600);
+    await expect(contentGroupRect?.width ?? 0).toBeGreaterThan(600);
+    await expect(Math.abs(leftWhitespace - rightWhitespace)).toBeLessThanOrEqual(1);
+  },
+};
+
+export const FullBleed: Story = {
+  args: {
+    reference: 'LUK.1.39-45',
+    versionId: 111,
+    maxWidth: '100%',
+  },
+  tags: ['integration'],
+  parameters: {
+    layout: 'fullscreen',
+  },
+  render: (args) => (
+    <div className="yv:p-8" style={{ width: 900 }}>
+      <BibleCard {...args} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(async () => {
+      await expect(canvas.getByText(/at that time mary got ready/i)).toBeInTheDocument();
+    });
+
+    const card = canvasElement.querySelector('section[data-yv-sdk][data-yv-theme]');
+    const contentGroup = canvasElement.querySelector('section[data-yv-sdk][data-yv-theme] > div');
+
+    await expect(card).not.toBeNull();
+    await expect(contentGroup).not.toBeNull();
 
     const cardWidth = card?.getBoundingClientRect().width ?? 0;
-    const contentGroupRect = contentGroup?.getBoundingClientRect();
-    const cardRect = card?.getBoundingClientRect();
-    const leftWhitespace = (contentGroupRect?.left ?? 0) - (cardRect?.left ?? 0);
-    const rightWhitespace = (cardRect?.right ?? 0) - (contentGroupRect?.right ?? 0);
-    const bibleTextWidth = bibleText?.getBoundingClientRect().width ?? 0;
+    const contentGroupWidth = contentGroup?.getBoundingClientRect().width ?? 0;
 
+    // maxWidth="100%": the painted shell fills the wide host (Come and See), but
+    // the inner text column stays capped at 600 so scripture keeps a column.
     await expect(cardWidth).toBeGreaterThan(800);
-    await expect(contentGroupRect?.width ?? 0).toBeLessThanOrEqual(600);
-    await expect(bibleTextWidth).toBeLessThanOrEqual(600);
-    await expect(Math.abs(leftWhitespace - rightWhitespace)).toBeLessThanOrEqual(1);
+    await expect(contentGroupWidth).toBeLessThanOrEqual(600);
   },
 };
 
