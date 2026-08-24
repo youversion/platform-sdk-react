@@ -1,7 +1,17 @@
-import { StrictMode } from 'react';
-import { render } from '@testing-library/react';
+import { StrictMode, useState } from 'react';
+import { render, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { ShadowRootHost } from './shadow-root-host';
+import { ShadowRootHost, useShadowPortalTarget } from './shadow-root-host';
+
+function PortalRequester(): React.ReactNode {
+  const [open, setOpen] = useState(false);
+  useShadowPortalTarget(open);
+  return (
+    <button type="button" onClick={() => setOpen(true)}>
+      Open portal
+    </button>
+  );
+}
 
 describe('ShadowRootHost', () => {
   it('attaches one shadow root under StrictMode', () => {
@@ -60,4 +70,36 @@ describe('ShadowRootHost', () => {
     expect(style?.getAttribute('data-href')).toBe('yv-sdk-shadow-styles');
     expect(style?.getAttribute('data-precedence')).toBe('yv-sdk');
   });
+
+  it('creates a local portal lazily only after an overlay requests one', async () => {
+    const { container } = render(
+      <>
+        <ShadowRootHost>
+          <span>leaf without overlays</span>
+        </ShadowRootHost>
+        <ShadowRootHost portalStrategy="local-inline">
+          <PortalRequester />
+        </ShadowRootHost>
+      </>,
+    );
+
+    const roots = Array.from(
+      container.querySelectorAll<HTMLElement>('[data-yv-shadow-host]'),
+      (host) => host.shadowRoot,
+    );
+    expect(roots).toHaveLength(2);
+    expect(roots[0]?.querySelector('[data-yv-shadow-inline-overlay]')).toBeNull();
+    expect(roots[1]?.querySelector('[data-yv-shadow-inline-overlay]')).toBeNull();
+
+    roots[1]?.querySelector<HTMLButtonElement>('button')?.click();
+
+    const localPortal = await waitFor(() => {
+      const element = roots[1]?.querySelector<HTMLElement>('[data-yv-shadow-inline-overlay]');
+      if (!element) throw new Error('local portal not created');
+      return element;
+    });
+    expect(localPortal.getRootNode()).toBe(roots[1]);
+    expect(roots[0]?.querySelector('[data-yv-shadow-inline-overlay]')).toBeNull();
+  });
+
 });

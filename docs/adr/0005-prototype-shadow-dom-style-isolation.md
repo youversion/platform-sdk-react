@@ -58,6 +58,41 @@ pseudo-content, existing interactions, and mounting in a same-origin iframe.
 Unit tests verify Strict Mode behavior and the inline-important host reset. The
 remaining hostile vectors are available for manual inspection on the demo page.
 
+## Complex-component top-layer spike
+
+`BibleVersionPicker` preserves two floating-content arrangements as executable
+stories. An ordinary portal container inside the component shadow root
+preserves IDREF relationships but is visibly clipped by an `overflow: hidden`,
+transformed ancestor. The selected native top-layer arrangement preserves the
+same tree scope while escaping that clipping.
+
+An earlier discarded experiment moved floating content to a shared shadow
+overlay under `document.body`. It escaped clipping but placed the trigger and
+panel in separate tree scopes: their `aria-controls` and content ID strings
+matched while Chromium's `ariaControlsElements` could not resolve the panel.
+That experiment informed the decision but is not retained as a supported
+arrangement in this slice.
+
+The selected spike keeps the Radix portal in the component shadow root and puts
+its local container in the native top layer with `popover="manual"`. Focused
+Chromium stories show that this arrangement escapes ancestor clipping, remains
+hit-testable, preserves viewport collision handling and hostile-CSS isolation,
+and resolves `ariaControlsElements` within the component tree. Radix continues
+to own positioning, focus, Escape, outside-click dismissal, and animations.
+
+Local portal containers are lazy: an isolated leaf creates none until its first
+popover requests one. Each Popover instance registers with the local controller
+before opening. The controller keeps the native container open through Radix's
+exit animation and hides it only after no instance is active and portal content
+has unmounted. The removal observer reads the current active-instance set and
+container contents directly, so an immediate reopen prevents a stale close from
+hiding the newly opened panel.
+
+The negative-control story proves the clipping premise directly: the inline
+panel's layout rectangle extends beyond the constrained ancestor, but
+hit-testing beyond the ancestor cannot reach it. The equivalent top-layer panel
+is reachable at the same point.
+
 ## Compatibility impact
 
 Although the React props API is unchanged, the rendered DOM structure is not.
@@ -71,23 +106,54 @@ detail.
 ## Deliberately deferred
 
 - Rollout to all exported components.
-- Radix popover/dialog portal placement and focus management.
+- Dialog portal placement, modal background inertness, and focus management.
+- Modal-overlay coordination, including ownership and nested-overlay behavior,
+  if Dialog support is added later.
 - Form association when controls live outside their form's tree scope.
 - SSR/hydration and the first client paint.
 - A package-wide custom-property audit. `all: initial` does not reset custom
   properties; the larger investigation branch tested redeclaring Tailwind v4's
-  generated theme tokens on the protected internal wrapper.
+  generated theme tokens on the protected internal wrapper. The audit must also
+  classify existing bare custom-property references, including
+  `BibleVersionPicker`'s `var(--spacing)` width calculation, rather than fixing
+  individual symptoms in this spike.
 - A deliberate inheritance policy for writing direction and future custom
   properties. Some host values may be intentional localization inputs, while
   SDK-owned visual tokens need shadow-local defaults.
 - Host `@font-face` rules, which are not scoped by Shadow DOM.
-- Ancestor layout constraints, which Shadow DOM cannot isolate.
+- Ancestor layout constraints on the component host itself. Native top-layer
+  content can escape clipping, but the host can still be hidden or constrained.
 - Event retargeting, nested-root behavior, and a supported consumer customization
   model.
 - Stylesheet construction/adoption failure recovery beyond feature fallback.
 - A full browser and assistive-technology matrix; current browser verification is
   Chromium-focused.
 - Consumer test-query migration guidance and a component-by-component rollout.
+- An audit of components that use Radix Popover directly instead of the shared
+  `ui/popover.tsx` wrapper (`VerseActionPopover` is a confirmed example) and are
+  therefore unaffected by this work.
+
+## Recommended path toward production rollout
+
+- **What's validated and shippable as an opt-in pattern today**: the
+  `ShadowRootHost` + `portalStrategy` + `useShadowPortalTarget` plumbing,
+  proven for the shared Popover primitive and components that explicitly opt
+  in. Portal placement changes only for an isolated component that requests a
+  local strategy. One shared correction also affects unisolated consumers: the
+  Popover now respects Radix's available-height measurement.
+- **Blocking next steps, not "someday" items**: the package-wide custom-
+  property audit (now with concrete evidence a real rule was silently broken
+  by it) and the direct-Radix-primitive audit (so rollout doesn't create a
+  false sense of coverage) both need to happen before any wider rollout.
+- **What must be true before a public export could default to isolation**:
+  an SSR/hydration story (the shadow root currently attaches in `useEffect`,
+  so server output is an empty host and the first paint is post-hydration —
+  represented above as a breaking change, not an implementation detail), and
+  a decision on whether isolation is opt-in per component instance or a
+  package-wide toggle.
+- This spike enables no automatic isolation for any public export, including
+  `BibleVersionPicker`. Rollout is a separate, later change with its own ADR
+  and PR.
 
 This prototype should be reviewed as an architectural checkpoint, not as a
 complete solution ready for release.
