@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, act, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { requireHtmlButton } from '@/test/dom-stubs';
+import { requireHtmlButton, requireHtmlElement } from '@/test/dom-stubs';
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import { BibleCard } from './bible-card';
 import type { FootnoteData } from './verse';
@@ -64,6 +64,8 @@ function renderCard(
     versionId?: number;
     highlights?: Highlight[];
     onVersionChange?: (id: number) => void;
+    maxWidth?: number | '100%';
+    hostWidth?: number;
   } = {},
 ) {
   const {
@@ -72,8 +74,10 @@ function renderCard(
     versionId = 3034,
     highlights,
     onVersionChange,
+    maxWidth,
+    hostWidth,
   } = extra;
-  return render(
+  const card = (
     <HookOverrideProvider
       overrides={{
         useVersion: () => idleVersion(),
@@ -86,9 +90,18 @@ function renderCard(
         onFootnotePress={onFootnotePress}
         highlights={highlights}
         onVersionChange={onVersionChange}
+        maxWidth={maxWidth}
       />
-    </HookOverrideProvider>,
+    </HookOverrideProvider>
   );
+  return render(hostWidth === undefined ? card : <div style={{ width: hostWidth }}>{card}</div>);
+}
+
+function cardShell(container: HTMLElement) {
+  return {
+    section: requireHtmlElement(container.querySelector('section')),
+    inner: requireHtmlElement(container.querySelector('section > div')),
+  };
 }
 
 const YELLOW = 'fffe00';
@@ -161,24 +174,65 @@ describe('BibleCard - Delayed spinner', () => {
     );
   });
 
-  it('should let the card fill its container while centering the content group', () => {
-    const { container } = renderCard(passageResult({ passage: mockPassage, loading: false }));
-    const card = container.querySelector('section');
-    const contentGroup = container.querySelector('section > div');
-    const bibleTextView = container.querySelector('[data-slot="yv-bible-renderer"]')?.parentElement;
-
-    expect(card).toHaveClass('yv:w-full');
-    expect(card).not.toHaveClass('yv:max-w-md');
-    expect(card).toHaveClass('yv:box-border');
-    expect(contentGroup).toHaveClass('yv:card-content');
-    expect(bibleTextView).not.toHaveClass('yv:max-w-[600px]');
-  });
-
   it('should hide inline verse numbers in the bible renderer', () => {
     const { container } = renderCard(passageResult({ passage: mockPassage, loading: false }));
     const bibleRenderer = container.querySelector('[data-slot="yv-bible-renderer"]');
 
     expect(bibleRenderer).toHaveAttribute('data-show-verse-numbers', 'false');
+  });
+});
+
+describe('BibleCard - maxWidth', () => {
+  const loaded = passageResult({ passage: mockPassage, loading: false });
+
+  it('omitting maxWidth caps the painted section at 700px and lets the inner column fill', () => {
+    const { container } = renderCard(loaded);
+    const { section, inner } = cardShell(container);
+    const bibleTextView = container.querySelector('[data-slot="yv-bible-renderer"]')?.parentElement;
+
+    expect(section).toHaveClass('yv:w-full');
+    expect(section).toHaveClass('yv:p-6');
+    expect(section).toHaveClass('yv:box-border');
+    expect(section).not.toHaveClass('yv:max-w-md');
+    expect(section).toHaveStyle({ maxWidth: '700px' });
+    expect(inner).toHaveClass('yv:w-full');
+    expect(inner).not.toHaveClass('yv:card-content');
+    expect(inner).not.toHaveStyle({ maxWidth: '600px' });
+    expect(bibleTextView).not.toHaveClass('yv:max-w-[600px]');
+  });
+
+  it('uses a number maxWidth as the section cap and lets the inner column fill', () => {
+    const { container } = renderCard(loaded, { maxWidth: 480 });
+    const { section, inner } = cardShell(container);
+
+    expect(section).toHaveClass('yv:w-full');
+    expect(section).toHaveStyle({ maxWidth: '480px' });
+    expect(inner).toHaveClass('yv:w-full');
+    expect(inner).not.toHaveClass('yv:card-content');
+    expect(inner).not.toHaveStyle({ maxWidth: '600px' });
+  });
+
+  it('keeps the 600px inner column when maxWidth is 100%', () => {
+    const { container } = renderCard(loaded, { maxWidth: '100%' });
+    const { section, inner } = cardShell(container);
+
+    expect(section).toHaveClass('yv:w-full');
+    expect(section).toHaveStyle({ maxWidth: '100%' });
+    expect(inner).toHaveClass('yv:card-content');
+    expect(inner).not.toHaveStyle({ maxWidth: 'none' });
+  });
+
+  it('still fills a parent that is narrower than the section cap', () => {
+    const { container } = renderCard(loaded, { hostWidth: 400 });
+    const host = container.firstElementChild;
+    const { section, inner } = cardShell(container);
+
+    expect(host).toHaveStyle({ width: '400px' });
+    expect(section.parentElement).toBe(host);
+    expect(section).toHaveClass('yv:w-full');
+    expect(section).toHaveStyle({ maxWidth: '700px' });
+    expect(inner).toHaveClass('yv:w-full');
+    expect(inner).not.toHaveClass('yv:card-content');
   });
 });
 
