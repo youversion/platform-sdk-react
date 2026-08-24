@@ -38,7 +38,7 @@ export function getBibleTextErrorMessage(error: BibleTextError, t: TFunction): s
     return t('passageNotFoundError');
   }
 
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+  if (globalThis.navigator?.onLine === false) {
     return t('unreachableServerError');
   }
 

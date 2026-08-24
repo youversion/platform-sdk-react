@@ -7,8 +7,8 @@ describe('extractTextFromHtml', () => {
   });
 
   it('should return empty string for falsy input', () => {
-    expect(extractTextFromHtml(null as unknown as string)).toBe('');
-    expect(extractTextFromHtml(undefined as unknown as string)).toBe('');
+    expect(extractTextFromHtml(null)).toBe('');
+    expect(extractTextFromHtml(undefined)).toBe('');
   });
 
   it('should extract text from single content span', () => {

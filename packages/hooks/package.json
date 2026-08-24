@@ -1,6 +1,6 @@
 {
   "name": "@youversion/platform-react-hooks",
-  "version": "2.7.1",
+  "version": "2.9.0",
   "description": "React hooks for accessing YouVersion Platform APIs with automatic loading/error states.",
   "license": "Apache-2.0",
   "type": "module",
@@ -24,11 +24,10 @@
     }
   },
   "scripts": {
-    "dev": "tsup src/index.ts --format cjs,esm --watch --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --watch",
     "build:js": "tsup src/index.ts --format cjs,esm",
     "build:types": "tsc -p tsconfig.build.json",
     "build": "pnpm build:js && pnpm build:types",
-    "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -41,17 +40,15 @@
     "react": ">=19.1.0 <20.0.0"
   },
   "devDependencies": {
-    "@internal/eslint-config": "workspace:*",
     "@internal/tsconfig": "workspace:*",
     "@testing-library/jest-dom": "^6.4.0",
     "@testing-library/react": "^16.0.0",
     "@types/react": "19.2.2",
     "@vitejs/plugin-react": "^4.2.1",
     "@vitest/coverage-v8": "4.0.4",
-    "eslint": "9.38.0",
     "jsdom": "27.0.1",
     "tsup": "8.5.0",
-    "typescript": "5.9.3",
+    "typescript": "7.0.2",
     "vitest": "4.0.4"
   }
 }

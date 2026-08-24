@@ -152,7 +152,7 @@ const YouVersionAuthButtonImpl = React.forwardRef<HTMLButtonElement, YouVersionA
         }
       } catch (error) {
         if (onAuthError) {
-          onAuthError(error as Error);
+          onAuthError(error instanceof Error ? error : new Error('Auth failed'));
         }
       }
     };
@@ -191,6 +191,15 @@ const YouVersionAuthButtonImpl = React.forwardRef<HTMLButtonElement, YouVersionA
       <LoaderIcon className="yv:z-20 yv:absolute yv:left-1/2 yv:top-1/2 yv:animate-spin yv:-translate-x-1/2 yv:-translate-y-1/2 yv:fill-primary-foreground yv:text-primary" />
     );
 
+    type AuthButtonStyle = React.CSSProperties & { '--yv-radius'?: string };
+    const buttonStyle: AuthButtonStyle = {
+      borderColor: theme === 'light' ? 'var(--yv-gray-15)' : 'var(--yv-gray-35)',
+      borderWidth: '1px',
+    };
+    if (radius === 'rectangular') {
+      buttonStyle['--yv-radius'] = '0.65rem';
+    }
+
     if (size === 'icon') {
       return (
         <Button
@@ -212,15 +221,7 @@ const YouVersionAuthButtonImpl = React.forwardRef<HTMLButtonElement, YouVersionA
           ref={ref}
           onClick={(e) => void handleClick(e)}
           size="icon"
-          style={{
-            ...(radius === 'rectangular'
-              ? ({
-                  '--yv-radius': '0.65rem',
-                } as React.CSSProperties)
-              : {}),
-            borderColor: theme === 'light' ? 'var(--yv-gray-15)' : 'var(--yv-gray-35)',
-            borderWidth: '1px',
-          }}
+          style={buttonStyle}
           variant={'default'}
         >
           {buttonLoading ? loadingSpinner : null}
@@ -248,15 +249,7 @@ const YouVersionAuthButtonImpl = React.forwardRef<HTMLButtonElement, YouVersionA
         ref={ref}
         onClick={(e) => void handleClick(e)}
         size="lg"
-        style={{
-          ...(radius === 'rectangular'
-            ? ({
-                '--yv-radius': '0.65rem',
-              } as React.CSSProperties)
-            : {}),
-          borderColor: theme === 'light' ? 'var(--yv-gray-15)' : 'var(--yv-gray-35)',
-          borderWidth: '1px',
-        }}
+        style={buttonStyle}
         variant={'default'}
       >
         {buttonLoading ? loadingSpinner : null}

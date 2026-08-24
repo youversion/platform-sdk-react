@@ -14,6 +14,21 @@ import {
   type BibleReaderRootProps,
 } from './bible-reader';
 
+type PathParams = {
+  id?: string | readonly string[];
+  usfm?: string | readonly string[];
+};
+
+function isPathParamText(value: string | readonly string[] | undefined): value is string {
+  return Object.prototype.toString.call(value) === '[object String]';
+}
+
+function firstPathParam(value: string | readonly string[] | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  if (isPathParamText(value)) return value;
+  return value[0];
+}
+
 let signInMock: ReturnType<typeof fn>;
 
 const meta: Meta<typeof BibleReader.Root> = {
@@ -677,11 +692,12 @@ export const VersionButtonLoadingStates: Story = {
     msw: {
       handlers: [
         // Delay the version endpoint so the loading state is reliably observable
-        http.get('*/v1/bibles/:id', async ({ params }) => {
+        http.get('*/v1/bibles/:id', async ({ params }: { params: PathParams }) => {
           await delay(1000);
-          const id = params.id as string;
+          const id = firstPathParam(params.id);
+          if (!id) return new HttpResponse(null, { status: 404 });
           const bible =
-            mockBibles.individual[id as keyof typeof mockBibles.individual] ??
+            Object.entries(mockBibles.individual).find(([key]) => key === id)?.[1] ??
             mockBibles.collections.default.data.find((b) => b.id === Number(id));
           if (bible) return HttpResponse.json(bible);
           return new HttpResponse(null, { status: 404 });
@@ -941,9 +957,10 @@ export const ChapterChangeLoadingOverlay: Story = {
   parameters: {
     msw: {
       handlers: [
-        http.get('*/v1/bibles/111/passages/:usfm', async ({ params }) => {
+        http.get('*/v1/bibles/111/passages/:usfm', async ({ params }: { params: PathParams }) => {
           await delay(800);
-          const usfm = params.usfm as string;
+          const usfm = firstPathParam(params.usfm);
+          if (!usfm) return new HttpResponse(null, { status: 404 });
           return HttpResponse.json({
             id: usfm,
             content: `<div class="p"><span class="verse">Passage text for ${usfm}.</span></div>`,

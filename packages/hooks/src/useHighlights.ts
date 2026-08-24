@@ -11,15 +11,10 @@ import {
   type Collection,
   type Highlight,
 } from '@youversion/platform-core';
+import type { UseNamedQueryResult } from './useQueryResult';
+import { useHookOverride } from './useHookOverride';
 
-export function useHighlights(
-  options: GetHighlightsOptions,
-  apiOptions?: UseApiDataOptions,
-): {
-  highlights: Collection<Highlight> | null;
-  loading: boolean;
-  error: Error | null;
-  refetch: () => void;
+export type UseHighlightsResult = UseNamedQueryResult<'highlights', Collection<Highlight>> & {
   /**
    * Creates a highlight. Intentionally does NOT auto-refetch: a single logical
    * apply can fan out into several writes, so callers must call `refetch()` once
@@ -32,7 +27,13 @@ export function useHighlights(
    * body for the why.
    */
   deleteHighlight: (passageId: string, deleteOptions: DeleteHighlightOptions) => Promise<void>;
-} {
+};
+
+export function useHighlights(
+  options: GetHighlightsOptions,
+  apiOptions?: UseApiDataOptions,
+): UseHighlightsResult {
+  const override = useHookOverride('useHighlights');
   const apiClient = useApiClient();
 
   const highlightsClient = useMemo(() => new HighlightsClient(apiClient), [apiClient]);
@@ -45,7 +46,7 @@ export function useHighlights(
     () => highlightsClient.getHighlights(options),
     [highlightsClient, options.version_id, options.passage_id],
     {
-      enabled: apiOptions?.enabled !== false,
+      enabled: !override && apiOptions?.enabled !== false,
     },
   );
 
@@ -66,6 +67,7 @@ export function useHighlights(
     [highlightsClient],
   );
 
+  if (override) return override(options, apiOptions);
   return {
     highlights: data,
     loading,

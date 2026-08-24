@@ -6,6 +6,7 @@ import { usePassage, useTheme } from '@youversion/platform-react-hooks';
 import {
   forwardRef,
   memo,
+  type CSSProperties,
   type ReactNode,
   useLayoutEffect,
   useMemo,
@@ -18,6 +19,7 @@ import { Footnote } from '@/components/icons/footnote';
 import { LoaderIcon } from '@/components/icons/loader';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { getBibleTextErrorMessage } from '@/lib/bible-text-error';
+import { useVersionFilterWarning } from '@/lib/use-version-filter-warning';
 import { cn } from '@/lib/utils';
 import { type FontFamily } from '@/lib/verse-html-utils';
 
@@ -133,7 +135,8 @@ function getVerseHtmlFromDom(container: HTMLElement, verseNum: string): string {
 
   wrappers.forEach((wrapper, i) => {
     if (i > 0) parts.push(' ');
-    const clone = wrapper.cloneNode(true) as Element;
+    const clone = wrapper.cloneNode(true);
+    if (!(clone instanceof Element)) return;
     clone.querySelectorAll('.yv-h, .yv-vlbl').forEach((el) => el.remove());
     clone.querySelectorAll('[data-verse-footnote]').forEach((anchor) => {
       const sup = wrapper.ownerDocument.createElement('sup');
@@ -187,7 +190,8 @@ export function getCleanVerseText(container: HTMLElement, verseNum: number): str
 
   const parts: string[] = [];
   wrappers.forEach((wrapper) => {
-    const clone = wrapper.cloneNode(true) as Element;
+    const clone = wrapper.cloneNode(true);
+    if (!(clone instanceof Element)) return;
     clone.querySelectorAll('.yv-h, .yv-vlbl, [data-verse-footnote]').forEach((el) => el.remove());
     const text = (clone.textContent || '').trim();
     if (text) parts.push(text);
@@ -361,18 +365,18 @@ function BibleTextHtml({
     const isDark = currentTheme === 'dark';
     const fillOpacity = isDark ? HIGHLIGHT_FILL_OPACITY_DARK : HIGHLIGHT_FILL_OPACITY_LIGHT;
     contentRef.current.querySelectorAll('.yv-v[v]').forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
       const verseNum = parseInt(el.getAttribute('v') || '0', 10);
       el.classList.toggle('yv-v-selected', selectedVerses.includes(verseNum));
       const color = highlightedVerses[verseNum];
       const isHighlighted = Boolean(color);
-      const node = el as HTMLElement;
-      node.style.backgroundColor = color ? hexToRgba(color, fillOpacity) : '';
+      el.style.backgroundColor = color ? hexToRgba(color, fillOpacity) : '';
       // Light mode paints fills at full strength. A dark non-palette hex
       // (YPE-4494) would sit under the reader's dark body text and go
       // illegible, so flip the wrapper to white; labels and footnote icons
       // inherit it. Palette fills stay on the default foreground. Dark mode
       // already uses light body text, so leave color unset there.
-      node.style.color = color && !isDark && isDarkHighlightHex(color) ? '#ffffff' : '';
+      el.style.color = color && !isDark && isDarkHighlightHex(color) ? '#ffffff' : '';
       // Over a highlight fill the muted label color clashes with saturated fills,
       // so the label inherits the verse body text color instead — the reader's
       // main text color in light mode, white/near-white in dark mode. Setting
@@ -381,7 +385,8 @@ function BibleTextHtml({
       // so they keep their CSS muted color. Deliberate divergence from the Swift
       // SDK, which only recolors the label in dark mode.
       el.querySelectorAll('.yv-vlbl').forEach((label) => {
-        (label as HTMLElement).style.color = isHighlighted ? 'inherit' : '';
+        if (!(label instanceof HTMLElement)) return;
+        label.style.color = isHighlighted ? 'inherit' : '';
       });
     });
   }, [html, selectedVerses, highlightedVerses, currentTheme]);
@@ -390,7 +395,9 @@ function BibleTextHtml({
   // handler always captures the latest selectedVerses via closure.
   const handleClick = onVerseSelect
     ? (e: React.MouseEvent<HTMLDivElement>) => {
-        const verseEl = (e.target as HTMLElement).closest('.yv-v[v]');
+        const target = e.target;
+        if (!(target instanceof Element)) return;
+        const verseEl = target.closest('.yv-v[v]');
         if (!verseEl) return;
         const verseNum = parseInt(verseEl.getAttribute('v') || '0', 10);
         if (!verseNum) return;
@@ -476,9 +483,11 @@ export const Verse = {
       return (
         <span className="yv:[&>p]:inline-block">
           <sup className="yv:text-muted-foreground yv:align-super yv:text-[0.6em]">{number}</sup>
-          &nbsp;{/* This spacing is intentional */}
+          {'\u00a0'}
+          {/* This spacing is intentional */}
           <span className="yv:font-serif! yv:text-xl yv:text-primary">{text}</span>
-          &nbsp;{/* This spacing is intentional */}
+          {'\u00a0'}
+          {/* This spacing is intentional */}
         </span>
       );
     }
@@ -486,9 +495,11 @@ export const Verse = {
     return (
       <span className="yv:[&>p]:inline-block">
         <sup className="yv:text-muted-foreground yv:align-super yv:text-[0.6em]">{number}</sup>
-        &nbsp;{/* This spacing is intentional */}
+        {'\u00a0'}
+        {/* This spacing is intentional */}
         <span className="yv:text-primary">{text}</span>
-        &nbsp;{/* This spacing is intentional */}
+        {'\u00a0'}
+        {/* This spacing is intentional */}
       </span>
     );
   },
@@ -514,22 +525,25 @@ export const Verse = {
       // SSR safety: DOMParser doesn't exist during server render.
       // Idempotent — already-transformed HTML from getPassage is a no-op.
       const transformedHtml = useMemo(
-        () => (typeof window === 'undefined' ? html : transformBibleHtml(html).html),
+        () => (!globalThis.window ? html : transformBibleHtml(html).html),
         [html],
       );
       const providerTheme = useTheme();
       const currentTheme = theme || providerTheme;
+      type ReaderStyleVars = CSSProperties & {
+        '--yv-reader-font-family'?: string;
+        '--yv-reader-font-size'?: string;
+        '--yv-reader-line-height'?: string | number;
+      };
+      const readerStyle: ReaderStyleVars = {};
+      if (fontFamily) readerStyle['--yv-reader-font-family'] = fontFamily;
+      if (fontSize) readerStyle['--yv-reader-font-size'] = `${fontSize}px`;
+      if (lineHeight) readerStyle['--yv-reader-line-height'] = lineHeight;
 
       return (
         <section
           ref={ref}
-          style={
-            {
-              ...(fontFamily ? { '--yv-reader-font-family': fontFamily } : {}),
-              ...(fontSize ? { '--yv-reader-font-size': `${fontSize}px` } : {}),
-              ...(lineHeight ? { '--yv-reader-line-height': lineHeight } : {}),
-            } as React.CSSProperties
-          }
+          style={readerStyle}
           data-show-verse-numbers={showVerseNumbers}
           data-show-notes={renderNotes}
           data-slot="yv-bible-renderer"
@@ -611,6 +625,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
     const { t } = useTranslation(undefined, { i18n });
     const providerTheme = useTheme();
     const currentTheme = theme || providerTheme;
+    useVersionFilterWarning(versionId);
 
     // Latched at first mount. Controlled (prop present) never falls through to
     // `highlightedVerses` or the self-contained fetch.

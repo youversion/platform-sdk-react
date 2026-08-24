@@ -17,40 +17,22 @@ import {
   type MockInstance,
 } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import type {
-  BibleBook,
-  BiblePassage,
-  BibleVersion,
-  Highlight,
-  Language,
-} from '@youversion/platform-core';
-import {
-  useBooks,
-  useFilteredVersions,
-  useHighlights,
-  useLanguage,
-  useLanguages,
-  useOrganizations,
-  usePassage,
-  useTheme,
-  useVersion,
-  useVersions,
-} from '@youversion/platform-react-hooks';
+import type { BibleBook, BiblePassage, BibleVersion, Highlight } from '@youversion/platform-core';
+import type { HookOverrides } from '@youversion/platform-react-hooks';
+import { HookOverrideProvider } from '@/test/hook-overrides';
 import {
   BibleReader,
   type BibleReaderRootProps,
   type BibleReaderShareData,
   type BibleReaderVerseSelection,
 } from './bible-reader';
+import type { HighlightedVerses } from '@/lib/highlight-colors';
 import { HIGHLIGHT_COLORS } from './verse-action-popover';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
 
-class ResizeObserverMock {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
+import { installResizeObserverStub } from '@/test/dom-stubs';
+
+installResizeObserverStub();
 
 // jsdom under this Node version refuses localStorage for opaque origins
 // (`SecurityError`). Theme-settings hydration in Root reads it on mount, so
@@ -82,22 +64,61 @@ if (!Element.prototype.scrollTo) {
   Element.prototype.scrollTo = () => {};
 }
 
-vi.mock('@youversion/platform-react-hooks', async () => {
-  const actual = await vi.importActual('@youversion/platform-react-hooks');
+function defaultOverrides(): HookOverrides {
   return {
-    ...actual,
-    useBooks: vi.fn(),
-    useFilteredVersions: vi.fn(),
-    useHighlights: vi.fn(),
-    useLanguage: vi.fn(),
-    useLanguages: vi.fn(),
-    useOrganizations: vi.fn(),
-    usePassage: vi.fn(),
-    useTheme: vi.fn(),
-    useVersion: vi.fn(),
-    useVersions: vi.fn(),
+    useBooks: () => ({
+      books: { data: [...mockBooks], next_page_token: null },
+      loading: false,
+      error: null,
+      refetch: () => undefined,
+    }),
+    useVersion: () => ({
+      version: mockVersion,
+      loading: false,
+      error: null,
+      refetch: () => undefined,
+    }),
+    usePassage: () => ({
+      passage: mockPassage,
+      loading: false,
+      error: null,
+      refetch: () => undefined,
+    }),
+    useHighlights: () => ({
+      highlights: { data: [], next_page_token: null },
+      loading: false,
+      error: null,
+      refetch: () => undefined,
+      createHighlight: () =>
+        Promise.resolve({
+          version_id: 111,
+          passage_id: 'JHN.3.16',
+          color: 'fffe00',
+        }),
+      deleteHighlight: () => Promise.resolve(),
+    }),
+    useLanguages: () => ({
+      languages: { data: [], next_page_token: null },
+      loading: false,
+      error: null,
+      refetch: () => undefined,
+    }),
+    useLanguage: () => ({
+      language: { id: 'en', language: 'English', display_names: { en: 'English' } },
+      loading: false,
+      error: null,
+      refetch: () => undefined,
+    }),
+    useVersions: () => ({
+      versions: { data: [], next_page_token: null },
+      loading: false,
+      error: null,
+      refetch: () => undefined,
+    }),
+    useFilteredVersions: () => [],
+    useOrganizations: () => ({ organizations: new Map() }),
   };
-});
+}
 
 const YELLOW = HIGHLIGHT_COLORS[0]; // fffe00
 const GREEN = HIGHLIGHT_COLORS[1]; // 5dff79
@@ -116,13 +137,16 @@ const mockBooks: BibleBook[] = [
   },
 ];
 
-const mockVersion = {
+const mockVersion: BibleVersion = {
   id: 111,
   localized_abbreviation: 'NIV',
   abbreviation: 'NIV',
   title: 'New International Version',
+  localized_title: 'New International Version',
   language_tag: 'en',
-} as BibleVersion;
+  books: ['JHN'],
+  youversion_deep_link: 'https://bible.com/versions/111',
+};
 
 // Same shape as the real passages API mock data: `.yv-v` markers that the
 // Bible HTML transformer expands into per-verse wrappers.
@@ -137,59 +161,6 @@ const mockPassage: BiblePassage = {
   reference: 'John 1',
 };
 
-function setupDefaultMocks() {
-  vi.mocked(useTheme).mockReturnValue('light');
-  vi.mocked(useBooks).mockReturnValue({
-    books: { data: [...mockBooks], next_page_token: null },
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-  });
-  vi.mocked(useVersion).mockReturnValue({
-    version: mockVersion,
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-  });
-  vi.mocked(usePassage).mockReturnValue({
-    passage: mockPassage,
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-  });
-  // Self-contained path is inert in these tests (controlled mode owns the
-  // surface). Keep useHighlights stubbed so Content can mount without a
-  // YouVersionProvider.
-  vi.mocked(useHighlights).mockReturnValue({
-    highlights: { data: [], next_page_token: null },
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-    createHighlight: vi.fn(),
-    deleteHighlight: vi.fn(),
-  });
-  vi.mocked(useLanguages).mockReturnValue({
-    languages: { data: [] as Language[], next_page_token: null },
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-  });
-  vi.mocked(useLanguage).mockReturnValue({
-    language: { id: 'en', language: 'English', display_names: { en: 'English' } } as Language,
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-  });
-  vi.mocked(useVersions).mockReturnValue({
-    versions: { data: [], next_page_token: null },
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-  });
-  vi.mocked(useFilteredVersions).mockReturnValue([]);
-  vi.mocked(useOrganizations).mockReturnValue({ organizations: new Map() });
-}
-
 // Toolbar is mounted alongside Content so the adversarial surface (chapter /
 // version pickers, settings) is present in every test.
 function readerJsx(props: Partial<BibleReaderRootProps> = {}) {
@@ -201,8 +172,15 @@ function readerJsx(props: Partial<BibleReaderRootProps> = {}) {
   );
 }
 
-function renderReader(props: Partial<BibleReaderRootProps> = {}) {
-  return render(readerJsx(props));
+function wrapReader(
+  props: Partial<BibleReaderRootProps> = {},
+  overrides: HookOverrides = defaultOverrides(),
+) {
+  return <HookOverrideProvider overrides={overrides}>{readerJsx(props)}</HookOverrideProvider>;
+}
+
+function renderReader(props: Partial<BibleReaderRootProps> = {}, overrides?: HookOverrides) {
+  return render(wrapReader(props, overrides));
 }
 
 function getVerseEl(container: HTMLElement, verse: number): HTMLElement {
@@ -241,7 +219,7 @@ function getClearButtons() {
 }
 
 /** Clean verse text the reader extracts from `mockPassage` for each verse. */
-const VERSE_TEXT: Record<number, string> = {
+const VERSE_TEXT: HighlightedVerses = {
   1: 'In the beginning was the Word.',
   2: 'He was with God in the beginning.',
   3: 'Through him all things were made.',
@@ -317,7 +295,6 @@ function lastShareData(mock: VerseSelectMock): BibleReaderShareData {
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
-  setupDefaultMocks();
 });
 
 describe('BibleReader controlled mode - pure projection', () => {
@@ -364,7 +341,7 @@ describe('BibleReader controlled mode - pure projection', () => {
     expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
 
     rerender(
-      readerJsx({ highlights: [{ version_id: 111, passage_id: 'JHN.1.1', color: YELLOW }] }),
+      wrapReader({ highlights: [{ version_id: 111, passage_id: 'JHN.1.1', color: YELLOW }] }),
     );
     expect(getVerseEl(container, 1).style.backgroundColor).toBe(fillFor(YELLOW));
   });
@@ -394,7 +371,7 @@ describe('BibleReader controlled mode - provable inertness', () => {
       await waitFor(() => expect(getClearButtons()).toHaveLength(1));
       fireEvent.click(getClearButtons()[0]!);
 
-      const highlightKey = (key: unknown) => String(key).includes('highlights');
+      const highlightKey = (key: string) => key.includes('highlights');
       expect(getItemSpy.mock.calls.some(([key]) => highlightKey(key))).toBe(false);
       expect(setItemSpy.mock.calls.some(([key]) => highlightKey(key))).toBe(false);
       expect(fetchSpy.mock.calls.some(([input]) => String(input).includes('/v1/highlights'))).toBe(
@@ -510,7 +487,7 @@ describe('BibleReader controlled mode - events', () => {
       { version_id: 111, passage_id: 'JHN.1.2', color: GREEN },
     ];
     const rerenderWith = (next: Highlight[]) =>
-      rerender(readerJsx({ highlights: next, onHighlightRemove }));
+      rerender(wrapReader({ highlights: next, onHighlightRemove }));
     const { container, rerender } = renderReader({ highlights, onHighlightRemove });
 
     selectVerse(container, 1);
@@ -576,7 +553,7 @@ describe('BibleReader controlled mode - latching', () => {
     });
     expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(GREEN));
 
-    rerender(readerJsx());
+    rerender(wrapReader());
 
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('latched at first mount'));
     // Transient undefined renders as "no highlights" — still controlled.
@@ -589,7 +566,7 @@ describe('BibleReader controlled mode - latching', () => {
     expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
 
     rerender(
-      readerJsx({ highlights: [{ version_id: 111, passage_id: 'JHN.1.1', color: YELLOW }] }),
+      wrapReader({ highlights: [{ version_id: 111, passage_id: 'JHN.1.1', color: YELLOW }] }),
     );
 
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('latched at first mount'));
@@ -726,15 +703,19 @@ describe('BibleReader selection payload - reference and shareData', () => {
   });
 
   it('falls back to the USFM book code until useBooks resolves', () => {
-    vi.mocked(useBooks).mockReturnValue({
-      books: null,
-      loading: true,
-      error: null,
-      refetch: vi.fn(),
-    });
-
     const onVerseSelect = verseSelectSpy();
-    const { container } = renderReader({ highlights: [], onVerseSelect });
+    const { container } = renderReader(
+      { highlights: [], onVerseSelect },
+      {
+        ...defaultOverrides(),
+        useBooks: () => ({
+          books: null,
+          loading: true,
+          error: null,
+          refetch: () => undefined,
+        }),
+      },
+    );
 
     selectVerse(container, 3);
 
@@ -743,28 +724,23 @@ describe('BibleReader selection payload - reference and shareData', () => {
   });
 
   it('re-emits the live selection when the book title resolves after it was made', async () => {
-    vi.mocked(useBooks).mockReturnValue({
-      books: null,
-      loading: true,
-      error: null,
-      refetch: vi.fn(),
-    });
-
     const onVerseSelect = verseSelectSpy();
     const props = { highlights: [], onVerseSelect, verseActions: 'none' as const };
-    const { container, rerender } = renderReader(props);
+    const { container, rerender } = renderReader(props, {
+      ...defaultOverrides(),
+      useBooks: () => ({
+        books: null,
+        loading: true,
+        error: null,
+        refetch: () => undefined,
+      }),
+    });
 
     selectVerse(container, 3);
     expect(lastSelection(onVerseSelect).reference).toBe('JHN 1:3');
 
     // useBooks resolves while verse 3 is still selected.
-    vi.mocked(useBooks).mockReturnValue({
-      books: { data: [...mockBooks], next_page_token: null },
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-    rerender(readerJsx(props));
+    rerender(wrapReader(props));
 
     await waitFor(() => expect(lastSelection(onVerseSelect).reference).toBe('John 1:3'));
     // The refreshed payload is otherwise the same selection, shareData included.
@@ -773,52 +749,42 @@ describe('BibleReader selection payload - reference and shareData', () => {
   });
 
   it('re-emits the live selection when the version abbreviation resolves after it was made', async () => {
-    vi.mocked(useVersion).mockReturnValue({
-      version: null,
-      loading: true,
-      error: null,
-      refetch: vi.fn(),
-    });
-
     const onVerseSelect = verseSelectSpy();
     const props = { highlights: [], onVerseSelect, verseActions: 'none' as const };
-    const { container, rerender } = renderReader(props);
+    const { container, rerender } = renderReader(props, {
+      ...defaultOverrides(),
+      useVersion: () => ({
+        version: null,
+        loading: true,
+        error: null,
+        refetch: () => undefined,
+      }),
+    });
 
     selectVerse(container, 1);
     // No version yet: the copy/share reference carries no abbreviation.
     expect(lastShareData(onVerseSelect).reference).toBe('John 1:1');
 
-    vi.mocked(useVersion).mockReturnValue({
-      version: mockVersion,
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-    rerender(readerJsx(props));
+    rerender(wrapReader(props));
 
     await waitFor(() => expect(lastShareData(onVerseSelect).reference).toBe('John 1:1 NIV'));
     expect(onVerseSelect).toHaveBeenLastCalledWith(selection([1]));
   });
 
   it('does not re-emit when metadata resolves with no selection live', async () => {
-    vi.mocked(useBooks).mockReturnValue({
-      books: null,
-      loading: true,
-      error: null,
-      refetch: vi.fn(),
-    });
-
     const onVerseSelect = verseSelectSpy();
     const props = { highlights: [], onVerseSelect };
-    const { rerender } = renderReader(props);
-
-    vi.mocked(useBooks).mockReturnValue({
-      books: { data: [...mockBooks], next_page_token: null },
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
+    const { rerender } = renderReader(props, {
+      ...defaultOverrides(),
+      useBooks: () => ({
+        books: null,
+        loading: true,
+        error: null,
+        refetch: () => undefined,
+      }),
     });
-    rerender(readerJsx(props));
+
+    rerender(wrapReader(props));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(onVerseSelect).not.toHaveBeenCalled();
@@ -833,7 +799,7 @@ describe('BibleReader selection payload - reference and shareData', () => {
     await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
     expect(onVerseSelect).toHaveBeenCalledTimes(1);
 
-    rerender(readerJsx(props));
+    rerender(wrapReader(props));
 
     expect(onVerseSelect).toHaveBeenCalledTimes(1);
     expect(onVerseSelect).toHaveBeenLastCalledWith(selection([2]));
@@ -884,7 +850,7 @@ describe('BibleReader clearSelectionSignal', () => {
     expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
     onVerseSelect.mockClear();
 
-    rerender(readerJsx({ ...props, clearSelectionSignal: 1 }));
+    rerender(wrapReader({ ...props, clearSelectionSignal: 1 }));
 
     await waitFor(() =>
       expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(false),
@@ -900,7 +866,7 @@ describe('BibleReader clearSelectionSignal', () => {
     selectVerse(container, 2);
     await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
 
-    rerender(readerJsx({ ...props, clearSelectionSignal: 4 }));
+    rerender(wrapReader({ ...props, clearSelectionSignal: 4 }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
@@ -920,7 +886,7 @@ describe('BibleReader clearSelectionSignal', () => {
     selectVerse(container, 1);
     onVerseSelect.mockClear();
 
-    rerender(readerJsx(props));
+    rerender(wrapReader(props));
 
     expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
     expect(onVerseSelect).not.toHaveBeenCalled();
@@ -933,7 +899,7 @@ describe('BibleReader clearSelectionSignal', () => {
 
     selectVerse(container, 1);
     onVerseSelect.mockClear();
-    rerender(readerJsx(props));
+    rerender(wrapReader(props));
 
     expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
     expect(onVerseSelect).not.toHaveBeenCalled();

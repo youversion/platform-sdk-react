@@ -3,6 +3,7 @@
 import type { BibleVersion } from '@youversion/platform-core';
 import { useMemo } from 'react';
 import { getISOFromVersion } from './utility/version';
+import { useHookOverride } from './useHookOverride';
 
 function getVersionSortTitle(version: BibleVersion): string {
   return version.localized_title || version.title;
@@ -24,7 +25,8 @@ export function useFilteredVersions(
   selectedLanguage: string,
   recentVersions?: Pick<BibleVersion, 'id' | 'title' | 'localized_abbreviation'>[],
 ): BibleVersion[] {
-  return useMemo(() => {
+  const override = useHookOverride('useFilteredVersions');
+  const filtered = useMemo(() => {
     let result = [...versions];
 
     // Language filter
@@ -55,4 +57,7 @@ export function useFilteredVersions(
 
     return result;
   }, [versions, recentVersions, searchTerm, selectedLanguage]);
+
+  if (override) return override(versions, searchTerm, selectedLanguage, recentVersions);
+  return filtered;
 }

@@ -1,4 +1,5 @@
 export * from './app';
+export * from './auth';
 export * from './bible-index';
 export * from './book';
 export * from './chapter';

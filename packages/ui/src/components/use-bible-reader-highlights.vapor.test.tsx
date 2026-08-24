@@ -170,7 +170,7 @@ describe('vapor flash — removed verse must never reappear at any frame', () =>
     const jsonHeaders = { 'content-type': 'application/json' };
 
     vi.spyOn(global, 'fetch').mockImplementation((input, init) => {
-      const url = typeof input === 'string' ? input : (input as Request).url;
+      const url = input instanceof Request ? input.url : input instanceof URL ? input.href : input;
       const method = (init?.method ?? 'GET').toUpperCase();
       if (url.includes('/v1/highlights') && method === 'DELETE') {
         deletedOnServer = true;

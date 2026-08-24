@@ -1,19 +1,17 @@
 'use client';
 import { useBibleClient } from './useBibleClient';
 import { useApiData, type UseApiDataOptions } from './useApiData';
+import type { UseNamedQueryResult } from './useQueryResult';
 import type { BibleChapter } from '@youversion/platform-core';
+
+export type UseChapterResult = UseNamedQueryResult<'chapter', BibleChapter>;
 
 export function useChapter(
   versionId: number,
   book: string,
   chapter: number,
   options?: UseApiDataOptions,
-): {
-  chapter: BibleChapter | null;
-  loading: boolean;
-  error: Error | null;
-  refetch: () => void;
-} {
+): UseChapterResult {
   const bibleClient = useBibleClient();
 
   const {

@@ -2,9 +2,11 @@
 
 import { useBibleClient } from './useBibleClient';
 import { useApiData, type UseApiDataOptions } from './useApiData';
+import type { UseNamedQueryResult } from './useQueryResult';
 import type { BiblePassage } from '@youversion/platform-core';
+import { useHookOverride } from './useHookOverride';
 
-type usePassageProps = {
+export type UsePassageProps = {
   versionId: number;
   usfm: string;
   format?: 'html' | 'text';
@@ -19,6 +21,8 @@ type usePassageProps = {
   options?: UseApiDataOptions;
 };
 
+export type UsePassageResult = UseNamedQueryResult<'passage', BiblePassage>;
+
 export function usePassage({
   versionId,
   usfm,
@@ -27,12 +31,8 @@ export function usePassage({
   include_notes = false,
   transform = true,
   options,
-}: usePassageProps): {
-  passage: BiblePassage | null;
-  loading: boolean;
-  error: Error | null;
-  refetch: () => void;
-} {
+}: UsePassageProps): UsePassageResult {
+  const override = useHookOverride('usePassage');
   const bibleClient = useBibleClient();
 
   // Don't attempt to fetch if usfm is invalid
@@ -42,8 +42,20 @@ export function usePassage({
     () =>
       bibleClient.getPassage(versionId, usfm, format, include_headings, include_notes, transform),
     [bibleClient, versionId, usfm, format, include_headings, include_notes, transform],
-    { enabled: options?.enabled !== false && isValidUsfm },
+    { enabled: !override && options?.enabled !== false && isValidUsfm },
   );
+
+  if (override) {
+    return override({
+      versionId,
+      usfm,
+      format,
+      include_headings,
+      include_notes,
+      transform,
+      options,
+    });
+  }
 
   return { passage: data, loading, error, refetch };
 }

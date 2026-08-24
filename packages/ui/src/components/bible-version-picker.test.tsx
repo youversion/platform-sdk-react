@@ -1,18 +1,15 @@
 /**
  * @vitest-environment jsdom
  */
-/* eslint-disable @typescript-eslint/no-empty-function */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
 
 // ResizeObserver is used by VersionAbbreviationIcon and @floating-ui/dom (Radix Popover)
-class ResizeObserverMock {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
+import { installResizeObserverStub } from '@/test/dom-stubs';
+
+installResizeObserverStub();
 
 import {
   BibleLanguagePickerContent,
@@ -20,18 +17,15 @@ import {
   BibleVersionPickerLanguageTrigger,
   RECENT_VERSIONS_KEY,
 } from './bible-version-picker';
+import type { HookOverrides } from '@youversion/platform-react-hooks';
 import {
-  useVersions,
-  useVersion,
-  useLanguages,
-  useLanguage,
-  useFilteredVersions,
-  useOrganizations,
-  useTheme,
-} from '@youversion/platform-react-hooks';
-import type { BibleVersion, Language, Organization } from '@youversion/platform-core';
-
-vi.mock('@youversion/platform-react-hooks');
+  YouVersionPlatformConfiguration,
+  type BibleVersion,
+  type GetLanguagesOptions,
+  type Language,
+  type Organization,
+} from '@youversion/platform-core';
+import { HookOverrideProvider } from '@/test/hook-overrides';
 
 const mockVersions: BibleVersion[] = [
   {
@@ -83,86 +77,98 @@ const mockLanguages: Language[] = [
   },
 ];
 
-function setupDefaultMocks({
-  versionsLoading = false,
-  languagesLoading = false,
-  versionsLanguageInfoLoading = false,
-  filteredVersions = mockVersions,
-}: {
+type OverrideSetup = {
   versionsLoading?: boolean;
   languagesLoading?: boolean;
   versionsLanguageInfoLoading?: boolean;
   filteredVersions?: BibleVersion[];
-} = {}) {
-  vi.mocked(useVersions).mockImplementation((languageId) => {
-    if (languageId === '*') {
+};
+
+function defaultOverrides({
+  versionsLoading = false,
+  languagesLoading = false,
+  versionsLanguageInfoLoading = false,
+  filteredVersions = mockVersions,
+}: OverrideSetup = {}): HookOverrides {
+  return {
+    useVersions: (languageId) => {
+      if (languageId === '*') {
+        return {
+          versions: versionsLanguageInfoLoading
+            ? null
+            : {
+                data: mockLanguages.map((language, index) => ({
+                  ...mockVersions[0]!,
+                  id: language.id === 'en' ? 111 : language.id === 'es' ? 222 : 333,
+                  language_tag: language.id,
+                  localized_abbreviation: language.id,
+                  abbreviation: language.id,
+                  title: language.language,
+                  localized_title: language.language,
+                  youversion_deep_link: `https://bible.com/versions/${index}`,
+                })),
+                next_page_token: null,
+              },
+          loading: versionsLanguageInfoLoading,
+          error: null,
+          refetch: () => undefined,
+        };
+      }
+
       return {
-        versions: versionsLanguageInfoLoading
-          ? null
-          : {
-              data: mockLanguages.map((language) => ({
-                id: language.id === 'en' ? 111 : language.id === 'es' ? 222 : 333,
-                language_tag: language.id,
-              })),
-              next_page_token: null,
-            },
-        loading: versionsLanguageInfoLoading,
+        versions: versionsLoading ? null : { data: mockVersions, next_page_token: null },
+        loading: versionsLoading,
         error: null,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useVersions>;
-    }
-
-    return {
-      versions: versionsLoading ? null : { data: mockVersions, next_page_token: null },
-      loading: versionsLoading,
+        refetch: () => undefined,
+      };
+    },
+    useVersion: () => ({
+      version: mockVersions[0]!,
+      loading: false,
       error: null,
-      refetch: vi.fn(),
-    } as unknown as ReturnType<typeof useVersions>;
-  });
-
-  vi.mocked(useVersion).mockReturnValue({
-    version: mockVersions[0]!,
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-  });
-
-  vi.mocked(useLanguages).mockImplementation((params: Parameters<typeof useLanguages>[0]) => ({
-    languages: languagesLoading
-      ? null
-      : {
-          data: params && 'country' in params ? [mockLanguages[0]!] : mockLanguages,
-          next_page_token: null,
-        },
-    loading: languagesLoading,
-    error: null,
-    refetch: vi.fn(),
-  }));
-
-  vi.mocked(useLanguage).mockReturnValue({
-    language: { id: 'en', display_names: { en: 'English' }, language: 'English' },
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-  } as ReturnType<typeof useLanguage>);
-
-  vi.mocked(useFilteredVersions).mockReturnValue(filteredVersions);
-
-  vi.mocked(useOrganizations).mockReturnValue({
-    organizations: new Map([[mockOrganization.id, mockOrganization]]),
-  });
-
-  vi.mocked(useTheme).mockReturnValue('light');
+      refetch: () => undefined,
+    }),
+    useLanguages: (params?: GetLanguagesOptions) => ({
+      languages: languagesLoading
+        ? null
+        : {
+            data: params && 'country' in params ? [mockLanguages[0]!] : mockLanguages,
+            next_page_token: null,
+          },
+      loading: languagesLoading,
+      error: null,
+      refetch: () => undefined,
+    }),
+    useLanguage: () => ({
+      language: mockLanguages[0]!,
+      loading: false,
+      error: null,
+      refetch: () => undefined,
+    }),
+    useFilteredVersions: () => filteredVersions,
+    useOrganizations: () => ({
+      organizations: new Map([[mockOrganization.id, mockOrganization]]),
+    }),
+  };
 }
 
-function renderPicker() {
-  return render(
+function renderWithOverrides(ui: ReactElement, setup?: OverrideSetup) {
+  return render(ui, {
+    wrapper: ({ children }) => (
+      <HookOverrideProvider overrides={defaultOverrides(setup)}>{children}</HookOverrideProvider>
+    ),
+  });
+}
+
+function renderPicker(setup?: OverrideSetup) {
+  return renderWithOverrides(
     <BibleVersionPicker.Root versionId={111} onVersionChange={vi.fn()}>
       <BibleVersionPicker.Trigger>
         <button type="button">Open</button>
       </BibleVersionPicker.Trigger>
       <BibleVersionPicker.Content />
     </BibleVersionPicker.Root>,
+    setup,
   );
 }
 
@@ -187,6 +193,9 @@ function getVersionSearchInput() {
 describe('BibleVersionPicker', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    YouVersionPlatformConfiguration.permittedVersionIds = undefined;
+    YouVersionPlatformConfiguration.excludedVersionIds = undefined;
+    YouVersionPlatformConfiguration.permittedLanguageTags = undefined;
     Object.defineProperty(window, 'localStorage', {
       value: {
         getItem: vi.fn(() => null),
@@ -200,8 +209,7 @@ describe('BibleVersionPicker', () => {
 
   describe('loading state', () => {
     it('should show spinner in version list when versions are loading', async () => {
-      setupDefaultMocks({ versionsLoading: true, filteredVersions: [] });
-      renderPicker();
+      renderPicker({ versionsLoading: true, filteredVersions: [] });
       await openPicker();
 
       await waitFor(() => {
@@ -227,8 +235,7 @@ describe('BibleVersionPicker', () => {
         return null;
       });
 
-      setupDefaultMocks({ versionsLoading: true, filteredVersions: [] });
-      renderPicker();
+      renderPicker({ versionsLoading: true, filteredVersions: [] });
       await openPicker();
 
       await waitFor(() => {
@@ -244,8 +251,7 @@ describe('BibleVersionPicker', () => {
     });
 
     it('should show spinner in badge when versions are loading', async () => {
-      setupDefaultMocks({ versionsLoading: true, filteredVersions: [] });
-      renderPicker();
+      renderPicker({ versionsLoading: true, filteredVersions: [] });
       await openPicker();
 
       await waitFor(() => {
@@ -263,8 +269,7 @@ describe('BibleVersionPicker', () => {
 
   describe('empty state', () => {
     it('should show "No versions found" when not loading and results are empty', async () => {
-      setupDefaultMocks({ versionsLoading: false, filteredVersions: [] });
-      renderPicker();
+      renderPicker({ versionsLoading: false, filteredVersions: [] });
       await openPicker();
 
       await waitFor(() => {
@@ -279,8 +284,7 @@ describe('BibleVersionPicker', () => {
 
   describe('loaded state', () => {
     it('should show version count in badge when loaded', async () => {
-      setupDefaultMocks({ versionsLoading: false, filteredVersions: mockVersions });
-      renderPicker();
+      renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
       await openPicker();
 
       await waitFor(() => {
@@ -292,8 +296,7 @@ describe('BibleVersionPicker', () => {
     });
 
     it('should render version items when loaded', async () => {
-      setupDefaultMocks({ versionsLoading: false, filteredVersions: mockVersions });
-      renderPicker();
+      renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
       await openPicker();
 
       await waitFor(() => {
@@ -309,8 +312,7 @@ describe('BibleVersionPicker', () => {
 
   describe('abbreviation tile', () => {
     it('renders the abbreviation tile with the Figma media styling', async () => {
-      setupDefaultMocks({ versionsLoading: false, filteredVersions: mockVersions });
-      renderPicker();
+      renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
       await openPicker();
 
       const row = await screen.findByRole('listitem', { name: /new international version/i });
@@ -325,7 +327,7 @@ describe('BibleVersionPicker', () => {
     });
 
     it('splits a trailing-digit abbreviation onto a second line', async () => {
-      setupDefaultMocks({
+      renderPicker({
         versionsLoading: false,
         filteredVersions: [
           {
@@ -337,7 +339,6 @@ describe('BibleVersionPicker', () => {
           },
         ],
       });
-      renderPicker();
       await openPicker();
 
       const row = await screen.findByRole('listitem', { name: /new american standard bible/i });
@@ -350,8 +351,7 @@ describe('BibleVersionPicker', () => {
     });
 
     it('renders the publisher name above the version title when available', async () => {
-      setupDefaultMocks({ versionsLoading: false, filteredVersions: mockVersions });
-      renderPicker();
+      renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
       await openPicker();
 
       const row = await screen.findByRole('listitem', { name: /new international version/i });
@@ -361,13 +361,32 @@ describe('BibleVersionPicker', () => {
     });
 
     it('omits the publisher name when the version has no organization', async () => {
-      setupDefaultMocks({ versionsLoading: false, filteredVersions: mockVersions });
-      renderPicker();
+      renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
       await openPicker();
 
       const row = await screen.findByRole('listitem', { name: /new living translation/i });
       const description = row.querySelector('[data-slot="item-description"]');
       expect(description).toBeNull();
+    });
+
+    it('still lists recent versions saved without an abbreviation field', async () => {
+      vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
+        key === RECENT_VERSIONS_KEY
+          ? JSON.stringify([
+              {
+                id: 1588,
+                title: 'Amplified Bible',
+                localized_abbreviation: 'AMP',
+              },
+            ])
+          : null,
+      );
+
+      renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
+      await openPicker();
+
+      const recentList = await screen.findByTestId('recent-version-list');
+      expect(within(recentList).getByText(/Amplified Bible/i)).toBeTruthy();
     });
 
     it('applies the same tile styling to recent-version rows', async () => {
@@ -384,8 +403,7 @@ describe('BibleVersionPicker', () => {
           : null,
       );
 
-      setupDefaultMocks({ versionsLoading: false, filteredVersions: mockVersions });
-      renderPicker();
+      renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
       await openPicker();
 
       const recentList = await screen.findByTestId('recent-version-list');
@@ -395,6 +413,82 @@ describe('BibleVersionPicker', () => {
       expect(media!.className).toContain('yv:bg-secondary');
       expect(media!.className).toContain('yv:rounded-[8px]');
     });
+
+    it('hides excluded recent versions without rewriting localStorage', async () => {
+      const stored = [
+        {
+          id: 111,
+          title: 'New International Version',
+          localized_abbreviation: 'NIV',
+          abbreviation: 'NIV',
+        },
+        {
+          id: 206,
+          title: 'New Living Translation',
+          localized_abbreviation: 'NLT',
+          abbreviation: 'NLT',
+        },
+      ];
+      const setItem = vi.fn();
+      vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
+        key === RECENT_VERSIONS_KEY ? JSON.stringify(stored) : null,
+      );
+      vi.spyOn(window.localStorage, 'setItem').mockImplementation(setItem);
+
+      YouVersionPlatformConfiguration.excludedVersionIds = [111];
+      renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
+      await openPicker();
+
+      const recentList = await screen.findByTestId('recent-version-list');
+      expect(recentList.textContent).toContain('NLT');
+      expect(recentList.textContent).not.toContain('NIV');
+      expect(setItem).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('recent versions storage', () => {
+    it('falls back to [] when localStorage contains [null]', async () => {
+      vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
+        key === RECENT_VERSIONS_KEY ? '[null]' : null,
+      );
+
+      expect(() => renderPicker()).not.toThrow();
+      await openPicker();
+
+      expect(screen.queryByTestId('recent-version-list')).not.toBeInTheDocument();
+    });
+
+    it('falls back to en when navigator exists but languages is missing', async () => {
+      const user = userEvent.setup();
+      const languagesDescriptor = Object.getOwnPropertyDescriptor(
+        globalThis.navigator,
+        'languages',
+      );
+      Object.defineProperty(globalThis.navigator, 'languages', {
+        value: undefined,
+        configurable: true,
+      });
+
+      try {
+        const onVersionPickerPress = vi.fn();
+        renderWithOverrides(
+          <BibleVersionPicker.Root versionId={111} onVersionPickerPress={onVersionPickerPress}>
+            <BibleVersionPicker.Trigger />
+          </BibleVersionPicker.Root>,
+        );
+
+        await user.click(screen.getByRole('button'));
+
+        expect(onVersionPickerPress).toHaveBeenCalledWith({
+          versionId: 111,
+          languageId: 'en',
+        });
+      } finally {
+        if (languagesDescriptor) {
+          Object.defineProperty(globalThis.navigator, 'languages', languagesDescriptor);
+        }
+      }
+    });
   });
 
   describe('onVersionPickerPress override', () => {
@@ -402,8 +496,7 @@ describe('BibleVersionPicker', () => {
       const user = userEvent.setup();
       const onVersionPickerPress = vi.fn();
 
-      setupDefaultMocks();
-      render(
+      renderWithOverrides(
         <BibleVersionPicker.Root versionId={111} onVersionPickerPress={onVersionPickerPress}>
           <BibleVersionPicker.Trigger />
         </BibleVersionPicker.Root>,
@@ -419,8 +512,7 @@ describe('BibleVersionPicker', () => {
     });
 
     it('does NOT render popover content when onVersionPickerPress is provided', () => {
-      setupDefaultMocks();
-      render(
+      renderWithOverrides(
         <BibleVersionPicker.Root versionId={111} onVersionPickerPress={vi.fn()}>
           <BibleVersionPicker.Trigger />
         </BibleVersionPicker.Root>,
@@ -434,8 +526,7 @@ describe('BibleVersionPicker', () => {
       const user = userEvent.setup();
       const onVersionPickerPress = vi.fn();
 
-      setupDefaultMocks();
-      render(
+      renderWithOverrides(
         <BibleVersionPicker.Root
           versionId={111}
           languageId="es"
@@ -457,8 +548,7 @@ describe('BibleVersionPicker', () => {
       const user = userEvent.setup();
       const onVersionPickerPress = vi.fn();
 
-      setupDefaultMocks();
-      render(
+      renderWithOverrides(
         <BibleVersionPicker.Root versionId={111} onVersionPickerPress={onVersionPickerPress}>
           <BibleVersionPicker.Trigger onClick={(event) => event.preventDefault()} />
         </BibleVersionPicker.Root>,
@@ -476,8 +566,7 @@ describe('BibleVersionPicker', () => {
       const onVersionChange = vi.fn();
       const onRequestClose = vi.fn();
 
-      setupDefaultMocks();
-      render(
+      renderWithOverrides(
         <BibleVersionPicker.Root
           versionId={111}
           onVersionChange={onVersionChange}
@@ -498,8 +587,7 @@ describe('BibleVersionPicker', () => {
       const onLanguageChange = vi.fn();
       const onRequestClose = vi.fn();
 
-      setupDefaultMocks();
-      render(
+      renderWithOverrides(
         <BibleVersionPicker.Root
           versionId={111}
           defaultLanguageId="es"
@@ -522,8 +610,7 @@ describe('BibleVersionPicker', () => {
       const user = userEvent.setup();
       const onClick = vi.fn();
 
-      setupDefaultMocks();
-      render(
+      renderWithOverrides(
         <BibleVersionPicker.Root versionId={111} onVersionPickerPress={vi.fn()}>
           <BibleVersionPickerLanguageTrigger onClick={onClick} />
         </BibleVersionPicker.Root>,
@@ -537,8 +624,7 @@ describe('BibleVersionPicker', () => {
     it('language trigger does not open default language view when click is prevented', async () => {
       const user = userEvent.setup();
 
-      setupDefaultMocks();
-      render(
+      renderWithOverrides(
         <BibleVersionPicker.Root versionId={111}>
           <BibleVersionPicker.Trigger />
           <BibleVersionPickerLanguageTrigger onClick={(event) => event.preventDefault()} />
@@ -555,7 +641,6 @@ describe('BibleVersionPicker', () => {
     it('bounds and animates the default language view inside the popover content', async () => {
       const user = userEvent.setup();
 
-      setupDefaultMocks();
       renderPicker();
 
       await openPicker();
@@ -581,8 +666,7 @@ describe('BibleVersionPicker', () => {
     it('open=false clears version search for pre-warmed standalone content', async () => {
       const user = userEvent.setup();
 
-      setupDefaultMocks();
-      const { rerender } = render(
+      const { rerender } = renderWithOverrides(
         <BibleVersionPicker.Root versionId={111} onVersionPickerPress={vi.fn()}>
           <BibleVersionPicker.Content open />
         </BibleVersionPicker.Root>,
@@ -603,9 +687,8 @@ describe('BibleVersionPicker', () => {
     it('open=false clears language search for pre-warmed standalone content', async () => {
       const user = userEvent.setup();
 
-      setupDefaultMocks();
       const rootProps = { versionId: 111, onVersionPickerPress: vi.fn() };
-      const { rerender } = render(
+      const { rerender } = renderWithOverrides(
         <BibleVersionPicker.Root {...rootProps}>
           <BibleLanguagePickerContent open />
         </BibleVersionPicker.Root>,
@@ -637,7 +720,6 @@ describe('BibleVersionPicker', () => {
     it('filters languages globally when searching', async () => {
       const user = userEvent.setup();
 
-      setupDefaultMocks();
       renderPicker();
       await openLanguagePanel();
 
@@ -654,7 +736,6 @@ describe('BibleVersionPicker', () => {
     it('shows empty state when no languages match the search', async () => {
       const user = userEvent.setup();
 
-      setupDefaultMocks();
       renderPicker();
       await openLanguagePanel();
 
@@ -669,8 +750,7 @@ describe('BibleVersionPicker', () => {
     it('shows loading state instead of empty results while languages are loading', async () => {
       const user = userEvent.setup();
 
-      setupDefaultMocks({ languagesLoading: true });
-      renderPicker();
+      renderPicker({ languagesLoading: true });
       await openLanguagePanel();
 
       await user.type(getLanguageSearchInput(), 'span');
@@ -689,7 +769,6 @@ describe('BibleVersionPicker', () => {
     it('clears language search when navigating back to bible versions', async () => {
       const user = userEvent.setup();
 
-      setupDefaultMocks();
       renderPicker();
       await openLanguagePanel();
 
@@ -705,7 +784,6 @@ describe('BibleVersionPicker', () => {
     it('preserves the selected tab after clearing language search', async () => {
       const user = userEvent.setup();
 
-      setupDefaultMocks();
       renderPicker();
       await openLanguagePanel();
 
@@ -720,8 +798,7 @@ describe('BibleVersionPicker', () => {
       const user = userEvent.setup();
       const onLanguageChange = vi.fn();
 
-      setupDefaultMocks();
-      render(
+      renderWithOverrides(
         <BibleVersionPicker.Root versionId={111} onLanguageChange={onLanguageChange}>
           <BibleVersionPicker.Trigger>
             <button type="button">Open</button>

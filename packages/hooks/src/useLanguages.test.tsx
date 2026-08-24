@@ -2,18 +2,16 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useLanguages } from './useLanguages';
 import {
-  type LanguagesClient,
   type Collection,
   type Language,
   type GetLanguagesOptions,
 } from '@youversion/platform-core';
-import { useLanguagesClient } from './useLanguageClient';
-import { createYVWrapper } from './test/utils';
-
-vi.mock('./useLanguageClient');
+import { createLanguagesClientStub, createYVWrapper } from './test/utils';
 
 describe('useLanguages', () => {
   const mockGetLanguages = vi.fn();
+  const languagesClient = createLanguagesClientStub({ getLanguages: mockGetLanguages });
+  const wrapper = createYVWrapper('test-app-key', { languagesClient });
 
   const mockLanguages: Collection<Language> = {
     data: [
@@ -59,14 +57,10 @@ describe('useLanguages', () => {
 
   beforeEach(() => {
     mockGetLanguages.mockResolvedValue(mockLanguages);
-
-    const mockClient: Partial<LanguagesClient> = { getLanguages: mockGetLanguages };
-    vi.mocked(useLanguagesClient).mockReturnValue(mockClient as LanguagesClient);
   });
 
   describe('fetching languages', () => {
     it('should fetch languages without country filter', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useLanguages(), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -81,7 +75,6 @@ describe('useLanguages', () => {
     });
 
     it('should fetch languages with provided country', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useLanguages({ country: 'US' }), { wrapper });
 
       expect(result.current.loading).toBe(true);
@@ -96,7 +89,6 @@ describe('useLanguages', () => {
     });
 
     it('should fetch languages with all options', async () => {
-      const wrapper = createYVWrapper();
       const options: GetLanguagesOptions = {
         country: 'US',
         page_size: 10,
@@ -114,7 +106,6 @@ describe('useLanguages', () => {
     });
 
     it('should refetch when options change', async () => {
-      const wrapper = createYVWrapper();
       const { result, rerender } = renderHook(({ options }) => useLanguages(options), {
         wrapper,
         initialProps: { options: { country: 'US' } },
@@ -137,7 +128,6 @@ describe('useLanguages', () => {
     });
 
     it('should not fetch when enabled is false', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useLanguages({ country: 'US' }, { enabled: false }), {
         wrapper,
       });
@@ -151,7 +141,6 @@ describe('useLanguages', () => {
     });
 
     it('should handle fetch errors', async () => {
-      const wrapper = createYVWrapper();
       const error = new Error('Failed to fetch languages');
       mockGetLanguages.mockRejectedValueOnce(error);
 
@@ -166,7 +155,6 @@ describe('useLanguages', () => {
     });
 
     it('should support manual refetch', async () => {
-      const wrapper = createYVWrapper();
       const { result } = renderHook(() => useLanguages({ country: 'US' }), { wrapper });
 
       await waitFor(() => {
@@ -185,7 +173,6 @@ describe('useLanguages', () => {
     });
 
     it('should fetch languages with fields filter', async () => {
-      const wrapper = createYVWrapper();
       const options: GetLanguagesOptions = {
         fields: ['id', 'language', 'script'],
         page_size: '*',
@@ -202,10 +189,11 @@ describe('useLanguages', () => {
     });
 
     it('should refetch when fields change', async () => {
-      const wrapper = createYVWrapper();
+      const initialOptions: GetLanguagesOptions = { fields: ['id', 'language'] };
+      const updatedOptions: GetLanguagesOptions = { fields: ['id', 'language', 'script'] };
       const { result, rerender } = renderHook(({ options }) => useLanguages(options), {
         wrapper,
-        initialProps: { options: { fields: ['id', 'language'] } as GetLanguagesOptions },
+        initialProps: { options: initialOptions },
       });
 
       await waitFor(() => {
@@ -214,7 +202,7 @@ describe('useLanguages', () => {
 
       expect(mockGetLanguages).toHaveBeenCalledTimes(1);
 
-      rerender({ options: { fields: ['id', 'language', 'script'] } as GetLanguagesOptions });
+      rerender({ options: updatedOptions });
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);

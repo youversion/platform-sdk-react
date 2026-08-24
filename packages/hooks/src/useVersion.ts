@@ -2,17 +2,14 @@
 
 import { useBibleClient } from './useBibleClient';
 import { useApiData, type UseApiDataOptions } from './useApiData';
+import type { UseNamedQueryResult } from './useQueryResult';
 import type { BibleVersion } from '@youversion/platform-core';
+import { useHookOverride } from './useHookOverride';
 
-export function useVersion(
-  versionId: number,
-  options?: UseApiDataOptions,
-): {
-  version: BibleVersion | null;
-  loading: boolean;
-  error: Error | null;
-  refetch: () => void;
-} {
+export type UseVersionResult = UseNamedQueryResult<'version', BibleVersion>;
+
+export function useVersion(versionId: number, options?: UseApiDataOptions): UseVersionResult {
+  const override = useHookOverride('useVersion');
   const bibleClient = useBibleClient();
 
   const {
@@ -21,8 +18,9 @@ export function useVersion(
     error,
     refetch,
   } = useApiData<BibleVersion>(() => bibleClient.getVersion(versionId), [bibleClient, versionId], {
-    enabled: options?.enabled !== false,
+    enabled: !override && options?.enabled !== false,
   });
 
+  if (override) return override(versionId, options);
   return { version, loading, error, refetch };
 }

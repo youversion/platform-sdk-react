@@ -1,54 +1,62 @@
 import { vi } from 'vitest';
 
-/**
- * Creates a mock window.location object for testing
- */
-export const createMockLocation = (): { href: string; search: string } => ({
-  href: '',
-  search: '',
-});
+type MockLocation = {
+  href: string;
+  search: string;
+};
 
-/**
- * Creates a mock window.history object for testing
- */
-export const createMockHistory = (): { replaceState: ReturnType<typeof vi.fn> } => ({
-  replaceState: vi.fn(),
-});
+type MockHistory = {
+  replaceState: ReturnType<typeof vi.fn>;
+};
 
-/**
- * Creates a mock window object for testing
- */
-export const createMockWindow = (): {
-  location: ReturnType<typeof createMockLocation>;
-  history: ReturnType<typeof createMockHistory>;
-} => ({
-  location: createMockLocation(),
-  history: createMockHistory(),
-});
+type MockWindow = {
+  location: MockLocation;
+  history: MockHistory;
+};
 
-/**
- * Creates a mock localStorage object for testing
- */
-export const createMockLocalStorage = (): {
+type MockLocalStorage = {
   getItem: ReturnType<typeof vi.fn>;
   setItem: ReturnType<typeof vi.fn>;
   removeItem: ReturnType<typeof vi.fn>;
   clear: ReturnType<typeof vi.fn>;
-} => ({
+};
+
+type MockCrypto = {
+  getRandomValues: ReturnType<typeof vi.fn>;
+  randomUUID: ReturnType<typeof vi.fn>;
+  subtle: { digest: ReturnType<typeof vi.fn> };
+};
+
+type BrowserMocks = {
+  window: MockWindow;
+  localStorage: MockLocalStorage;
+  crypto: MockCrypto;
+  btoa: ReturnType<typeof vi.fn>;
+  atob: ReturnType<typeof vi.fn>;
+};
+
+export const createMockLocation = (): MockLocation => ({
+  href: '',
+  search: '',
+});
+
+export const createMockHistory = (): MockHistory => ({
+  replaceState: vi.fn(),
+});
+
+export const createMockWindow = (): MockWindow => ({
+  location: createMockLocation(),
+  history: createMockHistory(),
+});
+
+export const createMockLocalStorage = (): MockLocalStorage => ({
   getItem: vi.fn(),
   setItem: vi.fn(),
   removeItem: vi.fn(),
   clear: vi.fn(),
 });
 
-/**
- * Creates a mock crypto API for testing
- */
-export const createMockCrypto = (): {
-  getRandomValues: ReturnType<typeof vi.fn>;
-  randomUUID: ReturnType<typeof vi.fn>;
-  subtle: { digest: ReturnType<typeof vi.fn> };
-} => ({
+export const createMockCrypto = (): MockCrypto => ({
   getRandomValues: vi.fn(),
   randomUUID: vi.fn(() => 'test-installation-id-123'),
   subtle: {
@@ -56,17 +64,7 @@ export const createMockCrypto = (): {
   },
 });
 
-/**
- * Sets up all browser-related mocks for testing
- * @returns Object containing references to all created mocks
- */
-export const setupBrowserMocks = (): {
-  window: ReturnType<typeof createMockWindow>;
-  localStorage: ReturnType<typeof createMockLocalStorage>;
-  crypto: ReturnType<typeof createMockCrypto>;
-  btoa: ReturnType<typeof vi.fn>;
-  atob: ReturnType<typeof vi.fn>;
-} => {
+export const setupBrowserMocks = (): BrowserMocks => {
   const window = createMockWindow();
   const localStorage = createMockLocalStorage();
   const crypto = createMockCrypto();
@@ -82,9 +80,6 @@ export const setupBrowserMocks = (): {
   return { window, localStorage, crypto, btoa, atob };
 };
 
-/**
- * Cleans up all browser-related mocks
- */
 export const cleanupBrowserMocks = (): void => {
   vi.unstubAllGlobals();
 };

@@ -2,6 +2,12 @@ import { z } from 'zod';
 import type { ApiClient } from './client';
 import type { Collection, Language } from './types';
 import { LanguageSchema } from './schemas';
+import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
+import {
+  collectFilteredPage,
+  fieldsNeededForLanguageFilter,
+  isUsableLanguageTag,
+} from './version-filters';
 
 /**
  * Options for getting languages collection.
@@ -94,11 +100,40 @@ export class LanguagesClient {
       params.page_size = options.page_size;
     }
 
-    if (options.page_token !== undefined) {
-      params.page_token = options.page_token;
+    const filterFields = fieldsNeededForLanguageFilter(options.fields);
+    const pageSize = options.page_size;
+    if (filterFields) {
+      params['fields[]'] = filterFields;
+      if (
+        YouVersionPlatformConfiguration.permittedLanguageTags !== undefined &&
+        pageSize === '*' &&
+        filterFields.length > 3
+      ) {
+        // API rejects page_size=* with more than 3 fields. Keep pageSize='*' so
+        // collectFilteredPage still walks every server page. Unfiltered *+>3
+        // stays a loud reject — do not drop * on that path.
+        delete params.page_size;
+      }
     }
 
-    return this.client.get<Collection<Language>>(`/v1/languages`, params);
+    const fetchPage = (pageToken?: string) => {
+      const pageParams = { ...params };
+      if (pageToken) {
+        pageParams.page_token = pageToken;
+      }
+      return this.client.get<Collection<Language>>(`/v1/languages`, pageParams);
+    };
+
+    if (YouVersionPlatformConfiguration.permittedLanguageTags === undefined) {
+      return fetchPage(options.page_token);
+    }
+
+    return collectFilteredPage(
+      fetchPage,
+      (language) => isUsableLanguageTag(language.id),
+      pageSize,
+      options.page_token,
+    );
   }
 
   /**

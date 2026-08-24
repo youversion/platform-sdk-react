@@ -57,3 +57,9 @@ const _CreateHighlightSchema = z.object({
 });
 
 export type CreateHighlight = z.infer<typeof _CreateHighlightSchema>;
+
+export const CreateHighlightEnvelopeSchema = z.object({
+  request_id: z.string().min(1),
+  highlight: HighlightWireSchema,
+});
+export type CreateHighlightEnvelope = z.infer<typeof CreateHighlightEnvelopeSchema>;

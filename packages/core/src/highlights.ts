@@ -1,12 +1,18 @@
 import { z } from 'zod';
 import type { ApiClient } from './client';
-import type { Collection, Highlight, CreateHighlight } from './types';
+import type { BibleVersion, Collection, CreateHighlight, Highlight } from './types';
 import { resolveAuthToken } from './auth-token';
 import {
   HighlightCollectionWireSchema,
   HighlightWireSchema,
   toHighlight,
 } from './schemas/highlight';
+import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
+import {
+  isUsableBibleVersion,
+  isVersionIdDecidablyUnusable,
+  throwUnusableBibleVersion,
+} from './version-filters';
 
 /**
  * Options for getting highlights.
@@ -25,6 +31,10 @@ export type GetHighlightsOptions = {
 export type DeleteHighlightOptions = {
   /** Bible version identifier (sent to the API as `bible_id`). */
   version_id: number;
+};
+
+type BearerAuthHeaders = {
+  Authorization: string;
 };
 
 /**
@@ -60,7 +70,7 @@ export class HighlightsClient {
     return resolveAuthToken(lat, 'accessing highlights');
   }
 
-  private authHeaders(lat?: string): Record<string, string> {
+  private authHeaders(lat?: string): BearerAuthHeaders {
     return { Authorization: `Bearer ${this.getAuthToken(lat)}` };
   }
 
@@ -86,6 +96,19 @@ export class HighlightsClient {
     }
   }
 
+  private async assertUsableVersion(versionId: number): Promise<void> {
+    if (isVersionIdDecidablyUnusable(versionId)) {
+      throwUnusableBibleVersion();
+    }
+    if (YouVersionPlatformConfiguration.permittedLanguageTags === undefined) {
+      return;
+    }
+    const version = await this.client.get<BibleVersion>(`/v1/bibles/${versionId}`);
+    if (!isUsableBibleVersion({ id: version.id, languageTag: version.language_tag })) {
+      throwUnusableBibleVersion();
+    }
+  }
+
   private validateColor(value: string): void {
     try {
       this.colorSchema.parse(value);
@@ -104,8 +127,8 @@ export class HighlightsClient {
    * single logical create if end-to-end idempotency is needed.
    */
   private generateRequestId(): string {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-      return crypto.randomUUID();
+    if (globalThis.crypto?.randomUUID) {
+      return globalThis.crypto.randomUUID();
     }
     // Extremely old runtimes only; uniqueness (not randomness quality) is what matters here.
     return `yvp-${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 10)}`;
@@ -123,6 +146,7 @@ export class HighlightsClient {
   async getHighlights(options: GetHighlightsOptions, lat?: string): Promise<Collection<Highlight>> {
     this.validateVersionId(options.version_id);
     this.validatePassageId(options.passage_id);
+    await this.assertUsableVersion(options.version_id);
 
     const response = await this.client.get<unknown>(
       `/v1/highlights`,
@@ -160,6 +184,7 @@ export class HighlightsClient {
     this.validateVersionId(data.version_id);
     this.validatePassageId(data.passage_id);
     this.validateColor(data.color);
+    await this.assertUsableVersion(data.version_id);
 
     const response = await this.client.post<unknown>(
       `/v1/highlights`,
@@ -206,6 +231,7 @@ export class HighlightsClient {
   ): Promise<void> {
     this.validatePassageId(passageId);
     this.validateVersionId(options.version_id);
+    await this.assertUsableVersion(options.version_id);
 
     await this.client.delete<void>(
       `/v1/highlights/${encodeURIComponent(passageId)}`,

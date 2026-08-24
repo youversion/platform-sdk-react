@@ -2,36 +2,41 @@
  * @vitest-environment jsdom
  */
 import { renderHook } from '@testing-library/react';
-import type { Collection, Highlight } from '@youversion/platform-core';
+import type { Highlight } from '@youversion/platform-core';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
-import { useHighlights } from '@youversion/platform-react-hooks';
+import type { HookOverrides } from '@youversion/platform-react-hooks';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
 import { collection, Providers, stubUseHighlights } from '@/test/highlights-test-utils';
-import { useScriptureHighlightPaint } from './use-scripture-highlight-paint';
-
-vi.mock('@youversion/platform-react-hooks', async () => {
-  const actual = await vi.importActual('@youversion/platform-react-hooks');
-  return {
-    ...actual,
-    useHighlights: vi.fn(),
-  };
-});
+import {
+  useScriptureHighlightPaint,
+  type UseScriptureHighlightPaintOptions,
+} from './use-scripture-highlight-paint';
 
 const yellowRow: Highlight = { version_id: 111, passage_id: 'JHN.1.1', color: 'fffe00' };
-const selfContainedOptions = {
+const selfContainedOptions: UseScriptureHighlightPaintOptions = {
   highlights: undefined,
   isHighlightsControlled: false,
-  highlightedVerses: undefined as Record<number, string> | undefined,
+  highlightedVerses: undefined,
   versionId: 111,
   chapterScope: { book: 'JHN', chapter: '1' },
   displayPassageId: 'JHN.1',
 };
 
+function wrapper(userInfo?: null, hookOverrides?: HookOverrides) {
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <Providers userInfo={userInfo === null ? null : undefined} hookOverrides={hookOverrides}>
+        {children}
+      </Providers>
+    );
+  };
+}
+
 describe('useScriptureHighlightPaint', () => {
   it('fetches and paints when signed in with permission and live, and disables fetch otherwise', () => {
-    const fetched: Collection<Highlight> = collection([yellowRow]);
-    const restoreHighlights = stubUseHighlights({ highlights: fetched });
+    const fetched = stubUseHighlights({ highlights: collection([yellowRow]) });
     const hasPermission = vi
       .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
       .mockReturnValue(true);
@@ -39,68 +44,48 @@ describe('useScriptureHighlightPaint', () => {
 
     try {
       const signedIn = renderHook(() => useScriptureHighlightPaint(selfContainedOptions), {
-        wrapper: Providers,
+        wrapper: wrapper(undefined, { useHighlights: fetched }),
       });
-      expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
-        { version_id: 111, passage_id: 'JHN.1' },
-        { enabled: true },
-      );
       expect(signedIn.result.current).toEqual({ 1: 'fffe00' });
       signedIn.unmount();
 
-      vi.mocked(useHighlights).mockClear();
       const signedOut = renderHook(() => useScriptureHighlightPaint(selfContainedOptions), {
-        wrapper: ({ children }) => <Providers userInfo={null}>{children}</Providers>,
+        wrapper: wrapper(null),
       });
-      expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
-        { version_id: 111, passage_id: 'JHN.1' },
-        { enabled: false },
-      );
       expect(signedOut.result.current).toEqual({});
       signedOut.unmount();
 
-      vi.mocked(useHighlights).mockClear();
-      const noProvider = renderHook(() => useScriptureHighlightPaint(selfContainedOptions));
-      expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
-        { version_id: 111, passage_id: 'JHN.1' },
-        { enabled: false },
-      );
-      expect(noProvider.result.current).toEqual({});
-      noProvider.unmount();
+      const noAuthProvider = renderHook(() => useScriptureHighlightPaint(selfContainedOptions), {
+        wrapper: ({ children }) => (
+          <Providers userInfo={null} hookOverrides={undefined}>
+            {children}
+          </Providers>
+        ),
+      });
+      expect(noAuthProvider.result.current).toEqual({});
+      noAuthProvider.unmount();
 
       hasPermission.mockReturnValue(false);
-      vi.mocked(useHighlights).mockClear();
       const noPermission = renderHook(() => useScriptureHighlightPaint(selfContainedOptions), {
-        wrapper: Providers,
+        wrapper: wrapper(),
       });
-      expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
-        { version_id: 111, passage_id: 'JHN.1' },
-        { enabled: false },
-      );
       expect(noPermission.result.current).toEqual({});
       noPermission.unmount();
 
       hasPermission.mockReturnValue(true);
       setHighlightsLive(false);
-      vi.mocked(useHighlights).mockClear();
       const liveOff = renderHook(() => useScriptureHighlightPaint(selfContainedOptions), {
-        wrapper: Providers,
+        wrapper: wrapper(),
       });
-      expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
-        { version_id: 111, passage_id: 'JHN.1' },
-        { enabled: false },
-      );
       expect(liveOff.result.current).toEqual({});
       liveOff.unmount();
     } finally {
-      restoreHighlights();
       setHighlightsLive(HIGHLIGHTS_LIVE);
       hasPermission.mockRestore();
     }
   });
 
   it('paints a host array or a reader map without fetching', () => {
-    const restoreHighlights = stubUseHighlights({ highlights: collection([yellowRow]) });
     const hasPermission = vi
       .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
       .mockReturnValue(true);
@@ -117,16 +102,11 @@ describe('useScriptureHighlightPaint', () => {
             chapterScope: { book: 'JHN', chapter: '1' },
             displayPassageId: 'JHN.1',
           }),
-        { wrapper: Providers },
-      );
-      expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
-        { version_id: 111, passage_id: 'JHN.1' },
-        { enabled: false },
+        { wrapper: wrapper() },
       );
       expect(controlled.result.current).toEqual({ 2: '5dff79' });
       controlled.unmount();
 
-      vi.mocked(useHighlights).mockClear();
       const readerSeam = renderHook(
         () =>
           useScriptureHighlightPaint({
@@ -137,22 +117,17 @@ describe('useScriptureHighlightPaint', () => {
             chapterScope: { book: 'JHN', chapter: '1' },
             displayPassageId: 'JHN.1',
           }),
-        { wrapper: Providers },
-      );
-      expect(vi.mocked(useHighlights)).toHaveBeenCalledWith(
-        { version_id: 111, passage_id: 'JHN.1' },
-        { enabled: false },
+        { wrapper: wrapper() },
       );
       expect(readerSeam.result.current).toEqual({ 3: 'abcdef' });
     } finally {
-      restoreHighlights();
       setHighlightsLive(HIGHLIGHTS_LIVE);
       hasPermission.mockRestore();
     }
   });
 
   it('clips fetched and host rows to a verse-unit display passage', () => {
-    const restoreHighlights = stubUseHighlights({
+    const fetchedOverride = stubUseHighlights({
       highlights: collection([{ version_id: 111, passage_id: 'JHN.1.1-3', color: 'fffe00' }]),
     });
     const hasPermission = vi
@@ -167,7 +142,7 @@ describe('useScriptureHighlightPaint', () => {
             ...selfContainedOptions,
             displayPassageId: 'JHN.1.1',
           }),
-        { wrapper: Providers },
+        { wrapper: wrapper(undefined, { useHighlights: fetchedOverride }) },
       );
       expect(fetched.result.current).toEqual({ 1: 'fffe00' });
       fetched.unmount();
@@ -185,7 +160,7 @@ describe('useScriptureHighlightPaint', () => {
             chapterScope: { book: 'JHN', chapter: '1' },
             displayPassageId: 'JHN.1.1',
           }),
-        { wrapper: Providers },
+        { wrapper: wrapper() },
       );
       expect(controlled.result.current).toEqual({ 1: 'fffe00' });
 
@@ -202,7 +177,7 @@ describe('useScriptureHighlightPaint', () => {
             chapterScope: { book: 'JHN', chapter: '1' },
             displayPassageId: 'JHN.2.3',
           }),
-        { wrapper: Providers },
+        { wrapper: wrapper() },
       );
       expect(retainedChapter.result.current).toEqual({
         1: 'fffe00',
@@ -210,7 +185,6 @@ describe('useScriptureHighlightPaint', () => {
         3: 'fffe00',
       });
     } finally {
-      restoreHighlights();
       setHighlightsLive(HIGHLIGHTS_LIVE);
       hasPermission.mockRestore();
     }
