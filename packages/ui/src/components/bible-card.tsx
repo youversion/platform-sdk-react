@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hooks';
 import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, type Highlight } from '@youversion/platform-core';
 import { useTranslation } from 'react-i18next';
@@ -45,8 +46,14 @@ export type BibleCardProps = {
    * Caps the painted `<section>` shell. A number is CSS pixels. `'100%'` fills
    * the parent (Come and See / full-bleed) and keeps the 600px inner column.
    * Omit for 700. Full-bleed hosts must pass `'100%'`.
+   * The section lifts the Bible renderer `65ch` measure so scripture fills
+   * that inner column.
    */
   maxWidth?: number | '100%';
+};
+
+type BibleCardSectionStyle = CSSProperties & {
+  '--yv-reader-max-width': 'none';
 };
 
 /**
@@ -182,10 +189,13 @@ export function BibleCard({
       data-yv-sdk
       data-yv-theme={theme}
       className="yv:w-full yv:flex yv:flex-col yv:grow yv:bg-card yv:p-6 yv:rounded-2xl yv:box-border"
-      style={{
-        maxWidth: maxWidth === '100%' ? '100%' : `${maxWidth}px`,
-        marginInline: 'auto',
-      }}
+      style={
+        {
+          maxWidth: maxWidth === '100%' ? '100%' : `${maxWidth}px`,
+          marginInline: 'auto',
+          '--yv-reader-max-width': 'none',
+        } satisfies BibleCardSectionStyle
+      }
     >
       {/* Default/number: fill the shell. Keep shared card-content (600px) only for full-bleed. */}
       <div className={maxWidth === '100%' ? 'yv:card-content' : 'yv:w-full'}>

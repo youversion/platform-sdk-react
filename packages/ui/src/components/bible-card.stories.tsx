@@ -34,7 +34,7 @@ const meta = {
     },
     maxWidth: {
       description:
-        'Painted section max-width. A number is CSS px (default 700). Pass "100%" for full-bleed; that path keeps the 600px inner column.',
+        'Painted section max-width. A number is CSS px (default 700). Pass "100%" for full-bleed; that path keeps the 600px inner column. Scripture fills the inner column (the card lifts the 65ch renderer measure).',
     },
   },
 } satisfies Meta<typeof BibleCard>;

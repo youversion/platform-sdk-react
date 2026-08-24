@@ -199,6 +199,7 @@ describe('BibleCard - maxWidth', () => {
     expect(inner).not.toHaveClass('yv:card-content');
     expect(inner).not.toHaveStyle({ maxWidth: '600px' });
     expect(bibleTextView).not.toHaveClass('yv:max-w-[600px]');
+    expect(section.style.getPropertyValue('--yv-reader-max-width')).toBe('none');
   });
 
   it('uses a number maxWidth as the section cap and lets the inner column fill', () => {
@@ -210,6 +211,7 @@ describe('BibleCard - maxWidth', () => {
     expect(inner).toHaveClass('yv:w-full');
     expect(inner).not.toHaveClass('yv:card-content');
     expect(inner).not.toHaveStyle({ maxWidth: '600px' });
+    expect(section.style.getPropertyValue('--yv-reader-max-width')).toBe('none');
   });
 
   it('keeps the 600px inner column when maxWidth is 100%', () => {
@@ -220,6 +222,7 @@ describe('BibleCard - maxWidth', () => {
     expect(section).toHaveStyle({ maxWidth: '100%' });
     expect(inner).toHaveClass('yv:card-content');
     expect(inner).not.toHaveStyle({ maxWidth: 'none' });
+    expect(section.style.getPropertyValue('--yv-reader-max-width')).toBe('none');
   });
 
   it('still fills a parent that is narrower than the section cap', () => {
@@ -233,6 +236,7 @@ describe('BibleCard - maxWidth', () => {
     expect(section).toHaveStyle({ maxWidth: '700px' });
     expect(inner).toHaveClass('yv:w-full');
     expect(inner).not.toHaveClass('yv:card-content');
+    expect(section.style.getPropertyValue('--yv-reader-max-width')).toBe('none');
   });
 });
 
