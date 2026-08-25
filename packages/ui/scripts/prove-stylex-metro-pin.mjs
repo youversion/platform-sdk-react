@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -24,7 +25,7 @@ if (!js.includes('yv-stylex-spike')) {
   failures.push('dist/index.js is missing the StyleX spike sheet');
 }
 
-const pack = execFileSync('pnpm', ['pack', '--pack-destination', uiRoot], {
+const pack = execFileSync('pnpm', ['pack', '--pack-destination', tmpdir()], {
   cwd: uiRoot,
   encoding: 'utf8',
 }).trim();
