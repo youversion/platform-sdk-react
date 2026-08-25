@@ -14,6 +14,8 @@ export type YouVersionContextData = {
   authEnabled?: boolean;
   additionalHeaders?: Record<string, string>;
   /**
+   * @internal
+   *
    * A JSON string of `additionalHeaders` with the keys in sorted order.
    * When `additionalHeaders` is not set, the value is `null`.
    * `YouVersionProvider` builds this string once.

@@ -214,11 +214,12 @@ describe('vapor flash — removed verse must never reappear at any frame', () =>
   });
 
   it('out-of-order fetches through real useApiData: fresh reflects removal, then a NEWER refetch returns a stale replica row — no resurrection', async () => {
-    // The one real-world path to deliver fresh→stale to the machine through
-    // useApiData's requestSeq guard: two refetches where the SECOND (newer)
-    // request hits a lagging replica. Refetch #1 (settle of the remove) reflects
-    // the removal; refetch #2 (settle of a later apply on verse 20) is stale and
-    // still carries verse 16. The held remove overlay must win.
+    // The one real-world path to deliver fresh→stale to the machine: two
+    // refetches where the SECOND (newer) request hits a lagging replica, so
+    // both results reach the machine in order and the later one is the stale
+    // one. Refetch #1 (settle of the remove) reflects the removal; refetch #2
+    // (settle of a later apply on verse 20) is stale and still carries verse
+    // 16. The held remove overlay must win.
     const getHighlights = vi
       .spyOn(HighlightsClient.prototype, 'getHighlights')
       // mount
