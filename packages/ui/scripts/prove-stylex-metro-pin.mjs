@@ -18,6 +18,9 @@ const failures = [];
 if (/stylex\.create\s*\(\{/.test(js)) {
   failures.push('dist/index.js still contains stylex.create({) — Metro would need StyleX Babel');
 }
+if (/stylex\.defineVars\s*\(\{/.test(js)) {
+  failures.push('dist/index.js still contains stylex.defineVars({) — Metro would need StyleX Babel');
+}
 if (js.includes('@stylexjs/babel-plugin')) {
   failures.push('dist/index.js references @stylexjs/babel-plugin');
 }

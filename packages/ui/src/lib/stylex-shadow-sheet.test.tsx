@@ -59,6 +59,7 @@ describe('StyleX-only shadow sheets', () => {
     const css = isolatedStyleText(container);
     expect(css).toContain('yv-stylex-spike');
     expect(css).toContain('[data-yv-sdk]');
+    expect(css).toMatch(/:host,\s*\[data-yv-sdk\]/);
     for (const marker of TAILWIND_MARKERS) {
       expect(css).not.toContain(marker);
     }

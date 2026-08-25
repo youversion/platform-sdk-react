@@ -42,7 +42,11 @@ async function compile() {
     }
   }
 
-  const stylexCss = stylexPlugin.processStylexRules(rules, { useLayers: false });
+  const stylexCss = stylexPlugin
+    .processStylexRules(rules, { useLayers: false })
+    // defineVars emit `:root, .hash`. `:root` is the light-DOM document, so
+    // remap onto Austin's shadow host and the existing theme root.
+    .replaceAll(':root', ':host, [data-yv-sdk]');
   const themeCss = readFileSync(join(coreStyles, 'theme.css'), 'utf8');
   const bibleReaderCss = readFileSync(join(coreStyles, 'bible-reader.css'), 'utf8');
 

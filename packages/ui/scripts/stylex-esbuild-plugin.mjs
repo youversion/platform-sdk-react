@@ -6,7 +6,7 @@ export function stylexEsbuildPlugin() {
   return {
     name: 'yv-stylex',
     setup(build) {
-      build.onLoad({ filter: /\.[cm]?[jt]sx$/ }, async (args) => {
+      build.onLoad({ filter: /\.[cm]?[jt]sx?$/ }, async (args) => {
         const code = await readFile(args.path, 'utf8');
         if (!code.includes('@stylexjs/stylex')) return undefined;
 

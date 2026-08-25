@@ -82,6 +82,11 @@ const styles = stylex.create({
     whiteSpace: 'nowrap',
     borderWidth: 0,
   },
+  logo: {
+    flexShrink: 0,
+    height: '1.5rem',
+    width: '1.5rem',
+  },
 });
 
 interface SignInAuthProps {
@@ -281,10 +286,10 @@ const YouVersionAuthButtonImpl = React.forwardRef<HTMLButtonElement, YouVersionA
         onClick={(e) => void handleClick(e)}
         size={isIcon ? 'icon' : 'lg'}
         style={composed.style}
-        variant="default"
+        variant="ghost"
       >
         {buttonLoading ? loadingSpinner : null}
-        <YouVersionLogo />
+        <YouVersionLogo {...stylex.props(styles.logo)} />
         {isIcon ? <span {...stylex.props(styles.srOnly)}>{buttonText}</span> : buttonText}
       </Button>
     );

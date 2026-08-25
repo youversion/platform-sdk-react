@@ -16,6 +16,7 @@ describe('StyleX Expo/Metro contract', () => {
     const css = readFileSync(distCss, 'utf8');
 
     expect(js).not.toMatch(/stylex\.create\s*\(\{/);
+    expect(js).not.toMatch(/stylex\.defineVars\s*\(\{/);
     expect(js).not.toMatch(/@stylexjs\/babel-plugin/);
     expect(js).toContain('yv-stylex-spike');
     expect(css).toContain('yv-stylex-spike');
