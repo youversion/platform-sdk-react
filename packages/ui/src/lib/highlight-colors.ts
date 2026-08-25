@@ -45,13 +45,13 @@ export function isPaletteHighlightColor(color: string): boolean {
 }
 
 /** `--yv-background` in light (`#ffffff`) and dark (`#121212`). Not popover `#1c1a1a`. */
-export const HIGHLIGHT_SURFACE_BG = {
+const HIGHLIGHT_SURFACE_BG = {
   light: 'ffffff',
   dark: '121212',
 } as const;
 
 /** Light identity. Dark `p = 0.20`. Black-theme `p = 0.25` is unused. */
-export const HIGHLIGHT_MIX_P = {
+const HIGHLIGHT_MIX_P = {
   light: 1,
   dark: 0.2,
 } as const;
