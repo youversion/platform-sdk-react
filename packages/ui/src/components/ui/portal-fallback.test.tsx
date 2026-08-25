@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { render, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { ShadowRootHost } from '@/lib/shadow-root-host';
+import { requireShadowRoot } from '@/test/dom-stubs';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
 
 function OpenPopover(): ReactNode {
@@ -29,16 +30,14 @@ describe('Popover portal placement', () => {
         <OpenPopover />
       </ShadowRootHost>,
     );
-    const fallbackRoot =
-      fallbackRender.container.querySelector('[data-yv-shadow-host]')?.shadowRoot;
-    expect(fallbackRoot).not.toBeNull();
+    const fallbackRoot = requireShadowRoot(fallbackRender.container);
     const fallbackContent = await waitFor(() => {
       const element = document.querySelector('[data-slot="popover-content"]');
       if (!element) throw new Error('fallback popover content not rendered');
       return element;
     });
     expect(fallbackContent.getRootNode()).toBe(document);
-    expect(fallbackRoot?.querySelector('[data-slot="popover-content"]')).toBeNull();
+    expect(fallbackRoot.querySelector('[data-slot="popover-content"]')).toBeNull();
     fallbackRender.unmount();
 
     const isolatedRender = render(
@@ -46,11 +45,9 @@ describe('Popover portal placement', () => {
         <OpenPopover />
       </ShadowRootHost>,
     );
-    const isolatedRoot =
-      isolatedRender.container.querySelector('[data-yv-shadow-host]')?.shadowRoot;
-    expect(isolatedRoot).not.toBeNull();
+    const isolatedRoot = requireShadowRoot(isolatedRender.container);
     const isolatedContent = await waitFor(() => {
-      const element = isolatedRoot?.querySelector('[data-slot="popover-content"]');
+      const element = isolatedRoot.querySelector('[data-slot="popover-content"]');
       if (!element) throw new Error('isolated popover content not rendered');
       return element;
     });

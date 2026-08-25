@@ -2,6 +2,7 @@ import { render, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ShadowRootHost } from '@/lib/shadow-root-host';
+import { requireShadowRoot } from '@/test/dom-stubs';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
 
 describe('Popover shadow portal coordination', () => {
@@ -15,12 +16,10 @@ describe('Popover shadow portal coordination', () => {
       </ShadowRootHost>,
     );
 
-    const defaultOpenRoot =
-      defaultOpenRender.container.querySelector('[data-yv-shadow-host]')?.shadowRoot;
-    expect(defaultOpenRoot).not.toBeNull();
+    const defaultOpenRoot = requireShadowRoot(defaultOpenRender.container);
 
     await waitFor(() => {
-      expect(defaultOpenRoot?.querySelector('[data-slot="popover-content"]')).toHaveTextContent(
+      expect(defaultOpenRoot.querySelector('[data-slot="popover-content"]')).toHaveTextContent(
         'Panel',
       );
     });
@@ -36,10 +35,9 @@ describe('Popover shadow portal coordination', () => {
       </ShadowRootHost>,
     );
 
-    const controlledOpenRoot =
-      controlledOpenRender.container.querySelector('[data-yv-shadow-host]')?.shadowRoot;
+    const controlledOpenRoot = requireShadowRoot(controlledOpenRender.container);
     await waitFor(() => {
-      expect(controlledOpenRoot?.querySelector('[data-slot="popover-content"]')).toHaveTextContent(
+      expect(controlledOpenRoot.querySelector('[data-slot="popover-content"]')).toHaveTextContent(
         'Panel',
       );
     });
@@ -58,14 +56,14 @@ describe('Popover shadow portal coordination', () => {
       </ShadowRootHost>,
     );
 
-    const shadowRoot = container.querySelector('[data-yv-shadow-host]')?.shadowRoot;
-    const trigger = shadowRoot?.querySelector<HTMLButtonElement>('button');
+    const shadowRoot = requireShadowRoot(container);
+    const trigger = shadowRoot.querySelector<HTMLButtonElement>('button');
     expect(trigger).not.toBeNull();
 
     await user.click(trigger!);
 
     expect(onOpenChange).toHaveBeenCalledWith(true);
-    expect(shadowRoot?.querySelector('[data-yv-shadow-inline-overlay]')).toBeNull();
+    expect(shadowRoot.querySelector('[data-yv-shadow-inline-overlay]')).toBeNull();
     expect(document.body.querySelector('[data-slot="popover-content"]')).toBeNull();
   });
 
@@ -81,16 +79,16 @@ describe('Popover shadow portal coordination', () => {
       </ShadowRootHost>,
     );
 
-    const shadowRoot = container.querySelector('[data-yv-shadow-host]')?.shadowRoot;
+    const shadowRoot = requireShadowRoot(container);
     await waitFor(() => {
-      expect(shadowRoot?.querySelector('[data-slot="popover-content"]')).toHaveTextContent('Panel');
+      expect(shadowRoot.querySelector('[data-slot="popover-content"]')).toHaveTextContent('Panel');
     });
 
-    await user.click(shadowRoot!.querySelector<HTMLButtonElement>('button')!);
+    await user.click(shadowRoot.querySelector<HTMLButtonElement>('button')!);
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(shadowRoot?.querySelector('[data-yv-shadow-inline-overlay]')).toContainElement(
-      shadowRoot?.querySelector('[data-slot="popover-content"]') ?? null,
+    expect(shadowRoot.querySelector('[data-yv-shadow-inline-overlay]')).toContainElement(
+      shadowRoot.querySelector('[data-slot="popover-content"]'),
     );
     expect(document.body.querySelector('[data-slot="popover-content"]')).toBeNull();
   });

@@ -3,8 +3,9 @@ import { YouVersionProvider as HooksYouVersionProvider } from '@youversion/platf
 import { http, HttpResponse } from 'msw';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { expect, userEvent, waitFor } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
+import { requireShadowRoot } from '../test/dom-stubs';
 import { globalHandlers } from '../test/mocks/handlers';
 import { BibleVersionPicker } from './bible-version-picker';
 
@@ -48,6 +49,30 @@ function TwoPickersInOneIsland(): React.ReactNode {
         </BibleVersionPicker.Root>
       </div>
     </ShadowRootHost>
+  );
+}
+
+function StrategySwitchingPicker(): React.ReactNode {
+  const [portalStrategy, setPortalStrategy] = useState<PortalStrategy | undefined>('local-inline');
+  const [versionId, setVersionId] = useState(111);
+
+  return (
+    <div style={{ display: 'grid', gap: 16 }}>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button type="button" onClick={() => setPortalStrategy('local-top-layer')}>
+          Use top layer
+        </button>
+        <button type="button" onClick={() => setPortalStrategy(undefined)}>
+          Disable local portal
+        </button>
+      </div>
+      <ShadowRootHost portalStrategy={portalStrategy}>
+        <BibleVersionPicker.Root versionId={versionId} onVersionChange={setVersionId} side="bottom">
+          <BibleVersionPicker.Trigger />
+          <BibleVersionPicker.Content />
+        </BibleVersionPicker.Root>
+      </ShadowRootHost>
+    </div>
   );
 }
 
@@ -110,12 +135,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 async function getComponentRoot(container: ParentNode): Promise<ShadowRoot> {
-  const host = await waitFor(() => {
-    const element = container.querySelector<HTMLElement>('[data-yv-shadow-host]');
-    if (!element?.shadowRoot) throw new Error('component shadow root not attached');
-    return element;
-  });
-  return host.shadowRoot!;
+  return waitFor(() => requireShadowRoot(container));
 }
 
 async function getTrigger(root: ShadowRoot): Promise<HTMLElement> {
@@ -451,6 +471,71 @@ export const MultiplePopoversShareOneIslandContainer: Story = {
     if (!viewport) throw new Error('story window not available');
     void expect(panelRect.top).toBeGreaterThanOrEqual(16);
     void expect(panelRect.bottom).toBeLessThanOrEqual(viewport.innerHeight - 16);
+  },
+};
+
+export const PortalStrategyChangesReplaceTheirLocalContainer: Story = {
+  render: () => <StrategySwitchingPicker />,
+  play: async ({ canvasElement }) => {
+    const root = await getComponentRoot(canvasElement);
+    const trigger = await getTrigger(root);
+
+    await userEvent.click(trigger);
+    const inlineContainer = await waitFor(() => {
+      const element = root.querySelector<HTMLElement>('[data-yv-shadow-inline-overlay]');
+      if (!element) throw new Error('inline portal container not created');
+      return element;
+    });
+    await waitFor(() => {
+      void expect(inlineContainer.querySelector('[data-slot="popover-content"]')).not.toBeNull();
+    });
+
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => {
+      void expect(inlineContainer.querySelector('[data-slot="popover-content"]')).toBeNull();
+    });
+
+    await userEvent.click(
+      await within(canvasElement).findByRole('button', { name: 'Use top layer' }),
+    );
+    await waitFor(() => {
+      void expect(inlineContainer.isConnected).toBe(false);
+      void expect(root.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
+    });
+
+    await userEvent.click(trigger);
+    const topLayer = await waitFor(() => {
+      const element = root.querySelector<HTMLElement>('[data-yv-shadow-local-overlay]');
+      if (!element) throw new Error('top-layer portal container not created');
+      return element;
+    });
+    await waitFor(() => {
+      void expect(topLayer.matches(':popover-open')).toBe(true);
+      void expect(topLayer.querySelector('[data-slot="popover-content"]')).not.toBeNull();
+    });
+
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => {
+      void expect(topLayer.querySelector('[data-slot="popover-content"]')).toBeNull();
+      void expect(topLayer.matches(':popover-open')).toBe(false);
+    });
+
+    await userEvent.click(
+      await within(canvasElement).findByRole('button', { name: 'Disable local portal' }),
+    );
+    await waitFor(() => {
+      void expect(topLayer.isConnected).toBe(false);
+      void expect(root.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
+    });
+
+    await userEvent.click(trigger);
+    await waitFor(() => {
+      const panel = canvasElement.ownerDocument.body.querySelector<HTMLElement>(
+        '[data-slot="popover-content"]',
+      );
+      if (!panel) throw new Error('document fallback panel not rendered');
+      void expect(panel.getRootNode()).toBe(canvasElement.ownerDocument);
+    });
   },
 };
 

@@ -25,6 +25,12 @@ interface ShadowPortalController {
   requestClose: (instanceId: string) => void;
 }
 
+interface ShadowPortalResource {
+  container: HTMLElement;
+  observer: MutationObserver | null;
+  strategy: ShadowPortalStrategy;
+}
+
 const ShadowPortalContext = createContext<ShadowPortalController | null>(null);
 
 /**
@@ -37,9 +43,9 @@ export function useShadowPortalTarget(open: boolean): HTMLElement | null | undef
   const instanceId = useId();
 
   useLayoutEffect(() => {
-    if (open) controller?.prepareOpen(instanceId);
-    else controller?.requestClose(instanceId);
+    if (!open) return;
 
+    controller?.prepareOpen(instanceId);
     return () => controller?.requestClose(instanceId);
   }, [controller, instanceId, open]);
 
@@ -77,6 +83,16 @@ function resetHost(host: HTMLDivElement): void {
   host.style.setProperty('text-orientation', 'inherit', 'important');
 }
 
+function hidePopoverIfOpen(container: HTMLElement): void {
+  if (container.matches(':popover-open')) container.hidePopover();
+}
+
+function disposePortalResource(resource: ShadowPortalResource): void {
+  resource.observer?.disconnect();
+  if (resource.strategy === 'local-top-layer') hidePopoverIfOpen(resource.container);
+  resource.container.remove();
+}
+
 interface ShadowRootHostProps {
   children: ReactNode;
   /** @internal Spike-only portal strategy; omitted for leaves without overlays. */
@@ -87,33 +103,35 @@ interface ShadowRootHostProps {
 export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps): ReactNode {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const shadowRootRef = useRef<ShadowRoot | null>(null);
-  const portalContainerRef = useRef<HTMLElement | null>(null);
-  const portalObserverRef = useRef<MutationObserver | null>(null);
+  const portalResourceRef = useRef<ShadowPortalResource | null>(null);
   const activePortalIdsRef = useRef(new Set<string>());
   const [shadowRoot, setShadowRoot] = useState<ShadowRoot | null>(null);
-  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
+  const [portalResource, setPortalResource] = useState<ShadowPortalResource | null>(null);
   const [needsStyleFallback, setNeedsStyleFallback] = useState(false);
 
-  const hideIfIdle = useCallback(
-    (): void => {
-      const container = portalContainerRef.current;
-      if (
-        portalStrategy !== 'local-top-layer' ||
-        !container ||
-        activePortalIdsRef.current.size > 0 ||
-        container.childElementCount > 0
-      ) {
-        return;
-      }
+  const hideIfIdle = useCallback((): void => {
+    const resource = portalResourceRef.current;
+    if (
+      resource?.strategy !== 'local-top-layer' ||
+      activePortalIdsRef.current.size > 0 ||
+      resource.container.childElementCount > 0
+    ) {
+      return;
+    }
 
-      if (container.matches(':popover-open')) container.hidePopover();
-    },
-    [portalStrategy],
-  );
+    hidePopoverIfOpen(resource.container);
+  }, []);
 
   const ensurePortalContainer = useCallback((): HTMLElement => {
-    const existing = portalContainerRef.current;
-    if (existing) return existing;
+    const existing = portalResourceRef.current;
+    if (existing && existing.strategy === portalStrategy) return existing.container;
+
+    if (existing) {
+      disposePortalResource(existing);
+      portalResourceRef.current = null;
+      activePortalIdsRef.current.clear();
+      setPortalResource(null);
+    }
 
     const root = shadowRootRef.current;
     if (!root || !portalStrategy) {
@@ -127,28 +145,26 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
         : 'data-yv-shadow-inline-overlay',
       '',
     );
+    let observer: MutationObserver | null = null;
     if (portalStrategy === 'local-top-layer') {
       if (!('showPopover' in container) || !('hidePopover' in container)) {
         throw new Error('The native Popover API is required for isolated floating content');
       }
-      container.setAttribute('popover', 'manual');
-    }
-    root.append(container);
-    portalContainerRef.current = container;
-    setPortalContainer(container);
-
-    // Only the top-layer strategy needs to know when the container goes idle
-    // (to hide the native popover); `hideIfIdle` is a guaranteed no-op for
-    // 'local-inline', so skip observing entirely for that strategy.
-    if (portalStrategy === 'local-top-layer') {
       const MutationObserverConstructor = root.ownerDocument.defaultView?.MutationObserver;
       if (!MutationObserverConstructor) {
         throw new Error('MutationObserver is required for isolated floating content');
       }
-      const observer = new MutationObserverConstructor(hideIfIdle);
-      observer.observe(container, { childList: true });
-      portalObserverRef.current = observer;
+      container.setAttribute('popover', 'manual');
+      observer = new MutationObserverConstructor(hideIfIdle);
     }
+
+    root.append(container);
+    if (observer) {
+      observer.observe(container, { childList: true });
+    }
+    const resource = { container, observer, strategy: portalStrategy };
+    portalResourceRef.current = resource;
+    setPortalResource(resource);
     return container;
   }, [hideIfIdle, portalStrategy]);
 
@@ -170,6 +186,19 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
     },
     [hideIfIdle],
   );
+
+  useLayoutEffect(() => {
+    const resource = portalResourceRef.current;
+    if (!resource || resource.strategy === portalStrategy) return;
+
+    disposePortalResource(resource);
+    portalResourceRef.current = null;
+    activePortalIdsRef.current.clear();
+    setPortalResource(null);
+  }, [portalStrategy]);
+
+  const portalContainer =
+    portalResource && portalResource.strategy === portalStrategy ? portalResource.container : null;
 
   const portalController = useMemo<ShadowPortalController | null>(
     () =>
@@ -199,13 +228,10 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
     setShadowRoot(root);
 
     return () => {
-      portalObserverRef.current?.disconnect();
-      portalObserverRef.current = null;
+      const resource = portalResourceRef.current;
+      if (resource) disposePortalResource(resource);
+      portalResourceRef.current = null;
       activePortalIdsRef.current.clear();
-      const container = portalContainerRef.current;
-      if (container?.matches(':popover-open')) container.hidePopover();
-      container?.remove();
-      portalContainerRef.current = null;
     };
   }, []);
 
