@@ -199,5 +199,42 @@ describe('useChapter', () => {
         expect(mockGetChapter).toHaveBeenCalledTimes(2);
       });
     });
+
+    it('keeps the current chapter visible, with loading true, while the next chapter fetches', async () => {
+      // The reader's next-chapter treatment (dim the current chapter, overlay
+      // a spinner) keys on `loading && chapter !== null` — so a chapter
+      // change must not blank `chapter` while the fetch is in flight.
+      const nextChapter: BibleChapter = {
+        id: '2',
+        passage_id: 'MAT.2',
+        title: 'Matthew 2',
+      };
+      const deferred = Promise.withResolvers<BibleChapter>();
+      mockGetChapter.mockResolvedValueOnce(mockChapter).mockReturnValueOnce(deferred.promise);
+
+      const { result, rerender } = renderHook(
+        ({ chapter }: { chapter: number }) => useChapter(111, 'MAT', chapter),
+        { wrapper, initialProps: { chapter: 1 } },
+      );
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+      expect(result.current.chapter).toEqual(mockChapter);
+
+      act(() => {
+        rerender({ chapter: 2 });
+      });
+      expect(result.current.chapter).toEqual(mockChapter);
+      expect(result.current.loading).toBe(true);
+
+      await act(async () => {
+        deferred.resolve(nextChapter);
+      });
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+      expect(result.current.chapter).toEqual(nextChapter);
+    });
   });
 });

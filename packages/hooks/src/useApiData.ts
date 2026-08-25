@@ -1,10 +1,21 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 
 export type UseApiDataOptions = {
   enabled?: boolean;
+  /**
+   * Controls what `data` holds while a `queryKey` change is being fetched.
+   * `true` (the default) keeps the previous key's data on screen, with
+   * `loading: true`, until the new data lands — so navigating chapters shows
+   * the current chapter under a loading treatment instead of a blank state.
+   *
+   * Account-scoped hooks must pass `false`: their `queryKey` carries the user
+   * scope, and holding data across a user switch would show one account's
+   * data to another.
+   */
+  keepPreviousData?: boolean;
 };
 
 type UseApiDataResult<TData> = {
@@ -26,6 +37,8 @@ type UseApiDataResult<TData> = {
  * Hooks that load user data also add `useUserScope()` to the `queryKey`.
  *
  * When the `queryKey` changes, TanStack Query keeps only the latest request.
+ * While that request is in flight, `data` still holds the previous key's data
+ * (see `UseApiDataOptions.keepPreviousData`).
  * If two components use the same `queryKey`, they share one request.
  * If the user returns to the same `queryKey`, the cache shows the data first.
  * Then TanStack Query fetches a new copy.
@@ -35,7 +48,7 @@ export function useApiData<TData>(
   fetchFn: () => Promise<TData>,
   options: UseApiDataOptions = {},
 ): UseApiDataResult<TData> {
-  const { enabled = true } = options;
+  const { enabled = true, keepPreviousData: holdPreviousData = true } = options;
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -49,6 +62,7 @@ export function useApiData<TData>(
       }
     },
     enabled,
+    placeholderData: holdPreviousData ? keepPreviousData : undefined,
   });
 
   const queryKeyRef = useRef(queryKey);
@@ -73,17 +87,19 @@ export function useApiData<TData>(
   // As a result, one user cannot see data from another user.
   // If `enabled` is true again with the same `queryKey`, the cache returns the data at once.
   //
-  // `loading` uses `isPending`, not `isFetching`.
-  // On the first load, `loading` is `true`.
-  // If the cache already has data, `loading` is `false`.
-  // If `refetch` runs, `loading` stays `false`.
-  // The current data stays on screen.
+  // `loading` is `true` while `data` is not the settled result for the
+  // current `queryKey`:
+  // - the first load of a key (`isPending`), and
+  // - a key change still showing the previous key's data (`isPlaceholderData`)
+  //   while the new fetch is in flight.
+  // A background revalidation of already-settled data keeps `loading` `false`,
+  // so the current data stays on screen through a `refetch`.
   //
   // If `enabled` is false, `loading` is `false`.
   // TanStack Query keeps `isPending` true.
   return {
     data: enabled ? (query.data ?? null) : null,
-    loading: enabled && query.isPending,
+    loading: enabled && (query.isPending || (query.isPlaceholderData && query.isFetching)),
     error: enabled ? (query.error ?? null) : null,
     refetch,
   };

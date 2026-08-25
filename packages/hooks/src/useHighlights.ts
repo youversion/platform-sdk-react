@@ -52,6 +52,10 @@ export function useHighlights(
     () => highlightsClient.getHighlights(options),
     {
       enabled: !override && apiOptions?.enabled !== false,
+      // The `queryKey` carries the user scope. Holding previous data across a
+      // key change would show one account's highlights to another during an
+      // account switch, so this hook always drops to `null` instead.
+      keepPreviousData: false,
     },
   );
 

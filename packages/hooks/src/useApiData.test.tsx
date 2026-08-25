@@ -96,6 +96,77 @@ describe('useApiData — enabled transitions', () => {
   });
 });
 
+describe('useApiData — key transitions', () => {
+  it('keeps the previous data, with loading true, while a new key fetches', async () => {
+    // The Bible reader's next-chapter treatment depends on this: the current
+    // chapter stays on screen (dimmed, spinner overlaid) instead of blanking.
+    const deferreds: PromiseWithResolvers<string>[] = [];
+    const fetchFn = vi.fn(() => {
+      const deferred = Promise.withResolvers<string>();
+      deferreds.push(deferred);
+      return deferred.promise;
+    });
+
+    const { result, rerender } = renderHook(
+      ({ scope }: { scope: string }) => useApiData(['chapter', scope], fetchFn),
+      { initialProps: { scope: 'JHN.3' }, wrapper: createWrapper() },
+    );
+
+    await act(async () => {
+      deferreds[0]!.resolve('JHN.3 data');
+      await flush();
+    });
+    expect(result.current.data).toBe('JHN.3 data');
+    expect(result.current.loading).toBe(false);
+
+    // Next chapter: the previous chapter stays visible under a loading state.
+    rerender({ scope: 'JHN.4' });
+    expect(result.current.data).toBe('JHN.3 data');
+    expect(result.current.loading).toBe(true);
+    expect(result.current.error).toBeNull();
+
+    await act(async () => {
+      deferreds[1]!.resolve('JHN.4 data');
+      await flush();
+    });
+    expect(result.current.data).toBe('JHN.4 data');
+    expect(result.current.loading).toBe(false);
+  });
+
+  it('drops to null across a key change when keepPreviousData is false', async () => {
+    // Account-scoped hooks (useHighlights) rely on this: previous data must
+    // not linger when the key's user scope changes.
+    const deferreds: PromiseWithResolvers<string>[] = [];
+    const fetchFn = vi.fn(() => {
+      const deferred = Promise.withResolvers<string>();
+      deferreds.push(deferred);
+      return deferred.promise;
+    });
+
+    const { result, rerender } = renderHook(
+      ({ scope }: { scope: string }) =>
+        useApiData(['highlights', scope], fetchFn, { keepPreviousData: false }),
+      { initialProps: { scope: 'user-a' }, wrapper: createWrapper() },
+    );
+
+    await act(async () => {
+      deferreds[0]!.resolve('user-a data');
+      await flush();
+    });
+    expect(result.current.data).toBe('user-a data');
+
+    rerender({ scope: 'user-b' });
+    expect(result.current.data).toBeNull();
+    expect(result.current.loading).toBe(true);
+
+    await act(async () => {
+      deferreds[1]!.resolve('user-b data');
+      await flush();
+    });
+    expect(result.current.data).toBe('user-b data');
+  });
+});
+
 describe('useApiData — stale responses (latest wins)', () => {
   it('ignores a stale refetch response that resolves after a newer fetch', async () => {
     const deferreds: PromiseWithResolvers<string>[] = [];

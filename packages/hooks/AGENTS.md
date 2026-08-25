@@ -42,8 +42,8 @@ the pnpm `minimumReleaseAge` window):
   The QueryClient is private to `YouVersionProvider`; export no TQ surface.
 - Call as `useApiData([...useQueryKeyBase(), '<hookName>', ...params], fetchFn)`.
   Key segments must be serializable (no class instances). Account-scoped hooks
-  (e.g. `useHighlights`) also append `useUserScope()` so users never see each
-  other's cached data.
+  (e.g. `useHighlights`) also append `useUserScope()` **and** pass
+  `keepPreviousData: false` so users never see each other's cached data.
 - Cache is memory-only; `refetch` performs exact query invalidation. Writes
   stay outside this layer (the highlights machine owns them) and refresh via
   `refetch` after the write.
