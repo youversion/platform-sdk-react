@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const css = readFileSync(resolve(import.meta.dirname, './bible-reader.css'), 'utf8');
+const themeCss = readFileSync(resolve(import.meta.dirname, './theme.css'), 'utf8');
 const cssWithoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
 
 function rulesForExactClass(cls: string): string {
@@ -149,7 +150,8 @@ describe('bible-reader phase-1 typography (Swift-adjusted tags)', () => {
     expect(css).not.toMatch(/&\s*\.note\s+\.fv\s*\{/);
 
     expect(rulesForExactClass('nd')).toContain('font-variant: small-caps');
-    expect(rulesForExactClass('wj')).toContain('color: var(--yv-red)');
+    expect(rulesForExactClass('wj')).toContain('color: var(--yv-wj)');
+    expect(rulesForExactClass('wj')).not.toContain('color: var(--yv-red)');
     expect(rulesForExactClass('it')).toContain('font-style: italic');
     expect(rulesForExactClass('add')).toContain('font-style: italic');
     expect(rulesForExactClass('qs')).toContain('font-style: italic');
@@ -158,5 +160,10 @@ describe('bible-reader phase-1 typography (Swift-adjusted tags)', () => {
     expect(css).not.toMatch(/&\s*\.p\s*\+\s*\.s1\b/);
     expect(css).not.toMatch(/&\s*\.q1\s*\+\s*\.p\b/);
     expect(css).not.toMatch(/&\s*\.p\s*\+\s*\.q1\b/);
+  });
+
+  it('keeps WOC text unmixed: #94000c light / #e4bfc2 dark', () => {
+    expect(themeCss).toContain('--yv-wj: #94000c;');
+    expect(themeCss).toContain('--yv-wj: #e4bfc2;');
   });
 });

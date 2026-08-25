@@ -33,24 +33,24 @@ describe('VerseActionPopover', () => {
   });
 
   describe('AC1: Basic popover display', () => {
-    it('should display 5 color circles when verse selected', () => {
+    it('should display 6 color circles when verse selected', () => {
       render(<VerseActionPopover {...defaultProps} />);
 
       const colorButtons = screen
         .getAllByRole('button')
         .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
 
-      expect(colorButtons).toHaveLength(5);
+      expect(colorButtons).toHaveLength(6);
     });
 
-    it('should render colors in correct order (yellow, green, blue, orange, pink)', () => {
+    it('should render the six apply colors', () => {
       render(<VerseActionPopover {...defaultProps} />);
 
       const applyButtons = screen
         .getAllByRole('button')
         .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
 
-      expect(applyButtons).toHaveLength(5);
+      expect(applyButtons).toHaveLength(6);
       applyButtons.forEach((btn) => {
         const bgColor = btn.style.backgroundColor;
         // Swatches render via theme tokens (var(--yv-*-30-dm)), with a hex fallback.
@@ -142,7 +142,7 @@ describe('VerseActionPopover', () => {
   });
 
   describe('AC5: Single highlighted verse', () => {
-    it('should show 5 circles: 1 remove + 4 apply (only inactive colors)', () => {
+    it('should show 6 circles: 1 remove + 5 apply (only inactive colors)', () => {
       const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0]]);
       const selectedVerses = [1];
       const highlightedVerses = { 1: HIGHLIGHT_COLORS[0] };
@@ -165,7 +165,7 @@ describe('VerseActionPopover', () => {
         .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
 
       expect(removeButtons).toHaveLength(1);
-      expect(applyButtons).toHaveLength(4);
+      expect(applyButtons).toHaveLength(5);
     });
   });
 
@@ -197,7 +197,7 @@ describe('VerseActionPopover', () => {
   });
 
   describe('AC6: Mixed selection (highlighted + unhighlighted)', () => {
-    it('should show all 5 apply colors when there are unhighlighted verses', () => {
+    it('should show all 6 apply colors when there are unhighlighted verses', () => {
       const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0]]);
       const selectedVerses = [1, 2];
       const highlightedVerses = { 1: HIGHLIGHT_COLORS[0] }; // verse 2 is unhighlighted
@@ -219,14 +219,14 @@ describe('VerseActionPopover', () => {
         .getAllByRole('button')
         .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
 
-      // 1 yellow remove + all 5 apply (because verse 2 is unhighlighted)
+      // 1 yellow remove + all 6 apply (because verse 2 is unhighlighted)
       expect(removeButtons).toHaveLength(1);
-      expect(applyButtons).toHaveLength(5);
+      expect(applyButtons).toHaveLength(6);
     });
   });
 
   describe('AC7: Multiple different highlights', () => {
-    it('should show all 5 apply colors when multiple colors are active', () => {
+    it('should show all 6 apply colors when multiple colors are active', () => {
       const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0], HIGHLIGHT_COLORS[1]]);
       const selectedVerses = [1, 2];
       const highlightedVerses = { 1: HIGHLIGHT_COLORS[0], 2: HIGHLIGHT_COLORS[1] };
@@ -248,9 +248,9 @@ describe('VerseActionPopover', () => {
         .getAllByRole('button')
         .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
 
-      // 2 remove (X) + all 5 apply (because multiple colors)
+      // 2 remove + all 6 apply (because multiple colors)
       expect(removeButtons).toHaveLength(2);
-      expect(applyButtons).toHaveLength(5);
+      expect(applyButtons).toHaveLength(6);
     });
 
     it('should call onClearHighlight with color when clear swatch clicked', () => {
@@ -435,6 +435,24 @@ describe('VerseActionPopover', () => {
       expect(removeButtons[0]!.style.backgroundColor).toBe(fillFor(custom));
     });
 
+    it('shows leftover fffe00 as a remove swatch, not an apply swatch', () => {
+      render(
+        <VerseActionPopover
+          {...defaultProps}
+          activeHighlights={new Set(['fffe00'])}
+          selectedVerses={[1]}
+          highlightedVerses={{ 1: 'fffe00' }}
+        />,
+      );
+
+      expect(clearButtons()).toHaveLength(1);
+      expect(clearButtons()[0]!.style.backgroundColor).toBe('rgb(255, 254, 0)');
+      expect(applyButtons().map((btn) => btn.style.backgroundColor)).not.toContain(
+        'rgb(255, 254, 0)',
+      );
+      expect(applyButtons()).toHaveLength(6);
+    });
+
     it('should handle empty active highlights', () => {
       const activeHighlights = new Set<HighlightColor>();
 
@@ -444,19 +462,20 @@ describe('VerseActionPopover', () => {
         .getAllByRole('button')
         .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
 
-      // Should still show 5 apply colors
-      expect(applyButtons).toHaveLength(5);
+      // Should still show 6 apply colors
+      expect(applyButtons).toHaveLength(6);
     });
 
-    it('should handle all 5 colors highlighted', () => {
+    it('should handle all 6 colors highlighted', () => {
       const activeHighlights = new Set<HighlightColor>(HIGHLIGHT_COLORS);
-      const selectedVerses = [1, 2, 3, 4, 5];
+      const selectedVerses = [1, 2, 3, 4, 5, 6];
       const highlightedVerses = {
         1: HIGHLIGHT_COLORS[0],
         2: HIGHLIGHT_COLORS[1],
         3: HIGHLIGHT_COLORS[2],
         4: HIGHLIGHT_COLORS[3],
         5: HIGHLIGHT_COLORS[4],
+        6: HIGHLIGHT_COLORS[5],
       };
 
       render(
@@ -476,8 +495,8 @@ describe('VerseActionPopover', () => {
         .getAllByRole('button')
         .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
 
-      // 5 remove (X) + 0 apply (all colors already active) = 5 total
-      expect(removeButtons).toHaveLength(5);
+      // 6 remove + 0 apply (all colors already active)
+      expect(removeButtons).toHaveLength(6);
       expect(applyButtons).toHaveLength(0);
     });
 
@@ -511,9 +530,9 @@ describe('VerseActionPopover', () => {
         .getAllByRole('button')
         .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
 
-      // 3 remove (X for Y, B, G) + all 5 apply (yellow, green, blue, orange, pink) = 8 total
+      // 3 remove + all 6 apply
       expect(removeButtons).toHaveLength(3);
-      expect(applyButtons).toHaveLength(5);
+      expect(applyButtons).toHaveLength(6);
     });
   });
 
@@ -558,24 +577,19 @@ describe('VerseActionPopover', () => {
   });
 
   describe('Swatch fill preview (theme-aware)', () => {
-    // The first apply swatch (no active highlights) is the first canonical color,
-    // yellow `fffe00` → rgb(255, 254, 0).
+    // First apply swatch is `ffec5b`. Light is identity; dark is the #121212 mix.
     function firstApplySwatch() {
       return applyButtons()[0]!;
     }
 
-    it('paints swatches at full opacity in light mode (matches the applied fill)', () => {
+    it('paints drawer dots with the unmixed stored hex in light mode', () => {
       render(<VerseActionPopover {...defaultProps} theme="light" />);
-      const bg = firstApplySwatch().style.backgroundColor;
-      // Full-strength: never the dimmed dark-mode alpha.
-      expect(bg).not.toContain('0.3');
-      expect(bg).toBeTruthy();
+      expect(firstApplySwatch().style.backgroundColor).toBe('rgb(255, 236, 91)');
     });
 
-    it('dims swatches to the dark-mode alpha (0.3) in dark mode', () => {
+    it('paints drawer dots with the same dark mix as reader fill', () => {
       render(<VerseActionPopover {...defaultProps} theme="dark" />);
-      // Same 0.3 alpha the applied highlight paints in dark mode (verse.tsx).
-      expect(firstApplySwatch().style.backgroundColor).toBe('rgba(255, 254, 0, 0.3)');
+      expect(firstApplySwatch().style.backgroundColor).toBe('rgb(65, 62, 33)');
     });
 
     it('uses a dark inner stroke in light mode and a light one in dark mode', () => {

@@ -49,7 +49,7 @@ function Reader({ removeRef }: { removeRef: { current: (() => void) | null } }) 
   const api = useBibleReaderHighlights(options);
   useEffect(() => {
     removeRef.current = () => {
-      api.remove('fffe00', selected);
+      api.remove('ffec5b', selected);
       // Popover close → selection clear on a SEPARATE tick (Radix close), so the
       // clear re-render lands after the optimistic overlay commit — modeling the
       // real reader rather than a single batched update.
@@ -70,7 +70,7 @@ describe('vapor flash — real Verse.Html DOM paint (MutationObserver on style)'
   // waitFor gates below use 5s each; the default 5s it() timeout can expire first
   // on a loaded CI runner and hide the real assertion.
   it('the verse-2 background is never repainted to yellow after the optimistic unpaint', async () => {
-    const withRow = () => collection([{ version_id: 111, passage_id: 'JHN.1.2', color: 'fffe00' }]);
+    const withRow = () => collection([{ version_id: 111, passage_id: 'JHN.1.2', color: 'ffec5b' }]);
     // The post-remove refetch is held unresolved to widen the settle→response
     // window the live flash lives in; it never settles.
     const heldRefetch = new Promise<Collection<Highlight>>(vi.fn());

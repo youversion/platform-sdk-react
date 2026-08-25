@@ -93,7 +93,7 @@ function defaultOverrides(): HookOverrides {
         Promise.resolve({
           version_id: 111,
           passage_id: 'JHN.3.16',
-          color: 'fffe00',
+          color: 'ffec5b',
         }),
       deleteHighlight: () => Promise.resolve(),
     }),
@@ -120,8 +120,8 @@ function defaultOverrides(): HookOverrides {
   };
 }
 
-const YELLOW = HIGHLIGHT_COLORS[0]; // fffe00
-const GREEN = HIGHLIGHT_COLORS[1]; // 5dff79
+const YELLOW = HIGHLIGHT_COLORS[0];
+const GREEN = HIGHLIGHT_COLORS[1];
 
 const mockBooks: BibleBook[] = [
   {
