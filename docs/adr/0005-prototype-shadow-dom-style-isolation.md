@@ -127,7 +127,9 @@ detail.
   model.
 - Stylesheet construction/adoption failure recovery beyond feature fallback.
 - A full browser and assistive-technology matrix; current browser verification is
-  Chromium-focused.
+  Chromium-focused. Chromium's `ariaControlsElements` confirms DOM relationship
+  resolution, but this spike does not verify screen-reader announcement or
+  navigation through Shadow DOM and the native top layer.
 - Consumer test-query migration guidance and a component-by-component rollout.
 - An audit of components that use Radix Popover directly instead of the shared
   `ui/popover.tsx` wrapper (`VerseActionPopover` is a confirmed example) and are

@@ -25,12 +25,6 @@ interface ShadowPortalController {
   requestClose: (instanceId: string) => void;
 }
 
-interface ShadowPortalResource {
-  container: HTMLElement;
-  observer: MutationObserver | null;
-  strategy: ShadowPortalStrategy;
-}
-
 const ShadowPortalContext = createContext<ShadowPortalController | null>(null);
 
 /**
@@ -83,19 +77,13 @@ function resetHost(host: HTMLDivElement): void {
   host.style.setProperty('text-orientation', 'inherit', 'important');
 }
 
-function hidePopoverIfOpen(container: HTMLElement): void {
-  if (container.matches(':popover-open')) container.hidePopover();
-}
-
-function disposePortalResource(resource: ShadowPortalResource): void {
-  resource.observer?.disconnect();
-  if (resource.strategy === 'local-top-layer') hidePopoverIfOpen(resource.container);
-  resource.container.remove();
+function hidePopoverIfOpen(container: HTMLElement | null): void {
+  if (container?.matches(':popover-open')) container.hidePopover();
 }
 
 interface ShadowRootHostProps {
   children: ReactNode;
-  /** @internal Spike-only portal strategy; omitted for leaves without overlays. */
+  /** @internal Spike-only, mount-stable strategy; omit for leaves without overlays. */
   portalStrategy?: ShadowPortalStrategy;
 }
 
@@ -103,35 +91,33 @@ interface ShadowRootHostProps {
 export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps): ReactNode {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const shadowRootRef = useRef<ShadowRoot | null>(null);
-  const portalResourceRef = useRef<ShadowPortalResource | null>(null);
+  const portalContainerRef = useRef<HTMLElement | null>(null);
+  const portalObserverRef = useRef<MutationObserver | null>(null);
   const activePortalIdsRef = useRef(new Set<string>());
   const [shadowRoot, setShadowRoot] = useState<ShadowRoot | null>(null);
-  const [portalResource, setPortalResource] = useState<ShadowPortalResource | null>(null);
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
   const [needsStyleFallback, setNeedsStyleFallback] = useState(false);
 
-  const hideIfIdle = useCallback((): void => {
-    const resource = portalResourceRef.current;
-    if (
-      resource?.strategy !== 'local-top-layer' ||
-      activePortalIdsRef.current.size > 0 ||
-      resource.container.childElementCount > 0
-    ) {
-      return;
-    }
+  const hideIfIdle = useCallback(
+    (): void => {
+      const container = portalContainerRef.current;
+      if (
+        portalStrategy !== 'local-top-layer' ||
+        !container ||
+        activePortalIdsRef.current.size > 0 ||
+        container.childElementCount > 0
+      ) {
+        return;
+      }
 
-    hidePopoverIfOpen(resource.container);
-  }, []);
+      hidePopoverIfOpen(container);
+    },
+    [portalStrategy],
+  );
 
   const ensurePortalContainer = useCallback((): HTMLElement => {
-    const existing = portalResourceRef.current;
-    if (existing && existing.strategy === portalStrategy) return existing.container;
-
-    if (existing) {
-      disposePortalResource(existing);
-      portalResourceRef.current = null;
-      activePortalIdsRef.current.clear();
-      setPortalResource(null);
-    }
+    const existing = portalContainerRef.current;
+    if (existing) return existing;
 
     const root = shadowRootRef.current;
     if (!root || !portalStrategy) {
@@ -159,12 +145,12 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
     }
 
     root.append(container);
+    portalContainerRef.current = container;
+    setPortalContainer(container);
     if (observer) {
       observer.observe(container, { childList: true });
+      portalObserverRef.current = observer;
     }
-    const resource = { container, observer, strategy: portalStrategy };
-    portalResourceRef.current = resource;
-    setPortalResource(resource);
     return container;
   }, [hideIfIdle, portalStrategy]);
 
@@ -186,19 +172,6 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
     },
     [hideIfIdle],
   );
-
-  useLayoutEffect(() => {
-    const resource = portalResourceRef.current;
-    if (!resource || resource.strategy === portalStrategy) return;
-
-    disposePortalResource(resource);
-    portalResourceRef.current = null;
-    activePortalIdsRef.current.clear();
-    setPortalResource(null);
-  }, [portalStrategy]);
-
-  const portalContainer =
-    portalResource && portalResource.strategy === portalStrategy ? portalResource.container : null;
 
   const portalController = useMemo<ShadowPortalController | null>(
     () =>
@@ -228,10 +201,13 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
     setShadowRoot(root);
 
     return () => {
-      const resource = portalResourceRef.current;
-      if (resource) disposePortalResource(resource);
-      portalResourceRef.current = null;
+      portalObserverRef.current?.disconnect();
+      portalObserverRef.current = null;
       activePortalIdsRef.current.clear();
+      const container = portalContainerRef.current;
+      hidePopoverIfOpen(container);
+      container?.remove();
+      portalContainerRef.current = null;
     };
   }, []);
 

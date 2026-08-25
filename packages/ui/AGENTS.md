@@ -17,7 +17,7 @@ export — treat those two as public API and breaking-change territory.
 
 ✅ Do: Use hooks from `@youversion/platform-react-hooks` for data; keep components thin
 ✅ Do: Use Radix UI primitives from `components/ui/` for low-level behaviors (modals, popovers, etc.)
-✅ Do: Prefix every Tailwind class with `yv:`
+✅ Do: Use Tailwind classes with the `yv:` prefix only
 ✅ Do: Use semantic theme tokens (`yv:text-muted-foreground`, `yv:bg-destructive`) instead of arbitrary colors
 
 ❌ Don't: Make raw network requests from UI components
@@ -27,7 +27,7 @@ export — treat those two as public API and breaking-change territory.
    `@youversion/platform-react-hooks`, never a core API client called from a component.
    Note that `src/types.ts` star-exports core, so anything in core's `"."` entry is already
    public API of this package — adding a core export is a public-surface change here too.
-❌ Don't: Add another global CSS entry point; use the existing Tailwind build
+❌ Don't: Add global CSS files; all styling goes through Tailwind build and `<YvStyles />`
 ❌ Don't: Use unprefixed Tailwind classes (causes collisions in consumer apps)
 
 ## CONVENTIONS
