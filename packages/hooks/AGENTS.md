@@ -35,10 +35,19 @@ providers and contexts in `src/context/`, helpers in `src/utility/`.
 
 ## DATA FETCHING PATTERN
 
-Hooks use a custom React Query-like pattern via `useApiData`:
-- Returns `{ data, loading, error, refetch }`
-- Provides caching and refetch capability
-- New hooks should follow this same pattern
+Data hooks go through `useApiData`, which is backed by TanStack Query
+(`@tanstack/react-query`, a direct dependency — exact-pinned; bumps must clear
+the pnpm `minimumReleaseAge` window):
+- Returns `{ data, loading, error, refetch }` — never TanStack Query types.
+  The QueryClient is private to `YouVersionProvider`; export no TQ surface.
+- Call as `useApiData([...useQueryKeyBase(), '<hookName>', ...params], fetchFn)`.
+  Key segments must be serializable (no class instances). Account-scoped hooks
+  (e.g. `useHighlights`) also append `useUserScope()` so users never see each
+  other's cached data.
+- Cache is memory-only; `refetch` performs exact query invalidation. Writes
+  stay outside this layer (the highlights machine owns them) and refresh via
+  `refetch` after the write.
+- Design decisions: `docs/adr/0006-tanstack-query-read-layer.md`.
 
 ## CONVENTIONS
 - Context and Provider in separate files
