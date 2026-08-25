@@ -577,7 +577,7 @@ describe('VerseActionPopover', () => {
   });
 
   describe('Swatch fill preview (theme-aware)', () => {
-    // First apply swatch is `ffec5b`. Light is identity; dark is the #121212 mix.
+    // First apply swatch is `ffec5b`. Light is identity; dark mixes against the card.
     function firstApplySwatch() {
       return applyButtons()[0]!;
     }
@@ -587,9 +587,9 @@ describe('VerseActionPopover', () => {
       expect(firstApplySwatch().style.backgroundColor).toBe('rgb(255, 236, 91)');
     });
 
-    it('paints drawer dots with the same dark mix as reader fill', () => {
+    it('paints drawer dots with the dark mix against the card surface', () => {
       render(<VerseActionPopover {...defaultProps} theme="dark" />);
-      expect(firstApplySwatch().style.backgroundColor).toBe('rgb(65, 62, 33)');
+      expect(firstApplySwatch().style.backgroundColor).toBe('rgb(79, 74, 45)');
     });
 
     it('uses a dark inner stroke in light mode and a light one in dark mode', () => {

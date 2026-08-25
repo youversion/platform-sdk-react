@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   HIGHLIGHT_COLORS,
   buildVerseActionSwatches,
+  highlightFillHex,
   isPaletteHighlightColor,
   isValidHighlightHex,
   mixSrgb,
@@ -155,6 +156,18 @@ describe('highlight-colors', () => {
     expect(mixSrgb('ffcff8', '121212', 0.2)).toBe('413840');
     expect(mixSrgb('dfdcff', '121212', 0.2)).toBe('3b3a41');
     expect(mixSrgb('fffe00', '121212', 0.2)).toBe('41410e');
+  });
+
+  it('highlightFillHex defaults to the reader surface', () => {
+    expect(highlightFillHex('ffec5b', 'light')).toBe('ffec5b');
+    expect(highlightFillHex('ffec5b', 'dark')).toBe('413e21');
+  });
+
+  it('highlightFillHex mixes dark p = 0.20 against a card surface', () => {
+    // `--yv-card` dark is `--yv-gray-45` `#232121`. Same p, different surface.
+    expect(mixSrgb('ffec5b', '232121', 0.2)).toBe('4f4a2d');
+    expect(highlightFillHex('ffec5b', 'dark', '232121')).toBe('4f4a2d');
+    expect(highlightFillHex('ffec5b', 'light', 'fcfafa')).toBe('ffec5b');
   });
 
   it('leftover fffe00 is not an apply swatch and still clears', () => {

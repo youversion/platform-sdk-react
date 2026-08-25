@@ -78,8 +78,10 @@ needed: real YV colors (ADR-005), alpha fill (ADR-005), wire into BibleReader
 > **Superseded for React web by YPE-5058.** Apply is six hexes (`ffec5b`,
 > `b4ffc1`, `bbf4ff`, `ffdca7`, `ffcff8`, `dfdcff`). Fill is
 > `mixSrgb(stored, --yv-background, p)`: light `p = 1.00`, dark `p = 0.20`
-> against `#121212` (not popover `#1c1a1a`, not 0.3 alpha). Old `fffe00`
-> leftovers still paint and clear. This table is the YPE-642 as-built palette.
+> against `#121212` (not popover `#1c1a1a`, not 0.3 alpha). Drawer dots use
+> the same `p` against `--yv-card` (`#232121` dark / `#fcfafa` light). Old
+> `fffe00` leftovers still paint and clear. This table is the YPE-642
+> as-built palette.
 
 Theme tokens don't carry these exact colors (the iOS app hardcodes them), so the
 palette is hardcoded here too. Simpler than mapping to tokens.

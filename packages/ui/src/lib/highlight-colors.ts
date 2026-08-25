@@ -73,12 +73,22 @@ export function mixSrgb(stored: string, surfaceBg: string, p: number): string {
   return `${byteToHex(r)}${byteToHex(g)}${byteToHex(b)}`;
 }
 
-export function highlightFillHex(stored: string, theme: 'light' | 'dark'): string {
+/**
+ * Mixed fill hex (no `#`) for painting a stored highlight.
+ * Defaults to the reader surface (`--yv-background`). Pass a different
+ * `surfaceBg` (e.g. `--yv-card` `#232121` / `#fcfafa`) to mix against
+ * another surface. `p` still comes from `theme` (light 1.00, dark 0.20).
+ */
+export function highlightFillHex(
+  stored: string,
+  theme: 'light' | 'dark',
+  surfaceBg?: string,
+): string {
   switch (theme) {
     case 'light':
-      return mixSrgb(stored, HIGHLIGHT_SURFACE_BG.light, HIGHLIGHT_MIX_P.light);
+      return mixSrgb(stored, surfaceBg ?? HIGHLIGHT_SURFACE_BG.light, HIGHLIGHT_MIX_P.light);
     case 'dark':
-      return mixSrgb(stored, HIGHLIGHT_SURFACE_BG.dark, HIGHLIGHT_MIX_P.dark);
+      return mixSrgb(stored, surfaceBg ?? HIGHLIGHT_SURFACE_BG.dark, HIGHLIGHT_MIX_P.dark);
     default: {
       const _exhaustive: never = theme;
       return _exhaustive;

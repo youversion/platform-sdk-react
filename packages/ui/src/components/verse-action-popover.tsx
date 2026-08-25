@@ -98,7 +98,10 @@ type ColorCircleProps = {
 
 function ColorCircle({ color, showRemove, label, onClick, theme }: ColorCircleProps) {
   const isDark = theme === 'dark';
-  const backgroundColor = `#${highlightFillHex(color, isDark ? 'dark' : 'light')}`;
+  // Dots sit on `yv:bg-card` (`--yv-gray-2` `#fcfafa` / `--yv-gray-45` `#232121`),
+  // not `--yv-background`. Same `p` as the reader; different surfaceBg.
+  const cardSurfaceBg = isDark ? '232121' : 'fcfafa';
+  const backgroundColor = `#${highlightFillHex(color, theme, cardSurfaceBg)}`;
   // Inner border matches the Figma "highlight stroke" (#121212 @ 20%), giving
   // pale swatches definition on the light popover. On the dark popover a dark
   // stroke would vanish against the dimmed fill, so flip it to a light stroke.
