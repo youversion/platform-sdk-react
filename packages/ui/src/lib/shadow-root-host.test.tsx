@@ -1,7 +1,17 @@
-import { StrictMode } from 'react';
-import { render } from '@testing-library/react';
+import { StrictMode, useState } from 'react';
+import { render, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { ShadowRootHost } from './shadow-root-host';
+import { ShadowRootHost, useShadowPortalTarget } from './shadow-root-host';
+
+function PortalRequester(): React.ReactNode {
+  const [open, setOpen] = useState(false);
+  useShadowPortalTarget(open);
+  return (
+    <button type="button" onClick={() => setOpen(true)}>
+      Open portal
+    </button>
+  );
+}
 
 describe('ShadowRootHost', () => {
   it('attaches one shadow root under StrictMode', () => {
@@ -59,5 +69,79 @@ describe('ShadowRootHost', () => {
     // stylesheet resources within the shadow root.
     expect(style?.getAttribute('data-href')).toBe('yv-sdk-shadow-styles');
     expect(style?.getAttribute('data-precedence')).toBe('yv-sdk');
+  });
+
+  it('creates a local portal lazily only after an overlay requests one', async () => {
+    const { container } = render(
+      <>
+        <ShadowRootHost>
+          <span>leaf without overlays</span>
+        </ShadowRootHost>
+        <ShadowRootHost portalStrategy="local-inline">
+          <PortalRequester />
+        </ShadowRootHost>
+      </>,
+    );
+
+    const roots = Array.from(
+      container.querySelectorAll<HTMLElement>('[data-yv-shadow-host]'),
+      (host) => host.shadowRoot,
+    );
+    expect(roots).toHaveLength(2);
+    expect(roots[0]?.querySelector('[data-yv-shadow-inline-overlay]')).toBeNull();
+    expect(roots[1]?.querySelector('[data-yv-shadow-inline-overlay]')).toBeNull();
+
+    roots[1]?.querySelector<HTMLButtonElement>('button')?.click();
+
+    const localPortal = await waitFor(() => {
+      const element = roots[1]?.querySelector<HTMLElement>('[data-yv-shadow-inline-overlay]');
+      if (!element) throw new Error('local portal not created');
+      return element;
+    });
+    expect(localPortal.getRootNode()).toBe(roots[1]);
+    expect(roots[0]?.querySelector('[data-yv-shadow-inline-overlay]')).toBeNull();
+  });
+
+  it('does not require native Popover selectors when an inline portal unmounts', async () => {
+    const matchesDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'matches');
+    let view: ReturnType<typeof render> | undefined;
+
+    try {
+      Object.defineProperty(HTMLElement.prototype, 'matches', {
+        configurable: true,
+        writable: true,
+        value(this: HTMLElement, selector: string): boolean {
+          if (selector === ':popover-open') {
+            throw new DOMException('unsupported selector', 'SyntaxError');
+          }
+          return false;
+        },
+      });
+      view = render(
+        <ShadowRootHost portalStrategy="local-inline">
+          <PortalRequester />
+        </ShadowRootHost>,
+      );
+      const shadowRoot = view.container.querySelector<HTMLElement>('[data-yv-shadow-host]')?.shadowRoot;
+      shadowRoot?.querySelector<HTMLButtonElement>('button')?.click();
+      await waitFor(() => {
+        if (!shadowRoot?.querySelector('[data-yv-shadow-inline-overlay]')) {
+          throw new Error('inline portal not created');
+        }
+      });
+      const mountedView = view;
+      view = undefined;
+      expect(() => mountedView.unmount()).not.toThrow();
+    } finally {
+      try {
+        view?.unmount();
+      } finally {
+        if (matchesDescriptor) {
+          Object.defineProperty(HTMLElement.prototype, 'matches', matchesDescriptor);
+        } else {
+          Reflect.deleteProperty(HTMLElement.prototype, 'matches');
+        }
+      }
+    }
   });
 });

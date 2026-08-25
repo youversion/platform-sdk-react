@@ -55,6 +55,27 @@ layer(yv-sdk-fonts);
   display: none !important;
 }
 
+/* A shadow-local portal container can enter the native top layer without
+   becoming a full-screen hit target itself. Its Radix-owned children remain
+   interactive while the zero-sized container only supplies tree scope. */
+[data-yv-shadow-local-overlay] {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inline-size: 0;
+  block-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
+  pointer-events: none;
+}
+
+[data-yv-shadow-local-overlay] > * {
+  pointer-events: auto;
+}
+
 /* Untitled Serif has no @font-face here on purpose. Its stylesheet URL needs the
    consumer's app key, which this file cannot know — it is frozen into __YV_STYLES__ at
    build time. It is loaded instead by <YvFonts /> (src/lib/yv-fonts.tsx), rendered from
