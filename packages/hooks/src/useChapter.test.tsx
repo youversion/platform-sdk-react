@@ -158,83 +158,83 @@ describe('useChapter', () => {
         expect(mockGetChapter).toHaveBeenCalledTimes(2);
       });
     });
+  });
 
-    it('should serve the cached chapter instantly on revisit and revalidate in background', async () => {
-      // The acceptance criterion behind the TanStack Query migration: leaving
-      // a chapter and coming back renders it from cache with no loading
-      // flash, while a background refetch keeps it fresh. The provider stack
-      // stays mounted across the visit (as in an app); only the hook-bearing
-      // component unmounts.
-      const results: UseChapterResult[] = [];
-      function Probe() {
-        results.push(useChapter(111, 'MAT', 1));
-        return null;
-      }
-      function Harness({ show }: { show: boolean }) {
-        return (
-          <YouVersionContext.Provider value={{ appKey: 'test-app-key', bibleClient }}>
-            <TestQueryClientProvider>{show ? <Probe /> : null}</TestQueryClientProvider>
-          </YouVersionContext.Provider>
-        );
-      }
-
-      const { rerender } = render(<Harness show />);
-      await waitFor(() => {
-        expect(results.at(-1)?.loading).toBe(false);
-      });
-      expect(mockGetChapter).toHaveBeenCalledTimes(1);
-
-      // Navigate away…
-      rerender(<Harness show={false} />);
-      const rendersBeforeRevisit = results.length;
-
-      // …and back: the very first render already has the chapter, no loading.
-      rerender(<Harness show />);
-      const firstRevisitRender = results[rendersBeforeRevisit];
-      expect(firstRevisitRender?.chapter).toEqual(mockChapter);
-      expect(firstRevisitRender?.loading).toBe(false);
-
-      // Background revalidation still goes out.
-      await waitFor(() => {
-        expect(mockGetChapter).toHaveBeenCalledTimes(2);
-      });
-    });
-
-    it('keeps the current chapter visible, with loading true, while the next chapter fetches', async () => {
-      // The reader's next-chapter treatment (dim the current chapter, overlay
-      // a spinner) keys on `loading && chapter !== null` — so a chapter
-      // change must not blank `chapter` while the fetch is in flight.
-      const nextChapter: BibleChapter = {
-        id: '2',
-        passage_id: 'MAT.2',
-        title: 'Matthew 2',
-      };
-      const deferred = Promise.withResolvers<BibleChapter>();
-      mockGetChapter.mockResolvedValueOnce(mockChapter).mockReturnValueOnce(deferred.promise);
-
-      const { result, rerender } = renderHook(
-        ({ chapter }: { chapter: number }) => useChapter(111, 'MAT', chapter),
-        { wrapper, initialProps: { chapter: 1 } },
+  it('should serve the cached chapter instantly on revisit and revalidate in background', async () => {
+    // The acceptance criterion behind the TanStack Query migration: leaving
+    // a chapter and coming back renders it from cache with no loading
+    // flash, while a background refetch keeps it fresh. The provider stack
+    // stays mounted across the visit (as in an app); only the hook-bearing
+    // component unmounts.
+    const results: UseChapterResult[] = [];
+    function Probe() {
+      results.push(useChapter(111, 'MAT', 1));
+      return null;
+    }
+    function Harness({ show }: { show: boolean }) {
+      return (
+        <YouVersionContext.Provider value={{ appKey: 'test-app-key', bibleClient }}>
+          <TestQueryClientProvider>{show ? <Probe /> : null}</TestQueryClientProvider>
+        </YouVersionContext.Provider>
       );
+    }
 
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-      expect(result.current.chapter).toEqual(mockChapter);
-
-      act(() => {
-        rerender({ chapter: 2 });
-      });
-      expect(result.current.chapter).toEqual(mockChapter);
-      expect(result.current.loading).toBe(true);
-
-      await act(async () => {
-        deferred.resolve(nextChapter);
-      });
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-      expect(result.current.chapter).toEqual(nextChapter);
+    const { rerender } = render(<Harness show />);
+    await waitFor(() => {
+      expect(results.at(-1)?.loading).toBe(false);
     });
+    expect(mockGetChapter).toHaveBeenCalledTimes(1);
+
+    // Navigate away…
+    rerender(<Harness show={false} />);
+    const rendersBeforeRevisit = results.length;
+
+    // …and back: the very first render already has the chapter, no loading.
+    rerender(<Harness show />);
+    const firstRevisitRender = results[rendersBeforeRevisit];
+    expect(firstRevisitRender?.chapter).toEqual(mockChapter);
+    expect(firstRevisitRender?.loading).toBe(false);
+
+    // Background revalidation still goes out.
+    await waitFor(() => {
+      expect(mockGetChapter).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('keeps the current chapter visible, with loading true, while the next chapter fetches', async () => {
+    // The reader's next-chapter treatment (dim the current chapter, overlay
+    // a spinner) keys on `loading && chapter !== null` — so a chapter
+    // change must not blank `chapter` while the fetch is in flight.
+    const nextChapter: BibleChapter = {
+      id: '2',
+      passage_id: 'MAT.2',
+      title: 'Matthew 2',
+    };
+    const deferred = Promise.withResolvers<BibleChapter>();
+    mockGetChapter.mockResolvedValueOnce(mockChapter).mockReturnValueOnce(deferred.promise);
+
+    const { result, rerender } = renderHook(
+      ({ chapter }: { chapter: number }) => useChapter(111, 'MAT', chapter),
+      { wrapper, initialProps: { chapter: 1 } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.chapter).toEqual(mockChapter);
+
+    act(() => {
+      rerender({ chapter: 2 });
+    });
+    expect(result.current.chapter).toEqual(mockChapter);
+    expect(result.current.loading).toBe(true);
+
+    await act(async () => {
+      deferred.resolve(nextChapter);
+    });
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.chapter).toEqual(nextChapter);
   });
 });
