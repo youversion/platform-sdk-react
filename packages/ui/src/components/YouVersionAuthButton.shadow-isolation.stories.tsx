@@ -3,7 +3,11 @@ import { http, HttpResponse } from 'msw';
 import { createRoot } from 'react-dom/client';
 import { expect, waitFor } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
+import { tailwindStylesheet } from '../lib/embedded-styles';
+import { BibleCard } from './bible-card';
+import { BibleCardTailwind } from './bible-card-tailwind';
 import { YouVersionAuthButton } from './YouVersionAuthButton';
+import { YouVersionAuthButtonTailwind } from './youversion-auth-button-tailwind';
 
 /**
  * Focused architectural POC coverage. These stories answer two questions:
@@ -167,4 +171,87 @@ export const SameOriginIframeDocument: Story = {
       container.remove();
     }
   },
+};
+
+function headingStyleSnapshot(heading: HTMLElement) {
+  const ownerWindow = heading.ownerDocument.defaultView;
+  if (!ownerWindow) throw new Error('heading owner window not available');
+  const styles = ownerWindow.getComputedStyle(heading);
+  return {
+    color: styles.color,
+    fontFamily: styles.fontFamily,
+    fontSize: styles.fontSize,
+    textTransform: styles.textTransform,
+  };
+}
+
+export const HostileBibleCardWithoutPicker: Story = {
+  tags: ['integration'],
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <h2 data-testid="host-heading">Host heading</h2>
+      <BibleCard data-testid="sdk-card" reference="JHN.3.16" versionId={111} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const ownerDocument = canvasElement.ownerDocument;
+    const ownerWindow = ownerDocument.defaultView;
+    if (!ownerWindow) throw new Error('story owner window not available');
+
+    const hostHeading = await waitFor(() => {
+      const element = canvasElement.querySelector<HTMLElement>('[data-testid="host-heading"]');
+      if (!element) throw new Error('host heading not rendered');
+      return element;
+    });
+    const host = await waitFor(() => {
+      const element = canvasElement.querySelector<HTMLElement>('[data-yv-shadow-host]');
+      if (!element?.shadowRoot) throw new Error('shadow root not attached');
+      return element;
+    });
+    const sdkHeading = await waitFor(() => {
+      const element = host.shadowRoot?.querySelector('h2');
+      if (!element) throw new Error('SDK card heading not rendered');
+      return element;
+    });
+
+    const sdkBaseline = headingStyleSnapshot(sdkHeading);
+    const style = ownerDocument.createElement('style');
+    style.textContent = `
+      h2 {
+        color: yellow !important;
+        font: 32px/1 fantasy !important;
+        text-transform: uppercase !important;
+      }
+      ${HOSTILE_CSS}
+    `;
+
+    try {
+      ownerDocument.head.append(style);
+      await waitFor(() => {
+        void expect(ownerWindow.getComputedStyle(hostHeading).color).toBe('rgb(255, 255, 0)');
+      });
+      void expect(headingStyleSnapshot(sdkHeading)).toEqual(sdkBaseline);
+    } finally {
+      style.remove();
+    }
+  },
+};
+
+export const StyleXVersusTailwindControl: Story = {
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+      <div>
+        <p>StyleX shadow (measured)</p>
+        <YouVersionAuthButton size="short" />
+        <BibleCard reference="JHN.3.16" versionId={111} />
+      </div>
+      <div>
+        <p>Tailwind-in-shadow control</p>
+        <YouVersionAuthButtonTailwind size="short" />
+        <ShadowRootHost cssText={tailwindStylesheet}>
+          <BibleCardTailwind reference="JHN.3.16" versionId={111} />
+        </ShadowRootHost>
+      </div>
+    </div>
+  ),
 };

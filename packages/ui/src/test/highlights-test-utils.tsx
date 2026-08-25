@@ -40,7 +40,7 @@ export const MULTI_VERSE_HTML = `
   </div>
 `;
 
-export function getVerseEl(container: HTMLElement, verse: number): HTMLElement {
+export function getVerseEl(container: ParentNode, verse: number): HTMLElement {
   const els = container.querySelectorAll<HTMLElement>(`.yv-v[v="${verse}"]`);
   const el = els[els.length - 1];
   if (!el) throw new Error(`Verse ${verse} not rendered`);

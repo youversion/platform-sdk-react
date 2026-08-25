@@ -6,6 +6,7 @@ import { render, act, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { requireHtmlButton, requireHtmlElement } from '@/test/dom-stubs';
 import { HookOverrideProvider } from '@/test/hook-overrides';
+import { isolatedTree } from '@/test/isolated-tree';
 import { BibleCard } from './bible-card';
 import type { FootnoteData } from './verse';
 import type { UsePassageResult, UseVersionResult } from '@youversion/platform-react-hooks';
@@ -98,10 +99,18 @@ function renderCard(
 }
 
 function cardShell(container: HTMLElement) {
+  const tree = isolatedTree(container);
   return {
-    section: requireHtmlElement(container.querySelector('section')),
-    inner: requireHtmlElement(container.querySelector('section > div')),
+    tree,
+    section: requireHtmlElement(tree.querySelector('section')),
+    inner: requireHtmlElement(tree.querySelector('section > div')),
   };
+}
+
+function queries(container: HTMLElement) {
+  const tree = isolatedTree(container);
+  // SAFETY: within() only calls querySelector, which ShadowRoot implements.
+  return within(tree as HTMLElement);
 }
 
 const YELLOW = 'fffe00';
@@ -128,7 +137,7 @@ describe('BibleCard - Delayed spinner', () => {
       vi.advanceTimersByTime(100);
     });
 
-    expect(within(container).queryByRole('status', { name: /loading/i })).toBeNull();
+    expect(queries(container).queryByRole('status', { name: /loading/i })).toBeNull();
   });
 
   it('should show spinner after 250ms when refetching', () => {
@@ -138,7 +147,7 @@ describe('BibleCard - Delayed spinner', () => {
       vi.advanceTimersByTime(250);
     });
 
-    expect(within(container).getByRole('status', { name: /loading/i })).toBeInTheDocument();
+    expect(queries(container).getByRole('status', { name: /loading/i })).toBeInTheDocument();
   });
 
   it('should hide spinner when loading completes', () => {
@@ -150,7 +159,7 @@ describe('BibleCard - Delayed spinner', () => {
       vi.advanceTimersByTime(250);
     });
 
-    expect(within(container).getByRole('status', { name: /loading/i })).toBeInTheDocument();
+    expect(queries(container).getByRole('status', { name: /loading/i })).toBeInTheDocument();
 
     rerender(
       <HookOverrideProvider
@@ -163,20 +172,20 @@ describe('BibleCard - Delayed spinner', () => {
       </HookOverrideProvider>,
     );
 
-    expect(within(container).queryByRole('status', { name: /loading/i })).toBeNull();
+    expect(queries(container).queryByRole('status', { name: /loading/i })).toBeNull();
   });
 
   it('should show spinner on initial load (no passage yet)', () => {
     const { container } = renderCard(passageResult({ passage: null, loading: true }));
 
-    expect(within(container).getAllByRole('status', { name: /loading/i }).length).toBeGreaterThan(
+    expect(queries(container).getAllByRole('status', { name: /loading/i }).length).toBeGreaterThan(
       0,
     );
   });
 
   it('should hide inline verse numbers in the bible renderer', () => {
     const { container } = renderCard(passageResult({ passage: mockPassage, loading: false }));
-    const bibleRenderer = container.querySelector('[data-slot="yv-bible-renderer"]');
+    const bibleRenderer = isolatedTree(container).querySelector('[data-slot="yv-bible-renderer"]');
 
     expect(bibleRenderer).toHaveAttribute('data-show-verse-numbers', 'false');
   });
@@ -187,17 +196,11 @@ describe('BibleCard - maxWidth', () => {
 
   it('omitting maxWidth caps the painted section at 700px and lets the inner column fill', () => {
     const { container } = renderCard(loaded);
-    const { section, inner } = cardShell(container);
-    const bibleTextView = container.querySelector('[data-slot="yv-bible-renderer"]')?.parentElement;
+    const { section, inner, tree } = cardShell(container);
+    const bibleTextView = tree.querySelector('[data-slot="yv-bible-renderer"]')?.parentElement;
 
-    expect(section).toHaveClass('yv:w-full');
-    expect(section).toHaveClass('yv:p-6');
-    expect(section).toHaveClass('yv:box-border');
-    expect(section).not.toHaveClass('yv:max-w-md');
     expect(section).toHaveStyle({ maxWidth: '700px' });
-    expect(inner).toHaveClass('yv:w-full');
-    expect(inner).not.toHaveClass('yv:card-content');
-    expect(inner).not.toHaveStyle({ maxWidth: '600px' });
+    expect(inner).toHaveAttribute('data-yv-card-content', 'fill');
     expect(bibleTextView).not.toHaveClass('yv:max-w-[600px]');
     expect(section.style.getPropertyValue('--yv-reader-max-width')).toBe('none');
   });
@@ -206,11 +209,8 @@ describe('BibleCard - maxWidth', () => {
     const { container } = renderCard(loaded, { maxWidth: 480 });
     const { section, inner } = cardShell(container);
 
-    expect(section).toHaveClass('yv:w-full');
     expect(section).toHaveStyle({ maxWidth: '480px' });
-    expect(inner).toHaveClass('yv:w-full');
-    expect(inner).not.toHaveClass('yv:card-content');
-    expect(inner).not.toHaveStyle({ maxWidth: '600px' });
+    expect(inner).toHaveAttribute('data-yv-card-content', 'fill');
     expect(section.style.getPropertyValue('--yv-reader-max-width')).toBe('none');
   });
 
@@ -218,10 +218,8 @@ describe('BibleCard - maxWidth', () => {
     const { container } = renderCard(loaded, { maxWidth: '100%' });
     const { section, inner } = cardShell(container);
 
-    expect(section).toHaveClass('yv:w-full');
     expect(section).toHaveStyle({ maxWidth: '100%' });
-    expect(inner).toHaveClass('yv:card-content');
-    expect(inner).not.toHaveStyle({ maxWidth: 'none' });
+    expect(inner).toHaveAttribute('data-yv-card-content', 'column');
     expect(section.style.getPropertyValue('--yv-reader-max-width')).toBe('none');
   });
 
@@ -230,12 +228,11 @@ describe('BibleCard - maxWidth', () => {
     const host = container.firstElementChild;
     const { section, inner } = cardShell(container);
 
+    const shadowHost = container.querySelector('[data-yv-shadow-host]');
     expect(host).toHaveStyle({ width: '400px' });
-    expect(section.parentElement).toBe(host);
-    expect(section).toHaveClass('yv:w-full');
+    expect(shadowHost?.parentElement).toBe(host);
     expect(section).toHaveStyle({ maxWidth: '700px' });
-    expect(inner).toHaveClass('yv:w-full');
-    expect(inner).not.toHaveClass('yv:card-content');
+    expect(inner).toHaveAttribute('data-yv-card-content', 'fill');
     expect(section.style.getPropertyValue('--yv-reader-max-width')).toBe('none');
   });
 });
@@ -254,12 +251,12 @@ describe('BibleCard - Error state', () => {
   it('should render exactly one alert region', () => {
     const { container } = renderErrorCard();
 
-    expect(within(container).getAllByRole('alert')).toHaveLength(1);
+    expect(queries(container).getAllByRole('alert')).toHaveLength(1);
   });
 
   it('should show the status message in that one alert region', () => {
     const { container } = renderErrorCard();
-    const alert = within(container).getByRole('alert');
+    const alert = queries(container).getByRole('alert');
 
     expect(alert).toHaveTextContent(
       'The Bible service is having trouble right now. Please try again in a moment.',
@@ -269,13 +266,13 @@ describe('BibleCard - Error state', () => {
   it('should render the error heading in the header slot', () => {
     const { container } = renderErrorCard();
 
-    expect(within(container).getByRole('heading', { level: 2 })).toHaveTextContent('Error');
+    expect(queries(container).getByRole('heading', { level: 2 })).toHaveTextContent('Error');
   });
 
   it('should not render a loading spinner while an error is set', () => {
     const { container } = renderErrorCard();
 
-    expect(within(container).queryByRole('status')).toBeNull();
+    expect(queries(container).queryByRole('status')).toBeNull();
   });
 
   // The version picker staying usable during an error is covered by the `Error`
@@ -300,7 +297,7 @@ describe('BibleCard - onFootnotePress callback', () => {
     );
 
     const button = await waitFor(() => {
-      const btn = container.querySelector('[data-verse-footnote="5"] button');
+      const btn = isolatedTree(container).querySelector('[data-verse-footnote="5"] button');
       expect(btn).not.toBeNull();
       return requireHtmlButton(btn);
     });
@@ -326,7 +323,7 @@ it('host highlights: paints matching verses and clears them when versionId no lo
     onVersionChange,
   });
 
-  expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
+  expect(getVerseEl(isolatedTree(container), 2).style.backgroundColor).toBe(fillFor(YELLOW));
 
   rerender(
     <HookOverrideProvider
@@ -344,7 +341,7 @@ it('host highlights: paints matching verses and clears them when versionId no lo
     </HookOverrideProvider>,
   );
 
-  expect(getVerseEl(container, 2).style.backgroundColor).toBe('');
+  expect(getVerseEl(isolatedTree(container), 2).style.backgroundColor).toBe('');
 });
 
 it('host highlights: paints from a stubbed fetch when the prop is omitted, and paints nothing for a host empty array', () => {
@@ -363,7 +360,9 @@ it('host highlights: paints from a stubbed fetch when the prop is omitted, and p
         <BibleCard reference="JHN.1" versionId={111} />
       </Providers>,
     );
-    expect(getVerseEl(omitted.container, 2).style.backgroundColor).toBe(fillFor(YELLOW));
+    expect(getVerseEl(isolatedTree(omitted.container), 2).style.backgroundColor).toBe(
+      fillFor(YELLOW),
+    );
     omitted.unmount();
 
     const hostEmpty = render(
@@ -371,7 +370,7 @@ it('host highlights: paints from a stubbed fetch when the prop is omitted, and p
         <BibleCard reference="JHN.1" versionId={111} highlights={[]} />
       </Providers>,
     );
-    expect(getVerseEl(hostEmpty.container, 2).style.backgroundColor).toBe('');
+    expect(getVerseEl(isolatedTree(hostEmpty.container), 2).style.backgroundColor).toBe('');
   } finally {
     hasPermission.mockRestore();
   }

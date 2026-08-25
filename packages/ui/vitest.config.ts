@@ -2,13 +2,19 @@ import { defineConfig, defineProject } from 'vitest/config';
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stylexVitePlugin } from './scripts/stylex-vite-plugin.mjs';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
+const stylexCssPath = path.join(dirname, 'src/styles/stylex.generated.css');
+const stylexCss = existsSync(stylexCssPath)
+  ? JSON.stringify(readFileSync(stylexCssPath, 'utf-8'))
+  : '""';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [stylexVitePlugin(), react()],
   test: {
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
@@ -21,11 +27,13 @@ export default defineConfig({
     projects: [
       // Unit tests project
       defineProject({
+        plugins: [stylexVitePlugin(), react()],
         // __YV_STYLES__ is normally injected by tsup at build time (see tsup.config.ts).
         // Tests run against source files directly, so we define it as empty here
         // to prevent ReferenceError when <YvStyles /> renders during tests.
         define: {
           __YV_STYLES__: '""',
+          __YV_STYLEX_STYLES__: stylexCss,
         },
         resolve: {
           alias: {

@@ -2,14 +2,19 @@ import type { StorybookConfig } from '@storybook/react-vite';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync, existsSync } from 'fs';
+// local compile helper; types live next to the file and are not part of the public API
+// @ts-expect-error -- TypeScript 7 does not load a sibling .mjs.d.ts for this specifier
+import { stylexVitePlugin } from '../scripts/stylex-vite-plugin.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Embed real CSS into __YV_STYLES__ — same pattern as tsup.config.ts.
-// This ensures Storybook tests the actual <YvStyles /> code path with
-// real CSS content, not a workaround import.
-const cssPath = resolve(__dirname, '../dist/tailwind.css');
-const yvStyles = existsSync(cssPath) ? JSON.stringify(readFileSync(cssPath, 'utf-8')) : '""';
+function embedCss(cssPath: string): string {
+  return existsSync(cssPath) ? JSON.stringify(readFileSync(cssPath, 'utf-8')) : '""';
+}
+
+// Embed real CSS into the constructable-stylesheet constants — same pattern as tsup.
+const yvStyles = embedCss(resolve(__dirname, '../dist/tailwind.css'));
+const yvStylex = embedCss(resolve(__dirname, '../src/styles/stylex.generated.css'));
 
 const config: StorybookConfig = {
   stories: ['../src/**/*.mdx', '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
@@ -28,7 +33,12 @@ const config: StorybookConfig = {
   },
   staticDirs: ['../public'], // This is for Storybook mock service worker
   viteFinal: (config) => {
-    config.define = { ...config.define, __YV_STYLES__: yvStyles };
+    config.define = {
+      ...config.define,
+      __YV_STYLES__: yvStyles,
+      __YV_STYLEX_STYLES__: yvStylex,
+    };
+    config.plugins = [...(config.plugins ?? []), stylexVitePlugin()];
     const existingAlias = config.resolve?.alias;
     const srcAlias = resolve(__dirname, '../src');
     config.resolve = {

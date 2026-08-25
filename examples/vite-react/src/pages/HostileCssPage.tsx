@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { YouVersionAuthButton } from '@youversion/platform-react-ui';
+import { BibleCard, YouVersionAuthButton } from '@youversion/platform-react-ui';
 
 interface HostileVector {
   key: string;
@@ -14,10 +14,12 @@ const HOSTILE_VECTORS: HostileVector[] = [
     key: 'type-selectors',
     label: 'Type selectors',
     expectation: 'The plain button changes; the SDK button should not.',
-    example: 'button { … }',
+    example: 'button, h1, h2 { … }',
     css: `
 .hostile-zone button,
-.hostile-zone [role='button'] {
+.hostile-zone [role='button'],
+.hostile-zone h1,
+.hostile-zone h2 {
   appearance: none !important;
   background: #b91c1c !important;
   border: 8px dashed #84cc16 !important;
@@ -129,10 +131,10 @@ export function HostileCssPage() {
       <section className="rounded-lg border p-5">
         <h1 className="text-xl font-semibold">Automatic Shadow DOM isolation POC</h1>
         <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-          This branch automatically isolates only <code>YouVersionAuthButton</code>. The plain host
-          controls are positive witnesses: they should look broken when an attack is active, while
-          the SDK button should remain stable. The font-face option demonstrates a known Shadow DOM
-          limitation.
+          This spike isolates <code>YouVersionAuthButton</code> and <code>BibleCard</code> (picker
+          off) on Austin&apos;s existing shadow host, with a StyleX-only sheet. Host controls should
+          look broken when an attack is active. The SDK button and card heading should stay stable.
+          The font-face option demonstrates a known Shadow DOM limitation.
         </p>
 
         <fieldset className="mt-5 flex flex-col gap-3">
@@ -167,6 +169,7 @@ export function HostileCssPage() {
           <h2 className="text-sm font-semibold">LIGHT DOM — SHOULD BE AFFECTED</h2>
           <div className="hostile-zone flex flex-col gap-5">
             <button type="button">Plain host-app button</button>
+            <h2>Plain host heading</h2>
             <p>Plain host text for inherited-property attacks.</p>
             <div data-host-box-witness className="rounded border p-3">
               Host-box witness — this should disappear during the host attack.
@@ -182,15 +185,15 @@ export function HostileCssPage() {
 
         <section className="flex flex-col gap-5 rounded-lg border p-5">
           <h2 className="text-sm font-semibold">SDK POC — SHOULD RESIST</h2>
-          <div className="hostile-zone">
+          <div className="hostile-zone flex flex-col gap-5">
             <YouVersionAuthButton
               size="short"
               onAuthError={(error) => console.error('Auth error:', error)}
             />
+            <BibleCard reference="JHN.3.16" versionId={3034} />
           </div>
           <p className="text-sm text-muted-foreground">
-            Other SDK components are intentionally absent: automatic isolation has not been rolled
-            out to them on this POC branch.
+            BibleCard is measured with the version picker off so popover work stays on YPE-5138.
           </p>
         </section>
       </div>

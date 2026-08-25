@@ -1,11 +1,10 @@
 import type { ReactElement } from 'react';
-
-declare const __YV_STYLES__: string;
+import { tailwindStylesheet } from './embedded-styles';
 
 export function YvStyles(): ReactElement {
   return (
     <style href="yv-sdk-styles" precedence="yv-sdk">
-      {__YV_STYLES__}
+      {tailwindStylesheet}
     </style>
   );
 }

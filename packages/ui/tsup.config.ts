@@ -1,6 +1,15 @@
 import { defineConfig } from 'tsup';
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
+import { stylexEsbuildPlugin } from './scripts/stylex-esbuild-plugin.mjs';
+
+function embedCss(cssPath: string, label: string): string {
+  if (!existsSync(cssPath)) {
+    console.warn(`Warning: ${cssPath} not found. ${label} will be empty.`);
+    return '""';
+  }
+  return JSON.stringify(readFileSync(cssPath, 'utf-8'));
+}
 
 export default defineConfig({
   entry: ['src/index.ts'],
@@ -13,6 +22,7 @@ export default defineConfig({
   },
   format: ['esm', 'cjs'],
   target: 'es2020',
+  esbuildPlugins: [stylexEsbuildPlugin()],
   // Always bundle workspace packages to avoid resolution issues.
   // This inlines core's *dist*, so the `X-YVP-Sdk` version constant core baked in
   // at its own build time is the one we ship — this build never computes it. That
@@ -24,16 +34,11 @@ export default defineConfig({
   // never inline it into the UI browser bundle.
   external: ['react', 'react/jsx-runtime', 'react-dom', 'jsdom'],
   dts: false, // types come from `tsc` + API Extractor
-  // Embed built Tailwind CSS as a global constant for runtime injection
-  // Users don't need to manually import the CSS file
-  define: (() => {
-    const cssPath = resolve(__dirname, 'dist/tailwind.css');
-    if (!existsSync(cssPath)) {
-      console.warn(`Warning: ${cssPath} not found. Styles will be empty.`);
-      return { __YV_STYLES__: '""' };
-    }
-    return { __YV_STYLES__: JSON.stringify(readFileSync(cssPath, 'utf-8')) };
-  })(),
+  // Embed built CSS as global constants for the constructable-stylesheet path.
+  define: {
+    __YV_STYLES__: embedCss(resolve(__dirname, 'dist/tailwind.css'), 'Tailwind styles'),
+    __YV_STYLEX_STYLES__: embedCss(resolve(__dirname, 'dist/stylex.css'), 'StyleX styles'),
+  },
   onSuccess: () => {
     console.log('React SDK build completed');
   },

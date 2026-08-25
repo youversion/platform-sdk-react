@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
+import * as stylex from '@stylexjs/stylex';
 import i18n from '@/i18n';
 import { LoaderIcon } from './icons/loader';
 import {
@@ -7,10 +8,81 @@ import {
   type SignInWithYouVersionPermissionValues,
 } from '@youversion/platform-core';
 import { useYVAuth, useTheme } from '@youversion/platform-react-hooks';
-import { Button } from '../components/ui/button';
+import { Button } from './ui/button-stylex';
 import { YouVersionLogo } from './icons/youversion-logo';
-import { cn } from '../lib/utils';
+import { stylexStylesheet } from '../lib/embedded-styles';
+import { colors } from '../lib/tokens.stylex';
+import { customClassName } from '../lib/utils.stylex';
 import { withShadowIsolation } from '../lib/shadow-isolation';
+
+const spin = stylex.keyframes({
+  from: { transform: 'translate(-50%, -50%) rotate(0deg)' },
+  to: { transform: 'translate(-50%, -50%) rotate(360deg)' },
+});
+
+const styles = stylex.create({
+  button: {
+    position: 'relative',
+    fontFamily: 'var(--yv-font-sans)',
+    boxShadow: 'none',
+    width: 'fit-content',
+    backgroundColor: {
+      default: colors.background,
+      ':hover': `color-mix(in oklab, ${colors.background} 90%, transparent)`,
+    },
+    borderStyle: 'solid',
+    borderWidth: '1px',
+  },
+  outline: {
+    borderWidth: '1px',
+  },
+  plain: {
+    borderWidth: 0,
+  },
+  light: {
+    color: 'black',
+    borderColor: 'var(--yv-gray-15)',
+  },
+  dark: {
+    color: 'white',
+    borderColor: 'var(--yv-gray-35)',
+  },
+  icon: {
+    padding: '0.75rem',
+    height: 'auto',
+  },
+  rectangular: {
+    borderRadius: '0.65rem',
+  },
+  label: {
+    fontWeight: 400,
+  },
+  labelBold: {
+    fontWeight: 700,
+  },
+  spinner: {
+    zIndex: 20,
+    position: 'absolute',
+    insetInlineStart: '50%',
+    insetBlockStart: '50%',
+    transform: 'translate(-50%, -50%)',
+    animationName: spin,
+    animationDuration: '1s',
+    animationIterationCount: 'infinite',
+    animationTimingFunction: 'linear',
+  },
+  srOnly: {
+    position: 'absolute',
+    width: '1px',
+    height: '1px',
+    padding: 0,
+    margin: '-1px',
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    borderWidth: 0,
+  },
+});
 
 interface SignInAuthProps {
   /**
@@ -169,92 +241,51 @@ const YouVersionAuthButtonImpl = React.forwardRef<HTMLButtonElement, YouVersionA
       }
 
       return isSignOut ? (
-        <div className="yv:font-normal">
+        <div {...stylex.props(styles.label)}>
           <Trans
             i18nKey="signOutOfYouVersion"
             i18n={i18n}
-            components={{ bold: <span className="yv:font-bold" /> }}
+            components={{ bold: <span {...stylex.props(styles.labelBold)} /> }}
           />
         </div>
       ) : (
-        <div className="yv:font-normal">
+        <div {...stylex.props(styles.label)}>
           <Trans
             i18nKey="signInWithYouVersion"
             i18n={i18n}
-            components={{ bold: <span className="yv:font-bold" /> }}
+            components={{ bold: <span {...stylex.props(styles.labelBold)} /> }}
           />
         </div>
       );
     }, [mode, auth.isAuthenticated, size, text, t]);
 
-    const loadingSpinner = (
-      <LoaderIcon className="yv:z-20 yv:absolute yv:left-1/2 yv:top-1/2 yv:animate-spin yv:-translate-x-1/2 yv:-translate-y-1/2 yv:fill-primary-foreground yv:text-primary" />
+    const loadingSpinner = <LoaderIcon {...stylex.props(styles.spinner)} />;
+    const isIcon = size === 'icon';
+    const composed = stylex.props(
+      styles.button,
+      variant === 'outline' ? styles.outline : styles.plain,
+      theme === 'light' ? styles.light : styles.dark,
+      isIcon ? styles.icon : null,
+      radius === 'rectangular' ? styles.rectangular : null,
+      customClassName(className),
     );
-
-    type AuthButtonStyle = React.CSSProperties & { '--yv-radius'?: string };
-    const buttonStyle: AuthButtonStyle = {
-      borderColor: theme === 'light' ? 'var(--yv-gray-15)' : 'var(--yv-gray-35)',
-      borderWidth: '1px',
-    };
-    if (radius === 'rectangular') {
-      buttonStyle['--yv-radius'] = '0.65rem';
-    }
-
-    if (size === 'icon') {
-      return (
-        <Button
-          {...props}
-          data-yv-sdk
-          data-yv-theme={theme}
-          className={cn(
-            'yv:font-sans yv:shadow-none yv:p-3 yv:h-auto yv:w-fit',
-            // The YV brand button is a neutral surface (white in light, dark in
-            // dark) with its own text/logo color set below — pin the background
-            // explicitly so it doesn't inherit the `default` variant's
-            // `bg-primary`, which would render the logo unreadable.
-            'yv:bg-background yv:hover:bg-background/90',
-            variant === 'outline' ? 'yv:border' : 'yv:border-none',
-            theme === 'light' ? 'yv:text-black' : 'yv:text-white',
-            className,
-          )}
-          disabled={buttonLoading ? true : (disabled ?? false)}
-          ref={ref}
-          onClick={(e) => void handleClick(e)}
-          size="icon"
-          style={buttonStyle}
-          variant={'default'}
-        >
-          {buttonLoading ? loadingSpinner : null}
-          <YouVersionLogo />
-          <span className="yv:sr-only">{buttonText}</span>
-        </Button>
-      );
-    }
 
     return (
       <Button
         {...props}
         data-yv-sdk
         data-yv-theme={theme}
-        className={cn(
-          'yv:font-sans yv:relative yv:shadow-none yv:w-fit',
-          // Pin the neutral brand surface so the button doesn't inherit the
-          // `default` variant's `bg-primary` (see the icon branch above).
-          'yv:bg-background yv:hover:bg-background/90',
-          variant === 'outline' ? 'yv:border' : 'yv:border-none',
-          theme === 'light' ? 'yv:text-black' : 'yv:text-white',
-          className,
-        )}
+        className={composed.className}
         disabled={buttonLoading ? true : (disabled ?? false)}
         ref={ref}
         onClick={(e) => void handleClick(e)}
-        size="lg"
-        style={buttonStyle}
-        variant={'default'}
+        size={isIcon ? 'icon' : 'lg'}
+        style={composed.style}
+        variant="default"
       >
         {buttonLoading ? loadingSpinner : null}
         <YouVersionLogo />
-        {buttonText}
+        {isIcon ? <span {...stylex.props(styles.srOnly)}>{buttonText}</span> : buttonText}
       </Button>
     );
   },
@@ -265,8 +296,10 @@ YouVersionAuthButtonImpl.displayName = 'YouVersionAuthButtonImpl';
 /**
  * Automatically rendered in a Shadow DOM so host-page selectors cannot style
  * the button's internal DOM. No consumer wrapper or opt-in flag is required.
+ * The adopted sheet is the precompiled StyleX spike CSS, not the Tailwind bundle.
  */
 export const YouVersionAuthButton = withShadowIsolation(
   YouVersionAuthButtonImpl,
   'YouVersionAuthButton',
+  stylexStylesheet,
 );

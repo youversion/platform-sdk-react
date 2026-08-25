@@ -60,4 +60,19 @@ describe('ShadowRootHost', () => {
     expect(style?.getAttribute('data-href')).toBe('yv-sdk-shadow-styles');
     expect(style?.getAttribute('data-precedence')).toBe('yv-sdk');
   });
+
+  it('adopts caller CSS on the existing fallback stylesheet path', () => {
+    const { container } = render(
+      <ShadowRootHost cssText=".spike-only { color: rgb(1, 2, 3); }">
+        <span>content</span>
+      </ShadowRootHost>,
+    );
+
+    const style = container
+      .querySelector<HTMLElement>('[data-yv-shadow-host]')
+      ?.shadowRoot?.querySelector('style');
+
+    expect(style?.textContent).toContain('.spike-only');
+    expect(style?.textContent).not.toContain('@layer yv-sdk-utilities');
+  });
 });

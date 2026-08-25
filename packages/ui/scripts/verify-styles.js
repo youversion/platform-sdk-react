@@ -10,6 +10,19 @@ if (!existsSync(cssPath) || readFileSync(cssPath, 'utf-8').trim().length === 0) 
   errors.push('dist/tailwind.css is missing or empty — did build:css run?');
 }
 
+const stylexPath = resolve(dist, 'stylex.css');
+if (!existsSync(stylexPath) || readFileSync(stylexPath, 'utf-8').trim().length === 0) {
+  errors.push('dist/stylex.css is missing or empty — did build:stylex run?');
+} else {
+  const stylex = readFileSync(stylexPath, 'utf-8');
+  if (!stylex.includes('yv-stylex-spike')) {
+    errors.push('dist/stylex.css missing StyleX spike marker');
+  }
+  if (stylex.includes('@layer yv-sdk-utilities') || stylex.includes('@utility card-content')) {
+    errors.push('dist/stylex.css contains Tailwind bundle markers');
+  }
+}
+
 const jsPath = resolve(dist, 'index.js');
 if (!existsSync(jsPath)) {
   errors.push('dist/index.js is missing — did build:js run?');
@@ -28,6 +41,16 @@ if (!existsSync(jsPath)) {
     errors.push(
       'dist/index.js missing actual CSS content — __YV_STYLES__ was not replaced with real CSS',
     );
+  }
+
+  if (!js.includes('yv-stylex-spike')) {
+    errors.push(
+      'dist/index.js missing StyleX sheet — __YV_STYLEX_STYLES__ was not replaced with real CSS',
+    );
+  }
+
+  if (/stylex\.create\s*\(\{/.test(js)) {
+    errors.push('dist/index.js still contains stylex.create({) — StyleX was not precompiled');
   }
 }
 

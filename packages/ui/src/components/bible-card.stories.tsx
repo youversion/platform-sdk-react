@@ -83,9 +83,11 @@ export const WideContainer: Story = {
       await expect(canvas.getByText(/at that time mary got ready/i)).toBeInTheDocument();
     });
 
-    const card = canvasElement.querySelector('section[data-yv-sdk][data-yv-theme]');
-    const contentGroup = canvasElement.querySelector('section[data-yv-sdk][data-yv-theme] > div');
-    const bibleText = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+    const host = canvasElement.querySelector('[data-yv-shadow-host]');
+    const tree = host?.shadowRoot ?? canvasElement;
+    const card = tree.querySelector('section[data-yv-sdk][data-yv-theme]');
+    const contentGroup = tree.querySelector('section[data-yv-sdk][data-yv-theme] > div');
+    const bibleText = tree.querySelector('[data-slot="yv-bible-renderer"]');
 
     await expect(card).not.toBeNull();
     await expect(contentGroup).not.toBeNull();
