@@ -35,13 +35,15 @@ const ShadowPortalContext = createContext<ShadowPortalController | null>(null);
 export function useShadowPortalTarget(open: boolean): HTMLElement | null | undefined {
   const controller = useContext(ShadowPortalContext);
   const instanceId = useId();
+  const prepareOpen = controller?.prepareOpen;
+  const requestClose = controller?.requestClose;
 
   useLayoutEffect(() => {
-    if (!open) return;
+    if (!open || !prepareOpen || !requestClose) return;
 
-    controller?.prepareOpen(instanceId);
-    return () => controller?.requestClose(instanceId);
-  }, [controller, instanceId, open]);
+    prepareOpen(instanceId);
+    return () => requestClose(instanceId);
+  }, [instanceId, open, prepareOpen, requestClose]);
 
   return controller?.container;
 }
@@ -78,7 +80,9 @@ function resetHost(host: HTMLDivElement): void {
 }
 
 function hidePopoverIfOpen(container: HTMLElement | null): void {
-  if (container?.matches(':popover-open')) container.hidePopover();
+  if (container?.hasAttribute('popover') && container.matches(':popover-open')) {
+    container.hidePopover();
+  }
 }
 
 interface ShadowRootHostProps {

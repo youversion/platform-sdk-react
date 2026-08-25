@@ -114,12 +114,20 @@ async function getComponentRoot(container: ParentNode): Promise<ShadowRoot> {
   return waitFor(() => requireShadowRoot(container));
 }
 
-async function getTrigger(root: ShadowRoot): Promise<HTMLElement> {
+async function waitForElement<ElementType extends Element>(
+  container: ParentNode,
+  selector: string,
+  errorMessage: string,
+): Promise<ElementType> {
   return waitFor(() => {
-    const trigger = root.querySelector<HTMLElement>('[data-slot="popover-trigger"]');
-    if (!trigger) throw new Error('picker trigger not rendered');
-    return trigger;
+    const element = container.querySelector<ElementType>(selector);
+    if (!element) throw new Error(errorMessage);
+    return element;
   });
+}
+
+async function getTrigger(root: ShadowRoot): Promise<HTMLElement> {
+  return waitForElement(root, '[data-slot="popover-trigger"]', 'picker trigger not rendered');
 }
 
 async function openPicker(container: ParentNode) {
@@ -127,16 +135,16 @@ async function openPicker(container: ParentNode) {
   const trigger = await getTrigger(root);
   void expect(root.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
   await userEvent.click(trigger);
-  const topLayer = await waitFor(() => {
-    const element = root.querySelector<HTMLElement>('[data-yv-shadow-local-overlay]');
-    if (!element) throw new Error('local top-layer container not created');
-    return element;
-  });
-  const panel = await waitFor(() => {
-    const element = topLayer.querySelector<HTMLElement>('[data-slot="popover-content"]');
-    if (!element) throw new Error('picker panel not rendered in local top layer');
-    return element;
-  });
+  const topLayer = await waitForElement<HTMLElement>(
+    root,
+    '[data-yv-shadow-local-overlay]',
+    'local top-layer container not created',
+  );
+  const panel = await waitForElement<HTMLElement>(
+    topLayer,
+    '[data-slot="popover-content"]',
+    'picker panel not rendered in local top layer',
+  );
   await waitFor(() => void expect(topLayer.matches(':popover-open')).toBe(true));
   return { root, trigger, topLayer, panel };
 }
@@ -164,13 +172,11 @@ export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
-    const clippingContainer = await waitFor(() => {
-      const element = canvasElement.querySelector<HTMLElement>(
-        '[data-testid="clipping-container"]',
-      );
-      if (!element) throw new Error('clipping container not rendered');
-      return element;
-    });
+    const clippingContainer = await waitForElement<HTMLElement>(
+      canvasElement,
+      '[data-testid="clipping-container"]',
+      'clipping container not rendered',
+    );
     const { root, trigger, topLayer, panel } = await openPicker(clippingContainer);
 
     void expect(topLayer.getRootNode()).toBe(root);
@@ -234,26 +240,24 @@ export const InlineControlIsClippedByItsAncestor: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
-    const clippingContainer = await waitFor(() => {
-      const element = canvasElement.querySelector<HTMLElement>(
-        '[data-testid="clipping-container"]',
-      );
-      if (!element) throw new Error('clipping container not rendered');
-      return element;
-    });
+    const clippingContainer = await waitForElement<HTMLElement>(
+      canvasElement,
+      '[data-testid="clipping-container"]',
+      'clipping container not rendered',
+    );
     const root = await getComponentRoot(clippingContainer);
     void expect(root.querySelector('[data-yv-shadow-inline-overlay]')).toBeNull();
     await userEvent.click(await getTrigger(root));
-    const inlineContainer = await waitFor(() => {
-      const element = root.querySelector<HTMLElement>('[data-yv-shadow-inline-overlay]');
-      if (!element) throw new Error('inline portal container not created');
-      return element;
-    });
-    const panel = await waitFor(() => {
-      const element = inlineContainer.querySelector<HTMLElement>('[data-slot="popover-content"]');
-      if (!element) throw new Error('inline picker panel not rendered');
-      return element;
-    });
+    const inlineContainer = await waitForElement<HTMLElement>(
+      root,
+      '[data-yv-shadow-inline-overlay]',
+      'inline portal container not created',
+    );
+    const panel = await waitForElement<HTMLElement>(
+      inlineContainer,
+      '[data-slot="popover-content"]',
+      'inline picker panel not rendered',
+    );
 
     const clippingRect = clippingContainer.getBoundingClientRect();
     const panelRect = panel.getBoundingClientRect();
@@ -334,11 +338,11 @@ export const StylingFocusDismissalAndRapidReopen: Story = {
     });
 
     await userEvent.click(trigger);
-    const reopenedPanel = await waitFor(() => {
-      const element = topLayer.querySelector<HTMLElement>('[data-slot="popover-content"]');
-      if (!element) throw new Error('picker panel did not reopen');
-      return element;
-    });
+    const reopenedPanel = await waitForElement<HTMLElement>(
+      topLayer,
+      '[data-slot="popover-content"]',
+      'picker panel did not reopen',
+    );
     await waitFor(() => {
       const activeElement = root.activeElement;
       void expect(activeElement !== null && reopenedPanel.contains(activeElement)).toBe(true);
@@ -387,19 +391,19 @@ export const MultiplePickersCreateIndependentLazyContainers: Story = {
     const firstTrigger = await getTrigger(firstRoot);
     const secondTrigger = await getTrigger(secondRoot);
     await userEvent.click(firstTrigger);
-    const firstTopLayer = await waitFor(() => {
-      const element = firstRoot.querySelector<HTMLElement>('[data-yv-shadow-local-overlay]');
-      if (!element) throw new Error('first local container not created');
-      return element;
-    });
+    const firstTopLayer = await waitForElement<HTMLElement>(
+      firstRoot,
+      '[data-yv-shadow-local-overlay]',
+      'first local container not created',
+    );
     void expect(secondRoot.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
 
     await userEvent.click(secondTrigger);
-    const secondTopLayer = await waitFor(() => {
-      const element = secondRoot.querySelector<HTMLElement>('[data-yv-shadow-local-overlay]');
-      if (!element) throw new Error('second local container not created');
-      return element;
-    });
+    const secondTopLayer = await waitForElement<HTMLElement>(
+      secondRoot,
+      '[data-yv-shadow-local-overlay]',
+      'second local container not created',
+    );
     await waitFor(() => {
       void expect(firstTopLayer.matches(':popover-open')).toBe(false);
       void expect(secondTopLayer.matches(':popover-open')).toBe(true);
@@ -421,11 +425,11 @@ export const MultiplePopoversShareOneIslandContainer: Story = {
     void expect(root.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
 
     await userEvent.click(firstTrigger);
-    const topLayer = await waitFor(() => {
-      const element = root.querySelector<HTMLElement>('[data-yv-shadow-local-overlay]');
-      if (!element) throw new Error('shared island container not created');
-      return element;
-    });
+    const topLayer = await waitForElement<HTMLElement>(
+      root,
+      '[data-yv-shadow-local-overlay]',
+      'shared island container not created',
+    );
     await waitFor(() => {
       void expect(firstTrigger).toHaveAttribute('aria-expanded', 'true');
       void expect(topLayer.querySelectorAll('[data-slot="popover-content"]')).toHaveLength(1);
@@ -473,11 +477,11 @@ export const PanelTracksAncestorScrollAndVersionListScrollsInternally: Story = {
     // Popper still recalculates position for content living in the native
     // top-layer container, even though that container itself sits outside
     // normal document flow.
-    const scrollAncestor = await waitFor(() => {
-      const element = canvasElement.querySelector<HTMLElement>('[data-testid="scroll-ancestor"]');
-      if (!element) throw new Error('scroll ancestor not rendered');
-      return element;
-    });
+    const scrollAncestor = await waitForElement<HTMLElement>(
+      canvasElement,
+      '[data-testid="scroll-ancestor"]',
+      'scroll ancestor not rendered',
+    );
     scrollAncestor.scrollTop = 350;
     scrollAncestor.dispatchEvent(new Event('scroll', { bubbles: true }));
 
@@ -520,11 +524,11 @@ export const PanelTracksAncestorScrollAndVersionListScrollsInternally: Story = {
     if (!listPickerContainer) throw new Error('list picker container not rendered');
     const { root: listRoot, panel: listPanel } = await openPicker(listPickerContainer);
 
-    const versionList = await waitFor(() => {
-      const element = listPanel.querySelector<HTMLElement>('[data-testid="version-list"]');
-      if (!element) throw new Error('version list not rendered');
-      return element;
-    });
+    const versionList = await waitForElement<HTMLElement>(
+      listPanel,
+      '[data-testid="version-list"]',
+      'version list not rendered',
+    );
     const scrollRegion = versionList.parentElement;
     if (!scrollRegion) throw new Error('version list scroll region not found');
 
@@ -560,11 +564,11 @@ export const SameOriginIframeTopLayerRemainsInteractive: Story = {
     const componentRoot = await getComponentRoot(iframe.contentDocument);
     const trigger = await getTrigger(componentRoot);
     await userEvent.click(trigger);
-    const topLayer = await waitFor(() => {
-      const element = componentRoot.querySelector<HTMLElement>('[data-yv-shadow-local-overlay]');
-      if (!element) throw new Error('iframe top-layer container not created');
-      return element;
-    });
+    const topLayer = await waitForElement<HTMLElement>(
+      componentRoot,
+      '[data-yv-shadow-local-overlay]',
+      'iframe top-layer container not created',
+    );
     const portalWrapper = await waitFor(() => {
       const element = topLayer.firstElementChild;
       // SAFETY: A same-origin iframe exposes its realm's HTMLElement constructor on its Window.
@@ -580,11 +584,11 @@ export const SameOriginIframeTopLayerRemainsInteractive: Story = {
     if (!portalWindow) throw new Error('iframe portal window not available');
     void expect(portalWindow.getComputedStyle(portalWrapper).pointerEvents).toBe('auto');
 
-    const input = await waitFor(() => {
-      const element = topLayer.querySelector<HTMLInputElement>('input');
-      if (!element) throw new Error('iframe picker input not rendered');
-      return element;
-    });
+    const input = await waitForElement<HTMLInputElement>(
+      topLayer,
+      'input',
+      'iframe picker input not rendered',
+    );
     await userEvent.click(input);
     void expect(componentRoot.activeElement).toBe(input);
 

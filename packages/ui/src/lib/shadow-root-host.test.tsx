@@ -102,4 +102,46 @@ describe('ShadowRootHost', () => {
     expect(roots[0]?.querySelector('[data-yv-shadow-inline-overlay]')).toBeNull();
   });
 
+  it('does not require native Popover selectors when an inline portal unmounts', async () => {
+    const matchesDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'matches');
+    let view: ReturnType<typeof render> | undefined;
+
+    try {
+      Object.defineProperty(HTMLElement.prototype, 'matches', {
+        configurable: true,
+        writable: true,
+        value(this: HTMLElement, selector: string): boolean {
+          if (selector === ':popover-open') {
+            throw new DOMException('unsupported selector', 'SyntaxError');
+          }
+          return false;
+        },
+      });
+      view = render(
+        <ShadowRootHost portalStrategy="local-inline">
+          <PortalRequester />
+        </ShadowRootHost>,
+      );
+      const shadowRoot = view.container.querySelector<HTMLElement>('[data-yv-shadow-host]')?.shadowRoot;
+      shadowRoot?.querySelector<HTMLButtonElement>('button')?.click();
+      await waitFor(() => {
+        if (!shadowRoot?.querySelector('[data-yv-shadow-inline-overlay]')) {
+          throw new Error('inline portal not created');
+        }
+      });
+      const mountedView = view;
+      view = undefined;
+      expect(() => mountedView.unmount()).not.toThrow();
+    } finally {
+      try {
+        view?.unmount();
+      } finally {
+        if (matchesDescriptor) {
+          Object.defineProperty(HTMLElement.prototype, 'matches', matchesDescriptor);
+        } else {
+          Reflect.deleteProperty(HTMLElement.prototype, 'matches');
+        }
+      }
+    }
+  });
 });

@@ -60,8 +60,8 @@ layer(yv-sdk-fonts);
    interactive while the zero-sized container only supplies tree scope. */
 [data-yv-shadow-local-overlay] {
   position: fixed;
-  inset-block: 0;
-  inset-inline: 0;
+  inset-block-start: 0;
+  inset-inline-start: 0;
   inline-size: 0;
   block-size: 0;
   margin: 0;

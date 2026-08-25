@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { render, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -5,7 +6,16 @@ import { ShadowRootHost } from '@/lib/shadow-root-host';
 import { requireShadowRoot } from '@/test/dom-stubs';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
 
-describe('Popover shadow portal coordination', () => {
+function OpenPopover(): ReactNode {
+  return (
+    <Popover open>
+      <PopoverTrigger>Open</PopoverTrigger>
+      <PopoverContent showHeader={false}>Panel</PopoverContent>
+    </Popover>
+  );
+}
+
+describe('Popover portal placement and shadow coordination', () => {
   it('renders initially open controlled and uncontrolled content in their shadow roots', async () => {
     const defaultOpenRender = render(
       <ShadowRootHost portalStrategy="local-inline">
@@ -28,10 +38,7 @@ describe('Popover shadow portal coordination', () => {
 
     const controlledOpenRender = render(
       <ShadowRootHost portalStrategy="local-inline">
-        <Popover open>
-          <PopoverTrigger>Open</PopoverTrigger>
-          <PopoverContent showHeader={false}>Panel</PopoverContent>
-        </Popover>
+        <OpenPopover />
       </ShadowRootHost>,
     );
 
@@ -91,5 +98,30 @@ describe('Popover shadow portal coordination', () => {
       shadowRoot.querySelector('[data-slot="popover-content"]'),
     );
     expect(document.body.querySelector('[data-slot="popover-content"]')).toBeNull();
+  });
+
+  it('uses the document portal when no local strategy is enabled', async () => {
+    const documentRender = render(<OpenPopover />);
+    const documentContent = await waitFor(() => {
+      const element = document.querySelector('[data-slot="popover-content"]');
+      if (!element) throw new Error('document popover content not rendered');
+      return element;
+    });
+    expect(documentContent.getRootNode()).toBe(document);
+    documentRender.unmount();
+
+    const fallbackRender = render(
+      <ShadowRootHost>
+        <OpenPopover />
+      </ShadowRootHost>,
+    );
+    const fallbackRoot = requireShadowRoot(fallbackRender.container);
+    const fallbackContent = await waitFor(() => {
+      const element = document.querySelector('[data-slot="popover-content"]');
+      if (!element) throw new Error('fallback popover content not rendered');
+      return element;
+    });
+    expect(fallbackContent.getRootNode()).toBe(document);
+    expect(fallbackRoot.querySelector('[data-slot="popover-content"]')).toBeNull();
   });
 });

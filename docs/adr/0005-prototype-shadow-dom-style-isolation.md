@@ -55,8 +55,10 @@ document-wide `@font-face` limitation.
 
 Focused Chromium stories verify hostile button rules, host-generated
 pseudo-content, existing interactions, and mounting in a same-origin iframe.
-Unit tests verify Strict Mode behavior and the inline-important host reset. The
-remaining hostile vectors are available for manual inspection on the demo page.
+Unit tests verify Strict Mode behavior, the inline-important host reset, and
+lazy local portal creation, including cleanup without native Popover selectors.
+The remaining hostile vectors are available for manual inspection on the demo
+page.
 
 ## Complex-component top-layer spike
 
@@ -79,6 +81,9 @@ Chromium stories show that this arrangement escapes ancestor clipping, remains
 hit-testable, preserves viewport collision handling and hostile-CSS isolation,
 and resolves `ariaControlsElements` within the component tree. Radix continues
 to own positioning, focus, Escape, outside-click dismissal, and animations.
+The `local-top-layer` strategy deliberately requires the native Popover API; it
+does not silently fall back to the inline arrangement because that would restore
+the clipping this strategy exists to escape.
 
 Local portal containers are lazy: an isolated leaf creates none until its first
 popover requests one. Each Popover instance registers with the local controller
@@ -137,12 +142,12 @@ detail.
 
 ## Recommended path toward production rollout
 
-- **What's validated and shippable as an opt-in pattern today**: the
+- **What's validated in Chromium as an internal opt-in prototype**: the
   `ShadowRootHost` + `portalStrategy` + `useShadowPortalTarget` plumbing,
-  proven for the shared Popover primitive and components that explicitly opt
-  in. Portal placement changes only for an isolated component that requests a
-  local strategy. One shared correction also affects unisolated consumers: the
-  Popover now respects Radix's available-height measurement.
+  exercised through the shared Popover primitive and the focused story harness.
+  Portal placement changes only for an isolated component that requests a local
+  strategy. One shared correction also affects unisolated consumers: the Popover
+  now respects Radix's available-height measurement.
 - **Blocking next steps, not "someday" items**: the package-wide custom-
   property audit (now with concrete evidence a real rule was silently broken
   by it) and the direct-Radix-primitive audit (so rollout doesn't create a
