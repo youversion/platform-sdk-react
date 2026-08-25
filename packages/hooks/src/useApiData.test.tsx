@@ -2,7 +2,8 @@
  * @vitest-environment jsdom
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { onlineManager } from '@tanstack/react-query';
 import type { ComponentType, ReactNode } from 'react';
 import { YouVersionProvider } from './context/YouVersionProvider';
 import { useApiData, type UseApiDataOptions } from './useApiData';
@@ -240,6 +241,60 @@ describe('useApiData — stale responses (latest wins)', () => {
     });
     expect(result.current.error).toBeNull();
     expect(result.current.data).toBe('JHN.4 data');
+  });
+});
+
+describe('useApiData — offline', () => {
+  // `onlineManager` is module-level state shared by every QueryClient in the
+  // process, so every test here hands it back online.
+  afterEach(() => {
+    onlineManager.setOnline(true);
+  });
+
+  it('attempts the first load while offline and surfaces the transport failure', async () => {
+    onlineManager.setOnline(false);
+    const fetchFn = vi.fn().mockRejectedValue(new Error('network down'));
+
+    const { result } = renderHook(() => useApiData(['offline-first-load'], fetchFn), {
+      wrapper: createWrapper(),
+    });
+
+    // The request goes out and its rejection settles the hook — a paused
+    // fetch would leave `loading` true with no error and no call.
+    await waitFor(() => {
+      expect(result.current.error).toBeInstanceOf(Error);
+    });
+    expect(result.current.error?.message).toBe('network down');
+    expect(result.current.loading).toBe(false);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not settle showing the previous key data while offline', async () => {
+    const fetchFn = vi
+      .fn<() => Promise<string>>()
+      .mockResolvedValueOnce('JHN.3 data')
+      .mockRejectedValue(new Error('network down'));
+
+    const { result, rerender } = renderHook(
+      ({ scope }: { scope: string }) => useApiData(['chapter', scope], fetchFn),
+      { initialProps: { scope: 'JHN.3' }, wrapper: createWrapper() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.data).toBe('JHN.3 data');
+    });
+
+    // Navigate to the next chapter with the network gone. The reader must not
+    // settle into a state that renders JHN.3 as though it were JHN.4.
+    onlineManager.setOnline(false);
+    rerender({ scope: 'JHN.4' });
+
+    await waitFor(() => {
+      expect(result.current.error).toBeInstanceOf(Error);
+    });
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    expect(result.current.data).toBeNull();
+    expect(result.current.loading).toBe(false);
   });
 });
 

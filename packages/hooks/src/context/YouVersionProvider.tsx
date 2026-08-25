@@ -162,6 +162,14 @@ function YouVersionProviderInner(
             // Those retries delay the error.
             // The reason is in `docs/adr/0006`.
             retry: false,
+            // Hooks always attempt the request and report a transport
+            // failure through `error`.
+            // TanStack Query pauses a fetch by default when the browser
+            // reports that it is offline.
+            // A paused first load stays `loading: true` and never settles.
+            // A paused fetch after a key change shows the previous key's
+            // data as if it belonged to the new key.
+            networkMode: 'always',
           },
         },
       }),
