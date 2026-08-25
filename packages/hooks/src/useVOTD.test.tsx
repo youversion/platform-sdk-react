@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { useVerseOfTheDay } from './useVOTD';
 import { YouVersionContext } from './context';
 import { type VOTD } from '@youversion/platform-core';
-import { createBibleClientStub, createYVWrapper } from './test/utils';
+import { createBibleClientStub, createYVWrapper, TestQueryClientProvider } from './test/utils';
 
 describe('useVerseOfTheDay', () => {
   const mockVOTD: VOTD = {
@@ -60,11 +60,14 @@ describe('useVerseOfTheDay', () => {
       expect(mockGetVOTD).toHaveBeenCalledTimes(1);
     });
 
-    it('should fetch again when the injected client identity changes', async () => {
-      let currentClient = bibleClient;
+    it('should fetch again when the provider config changes', async () => {
+      // Cache identity keys on provider config (which determines client
+      // identity), not on the client instance itself — so a config change is
+      // what invalidates previously fetched data.
+      let currentAppKey = 'test-app-key';
       const swappingWrapper = ({ children }: { children: ReactNode }) => (
-        <YouVersionContext.Provider value={{ appKey: 'test-app-key', bibleClient: currentClient }}>
-          {children}
+        <YouVersionContext.Provider value={{ appKey: currentAppKey, bibleClient }}>
+          <TestQueryClientProvider>{children}</TestQueryClientProvider>
         </YouVersionContext.Provider>
       );
 
@@ -74,7 +77,7 @@ describe('useVerseOfTheDay', () => {
         expect(mockGetVOTD).toHaveBeenCalledTimes(1);
       });
 
-      currentClient = createBibleClientStub({ getVOTD: mockGetVOTD });
+      currentAppKey = 'new-app-key';
       rerender();
 
       await waitFor(() => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useApiData, type UseApiDataOptions } from './useApiData';
+import { useQueryKeyBase } from './internal/useQueryKeyBase';
 import {
   type GetLanguagesOptions,
   type Collection,
@@ -18,16 +19,18 @@ export function useLanguages(
 ): UseLanguagesResult {
   const override = useHookOverride('useLanguages');
   const languagesClient = useLanguagesClient();
+  const keyBase = useQueryKeyBase();
 
   const { data, loading, error, refetch } = useApiData<Collection<Language>>(
-    () => languagesClient.getLanguages(options),
     [
-      languagesClient,
+      ...keyBase,
+      'languages',
       JSON.stringify(options.fields),
       options?.country,
       options?.page_size,
       options?.page_token,
     ],
+    () => languagesClient.getLanguages(options),
     {
       enabled: !override && apiOptions?.enabled !== false,
     },

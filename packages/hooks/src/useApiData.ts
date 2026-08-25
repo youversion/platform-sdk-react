@@ -1,95 +1,90 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export type UseApiDataOptions = {
   enabled?: boolean;
 };
 
-type UseApiDataResult<T> = {
-  data: T | null;
+type UseApiDataResult<TData> = {
+  data: TData | null;
   loading: boolean;
   error: Error | null;
   refetch: () => void;
 };
 
-export function useApiData<T>(
-  fetchFn: () => Promise<T>,
-  deps: React.DependencyList,
+/**
+ * Every data hook uses this function to load data.
+ * This function uses TanStack Query.
+ * `YouVersionProvider` holds the TanStack Query client.
+ * The return value is always `{ data, loading, error, refetch }`.
+ * This function does not return TanStack Query types.
+ *
+ * Each part of `queryKey` must be a string, a number, or another plain value.
+ * The `queryKey` has this shape: `[...useQueryKeyBase(), '<hookName>', ...params]`.
+ * Hooks that load user data also add `useUserScope()` to the `queryKey`.
+ *
+ * When the `queryKey` changes, TanStack Query keeps only the latest request.
+ * If two components use the same `queryKey`, they share one request.
+ * If the user returns to the same `queryKey`, the cache shows the data first.
+ * Then TanStack Query fetches a new copy.
+ */
+export function useApiData<TData>(
+  queryKey: readonly unknown[],
+  fetchFn: () => Promise<TData>,
   options: UseApiDataOptions = {},
-): UseApiDataResult<T> {
+): UseApiDataResult<TData> {
   const { enabled = true } = options;
+  const queryClient = useQueryClient();
 
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const query = useQuery({
+    queryKey,
+    queryFn: async () => {
+      try {
+        return await fetchFn();
+      } catch (err) {
+        // Consumers are promised `Error | null`; normalize non-Error throws.
+        throw err instanceof Error ? err : new Error('Request failed');
+      }
+    },
+    enabled,
+  });
 
-  // Monotonic sequence per issued request: only the latest-issued request may
-  // commit state. This covers refetch-initiated requests too, which a
-  // per-effect cancel closure would miss — a stale refetch (e.g. for a
-  // previous chapter) resolving after a newer fetch must not overwrite it.
-  const requestSeqRef = useRef(0);
+  const queryKeyRef = useRef(queryKey);
+  queryKeyRef.current = queryKey;
 
-  // Hold the (typically inline) `fetchFn` in a ref, refreshed every render, so
-  // it can stay out of `fetchData`'s deps below. Otherwise a new closure each
-  // render would churn `fetchData` — and therefore `refetch` — identity every
-  // render. `fetchData` reads the ref only when a fetch actually starts, and
-  // the ref is updated during render before any effect runs, so a dep-change
-  // fetch still uses the latest `fetchFn`.
-  const fetchFnRef = useRef(fetchFn);
-  fetchFnRef.current = fetchFn;
-
-  const fetchData = useCallback(() => {
-    const requestSeq = ++requestSeqRef.current;
-
-    if (!enabled) {
-      // Disabling drops previously fetched data instead of keeping it: the
-      // usual reason to disable is that the data must no longer be shown
-      // (signed out, auth switched to a different user), and leaking stale
-      // account data across sessions is worse than a refetch on re-enable.
-      setData(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    fetchFnRef
-      .current()
-      .then((result) => {
-        if (requestSeq === requestSeqRef.current) {
-          setData(result);
-        }
-      })
-      .catch((err) => {
-        if (requestSeq === requestSeqRef.current) {
-          setError(err instanceof Error ? err : new Error('Request failed'));
-        }
-      })
-      .finally(() => {
-        if (requestSeq === requestSeqRef.current) {
-          setLoading(false);
-        }
-      });
-  }, [enabled]);
-
+  // This function uses `invalidateQueries`, not `query.refetch()`.
+  // A refresh after a write is also an invalidation.
+  // When a component remounts, invalidation still updates the cache.
+  // `query.refetch()` calls an observer that is no longer active.
   const refetch = useCallback(() => {
-    fetchData();
-  }, [fetchData]);
+    void queryClient.invalidateQueries({ queryKey: queryKeyRef.current, exact: true });
+  }, [queryClient]);
 
-  // `enabled` rides alongside the caller-supplied deps so a false→true flip
-  // (e.g. auth resolving after mount, with the caller's deps unchanged)
-  // actually triggers the fetch.
-  useEffect(() => {
-    fetchData();
-    return () => {
-      // Invalidate any in-flight request (effect- or refetch-initiated) when
-      // the deps change or the component unmounts.
-      requestSeqRef.current++;
-    };
-  }, [...deps, enabled]);
-
-  return { data, loading, error, refetch };
+  // If `enabled` is false, `data` and `error` are `null`.
+  // The cache can still hold a value.
+  // The usual reason to disable the hook is that the data must not appear.
+  // A sign-out or a switch to a new user is the cause.
+  // Old account data on screen is worse than a new fetch.
+  //
+  // The cache entry stays.
+  // Hooks that load user data put the user in the `queryKey`.
+  // As a result, one user cannot see data from another user.
+  // If `enabled` is true again with the same `queryKey`, the cache returns the data at once.
+  //
+  // `loading` uses `isPending`, not `isFetching`.
+  // On the first load, `loading` is `true`.
+  // If the cache already has data, `loading` is `false`.
+  // If `refetch` runs, `loading` stays `false`.
+  // The current data stays on screen.
+  //
+  // If `enabled` is false, `loading` is `false`.
+  // TanStack Query keeps `isPending` true.
+  return {
+    data: enabled ? (query.data ?? null) : null,
+    loading: enabled && query.isPending,
+    error: enabled ? (query.error ?? null) : null,
+    refetch,
+  };
 }

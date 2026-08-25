@@ -20,6 +20,7 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
 import { readPendingHighlights, stashPendingHighlight } from '@/lib/pending-highlight';
+import { TestQueryClientProvider } from '@/test/hook-overrides';
 import { mockUserInfo } from '@/test/highlights-test-utils';
 import { useBibleReaderHighlights } from './use-bible-reader-highlights';
 
@@ -37,7 +38,7 @@ function Providers({ children }: { children: ReactNode }) {
           redirectUri: 'https://host.example/callback',
         }}
       >
-        {children}
+        <TestQueryClientProvider>{children}</TestQueryClientProvider>
       </YouVersionAuthContext.Provider>
     </YouVersionContext.Provider>
   );

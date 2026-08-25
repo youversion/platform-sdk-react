@@ -1,8 +1,9 @@
-import { renderHook, waitFor, act } from '@testing-library/react';
+import { render, renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
-import { useChapter } from './useChapter';
+import { useChapter, type UseChapterResult } from './useChapter';
+import { YouVersionContext } from './context';
 import { type BibleChapter } from '@youversion/platform-core';
-import { createBibleClientStub, createYVWrapper } from './test/utils';
+import { createBibleClientStub, createYVWrapper, TestQueryClientProvider } from './test/utils';
 
 describe('useChapter', () => {
   const mockGetChapter = vi.fn();
@@ -153,6 +154,47 @@ describe('useChapter', () => {
         result.current.refetch();
       });
 
+      await waitFor(() => {
+        expect(mockGetChapter).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('should serve the cached chapter instantly on revisit and revalidate in background', async () => {
+      // The acceptance criterion behind the TanStack Query migration: leaving
+      // a chapter and coming back renders it from cache with no loading
+      // flash, while a background refetch keeps it fresh. The provider stack
+      // stays mounted across the visit (as in an app); only the hook-bearing
+      // component unmounts.
+      const results: UseChapterResult[] = [];
+      function Probe() {
+        results.push(useChapter(111, 'MAT', 1));
+        return null;
+      }
+      function Harness({ show }: { show: boolean }) {
+        return (
+          <YouVersionContext.Provider value={{ appKey: 'test-app-key', bibleClient }}>
+            <TestQueryClientProvider>{show ? <Probe /> : null}</TestQueryClientProvider>
+          </YouVersionContext.Provider>
+        );
+      }
+
+      const { rerender } = render(<Harness show />);
+      await waitFor(() => {
+        expect(results.at(-1)?.loading).toBe(false);
+      });
+      expect(mockGetChapter).toHaveBeenCalledTimes(1);
+
+      // Navigate away…
+      rerender(<Harness show={false} />);
+      const rendersBeforeRevisit = results.length;
+
+      // …and back: the very first render already has the chapter, no loading.
+      rerender(<Harness show />);
+      const firstRevisitRender = results[rendersBeforeRevisit];
+      expect(firstRevisitRender?.chapter).toEqual(mockChapter);
+      expect(firstRevisitRender?.loading).toBe(false);
+
+      // Background revalidation still goes out.
       await waitFor(() => {
         expect(mockGetChapter).toHaveBeenCalledTimes(2);
       });

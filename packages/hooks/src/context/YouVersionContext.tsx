@@ -13,6 +13,14 @@ export type YouVersionContextData = {
   theme?: 'light' | 'dark';
   authEnabled?: boolean;
   additionalHeaders?: Record<string, string>;
+  /**
+   * A JSON string of `additionalHeaders` with the keys in sorted order.
+   * When `additionalHeaders` is not set, the value is `null`.
+   * `YouVersionProvider` builds this string once.
+   * The memo for the API client and the `queryKey` both use this string.
+   * As a result, they use the same value for the same headers.
+   */
+  additionalHeadersKey?: string | null;
   /** Test seam: skip constructing a live BibleClient. */
   bibleClient?: BibleClient;
   /** Test seam: skip constructing a live LanguagesClient. */

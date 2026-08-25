@@ -2,6 +2,7 @@
 
 import { useBibleClient } from './useBibleClient';
 import { useApiData, type UseApiDataOptions } from './useApiData';
+import { useQueryKeyBase } from './internal/useQueryKeyBase';
 import type { UseNamedQueryResult } from './useQueryResult';
 import type { BibleBook } from '@youversion/platform-core';
 
@@ -13,10 +14,11 @@ export function useBook(
   options?: UseApiDataOptions,
 ): UseBookResult {
   const bibleClient = useBibleClient();
+  const keyBase = useQueryKeyBase();
 
   const { data, loading, error, refetch } = useApiData<BibleBook>(
+    [...keyBase, 'book', versionId, book],
     () => bibleClient.getBook(versionId, book),
-    [bibleClient, versionId, book],
     {
       enabled: options?.enabled !== false,
     },

@@ -1,6 +1,7 @@
 'use client';
 import { useBibleClient } from './useBibleClient';
 import { useApiData, type UseApiDataOptions } from './useApiData';
+import { useQueryKeyBase } from './internal/useQueryKeyBase';
 import type { UseNamedQueryResult } from './useQueryResult';
 import type { BibleBook, Collection } from '@youversion/platform-core';
 import { useHookOverride } from './useHookOverride';
@@ -10,6 +11,7 @@ export type UseBooksResult = UseNamedQueryResult<'books', Collection<BibleBook>>
 export function useBooks(versionId: number, options?: UseApiDataOptions): UseBooksResult {
   const override = useHookOverride('useBooks');
   const bibleClient = useBibleClient();
+  const keyBase = useQueryKeyBase();
 
   const {
     data: books,
@@ -17,8 +19,8 @@ export function useBooks(versionId: number, options?: UseApiDataOptions): UseBoo
     error,
     refetch,
   } = useApiData<Collection<BibleBook>>(
+    [...keyBase, 'books', versionId],
     () => bibleClient.getBooks(versionId),
-    [bibleClient, versionId],
     {
       enabled: !override && options?.enabled !== false,
     },

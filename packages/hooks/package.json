@@ -34,6 +34,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@tanstack/react-query": "5.101.4",
     "@youversion/platform-core": "workspace:*"
   },
   "peerDependencies": {
@@ -47,6 +48,7 @@
     "@vitejs/plugin-react": "^4.2.1",
     "@vitest/coverage-v8": "4.0.4",
     "jsdom": "27.0.1",
+    "react-dom": "19.1.2",
     "tsup": "8.5.0",
     "typescript": "7.0.2",
     "vitest": "4.0.4"

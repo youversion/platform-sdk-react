@@ -1,6 +1,21 @@
-import type { ReactNode, ComponentType } from 'react';
+import { useState, type ReactNode, type ComponentType } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { BibleClient, LanguagesClient, OrganizationsClient } from '@youversion/platform-core';
 import { YouVersionContext } from '../context';
+
+/**
+ * QueryClient for tests that bypass `YouVersionProvider` (raw
+ * `YouVersionContext.Provider` with injected client stubs). Mirrors the
+ * provider's config (`retry: false`). Mount it INSIDE the test wrapper
+ * component so each mounted wrapper gets a fresh cache — a shared client
+ * would leak cached data between tests that reuse one wrapper.
+ */
+export function TestQueryClientProvider({ children }: { children: ReactNode }): React.ReactElement {
+  const [queryClient] = useState(
+    () => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+  );
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+}
 
 export type YVWrapperOptions = {
   theme?: 'light' | 'dark';
@@ -38,7 +53,7 @@ export const createYVWrapper = (
     <YouVersionContext.Provider
       value={{ appKey, theme, bibleClient, languagesClient, organizationsClient }}
     >
-      {children}
+      <TestQueryClientProvider>{children}</TestQueryClientProvider>
     </YouVersionContext.Provider>
   );
   return Wrapper;

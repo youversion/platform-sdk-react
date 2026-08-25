@@ -2,6 +2,7 @@
 
 import type { PropsWithChildren, ReactNode } from 'react';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { YouVersionContext } from './YouVersionContext';
 import {
   YouVersionPlatformConfiguration,
@@ -143,6 +144,29 @@ function YouVersionProviderInner(
 
   const resolvedTheme = useResolvedTheme(theme);
 
+  // This QueryClient is private.
+  // `useApiData` uses this client.
+  // Callers cannot read query keys or the cache.
+  //
+  // The initializer in `useState` runs once per instance.
+  // `useMemo` does not give that guarantee.
+  // If a module holds the client, SSR requests share one cache.
+  // Concurrent renderers also share that cache.
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            // Hooks show the error on the first failure.
+            // TanStack Query retries three times by default.
+            // Those retries delay the error.
+            // The reason is in `docs/adr/0006`.
+            retry: false,
+          },
+        },
+      }),
+  );
+
   // Stable identity so memoized consumers (hooks that build ApiClient) don't
   // rebuild when the parent re-renders with an inline object literal. Sort
   // entries before serialising so key-insertion-order differences don't
@@ -174,22 +198,29 @@ function YouVersionProviderInner(
     theme: resolvedTheme,
     authEnabled: !!includeAuth,
     additionalHeaders: stableAdditionalHeaders,
+    additionalHeadersKey,
   };
 
   if (includeAuth) {
     return (
       <YouVersionContext.Provider value={contextValue}>
-        <Suspense>
-          <AuthProvider
-            config={{ appKey, apiHost, redirectUri: props.authRedirectUrl }}
-            userInfo={props.userInfo}
-          >
-            {children}
-          </AuthProvider>
-        </Suspense>
+        <QueryClientProvider client={queryClient}>
+          <Suspense>
+            <AuthProvider
+              config={{ appKey, apiHost, redirectUri: props.authRedirectUrl }}
+              userInfo={props.userInfo}
+            >
+              {children}
+            </AuthProvider>
+          </Suspense>
+        </QueryClientProvider>
       </YouVersionContext.Provider>
     );
   }
 
-  return <YouVersionContext.Provider value={contextValue}>{children}</YouVersionContext.Provider>;
+  return (
+    <YouVersionContext.Provider value={contextValue}>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </YouVersionContext.Provider>
+  );
 }

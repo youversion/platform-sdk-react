@@ -2,15 +2,16 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, afterEach, it } from 'vitest';
 import type { ReactNode } from 'react';
 import { useHighlights } from './useHighlights';
-import { YouVersionContext } from './context';
+import { YouVersionContext, YouVersionAuthContext } from './context';
 import {
   HighlightsClient,
+  YouVersionUserInfo,
   type Collection,
   type GetHighlightsOptions,
   type Highlight,
   type CreateHighlight,
 } from '@youversion/platform-core';
-import { createYVWrapper } from './test/utils';
+import { createYVWrapper, TestQueryClientProvider } from './test/utils';
 
 describe('useHighlights', () => {
   const defaultOptions: GetHighlightsOptions = { version_id: 111, passage_id: 'MAT.1' };
@@ -100,7 +101,7 @@ describe('useHighlights', () => {
             appKey: currentAppKey,
           }}
         >
-          {children}
+          <TestQueryClientProvider>{children}</TestQueryClientProvider>
         </YouVersionContext.Provider>
       );
 
@@ -204,6 +205,76 @@ describe('useHighlights', () => {
 
       await waitFor(() => {
         expect(mockGetHighlights).toHaveBeenCalledTimes(2);
+      });
+    });
+  });
+
+  describe('user-scoped caching', () => {
+    it('should never show one user their predecessor cache, and restore it instantly on switch-back', async () => {
+      // Highlights are account data: the cache key carries the user id, so an
+      // account switch structurally cannot serve user A's rows to user B —
+      // and switching back to A serves A's cache instantly while revalidating.
+      const highlightsA: Collection<Highlight> = {
+        data: [{ version_id: 111, passage_id: 'MAT.1.1', color: 'fffe00' }],
+        next_page_token: null,
+      };
+      const highlightsB: Collection<Highlight> = {
+        data: [{ version_id: 111, passage_id: 'MAT.1.2', color: '5dff79' }],
+        next_page_token: null,
+      };
+      mockGetHighlights.mockReset();
+      mockGetHighlights
+        .mockResolvedValueOnce(highlightsA) // user A, initial
+        .mockResolvedValueOnce(highlightsB) // user B, initial
+        .mockResolvedValue(highlightsA); // user A again, background revalidate
+
+      const userA = new YouVersionUserInfo({ id: 'user-a', name: 'User A' });
+      const userB = new YouVersionUserInfo({ id: 'user-b', name: 'User B' });
+      let currentUser = userA;
+      // The provider stack (and its QueryClient) persists across the account
+      // switch — only the auth context value changes, as in a real sign-out /
+      // sign-in without a page reload.
+      const wrapper = ({ children }: { children: ReactNode }) => (
+        <YouVersionContext.Provider value={{ appKey: 'test-app-key' }}>
+          <YouVersionAuthContext.Provider
+            value={{
+              userInfo: currentUser,
+              setUserInfo: () => undefined,
+              isLoading: false,
+              error: null,
+            }}
+          >
+            <TestQueryClientProvider>{children}</TestQueryClientProvider>
+          </YouVersionAuthContext.Provider>
+        </YouVersionContext.Provider>
+      );
+
+      const { result, rerender } = renderHook(() => useHighlights(defaultOptions), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.highlights).toEqual(highlightsA);
+      });
+
+      // Switch to user B: the very first render must not leak A's rows.
+      currentUser = userB;
+      rerender();
+      expect(result.current.highlights).toBe(null);
+      expect(result.current.loading).toBe(true);
+
+      await waitFor(() => {
+        expect(result.current.highlights).toEqual(highlightsB);
+      });
+      expect(mockGetHighlights).toHaveBeenCalledTimes(2);
+
+      // Switch back to A: A's cache serves instantly (no loading flash)…
+      currentUser = userA;
+      rerender();
+      expect(result.current.highlights).toEqual(highlightsA);
+      expect(result.current.loading).toBe(false);
+
+      // …while a background revalidation still goes out.
+      await waitFor(() => {
+        expect(mockGetHighlights).toHaveBeenCalledTimes(3);
       });
     });
   });

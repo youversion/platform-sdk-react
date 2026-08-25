@@ -1,6 +1,7 @@
 'use client';
 import { useBibleClient } from './useBibleClient';
 import { useApiData, type UseApiDataOptions } from './useApiData';
+import { useQueryKeyBase } from './internal/useQueryKeyBase';
 import type { UseNamedQueryResult } from './useQueryResult';
 import type { BibleChapter } from '@youversion/platform-core';
 
@@ -13,6 +14,7 @@ export function useChapter(
   options?: UseApiDataOptions,
 ): UseChapterResult {
   const bibleClient = useBibleClient();
+  const keyBase = useQueryKeyBase();
 
   const {
     data: chapterData,
@@ -20,8 +22,8 @@ export function useChapter(
     error,
     refetch,
   } = useApiData<BibleChapter>(
+    [...keyBase, 'chapter', versionId, book, chapter],
     () => bibleClient.getChapter(versionId, book, chapter),
-    [bibleClient, versionId, book, chapter],
     {
       enabled: options?.enabled !== false,
     },

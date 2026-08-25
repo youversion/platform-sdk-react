@@ -247,26 +247,22 @@ export function useBibleReaderHighlights({
     actorRef.send({ type: 'SCOPE_CHANGED', scope });
   }, [actorRef, scope]);
 
-  // Parse the fetch into server truth and forward it whenever it changes. The
-  // machine reconciles the optimistic overlay against it.
+  // This parses the fetch result into `serverColors`.
+  // When `serverColors` changes, this code sends `serverColors` to the machine.
+  // The machine compares the optimistic overlay with `serverColors`.
   //
-  // `useApiData` swaps `highlights` for a fresh object on every refetch, even
-  // when the content is byte-identical. Parsing off that identity would mint a
-  // new `serverColors` each time and cascade a new `highlightedVerses` reference
-  // → a chapter-wide verse-style re-sweep (verse.tsx keys a useLayoutEffect on
-  // it). Hold the prior parsed reference when the content is unchanged so the
-  // downstream memos stay reference-stable across no-op refetches. (This is
-  // separate from `lastSentServerColorsRef`, which dedups machine sends.)
-  const parsedServerColorsRef = useRef<ServerColors | null>(null);
-  const serverColors = useMemo(() => {
-    const parsed = parseServerColors(highlights, versionId, chapterUsfm);
-    const previous = parsedServerColorsRef.current;
-    if (previous !== null && serverColorsEqual(previous, parsed)) {
-      return previous;
-    }
-    parsedServerColorsRef.current = parsed;
-    return parsed;
-  }, [highlights, versionId, chapterUsfm]);
+  // This `useMemo` depends on the `highlights` reference.
+  // `useApiData` uses TanStack Query.
+  // When a refetch returns the same content, TanStack Query keeps the same `highlights` object.
+  // As a result, that refetch does not create a new `serverColors`.
+  //
+  // If `serverColors` is a new object, `highlightedVerses` is also a new object.
+  // Then `verse.tsx` runs `useLayoutEffect` again for every verse.
+  const serverColors = useMemo(
+    () => parseServerColors(highlights, versionId, chapterUsfm),
+    [highlights, versionId, chapterUsfm],
+  );
+
   const lastSentServerColorsRef = useRef<ServerColors | null>(null);
   useEffect(() => {
     if (
