@@ -44,6 +44,9 @@ the pnpm `minimumReleaseAge` window):
   Key segments must be serializable (no class instances). Account-scoped hooks
   (e.g. `useHighlights`) also append `useUserScope()` **and** pass
   `keepPreviousData: false` so users never see each other's cached data.
+  `useUserScope()` returns `null` when the account is not identified yet — set
+  `enabled: false` for that render, because an unidentified account has no key
+  of its own and two of them would share one cache entry.
 - Cache is memory-only; `refetch` performs exact query invalidation. Writes
   stay outside this layer (the highlights machine owns them) and refresh via
   `refetch` after the write.
