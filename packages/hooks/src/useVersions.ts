@@ -67,6 +67,7 @@ export function useVersions(
     () => bibleClient.getVersions(languageRanges, licenseId, getVersionsOptions),
     {
       enabled: !override && options?.enabled !== false,
+      keepPreviousData: options?.keepPreviousData,
     },
   );
 

@@ -17,7 +17,10 @@ export function useVerseOfTheDay(day: number, options?: UseApiDataOptions): UseV
   const { data, loading, error, refetch } = useApiData<VOTD>(
     [...keyBase, 'votd', day],
     () => bibleClient.getVOTD(day),
-    { enabled: !override && options?.enabled !== false },
+    {
+      enabled: !override && options?.enabled !== false,
+      keepPreviousData: options?.keepPreviousData,
+    },
   );
   if (override) return override(day, options);
   return { data, loading, error, refetch };

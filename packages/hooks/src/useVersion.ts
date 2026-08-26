@@ -24,6 +24,7 @@ export function useVersion(versionId: number, options?: UseApiDataOptions): UseV
     () => bibleClient.getVersion(versionId),
     {
       enabled: !override && options?.enabled !== false,
+      keepPreviousData: options?.keepPreviousData,
     },
   );
 

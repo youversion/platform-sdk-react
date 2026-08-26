@@ -27,6 +27,7 @@ export function useVerses(
     () => bibleClient.getVerses(versionId, book, chapter),
     {
       enabled: options?.enabled !== false,
+      keepPreviousData: options?.keepPreviousData,
     },
   );
 

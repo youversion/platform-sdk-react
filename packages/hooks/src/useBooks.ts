@@ -23,6 +23,7 @@ export function useBooks(versionId: number, options?: UseApiDataOptions): UseBoo
     () => bibleClient.getBooks(versionId),
     {
       enabled: !override && options?.enabled !== false,
+      keepPreviousData: options?.keepPreviousData,
     },
   );
 

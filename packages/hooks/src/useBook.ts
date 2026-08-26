@@ -21,6 +21,7 @@ export function useBook(
     () => bibleClient.getBook(versionId, book),
     {
       enabled: options?.enabled !== false,
+      keepPreviousData: options?.keepPreviousData,
     },
   );
 

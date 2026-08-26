@@ -21,6 +21,7 @@ export function useOrganization(
     () => organizationsClient.getOrganization(organizationId),
     {
       enabled,
+      keepPreviousData: apiOptions?.keepPreviousData,
     },
   );
 

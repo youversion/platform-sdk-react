@@ -33,6 +33,7 @@ export function useLanguages(
     () => languagesClient.getLanguages(options),
     {
       enabled: !override && apiOptions?.enabled !== false,
+      keepPreviousData: apiOptions?.keepPreviousData,
     },
   );
 

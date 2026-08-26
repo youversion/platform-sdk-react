@@ -44,7 +44,10 @@ export function usePassage({
     [...keyBase, 'passage', versionId, usfm, format, include_headings, include_notes, transform],
     () =>
       bibleClient.getPassage(versionId, usfm, format, include_headings, include_notes, transform),
-    { enabled: !override && options?.enabled !== false && isValidUsfm },
+    {
+      enabled: !override && options?.enabled !== false && isValidUsfm,
+      keepPreviousData: options?.keepPreviousData,
+    },
   );
 
   if (override) {

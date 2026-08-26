@@ -19,6 +19,7 @@ export function useLanguage(languageId: string, apiOptions?: UseApiDataOptions):
     () => languagesClient.getLanguage(languageId),
     {
       enabled: !override && apiOptions?.enabled !== false,
+      keepPreviousData: apiOptions?.keepPreviousData,
     },
   );
 

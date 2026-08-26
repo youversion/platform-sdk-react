@@ -237,4 +237,42 @@ describe('useChapter', () => {
     });
     expect(result.current.chapter).toEqual(nextChapter);
   });
+
+  it('drops the previous chapter during a chapter change when keepPreviousData is false', async () => {
+    // `keepPreviousData` is on the public options type, so the wrapper must
+    // forward it — a caller who opts out gets `null` while the next chapter
+    // fetches, not the previous chapter's data.
+    const nextChapter: BibleChapter = {
+      id: '2',
+      passage_id: 'MAT.2',
+      title: 'Matthew 2',
+    };
+    const deferred = Promise.withResolvers<BibleChapter>();
+    mockGetChapter.mockResolvedValueOnce(mockChapter).mockReturnValueOnce(deferred.promise);
+
+    const { result, rerender } = renderHook(
+      ({ chapter }: { chapter: number }) =>
+        useChapter(111, 'MAT', chapter, { keepPreviousData: false }),
+      { wrapper, initialProps: { chapter: 1 } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.chapter).toEqual(mockChapter);
+
+    act(() => {
+      rerender({ chapter: 2 });
+    });
+    expect(result.current.chapter).toBe(null);
+    expect(result.current.loading).toBe(true);
+
+    await act(async () => {
+      deferred.resolve(nextChapter);
+    });
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.chapter).toEqual(nextChapter);
+  });
 });

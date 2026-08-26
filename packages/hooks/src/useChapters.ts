@@ -29,6 +29,7 @@ export function useChapters(
     () => bibleClient.getChapters(versionId, book),
     {
       enabled: options?.enabled !== false && isValidBook,
+      keepPreviousData: options?.keepPreviousData,
     },
   );
 
