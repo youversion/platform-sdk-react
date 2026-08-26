@@ -180,7 +180,13 @@ export function useBibleReaderHighlights({
   // here for the self-contained path: no fetch, no writes, nothing rendered.
   const authContext = useContext(YouVersionAuthContext);
   const hasAuthProvider = authContext !== null;
-  const isAuthenticated = Boolean(authContext?.userInfo);
+  // A profile with no `userId` is not enough. `useHighlights` keys its cache by
+  // account and does not fetch for an unidentified one, so treating this state
+  // as authenticated would allow writes that no read can ever return: the POST
+  // succeeds, the overlay paints, and the highlight is gone on the next load.
+  // A host that supplies `userInfo` itself can produce this state, because
+  // `userId` is optional on the profile.
+  const isAuthenticated = Boolean(authContext?.userInfo?.userId);
   // Controlled mode keeps the machine disabled (provably inert) and never hits
   // the network — the dark-launch flag only gates the self-contained server path.
   const flagOn = !isControlled && isHighlightsLive();

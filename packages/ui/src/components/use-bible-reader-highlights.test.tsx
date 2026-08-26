@@ -4,7 +4,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { Collection, Highlight } from '@youversion/platform-core';
 import { YouVersionAuthContext, type UseHighlightsResult } from '@youversion/platform-react-hooks';
-import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
+import { YouVersionPlatformConfiguration, YouVersionUserInfo } from '@youversion/platform-core';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
@@ -121,6 +121,46 @@ describe('useBibleReaderHighlights — flag off (dark launch)', () => {
 });
 
 describe('useBibleReaderHighlights — auth guarding', () => {
+  it('treats a signed-in profile with no user id as signed out', () => {
+    const mocked = mockUseHighlights();
+
+    // `userId` is optional on the profile, and a host that supplies `userInfo`
+    // itself can leave it unset. `useHighlights` keys its cache by account and
+    // will not fetch for an unidentified one, so writes must be gated the same
+    // way. Otherwise the POST succeeds and no read ever returns it.
+    function UnidentifiedWrapper({ children }: { children: ReactNode }) {
+      return (
+        <HighlightsWrapper>
+          <YouVersionAuthContext.Provider
+            value={{
+              userInfo: new YouVersionUserInfo({ name: 'Ada' }),
+              setUserInfo: vi.fn(),
+              isLoading: false,
+              error: null,
+            }}
+          >
+            {children}
+          </YouVersionAuthContext.Provider>
+        </HighlightsWrapper>
+      );
+    }
+
+    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: UnidentifiedWrapper,
+    });
+
+    expect(useHighlightsOverride).toHaveBeenCalledWith(
+      { version_id: 111, passage_id: 'JHN.3' },
+      { enabled: false },
+    );
+
+    act(() => {
+      result.current.apply('fffe00', [16]);
+    });
+    expect(mocked.createHighlight).not.toHaveBeenCalled();
+    expect(result.current.highlightedVerses).toEqual({});
+  });
+
   it('renders without crashing when no auth provider is mounted, treated as signed out', () => {
     const mocked = mockUseHighlights();
 

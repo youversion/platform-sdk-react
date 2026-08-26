@@ -47,6 +47,9 @@ the pnpm `minimumReleaseAge` window):
   `useUserScope()` returns `null` when the account is not identified yet — set
   `enabled: false` for that render, because an unidentified account has no key
   of its own and two of them would share one cache entry.
+- `useOrganizations` is the one exception: it predates this layer and keeps
+  its own `useEffect` cache, so it does not share entries with
+  `useOrganization`. New hooks use `useApiData`.
 - Cache is memory-only; `refetch` performs exact query invalidation. Writes
   stay outside this layer (the highlights machine owns them) and refresh via
   `refetch` after the write.

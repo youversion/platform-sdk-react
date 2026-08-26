@@ -4,6 +4,7 @@ import type { PropsWithChildren, ReactNode } from 'react';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { YouVersionContext } from './YouVersionContext';
+import { serializeAdditionalHeaders } from '../internal/additionalHeadersKey';
 import {
   YouVersionPlatformConfiguration,
   type YouVersionUserInfoJSON,
@@ -170,6 +171,14 @@ function YouVersionProviderInner(
             // A paused fetch after a key change shows the previous key's
             // data as if it belonged to the new key.
             networkMode: 'always',
+            // Returning to the tab costs no request.
+            // TanStack Query revalidates every mounted query on focus by
+            // default, and a reader holds several at once.
+            // Most reads are Bible content, which does not change while the
+            // reader is open.
+            // Mounting, a key change, and `refetch` all still revalidate, so
+            // data stays fresh at the points that matter.
+            refetchOnWindowFocus: false,
           },
         },
       }),
@@ -179,9 +188,7 @@ function YouVersionProviderInner(
   // rebuild when the parent re-renders with an inline object literal. Sort
   // entries before serialising so key-insertion-order differences don't
   // invalidate the memo for headers that are semantically identical.
-  const additionalHeadersKey = additionalHeaders
-    ? JSON.stringify(Object.entries(additionalHeaders).sort(([a], [b]) => a.localeCompare(b)))
-    : null;
+  const additionalHeadersKey = serializeAdditionalHeaders(additionalHeaders);
   const stableAdditionalHeaders = useMemo(
     () => additionalHeaders,
     // eslint-disable-next-line react-hooks/exhaustive-deps

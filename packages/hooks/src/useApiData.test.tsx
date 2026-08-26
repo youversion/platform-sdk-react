@@ -3,7 +3,7 @@
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { onlineManager } from '@tanstack/react-query';
+import { focusManager, onlineManager } from '@tanstack/react-query';
 import type { ComponentType, ReactNode } from 'react';
 import { YouVersionProvider } from './context/YouVersionProvider';
 import { useApiData, type UseApiDataOptions } from './useApiData';
@@ -416,5 +416,61 @@ describe('useApiData — existing behavior', () => {
     expect(keysWritten.filter((key) => key !== 'x-yvp-installation-id')).toEqual([]);
     expect('indexedDB' in globalThis && globalThis.indexedDB).toBeFalsy();
     setItem.mockRestore();
+  });
+});
+
+describe('useApiData — window focus', () => {
+  afterEach(() => {
+    // Hand focus tracking back to the browser listeners.
+    focusManager.setFocused(undefined);
+  });
+
+  const refocus = async () => {
+    act(() => {
+      focusManager.setFocused(false);
+    });
+    act(() => {
+      focusManager.setFocused(true);
+    });
+    await flush();
+  };
+
+  it('costs no request when the tab regains focus', async () => {
+    const fetchFn = vi.fn().mockResolvedValue('JHN.3 text');
+
+    const { result } = renderHook(() => useApiData(['chapter', 'JHN.3'], fetchFn), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.data).toBe('JHN.3 text');
+    });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+
+    await refocus();
+    await refocus();
+
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(result.current.data).toBe('JHN.3 text');
+  });
+
+  it('still revalidates on refetch()', async () => {
+    const fetchFn = vi.fn().mockResolvedValue('settled');
+
+    const { result } = renderHook(() => useApiData(['chapter', 'JHN.3'], fetchFn), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.data).toBe('settled');
+    });
+
+    act(() => {
+      result.current.refetch();
+    });
+
+    await waitFor(() => {
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+    });
   });
 });
