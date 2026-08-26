@@ -296,6 +296,40 @@ describe('useApiData — offline', () => {
     expect(result.current.data).toBeNull();
     expect(result.current.loading).toBe(false);
   });
+
+  it('recovers an errored read when the browser comes back online', async () => {
+    // Nothing else can rescue this read: `retry: false` gives up on the first
+    // failure and `refetchOnWindowFocus: false` ignores a return to the tab.
+    // Reconnecting is the only automatic path back to data.
+    onlineManager.setOnline(false);
+    const fetchFn = vi
+      .fn<() => Promise<string>>()
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValue('JHN.3 data');
+
+    const { result } = renderHook(() => useApiData(['chapter', 'JHN.3'], fetchFn), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toBeInstanceOf(Error);
+    });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+
+    // The browser regains its connection. `onlineManager` listens for this
+    // event, so the provider's client sees the reconnect the same way it
+    // would in an app.
+    act(() => {
+      globalThis.window.dispatchEvent(new Event('online'));
+    });
+
+    await waitFor(() => {
+      expect(result.current.data).toBe('JHN.3 data');
+    });
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    expect(result.current.error).toBeNull();
+    expect(result.current.loading).toBe(false);
+  });
 });
 
 describe('useApiData — existing behavior', () => {

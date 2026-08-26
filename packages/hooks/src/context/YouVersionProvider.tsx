@@ -179,6 +179,16 @@ function YouVersionProviderInner(
             // Mounting, a key change, and `refetch` all still revalidate, so
             // data stays fresh at the points that matter.
             refetchOnWindowFocus: false,
+            // A read that failed fetches again when the network returns.
+            // TanStack Query infers this option from `networkMode`, and
+            // `always` makes that inference `false`.
+            // The two are independent: `networkMode` decides whether a fetch
+            // is attempted while the browser reports itself offline, and this
+            // option decides whether coming back online triggers one.
+            // With `retry: false` and `refetchOnWindowFocus: false`, an
+            // errored read has no other way back — only a remount or a page
+            // reload would fetch again.
+            refetchOnReconnect: true,
           },
         },
       }),
