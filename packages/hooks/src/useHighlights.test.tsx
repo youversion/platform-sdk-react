@@ -319,6 +319,16 @@ describe('useHighlights', () => {
     expect(mockGetHighlights).not.toHaveBeenCalled();
     expect(result.current.highlights).toBe(null);
 
+    // An empty id is not an identity either. The profile schema accepts `''`, and
+    // every account carrying it would key to the same entry.
+    authValue = {
+      ...authValue,
+      userInfo: new YouVersionUserInfo({ id: '', name: 'Empty Id' }),
+    };
+    rerender();
+    expect(mockGetHighlights).not.toHaveBeenCalled();
+    expect(result.current.highlights).toBe(null);
+
     // The id lands: now the account has a key of its own and the fetch goes out.
     authValue = {
       ...authValue,
