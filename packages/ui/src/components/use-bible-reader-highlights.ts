@@ -291,6 +291,7 @@ export function useBibleReaderHighlights({
   // ── Rendered verse map ──────────────────────────────────────────────────────
   const overlay = useSelector(actorRef, (state) => state.context.overlay);
   const machineScope = useSelector(actorRef, (state) => state.context.scope);
+  const machineUserId = useSelector(actorRef, (state) => state.context.userId);
   const highlightedVerses = useMemo(() => {
     // Controlled: pure projection from the host prop — no overlay, no fetch.
     if (isControlled) {
@@ -306,6 +307,10 @@ export function useBibleReaderHighlights({
     // and the new chapter renders from server truth alone — verse numbers
     // collide across chapters.
     if (!scopesEqual(machineScope, scope)) return { ...serverColors };
+    // Same window for an account swap: until the AUTH_CHANGED effect runs, the
+    // machine still holds the previous account's overlay. Skip it, so the new
+    // account never sees those entries, not even for one paint.
+    if (machineUserId !== userId) return { ...serverColors };
     return selectHighlightedVerses(serverColors, overlay);
   }, [
     isControlled,
@@ -315,6 +320,8 @@ export function useBibleReaderHighlights({
     overlay,
     machineScope,
     scope,
+    machineUserId,
+    userId,
     versionId,
     book,
     chapter,

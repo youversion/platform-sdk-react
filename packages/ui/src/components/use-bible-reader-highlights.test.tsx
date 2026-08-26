@@ -239,6 +239,53 @@ describe('useBibleReaderHighlights — auth guarding', () => {
     expect(result.current.highlightedVerses).toEqual({});
   });
 
+  it('skips the overlay on the swap render itself, before effects run', async () => {
+    mockUseHighlights();
+
+    let user = mockUserInfo;
+    function SwapWrapper({ children }: { children: ReactNode }) {
+      return (
+        <HighlightsWrapper>
+          <YouVersionAuthContext.Provider
+            value={{ userInfo: user, setUserInfo: vi.fn(), isLoading: false, error: null }}
+          >
+            {children}
+          </YouVersionAuthContext.Provider>
+        </HighlightsWrapper>
+      );
+    }
+
+    // The AUTH_CHANGED effect runs after paint. Every render is recorded here,
+    // so the assertion also sees the swap render that the effect has not
+    // reached yet.
+    const renders: Record<number, string>[] = [];
+    const { result, rerender } = renderHook(
+      () => {
+        const value = useBibleReaderHighlights(defaultOptions);
+        renders.push(value.highlightedVerses);
+        return value;
+      },
+      { wrapper: SwapWrapper },
+    );
+
+    act(() => {
+      result.current.apply('ffec5b', [16]);
+    });
+    await waitFor(() => {
+      expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
+    });
+
+    const swapIndex = renders.length;
+    user = new YouVersionUserInfo({ id: 'user-2', name: 'Other User' });
+    act(() => {
+      rerender();
+    });
+    expect(renders.length).toBeGreaterThan(swapIndex);
+    for (const rendered of renders.slice(swapIndex)) {
+      expect(rendered).toEqual({});
+    }
+  });
+
   it('renders without crashing when no auth provider is mounted, treated as signed out', () => {
     const mocked = mockUseHighlights();
 
