@@ -30,7 +30,7 @@ import {
   clipUsfmForHighlightPaint,
 } from '@/lib/highlight-projection';
 import { useHighlightsControlledLatch, warnOnce } from '@/lib/use-highlights-controlled-latch';
-import { highlightFillHex } from '@/lib/highlight-colors';
+import { highlightFillColorMix, highlightMixP } from '@/lib/highlight-colors';
 import { useScriptureHighlightPaint } from '@/lib/use-scripture-highlight-paint';
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
@@ -341,21 +341,22 @@ function BibleTextHtml({
   // Toggle selection underline + paint highlight fills on verse wrappers.
   // A verse can map to multiple `.yv-v[v="N"]` wrappers; each is painted so the
   // highlight reads as one solid block across line/paragraph breaks.
-  // Fill is mixSrgb(stored, --yv-background, p): light p = 1.00, dark p = 0.20
-  // against #121212. Theme flip re-paints only. In dark mode a highlighted
-  // verse's number label inherits the body text so it stays legible; both are
-  // cleared on removal.
+  // Fill is color-mix(stored, --yv-background, --yv-highlight-mix-p):
+  // light p = 1.00, dark p = 0.20. Theme flip updates p; the browser re-mixes
+  // against the live surface token. In dark mode a highlighted verse's number
+  // label inherits the body text so it stays legible; both are cleared on removal.
   useLayoutEffect(() => {
     if (!contentRef.current) return;
     const isDark = currentTheme === 'dark';
-    const fillTheme = isDark ? 'dark' : 'light';
     contentRef.current.querySelectorAll('.yv-v[v]').forEach((el) => {
       if (!(el instanceof HTMLElement)) return;
       const verseNum = parseInt(el.getAttribute('v') || '0', 10);
       el.classList.toggle('yv-v-selected', selectedVerses.includes(verseNum));
       const color = highlightedVerses[verseNum];
       const isHighlighted = Boolean(color);
-      el.style.backgroundColor = color ? `#${highlightFillHex(color, fillTheme)}` : '';
+      const fill = color ? highlightFillColorMix(color) : null;
+      if (fill === null) el.style.removeProperty('background-color');
+      else el.style.setProperty('background-color', fill);
       // Light mode paints fills at full strength. A dark non-palette hex
       // (YPE-4494) would sit under the reader's dark body text and go
       // illegible, so flip the wrapper to white; labels and footnote icons
@@ -519,8 +520,11 @@ export const Verse = {
         '--yv-reader-font-family'?: string;
         '--yv-reader-font-size'?: string;
         '--yv-reader-line-height'?: string | number;
+        '--yv-highlight-mix-p'?: number;
       };
-      const readerStyle: ReaderStyleVars = {};
+      const readerStyle: ReaderStyleVars = {
+        '--yv-highlight-mix-p': highlightMixP(currentTheme === 'dark' ? 'dark' : 'light'),
+      };
       if (fontFamily) readerStyle['--yv-reader-font-family'] = fontFamily;
       if (fontSize) readerStyle['--yv-reader-font-size'] = `${fontSize}px`;
       if (lineHeight) readerStyle['--yv-reader-line-height'] = lineHeight;

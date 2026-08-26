@@ -1,18 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { fillFor } from '@/test/highlights-test-utils';
 import {
   VerseActionPopover,
   HIGHLIGHT_COLORS,
   computeScrollFade,
   type HighlightColor,
 } from './verse-action-popover';
-
-function fillFor(hex: string): string {
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  return `rgb(${r}, ${g}, ${b})`;
-}
 
 describe('VerseActionPopover', () => {
   const defaultProps = {
@@ -52,9 +46,8 @@ describe('VerseActionPopover', () => {
 
       expect(applyButtons).toHaveLength(6);
       applyButtons.forEach((btn) => {
-        const bgColor = btn.style.backgroundColor;
-        // Swatches render via theme tokens (var(--yv-*-30-dm)), with a hex fallback.
-        expect(bgColor).toMatch(/^(#[a-fA-F0-9]{6}|rgb\(.*\)|var\(--.*\))$/);
+        expect(btn.style.backgroundColor).toContain('color-mix');
+        expect(btn.style.backgroundColor).toContain('var(--yv-card)');
       });
     });
   });
@@ -432,7 +425,7 @@ describe('VerseActionPopover', () => {
 
       const removeButtons = clearButtons();
       expect(removeButtons).toHaveLength(1);
-      expect(removeButtons[0]!.style.backgroundColor).toBe(fillFor(custom));
+      expect(removeButtons[0]!.style.backgroundColor).toBe(fillFor(custom, 'card'));
     });
 
     it('shows leftover fffe00 as a remove swatch, not an apply swatch', () => {
@@ -446,9 +439,9 @@ describe('VerseActionPopover', () => {
       );
 
       expect(clearButtons()).toHaveLength(1);
-      expect(clearButtons()[0]!.style.backgroundColor).toBe('rgb(255, 254, 0)');
+      expect(clearButtons()[0]!.style.backgroundColor).toBe(fillFor('fffe00', 'card'));
       expect(applyButtons().map((btn) => btn.style.backgroundColor)).not.toContain(
-        'rgb(255, 254, 0)',
+        fillFor('fffe00', 'card'),
       );
       expect(applyButtons()).toHaveLength(6);
     });
@@ -584,12 +577,13 @@ describe('VerseActionPopover', () => {
 
     it('paints drawer dots with the unmixed stored hex in light mode', () => {
       render(<VerseActionPopover {...defaultProps} theme="light" />);
-      expect(firstApplySwatch().style.backgroundColor).toBe('rgb(255, 236, 91)');
+      expect(firstApplySwatch().style.backgroundColor).toBe(fillFor(HIGHLIGHT_COLORS[0], 'card'));
     });
 
     it('paints drawer dots with the dark mix against the card surface', () => {
       render(<VerseActionPopover {...defaultProps} theme="dark" />);
-      expect(firstApplySwatch().style.backgroundColor).toBe('rgb(79, 74, 45)');
+      expect(firstApplySwatch().style.backgroundColor).toBe(fillFor(HIGHLIGHT_COLORS[0], 'card'));
+      expect(firstApplySwatch().style.backgroundColor).toContain('var(--yv-card)');
     });
 
     it('uses a dark inner stroke in light mode and a light one in dark mode', () => {

@@ -166,4 +166,9 @@ describe('bible-reader phase-1 typography (Swift-adjusted tags)', () => {
     expect(themeCss).toContain('--yv-wj: #94000c;');
     expect(themeCss).toContain('--yv-wj: #e4bfc2;');
   });
+
+  it('sets highlight mix p to 1 in light and 0.2 in dark', () => {
+    expect(themeCss).toContain('--yv-highlight-mix-p: 1;');
+    expect(themeCss).toContain('--yv-highlight-mix-p: 0.2;');
+  });
 });

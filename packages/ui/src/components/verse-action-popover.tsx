@@ -6,7 +6,7 @@ import { cn } from '../lib/utils';
 import { BoxStackIcon } from './icons/box-stack';
 import { Share } from './icons/share';
 import { CheckIcon } from './icons/check';
-import { buildVerseActionSwatches, highlightFillHex } from '@/lib/highlight-colors';
+import { buildVerseActionSwatches, highlightFillColorMix } from '@/lib/highlight-colors';
 import { isDarkHighlightHex } from './verse';
 
 /** Re-export for back-compat; prefer `@/lib/highlight-colors` for new code. */
@@ -98,10 +98,9 @@ type ColorCircleProps = {
 
 function ColorCircle({ color, showRemove, label, onClick, theme }: ColorCircleProps) {
   const isDark = theme === 'dark';
-  // Dots sit on `yv:bg-card` (`--yv-gray-2` `#fcfafa` / `--yv-gray-45` `#232121`),
-  // not `--yv-background`. Same `p` as the reader; different surfaceBg.
-  const cardSurfaceBg = isDark ? '232121' : 'fcfafa';
-  const backgroundColor = `#${highlightFillHex(color, theme, cardSurfaceBg)}`;
+  // Dots sit on `yv:bg-card`. Same `--yv-highlight-mix-p` as the reader;
+  // mix against `--yv-card` so a host card override stays authoritative.
+  const backgroundColor = highlightFillColorMix(color, 'card') ?? undefined;
   // Inner border matches the Figma "highlight stroke" (#121212 @ 20%), giving
   // pale swatches definition on the light popover. On the dark popover a dark
   // stroke would vanish against the dimmed fill, so flip it to a light stroke.

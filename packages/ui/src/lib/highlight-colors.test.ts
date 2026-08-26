@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   HIGHLIGHT_COLORS,
   buildVerseActionSwatches,
-  highlightFillHex,
+  highlightFillColorMix,
+  highlightMixP,
   isPaletteHighlightColor,
   isValidHighlightHex,
-  mixSrgb,
   normalizeHighlightHex,
 } from './highlight-colors';
 
@@ -142,32 +142,31 @@ describe('highlight-colors', () => {
     ]);
   });
 
-  it('mixSrgb is identity in light (p = 1.00)', () => {
-    expect(mixSrgb('ffec5b', 'ffffff', 1)).toBe('ffec5b');
-    expect(mixSrgb('#ffec5b', '#ffffff', 1)).toBe('ffec5b');
-    expect(mixSrgb('fffe00', 'ffffff', 1)).toBe('fffe00');
+  it('highlightFillColorMix mixes the stored hex against the live surface token', () => {
+    expect(highlightFillColorMix('ffec5b')).toBe(
+      'color-mix(in srgb, #ffec5b calc(var(--yv-highlight-mix-p) * 100%), var(--yv-background))',
+    );
+    expect(highlightFillColorMix('#FFEC5B')).toBe(
+      'color-mix(in srgb, #ffec5b calc(var(--yv-highlight-mix-p) * 100%), var(--yv-background))',
+    );
+    expect(highlightFillColorMix('fffe00')).toBe(
+      'color-mix(in srgb, #fffe00 calc(var(--yv-highlight-mix-p) * 100%), var(--yv-background))',
+    );
   });
 
-  it('mixSrgb mixes dark p = 0.20 against #121212', () => {
-    expect(mixSrgb('ffec5b', '121212', 0.2)).toBe('413e21');
-    expect(mixSrgb('b4ffc1', '#121212', 0.2)).toBe('324135');
-    expect(mixSrgb('bbf4ff', '121212', 0.2)).toBe('343f41');
-    expect(mixSrgb('ffdca7', '121212', 0.2)).toBe('413a30');
-    expect(mixSrgb('ffcff8', '121212', 0.2)).toBe('413840');
-    expect(mixSrgb('dfdcff', '121212', 0.2)).toBe('3b3a41');
-    expect(mixSrgb('fffe00', '121212', 0.2)).toBe('41410e');
+  it('highlightFillColorMix mixes drawer dots against --yv-card', () => {
+    expect(highlightFillColorMix('ffec5b', 'card')).toBe(
+      'color-mix(in srgb, #ffec5b calc(var(--yv-highlight-mix-p) * 100%), var(--yv-card))',
+    );
   });
 
-  it('highlightFillHex defaults to the reader surface', () => {
-    expect(highlightFillHex('ffec5b', 'light')).toBe('ffec5b');
-    expect(highlightFillHex('ffec5b', 'dark')).toBe('413e21');
+  it('highlightFillColorMix drops invalid hex', () => {
+    expect(highlightFillColorMix('not-a-color')).toBeNull();
   });
 
-  it('highlightFillHex mixes dark p = 0.20 against a card surface', () => {
-    // `--yv-card` dark is `--yv-gray-45` `#232121`. Same p, different surface.
-    expect(mixSrgb('ffec5b', '232121', 0.2)).toBe('4f4a2d');
-    expect(highlightFillHex('ffec5b', 'dark', '232121')).toBe('4f4a2d');
-    expect(highlightFillHex('ffec5b', 'light', 'fcfafa')).toBe('ffec5b');
+  it('highlightMixP is 1 in light and 0.2 in dark', () => {
+    expect(highlightMixP('light')).toBe(1);
+    expect(highlightMixP('dark')).toBe(0.2);
   });
 
   it('leftover fffe00 is not an apply swatch and still clears', () => {

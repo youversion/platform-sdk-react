@@ -44,53 +44,48 @@ export function isPaletteHighlightColor(color: string): boolean {
   return HIGHLIGHT_COLOR_SET.has(normalized);
 }
 
-/** `--yv-background` in light (`#ffffff`) and dark (`#121212`). Not popover `#1c1a1a`. */
-const HIGHLIGHT_SURFACE_BG = {
-  light: 'ffffff',
-  dark: '121212',
-} as const;
-
 /** Light identity. Dark `p = 0.20`. Black-theme `p = 0.25` is unused. */
-const HIGHLIGHT_MIX_P = {
+export const HIGHLIGHT_MIX_P = {
   light: 1,
   dark: 0.2,
 } as const;
 
-function hexChannel(hex: string, offset: number): number {
-  return parseInt(stripHighlightHexPrefix(hex).slice(offset, offset + 2), 16);
-}
+export type HighlightFillSurface = 'background' | 'card';
 
-function byteToHex(value: number): string {
-  return Math.round(value).toString(16).padStart(2, '0');
-}
+const HIGHLIGHT_FILL_SURFACE_VAR = {
+  background: 'var(--yv-background)',
+  card: 'var(--yv-card)',
+} as const;
 
-/** `stored * p + surfaceBg * (1 - p)`. Returns unmixed-format lowercase hex, no `#`. */
-export function mixSrgb(stored: string, surfaceBg: string, p: number): string {
-  const q = 1 - p;
-  const r = hexChannel(stored, 0) * p + hexChannel(surfaceBg, 0) * q;
-  const g = hexChannel(stored, 2) * p + hexChannel(surfaceBg, 2) * q;
-  const b = hexChannel(stored, 4) * p + hexChannel(surfaceBg, 4) * q;
-  return `${byteToHex(r)}${byteToHex(g)}${byteToHex(b)}`;
+export function highlightMixP(theme: 'light' | 'dark'): number {
+  switch (theme) {
+    case 'light':
+      return HIGHLIGHT_MIX_P.light;
+    case 'dark':
+      return HIGHLIGHT_MIX_P.dark;
+    default: {
+      const _exhaustive: never = theme;
+      return _exhaustive;
+    }
+  }
 }
 
 /**
- * Mixed fill hex (no `#`) for painting a stored highlight.
- * Defaults to the reader surface (`--yv-background`). Pass a different
- * `surfaceBg` (e.g. `--yv-card` `#232121` / `#fcfafa`) to mix against
- * another surface. `p` still comes from `theme` (light 1.00, dark 0.20).
+ * Token-aware sRGB fill. `p` is `--yv-highlight-mix-p` (light 1.00, dark 0.20).
+ * Reader fills mix against `--yv-background`; drawer dots pass `'card'`.
  */
-export function highlightFillHex(
+export function highlightFillColorMix(
   stored: string,
-  theme: 'light' | 'dark',
-  surfaceBg?: string,
-): string {
-  switch (theme) {
-    case 'light':
-      return mixSrgb(stored, surfaceBg ?? HIGHLIGHT_SURFACE_BG.light, HIGHLIGHT_MIX_P.light);
-    case 'dark':
-      return mixSrgb(stored, surfaceBg ?? HIGHLIGHT_SURFACE_BG.dark, HIGHLIGHT_MIX_P.dark);
+  surface: HighlightFillSurface = 'background',
+): string | null {
+  const hex = normalizeHighlightHex(stored);
+  if (hex === null) return null;
+  switch (surface) {
+    case 'background':
+    case 'card':
+      return `color-mix(in srgb, #${hex} calc(var(--yv-highlight-mix-p) * 100%), ${HIGHLIGHT_FILL_SURFACE_VAR[surface]})`;
     default: {
-      const _exhaustive: never = theme;
+      const _exhaustive: never = surface;
       return _exhaustive;
     }
   }

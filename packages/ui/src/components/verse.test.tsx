@@ -621,7 +621,7 @@ describe('Verse.Html - Highlight fill (theme-aware, Swift parity)', () => {
     </div>
   `;
 
-  it('paints the stored hex unmixed in light mode', async () => {
+  it('paints the stored hex mixed against --yv-background in light mode', async () => {
     const { container } = render(
       <Verse.Html html={highlightHtml} theme="light" highlightedVerses={{ 1: 'ffec5b' }} />,
     );
@@ -629,11 +629,11 @@ describe('Verse.Html - Highlight fill (theme-aware, Swift parity)', () => {
     await waitFor(() => {
       const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
       expect(verse).not.toBeNull();
-      expect(verse!.style.backgroundColor).toBe('rgb(255, 236, 91)');
+      expect(verse!.style.backgroundColor).toBe(fillFor('ffec5b'));
     });
   });
 
-  it('paints the dark mix (p = 0.20 against #121212)', async () => {
+  it('paints the dark mix against the live --yv-background token', async () => {
     const { container } = render(
       <Verse.Html html={highlightHtml} theme="dark" highlightedVerses={{ 1: 'ffec5b' }} />,
     );
@@ -641,7 +641,27 @@ describe('Verse.Html - Highlight fill (theme-aware, Swift parity)', () => {
     await waitFor(() => {
       const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
       expect(verse).not.toBeNull();
-      expect(verse!.style.backgroundColor).toBe('rgb(65, 62, 33)');
+      expect(verse!.style.backgroundColor).toBe(fillFor('ffec5b'));
+      expect(verse!.style.backgroundColor).toContain('var(--yv-background)');
+    });
+  });
+
+  it('sets --yv-highlight-mix-p from the theme prop', async () => {
+    const { container, rerender } = render(
+      <Verse.Html html={highlightHtml} theme="light" highlightedVerses={{ 1: 'ffec5b' }} />,
+    );
+
+    await waitFor(() => {
+      const section = container.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
+      expect(section).not.toBeNull();
+      expect(section!.style.getPropertyValue('--yv-highlight-mix-p')).toBe('1');
+    });
+
+    rerender(<Verse.Html html={highlightHtml} theme="dark" highlightedVerses={{ 1: 'ffec5b' }} />);
+
+    await waitFor(() => {
+      const section = container.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
+      expect(section!.style.getPropertyValue('--yv-highlight-mix-p')).toBe('0.2');
     });
   });
 
@@ -653,7 +673,7 @@ describe('Verse.Html - Highlight fill (theme-aware, Swift parity)', () => {
     await waitFor(() => {
       const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
       expect(verse).not.toBeNull();
-      expect(verse!.style.backgroundColor).toBe('rgb(0, 0, 0)');
+      expect(verse!.style.backgroundColor).toBe(fillFor('000000'));
       expect(verse!.style.color).toBe('rgb(255, 255, 255)');
     });
 
@@ -678,7 +698,7 @@ describe('Verse.Html - Highlight fill (theme-aware, Swift parity)', () => {
     });
   });
 
-  it('paints leftover fffe00 at the dark mix, not 0.3 alpha', async () => {
+  it('paints leftover fffe00 with color-mix, not 0.3 alpha', async () => {
     const { container } = render(
       <Verse.Html html={highlightHtml} theme="dark" highlightedVerses={{ 1: 'fffe00' }} />,
     );
@@ -686,7 +706,9 @@ describe('Verse.Html - Highlight fill (theme-aware, Swift parity)', () => {
     await waitFor(() => {
       const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
       expect(verse).not.toBeNull();
-      expect(verse!.style.backgroundColor).toBe('rgb(65, 65, 14)');
+      expect(verse!.style.backgroundColor).toBe(fillFor('fffe00'));
+      expect(verse!.style.backgroundColor).toContain('color-mix');
+      expect(verse!.style.backgroundColor).not.toContain('0.3');
     });
   });
 
@@ -751,7 +773,7 @@ describe('Verse.Html - Highlight fill (theme-aware, Swift parity)', () => {
 
     await waitFor(() => {
       const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
-      expect(verse!.style.backgroundColor).toBe('rgb(65, 65, 14)');
+      expect(verse!.style.backgroundColor).toBe(fillFor('fffe00'));
       const label = container.querySelector<HTMLElement>('.yv-v[v="1"] .yv-vlbl');
       expect(label!.style.color).toBe('inherit');
     });
@@ -765,43 +787,32 @@ describe('Verse.Html - Highlight fill (theme-aware, Swift parity)', () => {
       expect(label!.style.color).toBe('');
     });
   });
-});
-
-describe('Verse.Html - leftover fffe00 paint and clear', () => {
-  const leftoverHtml = `
-    <div class="p">
-      <span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>In the beginning was the Word.
-    </div>
-  `;
 
   it('paints leftover fffe00 in light and clears it without remapping', async () => {
     const { container, rerender } = render(
-      <Verse.Html html={leftoverHtml} theme="light" highlightedVerses={{ 1: 'fffe00' }} />,
+      <Verse.Html html={highlightHtml} theme="light" highlightedVerses={{ 1: 'fffe00' }} />,
     );
 
     await waitFor(() => {
       const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
-      expect(verse!.style.backgroundColor).toBe('rgb(255, 254, 0)');
+      expect(verse!.style.backgroundColor).toBe(fillFor('fffe00'));
     });
 
-    rerender(<Verse.Html html={leftoverHtml} theme="light" highlightedVerses={{}} />);
+    rerender(<Verse.Html html={highlightHtml} theme="light" highlightedVerses={{}} />);
 
     await waitFor(() => {
       const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
       expect(verse!.style.backgroundColor).toBe('');
     });
   });
-});
-
-describe('Verse.Html - Words of Christ on a mixed fill', () => {
-  const wocHtml = `
-    <div class="p">
-      <span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>
-      <span class="wj">Very truly I tell you</span>
-    </div>
-  `;
 
   it('leaves WOC text unmixed on a mixed fill', async () => {
+    const wocHtml = `
+      <div class="p">
+        <span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>
+        <span class="wj">Very truly I tell you</span>
+      </div>
+    `;
     const { container, rerender } = render(
       <Verse.Html html={wocHtml} theme="light" highlightedVerses={{ 1: 'ffec5b' }} />,
     );
@@ -809,7 +820,7 @@ describe('Verse.Html - Words of Christ on a mixed fill', () => {
     await waitFor(() => {
       const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
       const woc = container.querySelector<HTMLElement>('.wj');
-      expect(verse!.style.backgroundColor).toBe('rgb(255, 236, 91)');
+      expect(verse!.style.backgroundColor).toBe(fillFor('ffec5b'));
       expect(woc).not.toBeNull();
       expect(woc!.style.color).toBe('');
       expect(woc!.style.backgroundColor).toBe('');
@@ -820,13 +831,19 @@ describe('Verse.Html - Words of Christ on a mixed fill', () => {
     await waitFor(() => {
       const verse = container.querySelector<HTMLElement>('.yv-v[v="1"]');
       const woc = container.querySelector<HTMLElement>('.wj');
-      expect(verse!.style.backgroundColor).toBe('rgb(65, 62, 33)');
+      expect(verse!.style.backgroundColor).toBe(fillFor('ffec5b'));
       expect(woc!.style.color).toBe('');
       expect(woc!.style.backgroundColor).toBe('');
     });
   });
 
   it('does not mix WOC when a dark leftover fill flips wrapper text', async () => {
+    const wocHtml = `
+      <div class="p">
+        <span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>
+        <span class="wj">Very truly I tell you</span>
+      </div>
+    `;
     const { container } = render(
       <Verse.Html html={wocHtml} theme="light" highlightedVerses={{ 1: '000000' }} />,
     );
