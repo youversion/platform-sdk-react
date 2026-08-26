@@ -186,7 +186,14 @@ export function useBibleReaderHighlights({
   // succeeds, the overlay paints, and the highlight is gone on the next load.
   // A host that supplies `userInfo` itself can produce this state, because
   // `userId` is optional on the profile.
-  const isAuthenticated = Boolean(authContext?.userInfo?.userId);
+  //
+  // `isLoading` gates writes for the same reason: `useUserScope` withholds the
+  // account scope while auth is loading, so the fetch is off. A profile that
+  // still carries a `userId` in that window would otherwise let a POST through
+  // that the withheld GET cannot show.
+  const isAuthenticated = Boolean(
+    authContext && !authContext.isLoading && authContext.userInfo?.userId,
+  );
   // Controlled mode keeps the machine disabled (provably inert) and never hits
   // the network — the dark-launch flag only gates the self-contained server path.
   const flagOn = !isControlled && isHighlightsLive();

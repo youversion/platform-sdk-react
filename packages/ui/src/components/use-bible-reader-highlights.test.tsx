@@ -161,6 +161,46 @@ describe('useBibleReaderHighlights — auth guarding', () => {
     expect(result.current.highlightedVerses).toEqual({});
   });
 
+  it('treats a signed-in profile as signed out while auth is still loading', () => {
+    const mocked = mockUseHighlights();
+
+    // While `isLoading` is true, `useUserScope` withholds the account scope and
+    // the fetch stays off. A host can leave a previous session's `userId` on
+    // the profile through that window; the write gate must not trust it, or a
+    // POST goes through that the withheld GET cannot show.
+    function LoadingWrapper({ children }: { children: ReactNode }) {
+      return (
+        <HighlightsWrapper>
+          <YouVersionAuthContext.Provider
+            value={{
+              userInfo: mockUserInfo,
+              setUserInfo: vi.fn(),
+              isLoading: true,
+              error: null,
+            }}
+          >
+            {children}
+          </YouVersionAuthContext.Provider>
+        </HighlightsWrapper>
+      );
+    }
+
+    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: LoadingWrapper,
+    });
+
+    expect(useHighlightsOverride).toHaveBeenCalledWith(
+      { version_id: 111, passage_id: 'JHN.3' },
+      { enabled: false },
+    );
+
+    act(() => {
+      result.current.apply('fffe00', [16]);
+    });
+    expect(mocked.createHighlight).not.toHaveBeenCalled();
+    expect(result.current.highlightedVerses).toEqual({});
+  });
+
   it('renders without crashing when no auth provider is mounted, treated as signed out', () => {
     const mocked = mockUseHighlights();
 
