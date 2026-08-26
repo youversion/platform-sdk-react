@@ -13,12 +13,11 @@ import { serializeVersionFilters } from './versionFilterKey';
  * TanStack Query converts the key to text to compare keys. A class instance
  * does not convert to stable text.
  *
- * The header segment comes from `context.additionalHeaders`, not from
- * `context.additionalHeadersKey`. `YouVersionContext` is public, so a host can
- * render the context directly and set `additionalHeaders` without setting
- * `additionalHeadersKey`. Those headers reach the request. Reading the
- * precomputed field would leave them out of the key, and two header sets would
- * then share one cache entry.
+ * The header segment is serialized here from `context.additionalHeaders`.
+ * `YouVersionContext` is public, so a host can render the context directly and
+ * set `additionalHeaders`. Those headers reach the request, so they must also
+ * reach the key. A precomputed key field on the context would be unset for
+ * such a host, and two header sets would then share one cache entry.
  *
  * The last segment is the active Bible version filter. That filter lives on
  * `YouVersionPlatformConfiguration`, not on the context, and it decides which

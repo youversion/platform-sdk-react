@@ -17,9 +17,9 @@ function Probe(): React.ReactElement {
 
 /**
  * A host can render `YouVersionContext.Provider` itself, because the context is
- * public. Such a host sets `additionalHeaders` and does not set
- * `additionalHeadersKey`, which only `YouVersionProvider` computes. The React
- * Native Expo SDK is one of these hosts: it replaces `X-YVP-Sdk`.
+ * public. Such a host sets `additionalHeaders` only, and `useQueryKeyBase`
+ * derives the key segment from those headers. The React Native Expo SDK is one
+ * of these hosts: it replaces `X-YVP-Sdk`.
  */
 function rawHost(
   additionalHeaders: Record<string, string>,

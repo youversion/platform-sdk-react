@@ -187,7 +187,6 @@ function YouVersionProviderInner(
     theme: resolvedTheme,
     authEnabled: !!includeAuth,
     additionalHeaders: stableAdditionalHeaders,
-    additionalHeadersKey,
   };
 
   if (includeAuth) {
