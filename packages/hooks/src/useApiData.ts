@@ -89,9 +89,15 @@ export function useApiData<TData>(
   //
   // `loading` is `true` while `data` is not the settled result for the
   // current `queryKey`:
-  // - the first load of a key (`isPending`), and
+  // - the first load of a key (`isPending`),
   // - a key change still showing the previous key's data (`isPlaceholderData`)
-  //   while the new fetch is in flight.
+  //   while the new fetch is in flight, and
+  // - a new fetch after an error (`isError` with `isFetching`), so a `refetch`
+  //   from an error state shows progress instead of a frozen error.
+  //   This clause covers an errored read that still holds data from an earlier
+  //   success; `error` keeps the failure until the retry settles. TanStack
+  //   Query resets an errored read without data to pending, which the first
+  //   clause covers.
   // A background revalidation of already-settled data keeps `loading` `false`,
   // so the current data stays on screen through a `refetch`.
   //
@@ -99,7 +105,11 @@ export function useApiData<TData>(
   // TanStack Query keeps `isPending` true.
   return {
     data: enabled ? (query.data ?? null) : null,
-    loading: enabled && (query.isPending || (query.isPlaceholderData && query.isFetching)),
+    loading:
+      enabled &&
+      (query.isPending ||
+        (query.isPlaceholderData && query.isFetching) ||
+        (query.isError && query.isFetching)),
     error: enabled ? (query.error ?? null) : null,
     refetch,
   };

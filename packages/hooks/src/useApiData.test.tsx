@@ -452,6 +452,59 @@ describe('useApiData — existing behavior', () => {
     expect(fetchFn).toHaveBeenCalledTimes(2);
   });
 
+  it('shows loading while a refetch retries an errored read that holds data', async () => {
+    // A failed revalidation leaves `error` set while `data` stays on screen.
+    // A `refetch` from that state keeps `error` set, so `loading` is the only
+    // sign that a retry is in flight.
+    const deferreds: PromiseWithResolvers<string>[] = [];
+    const fetchFn = vi.fn(() => {
+      const deferred = Promise.withResolvers<string>();
+      deferreds.push(deferred);
+      return deferred.promise;
+    });
+
+    const { result } = renderHook(() => useApiData(['key'], fetchFn), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      deferreds[0]!.resolve('first');
+      await flush();
+    });
+    expect(result.current.data).toBe('first');
+
+    // A revalidation fails: `error` surfaces while `data` stays (accepted
+    // delta (2) in docs/adr/0006).
+    act(() => {
+      result.current.refetch();
+    });
+    await act(async () => {
+      deferreds[1]!.reject(new Error('revalidate failure'));
+      await flush();
+    });
+    expect(result.current.error).toBeInstanceOf(Error);
+    expect(result.current.data).toBe('first');
+    expect(result.current.loading).toBe(false);
+
+    // The retry is in flight: progress shows, the failure and the data stay.
+    act(() => {
+      result.current.refetch();
+    });
+    await waitFor(() => {
+      expect(result.current.loading).toBe(true);
+    });
+    expect(result.current.error).toBeInstanceOf(Error);
+    expect(result.current.data).toBe('first');
+
+    await act(async () => {
+      deferreds[2]!.resolve('recovered');
+      await flush();
+    });
+    expect(result.current.data).toBe('recovered');
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBeNull();
+  });
+
   it('never touches persistent storage across a fetch + refetch cycle', async () => {
     // The cache is memory-only by design: no persister is configured, so a
     // full fetch + refetch cycle must not write localStorage (and jsdom has
