@@ -201,6 +201,44 @@ describe('useBibleReaderHighlights — auth guarding', () => {
     expect(result.current.highlightedVerses).toEqual({});
   });
 
+  it('clears optimistic paint when the host swaps accounts without a sign-out', async () => {
+    const mocked = mockUseHighlights();
+
+    // A host can swap `userInfo` from user A to user B with no signed-out
+    // state in between. The optimistic entries of user A must not render for
+    // user B.
+    let user = mockUserInfo;
+    function SwapWrapper({ children }: { children: ReactNode }) {
+      return (
+        <HighlightsWrapper>
+          <YouVersionAuthContext.Provider
+            value={{ userInfo: user, setUserInfo: vi.fn(), isLoading: false, error: null }}
+          >
+            {children}
+          </YouVersionAuthContext.Provider>
+        </HighlightsWrapper>
+      );
+    }
+
+    const { result, rerender } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: SwapWrapper,
+    });
+
+    act(() => {
+      result.current.apply('ffec5b', [16]);
+    });
+    await waitFor(() => {
+      expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
+    });
+    expect(mocked.createHighlight).toHaveBeenCalled();
+
+    user = new YouVersionUserInfo({ id: 'user-2', name: 'Other User' });
+    act(() => {
+      rerender();
+    });
+    expect(result.current.highlightedVerses).toEqual({});
+  });
+
   it('renders without crashing when no auth provider is mounted, treated as signed out', () => {
     const mocked = mockUseHighlights();
 

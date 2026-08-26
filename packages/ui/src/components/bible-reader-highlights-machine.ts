@@ -124,6 +124,13 @@ export type HighlightsMachineInput = {
   flagOn: boolean;
   hasAuthProvider: boolean;
   isAuthenticated: boolean;
+  /**
+   * The id of the signed-in account (`null` when unidentified). A host can
+   * swap `userInfo` from one signed-in user to another, and `isAuthenticated`
+   * stays true. The machine compares this id across `AUTH_CHANGED` events to
+   * detect that swap.
+   */
+  userId: string | null;
 };
 
 export type TapOutcome = 'applied' | 'flow' | 'noop';
@@ -134,6 +141,7 @@ type HighlightsContext = {
   flagOn: boolean;
   hasAuthProvider: boolean;
   isAuthenticated: boolean;
+  userId: string | null;
   serverColors: ServerColors;
   overlay: HighlightOverlay;
   reconcile: Map<number, ReconcileEntry>;
@@ -152,6 +160,7 @@ export type HighlightsEvent =
       flagOn: boolean;
       hasAuthProvider: boolean;
       isAuthenticated: boolean;
+      userId: string | null;
     }
   | { type: 'HIGHLIGHTS_UPDATED'; serverColors: ServerColors }
   | { type: 'SCOPE_CHANGED'; scope: HighlightScope }
@@ -415,12 +424,20 @@ export const bibleReaderHighlightsMachine = setup({
         flagOn: event.flagOn,
         hasAuthProvider: event.hasAuthProvider,
         isAuthenticated: event.isAuthenticated,
+        userId: event.userId,
       };
     }),
 
-    /** Sign-out / going disabled must not leave a stale overlay to resurface later. */
-    resetWriteStateIfSignedOut: assign(({ event }) => {
-      if (event.type !== 'AUTH_CHANGED' || event.isAuthenticated) return {};
+    /**
+     * Clears the write state on sign-out or on an account change, so the next
+     * account does not see optimistic entries from the previous one. The
+     * cleared `writeIntent` tokens also defuse in-flight writes: a write that
+     * settles later fails the per-verse ownership check, the same as after a
+     * scope change.
+     */
+    resetWriteStateOnAccountChange: assign(({ context, event }) => {
+      if (event.type !== 'AUTH_CHANGED') return {};
+      if (event.isAuthenticated && event.userId === context.userId) return {};
       return {
         overlay: {},
         reconcile: new Map<number, ReconcileEntry>(),
@@ -700,6 +717,7 @@ export const bibleReaderHighlightsMachine = setup({
     flagOn: input.flagOn,
     hasAuthProvider: input.hasAuthProvider,
     isAuthenticated: input.isAuthenticated,
+    userId: input.userId,
     serverColors: {},
     overlay: {},
     reconcile: new Map(),
@@ -711,7 +729,9 @@ export const bibleReaderHighlightsMachine = setup({
   // These three inputs update context regardless of the active state; state
   // moves are driven by `always` guards that read the freshly-assigned context.
   on: {
-    AUTH_CHANGED: { actions: ['assignAuth', 'resetWriteStateIfSignedOut'] },
+    // The reset runs first, while `context.userId` still holds the previous
+    // account. `assignAuth` then overwrites it.
+    AUTH_CHANGED: { actions: ['resetWriteStateOnAccountChange', 'assignAuth'] },
     HIGHLIGHTS_UPDATED: { actions: 'reconcileOverlay' },
     SCOPE_CHANGED: { guard: 'scopeIsDifferent', actions: 'resetForScopeChange' },
   },

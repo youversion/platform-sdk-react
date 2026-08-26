@@ -191,9 +191,8 @@ export function useBibleReaderHighlights({
   // account scope while auth is loading, so the fetch is off. A profile that
   // still carries a `userId` in that window would otherwise let a POST through
   // that the withheld GET cannot show.
-  const isAuthenticated = Boolean(
-    authContext && !authContext.isLoading && authContext.userInfo?.userId,
-  );
+  const userId = authContext?.userInfo?.userId ?? null;
+  const isAuthenticated = Boolean(authContext && !authContext.isLoading && userId);
   // Controlled mode keeps the machine disabled (provably inert) and never hits
   // the network — the dark-launch flag only gates the self-contained server path.
   const flagOn = !isControlled && isHighlightsLive();
@@ -248,13 +247,14 @@ export function useBibleReaderHighlights({
       flagOn,
       hasAuthProvider,
       isAuthenticated,
+      userId,
     },
   });
 
   // ── Feed React-owned inputs to the machine ──────────────────────────────────
   useEffect(() => {
-    actorRef.send({ type: 'AUTH_CHANGED', flagOn, hasAuthProvider, isAuthenticated });
-  }, [actorRef, flagOn, hasAuthProvider, isAuthenticated]);
+    actorRef.send({ type: 'AUTH_CHANGED', flagOn, hasAuthProvider, isAuthenticated, userId });
+  }, [actorRef, flagOn, hasAuthProvider, isAuthenticated, userId]);
 
   useEffect(() => {
     actorRef.send({ type: 'SCOPE_CHANGED', scope });
