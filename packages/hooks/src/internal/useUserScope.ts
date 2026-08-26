@@ -1,46 +1,53 @@
 'use client';
 
 import { useContext } from 'react';
+import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionAuthContext } from '../context/YouVersionAuthContext';
 
 /**
- * This function returns a `queryKey` segment for hooks that load user data.
- * `useHighlights` is one of these hooks.
+ * Returns the `queryKey` segment for hooks that load user data, such as
+ * `useHighlights`.
  *
- * The return value is one of three things:
- * - the user id, when a user is signed in and identified;
- * - `'anon'`, when no user can be signed in (auth is off) or no user is signed in;
- * - `null`, when the scope is not known yet or the signed-in user has no usable id.
+ * The return value is one of three values:
+ * - the user id, when a signed-in user has a non-empty id;
+ * - `'anon'`, when the host has no auth context, or when no user is signed in
+ *   and no access token is set;
+ * - `null`, when no safe cache key exists.
  *
- * A `null` scope is not a cache key. Hooks that get `null` must not fetch,
- * because two different accounts would otherwise share one cache entry.
- * `useHighlights` sets `enabled: false` while the scope is `null`.
+ * The `queryKey` includes this value, so each account has its own cache
+ * entry. A change in auth does not need a manual cache clear.
  *
- * The scope is not known when auth is still loading. A signed-in user has no
- * usable id when the profile has not resolved, the token has no id claim, or the
- * id is an empty string. `userId` is an optional string on `YouVersionUserInfo`
- * and the schema accepts `''`, so all of these states are possible.
+ * Hooks that get `null` must not fetch. Without this rule, two accounts can
+ * share one cache entry. No safe key exists in three states:
+ * - the auth context has not resolved;
+ * - the signed-in profile has a missing or empty id (the schema permits both);
+ * - an access token is set while the auth context reports no user.
  *
- * The `queryKey` includes this value.
- * As a result, each account has its own cache entry.
- * A change in auth does not need a manual cache clear.
+ * The third state guards the `'anon'` scope. This hook reads identity from
+ * the auth context. The request layer reads its token from
+ * `YouVersionPlatformConfiguration.accessToken`. When the two disagree, a
+ * fetch caches the account data for that token under the shared `'anon'` key.
+ * The token read occurs at render time and is not reactive. That is enough:
+ * each path that changes the token also changes the auth context, and the
+ * context change re-renders this hook.
  *
- * This function reads `YouVersionAuthContext`.
- * When `includeAuth` is off, data hooks must still work.
- * This function does not call `useYouVersionAuthContext()`.
- * When auth is off, `useYouVersionAuthContext()` throws.
- *
- * The React Native Expo SDK also puts `userInfo` in this context.
+ * This hook reads `YouVersionAuthContext` directly. It does not call
+ * `useYouVersionAuthContext()`, because that call throws when auth is off,
+ * and data hooks must work without auth. No auth context means that the host
+ * owns identity, so one scope covers any token the host sets. The React
+ * Native Expo SDK also puts `userInfo` in this context.
  */
 export function useUserScope(): string | null {
   const auth = useContext(YouVersionAuthContext);
-  // No auth context: the host never signs anyone in, so there is one scope.
+  // No auth context: the host owns identity, and one scope covers it.
   if (!auth) return 'anon';
-  // Auth is resolving. The scope is not known yet.
+  // The auth context has not resolved yet.
   if (auth.isLoading) return null;
-  // Auth resolved with no user.
-  if (!auth.userInfo) return 'anon';
-  // Signed in. A missing or empty id leaves the account unidentified, so there is
-  // no safe key for it: two such accounts would otherwise share one cache entry.
+  // No signed-in user. If a token is set, the request layer and this context
+  // disagree about identity, and no key is safe.
+  if (!auth.userInfo) {
+    return YouVersionPlatformConfiguration.accessToken ? null : 'anon';
+  }
+  // A missing or empty id leaves the account with no safe key of its own.
   return auth.userInfo.userId || null;
 }

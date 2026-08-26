@@ -5,6 +5,7 @@ import { useHighlights } from './useHighlights';
 import { YouVersionContext, YouVersionAuthContext } from './context';
 import {
   HighlightsClient,
+  YouVersionPlatformConfiguration,
   YouVersionUserInfo,
   type Collection,
   type GetHighlightsOptions,
@@ -58,6 +59,9 @@ describe('useHighlights', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    // Tokens live in the file-scoped localStorage; a test that seeds one must
+    // not leave it for the next test's scope resolution.
+    YouVersionPlatformConfiguration.saveAuthData(null, null, null);
   });
 
   describe('context validation', () => {
@@ -337,6 +341,45 @@ describe('useHighlights', () => {
     rerender();
     await waitFor(() => {
       expect(result.current.highlights).toEqual(highlightsA);
+    });
+    expect(mockGetHighlights).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not fetch under the anonymous scope while an access token contradicts it', async () => {
+    // The scope reads the auth context, but the request resolves its token from
+    // `YouVersionPlatformConfiguration.accessToken`. A token with no signed-in
+    // user means the fetch would land that token's account rows in the shared
+    // anonymous cache entry, which later signed-out sessions read.
+    YouVersionPlatformConfiguration.saveAuthData('orphaned-live-token', null, null);
+
+    const authValue: AuthContextValue = {
+      userInfo: null,
+      setUserInfo: () => undefined,
+      isLoading: false,
+      error: null,
+    };
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <YouVersionContext.Provider value={{ appKey: 'test-app-key' }}>
+        <YouVersionAuthContext.Provider value={authValue}>
+          <TestQueryClientProvider>{children}</TestQueryClientProvider>
+        </YouVersionAuthContext.Provider>
+      </YouVersionContext.Provider>
+    );
+
+    const { result, rerender } = renderHook(() => useHighlights(defaultOptions), { wrapper });
+
+    // Signed out per the context, yet a token is live: no request, no data.
+    // The flush gives an erroneously enabled query time to dispatch.
+    await Promise.resolve();
+    expect(mockGetHighlights).not.toHaveBeenCalled();
+    expect(result.current.highlights).toBe(null);
+
+    // The token clears — sign-out completed — and the sources agree again:
+    // the anonymous scope is a safe key, so the read goes out.
+    YouVersionPlatformConfiguration.saveAuthData(null, null, null);
+    rerender();
+    await waitFor(() => {
+      expect(result.current.highlights).toEqual(mockHighlights);
     });
     expect(mockGetHighlights).toHaveBeenCalledTimes(1);
   });
