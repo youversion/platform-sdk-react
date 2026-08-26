@@ -30,6 +30,7 @@ import {
   clipUsfmForHighlightPaint,
 } from '@/lib/highlight-projection';
 import { useHighlightsControlledLatch, warnOnce } from '@/lib/use-highlights-controlled-latch';
+import { highlightFillColorMix, highlightMixP } from '@/lib/highlight-colors';
 import { useScriptureHighlightPaint } from '@/lib/use-scripture-highlight-paint';
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
@@ -151,25 +152,8 @@ function getVerseHtmlFromDom(container: HTMLElement, verseNum: string): string {
 }
 
 /**
- * Verse highlight fill opacity, matched to the Swift SDK (cross-SDK parity is the
- * UX baseline). Light mode paints the highlight hex at full strength; dark mode
- * fades it so the fill sits behind the text without overpowering it. See
- * `docs/adr/YPE-642-verse-action-popover.md` (ADR-005 as-built).
- */
-export const HIGHLIGHT_FILL_OPACITY_LIGHT = 1.0;
-export const HIGHLIGHT_FILL_OPACITY_DARK = 0.3;
-
-/** Converts a 6-digit hex (no `#`) to an `rgba()` string at the given alpha. */
-export function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-/**
  * Rec. 601 luma. Dark fills (e.g. `000000`) need light text in light mode;
- * the five SDK palette colors all sit above this cutoff.
+ * the six SDK palette colors all sit above this cutoff.
  */
 export function isDarkHighlightHex(hex: string): boolean {
   const r = parseInt(hex.slice(0, 2), 16);
@@ -357,20 +341,22 @@ function BibleTextHtml({
   // Toggle selection underline + paint highlight fills on verse wrappers.
   // A verse can map to multiple `.yv-v[v="N"]` wrappers; each is painted so the
   // highlight reads as one solid block across line/paragraph breaks.
-  // Theme-aware fill opacity mirrors the Swift SDK: full strength in light mode,
-  // faded in dark mode. In dark mode a highlighted verse's number label renders
-  // white so it stays legible over the fill; both are cleared on removal.
+  // Fill is color-mix(stored, --yv-background, --yv-highlight-mix-p):
+  // light p = 1.00, dark p = 0.20. Theme flip updates p; the browser re-mixes
+  // against the live surface token. In dark mode a highlighted verse's number
+  // label inherits the body text so it stays legible; both are cleared on removal.
   useLayoutEffect(() => {
     if (!contentRef.current) return;
     const isDark = currentTheme === 'dark';
-    const fillOpacity = isDark ? HIGHLIGHT_FILL_OPACITY_DARK : HIGHLIGHT_FILL_OPACITY_LIGHT;
     contentRef.current.querySelectorAll('.yv-v[v]').forEach((el) => {
       if (!(el instanceof HTMLElement)) return;
       const verseNum = parseInt(el.getAttribute('v') || '0', 10);
       el.classList.toggle('yv-v-selected', selectedVerses.includes(verseNum));
       const color = highlightedVerses[verseNum];
       const isHighlighted = Boolean(color);
-      el.style.backgroundColor = color ? hexToRgba(color, fillOpacity) : '';
+      const fill = color ? highlightFillColorMix(color) : null;
+      if (fill === null) el.style.removeProperty('background-color');
+      else el.style.setProperty('background-color', fill);
       // Light mode paints fills at full strength. A dark non-palette hex
       // (YPE-4494) would sit under the reader's dark body text and go
       // illegible, so flip the wrapper to white; labels and footnote icons
@@ -534,8 +520,11 @@ export const Verse = {
         '--yv-reader-font-family'?: string;
         '--yv-reader-font-size'?: string;
         '--yv-reader-line-height'?: string | number;
+        '--yv-highlight-mix-p'?: number;
       };
-      const readerStyle: ReaderStyleVars = {};
+      const readerStyle: ReaderStyleVars = {
+        '--yv-highlight-mix-p': highlightMixP(currentTheme === 'dark' ? 'dark' : 'light'),
+      };
       if (fontFamily) readerStyle['--yv-reader-font-family'] = fontFamily;
       if (fontSize) readerStyle['--yv-reader-font-size'] = `${fontSize}px`;
       if (lineHeight) readerStyle['--yv-reader-line-height'] = lineHeight;

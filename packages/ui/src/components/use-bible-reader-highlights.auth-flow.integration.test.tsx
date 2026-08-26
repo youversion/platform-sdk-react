@@ -89,7 +89,7 @@ describe('highlight auth flow — one-fell-swoop (signed out)', () => {
     const signIn = vi.spyOn(YouVersionAPIUsers, 'signIn').mockResolvedValue(undefined);
     const createHighlight = vi
       .spyOn(HighlightsClient.prototype, 'createHighlight')
-      .mockResolvedValue({ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' });
+      .mockResolvedValue({ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' });
 
     const { result, unmount } = renderHook(() => useBibleReaderHighlights(options), {
       wrapper: Providers,
@@ -99,12 +99,12 @@ describe('highlight auth flow — one-fell-swoop (signed out)', () => {
     // instead of redirecting immediately. It stashes the pending intent and does
     // NOT launch OAuth until the user confirms.
     act(() => {
-      expect(result.current.apply('FFFE00', [16])).toBe('flow');
+      expect(result.current.apply('FFEC5B', [16])).toBe('flow');
     });
 
     expect(result.current.signInDialogOpen).toBe(true);
     const pending = readPendingHighlights()[0];
-    expect(pending).toMatchObject({ verses: [16], color: 'fffe00', versionId: 111, chapter: '3' });
+    expect(pending).toMatchObject({ verses: [16], color: 'ffec5b', versionId: 111, chapter: '3' });
     expect(signIn).not.toHaveBeenCalled();
     expect(createHighlight).not.toHaveBeenCalled();
 
@@ -130,7 +130,7 @@ describe('highlight auth flow — one-fell-swoop (signed out)', () => {
       expect(createHighlight).toHaveBeenCalledWith({
         version_id: 111,
         passage_id: 'JHN.3.16',
-        color: 'fffe00',
+        color: 'ffec5b',
       });
     });
     // Pending consumed (the write is the proof it applied).
@@ -145,11 +145,11 @@ describe('highlight auth flow — sign-in dialog (signed out)', () => {
     const { result } = renderHook(() => useBibleReaderHighlights(options), { wrapper: Providers });
 
     act(() => {
-      expect(result.current.apply('fffe00', [16])).toBe('flow');
+      expect(result.current.apply('ffec5b', [16])).toBe('flow');
     });
 
     expect(result.current.signInDialogOpen).toBe(true);
-    expect(readPendingHighlights()[0]).toMatchObject({ verses: [16], color: 'fffe00' });
+    expect(readPendingHighlights()[0]).toMatchObject({ verses: [16], color: 'ffec5b' });
     expect(signIn).not.toHaveBeenCalled();
   });
 
@@ -159,7 +159,7 @@ describe('highlight auth flow — sign-in dialog (signed out)', () => {
     const { result } = renderHook(() => useBibleReaderHighlights(options), { wrapper: Providers });
 
     act(() => {
-      result.current.apply('fffe00', [16]);
+      result.current.apply('ffec5b', [16]);
     });
     expect(result.current.signInDialogOpen).toBe(true);
     expect(readPendingHighlights()).not.toHaveLength(0);
@@ -187,11 +187,11 @@ describe('highlight auth flow — just-in-time (signed in, no permission)', () =
     const { result } = renderHook(() => useBibleReaderHighlights(options), { wrapper: Providers });
 
     act(() => {
-      expect(result.current.apply('fffe00', [16])).toBe('flow');
+      expect(result.current.apply('ffec5b', [16])).toBe('flow');
     });
 
     expect(result.current.permissionDialogOpen).toBe(true);
-    expect(readPendingHighlights()[0]).toMatchObject({ verses: [16], color: 'fffe00' });
+    expect(readPendingHighlights()[0]).toMatchObject({ verses: [16], color: 'ffec5b' });
     expect(createHighlight).not.toHaveBeenCalled();
 
     await act(async () => {
@@ -211,7 +211,7 @@ describe('highlight auth flow — just-in-time (signed in, no permission)', () =
     const { result } = renderHook(() => useBibleReaderHighlights(options), { wrapper: Providers });
 
     act(() => {
-      result.current.apply('fffe00', [16]);
+      result.current.apply('ffec5b', [16]);
     });
     expect(readPendingHighlights()).not.toHaveLength(0);
 
@@ -232,7 +232,7 @@ describe('highlight auth flow — just-in-time (signed in, no permission)', () =
     });
 
     act(() => {
-      result.current.apply('fffe00', [16]);
+      result.current.apply('ffec5b', [16]);
     });
     expect(result.current.permissionDialogOpen).toBe(true);
     expect(readPendingHighlights()).toHaveLength(1);
@@ -266,7 +266,7 @@ describe('highlight auth flow — data-exchange return', () => {
     // Pre-stash a pending highlight as the confirm path would have.
     stashPendingHighlight({
       verses: [16],
-      color: 'fffe00',
+      color: 'ffec5b',
       versionId: 111,
       book: 'JHN',
       chapter: '3',
@@ -274,7 +274,7 @@ describe('highlight auth flow — data-exchange return', () => {
     });
     const createHighlight = vi
       .spyOn(HighlightsClient.prototype, 'createHighlight')
-      .mockResolvedValue({ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' });
+      .mockResolvedValue({ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' });
 
     const { rerender } = renderHook(() => useBibleReaderHighlights(options), {
       wrapper: Providers,
@@ -288,7 +288,7 @@ describe('highlight auth flow — data-exchange return', () => {
       expect(createHighlight).toHaveBeenCalledWith({
         version_id: 111,
         passage_id: 'JHN.3.16',
-        color: 'fffe00',
+        color: 'ffec5b',
       });
     });
     expect(YouVersionPlatformConfiguration.hasPermission('highlights')).toBe(true);
@@ -309,7 +309,7 @@ describe('highlight auth flow — data-exchange return', () => {
     YouVersionPlatformConfiguration.saveDataExchangeInitiator();
     stashPendingHighlight({
       verses: [16],
-      color: 'fffe00',
+      color: 'ffec5b',
       versionId: 111,
       book: 'JHN',
       chapter: '3',
@@ -333,14 +333,14 @@ describe('highlight auth flow — data-exchange return', () => {
     expect(createHighlight).toHaveBeenCalledWith({
       version_id: 111,
       passage_id: 'JHN.3.16',
-      color: 'fffe00',
+      color: 'ffec5b',
     });
     // Server truth wins: cache invalidated, and the pending is re-stashed from the
     // op's own scope so a post-grant confirm can resume it.
     expect(YouVersionPlatformConfiguration.hasPermission('highlights')).toBe(false);
     expect(readPendingHighlights()[0]).toMatchObject({
       verses: [16],
-      color: 'fffe00',
+      color: 'ffec5b',
       versionId: 111,
       chapter: '3',
     });
@@ -355,7 +355,7 @@ describe('highlight auth flow — data-exchange return', () => {
     setLocation('https://host.example/read?data_exchange_status=cancel');
     stashPendingHighlight({
       verses: [16],
-      color: 'fffe00',
+      color: 'ffec5b',
       versionId: 111,
       book: 'JHN',
       chapter: '3',
@@ -383,7 +383,7 @@ describe('highlight auth flow — data-exchange return', () => {
     setLocation('https://host.example/read?data_exchange_status=something-unexpected');
     stashPendingHighlight({
       verses: [16],
-      color: 'fffe00',
+      color: 'ffec5b',
       versionId: 111,
       book: 'JHN',
       chapter: '3',
@@ -419,7 +419,7 @@ describe('highlight auth flow — write failure routing', () => {
     const { result } = renderHook(() => useBibleReaderHighlights(options), { wrapper: Providers });
 
     act(() => {
-      expect(result.current.apply('fffe00', [16])).toBe('applied');
+      expect(result.current.apply('ffec5b', [16])).toBe('applied');
     });
 
     await waitFor(() => {
@@ -428,7 +428,7 @@ describe('highlight auth flow — write failure routing', () => {
     // Cache invalidated (server truth wins), overlay reverted, pending KEPT.
     expect(YouVersionPlatformConfiguration.hasPermission('highlights')).toBe(false);
     expect(result.current.highlightedVerses).toEqual({});
-    expect(readPendingHighlights()[0]).toMatchObject({ verses: [16], color: 'fffe00' });
+    expect(readPendingHighlights()[0]).toMatchObject({ verses: [16], color: 'ffec5b' });
   });
 
   it('5xx reverts the overlay, logs, and discards pending without re-prompting', async () => {
@@ -438,7 +438,7 @@ describe('highlight auth flow — write failure routing', () => {
     const { result } = renderHook(() => useBibleReaderHighlights(options), { wrapper: Providers });
 
     act(() => {
-      result.current.apply('fffe00', [16]);
+      result.current.apply('ffec5b', [16]);
     });
 
     await waitFor(() => {
@@ -471,7 +471,7 @@ describe('highlight auth flow — operation queue', () => {
       order.push('create:start');
       await createGate;
       order.push('create:end');
-      return { version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' };
+      return { version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' };
     });
     vi.spyOn(HighlightsClient.prototype, 'deleteHighlight').mockImplementation(async () => {
       order.push('delete:start');
@@ -482,10 +482,10 @@ describe('highlight auth flow — operation queue', () => {
 
     // Apply then immediately remove the same verse.
     act(() => {
-      result.current.apply('fffe00', [16]);
+      result.current.apply('ffec5b', [16]);
     });
     act(() => {
-      result.current.remove('fffe00', [16]);
+      result.current.remove('ffec5b', [16]);
     });
 
     // Optimistic: last-issued (remove) wins the visual state.
