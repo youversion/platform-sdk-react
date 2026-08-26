@@ -1,3 +1,4 @@
+// lightningcss drops `-webkit-appearance` from the A2 rule on minify. Put it back.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';

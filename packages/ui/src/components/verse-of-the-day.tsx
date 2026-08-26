@@ -220,7 +220,7 @@ export function VerseOfTheDay({
         'yv:data-[size=lg]:p-8 yv:data-[size=default]:p-4 yv:*:shrink-0 yv:font-sans yv:flex yv:flex-col yv:w-full yv:grow yv:p-4 yv:rounded-2xl yv:bg-card yv:box-border'
       }
     >
-      <div className="yv:card-content yv:mx-auto yv:flex yv:flex-col yv:gap-3">
+      <div className="yv:card-content yv:flex yv:flex-col yv:gap-3">
         <div className="yv:flex yv:items-center yv:gap-2 yv:text-black yv:dark:text-white">
           {showSunIcon ? (
             <div

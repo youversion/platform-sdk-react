@@ -121,6 +121,12 @@ layer(yv-sdk-fonts);
   .trim-both {
     text-box-trim: trim-both;
   }
+
+  /* Layered so A2 `margin: revert-layer` pops back here, not to preflight 0.
+     `@utility card-content` only sets width / max-width (not in the revert list). */
+  .yv\:card-content {
+    margin-inline: auto;
+  }
 }
 
 /* Verse selection — an underline under the selected verse's text. Sits in the

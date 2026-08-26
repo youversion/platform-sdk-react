@@ -197,7 +197,7 @@ export function BibleCard({
       style={sectionStyle}
     >
       {/* Default/number: fill the shell. Keep shared card-content (600px) only for full-bleed. */}
-      <div className={maxWidth === '100%' ? 'yv:card-content yv:mx-auto' : 'yv:w-full'}>
+      <div className={maxWidth === '100%' ? 'yv:card-content' : 'yv:w-full'}>
         <div className="yv:flex yv:w-full yv:justify-between yv:items-center yv:mb-4">
           {/*
             The error branch stays separate rather than folding into the loading

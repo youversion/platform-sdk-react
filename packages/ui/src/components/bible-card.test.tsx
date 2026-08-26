@@ -221,7 +221,6 @@ describe('BibleCard - maxWidth', () => {
     expect(section).toHaveClass('yv:w-full');
     expect(section).toHaveStyle({ maxWidth: '100%' });
     expect(inner).toHaveClass('yv:card-content');
-    expect(inner).toHaveClass('yv:mx-auto');
     expect(inner).not.toHaveStyle({ maxWidth: 'none' });
     expect(section.style.getPropertyValue('--yv-reader-max-width')).toBe('none');
   });
