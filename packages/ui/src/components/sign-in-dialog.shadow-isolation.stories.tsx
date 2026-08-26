@@ -66,6 +66,19 @@ function styleSnapshot(element: HTMLElement) {
   };
 }
 
+async function expectOutsideFocusRedirectedInto(
+  root: ShadowRoot,
+  outsideControl: HTMLElement,
+  dialog: HTMLElement,
+): Promise<void> {
+  outsideControl.focus();
+  await waitFor(() => {
+    const focused = root.activeElement;
+    void expect(focused !== null && dialog.contains(focused)).toBe(true);
+  });
+  void expect(outsideControl.ownerDocument.activeElement).not.toBe(outsideControl);
+}
+
 export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
   play: async ({ canvasElement }) => {
     const { outsideControl, clippingContainer } = await waitFor(() => {
@@ -171,12 +184,7 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
 
     void expect(getComputedStyle(outsideControl).pointerEvents).toBe('none');
 
-    outsideControl.focus();
-    await waitFor(() => {
-      const focused = root.activeElement;
-      void expect(focused !== null && dialog.contains(focused)).toBe(true);
-    });
-    void expect(canvasElement.ownerDocument.activeElement).not.toBe(outsideControl);
+    await expectOutsideFocusRedirectedInto(root, outsideControl, dialog);
 
     void expect(insideControl.closest('[inert]')).not.toBeNull();
 
@@ -233,12 +241,7 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
       void expect(getComputedStyle(outsideControl).pointerEvents).toBe('none');
       void expect(topLayer.matches(':popover-open')).toBe(true);
     });
-    outsideControl.focus();
-    await waitFor(() => {
-      const focused = root.activeElement;
-      void expect(focused !== null && dialog.contains(focused)).toBe(true);
-    });
-    void expect(canvasElement.ownerDocument.activeElement).not.toBe(outsideControl);
+    await expectOutsideFocusRedirectedInto(root, outsideControl, dialog);
     await waitFor(() => {
       void expect(topLayer.querySelector('[role="dialog"]')).toBeNull();
       void expect(topLayer.querySelector('[data-slot="dialog-overlay"]')).not.toBeNull();
@@ -269,12 +272,7 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
       void expect(getComputedStyle(outsideControl).pointerEvents).toBe('none');
       void expect(topLayer.matches(':popover-open')).toBe(true);
     });
-    outsideControl.focus();
-    await waitFor(() => {
-      const focused = root.activeElement;
-      void expect(focused !== null && reopenedDialog.contains(focused)).toBe(true);
-    });
-    void expect(canvasElement.ownerDocument.activeElement).not.toBe(outsideControl);
+    await expectOutsideFocusRedirectedInto(root, outsideControl, reopenedDialog);
     await waitFor(() => {
       void expect(topLayer.querySelector('[role="dialog"]')).toBeNull();
       void expect(topLayer.querySelector('[data-slot="dialog-overlay"]')).not.toBeNull();

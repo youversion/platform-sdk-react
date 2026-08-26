@@ -8,7 +8,7 @@ import {
 } from '@/lib/shadow-root-host';
 
 interface ShadowDialogFocusOptions {
-  container: HTMLElement | null | undefined;
+  container: HTMLElement | undefined;
   content: HTMLElement | null;
   modal: boolean;
   open: boolean;

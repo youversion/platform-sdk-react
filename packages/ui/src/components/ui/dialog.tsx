@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useComposedRefs } from '@radix-ui/react-compose-refs';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 
 import { cn } from '@/lib/utils';
@@ -6,15 +7,17 @@ import { useShadowDialogFocus } from './use-shadow-dialog-focus';
 import { useShadowPortalState } from './use-shadow-portal-state';
 
 interface DialogPortalState {
-  container: HTMLElement | null | undefined;
+  container: HTMLElement | undefined;
   modal: boolean;
   open: boolean;
+  pending: boolean;
 }
 
 const DialogPortalContext = React.createContext<DialogPortalState>({
   container: undefined,
   modal: true,
   open: false,
+  pending: false,
 });
 
 function Dialog({
@@ -29,8 +32,8 @@ function Dialog({
     onOpenChange: (value) => props.onOpenChange?.(value),
   });
   const portalState = React.useMemo<DialogPortalState>(
-    () => ({ container: portal.container, modal, open: portal.open }),
-    [modal, portal.container, portal.open],
+    () => ({ container: portal.container, modal, open: portal.open, pending: portal.pending }),
+    [modal, portal.container, portal.open, portal.pending],
   );
 
   return (
@@ -71,15 +74,7 @@ function DialogContent({
   const portal = React.useContext(DialogPortalContext);
   const [overlayNode, setOverlayNode] = React.useState<HTMLDivElement | null>(null);
   const [contentNode, setContentNode] = React.useState<HTMLDivElement | null>(null);
-  const contentRef = React.useCallback(
-    (node: HTMLDivElement | null): void => {
-      setContentNode(node);
-      if (!ref) return;
-      if ('current' in ref) ref.current = node;
-      else ref(node);
-    },
-    [ref],
-  );
+  const contentRef = useComposedRefs(ref, setContentNode);
   const shadowFocus = useShadowDialogFocus({
     container: portal.container,
     content: contentNode,
@@ -88,10 +83,10 @@ function DialogContent({
     overlay: overlayNode,
   });
 
-  if (portal.open && portal.container === null) return null;
+  if (portal.pending) return null;
 
   return (
-    <DialogPrimitive.Portal container={portal.container ?? undefined}>
+    <DialogPrimitive.Portal container={portal.container}>
       <DialogPrimitive.Overlay
         ref={setOverlayNode}
         data-slot="dialog-overlay"

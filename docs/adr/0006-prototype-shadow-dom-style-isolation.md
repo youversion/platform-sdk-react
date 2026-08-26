@@ -74,10 +74,10 @@ checks can also emit warnings for valid IDs inside a shadow root because those
 checks query the document rather than the root.
 
 Only `YouVersionAuthButton` is automatically isolated by this prototype.
-`BibleVersionPicker`, `SignInDialog`, and other public exports do not gain
-automatic isolation from the opt-in validation work. Any wider rollout requires
-a separate decision and change.
+`BibleVersionPicker` and other public exports do not gain automatic isolation
+from the opt-in validation work. The internal `SignInDialog` is validated only
+through an opt-in story. Any wider rollout requires a separate decision and
+change.
 
 The detailed evidence, unresolved audits, and rollout gates live in the
 [Shadow DOM isolation validation and rollout plan](../shadow-dom-isolation-plan.md).
-

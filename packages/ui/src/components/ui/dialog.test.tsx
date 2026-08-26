@@ -38,6 +38,29 @@ describe('Dialog shadow portal coordination', () => {
     expect(document.body.querySelector('[role="dialog"]')).toHaveTextContent('Controlled title');
   });
 
+  it('forwards the content ref and runs its React callback cleanup on unmount', async () => {
+    const cleanup = vi.fn();
+    const contentRef = vi.fn((node: HTMLDivElement | null): (() => void) | undefined =>
+      node ? cleanup : undefined,
+    );
+    const view = render(
+      <Dialog defaultOpen>
+        <DialogContent ref={contentRef}>
+          <DialogTitle>Title</DialogTitle>
+        </DialogContent>
+      </Dialog>,
+    );
+
+    await waitFor(() => {
+      expect(contentRef).toHaveBeenCalledWith(expect.any(HTMLDivElement));
+    });
+
+    cleanup.mockClear();
+    view.unmount();
+
+    expect(cleanup).toHaveBeenCalledOnce();
+  });
+
   it('renders initially open content in its component shadow root', async () => {
     const { container } = render(
       <ShadowRootHost portalStrategy="local-inline">

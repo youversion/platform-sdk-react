@@ -8,9 +8,10 @@ interface ShadowPortalStateOptions {
 }
 
 interface ShadowPortalState {
-  container: HTMLElement | null | undefined;
+  container: HTMLElement | undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  pending: boolean;
 }
 
 /** @internal Keeps a Radix primitive's open state synchronized with its shadow portal. */
@@ -24,7 +25,12 @@ export function useShadowPortalState({
     defaultProp: defaultOpen ?? false,
     onChange: onOpenChange,
   });
-  const container = useShadowPortalTarget(actualOpen);
+  const portalTarget = useShadowPortalTarget(actualOpen);
 
-  return { container, open: actualOpen, onOpenChange: setActualOpen };
+  return {
+    container: portalTarget ?? undefined,
+    open: actualOpen,
+    onOpenChange: setActualOpen,
+    pending: actualOpen && portalTarget === null,
+  };
 }

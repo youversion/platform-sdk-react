@@ -15,8 +15,10 @@ This is a working plan, not approval for package-wide rollout.
 - `BibleVersionPicker` validates shadow-local inline and native top-layer
   floating content through opt-in stories.
 - The shared Dialog and Popover primitives support opt-in shadow-local portals.
-- `BibleVersionPicker`, `SignInDialog`, and all other public exports remain
-  unchanged unless explicitly rendered inside `ShadowRootHost`.
+- `BibleVersionPicker` and other public exports do not automatically create
+  Shadow DOM boundaries.
+- The internal `SignInDialog` is validated only through an opt-in
+  `ShadowRootHost` story.
 - Concurrent independent overlays in one shadow root and nested overlays
   launched from an open dialog are unsupported.
 
@@ -87,4 +89,3 @@ This is a working plan, not approval for package-wide rollout.
    accessibility, and the loss of global CSS styling.
 5. Repeat the validation matrix for each component rather than assuming that the
    infrastructure proof covers its component-specific behavior.
-
