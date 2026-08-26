@@ -1,10 +1,9 @@
 import * as React from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
-import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
-import { useShadowPortalTarget } from '@/lib/shadow-root-host';
 import { Button } from './button';
+import { useShadowPortalState } from './use-shadow-portal-state';
 import { XIcon } from '../icons/x';
 
 import { cn } from '@/lib/utils';
@@ -25,23 +24,22 @@ function Popover({
   onOpenChange,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Root>): React.ReactNode {
-  const [actualOpen, setActualOpen] = useControllableState({
-    prop: open,
-    defaultProp: defaultOpen ?? false,
-    onChange: onOpenChange,
+  const portal = useShadowPortalState({
+    open,
+    defaultOpen,
+    onOpenChange,
   });
-  const portalContainer = useShadowPortalTarget(actualOpen);
   const portalState = React.useMemo<PopoverPortalState>(
-    () => ({ container: portalContainer, open: actualOpen }),
-    [actualOpen, portalContainer],
+    () => ({ container: portal.container, open: portal.open }),
+    [portal.container, portal.open],
   );
 
   return (
     <PopoverPortalContext.Provider value={portalState}>
       <PopoverPrimitive.Root
         data-slot="popover"
-        open={actualOpen}
-        onOpenChange={setActualOpen}
+        open={portal.open}
+        onOpenChange={portal.onOpenChange}
         {...props}
       />
     </PopoverPortalContext.Provider>

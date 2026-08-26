@@ -98,6 +98,52 @@ panel's layout rectangle extends beyond the constrained ancestor, but
 hit-testing beyond the ancestor cannot reach it. The equivalent top-layer panel
 is reachable at the same point.
 
+## Dialog top-layer validation
+
+The shared Radix `Dialog` uses the same lazy, shadow-local top-layer container
+when rendered inside an opted-in `ShadowRootHost`. Its overlay and content stay
+in the dialog's shadow tree, so their title and description ID relationships
+remain resolvable while the backdrop escapes ancestor clipping.
+
+Modal behavior requires coordination beyond portal placement. Radix keeps its
+overlay and content mounted independently through exit animations, so the
+ordinary shadow content wrapper becomes inert from actual modal DOM presence,
+not merely from the Dialog's `open` state. The wrapper remains inert until both
+nodes have unmounted, while Radix continues to suppress interaction with the
+outer document.
+
+Radix's document-level focus tracking sees the shadow host instead of the real
+focused descendant. The isolated Dialog therefore uses `focusin` with
+`composedPath()` to redirect programmatic focus escapes. While the modal content
+is mounted inside a shadow root, the shadow-specific focus hook also owns Tab and
+Shift+Tab traversal: it uses `tabbable` to calculate browser-like candidate
+ordering, including radio-group and `tabindex` rules, and wraps traversal within
+the content. Radix continues to own the dialog lifecycle and dismissal behavior.
+A `popover="manual"` top-layer container does not provide the focus containment
+of a native modal dialog. During an overlay-only exit interval, focus is held on
+the overlay instead of escaping to background content. Focus restoration
+captures the real opener from the owning shadow root when present, falls back to
+the document for an external opener, and waits until both modal nodes have
+unmounted before restoring either opener.
+
+The focused Chromium story verifies shadow-root containment, Chromium's resolved
+title and description element relationships, initial focus, forward and reverse
+Tab cycling across ordinary buttons, a radio group, and a negative-tabindex
+control, programmatic-focus redirection, background inertness while open and
+through staggered content and overlay exit animations, full-viewport backdrop
+coverage and hit testing, Escape and backdrop-click dismissal, and restoration
+after the exit animation unmounts.
+
+Concurrent independent overlays in one shadow root remain deliberately
+unsupported. Nested dialogs and overlays launched from an open dialog are also
+unsupported: the prototype defines no stacking, focus-ownership, or dismissal
+contract for them, and consumers must not rely on incidental Radix behavior.
+Production rollout needs an explicit ownership model for nested or competing
+modal and non-modal overlays. Radix's development-only title and description
+checks also query the document and emit warnings for valid relationships inside
+a shadow root; this is known console noise, not evidence that the IDs are
+missing.
+
 ## Compatibility impact
 
 Although the React props API is unchanged, the rendered DOM structure is not.
@@ -111,9 +157,7 @@ detail.
 ## Deliberately deferred
 
 - Rollout to all exported components.
-- Dialog portal placement, modal background inertness, and focus management.
-- Modal-overlay coordination, including ownership and nested-overlay behavior,
-  if Dialog support is added later.
+- Support and coordination for nested or competing modal and non-modal overlays.
 - Form association when controls live outside their form's tree scope.
 - SSR/hydration and the first client paint.
 - A package-wide custom-property audit. `all: initial` does not reset custom
@@ -134,7 +178,9 @@ detail.
 - A full browser and assistive-technology matrix; current browser verification is
   Chromium-focused. Chromium's `ariaControlsElements` confirms DOM relationship
   resolution, but this spike does not verify screen-reader announcement or
-  navigation through Shadow DOM and the native top layer.
+  navigation through Shadow DOM and the native top layer. The Dialog checks verify
+  Chromium's reflected element relationships and focus behavior, not an
+  accessibility-tree snapshot or screen-reader announcement.
 - Consumer test-query migration guidance and a component-by-component rollout.
 - An audit of components that use Radix Popover directly instead of the shared
   `ui/popover.tsx` wrapper (`VerseActionPopover` is a confirmed example) and are
@@ -144,10 +190,10 @@ detail.
 
 - **What's validated in Chromium as an internal opt-in prototype**: the
   `ShadowRootHost` + `portalStrategy` + `useShadowPortalTarget` plumbing,
-  exercised through the shared Popover primitive and the focused story harness.
-  Portal placement changes only for an isolated component that requests a local
-  strategy. One shared correction also affects unisolated consumers: the Popover
-  now respects Radix's available-height measurement.
+  exercised through the shared Popover and Dialog primitives and their focused
+  story harnesses. Portal placement changes only for an isolated component that
+  requests a local strategy. One shared correction also affects unisolated
+  consumers: the Popover now respects Radix's available-height measurement.
 - **Blocking next steps, not "someday" items**: the package-wide custom-
   property audit (now with concrete evidence a real rule was silently broken
   by it) and the direct-Radix-primitive audit (so rollout doesn't create a
@@ -155,12 +201,12 @@ detail.
 - **What must be true before a public export could default to isolation**:
   an SSR/hydration story (the shadow root currently attaches in `useEffect`,
   so server output is an empty host and the first paint is post-hydration —
-  represented above as a breaking change, not an implementation detail), and
-  a decision on whether isolation is opt-in per component instance or a
-  package-wide toggle.
+  represented above as a breaking change, not an implementation detail), an
+  overlay-ownership decision, and a decision on whether isolation is opt-in per
+  component instance or a package-wide toggle.
 - This spike enables no automatic isolation for any public export, including
-  `BibleVersionPicker`. Rollout is a separate, later change with its own ADR
-  and PR.
+  `BibleVersionPicker` or `SignInDialog`. Rollout is a separate, later change
+  with its own ADR and PR.
 
 This prototype should be reviewed as an architectural checkpoint, not as a
 complete solution ready for release.

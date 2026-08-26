@@ -23,6 +23,8 @@ interface ShadowPortalController {
   container: HTMLElement | null;
   prepareOpen: (instanceId: string) => void;
   requestClose: (instanceId: string) => void;
+  setModalPresent: (instanceId: string, present: boolean) => void;
+  restoreFocusWhenModalReleased: (target: HTMLElement) => void;
 }
 
 const ShadowPortalContext = createContext<ShadowPortalController | null>(null);
@@ -46,6 +48,45 @@ export function useShadowPortalTarget(open: boolean): HTMLElement | null | undef
   }, [instanceId, open, prepareOpen, requestClose]);
 
   return controller?.container;
+}
+
+/**
+ * @internal Keeps sibling shadow content inert while mounted modal UI is present
+ * and returns the host-owned focus restoration function.
+ */
+export function useShadowModalPresence(
+  present: boolean,
+): ShadowPortalController['restoreFocusWhenModalReleased'] | undefined {
+  const controller = useContext(ShadowPortalContext);
+  const instanceId = useId();
+  const setModalPresent = controller?.setModalPresent;
+
+  useLayoutEffect(() => {
+    if (!present || !setModalPresent) return;
+
+    setModalPresent(instanceId, true);
+    return () => setModalPresent(instanceId, false);
+  }, [instanceId, present, setModalPresent]);
+
+  return controller?.restoreFocusWhenModalReleased;
+}
+
+/** @internal Returns the node's own ShadowRoot, or null when it isn't attached inside one. */
+export function getOwnShadowRoot(node: Node): ShadowRoot | null {
+  const root = node.getRootNode();
+  const ShadowRootConstructor = node.ownerDocument?.defaultView?.ShadowRoot;
+  return ShadowRootConstructor && root instanceof ShadowRootConstructor ? root : null;
+}
+
+/** @internal Checks an Element subtype against the node's owner realm. */
+export function isElementFromOwnerDocument<Kind extends 'Element' | 'HTMLElement'>(
+  value: EventTarget | null | undefined,
+  node: Node,
+  kind: Kind,
+): value is Kind extends 'HTMLElement' ? HTMLElement : Element {
+  const ownerWindow = node.ownerDocument?.defaultView;
+  const ElementConstructor = ownerWindow?.[kind];
+  return Boolean(ElementConstructor && value instanceof ElementConstructor);
 }
 
 function getStyleSheetConstructor(root: ShadowRoot): typeof CSSStyleSheet | undefined {
@@ -98,6 +139,9 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
   const portalContainerRef = useRef<HTMLElement | null>(null);
   const portalObserverRef = useRef<MutationObserver | null>(null);
   const activePortalIdsRef = useRef(new Set<string>());
+  const contentWrapperRef = useRef<HTMLDivElement | null>(null);
+  const presentModalIdsRef = useRef(new Set<string>());
+  const pendingFocusTargetRef = useRef<HTMLElement | null>(null);
   const [shadowRoot, setShadowRoot] = useState<ShadowRoot | null>(null);
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
   const [needsStyleFallback, setNeedsStyleFallback] = useState(false);
@@ -177,12 +221,51 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
     [hideIfIdle],
   );
 
+  const setModalPresent = useCallback(
+    (instanceId: string, present: boolean): void => {
+      const ids = presentModalIdsRef.current;
+      if (present) ids.add(instanceId);
+      else ids.delete(instanceId);
+
+      const wrapper = contentWrapperRef.current;
+      if (wrapper) wrapper.inert = ids.size > 0;
+      if (ids.size > 0) return;
+
+      const target = pendingFocusTargetRef.current;
+      pendingFocusTargetRef.current = null;
+      if (target?.isConnected) target.focus();
+    },
+    [],
+  );
+
+  const restoreFocusWhenModalReleased = useCallback((target: HTMLElement): void => {
+    if (presentModalIdsRef.current.size > 0) {
+      pendingFocusTargetRef.current = target;
+      return;
+    }
+
+    if (target.isConnected) target.focus();
+  }, []);
+
   const portalController = useMemo<ShadowPortalController | null>(
     () =>
       portalStrategy
-        ? { container: portalContainer, prepareOpen, requestClose }
+        ? {
+            container: portalContainer,
+            prepareOpen,
+            requestClose,
+            setModalPresent,
+            restoreFocusWhenModalReleased,
+          }
         : null,
-    [portalContainer, portalStrategy, prepareOpen, requestClose],
+    [
+      portalContainer,
+      portalStrategy,
+      prepareOpen,
+      requestClose,
+      restoreFocusWhenModalReleased,
+      setModalPresent,
+    ],
   );
 
   useEffect(() => {
@@ -212,6 +295,9 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
       hidePopoverIfOpen(container);
       container?.remove();
       portalContainerRef.current = null;
+      presentModalIdsRef.current.clear();
+      pendingFocusTargetRef.current = null;
+      if (contentWrapperRef.current) contentWrapperRef.current.inert = false;
     };
   }, []);
 
@@ -226,7 +312,11 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
                 </style>
               ) : null}
               {/* Host selectors cannot reach this reset boundary. */}
-              <div style={{ all: 'initial', display: 'contents' }}>
+              <div
+                ref={contentWrapperRef}
+                data-yv-shadow-content-wrapper
+                style={{ all: 'initial', display: 'contents' }}
+              >
                 {children}
               </div>
             </ShadowPortalContext.Provider>,
