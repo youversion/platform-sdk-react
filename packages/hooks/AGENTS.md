@@ -47,9 +47,14 @@ the pnpm `minimumReleaseAge` window):
   `useUserScope()` returns `null` when the account is not identified yet — set
   `enabled: false` for that render, because an unidentified account has no key
   of its own and two of them would share one cache entry.
-- `useOrganizations` is the one exception: it predates this layer and keeps
-  its own `useEffect` cache, so it does not share entries with
-  `useOrganization`. New hooks use `useApiData`.
+- `useOrganizations` is the one hook that reaches TanStack Query directly:
+  `useApiData` wraps a single `useQuery`, and a batch needs one query per id.
+  It calls `useQueries` with one entry per id, keyed
+  `[...useQueryKeyBase(), 'organization', <id>]` — the key `useOrganization`
+  builds — so the two hooks share cache entries and only ids the cache does
+  not hold reach the network. Its `combine` callback has a stable identity, so
+  TanStack Query memoizes it and the returned Map stays referentially stable.
+  No TanStack Query type reaches its public surface. New hooks use `useApiData`.
 - Cache is memory-only; `refetch` performs exact query invalidation. Writes
   stay outside this layer (the highlights machine owns them) and refresh via
   `refetch` after the write.
