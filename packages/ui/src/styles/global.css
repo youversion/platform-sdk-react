@@ -14,7 +14,15 @@
  *
  *   1. Consumer Tailwind layers (theme/base/utilities) = LOW priority
  *   2. SDK layers (yv-sdk-*)                           = MEDIUM priority
- *   3. Consumer unlayered author CSS                   = HIGH priority (always wins)
+ *   3. Consumer unlayered author CSS                   = HIGH priority
+ *
+ * One exception: the unlayered revert-layer rule on `[data-yv-sdk] *` (not the
+ * root). Cascade 5 treats unlayered as the last layer, so `revert-layer` pops
+ * back to `yv-sdk-*` and a host `button {}` cannot flatten SDK controls.
+ * Do not move that rule into `@layer yv-sdk-*` (Spike A leaked). Do not use
+ * `all: revert-layer` — it would wipe unlayered SDK CSS (`tw-animate-css`,
+ * `@utility`). lightningcss drops `-webkit-appearance` from the minify;
+ * `scripts/preserve-host-revert-layer.js` puts it back.
  *
  * Without the standard Tailwind names here, the consumer's Tailwind would
  * declare them AFTER ours, giving consumer layers higher priority and causing
@@ -148,7 +156,6 @@ layer(yv-sdk-fonts);
 @utility card-content {
   width: 100%;
   max-width: 600px;
-  margin-inline: auto;
 }
 
 /* Hide the scrollbar on horizontally scrollable rows (e.g. the verse-action
@@ -160,4 +167,29 @@ layer(yv-sdk-fonts);
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+/*
+ * A2: unlayered on purpose. Host `button {}` / Tailwind preflight sit in the
+ * implicit last layer; this rule sits there too and rolls the listed
+ * shorthands back to `yv-sdk-*`. Descendants only — the `[data-yv-sdk]` root
+ * keeps inherited `--yv` tokens.
+ */
+[data-yv-sdk] *,
+[data-yv-sdk] *::before,
+[data-yv-sdk] *::after {
+  box-sizing: revert-layer;
+  padding: revert-layer;
+  margin: revert-layer;
+  border: revert-layer;
+  background: revert-layer;
+  font: revert-layer;
+  color: revert-layer;
+  line-height: revert-layer;
+  letter-spacing: revert-layer;
+  appearance: revert-layer;
+  -webkit-appearance: revert-layer;
+  text-decoration: revert-layer;
+  list-style: revert-layer;
+  text-transform: revert-layer;
 }

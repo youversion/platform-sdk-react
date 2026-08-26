@@ -111,6 +111,7 @@ describe('VerseOfTheDay i18n integration', () => {
     expect(card).not.toHaveClass('yv:max-w-md');
     expect(card).toHaveClass('yv:box-border');
     expect(contentGroup).toHaveClass('yv:card-content');
+    expect(contentGroup).toHaveClass('yv:mx-auto');
   });
 
   it('renders the reference under the label in the header, not below the verse text', () => {
