@@ -330,6 +330,35 @@ describe('useApiData — offline', () => {
     expect(result.current.error).toBeNull();
     expect(result.current.loading).toBe(false);
   });
+
+  it('does not refetch a settled read when the browser comes back online', async () => {
+    // Only an errored read needs the reconnect: a settled read has its data,
+    // and mount, key change, and `refetch` keep it fresh. A reader holds
+    // several settled queries at once, so a reconnect refetch of all of them
+    // would be net-new traffic that buys nothing.
+    const fetchFn = vi.fn().mockResolvedValue('JHN.3 data');
+
+    const { result } = renderHook(() => useApiData(['chapter', 'JHN.3'], fetchFn), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.data).toBe('JHN.3 data');
+    });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+
+    // The connection drops and returns around the settled read.
+    act(() => {
+      onlineManager.setOnline(false);
+    });
+    act(() => {
+      globalThis.window.dispatchEvent(new Event('online'));
+    });
+    await flush();
+
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(result.current.data).toBe('JHN.3 data');
+  });
 });
 
 describe('useApiData — existing behavior', () => {

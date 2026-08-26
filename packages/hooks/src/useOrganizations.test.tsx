@@ -6,6 +6,7 @@ import { useOrganizations } from './useOrganizations';
 import { useOrganization } from './useOrganization';
 import { type Organization } from '@youversion/platform-core';
 import { YouVersionContext } from './context';
+import { queryClientDefaultOptions } from './internal/queryClientDefaults';
 import type { HookOverrides } from './hook-overrides';
 import { createOrganizationsClientStub } from './test/utils';
 
@@ -40,7 +41,7 @@ function setup({ getOrganization, hookOverrides, strict }: SetupOptions = {}) {
   const organizationsClient = createOrganizationsClientStub({
     getOrganization: mockGetOrganization,
   });
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const queryClient = new QueryClient({ defaultOptions: queryClientDefaultOptions });
 
   function wrapperWithAppKey(appKey: string) {
     return ({ children }: { children: ReactNode }) => {

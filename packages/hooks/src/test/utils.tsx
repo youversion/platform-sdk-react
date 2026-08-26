@@ -2,17 +2,19 @@ import { useState, type ReactNode, type ComponentType } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { BibleClient, LanguagesClient, OrganizationsClient } from '@youversion/platform-core';
 import { YouVersionContext } from '../context';
+import { queryClientDefaultOptions } from '../internal/queryClientDefaults';
 
 /**
  * QueryClient for tests that bypass `YouVersionProvider` (raw
- * `YouVersionContext.Provider` with injected client stubs). Mirrors the
- * provider's config (`retry: false`). Mount it INSIDE the test wrapper
- * component so each mounted wrapper gets a fresh cache — a shared client
- * would leak cached data between tests that reuse one wrapper.
+ * `YouVersionContext.Provider` with injected client stubs). Built from
+ * `queryClientDefaultOptions`, the same defaults the provider's private
+ * client uses. Mount it INSIDE the test wrapper component so each mounted
+ * wrapper gets a fresh cache — a shared client would leak cached data
+ * between tests that reuse one wrapper.
  */
 export function TestQueryClientProvider({ children }: { children: ReactNode }): React.ReactElement {
   const [queryClient] = useState(
-    () => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+    () => new QueryClient({ defaultOptions: queryClientDefaultOptions }),
   );
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }

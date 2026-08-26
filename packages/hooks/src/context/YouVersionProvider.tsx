@@ -5,6 +5,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { YouVersionContext } from './YouVersionContext';
 import { serializeAdditionalHeaders } from '../internal/additionalHeadersKey';
+import { queryClientDefaultOptions } from '../internal/queryClientDefaults';
 import {
   YouVersionPlatformConfiguration,
   type YouVersionUserInfoJSON,
@@ -154,44 +155,7 @@ function YouVersionProviderInner(
   // If a module holds the client, SSR requests share one cache.
   // Concurrent renderers also share that cache.
   const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            // Hooks show the error on the first failure.
-            // TanStack Query retries three times by default.
-            // Those retries delay the error.
-            // The reason is in `docs/adr/0006`.
-            retry: false,
-            // Hooks always attempt the request and report a transport
-            // failure through `error`.
-            // TanStack Query pauses a fetch by default when the browser
-            // reports that it is offline.
-            // A paused first load stays `loading: true` and never settles.
-            // A paused fetch after a key change shows the previous key's
-            // data as if it belonged to the new key.
-            networkMode: 'always',
-            // Returning to the tab costs no request.
-            // TanStack Query revalidates every mounted query on focus by
-            // default, and a reader holds several at once.
-            // Most reads are Bible content, which does not change while the
-            // reader is open.
-            // Mounting, a key change, and `refetch` all still revalidate, so
-            // data stays fresh at the points that matter.
-            refetchOnWindowFocus: false,
-            // A read that failed fetches again when the network returns.
-            // TanStack Query infers this option from `networkMode`, and
-            // `always` makes that inference `false`.
-            // The two are independent: `networkMode` decides whether a fetch
-            // is attempted while the browser reports itself offline, and this
-            // option decides whether coming back online triggers one.
-            // With `retry: false` and `refetchOnWindowFocus: false`, an
-            // errored read has no other way back — only a remount or a page
-            // reload would fetch again.
-            refetchOnReconnect: true,
-          },
-        },
-      }),
+    () => new QueryClient({ defaultOptions: queryClientDefaultOptions }),
   );
 
   // Stable identity so memoized consumers (hooks that build ApiClient) don't

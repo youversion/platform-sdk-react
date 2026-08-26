@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { YouVersionPlatformConfiguration, type BibleClient } from '@youversion/platform-core';
 import { YouVersionContext } from '../context';
+import { queryClientDefaultOptions } from './queryClientDefaults';
 import { createBibleClientStub } from '../test/utils';
 import { useVerseOfTheDay } from '../useVOTD';
 
@@ -35,7 +36,7 @@ describe('useQueryKeyBase — additionalHeaders', () => {
   it('keeps two header sets in separate cache entries under one QueryClient', async () => {
     const getVOTD = vi.fn().mockResolvedValue({ day: 1, passage_id: 'JHN.3.16' });
     const bibleClient = createBibleClientStub({ getVOTD });
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const queryClient = new QueryClient({ defaultOptions: queryClientDefaultOptions });
 
     render(
       <QueryClientProvider client={queryClient}>
@@ -55,7 +56,7 @@ describe('useQueryKeyBase — additionalHeaders', () => {
   it('gives identical headers one cache entry regardless of key order', async () => {
     const getVOTD = vi.fn().mockResolvedValue({ day: 1, passage_id: 'JHN.3.16' });
     const bibleClient = createBibleClientStub({ getVOTD });
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const queryClient = new QueryClient({ defaultOptions: queryClientDefaultOptions });
 
     render(
       <QueryClientProvider client={queryClient}>
@@ -81,7 +82,7 @@ describe('useQueryKeyBase — version filters', () => {
   it('gives a tightened filter its own cache entry', async () => {
     const getVOTD = vi.fn().mockResolvedValue({ day: 1, passage_id: 'JHN.3.16' });
     const bibleClient = createBibleClientStub({ getVOTD });
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const queryClient = new QueryClient({ defaultOptions: queryClientDefaultOptions });
 
     const { rerender } = render(
       <QueryClientProvider client={queryClient}>
@@ -110,7 +111,7 @@ describe('useQueryKeyBase — version filters', () => {
   it('gives one filter one cache entry regardless of list order', async () => {
     const getVOTD = vi.fn().mockResolvedValue({ day: 1, passage_id: 'JHN.3.16' });
     const bibleClient = createBibleClientStub({ getVOTD });
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const queryClient = new QueryClient({ defaultOptions: queryClientDefaultOptions });
 
     YouVersionPlatformConfiguration.permittedVersionIds = [111, 206];
     const { rerender } = render(

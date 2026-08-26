@@ -10,10 +10,25 @@ import { render, type RenderOptions, type RenderResult } from '@testing-library/
  * disabled) data hooks need a client in context. Fresh client per MOUNTED
  * wrapper (`useState`, not module scope) so tests sharing one wrapper
  * component don't share a cache.
+ *
+ * The defaults mirror `queryClientDefaultOptions` in
+ * `packages/hooks/src/internal/queryClientDefaults.ts` — the hooks package
+ * exports only its root, so this copy cannot import that module. A change
+ * there must also change this copy.
  */
 export function TestQueryClientProvider({ children }: { children: ReactNode }): ReactElement {
   const [queryClient] = useState(
-    () => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: false,
+            networkMode: 'always',
+            refetchOnWindowFocus: false,
+            refetchOnReconnect: (query) => query.state.status === 'error',
+          },
+        },
+      }),
   );
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }
