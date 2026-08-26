@@ -1,11 +1,15 @@
+import type { ReactElement, ReactNode } from 'react';
+import { vi } from 'vitest';
 import { YouVersionUserInfo, type Collection, type Highlight } from '@youversion/platform-core';
 import {
   YouVersionAuthContext,
   YouVersionContext,
   type HookOverrides,
 } from '@youversion/platform-react-hooks';
-import type { ReactElement, ReactNode } from 'react';
-import { vi } from 'vitest';
+import {
+  highlightFillColorMix,
+  type HighlightFillSurface,
+} from '@/lib/highlight-colors';
 
 /** Wraps a highlight list in the paginated collection envelope the clients return. */
 export function collection(data: Highlight[]): Collection<Highlight> {
@@ -47,15 +51,9 @@ export function getVerseEl(container: HTMLElement, verse: number): HTMLElement {
   return el;
 }
 
-/**
- * Color the renderer paints for a highlight fill in light mode (full opacity;
- * jsdom serializes a fully opaque color to `rgb(...)`).
- */
-export function fillFor(hex: string): string {
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  return `rgb(${r}, ${g}, ${b})`;
+/** Color the renderer or drawer-dot paints for a stored highlight hex. */
+export function fillFor(hex: string, surface: HighlightFillSurface = 'background'): string {
+  return highlightFillColorMix(hex, surface) ?? '';
 }
 
 /** Minimal signed-in user the auth context needs; only `id`/`name` are read. */

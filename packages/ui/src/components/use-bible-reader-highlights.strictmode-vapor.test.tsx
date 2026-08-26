@@ -64,7 +64,7 @@ function Harness({
   // as BibleReader.handleClearHighlight → closeAndClearSelection does.
   useEffect(() => {
     removeRef.current = () => {
-      api.remove('fffe00', selected);
+      api.remove('ffec5b', selected);
       setSelected([]);
     };
   });
@@ -79,7 +79,7 @@ describe('vapor flash — StrictMode + server-truth remove + selection-clear + h
     // POST-remove refetch is the one we hold. Phase-gate the mock so every
     // mount fetch resolves server truth (verse 2) and the settle refetch stays
     // unresolved to widen the settle→response window the live repaint lives in.
-    const withRow = () => collection([{ version_id: 111, passage_id: 'JHN.1.2', color: 'fffe00' }]);
+    const withRow = () => collection([{ version_id: 111, passage_id: 'JHN.1.2', color: 'ffec5b' }]);
     // The post-remove refetch is held unresolved to widen the settle→response
     // window the live repaint lives in; it never settles.
     const heldRefetch = new Promise<Collection<Highlight>>(vi.fn());
@@ -106,7 +106,7 @@ describe('vapor flash — StrictMode + server-truth remove + selection-clear + h
     // Wait for server truth to render verse 2 highlighted.
     await waitFor(
       () => {
-        expect(frames.at(-1)).toEqual({ 2: 'fffe00' });
+        expect(frames.at(-1)).toEqual({ 2: 'ffec5b' });
       },
       { timeout: 5000 },
     );
@@ -135,7 +135,7 @@ describe('vapor flash — StrictMode + server-truth remove + selection-clear + h
     });
 
     const window = frames.slice(startFrame);
-    const resurrected = window.filter((f) => f[2] === 'fffe00');
+    const resurrected = window.filter((f) => f[2] === 'ffec5b');
     expect(
       resurrected,
       `verse 2 resurrected in ${resurrected.length}/${window.length} frame(s): ` +

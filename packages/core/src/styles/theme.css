@@ -117,6 +117,8 @@
   --yv-font-sans: 'Inter', sans-serif;
   --yv-font-serif: 'Untitled Serif', 'Source Serif 4', serif;
   --yv-reader-font-family: var(--yv-font-serif), var(--yv-font-sans);
+  --yv-wj: #94000c;
+  --yv-highlight-mix-p: 1;
 
   &[data-yv-theme='dark'] {
     /* Brand colors - Dark theme */
@@ -152,6 +154,8 @@
     --yv-sidebar-accent-foreground: var(--yv-white);
     --yv-sidebar-border: var(--yv-gray-35);
     --yv-sidebar-ring: var(--yv-blue-30-dm);
+    --yv-wj: #e4bfc2;
+    --yv-highlight-mix-p: 0.2;
   }
 }
 
