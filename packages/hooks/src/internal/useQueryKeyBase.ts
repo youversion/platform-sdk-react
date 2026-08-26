@@ -3,6 +3,7 @@
 import { useContext, useMemo } from 'react';
 import { YouVersionContext } from '../context';
 import { serializeAdditionalHeaders } from './additionalHeadersKey';
+import { serializeVersionFilters } from './versionFilterKey';
 
 /**
  * Returns the first segments of the cache key for every data hook.
@@ -18,6 +19,13 @@ import { serializeAdditionalHeaders } from './additionalHeadersKey';
  * `additionalHeadersKey`. Those headers reach the request. Reading the
  * precomputed field would leave them out of the key, and two header sets would
  * then share one cache entry.
+ *
+ * The last segment is the active Bible version filter. That filter lives on
+ * `YouVersionPlatformConfiguration`, not on the context, and it decides which
+ * versions a read may return. Keeping it in the key means a provider that
+ * tightens the filter no longer serves content cached under the looser one: the
+ * tighter filter reads a different key, and the entry it would have reused stays
+ * out of view.
  */
 export function useQueryKeyBase(): readonly unknown[] {
   const context = useContext(YouVersionContext);
@@ -27,5 +35,11 @@ export function useQueryKeyBase(): readonly unknown[] {
     [additionalHeaders],
   );
 
-  return [context?.appKey, context?.apiHost, context?.installationId, additionalHeadersKey];
+  return [
+    context?.appKey,
+    context?.apiHost,
+    context?.installationId,
+    additionalHeadersKey,
+    serializeVersionFilters(),
+  ];
 }
