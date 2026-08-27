@@ -384,7 +384,11 @@ export class YouVersionAPIUsers {
 
       const responseText = await response.text();
 
-      const tokens = TokenExchangeResponseSchema.parse(JSON.parse(responseText));
+      const parsed = TokenExchangeResponseSchema.safeParse(JSON.parse(responseText));
+      if (!parsed.success) {
+        throw new Error(`Token exchange response was invalid: ${parsed.error.message}`);
+      }
+      const tokens = parsed.data;
 
       // Match Swift: union grants from (1) this URL, (2) stashed pre-code hop,
       // (3) token scope — then drop OIDC scopes before seeding the data-exchange

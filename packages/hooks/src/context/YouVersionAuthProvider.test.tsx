@@ -158,6 +158,7 @@ describe('YouVersionAuthProvider', () => {
       mockWindow.location.search = '?state=test-state&code=auth-code';
       const callbackError = new Error('Callback processing failed');
       vi.spyOn(YouVersionAPIUsers, 'handleAuthCallback').mockRejectedValue(callbackError);
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
       const { getByTestId } = render(
         <YouVersionAuthProvider config={mockConfig}>
@@ -170,6 +171,7 @@ describe('YouVersionAuthProvider', () => {
         expect(getByTestId('is-loading')).toHaveTextContent('false');
         expect(getByTestId('user-info')).toHaveTextContent('null');
       });
+      expect(errorSpy).toHaveBeenCalledWith('Auth callback failed:', callbackError);
     });
 
     it('tolerates the StrictMode double-invocation without a spurious error', async () => {

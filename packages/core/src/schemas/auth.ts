@@ -25,7 +25,8 @@ export type IdTokenClaims = z.infer<typeof IdTokenClaimsSchema>;
 
 export const TokenExchangeResponseSchema = z.object({
   access_token: z.string(),
-  expires_in: z.number(),
+  // Live `/auth/token` (and the platform docs) send this as a string.
+  expires_in: z.coerce.number(),
   id_token: z.string(),
   refresh_token: z.string(),
   scope: z.string(),
@@ -35,7 +36,7 @@ export type TokenExchangeResponse = z.infer<typeof TokenExchangeResponseSchema>;
 
 export const TokenRefreshResponseSchema = z.object({
   access_token: z.string(),
-  expires_in: z.number(),
+  expires_in: z.coerce.number(),
   refresh_token: z.string(),
   scope: z.string(),
   token_type: z.string(),
