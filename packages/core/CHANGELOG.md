@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 2.12.0
+
+### Patch Changes
+
+- 1f258fa: Sign-in no longer fails when the token endpoint returns `expires_in` as a string. Callback failures are logged in development so a failed exchange is visible in the console.
+
 ## 2.11.0
 
 ### Minor Changes
