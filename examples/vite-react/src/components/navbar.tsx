@@ -84,21 +84,11 @@ export function Navbar({ currentPage, onNavigate }: NavbarProps) {
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              {auth.error ? (
-                <span
-                  className="max-w-xs truncate text-sm text-destructive"
-                  title={auth.error.message}
-                >
-                  {auth.error.message}
-                </span>
-              ) : null}
-              <YouVersionAuthButton
-                size="short"
-                onAuthError={(err) => console.error('Auth error:', err)}
-                scopes={['profile', 'email']}
-              />
-            </div>
+            <YouVersionAuthButton
+              size="short"
+              onAuthError={(err) => console.error('Auth error:', err)}
+              scopes={['profile', 'email']}
+            />
           )}
 
           <ModeToggle />
