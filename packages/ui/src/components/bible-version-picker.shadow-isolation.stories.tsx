@@ -3,7 +3,7 @@ import { YouVersionProvider as HooksYouVersionProvider } from '@youversion/platf
 import { http, HttpResponse } from 'msw';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { expect, userEvent, waitFor } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { requireShadowRoot } from '../test/dom-stubs';
 import { globalHandlers } from '../test/mocks/handlers';
@@ -159,6 +159,25 @@ function styleSnapshot(element: HTMLElement) {
     fontFamily: styles.fontFamily,
     fontSize: styles.fontSize,
     padding: styles.padding,
+  };
+}
+
+function geometrySnapshot(element: HTMLElement) {
+  return {
+    blockSize: element.offsetHeight,
+    inlineSize: element.offsetWidth,
+  };
+}
+
+function typographySnapshot(element: HTMLElement, ownerWindow: Window) {
+  const style = ownerWindow.getComputedStyle(element);
+  return {
+    color: style.color,
+    fontFamily: style.fontFamily,
+    fontSize: style.fontSize,
+    letterSpacing: style.letterSpacing,
+    lineHeight: style.lineHeight,
+    wordSpacing: style.wordSpacing,
   };
 }
 
@@ -365,6 +384,123 @@ export const StylingFocusDismissalAndRapidReopen: Story = {
       void expect(topLayer.matches(':popover-open')).toBe(false);
       void expect(root.activeElement).toBe(trigger);
     });
+  },
+};
+
+export const DirectionOnlyInheritanceRejectsHostVisualValues: Story = {
+  render: () => (
+    <div
+      data-testid="hostile-inheritance-container"
+      dir="rtl"
+      style={{ display: 'flex', alignItems: 'center', gap: 24 }}
+    >
+      <span data-testid="hostile-inheritance-control">Host control</span>
+      <IsolatedBibleVersionPicker />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const ownerDocument = canvasElement.ownerDocument;
+    const ownerWindow = ownerDocument.defaultView;
+    if (!ownerWindow) throw new Error('story owner window not available');
+
+    const hostControl = canvasElement.querySelector<HTMLElement>(
+      '[data-testid="hostile-inheritance-control"]',
+    );
+    if (!hostControl) throw new Error('hostile inheritance control not rendered');
+
+    const { root, trigger, panel } = await openPicker(canvasElement);
+    const wrapper = root.querySelector<HTMLElement>('[data-yv-shadow-content-wrapper]');
+    const heading = panel.querySelector<HTMLElement>('h2');
+    const inputGroup = panel.querySelector<HTMLElement>('[data-slot="input-group"]');
+    if (!wrapper || !heading || !inputGroup) throw new Error('picker landmarks not rendered');
+
+    const triggerGeometry = geometrySnapshot(trigger);
+    const panelGeometry = geometrySnapshot(panel);
+    const inputGeometry = geometrySnapshot(inputGroup);
+    const headingTypography = typographySnapshot(heading, ownerWindow);
+    void expect(headingTypography.fontFamily).toContain('Inter');
+    void expect(ownerWindow.getComputedStyle(trigger).direction).toBe('rtl');
+    void expect(ownerWindow.getComputedStyle(wrapper).direction).toBe('rtl');
+
+    await userEvent.click(within(panel).getByRole('button', { name: /select language/i }));
+    const languageTabs = await waitForElement<HTMLElement>(
+      panel,
+      '[data-slot="tabs-list"]',
+      'language tabs did not render',
+    );
+    const languageTabsContainer = languageTabs.parentElement;
+    const languageContent = languageTabs.closest<HTMLElement>('[data-yv-sdk]');
+    const languageInputGroup = languageContent?.querySelector<HTMLElement>(
+      '[data-slot="input-group"]',
+    );
+    if (!languageTabsContainer || !languageInputGroup) {
+      throw new Error('language panel geometry landmarks not rendered');
+    }
+    const languageTabsInlineSize = languageTabs.offsetWidth;
+    const languageInputRadius = ownerWindow.getComputedStyle(languageInputGroup).borderRadius;
+    void expect(languageTabsInlineSize).toBe(languageTabsContainer.clientWidth - 32);
+    void expect(languageInputRadius).toBe('30px');
+
+    const hostileStyle = ownerDocument.createElement('style');
+    hostileStyle.textContent = `
+      [data-testid='hostile-inheritance-container'] {
+        --spacing: 6rem;
+        --yv-spacing: 6rem;
+        --radius: 0;
+        --yv-radius: 0;
+        writing-mode: vertical-rl;
+        text-orientation: upright;
+        color: rgb(185, 28, 28);
+        font-family: fantasy;
+        font-size: 32px;
+        letter-spacing: 0.5em;
+        line-height: 3;
+        word-spacing: 1em;
+      }
+
+      [data-testid='hostile-inheritance-control'] {
+        border-radius: var(--radius);
+      }
+    `;
+
+    try {
+      ownerDocument.head.append(hostileStyle);
+      await waitFor(() => {
+        const controlStyle = ownerWindow.getComputedStyle(hostControl);
+        void expect(controlStyle.writingMode).toBe('vertical-rl');
+        void expect(controlStyle.textOrientation).toBe('upright');
+        void expect(controlStyle.color).toBe('rgb(185, 28, 28)');
+        void expect(controlStyle.fontFamily).toContain('fantasy');
+        void expect(controlStyle.fontSize).toBe('32px');
+        void expect(controlStyle.letterSpacing).toBe('16px');
+        void expect(controlStyle.lineHeight).toBe('96px');
+        void expect(controlStyle.wordSpacing).toBe('32px');
+        void expect(controlStyle.borderRadius).toBe('0px');
+      });
+
+      const wrapperStyle = ownerWindow.getComputedStyle(wrapper);
+      const headingStyle = ownerWindow.getComputedStyle(heading);
+      const panelStyle = ownerWindow.getComputedStyle(panel);
+      void expect(wrapperStyle.direction).toBe('rtl');
+      void expect(wrapperStyle.writingMode).toBe('horizontal-tb');
+      void expect(wrapperStyle.textOrientation).toBe('mixed');
+      void expect(headingStyle.direction).toBe('rtl');
+      void expect(headingStyle.writingMode).toBe('horizontal-tb');
+      void expect(headingStyle.textOrientation).toBe('mixed');
+      void expect(typographySnapshot(heading, ownerWindow)).toEqual(headingTypography);
+      void expect(panelStyle.getPropertyValue('--yv-spacing').trim()).toBe('.25rem');
+      void expect(panelStyle.getPropertyValue('--spacing').trim()).toBe('.25rem');
+      void expect(panelStyle.getPropertyValue('--yv-radius').trim()).toBe('2rem');
+      void expect(languageTabs.offsetWidth).toBe(languageTabsInlineSize);
+      void expect(ownerWindow.getComputedStyle(languageInputGroup).borderRadius).toBe(
+        languageInputRadius,
+      );
+      void expect(geometrySnapshot(trigger)).toEqual(triggerGeometry);
+      void expect(geometrySnapshot(panel)).toEqual(panelGeometry);
+      void expect(geometrySnapshot(inputGroup)).toEqual(inputGeometry);
+    } finally {
+      hostileStyle.remove();
+    }
   },
 };
 
