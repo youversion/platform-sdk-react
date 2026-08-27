@@ -49,11 +49,15 @@ export function useHighlights(
   // If `GetHighlightsOptions` gets a new field that changes the result, that field must go in the `queryKey` too.
   //
   // A `null` `userScope` means the account is not known: auth is still loading,
-  // or the signed-in user has no id. Highlights belong to one account, so this
-  // hook does not fetch until the scope is known. Two unidentified accounts
-  // would otherwise write to the same cache entry.
+  // the signed-in user has no id, or an access token is set while no user is
+  // identified (the token's account is a mystery). Highlights belong to one
+  // account, so this hook does not fetch until the scope is known. Two
+  // unidentified accounts would otherwise write to the same cache entry.
+  // `null` goes into the key as-is: the query is disabled for that render, so
+  // the key is never fetched, and a sentinel string would only suggest the
+  // entry is real.
   const { data, loading, error, refetch } = useApiData<Collection<Highlight>>(
-    [...keyBase, 'highlights', userScope ?? 'unresolved', options.version_id, options.passage_id],
+    [...keyBase, 'highlights', userScope, options.version_id, options.passage_id],
     () => highlightsClient.getHighlights(options),
     {
       enabled: userScope !== null && !override && apiOptions?.enabled !== false,
