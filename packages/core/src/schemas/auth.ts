@@ -26,7 +26,7 @@ export type IdTokenClaims = z.infer<typeof IdTokenClaimsSchema>;
 /** Seconds until expiry. Live `/auth/token` sends a digit string; mocks may send a number. */
 const TokenExpiresInSchema = z
   .union([z.number(), z.string().regex(/^\d+$/).transform(Number)])
-  .pipe(z.number().finite().positive());
+  .pipe(z.number().int().positive());
 
 export const TokenExchangeResponseSchema = z.object({
   access_token: z.string(),

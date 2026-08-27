@@ -171,7 +171,7 @@ describe('YouVersionAuthProvider', () => {
         expect(getByTestId('is-loading')).toHaveTextContent('false');
         expect(getByTestId('user-info')).toHaveTextContent('null');
       });
-      expect(errorSpy).toHaveBeenCalledWith('Auth callback failed:', callbackError);
+      expect(errorSpy).not.toHaveBeenCalledWith('Auth callback failed:', callbackError);
     });
 
     it('tolerates the StrictMode double-invocation without a spurious error', async () => {

@@ -47,4 +47,7 @@ it('accepts expires_in as a number or digit string and rejects other JSON values
   expect(TokenExchangeResponseSchema.safeParse({ ...exchangeFields, expires_in: -1 }).success).toBe(
     false,
   );
+  expect(
+    TokenExchangeResponseSchema.safeParse({ ...exchangeFields, expires_in: 1.5 }).success,
+  ).toBe(false);
 });

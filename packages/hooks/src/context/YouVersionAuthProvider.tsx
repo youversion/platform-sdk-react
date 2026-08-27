@@ -63,7 +63,9 @@ export default function YouVersionAuthProvider({
           } catch (err) {
             if (!mounted) return;
             const error = err instanceof Error ? err : new Error('Auth callback failed');
-            console.error('Auth callback failed:', error);
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Auth callback failed:', error);
+            }
             setError(error);
           }
         } else {
