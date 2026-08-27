@@ -7,17 +7,17 @@ import { useShadowDialogFocus } from './use-shadow-dialog-focus';
 import { useShadowPortalState } from './use-shadow-portal-state';
 
 interface DialogPortalState {
+  awaitingPortalTarget: boolean;
   container: HTMLElement | undefined;
   modal: boolean;
   open: boolean;
-  pending: boolean;
 }
 
 const DialogPortalContext = React.createContext<DialogPortalState>({
+  awaitingPortalTarget: false,
   container: undefined,
   modal: true,
   open: false,
-  pending: false,
 });
 
 function Dialog({
@@ -32,8 +32,13 @@ function Dialog({
     onOpenChange: (value) => props.onOpenChange?.(value),
   });
   const portalState = React.useMemo<DialogPortalState>(
-    () => ({ container: portal.container, modal, open: portal.open, pending: portal.pending }),
-    [modal, portal.container, portal.open, portal.pending],
+    () => ({
+      awaitingPortalTarget: portal.awaitingPortalTarget,
+      container: portal.container,
+      modal,
+      open: portal.open,
+    }),
+    [modal, portal.awaitingPortalTarget, portal.container, portal.open],
   );
 
   return (
@@ -83,14 +88,14 @@ function DialogContent({
     overlay: overlayNode,
   });
 
-  if (portal.pending) return null;
+  if (portal.awaitingPortalTarget) return null;
 
   return (
     <DialogPrimitive.Portal container={portal.container}>
       <DialogPrimitive.Overlay
         ref={setOverlayNode}
         data-slot="dialog-overlay"
-        tabIndex={-1}
+        tabIndex={portal.container ? -1 : undefined}
         className={cn(
           'yv:fixed yv:inset-0 yv:z-50 yv:bg-black/50',
           'yv:data-[state=open]:animate-in yv:data-[state=closed]:animate-out',

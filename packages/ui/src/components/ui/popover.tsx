@@ -9,13 +9,13 @@ import { XIcon } from '../icons/x';
 import { cn } from '@/lib/utils';
 
 interface PopoverPortalState {
+  awaitingPortalTarget: boolean;
   container: HTMLElement | undefined;
-  pending: boolean;
 }
 
 const PopoverPortalContext = React.createContext<PopoverPortalState>({
+  awaitingPortalTarget: false,
   container: undefined,
-  pending: false,
 });
 
 function Popover({
@@ -30,8 +30,11 @@ function Popover({
     onOpenChange,
   });
   const portalState = React.useMemo<PopoverPortalState>(
-    () => ({ container: portal.container, pending: portal.pending }),
-    [portal.container, portal.pending],
+    () => ({
+      awaitingPortalTarget: portal.awaitingPortalTarget,
+      container: portal.container,
+    }),
+    [portal.awaitingPortalTarget, portal.container],
   );
 
   return (
@@ -73,7 +76,7 @@ function PopoverContent({
   const { t } = useTranslation(undefined, { i18n });
   const portal = React.useContext(PopoverPortalContext);
 
-  if (portal.pending) return null;
+  if (portal.awaitingPortalTarget) return null;
 
   return (
     <PopoverPrimitive.Portal container={portal.container}>
