@@ -1,14 +1,14 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, vi, it } from 'vitest';
 import { StrictMode, type ReactNode } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
 import { useOrganizations } from './useOrganizations';
 import { useOrganization } from './useOrganization';
 import { type Organization } from '@youversion/platform-core';
 import { YouVersionContext } from './context';
 import { queryClientDefaultOptions } from './internal/queryClientDefaults';
 import type { HookOverrides } from './hook-overrides';
-import { createOrganizationsClientStub } from './test/utils';
+import { createOrganizationsClientStub, TestQueryClientProvider } from './test/utils';
 
 const ORG_A = '798d8fa4-f640-4155-8cfb-fa91d1d8a06c';
 const ORG_B = '05a9aa40-37b6-4e34-b9f1-a443fa4b1fff';
@@ -47,7 +47,7 @@ function setup({ getOrganization, hookOverrides, strict }: SetupOptions = {}) {
     return ({ children }: { children: ReactNode }) => {
       const tree = (
         <YouVersionContext.Provider value={{ appKey, organizationsClient, hookOverrides }}>
-          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+          <TestQueryClientProvider client={queryClient}>{children}</TestQueryClientProvider>
         </YouVersionContext.Provider>
       );
       return strict ? <StrictMode>{tree}</StrictMode> : tree;

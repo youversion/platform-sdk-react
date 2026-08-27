@@ -3,11 +3,11 @@
  */
 import { render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
 import { YouVersionPlatformConfiguration, type BibleClient } from '@youversion/platform-core';
 import { YouVersionContext } from '../context';
 import { queryClientDefaultOptions } from './queryClientDefaults';
-import { createBibleClientStub } from '../test/utils';
+import { createBibleClientStub, TestQueryClientProvider } from '../test/utils';
 import { useVerseOfTheDay } from '../useVOTD';
 
 function Probe(): React.ReactElement {
@@ -39,10 +39,10 @@ describe('useQueryKeyBase — additionalHeaders', () => {
     const queryClient = new QueryClient({ defaultOptions: queryClientDefaultOptions });
 
     render(
-      <QueryClientProvider client={queryClient}>
+      <TestQueryClientProvider client={queryClient}>
         {rawHost({ 'X-YVP-Sdk': 'expo' }, bibleClient)}
         {rawHost({ 'X-YVP-Sdk': 'web' }, bibleClient)}
-      </QueryClientProvider>,
+      </TestQueryClientProvider>,
     );
 
     // Each header set fetches for itself. One shared entry would send the first
@@ -59,10 +59,10 @@ describe('useQueryKeyBase — additionalHeaders', () => {
     const queryClient = new QueryClient({ defaultOptions: queryClientDefaultOptions });
 
     render(
-      <QueryClientProvider client={queryClient}>
+      <TestQueryClientProvider client={queryClient}>
         {rawHost({ a: '1', b: '2' }, bibleClient)}
         {rawHost({ b: '2', a: '1' }, bibleClient)}
-      </QueryClientProvider>,
+      </TestQueryClientProvider>,
     );
 
     await waitFor(() => {
@@ -85,9 +85,9 @@ describe('useQueryKeyBase — version filters', () => {
     const queryClient = new QueryClient({ defaultOptions: queryClientDefaultOptions });
 
     const { rerender } = render(
-      <QueryClientProvider client={queryClient}>
+      <TestQueryClientProvider client={queryClient}>
         {rawHost({ a: '1' }, bibleClient)}
-      </QueryClientProvider>,
+      </TestQueryClientProvider>,
     );
     await waitFor(() => {
       expect(getVOTD).toHaveBeenCalledTimes(1);
@@ -97,9 +97,9 @@ describe('useQueryKeyBase — version filters', () => {
     // entry cached under the looser filter.
     YouVersionPlatformConfiguration.permittedVersionIds = [111];
     rerender(
-      <QueryClientProvider client={queryClient}>
+      <TestQueryClientProvider client={queryClient}>
         {rawHost({ a: '1' }, bibleClient)}
-      </QueryClientProvider>,
+      </TestQueryClientProvider>,
     );
 
     await waitFor(() => {
@@ -115,9 +115,9 @@ describe('useQueryKeyBase — version filters', () => {
 
     YouVersionPlatformConfiguration.permittedVersionIds = [111, 206];
     const { rerender } = render(
-      <QueryClientProvider client={queryClient}>
+      <TestQueryClientProvider client={queryClient}>
         {rawHost({ a: '1' }, bibleClient)}
-      </QueryClientProvider>,
+      </TestQueryClientProvider>,
     );
     await waitFor(() => {
       expect(getVOTD).toHaveBeenCalledTimes(1);
@@ -125,9 +125,9 @@ describe('useQueryKeyBase — version filters', () => {
 
     YouVersionPlatformConfiguration.permittedVersionIds = [206, 111];
     rerender(
-      <QueryClientProvider client={queryClient}>
+      <TestQueryClientProvider client={queryClient}>
         {rawHost({ a: '1' }, bibleClient)}
-      </QueryClientProvider>,
+      </TestQueryClientProvider>,
     );
 
     expect(queryClient.getQueryCache().getAll()).toHaveLength(1);

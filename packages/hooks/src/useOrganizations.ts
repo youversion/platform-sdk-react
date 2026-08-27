@@ -4,6 +4,7 @@ import { useCallback, useMemo } from 'react';
 import { useQueries, type UseQueryResult } from '@tanstack/react-query';
 import { type Organization } from '@youversion/platform-core';
 import { useOrganizationsClient } from './useOrganizationsClient';
+import { useInternalQueryClient } from './internal/QueryClientContext';
 import { useQueryKeyBase } from './internal/useQueryKeyBase';
 import { useHookOverride } from './useHookOverride';
 
@@ -40,6 +41,7 @@ export function useOrganizations(
   const override = useHookOverride('useOrganizations');
   const client = useOrganizationsClient();
   const keyBase = useQueryKeyBase();
+  const queryClient = useInternalQueryClient();
 
   // Sorting makes the identity independent of the caller's ordering, so a
   // reordered list of the same ids reuses the same array instance. That keeps
@@ -62,14 +64,19 @@ export function useOrganizations(
     [uniqueIds],
   );
 
-  const result = useQueries({
-    queries: uniqueIds.map((id) => ({
-      queryKey: [...keyBase, 'organization', id],
-      queryFn: () => client.getOrganization(id),
-      enabled: !override,
-    })),
-    combine,
-  });
+  // The client goes to `useQueries` as an explicit argument, so this hook
+  // never reads TanStack's own context — see `QueryClientContext` for why.
+  const result = useQueries(
+    {
+      queries: uniqueIds.map((id) => ({
+        queryKey: [...keyBase, 'organization', id],
+        queryFn: () => client.getOrganization(id),
+        enabled: !override,
+      })),
+      combine,
+    },
+    queryClient,
+  );
 
   if (override) return override(organizationIds);
   return result;

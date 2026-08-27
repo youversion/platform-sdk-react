@@ -1,23 +1,9 @@
-import { useState, type ReactNode, type ComponentType } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { type ReactNode, type ComponentType } from 'react';
 import type { BibleClient, LanguagesClient, OrganizationsClient } from '@youversion/platform-core';
 import { YouVersionContext } from '../context';
-import { queryClientDefaultOptions } from '../internal/queryClientDefaults';
+import { TestQueryClientProvider } from '../test-utils';
 
-/**
- * QueryClient for tests that bypass `YouVersionProvider` (raw
- * `YouVersionContext.Provider` with injected client stubs). Built from
- * `queryClientDefaultOptions`, the same defaults the provider's private
- * client uses. Mount it INSIDE the test wrapper component so each mounted
- * wrapper gets a fresh cache — a shared client would leak cached data
- * between tests that reuse one wrapper.
- */
-export function TestQueryClientProvider({ children }: { children: ReactNode }): React.ReactElement {
-  const [queryClient] = useState(
-    () => new QueryClient({ defaultOptions: queryClientDefaultOptions }),
-  );
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
-}
+export { TestQueryClientProvider };
 
 export type YVWrapperOptions = {
   theme?: 'light' | 'dark';

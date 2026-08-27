@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useInternalQueryClient } from './internal/QueryClientContext';
 
 export type UseApiDataOptions = {
   enabled?: boolean;
@@ -49,21 +50,26 @@ export function useApiData<TData>(
   options: UseApiDataOptions = {},
 ): UseApiDataResult<TData> {
   const { enabled = true, keepPreviousData: holdPreviousData = true } = options;
-  const queryClient = useQueryClient();
+  const queryClient = useInternalQueryClient();
 
-  const query = useQuery({
-    queryKey,
-    queryFn: async () => {
-      try {
-        return await fetchFn();
-      } catch (err) {
-        // Consumers are promised `Error | null`; normalize non-Error throws.
-        throw err instanceof Error ? err : new Error('Request failed');
-      }
+  // The client goes to `useQuery` as an explicit argument, so this hook never
+  // reads TanStack's own context — see `QueryClientContext` for why.
+  const query = useQuery(
+    {
+      queryKey,
+      queryFn: async () => {
+        try {
+          return await fetchFn();
+        } catch (err) {
+          // Consumers are promised `Error | null`; normalize non-Error throws.
+          throw err instanceof Error ? err : new Error('Request failed');
+        }
+      },
+      enabled,
+      placeholderData: holdPreviousData ? keepPreviousData : undefined,
     },
-    enabled,
-    placeholderData: holdPreviousData ? keepPreviousData : undefined,
-  });
+    queryClient,
+  );
 
   const queryKeyRef = useRef(queryKey);
   queryKeyRef.current = queryKey;

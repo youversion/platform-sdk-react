@@ -2,9 +2,10 @@
 
 import type { PropsWithChildren, ReactNode } from 'react';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
 import { YouVersionContext } from './YouVersionContext';
 import { serializeAdditionalHeaders } from '../internal/additionalHeadersKey';
+import { InternalQueryClientProvider } from '../internal/QueryClientContext';
 import { queryClientDefaultOptions } from '../internal/queryClientDefaults';
 import {
   YouVersionPlatformConfiguration,
@@ -150,6 +151,11 @@ function YouVersionProviderInner(
   // `useApiData` uses this client.
   // Callers cannot read query keys or the cache.
   //
+  // The client travels on `QueryClientContext`, not on TanStack's
+  // `QueryClientProvider`. That provider would shadow the host app's own
+  // client for host components rendered inside this tree whenever the host's
+  // `@tanstack/react-query` dedupes to the copy this package pins.
+  //
   // The initializer in `useState` runs once per instance.
   // `useMemo` does not give that guarantee.
   // If a module holds the client, SSR requests share one cache.
@@ -192,7 +198,7 @@ function YouVersionProviderInner(
   if (includeAuth) {
     return (
       <YouVersionContext.Provider value={contextValue}>
-        <QueryClientProvider client={queryClient}>
+        <InternalQueryClientProvider client={queryClient}>
           <Suspense>
             <AuthProvider
               config={{ appKey, apiHost, redirectUri: props.authRedirectUrl }}
@@ -201,14 +207,14 @@ function YouVersionProviderInner(
               {children}
             </AuthProvider>
           </Suspense>
-        </QueryClientProvider>
+        </InternalQueryClientProvider>
       </YouVersionContext.Provider>
     );
   }
 
   return (
     <YouVersionContext.Provider value={contextValue}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <InternalQueryClientProvider client={queryClient}>{children}</InternalQueryClientProvider>
     </YouVersionContext.Provider>
   );
 }
