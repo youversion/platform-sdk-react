@@ -6,6 +6,7 @@ import { serializeAdditionalHeaders } from './additionalHeadersKey';
 import { serializeVersionFilters } from './versionFilterKey';
 
 /**
+ * @internal
  * Returns the first segments of the cache key for every data hook.
  *
  * Two providers with different config must not share cached data, so the key

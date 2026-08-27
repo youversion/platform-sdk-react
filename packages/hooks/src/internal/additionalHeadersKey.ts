@@ -1,4 +1,5 @@
 /**
+ * @internal
  * Converts `additionalHeaders` to stable text.
  *
  * Two header sets with the same entries produce the same text, because the

@@ -5,6 +5,7 @@ import { ApiClient } from '@youversion/platform-core';
 import { YouVersionContext } from '../context';
 
 /**
+ * @internal
  * Reads {@link YouVersionContext} and returns a memoized {@link ApiClient} built
  * from its config. Shared by the per-service client hooks so the client
  * construction (and its dependency array) lives in one place.

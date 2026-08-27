@@ -5,6 +5,7 @@ import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionAuthContext } from '../context/YouVersionAuthContext';
 
 /**
+ * @internal
  * Returns the `queryKey` segment for hooks that load user data, such as
  * `useHighlights`.
  *

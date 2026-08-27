@@ -1,6 +1,7 @@
 import type { DefaultOptions } from '@tanstack/react-query';
 
 /**
+ * @internal
  * Query defaults for every `QueryClient` in this repository.
  *
  * `YouVersionProvider` builds its private client from this object. Test

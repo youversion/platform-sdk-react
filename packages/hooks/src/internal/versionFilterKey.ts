@@ -1,6 +1,7 @@
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 
 /**
+ * @internal
  * Converts the active Bible version filter to stable text.
  *
  * The filter lives on `YouVersionPlatformConfiguration`, which `YouVersionProvider`
