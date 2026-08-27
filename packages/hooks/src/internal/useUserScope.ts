@@ -10,8 +10,8 @@ import { YouVersionAuthContext } from '../context/YouVersionAuthContext';
  *
  * The return value is one of three values:
  * - the user id, when a signed-in user has a non-empty id;
- * - `'anon'`, when the host has no auth context, or when no user is signed in
- *   and no access token is set;
+ * - `'anon'`, when no access token is set and either the host has no auth
+ *   context or no user is signed in;
  * - `null`, when no safe cache key exists.
  *
  * The `queryKey` includes this value, so each account has its own cache
@@ -21,7 +21,8 @@ import { YouVersionAuthContext } from '../context/YouVersionAuthContext';
  * share one cache entry. No safe key exists in three states:
  * - the auth context has not resolved;
  * - the signed-in profile has a missing or empty id (the schema permits both);
- * - an access token is set while the auth context reports no user.
+ * - an access token is set while no user identity is known (with or without
+ *   an auth context mounted).
  *
  * The third state guards the `'anon'` scope. This hook reads identity from
  * the auth context. The request layer reads its token from
@@ -39,8 +40,15 @@ import { YouVersionAuthContext } from '../context/YouVersionAuthContext';
  */
 export function useUserScope(): string | null {
   const auth = useContext(YouVersionAuthContext);
-  // No auth context: the host owns identity, and one scope covers it.
-  if (!auth) return 'anon';
+  // No auth context: the SDK has no identity signal at all. A token set on the
+  // static config still authenticates requests, though, and successive tokens
+  // can belong to different accounts — so a set token means no safe key, the
+  // same rule as the token-without-user state below. Hosts that set tokens
+  // directly must render the auth provider (`includeAuth`) or supply
+  // `userInfo`; token-only identity is unsupported.
+  if (!auth) {
+    return YouVersionPlatformConfiguration.accessToken ? null : 'anon';
+  }
   // The auth context has not resolved yet.
   if (auth.isLoading) return null;
   // No signed-in user. If a token is set, the request layer and this context
