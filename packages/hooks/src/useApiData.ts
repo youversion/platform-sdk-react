@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData as keepPreviousDataPlaceholder, useQuery } from '@tanstack/react-query';
 import { useInternalQueryClient } from './internal/QueryClientContext';
 
 export type UseApiDataOptions = {
@@ -49,7 +49,7 @@ export function useApiData<TData>(
   fetchFn: () => Promise<TData>,
   options: UseApiDataOptions = {},
 ): UseApiDataResult<TData> {
-  const { enabled = true, keepPreviousData: holdPreviousData = true } = options;
+  const { enabled = true, keepPreviousData = true } = options;
   const queryClient = useInternalQueryClient();
 
   // The client goes to `useQuery` as an explicit argument, so this hook never
@@ -66,7 +66,7 @@ export function useApiData<TData>(
         }
       },
       enabled,
-      placeholderData: holdPreviousData ? keepPreviousData : undefined,
+      placeholderData: keepPreviousData ? keepPreviousDataPlaceholder : undefined,
     },
     queryClient,
   );
