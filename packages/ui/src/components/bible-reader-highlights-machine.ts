@@ -627,11 +627,17 @@ export const bibleReaderHighlightsMachine = setup({
      * fires, and failures route by status (401/403 → invalidate + maybe re-prompt;
      * network/5xx → revert overlay only).
      */
-    settleWrite: enqueueActions(({ enqueue, event }) => {
+    settleWrite: enqueueActions(({ enqueue, context, event }) => {
       // Wired only to the processWrite `onDone`, which delivers WriteResult via output.
       const settled = writeResultFromActionEvent(event);
       if (!settled) return;
       const { op, failures, failedVerses, succeededVerses } = settled;
+
+      // Ownership must come from the context BEFORE the assign below runs —
+      // the assign releases this op's claims, so a later read would always
+      // report disowned. A sign-out, account change, or scope change clears
+      // `writeIntent`, so a write that settles after one owns nothing.
+      const ownsAnyVerse = op.verses.some((verse) => context.writeIntent.get(verse) === op.token);
 
       enqueue.assign(({ context: current }) => {
         const overlay = { ...current.overlay };
@@ -677,7 +683,10 @@ export const bibleReaderHighlightsMachine = setup({
         // don't re-prompt (fixing the old deferred wart): with no pending
         // highlight, a re-prompt's post-grant resume was a no-op — invalidate the
         // cache only, and the next apply re-enters the flow.
-        if (op.kind === 'apply') {
+        // A disowned op belongs to a previous account, scope, or session — its
+        // 401/403 must not stash the old account's highlight or open the
+        // permission dialog over whoever is signed in now.
+        if (op.kind === 'apply' && ownsAnyVerse) {
           // Keep this highlight pending and re-prompt the just-in-time dialog.
           // Append (not replace): a sibling batch that already lost permission may
           // hold a different color/verses, and both intents must survive the grant.

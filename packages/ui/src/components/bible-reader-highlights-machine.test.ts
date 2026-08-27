@@ -300,6 +300,36 @@ describe('bibleReaderHighlightsMachine — account change', () => {
     actor.stop();
   });
 
+  it('does not stash or open the permission dialog when a disowned write 401s after an account swap', async () => {
+    const pending = deferred();
+    const createHighlight = vi
+      .fn()
+      .mockReturnValue(pending.promise.then(() => Promise.reject(httpError(401))));
+    const { ref, refetch } = makeServices({ createHighlight });
+    const actor = startMachine(ref);
+    vi.spyOn(console, 'error').mockImplementation(vi.fn());
+
+    actor.send({ type: 'TAP_COLOR', color: 'FFEC5B', verses: [16] });
+    await vi.waitFor(() => expect(createHighlight).toHaveBeenCalled());
+
+    // User B signs in while user A's write is still in flight.
+    actor.send({
+      type: 'AUTH_CHANGED',
+      flagOn: true,
+      hasAuthProvider: true,
+      isAuthenticated: true,
+      userId: 'user-b',
+    });
+
+    // User A's write settles with a 401 under user B's session. The disowned
+    // op must not stash user A's highlight or prompt user B for permission.
+    pending.resolve();
+    await vi.waitFor(() => expect(refetch).toHaveBeenCalled());
+    expect(peekPendingHighlights()).toEqual([]);
+    expect(actor.getSnapshot().matches({ enabled: { flow: 'permissionDialog' } })).toBe(false);
+    actor.stop();
+  });
+
   it('keeps the overlay when AUTH_CHANGED repeats the same account', async () => {
     const { ref, refetch } = makeServices();
     const actor = startMachine(ref);
