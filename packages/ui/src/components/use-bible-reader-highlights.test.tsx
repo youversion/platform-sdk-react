@@ -4,7 +4,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { Collection, Highlight } from '@youversion/platform-core';
 import { YouVersionAuthContext, type UseHighlightsResult } from '@youversion/platform-react-hooks';
-import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
+import { YouVersionPlatformConfiguration, YouVersionUserInfo } from '@youversion/platform-core';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
@@ -121,6 +121,171 @@ describe('useBibleReaderHighlights — flag off (dark launch)', () => {
 });
 
 describe('useBibleReaderHighlights — auth guarding', () => {
+  it('treats a signed-in profile with no user id as signed out', () => {
+    const mocked = mockUseHighlights();
+
+    // `userId` is optional on the profile, and a host that supplies `userInfo`
+    // itself can leave it unset. `useHighlights` keys its cache by account and
+    // will not fetch for an unidentified one, so writes must be gated the same
+    // way. Otherwise the POST succeeds and no read ever returns it.
+    function UnidentifiedWrapper({ children }: { children: ReactNode }) {
+      return (
+        <HighlightsWrapper>
+          <YouVersionAuthContext.Provider
+            value={{
+              userInfo: new YouVersionUserInfo({ name: 'Ada' }),
+              setUserInfo: vi.fn(),
+              isLoading: false,
+              error: null,
+            }}
+          >
+            {children}
+          </YouVersionAuthContext.Provider>
+        </HighlightsWrapper>
+      );
+    }
+
+    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: UnidentifiedWrapper,
+    });
+
+    expect(useHighlightsOverride).toHaveBeenCalledWith(
+      { version_id: 111, passage_id: 'JHN.3' },
+      { enabled: false },
+    );
+
+    act(() => {
+      result.current.apply('fffe00', [16]);
+    });
+    expect(mocked.createHighlight).not.toHaveBeenCalled();
+    expect(result.current.highlightedVerses).toEqual({});
+  });
+
+  it('treats a signed-in profile as signed out while auth is still loading', () => {
+    const mocked = mockUseHighlights();
+
+    // While `isLoading` is true, `useUserScope` withholds the account scope and
+    // the fetch stays off. A host can leave a previous session's `userId` on
+    // the profile through that window; the write gate must not trust it, or a
+    // POST goes through that the withheld GET cannot show.
+    function LoadingWrapper({ children }: { children: ReactNode }) {
+      return (
+        <HighlightsWrapper>
+          <YouVersionAuthContext.Provider
+            value={{
+              userInfo: mockUserInfo,
+              setUserInfo: vi.fn(),
+              isLoading: true,
+              error: null,
+            }}
+          >
+            {children}
+          </YouVersionAuthContext.Provider>
+        </HighlightsWrapper>
+      );
+    }
+
+    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: LoadingWrapper,
+    });
+
+    expect(useHighlightsOverride).toHaveBeenCalledWith(
+      { version_id: 111, passage_id: 'JHN.3' },
+      { enabled: false },
+    );
+
+    act(() => {
+      result.current.apply('fffe00', [16]);
+    });
+    expect(mocked.createHighlight).not.toHaveBeenCalled();
+    expect(result.current.highlightedVerses).toEqual({});
+  });
+
+  it('clears optimistic paint when the host swaps accounts without a sign-out', async () => {
+    const mocked = mockUseHighlights();
+
+    // A host can swap `userInfo` from user A to user B with no signed-out
+    // state in between. The optimistic entries of user A must not render for
+    // user B.
+    let user = mockUserInfo;
+    function SwapWrapper({ children }: { children: ReactNode }) {
+      return (
+        <HighlightsWrapper>
+          <YouVersionAuthContext.Provider
+            value={{ userInfo: user, setUserInfo: vi.fn(), isLoading: false, error: null }}
+          >
+            {children}
+          </YouVersionAuthContext.Provider>
+        </HighlightsWrapper>
+      );
+    }
+
+    const { result, rerender } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: SwapWrapper,
+    });
+
+    act(() => {
+      result.current.apply('ffec5b', [16]);
+    });
+    await waitFor(() => {
+      expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
+    });
+    expect(mocked.createHighlight).toHaveBeenCalled();
+
+    user = new YouVersionUserInfo({ id: 'user-2', name: 'Other User' });
+    act(() => {
+      rerender();
+    });
+    expect(result.current.highlightedVerses).toEqual({});
+  });
+
+  it('skips the overlay on the swap render itself, before effects run', async () => {
+    mockUseHighlights();
+
+    let user = mockUserInfo;
+    function SwapWrapper({ children }: { children: ReactNode }) {
+      return (
+        <HighlightsWrapper>
+          <YouVersionAuthContext.Provider
+            value={{ userInfo: user, setUserInfo: vi.fn(), isLoading: false, error: null }}
+          >
+            {children}
+          </YouVersionAuthContext.Provider>
+        </HighlightsWrapper>
+      );
+    }
+
+    // The AUTH_CHANGED effect runs after paint. Every render is recorded here,
+    // so the assertion also sees the swap render that the effect has not
+    // reached yet.
+    const renders: Record<number, string>[] = [];
+    const { result, rerender } = renderHook(
+      () => {
+        const value = useBibleReaderHighlights(defaultOptions);
+        renders.push(value.highlightedVerses);
+        return value;
+      },
+      { wrapper: SwapWrapper },
+    );
+
+    act(() => {
+      result.current.apply('ffec5b', [16]);
+    });
+    await waitFor(() => {
+      expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
+    });
+
+    const swapIndex = renders.length;
+    user = new YouVersionUserInfo({ id: 'user-2', name: 'Other User' });
+    act(() => {
+      rerender();
+    });
+    expect(renders.length).toBeGreaterThan(swapIndex);
+    for (const rendered of renders.slice(swapIndex)) {
+      expect(rendered).toEqual({});
+    }
+  });
+
   it('renders without crashing when no auth provider is mounted, treated as signed out', () => {
     const mocked = mockUseHighlights();
 

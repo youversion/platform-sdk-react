@@ -2,7 +2,11 @@
 
 import type { PropsWithChildren, ReactNode } from 'react';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { QueryClient } from '@tanstack/react-query';
 import { YouVersionContext } from './YouVersionContext';
+import { serializeAdditionalHeaders } from '../internal/additionalHeadersKey';
+import { InternalQueryClientProvider } from '../internal/QueryClientContext';
+import { queryClientDefaultOptions } from '../internal/queryClientDefaults';
 import {
   YouVersionPlatformConfiguration,
   type YouVersionUserInfoJSON,
@@ -143,13 +147,28 @@ function YouVersionProviderInner(
 
   const resolvedTheme = useResolvedTheme(theme);
 
+  // This QueryClient is private.
+  // `useApiData` uses this client.
+  // Callers cannot read query keys or the cache.
+  //
+  // The client travels on `QueryClientContext`, not on TanStack's
+  // `QueryClientProvider`. That provider would shadow the host app's own
+  // client for host components rendered inside this tree whenever the host's
+  // `@tanstack/react-query` dedupes to the copy this package pins.
+  //
+  // The initializer in `useState` runs once per instance.
+  // `useMemo` does not give that guarantee.
+  // If a module holds the client, SSR requests share one cache.
+  // Concurrent renderers also share that cache.
+  const [queryClient] = useState(
+    () => new QueryClient({ defaultOptions: queryClientDefaultOptions }),
+  );
+
   // Stable identity so memoized consumers (hooks that build ApiClient) don't
   // rebuild when the parent re-renders with an inline object literal. Sort
   // entries before serialising so key-insertion-order differences don't
   // invalidate the memo for headers that are semantically identical.
-  const additionalHeadersKey = additionalHeaders
-    ? JSON.stringify(Object.entries(additionalHeaders).sort(([a], [b]) => a.localeCompare(b)))
-    : null;
+  const additionalHeadersKey = serializeAdditionalHeaders(additionalHeaders);
   const stableAdditionalHeaders = useMemo(
     () => additionalHeaders,
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -179,17 +198,23 @@ function YouVersionProviderInner(
   if (includeAuth) {
     return (
       <YouVersionContext.Provider value={contextValue}>
-        <Suspense>
-          <AuthProvider
-            config={{ appKey, apiHost, redirectUri: props.authRedirectUrl }}
-            userInfo={props.userInfo}
-          >
-            {children}
-          </AuthProvider>
-        </Suspense>
+        <InternalQueryClientProvider client={queryClient}>
+          <Suspense>
+            <AuthProvider
+              config={{ appKey, apiHost, redirectUri: props.authRedirectUrl }}
+              userInfo={props.userInfo}
+            >
+              {children}
+            </AuthProvider>
+          </Suspense>
+        </InternalQueryClientProvider>
       </YouVersionContext.Provider>
     );
   }
 
-  return <YouVersionContext.Provider value={contextValue}>{children}</YouVersionContext.Provider>;
+  return (
+    <YouVersionContext.Provider value={contextValue}>
+      <InternalQueryClientProvider client={queryClient}>{children}</InternalQueryClientProvider>
+    </YouVersionContext.Provider>
+  );
 }

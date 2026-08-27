@@ -1,95 +1,122 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useRef } from 'react';
+import { keepPreviousData as keepPreviousDataPlaceholder, useQuery } from '@tanstack/react-query';
+import { useInternalQueryClient } from './internal/QueryClientContext';
 
 export type UseApiDataOptions = {
   enabled?: boolean;
+  /**
+   * Controls what `data` holds while a `queryKey` change is being fetched.
+   * `true` (the default) keeps the previous key's data on screen, with
+   * `loading: true`, until the new data lands — so navigating chapters shows
+   * the current chapter under a loading treatment instead of a blank state.
+   *
+   * Account-scoped hooks must pass `false`: their `queryKey` carries the user
+   * scope, and holding data across a user switch would show one account's
+   * data to another.
+   */
+  keepPreviousData?: boolean;
 };
 
-type UseApiDataResult<T> = {
-  data: T | null;
+type UseApiDataResult<TData> = {
+  data: TData | null;
   loading: boolean;
   error: Error | null;
   refetch: () => void;
 };
 
-export function useApiData<T>(
-  fetchFn: () => Promise<T>,
-  deps: React.DependencyList,
+/**
+ * Every data hook uses this function to load data.
+ * This function uses TanStack Query.
+ * `YouVersionProvider` holds the TanStack Query client.
+ * The return value is always `{ data, loading, error, refetch }`.
+ * This function does not return TanStack Query types.
+ *
+ * Each part of `queryKey` must be a string, a number, or another plain value.
+ * The `queryKey` has this shape: `[...useQueryKeyBase(), '<hookName>', ...params]`.
+ * Hooks that load user data also add `useUserScope()` to the `queryKey`.
+ *
+ * When the `queryKey` changes, TanStack Query keeps only the latest request.
+ * While that request is in flight, `data` still holds the previous key's data
+ * (see `UseApiDataOptions.keepPreviousData`).
+ * If two components use the same `queryKey`, they share one request.
+ * If the user returns to the same `queryKey`, the cache shows the data first.
+ * Then TanStack Query fetches a new copy.
+ */
+export function useApiData<TData>(
+  queryKey: readonly unknown[],
+  fetchFn: () => Promise<TData>,
   options: UseApiDataOptions = {},
-): UseApiDataResult<T> {
-  const { enabled = true } = options;
+): UseApiDataResult<TData> {
+  const { enabled = true, keepPreviousData = true } = options;
+  const queryClient = useInternalQueryClient();
 
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  // Monotonic sequence per issued request: only the latest-issued request may
-  // commit state. This covers refetch-initiated requests too, which a
-  // per-effect cancel closure would miss — a stale refetch (e.g. for a
-  // previous chapter) resolving after a newer fetch must not overwrite it.
-  const requestSeqRef = useRef(0);
-
-  // Hold the (typically inline) `fetchFn` in a ref, refreshed every render, so
-  // it can stay out of `fetchData`'s deps below. Otherwise a new closure each
-  // render would churn `fetchData` — and therefore `refetch` — identity every
-  // render. `fetchData` reads the ref only when a fetch actually starts, and
-  // the ref is updated during render before any effect runs, so a dep-change
-  // fetch still uses the latest `fetchFn`.
-  const fetchFnRef = useRef(fetchFn);
-  fetchFnRef.current = fetchFn;
-
-  const fetchData = useCallback(() => {
-    const requestSeq = ++requestSeqRef.current;
-
-    if (!enabled) {
-      // Disabling drops previously fetched data instead of keeping it: the
-      // usual reason to disable is that the data must no longer be shown
-      // (signed out, auth switched to a different user), and leaking stale
-      // account data across sessions is worse than a refetch on re-enable.
-      setData(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    fetchFnRef
-      .current()
-      .then((result) => {
-        if (requestSeq === requestSeqRef.current) {
-          setData(result);
+  // The client goes to `useQuery` as an explicit argument, so this hook never
+  // reads TanStack's own context — see `QueryClientContext` for why.
+  const query = useQuery(
+    {
+      queryKey,
+      queryFn: async () => {
+        try {
+          return await fetchFn();
+        } catch (err) {
+          // Consumers are promised `Error | null`; normalize non-Error throws.
+          throw err instanceof Error ? err : new Error('Request failed');
         }
-      })
-      .catch((err) => {
-        if (requestSeq === requestSeqRef.current) {
-          setError(err instanceof Error ? err : new Error('Request failed'));
-        }
-      })
-      .finally(() => {
-        if (requestSeq === requestSeqRef.current) {
-          setLoading(false);
-        }
-      });
-  }, [enabled]);
+      },
+      enabled,
+      placeholderData: keepPreviousData ? keepPreviousDataPlaceholder : undefined,
+    },
+    queryClient,
+  );
 
+  const queryKeyRef = useRef(queryKey);
+  queryKeyRef.current = queryKey;
+
+  // This function uses `invalidateQueries`, not `query.refetch()`.
+  // A refresh after a write is also an invalidation.
+  // When a component remounts, invalidation still updates the cache.
+  // `query.refetch()` calls an observer that is no longer active.
   const refetch = useCallback(() => {
-    fetchData();
-  }, [fetchData]);
+    void queryClient.invalidateQueries({ queryKey: queryKeyRef.current, exact: true });
+  }, [queryClient]);
 
-  // `enabled` rides alongside the caller-supplied deps so a false→true flip
-  // (e.g. auth resolving after mount, with the caller's deps unchanged)
-  // actually triggers the fetch.
-  useEffect(() => {
-    fetchData();
-    return () => {
-      // Invalidate any in-flight request (effect- or refetch-initiated) when
-      // the deps change or the component unmounts.
-      requestSeqRef.current++;
-    };
-  }, [...deps, enabled]);
-
-  return { data, loading, error, refetch };
+  // If `enabled` is false, `data` and `error` are `null`.
+  // The cache can still hold a value.
+  // The usual reason to disable the hook is that the data must not appear.
+  // A sign-out or a switch to a new user is the cause.
+  // Old account data on screen is worse than a new fetch.
+  //
+  // The cache entry stays.
+  // Hooks that load user data put the user in the `queryKey`.
+  // As a result, one user cannot see data from another user.
+  // If `enabled` is true again with the same `queryKey`, the cache returns the data at once.
+  //
+  // `loading` is `true` while `data` is not the settled result for the
+  // current `queryKey`:
+  // - the first load of a key (`isPending`),
+  // - a key change still showing the previous key's data (`isPlaceholderData`)
+  //   while the new fetch is in flight, and
+  // - a new fetch after an error (`isError` with `isFetching`), so a `refetch`
+  //   from an error state shows progress instead of a frozen error.
+  //   This clause covers an errored read that still holds data from an earlier
+  //   success; `error` keeps the failure until the retry settles. TanStack
+  //   Query resets an errored read without data to pending, which the first
+  //   clause covers.
+  // A background revalidation of already-settled data keeps `loading` `false`,
+  // so the current data stays on screen through a `refetch`.
+  //
+  // If `enabled` is false, `loading` is `false`.
+  // TanStack Query keeps `isPending` true.
+  return {
+    data: enabled ? (query.data ?? null) : null,
+    loading:
+      enabled &&
+      (query.isPending ||
+        (query.isPlaceholderData && query.isFetching) ||
+        (query.isError && query.isFetching)),
+    error: enabled ? (query.error ?? null) : null,
+    refetch,
+  };
 }

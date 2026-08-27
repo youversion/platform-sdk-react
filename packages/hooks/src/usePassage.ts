@@ -2,6 +2,7 @@
 
 import { useBibleClient } from './useBibleClient';
 import { useApiData, type UseApiDataOptions } from './useApiData';
+import { useQueryKeyBase } from './internal/useQueryKeyBase';
 import type { UseNamedQueryResult } from './useQueryResult';
 import type { BiblePassage } from '@youversion/platform-core';
 import { useHookOverride } from './useHookOverride';
@@ -34,15 +35,19 @@ export function usePassage({
 }: UsePassageProps): UsePassageResult {
   const override = useHookOverride('usePassage');
   const bibleClient = useBibleClient();
+  const keyBase = useQueryKeyBase();
 
   // Don't attempt to fetch if usfm is invalid
   const isValidUsfm = Boolean(usfm) && usfm !== 'undefined' && usfm !== 'null';
 
   const { data, loading, error, refetch } = useApiData<BiblePassage>(
+    [...keyBase, 'passage', versionId, usfm, format, include_headings, include_notes, transform],
     () =>
       bibleClient.getPassage(versionId, usfm, format, include_headings, include_notes, transform),
-    [bibleClient, versionId, usfm, format, include_headings, include_notes, transform],
-    { enabled: !override && options?.enabled !== false && isValidUsfm },
+    {
+      enabled: !override && options?.enabled !== false && isValidUsfm,
+      keepPreviousData: options?.keepPreviousData,
+    },
   );
 
   if (override) {

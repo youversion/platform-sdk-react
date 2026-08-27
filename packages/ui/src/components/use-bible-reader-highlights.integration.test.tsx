@@ -4,9 +4,9 @@
  * Integration coverage for the seam hook through the REAL `useHighlights` and
  * `useApiData` (nothing from the hooks package is module-mocked; only the core
  * client's network method is stubbed). This exists because wholesale-mocking
- * `useHighlights` hid a real bug: `useApiData`'s fetch effect didn't re-run
- * when `enabled` flipped false→true, so a signed-in session resolving after
- * mount never fetched highlights at all.
+ * `useHighlights` hid a real bug: `useApiData` didn't fetch when `enabled`
+ * flipped false→true, so a signed-in session resolving after mount never
+ * fetched highlights at all.
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { HighlightsClient, YouVersionPlatformConfiguration } from '@youversion/platform-core';

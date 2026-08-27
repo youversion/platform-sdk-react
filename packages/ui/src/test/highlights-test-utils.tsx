@@ -6,10 +6,8 @@ import {
   YouVersionContext,
   type HookOverrides,
 } from '@youversion/platform-react-hooks';
-import {
-  highlightFillColorMix,
-  type HighlightFillSurface,
-} from '@/lib/highlight-colors';
+import { highlightFillColorMix, type HighlightFillSurface } from '@/lib/highlight-colors';
+import { TestQueryClientProvider } from './hook-overrides';
 
 /** Wraps a highlight list in the paginated collection envelope the clients return. */
 export function collection(data: Highlight[]): Collection<Highlight> {
@@ -91,7 +89,7 @@ export function Providers({
       <YouVersionAuthContext.Provider
         value={{ userInfo, setUserInfo: vi.fn(), isLoading: false, error: null }}
       >
-        {children}
+        <TestQueryClientProvider>{children}</TestQueryClientProvider>
       </YouVersionAuthContext.Provider>
     </YouVersionContext.Provider>
   );

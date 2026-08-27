@@ -21,11 +21,16 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./test-utils": {
+      "types": "./dist/test-utils.d.ts",
+      "import": "./dist/test-utils.js",
+      "require": "./dist/test-utils.cjs"
     }
   },
   "scripts": {
-    "dev": "tsup src/index.ts --format cjs,esm --watch",
-    "build:js": "tsup src/index.ts --format cjs,esm",
+    "dev": "tsup src/index.ts src/test-utils.tsx --format cjs,esm --external jsdom --watch",
+    "build:js": "tsup src/index.ts src/test-utils.tsx --format cjs,esm --external jsdom",
     "build:types": "tsc -p tsconfig.build.json",
     "build": "pnpm build:js && pnpm build:types",
     "typecheck": "tsc --noEmit",
@@ -34,6 +39,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@tanstack/react-query": "5.101.4",
     "@youversion/platform-core": "workspace:*"
   },
   "peerDependencies": {
@@ -47,6 +53,7 @@
     "@vitejs/plugin-react": "^4.2.1",
     "@vitest/coverage-v8": "4.0.4",
     "jsdom": "27.0.1",
+    "react-dom": "19.1.2",
     "tsup": "8.5.0",
     "typescript": "7.0.2",
     "vitest": "4.0.4"

@@ -3,6 +3,8 @@
 import { useMemo, useCallback } from 'react';
 import { HighlightsClient } from '@youversion/platform-core';
 import { useApiClient } from './internal/useApiClient';
+import { useQueryKeyBase } from './internal/useQueryKeyBase';
+import { useUserScope } from './internal/useUserScope';
 import { useApiData, type UseApiDataOptions } from './useApiData';
 import {
   type GetHighlightsOptions,
@@ -35,18 +37,34 @@ export function useHighlights(
 ): UseHighlightsResult {
   const override = useHookOverride('useHighlights');
   const apiClient = useApiClient();
+  const keyBase = useQueryKeyBase();
+  const userScope = useUserScope();
 
   const highlightsClient = useMemo(() => new HighlightsClient(apiClient), [apiClient]);
 
-  // The dep array keys on the primitive fields of `options` rather than the
-  // object reference, so an inline `{ version_id, passage_id }` literal doesn't
-  // force a refetch on every render. If `GetHighlightsOptions` gains more
-  // fields that should trigger refetches, add them to this array too.
+  // The `queryKey` uses `options.version_id` and `options.passage_id`.
+  // The `queryKey` does not use the `options` object.
+  // Callers often pass a new `{ version_id, passage_id }` on each render.
+  // A new object does not start a new fetch.
+  // If `GetHighlightsOptions` gets a new field that changes the result, that field must go in the `queryKey` too.
+  //
+  // A `null` `userScope` means the account is not known: auth is still loading,
+  // the signed-in user has no id, or an access token is set while no user is
+  // identified (the token's account is a mystery). Highlights belong to one
+  // account, so this hook does not fetch until the scope is known. Two
+  // unidentified accounts would otherwise write to the same cache entry.
+  // `null` goes into the key as-is: the query is disabled for that render, so
+  // the key is never fetched, and a sentinel string would only suggest the
+  // entry is real.
   const { data, loading, error, refetch } = useApiData<Collection<Highlight>>(
+    [...keyBase, 'highlights', userScope, options.version_id, options.passage_id],
     () => highlightsClient.getHighlights(options),
-    [highlightsClient, options.version_id, options.passage_id],
     {
-      enabled: !override && apiOptions?.enabled !== false,
+      enabled: userScope !== null && !override && apiOptions?.enabled !== false,
+      // The `queryKey` carries the user scope. Holding previous data across a
+      // key change would show one account's highlights to another during an
+      // account switch, so this hook always drops to `null` instead.
+      keepPreviousData: false,
     },
   );
 

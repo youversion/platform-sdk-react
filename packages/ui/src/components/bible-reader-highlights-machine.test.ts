@@ -61,7 +61,14 @@ const scopeJHN4: HighlightScope = { versionId: 111, book: 'JHN', chapter: '4' };
 
 function startMachine(ref: HighlightServicesRef, scope: HighlightScope = scopeJHN3) {
   const actor = createActor(bibleReaderHighlightsMachine, {
-    input: { services: ref, scope, flagOn: true, hasAuthProvider: true, isAuthenticated: true },
+    input: {
+      services: ref,
+      scope,
+      flagOn: true,
+      hasAuthProvider: true,
+      isAuthenticated: true,
+      userId: 'user-a',
+    },
   });
   actor.start();
   return actor;
@@ -254,6 +261,93 @@ describe('bibleReaderHighlightsMachine — pending stash on lost permission', ()
     });
     // Pending consumed once resumed.
     expect(readPendingHighlights()).toEqual([]);
+    actor.stop();
+  });
+});
+
+describe('bibleReaderHighlightsMachine — account change', () => {
+  it('clears the optimistic overlay when the account changes without a sign-out', async () => {
+    const pending = deferred();
+    const createHighlight = vi.fn().mockReturnValue(pending.promise);
+    const { ref, refetch } = makeServices({ createHighlight });
+    const actor = startMachine(ref);
+
+    actor.send({ type: 'TAP_COLOR', color: 'FFEC5B', verses: [16] });
+    await vi.waitFor(() => expect(createHighlight).toHaveBeenCalled());
+    expect(actor.getSnapshot().context.overlay).toEqual({ 16: 'ffec5b' });
+
+    // A host that owns `userInfo` can swap user A for user B directly.
+    // `isAuthenticated` stays true, so only the id shows the change.
+    actor.send({
+      type: 'AUTH_CHANGED',
+      flagOn: true,
+      hasAuthProvider: true,
+      isAuthenticated: true,
+      userId: 'user-b',
+    });
+    const swapped = actor.getSnapshot().context;
+    expect(swapped.overlay).toEqual({});
+    expect(swapped.writeIntent.size).toBe(0);
+    expect(swapped.userId).toBe('user-b');
+
+    // The write from user A settles after the swap. Without its intent token,
+    // it cannot repaint or reconcile.
+    pending.resolve();
+    await vi.waitFor(() => expect(refetch).toHaveBeenCalled());
+    const ctx = actor.getSnapshot().context;
+    expect(ctx.overlay).toEqual({});
+    expect(ctx.reconcile.size).toBe(0);
+    actor.stop();
+  });
+
+  it('does not stash or open the permission dialog when a disowned write 401s after an account swap', async () => {
+    const pending = deferred();
+    const createHighlight = vi
+      .fn()
+      .mockReturnValue(pending.promise.then(() => Promise.reject(httpError(401))));
+    const { ref, refetch } = makeServices({ createHighlight });
+    const actor = startMachine(ref);
+    vi.spyOn(console, 'error').mockImplementation(vi.fn());
+
+    actor.send({ type: 'TAP_COLOR', color: 'FFEC5B', verses: [16] });
+    await vi.waitFor(() => expect(createHighlight).toHaveBeenCalled());
+
+    // User B signs in while user A's write is still in flight.
+    actor.send({
+      type: 'AUTH_CHANGED',
+      flagOn: true,
+      hasAuthProvider: true,
+      isAuthenticated: true,
+      userId: 'user-b',
+    });
+
+    // User A's write settles with a 401 under user B's session. The disowned
+    // op must not stash user A's highlight or prompt user B for permission.
+    pending.resolve();
+    await vi.waitFor(() => expect(refetch).toHaveBeenCalled());
+    expect(peekPendingHighlights()).toEqual([]);
+    expect(actor.getSnapshot().matches({ enabled: { flow: 'permissionDialog' } })).toBe(false);
+    actor.stop();
+  });
+
+  it('keeps the overlay when AUTH_CHANGED repeats the same account', async () => {
+    const { ref, refetch } = makeServices();
+    const actor = startMachine(ref);
+
+    actor.send({ type: 'TAP_COLOR', color: 'FFEC5B', verses: [16] });
+    await vi.waitFor(() => expect(refetch).toHaveBeenCalled());
+    expect(actor.getSnapshot().context.overlay).toEqual({ 16: 'ffec5b' });
+
+    // The adapter re-sends AUTH_CHANGED on unrelated changes (for example,
+    // the flag). The same signed-in account must not lose its optimistic paint.
+    actor.send({
+      type: 'AUTH_CHANGED',
+      flagOn: true,
+      hasAuthProvider: true,
+      isAuthenticated: true,
+      userId: 'user-a',
+    });
+    expect(actor.getSnapshot().context.overlay).toEqual({ 16: 'ffec5b' });
     actor.stop();
   });
 });

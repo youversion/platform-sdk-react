@@ -2,6 +2,7 @@
 
 import { useBibleClient } from './useBibleClient';
 import { useApiData, type UseApiDataOptions } from './useApiData';
+import { useQueryKeyBase } from './internal/useQueryKeyBase';
 import type { UseNamedQueryResult } from './useQueryResult';
 import type { BibleChapter, Collection } from '@youversion/platform-core';
 
@@ -13,6 +14,7 @@ export function useChapters(
   options?: UseApiDataOptions,
 ): UseChaptersResult {
   const bibleClient = useBibleClient();
+  const keyBase = useQueryKeyBase();
 
   // Don't attempt to fetch if book is invalid
   const isValidBook = Boolean(book) && book !== 'undefined' && book !== 'null';
@@ -23,10 +25,11 @@ export function useChapters(
     error,
     refetch,
   } = useApiData<Collection<BibleChapter>>(
+    [...keyBase, 'chapters', versionId, book],
     () => bibleClient.getChapters(versionId, book),
-    [bibleClient, versionId, book],
     {
       enabled: options?.enabled !== false && isValidBook,
+      keepPreviousData: options?.keepPreviousData,
     },
   );
 
