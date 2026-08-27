@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { focusManager, onlineManager } from '@tanstack/react-query';
 import type { ComponentType, ReactNode } from 'react';
 import { YouVersionProvider } from './context/YouVersionProvider';
@@ -26,7 +26,39 @@ const flush = async () => {
   await new Promise((resolve) => setTimeout(resolve, 0));
 };
 
-describe('useApiData — enabled transitions', () => {
+// `onlineManager` and `focusManager` are module-level state shared by every
+// QueryClient in the process. A test that touches one runs its body through
+// the matching wrapper, which hands the manager back however the body exits.
+async function withOnlineCleanup(run: () => Promise<void>): Promise<void> {
+  try {
+    await run();
+  } finally {
+    onlineManager.setOnline(true);
+  }
+}
+
+async function withFocusCleanup(run: () => Promise<void>): Promise<void> {
+  try {
+    await run();
+  } finally {
+    // Hand focus tracking back to the browser listeners.
+    focusManager.setFocused(undefined);
+  }
+}
+
+const refocus = async () => {
+  act(() => {
+    focusManager.setFocused(false);
+  });
+  act(() => {
+    focusManager.setFocused(true);
+  });
+  await flush();
+};
+
+describe('useApiData', () => {
+  // Enabled transitions
+
   it('fetches when enabled flips from false to true with an unchanged key', async () => {
     const fetchFn = vi.fn().mockResolvedValue('payload');
 
@@ -95,9 +127,9 @@ describe('useApiData — enabled transitions', () => {
       expect(fetchFn).toHaveBeenCalledTimes(2);
     });
   });
-});
 
-describe('useApiData — key transitions', () => {
+  // Key transitions
+
   it('keeps the previous data, with loading true, while a new key fetches', async () => {
     // The Bible reader's next-chapter treatment depends on this: the current
     // chapter stays on screen (dimmed, spinner overlaid) instead of blanking.
@@ -166,9 +198,9 @@ describe('useApiData — key transitions', () => {
     });
     expect(result.current.data).toBe('user-b data');
   });
-});
 
-describe('useApiData — stale responses (latest wins)', () => {
+  // Stale responses (latest wins)
+
   it('ignores a stale refetch response that resolves after a newer fetch', async () => {
     const deferreds: PromiseWithResolvers<string>[] = [];
     const fetchFn = vi.fn(() => {
@@ -242,126 +274,124 @@ describe('useApiData — stale responses (latest wins)', () => {
     expect(result.current.error).toBeNull();
     expect(result.current.data).toBe('JHN.4 data');
   });
-});
 
-describe('useApiData — offline', () => {
-  // `onlineManager` is module-level state shared by every QueryClient in the
-  // process, so every test here hands it back online.
-  afterEach(() => {
-    onlineManager.setOnline(true);
-  });
+  // Offline
 
-  it('attempts the first load while offline and surfaces the transport failure', async () => {
-    onlineManager.setOnline(false);
-    const fetchFn = vi.fn().mockRejectedValue(new Error('network down'));
-
-    const { result } = renderHook(() => useApiData(['offline-first-load'], fetchFn), {
-      wrapper: createWrapper(),
-    });
-
-    // The request goes out and its rejection settles the hook — a paused
-    // fetch would leave `loading` true with no error and no call.
-    await waitFor(() => {
-      expect(result.current.error).toBeInstanceOf(Error);
-    });
-    expect(result.current.error?.message).toBe('network down');
-    expect(result.current.loading).toBe(false);
-    expect(fetchFn).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not settle showing the previous key data while offline', async () => {
-    const fetchFn = vi
-      .fn<() => Promise<string>>()
-      .mockResolvedValueOnce('JHN.3 data')
-      .mockRejectedValue(new Error('network down'));
-
-    const { result, rerender } = renderHook(
-      ({ scope }: { scope: string }) => useApiData(['chapter', scope], fetchFn),
-      { initialProps: { scope: 'JHN.3' }, wrapper: createWrapper() },
-    );
-
-    await waitFor(() => {
-      expect(result.current.data).toBe('JHN.3 data');
-    });
-
-    // Navigate to the next chapter with the network gone. The reader must not
-    // settle into a state that renders JHN.3 as though it were JHN.4.
-    onlineManager.setOnline(false);
-    rerender({ scope: 'JHN.4' });
-
-    await waitFor(() => {
-      expect(result.current.error).toBeInstanceOf(Error);
-    });
-    expect(fetchFn).toHaveBeenCalledTimes(2);
-    expect(result.current.data).toBeNull();
-    expect(result.current.loading).toBe(false);
-  });
-
-  it('recovers an errored read when the browser comes back online', async () => {
-    // Nothing else can rescue this read: `retry: false` gives up on the first
-    // failure and `refetchOnWindowFocus: false` ignores a return to the tab.
-    // Reconnecting is the only automatic path back to data.
-    onlineManager.setOnline(false);
-    const fetchFn = vi
-      .fn<() => Promise<string>>()
-      .mockRejectedValueOnce(new Error('network down'))
-      .mockResolvedValue('JHN.3 data');
-
-    const { result } = renderHook(() => useApiData(['chapter', 'JHN.3'], fetchFn), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => {
-      expect(result.current.error).toBeInstanceOf(Error);
-    });
-    expect(fetchFn).toHaveBeenCalledTimes(1);
-
-    // The browser regains its connection. `onlineManager` listens for this
-    // event, so the provider's client sees the reconnect the same way it
-    // would in an app.
-    act(() => {
-      globalThis.window.dispatchEvent(new Event('online'));
-    });
-
-    await waitFor(() => {
-      expect(result.current.data).toBe('JHN.3 data');
-    });
-    expect(fetchFn).toHaveBeenCalledTimes(2);
-    expect(result.current.error).toBeNull();
-    expect(result.current.loading).toBe(false);
-  });
-
-  it('does not refetch a settled read when the browser comes back online', async () => {
-    // Only an errored read needs the reconnect: a settled read has its data,
-    // and mount, key change, and `refetch` keep it fresh. A reader holds
-    // several settled queries at once, so a reconnect refetch of all of them
-    // would be net-new traffic that buys nothing.
-    const fetchFn = vi.fn().mockResolvedValue('JHN.3 data');
-
-    const { result } = renderHook(() => useApiData(['chapter', 'JHN.3'], fetchFn), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => {
-      expect(result.current.data).toBe('JHN.3 data');
-    });
-    expect(fetchFn).toHaveBeenCalledTimes(1);
-
-    // The connection drops and returns around the settled read.
-    act(() => {
+  it('attempts the first load while offline and surfaces the transport failure', () =>
+    withOnlineCleanup(async () => {
       onlineManager.setOnline(false);
-    });
-    act(() => {
-      globalThis.window.dispatchEvent(new Event('online'));
-    });
-    await flush();
+      const fetchFn = vi.fn().mockRejectedValue(new Error('network down'));
 
-    expect(fetchFn).toHaveBeenCalledTimes(1);
-    expect(result.current.data).toBe('JHN.3 data');
-  });
-});
+      const { result } = renderHook(() => useApiData(['offline-first-load'], fetchFn), {
+        wrapper: createWrapper(),
+      });
 
-describe('useApiData — existing behavior', () => {
+      // The request goes out and its rejection settles the hook — a paused
+      // fetch would leave `loading` true with no error and no call.
+      await waitFor(() => {
+        expect(result.current.error).toBeInstanceOf(Error);
+      });
+      expect(result.current.error?.message).toBe('network down');
+      expect(result.current.loading).toBe(false);
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+    }));
+
+  it('does not settle showing the previous key data while offline', () =>
+    withOnlineCleanup(async () => {
+      const fetchFn = vi
+        .fn<() => Promise<string>>()
+        .mockResolvedValueOnce('JHN.3 data')
+        .mockRejectedValue(new Error('network down'));
+
+      const { result, rerender } = renderHook(
+        ({ scope }: { scope: string }) => useApiData(['chapter', scope], fetchFn),
+        { initialProps: { scope: 'JHN.3' }, wrapper: createWrapper() },
+      );
+
+      await waitFor(() => {
+        expect(result.current.data).toBe('JHN.3 data');
+      });
+
+      // Navigate to the next chapter with the network gone. The reader must not
+      // settle into a state that renders JHN.3 as though it were JHN.4.
+      onlineManager.setOnline(false);
+      rerender({ scope: 'JHN.4' });
+
+      await waitFor(() => {
+        expect(result.current.error).toBeInstanceOf(Error);
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+      expect(result.current.data).toBeNull();
+      expect(result.current.loading).toBe(false);
+    }));
+
+  it('recovers an errored read when the browser comes back online', () =>
+    withOnlineCleanup(async () => {
+      // Nothing else can rescue this read: `retry: false` gives up on the first
+      // failure and `refetchOnWindowFocus: false` ignores a return to the tab.
+      // Reconnecting is the only automatic path back to data.
+      onlineManager.setOnline(false);
+      const fetchFn = vi
+        .fn<() => Promise<string>>()
+        .mockRejectedValueOnce(new Error('network down'))
+        .mockResolvedValue('JHN.3 data');
+
+      const { result } = renderHook(() => useApiData(['chapter', 'JHN.3'], fetchFn), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.error).toBeInstanceOf(Error);
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+
+      // The browser regains its connection. `onlineManager` listens for this
+      // event, so the provider's client sees the reconnect the same way it
+      // would in an app.
+      act(() => {
+        globalThis.window.dispatchEvent(new Event('online'));
+      });
+
+      await waitFor(() => {
+        expect(result.current.data).toBe('JHN.3 data');
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+      expect(result.current.error).toBeNull();
+      expect(result.current.loading).toBe(false);
+    }));
+
+  it('does not refetch a settled read when the browser comes back online', () =>
+    withOnlineCleanup(async () => {
+      // Only an errored read needs the reconnect: a settled read has its data,
+      // and mount, key change, and `refetch` keep it fresh. A reader holds
+      // several settled queries at once, so a reconnect refetch of all of them
+      // would be net-new traffic that buys nothing.
+      const fetchFn = vi.fn().mockResolvedValue('JHN.3 data');
+
+      const { result } = renderHook(() => useApiData(['chapter', 'JHN.3'], fetchFn), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.data).toBe('JHN.3 data');
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+
+      // The connection drops and returns around the settled read.
+      act(() => {
+        onlineManager.setOnline(false);
+      });
+      act(() => {
+        globalThis.window.dispatchEvent(new Event('online'));
+      });
+      await flush();
+
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+      expect(result.current.data).toBe('JHN.3 data');
+    }));
+
+  // Existing behavior
+
   it('does not fetch when enabled is false for the whole lifetime', () => {
     const fetchFn = vi.fn().mockResolvedValue('never');
     const options: UseApiDataOptions = { enabled: false };
@@ -533,42 +563,28 @@ describe('useApiData — existing behavior', () => {
     expect('indexedDB' in globalThis && globalThis.indexedDB).toBeFalsy();
     setItem.mockRestore();
   });
-});
 
-describe('useApiData — window focus', () => {
-  afterEach(() => {
-    // Hand focus tracking back to the browser listeners.
-    focusManager.setFocused(undefined);
-  });
+  // Window focus
 
-  const refocus = async () => {
-    act(() => {
-      focusManager.setFocused(false);
-    });
-    act(() => {
-      focusManager.setFocused(true);
-    });
-    await flush();
-  };
+  it('costs no request when the tab regains focus', () =>
+    withFocusCleanup(async () => {
+      const fetchFn = vi.fn().mockResolvedValue('JHN.3 text');
 
-  it('costs no request when the tab regains focus', async () => {
-    const fetchFn = vi.fn().mockResolvedValue('JHN.3 text');
+      const { result } = renderHook(() => useApiData(['chapter', 'JHN.3'], fetchFn), {
+        wrapper: createWrapper(),
+      });
 
-    const { result } = renderHook(() => useApiData(['chapter', 'JHN.3'], fetchFn), {
-      wrapper: createWrapper(),
-    });
+      await waitFor(() => {
+        expect(result.current.data).toBe('JHN.3 text');
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(1);
 
-    await waitFor(() => {
+      await refocus();
+      await refocus();
+
+      expect(fetchFn).toHaveBeenCalledTimes(1);
       expect(result.current.data).toBe('JHN.3 text');
-    });
-    expect(fetchFn).toHaveBeenCalledTimes(1);
-
-    await refocus();
-    await refocus();
-
-    expect(fetchFn).toHaveBeenCalledTimes(1);
-    expect(result.current.data).toBe('JHN.3 text');
-  });
+    }));
 
   it('still revalidates on refetch()', async () => {
     const fetchFn = vi.fn().mockResolvedValue('settled');

@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { render, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import { YouVersionPlatformConfiguration, type BibleClient } from '@youversion/platform-core';
 import { YouVersionContext } from '../context';
@@ -32,7 +32,22 @@ function rawHost(
   );
 }
 
-describe('useQueryKeyBase — additionalHeaders', () => {
+/**
+ * Runs a test body and restores the version-filter statics before returning,
+ * whether the body settles or throws. Tests own their whole arrangement inline
+ * (no shared afterEach), so a body that mutates the statics wraps itself here.
+ */
+async function withVersionFilterCleanup(run: () => Promise<void>): Promise<void> {
+  try {
+    await run();
+  } finally {
+    YouVersionPlatformConfiguration.permittedVersionIds = undefined;
+    YouVersionPlatformConfiguration.excludedVersionIds = undefined;
+    YouVersionPlatformConfiguration.permittedLanguageTags = undefined;
+  }
+}
+
+describe('useQueryKeyBase', () => {
   it('keeps two header sets in separate cache entries under one QueryClient', async () => {
     const getVOTD = vi.fn().mockResolvedValue({ day: 1, passage_id: 'JHN.3.16' });
     const bibleClient = createBibleClientStub({ getVOTD });
@@ -70,67 +85,61 @@ describe('useQueryKeyBase — additionalHeaders', () => {
     });
     expect(queryClient.getQueryCache().getAll()).toHaveLength(1);
   });
-});
 
-describe('useQueryKeyBase — version filters', () => {
-  afterEach(() => {
-    YouVersionPlatformConfiguration.permittedVersionIds = undefined;
-    YouVersionPlatformConfiguration.excludedVersionIds = undefined;
-    YouVersionPlatformConfiguration.permittedLanguageTags = undefined;
-  });
+  it('gives a tightened filter its own cache entry', () =>
+    withVersionFilterCleanup(async () => {
+      const getVOTD = vi.fn().mockResolvedValue({ day: 1, passage_id: 'JHN.3.16' });
+      const bibleClient = createBibleClientStub({ getVOTD });
+      const queryClient = new QueryClient({ defaultOptions: queryClientDefaultOptions });
 
-  it('gives a tightened filter its own cache entry', async () => {
-    const getVOTD = vi.fn().mockResolvedValue({ day: 1, passage_id: 'JHN.3.16' });
-    const bibleClient = createBibleClientStub({ getVOTD });
-    const queryClient = new QueryClient({ defaultOptions: queryClientDefaultOptions });
+      const { rerender } = render(
+        <TestQueryClientProvider client={queryClient}>
+          {rawHost({ a: '1' }, bibleClient)}
+        </TestQueryClientProvider>,
+      );
+      await waitFor(() => {
+        expect(getVOTD).toHaveBeenCalledTimes(1);
+      });
 
-    const { rerender } = render(
-      <TestQueryClientProvider client={queryClient}>
-        {rawHost({ a: '1' }, bibleClient)}
-      </TestQueryClientProvider>,
-    );
-    await waitFor(() => {
+      // A provider that narrows the permitted versions must not keep serving the
+      // entry cached under the looser filter.
+      YouVersionPlatformConfiguration.permittedVersionIds = [111];
+      rerender(
+        <TestQueryClientProvider client={queryClient}>
+          {rawHost({ a: '1' }, bibleClient)}
+        </TestQueryClientProvider>,
+      );
+
+      await waitFor(() => {
+        expect(getVOTD).toHaveBeenCalledTimes(2);
+      });
+      expect(queryClient.getQueryCache().getAll()).toHaveLength(2);
+    }));
+
+  it('gives one filter one cache entry regardless of list order', () =>
+    withVersionFilterCleanup(async () => {
+      const getVOTD = vi.fn().mockResolvedValue({ day: 1, passage_id: 'JHN.3.16' });
+      const bibleClient = createBibleClientStub({ getVOTD });
+      const queryClient = new QueryClient({ defaultOptions: queryClientDefaultOptions });
+
+      YouVersionPlatformConfiguration.permittedVersionIds = [111, 206];
+      const { rerender } = render(
+        <TestQueryClientProvider client={queryClient}>
+          {rawHost({ a: '1' }, bibleClient)}
+        </TestQueryClientProvider>,
+      );
+      await waitFor(() => {
+        expect(getVOTD).toHaveBeenCalledTimes(1);
+      });
+
+      YouVersionPlatformConfiguration.permittedVersionIds = [206, 111];
+      rerender(
+        <TestQueryClientProvider client={queryClient}>
+          {rawHost({ a: '1' }, bibleClient)}
+        </TestQueryClientProvider>,
+      );
+
+      expect(queryClient.getQueryCache().getAll()).toHaveLength(1);
       expect(getVOTD).toHaveBeenCalledTimes(1);
-    });
-
-    // A provider that narrows the permitted versions must not keep serving the
-    // entry cached under the looser filter.
-    YouVersionPlatformConfiguration.permittedVersionIds = [111];
-    rerender(
-      <TestQueryClientProvider client={queryClient}>
-        {rawHost({ a: '1' }, bibleClient)}
-      </TestQueryClientProvider>,
-    );
-
-    await waitFor(() => {
-      expect(getVOTD).toHaveBeenCalledTimes(2);
-    });
-    expect(queryClient.getQueryCache().getAll()).toHaveLength(2);
-  });
-
-  it('gives one filter one cache entry regardless of list order', async () => {
-    const getVOTD = vi.fn().mockResolvedValue({ day: 1, passage_id: 'JHN.3.16' });
-    const bibleClient = createBibleClientStub({ getVOTD });
-    const queryClient = new QueryClient({ defaultOptions: queryClientDefaultOptions });
-
-    YouVersionPlatformConfiguration.permittedVersionIds = [111, 206];
-    const { rerender } = render(
-      <TestQueryClientProvider client={queryClient}>
-        {rawHost({ a: '1' }, bibleClient)}
-      </TestQueryClientProvider>,
-    );
-    await waitFor(() => {
-      expect(getVOTD).toHaveBeenCalledTimes(1);
-    });
-
-    YouVersionPlatformConfiguration.permittedVersionIds = [206, 111];
-    rerender(
-      <TestQueryClientProvider client={queryClient}>
-        {rawHost({ a: '1' }, bibleClient)}
-      </TestQueryClientProvider>,
-    );
-
-    expect(queryClient.getQueryCache().getAll()).toHaveLength(1);
-    expect(getVOTD).toHaveBeenCalledTimes(1);
-  });
+    }));
 });
