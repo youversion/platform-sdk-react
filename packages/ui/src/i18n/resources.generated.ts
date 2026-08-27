@@ -11,9 +11,10 @@ import locale7 from './locales/fr.json' with { type: 'json' };
 import locale8 from './locales/ko.json' with { type: 'json' };
 import locale9 from './locales/no.json' with { type: 'json' };
 import locale10 from './locales/pt.json' with { type: 'json' };
-import locale11 from './locales/tr.json' with { type: 'json' };
-import locale12 from './locales/vi.json' with { type: 'json' };
-import locale13 from './locales/zh.json' with { type: 'json' };
+import locale11 from './locales/sr.json' with { type: 'json' };
+import locale12 from './locales/tr.json' with { type: 'json' };
+import locale13 from './locales/vi.json' with { type: 'json' };
+import locale14 from './locales/zh.json' with { type: 'json' };
 
 const defaultNS = 'translation';
 
@@ -29,9 +30,10 @@ export const resources = {
   ko: { [defaultNS]: locale8 },
   no: { [defaultNS]: locale9 },
   pt: { [defaultNS]: locale10 },
-  tr: { [defaultNS]: locale11 },
-  vi: { [defaultNS]: locale12 },
-  zh: { [defaultNS]: locale13 },
+  sr: { [defaultNS]: locale11 },
+  tr: { [defaultNS]: locale12 },
+  vi: { [defaultNS]: locale13 },
+  zh: { [defaultNS]: locale14 },
 } as const;
 
 export const supportedLngs = Object.keys(resources);
