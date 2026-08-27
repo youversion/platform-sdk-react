@@ -194,6 +194,7 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
     const overlay = dialog.previousElementSibling;
     if (!(overlay instanceof HTMLElement)) throw new Error('dialog overlay not rendered');
     const overlayRect = overlay.getBoundingClientRect();
+    const dialogRect = dialog.getBoundingClientRect();
     const clippingRect = clippingContainer.getBoundingClientRect();
     const viewport = canvasElement.ownerDocument.defaultView;
     if (!viewport) throw new Error('story window not available');
@@ -206,6 +207,16 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
     void expect(
       escapedHit === overlay || (escapedHit !== null && overlay.contains(escapedHit)),
     ).toBe(true);
+    void expect(dialogRect.bottom).toBeGreaterThan(clippingRect.bottom + 1);
+    const dialogSampleX = dialogRect.left + dialogRect.width / 2;
+    const dialogSampleY = Math.max(dialogRect.top + 2, clippingRect.bottom + 2);
+    if (dialogSampleY >= dialogRect.bottom) {
+      throw new Error('dialog did not extend beyond its clipping ancestor');
+    }
+    const dialogHit = root.elementFromPoint(dialogSampleX, dialogSampleY);
+    void expect(dialogHit === dialog || (dialogHit !== null && dialog.contains(dialogHit))).toBe(
+      true,
+    );
 
     const dialogStyles = styleSnapshot(dialog);
     const overlayStyles = styleSnapshot(overlay);
