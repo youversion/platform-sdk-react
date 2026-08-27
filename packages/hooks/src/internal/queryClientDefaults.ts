@@ -4,10 +4,9 @@ import type { DefaultOptions } from '@tanstack/react-query';
  * Query defaults for every `QueryClient` in this repository.
  *
  * `YouVersionProvider` builds its private client from this object. Test
- * providers do the same, so tests run with the fetch semantics of the app.
- * The `TestQueryClientProvider` in `packages/ui` cannot import this module —
- * the package exports only its root — so it holds a mirrored copy. A change
- * here must also change that copy.
+ * providers do the same, so tests run with the fetch semantics of the app:
+ * the `./test-utils` subpath re-exports this object, and the ui package's
+ * test provider builds from that re-export.
  *
  * The reasons for each option are in `docs/adr/0006`.
  */

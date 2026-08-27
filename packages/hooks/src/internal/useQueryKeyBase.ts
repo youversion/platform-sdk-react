@@ -25,6 +25,12 @@ import { serializeVersionFilters } from './versionFilterKey';
  * tightens the filter no longer serves content cached under the looser one: the
  * tighter filter reads a different key, and the entry it would have reused stays
  * out of view.
+ *
+ * The `YouVersionProvider` props are the supported way to set the filter; the
+ * provider syncs them onto the config during render, so every child render
+ * reads the current value here. A direct write to the config statics from app
+ * code triggers no render and is unsupported — the key updates on the next
+ * render for any other reason, not at the moment of the write.
  */
 export function useQueryKeyBase(): readonly unknown[] {
   const context = useContext(YouVersionContext);
