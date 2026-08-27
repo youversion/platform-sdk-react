@@ -56,7 +56,7 @@ describe('ShadowRootHost', () => {
     expect(wrapper?.style.getPropertyValue('writing-mode')).toBe('');
     expect(wrapper?.style.getPropertyValue('text-orientation')).toBe('');
 
-    // jsdom's cssstyle backing does not track priority for `all`,
+    // jsdom's cssstyle backing does not track priority for `all`
     // or `direction` (real browsers do), so only `display` can assert
     // getPropertyPriority here. The value-only checks above still prove
     // direction was set.
