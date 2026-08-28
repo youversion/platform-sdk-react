@@ -3,15 +3,12 @@
  */
 import { render } from '@testing-library/react';
 import { expect, it } from 'vitest';
-import { InputGroup, InputGroupAddon, InputGroupInput } from './input-group';
+import { InputGroup, InputGroupAddon } from './input-group';
 
-it('keeps keyboard-hint radius independent of host custom properties', () => {
+it('uses --yv-radius for kbd rounding, not --radius', () => {
   const { container } = render(
     <InputGroup>
-      <InputGroupInput aria-label="Search" />
-      <InputGroupAddon>
-        <kbd>⌘K</kbd>
-      </InputGroupAddon>
+      <InputGroupAddon />
     </InputGroup>,
   );
   const addon = container.querySelector('[data-slot="input-group-addon"]');
