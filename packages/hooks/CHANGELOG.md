@@ -1,5 +1,24 @@
 # @youversion/platform-react-hooks
 
+## 2.12.0
+
+### Minor Changes
+
+- c55f690: Data hooks now cache reads with TanStack Query: revisiting previously fetched content (chapters, verses, versions, highlights) renders instantly from an in-memory cache and revalidates in the background instead of blanking and refetching. Two components reading the same thing now share one request. Public hook APIs are unchanged and no new providers or peer installs are required — `@tanstack/react-query` ships as a direct dependency of the hooks package with a private `QueryClient` inside `YouVersionProvider`. Cache entries are keyed by provider config, including `additionalHeaders`, so two header sets never share a response. Account-scoped queries (highlights) are keyed per user, so one account can never see another account's cached data — while the signed-in account is still resolving, or while a live access token disagrees with a signed-out session, `useHighlights` holds off fetching rather than sharing a cache entry. Returning to the tab no longer refetches; mounting, changing what you are reading, and `refetch()` still do. A read that failed while the network was down fetches again on its own once the connection returns. `useOrganizations` shares that cache too, keyed per organization exactly as `useOrganization` keys it, so a list of versions that share publishers costs one request per publisher and reopening a picker renders them from cache. The cache is memory-only and never persisted.
+
+### Patch Changes
+
+- 1f258fa: Sign-in no longer fails when the token endpoint returns `expires_in` as a string. Callback failures are logged in development so a failed exchange is visible in the console.
+- Updated dependencies [1f258fa]
+  - @youversion/platform-core@2.12.0
+
+## 2.11.0
+
+### Patch Changes
+
+- Updated dependencies [0ae2488]
+  - @youversion/platform-core@2.11.0
+
 ## 2.10.0
 
 ### Patch Changes

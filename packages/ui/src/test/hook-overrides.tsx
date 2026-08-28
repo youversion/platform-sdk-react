@@ -1,6 +1,9 @@
 import { YouVersionContext, type HookOverrides } from '@youversion/platform-react-hooks';
+import { TestQueryClientProvider } from '@youversion/platform-react-hooks/test-utils';
 import type { ReactElement, ReactNode } from 'react';
 import { render, type RenderOptions, type RenderResult } from '@testing-library/react';
+
+export { TestQueryClientProvider };
 
 export function HookOverrideProvider({
   overrides,
@@ -13,7 +16,7 @@ export function HookOverrideProvider({
 }): ReactElement {
   return (
     <YouVersionContext.Provider value={{ appKey: 'test', theme, hookOverrides: overrides }}>
-      {children}
+      <TestQueryClientProvider>{children}</TestQueryClientProvider>
     </YouVersionContext.Provider>
   );
 }

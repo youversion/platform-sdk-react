@@ -180,7 +180,19 @@ export function useBibleReaderHighlights({
   // here for the self-contained path: no fetch, no writes, nothing rendered.
   const authContext = useContext(YouVersionAuthContext);
   const hasAuthProvider = authContext !== null;
-  const isAuthenticated = Boolean(authContext?.userInfo);
+  // A profile with no `userId` is not enough. `useHighlights` keys its cache by
+  // account and does not fetch for an unidentified one, so treating this state
+  // as authenticated would allow writes that no read can ever return: the POST
+  // succeeds, the overlay paints, and the highlight is gone on the next load.
+  // A host that supplies `userInfo` itself can produce this state, because
+  // `userId` is optional on the profile.
+  //
+  // `isLoading` gates writes for the same reason: `useUserScope` withholds the
+  // account scope while auth is loading, so the fetch is off. A profile that
+  // still carries a `userId` in that window would otherwise let a POST through
+  // that the withheld GET cannot show.
+  const userId = authContext?.userInfo?.userId ?? null;
+  const isAuthenticated = Boolean(authContext && !authContext.isLoading && userId);
   // Controlled mode keeps the machine disabled (provably inert) and never hits
   // the network — the dark-launch flag only gates the self-contained server path.
   const flagOn = !isControlled && isHighlightsLive();
@@ -235,38 +247,35 @@ export function useBibleReaderHighlights({
       flagOn,
       hasAuthProvider,
       isAuthenticated,
+      userId,
     },
   });
 
   // ── Feed React-owned inputs to the machine ──────────────────────────────────
   useEffect(() => {
-    actorRef.send({ type: 'AUTH_CHANGED', flagOn, hasAuthProvider, isAuthenticated });
-  }, [actorRef, flagOn, hasAuthProvider, isAuthenticated]);
+    actorRef.send({ type: 'AUTH_CHANGED', flagOn, hasAuthProvider, isAuthenticated, userId });
+  }, [actorRef, flagOn, hasAuthProvider, isAuthenticated, userId]);
 
   useEffect(() => {
     actorRef.send({ type: 'SCOPE_CHANGED', scope });
   }, [actorRef, scope]);
 
-  // Parse the fetch into server truth and forward it whenever it changes. The
-  // machine reconciles the optimistic overlay against it.
+  // This parses the fetch result into `serverColors`.
+  // When `serverColors` changes, this code sends `serverColors` to the machine.
+  // The machine compares the optimistic overlay with `serverColors`.
   //
-  // `useApiData` swaps `highlights` for a fresh object on every refetch, even
-  // when the content is byte-identical. Parsing off that identity would mint a
-  // new `serverColors` each time and cascade a new `highlightedVerses` reference
-  // → a chapter-wide verse-style re-sweep (verse.tsx keys a useLayoutEffect on
-  // it). Hold the prior parsed reference when the content is unchanged so the
-  // downstream memos stay reference-stable across no-op refetches. (This is
-  // separate from `lastSentServerColorsRef`, which dedups machine sends.)
-  const parsedServerColorsRef = useRef<ServerColors | null>(null);
-  const serverColors = useMemo(() => {
-    const parsed = parseServerColors(highlights, versionId, chapterUsfm);
-    const previous = parsedServerColorsRef.current;
-    if (previous !== null && serverColorsEqual(previous, parsed)) {
-      return previous;
-    }
-    parsedServerColorsRef.current = parsed;
-    return parsed;
-  }, [highlights, versionId, chapterUsfm]);
+  // This `useMemo` depends on the `highlights` reference.
+  // `useApiData` uses TanStack Query.
+  // When a refetch returns the same content, TanStack Query keeps the same `highlights` object.
+  // As a result, that refetch does not create a new `serverColors`.
+  //
+  // If `serverColors` is a new object, `highlightedVerses` is also a new object.
+  // Then `verse.tsx` runs `useLayoutEffect` again for every verse.
+  const serverColors = useMemo(
+    () => parseServerColors(highlights, versionId, chapterUsfm),
+    [highlights, versionId, chapterUsfm],
+  );
+
   const lastSentServerColorsRef = useRef<ServerColors | null>(null);
   useEffect(() => {
     if (
@@ -282,6 +291,7 @@ export function useBibleReaderHighlights({
   // ── Rendered verse map ──────────────────────────────────────────────────────
   const overlay = useSelector(actorRef, (state) => state.context.overlay);
   const machineScope = useSelector(actorRef, (state) => state.context.scope);
+  const machineUserId = useSelector(actorRef, (state) => state.context.userId);
   const highlightedVerses = useMemo(() => {
     // Controlled: pure projection from the host prop — no overlay, no fetch.
     if (isControlled) {
@@ -297,6 +307,10 @@ export function useBibleReaderHighlights({
     // and the new chapter renders from server truth alone — verse numbers
     // collide across chapters.
     if (!scopesEqual(machineScope, scope)) return { ...serverColors };
+    // Same window for an account swap: until the AUTH_CHANGED effect runs, the
+    // machine still holds the previous account's overlay. Skip it, so the new
+    // account never sees those entries, not even for one paint.
+    if (machineUserId !== userId) return { ...serverColors };
     return selectHighlightedVerses(serverColors, overlay);
   }, [
     isControlled,
@@ -306,6 +320,8 @@ export function useBibleReaderHighlights({
     overlay,
     machineScope,
     scope,
+    machineUserId,
+    userId,
     versionId,
     book,
     chapter,

@@ -1,6 +1,7 @@
 'use client';
 
 import { useApiData, type UseApiDataOptions } from './useApiData';
+import { useQueryKeyBase } from './internal/useQueryKeyBase';
 import { type Organization } from '@youversion/platform-core';
 import { useOrganizationsClient } from './useOrganizationsClient';
 import type { UseNamedQueryResult } from './useQueryResult';
@@ -12,13 +13,15 @@ export function useOrganization(
   apiOptions?: UseApiDataOptions,
 ): UseOrganizationResult {
   const organizationsClient = useOrganizationsClient();
+  const keyBase = useQueryKeyBase();
   const enabled = apiOptions?.enabled !== false && organizationId.trim().length > 0;
 
   const { data, loading, error, refetch } = useApiData<Organization>(
+    [...keyBase, 'organization', organizationId],
     () => organizationsClient.getOrganization(organizationId),
-    [organizationsClient, organizationId],
     {
       enabled,
+      keepPreviousData: apiOptions?.keepPreviousData,
     },
   );
 

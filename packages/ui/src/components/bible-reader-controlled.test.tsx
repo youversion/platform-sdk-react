@@ -30,6 +30,7 @@ import type { HighlightedVerses } from '@/lib/highlight-colors';
 import { HIGHLIGHT_COLORS } from './verse-action-popover';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
 
+import { fillFor } from '@/test/highlights-test-utils';
 import { installResizeObserverStub } from '@/test/dom-stubs';
 
 installResizeObserverStub();
@@ -93,7 +94,7 @@ function defaultOverrides(): HookOverrides {
         Promise.resolve({
           version_id: 111,
           passage_id: 'JHN.3.16',
-          color: 'fffe00',
+          color: 'ffec5b',
         }),
       deleteHighlight: () => Promise.resolve(),
     }),
@@ -120,8 +121,8 @@ function defaultOverrides(): HookOverrides {
   };
 }
 
-const YELLOW = HIGHLIGHT_COLORS[0]; // fffe00
-const GREEN = HIGHLIGHT_COLORS[1]; // 5dff79
+const YELLOW = HIGHLIGHT_COLORS[0];
+const GREEN = HIGHLIGHT_COLORS[1];
 
 const mockBooks: BibleBook[] = [
   {
@@ -192,18 +193,6 @@ function getVerseEl(container: HTMLElement, verse: number): HTMLElement {
 
 function selectVerse(container: HTMLElement, verse: number) {
   fireEvent.click(getVerseEl(container, verse));
-}
-
-/**
- * Color the reader paints for a highlight fill. These tests run in light mode
- * (theme mocked to 'light'), where the fill is full opacity (Swift parity);
- * jsdom serializes a fully opaque color to `rgb(...)`.
- */
-function fillFor(hex: string): string {
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  return `rgb(${r}, ${g}, ${b})`;
 }
 
 function getApplyButtons() {

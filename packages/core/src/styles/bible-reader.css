@@ -760,9 +760,9 @@
      CHARACTER STYLES
      ============================================================ */
 
-  /* \wj - Words of Jesus (red letter) */
+  /* \wj - Words of Jesus (red letter). Unmixed on highlight fills. */
   & .wj {
-    color: var(--yv-red);
+    color: var(--yv-wj);
   }
 
   /* \nd - Name of Deity (e.g. "LORD") — Smallcaps */

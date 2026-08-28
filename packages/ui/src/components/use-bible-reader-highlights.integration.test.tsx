@@ -4,9 +4,9 @@
  * Integration coverage for the seam hook through the REAL `useHighlights` and
  * `useApiData` (nothing from the hooks package is module-mocked; only the core
  * client's network method is stubbed). This exists because wholesale-mocking
- * `useHighlights` hid a real bug: `useApiData`'s fetch effect didn't re-run
- * when `enabled` flipped false→true, so a signed-in session resolving after
- * mount never fetched highlights at all.
+ * `useHighlights` hid a real bug: `useApiData` didn't fetch when `enabled`
+ * flipped false→true, so a signed-in session resolving after mount never
+ * fetched highlights at all.
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { HighlightsClient, YouVersionPlatformConfiguration } from '@youversion/platform-core';
@@ -42,8 +42,8 @@ describe('useBibleReaderHighlights — real useHighlights/useApiData', () => {
   it('fetches and renders highlights when auth resolves after mount (enabled false→true)', async () => {
     const getHighlights = vi.spyOn(HighlightsClient.prototype, 'getHighlights').mockResolvedValue({
       data: [
-        { version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' },
-        { version_id: 111, passage_id: 'JHN.3.17', color: '5dff79' },
+        { version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' },
+        { version_id: 111, passage_id: 'JHN.3.17', color: 'b4ffc1' },
       ],
       next_page_token: null,
     });
@@ -62,7 +62,7 @@ describe('useBibleReaderHighlights — real useHighlights/useApiData', () => {
     rerender();
 
     await waitFor(() => {
-      expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00', 17: '5dff79' });
+      expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b', 17: 'b4ffc1' });
     });
     expect(getHighlights).toHaveBeenCalledTimes(1);
     expect(getHighlights).toHaveBeenCalledWith({ version_id: 111, passage_id: 'JHN.3' });
@@ -70,7 +70,7 @@ describe('useBibleReaderHighlights — real useHighlights/useApiData', () => {
 
   it('un-renders highlights immediately on sign-out and does not refetch', async () => {
     const getHighlights = vi.spyOn(HighlightsClient.prototype, 'getHighlights').mockResolvedValue({
-      data: [{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }],
+      data: [{ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' }],
       next_page_token: null,
     });
 
@@ -80,7 +80,7 @@ describe('useBibleReaderHighlights — real useHighlights/useApiData', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+      expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
     });
 
     signedIn = false;
@@ -121,21 +121,21 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
       .mockResolvedValue(collection([]));
     const createHighlight = vi
       .spyOn(HighlightsClient.prototype, 'createHighlight')
-      .mockResolvedValue({ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' });
+      .mockResolvedValue({ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' });
 
     const { result } = mountFlipped();
     await waitFor(() => expect(getHighlights).toHaveBeenCalledTimes(1));
 
     act(() => {
-      result.current.apply('fffe00', [16]);
+      result.current.apply('ffec5b', [16]);
     });
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
 
     await waitFor(() => expect(createHighlight).toHaveBeenCalledTimes(1));
     // Exactly one coalesced refetch after the write.
     await waitFor(() => expect(getHighlights).toHaveBeenCalledTimes(2));
     // The GET is still empty, but the overlay wins — the highlight stays painted.
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
   });
 
   it('apply: once a GET reflects the write, the overlay retires and server truth renders', async () => {
@@ -143,43 +143,43 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
       .spyOn(HighlightsClient.prototype, 'getHighlights')
       .mockResolvedValueOnce(collection([]))
       .mockResolvedValue(
-        collection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+        collection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' }]),
       );
     const createHighlight = vi
       .spyOn(HighlightsClient.prototype, 'createHighlight')
-      .mockResolvedValue({ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' });
+      .mockResolvedValue({ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' });
 
     const { result } = mountFlipped();
     await waitFor(() => expect(getHighlights).toHaveBeenCalledTimes(1));
 
     act(() => {
-      result.current.apply('fffe00', [16]);
+      result.current.apply('ffec5b', [16]);
     });
     await waitFor(() => expect(createHighlight).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(getHighlights).toHaveBeenCalledTimes(2));
 
     // The refetch reflects the write; the verse renders (now from server truth).
     await waitFor(() => {
-      expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+      expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
     });
 
     // Distinguish retired-overlay from still-masking-overlay (both render
-    // fffe00 above): the server now reports verse 16 in a DIFFERENT color, and
+    // ffec5b above): the server now reports verse 16 in a DIFFERENT color, and
     // a write to another verse triggers the next fetch. If verse 16's entry
-    // were still pending, its overlay would keep masking with fffe00; retired,
+    // were still pending, its overlay would keep masking with ffec5b; retired,
     // the server's color must render.
     getHighlights.mockResolvedValue(
       collection([
-        { version_id: 111, passage_id: 'JHN.3.16', color: '00d6ff' },
-        { version_id: 111, passage_id: 'JHN.3.20', color: 'fffe00' },
+        { version_id: 111, passage_id: 'JHN.3.16', color: 'bbf4ff' },
+        { version_id: 111, passage_id: 'JHN.3.20', color: 'ffec5b' },
       ]),
     );
     act(() => {
-      result.current.apply('fffe00', [20]);
+      result.current.apply('ffec5b', [20]);
     });
     await waitFor(() => expect(getHighlights).toHaveBeenCalledTimes(3));
     await waitFor(() => {
-      expect(result.current.highlightedVerses).toEqual({ 16: '00d6ff', 20: 'fffe00' });
+      expect(result.current.highlightedVerses).toEqual({ 16: 'bbf4ff', 20: 'ffec5b' });
     });
   });
 
@@ -191,8 +191,8 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
       .mockResolvedValueOnce(collection([]))
       .mockResolvedValue(
         collection([
-          { version_id: 111, passage_id: 'JHN.3.2', color: 'fffe00' },
-          { version_id: 111, passage_id: 'JHN.3.3', color: 'fffe00' },
+          { version_id: 111, passage_id: 'JHN.3.2', color: 'ffec5b' },
+          { version_id: 111, passage_id: 'JHN.3.3', color: 'ffec5b' },
         ]),
       );
     const createHighlight = vi
@@ -206,10 +206,10 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
     await waitFor(() => expect(getHighlights).toHaveBeenCalledTimes(1));
 
     act(() => {
-      result.current.apply('fffe00', [2, 3, 5]);
+      result.current.apply('ffec5b', [2, 3, 5]);
     });
     // Optimistic: all three painted.
-    expect(result.current.highlightedVerses).toEqual({ 2: 'fffe00', 3: 'fffe00', 5: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 2: 'ffec5b', 3: 'ffec5b', 5: 'ffec5b' });
 
     await waitFor(() => expect(createHighlight).toHaveBeenCalledTimes(2));
     // The refetch still fires despite the failure — exactly one for the batch.
@@ -219,7 +219,7 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
     // run [5] reverted. Before this fix the WHOLE batch reverted with no
     // refetch, erasing the persisted 2-3 until the next navigation/write.
     await waitFor(() => {
-      expect(result.current.highlightedVerses).toEqual({ 2: 'fffe00', 3: 'fffe00' });
+      expect(result.current.highlightedVerses).toEqual({ 2: 'ffec5b', 3: 'ffec5b' });
     });
     await act(async () => {
       await Promise.resolve();
@@ -233,9 +233,9 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
     // that still contains all three (read-after-write lag on the deletes).
     const getHighlights = vi.spyOn(HighlightsClient.prototype, 'getHighlights').mockResolvedValue(
       collection([
-        { version_id: 111, passage_id: 'JHN.3.2', color: '5dff79' },
-        { version_id: 111, passage_id: 'JHN.3.3', color: '5dff79' },
-        { version_id: 111, passage_id: 'JHN.3.4', color: '5dff79' },
+        { version_id: 111, passage_id: 'JHN.3.2', color: 'b4ffc1' },
+        { version_id: 111, passage_id: 'JHN.3.3', color: 'b4ffc1' },
+        { version_id: 111, passage_id: 'JHN.3.4', color: 'b4ffc1' },
       ]),
     );
     const deleteHighlight = vi
@@ -248,14 +248,14 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
     const { result } = mountFlipped();
     await waitFor(() =>
       expect(result.current.highlightedVerses).toEqual({
-        2: '5dff79',
-        3: '5dff79',
-        4: '5dff79',
+        2: 'b4ffc1',
+        3: 'b4ffc1',
+        4: 'b4ffc1',
       }),
     );
 
     act(() => {
-      result.current.remove('5dff79', [2, 3, 4]);
+      result.current.remove('b4ffc1', [2, 3, 4]);
     });
     expect(result.current.highlightedVerses).toEqual({});
 
@@ -267,7 +267,7 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
     // against the stale snapshot (no ghosts). Verse 3's DELETE failed: it
     // reverts and renders highlighted again from the fetched data.
     await waitFor(() => {
-      expect(result.current.highlightedVerses).toEqual({ 3: '5dff79' });
+      expect(result.current.highlightedVerses).toEqual({ 3: 'b4ffc1' });
     });
     await act(async () => {
       await Promise.resolve();
@@ -288,9 +288,9 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
     await waitFor(() => expect(getHighlights).toHaveBeenCalledTimes(1));
 
     act(() => {
-      result.current.apply('fffe00', [16, 17]);
+      result.current.apply('ffec5b', [16, 17]);
     });
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00', 17: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b', 17: 'ffec5b' });
 
     await waitFor(() => {
       expect(result.current.highlightedVerses).toEqual({});
@@ -308,17 +308,17 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
     const getHighlights = vi
       .spyOn(HighlightsClient.prototype, 'getHighlights')
       .mockResolvedValue(
-        collection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+        collection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' }]),
       );
     const deleteHighlight = vi
       .spyOn(HighlightsClient.prototype, 'deleteHighlight')
       .mockResolvedValue(undefined);
 
     const { result } = mountFlipped();
-    await waitFor(() => expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' }));
+    await waitFor(() => expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' }));
 
     act(() => {
-      result.current.remove('fffe00', [16]);
+      result.current.remove('ffec5b', [16]);
     });
     expect(result.current.highlightedVerses).toEqual({});
 
@@ -344,9 +344,9 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
     });
 
     act(() => {
-      result.current.apply('fffe00', [16]);
+      result.current.apply('ffec5b', [16]);
     });
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
 
     await waitFor(() => {
       expect(result.current.highlightedVerses).toEqual({});
@@ -359,25 +359,25 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
       .mockResolvedValue(collection([]));
     const createHighlight = vi
       .spyOn(HighlightsClient.prototype, 'createHighlight')
-      .mockResolvedValue({ version_id: 111, passage_id: 'JHN.3.2', color: 'fffe00' });
+      .mockResolvedValue({ version_id: 111, passage_id: 'JHN.3.2', color: 'ffec5b' });
 
     const { result } = mountFlipped();
     await waitFor(() => expect(getHighlights).toHaveBeenCalledTimes(1));
 
     act(() => {
-      result.current.apply('fffe00', [2, 3, 5]);
+      result.current.apply('ffec5b', [2, 3, 5]);
     });
 
     await waitFor(() => expect(createHighlight).toHaveBeenCalledTimes(2));
     expect(createHighlight).toHaveBeenCalledWith({
       version_id: 111,
       passage_id: 'JHN.3.2-3',
-      color: 'fffe00',
+      color: 'ffec5b',
     });
     expect(createHighlight).toHaveBeenCalledWith({
       version_id: 111,
       passage_id: 'JHN.3.5',
-      color: 'fffe00',
+      color: 'ffec5b',
     });
 
     // One refetch for the whole batch → 2 GETs total (mount + 1).
@@ -391,8 +391,8 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
   it('remove of a contiguous [2,3] issues per-verse DELETEs and one refetch (Fix 4 + 3)', async () => {
     const getHighlights = vi.spyOn(HighlightsClient.prototype, 'getHighlights').mockResolvedValue(
       collection([
-        { version_id: 111, passage_id: 'JHN.3.2', color: 'fffe00' },
-        { version_id: 111, passage_id: 'JHN.3.3', color: 'fffe00' },
+        { version_id: 111, passage_id: 'JHN.3.2', color: 'ffec5b' },
+        { version_id: 111, passage_id: 'JHN.3.3', color: 'ffec5b' },
       ]),
     );
     const deleteHighlight = vi
@@ -401,11 +401,11 @@ describe('useBibleReaderHighlights — write reconciliation (Fix 2/3/4)', () => 
 
     const { result } = mountFlipped();
     await waitFor(() =>
-      expect(result.current.highlightedVerses).toEqual({ 2: 'fffe00', 3: 'fffe00' }),
+      expect(result.current.highlightedVerses).toEqual({ 2: 'ffec5b', 3: 'ffec5b' }),
     );
 
     act(() => {
-      result.current.remove('fffe00', [2, 3]);
+      result.current.remove('ffec5b', [2, 3]);
     });
 
     await waitFor(() => expect(deleteHighlight).toHaveBeenCalledTimes(2));
