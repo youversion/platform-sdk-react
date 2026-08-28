@@ -1,22 +1,21 @@
 import * as React from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
-import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
-import { useShadowPortalTarget } from '@/lib/shadow-root-host';
 import { Button } from './button';
+import { useShadowPortalState } from './use-shadow-portal-state';
 import { XIcon } from '../icons/x';
 
 import { cn } from '@/lib/utils';
 
 interface PopoverPortalState {
-  container: HTMLElement | null | undefined;
-  open: boolean;
+  awaitingPortalTarget: boolean;
+  container: HTMLElement | undefined;
 }
 
 const PopoverPortalContext = React.createContext<PopoverPortalState>({
+  awaitingPortalTarget: false,
   container: undefined,
-  open: false,
 });
 
 function Popover({
@@ -25,23 +24,25 @@ function Popover({
   onOpenChange,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Root>): React.ReactNode {
-  const [actualOpen, setActualOpen] = useControllableState({
-    prop: open,
-    defaultProp: defaultOpen ?? false,
-    onChange: onOpenChange,
+  const portal = useShadowPortalState({
+    open,
+    defaultOpen,
+    onOpenChange,
   });
-  const portalContainer = useShadowPortalTarget(actualOpen);
   const portalState = React.useMemo<PopoverPortalState>(
-    () => ({ container: portalContainer, open: actualOpen }),
-    [actualOpen, portalContainer],
+    () => ({
+      awaitingPortalTarget: portal.awaitingPortalTarget,
+      container: portal.container,
+    }),
+    [portal.awaitingPortalTarget, portal.container],
   );
 
   return (
     <PopoverPortalContext.Provider value={portalState}>
       <PopoverPrimitive.Root
         data-slot="popover"
-        open={actualOpen}
-        onOpenChange={setActualOpen}
+        open={portal.open}
+        onOpenChange={portal.onOpenChange}
         {...props}
       />
     </PopoverPortalContext.Provider>
@@ -75,10 +76,10 @@ function PopoverContent({
   const { t } = useTranslation(undefined, { i18n });
   const portal = React.useContext(PopoverPortalContext);
 
-  if (portal.open && portal.container === null) return null;
+  if (portal.awaitingPortalTarget) return null;
 
   return (
-    <PopoverPrimitive.Portal container={portal.container ?? undefined}>
+    <PopoverPrimitive.Portal container={portal.container}>
       <PopoverPrimitive.Content
         data-slot="popover-content"
         data-yv-sdk
