@@ -53,6 +53,7 @@ import {
   stashPendingHighlight,
   type PendingHighlight,
 } from '@/lib/pending-highlight';
+import type { SettledHighlightWrite } from '@/lib/settled-highlight-overlay';
 import { getHttpStatus, type Highlight } from '@youversion/platform-core';
 import { Result } from 'better-result';
 import { assign, enqueueActions, fromPromise, setup, type DoneActorEvent } from 'xstate';
@@ -114,6 +115,8 @@ export type HighlightServices = {
   consumeDataExchangeReturn: () => { status: DataExchangeStatus } | null;
   startSignInForHighlights: () => Promise<void>;
   startDataExchangeForHighlights: () => Promise<void>;
+  /** Persist server-accepted writes across a provider unmount/remount. */
+  persistSettledWrite: (write: SettledHighlightWrite) => void;
 };
 
 export type HighlightServicesRef = { current: HighlightServices };
@@ -357,6 +360,19 @@ const processWrite = fromPromise<WriteResult, { services: HighlightServicesRef; 
         } else {
           succeededVerses.push(verse);
         }
+      });
+    }
+
+    // Persist only server-accepted verses. This runs inside the promise actor,
+    // before its completion event is delivered to the parent machine, so it
+    // still executes if route navigation stops the machine while the request is
+    // in flight. The adapter binds the write to the originating app key + user.
+    if (succeededVerses.length > 0) {
+      svc.persistSettledWrite({
+        kind: op.kind,
+        color: op.color,
+        verses: succeededVerses,
+        scope: op.scope,
       });
     }
 

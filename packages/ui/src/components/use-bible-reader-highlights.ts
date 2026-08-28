@@ -3,6 +3,12 @@
 import { isHighlightsLive } from '@/lib/feature-flags';
 import { deriveHighlightedVerses } from '@/lib/highlight-projection';
 import { isPaletteHighlightColor, normalizeHighlightHex } from '@/lib/highlight-colors';
+import {
+  persistSettledHighlightWrite,
+  readSettledHighlightOverlay,
+  reconcileSettledHighlightOverlay,
+  type SettledHighlightOverlay,
+} from '@/lib/settled-highlight-overlay';
 import type { Highlight } from '@youversion/platform-core';
 import {
   bibleReaderHighlightsMachine,
@@ -16,9 +22,10 @@ import {
   useHighlightAuthActions,
   useHighlights,
   YouVersionAuthContext,
+  YouVersionContext,
 } from '@youversion/platform-react-hooks';
 import { useActorRef, useSelector } from '@xstate/react';
-import { useContext, useEffect, useMemo, useRef } from 'react';
+import { useContext, useEffect, useMemo, useReducer, useRef } from 'react';
 
 /**
  * Bridge-safe highlight intent emitted in controlled mode. Structurally
@@ -128,6 +135,15 @@ function serverColorsEqual(a: ServerColors, b: ServerColors): boolean {
   return true;
 }
 
+function overlaysEqual(a: SettledHighlightOverlay, b: SettledHighlightOverlay): boolean {
+  const aKeys = Object.keys(a);
+  if (aKeys.length !== Object.keys(b).length) return false;
+  for (const key of aKeys) {
+    if (a[Number(key)] !== b[Number(key)]) return false;
+  }
+  return true;
+}
+
 function buildHighlightIntent(
   versionId: number,
   book: string,
@@ -179,6 +195,7 @@ export function useBibleReaderHighlights({
   // auth provider is mounted. No provider and signed out are the same state
   // here for the self-contained path: no fetch, no writes, nothing rendered.
   const authContext = useContext(YouVersionAuthContext);
+  const platformContext = useContext(YouVersionContext);
   const hasAuthProvider = authContext !== null;
   // A profile with no `userId` is not enough. `useHighlights` keys its cache by
   // account and does not fetch for an unidentified one, so treating this state
@@ -192,6 +209,7 @@ export function useBibleReaderHighlights({
   // still carries a `userId` in that window would otherwise let a POST through
   // that the withheld GET cannot show.
   const userId = authContext?.userInfo?.userId ?? null;
+  const appKey = platformContext?.appKey ?? null;
   const isAuthenticated = Boolean(authContext && !authContext.isLoading && userId);
   // Controlled mode keeps the machine disabled (provably inert) and never hits
   // the network — the dark-launch flag only gates the self-contained server path.
@@ -217,6 +235,22 @@ export function useBibleReaderHighlights({
   const controlledRef = useRef(controlled);
   controlledRef.current = controlled;
 
+  // Successful writes are persisted by app + account so a demos provider can
+  // unmount during route navigation without losing the read-lag overlay. The
+  // revision makes this mount observe a settlement immediately; a future mount
+  // reads the same short-lived session entry during render.
+  const [settledOverlayRevision, bumpSettledOverlayRevision] = useReducer(
+    (revision: number) => revision + 1,
+    0,
+  );
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   // A stable ref bag of the live SDK service closures. Passed once to the machine
   // via `input`; the machine reads `.current` at call time so it always sees the
   // latest closures without re-spawning. The ref is initialized with the first
@@ -231,6 +265,11 @@ export function useBibleReaderHighlights({
     consumeDataExchangeReturn,
     startSignInForHighlights,
     startDataExchangeForHighlights,
+    persistSettledWrite: (write) => {
+      if (!appKey || !userId) return;
+      persistSettledHighlightWrite(appKey, userId, write);
+      if (mountedRef.current) bumpSettledOverlayRevision();
+    },
   };
   const servicesRef = useRef(services);
   servicesRef.current = services;
@@ -276,6 +315,17 @@ export function useBibleReaderHighlights({
     [highlights, versionId, chapterUsfm],
   );
 
+  const settledOverlay = useMemo(() => {
+    if (!live || !appKey || !userId) return {};
+    return readSettledHighlightOverlay(appKey, userId, scope);
+  }, [live, appKey, userId, scope, settledOverlayRevision]);
+
+  useEffect(() => {
+    if (!live || !appKey || !userId) return;
+    const reconciled = reconcileSettledHighlightOverlay(appKey, userId, scope, serverColors);
+    if (!overlaysEqual(reconciled, settledOverlay)) bumpSettledOverlayRevision();
+  }, [live, appKey, userId, scope, serverColors, settledOverlay]);
+
   const lastSentServerColorsRef = useRef<ServerColors | null>(null);
   useEffect(() => {
     if (
@@ -311,12 +361,15 @@ export function useBibleReaderHighlights({
     // machine still holds the previous account's overlay. Skip it, so the new
     // account never sees those entries, not even for one paint.
     if (machineUserId !== userId) return { ...serverColors };
-    return selectHighlightedVerses(serverColors, overlay);
+    // Fresh in-memory intent wins over the settled cross-remount overlay; both
+    // win over a stale read replica.
+    return selectHighlightedVerses(serverColors, { ...settledOverlay, ...overlay });
   }, [
     isControlled,
     controlled?.highlights,
     live,
     serverColors,
+    settledOverlay,
     overlay,
     machineScope,
     scope,
