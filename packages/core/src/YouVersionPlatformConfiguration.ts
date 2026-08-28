@@ -116,12 +116,22 @@ export class YouVersionPlatformConfiguration {
    * 401/403 on a permissioned request invalidates the relevant entry via
    * {@link removeGrantedPermission}.
    *
-   * The cache is scoped to the signed-in user: it is persisted as
-   * `{ userId, permissions }` and only read back when `userId` matches the
-   * current {@link storedUserInfo}. This prevents one user's grants from leaking
-   * to a later user who signs in without a {@link clearAuthTokens} in between.
+   * The cache is scoped to both the configured app key and signed-in user. Each
+   * app key gets a separate storage entry containing `{ userId, permissions }`,
+   * and that entry is only read back when `userId` matches the current
+   * {@link storedUserInfo}. This prevents one app or user from inheriting grants
+   * that belong to another session sharing the same origin.
    */
-  private static readonly grantedPermissionsKey = 'youversion-platform:granted-permissions';
+  private static readonly grantedPermissionsKeyPrefix = 'youversion-platform:granted-permissions';
+
+  private static scopedStorageKey(prefix: string): string | null {
+    const appKey = this.appKey?.trim();
+    return appKey ? `${prefix}:${encodeURIComponent(appKey)}` : null;
+  }
+
+  private static get grantedPermissionsKey(): string | null {
+    return this.scopedStorageKey(this.grantedPermissionsKeyPrefix);
+  }
 
   /** The id of the user the cache is scoped to, or `null` when signed out. */
   private static get currentUserId(): string | null {
@@ -133,7 +143,9 @@ export class YouVersionPlatformConfiguration {
    * malformed, or in the legacy bare-array format (which is treated as absent).
    */
   private static readStoredGrants(): { userId: string; permissions: string[] } | null {
-    const raw = getLocalStorage()?.getItem(this.grantedPermissionsKey);
+    const key = this.grantedPermissionsKey;
+    if (!key) return null;
+    const raw = getLocalStorage()?.getItem(key);
     if (!raw) return null;
     try {
       const parsed = StoredGrantsSchema.safeParse(JSON.parse(raw));
@@ -144,11 +156,9 @@ export class YouVersionPlatformConfiguration {
   }
 
   private static writeStoredGrants(userId: string, permissions: string[]): void {
-    setStorageItem(
-      getLocalStorage(),
-      this.grantedPermissionsKey,
-      JSON.stringify({ userId, permissions }),
-    );
+    const key = this.grantedPermissionsKey;
+    if (!key) return;
+    setStorageItem(getLocalStorage(), key, JSON.stringify({ userId, permissions }));
   }
 
   public static get grantedPermissions(): string[] {
@@ -180,7 +190,9 @@ export class YouVersionPlatformConfiguration {
   }
 
   public static clearGrantedPermissions(): void {
-    removeStorageItem(getLocalStorage(), this.grantedPermissionsKey);
+    const key = this.grantedPermissionsKey;
+    if (!key) return;
+    removeStorageItem(getLocalStorage(), key);
   }
 
   /**
@@ -193,7 +205,12 @@ export class YouVersionPlatformConfiguration {
    * the callback loads. Recording the initiating user here lets the callback
    * verify the same user is still signed in before honoring the grant.
    */
-  private static readonly dataExchangeInitiatorKey = 'youversion-platform:data-exchange-initiator';
+  private static readonly dataExchangeInitiatorKeyPrefix =
+    'youversion-platform:data-exchange-initiator';
+
+  private static get dataExchangeInitiatorKey(): string | null {
+    return this.scopedStorageKey(this.dataExchangeInitiatorKeyPrefix);
+  }
 
   /**
    * Records the current user as the initiator of a data-exchange redirect.
@@ -203,17 +220,21 @@ export class YouVersionPlatformConfiguration {
    */
   public static saveDataExchangeInitiator(): void {
     const userId = this.currentUserId;
-    if (!userId) return;
-    setStorageItem(getLocalStorage(), this.dataExchangeInitiatorKey, userId);
+    const key = this.dataExchangeInitiatorKey;
+    if (!userId || !key) return;
+    setStorageItem(getLocalStorage(), key, userId);
   }
 
   /** The initiating user's id for the pending data exchange, or `null`. */
   public static get dataExchangeInitiator(): string | null {
-    return getLocalStorage()?.getItem(this.dataExchangeInitiatorKey) ?? null;
+    const key = this.dataExchangeInitiatorKey;
+    return key ? (getLocalStorage()?.getItem(key) ?? null) : null;
   }
 
   public static clearDataExchangeInitiator(): void {
-    removeStorageItem(getLocalStorage(), this.dataExchangeInitiatorKey);
+    const key = this.dataExchangeInitiatorKey;
+    if (!key) return;
+    removeStorageItem(getLocalStorage(), key);
   }
 
   /** Optimistic check against the permission cache. Server 401/403 still wins. */

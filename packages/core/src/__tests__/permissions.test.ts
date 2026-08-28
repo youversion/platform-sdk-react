@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { parseGrantedPermissions } from '../permissions';
 import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfiguration';
 
@@ -65,13 +65,19 @@ describe('parseGrantedPermissions', () => {
 });
 
 describe('YouVersionPlatformConfiguration permission cache', () => {
-  const storageKey = 'youversion-platform:granted-permissions';
+  const legacyStorageKey = 'youversion-platform:granted-permissions';
+  const storageKey = `${legacyStorageKey}:app-a`;
 
   beforeEach(() => {
     localStorage.clear();
+    YouVersionPlatformConfiguration.appKey = 'app-a';
     // The cache is scoped to the signed-in user; establish one for the cases
     // that exercise reads/writes for a single user.
     YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-a' });
+  });
+
+  afterEach(() => {
+    YouVersionPlatformConfiguration.appKey = null;
   });
 
   it('starts empty and merges granted permissions without duplicates', () => {
@@ -110,6 +116,40 @@ describe('YouVersionPlatformConfiguration permission cache', () => {
     localStorage.setItem(storageKey, JSON.stringify(['highlights']));
     expect(YouVersionPlatformConfiguration.grantedPermissions).toEqual([]);
     expect(YouVersionPlatformConfiguration.hasPermission('highlights')).toBe(false);
+  });
+
+  it('ignores an unscoped legacy entry instead of assigning it to the current app', () => {
+    localStorage.setItem(
+      legacyStorageKey,
+      JSON.stringify({ userId: 'user-a', permissions: ['highlights'] }),
+    );
+
+    expect(YouVersionPlatformConfiguration.grantedPermissions).toEqual([]);
+  });
+
+  it('keeps grants separate for two app keys used by the same user and origin', () => {
+    YouVersionPlatformConfiguration.saveGrantedPermissions(['highlights']);
+
+    YouVersionPlatformConfiguration.appKey = 'app-b';
+    expect(YouVersionPlatformConfiguration.grantedPermissions).toEqual([]);
+    YouVersionPlatformConfiguration.saveGrantedPermissions(['votd']);
+
+    YouVersionPlatformConfiguration.appKey = 'app-a';
+    expect(YouVersionPlatformConfiguration.grantedPermissions).toEqual(['highlights']);
+
+    YouVersionPlatformConfiguration.appKey = 'app-b';
+    expect(YouVersionPlatformConfiguration.grantedPermissions).toEqual(['votd']);
+  });
+
+  it('keeps pending data-exchange state separate for each app key', () => {
+    YouVersionPlatformConfiguration.saveDataExchangeInitiator();
+    expect(YouVersionPlatformConfiguration.dataExchangeInitiator).toBe('user-a');
+
+    YouVersionPlatformConfiguration.appKey = 'app-b';
+    expect(YouVersionPlatformConfiguration.dataExchangeInitiator).toBeNull();
+
+    YouVersionPlatformConfiguration.appKey = 'app-a';
+    expect(YouVersionPlatformConfiguration.dataExchangeInitiator).toBe('user-a');
   });
 
   it('returns [] when signed out even if an entry is stored', () => {

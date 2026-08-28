@@ -237,6 +237,16 @@ describe('useYVAuth', () => {
 
       expect(result.current.auth.accessToken).toBe('access-token');
     });
+
+    it('reads a newly persisted access token after the provider rerenders', async () => {
+      const { result, rerender } = await renderAuthHook();
+      expect(result.current.auth.accessToken).toBeNull();
+
+      YouVersionPlatformConfiguration.saveAuthData('fresh-access-token', null, null);
+      rerender();
+
+      expect(result.current.auth.accessToken).toBe('fresh-access-token');
+    });
   });
 
   describe('memoization', () => {

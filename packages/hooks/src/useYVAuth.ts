@@ -122,13 +122,9 @@ export function useYVAuth(): UseYVAuthReturn {
   // Derive authentication state
   const isAuthenticated = !!userInfo;
 
-  // Get current tokens for actions
-  const authTokens = useMemo(
-    () => ({
-      accessToken: YouVersionPlatformConfiguration.accessToken,
-    }),
-    [],
-  );
+  // Read persisted auth data on every render so callbacks and refreshes are
+  // reflected in consumers instead of being frozen at the hook's first mount.
+  const accessToken = YouVersionPlatformConfiguration.accessToken;
 
   // Sign in function
   const signIn = useCallback(
@@ -160,11 +156,11 @@ export function useYVAuth(): UseYVAuthReturn {
     () => ({
       isAuthenticated,
       isLoading,
-      accessToken: authTokens.accessToken,
+      accessToken,
       result: null,
       error,
     }),
-    [isAuthenticated, isLoading, authTokens.accessToken, error],
+    [isAuthenticated, isLoading, accessToken, error],
   );
 
   // Sign out function

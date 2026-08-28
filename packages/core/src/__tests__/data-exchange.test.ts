@@ -132,6 +132,7 @@ describe('handleDataExchangeCallback URL cleanup', () => {
   beforeEach(() => {
     // A signed-in user who is also the flow initiator, so a `granted` return is
     // honored and these tests can focus on URL cleanup.
+    YouVersionPlatformConfiguration.appKey = 'test-app';
     YouVersionPlatformConfiguration.clearAuthTokens();
     YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-a', name: 'A' });
     YouVersionPlatformConfiguration.saveDataExchangeInitiator();
@@ -139,6 +140,7 @@ describe('handleDataExchangeCallback URL cleanup', () => {
 
   afterEach(() => {
     YouVersionPlatformConfiguration.clearAuthTokens();
+    YouVersionPlatformConfiguration.appKey = null;
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
@@ -184,11 +186,13 @@ describe('handleDataExchangeCallback grant safety (initiating user)', () => {
     'https://app.example.com/read?data_exchange_status=granted&granted_permissions=highlights';
 
   beforeEach(() => {
+    YouVersionPlatformConfiguration.appKey = 'test-app';
     YouVersionPlatformConfiguration.clearAuthTokens();
   });
 
   afterEach(() => {
     YouVersionPlatformConfiguration.clearAuthTokens();
+    YouVersionPlatformConfiguration.appKey = null;
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });

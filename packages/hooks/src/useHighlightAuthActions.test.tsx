@@ -31,6 +31,7 @@ function wrapper({ children }: { children: ReactNode }) {
 describe('useHighlightAuthActions', () => {
   beforeEach(() => {
     localStorage.clear();
+    YouVersionPlatformConfiguration.appKey = 'app-1';
     // A writable location stub so href assignment doesn't hit jsdom navigation.
     Object.defineProperty(window, 'location', {
       value: { href: 'https://host.example/read' },
@@ -40,6 +41,7 @@ describe('useHighlightAuthActions', () => {
   });
 
   afterEach(() => {
+    YouVersionPlatformConfiguration.appKey = null;
     vi.restoreAllMocks();
   });
 
