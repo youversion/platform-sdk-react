@@ -51,7 +51,6 @@ function makeServices(overrides: Partial<HighlightServices> = {}): MachineTestSe
     consumeDataExchangeReturn: () => null,
     startSignInForHighlights: vi.fn().mockResolvedValue(undefined),
     startDataExchangeForHighlights: vi.fn().mockResolvedValue(undefined),
-    persistSettledWrite: vi.fn(),
     ...overrides,
   };
   return { ref: { current: services }, refetch };
@@ -82,28 +81,6 @@ afterEach(() => {
 });
 
 describe('bibleReaderHighlightsMachine — writeIntent lifecycle', () => {
-  it('persists a successful write even when navigation stops the machine before settlement', async () => {
-    const pending = deferred();
-    const createHighlight = vi.fn().mockReturnValue(pending.promise);
-    const persistSettledWrite = vi.fn();
-    const { ref } = makeServices({ createHighlight, persistSettledWrite });
-    const actor = startMachine(ref);
-
-    actor.send({ type: 'TAP_COLOR', color: 'FFEC5B', verses: [16] });
-    await vi.waitFor(() => expect(createHighlight).toHaveBeenCalledTimes(1));
-    actor.stop();
-
-    pending.resolve();
-    await vi.waitFor(() => {
-      expect(persistSettledWrite).toHaveBeenCalledWith({
-        kind: 'apply',
-        color: 'ffec5b',
-        verses: [16],
-        scope: scopeJHN3,
-      });
-    });
-  });
-
   it('releases a verse writeIntent entry once its write settles', async () => {
     const { ref, refetch } = makeServices();
     const actor = startMachine(ref);

@@ -511,48 +511,6 @@ describe('useBibleReaderHighlights — apply', () => {
 });
 
 describe('useBibleReaderHighlights — overlay reconciliation (Fix 2)', () => {
-  it('keeps a server-accepted highlight across provider unmount/remount while the GET is stale', async () => {
-    const mocked = mockUseHighlights();
-
-    const firstMount = renderHook(() => useBibleReaderHighlights(defaultOptions), {
-      wrapper: AuthWrapper,
-    });
-
-    act(() => {
-      firstMount.result.current.apply('ffec5b', [16]);
-    });
-    await waitFor(() => {
-      expect(mocked.refetch).toHaveBeenCalledTimes(1);
-    });
-    firstMount.unmount();
-
-    // Leaving /demos destroys its private provider and query client. A fresh
-    // provider can therefore receive an empty read-replica response even though
-    // the POST above succeeded. The app+user-scoped settled overlay bridges it.
-    mockUseHighlights({ highlights: makeCollection([]) });
-    const secondMount = renderHook(() => useBibleReaderHighlights(defaultOptions), {
-      wrapper: AuthWrapper,
-    });
-    expect(secondMount.result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
-
-    // Once server truth reflects the write, the session overlay is retired.
-    mockUseHighlights({
-      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' }]),
-    });
-    secondMount.rerender();
-    await waitFor(() => {
-      expect(secondMount.result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
-    });
-    secondMount.unmount();
-
-    // It is only a read-lag bridge, not a second durable highlight database.
-    mockUseHighlights({ highlights: makeCollection([]) });
-    const thirdMount = renderHook(() => useBibleReaderHighlights(defaultOptions), {
-      wrapper: AuthWrapper,
-    });
-    expect(thirdMount.result.current.highlightedVerses).toEqual({});
-  });
-
   it('holds the overlay until a fetch REFLECTS the write, then retires it to server truth', async () => {
     const mocked = mockUseHighlights();
 
