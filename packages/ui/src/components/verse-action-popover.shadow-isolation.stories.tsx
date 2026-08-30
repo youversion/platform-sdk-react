@@ -53,7 +53,7 @@ function IsolatedVerseActionPopover(): React.ReactNode {
           <div
             ref={setReaderScrollRoot}
             data-testid="reader-scroll-root"
-            style={{ blockSize: 64, overflowY: 'auto' }}
+            style={{ blockSize: 64, overflowBlock: 'auto' }}
           >
             <div style={{ display: 'grid', gap: 8 }}>
               <button type="button" data-testid="prior-control">
