@@ -1,5 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { ShadowRootHost } from '@/lib/shadow-root-host';
+import { requireShadowRoot } from '@/test/dom-stubs';
 import { fillFor } from '@/test/highlights-test-utils';
 import {
   VerseActionPopover,
@@ -8,8 +10,8 @@ import {
   type HighlightColor,
 } from './verse-action-popover';
 
-describe('VerseActionPopover', () => {
-  const defaultProps = {
+function createDefaultProps() {
+  return {
     open: true,
     onOpenChange: vi.fn(),
     activeHighlights: new Set<string>(),
@@ -21,14 +23,12 @@ describe('VerseActionPopover', () => {
     onCopy: vi.fn(),
     onShare: vi.fn(),
   };
+}
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
+describe('VerseActionPopover', () => {
   describe('AC1: Basic popover display', () => {
     it('should display 6 color circles when verse selected', () => {
-      render(<VerseActionPopover {...defaultProps} />);
+      render(<VerseActionPopover {...createDefaultProps()} />);
 
       const colorButtons = screen
         .getAllByRole('button')
@@ -38,7 +38,7 @@ describe('VerseActionPopover', () => {
     });
 
     it('should render the six apply colors', () => {
-      render(<VerseActionPopover {...defaultProps} />);
+      render(<VerseActionPopover {...createDefaultProps()} />);
 
       const applyButtons = screen
         .getAllByRole('button')
@@ -59,7 +59,7 @@ describe('VerseActionPopover', () => {
     // redirect initial focus to the (non-tabbable) content element instead, so
     // the ring only appears once the user actually Tabs to a swatch.
     it('moves initial focus to the popover content, not the first swatch', async () => {
-      render(<VerseActionPopover {...defaultProps} />);
+      render(<VerseActionPopover {...createDefaultProps()} />);
 
       const dialog = screen.getByRole('dialog');
       const firstSwatch = screen
@@ -76,7 +76,7 @@ describe('VerseActionPopover', () => {
   describe('AC2: Apply highlight', () => {
     it('should call onHighlight when color circle clicked', () => {
       const onHighlight = vi.fn();
-      render(<VerseActionPopover {...defaultProps} onHighlight={onHighlight} />);
+      render(<VerseActionPopover {...createDefaultProps()} onHighlight={onHighlight} />);
 
       const firstColorButton = screen
         .getAllByRole('button')
@@ -87,7 +87,7 @@ describe('VerseActionPopover', () => {
     });
 
     it('should render popover with color buttons', () => {
-      render(<VerseActionPopover {...defaultProps} />);
+      render(<VerseActionPopover {...createDefaultProps()} />);
 
       const dialog = screen.getByRole('dialog');
       expect(dialog).toBeTruthy();
@@ -102,14 +102,14 @@ describe('VerseActionPopover', () => {
 
   describe('AC3: Copy action', () => {
     it('should display copy button', () => {
-      render(<VerseActionPopover {...defaultProps} />);
+      render(<VerseActionPopover {...createDefaultProps()} />);
       const copyButton = screen.getByText('Copy');
       expect(copyButton).toBeTruthy();
     });
 
     it('should call onCopy when copy button clicked', () => {
       const onCopy = vi.fn();
-      render(<VerseActionPopover {...defaultProps} onCopy={onCopy} />);
+      render(<VerseActionPopover {...createDefaultProps()} onCopy={onCopy} />);
 
       const copyButton = screen.getByText('Copy');
       fireEvent.click(copyButton);
@@ -119,14 +119,14 @@ describe('VerseActionPopover', () => {
 
   describe('AC4: Share action', () => {
     it('should display share button', () => {
-      render(<VerseActionPopover {...defaultProps} />);
+      render(<VerseActionPopover {...createDefaultProps()} />);
       const shareButton = screen.getByText('Share');
       expect(shareButton).toBeTruthy();
     });
 
     it('should call onShare when share button clicked', () => {
       const onShare = vi.fn();
-      render(<VerseActionPopover {...defaultProps} onShare={onShare} />);
+      render(<VerseActionPopover {...createDefaultProps()} onShare={onShare} />);
 
       const shareButton = screen.getByText('Share');
       fireEvent.click(shareButton);
@@ -142,7 +142,7 @@ describe('VerseActionPopover', () => {
 
       render(
         <VerseActionPopover
-          {...defaultProps}
+          {...createDefaultProps()}
           activeHighlights={activeHighlights}
           selectedVerses={selectedVerses}
           highlightedVerses={highlightedVerses}
@@ -170,7 +170,7 @@ describe('VerseActionPopover', () => {
 
       render(
         <VerseActionPopover
-          {...defaultProps}
+          {...createDefaultProps()}
           activeHighlights={activeHighlights}
           selectedVerses={selectedVerses}
           highlightedVerses={highlightedVerses}
@@ -197,7 +197,7 @@ describe('VerseActionPopover', () => {
 
       render(
         <VerseActionPopover
-          {...defaultProps}
+          {...createDefaultProps()}
           activeHighlights={activeHighlights}
           selectedVerses={selectedVerses}
           highlightedVerses={highlightedVerses}
@@ -226,7 +226,7 @@ describe('VerseActionPopover', () => {
 
       render(
         <VerseActionPopover
-          {...defaultProps}
+          {...createDefaultProps()}
           activeHighlights={activeHighlights}
           selectedVerses={selectedVerses}
           highlightedVerses={highlightedVerses}
@@ -254,7 +254,7 @@ describe('VerseActionPopover', () => {
 
       render(
         <VerseActionPopover
-          {...defaultProps}
+          {...createDefaultProps()}
           activeHighlights={activeHighlights}
           selectedVerses={selectedVerses}
           highlightedVerses={highlightedVerses}
@@ -275,7 +275,7 @@ describe('VerseActionPopover', () => {
 
       render(
         <VerseActionPopover
-          {...defaultProps}
+          {...createDefaultProps()}
           activeHighlights={activeHighlights}
           selectedVerses={selectedVerses}
           highlightedVerses={highlightedVerses}
@@ -308,7 +308,7 @@ describe('VerseActionPopover', () => {
 
       render(
         <VerseActionPopover
-          {...defaultProps}
+          {...createDefaultProps()}
           activeHighlights={activeHighlights}
           selectedVerses={selectedVerses}
           highlightedVerses={highlightedVerses}
@@ -325,22 +325,15 @@ describe('VerseActionPopover', () => {
 
   describe('Popover visibility', () => {
     it('should not render content when open is false', () => {
-      render(<VerseActionPopover {...defaultProps} open={false} />);
+      render(<VerseActionPopover {...createDefaultProps()} open={false} />);
 
       expect(screen.queryByRole('dialog')).toBeNull();
     });
 
     it('should render content when open is true', () => {
-      render(<VerseActionPopover {...defaultProps} open={true} />);
+      render(<VerseActionPopover {...createDefaultProps()} open={true} />);
 
       expect(screen.getByRole('dialog')).toBeTruthy();
-    });
-
-    it('should use Radix popover with portal', () => {
-      render(<VerseActionPopover {...defaultProps} />);
-
-      const dialog = screen.getByRole('dialog');
-      expect(dialog).toBeTruthy();
     });
   });
 
@@ -352,7 +345,7 @@ describe('VerseActionPopover', () => {
 
       render(
         <VerseActionPopover
-          {...defaultProps}
+          {...createDefaultProps()}
           activeHighlights={activeHighlights}
           selectedVerses={selectedVerses}
           highlightedVerses={highlightedVerses}
@@ -373,7 +366,7 @@ describe('VerseActionPopover', () => {
     });
 
     it('should have dialog role with aria-label', () => {
-      render(<VerseActionPopover {...defaultProps} />);
+      render(<VerseActionPopover {...createDefaultProps()} />);
 
       const dialog = screen.getByRole('dialog');
       expect(dialog).toBeTruthy();
@@ -381,7 +374,7 @@ describe('VerseActionPopover', () => {
     });
 
     it('should have semantic color group', () => {
-      render(<VerseActionPopover {...defaultProps} />);
+      render(<VerseActionPopover {...createDefaultProps()} />);
 
       const colorGroup = screen.getByRole('group', { name: 'Highlight colors' });
       expect(colorGroup).toBeTruthy();
@@ -390,21 +383,21 @@ describe('VerseActionPopover', () => {
 
   describe('Styling', () => {
     it('should have data-yv-sdk attribute for scoping', () => {
-      render(<VerseActionPopover {...defaultProps} />);
+      render(<VerseActionPopover {...createDefaultProps()} />);
 
       const dialog = screen.getByRole('dialog');
       expect(dialog.getAttribute('data-yv-sdk')).not.toBeNull();
     });
 
     it('should apply theme attribute', () => {
-      render(<VerseActionPopover {...defaultProps} theme="dark" />);
+      render(<VerseActionPopover {...createDefaultProps()} theme="dark" />);
 
       const dialog = screen.getByRole('dialog');
       expect(dialog.getAttribute('data-yv-theme')).toBe('dark');
     });
 
     it('should default to light theme', () => {
-      render(<VerseActionPopover {...defaultProps} />);
+      render(<VerseActionPopover {...createDefaultProps()} />);
 
       const dialog = screen.getByRole('dialog');
       expect(dialog.getAttribute('data-yv-theme')).toBe('light');
@@ -416,7 +409,7 @@ describe('VerseActionPopover', () => {
       const custom = 'aabbcc';
       render(
         <VerseActionPopover
-          {...defaultProps}
+          {...createDefaultProps()}
           activeHighlights={new Set([custom])}
           selectedVerses={[1]}
           highlightedVerses={{ 1: custom }}
@@ -431,7 +424,7 @@ describe('VerseActionPopover', () => {
     it('shows leftover fffe00 as a remove swatch, not an apply swatch', () => {
       render(
         <VerseActionPopover
-          {...defaultProps}
+          {...createDefaultProps()}
           activeHighlights={new Set(['fffe00'])}
           selectedVerses={[1]}
           highlightedVerses={{ 1: 'fffe00' }}
@@ -449,7 +442,7 @@ describe('VerseActionPopover', () => {
     it('should handle empty active highlights', () => {
       const activeHighlights = new Set<HighlightColor>();
 
-      render(<VerseActionPopover {...defaultProps} activeHighlights={activeHighlights} />);
+      render(<VerseActionPopover {...createDefaultProps()} activeHighlights={activeHighlights} />);
 
       const applyButtons = screen
         .getAllByRole('button')
@@ -473,7 +466,7 @@ describe('VerseActionPopover', () => {
 
       render(
         <VerseActionPopover
-          {...defaultProps}
+          {...createDefaultProps()}
           activeHighlights={activeHighlights}
           selectedVerses={selectedVerses}
           highlightedVerses={highlightedVerses}
@@ -508,7 +501,7 @@ describe('VerseActionPopover', () => {
 
       render(
         <VerseActionPopover
-          {...defaultProps}
+          {...createDefaultProps()}
           activeHighlights={activeHighlights}
           selectedVerses={selectedVerses}
           highlightedVerses={highlightedVerses}
@@ -549,7 +542,7 @@ describe('VerseActionPopover', () => {
     it('renders a checkmark (not an X) on the active/remove swatch', () => {
       render(
         <VerseActionPopover
-          {...defaultProps}
+          {...createDefaultProps()}
           activeHighlights={new Set<HighlightColor>([HIGHLIGHT_COLORS[0]])}
           selectedVerses={[1]}
           highlightedVerses={{ 1: HIGHLIGHT_COLORS[0] }}
@@ -562,7 +555,7 @@ describe('VerseActionPopover', () => {
     });
 
     it('apply swatches render no icon', () => {
-      render(<VerseActionPopover {...defaultProps} />);
+      render(<VerseActionPopover {...createDefaultProps()} />);
       applyButtons().forEach((btn) => {
         expect(btn.querySelector('svg')).toBeNull();
       });
@@ -576,29 +569,29 @@ describe('VerseActionPopover', () => {
     }
 
     it('paints drawer dots with the unmixed stored hex in light mode', () => {
-      render(<VerseActionPopover {...defaultProps} theme="light" />);
+      render(<VerseActionPopover {...createDefaultProps()} theme="light" />);
       expect(firstApplySwatch().style.backgroundColor).toBe(fillFor(HIGHLIGHT_COLORS[0], 'card'));
     });
 
     it('paints drawer dots with the dark mix against the card surface', () => {
-      render(<VerseActionPopover {...defaultProps} theme="dark" />);
+      render(<VerseActionPopover {...createDefaultProps()} theme="dark" />);
       expect(firstApplySwatch().style.backgroundColor).toBe(fillFor(HIGHLIGHT_COLORS[0], 'card'));
       expect(firstApplySwatch().style.backgroundColor).toContain('var(--yv-card)');
     });
 
     it('uses a dark inner stroke in light mode and a light one in dark mode', () => {
-      const { unmount } = render(<VerseActionPopover {...defaultProps} theme="light" />);
+      const { unmount } = render(<VerseActionPopover {...createDefaultProps()} theme="light" />);
       expect(firstApplySwatch().style.border).toContain('rgba(18, 18, 18, 0.2)');
       unmount();
 
-      render(<VerseActionPopover {...defaultProps} theme="dark" />);
+      render(<VerseActionPopover {...createDefaultProps()} theme="dark" />);
       expect(firstApplySwatch().style.border).toContain('rgba(255, 255, 255, 0.2)');
     });
 
     it('keeps the active-swatch checkmark legible on the dimmed dark-mode fill', () => {
       render(
         <VerseActionPopover
-          {...defaultProps}
+          {...createDefaultProps()}
           theme="dark"
           activeHighlights={new Set<HighlightColor>([HIGHLIGHT_COLORS[0]])}
           selectedVerses={[1]}
@@ -612,7 +605,7 @@ describe('VerseActionPopover', () => {
     it('keeps the light-mode checkmark in the Text/Everdark color', () => {
       render(
         <VerseActionPopover
-          {...defaultProps}
+          {...createDefaultProps()}
           theme="light"
           activeHighlights={new Set<HighlightColor>([HIGHLIGHT_COLORS[0]])}
           selectedVerses={[1]}
@@ -627,7 +620,7 @@ describe('VerseActionPopover', () => {
       const custom = '000000';
       render(
         <VerseActionPopover
-          {...defaultProps}
+          {...createDefaultProps()}
           theme="light"
           activeHighlights={new Set([custom])}
           selectedVerses={[1]}
@@ -645,7 +638,7 @@ describe('VerseActionPopover', () => {
     // way to reach it. The pill is now capped to the viewport and the swatch row
     // scrolls horizontally inside it.
     it('caps the popover content to the min of the Radix available width and the live viewport', () => {
-      render(<VerseActionPopover {...defaultProps} />);
+      render(<VerseActionPopover {...createDefaultProps()} />);
       const dialog = screen.getByRole('dialog');
       // The `min(..., calc(100vw-24px))` term is what keeps the cap honest when
       // the viewport shrinks under an open popover — Radix's own var goes stale
@@ -656,7 +649,7 @@ describe('VerseActionPopover', () => {
     });
 
     it('makes the swatch row horizontally scrollable with a hidden scrollbar', () => {
-      render(<VerseActionPopover {...defaultProps} />);
+      render(<VerseActionPopover {...createDefaultProps()} />);
       const swatchRow = screen.getByRole('group', { name: 'Highlight colors' });
       expect(swatchRow.className).toContain('yv:overflow-x-auto');
       expect(swatchRow.className).toContain('yv:scrollbar-hide');
@@ -666,7 +659,7 @@ describe('VerseActionPopover', () => {
     });
 
     it('keeps swatches from squishing when the row is capped', () => {
-      render(<VerseActionPopover {...defaultProps} />);
+      render(<VerseActionPopover {...createDefaultProps()} />);
       const applyButton = screen
         .getAllByRole('button')
         .find((btn) => btn.getAttribute('aria-label')?.includes('Apply'))!;
@@ -684,7 +677,7 @@ describe('VerseActionPopover', () => {
     it('engages the edge-fade mask on scroll once the row overflows', () => {
       render(
         <VerseActionPopover
-          {...defaultProps}
+          {...createDefaultProps()}
           activeHighlights={new Set<HighlightColor>(HIGHLIGHT_COLORS)}
           selectedVerses={[1, 2, 3, 4, 5]}
           highlightedVerses={{
@@ -765,7 +758,7 @@ describe('VerseActionPopover', () => {
     it('hides the color row and remove circles but keeps Copy / Share', () => {
       render(
         <VerseActionPopover
-          {...defaultProps}
+          {...createDefaultProps()}
           highlightsEnabled={false}
           activeHighlights={new Set<HighlightColor>([HIGHLIGHT_COLORS[0]])}
           selectedVerses={[1]}
@@ -783,4 +776,31 @@ describe('VerseActionPopover', () => {
       expect(screen.getByText('Share')).toBeTruthy();
     });
   });
+});
+
+it('keeps isolated content in its shadow tree and preserves the document portal otherwise', async () => {
+  const isolatedRender = render(
+    <ShadowRootHost portalStrategy="local-inline">
+      <VerseActionPopover {...createDefaultProps()} />
+    </ShadowRootHost>,
+  );
+  const shadowRoot = requireShadowRoot(isolatedRender.container);
+
+  const isolatedDialog = await waitFor(() => {
+    const element = shadowRoot.querySelector<HTMLElement>('[role="dialog"]');
+    if (!element) throw new Error('isolated verse action popover not rendered');
+    return element;
+  });
+  expect(isolatedDialog.getRootNode()).toBe(shadowRoot);
+  expect(shadowRoot.querySelector('[data-yv-shadow-inline-overlay]')).toContainElement(
+    isolatedDialog,
+  );
+  expect(document.body.querySelector('[role="dialog"]')).toBeNull();
+  isolatedRender.unmount();
+
+  const documentRender = render(<VerseActionPopover {...createDefaultProps()} />);
+  const documentDialog = screen.getByRole('dialog');
+  expect(documentDialog.getRootNode()).toBe(document);
+  expect(document.body).toContainElement(documentDialog);
+  expect(documentRender.container).not.toContainElement(documentDialog);
 });

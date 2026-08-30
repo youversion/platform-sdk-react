@@ -161,6 +161,65 @@ export const Default: Story = {
   },
 };
 
+export const VerseActionPointerInteractions: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    lineSpacing: 1.7,
+    fontFamily: INTER_FONT,
+    showVerseNumbers: true,
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('*/v1/fonts/1/stylesheet', () =>
+          HttpResponse.text('', { headers: { 'Content-Type': 'text/css' } }),
+        ),
+        ...globalHandlers,
+      ],
+    },
+  },
+  render: (args) => (
+    <div className="yv:grid yv:h-screen yv:grid-rows-[auto_1fr] yv:bg-background">
+      <button type="button" data-testid="outside-reader-control">
+        Outside reader
+      </button>
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const firstVerse = await waitFor(() => {
+      const element = canvasElement.querySelector<HTMLElement>('.yv-v[v="1"]');
+      if (!element) throw new Error('first verse not rendered');
+      return element;
+    });
+    const secondVerse = canvasElement.querySelector<HTMLElement>('.yv-v[v="2"]');
+    const secondVerseLabel = secondVerse?.querySelector<HTMLElement>('.yv-vlbl');
+    const outsideControl = canvasElement.querySelector<HTMLButtonElement>(
+      '[data-testid="outside-reader-control"]',
+    );
+    if (!secondVerse || !secondVerseLabel || !outsideControl)
+      throw new Error('reader interaction controls not rendered');
+
+    await userEvent.click(firstVerse);
+    const dialog = await screen.findByRole('dialog');
+
+    await userEvent.click(secondVerseLabel);
+    await expect(firstVerse).toHaveClass('yv-v-selected');
+    await expect(secondVerse).toHaveClass('yv-v-selected');
+    await expect(dialog).toBeInTheDocument();
+
+    await userEvent.pointer({ keys: '[MouseLeft>]', target: outsideControl });
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    await expect(firstVerse).not.toHaveClass('yv-v-selected');
+    await expect(secondVerse).not.toHaveClass('yv-v-selected');
+    await userEvent.pointer({ keys: '[/MouseLeft]', target: outsideControl });
+  },
+};
+
 /**
  * Dark theme
  */

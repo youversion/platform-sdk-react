@@ -21,6 +21,7 @@ type ShadowPortalStrategy = 'local-inline' | 'local-top-layer';
 
 interface ShadowPortalController {
   container: HTMLElement | null;
+  getLastFocusedElement: () => HTMLElement | null;
   prepareOpen: (instanceId: string) => void;
   requestClose: (instanceId: string) => void;
   setModalPresent: (instanceId: string, present: boolean) => void;
@@ -69,6 +70,11 @@ export function useShadowModalPresence(
   }, [instanceId, present, setModalPresent]);
 
   return controller?.restoreFocusWhenModalReleased;
+}
+
+/** @internal Returns the most recent focus target from the component's non-overlay content. */
+export function useShadowFocusRestoreTarget(): (() => HTMLElement | null) | undefined {
+  return useContext(ShadowPortalContext)?.getLastFocusedElement;
 }
 
 /** @internal Returns the node's own ShadowRoot, or null when it isn't attached inside one. */
@@ -142,6 +148,7 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
   const contentWrapperRef = useRef<HTMLDivElement | null>(null);
   const presentModalIdsRef = useRef(new Set<string>());
   const pendingFocusTargetRef = useRef<HTMLElement | null>(null);
+  const lastFocusedElementRef = useRef<HTMLElement | null>(null);
   const [shadowRoot, setShadowRoot] = useState<ShadowRoot | null>(null);
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
   const [needsStyleFallback, setNeedsStyleFallback] = useState(false);
@@ -247,11 +254,17 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
     if (target.isConnected) target.focus();
   }, []);
 
+  const getLastFocusedElement = useCallback(
+    (): HTMLElement | null => lastFocusedElementRef.current,
+    [],
+  );
+
   const portalController = useMemo<ShadowPortalController | null>(
     () =>
       portalStrategy
         ? {
             container: portalContainer,
+            getLastFocusedElement,
             prepareOpen,
             requestClose,
             setModalPresent,
@@ -261,6 +274,7 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
     [
       portalContainer,
       portalStrategy,
+      getLastFocusedElement,
       prepareOpen,
       requestClose,
       restoreFocusWhenModalReleased,
@@ -297,6 +311,7 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
       portalContainerRef.current = null;
       presentModalIdsRef.current.clear();
       pendingFocusTargetRef.current = null;
+      lastFocusedElementRef.current = null;
       if (contentWrapperRef.current) contentWrapperRef.current.inert = false;
     };
   }, []);
@@ -316,6 +331,14 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
                 ref={contentWrapperRef}
                 data-yv-shadow-content-wrapper
                 style={{ all: 'initial', display: 'contents' }}
+                onFocusCapture={(event) => {
+                  if (
+                    isElementFromOwnerDocument(event.target, event.currentTarget, 'HTMLElement') &&
+                    event.currentTarget.contains(event.target)
+                  ) {
+                    lastFocusedElementRef.current = event.target;
+                  }
+                }}
               >
                 {children}
               </div>

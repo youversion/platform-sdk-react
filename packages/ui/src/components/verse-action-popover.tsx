@@ -6,7 +6,13 @@ import { cn } from '../lib/utils';
 import { BoxStackIcon } from './icons/box-stack';
 import { Share } from './icons/share';
 import { CheckIcon } from './icons/check';
+import { useShadowPortalState } from './ui/use-shadow-portal-state';
 import { buildVerseActionSwatches, highlightFillColorMix } from '@/lib/highlight-colors';
+import {
+  getOwnShadowRoot,
+  isElementFromOwnerDocument,
+  useShadowFocusRestoreTarget,
+} from '@/lib/shadow-root-host';
 import { isDarkHighlightHex } from './verse';
 
 /** Re-export for back-compat; prefer `@/lib/highlight-colors` for new code. */
@@ -173,6 +179,8 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   theme = 'light',
 }) => {
   const { t } = useTranslation(undefined, { i18n });
+  const portal = useShadowPortalState({ open, onOpenChange });
+  const getShadowFocusRestoreTarget = useShadowFocusRestoreTarget();
 
   // On open, Radix's FocusScope would autofocus the first swatch. Because the bar
   // opens from a mouse/tap on non-focusable verse text, Chromium treats that
@@ -182,6 +190,11 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   // still enters the popover (Escape closes; screen readers announce the dialog),
   // but the ring only appears once the user actually Tabs to a swatch.
   const contentRef = useRef<HTMLDivElement>(null);
+  const focusRestoreTargetRef = useRef<HTMLElement | null>(null);
+  const retainOutsideFocusRef = useRef(false);
+  const allowPriorFocusRestoration = (): void => {
+    retainOutsideFocusRef.current = false;
+  };
 
   // The swatch row is capped to the viewport width (see the Content max-width
   // below) and scrolls horizontally when it overflows. Track which edges have
@@ -313,10 +326,18 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
     };
   }, [swatchRow, swatchCount]);
 
+  if (portal.awaitingPortalTarget) {
+    return (
+      <PopoverPrimitive.Root open={portal.open} onOpenChange={portal.onOpenChange}>
+        <PopoverPrimitive.Anchor virtualRef={view.virtualRef} />
+      </PopoverPrimitive.Root>
+    );
+  }
+
   return (
-    <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}>
+    <PopoverPrimitive.Root open={portal.open} onOpenChange={portal.onOpenChange}>
       <PopoverPrimitive.Anchor virtualRef={view.virtualRef} />
-      <PopoverPrimitive.Portal>
+      <PopoverPrimitive.Portal container={portal.container}>
         <PopoverPrimitive.Content
           ref={contentRef}
           role="dialog"
@@ -330,15 +351,64 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
             // shows on pointer-open. The first Tab still moves to the first swatch,
             // and because Tab is keyboard modality the ring correctly appears then.
             event.preventDefault();
-            contentRef.current?.focus({ preventScroll: true });
+            const content = contentRef.current;
+            if (!content) return;
+
+            const root = getOwnShadowRoot(content);
+            retainOutsideFocusRef.current = false;
+            if (root) {
+              const activeElement = root.activeElement ?? getShadowFocusRestoreTarget?.();
+              focusRestoreTargetRef.current = isElementFromOwnerDocument(
+                activeElement,
+                content,
+                'HTMLElement',
+              )
+                ? activeElement
+                : null;
+            } else {
+              focusRestoreTargetRef.current = null;
+            }
+            content.focus({ preventScroll: true });
           }}
+          onCloseAutoFocus={(event) => {
+            const root = portal.container ? getOwnShadowRoot(portal.container) : null;
+            if (!root) return;
+
+            event.preventDefault();
+            const target = focusRestoreTargetRef.current;
+            if (
+              !retainOutsideFocusRef.current &&
+              target?.isConnected &&
+              target.getRootNode() === root
+            ) {
+              target.focus();
+            }
+            retainOutsideFocusRef.current = false;
+            focusRestoreTargetRef.current = null;
+          }}
+          onPointerDownCapture={allowPriorFocusRestoration}
+          onFocusCapture={allowPriorFocusRestoration}
+          onEscapeKeyDown={allowPriorFocusRestoration}
           onInteractOutside={(event) => {
             // Tapping another verse modifies the selection — it should re-anchor
             // the popover, not dismiss it. Only a tap truly outside the reader
             // dismisses (which clears the selection via onOpenChange).
-            const target = event.detail.originalEvent.target;
-            if (target instanceof Element && target.closest('.yv-v[v]')) {
+            const content = contentRef.current;
+            if (!content) return;
+            const originalEvent = event.detail.originalEvent;
+            const interactedWithVerse = originalEvent
+              .composedPath()
+              .some(
+                (target) =>
+                  isElementFromOwnerDocument(target, content, 'Element') &&
+                  target.matches('.yv-v[v]'),
+              );
+            if (interactedWithVerse) {
               event.preventDefault();
+              return;
+            }
+            if (getOwnShadowRoot(content)) {
+              retainOutsideFocusRef.current = true;
             }
           }}
           side={view.side}
