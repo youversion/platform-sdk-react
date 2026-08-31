@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { useRef, useState } from 'react';
 import { ShadowRootHost } from '@/lib/shadow-root-host';
 import { requireShadowRoot } from '@/test/dom-stubs';
 import { fillFor } from '@/test/highlights-test-utils';
@@ -23,6 +25,64 @@ function createDefaultProps() {
     onCopy: vi.fn(),
     onShare: vi.fn(),
   };
+}
+
+function FocusRestorationScenario() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Prior control
+      </button>
+      <VerseActionPopover
+        {...createDefaultProps()}
+        open={open}
+        onOpenChange={setOpen}
+        onCopy={() => setOpen(false)}
+      />
+    </>
+  );
+}
+
+function ControlledCloseScenario() {
+  const [open, setOpen] = useState(false);
+  const [closeRequests, setCloseRequests] = useState(0);
+  const rejectNextCloseRef = useRef(false);
+  const deferNextCloseRef = useRef(false);
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Prior control
+      </button>
+      <button type="button" onPointerDown={() => (rejectNextCloseRef.current = true)}>
+        Reject outside close
+      </button>
+      <button type="button" onPointerDown={() => (deferNextCloseRef.current = true)}>
+        Delay outside close
+      </button>
+      <output data-testid="close-requests">{closeRequests}</output>
+      <VerseActionPopover
+        {...createDefaultProps()}
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setCloseRequests((count) => count + 1);
+          if (!nextOpen && rejectNextCloseRef.current) {
+            rejectNextCloseRef.current = false;
+            return;
+          }
+          if (!nextOpen && deferNextCloseRef.current) {
+            deferNextCloseRef.current = false;
+            setTimeout(() => setOpen(false), 25);
+            return;
+          }
+          setOpen(nextOpen);
+        }}
+        onCopy={() => setOpen(false)}
+      />
+    </>
+  );
 }
 
 describe('VerseActionPopover', () => {
@@ -803,4 +863,138 @@ it('keeps isolated content in its shadow tree and preserves the document portal 
   expect(documentDialog.getRootNode()).toBe(document);
   expect(document.body).toContainElement(documentDialog);
   expect(documentRender.container).not.toContainElement(documentDialog);
+});
+
+it('restores document focus after Escape and an action closes the popover', async () => {
+  render(<FocusRestorationScenario />);
+  const priorControl = screen.getByRole('button', { name: 'Prior control' });
+
+  priorControl.focus();
+  fireEvent.click(priorControl);
+  let dialog = await screen.findByRole('dialog');
+  await waitFor(() => expect(document.activeElement).toBe(dialog));
+
+  fireEvent.keyDown(dialog, { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(document.activeElement).toBe(priorControl);
+
+  fireEvent.click(priorControl);
+  dialog = await screen.findByRole('dialog');
+  fireEvent.pointerDown(screen.getByRole('button', { name: 'Copy' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+  await waitFor(() => expect(dialog).not.toBeInTheDocument());
+  expect(document.activeElement).toBe(priorControl);
+});
+
+it('restores shadow focus after Escape and an action closes the popover', async () => {
+  const isolatedRender = render(
+    <ShadowRootHost portalStrategy="local-inline">
+      <FocusRestorationScenario />
+    </ShadowRootHost>,
+  );
+  const shadowRoot = requireShadowRoot(isolatedRender.container);
+  const priorControl = await waitFor(() => {
+    const element = shadowRoot.querySelector<HTMLButtonElement>('button');
+    if (!element) throw new Error('prior focus control not rendered');
+    return element;
+  });
+
+  priorControl.focus();
+  fireEvent.click(priorControl);
+  let dialog = await waitFor(() => {
+    const element = shadowRoot.querySelector<HTMLElement>('[role="dialog"]');
+    if (!element) throw new Error('isolated verse action popover not rendered');
+    return element;
+  });
+  await waitFor(() => expect(shadowRoot.activeElement).toBe(dialog));
+
+  fireEvent.keyDown(dialog, { key: 'Escape' });
+  await waitFor(() => expect(shadowRoot.querySelector('[role="dialog"]')).toBeNull());
+  expect(shadowRoot.activeElement).toBe(priorControl);
+
+  fireEvent.click(priorControl);
+  dialog = await waitFor(() => {
+    const element = shadowRoot.querySelector<HTMLElement>('[role="dialog"]');
+    if (!element) throw new Error('isolated verse action popover did not reopen');
+    return element;
+  });
+  const copyButton = Array.from(dialog.querySelectorAll('button')).find(
+    (button) => button.textContent === 'Copy',
+  );
+  if (!copyButton) throw new Error('copy action not rendered');
+  fireEvent.pointerDown(copyButton);
+  fireEvent.click(copyButton);
+  await waitFor(() => expect(shadowRoot.querySelector('[role="dialog"]')).toBeNull());
+  expect(shadowRoot.activeElement).toBe(priorControl);
+});
+
+it('preserves document focus through rejected and delayed outside closes', async () => {
+  const user = userEvent.setup();
+  render(<ControlledCloseScenario />);
+  const priorControl = screen.getByRole('button', { name: 'Prior control' });
+  const rejectedOutsideControl = screen.getByRole('button', { name: 'Reject outside close' });
+  const delayedOutsideControl = screen.getByRole('button', { name: 'Delay outside close' });
+
+  await user.click(priorControl);
+  let dialog = await screen.findByRole('dialog');
+  await user.click(rejectedOutsideControl);
+  await waitFor(() => expect(screen.getByTestId('close-requests')).toHaveTextContent('1'));
+  expect(dialog).toBeInTheDocument();
+  expect(document.activeElement).toBe(rejectedOutsideControl);
+
+  await user.click(screen.getByRole('button', { name: 'Copy' }));
+  await waitFor(() => expect(dialog).not.toBeInTheDocument());
+  expect(document.activeElement).toBe(priorControl);
+
+  await user.click(priorControl);
+  dialog = await screen.findByRole('dialog');
+  await user.click(delayedOutsideControl);
+  await waitFor(() => expect(dialog).not.toBeInTheDocument());
+  expect(document.activeElement).toBe(delayedOutsideControl);
+});
+
+it('restores document focus without retaining another popover as its target', async () => {
+  let setFirstOpen = (_open: boolean): void => undefined;
+  let setSecondOpen = (_open: boolean): void => undefined;
+
+  function TwoPopovers() {
+    const [firstOpen, updateFirstOpen] = useState(false);
+    const [secondOpen, updateSecondOpen] = useState(false);
+    setFirstOpen = updateFirstOpen;
+    setSecondOpen = updateSecondOpen;
+
+    return (
+      <>
+        <button type="button">Prior control</button>
+        <VerseActionPopover
+          {...createDefaultProps()}
+          open={firstOpen}
+          onOpenChange={(nextOpen) => {
+            if (nextOpen) updateFirstOpen(true);
+          }}
+        />
+        <VerseActionPopover
+          {...createDefaultProps()}
+          open={secondOpen}
+          onOpenChange={updateSecondOpen}
+        />
+      </>
+    );
+  }
+
+  render(<TwoPopovers />);
+  const priorControl = screen.getByRole('button', { name: 'Prior control' });
+  priorControl.focus();
+
+  act(() => setFirstOpen(true));
+  await waitFor(() => expect(screen.getAllByRole('dialog')).toHaveLength(1));
+  act(() => setSecondOpen(true));
+  await waitFor(() => expect(screen.getAllByRole('dialog')).toHaveLength(2));
+
+  act(() => setFirstOpen(false));
+  await waitFor(() => expect(screen.getAllByRole('dialog')).toHaveLength(1));
+  act(() => setSecondOpen(false));
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(document.activeElement).toBe(priorControl);
 });

@@ -161,7 +161,7 @@ export const Default: Story = {
   },
 };
 
-export const VerseActionPointerInteractions: Story = {
+export const VerseActionPopoverInteractions: Story = {
   tags: ['integration'],
   args: {
     defaultVersionId: 111,
@@ -181,7 +181,7 @@ export const VerseActionPointerInteractions: Story = {
   },
   render: (args) => (
     <div className="yv:grid yv:h-screen yv:grid-rows-[auto_1fr] yv:bg-background">
-      <button type="button" data-testid="outside-reader-control">
+      <button type="button" data-testid="outside-reader-control" autoFocus>
         Outside reader
       </button>
       <BibleReader.Root {...args}>
@@ -204,19 +204,40 @@ export const VerseActionPointerInteractions: Story = {
     if (!secondVerse || !secondVerseLabel || !outsideControl)
       throw new Error('reader interaction controls not rendered');
 
+    const ownerDocument = canvasElement.ownerDocument;
+    await waitFor(() => expect(ownerDocument.activeElement).toBe(outsideControl));
     await userEvent.click(firstVerse);
-    const dialog = await screen.findByRole('dialog');
+    let dialog = await screen.findByRole('dialog');
+
+    await expect(dialog.getRootNode()).toBe(ownerDocument);
+    await expect(ownerDocument.body).toContainElement(dialog);
+    await waitFor(() => expect(ownerDocument.activeElement).toBe(dialog));
+
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await expect(ownerDocument.activeElement).toBe(outsideControl);
+
+    await userEvent.click(firstVerse);
+    dialog = await screen.findByRole('dialog');
+    const firstDialogRect = dialog.getBoundingClientRect();
 
     await userEvent.click(secondVerseLabel);
     await expect(firstVerse).toHaveClass('yv-v-selected');
     await expect(secondVerse).toHaveClass('yv-v-selected');
     await expect(dialog).toBeInTheDocument();
+    await waitFor(() => {
+      const reanchoredRect = dialog.getBoundingClientRect();
+      const movedInline = Math.abs(reanchoredRect.left - firstDialogRect.left) > 8;
+      const movedBlock = Math.abs(reanchoredRect.top - firstDialogRect.top) > 8;
+      void expect(movedInline || movedBlock).toBe(true);
+    });
 
     await userEvent.pointer({ keys: '[MouseLeft>]', target: outsideControl });
     await waitFor(() => expect(dialog).not.toBeInTheDocument());
     await expect(firstVerse).not.toHaveClass('yv-v-selected');
     await expect(secondVerse).not.toHaveClass('yv-v-selected');
     await userEvent.pointer({ keys: '[/MouseLeft]', target: outsideControl });
+    await expect(ownerDocument.activeElement).toBe(outsideControl);
   },
 };
 
