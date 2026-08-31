@@ -128,6 +128,24 @@ This monorepo uses [rev-dep](https://github.com/jayu/rev-dep) and [Knip](https:/
 
 > **Tip:** Run `pnpm analyze` before opening a PR to catch dead code, boundary violations, or unused dependencies early.
 
+### Bundle Size & Tree-Shaking Analysis
+
+Bundle size budgets and tree-shaking verification require a full build first — `size-limit` and the tree-shaking fixture import from `packages/*/dist`, not source.
+
+| Command | Description |
+|---------|-------------|
+| `pnpm build && pnpm size` | Check published bundle sizes against budgets in `.size-limit.json` (root) |
+| `pnpm size:build` | Build then run size-limit in one step |
+| `pnpm size:visualize` | Generate esbuild metafile JSON in `bundle-report/` for [esbuild.github.io/analyze](https://esbuild.github.io/analyze/) |
+| `pnpm size:why` | Alias for `pnpm size:visualize` (size-limit `--why` is unavailable with `preset-small-lib`) |
+| `pnpm check:tree-shaking` | Verify single-symbol consumer bundles exclude unused-export sentinels; CI asserts package.json `sideEffects` |
+
+`pnpm size:why` is an alias for `pnpm size:visualize`. The size-limit built-in `--why` flag does not work with `@size-limit/preset-small-lib`.
+
+**Updating budgets:** After a deliberate size change, run `pnpm size` locally, note the reported brotlied sizes, and set each `.size-limit.json` `limit` to measured size plus ~10% headroom.
+
+**Non-additive UI numbers:** `@youversion/platform-react-ui` inlines `@youversion/platform-core` at build time (`noExternal`), so UI size-limit entries already include core — do not add core and UI budgets together when estimating consumer impact.
+
 ### Development Environment
 
 ```bash

@@ -208,3 +208,43 @@ jobs:
 
       - name: Build packages
         run: pnpm build
+
+  bundle-size:
+    name: Bundle Size
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Check bundle size budgets
+        run: |
+          set -o pipefail
+          pnpm size | tee /tmp/size.txt
+
+      - name: Verify tree-shaking
+        run: pnpm check:tree-shaking
+
+      - name: Bundle size summary
+        if: always()
+        run: |
+          {
+            echo '### Bundle size'
+            echo '```'
+            cat /tmp/size.txt 2>/dev/null || echo '(bundle size check did not run)'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
