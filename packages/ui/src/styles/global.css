@@ -89,6 +89,10 @@ layer(yv-sdk-fonts);
 
 @layer yv-sdk-theme {
   [data-yv-sdk] {
+    /* Keep Tailwind and tw-animate-css spacing independent of host custom properties. */
+    --yv-spacing: 0.25rem;
+    --spacing: var(--yv-spacing);
+
     @theme inline {
       /* Untitled Serif is the brand serif, loaded from the gated Fonts API stylesheet
          endpoint by <YvFonts /> — see docs/adr/0004-adopt-untitled-serif-via-fonts-api.md.

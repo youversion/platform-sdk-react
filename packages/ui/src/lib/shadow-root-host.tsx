@@ -122,8 +122,7 @@ function resetHost(host: HTMLDivElement): void {
   // Inline author-important declarations establish the smallest stable box.
   host.style.setProperty('all', 'initial', 'important');
   host.style.setProperty('display', 'contents', 'important');
-  host.style.setProperty('writing-mode', 'inherit', 'important');
-  host.style.setProperty('text-orientation', 'inherit', 'important');
+  host.style.setProperty('direction', 'inherit', 'important');
 }
 
 function hidePopoverIfOpen(container: HTMLElement | null): void {
@@ -330,7 +329,7 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
               <div
                 ref={contentWrapperRef}
                 data-yv-shadow-content-wrapper
-                style={{ all: 'initial', display: 'contents' }}
+                style={{ all: 'initial', direction: 'inherit', display: 'contents' }}
                 onFocusCapture={(event) => {
                   if (
                     isElementFromOwnerDocument(event.target, event.currentTarget, 'HTMLElement') &&

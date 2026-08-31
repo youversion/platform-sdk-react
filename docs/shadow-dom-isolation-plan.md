@@ -28,7 +28,7 @@ This is a working plan, not approval for package-wide rollout.
 
 | Area | Evidence today | Status | Remaining work |
 | --- | --- | --- | --- |
-| Host CSS isolation | Hostile-CSS demo and focused Chromium coverage exercise element selectors, inherited properties, universal `!important` rules, host attacks, and generated pseudo-content. | Validated for the prototype | Repeat against each component selected for rollout. |
+| Host CSS isolation | Hostile-CSS demo and focused Chromium coverage exercise element selectors, direction inheritance, vertical writing and typography resets, hostile custom properties, universal `!important` rules, host attacks, and generated pseudo-content. | Validated for the prototype | Repeat against each component selected for rollout. |
 | Component behavior | Auth button interaction works through the React portal; Strict Mode does not attach the root twice. | Validated for the prototype | Audit component-specific refs, events, and consumer integrations during rollout. |
 | Owner-document handling | Focused coverage mounts into a same-origin iframe and verifies document-compatible stylesheet construction. | Validated for the prototype | Verify stylesheet failure recovery. |
 | Inline floating content | The picker negative control preserves tree-scope relationships but demonstrates clipping beyond a constrained ancestor. | Validated as a negative control | None; clipping is why inline placement is not the selected escaping strategy. |
@@ -61,17 +61,18 @@ separate decision.
   root renders an empty host on the server and delays content and forwarded refs.
 - Define stacking, focus ownership, and dismissal contracts for nested or
   competing modal and non-modal overlays.
-- Complete a package-wide custom-property audit. `all: initial` does not reset
-  custom properties, and existing bare references such as
-  `BibleVersionPicker`'s `var(--spacing)` must be classified rather than fixed as
-  isolated symptoms.
+- Complete the package-wide custom-property inventory and prevention guard in
+  YPE-5400. The known `BibleVersionPicker`, `InputGroup`, and `tw-animate-css`
+  dependencies now resolve through locally-defined SDK-owned spacing and radius
+  values, but `all: initial` does not reset unknown custom properties.
 
 ## Functional and compatibility audits
 
 - Verify native form participation and external `label`, `aria-labelledby`, and
   `aria-describedby` relationships when controls cross tree scopes.
-- Define which inherited inputs are intentional, including writing direction,
-  writing mode, and any future consumer-provided custom properties.
+- Preserve `direction` as the only intentional inherited visual input. Vertical
+  writing modes, text orientation, host typography, and undeclared host custom
+  properties are not supported customization inputs.
 - Document event retargeting, nested-root behavior, supported customization, and
   shadow-aware consumer test and automation queries.
 - Verify stylesheet construction and adoption failure recovery beyond the
@@ -82,8 +83,9 @@ separate decision.
 ## Accepted boundaries and unresolved environment coverage
 
 - Host `@font-face` registrations are document-scoped and can collide with the
-  public font family names used inside a shadow root. Avoiding that requires
-  private family names and controlled font declarations.
+  public font family names used inside a shadow root. This limitation is
+  accepted for the prototype; avoiding it requires private family names and
+  controlled font declarations.
 - Shadow DOM cannot prevent a host from hiding, clipping, transforming, or
   constraining the component host or its ancestors.
 - Open shadow roots prevent CSS selector crossover; they do not prevent
@@ -95,7 +97,7 @@ separate decision.
 
 ## Rollout sequence
 
-1. Complete the custom-property audit.
+1. Complete YPE-5400's custom-property inventory and prevention guard.
 2. Resolve SSR/hydration, rollout-control, and overlay-ownership decisions.
 3. Select the next public component and add component-specific compatibility,
    browser, and accessibility coverage before enabling isolation.

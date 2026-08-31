@@ -32,7 +32,7 @@ describe('ShadowRootHost', () => {
     expect(host?.shadowRoot?.textContent).toContain('content');
   });
 
-  it('applies important inline declarations to stabilize the host box', () => {
+  it('stabilizes the host box while preserving only writing direction', () => {
     const { container } = render(
       <ShadowRootHost>
         <span>content</span>
@@ -40,16 +40,26 @@ describe('ShadowRootHost', () => {
     );
 
     const host = container.querySelector<HTMLElement>('[data-yv-shadow-host]');
+    const wrapper = host?.shadowRoot?.querySelector<HTMLElement>(
+      '[data-yv-shadow-content-wrapper]',
+    );
     expect(host).not.toBeNull();
+    expect(wrapper).not.toBeNull();
     expect(host?.style.getPropertyValue('all')).toBe('initial');
     expect(host?.style.getPropertyValue('display')).toBe('contents');
-    expect(host?.style.getPropertyValue('writing-mode')).toBe('inherit');
-    expect(host?.style.getPropertyValue('text-orientation')).toBe('inherit');
+    expect(host?.style.getPropertyValue('direction')).toBe('inherit');
+    expect(host?.style.getPropertyValue('writing-mode')).toBe('');
+    expect(host?.style.getPropertyValue('text-orientation')).toBe('');
+    expect(wrapper?.style.getPropertyValue('all')).toBe('initial');
+    expect(wrapper?.style.getPropertyValue('display')).toBe('contents');
+    expect(wrapper?.style.getPropertyValue('direction')).toBe('inherit');
+    expect(wrapper?.style.getPropertyValue('writing-mode')).toBe('');
+    expect(wrapper?.style.getPropertyValue('text-orientation')).toBe('');
 
-    // jsdom's cssstyle backing does not track priority for `all`,
-    // `writing-mode`, or `text-orientation` (real browsers do), so only
-    // `display` can assert getPropertyPriority here. The value-only checks
-    // above still prove the other properties were set.
+    // jsdom's cssstyle backing does not track priority for `all`
+    // or `direction` (real browsers do), so only `display` can assert
+    // getPropertyPriority here. The value-only checks above still prove
+    // direction was set.
     expect(host?.style.getPropertyPriority('display')).toBe('important');
   });
 
