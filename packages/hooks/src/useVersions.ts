@@ -2,6 +2,7 @@
 
 import { useBibleClient } from './useBibleClient';
 import { useApiData, type UseApiDataOptions } from './useApiData';
+import { useQueryKeyBase } from './internal/useQueryKeyBase';
 import type { UseNamedQueryResult } from './useQueryResult';
 import type { Collection, BibleVersion } from '@youversion/platform-core';
 import { useHookOverride } from './useHookOverride';
@@ -26,6 +27,7 @@ export function useVersions(
 ): UseVersionsResult {
   const override = useHookOverride('useVersions');
   const bibleClient = useBibleClient();
+  const keyBase = useQueryKeyBase();
 
   const getVersionsOptions =
     options?.page_size !== undefined ||
@@ -52,9 +54,9 @@ export function useVersions(
     error,
     refetch,
   } = useApiData<Collection<BibleVersion>>(
-    () => bibleClient.getVersions(languageRanges, licenseId, getVersionsOptions),
     [
-      bibleClient,
+      ...keyBase,
+      'versions',
       languageRangesKey,
       licenseId,
       options?.page_size,
@@ -62,8 +64,10 @@ export function useVersions(
       fieldsKey,
       options?.all_available,
     ],
+    () => bibleClient.getVersions(languageRanges, licenseId, getVersionsOptions),
     {
       enabled: !override && options?.enabled !== false,
+      keepPreviousData: options?.keepPreviousData,
     },
   );
 

@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import React from 'react';
 
+import { useTheme } from '@youversion/platform-react-hooks';
+
 import { type BibleTextViewProps, BibleTextView, Verse, getCleanVerseText } from './verse';
 import { VerseActionPopover } from './verse-action-popover';
 import { buildVerseShareText } from '@/lib/verse-share';
@@ -396,6 +398,7 @@ export const FootnotePopoverThemeDark: Story = {
 };
 
 function VerseSelectionDemo(props: BibleTextViewProps) {
+  const providerTheme = useTheme();
   const containerRef = React.useRef<HTMLDivElement>(null);
   // Captured as state (not a ref) so the popover's docking observer re-subscribes
   // once the scroll container mounts.
@@ -541,6 +544,7 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
         onClearHighlight={handleClearHighlight}
         onCopy={handleCopy}
         onShare={handleShare}
+        theme={props.theme ?? providerTheme}
       />
     </div>
   );

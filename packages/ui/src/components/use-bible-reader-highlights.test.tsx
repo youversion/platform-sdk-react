@@ -4,7 +4,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { Collection, Highlight } from '@youversion/platform-core';
 import { YouVersionAuthContext, type UseHighlightsResult } from '@youversion/platform-react-hooks';
-import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
+import { YouVersionPlatformConfiguration, YouVersionUserInfo } from '@youversion/platform-core';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
@@ -25,7 +25,7 @@ function defaultHighlightsResult(): UseHighlightsResult {
     createHighlight: vi.fn().mockResolvedValue({
       version_id: 111,
       passage_id: 'JHN.3.16',
-      color: 'fffe00',
+      color: 'ffec5b',
     }),
     deleteHighlight: vi.fn().mockResolvedValue(undefined),
   };
@@ -95,7 +95,7 @@ describe('useBibleReaderHighlights — flag off (dark launch)', () => {
   it('is fully inert: fetch disabled, empty map, writes are no-ops', () => {
     setHighlightsLive(false);
     const mocked = mockUseHighlights({
-      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' }]),
     });
 
     const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
@@ -111,8 +111,8 @@ describe('useBibleReaderHighlights — flag off (dark launch)', () => {
     expect(result.current.highlightedVerses).toEqual({});
 
     act(() => {
-      result.current.apply('fffe00', [16, 17]);
-      result.current.remove('fffe00', [16]);
+      result.current.apply('ffec5b', [16, 17]);
+      result.current.remove('ffec5b', [16]);
     });
     expect(mocked.createHighlight).not.toHaveBeenCalled();
     expect(mocked.deleteHighlight).not.toHaveBeenCalled();
@@ -121,6 +121,171 @@ describe('useBibleReaderHighlights — flag off (dark launch)', () => {
 });
 
 describe('useBibleReaderHighlights — auth guarding', () => {
+  it('treats a signed-in profile with no user id as signed out', () => {
+    const mocked = mockUseHighlights();
+
+    // `userId` is optional on the profile, and a host that supplies `userInfo`
+    // itself can leave it unset. `useHighlights` keys its cache by account and
+    // will not fetch for an unidentified one, so writes must be gated the same
+    // way. Otherwise the POST succeeds and no read ever returns it.
+    function UnidentifiedWrapper({ children }: { children: ReactNode }) {
+      return (
+        <HighlightsWrapper>
+          <YouVersionAuthContext.Provider
+            value={{
+              userInfo: new YouVersionUserInfo({ name: 'Ada' }),
+              setUserInfo: vi.fn(),
+              isLoading: false,
+              error: null,
+            }}
+          >
+            {children}
+          </YouVersionAuthContext.Provider>
+        </HighlightsWrapper>
+      );
+    }
+
+    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: UnidentifiedWrapper,
+    });
+
+    expect(useHighlightsOverride).toHaveBeenCalledWith(
+      { version_id: 111, passage_id: 'JHN.3' },
+      { enabled: false },
+    );
+
+    act(() => {
+      result.current.apply('fffe00', [16]);
+    });
+    expect(mocked.createHighlight).not.toHaveBeenCalled();
+    expect(result.current.highlightedVerses).toEqual({});
+  });
+
+  it('treats a signed-in profile as signed out while auth is still loading', () => {
+    const mocked = mockUseHighlights();
+
+    // While `isLoading` is true, `useUserScope` withholds the account scope and
+    // the fetch stays off. A host can leave a previous session's `userId` on
+    // the profile through that window; the write gate must not trust it, or a
+    // POST goes through that the withheld GET cannot show.
+    function LoadingWrapper({ children }: { children: ReactNode }) {
+      return (
+        <HighlightsWrapper>
+          <YouVersionAuthContext.Provider
+            value={{
+              userInfo: mockUserInfo,
+              setUserInfo: vi.fn(),
+              isLoading: true,
+              error: null,
+            }}
+          >
+            {children}
+          </YouVersionAuthContext.Provider>
+        </HighlightsWrapper>
+      );
+    }
+
+    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: LoadingWrapper,
+    });
+
+    expect(useHighlightsOverride).toHaveBeenCalledWith(
+      { version_id: 111, passage_id: 'JHN.3' },
+      { enabled: false },
+    );
+
+    act(() => {
+      result.current.apply('fffe00', [16]);
+    });
+    expect(mocked.createHighlight).not.toHaveBeenCalled();
+    expect(result.current.highlightedVerses).toEqual({});
+  });
+
+  it('clears optimistic paint when the host swaps accounts without a sign-out', async () => {
+    const mocked = mockUseHighlights();
+
+    // A host can swap `userInfo` from user A to user B with no signed-out
+    // state in between. The optimistic entries of user A must not render for
+    // user B.
+    let user = mockUserInfo;
+    function SwapWrapper({ children }: { children: ReactNode }) {
+      return (
+        <HighlightsWrapper>
+          <YouVersionAuthContext.Provider
+            value={{ userInfo: user, setUserInfo: vi.fn(), isLoading: false, error: null }}
+          >
+            {children}
+          </YouVersionAuthContext.Provider>
+        </HighlightsWrapper>
+      );
+    }
+
+    const { result, rerender } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: SwapWrapper,
+    });
+
+    act(() => {
+      result.current.apply('ffec5b', [16]);
+    });
+    await waitFor(() => {
+      expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
+    });
+    expect(mocked.createHighlight).toHaveBeenCalled();
+
+    user = new YouVersionUserInfo({ id: 'user-2', name: 'Other User' });
+    act(() => {
+      rerender();
+    });
+    expect(result.current.highlightedVerses).toEqual({});
+  });
+
+  it('skips the overlay on the swap render itself, before effects run', async () => {
+    mockUseHighlights();
+
+    let user = mockUserInfo;
+    function SwapWrapper({ children }: { children: ReactNode }) {
+      return (
+        <HighlightsWrapper>
+          <YouVersionAuthContext.Provider
+            value={{ userInfo: user, setUserInfo: vi.fn(), isLoading: false, error: null }}
+          >
+            {children}
+          </YouVersionAuthContext.Provider>
+        </HighlightsWrapper>
+      );
+    }
+
+    // The AUTH_CHANGED effect runs after paint. Every render is recorded here,
+    // so the assertion also sees the swap render that the effect has not
+    // reached yet.
+    const renders: Record<number, string>[] = [];
+    const { result, rerender } = renderHook(
+      () => {
+        const value = useBibleReaderHighlights(defaultOptions);
+        renders.push(value.highlightedVerses);
+        return value;
+      },
+      { wrapper: SwapWrapper },
+    );
+
+    act(() => {
+      result.current.apply('ffec5b', [16]);
+    });
+    await waitFor(() => {
+      expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
+    });
+
+    const swapIndex = renders.length;
+    user = new YouVersionUserInfo({ id: 'user-2', name: 'Other User' });
+    act(() => {
+      rerender();
+    });
+    expect(renders.length).toBeGreaterThan(swapIndex);
+    for (const rendered of renders.slice(swapIndex)) {
+      expect(rendered).toEqual({});
+    }
+  });
+
   it('renders without crashing when no auth provider is mounted, treated as signed out', () => {
     const mocked = mockUseHighlights();
 
@@ -136,7 +301,7 @@ describe('useBibleReaderHighlights — auth guarding', () => {
     expect(result.current.highlightedVerses).toEqual({});
 
     act(() => {
-      result.current.apply('fffe00', [16]);
+      result.current.apply('ffec5b', [16]);
     });
     expect(mocked.createHighlight).not.toHaveBeenCalled();
   });
@@ -167,13 +332,13 @@ describe('useBibleReaderHighlights — auth guarding', () => {
 
   it('clears rendered highlights immediately when the user signs out', () => {
     mockUseHighlights({
-      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' }]),
     });
 
     const { result, rerender } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
       wrapper: AuthWrapper,
     });
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
 
     // Sign out: the mock still returns fetched data (like a not-yet-cleared
     // cache would), so this pins the hook's own render gate.
@@ -187,10 +352,10 @@ describe('useBibleReaderHighlights — fetched highlights', () => {
   it('maps per-verse USFMs for the current chapter into the verse map', () => {
     mockUseHighlights({
       highlights: makeCollection([
-        { version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' },
-        { version_id: 111, passage_id: 'JHN.3.17', color: '5DFF79' }, // uppercase from server
-        { version_id: 111, passage_id: 'JHN.4.1', color: '00d6ff' }, // other chapter
-        { version_id: 999, passage_id: 'JHN.3.2', color: '00d6ff' }, // other version
+        { version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' },
+        { version_id: 111, passage_id: 'JHN.3.17', color: 'B4FFC1' }, // uppercase from server
+        { version_id: 111, passage_id: 'JHN.4.1', color: 'bbf4ff' }, // other chapter
+        { version_id: 999, passage_id: 'JHN.3.2', color: 'bbf4ff' }, // other version
       ]),
     });
 
@@ -203,15 +368,15 @@ describe('useBibleReaderHighlights — fetched highlights', () => {
       { enabled: true },
     );
     expect(result.current.highlightedVerses).toEqual({
-      16: 'fffe00',
-      17: '5dff79',
+      16: 'ffec5b',
+      17: 'b4ffc1',
     });
   });
 
   it('drops invalid hex from the fetched server path (parseServerColors)', () => {
     mockUseHighlights({
       highlights: makeCollection([
-        { version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' },
+        { version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' },
         { version_id: 111, passage_id: 'JHN.3.17', color: 'gggggg' },
         { version_id: 111, passage_id: 'JHN.3.18', color: 'aabbcc' },
       ]),
@@ -222,7 +387,7 @@ describe('useBibleReaderHighlights — fetched highlights', () => {
     });
 
     expect(result.current.highlightedVerses).toEqual({
-      16: 'fffe00',
+      16: 'ffec5b',
       18: 'aabbcc',
     });
   });
@@ -237,15 +402,15 @@ describe('useBibleReaderHighlights — apply', () => {
     });
 
     act(() => {
-      result.current.apply('FFFE00', [16, 17, 18, 20]);
+      result.current.apply('FFEC5B', [16, 17, 18, 20]);
     });
 
     // Optimistic: rendered before any network round-trip settles.
     expect(result.current.highlightedVerses).toEqual({
-      16: 'fffe00',
-      17: 'fffe00',
-      18: 'fffe00',
-      20: 'fffe00',
+      16: 'ffec5b',
+      17: 'ffec5b',
+      18: 'ffec5b',
+      20: 'ffec5b',
     });
 
     await waitFor(() => {
@@ -254,12 +419,12 @@ describe('useBibleReaderHighlights — apply', () => {
     expect(mocked.createHighlight).toHaveBeenCalledWith({
       version_id: 111,
       passage_id: 'JHN.3.16-18',
-      color: 'fffe00', // lowercased on the wire
+      color: 'ffec5b', // lowercased on the wire
     });
     expect(mocked.createHighlight).toHaveBeenCalledWith({
       version_id: 111,
       passage_id: 'JHN.3.20',
-      color: 'fffe00',
+      color: 'ffec5b',
     });
     // Two POSTs (two runs) but a SINGLE coalesced refetch for the batch (Fix 3).
     expect(mocked.refetch).toHaveBeenCalledTimes(1);
@@ -276,9 +441,9 @@ describe('useBibleReaderHighlights — apply', () => {
     });
 
     act(() => {
-      result.current.apply('fffe00', [16, 17]);
+      result.current.apply('ffec5b', [16, 17]);
     });
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00', 17: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b', 17: 'ffec5b' });
 
     await waitFor(() => {
       expect(result.current.highlightedVerses).toEqual({});
@@ -305,6 +470,44 @@ describe('useBibleReaderHighlights — apply', () => {
     expect(result.current.highlightedVerses).toEqual({});
     expect(mocked.createHighlight).not.toHaveBeenCalled();
   });
+
+  it('rejects the old five apply hexes without writing', () => {
+    const mocked = mockUseHighlights();
+
+    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: AuthWrapper,
+    });
+
+    act(() => {
+      expect(result.current.apply('fffe00', [16])).toBe('noop');
+      expect(result.current.apply('5dff79', [16])).toBe('noop');
+      expect(result.current.apply('00d6ff', [16])).toBe('noop');
+      expect(result.current.apply('ffc66f', [16])).toBe('noop');
+      expect(result.current.apply('ff95ef', [16])).toBe('noop');
+    });
+
+    expect(result.current.highlightedVerses).toEqual({});
+    expect(mocked.createHighlight).not.toHaveBeenCalled();
+  });
+
+  it('paints and clears leftover fffe00 without remapping', async () => {
+    const mocked = mockUseHighlights({
+      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+    });
+
+    const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
+      wrapper: AuthWrapper,
+    });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+
+    act(() => {
+      result.current.remove('fffe00', [16]);
+    });
+    expect(result.current.highlightedVerses).toEqual({});
+    await waitFor(() => {
+      expect(mocked.deleteHighlight).toHaveBeenCalledTimes(1);
+    });
+  });
 });
 
 describe('useBibleReaderHighlights — overlay reconciliation (Fix 2)', () => {
@@ -316,9 +519,9 @@ describe('useBibleReaderHighlights — overlay reconciliation (Fix 2)', () => {
     });
 
     act(() => {
-      result.current.apply('fffe00', [16]);
+      result.current.apply('ffec5b', [16]);
     });
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
 
     // Let the write settle successfully.
     await waitFor(() => {
@@ -332,15 +535,15 @@ describe('useBibleReaderHighlights — overlay reconciliation (Fix 2)', () => {
     // write lag). The overlay must WIN — no flicker out and back.
     mockUseHighlights({ highlights: makeCollection([]) });
     rerender();
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
 
     // A later GET reflects the write (verse present in the written color).
     mockUseHighlights({
-      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' }]),
     });
     rerender();
     await waitFor(() => {
-      expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+      expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
     });
 
     // Prove the overlay entry was retired: with the entry gone, server truth now
@@ -360,7 +563,7 @@ describe('useBibleReaderHighlights — overlay reconciliation (Fix 2)', () => {
     });
 
     act(() => {
-      result.current.apply('fffe00', [16]);
+      result.current.apply('ffec5b', [16]);
     });
     await waitFor(() => {
       expect(mocked.createHighlight).toHaveBeenCalledTimes(1);
@@ -372,13 +575,13 @@ describe('useBibleReaderHighlights — overlay reconciliation (Fix 2)', () => {
     // A GET returns the verse in a color that is NOT what we wrote. That doesn't
     // reflect our write, so the overlay is held rather than snapping to it.
     mockUseHighlights({
-      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: '00d6ff' }]),
+      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'bbf4ff' }]),
     });
     rerender();
     await act(async () => {
       await Promise.resolve();
     });
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
   });
 });
 
@@ -390,16 +593,16 @@ describe('useBibleReaderHighlights — vapor bug (removed highlight resurrection
   // had nothing suppressing it, so the verse repainted until the next fetch.
   it('a stale fetch after a settled+reflected DELETE does not resurrect the removed highlight', async () => {
     const mocked = mockUseHighlights({
-      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' }]),
     });
 
     const { result, rerender } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
       wrapper: AuthWrapper,
     });
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
 
     act(() => {
-      result.current.remove('fffe00', [16]);
+      result.current.remove('ffec5b', [16]);
     });
     // Optimistic removal.
     expect(result.current.highlightedVerses).toEqual({});
@@ -419,7 +622,7 @@ describe('useBibleReaderHighlights — vapor bug (removed highlight resurrection
     // Fetch B is a STALE read replica that still contains the removed highlight.
     // The removal overlay must be HELD so the highlight does not resurrect.
     mockUseHighlights({
-      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' }]),
     });
     rerender();
     expect(result.current.highlightedVerses).toEqual({});
@@ -435,9 +638,9 @@ describe('useBibleReaderHighlights — remove', () => {
   it('removes optimistically and DELETEs one passage-id per verse (never a range)', async () => {
     const mocked = mockUseHighlights({
       highlights: makeCollection([
-        { version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' },
-        { version_id: 111, passage_id: 'JHN.3.17', color: 'fffe00' },
-        { version_id: 111, passage_id: 'JHN.3.18', color: '5dff79' }, // different color, stays
+        { version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' },
+        { version_id: 111, passage_id: 'JHN.3.17', color: 'ffec5b' },
+        { version_id: 111, passage_id: 'JHN.3.18', color: 'b4ffc1' }, // different color, stays
       ]),
     });
 
@@ -446,11 +649,11 @@ describe('useBibleReaderHighlights — remove', () => {
     });
 
     act(() => {
-      result.current.remove('fffe00', [16, 17, 18]);
+      result.current.remove('ffec5b', [16, 17, 18]);
     });
 
     // Optimistic: yellow verses gone immediately, green untouched.
-    expect(result.current.highlightedVerses).toEqual({ 18: '5dff79' });
+    expect(result.current.highlightedVerses).toEqual({ 18: 'b4ffc1' });
 
     // Contiguous [16,17] must NOT collapse to `JHN.3.16-17` — range delete is
     // unsupported server-side (Fix 4). One DELETE per verse instead.
@@ -466,7 +669,7 @@ describe('useBibleReaderHighlights — remove', () => {
   it('reverts the optimistic removal and logs when the delete fails', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(vi.fn());
     mockUseHighlights({
-      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' }]),
       deleteHighlight: vi.fn().mockRejectedValue(new Error('network down')),
     });
 
@@ -475,12 +678,12 @@ describe('useBibleReaderHighlights — remove', () => {
     });
 
     act(() => {
-      result.current.remove('fffe00', [16]);
+      result.current.remove('ffec5b', [16]);
     });
     expect(result.current.highlightedVerses).toEqual({});
 
     await waitFor(() => {
-      expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+      expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
     });
     expect(consoleError).toHaveBeenCalledWith(
       expect.stringContaining('Failed to remove highlight'),
@@ -491,7 +694,7 @@ describe('useBibleReaderHighlights — remove', () => {
 
   it('is a no-op when no selected verse is rendered in the given color', () => {
     const mocked = mockUseHighlights({
-      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' }]),
     });
 
     const { result } = renderHook(() => useBibleReaderHighlights(defaultOptions), {
@@ -499,10 +702,10 @@ describe('useBibleReaderHighlights — remove', () => {
     });
 
     act(() => {
-      result.current.remove('5dff79', [16]);
+      result.current.remove('b4ffc1', [16]);
     });
     expect(mocked.deleteHighlight).not.toHaveBeenCalled();
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
   });
 
   it('clears valid non-palette highlights on the selected verses', async () => {
@@ -510,7 +713,7 @@ describe('useBibleReaderHighlights — remove', () => {
     const mocked = mockUseHighlights({
       highlights: makeCollection([
         { version_id: 111, passage_id: 'JHN.3.16', color: custom },
-        { version_id: 111, passage_id: 'JHN.3.17', color: 'fffe00' },
+        { version_id: 111, passage_id: 'JHN.3.17', color: 'ffec5b' },
       ]),
     });
 
@@ -518,13 +721,13 @@ describe('useBibleReaderHighlights — remove', () => {
       wrapper: AuthWrapper,
     });
 
-    expect(result.current.highlightedVerses).toEqual({ 16: custom, 17: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: custom, 17: 'ffec5b' });
 
     act(() => {
       result.current.remove(custom, [16, 17]);
     });
 
-    expect(result.current.highlightedVerses).toEqual({ 17: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 17: 'ffec5b' });
 
     await waitFor(() => {
       expect(mocked.deleteHighlight).toHaveBeenCalledTimes(1);
@@ -547,9 +750,9 @@ describe('useBibleReaderHighlights — scope changes', () => {
     );
 
     act(() => {
-      result.current.apply('fffe00', [16]);
+      result.current.apply('ffec5b', [16]);
     });
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
 
     rerender({ versionId: 111, book: 'JHN', chapter: '4' });
     expect(result.current.highlightedVerses).toEqual({});
@@ -573,9 +776,9 @@ describe('useBibleReaderHighlights — scope changes', () => {
 
     // Highlight JHN.3.16 — write is in flight (deferred, has not settled).
     act(() => {
-      result.current.apply('fffe00', [16]);
+      result.current.apply('ffec5b', [16]);
     });
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
 
     // Navigate to JHN.4: the overlay resets. Give this chapter its own
     // never-settling write so its optimistic entry survives on its own terms.
@@ -587,18 +790,18 @@ describe('useBibleReaderHighlights — scope changes', () => {
 
     // Highlight JHN.4.16 — same verse number, different chapter.
     act(() => {
-      result.current.apply('fffe00', [16]);
+      result.current.apply('ffec5b', [16]);
     });
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
 
     // Chapter 3's stale write finally settles. It must NOT enroll verse 16 in
     // the confirmed set, because we have since left its scope.
     await act(async () => {
-      resolvePrevWrite({ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' });
+      resolvePrevWrite({ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' });
       await Promise.resolve();
       await Promise.resolve();
     });
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
 
     // A refetch lands for JHN.4 (new `highlights` identity fires the drain
     // effect). A leaked cross-scope confirmation would erase JHN.4.16 here.
@@ -608,7 +811,7 @@ describe('useBibleReaderHighlights — scope changes', () => {
     });
     rerender({ versionId: 111, book: 'JHN', chapter: '4' });
 
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
   });
 
   it("does not revert the new scope's optimistic overlay when a previous scope's write fails", async () => {
@@ -631,9 +834,9 @@ describe('useBibleReaderHighlights — scope changes', () => {
 
     // Highlight JHN.3.16 — write is in flight (deferred, will fail later).
     act(() => {
-      result.current.apply('fffe00', [16]);
+      result.current.apply('ffec5b', [16]);
     });
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
 
     // Navigate to JHN.4: the overlay resets. This chapter gets its own
     // never-settling write so its optimistic entry survives on its own terms.
@@ -645,9 +848,9 @@ describe('useBibleReaderHighlights — scope changes', () => {
 
     // Highlight JHN.4.16 — same verse number, different chapter.
     act(() => {
-      result.current.apply('fffe00', [16]);
+      result.current.apply('ffec5b', [16]);
     });
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
 
     // Chapter 3's stale write finally fails. Its snapshot ({}) lacks verse 16,
     // so an ungated revert would `delete` JHN.4.16's optimistic entry. The
@@ -658,7 +861,7 @@ describe('useBibleReaderHighlights — scope changes', () => {
       await Promise.resolve();
     });
 
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
     // The failure is still logged unconditionally.
     expect(consoleError).toHaveBeenCalledWith(
       expect.stringContaining('Failed to apply highlight'),
@@ -672,7 +875,7 @@ describe('useBibleReaderHighlights — controlled mode (YPE-3705)', () => {
   it('keeps the fetch disabled and projects from the host prop, even with the flag off', () => {
     setHighlightsLive(false);
     const mocked = mockUseHighlights({
-      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: '00d6ff' }]),
+      highlights: makeCollection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'bbf4ff' }]),
     });
 
     const { result } = renderHook(
@@ -681,8 +884,8 @@ describe('useBibleReaderHighlights — controlled mode (YPE-3705)', () => {
           ...defaultOptions,
           controlled: {
             highlights: [
-              { version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' },
-              { version_id: 111, passage_id: 'JHN.3.17-18', color: '5dff79' },
+              { version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' },
+              { version_id: 111, passage_id: 'JHN.3.17-18', color: 'b4ffc1' },
               { version_id: 111, passage_id: 'JHN.3.1', color: 'abcdef' }, // outside palette
             ],
           },
@@ -697,9 +900,9 @@ describe('useBibleReaderHighlights — controlled mode (YPE-3705)', () => {
     expect(mocked.createHighlight).not.toHaveBeenCalled();
     expect(result.current.highlightedVerses).toEqual({
       1: 'abcdef',
-      16: 'fffe00',
-      17: '5dff79',
-      18: '5dff79',
+      16: 'ffec5b',
+      17: 'b4ffc1',
+      18: 'b4ffc1',
     });
   });
 
@@ -717,18 +920,18 @@ describe('useBibleReaderHighlights — controlled mode (YPE-3705)', () => {
       {
         wrapper: AuthWrapper,
         initialProps: {
-          highlights: [{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }],
+          highlights: [{ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' }],
         },
       },
     );
 
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
 
     act(() => {
-      result.current.apply('5dff79', [17, 18]);
+      result.current.apply('b4ffc1', [17, 18]);
     });
     // Pure projection: paint waits for the host round-trip.
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
     expect(onApply).toHaveBeenCalledTimes(1);
     expect(onApply).toHaveBeenCalledWith({
       versionId: 111,
@@ -736,12 +939,12 @@ describe('useBibleReaderHighlights — controlled mode (YPE-3705)', () => {
       chapter: '3',
       verses: [17, 18],
       passageIds: ['JHN.3.17', 'JHN.3.18'],
-      color: '5dff79',
+      color: 'b4ffc1',
     });
     expect(mocked.createHighlight).not.toHaveBeenCalled();
 
     act(() => {
-      result.current.remove('fffe00', [16, 17]);
+      result.current.remove('ffec5b', [16, 17]);
     });
     expect(onRemove).toHaveBeenCalledTimes(1);
     expect(onRemove).toHaveBeenCalledWith({
@@ -750,11 +953,11 @@ describe('useBibleReaderHighlights — controlled mode (YPE-3705)', () => {
       chapter: '3',
       verses: [16],
       passageIds: ['JHN.3.16'],
-      color: 'fffe00',
+      color: 'ffec5b',
     });
     expect(mocked.deleteHighlight).not.toHaveBeenCalled();
     // Still no optimistic un-paint.
-    expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' });
+    expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' });
 
     // Host round-trip.
     rerender({ highlights: [] });

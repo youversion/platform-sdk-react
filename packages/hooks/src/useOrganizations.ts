@@ -1,81 +1,83 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { type Organization, type OrganizationsClient } from '@youversion/platform-core';
+import { useCallback, useMemo } from 'react';
+import { useQueries, type UseQueryResult } from '@tanstack/react-query';
+import { type Organization } from '@youversion/platform-core';
 import { useOrganizationsClient } from './useOrganizationsClient';
+import { useInternalQueryClient } from './internal/QueryClientContext';
+import { useQueryKeyBase } from './internal/useQueryKeyBase';
 import { useHookOverride } from './useHookOverride';
 
-/** Normalizes a raw id list into a unique set of non-empty, trimmed ids. */
+/** Drops null, undefined, and blank ids, then dedupes what is left. */
 function toUniqueIds(ids: (string | null | undefined)[]): string[] {
   return Array.from(new Set(ids.filter((id): id is string => !!id && id.trim().length > 0)));
 }
 
 /**
- * Fetches the given organizations concurrently, tolerating individual failures.
- * Returns a Map of only the successfully-resolved entries; rejected requests
- * are omitted so a single failure never rejects the batch.
+ * Separator for the id-list identity string. A NUL byte cannot appear in an id,
+ * so the joined form always splits back into the same list.
  */
-async function fetchOrganizations(
-  client: OrganizationsClient,
-  ids: string[],
-): Promise<Map<string, Organization>> {
-  const results = await Promise.allSettled(ids.map((id) => client.getOrganization(id)));
-  const resolved = new Map<string, Organization>();
-  ids.forEach((id, index) => {
-    const result = results[index];
-    if (result?.status === 'fulfilled') resolved.set(id, result.value);
-  });
-  return resolved;
-}
+const ID_SEPARATOR = '\u0000';
+
+export type UseOrganizationsResult = {
+  organizations: Map<string, Organization>;
+};
 
 /**
  * Resolves multiple organizations at once, deduplicating by id so a list of
  * versions that share publishers only triggers one request per unique
  * organization. Returns a Map keyed by organization id.
+ *
+ * Each id gets its own query, keyed exactly as `useOrganization` keys it, so
+ * the two hooks share cache entries. An id already in the cache costs no
+ * request, and growing the id list fetches only the genuinely new ids.
+ *
+ * Individual failures are tolerated: a rejected id is absent from the Map while
+ * the rest of the batch still resolves.
  */
-export type UseOrganizationsResult = {
-  organizations: Map<string, Organization>;
-};
-
 export function useOrganizations(
   organizationIds: (string | null | undefined)[],
 ): UseOrganizationsResult {
   const override = useHookOverride('useOrganizations');
   const client = useOrganizationsClient();
-  const [organizations, setOrganizations] = useState<Map<string, Organization>>(new Map());
-  const cacheRef = useRef<Map<string, Organization>>(new Map());
-  const clientRef = useRef(client);
+  const keyBase = useQueryKeyBase();
+  const queryClient = useInternalQueryClient();
 
-  const uniqueIds = override ? [] : toUniqueIds(organizationIds);
-  // Stable dependency key so the effect only re-runs when the id set changes.
-  const idsKey = uniqueIds.slice().sort().join(',');
+  // Sorting makes the identity independent of the caller's ordering, so a
+  // reordered list of the same ids reuses the same array instance. That keeps
+  // `combine` stable, and with it the returned Map.
+  const idsKey = toUniqueIds(organizationIds).sort().join(ID_SEPARATOR);
+  const uniqueIds = useMemo(() => (idsKey ? idsKey.split(ID_SEPARATOR) : []), [idsKey]);
 
-  useEffect(() => {
-    if (override) return;
+  // TanStack Query memoizes `combine` on its own identity and on the query
+  // results, so the Map instance changes only when an id resolves, fails, or
+  // leaves the list.
+  const combine = useCallback(
+    (results: UseQueryResult<Organization, Error>[]): UseOrganizationsResult => {
+      const organizations = new Map<string, Organization>();
+      uniqueIds.forEach((id, index) => {
+        const organization = results[index]?.data;
+        if (organization) organizations.set(id, organization);
+      });
+      return { organizations };
+    },
+    [uniqueIds],
+  );
 
-    // A new client identity (e.g. appKey/host change) invalidates the cache.
-    // Handled here so there is no cross-effect ordering dependence.
-    if (clientRef.current !== client) {
-      clientRef.current = client;
-      cacheRef.current = new Map();
-      setOrganizations(new Map());
-    }
-
-    const missing = uniqueIds.filter((id) => !cacheRef.current.has(id));
-    if (missing.length === 0) return;
-
-    let cancelled = false;
-    void fetchOrganizations(client, missing).then((resolved) => {
-      if (cancelled || resolved.size === 0) return;
-      resolved.forEach((org, id) => cacheRef.current.set(id, org));
-      setOrganizations(new Map(cacheRef.current));
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [client, idsKey, override]);
+  // The client goes to `useQueries` as an explicit argument, so this hook
+  // never reads TanStack's own context — see `QueryClientContext` for why.
+  const result = useQueries(
+    {
+      queries: uniqueIds.map((id) => ({
+        queryKey: [...keyBase, 'organization', id],
+        queryFn: () => client.getOrganization(id),
+        enabled: !override,
+      })),
+      combine,
+    },
+    queryClient,
+  );
 
   if (override) return override(organizationIds);
-  return { organizations };
+  return result;
 }

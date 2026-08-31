@@ -16,7 +16,7 @@ const STORAGE_KEY = 'youversion-platform:pending-highlight';
 
 const base: PendingHighlight = {
   verses: [16, 17],
-  color: 'fffe00',
+  color: 'ffec5b',
   versionId: 111,
   book: 'JHN',
   chapter: '3',

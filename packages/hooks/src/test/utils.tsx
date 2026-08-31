@@ -1,6 +1,9 @@
-import type { ReactNode, ComponentType } from 'react';
+import { type ReactNode, type ComponentType } from 'react';
 import type { BibleClient, LanguagesClient, OrganizationsClient } from '@youversion/platform-core';
 import { YouVersionContext } from '../context';
+import { TestQueryClientProvider } from '../test-utils';
+
+export { TestQueryClientProvider };
 
 export type YVWrapperOptions = {
   theme?: 'light' | 'dark';
@@ -38,7 +41,7 @@ export const createYVWrapper = (
     <YouVersionContext.Provider
       value={{ appKey, theme, bibleClient, languagesClient, organizationsClient }}
     >
-      {children}
+      <TestQueryClientProvider>{children}</TestQueryClientProvider>
     </YouVersionContext.Provider>
   );
   return Wrapper;

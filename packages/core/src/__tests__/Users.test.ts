@@ -13,7 +13,7 @@ const mockFetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promis
 
 type TokenJson = {
   access_token?: string;
-  expires_in?: number;
+  expires_in?: number | string;
   id_token?: string;
   refresh_token?: string;
   scope?: string;
@@ -37,11 +37,11 @@ function emptyResponse(status: number, statusText: string): Response {
 const MOCK_ID_TOKEN =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJwcm9maWxlX3BpY3R1cmUiOiJodHRwczovL2V4YW1wbGUuY29tL2F2YXRhci5qcGcifQ.invalid-signature';
 
-/** Builds the token payload the /auth/token exchange returns; only `scope` varies per test. */
+/** Token body from `/auth/token`. `expires_in` is a string, matching the live endpoint. */
 function makeTokens(scope: string) {
   return {
     access_token: 'access-token-123',
-    expires_in: 3600,
+    expires_in: '3599',
     id_token: MOCK_ID_TOKEN,
     refresh_token: 'refresh-token-456',
     scope,

@@ -81,7 +81,7 @@ describe('vapor flash — removed verse must never reappear at any frame', () =>
       .spyOn(HighlightsClient.prototype, 'getHighlights')
       // mount GET
       .mockResolvedValueOnce(
-        collection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+        collection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' }]),
       )
       // post-DELETE refetch: controlled, resolves STALE (still has the row)
       .mockReturnValueOnce(getDeferred.promise);
@@ -91,11 +91,11 @@ describe('vapor flash — removed verse must never reappear at any frame', () =>
 
     const renderLog: Record<number, string>[] = [];
     const { result } = mountFlipped(renderLog);
-    await waitFor(() => expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' }));
+    await waitFor(() => expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' }));
 
     // The point at which we START watching for a resurrection.
     act(() => {
-      result.current.remove('fffe00', [16]);
+      result.current.remove('ffec5b', [16]);
     });
     expect(result.current.highlightedVerses).toEqual({});
 
@@ -106,14 +106,14 @@ describe('vapor flash — removed verse must never reappear at any frame', () =>
     await waitFor(() => expect(getHighlights).toHaveBeenCalledTimes(2));
     await act(async () => {
       getDeferred.resolve(
-        collection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+        collection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' }]),
       );
       await Promise.resolve();
     });
 
     // Inspect EVERY committed frame from the remove onward.
     const frames = renderLog.slice(startFrame);
-    const resurrected = frames.filter((f) => f[16] === 'fffe00');
+    const resurrected = frames.filter((f) => f[16] === 'ffec5b');
     expect(
       resurrected,
       `verse 16 reappeared in ${resurrected.length} frame(s): ${JSON.stringify(frames)}`,
@@ -125,7 +125,7 @@ describe('vapor flash — removed verse must never reappear at any frame', () =>
     const getDeferred = deferred<Collection<Highlight>>();
     vi.spyOn(HighlightsClient.prototype, 'getHighlights')
       .mockResolvedValueOnce(
-        collection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+        collection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' }]),
       )
       .mockReturnValueOnce(getDeferred.promise);
     const deleteHighlight = vi
@@ -134,10 +134,10 @@ describe('vapor flash — removed verse must never reappear at any frame', () =>
 
     const renderLog: Record<number, string>[] = [];
     const { result } = mountFlipped(renderLog);
-    await waitFor(() => expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' }));
+    await waitFor(() => expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' }));
 
     act(() => {
-      result.current.remove('fffe00', [16]);
+      result.current.remove('ffec5b', [16]);
     });
     const startFrame = renderLog.length;
 
@@ -148,7 +148,7 @@ describe('vapor flash — removed verse must never reappear at any frame', () =>
     });
 
     const frames = renderLog.slice(startFrame);
-    const resurrected = frames.filter((f) => f[16] === 'fffe00');
+    const resurrected = frames.filter((f) => f[16] === 'ffec5b');
     expect(resurrected, `verse 16 reappeared: ${JSON.stringify(frames)}`).toEqual([]);
     expect(result.current.highlightedVerses).toEqual({});
   });
@@ -165,7 +165,7 @@ describe('vapor flash — removed verse must never reappear at any frame', () =>
     // (mountFlipped seeds the bearer token the real client reads from localStorage.)
 
     // Wire format uses `bible_id` (mapped to `version_id` by the client).
-    const wireRow = { bible_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' };
+    const wireRow = { bible_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' };
     let deletedOnServer = false;
     const jsonHeaders = { 'content-type': 'application/json' };
 
@@ -191,10 +191,10 @@ describe('vapor flash — removed verse must never reappear at any frame', () =>
 
     const renderLog: Record<number, string>[] = [];
     const { result } = mountFlipped(renderLog);
-    await waitFor(() => expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' }));
+    await waitFor(() => expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' }));
 
     act(() => {
-      result.current.remove('fffe00', [16]);
+      result.current.remove('ffec5b', [16]);
     });
     expect(result.current.highlightedVerses).toEqual({});
     const startFrame = renderLog.length;
@@ -205,7 +205,7 @@ describe('vapor flash — removed verse must never reappear at any frame', () =>
     });
 
     const frames = renderLog.slice(startFrame);
-    const resurrected = frames.filter((f) => f[16] === 'fffe00');
+    const resurrected = frames.filter((f) => f[16] === 'ffec5b');
     expect(
       resurrected,
       `verse 16 resurrected in ${resurrected.length} frame(s): ${JSON.stringify(frames)}`,
@@ -214,39 +214,40 @@ describe('vapor flash — removed verse must never reappear at any frame', () =>
   });
 
   it('out-of-order fetches through real useApiData: fresh reflects removal, then a NEWER refetch returns a stale replica row — no resurrection', async () => {
-    // The one real-world path to deliver fresh→stale to the machine through
-    // useApiData's requestSeq guard: two refetches where the SECOND (newer)
-    // request hits a lagging replica. Refetch #1 (settle of the remove) reflects
-    // the removal; refetch #2 (settle of a later apply on verse 20) is stale and
-    // still carries verse 16. The held remove overlay must win.
+    // The one real-world path to deliver fresh→stale to the machine: two
+    // refetches where the SECOND (newer) request hits a lagging replica, so
+    // both results reach the machine in order and the later one is the stale
+    // one. Refetch #1 (settle of the remove) reflects the removal; refetch #2
+    // (settle of a later apply on verse 20) is stale and still carries verse
+    // 16. The held remove overlay must win.
     const getHighlights = vi
       .spyOn(HighlightsClient.prototype, 'getHighlights')
       // mount
       .mockResolvedValueOnce(
-        collection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]),
+        collection([{ version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' }]),
       )
       // refetch #1: fresh, reflects the DELETE of 16
       .mockResolvedValueOnce(collection([]))
       // refetch #2: STALE replica — verse 16 is back (plus the just-applied 20)
       .mockResolvedValue(
         collection([
-          { version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' },
-          { version_id: 111, passage_id: 'JHN.3.20', color: '5dff79' },
+          { version_id: 111, passage_id: 'JHN.3.16', color: 'ffec5b' },
+          { version_id: 111, passage_id: 'JHN.3.20', color: 'b4ffc1' },
         ]),
       );
     vi.spyOn(HighlightsClient.prototype, 'deleteHighlight').mockResolvedValue(undefined);
     vi.spyOn(HighlightsClient.prototype, 'createHighlight').mockResolvedValue({
       version_id: 111,
       passage_id: 'JHN.3.20',
-      color: '5dff79',
+      color: 'b4ffc1',
     });
 
     const renderLog: Record<number, string>[] = [];
     const { result } = mountFlipped(renderLog);
-    await waitFor(() => expect(result.current.highlightedVerses).toEqual({ 16: 'fffe00' }));
+    await waitFor(() => expect(result.current.highlightedVerses).toEqual({ 16: 'ffec5b' }));
 
     act(() => {
-      result.current.remove('fffe00', [16]);
+      result.current.remove('ffec5b', [16]);
     });
     expect(result.current.highlightedVerses).toEqual({});
     const startFrame = renderLog.length;
@@ -259,7 +260,7 @@ describe('vapor flash — removed verse must never reappear at any frame', () =>
 
     // A later apply on verse 20 fires refetch #2, which returns the stale replica.
     act(() => {
-      result.current.apply('5dff79', [20]);
+      result.current.apply('b4ffc1', [20]);
     });
     await waitFor(() => expect(getHighlights).toHaveBeenCalledTimes(3));
     await act(async () => {
@@ -267,7 +268,7 @@ describe('vapor flash — removed verse must never reappear at any frame', () =>
     });
 
     const frames = renderLog.slice(startFrame);
-    const resurrected = frames.filter((f) => f[16] === 'fffe00');
+    const resurrected = frames.filter((f) => f[16] === 'ffec5b');
     expect(
       resurrected,
       `verse 16 resurrected in ${resurrected.length} frame(s): ${JSON.stringify(frames)}`,

@@ -2,15 +2,18 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, afterEach, it } from 'vitest';
 import type { ReactNode } from 'react';
 import { useHighlights } from './useHighlights';
-import { YouVersionContext } from './context';
+import { YouVersionContext, YouVersionAuthContext } from './context';
 import {
   HighlightsClient,
+  YouVersionPlatformConfiguration,
+  YouVersionUserInfo,
   type Collection,
   type GetHighlightsOptions,
   type Highlight,
   type CreateHighlight,
 } from '@youversion/platform-core';
-import { createYVWrapper } from './test/utils';
+import { createYVWrapper, TestQueryClientProvider } from './test/utils';
+import type { AuthContextValue } from './types/auth';
 
 describe('useHighlights', () => {
   const defaultOptions: GetHighlightsOptions = { version_id: 111, passage_id: 'MAT.1' };
@@ -56,6 +59,9 @@ describe('useHighlights', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    // Tokens live in the file-scoped localStorage; a test that seeds one must
+    // not leave it for the next test's scope resolution.
+    YouVersionPlatformConfiguration.saveAuthData(null, null, null);
   });
 
   describe('context validation', () => {
@@ -100,7 +106,7 @@ describe('useHighlights', () => {
             appKey: currentAppKey,
           }}
         >
-          {children}
+          <TestQueryClientProvider>{children}</TestQueryClientProvider>
         </YouVersionContext.Provider>
       );
 
@@ -206,6 +212,176 @@ describe('useHighlights', () => {
         expect(mockGetHighlights).toHaveBeenCalledTimes(2);
       });
     });
+  });
+
+  it('should never show one user their predecessor cache, and restore it instantly on switch-back', async () => {
+    // Highlights are account data: the cache key carries the user id, so an
+    // account switch structurally cannot serve user A's rows to user B —
+    // and switching back to A serves A's cache instantly while revalidating.
+    const highlightsA: Collection<Highlight> = {
+      data: [{ version_id: 111, passage_id: 'MAT.1.1', color: 'fffe00' }],
+      next_page_token: null,
+    };
+    const highlightsB: Collection<Highlight> = {
+      data: [{ version_id: 111, passage_id: 'MAT.1.2', color: '5dff79' }],
+      next_page_token: null,
+    };
+    mockGetHighlights.mockReset();
+    mockGetHighlights
+      .mockResolvedValueOnce(highlightsA) // user A, initial
+      .mockResolvedValueOnce(highlightsB) // user B, initial
+      .mockResolvedValue(highlightsA); // user A again, background revalidate
+
+    const userA = new YouVersionUserInfo({ id: 'user-a', name: 'User A' });
+    const userB = new YouVersionUserInfo({ id: 'user-b', name: 'User B' });
+    let currentUser = userA;
+    // The provider stack (and its QueryClient) persists across the account
+    // switch — only the auth context value changes, as in a real sign-out /
+    // sign-in without a page reload.
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <YouVersionContext.Provider value={{ appKey: 'test-app-key' }}>
+        <YouVersionAuthContext.Provider
+          value={{
+            userInfo: currentUser,
+            setUserInfo: () => undefined,
+            isLoading: false,
+            error: null,
+          }}
+        >
+          <TestQueryClientProvider>{children}</TestQueryClientProvider>
+        </YouVersionAuthContext.Provider>
+      </YouVersionContext.Provider>
+    );
+
+    const { result, rerender } = renderHook(() => useHighlights(defaultOptions), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.highlights).toEqual(highlightsA);
+    });
+
+    // Switch to user B: the very first render must not leak A's rows.
+    currentUser = userB;
+    rerender();
+    expect(result.current.highlights).toBe(null);
+    expect(result.current.loading).toBe(true);
+
+    await waitFor(() => {
+      expect(result.current.highlights).toEqual(highlightsB);
+    });
+    expect(mockGetHighlights).toHaveBeenCalledTimes(2);
+
+    // Switch back to A: A's cache serves instantly (no loading flash)…
+    currentUser = userA;
+    rerender();
+    expect(result.current.highlights).toEqual(highlightsA);
+    expect(result.current.loading).toBe(false);
+
+    // …while a background revalidation still goes out.
+    await waitFor(() => {
+      expect(mockGetHighlights).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  it('should not fetch, and must not share a cache entry, while the account is unidentified', async () => {
+    // An unidentified account has no safe cache key: auth still loading, or a
+    // signed-in profile with no id. Two such accounts writing to one entry
+    // would show each other's highlights, so the hook waits for the scope.
+    const highlightsA: Collection<Highlight> = {
+      data: [{ version_id: 111, passage_id: 'MAT.1.1', color: 'fffe00' }],
+      next_page_token: null,
+    };
+    mockGetHighlights.mockReset();
+    mockGetHighlights.mockResolvedValue(highlightsA);
+
+    let authValue: AuthContextValue = {
+      userInfo: null,
+      setUserInfo: () => undefined,
+      isLoading: true,
+      error: null,
+    };
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <YouVersionContext.Provider value={{ appKey: 'test-app-key' }}>
+        <YouVersionAuthContext.Provider value={authValue}>
+          <TestQueryClientProvider>{children}</TestQueryClientProvider>
+        </YouVersionAuthContext.Provider>
+      </YouVersionContext.Provider>
+    );
+
+    const { result, rerender } = renderHook(() => useHighlights(defaultOptions), { wrapper });
+
+    // Auth resolving: no request, no data.
+    expect(mockGetHighlights).not.toHaveBeenCalled();
+    expect(result.current.highlights).toBe(null);
+
+    // Resolved, but the profile carries no id: still no safe key, still no request.
+    authValue = {
+      ...authValue,
+      isLoading: false,
+      userInfo: new YouVersionUserInfo({ name: 'No Id' }),
+    };
+    rerender();
+    expect(mockGetHighlights).not.toHaveBeenCalled();
+    expect(result.current.highlights).toBe(null);
+
+    // An empty id is not an identity either. The profile schema accepts `''`, and
+    // every account carrying it would key to the same entry.
+    authValue = {
+      ...authValue,
+      userInfo: new YouVersionUserInfo({ id: '', name: 'Empty Id' }),
+    };
+    rerender();
+    expect(mockGetHighlights).not.toHaveBeenCalled();
+    expect(result.current.highlights).toBe(null);
+
+    // The id lands: now the account has a key of its own and the fetch goes out.
+    authValue = {
+      ...authValue,
+      userInfo: new YouVersionUserInfo({ id: 'user-a', name: 'User A' }),
+    };
+    rerender();
+    await waitFor(() => {
+      expect(result.current.highlights).toEqual(highlightsA);
+    });
+    expect(mockGetHighlights).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not fetch under the anonymous scope while an access token contradicts it', async () => {
+    // The scope reads the auth context, but the request resolves its token from
+    // `YouVersionPlatformConfiguration.accessToken`. A token with no signed-in
+    // user means the fetch would land that token's account rows in the shared
+    // anonymous cache entry, which later signed-out sessions read.
+    YouVersionPlatformConfiguration.saveAuthData('orphaned-live-token', null, null);
+
+    const authValue: AuthContextValue = {
+      userInfo: null,
+      setUserInfo: () => undefined,
+      isLoading: false,
+      error: null,
+    };
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <YouVersionContext.Provider value={{ appKey: 'test-app-key' }}>
+        <YouVersionAuthContext.Provider value={authValue}>
+          <TestQueryClientProvider>{children}</TestQueryClientProvider>
+        </YouVersionAuthContext.Provider>
+      </YouVersionContext.Provider>
+    );
+
+    const { result, rerender } = renderHook(() => useHighlights(defaultOptions), { wrapper });
+
+    // Signed out per the context, yet a token is live: no request, no data.
+    // The flush gives an erroneously enabled query time to dispatch.
+    await Promise.resolve();
+    expect(mockGetHighlights).not.toHaveBeenCalled();
+    expect(result.current.highlights).toBe(null);
+
+    // The token clears — sign-out completed — and the sources agree again:
+    // the anonymous scope is a safe key, so the read goes out.
+    YouVersionPlatformConfiguration.saveAuthData(null, null, null);
+    rerender();
+    await waitFor(() => {
+      expect(result.current.highlights).toEqual(mockHighlights);
+    });
+    expect(mockGetHighlights).toHaveBeenCalledTimes(1);
   });
 
   describe('createHighlight mutation', () => {

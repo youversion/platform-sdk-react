@@ -1,5 +1,19 @@
 # @youversion/platform-core
 
+## 2.12.0
+
+### Patch Changes
+
+- 1f258fa: Sign-in no longer fails when the token endpoint returns `expires_in` as a string. Callback failures are logged in development so a failed exchange is visible in the console.
+
+## 2.11.0
+
+### Minor Changes
+
+- 0ae2488: Highlights mix into the reader background so they stay readable in light and dark. If a host sets a different `--yv-background` or `--yv-card`, the fill follows that token.
+
+  The apply palette is six new colors. The stored hex stays unmixed. Dark mode uses 20% of the stored color. Words of Christ keep their own color (`#94000c` / `#e4bfc2`) so the red letters stay clear on the fill. Old `fffe00` highlights still paint and clear.
+
 ## 2.10.0
 
 ## 2.9.0

@@ -2,6 +2,7 @@
 
 import { useBibleClient } from './useBibleClient';
 import { useApiData, type UseApiDataOptions } from './useApiData';
+import { useQueryKeyBase } from './internal/useQueryKeyBase';
 import type { UseNamedQueryResult } from './useQueryResult';
 import type { BibleVerse } from '@youversion/platform-core';
 
@@ -15,6 +16,7 @@ export function useVerse(
   options?: UseApiDataOptions,
 ): UseVerseResult {
   const bibleClient = useBibleClient();
+  const keyBase = useQueryKeyBase();
 
   const {
     data: verseData,
@@ -22,10 +24,11 @@ export function useVerse(
     error,
     refetch,
   } = useApiData<BibleVerse>(
+    [...keyBase, 'verse', versionId, book, chapter, verse],
     () => bibleClient.getVerse(versionId, book, chapter, verse),
-    [bibleClient, versionId, book, chapter, verse],
     {
       enabled: options?.enabled !== false,
+      keepPreviousData: options?.keepPreviousData,
     },
   );
 
