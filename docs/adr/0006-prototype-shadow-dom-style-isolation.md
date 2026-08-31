@@ -17,6 +17,15 @@ The SDK's compiled Tailwind CSS is installed inside the root, the light-DOM host
 receives a protected box reset, and an internal wrapper resets inherited visual
 properties.
 
+Writing direction is the only intentional inherited visual input: both reset
+boundaries explicitly preserve `direction`, while `all: initial` restores
+horizontal writing, mixed text orientation, SDK typography, and other visual
+properties. Vertical host writing modes and host typography are unsupported.
+Known ambient custom-property dependencies are closed by using SDK-owned
+`--yv-spacing` and `--yv-radius` values and by defining a local `--spacing`
+compatibility alias for `tw-animate-css`. YPE-5400 owns the full custom-property
+inventory and a compiled-CSS prevention guard.
+
 Constructable stylesheets are cached per owning `Document`, because a sheet from
 the top-level document cannot be adopted into a same-origin iframe's shadow
 root. Environments without constructable stylesheets receive a `<style>` element
@@ -63,9 +72,10 @@ host, isolated content appears after hydration, and forwarded refs become
 available later. Automatic isolation is therefore a breaking change rather than
 an internal implementation detail.
 
-Shadow DOM does not isolate document-scoped `@font-face` names or protect a
-component host from constraints applied to its ancestors. Open roots are a CSS
-boundary, not a security boundary.
+Shadow DOM does not isolate document-scoped `@font-face` names; the prototype
+accepts that host registrations can collide with SDK family names. It also
+cannot protect a component host from constraints applied to its ancestors. Open
+roots are a CSS boundary, not a security boundary.
 
 Concurrent independent overlays in one shadow root and nested overlays launched
 from an open dialog are unsupported until the package defines stacking, focus
