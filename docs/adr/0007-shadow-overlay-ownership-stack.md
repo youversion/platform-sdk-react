@@ -11,13 +11,16 @@ keeps stacking, focus, dismissal, inertness, and restoration behind the
 with its siblings.
 
 The topmost mounted overlay owns interaction, focus, Escape, and outside-click
-dismissal. A nested overlay remains inside its ancestor modal's focus scope;
-lower concurrent overlays may remain mounted but are non-interactive. Shadow
-content stays inert while any modal is mounted, including its exit animation.
-Closing an ancestor closes its descendants first. Focus restores only after an
-overlay unmounts, in this order: a connected opener in the remaining active
-scope; otherwise the remaining top layer; otherwise the outer opener once the
-last modal leaves. A disconnected opener is skipped in favor of the next tier.
+dismissal. If it is not dismissible, those dismissal attempts do not fall
+through to a lower overlay. A nested overlay remains inside its ancestor modal's
+focus scope; lower concurrent overlays may remain mounted but are
+non-interactive. Shadow content stays inert while any modal is mounted,
+including its exit animation. An ancestor close may start its own and its
+descendants' exit phases together, but every descendant must unmount before the
+ancestor. Focus restores only after an overlay unmounts, in this order: a
+connected opener in the remaining active scope; otherwise the remaining top
+layer; otherwise the outer opener once the last modal leaves. A disconnected
+opener is skipped in favor of the next tier.
 
 ## Considered options
 
