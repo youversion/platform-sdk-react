@@ -15,6 +15,8 @@ This is a working plan, not approval for package-wide rollout.
 - `BibleVersionPicker` validates shadow-local inline and native top-layer
   floating content through opt-in stories.
 - The shared Dialog and Popover primitives support opt-in shadow-local portals.
+- `VerseActionPopover` uses the shared portal-state infrastructure while
+  retaining its specialized direct Radix composition.
 - `BibleVersionPicker` and other public exports do not automatically create
   Shadow DOM boundaries.
 - The internal `SignInDialog` is validated only through an opt-in
@@ -32,12 +34,26 @@ This is a working plan, not approval for package-wide rollout.
 | Owner-document handling | Focused coverage mounts into a same-origin iframe and verifies document-compatible stylesheet construction. | Validated for the prototype | Verify stylesheet failure recovery. |
 | Inline floating content | The picker negative control preserves tree-scope relationships but demonstrates clipping beyond a constrained ancestor. | Validated as a negative control | None; clipping is why inline placement is not the selected escaping strategy. |
 | Native top-layer floating content | Picker stories verify clipping escape, hit testing, collision handling, hostile-CSS isolation, and resolved `aria-controls` relationships. | Validated in Chromium | Expand browser and assistive-technology coverage. |
-| Portal lifecycle | Unit and browser coverage exercise lazy creation, exit-animation retention, cleanup, and immediate reopen behavior. | Validated for shared primitives | Audit components that bypass the shared Popover wrapper. |
+| Portal lifecycle | Unit and browser coverage exercise lazy creation, exit-animation retention, cleanup, immediate reopen behavior, and the direct-Radix `VerseActionPopover` consumer. | Validated for shared primitives and the known bypass | Repeat the consumer audit when adding another direct overlay primitive. |
 | Dialog relationships | Chromium resolves title and description relationships inside the component tree. | Validated in Chromium | Verify announcements with real assistive technology. |
 | Dialog keyboard containment | Browser coverage exercises initial focus, programmatic escape redirection, forward and reverse traversal, radio-group collapsing, negative `tabindex`, and wraparound. | Validated in Chromium | Expand the browser and assistive-technology matrix. |
 | Dialog modal lifetime | Coverage verifies inert background content while open and through staggered Content and Overlay exit animations. | Validated for one modal | Implement ADR 0007 before supporting nested or competing overlays. |
 | Dialog dismissal and restoration | Coverage exercises Escape, backdrop click, full-viewport hit testing, overlay-only focus, and restoration after both modal nodes unmount. | Validated in Chromium | Verify real screen-reader and cross-browser behavior. |
 | Nested and concurrent ownership | A pure state-model walkthrough exercises nested modal/popover ownership, concurrent siblings, ancestor-close cascading, exit-animation lifetime, and disconnected-opener fallback. | Contract selected in ADR 0007; runtime unsupported | Implement the layer registry and prove the contract through shared primitives in Chromium. |
+
+## Direct overlay inventory
+
+| Location | Classification | Shadow portal requirement |
+| --- | --- | --- |
+| `components/ui/dialog.tsx` | Shared Radix Dialog infrastructure | Already owns shadow-aware portal and modal-focus coordination. |
+| `components/ui/popover.tsx` | Shared Radix Popover infrastructure | Already owns shadow-aware portal state. |
+| `components/verse-action-popover.tsx` | Intentional direct Radix Popover consumer | Uses the shared portal-state seam while retaining its virtual anchor, reader-edge docking, custom pill surface, and verse-selection interaction rules. |
+| `components/verse.tsx` | React portals into existing YVDOM footnote anchors, not floating overlays | No overlay migration required; each target remains in the rendered verse tree. |
+
+No other production direct-overlay bypass was found. The inventory therefore
+produced no equivalent low-risk migration and no materially different case that
+requires follow-up work. Nested and concurrent overlay ownership remains a
+separate decision.
 
 ## Blocking production-readiness decisions
 
@@ -52,8 +68,6 @@ This is a working plan, not approval for package-wide rollout.
   YPE-5400. The known `BibleVersionPicker`, `InputGroup`, and `tw-animate-css`
   dependencies now resolve through locally-defined SDK-owned spacing and radius
   values, but `all: initial` does not reset unknown custom properties.
-- Audit components that use Radix primitives directly instead of the shared
-  wrappers. `VerseActionPopover` is a known direct Popover consumer.
 
 ## Functional and compatibility audits
 
@@ -86,8 +100,7 @@ This is a working plan, not approval for package-wide rollout.
 
 ## Rollout sequence
 
-1. Complete YPE-5400's custom-property inventory and prevention guard, plus the
-   direct-Radix-consumer audit.
+1. Complete YPE-5400's custom-property inventory and prevention guard.
 2. Resolve SSR/hydration and rollout-control decisions, then implement and
    browser-validate the selected overlay-ownership contract.
 3. Select the next public component and add component-specific compatibility,
