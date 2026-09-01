@@ -19,8 +19,9 @@ This is a working plan, not approval for package-wide rollout.
   Shadow DOM boundaries.
 - The internal `SignInDialog` is validated only through an opt-in
   `ShadowRootHost` story.
-- Concurrent independent overlays in one shadow root and nested overlays
-  launched from an open dialog are unsupported.
+- [ADR 0007](adr/0007-shadow-overlay-ownership-stack.md) defines a root-owned
+  LIFO contract for concurrent and nested overlays. Runtime support remains
+  unimplemented, so those cases are still unsupported by the prototype.
 
 ## Validation matrix
 
@@ -34,8 +35,9 @@ This is a working plan, not approval for package-wide rollout.
 | Portal lifecycle | Unit and browser coverage exercise lazy creation, exit-animation retention, cleanup, and immediate reopen behavior. | Validated for shared primitives | Audit components that bypass the shared Popover wrapper. |
 | Dialog relationships | Chromium resolves title and description relationships inside the component tree. | Validated in Chromium | Verify announcements with real assistive technology. |
 | Dialog keyboard containment | Browser coverage exercises initial focus, programmatic escape redirection, forward and reverse traversal, radio-group collapsing, negative `tabindex`, and wraparound. | Validated in Chromium | Expand the browser and assistive-technology matrix. |
-| Dialog modal lifetime | Coverage verifies inert background content while open and through staggered Content and Overlay exit animations. | Validated for one modal | Define ownership before supporting nested or competing overlays. |
+| Dialog modal lifetime | Coverage verifies inert background content while open and through staggered Content and Overlay exit animations. | Validated for one modal | Implement ADR 0007 before supporting nested or competing overlays. |
 | Dialog dismissal and restoration | Coverage exercises Escape, backdrop click, full-viewport hit testing, overlay-only focus, and restoration after both modal nodes unmount. | Validated in Chromium | Verify real screen-reader and cross-browser behavior. |
+| Nested and concurrent ownership | A pure state-model walkthrough exercises nested modal/popover ownership, concurrent siblings, ancestor-close cascading, exit-animation lifetime, and disconnected-opener fallback. | Contract selected in ADR 0007; runtime unsupported | Implement the layer registry and prove the contract through shared primitives in Chromium. |
 
 ## Blocking production-readiness decisions
 
@@ -43,8 +45,9 @@ This is a working plan, not approval for package-wide rollout.
   or package-wide.
 - Define SSR, hydration, and first-paint behavior. The current effect-attached
   root renders an empty host on the server and delays content and forwarded refs.
-- Define stacking, focus ownership, and dismissal contracts for nested or
-  competing modal and non-modal overlays.
+- Implement and browser-validate ADR 0007's root-owned overlay stack before
+  enabling isolation on a component that can launch nested or concurrent
+  overlays.
 - Complete the package-wide custom-property inventory and prevention guard in
   YPE-5400. The known `BibleVersionPicker`, `InputGroup`, and `tw-animate-css`
   dependencies now resolve through locally-defined SDK-owned spacing and radius
@@ -85,7 +88,8 @@ This is a working plan, not approval for package-wide rollout.
 
 1. Complete YPE-5400's custom-property inventory and prevention guard, plus the
    direct-Radix-consumer audit.
-2. Resolve SSR/hydration, rollout-control, and overlay-ownership decisions.
+2. Resolve SSR/hydration and rollout-control decisions, then implement and
+   browser-validate the selected overlay-ownership contract.
 3. Select the next public component and add component-specific compatibility,
    browser, and accessibility coverage before enabling isolation.
 4. Publish consumer guidance for DOM queries, automation, customization, forms,
