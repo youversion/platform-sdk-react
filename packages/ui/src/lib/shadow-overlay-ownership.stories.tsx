@@ -176,6 +176,7 @@ function OwnershipProof(): React.ReactNode {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
+      if (ownershipRef.current.snapshot().ownerId === null) return;
       event.preventDefault();
       dismissOwner();
     };
@@ -383,6 +384,13 @@ export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
     const outsideLayer = requireElement<HTMLElement>(topLayer, '[data-testid="outside-layer"]');
     void expect(outsideLayer.tabIndex).toBe(-1);
     const background = requireElement<HTMLElement>(root, '[data-testid="proof-background"]');
+    const unownedEscape = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    canvasElement.ownerDocument.dispatchEvent(unownedEscape);
+    void expect(unownedEscape.defaultPrevented).toBe(false);
 
     const popoverParentOpener = requireElement<HTMLButtonElement>(
       root,
@@ -478,6 +486,13 @@ export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
     );
     void expect(rapidDialog).toHaveAttribute('data-phase', 'exiting');
     void expect(background.inert).toBe(true);
+    const exitingEscape = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    canvasElement.ownerDocument.dispatchEvent(exitingEscape);
+    void expect(exitingEscape.defaultPrevented).toBe(true);
     await userEvent.click(
       requireElement<HTMLButtonElement>(rapidDialog, '[data-testid="reopen-during-exit"]'),
     );
