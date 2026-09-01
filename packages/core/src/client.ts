@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseCachePolicy, type CachePolicy } from './parse-cache-policy';
 import type { ApiConfig } from './types';
 import { SDK_VERSION_HEADER_NAME, buildSdkVersionHeaderValue } from './version';
 
@@ -28,6 +29,20 @@ const ErrorBodySchema = z.object({
 export function getHttpStatus(cause: unknown): number | undefined {
   const parsed = HttpStatusCarrierSchema.safeParse(cause);
   return parsed.success ? parsed.data.status : undefined;
+}
+
+function policyFromResponseHeaders(headers: Headers): CachePolicy {
+  try {
+    return parseCachePolicy(headers.get('cache-control'), headers.get('age'));
+  } catch {
+    return {
+      allowsCaching: false,
+      maxAgeSeconds: 0,
+      ageSeconds: 0,
+      remainingMs: 0,
+      expiresAt: Date.now(),
+    };
+  }
 }
 
 /**
@@ -88,6 +103,17 @@ export class ApiClient {
    * Makes an HTTP request with timeout support
    */
   private async request<T>(url: string, options: RequestInit = {}): Promise<T> {
+    const { data } = await this.requestWithHeaders<T>(url, options);
+    return data;
+  }
+
+  /**
+   * Same body decoding as request(), plus response headers for Cache-Control.
+   */
+  private async requestWithHeaders<T>(
+    url: string,
+    options: RequestInit = {},
+  ): Promise<{ data: T; headers: Headers }> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
@@ -151,16 +177,16 @@ export class ApiClient {
         if (!text) {
           // SAFETY: empty 2xx JSON bodies (DELETE 200 with no payload) are
           // treated as undefined for the caller-owned generic T.
-          return undefined as T;
+          return { data: undefined as T, headers: response.headers };
         }
         // SAFETY: this client only decodes JSON text. Callers own T and parse
         // untrusted payloads with Zod at their boundary.
-        return JSON.parse(text) as T;
+        return { data: JSON.parse(text) as T, headers: response.headers };
       } else {
         const text = await response.text();
         // SAFETY: non-JSON 2xx bodies are returned as raw text. Callers that
         // asked for T=string receive it; other T values are caller-owned.
-        return text as T;
+        return { data: text as T, headers: response.headers };
       }
     } catch (error) {
       clearTimeout(timeoutId);
@@ -185,6 +211,23 @@ export class ApiClient {
       method: 'GET',
       headers,
     });
+  }
+
+  /**
+   * GET that returns the decoded body plus the Cache-Control policy.
+   * Non-2xx throws the same way as {@link get}; there is no policy on the error.
+   */
+  async getWithPolicy<T>(
+    path: string,
+    params?: QueryParams,
+    headers?: RequestHeaders,
+  ): Promise<{ data: T; policy: CachePolicy }> {
+    const url = `${this.baseURL}${path}${this.buildQueryString(params)}`;
+    const { data, headers: responseHeaders } = await this.requestWithHeaders<T>(url, {
+      method: 'GET',
+      headers,
+    });
+    return { data, policy: policyFromResponseHeaders(responseHeaders) };
   }
 
   /**
