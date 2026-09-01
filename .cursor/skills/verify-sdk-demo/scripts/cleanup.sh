@@ -13,26 +13,14 @@ if [[ ! -f "${VERIFY_INSTANCE_FILE}" ]]; then
 fi
 
 pid="$(verify_read_instance_pid || true)"
-if verify_pid_alive "${pid}"; then
-  echo "verify-sdk-demo cleanup: stopping pid ${pid}"
-  kill "${pid}" 2>/dev/null || true
-  for _ in $(seq 1 20); do
-    if ! verify_pid_alive "${pid}"; then
-      break
-    fi
-    sleep 0.25
-  done
-  if verify_pid_alive "${pid}"; then
-    echo "verify-sdk-demo cleanup: pid ${pid} still alive; sending TERM to process group" >&2
-    kill -TERM "-${pid}" 2>/dev/null || kill -TERM "${pid}" 2>/dev/null || true
-    sleep 1
-  fi
-  if verify_pid_alive "${pid}"; then
-    echo "verify-sdk-demo cleanup: pid ${pid} still alive; sending KILL" >&2
-    kill -KILL "${pid}" 2>/dev/null || true
-  fi
-else
-  echo "verify-sdk-demo cleanup: recorded pid ${pid} already gone"
+listener_pid="$(verify_read_instance_listener_pid || true)"
+if [[ -n "${pid}" ]]; then
+  echo "verify-sdk-demo cleanup: stopping pid ${pid} and descendants"
+  verify_stop_tree "${pid}"
+fi
+if [[ -n "${listener_pid}" && "${listener_pid}" != "${pid}" ]]; then
+  echo "verify-sdk-demo cleanup: stopping listener pid ${listener_pid} and descendants"
+  verify_stop_tree "${listener_pid}"
 fi
 
 rm -f "${VERIFY_INSTANCE_FILE}"

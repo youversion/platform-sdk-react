@@ -31,20 +31,8 @@ port_pid="$(verify_port_pid || true)"
 if [[ -z "${port_pid}" ]]; then
   fail "nothing listening on $(verify_origin)"
 fi
-if [[ "${port_pid}" != "${pid}" ]]; then
-  # Vite's listener is often a child of the pnpm wrapper we recorded.
-  if [[ "/proc/${port_pid}/" -ef "/proc/${pid}/" ]] || \
-     grep -q "^PPid:[[:space:]]*${pid}$" "/proc/${port_pid}/status" 2>/dev/null || \
-     grep -q "^PPid:[[:space:]]*${port_pid}$" "/proc/${pid}/status" 2>/dev/null; then
-    :
-  else
-    # Walk one more parent — pnpm -> node -> vite is common.
-    listener_ppid="$(awk '/^PPid:/{print $2}' "/proc/${port_pid}/status" 2>/dev/null || true)"
-    if [[ "${listener_ppid}" != "${pid}" ]] && \
-       ! grep -q "^PPid:[[:space:]]*${pid}$" "/proc/${listener_ppid}/status" 2>/dev/null; then
-      fail "port ${VERIFY_PORT} is pid ${port_pid}, not our instance ${pid} — refuse to drive a shared listener"
-    fi
-  fi
+if ! verify_pid_in_tree "${port_pid}" "${pid}"; then
+  fail "port ${VERIFY_PORT} is pid ${port_pid}, not in the tree of instance ${pid} — refuse to drive a shared listener"
 fi
 
 html="$(curl -fsS --max-time 5 "$(verify_origin)/")" || fail "GET $(verify_origin)/ failed"

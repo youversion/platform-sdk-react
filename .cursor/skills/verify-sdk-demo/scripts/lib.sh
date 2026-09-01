@@ -70,6 +70,65 @@ verify_port_pid() {
   fi
 }
 
+# True if $1 is $2 or a descendant of $2 (pnpm → sh → vite).
+verify_pid_in_tree() {
+  local candidate="$1"
+  local root="$2"
+  local guard=0
+  while [[ -n "${candidate}" && "${candidate}" != "0" && "${candidate}" != "1" ]]; do
+    if [[ "${candidate}" == "${root}" ]]; then
+      return 0
+    fi
+    candidate="$(awk '/^PPid:/{print $2}' "/proc/${candidate}/status" 2>/dev/null || true)"
+    guard=$((guard + 1))
+    if [[ "${guard}" -gt 32 ]]; then
+      break
+    fi
+  done
+  return 1
+}
+
+# Prints recorded pid plus descendants (children first). Used by cleanup only.
+verify_process_tree() {
+  local root="$1"
+  local children
+  local child
+  children="$(ps -o pid= --ppid "${root}" 2>/dev/null || true)"
+  for child in ${children}; do
+    verify_process_tree "${child}"
+  done
+  printf '%s\n' "${root}"
+}
+
+verify_stop_tree() {
+  local root="$1"
+  local pid
+  local pids
+  pids="$(verify_process_tree "${root}" | tr '\n' ' ')"
+  for pid in ${pids}; do
+    if verify_pid_alive "${pid}"; then
+      kill -TERM "${pid}" 2>/dev/null || true
+    fi
+  done
+  for _ in $(seq 1 20); do
+    local any=0
+    for pid in ${pids}; do
+      if verify_pid_alive "${pid}"; then
+        any=1
+      fi
+    done
+    if [[ "${any}" -eq 0 ]]; then
+      return 0
+    fi
+    sleep 0.25
+  done
+  for pid in ${pids}; do
+    if verify_pid_alive "${pid}"; then
+      kill -KILL "${pid}" 2>/dev/null || true
+    fi
+  done
+}
+
 verify_read_instance_pid() {
   if [[ ! -f "${VERIFY_INSTANCE_FILE}" ]]; then
     return 1
@@ -80,5 +139,10 @@ verify_read_instance_pid() {
 
 verify_read_instance_port() {
   python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("port",""))' \
+    "${VERIFY_INSTANCE_FILE}"
+}
+
+verify_read_instance_listener_pid() {
+  python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("listenerPid",""))' \
     "${VERIFY_INSTANCE_FILE}"
 }

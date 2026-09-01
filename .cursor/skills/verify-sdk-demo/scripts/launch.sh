@@ -98,6 +98,19 @@ if [[ "${ready}" -ne 1 ]]; then
   exit 1
 fi
 
+listener_pid="$(verify_port_pid || true)"
+python3 - "${VERIFY_INSTANCE_FILE}" "${listener_pid}" <<'PY'
+import json, sys
+path, listener = sys.argv[1], sys.argv[2]
+with open(path, encoding="utf-8") as fh:
+    data = json.load(fh)
+if listener:
+    data["listenerPid"] = int(listener)
+with open(path, "w", encoding="utf-8") as fh:
+    json.dump(data, fh, indent=2)
+    fh.write("\n")
+PY
+
 echo "verify-sdk-demo: ready pid=${vite_pid} origin=$(verify_origin)"
 echo "verify-sdk-demo: instance ${VERIFY_INSTANCE_FILE}"
 echo "verify-sdk-demo: log ${VERIFY_LOG_FILE}"
