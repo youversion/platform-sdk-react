@@ -20,10 +20,13 @@ do not fall through to a lower overlay. A nested overlay remains inside its
 ancestor modal's focus scope. Shadow content stays inert while any modal is
 mounted, including its exit animation. An ancestor close may start its own and
 its descendants' exit phases together, but every descendant must unmount before
-the ancestor. Focus restores only after an overlay unmounts, in this order: a
-connected opener in the remaining active scope; otherwise the remaining top
-eligible layer; otherwise the outer opener once the last modal leaves. A
-disconnected opener is skipped in favor of the next tier.
+the ancestor; a new child cannot mount beneath an exiting parent. Reopening a
+stable overlay ID during exit cancels that exit and refreshes its registration,
+including its opener, parent, kind, and dismissal policy. Focus restores only
+after an overlay unmounts, in this order: a connected opener in the remaining
+active scope; otherwise the remaining top eligible layer; otherwise the outer
+opener once the last modal leaves. A disconnected opener is skipped in favor of
+the next tier.
 
 ## Scenario classification and proof
 

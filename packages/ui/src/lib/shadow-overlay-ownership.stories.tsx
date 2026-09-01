@@ -191,11 +191,11 @@ function OwnershipProof(): React.ReactNode {
                   key={layer.id}
                   role={layer.kind === 'modal' ? 'dialog' : 'region'}
                   aria-label={layer.id}
-                  aria-hidden={!layer.eligible}
+                  aria-hidden={layer.id !== snapshot.ownerId}
                   data-overlay-id={layer.id}
                   data-owner={layer.id === snapshot.ownerId ? '' : undefined}
                   data-phase={layer.phase}
-                  inert={!layer.eligible}
+                  inert={layer.id !== snapshot.ownerId}
                   tabIndex={-1}
                   style={{
                     position: 'fixed',
@@ -361,7 +361,7 @@ export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
     );
     await expectFocusedOwner(root, 'dialog-child-popover');
     void expect(background.inert).toBe(true);
-    void expect(dialogParent.inert).toBe(false);
+    void expect(dialogParent.inert).toBe(true);
     await userEvent.click(outsideLayer);
     await expectUnmounted(root, 'dialog-child-popover');
     await expectOwner(root, 'dialog-parent');
@@ -377,7 +377,10 @@ export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
     const secondOpener = requireElement<HTMLButtonElement>(root, '[data-testid="open-second"]');
     await userEvent.click(firstOpener);
     await userEvent.click(secondOpener);
-    await expectFocusedOwner(root, 'second');
+    const second = await expectFocusedOwner(root, 'second');
+    const first = requireElement<HTMLElement>(topLayer, '[data-overlay-id="first"]');
+    void expect(first.inert).toBe(true);
+    void expect(second.inert).toBe(false);
     void expect(
       Array.from(topLayer.querySelectorAll('[data-overlay-id]'), (element) =>
         element.getAttribute('data-overlay-id'),
@@ -386,6 +389,7 @@ export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
     await userEvent.click(outsideLayer);
     await expectUnmounted(root, 'second');
     await expectOwner(root, 'first');
+    void expect(first.inert).toBe(false);
     await expectActiveElement(root, secondOpener);
     await userEvent.keyboard('{Escape}');
     await expectUnmounted(root, 'first');

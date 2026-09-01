@@ -42,19 +42,29 @@ export class ShadowOverlayOwnership {
   readonly #layers: ShadowOverlayLayer[] = [];
 
   mount(registration: ShadowOverlayRegistration): void {
-    const existing = this.#layers.find((layer) => layer.id === registration.id);
-    if (existing) {
-      existing.phase = 'active';
-      return;
-    }
-
-    if (
-      registration.parentId !== undefined &&
-      !this.#layers.some((layer) => layer.id === registration.parentId)
-    ) {
+    const parent =
+      registration.parentId === undefined
+        ? undefined
+        : this.#layers.find((layer) => layer.id === registration.parentId);
+    if (registration.parentId !== undefined && !parent) {
       throw new Error(
         `Cannot mount overlay "${registration.id}" with missing parent "${registration.parentId}"`,
       );
+    }
+    if (parent?.phase === 'exiting') {
+      throw new Error(
+        `Cannot mount overlay "${registration.id}" under exiting parent "${registration.parentId}"`,
+      );
+    }
+
+    const existing = this.#layers.find((layer) => layer.id === registration.id);
+    if (existing) {
+      Object.assign(existing, registration, {
+        dismissible: registration.dismissible ?? true,
+        parentId: registration.parentId,
+        phase: 'active' satisfies ShadowOverlayPhase,
+      });
+      return;
     }
 
     this.#layers.push({

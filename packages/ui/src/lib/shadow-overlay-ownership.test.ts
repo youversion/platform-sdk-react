@@ -109,10 +109,11 @@ describe('ShadowOverlayOwnership', () => {
 
   it('reopens the same overlay during its exit without duplicating ownership', () => {
     document.body.replaceChildren();
-    const opener = button('Open dialog');
+    const originalOpener = button('Open dialog');
+    const reopenedOpener = button('Reopen dialog');
     const ownership = new ShadowOverlayOwnership();
 
-    ownership.mount({ id: 'dialog', kind: 'modal', opener });
+    ownership.mount({ id: 'dialog', kind: 'modal', opener: originalOpener });
     ownership.beginExit('dialog');
     expect(ownership.snapshot()).toMatchObject({
       ownerId: 'dialog',
@@ -120,13 +121,21 @@ describe('ShadowOverlayOwnership', () => {
       layers: [{ id: 'dialog', phase: 'exiting' }],
     });
 
-    ownership.mount({ id: 'dialog', kind: 'modal', opener });
+    ownership.mount({
+      id: 'dialog',
+      kind: 'modal',
+      opener: reopenedOpener,
+      dismissible: false,
+    });
 
     expect(ownership.snapshot()).toMatchObject({
       ownerId: 'dialog',
       backgroundInert: true,
       layers: [{ id: 'dialog', phase: 'active' }],
     });
+    expect(ownership.requestDismiss()).toBeNull();
+    ownership.beginExit('dialog');
+    expect(ownership.unmount('dialog')).toEqual({ kind: 'element', element: reopenedOpener });
   });
 
   it('keeps an unrelated nonmodal overlay outside the active modal scope', () => {
@@ -183,6 +192,14 @@ describe('ShadowOverlayOwnership', () => {
 
     expect(ownership.beginExit('dialog')).toEqual(['popover', 'dialog']);
     expect(ownership.requestDismiss()).toBeNull();
+    expect(() =>
+      ownership.mount({
+        id: 'late-child',
+        kind: 'nonmodal',
+        opener: button('Open late child'),
+        parentId: 'dialog',
+      }),
+    ).toThrow('Cannot mount overlay "late-child" under exiting parent "dialog"');
     expect(() => ownership.unmount('dialog')).toThrow(
       'Cannot unmount overlay "dialog" before descendant "popover"',
     );
