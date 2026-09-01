@@ -72,6 +72,7 @@ export class ShadowOverlayOwnership {
         parentId: registration.parentId,
         phase: 'active' satisfies ShadowOverlayPhase,
       });
+      this.#moveSubtreeToTop(existing.id);
       return;
     }
 
@@ -151,6 +152,15 @@ export class ShadowOverlayOwnership {
       parentId = this.#layers.find((candidate) => candidate.id === parentId)?.parentId;
     }
     return false;
+  }
+
+  #moveSubtreeToTop(id: string): void {
+    const subtree = this.#layers.filter(
+      (layer) => layer.id === id || this.#hasAncestor(layer, id),
+    );
+    const subtreeIds = new Set(subtree.map((layer) => layer.id));
+    const remainingLayers = this.#layers.filter((layer) => !subtreeIds.has(layer.id));
+    this.#layers.splice(0, this.#layers.length, ...remainingLayers, ...subtree);
   }
 
   /** Topmost modal, and topmost layer eligible under it, in one backward pass each. */

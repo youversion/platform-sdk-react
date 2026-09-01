@@ -30,7 +30,8 @@ steal focus from its owner. A disconnected opener is skipped in favor of the
 next tier. Descendant unmounts during an ancestor-close cascade suppress focus
 restoration; the ancestor's final unmount performs the single restore. Parent
 updates must remain acyclic: an overlay cannot register under itself or one of
-its descendants.
+its descendants. Refreshing a stable ID moves its existing subtree to the top
+so every parent remains before its children in registration order.
 
 ## Scenario classification and proof
 

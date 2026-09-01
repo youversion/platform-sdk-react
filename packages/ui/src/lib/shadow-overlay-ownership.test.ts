@@ -219,6 +219,30 @@ describe('ShadowOverlayOwnership', () => {
     ).toThrow('Cannot mount overlay "dialog" under descendant "popover"');
   });
 
+  it('preserves parent-before-child order when reparenting a stable ID', () => {
+    document.body.replaceChildren();
+    const ownership = new ShadowOverlayOwnership();
+    const firstOpener = button('Open first');
+    const secondOpener = button('Open second');
+    ownership.mount({ id: 'first', kind: 'nonmodal', opener: firstOpener });
+    ownership.mount({ id: 'second', kind: 'nonmodal', opener: secondOpener });
+
+    ownership.mount({
+      id: 'first',
+      kind: 'nonmodal',
+      opener: firstOpener,
+      parentId: 'second',
+    });
+
+    expect(ownership.snapshot()).toMatchObject({
+      ownerId: 'first',
+      layers: [{ id: 'second' }, { id: 'first', parentId: 'second' }],
+    });
+    expect(ownership.beginExit('second')).toEqual(['first', 'second']);
+    expect(ownership.unmount('first')).toBeNull();
+    expect(ownership.unmount('second')).toEqual({ kind: 'element', element: secondOpener });
+  });
+
   it('blocks dismissal fallthrough and ancestor unmount while descendants exit', () => {
     document.body.replaceChildren();
     const ownership = new ShadowOverlayOwnership();
