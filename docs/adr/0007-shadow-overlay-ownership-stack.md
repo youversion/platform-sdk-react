@@ -15,10 +15,9 @@ dismissal. A nested overlay remains inside its ancestor modal's focus scope;
 lower concurrent overlays may remain mounted but are non-interactive. Shadow
 content stays inert while any modal is mounted, including its exit animation.
 Closing an ancestor closes its descendants first. Focus restores only after an
-overlay unmounts: first to a connected opener in the remaining active scope,
-otherwise to the remaining top layer, and finally to the outer opener after the
-last modal leaves. A disconnected opener falls back rather than receiving
-focus.
+overlay unmounts, in this order: a connected opener in the remaining active
+scope; otherwise the remaining top layer; otherwise the outer opener once the
+last modal leaves. A disconnected opener is skipped in favor of the next tier.
 
 ## Considered options
 

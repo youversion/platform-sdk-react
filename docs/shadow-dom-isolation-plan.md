@@ -19,9 +19,9 @@ This is a working plan, not approval for package-wide rollout.
   Shadow DOM boundaries.
 - The internal `SignInDialog` is validated only through an opt-in
   `ShadowRootHost` story.
-- [ADR 0007](adr/0007-shadow-overlay-ownership-stack.md) defines a root-owned
-  LIFO contract for concurrent and nested overlays. Runtime support remains
-  unimplemented, so those cases are still unsupported by the prototype.
+- Concurrent and nested overlays in one shadow root remain unsupported.
+  [ADR 0007](adr/0007-shadow-overlay-ownership-stack.md) selects the contract
+  to implement them; see "Blocking production-readiness decisions" below.
 
 ## Validation matrix
 

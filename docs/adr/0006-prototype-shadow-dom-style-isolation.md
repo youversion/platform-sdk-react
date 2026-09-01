@@ -77,13 +77,12 @@ accepts that host registrations can collide with SDK family names. It also
 cannot protect a component host from constraints applied to its ancestors. Open
 roots are a CSS boundary, not a security boundary.
 
-[ADR 0007](0007-shadow-overlay-ownership-stack.md) selects a root-owned LIFO
-stacking, focus, dismissal, inertness, and restoration contract for concurrent
-and nested overlays. The current prototype does not implement that contract, so
-those cases remain unsupported until the layer registry and browser evidence
-land. Radix's development-only relationship checks can also emit warnings for
-valid IDs inside a shadow root because those checks query the document rather
-than the root.
+[ADR 0007](0007-shadow-overlay-ownership-stack.md) selects an ownership
+contract for concurrent and nested overlays. The current prototype does not
+implement that contract, so those cases remain unsupported until the layer
+registry and browser evidence land. Radix's development-only relationship
+checks can also emit warnings for valid IDs inside a shadow root because those
+checks query the document rather than the root.
 
 Only `YouVersionAuthButton` is automatically isolated by this prototype.
 `BibleVersionPicker` and other public exports do not gain automatic isolation
