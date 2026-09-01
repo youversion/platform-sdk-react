@@ -1,42 +1,10 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripLayerBlocks } from './strip-layer-blocks.js';
 
 const dist = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const errors = [];
-
-function stripLayerBlocks(css) {
-  let result = '';
-  let i = 0;
-  while (i < css.length) {
-    const start = css.indexOf('@layer', i);
-    if (start === -1) {
-      result += css.slice(i);
-      break;
-    }
-    result += css.slice(i, start);
-    const brace = css.indexOf('{', start);
-    const semi = css.indexOf(';', start);
-    if (brace === -1 || (semi !== -1 && semi < brace)) {
-      i = (semi === -1 ? start + 6 : semi) + 1;
-      continue;
-    }
-    let depth = 0;
-    let j = brace;
-    for (; j < css.length; j++) {
-      if (css[j] === '{') depth += 1;
-      else if (css[j] === '}') {
-        depth -= 1;
-        if (depth === 0) {
-          j += 1;
-          break;
-        }
-      }
-    }
-    i = j;
-  }
-  return result;
-}
 
 const cssPath = resolve(dist, 'tailwind.css');
 const css = existsSync(cssPath) ? readFileSync(cssPath, 'utf-8') : '';
