@@ -98,7 +98,12 @@ export class ShadowOverlayOwnership {
       throw new Error(`Cannot unmount overlay "${id}" before descendant "${descendant.id}"`);
     }
 
+    const parentIsExiting = this.#layers.some(
+      (candidate) => candidate.id === layer.parentId && candidate.phase === 'exiting',
+    );
     this.#layers.splice(this.#layers.indexOf(layer), 1);
+    if (parentIsExiting) return null;
+
     const { modalOwner, owner, eligibleIds } = this.#computeOwnership();
     const parentIsEligible = layer.parentId !== undefined && eligibleIds.has(layer.parentId);
     const openerTarget: ShadowOverlayFocusTarget = layer.opener.isConnected

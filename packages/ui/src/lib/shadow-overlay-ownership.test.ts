@@ -182,7 +182,8 @@ describe('ShadowOverlayOwnership', () => {
   it('blocks dismissal fallthrough and ancestor unmount while descendants exit', () => {
     document.body.replaceChildren();
     const ownership = new ShadowOverlayOwnership();
-    ownership.mount({ id: 'dialog', kind: 'modal', opener: button('Open dialog') });
+    const dialogOpener = button('Open dialog');
+    ownership.mount({ id: 'dialog', kind: 'modal', opener: dialogOpener });
     ownership.mount({
       id: 'popover',
       kind: 'nonmodal',
@@ -203,9 +204,12 @@ describe('ShadowOverlayOwnership', () => {
     expect(() => ownership.unmount('dialog')).toThrow(
       'Cannot unmount overlay "dialog" before descendant "popover"',
     );
-    ownership.unmount('popover');
+    expect(ownership.unmount('popover')).toBeNull();
     expect(ownership.snapshot().backgroundInert).toBe(true);
-    ownership.unmount('dialog');
+    expect(ownership.unmount('dialog')).toEqual({
+      kind: 'element',
+      element: dialogOpener,
+    });
     expect(ownership.snapshot().backgroundInert).toBe(false);
   });
 

@@ -26,7 +26,8 @@ including its opener, parent, kind, and dismissal policy. Focus restores only
 after an overlay unmounts, in this order: a connected opener in the remaining
 active scope; otherwise the remaining top eligible layer; otherwise the outer
 opener once the last modal leaves. A disconnected opener is skipped in favor of
-the next tier.
+the next tier. Descendant unmounts during an ancestor-close cascade suppress
+focus restoration; the ancestor's final unmount performs the single restore.
 
 ## Scenario classification and proof
 
