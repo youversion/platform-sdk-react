@@ -84,7 +84,7 @@ function parseAgeSeconds(value: string | null | undefined): number {
 
 function parseNonNegativeInteger(value: string | null | undefined): number | null {
   if (value == null) return null;
-  const trimmed = value.trim();
+  const trimmed = value.trim().replace(/^"|"$/g, '');
   if (!/^\d+$/.test(trimmed)) return null;
   return Number(trimmed);
 }
