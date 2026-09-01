@@ -61,16 +61,13 @@ export class ShadowOverlayOwnership {
 
   beginExit(id: string): string[] {
     this.#requireLayer(id);
-    const exitingIds = this.#layers
+    const exitingLayers = this.#layers
       .filter((layer) => layer.id === id || this.#hasAncestor(layer, id))
-      .map((layer) => layer.id)
       .reverse();
 
-    for (const exitingId of exitingIds) {
-      this.#requireLayer(exitingId).phase = 'exiting';
-    }
+    for (const layer of exitingLayers) layer.phase = 'exiting';
 
-    return exitingIds;
+    return exitingLayers.map((layer) => layer.id);
   }
 
   requestDismiss(): string | null {
@@ -87,33 +84,20 @@ export class ShadowOverlayOwnership {
     }
 
     this.#layers.splice(this.#layers.indexOf(layer), 1);
-    const snapshot = this.snapshot();
-    const parentIsEligible =
-      layer.parentId !== undefined &&
-      snapshot.layers.some((candidate) => candidate.id === layer.parentId && candidate.eligible);
-    if (
-      layer.opener.isConnected &&
-      (snapshot.modalOwnerId === null || snapshot.ownerId === null || parentIsEligible)
-    ) {
-      return { kind: 'element', element: layer.opener };
+    const { modalOwner, owner, eligibleIds } = this.#computeOwnership();
+    const parentIsEligible = layer.parentId !== undefined && eligibleIds.has(layer.parentId);
+    const openerTarget: ShadowOverlayFocusTarget = layer.opener.isConnected
+      ? { kind: 'element', element: layer.opener }
+      : null;
+
+    if (openerTarget && (modalOwner === null || owner === null || parentIsEligible)) {
+      return openerTarget;
     }
-    if (snapshot.ownerId) return { kind: 'layer', id: snapshot.ownerId };
-    return layer.opener.isConnected ? { kind: 'element', element: layer.opener } : null;
+    return owner ? { kind: 'layer', id: owner.id } : openerTarget;
   }
 
   snapshot(): ShadowOverlaySnapshot {
-    const modalOwner = [...this.#layers].reverse().find((layer) => layer.kind === 'modal') ?? null;
-    const eligibleIds = new Set(
-      this.#layers
-        .filter(
-          (layer) =>
-            modalOwner === null ||
-            layer.id === modalOwner.id ||
-            this.#hasAncestor(layer, modalOwner.id),
-        )
-        .map((layer) => layer.id),
-    );
-    const owner = [...this.#layers].reverse().find((layer) => eligibleIds.has(layer.id)) ?? null;
+    const { modalOwner, owner, eligibleIds } = this.#computeOwnership();
 
     return {
       ownerId: owner?.id ?? null,
@@ -140,9 +124,34 @@ export class ShadowOverlayOwnership {
     return false;
   }
 
+  /** Topmost modal, and topmost layer eligible under it, in one backward pass each. */
+  #computeOwnership() {
+    const modalOwner = this.#findLastLayer((layer) => layer.kind === 'modal');
+    const eligibleIds = new Set(
+      this.#layers
+        .filter(
+          (layer) =>
+            modalOwner === null ||
+            layer.id === modalOwner.id ||
+            this.#hasAncestor(layer, modalOwner.id),
+        )
+        .map((layer) => layer.id),
+    );
+    const owner = this.#findLastLayer((layer) => eligibleIds.has(layer.id));
+    return { modalOwner, owner, eligibleIds };
+  }
+
+  #findLastLayer(predicate: (layer: ShadowOverlayLayer) => boolean): ShadowOverlayLayer | null {
+    for (let index = this.#layers.length - 1; index >= 0; index--) {
+      const layer = this.#layers[index];
+      if (!layer) continue;
+      if (predicate(layer)) return layer;
+    }
+    return null;
+  }
+
   #owner(): ShadowOverlayLayer | null {
-    const ownerId = this.snapshot().ownerId;
-    return ownerId ? (this.#layers.find((layer) => layer.id === ownerId) ?? null) : null;
+    return this.#computeOwnership().owner;
   }
 
   #requireLayer(id: string): ShadowOverlayLayer {

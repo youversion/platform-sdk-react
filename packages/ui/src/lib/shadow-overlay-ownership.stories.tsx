@@ -9,7 +9,7 @@ import {
   type ShadowOverlayFocusTarget,
   type ShadowOverlayKind,
 } from './shadow-overlay-ownership';
-import { ShadowRootHost } from './shadow-root-host';
+import { getOwnShadowRoot, ShadowRootHost } from './shadow-root-host';
 
 const EXIT_DURATION_MS = 150;
 
@@ -73,8 +73,8 @@ function OwnershipProof(): React.ReactNode {
 
   useLayoutEffect(() => {
     const marker = markerRef.current;
-    const root = marker?.getRootNode();
-    if (!marker || !(root instanceof ShadowRoot)) return;
+    const root = marker ? getOwnShadowRoot(marker) : null;
+    if (!marker || !root) return;
 
     const container = marker.ownerDocument.createElement('div');
     container.setAttribute('data-testid', 'ownership-top-layer');
@@ -307,12 +307,17 @@ async function expectUnmounted(root: ShadowRoot, id: string): Promise<void> {
   );
 }
 
+async function expectActiveElement(root: ShadowRoot, element: Element): Promise<void> {
+  await waitFor(() => void expect(root.activeElement).toBe(element));
+}
+
 export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
   play: async ({ canvasElement }) => {
     const root = await waitFor(() => requireShadowRoot(canvasElement));
     const topLayer = await waitFor(() =>
       requireElement<HTMLElement>(root, '[data-testid="ownership-top-layer"]'),
     );
+    const outsideLayer = requireElement<HTMLElement>(topLayer, '[data-testid="outside-layer"]');
     const background = requireElement<HTMLElement>(root, '[data-testid="proof-background"]');
 
     const popoverParentOpener = requireElement<HTMLButtonElement>(
@@ -330,15 +335,14 @@ export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
     await userEvent.keyboard('{Escape}');
     await expectUnmounted(root, 'popover-child-dialog');
     await expectOwner(root, 'popover-parent');
-    await waitFor(() =>
-      void expect(root.activeElement).toBe(
-        requireElement(popoverParent, '[data-testid="popover-opens-dialog"]'),
-      ),
+    await expectActiveElement(
+      root,
+      requireElement(popoverParent, '[data-testid="popover-opens-dialog"]'),
     );
     void expect(background.inert).toBe(false);
-    await userEvent.click(requireElement(topLayer, '[data-testid="outside-layer"]'));
+    await userEvent.click(outsideLayer);
     await expectUnmounted(root, 'popover-parent');
-    await waitFor(() => void expect(root.activeElement).toBe(popoverParentOpener));
+    await expectActiveElement(root, popoverParentOpener);
 
     const dialogParentOpener = requireElement<HTMLButtonElement>(
       root,
@@ -352,12 +356,12 @@ export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
     await expectOwner(root, 'dialog-child-popover');
     void expect(background.inert).toBe(true);
     void expect(dialogParent.inert).toBe(false);
-    await userEvent.click(requireElement(topLayer, '[data-testid="outside-layer"]'));
+    await userEvent.click(outsideLayer);
     await expectUnmounted(root, 'dialog-child-popover');
     await expectOwner(root, 'dialog-parent');
     await userEvent.keyboard('{Escape}');
     await expectUnmounted(root, 'dialog-parent');
-    await waitFor(() => void expect(root.activeElement).toBe(dialogParentOpener));
+    await expectActiveElement(root, dialogParentOpener);
 
     const firstOpener = requireElement<HTMLButtonElement>(root, '[data-testid="open-first"]');
     const secondOpener = requireElement<HTMLButtonElement>(root, '[data-testid="open-second"]');
@@ -369,13 +373,13 @@ export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
         element.getAttribute('data-overlay-id'),
       ),
     ).toEqual(['first', 'second']);
-    await userEvent.click(requireElement(topLayer, '[data-testid="outside-layer"]'));
+    await userEvent.click(outsideLayer);
     await expectUnmounted(root, 'second');
     await expectOwner(root, 'first');
-    await waitFor(() => void expect(root.activeElement).toBe(secondOpener));
+    await expectActiveElement(root, secondOpener);
     await userEvent.keyboard('{Escape}');
     await expectUnmounted(root, 'first');
-    await waitFor(() => void expect(root.activeElement).toBe(firstOpener));
+    await expectActiveElement(root, firstOpener);
 
     const rapidOpener = requireElement<HTMLButtonElement>(
       root,
@@ -398,7 +402,7 @@ export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
     await userEvent.keyboard('{Escape}');
     await expectUnmounted(root, 'rapid-dialog');
     void expect(background.inert).toBe(false);
-    await waitFor(() => void expect(root.activeElement).toBe(rapidOpener));
+    await expectActiveElement(root, rapidOpener);
     await waitFor(() => void expect(topLayer.matches(':popover-open')).toBe(false));
   },
 };

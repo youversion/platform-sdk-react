@@ -45,10 +45,8 @@ dismissal ownership, modal inertness through exit, restoration, and stable
 identity during a rapid reopen.
 
 These scenarios remain unsupported by production SDK Dialog and Popover
-callers. The proof module is internal and is deliberately not connected to
-those primitives. Production support begins only after the root-owned registry
-is integrated at the `ShadowRootHost` seam and the same browser evidence passes
-through the shared primitives and every direct overlay consumer.
+callers; the proof module is internal and deliberately not connected to those
+primitives. See Consequences below for what production integration requires.
 
 ## Considered options
 
