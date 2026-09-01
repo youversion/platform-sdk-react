@@ -9,43 +9,50 @@ function button(label: string): HTMLButtonElement {
 }
 
 describe('ShadowOverlayOwnership', () => {
-  it('coordinates a popover opening a dialog', () => {
+  it('coordinates the verse action popover opening the highlights permission dialog', () => {
     document.body.replaceChildren();
-    const pageOpener = button('Open popover');
-    const dialogOpener = button('Open dialog');
+    const dialogOpener = button('Choose highlight color');
     const ownership = new ShadowOverlayOwnership();
 
-    ownership.mount({ id: 'popover', kind: 'nonmodal', opener: pageOpener });
+    ownership.mount({ id: 'verse-action-popover', kind: 'nonmodal', opener: null });
     ownership.mount({
-      id: 'dialog',
+      id: 'highlights-permission-dialog',
       kind: 'modal',
       opener: dialogOpener,
-      parentId: 'popover',
+      parentId: 'verse-action-popover',
     });
 
     expect(ownership.snapshot()).toMatchObject({
-      ownerId: 'dialog',
-      modalOwnerId: 'dialog',
+      ownerId: 'highlights-permission-dialog',
+      modalOwnerId: 'highlights-permission-dialog',
       backgroundInert: true,
       layers: [
-        { id: 'popover', eligible: false, phase: 'active' },
-        { id: 'dialog', eligible: true, phase: 'active' },
+        { id: 'verse-action-popover', eligible: false, phase: 'active' },
+        {
+          id: 'highlights-permission-dialog',
+          parentId: 'verse-action-popover',
+          eligible: true,
+          phase: 'active',
+        },
       ],
     });
-    expect(ownership.requestDismiss()).toBe('dialog');
+    expect(ownership.requestDismiss()).toBe('highlights-permission-dialog');
 
-    ownership.beginExit('dialog');
+    ownership.beginExit('highlights-permission-dialog');
     expect(ownership.snapshot().backgroundInert).toBe(true);
     expect(ownership.requestDismiss()).toBeNull();
-    expect(ownership.unmount('dialog')).toEqual({ kind: 'element', element: dialogOpener });
+    expect(ownership.unmount('highlights-permission-dialog')).toEqual({
+      kind: 'element',
+      element: dialogOpener,
+    });
     expect(ownership.snapshot()).toMatchObject({
-      ownerId: 'popover',
+      ownerId: 'verse-action-popover',
       modalOwnerId: null,
       backgroundInert: false,
     });
 
-    ownership.beginExit('popover');
-    expect(ownership.unmount('popover')).toEqual({ kind: 'element', element: pageOpener });
+    ownership.beginExit('verse-action-popover');
+    expect(ownership.unmount('verse-action-popover')).toBeNull();
   });
 
   it('coordinates a dialog containing a popover', () => {
@@ -287,5 +294,15 @@ describe('ShadowOverlayOwnership', () => {
 
     ownership.beginExit('second');
     expect(ownership.unmount('second')).toEqual({ kind: 'layer', id: 'first' });
+  });
+
+  it('falls back to the remaining owner when no focus restoration target exists', () => {
+    document.body.replaceChildren();
+    const ownership = new ShadowOverlayOwnership();
+    ownership.mount({ id: 'first', kind: 'nonmodal', opener: button('Open first') });
+    ownership.mount({ id: 'default-open', kind: 'nonmodal', opener: null });
+
+    ownership.beginExit('default-open');
+    expect(ownership.unmount('default-open')).toEqual({ kind: 'layer', id: 'first' });
   });
 });

@@ -7,7 +7,9 @@ export type ShadowOverlayPhase = 'active' | 'exiting';
 export interface ShadowOverlayRegistration {
   id: string;
   kind: ShadowOverlayKind;
-  opener: HTMLElement;
+  /** Focus restoration target captured at launch, or null when no target exists. */
+  opener: HTMLElement | null;
+  /** Logical overlay that launched this overlay, independent of DOM or React ancestry. */
   parentId?: string;
   dismissible?: boolean;
 }
@@ -116,7 +118,7 @@ export class ShadowOverlayOwnership {
 
     const { modalOwner, owner, eligibleIds } = this.#computeOwnership();
     const parentIsEligible = layer.parentId !== undefined && eligibleIds.has(layer.parentId);
-    const openerTarget: ShadowOverlayFocusTarget = layer.opener.isConnected
+    const openerTarget: ShadowOverlayFocusTarget = layer.opener?.isConnected
       ? { kind: 'element', element: layer.opener }
       : null;
 
