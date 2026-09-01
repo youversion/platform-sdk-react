@@ -5,6 +5,10 @@ import { type BibleVersion } from '@youversion/platform-core';
 import { YouVersionContext } from './context';
 import { createBibleClientStub, createYVWrapper, TestQueryClientProvider } from './test/utils';
 
+type VersionHookProbe = {
+  current: UseVersionResult | null;
+};
+
 describe('useVersion', () => {
   const mockGetVersionWithPolicy = vi.fn();
   const bibleClient = createBibleClientStub({ getVersionWithPolicy: mockGetVersionWithPolicy });
@@ -199,7 +203,7 @@ describe('useVersion', () => {
       policy: { allowsCaching: true, remainingMs: 60_000 },
     });
 
-    const latest: { current: UseVersionResult | null } = { current: null };
+    const latest: VersionHookProbe = { current: null };
     function Probe() {
       latest.current = useVersion(111);
       return null;

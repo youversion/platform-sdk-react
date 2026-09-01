@@ -7,6 +7,9 @@ import { createMockPassage } from './__tests__/mocks/bibles';
 
 type PassageArgs = { versionId: number; usfm: string; format: 'html' | 'text' };
 type PassageCall = [number, string, string, boolean, boolean, boolean];
+type PassageHookProbe = {
+  current: UsePassageResult | null;
+};
 
 describe('usePassage', () => {
   const mockGetPassage = vi.fn();
@@ -316,7 +319,7 @@ describe('usePassage', () => {
       policy: { allowsCaching: true, remainingMs: 60_000 },
     });
 
-    const latest: { current: UsePassageResult | null } = { current: null };
+    const latest: PassageHookProbe = { current: null };
     function Probe() {
       latest.current = usePassage({ versionId: 3034, usfm: 'JHN.3.16' });
       return null;

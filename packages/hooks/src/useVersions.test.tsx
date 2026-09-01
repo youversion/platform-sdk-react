@@ -5,6 +5,10 @@ import { type Collection, type BibleVersion } from '@youversion/platform-core';
 import { YouVersionContext } from './context';
 import { createBibleClientStub, createYVWrapper, TestQueryClientProvider } from './test/utils';
 
+type VersionsHookProbe = {
+  current: UseVersionsResult | null;
+};
+
 describe('useVersions', () => {
   const mockGetVersions = vi.fn();
   const bibleClient = createBibleClientStub({ getVersions: mockGetVersions });
@@ -535,7 +539,7 @@ describe('useVersions', () => {
   });
 
   it('refetches a remount in the same provider', async () => {
-    const latest: { current: UseVersionsResult | null } = { current: null };
+    const latest: VersionsHookProbe = { current: null };
     function Probe() {
       latest.current = useVersions('en');
       return null;
