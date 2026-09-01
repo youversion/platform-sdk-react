@@ -37,13 +37,13 @@ const TARGETS = [
   {
     id: 'hooks-index',
     entry: 'packages/hooks/dist/index.js',
-    external: ['react', 'react-dom'],
+    external: ['react', 'react-dom', '@tanstack/react-query'],
   },
   {
     id: 'hooks-usechapter',
     entry: 'packages/hooks/dist/index.js',
     import: '{ useChapter }',
-    external: ['react', 'react-dom'],
+    external: ['react', 'react-dom', '@tanstack/react-query'],
   },
   {
     id: 'ui-index',
