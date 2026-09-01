@@ -8,6 +8,15 @@ Amended: 2026-09-01
 
 Accepted
 
+## How to navigate
+
+This ADR is the why, not the file map.
+Read `docs/bible-read-cache.md` for owners, remount contracts, and files.
+Do not use this layer as the React Native Expo disk cache.
+Do not persist QueryClient.
+Do not share one QueryClient across Expo WebViews.
+Do not wrap window.fetch in the Web SDK to close YPE-5262.
+
 ## Context
 
 `useApiData` was a hand-rolled effect: every mount and every dep change refetched, nothing was cached, and disabling a query threw its data away. Revisiting a chapter re-blanked the reader; account data was cleared imperatively on auth changes, which is easy to get wrong once and leak one user's highlights to another. The hook-level call shape is documented in `packages/hooks/AGENTS.md`.

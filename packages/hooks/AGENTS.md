@@ -58,10 +58,20 @@ the pnpm `minimumReleaseAge` window):
 - Cache is memory-only; `refetch` performs exact query invalidation. Writes
   stay outside this layer (the highlights machine owns them) and refresh via
   `refetch` after the write.
-- Opted-in Bible reads (version, book, books, chapter, chapters, verse,
-  verses, passage) may serve from memory until remaining Cache-Control
-  lifetime ends. Remount after expiry fetches. Highlights, the versions
-  list, and VOTD keep `staleTime: 0` and revalidate on remount.
+- Opted-in Bible read remount contracts live in `docs/bible-read-cache.md`.
+
+  | Event | Result |
+  | --- | --- |
+  | remount inside remaining lifetime | cache hit, no fetch |
+  | remount after remaining lifetime | miss, fetch |
+  | still-mounted observer after expiry | keep showing the body |
+  | no-cache / no-store | write while mounted with gcTime 0; remount misses |
+  | refetch() | always fetches |
+
+- Do not use this layer as the React Native Expo disk cache.
+- Do not persist QueryClient.
+- Do not share one QueryClient across Expo WebViews.
+- Do not wrap window.fetch in the Web SDK to close YPE-5262.
 - Design decisions: `docs/adr/0006-tanstack-query-read-layer.md`.
 
 ## CONVENTIONS

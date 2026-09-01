@@ -31,6 +31,8 @@ Do not use "integration" as a style term — choose by capability:
 
 core owns HTTP+Zod+MSW; hooks own React state against stubbed clients; UI owns user-visible behavior against stubbed hooks/providers. Stub UI hook results with `YouVersionContext.hookOverrides` (see `packages/ui/src/test/hook-overrides.tsx`), not `vi.mock`. Do not re-test a lower package's contract unless the bug is at the boundary. Rare vertical smokes (e.g. highlight auth) may climb one rung for critical journeys.
 
+Remount tests for opted-in Bible reads live in hooks and must stay. Core owns the `parseCachePolicy` table. See `docs/bible-read-cache.md`.
+
 ## Scope
 
 Bind on new/edited tests. When touching a file, bend the cases you edit toward this style — no mass rewrite of untouched suites.

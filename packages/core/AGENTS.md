@@ -107,6 +107,23 @@ See `docs/adding-a-core-endpoint.md`.
 - `YouVersionAPI` is a separate static header helper, not a base client. Do not
   build a new client on it.
 
+## CachePolicy and getWithPolicy
+
+`parseCachePolicy` turns Cache-Control and Age into CachePolicy.
+
+`ApiClient.get` stays body-only. `getWithPolicy` returns `{ data, policy }`.
+
+A new Bible GET under `/v1/bibles/{id}` gets a `*WithPolicy` twin.
+
+Public body-only wrappers stay. Do not put TanStack here.
+
+The how and where live in `docs/bible-read-cache.md`.
+
+Do not use this layer as the React Native Expo disk cache.
+Do not persist QueryClient.
+Do not share one QueryClient across Expo WebViews.
+Do not wrap window.fetch in the Web SDK to close YPE-5262.
+
 ## CONVENTIONS
 - Schema-first: All types defined in schemas/*.ts using Zod
 - Zero React: Pure TypeScript, no React dependencies

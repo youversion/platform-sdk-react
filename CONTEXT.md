@@ -175,3 +175,55 @@ survives the full-page redirect round-trip and expires (~10 min) so an
 abandoned round-trip can never silently apply a highlight during a much later
 sign-in. It is intent, not highlight data (highlights stay server-only,
 ADR-001); discarded on decline, cancel, failure, or successful apply.
+
+## Opted-in Bible read
+
+An opted-in Bible read is a GET under `/v1/bibles/{id}` that honors Cache-Control remaining lifetime.
+
+The list is version, book, books, chapter, chapters, verse, verses, and passage.
+
+Highlights, GET `/v1/bibles` versions list, VOTD, languages, organizations, theme, and auth stay out.
+
+The how and where live in `docs/bible-read-cache.md`.
+ADR 0006 is the why.
+This is not YPE-5262.
+
+## Remaining lifetime
+
+Remaining lifetime is `max-age` minus `Age`, in milliseconds, on CachePolicy as `remainingMs`.
+
+Missing max-age is 7 days.
+Missing Age is 0.
+`no-cache` / `no-store` set remainingMs 0.
+
+## CachePolicy
+
+CachePolicy is the parsed Cache-Control result from `parseCachePolicy`.
+
+Fields include `remainingMs` and `allowsCaching`.
+
+## getWithPolicy
+
+getWithPolicy is the `ApiClient` GET that returns `{ data, policy }`.
+
+`ApiClient.get` stays body-only.
+
+## Memory-only
+
+Memory-only means QueryClient lives in process memory.
+One QueryClient per YouVersionProvider.
+
+Expo DOM WebViews do not share this memory.
+
+Do not use this layer as the React Native Expo disk cache.
+Do not persist QueryClient.
+Do not share one QueryClient across Expo WebViews.
+Do not wrap window.fetch in the Web SDK to close YPE-5262.
+
+## Remount
+
+A remount is a new hook mount after the previous observer unmounted, under the same YouVersionProvider.
+
+## Still-mounted observer
+
+A still-mounted observer is a hook that stayed mounted after remaining lifetime ended.
