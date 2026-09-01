@@ -140,7 +140,9 @@ Bundle size budgets and tree-shaking verification require a full build first —
 | `pnpm size:why` | Alias for `pnpm size:visualize` (size-limit `--why` is unavailable with `preset-small-lib`) |
 | `pnpm check:tree-shaking` | Verify single-symbol consumer bundles exclude unused-export sentinels; CI asserts package.json `sideEffects` |
 
-`pnpm size:why` is an alias for `pnpm size:visualize`. The size-limit built-in `--why` flag does not work with `@size-limit/preset-small-lib`.
+**Export-size acceptance criteria:** `.size-limit.json` spot-checks representative named imports (`ApiClient`, `useChapter`) against budgets. Per-export attribution is `pnpm size:visualize` plus [esbuild.github.io/analyze](https://esbuild.github.io/analyze/).
+
+**UI tree-shaking check omitted:** `@youversion/platform-react-ui` is not in `check:tree-shaking` because `packages/ui/tsup.config.ts` sets `splitting: false` and inlines core, producing a single-chunk `dist/index.js` that cannot drop unused components. Follow-up: enable tsup splitting, then add a UI CHECKS fixture.
 
 **Updating budgets:** After a deliberate size change, run `pnpm size` locally, note the reported brotlied sizes, and set each `.size-limit.json` `limit` to measured size plus ~10% headroom.
 

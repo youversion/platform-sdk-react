@@ -48,6 +48,11 @@ const TARGETS = [
   {
     id: 'ui-index',
     entry: 'packages/ui/dist/index.js',
+    external: ['react', 'react-dom'],
+  },
+  {
+    id: 'ui-youversionprovider',
+    entry: 'packages/ui/dist/index.js',
     import: '{ YouVersionProvider }',
     external: ['react', 'react-dom'],
   },
@@ -60,16 +65,7 @@ function buildConsumerSource(target) {
     if (symbol === 'ApiClient') {
       return `import ${target.import} from '${importPath}';\nnew ApiClient({ apiHost: 'https://api.youversion.com' });\n`;
     }
-    if (symbol === 'useChapter') {
-      return `import ${target.import} from '${importPath}';\nexport { ${symbol} };\n`;
-    }
-    if (symbol === 'transformBibleHtml') {
-      return `import ${target.import} from '${importPath}';\nexport { ${symbol} };\n`;
-    }
-    if (symbol === 'YouVersionProvider') {
-      return `import ${target.import} from '${importPath}';\nexport { ${symbol} };\n`;
-    }
-    return `import ${target.import} from '${importPath}';\nvoid ${symbol};\n`;
+    return `import ${target.import} from '${importPath}';\nexport { ${symbol} };\n`;
   }
   return `import * as pkg from '${importPath}';\nexport default pkg;\n`;
 }
@@ -79,7 +75,7 @@ async function analyzeTarget(target, tempDir) {
   const consumerSource = buildConsumerSource(target);
   writeFileSync(consumerPath, consumerSource, 'utf8');
 
-  const external = target.external ?? [];
+  const external = [...(target.external ?? [])];
   if (target.entry.includes('core/')) {
     external.push('jsdom');
   }

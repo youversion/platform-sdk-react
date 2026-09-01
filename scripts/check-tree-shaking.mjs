@@ -2,7 +2,8 @@
 /**
  * Tree-shaking verification for published SDK packages.
  *
- * Each package is resolved through its package.json exports (same as consumers).
+ * Packages are resolved from built dist via esbuild alias; the package.json
+ * exports map is not exercised by this script.
  * esbuild bundles a minimal fixture with treeShaking:true, then we assert:
  *
  * 1. Narrow import (one symbol) excludes sentinel string literals from other exports.
@@ -50,9 +51,15 @@ const EXPECTED_SIDE_EFFECTS = [
   {
     package: '@youversion/platform-react-ui',
     path: join(repoRoot, 'packages/ui/package.json'),
-    sideEffects: ['*.css'],
+    sideEffects: ['**/*.css'],
   },
 ];
+
+// UI is omitted from CHECKS: packages/ui/tsup.config.ts has splitting: false and
+// inlines core (noExternal), so dist/index.js is a single ~999 kB chunk. A narrow
+// YouVersionProvider-only import still retains BibleChapterPicker/BibleVersionPicker/
+// BibleReader sentinels — the check would fail CI. Follow-up: enable tsup splitting,
+// then add a UI CHECKS fixture here.
 
 /** @param {unknown} actual @param {boolean | string[]} expected */
 function sideEffectsEqual(actual, expected) {
@@ -101,6 +108,11 @@ const CHECKS = [
         label: 'DataExchangeClient',
         source: `import { DataExchangeClient } from '@youversion/platform-core';\nexport { DataExchangeClient };\n`,
         present: ['App key is required to request a data exchange token.'],
+      },
+      {
+        label: 'YouVersionAPIUsers',
+        source: `import { YouVersionAPIUsers } from '@youversion/platform-core';\nexport { YouVersionAPIUsers };\n`,
+        present: ['Invalid state parameter - possible CSRF attack'],
       },
     ],
     fullBarrel: {
@@ -253,15 +265,17 @@ async function runPackageCheck(check) {
   const shakeProbeHits = check.narrow.absent.filter((sentinel) =>
     withoutShake.text.includes(sentinel),
   );
-  const probePass = shakeProbeHits.length > 0;
+  const probePass = shakeProbeHits.length === check.narrow.absent.length;
   rows.push({
     kind: 'probe',
     label: 'treeShaking:false probe',
     bytes: withoutShake.bytes,
     pass: probePass,
     detail: probePass
-      ? `sentinels appear without tree-shaking (${shakeProbeHits.length})`
-      : 'sentinels never appear even with treeShaking:false — sentinels may be stale',
+      ? `all ${check.narrow.absent.length} sentinels appear without tree-shaking`
+      : shakeProbeHits.length === 0
+        ? 'sentinels never appear even with treeShaking:false — sentinels may be stale'
+        : `only ${shakeProbeHits.length}/${check.narrow.absent.length} sentinels appear with treeShaking:false`,
   });
   if (!probePass) {
     errors.push(
@@ -293,7 +307,7 @@ async function main() {
 
   console.log('');
   console.log(bold('Tree-shaking verification'));
-  console.log(dim('  Resolves package exports → dist, treeShaking:true, content + size checks'));
+  console.log(dim('  Resolved from built dist via esbuild alias; exports map not exercised'));
   console.log('');
 
   for (const result of allRows) {

@@ -28,7 +28,7 @@
     "LICENSE"
   ],
   "sideEffects": [
-    "*.css"
+    "**/*.css"
   ],
   "scripts": {
     "build:types": "tsc -p tsconfig.build.json",
