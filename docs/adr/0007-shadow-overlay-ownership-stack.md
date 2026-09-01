@@ -1,6 +1,7 @@
 # ADR 0007: Model shadow-root overlays as an ownership stack
 
-Status: Proposed (contract selected by YPE-5355; runtime support not implemented)
+Status: Proposed (contract and executable proof selected by YPE-5355; production
+runtime support not implemented)
 
 Nested and concurrent overlays inside one component shadow root will share one
 shadow-local top-layer container and register with a root-owned LIFO overlay
@@ -24,6 +25,31 @@ connected opener in the remaining active scope; otherwise the remaining top
 eligible layer; otherwise the outer opener once the last modal leaves. A
 disconnected opener is skipped in favor of the next tier.
 
+## Scenario classification and proof
+
+The ownership contract supports these scenarios in the committed executable
+proof:
+
+- a non-modal popover opening a modal dialog;
+- a modal dialog containing a non-modal popover;
+- two independent non-modal overlays; and
+- closing and reopening the same modal during its exit animation.
+
+`shadow-overlay-ownership.ts` is the deterministic state model for the
+contract. Its unit tests cover the four scenarios plus modal-scope exclusion,
+ancestor/descendant exit ordering, dismissal blocking during exit, and
+disconnected-opener fallback. The `Shadow overlay ownership` integration story
+exercises the four required scenarios in Chromium inside one real shadow root
+and one native top-layer container. It verifies LIFO DOM ordering, focus and
+dismissal ownership, modal inertness through exit, restoration, and stable
+identity during a rapid reopen.
+
+These scenarios remain unsupported by production SDK Dialog and Popover
+callers. The proof module is internal and is deliberately not connected to
+those primitives. Production support begins only after the root-owned registry
+is integrated at the `ShadowRootHost` seam and the same browser evidence passes
+through the shared primitives and every direct overlay consumer.
+
 ## Considered options
 
 - A shared container without ownership was rejected because independent focus
@@ -37,10 +63,12 @@ disconnected opener is skipped in favor of the next tier.
 
 ## Consequences
 
-The current active-ID sets prove lazy portal lifetime but do not implement this
-contract. Production support requires a root-owned layer registry, descendant
-close ordering, topmost interaction gating, modal-aware focus containment, and
-direct browser evidence for nested and concurrent cases. Until that work lands,
-nested or concurrent overlays in one shadow root remain unsupported and do not
-block this decision from being revised by browser or assistive-technology
-findings.
+The current production active-ID sets prove lazy portal lifetime but do not
+implement this contract. The executable state model reduces implementation
+ambiguity but is not a production registry. Production support requires wiring
+the model's rules into `ShadowRootHost`, descendant close ordering, topmost
+interaction gating, modal-aware focus containment, and direct browser evidence
+through the actual overlay primitives. Until that work lands, nested or
+concurrent production overlays in one shadow root remain unsupported. The
+contract may still be revised in response to cross-browser or
+assistive-technology findings.
