@@ -43,7 +43,14 @@ export function usePassage({
   const { data, loading, error, refetch } = useApiData<BiblePassage>(
     [...keyBase, 'passage', versionId, usfm, format, include_headings, include_notes, transform],
     () =>
-      bibleClient.getPassage(versionId, usfm, format, include_headings, include_notes, transform),
+      bibleClient.getPassageWithPolicy(
+        versionId,
+        usfm,
+        format,
+        include_headings,
+        include_notes,
+        transform,
+      ),
     {
       enabled: !override && options?.enabled !== false && isValidUsfm,
       keepPreviousData: options?.keepPreviousData,

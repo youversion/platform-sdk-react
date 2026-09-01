@@ -1,7 +1,8 @@
-import { renderHook, waitFor, act } from '@testing-library/react';
+import { render, renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { usePassage, type UsePassageResult } from './usePassage';
-import { createBibleClientStub, createYVWrapper } from './test/utils';
+import { YouVersionContext } from './context';
+import { createBibleClientStub, createYVWrapper, TestQueryClientProvider } from './test/utils';
 import { createMockPassage } from './__tests__/mocks/bibles';
 
 type PassageArgs = { versionId: number; usfm: string; format: 'html' | 'text' };
@@ -10,7 +11,7 @@ type PassageCall = [number, string, string, boolean, boolean, boolean];
 describe('usePassage', () => {
   const mockGetPassage = vi.fn();
   const mockPassage = createMockPassage();
-  const bibleClient = createBibleClientStub({ getPassage: mockGetPassage });
+  const bibleClient = createBibleClientStub({ getPassageWithPolicy: mockGetPassage });
   const wrapper = createYVWrapper('test-app-key', { bibleClient });
 
   beforeEach(() => {
@@ -33,7 +34,7 @@ describe('usePassage', () => {
       expect.soft(result.current.passage).toEqual(mockPassage);
     });
 
-    it('should call getPassage with correct default args', async () => {
+    it('should call getPassageWithPolicy with correct default args', async () => {
       const { result } = renderHook(() => usePassage({ versionId: 3034, usfm: 'JHN.3.16' }), {
         wrapper,
       });
@@ -307,5 +308,42 @@ describe('usePassage', () => {
         expect(mockGetPassage).toHaveBeenCalledTimes(2);
       });
     });
+  });
+
+  it('does not refetch a remount while Cache-Control lifetime remains', async () => {
+    mockGetPassage.mockResolvedValue({
+      data: mockPassage,
+      policy: { allowsCaching: true, remainingMs: 60_000 },
+    });
+
+    const latest: { current: UsePassageResult | null } = { current: null };
+    function Probe() {
+      latest.current = usePassage({ versionId: 3034, usfm: 'JHN.3.16' });
+      return null;
+    }
+    function App({ mounted }: { mounted: boolean }) {
+      return (
+        <YouVersionContext.Provider value={{ appKey: 'test-app-key', bibleClient }}>
+          <TestQueryClientProvider>{mounted ? <Probe /> : null}</TestQueryClientProvider>
+        </YouVersionContext.Provider>
+      );
+    }
+
+    const { rerender } = render(<App mounted />);
+    await waitFor(() => {
+      expect(latest.current?.loading).toBe(false);
+    });
+    expect(latest.current?.passage).toEqual(mockPassage);
+    expect(mockGetPassage).toHaveBeenCalledTimes(1);
+    expect(mockGetPassage).toHaveBeenCalledWith(3034, 'JHN.3.16', 'html', false, false, true);
+
+    rerender(<App mounted={false} />);
+    rerender(<App mounted />);
+
+    await waitFor(() => {
+      expect(latest.current?.loading).toBe(false);
+    });
+    expect(latest.current?.passage).toEqual(mockPassage);
+    expect(mockGetPassage).toHaveBeenCalledTimes(1);
   });
 });

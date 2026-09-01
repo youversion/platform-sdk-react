@@ -6,7 +6,7 @@ import { createBibleClientStub, createYVWrapper } from './test/utils';
 
 describe('useVerses', () => {
   const mockGetVerses = vi.fn();
-  const bibleClient = createBibleClientStub({ getVerses: mockGetVerses });
+  const bibleClient = createBibleClientStub({ getVersesWithPolicy: mockGetVerses });
   const wrapper = createYVWrapper('test-app-key', { bibleClient });
 
   const mockVerses: Collection<BibleVerse> = {

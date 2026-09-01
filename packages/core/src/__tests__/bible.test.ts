@@ -11,7 +11,7 @@ import {
   VOTDSchema,
 } from '../schemas';
 import { server } from './setup';
-import { mockVersions } from './MockVersions';
+import { mockVersionKJV, mockVersions } from './MockVersions';
 
 describe('BibleClient', () => {
   let apiClient: ApiClient;
@@ -362,6 +362,30 @@ describe('BibleClient', () => {
       );
       await expect(bibleClient.getVersion(1.5)).rejects.toThrow();
       await expect(bibleClient.getVersion(NaN)).rejects.toThrow();
+    });
+
+    it('returns the version plus a Cache-Control policy', async () => {
+      const apiHost = process.env.YVP_API_HOST || '';
+      server.use(
+        http.get(`https://${apiHost}/v1/bibles/:id`, () => {
+          return HttpResponse.json(mockVersionKJV, {
+            headers: {
+              'Cache-Control': 'max-age=3600',
+              Age: '100',
+            },
+          });
+        }),
+      );
+
+      const result = await bibleClient.getVersionWithPolicy(1);
+
+      expect(result.data).toHaveProperty('id', 1);
+      expect(result.policy).toEqual(
+        expect.objectContaining({
+          allowsCaching: true,
+          remainingMs: expect.any(Number),
+        }),
+      );
     });
   });
 

@@ -1,8 +1,9 @@
-import { renderHook, waitFor, act } from '@testing-library/react';
+import { render, renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
-import { useVersions } from './useVersions';
+import { useVersions, type UseVersionsResult } from './useVersions';
 import { type Collection, type BibleVersion } from '@youversion/platform-core';
-import { createBibleClientStub, createYVWrapper } from './test/utils';
+import { YouVersionContext } from './context';
+import { createBibleClientStub, createYVWrapper, TestQueryClientProvider } from './test/utils';
 
 describe('useVersions', () => {
   const mockGetVersions = vi.fn();
@@ -531,5 +532,35 @@ describe('useVersions', () => {
 
       expect(mockGetVersions).toHaveBeenNthCalledWith(2, 'en', undefined, undefined);
     });
+  });
+
+  it('refetches a remount in the same provider', async () => {
+    const latest: { current: UseVersionsResult | null } = { current: null };
+    function Probe() {
+      latest.current = useVersions('en');
+      return null;
+    }
+    function App({ mounted }: { mounted: boolean }) {
+      return (
+        <YouVersionContext.Provider value={{ appKey: 'test-app-key', bibleClient }}>
+          <TestQueryClientProvider>{mounted ? <Probe /> : null}</TestQueryClientProvider>
+        </YouVersionContext.Provider>
+      );
+    }
+
+    const { rerender } = render(<App mounted />);
+    await waitFor(() => {
+      expect(latest.current?.loading).toBe(false);
+    });
+    expect(latest.current?.versions).toEqual(mockVersions);
+    expect(mockGetVersions).toHaveBeenCalledTimes(1);
+
+    rerender(<App mounted={false} />);
+    rerender(<App mounted />);
+
+    await waitFor(() => {
+      expect(mockGetVersions).toHaveBeenCalledTimes(2);
+    });
+    expect(latest.current?.versions).toEqual(mockVersions);
   });
 });

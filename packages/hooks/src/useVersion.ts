@@ -21,7 +21,7 @@ export function useVersion(versionId: number, options?: UseApiDataOptions): UseV
     refetch,
   } = useApiData<BibleVersion>(
     [...keyBase, 'version', versionId],
-    () => bibleClient.getVersion(versionId),
+    () => bibleClient.getVersionWithPolicy(versionId),
     {
       enabled: !override && options?.enabled !== false,
       keepPreviousData: options?.keepPreviousData,

@@ -7,7 +7,7 @@ import { createBibleClientStub, createYVWrapper, TestQueryClientProvider } from 
 
 describe('useChapter', () => {
   const mockGetChapter = vi.fn();
-  const bibleClient = createBibleClientStub({ getChapter: mockGetChapter });
+  const bibleClient = createBibleClientStub({ getChapterWithPolicy: mockGetChapter });
   const wrapper = createYVWrapper('test-app-key', { bibleClient });
 
   const mockChapter: BibleChapter = {
