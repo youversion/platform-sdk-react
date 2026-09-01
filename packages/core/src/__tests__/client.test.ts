@@ -151,6 +151,101 @@ describe('ApiClient', () => {
     });
   });
 
+  describe('getWithPolicy', () => {
+    it('returns JSON data plus remaining Cache-Control lifetime', async () => {
+      server.use(
+        http.get('https://test_placeholder.youversion.com/test', () => {
+          return HttpResponse.json(
+            { message: 'success' },
+            {
+              headers: {
+                'Cache-Control': 'max-age=3600',
+                Age: '100',
+              },
+            },
+          );
+        }),
+      );
+
+      const result = await apiClient.getWithPolicy<{ message: string }>('/test');
+
+      expect(result.data).toEqual({ message: 'success' });
+      expect(result.policy.allowsCaching).toBe(true);
+      expect(result.policy.maxAgeSeconds).toBe(3600);
+      expect(result.policy.ageSeconds).toBe(100);
+      expect(result.policy.remainingMs).toBe(3500000);
+    });
+
+    it('returns a text body as data', async () => {
+      server.use(
+        http.get('https://test_placeholder.youversion.com/test', () => {
+          return new HttpResponse('plain chapter text', {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/plain',
+              'Cache-Control': 'max-age=60',
+            },
+          });
+        }),
+      );
+
+      const result = await apiClient.getWithPolicy<string>('/test');
+
+      expect(result.data).toBe('plain chapter text');
+      expect(result.policy.allowsCaching).toBe(true);
+    });
+
+    it('returns undefined data and a policy for an empty 2xx JSON body', async () => {
+      server.use(
+        http.get('https://test_placeholder.youversion.com/test', () => {
+          return new HttpResponse('', {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'max-age=60',
+            },
+          });
+        }),
+      );
+
+      const result = await apiClient.getWithPolicy('/test');
+
+      expect(result.data).toBeUndefined();
+      expect(result.policy).toEqual(
+        expect.objectContaining({
+          allowsCaching: true,
+          remainingMs: 60000,
+        }),
+      );
+    });
+
+    it('throws on 4xx and 5xx without a policy envelope', async () => {
+      server.use(
+        http.get('https://test_placeholder.youversion.com/test', () => {
+          return HttpResponse.json({ error: 'gone' }, { status: 404 });
+        }),
+      );
+
+      const missing = apiClient.getWithPolicy('/test');
+      await expect(missing).rejects.toBeInstanceOf(Error);
+      await expect(missing).rejects.toMatchObject({ status: 404 });
+      await expect(missing).rejects.not.toHaveProperty('policy');
+      await expect(missing).rejects.not.toHaveProperty('data');
+
+      server.use(
+        http.get('https://test_placeholder.youversion.com/test', () => {
+          return HttpResponse.json({ error: 'boom' }, { status: 500 });
+        }),
+      );
+
+      const failed = apiClient.getWithPolicy('/test');
+      await expect(failed).rejects.toBeInstanceOf(Error);
+      await expect(failed).rejects.toMatchObject({ status: 500 });
+      await expect(failed).rejects.not.toHaveProperty('policy');
+      await expect(failed).rejects.not.toHaveProperty('data');
+    });
+  });
+
   describe('default headers', () => {
     it('should send X-YVP-Sdk header with ReactSDK identifier on every request', async () => {
       let receivedHeader: string | null = null;
