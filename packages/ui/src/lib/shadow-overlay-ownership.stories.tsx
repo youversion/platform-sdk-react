@@ -174,15 +174,18 @@ function OwnershipProof(): React.ReactNode {
   }, [snapshot.modalOwnerId, snapshot.ownerId, topLayer]);
 
   useEffect(() => {
+    const ownerDocument = topLayer?.ownerDocument;
+    if (!ownerDocument) return;
+
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
       if (ownershipRef.current.snapshot().ownerId === null) return;
       event.preventDefault();
       dismissOwner();
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [dismissOwner]);
+    ownerDocument.addEventListener('keydown', handleKeyDown);
+    return () => ownerDocument.removeEventListener('keydown', handleKeyDown);
+  }, [dismissOwner, topLayer]);
 
   return (
     <>

@@ -25,8 +25,9 @@ within the current owner and programmatic focus outside it redirects back to the
 owner. Shadow content stays inert through the modal's exit animation. An
 ancestor close may start its own and its descendants' exit phases together, but
 every descendant must unmount before the ancestor; a new child cannot mount
-beneath an exiting parent. Reopening a
-stable overlay ID during exit cancels that exit and refreshes its registration,
+beneath an exiting parent. Repeated exit requests are idempotent and do not
+extend an existing descendant's teardown deadline. Reopening a stable overlay
+ID during exit cancels that exit and refreshes its registration,
 including its focus restoration target, parent, kind, and dismissal policy.
 Focus restores only when the current owner unmounts, in this order: a connected
 focus restoration target in the remaining active scope; otherwise the remaining

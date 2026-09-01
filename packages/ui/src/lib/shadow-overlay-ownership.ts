@@ -88,7 +88,11 @@ export class ShadowOverlayOwnership {
   beginExit(id: string): string[] {
     this.#requireLayer(id);
     const exitingLayers = this.#layers
-      .filter((layer) => layer.id === id || this.#hasAncestor(layer, id))
+      .filter(
+        (layer) =>
+          layer.phase === 'active' &&
+          (layer.id === id || this.#hasAncestor(layer, id)),
+      )
       .reverse();
 
     for (const layer of exitingLayers) layer.phase = 'exiting';
@@ -116,13 +120,14 @@ export class ShadowOverlayOwnership {
     this.#layers.splice(this.#layers.indexOf(layer), 1);
     if (parentIsExiting || !wasOwner) return null;
 
-    const { modalOwner, owner, eligibleIds } = this.#computeOwnership();
-    const parentIsEligible = layer.parentId !== undefined && eligibleIds.has(layer.parentId);
+    const { modalOwner, owner } = this.#computeOwnership();
+    const parentOwnsFocus = layer.parentId !== undefined && owner?.id === layer.parentId;
+    const outerScopeIsActive = layer.parentId === undefined && modalOwner === null;
     const openerTarget: ShadowOverlayFocusTarget = layer.opener?.isConnected
       ? { kind: 'element', element: layer.opener }
       : null;
 
-    if (openerTarget && (modalOwner === null || owner === null || parentIsEligible)) {
+    if (openerTarget && (owner === null || parentOwnsFocus || outerScopeIsActive)) {
       return openerTarget;
     }
     return owner ? { kind: 'layer', id: owner.id } : openerTarget;

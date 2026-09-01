@@ -170,6 +170,22 @@ describe('ShadowOverlayOwnership', () => {
     });
   });
 
+  it('restores to a newly eligible owner instead of an inert nested opener', () => {
+    document.body.replaceChildren();
+    const ownership = new ShadowOverlayOwnership();
+    ownership.mount({ id: 'parent', kind: 'nonmodal', opener: button('Open parent') });
+    ownership.mount({
+      id: 'dialog',
+      kind: 'modal',
+      opener: button('Open dialog'),
+      parentId: 'parent',
+    });
+    ownership.mount({ id: 'unrelated', kind: 'nonmodal', opener: button('Open unrelated') });
+
+    ownership.beginExit('dialog');
+    expect(ownership.unmount('dialog')).toEqual({ kind: 'layer', id: 'unrelated' });
+  });
+
   it('blocks dismissal fallthrough from a nondismissible owner', () => {
     document.body.replaceChildren();
     const ownership = new ShadowOverlayOwnership();
@@ -263,6 +279,7 @@ describe('ShadowOverlayOwnership', () => {
     });
 
     expect(ownership.beginExit('dialog')).toEqual(['popover', 'dialog']);
+    expect(ownership.beginExit('popover')).toEqual([]);
     expect(ownership.requestDismiss()).toBeNull();
     expect(() =>
       ownership.mount({
