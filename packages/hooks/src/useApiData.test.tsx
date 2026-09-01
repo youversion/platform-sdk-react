@@ -1,12 +1,41 @@
 /**
  * @vitest-environment jsdom
  */
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { focusManager, onlineManager } from '@tanstack/react-query';
 import type { ComponentType, ReactNode } from 'react';
 import { YouVersionProvider } from './context/YouVersionProvider';
 import { useApiData, type UseApiDataOptions } from './useApiData';
+
+type ChapterBody = string;
+
+type PolicyEnvelope = {
+  data: ChapterBody;
+  policy: { allowsCaching: boolean; remainingMs: number };
+};
+
+type ChapterFetchResult = ChapterBody | PolicyEnvelope;
+
+type ChapterHookResult = {
+  data: ChapterBody | null;
+  loading: boolean;
+  error: Error | null;
+  refetch: () => void;
+};
+
+type ChapterHookProbe = {
+  current: ChapterHookResult | null;
+};
+
+const policyEnvelope = (
+  data: ChapterBody,
+  remainingMs: number,
+  allowsCaching = true,
+): PolicyEnvelope => ({
+  data,
+  policy: { allowsCaching, remainingMs },
+});
 
 // The real provider supplies the private QueryClient `useApiData` runs on —
 // one per provider instance, so each mounted wrapper is cache-isolated.
@@ -54,6 +83,44 @@ const refocus = async () => {
     focusManager.setFocused(true);
   });
   await flush();
+};
+
+// `renderHook` + `createWrapper()` builds a new QueryClient. Remount-within-
+// lifetime tests keep one provider mounted and toggle the hook child.
+function createProviderToggle(
+  fetchFn: () => Promise<ChapterFetchResult>,
+  options?: UseApiDataOptions,
+) {
+  const latest: ChapterHookProbe = { current: null };
+
+  function Probe() {
+    latest.current = useApiData<ChapterBody>(['chapter', 'JHN.3'], fetchFn, options);
+    return null;
+  }
+
+  function App({ mounted }: { mounted: boolean }) {
+    return (
+      <YouVersionProvider appKey="test-app-key">{mounted ? <Probe /> : null}</YouVersionProvider>
+    );
+  }
+
+  return { App, latest };
+}
+
+async function withFakeTimers(run: () => Promise<void>): Promise<void> {
+  vi.useFakeTimers();
+  try {
+    await run();
+  } finally {
+    vi.useRealTimers();
+  }
+}
+
+const flushFake = async () => {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(0);
+  });
 };
 
 describe('useApiData', () => {
@@ -604,5 +671,202 @@ describe('useApiData', () => {
     await waitFor(() => {
       expect(fetchFn).toHaveBeenCalledTimes(2);
     });
+  });
+
+  // Cache-Control policy envelope
+
+  it('does not refetch an envelope remount within remainingMs in the same provider', () =>
+    withFakeTimers(async () => {
+      const fetchFn = vi.fn().mockResolvedValue(policyEnvelope('JHN.3 body', 100));
+      const { App, latest } = createProviderToggle(fetchFn);
+      const { rerender } = render(<App mounted />);
+
+      await flushFake();
+      expect(latest.current?.data).toBe('JHN.3 body');
+      expect(latest.current?.error).toBeNull();
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+
+      rerender(<App mounted={false} />);
+      rerender(<App mounted />);
+
+      await flushFake();
+      expect(latest.current?.data).toBe('JHN.3 body');
+      expect(latest.current?.loading).toBe(false);
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+    }));
+
+  it('refetches an envelope remount after remainingMs in the same provider', () =>
+    withFakeTimers(async () => {
+      const fetchFn = vi
+        .fn()
+        .mockResolvedValueOnce(policyEnvelope('first body', 50))
+        .mockResolvedValueOnce(policyEnvelope('second body', 50));
+      const { App, latest } = createProviderToggle(fetchFn);
+      const { rerender } = render(<App mounted />);
+
+      await flushFake();
+      expect(latest.current?.data).toBe('first body');
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+
+      rerender(<App mounted={false} />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(50);
+      });
+      rerender(<App mounted />);
+
+      await flushFake();
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+      expect(latest.current?.data).toBe('second body');
+    }));
+
+  it('keeps envelope data on a still-mounted hook after remainingMs without refetching', () =>
+    withFakeTimers(async () => {
+      const fetchFn = vi.fn().mockResolvedValue(policyEnvelope('JHN.3 body', 50));
+
+      const { result } = renderHook(() => useApiData(['chapter', 'JHN.3'], fetchFn), {
+        wrapper: createWrapper(),
+      });
+
+      await flushFake();
+      expect(result.current.data).toBe('JHN.3 body');
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(50);
+      });
+
+      expect(result.current.data).toBe('JHN.3 body');
+      expect(result.current.loading).toBe(false);
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+    }));
+
+  it('refetch() fetches again while an envelope is still within remainingMs', () =>
+    withFakeTimers(async () => {
+      const fetchFn = vi
+        .fn()
+        .mockResolvedValueOnce(policyEnvelope('first body', 100))
+        .mockResolvedValueOnce(policyEnvelope('second body', 100));
+
+      const { result } = renderHook(() => useApiData(['chapter', 'JHN.3'], fetchFn), {
+        wrapper: createWrapper(),
+      });
+
+      await flushFake();
+      expect(result.current.data).toBe('first body');
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        result.current.refetch();
+      });
+
+      await flushFake();
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+      expect(result.current.data).toBe('second body');
+      expect(result.current.error).toBeNull();
+    }));
+
+  it('refetches a bare payload remount in the same provider', async () => {
+    const fetchFn = vi.fn().mockResolvedValue('bare body');
+    const { App, latest } = createProviderToggle(fetchFn);
+    const { rerender } = render(<App mounted />);
+
+    await waitFor(() => {
+      expect(latest.current?.data).toBe('bare body');
+    });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+
+    rerender(<App mounted={false} />);
+    rerender(<App mounted />);
+
+    await waitFor(() => {
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+    });
+    expect(latest.current?.data).toBe('bare body');
+  });
+
+  it('refetches an allowsCaching false remount in the same provider', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(policyEnvelope('uncached body', 100, false));
+    const { App, latest } = createProviderToggle(fetchFn);
+    const { rerender } = render(<App mounted />);
+
+    await waitFor(() => {
+      expect(latest.current?.data).toBe('uncached body');
+    });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+
+    rerender(<App mounted={false} />);
+    rerender(<App mounted />);
+
+    await waitFor(() => {
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+    });
+    expect(latest.current?.data).toBe('uncached body');
+  });
+
+  it('does not write a lifetime when the first fetch throws, so remount still fetches', async () => {
+    const fetchFn = vi.fn().mockRejectedValue(new Error('transport down'));
+    const { App, latest } = createProviderToggle(fetchFn);
+    const { rerender } = render(<App mounted />);
+
+    await waitFor(() => {
+      expect(latest.current?.error).toBeInstanceOf(Error);
+    });
+    expect(latest.current?.error?.message).toBe('transport down');
+    expect(latest.current?.data).toBeNull();
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+
+    rerender(<App mounted={false} />);
+    rerender(<App mounted />);
+
+    await waitFor(() => {
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+      expect(latest.current?.error).toBeInstanceOf(Error);
+    });
+  });
+
+  it('keeps the last good envelope body after a later transport failure', async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(policyEnvelope('good body', 100))
+      .mockRejectedValueOnce(new Error('network down'));
+
+    const { result } = renderHook(() => useApiData(['chapter', 'JHN.3'], fetchFn), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.data).toBe('good body');
+    });
+
+    act(() => {
+      result.current.refetch();
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toBeInstanceOf(Error);
+    });
+    expect(result.current.error?.message).toBe('network down');
+    expect(result.current.data).toBe('good body');
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
+  it('masks envelope data to null while enabled is false', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(policyEnvelope('hidden body', 100));
+
+    const { result, rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) => useApiData(['chapter', 'JHN.3'], fetchFn, { enabled }),
+      { initialProps: { enabled: true }, wrapper: createWrapper() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.data).toBe('hidden body');
+    });
+
+    rerender({ enabled: false });
+
+    expect(result.current.data).toBeNull();
+    expect(result.current.error).toBeNull();
+    expect(result.current.loading).toBe(false);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
   });
 });
