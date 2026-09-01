@@ -18,7 +18,7 @@ export function useBook(
 
   const { data, loading, error, refetch } = useApiData<BibleBook>(
     [...keyBase, 'book', versionId, book],
-    () => bibleClient.getBook(versionId, book),
+    () => bibleClient.getBookWithPolicy(versionId, book),
     {
       enabled: options?.enabled !== false,
       keepPreviousData: options?.keepPreviousData,

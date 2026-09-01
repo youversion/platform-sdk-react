@@ -23,7 +23,7 @@ export function useChapter(
     refetch,
   } = useApiData<BibleChapter>(
     [...keyBase, 'chapter', versionId, book, chapter],
-    () => bibleClient.getChapter(versionId, book, chapter),
+    () => bibleClient.getChapterWithPolicy(versionId, book, chapter),
     {
       enabled: options?.enabled !== false,
       keepPreviousData: options?.keepPreviousData,

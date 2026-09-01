@@ -24,7 +24,7 @@ export function useVerses(
     refetch,
   } = useApiData<Collection<BibleVerse>>(
     [...keyBase, 'verses', versionId, book, chapter],
-    () => bibleClient.getVerses(versionId, book, chapter),
+    () => bibleClient.getVersesWithPolicy(versionId, book, chapter),
     {
       enabled: options?.enabled !== false,
       keepPreviousData: options?.keepPreviousData,

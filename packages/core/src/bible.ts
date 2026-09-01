@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { ApiClient } from './client';
 import { transformBibleHtml, type TransformBibleHtmlOptions } from './bible-html-transformer';
+import type { CachePolicy } from './parse-cache-policy';
 import { BibleVersionSchema } from './schemas';
 import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
 import {
@@ -36,6 +37,11 @@ type PassageQuery = {
   format: 'html' | 'text';
   include_headings?: boolean;
   include_notes?: boolean;
+};
+
+type WithPolicy<T> = {
+  data: T;
+  policy: CachePolicy;
 };
 
 async function getHtmlAdapters(): Promise<TransformBibleHtmlOptions> {
@@ -202,15 +208,25 @@ export class BibleClient {
    * @returns The requested BibleVersion object.
    */
   async getVersion(id: number): Promise<BibleVersion> {
+    const { data } = await this.getVersionWithPolicy(id);
+    return data;
+  }
+
+  /**
+   * Same read as {@link getVersion}, plus the Cache-Control policy.
+   */
+  async getVersionWithPolicy(id: number): Promise<WithPolicy<BibleVersion>> {
     BibleClient.versionIdSchema.parse(id);
     if (isVersionIdDecidablyUnusable(id)) {
       throwUnusableBibleVersion();
     }
-    const version = await this.client.get<BibleVersion>(`/v1/bibles/${id}`);
+    const { data: version, policy } = await this.client.getWithPolicy<BibleVersion>(
+      `/v1/bibles/${id}`,
+    );
     if (!isUsableBibleVersion({ id: version.id, languageTag: version.language_tag })) {
       throwUnusableBibleVersion();
     }
-    return version;
+    return { data: version, policy };
   }
 
   private async assertUsableVersion(versionId: number): Promise<void> {
@@ -231,9 +247,20 @@ export class BibleClient {
    *          available in the Bible version.
    */
   async getBooks(versionId: number, canon?: CANON): Promise<Collection<BibleBook>> {
+    const { data } = await this.getBooksWithPolicy(versionId, canon);
+    return data;
+  }
+
+  /**
+   * Same read as {@link getBooks}, plus the Cache-Control policy.
+   */
+  async getBooksWithPolicy(
+    versionId: number,
+    canon?: CANON,
+  ): Promise<WithPolicy<Collection<BibleBook>>> {
     BibleClient.versionIdSchema.parse(versionId);
     await this.assertUsableVersion(versionId);
-    return this.client.get<Collection<BibleBook>>(`/v1/bibles/${versionId}/books`, {
+    return this.client.getWithPolicy<Collection<BibleBook>>(`/v1/bibles/${versionId}/books`, {
       ...(canon && { canon }),
     });
   }
@@ -247,10 +274,18 @@ export class BibleClient {
    *          available. Use the `passage_id` with `getPassage()` to fetch intro content.
    */
   async getBook(versionId: number, book: string): Promise<BibleBook> {
+    const { data } = await this.getBookWithPolicy(versionId, book);
+    return data;
+  }
+
+  /**
+   * Same read as {@link getBook}, plus the Cache-Control policy.
+   */
+  async getBookWithPolicy(versionId: number, book: string): Promise<WithPolicy<BibleBook>> {
     BibleClient.versionIdSchema.parse(versionId);
     BibleClient.bookSchema.parse(book);
     await this.assertUsableVersion(versionId);
-    return this.client.get<BibleBook>(`/v1/bibles/${versionId}/books/${book}`);
+    return this.client.getWithPolicy<BibleBook>(`/v1/bibles/${versionId}/books/${book}`);
   }
 
   /**
@@ -260,10 +295,21 @@ export class BibleClient {
    * @returns An array of BibleChapter objects.
    */
   async getChapters(versionId: number, book: string): Promise<Collection<BibleChapter>> {
+    const { data } = await this.getChaptersWithPolicy(versionId, book);
+    return data;
+  }
+
+  /**
+   * Same read as {@link getChapters}, plus the Cache-Control policy.
+   */
+  async getChaptersWithPolicy(
+    versionId: number,
+    book: string,
+  ): Promise<WithPolicy<Collection<BibleChapter>>> {
     BibleClient.versionIdSchema.parse(versionId);
     BibleClient.bookSchema.parse(book);
     await this.assertUsableVersion(versionId);
-    return this.client.get<Collection<BibleChapter>>(
+    return this.client.getWithPolicy<Collection<BibleChapter>>(
       `/v1/bibles/${versionId}/books/${book}/chapters`,
     );
   }
@@ -276,12 +322,24 @@ export class BibleClient {
    * @returns The requested BibleChapter object.
    */
   async getChapter(versionId: number, book: string, chapter: number): Promise<BibleChapter> {
+    const { data } = await this.getChapterWithPolicy(versionId, book, chapter);
+    return data;
+  }
+
+  /**
+   * Same read as {@link getChapter}, plus the Cache-Control policy.
+   */
+  async getChapterWithPolicy(
+    versionId: number,
+    book: string,
+    chapter: number,
+  ): Promise<WithPolicy<BibleChapter>> {
     BibleClient.versionIdSchema.parse(versionId);
     BibleClient.bookSchema.parse(book);
     BibleClient.chapterSchema.parse(chapter);
     await this.assertUsableVersion(versionId);
 
-    return this.client.get<BibleChapter>(
+    return this.client.getWithPolicy<BibleChapter>(
       `/v1/bibles/${versionId}/books/${book}/chapters/${chapter}`,
     );
   }
@@ -298,12 +356,24 @@ export class BibleClient {
     book: string,
     chapter: number,
   ): Promise<Collection<BibleVerse>> {
+    const { data } = await this.getVersesWithPolicy(versionId, book, chapter);
+    return data;
+  }
+
+  /**
+   * Same read as {@link getVerses}, plus the Cache-Control policy.
+   */
+  async getVersesWithPolicy(
+    versionId: number,
+    book: string,
+    chapter: number,
+  ): Promise<WithPolicy<Collection<BibleVerse>>> {
     BibleClient.versionIdSchema.parse(versionId);
     BibleClient.bookSchema.parse(book);
     BibleClient.chapterSchema.parse(chapter);
     await this.assertUsableVersion(versionId);
 
-    return this.client.get<Collection<BibleVerse>>(
+    return this.client.getWithPolicy<Collection<BibleVerse>>(
       `/v1/bibles/${versionId}/books/${book}/chapters/${chapter}/verses`,
     );
   }
@@ -322,13 +392,26 @@ export class BibleClient {
     chapter: number,
     verse: number,
   ): Promise<BibleVerse> {
+    const { data } = await this.getVerseWithPolicy(versionId, book, chapter, verse);
+    return data;
+  }
+
+  /**
+   * Same read as {@link getVerse}, plus the Cache-Control policy.
+   */
+  async getVerseWithPolicy(
+    versionId: number,
+    book: string,
+    chapter: number,
+    verse: number,
+  ): Promise<WithPolicy<BibleVerse>> {
     BibleClient.versionIdSchema.parse(versionId);
     BibleClient.bookSchema.parse(book);
     BibleClient.chapterSchema.parse(chapter);
     BibleClient.verseSchema.parse(verse);
     await this.assertUsableVersion(versionId);
 
-    return this.client.get<BibleVerse>(
+    return this.client.getWithPolicy<BibleVerse>(
       `/v1/bibles/${versionId}/books/${book}/chapters/${chapter}/verses/${verse}`,
     );
   }
@@ -379,6 +462,29 @@ export class BibleClient {
     include_notes?: boolean,
     transform?: boolean,
   ): Promise<BiblePassage> {
+    const { data } = await this.getPassageWithPolicy(
+      versionId,
+      usfm,
+      format,
+      include_headings,
+      include_notes,
+      transform,
+    );
+    return data;
+  }
+
+  /**
+   * Same read as {@link getPassage}, plus the Cache-Control policy.
+   * HTML transform, when enabled, applies to `data.content` only.
+   */
+  async getPassageWithPolicy(
+    versionId: number,
+    usfm: string,
+    format: 'html' | 'text' = 'html',
+    include_headings?: boolean,
+    include_notes?: boolean,
+    transform?: boolean,
+  ): Promise<WithPolicy<BiblePassage>> {
     BibleClient.versionIdSchema.parse(versionId);
     if (include_headings !== undefined) {
       BibleClient.booleanSchema.parse(include_headings);
@@ -396,7 +502,7 @@ export class BibleClient {
       params.include_notes = include_notes;
     }
     await this.assertUsableVersion(versionId);
-    const passage = await this.client.get<BiblePassage>(
+    const { data: passage, policy } = await this.client.getWithPolicy<BiblePassage>(
       `/v1/bibles/${versionId}/passages/${usfm}`,
       params,
     );
@@ -404,10 +510,10 @@ export class BibleClient {
     if (format === 'html' && transform !== false) {
       const adapters = await getHtmlAdapters();
       const { html } = transformBibleHtml(passage.content, adapters);
-      return { ...passage, content: html };
+      return { data: { ...passage, content: html }, policy };
     }
 
-    return passage;
+    return { data: passage, policy };
   }
 
   /**

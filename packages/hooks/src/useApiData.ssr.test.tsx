@@ -19,8 +19,8 @@ function Chapter() {
 
 describe('useApiData — server-side rendering', () => {
   it('renders the loading state without crashing or fetching', () => {
-    const getChapter = vi
-      .spyOn(BibleClient.prototype, 'getChapter')
+    const getChapterWithPolicy = vi
+      .spyOn(BibleClient.prototype, 'getChapterWithPolicy')
       .mockRejectedValue(new Error('must not be called during SSR'));
 
     const html = renderToString(
@@ -30,7 +30,7 @@ describe('useApiData — server-side rendering', () => {
     );
 
     expect(html).toContain('loading');
-    expect(getChapter).not.toHaveBeenCalled();
-    getChapter.mockRestore();
+    expect(getChapterWithPolicy).not.toHaveBeenCalled();
+    getChapterWithPolicy.mockRestore();
   });
 });

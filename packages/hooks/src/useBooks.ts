@@ -20,7 +20,7 @@ export function useBooks(versionId: number, options?: UseApiDataOptions): UseBoo
     refetch,
   } = useApiData<Collection<BibleBook>>(
     [...keyBase, 'books', versionId],
-    () => bibleClient.getBooks(versionId),
+    () => bibleClient.getBooksWithPolicy(versionId),
     {
       enabled: !override && options?.enabled !== false,
       keepPreviousData: options?.keepPreviousData,

@@ -7,7 +7,7 @@ import { createMockBook } from './__tests__/mocks/bibles';
 
 describe('useBooks', () => {
   const mockGetBooks = vi.fn();
-  const bibleClient = createBibleClientStub({ getBooks: mockGetBooks });
+  const bibleClient = createBibleClientStub({ getBooksWithPolicy: mockGetBooks });
   const wrapper = createYVWrapper('test-app-key', { bibleClient });
 
   const mockBooks: Collection<BibleBook> = {

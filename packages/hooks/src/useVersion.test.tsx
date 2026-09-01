@@ -1,12 +1,13 @@
-import { renderHook, waitFor, act } from '@testing-library/react';
+import { render, renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
-import { useVersion } from './useVersion';
+import { useVersion, type UseVersionResult } from './useVersion';
 import { type BibleVersion } from '@youversion/platform-core';
-import { createBibleClientStub, createYVWrapper } from './test/utils';
+import { YouVersionContext } from './context';
+import { createBibleClientStub, createYVWrapper, TestQueryClientProvider } from './test/utils';
 
 describe('useVersion', () => {
-  const mockGetVersion = vi.fn();
-  const bibleClient = createBibleClientStub({ getVersion: mockGetVersion });
+  const mockGetVersionWithPolicy = vi.fn();
+  const bibleClient = createBibleClientStub({ getVersionWithPolicy: mockGetVersionWithPolicy });
   const wrapper = createYVWrapper('test-app-key', { bibleClient });
 
   const mockVersion: BibleVersion = {
@@ -21,7 +22,7 @@ describe('useVersion', () => {
   };
 
   beforeEach(() => {
-    mockGetVersion.mockResolvedValue(mockVersion);
+    mockGetVersionWithPolicy.mockResolvedValue(mockVersion);
   });
 
   describe('fetching version', () => {
@@ -35,7 +36,7 @@ describe('useVersion', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetVersion).toHaveBeenCalledWith(111);
+      expect.soft(mockGetVersionWithPolicy).toHaveBeenCalledWith(111);
       expect.soft(result.current.version).toEqual(mockVersion);
     });
 
@@ -50,7 +51,7 @@ describe('useVersion', () => {
         books: ['GEN', 'EXO', 'LEV'],
         youversion_deep_link: 'https://bible.com/versions/1',
       };
-      mockGetVersion.mockResolvedValueOnce(mockKJV);
+      mockGetVersionWithPolicy.mockResolvedValueOnce(mockKJV);
 
       const { result } = renderHook(() => useVersion(1), { wrapper });
 
@@ -58,7 +59,7 @@ describe('useVersion', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetVersion).toHaveBeenCalledWith(1);
+      expect.soft(mockGetVersionWithPolicy).toHaveBeenCalledWith(1);
       expect.soft(result.current.version).toEqual(mockKJV);
     });
   });
@@ -74,8 +75,8 @@ describe('useVersion', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetVersion).toHaveBeenCalledTimes(1);
-      expect.soft(mockGetVersion).toHaveBeenNthCalledWith(1, 111);
+      expect.soft(mockGetVersionWithPolicy).toHaveBeenCalledTimes(1);
+      expect.soft(mockGetVersionWithPolicy).toHaveBeenNthCalledWith(1, 111);
 
       rerender({ versionId: 1 });
 
@@ -83,8 +84,8 @@ describe('useVersion', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetVersion).toHaveBeenCalledTimes(2);
-      expect.soft(mockGetVersion).toHaveBeenNthCalledWith(2, 1);
+      expect.soft(mockGetVersionWithPolicy).toHaveBeenCalledTimes(2);
+      expect.soft(mockGetVersionWithPolicy).toHaveBeenNthCalledWith(2, 1);
     });
   });
 
@@ -98,7 +99,7 @@ describe('useVersion', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetVersion).not.toHaveBeenCalled();
+      expect.soft(mockGetVersionWithPolicy).not.toHaveBeenCalled();
       expect.soft(result.current.version).toBe(null);
     });
 
@@ -111,7 +112,7 @@ describe('useVersion', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetVersion).toHaveBeenCalled();
+      expect.soft(mockGetVersionWithPolicy).toHaveBeenCalled();
       expect.soft(result.current.version).toEqual(mockVersion);
     });
 
@@ -124,14 +125,14 @@ describe('useVersion', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(mockGetVersion).toHaveBeenCalled();
+      expect(mockGetVersionWithPolicy).toHaveBeenCalled();
     });
   });
 
   describe('error handling', () => {
     it('should handle fetch errors', async () => {
       const error = new Error('Failed to fetch version');
-      mockGetVersion.mockRejectedValueOnce(error);
+      mockGetVersionWithPolicy.mockRejectedValueOnce(error);
 
       const { result } = renderHook(() => useVersion(111), { wrapper });
 
@@ -145,7 +146,7 @@ describe('useVersion', () => {
 
     it('should clear error on successful refetch', async () => {
       const error = new Error('Failed to fetch version');
-      mockGetVersion.mockRejectedValueOnce(error).mockResolvedValueOnce(mockVersion);
+      mockGetVersionWithPolicy.mockRejectedValueOnce(error).mockResolvedValueOnce(mockVersion);
 
       const { result } = renderHook(() => useVersion(111), { wrapper });
 
@@ -177,18 +178,55 @@ describe('useVersion', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetVersion).toHaveBeenCalledTimes(1);
-      expect.soft(mockGetVersion).toHaveBeenNthCalledWith(1, 111);
+      expect.soft(mockGetVersionWithPolicy).toHaveBeenCalledTimes(1);
+      expect.soft(mockGetVersionWithPolicy).toHaveBeenNthCalledWith(1, 111);
 
       act(() => {
         result.current.refetch();
       });
 
       await waitFor(() => {
-        expect(mockGetVersion).toHaveBeenCalledTimes(2);
+        expect(mockGetVersionWithPolicy).toHaveBeenCalledTimes(2);
       });
 
-      expect(mockGetVersion).toHaveBeenNthCalledWith(2, 111);
+      expect(mockGetVersionWithPolicy).toHaveBeenNthCalledWith(2, 111);
     });
+  });
+
+  it('does not refetch a remount while Cache-Control lifetime remains', async () => {
+    mockGetVersionWithPolicy.mockResolvedValue({
+      data: mockVersion,
+      policy: { allowsCaching: true, remainingMs: 60_000 },
+    });
+
+    const latest: { current: UseVersionResult | null } = { current: null };
+    function Probe() {
+      latest.current = useVersion(111);
+      return null;
+    }
+    function App({ mounted }: { mounted: boolean }) {
+      return (
+        <YouVersionContext.Provider value={{ appKey: 'test-app-key', bibleClient }}>
+          <TestQueryClientProvider>{mounted ? <Probe /> : null}</TestQueryClientProvider>
+        </YouVersionContext.Provider>
+      );
+    }
+
+    const { rerender } = render(<App mounted />);
+    await waitFor(() => {
+      expect(latest.current?.loading).toBe(false);
+    });
+    expect(latest.current?.version).toEqual(mockVersion);
+    expect(mockGetVersionWithPolicy).toHaveBeenCalledTimes(1);
+    expect(mockGetVersionWithPolicy).toHaveBeenCalledWith(111);
+
+    rerender(<App mounted={false} />);
+    rerender(<App mounted />);
+
+    await waitFor(() => {
+      expect(latest.current?.loading).toBe(false);
+    });
+    expect(latest.current?.version).toEqual(mockVersion);
+    expect(mockGetVersionWithPolicy).toHaveBeenCalledTimes(1);
   });
 });

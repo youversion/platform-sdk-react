@@ -26,7 +26,7 @@ export function useChapters(
     refetch,
   } = useApiData<Collection<BibleChapter>>(
     [...keyBase, 'chapters', versionId, book],
-    () => bibleClient.getChapters(versionId, book),
+    () => bibleClient.getChaptersWithPolicy(versionId, book),
     {
       enabled: options?.enabled !== false && isValidBook,
       keepPreviousData: options?.keepPreviousData,
