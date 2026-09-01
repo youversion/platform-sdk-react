@@ -16,6 +16,7 @@ export {
   type DataExchangeCallbackResult,
 } from './data-exchange';
 export { parseGrantedPermissions } from './permissions';
+export { parseCachePolicy, type CachePolicy } from './parse-cache-policy';
 export * from './StorageStrategy';
 export * from './Users';
 export * from './YouVersionUserInfo';
