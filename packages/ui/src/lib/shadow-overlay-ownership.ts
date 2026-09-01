@@ -1,6 +1,9 @@
+/** @internal */
 export type ShadowOverlayKind = 'modal' | 'nonmodal';
+/** @internal */
 export type ShadowOverlayPhase = 'active' | 'exiting';
 
+/** @internal */
 export interface ShadowOverlayRegistration {
   id: string;
   kind: ShadowOverlayKind;
@@ -9,11 +12,13 @@ export interface ShadowOverlayRegistration {
   dismissible?: boolean;
 }
 
+/** @internal */
 export type ShadowOverlayFocusTarget =
   | { kind: 'element'; element: HTMLElement }
   | { kind: 'layer'; id: string }
   | null;
 
+/** @internal */
 export interface ShadowOverlaySnapshot {
   ownerId: string | null;
   modalOwnerId: string | null;

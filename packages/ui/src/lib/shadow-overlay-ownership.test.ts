@@ -132,7 +132,8 @@ describe('ShadowOverlayOwnership', () => {
   it('keeps an unrelated nonmodal overlay outside the active modal scope', () => {
     document.body.replaceChildren();
     const ownership = new ShadowOverlayOwnership();
-    ownership.mount({ id: 'dialog', kind: 'modal', opener: button('Open dialog') });
+    const dialogOpener = button('Open dialog');
+    ownership.mount({ id: 'dialog', kind: 'modal', opener: dialogOpener });
     ownership.mount({ id: 'unrelated', kind: 'nonmodal', opener: button('Open unrelated') });
 
     expect(ownership.snapshot()).toMatchObject({
@@ -142,6 +143,31 @@ describe('ShadowOverlayOwnership', () => {
         { id: 'unrelated', eligible: false },
       ],
     });
+
+    ownership.beginExit('dialog');
+    expect(ownership.unmount('dialog')).toEqual({ kind: 'element', element: dialogOpener });
+    expect(ownership.snapshot()).toMatchObject({
+      ownerId: 'unrelated',
+      modalOwnerId: null,
+      backgroundInert: false,
+      layers: [{ id: 'unrelated', eligible: true }],
+    });
+  });
+
+  it('blocks dismissal fallthrough from a nondismissible owner', () => {
+    document.body.replaceChildren();
+    const ownership = new ShadowOverlayOwnership();
+    ownership.mount({ id: 'first', kind: 'nonmodal', opener: button('Open first') });
+    ownership.mount({
+      id: 'second',
+      kind: 'nonmodal',
+      opener: button('Open second'),
+      dismissible: false,
+    });
+
+    expect(ownership.snapshot().ownerId).toBe('second');
+    expect(ownership.requestDismiss()).toBeNull();
+    expect(ownership.snapshot().layers).toHaveLength(2);
   });
 
   it('blocks dismissal fallthrough and ancestor unmount while descendants exit', () => {

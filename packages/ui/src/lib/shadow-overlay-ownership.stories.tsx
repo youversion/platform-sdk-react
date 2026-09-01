@@ -311,6 +311,12 @@ async function expectActiveElement(root: ShadowRoot, element: Element): Promise<
   await waitFor(() => void expect(root.activeElement).toBe(element));
 }
 
+async function expectFocusedOwner(root: ShadowRoot, id: string): Promise<HTMLElement> {
+  const owner = await expectOwner(root, id);
+  await expectActiveElement(root, owner);
+  return owner;
+}
+
 export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
   play: async ({ canvasElement }) => {
     const root = await waitFor(() => requireShadowRoot(canvasElement));
@@ -325,11 +331,11 @@ export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
       '[data-testid="open-popover-parent"]',
     );
     await userEvent.click(popoverParentOpener);
-    const popoverParent = await expectOwner(root, 'popover-parent');
+    const popoverParent = await expectFocusedOwner(root, 'popover-parent');
     await userEvent.click(
       requireElement<HTMLButtonElement>(popoverParent, '[data-testid="popover-opens-dialog"]'),
     );
-    await expectOwner(root, 'popover-child-dialog');
+    await expectFocusedOwner(root, 'popover-child-dialog');
     void expect(background.inert).toBe(true);
     void expect(popoverParent.inert).toBe(true);
     await userEvent.keyboard('{Escape}');
@@ -349,16 +355,20 @@ export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
       '[data-testid="open-dialog-parent"]',
     );
     await userEvent.click(dialogParentOpener);
-    const dialogParent = await expectOwner(root, 'dialog-parent');
+    const dialogParent = await expectFocusedOwner(root, 'dialog-parent');
     await userEvent.click(
       requireElement<HTMLButtonElement>(dialogParent, '[data-testid="dialog-opens-popover"]'),
     );
-    await expectOwner(root, 'dialog-child-popover');
+    await expectFocusedOwner(root, 'dialog-child-popover');
     void expect(background.inert).toBe(true);
     void expect(dialogParent.inert).toBe(false);
     await userEvent.click(outsideLayer);
     await expectUnmounted(root, 'dialog-child-popover');
     await expectOwner(root, 'dialog-parent');
+    await expectActiveElement(
+      root,
+      requireElement(dialogParent, '[data-testid="dialog-opens-popover"]'),
+    );
     await userEvent.keyboard('{Escape}');
     await expectUnmounted(root, 'dialog-parent');
     await expectActiveElement(root, dialogParentOpener);
@@ -367,7 +377,7 @@ export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
     const secondOpener = requireElement<HTMLButtonElement>(root, '[data-testid="open-second"]');
     await userEvent.click(firstOpener);
     await userEvent.click(secondOpener);
-    await expectOwner(root, 'second');
+    await expectFocusedOwner(root, 'second');
     void expect(
       Array.from(topLayer.querySelectorAll('[data-overlay-id]'), (element) =>
         element.getAttribute('data-overlay-id'),
@@ -386,7 +396,7 @@ export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
       '[data-testid="open-rapid-dialog"]',
     );
     await userEvent.click(rapidOpener);
-    const rapidDialog = await expectOwner(root, 'rapid-dialog');
+    const rapidDialog = await expectFocusedOwner(root, 'rapid-dialog');
     await userEvent.click(
       requireElement<HTMLButtonElement>(rapidDialog, '[data-testid="close-rapid-dialog"]'),
     );
