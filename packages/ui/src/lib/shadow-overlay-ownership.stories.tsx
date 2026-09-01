@@ -184,6 +184,7 @@ function OwnershipProof(): React.ReactNode {
                 aria-label="Outside active overlay"
                 data-testid="outside-layer"
                 onClick={dismissOwner}
+                tabIndex={-1}
                 style={{ position: 'fixed', inset: 0, border: 0, background: 'transparent' }}
               />
               {snapshot.layers.map((layer, index) => (
@@ -324,6 +325,7 @@ export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
       requireElement<HTMLElement>(root, '[data-testid="ownership-top-layer"]'),
     );
     const outsideLayer = requireElement<HTMLElement>(topLayer, '[data-testid="outside-layer"]');
+    void expect(outsideLayer.tabIndex).toBe(-1);
     const background = requireElement<HTMLElement>(root, '[data-testid="proof-background"]');
 
     const popoverParentOpener = requireElement<HTMLButtonElement>(

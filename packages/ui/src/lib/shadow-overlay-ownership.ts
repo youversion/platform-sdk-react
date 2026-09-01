@@ -42,6 +42,7 @@ export class ShadowOverlayOwnership {
   readonly #layers: ShadowOverlayLayer[] = [];
 
   mount(registration: ShadowOverlayRegistration): void {
+    const existing = this.#layers.find((layer) => layer.id === registration.id);
     const parent =
       registration.parentId === undefined
         ? undefined
@@ -51,13 +52,20 @@ export class ShadowOverlayOwnership {
         `Cannot mount overlay "${registration.id}" with missing parent "${registration.parentId}"`,
       );
     }
+    if (existing && parent === existing) {
+      throw new Error(`Cannot mount overlay "${registration.id}" under itself`);
+    }
+    if (existing && parent && this.#hasAncestor(parent, existing.id)) {
+      throw new Error(
+        `Cannot mount overlay "${registration.id}" under descendant "${registration.parentId}"`,
+      );
+    }
     if (parent?.phase === 'exiting') {
       throw new Error(
         `Cannot mount overlay "${registration.id}" under exiting parent "${registration.parentId}"`,
       );
     }
 
-    const existing = this.#layers.find((layer) => layer.id === registration.id);
     if (existing) {
       Object.assign(existing, registration, {
         dismissible: registration.dismissible ?? true,
@@ -93,6 +101,7 @@ export class ShadowOverlayOwnership {
 
   unmount(id: string): ShadowOverlayFocusTarget {
     const layer = this.#requireLayer(id);
+    const wasOwner = this.#owner()?.id === id;
     const descendant = this.#layers.find((candidate) => this.#hasAncestor(candidate, id));
     if (descendant) {
       throw new Error(`Cannot unmount overlay "${id}" before descendant "${descendant.id}"`);
@@ -102,7 +111,7 @@ export class ShadowOverlayOwnership {
       (candidate) => candidate.id === layer.parentId && candidate.phase === 'exiting',
     );
     this.#layers.splice(this.#layers.indexOf(layer), 1);
-    if (parentIsExiting) return null;
+    if (parentIsExiting || !wasOwner) return null;
 
     const { modalOwner, owner, eligibleIds } = this.#computeOwnership();
     const parentIsEligible = layer.parentId !== undefined && eligibleIds.has(layer.parentId);

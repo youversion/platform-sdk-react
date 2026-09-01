@@ -177,6 +177,8 @@ describe('ShadowOverlayOwnership', () => {
     expect(ownership.snapshot().ownerId).toBe('second');
     expect(ownership.requestDismiss()).toBeNull();
     expect(ownership.snapshot().layers).toHaveLength(2);
+    expect(ownership.unmount('first')).toBeNull();
+    expect(ownership.snapshot().ownerId).toBe('second');
   });
 
   it('blocks dismissal fallthrough and ancestor unmount while descendants exit', () => {
@@ -190,6 +192,23 @@ describe('ShadowOverlayOwnership', () => {
       opener: button('Open popover'),
       parentId: 'dialog',
     });
+
+    expect(() =>
+      ownership.mount({
+        id: 'dialog',
+        kind: 'modal',
+        opener: dialogOpener,
+        parentId: 'dialog',
+      }),
+    ).toThrow('Cannot mount overlay "dialog" under itself');
+    expect(() =>
+      ownership.mount({
+        id: 'dialog',
+        kind: 'modal',
+        opener: dialogOpener,
+        parentId: 'popover',
+      }),
+    ).toThrow('Cannot mount overlay "dialog" under descendant "popover"');
 
     expect(ownership.beginExit('dialog')).toEqual(['popover', 'dialog']);
     expect(ownership.requestDismiss()).toBeNull();
