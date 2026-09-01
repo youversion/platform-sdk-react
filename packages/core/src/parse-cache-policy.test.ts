@@ -172,6 +172,18 @@ describe('parseCachePolicy', () => {
         age: undefined,
         expected: SEVEN_DAY_FALLBACK,
       },
+      {
+        name: 'quoted max-age is accepted',
+        cacheControl: 'max-age="3600"',
+        age: undefined,
+        expected: {
+          allowsCaching: true,
+          maxAgeSeconds: 3600,
+          ageSeconds: 0,
+          remainingMs: 3600000,
+          expiresAt: 1_700_003_600_000,
+        },
+      },
     ];
 
     for (const row of rows) {
