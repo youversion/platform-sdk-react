@@ -58,6 +58,10 @@ the pnpm `minimumReleaseAge` window):
 - Cache is memory-only; `refetch` performs exact query invalidation. Writes
   stay outside this layer (the highlights machine owns them) and refresh via
   `refetch` after the write.
+- Opted-in Bible reads (version, book, books, chapter, chapters, verse,
+  verses, passage) may serve from memory until remaining Cache-Control
+  lifetime ends. Remount after expiry fetches. Highlights, the versions
+  list, and VOTD keep `staleTime: 0` and revalidate on remount.
 - Design decisions: `docs/adr/0006-tanstack-query-read-layer.md`.
 
 ## CONVENTIONS
