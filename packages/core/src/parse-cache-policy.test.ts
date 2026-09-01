@@ -184,6 +184,18 @@ describe('parseCachePolicy', () => {
           expiresAt: 1_700_003_600_000,
         },
       },
+      {
+        name: 'decimal max-age is accepted',
+        cacheControl: 'max-age=3600.5',
+        age: undefined,
+        expected: {
+          allowsCaching: true,
+          maxAgeSeconds: 3600.5,
+          ageSeconds: 0,
+          remainingMs: 3600500,
+          expiresAt: 1_700_003_600_500,
+        },
+      },
     ];
 
     for (const row of rows) {

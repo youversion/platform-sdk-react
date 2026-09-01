@@ -61,12 +61,13 @@ function parseDirectives(cacheControl: string | null | undefined): Map<string, s
 
     const eq = trimmed.indexOf('=');
     if (eq === -1) {
-      directives.set(trimmed.toLowerCase(), undefined);
+      const name = trimmed.toLowerCase();
+      if (!directives.has(name)) directives.set(name, undefined);
       continue;
     }
 
     const name = trimmed.slice(0, eq).trim().toLowerCase();
-    if (!name) continue;
+    if (!name || directives.has(name)) continue;
     directives.set(name, trimmed.slice(eq + 1).trim());
   }
 
@@ -74,17 +75,19 @@ function parseDirectives(cacheControl: string | null | undefined): Map<string, s
 }
 
 function parseMaxAgeSeconds(value: string | undefined): number {
-  const parsed = parseNonNegativeInteger(value);
+  const parsed = parseNonNegativeNumber(value);
   return parsed ?? SEVEN_DAY_SECONDS;
 }
 
 function parseAgeSeconds(value: string | null | undefined): number {
-  return parseNonNegativeInteger(value) ?? 0;
+  return parseNonNegativeNumber(value) ?? 0;
 }
 
-function parseNonNegativeInteger(value: string | null | undefined): number | null {
+function parseNonNegativeNumber(value: string | null | undefined): number | null {
   if (value == null) return null;
   const trimmed = value.trim().replace(/^"|"$/g, '');
-  if (!/^\d+$/.test(trimmed)) return null;
-  return Number(trimmed);
+  if (trimmed === '') return null;
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return parsed;
 }

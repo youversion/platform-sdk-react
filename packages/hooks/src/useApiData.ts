@@ -1,7 +1,11 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
-import { keepPreviousData as keepPreviousDataPlaceholder, useQuery } from '@tanstack/react-query';
+import {
+  keepPreviousData as keepPreviousDataPlaceholder,
+  useQuery,
+  type QueryClient,
+} from '@tanstack/react-query';
 import { useInternalQueryClient } from './internal/QueryClientContext';
 
 export type UseApiDataOptions = {
@@ -58,6 +62,24 @@ function isApiDataEnvelope<TData>(
   );
 }
 
+function applyCacheLifetime(
+  queryClient: QueryClient,
+  queryKey: readonly unknown[],
+  lifetimeMs: number,
+): void {
+  const lifetime = { staleTime: lifetimeMs, gcTime: lifetimeMs };
+  // Later mounts in this provider pick these up. Do not pass staleTime on
+  // useQuery — that would override them on remount.
+  queryClient.setQueryDefaults(queryKey, lifetime);
+  // The query created for this fetch still has the client default gcTime
+  // (five minutes). Write remaining lifetime onto that instance so an
+  // unused entry is not collected before Cache-Control says it is stale.
+  const query = queryClient.getQueryCache().find({ queryKey, exact: true });
+  if (query) {
+    query.setOptions({ ...query.options, ...lifetime });
+  }
+}
+
 /**
  * Every data hook uses this function to load data.
  * This function uses TanStack Query.
@@ -95,13 +117,7 @@ export function useApiData<TData>(
           const result = await fetchFn();
           if (isApiDataEnvelope(result)) {
             const lifetimeMs = result.policy.allowsCaching ? result.policy.remainingMs : 0;
-            // Per-key defaults so a later mount in this provider sees the
-            // Cache-Control lifetime. Do not pass staleTime on useQuery —
-            // that would override these defaults on remount.
-            queryClient.setQueryDefaults(queryKey, {
-              staleTime: lifetimeMs,
-              gcTime: lifetimeMs,
-            });
+            applyCacheLifetime(queryClient, queryKey, lifetimeMs);
             return result.data;
           }
           return result;

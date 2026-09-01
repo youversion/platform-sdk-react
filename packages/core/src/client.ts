@@ -32,17 +32,7 @@ export function getHttpStatus(cause: unknown): number | undefined {
 }
 
 function policyFromResponseHeaders(headers: Headers): CachePolicy {
-  try {
-    return parseCachePolicy(headers.get('cache-control'), headers.get('age'));
-  } catch {
-    return {
-      allowsCaching: false,
-      maxAgeSeconds: 0,
-      ageSeconds: 0,
-      remainingMs: 0,
-      expiresAt: Date.now(),
-    };
-  }
+  return parseCachePolicy(headers.get('cache-control'), headers.get('age'));
 }
 
 /**

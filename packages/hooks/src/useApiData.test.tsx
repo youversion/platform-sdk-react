@@ -695,6 +695,29 @@ describe('useApiData', () => {
       expect(fetchFn).toHaveBeenCalledTimes(1);
     }));
 
+  it('keeps an envelope past the default five-minute unused window when remainingMs is longer', () =>
+    withFakeTimers(async () => {
+      const tenMinutes = 10 * 60 * 1000;
+      const fiveMinutes = 5 * 60 * 1000;
+      const fetchFn = vi.fn().mockResolvedValue(policyEnvelope('JHN.3 body', tenMinutes));
+      const { App, latest } = createProviderToggle(fetchFn);
+      const { rerender } = render(<App mounted />);
+
+      await flushFake();
+      expect(latest.current?.data).toBe('JHN.3 body');
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+
+      rerender(<App mounted={false} />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(fiveMinutes + 1);
+      });
+      rerender(<App mounted />);
+
+      await flushFake();
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+      expect(latest.current?.data).toBe('JHN.3 body');
+    }));
+
   it('refetches an envelope remount after remainingMs in the same provider', () =>
     withFakeTimers(async () => {
       const fetchFn = vi
