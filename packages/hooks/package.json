@@ -4,6 +4,15 @@
   "description": "React hooks for accessing YouVersion Platform APIs with automatic loading/error states.",
   "license": "Apache-2.0",
   "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "!dist/**/*.test.*",
+    "!dist/__tests__",
+    "!dist/test"
+  ],
   "publishConfig": {
     "access": "public",
     "provenance": true
