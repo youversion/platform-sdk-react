@@ -26,6 +26,38 @@ type UseApiDataResult<TData> = {
   refetch: () => void;
 };
 
+type CacheControlPolicy = {
+  allowsCaching: boolean;
+  remainingMs: number;
+};
+
+type ApiDataEnvelope<TData> = {
+  data: TData;
+  policy: CacheControlPolicy;
+};
+
+function isApiDataEnvelope<TData>(
+  result: TData | ApiDataEnvelope<TData>,
+): result is ApiDataEnvelope<TData> {
+  if (!(result instanceof Object)) {
+    return false;
+  }
+  if (!('data' in result) || !('policy' in result)) {
+    return false;
+  }
+  const { policy } = result;
+  if (!(policy instanceof Object)) {
+    return false;
+  }
+  if (!('allowsCaching' in policy) || !('remainingMs' in policy)) {
+    return false;
+  }
+  return (
+    (policy.allowsCaching === true || policy.allowsCaching === false) &&
+    Number.isFinite(policy.remainingMs)
+  );
+}
+
 /**
  * Every data hook uses this function to load data.
  * This function uses TanStack Query.
@@ -42,11 +74,12 @@ type UseApiDataResult<TData> = {
  * (see `UseApiDataOptions.keepPreviousData`).
  * If two components use the same `queryKey`, they share one request.
  * If the user returns to the same `queryKey`, the cache shows the data first.
- * Then TanStack Query fetches a new copy.
+ * Then TanStack Query fetches a new copy, unless a `{ data, policy }` envelope
+ * set a remaining lifetime on that key.
  */
 export function useApiData<TData>(
   queryKey: readonly unknown[],
-  fetchFn: () => Promise<TData>,
+  fetchFn: () => Promise<TData | ApiDataEnvelope<TData>>,
   options: UseApiDataOptions = {},
 ): UseApiDataResult<TData> {
   const { enabled = true, keepPreviousData = true } = options;
@@ -59,7 +92,19 @@ export function useApiData<TData>(
       queryKey,
       queryFn: async () => {
         try {
-          return await fetchFn();
+          const result = await fetchFn();
+          if (isApiDataEnvelope(result)) {
+            const lifetimeMs = result.policy.allowsCaching ? result.policy.remainingMs : 0;
+            // Per-key defaults so a later mount in this provider sees the
+            // Cache-Control lifetime. Do not pass staleTime on useQuery —
+            // that would override these defaults on remount.
+            queryClient.setQueryDefaults(queryKey, {
+              staleTime: lifetimeMs,
+              gcTime: lifetimeMs,
+            });
+            return result.data;
+          }
+          return result;
         } catch (err) {
           // Consumers are promised `Error | null`; normalize non-Error throws.
           throw err instanceof Error ? err : new Error('Request failed');
