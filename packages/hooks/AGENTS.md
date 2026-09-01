@@ -59,9 +59,11 @@ the pnpm `minimumReleaseAge` window):
   stay outside this layer (the highlights machine owns them) and refresh via
   `refetch` after the write.
 - Opted-in Bible reads (version, book, books, chapter, chapters, verse,
-  verses, passage) may serve from memory until remaining Cache-Control
-  lifetime ends. Remount after expiry fetches. Highlights, the versions
-  list, and VOTD keep `staleTime: 0` and revalidate on remount.
+  verses, passage) call `useApiData(..., { cacheControl: true })` with
+  `bibleClient.readWithPolicy` so the fetch is typed as `{ data, policy }`.
+  They may serve from memory until remaining Cache-Control lifetime ends.
+  Remount after expiry fetches. Highlights, the versions list, and VOTD
+  keep a bare `T` (default-fresh): `staleTime: 0` and revalidate on remount.
 - Design decisions: `docs/adr/0006-tanstack-query-read-layer.md`.
 
 ## CONVENTIONS

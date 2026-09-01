@@ -1,5 +1,11 @@
 export { ApiClient, getHttpStatus } from './client';
-export { BibleClient } from './bible';
+export {
+  BibleClient,
+  type BibleCacheRead,
+  type BibleCacheReadOf,
+  type BibleCacheDataByResource,
+  type BibleCacheReadResult,
+} from './bible';
 export { LanguagesClient, type GetLanguagesOptions } from './languages';
 export { OrganizationsClient } from './organizations';
 export {

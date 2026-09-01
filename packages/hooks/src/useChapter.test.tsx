@@ -3,11 +3,16 @@ import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useChapter, type UseChapterResult } from './useChapter';
 import { YouVersionContext } from './context';
 import { type BibleChapter } from '@youversion/platform-core';
-import { createBibleClientStub, createYVWrapper, TestQueryClientProvider } from './test/utils';
+import {
+  cacheEnvelope,
+  createBibleClientStub,
+  createYVWrapper,
+  TestQueryClientProvider,
+} from './test/utils';
 
 describe('useChapter', () => {
   const mockGetChapter = vi.fn();
-  const bibleClient = createBibleClientStub({ getChapterWithPolicy: mockGetChapter });
+  const bibleClient = createBibleClientStub({ readWithPolicy: mockGetChapter });
   const wrapper = createYVWrapper('test-app-key', { bibleClient });
 
   const mockChapter: BibleChapter = {
@@ -17,7 +22,7 @@ describe('useChapter', () => {
   };
 
   beforeEach(() => {
-    mockGetChapter.mockResolvedValue(mockChapter);
+    mockGetChapter.mockResolvedValue(cacheEnvelope(mockChapter));
   });
 
   describe('fetching chapter', () => {
@@ -31,7 +36,12 @@ describe('useChapter', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetChapter).toHaveBeenCalledWith(111, 'MAT', 1);
+      expect.soft(mockGetChapter).toHaveBeenCalledWith({
+        resource: 'chapter',
+        versionId: 111,
+        book: 'MAT',
+        chapter: 1,
+      });
       expect.soft(result.current.chapter).toEqual(mockChapter);
     });
 
@@ -40,22 +50,22 @@ describe('useChapter', () => {
         param: 'versionId',
         initial: { versionId: 1, book: 'MAT', chapter: 1 },
         updated: { versionId: 111, book: 'MAT', chapter: 1 },
-        expectedInitial: [1, 'MAT', 1],
-        expectedUpdated: [111, 'MAT', 1],
+        expectedInitial: { resource: 'chapter' as const, versionId: 1, book: 'MAT', chapter: 1 },
+        expectedUpdated: { resource: 'chapter' as const, versionId: 111, book: 'MAT', chapter: 1 },
       },
       {
         param: 'book',
         initial: { versionId: 1, book: 'MAT', chapter: 1 },
         updated: { versionId: 1, book: 'GEN', chapter: 1 },
-        expectedInitial: [1, 'MAT', 1],
-        expectedUpdated: [1, 'GEN', 1],
+        expectedInitial: { resource: 'chapter' as const, versionId: 1, book: 'MAT', chapter: 1 },
+        expectedUpdated: { resource: 'chapter' as const, versionId: 1, book: 'GEN', chapter: 1 },
       },
       {
         param: 'chapter',
         initial: { versionId: 1, book: 'MAT', chapter: 1 },
         updated: { versionId: 1, book: 'MAT', chapter: 5 },
-        expectedInitial: [1, 'MAT', 1],
-        expectedUpdated: [1, 'MAT', 5],
+        expectedInitial: { resource: 'chapter' as const, versionId: 1, book: 'MAT', chapter: 1 },
+        expectedUpdated: { resource: 'chapter' as const, versionId: 1, book: 'MAT', chapter: 5 },
       },
     ])(
       'should refetch when $param changes',
@@ -74,7 +84,7 @@ describe('useChapter', () => {
         });
 
         expect.soft(mockGetChapter).toHaveBeenCalledTimes(1);
-        expect.soft(mockGetChapter).toHaveBeenLastCalledWith(...expectedInitial);
+        expect.soft(mockGetChapter).toHaveBeenLastCalledWith(expectedInitial);
 
         act(() => {
           rerender(updated);
@@ -85,7 +95,7 @@ describe('useChapter', () => {
         });
 
         expect.soft(mockGetChapter).toHaveBeenCalledTimes(2);
-        expect.soft(mockGetChapter).toHaveBeenLastCalledWith(...expectedUpdated);
+        expect.soft(mockGetChapter).toHaveBeenLastCalledWith(expectedUpdated);
       },
     );
 
@@ -118,7 +128,7 @@ describe('useChapter', () => {
 
     it('should clear error on successful refetch', async () => {
       const error = new Error('Failed to fetch chapter');
-      mockGetChapter.mockRejectedValueOnce(error).mockResolvedValueOnce(mockChapter);
+      mockGetChapter.mockRejectedValueOnce(error).mockResolvedValueOnce(cacheEnvelope(mockChapter));
 
       const { result } = renderHook(() => useChapter(1, 'MAT', 1), { wrapper });
 
@@ -160,12 +170,8 @@ describe('useChapter', () => {
     });
   });
 
-  it('should serve the cached chapter instantly on revisit and revalidate in background', async () => {
-    // The acceptance criterion behind the TanStack Query migration: leaving
-    // a chapter and coming back renders it from cache with no loading
-    // flash, while a background refetch keeps it fresh. The provider stack
-    // stays mounted across the visit (as in an app); only the hook-bearing
-    // component unmounts.
+  it('does not refetch a remount while Cache-Control lifetime remains', async () => {
+    mockGetChapter.mockResolvedValue(cacheEnvelope(mockChapter, 60_000));
     const results: UseChapterResult[] = [];
     function Probe() {
       results.push(useChapter(111, 'MAT', 1));
@@ -185,20 +191,14 @@ describe('useChapter', () => {
     });
     expect(mockGetChapter).toHaveBeenCalledTimes(1);
 
-    // Navigate away…
     rerender(<Harness show={false} />);
     const rendersBeforeRevisit = results.length;
 
-    // …and back: the very first render already has the chapter, no loading.
     rerender(<Harness show />);
     const firstRevisitRender = results[rendersBeforeRevisit];
     expect(firstRevisitRender?.chapter).toEqual(mockChapter);
     expect(firstRevisitRender?.loading).toBe(false);
-
-    // Background revalidation still goes out.
-    await waitFor(() => {
-      expect(mockGetChapter).toHaveBeenCalledTimes(2);
-    });
+    expect(mockGetChapter).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the current chapter visible, with loading true, while the next chapter fetches', async () => {
@@ -210,8 +210,10 @@ describe('useChapter', () => {
       passage_id: 'MAT.2',
       title: 'Matthew 2',
     };
-    const deferred = Promise.withResolvers<BibleChapter>();
-    mockGetChapter.mockResolvedValueOnce(mockChapter).mockReturnValueOnce(deferred.promise);
+    const deferred = Promise.withResolvers<ReturnType<typeof cacheEnvelope<BibleChapter>>>();
+    mockGetChapter
+      .mockResolvedValueOnce(cacheEnvelope(mockChapter))
+      .mockReturnValueOnce(deferred.promise);
 
     const { result, rerender } = renderHook(
       ({ chapter }: { chapter: number }) => useChapter(111, 'MAT', chapter),
@@ -230,7 +232,7 @@ describe('useChapter', () => {
     expect(result.current.loading).toBe(true);
 
     await act(async () => {
-      deferred.resolve(nextChapter);
+      deferred.resolve(cacheEnvelope(nextChapter));
     });
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -247,8 +249,10 @@ describe('useChapter', () => {
       passage_id: 'MAT.2',
       title: 'Matthew 2',
     };
-    const deferred = Promise.withResolvers<BibleChapter>();
-    mockGetChapter.mockResolvedValueOnce(mockChapter).mockReturnValueOnce(deferred.promise);
+    const deferred = Promise.withResolvers<ReturnType<typeof cacheEnvelope<BibleChapter>>>();
+    mockGetChapter
+      .mockResolvedValueOnce(cacheEnvelope(mockChapter))
+      .mockReturnValueOnce(deferred.promise);
 
     const { result, rerender } = renderHook(
       ({ chapter }: { chapter: number }) =>
@@ -268,7 +272,7 @@ describe('useChapter', () => {
     expect(result.current.loading).toBe(true);
 
     await act(async () => {
-      deferred.resolve(nextChapter);
+      deferred.resolve(cacheEnvelope(nextChapter));
     });
     await waitFor(() => {
       expect(result.current.loading).toBe(false);

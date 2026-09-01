@@ -24,10 +24,11 @@ export function useChapters(
     loading,
     error,
     refetch,
-  } = useApiData<Collection<BibleChapter>>(
+  } = useApiData(
     [...keyBase, 'chapters', versionId, book],
-    () => bibleClient.getChaptersWithPolicy(versionId, book),
+    () => bibleClient.readWithPolicy({ resource: 'chapters', versionId, book }),
     {
+      cacheControl: true,
       enabled: options?.enabled !== false && isValidBook,
       keepPreviousData: options?.keepPreviousData,
     },

@@ -1,17 +1,17 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useBook } from './useBook';
-import { createBibleClientStub, createYVWrapper } from './test/utils';
+import { cacheEnvelope, createBibleClientStub, createYVWrapper } from './test/utils';
 import { createMockBook } from './__tests__/mocks/bibles';
 
 describe('useBook', () => {
   const mockGetBook = vi.fn();
   const mockBook = createMockBook();
-  const bibleClient = createBibleClientStub({ getBookWithPolicy: mockGetBook });
+  const bibleClient = createBibleClientStub({ readWithPolicy: mockGetBook });
   const wrapper = createYVWrapper('test-app-key', { bibleClient });
 
   beforeEach(() => {
-    mockGetBook.mockResolvedValue(mockBook);
+    mockGetBook.mockResolvedValue(cacheEnvelope(mockBook));
   });
 
   describe('fetching book', () => {
@@ -25,7 +25,11 @@ describe('useBook', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetBook).toHaveBeenCalledWith(111, 'GEN');
+      expect.soft(mockGetBook).toHaveBeenCalledWith({
+        resource: 'book',
+        versionId: 111,
+        book: 'GEN',
+      });
       expect.soft(result.current.book).toEqual(mockBook);
     });
 
@@ -34,15 +38,15 @@ describe('useBook', () => {
         param: 'versionId',
         initial: { versionId: 1, book: 'GEN' },
         updated: { versionId: 111, book: 'GEN' },
-        expectedInitial: [1, 'GEN'],
-        expectedUpdated: [111, 'GEN'],
+        expectedInitial: { resource: 'book' as const, versionId: 1, book: 'GEN' },
+        expectedUpdated: { resource: 'book' as const, versionId: 111, book: 'GEN' },
       },
       {
         param: 'book',
         initial: { versionId: 1, book: 'GEN' },
         updated: { versionId: 1, book: 'EXO' },
-        expectedInitial: [1, 'GEN'],
-        expectedUpdated: [1, 'EXO'],
+        expectedInitial: { resource: 'book' as const, versionId: 1, book: 'GEN' },
+        expectedUpdated: { resource: 'book' as const, versionId: 1, book: 'EXO' },
       },
     ])(
       'should refetch when $param changes',
@@ -60,7 +64,7 @@ describe('useBook', () => {
         });
 
         expect.soft(mockGetBook).toHaveBeenCalledTimes(1);
-        expect.soft(mockGetBook).toHaveBeenLastCalledWith(...expectedInitial);
+        expect.soft(mockGetBook).toHaveBeenLastCalledWith(expectedInitial);
 
         act(() => {
           rerender(updated);
@@ -71,7 +75,7 @@ describe('useBook', () => {
         });
 
         expect.soft(mockGetBook).toHaveBeenCalledTimes(2);
-        expect.soft(mockGetBook).toHaveBeenLastCalledWith(...expectedUpdated);
+        expect.soft(mockGetBook).toHaveBeenLastCalledWith(expectedUpdated);
       },
     );
 
@@ -104,7 +108,7 @@ describe('useBook', () => {
 
     it('should clear error on successful refetch', async () => {
       const error = new Error('Failed to fetch book');
-      mockGetBook.mockRejectedValueOnce(error).mockResolvedValueOnce(mockBook);
+      mockGetBook.mockRejectedValueOnce(error).mockResolvedValueOnce(cacheEnvelope(mockBook));
 
       const { result } = renderHook(() => useBook(1, 'GEN'), { wrapper });
 

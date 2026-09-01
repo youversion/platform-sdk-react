@@ -16,10 +16,11 @@ export function useBook(
   const bibleClient = useBibleClient();
   const keyBase = useQueryKeyBase();
 
-  const { data, loading, error, refetch } = useApiData<BibleBook>(
+  const { data, loading, error, refetch } = useApiData(
     [...keyBase, 'book', versionId, book],
-    () => bibleClient.getBookWithPolicy(versionId, book),
+    () => bibleClient.readWithPolicy({ resource: 'book', versionId, book }),
     {
+      cacheControl: true,
       enabled: options?.enabled !== false,
       keepPreviousData: options?.keepPreviousData,
     },

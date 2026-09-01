@@ -2,12 +2,12 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useBooks } from './useBooks';
 import { type BibleBook, type Collection } from '@youversion/platform-core';
-import { createBibleClientStub, createYVWrapper } from './test/utils';
+import { cacheEnvelope, createBibleClientStub, createYVWrapper } from './test/utils';
 import { createMockBook } from './__tests__/mocks/bibles';
 
 describe('useBooks', () => {
   const mockGetBooks = vi.fn();
-  const bibleClient = createBibleClientStub({ getBooksWithPolicy: mockGetBooks });
+  const bibleClient = createBibleClientStub({ readWithPolicy: mockGetBooks });
   const wrapper = createYVWrapper('test-app-key', { bibleClient });
 
   const mockBooks: Collection<BibleBook> = {
@@ -24,7 +24,7 @@ describe('useBooks', () => {
   };
 
   beforeEach(() => {
-    mockGetBooks.mockResolvedValue(mockBooks);
+    mockGetBooks.mockResolvedValue(cacheEnvelope(mockBooks));
   });
 
   describe('fetching books', () => {
@@ -38,7 +38,7 @@ describe('useBooks', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetBooks).toHaveBeenCalledWith(111);
+      expect.soft(mockGetBooks).toHaveBeenCalledWith({ resource: 'books', versionId: 111 });
       expect.soft(result.current.books).toEqual(mockBooks);
     });
 
@@ -53,7 +53,7 @@ describe('useBooks', () => {
       });
 
       expect.soft(mockGetBooks).toHaveBeenCalledTimes(1);
-      expect.soft(mockGetBooks).toHaveBeenLastCalledWith(111);
+      expect.soft(mockGetBooks).toHaveBeenLastCalledWith({ resource: 'books', versionId: 111 });
 
       rerender({ versionId: 1 });
 
@@ -62,7 +62,7 @@ describe('useBooks', () => {
       });
 
       expect.soft(mockGetBooks).toHaveBeenCalledTimes(2);
-      expect.soft(mockGetBooks).toHaveBeenLastCalledWith(1);
+      expect.soft(mockGetBooks).toHaveBeenLastCalledWith({ resource: 'books', versionId: 1 });
     });
 
     it('should not fetch when enabled is false', async () => {
@@ -94,7 +94,7 @@ describe('useBooks', () => {
 
     it('should clear error on successful refetch', async () => {
       const error = new Error('Failed to fetch books');
-      mockGetBooks.mockRejectedValueOnce(error).mockResolvedValueOnce(mockBooks);
+      mockGetBooks.mockRejectedValueOnce(error).mockResolvedValueOnce(cacheEnvelope(mockBooks));
 
       const { result } = renderHook(() => useBooks(111), { wrapper });
 

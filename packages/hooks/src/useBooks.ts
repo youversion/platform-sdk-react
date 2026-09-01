@@ -18,10 +18,11 @@ export function useBooks(versionId: number, options?: UseApiDataOptions): UseBoo
     loading,
     error,
     refetch,
-  } = useApiData<Collection<BibleBook>>(
+  } = useApiData(
     [...keyBase, 'books', versionId],
-    () => bibleClient.getBooksWithPolicy(versionId),
+    () => bibleClient.readWithPolicy({ resource: 'books', versionId }),
     {
+      cacheControl: true,
       enabled: !override && options?.enabled !== false,
       keepPreviousData: options?.keepPreviousData,
     },

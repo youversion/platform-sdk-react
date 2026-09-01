@@ -23,10 +23,11 @@ export function useVerse(
     loading,
     error,
     refetch,
-  } = useApiData<BibleVerse>(
+  } = useApiData(
     [...keyBase, 'verse', versionId, book, chapter, verse],
-    () => bibleClient.getVerseWithPolicy(versionId, book, chapter, verse),
+    () => bibleClient.readWithPolicy({ resource: 'verse', versionId, book, chapter, verse }),
     {
+      cacheControl: true,
       enabled: options?.enabled !== false,
       keepPreviousData: options?.keepPreviousData,
     },

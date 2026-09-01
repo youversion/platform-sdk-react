@@ -2,23 +2,53 @@ import { render, renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { usePassage, type UsePassageResult } from './usePassage';
 import { YouVersionContext } from './context';
-import { createBibleClientStub, createYVWrapper, TestQueryClientProvider } from './test/utils';
+import {
+  cacheEnvelope,
+  createBibleClientStub,
+  createYVWrapper,
+  TestQueryClientProvider,
+} from './test/utils';
 import { createMockPassage } from './__tests__/mocks/bibles';
 
 type PassageArgs = { versionId: number; usfm: string; format: 'html' | 'text' };
-type PassageCall = [number, string, string, boolean, boolean, boolean];
+type PassageRead = {
+  resource: 'passage';
+  versionId: number;
+  usfm: string;
+  format: 'html' | 'text';
+  include_headings: boolean;
+  include_notes: boolean;
+  transform: boolean;
+};
 type PassageHookProbe = {
   current: UsePassageResult | null;
 };
 
+const passageRead = (
+  versionId: number,
+  usfm: string,
+  format: 'html' | 'text' = 'html',
+  include_headings = false,
+  include_notes = false,
+  transform = true,
+): PassageRead => ({
+  resource: 'passage',
+  versionId,
+  usfm,
+  format,
+  include_headings,
+  include_notes,
+  transform,
+});
+
 describe('usePassage', () => {
   const mockGetPassage = vi.fn();
   const mockPassage = createMockPassage();
-  const bibleClient = createBibleClientStub({ getPassageWithPolicy: mockGetPassage });
+  const bibleClient = createBibleClientStub({ readWithPolicy: mockGetPassage });
   const wrapper = createYVWrapper('test-app-key', { bibleClient });
 
   beforeEach(() => {
-    mockGetPassage.mockResolvedValue(mockPassage);
+    mockGetPassage.mockResolvedValue(cacheEnvelope(mockPassage));
   });
 
   describe('basic fetching', () => {
@@ -37,7 +67,7 @@ describe('usePassage', () => {
       expect.soft(result.current.passage).toEqual(mockPassage);
     });
 
-    it('should call getPassageWithPolicy with correct default args', async () => {
+    it('should call readWithPolicy with correct default args', async () => {
       const { result } = renderHook(() => usePassage({ versionId: 3034, usfm: 'JHN.3.16' }), {
         wrapper,
       });
@@ -46,9 +76,7 @@ describe('usePassage', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect
-        .soft(mockGetPassage)
-        .toHaveBeenCalledWith(3034, 'JHN.3.16', 'html', false, false, true);
+      expect.soft(mockGetPassage).toHaveBeenCalledWith(passageRead(3034, 'JHN.3.16'));
     });
 
     it('should forward transform: false so callers can opt out of HTML transformation', async () => {
@@ -63,7 +91,7 @@ describe('usePassage', () => {
 
       expect
         .soft(mockGetPassage)
-        .toHaveBeenCalledWith(3034, 'JHN.3.16', 'html', false, false, false);
+        .toHaveBeenCalledWith(passageRead(3034, 'JHN.3.16', 'html', false, false, false));
     });
   });
 
@@ -91,9 +119,7 @@ describe('usePassage', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect
-        .soft(mockGetPassage)
-        .toHaveBeenCalledWith(3034, 'JHN.3.16', 'text', false, false, true);
+      expect.soft(mockGetPassage).toHaveBeenCalledWith(passageRead(3034, 'JHN.3.16', 'text'));
     });
   });
 
@@ -108,7 +134,7 @@ describe('usePassage', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetPassage).toHaveBeenCalledWith(3034, 'JHN.3.16', 'html', true, false, true);
+      expect.soft(mockGetPassage).toHaveBeenCalledWith(passageRead(3034, 'JHN.3.16', 'html', true));
     });
 
     it('should pass include_notes=true', async () => {
@@ -121,7 +147,9 @@ describe('usePassage', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetPassage).toHaveBeenCalledWith(3034, 'JHN.3.16', 'html', false, true, true);
+      expect
+        .soft(mockGetPassage)
+        .toHaveBeenCalledWith(passageRead(3034, 'JHN.3.16', 'html', false, true));
     });
 
     it('should pass all options combined', async () => {
@@ -141,7 +169,9 @@ describe('usePassage', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetPassage).toHaveBeenCalledWith(3034, 'JHN.3', 'text', true, true, true);
+      expect
+        .soft(mockGetPassage)
+        .toHaveBeenCalledWith(passageRead(3034, 'JHN.3', 'text', true, true));
     });
   });
 
@@ -151,29 +181,29 @@ describe('usePassage', () => {
         param: 'versionId',
         initial: { versionId: 1, usfm: 'JHN.3.16', format: 'html' },
         updated: { versionId: 3034, usfm: 'JHN.3.16', format: 'html' },
-        expectedInitial: [1, 'JHN.3.16', 'html', false, false, true],
-        expectedUpdated: [3034, 'JHN.3.16', 'html', false, false, true],
+        expectedInitial: passageRead(1, 'JHN.3.16'),
+        expectedUpdated: passageRead(3034, 'JHN.3.16'),
       },
       {
         param: 'usfm',
         initial: { versionId: 3034, usfm: 'JHN.3.16', format: 'html' },
         updated: { versionId: 3034, usfm: 'GEN.1.1', format: 'html' },
-        expectedInitial: [3034, 'JHN.3.16', 'html', false, false, true],
-        expectedUpdated: [3034, 'GEN.1.1', 'html', false, false, true],
+        expectedInitial: passageRead(3034, 'JHN.3.16'),
+        expectedUpdated: passageRead(3034, 'GEN.1.1'),
       },
       {
         param: 'format',
         initial: { versionId: 3034, usfm: 'JHN.3.16', format: 'html' },
         updated: { versionId: 3034, usfm: 'JHN.3.16', format: 'text' },
-        expectedInitial: [3034, 'JHN.3.16', 'html', false, false, true],
-        expectedUpdated: [3034, 'JHN.3.16', 'text', false, false, true],
+        expectedInitial: passageRead(3034, 'JHN.3.16'),
+        expectedUpdated: passageRead(3034, 'JHN.3.16', 'text'),
       },
     ] satisfies {
       param: string;
       initial: PassageArgs;
       updated: PassageArgs;
-      expectedInitial: PassageCall;
-      expectedUpdated: PassageCall;
+      expectedInitial: PassageRead;
+      expectedUpdated: PassageRead;
     }[])(
       'should refetch when $param changes',
       async ({ initial, updated, expectedInitial, expectedUpdated }) => {
@@ -190,7 +220,7 @@ describe('usePassage', () => {
         });
 
         expect.soft(mockGetPassage).toHaveBeenCalledTimes(1);
-        expect.soft(mockGetPassage).toHaveBeenLastCalledWith(...expectedInitial);
+        expect.soft(mockGetPassage).toHaveBeenLastCalledWith(expectedInitial);
 
         act(() => {
           rerender(updated);
@@ -201,7 +231,7 @@ describe('usePassage', () => {
         });
 
         expect.soft(mockGetPassage).toHaveBeenCalledTimes(2);
-        expect.soft(mockGetPassage).toHaveBeenLastCalledWith(...expectedUpdated);
+        expect.soft(mockGetPassage).toHaveBeenLastCalledWith(expectedUpdated);
       },
     );
   });
@@ -265,7 +295,7 @@ describe('usePassage', () => {
 
     it('should clear error on successful refetch', async () => {
       const error = new Error('Failed to fetch passage');
-      mockGetPassage.mockRejectedValueOnce(error).mockResolvedValueOnce(mockPassage);
+      mockGetPassage.mockRejectedValueOnce(error).mockResolvedValueOnce(cacheEnvelope(mockPassage));
 
       const { result } = renderHook(() => usePassage({ versionId: 3034, usfm: 'JHN.3.16' }), {
         wrapper,
@@ -314,10 +344,7 @@ describe('usePassage', () => {
   });
 
   it('does not refetch a remount while Cache-Control lifetime remains', async () => {
-    mockGetPassage.mockResolvedValue({
-      data: mockPassage,
-      policy: { allowsCaching: true, remainingMs: 60_000 },
-    });
+    mockGetPassage.mockResolvedValue(cacheEnvelope(mockPassage, 60_000));
 
     const latest: PassageHookProbe = { current: null };
     function Probe() {
@@ -338,7 +365,7 @@ describe('usePassage', () => {
     });
     expect(latest.current?.passage).toEqual(mockPassage);
     expect(mockGetPassage).toHaveBeenCalledTimes(1);
-    expect(mockGetPassage).toHaveBeenCalledWith(3034, 'JHN.3.16', 'html', false, false, true);
+    expect(mockGetPassage).toHaveBeenCalledWith(passageRead(3034, 'JHN.3.16'));
 
     rerender(<App mounted={false} />);
     rerender(<App mounted />);

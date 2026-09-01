@@ -15,8 +15,6 @@ type PolicyEnvelope = {
   policy: { allowsCaching: boolean; remainingMs: number };
 };
 
-type ChapterFetchResult = ChapterBody | PolicyEnvelope;
-
 type ChapterHookResult = {
   data: ChapterBody | null;
   loading: boolean;
@@ -87,14 +85,30 @@ const refocus = async () => {
 
 // `renderHook` + `createWrapper()` builds a new QueryClient. Remount-within-
 // lifetime tests keep one provider mounted and toggle the hook child.
-function createProviderToggle(
-  fetchFn: () => Promise<ChapterFetchResult>,
-  options?: UseApiDataOptions,
-) {
+function createProviderToggle(fetchFn: () => Promise<ChapterBody>, options?: UseApiDataOptions) {
   const latest: ChapterHookProbe = { current: null };
 
   function Probe() {
     latest.current = useApiData<ChapterBody>(['chapter', 'JHN.3'], fetchFn, options);
+    return null;
+  }
+
+  function App({ mounted }: { mounted: boolean }) {
+    return (
+      <YouVersionProvider appKey="test-app-key">{mounted ? <Probe /> : null}</YouVersionProvider>
+    );
+  }
+
+  return { App, latest };
+}
+
+function createCacheControlToggle(fetchFn: () => Promise<PolicyEnvelope>) {
+  const latest: ChapterHookProbe = { current: null };
+
+  function Probe() {
+    latest.current = useApiData<ChapterBody>(['chapter', 'JHN.3'], fetchFn, {
+      cacheControl: true,
+    });
     return null;
   }
 
@@ -675,10 +689,24 @@ describe('useApiData', () => {
 
   // Cache-Control policy envelope
 
+  it('keeps a { data, policy } payload as data when cacheControl is not set', async () => {
+    const envelope = policyEnvelope('should not unwrap', 100);
+    const fetchFn = vi.fn().mockResolvedValue(envelope);
+
+    const { result } = renderHook(() => useApiData(['key'], fetchFn), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.data).toEqual(envelope);
+    });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
   it('does not refetch an envelope remount within remainingMs in the same provider', () =>
     withFakeTimers(async () => {
       const fetchFn = vi.fn().mockResolvedValue(policyEnvelope('JHN.3 body', 100));
-      const { App, latest } = createProviderToggle(fetchFn);
+      const { App, latest } = createCacheControlToggle(fetchFn);
       const { rerender } = render(<App mounted />);
 
       await flushFake();
@@ -700,7 +728,7 @@ describe('useApiData', () => {
       const tenMinutes = 10 * 60 * 1000;
       const fiveMinutes = 5 * 60 * 1000;
       const fetchFn = vi.fn().mockResolvedValue(policyEnvelope('JHN.3 body', tenMinutes));
-      const { App, latest } = createProviderToggle(fetchFn);
+      const { App, latest } = createCacheControlToggle(fetchFn);
       const { rerender } = render(<App mounted />);
 
       await flushFake();
@@ -724,7 +752,7 @@ describe('useApiData', () => {
         .fn()
         .mockResolvedValueOnce(policyEnvelope('first body', 50))
         .mockResolvedValueOnce(policyEnvelope('second body', 50));
-      const { App, latest } = createProviderToggle(fetchFn);
+      const { App, latest } = createCacheControlToggle(fetchFn);
       const { rerender } = render(<App mounted />);
 
       await flushFake();
@@ -746,9 +774,12 @@ describe('useApiData', () => {
     withFakeTimers(async () => {
       const fetchFn = vi.fn().mockResolvedValue(policyEnvelope('JHN.3 body', 50));
 
-      const { result } = renderHook(() => useApiData(['chapter', 'JHN.3'], fetchFn), {
-        wrapper: createWrapper(),
-      });
+      const { result } = renderHook(
+        () => useApiData(['chapter', 'JHN.3'], fetchFn, { cacheControl: true }),
+        {
+          wrapper: createWrapper(),
+        },
+      );
 
       await flushFake();
       expect(result.current.data).toBe('JHN.3 body');
@@ -770,9 +801,12 @@ describe('useApiData', () => {
         .mockResolvedValueOnce(policyEnvelope('first body', 100))
         .mockResolvedValueOnce(policyEnvelope('second body', 100));
 
-      const { result } = renderHook(() => useApiData(['chapter', 'JHN.3'], fetchFn), {
-        wrapper: createWrapper(),
-      });
+      const { result } = renderHook(
+        () => useApiData(['chapter', 'JHN.3'], fetchFn, { cacheControl: true }),
+        {
+          wrapper: createWrapper(),
+        },
+      );
 
       await flushFake();
       expect(result.current.data).toBe('first body');
@@ -809,7 +843,7 @@ describe('useApiData', () => {
 
   it('refetches an allowsCaching false remount in the same provider', async () => {
     const fetchFn = vi.fn().mockResolvedValue(policyEnvelope('uncached body', 100, false));
-    const { App, latest } = createProviderToggle(fetchFn);
+    const { App, latest } = createCacheControlToggle(fetchFn);
     const { rerender } = render(<App mounted />);
 
     await waitFor(() => {
@@ -853,9 +887,12 @@ describe('useApiData', () => {
       .mockResolvedValueOnce(policyEnvelope('good body', 100))
       .mockRejectedValueOnce(new Error('network down'));
 
-    const { result } = renderHook(() => useApiData(['chapter', 'JHN.3'], fetchFn), {
-      wrapper: createWrapper(),
-    });
+    const { result } = renderHook(
+      () => useApiData(['chapter', 'JHN.3'], fetchFn, { cacheControl: true }),
+      {
+        wrapper: createWrapper(),
+      },
+    );
 
     await waitFor(() => {
       expect(result.current.data).toBe('good body');
@@ -877,7 +914,8 @@ describe('useApiData', () => {
     const fetchFn = vi.fn().mockResolvedValue(policyEnvelope('hidden body', 100));
 
     const { result, rerender } = renderHook(
-      ({ enabled }: { enabled: boolean }) => useApiData(['chapter', 'JHN.3'], fetchFn, { enabled }),
+      ({ enabled }: { enabled: boolean }) =>
+        useApiData(['chapter', 'JHN.3'], fetchFn, { cacheControl: true, enabled }),
       { initialProps: { enabled: true }, wrapper: createWrapper() },
     );
 

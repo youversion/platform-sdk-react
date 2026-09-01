@@ -40,18 +40,20 @@ export function usePassage({
   // Don't attempt to fetch if usfm is invalid
   const isValidUsfm = Boolean(usfm) && usfm !== 'undefined' && usfm !== 'null';
 
-  const { data, loading, error, refetch } = useApiData<BiblePassage>(
+  const { data, loading, error, refetch } = useApiData(
     [...keyBase, 'passage', versionId, usfm, format, include_headings, include_notes, transform],
     () =>
-      bibleClient.getPassageWithPolicy(
+      bibleClient.readWithPolicy({
+        resource: 'passage',
         versionId,
         usfm,
         format,
         include_headings,
         include_notes,
         transform,
-      ),
+      }),
     {
+      cacheControl: true,
       enabled: !override && options?.enabled !== false && isValidUsfm,
       keepPreviousData: options?.keepPreviousData,
     },

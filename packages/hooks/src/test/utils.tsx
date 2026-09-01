@@ -12,6 +12,19 @@ export type YVWrapperOptions = {
   organizationsClient?: OrganizationsClient;
 };
 
+type CacheEnvelope<T> = {
+  data: T;
+  policy: { allowsCaching: boolean; remainingMs: number };
+};
+
+/** Envelope a stubbed Bible body so `useApiData(..., { cacheControl: true })` can unwrap it. */
+export function cacheEnvelope<T>(data: T, remainingMs = 0): CacheEnvelope<T> {
+  return {
+    data,
+    policy: { allowsCaching: remainingMs > 0, remainingMs },
+  };
+}
+
 /** Builds a `BibleClient`-typed stub with only the methods the test calls. */
 export function createBibleClientStub(methods: Partial<BibleClient>): BibleClient {
   // SAFETY: stub implements the methods under test

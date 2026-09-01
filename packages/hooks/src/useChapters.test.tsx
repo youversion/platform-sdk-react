@@ -2,11 +2,11 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useChapters } from './useChapters';
 import { type BibleChapter, type Collection } from '@youversion/platform-core';
-import { createBibleClientStub, createYVWrapper } from './test/utils';
+import { cacheEnvelope, createBibleClientStub, createYVWrapper } from './test/utils';
 
 describe('useChapters', () => {
   const mockGetChapters = vi.fn();
-  const bibleClient = createBibleClientStub({ getChaptersWithPolicy: mockGetChapters });
+  const bibleClient = createBibleClientStub({ readWithPolicy: mockGetChapters });
   const wrapper = createYVWrapper('test-app-key', { bibleClient });
 
   const mockChapters: Collection<BibleChapter> = {
@@ -19,7 +19,7 @@ describe('useChapters', () => {
   };
 
   beforeEach(() => {
-    mockGetChapters.mockResolvedValue(mockChapters);
+    mockGetChapters.mockResolvedValue(cacheEnvelope(mockChapters));
   });
 
   describe('fetching chapters', () => {
@@ -33,7 +33,11 @@ describe('useChapters', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetChapters).toHaveBeenCalledWith(111, 'MAT');
+      expect.soft(mockGetChapters).toHaveBeenCalledWith({
+        resource: 'chapters',
+        versionId: 111,
+        book: 'MAT',
+      });
       expect.soft(result.current.chapters).toEqual(mockChapters);
     });
 
@@ -42,15 +46,15 @@ describe('useChapters', () => {
         param: 'versionId',
         initial: { versionId: 1, book: 'MAT' },
         updated: { versionId: 111, book: 'MAT' },
-        expectedInitial: [1, 'MAT'],
-        expectedUpdated: [111, 'MAT'],
+        expectedInitial: { resource: 'chapters' as const, versionId: 1, book: 'MAT' },
+        expectedUpdated: { resource: 'chapters' as const, versionId: 111, book: 'MAT' },
       },
       {
         param: 'book',
         initial: { versionId: 1, book: 'MAT' },
         updated: { versionId: 1, book: 'GEN' },
-        expectedInitial: [1, 'MAT'],
-        expectedUpdated: [1, 'GEN'],
+        expectedInitial: { resource: 'chapters' as const, versionId: 1, book: 'MAT' },
+        expectedUpdated: { resource: 'chapters' as const, versionId: 1, book: 'GEN' },
       },
     ])(
       'should refetch when $param changes',
@@ -69,7 +73,7 @@ describe('useChapters', () => {
         });
 
         expect.soft(mockGetChapters).toHaveBeenCalledTimes(1);
-        expect.soft(mockGetChapters).toHaveBeenLastCalledWith(...expectedInitial);
+        expect.soft(mockGetChapters).toHaveBeenLastCalledWith(expectedInitial);
 
         act(() => {
           rerender(updated);
@@ -80,7 +84,7 @@ describe('useChapters', () => {
         });
 
         expect.soft(mockGetChapters).toHaveBeenCalledTimes(2);
-        expect.soft(mockGetChapters).toHaveBeenLastCalledWith(...expectedUpdated);
+        expect.soft(mockGetChapters).toHaveBeenLastCalledWith(expectedUpdated);
       },
     );
 
@@ -113,7 +117,9 @@ describe('useChapters', () => {
 
     it('should clear error on successful refetch', async () => {
       const error = new Error('Failed to fetch chapters');
-      mockGetChapters.mockRejectedValueOnce(error).mockResolvedValueOnce(mockChapters);
+      mockGetChapters
+        .mockRejectedValueOnce(error)
+        .mockResolvedValueOnce(cacheEnvelope(mockChapters));
 
       const { result } = renderHook(() => useChapters(1, 'MAT'), { wrapper });
 
@@ -191,7 +197,11 @@ describe('useChapters', () => {
       });
 
       expect.soft(mockGetChapters).toHaveBeenCalledTimes(1);
-      expect.soft(mockGetChapters).toHaveBeenCalledWith(1, 'MAT');
+      expect.soft(mockGetChapters).toHaveBeenCalledWith({
+        resource: 'chapters',
+        versionId: 1,
+        book: 'MAT',
+      });
       expect.soft(result.current.chapters).toEqual(mockChapters);
     });
   });

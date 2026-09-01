@@ -2,11 +2,11 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useVerse } from './useVerse';
 import { type BibleVerse } from '@youversion/platform-core';
-import { createBibleClientStub, createYVWrapper } from './test/utils';
+import { cacheEnvelope, createBibleClientStub, createYVWrapper } from './test/utils';
 
 describe('useVerse', () => {
   const mockGetVerse = vi.fn();
-  const bibleClient = createBibleClientStub({ getVerseWithPolicy: mockGetVerse });
+  const bibleClient = createBibleClientStub({ readWithPolicy: mockGetVerse });
   const wrapper = createYVWrapper('test-app-key', { bibleClient });
 
   const mockVerse: BibleVerse = {
@@ -16,7 +16,7 @@ describe('useVerse', () => {
   };
 
   beforeEach(() => {
-    mockGetVerse.mockResolvedValue(mockVerse);
+    mockGetVerse.mockResolvedValue(cacheEnvelope(mockVerse));
   });
 
   describe('fetching verse', () => {
@@ -30,7 +30,13 @@ describe('useVerse', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetVerse).toHaveBeenCalledWith(111, 'MAT', 1, 1);
+      expect.soft(mockGetVerse).toHaveBeenCalledWith({
+        resource: 'verse',
+        versionId: 111,
+        book: 'MAT',
+        chapter: 1,
+        verse: 1,
+      });
       expect.soft(result.current.verse).toEqual(mockVerse);
     });
 
@@ -39,29 +45,77 @@ describe('useVerse', () => {
         param: 'versionId',
         initial: { versionId: 1, book: 'MAT', chapter: 1, verse: 1 },
         updated: { versionId: 111, book: 'MAT', chapter: 1, verse: 1 },
-        expectedInitial: [1, 'MAT', 1, 1],
-        expectedUpdated: [111, 'MAT', 1, 1],
+        expectedInitial: {
+          resource: 'verse' as const,
+          versionId: 1,
+          book: 'MAT',
+          chapter: 1,
+          verse: 1,
+        },
+        expectedUpdated: {
+          resource: 'verse' as const,
+          versionId: 111,
+          book: 'MAT',
+          chapter: 1,
+          verse: 1,
+        },
       },
       {
         param: 'book',
         initial: { versionId: 1, book: 'MAT', chapter: 1, verse: 1 },
         updated: { versionId: 1, book: 'GEN', chapter: 1, verse: 1 },
-        expectedInitial: [1, 'MAT', 1, 1],
-        expectedUpdated: [1, 'GEN', 1, 1],
+        expectedInitial: {
+          resource: 'verse' as const,
+          versionId: 1,
+          book: 'MAT',
+          chapter: 1,
+          verse: 1,
+        },
+        expectedUpdated: {
+          resource: 'verse' as const,
+          versionId: 1,
+          book: 'GEN',
+          chapter: 1,
+          verse: 1,
+        },
       },
       {
         param: 'chapter',
         initial: { versionId: 1, book: 'MAT', chapter: 1, verse: 1 },
         updated: { versionId: 1, book: 'MAT', chapter: 5, verse: 1 },
-        expectedInitial: [1, 'MAT', 1, 1],
-        expectedUpdated: [1, 'MAT', 5, 1],
+        expectedInitial: {
+          resource: 'verse' as const,
+          versionId: 1,
+          book: 'MAT',
+          chapter: 1,
+          verse: 1,
+        },
+        expectedUpdated: {
+          resource: 'verse' as const,
+          versionId: 1,
+          book: 'MAT',
+          chapter: 5,
+          verse: 1,
+        },
       },
       {
         param: 'verse',
         initial: { versionId: 1, book: 'MAT', chapter: 1, verse: 1 },
         updated: { versionId: 1, book: 'MAT', chapter: 1, verse: 10 },
-        expectedInitial: [1, 'MAT', 1, 1],
-        expectedUpdated: [1, 'MAT', 1, 10],
+        expectedInitial: {
+          resource: 'verse' as const,
+          versionId: 1,
+          book: 'MAT',
+          chapter: 1,
+          verse: 1,
+        },
+        expectedUpdated: {
+          resource: 'verse' as const,
+          versionId: 1,
+          book: 'MAT',
+          chapter: 1,
+          verse: 10,
+        },
       },
     ])(
       'should refetch when $param changes',
@@ -81,7 +135,7 @@ describe('useVerse', () => {
         });
 
         expect.soft(mockGetVerse).toHaveBeenCalledTimes(1);
-        expect.soft(mockGetVerse).toHaveBeenLastCalledWith(...expectedInitial);
+        expect.soft(mockGetVerse).toHaveBeenLastCalledWith(expectedInitial);
 
         act(() => {
           rerender(updated);
@@ -92,7 +146,7 @@ describe('useVerse', () => {
         });
 
         expect.soft(mockGetVerse).toHaveBeenCalledTimes(2);
-        expect.soft(mockGetVerse).toHaveBeenLastCalledWith(...expectedUpdated);
+        expect.soft(mockGetVerse).toHaveBeenLastCalledWith(expectedUpdated);
       },
     );
 

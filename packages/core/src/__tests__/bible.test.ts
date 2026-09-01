@@ -377,7 +377,7 @@ describe('BibleClient', () => {
         }),
       );
 
-      const result = await bibleClient.getVersionWithPolicy(1);
+      const result = await bibleClient.readWithPolicy({ resource: 'version', id: 1 });
 
       expect(result.data).toHaveProperty('id', 1);
       expect(result.policy).toEqual(

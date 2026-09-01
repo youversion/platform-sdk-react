@@ -39,7 +39,46 @@ type PassageQuery = {
   include_notes?: boolean;
 };
 
-type WithPolicy<T> = {
+export type BibleCacheRead =
+  | { resource: 'version'; id: number }
+  | { resource: 'books'; versionId: number; canon?: CANON }
+  | { resource: 'book'; versionId: number; book: string }
+  | { resource: 'chapters'; versionId: number; book: string }
+  | { resource: 'chapter'; versionId: number; book: string; chapter: number }
+  | { resource: 'verses'; versionId: number; book: string; chapter: number }
+  | { resource: 'verse'; versionId: number; book: string; chapter: number; verse: number }
+  | {
+      resource: 'passage';
+      versionId: number;
+      usfm: string;
+      format?: 'html' | 'text';
+      include_headings?: boolean;
+      include_notes?: boolean;
+      transform?: boolean;
+    };
+
+export type BibleCacheDataByResource = {
+  version: BibleVersion;
+  books: Collection<BibleBook>;
+  book: BibleBook;
+  chapters: Collection<BibleChapter>;
+  chapter: BibleChapter;
+  verses: Collection<BibleVerse>;
+  verse: BibleVerse;
+  passage: BiblePassage;
+};
+
+export type BibleCacheReadResult<R extends BibleCacheRead = BibleCacheRead> = {
+  data: BibleCacheDataByResource[R['resource']];
+  policy: CachePolicy;
+};
+
+export type BibleCacheReadOf<R extends BibleCacheRead['resource']> = Extract<
+  BibleCacheRead,
+  { resource: R }
+>;
+
+type Cached<T> = {
   data: T;
   policy: CachePolicy;
 };
@@ -203,19 +242,77 @@ export class BibleClient {
   }
 
   /**
+   * Hook-facing Bible read that includes Cache-Control policy.
+   * Partners should keep using {@link getVersion}, {@link getBook},
+   * {@link getPassage}, and the other body-only getters.
+   */
+  async readWithPolicy(
+    read: BibleCacheReadOf<'version'>,
+  ): Promise<BibleCacheReadResult<BibleCacheReadOf<'version'>>>;
+  async readWithPolicy(
+    read: BibleCacheReadOf<'books'>,
+  ): Promise<BibleCacheReadResult<BibleCacheReadOf<'books'>>>;
+  async readWithPolicy(
+    read: BibleCacheReadOf<'book'>,
+  ): Promise<BibleCacheReadResult<BibleCacheReadOf<'book'>>>;
+  async readWithPolicy(
+    read: BibleCacheReadOf<'chapters'>,
+  ): Promise<BibleCacheReadResult<BibleCacheReadOf<'chapters'>>>;
+  async readWithPolicy(
+    read: BibleCacheReadOf<'chapter'>,
+  ): Promise<BibleCacheReadResult<BibleCacheReadOf<'chapter'>>>;
+  async readWithPolicy(
+    read: BibleCacheReadOf<'verses'>,
+  ): Promise<BibleCacheReadResult<BibleCacheReadOf<'verses'>>>;
+  async readWithPolicy(
+    read: BibleCacheReadOf<'verse'>,
+  ): Promise<BibleCacheReadResult<BibleCacheReadOf<'verse'>>>;
+  async readWithPolicy(
+    read: BibleCacheReadOf<'passage'>,
+  ): Promise<BibleCacheReadResult<BibleCacheReadOf<'passage'>>>;
+  async readWithPolicy(read: BibleCacheRead): Promise<BibleCacheReadResult> {
+    switch (read.resource) {
+      case 'version':
+        return this.readVersion(read.id);
+      case 'books':
+        return this.readBooks(read.versionId, read.canon);
+      case 'book':
+        return this.readBook(read.versionId, read.book);
+      case 'chapters':
+        return this.readChapters(read.versionId, read.book);
+      case 'chapter':
+        return this.readChapter(read.versionId, read.book, read.chapter);
+      case 'verses':
+        return this.readVerses(read.versionId, read.book, read.chapter);
+      case 'verse':
+        return this.readVerse(read.versionId, read.book, read.chapter, read.verse);
+      case 'passage':
+        return this.readPassage(
+          read.versionId,
+          read.usfm,
+          read.format ?? 'html',
+          read.include_headings,
+          read.include_notes,
+          read.transform,
+        );
+      default: {
+        const _exhaustive: never = read;
+        throw new Error(`Unhandled Bible cache read: ${JSON.stringify(_exhaustive)}`);
+      }
+    }
+  }
+
+  /**
    * Fetches a Bible version by its ID.
    * @param id The version ID.
    * @returns The requested BibleVersion object.
    */
   async getVersion(id: number): Promise<BibleVersion> {
-    const { data } = await this.getVersionWithPolicy(id);
+    const { data } = await this.readVersion(id);
     return data;
   }
 
-  /**
-   * Same read as {@link getVersion}, plus the Cache-Control policy.
-   */
-  async getVersionWithPolicy(id: number): Promise<WithPolicy<BibleVersion>> {
+  private async readVersion(id: number): Promise<Cached<BibleVersion>> {
     BibleClient.versionIdSchema.parse(id);
     if (isVersionIdDecidablyUnusable(id)) {
       throwUnusableBibleVersion();
@@ -247,17 +344,14 @@ export class BibleClient {
    *          available in the Bible version.
    */
   async getBooks(versionId: number, canon?: CANON): Promise<Collection<BibleBook>> {
-    const { data } = await this.getBooksWithPolicy(versionId, canon);
+    const { data } = await this.readBooks(versionId, canon);
     return data;
   }
 
-  /**
-   * Same read as {@link getBooks}, plus the Cache-Control policy.
-   */
-  async getBooksWithPolicy(
+  private async readBooks(
     versionId: number,
     canon?: CANON,
-  ): Promise<WithPolicy<Collection<BibleBook>>> {
+  ): Promise<Cached<Collection<BibleBook>>> {
     BibleClient.versionIdSchema.parse(versionId);
     await this.assertUsableVersion(versionId);
     return this.client.getWithPolicy<Collection<BibleBook>>(`/v1/bibles/${versionId}/books`, {
@@ -274,14 +368,11 @@ export class BibleClient {
    *          available. Use the `passage_id` with `getPassage()` to fetch intro content.
    */
   async getBook(versionId: number, book: string): Promise<BibleBook> {
-    const { data } = await this.getBookWithPolicy(versionId, book);
+    const { data } = await this.readBook(versionId, book);
     return data;
   }
 
-  /**
-   * Same read as {@link getBook}, plus the Cache-Control policy.
-   */
-  async getBookWithPolicy(versionId: number, book: string): Promise<WithPolicy<BibleBook>> {
+  private async readBook(versionId: number, book: string): Promise<Cached<BibleBook>> {
     BibleClient.versionIdSchema.parse(versionId);
     BibleClient.bookSchema.parse(book);
     await this.assertUsableVersion(versionId);
@@ -295,17 +386,14 @@ export class BibleClient {
    * @returns An array of BibleChapter objects.
    */
   async getChapters(versionId: number, book: string): Promise<Collection<BibleChapter>> {
-    const { data } = await this.getChaptersWithPolicy(versionId, book);
+    const { data } = await this.readChapters(versionId, book);
     return data;
   }
 
-  /**
-   * Same read as {@link getChapters}, plus the Cache-Control policy.
-   */
-  async getChaptersWithPolicy(
+  private async readChapters(
     versionId: number,
     book: string,
-  ): Promise<WithPolicy<Collection<BibleChapter>>> {
+  ): Promise<Cached<Collection<BibleChapter>>> {
     BibleClient.versionIdSchema.parse(versionId);
     BibleClient.bookSchema.parse(book);
     await this.assertUsableVersion(versionId);
@@ -322,18 +410,15 @@ export class BibleClient {
    * @returns The requested BibleChapter object.
    */
   async getChapter(versionId: number, book: string, chapter: number): Promise<BibleChapter> {
-    const { data } = await this.getChapterWithPolicy(versionId, book, chapter);
+    const { data } = await this.readChapter(versionId, book, chapter);
     return data;
   }
 
-  /**
-   * Same read as {@link getChapter}, plus the Cache-Control policy.
-   */
-  async getChapterWithPolicy(
+  private async readChapter(
     versionId: number,
     book: string,
     chapter: number,
-  ): Promise<WithPolicy<BibleChapter>> {
+  ): Promise<Cached<BibleChapter>> {
     BibleClient.versionIdSchema.parse(versionId);
     BibleClient.bookSchema.parse(book);
     BibleClient.chapterSchema.parse(chapter);
@@ -356,18 +441,15 @@ export class BibleClient {
     book: string,
     chapter: number,
   ): Promise<Collection<BibleVerse>> {
-    const { data } = await this.getVersesWithPolicy(versionId, book, chapter);
+    const { data } = await this.readVerses(versionId, book, chapter);
     return data;
   }
 
-  /**
-   * Same read as {@link getVerses}, plus the Cache-Control policy.
-   */
-  async getVersesWithPolicy(
+  private async readVerses(
     versionId: number,
     book: string,
     chapter: number,
-  ): Promise<WithPolicy<Collection<BibleVerse>>> {
+  ): Promise<Cached<Collection<BibleVerse>>> {
     BibleClient.versionIdSchema.parse(versionId);
     BibleClient.bookSchema.parse(book);
     BibleClient.chapterSchema.parse(chapter);
@@ -392,19 +474,16 @@ export class BibleClient {
     chapter: number,
     verse: number,
   ): Promise<BibleVerse> {
-    const { data } = await this.getVerseWithPolicy(versionId, book, chapter, verse);
+    const { data } = await this.readVerse(versionId, book, chapter, verse);
     return data;
   }
 
-  /**
-   * Same read as {@link getVerse}, plus the Cache-Control policy.
-   */
-  async getVerseWithPolicy(
+  private async readVerse(
     versionId: number,
     book: string,
     chapter: number,
     verse: number,
-  ): Promise<WithPolicy<BibleVerse>> {
+  ): Promise<Cached<BibleVerse>> {
     BibleClient.versionIdSchema.parse(versionId);
     BibleClient.bookSchema.parse(book);
     BibleClient.chapterSchema.parse(chapter);
@@ -462,7 +541,7 @@ export class BibleClient {
     include_notes?: boolean,
     transform?: boolean,
   ): Promise<BiblePassage> {
-    const { data } = await this.getPassageWithPolicy(
+    const { data } = await this.readPassage(
       versionId,
       usfm,
       format,
@@ -473,18 +552,14 @@ export class BibleClient {
     return data;
   }
 
-  /**
-   * Same read as {@link getPassage}, plus the Cache-Control policy.
-   * HTML transform, when enabled, applies to `data.content` only.
-   */
-  async getPassageWithPolicy(
+  private async readPassage(
     versionId: number,
     usfm: string,
     format: 'html' | 'text' = 'html',
     include_headings?: boolean,
     include_notes?: boolean,
     transform?: boolean,
-  ): Promise<WithPolicy<BiblePassage>> {
+  ): Promise<Cached<BiblePassage>> {
     BibleClient.versionIdSchema.parse(versionId);
     if (include_headings !== undefined) {
       BibleClient.booleanSchema.parse(include_headings);

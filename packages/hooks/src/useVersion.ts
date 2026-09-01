@@ -19,10 +19,11 @@ export function useVersion(versionId: number, options?: UseApiDataOptions): UseV
     loading,
     error,
     refetch,
-  } = useApiData<BibleVersion>(
+  } = useApiData(
     [...keyBase, 'version', versionId],
-    () => bibleClient.getVersionWithPolicy(versionId),
+    () => bibleClient.readWithPolicy({ resource: 'version', id: versionId }),
     {
+      cacheControl: true,
       enabled: !override && options?.enabled !== false,
       keepPreviousData: options?.keepPreviousData,
     },

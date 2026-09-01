@@ -2,11 +2,11 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useVerses } from './useVerses';
 import { type BibleVerse, type Collection } from '@youversion/platform-core';
-import { createBibleClientStub, createYVWrapper } from './test/utils';
+import { cacheEnvelope, createBibleClientStub, createYVWrapper } from './test/utils';
 
 describe('useVerses', () => {
   const mockGetVerses = vi.fn();
-  const bibleClient = createBibleClientStub({ getVersesWithPolicy: mockGetVerses });
+  const bibleClient = createBibleClientStub({ readWithPolicy: mockGetVerses });
   const wrapper = createYVWrapper('test-app-key', { bibleClient });
 
   const mockVerses: Collection<BibleVerse> = {
@@ -19,7 +19,7 @@ describe('useVerses', () => {
   };
 
   beforeEach(() => {
-    mockGetVerses.mockResolvedValue(mockVerses);
+    mockGetVerses.mockResolvedValue(cacheEnvelope(mockVerses));
   });
 
   describe('fetching verses', () => {
@@ -33,7 +33,12 @@ describe('useVerses', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect.soft(mockGetVerses).toHaveBeenCalledWith(111, 'MAT', 1);
+      expect.soft(mockGetVerses).toHaveBeenCalledWith({
+        resource: 'verses',
+        versionId: 111,
+        book: 'MAT',
+        chapter: 1,
+      });
       expect.soft(result.current.verses).toEqual(mockVerses);
     });
 
@@ -68,9 +73,12 @@ describe('useVerses', () => {
       });
 
       expect.soft(mockGetVerses).toHaveBeenCalledTimes(1);
-      expect
-        .soft(mockGetVerses)
-        .toHaveBeenLastCalledWith(initialArgs.versionId, initialArgs.book, initialArgs.chapter);
+      expect.soft(mockGetVerses).toHaveBeenLastCalledWith({
+        resource: 'verses',
+        versionId: initialArgs.versionId,
+        book: initialArgs.book,
+        chapter: initialArgs.chapter,
+      });
 
       act(() => {
         rerender(updatedArgs);
@@ -81,9 +89,12 @@ describe('useVerses', () => {
       });
 
       expect.soft(mockGetVerses).toHaveBeenCalledTimes(2);
-      expect
-        .soft(mockGetVerses)
-        .toHaveBeenLastCalledWith(updatedArgs.versionId, updatedArgs.book, updatedArgs.chapter);
+      expect.soft(mockGetVerses).toHaveBeenLastCalledWith({
+        resource: 'verses',
+        versionId: updatedArgs.versionId,
+        book: updatedArgs.book,
+        chapter: updatedArgs.chapter,
+      });
     });
 
     it('should not fetch when enabled is false', async () => {
