@@ -177,11 +177,19 @@ describe('ShadowOverlayOwnership', () => {
     expect(ownership.snapshot().ownerId).toBe('second');
     expect(ownership.requestDismiss()).toBeNull();
     expect(ownership.snapshot().layers).toHaveLength(2);
+  });
+
+  it('does not restore focus when a non-owner unmounts', () => {
+    document.body.replaceChildren();
+    const ownership = new ShadowOverlayOwnership();
+    ownership.mount({ id: 'first', kind: 'nonmodal', opener: button('Open first') });
+    ownership.mount({ id: 'second', kind: 'nonmodal', opener: button('Open second') });
+
     expect(ownership.unmount('first')).toBeNull();
     expect(ownership.snapshot().ownerId).toBe('second');
   });
 
-  it('blocks dismissal fallthrough and ancestor unmount while descendants exit', () => {
+  it('rejects cyclic parent updates', () => {
     document.body.replaceChildren();
     const ownership = new ShadowOverlayOwnership();
     const dialogOpener = button('Open dialog');
@@ -209,6 +217,19 @@ describe('ShadowOverlayOwnership', () => {
         parentId: 'popover',
       }),
     ).toThrow('Cannot mount overlay "dialog" under descendant "popover"');
+  });
+
+  it('blocks dismissal fallthrough and ancestor unmount while descendants exit', () => {
+    document.body.replaceChildren();
+    const ownership = new ShadowOverlayOwnership();
+    const dialogOpener = button('Open dialog');
+    ownership.mount({ id: 'dialog', kind: 'modal', opener: dialogOpener });
+    ownership.mount({
+      id: 'popover',
+      kind: 'nonmodal',
+      opener: button('Open popover'),
+      parentId: 'dialog',
+    });
 
     expect(ownership.beginExit('dialog')).toEqual(['popover', 'dialog']);
     expect(ownership.requestDismiss()).toBeNull();
