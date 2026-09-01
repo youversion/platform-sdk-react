@@ -39,7 +39,7 @@ This is a working plan, not approval for package-wide rollout.
 | Dialog keyboard containment | Browser coverage exercises initial focus, programmatic escape redirection, forward and reverse traversal, radio-group collapsing, negative `tabindex`, and wraparound. | Validated in Chromium | Expand the browser and assistive-technology matrix. |
 | Dialog modal lifetime | Coverage verifies inert background content while open and through staggered Content and Overlay exit animations. | Validated for one modal | Implement ADR 0007 before supporting nested or competing overlays. |
 | Dialog dismissal and restoration | Coverage exercises Escape, backdrop click, full-viewport hit testing, overlay-only focus, and restoration after both modal nodes unmount. | Validated in Chromium | Verify real screen-reader and cross-browser behavior. |
-| Nested and concurrent ownership | A pure state-model walkthrough exercises nested modal/popover ownership, concurrent siblings, ancestor-close cascading, exit-animation lifetime, and disconnected-opener fallback. | Contract selected in ADR 0007; runtime unsupported | Implement the layer registry and prove the contract through shared primitives in Chromium. |
+| Nested and concurrent ownership | A pure state-model walkthrough exercises nested modal/popover ownership, concurrent siblings, ancestor-close cascading, exit-animation lifetime, and disconnected-opener fallback. | Contract selected in ADR 0007; runtime unsupported | Implement the layer registry and prove the contract through shared primitives and every inventoried direct overlay consumer in Chromium. |
 
 ## Direct overlay inventory
 
