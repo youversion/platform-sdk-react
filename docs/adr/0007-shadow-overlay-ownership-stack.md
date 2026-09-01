@@ -17,10 +17,12 @@ a modal mounted, eligibility is limited to the topmost modal and its descendant
 chain; a later unrelated non-modal overlay remains mounted but non-interactive
 until that modal unmounts. If the owner is not dismissible, dismissal attempts
 do not fall through to a lower overlay. A nested overlay remains inside its
-ancestor modal's focus scope. Shadow content stays inert while any modal is
-mounted, including its exit animation. An ancestor close may start its own and
-its descendants' exit phases together, but every descendant must unmount before
-the ancestor; a new child cannot mount beneath an exiting parent. Reopening a
+ancestor modal's focus scope. While a modal is mounted, Tab and Shift+Tab loop
+within the current owner and programmatic focus outside it redirects back to the
+owner. Shadow content stays inert through the modal's exit animation. An
+ancestor close may start its own and its descendants' exit phases together, but
+every descendant must unmount before the ancestor; a new child cannot mount
+beneath an exiting parent. Reopening a
 stable overlay ID during exit cancels that exit and refreshes its registration,
 including its opener, parent, kind, and dismissal policy. Focus restores only
 when the current owner unmounts, in this order: a connected opener in the

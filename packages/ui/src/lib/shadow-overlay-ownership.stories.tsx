@@ -3,13 +3,18 @@ import { http, HttpResponse } from 'msw';
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { expect, userEvent, waitFor } from 'storybook/test';
+import { tabbable } from 'tabbable';
 import { requireShadowRoot } from '../test/dom-stubs';
 import {
   ShadowOverlayOwnership,
   type ShadowOverlayFocusTarget,
   type ShadowOverlayKind,
 } from './shadow-overlay-ownership';
-import { getOwnShadowRoot, ShadowRootHost } from './shadow-root-host';
+import {
+  getOwnShadowRoot,
+  isElementFromOwnerDocument,
+  ShadowRootHost,
+} from './shadow-root-host';
 
 const EXIT_DURATION_MS = 150;
 
@@ -124,6 +129,49 @@ function OwnershipProof(): React.ReactNode {
       owner.focus();
     }
   }, [revision, snapshot.backgroundInert, snapshot.layers, snapshot.ownerId, topLayer]);
+
+  useLayoutEffect(() => {
+    if (!topLayer || !snapshot.modalOwnerId || !snapshot.ownerId) return;
+    const owner = topLayer.querySelector<HTMLElement>(
+      `[data-overlay-id="${snapshot.ownerId}"]`,
+    );
+    if (!owner) return;
+
+    const handleFocusIn = (event: FocusEvent): void => {
+      const [realTarget] = event.composedPath();
+      if (!isElementFromOwnerDocument(realTarget, owner, 'Element')) return;
+      if (!owner.contains(realTarget)) owner.focus();
+    };
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Tab' || event.defaultPrevented) return;
+      const candidates = tabbable(owner);
+      if (candidates.length === 0) {
+        event.preventDefault();
+        owner.focus();
+        return;
+      }
+
+      const [realTarget] = event.composedPath();
+      const currentIndex = candidates.findIndex((candidate) => candidate === realTarget);
+      let nextIndex = 0;
+      if (event.shiftKey) {
+        nextIndex = currentIndex <= 0 ? candidates.length - 1 : currentIndex - 1;
+      } else if (currentIndex !== -1 && currentIndex !== candidates.length - 1) {
+        nextIndex = currentIndex + 1;
+      }
+
+      event.preventDefault();
+      candidates[nextIndex]?.focus();
+    };
+
+    const ownerDocument = owner.ownerDocument;
+    ownerDocument.addEventListener('focusin', handleFocusIn);
+    owner.addEventListener('keydown', handleKeyDown);
+    return () => {
+      ownerDocument.removeEventListener('focusin', handleFocusIn);
+      owner.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [snapshot.modalOwnerId, snapshot.ownerId, topLayer]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -261,9 +309,14 @@ function OwnershipProof(): React.ReactNode {
 
 function OwnershipProofStory(): React.ReactNode {
   return (
-    <ShadowRootHost>
-      <OwnershipProof />
-    </ShadowRootHost>
+    <>
+      <button type="button" data-testid="host-page-control">
+        Host page control
+      </button>
+      <ShadowRootHost>
+        <OwnershipProof />
+      </ShadowRootHost>
+    </>
   );
 }
 
@@ -320,6 +373,9 @@ async function expectFocusedOwner(root: ShadowRoot, id: string): Promise<HTMLEle
 
 export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
   play: async ({ canvasElement }) => {
+    const hostPageControl = await waitFor(() =>
+      requireElement<HTMLButtonElement>(canvasElement, '[data-testid="host-page-control"]'),
+    );
     const root = await waitFor(() => requireShadowRoot(canvasElement));
     const topLayer = await waitFor(() =>
       requireElement<HTMLElement>(root, '[data-testid="ownership-top-layer"]'),
@@ -358,9 +414,23 @@ export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
     );
     await userEvent.click(dialogParentOpener);
     const dialogParent = await expectFocusedOwner(root, 'dialog-parent');
-    await userEvent.click(
-      requireElement<HTMLButtonElement>(dialogParent, '[data-testid="dialog-opens-popover"]'),
+    const dialogOpensPopover = requireElement<HTMLButtonElement>(
+      dialogParent,
+      '[data-testid="dialog-opens-popover"]',
     );
+    const closeDialogParent = requireElement<HTMLButtonElement>(
+      dialogParent,
+      '[data-testid="close-dialog-parent"]',
+    );
+    closeDialogParent.focus();
+    await userEvent.keyboard('{Tab}');
+    await expectActiveElement(root, dialogOpensPopover);
+    dialogOpensPopover.focus();
+    await userEvent.keyboard('{Shift>}{Tab}{/Shift}');
+    await expectActiveElement(root, closeDialogParent);
+    hostPageControl.focus();
+    await expectActiveElement(root, dialogParent);
+    await userEvent.click(dialogOpensPopover);
     await expectFocusedOwner(root, 'dialog-child-popover');
     void expect(background.inert).toBe(true);
     void expect(dialogParent.inert).toBe(true);
