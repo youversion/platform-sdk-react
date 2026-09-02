@@ -58,30 +58,102 @@ interface NodeEvidenceOutput extends HTMLOutputElement {
   observedNode?: EventTarget | null;
 }
 
+interface CompatibilityScenarioProps {
+  children: React.ReactNode;
+  classification: string;
+  expectedResult: string;
+  summary: string;
+  title: string;
+}
+
+function CompatibilityScenario({
+  children,
+  classification,
+  expectedResult,
+  summary,
+  title,
+}: CompatibilityScenarioProps): React.ReactNode {
+  return (
+    <section
+      style={{
+        border: '1px solid #d1d5db',
+        borderRadius: '0.75rem',
+        display: 'grid',
+        fontFamily: 'system-ui, sans-serif',
+        gap: '1.25rem',
+        maxInlineSize: '44rem',
+        padding: '1.5rem',
+      }}
+    >
+      <header style={{ display: 'grid', gap: '0.5rem' }}>
+        <p style={{ color: '#4b5563', fontSize: '0.75rem', fontWeight: 700, margin: 0 }}>
+          SHADOW DOM COMPATIBILITY EVIDENCE
+        </p>
+        <h2 style={{ fontSize: '1.25rem', margin: 0 }}>{title}</h2>
+        <p style={{ color: '#374151', lineHeight: 1.5, margin: 0 }}>{summary}</p>
+      </header>
+      <aside
+        aria-label="Expected result"
+        style={{
+          background: '#f3f4f6',
+          borderInlineStart: '0.25rem solid #4b5563',
+          paddingBlock: '0.75rem',
+          paddingInline: '1rem',
+        }}
+      >
+        <p style={{ color: '#4b5563', fontSize: '0.75rem', fontWeight: 700, margin: 0 }}>
+          EXPECTED RESULT
+        </p>
+        <p style={{ fontWeight: 700, margin: 0 }}>{classification}</p>
+        <p style={{ lineHeight: 1.5, marginBlock: '0.25rem 0', marginInline: 0 }}>
+          {expectedResult}
+        </p>
+      </aside>
+      <div style={{ borderBlockStart: '1px solid #e5e7eb', paddingBlockStart: '1.25rem' }}>
+        <p style={{ fontSize: '0.875rem', fontWeight: 700, marginBlock: '0 0.75rem' }}>
+          Rendered example
+        </p>
+        {children}
+      </div>
+    </section>
+  );
+}
+
 function FormRelationshipsHarness(): React.ReactNode {
   return (
-    <form data-testid="consumer-form">
-      <label htmlFor="isolated-notes" data-testid="external-label">
-        Notes
-      </label>
-      <span id="external-name">External accessible name</span>
-      <span id="external-description">External accessible description</span>
-      <ShadowRootHost>
-        <Textarea
-          id="isolated-notes"
-          name="notes"
-          defaultValue="consumer value"
-          aria-labelledby="external-name"
-          aria-describedby="external-description"
-        />
-      </ShadowRootHost>
-    </form>
+    <CompatibilityScenario
+      classification="Unsupported across tree scopes"
+      expectedResult="The outer form, label, accessible name, and description cannot establish native relationships with the textarea inside the shadow root."
+      summary="This example places form metadata in the light DOM and a textarea inside an SDK shadow root."
+      title="Forms, labels, and descriptions"
+    >
+      <form data-testid="consumer-form" style={{ display: 'grid', gap: '0.5rem' }}>
+        <label htmlFor="isolated-notes" data-testid="external-label">
+          Notes
+        </label>
+        <span id="external-name">External accessible name</span>
+        <span id="external-description">External accessible description</span>
+        <ShadowRootHost>
+          <Textarea
+            id="isolated-notes"
+            name="notes"
+            defaultValue="consumer value"
+            aria-labelledby="external-name"
+            aria-describedby="external-description"
+          />
+        </ShadowRootHost>
+      </form>
+    </CompatibilityScenario>
   );
 }
 
 export const FormsAndExternalRelationshipsStopAtTheTreeScope: Story = {
+  name: 'Forms, labels, and descriptions',
   render: () => <FormRelationshipsHarness />,
   play: async ({ canvasElement }) => {
+    void expect(
+      await waitForElement<HTMLHeadingElement>(canvasElement, 'h2', 'scenario title not rendered'),
+    ).toHaveTextContent('Forms, labels, and descriptions');
     const form = await waitFor(() =>
       requireElement<HTMLFormElement>(
         canvasElement,
@@ -154,29 +226,43 @@ function AutomaticButtonHarness(): React.ReactNode {
   }, []);
 
   return (
-    <div data-testid="consumer-observer">
-      <YouVersionAuthButton
-        ref={receiveButtonRef}
-        data-testid="isolated-auth-button"
-        mode="signOut"
-        onClick={(event) => {
-          if (consumerTargetEvidence.current) {
-            consumerTargetEvidence.current.observedNode = event.target;
-          }
-          if (consumerCurrentTargetEvidence.current) {
-            consumerCurrentTargetEvidence.current.observedNode = event.currentTarget;
-          }
-        }}
-      />
-      <output data-testid="first-layout-ref-state">{firstLayoutResult}</output>
-      <output ref={forwardedRefEvidence} data-testid="forwarded-ref-evidence" />
-      <output ref={consumerTargetEvidence} data-testid="consumer-target-evidence" />
-      <output ref={consumerCurrentTargetEvidence} data-testid="consumer-current-target-evidence" />
-    </div>
+    <CompatibilityScenario
+      classification="Supported with documented constraints"
+      expectedResult="The React click handler and forwarded ref expose the internal button. Native listeners outside the root see the shadow host as the event target. DOM selector APIs need explicit root traversal."
+      summary="This example compares the views exposed to React consumers, native event listeners, refs, and DOM selector APIs."
+      title="Events, refs, and test queries"
+    >
+      <div data-testid="consumer-observer">
+        <YouVersionAuthButton
+          ref={receiveButtonRef}
+          data-testid="isolated-auth-button"
+          mode="signOut"
+          onClick={(event) => {
+            if (consumerTargetEvidence.current) {
+              consumerTargetEvidence.current.observedNode = event.target;
+            }
+            if (consumerCurrentTargetEvidence.current) {
+              consumerCurrentTargetEvidence.current.observedNode = event.currentTarget;
+            }
+          }}
+        />
+        <output hidden data-testid="first-layout-ref-state">
+          {firstLayoutResult}
+        </output>
+        <output hidden ref={forwardedRefEvidence} data-testid="forwarded-ref-evidence" />
+        <output hidden ref={consumerTargetEvidence} data-testid="consumer-target-evidence" />
+        <output
+          hidden
+          ref={consumerCurrentTargetEvidence}
+          data-testid="consumer-current-target-evidence"
+        />
+      </div>
+    </CompatibilityScenario>
   );
 }
 
 export const EventsRefsAndAutomationExposeDifferentConsumerViews: Story = {
+  name: 'Events, refs, and test queries',
   render: () => <AutomaticButtonHarness />,
   play: async ({ canvasElement }) => {
     const observer = await waitFor(() =>
@@ -218,6 +304,10 @@ export const EventsRefsAndAutomationExposeDifferentConsumerViews: Story = {
     );
 
     void expect(firstLayoutEvidence).toHaveTextContent('null');
+    void expect(firstLayoutEvidence).toHaveAttribute('hidden');
+    void expect(
+      await waitForElement<HTMLHeadingElement>(canvasElement, 'h2', 'scenario title not rendered'),
+    ).toHaveTextContent('Events, refs, and test queries');
     await waitFor(() => void expect(forwardedRefEvidence.observedNode).toBe(button));
 
     const clickTarget = requireElement<HTMLDivElement>(
@@ -249,17 +339,28 @@ export const EventsRefsAndAutomationExposeDifferentConsumerViews: Story = {
 
 function NestedRootsHarness(): React.ReactNode {
   return (
-    <ShadowRootHost>
-      <div data-testid="outer-shadow-observer">
-        <YouVersionAuthButton data-testid="nested-auth-button" mode="signOut" />
-      </div>
-    </ShadowRootHost>
+    <CompatibilityScenario
+      classification="Supported for the validated basics"
+      expectedResult="The button renders and its composed click crosses both roots. DOM selector APIs must traverse the outer root and then the inner root. Overlay behavior is not part of this evidence."
+      summary="This example places an automatically isolated button inside a second SDK shadow root."
+      title="Nested shadow roots"
+    >
+      <ShadowRootHost>
+        <div data-testid="outer-shadow-observer">
+          <YouVersionAuthButton data-testid="nested-auth-button" mode="signOut" />
+        </div>
+      </ShadowRootHost>
+    </CompatibilityScenario>
   );
 }
 
 export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
+  name: 'Nested shadow roots',
   render: () => <NestedRootsHarness />,
   play: async ({ canvasElement }) => {
+    void expect(
+      await waitForElement<HTMLHeadingElement>(canvasElement, 'h2', 'scenario title not rendered'),
+    ).toHaveTextContent('Nested shadow roots');
     const outerHost = await requireShadowHost(canvasElement);
     const outerRoot = outerHost.shadowRoot!;
     const outerObserver = await waitForElement<HTMLElement>(
