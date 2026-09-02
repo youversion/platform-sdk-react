@@ -101,10 +101,26 @@ separate decision.
 - Chromium DOM relationship reflection is not a substitute for VoiceOver, NVDA,
   or other real assistive-technology verification.
 
+## Research handoff and completion gate
+
+YPE-5356 is the convergence point for the Shadow DOM research. Its foundational
+evidence comes from YPE-5298, YPE-5310, YPE-5352, and YPE-5353. It must not be
+completed until the final findings from YPE-5354, YPE-5355, YPE-5400, and
+YPE-5436 have been reconciled into the rollout policy and these durable Shadow
+DOM documents. Any conflicts and accepted limitations must be recorded rather
+than left implicit.
+
+Every component rollout ticket produced by YPE-5356 must link back to that
+policy and repeat the compatibility matrix for its selected component. Its gates
+must cover browser and assistive-technology behavior, customization,
+performance, and stylesheet failure recovery in addition to the component's
+forms, labels, ARIA relationships, events, refs, queries, and overlays.
+
 ## Rollout sequence
 
 1. Complete YPE-5400's custom-property inventory and prevention guard.
-2. Resolve SSR/hydration, rollout-control, and overlay-ownership decisions.
+2. Resolve SSR/hydration in YPE-5354 and overlay ownership in YPE-5355, then
+   reconcile those findings and YPE-5436's consumer contract in YPE-5356.
 3. Select the next public component and add component-specific compatibility,
    browser, and accessibility coverage before enabling isolation.
 4. Publish consumer guidance for DOM queries, automation, customization, forms,
