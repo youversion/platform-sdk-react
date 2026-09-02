@@ -93,6 +93,7 @@ function OwnershipProof(): React.ReactNode {
       maxHeight: 'none',
       maxWidth: 'none',
       padding: '0',
+      pointerEvents: 'none',
       width: '100dvw',
     });
     root.append(container);
@@ -237,8 +238,18 @@ function OwnershipProof(): React.ReactNode {
                 data-testid="outside-layer"
                 onClick={dismissOwner}
                 tabIndex={-1}
-                style={{ position: 'fixed', inset: 0, border: 0, background: 'transparent' }}
-              />
+                style={{
+                  position: 'fixed',
+                  insetBlockEnd: '16px',
+                  insetInlineEnd: '16px',
+                  border: '2px solid black',
+                  background: 'white',
+                  padding: '8px',
+                  pointerEvents: 'auto',
+                }}
+              >
+                Outside active overlay
+              </button>
               {snapshot.layers.map((layer, index) => (
                 <section
                   key={layer.id}
@@ -255,6 +266,7 @@ function OwnershipProof(): React.ReactNode {
                     insetBlockStart: `${80 + index * 40}px`,
                     insetInlineStart: `${80 + index * 40}px`,
                     padding: '16px',
+                    pointerEvents: 'auto',
                     background: 'white',
                     border: '2px solid black',
                   }}
@@ -459,6 +471,13 @@ export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
     const firstOpener = requireElement<HTMLButtonElement>(root, '[data-testid="open-first"]');
     const secondOpener = requireElement<HTMLButtonElement>(root, '[data-testid="open-second"]');
     await userEvent.click(firstOpener);
+    const secondOpenerBounds = secondOpener.getBoundingClientRect();
+    void expect(
+      root.elementFromPoint(
+        secondOpenerBounds.left + secondOpenerBounds.width / 2,
+        secondOpenerBounds.top + secondOpenerBounds.height / 2,
+      ),
+    ).toBe(secondOpener);
     await userEvent.click(secondOpener);
     const second = await expectFocusedOwner(root, 'second');
     const first = requireElement<HTMLElement>(topLayer, '[data-overlay-id="first"]');
