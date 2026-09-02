@@ -33,7 +33,7 @@
   "scripts": {
     "build:types": "tsc -p tsconfig.build.json",
     "build:js": "tsup",
-    "build:css": "tailwindcss -i src/styles/global.css -o dist/tailwind.css --minify",
+    "build:css": "tailwindcss -i src/styles/global.css -o dist/tailwind.css --minify && node scripts/preserve-host-revert-layer.js",
     "verify:styles": "node scripts/verify-styles.js",
     "generate:i18n": "node scripts/generate-i18n-resources.mjs",
     "build": "pnpm generate:i18n && pnpm build:css && pnpm build:js && pnpm verify:styles && pnpm build:types",

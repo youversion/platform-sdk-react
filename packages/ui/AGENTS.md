@@ -72,5 +72,5 @@ Follow `docs/testing.md`. This package’s flavors:
 
 ## CRITICAL
 - **No module side effects**: styles are rendered via React 19 `<style precedence>` in the `YouVersionProvider` wrapper
-- **Build sub-steps are order-dependent**: `build:css` (Tailwind + `strip-layers.js`) → `build:js` (tsup, injects `__YV_STYLES__`) → `build:types`. Never skip `build:css` — without it the `__YV_STYLES__` constant is empty.
+- **Build sub-steps are order-dependent**: `build:css` (Tailwind, then `preserve-host-revert-layer.js` so minify keeps `-webkit-appearance`) → `build:js` (tsup, injects `__YV_STYLES__`) → `build:types`. Never skip `build:css` — without it the `__YV_STYLES__` constant is empty.
 - Always rebuild after CSS changes
