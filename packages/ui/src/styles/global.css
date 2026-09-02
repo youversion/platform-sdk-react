@@ -41,8 +41,13 @@
 layer(yv-sdk-fonts);
 @import '@youversion/platform-core/browser/styles/theme.css' layer(yv-sdk-styles);
 @import 'tailwindcss/theme.css' layer(yv-sdk-theme) prefix(yv);
-@import 'tailwindcss/utilities.css' layer(yv-sdk-utilities) prefix(yv);
+@import 'tailwindcss/utilities.css' layer(yv-sdk-utilities) prefix(yv) source(none);
 @import 'tw-animate-css';
+
+@source '../components';
+@source not '../**/*.stories.tsx';
+@source not '../**/*.test.tsx';
+@source not '../**/*.test.ts';
 
 /* Untitled Serif has no @font-face here on purpose. Its stylesheet URL needs the
    consumer's app key, which this file cannot know — it is frozen into __YV_STYLES__ at

@@ -144,6 +144,8 @@ export {
         'A redirect URL is required to start sign-in for highlights.',
         'YouVersion context is required to start a data exchange.',
         'youversion-platform:granted-permissions',
+        'page_size="*" required 1-3 fields to be specified',
+        'Server-side HTML transformation requires "jsdom"',
       ],
       // Auth strings still live on the hooks barrel. The grants key does not:
       // useChapter reads version-filter state, not Configuration.

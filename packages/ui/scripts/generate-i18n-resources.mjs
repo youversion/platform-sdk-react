@@ -82,7 +82,7 @@ import en from './slim/en.json' with { type: 'json' };
 
 const defaultNS = '${defaultNS}';
 
-type LocaleJsonModule = { default: typeof en };
+type LocaleJsonModule = { default: Record<string, string> };
 
 export const resources = {
   en: { [defaultNS]: en },

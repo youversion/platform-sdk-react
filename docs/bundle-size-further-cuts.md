@@ -26,11 +26,11 @@ Provider-only leftovers after the landed cuts. Re-checked 2026-09-02.
 | i18next + catalogs | No | Off Provider. Still on scripture, pickers, auth, and the full barrel. Official i18next has no compile-time subset. |
 | Full utility sheet + reader CSS | No | Provider embeds chrome only. Scripture, pickers, and chrome-adjacent roots inject the full sheet. |
 | Second copy of core | No | Stamp lives in published core. UI does not inline the rest of core. |
-| Story/test-only Tailwind classes | No | `@source not` on stories/tests drops **71 B** brotli from `tailwind.css`. Not worth a source-list to maintain. |
+| Story/test-only Tailwind classes | No | `@source not` on stories/tests is landed. `tailwind.css` **7.74 → 7.66 kB**. |
 | radix, xstate, tailwind-merge | No | Absent from the minified Provider output. They stay on the components that use them. |
 | TanStack Query | Peer/ignore | size-limit `ignore` lists it; a partner who does not already have it still pays |
 
-Blocked floors: whole `BibleClient` class on `useChapter` (host `bibleClient` overrides), CJS+ESM (public `require`), CHANGELOG, tsup syntax/identifier minify and core `treeshake` (stamp ADR).
+Blocked floors: CJS+ESM (public `require`), CHANGELOG, tsup syntax/identifier minify and core `treeshake` (stamp ADR). `useChapter` no longer ships `BibleClient`; host `bibleClient` overrides still win.
 
 ## Already landed
 
@@ -40,7 +40,7 @@ Measured on this branch after `pnpm --filter @youversion/platform-core --filter 
 | --- | --- | --- |
 | UI tsup 13 named entries + `splitting: true` | Provider entry is a 201 B re-export. Reader / picker sentinels are absent from a Provider-only bundle | `packages/ui/tsup.config.ts` lines 6–22; `scripts/check-tree-shaking.mjs` UI row |
 | English eager, 14 locales `import()` | ESM locale files 6.4–16.3 kB each under `packages/ui/dist/{af,ar,…}-*.js` | `packages/ui/src/i18n/resources.generated.ts` lines 13–28; `packages/ui/dist/chunk-JYNC4O7D.js` lines 150–165 |
-| Provider-only size-limit row | After unused theme tokens: Provider **16.1 kB** / 18; ApiClient **6.47 kB** / 8; useChapter **13.73 kB** / 15; full barrel **158.58 kB** / 175; chrome.css **1.31 kB** / 2; tailwind.css **7.74 kB** / 9; core full **19.32 kB** / 21; hooks full **22.95 kB** / 26 | `.size-limit.js`; `pnpm size` |
+| Provider-only size-limit row | After language extracts + story/test `@source`: Provider **16.07 kB** / 18; ApiClient **6.45 kB** / 8; useChapter **9 kB** / 10; full barrel **158.42 kB** / 175; chrome.css **1.31 kB** / 2; tailwind.css **7.66 kB** / 9; core full **19.38 kB** / 21; hooks full **23.12 kB** / 26 | `.size-limit.js`; `pnpm size` |
 | Chrome CSS `@source` split | Provider embeds `dist/chrome.css` (10,178 B / 2.43 kB brotli): missing-app-key utilities only. ProfileAvatar, Separator, Textarea, and scripture roots inject full `dist/tailwind.css` as `yv-sdk-components`. Public `./styles.css` stays the full sheet. | `packages/ui/src/styles/chrome.css`; `packages/ui/src/lib/yv-styles.tsx` |
 | Tarball hygiene | Locale `import()` types are a catalog map (resources.generated.d.ts 93 kB → 514 B). Published `files` drop `*.d.ts.map`, stale `*.d.cts`, UI `chrome.css`, and UI `bible-reader.css`. Core/hooks `build` wipes `dist` first. | package `files`; core/hooks `build` scripts |
 | size-limit honesty | Gate lives in `.size-limit.js`. esbuild `splitting` stays off so locale `import()`s stay inlined. | `.size-limit.js`; `CONTRIBUTING.md` |
@@ -56,6 +56,12 @@ Measured on this branch after `pnpm --filter @youversion/platform-core --filter 
 | Publish-minified core CSS | `src/styles/*.css` stays readable. `build:css` writes minified copies to `dist/styles/`. Specifier stays `@youversion/platform-core/browser/styles/*`. Core packed **85.3 → 80.8 kB**. `bible-reader.css` 31,831 → 13,224. | `packages/core/scripts/minify-browser-css.mjs` |
 | Unused Button/Badge variants | Dropped `destructive` / `link` on Button and unused Badge variants. Full barrel 159.76 → **159.62 kB**. `tailwind.css` 8.74 → **8.63 kB**. | `packages/ui/src/components/ui/button.tsx`; `badge.tsx` |
 | Version-filter state module | Configuration statics delegate to `version-filter-state.ts`. `useChapter` reads `getVersionFilterSnapshot` instead of the Configuration class. useChapter **15.18 → 13.73 kB**. Grants key is absent from the useChapter tree-shake fixture. | `packages/core/src/version-filter-state.ts`; `packages/hooks/src/internal/versionFilterKey.ts` |
+| Standalone `getChapter` | `useChapter` calls `getChapter` unless a host `bibleClient` override is set. Named tsup entry keeps `getChapter` off the `BibleClient` chunk. useChapter **13.73 → 8.91 kB**. `page_size="*"` and jsdom sentinels are absent from the useChapter tree-shake fixture. | `packages/core/src/bible-chapter.ts`; `packages/hooks/src/useChapter.ts` |
+| Standalone bible reads | `getBooks` / `getBook` / `getChapters` / `getVerses` / `getVerse` / `getVOTD` / `getAllVOTDs` live in `bible-reads.ts`. Matching hooks skip `BibleClient` unless a host override is set. useChapter stayed **8.91 kB**. | `packages/core/src/bible-reads.ts` |
+| Standalone `getVersions` | `useVersions` calls `getVersions` unless a host override is set. Version-picker tree-shake fixture **791 → 776 KB** raw (jsdom stays on `getPassage`). | `packages/core/src/bible-versions.ts`; `packages/hooks/src/useVersions.ts` |
+| Standalone `getPassage` | `usePassage` calls `getPassage` unless a host override is set. jsdom stays on the HTML-transform path. BibleReader tree-shake fixture **1143 → 1139 KB** raw. useChapter stayed **9 kB**. | `packages/core/src/bible-passage.ts`; `packages/hooks/src/usePassage.ts` |
+| Standalone `getLanguage` / `getLanguages` | Matching hooks skip `LanguagesClient` unless a host override is set. Named tsup entries keep the class off the standalone chunks. hooks full **23.21 → 23.12 kB**. BibleVersionPicker **776.2 → 774.6 KB** raw. | `packages/core/src/languages-language.ts`; `packages/core/src/languages-list.ts` |
+| Story/test `@source not` | Full-sheet Tailwind no longer scans `*.stories.*` / `*.test.*`. `tailwind.css` **7.74 → 7.66 kB**. Full barrel **158.73 → 158.42 kB**. | `packages/ui/src/styles/global.css` |
 | Unused Item / InputGroup CSS | Dropped unused Item `outline`/`muted`/`image` variants and unused InputGroup aligns. Dropped unused `chart-*` / `sidebar-*` `@theme` keys. Full barrel 159.77 → **159.17 kB**. `tailwind.css` 8.63 → **8.44 kB**. | `packages/ui/src/components/ui/item.tsx`; `input-group.tsx`; `packages/ui/src/styles/global.css` |
 | Unused public theme tokens | Dropped unused Figma steps (`orange`/`teal`/`green`/`purple`/`magenta`, unused yellows/blues, `gray-25`) and unused `chart`/`sidebar` aliases. Kept tokens components read (`yellow-10`, `blue-30`, grays, semantic colors). `theme.css` dist 4862 → **2181**. Full barrel 159.17 → **158.58 kB**. `tailwind.css` 8.44 → **7.74 kB**. | `packages/core/src/styles/theme.css` |
 | `noExternal` core | Version-stamp contract. UI inlines core’s dist | `packages/ui/tsup.config.ts` lines 32–38; `scripts/check-sdk-version-stamp.mjs` |

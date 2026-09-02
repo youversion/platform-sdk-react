@@ -43,7 +43,7 @@ export default [
     name: 'hooks / useChapter only',
     path: 'packages/hooks/dist/index.js',
     import: '{ useChapter }',
-    limit: '15 KB',
+    limit: '10 KB',
     ignore: ['react', 'react-dom', '@tanstack/react-query'],
   },
   {
