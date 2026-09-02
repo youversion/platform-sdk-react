@@ -34,7 +34,7 @@ exercise. They do not establish compatibility for every SDK component.
 | A native composed event crosses one shadow boundary | Supported with native retargeting | `EventsRefsAndAutomationExposeDifferentConsumerViews` clicks an internal label element and verifies that a light-DOM listener receives the shadow host as `event.target`; `composedPath()` begins with the label and includes the internal button and host. Consumers must not assume an external native listener's target is the internal control. |
 | A React handler passed to `YouVersionAuthButton` receives its button event | Supported for this public component | The same story verifies that the consumer `onClick` handler receives the internal originating label as `target` and the internal button as `currentTarget`. Consumers may rely on the button current target, not on every event originating at the button itself. This is component-specific evidence, not a package-wide promise for every event prop. |
 | A forwarded `YouVersionAuthButton` ref exposes the internal button | Supported after mount | The ref resolves to the exact internal `HTMLButtonElement`. It remains `null` through the consumer's first layout effect because the shadow root attaches in a passive effect; consumers must handle callback-ref updates or read object refs after a later commit. |
-| An ordinary document or Storybook-canvas selector finds SDK internals | Unsupported | Selectors do not cross a shadow boundary. `document.querySelector`, Testing Library queries rooted at the document, and equivalent automation locators need an explicit shadow-aware strategy. |
+| An ordinary document or Storybook-canvas selector finds SDK internals | Unsupported | DOM selector APIs do not cross a shadow boundary. `document.querySelector` and Testing Library queries rooted at the document need explicit open-root traversal. Automation behavior is tool-specific: Playwright locators pierce open roots by default, except for XPath locators, while closed roots remain inaccessible. |
 | A consumer traverses an open root and queries after attachment | Supported with timing and access constraints | Wait for the host's open `shadowRoot`, then query within it. The contract depends on the prototype's open-root policy and does not make internals a stable semantic API; prefer public refs, roles, and component callbacks where available. |
 | An automatically isolated component is nested inside another open SDK shadow root | Supported for basic rendering, traversal, and composed events | `NestedRootsRequireTraversalAndRetargetAtEveryBoundary` verifies recursive root traversal and target retargeting to the inner host in the outer scope and to the outer host in the document scope. Consumers must traverse every root explicitly. |
 | Nested or concurrent overlays inside shadow roots | Unsupported by this contract | YPE-5355 owns stacking, focus, inertness, dismissal, and restoration. Basic nested-root evidence here does not change that overlay boundary. |
@@ -68,8 +68,10 @@ must:
   unretargeted native events;
 - prefer rollout candidates whose public callbacks, refs, and internal labels
   already avoid those cross-scope dependencies;
-- define consumer automation guidance around roles, public refs, and explicit
-  open-root traversal with an attachment wait;
+- define consumer automation guidance around roles, public refs, and
+  tool-specific shadow behavior: Playwright locators pierce open roots by
+  default, while DOM selector APIs need explicit traversal after root
+  attachment and internal rendering;
 - define required Firefox, WebKit, and assistive-technology evidence rather than
   treating the Chromium results as universal; and
 - preserve YPE-5355's separate ownership of nested and concurrent overlay
