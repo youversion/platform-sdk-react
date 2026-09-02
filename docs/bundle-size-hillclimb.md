@@ -14,7 +14,7 @@ The next engineer inherits size-limit rows that lock each kept win, plus a rerun
 
 Primary. `ui / YouVersionProvider only`, minified + brotli, same externals as the research (`react`, `react-dom`, `react/jsx-runtime`, `@tanstack/react-query`, `jsdom`).
 
-Secondary. `ui / full barrel` (235 KB budget today, measured ~204 KB brotli). `ui / tailwind.css`. Hooks and core rows only when they show up in the remaining Provider graph.
+Secondary. `ui / full barrel` (179 KB budget, measured ~163 KB brotli). `ui / tailwind.css`. Hooks and core rows only when they show up in the remaining Provider graph.
 
 Do not use the tree-shaking fixture’s raw 1.46 MB as the ruler. That number is unminified and inlines deps. It answers “did sentinels drop,” not “what the partner downloads.”
 
@@ -28,14 +28,12 @@ This predicate is true, checked on the real size-limit output and the measure sc
 4. The hillclimb then runs until one of these is true.
    - The next untried, in-scope hypothesis is under 5 KB brotli.
    - Six kept-or-reverted iterations in a row produce no keep.
-   - The remaining ideas are named follow-ups (lazy locales, `noExternal`, zod policy).
+   - The remaining ideas are named follow-ups (unused chrome Tailwind utilities, i18next on scripture entries).
 
 “As small as possible” for every package at once is out. Core is a 64 KB budget. Hooks is 68 KB. UI is the partner-visible problem.
 
 ## Out of this run
 
-- Lazy locale loading (follow-up ticket, do not sneak it into 5528)
-- Removing `noExternal` for core (version-stamp contract)
 - Subpath `exports`
 - Compiling the components folder as a glob
 - A general architecture rewrite
@@ -68,7 +66,7 @@ One hypothesis per iteration. Ground each in the ranked list. Examples, not a pr
 - A heavy dep is only needed by the three split entries and leaked into the root file.
 - CSS or locale weight that can move without a new public API.
 
-Not in this loop. Lazy locales. Dropping `noExternal`. Replacing zod.
+Not in this loop. Replacing i18next. A first-paint walker that does not match official size-limit.
 
 For each iteration. Change one thing. Measure with the frozen script. Run `pnpm size`, `pnpm check:tree-shaking`, UI unit tests, and the Vite example build. Keep only if Provider-only brotli drops by 5 KB or more and the gate stays green. Otherwise revert. Log the row either way.
 

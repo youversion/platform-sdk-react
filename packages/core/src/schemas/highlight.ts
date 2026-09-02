@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 
 // Case-insensitive: the API may echo colors in any case, and the client's input
 // validator accepts both, so response parsing must not reject uppercase hex.
@@ -11,29 +11,29 @@ const HEX_COLOR_REGEX = /^[0-9a-f]{6}$/i;
  */
 export const HighlightWireSchema = z.object({
   /** Bible version identifier */
-  bible_id: z.number().int().positive(),
+  bible_id: z.int().check(z.positive()),
   /** Passage identifier (e.g., "MAT.1.1") */
   passage_id: z.string(),
   /** Hex color code (6 digits, no #) */
-  color: z.string().regex(HEX_COLOR_REGEX),
+  color: z.string().check(z.regex(HEX_COLOR_REGEX)),
 });
 
 export type HighlightWire = z.infer<typeof HighlightWireSchema>;
 
 export const HighlightCollectionWireSchema = z.object({
   data: z.array(HighlightWireSchema),
-  next_page_token: z.string().nullable().optional(),
+  next_page_token: z.optional(z.nullable(z.string())),
 });
 
 export type HighlightCollectionWire = z.infer<typeof HighlightCollectionWireSchema>;
 
 const _HighlightSchema = z.object({
   /** Bible version identifier (sent to / received from the API as `bible_id`) */
-  version_id: z.number().int().positive(),
+  version_id: z.int().check(z.positive()),
   /** Passage identifier (e.g., "MAT.1.1") */
   passage_id: z.string(),
   /** Hex color code (6 digits, no #) */
-  color: z.string().regex(HEX_COLOR_REGEX),
+  color: z.string().check(z.regex(HEX_COLOR_REGEX)),
 });
 
 export type Highlight = z.infer<typeof _HighlightSchema>;
@@ -49,17 +49,17 @@ export function toHighlight(wire: HighlightWire): Highlight {
 
 const _CreateHighlightSchema = z.object({
   /** Bible version identifier (sent to the API as `bible_id`) */
-  version_id: z.number().int().positive(),
+  version_id: z.int().check(z.positive()),
   /** Passage identifier (e.g., "MAT.1.1") */
   passage_id: z.string(),
   /** Hex color code (6 digits, no #) */
-  color: z.string().regex(HEX_COLOR_REGEX),
+  color: z.string().check(z.regex(HEX_COLOR_REGEX)),
 });
 
 export type CreateHighlight = z.infer<typeof _CreateHighlightSchema>;
 
 export const CreateHighlightEnvelopeSchema = z.object({
-  request_id: z.string().min(1),
+  request_id: z.string().check(z.minLength(1)),
   highlight: HighlightWireSchema,
 });
 export type CreateHighlightEnvelope = z.infer<typeof CreateHighlightEnvelopeSchema>;

@@ -27,6 +27,7 @@ export {
   fieldsNeededForLanguageFilter,
   fieldsNeededForVersionFilter,
   isUsableBibleVersion,
+  getVersionFilterSnapshot,
   isUsableLanguageTag,
   isVersionFilterActive,
   isVersionIdDecidablyUnusable,

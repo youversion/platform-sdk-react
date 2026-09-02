@@ -34,8 +34,11 @@ Domain terms (highlight, passage, Bible version, auth flow): read `CONTEXT.md`.
 Cloud VM, env files, Vite bind, or demo startup: read `docs/cursor-cloud.md`.
 
 ## Learned User Preferences
-- When posting PR review comments, use conventionalcomments.org labels. If posting on behalf of the user, identify as Cursor, an AI agent sent on behalf of Cam, in every post.
+- When posting on Cam's behalf (PR reviews or Jira comments), identify as Cursor, an AI agent sent on behalf of Cam, in every post. PR reviews use conventionalcomments.org labels. Jira comments note they were signed off by Cam.
 - Prefer logical CSS properties (`margin-block-end`, `padding-inline-start`) over physical ones.
+- When a ticket's spec changes, update the Jira ticket before implementing so the ticket stays the source of truth.
 
 ## Learned Workspace Facts
 - Public Bible CSS on the CDN updates automatically on UI package release.
+- Prefer production `api.youversion.com` for local demos and bug repros; do not use the staging API.
+- BibleCard default max-width matches Swift (700px) and is overridable by the host app.

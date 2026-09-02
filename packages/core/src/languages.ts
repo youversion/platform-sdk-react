@@ -1,11 +1,11 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import type { ApiClient } from './client';
 import type { Collection, Language } from './types';
 import { LanguageSchema } from './schemas';
-import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
 import {
   collectFilteredPage,
   fieldsNeededForLanguageFilter,
+  isLanguageFilterActive,
   isUsableLanguageTag,
 } from './version-filters';
 
@@ -27,36 +27,42 @@ export class LanguagesClient {
 
   private static readonly languageIdSchema = z
     .string()
-    .trim()
-    .min(1, 'Language ID must be a non-empty string')
-    .regex(
-      /^[a-z]{2,3}(?:-[A-Z][a-z]{3})?$/,
-      'Language ID must match BCP 47 format (language or language+script)',
+    .check(
+      z.trim(),
+      z.minLength(1, 'Language ID must be a non-empty string'),
+      z.regex(
+        /^[a-z]{2,3}(?:-[A-Z][a-z]{3})?$/,
+        'Language ID must match BCP 47 format (language or language+script)',
+      ),
     );
   private static readonly countrySchema = z
     .string()
-    .trim()
-    .length(2, 'Country code must be a 2-character ISO 3166-1 alpha-2 code')
-    .toUpperCase();
+    .check(
+      z.trim(),
+      z.length(2, 'Country code must be a 2-character ISO 3166-1 alpha-2 code'),
+      z.toUpperCase(),
+    );
 
   private static readonly GetLanguagesOptionsSchema = z
     .object({
-      page_size: z.union([z.number(), z.literal('*')]).optional(),
-      fields: z.array(LanguageSchema.keyof()).optional(),
-      page_token: z.string().optional(),
+      page_size: z.optional(z.union([z.number(), z.literal('*')])),
+      fields: z.optional(z.array(z.keyof(LanguageSchema))),
+      page_token: z.optional(z.string()),
       country: LanguagesClient.countrySchema,
     })
-    .refine(
-      (data) => {
-        if (data.page_size === '*') {
-          return data.fields && data.fields?.length >= 1 && data.fields?.length <= 3;
-        }
-        return true;
-      },
-      {
-        message: 'page_size="*" required 1-3 fields to be specified',
-        path: ['page_size', 'fields'],
-      },
+    .check(
+      z.refine(
+        (data) => {
+          if (data.page_size === '*') {
+            return data.fields && data.fields?.length >= 1 && data.fields?.length <= 3;
+          }
+          return true;
+        },
+        {
+          error: 'page_size="*" required 1-3 fields to be specified',
+          path: ['page_size', 'fields'],
+        },
+      ),
     );
 
   /**
@@ -81,13 +87,13 @@ export class LanguagesClient {
     }
 
     if (options.fields !== undefined) {
-      const fieldsSchema = z.array(LanguageSchema.keyof());
+      const fieldsSchema = z.array(z.keyof(LanguageSchema));
       fieldsSchema.parse(options.fields);
       params['fields[]'] = options.fields;
     }
 
     if (options.page_size !== undefined) {
-      const pageSizeSchema = z.union([z.number().int().positive(), z.literal('*')]);
+      const pageSizeSchema = z.union([z.int().check(z.positive()), z.literal('*')]);
       pageSizeSchema.parse(options.page_size);
 
       if (options.page_size === '*') {
@@ -104,11 +110,7 @@ export class LanguagesClient {
     const pageSize = options.page_size;
     if (filterFields) {
       params['fields[]'] = filterFields;
-      if (
-        YouVersionPlatformConfiguration.permittedLanguageTags !== undefined &&
-        pageSize === '*' &&
-        filterFields.length > 3
-      ) {
+      if (isLanguageFilterActive() && pageSize === '*' && filterFields.length > 3) {
         // API rejects page_size=* with more than 3 fields. Keep pageSize='*' so
         // collectFilteredPage still walks every server page. Unfiltered *+>3
         // stays a loud reject — do not drop * on that path.
@@ -124,7 +126,7 @@ export class LanguagesClient {
       return this.client.get<Collection<Language>>(`/v1/languages`, pageParams);
     };
 
-    if (YouVersionPlatformConfiguration.permittedLanguageTags === undefined) {
+    if (!isLanguageFilterActive()) {
       return fetchPage(options.page_token);
     }
 

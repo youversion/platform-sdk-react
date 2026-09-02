@@ -3,17 +3,53 @@
 export * from './components';
 export * from './types';
 
-// Re-export shared types and API classes
+// Named value re-exports (not `export *`) so a Provider-only import does not
+// evaluate the whole core barrel. Types come from `./types`.
 export {
+  ApiClient,
+  BOOK_CANON,
+  BOOK_IDS,
+  BibleClient,
+  CANON_IDS,
+  DEFAULT_LICENSE_FREE_BIBLE_VERSION,
+  DataExchangeClient,
+  HighlightsClient,
+  LanguagesClient,
+  MemoryStorageStrategy,
+  OrganizationsClient,
+  SDK_NAME,
+  SDK_VERSION,
+  SDK_VERSION_HEADER_NAME,
+  SessionStorageStrategy,
   SignInWithYouVersionPermission,
   SignInWithYouVersionResult,
+  YouVersionAPI,
   YouVersionAPIUsers,
-
-  // Authentication
+  YouVersionPlatformConfiguration,
+  YouVersionUserInfo,
+  buildDataExchangeUrl,
+  buildSdkVersionHeaderValue,
+  clearStorage,
+  collectFilteredPage,
+  fieldsNeededForLanguageFilter,
+  fieldsNeededForVersionFilter,
+  getAdjacentChapter,
+  getHttpStatus,
+  getLocalStorage,
+  getSessionStorage,
+  handleDataExchangeCallback,
+  isUsableBibleVersion,
+  isUsableLanguageTag,
+  isVersionFilterActive,
+  isVersionIdDecidablyUnusable,
+  parseDataExchangeCallback,
+  parseGrantedPermissions,
+  removeStorageItem,
+  setStorageItem,
+  throwUnusableBibleVersion,
+  transformBibleHtml,
   type ApiConfig,
   type AuthenticationState,
-
-  // Highlights (the shape of BibleReader.Root's controlled `highlights` prop)
   type Highlight,
 } from '@youversion/platform-core';
 

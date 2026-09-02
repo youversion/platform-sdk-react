@@ -1,38 +1,49 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 
 export const LanguageSchema = z.object({
   /** BCP 47 language identifier (e.g., "en") */
   id: z
     .string()
-    .regex(/^[a-z]{2,3}(?:-[A-Z][a-z]{3})?$/, 'BCP 47 id limited to language or language+script'),
+    .check(
+      z.regex(
+        /^[a-z]{2,3}(?:-[A-Z][a-z]{3})?$/,
+        'BCP 47 id limited to language or language+script',
+      ),
+    ),
   /** ISO 639 language code */
-  language: z.string().regex(/^[a-z]{2,3}$/, 'ISO 639 canonical language subtag'),
+  language: z.string().check(z.regex(/^[a-z]{2,3}$/, 'ISO 639 canonical language subtag')),
   /** ISO 15924 script code (e.g., "Latn") */
-  script: z
-    .string()
-    .regex(/^[A-Z][a-z]{3}$/, 'Script must match ISO 15924 format (e.g., "Latn")')
-    .nullable()
-    .optional(),
+  script: z.optional(
+    z.nullable(
+      z
+        .string()
+        .check(z.regex(/^[A-Z][a-z]{3}$/, 'Script must match ISO 15924 format (e.g., "Latn")')),
+    ),
+  ),
   /** Script name (e.g., "Latin") */
-  script_name: z.string().nullable().optional(),
+  script_name: z.optional(z.nullable(z.string())),
   /** Language aliases */
-  aliases: z.array(z.string()).optional(),
+  aliases: z.optional(z.array(z.string())),
   /** Display names for different locales */
-  display_names: z.record(z.string(), z.string()).optional(),
+  display_names: z.optional(z.record(z.string(), z.string())),
   /** Available scripts for this language (e.g., ["Cyrl", "Latn"]) */
-  scripts: z.array(z.string().regex(/^[A-Z][a-z]{3}$/, 'ISO 15924 script code')).optional(),
+  scripts: z.optional(
+    z.array(z.string().check(z.regex(/^[A-Z][a-z]{3}$/, 'ISO 15924 script code'))),
+  ),
   /** Language variants (e.g., ["1996", "fonipa"]) */
-  variants: z.array(z.string()).optional(),
+  variants: z.optional(z.array(z.string())),
   /** ISO 3166-1 alpha-2 country codes (e.g., ["RS", "BA", "ME"]) */
-  countries: z.array(z.string().regex(/^[A-Z]{2}$/, 'ISO 3166-1 alpha-2 country code')).optional(),
+  countries: z.optional(
+    z.array(z.string().check(z.regex(/^[A-Z]{2}$/, 'ISO 3166-1 alpha-2 country code'))),
+  ),
   /** Text direction (ltr or rtl) */
-  text_direction: z.enum(['ltr', 'rtl']).optional(),
+  text_direction: z.optional(z.enum(['ltr', 'rtl'])),
   /** Writing population count */
-  writing_population: z.number().int().optional(),
+  writing_population: z.optional(z.int()),
   /** Speaking population count */
-  speaking_population: z.number().int().optional(),
+  speaking_population: z.optional(z.int()),
   /** Default Bible version ID for this language */
-  default_bible_id: z.number().int().nullable().optional(),
+  default_bible_id: z.optional(z.nullable(z.int())),
 });
 
 export type Language = Readonly<z.infer<typeof LanguageSchema>>;

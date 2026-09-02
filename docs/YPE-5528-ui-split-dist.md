@@ -41,29 +41,31 @@ Prove that with the existing tree-shaking check, not with a smaller root file. D
 21. As CI, I want the omitted-UI comment gone, so that the docs match the check.
 22. As CI, I want a Provider-only size budget, so that the win has a number that cannot silently grow.
 23. As CI, I want the full-barrel size budget to keep measuring a bundled import, so that a tiny re-export file cannot fake a pass.
-24. As a releaser, I want the version stamp still found in the published UI build, so that `prepublishOnly` does not fail closed or pass on the wrong file.
+24. As a releaser, I want the version stamp still found in published core, so that `prepublishOnly` does not fail closed or pass on the wrong file. UI imports that stamped core at runtime.
 25. As a releaser, I want style verification to keep proving embedded CSS landed, so that an empty `__YV_STYLES__` cannot publish.
 26. As a releaser, I want a patch changelog for the UI package, so that partners see a different artifact and a smaller unused-import graph.
 27. As a maintainer adding a UI component later, I want the entry list to stay an explicit named list, so that a new file under components does not become a published entry.
-28. As a maintainer, I want `noExternal` for core left alone, so that the UI package still ships the stamped core version.
+28. As a maintainer, I want UI to import core at runtime (not inline it), so that partners pay for one Configuration+zod copy.
 29. As a maintainer, I want locale files to keep loading with the provider, so that this ticket does not become an i18n rewrite.
 30. As a reviewer, I want `splitting` alone treated as a no-op, so that nobody closes the ticket after flipping one flag.
 31. As a reviewer, I want a full UI build as the proof, so that a scratch tsup probe cannot hide a broken `verify:styles` or types step.
 32. As a Storybook user, I want existing stories to keep running from source, so that the dist shape does not break local UI work.
 33. As a unit-test author, I want Vitest still to import components from source, so that tests do not depend on the new chunk graph.
 34. As the Vite example app, I want `pnpm build` to succeed after the split, so that a real app graph is exercised once.
-35. As someone who only wanted the three components dropped, I want `YouVersionProvider` left inside the root build file, so that style markers do not have to move and the style guard can stay as it is unless a real build proves otherwise.
+35. As someone who only wanted the three components dropped, I want style markers still present on a Provider-only import, so that children keep SDK styles after `YouVersionProvider` becomes its own entry.
 
 ## Implementation Decisions
 
-- The UI JavaScript build declares the package root plus every public component module as an entry (provider, reader, both pickers, auth button, verse of the day, verse, verse action popover, card, avatar, separator, textarea).
+- The UI JavaScript build declares the package root plus every public component module as an entry (provider, reader, both pickers, auth button, verse of the day, verse, verse action popover, card, avatar, separator, textarea). `packages/ui/scripts/check-public-entries.mjs` fails the build if that list drifts from `src/components/index.ts`.
+- English locale JSON stays in the initial i18n graph. Other locales load through `import()`. A Provider-only first paint may still be English until that chunk resolves.
+- Every public module that uses hooks has a `'use client'` directive on the source file. The split build no longer hoists one directive onto `dist/index.js`.
 - Four entries are not enough. `src/index.ts` star-exports the components barrel, so the root file still imports the shared chunks that hold the reader and pickers. A Provider-only consumer then cannot drop them. Measured. All public modules must be entries so the root file is only re-exports.
 - `splitting` is on. The flag is not sufficient by itself. The extra entries are what create chunks.
 - `YouVersionProvider` is its own entry. Style markers leave `dist/index.js`. The style guard must read every JavaScript file under `dist`.
 - Do not glob the components folder. A glob compiles tests, stories, internals, and the components barrel. Those files would publish because the UI package ships all of `dist`.
 - Do not use the public-barrel module list as the entry list. That list is the wrong size for this ticket, omits the provider, and forces style-guard work the outcome does not need.
 - Do not add package `exports` subpaths. The public import stays the package root. Relative chunk imports inside `dist` do not need export-map entries.
-- Do not change `noExternal` for core. The UI package still inlines core so the published version stamp stays the one core baked in.
+- Do not inline `@youversion/platform-core` into UI. The stamp lives in published core. UI `prepublishOnly` rebuilds and checks that core stamp.
 - Do not change `dts` or the TypeScript declaration build. Types stay a separate step.
 - Do not change `sideEffects`. The CSS glob is already correct.
 - The tree-shaking check gains a UI row. A Provider-only import must omit reader and picker sentinels. Control imports of each of those three must still contain their sentinels. A multi-export barrel must be larger than the Provider-only bundle.
@@ -100,7 +102,7 @@ After a clean forced turbo build:
 - The UI `dist` contains no test or Storybook outputs.
 - `pnpm check:tree-shaking` passes, including the new UI row.
 - Style verification still passes.
-- The UI version-stamp check still passes.
+- The core version-stamp check still passes on a publish-style core build.
 - ESM and CJS root exports match each other and do not lose symbols.
 - `pnpm size` passes against the new measured limits.
 - UI typecheck, unit tests, and lint pass.
@@ -112,14 +114,9 @@ Do not treat a scratch tsup write that skipped i18n generation, CSS, style verif
 
 ## Out of Scope
 
-- Lazy-loading locale files
 - Subpath exports such as `./bible-reader`
-- Removing `noExternal` for core
-- A general size reduction of the provider graph
+- Inlining `@youversion/platform-core` into UI again
 - Changing `dts` or the TypeScript declaration pipeline
-- Making `YouVersionProvider` its own entry so the root file becomes a re-export stub
-- Compiling every public UI module as an entry
-- Changing `'use client'` handling
 - Rewriting `Object.assign` namespace exports to plain objects
 - New public API
 

@@ -11,7 +11,9 @@
     "CHANGELOG.md",
     "!dist/**/*.test.*",
     "!dist/__tests__",
-    "!dist/test"
+    "!dist/test",
+    "!dist/**/*.d.ts.map",
+    "!dist/**/*.d.cts"
   ],
   "publishConfig": {
     "access": "public",
@@ -38,10 +40,10 @@
     }
   },
   "scripts": {
-    "dev": "tsup src/index.ts src/test-utils.tsx --format cjs,esm --external jsdom --watch",
-    "build:js": "tsup src/index.ts src/test-utils.tsx --format cjs,esm --external jsdom",
+    "dev": "tsup --watch",
+    "build:js": "tsup",
     "build:types": "tsc -p tsconfig.build.json",
-    "build": "pnpm build:js && pnpm build:types",
+    "build": "rm -rf dist && pnpm build:js && pnpm build:types",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

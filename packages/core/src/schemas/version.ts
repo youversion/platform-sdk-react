@@ -1,19 +1,19 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { BookUsfmSchema } from './book';
 
 export const BibleVersionSchema = z.object({
   /** Bible version identifier */
-  id: z.number().int(),
+  id: z.int(),
   /** Bible version abbreviation */
   abbreviation: z.string(),
   /** Long copyright text */
-  promotional_content: z.string().nullable().optional(),
+  promotional_content: z.optional(z.nullable(z.string())),
   /** Short copyright text */
-  copyright: z.string().nullable().optional(),
+  copyright: z.optional(z.nullable(z.string())),
   /** Bible information text */
-  info: z.string().nullable().optional(),
+  info: z.optional(z.nullable(z.string())),
   /** Publisher URL (may be an empty string when not provided) */
-  publisher_url: z.string().nullable().optional(),
+  publisher_url: z.optional(z.nullable(z.string())),
   /** Language tag (e.g., "en") */
   language_tag: z.string(),
   /** Localized abbreviation */
@@ -21,7 +21,7 @@ export const BibleVersionSchema = z.object({
   /** Localized title */
   localized_title: z.string(),
   /** Organization ID of publisher */
-  organization_id: z.string().nullable().optional(),
+  organization_id: z.optional(z.nullable(z.string())),
   /** Full title */
   title: z.string(),
   /** Array of book identifiers (e.g., ["GEN", "EXO", "LEV"]) */

@@ -1,11 +1,11 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import type { ApiClient } from './client';
 import { transformBibleHtml, type TransformBibleHtmlOptions } from './bible-html-transformer';
 import { BibleVersionSchema } from './schemas';
-import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
 import {
   collectFilteredPage,
   fieldsNeededForVersionFilter,
+  isLanguageFilterActive,
   isUsableBibleVersion,
   isVersionFilterActive,
   isVersionIdDecidablyUnusable,
@@ -74,46 +74,47 @@ export class BibleClient {
 
   // Validation schemas
   private static readonly versionIdSchema = z
-    .number()
     .int()
-    .positive('Version ID must be a positive integer');
+    .check(z.positive('Version ID must be a positive integer'));
   private static readonly bookSchema = z
     .string()
-    .trim()
-    .min(3, 'Book ID must be exactly 3 characters')
-    .max(3, 'Book ID must be exactly 3 characters');
+    .check(
+      z.trim(),
+      z.minLength(3, 'Book ID must be exactly 3 characters'),
+      z.maxLength(3, 'Book ID must be exactly 3 characters'),
+    );
   private static readonly chapterSchema = z
-    .number()
-    .int('Chapter must be an integer')
-    .positive('Chapter must be a positive integer');
+    .int({ error: 'Chapter must be an integer' })
+    .check(z.positive('Chapter must be a positive integer'));
   private static readonly verseSchema = z
-    .number()
-    .int('Verse must be an integer')
-    .positive('Verse must be a positive integer');
+    .int({ error: 'Verse must be an integer' })
+    .check(z.positive('Verse must be a positive integer'));
   private static readonly languageRangesSchema = z
     .string()
-    .trim()
-    .min(1, 'Language ranges must be a non-empty string');
+    .check(z.trim(), z.minLength(1, 'Language ranges must be a non-empty string'));
   private static readonly booleanSchema = z.boolean();
   private static readonly GetVersionsOptionsSchema = z
-    .object({
-      page_size: z.union([z.number().int().positive(), z.literal('*')]).optional(),
-      page_token: z.string().optional(),
-      fields: z.array(BibleVersionSchema.keyof()).optional(),
-      all_available: z.boolean().optional(),
-    })
-    .optional()
-    .refine(
-      (data) => {
-        if (data?.page_size === '*') {
-          return data.fields && data.fields.length >= 1 && data.fields.length <= 3;
-        }
-        return true;
-      },
-      {
-        message: 'page_size="*" required 1-3 fields to be specified',
-        path: ['page_size', 'fields'],
-      },
+    .optional(
+      z.object({
+        page_size: z.optional(z.union([z.int().check(z.positive()), z.literal('*')])),
+        page_token: z.optional(z.string()),
+        fields: z.optional(z.array(z.keyof(BibleVersionSchema))),
+        all_available: z.optional(z.boolean()),
+      }),
+    )
+    .check(
+      z.refine(
+        (data) => {
+          if (data?.page_size === '*') {
+            return data.fields && data.fields.length >= 1 && data.fields.length <= 3;
+          }
+          return true;
+        },
+        {
+          error: 'page_size="*" required 1-3 fields to be specified',
+          path: ['page_size', 'fields'],
+        },
+      ),
     );
 
   /**
@@ -140,7 +141,7 @@ export class BibleClient {
 
     const parsedLanguageRanges = z
       .array(BibleClient.languageRangesSchema)
-      .nonempty('At least one language range is required')
+      .check(z.minLength(1, 'At least one language range is required'))
       .parse(languageRangeArray);
 
     const params: VersionListQuery = {
@@ -217,7 +218,7 @@ export class BibleClient {
     if (isVersionIdDecidablyUnusable(versionId)) {
       throwUnusableBibleVersion();
     }
-    if (YouVersionPlatformConfiguration.permittedLanguageTags !== undefined) {
+    if (isLanguageFilterActive()) {
       await this.getVersion(versionId);
     }
   }
@@ -443,7 +444,7 @@ export class BibleClient {
    * ```
    */
   async getVOTD(day: number): Promise<VOTD> {
-    const daySchema = z.number().int().min(1).max(366);
+    const daySchema = z.int().check(z.gte(1), z.lte(366));
     daySchema.parse(day);
     return this.client.get<VOTD>(`/v1/verse_of_the_days/${day}`);
   }

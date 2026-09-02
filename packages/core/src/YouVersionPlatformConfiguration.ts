@@ -1,5 +1,6 @@
 import { StoredGrantsSchema } from './schemas/auth';
 import { YouVersionUserInfoJSONSchema, type YouVersionUserInfoJSON } from './schemas/user-info';
+import { versionFilterState } from './version-filter-state';
 import { getLocalStorage, removeStorageItem, setStorageItem } from './web-storage';
 
 /**
@@ -19,9 +20,6 @@ export class YouVersionPlatformConfiguration {
   private static _expiryDateKey: string | null = null;
   private static _signInPromptMessage: string | undefined = undefined;
   private static _appName: string | undefined = undefined;
-  private static _permittedVersionIds: number[] | undefined = undefined;
-  private static _excludedVersionIds: number[] | undefined = undefined;
-  private static _permittedLanguageTags: string[] | undefined = undefined;
 
   private static getOrSetInstallationId(): string {
     const storage = getLocalStorage();
@@ -326,11 +324,11 @@ export class YouVersionPlatformConfiguration {
    * An empty array permits nothing. See YPE-4657.
    */
   static get permittedVersionIds(): number[] | undefined {
-    return this._permittedVersionIds;
+    return versionFilterState.permittedVersionIds;
   }
 
   static set permittedVersionIds(value: number[] | undefined) {
-    this._permittedVersionIds = value;
+    versionFilterState.permittedVersionIds = value;
   }
 
   /**
@@ -338,11 +336,11 @@ export class YouVersionPlatformConfiguration {
    * exclude nothing. Exclusion wins over `permittedVersionIds`.
    */
   static get excludedVersionIds(): number[] | undefined {
-    return this._excludedVersionIds;
+    return versionFilterState.excludedVersionIds;
   }
 
   static set excludedVersionIds(value: number[] | undefined) {
-    this._excludedVersionIds = value;
+    versionFilterState.excludedVersionIds = value;
   }
 
   /**
@@ -350,10 +348,10 @@ export class YouVersionPlatformConfiguration {
    * restriction. An empty array permits nothing.
    */
   static get permittedLanguageTags(): string[] | undefined {
-    return this._permittedLanguageTags;
+    return versionFilterState.permittedLanguageTags;
   }
 
   static set permittedLanguageTags(value: string[] | undefined) {
-    this._permittedLanguageTags = value;
+    versionFilterState.permittedLanguageTags = value;
   }
 }

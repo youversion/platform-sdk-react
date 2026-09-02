@@ -26,6 +26,8 @@ export default defineConfig({
         // to prevent ReferenceError when <YvStyles /> renders during tests.
         define: {
           __YV_STYLES__: '""',
+          __YV_COMPONENT_STYLES__: '""',
+          __YV_READER_STYLES__: '""',
         },
         resolve: {
           alias: {

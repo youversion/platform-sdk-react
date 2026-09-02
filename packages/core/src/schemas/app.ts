@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 
 /** A public app summary resource. */
 export const AppSummarySchema = z.object({
@@ -7,11 +7,11 @@ export const AppSummarySchema = z.object({
   /** The app name. */
   name: z.string(),
   /** The app description. */
-  description: z.string().optional(),
+  description: z.optional(z.string()),
   /** The app's website URL. */
-  website_url: z.string().optional(),
+  website_url: z.optional(z.string()),
   /** The app's lifecycle status. */
-  status: z.enum(['development', 'live', 'archived']).optional(),
+  status: z.optional(z.enum(['development', 'live', 'archived'])),
 });
 
 export type AppSummary = Readonly<z.infer<typeof AppSummarySchema>>;

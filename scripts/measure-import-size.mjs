@@ -39,8 +39,16 @@ const TARGETS = [
     external: UI_EXTERNAL,
   },
   {
+    name: 'ui / chrome.css',
+    path: 'packages/ui/dist/chrome.css',
+  },
+  {
     name: 'ui / tailwind.css',
     path: 'packages/ui/dist/tailwind.css',
+  },
+  {
+    name: 'ui / bible-reader.css',
+    path: 'packages/ui/dist/bible-reader.css',
   },
 ];
 
@@ -105,6 +113,7 @@ function pad(n) {
 async function main() {
   console.log('Import size (minify + gzip-9 + brotli)');
   console.log('  react, react-dom, jsx-runtime, react-query, jsdom are external');
+  console.log('  esbuild without splitting inlines import() locale chunks');
   console.log('');
   console.log(`${'name'.padEnd(36)}${'raw'.padStart(12)}${'gzip'.padStart(12)}${'brotli'.padStart(12)}`);
 

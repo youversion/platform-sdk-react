@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { BibleVerseSchema } from './verse';
 
 export const BibleChapterSchema = z.object({
@@ -9,7 +9,7 @@ export const BibleChapterSchema = z.object({
   /** Chapter title (e.g., "1") */
   title: z.string(),
   /** Array of verses */
-  verses: z.array(BibleVerseSchema).optional(),
+  verses: z.optional(z.array(BibleVerseSchema)),
 });
 
 export type BibleChapter = Readonly<z.infer<typeof BibleChapterSchema>>;

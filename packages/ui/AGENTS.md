@@ -37,10 +37,9 @@ export — treat those two as public API and breaking-change territory.
 - tsup for bundling, tsc for type declarations
 
 ## STYLING
-**React 19 `<style precedence>`**: The `YouVersionProvider` wrapper (in `src/components/YouVersionProvider.tsx`) renders `<YvStyles />` once, which outputs a `<style href="yv-sdk-styles" precedence="yv-sdk">` element. React handles hoisting to `<head>`, deduplication, SSR streaming, and Suspense integration. Individual components do NOT render `<YvStyles />` — it's centralized in the provider.
-- CSS embedded as `__YV_STYLES__` constant via tsup define
-- Built Tailwind CSS: `dist/tailwind.css` → embedded as JS string at build time
-- Static CSS also available via `import '@youversion/platform-react-ui/styles.css'` for non-React consumers
+**React 19 `<style precedence>`**: `YouVersionProvider` renders `<YvStyles />` (`href="yv-sdk-styles"`). That sheet is Provider chrome (`dist/chrome.css`). Scripture and interactive roots render `<YvComponentStyles />` (`href="yv-sdk-components"`, the full `dist/tailwind.css`) and `BibleTextView` also renders `<YvReaderStyles />`. The three injectors are separate modules so Provider does not import the fat sheets. Different hrefs so React 19 does not drop the fat sheet. React hoists, dedupes, and streams the tags.
+- CSS embedded via tsup define: chrome → `__YV_STYLES__`, full utilities → `__YV_COMPONENT_STYLES__`, reader → `__YV_READER_STYLES__`
+- Public stylesheet stays `import '@youversion/platform-react-ui/styles.css'` (`dist/tailwind.css`)
 - Each component includes a `data-yv-sdk` attribute on its root element for style scoping (consumers don't need to add this)
 - Tailwind CSS classes must be prefixed with `yv:` to prevent class naming collision when someone uses our components in their app. For example, `mt-4` becomes `yv:mt-4`
 - Light/dark mode via CSS variables (`[data-yv-sdk]`)
@@ -71,6 +70,6 @@ Follow `docs/testing.md`. This package’s flavors:
 - Do not talk to the network from UI tests; stub hooks via `YouVersionContext.hookOverrides` (`HookOverrideProvider` in `src/test/hook-overrides.tsx`) unless writing an intentional vertical smoke. Do not `vi.mock` `@youversion/platform-react-hooks`.
 
 ## CRITICAL
-- **No module side effects**: styles are rendered via React 19 `<style precedence>` in the `YouVersionProvider` wrapper
-- **Build sub-steps are order-dependent**: `build:css` (Tailwind + `strip-layers.js`) → `build:js` (tsup, injects `__YV_STYLES__`) → `build:types`. Never skip `build:css` — without it the `__YV_STYLES__` constant is empty.
+- **No module side effects**: styles are rendered via React 19 `<style precedence>`
+- **Build sub-steps are order-dependent**: `build:css` (chrome, full Tailwind, reader) → `build:js` (tsup embeds the three sheets) → `build:types`. Never skip `build:css`.
 - Always rebuild after CSS changes

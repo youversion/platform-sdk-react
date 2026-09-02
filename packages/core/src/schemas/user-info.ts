@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 
 /**
  * Shape of the decoded user profile that is persisted at sign-in.
@@ -9,10 +9,10 @@ import { z } from 'zod';
  * than trusted blindly.
  */
 export const YouVersionUserInfoJSONSchema = z.object({
-  name: z.string().optional(),
-  id: z.string().optional(),
-  avatar_url: z.string().optional(),
-  email: z.string().optional(),
+  name: z.optional(z.string()),
+  id: z.optional(z.string()),
+  avatar_url: z.optional(z.string()),
+  email: z.optional(z.string()),
 });
 
 export type YouVersionUserInfoJSON = z.infer<typeof YouVersionUserInfoJSONSchema>;

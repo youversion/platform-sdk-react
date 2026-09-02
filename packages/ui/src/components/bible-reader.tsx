@@ -56,6 +56,7 @@ import { SignInDialog } from './sign-in-dialog';
 import { BibleTextView, getCleanVerseText, type FootnoteData } from './verse';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
 import { isHighlightsLive } from '@/lib/feature-flags';
+import { YvComponentStyles } from '@/lib/yv-styles-components';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 
 type BibleReaderContextType = {
@@ -666,6 +667,7 @@ function Root({
 
   return (
     <BibleReaderContext.Provider value={contextValue}>
+      <YvComponentStyles />
       <div
         data-yv-sdk
         data-yv-theme={theme}
