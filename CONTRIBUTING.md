@@ -169,7 +169,7 @@ pnpm dev:web
 ### Workflow
 
 1. Make your changes and run `pnpm build` + `pnpm test`
-2. Run `pnpm changeset` (select patch/minor/major based on change type)
+2. Run `pnpm changeset` (select patch/minor/major) when the change should release, or `pnpm changeset --empty` when it should not
 3. Submit PR → once merged, CI creates a "Version Packages" PR
 4. Merge version PR → packages auto-publish to npm
 
@@ -185,7 +185,7 @@ pnpm dev:web
 - Breaking changes
 - Dependency updates affecting APIs
 
-**Skip changesets for:**
+**Run `pnpm changeset --empty` for:**
 
 - Documentation
 - Internal refactoring
