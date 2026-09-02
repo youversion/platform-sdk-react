@@ -3,10 +3,26 @@ import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 
 export default defineConfig({
-  entry: ['src/index.ts'],
+  entry: [
+    'src/index.ts',
+    'src/components/YouVersionProvider.tsx',
+    'src/components/bible-reader.tsx',
+    'src/components/bible-chapter-picker.tsx',
+    'src/components/bible-version-picker.tsx',
+    'src/components/YouVersionAuthButton.tsx',
+    'src/components/verse-of-the-day.tsx',
+    'src/components/verse.tsx',
+    'src/components/verse-action-popover.tsx',
+    'src/components/bible-card.tsx',
+    'src/components/profile-avatar.tsx',
+    'src/components/ui/separator.tsx',
+    'src/components/ui/textarea.tsx',
+  ],
   sourcemap: false,
-  splitting: false,
-  clean: process.env.NODE_ENV === 'production',
+  splitting: true,
+  // The UI build script empties dist before CSS. tsup must not delete
+  // dist/tailwind.css after that, or __YV_STYLES__ is empty.
+  clean: false,
   injectStyle: false,
   loader: {
     '.css': 'text',

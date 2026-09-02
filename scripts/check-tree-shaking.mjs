@@ -29,6 +29,7 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PACKAGE_ALIASES = {
   '@youversion/platform-core': join(repoRoot, 'packages/core'),
   '@youversion/platform-react-hooks': join(repoRoot, 'packages/hooks'),
+  '@youversion/platform-react-ui': join(repoRoot, 'packages/ui'),
 };
 
 const bold = (s) => `\x1B[1m${s}\x1B[0m`;
@@ -54,12 +55,6 @@ const EXPECTED_SIDE_EFFECTS = [
     sideEffects: ['**/*.css'],
   },
 ];
-
-// UI is omitted from CHECKS: packages/ui/tsup.config.ts has splitting: false and
-// inlines core (noExternal), so dist/index.js is a single ~999 kB chunk. A narrow
-// YouVersionProvider-only import still retains BibleChapterPicker/BibleVersionPicker/
-// BibleReader sentinels — the check would fail CI. Follow-up: enable tsup splitting,
-// then add a UI CHECKS fixture here.
 
 /** @param {unknown} actual @param {boolean | string[]} expected */
 function sideEffectsEqual(actual, expected) {
@@ -167,6 +162,44 @@ export {
 } from '@youversion/platform-react-hooks';
 export { useChapter, useHighlightAuthActions, useYVAuth, useBibleClient };
 `,
+    },
+  },
+  {
+    package: '@youversion/platform-react-ui',
+    external: ['react', 'react/jsx-runtime', 'react-dom', 'jsdom', '@tanstack/react-query'],
+    narrow: {
+      label: 'YouVersionProvider only',
+      source: `import { YouVersionProvider } from '@youversion/platform-react-ui';\nexport { YouVersionProvider };\n`,
+      absent: [
+        'BibleChapterPicker components must be used within BibleChapterPicker.Root',
+        'BibleVersionPicker components must be used within BibleVersionPicker.Root',
+        'BibleReader components must be used within BibleReader.Root',
+      ],
+    },
+    controls: [
+      {
+        label: 'BibleChapterPicker',
+        source: `import { BibleChapterPicker } from '@youversion/platform-react-ui';\nexport { BibleChapterPicker };\n`,
+        present: [
+          'BibleChapterPicker components must be used within BibleChapterPicker.Root',
+        ],
+      },
+      {
+        label: 'BibleVersionPicker',
+        source: `import { BibleVersionPicker } from '@youversion/platform-react-ui';\nexport { BibleVersionPicker };\n`,
+        present: [
+          'BibleVersionPicker components must be used within BibleVersionPicker.Root',
+        ],
+      },
+      {
+        label: 'BibleReader',
+        source: `import { BibleReader } from '@youversion/platform-react-ui';\nexport { BibleReader };\n`,
+        present: ['BibleReader components must be used within BibleReader.Root'],
+      },
+    ],
+    fullBarrel: {
+      label: 'multi-export barrel',
+      source: `import { YouVersionProvider, BibleReader, BibleChapterPicker, BibleVersionPicker } from '@youversion/platform-react-ui';\nexport { YouVersionProvider, BibleReader, BibleChapterPicker, BibleVersionPicker };\n`,
     },
   },
 ];

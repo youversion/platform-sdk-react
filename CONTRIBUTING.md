@@ -136,13 +136,14 @@ Bundle size budgets and tree-shaking verification require a full build first —
 |---------|-------------|
 | `pnpm build && pnpm size` | Check published bundle sizes against budgets in `.size-limit.json` (root) |
 | `pnpm size:build` | Build then run size-limit in one step |
+| `pnpm size:measure` | Minify + gzip-9 + brotli of UI consumer imports (hillclimb ruler; not the CI gate) |
 | `pnpm size:visualize` | Generate esbuild metafile JSON in `bundle-report/` for [esbuild.github.io/analyze](https://esbuild.github.io/analyze/) |
 | `pnpm size:why` | Alias for `pnpm size:visualize` (size-limit `--why` is unavailable with `preset-small-lib`) |
 | `pnpm check:tree-shaking` | Verify single-symbol consumer bundles exclude unused-export sentinels; CI asserts package.json `sideEffects` |
 
-**Export-size acceptance criteria:** `.size-limit.json` spot-checks representative named imports (`ApiClient`, `useChapter`) against budgets. Per-export attribution is `pnpm size:visualize` plus [esbuild.github.io/analyze](https://esbuild.github.io/analyze/).
+**Export-size acceptance criteria:** `.size-limit.json` spot-checks representative named imports (`ApiClient`, `useChapter`, `YouVersionProvider`) against budgets. Per-export attribution is `pnpm size:visualize` plus [esbuild.github.io/analyze](https://esbuild.github.io/analyze/).
 
-**UI tree-shaking check omitted:** `@youversion/platform-react-ui` is not in `check:tree-shaking` because `packages/ui/tsup.config.ts` sets `splitting: false` and inlines core, producing a single-chunk `dist/index.js` that cannot drop unused components. Follow-up: enable tsup splitting, then add a UI CHECKS fixture.
+**UI tree-shaking:** `check:tree-shaking` covers `@youversion/platform-react-ui`. A Provider-only import must drop `BibleReader` and both pickers. That win comes from listing every public component as a tsup entry, not from `splitting: true` alone. Four entries leave the three Bible modules on the root graph.
 
 **Updating budgets:** After a deliberate size change, run `pnpm size` locally, note the reported brotlied sizes, and set each `.size-limit.json` `limit` to measured size plus ~10% headroom.
 

@@ -36,7 +36,7 @@
     "build:css": "tailwindcss -i src/styles/global.css -o dist/tailwind.css --minify",
     "verify:styles": "node scripts/verify-styles.js",
     "generate:i18n": "node scripts/generate-i18n-resources.mjs",
-    "build": "pnpm generate:i18n && pnpm build:css && pnpm build:js && pnpm verify:styles && pnpm build:types",
+    "build": "rm -rf dist && pnpm generate:i18n && pnpm build:css && pnpm build:js && pnpm verify:styles && pnpm build:types",
     "dev": "concurrently \"node scripts/generate-i18n-resources.mjs --watch\" \"tailwindcss -i src/styles/global.css -o dist/tailwind.css --watch\" \"NODE_ENV=development tsup --watch\"",
     "test": "pnpm generate:i18n && vitest run --project unit",
     "test:watch": "pnpm generate:i18n && vitest --project unit",

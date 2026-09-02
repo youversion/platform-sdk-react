@@ -38,6 +38,13 @@
     "ignore": ["react", "react-dom", "@tanstack/react-query"]
   },
   {
+    "name": "ui / YouVersionProvider only",
+    "path": "packages/ui/dist/index.js",
+    "import": "{ YouVersionProvider }",
+    "limit": "123 KB",
+    "ignore": ["react", "react-dom", "react/jsx-runtime", "@tanstack/react-query"]
+  },
+  {
     "name": "ui / full barrel",
     "path": "packages/ui/dist/index.js",
     "limit": "235 KB",

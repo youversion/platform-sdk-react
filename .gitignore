@@ -85,3 +85,6 @@ storybook-static
 .opencode/
 .superset/
 .codex/
+
+# Local decision trails (show-me-your-work)
+.audit/
