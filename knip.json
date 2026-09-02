@@ -11,7 +11,10 @@
     "tsup",
     "tw-animate-css",
     "@microsoft/api-extractor",
-    "postcss"
+    "postcss",
+    "size-limit",
+    "@size-limit/preset-small-lib",
+    "esbuild"
   ],
   "ignoreFiles": ["packages/core/src/highlight.ts", "packages/core/src/types/highlight.ts"]
 }
