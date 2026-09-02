@@ -32,6 +32,10 @@ coverage-output/
 out/
 build
 dist
+
+# Bundle analysis reports
+bundle-report/
+*.size-limit-why.html
 *.tsbuildinfo
 
 # tsup bundled configs (temporary build artifacts)

@@ -4,6 +4,17 @@
   "description": "A type-safe TypeScript SDK for accessing the YouVersion Platform APIs. Get Bible content and build Bible-based applications.",
   "license": "Apache-2.0",
   "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "files": [
+    "dist",
+    "src/styles/*.css",
+    "README.md",
+    "CHANGELOG.md",
+    "!dist/**/*.test.*",
+    "!dist/__tests__"
+  ],
   "publishConfig": {
     "access": "public",
     "provenance": true
