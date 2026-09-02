@@ -38,6 +38,10 @@ This is a working plan, not approval for package-wide rollout.
 | Dialog keyboard containment | Browser coverage exercises initial focus, programmatic escape redirection, forward and reverse traversal, radio-group collapsing, negative `tabindex`, and wraparound. | Validated in Chromium | Expand the browser and assistive-technology matrix. |
 | Dialog modal lifetime | Coverage verifies inert background content while open and through staggered Content and Overlay exit animations. | Validated for one modal | Define ownership before supporting nested or competing overlays. |
 | Dialog dismissal and restoration | Coverage exercises Escape, backdrop click, full-viewport hit testing, overlay-only focus, and restoration after both modal nodes unmount. | Validated in Chromium | Verify real screen-reader and cross-browser behavior. |
+| Consumer form participation | Chromium coverage verifies that a light-DOM form does not own or serialize a native control inside an SDK shadow root. | Unsupported across tree scopes | Use an explicit component contract if a rollout target requires outer-form participation. |
+| Consumer labels and ARIA ID references | Chromium coverage verifies that external native labels, `aria-labelledby`, and `aria-describedby` relationships do not resolve to controls inside the root. | Unsupported across tree scopes | Keep relationships in one tree scope; verify real assistive technology separately. |
+| Consumer events, refs, and automation | Coverage verifies native retargeting, the auth button's React handler and forwarded ref, open-root queries, and effect-driven attachment timing. | Supported with documented constraints | Repeat for each public component selected for rollout. |
+| Nested shadow roots | Coverage verifies basic rendering, recursive queries, and event retargeting at each boundary. | Supported for the validated basics | Nested and concurrent overlay ownership remains with YPE-5355. |
 
 ## Direct overlay inventory
 
@@ -68,13 +72,15 @@ separate decision.
 
 ## Functional and compatibility audits
 
-- Verify native form participation and external `label`, `aria-labelledby`, and
-  `aria-describedby` relationships when controls cross tree scopes.
+- Apply the [Shadow DOM consumer compatibility contract](shadow-dom-consumer-compatibility.md)
+  to every proposed rollout component. Native outer-form participation and
+  external `label`, `aria-labelledby`, and `aria-describedby` relationships are
+  unsupported across tree scopes in the current Chromium evidence.
 - Preserve `direction` as the only intentional inherited visual input. Vertical
   writing modes, text orientation, host typography, and undeclared host custom
   properties are not supported customization inputs.
-- Document event retargeting, nested-root behavior, supported customization, and
-  shadow-aware consumer test and automation queries.
+- Repeat the documented event, ref, nested-root, and shadow-aware automation
+  checks for every public component selected for rollout.
 - Verify stylesheet construction and adoption failure recovery beyond the
   current feature fallback.
 - Audit realistic component density and the cost of many roots, effects,
