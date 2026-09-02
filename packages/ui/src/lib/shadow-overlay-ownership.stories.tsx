@@ -26,6 +26,7 @@ function OwnershipProof(): React.ReactNode {
   const exitTokensRef = useRef(new Map<string, number>());
   const pendingFocusTargetRef = useRef<ShadowOverlayFocusTarget>(null);
   const [topLayer, setTopLayer] = useState<HTMLElement | null>(null);
+  const [reopenRejected, setReopenRejected] = useState(false);
   const [revision, setRevision] = useState(0);
   const snapshot = ownershipRef.current.snapshot();
 
@@ -38,8 +39,8 @@ function OwnershipProof(): React.ReactNode {
       opener: HTMLElement,
       parentId?: string,
     ): void => {
-      exitTokensRef.current.set(id, (exitTokensRef.current.get(id) ?? 0) + 1);
       ownershipRef.current.mount({ id, kind, opener, parentId });
+      exitTokensRef.current.set(id, (exitTokensRef.current.get(id) ?? 0) + 1);
       refresh();
     },
     [refresh],
@@ -306,6 +307,34 @@ function OwnershipProof(): React.ReactNode {
                       Reopen during exit
                     </button>
                   ) : null}
+                  {layer.id === 'dialog-child-popover' ? (
+                    <button
+                      type="button"
+                      data-reopen-rejected={reopenRejected ? '' : undefined}
+                      data-testid="reject-reopen-under-exiting-parent"
+                      onClick={(event) => {
+                        beginExit('dialog-parent');
+                        try {
+                          mount(
+                            'dialog-child-popover',
+                            'nonmodal',
+                            event.currentTarget,
+                            'dialog-parent',
+                          );
+                        } catch (error) {
+                          if (
+                            !(error instanceof Error) ||
+                            !error.message.includes('under exiting parent')
+                          ) {
+                            throw error;
+                          }
+                          setReopenRejected(true);
+                        }
+                      }}
+                    >
+                      Attempt invalid reopen
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     data-testid={`close-${layer.id}`}
@@ -465,6 +494,27 @@ export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
       requireElement(dialogParent, '[data-testid="dialog-opens-popover"]'),
     );
     await userEvent.keyboard('{Escape}');
+    await expectUnmounted(root, 'dialog-parent');
+    await expectActiveElement(root, dialogParentOpener);
+
+    await userEvent.click(dialogParentOpener);
+    const cascadingDialogParent = await expectFocusedOwner(root, 'dialog-parent');
+    await userEvent.click(
+      requireElement<HTMLButtonElement>(
+        cascadingDialogParent,
+        '[data-testid="dialog-opens-popover"]',
+      ),
+    );
+    const cascadingPopover = await expectFocusedOwner(root, 'dialog-child-popover');
+    const rejectedReopen = requireElement<HTMLButtonElement>(
+      cascadingPopover,
+      '[data-testid="reject-reopen-under-exiting-parent"]',
+    );
+    await userEvent.click(rejectedReopen);
+    void expect(rejectedReopen).toHaveAttribute('data-reopen-rejected');
+    void expect(cascadingPopover).toHaveAttribute('data-phase', 'exiting');
+    void expect(cascadingDialogParent).toHaveAttribute('data-phase', 'exiting');
+    await expectUnmounted(root, 'dialog-child-popover');
     await expectUnmounted(root, 'dialog-parent');
     await expectActiveElement(root, dialogParentOpener);
 
