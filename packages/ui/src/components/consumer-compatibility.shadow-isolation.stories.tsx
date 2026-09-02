@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { expect, userEvent, waitFor } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { Textarea } from './ui/textarea';
@@ -44,6 +44,10 @@ async function requireShadowHost(container: ParentNode): Promise<HTMLElement> {
     if (!host.shadowRoot) throw new Error('shadow root not attached');
     return host;
   });
+}
+
+interface NodeEvidenceOutput extends HTMLOutputElement {
+  observedNode?: EventTarget | null;
 }
 
 function FormRelationshipsHarness(): React.ReactNode {
@@ -120,15 +124,25 @@ export const FormsAndExternalRelationshipsStopAtTheTreeScope: Story = {
 
 function AutomaticButtonHarness(): React.ReactNode {
   const buttonRef = useRef<HTMLButtonElement | null>(null);
-  const initialRenderRefWasNull = useRef<boolean | undefined>(undefined);
-  const [resolvedRefTag, setResolvedRefTag] = useState('pending');
-  const [consumerTargetTag, setConsumerTargetTag] = useState('pending');
-  const [consumerCurrentTargetTag, setConsumerCurrentTargetTag] = useState('pending');
+  const firstLayoutRefState = useRef<'pending' | 'null' | 'resolved'>('pending');
+  const forwardedRefEvidence = useRef<NodeEvidenceOutput | null>(null);
+  const consumerTargetEvidence = useRef<NodeEvidenceOutput | null>(null);
+  const consumerCurrentTargetEvidence = useRef<NodeEvidenceOutput | null>(null);
+  const [firstLayoutResult, setFirstLayoutResult] = useState<'pending' | 'null' | 'resolved'>(
+    'pending',
+  );
 
-  initialRenderRefWasNull.current ??= buttonRef.current === null;
+  useLayoutEffect(() => {
+    if (firstLayoutRefState.current !== 'pending') return;
+
+    const result = buttonRef.current === null ? 'null' : 'resolved';
+    firstLayoutRefState.current = result;
+    setFirstLayoutResult(result);
+  }, []);
+
   const receiveButtonRef = useCallback((node: HTMLButtonElement | null): void => {
     buttonRef.current = node;
-    setResolvedRefTag(node?.tagName ?? 'pending');
+    if (forwardedRefEvidence.current) forwardedRefEvidence.current.observedNode = node;
   }, []);
 
   return (
@@ -138,16 +152,18 @@ function AutomaticButtonHarness(): React.ReactNode {
         data-testid="isolated-auth-button"
         mode="signOut"
         onClick={(event) => {
-          setConsumerTargetTag(event.target instanceof Element ? event.target.tagName : 'unknown');
-          setConsumerCurrentTargetTag(event.currentTarget.tagName);
+          if (consumerTargetEvidence.current) {
+            consumerTargetEvidence.current.observedNode = event.target;
+          }
+          if (consumerCurrentTargetEvidence.current) {
+            consumerCurrentTargetEvidence.current.observedNode = event.currentTarget;
+          }
         }}
       />
-      <output data-testid="initial-ref-state">
-        {initialRenderRefWasNull.current ? 'null' : 'resolved'}
-      </output>
-      <output data-testid="resolved-ref-tag">{resolvedRefTag}</output>
-      <output data-testid="consumer-target-tag">{consumerTargetTag}</output>
-      <output data-testid="consumer-current-target-tag">{consumerCurrentTargetTag}</output>
+      <output data-testid="first-layout-ref-state">{firstLayoutResult}</output>
+      <output ref={forwardedRefEvidence} data-testid="forwarded-ref-evidence" />
+      <output ref={consumerTargetEvidence} data-testid="consumer-target-evidence" />
+      <output ref={consumerCurrentTargetEvidence} data-testid="consumer-current-target-evidence" />
     </div>
   );
 }
@@ -172,24 +188,35 @@ export const EventsRefsAndAutomationExposeDifferentConsumerViews: Story = {
 
     void expect(canvasElement.querySelector('[data-testid="isolated-auth-button"]')).toBeNull();
     void expect(root.querySelector('[data-testid="isolated-auth-button"]')).toBe(button);
-    void expect(
-      requireElement<HTMLOutputElement>(
-        canvasElement,
-        '[data-testid="initial-ref-state"]',
-        'initial ref state not rendered',
-      ),
-    ).toHaveTextContent('null');
-    await waitFor(
-      () =>
-        void expect(
-          requireElement<HTMLOutputElement>(
-            canvasElement,
-            '[data-testid="resolved-ref-tag"]',
-            'resolved ref state not rendered',
-          ),
-        ).toHaveTextContent('BUTTON'),
+    const firstLayoutEvidence = requireElement<HTMLOutputElement>(
+      canvasElement,
+      '[data-testid="first-layout-ref-state"]',
+      'first layout ref state not rendered',
+    );
+    const forwardedRefEvidence = requireElement<NodeEvidenceOutput>(
+      canvasElement,
+      '[data-testid="forwarded-ref-evidence"]',
+      'forwarded ref evidence not rendered',
+    );
+    const consumerTargetEvidence = requireElement<NodeEvidenceOutput>(
+      canvasElement,
+      '[data-testid="consumer-target-evidence"]',
+      'consumer target evidence not rendered',
+    );
+    const consumerCurrentTargetEvidence = requireElement<NodeEvidenceOutput>(
+      canvasElement,
+      '[data-testid="consumer-current-target-evidence"]',
+      'consumer current target evidence not rendered',
     );
 
+    void expect(firstLayoutEvidence).toHaveTextContent('null');
+    await waitFor(() => void expect(forwardedRefEvidence.observedNode).toBe(button));
+
+    const clickTarget = requireElement<HTMLDivElement>(
+      button,
+      'div',
+      'auth button label click target not rendered',
+    );
     let outsideTarget: EventTarget | null = null;
     let outsidePath: EventTarget[] = [];
     observer.addEventListener(
@@ -201,27 +228,14 @@ export const EventsRefsAndAutomationExposeDifferentConsumerViews: Story = {
       { once: true },
     );
 
-    await userEvent.click(button);
+    await userEvent.click(clickTarget);
 
     void expect(outsideTarget).toBe(host);
-    void expect(outsidePath[0]).toBe(button);
+    void expect(outsidePath[0]).toBe(clickTarget);
+    void expect(outsidePath).toContain(button);
     void expect(outsidePath).toContain(host);
-    await waitFor(() => {
-      void expect(
-        requireElement<HTMLOutputElement>(
-          canvasElement,
-          '[data-testid="consumer-target-tag"]',
-          'consumer target state not rendered',
-        ),
-      ).toHaveTextContent('BUTTON');
-      void expect(
-        requireElement<HTMLOutputElement>(
-          canvasElement,
-          '[data-testid="consumer-current-target-tag"]',
-          'consumer current target state not rendered',
-        ),
-      ).toHaveTextContent('BUTTON');
-    });
+    void expect(consumerTargetEvidence.observedNode).toBe(clickTarget);
+    void expect(consumerCurrentTargetEvidence.observedNode).toBe(button);
   },
 };
 
