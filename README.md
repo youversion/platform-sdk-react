@@ -10,7 +10,7 @@
 
 A comprehensive React SDK for integrating [YouVersion Platform](https://platform.youversion.com/) features into your web applications. This monorepo provides a type-safe API client, React hooks, and ready-to-use components for Bible content.
 
-**Hosted demo:** https://youversion.github.io/platform-sdk-react/
+Play with these React SDK components in the [demo app](https://youversion.github.io/platform-sdk-react/).
 
 ## Quick Start
 
