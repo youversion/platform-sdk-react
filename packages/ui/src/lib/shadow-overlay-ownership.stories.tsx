@@ -115,7 +115,7 @@ function OwnershipProof(): React.ReactNode {
     pendingFocusTargetRef.current = null;
     if (pendingFocusTarget?.kind === 'element') {
       pendingFocusTarget.element.focus();
-      return;
+      if (pendingFocusTarget.element.matches(':focus')) return;
     }
     if (pendingFocusTarget?.kind === 'layer') {
       topLayer
@@ -543,6 +543,19 @@ export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
     await expectOwner(root, 'first');
     void expect(first.inert).toBe(false);
     await expectActiveElement(root, secondOpener);
+    await userEvent.keyboard('{Escape}');
+    await expectUnmounted(root, 'first');
+    await expectActiveElement(root, firstOpener);
+
+    await userEvent.click(firstOpener);
+    await userEvent.click(secondOpener);
+    const fallbackFirst = requireElement<HTMLElement>(topLayer, '[data-overlay-id="first"]');
+    secondOpener.disabled = true;
+    await userEvent.click(outsideLayer);
+    await expectUnmounted(root, 'second');
+    await expectFocusedOwner(root, 'first');
+    void expect(fallbackFirst.inert).toBe(false);
+    secondOpener.disabled = false;
     await userEvent.keyboard('{Escape}');
     await expectUnmounted(root, 'first');
     await expectActiveElement(root, firstOpener);

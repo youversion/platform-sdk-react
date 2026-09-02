@@ -30,12 +30,13 @@ extend an existing descendant's teardown deadline. Reopening a stable overlay
 ID during exit cancels that exit and refreshes its registration,
 including its focus restoration target, parent, kind, and dismissal policy.
 Focus restores only when the current owner unmounts, in this order: a connected
-focus restoration target in the remaining active scope; otherwise the remaining
-top eligible layer; otherwise the outer focus restoration target once the last
-modal leaves. Removing a lower layer does not steal focus from its owner. An
-absent or disconnected focus restoration target is skipped in favor of the next
-tier. Descendant unmounts during an ancestor-close cascade suppress focus
-restoration; the ancestor's final unmount performs the single restore. Parent
+focus restoration target in the remaining active scope that accepts focus;
+otherwise the remaining top eligible layer; otherwise the outer focus
+restoration target once the last modal leaves. Removing a lower layer does not
+steal focus from its owner. An absent, disconnected, or unfocusable restoration
+target is skipped in favor of the next tier. Descendant unmounts during an
+ancestor-close cascade suppress focus restoration; the ancestor's final unmount
+performs the single restore. Parent
 updates must remain acyclic: an overlay cannot register under itself or one of
 its descendants. Refreshing a stable ID moves its existing subtree to the top
 so every parent remains before its children in registration order.
