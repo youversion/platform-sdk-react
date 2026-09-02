@@ -34,6 +34,14 @@ function requireElement<ElementType extends Element>(
   return element;
 }
 
+async function waitForElement<ElementType extends Element>(
+  container: ParentNode,
+  selector: string,
+  message: string,
+): Promise<ElementType> {
+  return waitFor(() => requireElement<ElementType>(container, selector, message));
+}
+
 async function requireShadowHost(container: ParentNode): Promise<HTMLElement> {
   return waitFor(() => {
     const host = requireElement<HTMLElement>(
@@ -88,7 +96,7 @@ export const FormsAndExternalRelationshipsStopAtTheTreeScope: Story = {
     );
     const host = await requireShadowHost(form);
     const root = host.shadowRoot!;
-    const textarea = requireElement<HTMLTextAreaElement>(
+    const textarea = await waitForElement<HTMLTextAreaElement>(
       root,
       '#isolated-notes',
       'isolated textarea not rendered',
@@ -180,7 +188,7 @@ export const EventsRefsAndAutomationExposeDifferentConsumerViews: Story = {
     );
     const host = await requireShadowHost(observer);
     const root = host.shadowRoot!;
-    const button = requireElement<HTMLButtonElement>(
+    const button = await waitForElement<HTMLButtonElement>(
       root,
       '[data-testid="isolated-auth-button"]',
       'isolated auth button not rendered',
@@ -254,14 +262,14 @@ export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
   play: async ({ canvasElement }) => {
     const outerHost = await requireShadowHost(canvasElement);
     const outerRoot = outerHost.shadowRoot!;
-    const outerObserver = requireElement<HTMLElement>(
+    const outerObserver = await waitForElement<HTMLElement>(
       outerRoot,
       '[data-testid="outer-shadow-observer"]',
       'outer shadow observer not rendered',
     );
     const innerHost = await requireShadowHost(outerObserver);
     const innerRoot = innerHost.shadowRoot!;
-    const button = requireElement<HTMLButtonElement>(
+    const button = await waitForElement<HTMLButtonElement>(
       innerRoot,
       '[data-testid="nested-auth-button"]',
       'nested auth button not rendered',
