@@ -12,11 +12,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
-    "./styles.css": "./dist/tailwind.css"
+    "./styles.css": "./dist/styles.css"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
-  "style": "./dist/tailwind.css",
+  "style": "./dist/styles.css",
   "types": "./dist/index.d.ts",
   "browser": {
     "jsdom": false
@@ -40,7 +40,7 @@
   "scripts": {
     "build:types": "tsc -p tsconfig.build.json",
     "build:js": "tsup",
-    "build:css": "tailwindcss -i src/styles/chrome.css -o dist/chrome.css --minify && tailwindcss -i src/styles/global.css -o dist/tailwind.css --minify && node scripts/preserve-host-revert-layer.js && tailwindcss -i src/styles/reader.css -o dist/bible-reader.css --minify",
+    "build:css": "tailwindcss -i src/styles/chrome.css -o dist/chrome.css --minify && tailwindcss -i src/styles/global.css -o dist/tailwind.css --minify && node scripts/preserve-host-revert-layer.js && tailwindcss -i src/styles/reader.css -o dist/bible-reader.css --minify && node scripts/write-public-styles.js",
     "verify:styles": "node scripts/verify-styles.js",
     "generate:i18n": "node scripts/generate-i18n-resources.mjs",
     "check:entries": "node scripts/check-public-entries.mjs",

@@ -114,6 +114,7 @@ function collectUsedCatalogKeys() {
       }
       if (!/\.(?:[cm]?[jt]sx?)$/.test(entry.name)) continue;
       if (entry.name.includes('.generated.')) continue;
+      if (/\.(?:test|stories)\./.test(entry.name)) continue;
       const source = readFileSync(fullPath, 'utf8');
       for (const pattern of [T_CALL_RE, I18N_KEY_RE]) {
         pattern.lastIndex = 0;

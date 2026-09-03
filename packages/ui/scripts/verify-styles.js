@@ -7,8 +7,19 @@ const dist = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const errors = [];
 
 const chromeCssPath = resolve(dist, 'chrome.css');
-if (!existsSync(chromeCssPath) || readFileSync(chromeCssPath, 'utf-8').trim().length === 0) {
+const chromeCss = existsSync(chromeCssPath) ? readFileSync(chromeCssPath, 'utf-8') : '';
+if (!chromeCss.trim()) {
   errors.push('dist/chrome.css is missing or empty — did build:css run?');
+} else {
+  const unlayeredChrome = stripLayerBlocks(chromeCss);
+  if (!unlayeredChrome.includes('revert-layer')) {
+    errors.push(
+      'dist/chrome.css missing unlayered A2 revert-layer rule (Provider-only host isolation)',
+    );
+  }
+  if (!unlayeredChrome.includes('-webkit-appearance:revert-layer')) {
+    errors.push('dist/chrome.css missing -webkit-appearance:revert-layer on the unlayered A2 rule');
+  }
 }
 
 const cssPath = resolve(dist, 'tailwind.css');
@@ -30,8 +41,22 @@ if (!css.trim()) {
 }
 
 const readerCssPath = resolve(dist, 'bible-reader.css');
-if (!existsSync(readerCssPath) || readFileSync(readerCssPath, 'utf-8').trim().length === 0) {
+const readerCss = existsSync(readerCssPath) ? readFileSync(readerCssPath, 'utf-8') : '';
+if (!readerCss.trim()) {
   errors.push('dist/bible-reader.css is missing or empty — did build:css run?');
+}
+
+const publicCssPath = resolve(dist, 'styles.css');
+const publicCss = existsSync(publicCssPath) ? readFileSync(publicCssPath, 'utf-8') : '';
+if (!publicCss.trim()) {
+  errors.push('dist/styles.css is missing or empty — did write-public-styles run?');
+} else {
+  if (!publicCss.includes('scrollbar-hide')) {
+    errors.push('dist/styles.css missing full utility sheet');
+  }
+  if (!publicCss.includes('--yv-reader-font-size')) {
+    errors.push('dist/styles.css missing reader typography (manual import contract)');
+  }
 }
 
 const jsPath = resolve(dist, 'index.js');

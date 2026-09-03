@@ -39,7 +39,7 @@ export — treat those two as public API and breaking-change territory.
 ## STYLING
 **React 19 `<style precedence>`**: `YouVersionProvider` renders `<YvStyles />` (`href="yv-sdk-styles"`). That sheet is Provider chrome (`dist/chrome.css`). Scripture and interactive roots render `<YvComponentStyles />` (`href="yv-sdk-components"`, the full `dist/tailwind.css`) and `BibleTextView` also renders `<YvReaderStyles />`. The three injectors are separate modules so Provider does not import the fat sheets. Different hrefs so React 19 does not drop the fat sheet. React hoists, dedupes, and streams the tags.
 - CSS embedded via tsup define: chrome → `__YV_STYLES__`, full utilities → `__YV_COMPONENT_STYLES__`, reader → `__YV_READER_STYLES__`
-- Public stylesheet stays `import '@youversion/platform-react-ui/styles.css'` (`dist/tailwind.css`)
+- Public stylesheet stays `import '@youversion/platform-react-ui/styles.css'` (`dist/styles.css`: utilities plus reader). JS still injects the three sheets separately.
 - Each component includes a `data-yv-sdk` attribute on its root element for style scoping (consumers don't need to add this)
 - Tailwind CSS classes must be prefixed with `yv:` to prevent class naming collision when someone uses our components in their app. For example, `mt-4` becomes `yv:mt-4`
 - Light/dark mode via CSS variables (`[data-yv-sdk]`)

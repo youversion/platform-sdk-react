@@ -51,3 +51,26 @@ layer(yv-sdk-fonts);
     }
   }
 }
+
+/*
+ * Same A2 rule as global.css. Provider chrome is the only sheet on a
+ * Provider-only import, so host `button {}` must revert here too.
+ */
+[data-yv-sdk] *,
+[data-yv-sdk] *::before,
+[data-yv-sdk] *::after {
+  box-sizing: revert-layer;
+  padding: revert-layer;
+  margin: revert-layer;
+  border: revert-layer;
+  background: revert-layer;
+  font: revert-layer;
+  color: revert-layer;
+  line-height: revert-layer;
+  letter-spacing: revert-layer;
+  appearance: revert-layer;
+  -webkit-appearance: revert-layer;
+  text-decoration: revert-layer;
+  list-style: revert-layer;
+  text-transform: revert-layer;
+}
