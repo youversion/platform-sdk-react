@@ -2,6 +2,7 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useLanguage } from './useLanguage';
 import * as core from '@youversion/platform-core';
+import type { Language } from '@youversion/platform-core';
 import { createLanguagesClientStub, createYVWrapper } from './test/utils';
 
 describe('useLanguage', () => {
@@ -9,7 +10,7 @@ describe('useLanguage', () => {
   const languagesClient = createLanguagesClientStub({ getLanguage: mockGetLanguage });
   const wrapper = createYVWrapper('test-app-key', { languagesClient });
 
-  const mockLanguage = {
+  const mockLanguage: Language = {
     id: 'en',
     language: 'en',
     script: 'Latn',
