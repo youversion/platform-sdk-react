@@ -137,7 +137,6 @@ describe('UI YouVersionProvider', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     render(
-      // @ts-expect-error -- exercising the runtime guard with an invalid appKey
       <YouVersionProvider appKey="" locale="es">
         <div data-testid="child">hello</div>
       </YouVersionProvider>,
