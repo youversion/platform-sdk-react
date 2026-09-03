@@ -77,11 +77,26 @@ accepts that host registrations can collide with SDK family names. It also
 cannot protect a component host from constraints applied to its ancestors. Open
 roots are a CSS boundary, not a security boundary.
 
-Concurrent independent overlays in one shadow root and nested overlays launched
-from an open dialog are unsupported until the package defines stacking, focus
-ownership, and dismissal contracts. Radix's development-only relationship
-checks can also emit warnings for valid IDs inside a shadow root because those
-checks query the document rather than the root.
+YPE-5355 exercised nested and concurrent overlays through the production
+`ShadowRootHost` seam (`portalStrategy="local-top-layer"`, real
+`VerseActionPopover`, `HighlightPermissionDialog`, `Dialog`, and `Popover`).
+The four ticket scenarios — popover → dialog, dialog → popover, two independent
+overlays, and rapid close/reopen during exit — did not require a new
+overlay-ownership registry. Radix already owns Escape, outside dismissal,
+presence, and focus scope. Independent overlays keep current Radix
+dismiss-on-outside; both staying mounted is not required. YPE-1034 still allows
+a verse-action popover to remain open under the permission or sign-in dialog.
+
+The one reproduced gap was focus restoration after a rapid reopen while the
+previous modal was still exiting: the adapter had captured the outgoing overlay
+node. The production focus helper now skips portal-container nodes and falls
+back to the last wrapper control. No second ownership class, parent graph,
+custom exiting phase, or duplicate focus trap was added. Shipping this
+coordination to `main` remains YPE-5356.
+
+Radix's development-only relationship checks can also emit warnings for valid
+IDs inside a shadow root because those checks query the document rather than
+the root.
 
 Only `YouVersionAuthButton` is automatically isolated by this prototype.
 `BibleVersionPicker` and other public exports do not gain automatic isolation

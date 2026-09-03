@@ -21,8 +21,9 @@ This is a working plan, not approval for package-wide rollout.
   Shadow DOM boundaries.
 - The internal `SignInDialog` is validated only through an opt-in
   `ShadowRootHost` story.
-- Concurrent independent overlays in one shadow root and nested overlays
-  launched from an open dialog are unsupported.
+- Nested and concurrent overlays in one shadow root were exercised through the
+  production `ShadowRootHost` seam (YPE-5355). No additional ownership registry
+  was required. Runtime shipping remains YPE-5356.
 
 ## Validation matrix
 
@@ -36,7 +37,7 @@ This is a working plan, not approval for package-wide rollout.
 | Portal lifecycle | Unit and browser coverage exercise lazy creation, exit-animation retention, cleanup, immediate reopen behavior, and the direct-Radix `VerseActionPopover` consumer. | Validated for shared primitives and the known bypass | Repeat the consumer audit when adding another direct overlay primitive. |
 | Dialog relationships | Chromium resolves title and description relationships inside the component tree. | Validated in Chromium | Verify announcements with real assistive technology. |
 | Dialog keyboard containment | Browser coverage exercises initial focus, programmatic escape redirection, forward and reverse traversal, radio-group collapsing, negative `tabindex`, and wraparound. | Validated in Chromium | Expand the browser and assistive-technology matrix. |
-| Dialog modal lifetime | Coverage verifies inert background content while open and through staggered Content and Overlay exit animations. | Validated for one modal | Define ownership before supporting nested or competing overlays. |
+| Dialog modal lifetime | Coverage verifies inert background content while open and through staggered Content and Overlay exit animations. Nested and concurrent overlays were then exercised through the production seam (YPE-5355): popover → dialog, dialog → popover, independent Radix dismiss-on-outside, and rapid reopen during unequal exit. | Validated for the production seam | YPE-5356 owns shipping. Expand browser and assistive-technology coverage. |
 | Dialog dismissal and restoration | Coverage exercises Escape, backdrop click, full-viewport hit testing, overlay-only focus, and restoration after both modal nodes unmount. | Validated in Chromium | Verify real screen-reader and cross-browser behavior. |
 
 ## Direct overlay inventory
@@ -50,8 +51,8 @@ This is a working plan, not approval for package-wide rollout.
 
 No other production direct-overlay bypass was found. The inventory therefore
 produced no equivalent low-risk migration and no materially different case that
-requires follow-up work. Nested and concurrent overlay ownership remains a
-separate decision.
+requires follow-up work. YPE-5355 found no need for a new overlay-ownership
+registry on top of `ShadowRootHost` plus Radix; YPE-5356 owns runtime shipping.
 
 ## Blocking production-readiness decisions
 
@@ -59,8 +60,10 @@ separate decision.
   or package-wide.
 - Define SSR, hydration, and first-paint behavior. The current effect-attached
   root renders an empty host on the server and delays content and forwarded refs.
-- Define stacking, focus ownership, and dismissal contracts for nested or
-  competing modal and non-modal overlays.
+- Decide whether the YPE-5355 production-seam proof is enough to ship nested
+  and concurrent overlays (YPE-5356). The proof did not require a new
+  ownership registry; cross-browser and assistive-technology coverage still
+  remain.
 - Complete the package-wide custom-property inventory and prevention guard in
   YPE-5400. The known `BibleVersionPicker`, `InputGroup`, and `tw-animate-css`
   dependencies now resolve through locally-defined SDK-owned spacing and radius
