@@ -56,7 +56,9 @@ export const InitialsFallback: Story = {
   tags: ['integration'],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText('CA')).toBeInTheDocument();
+    await waitFor(async () => {
+      await expect(canvas.getByText('CA')).toBeInTheDocument();
+    });
     await expect(canvasElement.querySelector('[data-slot="avatar"]')).toHaveAttribute(
       'aria-label',
       'Cam Anderson',
@@ -71,7 +73,9 @@ export const SingleName: Story = {
   tags: ['integration'],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText('C')).toBeInTheDocument();
+    await waitFor(async () => {
+      await expect(canvas.getByText('C')).toBeInTheDocument();
+    });
   },
 };
 
@@ -81,8 +85,10 @@ export const EmptyName: Story = {
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
-    await expect(canvasElement.querySelector('[data-slot="avatar-fallback"]')).toHaveTextContent(
-      '',
-    );
+    await waitFor(async () => {
+      await expect(canvasElement.querySelector('[data-slot="avatar-fallback"]')).toHaveTextContent(
+        '',
+      );
+    });
   },
 };

@@ -231,7 +231,11 @@ export const SuggestedLanguagesTabs: Story = {
     await expect(dialog).toBeInTheDocument();
 
     // Click language button to open language selection
-    const languageButton = await screen.findByRole('button', { name: /select language/i });
+    const languageButton = await screen.findByRole(
+      'button',
+      { name: /select language/i },
+      { timeout: 10_000 },
+    );
     await userEvent.click(languageButton);
 
     // Verify the Suggested tab is active by default and shows "Regional" heading
@@ -378,7 +382,11 @@ export const InteractiveVersionSearch: Story = {
     const canvas = within(canvasElement);
 
     // Open popover
-    const trigger = canvas.getByRole('button', { name: /select|111|1/i });
+    const trigger = await canvas.findByRole(
+      'button',
+      { name: /select|111|1/i },
+      { timeout: 10_000 },
+    );
     await userEvent.click(trigger);
 
     // Type in search

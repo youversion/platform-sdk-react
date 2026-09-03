@@ -4,7 +4,6 @@ import type { PartialStoryFn, StoryContext } from 'storybook/internal/csf';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { YouVersionProvider } from '../src/components/YouVersionProvider';
 import { YvComponentStyles } from '../src/lib/yv-styles-components';
-import { YvReaderStyles } from '../src/lib/yv-styles-reader';
 import { globalHandlers } from '../src/test/mocks/handlers';
 import { StorybookEnvCheck } from '../src/test/StorybookEnvCheck';
 
@@ -19,7 +18,6 @@ function StoryWithSdkSheets({ children }: { children: React.ReactNode }): React.
     <>
       <Suspense fallback={null}>
         <YvComponentStyles />
-        <YvReaderStyles />
       </Suspense>
       {children}
     </>
