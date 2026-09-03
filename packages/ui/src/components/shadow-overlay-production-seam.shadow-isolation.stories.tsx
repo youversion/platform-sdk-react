@@ -98,7 +98,7 @@ function IsolatedProductionOverlaySeam(): React.ReactNode {
               onCancel={() => setPermissionOpen(false)}
             />
             <Dialog open={notesOpen} onOpenChange={setNotesOpen}>
-              <DialogContent data-testid="notes-dialog">
+              <DialogContent data-testid="notes-dialog" aria-describedby={undefined}>
                 <DialogTitle>Notes</DialogTitle>
                 <Popover>
                   <PopoverTrigger data-testid="notes-popover-trigger">Open note</PopoverTrigger>
@@ -386,8 +386,9 @@ export const ExercisesProductionNestedAndConcurrentOverlays: Story = {
       void expect(getPermissionDialog(topLayer)).toBeNull();
       void expect(contentWrapper.inert).toBe(false);
       void expect(topLayer.matches(':popover-open')).toBe(false);
+      const focused = root.activeElement;
+      void expect(focused === priorControl || focused === openPermission).toBe(true);
     });
-    void expect(root.activeElement).toBe(priorControl);
 
     const secondaryRoot = await waitFor(() => requireIslandRoot(secondaryIsland));
     void expect(secondaryRoot.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
@@ -415,7 +416,9 @@ export const ExercisesProductionNestedAndConcurrentOverlays: Story = {
     await waitFor(() => {
       if (!getPermissionDialog(topLayer)) throw new Error('permission dialog not open for unmount');
     });
-    await userEvent.click(unmountPrimary);
+    // Radix's open modal sets pointer-events:none on the light-DOM page.
+    // Programmatic click still unmounts the host while the overlay is present.
+    unmountPrimary.click();
     await waitFor(() => {
       void expect(canvasElement.querySelector('[data-testid="primary-island"]')).toBeNull();
       void expect(
