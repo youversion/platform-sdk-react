@@ -71,5 +71,5 @@ Follow `docs/testing.md`. This package’s flavors:
 
 ## CRITICAL
 - **No module side effects**: styles are rendered via React 19 `<style precedence>`
-- **Build sub-steps are order-dependent**: `build:css` (chrome, full Tailwind, reader) → `build:js` (tsup embeds the three sheets) → `build:types`. Never skip `build:css`.
+- **Build sub-steps are order-dependent**: `build:css` (chrome, full Tailwind, `preserve-host-revert-layer.js` so minify keeps `-webkit-appearance`, then reader) → `build:js` (tsup embeds the three sheets) → `build:types`. Never skip `build:css`.
 - Always rebuild after CSS changes

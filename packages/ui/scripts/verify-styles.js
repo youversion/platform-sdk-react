@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripLayerBlocks } from './strip-layer-blocks.js';
 
 const dist = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const errors = [];
@@ -11,8 +12,21 @@ if (!existsSync(chromeCssPath) || readFileSync(chromeCssPath, 'utf-8').trim().le
 }
 
 const cssPath = resolve(dist, 'tailwind.css');
-if (!existsSync(cssPath) || readFileSync(cssPath, 'utf-8').trim().length === 0) {
+const css = existsSync(cssPath) ? readFileSync(cssPath, 'utf-8') : '';
+if (!css.trim()) {
   errors.push('dist/tailwind.css is missing or empty — did build:css run?');
+} else {
+  const unlayered = stripLayerBlocks(css);
+  if (!unlayered.includes('revert-layer')) {
+    errors.push(
+      'dist/tailwind.css missing unlayered A2 revert-layer rule (must not live inside @layer)',
+    );
+  }
+  if (!unlayered.includes('-webkit-appearance:revert-layer')) {
+    errors.push(
+      'dist/tailwind.css missing -webkit-appearance:revert-layer on the unlayered A2 rule',
+    );
+  }
 }
 
 const readerCssPath = resolve(dist, 'bible-reader.css');
@@ -57,6 +71,10 @@ if (existsSync(dist)) {
 
   if (!js.includes('--yv-reader-font-size')) {
     errors.push('reader CSS missing from dist — __YV_READER_STYLES__ was not replaced');
+  }
+
+  if (!js.includes('revert-layer')) {
+    errors.push('dist/index.js missing A2 revert-layer isolation rule');
   }
 }
 
