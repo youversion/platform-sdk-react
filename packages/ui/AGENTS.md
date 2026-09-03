@@ -38,10 +38,20 @@ export — treat those two as public API and breaking-change territory.
 
 ## STYLING
 **React 19 `<style precedence>`**: The `YouVersionProvider` wrapper (in `src/components/YouVersionProvider.tsx`) renders `<YvStyles />` once, which outputs a `<style href="yv-sdk-styles" precedence="yv-sdk">` element. React handles hoisting to `<head>`, deduplication, SSR streaming, and Suspense integration. Individual components do NOT render `<YvStyles />` — it's centralized in the provider.
+- Shadow DOM exception: `ShadowRootHost` installs the embedded `__YV_STYLES__`
+  inside each component shadow root because document styles cannot cross that
+  boundary. It prefers a cached constructable stylesheet and renders a local
+  `<style>` fallback when adoption is unavailable.
+- Structural shadow selectors, including `:host` and dynamically-created
+  shadow overlay containers, are intentionally centralized in the existing
+  `src/styles/global.css` so they pass through the standard build and embedding
+  path.
 - CSS embedded as `__YV_STYLES__` constant via tsup define
 - Built Tailwind CSS: `dist/tailwind.css` → embedded as JS string at build time
 - Static CSS also available via `import '@youversion/platform-react-ui/styles.css'` for non-React consumers
-- Each component includes a `data-yv-sdk` attribute on its root element for style scoping (consumers don't need to add this)
+- Each component includes `data-yv-sdk` on its styled root. An isolated
+  component's styled root is inside its shadow tree; its light-DOM boundary uses
+  `data-yv-shadow-host` instead.
 - Tailwind CSS classes must be prefixed with `yv:` to prevent class naming collision when someone uses our components in their app. For example, `mt-4` becomes `yv:mt-4`
 - Light/dark mode via CSS variables (`[data-yv-sdk]`)
 - Use semantic theme tokens (`yv:text-muted-foreground`, `yv:bg-destructive`) instead of arbitrary color values
