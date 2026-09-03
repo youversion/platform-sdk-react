@@ -7,7 +7,7 @@ import { tabbable } from 'tabbable';
 import { requireShadowRoot } from '../test/dom-stubs';
 import {
   ShadowOverlayOwnership,
-  type ShadowOverlayFocusTarget,
+  type ShadowOverlayFocusPlan,
   type ShadowOverlayKind,
 } from './shadow-overlay-ownership';
 import {
@@ -24,7 +24,7 @@ function OwnershipProof(): React.ReactNode {
   const rapidOpenerRef = useRef<HTMLButtonElement | null>(null);
   const ownershipRef = useRef(new ShadowOverlayOwnership());
   const exitTokensRef = useRef(new Map<string, number>());
-  const pendingFocusTargetRef = useRef<ShadowOverlayFocusTarget>(null);
+  const pendingFocusPlanRef = useRef<ShadowOverlayFocusPlan>([]);
   const [topLayer, setTopLayer] = useState<HTMLElement | null>(null);
   const [reopenRejected, setReopenRejected] = useState(false);
   const [revision, setRevision] = useState(0);
@@ -52,8 +52,7 @@ function OwnershipProof(): React.ReactNode {
       const layer = ownershipRef.current.snapshot().layers.find((candidate) => candidate.id === id);
       if (layer?.phase !== 'exiting') return;
 
-      const focusTarget = ownershipRef.current.unmount(id);
-      pendingFocusTargetRef.current = focusTarget;
+      pendingFocusPlanRef.current = ownershipRef.current.unmount(id);
       refresh();
     },
     [refresh],
@@ -111,17 +110,15 @@ function OwnershipProof(): React.ReactNode {
     if (snapshot.layers.length > 0 && !topLayer.matches(':popover-open')) topLayer.showPopover();
     if (snapshot.layers.length === 0 && topLayer.matches(':popover-open')) topLayer.hidePopover();
 
-    const pendingFocusTarget = pendingFocusTargetRef.current;
-    pendingFocusTargetRef.current = null;
-    if (pendingFocusTarget?.kind === 'element') {
-      pendingFocusTarget.element.focus();
-      if (pendingFocusTarget.element.matches(':focus')) return;
-    }
-    if (pendingFocusTarget?.kind === 'layer') {
-      topLayer
-        .querySelector<HTMLElement>(`[data-overlay-id="${pendingFocusTarget.id}"]`)
-        ?.focus();
-      return;
+    const pendingFocusPlan = pendingFocusPlanRef.current;
+    pendingFocusPlanRef.current = [];
+    for (const candidate of pendingFocusPlan) {
+      const target =
+        candidate.kind === 'element'
+          ? candidate.element
+          : topLayer.querySelector<HTMLElement>(`[data-overlay-id="${candidate.id}"]`);
+      target?.focus();
+      if (target?.matches(':focus')) return;
     }
 
     const owner = topLayer.querySelector<HTMLElement>(
@@ -556,6 +553,16 @@ export const ExercisesNestedConcurrentAndRapidReopenOwnership: Story = {
     await expectFocusedOwner(root, 'first');
     void expect(fallbackFirst.inert).toBe(false);
     secondOpener.disabled = false;
+    await userEvent.keyboard('{Escape}');
+    await expectUnmounted(root, 'first');
+    await expectActiveElement(root, firstOpener);
+
+    await userEvent.click(firstOpener);
+    await userEvent.click(secondOpener);
+    secondOpener.remove();
+    await userEvent.click(outsideLayer);
+    await expectUnmounted(root, 'second');
+    await expectFocusedOwner(root, 'first');
     await userEvent.keyboard('{Escape}');
     await expectUnmounted(root, 'first');
     await expectActiveElement(root, firstOpener);

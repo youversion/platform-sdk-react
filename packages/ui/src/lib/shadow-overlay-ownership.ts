@@ -17,8 +17,9 @@ export interface ShadowOverlayRegistration {
 /** @internal */
 export type ShadowOverlayFocusTarget =
   | { kind: 'element'; element: HTMLElement }
-  | { kind: 'layer'; id: string }
-  | null;
+  | { kind: 'layer'; id: string };
+/** @internal Ordered candidates for the DOM adapter to try until one accepts focus. */
+export type ShadowOverlayFocusPlan = ShadowOverlayFocusTarget[];
 
 /** @internal */
 export interface ShadowOverlaySnapshot {
@@ -106,7 +107,7 @@ export class ShadowOverlayOwnership {
     return owner.id;
   }
 
-  unmount(id: string): ShadowOverlayFocusTarget {
+  unmount(id: string): ShadowOverlayFocusPlan {
     const layer = this.#requireLayer(id);
     const wasOwner = this.#owner()?.id === id;
     const descendant = this.#layers.find((candidate) => this.#hasAncestor(candidate, id));
@@ -118,21 +119,17 @@ export class ShadowOverlayOwnership {
       (candidate) => candidate.id === layer.parentId && candidate.phase === 'exiting',
     );
     this.#layers.splice(this.#layers.indexOf(layer), 1);
-    if (parentIsExiting || !wasOwner) return null;
+    if (parentIsExiting || !wasOwner) return [];
 
     const { modalOwner, owner } = this.#computeOwnership();
     const parentOwnsFocus = layer.parentId !== undefined && owner?.id === layer.parentId;
     const outerScopeIsActive = layer.parentId === undefined && modalOwner === null;
-    const opener = layer.opener;
-    const openerTarget: ShadowOverlayFocusTarget =
-      opener?.isConnected && !opener.matches(':disabled') && !opener.hidden && !opener.inert
-        ? { kind: 'element', element: opener }
-        : null;
-
-    if (openerTarget && (owner === null || parentOwnsFocus || outerScopeIsActive)) {
-      return openerTarget;
+    const plan: ShadowOverlayFocusPlan = [];
+    if (layer.opener && (owner === null || parentOwnsFocus || outerScopeIsActive)) {
+      plan.push({ kind: 'element', element: layer.opener });
     }
-    return owner ? { kind: 'layer', id: owner.id } : openerTarget;
+    if (owner) plan.push({ kind: 'layer', id: owner.id });
+    return plan;
   }
 
   snapshot(): ShadowOverlaySnapshot {

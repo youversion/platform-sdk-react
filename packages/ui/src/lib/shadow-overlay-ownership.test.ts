@@ -41,10 +41,10 @@ describe('ShadowOverlayOwnership', () => {
     ownership.beginExit('highlights-permission-dialog');
     expect(ownership.snapshot().backgroundInert).toBe(true);
     expect(ownership.requestDismiss()).toBeNull();
-    expect(ownership.unmount('highlights-permission-dialog')).toEqual({
-      kind: 'element',
-      element: dialogOpener,
-    });
+    expect(ownership.unmount('highlights-permission-dialog')).toEqual([
+      { kind: 'element', element: dialogOpener },
+      { kind: 'layer', id: 'verse-action-popover' },
+    ]);
     expect(ownership.snapshot()).toMatchObject({
       ownerId: 'verse-action-popover',
       modalOwnerId: null,
@@ -52,7 +52,7 @@ describe('ShadowOverlayOwnership', () => {
     });
 
     ownership.beginExit('verse-action-popover');
-    expect(ownership.unmount('verse-action-popover')).toBeNull();
+    expect(ownership.unmount('verse-action-popover')).toEqual([]);
   });
 
   it('coordinates a dialog containing a popover', () => {
@@ -81,11 +81,14 @@ describe('ShadowOverlayOwnership', () => {
     expect(ownership.requestDismiss()).toBe('popover');
 
     ownership.beginExit('popover');
-    expect(ownership.unmount('popover')).toEqual({ kind: 'element', element: popoverOpener });
+    expect(ownership.unmount('popover')).toEqual([
+      { kind: 'element', element: popoverOpener },
+      { kind: 'layer', id: 'dialog' },
+    ]);
     expect(ownership.snapshot()).toMatchObject({ ownerId: 'dialog', backgroundInert: true });
 
     ownership.beginExit('dialog');
-    expect(ownership.unmount('dialog')).toEqual({ kind: 'element', element: pageOpener });
+    expect(ownership.unmount('dialog')).toEqual([{ kind: 'element', element: pageOpener }]);
     expect(ownership.snapshot().backgroundInert).toBe(false);
   });
 
@@ -106,11 +109,14 @@ describe('ShadowOverlayOwnership', () => {
     expect(ownership.requestDismiss()).toBe('second');
 
     ownership.beginExit('second');
-    expect(ownership.unmount('second')).toEqual({ kind: 'element', element: secondOpener });
+    expect(ownership.unmount('second')).toEqual([
+      { kind: 'element', element: secondOpener },
+      { kind: 'layer', id: 'first' },
+    ]);
     expect(ownership.snapshot().ownerId).toBe('first');
 
     ownership.beginExit('first');
-    expect(ownership.unmount('first')).toEqual({ kind: 'element', element: firstOpener });
+    expect(ownership.unmount('first')).toEqual([{ kind: 'element', element: firstOpener }]);
     expect(ownership.snapshot().ownerId).toBeNull();
   });
 
@@ -142,7 +148,9 @@ describe('ShadowOverlayOwnership', () => {
     });
     expect(ownership.requestDismiss()).toBeNull();
     ownership.beginExit('dialog');
-    expect(ownership.unmount('dialog')).toEqual({ kind: 'element', element: reopenedOpener });
+    expect(ownership.unmount('dialog')).toEqual([
+      { kind: 'element', element: reopenedOpener },
+    ]);
   });
 
   it('keeps an unrelated nonmodal overlay outside the active modal scope', () => {
@@ -161,7 +169,10 @@ describe('ShadowOverlayOwnership', () => {
     });
 
     ownership.beginExit('dialog');
-    expect(ownership.unmount('dialog')).toEqual({ kind: 'element', element: dialogOpener });
+    expect(ownership.unmount('dialog')).toEqual([
+      { kind: 'element', element: dialogOpener },
+      { kind: 'layer', id: 'unrelated' },
+    ]);
     expect(ownership.snapshot()).toMatchObject({
       ownerId: 'unrelated',
       modalOwnerId: null,
@@ -170,7 +181,7 @@ describe('ShadowOverlayOwnership', () => {
     });
   });
 
-  it('restores to a newly eligible owner instead of an inert nested opener', () => {
+  it('plans the newly eligible owner instead of an out-of-scope nested opener', () => {
     document.body.replaceChildren();
     const ownership = new ShadowOverlayOwnership();
     ownership.mount({ id: 'parent', kind: 'nonmodal', opener: button('Open parent') });
@@ -183,7 +194,7 @@ describe('ShadowOverlayOwnership', () => {
     ownership.mount({ id: 'unrelated', kind: 'nonmodal', opener: button('Open unrelated') });
 
     ownership.beginExit('dialog');
-    expect(ownership.unmount('dialog')).toEqual({ kind: 'layer', id: 'unrelated' });
+    expect(ownership.unmount('dialog')).toEqual([{ kind: 'layer', id: 'unrelated' }]);
   });
 
   it('blocks dismissal fallthrough from a nondismissible owner', () => {
@@ -208,7 +219,7 @@ describe('ShadowOverlayOwnership', () => {
     ownership.mount({ id: 'first', kind: 'nonmodal', opener: button('Open first') });
     ownership.mount({ id: 'second', kind: 'nonmodal', opener: button('Open second') });
 
-    expect(ownership.unmount('first')).toBeNull();
+    expect(ownership.unmount('first')).toEqual([]);
     expect(ownership.snapshot().ownerId).toBe('second');
   });
 
@@ -262,8 +273,10 @@ describe('ShadowOverlayOwnership', () => {
       layers: [{ id: 'second' }, { id: 'first', parentId: 'second' }],
     });
     expect(ownership.beginExit('second')).toEqual(['first', 'second']);
-    expect(ownership.unmount('first')).toBeNull();
-    expect(ownership.unmount('second')).toEqual({ kind: 'element', element: secondOpener });
+    expect(ownership.unmount('first')).toEqual([]);
+    expect(ownership.unmount('second')).toEqual([
+      { kind: 'element', element: secondOpener },
+    ]);
   });
 
   it('blocks dismissal fallthrough and ancestor unmount while descendants exit', () => {
@@ -292,16 +305,15 @@ describe('ShadowOverlayOwnership', () => {
     expect(() => ownership.unmount('dialog')).toThrow(
       'Cannot unmount overlay "dialog" before descendant "popover"',
     );
-    expect(ownership.unmount('popover')).toBeNull();
+    expect(ownership.unmount('popover')).toEqual([]);
     expect(ownership.snapshot().backgroundInert).toBe(true);
-    expect(ownership.unmount('dialog')).toEqual({
-      kind: 'element',
-      element: dialogOpener,
-    });
+    expect(ownership.unmount('dialog')).toEqual([
+      { kind: 'element', element: dialogOpener },
+    ]);
     expect(ownership.snapshot().backgroundInert).toBe(false);
   });
 
-  it('falls back to the remaining owner when an opener disconnects', () => {
+  it('preserves candidate order when an opener disconnects', () => {
     document.body.replaceChildren();
     const ownership = new ShadowOverlayOwnership();
     ownership.mount({ id: 'first', kind: 'nonmodal', opener: button('Open first') });
@@ -310,31 +322,25 @@ describe('ShadowOverlayOwnership', () => {
     disconnectedOpener.remove();
 
     ownership.beginExit('second');
-    expect(ownership.unmount('second')).toEqual({ kind: 'layer', id: 'first' });
+    expect(ownership.unmount('second')).toEqual([
+      { kind: 'element', element: disconnectedOpener },
+      { kind: 'layer', id: 'first' },
+    ]);
   });
 
-  it('falls back to the remaining owner when an opener cannot take focus', () => {
+  it('preserves fallback order without predicting whether an opener can take focus', () => {
     document.body.replaceChildren();
     const ownership = new ShadowOverlayOwnership();
     ownership.mount({ id: 'first', kind: 'nonmodal', opener: button('Open first') });
+    const opener = document.createElement('div');
+    document.body.append(opener);
+    ownership.mount({ id: 'second', kind: 'nonmodal', opener });
 
-    const disabledOpener = button('Disabled');
-    ownership.mount({ id: 'disabled', kind: 'nonmodal', opener: disabledOpener });
-    disabledOpener.disabled = true;
-    ownership.beginExit('disabled');
-    expect(ownership.unmount('disabled')).toEqual({ kind: 'layer', id: 'first' });
-
-    const hiddenOpener = button('Hidden');
-    ownership.mount({ id: 'hidden', kind: 'nonmodal', opener: hiddenOpener });
-    hiddenOpener.hidden = true;
-    ownership.beginExit('hidden');
-    expect(ownership.unmount('hidden')).toEqual({ kind: 'layer', id: 'first' });
-
-    const inertOpener = button('Inert');
-    ownership.mount({ id: 'inert', kind: 'nonmodal', opener: inertOpener });
-    inertOpener.inert = true;
-    ownership.beginExit('inert');
-    expect(ownership.unmount('inert')).toEqual({ kind: 'layer', id: 'first' });
+    ownership.beginExit('second');
+    expect(ownership.unmount('second')).toEqual([
+      { kind: 'element', element: opener },
+      { kind: 'layer', id: 'first' },
+    ]);
   });
 
   it('falls back to the remaining owner when no focus restoration target exists', () => {
@@ -344,6 +350,6 @@ describe('ShadowOverlayOwnership', () => {
     ownership.mount({ id: 'default-open', kind: 'nonmodal', opener: null });
 
     ownership.beginExit('default-open');
-    expect(ownership.unmount('default-open')).toEqual({ kind: 'layer', id: 'first' });
+    expect(ownership.unmount('default-open')).toEqual([{ kind: 'layer', id: 'first' }]);
   });
 });

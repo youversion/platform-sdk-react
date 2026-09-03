@@ -29,14 +29,13 @@ beneath an exiting parent. Repeated exit requests are idempotent and do not
 extend an existing descendant's teardown deadline. Reopening a stable overlay
 ID during exit cancels that exit and refreshes its registration,
 including its focus restoration target, parent, kind, and dismissal policy.
-Focus restores only when the current owner unmounts, in this order: a connected
-focus restoration target in the remaining active scope that accepts focus;
-otherwise the remaining top eligible layer; otherwise the outer focus
-restoration target once the last modal leaves. Removing a lower layer does not
-steal focus from its owner. An absent, disconnected, or unfocusable restoration
-target is skipped in favor of the next tier. Descendant unmounts during an
-ancestor-close cascade suppress focus restoration; the ancestor's final unmount
-performs the single restore. Parent
+Focus restoration starts only when the current owner unmounts. The ownership
+model returns the eligible opener followed by the remaining top eligible layer,
+or the outer opener when the last modal leaves. The DOM adapter attempts those
+candidates in order and advances when a candidate is absent, disconnected, or
+does not accept focus. Removing a lower layer does not steal focus from its
+owner. Descendant unmounts during an ancestor-close cascade suppress focus
+restoration; the ancestor's final unmount performs the single restore. Parent
 updates must remain acyclic: an overlay cannot register under itself or one of
 its descendants. Refreshing a stable ID moves its existing subtree to the top
 so every parent remains before its children in registration order.
@@ -56,11 +55,11 @@ proof:
 `shadow-overlay-ownership.ts` is the deterministic state model for the
 contract. Its unit tests cover the four scenarios plus modal-scope exclusion,
 ancestor/descendant exit ordering, dismissal blocking during exit, and
-absent, disconnected, or unfocusable focus restoration fallback. The `Shadow overlay
-ownership` integration story exercises the four required scenarios in Chromium
-inside one real shadow root and one native top-layer container. It verifies LIFO
-DOM ordering, focus and dismissal ownership, modal inertness through exit,
-restoration, and stable identity during a rapid reopen.
+focus-restoration candidate ordering. The `Shadow overlay ownership` integration
+story exercises the four required scenarios in Chromium inside one real shadow
+root and one native top-layer container. It verifies LIFO DOM ordering, focus
+and dismissal ownership, modal inertness through exit, rejected-candidate
+fallback, restoration, and stable identity during a rapid reopen.
 
 These scenarios remain unsupported by production SDK Dialog and Popover
 callers; the proof module is internal and deliberately not connected to those
@@ -87,8 +86,9 @@ interaction gating, modal-aware focus containment, and direct browser evidence
 through the actual overlay primitives. The production adapter must register the
 logical launch parent even when overlays are DOM or React siblings. It must omit
 a focus restoration target unless that target belongs to the launch parent's
-active focus scope, and it must make shadow-specific focus containment follow
-the current owner while other layers yield. Until that work lands, nested or
-concurrent production overlays in one shadow root remain unsupported. The
-contract may still be revised in response to cross-browser or
+active focus scope, attempt the model's restoration candidates in order, and
+advance whenever the browser rejects focus. It must also make shadow-specific
+focus containment follow the current owner while other layers yield. Until that
+work lands, nested or concurrent production overlays in one shadow root remain
+unsupported. The contract may still be revised in response to cross-browser or
 assistive-technology findings.
