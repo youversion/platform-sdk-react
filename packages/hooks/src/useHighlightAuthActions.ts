@@ -10,7 +10,7 @@ import {
   YouVersionPlatformConfiguration,
   type DataExchangeCallbackResult,
 } from '@youversion/platform-core';
-import { YouVersionContext } from './context';
+import { YouVersionContext } from './context/YouVersionContext';
 import { YouVersionAuthContext } from './context/YouVersionAuthContext';
 import { useApiClient } from './internal/useApiClient';
 

@@ -8,7 +8,9 @@ import { resolve } from 'node:path';
  * `host-css-isolation.stories.tsx` (Chromium / Storybook play). The compiled
  * sheet staying unlayered is `scripts/verify-styles.js`.
  */
-const globalCss = readFileSync(resolve(import.meta.dirname, './global.css'), 'utf8');
+const styleDir = import.meta.dirname;
+const globalCss = readFileSync(resolve(styleDir, './global.css'), 'utf8');
+const chromeCss = readFileSync(resolve(styleDir, './chrome.css'), 'utf8');
 
 const EXPECTED_SELECTORS = [
   '[data-yv-sdk] *',
@@ -70,25 +72,30 @@ function revertLayerRules(css: string): [selectors: string[], body: string][] {
   return rules;
 }
 
-describe('A2 host isolation rule in global.css', () => {
-  it('declares revert-layer on the listed shorthands, on descendants only, and not via all', () => {
-    const withoutComments = stripComments(globalCss);
-    const collapsed = withoutComments.replace(/\s+/g, ' ');
+function expectA2Rule(css: string, label: string): void {
+  const withoutComments = stripComments(css);
+  const collapsed = withoutComments.replace(/\s+/g, ' ');
 
-    expect(collapsed).not.toMatch(/\ball\s*:\s*revert/);
+  expect(collapsed, label).not.toMatch(/\ball\s*:\s*revert/);
 
-    const rules = revertLayerRules(collapsed);
-    expect(rules.length, 'expected at least one revert-layer rule').toBeGreaterThan(0);
+  const rules = revertLayerRules(collapsed);
+  expect(rules.length, `${label}: expected at least one revert-layer rule`).toBeGreaterThan(0);
 
-    for (const [selectors, body] of rules) {
-      expect(selectors).toEqual([...EXPECTED_SELECTORS]);
-      expect(body).not.toMatch(/\bdisplay\s*:/);
-      expect(body).not.toMatch(/\bmax-width\s*:/);
+  for (const [selectors, body] of rules) {
+    expect(selectors, label).toEqual([...EXPECTED_SELECTORS]);
+    expect(body, label).not.toMatch(/\bdisplay\s*:/);
+    expect(body, label).not.toMatch(/\bmax-width\s*:/);
 
-      const declarations = declarationMap(body);
-      for (const property of REVERT_PROPERTIES) {
-        expect(declarations.get(property), property).toBe('revert-layer');
-      }
+    const declarations = declarationMap(body);
+    for (const property of REVERT_PROPERTIES) {
+      expect(declarations.get(property), `${label} ${property}`).toBe('revert-layer');
     }
+  }
+}
+
+describe('A2 host isolation rule', () => {
+  it('declares revert-layer on the listed shorthands in global.css and chrome.css', () => {
+    expectA2Rule(globalCss, 'global.css');
+    expectA2Rule(chromeCss, 'chrome.css');
   });
 });

@@ -1,3 +1,5 @@
+'use client';
+
 import type { CSSProperties } from 'react';
 import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hooks';
 import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, type Highlight } from '@youversion/platform-core';

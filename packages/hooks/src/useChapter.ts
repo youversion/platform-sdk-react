@@ -1,9 +1,11 @@
 'use client';
-import { useBibleClient } from './useBibleClient';
+import { useContext } from 'react';
+import { getChapter, type BibleChapter } from '@youversion/platform-core';
+import { YouVersionContext } from './context/YouVersionContext';
+import { useApiClient } from './internal/useApiClient';
 import { useApiData, type UseApiDataOptions } from './useApiData';
 import { useQueryKeyBase } from './internal/useQueryKeyBase';
 import type { UseNamedQueryResult } from './useQueryResult';
-import type { BibleChapter } from '@youversion/platform-core';
 
 export type UseChapterResult = UseNamedQueryResult<'chapter', BibleChapter>;
 
@@ -13,7 +15,8 @@ export function useChapter(
   chapter: number,
   options?: UseApiDataOptions,
 ): UseChapterResult {
-  const bibleClient = useBibleClient();
+  const override = useContext(YouVersionContext)?.bibleClient;
+  const apiClient = useApiClient();
   const keyBase = useQueryKeyBase();
 
   const {
@@ -23,7 +26,10 @@ export function useChapter(
     refetch,
   } = useApiData<BibleChapter>(
     [...keyBase, 'chapter', versionId, book, chapter],
-    () => bibleClient.getChapter(versionId, book, chapter),
+    () =>
+      override
+        ? override.getChapter(versionId, book, chapter)
+        : getChapter(apiClient, versionId, book, chapter),
     {
       enabled: options?.enabled !== false,
       keepPreviousData: options?.keepPreviousData,

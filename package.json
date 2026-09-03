@@ -33,6 +33,7 @@
     "prepare": "husky",
     "size": "size-limit",
     "size:build": "pnpm build && size-limit",
+    "size:measure": "node scripts/measure-import-size.mjs",
     "size:why": "node scripts/bundle-visualize.mjs",
     "size:visualize": "node scripts/bundle-visualize.mjs",
     "check:tree-shaking": "node scripts/check-tree-shaking.mjs",

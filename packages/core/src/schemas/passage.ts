@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 
 export const BiblePassageSchema = z.object({
   /** Passage identifier (e.g., "MAT.1.1") */

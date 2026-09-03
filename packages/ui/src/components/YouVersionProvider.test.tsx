@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
 import React, { useContext } from 'react';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
@@ -82,7 +82,7 @@ describe('UI YouVersionProvider', () => {
     );
   });
 
-  it('mirrors appName and signInPromptMessage onto the UI-bundled config', () => {
+  it('forwards appName and signInPromptMessage onto the shared core config', () => {
     YouVersionPlatformConfiguration.appName = undefined;
     YouVersionPlatformConfiguration.signInPromptMessage = undefined;
 
@@ -120,6 +120,11 @@ describe('UI YouVersionProvider', () => {
 
       expect(screen.getByRole('alert')).toBeInTheDocument();
       expect(screen.getByText('Error')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "This Bible content couldn't be loaded because the app key is missing or invalid.",
+        ),
+      ).toBeInTheDocument();
       expect(screen.queryByTestId('child')).not.toBeInTheDocument();
       // The actionable guidance for developers lives in console.error, not the panel.
       expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('appKey'));
@@ -127,6 +132,26 @@ describe('UI YouVersionProvider', () => {
       errorSpy.mockRestore();
     },
   );
+
+  it('translates the missing-app-key panel from locale without loading the full catalog', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    render(
+      <YouVersionProvider appKey="" locale="es">
+        <div data-testid="child">hello</div>
+      </YouVersionProvider>,
+    );
+
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Este contenido bíblico no se pudo cargar porque la clave de la aplicación falta o no es válida.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('child')).not.toBeInTheDocument();
+
+    errorSpy.mockRestore();
+  });
 
   it('uses locale instead of the browser language', async () => {
     vi.stubGlobal('navigator', {
@@ -140,7 +165,9 @@ describe('UI YouVersionProvider', () => {
       </YouVersionProvider>,
     );
 
-    expect(i18n.language).toBe('es');
+    await waitFor(() => {
+      expect(i18n.language).toBe('es');
+    });
 
     rerender(
       <YouVersionProvider appKey="test-key" locale="es-MX">
@@ -148,13 +175,15 @@ describe('UI YouVersionProvider', () => {
       </YouVersionProvider>,
     );
 
-    expect(i18n.language).toBe('es');
+    await waitFor(() => {
+      expect(i18n.language).toBe('es');
+    });
 
     await i18n.changeLanguage('en');
     vi.unstubAllGlobals();
   });
 
-  it('applies locale during SSR without waiting for layout effects', async () => {
+  it('starts loading an explicit locale during SSR without waiting for layout effects', async () => {
     await i18n.changeLanguage('en');
 
     renderToString(
@@ -163,7 +192,9 @@ describe('UI YouVersionProvider', () => {
       </YouVersionProvider>,
     );
 
-    expect(i18n.language).toBe('es');
+    await waitFor(() => {
+      expect(i18n.language).toBe('es');
+    });
 
     await i18n.changeLanguage('en');
   });

@@ -1,5 +1,8 @@
+'use client';
+
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
+import { YvComponentStyles } from '@/lib/yv-styles-components';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import {
   getLocalStorage,
@@ -493,6 +496,7 @@ function Root({
   if (onVersionPickerPress) {
     return (
       <BibleVersionPickerContext.Provider value={contextValue}>
+        <YvComponentStyles />
         {children}
       </BibleVersionPickerContext.Provider>
     );
@@ -500,6 +504,7 @@ function Root({
 
   return (
     <BibleVersionPickerContext.Provider value={contextValue}>
+      <YvComponentStyles />
       <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
         {children}
       </Popover>

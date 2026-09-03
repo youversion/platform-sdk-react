@@ -2,6 +2,7 @@
 
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
+import { YvComponentStyles } from '@/lib/yv-styles-components';
 import {
   cloneElement,
   createContext,
@@ -200,11 +201,13 @@ function Root({
 
   return onChapterPickerPress ? (
     <BibleChapterPickerContext.Provider value={contextValue}>
+      <YvComponentStyles />
       {children}
     </BibleChapterPickerContext.Provider>
   ) : (
     <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
       <BibleChapterPickerContext.Provider value={contextValue}>
+        <YvComponentStyles />
         {children}
 
         {/* data-yv-sdk for styles is needed because the popover gets rendered outside of the providers scope **/}
@@ -401,7 +404,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <InputGroupAddon align="inline-start">
+          <InputGroupAddon>
             <SearchIcon className="yv:size-5 yv:text-muted-foreground" />
           </InputGroupAddon>
         </InputGroup>

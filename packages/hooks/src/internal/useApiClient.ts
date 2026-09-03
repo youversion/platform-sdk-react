@@ -2,7 +2,7 @@
 
 import { useContext, useMemo } from 'react';
 import { ApiClient } from '@youversion/platform-core';
-import { YouVersionContext } from '../context';
+import { YouVersionContext } from '../context/YouVersionContext';
 
 /**
  * @internal
