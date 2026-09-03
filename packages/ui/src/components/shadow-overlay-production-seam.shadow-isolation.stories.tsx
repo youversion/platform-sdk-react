@@ -9,13 +9,26 @@ import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { VerseActionPopover } from './verse-action-popover';
 
-function IsolatedProductionOverlaySeam(): React.ReactNode {
+function IsolatedProductionOverlaySeam({
+  initialVerseOpen = false,
+  initialPermissionOpen = false,
+  initialNotesOpen = false,
+  initialNotesPopoverOpen = false,
+  initialIndependentOpen = false,
+}: {
+  initialVerseOpen?: boolean;
+  initialPermissionOpen?: boolean;
+  initialNotesOpen?: boolean;
+  initialNotesPopoverOpen?: boolean;
+  initialIndependentOpen?: boolean;
+} = {}): React.ReactNode {
   const [primaryMounted, setPrimaryMounted] = useState(true);
-  const [verseOpen, setVerseOpen] = useState(false);
+  const [verseOpen, setVerseOpen] = useState(initialVerseOpen);
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null);
-  const [permissionOpen, setPermissionOpen] = useState(false);
-  const [notesOpen, setNotesOpen] = useState(false);
-  const [independentOpen, setIndependentOpen] = useState(false);
+  const [permissionOpen, setPermissionOpen] = useState(initialPermissionOpen);
+  const [notesOpen, setNotesOpen] = useState(initialNotesOpen);
+  const [notesPopoverOpen, setNotesPopoverOpen] = useState(initialNotesPopoverOpen);
+  const [independentOpen, setIndependentOpen] = useState(initialIndependentOpen);
   const [noteActionCount, setNoteActionCount] = useState(0);
   const [unmountRequests, setUnmountRequests] = useState(0);
 
@@ -42,7 +55,9 @@ function IsolatedProductionOverlaySeam(): React.ReactNode {
             </button>
             <span
               ref={(element) => {
-                element?.setAttribute('v', '1');
+                if (!element) return;
+                element.setAttribute('v', '1');
+                setAnchorElement(element);
               }}
               className="yv-v"
               data-testid="verse-1"
@@ -100,7 +115,7 @@ function IsolatedProductionOverlaySeam(): React.ReactNode {
             <Dialog open={notesOpen} onOpenChange={setNotesOpen}>
               <DialogContent data-testid="notes-dialog" aria-describedby={undefined}>
                 <DialogTitle>Notes</DialogTitle>
-                <Popover>
+                <Popover open={notesPopoverOpen} onOpenChange={setNotesPopoverOpen}>
                   <PopoverTrigger data-testid="notes-popover-trigger">Open note</PopoverTrigger>
                   <PopoverContent data-testid="notes-popover" showHeader heading="Note">
                     <button
@@ -135,7 +150,6 @@ function IsolatedProductionOverlaySeam(): React.ReactNode {
 const meta = {
   title: 'Spikes/Nested concurrent overlays production seam',
   component: IsolatedProductionOverlaySeam,
-  tags: ['integration'],
   parameters: {
     layout: 'centered',
     includeAuth: false,
@@ -185,7 +199,29 @@ function installUnequalExitDurations(root: ShadowRoot): HTMLStyleElement {
   return style;
 }
 
+export const VisualPopoverAndPermissionDialog: Story = {
+  args: {
+    initialVerseOpen: true,
+    initialPermissionOpen: true,
+  },
+};
+
+export const VisualDialogAndNestedPopover: Story = {
+  args: {
+    initialNotesOpen: true,
+    initialNotesPopoverOpen: true,
+  },
+};
+
+export const VisualIndependentOverlays: Story = {
+  args: {
+    initialVerseOpen: true,
+    initialIndependentOpen: true,
+  },
+};
+
 export const ExercisesProductionNestedAndConcurrentOverlays: Story = {
+  tags: ['integration'],
   play: async ({ canvasElement }) => {
     const primaryIsland = canvasElement.querySelector<HTMLElement>(
       '[data-testid="primary-island"]',
