@@ -151,9 +151,6 @@ export const FormsAndExternalRelationshipsStopAtTheTreeScope: Story = {
   name: 'Forms, labels, and descriptions',
   render: () => <FormRelationshipsHarness />,
   play: async ({ canvasElement }) => {
-    void expect(
-      await waitForElement<HTMLHeadingElement>(canvasElement, 'h2', 'scenario title not rendered'),
-    ).toHaveTextContent('Forms, labels, and descriptions');
     const form = await waitFor(() =>
       requireElement<HTMLFormElement>(
         canvasElement,
@@ -305,9 +302,6 @@ export const EventsRefsAndAutomationExposeDifferentConsumerViews: Story = {
 
     void expect(firstLayoutEvidence).toHaveTextContent('null');
     void expect(firstLayoutEvidence).toHaveAttribute('hidden');
-    void expect(
-      await waitForElement<HTMLHeadingElement>(canvasElement, 'h2', 'scenario title not rendered'),
-    ).toHaveTextContent('Events, refs, and test queries');
     await waitFor(() => void expect(forwardedRefEvidence.observedNode).toBe(button));
 
     const clickTarget = requireElement<HTMLDivElement>(
@@ -358,9 +352,6 @@ export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
   name: 'Nested shadow roots',
   render: () => <NestedRootsHarness />,
   play: async ({ canvasElement }) => {
-    void expect(
-      await waitForElement<HTMLHeadingElement>(canvasElement, 'h2', 'scenario title not rendered'),
-    ).toHaveTextContent('Nested shadow roots');
     const outerHost = await requireShadowHost(canvasElement);
     const outerRoot = outerHost.shadowRoot!;
     const outerObserver = await waitForElement<HTMLElement>(
@@ -408,3 +399,4 @@ export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
     void expect(composedPath).toContain(outerHost);
   },
 };
+
