@@ -1,0 +1,94 @@
+# ADR 0007: Model shadow-root overlays as an ownership stack
+
+Status: Proposed (contract and executable proof selected by YPE-5355; production
+runtime support not implemented)
+
+Nested and concurrent overlays inside one component shadow root will share one
+shadow-local top-layer container and register with a root-owned LIFO overlay
+stack. An overlay registration identifies its stable instance, modal or
+non-modal kind, logical launch parent when nested, optional focus restoration
+target, and mounted phase. The launch parent is the overlay whose interaction
+opened the new overlay; it does not require DOM or React ancestry. A focus
+restoration target may be absent for a default-open overlay, virtual anchor, or
+launch without a focusable control. This keeps stacking, focus, dismissal,
+inertness, and restoration behind the `ShadowRootHost` interface instead of
+making each Dialog or Popover coordinate with its siblings.
+
+The topmost eligible mounted overlay owns interaction, focus, Escape, and
+outside-click dismissal. With no modal mounted, every overlay is eligible. With
+a modal mounted, eligibility is limited to the topmost modal and its descendant
+chain; a later unrelated non-modal overlay remains mounted but non-interactive
+until that modal unmounts. If the owner is not dismissible, dismissal attempts
+do not fall through to a lower overlay. A nested overlay remains inside its
+ancestor modal's focus scope. While a modal is mounted, Tab and Shift+Tab loop
+within the current owner and programmatic focus outside it redirects back to the
+owner. Shadow content stays inert through the modal's exit animation. An
+ancestor close may start its own and its descendants' exit phases together, but
+every descendant must unmount before the ancestor; a new child cannot mount
+beneath an exiting parent. Repeated exit requests are idempotent and do not
+extend an existing descendant's teardown deadline. Reopening a stable overlay
+ID during exit cancels that exit and refreshes its registration,
+including its focus restoration target, parent, kind, and dismissal policy.
+Focus restoration starts only when the current owner unmounts. The ownership
+model returns the eligible opener followed by the remaining top eligible layer,
+or the outer opener when the last modal leaves. The DOM adapter attempts those
+candidates in order and advances when a candidate is absent, disconnected, or
+does not accept focus. Removing a lower layer does not steal focus from its
+owner. Descendant unmounts during an ancestor-close cascade suppress focus
+restoration; the ancestor's final unmount performs the single restore. Parent
+updates must remain acyclic: an overlay cannot register under itself or one of
+its descendants. Refreshing a stable ID moves its existing subtree to the top
+so every parent remains before its children in registration order.
+
+## Scenario classification and proof
+
+The ownership contract supports these scenarios in the committed executable
+proof:
+
+- a non-modal popover opening a modal dialog, including the verse action
+  popover opening the highlights permission dialog during the highlight auth
+  flow;
+- a modal dialog containing a non-modal popover;
+- two independent non-modal overlays; and
+- closing and reopening the same modal during its exit animation.
+
+`shadow-overlay-ownership.ts` is the deterministic state model for the
+contract. Its unit tests cover the four scenarios plus modal-scope exclusion,
+ancestor/descendant exit ordering, dismissal blocking during exit, and
+focus-restoration candidate ordering. The `Shadow overlay ownership` integration
+story exercises the four required scenarios in Chromium inside one real shadow
+root and one native top-layer container. It verifies LIFO DOM ordering, focus
+and dismissal ownership, modal inertness through exit, rejected-candidate
+fallback, restoration, and stable identity during a rapid reopen.
+
+These scenarios remain unsupported by production SDK Dialog and Popover
+callers; the proof module is internal and deliberately not connected to those
+primitives. See Consequences below for what production integration requires.
+
+## Considered options
+
+- A shared container without ownership was rejected because independent focus
+  traps can compete and unrelated overlays can escape modal inertness.
+- Permanently forbidding nested and concurrent overlays was rejected because
+  composite SDK surfaces such as `BibleReader` legitimately coordinate several
+  dialogs and popovers.
+- One native top-layer container per overlay was rejected because ownership,
+  ordering, and restoration would be distributed across callers rather than
+  localized at the shadow-root seam.
+
+## Consequences
+
+The current production active-ID sets prove lazy portal lifetime but do not
+implement this contract. The executable state model reduces implementation
+ambiguity but is not a production registry. Production support requires wiring
+the model's rules into `ShadowRootHost`, descendant close ordering, topmost
+interaction gating, modal-aware focus containment, and direct browser evidence
+through the actual overlay primitives. The production adapter must register the
+logical launch parent even when overlays are DOM or React siblings. It must omit
+a focus restoration target unless that target belongs to the launch parent's
+active focus scope, attempt the model's restoration candidates in order, and
+advance whenever the browser rejects focus. It must also make shadow-specific
+focus containment follow the current owner while other layers yield. Until that
+work lands, nested or concurrent production overlays in one shadow root remain
+unsupported. The contract may still be revised in response to cross-browser or
+assistive-technology findings.

@@ -21,8 +21,9 @@ This is a working plan, not approval for package-wide rollout.
   Shadow DOM boundaries.
 - The internal `SignInDialog` is validated only through an opt-in
   `ShadowRootHost` story.
-- Concurrent independent overlays in one shadow root and nested overlays
-  launched from an open dialog are unsupported.
+- Concurrent and nested overlays in one shadow root remain unsupported.
+  [ADR 0007](adr/0007-shadow-overlay-ownership-stack.md) selects the contract
+  to implement them; see "Blocking production-readiness decisions" below.
 
 ## Validation matrix
 
@@ -36,8 +37,9 @@ This is a working plan, not approval for package-wide rollout.
 | Portal lifecycle | Unit and browser coverage exercise lazy creation, exit-animation retention, cleanup, immediate reopen behavior, and the direct-Radix `VerseActionPopover` consumer. | Validated for shared primitives and the known bypass | Repeat the consumer audit when adding another direct overlay primitive. |
 | Dialog relationships | Chromium resolves title and description relationships inside the component tree. | Validated in Chromium | Verify announcements with real assistive technology. |
 | Dialog keyboard containment | Browser coverage exercises initial focus, programmatic escape redirection, forward and reverse traversal, radio-group collapsing, negative `tabindex`, and wraparound. | Validated in Chromium | Expand the browser and assistive-technology matrix. |
-| Dialog modal lifetime | Coverage verifies inert background content while open and through staggered Content and Overlay exit animations. | Validated for one modal | Define ownership before supporting nested or competing overlays. |
+| Dialog modal lifetime | Coverage verifies inert background content while open and through staggered Content and Overlay exit animations. | Validated for one modal | Implement ADR 0007 before supporting nested or competing overlays. |
 | Dialog dismissal and restoration | Coverage exercises Escape, backdrop click, full-viewport hit testing, overlay-only focus, and restoration after both modal nodes unmount. | Validated in Chromium | Verify real screen-reader and cross-browser behavior. |
+| Nested and concurrent ownership | A committed state model and unit suite exercise both nesting directions, concurrent siblings, modal-scope exclusion, ancestor-close cascading, exit-animation lifetime, rapid reopen, logical launch parentage, and absent or disconnected focus restoration fallback. A Chromium integration story proves both nesting directions, two independent overlays, and rapid close/reopen inside one shadow root and native top-layer container. | Contract proved; production runtime unsupported | Integrate the registry with `ShadowRootHost`, then repeat the browser proof through shared primitives and every inventoried direct overlay consumer. |
 
 ## Direct overlay inventory
 
@@ -59,8 +61,9 @@ separate decision.
   or package-wide.
 - Define SSR, hydration, and first-paint behavior. The current effect-attached
   root renders an empty host on the server and delays content and forwarded refs.
-- Define stacking, focus ownership, and dismissal contracts for nested or
-  competing modal and non-modal overlays.
+- Implement and browser-validate ADR 0007's root-owned overlay stack before
+  enabling isolation on a component that can launch nested or concurrent
+  overlays.
 - Complete the package-wide custom-property inventory and prevention guard in
   YPE-5400. The known `BibleVersionPicker`, `InputGroup`, and `tw-animate-css`
   dependencies now resolve through locally-defined SDK-owned spacing and radius
@@ -98,7 +101,8 @@ separate decision.
 ## Rollout sequence
 
 1. Complete YPE-5400's custom-property inventory and prevention guard.
-2. Resolve SSR/hydration, rollout-control, and overlay-ownership decisions.
+2. Resolve SSR/hydration and rollout-control decisions, then implement and
+   browser-validate the selected overlay-ownership contract.
 3. Select the next public component and add component-specific compatibility,
    browser, and accessibility coverage before enabling isolation.
 4. Publish consumer guidance for DOM queries, automation, customization, forms,

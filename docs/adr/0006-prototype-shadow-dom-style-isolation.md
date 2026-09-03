@@ -77,9 +77,10 @@ accepts that host registrations can collide with SDK family names. It also
 cannot protect a component host from constraints applied to its ancestors. Open
 roots are a CSS boundary, not a security boundary.
 
-Concurrent independent overlays in one shadow root and nested overlays launched
-from an open dialog are unsupported until the package defines stacking, focus
-ownership, and dismissal contracts. Radix's development-only relationship
+[ADR 0007](0007-shadow-overlay-ownership-stack.md) selects an ownership
+contract for concurrent and nested overlays. The current prototype does not
+implement that contract, so those cases remain unsupported until the layer
+registry and browser evidence land. Radix's development-only relationship
 checks can also emit warnings for valid IDs inside a shadow root because those
 checks query the document rather than the root.
 
