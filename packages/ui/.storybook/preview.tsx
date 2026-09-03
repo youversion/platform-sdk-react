@@ -75,6 +75,8 @@ const preview: Preview = {
       }, [theme]);
 
       const includeAuth = context.parameters.includeAuth !== false;
+      const locale =
+        typeof context.parameters.locale === 'string' ? context.parameters.locale : undefined;
       const requiredEnvVars = includeAuth
         ? ['STORYBOOK_YOUVERSION_APP_KEY', 'STORYBOOK_AUTH_REDIRECT_URL']
         : ['STORYBOOK_YOUVERSION_APP_KEY'];
@@ -87,6 +89,7 @@ const preview: Preview = {
               authRedirectUrl={import.meta.env.STORYBOOK_AUTH_REDIRECT_URL || ''}
               apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
               includeAuth={true}
+              locale={locale}
               theme={getTheme(context.globals.theme)}
             >
               <StoryWithSdkSheets>
@@ -102,6 +105,7 @@ const preview: Preview = {
           <YouVersionProvider
             appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || ''}
             apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
+            locale={locale}
             theme={getTheme(context.globals.theme)}
           >
             <StoryWithSdkSheets>
