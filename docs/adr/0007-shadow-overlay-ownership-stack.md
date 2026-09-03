@@ -56,7 +56,7 @@ proof:
 `shadow-overlay-ownership.ts` is the deterministic state model for the
 contract. Its unit tests cover the four scenarios plus modal-scope exclusion,
 ancestor/descendant exit ordering, dismissal blocking during exit, and
-absent or disconnected focus restoration fallback. The `Shadow overlay
+absent, disconnected, or unfocusable focus restoration fallback. The `Shadow overlay
 ownership` integration story exercises the four required scenarios in Chromium
 inside one real shadow root and one native top-layer container. It verifies LIFO
 DOM ordering, focus and dismissal ownership, modal inertness through exit,

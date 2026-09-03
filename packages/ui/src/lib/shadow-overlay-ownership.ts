@@ -123,9 +123,11 @@ export class ShadowOverlayOwnership {
     const { modalOwner, owner } = this.#computeOwnership();
     const parentOwnsFocus = layer.parentId !== undefined && owner?.id === layer.parentId;
     const outerScopeIsActive = layer.parentId === undefined && modalOwner === null;
-    const openerTarget: ShadowOverlayFocusTarget = layer.opener?.isConnected
-      ? { kind: 'element', element: layer.opener }
-      : null;
+    const opener = layer.opener;
+    const openerTarget: ShadowOverlayFocusTarget =
+      opener?.isConnected && !opener.matches(':disabled') && !opener.hidden && !opener.inert
+        ? { kind: 'element', element: opener }
+        : null;
 
     if (openerTarget && (owner === null || parentOwnsFocus || outerScopeIsActive)) {
       return openerTarget;

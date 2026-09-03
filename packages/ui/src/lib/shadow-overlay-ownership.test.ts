@@ -313,6 +313,30 @@ describe('ShadowOverlayOwnership', () => {
     expect(ownership.unmount('second')).toEqual({ kind: 'layer', id: 'first' });
   });
 
+  it('falls back to the remaining owner when an opener cannot take focus', () => {
+    document.body.replaceChildren();
+    const ownership = new ShadowOverlayOwnership();
+    ownership.mount({ id: 'first', kind: 'nonmodal', opener: button('Open first') });
+
+    const disabledOpener = button('Disabled');
+    ownership.mount({ id: 'disabled', kind: 'nonmodal', opener: disabledOpener });
+    disabledOpener.disabled = true;
+    ownership.beginExit('disabled');
+    expect(ownership.unmount('disabled')).toEqual({ kind: 'layer', id: 'first' });
+
+    const hiddenOpener = button('Hidden');
+    ownership.mount({ id: 'hidden', kind: 'nonmodal', opener: hiddenOpener });
+    hiddenOpener.hidden = true;
+    ownership.beginExit('hidden');
+    expect(ownership.unmount('hidden')).toEqual({ kind: 'layer', id: 'first' });
+
+    const inertOpener = button('Inert');
+    ownership.mount({ id: 'inert', kind: 'nonmodal', opener: inertOpener });
+    inertOpener.inert = true;
+    ownership.beginExit('inert');
+    expect(ownership.unmount('inert')).toEqual({ kind: 'layer', id: 'first' });
+  });
+
   it('falls back to the remaining owner when no focus restoration target exists', () => {
     document.body.replaceChildren();
     const ownership = new ShadowOverlayOwnership();
