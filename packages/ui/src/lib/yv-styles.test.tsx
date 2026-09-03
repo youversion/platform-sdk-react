@@ -7,6 +7,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react';
 import { YouVersionProvider } from '@/components/YouVersionProvider';
+import { YvComponentStyles } from '@/lib/yv-styles-components';
 
 describe('Style injection via YouVersionProvider', () => {
   it('renders a <style> element in document.head with CSS content', () => {
@@ -21,6 +22,17 @@ describe('Style injection via YouVersionProvider', () => {
     expect(styles[0]!.getAttribute('data-precedence')).toBe('yv-sdk');
     expect(styles[0]!.textContent).toBe('');
     expect(document.body.querySelector('[data-testid="child"]')?.textContent).toBe('hello');
+  });
+
+  it('keeps siblings visible while a component sheet injects', () => {
+    render(
+      <>
+        <YvComponentStyles />
+        <span data-testid="sibling">ok</span>
+      </>,
+    );
+
+    expect(document.body.querySelector('[data-testid="sibling"]')?.textContent).toBe('ok');
   });
 
   it('deduplicates styles when multiple providers are rendered', () => {

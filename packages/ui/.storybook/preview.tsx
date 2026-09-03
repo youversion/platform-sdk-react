@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import type { Preview, ReactRenderer } from '@storybook/react-vite';
 import type { PartialStoryFn, StoryContext } from 'storybook/internal/csf';
 import { initialize, mswLoader } from 'msw-storybook-addon';
@@ -17,8 +17,10 @@ function getTheme(value: string | undefined): 'light' | 'dark' | 'system' {
 function StoryWithSdkSheets({ children }: { children: React.ReactNode }): React.ReactElement {
   return (
     <>
-      <YvComponentStyles />
-      <YvReaderStyles />
+      <Suspense fallback={null}>
+        <YvComponentStyles />
+        <YvReaderStyles />
+      </Suspense>
       {children}
     </>
   );
