@@ -1,6 +1,12 @@
 import React, { useEffect } from 'react';
 import type { Preview, ReactRenderer } from '@storybook/react-vite';
 import type { PartialStoryFn, StoryContext } from 'storybook/internal/csf';
+import { initialize, mswLoader } from 'msw-storybook-addon';
+import { YouVersionProvider } from '../src/components/YouVersionProvider';
+import { YvComponentStyles } from '../src/lib/yv-styles-components';
+import { YvReaderStyles } from '../src/lib/yv-styles-reader';
+import { globalHandlers } from '../src/test/mocks/handlers';
+import { StorybookEnvCheck } from '../src/test/StorybookEnvCheck';
 
 function getTheme(value: string | undefined): 'light' | 'dark' | 'system' {
   if (value === 'dark') return 'dark';
@@ -8,10 +14,15 @@ function getTheme(value: string | undefined): 'light' | 'dark' | 'system' {
   return 'light';
 }
 
-import { initialize, mswLoader } from 'msw-storybook-addon';
-import { StorybookEnvCheck } from '../src/test/StorybookEnvCheck';
-import { YouVersionProvider } from '../src/components/YouVersionProvider';
-import { globalHandlers } from '../src/test/mocks/handlers';
+function StoryWithSdkSheets({ children }: { children: React.ReactNode }): React.ReactElement {
+  return (
+    <>
+      <YvComponentStyles />
+      <YvReaderStyles />
+      {children}
+    </>
+  );
+}
 
 const THEME_BACKGROUNDS = {
   light: '#ffffff',
@@ -78,7 +89,9 @@ const preview: Preview = {
               includeAuth={true}
               theme={getTheme(context.globals.theme)}
             >
-              <Story />
+              <StoryWithSdkSheets>
+                <Story />
+              </StoryWithSdkSheets>
             </YouVersionProvider>
           </StorybookEnvCheck>
         );
@@ -91,7 +104,9 @@ const preview: Preview = {
             apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
             theme={getTheme(context.globals.theme)}
           >
-            <Story />
+            <StoryWithSdkSheets>
+              <Story />
+            </StoryWithSdkSheets>
           </YouVersionProvider>
         </StorybookEnvCheck>
       );
