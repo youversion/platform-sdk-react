@@ -57,7 +57,7 @@ Ported from the Kotlin SDK's working setup ([`commitlint.yml`](https://github.co
 Two React-specific deltas from the Kotlin original:
 
 - **Release-commit ignore.** Kotlin (semantic-release) ignores `chore(release):`. This repo (Changesets) emits `chore: version packages` — the config ignores that subject instead, so the release bot's own commit never fails the lint range on a workflow re-run.
-- **Ticket prefix allowed.** ~Half this repo's history leads with a ticket id (`YPE-1234: feat(ui): …` / `YPE-1234 - feat(ui): …`). A custom `headerPattern` permits an optional leading ticket reference before the conventional `type(scope): subject`, so the team's existing convention keeps passing. Note: `config-conventional`'s `subject-case` rule still applies, so capitalized subjects (`feat(ui): Move …`) are flagged — a minor habit change, consistent with the Kotlin reference.
+- **No ticket prefix in commit subjects.** Plain `@commitlint/config-conventional` — no custom `headerPattern`. Ticket references (YPE-1234) live in the branch name and PR body, not the commit subject. GitHub-generated Greptile suggestion commits (`Update <path>` / `Apply suggestions from code review` with a `Co-authored-by: greptile-apps[bot]` trailer) are ignored; see `docs/adr/0007-github-suggestion-commits-bypass-commitlint.md`.
 
 ## BREAKING CHANGE approval
 
