@@ -65,7 +65,10 @@ yarn-error.log*
 # Claude Code
 .claude/
 .omc/
-.cursor/
+# Cursor local state — keep versioned agent skills
+.cursor/*
+!.cursor/skills/
+!.cursor/skills/**
 
 # Storybook
 *storybook.log
