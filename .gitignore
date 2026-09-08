@@ -33,6 +33,9 @@ out/
 build
 dist
 
+# Generated slim i18n catalogs (source locales stay under src/i18n/locales)
+packages/ui/src/i18n/slim/
+
 # Bundle analysis reports
 bundle-report/
 *.size-limit-why.html
@@ -85,3 +88,6 @@ storybook-static
 .opencode/
 .superset/
 .codex/
+
+# Local decision trails (show-me-your-work)
+.audit/

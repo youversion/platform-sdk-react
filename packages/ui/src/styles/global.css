@@ -49,9 +49,13 @@
 layer(yv-sdk-fonts);
 @import '@youversion/platform-core/browser/styles/theme.css' layer(yv-sdk-styles);
 @import 'tailwindcss/theme.css' layer(yv-sdk-theme) prefix(yv);
-@import 'tailwindcss/utilities.css' layer(yv-sdk-utilities) prefix(yv);
-@import '@youversion/platform-core/browser/styles/bible-reader.css' layer(yv-sdk-bible-reader);
+@import 'tailwindcss/utilities.css' layer(yv-sdk-utilities) prefix(yv) source(none);
 @import 'tw-animate-css';
+
+@source '../components';
+@source not '../**/*.stories.tsx';
+@source not '../**/*.test.tsx';
+@source not '../**/*.test.ts';
 
 /* Untitled Serif has no @font-face here on purpose. Its stylesheet URL needs the
    consumer's app key, which this file cannot know — it is frozen into __YV_STYLES__ at
@@ -95,23 +99,10 @@ layer(yv-sdk-fonts);
       --color-border: var(--yv-border);
       --color-input: var(--yv-input);
       --color-ring: var(--yv-ring);
-      --color-chart-1: var(--yv-chart-1);
-      --color-chart-2: var(--yv-chart-2);
-      --color-chart-3: var(--yv-chart-3);
-      --color-chart-4: var(--yv-chart-4);
-      --color-chart-5: var(--yv-chart-5);
       --radius-sm: calc(var(--yv-radius) - 4px);
       --radius-md: calc(var(--yv-radius) - 2px);
       --radius-lg: var(--yv-radius);
       --radius-xl: calc(var(--yv-radius) + 4px);
-      --color-sidebar: var(--yv-sidebar);
-      --color-sidebar-foreground: var(--yv-sidebar-foreground);
-      --color-sidebar-primary: var(--yv-sidebar-primary);
-      --color-sidebar-primary-foreground: var(--yv-sidebar-primary-foreground);
-      --color-sidebar-accent: var(--yv-sidebar-accent);
-      --color-sidebar-accent-foreground: var(--yv-sidebar-accent-foreground);
-      --color-sidebar-border: var(--yv-sidebar-border);
-      --color-sidebar-ring: var(--yv-sidebar-ring);
     }
   }
 }
@@ -126,18 +117,6 @@ layer(yv-sdk-fonts);
      `@utility card-content` only sets width / max-width (not in the revert list). */
   .yv\:card-content {
     margin-inline: auto;
-  }
-}
-
-/* Verse selection — an underline under the selected verse's text. Sits in the
-   bible-reader layer alongside the `.yv-v` verse structure. Highlight fills are
-   applied as inline styles in verse.tsx (per-verse color), so they aren't here. */
-@layer yv-sdk-bible-reader {
-  [data-yv-sdk] .yv-v-selected {
-    text-decoration-line: underline;
-    text-decoration-thickness: 2px;
-    text-underline-offset: 2px;
-    text-decoration-color: var(--yv-foreground);
   }
 }
 

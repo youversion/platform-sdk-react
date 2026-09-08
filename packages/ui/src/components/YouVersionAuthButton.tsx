@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useMemo } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import i18n from '@/i18n';
@@ -10,6 +12,7 @@ import { useYVAuth, useTheme } from '@youversion/platform-react-hooks';
 import { Button } from '../components/ui/button';
 import { YouVersionLogo } from './icons/youversion-logo';
 import { cn } from '../lib/utils';
+import { YvComponentStyles } from '@/lib/yv-styles-components';
 
 interface SignInAuthProps {
   /**
@@ -201,16 +204,49 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
 
     if (size === 'icon') {
       return (
+        <>
+          <YvComponentStyles />
+          <Button
+            {...props}
+            data-yv-sdk
+            data-yv-theme={theme}
+            className={cn(
+              'yv:shadow-none yv:p-3 yv:h-auto yv:w-fit',
+              // The YV brand button is a neutral surface (white in light, dark in
+              // dark) with its own text/logo color set below — pin the background
+              // explicitly so it doesn't inherit the `default` variant's
+              // `bg-primary`, which would render the logo unreadable.
+              'yv:bg-background yv:hover:bg-background/90',
+              variant === 'outline' ? 'yv:border' : 'yv:border-none',
+              theme === 'light' ? 'yv:text-black' : 'yv:text-white',
+              className,
+            )}
+            disabled={buttonLoading ? true : (disabled ?? false)}
+            ref={ref}
+            onClick={(e) => void handleClick(e)}
+            size="icon"
+            style={buttonStyle}
+            variant={'default'}
+          >
+            {buttonLoading ? loadingSpinner : null}
+            <YouVersionLogo />
+            <span className="yv:sr-only">{buttonText}</span>
+          </Button>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <YvComponentStyles />
         <Button
           {...props}
           data-yv-sdk
           data-yv-theme={theme}
           className={cn(
-            'yv:shadow-none yv:p-3 yv:h-auto yv:w-fit',
-            // The YV brand button is a neutral surface (white in light, dark in
-            // dark) with its own text/logo color set below — pin the background
-            // explicitly so it doesn't inherit the `default` variant's
-            // `bg-primary`, which would render the logo unreadable.
+            'yv:relative yv:shadow-none yv:w-fit',
+            // Pin the neutral brand surface so the button doesn't inherit the
+            // `default` variant's `bg-primary` (see the icon branch above).
             'yv:bg-background yv:hover:bg-background/90',
             variant === 'outline' ? 'yv:border' : 'yv:border-none',
             theme === 'light' ? 'yv:text-black' : 'yv:text-white',
@@ -219,42 +255,15 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
           disabled={buttonLoading ? true : (disabled ?? false)}
           ref={ref}
           onClick={(e) => void handleClick(e)}
-          size="icon"
+          size="lg"
           style={buttonStyle}
           variant={'default'}
         >
           {buttonLoading ? loadingSpinner : null}
           <YouVersionLogo />
-          <span className="yv:sr-only">{buttonText}</span>
+          {buttonText}
         </Button>
-      );
-    }
-
-    return (
-      <Button
-        {...props}
-        data-yv-sdk
-        data-yv-theme={theme}
-        className={cn(
-          'yv:relative yv:shadow-none yv:w-fit',
-          // Pin the neutral brand surface so the button doesn't inherit the
-          // `default` variant's `bg-primary` (see the icon branch above).
-          'yv:bg-background yv:hover:bg-background/90',
-          variant === 'outline' ? 'yv:border' : 'yv:border-none',
-          theme === 'light' ? 'yv:text-black' : 'yv:text-white',
-          className,
-        )}
-        disabled={buttonLoading ? true : (disabled ?? false)}
-        ref={ref}
-        onClick={(e) => void handleClick(e)}
-        size="lg"
-        style={buttonStyle}
-        variant={'default'}
-      >
-        {buttonLoading ? loadingSpinner : null}
-        <YouVersionLogo />
-        {buttonText}
-      </Button>
+      </>
     );
   },
 );

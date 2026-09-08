@@ -3,9 +3,13 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import en from './locales/en.json';
+import es from './locales/es.json';
+import fr from './locales/fr.json';
+import ko from './locales/ko.json';
+import no from './locales/no.json';
 
 import { getBrowserLanguages, resolveBrowserLanguage } from './detectLanguage';
-import { resources, supportedLngs } from './resources.generated';
+import { supportedLngs } from './resources.generated';
 
 const fallbackLng = 'en';
 
@@ -183,8 +187,9 @@ describe('i18n instance', () => {
     vi.resetModules();
 
     const i18n = await loadI18n();
-    const localeStrings = Object.entries(resources).find(([key]) => key === lng)?.[1]?.translation;
-    if (!localeStrings) throw new Error(`missing locale ${lng}`);
+    const { syncSdkLanguage } = await import('./index');
+    await syncSdkLanguage();
+    const localeStrings = (await import(`./locales/${lng}.json`)).default;
     expect(i18n.language).toBe(lng);
     expect(i18n.t('verseOfTheDay')).toBe(localeStrings.verseOfTheDay);
   });
@@ -197,8 +202,9 @@ describe('i18n instance', () => {
     vi.resetModules();
 
     const i18n = await loadI18n();
-    const koStrings = resources.ko.translation;
-    expect(koStrings).not.toHaveProperty('versionSearchAriaLabel');
+    const { syncSdkLanguage } = await import('./index');
+    await syncSdkLanguage();
+    expect(ko).not.toHaveProperty('versionSearchAriaLabel');
     expect(i18n.t('versionSearchAriaLabel')).toBe(en.versionSearchAriaLabel);
   });
 
@@ -210,9 +216,10 @@ describe('i18n instance', () => {
     vi.resetModules();
 
     const i18n = await loadI18n();
-    const noStrings = resources.no.translation;
+    const { syncSdkLanguage } = await import('./index');
+    await syncSdkLanguage();
     expect(i18n.language).toBe('no');
-    expect(i18n.t('verseOfTheDay')).toBe(noStrings.verseOfTheDay);
+    expect(i18n.t('verseOfTheDay')).toBe(no.verseOfTheDay);
   });
 
   it('re-exports supportedLngs from generated resources', async () => {
@@ -247,11 +254,11 @@ describe('i18n instance', () => {
     await syncSdkLanguage('fr-FR');
 
     expect(i18n.language).toBe('fr');
-    expect(i18n.t('verseOfTheDay')).toBe(resources.fr.translation.verseOfTheDay);
+    expect(i18n.t('verseOfTheDay')).toBe(fr.verseOfTheDay);
 
     await syncSdkLanguage('es-MX');
 
     expect(i18n.language).toBe('es');
-    expect(i18n.t('verseOfTheDay')).toBe(resources.es.translation.verseOfTheDay);
+    expect(i18n.t('verseOfTheDay')).toBe(es.verseOfTheDay);
   });
 });
