@@ -1,15 +1,25 @@
 import * as z from 'zod/mini';
 
+/** BCP 47 tag limited to language or language+script (e.g., "en", "zh-Hans"). */
+export const BCP47_LANGUAGE_TAG_REGEX = /^[a-z]{2,3}(?:-[A-Z][a-z]{3})?$/;
+
+/** Input validation for a caller-supplied language identifier. */
+export const LanguageIdSchema = z
+  .string()
+  .check(
+    z.trim(),
+    z.minLength(1, 'Language ID must be a non-empty string'),
+    z.regex(
+      BCP47_LANGUAGE_TAG_REGEX,
+      'Language ID must match BCP 47 format (language or language+script)',
+    ),
+  );
+
 export const LanguageSchema = z.object({
   /** BCP 47 language identifier (e.g., "en") */
   id: z
     .string()
-    .check(
-      z.regex(
-        /^[a-z]{2,3}(?:-[A-Z][a-z]{3})?$/,
-        'BCP 47 id limited to language or language+script',
-      ),
-    ),
+    .check(z.regex(BCP47_LANGUAGE_TAG_REGEX, 'BCP 47 id limited to language or language+script')),
   /** ISO 639 language code */
   language: z.string().check(z.regex(/^[a-z]{2,3}$/, 'ISO 639 canonical language subtag')),
   /** ISO 15924 script code (e.g., "Latn") */
@@ -56,12 +66,27 @@ const countrySchema = z
     z.toUpperCase(),
   );
 
-export const GetLanguagesOptionsSchema = z.object({
-  page_size: z.optional(z.union([z.int().check(z.positive()), z.literal('*')])),
-  fields: z.optional(z.array(z.keyof(LanguageSchema))),
-  page_token: z.optional(z.string()),
-  /** ISO 3166-1 alpha-2 country code */
-  country: z.optional(countrySchema),
-});
+export const GetLanguagesOptionsSchema = z
+  .object({
+    page_size: z.optional(z.union([z.int().check(z.positive()), z.literal('*')])),
+    fields: z.optional(z.array(z.keyof(LanguageSchema))),
+    page_token: z.optional(z.string()),
+    /** ISO 3166-1 alpha-2 country code */
+    country: z.optional(countrySchema),
+  })
+  .check(
+    z.refine(
+      (data) => {
+        if (data?.page_size === '*') {
+          return data.fields && data.fields.length >= 1 && data.fields.length <= 3;
+        }
+        return true;
+      },
+      {
+        error: 'page_size="*" required 1-3 fields to be specified',
+        path: ['page_size', 'fields'],
+      },
+    ),
+  );
 
 export type GetLanguagesOptions = z.infer<typeof GetLanguagesOptionsSchema>;

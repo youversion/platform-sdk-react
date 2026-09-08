@@ -57,3 +57,9 @@ export const OrganizationSchema = z.object({
 });
 
 export type Organization = Readonly<z.infer<typeof OrganizationSchema>>;
+
+/** Input validation for a caller-supplied organization identifier. */
+export const OrganizationIdSchema = z.pipe(
+  z.string().check(z.trim()),
+  z.uuid({ error: 'Organization ID must be a valid UUID' }),
+);

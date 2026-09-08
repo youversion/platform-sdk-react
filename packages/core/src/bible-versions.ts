@@ -1,6 +1,10 @@
 import * as z from 'zod/mini';
 import type { ApiClient } from './client';
-import { GetVersionsOptionsSchema, type GetVersionsOptions } from './schemas';
+import {
+  LanguageRangeSchema,
+  GetVersionsOptionsSchema,
+  type GetVersionsOptions,
+} from './schemas/version';
 import type { BibleVersion, Collection } from './types';
 import {
   fetchFilteredCollection,
@@ -21,10 +25,6 @@ type VersionListQuery = {
   all_available?: string;
 };
 
-const languageRangesSchema = z
-  .string()
-  .check(z.trim(), z.minLength(1, 'Language ranges must be a non-empty string'));
-
 export async function getVersions(
   client: ApiClient,
   language_ranges: string | string[],
@@ -34,7 +34,7 @@ export async function getVersions(
   const languageRangeArray = Array.isArray(language_ranges) ? language_ranges : [language_ranges];
 
   const parsedLanguageRanges = z
-    .array(languageRangesSchema)
+    .array(LanguageRangeSchema)
     .check(z.minLength(1, 'At least one language range is required'))
     .parse(languageRangeArray);
 

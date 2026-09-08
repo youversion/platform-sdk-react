@@ -6,11 +6,8 @@ import {
   parseBibleChapter,
   parseBibleVersionId,
 } from './bible-chapter';
+import { BibleVerseNumberSchema } from './schemas/verse';
 import type { BibleBook, BibleChapter, BibleVerse, CANON, Collection, VOTD } from './types';
-
-const verseSchema = z
-  .int({ error: 'Verse must be an integer' })
-  .check(z.positive('Verse must be a positive integer'));
 
 export async function getBooks(
   client: ApiClient,
@@ -71,7 +68,7 @@ export async function getVerse(
   parseBibleVersionId(versionId);
   parseBibleBookId(book);
   parseBibleChapter(chapter);
-  verseSchema.parse(verse);
+  BibleVerseNumberSchema.parse(verse);
   await assertUsableVersion(client, versionId);
   return client.get<BibleVerse>(
     `/v1/bibles/${versionId}/books/${book}/chapters/${chapter}/verses/${verse}`,

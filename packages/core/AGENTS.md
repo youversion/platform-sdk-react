@@ -17,9 +17,17 @@ styles/                      # Browser CSS (exported via ./browser/styles/*)
   bible-reader.css           # USFM/Bible typography for [data-slot='yv-bible-renderer']
   index.css                  # Barrel: imports fonts + theme + bible-reader
 client.ts                    # ApiClient - main HTTP client
-bible.ts                     # BibleClient - Bible data operations
-languages.ts                 # LanguagesClient - language data
+bible.ts                     # BibleClient - Bible data operations (facade over bible-* modules)
+bible-chapter.ts             # getVersion/getChapter + shared id/book/chapter parse helpers
+bible-reads.ts               # Book/chapter/verse/VOTD reads (tree-shakable module)
+bible-versions.ts            # Version listing (tree-shakable module)
+bible-passage.ts             # Passage fetch (tree-shakable module)
+languages.ts                 # LanguagesClient - language data (facade over languages-* modules)
+languages-language.ts        # Single-language fetch (tree-shakable module)
+languages-list.ts            # Language listing (tree-shakable module)
+version-filter-state.ts      # Version-filter allowlists without pulling auth storage
 highlights.ts                # HighlightsClient - user highlights
+organizations.ts             # OrganizationsClient
 YouVersionAPI.ts             # Base YouVersion API client
 SignInWithYouVersionPKCE.ts  # PKCE auth implementation
 StorageStrategy.ts           # Storage interface (SessionStorage, MemoryStorage)
@@ -54,7 +62,7 @@ index.ts                     # Main entry point (runtime-agnostic)
 ## DOs / DON'Ts
 
 ✅ Do: Keep this package **framework-agnostic**, but if you must target server or browser, those files must export from `/server` or `/browser`
-✅ Do: Define all input/output types in `schemas/` using Zod; schemas are the single source of truth
+✅ Do: Define all input/output types in `schemas/` using Zod; schemas are the single source of truth. Client modules import schema files directly (`./schemas/version`), not the `./schemas` barrel, so tree-shakable entries stay narrow.
 ✅ Do: Compose `ApiClient` in new service clients; take it as a constructor argument
 ✅ Do: Parse API responses with Zod schemas for validation
 

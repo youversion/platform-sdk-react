@@ -1,5 +1,7 @@
-import * as z from 'zod/mini';
 import type { ApiClient } from './client';
+import { BibleBookIdSchema } from './schemas/book';
+import { BibleChapterNumberSchema } from './schemas/chapter';
+import { BibleVersionIdSchema } from './schemas/version';
 import type { BibleChapter, BibleVersion } from './types';
 import {
   isLanguageFilterActive,
@@ -8,28 +10,16 @@ import {
   throwUnusableBibleVersion,
 } from './version-filters';
 
-const versionIdSchema = z.int().check(z.positive('Version ID must be a positive integer'));
-const bookSchema = z
-  .string()
-  .check(
-    z.trim(),
-    z.minLength(3, 'Book ID must be exactly 3 characters'),
-    z.maxLength(3, 'Book ID must be exactly 3 characters'),
-  );
-const chapterSchema = z
-  .int({ error: 'Chapter must be an integer' })
-  .check(z.positive('Chapter must be a positive integer'));
-
 export function parseBibleVersionId(id: number): number {
-  return versionIdSchema.parse(id);
+  return BibleVersionIdSchema.parse(id);
 }
 
 export function parseBibleBookId(book: string): string {
-  return bookSchema.parse(book);
+  return BibleBookIdSchema.parse(book);
 }
 
 export function parseBibleChapter(chapter: number): number {
-  return chapterSchema.parse(chapter);
+  return BibleChapterNumberSchema.parse(chapter);
 }
 
 export async function getVersion(client: ApiClient, id: number): Promise<BibleVersion> {

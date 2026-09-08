@@ -1,6 +1,6 @@
 import type { ApiClient } from './client';
+import { GetLanguagesOptionsSchema, type GetLanguagesOptions } from './schemas/language';
 import type { Collection, Language } from './types';
-import { GetLanguagesOptionsSchema, type GetLanguagesOptions } from './schemas';
 import {
   fetchFilteredCollection,
   fieldsNeededForLanguageFilter,
@@ -26,13 +26,6 @@ export async function getLanguages(
   }
 
   if (parsed.page_size !== undefined) {
-    if (parsed.page_size === '*') {
-      const fieldsCount = parsed.fields?.length ?? 0;
-      if (fieldsCount < 1 || fieldsCount > 3) {
-        throw new Error('page_size="*" requires 1-3 fields to be specified');
-      }
-    }
-
     params.page_size = parsed.page_size;
   }
 

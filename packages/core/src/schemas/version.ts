@@ -32,6 +32,16 @@ export const BibleVersionSchema = z.object({
 
 export type BibleVersion = Readonly<z.infer<typeof BibleVersionSchema>>;
 
+/** Input validation for a Bible version identifier. */
+export const BibleVersionIdSchema = z
+  .int()
+  .check(z.positive('Version ID must be a positive integer'));
+
+/** Input validation for one language range accepted by the versions list endpoint. */
+export const LanguageRangeSchema = z
+  .string()
+  .check(z.trim(), z.minLength(1, 'Language ranges must be a non-empty string'));
+
 export const GetVersionsOptionsSchema = z
   .optional(
     z.object({

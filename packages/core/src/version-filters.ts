@@ -125,7 +125,7 @@ function resolveFilterPageStart(startToken?: string): FilterPageStart {
  * filtered walk, per filter state. Mutates `params` in place.
  */
 export async function fetchFilteredCollection<T>(
-  params: { 'fields[]'?: unknown; page_size?: unknown },
+  params: { 'fields[]'?: string[]; page_size?: number | '*' },
   options: { page_size?: number | '*'; page_token?: string },
   deps: {
     fieldsNeeded: () => string[] | undefined;

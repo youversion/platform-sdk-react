@@ -10,3 +10,8 @@ export const BibleVerseSchema = z.object({
 });
 
 export type BibleVerse = Readonly<z.infer<typeof BibleVerseSchema>>;
+
+/** Input validation for a caller-supplied verse number. */
+export const BibleVerseNumberSchema = z
+  .int({ error: 'Verse must be an integer' })
+  .check(z.positive('Verse must be a positive integer'));

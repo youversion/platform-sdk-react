@@ -37,3 +37,12 @@ export const BibleBookSchema = z.object({
 
 export type BibleBook = Readonly<z.infer<typeof BibleBookSchema>>;
 export type CANON = Readonly<z.infer<typeof CanonSchema>>;
+
+/** Input validation for a caller-supplied book identifier (3-character USFM). */
+export const BibleBookIdSchema = z
+  .string()
+  .check(
+    z.trim(),
+    z.minLength(3, 'Book ID must be exactly 3 characters'),
+    z.maxLength(3, 'Book ID must be exactly 3 characters'),
+  );

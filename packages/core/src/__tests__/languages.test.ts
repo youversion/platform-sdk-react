@@ -110,7 +110,7 @@ describe('LanguagesClient', () => {
         languagesClient.getLanguages({
           page_size: '*',
         }),
-      ).rejects.toThrow('page_size="*" requires 1-3 fields to be specified');
+      ).rejects.toThrow(/required 1-3 fields to be specified/);
     });
 
     it('should throw an error for page_size="*" with empty fields array', async () => {
@@ -119,7 +119,7 @@ describe('LanguagesClient', () => {
           fields: [],
           page_size: '*',
         }),
-      ).rejects.toThrow('page_size="*" requires 1-3 fields to be specified');
+      ).rejects.toThrow(/required 1-3 fields to be specified/);
     });
 
     it('should throw an error for page_size="*" with more than 3 fields', async () => {
@@ -128,7 +128,7 @@ describe('LanguagesClient', () => {
           fields: ['id', 'language', 'script', 'script_name'],
           page_size: '*',
         }),
-      ).rejects.toThrow('page_size="*" requires 1-3 fields to be specified');
+      ).rejects.toThrow(/required 1-3 fields to be specified/);
     });
 
     it('should allow page_size="*" with exactly 1 field', async () => {

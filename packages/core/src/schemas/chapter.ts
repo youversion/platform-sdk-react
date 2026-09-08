@@ -13,3 +13,8 @@ export const BibleChapterSchema = z.object({
 });
 
 export type BibleChapter = Readonly<z.infer<typeof BibleChapterSchema>>;
+
+/** Input validation for a caller-supplied chapter number. */
+export const BibleChapterNumberSchema = z
+  .int({ error: 'Chapter must be an integer' })
+  .check(z.positive('Chapter must be a positive integer'));

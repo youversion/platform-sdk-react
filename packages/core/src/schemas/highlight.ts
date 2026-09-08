@@ -4,6 +4,18 @@ import * as z from 'zod/mini';
 // validator accepts both, so response parsing must not reject uppercase hex.
 const HEX_COLOR_REGEX = /^[0-9a-f]{6}$/i;
 
+const HexColorSchema = z.string().check(z.regex(HEX_COLOR_REGEX));
+
+/** Input validation for a caller-supplied highlight passage identifier. */
+export const HighlightPassageIdSchema = z
+  .string()
+  .check(z.trim(), z.minLength(1, 'Passage ID must be a non-empty string'));
+
+/** Input validation for a caller-supplied highlight color (6-digit hex, no #). */
+export const HighlightColorSchema = z
+  .string()
+  .check(z.regex(HEX_COLOR_REGEX, 'Color must be a 6-character hex string without #'));
+
 /**
  * Wire format used by the highlights API (`/v1/highlights`), which names the
  * Bible version field `bible_id`. The SDK exposes it as `version_id` for
@@ -15,7 +27,7 @@ export const HighlightWireSchema = z.object({
   /** Passage identifier (e.g., "MAT.1.1") */
   passage_id: z.string(),
   /** Hex color code (6 digits, no #) */
-  color: z.string().check(z.regex(HEX_COLOR_REGEX)),
+  color: HexColorSchema,
 });
 
 export type HighlightWire = z.infer<typeof HighlightWireSchema>;
@@ -33,7 +45,7 @@ const _HighlightSchema = z.object({
   /** Passage identifier (e.g., "MAT.1.1") */
   passage_id: z.string(),
   /** Hex color code (6 digits, no #) */
-  color: z.string().check(z.regex(HEX_COLOR_REGEX)),
+  color: HexColorSchema,
 });
 
 export type Highlight = z.infer<typeof _HighlightSchema>;
@@ -53,7 +65,7 @@ const _CreateHighlightSchema = z.object({
   /** Passage identifier (e.g., "MAT.1.1") */
   passage_id: z.string(),
   /** Hex color code (6 digits, no #) */
-  color: z.string().check(z.regex(HEX_COLOR_REGEX)),
+  color: HexColorSchema,
 });
 
 export type CreateHighlight = z.infer<typeof _CreateHighlightSchema>;
