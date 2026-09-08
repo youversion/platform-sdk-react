@@ -1,6 +1,8 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useLanguage } from './useLanguage';
+import * as core from '@youversion/platform-core';
+import type { Language } from '@youversion/platform-core';
 import { createLanguagesClientStub, createYVWrapper } from './test/utils';
 
 describe('useLanguage', () => {
@@ -8,7 +10,7 @@ describe('useLanguage', () => {
   const languagesClient = createLanguagesClientStub({ getLanguage: mockGetLanguage });
   const wrapper = createYVWrapper('test-app-key', { languagesClient });
 
-  const mockLanguage = {
+  const mockLanguage: Language = {
     id: 'en',
     language: 'en',
     script: 'Latn',
@@ -41,6 +43,20 @@ describe('useLanguage', () => {
 
       expect.soft(mockGetLanguage).toHaveBeenCalledWith('en');
       expect.soft(result.current.language).toEqual(mockLanguage);
+    });
+
+    it('fetches via getLanguage when the provider has no languagesClient override', async () => {
+      const spy = vi.spyOn(core, 'getLanguage').mockResolvedValue(mockLanguage);
+      const bare = createYVWrapper('test-app-key');
+      const { result } = renderHook(() => useLanguage('en'), { wrapper: bare });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(spy).toHaveBeenCalled();
+      expect(result.current.language).toEqual(mockLanguage);
+      spy.mockRestore();
     });
 
     it('should refetch when languageId changes', async () => {
