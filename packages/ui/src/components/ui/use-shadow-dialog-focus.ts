@@ -4,7 +4,6 @@ import { tabbable } from 'tabbable';
 import {
   getOwnShadowRoot,
   isElementFromOwnerDocument,
-  useShadowFocusRestoreTarget,
   useShadowModalPresence,
 } from '@/lib/shadow-root-host';
 
@@ -113,7 +112,6 @@ export function useShadowDialogFocus({
   const modalPresent = modal && (overlay !== null || content !== null);
   useShadowDialogFocusContainment(modalPresent, content, overlay);
   const restoreFocusWhenModalReleased = useShadowModalPresence(modalPresent);
-  const getLastFocusedElement = useShadowFocusRestoreTarget();
   const restoreFocusRef = React.useRef<HTMLElement | null>(null);
   const capturedRestoreFocusRef = React.useRef(false);
 
@@ -128,34 +126,24 @@ export function useShadowDialogFocus({
     const activeElement = shadowRoot
       ? (shadowRoot.activeElement ?? container.ownerDocument.activeElement)
       : container.ownerDocument.activeElement;
-    const fallback = getLastFocusedElement?.() ?? null;
-    // A rapid reopen during exit leaves focus on the outgoing overlay. That
-    // node is not an opener; prefer the last wrapper control instead.
-    const captured =
-      isElementFromOwnerDocument(activeElement, container, 'HTMLElement') &&
-      !container.contains(activeElement)
-        ? activeElement
-        : fallback;
-    restoreFocusRef.current =
-      captured && isElementFromOwnerDocument(captured, container, 'HTMLElement') ? captured : null;
+    if (isElementFromOwnerDocument(activeElement, container, 'HTMLElement')) {
+      restoreFocusRef.current = activeElement;
+    }
     capturedRestoreFocusRef.current = true;
-  }, [container, getLastFocusedElement, open]);
+  }, [container, open]);
 
   const onCloseAutoFocus = React.useCallback(
     (event: Event): void => {
       if (event.defaultPrevented || container === undefined) return;
 
       event.preventDefault();
-      const captured = restoreFocusRef.current;
+      const restoreFocusTo = restoreFocusRef.current;
       restoreFocusRef.current = null;
-      const fallback = getLastFocusedElement?.() ?? null;
-      const restoreFocusTo =
-        captured && captured.isConnected && !container.contains(captured) ? captured : fallback;
       if (restoreFocusTo && restoreFocusWhenModalReleased) {
         restoreFocusWhenModalReleased(restoreFocusTo);
       }
     },
-    [container, getLastFocusedElement, restoreFocusWhenModalReleased],
+    [container, restoreFocusWhenModalReleased],
   );
 
   return { onCloseAutoFocus };

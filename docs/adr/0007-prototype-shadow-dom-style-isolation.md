@@ -1,4 +1,4 @@
-# ADR 0006: Prototype automatic Shadow DOM style isolation
+# ADR 0007: Prototype automatic Shadow DOM style isolation
 
 Status: Proposed (validated experimentally; not approved for production rollout)
 
@@ -77,22 +77,45 @@ accepts that host registrations can collide with SDK family names. It also
 cannot protect a component host from constraints applied to its ancestors. Open
 roots are a CSS boundary, not a security boundary.
 
-YPE-5355 exercised nested and concurrent overlays through the production
-`ShadowRootHost` seam (`portalStrategy="local-top-layer"`, real
-`VerseActionPopover`, `HighlightPermissionDialog`, `Dialog`, and `Popover`).
-The four ticket scenarios — popover → dialog, dialog → popover, two independent
-overlays, and rapid close/reopen during exit — did not require a new
-overlay-ownership registry. Radix already owns Escape, outside dismissal,
-presence, and focus scope. Independent overlays keep current Radix
-dismiss-on-outside; both staying mounted is not required. YPE-1034 still allows
-a verse-action popover to remain open under the permission or sign-in dialog.
+## Nested and concurrent overlays
 
-The one reproduced gap was focus restoration after a rapid reopen while the
-previous modal was still exiting: the adapter had captured the outgoing overlay
-node. The production focus helper now skips portal-container nodes and falls
-back to the last wrapper control. No second ownership class, parent graph,
-custom exiting phase, or duplicate focus trap was added. Shipping this
-coordination to `main` remains YPE-5356.
+YPE-5355 exercised nested and concurrent overlays through the production
+`ShadowRootHost` seam. Both nesting directions preserve topmost-only Escape
+dismissal and restore focus into the remaining parent overlay. Either
+nested-overlay teardown order also works with the current architecture. Separate
+component shadow roots own distinct portal containers, but do not isolate Radix
+outside interaction: opening a peer popover dismisses the existing peer across
+the same or separate roots. A verse action popover does not restore final focus
+after its nested dialog and then the popover close, and rapid dialog close/reopen
+also loses final focus restoration.
+
+Keep one shadow root, one shadow-local native top-layer container, and one React
+tree. Continue to use Radix for presence, focus scopes, outside interaction, and
+keyboard behavior. Do not add PR 375's separate ownership class, parent graph,
+custom exit phase, or duplicate focus trap.
+
+YPE-5356 owns production coordination. If it requires concurrent peers within or
+across component shadow roots, or exact final focus restoration for the
+unsupported cases, extend the controller already owned by `ShadowRootHost`. Any
+design must account for overlay order, connected restore targets, and the outside
+interaction that can dismiss a peer before the new overlay registers. The
+detailed Chromium evidence and remaining validation live in the rollout plan.
+
+The smallest extension has two responsibilities. First, a managed overlay trigger
+marks its original `pointerdown` during target capture with an open intent and
+owner identity. Radix observes outside interaction later from its document bubble
+listener; the existing overlay can inspect that same composed event and prevent
+its dismissal when the intent targets a peer that may remain concurrent. This
+handles trigger-time dismissal within or across shadow roots without a separate
+global ownership registry. The controller commits the ordered overlay entry only
+if content mounts and otherwise clears the intent.
+
+Second, the controller captures one connected, non-overlay restore target before
+the first overlay in a chain opens. Nested opens and close/reopen during retained
+exit presence do not replace it with an overlay node. After the final overlay and
+exit lease release, the controller restores that target if it is still connected,
+then clears the chain. Keep Radix's focus scopes, dismissal events, and presence;
+do not add a second focus trap or parent graph.
 
 Radix's development-only relationship checks can also emit warnings for valid
 IDs inside a shadow root because those checks query the document rather than

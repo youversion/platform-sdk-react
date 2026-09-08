@@ -2,7 +2,7 @@
 
 ## Why this doc exists
 
-[ADR 0006](adr/0006-prototype-shadow-dom-style-isolation.md) records the durable
+[ADR 0007](adr/0007-prototype-shadow-dom-style-isolation.md) records the durable
 architectural decision behind the Shadow DOM prototype. This document tracks
 the implementation evidence, unresolved audits, and conditions for expanding
 automatic isolation beyond `YouVersionAuthButton`.
@@ -21,9 +21,26 @@ This is a working plan, not approval for package-wide rollout.
   Shadow DOM boundaries.
 - The internal `SignInDialog` is validated only through an opt-in
   `ShadowRootHost` story.
-- Nested and concurrent overlays in one shadow root were exercised through the
-  production `ShadowRootHost` seam (YPE-5355). No additional ownership registry
-  was required. Runtime shipping remains YPE-5356.
+- Nested and concurrent overlays within and across component shadow roots were
+  exercised through the production `ShadowRootHost` seam (YPE-5355). The Shadow
+  DOM ADR records the architectural boundary; the results below record the
+  supported contract and peer-dismissal and final focus-restoration gaps. Runtime
+  changes remain YPE-5356.
+
+## Nested and concurrent overlay evidence
+
+| Scenario | Result | Evidence and limitation |
+| --- | --- | --- |
+| Verse action popover opens the highlights permission dialog | Partially supported | Both render in the shadow-local top layer. The dialog receives focus and the wrapper is inert. A first Escape closes only the dialog and restores focus inside the popover; a second closes the popover. Chromium spike observation found no final focus restoration. Automated evidence covers the stable dismissal, containment, and teardown contract without requiring that known gap to remain. |
+| Dialog contains a popover | Supported | The popover is interactive and receives focus. Escape closes it first and restores its trigger while the dialog remains modal. A second Escape closes the dialog and restores its opener. |
+| Two independent popovers in the same or separate roots | Unsupported as concurrent peers | Chromium spike observation found that opening a popover dismisses an existing peer through Radix outside interaction, including when the peers use separate component shadow roots. Automated evidence covers the stable contract that the new peer receives focus, remains non-modal, tears down cleanly, and that separate roots remain usable after primary teardown. |
+| Rapid dialog close/reopen during exit | Unsupported | The first dialog remains connected in its closed state when it is reopened. The reopened dialog receives focus and the wrapper remains inert. Chromium spike observation found that final dismissal loses the opener; automated evidence requires safe modal release without locking in that focus loss. |
+
+Separate `ShadowRootHost` instances use different portal containers and tear
+those containers down independently. This provides lifecycle isolation, not
+interactive concurrency: pointer interaction in another root dismisses the
+existing peer overlay. Firefox, WebKit, and assistive-technology checks remain
+open.
 
 ## Validation matrix
 
@@ -37,7 +54,7 @@ This is a working plan, not approval for package-wide rollout.
 | Portal lifecycle | Unit and browser coverage exercise lazy creation, exit-animation retention, cleanup, immediate reopen behavior, and the direct-Radix `VerseActionPopover` consumer. | Validated for shared primitives and the known bypass | Repeat the consumer audit when adding another direct overlay primitive. |
 | Dialog relationships | Chromium resolves title and description relationships inside the component tree. | Validated in Chromium | Verify announcements with real assistive technology. |
 | Dialog keyboard containment | Browser coverage exercises initial focus, programmatic escape redirection, forward and reverse traversal, radio-group collapsing, negative `tabindex`, and wraparound. | Validated in Chromium | Expand the browser and assistive-technology matrix. |
-| Dialog modal lifetime | Coverage verifies inert background content while open and through staggered Content and Overlay exit animations. Nested and concurrent overlays were then exercised through the production seam (YPE-5355): popover → dialog, dialog → popover, independent Radix dismiss-on-outside, and rapid reopen during unequal exit. | Validated for the production seam | YPE-5356 owns shipping. Expand browser and assistive-technology coverage. |
+| Dialog modal lifetime | Coverage verifies inert background content while open and through staggered Content and Overlay exit animations. YPE-5355 also exercises both unmount orders for overlapping popover and dialog exits. | Validated for order-independent teardown | YPE-5356 owns peer concurrency across component roots and final focus-restoration gaps. Expand browser and assistive-technology coverage. |
 | Dialog dismissal and restoration | Coverage exercises Escape, backdrop click, full-viewport hit testing, overlay-only focus, and restoration after both modal nodes unmount. | Validated in Chromium | Verify real screen-reader and cross-browser behavior. |
 
 ## Direct overlay inventory
@@ -51,8 +68,9 @@ This is a working plan, not approval for package-wide rollout.
 
 No other production direct-overlay bypass was found. The inventory therefore
 produced no equivalent low-risk migration and no materially different case that
-requires follow-up work. YPE-5355 found no need for a new overlay-ownership
-registry on top of `ShadowRootHost` plus Radix; YPE-5356 owns runtime shipping.
+requires follow-up work. YPE-5355 found that any added overlay coordination
+should extend the controller already owned by `ShadowRootHost`; YPE-5356 owns
+that runtime decision and implementation.
 
 ## Blocking production-readiness decisions
 
@@ -60,10 +78,11 @@ registry on top of `ShadowRootHost` plus Radix; YPE-5356 owns runtime shipping.
   or package-wide.
 - Define SSR, hydration, and first-paint behavior. The current effect-attached
   root renders an empty host on the server and delays content and forwarded refs.
-- Decide whether the YPE-5355 production-seam proof is enough to ship nested
-  and concurrent overlays (YPE-5356). The proof did not require a new
-  ownership registry; cross-browser and assistive-technology coverage still
-  remain.
+- Resolve the YPE-5355 peer-dismissal and final focus-restoration gaps before
+  shipping nested and concurrent overlays (YPE-5356). ADR 0007 limits any new
+  coordination to the existing root-owned controller and requires it to account
+  for trigger-time peer dismissal as well as overlay order and restore targets.
+  Cross-browser and assistive-technology coverage still remain.
 - Complete the package-wide custom-property inventory and prevention guard in
   YPE-5400. The known `BibleVersionPicker`, `InputGroup`, and `tw-animate-css`
   dependencies now resolve through locally-defined SDK-owned spacing and radius
