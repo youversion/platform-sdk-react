@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useTheme } from '@youversion/platform-react-hooks';
 import { http, HttpResponse } from 'msw';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { expect, userEvent, waitFor } from 'storybook/test';
@@ -73,10 +74,16 @@ function CompatibilityScenario({
   summary,
   title,
 }: CompatibilityScenarioProps): React.ReactNode {
+  const theme = useTheme();
+
   return (
     <section
+      className="yv:border-border yv:text-foreground"
+      data-yv-sdk
+      data-yv-theme={theme}
       style={{
-        border: '1px solid #d1d5db',
+        borderStyle: 'solid',
+        borderWidth: '1px',
         borderRadius: '0.75rem',
         display: 'grid',
         fontFamily: 'system-ui, sans-serif',
@@ -86,22 +93,29 @@ function CompatibilityScenario({
       }}
     >
       <header style={{ display: 'grid', gap: '0.5rem' }}>
-        <p style={{ color: '#4b5563', fontSize: '0.75rem', fontWeight: 700, margin: 0 }}>
+        <p
+          className="yv:text-muted-foreground"
+          style={{ fontSize: '0.75rem', fontWeight: 700, margin: 0 }}
+        >
           SHADOW DOM COMPATIBILITY EVIDENCE
         </p>
         <h2 style={{ fontSize: '1.25rem', margin: 0 }}>{title}</h2>
-        <p style={{ color: '#374151', lineHeight: 1.5, margin: 0 }}>{summary}</p>
+        <p style={{ lineHeight: 1.5, margin: 0 }}>{summary}</p>
       </header>
       <aside
         aria-label="Expected result"
+        className="yv:bg-muted yv:border-muted-foreground"
         style={{
-          background: '#f3f4f6',
-          borderInlineStart: '0.25rem solid #4b5563',
+          borderInlineStartStyle: 'solid',
+          borderInlineStartWidth: '0.25rem',
           paddingBlock: '0.75rem',
           paddingInline: '1rem',
         }}
       >
-        <p style={{ color: '#4b5563', fontSize: '0.75rem', fontWeight: 700, margin: 0 }}>
+        <p
+          className="yv:text-muted-foreground"
+          style={{ fontSize: '0.75rem', fontWeight: 700, margin: 0 }}
+        >
           EXPECTED RESULT
         </p>
         <p style={{ fontWeight: 700, margin: 0 }}>{classification}</p>
@@ -109,7 +123,14 @@ function CompatibilityScenario({
           {expectedResult}
         </p>
       </aside>
-      <div style={{ borderBlockStart: '1px solid #e5e7eb', paddingBlockStart: '1.25rem' }}>
+      <div
+        className="yv:border-border"
+        style={{
+          borderBlockStartStyle: 'solid',
+          borderBlockStartWidth: '1px',
+          paddingBlockStart: '1.25rem',
+        }}
+      >
         <p style={{ fontSize: '0.875rem', fontWeight: 700, marginBlock: '0 0.75rem' }}>
           Rendered example
         </p>
@@ -148,7 +169,7 @@ function FormRelationshipsHarness(): React.ReactNode {
 }
 
 export const FormsAndExternalRelationshipsStopAtTheTreeScope: Story = {
-  name: 'Forms, labels, and descriptions',
+  name: 'External relationships stop at the shadow boundary',
   render: () => <FormRelationshipsHarness />,
   play: async ({ canvasElement }) => {
     const form = await waitFor(() =>
@@ -258,8 +279,8 @@ function AutomaticButtonHarness(): React.ReactNode {
   );
 }
 
-export const EventsRefsAndAutomationExposeDifferentConsumerViews: Story = {
-  name: 'Events, refs, and test queries',
+export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
+  name: 'Events, refs, and DOM queries expose different views',
   render: () => <AutomaticButtonHarness />,
   play: async ({ canvasElement }) => {
     const observer = await waitFor(() =>
@@ -349,7 +370,7 @@ function NestedRootsHarness(): React.ReactNode {
 }
 
 export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
-  name: 'Nested shadow roots',
+  name: 'Nested roots require traversal and retargeting at every boundary',
   render: () => <NestedRootsHarness />,
   play: async ({ canvasElement }) => {
     const outerHost = await requireShadowHost(canvasElement);
@@ -399,4 +420,3 @@ export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
     void expect(composedPath).toContain(outerHost);
   },
 };
-
