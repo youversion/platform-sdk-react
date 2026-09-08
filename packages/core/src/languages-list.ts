@@ -1,7 +1,6 @@
-import * as z from 'zod/mini';
 import type { ApiClient } from './client';
 import type { Collection, Language } from './types';
-import { LanguageSchema } from './schemas';
+import { GetLanguagesOptionsSchema, type GetLanguagesOptions } from './schemas';
 import {
   fetchFilteredCollection,
   fieldsNeededForLanguageFilter,
@@ -9,51 +8,35 @@ import {
   isUsableLanguageTag,
 } from './version-filters';
 
-export type GetLanguagesOptions = {
-  page_size?: number | '*';
-  fields?: (keyof Language)[];
-  page_token?: string;
-  country?: string; // ISO 3166-1 alpha-2 country code
-};
-
-const countrySchema = z
-  .string()
-  .check(
-    z.trim(),
-    z.length(2, 'Country code must be a 2-character ISO 3166-1 alpha-2 code'),
-    z.toUpperCase(),
-  );
+export type { GetLanguagesOptions };
 
 export async function getLanguages(
   client: ApiClient,
   options: GetLanguagesOptions = {},
 ): Promise<Collection<Language>> {
+  const parsed = GetLanguagesOptionsSchema.parse(options);
   const params: Record<string, string | number | (keyof Language)[]> = {};
 
-  if (options.country !== undefined) {
-    const country = countrySchema.parse(options.country);
-    params.country = country;
+  if (parsed.country !== undefined) {
+    params.country = parsed.country;
   }
 
-  if (options.fields !== undefined) {
-    z.array(z.keyof(LanguageSchema)).parse(options.fields);
-    params['fields[]'] = options.fields;
+  if (parsed.fields !== undefined) {
+    params['fields[]'] = parsed.fields;
   }
 
-  if (options.page_size !== undefined) {
-    z.union([z.int().check(z.positive()), z.literal('*')]).parse(options.page_size);
-
-    if (options.page_size === '*') {
-      const fieldsCount = options.fields?.length ?? 0;
+  if (parsed.page_size !== undefined) {
+    if (parsed.page_size === '*') {
+      const fieldsCount = parsed.fields?.length ?? 0;
       if (fieldsCount < 1 || fieldsCount > 3) {
         throw new Error('page_size="*" requires 1-3 fields to be specified');
       }
     }
 
-    params.page_size = options.page_size;
+    params.page_size = parsed.page_size;
   }
 
-  const filterFields = fieldsNeededForLanguageFilter(options.fields);
+  const filterFields = fieldsNeededForLanguageFilter(parsed.fields);
   return fetchFilteredCollection<Language>(params, options, {
     fieldsNeeded: () => filterFields,
     isFilterActive: isLanguageFilterActive,

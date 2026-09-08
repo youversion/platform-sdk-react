@@ -31,3 +31,29 @@ export const BibleVersionSchema = z.object({
 });
 
 export type BibleVersion = Readonly<z.infer<typeof BibleVersionSchema>>;
+
+export const GetVersionsOptionsSchema = z
+  .optional(
+    z.object({
+      page_size: z.optional(z.union([z.int().check(z.positive()), z.literal('*')])),
+      page_token: z.optional(z.string()),
+      fields: z.optional(z.array(z.keyof(BibleVersionSchema))),
+      all_available: z.optional(z.boolean()),
+    }),
+  )
+  .check(
+    z.refine(
+      (data) => {
+        if (data?.page_size === '*') {
+          return data.fields && data.fields.length >= 1 && data.fields.length <= 3;
+        }
+        return true;
+      },
+      {
+        error: 'page_size="*" required 1-3 fields to be specified',
+        path: ['page_size', 'fields'],
+      },
+    ),
+  );
+
+export type GetVersionsOptions = z.infer<typeof GetVersionsOptionsSchema>;

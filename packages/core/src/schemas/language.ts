@@ -47,3 +47,21 @@ export const LanguageSchema = z.object({
 });
 
 export type Language = Readonly<z.infer<typeof LanguageSchema>>;
+
+const countrySchema = z
+  .string()
+  .check(
+    z.trim(),
+    z.length(2, 'Country code must be a 2-character ISO 3166-1 alpha-2 code'),
+    z.toUpperCase(),
+  );
+
+export const GetLanguagesOptionsSchema = z.object({
+  page_size: z.optional(z.union([z.int().check(z.positive()), z.literal('*')])),
+  fields: z.optional(z.array(z.keyof(LanguageSchema))),
+  page_token: z.optional(z.string()),
+  /** ISO 3166-1 alpha-2 country code */
+  country: z.optional(countrySchema),
+});
+
+export type GetLanguagesOptions = z.infer<typeof GetLanguagesOptionsSchema>;
