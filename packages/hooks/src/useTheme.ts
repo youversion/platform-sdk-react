@@ -1,7 +1,7 @@
 'use client';
 
 import { useContext } from 'react';
-import { YouVersionContext } from './context';
+import { YouVersionContext } from './context/YouVersionContext';
 import { useHookOverride } from './useHookOverride';
 
 /**

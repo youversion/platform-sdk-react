@@ -2,7 +2,7 @@
 
 import { useContext, useMemo } from 'react';
 import { LanguagesClient } from '@youversion/platform-core';
-import { YouVersionContext } from './context';
+import { YouVersionContext } from './context/YouVersionContext';
 import { useApiClient } from './internal/useApiClient';
 
 export function useLanguagesClient(): LanguagesClient {

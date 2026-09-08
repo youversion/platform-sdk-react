@@ -2,7 +2,8 @@ import { render, renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, vi, beforeEach, it } from 'vitest';
 import { useChapter, type UseChapterResult } from './useChapter';
 import { YouVersionContext } from './context';
-import { type BibleChapter } from '@youversion/platform-core';
+import * as core from '@youversion/platform-core';
+import type { BibleChapter } from '@youversion/platform-core';
 import { createBibleClientStub, createYVWrapper, TestQueryClientProvider } from './test/utils';
 
 describe('useChapter', () => {
@@ -33,6 +34,20 @@ describe('useChapter', () => {
 
       expect.soft(mockGetChapter).toHaveBeenCalledWith(111, 'MAT', 1);
       expect.soft(result.current.chapter).toEqual(mockChapter);
+    });
+
+    it('fetches via getChapter when the provider has no bibleClient override', async () => {
+      const spy = vi.spyOn(core, 'getChapter').mockResolvedValue(mockChapter);
+      const bare = createYVWrapper('test-app-key');
+      const { result } = renderHook(() => useChapter(111, 'MAT', 1), { wrapper: bare });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(spy).toHaveBeenCalled();
+      expect(result.current.chapter).toEqual(mockChapter);
+      spy.mockRestore();
     });
 
     it.each([
