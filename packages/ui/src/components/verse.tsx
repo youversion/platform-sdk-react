@@ -20,6 +20,8 @@ import { LoaderIcon } from '@/components/icons/loader';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { getBibleTextErrorMessage } from '@/lib/bible-text-error';
 import { useVersionFilterWarning } from '@/lib/use-version-filter-warning';
+import { YvComponentStyles } from '@/lib/yv-styles-components';
+import { YvReaderStyles } from '@/lib/yv-styles-reader';
 import { cn } from '@/lib/utils';
 import { type FontFamily } from '@/lib/verse-html-utils';
 
@@ -678,54 +680,66 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
 
     if (currentLoading && !currentPassage) {
       return (
-        <div
-          ref={ref}
-          data-yv-sdk
-          data-yv-theme={currentTheme}
-          role="status"
-          aria-label={t('loadingPassageAriaLabel')}
-          className="yv:flex yv:grow yv:items-center yv:justify-center"
-        >
-          <LoaderIcon
-            className="yv:size-4 yv:animate-spin yv:text-muted-foreground"
-            aria-hidden="true"
-          />
-        </div>
+        <>
+          <YvComponentStyles />
+          <YvReaderStyles />
+          <div
+            ref={ref}
+            data-yv-sdk
+            data-yv-theme={currentTheme}
+            role="status"
+            aria-label={t('loadingPassageAriaLabel')}
+            className="yv:flex yv:grow yv:items-center yv:justify-center"
+          >
+            <LoaderIcon
+              className="yv:size-4 yv:animate-spin yv:text-muted-foreground"
+              aria-hidden="true"
+            />
+          </div>
+        </>
       );
     }
 
     if (currentError) {
       return (
-        <div ref={ref} data-yv-sdk data-yv-theme={currentTheme}>
-          <VerseUnavailableMessage message={getBibleTextErrorMessage(currentError, t)} />
-        </div>
+        <>
+          <YvComponentStyles />
+          <YvReaderStyles />
+          <div ref={ref} data-yv-sdk data-yv-theme={currentTheme}>
+            <VerseUnavailableMessage message={getBibleTextErrorMessage(currentError, t)} />
+          </div>
+        </>
       );
     }
 
     return (
-      <div
-        data-yv-sdk
-        data-yv-theme={currentTheme}
-        className={cn(fetchedLoading || currentLoading ? 'yv:animate-pulse' : '')}
-        aria-busy={currentLoading || undefined}
-        style={currentLoading ? { pointerEvents: 'none' } : undefined}
-      >
-        <Verse.Html
-          ref={ref}
-          html={currentPassage?.content || ''}
-          fontFamily={fontFamily}
-          fontSize={fontSize}
-          lineHeight={lineHeight}
-          showVerseNumbers={showVerseNumbers}
-          renderNotes={renderNotes}
-          reference={currentPassage?.reference}
-          theme={currentTheme}
-          selectedVerses={selectedVerses}
-          onVerseSelect={onVerseSelect}
-          highlightedVerses={paintedVerses}
-          onFootnotePress={onFootnotePress}
-        />
-      </div>
+      <>
+        <YvComponentStyles />
+        <YvReaderStyles />
+        <div
+          data-yv-sdk
+          data-yv-theme={currentTheme}
+          className={cn(fetchedLoading || currentLoading ? 'yv:animate-pulse' : '')}
+          aria-busy={currentLoading || undefined}
+          style={currentLoading ? { pointerEvents: 'none' } : undefined}
+        >
+          <Verse.Html
+            ref={ref}
+            html={currentPassage?.content || ''}
+            fontFamily={fontFamily}
+            fontSize={fontSize}
+            lineHeight={lineHeight}
+            showVerseNumbers={showVerseNumbers}
+            renderNotes={renderNotes}
+            reference={currentPassage?.reference}
+            theme={currentTheme}
+            selectedVerses={selectedVerses}
+            onVerseSelect={onVerseSelect}
+            highlightedVerses={paintedVerses}
+            onFootnotePress={onFootnotePress}
+          />
+        </div>
+      </>
     );
   },
 );
