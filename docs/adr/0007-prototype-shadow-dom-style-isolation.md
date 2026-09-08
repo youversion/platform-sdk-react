@@ -89,33 +89,10 @@ the same or separate roots. A verse action popover does not restore final focus
 after its nested dialog and then the popover close, and rapid dialog close/reopen
 also loses final focus restoration.
 
-Keep one shadow root, one shadow-local native top-layer container, and one React
-tree. Continue to use Radix for presence, focus scopes, outside interaction, and
-keyboard behavior. Do not add PR 375's separate ownership class, parent graph,
-custom exit phase, or duplicate focus trap.
-
-YPE-5356 owns production coordination. If it requires concurrent peers within or
-across component shadow roots, or exact final focus restoration for the
-unsupported cases, extend the controller already owned by `ShadowRootHost`. Any
-design must account for overlay order, connected restore targets, and the outside
-interaction that can dismiss a peer before the new overlay registers. The
-detailed Chromium evidence and remaining validation live in the rollout plan.
-
-The smallest extension has two responsibilities. First, a managed overlay trigger
-marks its original `pointerdown` during target capture with an open intent and
-owner identity. Radix observes outside interaction later from its document bubble
-listener; the existing overlay can inspect that same composed event and prevent
-its dismissal when the intent targets a peer that may remain concurrent. This
-handles trigger-time dismissal within or across shadow roots without a separate
-global ownership registry. The controller commits the ordered overlay entry only
-if content mounts and otherwise clears the intent.
-
-Second, the controller captures one connected, non-overlay restore target before
-the first overlay in a chain opens. Nested opens and close/reopen during retained
-exit presence do not replace it with an overlay node. After the final overlay and
-exit lease release, the controller restores that target if it is still connected,
-then clears the chain. Keep Radix's focus scopes, dismissal events, and presence;
-do not add a second focus trap or parent graph.
+These observations do not select or design production overlay coordination.
+YPE-5356 owns deciding whether and how to support concurrent peers and exact
+final focus restoration. The detailed Chromium evidence and remaining
+validation live in the rollout plan.
 
 Radix's development-only relationship checks can also emit warnings for valid
 IDs inside a shadow root because those checks query the document rather than
