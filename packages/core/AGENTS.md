@@ -12,7 +12,8 @@ Foundation package providing pure TypeScript API clients for YouVersion services
 schemas/                     # Zod schemas for all data types (schema-first design)
 styles/                      # Browser CSS (exported via ./browser/styles/*)
   fonts.css                  # Google Fonts import (Inter, Source Serif 4)
-  theme.css                  # --yv-* design tokens on :root, dark mode, scoped preflight
+  theme.css                  # --yv-* design tokens + @import of scoped preflight
+  preflight.css              # scoped [data-yv-sdk] reset (also imported by UI chrome)
   bible-reader.css           # USFM/Bible typography for [data-slot='yv-bible-renderer']
   index.css                  # Barrel: imports fonts + theme + bible-reader
 client.ts                    # ApiClient - main HTTP client
@@ -45,7 +46,8 @@ index.ts                     # Main entry point (runtime-agnostic)
 
 ### Browser CSS (`@youversion/platform-core/browser/styles/*`)
 - `index.css`: All-in-one import (fonts + theme + bible-reader)
-- `theme.css`: `--yv-*` design tokens on `:root` + dark mode (`[data-yv-theme='dark']`) + scoped preflight
+- `theme.css`: `--yv-*` design tokens on `[data-yv-sdk]` + dark mode + `@import` of scoped preflight
+- `preflight.css`: scoped `[data-yv-sdk]` reset. UI chrome imports this without the full token sheet.
 - `bible-reader.css`: USFM typography for `[data-slot='yv-bible-renderer']` or `[data-yv-sdk-bible-reader]`
 - `fonts.css`: Google Fonts import (Inter, Source Serif 4)
 
@@ -113,7 +115,7 @@ See `docs/adding-a-core-endpoint.md`.
 - Storage: Abstract via StorageStrategy interface
 - Auth: PKCE flow with pluggable storage backends
 - Error handling: Zod validation for all API responses
-- Browser CSS: Plain CSS only (no Tailwind, no preprocessors), served from `src/styles/` without a build step
+- Browser CSS: Plain CSS only (no Tailwind, no preprocessors). Source lives in `src/styles/`. Publish minifies copies to `dist/styles/`. The specifier stays `@youversion/platform-core/browser/styles/*`.
 - Two export namespaces: `"."` for TS (framework-agnostic), `"./browser"` for browser environments, and `"./server` for server environments
 
 ## TESTING

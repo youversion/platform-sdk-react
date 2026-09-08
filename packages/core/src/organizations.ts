@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import type { ApiClient } from './client';
 import { OrganizationSchema } from './schemas';
 import type { Organization } from './types';
@@ -7,10 +7,10 @@ import type { Organization } from './types';
 export class OrganizationsClient {
   private client: ApiClient;
 
-  private static readonly organizationIdSchema = z
-    .string()
-    .trim()
-    .uuid('Organization ID must be a valid UUID');
+  private static readonly organizationIdSchema = z.pipe(
+    z.string().check(z.trim()),
+    z.uuid({ error: 'Organization ID must be a valid UUID' }),
+  );
 
   /** Creates a new OrganizationsClient instance. */
   constructor(client: ApiClient) {

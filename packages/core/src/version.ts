@@ -1,8 +1,12 @@
-import pkg from '../package.json' with { type: 'json' };
-
 export const SDK_NAME = 'ReactSDK';
 
 export const SDK_VERSION_HEADER_NAME = 'X-YVP-Sdk';
+
+/**
+ * Inlined by tsup / vitest from `package.json` `version`. Do not import the
+ * JSON module: esbuild embeds the whole manifest in the partner bundle.
+ */
+declare const __SDK_PACKAGE_VERSION__: string;
 
 /**
  * `true` only in builds produced for publishing (see `tsup.config.ts`, which
@@ -14,7 +18,9 @@ export const SDK_VERSION_HEADER_NAME = 'X-YVP-Sdk';
  */
 const isPublishBuild = process.env.YVP_PUBLISH_BUILD === 'true';
 
-export const SDK_VERSION = isPublishBuild ? pkg.version : `${pkg.version}-dev`;
+export const SDK_VERSION = isPublishBuild
+  ? __SDK_PACKAGE_VERSION__
+  : `${__SDK_PACKAGE_VERSION__}-dev`;
 
 export function buildSdkVersionHeaderValue(): string {
   return `${SDK_NAME}=${SDK_VERSION}`;

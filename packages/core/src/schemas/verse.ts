@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 
 export const BibleVerseSchema = z.object({
   /** Verse identifier (e.g., "1") */

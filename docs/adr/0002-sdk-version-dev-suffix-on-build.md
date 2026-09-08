@@ -51,10 +51,10 @@ Mechanism (`packages/core`):
   would sail through. Requiring the stamp fails closed instead — a build whose
   channel cannot be confirmed aborts the publish.
 
-`@youversion/platform-react-ui` bundles core (`noExternal`), so it inherits the
-stamp from the core dist it bundles; its `prepublishOnly` runs the same guard.
-`@youversion/platform-react-hooks` imports core at runtime and bakes no version,
-so it needs no change.
+`@youversion/platform-react-ui` and `@youversion/platform-react-hooks` import
+core at runtime and bake no version. The stamp lives in published core. UI
+`prepublishOnly` rebuilds core with `YVP_PUBLISH_BUILD=true` and runs the same
+guard on core.
 
 ## Why this differs from the React Native SDK
 

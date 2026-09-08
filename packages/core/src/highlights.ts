@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import type { ApiClient } from './client';
 import type { BibleVersion, Collection, CreateHighlight, Highlight } from './types';
 import { resolveAuthToken } from './auth-token';
@@ -46,11 +46,13 @@ type BearerAuthHeaders = {
 export class HighlightsClient {
   private client: ApiClient;
 
-  private versionIdSchema = z.number().int().positive('Version ID must be a positive integer');
-  private passageIdSchema = z.string().trim().min(1, 'Passage ID must be a non-empty string');
+  private versionIdSchema = z.int().check(z.positive('Version ID must be a positive integer'));
+  private passageIdSchema = z
+    .string()
+    .check(z.trim(), z.minLength(1, 'Passage ID must be a non-empty string'));
   private colorSchema = z
     .string()
-    .regex(/^[0-9a-f]{6}$/i, 'Color must be a 6-character hex string without #');
+    .check(z.regex(/^[0-9a-f]{6}$/i, 'Color must be a 6-character hex string without #'));
 
   /**
    * Creates a new HighlightsClient instance.
@@ -77,22 +79,16 @@ export class HighlightsClient {
   private validateVersionId(value: number): void {
     try {
       this.versionIdSchema.parse(value);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        throw new Error('Version ID must be a positive integer');
-      }
-      throw error;
+    } catch {
+      throw new Error('Version ID must be a positive integer');
     }
   }
 
   private validatePassageId(value: string): void {
     try {
       this.passageIdSchema.parse(value);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        throw new Error('Passage ID must be a non-empty string');
-      }
-      throw error;
+    } catch {
+      throw new Error('Passage ID must be a non-empty string');
     }
   }
 
@@ -112,11 +108,8 @@ export class HighlightsClient {
   private validateColor(value: string): void {
     try {
       this.colorSchema.parse(value);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        throw new Error('Color must be a 6-character hex string without #');
-      }
-      throw error;
+    } catch {
+      throw new Error('Color must be a 6-character hex string without #');
     }
   }
 

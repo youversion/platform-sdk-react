@@ -4,6 +4,8 @@ import {
   collectFilteredPage,
   fieldsNeededForLanguageFilter,
   fieldsNeededForVersionFilter,
+  getVersionFilterSnapshot,
+  isLanguageFilterActive,
   isUsableBibleVersion,
   isUsableLanguageTag,
   isVersionFilterActive,
@@ -28,6 +30,12 @@ function clearFilters(): void {
 describe('version filters', () => {
   it('treats unset lists as no restriction and empty permit lists as permit nothing', () => {
     clearFilters();
+    expect(getVersionFilterSnapshot()).toEqual({
+      permittedVersionIds: undefined,
+      excludedVersionIds: undefined,
+      permittedLanguageTags: undefined,
+    });
+    expect(isLanguageFilterActive()).toBe(false);
     expect(isVersionFilterActive()).toBe(false);
     expect(isUsableBibleVersion({ id: 111, languageTag: 'en' })).toBe(true);
     expect(isVersionIdDecidablyUnusable(111)).toBe(false);
@@ -58,6 +66,12 @@ describe('version filters', () => {
     expect(isVersionIdDecidablyUnusable(206)).toBe(false);
     expect(isUsableLanguageTag('en')).toBe(true);
     expect(isUsableLanguageTag('es')).toBe(false);
+    expect(isLanguageFilterActive()).toBe(true);
+    expect(getVersionFilterSnapshot()).toEqual({
+      permittedVersionIds: [111, 206],
+      excludedVersionIds: [111],
+      permittedLanguageTags: ['en'],
+    });
 
     clearFilters();
   });
