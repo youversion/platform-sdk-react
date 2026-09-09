@@ -244,6 +244,10 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     const touchUser = userEvent.setup({ document: ownerDocument });
     await touchUser.pointer({ keys: '[TouchA]', target: firstVerse });
     dialog = await screen.findByRole('dialog');
+    // Radix disables animations until placement completes. Measure after both
+    // so initial positioning or animation cannot count as verse reanchoring.
+    await waitFor(() => expect(dialog.style.animation).not.toBe('none'));
+    await Promise.all(dialog.getAnimations().map((animation) => animation.finished));
     const touchDialogRect = dialog.getBoundingClientRect();
     await touchUser.pointer({ keys: '[TouchA]', target: secondVerseLabel });
     await expect(firstVerse).toHaveClass('yv-v-selected');
