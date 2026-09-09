@@ -55,10 +55,23 @@ function changesetStatus() {
   const dir = mkdtempSync(join(REPO_ROOT, '.changeset-status-'));
   const rel = join(relative(REPO_ROOT, dir), 'status.json');
   try {
-    execFileSync('pnpm', ['exec', 'changeset', 'status', `--output=${rel}`], {
-      cwd: REPO_ROOT,
-      stdio: 'ignore',
-    });
+    try {
+      execFileSync('pnpm', ['exec', 'changeset', 'status', `--output=${rel}`], {
+        cwd: REPO_ROOT,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+    } catch (error) {
+      // Swallowing this cost a CI round-trip: `changeset status` resolves the configured
+      // baseBranch as a LOCAL ref, and a PR checkout has only origin/main, so it failed
+      // with a message nobody could see. Changesets writes its diagnostics to stdout and
+      // an unrelated /dev/tty warning to stderr on non-interactive runners, so include
+      // both and let the reader judge.
+      const detail = [error.stdout, error.stderr]
+        .map((s) => s?.toString().trim())
+        .filter(Boolean)
+        .join('\n');
+      throw new Error(`changeset status failed${detail ? `:\n${detail}` : ''}`);
+    }
     return JSON.parse(readFileSync(join(dir, 'status.json'), 'utf8'));
   } finally {
     rmSync(dir, { recursive: true, force: true });

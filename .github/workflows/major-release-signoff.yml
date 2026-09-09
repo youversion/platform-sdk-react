@@ -74,11 +74,14 @@ jobs:
           HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
         run: |
           set -euo pipefail
+          # `changeset status` resolves `baseBranch` (main) as a LOCAL ref and fails with
+          # "Failed to find where HEAD diverged from main" if it is missing. A PR checkout
+          # has only origin/main, so create the local branch too.
+          git fetch --no-tags --force origin main:refs/heads/main
           # Merge-base, not the PR's base sha: on a synchronize event the base
           # branch may have moved, and diffing against its tip would attribute
           # someone else's changesets to this PR.
-          git fetch --no-tags origin main:refs/remotes/origin/main
-          BASE=$(git merge-base origin/main "$HEAD_SHA")
+          BASE=$(git merge-base main "$HEAD_SHA")
           node scripts/preview-release.mjs --base "$BASE" --head "$HEAD_SHA" > preview.json
           cat preview.json
           # `introduced_major`, not `is_major`: a major already pending on main
