@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
+import { ZodError } from 'zod';
 import { ApiClient } from '../client';
 import { BibleClient } from '../bible';
 import {
@@ -179,15 +180,18 @@ describe('BibleClient', () => {
       });
 
       it('should throw when page_size is "*" but no fields specified', async () => {
-        await expect(bibleClient.getVersions('en*', undefined, { page_size: '*' })).rejects.toThrow(
-          /required 1-3 fields to be specified/,
-        );
+        const error = await bibleClient
+          .getVersions('en*', undefined, { page_size: '*' })
+          .catch((cause) => cause);
+        expect(error).toBeInstanceOf(Error);
+        expect(error).not.toBeInstanceOf(ZodError);
+        expect(error.message).toBe('page_size="*" requires 1-3 fields to be specified');
       });
 
       it('should throw when page_size is "*" with empty fields array', async () => {
         await expect(
           bibleClient.getVersions('en*', undefined, { page_size: '*', fields: [] }),
-        ).rejects.toThrow(/required 1-3 fields to be specified/);
+        ).rejects.toThrow('page_size="*" requires 1-3 fields to be specified');
       });
 
       it('should throw when page_size is "*" with more than 3 fields', async () => {
@@ -196,11 +200,14 @@ describe('BibleClient', () => {
             page_size: '*',
             fields: ['id', 'title', 'abbreviation', 'language_tag'],
           }),
-        ).rejects.toThrow(/required 1-3 fields to be specified/);
+        ).rejects.toThrow('page_size="*" requires 1-3 fields to be specified');
       });
 
       it('should throw for page_size of zero', async () => {
-        await expect(bibleClient.getVersions('en*', undefined, { page_size: 0 })).rejects.toThrow();
+        const error = await bibleClient
+          .getVersions('en*', undefined, { page_size: 0 })
+          .catch((cause) => cause);
+        expect(error).toBeInstanceOf(ZodError);
       });
 
       it('should throw for negative page_size', async () => {

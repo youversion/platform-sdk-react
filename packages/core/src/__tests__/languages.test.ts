@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { ZodError } from 'zod';
 import { ApiClient } from '../client';
 import { LanguagesClient } from '../languages';
 import { LanguageSchema } from '../schemas';
@@ -106,11 +107,10 @@ describe('LanguagesClient', () => {
     });
 
     it('should throw an error for page_size="*" without fields', async () => {
-      await expect(
-        languagesClient.getLanguages({
-          page_size: '*',
-        }),
-      ).rejects.toThrow(/required 1-3 fields to be specified/);
+      const error = await languagesClient.getLanguages({ page_size: '*' }).catch((cause) => cause);
+      expect(error).toBeInstanceOf(Error);
+      expect(error).not.toBeInstanceOf(ZodError);
+      expect(error.message).toBe('page_size="*" requires 1-3 fields to be specified');
     });
 
     it('should throw an error for page_size="*" with empty fields array', async () => {
@@ -119,7 +119,7 @@ describe('LanguagesClient', () => {
           fields: [],
           page_size: '*',
         }),
-      ).rejects.toThrow(/required 1-3 fields to be specified/);
+      ).rejects.toThrow('page_size="*" requires 1-3 fields to be specified');
     });
 
     it('should throw an error for page_size="*" with more than 3 fields', async () => {
@@ -128,7 +128,7 @@ describe('LanguagesClient', () => {
           fields: ['id', 'language', 'script', 'script_name'],
           page_size: '*',
         }),
-      ).rejects.toThrow(/required 1-3 fields to be specified/);
+      ).rejects.toThrow('page_size="*" requires 1-3 fields to be specified');
     });
 
     it('should allow page_size="*" with exactly 1 field', async () => {
@@ -148,11 +148,8 @@ describe('LanguagesClient', () => {
     });
 
     it('should throw an error for invalid page_size - negative number', async () => {
-      await expect(
-        languagesClient.getLanguages({
-          page_size: -1,
-        }),
-      ).rejects.toThrow();
+      const error = await languagesClient.getLanguages({ page_size: -1 }).catch((cause) => cause);
+      expect(error).toBeInstanceOf(ZodError);
     });
 
     it('should throw an error for invalid page_size - zero', async () => {

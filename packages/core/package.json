@@ -78,7 +78,7 @@
     }
   },
   "scripts": {
-    "dev": "tsup --watch",
+    "dev": "node scripts/dev.mjs",
     "build:js": "tsup",
     "build:types": "tsc -p tsconfig.build.json",
     "build:css": "node scripts/minify-browser-css.mjs",

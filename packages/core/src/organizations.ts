@@ -1,4 +1,5 @@
 import type { ApiClient } from './client';
+import { parsePublic } from './parse-public';
 import { OrganizationIdSchema, OrganizationSchema } from './schemas/organization';
 import type { Organization } from './types';
 
@@ -17,11 +18,11 @@ export class OrganizationsClient {
    * @returns The requested Organization object.
    */
   async getOrganization(organizationId: string): Promise<Organization> {
-    const parsedOrganizationId = OrganizationIdSchema.parse(organizationId);
+    const parsedOrganizationId = parsePublic(OrganizationIdSchema, organizationId);
     const organization = await this.client.get<Organization>(
       `/v1/organizations/${parsedOrganizationId}`,
     );
 
-    return OrganizationSchema.parse(organization);
+    return parsePublic(OrganizationSchema, organization);
   }
 }

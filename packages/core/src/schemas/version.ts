@@ -60,7 +60,7 @@ export const GetVersionsOptionsSchema = z
         return true;
       },
       {
-        error: 'page_size="*" required 1-3 fields to be specified',
+        error: 'page_size="*" requires 1-3 fields to be specified',
         path: ['page_size', 'fields'],
       },
     ),
