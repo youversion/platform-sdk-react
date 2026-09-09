@@ -12,9 +12,8 @@ import {
 } from './bible-reads';
 import { getVersions, type GetVersionsOptions } from './bible-versions';
 import {
-  assertBrowserDocument,
-  createStyledPassageElement,
-  ensureStyledPassageStylesheets,
+  assembleStyledPassageElement,
+  requireStyledPassageDocument,
   type GetStyledPassageElementOptions,
 } from './getStyledPassageElement';
 import type {
@@ -241,7 +240,7 @@ export class BibleClient {
    * ```
    */
   async getStyledPassageElement(options: GetStyledPassageElementOptions): Promise<HTMLElement> {
-    assertBrowserDocument();
+    requireStyledPassageDocument();
 
     const { versionId, usfm, fontId = 1 } = options;
     const [passage, version] = await Promise.all([
@@ -249,8 +248,7 @@ export class BibleClient {
       this.getVersion(versionId),
     ]);
 
-    ensureStyledPassageStylesheets(this.client, fontId);
-    return createStyledPassageElement(passage.content, version.copyright);
+    return assembleStyledPassageElement(this.client, passage.content, version.copyright, fontId);
   }
 
   /**

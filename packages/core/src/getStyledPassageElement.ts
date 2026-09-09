@@ -11,7 +11,7 @@ export type GetStyledPassageElementOptions = {
   fontId?: number;
 };
 
-export function assertBrowserDocument(): Document {
+function assertBrowserDocument(): Document {
   const doc = globalThis.document;
   if (!doc?.createElement || !doc.head) {
     throw new Error(
@@ -33,8 +33,7 @@ function ensureStylesheetLink(doc: Document, href: string): void {
   doc.head.append(link);
 }
 
-/** Inject CDN bible.css + Fonts API stylesheet once each (dedupe by href). */
-export function ensureStyledPassageStylesheets(client: ApiClient, fontId: number): void {
+function ensureStyledPassageStylesheets(client: ApiClient, fontId: number): void {
   const doc = assertBrowserDocument();
   const fontHref = getFontStylesheetUrl({
     fontId,
@@ -45,8 +44,7 @@ export function ensureStyledPassageStylesheets(client: ApiClient, fontId: number
   ensureStylesheetLink(doc, fontHref);
 }
 
-/** Detached element with reader tokens, passage HTML, and copyright text child. */
-export function createStyledPassageElement(
+function createStyledPassageElement(
   passageContent: string,
   copyright: string | null | undefined,
 ): HTMLElement {
@@ -61,4 +59,20 @@ export function createStyledPassageElement(
   root.append(copyrightEl);
 
   return root;
+}
+
+/** Throws if `document` is missing; call before fetching so failures stay browser-local. */
+export function requireStyledPassageDocument(): void {
+  assertBrowserDocument();
+}
+
+/** Inject stylesheets (deduped) and build the detached passage element. */
+export function assembleStyledPassageElement(
+  client: ApiClient,
+  passageContent: string,
+  copyright: string | null | undefined,
+  fontId: number,
+): HTMLElement {
+  ensureStyledPassageStylesheets(client, fontId);
+  return createStyledPassageElement(passageContent, copyright);
 }
