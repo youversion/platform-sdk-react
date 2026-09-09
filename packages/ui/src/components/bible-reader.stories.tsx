@@ -161,7 +161,7 @@ export const Default: Story = {
   },
 };
 
-export const VerseActionPopoverInteractions: Story = {
+export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
   tags: ['integration'],
   args: {
     defaultVersionId: 111,
@@ -261,6 +261,7 @@ export const VerseActionPopoverInteractions: Story = {
     await waitFor(() => expect(dialog).not.toBeInTheDocument());
     await expect(firstVerse).not.toHaveClass('yv-v-selected');
     await expect(secondVerse).not.toHaveClass('yv-v-selected');
+    await expect(ownerDocument.activeElement).toBe(outsideControl);
   },
 };
 

@@ -18,8 +18,14 @@ function IsolatedVerseActionPopover(): React.ReactNode {
 
   const selectVerse = (verse: number, element: HTMLElement): void => {
     setAnchorElement(element);
-    setSelectedVerses([verse]);
+    setSelectedVerses((selected) => (selected.includes(verse) ? selected : [...selected, verse]));
     setOpen(true);
+  };
+
+  const closeAndClearSelection = (): void => {
+    setOpen(false);
+    setAnchorElement(null);
+    setSelectedVerses([]);
   };
 
   return (
@@ -64,7 +70,7 @@ function IsolatedVerseActionPopover(): React.ReactNode {
                   ref={(element) => {
                     element?.setAttribute('v', '1');
                   }}
-                  className="yv-v"
+                  className={selectedVerses.includes(1) ? 'yv-v yv-v-selected' : 'yv-v'}
                   data-testid="verse-1"
                   onClick={(event) => selectVerse(1, event.currentTarget)}
                 >
@@ -74,7 +80,7 @@ function IsolatedVerseActionPopover(): React.ReactNode {
                   ref={(element) => {
                     element?.setAttribute('v', '2');
                   }}
-                  className="yv-v"
+                  className={selectedVerses.includes(2) ? 'yv-v yv-v-selected' : 'yv-v'}
                   data-testid="verse-2"
                   onClick={(event) => selectVerse(2, event.currentTarget)}
                 >
@@ -95,20 +101,21 @@ function IsolatedVerseActionPopover(): React.ReactNode {
               }
               if (!nextOpen && deferNextCloseRef.current) {
                 deferNextCloseRef.current = false;
-                setTimeout(() => setOpen(false), 25);
+                setTimeout(closeAndClearSelection, 25);
                 return;
               }
-              setOpen(nextOpen);
+              if (nextOpen) setOpen(true);
+              else closeAndClearSelection();
             }}
             activeHighlights={new Set()}
             selectedVerses={selectedVerses}
             highlightedVerses={{}}
             anchorElement={anchorElement}
             scrollRoot={readerScrollRoot}
-            onHighlight={() => setOpen(false)}
-            onClearHighlight={() => setOpen(false)}
-            onCopy={() => setOpen(false)}
-            onShare={() => setOpen(false)}
+            onHighlight={closeAndClearSelection}
+            onClearHighlight={closeAndClearSelection}
+            onCopy={closeAndClearSelection}
+            onShare={closeAndClearSelection}
           />
         </ShadowRootHost>
       </div>
@@ -313,6 +320,8 @@ export const PortalPlacementDockingReanchoringAndFocusRestoration: Story = {
     dialog = await waitForElement(topLayer, '[role="dialog"]', 'popover did not open for touch');
     const touchDialogRect = dialog.getBoundingClientRect();
     await touchUser.pointer({ keys: '[TouchA]', target: secondVerse });
+    void expect(firstVerse).toHaveClass('yv-v-selected');
+    void expect(secondVerse).toHaveClass('yv-v-selected');
     void expect(dialog).toHaveAttribute('data-state', 'open');
     void expect(Number(closeRequestOutput.getAttribute('data-count'))).toBe(
       closeRequestsBeforeTouch,
@@ -327,5 +336,6 @@ export const PortalPlacementDockingReanchoringAndFocusRestoration: Story = {
     void expect(Number(closeRequestOutput.getAttribute('data-count'))).toBe(
       closeRequestsBeforeTouch + 1,
     );
+    void expect(canvasElement.ownerDocument.activeElement).toBe(outsideControl);
   },
 };
