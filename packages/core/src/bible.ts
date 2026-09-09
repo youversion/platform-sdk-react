@@ -11,6 +11,12 @@ import {
   getVOTD,
 } from './bible-reads';
 import { getVersions, type GetVersionsOptions } from './bible-versions';
+import {
+  assertBrowserDocument,
+  createStyledPassageElement,
+  ensureStyledPassageStylesheets,
+  type GetStyledPassageElementOptions,
+} from './getStyledPassageElement';
 import type {
   BibleBook,
   BibleChapter,
@@ -22,6 +28,8 @@ import type {
   Collection,
   VOTD,
 } from './types';
+
+export type { GetStyledPassageElementOptions };
 
 /**
  * Client for interacting with Bible API endpoints.
@@ -204,6 +212,45 @@ export class BibleClient {
     parseBibleVersionId(versionId);
     await assertUsableVersion(this.client, versionId);
     return this.client.get<BibleIndex>(`/v1/bibles/${versionId}/index`);
+  }
+
+  /**
+   * Returns a detached DOM element with styled Bible HTML for vanilla JS partners.
+   *
+   * Fetches the passage (html + transform defaults) and version, injects the CDN
+   * Bible CSS sheet and Fonts API stylesheet into `document.head` once each
+   * (deduped by href), then builds an element with `data-yv-sdk` and
+   * `data-slot="yv-bible-renderer"`, passage HTML via `innerHTML`, and copyright
+   * via `textContent`. Does not mount the element — append it where you want.
+   *
+   * Requires a browser `document`. Reuses version-refuse and propagates
+   * `getPassage` / `getVersion` errors.
+   *
+   * @param options.versionId - Bible version id
+   * @param options.usfm - Passage USFM (e.g. `"JHN.3.16"`)
+   * @param options.fontId - Optional Fonts API font id (default `1`, Untitled Serif)
+   * @returns A detached `HTMLElement` ready to append
+   *
+   * @example
+   * ```ts
+   * const el = await bibleClient.getStyledPassageElement({
+   *   versionId: 3034,
+   *   usfm: "JHN.3.16",
+   * });
+   * mount.append(el);
+   * ```
+   */
+  async getStyledPassageElement(options: GetStyledPassageElementOptions): Promise<HTMLElement> {
+    assertBrowserDocument();
+
+    const { versionId, usfm, fontId = 1 } = options;
+    const [passage, version] = await Promise.all([
+      this.getPassage(versionId, usfm),
+      this.getVersion(versionId),
+    ]);
+
+    ensureStyledPassageStylesheets(this.client, fontId);
+    return createStyledPassageElement(passage.content, version.copyright);
   }
 
   /**

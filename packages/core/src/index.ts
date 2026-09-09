@@ -1,5 +1,5 @@
 export { ApiClient, getHttpStatus } from './client';
-export { BibleClient } from './bible';
+export { BibleClient, type GetStyledPassageElementOptions } from './bible';
 export { getChapter, getVersion } from './bible-chapter';
 export {
   getAllVOTDs,
