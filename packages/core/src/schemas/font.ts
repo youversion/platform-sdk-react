@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 
 /** A CDN asset for a specific font weight and style. */
 export const FontSourceSchema = z.object({
@@ -25,7 +25,7 @@ export type FontVariant = Readonly<z.infer<typeof FontVariantSchema>>;
 /** A font family resource with available variants and CDN-backed source files. */
 export const FontSchema = z.object({
   /** Stable integer identifier for the font family. */
-  id: z.number().int(),
+  id: z.int(),
   /** Stable URL-safe identifier for the font family. */
   slug: z.string(),
   /** Canonical font-family name clients should use. */

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 
 const _UserSchema = z.object({
   avatar_url: z.string(),

@@ -12,13 +12,22 @@ Foundation package providing pure TypeScript API clients for YouVersion services
 schemas/                     # Zod schemas for all data types (schema-first design)
 styles/                      # Browser CSS (exported via ./browser/styles/*)
   fonts.css                  # Google Fonts import (Inter, Source Serif 4)
-  theme.css                  # --yv-* design tokens on :root, dark mode, scoped preflight
+  theme.css                  # --yv-* design tokens + @import of scoped preflight
+  preflight.css              # scoped [data-yv-sdk] reset (also imported by UI chrome)
   bible-reader.css           # USFM/Bible typography for [data-slot='yv-bible-renderer']
   index.css                  # Barrel: imports fonts + theme + bible-reader
 client.ts                    # ApiClient - main HTTP client
-bible.ts                     # BibleClient - Bible data operations
-languages.ts                 # LanguagesClient - language data
+bible.ts                     # BibleClient - Bible data operations (facade over bible-* modules)
+bible-chapter.ts             # getVersion/getChapter + shared id/book/chapter parse helpers
+bible-reads.ts               # Book/chapter/verse/VOTD reads (tree-shakable module)
+bible-versions.ts            # Version listing (tree-shakable module)
+bible-passage.ts             # Passage fetch (tree-shakable module)
+languages.ts                 # LanguagesClient - language data (facade over languages-* modules)
+languages-language.ts        # Single-language fetch (tree-shakable module)
+languages-list.ts            # Language listing (tree-shakable module)
+version-filter-state.ts      # Version-filter allowlists without pulling auth storage
 highlights.ts                # HighlightsClient - user highlights
+organizations.ts             # OrganizationsClient
 YouVersionAPI.ts             # Base YouVersion API client
 SignInWithYouVersionPKCE.ts  # PKCE auth implementation
 StorageStrategy.ts           # Storage interface (SessionStorage, MemoryStorage)
@@ -45,14 +54,15 @@ index.ts                     # Main entry point (runtime-agnostic)
 
 ### Browser CSS (`@youversion/platform-core/browser/styles/*`)
 - `index.css`: All-in-one import (fonts + theme + bible-reader)
-- `theme.css`: `--yv-*` design tokens on `:root` + dark mode (`[data-yv-theme='dark']`) + scoped preflight
+- `theme.css`: `--yv-*` design tokens on `[data-yv-sdk]` + dark mode + `@import` of scoped preflight
+- `preflight.css`: scoped `[data-yv-sdk]` reset. UI chrome imports this without the full token sheet.
 - `bible-reader.css`: USFM typography for `[data-slot='yv-bible-renderer']` or `[data-yv-sdk-bible-reader]`
 - `fonts.css`: Google Fonts import (Inter, Source Serif 4)
 
 ## DOs / DON'Ts
 
 ✅ Do: Keep this package **framework-agnostic**, but if you must target server or browser, those files must export from `/server` or `/browser`
-✅ Do: Define all input/output types in `schemas/` using Zod; schemas are the single source of truth
+✅ Do: Define all input/output types in `schemas/` using Zod; schemas are the single source of truth. Client modules import schema files directly (`./schemas/version`), not the `./schemas` barrel, so tree-shakable entries stay narrow.
 ✅ Do: Compose `ApiClient` in new service clients; take it as a constructor argument
 ✅ Do: Parse API responses with Zod schemas for validation
 
@@ -113,7 +123,7 @@ See `docs/adding-a-core-endpoint.md`.
 - Storage: Abstract via StorageStrategy interface
 - Auth: PKCE flow with pluggable storage backends
 - Error handling: Zod validation for all API responses
-- Browser CSS: Plain CSS only (no Tailwind, no preprocessors), served from `src/styles/` without a build step
+- Browser CSS: Plain CSS only (no Tailwind, no preprocessors). Source lives in `src/styles/`. Publish minifies copies to `dist/styles/`. The specifier stays `@youversion/platform-core/browser/styles/*`.
 - Two export namespaces: `"."` for TS (framework-agnostic), `"./browser"` for browser environments, and `"./server` for server environments
 
 ## TESTING

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import type { ApiConfig } from './types';
 import { SDK_VERSION_HEADER_NAME, buildSdkVersionHeaderValue } from './version';
 
@@ -15,8 +15,8 @@ const HttpStatusCarrierSchema = z.object({
 });
 
 const ErrorBodySchema = z.object({
-  message: z.string().optional(),
-  error: z.string().optional(),
+  message: z.optional(z.string()),
+  error: z.optional(z.string()),
 });
 
 /**
