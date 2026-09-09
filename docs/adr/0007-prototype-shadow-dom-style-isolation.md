@@ -1,4 +1,4 @@
-# ADR 0006: Prototype automatic Shadow DOM style isolation
+# ADR 0007: Prototype automatic Shadow DOM style isolation
 
 Status: Proposed (validated experimentally; not approved for production rollout)
 
@@ -77,11 +77,26 @@ accepts that host registrations can collide with SDK family names. It also
 cannot protect a component host from constraints applied to its ancestors. Open
 roots are a CSS boundary, not a security boundary.
 
-Concurrent independent overlays in one shadow root and nested overlays launched
-from an open dialog are unsupported until the package defines stacking, focus
-ownership, and dismissal contracts. Radix's development-only relationship
-checks can also emit warnings for valid IDs inside a shadow root because those
-checks query the document rather than the root.
+## Nested and concurrent overlays
+
+YPE-5355 exercised nested and concurrent overlays through the production
+`ShadowRootHost` seam. Both nesting directions preserve topmost-only Escape
+dismissal and restore focus into the remaining parent overlay. Either
+nested-overlay teardown order also works with the current architecture. Separate
+component shadow roots own distinct portal containers, but do not isolate Radix
+outside interaction: opening a peer popover dismisses the existing peer across
+the same or separate roots. A verse action popover does not restore final focus
+after its nested dialog and then the popover close, and rapid dialog close/reopen
+also loses final focus restoration.
+
+These observations do not select or design production overlay coordination.
+YPE-5356 owns deciding whether and how to support concurrent peers and exact
+final focus restoration. The detailed Chromium evidence and remaining
+validation live in the rollout plan.
+
+Radix's development-only relationship checks can also emit warnings for valid
+IDs inside a shadow root because those checks query the document rather than
+the root.
 
 Only `YouVersionAuthButton` is automatically isolated by this prototype.
 `BibleVersionPicker` and other public exports do not gain automatic isolation
