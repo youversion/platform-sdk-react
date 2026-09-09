@@ -1,6 +1,5 @@
 import * as z from 'zod/mini';
 import type { ApiClient } from './client';
-import { parsePublic } from './parse-public';
 import {
   LanguageRangeSchema,
   GetVersionsOptionsSchema,
@@ -34,10 +33,10 @@ export async function getVersions(
 ): Promise<Collection<BibleVersion>> {
   const languageRangeArray = Array.isArray(language_ranges) ? language_ranges : [language_ranges];
 
-  const parsedLanguageRanges = parsePublic(
-    z.array(LanguageRangeSchema).check(z.minLength(1, 'At least one language range is required')),
-    languageRangeArray,
-  );
+  const parsedLanguageRanges = z
+    .array(LanguageRangeSchema)
+    .check(z.minLength(1, 'At least one language range is required'))
+    .parse(languageRangeArray);
 
   const params: VersionListQuery = {
     'language_ranges[]': parsedLanguageRanges,
@@ -53,7 +52,7 @@ export async function getVersions(
       throw new Error('page_size="*" requires 1-3 fields to be specified');
     }
   }
-  parsePublic(GetVersionsOptionsSchema, options);
+  GetVersionsOptionsSchema.parse(options);
   if (options?.page_size) {
     params.page_size = options.page_size;
   }

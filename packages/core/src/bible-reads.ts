@@ -6,7 +6,6 @@ import {
   parseBibleChapter,
   parseBibleVersionId,
 } from './bible-chapter';
-import { parsePublic } from './parse-public';
 import { BibleVerseNumberSchema } from './schemas/verse';
 import type { BibleBook, BibleChapter, BibleVerse, CANON, Collection, VOTD } from './types';
 
@@ -69,7 +68,7 @@ export async function getVerse(
   parseBibleVersionId(versionId);
   parseBibleBookId(book);
   parseBibleChapter(chapter);
-  parsePublic(BibleVerseNumberSchema, verse);
+  BibleVerseNumberSchema.parse(verse);
   await assertUsableVersion(client, versionId);
   return client.get<BibleVerse>(
     `/v1/bibles/${versionId}/books/${book}/chapters/${chapter}/verses/${verse}`,
@@ -81,6 +80,6 @@ export async function getAllVOTDs(client: ApiClient): Promise<Collection<VOTD>> 
 }
 
 export async function getVOTD(client: ApiClient, day: number): Promise<VOTD> {
-  parsePublic(z.int().check(z.gte(1), z.lte(366)), day);
+  z.int().check(z.gte(1), z.lte(366)).parse(day);
   return client.get<VOTD>(`/v1/verse_of_the_days/${day}`);
 }

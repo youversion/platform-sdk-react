@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { ZodError } from 'zod';
 import { ApiClient } from '../client';
 import { BibleClient } from '../bible';
 import {
@@ -184,7 +183,6 @@ describe('BibleClient', () => {
           .getVersions('en*', undefined, { page_size: '*' })
           .catch((cause) => cause);
         expect(error).toBeInstanceOf(Error);
-        expect(error).not.toBeInstanceOf(ZodError);
         expect(error.message).toBe('page_size="*" requires 1-3 fields to be specified');
       });
 
@@ -204,10 +202,7 @@ describe('BibleClient', () => {
       });
 
       it('should throw for page_size of zero', async () => {
-        const error = await bibleClient
-          .getVersions('en*', undefined, { page_size: 0 })
-          .catch((cause) => cause);
-        expect(error).toBeInstanceOf(ZodError);
+        await expect(bibleClient.getVersions('en*', undefined, { page_size: 0 })).rejects.toThrow();
       });
 
       it('should throw for negative page_size', async () => {

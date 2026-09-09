@@ -1,5 +1,4 @@
 import type { ApiClient } from './client';
-import { parsePublic } from './parse-public';
 import { BibleBookIdSchema } from './schemas/book';
 import { BibleChapterNumberSchema } from './schemas/chapter';
 import { BibleVersionIdSchema } from './schemas/version';
@@ -12,15 +11,15 @@ import {
 } from './version-filters';
 
 export function parseBibleVersionId(id: number): number {
-  return parsePublic(BibleVersionIdSchema, id);
+  return BibleVersionIdSchema.parse(id);
 }
 
 export function parseBibleBookId(book: string): string {
-  return parsePublic(BibleBookIdSchema, book);
+  return BibleBookIdSchema.parse(book);
 }
 
 export function parseBibleChapter(chapter: number): number {
-  return parsePublic(BibleChapterNumberSchema, chapter);
+  return BibleChapterNumberSchema.parse(chapter);
 }
 
 export async function getVersion(client: ApiClient, id: number): Promise<BibleVersion> {

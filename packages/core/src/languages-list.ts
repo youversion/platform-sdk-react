@@ -1,5 +1,4 @@
 import type { ApiClient } from './client';
-import { parsePublic } from './parse-public';
 import { GetLanguagesOptionsSchema, type GetLanguagesOptions } from './schemas/language';
 import type { Collection, Language } from './types';
 import {
@@ -23,7 +22,7 @@ export async function getLanguages(
       throw new Error(PAGE_SIZE_STAR_FIELDS_MESSAGE);
     }
   }
-  const parsed = parsePublic(GetLanguagesOptionsSchema, options);
+  const parsed = GetLanguagesOptionsSchema.parse(options);
   const params: Record<string, string | number | (keyof Language)[]> = {};
 
   if (parsed.country !== undefined) {

@@ -2,7 +2,6 @@ import * as z from 'zod/mini';
 import type { ApiClient } from './client';
 import { transformBibleHtml, type TransformBibleHtmlOptions } from './bible-html-transformer';
 import { assertUsableVersion, parseBibleVersionId } from './bible-chapter';
-import { parsePublic } from './parse-public';
 import type { BiblePassage } from './types';
 
 type PassageQuery = {
@@ -52,10 +51,10 @@ export async function getPassage(
 ): Promise<BiblePassage> {
   parseBibleVersionId(versionId);
   if (include_headings !== undefined) {
-    parsePublic(booleanSchema, include_headings);
+    booleanSchema.parse(include_headings);
   }
   if (include_notes !== undefined) {
-    parsePublic(booleanSchema, include_notes);
+    booleanSchema.parse(include_notes);
   }
   const params: PassageQuery = {
     format,

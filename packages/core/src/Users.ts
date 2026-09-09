@@ -4,7 +4,6 @@ import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfigurati
 import { SignInWithYouVersionPKCEAuthorizationRequestBuilder } from './SignInWithYouVersionPKCE';
 import { SignInWithYouVersionResult } from './SignInWithYouVersionResult';
 import { parseGrantedPermissions, parsePermissionList } from './permissions';
-import { parsePublic } from './parse-public';
 import {
   IdTokenClaimsSchema,
   StatePermissionsStashSchema,
@@ -657,7 +656,7 @@ export class YouVersionAPIUsers {
         throw new Error(`Token refresh failed: ${response.status} ${response.statusText}`);
       }
 
-      const tokens = parsePublic(TokenRefreshResponseSchema, await response.json());
+      const tokens = TokenRefreshResponseSchema.parse(await response.json());
 
       // Create result with new tokens. The persisted user profile is left
       // untouched — refreshing only rotates the access/refresh tokens.

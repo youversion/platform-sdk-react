@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ZodError } from 'zod';
 import { ApiClient } from '../client';
 import { LanguagesClient } from '../languages';
 import { LanguageSchema } from '../schemas';
@@ -109,7 +108,6 @@ describe('LanguagesClient', () => {
     it('should throw an error for page_size="*" without fields', async () => {
       const error = await languagesClient.getLanguages({ page_size: '*' }).catch((cause) => cause);
       expect(error).toBeInstanceOf(Error);
-      expect(error).not.toBeInstanceOf(ZodError);
       expect(error.message).toBe('page_size="*" requires 1-3 fields to be specified');
     });
 
@@ -148,8 +146,11 @@ describe('LanguagesClient', () => {
     });
 
     it('should throw an error for invalid page_size - negative number', async () => {
-      const error = await languagesClient.getLanguages({ page_size: -1 }).catch((cause) => cause);
-      expect(error).toBeInstanceOf(ZodError);
+      await expect(
+        languagesClient.getLanguages({
+          page_size: -1,
+        }),
+      ).rejects.toThrow();
     });
 
     it('should throw an error for invalid page_size - zero', async () => {
