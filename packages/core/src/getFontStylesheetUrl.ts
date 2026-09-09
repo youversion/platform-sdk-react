@@ -4,11 +4,11 @@ export type GetFontStylesheetUrlOptions = {
   apiHost?: string;
 };
 
-/** Default `fontId` is 1 (Untitled Serif). See ADR-0004. */
+/** Default `fontId` is 1 (Untitled Serif). `apiHost` is hostname-only, like `ApiClient`. See ADR-0004. */
 export function getFontStylesheetUrl({
   fontId = 1,
   appKey,
-  apiHost = 'https://api.youversion.com',
+  apiHost = 'api.youversion.com',
 }: GetFontStylesheetUrlOptions): string {
   const trimmed = apiHost.replace(/\/+$/, '');
   const host = trimmed.includes('://') ? trimmed : `https://${trimmed}`;
