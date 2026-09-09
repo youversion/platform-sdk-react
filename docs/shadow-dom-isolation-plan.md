@@ -38,6 +38,10 @@ This is a working plan, not approval for package-wide rollout.
 | Dialog keyboard containment | Browser coverage exercises initial focus, programmatic escape redirection, forward and reverse traversal, radio-group collapsing, negative `tabindex`, and wraparound. | Validated in Chromium | Expand the browser and assistive-technology matrix. |
 | Dialog modal lifetime | Coverage verifies inert background content while open and through staggered Content and Overlay exit animations. | Validated for one modal | Define ownership before supporting nested or competing overlays. |
 | Dialog dismissal and restoration | Coverage exercises Escape, backdrop click, full-viewport hit testing, overlay-only focus, and restoration after both modal nodes unmount. | Validated in Chromium | Verify real screen-reader and cross-browser behavior. |
+| Consumer form participation | Chromium coverage verifies that a light-DOM form does not own or serialize a native control inside an SDK shadow root. | Unsupported across tree scopes | Use an explicit component contract if a rollout target requires outer-form participation. |
+| Consumer labels and ARIA ID references | Chromium coverage verifies that external native labels, `aria-labelledby`, and `aria-describedby` relationships do not resolve to controls inside the root. | Unsupported across tree scopes | Keep relationships in one tree scope; verify real assistive technology separately. |
+| Consumer events, refs, and automation | Coverage verifies native retargeting, the auth button's React handler and forwarded ref, open-root queries, and effect-driven attachment timing. | Supported with documented constraints | Repeat for each public component selected for rollout. |
+| Nested shadow roots | Coverage verifies basic rendering, recursive queries, and event retargeting at each boundary. | Supported for the validated basics | Nested and concurrent overlay ownership remains with YPE-5355. |
 
 ## Direct overlay inventory
 
@@ -68,13 +72,15 @@ separate decision.
 
 ## Functional and compatibility audits
 
-- Verify native form participation and external `label`, `aria-labelledby`, and
-  `aria-describedby` relationships when controls cross tree scopes.
+- Apply the [Shadow DOM consumer compatibility contract](shadow-dom-consumer-compatibility.md)
+  to every proposed rollout component. Native outer-form participation and
+  external `label`, `aria-labelledby`, and `aria-describedby` relationships are
+  unsupported across tree scopes in the current Chromium evidence.
 - Preserve `direction` as the only intentional inherited visual input. Vertical
   writing modes, text orientation, host typography, and undeclared host custom
   properties are not supported customization inputs.
-- Document event retargeting, nested-root behavior, supported customization, and
-  shadow-aware consumer test and automation queries.
+- Repeat the documented event, ref, nested-root, and shadow-aware automation
+  checks for every public component selected for rollout.
 - Verify stylesheet construction and adoption failure recovery beyond the
   current feature fallback.
 - Audit realistic component density and the cost of many roots, effects,
@@ -95,10 +101,26 @@ separate decision.
 - Chromium DOM relationship reflection is not a substitute for VoiceOver, NVDA,
   or other real assistive-technology verification.
 
+## Research handoff and completion gate
+
+YPE-5356 is the convergence point for the Shadow DOM research. Its foundational
+evidence comes from YPE-5298, YPE-5310, YPE-5352, and YPE-5353. It must not be
+completed until the final findings from YPE-5354, YPE-5355, YPE-5400, and
+YPE-5436 have been reconciled into the rollout policy and these durable Shadow
+DOM documents. Any conflicts and accepted limitations must be recorded rather
+than left implicit.
+
+Every component rollout ticket produced by YPE-5356 must link back to that
+policy and repeat the compatibility matrix for its selected component. Its gates
+must cover browser and assistive-technology behavior, customization,
+performance, and stylesheet failure recovery in addition to the component's
+forms, labels, ARIA relationships, events, refs, queries, and overlays.
+
 ## Rollout sequence
 
 1. Complete YPE-5400's custom-property inventory and prevention guard.
-2. Resolve SSR/hydration, rollout-control, and overlay-ownership decisions.
+2. Resolve SSR/hydration in YPE-5354 and overlay ownership in YPE-5355, then
+   reconcile those findings and YPE-5436's consumer contract in YPE-5356.
 3. Select the next public component and add component-specific compatibility,
    browser, and accessibility coverage before enabling isolation.
 4. Publish consumer guidance for DOM queries, automation, customization, forms,
