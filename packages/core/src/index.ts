@@ -52,6 +52,10 @@ export * from './types';
 export * from './utils/constants';
 export { getAdjacentChapter } from './getAdjacentChapter';
 export {
+  getFontStylesheetUrl,
+  type GetFontStylesheetUrlOptions,
+} from './getFontStylesheetUrl';
+export {
   transformBibleHtml,
   type TransformBibleHtmlOptions,
   type TransformedBibleHtml,
