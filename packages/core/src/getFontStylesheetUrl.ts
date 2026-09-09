@@ -10,6 +10,7 @@ export function getFontStylesheetUrl({
   appKey,
   apiHost = 'https://api.youversion.com',
 }: GetFontStylesheetUrlOptions): string {
-  const host = apiHost.replace(/\/+$/, '');
+  const trimmed = apiHost.replace(/\/+$/, '');
+  const host = trimmed.includes('://') ? trimmed : `https://${trimmed}`;
   return `${host}/v1/fonts/${fontId}/stylesheet?app_key=${encodeURIComponent(appKey)}`;
 }

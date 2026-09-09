@@ -19,6 +19,13 @@ describe('getFontStylesheetUrl', () => {
       }),
     ).toBe('https://api-staging.youversion.com/v1/fonts/1/stylesheet?app_key=test-app-key');
 
+    expect(
+      getFontStylesheetUrl({
+        appKey: 'test-app-key',
+        apiHost: 'api-staging.youversion.com',
+      }),
+    ).toBe('https://api-staging.youversion.com/v1/fonts/1/stylesheet?app_key=test-app-key');
+
     expect(getFontStylesheetUrl({ appKey: 'key encode/+chars' })).toBe(
       'https://api.youversion.com/v1/fonts/1/stylesheet?app_key=key%20encode%2F%2Bchars',
     );
