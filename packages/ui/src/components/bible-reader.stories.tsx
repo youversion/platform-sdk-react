@@ -238,6 +238,29 @@ export const VerseActionPopoverInteractions: Story = {
     await expect(secondVerse).not.toHaveClass('yv-v-selected');
     await userEvent.pointer({ keys: '[/MouseLeft]', target: outsideControl });
     await expect(ownerDocument.activeElement).toBe(outsideControl);
+
+    // Touch outside events are deferred until click: the original pointerdown's
+    // composed path is already empty when Radix asks whether to dismiss.
+    const touchUser = userEvent.setup({ document: ownerDocument });
+    await touchUser.pointer({ keys: '[TouchA]', target: firstVerse });
+    dialog = await screen.findByRole('dialog');
+    const touchDialogRect = dialog.getBoundingClientRect();
+    await touchUser.pointer({ keys: '[TouchA]', target: secondVerseLabel });
+    await expect(firstVerse).toHaveClass('yv-v-selected');
+    await expect(secondVerse).toHaveClass('yv-v-selected');
+    await expect(dialog).toHaveAttribute('data-state', 'open');
+    await waitFor(() => {
+      const nextRect = dialog.getBoundingClientRect();
+      const movedInline = Math.abs(nextRect.left - touchDialogRect.left) > 8;
+      const movedBlock = Math.abs(nextRect.top - touchDialogRect.top) > 8;
+      void expect(movedInline || movedBlock).toBe(true);
+    });
+    await touchUser.pointer({ keys: '[TouchA>]', target: outsideControl });
+    await expect(dialog).toHaveAttribute('data-state', 'open');
+    await touchUser.pointer({ keys: '[/TouchA]', target: outsideControl });
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    await expect(firstVerse).not.toHaveClass('yv-v-selected');
+    await expect(secondVerse).not.toHaveClass('yv-v-selected');
   },
 };
 

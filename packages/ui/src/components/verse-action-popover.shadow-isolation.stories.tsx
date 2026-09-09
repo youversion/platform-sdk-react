@@ -306,5 +306,26 @@ export const PortalPlacementDockingReanchoringAndFocusRestoration: Story = {
     await userEvent.click(outsideControl);
     await waitForClosed(topLayer);
     void expect(canvasElement.ownerDocument.activeElement).toBe(outsideControl);
+
+    const closeRequestsBeforeTouch = Number(closeRequestOutput.getAttribute('data-count'));
+    const touchUser = userEvent.setup({ document: canvasElement.ownerDocument });
+    await touchUser.pointer({ keys: '[TouchA]', target: firstVerse });
+    dialog = await waitForElement(topLayer, '[role="dialog"]', 'popover did not open for touch');
+    const touchDialogRect = dialog.getBoundingClientRect();
+    await touchUser.pointer({ keys: '[TouchA]', target: secondVerse });
+    void expect(dialog).toHaveAttribute('data-state', 'open');
+    void expect(Number(closeRequestOutput.getAttribute('data-count'))).toBe(
+      closeRequestsBeforeTouch,
+    );
+    await waitFor(() => {
+      void expect(dialog.getBoundingClientRect().left).toBeGreaterThan(touchDialogRect.left + 20);
+    });
+    await touchUser.pointer({ keys: '[TouchA>]', target: outsideControl });
+    void expect(dialog).toHaveAttribute('data-state', 'open');
+    await touchUser.pointer({ keys: '[/TouchA]', target: outsideControl });
+    await waitForClosed(topLayer);
+    void expect(Number(closeRequestOutput.getAttribute('data-count'))).toBe(
+      closeRequestsBeforeTouch + 1,
+    );
   },
 };

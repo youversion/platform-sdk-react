@@ -13,14 +13,18 @@ prototype therefore uses Shadow DOM as the browser-enforced style boundary.
 `YouVersionAuthButton` automatically creates an open shadow root and renders its
 existing implementation into it through a React portal. Consumers continue to
 use the same component API; they do not need to discover or enable isolation.
-The SDK's compiled Tailwind CSS is installed inside the root, the light-DOM host
+The SDK's compiled Tailwind component rules are installed inside the root, the light-DOM host
 receives a protected box reset, and an internal wrapper resets inherited visual
 properties.
 
-Writing direction is the only intentional inherited visual input: both reset
+Writing direction is the only intentional inherited CSS property: both reset
 boundaries explicitly preserve `direction`, while `all: initial` restores
 horizontal writing, mixed text orientation, SDK typography, and other visual
-properties. Vertical host writing modes and host typography are unsupported.
+properties. Vertical host writing modes and inherited host typography are unsupported.
+This is selector and inheritance isolation, not independent document sizing:
+the prototype retains `rem` units, so the owning document's root font size still
+scales SDK text, spacing, and controls. That sizing input is accepted for the
+prototype; it is not reset by a shadow boundary.
 Known ambient custom-property dependencies are closed by using SDK-owned
 `--yv-spacing` and `--yv-radius` values and by defining a local `--spacing`
 compatibility alias for `tw-animate-css`. YPE-5400 owns the full custom-property
@@ -29,7 +33,14 @@ inventory and a compiled-CSS prevention guard.
 Constructable stylesheets are cached per owning `Document`, because a sheet from
 the top-level document cannot be adopted into a same-origin iframe's shadow
 root. Environments without constructable stylesheets receive a `<style>` element
-instead.
+instead. Font loading remains document-owned: `CSSStyleSheet.replaceSync()`
+discards `@import`, so the adopted sheet does not load the Google Fonts import
+from the compiled CSS (and Chromium warns once when the cached sheet is created).
+`YouVersionProvider` installs the document stylesheet and brand-font stylesheet;
+an isolated component still depends on those document-level font registrations.
+The local `<style>` fallback retains the import but is not a substitute for
+document-owned font loading. For iframe consumers, fonts must be loaded in the
+iframe's owning document, not merely in the parent document.
 
 The same infrastructure was exercised as an internal opt-in with
 `BibleVersionPicker` and the shared Dialog and Popover primitives. Floating
