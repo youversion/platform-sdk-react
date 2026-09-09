@@ -54,6 +54,10 @@
       {
         "scope": ["*"],
         "rule": "Every PR must include a changeset. For a genuine no-release change (CI, docs, tooling) add an intentional empty changeset via `pnpm changeset --empty`. See docs/release-hardening-decisions.md (Decision 4)."
+      },
+      {
+        "scope": ["*"],
+        "rule": "GitHub suggestion commits: accepting a review suggestion via GitHub's \"Commit suggestion\" / \"Sign off and commit suggestion\" button produces a non-conventional subject (`Update <path>` or `Apply suggestions from code review`) that GitHub writes, not Greptile. commitlint.config.js deliberately ignores those when they carry the greptile-apps[bot] co-author trailer; do not amend or rebase them, and do not flag them in review. See docs/adr/0007-github-suggestion-commits-bypass-commitlint.md."
       }
     ],
     "files": [
