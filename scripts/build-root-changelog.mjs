@@ -66,13 +66,46 @@ function parseEntries(bodyLines) {
     if (entry) entry.push(line);
   }
   push();
-  // The fixed group's own bookkeeping, not release notes.
-  return groups.filter((g) => !/^- Updated dependencies/.test(g.text));
+  return groups
+    .map((g) => ({ ...g, text: stripBookkeeping(g.text) }))
+    .filter((g) => g.text !== null);
+}
+
+/** `- @youversion/platform-core@2.6.3`, at any indent. The fixed group bumping itself. */
+const DEPENDENCY_BUMP = /^\s*-\s+@[^@\s]+@\d[\w.-]*\s*$/;
+
+/**
+ * Remove the fixed group's own version bookkeeping, returning null when an entry is nothing else.
+ *
+ * Changesets records it two ways and both reach a consumer-facing changelog as noise:
+ * an `Updated dependencies` block, and bare `- @pkg@version` lines, either standing alone as
+ * their own entry or trailing a real note as continuation lines.
+ */
+function stripBookkeeping(text) {
+  if (/^- Updated dependencies/.test(text)) return null;
+  const kept = text.split('\n').filter((line) => !DEPENDENCY_BUMP.test(line));
+  const collapsed = kept
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trimEnd();
+  // Nothing but a bullet marker left, so the entry was only a version bump.
+  return /^-\s*$/.test(collapsed) || collapsed === '' ? null : collapsed;
+}
+
+/**
+ * Same note, written slightly differently in two packages' changelogs. Compared on collapsed
+ * whitespace so a stray blank line does not split one entry into two.
+ */
+function dedupeKey(text) {
+  return text.replace(/\s+/g, ' ').trim();
 }
 
 const packages = readdirSync(PACKAGES).filter((d) => existsSync(join(PACKAGES, d, 'CHANGELOG.md')));
 
-/** version -> kind -> entryText -> Set(packageName) */
+/** Section order in the output. */
+const KIND_ORDER = ['Major', 'Minor', 'Patch'];
+
+/** version -> dedupe key -> { kind, packages, text } */
 const byVersion = new Map();
 const order = [];
 
@@ -84,19 +117,21 @@ for (const dir of packages) {
       byVersion.set(version, new Map());
       order.push(version);
     }
-    const kinds = byVersion.get(version);
+    const entries = byVersion.get(version);
     for (const { kind, text } of parseEntries(body)) {
-      if (!kinds.has(kind)) kinds.set(kind, new Map());
-      const entries = kinds.get(kind);
-      if (!entries.has(text)) entries.set(text, new Set());
-      entries.get(text).add(pkgName);
+      const key = dedupeKey(text);
+      const existing = entries.get(key);
+      if (!existing) {
+        entries.set(key, { kind, packages: new Set([pkgName]), text });
+        continue;
+      }
+      existing.packages.add(pkgName);
     }
   }
 }
 
 // Newest first. Changesets already writes each file newest-first, and the fixed group means
 // every package sees the same versions, so first-seen order is release order.
-const KIND_ORDER = ['Major', 'Minor', 'Patch'];
 const out = [
   '# Changelog',
   '',
@@ -114,12 +149,12 @@ const out = [
 
 for (const version of order) {
   out.push(`## ${version}`, '');
-  const kinds = byVersion.get(version);
+  const entries = [...byVersion.get(version).values()];
   for (const kind of KIND_ORDER) {
-    const entries = kinds.get(kind);
-    if (!entries || entries.size === 0) continue;
+    const forKind = entries.filter((e) => e.kind === kind);
+    if (forKind.length === 0) continue;
     out.push(`### ${kind} Changes`, '');
-    for (const [text, pkgs] of entries) {
+    for (const { text, packages: pkgs } of forKind) {
       const scope = pkgs.size === packages.length ? 'all packages' : [...pkgs].sort().join(', ');
       out.push(text.replace(/^- /, `- _(${scope})_ `), '');
     }

@@ -27,15 +27,13 @@ or the changeset, rather than this file.
 
 ### Minor Changes
 
-- _(@youversion/platform-react-hooks)_ c55f690: Data hooks now cache reads with TanStack Query: revisiting previously fetched content (chapters, verses, versions, highlights) renders instantly from an in-memory cache and revalidates in the background instead of blanking and refetching. Two components reading the same thing now share one request. Public hook APIs are unchanged and no new providers or peer installs are required — `@tanstack/react-query` ships as a direct dependency of the hooks package with a private `QueryClient` inside `YouVersionProvider`. Cache entries are keyed by provider config, including `additionalHeaders`, so two header sets never share a response. Account-scoped queries (highlights) are keyed per user, so one account can never see another account's cached data — while the signed-in account is still resolving, or while a live access token disagrees with a signed-out session, `useHighlights` holds off fetching rather than sharing a cache entry. Returning to the tab no longer refetches; mounting, changing what you are reading, and `refetch()` still do. A read that failed while the network was down fetches again on its own once the connection returns. `useOrganizations` shares that cache too, keyed per organization exactly as `useOrganization` keys it, so a list of versions that share publishers costs one request per publisher and reopening a picker renders them from cache. The cache is memory-only and never persisted.
+- _(@youversion/platform-react-hooks, @youversion/platform-react-ui)_ c55f690: Data hooks now cache reads with TanStack Query: revisiting previously fetched content (chapters, verses, versions, highlights) renders instantly from an in-memory cache and revalidates in the background instead of blanking and refetching. Two components reading the same thing now share one request. Public hook APIs are unchanged and no new providers or peer installs are required — `@tanstack/react-query` ships as a direct dependency of the hooks package with a private `QueryClient` inside `YouVersionProvider`. Cache entries are keyed by provider config, including `additionalHeaders`, so two header sets never share a response. Account-scoped queries (highlights) are keyed per user, so one account can never see another account's cached data — while the signed-in account is still resolving, or while a live access token disagrees with a signed-out session, `useHighlights` holds off fetching rather than sharing a cache entry. Returning to the tab no longer refetches; mounting, changing what you are reading, and `refetch()` still do. A read that failed while the network was down fetches again on its own once the connection returns. `useOrganizations` shares that cache too, keyed per organization exactly as `useOrganization` keys it, so a list of versions that share publishers costs one request per publisher and reopening a picker renders them from cache. The cache is memory-only and never persisted.
 
 ### Patch Changes
 
 - _(@youversion/platform-core, @youversion/platform-react-hooks)_ 1f258fa: Sign-in no longer fails when the token endpoint returns `expires_in` as a string. Callback failures are logged in development so a failed exchange is visible in the console.
 
 - _(@youversion/platform-react-ui)_ 22c36dd: Sync localization from platform-localization (032e300): add Serbian (sr); update 43 keys in af, zh.
-
-- _(@youversion/platform-react-ui)_ c55f690: Data hooks now cache reads with TanStack Query: revisiting previously fetched content (chapters, verses, versions, highlights) renders instantly from an in-memory cache and revalidates in the background instead of blanking and refetching. Two components reading the same thing now share one request. Public hook APIs are unchanged and no new providers or peer installs are required — `@tanstack/react-query` ships as a direct dependency of the hooks package with a private `QueryClient` inside `YouVersionProvider`. Cache entries are keyed by provider config, including `additionalHeaders`, so two header sets never share a response. Account-scoped queries (highlights) are keyed per user, so one account can never see another account's cached data — while the signed-in account is still resolving, or while a live access token disagrees with a signed-out session, `useHighlights` holds off fetching rather than sharing a cache entry. Returning to the tab no longer refetches; mounting, changing what you are reading, and `refetch()` still do. A read that failed while the network was down fetches again on its own once the connection returns. `useOrganizations` shares that cache too, keyed per organization exactly as `useOrganization` keys it, so a list of versions that share publishers costs one request per publisher and reopening a picker renders them from cache. The cache is memory-only and never persisted.
 
 ## 2.11.0
 
@@ -51,23 +49,11 @@ or the changeset, rather than this file.
 
 - _(@youversion/platform-react-ui)_ c24ce71: `BibleCard` now caps its painted shell at 700px by default, or at a pixel `maxWidth`. Scripture fills that shell. Pass `maxWidth="100%"` for a full-bleed shell; that path keeps the 600px inner column, and scripture fills the column. Full-bleed hosts must pass `"100%"`. `VerseOfTheDay` and `BibleReader` are unchanged.
 
-### Patch Changes
-
-- _(@youversion/platform-react-hooks, @youversion/platform-react-ui)_ @youversion/platform-core@2.10.0
-
-- _(@youversion/platform-react-ui)_ @youversion/platform-react-hooks@2.10.0
-
 ## 2.9.0
 
 ### Minor Changes
 
 - _(@youversion/platform-react-ui)_ aef57f3: Hosts can pass `locale` on `YouVersionProvider` to set SDK UI language and `Accept-Language` (including Verse of the Day copy in Expo WebViews), and `defaultLanguageId` / `languageId` on `BibleReader.Root` to seed the version picker. App locale and Bible language stay separate: `locale` does not pick a default Bible translation.
-
-### Patch Changes
-
-- _(@youversion/platform-react-hooks, @youversion/platform-react-ui)_ @youversion/platform-core@2.9.0
-
-- _(@youversion/platform-react-ui)_ @youversion/platform-react-hooks@2.9.0
 
 ## 2.8.0
 
@@ -95,21 +81,11 @@ or the changeset, rather than this file.
 
 - _(@youversion/platform-react-ui)_ f751b5b: `BibleTextView`, `BibleCard`, and `VerseOfTheDay` now auto-paint the signed-in user's highlights from the API when the `highlights` permission is granted. Omit the prop for that self-contained path. Passing `highlights` (including `[]`) stays controlled so React Native hosts can keep the token out of the WebView.
 
-### Patch Changes
-
-- _(@youversion/platform-react-hooks, @youversion/platform-react-ui)_ @youversion/platform-core@2.7.0
-
-- _(@youversion/platform-react-ui)_ @youversion/platform-react-hooks@2.7.0
-
 ## 2.6.3
 
 ### Patch Changes
 
-- _(@youversion/platform-react-hooks)_ @youversion/platform-core@2.6.3
-
 - _(@youversion/platform-react-ui)_ 037de56: Replace the iOS-style box-arrow-up share glyph with a curved forward arrow in `VerseOfTheDay` and the verse action popover, so the share affordance reads as "share" on non-Apple platforms too.
-  - @youversion/platform-core@2.6.3
-  - @youversion/platform-react-hooks@2.6.3
 
 ## 2.6.2
 
@@ -135,13 +111,9 @@ or the changeset, rather than this file.
 
 ### Patch Changes
 
-- _(@youversion/platform-react-hooks)_ @youversion/platform-core@2.6.1
-
 - _(@youversion/platform-react-ui)_ 4cae248: Fix the `BibleCard` error state announcing two alerts, and keep the version picker usable while an error is showing. The "Error" label stays in the header slot but drops its `role="alert"` and `aria-live`, leaving the message block in the card body as the only alert region. The picker no longer disappears on error, so a 404 has an in-card fix: switch to a version that carries the passage.
 
   The shared message block now hides its icon with `aria-hidden`, so `VerseOfTheDay` and standalone `BibleTextView` pick up that fix too. Their announcement stays polite and their visible text is unchanged, and neither gains an "Error" label. The eight status-aware messages, their six locales, and how errors are derived are untouched.
-  - @youversion/platform-core@2.6.1
-  - @youversion/platform-react-hooks@2.6.1
 
 ## 2.6.0
 
@@ -153,8 +125,6 @@ or the changeset, rather than this file.
 
 ### Patch Changes
 
-- _(@youversion/platform-react-hooks)_ @youversion/platform-core@2.5.1
-
 - _(@youversion/platform-react-ui)_ 9a2b3e9: Fix secondary buttons rendering their label in the muted text color, which made active controls read as disabled. The `secondary` variant now pairs `bg-muted` with the normal foreground color in both light and dark themes. This is most visible on the BibleCard version picker button, and also affects the secondary buttons in BibleReader, BibleChapterPicker, BibleVersionPicker, and the highlight permission dialog.
 
 - _(@youversion/platform-react-ui)_ 9c2e8e4: Remove the divider lines between book rows in `BibleChapterPicker` to match the current design. Row padding and tap targets are unchanged.
@@ -162,8 +132,6 @@ or the changeset, rather than this file.
 - _(@youversion/platform-react-ui)_ f6b98da: Sync localization from platform-localization (ac750ac): update 31 keys in es, tr.
 
 - _(@youversion/platform-react-ui)_ b592e72: Fix the version count badge in the version picker's language trigger rendering with a monospace, slashed-zero font. The badge now inherits the picker's font and keeps `tabular-nums` for stable digit widths.
-  - @youversion/platform-core@2.5.1
-  - @youversion/platform-react-hooks@2.5.1
 
 ## 2.5.0
 
@@ -201,24 +169,6 @@ or the changeset, rather than this file.
 
 ### Minor Changes
 
-- _(@youversion/platform-react-hooks, @youversion/platform-react-ui)_ 71e4c1a: BibleReader highlights are now real, server-backed YouVersion highlights, with a built-in sign-in and permission flow so a reader's highlights persist to their YouVersion account.
-
-  **Important: previous releases accidentally shipped a demo-only, localStorage-based highlights implementation in BibleReader. It stored highlights only in the local browser and never synced to the reader's YouVersion account. That implementation has been removed and replaced by the server-backed highlights described here.** These highlights are live in this release and enabled by default.
-  - Server-backed highlights in BibleReader: tap verses, pick a color, and highlights persist to the reader's YouVersion account instead of the local browser.
-  - Built-in sign-in dialog and just-in-time `highlights` permission flow: a highlight tap while signed out opens a sign-in dialog; a missing `highlights` permission triggers the YouVersion data-exchange consent flow, and the pending highlight is applied automatically once consent is granted (surviving the redirect round-trip).
-  - New `BibleReader` props `appName` and `signInPromptMessage` for the sign-in dialog (Swift SDK parity): `appName` names your app in the dialog, and `signInPromptMessage` shows an optional integrator pitch (hidden when unset).
-  - Optimistic UI: color taps apply and remove instantly while writes settle in the background, with automatic revert on network/5xx failures and a re-prompt on auth failures (401/403).
-  - Behavior change in `useHighlights`: `createHighlight` and `deleteHighlight` no longer auto-refetch. Direct consumers must now call `refetch()` themselves after their mutations settle; the BibleReader flow coordinates this for you (batching a set of verse writes into a single refetch).
-  - New exports: `YouVersionAuthContext` from `@youversion/platform-react-hooks` (the no-throw alternative to `useYVAuth` for components that must tolerate a missing auth provider), and a re-export of the `Highlight` type from `@youversion/platform-react-ui`.
-  - The active color swatch now shows a checkmark (24px `icons/check`) instead of an X, matching the Bible app; tapping it still removes the highlight.
-  - Highlight-flow reliability fixes surfaced by staging: the previously invisible primary button in the permission dialog now uses the correct `bg-primary` / `text-primary-foreground` pairing (it resolved to white-on-white in light mode); the optimistic overlay is retired only once a refetch actually reflects the write, so highlights no longer flicker out and back under read-after-write lag; removes now send one DELETE per verse (range DELETE is unsupported by the API), while applies still collapse contiguous verses into range USFMs; and highlight fills now fade their background color (~250ms, disabled under `prefers-reduced-motion`) instead of popping in.
-  - Fix: the core `ApiClient` now treats empty-body 2xx JSON responses as success with no data. Previously a successful highlight delete (a 200 with an empty body) was misread as a failure, briefly flashing the removed highlight back before it disappeared.
-  - Fix: duplicate processing of the same OAuth callback (e.g. the double-invoked auth init effect under React StrictMode) can no longer clear a just-granted `highlights` permission. The code-for-token exchange is now deduped by authorization code, so a repeated callback shares the one exchange instead of firing a second request whose failure would wipe the freshly seeded grant and re-prompt for permission.
-  - Fix: a one-shot `highlights` sign-in no longer re-prompts for permission when the auth server omits the grant echo. On the web flow the server returns no `granted_permissions` on the callback and no data-exchange scope on the token, so nothing seeded the permission cache and the flow immediately re-prompted after consent. The permissions requested at sign-in are now stashed (bound to the OAuth `state`) and seeded optimistically on return; the seed is self-correcting because a 401/403 on the first write drops the permission and re-prompts.
-  - Fix: concurrent token refreshes (e.g. the double-invoked auth init effect under React StrictMode) now share a single in-flight refresh, so a losing duplicate can no longer spend the single-use refresh token a second time and wipe the session on its failure.
-  - Fix: verse labels and footnote icons now inherit the surrounding text color over highlight fills instead of being painted with the fill color, keeping them legible on highlighted verses.
-  - Theme-aware highlight rendering: highlight fills render at full opacity in light mode and 30 percent opacity in dark mode, matching the Swift SDK; verse numbers over dark-mode highlights render white. Highlight fills now have subtly rounded corners, with each wrapped line fragment getting its own rounded ends so a multi-line highlight no longer cuts off square at the wrap. The verse-action popover color swatches preview the real fill: in dark mode they show the same dimmed color a highlight will apply. Opening the popover with a mouse or touch no longer flashes a focus ring on the first swatch; keyboard navigation still shows a clearly visible focus ring.
-
 - _(@youversion/platform-react-ui)_ ebddf21: BibleReader gains a controlled highlights mode (YPE-3705) for hosts that own highlight data themselves (e.g. React Native / Expo DOM hosts keeping the user token out of the WebView).
   - New `BibleReader.Root` props: `highlights?: Highlight[]` (core API shape; presence puts the highlight slice in controlled mode, latched at first mount), `onVerseSelect` (both modes, fires on every selection change — `verses: []` whenever a non-empty selection clears, including after highlight/copy/share actions, popover dismiss, and navigation), and `onHighlightApply` / `onHighlightRemove` (controlled mode only; ignored in self-contained mode). Payloads are serializable, bridge-safe objects (`BibleReaderVerseSelection`, `BibleReaderHighlightIntent`) with always-per-verse `passageIds`.
   - In controlled mode the reader is a pure projection: highlights render solely from the prop (filtered by displayed version + chapter, range USFMs like `JHN.3.16-18` expanded per verse), color taps emit intents and paint nothing until the host round-trips an updated prop, and neither the highlights API nor any local store is touched. No auth surface can originate from the highlight path.
@@ -231,7 +181,7 @@ or the changeset, rather than this file.
 
   `parseGrantedPermissions` read only the bare `granted_permissions` key, but `URLSearchParams` treats `granted_permissions[]` (and indexed `granted_permissions[0]`) as distinct keys. The server demonstrably uses this bracket notation for the analogous outbound `requested_permissions[]` param it builds on the hosted consent redirect, so a return echo in the same shape was silently discarded — leaving the permission cache empty and re-prompting the just-in-time data-exchange consent after a completed sign-in. The parser now accepts `granted_permissions`, `granted_permissions[]`, and `granted_permissions[<index>]`, keeping it symmetric with the server's encoding. Purely additive: bare `granted_permissions` and all user/state-scoping and fail-closed protections are unchanged.
 
-- _(@youversion/platform-core)_ 71e4c1a: BibleReader highlights are now real, server-backed YouVersion highlights, with a built-in sign-in and permission flow so a reader's highlights persist to their YouVersion account.
+- _(all packages)_ 71e4c1a: BibleReader highlights are now real, server-backed YouVersion highlights, with a built-in sign-in and permission flow so a reader's highlights persist to their YouVersion account.
 
   **Important: previous releases accidentally shipped a demo-only, localStorage-based highlights implementation in BibleReader. It stored highlights only in the local browser and never synced to the reader's YouVersion account. That implementation has been removed and replaced by the server-backed highlights described here.** These highlights are live in this release and enabled by default.
   - Server-backed highlights in BibleReader: tap verses, pick a color, and highlights persist to the reader's YouVersion account instead of the local browser.
@@ -318,21 +268,13 @@ or the changeset, rather than this file.
 
 ### Patch Changes
 
-- _(@youversion/platform-react-hooks)_ @youversion/platform-core@2.1.0
-
 - _(@youversion/platform-react-ui)_ f2c83cf: VerseOfTheDay now shows the Bible reference directly under the "Verse of the Day" label in foreground text instead of below the verse body. BibleCard and VerseOfTheDay no longer display inline verse numbers in passage text.
-  - @youversion/platform-core@2.1.0
-  - @youversion/platform-react-hooks@2.1.0
 
 ## 2.0.1
 
 ### Patch Changes
 
-- _(@youversion/platform-react-hooks)_ @youversion/platform-core@2.0.1
-
 - _(@youversion/platform-react-ui)_ dd83b33: BibleReader now keeps the previous chapter's text on screen while the next chapter loads, dimming it and floating a spinner over it (after a short delay) instead of pulsing stale text or flashing a blank spinner. Fast/cached chapter switches stay instant, the scroll position resets to the top on chapter change, and the `useDelayedLoading` helper is shared with BibleCard. No changes to BibleTextView.
-  - @youversion/platform-core@2.0.1
-  - @youversion/platform-react-hooks@2.0.1
 
 ## 2.0.0
 
@@ -430,12 +372,6 @@ or the changeset, rather than this file.
 
 - _(@youversion/platform-react-ui)_ b5f42ff: Add optional `onShare` and `VerseOfTheDayShareData` to `VerseOfTheDay` for native host share flows.
 
-### Patch Changes
-
-- _(@youversion/platform-react-hooks, @youversion/platform-react-ui)_ @youversion/platform-core@1.31.0
-
-- _(@youversion/platform-react-ui)_ @youversion/platform-react-hooks@1.31.0
-
 ## 1.30.0
 
 ### Minor Changes
@@ -460,12 +396,6 @@ or the changeset, rather than this file.
   - `BibleWidgetView` kept as a deprecated alias for `BibleCard`
   - `BibleVersionPickerPressData` type exported: `{ versionId: number; languageId: string }`
 
-### Patch Changes
-
-- _(@youversion/platform-react-hooks, @youversion/platform-react-ui)_ @youversion/platform-core@1.29.0
-
-- _(@youversion/platform-react-ui)_ @youversion/platform-react-hooks@1.29.0
-
 ## 1.28.0
 
 ### Minor Changes
@@ -474,12 +404,6 @@ or the changeset, rather than this file.
   - `BibleChapterPickerSelectData` type exported for `onSelect` payload
   - `onSelect` prop on `Content` fires after internal state updates, before `onRequestClose`
   - `onChapterPickerPress` prop on `BibleReader.Root` threaded through context to `Toolbar`, suppressing default popover when provided
-
-### Patch Changes
-
-- _(@youversion/platform-react-hooks, @youversion/platform-react-ui)_ @youversion/platform-core@1.28.0
-
-- _(@youversion/platform-react-ui)_ @youversion/platform-react-hooks@1.28.0
 
 ## 1.27.0
 
@@ -491,11 +415,7 @@ or the changeset, rather than this file.
 
 ### Patch Changes
 
-- _(@youversion/platform-react-hooks)_ @youversion/platform-core@1.26.1
-
 - _(@youversion/platform-react-ui)_ c1b9968: Fixed a UI bug on the `BibleVersionPicker` component where switching to the language picker view would result in the scrollable contents overflowing off of the view container.
-  - @youversion/platform-core@1.26.1
-  - @youversion/platform-react-hooks@1.26.1
 
 ## 1.26.0
 
@@ -505,35 +425,17 @@ or the changeset, rather than this file.
 
 - _(@youversion/platform-react-ui)_ d77c19e: Expose `BibleThemeSettingsContent` and add optional `onOpenBibleThemeSettings` on `BibleReader.Toolbar` with a **serializable** `BibleThemeSettingsSnapshot` payload for Expo DOM hosts. Export `BIBLE_READER_FONT`, `clampBibleReaderFontSize`, `nextBibleReaderFontSizeUp`, and `nextBibleReaderFontSizeDown` so native can apply edits without closure payloads. Add optional controlled typography on `BibleReader.Root` via `fontSize`/`fontFamily` with `onFontSizeChange`/`onFontFamilyChange` (and `defaultFontSize` / `defaultFontFamily` for defaults).
 
-### Patch Changes
-
-- _(@youversion/platform-react-hooks, @youversion/platform-react-ui)_ @youversion/platform-core@1.26.0
-
-- _(@youversion/platform-react-ui)_ @youversion/platform-react-hooks@1.26.0
-
 ## 1.25.0
 
 ### Minor Changes
 
 - _(@youversion/platform-react-ui)_ e5a8681: Export `BibleChapterPicker.Content` for standalone rendering and add `onChapterPickerPress` to intercept trigger presses (e.g. to render picker content in a native bottom sheet instead of a popover).
 
-### Patch Changes
-
-- _(@youversion/platform-react-hooks, @youversion/platform-react-ui)_ @youversion/platform-core@1.25.0
-
-- _(@youversion/platform-react-ui)_ @youversion/platform-react-hooks@1.25.0
-
 ## 1.24.0
 
 ### Minor Changes
 
 - _(@youversion/platform-react-ui)_ 2d26bf0: Add `onFootnotePress` callback prop to `BibleTextView`, `Verse.Html`, and `BibleReader.Root`. When provided, suppresses the Radix popover and calls the callback with a serializable `FootnoteData` payload. Export `FootnoteContent` component for rendering footnote data standalone (e.g. inside an Expo DOM component). Exports new `FootnoteData` and `FootnoteContentProps` types.
-
-### Patch Changes
-
-- _(@youversion/platform-react-hooks, @youversion/platform-react-ui)_ @youversion/platform-core@1.24.0
-
-- _(@youversion/platform-react-ui)_ @youversion/platform-react-hooks@1.24.0
 
 ## 1.23.2
 
