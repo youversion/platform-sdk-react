@@ -1,6 +1,10 @@
 import type { CSSProperties } from 'react';
 import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hooks';
-import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, type Highlight } from '@youversion/platform-core';
+import {
+  DEFAULT_LICENSE_FREE_BIBLE_VERSION,
+  type Highlight,
+  type TextDirection,
+} from '@youversion/platform-core';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { BibleTextView, type FootnoteData } from './verse';
@@ -50,6 +54,7 @@ export type BibleCardProps = {
    * that inner column.
    */
   maxWidth?: number | '100%';
+  direction?: TextDirection;
 };
 
 type BibleCardSectionStyle = CSSProperties & {
@@ -155,6 +160,7 @@ export function BibleCard({
   onFootnotePress,
   highlights,
   maxWidth = BIBLE_CARD_DEFAULT_MAX_WIDTH_PX,
+  direction,
 }: BibleCardProps): React.ReactNode {
   // Controlled only when both versionId + onVersionChange are provided.
   // versionId alone seeds uncontrolled state, preserving backwards compatibility
@@ -245,6 +251,7 @@ export function BibleCard({
             }}
             onFootnotePress={onFootnotePress}
             highlights={highlights}
+            direction={direction}
           />
         </AnimatedHeight>
 

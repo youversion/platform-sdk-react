@@ -15,7 +15,11 @@ import { Share } from '@/components/icons/share';
 import { Votd } from '@/components/icons/votd';
 import { Button } from '@/components/ui/button';
 import { BibleTextView } from '@/components/verse';
-import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, type Highlight } from '@youversion/platform-core';
+import {
+  DEFAULT_LICENSE_FREE_BIBLE_VERSION,
+  type Highlight,
+  type TextDirection,
+} from '@youversion/platform-core';
 import { cn } from '@/lib/utils';
 import { filterHighlightsForPassage } from '@/lib/highlight-projection';
 import { useHighlightsControlledLatch } from '@/lib/use-highlights-controlled-latch';
@@ -82,6 +86,7 @@ export type VerseOfTheDayProps = {
    * latches self-contained (fetch when eligible), not "never paint".
    */
   highlights?: Highlight[];
+  direction?: TextDirection;
 };
 
 function clipHighlightsToPassage(
@@ -158,6 +163,7 @@ export function VerseOfTheDay({
   onShare,
   size = 'default',
   highlights,
+  direction,
 }: VerseOfTheDayProps): React.ReactElement {
   const { t } = useTranslation(undefined, { i18n });
   const day = React.useMemo(() => dayOfYear || getDayOfYear(new Date()), [dayOfYear]);
@@ -290,6 +296,7 @@ export function VerseOfTheDay({
                 error: errorPassage || errorVerseOfTheDay || null,
               }}
               highlights={clippedHighlights}
+              direction={direction}
             />
           )}
         </AnimatedHeight>

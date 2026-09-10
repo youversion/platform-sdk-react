@@ -53,6 +53,7 @@ export * from './utils/constants';
 export { getAdjacentChapter } from './getAdjacentChapter';
 export {
   transformBibleHtml,
+  type TextDirection,
   type TransformBibleHtmlOptions,
   type TransformedBibleHtml,
 } from './bible-html-transformer';

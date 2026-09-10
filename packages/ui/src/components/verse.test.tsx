@@ -392,6 +392,87 @@ describe('Verse.Html - Footnotes', () => {
   });
 });
 
+describe('Verse.Html - direction', () => {
+  it('uses the transformed passage root direction on the renderer', async () => {
+    const { container } = render(<Verse.Html html={'<div dir="rtl"><p>Text</p></div>'} />);
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute(
+        'dir',
+        'rtl',
+      );
+    });
+  });
+
+  it('prefers an explicit direction over transformed passage content', async () => {
+    const { container } = render(
+      <Verse.Html html={'<div dir="rtl"><p>Text</p></div>'} direction="ltr" />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute(
+        'dir',
+        'ltr',
+      );
+    });
+  });
+
+  it('omits renderer direction when the passage root does not resolve one', async () => {
+    const { container } = render(
+      <div dir="rtl">
+        <Verse.Html html="<div><p>Text</p></div>" />
+      </div>,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-slot="yv-bible-renderer"]')).not.toHaveAttribute('dir');
+    });
+  });
+
+  it('forwards the explicit direction through BibleTextView', async () => {
+    const { container } = render(
+      <BibleTextView
+        reference="JHN.1.1"
+        versionId={3034}
+        direction="rtl"
+        passageState={{
+          passage: { id: 'JHN.1.1', content: '<div><p>Text</p></div>', reference: 'John 1:1' },
+          loading: false,
+          error: null,
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute(
+        'dir',
+        'rtl',
+      );
+    });
+  });
+
+  it('preserves scripture direction in the portaled footnote content', async () => {
+    const { container } = render(
+      <Verse.Html
+        html={
+          '<div dir="rtl"><p><span class="yv-v" v="1"></span>Text<span class="yv-n f"><span class="ft">Note</span></span></p></div>'
+        }
+      />,
+    );
+
+    const button = await waitFor(() => {
+      const footnoteButton = container.querySelector('[data-verse-footnote="1"] button');
+      expect(footnoteButton).not.toBeNull();
+      return requireHtmlButton(footnoteButton);
+    });
+    await userEvent.click(button);
+
+    await waitFor(() => {
+      expect(document.body.querySelector('[role="dialog"]')).toHaveAttribute('dir', 'rtl');
+    });
+  });
+});
+
 describe('Verse.Html - Footnote spacing', () => {
   it('should insert space when footnote is between two words without spacing', async () => {
     const htmlWithNoSpacing = `

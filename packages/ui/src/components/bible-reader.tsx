@@ -11,7 +11,7 @@ import {
   type FontFamily,
 } from '@/lib/verse-html-utils';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
-import type { BibleBook, Highlight } from '@youversion/platform-core';
+import type { BibleBook, Highlight, TextDirection } from '@youversion/platform-core';
 import {
   DEFAULT_LICENSE_FREE_BIBLE_VERSION,
   getAdjacentChapter,
@@ -92,6 +92,7 @@ type BibleReaderContextType = {
   onHighlightRemove?: (intent: BibleReaderHighlightIntent) => void;
   verseActions: 'popover' | 'none';
   clearSelectionSignal?: number;
+  direction?: TextDirection;
 };
 
 /**
@@ -328,6 +329,7 @@ export type RootProps = {
    * the reader can clear the selection any more.
    */
   clearSelectionSignal?: number;
+  direction?: TextDirection;
   children?: ReactNode;
 };
 
@@ -483,6 +485,7 @@ function Root({
   onHighlightRemove,
   verseActions = 'popover',
   clearSelectionSignal,
+  direction,
   children,
 }: RootProps) {
   // Latched at first mount: a transient `undefined` on a controlled reader must
@@ -662,6 +665,7 @@ function Root({
     onHighlightRemove,
     verseActions,
     clearSelectionSignal,
+    direction,
   };
 
   return (
@@ -699,6 +703,7 @@ function Content() {
     onHighlightRemove,
     verseActions,
     clearSelectionSignal,
+    direction,
   } = useBibleReaderContext();
   const { version } = useVersion(versionId);
 
@@ -1080,6 +1085,7 @@ function Content() {
               showVerseNumbers={showVerseNumbers}
               theme={background}
               onFootnotePress={onFootnotePress}
+              direction={direction}
               selectedVerses={selectedVerses}
               onVerseSelect={handleVerseSelect}
               highlightedVerses={highlightedVerses}
