@@ -20,8 +20,8 @@ importers:
         specifier: 2.29.7
         version: 2.29.7(@types/node@24.9.1)
       '@changesets/parse':
-        specifier: ^1.0.0
-        version: 1.0.0
+        specifier: 0.4.1
+        version: 0.4.1
       '@commitlint/cli':
         specifier: 19.8.1
         version: 19.8.1(@types/node@24.9.1)(typescript@7.0.2)
@@ -689,10 +689,6 @@ packages:
   '@changesets/parse@0.4.1':
     resolution: {integrity: sha512-iwksMs5Bf/wUItfcg+OXrEpravm5rEd9Bf4oyIPL4kVTmJQ7PNDSd6MDYkpSJR1pn7tz/k8Zf2DhTCqX08Ou+Q==}
 
-  '@changesets/parse@1.0.0':
-    resolution: {integrity: sha512-P0iaMb9p9CRYZiTgAllEIF9AUMQHIy1G72tKlcIqJp61icZSsKQNiOPdxAMZG8m/DvZwt/oz5xEbTpike//dWg==}
-    engines: {node: ^22.11 || ^24 || >=26}
-
   '@changesets/pre@2.0.2':
     resolution: {integrity: sha512-HaL/gEyFVvkf9KFg6484wR9s0qjAXlZ8qWPDkTyKF6+zqjBe/I2mygg3MbpZ++hdi0ToqNUF8cjj7fBy0dg8Ug==}
 
@@ -707,10 +703,6 @@ packages:
 
   '@changesets/types@6.1.0':
     resolution: {integrity: sha512-rKQcJ+o1nKNgeoYRHKOS07tAMNd3YSN0uHaJOZYjBAgxfV7TUE7JE+z4BzZdQwb5hKaYbayKN5KrYV7ODb2rAA==}
-
-  '@changesets/types@7.0.0':
-    resolution: {integrity: sha512-c5GoiQyt3pxiXjrWSNoP8/GRf4kG+VnKzovx1OQM8dYYALlSwgedmkPmJ+ZqGxqwg9D3Bkj85Uo4KLd5BN3A0w==}
-    engines: {node: ^22.11 || ^24 || >=26}
 
   '@changesets/write@0.4.0':
     resolution: {integrity: sha512-CdTLvIOPiCNuH71pyDu3rA+Q0n65cmAbXnwWH84rKGiFumFzkmHNT8KHTMEchcxN+Kl8I54xGUhJ7l3E7X396Q==}
@@ -7252,11 +7244,6 @@ snapshots:
       '@changesets/types': 6.1.0
       js-yaml: 3.14.1
 
-  '@changesets/parse@1.0.0':
-    dependencies:
-      '@changesets/types': 7.0.0
-      yaml: 2.9.0
-
   '@changesets/pre@2.0.2':
     dependencies:
       '@changesets/errors': 0.2.0
@@ -7282,8 +7269,6 @@ snapshots:
   '@changesets/types@4.1.0': {}
 
   '@changesets/types@6.1.0': {}
-
-  '@changesets/types@7.0.0': {}
 
   '@changesets/write@0.4.0':
     dependencies:
@@ -13195,7 +13180,8 @@ snapshots:
 
   yaml@2.8.1: {}
 
-  yaml@2.9.0: {}
+  yaml@2.9.0:
+    optional: true
 
   yargs-parser@21.1.1: {}
 

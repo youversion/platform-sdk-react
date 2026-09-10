@@ -100,10 +100,17 @@ jobs:
             scripts/preview-release.mjs \
             package.json \
             pnpm-lock.yaml \
+            pnpm-workspace.yaml \
             .changeset/config.json
-          if git cat-file -e main:.npmrc 2>/dev/null; then
-            git checkout main -- .npmrc
-          fi
+          # Restore these if `main` has them, otherwise delete the PR's copy. Leaving a
+          # PR-authored one in place would hand back the control we just took.
+          for f in .npmrc .pnpmfile.cjs; do
+            if git cat-file -e "main:$f" 2>/dev/null; then
+              git checkout main -- "$f"
+            else
+              rm -f "$f"
+            fi
+          done
 
       - name: Setup pnpm
         uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
@@ -115,10 +122,10 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        # `--ignore-scripts`: this job installs code from the PR, so its lifecycle
-        # scripts must not run. The job holds no write scopes either, so a
-        # compromised dependency cannot reach the status API.
-        run: pnpm install --frozen-lockfile --ignore-scripts
+        # `--ignore-scripts` stops lifecycle scripts; `--ignore-pnpmfile` stops pnpm's
+        # own hooks, which are a separate mechanism and can rewrite files on disk. The
+        # job holds no write scopes either, so nothing here reaches the status API.
+        run: pnpm install --frozen-lockfile --ignore-scripts --ignore-pnpmfile
 
       - name: Compute release preview
         id: preview
@@ -222,6 +229,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ needs.context.outputs.pr_number }}
           PR_AUTHOR: ${{ needs.context.outputs.pr_author }}
+          HEAD_SHA: ${{ needs.context.outputs.head_sha }}
           NEXT_VERSION: ${{ steps.decision.outputs.next }}
         run: |
           set -euo pipefail
@@ -252,9 +260,16 @@ jobs:
           }
           NORM_TEMPLATE=$(normalize "$TEMPLATE_PHRASE")
 
+          # A signoff approves the code it was given on. Pushing more breaking changes after
+          # an approval must not inherit it, and it would: the next version is still the same
+          # string, so the old comment would keep matching. Ignore anything older than the
+          # commit currently under review.
+          HEAD_DATE=$(gh api "repos/${{ github.repository }}/commits/$HEAD_SHA" --jq '.commit.committer.date')
+          echo "Head $HEAD_SHA committed at $HEAD_DATE; older signoffs do not count."
+
           COMMENTS=$(gh api --paginate \
             "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" \
-            --jq '[.[] | {login: .user.login, type: .user.type, body: .body, html_url: .html_url}]')
+            --jq '[.[] | {login: .user.login, type: .user.type, body: .body, html_url: .html_url, at: (.updated_at // .created_at)}]')
 
           declare -A PERM_CACHE
           MATCH_LOGIN=""
@@ -264,6 +279,9 @@ jobs:
             BODY=$(jq -r .body <<<"$row")
             URL=$(jq -r .html_url <<<"$row")
             USER_TYPE=$(jq -r .type <<<"$row")
+            AT=$(jq -r .at <<<"$row")
+            # Predates the commit under review, so it approved different code.
+            if [[ "$AT" < "$HEAD_DATE" ]]; then continue; fi
             # Bots can't sign off.
             if [ "$USER_TYPE" = "Bot" ]; then continue; fi
             # Skip the PR author — the point of the gate is a second pair of

@@ -133,7 +133,9 @@ function addedChangesetLevels(base) {
   );
   const fields = raw.split('\0').filter((f) => f !== '');
 
-  const isChangeset = (f) => /^\.changeset\/.+\.md$/.test(f) && !/README\.md$/.test(f);
+  // `[^]` rather than `.`: a filename containing a line terminator would otherwise fail
+  // this test and drop out of the scan entirely.
+  const isChangeset = (f) => /^\.changeset\/[^]+\.md$/.test(f) && !/README\.md$/.test(f);
   const levels = [];
   const touched = [];
 
