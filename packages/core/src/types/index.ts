@@ -9,6 +9,12 @@ export type { BibleBook, BibleBookIntro, CANON } from '../schemas/book';
 export type { BibleChapter } from '../schemas/chapter';
 export type { BibleVerse } from '../schemas/verse';
 export type { BiblePassage } from '../schemas/passage';
+export type {
+  BiblePassageDisplay,
+  GetPassageDisplayOptions,
+  PassageAttribution,
+  PassageStylesheet,
+} from '../schemas/passage-display';
 export type { VOTD } from '../schemas/votd';
 export type {
   BibleIndex,

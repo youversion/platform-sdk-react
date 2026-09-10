@@ -1,6 +1,8 @@
 import type { ApiClient } from './client';
 import { assertUsableVersion, getChapter, getVersion, parseBibleVersionId } from './bible-chapter';
 import { getPassage } from './bible-passage';
+import { getPassageDisplay } from './bible-passage-display';
+import type { BiblePassageDisplay, GetPassageDisplayOptions } from './schemas/passage-display';
 import {
   getAllVOTDs,
   getBook,
@@ -193,6 +195,17 @@ export class BibleClient {
       include_notes,
       transform,
     );
+  }
+
+  /**
+   * Fetches transformed passage HTML, current attribution, and the resources
+   * required to display it with YouVersion's Bible styles.
+   *
+   * The returned model is declarative. This method does not inject styles,
+   * modify the DOM, or cache Bible version attribution.
+   */
+  async getPassageDisplay(options: GetPassageDisplayOptions): Promise<BiblePassageDisplay> {
+    return getPassageDisplay(this.client, options);
   }
 
   /**

@@ -12,6 +12,20 @@ export {
 } from './bible-reads';
 export { getVersions, type GetVersionsOptions } from './bible-versions';
 export { getPassage } from './bible-passage';
+export {
+  BIBLE_CONTAINER_ATTRIBUTES,
+  BIBLE_CSS_STYLESHEET_URL,
+  MissingPassageAttributionError,
+  UNTITLED_SERIF_FONT_ID,
+  getBibleStylesheets,
+  getPassageDisplay,
+} from './bible-passage-display';
+export type {
+  BiblePassageDisplay,
+  GetPassageDisplayOptions,
+  PassageAttribution,
+  PassageStylesheet,
+} from './schemas/passage-display';
 export { LanguagesClient } from './languages';
 export { getLanguage } from './languages-language';
 export { getLanguages, type GetLanguagesOptions } from './languages-list';

@@ -50,6 +50,29 @@ export async function getPassage(
   transform?: boolean,
 ): Promise<BiblePassage> {
   parseBibleVersionId(versionId);
+  await assertUsableVersion(client, versionId);
+  return getPassageForValidatedVersion(
+    client,
+    versionId,
+    usfm,
+    format,
+    include_headings,
+    include_notes,
+    transform,
+  );
+}
+
+/** @internal Fetches a passage after the caller has enforced the version filter. */
+export async function getPassageForValidatedVersion(
+  client: ApiClient,
+  versionId: number,
+  usfm: string,
+  format: 'html' | 'text' = 'html',
+  include_headings?: boolean,
+  include_notes?: boolean,
+  transform?: boolean,
+): Promise<BiblePassage> {
+  parseBibleVersionId(versionId);
   if (include_headings !== undefined) {
     booleanSchema.parse(include_headings);
   }
@@ -65,7 +88,6 @@ export async function getPassage(
   if (include_notes !== undefined) {
     params.include_notes = include_notes;
   }
-  await assertUsableVersion(client, versionId);
   const passage = await client.get<BiblePassage>(
     `/v1/bibles/${versionId}/passages/${usfm}`,
     params,

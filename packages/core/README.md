@@ -52,6 +52,29 @@ const passage = await bibleClient.getPassage(versions.data[0].id, 'JHN.3.16');
 console.log(passage.content);
 ```
 
+### Display Bible HTML
+
+Use `getPassageDisplay` when you need transformed HTML together with current
+attribution and the resources required to apply YouVersion's Bible styles:
+
+```ts
+const display = await bibleClient.getPassageDisplay({
+  versionId: 3034,
+  passageId: 'JHN.3.16',
+});
+
+for (const stylesheet of display.stylesheets) {
+  console.log(stylesheet.href);
+}
+
+console.log(display.html);
+console.log(display.attribution.text);
+```
+
+The result is declarative. The SDK does not insert the stylesheets or HTML into
+your page. On a server, HTML transformation requires the optional `jsdom` peer
+dependency.
+
 ## Documentation and API Reference
 * [developers.youversion.com/sdks/typescript](https://developers.youversion.com/sdks/typescript)
 

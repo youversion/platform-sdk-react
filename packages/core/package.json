@@ -25,6 +25,8 @@
     "!dist/bible-versions.cjs",
     "!dist/bible-passage.js",
     "!dist/bible-passage.cjs",
+    "!dist/bible-passage-display.js",
+    "!dist/bible-passage-display.cjs",
     "!dist/client.js",
     "!dist/client.cjs",
     "!dist/languages.js",

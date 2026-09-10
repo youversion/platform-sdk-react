@@ -48,7 +48,7 @@ export runtime-agnostic while `linkedom` stays out of browser bundles:
 |---|---|
 | `@youversion/platform-core` | Runtime-agnostic; requires DOM adapters |
 | `@youversion/platform-core/browser` | Convenience wrapper using native `DOMParser` |
-| `@youversion/platform-core/server` | Convenience wrapper using `linkedom` |
+| `@youversion/platform-core/server` | Convenience wrapper using `jsdom` |
 
 If a new client needs DOM access, follow the same pattern rather than importing
 a DOM library into the main entry point.
