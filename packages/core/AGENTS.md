@@ -25,6 +25,10 @@ bible-passage.ts             # Passage fetch (tree-shakable module)
 languages.ts                 # LanguagesClient - language data (facade over languages-* modules)
 languages-language.ts        # Single-language fetch (tree-shakable module)
 languages-list.ts            # Language listing (tree-shakable module)
+search.ts                    # SearchClient - Platform Search API (facade over search-* modules)
+search-queries.ts            # Suggested/trending queries (tree-shakable module)
+search-verses.ts             # Verse search (tree-shakable module)
+search-topics.ts             # Topic search (tree-shakable module)
 version-filter-state.ts      # Version-filter allowlists without pulling auth storage
 highlights.ts                # HighlightsClient - user highlights
 organizations.ts             # OrganizationsClient
@@ -44,6 +48,7 @@ index.ts                     # Main entry point (runtime-agnostic)
 - `ApiClient`: Main HTTP client with auth handling
 - `BibleClient`: Fetch Bibles, chapters, verses, versions
 - `LanguagesClient`: Get available languages
+- `SearchClient`: Platform Search (`/v1/search-queries`, `/v1/search-verses`, `/v1/search-topics`)
 - `HighlightsClient`: Manage user highlights
 - `SignInWithYouVersionPKCE()`: PKCE auth flow function
 - `SessionStorage`, `MemoryStorage`: Storage strategies
