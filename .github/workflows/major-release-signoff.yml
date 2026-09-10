@@ -268,16 +268,17 @@ jobs:
           }
           NORM_TEMPLATE=$(normalize "$TEMPLATE_PHRASE")
 
-          # A signoff approves the code it was given on. Pushing more breaking changes after
-          # an approval must not inherit it, and it would: the next version is still the same
-          # string, so the old comment would keep matching. Ignore anything older than the
-          # commit currently under review.
-          HEAD_DATE=$(gh api "repos/${{ github.repository }}/commits/$HEAD_SHA" --jq '.commit.committer.date')
-          echo "Head $HEAD_SHA committed at $HEAD_DATE; older signoffs do not count."
+          # A signoff approves the code it was given on, so it names that code. Comparing
+          # timestamps instead would trust `committer.date`, which the committer sets, so a
+          # backdated commit could inherit an older approval. A SHA cannot be backdated, and
+          # a new push changes it, which retires the previous signoff on its own.
+          SHORT_SHA=${HEAD_SHA:0:7}
+          SHA_RE="(^|[^0-9A-Za-z])${SHORT_SHA}[0-9A-Fa-f]*([^0-9A-Za-z]|$)"
+          echo "Signoff must name head $SHORT_SHA."
 
           COMMENTS=$(gh api --paginate \
             "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" \
-            --jq '[.[] | {login: .user.login, type: .user.type, body: .body, html_url: .html_url, at: (.updated_at // .created_at)}]')
+            --jq '[.[] | {login: .user.login, type: .user.type, body: .body, html_url: .html_url}]')
 
           declare -A PERM_CACHE
           MATCH_LOGIN=""
@@ -287,9 +288,6 @@ jobs:
             BODY=$(jq -r .body <<<"$row")
             URL=$(jq -r .html_url <<<"$row")
             USER_TYPE=$(jq -r .type <<<"$row")
-            AT=$(jq -r .at <<<"$row")
-            # Predates the commit under review, so it approved different code.
-            if [[ "$AT" < "$HEAD_DATE" ]]; then continue; fi
             # Bots can't sign off.
             if [ "$USER_TYPE" = "Bot" ]; then continue; fi
             # Skip the PR author — the point of the gate is a second pair of
@@ -299,6 +297,7 @@ jobs:
             NORM_BODY=$(normalize "$BODY")
             if [[ "$NORM_BODY" != *"$NORM_TEMPLATE"* ]]; then continue; fi
             if ! [[ "$BODY" =~ $VERSION_RE ]] || ! [[ "$BODY" =~ $ROCKET_RE ]]; then continue; fi
+            if ! [[ "$BODY" =~ $SHA_RE ]]; then continue; fi
             # Then verify write+ permission. Cached so a chatty approver doesn't
             # cost one API call per comment.
             PERM="${PERM_CACHE[$LOGIN]:-}"
@@ -342,9 +341,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ needs.context.outputs.pr_number }}
+          HEAD_SHA: ${{ needs.context.outputs.head_sha }}
           NEXT_VERSION: ${{ steps.decision.outputs.next }}
         run: |
           set -euo pipefail
+          SHORT_SHA=${HEAD_SHA:0:7}
           MARKER='<!-- major-signoff-required -->'
           # echo-per-line rather than a heredoc: un-indented heredoc lines
           # confuse the YAML block-scalar parser.
@@ -352,11 +353,12 @@ jobs:
             echo "$MARKER"
             echo "## 🚨 Breaking change detected — signoff required for \`v$NEXT_VERSION\`"
             echo
-            echo "This PR adds a changeset declaring a **major** bump, which would ship all three packages as \`v$NEXT_VERSION\` (they are a \`fixed\` group in \`.changeset/config.json\`, so they version together). Merging is blocked until a repo collaborator with write access comments on this PR with **all three (3) of the following:**"
+            echo "This PR adds a changeset declaring a **major** bump, which would ship all three packages as \`v$NEXT_VERSION\` (they are a \`fixed\` group in \`.changeset/config.json\`, so they version together). Merging is blocked until a repo collaborator with write access comments on this PR with **all four (4) of the following:**"
             echo
             echo "1. The verbatim acknowledgment phrase below,"
-            echo "2. The precise next version (\`v$NEXT_VERSION\` or \`$NEXT_VERSION\`), and"
-            echo "3. A 🚀 (\`:rocket:\`) emoji."
+            echo "2. The precise next version (\`v$NEXT_VERSION\` or \`$NEXT_VERSION\`),"
+            echo "3. The commit being approved (\`$SHORT_SHA\`), and"
+            echo "4. A 🚀 (\`:rocket:\`) emoji."
             echo
             echo "I confirm that this is an intentional breaking change, and I have read the release procedures. I understand and have documented its impact upon release."
             echo
@@ -365,10 +367,10 @@ jobs:
             echo '```'
             echo "I confirm that this is an intentional breaking change, and I have read the release procedures. I understand and have documented its impact upon release."
             echo
-            echo "v$NEXT_VERSION 🚀"
+            echo "v$NEXT_VERSION $SHORT_SHA 🚀"
             echo '```'
             echo
-            echo "The check re-runs automatically when a qualifying comment is posted or edited."
+            echo "The check re-runs automatically when a qualifying comment is posted or edited. Pushing new commits changes the hash, so a fresh signoff is needed."
           } > comment.md
 
           EXISTING=$(gh api --paginate \
