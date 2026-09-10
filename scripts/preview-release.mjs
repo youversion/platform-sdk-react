@@ -22,6 +22,7 @@
 // Usage:
 //   node scripts/preview-release.mjs --base <sha> [--head <sha>]
 import { execFileSync } from 'node:child_process';
+import parseChangeset from '@changesets/parse';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve, dirname } from 'node:path';
@@ -44,7 +45,8 @@ if (!args.base) {
 }
 const head = args.head ?? 'HEAD';
 
-const git = (...a) => execFileSync('git', a, { cwd: REPO_ROOT, encoding: 'utf8' }).trim();
+const git = (...a) =>
+  execFileSync('git', a, { cwd: REPO_ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).trim();
 
 /**
  * `changeset status` writes its JSON relative to the repo root, not the cwd, and prints
@@ -78,32 +80,82 @@ function changesetStatus() {
   }
 }
 
-/** Bump levels declared by the changeset files this PR adds. */
-function addedChangesetLevels(base) {
-  const added = git(
-    'diff',
-    '--name-only',
-    '--diff-filter=A',
-    `${base}..${head}`,
-    '--',
-    '.changeset',
-  )
-    .split('\n')
-    .filter((f) => /^\.changeset\/.+\.md$/.test(f) && !/README\.md$/.test(f));
+/**
+ * Levels declared at one ref, or null when the file does not exist there.
+ *
+ * Parsed with Changesets' own parser rather than by hand. A partial YAML reader diverges on
+ * flow mappings, block scalars, anchors and tags, and every divergence is the same failure:
+ * Changesets computes a major that this script reports as no major, and the gate opens.
+ *
+ * Only a genuine absence returns null. A read that fails for any other reason throws, because
+ * treating it as "no levels" would under-report a major.
+ */
+function levelsAtRef(ref, file) {
+  const spec = `${ref}:${file}`;
+  try {
+    execFileSync('git', ['cat-file', '-e', spec], { cwd: REPO_ROOT, stdio: 'ignore' });
+  } catch {
+    return null;
+  }
+  const levels = {};
+  for (const release of parseChangeset(git('show', spec)).releases ?? []) {
+    levels[release.name] = release.type;
+  }
+  return levels;
+}
 
+/**
+ * Majors this PR introduces, per package.
+ *
+ * Renames are followed (`-M`): renaming a changeset while raising it to major would otherwise
+ * report as `R` and be skipped entirely.
+ *
+ * The base comparison is per package, not per file. A changeset already declaring one package
+ * major must not mask a *different* package being raised to major in the same file.
+ *
+ * `-z` because git C-quotes unusual paths otherwise, and a quoted path fails the changeset
+ * name test and drops out of the scan.
+ */
+function addedChangesetLevels(base) {
+  const raw = execFileSync(
+    'git',
+    [
+      'diff',
+      '--name-status',
+      '-z',
+      '-M',
+      '--diff-filter=AMR',
+      `${base}..${head}`,
+      '--',
+      '.changeset',
+    ],
+    { cwd: REPO_ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
+  );
+  const fields = raw.split('\0').filter((f) => f !== '');
+
+  const isChangeset = (f) => /^\.changeset\/.+\.md$/.test(f) && !/README\.md$/.test(f);
   const levels = [];
-  for (const file of added) {
-    // Read from the ref rather than the working tree: the runner checks out head,
-    // but this keeps the script usable for any base..head pair.
-    const body = git('show', `${head}:${file}`);
-    const frontmatter = body.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-    if (!frontmatter) continue; // an empty changeset (`changeset --empty`) has no releases
-    for (const line of frontmatter[1].split(/\r?\n/)) {
-      const m = line.match(/:\s*(major|minor|patch)\s*$/);
-      if (m) levels.push({ file, level: m[1] });
+  const touched = [];
+
+  for (let i = 0; i < fields.length; ) {
+    const code = fields[i];
+    // A rename consumes three fields (status, old, new); add and modify consume two.
+    const isRename = code.startsWith('R');
+    const basePath = fields[i + 1];
+    const headPath = isRename ? fields[i + 2] : fields[i + 1];
+    i += isRename ? 3 : 2;
+    if (!isChangeset(headPath)) continue;
+    touched.push(headPath);
+
+    const headLevels = levelsAtRef(head, headPath) ?? {};
+    const baseLevels = levelsAtRef(base, basePath);
+    for (const [pkg, level] of Object.entries(headLevels)) {
+      if (level !== 'major') continue;
+      if (baseLevels && baseLevels[pkg] === 'major') continue; // already breaking before this PR
+      levels.push({ file: headPath, level, package: pkg });
     }
   }
-  return { added, levels };
+  return { added: touched, levels };
 }
 
 const status = changesetStatus();
