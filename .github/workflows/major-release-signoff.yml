@@ -96,14 +96,19 @@ jobs:
         run: |
           set -euo pipefail
           git fetch --no-tags --force origin main:refs/heads/main
-          git checkout main -- \
-            scripts/preview-release.mjs \
-            package.json \
-            pnpm-lock.yaml \
-            pnpm-workspace.yaml \
-            .changeset/config.json
-          # Restore these if `main` has them, otherwise delete the PR's copy. Leaving a
-          # PR-authored one in place would hand back the control we just took.
+          # Take main's copy where main has one. A PR that *introduces* one of these has
+          # nothing to restore, so it runs its own and the protection engages from the
+          # next PR onward. That is the bootstrap case, not a hole a PR can choose.
+          for f in scripts/preview-release.mjs package.json pnpm-lock.yaml \
+                   pnpm-workspace.yaml .changeset/config.json; do
+            if git cat-file -e "main:$f" 2>/dev/null; then
+              git checkout main -- "$f"
+            else
+              echo "::warning::$f is not on main yet; using this PR's copy."
+            fi
+          done
+          # Install hooks a PR could add to rewrite what we just restored. Take main's, or
+          # remove it outright: leaving a PR-authored one hands back the control.
           for f in .npmrc .pnpmfile.cjs; do
             if git cat-file -e "main:$f" 2>/dev/null; then
               git checkout main -- "$f"
@@ -390,7 +395,7 @@ jobs:
           gh api repos/${{ github.repository }}/statuses/$HEAD_SHA \
             -f state=failure \
             -f context="$STATUS_CONTEXT" \
-            -f description="Breaking change detected; awaiting v${NEXT_VERSION} + 🚀 signoff from a write-access collaborator." \
+            -f description="Breaking change detected; awaiting v${NEXT_VERSION} + :rocket: signoff from a write-access collaborator." \
             -f target_url="$RUN_URL"
 
       - name: Fail the job so the gate is loud in the PR UI
