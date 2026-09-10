@@ -96,26 +96,26 @@ jobs:
         run: |
           set -euo pipefail
           git fetch --no-tags --force origin main:refs/heads/main
-          # Take main's copy where main has one. A PR that *introduces* one of these has
-          # nothing to restore, so it runs its own and the protection engages from the
-          # next PR onward. That is the bootstrap case, not a hole a PR can choose.
-          for f in scripts/preview-release.mjs package.json pnpm-lock.yaml \
-                   pnpm-workspace.yaml .changeset/config.json; do
-            if git cat-file -e "main:$f" 2>/dev/null; then
-              git checkout main -- "$f"
-            else
-              echo "::warning::$f is not on main yet; using this PR's copy."
-            fi
-          done
-          # Install hooks a PR could add to rewrite what we just restored. Take main's, or
-          # remove it outright: leaving a PR-authored one hands back the control.
-          for f in .npmrc .pnpmfile.cjs; do
-            if git cat-file -e "main:$f" 2>/dev/null; then
-              git checkout main -- "$f"
-            else
-              rm -f "$f"
-            fi
-          done
+          # All of main's tooling, or none of it. The detector, the dependency set it runs
+          # under, and the changesets config have to agree, so restoring some from main and
+          # taking the rest from the PR gives a detector without its own dependencies.
+          if git cat-file -e main:scripts/preview-release.mjs 2>/dev/null; then
+            for f in scripts/preview-release.mjs package.json pnpm-lock.yaml \
+                     pnpm-workspace.yaml .changeset/config.json; do
+              git cat-file -e "main:$f" 2>/dev/null && git checkout main -- "$f"
+            done
+            # Install hooks a PR could add to rewrite what we just restored. Take main's, or
+            # remove it outright: leaving a PR-authored one hands back the control.
+            for f in .npmrc .pnpmfile.cjs; do
+              if git cat-file -e "main:$f" 2>/dev/null; then
+                git checkout main -- "$f"
+              else
+                rm -f "$f"
+              fi
+            done
+          else
+            echo "::warning::scripts/preview-release.mjs is not on main yet, so this PR supplies its own tooling. The trust boundary engages once it merges."
+          fi
 
       - name: Setup pnpm
         uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
