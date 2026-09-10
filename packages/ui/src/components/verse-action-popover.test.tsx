@@ -27,7 +27,13 @@ function createDefaultProps() {
   };
 }
 
-function FocusRestorationScenario() {
+function FocusRestorationScenario({
+  anchorElement,
+  mountWhenOpen = false,
+}: {
+  anchorElement?: HTMLElement;
+  mountWhenOpen?: boolean;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -35,12 +41,15 @@ function FocusRestorationScenario() {
       <button type="button" onClick={() => setOpen(true)}>
         Prior control
       </button>
-      <VerseActionPopover
-        {...createDefaultProps()}
-        open={open}
-        onOpenChange={setOpen}
-        onCopy={() => setOpen(false)}
-      />
+      {(!mountWhenOpen || open) && (
+        <VerseActionPopover
+          {...createDefaultProps()}
+          anchorElement={anchorElement}
+          open={open}
+          onOpenChange={setOpen}
+          onCopy={() => setOpen(false)}
+        />
+      )}
     </>
   );
 }
@@ -885,6 +894,36 @@ it('restores document focus after Escape and an action closes the popover', asyn
   await waitFor(() => expect(dialog).not.toBeInTheDocument());
   expect(document.activeElement).toBe(priorControl);
 });
+
+it.each([false, true])(
+  'restores focus with an existing virtual anchor (mount only when open: %s)',
+  async (mountWhenOpen) => {
+    const anchorElement = document.createElement('span');
+    document.body.append(anchorElement);
+    const user = userEvent.setup();
+    const view = render(
+      <FocusRestorationScenario anchorElement={anchorElement} mountWhenOpen={mountWhenOpen} />,
+    );
+    try {
+      const priorControl = screen.getByRole('button', { name: 'Prior control' });
+      await user.click(priorControl);
+      const dialog = await screen.findByRole('dialog');
+      await waitFor(() => expect(document.activeElement).toBe(dialog));
+      await user.click(screen.getByRole('button', { name: 'Copy' }));
+      await waitFor(() => expect(dialog).not.toBeInTheDocument());
+      await waitFor(() => expect(document.activeElement).toBe(priorControl));
+
+      await user.click(priorControl);
+      await screen.findByRole('dialog');
+      await user.keyboard('{Escape}');
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      await waitFor(() => expect(document.activeElement).toBe(priorControl));
+    } finally {
+      view.unmount();
+      anchorElement.remove();
+    }
+  },
+);
 
 it('restores shadow focus after Escape and an action closes the popover', async () => {
   const isolatedRender = render(

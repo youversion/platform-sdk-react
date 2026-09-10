@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type FC } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FC,
+} from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
@@ -66,6 +74,15 @@ function scrollFadeMask({ start, end }: ScrollFade): React.CSSProperties | undef
   const right = end ? 'transparent' : '#000';
   const mask = `linear-gradient(to right, ${left} 0, #000 ${SCROLL_FADE_PX}px, #000 calc(100% - ${SCROLL_FADE_PX}px), ${right} 100%)`;
   return { maskImage: mask, WebkitMaskImage: mask };
+}
+
+function isVerseEvent(event: Event, owner: HTMLElement): boolean {
+  return event
+    .composedPath()
+    .some(
+      (target) =>
+        isElementFromOwnerDocument(target, owner, 'Element') && target.matches('.yv-v[v]'),
+    );
 }
 
 type VerseActionPopoverProps = {
@@ -189,36 +206,15 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   // initial focus to the content container instead (see `onOpenAutoFocus`): focus
   // still enters the popover (Escape closes; screen readers announce the dialog),
   // but the ring only appears once the user actually Tabs to a swatch.
-  const popoverAnchorRef = useRef<HTMLDivElement>(null);
+  const [popoverAnchor, setPopoverAnchor] = useState<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const focusRestoreTargetRef = useRef<HTMLElement | null>(null);
   const documentFocusRestoreTargetRef = useRef<HTMLElement | null>(null);
+  const versePointerEventsRef = useRef(new WeakSet<Event>());
   const retainOutsideFocusRef = useRef(false);
   const allowPriorFocusRestoration = (): void => {
     retainOutsideFocusRef.current = false;
   };
-
-  useEffect(() => {
-    const anchor = popoverAnchorRef.current;
-    if (!anchor || getOwnShadowRoot(anchor)) return;
-
-    const ownerDocument = anchor.ownerDocument;
-    const rememberFocusedElement = (target: EventTarget | null): void => {
-      if (
-        !isElementFromOwnerDocument(target, anchor, 'HTMLElement') ||
-        target.closest('[data-slot="verse-action-popover"]') ||
-        target.hasAttribute('data-radix-focus-guard')
-      ) {
-        return;
-      }
-      documentFocusRestoreTargetRef.current = target;
-    };
-    const handleFocusIn = (event: FocusEvent): void => rememberFocusedElement(event.target);
-
-    rememberFocusedElement(ownerDocument.activeElement);
-    ownerDocument.addEventListener('focusin', handleFocusIn);
-    return () => ownerDocument.removeEventListener('focusin', handleFocusIn);
-  }, []);
 
   // The swatch row is capped to the viewport width (see the Content max-width
   // below) and scrolls horizontally when it overflows. Track which edges have
@@ -302,13 +298,14 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
     highlightedVerses,
   });
 
-  // Snapshot of everything the Content renders. While open we keep it fresh; the
-  // moment `open` flips false (apply / outside-click) the parent clears the
-  // selection and anchor synchronously, so without this the still-animating bar
+  // Snapshot of the anchor and everything the Content renders. While open we
+  // keep it fresh; the moment `open` flips false (apply / outside-click) the
+  // parent clears the selection and anchor, so the still-animating bar
   // would lose its anchor (jump to a fallback position) and flash the empty
   // layout. Freezing the last snapshot lets it simply fade out where it was.
   const dockSide: 'top' | 'bottom' = docked ? dockedSide : 'bottom';
   const live = {
+    anchorElement,
     virtualRef,
     side: dockSide,
     sideOffset: docked ? 24 : 20,
@@ -318,6 +315,51 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   const frozenView = useRef(live);
   if (open) frozenView.current = live;
   const view = open ? live : frozenView.current;
+
+  // Radix renders no Anchor element when given a virtual ref. Use the actual
+  // verse in that case, including the frozen anchor while closed, so document
+  // focus tracking survives the reader clearing its selection between opens.
+  const anchor = view.anchorElement ?? popoverAnchor;
+  const interactionRoot = anchor ? (getOwnShadowRoot(anchor) ?? anchor.ownerDocument) : null;
+  const ownerDocument = anchor && !getOwnShadowRoot(anchor) ? anchor.ownerDocument : null;
+
+  // Capture before Radix's passive autofocus, including a mount already open
+  // with a virtual anchor. Key on the document, not each newly selected verse,
+  // so re-anchoring doesn't replace the remembered control with document.body.
+  useLayoutEffect(() => {
+    if (!ownerDocument) return;
+
+    const rememberFocusedElement = (target: EventTarget | null): void => {
+      if (
+        !isElementFromOwnerDocument(target, ownerDocument.documentElement, 'HTMLElement') ||
+        target.closest('[data-slot="verse-action-popover"]') ||
+        target.hasAttribute('data-radix-focus-guard')
+      ) {
+        return;
+      }
+      documentFocusRestoreTargetRef.current = target;
+    };
+    const handleFocusIn = (event: FocusEvent): void => rememberFocusedElement(event.target);
+
+    rememberFocusedElement(ownerDocument.activeElement);
+    ownerDocument.addEventListener('focusin', handleFocusIn);
+    return () => ownerDocument.removeEventListener('focusin', handleFocusIn);
+  }, [ownerDocument]);
+
+  useEffect(() => {
+    if (!open || !interactionRoot) return;
+    const rememberVersePointer = (event: Event): void => {
+      const content = contentRef.current;
+      if (content && isVerseEvent(event, content)) {
+        versePointerEventsRef.current.add(event);
+      }
+    };
+    // Radix defers touch outside handling to click, after pointerdown's composed
+    // path is cleared and its target may be retargeted to the shadow host. Keep
+    // only a verdict keyed to that event, not DOM paths or a sticky pointer flag.
+    interactionRoot.addEventListener('pointerdown', rememberVersePointer, true);
+    return () => interactionRoot.removeEventListener('pointerdown', rememberVersePointer, true);
+  }, [open, interactionRoot]);
 
   // Measure the swatch row's overflow and keep the fade in sync. Keyed on the
   // state-held node so it (re)attaches the listener the moment Radix commits the
@@ -352,7 +394,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
 
   return (
     <PopoverPrimitive.Root open={portal.open} onOpenChange={portal.onOpenChange}>
-      <PopoverPrimitive.Anchor ref={popoverAnchorRef} virtualRef={view.virtualRef} />
+      <PopoverPrimitive.Anchor ref={setPopoverAnchor} virtualRef={view.virtualRef} />
       {!portal.awaitingPortalTarget && (
         <PopoverPrimitive.Portal container={portal.container}>
           <PopoverPrimitive.Content
@@ -406,13 +448,9 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
               const content = contentRef.current;
               if (!content) return;
               const originalEvent = event.detail.originalEvent;
-              const interactedWithVerse = originalEvent
-                .composedPath()
-                .some(
-                  (target) =>
-                    isElementFromOwnerDocument(target, content, 'Element') &&
-                    target.matches('.yv-v[v]'),
-                );
+              const interactedWithVerse =
+                versePointerEventsRef.current.has(originalEvent) ||
+                isVerseEvent(originalEvent, content);
               if (interactedWithVerse) {
                 event.preventDefault();
                 return;

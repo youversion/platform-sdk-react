@@ -72,9 +72,9 @@ open.
 
 No other production direct-overlay bypass was found. The inventory therefore
 produced no equivalent low-risk migration and no materially different case that
-requires follow-up work. YPE-5355 found that any added overlay coordination
-should extend the controller already owned by `ShadowRootHost`; YPE-5356 owns
-that runtime decision and implementation.
+requires follow-up work. Extending the controller already owned by
+`ShadowRootHost` is a candidate seam for added overlay coordination, not an ADR
+decision. YPE-5356 owns whether and how to implement that coordination.
 
 ## Blocking production-readiness decisions
 
@@ -83,9 +83,9 @@ that runtime decision and implementation.
 - Define SSR, hydration, and first-paint behavior. The current effect-attached
   root renders an empty host on the server and delays content and forwarded refs.
 - Resolve the YPE-5355 peer-dismissal and final focus-restoration gaps before
-  shipping nested and concurrent overlays (YPE-5356). ADR 0007 limits any new
-  coordination to the existing root-owned controller and requires it to account
-  for trigger-time peer dismissal as well as overlay order and restore targets.
+  shipping nested and concurrent overlays (YPE-5356). The decision must consider
+  trigger-time peer dismissal as well as overlay order and restore targets;
+  ADR 0007 records the gaps but does not select a coordination design.
   Cross-browser and assistive-technology coverage still remain.
 - Complete the package-wide custom-property inventory and prevention guard in
   YPE-5400. The known `BibleVersionPicker`, `InputGroup`, and `tw-animate-css`
@@ -98,9 +98,11 @@ that runtime decision and implementation.
   to every proposed rollout component. Native outer-form participation and
   external `label`, `aria-labelledby`, and `aria-describedby` relationships are
   unsupported across tree scopes in the current Chromium evidence.
-- Preserve `direction` as the only intentional inherited visual input. Vertical
-  writing modes, text orientation, host typography, and undeclared host custom
-  properties are not supported customization inputs.
+- Preserve `direction` as the only intentional inherited CSS property. Vertical
+  writing modes, text orientation, inherited host typography, and undeclared
+  host custom properties are not supported customization inputs. The prototype
+  retains `rem` sizing, which still responds to the owning document's root font
+  size; review that accepted sizing input for each rollout component.
 - Repeat the documented event, ref, nested-root, and shadow-aware automation
   checks for every public component selected for rollout.
 - Verify stylesheet construction and adoption failure recovery beyond the
@@ -110,6 +112,12 @@ that runtime decision and implementation.
 
 ## Accepted boundaries and unresolved environment coverage
 
+- Component rules are installed locally, but font loading is document-owned.
+  Constructable stylesheets discard the compiled Google Fonts `@import` and
+  Chromium warns when the per-document cached sheet is created. The `<style>`
+  fallback retains the import; neither path replaces the provider's document
+  stylesheet and brand-font registration. Fonts must be loaded in each owning
+  document, including same-origin iframes.
 - Host `@font-face` registrations are document-scoped and can collide with the
   public font family names used inside a shadow root. This limitation is
   accepted for the prototype; avoiding it requires private family names and
