@@ -19,16 +19,12 @@ interface YouVersionProviderPropsBase {
   theme?: 'light' | 'dark' | 'system';
   /**
    * Integrator display name for the sign-in dialog body copy. Synced onto
-   * `YouVersionPlatformConfiguration.appName`. The UI package also mirrors this
-   * onto its bundled core copy (tsup `noExternal`), so pass it via
-   * `YouVersionProvider` props — do not set the config from a separate
-   * `@youversion/platform-core` import when consuming `@youversion/platform-react-ui`.
+   * `YouVersionPlatformConfiguration.appName`.
    */
   appName?: string;
   /**
    * Optional pitch line for the sign-in dialog. Synced onto
-   * `YouVersionPlatformConfiguration.signInPromptMessage` (and mirrored by the
-   * UI provider onto its bundled core copy — same dual-instance caveat as `appName`).
+   * `YouVersionPlatformConfiguration.signInPromptMessage`.
    */
   signInPromptMessage?: string;
   /**
@@ -72,6 +68,9 @@ interface YouVersionProviderPropsWithoutAuth extends YouVersionProviderPropsBase
   authRedirectUrl?: never;
 }
 
+// Keep the lazy component at module scope. React may discard useMemo caches
+// when a component suspends during its initial mount; recreating this lazy
+// wrapper inside the provider can therefore leave the tree suspended forever.
 const AuthProvider = lazy(() => import('./YouVersionAuthProvider'));
 
 function useResolvedTheme(theme: 'light' | 'dark' | 'system'): 'light' | 'dark' {
