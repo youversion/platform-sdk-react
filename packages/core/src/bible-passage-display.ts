@@ -18,7 +18,10 @@ import {
   throwUnusableBibleVersion,
 } from './version-filters';
 
-/** The versioned YouVersion stylesheet for Bible HTML. */
+/**
+ * The YouVersion stylesheet for Bible HTML. The path is a CSS compatibility
+ * major, not the version of this package; routine UI releases overwrite it.
+ */
 export const BIBLE_CSS_STYLESHEET_URL = 'https://cdn.youversion.com/platform/1/bible.css';
 
 /** The permanent Fonts API identifier for Untitled Serif. */

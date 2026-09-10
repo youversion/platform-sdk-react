@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   ApiClient,
   BIBLE_CONTAINER_ATTRIBUTES,
@@ -36,16 +36,16 @@ function clearVersionFilters(): void {
   YouVersionPlatformConfiguration.permittedLanguageTags = undefined;
 }
 
-describe('passage display model', () => {
-  beforeEach(() => {
-    clearVersionFilters();
-    server.use(
-      http.get(`https://${apiHost}/v1/bibles/:id`, () => HttpResponse.json(mockDisplayVersion)),
-    );
-  });
-  afterEach(clearVersionFilters);
+function setupDisplayTest(): void {
+  clearVersionFilters();
+  server.use(
+    http.get(`https://${apiHost}/v1/bibles/:id`, () => HttpResponse.json(mockDisplayVersion)),
+  );
+}
 
+describe('passage display model', () => {
   it('returns transformed HTML, current attribution, stylesheets, and container attributes', async () => {
+    setupDisplayTest();
     const display = await createBibleClient().getPassageDisplay({
       versionId: 111,
       passageId: 'GEN.1.1',
@@ -75,6 +75,7 @@ describe('passage display model', () => {
   });
 
   it('forwards heading and note options to the passage request', async () => {
+    setupDisplayTest();
     const display = await createBibleClient().getPassageDisplay({
       versionId: 111,
       passageId: 'ROM.1',
@@ -87,6 +88,7 @@ describe('passage display model', () => {
   });
 
   it('supports the public tree-shakable function', async () => {
+    setupDisplayTest();
     const display = await getPassageDisplay(createApiClient(), {
       versionId: 111,
       passageId: 'GEN.1.1',
@@ -97,6 +99,7 @@ describe('passage display model', () => {
   });
 
   it('falls back to promotional content when copyright is empty', async () => {
+    setupDisplayTest();
     server.use(
       http.get(`https://${apiHost}/v1/bibles/:id`, () =>
         HttpResponse.json({
@@ -119,6 +122,7 @@ describe('passage display model', () => {
   });
 
   it('fails closed when the version has no display attribution', async () => {
+    setupDisplayTest();
     server.use(
       http.get(`https://${apiHost}/v1/bibles/:id`, () =>
         HttpResponse.json({
@@ -142,6 +146,7 @@ describe('passage display model', () => {
   });
 
   it('starts passage and version requests concurrently when no language filter is active', async () => {
+    setupDisplayTest();
     let requestCount = 0;
     let releaseRequests: (() => void) | undefined;
     const bothRequestsStarted = new Promise<void>((resolve) => {
@@ -173,6 +178,7 @@ describe('passage display model', () => {
   });
 
   it('reuses the version request when a language filter requires metadata validation', async () => {
+    setupDisplayTest();
     YouVersionPlatformConfiguration.permittedLanguageTags = ['en'];
     let versionRequests = 0;
     let passageRequests = 0;
@@ -197,6 +203,7 @@ describe('passage display model', () => {
   });
 
   it('refuses an excluded version before requesting passage content', async () => {
+    clearVersionFilters();
     YouVersionPlatformConfiguration.excludedVersionIds = [111];
     let passageRequests = 0;
     server.use(
@@ -216,6 +223,7 @@ describe('passage display model', () => {
   });
 
   it('validates display inputs', async () => {
+    clearVersionFilters();
     await expect(
       createBibleClient().getPassageDisplay({ versionId: 0, passageId: 'GEN.1.1' }),
     ).rejects.toThrow('Version ID must be a positive integer');
