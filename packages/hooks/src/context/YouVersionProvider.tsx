@@ -68,26 +68,10 @@ interface YouVersionProviderPropsWithoutAuth extends YouVersionProviderPropsBase
   authRedirectUrl?: never;
 }
 
-const loadAuthProvider = () => import('./YouVersionAuthProvider');
-
-function YouVersionAuthGate({
-  config,
-  userInfo,
-  children,
-}: {
-  config: { appKey: string; apiHost?: string; redirectUri: string };
-  userInfo?: YouVersionUserInfoJSON | null;
-  children: ReactNode;
-}): React.ReactElement {
-  const AuthProvider = useMemo(() => lazy(loadAuthProvider), []);
-  return (
-    <Suspense>
-      <AuthProvider config={config} userInfo={userInfo}>
-        {children}
-      </AuthProvider>
-    </Suspense>
-  );
-}
+// Keep the lazy component at module scope. React may discard useMemo caches
+// when a component suspends during its initial mount; recreating this lazy
+// wrapper inside the provider can therefore leave the tree suspended forever.
+const AuthProvider = lazy(() => import('./YouVersionAuthProvider'));
 
 function useResolvedTheme(theme: 'light' | 'dark' | 'system'): 'light' | 'dark' {
   const [resolved, setResolved] = useState<'light' | 'dark'>(() => {
@@ -214,12 +198,14 @@ function YouVersionProviderInner(
     return (
       <YouVersionContext.Provider value={contextValue}>
         <InternalQueryClientProvider client={queryClient}>
-          <YouVersionAuthGate
-            config={{ appKey, apiHost, redirectUri: props.authRedirectUrl }}
-            userInfo={props.userInfo}
-          >
-            {children}
-          </YouVersionAuthGate>
+          <Suspense>
+            <AuthProvider
+              config={{ appKey, apiHost, redirectUri: props.authRedirectUrl }}
+              userInfo={props.userInfo}
+            >
+              {children}
+            </AuthProvider>
+          </Suspense>
         </InternalQueryClientProvider>
       </YouVersionContext.Provider>
     );
