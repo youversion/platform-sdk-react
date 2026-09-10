@@ -157,8 +157,11 @@ jobs:
             *)    IS_MAJOR=0 ;;
           esac
           echo "is_major=$IS_MAJOR" >> "$GITHUB_OUTPUT"
-          echo "next=$(jq -r .next preview.json)" >> "$GITHUB_OUTPUT"
-          echo "release_type=$(jq -r .release_type preview.json)" >> "$GITHUB_OUTPUT"
+          # `// empty` rather than plain `-r`: jq prints a JSON null as the literal string
+          # "null", which is not empty, so the `${VAR:-default}` fallbacks downstream never
+          # fire and the status reads "No breaking changeset added (null)".
+          echo "next=$(jq -r '.next // empty' preview.json)" >> "$GITHUB_OUTPUT"
+          echo "release_type=$(jq -r '.release_type // empty' preview.json)" >> "$GITHUB_OUTPUT"
 
 
   gate:
