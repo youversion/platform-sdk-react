@@ -1,6 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { auditCustomProperties } from './custom-property-contract.js';
 import { stripLayerBlocks } from './strip-layer-blocks.js';
 
 const dist = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
@@ -20,6 +21,13 @@ if (!css.trim()) {
   if (!unlayered.includes('-webkit-appearance:revert-layer')) {
     errors.push(
       'dist/tailwind.css missing -webkit-appearance:revert-layer on the unlayered A2 rule',
+    );
+  }
+
+  const { unexplainedReferences } = auditCustomProperties(css);
+  if (unexplainedReferences.length > 0) {
+    errors.push(
+      `dist/tailwind.css contains unexplained custom-property references: ${unexplainedReferences.join(', ')}`,
     );
   }
 }

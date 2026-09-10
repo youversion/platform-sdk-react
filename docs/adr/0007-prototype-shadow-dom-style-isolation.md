@@ -27,8 +27,9 @@ scales SDK text, spacing, and controls. That sizing input is accepted for the
 prototype; it is not reset by a shadow boundary.
 Known ambient custom-property dependencies are closed by using SDK-owned
 `--yv-spacing` and `--yv-radius` values and by defining a local `--spacing`
-compatibility alias for `tw-animate-css`. YPE-5400 owns the full custom-property
-inventory and a compiled-CSS prevention guard.
+compatibility alias for `tw-animate-css`. The completed YPE-5400 inventory,
+exact runtime-input exceptions, and compiled-CSS prevention guard are documented
+in the rollout plan.
 
 Constructable stylesheets are cached per owning `Document`, because a sheet from
 the top-level document cannot be adopted into a same-origin iframe's shadow
