@@ -1,6 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import type { Preview, ReactRenderer } from '@storybook/react-vite';
 import type { PartialStoryFn, StoryContext } from 'storybook/internal/csf';
+import { initialize, mswLoader } from 'msw-storybook-addon';
+import { YouVersionProvider } from '../src/components/YouVersionProvider';
+import { YvComponentStyles } from '../src/lib/yv-styles-components';
+import { globalHandlers } from '../src/test/mocks/handlers';
+import { StorybookEnvCheck } from '../src/test/StorybookEnvCheck';
 
 function getTheme(value: string | undefined): 'light' | 'dark' | 'system' {
   if (value === 'dark') return 'dark';
@@ -8,10 +13,16 @@ function getTheme(value: string | undefined): 'light' | 'dark' | 'system' {
   return 'light';
 }
 
-import { initialize, mswLoader } from 'msw-storybook-addon';
-import { StorybookEnvCheck } from '../src/test/StorybookEnvCheck';
-import { YouVersionProvider } from '../src/components/YouVersionProvider';
-import { globalHandlers } from '../src/test/mocks/handlers';
+function StoryWithSdkSheets({ children }: { children: React.ReactNode }): React.ReactElement {
+  return (
+    <>
+      <Suspense fallback={null}>
+        <YvComponentStyles />
+      </Suspense>
+      {children}
+    </>
+  );
+}
 
 const THEME_BACKGROUNDS = {
   light: '#ffffff',
@@ -64,6 +75,8 @@ const preview: Preview = {
       }, [theme]);
 
       const includeAuth = context.parameters.includeAuth !== false;
+      const locale =
+        typeof context.parameters.locale === 'string' ? context.parameters.locale : undefined;
       const requiredEnvVars = includeAuth
         ? ['STORYBOOK_YOUVERSION_APP_KEY', 'STORYBOOK_AUTH_REDIRECT_URL']
         : ['STORYBOOK_YOUVERSION_APP_KEY'];
@@ -76,9 +89,12 @@ const preview: Preview = {
               authRedirectUrl={import.meta.env.STORYBOOK_AUTH_REDIRECT_URL || ''}
               apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
               includeAuth={true}
+              locale={locale}
               theme={getTheme(context.globals.theme)}
             >
-              <Story />
+              <StoryWithSdkSheets>
+                <Story />
+              </StoryWithSdkSheets>
             </YouVersionProvider>
           </StorybookEnvCheck>
         );
@@ -89,9 +105,12 @@ const preview: Preview = {
           <YouVersionProvider
             appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || ''}
             apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
+            locale={locale}
             theme={getTheme(context.globals.theme)}
           >
-            <Story />
+            <StoryWithSdkSheets>
+              <Story />
+            </StoryWithSdkSheets>
           </YouVersionProvider>
         </StorybookEnvCheck>
       );

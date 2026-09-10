@@ -8,8 +8,18 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Embed real CSS into __YV_STYLES__ — same pattern as tsup.config.ts.
 // This ensures Storybook tests the actual <YvStyles /> code path with
 // real CSS content, not a workaround import.
+const chromeCssPath = resolve(__dirname, '../dist/chrome.css');
 const cssPath = resolve(__dirname, '../dist/tailwind.css');
-const yvStyles = existsSync(cssPath) ? JSON.stringify(readFileSync(cssPath, 'utf-8')) : '""';
+const readerCssPath = resolve(__dirname, '../dist/bible-reader.css');
+const yvStyles = existsSync(chromeCssPath)
+  ? JSON.stringify(readFileSync(chromeCssPath, 'utf-8'))
+  : '""';
+const yvComponentStyles = existsSync(cssPath)
+  ? JSON.stringify(readFileSync(cssPath, 'utf-8'))
+  : '""';
+const yvReaderStyles = existsSync(readerCssPath)
+  ? JSON.stringify(readFileSync(readerCssPath, 'utf-8'))
+  : '""';
 
 const config: StorybookConfig = {
   stories: ['../src/**/*.mdx', '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
@@ -28,7 +38,12 @@ const config: StorybookConfig = {
   },
   staticDirs: ['../public'], // This is for Storybook mock service worker
   viteFinal: (config) => {
-    config.define = { ...config.define, __YV_STYLES__: yvStyles };
+    config.define = {
+      ...config.define,
+      __YV_STYLES__: yvStyles,
+      __YV_COMPONENT_STYLES__: yvComponentStyles,
+      __YV_READER_STYLES__: yvReaderStyles,
+    };
     const existingAlias = config.resolve?.alias;
     const srcAlias = resolve(__dirname, '../src');
     config.resolve = {

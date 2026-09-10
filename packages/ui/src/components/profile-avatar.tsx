@@ -2,6 +2,7 @@ import * as React from 'react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { YvComponentStyles } from '@/lib/yv-styles-components';
 
 export interface ProfileAvatarProps extends React.ComponentProps<typeof Avatar> {
   /** Full display name; initials are used as the fallback. */
@@ -31,26 +32,29 @@ export function ProfileAvatar({
   const initial = getInitials(name);
   const [imageLoaded, setImageLoaded] = React.useState(false);
   return (
-    <Avatar
-      aria-label={name?.trim() || undefined}
-      className={cn(src && imageLoaded && 'yv:bg-(--yv-gray-10) yv:p-[3px]', className)}
-      {...props}
-    >
-      {src ? (
-        <AvatarImage
-          src={src}
-          alt=""
-          className="yv:rounded-full"
-          onLoadingStatusChange={(status) => setImageLoaded(status === 'loaded')}
-        />
-      ) : null}
-      <AvatarFallback
-        className={cn(
-          'yv:border-2 yv:border-foreground yv:bg-background yv:font-sans yv:text-xs yv:font-bold yv:text-foreground',
-        )}
+    <>
+      <YvComponentStyles />
+      <Avatar
+        aria-label={name?.trim() || undefined}
+        className={cn(src && imageLoaded && 'yv:bg-(--yv-gray-10) yv:p-[3px]', className)}
+        {...props}
       >
-        {initial}
-      </AvatarFallback>
-    </Avatar>
+        {src ? (
+          <AvatarImage
+            src={src}
+            alt=""
+            className="yv:rounded-full"
+            onLoadingStatusChange={(status) => setImageLoaded(status === 'loaded')}
+          />
+        ) : null}
+        <AvatarFallback
+          className={cn(
+            'yv:border-2 yv:border-foreground yv:bg-background yv:font-sans yv:text-xs yv:font-bold yv:text-foreground',
+          )}
+        >
+          {initial}
+        </AvatarFallback>
+      </Avatar>
+    </>
   );
 }

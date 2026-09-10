@@ -1,8 +1,9 @@
+'use client';
+
 import React, { type ComponentProps, Suspense, useEffect, useLayoutEffect } from 'react';
-import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionProvider as BaseYouVersionProvider } from '@youversion/platform-react-hooks';
-import { syncSdkLanguage } from '@/i18n';
-import { YvStyles } from '@/lib/yv-styles';
+import { requestSdkLanguage } from '@/i18n/pending-locale';
+import { YvStyles } from '@/lib/yv-styles-chrome';
 import { YvFonts } from '@/lib/yv-fonts';
 import { MissingAppKey } from '@/components/missing-app-key';
 
@@ -33,30 +34,18 @@ export function YouVersionProvider({
 }: YouVersionProviderProps): React.ReactElement {
   const normalizedLocale = locale?.trim() || undefined;
 
-  // Layout effects never run during SSR. Apply an explicit locale during render
-  // so children emit the host language in the server HTML and the first client
-  // paint matches it. When locale is omitted, wait for the layout effect so SSR
-  // stays on the English fallback instead of a request-time browser language.
+  // Record the locale without importing i18next or locale JSON. A translating
+  // child loads catalogs. Kick off an explicit locale during render so that
+  // import can start before paint. The first HTML may still be English until
+  // the catalog resolves. When locale is omitted, wait for the layout effect
+  // so SSR stays on the English fallback.
   if (normalizedLocale) {
-    void syncSdkLanguage(normalizedLocale);
+    requestSdkLanguage(normalizedLocale);
   }
 
   useLayoutEffect(() => {
-    void syncSdkLanguage(normalizedLocale);
+    requestSdkLanguage(normalizedLocale);
   }, [normalizedLocale]);
-
-  // UI tsup inlines `@youversion/platform-core`, so this singleton is a different
-  // copy from the one hooks syncs. BibleReader reads appName / signInPromptMessage
-  // and the version filter from *this* copy — keep it in sync with the provider
-  // props. Filters write during render so the first child fetch sees them.
-  YouVersionPlatformConfiguration.permittedVersionIds = props.permittedVersionIds;
-  YouVersionPlatformConfiguration.excludedVersionIds = props.excludedVersionIds;
-  YouVersionPlatformConfiguration.permittedLanguageTags = props.permittedLanguageTags;
-
-  useEffect(() => {
-    YouVersionPlatformConfiguration.appName = props.appName;
-    YouVersionPlatformConfiguration.signInPromptMessage = props.signInPromptMessage;
-  }, [props.appName, props.signInPromptMessage]);
 
   // Guard against a missing/empty app key here (rather than letting the base
   // provider throw) so consumers of the UI package see a styled message instead
@@ -81,7 +70,7 @@ export function YouVersionProvider({
     return (
       <>
         <YvStyles />
-        <MissingAppKey theme={resolveTheme(props.theme)} />
+        <MissingAppKey locale={normalizedLocale} theme={resolveTheme(props.theme)} />
       </>
     );
   }

@@ -1,11 +1,3 @@
-import type { ReactElement } from 'react';
-
-declare const __YV_STYLES__: string;
-
-export function YvStyles(): ReactElement {
-  return (
-    <style href="yv-sdk-styles" precedence="yv-sdk">
-      {__YV_STYLES__}
-    </style>
-  );
-}
+export { YvStyles } from './yv-styles-chrome';
+export { YvComponentStyles } from './yv-styles-components';
+export { YvReaderStyles } from './yv-styles-reader';

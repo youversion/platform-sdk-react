@@ -10,8 +10,10 @@
  * 2. Control imports (symbols that own those sentinels) still include them (proves
  *    sentinels are valid and the check would catch a regression).
  * 3. Narrow bundle is smaller than a multi-export barrel bundle.
- * 4. Integrity probe: treeShaking:false on the narrow import includes sentinels
- *    (proves the check is not a no-op against pre-bundled tsup output).
+ * 4. Integrity probe: treeShaking:false on the narrow import includes
+ *    `probe` (or `absent`) sentinels that still live in that module graph.
+ *    Named tsup entries can keep other `absent` strings off the graph
+ *    entirely; those must be verified live by a control import instead.
  *
  * 0. package.json sideEffects matches expected values (webpack/Rollup consumers).
  *
@@ -28,7 +30,10 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const PACKAGE_ALIASES = {
   '@youversion/platform-core': join(repoRoot, 'packages/core'),
+  '@youversion/platform-core/browser': join(repoRoot, 'packages/core/dist/browser.js'),
+  '@youversion/platform-core/server': join(repoRoot, 'packages/core/dist/server.js'),
   '@youversion/platform-react-hooks': join(repoRoot, 'packages/hooks'),
+  '@youversion/platform-react-ui': join(repoRoot, 'packages/ui'),
 };
 
 const bold = (s) => `\x1B[1m${s}\x1B[0m`;
@@ -54,12 +59,6 @@ const EXPECTED_SIDE_EFFECTS = [
     sideEffects: ['**/*.css'],
   },
 ];
-
-// UI is omitted from CHECKS: packages/ui/tsup.config.ts has splitting: false and
-// inlines core (noExternal), so dist/index.js is a single ~999 kB chunk. A narrow
-// YouVersionProvider-only import still retains BibleChapterPicker/BibleVersionPicker/
-// BibleReader sentinels — the check would fail CI. Follow-up: enable tsup splitting,
-// then add a UI CHECKS fixture here.
 
 /** @param {unknown} actual @param {boolean | string[]} expected */
 function sideEffectsEqual(actual, expected) {
@@ -145,6 +144,15 @@ export {
       absent: [
         'A redirect URL is required to start sign-in for highlights.',
         'YouVersion context is required to start a data exchange.',
+        'youversion-platform:granted-permissions',
+        'page_size="*" required 1-3 fields to be specified',
+        'Server-side HTML transformation requires "jsdom"',
+      ],
+      // Auth strings still live on the hooks barrel. The grants key does not:
+      // useChapter reads version-filter state, not Configuration.
+      probe: [
+        'A redirect URL is required to start sign-in for highlights.',
+        'YouVersion context is required to start a data exchange.',
       ],
     },
     controls: [
@@ -155,6 +163,21 @@ export {
           'A redirect URL is required to start sign-in for highlights.',
           'YouVersion context is required to start a data exchange.',
         ],
+      },
+      {
+        label: 'useVersions',
+        source: `import { useVersions } from '@youversion/platform-react-hooks';\nexport { useVersions };\n`,
+        present: ['page_size="*" required 1-3 fields to be specified'],
+      },
+      {
+        label: 'usePassage',
+        source: `import { usePassage } from '@youversion/platform-react-hooks';\nexport { usePassage };\n`,
+        present: ['Server-side HTML transformation requires "jsdom"'],
+      },
+      {
+        label: 'useYVAuth',
+        source: `import { useYVAuth } from '@youversion/platform-react-hooks';\nexport { useYVAuth };\n`,
+        present: ['youversion-platform:granted-permissions'],
       },
     ],
     fullBarrel: {
@@ -167,6 +190,60 @@ export {
 } from '@youversion/platform-react-hooks';
 export { useChapter, useHighlightAuthActions, useYVAuth, useBibleClient };
 `,
+    },
+  },
+  {
+    package: '@youversion/platform-react-ui',
+    external: ['react', 'react/jsx-runtime', 'react-dom', 'jsdom', '@tanstack/react-query'],
+    narrow: {
+      label: 'YouVersionProvider only',
+      source: `import { YouVersionProvider } from '@youversion/platform-react-ui';\nexport { YouVersionProvider };\n`,
+      absent: [
+        'BibleChapterPicker components must be used within BibleChapterPicker.Root',
+        'BibleVersionPicker components must be used within BibleVersionPicker.Root',
+        'BibleReader components must be used within BibleReader.Root',
+        'youversion-platform:reader:font-size',
+        'youversion-platform:picker:recent-versions',
+      ],
+      // Named tsup entries keep picker / reader / VOTD off the Provider
+      // module graph, so those sentinels cannot appear here even with
+      // treeShaking:false. Staleness is proven by the controls instead:
+      // every absent sentinel must appear in a control's present list.
+      // The probe uses a core string that still rides in via hooks.
+      probe: ['Color must be a 6-character hex string without #'],
+      present: [
+        'yv-sdk-styles',
+        '@layer yv-sdk-styles',
+      ],
+    },
+    controls: [
+      {
+        label: 'BibleChapterPicker',
+        source: `import { BibleChapterPicker } from '@youversion/platform-react-ui';\nexport { BibleChapterPicker };\n`,
+        present: [
+          'BibleChapterPicker components must be used within BibleChapterPicker.Root',
+        ],
+      },
+      {
+        label: 'BibleVersionPicker',
+        source: `import { BibleVersionPicker } from '@youversion/platform-react-ui';\nexport { BibleVersionPicker };\n`,
+        present: [
+          'BibleVersionPicker components must be used within BibleVersionPicker.Root',
+          'youversion-platform:picker:recent-versions',
+        ],
+      },
+      {
+        label: 'BibleReader',
+        source: `import { BibleReader } from '@youversion/platform-react-ui';\nexport { BibleReader };\n`,
+        present: [
+          'BibleReader components must be used within BibleReader.Root',
+          'youversion-platform:reader:font-size',
+        ],
+      },
+    ],
+    fullBarrel: {
+      label: 'multi-export barrel',
+      source: `import { YouVersionProvider, BibleReader, BibleChapterPicker, BibleVersionPicker } from '@youversion/platform-react-ui';\nexport { YouVersionProvider, BibleReader, BibleChapterPicker, BibleVersionPicker };\n`,
     },
   },
 ];
@@ -200,6 +277,26 @@ async function bundleConsumer(source, external, { treeShaking = true } = {}) {
   }
 }
 
+/**
+ * Every narrow `absent` sentinel must be verifiable as live, or the narrow
+ * check can pass on a stale string. Liveness is proven by either a control
+ * import's `present` list or the integrity probe (which defaults to the full
+ * absent list when unspecified).
+ * @param {{ narrow: { absent: string[]; probe?: string[] }; controls: { present: string[] }[] }} check
+ */
+function sentinelCoverageErrors(check) {
+  const verified = new Set([
+    ...(check.narrow.probe ?? check.narrow.absent),
+    ...check.controls.flatMap((control) => control.present),
+  ]);
+  return check.narrow.absent
+    .filter((sentinel) => !verified.has(sentinel))
+    .map(
+      (sentinel) =>
+        `"${sentinel}" is not verified live: add it to a control import's present list or the probe`,
+    );
+}
+
 async function runPackageCheck(check) {
   const errors = [];
   const rows = [];
@@ -220,6 +317,26 @@ async function runPackageCheck(check) {
     errors.push(
       `${check.package} narrow import leaked unused-module sentinels: ${narrowLeaks.join(' | ')}`,
     );
+  }
+
+  const narrowPresent = check.narrow.present ?? [];
+  if (narrowPresent.length > 0) {
+    const missingPresent = narrowPresent.filter((sentinel) => !narrow.text.includes(sentinel));
+    rows.push({
+      kind: 'narrow-present',
+      label: `${check.narrow.label} required`,
+      bytes: narrow.bytes,
+      pass: missingPresent.length === 0,
+      detail:
+        missingPresent.length === 0
+          ? 'expected sentinels present'
+          : `missing: ${missingPresent.map((s) => JSON.stringify(s)).join(', ')}`,
+    });
+    if (missingPresent.length > 0) {
+      errors.push(
+        `${check.package} narrow import missing required sentinels — styles left the Provider graph`,
+      );
+    }
   }
 
   for (const control of check.controls) {
@@ -262,20 +379,21 @@ async function runPackageCheck(check) {
   const withoutShake = await bundleConsumer(check.narrow.source, check.external, {
     treeShaking: false,
   });
-  const shakeProbeHits = check.narrow.absent.filter((sentinel) =>
+  const probeSentinels = check.narrow.probe ?? check.narrow.absent;
+  const shakeProbeHits = probeSentinels.filter((sentinel) =>
     withoutShake.text.includes(sentinel),
   );
-  const probePass = shakeProbeHits.length === check.narrow.absent.length;
+  const probePass = shakeProbeHits.length === probeSentinels.length;
   rows.push({
     kind: 'probe',
     label: 'treeShaking:false probe',
     bytes: withoutShake.bytes,
     pass: probePass,
     detail: probePass
-      ? `all ${check.narrow.absent.length} sentinels appear without tree-shaking`
+      ? `all ${probeSentinels.length} sentinels appear without tree-shaking`
       : shakeProbeHits.length === 0
         ? 'sentinels never appear even with treeShaking:false — sentinels may be stale'
-        : `only ${shakeProbeHits.length}/${check.narrow.absent.length} sentinels appear with treeShaking:false`,
+        : `only ${shakeProbeHits.length}/${probeSentinels.length} sentinels appear with treeShaking:false`,
   });
   if (!probePass) {
     errors.push(
@@ -294,6 +412,15 @@ async function main() {
   if (sideEffectsErrors.length > 0) {
     console.error(red(`${sideEffectsErrors.length} package.json sideEffects check(s) failed.`));
     for (const error of sideEffectsErrors) {
+      console.error(red(`  ✗ ${error}`));
+    }
+    process.exit(1);
+  }
+
+  const coverageErrors = CHECKS.flatMap(sentinelCoverageErrors);
+  if (coverageErrors.length > 0) {
+    console.error(red(`${coverageErrors.length} sentinel coverage check(s) failed.`));
+    for (const error of coverageErrors) {
       console.error(red(`  ✗ ${error}`));
     }
     process.exit(1);
