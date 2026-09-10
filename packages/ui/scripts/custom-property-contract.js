@@ -80,12 +80,10 @@ export function auditCustomProperties(css) {
 
     if (node.type === 'Atrule' && node.name.toLowerCase() === 'property') {
       const name = node.prelude?.children.first;
-      let hasInitialValue = false;
-      node.block?.children.forEach((child) => {
-        if (child.type === 'Declaration' && child.property === 'initial-value') {
-          hasInitialValue = true;
-        }
-      });
+      const hasInitialValue =
+        node.block?.children.some(
+          (child) => child.type === 'Declaration' && child.property === 'initial-value',
+        ) ?? false;
 
       if (name?.type === 'Identifier' && name.name.startsWith('--') && hasInitialValue) {
         declarations.add(name.name);
