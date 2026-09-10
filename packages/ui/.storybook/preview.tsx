@@ -31,6 +31,18 @@ initialize({
 
 const preview: Preview = {
   globalTypes: {
+    interfaceDirection: {
+      description: 'Provider interface direction',
+      toolbar: {
+        title: 'Interface direction',
+        icon: 'transfer',
+        items: [
+          { value: 'ltr', title: 'LTR' },
+          { value: 'rtl', title: 'RTL' },
+        ],
+        dynamicTitle: true,
+      },
+    },
     theme: {
       description: 'Provider theme',
       toolbar: {
@@ -46,6 +58,7 @@ const preview: Preview = {
     },
   },
   initialGlobals: {
+    interfaceDirection: 'ltr',
     theme: 'light',
   },
   decorators: [
@@ -77,6 +90,7 @@ const preview: Preview = {
               apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
               includeAuth={true}
               theme={getTheme(context.globals.theme)}
+              direction={context.globals.interfaceDirection}
             >
               <Story />
             </YouVersionProvider>
@@ -90,6 +104,7 @@ const preview: Preview = {
             appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || ''}
             apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
             theme={getTheme(context.globals.theme)}
+            direction={context.globals.interfaceDirection}
           >
             <Story />
           </YouVersionProvider>

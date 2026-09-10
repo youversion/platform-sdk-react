@@ -78,6 +78,11 @@ const meta: Meta<typeof BibleReader.Root> = {
       control: 'boolean',
       description: 'Show verse numbers',
     },
+    direction: {
+      control: 'select',
+      options: ['ltr', 'rtl'],
+      description: 'Explicit scripture direction for the shared Bible renderer',
+    },
     background: {
       table: { disable: true },
     },

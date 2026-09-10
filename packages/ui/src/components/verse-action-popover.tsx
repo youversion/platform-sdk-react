@@ -8,6 +8,7 @@ import { Share } from './icons/share';
 import { CheckIcon } from './icons/check';
 import { buildVerseActionSwatches, highlightFillColorMix } from '@/lib/highlight-colors';
 import { isDarkHighlightHex } from './verse';
+import { useInterfaceDirection } from '@/lib/direction';
 
 /** Re-export for back-compat; prefer `@/lib/highlight-colors` for new code. */
 export { HIGHLIGHT_COLORS, type HighlightColor } from '@/lib/highlight-colors';
@@ -173,6 +174,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   theme = 'light',
 }) => {
   const { t } = useTranslation(undefined, { i18n });
+  const direction = useInterfaceDirection();
 
   // On open, Radix's FocusScope would autofocus the first swatch. Because the bar
   // opens from a mouse/tap on non-focusable verse text, Chromium treats that
@@ -324,6 +326,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
           tabIndex={-1}
           data-yv-sdk
           data-yv-theme={theme}
+          dir={direction}
           onOpenAutoFocus={(event) => {
             // Keep focus contained in the popover but off the first swatch: land
             // it on the (non-tabbable) content element so no `:focus-visible` ring

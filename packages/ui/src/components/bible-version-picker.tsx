@@ -31,7 +31,7 @@ import {
   useState,
 } from 'react';
 import { cn } from '@/lib/utils';
-import { ArrowLeftIcon } from './icons/arrow-left';
+import { ChevronBackwardIcon } from './icons/chevron-backward';
 import { GlobeIcon } from './icons/globe';
 import { LoaderIcon } from './icons/loader';
 import { SearchIcon } from './icons/search';
@@ -126,7 +126,7 @@ function filterLanguagesBySearch(languages: LanguageListItem[], query: string): 
 function VersionPublisherName({ name }: { name?: string | null }) {
   if (!name) return null;
 
-  return <ItemDescription className="yv:line-clamp-1 yv:text-left">{name}</ItemDescription>;
+  return <ItemDescription className="yv:line-clamp-1 yv:text-start">{name}</ItemDescription>;
 }
 
 // Displays a version abbreviation (e.g., "NIV", "KJV2") centered within a fixed-size icon.
@@ -600,7 +600,7 @@ export function BibleVersionPickerLanguageTrigger({
     <Button
       aria-label={ariaLabel ?? t('selectLanguageAriaLabel')}
       className={cn(
-        'yv:ml-auto yv:bg-card yv:border yv:border-transparent yv:hover:bg-card yv:hover:border-border yv:max-w-40',
+        'yv:ms-auto yv:bg-card yv:border yv:border-transparent yv:hover:bg-card yv:hover:border-border yv:max-w-40',
         className,
       )}
       size={size}
@@ -697,7 +697,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
               size="icon"
               className="yv:w-6 yv:h-6 yv:text-muted-foreground"
             >
-              <ArrowLeftIcon className="yv:size-5" />
+              <ChevronBackwardIcon className="yv:size-5" />
               <span className="yv:sr-only">{t('backToBibleVersionsAriaLabel')}</span>
             </Button>
           ) : null
@@ -778,7 +778,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
                     </ItemMedia>
                     <ItemContent>
                       <VersionPublisherName name={publisherName(version.organization_id)} />
-                      <ItemTitle className="yv:line-clamp-2 yv:text-left">
+                      <ItemTitle className="yv:line-clamp-2 yv:text-start">
                         {version.title}
                       </ItemTitle>
                     </ItemContent>
@@ -818,7 +818,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
                   </ItemMedia>
                   <ItemContent>
                     <VersionPublisherName name={publisherName(version.organization_id)} />
-                    <ItemTitle className="yv:line-clamp-2 yv:text-left">{version.title}</ItemTitle>
+                    <ItemTitle className="yv:line-clamp-2 yv:text-start">{version.title}</ItemTitle>
                   </ItemContent>
                 </button>
               </Item>

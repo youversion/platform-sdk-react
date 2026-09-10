@@ -1,7 +1,9 @@
 import React, { type ComponentProps, Suspense, useEffect, useLayoutEffect } from 'react';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionProvider as BaseYouVersionProvider } from '@youversion/platform-react-hooks';
+import { DirectionProvider } from '@radix-ui/react-direction';
 import { syncSdkLanguage } from '@/i18n';
+import { InterfaceDirectionProvider, resolveInterfaceDirection } from '@/lib/direction';
 import { YvStyles } from '@/lib/yv-styles';
 import { YvFonts } from '@/lib/yv-fonts';
 import { MissingAppKey } from '@/components/missing-app-key';
@@ -24,14 +26,22 @@ export type YouVersionProviderProps = ComponentProps<typeof BaseYouVersionProvid
    * `locale` to a Bible language.
    */
   locale?: string;
+  /**
+   * Direction for SDK interface controls and their portaled surfaces. When
+   * omitted, Arabic UI locale uses RTL and every other locale uses LTR.
+   * Scripture direction remains controlled by each scripture surface.
+   */
+  direction?: 'ltr' | 'rtl';
 };
 
 export function YouVersionProvider({
   locale,
+  direction,
   additionalHeaders,
   ...props
 }: YouVersionProviderProps): React.ReactElement {
   const normalizedLocale = locale?.trim() || undefined;
+  const interfaceDirection = resolveInterfaceDirection(direction, normalizedLocale);
 
   // Layout effects never run during SSR. Apply an explicit locale during render
   // so children emit the host language in the server HTML and the first client
@@ -98,18 +108,22 @@ export function YouVersionProvider({
 
   return (
     <BaseYouVersionProvider {...props} additionalHeaders={mergedHeaders}>
-      <YvStyles />
-      {/* Only in this branch — the missing-app-key guard above has no key, and
-          without a key the gated Fonts API request would 401.
+      <DirectionProvider dir={interfaceDirection}>
+        <InterfaceDirectionProvider direction={interfaceDirection}>
+          <YvStyles />
+          {/* Only in this branch — the missing-app-key guard above has no key, and
+              without a key the gated Fonts API request would 401.
 
-          React suspends the component that renders a `precedence` stylesheet
-          while it loads. The local boundary keeps that suspension scoped to the
-          font link so it can't bubble to the consumer's nearest boundary above
-          the provider and hold their tree during the Fonts API fetch. */}
-      <Suspense fallback={null}>
-        <YvFonts appKey={props.appKey} apiHost={props.apiHost} />
-      </Suspense>
-      {props.children}
+              React suspends the component that renders a `precedence` stylesheet
+              while it loads. The local boundary keeps that suspension scoped to the
+              font link so it can't bubble to the consumer's nearest boundary above
+              the provider and hold their tree during the Fonts API fetch. */}
+          <Suspense fallback={null}>
+            <YvFonts appKey={props.appKey} apiHost={props.apiHost} />
+          </Suspense>
+          {props.children}
+        </InterfaceDirectionProvider>
+      </DirectionProvider>
     </BaseYouVersionProvider>
   );
 }
