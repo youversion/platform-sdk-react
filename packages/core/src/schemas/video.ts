@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 
 /** A playable video or audio source. */
 export const VideoPlaybackSourceSchema = z.object({
@@ -20,11 +20,11 @@ export type VideoPlaybackSource = Readonly<z.infer<typeof VideoPlaybackSourceSch
 /** A thumbnail image for a video. */
 export const VideoThumbnailSchema = z.object({
   /** URL for the thumbnail image. */
-  url: z.string().nullable().optional(),
+  url: z.optional(z.nullable(z.string())),
   /** Thumbnail width in pixels. */
-  width: z.number().int().nullable().optional(),
+  width: z.optional(z.nullable(z.int())),
   /** Thumbnail height in pixels. */
-  height: z.number().int().nullable().optional(),
+  height: z.optional(z.nullable(z.int())),
 });
 
 export type VideoThumbnail = Readonly<z.infer<typeof VideoThumbnailSchema>>;
@@ -32,27 +32,27 @@ export type VideoThumbnail = Readonly<z.infer<typeof VideoThumbnailSchema>>;
 /** A dark-launched video resource approved for Platform consumers. */
 export const VideoSchema = z.object({
   /** Video identifier. */
-  id: z.number().int(),
+  id: z.int(),
   /** Video title. */
-  title: z.string().nullable().optional(),
+  title: z.optional(z.nullable(z.string())),
   /** Video description. */
-  description: z.string().nullable().optional(),
+  description: z.optional(z.nullable(z.string())),
   /** Bible references associated with the video (e.g., ["1SA.17.45"]). */
-  references: z.array(z.string()).nullable().optional(),
+  references: z.optional(z.nullable(z.array(z.string()))),
   /** BCP 47 language tag for the video. */
-  language_tag: z.string().nullable().optional(),
+  language_tag: z.optional(z.nullable(z.string())),
   /** Runtime in seconds. */
-  runtime: z.number().int().nullable().optional(),
+  runtime: z.optional(z.nullable(z.int())),
   /** Video orientation. */
-  orientation: z.enum(['landscape', 'portrait']).nullable().optional(),
+  orientation: z.optional(z.nullable(z.enum(['landscape', 'portrait']))),
   /** Thumbnail image. */
-  thumbnail: VideoThumbnailSchema.nullable().optional(),
+  thumbnail: z.optional(z.nullable(VideoThumbnailSchema)),
   /** Playable video or audio sources. */
   playback_sources: z.array(VideoPlaybackSourceSchema),
   /** Preview clip sources. */
   playback_preview_sources: z.array(VideoPlaybackSourceSchema),
   /** Share URL for the video. */
-  share_url: z.string().nullable().optional(),
+  share_url: z.optional(z.nullable(z.string())),
 });
 
 export type Video = Readonly<z.infer<typeof VideoSchema>>;

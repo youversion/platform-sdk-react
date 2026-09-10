@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { BookUsfmSchema, CanonSchema } from './book';
 
 const BibleIndexVerseSchema = z.object({
@@ -50,7 +50,7 @@ const BibleIndexBookSchema = z.object({
   /** Array of chapters in this book */
   chapters: z.array(BibleIndexChapterSchema),
   /** Intro metadata (optional) */
-  intro: BibleIndexBookIntroSchema.optional(),
+  intro: z.optional(BibleIndexBookIntroSchema),
 });
 
 export type BibleIndexBook = Readonly<z.infer<typeof BibleIndexBookSchema>>;

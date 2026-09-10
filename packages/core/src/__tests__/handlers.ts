@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw';
-import { z } from 'zod';
+import * as z from 'zod/mini';
 import { CreateHighlightEnvelopeSchema } from '../schemas/highlight';
 import type { Collection, Language } from '../types';
 import { mockLanguages } from './MockLanguages';
@@ -25,7 +25,7 @@ if (!apiHost) {
 }
 
 const PageCursorSchema = z.object({
-  start: z.number().optional(),
+  start: z.optional(z.number()),
 });
 
 /** Mirrors the live API's 401 when no `Authorization: Bearer` header is sent. */

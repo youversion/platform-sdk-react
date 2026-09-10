@@ -5,7 +5,8 @@
 // `-dev` suffix used for internal YouVersion dev traffic. `src/version.ts`
 // compiles to `isPublishBuild ? version : `${version}-dev``; a stamped build
 // folds `isPublishBuild` to `true`, a dev build to `false`. `@youversion/
-// platform-react-ui` bundles core, so the same constant appears in its output.
+// platform-react-ui` still bundles core through `noExternal`, so the same
+// constant appears in its output until that bundling changes.
 //
 // This runs from each package's `prepublishOnly`, so `npm publish` aborts if the
 // artifact would tag traffic as `-dev`. (Grepping for `-dev` directly would
@@ -61,7 +62,9 @@ let sawVersionCode = false;
 
 for (const file of bundleFiles) {
   const content = readFileSync(join(distDir, file), 'utf8');
-  if (!content.includes('SDK_VERSION')) continue;
+  // Split entries re-export `SDK_VERSION` without the stamp assignment.
+  // Only files that emit `isPublishBuild` are the version implementation.
+  if (!content.includes('isPublishBuild')) continue;
   sawVersionCode = true;
   if (DEV_MARKER.test(content)) {
     unstamped.push(file);
