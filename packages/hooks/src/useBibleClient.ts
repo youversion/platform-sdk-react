@@ -2,7 +2,7 @@
 
 import { useContext, useMemo } from 'react';
 import { BibleClient } from '@youversion/platform-core';
-import { YouVersionContext } from './context';
+import { YouVersionContext } from './context/YouVersionContext';
 import { useApiClient } from './internal/useApiClient';
 
 export function useBibleClient(): BibleClient {

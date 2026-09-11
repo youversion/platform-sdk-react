@@ -1,13 +1,16 @@
 'use client';
 
-import { useApiData, type UseApiDataOptions } from './useApiData';
-import { useQueryKeyBase } from './internal/useQueryKeyBase';
+import { useContext } from 'react';
 import {
+  getLanguages,
   type GetLanguagesOptions,
   type Collection,
   type Language,
 } from '@youversion/platform-core';
-import { useLanguagesClient } from './useLanguageClient';
+import { YouVersionContext } from './context/YouVersionContext';
+import { useApiClient } from './internal/useApiClient';
+import { useApiData, type UseApiDataOptions } from './useApiData';
+import { useQueryKeyBase } from './internal/useQueryKeyBase';
 import type { UseNamedQueryResult } from './useQueryResult';
 import { useHookOverride } from './useHookOverride';
 
@@ -18,7 +21,8 @@ export function useLanguages(
   apiOptions?: UseApiDataOptions,
 ): UseLanguagesResult {
   const override = useHookOverride('useLanguages');
-  const languagesClient = useLanguagesClient();
+  const languagesClient = useContext(YouVersionContext)?.languagesClient;
+  const apiClient = useApiClient();
   const keyBase = useQueryKeyBase();
 
   const { data, loading, error, refetch } = useApiData<Collection<Language>>(
@@ -30,7 +34,8 @@ export function useLanguages(
       options?.page_size,
       options?.page_token,
     ],
-    () => languagesClient.getLanguages(options),
+    () =>
+      languagesClient ? languagesClient.getLanguages(options) : getLanguages(apiClient, options),
     {
       enabled: !override && apiOptions?.enabled !== false,
       keepPreviousData: apiOptions?.keepPreviousData,

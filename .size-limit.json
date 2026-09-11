@@ -34,7 +34,7 @@
     "name": "hooks / useChapter only",
     "path": "packages/hooks/dist/index.js",
     "import": "{ useChapter }",
-    "limit": "64 KB",
+    "limit": "12.2 KB",
     "ignore": ["react", "react-dom", "@tanstack/react-query"]
   },
   {
