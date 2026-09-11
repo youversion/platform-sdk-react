@@ -209,6 +209,50 @@ describe('useBibleSearch', () => {
     });
   });
 
+  it('does not re-request the submitted query as suggestions during the first edit debounce', async () => {
+    const { result } = renderHook(() => useBibleSearch({ versionId: 111 }), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.phase.kind).toBe('trending');
+    });
+
+    act(() => {
+      result.current.setQuery('love');
+    });
+    await settleDebounce();
+    await waitFor(() => {
+      expect(mockGetSuggestedQueries).toHaveBeenCalledTimes(1);
+    });
+
+    act(() => {
+      result.current.submit();
+    });
+    await waitFor(() => {
+      expect(result.current.phase.kind).toBe('results');
+    });
+
+    mockGetSuggestedQueries.mockClear();
+    act(() => {
+      result.current.setQuery('loved');
+    });
+
+    expect(mockGetSuggestedQueries).not.toHaveBeenCalled();
+    expect(result.current.phase).toEqual({
+      kind: 'suggesting',
+      queries: [],
+      loading: false,
+      debouncing: true,
+    });
+
+    await settleDebounce();
+
+    await waitFor(() => {
+      expect(mockGetSuggestedQueries).toHaveBeenCalledTimes(1);
+    });
+    expect(mockGetSuggestedQueries).toHaveBeenCalledWith('loved', 'en');
+    expect(mockGetSuggestedQueries).not.toHaveBeenCalledWith('love', 'en');
+  });
+
   it('selectSuggestion submits immediately without a filled-but-idle frame', async () => {
     const { result } = renderHook(() => useBibleSearch({ versionId: 111 }), { wrapper });
 

@@ -51,7 +51,10 @@ export function useBibleSearch(props: UseBibleSearchProps): UseBibleSearchResult
 
   const { version } = useVersion(versionId);
   const languageRanges = version?.language_tag ?? null;
-  const debounced = useDebounce(session.normalized, SEARCH_SUGGESTION_DEBOUNCE_MS);
+  const debounced = useDebounce(
+    session.lane.kind === 'submitted' ? null : session.normalized,
+    SEARCH_SUGGESTION_DEBOUNCE_MS,
+  );
   const settled = session.normalized === EMPTY_QUERY ? EMPTY_QUERY : debounced;
   const qReq = queriesRequest(session, settled);
   const suggestQuery = qReq?.kind === 'suggest' ? qReq.query : '';
