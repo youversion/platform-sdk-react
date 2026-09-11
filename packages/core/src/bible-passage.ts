@@ -12,6 +12,27 @@ type PassageQuery = {
 
 const booleanSchema = z.boolean();
 
+function buildPassageQuery(
+  format: 'html' | 'text',
+  includeHeadings?: boolean,
+  includeNotes?: boolean,
+): PassageQuery {
+  if (includeHeadings !== undefined) {
+    booleanSchema.parse(includeHeadings);
+  }
+  if (includeNotes !== undefined) {
+    booleanSchema.parse(includeNotes);
+  }
+  const params: PassageQuery = { format };
+  if (includeHeadings !== undefined) {
+    params.include_headings = includeHeadings;
+  }
+  if (includeNotes !== undefined) {
+    params.include_notes = includeNotes;
+  }
+  return params;
+}
+
 async function getHtmlAdapters(): Promise<TransformBibleHtmlOptions> {
   if (globalThis.DOMParser) {
     return {
@@ -50,16 +71,9 @@ export async function getPassage(
   transform?: boolean,
 ): Promise<BiblePassage> {
   parseBibleVersionId(versionId);
+  const params = buildPassageQuery(format, include_headings, include_notes);
   await assertUsableVersion(client, versionId);
-  return getPassageForValidatedVersion(
-    client,
-    versionId,
-    usfm,
-    format,
-    include_headings,
-    include_notes,
-    transform,
-  );
+  return fetchPassage(client, versionId, usfm, params, transform);
 }
 
 /** @internal Fetches a passage after the caller has enforced the version filter. */
@@ -73,27 +87,23 @@ export async function getPassageForValidatedVersion(
   transform?: boolean,
 ): Promise<BiblePassage> {
   parseBibleVersionId(versionId);
-  if (include_headings !== undefined) {
-    booleanSchema.parse(include_headings);
-  }
-  if (include_notes !== undefined) {
-    booleanSchema.parse(include_notes);
-  }
-  const params: PassageQuery = {
-    format,
-  };
-  if (include_headings !== undefined) {
-    params.include_headings = include_headings;
-  }
-  if (include_notes !== undefined) {
-    params.include_notes = include_notes;
-  }
+  const params = buildPassageQuery(format, include_headings, include_notes);
+  return fetchPassage(client, versionId, usfm, params, transform);
+}
+
+async function fetchPassage(
+  client: ApiClient,
+  versionId: number,
+  usfm: string,
+  params: PassageQuery,
+  transform?: boolean,
+): Promise<BiblePassage> {
   const passage = await client.get<BiblePassage>(
     `/v1/bibles/${versionId}/passages/${usfm}`,
     params,
   );
 
-  if (format === 'html' && transform !== false) {
+  if (params.format === 'html' && transform !== false) {
     const adapters = await getHtmlAdapters();
     const { html } = transformBibleHtml(passage.content, adapters);
     return { ...passage, content: html };

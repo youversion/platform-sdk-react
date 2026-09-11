@@ -43,7 +43,7 @@ function setupDisplayTest(): void {
   );
 }
 
-describe('passage display model', () => {
+describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('passage display model', () => {
   it('returns transformed HTML, current attribution, stylesheets, and container attributes', async () => {
     setupDisplayTest();
     const display = await createBibleClient().getPassageDisplay({
@@ -96,6 +96,29 @@ describe('passage display model', () => {
 
     expect(display.html).toContain('data-yv-transformed');
     expect(display.attribution.source).toBe('copyright');
+  });
+
+  it('requests fresh attribution for repeated display operations', async () => {
+    setupDisplayTest();
+    let versionRequests = 0;
+    server.use(
+      http.get(`https://${apiHost}/v1/bibles/:id`, () => {
+        versionRequests += 1;
+        return HttpResponse.json({
+          ...mockDisplayVersion,
+          copyright: versionRequests === 1 ? 'First attribution' : 'Second attribution',
+        });
+      }),
+    );
+    const client = createBibleClient();
+    const options = { versionId: 111, passageId: 'GEN.1.1' } as const;
+
+    const first = await client.getPassageDisplay(options);
+    const second = await client.getPassageDisplay(options);
+
+    expect(first.attribution.text).toBe('First attribution');
+    expect(second.attribution.text).toBe('Second attribution');
+    expect(versionRequests).toBe(2);
   });
 
   it('falls back to promotional content when copyright is empty', async () => {
@@ -233,7 +256,7 @@ describe('passage display model', () => {
   });
 });
 
-describe('getBibleStylesheets', () => {
+describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('getBibleStylesheets', () => {
   it('returns stable assets and respects a custom API host', () => {
     expect(
       getBibleStylesheets({ appKey: 'key +/reserved', apiHost: 'api-staging.youversion.com' }),

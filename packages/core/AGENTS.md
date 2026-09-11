@@ -22,6 +22,7 @@ bible-chapter.ts             # getVersion/getChapter + shared id/book/chapter pa
 bible-reads.ts               # Book/chapter/verse/VOTD reads (tree-shakable module)
 bible-versions.ts            # Version listing (tree-shakable module)
 bible-passage.ts             # Passage fetch (tree-shakable module)
+bible-display-resources.ts   # Dependency-free Bible CSS/font resource descriptors
 bible-passage-display.ts     # Declarative styled-passage model and resources
 languages.ts                 # LanguagesClient - language data (facade over languages-* modules)
 languages-language.ts        # Single-language fetch (tree-shakable module)

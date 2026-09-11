@@ -1,5 +1,6 @@
 import type { ApiClient } from './client';
 import { getVersion, parseBibleVersionId } from './bible-chapter';
+import { getBibleStylesheets } from './bible-display-resources';
 import { getPassageForValidatedVersion } from './bible-passage';
 import {
   BiblePassageDisplaySchema,
@@ -7,25 +8,15 @@ import {
   type BiblePassageDisplay,
   type GetPassageDisplayOptions,
   type PassageAttribution,
-  type PassageStylesheet,
 } from './schemas/passage-display';
 import { BiblePassageSchema } from './schemas/passage';
 import { BibleVersionSchema } from './schemas/version';
-import type { ApiConfig, BibleVersion } from './types';
+import type { BibleVersion } from './types';
 import {
   isLanguageFilterActive,
   isVersionIdDecidablyUnusable,
   throwUnusableBibleVersion,
 } from './version-filters';
-
-/**
- * The YouVersion stylesheet for Bible HTML. The path is a CSS compatibility
- * major, not the version of this package; routine UI releases overwrite it.
- */
-export const BIBLE_CSS_STYLESHEET_URL = 'https://cdn.youversion.com/platform/1/bible.css';
-
-/** The permanent Fonts API identifier for Untitled Serif. */
-export const UNTITLED_SERIF_FONT_ID = 1;
 
 /** Attributes that scope Bible CSS to a passage container. */
 export const BIBLE_CONTAINER_ATTRIBUTES = Object.freeze({
@@ -42,25 +33,6 @@ export class MissingPassageAttributionError extends Error {
     this.name = 'MissingPassageAttributionError';
     this.versionId = versionId;
   }
-}
-
-/** Returns the ordered stylesheet resources for displaying Bible HTML. */
-export function getBibleStylesheets(
-  config: Pick<ApiConfig, 'appKey' | 'apiHost'>,
-): readonly PassageStylesheet[] {
-  const apiHost = config.apiHost || 'api.youversion.com';
-  return [
-    {
-      kind: 'bible',
-      rel: 'stylesheet',
-      href: BIBLE_CSS_STYLESHEET_URL,
-    },
-    {
-      kind: 'font',
-      rel: 'stylesheet',
-      href: `https://${apiHost}/v1/fonts/${UNTITLED_SERIF_FONT_ID}/stylesheet?app_key=${encodeURIComponent(config.appKey)}`,
-    },
-  ];
 }
 
 function getPassageAttribution(version: BibleVersion): PassageAttribution {

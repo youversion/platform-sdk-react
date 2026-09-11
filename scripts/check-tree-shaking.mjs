@@ -84,7 +84,7 @@ function assertPackageSideEffects() {
   return errors;
 }
 
-/** @type {Array<{ package: string; external: string[]; narrow: object; controls: object[]; fullBarrel: object }>} */
+/** @type {Array<{ package: string; external: string[]; narrow: object; controls: object[]; focused?: object[]; fullBarrel: object }>} */
 const CHECKS = [
   {
     package: '@youversion/platform-core',
@@ -113,6 +113,26 @@ const CHECKS = [
         label: 'YouVersionAPIUsers',
         source: `import { YouVersionAPIUsers } from '@youversion/platform-core';\nexport { YouVersionAPIUsers };\n`,
         present: ['Invalid state parameter - possible CSRF attack'],
+      },
+    ],
+    focused: [
+      {
+        label: 'getBibleStylesheets only',
+        source: `import { getBibleStylesheets } from '@youversion/platform-core';
+export const stylesheets = getBibleStylesheets({ appKey: 'fixture' });
+`,
+        absent: [
+          'missing_passage_attribution',
+          'Passage ID must be a non-empty string',
+          'Server-side HTML transformation requires "jsdom".',
+        ],
+        maxBytes: 5_000,
+        control: {
+          label: 'getPassageDisplay',
+          source: `import { getPassageDisplay } from '@youversion/platform-core';
+export { getPassageDisplay };
+`,
+        },
       },
     ],
     fullBarrel: {
@@ -238,6 +258,48 @@ async function runPackageCheck(check) {
     if (missing.length > 0) {
       errors.push(
         `${check.package} control "${control.label}" missing expected sentinels — update sentinels or exports`,
+      );
+    }
+  }
+
+  for (const focused of check.focused ?? []) {
+    const bundle = await bundleConsumer(focused.source, check.external);
+    const leaked = focused.absent.filter((sentinel) => bundle.text.includes(sentinel));
+    const sizePass = bundle.bytes <= focused.maxBytes;
+    const pass = leaked.length === 0 && sizePass;
+    const details = [];
+    if (leaked.length > 0) {
+      details.push(`leaked: ${leaked.map((s) => JSON.stringify(s)).join(', ')}`);
+    }
+    if (!sizePass) {
+      details.push(`${bundle.bytes.toLocaleString()} B > ${focused.maxBytes.toLocaleString()} B`);
+    }
+    rows.push({
+      kind: 'focused',
+      label: focused.label,
+      bytes: bundle.bytes,
+      pass,
+      detail: pass ? 'isolated from display orchestration' : details.join('; '),
+    });
+    if (!pass) {
+      errors.push(`${check.package} focused import "${focused.label}" is not isolated`);
+    }
+
+    const control = await bundleConsumer(focused.control.source, check.external);
+    const missing = focused.absent.filter((sentinel) => !control.text.includes(sentinel));
+    const controlPass = missing.length === 0;
+    rows.push({
+      kind: 'control',
+      label: `${focused.control.label} sentinel control`,
+      bytes: control.bytes,
+      pass: controlPass,
+      detail: controlPass
+        ? 'all excluded sentinels present'
+        : `missing: ${missing.map((s) => JSON.stringify(s)).join(', ')}`,
+    });
+    if (!controlPass) {
+      errors.push(
+        `${check.package} focused control "${focused.control.label}" has stale sentinels`,
       );
     }
   }

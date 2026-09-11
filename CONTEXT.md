@@ -31,10 +31,12 @@ A declarative representation of a passage and everything a web application
 needs to display it with YouVersion's rendering contract. _Avoid_: rendered
 passage, passage component, display bundle.
 
-## Display attribution
+## Passage display model attribution
 
-The current, non-empty legal text that accompanies a displayed passage. The
-short copyright text is preferred; promotional content is its fallback.
+The current, non-empty legal text returned by the passage display model. The
+short copyright text is preferred; promotional content is its fallback. This
+fail-closed contract applies to `getPassageDisplay`; existing React UI
+components retain their own attribution behavior.
 _Avoid_: copyright HTML.
 
 ## Bible version

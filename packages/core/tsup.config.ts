@@ -30,6 +30,7 @@ export default defineConfig({
     'src/bible-reads.ts',
     'src/bible-versions.ts',
     'src/bible-passage.ts',
+    'src/bible-display-resources.ts',
     'src/bible-passage-display.ts',
     'src/languages.ts',
     'src/languages-language.ts',

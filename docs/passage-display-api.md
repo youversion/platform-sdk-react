@@ -64,8 +64,10 @@ Untitled Serif font ID, and container attributes.
 - A language filter requires version metadata. In that case, the version is
   validated before Scripture is fetched, and that same response supplies the
   display model. No duplicate metadata request is made.
-- Attribution is freshly requested for every operation and is never cached by
-  this API.
+- Passage display model attribution is freshly requested for every operation
+  and is never cached by this API. This contract is scoped to
+  `getPassageDisplay`; it does not redefine existing React UI component
+  behavior.
 - Non-empty `copyright` is preferred. Non-empty `promotional_content` is the
   fallback. If neither exists, `MissingPassageAttributionError` rejects the
   operation so a caller cannot receive a display-ready passage without legal
