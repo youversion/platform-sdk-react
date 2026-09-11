@@ -272,9 +272,11 @@ jobs:
           # timestamps instead would trust `committer.date`, which the committer sets, so a
           # backdated commit could inherit an older approval. A SHA cannot be backdated, and
           # a new push changes it, which retires the previous signoff on its own.
-          SHORT_SHA=${HEAD_SHA:0:7}
-          SHA_RE="(^|[^0-9A-Za-z])${SHORT_SHA}[0-9A-Fa-f]*([^0-9A-Za-z]|$)"
-          echo "Signoff must name head $SHORT_SHA."
+          # The full 40 characters, not an abbreviation: a 7-character prefix is
+          # 28 bits, which is cheap to brute-force, so an author could craft a new
+          # commit sharing the approved prefix and inherit its signoff.
+          SHA_RE="(^|[^0-9A-Za-z])${HEAD_SHA}([^0-9A-Za-z]|$)"
+          echo "Signoff must name head $HEAD_SHA."
 
           COMMENTS=$(gh api --paginate \
             "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" \
@@ -345,7 +347,6 @@ jobs:
           NEXT_VERSION: ${{ steps.decision.outputs.next }}
         run: |
           set -euo pipefail
-          SHORT_SHA=${HEAD_SHA:0:7}
           MARKER='<!-- major-signoff-required -->'
           # echo-per-line rather than a heredoc: un-indented heredoc lines
           # confuse the YAML block-scalar parser.
@@ -357,7 +358,7 @@ jobs:
             echo
             echo "1. The verbatim acknowledgment phrase below,"
             echo "2. The precise next version (\`v$NEXT_VERSION\` or \`$NEXT_VERSION\`),"
-            echo "3. The commit being approved (\`$SHORT_SHA\`), and"
+            echo "3. The full commit hash being approved (\`$HEAD_SHA\`), and"
             echo "4. A 🚀 (\`:rocket:\`) emoji."
             echo
             echo "I confirm that this is an intentional breaking change, and I have read the release procedures. I understand and have documented its impact upon release."
@@ -367,7 +368,7 @@ jobs:
             echo '```'
             echo "I confirm that this is an intentional breaking change, and I have read the release procedures. I understand and have documented its impact upon release."
             echo
-            echo "v$NEXT_VERSION $SHORT_SHA 🚀"
+            echo "v$NEXT_VERSION $HEAD_SHA 🚀"
             echo '```'
             echo
             echo "The check re-runs automatically when a qualifying comment is posted or edited. Pushing new commits changes the hash, so a fresh signoff is needed."
