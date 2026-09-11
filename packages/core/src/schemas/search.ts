@@ -5,12 +5,21 @@ export const KNOWN_SEARCH_USER_INTENTS = ['unknown', 'topical', 'text', 'referen
 
 export type KnownSearchUserIntent = (typeof KNOWN_SEARCH_USER_INTENTS)[number];
 
+/**
+ * Dot-separated USFM passage id for search hits (`BOOK.CHAPTER[.VERSE[-VERSE]]`).
+ * Structural only: book codes are not checked against {@link BOOK_IDS}.
+ */
 const USFM_REFERENCE_PATTERN = /^([A-Z0-9]{1,3})\.(\d+)(?:\.(\d+)(?:-(\d+))?)?$/;
 
 /**
  * Structural USFM reference check for search verse hits.
  * Rejects malformed references and non-positive chapter/verse numbers.
  * Does not validate book codes against {@link BOOK_IDS}.
+ *
+ * Kept separate from UI `expandPassageId` (`packages/ui`): that helper requires a
+ * verse segment, rejects reversed ranges and oversized spans, and lives behind the
+ * core → hooks → ui boundary. Search needs chapter-only ids and unknown book codes
+ * (for example `ZZZ.1.1`) so bad hits drop without throwing while good hits stay.
  */
 export function isValidStructuralUsfmReference(usfm: string): boolean {
   const match = USFM_REFERENCE_PATTERN.exec(usfm);
@@ -45,6 +54,11 @@ export function normalizeSearchLanguageRange(range: string): string {
   return range.trim().replace(/_/g, '-');
 }
 
+/**
+ * Platform Search `language_ranges[]` filter grammar: `*` or a Basic Language Range
+ * subset (ISO 639 primary subtag plus optional hyphen extensions such as region).
+ * Not full BCP 47. Language API resource ids use {@link BCP47_LANGUAGE_TAG_REGEX}.
+ */
 const SEARCH_LANGUAGE_RANGE_REGEX = /^(\*|[a-z]{2,3}(?:-[A-Za-z0-9]+)*)$/;
 
 const SEARCH_LANGUAGE_RANGE_ERROR =
