@@ -239,9 +239,9 @@ export function searchSessionReducer(
 
 export function queriesRequest(
   session: SearchSession,
-  settled: NormalizedQuery,
+  settled: NormalizedQuery | null,
 ): QueriesRequest | null {
-  if (session.lane.kind === 'submitted') {
+  if (session.lane.kind === 'submitted' || settled === null) {
     return null;
   }
   if (settled === EMPTY_QUERY) {
@@ -320,7 +320,7 @@ function nextPageStatus(input: {
 
 export function deriveSearchPhase(input: {
   readonly session: SearchSession;
-  readonly settled: NormalizedQuery;
+  readonly settled: NormalizedQuery | null;
   readonly queries: readonly SearchQuery[] | null;
   readonly queriesLoading: boolean;
   readonly versesLoading: boolean;

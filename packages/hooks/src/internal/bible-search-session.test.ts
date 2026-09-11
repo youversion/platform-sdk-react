@@ -252,6 +252,7 @@ describe('queriesRequest and versesRequest', () => {
     expect(queriesRequest(createSearchSession(111), EMPTY_QUERY)).toEqual({ kind: 'trending' });
     expect(queriesRequest(browsing('love'), LOVE)).toEqual({ kind: 'suggest', query: LOVE });
     expect(queriesRequest(submitted('love'), LOVE)).toBeNull();
+    expect(queriesRequest(browsing('loved'), null)).toBeNull();
   });
 
   it('requests the first verse page, then the next token only while wantsMore', () => {

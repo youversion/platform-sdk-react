@@ -92,4 +92,23 @@ describe('useDebounce', () => {
 
     expect(result.current).toBe('updated');
   });
+
+  it('applies null immediately so the next value debounces from empty', () => {
+    const { result, rerender } = renderHook(
+      ({ value }: { value: string | null }) => useDebounce(value, 500),
+      { initialProps: { value: 'love' } },
+    );
+
+    rerender({ value: null });
+    expect(result.current).toBeNull();
+
+    rerender({ value: 'loved' });
+    expect(result.current).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(result.current).toBe('loved');
+  });
 });
