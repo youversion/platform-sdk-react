@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { useLayoutEffect, useRef, type RefObject } from 'react';
 
 export const SEARCH_VERSE_FOCUS_HOLD_MS = 1500;
 
@@ -8,10 +8,6 @@ export type VerseFocusRequest = Readonly<{
   book: string;
   chapter: string;
   verses: readonly number[];
-}>;
-
-export type TransientVerseFocus = Readonly<{
-  focusedVerses: readonly number[];
 }>;
 
 function paintFocus(container: HTMLElement, verses: readonly number[]): void {
@@ -35,6 +31,18 @@ function prefersReducedMotion(): boolean {
   return Boolean(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
 }
 
+function overflowAncestor(start: HTMLElement): HTMLElement {
+  let node: HTMLElement | null = start;
+  while (node !== null) {
+    const overflowY = globalThis.getComputedStyle(node).overflowY;
+    if (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') {
+      return node;
+    }
+    node = node.parentElement;
+  }
+  return start;
+}
+
 /**
  * Holds a focus request until `renderedReference` equals
  * `${request.book}.${request.chapter}`, then scrolls, paints, and starts the
@@ -45,9 +53,8 @@ export function useTransientVerseFocus(args: {
   readonly request: VerseFocusRequest | null;
   readonly renderedReference: string;
   readonly containerRef: RefObject<HTMLElement | null>;
-}): TransientVerseFocus {
+}): void {
   const { request, renderedReference, containerRef } = args;
-  const [focusedVerses, setFocusedVerses] = useState<readonly number[]>([]);
   const appliedSeqRef = useRef<number | null>(null);
 
   useLayoutEffect(() => {
@@ -78,24 +85,23 @@ export function useTransientVerseFocus(args: {
       });
     }
     paintFocus(container, verses);
-    setFocusedVerses(verses);
 
     let cleared = false;
     const clear = (): void => {
       if (cleared) return;
       cleared = true;
       clearFocusPaint(container);
-      setFocusedVerses([]);
     };
 
     const hold = globalThis.setTimeout(clear, SEARCH_VERSE_FOCUS_HOLD_MS);
     const onInteract = (): void => {
       clear();
     };
+    const scroller = overflowAncestor(container);
     const attachId = globalThis.requestAnimationFrame(() => {
       container.addEventListener('pointerdown', onInteract);
       container.addEventListener('keydown', onInteract);
-      container.addEventListener('scroll', onInteract, true);
+      scroller.addEventListener('scroll', onInteract);
     });
 
     return () => {
@@ -103,12 +109,10 @@ export function useTransientVerseFocus(args: {
       globalThis.cancelAnimationFrame(attachId);
       container.removeEventListener('pointerdown', onInteract);
       container.removeEventListener('keydown', onInteract);
-      container.removeEventListener('scroll', onInteract, true);
+      scroller.removeEventListener('scroll', onInteract);
       if (!cleared) {
         clearFocusPaint(container);
       }
     };
   }, [request, renderedReference, containerRef]);
-
-  return { focusedVerses };
 }

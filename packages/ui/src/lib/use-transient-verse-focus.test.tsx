@@ -57,14 +57,12 @@ describe('useTransientVerseFocus', () => {
       chapter: '3',
       verses: [16],
     };
-    const { result, rerender } = renderFocus(request, 'JHN.1', container);
+    const { rerender } = renderFocus(request, 'JHN.1', container);
 
-    expect(result.current.focusedVerses).toEqual([]);
     expect(container.hasAttribute('data-yv-verse-focus')).toBe(false);
 
     rerender({ request, renderedReference: 'JHN.3' });
 
-    expect(result.current.focusedVerses).toEqual([16]);
     expect(container.getAttribute('data-yv-verse-focus')).toBe('');
     expect(verse.classList.contains('yv-v-focused')).toBe(true);
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center', behavior: 'smooth' });
@@ -73,7 +71,6 @@ describe('useTransientVerseFocus', () => {
       vi.advanceTimersByTime(SEARCH_VERSE_FOCUS_HOLD_MS);
     });
 
-    expect(result.current.focusedVerses).toEqual([]);
     expect(container.hasAttribute('data-yv-verse-focus')).toBe(false);
     expect(verse.classList.contains('yv-v-focused')).toBe(false);
   });
@@ -93,5 +90,35 @@ describe('useTransientVerseFocus', () => {
     });
 
     expect(verse.classList.contains('yv-v-focused')).toBe(true);
+  });
+
+  it('clears paint on the first scroll of the overflow ancestor', () => {
+    const scroller = document.createElement('div');
+    scroller.style.overflowY = 'auto';
+    scroller.append(container);
+    document.body.append(scroller);
+
+    const request: VerseFocusRequest = {
+      seq: 1,
+      book: 'JHN',
+      chapter: '3',
+      verses: [16],
+    };
+    renderFocus(request, 'JHN.3', container);
+
+    expect(verse.classList.contains('yv-v-focused')).toBe(true);
+
+    act(() => {
+      vi.advanceTimersByTime(16);
+    });
+
+    act(() => {
+      scroller.dispatchEvent(new Event('scroll'));
+    });
+
+    expect(container.hasAttribute('data-yv-verse-focus')).toBe(false);
+    expect(verse.classList.contains('yv-v-focused')).toBe(false);
+
+    scroller.remove();
   });
 });
