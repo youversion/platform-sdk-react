@@ -196,7 +196,7 @@ forms, labels, ARIA relationships, events, refs, queries, and overlays.
 
 ## Rollout sequence
 
-1. Complete YPE-5400's custom-property inventory and prevention guard.
+1. Maintain YPE-5400's completed custom-property inventory and prevention guard.
 2. Resolve SSR/hydration in YPE-5354 and overlay ownership in YPE-5355, then
    reconcile those findings and YPE-5436's consumer contract in YPE-5356.
 3. Select the next public component and add component-specific compatibility,
