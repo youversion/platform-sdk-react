@@ -22,6 +22,8 @@ bible-chapter.ts             # getVersion/getChapter + shared id/book/chapter pa
 bible-reads.ts               # Book/chapter/verse/VOTD reads (tree-shakable module)
 bible-versions.ts            # Version listing (tree-shakable module)
 bible-passage.ts             # Passage fetch (tree-shakable module)
+bible-display-resources.ts   # Dependency-free Bible CSS/font resource descriptors
+bible-passage-display.ts     # Declarative styled-passage model and resources
 languages.ts                 # LanguagesClient - language data (facade over languages-* modules)
 languages-language.ts        # Single-language fetch (tree-shakable module)
 languages-list.ts            # Language listing (tree-shakable module)
@@ -51,6 +53,9 @@ index.ts                     # Main entry point (runtime-agnostic)
 - `setStorageItem()`, `removeStorageItem()`, `clearStorage()`: Throw-safe mutations for a resolved store (`setStorageItem` returns whether the write landed)
 - `transformBibleHtml`: Runtime-agnostic Bible HTML transformer (requires DOM adapters)
 - `TransformBibleHtmlOptions`: Options for DOM parsing and serialization
+- `getPassageDisplay`: Fetch transformed HTML, current attribution, and declarative rendering resources
+- `getBibleStylesheets`: Build the ordered Bible CSS and Fonts API stylesheet descriptors
+- `MissingPassageAttributionError`: Fail-closed error when a version has no display attribution
 
 ### Browser CSS (`@youversion/platform-core/browser/styles/*`)
 - `index.css`: All-in-one import (fonts + theme + bible-reader)
