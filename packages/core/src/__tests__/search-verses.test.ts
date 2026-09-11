@@ -33,7 +33,13 @@ describe('isValidStructuralUsfmReference', () => {
     expect(isValidStructuralUsfmReference('JHN.0.1')).toBe(false);
     expect(isValidStructuralUsfmReference('JHN.1.0')).toBe(false);
     expect(isValidStructuralUsfmReference('JHN.1.1-0')).toBe(false);
+    expect(isValidStructuralUsfmReference('JHN.1.5-3')).toBe(false);
     expect(isValidStructuralUsfmReference('')).toBe(false);
+  });
+
+  it('accepts chapter-only and inclusive verse ranges', () => {
+    expect(isValidStructuralUsfmReference('JHN.6')).toBe(true);
+    expect(isValidStructuralUsfmReference('JHN.6.9-11')).toBe(true);
   });
 });
 

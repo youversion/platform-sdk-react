@@ -1,11 +1,10 @@
 import * as z from 'zod/mini';
+import { parseUsfmReference } from '../usfm-reference';
 
 /** Known Platform Search user-intent values. Unknown wire strings remain valid. */
 export const KNOWN_SEARCH_USER_INTENTS = ['unknown', 'topical', 'text', 'reference'] as const;
 
 export type KnownSearchUserIntent = (typeof KNOWN_SEARCH_USER_INTENTS)[number];
-
-const USFM_REFERENCE_PATTERN = /^([A-Z0-9]{1,3})\.(\d+)(?:\.(\d+)(?:-(\d+))?)?$/;
 
 /**
  * Structural USFM reference check for search verse hits.
@@ -13,31 +12,7 @@ const USFM_REFERENCE_PATTERN = /^([A-Z0-9]{1,3})\.(\d+)(?:\.(\d+)(?:-(\d+))?)?$/
  * Does not validate book codes against {@link BOOK_IDS}.
  */
 export function isValidStructuralUsfmReference(usfm: string): boolean {
-  const match = USFM_REFERENCE_PATTERN.exec(usfm);
-  if (!match) {
-    return false;
-  }
-
-  const chapter = Number(match[2]);
-  if (!Number.isInteger(chapter) || chapter <= 0) {
-    return false;
-  }
-
-  if (match[3] !== undefined) {
-    const verse = Number(match[3]);
-    if (!Number.isInteger(verse) || verse <= 0) {
-      return false;
-    }
-  }
-
-  if (match[4] !== undefined) {
-    const verseEnd = Number(match[4]);
-    if (!Number.isInteger(verseEnd) || verseEnd <= 0) {
-      return false;
-    }
-  }
-
-  return true;
+  return parseUsfmReference(usfm) !== null;
 }
 
 /** Normalizes caller language ranges for search endpoints (`en_US` → `en-US`). */
