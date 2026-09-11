@@ -45,20 +45,6 @@ describe('useLanguage', () => {
       expect.soft(result.current.language).toEqual(mockLanguage);
     });
 
-    it('fetches via getLanguage when the provider has no languagesClient override', async () => {
-      const spy = vi.spyOn(core, 'getLanguage').mockResolvedValue(mockLanguage);
-      const bare = createYVWrapper('test-app-key');
-      const { result } = renderHook(() => useLanguage('en'), { wrapper: bare });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect(spy).toHaveBeenCalled();
-      expect(result.current.language).toEqual(mockLanguage);
-      spy.mockRestore();
-    });
-
     it('should refetch when languageId changes', async () => {
       const { result, rerender } = renderHook(({ languageId }) => useLanguage(languageId), {
         wrapper,
@@ -123,5 +109,19 @@ describe('useLanguage', () => {
         expect(mockGetLanguage).toHaveBeenCalledTimes(2);
       });
     });
+  });
+
+  it('fetches via getLanguage when the provider has no languagesClient override', async () => {
+    const spy = vi.spyOn(core, 'getLanguage').mockResolvedValue(mockLanguage);
+    const bare = createYVWrapper('test-app-key');
+    const { result } = renderHook(() => useLanguage('en'), { wrapper: bare });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(spy).toHaveBeenCalledWith(expect.any(core.ApiClient), 'en');
+    expect(result.current.language).toEqual(mockLanguage);
+    spy.mockRestore();
   });
 });

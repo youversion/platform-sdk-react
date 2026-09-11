@@ -36,20 +36,6 @@ describe('useChapter', () => {
       expect.soft(result.current.chapter).toEqual(mockChapter);
     });
 
-    it('fetches via getChapter when the provider has no bibleClient override', async () => {
-      const spy = vi.spyOn(core, 'getChapter').mockResolvedValue(mockChapter);
-      const bare = createYVWrapper('test-app-key');
-      const { result } = renderHook(() => useChapter(111, 'MAT', 1), { wrapper: bare });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect(spy).toHaveBeenCalled();
-      expect(result.current.chapter).toEqual(mockChapter);
-      spy.mockRestore();
-    });
-
     it.each([
       {
         param: 'versionId',
@@ -173,6 +159,20 @@ describe('useChapter', () => {
         expect(mockGetChapter).toHaveBeenCalledTimes(2);
       });
     });
+  });
+
+  it('fetches via getChapter when the provider has no bibleClient override', async () => {
+    const spy = vi.spyOn(core, 'getChapter').mockResolvedValue(mockChapter);
+    const bare = createYVWrapper('test-app-key');
+    const { result } = renderHook(() => useChapter(111, 'MAT', 1), { wrapper: bare });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(spy).toHaveBeenCalledWith(expect.any(core.ApiClient), 111, 'MAT', 1);
+    expect(result.current.chapter).toEqual(mockChapter);
+    spy.mockRestore();
   });
 
   it('should serve the cached chapter instantly on revisit and revalidate in background', async () => {

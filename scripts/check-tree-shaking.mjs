@@ -165,6 +165,7 @@ export {
       absent: [
         'A redirect URL is required to start sign-in for highlights.',
         'YouVersion context is required to start a data exchange.',
+        'youversion-platform:granted-permissions',
       ],
     },
     controls: [
@@ -174,6 +175,7 @@ export {
         present: [
           'A redirect URL is required to start sign-in for highlights.',
           'YouVersion context is required to start a data exchange.',
+          'youversion-platform:granted-permissions',
         ],
       },
     ],

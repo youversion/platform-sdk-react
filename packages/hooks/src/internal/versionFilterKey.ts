@@ -4,10 +4,11 @@ import { getVersionFilterSnapshot } from '@youversion/platform-core';
  * @internal
  * Converts the active Bible version filter to stable text.
  *
- * `YouVersionProvider` writes those lists onto
- * `YouVersionPlatformConfiguration` during render, before children read this
- * value. Readers use `getVersionFilterSnapshot` so unused auth storage stays
- * off the `useChapter` graph.
+ * `YouVersionProvider` writes its `permittedVersionIds`, `excludedVersionIds`,
+ * and `permittedLanguageTags` props onto `YouVersionPlatformConfiguration`
+ * during render, before children read this value. Readers use
+ * `getVersionFilterSnapshot` so unused auth storage stays off the `useChapter`
+ * graph.
  *
  * The ids and tags are sorted before serialization, so two lists with the same
  * entries produce the same text. An unset list serializes as `null`, which keeps
