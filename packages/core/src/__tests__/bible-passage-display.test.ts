@@ -52,7 +52,6 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('passage display model',
     });
 
     expect(BiblePassageDisplaySchema.safeParse(display).success).toBe(true);
-    expect(display.html).toBe(display.passage.content);
     expect(display.html).toContain('data-yv-transformed');
     expect(display.version).toEqual(mockDisplayVersion);
     expect(display.attribution).toEqual({
@@ -168,6 +167,25 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('passage display model',
     });
   });
 
+  it('rejects malformed passage content before transforming it', async () => {
+    setupDisplayTest();
+    server.use(
+      http.get(`https://${apiHost}/v1/bibles/:id/passages/:passageId`, () =>
+        HttpResponse.json({
+          ...mockNIVGen1Verse1PassageHTML,
+          content: null,
+        }),
+      ),
+    );
+
+    await expect(
+      createBibleClient().getPassageDisplay({
+        versionId: 111,
+        passageId: 'GEN.1.1',
+      }),
+    ).rejects.toThrow('"expected": "string"');
+  });
+
   it('starts passage and version requests concurrently when no language filter is active', async () => {
     setupDisplayTest();
     let requestCount = 0;
@@ -272,5 +290,10 @@ describe('getBibleStylesheets', () => {
         href: 'https://api-staging.youversion.com/v1/fonts/1/stylesheet?app_key=key%20%2B%2Freserved',
       },
     ]);
+  });
+
+  it('rejects missing app keys instead of returning an unusable font resource', () => {
+    expect(() => getBibleStylesheets({ appKey: '' })).toThrow('A non-empty app key is required');
+    expect(() => getBibleStylesheets({ appKey: '   ' })).toThrow('A non-empty app key is required');
   });
 });

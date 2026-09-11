@@ -28,7 +28,6 @@ type PassageStylesheet = Readonly<{
 }>;
 
 type BiblePassageDisplay = Readonly<{
-  passage: BiblePassage;
   version: BibleVersion;
   html: string;
   attribution: {

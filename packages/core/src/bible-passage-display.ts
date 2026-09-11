@@ -3,13 +3,11 @@ import { getVersion } from './bible-chapter';
 import { getBibleStylesheets } from './bible-display-resources';
 import { getPassageForValidatedVersion } from './bible-passage';
 import {
-  BiblePassageDisplaySchema,
   GetPassageDisplayOptionsSchema,
   type BiblePassageDisplay,
   type GetPassageDisplayOptions,
   type PassageAttribution,
 } from './schemas/passage-display';
-import { BiblePassageSchema } from './schemas/passage';
 import { BibleVersionSchema } from './schemas/version';
 import type { BibleVersion } from './types';
 import {
@@ -83,18 +81,15 @@ export async function getPassageDisplay(
   input: GetPassageDisplayOptions,
 ): Promise<BiblePassageDisplay> {
   const options = GetPassageDisplayOptionsSchema.parse(input);
+  const stylesheets = getBibleStylesheets(client.config);
 
   const resources = await fetchDisplayResources(client, options);
-  const passage = BiblePassageSchema.parse(resources.passage);
   const version = BibleVersionSchema.parse(resources.version);
-  const display = {
-    passage,
+  return {
     version,
-    html: passage.content,
+    html: resources.passage.content,
     attribution: getPassageAttribution(version),
-    stylesheets: getBibleStylesheets(client.config),
+    stylesheets,
     containerAttributes: BIBLE_CONTAINER_ATTRIBUTES,
   };
-
-  return BiblePassageDisplaySchema.parse(display);
 }

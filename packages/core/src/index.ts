@@ -22,12 +22,6 @@ export {
   MissingPassageAttributionError,
   getPassageDisplay,
 } from './bible-passage-display';
-export type {
-  BiblePassageDisplay,
-  GetPassageDisplayOptions,
-  PassageAttribution,
-  PassageStylesheet,
-} from './schemas/passage-display';
 export { LanguagesClient } from './languages';
 export { getLanguage } from './languages-language';
 export { getLanguages, type GetLanguagesOptions } from './languages-list';

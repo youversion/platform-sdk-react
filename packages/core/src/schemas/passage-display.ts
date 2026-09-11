@@ -1,5 +1,4 @@
 import * as z from 'zod/mini';
-import { BiblePassageSchema, type BiblePassage } from './passage';
 import { BibleVersionIdSchema, BibleVersionSchema, type BibleVersion } from './version';
 
 export const GetPassageDisplayOptionsSchema = z.object({
@@ -26,7 +25,6 @@ const BiblePassageContainerAttributesSchema = z.object({
 });
 
 export const BiblePassageDisplaySchema = z.object({
-  passage: BiblePassageSchema,
   version: BibleVersionSchema,
   html: z.string(),
   attribution: PassageAttributionSchema,
@@ -40,9 +38,8 @@ export type PassageStylesheet = Readonly<z.infer<typeof PassageStylesheetSchema>
 export type BiblePassageDisplay = Readonly<
   Omit<
     z.infer<typeof BiblePassageDisplaySchema>,
-    'passage' | 'version' | 'attribution' | 'stylesheets' | 'containerAttributes'
+    'version' | 'attribution' | 'stylesheets' | 'containerAttributes'
   > & {
-    passage: BiblePassage;
     version: BibleVersion;
     attribution: PassageAttribution;
     stylesheets: readonly PassageStylesheet[];

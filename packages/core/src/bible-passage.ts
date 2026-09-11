@@ -2,6 +2,7 @@ import * as z from 'zod/mini';
 import type { ApiClient } from './client';
 import { transformBibleHtml, type TransformBibleHtmlOptions } from './bible-html-transformer';
 import { assertUsableVersion, parseBibleVersionId } from './bible-chapter';
+import { BiblePassageSchema } from './schemas/passage';
 import type { BiblePassage } from './types';
 
 type PassageQuery = {
@@ -98,10 +99,8 @@ async function fetchPassage(
   params: PassageQuery,
   transform?: boolean,
 ): Promise<BiblePassage> {
-  const passage = await client.get<BiblePassage>(
-    `/v1/bibles/${versionId}/passages/${usfm}`,
-    params,
-  );
+  const response = await client.get<unknown>(`/v1/bibles/${versionId}/passages/${usfm}`, params);
+  const passage = BiblePassageSchema.parse(response);
 
   if (params.format === 'html' && transform !== false) {
     const adapters = await getHtmlAdapters();

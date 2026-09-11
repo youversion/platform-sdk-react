@@ -14,6 +14,10 @@ export const UNTITLED_SERIF_FONT_ID = 1;
 export function getBibleStylesheets(
   config: Pick<ApiConfig, 'appKey' | 'apiHost'>,
 ): readonly PassageStylesheet[] {
+  if (!config.appKey.trim()) {
+    throw new Error('A non-empty app key is required to build Bible stylesheet resources.');
+  }
+
   const apiHost = config.apiHost || 'api.youversion.com';
   return [
     {
