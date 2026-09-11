@@ -139,6 +139,26 @@ describe('BibleReaderSearch', () => {
     expect(screen.getByRole('option', { name: 'hope' })).toBeInTheDocument();
   });
 
+  it('uses a text input and one custom clear control when the query is non-empty', () => {
+    renderSearch(
+      searchOf(
+        {
+          kind: 'suggesting',
+          queries: [{ text: 'love of God' }],
+          loading: false,
+          debouncing: false,
+        },
+        'love',
+      ),
+    );
+
+    expect(screen.getByRole('textbox', { name: 'Search the Bible' })).toHaveAttribute(
+      'type',
+      'text',
+    );
+    expect(screen.getAllByRole('button', { name: 'Clear search' })).toHaveLength(1);
+  });
+
   it('lists suggestions as options', () => {
     renderSearch(
       searchOf(

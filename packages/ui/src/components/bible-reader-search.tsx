@@ -104,7 +104,7 @@ function SearchPanel({ onClose }: { onClose: () => void }): ReactElement {
           <SearchIcon className="yv:size-5 yv:text-muted-foreground" />
         </InputGroupAddon>
         <InputGroupInput
-          type="search"
+          type="text"
           value={search.query}
           maxLength={SEARCH_INPUT_MAX_LENGTH}
           autoFocus
