@@ -93,13 +93,13 @@ decision. YPE-5356 owns whether and how to implement that coordination.
 
 ## Custom-property contract
 
-YPE-5400 audited authored UI CSS and TSX class inputs, the embedded core reader
-CSS, Tailwind and `tw-animate-css` inputs, and the resulting
+YPE-5400 audited authored UI CSS and TSX class inputs, the embedded core theme
+and Bible reader CSS, Tailwind and `tw-animate-css` inputs, and the resulting
 `packages/ui/dist/tailwind.css`. After removing an accidental `--radius`
-reference introduced by a test-only Tailwind class, the compiled stylesheet has
-201 declared or initialized names and 151 referenced names. The declarations
-are 137 SDK-owned `--yv-*` names, 63 generated `--tw-*` names, and the local
-`--spacing` compatibility alias.
+reference introduced by a test-only Tailwind class, the compiled stylesheet at
+the completion of YPE-5400 contained 201 declared or initialized names and 151
+referenced names. The declarations comprised 137 SDK-owned `--yv-*` names, 63
+generated `--tw-*` names, and the local `--spacing` compatibility alias.
 
 | Name or namespace | Classification and ownership |
 | --- | --- |
@@ -116,7 +116,7 @@ reference-only exceptions:
 
 | Property | Supplier and rationale |
 | --- | --- |
-| `--yv-reader-max-width` | `BibleCard` supplies it inline when configured; the embedded reader CSS otherwise falls back to `65ch`. |
+| `--yv-reader-max-width` | `BibleCard` always supplies `none` inline so scripture fills its card content; other uses of the embedded or published reader CSS fall back to `65ch` when the property is unset. |
 | `--radix-accordion-content-height` | Radix Accordion supplies its measured content height inline. |
 | `--radix-popover-content-available-height` | Radix Popover supplies the available height inline. |
 | `--radix-popover-content-available-width` | Radix Popover supplies the available width inline. |

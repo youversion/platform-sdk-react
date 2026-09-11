@@ -42,9 +42,13 @@ describe('auditCustomProperties', () => {
     const audit = auditCustomProperties(`
       .reader { max-width: var(--yv-reader-max-width, 65ch); }
       .popover { width: var(--radix-popover-content-available-width); }
+      .near-match { width: var(--radix-popover-content-available-width-extra); }
       .unknown { border-radius: var(--radius); }
     `);
 
-    expect(audit.unexplainedReferences).toEqual(['--radius']);
+    expect(audit.unexplainedReferences).toEqual([
+      '--radius',
+      '--radix-popover-content-available-width-extra',
+    ]);
   });
 });
