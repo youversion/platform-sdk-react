@@ -1,9 +1,10 @@
 'use client';
 
-import type { PropsWithChildren, ReactNode } from 'react';
+import type { LazyExoticComponent, PropsWithChildren, ReactNode } from 'react';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { QueryClient } from '@tanstack/react-query';
 import { YouVersionContext } from './YouVersionContext';
+import type YouVersionAuthProvider from './YouVersionAuthProvider';
 import { serializeAdditionalHeaders } from '../internal/additionalHeadersKey';
 import { InternalQueryClientProvider } from '../internal/QueryClientContext';
 import { queryClientDefaultOptions } from '../internal/queryClientDefaults';
@@ -19,12 +20,16 @@ interface YouVersionProviderPropsBase {
   theme?: 'light' | 'dark' | 'system';
   /**
    * Integrator display name for the sign-in dialog body copy. Synced onto
-   * `YouVersionPlatformConfiguration.appName`.
+   * `YouVersionPlatformConfiguration.appName`. The UI package also mirrors this
+   * onto its bundled core copy (tsup `noExternal`), so pass it via
+   * `YouVersionProvider` props — do not set the config from a separate
+   * `@youversion/platform-core` import when consuming `@youversion/platform-react-ui`.
    */
   appName?: string;
   /**
    * Optional pitch line for the sign-in dialog. Synced onto
-   * `YouVersionPlatformConfiguration.signInPromptMessage`.
+   * `YouVersionPlatformConfiguration.signInPromptMessage` (and mirrored by the
+   * UI provider onto its bundled core copy — same dual-instance caveat as `appName`).
    */
   signInPromptMessage?: string;
   /**
@@ -68,10 +73,12 @@ interface YouVersionProviderPropsWithoutAuth extends YouVersionProviderPropsBase
   authRedirectUrl?: never;
 }
 
-// Keep the lazy component at module scope. React may discard useMemo caches
-// when a component suspends during its initial mount; recreating this lazy
-// wrapper inside the provider can therefore leave the tree suspended forever.
-const AuthProvider = lazy(() => import('./YouVersionAuthProvider'));
+let authProvider: LazyExoticComponent<typeof YouVersionAuthProvider> | undefined;
+
+function getAuthProvider(): LazyExoticComponent<typeof YouVersionAuthProvider> {
+  authProvider ??= lazy(() => import('./YouVersionAuthProvider'));
+  return authProvider;
+}
 
 function useResolvedTheme(theme: 'light' | 'dark' | 'system'): 'light' | 'dark' {
   const [resolved, setResolved] = useState<'light' | 'dark'>(() => {
@@ -195,6 +202,7 @@ function YouVersionProviderInner(
   };
 
   if (includeAuth) {
+    const AuthProvider = getAuthProvider();
     return (
       <YouVersionContext.Provider value={contextValue}>
         <InternalQueryClientProvider client={queryClient}>

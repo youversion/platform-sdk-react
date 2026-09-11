@@ -6,8 +6,7 @@ export default defineConfig({
   dts: false,
   treeshake: true,
   external: ['jsdom'],
-  // Whitespace only. Keep identifiers so a future stamp in this graph
-  // still matches `scripts/check-sdk-version-stamp.mjs`.
+  // Apply whitespace-only minification; preserve syntax and identifiers.
   esbuildOptions(options) {
     options.minifyWhitespace = true;
     options.minifySyntax = false;
