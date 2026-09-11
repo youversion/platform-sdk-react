@@ -1,5 +1,5 @@
 import type { ApiClient } from './client';
-import { getVersion, parseBibleVersionId } from './bible-chapter';
+import { getVersion } from './bible-chapter';
 import { getBibleStylesheets } from './bible-display-resources';
 import { getPassageForValidatedVersion } from './bible-passage';
 import {
@@ -83,7 +83,6 @@ export async function getPassageDisplay(
   input: GetPassageDisplayOptions,
 ): Promise<BiblePassageDisplay> {
   const options = GetPassageDisplayOptionsSchema.parse(input);
-  parseBibleVersionId(options.versionId);
 
   const resources = await fetchDisplayResources(client, options);
   const passage = BiblePassageSchema.parse(resources.passage);

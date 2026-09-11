@@ -111,7 +111,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('passage display model',
       }),
     );
     const client = createBibleClient();
-    const options = { versionId: 111, passageId: 'GEN.1.1' } as const;
+    const options = { versionId: 111, passageId: 'GEN.1.1' };
 
     const first = await client.getPassageDisplay(options);
     const second = await client.getPassageDisplay(options);
@@ -256,7 +256,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('passage display model',
   });
 });
 
-describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('getBibleStylesheets', () => {
+describe('getBibleStylesheets', () => {
   it('returns stable assets and respects a custom API host', () => {
     expect(
       getBibleStylesheets({ appKey: 'key +/reserved', apiHost: 'api-staging.youversion.com' }),
