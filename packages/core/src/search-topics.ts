@@ -1,7 +1,6 @@
-import * as z from 'zod/mini';
 import type { ApiClient } from './client';
 import {
-  parseSearchLanguageRange,
+  parseLanguageRanges,
   SearchTextQuerySchema,
   SearchTopicsWireSchema,
   toSearchTopicsResponse,
@@ -14,11 +13,7 @@ export async function searchTopics(
   languageRanges: string | string[],
 ): Promise<SearchTopicsResponse> {
   const parsedQuery = SearchTextQuerySchema.parse(query);
-  const rangeArray = Array.isArray(languageRanges) ? languageRanges : [languageRanges];
-  z.array(z.string())
-    .check(z.minLength(1, 'At least one language range is required'))
-    .parse(rangeArray);
-  const parsedLanguageRanges = rangeArray.map(parseSearchLanguageRange);
+  const parsedLanguageRanges = parseLanguageRanges(languageRanges);
 
   const response = await client.get<unknown>('/v1/search-topics', {
     query: parsedQuery,

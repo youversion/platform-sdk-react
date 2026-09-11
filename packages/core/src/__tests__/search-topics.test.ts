@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { ApiClient } from '../client';
 import { SearchClient } from '../search';
@@ -12,20 +12,18 @@ function urlFromFetchInput(input: RequestInfo | URL | undefined): string {
   return input ?? '';
 }
 
-describe('SearchClient.searchTopics', () => {
-  let apiClient: ApiClient;
-  let searchClient: SearchClient;
-
-  beforeEach(() => {
-    apiClient = new ApiClient({
-      apiHost,
-      appKey: 'test-app',
-      installationId: 'test-installation',
-    });
-    searchClient = new SearchClient(apiClient);
+function createSearchClient(): SearchClient {
+  const apiClient = new ApiClient({
+    apiHost,
+    appKey: 'test-app',
+    installationId: 'test-installation',
   });
+  return new SearchClient(apiClient);
+}
 
+describe('SearchClient.searchTopics', () => {
   it('requests GET /v1/search-topics with ordered language_ranges[] and no pagination params', async () => {
+    const searchClient = createSearchClient();
     const fetchSpy = vi.spyOn(global, 'fetch');
 
     server.use(
@@ -66,6 +64,8 @@ describe('SearchClient.searchTopics', () => {
   });
 
   it('returns totalSize zero for an empty topics collection', async () => {
+    const searchClient = createSearchClient();
+
     server.use(
       http.get(`https://${apiHost}/v1/search-topics`, () =>
         HttpResponse.json({
@@ -83,6 +83,8 @@ describe('SearchClient.searchTopics', () => {
   });
 
   it('normalizes en_US to en-US on the wire', async () => {
+    const searchClient = createSearchClient();
+
     server.use(
       http.get(`https://${apiHost}/v1/search-topics`, ({ request }) => {
         const url = new URL(request.url);
@@ -100,6 +102,7 @@ describe('SearchClient.searchTopics', () => {
   });
 
   it('rejects invalid query and language ranges before networking', async () => {
+    const searchClient = createSearchClient();
     const fetchSpy = vi.spyOn(global, 'fetch');
 
     await expect(searchClient.searchTopics('', ['en'])).rejects.toThrow(

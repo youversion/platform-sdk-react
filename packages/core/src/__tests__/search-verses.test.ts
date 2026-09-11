@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { ApiClient } from '../client';
 import { SearchClient } from '../search';
@@ -11,6 +11,15 @@ function urlFromFetchInput(input: RequestInfo | URL | undefined): string {
   if (input instanceof Request) return input.url;
   if (input instanceof URL) return input.href;
   return input ?? '';
+}
+
+function createSearchClient(): SearchClient {
+  const apiClient = new ApiClient({
+    apiHost,
+    appKey: 'test-app',
+    installationId: 'test-installation',
+  });
+  return new SearchClient(apiClient);
 }
 
 describe('isValidStructuralUsfmReference', () => {
@@ -29,19 +38,9 @@ describe('isValidStructuralUsfmReference', () => {
 });
 
 describe('SearchClient.searchVerses', () => {
-  let apiClient: ApiClient;
-  let searchClient: SearchClient;
-
-  beforeEach(() => {
-    apiClient = new ApiClient({
-      apiHost,
-      appKey: 'test-app',
-      installationId: 'test-installation',
-    });
-    searchClient = new SearchClient(apiClient);
-  });
-
   it('maps wire reference to SDK id and metadata fields', async () => {
+    const searchClient = createSearchClient();
+
     server.use(
       http.get(`https://${apiHost}/v1/search-verses`, ({ request }) => {
         const url = new URL(request.url);
@@ -70,6 +69,7 @@ describe('SearchClient.searchVerses', () => {
   });
 
   it('includes user_intent only when the caller supplies it', async () => {
+    const searchClient = createSearchClient();
     const fetchSpy = vi.spyOn(global, 'fetch');
 
     server.use(
@@ -92,6 +92,7 @@ describe('SearchClient.searchVerses', () => {
   });
 
   it('serializes pagination params and omits user_intent when unset', async () => {
+    const searchClient = createSearchClient();
     const fetchSpy = vi.spyOn(global, 'fetch');
 
     server.use(
@@ -115,6 +116,8 @@ describe('SearchClient.searchVerses', () => {
   });
 
   it('decodes unknown future user_intent values', async () => {
+    const searchClient = createSearchClient();
+
     server.use(
       http.get(`https://${apiHost}/v1/search-verses`, () =>
         HttpResponse.json({
@@ -132,6 +135,7 @@ describe('SearchClient.searchVerses', () => {
   });
 
   it('rejects invalid queries and version IDs before networking', async () => {
+    const searchClient = createSearchClient();
     const fetchSpy = vi.spyOn(global, 'fetch');
 
     await expect(searchClient.searchVerses('', 111)).rejects.toThrow(

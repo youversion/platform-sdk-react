@@ -1,7 +1,6 @@
-import * as z from 'zod/mini';
 import type { ApiClient } from './client';
 import {
-  parseSearchLanguageRange,
+  parseLanguageRanges,
   SearchQueriesSchema,
   SearchQueriesWireSchema,
   SuggestedSearchQuerySchema,
@@ -10,15 +9,9 @@ import {
   type SearchQueriesWire,
 } from './schemas/search';
 
-function parseLanguageRanges(languageRanges: string | string[]): string[] {
-  const rangeArray = Array.isArray(languageRanges) ? languageRanges : [languageRanges];
-  z.array(z.string())
-    .check(z.minLength(1, 'At least one language range is required'))
-    .parse(rangeArray);
-  return rangeArray.map(parseSearchLanguageRange);
-}
-
-function parseSearchQueriesResponse(response: SearchQueriesWire | '' | null | undefined): SearchQueries {
+function parseSearchQueriesResponse(
+  response: SearchQueriesWire | '' | null | undefined,
+): SearchQueries {
   if (response === '' || response == null) {
     return { queries: [] };
   }

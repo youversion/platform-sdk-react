@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { ApiClient } from '../client';
 import { SearchClient } from '../search';
@@ -12,21 +12,20 @@ function urlFromFetchInput(input: RequestInfo | URL | undefined): string {
   return input ?? '';
 }
 
-describe('SearchClient query endpoints', () => {
-  let apiClient: ApiClient;
-  let searchClient: SearchClient;
-
-  beforeEach(() => {
-    apiClient = new ApiClient({
-      apiHost,
-      appKey: 'test-app',
-      installationId: 'test-installation',
-    });
-    searchClient = new SearchClient(apiClient);
+function createSearchClient(): SearchClient {
+  const apiClient = new ApiClient({
+    apiHost,
+    appKey: 'test-app',
+    installationId: 'test-installation',
   });
+  return new SearchClient(apiClient);
+}
 
+describe('SearchClient query endpoints', () => {
   describe('getSuggestedQueries', () => {
     it('requests GET /v1/search-queries with query and ordered language_ranges[]', async () => {
+      const searchClient = createSearchClient();
+
       server.use(
         http.get(`https://${apiHost}/v1/search-queries`, ({ request }) => {
           const url = new URL(request.url);
@@ -47,9 +46,12 @@ describe('SearchClient query endpoints', () => {
     });
 
     it('returns { queries: [] } for 204 No Content', async () => {
+      const searchClient = createSearchClient();
+
       server.use(
-        http.get(`https://${apiHost}/v1/search-queries`, () =>
-          new HttpResponse(null, { status: 204 }),
+        http.get(
+          `https://${apiHost}/v1/search-queries`,
+          () => new HttpResponse(null, { status: 204 }),
         ),
       );
 
@@ -58,6 +60,7 @@ describe('SearchClient query endpoints', () => {
     });
 
     it('rejects an empty suggestion query before networking', async () => {
+      const searchClient = createSearchClient();
       const fetchSpy = vi.spyOn(global, 'fetch');
       await expect(searchClient.getSuggestedQueries('   ', ['en'])).rejects.toThrow(
         'Query must be a non-empty string',
@@ -67,6 +70,7 @@ describe('SearchClient query endpoints', () => {
     });
 
     it('normalizes en_US language ranges to en-US on the wire', async () => {
+      const searchClient = createSearchClient();
       const fetchSpy = vi.spyOn(global, 'fetch');
 
       server.use(
@@ -88,6 +92,8 @@ describe('SearchClient query endpoints', () => {
 
   describe('getTrendingQueries', () => {
     it('requests trending=true without query', async () => {
+      const searchClient = createSearchClient();
+
       server.use(
         http.get(`https://${apiHost}/v1/search-queries`, ({ request }) => {
           const url = new URL(request.url);
@@ -105,10 +111,10 @@ describe('SearchClient query endpoints', () => {
     });
 
     it('returns { queries: [] } for an empty data collection', async () => {
+      const searchClient = createSearchClient();
+
       server.use(
-        http.get(`https://${apiHost}/v1/search-queries`, () =>
-          HttpResponse.json({ data: [] }),
-        ),
+        http.get(`https://${apiHost}/v1/search-queries`, () => HttpResponse.json({ data: [] })),
       );
 
       const result = await searchClient.getTrendingQueries('*');
@@ -116,6 +122,7 @@ describe('SearchClient query endpoints', () => {
     });
 
     it('rejects missing language ranges before networking', async () => {
+      const searchClient = createSearchClient();
       const fetchSpy = vi.spyOn(global, 'fetch');
       await expect(searchClient.getTrendingQueries([])).rejects.toThrow(
         'At least one language range is required',

@@ -63,6 +63,15 @@ export function parseSearchLanguageRange(range: string): string {
   return normalized;
 }
 
+/** Validates and normalizes one or more search language ranges. */
+export function parseLanguageRanges(languageRanges: string | string[]): string[] {
+  const rangeArray = Array.isArray(languageRanges) ? languageRanges : [languageRanges];
+  z.array(z.string())
+    .check(z.minLength(1, 'At least one language range is required'))
+    .parse(rangeArray);
+  return rangeArray.map(parseSearchLanguageRange);
+}
+
 export const SearchQuerySchema = z.object({
   /** Suggested or trending query text */
   text: z.string(),
