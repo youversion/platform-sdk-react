@@ -118,6 +118,15 @@ function defaultOverrides(): HookOverrides {
     }),
     useFilteredVersions: () => [],
     useOrganizations: () => ({ organizations: new Map() }),
+    useBibleSearch: () => ({
+      query: '',
+      phase: { kind: 'trending', queries: [], loading: false },
+      setQuery: () => undefined,
+      submit: () => undefined,
+      selectSuggestion: () => undefined,
+      loadMore: () => undefined,
+      retry: () => undefined,
+    }),
   };
 }
 

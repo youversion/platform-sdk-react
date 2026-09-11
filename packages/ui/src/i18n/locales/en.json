@@ -83,5 +83,15 @@
   "signOutPendingHighlightsConfirm": "Sign out anyway",
   "youVersionPlatformLogoAriaLabel": "YouVersion Platform",
   "signInAppNameFallback": "This app",
-  "untitledSerifFontName": "Untitled Serif"
+  "untitledSerifFontName": "Untitled Serif",
+  "bibleSearchAriaLabel": "Search the Bible",
+  "bibleSearchDialogTitle": "Search",
+  "bibleSearchPlaceholder": "Search verses",
+  "bibleSearchClearAriaLabel": "Clear search",
+  "bibleSearchTrendingHeading": "Trending",
+  "bibleSearchSuggestionsHeading": "Suggestions",
+  "bibleSearchNoVerseResults": "No verses matched this search.",
+  "bibleSearchFailure": "We couldn't complete this search. Try again.",
+  "bibleSearchRetry": "Try again",
+  "bibleSearchLoadMore": "Load more"
 }

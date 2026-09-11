@@ -197,6 +197,27 @@ export const globalHandlers = [
       passage_id: 'ISA.43.19',
     });
   }),
+
+  http.get('*/v1/search-queries', ({ request }) => {
+    const url = new URL(request.url);
+    if (url.searchParams.get('trending') === 'true') {
+      return HttpResponse.json({
+        data: [{ text: 'love' }, { text: 'hope' }],
+      });
+    }
+    return HttpResponse.json({
+      data: [{ text: 'love of God' }],
+    });
+  }),
+
+  http.get('*/v1/search-verses', () => {
+    return HttpResponse.json({
+      verses: [{ reference: 'JHN.3.16' }],
+      did_you_mean: [],
+      search_instead_for: null,
+      next_page_token: null,
+    });
+  }),
 ];
 
 export default globalHandlers;
