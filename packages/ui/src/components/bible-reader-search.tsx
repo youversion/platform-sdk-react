@@ -105,6 +105,7 @@ function SearchPanel({ onClose }: { onClose: () => void }): ReactElement {
         </InputGroupAddon>
         <InputGroupInput
           type="text"
+          enterKeyHint="search"
           value={search.query}
           maxLength={SEARCH_INPUT_MAX_LENGTH}
           autoFocus
