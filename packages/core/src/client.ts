@@ -54,7 +54,7 @@ export class ApiClient {
       throw new Error('ApiClient requires a host name. Provide an apiHost in the config.');
     }
     this.baseURL = 'https://' + apiHost;
-    this.timeout = config.timeout || 10000;
+    this.timeout = config.timeout || 60000;
     this.defaultHeaders = {
       'Content-Type': 'application/json',
       'X-YVP-App-Key': this.config.appKey,
