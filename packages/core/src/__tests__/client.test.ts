@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll, vi } from 'vitest';
 import { ApiClient, getHttpStatus } from '../client';
 import { http, HttpResponse } from 'msw';
 import { server } from './setup';
@@ -225,6 +225,79 @@ describe('ApiClient', () => {
       await client.get('/test');
 
       expect(receivedSdk).toBe('ReactNativeSDK=1.2.3');
+    });
+  });
+
+  describe('timeout', () => {
+    function stubNeverResolvingFetch() {
+      let signal: AbortSignal | undefined;
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((_url: string | URL | Request, init?: RequestInit) => {
+          signal = init?.signal ?? undefined;
+          return new Promise<Response>((_resolve, reject) => {
+            signal?.addEventListener('abort', () => {
+              reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+            });
+          });
+        }),
+      );
+
+      return {
+        get signal() {
+          return signal;
+        },
+      };
+    }
+
+    it('should wait 60 seconds before timing out by default', async () => {
+      vi.useFakeTimers();
+      try {
+        const fetchProbe = stubNeverResolvingFetch();
+        const client = new ApiClient({
+          apiHost: 'test_placeholder.youversion.com',
+          appKey: 'test-app',
+          installationId: 'test-installation',
+        });
+
+        const request = client.get('/slow');
+        const rejection = expect(request).rejects.toThrow('Request timeout after 60000ms');
+
+        await vi.advanceTimersByTimeAsync(59_999);
+        expect(fetchProbe.signal?.aborted).toBe(false);
+
+        await vi.advanceTimersByTimeAsync(1);
+        await rejection;
+      } finally {
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it('should honor caller-provided timeout overrides', async () => {
+      vi.useFakeTimers();
+      try {
+        const fetchProbe = stubNeverResolvingFetch();
+        const client = new ApiClient({
+          apiHost: 'test_placeholder.youversion.com',
+          appKey: 'test-app',
+          installationId: 'test-installation',
+          timeout: 1234,
+        });
+
+        const request = client.get('/slow');
+        const rejection = expect(request).rejects.toThrow('Request timeout after 1234ms');
+
+        await vi.advanceTimersByTimeAsync(1233);
+        expect(fetchProbe.signal?.aborted).toBe(false);
+
+        await vi.advanceTimersByTimeAsync(1);
+        await rejection;
+      } finally {
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
+      }
     });
   });
 
