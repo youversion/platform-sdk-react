@@ -61,7 +61,7 @@ export function BibleReaderSearch({
       <Button
         size="sm"
         variant="secondary"
-        aria-label={t('bibleSearchAriaLabel')}
+        aria-label={t('bibleSearchAriaLabel', 'Search the Bible')}
         onClick={() => setOpen(true)}
       >
         <SearchIcon className="yv:text-foreground" />
@@ -73,10 +73,10 @@ export function BibleReaderSearch({
             className="yv:flex yv:max-h-[min(36rem,80vh)] yv:w-[calc(100vw-2rem)] yv:max-w-md yv:flex-col yv:gap-4 yv:p-4"
           >
             <DialogTitle className="yv:text-base yv:font-semibold">
-              {t('bibleSearchDialogTitle')}
+              {t('bibleSearchDialogTitle', 'Search')}
             </DialogTitle>
             <DialogDescription className="yv:sr-only">
-              {t('bibleSearchPlaceholder')}
+              {t('bibleSearchPlaceholder', 'Search verses')}
             </DialogDescription>
             <SearchPanel onClose={() => setOpen(false)} />
           </DialogContent>
@@ -109,8 +109,8 @@ function SearchPanel({ onClose }: { onClose: () => void }): ReactElement {
           value={search.query}
           maxLength={SEARCH_INPUT_MAX_LENGTH}
           autoFocus
-          placeholder={t('bibleSearchPlaceholder')}
-          aria-label={t('bibleSearchAriaLabel')}
+          placeholder={t('bibleSearchPlaceholder', 'Search verses')}
+          aria-label={t('bibleSearchAriaLabel', 'Search the Bible')}
           onChange={(event) => search.setQuery(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
@@ -125,7 +125,7 @@ function SearchPanel({ onClose }: { onClose: () => void }): ReactElement {
               size="icon"
               variant="ghost"
               className="yv:size-7"
-              aria-label={t('bibleSearchClearAriaLabel')}
+              aria-label={t('bibleSearchClearAriaLabel', 'Clear search')}
               onClick={() => search.setQuery('')}
             >
               <XIcon className="yv:size-4" />
@@ -164,7 +164,7 @@ function SearchPhaseBody({
     case 'trending':
       return (
         <QueryList
-          heading={t('bibleSearchTrendingHeading')}
+          heading={t('bibleSearchTrendingHeading', 'Trending')}
           items={phase.queries}
           busy={phase.loading}
           onPick={search.selectSuggestion}
@@ -173,7 +173,7 @@ function SearchPhaseBody({
     case 'suggesting':
       return (
         <QueryList
-          heading={t('bibleSearchSuggestionsHeading')}
+          heading={t('bibleSearchSuggestionsHeading', 'Suggestions')}
           items={phase.queries}
           busy={phase.loading}
           onPick={search.selectSuggestion}
@@ -200,14 +200,18 @@ function SearchPhaseBody({
       );
     case 'empty':
       return (
-        <p className="yv:text-sm yv:text-muted-foreground">{t('bibleSearchNoVerseResults')}</p>
+        <p className="yv:text-sm yv:text-muted-foreground">
+          {t('bibleSearchNoVerseResults', 'No verses matched this search.')}
+        </p>
       );
     case 'failed':
       return (
         <div className="yv:flex yv:flex-col yv:gap-2">
-          <p className="yv:text-sm yv:text-muted-foreground">{t('bibleSearchFailure')}</p>
+          <p className="yv:text-sm yv:text-muted-foreground">
+            {t('bibleSearchFailure', "We couldn't complete this search. Try again.")}
+          </p>
           <Button variant="secondary" onClick={search.retry}>
-            {t('bibleSearchRetry')}
+            {t('bibleSearchRetry', 'Try again')}
           </Button>
         </div>
       );
@@ -295,7 +299,7 @@ function VerseResults({
       </ul>
       {nextPage === 'available' ? (
         <Button variant="secondary" onClick={onLoadMore}>
-          {t('bibleSearchLoadMore')}
+          {t('bibleSearchLoadMore', 'Load more')}
         </Button>
       ) : null}
       {nextPage === 'loading' ? (
@@ -305,7 +309,7 @@ function VerseResults({
       ) : null}
       {nextPage === 'failed' ? (
         <Button variant="secondary" onClick={onRetry}>
-          {t('bibleSearchRetry')}
+          {t('bibleSearchRetry', 'Try again')}
         </Button>
       ) : null}
     </div>

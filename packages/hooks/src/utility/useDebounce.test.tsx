@@ -94,8 +94,9 @@ describe('useDebounce', () => {
   });
 
   it('applies null immediately so the next value debounces from empty', () => {
-    const { result, rerender } = renderHook(
-      ({ value }: { value: string | null }) => useDebounce(value, 500),
+    type NullFlushProps = { value: string | null };
+    const { result, rerender } = renderHook<string | null, NullFlushProps>(
+      ({ value }) => useDebounce(value, 500),
       { initialProps: { value: 'love' } },
     );
 
