@@ -104,12 +104,13 @@ the component mount in the shadow root together. A same-origin iframe uses a
 stylesheet constructed for its own `Document`; it never adopts the parent
 document's sheet.
 
-The server and initial browser paint contain no component content. On a slow
-client, the user can see an empty state followed by the component appearing.
-If JavaScript does not run, the component never appears. No placeholder space
-is reserved, so mounting can move nearby content. Cumulative Layout Shift is a
-page-level result that also depends on the consuming app's layout; this
-prototype neither guarantees zero shift nor claims the delay is negligible.
+The server contains no component content. If the browser paints before the
+effect runs, that paint is also empty; on a slow client, the user can see this
+empty state followed by the component appearing. If JavaScript does not run,
+the component never appears. No placeholder space is reserved, so mounting can
+move nearby content. Cumulative Layout Shift is a page-level result that also
+depends on the consuming app's layout; this prototype neither guarantees zero
+shift nor claims the delay is negligible.
 The [YPE-5354 first-paint research](../ype-5354-client-only-first-paint-research.md)
 records the measurement and reservation options for a future rollout decision.
 
