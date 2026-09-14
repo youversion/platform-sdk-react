@@ -8,6 +8,11 @@ export default function ThemedApp() {
   // "Missing app key" message instead of a blank page.
   const appKey = import.meta.env.VITE_YVP_APP_KEY;
   const apiHost = import.meta.env.VITE_YVP_API_HOST ?? 'api.youversion.com';
+  const configuredApiTimeout = Number(import.meta.env.VITE_YVP_API_TIMEOUT_MS);
+  const apiTimeout =
+    Number.isFinite(configuredApiTimeout) && configuredApiTimeout > 0
+      ? configuredApiTimeout
+      : 60000;
   const authRedirectUrl = import.meta.env.VITE_YVP_AUTH_REDIRECT_URL ?? window.location.origin;
   const locale = import.meta.env.VITE_YVP_LOCALE?.trim() || undefined;
 
@@ -15,6 +20,7 @@ export default function ThemedApp() {
     <YouVersionProvider
       theme={theme}
       apiHost={apiHost}
+      timeout={apiTimeout}
       appKey={appKey ?? ''}
       includeAuth
       authRedirectUrl={authRedirectUrl}

@@ -18,6 +18,11 @@ function ContextReader() {
   return <div data-testid="installation-id">{ctx?.installationId ?? 'none'}</div>;
 }
 
+function TimeoutReader() {
+  const ctx = useContext(YouVersionContext);
+  return <div data-testid="timeout">{ctx?.timeout ?? 'none'}</div>;
+}
+
 describe('YouVersionProvider', () => {
   beforeEach(() => {
     YouVersionPlatformConfiguration.installationId = null;
@@ -64,5 +69,15 @@ describe('YouVersionProvider', () => {
 
     expect(screen.getByTestId('filters').textContent).toBe('111,3034');
     expect(YouVersionPlatformConfiguration.permittedVersionIds).toEqual([111, 3034]);
+  });
+
+  it('provides the optional request timeout via context', () => {
+    render(
+      <YouVersionProvider appKey="test" timeout={60_000}>
+        <TimeoutReader />
+      </YouVersionProvider>,
+    );
+
+    expect(screen.getByTestId('timeout').textContent).toBe('60000');
   });
 });

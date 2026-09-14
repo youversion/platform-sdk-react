@@ -16,6 +16,11 @@ interface YouVersionProviderPropsBase {
   children: ReactNode;
   appKey: string;
   apiHost?: string;
+  /**
+   * Optional request timeout, in milliseconds, for API calls made through
+   * hooks created by this provider. Omit to keep the core client's default.
+   */
+  timeout?: number;
   theme?: 'light' | 'dark' | 'system';
   /**
    * Integrator display name for the sign-in dialog body copy. Synced onto
@@ -130,6 +135,7 @@ function YouVersionProviderInner(
   const {
     appKey,
     apiHost = 'api.youversion.com',
+    timeout,
     includeAuth,
     theme = 'light',
     additionalHeaders,
@@ -189,6 +195,7 @@ function YouVersionProviderInner(
   const contextValue = {
     appKey,
     apiHost,
+    timeout,
     installationId: YouVersionPlatformConfiguration.installationId,
     theme: resolvedTheme,
     authEnabled: !!includeAuth,

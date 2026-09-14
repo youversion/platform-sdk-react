@@ -25,6 +25,14 @@ export {
 export { LanguagesClient } from './languages';
 export { getLanguage } from './languages-language';
 export { getLanguages, type GetLanguagesOptions } from './languages-list';
+export { SearchClient, type SearchVersesOptions } from './search';
+export {
+  getSuggestedQueries,
+  getTrendingQueries,
+} from './search-queries';
+export { searchVerses } from './search-verses';
+export { searchTopics } from './search-topics';
+export { isValidStructuralUsfmReference } from './schemas/search';
 export { OrganizationsClient } from './organizations';
 export {
   HighlightsClient,
