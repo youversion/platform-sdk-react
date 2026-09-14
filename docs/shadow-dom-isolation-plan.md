@@ -87,10 +87,58 @@ decision. YPE-5356 owns whether and how to implement that coordination.
   trigger-time peer dismissal as well as overlay order and restore targets;
   ADR 0007 records the gaps but does not select a coordination design.
   Cross-browser and assistive-technology coverage still remain.
-- Complete the package-wide custom-property inventory and prevention guard in
-  YPE-5400. The known `BibleVersionPicker`, `InputGroup`, and `tw-animate-css`
-  dependencies now resolve through locally-defined SDK-owned spacing and radius
-  values, but `all: initial` does not reset unknown custom properties.
+- Keep the YPE-5400 custom-property contract and compiled-stylesheet prevention
+  guard green as component styles change. The audit below closes the known
+  ambient dependency; `all: initial` still does not reset custom properties.
+
+## Custom-property contract
+
+YPE-5400 audited authored UI CSS and TSX class inputs, the embedded core theme
+and Bible reader CSS, Tailwind and `tw-animate-css` inputs, and the resulting
+`packages/ui/dist/tailwind.css`. After removing an accidental `--radius`
+reference introduced by a test-only Tailwind class, the compiled stylesheet at
+the completion of YPE-5400 contained 201 declared or initialized names and 151
+referenced names. The declarations comprised 137 SDK-owned `--yv-*` names, 63
+generated `--tw-*` names, and the local `--spacing` compatibility alias.
+
+| Name or namespace | Classification and ownership |
+| --- | --- |
+| `--yv-*` | SDK-owned properties. The README's documented overrides are supported consumer inputs for light-DOM components under `[data-yv-sdk]`. They are not a public document-level override API for the automatically isolated `YouVersionAuthButton`. |
+| `--tw-*` | Tailwind and `tw-animate-css` implementation state that is declared or initialized in the compiled stylesheet. It is not a supported consumer input. |
+| `--spacing` | SDK-owned local compatibility alias for `--yv-spacing`, used by generated Tailwind utilities. |
+| Authored `--font-*`, `--color-*`, and `--radius-*` theme aliases | Compile-time Tailwind inputs that produce utilities backed by `--yv-*` values. They are not runtime consumer inputs. |
+| Exact `--radix-*` exceptions below | Third-party runtime inputs supplied inline by the corresponding Radix primitive. |
+| Exact cross-framework accordion exceptions below | Optional inputs in `tw-animate-css`'s fallback chain. The chain first checks the Radix value and ultimately falls back to `auto`. |
+| Any other reference-only name | Forbidden ambient dependency until it is locally supplied or added below with a reviewed owner and rationale. |
+
+The compiled guard has no namespace wildcards. These are its exact reviewed
+reference-only exceptions:
+
+| Property | Supplier and rationale |
+| --- | --- |
+| `--yv-reader-max-width` | `BibleCard` always supplies `none` inline so scripture fills its card content; other uses of the embedded or published reader CSS fall back to `65ch` when the property is unset. |
+| `--radix-accordion-content-height` | Radix Accordion supplies its measured content height inline. |
+| `--radix-popover-content-available-height` | Radix Popover supplies the available height inline. |
+| `--radix-popover-content-available-width` | Radix Popover supplies the available width inline. |
+| `--radix-popover-content-transform-origin` | Radix Popover supplies the transform origin inline. |
+| `--bits-accordion-content-height` | Optional `tw-animate-css` cross-framework fallback; the chain ends at `auto`. |
+| `--reka-accordion-content-height` | Optional `tw-animate-css` cross-framework fallback; the chain ends at `auto`. |
+| `--kb-accordion-content-height` | Optional `tw-animate-css` cross-framework fallback; the chain ends at `auto`. |
+| `--ngp-accordion-content-height` | Optional `tw-animate-css` cross-framework fallback; the chain ends at `auto`. |
+
+`scripts/verify-styles.js` parses the real compiled stylesheet and fails the UI
+build when a referenced custom-property name is neither declared/initialized
+there nor present in that exact allowlist. This is deliberately a name-level
+artifact check: a declaration somewhere in the stylesheet does not prove that
+the cascade makes it available to every selector. Focused contract tests and
+component tests preserve that boundary without pretending to perform full
+selector-reachability analysis.
+
+The source audit also found that `VerseActionPopover` assigns the source-only
+names `--tw-animate-duration` and `--tw-animate-easing`, while the installed
+animation CSS consumes differently named properties. Those inert assignments
+are not ambient stylesheet dependencies; their behavior change is tracked
+separately in YPE-5749.
 
 ## Functional and compatibility audits
 
@@ -148,7 +196,7 @@ forms, labels, ARIA relationships, events, refs, queries, and overlays.
 
 ## Rollout sequence
 
-1. Complete YPE-5400's custom-property inventory and prevention guard.
+1. Maintain YPE-5400's completed custom-property inventory and prevention guard.
 2. Resolve SSR/hydration in YPE-5354 and overlay ownership in YPE-5355, then
    reconcile those findings and YPE-5436's consumer contract in YPE-5356.
 3. Select the next public component and add component-specific compatibility,

@@ -93,6 +93,7 @@
     "@vitest/browser-playwright": "4.0.4",
     "@vitest/coverage-v8": "4.0.4",
     "concurrently": "9.2.1",
+    "css-tree": "^3.2.1",
     "dotenv-cli": "7.4.2",
     "jsdom": "27.0.1",
     "markdown-to-jsx": "^9.6.1",
