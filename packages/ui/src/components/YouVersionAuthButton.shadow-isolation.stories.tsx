@@ -156,7 +156,9 @@ export const SameOriginIframeDocument: Story = {
     try {
       root.render(
         <ShadowRootHost>
-          <span data-testid="iframe-content">Isolated</span>
+          <span className="yv:flex" data-testid="iframe-content">
+            Isolated
+          </span>
         </ShadowRootHost>,
       );
 
@@ -168,6 +170,7 @@ export const SameOriginIframeDocument: Story = {
         void expect(host?.ownerDocument).toBe(iframeDocument);
         void expect(shadowRoot?.adoptedStyleSheets).toHaveLength(1);
         void expect(shadowRoot?.adoptedStyleSheets[0]).toBeInstanceOf(iframeWindow.CSSStyleSheet);
+        void expect(iframeWindow.getComputedStyle(content).display).toBe('flex');
       });
 
       const styleSheetPrototype = iframeWindow.CSSStyleSheet.prototype;
@@ -186,7 +189,9 @@ export const SameOriginIframeDocument: Story = {
         fallbackRoot = createRoot(fallbackContainer);
         fallbackRoot.render(
           <ShadowRootHost>
-            <span data-testid="iframe-fallback-content">Fallback isolated</span>
+            <span className="yv:flex" data-testid="iframe-fallback-content">
+              Fallback isolated
+            </span>
           </ShadowRootHost>,
         );
 
@@ -200,6 +205,7 @@ export const SameOriginIframeDocument: Story = {
           void expect(shadowRoot?.adoptedStyleSheets).toHaveLength(0);
           void expect(style.getAttribute('data-href')).toBe('yv-sdk-shadow-styles');
           void expect(style.getAttribute('data-precedence')).toBe('yv-sdk');
+          void expect(iframeWindow.getComputedStyle(content).display).toBe('flex');
         });
       } finally {
         fallbackRoot?.unmount();
