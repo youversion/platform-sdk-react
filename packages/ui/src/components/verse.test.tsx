@@ -1070,7 +1070,7 @@ describe('BibleTextView - Error messaging', () => {
 
     await waitFor(() => {
       expect(getByRole('alert')).toHaveTextContent(
-        "This passage isn't available in the selected Bible version.",
+        'This passage is unavailable in the selected Bible version.',
       );
     });
   });
