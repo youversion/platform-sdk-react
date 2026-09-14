@@ -20,6 +20,16 @@ export type {
 export type { Language } from '../schemas/language';
 export type { User } from '../schemas/user';
 export type { Highlight, CreateHighlight } from '../schemas/highlight';
+export type {
+  KnownSearchUserIntent,
+  SearchQueries,
+  SearchQuery,
+  SearchTopic,
+  SearchTopicsResponse,
+  SearchVerseHit,
+  SearchVersesOptions,
+  SearchVersesResponse,
+} from '../schemas/search';
 export type { Collection } from '../schemas/collection';
 export type { Organization, OrganizationAddress } from '../schemas/organization';
 export type { Video, VideoPlaybackSource, VideoThumbnail } from '../schemas/video';
