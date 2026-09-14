@@ -7,12 +7,6 @@ function hasEnvVar(varName: string): boolean {
   if (varName === 'STORYBOOK_YOUVERSION_APP_KEY') {
     return Boolean(import.meta.env.STORYBOOK_YOUVERSION_APP_KEY);
   }
-  if (varName === 'STORYBOOK_AUTH_REDIRECT_URL') {
-    return Boolean(import.meta.env.STORYBOOK_AUTH_REDIRECT_URL);
-  }
-  if (varName === 'STORYBOOK_YOUVERSION_API_HOST') {
-    return Boolean(import.meta.env.STORYBOOK_YOUVERSION_API_HOST);
-  }
   return false;
 }
 
@@ -42,8 +36,8 @@ export function StorybookEnvCheck({
             ))}
           </ul>
           <p className="text-sm text-yellow-700 dark:text-yellow-300">
-            Copy <code>.env.example</code> to <code>.env.local</code> in <code>packages/ui/</code>{' '}
-            and fill in the required values.
+            Copy the repository's root <code>.env.example</code> to <code>.env</code> and add your
+            app key.
           </p>
         </div>
       </div>
