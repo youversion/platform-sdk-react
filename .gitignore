@@ -85,3 +85,6 @@ storybook-static
 .opencode/
 .superset/
 .codex/
+
+# Amp orb runtime files
+.amp/portals/*
