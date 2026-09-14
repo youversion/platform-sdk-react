@@ -175,6 +175,12 @@ pnpm dev:web
 
 **Note:** All packages use unified versioning and release together.
 
+### Commit messages
+
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/), enforced locally by the husky `commit-msg` hook (`.husky/commit-msg`) and in CI by `.github/workflows/commitlint.yml`. Because we squash-merge, the **PR title** is the commit that lands on `main` — that title is gated separately by `.github/workflows/pr-title.yml`. Ticket references (YPE-1234) belong in the branch name and PR body, not the commit subject or PR title prefix.
+
+Accepting a Greptile review suggestion through GitHub's "Commit suggestion" / "Sign off and commit suggestion" button produces a non-conventional subject that GitHub writes (`Update <path>` or `Apply suggestions from code review`). Those commits are exempt from per-commit commitlint when they carry the `greptile-apps[bot]` co-author trailer — leave them alone; they are discarded at squash-merge. See `docs/adr/0007-github-suggestion-commits-bypass-commitlint.md`.
+
 ## Changesets
 
 ### When to Create

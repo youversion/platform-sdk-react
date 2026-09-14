@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 
 /** OAuth `state`-bound permission list persisted across the redirect handoff. */
 export const StatePermissionsStashSchema = z.object({
@@ -16,17 +16,18 @@ export type StoredGrants = z.infer<typeof StoredGrantsSchema>;
 
 /** Claims read from an ID token for UI display. Signature is not verified here. */
 export const IdTokenClaimsSchema = z.object({
-  sub: z.string().optional().catch(undefined),
-  name: z.string().optional().catch(undefined),
-  profile_picture: z.string().optional().catch(undefined),
-  email: z.string().optional().catch(undefined),
+  sub: z.catch(z.optional(z.string()), undefined),
+  name: z.catch(z.optional(z.string()), undefined),
+  profile_picture: z.catch(z.optional(z.string()), undefined),
+  email: z.catch(z.optional(z.string()), undefined),
 });
 export type IdTokenClaims = z.infer<typeof IdTokenClaimsSchema>;
 
 /** Seconds until expiry. Live `/auth/token` sends a digit string; mocks may send a number. */
-const TokenExpiresInSchema = z
-  .union([z.number(), z.string().regex(/^\d+$/).transform(Number)])
-  .pipe(z.number().int().positive());
+const TokenExpiresInSchema = z.pipe(
+  z.union([z.number(), z.pipe(z.string().check(z.regex(/^\d+$/)), z.transform(Number))]),
+  z.int().check(z.positive()),
+);
 
 export const TokenExchangeResponseSchema = z.object({
   access_token: z.string(),

@@ -106,11 +106,9 @@ describe('LanguagesClient', () => {
     });
 
     it('should throw an error for page_size="*" without fields', async () => {
-      await expect(
-        languagesClient.getLanguages({
-          page_size: '*',
-        }),
-      ).rejects.toThrow('page_size="*" requires 1-3 fields to be specified');
+      const error = await languagesClient.getLanguages({ page_size: '*' }).catch((cause) => cause);
+      expect(error).toBeInstanceOf(Error);
+      expect(error.message).toBe('page_size="*" requires 1-3 fields to be specified');
     });
 
     it('should throw an error for page_size="*" with empty fields array', async () => {

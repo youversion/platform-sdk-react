@@ -1,16 +1,16 @@
-import { z } from 'zod';
 import type { ApiClient } from './client';
-import { transformBibleHtml, type TransformBibleHtmlOptions } from './bible-html-transformer';
-import { BibleVersionSchema } from './schemas';
-import { YouVersionPlatformConfiguration } from './YouVersionPlatformConfiguration';
+import { assertUsableVersion, getChapter, getVersion, parseBibleVersionId } from './bible-chapter';
+import { getPassage } from './bible-passage';
 import {
-  collectFilteredPage,
-  fieldsNeededForVersionFilter,
-  isUsableBibleVersion,
-  isVersionFilterActive,
-  isVersionIdDecidablyUnusable,
-  throwUnusableBibleVersion,
-} from './version-filters';
+  getAllVOTDs,
+  getBook,
+  getBooks,
+  getChapters,
+  getVerse,
+  getVerses,
+  getVOTD,
+} from './bible-reads';
+import { getVersions, type GetVersionsOptions } from './bible-versions';
 import type {
   BibleBook,
   BibleChapter,
@@ -23,98 +23,11 @@ import type {
   VOTD,
 } from './types';
 
-type VersionListQuery = {
-  'language_ranges[]': string[];
-  license_id?: string | number;
-  page_size?: number | '*';
-  'fields[]'?: string[];
-  page_token?: string;
-  all_available?: string;
-};
-
-type PassageQuery = {
-  format: 'html' | 'text';
-  include_headings?: boolean;
-  include_notes?: boolean;
-};
-
-async function getHtmlAdapters(): Promise<TransformBibleHtmlOptions> {
-  if (globalThis.DOMParser) {
-    return {
-      parseHtml: (h) => new globalThis.DOMParser().parseFromString(h, 'text/html'),
-      serializeHtml: (doc) => doc.body.innerHTML,
-    };
-  }
-  let jsdom;
-  try {
-    // Literal dynamic import is fine in Node. Client bundlers must not pull
-    // jsdom into browser graphs — see package.json "browser": { "jsdom": false }.
-    jsdom = await import('jsdom');
-  } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
-    throw new Error(
-      'Server-side HTML transformation requires "jsdom". ' +
-        'Install it as a dependency or pass transform: false to skip transformation. ' +
-        `Original error: ${detail}`,
-      { cause: err },
-    );
-  }
-  return {
-    parseHtml: (h) =>
-      new jsdom.JSDOM(`<!DOCTYPE html><html><body>${h}</body></html>`).window.document,
-    serializeHtml: (doc) => doc.body.innerHTML,
-  };
-}
-
 /**
  * Client for interacting with Bible API endpoints.
  */
 export class BibleClient {
   private client: ApiClient;
-
-  // Validation schemas
-  private static readonly versionIdSchema = z
-    .number()
-    .int()
-    .positive('Version ID must be a positive integer');
-  private static readonly bookSchema = z
-    .string()
-    .trim()
-    .min(3, 'Book ID must be exactly 3 characters')
-    .max(3, 'Book ID must be exactly 3 characters');
-  private static readonly chapterSchema = z
-    .number()
-    .int('Chapter must be an integer')
-    .positive('Chapter must be a positive integer');
-  private static readonly verseSchema = z
-    .number()
-    .int('Verse must be an integer')
-    .positive('Verse must be a positive integer');
-  private static readonly languageRangesSchema = z
-    .string()
-    .trim()
-    .min(1, 'Language ranges must be a non-empty string');
-  private static readonly booleanSchema = z.boolean();
-  private static readonly GetVersionsOptionsSchema = z
-    .object({
-      page_size: z.union([z.number().int().positive(), z.literal('*')]).optional(),
-      page_token: z.string().optional(),
-      fields: z.array(BibleVersionSchema.keyof()).optional(),
-      all_available: z.boolean().optional(),
-    })
-    .optional()
-    .refine(
-      (data) => {
-        if (data?.page_size === '*') {
-          return data.fields && data.fields.length >= 1 && data.fields.length <= 3;
-        }
-        return true;
-      },
-      {
-        message: 'page_size="*" required 1-3 fields to be specified',
-        path: ['page_size', 'fields'],
-      },
-    );
 
   /**
    * Creates a new BibleClient instance.
@@ -134,66 +47,9 @@ export class BibleClient {
   async getVersions(
     language_ranges: string | string[],
     license_id?: string | number,
-    options?: z.infer<typeof BibleClient.GetVersionsOptionsSchema>,
+    options?: GetVersionsOptions,
   ): Promise<Collection<BibleVersion>> {
-    const languageRangeArray = Array.isArray(language_ranges) ? language_ranges : [language_ranges];
-
-    const parsedLanguageRanges = z
-      .array(BibleClient.languageRangesSchema)
-      .nonempty('At least one language range is required')
-      .parse(languageRangeArray);
-
-    const params: VersionListQuery = {
-      'language_ranges[]': parsedLanguageRanges,
-    };
-
-    if (license_id) {
-      params.license_id = license_id;
-    }
-
-    BibleClient.GetVersionsOptionsSchema.parse(options);
-    if (options?.page_size) {
-      params.page_size = options.page_size;
-    }
-
-    if (options?.fields) {
-      params['fields[]'] = options.fields;
-    }
-
-    if (options?.all_available) {
-      params.all_available = 'true';
-    }
-
-    const filterFields = fieldsNeededForVersionFilter(options?.fields);
-    const pageSize = options?.page_size;
-    if (filterFields) {
-      params['fields[]'] = filterFields;
-      if (isVersionFilterActive() && pageSize === '*' && filterFields.length > 3) {
-        // API rejects page_size=* with more than 3 fields. Keep pageSize='*' so
-        // collectFilteredPage still walks every server page. Unfiltered *+>3
-        // stays a loud schema reject — do not drop * on that path.
-        delete params.page_size;
-      }
-    }
-
-    const fetchPage = (pageToken?: string) => {
-      const pageParams = { ...params };
-      if (pageToken) {
-        pageParams.page_token = pageToken;
-      }
-      return this.client.get<Collection<BibleVersion>>(`/v1/bibles`, pageParams);
-    };
-
-    if (!isVersionFilterActive()) {
-      return fetchPage(options?.page_token);
-    }
-
-    return collectFilteredPage(
-      fetchPage,
-      (version) => isUsableBibleVersion({ id: version.id, languageTag: version.language_tag }),
-      pageSize,
-      options?.page_token,
-    );
+    return getVersions(this.client, language_ranges, license_id, options);
   }
 
   /**
@@ -202,24 +58,7 @@ export class BibleClient {
    * @returns The requested BibleVersion object.
    */
   async getVersion(id: number): Promise<BibleVersion> {
-    BibleClient.versionIdSchema.parse(id);
-    if (isVersionIdDecidablyUnusable(id)) {
-      throwUnusableBibleVersion();
-    }
-    const version = await this.client.get<BibleVersion>(`/v1/bibles/${id}`);
-    if (!isUsableBibleVersion({ id: version.id, languageTag: version.language_tag })) {
-      throwUnusableBibleVersion();
-    }
-    return version;
-  }
-
-  private async assertUsableVersion(versionId: number): Promise<void> {
-    if (isVersionIdDecidablyUnusable(versionId)) {
-      throwUnusableBibleVersion();
-    }
-    if (YouVersionPlatformConfiguration.permittedLanguageTags !== undefined) {
-      await this.getVersion(versionId);
-    }
+    return getVersion(this.client, id);
   }
 
   /**
@@ -231,11 +70,7 @@ export class BibleClient {
    *          available in the Bible version.
    */
   async getBooks(versionId: number, canon?: CANON): Promise<Collection<BibleBook>> {
-    BibleClient.versionIdSchema.parse(versionId);
-    await this.assertUsableVersion(versionId);
-    return this.client.get<Collection<BibleBook>>(`/v1/bibles/${versionId}/books`, {
-      ...(canon && { canon }),
-    });
+    return getBooks(this.client, versionId, canon);
   }
 
   /**
@@ -247,10 +82,7 @@ export class BibleClient {
    *          available. Use the `passage_id` with `getPassage()` to fetch intro content.
    */
   async getBook(versionId: number, book: string): Promise<BibleBook> {
-    BibleClient.versionIdSchema.parse(versionId);
-    BibleClient.bookSchema.parse(book);
-    await this.assertUsableVersion(versionId);
-    return this.client.get<BibleBook>(`/v1/bibles/${versionId}/books/${book}`);
+    return getBook(this.client, versionId, book);
   }
 
   /**
@@ -260,12 +92,7 @@ export class BibleClient {
    * @returns An array of BibleChapter objects.
    */
   async getChapters(versionId: number, book: string): Promise<Collection<BibleChapter>> {
-    BibleClient.versionIdSchema.parse(versionId);
-    BibleClient.bookSchema.parse(book);
-    await this.assertUsableVersion(versionId);
-    return this.client.get<Collection<BibleChapter>>(
-      `/v1/bibles/${versionId}/books/${book}/chapters`,
-    );
+    return getChapters(this.client, versionId, book);
   }
 
   /**
@@ -276,14 +103,7 @@ export class BibleClient {
    * @returns The requested BibleChapter object.
    */
   async getChapter(versionId: number, book: string, chapter: number): Promise<BibleChapter> {
-    BibleClient.versionIdSchema.parse(versionId);
-    BibleClient.bookSchema.parse(book);
-    BibleClient.chapterSchema.parse(chapter);
-    await this.assertUsableVersion(versionId);
-
-    return this.client.get<BibleChapter>(
-      `/v1/bibles/${versionId}/books/${book}/chapters/${chapter}`,
-    );
+    return getChapter(this.client, versionId, book, chapter);
   }
 
   /**
@@ -298,14 +118,7 @@ export class BibleClient {
     book: string,
     chapter: number,
   ): Promise<Collection<BibleVerse>> {
-    BibleClient.versionIdSchema.parse(versionId);
-    BibleClient.bookSchema.parse(book);
-    BibleClient.chapterSchema.parse(chapter);
-    await this.assertUsableVersion(versionId);
-
-    return this.client.get<Collection<BibleVerse>>(
-      `/v1/bibles/${versionId}/books/${book}/chapters/${chapter}/verses`,
-    );
+    return getVerses(this.client, versionId, book, chapter);
   }
 
   /**
@@ -322,15 +135,7 @@ export class BibleClient {
     chapter: number,
     verse: number,
   ): Promise<BibleVerse> {
-    BibleClient.versionIdSchema.parse(versionId);
-    BibleClient.bookSchema.parse(book);
-    BibleClient.chapterSchema.parse(chapter);
-    BibleClient.verseSchema.parse(verse);
-    await this.assertUsableVersion(versionId);
-
-    return this.client.get<BibleVerse>(
-      `/v1/bibles/${versionId}/books/${book}/chapters/${chapter}/verses/${verse}`,
-    );
+    return getVerse(this.client, versionId, book, chapter, verse);
   }
 
   /**
@@ -379,35 +184,15 @@ export class BibleClient {
     include_notes?: boolean,
     transform?: boolean,
   ): Promise<BiblePassage> {
-    BibleClient.versionIdSchema.parse(versionId);
-    if (include_headings !== undefined) {
-      BibleClient.booleanSchema.parse(include_headings);
-    }
-    if (include_notes !== undefined) {
-      BibleClient.booleanSchema.parse(include_notes);
-    }
-    const params: PassageQuery = {
+    return getPassage(
+      this.client,
+      versionId,
+      usfm,
       format,
-    };
-    if (include_headings !== undefined) {
-      params.include_headings = include_headings;
-    }
-    if (include_notes !== undefined) {
-      params.include_notes = include_notes;
-    }
-    await this.assertUsableVersion(versionId);
-    const passage = await this.client.get<BiblePassage>(
-      `/v1/bibles/${versionId}/passages/${usfm}`,
-      params,
+      include_headings,
+      include_notes,
+      transform,
     );
-
-    if (format === 'html' && transform !== false) {
-      const adapters = await getHtmlAdapters();
-      const { html } = transformBibleHtml(passage.content, adapters);
-      return { ...passage, content: html };
-    }
-
-    return passage;
   }
 
   /**
@@ -416,8 +201,8 @@ export class BibleClient {
    * @returns The BibleIndex object containing full hierarchy of books, chapters, and verses.
    */
   async getIndex(versionId: number): Promise<BibleIndex> {
-    BibleClient.versionIdSchema.parse(versionId);
-    await this.assertUsableVersion(versionId);
+    parseBibleVersionId(versionId);
+    await assertUsableVersion(this.client, versionId);
     return this.client.get<BibleIndex>(`/v1/bibles/${versionId}/index`);
   }
 
@@ -426,7 +211,7 @@ export class BibleClient {
    * @returns A collection of VOTD objects for all days of the year.
    */
   async getAllVOTDs(): Promise<Collection<VOTD>> {
-    return this.client.get<Collection<VOTD>>(`/v1/verse_of_the_days`);
+    return getAllVOTDs(this.client);
   }
 
   /**
@@ -443,8 +228,6 @@ export class BibleClient {
    * ```
    */
   async getVOTD(day: number): Promise<VOTD> {
-    const daySchema = z.number().int().min(1).max(366);
-    daySchema.parse(day);
-    return this.client.get<VOTD>(`/v1/verse_of_the_days/${day}`);
+    return getVOTD(this.client, day);
   }
 }

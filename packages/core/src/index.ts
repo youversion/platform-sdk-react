@@ -1,6 +1,28 @@
 export { ApiClient, getHttpStatus } from './client';
 export { BibleClient } from './bible';
-export { LanguagesClient, type GetLanguagesOptions } from './languages';
+export { getChapter, getVersion } from './bible-chapter';
+export {
+  getAllVOTDs,
+  getBook,
+  getBooks,
+  getChapters,
+  getVerse,
+  getVerses,
+  getVOTD,
+} from './bible-reads';
+export { getVersions, type GetVersionsOptions } from './bible-versions';
+export { getPassage } from './bible-passage';
+export { LanguagesClient } from './languages';
+export { getLanguage } from './languages-language';
+export { getLanguages, type GetLanguagesOptions } from './languages-list';
+export { SearchClient, type SearchVersesOptions } from './search';
+export {
+  getSuggestedQueries,
+  getTrendingQueries,
+} from './search-queries';
+export { searchVerses } from './search-verses';
+export { searchTopics } from './search-topics';
+export { isValidStructuralUsfmReference } from './schemas/search';
 export { OrganizationsClient } from './organizations';
 export {
   HighlightsClient,
@@ -27,6 +49,7 @@ export {
   fieldsNeededForLanguageFilter,
   fieldsNeededForVersionFilter,
   isUsableBibleVersion,
+  getVersionFilterSnapshot,
   isUsableLanguageTag,
   isVersionFilterActive,
   isVersionIdDecidablyUnusable,

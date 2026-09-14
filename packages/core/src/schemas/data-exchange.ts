@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod/mini';
 
 /** Body of `POST /data-exchange/token`. */
 export const DataExchangeTokenRequestSchema = z.object({
@@ -11,7 +11,7 @@ export type DataExchangeTokenRequest = z.infer<typeof DataExchangeTokenRequestSc
  * minted for the requested permissions (see {@link DataExchangeClient}).
  */
 export const DataExchangeTokenResponseSchema = z.object({
-  token: z.string().min(1),
+  token: z.string().check(z.minLength(1)),
 });
 
 export type DataExchangeTokenResponse = z.infer<typeof DataExchangeTokenResponseSchema>;

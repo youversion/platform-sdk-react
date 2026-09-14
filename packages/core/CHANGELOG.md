@@ -1,5 +1,21 @@
 # @youversion/platform-core
 
+## 2.13.0
+
+### Minor Changes
+
+- b3833e4: Add Platform Search APIs to core: `SearchClient` with suggested/trending queries, verse search, and topic search against `/v1/*` endpoints.
+
+  PRD-over-Swift notes: query responses use a `{ queries: SearchQuery[] }` wrapper (not a bare array), and `user_intent` is omitted on the wire unless the caller supplies it. Topic results expose `totalSize` from `total_size`. Language ranges accept `en_US` and normalize underscores to hyphens before validation.
+
+  The UI package will consume these types via the core `"."` export in a follow-up PR. Public API Extractor compatibility is not updated in this release (api-extractor is not wired in this repo).
+
+### Patch Changes
+
+- 42a7d88: Core clients are separate tsup entries so an `ApiClient` import can drop `BibleClient` and `LanguagesClient`. Import zod Mini as a namespace so unused classic locale files and unused Mini helpers stay out of named-import graphs. The version string is inlined from `package.json` without embedding the rest of the manifest. Published JS is whitespace-minified; syntax and identifier minify stay off so the `X-YVP-Sdk` stamp remains verifiable. Core does not run tsup's Rollup tree-shake pass, because that pass folds `isPublishBuild` and trips the stamp guard. Core wipes `dist` on build so stale tsup `.d.cts` files cannot publish. Bible version-filter allowlists live in a small state module so narrow imports do not pull auth storage or grants. `YouVersionPlatformConfiguration` still exposes the same statics. Public `theme.css` keeps the `--yv-*` tokens SDK components read.
+
+  Behavior note: input-validation failures throw zod Mini's `$ZodError` (from `zod/mini`) instead of classic `ZodError`. `instanceof ZodError` checks against classic `zod` no longer match. Callers that catch validation errors should match on `error instanceof $ZodError` from `zod/mini` (or `z.core.$ZodError`). `page_size="*"` without 1-3 fields still throws the prior `Error` (`page_size="*" requires 1-3 fields to be specified`).
+
 ## 2.12.1
 
 ### Patch Changes
