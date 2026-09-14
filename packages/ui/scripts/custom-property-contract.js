@@ -1,59 +1,18 @@
 import { parse, walk } from 'css-tree';
 
-const referenceOnlyExceptions = new Map([
-  [
-    '--yv-reader-max-width',
-    {
-      category: 'SDK-owned component input',
-      supplier: 'BibleCard inline style or the 65ch literal fallback',
-      reason: 'The core reader stylesheet is also published for configurable light-DOM use.',
-    },
-  ],
-  [
-    '--radix-accordion-content-height',
-    {
-      category: 'third-party runtime input',
-      supplier: '@radix-ui/react-accordion',
-      reason: 'Radix sets the measured content height on its accordion content element.',
-    },
-  ],
-  [
-    '--radix-popover-content-available-height',
-    {
-      category: 'third-party runtime input',
-      supplier: '@radix-ui/react-popover',
-      reason: 'Radix sets the available height on the popover content element.',
-    },
-  ],
-  [
-    '--radix-popover-content-available-width',
-    {
-      category: 'third-party runtime input',
-      supplier: '@radix-ui/react-popover',
-      reason: 'Radix sets the available width on the popover content element.',
-    },
-  ],
-  [
-    '--radix-popover-content-transform-origin',
-    {
-      category: 'third-party runtime input',
-      supplier: '@radix-ui/react-popover',
-      reason: 'Radix sets the transform origin on the popover content element.',
-    },
-  ],
-  ...[
-    '--bits-accordion-content-height',
-    '--reka-accordion-content-height',
-    '--kb-accordion-content-height',
-    '--ngp-accordion-content-height',
-  ].map((name) => [
-    name,
-    {
-      category: 'third-party generated fallback input',
-      supplier: 'tw-animate-css',
-      reason: 'The imported cross-framework accordion fallback chain terminates in auto.',
-    },
-  ]),
+const referenceOnlyExceptions = new Set([
+  // SDK-owned component input
+  '--yv-reader-max-width',
+  // Third-party runtime inputs
+  '--radix-accordion-content-height',
+  '--radix-popover-content-available-height',
+  '--radix-popover-content-available-width',
+  '--radix-popover-content-transform-origin',
+  // Third-party generated fallback inputs
+  '--bits-accordion-content-height',
+  '--reka-accordion-content-height',
+  '--kb-accordion-content-height',
+  '--ngp-accordion-content-height',
 ]);
 
 function sorted(values) {
