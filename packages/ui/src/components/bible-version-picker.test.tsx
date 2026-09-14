@@ -179,7 +179,7 @@ async function openPicker() {
 
 async function openLanguagePanel() {
   await openPicker();
-  await userEvent.click(screen.getByRole('button', { name: /select language/i }));
+  await userEvent.click(screen.getByRole('button', { name: /select a language/i }));
 }
 
 function getLanguageSearchInput() {
@@ -255,7 +255,7 @@ describe('BibleVersionPicker', () => {
       await openPicker();
 
       await waitFor(() => {
-        const languageButton = screen.getByRole('button', { name: /select language/i });
+        const languageButton = screen.getByRole('button', { name: /select a language/i });
         const badge = languageButton.querySelector('[data-slot="badge"]');
         expect(badge).not.toBeNull();
 
@@ -288,7 +288,7 @@ describe('BibleVersionPicker', () => {
       await openPicker();
 
       await waitFor(() => {
-        const languageButton = screen.getByRole('button', { name: /select language/i });
+        const languageButton = screen.getByRole('button', { name: /select a language/i });
         const badge = languageButton.querySelector('[data-slot="badge"]');
         expect(badge).not.toBeNull();
         expect(badge!.textContent).toBe('2');
@@ -598,7 +598,7 @@ describe('BibleVersionPicker', () => {
         </BibleVersionPicker.Root>,
       );
 
-      expect(screen.queryByText('Select Language')).not.toBeInTheDocument();
+      expect(screen.queryByText('Select a Language')).not.toBeInTheDocument();
       expect(screen.getByText('Suggested')).toBeInTheDocument();
       await user.click(screen.getByRole('listitem', { name: /english/i }));
 
@@ -616,7 +616,7 @@ describe('BibleVersionPicker', () => {
         </BibleVersionPicker.Root>,
       );
 
-      await user.click(screen.getByRole('button', { name: /select language/i }));
+      await user.click(screen.getByRole('button', { name: /select a language/i }));
 
       expect(onClick).toHaveBeenCalledTimes(1);
     });
@@ -633,7 +633,7 @@ describe('BibleVersionPicker', () => {
       );
 
       await user.click(screen.getByRole('button', { name: 'NIV' }));
-      await user.click(screen.getAllByRole('button', { name: /select language/i })[0]!);
+      await user.click(screen.getAllByRole('button', { name: /select a language/i })[0]!);
 
       expect(screen.queryByText('All Languages')).not.toBeInTheDocument();
     });
@@ -644,9 +644,9 @@ describe('BibleVersionPicker', () => {
       renderPicker();
 
       await openPicker();
-      await user.click(screen.getByRole('button', { name: /select language/i }));
+      await user.click(screen.getByRole('button', { name: /select a language/i }));
 
-      expect(screen.getByRole('heading', { name: /select language/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /select a language/i })).toBeInTheDocument();
 
       const dialog = screen.getByRole('dialog');
       const viewport = dialog.querySelector('.yv\\:relative.yv\\:min-h-0.yv\\:overflow-hidden');
@@ -776,7 +776,7 @@ describe('BibleVersionPicker', () => {
       expect(getLanguageSearchInput()).toHaveValue('korean');
 
       await user.click(screen.getByRole('button', { name: /back to bible versions/i }));
-      await user.click(screen.getByRole('button', { name: /select language/i }));
+      await user.click(screen.getByRole('button', { name: /select a language/i }));
 
       expect(getLanguageSearchInput()).toHaveValue('');
     });
