@@ -30,6 +30,7 @@ Get your App Key at [platform.youversion.com](https://platform.youversion.com/)
 import {
   ApiClient,
   BibleClient,
+  SearchClient,
   YouVersionPlatformConfiguration,
 } from '@youversion/platform-core';
 
@@ -50,6 +51,14 @@ console.log(versions.data[0].title);
 // Fetch the html text of John 3:16 in that first Bible version
 const passage = await bibleClient.getPassage(versions.data[0].id, 'JHN.3.16');
 console.log(passage.content);
+
+// Search (`/v1/*` endpoints; requires an app key authorized for Search)
+const searchClient = new SearchClient(apiClient);
+const trending = await searchClient.getTrendingQueries('en');
+const verses = await searchClient.searchVerses('faith', versions.data[0].id, {
+  pageSize: 10,
+});
+console.log(trending.queries[0]?.text, verses.verses[0]?.id);
 ```
 
 ## Documentation and API Reference
