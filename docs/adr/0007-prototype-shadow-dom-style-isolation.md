@@ -58,6 +58,20 @@ focus is restored to the real opener.
 
 ## Considered options
 
+- Client-side attachment emits an empty host from the server, hydrates that
+  host, and mounts isolated content after an effect attaches the shadow root.
+  This preserves React's ownership of the light-DOM tree and never exposes the
+  component internals to consuming-app CSS. It is the selected contract for the
+  prototype.
+- Rendering the component in the light DOM on the server and moving or
+  remounting it after hydration would make content visible sooner, but exposes
+  that first paint to consuming-app CSS and risks replacement, duplicate
+  content, and lost DOM identity during hydration.
+- Declarative Shadow DOM could provide isolated server content and an isolated
+  first paint. React 19.1 does not provide a supported render-and-hydrate seam
+  for the browser-created shadow tree, so adopting it would require custom
+  serialization and hydration behavior. It remains a future option for a
+  component that requires server-rendered content.
 - Stronger selectors, resets, cascade layers, `@scope`, and `!important` reduce
   collisions but do not create a selector boundary.
 - A shared shadow overlay under `document.body` escapes clipping, but separates
@@ -73,16 +87,52 @@ it preserves tree scope and style isolation while escaping ancestor clipping.
 The top-layer strategy requires the native Popover API; it does not silently
 fall back to the clipped inline arrangement.
 
+## SSR and hydration contract
+
+`ShadowRootHost` is client-only. Its server markup is exactly an empty host:
+
+```html
+<div data-yv-shadow-host="true"></div>
+```
+
+The first client render matches that markup. After hydration, `useEffect`
+attaches or reuses one open shadow root, installs the SDK stylesheet, and then
+portals the component into that root. The component is not rendered in the
+light DOM, so hydration does not replace server content or create a duplicate.
+If constructable stylesheets are unavailable, the local `<style>` fallback and
+the component mount in the shadow root together. A same-origin iframe uses a
+stylesheet constructed for its own `Document`; it never adopts the parent
+document's sheet.
+
+The server and initial browser paint contain no component content. On a slow
+client, the user can see an empty state followed by the component appearing.
+If JavaScript does not run, the component never appears. No placeholder space
+is reserved, so mounting can move nearby content. Cumulative Layout Shift is a
+page-level result that also depends on the consuming app's layout; this
+prototype neither guarantees zero shift nor claims the delay is negligible.
+The [YPE-5354 first-paint research](../ype-5354-client-only-first-paint-research.md)
+records the measurement and reservation options for a future rollout decision.
+
+A forwarded component ref remains `null` during server rendering. It becomes
+available after the shadow content mounts and points to the real component
+element inside the shadow root, not to the light-DOM host. Before that mount,
+the component cannot receive focus or interaction.
+
+This contract must be accepted separately for every component selected for
+automatic isolation. A component that requires server content, no-JavaScript
+content, or a stable first-paint footprint cannot use this host unchanged.
+YPE-5356 owns that rollout policy, including whether a component needs reserved
+space, a product timing budget, or a different SSR strategy.
+
 ## Consequences
 
 The React props API remains unchanged, but the rendered DOM structure changes.
 Consumer CSS and ordinary document queries cannot reach component internals.
 Native events observed outside the root are retargeted to the shadow host.
 
-The root currently attaches in `useEffect`, so server output contains an empty
-host, isolated content appears after hydration, and forwarded refs become
-available later. Automatic isolation is therefore a breaking change rather than
-an internal implementation detail.
+The client-only SSR and hydration behavior above is part of the component
+contract. Automatic isolation is therefore a breaking change rather than an
+internal implementation detail.
 
 Shadow DOM does not isolate document-scoped `@font-face` names; the prototype
 accepts that host registrations can collide with SDK family names. It also
