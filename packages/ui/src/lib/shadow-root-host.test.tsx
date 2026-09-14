@@ -1,6 +1,9 @@
-import { StrictMode, useState } from 'react';
-import { render, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { createRef, forwardRef, StrictMode, useLayoutEffect, useState } from 'react';
+import { hydrateRoot, type Root } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
+import { act, render, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { withShadowIsolation } from './shadow-isolation';
 import { ShadowRootHost, useShadowPortalTarget } from './shadow-root-host';
 
 function PortalRequester(): React.ReactNode {
@@ -13,7 +16,71 @@ function PortalRequester(): React.ReactNode {
   );
 }
 
+const IsolatedRefProbe = withShadowIsolation(
+  forwardRef<HTMLButtonElement>((_, ref) => (
+    <button ref={ref} type="button">
+      Isolated content
+    </button>
+  )),
+  'IsolatedRefProbe',
+);
+
 describe('ShadowRootHost', () => {
+  it('reuses the empty server host before making the forwarded ref available after shadow mount', async () => {
+    const buttonRef = createRef<HTMLButtonElement>();
+    const refsDuringInitialClientRender: Array<HTMLButtonElement | null> = [];
+
+    function HydrationProbe(): React.ReactNode {
+      useLayoutEffect(() => {
+        refsDuringInitialClientRender.push(buttonRef.current);
+      }, []);
+      return <IsolatedRefProbe ref={buttonRef} />;
+    }
+
+    const element = (
+      <StrictMode>
+        <HydrationProbe />
+      </StrictMode>
+    );
+    const serverMarkup = renderToString(element);
+
+    expect(serverMarkup).toBe('<div data-yv-shadow-host="true"></div>');
+    expect(buttonRef.current).toBeNull();
+
+    const container = document.createElement('div');
+    container.innerHTML = serverMarkup;
+    document.body.append(container);
+    const serverHost = container.firstElementChild;
+    const recoverableErrors: unknown[] = [];
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    let root: Root | undefined;
+
+    try {
+      await act(async () => {
+        root = hydrateRoot(container, element, {
+          onRecoverableError: (error) => recoverableErrors.push(error),
+        });
+      });
+
+      const hosts = container.querySelectorAll<HTMLElement>('[data-yv-shadow-host]');
+      expect(hosts).toHaveLength(1);
+      expect(hosts[0]).toBe(serverHost);
+      expect(hosts[0]?.childNodes).toHaveLength(0);
+      expect(hosts[0]?.shadowRoot?.querySelectorAll('button')).toHaveLength(1);
+      expect(refsDuringInitialClientRender.length).toBeGreaterThan(0);
+      expect(refsDuringInitialClientRender.every((value) => value === null)).toBe(true);
+      expect(buttonRef.current).toBe(hosts[0]?.shadowRoot?.querySelector('button'));
+      expect(recoverableErrors).toEqual([]);
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      if (root) {
+        await act(async () => root?.unmount());
+      }
+      consoleError.mockRestore();
+      container.remove();
+    }
+  });
+
   it('attaches one shadow root under StrictMode', () => {
     let container!: HTMLElement;
     expect(() => {

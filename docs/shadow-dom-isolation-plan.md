@@ -47,6 +47,7 @@ open.
 | Area | Evidence today | Status | Remaining work |
 | --- | --- | --- | --- |
 | Host CSS isolation | Hostile-CSS demo and focused Chromium coverage exercise element selectors, direction inheritance, vertical writing and typography resets, hostile custom properties, universal `!important` rules, host attacks, and generated pseudo-content. | Validated for the prototype | Repeat against each component selected for rollout. |
+| SSR and hydration | Focused React coverage verifies reuse of the exact empty server host, matching hydration without recoverable errors or duplicate content, and a null forwarded ref before the passive-effect mount. | Validated for the client-only prototype | Decide per rollout component whether a possibly empty first paint, layout shift, and no-JavaScript absence are acceptable. |
 | Component behavior | Auth button interaction works through the React portal; Strict Mode does not attach the root twice. | Validated for the prototype | Audit component-specific refs, events, and consumer integrations during rollout. |
 | Owner-document handling | Focused coverage mounts into a same-origin iframe and verifies document-compatible stylesheet construction. | Validated for the prototype | Verify stylesheet failure recovery. |
 | Inline floating content | The picker negative control preserves tree-scope relationships but demonstrates clipping beyond a constrained ancestor. | Validated as a negative control | None; clipping is why inline placement is not the selected escaping strategy. |
@@ -80,8 +81,9 @@ decision. YPE-5356 owns whether and how to implement that coordination.
 
 - Decide whether isolation is enabled per component instance, per public export,
   or package-wide.
-- Define SSR, hydration, and first-paint behavior. The current effect-attached
-  root renders an empty host on the server and delays content and forwarded refs.
+- Apply [ADR 0007's client-only SSR and hydration contract](adr/0007-prototype-shadow-dom-style-isolation.md#ssr-and-hydration-contract)
+  per rollout component. YPE-5356 decides whether its first-paint, layout, and
+  no-JavaScript limitations are acceptable for that component.
 - Resolve the YPE-5355 peer-dismissal and final focus-restoration gaps before
   shipping nested and concurrent overlays (YPE-5356). The decision must consider
   trigger-time peer dismissal as well as overlay order and restore targets;

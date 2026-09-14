@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
-import { createRoot } from 'react-dom/client';
+import { createRoot, type Root } from 'react-dom/client';
 import { expect, waitFor } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { YouVersionAuthButton } from './YouVersionAuthButton';
@@ -8,9 +8,9 @@ import { YouVersionAuthButton } from './YouVersionAuthButton';
 /**
  * Focused architectural POC coverage. These stories answer two questions:
  * whether a literal global `button {}` rule can change an automatically
- * isolated SDK button, and whether the document-bound constructed stylesheet
- * works when a shadow host mounts in a same-origin iframe. Package-wide hostile
- * vectors and component-specific behavior are deliberately deferred.
+ * isolated SDK button, and whether both stylesheet paths work when a shadow
+ * host mounts in a same-origin iframe. Package-wide hostile vectors and
+ * component-specific behavior are deliberately deferred.
  */
 const HOSTILE_CSS = `
   button {
@@ -141,27 +141,77 @@ export const SameOriginIframeDocument: Story = {
   render: () => <iframe data-testid="iframe" title="same-origin isolation target" />,
   play: async ({ canvasElement }) => {
     const iframe = canvasElement.querySelector<HTMLIFrameElement>('[data-testid="iframe"]');
-    if (!iframe?.contentDocument) throw new Error('same-origin iframe document not available');
+    const iframeDocument = iframe?.contentDocument;
+    const iframeWindow = iframeDocument?.defaultView;
+    if (!iframeDocument || !iframeWindow) {
+      throw new Error('same-origin iframe document not available');
+    }
 
-    const container = iframe.contentDocument.createElement('div');
-    iframe.contentDocument.body.append(container);
+    const container = iframeDocument.createElement('div');
+    iframeDocument.body.append(container);
     const root = createRoot(container);
+    let fallbackContainer: HTMLDivElement | undefined;
+    let fallbackRoot: Root | undefined;
 
     try {
       root.render(
         <ShadowRootHost>
-          <span data-testid="iframe-content">Isolated</span>
+          <span className="yv:flex" data-testid="iframe-content">
+            Isolated
+          </span>
         </ShadowRootHost>,
       );
 
       await waitFor(() => {
-        const host = iframe.contentDocument?.querySelector<HTMLDivElement>('[data-yv-shadow-host]');
+        const host = container.querySelector<HTMLDivElement>('[data-yv-shadow-host]');
         const shadowRoot = host?.shadowRoot;
         const content = shadowRoot?.querySelector('[data-testid="iframe-content"]');
         if (!content) throw new Error('iframe shadow content not mounted');
-        void expect(host?.ownerDocument).toBe(iframe.contentDocument);
+        void expect(host?.ownerDocument).toBe(iframeDocument);
         void expect(shadowRoot?.adoptedStyleSheets).toHaveLength(1);
+        void expect(shadowRoot?.adoptedStyleSheets[0]).toBeInstanceOf(iframeWindow.CSSStyleSheet);
+        void expect(iframeWindow.getComputedStyle(content).display).toBe('flex');
       });
+
+      const styleSheetPrototype = iframeWindow.CSSStyleSheet.prototype;
+      const replaceSyncDescriptor = Object.getOwnPropertyDescriptor(
+        styleSheetPrototype,
+        'replaceSync',
+      );
+      if (!replaceSyncDescriptor?.configurable) {
+        throw new Error('iframe CSSStyleSheet.replaceSync cannot be disabled for fallback proof');
+      }
+
+      Reflect.deleteProperty(styleSheetPrototype, 'replaceSync');
+      try {
+        fallbackContainer = iframeDocument.createElement('div');
+        iframeDocument.body.append(fallbackContainer);
+        fallbackRoot = createRoot(fallbackContainer);
+        fallbackRoot.render(
+          <ShadowRootHost>
+            <span className="yv:flex" data-testid="iframe-fallback-content">
+              Fallback isolated
+            </span>
+          </ShadowRootHost>,
+        );
+
+        await waitFor(() => {
+          const fallbackHost =
+            fallbackContainer?.querySelector<HTMLDivElement>('[data-yv-shadow-host]');
+          const shadowRoot = fallbackHost?.shadowRoot;
+          const content = shadowRoot?.querySelector('[data-testid="iframe-fallback-content"]');
+          const style = shadowRoot?.querySelector('style');
+          if (!content || !style) throw new Error('iframe fallback content not mounted');
+          void expect(shadowRoot?.adoptedStyleSheets).toHaveLength(0);
+          void expect(style.getAttribute('data-href')).toBe('yv-sdk-shadow-styles');
+          void expect(style.getAttribute('data-precedence')).toBe('yv-sdk');
+          void expect(iframeWindow.getComputedStyle(content).display).toBe('flex');
+        });
+      } finally {
+        fallbackRoot?.unmount();
+        fallbackContainer?.remove();
+        Object.defineProperty(styleSheetPrototype, 'replaceSync', replaceSyncDescriptor);
+      }
     } finally {
       root.unmount();
       container.remove();
