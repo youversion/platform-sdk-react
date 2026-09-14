@@ -68,10 +68,10 @@ focus is restored to the real opener.
   that first paint to consuming-app CSS and risks replacement, duplicate
   content, and lost DOM identity during hydration.
 - Declarative Shadow DOM could provide isolated server content and an isolated
-  first paint. React 19.1 does not provide a supported render-and-hydrate seam
-  for the browser-created shadow tree, so adopting it would require custom
-  serialization and hydration behavior. It remains a future option for a
-  component that requires server-rendered content.
+  first paint. This spike did not identify a supported React 19.1
+  render-and-hydrate seam for the browser-created shadow tree, so adopting it
+  would require custom serialization and hydration behavior. It remains a
+  future option for a component that requires server-rendered content.
 - Stronger selectors, resets, cascade layers, `@scope`, and `!important` reduce
   collisions but do not create a selector boundary.
 - A shared shadow overlay under `document.body` escapes clipping, but separates

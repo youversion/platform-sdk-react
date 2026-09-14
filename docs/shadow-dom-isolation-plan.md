@@ -81,11 +81,9 @@ decision. YPE-5356 owns whether and how to implement that coordination.
 
 - Decide whether isolation is enabled per component instance, per public export,
   or package-wide.
-- Apply YPE-5354's client-only SSR and hydration contract per rollout component.
-  The effect-attached root intentionally renders an empty host on the server and
-  delays content and forwarded refs. YPE-5356 must decide whether those
-  first-paint, layout-shift, and no-JavaScript limitations are acceptable for
-  each component selected for automatic isolation.
+- Apply [ADR 0007's client-only SSR and hydration contract](adr/0007-prototype-shadow-dom-style-isolation.md#ssr-and-hydration-contract)
+  per rollout component. YPE-5356 decides whether its first-paint, layout, and
+  no-JavaScript limitations are acceptable for that component.
 - Resolve the YPE-5355 peer-dismissal and final focus-restoration gaps before
   shipping nested and concurrent overlays (YPE-5356). The decision must consider
   trigger-time peer dismissal as well as overlay order and restore targets;
