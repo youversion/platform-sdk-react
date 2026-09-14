@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { ApiClient } from '../client';
 import { SearchClient } from '../search';
-import { isValidStructuralUsfmReference } from '../schemas/search';
+import { isValidStructuralUsfmReference, parseSearchLanguageRange } from '../schemas/search';
 import { server } from './setup';
 
 const apiHost = process.env.YVP_API_HOST;
@@ -22,7 +22,7 @@ function createSearchClient(): SearchClient {
   return new SearchClient(apiClient);
 }
 
-describe('isValidStructuralUsfmReference', () => {
+describe('SearchClient.searchVerses', () => {
   it('accepts single-verse references without gating on book codes', () => {
     expect(isValidStructuralUsfmReference('JHN.6.9')).toBe(true);
     expect(isValidStructuralUsfmReference('ZZZ.1.1')).toBe(true);
@@ -35,9 +35,20 @@ describe('isValidStructuralUsfmReference', () => {
     expect(isValidStructuralUsfmReference('JHN.1.1-0')).toBe(false);
     expect(isValidStructuralUsfmReference('')).toBe(false);
   });
-});
 
-describe('SearchClient.searchVerses', () => {
+  it('accepts valid language ranges and normalizes case and underscores', () => {
+    expect(parseSearchLanguageRange('EN')).toBe('en');
+    expect(parseSearchLanguageRange('en')).toBe('en');
+    expect(parseSearchLanguageRange('abcdef')).toBe('abcdef');
+    expect(parseSearchLanguageRange('en-US')).toBe('en-us');
+    expect(parseSearchLanguageRange('en_US')).toBe('en-us');
+  });
+
+  it('rejects language ranges with a 9-letter primary subtag or 9-character extension', () => {
+    expect(() => parseSearchLanguageRange('abcdefghi')).toThrow(/Language range must/);
+    expect(() => parseSearchLanguageRange('en-abcdefghi')).toThrow(/Language range must/);
+  });
+
   it('maps wire reference to SDK id and metadata fields', async () => {
     const searchClient = createSearchClient();
 
@@ -66,6 +77,31 @@ describe('SearchClient.searchVerses', () => {
       searchInsteadFor: null,
       nextPageToken: 'page-2',
     });
+  });
+
+  it('omits userIntent when the API returns null', async () => {
+    const searchClient = createSearchClient();
+
+    server.use(
+      http.get(`https://${apiHost}/v1/search-verses`, () =>
+        HttpResponse.json({
+          verses: [{ reference: 'JHN.6.35' }],
+          user_intent: null,
+          did_you_mean: [],
+          search_instead_for: null,
+          next_page_token: null,
+        }),
+      ),
+    );
+
+    const result = await searchClient.searchVerses('bread', 111);
+    expect(result).toEqual({
+      verses: [{ id: 'JHN.6.35' }],
+      didYouMean: [],
+      searchInsteadFor: null,
+      nextPageToken: null,
+    });
+    expect(result).not.toHaveProperty('userIntent');
   });
 
   it('includes user_intent only when the caller supplies it', async () => {

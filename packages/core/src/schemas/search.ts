@@ -49,9 +49,9 @@ export function isValidStructuralUsfmReference(usfm: string): boolean {
   return true;
 }
 
-/** Normalizes caller language ranges for search endpoints (`en_US` → `en-US`). */
+/** Normalizes caller language ranges for search endpoints (`en_US` → `en-us`). */
 export function normalizeSearchLanguageRange(range: string): string {
-  return range.trim().replace(/_/g, '-');
+  return range.trim().replace(/_/g, '-').toLowerCase();
 }
 
 /**
@@ -59,12 +59,12 @@ export function normalizeSearchLanguageRange(range: string): string {
  * subset (ISO 639 primary subtag plus optional hyphen extensions such as region).
  * Not full BCP 47. Language API resource ids use {@link BCP47_LANGUAGE_TAG_REGEX}.
  */
-const SEARCH_LANGUAGE_RANGE_REGEX = /^(\*|[a-z]{2,3}(?:-[A-Za-z0-9]+)*)$/;
+const SEARCH_LANGUAGE_RANGE_REGEX = /^(\*|[A-Za-z]{1,8}(?:-[A-Za-z0-9]{1,8})*)$/;
 
 const SEARCH_LANGUAGE_RANGE_ERROR =
   'Language range must be "*" or a Basic Language Range (e.g., "en", "en-US")';
 
-/** Validates and normalizes one search language range (`en_US` → `en-US`). */
+/** Validates and normalizes one search language range (`EN`, `en_US` → `en`, `en-us`). */
 export function parseSearchLanguageRange(range: string): string {
   const trimmed = z
     .string()
@@ -104,7 +104,7 @@ export type SearchQueries = Readonly<z.infer<typeof SearchQueriesSchema>>;
 
 export const SearchQueryWireSchema = z.object({
   text: z.string(),
-  source: z.optional(z.string()),
+  source: z.optional(z.nullable(z.string())),
 });
 
 export type SearchQueryWire = z.infer<typeof SearchQueryWireSchema>;
@@ -117,7 +117,7 @@ export type SearchQueriesWire = z.infer<typeof SearchQueriesWireSchema>;
 
 export function toSearchQuery(wire: SearchQueryWire): SearchQuery {
   const query: SearchQuery = { text: wire.text };
-  if (wire.source !== undefined) {
+  if (wire.source != null) {
     return { ...query, source: wire.source };
   }
   return query;
@@ -155,7 +155,7 @@ export type SearchVerseHitWire = z.infer<typeof SearchVerseHitWireSchema>;
 
 export const SearchVersesWireSchema = z.object({
   verses: z.array(SearchVerseHitWireSchema),
-  user_intent: z.optional(z.string()),
+  user_intent: z.optional(z.nullable(z.string())),
   did_you_mean: z.array(z.string()),
   search_instead_for: z.optional(z.nullable(z.string())),
   next_page_token: z.optional(z.nullable(z.string())),
@@ -181,7 +181,7 @@ export function toSearchVersesResponse(wire: SearchVersesWire): SearchVersesResp
     searchInsteadFor: wire.search_instead_for ?? null,
     nextPageToken: wire.next_page_token ?? null,
   };
-  if (wire.user_intent !== undefined) {
+  if (wire.user_intent != null) {
     return { ...response, userIntent: wire.user_intent };
   }
   return response;

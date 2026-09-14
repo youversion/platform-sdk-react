@@ -82,13 +82,13 @@ describe('SearchClient.searchTopics', () => {
     expect(result.totalSize).toBe(0);
   });
 
-  it('normalizes en_US to en-US on the wire', async () => {
+  it('normalizes en_US to en-us on the wire', async () => {
     const searchClient = createSearchClient();
 
     server.use(
       http.get(`https://${apiHost}/v1/search-topics`, ({ request }) => {
         const url = new URL(request.url);
-        expect(url.searchParams.getAll('language_ranges[]')).toEqual(['en-US']);
+        expect(url.searchParams.getAll('language_ranges[]')).toEqual(['en-us']);
         return HttpResponse.json({
           topics: [],
           did_you_mean: [],

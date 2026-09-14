@@ -57,7 +57,7 @@ export class SearchClient {
   /**
    * Returns topics related to a query. This endpoint is unpaginated.
    * @param query Search text (1–100 characters).
-   * @param languageRanges Ordered language ranges (`en_US` is normalized to `en-US` on the wire).
+   * @param languageRanges Ordered language ranges (`en_US` is normalized to `en-us` on the wire).
    */
   async searchTopics(
     query: string,
