@@ -1259,7 +1259,11 @@ export function BibleThemeSettingsContent({
 }: BibleThemeSettingsContentProps): ReactElement {
   const { t } = useTranslation(undefined, { i18n });
   return (
-    <div data-yv-sdk data-yv-theme={theme} className="yv:flex yv:flex-col yv:gap-4 yv:p-4">
+    <div
+      data-yv-sdk
+      data-yv-theme={theme}
+      className="yv:flex yv:min-h-0 yv:flex-col yv:gap-4 yv:overflow-y-auto yv:p-4"
+    >
       <div className="yv:flex yv:justify-between yv:items-stretch yv:gap-4">
         <div className="yv:flex yv:flex-1">
           <Button

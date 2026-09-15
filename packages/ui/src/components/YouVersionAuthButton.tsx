@@ -10,6 +10,7 @@ import { useYVAuth, useTheme } from '@youversion/platform-react-hooks';
 import { Button } from '../components/ui/button';
 import { YouVersionLogo } from './icons/youversion-logo';
 import { cn } from '../lib/utils';
+import { withShadowIsolation } from '../lib/shadow-isolation';
 
 interface SignInAuthProps {
   /**
@@ -109,7 +110,7 @@ export interface YouVersionAuthButtonProps
  * <YouVersionAuthButton scopes={['profile']}/>
  *
  */
-export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersionAuthButtonProps>(
+const YouVersionAuthButtonImpl = React.forwardRef<HTMLButtonElement, YouVersionAuthButtonProps>(
   (
     {
       background,
@@ -206,7 +207,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
           data-yv-sdk
           data-yv-theme={theme}
           className={cn(
-            'yv:shadow-none yv:p-3 yv:h-auto yv:w-fit',
+            'yv:font-sans yv:shadow-none yv:p-3 yv:h-auto yv:w-fit',
             // The YV brand button is a neutral surface (white in light, dark in
             // dark) with its own text/logo color set below — pin the background
             // explicitly so it doesn't inherit the `default` variant's
@@ -236,7 +237,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
         data-yv-sdk
         data-yv-theme={theme}
         className={cn(
-          'yv:relative yv:shadow-none yv:w-fit',
+          'yv:font-sans yv:relative yv:shadow-none yv:w-fit',
           // Pin the neutral brand surface so the button doesn't inherit the
           // `default` variant's `bg-primary` (see the icon branch above).
           'yv:bg-background yv:hover:bg-background/90',
@@ -259,4 +260,13 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
   },
 );
 
-YouVersionAuthButton.displayName = 'YouVersionAuthButton';
+YouVersionAuthButtonImpl.displayName = 'YouVersionAuthButtonImpl';
+
+/**
+ * Automatically rendered in a Shadow DOM so host-page selectors cannot style
+ * the button's internal DOM. No consumer wrapper or opt-in flag is required.
+ */
+export const YouVersionAuthButton = withShadowIsolation(
+  YouVersionAuthButtonImpl,
+  'YouVersionAuthButton',
+);
