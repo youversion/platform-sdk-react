@@ -35,6 +35,17 @@ assert_not_contains() {
   fi
 }
 
+assert_before() {
+  local name="$1" first="$2" second="$3" first_line second_line
+  first_line="$(grep -nF -- "$first" "$WORKFLOW" | head -1 | cut -d: -f1)"
+  second_line="$(grep -nF -- "$second" "$WORKFLOW" | head -1 | cut -d: -f1)"
+  if [[ -n "$first_line" && -n "$second_line" && "$first_line" -lt "$second_line" ]]; then
+    pass "$name"
+  else
+    fail "$name" "expected '$first' before '$second'"
+  fi
+}
+
 if pnpm exec prettier --check "$WORKFLOW" >/dev/null; then
   pass "workflow YAML parses and is formatted"
 else
@@ -55,8 +66,13 @@ assert_contains "unknown impact has its own failure status" \
   "Post failure status when release impact cannot be determined"
 assert_contains "breaking-change status requires a trusted decision" \
   "steps.decision.outputs.blocked == '' && steps.decision.outputs.is_major == '1'"
-assert_contains "trusted non-major evaluations remove stale instructions" \
-  "Mark PRs without a breaking change as success and remove stale instructions"
+assert_contains "unknown and non-major evaluations remove stale instructions" \
+  "steps.decision.outputs.blocked != '' || steps.decision.outputs.is_major != '1'"
+assert_contains "cleanup only deletes workflow-owned comments" \
+  '.user.login == \"github-actions[bot]\"'
+assert_before "cleanup happens before a new status is published" \
+  "Remove stale workflow-owned signoff instructions" \
+  "Mark PRs without a breaking change as success"
 
 printf '\n%d passed, %d failed\n' "$passes" "$failures"
 [[ "$failures" -eq 0 ]]

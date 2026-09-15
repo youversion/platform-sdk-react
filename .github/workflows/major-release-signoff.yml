@@ -229,12 +229,30 @@ jobs:
           echo "next=$PREVIEW_NEXT" >> "$GITHUB_OUTPUT"
           echo "release_type=$PREVIEW_RELEASE_TYPE" >> "$GITHUB_OUTPUT"
 
-      - name: Mark PRs without a breaking change as success and remove stale instructions
+      - name: Remove stale workflow-owned signoff instructions
+        # Unknown impact must not leave a comment claiming a confirmed breaking change.
+        # Trusted non-major results also retire instructions from an earlier evaluation.
+        if: steps.decision.outputs.blocked != '' || steps.decision.outputs.is_major != '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.context.outputs.pr_number }}
+        run: |
+          set -euo pipefail
+          MARKER='<!-- major-signoff-required -->'
+          gh api --paginate \
+            "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$MARKER\"))) | .id" |
+            while read -r COMMENT_ID; do
+              [ -z "$COMMENT_ID" ] && continue
+              gh api -X DELETE "repos/${{ github.repository }}/issues/comments/$COMMENT_ID"
+              echo "Removed stale blocking comment ($COMMENT_ID)."
+            done
+
+      - name: Mark PRs without a breaking change as success
         if: steps.decision.outputs.blocked == '' && steps.decision.outputs.is_major != '1'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ needs.context.outputs.head_sha }}
-          PR_NUMBER: ${{ needs.context.outputs.pr_number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           RELEASE_TYPE: ${{ steps.decision.outputs.release_type }}
         run: |
@@ -244,16 +262,6 @@ jobs:
             -f context="$STATUS_CONTEXT" \
             -f description="No breaking changeset added (${RELEASE_TYPE:-no bump}); signoff not required." \
             -f target_url="$RUN_URL"
-
-          MARKER='<!-- major-signoff-required -->'
-          gh api --paginate \
-            "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" \
-            --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" |
-            while read -r COMMENT_ID; do
-              [ -z "$COMMENT_ID" ] && continue
-              gh api -X DELETE "repos/${{ github.repository }}/issues/comments/$COMMENT_ID"
-              echo "Removed stale blocking comment ($COMMENT_ID)."
-            done
 
       - name: Post failure status when release impact cannot be determined
         if: steps.decision.outputs.blocked != ''
