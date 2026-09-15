@@ -12,13 +12,14 @@
  * 3. Narrow bundle is smaller than a multi-export barrel bundle.
  * 4. Integrity probe: treeShaking:false on the narrow import includes sentinels
  *    (proves the check is not a no-op against pre-bundled tsup output).
+ * 5. The lazy hooks auth ESM chunk retains its "use client" directive.
  *
  * 0. package.json sideEffects matches expected values (webpack/Rollup consumers).
  *
  * Note: esbuild tree-shaking checks use pre-bundled tsup dist and do not honor
  * package.json sideEffects; CI asserts sideEffects separately (step 0).
  */
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -82,6 +83,21 @@ function assertPackageSideEffects() {
     }
   }
   return errors;
+}
+
+function assertHooksAuthChunkDirective() {
+  const hooksDist = join(repoRoot, 'packages/hooks/dist');
+  const authChunks = readdirSync(hooksDist).filter(
+    (fileName) => fileName.startsWith('YouVersionAuthProvider-') && fileName.endsWith('.js'),
+  );
+  if (authChunks.length !== 1) {
+    return [`expected one hooks auth ESM chunk, found ${authChunks.length}`];
+  }
+
+  const source = readFileSync(join(hooksDist, authChunks[0]), 'utf8');
+  return source.startsWith("'use client';\n")
+    ? []
+    : [`${authChunks[0]} is missing its leading "use client" directive`];
 }
 
 /** @type {Array<{ package: string; external: string[]; narrow: object; controls: object[]; focused?: object[]; fullBarrel: object }>} */
@@ -358,6 +374,15 @@ async function main() {
   if (sideEffectsErrors.length > 0) {
     console.error(red(`${sideEffectsErrors.length} package.json sideEffects check(s) failed.`));
     for (const error of sideEffectsErrors) {
+      console.error(red(`  ✗ ${error}`));
+    }
+    process.exit(1);
+  }
+
+  const authChunkErrors = assertHooksAuthChunkDirective();
+  if (authChunkErrors.length > 0) {
+    console.error(red(`${authChunkErrors.length} hooks auth chunk check(s) failed.`));
+    for (const error of authChunkErrors) {
       console.error(red(`  ✗ ${error}`));
     }
     process.exit(1);
