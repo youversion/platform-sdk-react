@@ -44,17 +44,15 @@ You'll need to obtain an app key from <https://platform.youversion.com>
 
 ### Set up environment variables
 
-Create an .env.local file in the `./packages/core` package and update the app key variable.
+Copy the root environment template and add your YouVersion app key. This one file configures the
+core tests, Storybook, and the Vite example app.
 
 ```bash
-cp ./packages/core/.env.example ./packages/core/.env.local
+cp .env.example .env
 ```
 
-Create an .env.local file in the `./packages/ui` package and update the app key variable.
-
-```bash
-cp ./packages/ui/.env.example ./packages/ui/.env.local
-```
+Shell and CI variables take precedence over files. Existing package-local `.env.local` files remain
+supported as optional harness-specific overrides; the root `.env` provides the default.
 
 > [!NOTE]
 > Our React hooks package does not require environment variables at this time.
