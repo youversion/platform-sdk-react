@@ -27,7 +27,23 @@ describe('parseUsfmReference', () => {
     'JHN.6.9-',
     'JHN..9',
     'MAT.1.1-2-3',
+    'JHN.6.9007199254740992',
+    'JHN.6.1-100000',
   ])('rejects %s', (usfm) => {
     expect(parseUsfmReference(usfm)).toBeNull();
+  });
+
+  it('rejects unsafe integer verse ranges without hanging', () => {
+    expect(parseUsfmReference('JHN.6.9007199254740992-9007199254740993')).toBeNull();
+    expect(parseUsfmReference('JHN.6.9007199254740991-9007199254740992')).toBeNull();
+  }, 1000);
+
+  it('parses a full Psalm 119 range', () => {
+    const parsed = parseUsfmReference('PSA.119.1-176');
+    expect(parsed?.book).toBe('PSA');
+    expect(parsed?.chapter).toBe('119');
+    expect(parsed?.verses[0]).toBe(1);
+    expect(parsed?.verses[175]).toBe(176);
+    expect(parsed?.verses).toHaveLength(176);
   });
 });
