@@ -2,7 +2,7 @@
 
 import React, { type ComponentProps, Suspense, useEffect, useLayoutEffect } from 'react';
 import { YouVersionProvider as BaseYouVersionProvider } from '@youversion/platform-react-hooks';
-import { requestSdkLanguage } from '@/i18n/pending-locale';
+import { syncSdkLanguage } from '@/i18n';
 import { YvStyles } from '@/lib/yv-styles-chrome';
 import { YvFonts } from '@/lib/yv-fonts';
 import { MissingAppKey } from '@/components/missing-app-key';
@@ -34,17 +34,16 @@ export function YouVersionProvider({
 }: YouVersionProviderProps): React.ReactElement {
   const normalizedLocale = locale?.trim() || undefined;
 
-  // Record the locale without importing i18next or locale JSON. A translating
-  // child loads catalogs. Kick off an explicit locale during render so that
-  // import can start before paint. The first HTML may still be English until
-  // the catalog resolves. When locale is omitted, wait for the layout effect
-  // so SSR stays on the English fallback.
+  // Layout effects never run during SSR. Apply an explicit locale during render
+  // so children emit the host language in the server HTML and the first client
+  // paint matches it. When locale is omitted, wait for the layout effect so SSR
+  // stays on the English fallback instead of a request-time browser language.
   if (normalizedLocale) {
-    requestSdkLanguage(normalizedLocale);
+    void syncSdkLanguage(normalizedLocale);
   }
 
   useLayoutEffect(() => {
-    requestSdkLanguage(normalizedLocale);
+    void syncSdkLanguage(normalizedLocale);
   }, [normalizedLocale]);
 
   // Guard against a missing/empty app key here (rather than letting the base
@@ -70,7 +69,7 @@ export function YouVersionProvider({
     return (
       <>
         <YvStyles />
-        <MissingAppKey locale={normalizedLocale} theme={resolveTheme(props.theme)} />
+        <MissingAppKey theme={resolveTheme(props.theme)} />
       </>
     );
   }

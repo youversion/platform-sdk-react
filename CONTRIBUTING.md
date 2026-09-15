@@ -140,9 +140,9 @@ Bundle size budgets and tree-shaking verification require a full build first —
 | `pnpm size:why` | Alias for `pnpm size:visualize` (size-limit `--why` is unavailable with `preset-small-lib`) |
 | `pnpm check:tree-shaking` | Verify single-symbol consumer bundles exclude unused-export sentinels; CI asserts package.json `sideEffects` |
 
-**Export-size acceptance criteria:** `.size-limit.js` spot-checks representative named imports (`ApiClient`, `useChapter`, `YouVersionProvider`) against budgets. The gate leaves esbuild `splitting` off so `import()` catalogs stay inlined. That is the honest esbuild-partner number, not a Vite first-paint. Per-export attribution is `pnpm size:visualize` plus [esbuild.github.io/analyze](https://esbuild.github.io/analyze/).
+**Export-size acceptance criteria:** `.size-limit.js` spot-checks representative named imports (`ApiClient`, `useChapter`, `YouVersionProvider`) against budgets. Per-export attribution is `pnpm size:visualize` plus [esbuild.github.io/analyze](https://esbuild.github.io/analyze/).
 
-**UI tree-shaking:** `check:tree-shaking` covers `@youversion/platform-react-ui`. A Provider-only import must drop `BibleReader` and both pickers, and must still contain SDK style markers. That win comes from listing every public component as a tsup entry, not from `splitting: true` alone. Four entries leave the three Bible modules on the root graph. `pnpm --filter @youversion/platform-react-ui check:entries` fails if a new barrel export is missing from `tsup.config.ts`. English is the only eager locale. Other locale files load on demand. Reader CSS is injected by `BibleTextView`, not `YouVersionProvider`.
+**UI tree-shaking:** `check:tree-shaking` covers `@youversion/platform-react-ui`. A Provider-only import must drop `BibleReader` and both pickers, and must still contain SDK style markers. That win comes from listing every public component as a tsup entry, not from `splitting: true` alone. `pnpm --filter @youversion/platform-react-ui check:entries` fails if a new barrel export is missing from `tsup.config.ts`. Reader CSS is injected by `BibleTextView`, not `YouVersionProvider`.
 
 **Updating budgets:** After a deliberate size change, run `pnpm size` locally, note the reported brotlied sizes, and set each `.size-limit.js` `limit` to measured size plus ~10% headroom.
 

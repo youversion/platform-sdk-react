@@ -1,12 +1,4 @@
-/**
- * CI gate for published partner-bundle bytes.
- *
- * Official `@size-limit/esbuild` does not set `splitting`. esbuild then inlines
- * `import()`, so the UI Provider row includes every locale catalog. That is the
- * honest number for an esbuild partner who does not split. Do not enable
- * `splitting` here to make the gate look like a Vite first-paint. Vite partners
- * still split those `import()`s.
- */
+/** CI gate for published consumer-bundle bytes. */
 export default [
   {
     name: 'core / full barrel (esm)',
@@ -50,7 +42,7 @@ export default [
     name: 'ui / YouVersionProvider only',
     path: 'packages/ui/dist/index.js',
     import: '{ YouVersionProvider }',
-    limit: '18 KB',
+    limit: '54 KB',
     ignore: ['react', 'react-dom', 'react/jsx-runtime', '@tanstack/react-query'],
   },
   {

@@ -1,22 +1,9 @@
 'use client';
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 import { ExclamationCircle } from '@/components/icons/exclamation-circle';
-import { getBrowserLanguages, resolveBrowserLanguage } from '@/i18n/detectLanguage';
-import { providerStringLngs, providerStrings } from '@/i18n/provider-strings.generated';
-
-function providerLocale(locale?: string): keyof typeof providerStrings {
-  const lng = resolveBrowserLanguage(
-    locale ? [locale] : getBrowserLanguages(),
-    providerStringLngs,
-    'en',
-  );
-  if (lng in providerStrings) {
-    // SAFETY: `in` checked lng against the generated provider string map.
-    return lng as keyof typeof providerStrings;
-  }
-  return 'en';
-}
 
 /**
  * Styled panel shown by {@link YouVersionProvider} when no (or an empty)
@@ -25,12 +12,10 @@ function providerLocale(locale?: string): keyof typeof providerStrings {
  */
 export function MissingAppKey({
   theme = 'light',
-  locale,
 }: {
   theme?: 'light' | 'dark';
-  locale?: string;
 }): React.ReactElement {
-  const strings = providerStrings[providerLocale(locale)];
+  const { t } = useTranslation(undefined, { i18n });
 
   return (
     <div
@@ -41,11 +26,9 @@ export function MissingAppKey({
     >
       <ExclamationCircle className="yv:size-5 yv:shrink-0 yv:text-foreground" aria-hidden="true" />
       <div className="yv:flex yv:flex-col yv:gap-1">
-        <p className="yv:m-0 yv:text-sm yv:font-semibold yv:leading-tight">
-          {strings.errorHeading}
-        </p>
+        <p className="yv:m-0 yv:text-sm yv:font-semibold yv:leading-tight">{t('errorHeading')}</p>
         <p className="yv:m-0 yv:text-[13px] yv:font-medium yv:leading-snug yv:text-muted-foreground">
-          {strings.invalidAppKeyError}
+          {t('invalidAppKeyError')}
         </p>
       </div>
     </div>

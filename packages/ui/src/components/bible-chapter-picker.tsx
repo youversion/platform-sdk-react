@@ -404,7 +404,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <InputGroupAddon>
+          <InputGroupAddon align="inline-start">
             <SearchIcon className="yv:size-5 yv:text-muted-foreground" />
           </InputGroupAddon>
         </InputGroup>
