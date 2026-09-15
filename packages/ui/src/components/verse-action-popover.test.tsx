@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { fillFor } from '@/test/highlights-test-utils';
+import { InterfaceDirectionProvider } from '@/lib/direction';
 import {
   VerseActionPopover,
   HIGHLIGHT_COLORS,
@@ -701,15 +702,15 @@ describe('VerseActionPopover', () => {
       // No layout in jsdom → no mask at rest.
       expect(swatchRow.getAttribute('style') ?? '').not.toContain('linear-gradient');
 
-      // Fake an overflowing row scrolled to the middle, then fire a real scroll
-      // event. Only an attached handler will read these and apply the mask.
-      Object.defineProperty(swatchRow, 'scrollWidth', { configurable: true, value: 500 });
-      Object.defineProperty(swatchRow, 'clientWidth', { configurable: true, value: 200 });
-      Object.defineProperty(swatchRow, 'scrollLeft', {
-        configurable: true,
-        writable: true,
-        value: 120,
-      });
+      // Fake a row whose first and last swatches both extend past its viewport,
+      // then fire a real scroll event. Only an attached handler will measure
+      // these rectangles and apply the mask.
+      const swatches = swatchRow.querySelectorAll('button');
+      vi.spyOn(swatchRow, 'getBoundingClientRect').mockReturnValue(rect(100, 300));
+      vi.spyOn(swatches[0]!, 'getBoundingClientRect').mockReturnValue(rect(80, 112));
+      vi.spyOn(swatches[swatches.length - 1]!, 'getBoundingClientRect').mockReturnValue(
+        rect(288, 320),
+      );
       fireEvent.scroll(swatchRow);
 
       // Both edges have hidden content → a two-sided fade mask is applied.
@@ -717,49 +718,102 @@ describe('VerseActionPopover', () => {
     });
   });
 
-  describe('computeScrollFade (edge-fade toggle logic)', () => {
-    // jsdom has no layout, so exercise the pure helper with mocked scroll
-    // metrics rather than asserting rendered pixels.
+  describe('computeScrollFade (geometry-based edge fades)', () => {
+    const viewport = rect(100, 300);
+    const firstVisible = rect(100, 132);
+    const lastVisible = rect(268, 300);
+
     it('fades neither edge when the row fits (no overflow)', () => {
-      expect(computeScrollFade({ scrollLeft: 0, scrollWidth: 200, clientWidth: 200 })).toEqual({
-        start: false,
-        end: false,
-      });
+      expect(
+        computeScrollFade({
+          firstSwatch: firstVisible,
+          lastSwatch: lastVisible,
+          viewport,
+          direction: 'ltr',
+        }),
+      ).toEqual({ left: false, right: false });
     });
 
-    it('fades only the end edge when scrolled fully to the start', () => {
-      expect(computeScrollFade({ scrollLeft: 0, scrollWidth: 500, clientWidth: 200 })).toEqual({
-        start: false,
-        end: true,
-      });
+    it('maps a clipped logical end to the right edge in LTR', () => {
+      expect(
+        computeScrollFade({
+          firstSwatch: firstVisible,
+          lastSwatch: rect(268, 320),
+          viewport,
+          direction: 'ltr',
+        }),
+      ).toEqual({ left: false, right: true });
     });
 
-    it('fades both edges when scrolled somewhere in the middle', () => {
-      expect(computeScrollFade({ scrollLeft: 120, scrollWidth: 500, clientWidth: 200 })).toEqual({
-        start: true,
-        end: true,
-      });
+    it('maps both clipped logical edges in the middle of an LTR row', () => {
+      expect(
+        computeScrollFade({
+          firstSwatch: rect(80, 112),
+          lastSwatch: rect(288, 320),
+          viewport,
+          direction: 'ltr',
+        }),
+      ).toEqual({ left: true, right: true });
     });
 
-    it('fades only the start edge when scrolled fully to the end', () => {
-      expect(computeScrollFade({ scrollLeft: 300, scrollWidth: 500, clientWidth: 200 })).toEqual({
-        start: true,
-        end: false,
-      });
+    it('maps a clipped logical start to the right edge in RTL', () => {
+      expect(
+        computeScrollFade({
+          firstSwatch: rect(288, 320),
+          lastSwatch: lastVisible,
+          viewport,
+          direction: 'rtl',
+        }),
+      ).toEqual({ left: false, right: true });
     });
 
-    it('tolerates sub-pixel slack at both bounds', () => {
-      // Half a pixel shy of each bound still counts as "at the edge".
-      expect(computeScrollFade({ scrollLeft: 0.5, scrollWidth: 500, clientWidth: 200 })).toEqual({
-        start: false,
-        end: true,
-      });
-      expect(computeScrollFade({ scrollLeft: 299.5, scrollWidth: 500, clientWidth: 200 })).toEqual({
-        start: true,
-        end: false,
-      });
+    it('maps a clipped logical end to the left edge in RTL', () => {
+      expect(
+        computeScrollFade({
+          firstSwatch: firstVisible,
+          lastSwatch: rect(80, 112),
+          viewport,
+          direction: 'rtl',
+        }),
+      ).toEqual({ left: true, right: false });
+    });
+
+    it('tolerates sub-pixel slack at every viewport edge', () => {
+      expect(
+        computeScrollFade({
+          firstSwatch: rect(99.5, 131.5),
+          lastSwatch: rect(268.5, 300.5),
+          viewport,
+          direction: 'ltr',
+        }),
+      ).toEqual({ left: false, right: false });
+    });
+
+    it('renders the RTL logical-start fade on the physical right edge', () => {
+      render(
+        <InterfaceDirectionProvider direction="rtl">
+          <VerseActionPopover {...defaultProps} />
+        </InterfaceDirectionProvider>,
+      );
+      const swatchRow = screen.getByRole('group', { name: 'Highlight colors' });
+      const swatches = swatchRow.querySelectorAll('button');
+      vi.spyOn(swatchRow, 'getBoundingClientRect').mockReturnValue(rect(100, 300));
+      vi.spyOn(swatches[0]!, 'getBoundingClientRect').mockReturnValue(rect(288, 320));
+      vi.spyOn(swatches[swatches.length - 1]!, 'getBoundingClientRect').mockReturnValue(
+        rect(268, 300),
+      );
+
+      fireEvent.scroll(swatchRow);
+
+      expect(swatchRow.style.maskImage).toContain('to right,#000 0');
+      expect(swatchRow.style.maskImage).toContain('transparent 100%');
     });
   });
+
+  function rect(left: number, right: number): DOMRect {
+    // SAFETY: computeScrollFade reads only the horizontal edges from this test rectangle.
+    return { left, right } as DOMRect;
+  }
 
   describe('Highlights disabled (flag off)', () => {
     it('hides the color row and remove circles but keeps Copy / Share', () => {

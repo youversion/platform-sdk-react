@@ -13,6 +13,7 @@ import {
   type BibleReaderHighlightIntent,
   type BibleReaderRootProps,
 } from './bible-reader';
+import { VerseActionPopover } from './verse-action-popover';
 
 type PathParams = {
   id?: string | readonly string[];
@@ -163,6 +164,117 @@ export const Default: Story = {
 
     await userEvent.click(interButton);
     await expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(INTER_FONT);
+  },
+};
+
+const rtlPassage = {
+  id: 'JHN.1',
+  content:
+    '<div dir="rtl"><div class="p"><span class="v" v="1">1</span>في البدء كان الكلمة، والكلمة كان عند الله.</div><div class="q1">وهذا سطر شعري بمسافة بادئة من البداية المنطقية.</div></div>',
+  reference: 'يوحنا 1',
+};
+
+/**
+ * Scripture derives RTL from the deterministic passage fixture while the
+ * provider keeps the reader interface LTR. This verifies the two direction
+ * domains do not leak into each other in Chromium.
+ */
+export const RtlScriptureWithLtrChrome: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+  },
+  globals: {
+    interfaceDirection: 'ltr',
+    locale: 'en',
+  },
+  parameters: {
+    msw: {
+      handlers: [http.get('*/v1/bibles/111/passages/JHN.1', () => HttpResponse.json(rtlPassage))],
+    },
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(async () => {
+      const renderer = canvasElement.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
+      await expect(renderer).toHaveAttribute('dir', 'rtl');
+      await expect(renderer?.textContent).toContain('في البدء');
+    });
+
+    const renderer = canvasElement.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]')!;
+    const poetry = renderer.querySelector<HTMLElement>('.q1')!;
+    const rendererStyle = getComputedStyle(renderer);
+    const poetryStyle = getComputedStyle(poetry);
+    await expect(rendererStyle.textAlign).toBe('right');
+    await expect(Number.parseFloat(poetryStyle.paddingRight)).toBeGreaterThan(0);
+    await expect(poetryStyle.paddingLeft).toBe('0px');
+
+    await userEvent.click(screen.getByRole('button', { name: /settings/i }));
+    await waitFor(async () => {
+      const settings = await screen.findByText('Reader Settings');
+      await expect(settings.closest('[role="dialog"]')).toHaveAttribute('dir', 'ltr');
+    });
+  },
+};
+
+/**
+ * The highlight action bar is intentionally narrow so Chromium must clip its
+ * swatches. Its RTL portal direction drives geometry-based fade placement.
+ */
+export const RtlActionOverflow: Story = {
+  tags: ['integration'],
+  globals: {
+    interfaceDirection: 'rtl',
+    locale: 'en',
+  },
+  render: () => (
+    <VerseActionPopover
+      open
+      onOpenChange={fn()}
+      activeHighlights={new Set()}
+      selectedVerses={[]}
+      highlightedVerses={{}}
+      onHighlight={fn()}
+      onClearHighlight={fn()}
+      onCopy={fn()}
+      onShare={fn()}
+    />
+  ),
+  play: async () => {
+    const dialog = await screen.findByRole('dialog');
+    dialog.style.width = '260px';
+    const swatchRow = screen.getByRole('group', { name: /highlight colors/i });
+
+    // Width is constrained after Radix mounts the portal, so trigger the same
+    // measurement path the component uses for user-driven horizontal scrolling.
+    swatchRow.dispatchEvent(new Event('scroll'));
+
+    await waitFor(async () => {
+      await expect(dialog).toHaveAttribute('dir', 'rtl');
+      await expect(swatchRow.scrollWidth).toBeGreaterThan(swatchRow.clientWidth);
+    });
+
+    const first = swatchRow.firstElementChild!;
+    const last = swatchRow.lastElementChild!;
+    const viewport = swatchRow.getBoundingClientRect();
+    const firstRect = first.getBoundingClientRect();
+    const lastRect = last.getBoundingClientRect();
+    const startHidden = firstRect.right > viewport.right + 1;
+    const endHidden = lastRect.left < viewport.left - 1;
+    const mask = swatchRow.style.maskImage;
+
+    await expect(mask.length > 0).toBe(startHidden || endHidden);
+    if (startHidden) await expect(mask).toContain('transparent 100%');
+    if (endHidden) await expect(mask).toContain('transparent 0');
   },
 };
 
