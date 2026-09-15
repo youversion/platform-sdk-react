@@ -89,7 +89,8 @@ jobs:
             # Bot authorship does not authenticate later commits pushed to the branch.
             # Bind the exception to this immutable base/head pair and only accept the
             # release lifecycle shape: one or more consumed changeset Markdown files,
-            # with no added, modified, renamed, or copied changeset input.
+            # with no added, modified, renamed, or copied changeset input, plus exactly
+            # the package manifests and changelogs emitted for this repo's fixed group.
             if COMPARE_JSON=$(gh api "repos/$REPOSITORY/compare/$BASE_SHA...$HEAD_SHA"); then
               if jq -e --arg base "$BASE_SHA" '
                 (.base_commit.sha == $base) and
@@ -99,11 +100,21 @@ jobs:
                   ($changesets | length) > 0 and
                   all($changesets[];
                     .status == "removed" and
-                    (.filename | test("^\\.changeset/[^/]+\\.md$"))))
+                    (.filename | test("^\\.changeset/[^/]+\\.md$")))) and
+                ([.files[] |
+                  select(.filename | startswith(".changeset/") | not) |
+                  [.filename, .status]] | sort) == [
+                    ["packages/core/CHANGELOG.md", "modified"],
+                    ["packages/core/package.json", "modified"],
+                    ["packages/hooks/CHANGELOG.md", "modified"],
+                    ["packages/hooks/package.json", "modified"],
+                    ["packages/ui/CHANGELOG.md", "modified"],
+                    ["packages/ui/package.json", "modified"]
+                  ]
               ' >/dev/null <<<"$COMPARE_JSON"; then
                 GENERATED_RELEASE=true
               else
-                echo "::warning::Generated release comparison was incomplete, ambiguous, or contained non-deletion changeset input."
+                echo "::warning::Generated release comparison was incomplete, ambiguous, or not canonical generated output."
               fi
             else
               echo "::warning::Could not verify the generated release PR comparison."

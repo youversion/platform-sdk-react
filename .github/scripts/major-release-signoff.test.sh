@@ -62,7 +62,12 @@ VALID_COMPARE=$(jq -n --arg base "$BASE_SHA" '{
   base_commit: {sha: $base},
   files: [
     {filename: ".changeset/consumed-change.md", status: "removed"},
-    {filename: "packages/core/package.json", status: "modified"}
+    {filename: "packages/core/CHANGELOG.md", status: "modified"},
+    {filename: "packages/core/package.json", status: "modified"},
+    {filename: "packages/hooks/CHANGELOG.md", status: "modified"},
+    {filename: "packages/hooks/package.json", status: "modified"},
+    {filename: "packages/ui/CHANGELOG.md", status: "modified"},
+    {filename: "packages/ui/package.json", status: "modified"}
   ]
 }')
 
@@ -141,12 +146,16 @@ run_context_case "rejects an added changeset input" false "$VALID_PR" \
   "$(jq '.files[0].status = "added"' <<<"$VALID_COMPARE")"
 run_context_case "rejects a modified changeset input" false "$VALID_PR" \
   "$(jq '.files[0].status = "modified"' <<<"$VALID_COMPARE")"
+run_context_case "rejects an unrelated source modification" false "$VALID_PR" \
+  "$(jq '.files += [{filename:"packages/core/src/client.ts",status:"modified"}]' <<<"$VALID_COMPARE")"
+run_context_case "rejects missing canonical generated-release output" false "$VALID_PR" \
+  "$(jq 'del(.files[-1])' <<<"$VALID_COMPARE")"
 run_context_case "rejects a comparison for a different base SHA" false "$VALID_PR" \
   "$(jq '.base_commit.sha = "cccccccccccccccccccccccccccccccccccccccc"' <<<"$VALID_COMPARE")"
 run_context_case "rejects a comparison without a verifiable file list" false "$VALID_PR" \
   "$(jq 'del(.files)' <<<"$VALID_COMPARE")"
 run_context_case "rejects a potentially truncated 300-file comparison" false "$VALID_PR" \
-  "$(jq -n --arg base "$BASE_SHA" '{base_commit:{sha:$base}, files: ([{filename:".changeset/consumed.md",status:"removed"}] + [range(1;300) | {filename:("file-" + tostring),status:"modified"}])}')"
+  "$(jq '.files += [range(7;300) | {filename:("file-" + tostring),status:"modified"}]' <<<"$VALID_COMPARE")"
 run_context_error_case "comparison API errors fail closed without claiming the exemption" success MOCK_COMPARE_ERROR
 run_context_error_case "PR API errors fail the resolver closed" failure MOCK_PULL_ERROR
 
