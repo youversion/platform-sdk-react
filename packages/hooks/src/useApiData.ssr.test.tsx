@@ -7,7 +7,7 @@
  */
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { BibleClient } from '@youversion/platform-core';
+import * as core from '@youversion/platform-core';
 import { YouVersionProvider } from './context/YouVersionProvider';
 import { useChapter } from './useChapter';
 
@@ -20,7 +20,7 @@ function Chapter() {
 describe('useApiData — server-side rendering', () => {
   it('renders the loading state without crashing or fetching', () => {
     const getChapter = vi
-      .spyOn(BibleClient.prototype, 'getChapter')
+      .spyOn(core, 'getChapter')
       .mockRejectedValue(new Error('must not be called during SSR'));
 
     const html = renderToString(
