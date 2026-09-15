@@ -31,6 +31,7 @@ extract_step() {
 
 extract_step "Resolve PR context" > "$TMP/context.sh"
 extract_step "Decide whether a signoff is required" > "$TMP/decision.sh"
+extract_step "Regenerate and verify release contents" > "$TMP/verify.sh"
 
 mkdir "$TMP/bin"
 cat > "$TMP/bin/gh" <<'EOF'
@@ -48,6 +49,19 @@ else
 fi
 EOF
 chmod +x "$TMP/bin/gh"
+cat > "$TMP/bin/pnpm" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+[ "$1" = "version-packages" ]
+rm .changeset/consumed-change.md
+for file in \
+  packages/core/CHANGELOG.md packages/core/package.json \
+  packages/hooks/CHANGELOG.md packages/hooks/package.json \
+  packages/ui/CHANGELOG.md packages/ui/package.json; do
+  printf 'generated\n' > "$file"
+done
+EOF
+chmod +x "$TMP/bin/pnpm"
 
 HEAD_SHA=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 BASE_SHA=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
@@ -88,10 +102,10 @@ run_context_case() {
     REPOSITORY=youversion/platform-sdk-react \
     GITHUB_OUTPUT="$output" MOCK_PR_FILE="$pr_file" MOCK_COMPARE_FILE="$compare_file" \
     MOCK_COMPARE_CALLS="$TMP/compare-calls" bash "$TMP/context.sh" >/dev/null 2>&1 &&
-    grep -Fxq "generated_release=$expected" "$output"; then
+    grep -Fxq "generated_candidate=$expected" "$output"; then
     pass "$name"
   else
-    fail "$name" "expected generated_release=$expected; output: $(tr '\n' ' ' < "$output")"
+    fail "$name" "expected generated_candidate=$expected; output: $(tr '\n' ' ' < "$output")"
   fi
 }
 
@@ -112,7 +126,7 @@ run_context_error_case() {
     result=failure
   fi
   if [ "$result" = "$expected" ] &&
-    { [ "$expected" = "failure" ] || grep -Fxq 'generated_release=false' "$output"; }; then
+    { [ "$expected" = "failure" ] || grep -Fxq 'generated_candidate=false' "$output"; }; then
     pass "$name"
   else
     fail "$name" "expected $expected with a fail-closed result; got $result and $(tr '\n' ' ' < "$output")"
@@ -159,11 +173,58 @@ run_context_case "rejects a potentially truncated 300-file comparison" false "$V
 run_context_error_case "comparison API errors fail closed without claiming the exemption" success MOCK_COMPARE_ERROR
 run_context_error_case "PR API errors fail the resolver closed" failure MOCK_PULL_ERROR
 
+VERIFY_REPO="$TMP/verify-repo"
+git init --quiet "$VERIFY_REPO"
+git -C "$VERIFY_REPO" config commit.gpgsign false
+git -C "$VERIFY_REPO" config user.name test
+git -C "$VERIFY_REPO" config user.email test@example.com
+mkdir -p "$VERIFY_REPO/.changeset" \
+  "$VERIFY_REPO/packages/core" "$VERIFY_REPO/packages/hooks" "$VERIFY_REPO/packages/ui"
+printf '%s\n' '---' '---' > "$VERIFY_REPO/.changeset/consumed-change.md"
+for file in \
+  packages/core/CHANGELOG.md packages/core/package.json \
+  packages/hooks/CHANGELOG.md packages/hooks/package.json \
+  packages/ui/CHANGELOG.md packages/ui/package.json; do
+  printf 'base\n' > "$VERIFY_REPO/$file"
+done
+git -C "$VERIFY_REPO" add -A
+git -C "$VERIFY_REPO" commit --quiet -m base
+VERIFY_BASE=$(git -C "$VERIFY_REPO" rev-parse HEAD)
+(cd "$VERIFY_REPO" && PATH="$TMP/bin:$PATH" pnpm version-packages)
+git -C "$VERIFY_REPO" add -A
+git -C "$VERIFY_REPO" commit --quiet -m generated
+VERIFY_CANONICAL=$(git -C "$VERIFY_REPO" rev-parse HEAD)
+printf 'tampered\n' > "$VERIFY_REPO/packages/core/package.json"
+git -C "$VERIFY_REPO" add -A
+git -C "$VERIFY_REPO" commit --quiet -m tampered
+VERIFY_TAMPERED=$(git -C "$VERIFY_REPO" rev-parse HEAD)
+git -C "$VERIFY_REPO" remote add origin "$VERIFY_REPO"
+
+run_content_verification_case() {
+  local name="$1" expected="$2" head="$3" output="$TMP/verify-output"
+  git -C "$VERIFY_REPO" reset --hard --quiet "$VERIFY_BASE"
+  : > "$output"
+  if (cd "$VERIFY_REPO" && \
+    PATH="$TMP/bin:$PATH" HEAD_SHA="$head" GITHUB_OUTPUT="$output" bash "$TMP/verify.sh") \
+    >/dev/null 2>&1 && grep -Fxq "verified=$expected" "$output"; then
+    pass "$name"
+  else
+    fail "$name" "expected verified=$expected; output: $(tr '\n' ' ' < "$output")"
+  fi
+}
+
+run_content_verification_case "accepts byte-for-byte base-owned Changesets output" \
+  true "$VERIFY_CANONICAL"
+run_content_verification_case "rejects tampered content at an allowed manifest path" \
+  false "$VERIFY_TAMPERED"
+
 run_decision_case() {
-  local name="$1" expected="$2" generated="$3" preview_result="$4" preview_major="$5"
+  local name="$1" expected="$2" candidate="$3" verification_result="$4" verified="$5"
+  local preview_result="$6" preview_major="$7"
   local output="$TMP/decision-output"
   : > "$output"
-  if GENERATED_RELEASE="$generated" IS_FORK=false PREVIEW_RESULT="$preview_result" \
+  if GENERATED_CANDIDATE="$candidate" GENERATED_RELEASE_RESULT="$verification_result" \
+    VERIFIED_GENERATED_RELEASE="$verified" IS_FORK=false PREVIEW_RESULT="$preview_result" \
     PREVIEW_IS_MAJOR="$preview_major" PREVIEW_NEXT=3.0.0 PREVIEW_RELEASE_TYPE=major \
     GITHUB_OUTPUT="$output" bash "$TMP/decision.sh" >/dev/null 2>&1 &&
     grep -Fxq "$expected" "$output"; then
@@ -174,11 +235,17 @@ run_decision_case() {
 }
 
 run_decision_case "generated releases require no source-PR major signoff" \
-  'is_major=0' true skipped ''
+  'is_major=0' true success true skipped ''
+run_decision_case "noncanonical generated release contents fail closed" \
+  'blocked=generated release contents did not match base-owned Changesets output' \
+  true success false skipped ''
+run_decision_case "failed generated release verification fails closed" \
+  'blocked=generated release contents did not match base-owned Changesets output' \
+  true failure '' skipped ''
 run_decision_case "ordinary major previews still require signoff" \
-  'is_major=1' false success 1
+  'is_major=1' false skipped '' success 1
 run_decision_case "failed ordinary previews remain blocked, not major" \
-  'blocked=release preview did not succeed (failure)' false failure ''
+  'blocked=release preview did not succeed (failure)' false skipped '' failure ''
 
 if pnpm exec prettier --check "$WORKFLOW" >/dev/null; then
   pass "workflow YAML parses and is formatted"

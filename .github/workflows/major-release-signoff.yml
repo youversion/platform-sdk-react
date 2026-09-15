@@ -35,7 +35,8 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      generated_release: ${{ steps.pr.outputs.generated_release }}
+      base_sha: ${{ steps.pr.outputs.base_sha }}
+      generated_candidate: ${{ steps.pr.outputs.generated_candidate }}
       head_sha: ${{ steps.pr.outputs.head_sha }}
       is_fork: ${{ steps.pr.outputs.is_fork }}
       pr_author: ${{ steps.pr.outputs.pr_author }}
@@ -77,7 +78,7 @@ jobs:
             IS_FORK=true
           fi
 
-          GENERATED_RELEASE=false
+          GENERATED_CANDIDATE=false
           if [ "$HEAD_REPO" = "$REPOSITORY" ] && \
              [ "$BASE_REPO" = "$REPOSITORY" ] && \
              [ "$BASE_REF" = "main" ] && \
@@ -112,7 +113,7 @@ jobs:
                     ["packages/ui/package.json", "modified"]
                   ]
               ' >/dev/null <<<"$COMPARE_JSON"; then
-                GENERATED_RELEASE=true
+                GENERATED_CANDIDATE=true
               else
                 echo "::warning::Generated release comparison was incomplete, ambiguous, or not canonical generated output."
               fi
@@ -122,10 +123,65 @@ jobs:
           fi
 
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
           echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
           echo "pr_author=$PR_AUTHOR" >> "$GITHUB_OUTPUT"
           echo "is_fork=$IS_FORK" >> "$GITHUB_OUTPUT"
-          echo "generated_release=$GENERATED_RELEASE" >> "$GITHUB_OUTPUT"
+          echo "generated_candidate=$GENERATED_CANDIDATE" >> "$GITHUB_OUTPUT"
+
+
+  generated_release:
+    # The metadata and comparison shape are a cheap fail-closed prefilter. Prove the
+    # contents separately by reproducing Changesets' output from the immutable base.
+    if: needs.context.outputs.generated_candidate == 'true'
+    name: Verify generated release contents
+    needs: context
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      verified: ${{ steps.verify.outputs.verified }}
+    steps:
+      - name: Checkout immutable base
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ needs.context.outputs.base_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install base-owned release tooling
+        run: pnpm install --frozen-lockfile --ignore-scripts --ignore-pnpmfile
+
+      - name: Regenerate and verify release contents
+        id: verify
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ needs.context.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --force origin "$HEAD_SHA"
+          git cat-file -e "$HEAD_SHA^{commit}"
+          pnpm version-packages
+          # Compare complete Git trees, not allowed paths or patches. This proves that
+          # base-owned Changesets tooling generated every byte at the evaluated head.
+          git add -A
+          GENERATED_TREE=$(git write-tree)
+          HEAD_TREE=$(git rev-parse "$HEAD_SHA^{tree}")
+          if [ "$GENERATED_TREE" = "$HEAD_TREE" ]; then
+            echo "verified=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "verified=false" >> "$GITHUB_OUTPUT"
+            echo "::error::Release PR contents do not exactly match base-owned Changesets output."
+          fi
 
 
   preview:
@@ -133,7 +189,7 @@ jobs:
     # in the gate below and report that its release impact could not be determined. A
     # verified generated release PR has consumed its changesets, so it is classified by
     # the gate without asking the generic source-PR preview to understand that lifecycle.
-    if: needs.context.outputs.is_fork != 'true' && needs.context.outputs.generated_release != 'true'
+    if: needs.context.outputs.is_fork != 'true' && needs.context.outputs.generated_candidate != 'true'
     name: Compute release preview
     needs: context
     runs-on: ubuntu-latest
@@ -230,7 +286,7 @@ jobs:
     # `always()`: `preview` is skipped for forks and the gate still has to post a status.
     if: always() && needs.context.result == 'success'
     name: Major release signoff
-    needs: [context, preview]
+    needs: [context, generated_release, preview]
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -239,20 +295,28 @@ jobs:
       - name: Decide whether a signoff is required
         id: decision
         env:
-          GENERATED_RELEASE: ${{ needs.context.outputs.generated_release }}
+          GENERATED_CANDIDATE: ${{ needs.context.outputs.generated_candidate }}
+          GENERATED_RELEASE_RESULT: ${{ needs.generated_release.result }}
           IS_FORK: ${{ needs.context.outputs.is_fork }}
           PREVIEW_RESULT: ${{ needs.preview.result }}
           PREVIEW_IS_MAJOR: ${{ needs.preview.outputs.is_major }}
           PREVIEW_NEXT: ${{ needs.preview.outputs.next }}
           PREVIEW_RELEASE_TYPE: ${{ needs.preview.outputs.release_type }}
+          VERIFIED_GENERATED_RELEASE: ${{ needs.generated_release.outputs.verified }}
         run: |
           set -euo pipefail
-          if [ "$GENERATED_RELEASE" = "true" ]; then
-            echo "blocked=" >> "$GITHUB_OUTPUT"
+          if [ "$GENERATED_CANDIDATE" = "true" ]; then
             echo "is_major=0" >> "$GITHUB_OUTPUT"
             echo "next=" >> "$GITHUB_OUTPUT"
             echo "release_type=" >> "$GITHUB_OUTPUT"
-            echo "generated_release=true" >> "$GITHUB_OUTPUT"
+            if [ "$GENERATED_RELEASE_RESULT" = "success" ] && \
+               [ "$VERIFIED_GENERATED_RELEASE" = "true" ]; then
+              echo "blocked=" >> "$GITHUB_OUTPUT"
+              echo "generated_release=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "blocked=generated release contents did not match base-owned Changesets output" >> "$GITHUB_OUTPUT"
+              echo "generated_release=false" >> "$GITHUB_OUTPUT"
+            fi
             exit 0
           fi
           echo "generated_release=false" >> "$GITHUB_OUTPUT"
