@@ -90,7 +90,8 @@ VALID_COMPARE=$(jq -n --arg base "$BASE_SHA" '{
 }')
 
 run_context_case() {
-  local name="$1" expected="$2" pr_json="$3" compare_json="$4" event_kind="${5:-pull_request}"
+  local name="$1" expected_release_pr="$2" expected_candidate="$3" pr_json="$4" compare_json="$5"
+  local event_kind="${6:-pull_request}"
   local output="$TMP/output" pr_file="$TMP/pr.json" compare_file="$TMP/compare.json"
   local event_pr_number=400 event_issue_number=
   if [ "$event_kind" = "issue_comment" ]; then
@@ -106,15 +107,16 @@ run_context_case() {
     REPOSITORY=youversion/platform-sdk-react \
     GITHUB_OUTPUT="$output" MOCK_PR_FILE="$pr_file" MOCK_COMPARE_FILE="$compare_file" \
     MOCK_COMPARE_CALLS="$TMP/compare-calls" bash "$TMP/context.sh" >/dev/null 2>&1 &&
-    grep -Fxq "generated_candidate=$expected" "$output"; then
+    grep -Fxq "generated_release_pr=$expected_release_pr" "$output" &&
+    grep -Fxq "generated_candidate=$expected_candidate" "$output"; then
     pass "$name"
   else
-    fail "$name" "expected generated_candidate=$expected; output: $(tr '\n' ' ' < "$output")"
+    fail "$name" "expected generated_release_pr=$expected_release_pr and generated_candidate=$expected_candidate; output: $(tr '\n' ' ' < "$output")"
   fi
 }
 
 run_context_error_case() {
-  local name="$1" expected="$2" error_var="$3"
+  local name="$1" expected_result="$2" expected_release_pr="$3" expected_candidate="$4" error_var="$5"
   local output="$TMP/output"
   : > "$output"
   : > "$TMP/compare-calls"
@@ -129,18 +131,20 @@ run_context_error_case() {
   else
     result=failure
   fi
-  if [ "$result" = "$expected" ] &&
-    { [ "$expected" = "failure" ] || grep -Fxq 'generated_candidate=false' "$output"; }; then
+  if [ "$result" = "$expected_result" ] &&
+    { [ "$expected_result" = "failure" ] || { \
+      grep -Fxq "generated_release_pr=$expected_release_pr" "$output" &&
+      grep -Fxq "generated_candidate=$expected_candidate" "$output"; }; }; then
     pass "$name"
   else
-    fail "$name" "expected $expected with a fail-closed result; got $result and $(tr '\n' ' ' < "$output")"
+    fail "$name" "expected $expected_result with generated_release_pr=$expected_release_pr and generated_candidate=$expected_candidate; got $result and $(tr '\n' ' ' < "$output")"
   fi
 }
 
 run_context_case "accepts the exact generated release PR and consumed changeset shape" \
-  true "$VALID_PR" "$VALID_COMPARE"
+  true true "$VALID_PR" "$VALID_COMPARE"
 run_context_case "human issue comments resolve the current PR identity and head" \
-  true "$VALID_PR" "$VALID_COMPARE" issue_comment
+  true true "$VALID_PR" "$VALID_COMPARE" issue_comment
 
 for field in login id type; do
   case "$field" in
@@ -148,32 +152,35 @@ for field in login id type; do
     id) altered=$(jq '.user.id = 1' <<<"$VALID_PR") ;;
     type) altered=$(jq '.user.type = "User"' <<<"$VALID_PR") ;;
   esac
-  run_context_case "rejects the wrong bot author $field" false "$altered" "$VALID_COMPARE"
+  run_context_case "rejects the wrong bot author $field" false false "$altered" "$VALID_COMPARE"
 done
 
-run_context_case "rejects the wrong generated-release branch" false \
+run_context_case "rejects the wrong generated-release branch" false false \
   "$(jq '.head.ref = "changeset-release/next"' <<<"$VALID_PR")" "$VALID_COMPARE"
-run_context_case "rejects the wrong base branch" false \
+run_context_case "rejects the wrong base branch" false false \
   "$(jq '.base.ref = "develop"' <<<"$VALID_PR")" "$VALID_COMPARE"
-run_context_case "rejects a different head repository" false \
+run_context_case "rejects a different head repository" false false \
   "$(jq '.head.repo.full_name = "attacker/fork"' <<<"$VALID_PR")" "$VALID_COMPARE"
-run_context_case "rejects a different base repository" false \
+run_context_case "rejects a different base repository" false false \
   "$(jq '.base.repo.full_name = "attacker/fork"' <<<"$VALID_PR")" "$VALID_COMPARE"
 
-run_context_case "rejects an added changeset input" false "$VALID_PR" \
+run_context_case "blocks an added changeset input as a generated release PR" true false "$VALID_PR" \
   "$(jq '.files[0].status = "added"' <<<"$VALID_COMPARE")"
-run_context_case "rejects a modified changeset input" false "$VALID_PR" \
+run_context_case "blocks a modified changeset input as a generated release PR" true false "$VALID_PR" \
   "$(jq '.files[0].status = "modified"' <<<"$VALID_COMPARE")"
-run_context_case "allows extra files only into complete-tree verification" true "$VALID_PR" \
+run_context_case "allows extra files only into complete-tree verification" true true "$VALID_PR" \
   "$(jq '.files += [{filename:"packages/core/src/client.ts",status:"modified"}]' <<<"$VALID_COMPARE")"
-run_context_case "rejects a comparison for a different base SHA" false "$VALID_PR" \
+run_context_case "blocks a comparison for a different base SHA as a generated release PR" true false "$VALID_PR" \
   "$(jq '.base_commit.sha = "cccccccccccccccccccccccccccccccccccccccc"' <<<"$VALID_COMPARE")"
-run_context_case "rejects a comparison without a verifiable file list" false "$VALID_PR" \
+run_context_case "blocks a generated release PR without an immutable base SHA" true false \
+  "$(jq '.base.sha = null' <<<"$VALID_PR")" "$VALID_COMPARE"
+run_context_case "blocks a comparison without a verifiable file list as a generated release PR" true false "$VALID_PR" \
   "$(jq 'del(.files)' <<<"$VALID_COMPARE")"
-run_context_case "rejects a potentially truncated 300-file comparison" false "$VALID_PR" \
+run_context_case "blocks a potentially truncated 300-file generated release comparison" true false "$VALID_PR" \
   "$(jq '.files += [range(7;300) | {filename:("file-" + tostring),status:"modified"}]' <<<"$VALID_COMPARE")"
-run_context_error_case "comparison API errors fail closed without claiming the exemption" success MOCK_COMPARE_ERROR
-run_context_error_case "PR API errors fail the resolver closed" failure MOCK_PULL_ERROR
+run_context_error_case "comparison API errors retain generated identity and fail the precheck" \
+  success true false MOCK_COMPARE_ERROR
+run_context_error_case "PR API errors fail the resolver closed" failure false false MOCK_PULL_ERROR
 
 VERIFY_REPO="$TMP/verify-repo"
 git init --quiet "$VERIFY_REPO"
@@ -230,11 +237,12 @@ run_content_verification_case "rejects an unrelated source file after the prefil
   false "$VERIFY_EXTRA_SOURCE"
 
 run_decision_case() {
-  local name="$1" expected="$2" candidate="$3" verification_result="$4" verified="$5"
-  local preview_result="$6" preview_major="$7"
+  local name="$1" expected="$2" generated_release_pr="$3" candidate="$4"
+  local verification_result="$5" verified="$6" preview_result="$7" preview_major="$8"
   local output="$TMP/decision-output"
   : > "$output"
-  if GENERATED_CANDIDATE="$candidate" GENERATED_RELEASE_RESULT="$verification_result" \
+  if GENERATED_RELEASE_PR="$generated_release_pr" GENERATED_CANDIDATE="$candidate" \
+    GENERATED_RELEASE_RESULT="$verification_result" \
     VERIFIED_GENERATED_RELEASE="$verified" IS_FORK=false PREVIEW_RESULT="$preview_result" \
     PREVIEW_IS_MAJOR="$preview_major" PREVIEW_NEXT=3.0.0 PREVIEW_RELEASE_TYPE=major \
     GITHUB_OUTPUT="$output" bash "$TMP/decision.sh" >/dev/null 2>&1 &&
@@ -246,17 +254,19 @@ run_decision_case() {
 }
 
 run_decision_case "generated releases require no source-PR major signoff" \
-  'is_major=0' true success true skipped ''
+  'is_major=0' true true success true skipped ''
+run_decision_case "unverifiable generated release comparisons cannot fall back to preview" \
+  'blocked=generated release comparison could not be verified' true false skipped '' success 0
 run_decision_case "noncanonical generated release contents fail closed" \
   'blocked=generated release contents did not match base-owned Changesets output' \
-  true success false skipped ''
+  true true success false skipped ''
 run_decision_case "failed generated release verification fails closed" \
   'blocked=generated release contents did not match base-owned Changesets output' \
-  true failure '' skipped ''
+  true true failure '' skipped ''
 run_decision_case "ordinary major previews still require signoff" \
-  'is_major=1' false skipped '' success 1
+  'is_major=1' false false skipped '' success 1
 run_decision_case "failed ordinary previews remain blocked, not major" \
-  'blocked=release preview did not succeed (failure)' false skipped '' failure ''
+  'blocked=release preview did not succeed (failure)' false false skipped '' failure ''
 
 if pnpm exec prettier --check "$WORKFLOW" >/dev/null; then
   pass "workflow YAML parses and is formatted"
@@ -270,6 +280,14 @@ if grep -Fq \
   pass "bot comments retain an isolated pre-job concurrency key"
 else
   fail "bot comments retain an isolated pre-job concurrency key" "isolated concurrency expression is missing"
+fi
+
+if grep -Fq \
+  "needs.context.outputs.generated_release_pr != 'true'" \
+  "$WORKFLOW"; then
+  pass "generated release identity always stays out of the ordinary preview"
+else
+  fail "generated release identity always stays out of the ordinary preview" "preview does not use generated release identity"
 fi
 
 if grep -Fq 'Generated release PR; major signoff is enforced on source PRs.' "$WORKFLOW"; then

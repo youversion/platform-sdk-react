@@ -37,6 +37,7 @@ jobs:
     outputs:
       base_sha: ${{ steps.pr.outputs.base_sha }}
       generated_candidate: ${{ steps.pr.outputs.generated_candidate }}
+      generated_release_pr: ${{ steps.pr.outputs.generated_release_pr }}
       head_sha: ${{ steps.pr.outputs.head_sha }}
       is_fork: ${{ steps.pr.outputs.is_fork }}
       pr_author: ${{ steps.pr.outputs.pr_author }}
@@ -79,20 +80,23 @@ jobs:
           fi
 
           GENERATED_CANDIDATE=false
+          GENERATED_RELEASE_PR=false
           if [ "$HEAD_REPO" = "$REPOSITORY" ] && \
              [ "$BASE_REPO" = "$REPOSITORY" ] && \
              [ "$BASE_REF" = "main" ] && \
              [ "$HEAD_REF" = "changeset-release/main" ] && \
              [ "$PR_AUTHOR" = 'github-actions[bot]' ] && \
              [ "$PR_AUTHOR_ID" = "41898282" ] && \
-             [ "$PR_AUTHOR_TYPE" = "Bot" ] && \
-             [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+             [ "$PR_AUTHOR_TYPE" = "Bot" ]; then
+            GENERATED_RELEASE_PR=true
             # Bot authorship does not authenticate later commits pushed to the branch.
             # Bind the exception to this immutable base/head pair and only accept the
             # release lifecycle shape: one or more consumed changeset Markdown files,
             # with no added, modified, renamed, or copied changeset input. The complete
             # generated contents are verified separately with base-owned tooling below.
-            if COMPARE_JSON=$(gh api "repos/$REPOSITORY/compare/$BASE_SHA...$HEAD_SHA"); then
+            if ! [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "::warning::Could not resolve a full PR base SHA for generated release verification."
+            elif COMPARE_JSON=$(gh api "repos/$REPOSITORY/compare/$BASE_SHA...$HEAD_SHA"); then
               if jq -e --arg base "$BASE_SHA" '
                 (.base_commit.sha == $base) and
                 (.files | type == "array") and
@@ -118,6 +122,7 @@ jobs:
           echo "pr_author=$PR_AUTHOR" >> "$GITHUB_OUTPUT"
           echo "is_fork=$IS_FORK" >> "$GITHUB_OUTPUT"
           echo "generated_candidate=$GENERATED_CANDIDATE" >> "$GITHUB_OUTPUT"
+          echo "generated_release_pr=$GENERATED_RELEASE_PR" >> "$GITHUB_OUTPUT"
 
 
   generated_release:
@@ -176,10 +181,10 @@ jobs:
 
   preview:
     # Skipped for forks. A fork's code is untrusted, so rather than run it we fail closed
-    # in the gate below and report that its release impact could not be determined. A
-    # verified generated release PR has consumed its changesets, so it is classified by
-    # the gate without asking the generic source-PR preview to understand that lifecycle.
-    if: needs.context.outputs.is_fork != 'true' && needs.context.outputs.generated_candidate != 'true'
+    # in the gate below and report that its release impact could not be determined. Any
+    # PR with the exact generated-release identity stays out of the ordinary preview,
+    # even when its comparison is unverifiable, so ambiguity cannot bypass verification.
+    if: needs.context.outputs.is_fork != 'true' && needs.context.outputs.generated_release_pr != 'true'
     name: Compute release preview
     needs: context
     runs-on: ubuntu-latest
@@ -286,6 +291,7 @@ jobs:
         id: decision
         env:
           GENERATED_CANDIDATE: ${{ needs.context.outputs.generated_candidate }}
+          GENERATED_RELEASE_PR: ${{ needs.context.outputs.generated_release_pr }}
           GENERATED_RELEASE_RESULT: ${{ needs.generated_release.result }}
           IS_FORK: ${{ needs.context.outputs.is_fork }}
           PREVIEW_RESULT: ${{ needs.preview.result }}
@@ -295,11 +301,14 @@ jobs:
           VERIFIED_GENERATED_RELEASE: ${{ needs.generated_release.outputs.verified }}
         run: |
           set -euo pipefail
-          if [ "$GENERATED_CANDIDATE" = "true" ]; then
+          if [ "$GENERATED_RELEASE_PR" = "true" ]; then
             echo "is_major=0" >> "$GITHUB_OUTPUT"
             echo "next=" >> "$GITHUB_OUTPUT"
             echo "release_type=" >> "$GITHUB_OUTPUT"
-            if [ "$GENERATED_RELEASE_RESULT" = "success" ] && \
+            if [ "$GENERATED_CANDIDATE" != "true" ]; then
+              echo "blocked=generated release comparison could not be verified" >> "$GITHUB_OUTPUT"
+              echo "generated_release=false" >> "$GITHUB_OUTPUT"
+            elif [ "$GENERATED_RELEASE_RESULT" = "success" ] && \
                [ "$VERIFIED_GENERATED_RELEASE" = "true" ]; then
               echo "blocked=" >> "$GITHUB_OUTPUT"
               echo "generated_release=true" >> "$GITHUB_OUTPUT"
