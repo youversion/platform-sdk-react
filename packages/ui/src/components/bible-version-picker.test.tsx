@@ -26,6 +26,8 @@ import {
   type Organization,
 } from '@youversion/platform-core';
 import { HookOverrideProvider } from '@/test/hook-overrides';
+import { InterfaceDirectionProvider } from '@/lib/direction';
+import { DirectionProvider } from '@radix-ui/react-direction';
 
 const mockVersions: BibleVersion[] = [
   {
@@ -814,5 +816,29 @@ describe('BibleVersionPicker', () => {
       expect(onLanguageChange).toHaveBeenCalledWith('ko');
       expect(screen.getByRole('heading', { name: /bible versions/i })).toBeInTheDocument();
     });
+  });
+
+  it('applies interface direction to its portaled content and Radix tabs', async () => {
+    renderWithOverrides(
+      <DirectionProvider dir="rtl">
+        <InterfaceDirectionProvider direction="rtl">
+          <BibleVersionPicker.Root versionId={111} onVersionChange={vi.fn()}>
+            <BibleVersionPicker.Trigger dir="ltr" />
+            <BibleVersionPicker.Content />
+          </BibleVersionPicker.Root>
+        </InterfaceDirectionProvider>
+      </DirectionProvider>,
+    );
+
+    const trigger = screen.getByRole('button', { name: 'NIV' });
+    expect(trigger.querySelector('bdi')).toHaveAttribute('dir', 'auto');
+    await userEvent.click(trigger);
+    await userEvent.click(screen.getByRole('button', { name: /select language/i }));
+
+    expect(trigger).toHaveAttribute('dir', 'rtl');
+    expect(screen.getByRole('dialog')).toHaveAttribute('dir', 'rtl');
+    expect(screen.getByRole('tablist').parentElement).toHaveAttribute('dir', 'rtl');
+    expect(getLanguageSearchInput()).toHaveAttribute('dir', 'auto');
+    expect(screen.getAllByText('English')[0]?.closest('bdi')).toHaveAttribute('dir', 'auto');
   });
 });

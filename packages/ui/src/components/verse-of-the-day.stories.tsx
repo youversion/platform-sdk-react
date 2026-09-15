@@ -158,6 +158,35 @@ export const WithHighlights: Story = {
   },
 };
 
+export const RtlInterfaceWithLtrScripture: Story = {
+  args: {
+    versionId: 111,
+    showSunIcon: true,
+    showBibleAppAttribution: true,
+    showShareButton: true,
+    scriptureDirection: 'ltr',
+  },
+  globals: {
+    interfaceDirection: 'rtl',
+    locale: 'ar',
+  },
+  tags: ['integration'],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText(/for I am about to do something new/i);
+    const card = canvasElement.querySelector('section[data-yv-sdk]');
+    const icon = canvasElement.querySelector('[data-slot="card-icon"]');
+    const action = canvasElement.querySelector('[data-slot="card-action"]');
+    const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+
+    await expect(card).toHaveAttribute('dir', 'rtl');
+    await expect(renderer).toHaveAttribute('dir', 'ltr');
+    await expect(icon?.getBoundingClientRect().left ?? 0).toBeGreaterThan(
+      action?.getBoundingClientRect().left ?? 0,
+    );
+  },
+};
+
 export const RealAPI: Story = {
   args: {
     showSunIcon: true,

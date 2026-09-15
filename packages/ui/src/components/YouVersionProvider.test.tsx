@@ -2,17 +2,22 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
 import React, { useContext } from 'react';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionContext } from '@youversion/platform-react-hooks';
 import { YouVersionProvider } from '@/components/YouVersionProvider';
+import { useInterfaceDirection } from '@/lib/direction';
 import i18n from '@/i18n';
 
 function AdditionalHeadersProbe(): React.ReactElement {
   const headers = useContext(YouVersionContext)?.additionalHeaders;
   return <div data-testid="headers">{headers ? JSON.stringify(headers) : 'none'}</div>;
+}
+
+function DirectionProbe(): React.ReactElement {
+  return <div data-testid="direction">{useInterfaceDirection()}</div>;
 }
 
 describe('UI YouVersionProvider', () => {
@@ -166,5 +171,64 @@ describe('UI YouVersionProvider', () => {
     expect(i18n.language).toBe('es');
 
     await i18n.changeLanguage('en');
+  });
+
+  it('uses explicit interface direction over the locale fallback', () => {
+    render(
+      <YouVersionProvider appKey="test-key" locale="ar" direction="ltr">
+        <DirectionProbe />
+      </YouVersionProvider>,
+    );
+
+    expect(screen.getByTestId('direction')).toHaveTextContent('ltr');
+  });
+
+  it('uses RTL for Arabic UI locale and LTR for other locales', () => {
+    const { rerender } = render(
+      <YouVersionProvider appKey="test-key" locale="ar-EG">
+        <DirectionProbe />
+      </YouVersionProvider>,
+    );
+
+    expect(screen.getByTestId('direction')).toHaveTextContent('rtl');
+
+    rerender(
+      <YouVersionProvider appKey="test-key" locale="en">
+        <DirectionProbe />
+      </YouVersionProvider>,
+    );
+
+    expect(screen.getByTestId('direction')).toHaveTextContent('ltr');
+  });
+
+  it('uses browser-detected Arabic for labels and interface direction when locale is omitted', async () => {
+    vi.stubGlobal('navigator', {
+      language: 'ar-EG',
+      languages: ['ar-EG', 'ar'],
+    });
+
+    render(
+      <YouVersionProvider appKey="test-key">
+        <DirectionProbe />
+      </YouVersionProvider>,
+    );
+
+    await waitFor(() => {
+      expect(i18n.language).toBe('ar');
+      expect(screen.getByTestId('direction')).toHaveTextContent('rtl');
+    });
+
+    await i18n.changeLanguage('en');
+    vi.unstubAllGlobals();
+  });
+
+  it('uses the LTR fallback during SSR when direction and locale are omitted', () => {
+    const html = renderToString(
+      <YouVersionProvider appKey="test-key">
+        <DirectionProbe />
+      </YouVersionProvider>,
+    );
+
+    expect(html).toContain('>ltr<');
   });
 });

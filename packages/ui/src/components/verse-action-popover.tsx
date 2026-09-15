@@ -8,6 +8,7 @@ import { Share } from './icons/share';
 import { CheckIcon } from './icons/check';
 import { buildVerseActionSwatches, highlightFillColorMix } from '@/lib/highlight-colors';
 import { isDarkHighlightHex } from './verse';
+import { useInterfaceDirection } from '@/lib/direction';
 
 /** Re-export for back-compat; prefer `@/lib/highlight-colors` for new code. */
 export { HIGHLIGHT_COLORS, type HighlightColor } from '@/lib/highlight-colors';
@@ -24,29 +25,41 @@ popoverMotionStyle['--tw-animate-easing'] = 'cubic-bezier(0.16, 1, 0.3, 1)';
 /** Width, in px, of the fade applied at each overflowing edge of the swatch row. */
 const SCROLL_FADE_PX = 20;
 
-type ScrollMetrics = { scrollLeft: number; scrollWidth: number; clientWidth: number };
-type ScrollFade = { start: boolean; end: boolean };
+type HorizontalRect = Pick<DOMRectReadOnly, 'left' | 'right'>;
+type ScrollFade = { left: boolean; right: boolean };
+
+type ScrollFadeGeometry = {
+  firstSwatch: HorizontalRect;
+  lastSwatch: HorizontalRect;
+  viewport: HorizontalRect;
+  direction: 'ltr' | 'rtl';
+};
 
 /**
- * Decide which edges of a horizontally scrollable row should fade. A fade only
- * appears on an edge that has hidden content in that direction, so a row that
- * fits (or is scrolled fully to one end) shows no fade on the exhausted side.
- * Pure so it can be unit-tested without layout (jsdom reports zero sizes).
- * Assumes LTR positive `scrollLeft`.
+ * Decide which physical edges of a horizontally scrollable row should fade.
+ * First and last swatches are the logical start and end because a flex row
+ * follows its `dir`. Measuring their visible clipping avoids the browser's
+ * incompatible RTL `scrollLeft` coordinate models.
  */
 export function computeScrollFade({
-  scrollLeft,
-  scrollWidth,
-  clientWidth,
-}: ScrollMetrics): ScrollFade {
-  const maxScroll = scrollWidth - clientWidth;
-  // Sub-pixel slack: rounding in real browsers can leave scrollLeft a hair off
-  // its bound, which would otherwise flicker a fade at a fully-scrolled edge.
+  firstSwatch,
+  lastSwatch,
+  viewport,
+  direction,
+}: ScrollFadeGeometry): ScrollFade {
   const slack = 1;
-  if (maxScroll <= slack) return { start: false, end: false };
+  const start =
+    direction === 'ltr'
+      ? firstSwatch.left < viewport.left - slack
+      : firstSwatch.right > viewport.right + slack;
+  const end =
+    direction === 'ltr'
+      ? lastSwatch.right > viewport.right + slack
+      : lastSwatch.left < viewport.left - slack;
+
   return {
-    start: scrollLeft > slack,
-    end: scrollLeft < maxScroll - slack,
+    left: direction === 'ltr' ? start : end,
+    right: direction === 'ltr' ? end : start,
   };
 }
 
@@ -54,10 +67,13 @@ export function computeScrollFade({
  * Build the `mask-image` that fades the overflowing edge(s). Returns `undefined`
  * when neither edge fades so the element carries no mask at all (nothing to hint).
  */
-function scrollFadeMask({ start, end }: ScrollFade): React.CSSProperties | undefined {
-  if (!start && !end) return undefined;
-  const left = start ? 'transparent' : '#000';
-  const right = end ? 'transparent' : '#000';
+function scrollFadeMask({
+  left: fadeLeft,
+  right: fadeRight,
+}: ScrollFade): React.CSSProperties | undefined {
+  if (!fadeLeft && !fadeRight) return undefined;
+  const left = fadeLeft ? 'transparent' : '#000';
+  const right = fadeRight ? 'transparent' : '#000';
   const mask = `linear-gradient(to right, ${left} 0, #000 ${SCROLL_FADE_PX}px, #000 calc(100% - ${SCROLL_FADE_PX}px), ${right} 100%)`;
   return { maskImage: mask, WebkitMaskImage: mask };
 }
@@ -173,6 +189,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   theme = 'light',
 }) => {
   const { t } = useTranslation(undefined, { i18n });
+  const direction = useInterfaceDirection();
 
   // On open, Radix's FocusScope would autofocus the first swatch. Because the bar
   // opens from a mouse/tap on non-focusable verse text, Chromium treats that
@@ -194,7 +211,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   // the `open` flip the element isn't attached yet — an effect keyed on `open`
   // alone would run against a null ref and never re-run to wire up the listener.
   const [swatchRow, setSwatchRow] = useState<HTMLDivElement | null>(null);
-  const [scrollFade, setScrollFade] = useState<ScrollFade>({ start: false, end: false });
+  const [scrollFade, setScrollFade] = useState<ScrollFade>({ left: false, right: false });
 
   // When the anchored verse scrolls out of the container, dock the bar to the
   // edge it exited through: scroll down (verse leaves the top) → dock top; scroll
@@ -289,17 +306,25 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   useEffect(() => {
     const el = swatchRow;
     if (!el) {
-      setScrollFade({ start: false, end: false });
+      setScrollFade({ left: false, right: false });
       return;
     }
-    const update = () =>
+    const update = () => {
+      const firstSwatch = el.firstElementChild;
+      const lastSwatch = el.lastElementChild;
+      if (!(firstSwatch instanceof HTMLElement) || !(lastSwatch instanceof HTMLElement)) {
+        setScrollFade({ left: false, right: false });
+        return;
+      }
       setScrollFade(
         computeScrollFade({
-          scrollLeft: el.scrollLeft,
-          scrollWidth: el.scrollWidth,
-          clientWidth: el.clientWidth,
+          firstSwatch: firstSwatch.getBoundingClientRect(),
+          lastSwatch: lastSwatch.getBoundingClientRect(),
+          viewport: el.getBoundingClientRect(),
+          direction,
         }),
       );
+    };
     update();
     el.addEventListener('scroll', update, { passive: true });
     let observer: ResizeObserver | undefined;
@@ -311,7 +336,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
       el.removeEventListener('scroll', update);
       observer?.disconnect();
     };
-  }, [swatchRow, swatchCount]);
+  }, [direction, swatchRow, swatchCount]);
 
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -324,6 +349,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
           tabIndex={-1}
           data-yv-sdk
           data-yv-theme={theme}
+          dir={direction}
           onOpenAutoFocus={(event) => {
             // Keep focus contained in the popover but off the first swatch: land
             // it on the (non-tabbable) content element so no `:focus-visible` ring
