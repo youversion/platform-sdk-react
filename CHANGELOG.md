@@ -10,6 +10,12 @@ affected.
 Generated from the per-package changelogs by `scripts/build-root-changelog.mjs` — edit those,
 or the changeset, rather than this file.
 
+## 2.14.1
+
+### Patch Changes
+
+- _(@youversion/platform-react-hooks)_ 90374fe: Hooks import `YouVersionContext` from its module, not the context barrel, so a `useChapter` import does not evaluate Auth. Hooks run tsup's Rollup tree-shake pass so unused exports drop from narrow graphs. Hooks wipe `dist` on build so stale tsup `.d.cts` files cannot publish.
+
 ## 2.14.0
 
 ### Minor Changes
