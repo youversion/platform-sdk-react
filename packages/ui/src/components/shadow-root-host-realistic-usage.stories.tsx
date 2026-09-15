@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { BibleBook, BibleVersion } from '@youversion/platform-core';
 import { YouVersionContext, type HookOverrides } from '@youversion/platform-react-hooks';
 import { http, HttpResponse } from 'msw';
-import { StrictMode, useContext, useState, type ReactNode } from 'react';
+import { StrictMode, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { expect, spyOn, userEvent, waitFor } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { BibleCard } from './bible-card';
@@ -172,15 +172,45 @@ function RealisticComponentMix(): ReactNode {
   );
 }
 
+type EffectPhase = 'setup' | 'cleanup';
+
+function EffectLifecycleProbe({
+  recordEffectPhase,
+}: {
+  recordEffectPhase: (phase: EffectPhase) => void;
+}): null {
+  useEffect(() => {
+    recordEffectPhase('setup');
+    return () => recordEffectPhase('cleanup');
+  }, [recordEffectPhase]);
+
+  return null;
+}
+
 function LifecycleHarness({ strict }: { strict: boolean }): ReactNode {
   const [mounted, setMounted] = useState(false);
-  const mix = mounted ? <RealisticComponentMix /> : null;
+  const [effectCounts, setEffectCounts] = useState({ setup: 0, cleanup: 0 });
+  const recordEffectPhase = useCallback((phase: EffectPhase): void => {
+    setEffectCounts((current) => ({ ...current, [phase]: current[phase] + 1 }));
+  }, []);
+  const mix = mounted ? (
+    <>
+      <EffectLifecycleProbe recordEffectPhase={recordEffectPhase} />
+      <RealisticComponentMix />
+    </>
+  ) : null;
 
   return (
     <main data-yv-sdk style={{ padding: '1.5rem' }}>
       <button type="button" onClick={() => setMounted((current) => !current)}>
         Toggle component mix
       </button>
+      <span
+        data-testid="effect-lifecycle-counts"
+        data-effect-setup={effectCounts.setup}
+        data-effect-cleanup={effectCounts.cleanup}
+        hidden
+      />
       {strict ? <StrictMode>{mix}</StrictMode> : mix}
     </main>
   );
@@ -255,21 +285,48 @@ function requireMountedFixture(canvasElement: HTMLElement): MountedFixture {
   return { hosts, sheet };
 }
 
-async function exerciseLifecycle(canvasElement: HTMLElement): Promise<void> {
-  const consoleError = spyOn(console, 'error').mockImplementation(() => undefined);
+interface ExpectedEffectCounts {
+  firstMount: [setup: number, cleanup: number];
+  removal: [setup: number, cleanup: number];
+  secondMount: [setup: number, cleanup: number];
+}
+
+function requireEffectCounts(
+  canvasElement: HTMLElement,
+  [setup, cleanup]: [setup: number, cleanup: number],
+): void {
+  const counts = canvasElement.querySelector('[data-testid="effect-lifecycle-counts"]');
+  void expect(counts).toHaveAttribute('data-effect-setup', String(setup));
+  void expect(counts).toHaveAttribute('data-effect-cleanup', String(cleanup));
+}
+
+async function exerciseLifecycle(
+  canvasElement: HTMLElement,
+  expectedEffectCounts: ExpectedEffectCounts,
+): Promise<void> {
   const toggle = canvasElement.querySelector<HTMLButtonElement>('button');
   if (!toggle) throw new Error('lifecycle toggle not rendered');
+  const consoleError = spyOn(console, 'error').mockImplementation(() => undefined);
 
   try {
     await userEvent.click(toggle);
-    const firstMount = await waitFor(() => requireMountedFixture(canvasElement));
+    const firstMount = await waitFor(() => {
+      const fixture = requireMountedFixture(canvasElement);
+      requireEffectCounts(canvasElement, expectedEffectCounts.firstMount);
+      return fixture;
+    });
 
     await userEvent.click(toggle);
     void expect(canvasElement.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
     void expect(canvasElement.querySelector('[data-testid="realistic-component-mix"]')).toBeNull();
+    requireEffectCounts(canvasElement, expectedEffectCounts.removal);
 
     await userEvent.click(toggle);
-    const secondMount = await waitFor(() => requireMountedFixture(canvasElement));
+    const secondMount = await waitFor(() => {
+      const fixture = requireMountedFixture(canvasElement);
+      requireEffectCounts(canvasElement, expectedEffectCounts.secondMount);
+      return fixture;
+    });
     for (const host of secondMount.hosts) {
       void expect(host.shadowRoot?.adoptedStyleSheets[0]).toBe(firstMount.sheet);
     }
@@ -286,7 +343,11 @@ export const NormalLifecycle: Story = {
     </FixtureProviders>
   ),
   play: async ({ canvasElement }) => {
-    await exerciseLifecycle(canvasElement);
+    await exerciseLifecycle(canvasElement, {
+      firstMount: [1, 0],
+      removal: [1, 1],
+      secondMount: [2, 1],
+    });
   },
 };
 
@@ -297,6 +358,10 @@ export const StrictModeLifecycle: Story = {
     </FixtureProviders>
   ),
   play: async ({ canvasElement }) => {
-    await exerciseLifecycle(canvasElement);
+    await exerciseLifecycle(canvasElement, {
+      firstMount: [2, 1],
+      removal: [2, 2],
+      secondMount: [4, 3],
+    });
   },
 };
