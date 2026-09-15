@@ -100,7 +100,31 @@ function dedupeKey(text) {
   return text.replace(/\s+/g, ' ').trim();
 }
 
-const packages = readdirSync(PACKAGES).filter((d) => existsSync(join(PACKAGES, d, 'CHANGELOG.md')));
+// Take the package list from the `fixed` group rather than whatever directories happen to
+// have a changelog. That group is the reason this merge is valid at all: fixed packages share
+// a version, so the same entry appears in each of their changelogs. Reading the filesystem
+// instead would silently drop a package whose changelog went missing, and would silently fold
+// a future unrelated package into `(all packages)`.
+const fixedGroups = JSON.parse(readFileSync(join(ROOT, '.changeset', 'config.json'), 'utf8')).fixed;
+if (fixedGroups?.length !== 1) {
+  throw new Error(
+    `Expected exactly one fixed group in .changeset/config.json, found ${fixedGroups?.length ?? 0}.`,
+  );
+}
+const expected = new Map(
+  readdirSync(PACKAGES)
+    .filter((d) => existsSync(join(PACKAGES, d, 'package.json')))
+    .map((d) => [JSON.parse(readFileSync(join(PACKAGES, d, 'package.json'), 'utf8')).name, d]),
+);
+const packages = fixedGroups[0].map((name) => {
+  const dir = expected.get(name);
+  if (!dir || !existsSync(join(PACKAGES, dir, 'CHANGELOG.md'))) {
+    throw new Error(
+      `Fixed-group package ${name} has no changelog; refusing to write a partial root changelog.`,
+    );
+  }
+  return dir;
+});
 
 /** Section order in the output. */
 const KIND_ORDER = ['Major', 'Minor', 'Patch'];
