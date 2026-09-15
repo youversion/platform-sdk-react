@@ -61,6 +61,7 @@ open.
 | Consumer labels and ARIA ID references | Chromium coverage verifies that external native labels, `aria-labelledby`, and `aria-describedby` relationships do not resolve to controls inside the root. | Unsupported across tree scopes | Keep relationships in one tree scope; verify real assistive technology separately. |
 | Consumer events, refs, and automation | Coverage verifies native retargeting, the auth button's React handler and forwarded ref, open-root queries, and effect-driven attachment timing. | Supported with documented constraints | Repeat for each public component selected for rollout. |
 | Nested shadow roots | Coverage verifies basic rendering, recursive queries, and event retargeting at each boundary. | Supported for the validated basics | Nested and concurrent overlay ownership remains with YPE-5355. |
+| Realistic same-page usage | YPE-5437 mounts, removes, and re-adds a 12-component mix in Normal and Strict Mode. Chromium coverage verifies exact host counts, rendered scripture content, and one shared stylesheet object across roots and remounts. A production-build comparison found a small warm-run mount-cost difference on one machine. | No shared-host blocker found | Repeat user-visible performance and compatibility checks for each component selected for rollout. |
 
 ## Direct overlay inventory
 
@@ -157,8 +158,10 @@ separately in YPE-5749.
   checks for every public component selected for rollout.
 - Verify stylesheet construction and adoption failure recovery beyond the
   current feature fallback.
-- Audit realistic component density and the cost of many roots, effects,
-  wrappers, and local portal containers.
+- Preserve YPE-5437's realistic-usage fixture as the shared-host regression
+  check. Its one-machine mount comparison is diagnostic, so selected rollout
+  components still need user-visible performance review in their intended
+  layouts.
 
 ## Accepted boundaries and unresolved environment coverage
 
@@ -185,10 +188,10 @@ separately in YPE-5749.
 
 YPE-5356 is the convergence point for the Shadow DOM research. Its foundational
 evidence comes from YPE-5298, YPE-5310, YPE-5352, and YPE-5353. It must not be
-completed until the final findings from YPE-5354, YPE-5355, YPE-5400, and
-YPE-5436 have been reconciled into the rollout policy and these durable Shadow
-DOM documents. Any conflicts and accepted limitations must be recorded rather
-than left implicit.
+completed until the final findings from YPE-5354, YPE-5355, YPE-5400, YPE-5436,
+and [YPE-5437](ype-5437-shadow-dom-realistic-usage.md) have been reconciled into
+the rollout policy and these durable Shadow DOM documents. Any conflicts and
+accepted limitations must be recorded rather than left implicit.
 
 Every component rollout ticket produced by YPE-5356 must link back to that
 policy and repeat the compatibility matrix for its selected component. Its gates
@@ -199,8 +202,9 @@ forms, labels, ARIA relationships, events, refs, queries, and overlays.
 ## Rollout sequence
 
 1. Maintain YPE-5400's completed custom-property inventory and prevention guard.
-2. Resolve SSR/hydration in YPE-5354 and overlay ownership in YPE-5355, then
-   reconcile those findings and YPE-5436's consumer contract in YPE-5356.
+2. Reconcile YPE-5354's SSR/hydration decision, YPE-5355's overlay findings,
+   YPE-5436's consumer contract, and YPE-5437's realistic-usage result in
+   YPE-5356.
 3. Select the next public component and add component-specific compatibility,
    browser, and accessibility coverage before enabling isolation.
 4. Publish consumer guidance for DOM queries, automation, customization, forms,
