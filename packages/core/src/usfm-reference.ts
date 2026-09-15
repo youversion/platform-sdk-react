@@ -7,9 +7,20 @@ export type UsfmReference = Readonly<{
 const USFM_REFERENCE_PATTERN = /^([A-Z0-9]{1,3})\.(\d+)(?:\.(\d+)(?:-(\d+))?)?$/;
 
 /**
+ * Longest Bible chapter is Psalm 119 (176 verses). Anything longer is
+ * malformed and is rejected rather than expanded.
+ */
+const MAX_RANGE_LENGTH = 250;
+
+function isPositiveSafeInteger(value: number): boolean {
+  return Number.isSafeInteger(value) && value > 0;
+}
+
+/**
  * Parses `JHN.6`, `JHN.6.9`, and `JHN.6.9-11`. Returns `null` for anything
- * malformed, non-positive, or with `verseEnd < verseStart`. Does not check
- * book codes against `BOOK_IDS`.
+ * malformed, non-positive, not a safe integer, with `verseEnd < verseStart`,
+ * or a verse span longer than 250. Does not check book codes against
+ * `BOOK_IDS`.
  *
  * Sole owner of this grammar. `isValidStructuralUsfmReference` is
  * `parseUsfmReference(usfm) !== null`.
@@ -27,7 +38,7 @@ export function parseUsfmReference(usfm: string): UsfmReference | null {
   }
 
   const chapterNumber = Number(chapter);
-  if (!Number.isInteger(chapterNumber) || chapterNumber <= 0) {
+  if (!isPositiveSafeInteger(chapterNumber)) {
     return null;
   }
 
@@ -36,7 +47,7 @@ export function parseUsfmReference(usfm: string): UsfmReference | null {
   }
 
   const verseStart = Number(match[3]);
-  if (!Number.isInteger(verseStart) || verseStart <= 0) {
+  if (!isPositiveSafeInteger(verseStart)) {
     return null;
   }
 
@@ -45,7 +56,11 @@ export function parseUsfmReference(usfm: string): UsfmReference | null {
   }
 
   const verseEnd = Number(match[4]);
-  if (!Number.isInteger(verseEnd) || verseEnd <= 0 || verseEnd < verseStart) {
+  if (!isPositiveSafeInteger(verseEnd) || verseEnd < verseStart) {
+    return null;
+  }
+
+  if (verseEnd - verseStart + 1 > MAX_RANGE_LENGTH) {
     return null;
   }
 
