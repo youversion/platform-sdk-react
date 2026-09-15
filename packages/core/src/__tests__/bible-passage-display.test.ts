@@ -97,6 +97,29 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('passage display model',
     expect(display.attribution.source).toBe('copyright');
   });
 
+  it('preserves additional API fields returned by the existing getPassage method', async () => {
+    setupDisplayTest();
+    server.use(
+      http.get(`https://${apiHost}/v1/bibles/:id/passages/:passageId`, () =>
+        HttpResponse.json({
+          ...mockNIVGen1Verse1PassageHTML,
+          future_api_field: 'preserved',
+        }),
+      ),
+    );
+
+    const passage = await createBibleClient().getPassage(
+      111,
+      'GEN.1.1',
+      'html',
+      undefined,
+      undefined,
+      false,
+    );
+
+    expect(passage).toHaveProperty('future_api_field', 'preserved');
+  });
+
   it('requests fresh attribution for repeated display operations', async () => {
     setupDisplayTest();
     let versionRequests = 0;

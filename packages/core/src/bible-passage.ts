@@ -74,7 +74,8 @@ export async function getPassage(
   parseBibleVersionId(versionId);
   const params = buildPassageQuery(format, include_headings, include_notes);
   await assertUsableVersion(client, versionId);
-  return fetchPassage(client, versionId, usfm, params, transform);
+  const passage = await fetchPassage(client, versionId, usfm, params);
+  return transformPassage(passage, params.format, transform);
 }
 
 /** @internal Fetches a passage after the caller has enforced the version filter. */
@@ -89,7 +90,9 @@ export async function getPassageForValidatedVersion(
 ): Promise<BiblePassage> {
   parseBibleVersionId(versionId);
   const params = buildPassageQuery(format, include_headings, include_notes);
-  return fetchPassage(client, versionId, usfm, params, transform);
+  const response = await fetchPassage(client, versionId, usfm, params);
+  const passage = BiblePassageSchema.parse(response);
+  return transformPassage(passage, params.format, transform);
 }
 
 async function fetchPassage(
@@ -97,12 +100,16 @@ async function fetchPassage(
   versionId: number,
   usfm: string,
   params: PassageQuery,
+): Promise<BiblePassage> {
+  return client.get<BiblePassage>(`/v1/bibles/${versionId}/passages/${usfm}`, params);
+}
+
+async function transformPassage(
+  passage: BiblePassage,
+  format: PassageQuery['format'],
   transform?: boolean,
 ): Promise<BiblePassage> {
-  const response = await client.get<unknown>(`/v1/bibles/${versionId}/passages/${usfm}`, params);
-  const passage = BiblePassageSchema.parse(response);
-
-  if (params.format === 'html' && transform !== false) {
+  if (format === 'html' && transform !== false) {
     const adapters = await getHtmlAdapters();
     const { html } = transformBibleHtml(passage.content, adapters);
     return { ...passage, content: html };
