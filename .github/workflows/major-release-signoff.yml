@@ -32,8 +32,10 @@ jobs:
     name: Resolve PR context
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: read
     outputs:
+      generated_release: ${{ steps.pr.outputs.generated_release }}
       head_sha: ${{ steps.pr.outputs.head_sha }}
       is_fork: ${{ steps.pr.outputs.is_fork }}
       pr_author: ${{ steps.pr.outputs.pr_author }}
@@ -43,39 +45,84 @@ jobs:
         id: pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_ISSUE_NUMBER: ${{ github.event.issue.number }}
+          EVENT_PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            PR_NUMBER=${{ github.event.pull_request.number }}
-            HEAD_SHA=${{ github.event.pull_request.head.sha }}
-            PR_AUTHOR=${{ github.event.pull_request.user.login }}
-            HEAD_REPO=${{ github.event.pull_request.head.repo.full_name }}
-          else
-            PR_NUMBER=${{ github.event.issue.number }}
-            # issue_comment payload has no head/base info — look it up so
-            # we evaluate the PR's *current* head, not a stale snapshot.
-            PR_JSON=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER)
-            HEAD_SHA=$(jq -r .head.sha <<<"$PR_JSON")
-            PR_AUTHOR=$(jq -r .user.login <<<"$PR_JSON")
-            HEAD_REPO=$(jq -r '.head.repo.full_name // ""' <<<"$PR_JSON")
+          PR_NUMBER=${EVENT_PR_NUMBER:-$EVENT_ISSUE_NUMBER}
+          # Resolve every event through the API. In particular, issue_comment payloads
+          # contain no PR head, and created/edited/deleted comments must evaluate the
+          # current immutable head rather than the head from an earlier workflow run.
+          PR_JSON=$(gh api "repos/$REPOSITORY/pulls/$PR_NUMBER")
+          HEAD_SHA=$(jq -r '.head.sha // empty' <<<"$PR_JSON")
+          if ! [[ "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Could not resolve a full PR head SHA."
+            exit 1
           fi
+          BASE_SHA=$(jq -r '.base.sha // empty' <<<"$PR_JSON")
+          PR_AUTHOR=$(jq -r '.user.login // empty' <<<"$PR_JSON")
+          PR_AUTHOR_ID=$(jq -r '.user.id // empty' <<<"$PR_JSON")
+          PR_AUTHOR_TYPE=$(jq -r '.user.type // empty' <<<"$PR_JSON")
+          HEAD_REPO=$(jq -r '.head.repo.full_name // empty' <<<"$PR_JSON")
+          HEAD_REF=$(jq -r '.head.ref // empty' <<<"$PR_JSON")
+          BASE_REPO=$(jq -r '.base.repo.full_name // empty' <<<"$PR_JSON")
+          BASE_REF=$(jq -r '.base.ref // empty' <<<"$PR_JSON")
+
           # A deleted fork reports no head repo. Treat that as a fork too, since we
           # cannot show it came from here.
-          if [ "$HEAD_REPO" = "${{ github.repository }}" ]; then
+          if [ "$HEAD_REPO" = "$REPOSITORY" ]; then
             IS_FORK=false
           else
             IS_FORK=true
           fi
+
+          GENERATED_RELEASE=false
+          if [ "$HEAD_REPO" = "$REPOSITORY" ] && \
+             [ "$BASE_REPO" = "$REPOSITORY" ] && \
+             [ "$BASE_REF" = "main" ] && \
+             [ "$HEAD_REF" = "changeset-release/main" ] && \
+             [ "$PR_AUTHOR" = 'github-actions[bot]' ] && \
+             [ "$PR_AUTHOR_ID" = "41898282" ] && \
+             [ "$PR_AUTHOR_TYPE" = "Bot" ] && \
+             [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            # Bot authorship does not authenticate later commits pushed to the branch.
+            # Bind the exception to this immutable base/head pair and only accept the
+            # release lifecycle shape: one or more consumed changeset Markdown files,
+            # with no added, modified, renamed, or copied changeset input.
+            if COMPARE_JSON=$(gh api "repos/$REPOSITORY/compare/$BASE_SHA...$HEAD_SHA"); then
+              if jq -e --arg base "$BASE_SHA" '
+                (.base_commit.sha == $base) and
+                (.files | type == "array") and
+                ((.files | length) < 300) and
+                ([.files[] | select(.filename | startswith(".changeset/"))] as $changesets |
+                  ($changesets | length) > 0 and
+                  all($changesets[];
+                    .status == "removed" and
+                    (.filename | test("^\\.changeset/[^/]+\\.md$"))))
+              ' >/dev/null <<<"$COMPARE_JSON"; then
+                GENERATED_RELEASE=true
+              else
+                echo "::warning::Generated release comparison was incomplete, ambiguous, or contained non-deletion changeset input."
+              fi
+            else
+              echo "::warning::Could not verify the generated release PR comparison."
+            fi
+          fi
+
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
           echo "pr_author=$PR_AUTHOR" >> "$GITHUB_OUTPUT"
           echo "is_fork=$IS_FORK" >> "$GITHUB_OUTPUT"
+          echo "generated_release=$GENERATED_RELEASE" >> "$GITHUB_OUTPUT"
 
 
   preview:
     # Skipped for forks. A fork's code is untrusted, so rather than run it we fail closed
-    # in the gate below and report that its release impact could not be determined.
-    if: needs.context.outputs.is_fork != 'true'
+    # in the gate below and report that its release impact could not be determined. A
+    # verified generated release PR has consumed its changesets, so it is classified by
+    # the gate without asking the generic source-PR preview to understand that lifecycle.
+    if: needs.context.outputs.is_fork != 'true' && needs.context.outputs.generated_release != 'true'
     name: Compute release preview
     needs: context
     runs-on: ubuntu-latest
@@ -181,6 +228,7 @@ jobs:
       - name: Decide whether a signoff is required
         id: decision
         env:
+          GENERATED_RELEASE: ${{ needs.context.outputs.generated_release }}
           IS_FORK: ${{ needs.context.outputs.is_fork }}
           PREVIEW_RESULT: ${{ needs.preview.result }}
           PREVIEW_IS_MAJOR: ${{ needs.preview.outputs.is_major }}
@@ -188,6 +236,15 @@ jobs:
           PREVIEW_RELEASE_TYPE: ${{ needs.preview.outputs.release_type }}
         run: |
           set -euo pipefail
+          if [ "$GENERATED_RELEASE" = "true" ]; then
+            echo "blocked=" >> "$GITHUB_OUTPUT"
+            echo "is_major=0" >> "$GITHUB_OUTPUT"
+            echo "next=" >> "$GITHUB_OUTPUT"
+            echo "release_type=" >> "$GITHUB_OUTPUT"
+            echo "generated_release=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "generated_release=false" >> "$GITHUB_OUTPUT"
           # Fail closed. A fork, or a preview that did not succeed, means release impact
           # is unknown. Keep the gate red, but do not classify that uncertainty as a
           # confirmed breaking change or offer signoff instructions for an unknown result.
@@ -249,7 +306,7 @@ jobs:
             done
 
       - name: Mark PRs without a breaking change as success
-        if: steps.decision.outputs.blocked == '' && steps.decision.outputs.is_major != '1'
+        if: steps.decision.outputs.blocked == '' && steps.decision.outputs.is_major != '1' && steps.decision.outputs.generated_release != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ needs.context.outputs.head_sha }}
@@ -261,6 +318,20 @@ jobs:
             -f state=success \
             -f context="$STATUS_CONTEXT" \
             -f description="No breaking changeset added (${RELEASE_TYPE:-no bump}); signoff not required." \
+            -f target_url="$RUN_URL"
+
+      - name: Mark generated release PR as success
+        if: steps.decision.outputs.generated_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ needs.context.outputs.head_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh api repos/${{ github.repository }}/statuses/$HEAD_SHA \
+            -f state=success \
+            -f context="$STATUS_CONTEXT" \
+            -f description="Generated release PR; major signoff is enforced on source PRs." \
             -f target_url="$RUN_URL"
 
       - name: Post failure status when release impact cannot be determined

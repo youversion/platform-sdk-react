@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Structural regression tests for the workflow's concurrency and classification boundaries.
+# Behavioral regression tests for the workflow's trust and classification boundaries.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WORKFLOW="$ROOT/.github/workflows/major-release-signoff.yml"
+TMP=$(mktemp -d)
 passes=0
 failures=0
+trap 'rm -rf "$TMP"' EXIT
 
 pass() {
   printf 'ok   %s\n' "$1"
@@ -17,34 +19,157 @@ fail() {
   failures=$((failures + 1))
 }
 
-assert_contains() {
-  local name="$1" needle="$2"
-  if grep -Fq -- "$needle" "$WORKFLOW"; then
+extract_step() {
+  local name="$1"
+  awk -v target="      - name: $name" '
+    $0 == target { found = 1; next }
+    found && $0 == "        run: |" { capture = 1; next }
+    capture && ($0 ~ /^      - name:/ || $0 ~ /^  [[:alnum:]_-]+:/) { exit }
+    capture { sub(/^          /, ""); print }
+  ' "$WORKFLOW"
+}
+
+extract_step "Resolve PR context" > "$TMP/context.sh"
+extract_step "Decide whether a signoff is required" > "$TMP/decision.sh"
+
+mkdir "$TMP/bin"
+cat > "$TMP/bin/gh" <<'EOF'
+#!/usr/bin/env bash
+set -u
+if [[ "$2" == *"/pulls/"* ]]; then
+  if [ "${MOCK_PULL_ERROR:-0}" = "1" ]; then exit 1; fi
+  cat "$MOCK_PR_FILE"
+elif [[ "$2" == *"/compare/"* ]]; then
+  echo called >> "$MOCK_COMPARE_CALLS"
+  if [ "${MOCK_COMPARE_ERROR:-0}" = "1" ]; then exit 1; fi
+  cat "$MOCK_COMPARE_FILE"
+else
+  exit 2
+fi
+EOF
+chmod +x "$TMP/bin/gh"
+
+HEAD_SHA=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+BASE_SHA=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+VALID_PR=$(jq -n \
+  --arg head "$HEAD_SHA" --arg base "$BASE_SHA" \
+  '{
+    head: {sha: $head, ref: "changeset-release/main", repo: {full_name: "youversion/platform-sdk-react"}},
+    base: {sha: $base, ref: "main", repo: {full_name: "youversion/platform-sdk-react"}},
+    user: {login: "github-actions[bot]", id: 41898282, type: "Bot"}
+  }')
+VALID_COMPARE=$(jq -n --arg base "$BASE_SHA" '{
+  base_commit: {sha: $base},
+  files: [
+    {filename: ".changeset/consumed-change.md", status: "removed"},
+    {filename: "packages/core/package.json", status: "modified"}
+  ]
+}')
+
+run_context_case() {
+  local name="$1" expected="$2" pr_json="$3" compare_json="$4" event_kind="${5:-pull_request}"
+  local output="$TMP/output" pr_file="$TMP/pr.json" compare_file="$TMP/compare.json"
+  local event_pr_number=400 event_issue_number=
+  if [ "$event_kind" = "issue_comment" ]; then
+    event_pr_number=
+    event_issue_number=400
+  fi
+  : > "$output"
+  : > "$TMP/compare-calls"
+  printf '%s\n' "$pr_json" > "$pr_file"
+  printf '%s\n' "$compare_json" > "$compare_file"
+  if PATH="$TMP/bin:$PATH" \
+    EVENT_PR_NUMBER="$event_pr_number" EVENT_ISSUE_NUMBER="$event_issue_number" \
+    REPOSITORY=youversion/platform-sdk-react \
+    GITHUB_OUTPUT="$output" MOCK_PR_FILE="$pr_file" MOCK_COMPARE_FILE="$compare_file" \
+    MOCK_COMPARE_CALLS="$TMP/compare-calls" bash "$TMP/context.sh" >/dev/null 2>&1 &&
+    grep -Fxq "generated_release=$expected" "$output"; then
     pass "$name"
   else
-    fail "$name" "workflow did not contain: $needle"
+    fail "$name" "expected generated_release=$expected; output: $(tr '\n' ' ' < "$output")"
   fi
 }
 
-assert_not_contains() {
-  local name="$1" needle="$2"
-  if grep -Fq -- "$needle" "$WORKFLOW"; then
-    fail "$name" "workflow unexpectedly contained: $needle"
+run_context_error_case() {
+  local name="$1" expected="$2" error_var="$3"
+  local output="$TMP/output"
+  : > "$output"
+  : > "$TMP/compare-calls"
+  printf '%s\n' "$VALID_PR" > "$TMP/pr.json"
+  printf '%s\n' "$VALID_COMPARE" > "$TMP/compare.json"
+  if env PATH="$TMP/bin:$PATH" \
+    EVENT_PR_NUMBER= EVENT_ISSUE_NUMBER=400 REPOSITORY=youversion/platform-sdk-react \
+    GITHUB_OUTPUT="$output" MOCK_PR_FILE="$TMP/pr.json" MOCK_COMPARE_FILE="$TMP/compare.json" \
+    MOCK_COMPARE_CALLS="$TMP/compare-calls" "$error_var"=1 \
+    bash "$TMP/context.sh" >/dev/null 2>&1; then
+    result=success
   else
+    result=failure
+  fi
+  if [ "$result" = "$expected" ] &&
+    { [ "$expected" = "failure" ] || grep -Fxq 'generated_release=false' "$output"; }; then
     pass "$name"
+  else
+    fail "$name" "expected $expected with a fail-closed result; got $result and $(tr '\n' ' ' < "$output")"
   fi
 }
 
-assert_before() {
-  local name="$1" first="$2" second="$3" first_line second_line
-  first_line="$(grep -nF -- "$first" "$WORKFLOW" | head -1 | cut -d: -f1)"
-  second_line="$(grep -nF -- "$second" "$WORKFLOW" | head -1 | cut -d: -f1)"
-  if [[ -n "$first_line" && -n "$second_line" && "$first_line" -lt "$second_line" ]]; then
+run_context_case "accepts the exact generated release PR and consumed changeset shape" \
+  true "$VALID_PR" "$VALID_COMPARE"
+run_context_case "human issue comments resolve the current PR identity and head" \
+  true "$VALID_PR" "$VALID_COMPARE" issue_comment
+
+for field in login id type; do
+  case "$field" in
+    login) altered=$(jq '.user.login = "github-actions"' <<<"$VALID_PR") ;;
+    id) altered=$(jq '.user.id = 1' <<<"$VALID_PR") ;;
+    type) altered=$(jq '.user.type = "User"' <<<"$VALID_PR") ;;
+  esac
+  run_context_case "rejects the wrong bot author $field" false "$altered" "$VALID_COMPARE"
+done
+
+run_context_case "rejects the wrong generated-release branch" false \
+  "$(jq '.head.ref = "changeset-release/next"' <<<"$VALID_PR")" "$VALID_COMPARE"
+run_context_case "rejects the wrong base branch" false \
+  "$(jq '.base.ref = "develop"' <<<"$VALID_PR")" "$VALID_COMPARE"
+run_context_case "rejects a different head repository" false \
+  "$(jq '.head.repo.full_name = "attacker/fork"' <<<"$VALID_PR")" "$VALID_COMPARE"
+run_context_case "rejects a different base repository" false \
+  "$(jq '.base.repo.full_name = "attacker/fork"' <<<"$VALID_PR")" "$VALID_COMPARE"
+
+run_context_case "rejects an added changeset input" false "$VALID_PR" \
+  "$(jq '.files[0].status = "added"' <<<"$VALID_COMPARE")"
+run_context_case "rejects a modified changeset input" false "$VALID_PR" \
+  "$(jq '.files[0].status = "modified"' <<<"$VALID_COMPARE")"
+run_context_case "rejects a comparison for a different base SHA" false "$VALID_PR" \
+  "$(jq '.base_commit.sha = "cccccccccccccccccccccccccccccccccccccccc"' <<<"$VALID_COMPARE")"
+run_context_case "rejects a comparison without a verifiable file list" false "$VALID_PR" \
+  "$(jq 'del(.files)' <<<"$VALID_COMPARE")"
+run_context_case "rejects a potentially truncated 300-file comparison" false "$VALID_PR" \
+  "$(jq -n --arg base "$BASE_SHA" '{base_commit:{sha:$base}, files: ([{filename:".changeset/consumed.md",status:"removed"}] + [range(1;300) | {filename:("file-" + tostring),status:"modified"}])}')"
+run_context_error_case "comparison API errors fail closed without claiming the exemption" success MOCK_COMPARE_ERROR
+run_context_error_case "PR API errors fail the resolver closed" failure MOCK_PULL_ERROR
+
+run_decision_case() {
+  local name="$1" expected="$2" generated="$3" preview_result="$4" preview_major="$5"
+  local output="$TMP/decision-output"
+  : > "$output"
+  if GENERATED_RELEASE="$generated" IS_FORK=false PREVIEW_RESULT="$preview_result" \
+    PREVIEW_IS_MAJOR="$preview_major" PREVIEW_NEXT=3.0.0 PREVIEW_RELEASE_TYPE=major \
+    GITHUB_OUTPUT="$output" bash "$TMP/decision.sh" >/dev/null 2>&1 &&
+    grep -Fxq "$expected" "$output"; then
     pass "$name"
   else
-    fail "$name" "expected '$first' before '$second'"
+    fail "$name" "expected '$expected'; output: $(tr '\n' ' ' < "$output")"
   fi
 }
+
+run_decision_case "generated releases require no source-PR major signoff" \
+  'is_major=0' true skipped ''
+run_decision_case "ordinary major previews still require signoff" \
+  'is_major=1' false success 1
+run_decision_case "failed ordinary previews remain blocked, not major" \
+  'blocked=release preview did not succeed (failure)' false failure ''
 
 if pnpm exec prettier --check "$WORKFLOW" >/dev/null; then
   pass "workflow YAML parses and is formatted"
@@ -52,27 +177,19 @@ else
   fail "workflow YAML parses and is formatted" "prettier rejected $WORKFLOW"
 fi
 
-assert_contains "bot comments use an isolated pre-job concurrency key" \
-  "github.event.comment.user.type == 'Bot' && format('bot-{0}', github.run_id) || 'evaluation'"
-assert_contains "bot issue comments do not evaluate the PR" \
-  "github.event.comment.user.type != 'Bot'"
-assert_contains "unevaluable previews are not classified as major" \
-  'echo "is_major=0" >> "$GITHUB_OUTPUT"'
-assert_not_contains "no decision branch maps uncertainty to major" \
-  'echo "is_major=1" >> "$GITHUB_OUTPUT"'
-assert_contains "malformed preview decisions fail closed" \
-  "blocked=release preview returned an invalid major decision"
-assert_contains "unknown impact has its own failure status" \
-  "Post failure status when release impact cannot be determined"
-assert_contains "breaking-change status requires a trusted decision" \
-  "steps.decision.outputs.blocked == '' && steps.decision.outputs.is_major == '1'"
-assert_contains "unknown and non-major evaluations remove stale instructions" \
-  "steps.decision.outputs.blocked != '' || steps.decision.outputs.is_major != '1'"
-assert_contains "cleanup only deletes workflow-owned comments" \
-  '.user.login == \"github-actions[bot]\"'
-assert_before "cleanup happens before a new status is published" \
-  "Remove stale workflow-owned signoff instructions" \
-  "Mark PRs without a breaking change as success"
+if grep -Fq \
+  "github.event.comment.user.type == 'Bot' && format('bot-{0}', github.run_id) || 'evaluation'" \
+  "$WORKFLOW"; then
+  pass "bot comments retain an isolated pre-job concurrency key"
+else
+  fail "bot comments retain an isolated pre-job concurrency key" "isolated concurrency expression is missing"
+fi
+
+if grep -Fq 'Generated release PR; major signoff is enforced on source PRs.' "$WORKFLOW"; then
+  pass "generated releases publish an explicit lifecycle-aware success"
+else
+  fail "generated releases publish an explicit lifecycle-aware success" "status wording is missing"
+fi
 
 printf '\n%d passed, %d failed\n' "$passes" "$failures"
 [[ "$failures" -eq 0 ]]
