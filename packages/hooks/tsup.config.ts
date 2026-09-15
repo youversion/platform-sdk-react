@@ -10,8 +10,8 @@ export default defineConfig({
   dts: false,
   treeshake: true,
   external: ['jsdom'],
-  // Rollup removes directives from non-entry chunks. Restore only the lazy auth
-  // chunk; a global banner would mark every data hook as client-only.
+  // Rollup strips module-level directives, including on entries. Restore the
+  // lazy auth ESM boundary after that pass; leave other outputs untouched.
   plugins: [
     {
       name: 'restore-auth-use-client-directive',
