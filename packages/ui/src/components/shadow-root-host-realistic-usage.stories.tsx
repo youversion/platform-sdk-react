@@ -291,6 +291,20 @@ interface ExpectedEffectCounts {
   secondMount: [setup: number, cleanup: number];
 }
 
+const NORMAL_EFFECT_COUNTS: ExpectedEffectCounts = {
+  firstMount: [1, 0],
+  removal: [1, 1],
+  secondMount: [2, 1],
+};
+
+const STRICT_EFFECT_COUNTS: ExpectedEffectCounts = import.meta.env.DEV
+  ? {
+      firstMount: [2, 1],
+      removal: [2, 2],
+      secondMount: [4, 3],
+    }
+  : NORMAL_EFFECT_COUNTS;
+
 function requireEffectCounts(
   canvasElement: HTMLElement,
   [setup, cleanup]: [setup: number, cleanup: number],
@@ -343,11 +357,7 @@ export const NormalLifecycle: Story = {
     </FixtureProviders>
   ),
   play: async ({ canvasElement }) => {
-    await exerciseLifecycle(canvasElement, {
-      firstMount: [1, 0],
-      removal: [1, 1],
-      secondMount: [2, 1],
-    });
+    await exerciseLifecycle(canvasElement, NORMAL_EFFECT_COUNTS);
   },
 };
 
@@ -358,10 +368,6 @@ export const StrictModeLifecycle: Story = {
     </FixtureProviders>
   ),
   play: async ({ canvasElement }) => {
-    await exerciseLifecycle(canvasElement, {
-      firstMount: [2, 1],
-      removal: [2, 2],
-      secondMount: [4, 3],
-    });
+    await exerciseLifecycle(canvasElement, STRICT_EFFECT_COUNTS);
   },
 };
