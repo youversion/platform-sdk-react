@@ -60,6 +60,9 @@ for file in \
   packages/ui/CHANGELOG.md packages/ui/package.json; do
   printf 'generated\n' > "$file"
 done
+if [ -f CHANGELOG.md ]; then
+  printf 'generated root\n' > CHANGELOG.md
+fi
 EOF
 chmod +x "$TMP/bin/pnpm"
 
@@ -81,7 +84,8 @@ VALID_COMPARE=$(jq -n --arg base "$BASE_SHA" '{
     {filename: "packages/hooks/CHANGELOG.md", status: "modified"},
     {filename: "packages/hooks/package.json", status: "modified"},
     {filename: "packages/ui/CHANGELOG.md", status: "modified"},
-    {filename: "packages/ui/package.json", status: "modified"}
+    {filename: "packages/ui/package.json", status: "modified"},
+    {filename: "CHANGELOG.md", status: "modified"}
   ]
 }')
 
@@ -160,10 +164,8 @@ run_context_case "rejects an added changeset input" false "$VALID_PR" \
   "$(jq '.files[0].status = "added"' <<<"$VALID_COMPARE")"
 run_context_case "rejects a modified changeset input" false "$VALID_PR" \
   "$(jq '.files[0].status = "modified"' <<<"$VALID_COMPARE")"
-run_context_case "rejects an unrelated source modification" false "$VALID_PR" \
+run_context_case "allows extra files only into complete-tree verification" true "$VALID_PR" \
   "$(jq '.files += [{filename:"packages/core/src/client.ts",status:"modified"}]' <<<"$VALID_COMPARE")"
-run_context_case "rejects missing canonical generated-release output" false "$VALID_PR" \
-  "$(jq 'del(.files[-1])' <<<"$VALID_COMPARE")"
 run_context_case "rejects a comparison for a different base SHA" false "$VALID_PR" \
   "$(jq '.base_commit.sha = "cccccccccccccccccccccccccccccccccccccccc"' <<<"$VALID_COMPARE")"
 run_context_case "rejects a comparison without a verifiable file list" false "$VALID_PR" \
@@ -181,6 +183,7 @@ git -C "$VERIFY_REPO" config user.email test@example.com
 mkdir -p "$VERIFY_REPO/.changeset" \
   "$VERIFY_REPO/packages/core" "$VERIFY_REPO/packages/hooks" "$VERIFY_REPO/packages/ui"
 printf '%s\n' '---' '---' > "$VERIFY_REPO/.changeset/consumed-change.md"
+printf 'base root\n' > "$VERIFY_REPO/CHANGELOG.md"
 for file in \
   packages/core/CHANGELOG.md packages/core/package.json \
   packages/hooks/CHANGELOG.md packages/hooks/package.json \
@@ -198,6 +201,12 @@ printf 'tampered\n' > "$VERIFY_REPO/packages/core/package.json"
 git -C "$VERIFY_REPO" add -A
 git -C "$VERIFY_REPO" commit --quiet -m tampered
 VERIFY_TAMPERED=$(git -C "$VERIFY_REPO" rev-parse HEAD)
+git -C "$VERIFY_REPO" reset --hard --quiet "$VERIFY_CANONICAL"
+mkdir -p "$VERIFY_REPO/packages/core/src"
+printf 'unrelated source\n' > "$VERIFY_REPO/packages/core/src/client.ts"
+git -C "$VERIFY_REPO" add -A
+git -C "$VERIFY_REPO" commit --quiet -m extra-source
+VERIFY_EXTRA_SOURCE=$(git -C "$VERIFY_REPO" rev-parse HEAD)
 git -C "$VERIFY_REPO" remote add origin "$VERIFY_REPO"
 
 run_content_verification_case() {
@@ -213,10 +222,12 @@ run_content_verification_case() {
   fi
 }
 
-run_content_verification_case "accepts byte-for-byte base-owned Changesets output" \
+run_content_verification_case "accepts base-owned output with a generated root changelog" \
   true "$VERIFY_CANONICAL"
 run_content_verification_case "rejects tampered content at an allowed manifest path" \
   false "$VERIFY_TAMPERED"
+run_content_verification_case "rejects an unrelated source file after the prefilter" \
+  false "$VERIFY_EXTRA_SOURCE"
 
 run_decision_case() {
   local name="$1" expected="$2" candidate="$3" verification_result="$4" verified="$5"
