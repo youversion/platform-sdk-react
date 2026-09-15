@@ -10,6 +10,20 @@ affected.
 Generated from the per-package changelogs by `scripts/build-root-changelog.mjs` — edit those,
 or the changeset, rather than this file.
 
+## 2.14.0
+
+### Minor Changes
+
+- _(@youversion/platform-core)_ 1e6c8a2: Add a declarative passage display API that returns transformed Bible HTML,
+  current attribution, required stylesheet descriptors, and container attributes
+  without rendering or mutating the DOM.
+
+### Patch Changes
+
+- _(@youversion/platform-react-hooks, @youversion/platform-react-ui)_ 67223e4: Add an optional `timeout` prop to `YouVersionProvider` and configure the Vite demo to wait longer for slower Bible content requests.
+
+- _(@youversion/platform-react-ui)_ bb1f056: Sync localization from platform-localization (e4c7700): update 28 keys in en.
+
 ## 2.13.0
 
 ### Minor Changes
