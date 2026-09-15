@@ -16,13 +16,11 @@ export { LanguagesClient } from './languages';
 export { getLanguage } from './languages-language';
 export { getLanguages, type GetLanguagesOptions } from './languages-list';
 export { SearchClient, type SearchVersesOptions } from './search';
-export {
-  getSuggestedQueries,
-  getTrendingQueries,
-} from './search-queries';
+export { getSuggestedQueries, getTrendingQueries } from './search-queries';
 export { searchVerses } from './search-verses';
 export { searchTopics } from './search-topics';
 export { isValidStructuralUsfmReference } from './schemas/search';
+export { parseUsfmReference, type UsfmReference } from './usfm-reference';
 export { OrganizationsClient } from './organizations';
 export {
   HighlightsClient,

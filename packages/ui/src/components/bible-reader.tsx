@@ -28,6 +28,7 @@ import {
 } from '@youversion/platform-react-hooks';
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -57,6 +58,8 @@ import { BibleTextView, getCleanVerseText, type FootnoteData } from './verse';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
 import { isHighlightsLive } from '@/lib/feature-flags';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
+import { BibleReaderSearch } from './bible-reader-search';
+import { useTransientVerseFocus, type VerseFocusRequest } from '@/lib/use-transient-verse-focus';
 
 type BibleReaderContextType = {
   book: string;
@@ -92,6 +95,8 @@ type BibleReaderContextType = {
   onHighlightRemove?: (intent: BibleReaderHighlightIntent) => void;
   verseActions: 'popover' | 'none';
   clearSelectionSignal?: number;
+  navigateToVerse: (target: Omit<VerseFocusRequest, 'seq'>) => void;
+  verseFocus: VerseFocusRequest | null;
 };
 
 /**
@@ -176,7 +181,7 @@ export type BibleReaderShareData = {
 
 const BibleReaderContext = createContext<BibleReaderContextType | null>(null);
 
-function useBibleReaderContext() {
+export function useBibleReaderContext(): BibleReaderContextType {
   const context = useContext(BibleReaderContext);
   if (!context) {
     throw new Error('BibleReader components must be used within BibleReader.Root');
@@ -628,6 +633,23 @@ function Root({
   const { books, loading: booksLoading } = useBooks(versionId);
   const booksData = books?.data ?? [];
 
+  const [verseFocus, setVerseFocus] = useState<VerseFocusRequest | null>(null);
+  const verseFocusSeqRef = useRef(0);
+  const navigateToVerse = useCallback(
+    (target: Omit<VerseFocusRequest, 'seq'>) => {
+      verseFocusSeqRef.current += 1;
+      setBook(target.book);
+      setChapter(target.chapter);
+      setVerseFocus({
+        seq: verseFocusSeqRef.current,
+        book: target.book,
+        chapter: target.chapter,
+        verses: target.verses,
+      });
+    },
+    [setBook, setChapter],
+  );
+
   const contextValue: BibleReaderContextType = {
     book,
     chapter,
@@ -662,6 +684,8 @@ function Root({
     onHighlightRemove,
     verseActions,
     clearSelectionSignal,
+    navigateToVerse,
+    verseFocus,
   };
 
   return (
@@ -699,6 +723,7 @@ function Content() {
     onHighlightRemove,
     verseActions,
     clearSelectionSignal,
+    verseFocus,
   } = useBibleReaderContext();
   const { version } = useVersion(versionId);
 
@@ -746,6 +771,12 @@ function Content() {
   // dark-launched behind HIGHLIGHTS_LIVE. The reader DOM ref anchors the
   // popover and supplies clean verse text for Copy / Share.
   const readerRef = useRef<HTMLDivElement>(null);
+  const renderedReference = !passageLoading && passage ? usfmReference : '';
+  useTransientVerseFocus({
+    request: verseFocus,
+    renderedReference,
+    containerRef: readerRef,
+  });
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null);
@@ -1361,9 +1392,18 @@ export function BibleThemeSettingsContent({
 export type BibleReaderToolbarProps = {
   border?: 'top' | 'bottom';
   onOpenBibleThemeSettings?: (snapshot: BibleThemeSettingsSnapshot) => void;
+  /**
+   * Whether the toolbar renders the built-in search control.
+   * `'control'` (default) | `'none'`. Mirrors `RootProps.verseActions`.
+   */
+  search?: 'control' | 'none';
 };
 
-function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolbarProps) {
+function Toolbar({
+  border = 'top',
+  onOpenBibleThemeSettings,
+  search = 'control',
+}: BibleReaderToolbarProps) {
   const { t } = useTranslation(undefined, { i18n });
   const {
     book,
@@ -1458,6 +1498,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
   const nextResult = getAdjacentChapter(booksData, book, chapter, 'next');
   const canNavigatePrevious = !booksLoading && prevResult !== null;
   const canNavigateNext = !booksLoading && nextResult !== null;
+  const showSearch = search !== 'none';
 
   return (
     <section
@@ -1471,8 +1512,12 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
         className={cn(
           'yv:grid yv:w-full yv:items-center yv:sm:max-w-lg yv:max-w-[calc(100vw-2rem)] yv:gap-3',
           yvContext?.authEnabled
-            ? 'yv:grid-cols-[auto_1fr_auto_auto]'
-            : 'yv:grid-cols-[1fr_auto_auto]',
+            ? showSearch
+              ? 'yv:grid-cols-[auto_1fr_auto_auto_auto]'
+              : 'yv:grid-cols-[auto_1fr_auto_auto]'
+            : showSearch
+              ? 'yv:grid-cols-[1fr_auto_auto_auto]'
+              : 'yv:grid-cols-[1fr_auto_auto]',
         )}
       >
         {yvContext?.authEnabled && <UserMenu />}
@@ -1583,6 +1628,8 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
           </BibleVersionPicker.Trigger>
           <BibleVersionPicker.Content />
         </BibleVersionPicker.Root>
+
+        {showSearch ? <BibleReaderSearch /> : null}
 
         {onOpenBibleThemeSettings ? (
           <Button
