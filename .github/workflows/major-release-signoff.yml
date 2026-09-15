@@ -14,7 +14,10 @@ on:
 permissions: {}
 
 concurrency:
-  group: major-release-signoff-${{ github.event.pull_request.number || github.event.issue.number }}
+  # Workflow concurrency is resolved before job `if` conditions. Isolate bot comment
+  # runs so comments from changeset-bot or this workflow cannot cancel an active PR
+  # evaluation before their jobs are skipped.
+  group: major-release-signoff-${{ github.event.pull_request.number || github.event.issue.number }}-${{ github.event_name == 'issue_comment' && github.event.comment.user.type == 'Bot' && format('bot-{0}', github.run_id) || 'evaluation' }}
   cancel-in-progress: true
 
 env:
@@ -23,8 +26,9 @@ env:
 jobs:
   context:
     # issue_comment fires for issues AND PRs across the repo. Skip non-PR
-    # issues so we don't waste a run when someone comments on a plain issue.
-    if: ${{ github.event_name != 'issue_comment' || github.event.issue.pull_request != null }}
+    # issues and bot comments. Bot runs have isolated concurrency keys above,
+    # because this condition is not evaluated until after concurrency handling.
+    if: ${{ github.event_name != 'issue_comment' || (github.event.issue.pull_request != null && github.event.comment.user.type != 'Bot') }}
     name: Resolve PR context
     runs-on: ubuntu-latest
     permissions:
@@ -70,7 +74,7 @@ jobs:
 
   preview:
     # Skipped for forks. A fork's code is untrusted, so rather than run it we fail closed
-    # in the gate below and require a signoff regardless of what the PR declares.
+    # in the gate below and report that its release impact could not be determined.
     if: needs.context.outputs.is_fork != 'true'
     name: Compute release preview
     needs: context
@@ -184,20 +188,30 @@ jobs:
           PREVIEW_RELEASE_TYPE: ${{ needs.preview.outputs.release_type }}
         run: |
           set -euo pipefail
-          # Fail closed. A fork, or a preview that did not succeed, means we could not
-          # establish that this PR is non-breaking, so require the signoff rather than
-          # trusting a value computed by code we did not run in a trusted context.
+          # Fail closed. A fork, or a preview that did not succeed, means release impact
+          # is unknown. Keep the gate red, but do not classify that uncertainty as a
+          # confirmed breaking change or offer signoff instructions for an unknown result.
           if [ "$IS_FORK" = "true" ] || [ "$PREVIEW_RESULT" != "success" ]; then
             if [ "$IS_FORK" = "true" ]; then
               echo "blocked=pull request is from a fork, so its release preview is not trusted" >> "$GITHUB_OUTPUT"
             else
               echo "blocked=release preview did not succeed ($PREVIEW_RESULT)" >> "$GITHUB_OUTPUT"
             fi
-            echo "is_major=1" >> "$GITHUB_OUTPUT"
+            echo "is_major=0" >> "$GITHUB_OUTPUT"
             echo "next=$PREVIEW_NEXT" >> "$GITHUB_OUTPUT"
             echo "release_type=$PREVIEW_RELEASE_TYPE" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          case "$PREVIEW_IS_MAJOR" in
+            0|1) ;;
+            *)
+              echo "blocked=release preview returned an invalid major decision" >> "$GITHUB_OUTPUT"
+              echo "is_major=0" >> "$GITHUB_OUTPUT"
+              echo "next=$PREVIEW_NEXT" >> "$GITHUB_OUTPUT"
+              echo "release_type=$PREVIEW_RELEASE_TYPE" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
           # The version reaches a regex below, so anything that is not a plain semver
           # string is recorded as unevaluable rather than aborting: the job must still
           # reach the step that posts a red status.
@@ -205,7 +219,7 @@ jobs:
              ! printf '%s' "$PREVIEW_NEXT" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
             echo "::error::Preview reported a major but next version '$PREVIEW_NEXT' is not a plain semver string."
             echo "blocked=next version '$PREVIEW_NEXT' is not a plain semver string" >> "$GITHUB_OUTPUT"
-            echo "is_major=1" >> "$GITHUB_OUTPUT"
+            echo "is_major=0" >> "$GITHUB_OUTPUT"
             echo "next=" >> "$GITHUB_OUTPUT"
             echo "release_type=$PREVIEW_RELEASE_TYPE" >> "$GITHUB_OUTPUT"
             exit 0
@@ -215,8 +229,27 @@ jobs:
           echo "next=$PREVIEW_NEXT" >> "$GITHUB_OUTPUT"
           echo "release_type=$PREVIEW_RELEASE_TYPE" >> "$GITHUB_OUTPUT"
 
-      - name: Mark PRs without a breaking change as success and exit
-        if: steps.decision.outputs.is_major != '1'
+      - name: Remove stale workflow-owned signoff instructions
+        # Unknown impact must not leave a comment claiming a confirmed breaking change.
+        # Trusted non-major results also retire instructions from an earlier evaluation.
+        if: steps.decision.outputs.blocked != '' || steps.decision.outputs.is_major != '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.context.outputs.pr_number }}
+        run: |
+          set -euo pipefail
+          MARKER='<!-- major-signoff-required -->'
+          gh api --paginate \
+            "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$MARKER\"))) | .id" |
+            while read -r COMMENT_ID; do
+              [ -z "$COMMENT_ID" ] && continue
+              gh api -X DELETE "repos/${{ github.repository }}/issues/comments/$COMMENT_ID"
+              echo "Removed stale blocking comment ($COMMENT_ID)."
+            done
+
+      - name: Mark PRs without a breaking change as success
+        if: steps.decision.outputs.blocked == '' && steps.decision.outputs.is_major != '1'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ needs.context.outputs.head_sha }}
@@ -229,6 +262,22 @@ jobs:
             -f context="$STATUS_CONTEXT" \
             -f description="No breaking changeset added (${RELEASE_TYPE:-no bump}); signoff not required." \
             -f target_url="$RUN_URL"
+
+      - name: Post failure status when release impact cannot be determined
+        if: steps.decision.outputs.blocked != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ needs.context.outputs.head_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BLOCKED: ${{ steps.decision.outputs.blocked }}
+        run: |
+          set -euo pipefail
+          gh api repos/${{ github.repository }}/statuses/$HEAD_SHA \
+            -f state=failure \
+            -f context="$STATUS_CONTEXT" \
+            -f description="Unable to determine release impact; inspect the workflow run." \
+            -f target_url="$RUN_URL"
+          echo "Unable to determine release impact: $BLOCKED"
 
       - name: Search PR comments for valid approver signoff
         id: signoff
@@ -323,7 +372,7 @@ jobs:
           fi
 
       - name: Post success status when signoff present
-        if: steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off == '1'
+        if: steps.decision.outputs.blocked == '' && steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off == '1'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ needs.context.outputs.head_sha }}
@@ -339,7 +388,7 @@ jobs:
             -f target_url="$RUN_URL"
 
       - name: Upsert blocking comment when signoff missing
-        if: always() && steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off != '1' && github.event_name == 'pull_request'
+        if: always() && steps.decision.outputs.blocked == '' && steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off != '1' && github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ needs.context.outputs.pr_number }}
@@ -390,7 +439,7 @@ jobs:
           fi
 
       - name: Post failure status when signoff missing
-        if: always() && steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off != '1'
+        if: always() && steps.decision.outputs.blocked == '' && steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off != '1'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ needs.context.outputs.head_sha }}
@@ -405,7 +454,13 @@ jobs:
             -f target_url="$RUN_URL"
 
       - name: Fail the job so the gate is loud in the PR UI
-        if: always() && steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off != '1'
+        if: always() && ((steps.decision.outputs.blocked != '') || (steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off != '1'))
+        env:
+          BLOCKED: ${{ steps.decision.outputs.blocked }}
         run: |
-          echo "Breaking change detected; awaiting write-access collaborator signoff."
+          if [ -n "$BLOCKED" ]; then
+            echo "Unable to determine release impact: $BLOCKED"
+          else
+            echo "Breaking change detected; awaiting write-access collaborator signoff."
+          fi
           exit 1
