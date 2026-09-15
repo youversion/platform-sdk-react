@@ -246,7 +246,6 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
         className="yv:flex yv:flex-col yv:bg-background yv:p-0 yv:sm:w-sm yv:overflow-none yv:rounded-2xl yv:border-0 yv:shadow-lg"
         heading={t('footnotesHeading')}
         theme={theme}
-        dir={direction}
       >
         <div className="yv:max-h-[33svh] yv:overflow-y-auto">
           <FootnoteContent

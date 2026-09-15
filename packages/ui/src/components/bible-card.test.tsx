@@ -120,6 +120,7 @@ it('establishes interface direction independently from Scripture direction', asy
   );
 
   expect(cardShell(container).section).toHaveAttribute('dir', 'rtl');
+  expect(within(container).getByRole('heading', { level: 2 })).toHaveAttribute('dir', 'ltr');
   await waitFor(() => {
     expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute(
       'dir',

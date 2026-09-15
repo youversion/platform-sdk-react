@@ -222,10 +222,13 @@ export const RtlScriptureWithLtrChrome: Story = {
     await expect(Number.parseFloat(poetryStyle.paddingRight)).toBeGreaterThan(0);
     await expect(poetryStyle.paddingLeft).toBe('0px');
     await expect(table).toBeInTheDocument();
+    await expect(canvasElement.querySelector('h1')).toHaveAttribute('dir', 'rtl');
 
     await userEvent.click(screen.getByRole('button', { name: /footnote/i }));
     await waitFor(async () => {
-      await expect(await screen.findByRole('dialog')).toHaveAttribute('dir', 'rtl');
+      const dialog = await screen.findByRole('dialog');
+      await expect(dialog).toHaveAttribute('dir', 'ltr');
+      await expect(dialog.querySelector('[data-yv-sdk]')).toHaveAttribute('dir', 'rtl');
       await expect(await screen.findByText('حاشية عربية.')).toBeInTheDocument();
     });
     await userEvent.click(screen.getByRole('button', { name: /close/i }));
@@ -345,6 +348,7 @@ export const ForcedRtlChromeGeometry: Story = {
     });
 
     await expect(renderer).toHaveAttribute('dir', 'ltr');
+    await expect(canvasElement.querySelector('h1')).toHaveAttribute('dir', 'ltr');
     await expect(previous.getBoundingClientRect().left).toBeGreaterThan(
       chapter.getBoundingClientRect().left,
     );

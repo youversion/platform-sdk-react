@@ -534,7 +534,7 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
       ? children({ version, loading })
       : children || (
           <Button variant={'secondary'} className="yv:cursor-pointer yv:font-bold yv:text-base">
-            {version?.localized_abbreviation || t('select')}
+            <bdi dir="auto">{version?.localized_abbreviation || t('select')}</bdi>
           </Button>
         );
 

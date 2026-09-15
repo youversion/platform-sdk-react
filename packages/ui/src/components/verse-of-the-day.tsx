@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { filterHighlightsForPassage } from '@/lib/highlight-projection';
 import { useHighlightsControlledLatch } from '@/lib/use-highlights-controlled-latch';
 import { useInterfaceDirection } from '@/lib/direction';
+import { useResolvedScriptureDirection } from '@/lib/scripture-direction';
 
 export type VerseOfTheDayShareData = {
   /** Full share body: verse text, blank line, then reference (same as Web Share `text`). */
@@ -182,6 +183,10 @@ export function VerseOfTheDay({
       enabled: !loadingVerseOfTheDay && !errorVerseOfTheDay && !!data?.passage_id,
     },
   });
+  const resolvedScriptureDirection = useResolvedScriptureDirection(
+    passage?.content,
+    scriptureDirection,
+  );
   const { version, loading: loadingVersion } = useVersion(versionId);
   const providerTheme = useTheme();
   const theme = background || providerTheme;
@@ -248,7 +253,10 @@ export function VerseOfTheDay({
               {t('verseOfTheDay')}
             </p>
             {referenceText && !errorPassage && !errorVerseOfTheDay ? (
-              <p className="yv:text-black yv:dark:text-white yv:font-medium yv:text-sm">
+              <p
+                dir={resolvedScriptureDirection}
+                className="yv:text-black yv:dark:text-white yv:font-medium yv:text-sm"
+              >
                 <bdi dir="auto">{referenceText}</bdi>
               </p>
             ) : null}

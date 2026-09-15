@@ -38,7 +38,6 @@ function DialogContent({
       <DialogPrimitive.Content
         data-yv-sdk
         data-yv-theme={theme}
-        dir={props.dir ?? direction}
         className={cn(
           'yv:fixed yv:left-1/2 yv:top-1/2 yv:z-50 yv:-translate-x-1/2 yv:-translate-y-1/2',
           'yv:w-[calc(100vw-2rem)] yv:max-w-sm',
@@ -50,6 +49,7 @@ function DialogContent({
           'yv:data-[state=closed]:zoom-out-95 yv:data-[state=open]:zoom-in-95',
         )}
         {...props}
+        dir={direction}
       >
         {children}
       </DialogPrimitive.Content>

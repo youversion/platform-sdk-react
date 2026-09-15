@@ -284,32 +284,30 @@ describe('transformBibleHtml - return type', () => {
   });
 });
 
-describe('transformBibleHtml - direction', () => {
-  it.each([
-    ['ltr', 'ltr'],
-    ['rtl', 'rtl'],
-  ] as const)('resolves a shared valid %s root direction', (dir, direction) => {
-    const result = transformBibleHtml(`<div dir="${dir}"><p>Text</p></div>`, createAdapters());
+it.each([
+  ['ltr', 'ltr'],
+  ['rtl', 'rtl'],
+] as const)('resolves a shared valid %s root direction', (dir, direction) => {
+  const result = transformBibleHtml(`<div dir="${dir}"><p>Text</p></div>`, createAdapters());
 
-    expect(result.direction).toBe(direction);
-  });
+  expect(result.direction).toBe(direction);
+});
 
-  it.each([
-    ['<div><p>Text</p></div>', 'missing'],
-    ['<div dir="auto"><p>Text</p></div>', 'invalid'],
-    ['<div dir="ltr">One</div><div dir="rtl">Two</div>', 'mixed'],
-  ])('does not resolve %s root directions', (html) => {
-    const result = transformBibleHtml(html, createAdapters());
+it.each([
+  ['<div><p>Text</p></div>', 'missing'],
+  ['<div dir="auto"><p>Text</p></div>', 'invalid'],
+  ['<div dir="ltr">One</div><div dir="rtl">Two</div>', 'mixed'],
+])('does not resolve %s root directions', (html) => {
+  const result = transformBibleHtml(html, createAdapters());
 
-    expect(result.direction).toBeUndefined();
-  });
+  expect(result.direction).toBeUndefined();
+});
 
-  it('preserves direction when transforming an already transformed fragment', () => {
-    const first = transformBibleHtml('<div dir="rtl"><p>Text</p></div>', createAdapters());
-    const second = transformBibleHtml(first.html, createAdapters());
+it('preserves direction when transforming an already transformed fragment', () => {
+  const first = transformBibleHtml('<div dir="rtl"><p>Text</p></div>', createAdapters());
+  const second = transformBibleHtml(first.html, createAdapters());
 
-    expect(second.direction).toBe('rtl');
-  });
+  expect(second.direction).toBe('rtl');
 });
 
 describe('transformBibleHtml - sanitization', () => {

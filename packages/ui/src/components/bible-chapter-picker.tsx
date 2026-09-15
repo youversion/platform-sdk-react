@@ -246,14 +246,24 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
   if (!!currentBook?.intro && chapter === currentBook.intro.id) {
     chapterLabel = currentBook.intro.title;
   }
-  const buttonText = loading
-    ? t('loadingEllipsis')
-    : `${currentBook?.title || t('selectChapter')}${chapterLabel ? ` ${chapterLabel}` : ''}`;
+  const buttonContent = loading ? (
+    t('loadingEllipsis')
+  ) : (
+    <>
+      <bdi dir="auto">{currentBook?.title || t('selectChapter')}</bdi>
+      {chapterLabel ? (
+        <>
+          {' '}
+          <bdi dir="auto">{chapterLabel}</bdi>
+        </>
+      ) : null}
+    </>
+  );
 
   const content =
     children instanceof Function
       ? children({ book, chapter, chapterLabel, currentBook, loading })
-      : children || <Button variant="secondary">{buttonText}</Button>;
+      : children || <Button variant="secondary">{buttonContent}</Button>;
 
   const handlePress = (event: React.MouseEvent<HTMLButtonElement>) => {
     props.onClick?.(event);

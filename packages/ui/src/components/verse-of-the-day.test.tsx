@@ -97,6 +97,7 @@ it('establishes interface direction independently from Scripture direction', () 
   );
 
   expect(container.querySelector('section')).toHaveAttribute('dir', 'rtl');
+  expect(screen.getByText(MOCK_REFERENCE).closest('p')).toHaveAttribute('dir', 'ltr');
   expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute('dir', 'ltr');
 });
 

@@ -358,28 +358,30 @@ describe('BibleChapterPicker - accordion expand/collapse', () => {
   });
 });
 
-describe('BibleChapterPicker - interface direction', () => {
-  it('establishes RTL on standalone content while isolating book names and query direction', () => {
-    renderWithOverrides(
-      <InterfaceDirectionProvider direction="rtl">
-        <BibleChapterPicker.Root
-          versionId={3034}
-          book="GEN"
-          chapter="1"
-          onChapterPickerPress={vi.fn()}
-        >
-          <BibleChapterPicker.Trigger dir="ltr" />
-          <BibleChapterPicker.Content />
-        </BibleChapterPicker.Root>
-      </InterfaceDirectionProvider>,
-    );
+it('establishes RTL on standalone chapter content while isolating dynamic labels', () => {
+  renderWithOverrides(
+    <InterfaceDirectionProvider direction="rtl">
+      <BibleChapterPicker.Root
+        versionId={3034}
+        book="GEN"
+        chapter="1"
+        onChapterPickerPress={vi.fn()}
+      >
+        <BibleChapterPicker.Trigger dir="ltr" />
+        <BibleChapterPicker.Content />
+      </BibleChapterPicker.Root>
+    </InterfaceDirectionProvider>,
+  );
 
-    expect(screen.getByRole('button', { name: /genesis 1/i })).toHaveAttribute('dir', 'rtl');
-    expect(screen.getByText('Genesis').closest('bdi')).toHaveAttribute('dir', 'auto');
-    expect(screen.getByPlaceholderText('Search')).toHaveAttribute('dir', 'auto');
-    expect(screen.getByPlaceholderText('Search').closest('[data-yv-sdk]')).toHaveAttribute(
-      'dir',
-      'rtl',
-    );
-  });
+  const trigger = screen.getByRole('button', { name: /genesis 1/i });
+  expect(trigger).toHaveAttribute('dir', 'rtl');
+  expect(trigger.querySelectorAll('bdi')).toHaveLength(2);
+  for (const bookName of screen.getAllByText('Genesis')) {
+    expect(bookName.closest('bdi')).toHaveAttribute('dir', 'auto');
+  }
+  expect(screen.getByPlaceholderText('Search')).toHaveAttribute('dir', 'auto');
+  expect(screen.getByPlaceholderText('Search').closest('[data-yv-sdk]')).toHaveAttribute(
+    'dir',
+    'rtl',
+  );
 });

@@ -47,7 +47,6 @@ function PopoverContent({
         data-slot="popover-content"
         data-yv-sdk
         data-yv-theme={theme}
-        dir={props.dir ?? direction}
         align={align}
         sideOffset={sideOffset}
         collisionPadding={16}
@@ -56,6 +55,7 @@ function PopoverContent({
           className,
         )}
         {...props}
+        dir={direction}
       >
         {showHeader ? (
           <section

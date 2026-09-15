@@ -17,6 +17,7 @@ import { useDelayedLoading } from '@/lib/use-delayed-loading';
 import { LoaderIcon } from './icons/loader';
 import { AnimatedHeight } from './animated-height';
 import { useInterfaceDirection } from '@/lib/direction';
+import { useResolvedScriptureDirection } from '@/lib/scripture-direction';
 
 type PassageResult = ReturnType<typeof usePassage>;
 type VersionResult = ReturnType<typeof useVersion>;
@@ -83,12 +84,17 @@ function BibleCardHeaderError(): React.ReactNode {
 function BibleCardHeaderReference({
   passage,
   version,
+  direction,
 }: {
   passage: NonNullable<PassageResult['passage']>;
   version: VersionResult['version'];
+  direction: TextDirection | 'auto';
 }): React.ReactNode {
   return (
-    <h2 className="yv:font-bold yv:tracking-widest yv:text-xs yv:uppercase yv:text-foreground">
+    <h2
+      dir={direction}
+      className="yv:font-bold yv:tracking-widest yv:text-xs yv:uppercase yv:text-foreground"
+    >
       <bdi dir="auto">{passage.reference}</bdi>{' '}
       <bdi dir="auto">{version?.localized_abbreviation}</bdi>
     </h2>
@@ -186,6 +192,10 @@ export function BibleCard({
     include_headings: true,
     include_notes: true,
   });
+  const resolvedScriptureDirection = useResolvedScriptureDirection(
+    passage?.content,
+    scriptureDirection,
+  );
 
   const providerTheme = useTheme();
   const theme = background || providerTheme;
@@ -215,7 +225,11 @@ export function BibleCard({
           */}
           {passage && !passageError ? (
             <div className="yv:grow yv:flex yv:items-center yv:gap-1.5">
-              <BibleCardHeaderReference passage={passage} version={version} />
+              <BibleCardHeaderReference
+                passage={passage}
+                version={version}
+                direction={resolvedScriptureDirection}
+              />
               {showSpinner ? (
                 <LoaderIcon className="yv:size-3 yv:animate-spin yv:text-muted-foreground" />
               ) : null}

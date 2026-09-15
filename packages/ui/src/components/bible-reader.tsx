@@ -4,6 +4,7 @@ import i18n from '@/i18n';
 import { useInterfaceDirection } from '@/lib/direction';
 import { useDelayedLoading } from '@/lib/use-delayed-loading';
 import { useHighlightsControlledLatch } from '@/lib/use-highlights-controlled-latch';
+import { useResolvedScriptureDirection } from '@/lib/scripture-direction';
 import { cn } from '@/lib/utils';
 import {
   INTER_FONT,
@@ -737,6 +738,10 @@ function Content() {
     include_notes: true,
     options: { enabled: !chapterUnavailable },
   });
+  const resolvedScriptureDirection = useResolvedScriptureDirection(
+    passage?.content,
+    scriptureDirection,
+  );
 
   const isRefetching = !chapterUnavailable && passageLoading && passage !== null;
   const showLoadingOverlay = useDelayedLoading(isRefetching);
@@ -1051,7 +1056,10 @@ function Content() {
       ref={scrollContainerRef}
       className="yv:*:max-w-lg yv:flex yv:flex-col yv:items-center yv:gap-6 yv:overflow-y-auto yv:px-6 yv:max-sm:px-4 yv:py-12 yv:h-full"
     >
-      <h1 className="yv:flex yv:gap-2 yv:flex-col yv:justify-center yv:items-center yv:text-muted-foreground yv:font-medium">
+      <h1
+        dir={resolvedScriptureDirection}
+        className="yv:flex yv:gap-2 yv:flex-col yv:justify-center yv:items-center yv:text-muted-foreground yv:font-medium"
+      >
         <span
           className={cn(
             'yv:font-serif yv:leading-none yv:block yv:text-2xl yv:transition-[filter]',

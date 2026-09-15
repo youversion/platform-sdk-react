@@ -431,34 +431,32 @@ describe('BibleReader Toolbar - onChapterPickerPress', () => {
   });
 });
 
-describe('BibleReader interface direction', () => {
-  it('keeps chapter targets canonical while semantic icons follow RTL interface direction', async () => {
-    const user = userEvent.setup();
-    const onChapterChange = vi.fn();
+it('keeps chapter targets canonical while semantic icons follow RTL interface direction', async () => {
+  const user = userEvent.setup();
+  const onChapterChange = vi.fn();
 
-    renderWithOverrides(
-      <InterfaceDirectionProvider direction="rtl">
-        <BibleReader.Root
-          defaultVersionId={3034}
-          defaultBook="JHN"
-          defaultChapter="1"
-          onChapterChange={onChapterChange}
-        >
-          <BibleReader.Toolbar />
-        </BibleReader.Root>
-      </InterfaceDirectionProvider>,
-    );
+  renderWithOverrides(
+    <InterfaceDirectionProvider direction="rtl">
+      <BibleReader.Root
+        defaultVersionId={3034}
+        defaultBook="JHN"
+        defaultChapter="1"
+        onChapterChange={onChapterChange}
+      >
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </InterfaceDirectionProvider>,
+  );
 
-    await user.click(screen.getByRole('button', { name: 'Next chapter' }));
+  await user.click(screen.getByRole('button', { name: 'Next chapter' }));
 
-    expect(onChapterChange).toHaveBeenCalledWith('2');
-    expect(
-      screen
-        .getByRole('button', { name: 'Previous chapter' })
-        .querySelector('path')
-        ?.getAttribute('d'),
-    ).toContain('8.29289');
-  });
+  expect(onChapterChange).toHaveBeenCalledWith('2');
+  expect(
+    screen
+      .getByRole('button', { name: 'Previous chapter' })
+      .querySelector('path')
+      ?.getAttribute('d'),
+  ).toContain('8.29289');
 });
 
 describe('BibleReader version picker language', () => {
