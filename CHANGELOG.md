@@ -185,18 +185,6 @@ or the changeset, rather than this file.
 
 ### Minor Changes
 
-- _(@youversion/platform-react-ui)_ ebddf21: BibleReader gains a controlled highlights mode (YPE-3705) for hosts that own highlight data themselves (e.g. React Native / Expo DOM hosts keeping the user token out of the WebView).
-  - New `BibleReader.Root` props: `highlights?: Highlight[]` (core API shape; presence puts the highlight slice in controlled mode, latched at first mount), `onVerseSelect` (both modes, fires on every selection change — `verses: []` whenever a non-empty selection clears, including after highlight/copy/share actions, popover dismiss, and navigation), and `onHighlightApply` / `onHighlightRemove` (controlled mode only; ignored in self-contained mode). Payloads are serializable, bridge-safe objects (`BibleReaderVerseSelection`, `BibleReaderHighlightIntent`) with always-per-verse `passageIds`.
-  - In controlled mode the reader is a pure projection: highlights render solely from the prop (filtered by displayed version + chapter, range USFMs like `JHN.3.16-18` expanded per verse), color taps emit intents and paint nothing until the host round-trips an updated prop, and neither the highlights API nor any local store is touched. No auth surface can originate from the highlight path.
-  - Self-contained behavior (no `highlights` prop) uses the server-backed `useBibleReaderHighlights` path (YPE-1034), dark-launched behind `HIGHLIGHTS_LIVE`.
-  - `@youversion/platform-react-ui` now re-exports the `Highlight` type from `@youversion/platform-core`.
-
-### Patch Changes
-
-- _(@youversion/platform-core)_ 71e4c1a: Fix one-shot sign-in dropping the `highlights` grant when the auth server echoes it back with PHP/Rails bracket-array notation (`granted_permissions[]=highlights`).
-
-  `parseGrantedPermissions` read only the bare `granted_permissions` key, but `URLSearchParams` treats `granted_permissions[]` (and indexed `granted_permissions[0]`) as distinct keys. The server demonstrably uses this bracket notation for the analogous outbound `requested_permissions[]` param it builds on the hosted consent redirect, so a return echo in the same shape was silently discarded — leaving the permission cache empty and re-prompting the just-in-time data-exchange consent after a completed sign-in. The parser now accepts `granted_permissions`, `granted_permissions[]`, and `granted_permissions[<index>]`, keeping it symmetric with the server's encoding. Purely additive: bare `granted_permissions` and all user/state-scoping and fail-closed protections are unchanged.
-
 - _(all packages)_ 71e4c1a: BibleReader highlights are now real, server-backed YouVersion highlights, with a built-in sign-in and permission flow so a reader's highlights persist to their YouVersion account.
 
   **Important: previous releases accidentally shipped a demo-only, localStorage-based highlights implementation in BibleReader. It stored highlights only in the local browser and never synced to the reader's YouVersion account. That implementation has been removed and replaced by the server-backed highlights described here.** These highlights are live in this release and enabled by default.
@@ -214,6 +202,18 @@ or the changeset, rather than this file.
   - Fix: concurrent token refreshes (e.g. the double-invoked auth init effect under React StrictMode) now share a single in-flight refresh, so a losing duplicate can no longer spend the single-use refresh token a second time and wipe the session on its failure.
   - Fix: verse labels and footnote icons now inherit the surrounding text color over highlight fills instead of being painted with the fill color, keeping them legible on highlighted verses.
   - Theme-aware highlight rendering: highlight fills render at full opacity in light mode and 30 percent opacity in dark mode, matching the Swift SDK; verse numbers over dark-mode highlights render white. Highlight fills now have subtly rounded corners, with each wrapped line fragment getting its own rounded ends so a multi-line highlight no longer cuts off square at the wrap. The verse-action popover color swatches preview the real fill: in dark mode they show the same dimmed color a highlight will apply. Opening the popover with a mouse or touch no longer flashes a focus ring on the first swatch; keyboard navigation still shows a clearly visible focus ring.
+
+- _(@youversion/platform-react-ui)_ ebddf21: BibleReader gains a controlled highlights mode (YPE-3705) for hosts that own highlight data themselves (e.g. React Native / Expo DOM hosts keeping the user token out of the WebView).
+  - New `BibleReader.Root` props: `highlights?: Highlight[]` (core API shape; presence puts the highlight slice in controlled mode, latched at first mount), `onVerseSelect` (both modes, fires on every selection change — `verses: []` whenever a non-empty selection clears, including after highlight/copy/share actions, popover dismiss, and navigation), and `onHighlightApply` / `onHighlightRemove` (controlled mode only; ignored in self-contained mode). Payloads are serializable, bridge-safe objects (`BibleReaderVerseSelection`, `BibleReaderHighlightIntent`) with always-per-verse `passageIds`.
+  - In controlled mode the reader is a pure projection: highlights render solely from the prop (filtered by displayed version + chapter, range USFMs like `JHN.3.16-18` expanded per verse), color taps emit intents and paint nothing until the host round-trips an updated prop, and neither the highlights API nor any local store is touched. No auth surface can originate from the highlight path.
+  - Self-contained behavior (no `highlights` prop) uses the server-backed `useBibleReaderHighlights` path (YPE-1034), dark-launched behind `HIGHLIGHTS_LIVE`.
+  - `@youversion/platform-react-ui` now re-exports the `Highlight` type from `@youversion/platform-core`.
+
+### Patch Changes
+
+- _(@youversion/platform-core)_ 71e4c1a: Fix one-shot sign-in dropping the `highlights` grant when the auth server echoes it back with PHP/Rails bracket-array notation (`granted_permissions[]=highlights`).
+
+  `parseGrantedPermissions` read only the bare `granted_permissions` key, but `URLSearchParams` treats `granted_permissions[]` (and indexed `granted_permissions[0]`) as distinct keys. The server demonstrably uses this bracket notation for the analogous outbound `requested_permissions[]` param it builds on the hosted consent redirect, so a return echo in the same shape was silently discarded — leaving the permission cache empty and re-prompting the just-in-time data-exchange consent after a completed sign-in. The parser now accepts `granted_permissions`, `granted_permissions[]`, and `granted_permissions[<index>]`, keeping it symmetric with the server's encoding. Purely additive: bare `granted_permissions` and all user/state-scoping and fail-closed protections are unchanged.
 
 - _(@youversion/platform-react-ui)_ 05beced: Localize BibleReader font-size/line-spacing and popover close accessibility labels via i18n.
   - The YouVersion Platform logo component's accessible label is now a required prop with no hardcoded English default; the SDK's built-in usages pass localized labels.

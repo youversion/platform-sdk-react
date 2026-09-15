@@ -126,6 +126,13 @@ for (const dir of packages) {
         continue;
       }
       existing.packages.add(pkgName);
+      // A fixed-group changeset can land under different headings per package: 71e4c1a is
+      // Patch for core but Minor for hooks and ui. Keep the most significant kind rather
+      // than whichever package readdir happened to return first, so the merged entry is
+      // filed where a reader looking for that change would go.
+      if (KIND_ORDER.indexOf(kind) < KIND_ORDER.indexOf(existing.kind)) {
+        existing.kind = kind;
+      }
     }
   }
 }
