@@ -22,6 +22,7 @@ import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/accordion';
 import { InputGroup, InputGroupInput, InputGroupAddon } from './ui/input-group';
+import { useInterfaceDirection } from '@/lib/direction';
 
 export interface BibleChapterPickerPressData {
   book: string;
@@ -232,6 +233,7 @@ export type TriggerProps = Omit<React.ComponentProps<typeof PopoverTrigger>, 'ch
 
 function Trigger({ asChild = true, children, ...props }: TriggerProps) {
   const { t } = useTranslation(undefined, { i18n });
+  const interfaceDirection = useInterfaceDirection();
   const { book, chapter, background, versionId, scrollToCurrentBook, onChapterPickerPress } =
     useBibleChapterPickerContext();
   const { books, loading } = useBooks(versionId);
@@ -267,12 +269,20 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
         'data-yv-sdk': true,
         'data-yv-theme': theme,
         ...props,
+        dir: interfaceDirection,
         onClick: handlePress,
       });
     }
 
     return (
-      <button type="button" data-yv-sdk data-yv-theme={theme} {...props} onClick={handlePress}>
+      <button
+        type="button"
+        data-yv-sdk
+        data-yv-theme={theme}
+        {...props}
+        dir={interfaceDirection}
+        onClick={handlePress}
+      >
         {content}
       </button>
     );
@@ -289,6 +299,7 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
       data-yv-theme={theme}
       asChild={asChild}
       {...props}
+      dir={interfaceDirection}
       onClick={handleOpenPopover}
     >
       {content}
@@ -298,6 +309,7 @@ function Trigger({ asChild = true, children, ...props }: TriggerProps) {
 
 function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
   const { t } = useTranslation(undefined, { i18n });
+  const interfaceDirection = useInterfaceDirection();
   const {
     filteredBooks,
     expandedBook,
@@ -308,6 +320,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
     setBook,
     setChapter,
     versionId,
+    background,
   } = useBibleChapterPickerContext();
 
   const handleChapterButtonClick = (bookId: string, passageId: string) => {
@@ -322,9 +335,14 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
   };
 
   return (
-    <>
+    <div
+      data-yv-sdk
+      data-yv-theme={background}
+      dir={interfaceDirection}
+      className="yv:flex yv:h-full yv:min-h-0 yv:flex-col"
+    >
       <Accordion
-        className="yv:relative yv:overflow-y-auto yv:bg-background yv:px-6"
+        className="yv:relative yv:min-h-0 yv:flex-1 yv:overflow-y-auto yv:bg-background yv:px-6"
         type="single"
         collapsible
         value={expandedBook}
@@ -340,7 +358,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
               ref={(node) => registerBookElement(bookItem.id, node)}
             >
               <AccordionTrigger className="yv:rounded-none yv:text-base yv:font-normal yv:leading-normal yv:text-foreground yv:data-[state=open]:font-bold">
-                {bookItem.title}
+                <bdi dir="auto">{bookItem.title}</bdi>
               </AccordionTrigger>
               <AccordionContent>
                 {bookItem.chapters && bookItem.chapters.length > 0 ? (
@@ -397,6 +415,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
             tabIndex={1}
             type="text"
             placeholder={t('searchPlaceholder')}
+            dir="auto"
             className="yv:text-base yv:leading-normal"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -406,7 +425,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
           </InputGroupAddon>
         </InputGroup>
       </section>
-    </>
+    </div>
   );
 }
 

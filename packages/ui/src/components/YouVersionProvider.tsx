@@ -1,4 +1,4 @@
-import React, { type ComponentProps, Suspense, useEffect, useLayoutEffect } from 'react';
+import React, { type ComponentProps, Suspense, useEffect, useLayoutEffect, useState } from 'react';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionProvider as BaseYouVersionProvider } from '@youversion/platform-react-hooks';
 import { DirectionProvider } from '@radix-ui/react-direction';
@@ -28,7 +28,8 @@ export type YouVersionProviderProps = ComponentProps<typeof BaseYouVersionProvid
   locale?: string;
   /**
    * Direction for SDK interface controls and their portaled surfaces. When
-   * omitted, Arabic UI locale uses RTL and every other locale uses LTR.
+   * omitted, direction follows the resolved SDK UI locale, including browser
+   * detection. Server rendering uses a deterministic LTR fallback.
    * Scripture direction remains controlled by each scripture surface.
    */
   direction?: 'ltr' | 'rtl';
@@ -41,7 +42,11 @@ export function YouVersionProvider({
   ...props
 }: YouVersionProviderProps): React.ReactElement {
   const normalizedLocale = locale?.trim() || undefined;
-  const interfaceDirection = resolveInterfaceDirection(direction, normalizedLocale);
+  const [browserLocale, setBrowserLocale] = useState<string>();
+  const interfaceDirection = resolveInterfaceDirection(
+    direction,
+    normalizedLocale ?? browserLocale,
+  );
 
   // Layout effects never run during SSR. Apply an explicit locale during render
   // so children emit the host language in the server HTML and the first client
@@ -52,7 +57,13 @@ export function YouVersionProvider({
   }
 
   useLayoutEffect(() => {
-    void syncSdkLanguage(normalizedLocale);
+    let active = true;
+    void syncSdkLanguage(normalizedLocale).then((resolvedLocale) => {
+      if (active && !normalizedLocale) setBrowserLocale(resolvedLocale);
+    });
+    return () => {
+      active = false;
+    };
   }, [normalizedLocale]);
 
   // UI tsup inlines `@youversion/platform-core`, so this singleton is a different

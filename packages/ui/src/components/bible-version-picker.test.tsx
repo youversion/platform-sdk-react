@@ -823,7 +823,7 @@ describe('BibleVersionPicker', () => {
       <DirectionProvider dir="rtl">
         <InterfaceDirectionProvider direction="rtl">
           <BibleVersionPicker.Root versionId={111} onVersionChange={vi.fn()}>
-            <BibleVersionPicker.Trigger>
+            <BibleVersionPicker.Trigger dir="ltr">
               <button type="button">Open</button>
             </BibleVersionPicker.Trigger>
             <BibleVersionPicker.Content />
@@ -834,7 +834,10 @@ describe('BibleVersionPicker', () => {
 
     await openLanguagePanel();
 
+    expect(screen.getByRole('button', { name: 'Open' })).toHaveAttribute('dir', 'rtl');
     expect(screen.getByRole('dialog')).toHaveAttribute('dir', 'rtl');
     expect(screen.getByRole('tablist').parentElement).toHaveAttribute('dir', 'rtl');
+    expect(getLanguageSearchInput()).toHaveAttribute('dir', 'auto');
+    expect(screen.getAllByText('English')[0]?.closest('bdi')).toHaveAttribute('dir', 'auto');
   });
 });

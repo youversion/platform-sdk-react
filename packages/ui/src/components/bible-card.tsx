@@ -16,6 +16,7 @@ import { UNTITLED_SERIF_FONT } from '@/lib/verse-html-utils';
 import { useDelayedLoading } from '@/lib/use-delayed-loading';
 import { LoaderIcon } from './icons/loader';
 import { AnimatedHeight } from './animated-height';
+import { useInterfaceDirection } from '@/lib/direction';
 
 type PassageResult = ReturnType<typeof usePassage>;
 type VersionResult = ReturnType<typeof useVersion>;
@@ -54,7 +55,7 @@ export type BibleCardProps = {
    * that inner column.
    */
   maxWidth?: number | '100%';
-  direction?: TextDirection;
+  scriptureDirection?: TextDirection;
 };
 
 type BibleCardSectionStyle = CSSProperties & {
@@ -88,7 +89,8 @@ function BibleCardHeaderReference({
 }): React.ReactNode {
   return (
     <h2 className="yv:font-bold yv:tracking-widest yv:text-xs yv:uppercase yv:text-foreground">
-      {passage.reference} {version?.localized_abbreviation}
+      <bdi dir="auto">{passage.reference}</bdi>{' '}
+      <bdi dir="auto">{version?.localized_abbreviation}</bdi>
     </h2>
   );
 }
@@ -123,7 +125,7 @@ function BibleCardVersionPicker({
             {loading ? (
               <LoaderIcon className="yv:size-4 yv:animate-spin" aria-hidden="true" />
             ) : (
-              version?.localized_abbreviation || t('selectVersion')
+              <bdi dir="auto">{version?.localized_abbreviation || t('selectVersion')}</bdi>
             )}
           </Button>
         )}
@@ -137,7 +139,7 @@ function BibleCardFooter({ copyright }: { copyright?: string | null }): React.Re
   return (
     <div className="yv:grid yv:grid-cols-[1fr_auto] yv:gap-4 yv:items-center yv:mt-4">
       <p className="yv:text-balance yv:text-muted-foreground yv:justify-self-start yv:font-bold yv:text-[0.5rem]">
-        {copyright || ''}
+        <bdi dir="auto">{copyright || ''}</bdi>
       </p>
 
       <div className="yv:justify-self-end">
@@ -160,8 +162,9 @@ export function BibleCard({
   onFootnotePress,
   highlights,
   maxWidth = BIBLE_CARD_DEFAULT_MAX_WIDTH_PX,
-  direction,
+  scriptureDirection,
 }: BibleCardProps): React.ReactNode {
+  const interfaceDirection = useInterfaceDirection();
   // Controlled only when both versionId + onVersionChange are provided.
   // versionId alone seeds uncontrolled state, preserving backwards compatibility
   // with consumers who use the version picker without an onChange handler.
@@ -199,6 +202,7 @@ export function BibleCard({
     <section
       data-yv-sdk
       data-yv-theme={theme}
+      dir={interfaceDirection}
       className="yv:w-full yv:flex yv:flex-col yv:grow yv:bg-card yv:p-6 yv:rounded-2xl yv:box-border"
       style={sectionStyle}
     >
@@ -251,7 +255,7 @@ export function BibleCard({
             }}
             onFootnotePress={onFootnotePress}
             highlights={highlights}
-            direction={direction}
+            scriptureDirection={scriptureDirection}
           />
         </AnimatedHeight>
 

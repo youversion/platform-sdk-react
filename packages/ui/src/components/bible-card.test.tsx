@@ -19,6 +19,7 @@ import {
   Providers,
   stubUseHighlights,
 } from '@/test/highlights-test-utils';
+import { InterfaceDirectionProvider } from '@/lib/direction';
 
 const mockPassage: BiblePassage = {
   id: 'JHN.3.16',
@@ -103,6 +104,29 @@ function cardShell(container: HTMLElement) {
     inner: requireHtmlElement(container.querySelector('section > div')),
   };
 }
+
+it('establishes interface direction independently from Scripture direction', async () => {
+  const { container } = render(
+    <HookOverrideProvider
+      overrides={{
+        useVersion: () => idleVersion(),
+        usePassage: () => passageResult({ passage: mockPassage, loading: false }),
+      }}
+    >
+      <InterfaceDirectionProvider direction="rtl">
+        <BibleCard reference="JHN.3.16" versionId={3034} scriptureDirection="ltr" />
+      </InterfaceDirectionProvider>
+    </HookOverrideProvider>,
+  );
+
+  expect(cardShell(container).section).toHaveAttribute('dir', 'rtl');
+  await waitFor(() => {
+    expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute(
+      'dir',
+      'ltr',
+    );
+  });
+});
 
 const YELLOW = 'fffe00';
 const multiVersePassage: BiblePassage = {

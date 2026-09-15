@@ -3,4 +3,4 @@
 '@youversion/platform-react-ui': minor
 ---
 
-Add content-derived scripture direction metadata to transformed Bible HTML. Scripture surfaces now accept a `direction` override and render the resolved direction independently from the provider-owned interface direction, including portaled footnotes and reader controls. RTL highlight swatch overflow fades now use visible geometry instead of browser-specific scroll offsets.
+Complete RTL support across Bible UI surfaces and pickers. SDK chrome now resolves Interface direction from an explicit provider override or the SDK UI locale, emits real `dir` boundaries and portals, mirrors semantic geometry and directional controls, and isolates mixed-direction API strings. Scripture surfaces independently resolve `scriptureDirection` from an explicit override, transformed YVDOM, or `auto`, including footnotes. RTL highlight swatch overflow fades use visible geometry instead of browser-specific scroll offsets.

@@ -1360,6 +1360,6 @@
 
   &[dir='rtl'] {
     direction: rtl;
-    text-align: right;
+    text-align: start;
   }
 }

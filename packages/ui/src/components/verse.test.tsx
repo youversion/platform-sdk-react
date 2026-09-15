@@ -21,6 +21,7 @@ import {
   Providers,
   stubUseHighlights,
 } from '@/test/highlights-test-utils';
+import { InterfaceDirectionProvider } from '@/lib/direction';
 
 // BibleTextView always calls usePassage internally (even when passageState is
 // provided). Stub the result so these tests do not need a live BibleClient.
@@ -406,7 +407,7 @@ describe('Verse.Html - direction', () => {
 
   it('prefers an explicit direction over transformed passage content', async () => {
     const { container } = render(
-      <Verse.Html html={'<div dir="rtl"><p>Text</p></div>'} direction="ltr" />,
+      <Verse.Html html={'<div dir="rtl"><p>Text</p></div>'} scriptureDirection="ltr" />,
     );
 
     await waitFor(() => {
@@ -417,7 +418,7 @@ describe('Verse.Html - direction', () => {
     });
   });
 
-  it('omits renderer direction when the passage root does not resolve one', async () => {
+  it('uses auto when runtime scripture content has no resolved direction', async () => {
     const { container } = render(
       <div dir="rtl">
         <Verse.Html html="<div><p>Text</p></div>" />
@@ -425,28 +426,34 @@ describe('Verse.Html - direction', () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelector('[data-slot="yv-bible-renderer"]')).not.toHaveAttribute('dir');
+      expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute(
+        'dir',
+        'auto',
+      );
     });
   });
 
-  it('forwards the explicit direction through BibleTextView', async () => {
+  it('keeps RTL interface direction independent from explicit LTR Scripture direction', async () => {
     const { container } = render(
-      <BibleTextView
-        reference="JHN.1.1"
-        versionId={3034}
-        direction="rtl"
-        passageState={{
-          passage: { id: 'JHN.1.1', content: '<div><p>Text</p></div>', reference: 'John 1:1' },
-          loading: false,
-          error: null,
-        }}
-      />,
+      <InterfaceDirectionProvider direction="rtl">
+        <BibleTextView
+          reference="JHN.1.1"
+          versionId={3034}
+          scriptureDirection="ltr"
+          passageState={{
+            passage: { id: 'JHN.1.1', content: '<div><p>Text</p></div>', reference: 'John 1:1' },
+            loading: false,
+            error: null,
+          }}
+        />
+      </InterfaceDirectionProvider>,
     );
 
     await waitFor(() => {
+      expect(container.firstElementChild).toHaveAttribute('dir', 'rtl');
       expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute(
         'dir',
-        'rtl',
+        'ltr',
       );
     });
   });

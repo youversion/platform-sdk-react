@@ -93,7 +93,7 @@ type BibleReaderContextType = {
   onHighlightRemove?: (intent: BibleReaderHighlightIntent) => void;
   verseActions: 'popover' | 'none';
   clearSelectionSignal?: number;
-  direction?: TextDirection;
+  scriptureDirection?: TextDirection;
 };
 
 /**
@@ -330,7 +330,7 @@ export type RootProps = {
    * the reader can clear the selection any more.
    */
   clearSelectionSignal?: number;
-  direction?: TextDirection;
+  scriptureDirection?: TextDirection;
   children?: ReactNode;
 };
 
@@ -486,7 +486,7 @@ function Root({
   onHighlightRemove,
   verseActions = 'popover',
   clearSelectionSignal,
-  direction,
+  scriptureDirection,
   children,
 }: RootProps) {
   const interfaceDirection = useInterfaceDirection();
@@ -667,7 +667,7 @@ function Root({
     onHighlightRemove,
     verseActions,
     clearSelectionSignal,
-    direction,
+    scriptureDirection,
   };
 
   return (
@@ -706,7 +706,7 @@ function Content() {
     onHighlightRemove,
     verseActions,
     clearSelectionSignal,
-    direction,
+    scriptureDirection,
   } = useBibleReaderContext();
   const { version } = useVersion(versionId);
 
@@ -1057,7 +1057,9 @@ function Content() {
             'yv:font-serif yv:leading-none yv:block yv:text-2xl yv:transition-[filter]',
           )}
         >
-          {bookData?.title || (
+          {bookData?.title ? (
+            <bdi dir="auto">{bookData.title}</bdi>
+          ) : (
             <LoaderIcon className="yv:size-6 yv:animate-spin yv:text-muted-foreground" />
           )}
         </span>
@@ -1088,7 +1090,7 @@ function Content() {
               showVerseNumbers={showVerseNumbers}
               theme={background}
               onFootnotePress={onFootnotePress}
-              direction={direction}
+              scriptureDirection={scriptureDirection}
               selectedVerses={selectedVerses}
               onVerseSelect={handleVerseSelect}
               highlightedVerses={highlightedVerses}
@@ -1166,7 +1168,7 @@ function Content() {
           style={{ fontSize: currentFontSize }}
         >
           <p className="yv:text-balance yv:text-[0.75em] yv:text-center yv:text-muted-foreground">
-            {version.copyright}
+            <bdi dir="auto">{version.copyright}</bdi>
           </p>
           {version.publisher_url ? (
             <a
@@ -1267,8 +1269,14 @@ export function BibleThemeSettingsContent({
   onChangeLineSpacing,
 }: BibleThemeSettingsContentProps): ReactElement {
   const { t } = useTranslation(undefined, { i18n });
+  const interfaceDirection = useInterfaceDirection();
   return (
-    <div data-yv-sdk data-yv-theme={theme} className="yv:flex yv:flex-col yv:gap-4 yv:p-4">
+    <div
+      data-yv-sdk
+      data-yv-theme={theme}
+      dir={interfaceDirection}
+      className="yv:flex yv:flex-col yv:gap-4 yv:p-4"
+    >
       <div className="yv:flex yv:justify-between yv:items-stretch yv:gap-4">
         <div className="yv:flex yv:flex-1">
           <Button
@@ -1374,6 +1382,7 @@ export type BibleReaderToolbarProps = {
 
 function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolbarProps) {
   const { t } = useTranslation(undefined, { i18n });
+  const interfaceDirection = useInterfaceDirection();
   const {
     book,
     chapter,
@@ -1470,6 +1479,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
 
   return (
     <section
+      dir={interfaceDirection}
       className={cn(
         'yv:flex yv:justify-center yv:gap-2 yv:p-4 yv:bg-background yv:border-border yv:max-w-screen yv:overflow-x-hidden',
         border === 'top' && 'yv:border-t',
@@ -1526,9 +1536,9 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
                     <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
                   ) : (
                     <>
-                      <span className="yv:min-w-[3ch] yv:truncate">
+                      <bdi dir="auto" className="yv:min-w-[3ch] yv:truncate">
                         {currentBook?.title || t('select')}
-                      </span>
+                      </bdi>
                       <span className="yv:tabular-nums yv:min-w-[1ch] yv:truncate">
                         {chapterLabel || ''}
                       </span>
@@ -1582,9 +1592,9 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
                   {loading ? (
                     <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
                   ) : (
-                    <span className="yv:truncate">
+                    <bdi dir="auto" className="yv:truncate">
                       {version?.localized_abbreviation || t('selectVersion')}
-                    </span>
+                    </bdi>
                   )}
                 </div>
               </Button>

@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
 import React, { useContext } from 'react';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
@@ -199,6 +199,27 @@ describe('UI YouVersionProvider', () => {
     );
 
     expect(screen.getByTestId('direction')).toHaveTextContent('ltr');
+  });
+
+  it('uses browser-detected Arabic for labels and interface direction when locale is omitted', async () => {
+    vi.stubGlobal('navigator', {
+      language: 'ar-EG',
+      languages: ['ar-EG', 'ar'],
+    });
+
+    render(
+      <YouVersionProvider appKey="test-key">
+        <DirectionProbe />
+      </YouVersionProvider>,
+    );
+
+    await waitFor(() => {
+      expect(i18n.language).toBe('ar');
+      expect(screen.getByTestId('direction')).toHaveTextContent('rtl');
+    });
+
+    await i18n.changeLanguage('en');
+    vi.unstubAllGlobals();
   });
 
   it('uses the LTR fallback during SSR when direction and locale are omitted', () => {

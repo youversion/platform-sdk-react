@@ -21,6 +21,7 @@ import type {
 import type { HookOverrides } from '@youversion/platform-react-hooks';
 import type { BibleBook } from '@youversion/platform-core';
 import { HookOverrideProvider } from '@/test/hook-overrides';
+import { InterfaceDirectionProvider } from '@/lib/direction';
 
 const mockBooks: BibleBook[] = [
   {
@@ -354,5 +355,31 @@ describe('BibleChapterPicker - accordion expand/collapse', () => {
         Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
       }
     }
+  });
+});
+
+describe('BibleChapterPicker - interface direction', () => {
+  it('establishes RTL on standalone content while isolating book names and query direction', () => {
+    renderWithOverrides(
+      <InterfaceDirectionProvider direction="rtl">
+        <BibleChapterPicker.Root
+          versionId={3034}
+          book="GEN"
+          chapter="1"
+          onChapterPickerPress={vi.fn()}
+        >
+          <BibleChapterPicker.Trigger dir="ltr" />
+          <BibleChapterPicker.Content />
+        </BibleChapterPicker.Root>
+      </InterfaceDirectionProvider>,
+    );
+
+    expect(screen.getByRole('button', { name: /genesis 1/i })).toHaveAttribute('dir', 'rtl');
+    expect(screen.getByText('Genesis').closest('bdi')).toHaveAttribute('dir', 'auto');
+    expect(screen.getByPlaceholderText('Search')).toHaveAttribute('dir', 'auto');
+    expect(screen.getByPlaceholderText('Search').closest('[data-yv-sdk]')).toHaveAttribute(
+      'dir',
+      'rtl',
+    );
   });
 });
