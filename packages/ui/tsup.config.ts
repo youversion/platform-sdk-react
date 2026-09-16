@@ -1,6 +1,8 @@
 import { defineConfig } from 'tsup';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
+
+const useClientDirective = "'use client';\n";
 
 export default defineConfig({
   entry: [
@@ -29,6 +31,22 @@ export default defineConfig({
     '.css': 'text',
   },
   format: ['esm', 'cjs'],
+  // Rollup strips module-level directives. Every public UI entry uses React
+  // client APIs, so restore the package boundary after the final bundling pass.
+  plugins: [
+    {
+      name: 'restore-use-client-directives',
+      buildEnd({ writtenFiles }) {
+        for (const { name } of writtenFiles) {
+          if (!/\.(js|cjs)$/.test(name)) continue;
+          const source = readFileSync(name, 'utf8');
+          if (!source.startsWith(useClientDirective)) {
+            writeFileSync(name, useClientDirective + source);
+          }
+        }
+      },
+    },
+  ],
   target: 'es2020',
   // Core stays a runtime dependency so UI and hooks share one copy. The
   // X-YVP-Sdk stamp lives in published core (core `prepublishOnly`). Inlining

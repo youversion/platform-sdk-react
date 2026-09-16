@@ -11,12 +11,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const chromeCssPath = resolve(__dirname, '../dist/chrome.css');
 const cssPath = resolve(__dirname, '../dist/tailwind.css');
 const readerCssPath = resolve(__dirname, '../dist/bible-reader.css');
+const storyCssPath = resolve(__dirname, './generated-styles.css');
 const yvStyles = existsSync(chromeCssPath)
   ? JSON.stringify(readFileSync(chromeCssPath, 'utf-8'))
   : '""';
-const yvComponentStyles = existsSync(cssPath)
-  ? JSON.stringify(readFileSync(cssPath, 'utf-8'))
-  : '""';
+const yvComponentStyles = JSON.stringify(
+  [cssPath, storyCssPath]
+    .filter(existsSync)
+    .map((path) => readFileSync(path, 'utf-8'))
+    .join(''),
+);
 const yvReaderStyles = existsSync(readerCssPath)
   ? JSON.stringify(readFileSync(readerCssPath, 'utf-8'))
   : '""';

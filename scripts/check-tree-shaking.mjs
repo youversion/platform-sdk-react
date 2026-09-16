@@ -14,7 +14,7 @@
  *    `probe` (or `absent`) sentinels that still live in that module graph.
  *    Named tsup entries can keep other `absent` strings off the graph
  *    entirely; those must be verified live by a control import instead.
- * 5. The lazy hooks auth ESM chunk retains its "use client" directive.
+ * 5. The lazy hooks auth chunk and UI outputs retain their "use client" directives.
  *
  * 0. package.json sideEffects matches expected values (webpack/Rollup consumers).
  *
@@ -97,6 +97,20 @@ function assertHooksAuthChunkDirective() {
   return source.startsWith("'use client';\n")
     ? []
     : [`${authChunks[0]} is missing its leading "use client" directive`];
+}
+
+function assertUiClientDirectives() {
+  const uiDist = join(repoRoot, 'packages/ui/dist');
+  const outputs = readdirSync(uiDist, { recursive: true, encoding: 'utf8' }).filter((fileName) =>
+    /\.(js|cjs)$/.test(fileName),
+  );
+  if (outputs.length === 0) return ['expected UI JavaScript outputs, found none'];
+
+  return outputs
+    .filter(
+      (fileName) => !readFileSync(join(uiDist, fileName), 'utf8').startsWith("'use client';\n"),
+    )
+    .map((fileName) => `${fileName} is missing its leading "use client" directive`);
 }
 
 /** @type {Array<{ package: string; external: string[]; narrow: object; controls: object[]; focused?: object[]; fullBarrel: object }>} */
@@ -498,6 +512,15 @@ async function main() {
   if (authChunkErrors.length > 0) {
     console.error(red(`${authChunkErrors.length} hooks auth chunk check(s) failed.`));
     for (const error of authChunkErrors) {
+      console.error(red(`  ✗ ${error}`));
+    }
+    process.exit(1);
+  }
+
+  const uiDirectiveErrors = assertUiClientDirectives();
+  if (uiDirectiveErrors.length > 0) {
+    console.error(red(`${uiDirectiveErrors.length} UI client directive check(s) failed.`));
+    for (const error of uiDirectiveErrors) {
       console.error(red(`  ✗ ${error}`));
     }
     process.exit(1);
