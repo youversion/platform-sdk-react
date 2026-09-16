@@ -1,8 +1,10 @@
 'use client';
 
 import i18n from '@/i18n';
+import { useInterfaceDirection } from '@/lib/direction';
 import { useDelayedLoading } from '@/lib/use-delayed-loading';
 import { useHighlightsControlledLatch } from '@/lib/use-highlights-controlled-latch';
+import { useResolvedScriptureDirection } from '@/lib/scripture-direction';
 import { cn } from '@/lib/utils';
 import {
   INTER_FONT,
@@ -11,7 +13,7 @@ import {
   type FontFamily,
 } from '@/lib/verse-html-utils';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
-import type { BibleBook, Highlight } from '@youversion/platform-core';
+import type { BibleBook, Highlight, TextDirection } from '@youversion/platform-core';
 import {
   DEFAULT_LICENSE_FREE_BIBLE_VERSION,
   getAdjacentChapter,
@@ -40,8 +42,8 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { BibleChapterPicker, type BibleChapterPickerPressData } from './bible-chapter-picker';
 import { BibleVersionPicker, type BibleVersionPickerPressData } from './bible-version-picker';
-import { ChevronLeftIcon } from './icons/chevron-left';
-import { ChevronRightIcon } from './icons/chevron-right';
+import { ChevronBackwardIcon } from './icons/chevron-backward';
+import { ChevronForwardIcon } from './icons/chevron-forward';
 import { GearIcon } from './icons/gear';
 import { InfoIcon } from './icons/info';
 import { LoaderIcon } from './icons/loader';
@@ -97,6 +99,7 @@ type BibleReaderContextType = {
   clearSelectionSignal?: number;
   navigation: BibleReaderNavigation;
   verseFocus: VerseFocusRequest | null;
+  scriptureDirection?: TextDirection;
 };
 
 /**
@@ -335,6 +338,7 @@ export type RootProps = {
    * the reader can clear the selection any more.
    */
   clearSelectionSignal?: number;
+  scriptureDirection?: TextDirection;
   children?: ReactNode;
 };
 
@@ -491,8 +495,10 @@ function Root({
   onHighlightRemove,
   verseActions = 'popover',
   clearSelectionSignal,
+  scriptureDirection,
   children,
 }: RootProps) {
+  const interfaceDirection = useInterfaceDirection();
   // Latched at first mount: a transient `undefined` on a controlled reader must
   // render as "no highlights", never fall through to the self-contained path.
   const isHighlightsControlled = useHighlightsControlledLatch(highlights, 'BibleReader.Root');
@@ -708,6 +714,7 @@ function Root({
     clearSelectionSignal,
     navigation,
     verseFocus,
+    scriptureDirection,
   };
 
   return (
@@ -715,6 +722,7 @@ function Root({
       <div
         data-yv-sdk
         data-yv-theme={theme}
+        dir={interfaceDirection}
         className="yv:flex yv:flex-col yv:h-full yv:bg-background yv:text-foreground"
       >
         {children}
@@ -746,6 +754,7 @@ function Content() {
     verseActions,
     clearSelectionSignal,
     verseFocus,
+    scriptureDirection,
   } = useBibleReaderContext();
   const { version } = useVersion(versionId);
 
@@ -786,6 +795,10 @@ function Content() {
     include_notes: true,
     options: { enabled: !chapterUnavailable },
   });
+  const resolvedScriptureDirection = useResolvedScriptureDirection(
+    passage?.content,
+    scriptureDirection,
+  );
 
   const isRefetching = !chapterUnavailable && passageLoading && passage !== null;
   const showLoadingOverlay = useDelayedLoading(isRefetching);
@@ -1106,18 +1119,23 @@ function Content() {
       ref={scrollContainerRef}
       className="yv:*:max-w-lg yv:flex yv:flex-col yv:items-center yv:gap-6 yv:overflow-y-auto yv:px-6 yv:max-sm:px-4 yv:py-12 yv:h-full"
     >
-      <h1 className="yv:flex yv:gap-2 yv:flex-col yv:justify-center yv:items-center yv:text-muted-foreground yv:font-medium">
+      <h1
+        dir={resolvedScriptureDirection}
+        className="yv:flex yv:gap-2 yv:flex-col yv:justify-center yv:items-center yv:text-muted-foreground yv:font-medium"
+      >
         <span
           className={cn(
             'yv:font-serif yv:leading-none yv:block yv:text-2xl yv:transition-[filter]',
           )}
         >
-          {bookData?.title || (
+          {bookData?.title ? (
+            <bdi dir="auto">{bookData.title}</bdi>
+          ) : (
             <LoaderIcon className="yv:size-6 yv:animate-spin yv:text-muted-foreground" />
           )}
         </span>
         <span className="yv:font-serif yv:leading-none yv:block yv:text-[2.5rem] yv:font-normal yv:tabular-nums">
-          {chapterLabel || chapter || '-'}
+          <bdi dir="auto">{chapterLabel || chapter || '-'}</bdi>
         </span>
       </h1>
 
@@ -1143,6 +1161,7 @@ function Content() {
               showVerseNumbers={showVerseNumbers}
               theme={background}
               onFootnotePress={onFootnotePress}
+              scriptureDirection={scriptureDirection}
               selectedVerses={selectedVerses}
               onVerseSelect={handleVerseSelect}
               highlightedVerses={highlightedVerses}
@@ -1220,7 +1239,7 @@ function Content() {
           style={{ fontSize: currentFontSize }}
         >
           <p className="yv:text-balance yv:text-[0.75em] yv:text-center yv:text-muted-foreground">
-            {version.copyright}
+            <bdi dir="auto">{version.copyright}</bdi>
           </p>
           {version.publisher_url ? (
             <a
@@ -1321,12 +1340,18 @@ export function BibleThemeSettingsContent({
   onChangeLineSpacing,
 }: BibleThemeSettingsContentProps): ReactElement {
   const { t } = useTranslation(undefined, { i18n });
+  const interfaceDirection = useInterfaceDirection();
   return (
-    <div data-yv-sdk data-yv-theme={theme} className="yv:flex yv:flex-col yv:gap-4 yv:p-4">
+    <div
+      data-yv-sdk
+      data-yv-theme={theme}
+      dir={interfaceDirection}
+      className="yv:flex yv:flex-col yv:gap-4 yv:p-4"
+    >
       <div className="yv:flex yv:justify-between yv:items-stretch yv:gap-4">
         <div className="yv:flex yv:flex-1">
           <Button
-            className="yv:flex-1 yv:text-xs yv:text-black yv:dark:text-muted-foreground yv:rounded-l-[8px] yv:rounded-r-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
+            className="yv:flex-1 yv:text-xs yv:text-black yv:dark:text-muted-foreground yv:rounded-s-[8px] yv:rounded-e-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
             onClick={onFontDecreased}
             size="lg"
             variant="secondary"
@@ -1338,7 +1363,7 @@ export function BibleThemeSettingsContent({
             A
           </Button>
           <Button
-            className="yv:flex-1 yv:text-3xl yv:text-black yv:dark:text-muted-foreground yv:rounded-r-[8px] yv:rounded-l-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
+            className="yv:flex-1 yv:text-3xl yv:text-black yv:dark:text-muted-foreground yv:rounded-e-[8px] yv:rounded-s-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
             onClick={onFontIncreased}
             size="lg"
             variant="secondary"
@@ -1368,7 +1393,7 @@ export function BibleThemeSettingsContent({
       <div className="yv:grid yv:grid-cols-2">
         <Button
           className={cn(
-            'yv:group yv:dark:bg-muted yv:rounded-r-none yv:border-r-0.5 yv:dark:border-border yv:rounded-l-[8px] yv:h-auto',
+            'yv:group yv:dark:bg-muted yv:rounded-e-none yv:border-e-0.5 yv:dark:border-border yv:rounded-s-[8px] yv:h-auto',
             fontFamily === INTER_FONT
               ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
               : '',
@@ -1392,7 +1417,7 @@ export function BibleThemeSettingsContent({
         </Button>
         <Button
           className={cn(
-            'yv:group yv:dark:bg-muted yv:border-l-0.5 yv:rounded-l-none yv:rounded-r-[8px] yv:h-auto',
+            'yv:group yv:dark:bg-muted yv:border-s-0.5 yv:rounded-s-none yv:rounded-e-[8px] yv:h-auto',
             fontFamily === UNTITLED_SERIF_FONT
               ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
               : '',
@@ -1437,6 +1462,7 @@ function Toolbar({
   search = 'control',
 }: BibleReaderToolbarProps) {
   const { t } = useTranslation(undefined, { i18n });
+  const interfaceDirection = useInterfaceDirection();
   const {
     book,
     chapter,
@@ -1534,6 +1560,7 @@ function Toolbar({
 
   return (
     <section
+      dir={interfaceDirection}
       className={cn(
         'yv:flex yv:justify-center yv:gap-2 yv:p-4 yv:bg-background yv:border-border yv:max-w-screen yv:overflow-x-hidden',
         border === 'top' && 'yv:border-t',
@@ -1580,7 +1607,7 @@ function Toolbar({
                     }
                   }}
                 >
-                  <ChevronLeftIcon className="yv:transition-transform yv:duration-100 yv:group-active:translate-y-px" />
+                  <ChevronBackwardIcon className="yv:transition-transform yv:duration-100 yv:group-active:translate-y-px" />
                 </Button>
 
                 <Button
@@ -1594,12 +1621,12 @@ function Toolbar({
                     <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
                   ) : (
                     <>
-                      <span className="yv:min-w-[3ch] yv:truncate">
+                      <bdi dir="auto" className="yv:min-w-[3ch] yv:truncate">
                         {currentBook?.title || t('select')}
-                      </span>
-                      <span className="yv:tabular-nums yv:min-w-[1ch] yv:truncate">
+                      </bdi>
+                      <bdi dir="auto" className="yv:tabular-nums yv:min-w-[1ch] yv:truncate">
                         {chapterLabel || ''}
-                      </span>
+                      </bdi>
                     </>
                   )}
                 </Button>
@@ -1618,7 +1645,7 @@ function Toolbar({
                   disabled={!canNavigateNext}
                   aria-label={t('nextChapterAriaLabel')}
                 >
-                  <ChevronRightIcon className="yv:transition-transform yv:duration-100 yv:group-active:translate-y-px" />
+                  <ChevronForwardIcon className="yv:transition-transform yv:duration-100 yv:group-active:translate-y-px" />
                 </Button>
               </div>
             )}
@@ -1650,9 +1677,9 @@ function Toolbar({
                   {loading ? (
                     <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
                   ) : (
-                    <span className="yv:truncate">
+                    <bdi dir="auto" className="yv:truncate">
                       {version?.localized_abbreviation || t('selectVersion')}
-                    </span>
+                    </bdi>
                   )}
                 </div>
               </Button>

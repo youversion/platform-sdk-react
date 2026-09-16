@@ -31,6 +31,30 @@ initialize({
 
 const preview: Preview = {
   globalTypes: {
+    locale: {
+      description: 'Provider UI locale',
+      toolbar: {
+        title: 'Locale',
+        icon: 'globe',
+        items: [
+          { value: 'en', title: 'English' },
+          { value: 'ar', title: 'Arabic' },
+        ],
+        dynamicTitle: true,
+      },
+    },
+    interfaceDirection: {
+      description: 'Provider interface direction',
+      toolbar: {
+        title: 'Interface direction',
+        icon: 'transfer',
+        items: [
+          { value: 'ltr', title: 'LTR' },
+          { value: 'rtl', title: 'RTL' },
+        ],
+        dynamicTitle: true,
+      },
+    },
     theme: {
       description: 'Provider theme',
       toolbar: {
@@ -46,6 +70,8 @@ const preview: Preview = {
     },
   },
   initialGlobals: {
+    locale: 'en',
+    interfaceDirection: 'ltr',
     theme: 'light',
   },
   decorators: [
@@ -76,7 +102,9 @@ const preview: Preview = {
               authRedirectUrl={import.meta.env.STORYBOOK_AUTH_REDIRECT_URL || ''}
               apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
               includeAuth={true}
+              locale={context.globals.locale}
               theme={getTheme(context.globals.theme)}
+              direction={context.globals.interfaceDirection}
             >
               <Story />
             </YouVersionProvider>
@@ -89,7 +117,9 @@ const preview: Preview = {
           <YouVersionProvider
             appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || ''}
             apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
+            locale={context.globals.locale}
             theme={getTheme(context.globals.theme)}
+            direction={context.globals.interfaceDirection}
           >
             <Story />
           </YouVersionProvider>
