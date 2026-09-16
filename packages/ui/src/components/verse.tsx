@@ -23,7 +23,7 @@ import { useVersionFilterWarning } from '@/lib/use-version-filter-warning';
 import { cn } from '@/lib/utils';
 import { type FontFamily } from '@/lib/verse-html-utils';
 
-import type { Highlight } from '@youversion/platform-core';
+import type { Highlight, TextDirection } from '@youversion/platform-core';
 import { transformBibleHtml } from '@youversion/platform-core/browser';
 import {
   chapterScopeForHighlightPaint,
@@ -32,8 +32,11 @@ import {
 import { useHighlightsControlledLatch, warnOnce } from '@/lib/use-highlights-controlled-latch';
 import { highlightFillColorMix, highlightMixP } from '@/lib/highlight-colors';
 import { useScriptureHighlightPaint } from '@/lib/use-scripture-highlight-paint';
+import { useInterfaceDirection } from '@/lib/direction';
+import { useHydrationSafeScriptureDirection } from '@/lib/scripture-direction';
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
+type ResolvedScriptureDirection = TextDirection | 'auto';
 
 function getFootnoteMarker(index: number): string {
   const base = LETTERS.length;
@@ -55,6 +58,7 @@ export type FootnoteData = {
 };
 
 export type FootnoteContentProps = FootnoteData & {
+  scriptureDirection?: TextDirection;
   fontSize?: number;
   theme?: 'light' | 'dark';
   hasVerseContext?: boolean;
@@ -68,17 +72,20 @@ export function FootnoteContent({
   fontSize,
   theme,
   hasVerseContext,
+  scriptureDirection,
 }: FootnoteContentProps): React.ReactElement {
   const { t } = useTranslation(undefined, { i18n });
   const verseReference = reference ? `${reference}:${verseNum}` : t('verseLabel', { verseNum });
   const showVerseContext = hasVerseContext ?? verseHtml.length > 0;
 
   return (
-    <div data-yv-sdk data-yv-theme={theme}>
+    <div data-yv-sdk data-yv-theme={theme} dir={scriptureDirection ?? 'auto'}>
       <div className="yv:p-3 yv:overflow-y-auto yv:bg-background yv:text-foreground">
         {showVerseContext && (
           <>
-            <div className="yv:font-bold yv:mb-2">{verseReference}</div>
+            <div className="yv:font-bold yv:mb-2">
+              <bdi dir="auto">{verseReference}</bdi>
+            </div>
             <div
               className="yv:mb-3 yv:font-serif yv:*:font-serif"
               style={{ fontSize: fontSize ? `${fontSize}px` : '1.25rem' }}
@@ -113,6 +120,7 @@ type VerseFootnoteData = {
   notes: string[];
   verseHtml: string;
   hasVerseContext: boolean;
+  direction?: TextDirection;
 };
 
 type PassageResult = ReturnType<typeof usePassage>;
@@ -194,6 +202,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   theme,
   onFootnotePress,
   isHighlighted,
+  direction,
 }: {
   verseNum: string;
   notes: string[];
@@ -204,6 +213,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   theme: 'light' | 'dark';
   onFootnotePress?: (data: FootnoteData) => void;
   isHighlighted?: boolean;
+  direction?: TextDirection;
 }) {
   const { t } = useTranslation(undefined, { i18n });
 
@@ -211,7 +221,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
   // it inherits the verse body text color (matching the recolored verse label);
   // otherwise it keeps its default muted-gray marker color.
   const iconClassName = cn(
-    'yv:inline-flex yv:align-middle yv:cursor-pointer yv:ml-1!',
+    'yv:inline-flex yv:align-middle yv:cursor-pointer yv:ms-1!',
     isHighlighted ? 'yv:text-inherit' : 'yv:text-(--yv-gray-20)',
   );
 
@@ -249,6 +259,7 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
             reference={reference}
             fontSize={fontSize}
             theme={theme}
+            scriptureDirection={direction}
           />
         </div>
       </PopoverContent>
@@ -291,6 +302,8 @@ function BibleTextHtml({
   onVerseSelect,
   highlightedVerses = {},
   onFootnotePress,
+  direction,
+  directionOverride,
 }: {
   html: string;
   reference?: string;
@@ -300,8 +313,11 @@ function BibleTextHtml({
   onVerseSelect?: (verses: number[]) => void;
   highlightedVerses?: Record<number, string>;
   onFootnotePress?: (data: FootnoteData) => void;
+  direction?: ResolvedScriptureDirection;
+  directionOverride?: TextDirection;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
+  const passageRootDirectionsRef = useRef(new Map<Element, string | null>());
   const [footnoteData, setFootnoteData] = useState<VerseFootnoteData[]>([]);
   const providerTheme = useTheme();
   const currentTheme = theme || providerTheme;
@@ -311,6 +327,26 @@ function BibleTextHtml({
   useLayoutEffect(() => {
     if (!contentRef.current) return;
     contentRef.current.innerHTML = html;
+
+    passageRootDirectionsRef.current = new Map(
+      Array.from(contentRef.current.children, (root) => [root, root.getAttribute('dir')]),
+    );
+  }, [html]);
+
+  // An explicit consumer override owns each passage root while preserving
+  // intentional nested bidi islands. Restore API-provided root directions when
+  // the override is removed without replacing the passage DOM.
+  useLayoutEffect(() => {
+    if (!contentRef.current) return;
+    passageRootDirectionsRef.current.forEach((originalDirection, root) => {
+      if (directionOverride) {
+        root.setAttribute('dir', directionOverride);
+      } else if (originalDirection === null) {
+        root.removeAttribute('dir');
+      } else {
+        root.setAttribute('dir', originalDirection);
+      }
+    });
 
     const anchors = contentRef.current.querySelectorAll('[data-verse-footnote]');
 
@@ -333,10 +369,20 @@ function BibleTextHtml({
       const allNotes = notesByKey.get(verseNum) || [];
       const hasVerseContext = el.closest('.yv-v[v]') !== null;
       const verseHtml = hasVerseContext ? getVerseHtmlFromDom(contentRef.current!, verseNum) : '';
-      result.push({ verseNum, el, notes: allNotes, verseHtml, hasVerseContext });
+      const computedDirection = getComputedStyle(el).direction;
+      const footnoteDirection =
+        direction && direction !== 'auto' ? direction : computedDirection === 'rtl' ? 'rtl' : 'ltr';
+      result.push({
+        verseNum,
+        el,
+        notes: allNotes,
+        verseHtml,
+        hasVerseContext,
+        direction: footnoteDirection,
+      });
     });
     setFootnoteData(result);
-  }, [html]);
+  }, [html, direction, directionOverride]);
 
   // Toggle selection underline + paint highlight fills on verse wrappers.
   // A verse can map to multiple `.yv-v[v="N"]` wrappers; each is painted so the
@@ -397,7 +443,7 @@ function BibleTextHtml({
   return (
     <>
       <div ref={contentRef} onClick={handleClick} />
-      {footnoteData.map(({ verseNum, el, notes, verseHtml, hasVerseContext }, index) =>
+      {footnoteData.map(({ verseNum, el, notes, verseHtml, hasVerseContext, direction }, index) =>
         createPortal(
           <VerseFootnoteButton
             verseNum={verseNum}
@@ -409,6 +455,7 @@ function BibleTextHtml({
             theme={currentTheme}
             onFootnotePress={onFootnotePress}
             isHighlighted={Boolean(highlightedVerses[Number(verseNum)])}
+            direction={direction}
           />,
           el,
           `${verseNum}-${index}`,
@@ -449,6 +496,7 @@ type VerseHtmlProps = {
   onVerseSelect?: (verses: number[]) => void;
   highlightedVerses?: Record<number, string>;
   onFootnotePress?: (data: FootnoteData) => void;
+  scriptureDirection?: TextDirection;
 };
 
 /**
@@ -505,14 +553,19 @@ export const Verse = {
         onVerseSelect,
         highlightedVerses,
         onFootnotePress,
+        scriptureDirection,
       }: VerseHtmlProps,
       ref,
     ): ReactNode => {
       // SSR safety: DOMParser doesn't exist during server render.
       // Idempotent — already-transformed HTML from getPassage is a no-op.
-      const transformedHtml = useMemo(
-        () => (!globalThis.window ? html : transformBibleHtml(html).html),
+      const transformed = useMemo(
+        () => (!globalThis.window ? { html } : transformBibleHtml(html)),
         [html],
+      );
+      const direction = useHydrationSafeScriptureDirection(
+        scriptureDirection,
+        transformed.direction,
       );
       const providerTheme = useTheme();
       const currentTheme = theme || providerTheme;
@@ -533,13 +586,14 @@ export const Verse = {
         <section
           ref={ref}
           style={readerStyle}
+          dir={direction}
           data-show-verse-numbers={showVerseNumbers}
           data-show-notes={renderNotes}
           data-slot="yv-bible-renderer"
           data-selectable={onVerseSelect ? 'true' : 'false'}
         >
           <BibleTextHtml
-            html={transformedHtml}
+            html={transformed.html}
             reference={reference}
             fontSize={fontSize}
             theme={currentTheme}
@@ -547,6 +601,8 @@ export const Verse = {
             onVerseSelect={onVerseSelect}
             highlightedVerses={highlightedVerses}
             onFootnotePress={onFootnotePress}
+            direction={direction}
+            directionOverride={scriptureDirection}
           />
         </section>
       );
@@ -586,6 +642,7 @@ export type BibleTextViewProps = {
   highlights?: Highlight[];
   passageState?: Partial<BibleTextViewPassageState>;
   onFootnotePress?: (data: FootnoteData) => void;
+  scriptureDirection?: TextDirection;
 };
 
 /**
@@ -608,10 +665,12 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
       highlights,
       passageState,
       onFootnotePress,
+      scriptureDirection,
     },
     ref,
   ): React.ReactElement => {
     const { t } = useTranslation(undefined, { i18n });
+    const interfaceDirection = useInterfaceDirection();
     const providerTheme = useTheme();
     const currentTheme = theme || providerTheme;
     useVersionFilterWarning(versionId);
@@ -682,6 +741,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
           ref={ref}
           data-yv-sdk
           data-yv-theme={currentTheme}
+          dir={interfaceDirection}
           role="status"
           aria-label={t('loadingPassageAriaLabel')}
           className="yv:flex yv:grow yv:items-center yv:justify-center"
@@ -696,7 +756,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
 
     if (currentError) {
       return (
-        <div ref={ref} data-yv-sdk data-yv-theme={currentTheme}>
+        <div ref={ref} data-yv-sdk data-yv-theme={currentTheme} dir={interfaceDirection}>
           <VerseUnavailableMessage message={getBibleTextErrorMessage(currentError, t)} />
         </div>
       );
@@ -706,6 +766,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
       <div
         data-yv-sdk
         data-yv-theme={currentTheme}
+        dir={interfaceDirection}
         className={cn(fetchedLoading || currentLoading ? 'yv:animate-pulse' : '')}
         aria-busy={currentLoading || undefined}
         style={currentLoading ? { pointerEvents: 'none' } : undefined}
@@ -724,6 +785,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
           onVerseSelect={onVerseSelect}
           highlightedVerses={paintedVerses}
           onFootnotePress={onFootnotePress}
+          scriptureDirection={scriptureDirection}
         />
       </div>
     );

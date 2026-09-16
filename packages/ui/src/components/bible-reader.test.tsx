@@ -9,6 +9,7 @@ import { useState, type ReactElement } from 'react';
 import type { BibleBook, BibleVersion } from '@youversion/platform-core';
 import type { HookOverrides } from '@youversion/platform-react-hooks';
 import { HookOverrideProvider } from '@/test/hook-overrides';
+import { InterfaceDirectionProvider } from '@/lib/direction';
 import {
   BIBLE_READER_SPACING,
   BibleReader,
@@ -428,6 +429,39 @@ describe('BibleReader Toolbar - onChapterPickerPress', () => {
 
     expect(screen.queryByPlaceholderText('Search')).not.toBeInTheDocument();
   });
+});
+
+it('keeps chapter targets canonical while semantic icons follow RTL interface direction', async () => {
+  const user = userEvent.setup();
+  const onChapterChange = vi.fn();
+
+  renderWithOverrides(
+    <InterfaceDirectionProvider direction="rtl">
+      <BibleReader.Root
+        defaultVersionId={3034}
+        defaultBook="JHN"
+        defaultChapter="1"
+        onChapterChange={onChapterChange}
+      >
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </InterfaceDirectionProvider>,
+  );
+
+  const chapterButton = screen.getByRole('button', { name: 'Change Bible book and chapter' });
+  const labels = chapterButton.querySelectorAll('bdi[dir="auto"]');
+  expect(labels).toHaveLength(2);
+  expect(labels[1]).toHaveTextContent('1');
+
+  await user.click(screen.getByRole('button', { name: 'Next chapter' }));
+
+  expect(onChapterChange).toHaveBeenCalledWith('2');
+  expect(
+    screen
+      .getByRole('button', { name: 'Previous chapter' })
+      .querySelector('path')
+      ?.getAttribute('d'),
+  ).toContain('8.29289');
 });
 
 describe('BibleReader version picker language', () => {

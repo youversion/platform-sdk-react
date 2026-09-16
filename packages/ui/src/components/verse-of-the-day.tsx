@@ -15,10 +15,15 @@ import { Share } from '@/components/icons/share';
 import { Votd } from '@/components/icons/votd';
 import { Button } from '@/components/ui/button';
 import { BibleTextView } from '@/components/verse';
-import { DEFAULT_LICENSE_FREE_BIBLE_VERSION, type Highlight } from '@youversion/platform-core';
-import { cn } from '@/lib/utils';
+import {
+  DEFAULT_LICENSE_FREE_BIBLE_VERSION,
+  type Highlight,
+  type TextDirection,
+} from '@youversion/platform-core';
 import { filterHighlightsForPassage } from '@/lib/highlight-projection';
 import { useHighlightsControlledLatch } from '@/lib/use-highlights-controlled-latch';
+import { useInterfaceDirection } from '@/lib/direction';
+import { useResolvedScriptureDirection } from '@/lib/scripture-direction';
 
 export type VerseOfTheDayShareData = {
   /** Full share body: verse text, blank line, then reference (same as Web Share `text`). */
@@ -82,6 +87,7 @@ export type VerseOfTheDayProps = {
    * latches self-contained (fetch when eligible), not "never paint".
    */
   highlights?: Highlight[];
+  scriptureDirection?: TextDirection;
 };
 
 function clipHighlightsToPassage(
@@ -158,8 +164,10 @@ export function VerseOfTheDay({
   onShare,
   size = 'default',
   highlights,
+  scriptureDirection,
 }: VerseOfTheDayProps): React.ReactElement {
   const { t } = useTranslation(undefined, { i18n });
+  const interfaceDirection = useInterfaceDirection();
   const day = React.useMemo(() => dayOfYear || getDayOfYear(new Date()), [dayOfYear]);
   const verseRef = React.useRef<HTMLDivElement>(null);
   const { data, loading: loadingVerseOfTheDay, error: errorVerseOfTheDay } = useVerseOfTheDay(day);
@@ -174,6 +182,10 @@ export function VerseOfTheDay({
       enabled: !loadingVerseOfTheDay && !errorVerseOfTheDay && !!data?.passage_id,
     },
   });
+  const resolvedScriptureDirection = useResolvedScriptureDirection(
+    passage?.content,
+    scriptureDirection,
+  );
   const { version, loading: loadingVersion } = useVersion(versionId);
   const providerTheme = useTheme();
   const theme = background || providerTheme;
@@ -216,6 +228,7 @@ export function VerseOfTheDay({
       data-yv-sdk
       data-yv-theme={theme}
       data-size={size}
+      dir={interfaceDirection}
       className={
         'yv:data-[size=lg]:p-8 yv:data-[size=default]:p-4 yv:*:shrink-0 yv:font-sans yv:flex yv:flex-col yv:w-full yv:grow yv:p-4 yv:rounded-2xl yv:bg-card yv:box-border'
       }
@@ -239,8 +252,11 @@ export function VerseOfTheDay({
               {t('verseOfTheDay')}
             </p>
             {referenceText && !errorPassage && !errorVerseOfTheDay ? (
-              <p className="yv:text-black yv:dark:text-white yv:font-medium yv:text-sm">
-                {referenceText}
+              <p
+                dir={resolvedScriptureDirection}
+                className="yv:text-black yv:dark:text-white yv:font-medium yv:text-sm"
+              >
+                <bdi dir="auto">{referenceText}</bdi>
               </p>
             ) : null}
           </div>
@@ -251,7 +267,7 @@ export function VerseOfTheDay({
             >
               <Button
                 aria-label={t('shareAriaLabel')}
-                className={cn(size === 'lg' ? 'yv:translate-x-3' : 'yv:translate-x-2')}
+                className={size === 'lg' ? 'yv:-me-3' : 'yv:-me-2'}
                 onClick={() => void handleShareVerse()}
                 disabled={!!(errorPassage || errorVerseOfTheDay)}
                 size="icon"
@@ -290,6 +306,7 @@ export function VerseOfTheDay({
                 error: errorPassage || errorVerseOfTheDay || null,
               }}
               highlights={clippedHighlights}
+              scriptureDirection={scriptureDirection}
             />
           )}
         </AnimatedHeight>
