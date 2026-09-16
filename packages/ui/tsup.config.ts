@@ -3,6 +3,10 @@ import { readFileSync, existsSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 
 const useClientDirective = "'use client';\n";
+const serverCompatibleEntries = new Set([
+  resolve(__dirname, 'dist/index.js'),
+  resolve(__dirname, 'dist/index.cjs'),
+]);
 
 export default defineConfig({
   entry: [
@@ -31,14 +35,16 @@ export default defineConfig({
     '.css': 'text',
   },
   format: ['esm', 'cjs'],
-  // Rollup strips module-level directives. Every public UI entry uses React
-  // client APIs, so restore the package boundary after the final bundling pass.
+  // Rollup strips module-level directives. Restore the client boundary on
+  // component entries and their chunks after the final bundling pass. The
+  // package root also exports server-safe core values, so it stays unmarked.
   plugins: [
     {
       name: 'restore-use-client-directives',
       buildEnd({ writtenFiles }) {
         for (const { name } of writtenFiles) {
           if (!/\.(js|cjs)$/.test(name)) continue;
+          if (serverCompatibleEntries.has(resolve(name))) continue;
           const source = readFileSync(name, 'utf8');
           if (!source.startsWith(useClientDirective)) {
             writeFileSync(name, useClientDirective + source);

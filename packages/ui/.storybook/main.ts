@@ -15,12 +15,13 @@ const storyCssPath = resolve(__dirname, './generated-styles.css');
 const yvStyles = existsSync(chromeCssPath)
   ? JSON.stringify(readFileSync(chromeCssPath, 'utf-8'))
   : '""';
-const yvComponentStyles = JSON.stringify(
-  [cssPath, storyCssPath]
-    .filter(existsSync)
-    .map((path) => readFileSync(path, 'utf-8'))
-    .join(''),
-);
+// The Storybook sheet contains the production component CSS plus story-only
+// utilities. Do not append it to the production sheet or duplicate utilities
+// in the same layer can override the shipped theme tokens.
+const componentCssPath = existsSync(storyCssPath) ? storyCssPath : cssPath;
+const yvComponentStyles = existsSync(componentCssPath)
+  ? JSON.stringify(readFileSync(componentCssPath, 'utf-8'))
+  : '""';
 const yvReaderStyles = existsSync(readerCssPath)
   ? JSON.stringify(readFileSync(readerCssPath, 'utf-8'))
   : '""';

@@ -1,5 +1,4 @@
 /* Story wrappers use utilities that do not belong in the published component sheet. */
-@import 'tailwindcss/theme.css' layer(yv-sdk-theme) prefix(yv);
-@import 'tailwindcss/utilities.css' layer(yv-sdk-utilities) prefix(yv) source(none);
+@import '../src/styles/global.css';
 
-@source '../src';
+@source '../src/**/*.stories.tsx';

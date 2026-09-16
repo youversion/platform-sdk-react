@@ -53,9 +53,6 @@ layer(yv-sdk-fonts);
 @import 'tw-animate-css';
 
 @source '../components';
-@source not '../**/*.stories.tsx';
-@source not '../**/*.test.tsx';
-@source not '../**/*.test.ts';
 
 /* Untitled Serif has no @font-face here on purpose. Its stylesheet URL needs the
    consumer's app key, which this file cannot know — it is frozen into __YV_STYLES__ at

@@ -14,7 +14,8 @@
  *    `probe` (or `absent`) sentinels that still live in that module graph.
  *    Named tsup entries can keep other `absent` strings off the graph
  *    entirely; those must be verified live by a control import instead.
- * 5. The lazy hooks auth chunk and UI outputs retain their "use client" directives.
+ * 5. The lazy hooks auth chunk and UI component outputs retain their "use client"
+ *    directives while the mixed UI package root remains server-compatible.
  *
  * 0. package.json sideEffects matches expected values (webpack/Rollup consumers).
  *
@@ -99,18 +100,24 @@ function assertHooksAuthChunkDirective() {
     : [`${authChunks[0]} is missing its leading "use client" directive`];
 }
 
-function assertUiClientDirectives() {
+function assertUiClientBoundaries() {
   const uiDist = join(repoRoot, 'packages/ui/dist');
   const outputs = readdirSync(uiDist, { recursive: true, encoding: 'utf8' }).filter((fileName) =>
     /\.(js|cjs)$/.test(fileName),
   );
   if (outputs.length === 0) return ['expected UI JavaScript outputs, found none'];
 
-  return outputs
-    .filter(
-      (fileName) => !readFileSync(join(uiDist, fileName), 'utf8').startsWith("'use client';\n"),
-    )
-    .map((fileName) => `${fileName} is missing its leading "use client" directive`);
+  return outputs.flatMap((fileName) => {
+    const hasDirective = readFileSync(join(uiDist, fileName), 'utf8').startsWith("'use client';\n");
+    const isPackageRoot = fileName === 'index.js' || fileName === 'index.cjs';
+    if (isPackageRoot && hasDirective) {
+      return [`${fileName} must remain server-compatible but has a "use client" directive`];
+    }
+    if (!isPackageRoot && !hasDirective) {
+      return [`${fileName} is missing its leading "use client" directive`];
+    }
+    return [];
+  });
 }
 
 /** @type {Array<{ package: string; external: string[]; narrow: object; controls: object[]; focused?: object[]; fullBarrel: object }>} */
@@ -517,7 +524,7 @@ async function main() {
     process.exit(1);
   }
 
-  const uiDirectiveErrors = assertUiClientDirectives();
+  const uiDirectiveErrors = assertUiClientBoundaries();
   if (uiDirectiveErrors.length > 0) {
     console.error(red(`${uiDirectiveErrors.length} UI client directive check(s) failed.`));
     for (const error of uiDirectiveErrors) {
