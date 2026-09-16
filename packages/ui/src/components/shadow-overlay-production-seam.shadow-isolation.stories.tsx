@@ -864,6 +864,41 @@ export const RapidCloseReopenIgnoresInvalidOpenerEvidence: Story = {
           focus.mockRestore();
         }
       });
+
+      await step('Ignore the opener after it moves to another document', async () => {
+        contentWrapper.append(runRapidCloseReopen);
+        await userEvent.click(runRapidCloseReopen);
+        const firstDialog = await waitFor(() => {
+          const dialog = getPermissionDialog(topLayer);
+          if (!dialog)
+            throw new Error('permission dialog did not reopen for cross-document target');
+          return dialog;
+        });
+        await waitFor(() => void expect(firstDialog).toHaveAttribute('data-state', 'closed'));
+        await waitFor(() => {
+          const dialog = getPermissionDialog(topLayer);
+          if (!dialog || dialog.getAttribute('data-state') === 'closed') {
+            throw new Error('permission dialog did not rapidly reopen for cross-document target');
+          }
+        });
+
+        const secondaryDocument = canvasElement.ownerDocument.implementation.createHTMLDocument();
+        const focus = spyOn(runRapidCloseReopen, 'focus');
+        try {
+          secondaryDocument.body.append(runRapidCloseReopen);
+          void expect(runRapidCloseReopen.isConnected).toBe(true);
+          void expect(runRapidCloseReopen.ownerDocument).toBe(secondaryDocument);
+          await userEvent.keyboard('{Escape}');
+          await waitFor(() => {
+            void expect(getPermissionDialog(topLayer)).toBeNull();
+            void expect(contentWrapper.inert).toBe(false);
+            void expect(topLayer.matches(':popover-open')).toBe(false);
+          });
+          void expect(focus).not.toHaveBeenCalled();
+        } finally {
+          focus.mockRestore();
+        }
+      });
     } finally {
       exitAnimationStyle.remove();
     }
