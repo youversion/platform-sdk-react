@@ -92,9 +92,10 @@
     font-family: var(--yv-font-sans);
   }
 
-  /* When content hasn't been JS-transformed, add spacing after verse labels via CSS.
-     Transformed HTML already has a \u00A0 inserted by addNbspToVerseLabels(). */
-  &:not(:has([data-yv-transformed])) :is(.yv-vlbl, .va)::after {
+  /* Raw labels need CSS spacing even beside transformed fragments. Labels on or
+     inside a transformed root already have a NBSP from addNbspToVerseLabels(). */
+  & .yv-vlbl:not([data-yv-transformed], [data-yv-transformed] *)::after,
+  & .va:not([data-yv-transformed], [data-yv-transformed] *)::after {
     content: '\00A0';
   }
 

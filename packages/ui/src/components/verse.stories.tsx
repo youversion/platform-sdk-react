@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import React from 'react';
 
+import { transformBibleHtml } from '@youversion/platform-core/browser';
 import { useTheme } from '@youversion/platform-react-hooks';
 
 import {
@@ -418,6 +419,56 @@ export const SwiftPhaseTwoTypographyFixture: Story = {
     await expect(fpStyle.textIndent).toBe('0px');
     await expect(fpStyle.marginTop).toBe('0px');
     await expect(getComputedStyle(note.querySelector<HTMLElement>('.fk')!).fontWeight).toBe('500');
+  },
+};
+
+export const MixedVerseLabelSpacing: Story = {
+  args: { reference: 'GEN.1', versionId: 111 },
+  tags: ['integration'],
+  render: () => {
+    const raw =
+      '<div><span class="yv-vlbl">1</span>Raw verse <span class="va">1a</span>Alternate label</div>';
+    const transformed = transformBibleHtml(
+      '<div><span class="yv-vlbl">2</span>Transformed verse <span class="va">2a</span>Alternate label</div>',
+    ).html;
+    const transformedLabels = transformBibleHtml(
+      '<span class="yv-vlbl">3</span><span class="va">3a</span>',
+    ).html;
+
+    return (
+      <div data-yv-sdk data-yv-sdk-bible-reader="">
+        <div data-testid="raw-before" dangerouslySetInnerHTML={{ __html: raw }} />
+        <div data-testid="transformed" dangerouslySetInnerHTML={{ __html: transformed }} />
+        <div data-testid="raw-after" dangerouslySetInnerHTML={{ __html: raw }} />
+        <div
+          data-testid="transformed-labels"
+          dangerouslySetInnerHTML={{ __html: transformedLabels }}
+        />
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByTestId('raw-before');
+    for (const fragment of ['raw-before', 'raw-after']) {
+      const labels = canvasElement.querySelectorAll(
+        `[data-testid="${fragment}"] :is(.yv-vlbl, .va)`,
+      );
+      await expect(labels.length).toBe(2);
+      for (const label of labels) {
+        await expect(label.textContent).not.toContain('\u00a0');
+        await expect(getComputedStyle(label, '::after').content).toBe('"\u00a0"');
+      }
+    }
+    for (const fragment of ['transformed', 'transformed-labels']) {
+      const labels = canvasElement.querySelectorAll(
+        `[data-testid="${fragment}"] :is(.yv-vlbl, .va)`,
+      );
+      await expect(labels.length).toBe(2);
+      for (const label of labels) {
+        await expect(label.textContent?.endsWith('\u00a0')).toBe(true);
+        await expect(getComputedStyle(label, '::after').content).toBe('none');
+      }
+    }
   },
 };
 

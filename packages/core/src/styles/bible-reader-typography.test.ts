@@ -226,6 +226,6 @@ describe('bible-reader Swift-aligned typography', () => {
     expect(va).toContain('font-size: calc(var(--yv-reader-font-size) * 0.65)');
     expect(va).toContain('font-family: var(--yv-font-sans)');
     expect(css).toContain("&[data-show-verse-numbers='false'] .va");
-    expect(css).toContain(':is(.yv-vlbl, .va)::after');
+    expect(css).toContain('& .va:not([data-yv-transformed], [data-yv-transformed] *)::after');
   });
 });
