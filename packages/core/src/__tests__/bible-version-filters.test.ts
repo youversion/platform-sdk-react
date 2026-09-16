@@ -26,6 +26,30 @@ function clearFilters(): void {
 }
 
 describe('BibleClient version filter', () => {
+  it('validates passage booleans before filter-related requests', async () => {
+    clearFilters();
+    YouVersionPlatformConfiguration.permittedLanguageTags = ['en'];
+    let requestCount = 0;
+    server.use(
+      http.get(`https://${apiHost}/v1/bibles/:id`, () => {
+        requestCount += 1;
+        return HttpResponse.json({ id: 111, language_tag: 'en' });
+      }),
+      http.get(`https://${apiHost}/v1/bibles/:id/passages/:passageId`, () => {
+        requestCount += 1;
+        return HttpResponse.json({ id: 'GEN.1.1', content: '', reference: 'Genesis 1:1' });
+      }),
+    );
+
+    await expect(
+      // @ts-expect-error - verifies runtime validation for unsafe JavaScript callers
+      bibleClient().getPassage(111, 'GEN.1.1', 'html', 'true'),
+    ).rejects.toThrow('"expected": "boolean"');
+    expect(requestCount).toBe(0);
+
+    clearFilters();
+  });
+
   it('refuses an excluded version before fetching and walks pages for usable rows', async () => {
     YouVersionPlatformConfiguration.excludedVersionIds = [111];
     YouVersionPlatformConfiguration.permittedVersionIds = [111, 206];

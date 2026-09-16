@@ -2,7 +2,7 @@
 
 import { useContext, useMemo } from 'react';
 import { ApiClient } from '@youversion/platform-core';
-import { YouVersionContext } from '../context';
+import { YouVersionContext } from '../context/YouVersionContext';
 
 /**
  * @internal
@@ -32,12 +32,14 @@ export function useApiClient(options: { optional?: boolean } = {}): ApiClient | 
     return new ApiClient({
       appKey: context.appKey,
       apiHost: context.apiHost,
+      timeout: context.timeout,
       installationId: context.installationId,
       additionalHeaders: context.additionalHeaders,
     });
   }, [
     context?.appKey,
     context?.apiHost,
+    context?.timeout,
     context?.installationId,
     context?.additionalHeaders,
     optional,
