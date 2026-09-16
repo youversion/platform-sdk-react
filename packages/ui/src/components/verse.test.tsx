@@ -1654,6 +1654,9 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
     expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(GREEN));
     expect(getVerseEl(container, 3).style.backgroundColor).toBe('');
   });
+});
+
+describe('getCleanVerseText', () => {
   it('omits alternate labels from copied verse prose', () => {
     const container = document.createElement('div');
     container.innerHTML =
@@ -1661,8 +1664,10 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
 
     expect(getCleanVerseText(container, 2)).toBe('Paul spoke.');
   });
+});
 
-  it('puts footnote composition inside the scoped note typography without resetting popup UI', () => {
+describe('FootnoteContent', () => {
+  it('renders footnote paragraph and character-style markup inside the note scope', () => {
     const { container } = render(
       <FootnoteContent
         verseNum="2"

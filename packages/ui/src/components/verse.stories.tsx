@@ -50,6 +50,25 @@ const SWIFT_PHASE_TWO_FIXTURE_HTML = `
   <div><span class="rq"><span class="pn">(Genesis 1:1)</span></span> <span class="em"><span class="bd">Word</span></span>
     <span class="qac">A</span> <span class="sig">John</span> <span class="litl">Selah</span>
     <span class="ref">John 1:1</span> <span class="wg">λόγος</span> <span class="wh">דָּבָר</span> <span class="ior">1–5</span> <span class="xta">Gen 1:1</span></div>
+  <div class="p" data-indent-fixture>
+    Indented ancestor: each heading below clears this first-line indent.
+    <div class="cl">cl: Chapter label</div><div class="d">d: Descriptive title</div>
+    <div class="imt">imt: Introduction title</div><div class="imt1">imt1: Introduction title 1</div>
+    <div class="imt2">imt2: Introduction title 2</div><div class="imt3">imt3: Introduction title 3</div>
+    <div class="imt4">imt4: Introduction title 4</div><div class="imte">imte: Introduction ending</div>
+    <div class="imte1">imte1: Introduction ending 1</div><div class="imte2">imte2: Introduction ending 2</div>
+    <div class="iot">iot: Introduction outline</div><div class="is">is: Introduction section</div>
+    <div class="is1">is1: Introduction section 1</div><div class="is2">is2: Introduction section 2</div>
+    <div class="mr">mr: Major section reference</div><div class="ms">ms: Major section</div>
+    <div class="ms1">ms1: Major section 1</div><div class="ms2">ms2: Major section 2</div>
+    <div class="ms3">ms3: Major section 3</div><div class="ms4">ms4: Major section 4</div>
+    <div class="mt1">mt1: Main title 1</div><div class="mt2">mt2: Main title 2</div>
+    <div class="pc">pc: Centered paragraph</div><div class="qc">qc: Centered poetry</div>
+    <div class="r">r: Parallel reference</div><div class="s">s: Section heading</div>
+    <div class="s1">s1: Section heading 1</div><div class="s2">s2: Section heading 2</div>
+    <div class="s3">s3: Section heading 3</div><div class="s4">s4: Section heading 4</div>
+    <div class="sr">sr: Section reference</div>
+  </div>
   <div class="po">Dear children,</div><div class="p"><span class="yv-v" v="2"></span><span class="va">2a</span>
     In the beginning was the Word, and the Word was with God.
   </div>
@@ -410,6 +429,15 @@ export const SwiftPhaseTwoTypographyFixture: Story = {
     await expect(getComputedStyle(standalone.querySelector('.imt1')!).marginTop).toBe('24px');
     await expect(getComputedStyle(standalone.querySelector('.is1 .rq')!).fontSize).toBe('19.92px');
     await expect(getComputedStyle(standalone.querySelector('.is1 .va')!).fontSize).toBe('15.6px');
+
+    for (const reader of [ltr, standalone]) {
+      const indented = reader.querySelector('[data-indent-fixture]')!;
+      await expect(parseFloat(getComputedStyle(indented).textIndent)).toBeGreaterThan(0);
+      await expect(indented.children.length).toBe(31);
+      for (const heading of indented.children) {
+        await expect(getComputedStyle(heading).textIndent).toBe('0px');
+      }
+    }
 
     const note = canvasElement.querySelector<HTMLElement>('[data-slot="yv-bible-note"]')!;
     const noteStyle = getComputedStyle(note);
