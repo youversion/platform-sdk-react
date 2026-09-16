@@ -151,8 +151,8 @@ outside interaction: opening a peer popover dismisses the existing peer across
 the same or separate roots. Nested dialog-to-popover dismissal restores focus in
 order, and final dismissal returns to the original outside control. A dialog
 that closes and reopens during retained exit presence also preserves and restores
-its original opener; disconnected targets and targets moved to another shadow root
-or document are ignored.
+its original opener; disconnected targets and targets moved out of their captured
+root (into the light DOM, another shadow root, or another document) are ignored.
 
 These observations do not select or design production overlay coordination.
 YPE-5356 owns deciding whether and how to support concurrent peers. The detailed

@@ -832,6 +832,39 @@ export const RapidCloseReopenIgnoresInvalidOpenerEvidence: Story = {
         void expect(secondaryRoot.activeElement).not.toBe(runRapidCloseReopen);
       });
 
+      await step('Ignore the opener after it moves into the light DOM', async () => {
+        contentWrapper.append(runRapidCloseReopen);
+        await userEvent.click(runRapidCloseReopen);
+        const firstDialog = await waitFor(() => {
+          const dialog = getPermissionDialog(topLayer);
+          if (!dialog) throw new Error('permission dialog did not reopen for light-DOM target');
+          return dialog;
+        });
+        await waitFor(() => void expect(firstDialog).toHaveAttribute('data-state', 'closed'));
+        await waitFor(() => {
+          const dialog = getPermissionDialog(topLayer);
+          if (!dialog || dialog.getAttribute('data-state') === 'closed') {
+            throw new Error('permission dialog did not rapidly reopen for light-DOM target');
+          }
+        });
+
+        const focus = spyOn(runRapidCloseReopen, 'focus');
+        try {
+          canvasElement.ownerDocument.body.append(runRapidCloseReopen);
+          void expect(runRapidCloseReopen.getRootNode()).toBe(canvasElement.ownerDocument);
+          await userEvent.keyboard('{Escape}');
+          await waitFor(() => {
+            void expect(getPermissionDialog(topLayer)).toBeNull();
+            void expect(contentWrapper.inert).toBe(false);
+            void expect(topLayer.matches(':popover-open')).toBe(false);
+          });
+          void expect(focus).not.toHaveBeenCalled();
+          void expect(canvasElement.ownerDocument.activeElement).not.toBe(runRapidCloseReopen);
+        } finally {
+          focus.mockRestore();
+        }
+      });
+
       await step('Ignore the opener after it disconnects', async () => {
         contentWrapper.append(runRapidCloseReopen);
         await userEvent.click(runRapidCloseReopen);

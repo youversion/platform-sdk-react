@@ -25,7 +25,7 @@ interface ShadowPortalController {
   prepareOpen: (instanceId: string) => void;
   requestClose: (instanceId: string) => void;
   setModalPresent: (instanceId: string, present: boolean) => void;
-  restoreFocusWhenModalReleased: (target: HTMLElement) => void;
+  restoreFocusWhenModalReleased: (target: HTMLElement, capturedRoot: Node) => void;
 }
 
 const ShadowPortalContext = createContext<ShadowPortalController | null>(null);
@@ -146,7 +146,7 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
   const activePortalIdsRef = useRef(new Set<string>());
   const contentWrapperRef = useRef<HTMLDivElement | null>(null);
   const presentModalIdsRef = useRef(new Set<string>());
-  const pendingFocusTargetRef = useRef<HTMLElement | null>(null);
+  const pendingFocusTargetRef = useRef<{ target: HTMLElement; capturedRoot: Node } | null>(null);
   const lastFocusedElementRef = useRef<HTMLElement | null>(null);
   const [shadowRoot, setShadowRoot] = useState<ShadowRoot | null>(null);
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
@@ -228,14 +228,17 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
   );
 
   const canRestoreFocus = useCallback(
-    (target: HTMLElement): boolean => {
+    (target: HTMLElement, capturedRoot: Node): boolean => {
       const shadowRoot = shadowRootRef.current;
       if (!shadowRoot || !target.isConnected || target.ownerDocument !== shadowRoot.ownerDocument) {
         return false;
       }
 
       const targetRoot = target.getRootNode();
-      return targetRoot === shadowRoot || targetRoot === shadowRoot.ownerDocument;
+      return (
+        targetRoot === capturedRoot &&
+        (targetRoot === shadowRoot || targetRoot === shadowRoot.ownerDocument)
+      );
     },
     [],
   );
@@ -250,21 +253,26 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
       if (wrapper) wrapper.inert = ids.size > 0;
       if (ids.size > 0) return;
 
-      const target = pendingFocusTargetRef.current;
+      const pendingTarget = pendingFocusTargetRef.current;
       pendingFocusTargetRef.current = null;
-      if (target && canRestoreFocus(target)) target.focus();
+      if (pendingTarget && canRestoreFocus(pendingTarget.target, pendingTarget.capturedRoot)) {
+        pendingTarget.target.focus();
+      }
     },
     [canRestoreFocus],
   );
 
-  const restoreFocusWhenModalReleased = useCallback((target: HTMLElement): void => {
-    if (presentModalIdsRef.current.size > 0) {
-      pendingFocusTargetRef.current = target;
-      return;
-    }
+  const restoreFocusWhenModalReleased = useCallback(
+    (target: HTMLElement, capturedRoot: Node): void => {
+      if (presentModalIdsRef.current.size > 0) {
+        pendingFocusTargetRef.current = { target, capturedRoot };
+        return;
+      }
 
-    if (canRestoreFocus(target)) target.focus();
-  }, [canRestoreFocus]);
+      if (canRestoreFocus(target, capturedRoot)) target.focus();
+    },
+    [canRestoreFocus],
+  );
 
   const getLastFocusedElement = useCallback(
     (): HTMLElement | null => lastFocusedElementRef.current,

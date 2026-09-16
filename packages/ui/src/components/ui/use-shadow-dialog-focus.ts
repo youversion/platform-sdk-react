@@ -113,6 +113,7 @@ export function useShadowDialogFocus({
   useShadowDialogFocusContainment(modalPresent, content, overlay);
   const restoreFocusWhenModalReleased = useShadowModalPresence(modalPresent);
   const restoreFocusRef = React.useRef<HTMLElement | null>(null);
+  const restoreFocusRootRef = React.useRef<Node | null>(null);
   const capturedRestoreFocusRef = React.useRef(false);
 
   React.useLayoutEffect(() => {
@@ -128,6 +129,7 @@ export function useShadowDialogFocus({
       : container.ownerDocument.activeElement;
     if (isElementFromOwnerDocument(activeElement, container, 'HTMLElement')) {
       restoreFocusRef.current = activeElement;
+      restoreFocusRootRef.current = activeElement.getRootNode();
     }
     capturedRestoreFocusRef.current = true;
   }, [container, open]);
@@ -137,14 +139,17 @@ export function useShadowDialogFocus({
       if (container === undefined) return;
       if (event.defaultPrevented) {
         restoreFocusRef.current = null;
+        restoreFocusRootRef.current = null;
         return;
       }
 
       event.preventDefault();
       const restoreFocusTo = restoreFocusRef.current;
+      const restoreFocusRoot = restoreFocusRootRef.current;
       restoreFocusRef.current = null;
-      if (restoreFocusTo && restoreFocusWhenModalReleased) {
-        restoreFocusWhenModalReleased(restoreFocusTo);
+      restoreFocusRootRef.current = null;
+      if (restoreFocusTo && restoreFocusRoot && restoreFocusWhenModalReleased) {
+        restoreFocusWhenModalReleased(restoreFocusTo, restoreFocusRoot);
       }
     },
     [container, restoreFocusWhenModalReleased],
