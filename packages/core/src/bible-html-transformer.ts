@@ -49,8 +49,19 @@ const DROP_ENTIRELY_TAGS = new Set([
 
 const ALLOWED_ATTRS = new Set(['class', 'v', 'colspan', 'rowspan', 'dir', 'usfm']);
 
+export type TextDirection = 'ltr' | 'rtl';
+
 function topLevelElements(doc: Document): Element[] {
   return doc.body ? Array.from(doc.body.children) : [];
+}
+
+function resolveTextDirection(roots: Element[]): TextDirection | undefined {
+  if (roots.length === 0) return undefined;
+
+  const directions = roots.map((root) => root.getAttribute('dir'));
+  if (directions.every((direction) => direction === 'ltr')) return 'ltr';
+  if (directions.every((direction) => direction === 'rtl')) return 'rtl';
+  return undefined;
 }
 
 function sanitizeBibleHtmlDocument(doc: Document): void {
@@ -106,6 +117,8 @@ export type TransformBibleHtmlOptions = {
 export type TransformedBibleHtml = {
   /** The transformed HTML with footnotes replaced by marker elements */
   html: string;
+  /** The shared direction of every top-level Bible content root, when explicit. */
+  direction?: TextDirection;
 };
 
 function wrapVerseContent(doc: Document): void {
@@ -362,7 +375,7 @@ export function transformBibleHtml(
     // Older transformed output predates alternate-label spacing. Backfill it
     // without repeating verse wrapping or footnote extraction.
     addNbspToVerseLabels(doc);
-    return { html: options.serializeHtml(doc) };
+    return { html: options.serializeHtml(doc), direction: resolveTextDirection(roots) };
   }
 
   wrapVerseContent(doc);
@@ -381,7 +394,7 @@ export function transformBibleHtml(
   }
 
   const transformedHtml = options.serializeHtml(doc);
-  return { html: transformedHtml };
+  return { html: transformedHtml, direction: resolveTextDirection(topLevelElements(doc)) };
 }
 
 /**

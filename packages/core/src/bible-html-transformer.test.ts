@@ -294,6 +294,32 @@ describe('transformBibleHtml - return type', () => {
   });
 });
 
+it.each([
+  ['ltr', 'ltr'],
+  ['rtl', 'rtl'],
+] as const)('resolves a shared valid %s root direction', (dir, direction) => {
+  const result = transformBibleHtml(`<div dir="${dir}"><p>Text</p></div>`, createAdapters());
+
+  expect(result.direction).toBe(direction);
+});
+
+it.each([
+  ['missing', '<div><p>Text</p></div>'],
+  ['invalid', '<div dir="auto"><p>Text</p></div>'],
+  ['mixed', '<div dir="ltr">One</div><div dir="rtl">Two</div>'],
+])('does not resolve %s root directions', (_label, html) => {
+  const result = transformBibleHtml(html, createAdapters());
+
+  expect(result.direction).toBeUndefined();
+});
+
+it('preserves direction when transforming an already transformed fragment', () => {
+  const first = transformBibleHtml('<div dir="rtl"><p>Text</p></div>', createAdapters());
+  const second = transformBibleHtml(first.html, createAdapters());
+
+  expect(second.direction).toBe('rtl');
+});
+
 describe('transformBibleHtml - sanitization', () => {
   it('should remove script tags entirely', () => {
     const html = '<p>Safe text</p><script>alert("XSS")</script>';
@@ -400,15 +426,16 @@ describe('transformBibleHtml - sanitization', () => {
 describe('transformBibleHtml - idempotency', () => {
   it('backfills alternate labels in marked legacy output without changing existing spacing or anchors', () => {
     const html =
-      '<div data-yv-transformed><span class="yv-v" v="2"><span class="yv-vlbl">2&nbsp;</span><span class="va">2a</span>Text<span data-verse-footnote="2" data-verse-footnote-content="A note"></span></span></div>' +
-      '<span class="va" data-yv-transformed>3a</span>';
+      '<div data-yv-transformed dir="rtl"><span class="yv-v" v="2"><span class="yv-vlbl">2&nbsp;</span><span class="va">2a</span>Text<span data-verse-footnote="2" data-verse-footnote-content="A note"></span></span></div>' +
+      '<span class="va" data-yv-transformed dir="rtl">3a</span>';
     const first = transformBibleHtml(html, createAdapters());
 
     expect(first.html).toBe(
-      '<div data-yv-transformed=""><span class="yv-v" v="2"><span class="yv-vlbl">2&nbsp;</span><span class="va">2a&nbsp;</span>Text<span data-verse-footnote="2" data-verse-footnote-content="A note"></span></span></div>' +
-        '<span class="va" data-yv-transformed="">3a&nbsp;</span>',
+      '<div data-yv-transformed="" dir="rtl"><span class="yv-v" v="2"><span class="yv-vlbl">2&nbsp;</span><span class="va">2a&nbsp;</span>Text<span data-verse-footnote="2" data-verse-footnote-content="A note"></span></span></div>' +
+        '<span class="va" data-yv-transformed="" dir="rtl">3a&nbsp;</span>',
     );
-    expect(transformBibleHtml(first.html, createAdapters()).html).toBe(first.html);
+    expect(first.direction).toBe('rtl');
+    expect(transformBibleHtml(first.html, createAdapters())).toEqual(first);
   });
 
   it('should add data-yv-transformed marker after transforming', () => {

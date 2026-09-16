@@ -1385,7 +1385,7 @@
 
   & table td:not(:last-child),
   & table th:not(:last-child) {
-    border-right: 1px solid var(--yv-border);
+    border-inline-end: 1px solid var(--yv-border);
   }
 
   & table tr:not(:last-child) td,
@@ -1395,7 +1395,7 @@
 
   & table td[colspan],
   & table th[colspan] {
-    border-right: none;
+    border-inline-end: none;
   }
 
   & table th,
@@ -1475,7 +1475,7 @@
 
   &[dir='rtl'] {
     direction: rtl;
-    text-align: right;
+    text-align: start;
   }
 }
 

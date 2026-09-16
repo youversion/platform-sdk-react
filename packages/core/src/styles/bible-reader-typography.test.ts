@@ -228,4 +228,10 @@ describe('bible-reader Swift-aligned typography', () => {
     expect(css).toContain("&[data-show-verse-numbers='false'] .va");
     expect(css).toContain('& .va:not([data-yv-transformed], [data-yv-transformed] *)::after');
   });
+
+  it('uses logical table borders for both directions', () => {
+    expect(css).toContain('border-inline-end: 1px solid var(--yv-border)');
+    expect(css).toContain('border-inline-end: none');
+    expect(css).not.toContain('border-right: 1px solid var(--yv-border)');
+  });
 });

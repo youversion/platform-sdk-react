@@ -12,12 +12,21 @@ function pathParam(value: string | readonly string[] | undefined): string | unde
   return parts.concat(value)[0];
 }
 
+function mockAvatar() {
+  return new HttpResponse(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="#767676"/></svg>',
+    { headers: { 'Content-Type': 'image/svg+xml' } },
+  );
+}
+
 export const globalHandlers = [
   // Keep typography stories deterministic without authenticated font requests.
   // Browser fixtures use the configured fallback fonts.
   http.get('*/v1/fonts/:id/stylesheet', () => {
     return new HttpResponse('', { headers: { 'Content-Type': 'text/css' } });
   }),
+  http.get('https://notion-avatar.app/*', mockAvatar),
+  http.get('https://example.com/avatar/*', mockAvatar),
   // Organization (publisher) lookup for the version picker
   http.get('*/v1/organizations/:id', ({ params }) => {
     const id = pathParam(params.id);

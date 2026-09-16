@@ -4,8 +4,10 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render as rtlRender, waitFor, within } from '@testing-library/react';
+import { act, render as rtlRender, waitFor, within } from '@testing-library/react';
 import type { ReactElement } from 'react';
+import { hydrateRoot } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
 import userEvent from '@testing-library/user-event';
 import { requireHtmlButton, requireHtmlElement } from '@/test/dom-stubs';
 import { HookOverrideProvider } from '@/test/hook-overrides';
@@ -28,6 +30,7 @@ import {
   Providers,
   stubUseHighlights,
 } from '@/test/highlights-test-utils';
+import { InterfaceDirectionProvider } from '@/lib/direction';
 
 // BibleTextView always calls usePassage internally (even when passageState is
 // provided). Stub the result so these tests do not need a live BibleClient.
@@ -396,6 +399,175 @@ describe('Verse.Html - Footnotes', () => {
       const marker27 = listItems?.[26]?.querySelector('span')?.textContent;
       expect(marker27).toBe('aa.');
     });
+  });
+});
+
+it('uses the transformed passage root direction on the renderer', async () => {
+  const { container } = render(<Verse.Html html={'<div dir="rtl"><p>Text</p></div>'} />);
+
+  await waitFor(() => {
+    expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute(
+      'dir',
+      'rtl',
+    );
+  });
+});
+
+it('prefers an explicit direction over transformed passage content', async () => {
+  const html =
+    '<div dir="rtl" data-passage-root><p>Text <span dir="rtl" data-bidi-island>عربي</span></p></div>';
+  const { container, rerender } = render(<Verse.Html html={html} scriptureDirection="ltr" />);
+
+  await waitFor(() => {
+    expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute(
+      'dir',
+      'ltr',
+    );
+    expect(container.querySelector('[data-passage-root]')).toHaveAttribute('dir', 'ltr');
+    expect(container.querySelector('[data-bidi-island]')).toHaveAttribute('dir', 'rtl');
+  });
+
+  rerender(<Verse.Html html={html} />);
+
+  await waitFor(() => {
+    expect(container.querySelector('[data-passage-root]')).toHaveAttribute('dir', 'rtl');
+    expect(container.querySelector('[data-bidi-island]')).toHaveAttribute('dir', 'rtl');
+  });
+});
+
+it('preserves painted selection and highlights when only Scripture direction changes', async () => {
+  const html =
+    '<div dir="rtl"><p><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text</p></div>';
+  const selectedVerses = [1];
+  const highlightedVerses = { 1: 'ffec5b' };
+  const { container, rerender } = render(
+    <Verse.Html
+      html={html}
+      scriptureDirection="rtl"
+      selectedVerses={selectedVerses}
+      highlightedVerses={highlightedVerses}
+    />,
+  );
+
+  const originalVerse = await waitFor(() => {
+    const verse = getVerseEl(container, 1);
+    expect(verse).toHaveClass('yv-v-selected');
+    expect(verse.style.backgroundColor).toBe(fillFor('ffec5b'));
+    return verse;
+  });
+
+  rerender(
+    <Verse.Html
+      html={html}
+      scriptureDirection="ltr"
+      selectedVerses={selectedVerses}
+      highlightedVerses={highlightedVerses}
+    />,
+  );
+
+  await waitFor(() => {
+    const verse = getVerseEl(container, 1);
+    expect(verse).toBe(originalVerse);
+    expect(verse).toHaveClass('yv-v-selected');
+    expect(verse.style.backgroundColor).toBe(fillFor('ffec5b'));
+    expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute(
+      'dir',
+      'ltr',
+    );
+  });
+});
+
+it('hydrates inferred Scripture direction without a mismatched server attribute', async () => {
+  const element = <Verse.Html html={'<div dir="rtl"><p>Text</p></div>'} />;
+  const serverMarkup = renderToString(element);
+  const hydrationErrors: unknown[] = [];
+  const container = document.createElement('div');
+  container.innerHTML = serverMarkup;
+  document.body.append(container);
+
+  expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute('dir', 'auto');
+
+  const root = await act(() => {
+    return hydrateRoot(container, element, {
+      onRecoverableError: (error) => hydrationErrors.push(error),
+    });
+  });
+
+  await waitFor(() => {
+    expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute(
+      'dir',
+      'rtl',
+    );
+  });
+  expect(hydrationErrors).toEqual([]);
+
+  await act(async () => root.unmount());
+  container.remove();
+});
+
+it('uses auto when runtime scripture content has no resolved direction', async () => {
+  const { container } = render(
+    <div dir="rtl">
+      <Verse.Html html="<div><p>Text</p></div>" />
+    </div>,
+  );
+
+  await waitFor(() => {
+    expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute(
+      'dir',
+      'auto',
+    );
+  });
+});
+
+it('keeps RTL interface direction independent from explicit LTR Scripture direction', async () => {
+  const { container } = render(
+    <InterfaceDirectionProvider direction="rtl">
+      <BibleTextView
+        reference="JHN.1.1"
+        versionId={3034}
+        scriptureDirection="ltr"
+        passageState={{
+          passage: { id: 'JHN.1.1', content: '<div><p>Text</p></div>', reference: 'John 1:1' },
+          loading: false,
+          error: null,
+        }}
+      />
+    </InterfaceDirectionProvider>,
+  );
+
+  await waitFor(() => {
+    expect(container.firstElementChild).toHaveAttribute('dir', 'rtl');
+    expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute(
+      'dir',
+      'ltr',
+    );
+  });
+});
+
+it('keeps portaled footnote chrome interface-directed and its Scripture content RTL', async () => {
+  const { container } = render(
+    <Verse.Html
+      html={
+        '<div dir="rtl"><p><span class="yv-v" v="1"></span>Text<span class="yv-n f"><span class="ft">Note</span></span></p></div>'
+      }
+      reference="John 1"
+    />,
+  );
+
+  const button = await waitFor(() => {
+    const footnoteButton = container.querySelector('[data-verse-footnote="1"] button');
+    expect(footnoteButton).not.toBeNull();
+    return requireHtmlButton(footnoteButton);
+  });
+  await userEvent.click(button);
+
+  await waitFor(() => {
+    const popover = document.body.querySelector('[role="dialog"]');
+    expect(popover).toHaveAttribute('dir', 'ltr');
+    expect(popover?.querySelector('[data-yv-sdk]')).toHaveAttribute('dir', 'rtl');
+    expect(popover?.querySelector('bdi')).toHaveAttribute('dir', 'auto');
+    expect(popover?.querySelector('bdi')).toHaveTextContent('John 1:1');
   });
 });
 

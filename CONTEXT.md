@@ -3,6 +3,21 @@
 Glossary of domain terms for the YouVersion Platform SDK. Terms here are
 canonical: code, docs, and conversation should use them exactly.
 
+## Interface direction
+
+The left-to-right or right-to-left flow of SDK-owned chrome: controls, rows,
+pickers, directional icons, and portaled surfaces. It follows an explicit
+`YouVersionProvider.direction`, then the resolved SDK UI locale, then LTR as a
+deterministic fallback. It is independent of Bible picker language and
+**Scripture direction**.
+
+## Scripture direction
+
+The left-to-right, right-to-left, or automatically detected flow of rendered
+Bible content, including Scripture typography, references, and Scripture-owned
+footnotes. It follows an explicit `scriptureDirection`, then transformed YVDOM
+direction, then `auto`. It is independent of **Interface direction**.
+
 ## Highlight
 
 A user-owned color marking on a Bible passage, stored on the user's
