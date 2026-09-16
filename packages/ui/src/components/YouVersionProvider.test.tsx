@@ -87,7 +87,7 @@ describe('UI YouVersionProvider', () => {
     );
   });
 
-  it('mirrors appName and signInPromptMessage onto the UI-bundled config', () => {
+  it('forwards appName and signInPromptMessage onto the shared core config', () => {
     YouVersionPlatformConfiguration.appName = undefined;
     YouVersionPlatformConfiguration.signInPromptMessage = undefined;
 
