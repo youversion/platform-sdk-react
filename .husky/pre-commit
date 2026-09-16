@@ -1,3 +1,9 @@
+# Skip only staged-file checks when their tooling fails; commit-msg still runs.
+if [ "${SKIP_PRE_COMMIT:-}" = "1" ]; then
+  echo "Skipping pre-commit checks (SKIP_PRE_COMMIT=1); commit-msg remains active."
+  exit 0
+fi
+
 # Prefer corepack so the repo-pinned pnpm (packageManager in package.json) runs
 # regardless of what's on PATH. Fall back to pnpm directly where corepack isn't
 # available — Node 25+ no longer bundles it, and nvm/global-pnpm setups may lack

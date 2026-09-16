@@ -181,6 +181,33 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/), enf
 
 Accepting a Greptile review suggestion through GitHub's "Commit suggestion" / "Sign off and commit suggestion" button produces a non-conventional subject that GitHub writes (`Update <path>` or `Apply suggestions from code review`). Those commits are exempt from per-commit commitlint when they carry the `greptile-apps[bot]` co-author trailer — leave them alone; they are discarded at squash-merge. See `docs/adr/0007-github-suggestion-commits-bypass-commitlint.md`.
 
+#### Recover from pre-commit tooling failures
+
+If pre-commit tooling crashes, use a one-command bypass:
+
+```bash
+SKIP_PRE_COMMIT=1 git commit -m "chore: describe the change"
+```
+
+This skips only pre-commit's lint-staged checks, including staged-file linting and
+formatting. The `commit-msg` hook still validates the commit message. Do not use
+`HUSKY=0` or `git commit --no-verify` for this recovery path: both also disable
+`commit-msg`. Fix lint violations rather than bypassing them, and rerun skipped
+checks when the tooling works. Report any checks you could not complete.
+
+Before pushing, check every commit on your current branch:
+
+```bash
+pnpm check:commits
+```
+
+This requires installed dependencies, access to the `origin` remote, and full Git
+history. For a shallow clone, run `git fetch --unshallow origin` first. The command
+fetches `origin/main` and validates the range from `git merge-base origin/main HEAD`
+to `HEAD`, matching CI's calculation with your local HEAD instead of the PR head.
+It does not validate uncommitted changes or the PR title, which has a separate CI
+check. Run `pnpm test:git-hooks` to test the recovery path in disposable Git data.
+
 ## Changesets
 
 ### When to Create

@@ -1,9 +1,9 @@
 // Commit message linting for the React SDK.
 //
-// We squash-merge, so the landing commit on main is the PR title. The real
-// gate is the PR-title lint job (.github/workflows/pr-title.yml); this
-// per-commit config stays as an optional local dev aid via the husky
-// commit-msg hook. See docs/release-hardening-decisions.md (Decision 1).
+// We squash-merge, so the landing commit on main is the PR title, enforced
+// by .github/workflows/pr-title.yml. This per-commit config is also enforced
+// by the husky commit-msg hook and .github/workflows/commitlint.yml.
+// See docs/release-hardening-decisions.md (Decision 1).
 //
 // Titles are plain Conventional Commits — no ticket prefix. Ticket references
 // (YPE-1234) live in the branch name and PR body, not the title.
