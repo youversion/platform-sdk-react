@@ -359,6 +359,9 @@ export function transformBibleHtml(
   // still run verse wrapping and footnote extraction.
   const roots = topLevelElements(doc);
   if (roots.length > 0 && roots.every((el) => el.hasAttribute(TRANSFORMED_ATTR))) {
+    // Older transformed output predates alternate-label spacing. Backfill it
+    // without repeating verse wrapping or footnote extraction.
+    addNbspToVerseLabels(doc);
     return { html: options.serializeHtml(doc) };
   }
 
