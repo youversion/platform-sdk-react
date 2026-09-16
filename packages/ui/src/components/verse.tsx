@@ -97,12 +97,7 @@ export function FootnoteContent({
               >
                 <span>{marker}.</span>
                 {/** biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe */}
-                <span
-                  data-slot="yv-bible-renderer"
-                  className="yv:inline! yv:w-auto! yv:max-w-none!"
-                  style={{ fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit' }}
-                  dangerouslySetInnerHTML={{ __html: note }}
-                />
+                <span data-slot="yv-bible-note" dangerouslySetInnerHTML={{ __html: note }} />
               </li>
             );
           })}
@@ -377,7 +372,7 @@ function BibleTextHtml({
       // fixing the light-mode gray-on-fill clash. Unhighlighted labels reset to ''
       // so they keep their CSS muted color. Deliberate divergence from the Swift
       // SDK, which only recolors the label in dark mode.
-      el.querySelectorAll('.yv-vlbl').forEach((label) => {
+      el.querySelectorAll('.yv-vlbl, .va').forEach((label) => {
         if (!(label instanceof HTMLElement)) return;
         label.style.color = isHighlighted ? 'inherit' : '';
       });

@@ -45,7 +45,7 @@ describe('bible-reader Swift-aligned typography', () => {
 
   it('raises verse labels 0.2em at 0.65em without changing family', () => {
     const labels = rulesForExactClass('yv-vlbl');
-    expect(labels).toContain('font-size: 0.65em');
+    expect(labels).toContain('font-size: calc(var(--yv-reader-font-size) * 0.65)');
     expect(labels).toContain('top: -0.2em');
     expect(labels).not.toContain('top: -0.3em');
     expect(labels).toContain('font-family: var(--yv-font-sans)');
@@ -143,7 +143,9 @@ describe('bible-reader Swift-aligned typography', () => {
 
     expect(rulesForExactClass('ord')).toContain('font-size: 0.65em');
     expect(rulesForExactClass('ord')).toContain('top: -0.2em');
-    expect(rulesForExactClass('fv')).toContain('font-size: 0.65em');
+    expect(rulesForExactClass('fv')).toContain(
+      'font-size: calc(var(--yv-reader-font-size) * 0.65)',
+    );
     expect(rulesForExactClass('fv')).toContain('top: -0.2em');
     expect(rulesForExactClass('sup')).toContain('font-size: 0.65em');
     expect(rulesForExactClass('sup')).toContain('top: -0.2em');
@@ -192,21 +194,23 @@ describe('bible-reader Swift-aligned typography', () => {
     expect(rulesForExactClass('sr')).toContain('text-align: center');
     expect(rulesForExactClass('r')).toContain('text-align: center');
 
-    expect(css).toMatch(/& \.yv-h\.r,\s*& \.r\.yv-h\s*\{[^}]*font-weight: 500/s);
+    expect(rulesForExactClass('yv-h.r')).toContain('font-weight: 500');
   });
 
   it('applies phase-2 and phase-3 block and inline styles', () => {
-    expect(rulesForExactClass('imq')).toContain('padding-inline-start: 2em');
+    expect(rulesForExactClass('imq')).toContain('padding-inline-start: 1em');
     expect(rulesForExactClass('imq')).toContain('margin-block: var(--yv-reader-font-size)');
-    expect(rulesForExactClass('li')).toContain('padding-inline-start: 2em');
+    expect(rulesForExactClass('li')).toContain('padding-inline-start: 1em');
     expect(rulesForExactClass('li')).toContain('text-indent: 0');
-    expect(rulesForExactClass('lim')).toContain('padding-inline-start: 2em');
+    expect(rulesForExactClass('lim')).toContain('padding-inline-start: 1em');
     expect(rulesForExactClass('lh')).toContain('text-indent: 1em');
     expect(rulesForExactClass('po')).toContain(
       'margin-block-start: calc(var(--yv-reader-font-size) * 0.25)',
     );
 
-    expect(rulesForExactClass('rq')).toContain('font-size: 0.83em');
+    expect(rulesForExactClass('rq')).toContain(
+      'font-size: calc(var(--yv-reader-font-size) * 0.83)',
+    );
     expect(rulesForExactClass('fk')).toContain('font-weight: 500');
     expect(rulesForExactClass('fk')).toContain('font-style: italic');
     expect(rulesForExactClass('fl')).toContain('font-weight: 500');
@@ -219,7 +223,7 @@ describe('bible-reader Swift-aligned typography', () => {
 
   it('treats va consistently as a visible, hideable alternate verse label', () => {
     const va = rulesForExactClass('va');
-    expect(va).toContain('font-size: 0.65em');
+    expect(va).toContain('font-size: calc(var(--yv-reader-font-size) * 0.65)');
     expect(va).toContain('font-family: var(--yv-font-sans)');
     expect(css).toContain("&[data-show-verse-numbers='false'] .va");
     expect(css).toContain(':is(.yv-vlbl, .va)::after');

@@ -38,17 +38,23 @@ const MULTIPLE_FOOTNOTE_SINGLE_VERSE_HTML = `
 `;
 
 const SWIFT_PHASE_TWO_FIXTURE_HTML = `
-  <div class="imt1">Introduction title</div><div class="imt2">Introduction subtitle</div>
-  <div class="imt3">Introduction tertiary title</div><div class="is1">Introduction section</div>
-  <div class="imq">Introduction quotation</div><div class="lh">List header</div>
-  <div class="li">List item</div><div class="lim">Embedded list item</div>
-  <div class="mt1">Major title</div><div class="mt2">Secondary title</div>
-  <div class="r yv-h">Parallel heading</div><div class="sr">Section range</div>
-  <div class="po">Letter opening</div><div class="p"><span class="yv-v" v="2"></span><span class="va">2a</span>
-    <span class="bd">Bold</span> <span class="em">emphasis</span> <span class="pn"><span class="bd">nested proper name</span></span>
-    <span class="rq">quotation reference</span> <span class="ref">reference</span> <span class="wg">glossary</span>
-    <span class="wh">Hebrew word</span> <span class="ior">outline range</span> <span class="xta">cross-reference target</span>
+  <div class="imt1">The Gospel According to John</div><div class="imt2">The Word Became Flesh</div>
+  <div class="imte2">Introduction ending</div><div class="imt3">The witness of John</div><div class="is1">Jesus, the Lamb of God</div>
+  <div class="imq">“Look, the Lamb of God, who takes away the sin of the world!”</div><div class="lh">The first disciples</div>
+  <div class="li">Andrew followed Jesus.</div><div class="lim">Simon was called Peter.</div><div class="lf">They stayed with him that day.</div>
+  <div class="mt1">John</div><div class="mt2">The Good News</div>
+  <div class="p">An indented paragraph before a heading.</div><div class="r yv-h">See also Genesis 1:1</div><div class="sr">John 1:1–5</div>
+  <div><span class="rq"><span class="pn">(Genesis 1:1)</span></span> <span class="em"><span class="bd">Word</span></span>
+    <span class="qac">A</span> <span class="sig">John</span> <span class="litl">Selah</span>
+    <span class="ref">John 1:1</span> <span class="wg">λόγος</span> <span class="wh">דָּבָר</span> <span class="ior">1–5</span> <span class="xta">Gen 1:1</span></div>
+  <div class="po">Dear children,</div><div class="p"><span class="yv-v" v="2"></span><span class="va">2a</span>
+    In the beginning was the Word, and the Word was with God.
   </div>
+`;
+
+const SWIFT_PHASE_TWO_RTL_HTML = `
+  <div class="mt1">בְּרֵאשִׁית</div><div class="p"><span class="yv-v" v="1"><span class="yv-vlbl">1</span>
+  בְּרֵאשִׁית בָּרָא אֱלֹהִים אֵת הַשָּׁמַיִם וְאֵת הָאָרֶץ׃</span></div>
 `;
 
 function DebouncedBibleTextView({
@@ -327,22 +333,66 @@ export const SwiftPhaseTwoTypographyFixture: Story = {
   args: { reference: 'GEN.1', versionId: 111 },
   render: () => (
     <div data-yv-sdk data-yv-theme="light" className="yv:grid yv:gap-8 yv:lg:grid-cols-2">
-      {(['ltr', 'rtl'] as const).map((direction) => (
-        <section key={direction} dir={direction} className="yv:min-w-0">
-          <h2 className="yv:font-sans yv:font-bold yv:mb-3">{direction.toUpperCase()}</h2>
-          <Verse.Html html={SWIFT_PHASE_TWO_FIXTURE_HTML} renderNotes={true} />
-          <FootnoteContent
-            verseNum="2"
-            verseHtml="Deterministic verse context."
-            notes={[
-              '<span class="ft">First footnote paragraph.</span><span class="fp"><span class="fk">Keyword</span> and <span class="fl">label</span> continue inline.</span>',
-            ]}
-          />
-        </section>
-      ))}
+      <section dir="ltr" className="yv:min-w-0">
+        <h2 className="yv:font-sans yv:font-bold yv:mb-3">LTR</h2>
+        <Verse.Html
+          html={SWIFT_PHASE_TWO_FIXTURE_HTML}
+          renderNotes={true}
+          highlightedVerses={{ 2: '#f19c33' }}
+        />
+        <FootnoteContent
+          verseNum="2"
+          verseHtml="Deterministic verse context."
+          notes={[
+            '<span class="ft">The Greek is plural.</span><span class="fp"><span class="fk">Word</span> <span class="fl">label</span> continues without an indent.</span>',
+          ]}
+        />
+      </section>
+      <section dir="rtl" className="yv:min-w-0">
+        <h2 className="yv:font-sans yv:font-bold yv:mb-3">RTL</h2>
+        <Verse.Html html={SWIFT_PHASE_TWO_RTL_HTML} showVerseNumbers={false} />
+      </section>
     </div>
   ),
   parameters: { layout: 'padded' },
+  tags: ['integration'],
+  play: async ({ canvasElement }) => {
+    const readers = canvasElement.querySelectorAll<HTMLElement>('[data-slot="yv-bible-renderer"]');
+    const ltr = readers[0]!;
+    const rtl = readers[1]!;
+    const style = (selector: string) => getComputedStyle(ltr.querySelector<HTMLElement>(selector)!);
+
+    await expect(style('.imt1').fontSize).toBe('23.4px');
+    await expect(style('.imt1').marginTop).toBe('20px');
+    await expect(style('.imte2').marginBottom).toBe('5px');
+    await expect(style('.r.yv-h').textIndent).toBe('0px');
+    await expect(style('.r.yv-h').marginTop).toBe('0px');
+    await expect(style('.imq').paddingInlineStart).toBe('20px');
+    await expect(style('.li').paddingInlineStart).toBe('20px');
+    await expect(style('.lf').marginTop).toBe('10px');
+    await expect(style('.rq').fontSize).toBe('16.6px');
+    await expect(style('.rq .pn').fontSize).toBe('20px');
+    await expect(style('.rq .pn').fontStyle).toBe('normal');
+    await expect(style('.em .bd').fontStyle).toBe('normal');
+    await expect(style('.em .bd').fontWeight).toBe('700');
+    await expect(style('.qac').fontSize).toBe('20px');
+    await expect(style('.ref').fontStyle).toBe(style('.p').fontStyle);
+    await expect(style('.va').display).toBe('inline');
+    await expect(style('.va').color).toBe(style('.yv-v').color);
+    await expect(getComputedStyle(rtl.querySelector<HTMLElement>('.yv-vlbl')!).display).toBe(
+      'none',
+    );
+    await expect(getComputedStyle(rtl).direction).toBe('rtl');
+
+    const note = canvasElement.querySelector<HTMLElement>('[data-slot="yv-bible-note"]')!;
+    const noteStyle = getComputedStyle(note);
+    const fpStyle = getComputedStyle(note.querySelector<HTMLElement>('.fp')!);
+    await expect(noteStyle.fontSize).toBe('12px');
+    await expect(noteStyle.userSelect).not.toBe('none');
+    await expect(fpStyle.textIndent).toBe('0px');
+    await expect(fpStyle.marginTop).toBe('0px');
+    await expect(getComputedStyle(note.querySelector<HTMLElement>('.fk')!).fontWeight).toBe('500');
+  },
 };
 
 export const DarkMode: Story = {

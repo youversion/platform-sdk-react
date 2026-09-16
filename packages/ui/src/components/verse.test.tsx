@@ -1654,9 +1654,6 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
     expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(GREEN));
     expect(getVerseEl(container, 3).style.backgroundColor).toBe('');
   });
-});
-
-describe('Bible rendering labels and footnotes', () => {
   it('omits alternate labels from copied verse prose', () => {
     const container = document.createElement('div');
     container.innerHTML =
@@ -1665,7 +1662,7 @@ describe('Bible rendering labels and footnotes', () => {
     expect(getCleanVerseText(container, 2)).toBe('Paul spoke.');
   });
 
-  it('puts real footnote composition inside the canonical Bible CSS scope', () => {
+  it('puts footnote composition inside the scoped note typography without resetting popup UI', () => {
     const { container } = render(
       <FootnoteContent
         verseNum="2"
@@ -1676,7 +1673,7 @@ describe('Bible rendering labels and footnotes', () => {
       />,
     );
 
-    const note = container.querySelector('[data-slot="yv-bible-renderer"]');
+    const note = container.querySelector('[data-slot="yv-bible-note"]');
     expect(note).not.toBeNull();
     expect(note?.querySelector('.fp')?.textContent).toBe('Keyword and label.');
     expect(note?.querySelector('.fk')).not.toBeNull();

@@ -73,7 +73,7 @@
   & .yv-vlbl,
   & .va {
     display: inline;
-    font-size: 0.65em;
+    font-size: calc(var(--yv-reader-font-size) * 0.65);
     color: var(--yv-muted-foreground);
     line-height: 1em;
     vertical-align: baseline;
@@ -308,11 +308,13 @@
 
   /* \imte2 - Introduction major title ending (level 2) — FontSize 16, Italic, Center */
   & .imte2 {
-    font-size: 1.3em;
+    font-size: var(--yv-reader-font-size);
     font-style: italic;
-    line-height: 1.4em;
-    text-align: start; /* Intentionally set as left-aligned per YV standards */
-    margin: 0.5em 0 0.15em;
+    text-align: center;
+    margin-block-start: calc(var(--yv-reader-font-size) * 0.5);
+    margin-block-end: calc(var(--yv-reader-font-size) * 0.25);
+    padding-inline: 0;
+    text-indent: 0;
     display: block;
   }
 
@@ -524,8 +526,7 @@
     text-indent: 0;
   }
 
-  & .yv-h.r,
-  & .r.yv-h {
+  & .yv-h.r {
     font-size: 1em;
     font-weight: 500;
     font-style: italic;
@@ -673,7 +674,7 @@
     display: block;
     font-style: italic;
     text-indent: 0;
-    padding-inline-start: 2em;
+    padding-inline-start: 1em;
     margin-block: var(--yv-reader-font-size);
   }
 
@@ -786,14 +787,14 @@
   }
 
   & .note .fk {
-    /* \fk - Footnote keyword — Bold + Italic */
+    /* \fk - Footnote keyword — Medium + Italic */
     font-style: italic;
-    font-weight: bold;
+    font-weight: 500;
   }
 
   & .note .fl {
-    /* \fl - Footnote label — Italic + Bold */
-    font-weight: bold;
+    /* \fl - Footnote label — Italic + Medium */
+    font-weight: 500;
     font-style: italic;
   }
 
@@ -842,11 +843,15 @@
 
   /* \bd - Bold text */
   & .bd {
+    font-size: var(--yv-reader-font-size);
     font-weight: bold;
+    font-style: normal;
   }
 
   /* \em - Emphasis text — Italic */
   & .em {
+    font-size: var(--yv-reader-font-size);
+    font-weight: normal;
     font-style: italic;
   }
 
@@ -859,6 +864,7 @@
   /* \fk / \fl - Footnote keyword and label */
   & .fk,
   & .fl {
+    font-size: var(--yv-reader-font-size);
     font-weight: 500;
     font-style: italic;
   }
@@ -879,6 +885,7 @@
 
   /* \pn - Proper name (semantic marker, no special formatting in this reader) */
   & .pn {
+    font-size: var(--yv-reader-font-size);
     font-weight: normal;
     font-style: normal;
   }
@@ -897,7 +904,7 @@
   /* \rq - Inline cross-reference quotation — Italic, smaller */
   & .rq {
     font-style: italic;
-    font-size: 0.83em;
+    font-size: calc(var(--yv-reader-font-size) * 0.83);
   }
 
   /* \x - Cross-reference note */
@@ -936,6 +943,8 @@
 
   /* \sig - Signature of the author of a letter/epistle — Italic */
   & .sig {
+    font-size: var(--yv-reader-font-size);
+    font-weight: normal;
     font-style: italic;
   }
 
@@ -1031,6 +1040,8 @@
 
   /* \qac - Acrostic letter within a poetic line — Italic */
   & .qac {
+    font-size: var(--yv-reader-font-size);
+    font-weight: normal;
     font-style: italic;
   }
 
@@ -1222,13 +1233,14 @@
   /* \lf - List footer */
   & .lf {
     display: block;
+    margin: 0.5em 0 0.25em;
   }
 
   /* \li - List entry */
   & .li {
     display: block;
     list-style-type: none;
-    padding-inline-start: 2em;
+    padding-inline-start: 1em;
     text-indent: 0;
   }
 
@@ -1265,7 +1277,7 @@
   & .lim {
     display: block;
     list-style-type: none;
-    padding-inline-start: 2em;
+    padding-inline-start: 1em;
     text-indent: 0;
   }
 
@@ -1448,6 +1460,13 @@
     font-weight: bold;
   }
 
+  /* \litl - Liturgical note label */
+  & .litl {
+    font-size: var(--yv-reader-font-size);
+    font-weight: normal;
+    font-style: italic;
+  }
+
   /* ============================================================
      RTL SUPPORT
      ============================================================ */
@@ -1455,5 +1474,33 @@
   &[dir='rtl'] {
     direction: rtl;
     text-align: right;
+  }
+}
+
+/* Footnote popup prose shares only Bible note character styles. It intentionally
+   does not use the full reader root, whose reset, width, 20px default, and
+   selection rules would disturb the surrounding popup UI. */
+[data-slot='yv-bible-note'] {
+  font: inherit;
+  direction: inherit;
+
+  & .fp {
+    display: block;
+    margin: 0;
+    text-indent: 0;
+  }
+
+  & .fk,
+  & .fl {
+    font-size: inherit;
+    font-weight: 500;
+    font-style: italic;
+  }
+
+  & .fq,
+  & .fqa {
+    font-size: inherit;
+    font-weight: normal;
+    font-style: italic;
   }
 }
