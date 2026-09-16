@@ -248,18 +248,13 @@ export { useChapter, useHighlightAuthActions, useYVAuth, useBibleClient };
       // every absent sentinel must appear in a control's present list.
       // The probe uses a core string that still rides in via hooks.
       probe: ['Color must be a 6-character hex string without #'],
-      present: [
-        'yv-sdk-styles',
-        '@layer yv-sdk-styles',
-      ],
+      present: ['yv-sdk-styles', '@layer yv-sdk-styles'],
     },
     controls: [
       {
         label: 'BibleChapterPicker',
         source: `import { BibleChapterPicker } from '@youversion/platform-react-ui';\nexport { BibleChapterPicker };\n`,
-        present: [
-          'BibleChapterPicker components must be used within BibleChapterPicker.Root',
-        ],
+        present: ['BibleChapterPicker components must be used within BibleChapterPicker.Root'],
       },
       {
         label: 'BibleVersionPicker',
@@ -276,6 +271,11 @@ export { useChapter, useHighlightAuthActions, useYVAuth, useBibleClient };
           'BibleReader components must be used within BibleReader.Root',
           'youversion-platform:reader:font-size',
         ],
+      },
+      {
+        label: 'Separator',
+        source: `import { Separator } from '@youversion/platform-react-ui';\nexport { Separator };\n`,
+        present: ['yv-sdk-components', 'scrollbar-hide'],
       },
     ],
     fullBarrel: {
@@ -459,9 +459,7 @@ async function runPackageCheck(check) {
     treeShaking: false,
   });
   const probeSentinels = check.narrow.probe ?? check.narrow.absent;
-  const shakeProbeHits = probeSentinels.filter((sentinel) =>
-    withoutShake.text.includes(sentinel),
-  );
+  const shakeProbeHits = probeSentinels.filter((sentinel) => withoutShake.text.includes(sentinel));
   const probePass = shakeProbeHits.length === probeSentinels.length;
   rows.push({
     kind: 'probe',

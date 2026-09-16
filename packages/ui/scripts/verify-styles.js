@@ -3,8 +3,11 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stripLayerBlocks } from './strip-layer-blocks.js';
 
-const dist = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
+const uiRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const dist = resolve(uiRoot, 'dist');
 const errors = [];
+const packageJson = JSON.parse(readFileSync(resolve(uiRoot, 'package.json'), 'utf8'));
+const publicCssExport = packageJson.exports?.['./styles.css'];
 
 const chromeCssPath = resolve(dist, 'chrome.css');
 const chromeCss = existsSync(chromeCssPath) ? readFileSync(chromeCssPath, 'utf-8') : '';
@@ -46,10 +49,10 @@ if (!readerCss.trim()) {
   errors.push('dist/bible-reader.css is missing or empty — did build:css run?');
 }
 
-const publicCssPath = resolve(dist, 'styles.css');
+const publicCssPath = typeof publicCssExport === 'string' ? resolve(uiRoot, publicCssExport) : '';
 const publicCss = existsSync(publicCssPath) ? readFileSync(publicCssPath, 'utf-8') : '';
 if (!publicCss.trim()) {
-  errors.push('dist/styles.css is missing or empty — did write-public-styles run?');
+  errors.push('the public ./styles.css export is missing or empty — did build:css run?');
 } else {
   if (!publicCss.includes('scrollbar-hide')) {
     errors.push('dist/styles.css missing full utility sheet');

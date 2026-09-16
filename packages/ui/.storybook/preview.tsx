@@ -3,7 +3,6 @@ import type { Preview, ReactRenderer } from '@storybook/react-vite';
 import type { PartialStoryFn, StoryContext } from 'storybook/internal/csf';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { YouVersionProvider } from '../src/components/YouVersionProvider';
-import { YvComponentStyles } from '../src/lib/yv-styles-components';
 import { globalHandlers } from '../src/test/mocks/handlers';
 import { StorybookEnvCheck } from '../src/test/StorybookEnvCheck';
 
@@ -11,15 +10,6 @@ function getTheme(value: string | undefined): 'light' | 'dark' | 'system' {
   if (value === 'dark') return 'dark';
   if (value === 'system') return 'system';
   return 'light';
-}
-
-function StoryWithSdkSheets({ children }: { children: React.ReactNode }): React.ReactElement {
-  return (
-    <>
-      <YvComponentStyles />
-      {children}
-    </>
-  );
 }
 
 const THEME_BACKGROUNDS = {
@@ -90,9 +80,7 @@ const preview: Preview = {
               locale={locale}
               theme={getTheme(context.globals.theme)}
             >
-              <StoryWithSdkSheets>
-                <Story />
-              </StoryWithSdkSheets>
+              <Story />
             </YouVersionProvider>
           </StorybookEnvCheck>
         );
@@ -106,9 +94,7 @@ const preview: Preview = {
             locale={locale}
             theme={getTheme(context.globals.theme)}
           >
-            <StoryWithSdkSheets>
-              <Story />
-            </StoryWithSdkSheets>
+            <Story />
           </YouVersionProvider>
         </StorybookEnvCheck>
       );

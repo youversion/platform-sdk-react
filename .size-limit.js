@@ -46,6 +46,13 @@ export default [
     ignore: ['react', 'react-dom', 'react/jsx-runtime', '@tanstack/react-query'],
   },
   {
+    name: 'ui / Separator only',
+    path: 'packages/ui/dist/index.js',
+    import: '{ Separator }',
+    limit: '19 KB',
+    ignore: ['react', 'react-dom', 'react/jsx-runtime', '@tanstack/react-query'],
+  },
+  {
     name: 'ui / full barrel',
     path: 'packages/ui/dist/index.js',
     limit: '175 KB',

@@ -1261,102 +1261,105 @@ export function BibleThemeSettingsContent({
 }: BibleThemeSettingsContentProps): ReactElement {
   const { t } = useTranslation(undefined, { i18n });
   return (
-    <div data-yv-sdk data-yv-theme={theme} className="yv:flex yv:flex-col yv:gap-4 yv:p-4">
-      <div className="yv:flex yv:justify-between yv:items-stretch yv:gap-4">
-        <div className="yv:flex yv:flex-1">
+    <>
+      <YvComponentStyles />
+      <div data-yv-sdk data-yv-theme={theme} className="yv:flex yv:flex-col yv:gap-4 yv:p-4">
+        <div className="yv:flex yv:justify-between yv:items-stretch yv:gap-4">
+          <div className="yv:flex yv:flex-1">
+            <Button
+              className="yv:flex-1 yv:text-xs yv:text-black yv:dark:text-muted-foreground yv:rounded-l-[8px] yv:rounded-r-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
+              onClick={onFontDecreased}
+              size="lg"
+              variant="secondary"
+              data-testid="decrease-font-size"
+              disabled={fontSize <= MIN_FONT_SIZE}
+              aria-disabled={fontSize <= MIN_FONT_SIZE}
+              aria-label={t('decreaseFontSizeAriaLabel')}
+            >
+              A
+            </Button>
+            <Button
+              className="yv:flex-1 yv:text-3xl yv:text-black yv:dark:text-muted-foreground yv:rounded-r-[8px] yv:rounded-l-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
+              onClick={onFontIncreased}
+              size="lg"
+              variant="secondary"
+              data-testid="increase-font-size"
+              disabled={fontSize >= MAX_FONT_SIZE}
+              aria-disabled={fontSize >= MAX_FONT_SIZE}
+              aria-label={t('increaseFontSizeAriaLabel')}
+            >
+              A
+            </Button>
+          </div>
           <Button
-            className="yv:flex-1 yv:text-xs yv:text-black yv:dark:text-muted-foreground yv:rounded-l-[8px] yv:rounded-r-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
-            onClick={onFontDecreased}
-            size="lg"
+            className="yv:h-auto yv:border yv:border-white yv:dark:border-border yv:rounded-[8px]"
             variant="secondary"
-            data-testid="decrease-font-size"
-            disabled={fontSize <= MIN_FONT_SIZE}
-            aria-disabled={fontSize <= MIN_FONT_SIZE}
-            aria-label={t('decreaseFontSizeAriaLabel')}
+            data-testid="line-spacing"
+            onClick={onChangeLineSpacing}
+            aria-label={t('changeLineSpacingAriaLabel')}
           >
-            A
-          </Button>
-          <Button
-            className="yv:flex-1 yv:text-3xl yv:text-black yv:dark:text-muted-foreground yv:rounded-r-[8px] yv:rounded-l-none yv:border yv:border-white yv:dark:border-border yv:h-auto yv:py-2"
-            onClick={onFontIncreased}
-            size="lg"
-            variant="secondary"
-            data-testid="increase-font-size"
-            disabled={fontSize >= MAX_FONT_SIZE}
-            aria-disabled={fontSize >= MAX_FONT_SIZE}
-            aria-label={t('increaseFontSizeAriaLabel')}
-          >
-            A
+            <div className={cn('yv:flex yv:flex-col', lineSpacingButtonGapClass(lineSpacing))}>
+              <span className="yv:h-0.5 yv:w-8 yv:bg-black yv:dark:bg-current"></span>
+              <span className="yv:h-0.5 yv:w-8 yv:bg-black yv:dark:bg-current"></span>
+              <span className="yv:h-0.5 yv:w-8 yv:bg-black yv:dark:bg-current"></span>
+            </div>
           </Button>
         </div>
-        <Button
-          className="yv:h-auto yv:border yv:border-white yv:dark:border-border yv:rounded-[8px]"
-          variant="secondary"
-          data-testid="line-spacing"
-          onClick={onChangeLineSpacing}
-          aria-label={t('changeLineSpacingAriaLabel')}
-        >
-          <div className={cn('yv:flex yv:flex-col', lineSpacingButtonGapClass(lineSpacing))}>
-            <span className="yv:h-0.5 yv:w-8 yv:bg-black yv:dark:bg-current"></span>
-            <span className="yv:h-0.5 yv:w-8 yv:bg-black yv:dark:bg-current"></span>
-            <span className="yv:h-0.5 yv:w-8 yv:bg-black yv:dark:bg-current"></span>
-          </div>
-        </Button>
-      </div>
 
-      <div className="yv:grid yv:grid-cols-2">
-        <Button
-          className={cn(
-            'yv:group yv:dark:bg-muted yv:rounded-r-none yv:border-r-0.5 yv:dark:border-border yv:rounded-l-[8px] yv:h-auto',
-            fontFamily === INTER_FONT
-              ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
-              : '',
-          )}
-          onClick={() => onFontSelected(INTER_FONT)}
-          variant="outline"
-        >
-          <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
-            <span
-              className={cn(
-                'yv:text-xs yv:text-muted-foreground',
-                fontFamily === INTER_FONT
-                  ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
-                  : '',
-              )}
-            >
-              {t('fontLabel')}
-            </span>
-            <span className="yv:sm:text-xl yv:text-base">{t('interFontName')}</span>
-          </div>
-        </Button>
-        <Button
-          className={cn(
-            'yv:group yv:dark:bg-muted yv:border-l-0.5 yv:rounded-l-none yv:rounded-r-[8px] yv:h-auto',
-            fontFamily === UNTITLED_SERIF_FONT
-              ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
-              : '',
-          )}
-          onClick={() => onFontSelected(UNTITLED_SERIF_FONT)}
-          variant="outline"
-        >
-          <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
-            <span
-              className={cn(
-                'yv:text-xs yv:text-muted-foreground',
-                fontFamily === UNTITLED_SERIF_FONT
-                  ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
-                  : '',
-              )}
-            >
-              {t('fontLabel')}
-            </span>
-            <span className="yv:sm:text-xl yv:text-base yv:font-serif">
-              {t('untitledSerifFontName')}
-            </span>
-          </div>
-        </Button>
+        <div className="yv:grid yv:grid-cols-2">
+          <Button
+            className={cn(
+              'yv:group yv:dark:bg-muted yv:rounded-r-none yv:border-r-0.5 yv:dark:border-border yv:rounded-l-[8px] yv:h-auto',
+              fontFamily === INTER_FONT
+                ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
+                : '',
+            )}
+            onClick={() => onFontSelected(INTER_FONT)}
+            variant="outline"
+          >
+            <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
+              <span
+                className={cn(
+                  'yv:text-xs yv:text-muted-foreground',
+                  fontFamily === INTER_FONT
+                    ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
+                    : '',
+                )}
+              >
+                {t('fontLabel')}
+              </span>
+              <span className="yv:sm:text-xl yv:text-base">{t('interFontName')}</span>
+            </div>
+          </Button>
+          <Button
+            className={cn(
+              'yv:group yv:dark:bg-muted yv:border-l-0.5 yv:rounded-l-none yv:rounded-r-[8px] yv:h-auto',
+              fontFamily === UNTITLED_SERIF_FONT
+                ? 'yv:bg-primary yv:border-primary yv:dark:bg-inherit yv:text-primary-foreground yv:hover:text-primary-foreground yv:hover:bg-primary/80'
+                : '',
+            )}
+            onClick={() => onFontSelected(UNTITLED_SERIF_FONT)}
+            variant="outline"
+          >
+            <div className="yv:flex yv:flex-col yv:w-full yv:items-start">
+              <span
+                className={cn(
+                  'yv:text-xs yv:text-muted-foreground',
+                  fontFamily === UNTITLED_SERIF_FONT
+                    ? 'yv:text-muted yv:dark:text-muted-foreground yv:group-hover:text-muted'
+                    : '',
+                )}
+              >
+                {t('fontLabel')}
+              </span>
+              <span className="yv:sm:text-xl yv:text-base yv:font-serif">
+                {t('untitledSerifFontName')}
+              </span>
+            </div>
+          </Button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

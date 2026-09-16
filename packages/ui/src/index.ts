@@ -32,6 +32,8 @@ export {
   YouVersionAPIUsers,
   YouVersionPlatformConfiguration,
   YouVersionUserInfo,
+  __resetAuthCallbackDedupeForTests,
+  __resetTokenRefreshDedupeForTests,
   buildDataExchangeUrl,
   buildSdkVersionHeaderValue,
   clearStorage,
