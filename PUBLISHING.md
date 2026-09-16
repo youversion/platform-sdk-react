@@ -61,7 +61,7 @@ The workflow keeps `NPM_TOKEN` as a fallback for any package where Trusted Publi
 
 ## CDN Stylesheet (bible.css)
 
-When the Release workflow publishes a new `@youversion/platform-react-ui` version, it also uploads the package's compiled stylesheet (`packages/ui/dist/tailwind.css`) to the YouVersion static-asset CDN, where it is served at:
+When the Release workflow publishes a new `@youversion/platform-react-ui` version, it also uploads the stylesheet selected by the package's public `./styles.css` export to the YouVersion static-asset CDN, where it is served at:
 
 ```
 https://cdn.youversion.com/platform/<major>/bible.css

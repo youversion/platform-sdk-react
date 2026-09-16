@@ -4,15 +4,14 @@
 // Published builds must report the real version (`ReactSDK=2.2.0`), never the
 // `-dev` suffix used for internal YouVersion dev traffic. `src/version.ts`
 // compiles to `isPublishBuild ? version : `${version}-dev``; a stamped build
-// folds `isPublishBuild` to `true`, a dev build to `false`. `@youversion/
-// platform-react-ui` still bundles core through `noExternal`, so the same
-// constant appears in its output until that bundling changes.
+// folds `isPublishBuild` to `true`, a dev build to `false`. UI keeps core
+// external, so checking core verifies the one runtime copy used by both packages.
 //
 // This runs from each package's `prepublishOnly`, so `npm publish` aborts if the
 // artifact would tag traffic as `-dev`. (Grepping for `-dev` directly would
 // false-positive: the ternary's dead branch keeps the suffix in every build.)
 //
-// Usage: node scripts/check-sdk-version-stamp.mjs <core|ui>
+// Usage: node scripts/check-sdk-version-stamp.mjs core
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -22,7 +21,6 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const PACKAGE_DIRS = {
   core: 'packages/core',
-  ui: 'packages/ui',
 };
 
 const pkg = process.argv[2];
