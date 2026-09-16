@@ -12,21 +12,20 @@ function pathParam(value: string | readonly string[] | undefined): string | unde
   return parts.concat(value)[0];
 }
 
+function mockAvatar() {
+  return new HttpResponse(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="#767676"/></svg>',
+    { headers: { 'Content-Type': 'image/svg+xml' } },
+  );
+}
+
 export const globalHandlers = [
-  // React 19 tracks precedence stylesheets with a promise. Keep Storybook
-  // independent of the Fonts API so a failed request cannot surface as an
-  // unhandled stylesheet rejection after the story assertions pass.
-  http.get('*/v1/fonts/1/stylesheet', () => {
+  // Keep Storybook deterministic and let React's stylesheet resource settle successfully.
+  http.get('*/v1/fonts/:id/stylesheet', () => {
     return new HttpResponse('', { headers: { 'Content-Type': 'text/css' } });
   }),
-
-  http.get('https://notion-avatar.app/image/avatar-1.jpg', () => {
-    return new HttpResponse(
-      '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#737373"/></svg>',
-      { headers: { 'Content-Type': 'image/svg+xml' } },
-    );
-  }),
-
+  http.get('https://notion-avatar.app/*', mockAvatar),
+  http.get('https://example.com/avatar/*', mockAvatar),
   // Organization (publisher) lookup for the version picker
   http.get('*/v1/organizations/:id', ({ params }) => {
     const id = pathParam(params.id);

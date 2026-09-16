@@ -30,6 +30,30 @@ initialize({
 
 const preview: Preview = {
   globalTypes: {
+    locale: {
+      description: 'Provider UI locale',
+      toolbar: {
+        title: 'Locale',
+        icon: 'globe',
+        items: [
+          { value: 'en', title: 'English' },
+          { value: 'ar', title: 'Arabic' },
+        ],
+        dynamicTitle: true,
+      },
+    },
+    interfaceDirection: {
+      description: 'Provider interface direction',
+      toolbar: {
+        title: 'Interface direction',
+        icon: 'transfer',
+        items: [
+          { value: 'ltr', title: 'LTR' },
+          { value: 'rtl', title: 'RTL' },
+        ],
+        dynamicTitle: true,
+      },
+    },
     theme: {
       description: 'Provider theme',
       toolbar: {
@@ -45,6 +69,8 @@ const preview: Preview = {
     },
   },
   initialGlobals: {
+    locale: 'en',
+    interfaceDirection: 'ltr',
     theme: 'light',
   },
   decorators: [
@@ -64,7 +90,9 @@ const preview: Preview = {
 
       const includeAuth = context.parameters.includeAuth !== false;
       const locale =
-        typeof context.parameters.locale === 'string' ? context.parameters.locale : undefined;
+        typeof context.parameters.locale === 'string'
+          ? context.parameters.locale
+          : context.globals.locale;
       const requiredEnvVars = includeAuth
         ? ['STORYBOOK_YOUVERSION_APP_KEY', 'STORYBOOK_AUTH_REDIRECT_URL']
         : ['STORYBOOK_YOUVERSION_APP_KEY'];
@@ -79,6 +107,7 @@ const preview: Preview = {
               includeAuth={true}
               locale={locale}
               theme={getTheme(context.globals.theme)}
+              direction={context.globals.interfaceDirection}
             >
               <Story />
             </YouVersionProvider>
@@ -93,6 +122,7 @@ const preview: Preview = {
             apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
             locale={locale}
             theme={getTheme(context.globals.theme)}
+            direction={context.globals.interfaceDirection}
           >
             <Story />
           </YouVersionProvider>

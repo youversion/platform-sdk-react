@@ -34,7 +34,7 @@ import {
   useState,
 } from 'react';
 import { cn } from '@/lib/utils';
-import { ArrowLeftIcon } from './icons/arrow-left';
+import { ChevronBackwardIcon } from './icons/chevron-backward';
 import { GlobeIcon } from './icons/globe';
 import { LoaderIcon } from './icons/loader';
 import { SearchIcon } from './icons/search';
@@ -44,6 +44,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from './ui/input-group';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from './ui/item';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { useInterfaceDirection } from '@/lib/direction';
 
 export const RECENT_VERSIONS_KEY = 'youversion-platform:picker:recent-versions';
 const MAX_RECENT_VERSIONS = 3;
@@ -129,7 +130,11 @@ function filterLanguagesBySearch(languages: LanguageListItem[], query: string): 
 function VersionPublisherName({ name }: { name?: string | null }) {
   if (!name) return null;
 
-  return <ItemDescription className="yv:line-clamp-1 yv:text-left">{name}</ItemDescription>;
+  return (
+    <ItemDescription className="yv:line-clamp-1 yv:text-start">
+      <bdi dir="auto">{name}</bdi>
+    </ItemDescription>
+  );
 }
 
 // Displays a version abbreviation (e.g., "NIV", "KJV2") centered within a fixed-size icon.
@@ -199,6 +204,7 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
   return (
     <div
       ref={containerRef}
+      dir="auto"
       className="yv:flex yv:flex-col yv:w-full yv:h-full yv:px-1.5 yv:font-serif! yv:[&_*]:font-serif! yv:leading-[1.03] yv:font-bold yv:text-foreground yv:items-center yv:justify-center"
     >
       <div ref={prefixRef} className="yv:whitespace-nowrap" style={{ fontSize: `${prefixSize}px` }}>
@@ -512,6 +518,10 @@ function Root({
   );
 }
 
+/**
+ * Props for the version picker trigger. Interface direction owns the rendered
+ * trigger's `dir`; a consumer-supplied `dir` is intentionally ignored.
+ */
 export type BibleVersionPickerTriggerProps = Omit<
   React.ComponentProps<typeof PopoverTrigger>,
   'children'
@@ -523,6 +533,7 @@ export type BibleVersionPickerTriggerProps = Omit<
 
 function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTriggerProps) {
   const { t } = useTranslation(undefined, { i18n });
+  const interfaceDirection = useInterfaceDirection();
   const { versionId, selectedLanguageId, background, onVersionPickerPress } =
     useBibleVersionPickerContext();
   const { version, loading } = useVersion(versionId);
@@ -532,7 +543,7 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
       ? children({ version, loading })
       : children || (
           <Button variant={'secondary'} className="yv:cursor-pointer yv:font-bold yv:text-base">
-            {version?.localized_abbreviation || t('select')}
+            <bdi dir="auto">{version?.localized_abbreviation || t('select')}</bdi>
           </Button>
         );
 
@@ -549,19 +560,33 @@ function Trigger({ asChild = true, children, ...props }: BibleVersionPickerTrigg
         'data-yv-sdk': true,
         'data-yv-theme': background,
         ...props,
+        dir: interfaceDirection,
         onClick: handlePress,
       });
     }
 
     return (
-      <button type="button" data-yv-sdk data-yv-theme={background} {...props} onClick={handlePress}>
+      <button
+        type="button"
+        data-yv-sdk
+        data-yv-theme={background}
+        {...props}
+        dir={interfaceDirection}
+        onClick={handlePress}
+      >
         {content}
       </button>
     );
   }
 
   return (
-    <PopoverTrigger data-yv-sdk data-yv-theme={background} asChild={asChild} {...props}>
+    <PopoverTrigger
+      data-yv-sdk
+      data-yv-theme={background}
+      asChild={asChild}
+      {...props}
+      dir={interfaceDirection}
+    >
       {content}
     </PopoverTrigger>
   );
@@ -584,6 +609,7 @@ export function BibleVersionPickerLanguageTrigger({
   ...props
 }: BibleVersionPickerLanguageTriggerProps): React.ReactElement {
   const { t } = useTranslation(undefined, { i18n });
+  const interfaceDirection = useInterfaceDirection();
   const {
     filteredVersions,
     filteredRecentVersions,
@@ -605,17 +631,18 @@ export function BibleVersionPickerLanguageTrigger({
     <Button
       aria-label={ariaLabel ?? t('selectLanguageAriaLabel')}
       className={cn(
-        'yv:ml-auto yv:bg-card yv:border yv:border-transparent yv:hover:bg-card yv:hover:border-border yv:max-w-40',
+        'yv:ms-auto yv:bg-card yv:border yv:border-transparent yv:hover:bg-card yv:hover:border-border yv:max-w-40',
         className,
       )}
       size={size}
       onClick={handleClick}
       variant={variant}
       {...props}
+      dir={interfaceDirection}
     >
       <GlobeIcon className="yv:size-4" />
       <span className="yv:text-sm yv:font-medium yv:truncate">
-        {selectedLanguage?.display_names?.en || selectedLanguage?.language}
+        <bdi dir="auto">{selectedLanguage?.display_names?.en || selectedLanguage?.language}</bdi>
       </span>
       <Badge
         variant="secondary"
@@ -633,6 +660,7 @@ export function BibleVersionPickerLanguageTrigger({
 
 function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) {
   const { t } = useTranslation(undefined, { i18n });
+  const interfaceDirection = useInterfaceDirection();
   const {
     searchQuery,
     setSearchQuery,
@@ -702,7 +730,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
               size="icon"
               className="yv:w-6 yv:h-6 yv:text-muted-foreground"
             >
-              <ArrowLeftIcon className="yv:size-5" />
+              <ChevronBackwardIcon className="yv:size-5" />
               <span className="yv:sr-only">{t('backToBibleVersionsAriaLabel')}</span>
             </Button>
           ) : null
@@ -747,6 +775,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
       className="yv:overflow-y-auto yv:h-full yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center"
       data-yv-sdk
       data-yv-theme={background}
+      dir={interfaceDirection}
     >
       {/* Versions View */}
       <div className="yv:flex-1 yv:overflow-y-auto yv:py-2">
@@ -783,8 +812,8 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
                     </ItemMedia>
                     <ItemContent>
                       <VersionPublisherName name={publisherName(version.organization_id)} />
-                      <ItemTitle className="yv:line-clamp-2 yv:text-left">
-                        {version.title}
+                      <ItemTitle className="yv:line-clamp-2 yv:text-start">
+                        <bdi dir="auto">{version.title}</bdi>
                       </ItemTitle>
                     </ItemContent>
                   </button>
@@ -823,7 +852,9 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
                   </ItemMedia>
                   <ItemContent>
                     <VersionPublisherName name={publisherName(version.organization_id)} />
-                    <ItemTitle className="yv:line-clamp-2 yv:text-left">{version.title}</ItemTitle>
+                    <ItemTitle className="yv:line-clamp-2 yv:text-start">
+                      <bdi dir="auto">{version.title}</bdi>
+                    </ItemTitle>
                   </ItemContent>
                 </button>
               </Item>
@@ -848,6 +879,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
               tabIndex={1}
               type="text"
               placeholder={t('searchPlaceholder')}
+              dir="auto"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             ></InputGroupInput>
@@ -899,10 +931,10 @@ function LanguageRow({
       >
         <ItemContent className="yv:flex yv:flex-row yv:justify-between yv:items-center">
           <ItemTitle className="yv:text-start yv:line-clamp-2 yv:truncate yv:min-w-0 yv:max-w-2/3 yv:flex-1">
-            {language.display_names?.en}
+            <bdi dir="auto">{language.display_names?.en}</bdi>
           </ItemTitle>
           <ItemDescription className="yv:text-end yv:shrink-0 yv:max-w-1/3">
-            {language.display_names?.[language.id]}
+            <bdi dir="auto">{language.display_names?.[language.id]}</bdi>
           </ItemDescription>
         </ItemContent>
       </Button>
@@ -921,6 +953,7 @@ export function BibleLanguagePickerContent({
   onRequestClose,
 }: BibleLanguagePickerContentProps = {}): React.ReactElement {
   const { t } = useTranslation(undefined, { i18n });
+  const interfaceDirection = useInterfaceDirection();
   const {
     totalLanguages,
     selectedLanguageId,
@@ -960,6 +993,7 @@ export function BibleLanguagePickerContent({
       className="yv:h-full yv:min-h-0 yv:overflow-hidden yv:flex yv:flex-col"
       data-yv-sdk
       data-yv-theme={background}
+      dir={interfaceDirection}
       data-open={open}
     >
       {isSearching ? (
@@ -988,6 +1022,7 @@ export function BibleLanguagePickerContent({
       ) : (
         <Tabs
           className="yv:mt-4 yv:gap-4 yv:flex-1 yv:min-h-0 yv:flex yv:flex-col"
+          dir={interfaceDirection}
           value={languageTab}
           onValueChange={setLanguageTab}
         >
@@ -1050,6 +1085,7 @@ export function BibleLanguagePickerContent({
               tabIndex={1}
               type="text"
               placeholder={t('searchPlaceholder')}
+              dir="auto"
               value={languageSearchQuery}
               onChange={(e) => setLanguageSearchQuery(e.target.value)}
             />
