@@ -133,6 +133,29 @@ describe('UI YouVersionProvider', () => {
     },
   );
 
+  it('applies explicit and locale-derived direction to the missing-app-key alert', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const { rerender } = render(
+      <YouVersionProvider appKey="" locale="en" direction="rtl">
+        <div />
+      </YouVersionProvider>,
+    );
+
+    expect(screen.getByRole('alert')).toHaveAttribute('dir', 'rtl');
+
+    rerender(
+      <YouVersionProvider appKey="" locale="ar">
+        <div />
+      </YouVersionProvider>,
+    );
+
+    expect(screen.getByRole('alert')).toHaveAttribute('dir', 'rtl');
+
+    await i18n.changeLanguage('en');
+    errorSpy.mockRestore();
+  });
+
   it('uses locale instead of the browser language', async () => {
     vi.stubGlobal('navigator', {
       language: 'en-US',

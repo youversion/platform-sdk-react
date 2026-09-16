@@ -101,7 +101,7 @@ export function YouVersionProvider({
     return (
       <>
         <YvStyles />
-        <MissingAppKey theme={resolveTheme(props.theme)} />
+        <MissingAppKey theme={resolveTheme(props.theme)} direction={interfaceDirection} />
       </>
     );
   }
