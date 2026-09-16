@@ -29,7 +29,12 @@ export { SearchClient, type SearchVersesOptions } from './search';
 export { getSuggestedQueries, getTrendingQueries } from './search-queries';
 export { searchVerses } from './search-verses';
 export { searchTopics } from './search-topics';
-export { isValidStructuralUsfmReference } from './schemas/search';
+export {
+  MAX_SEARCH_QUERY_GRAPHEMES,
+  clampSearchText,
+  isValidStructuralUsfmReference,
+  parseSearchLanguageRange,
+} from './schemas/search';
 export { parseUsfmReference, type UsfmReference } from './usfm-reference';
 export { OrganizationsClient } from './organizations';
 export {

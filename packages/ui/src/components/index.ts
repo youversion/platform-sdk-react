@@ -24,6 +24,7 @@ export {
   type BibleThemeSettingsSnapshot,
   type BibleThemeSettingsValues,
 } from './bible-reader';
+export { BibleReaderNavigation, type BibleReaderReference } from './bible-reader-navigation';
 export {
   BibleVersionPicker,
   BibleLanguagePickerContent,

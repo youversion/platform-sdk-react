@@ -1,14 +1,13 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react';
+import type { BibleReaderNavigationRequest } from '@/components/bible-reader-navigation';
 
 export const SEARCH_VERSE_FOCUS_HOLD_MS = 1500;
 
-export type VerseFocusRequest = Readonly<{
-  /** Monotonic. Re-selecting the same verse must re-trigger, like `clearSelectionSignal`. */
-  seq: number;
-  book: string;
-  chapter: string;
-  verses: readonly number[];
-}>;
+export type VerseFocusRequest = BibleReaderNavigationRequest &
+  Readonly<{
+    /** Monotonic. Re-selecting the same verse must re-trigger, like `clearSelectionSignal`. */
+    seq: number;
+  }>;
 
 function paintFocus(container: HTMLElement, verses: readonly number[]): void {
   container.setAttribute('data-yv-verse-focus', '');
@@ -40,12 +39,12 @@ function overflowAncestor(start: HTMLElement): HTMLElement {
     }
     node = node.parentElement;
   }
-  return start;
+  return document.documentElement;
 }
 
 /**
  * Holds a focus request until `renderedReference` equals
- * `${request.book}.${request.chapter}`, then scrolls, paints, and starts the
+ * the requested passage, then scrolls, paints, and starts the
  * hold. A newer `seq` cancels the pending timer. Paint adds `yv-v-focused` to
  * `.yv-v[v="N"]` and `data-yv-verse-focus` to the renderer root.
  */
@@ -55,64 +54,97 @@ export function useTransientVerseFocus(args: {
   readonly containerRef: RefObject<HTMLElement | null>;
 }): void {
   const { request, renderedReference, containerRef } = args;
-  const appliedSeqRef = useRef<number | null>(null);
+  const handledSeq = useRef<number | null>(null);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
-    if (request === null || container === null) {
+    if (request === null || container === null || handledSeq.current === request.seq) {
       return;
     }
-    if (appliedSeqRef.current === request.seq) {
+    const reference = request.showsFullChapter
+      ? `${request.book}.${request.chapter}`
+      : request.passageId;
+    if (renderedReference !== reference) {
       return;
     }
-    if (renderedReference !== `${request.book}.${request.chapter}`) {
-      return;
-    }
-
-    appliedSeqRef.current = request.seq;
 
     const verses = request.verses;
-    if (verses.length === 0) {
-      return;
-    }
-
     const first = verses[0];
     const target = container.querySelector(`.yv-v[v="${String(first)}"]`);
-    if (target instanceof HTMLElement) {
-      target.scrollIntoView({
-        block: 'center',
-        behavior: prefersReducedMotion() ? 'auto' : 'smooth',
-      });
-    }
-    paintFocus(container, verses);
-
+    const scroller = overflowAncestor(container);
+    const scrollEvents = scroller === document.documentElement ? document : scroller;
+    let waiting = false;
     let cleared = false;
+    let hold: ReturnType<typeof setTimeout> | undefined;
+    let settle: ReturnType<typeof setTimeout> | undefined;
+    let fallback: ReturnType<typeof setTimeout> | undefined;
     const clear = (): void => {
-      if (cleared) return;
       cleared = true;
+      waiting = false;
+      globalThis.clearTimeout(hold);
+      globalThis.clearTimeout(settle);
+      globalThis.clearTimeout(fallback);
       clearFocusPaint(container);
     };
-
-    const hold = globalThis.setTimeout(clear, SEARCH_VERSE_FOCUS_HOLD_MS);
+    const landed = (): void => {
+      handledSeq.current = request.seq;
+      waiting = false;
+      globalThis.clearTimeout(settle);
+      globalThis.clearTimeout(fallback);
+      if (cleared || !request.shouldFocus || verses.length === 0) return;
+      paintFocus(container, verses);
+      hold = globalThis.setTimeout(clear, SEARCH_VERSE_FOCUS_HOLD_MS);
+    };
+    const onScroll = (): void => {
+      if (!waiting) return;
+      globalThis.clearTimeout(settle);
+      settle = globalThis.setTimeout(landed, 100);
+    };
+    const onScrollEnd = (): void => {
+      if (waiting) landed();
+    };
+    scrollEvents.addEventListener('scroll', onScroll);
+    scrollEvents.addEventListener('scrollend', onScrollEnd);
+    // User intent cancels both pending and painted focus. Programmatic scroll
+    // events only settle navigation; they cannot masquerade as user input.
     const onInteract = (): void => {
+      handledSeq.current = request.seq;
       clear();
     };
-    const scroller = overflowAncestor(container);
-    const attachId = globalThis.requestAnimationFrame(() => {
-      container.addEventListener('pointerdown', onInteract);
-      container.addEventListener('keydown', onInteract);
-      scroller.addEventListener('scroll', onInteract);
+    for (const event of ['pointerdown', 'keydown', 'wheel', 'touchstart']) {
+      scroller.addEventListener(event, onInteract, { passive: true });
+    }
+    const frame = globalThis.requestAnimationFrame(() => {
+      if (cleared) return;
+      if (!request.scrollsToVerse) {
+        landed();
+        return;
+      }
+      const reducedMotion = prefersReducedMotion();
+      waiting = true;
+      const destination =
+        request.showsFullChapter && target instanceof HTMLElement ? target : container;
+      destination.scrollIntoView({
+        block: request.showsFullChapter && target instanceof HTMLElement ? 'center' : 'start',
+        behavior: reducedMotion ? 'auto' : 'smooth',
+      });
+      if (reducedMotion) {
+        landed();
+        return;
+      }
+      // scrollend is not universal, and a no-op scroll emits no events.
+      settle = globalThis.setTimeout(landed, 100);
+      fallback = globalThis.setTimeout(landed, 2000);
     });
 
     return () => {
-      globalThis.clearTimeout(hold);
-      globalThis.cancelAnimationFrame(attachId);
-      container.removeEventListener('pointerdown', onInteract);
-      container.removeEventListener('keydown', onInteract);
-      scroller.removeEventListener('scroll', onInteract);
-      if (!cleared) {
-        clearFocusPaint(container);
+      globalThis.cancelAnimationFrame(frame);
+      scrollEvents.removeEventListener('scroll', onScroll);
+      scrollEvents.removeEventListener('scrollend', onScrollEnd);
+      for (const event of ['pointerdown', 'keydown', 'wheel', 'touchstart']) {
+        scroller.removeEventListener(event, onInteract);
       }
+      clear();
     };
   }, [request, renderedReference, containerRef]);
 }

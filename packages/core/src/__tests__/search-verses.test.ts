@@ -2,7 +2,13 @@ import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { ApiClient } from '../client';
 import { SearchClient } from '../search';
-import { isValidStructuralUsfmReference, parseSearchLanguageRange } from '../schemas/search';
+import {
+  MAX_SEARCH_QUERY_GRAPHEMES,
+  SearchTextQuerySchema,
+  clampSearchText,
+  isValidStructuralUsfmReference,
+  parseSearchLanguageRange,
+} from '../schemas/search';
 import { server } from './setup';
 
 const apiHost = process.env.YVP_API_HOST;
@@ -53,6 +59,19 @@ describe('SearchClient.searchVerses', () => {
   it('rejects language ranges with a 9-letter primary subtag or 9-character extension', () => {
     expect(() => parseSearchLanguageRange('abcdefghi')).toThrow(/Language range must/);
     expect(() => parseSearchLanguageRange('en-abcdefghi')).toThrow(/Language range must/);
+  });
+
+  it('validates and clamps search text by grapheme clusters', () => {
+    const combiningCluster = 'e\u0301';
+    const combiningBoundary = `${'a'.repeat(MAX_SEARCH_QUERY_GRAPHEMES - 1)}${combiningCluster}`;
+    const surrogateBoundary = `${'a'.repeat(MAX_SEARCH_QUERY_GRAPHEMES - 1)}😀`;
+
+    expect(SearchTextQuerySchema.parse(combiningBoundary)).toBe(combiningBoundary);
+    expect(SearchTextQuerySchema.parse(surrogateBoundary)).toBe(surrogateBoundary);
+    expect(() => SearchTextQuerySchema.parse(`${combiningBoundary}z`)).toThrow();
+    expect(() => SearchTextQuerySchema.parse(`${surrogateBoundary}z`)).toThrow();
+    expect(clampSearchText(`${combiningBoundary}z`)).toBe(combiningBoundary);
+    expect(clampSearchText(`${surrogateBoundary}z`)).toBe(surrogateBoundary);
   });
 
   it('maps wire reference to SDK id and metadata fields', async () => {

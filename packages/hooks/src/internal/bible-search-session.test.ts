@@ -67,9 +67,15 @@ describe('clampSearchInput', () => {
     expect(clampSearchInput('love ')).toBe('love ');
   });
 
-  it('slices to 100 characters without trimming', () => {
+  it('clamps to 100 graphemes without trimming or splitting clusters', () => {
     const raw = `${'a'.repeat(MAX_SEARCH_QUERY_LENGTH)}bcd`;
     expect(clampSearchInput(raw)).toBe('a'.repeat(MAX_SEARCH_QUERY_LENGTH));
+
+    const combiningCluster = 'e\u0301';
+    expect(clampSearchInput(`${'a'.repeat(99)}${combiningCluster}z`)).toBe(
+      `${'a'.repeat(99)}${combiningCluster}`,
+    );
+    expect(clampSearchInput(`${'a'.repeat(99)}😀z`)).toBe(`${'a'.repeat(99)}😀`);
   });
 });
 
@@ -253,6 +259,7 @@ describe('queriesRequest and versesRequest', () => {
     expect(queriesRequest(browsing('love'), LOVE)).toEqual({ kind: 'suggest', query: LOVE });
     expect(queriesRequest(submitted('love'), LOVE)).toBeNull();
     expect(queriesRequest(browsing('loved'), null)).toBeNull();
+    expect(queriesRequest(browsing('loved'), LOVE)).toBeNull();
   });
 
   it('requests the first verse page, then the next token only while wantsMore', () => {
@@ -271,8 +278,10 @@ describe('queriesRequest and versesRequest', () => {
 });
 
 describe('projectVerses', () => {
-  it('parses hits and drops malformed ids', () => {
-    expect(projectVerses([{ id: 'JHN.3.16-18' }, { id: 'BAD' }, { id: 'JHN.3' }])).toEqual([
+  it('parses hits, drops malformed ids, and keeps only the first duplicate', () => {
+    expect(
+      projectVerses([{ id: 'JHN.3.16-18' }, { id: 'BAD' }, { id: 'JHN.3.16-18' }, { id: 'JHN.3' }]),
+    ).toEqual([
       { id: 'JHN.3.16-18', book: 'JHN', chapter: '3', verses: [16, 17, 18] },
       { id: 'JHN.3', book: 'JHN', chapter: '3', verses: [] },
     ]);
@@ -447,6 +456,19 @@ describe('deriveSearchPhase', () => {
       kind: 'results',
       verses: [john],
       nextPage: 'none',
+    });
+
+    const first = withPages(submitted('love'), ['JHN.3.16', 'JHN.3.16'], 'page-2');
+    const loadingSecond = searchSessionReducer(first, { type: 'loadMore' });
+    const duplicateAcrossPages = searchSessionReducer(loadingSecond, {
+      type: 'commitPage',
+      request: { query: LOVE, versionId: 111, pageToken: 'page-2' },
+      response: versesResponse(['JHN.3.16', 'ROM.8.28']),
+    });
+    expect(
+      deriveSearchPhase({ session: duplicateAcrossPages, settled: LOVE, ...idle }),
+    ).toMatchObject({
+      verses: [john, { id: 'ROM.8.28', book: 'ROM', chapter: '8', verses: [28] }],
     });
   });
 });

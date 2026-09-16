@@ -1,124 +1,160 @@
-/**
- * @vitest-environment jsdom
- */
 import { renderHook, act } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { type RefObject } from 'react';
+import { expect, it, vi } from 'vitest';
+import { StrictMode } from 'react';
 import {
   SEARCH_VERSE_FOCUS_HOLD_MS,
   useTransientVerseFocus,
   type VerseFocusRequest,
 } from './use-transient-verse-focus';
 
-function renderFocus(
-  request: VerseFocusRequest | null,
-  renderedReference: string,
-  container: HTMLElement,
-) {
-  const containerRef: RefObject<HTMLElement | null> = { current: container };
-  return renderHook(
-    (props: { request: VerseFocusRequest | null; renderedReference: string }) =>
-      useTransientVerseFocus({
-        request: props.request,
-        renderedReference: props.renderedReference,
-        containerRef,
-      }),
-    { initialProps: { request, renderedReference } },
+function setup() {
+  const scroller = document.createElement('div');
+  scroller.style.overflowY = 'auto';
+  const container = document.createElement('section');
+  container.innerHTML =
+    '<span class="yv-v" v="16"></span><span class="yv-v" v="17"></span><span class="yv-v" v="18"></span>';
+  const verse = container.querySelector<HTMLElement>('[v="16"]')!;
+  const scrollIntoView = vi.fn();
+  verse.scrollIntoView = scrollIntoView;
+  scroller.append(container);
+  document.body.append(scroller);
+  const request: VerseFocusRequest = {
+    seq: 1,
+    book: 'JHN',
+    chapter: '3',
+    verses: [16, 17],
+    versionId: 111,
+    passageId: 'JHN.3.16-17',
+    showsFullChapter: true,
+    scrollsToVerse: true,
+    shouldFocus: true,
+  };
+  const containerRef = { current: container };
+  const hook = renderHook(
+    (props: { request: VerseFocusRequest; renderedReference: string }) =>
+      useTransientVerseFocus({ ...props, containerRef }),
+    { initialProps: { request, renderedReference: 'JHN.1' }, wrapper: StrictMode },
   );
+  return {
+    ...hook,
+    scroller,
+    container,
+    verse,
+    request,
+    scrollIntoView,
+    dispose() {
+      hook.unmount();
+      scroller.remove();
+    },
+  };
 }
 
-describe('useTransientVerseFocus', () => {
-  let container: HTMLElement;
-  let verse: HTMLElement;
-  let scrollIntoView: ReturnType<typeof vi.fn>;
-
-  beforeEach(() => {
-    vi.useFakeTimers();
-    container = document.createElement('section');
-    container.setAttribute('data-slot', 'yv-bible-renderer');
-    verse = document.createElement('span');
-    verse.className = 'yv-v';
-    verse.setAttribute('v', '16');
-    scrollIntoView = vi.fn();
-    verse.scrollIntoView = scrollIntoView;
-    container.append(verse);
-    document.body.append(container);
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-    container.remove();
-  });
-
-  it('waits for the destination chapter, then paints, scrolls, and clears after the hold', () => {
-    const request: VerseFocusRequest = {
-      seq: 1,
-      book: 'JHN',
-      chapter: '3',
-      verses: [16],
-    };
-    const { rerender } = renderFocus(request, 'JHN.1', container);
-
-    expect(container.hasAttribute('data-yv-verse-focus')).toBe(false);
-
-    rerender({ request, renderedReference: 'JHN.3' });
-
-    expect(container.getAttribute('data-yv-verse-focus')).toBe('');
-    expect(verse.classList.contains('yv-v-focused')).toBe(true);
-    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center', behavior: 'smooth' });
-
-    act(() => {
-      vi.advanceTimersByTime(SEARCH_VERSE_FOCUS_HOLD_MS);
-    });
-
-    expect(container.hasAttribute('data-yv-verse-focus')).toBe(false);
-    expect(verse.classList.contains('yv-v-focused')).toBe(false);
-  });
-
-  it('re-applies when seq bumps for the same verse', () => {
-    const first: VerseFocusRequest = { seq: 1, book: 'JHN', chapter: '3', verses: [16] };
-    const { rerender } = renderFocus(first, 'JHN.3', container);
-
-    act(() => {
-      vi.advanceTimersByTime(SEARCH_VERSE_FOCUS_HOLD_MS);
-    });
-    expect(verse.classList.contains('yv-v-focused')).toBe(false);
-
-    rerender({
-      request: { seq: 2, book: 'JHN', chapter: '3', verses: [16] },
-      renderedReference: 'JHN.3',
-    });
-
-    expect(verse.classList.contains('yv-v-focused')).toBe(true);
-  });
-
-  it('clears paint on the first scroll of the overflow ancestor', () => {
-    const scroller = document.createElement('div');
-    scroller.style.overflowY = 'auto';
-    scroller.append(container);
-    document.body.append(scroller);
-
-    const request: VerseFocusRequest = {
-      seq: 1,
-      book: 'JHN',
-      chapter: '3',
-      verses: [16],
-    };
-    renderFocus(request, 'JHN.3', container);
-
-    expect(verse.classList.contains('yv-v-focused')).toBe(true);
-
+it('waits for layout and scroll completion, then holds the range until expiry or user input', () => {
+  vi.useFakeTimers();
+  const view = setup();
+  try {
+    expect(view.scrollIntoView).not.toHaveBeenCalled();
+    view.rerender({ request: view.request, renderedReference: 'JHN.3' });
     act(() => {
       vi.advanceTimersByTime(16);
     });
-
+    expect(view.scrollIntoView).toHaveBeenCalledWith({ block: 'center', behavior: 'smooth' });
+    for (let frame = 0; frame < 20; frame += 1) {
+      act(() => {
+        view.scroller.dispatchEvent(new Event('scroll'));
+        vi.advanceTimersByTime(16);
+      });
+      expect(view.container).not.toHaveAttribute('data-yv-verse-focus');
+    }
     act(() => {
-      scroller.dispatchEvent(new Event('scroll'));
+      view.scroller.dispatchEvent(new Event('scrollend'));
     });
+    expect(
+      [...view.container.querySelectorAll('.yv-v-focused')].map((node) => node.getAttribute('v')),
+    ).toEqual(['16', '17']);
+    act(() => {
+      view.scroller.dispatchEvent(new Event('scroll'));
+    });
+    expect(view.verse).toHaveClass('yv-v-focused');
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_VERSE_FOCUS_HOLD_MS);
+    });
+    expect(view.container).not.toHaveAttribute('data-yv-verse-focus');
 
-    expect(container.hasAttribute('data-yv-verse-focus')).toBe(false);
-    expect(verse.classList.contains('yv-v-focused')).toBe(false);
+    view.rerender({
+      request: { ...view.request, seq: 2, scrollsToVerse: false },
+      renderedReference: 'JHN.3',
+    });
+    act(() => {
+      vi.advanceTimersByTime(16);
+    });
+    expect(view.scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(view.verse).toHaveClass('yv-v-focused');
+    act(() => {
+      view.scroller.dispatchEvent(new Event('wheel'));
+    });
+    expect(view.container).not.toHaveAttribute('data-yv-verse-focus');
+  } finally {
+    view.dispose();
+    vi.useRealTimers();
+  }
+});
 
-    scroller.remove();
-  });
+it('cancels pending focus on user interaction and superseding requests, with a no-event scroll fallback', () => {
+  vi.useFakeTimers();
+  const view = setup();
+  try {
+    view.rerender({ request: view.request, renderedReference: 'JHN.3' });
+    act(() => {
+      vi.advanceTimersByTime(16);
+      view.scroller.dispatchEvent(new Event('touchstart'));
+      vi.advanceTimersByTime(2000);
+    });
+    expect(view.container).not.toHaveAttribute('data-yv-verse-focus');
+    view.rerender({ request: { ...view.request, seq: 2 }, renderedReference: 'JHN.3' });
+    act(() => {
+      vi.advanceTimersByTime(16);
+    });
+    view.rerender({
+      request: { ...view.request, seq: 3, verses: [18] },
+      renderedReference: 'JHN.3',
+    });
+    view.container.querySelector<HTMLElement>('[v="18"]')!.scrollIntoView = vi.fn();
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+    expect(view.verse).not.toHaveClass('yv-v-focused');
+    expect(view.container.querySelector('[v="18"]')).toHaveClass('yv-v-focused');
+  } finally {
+    view.dispose();
+    vi.useRealTimers();
+  }
+});
+
+it('honors reduced motion and never focuses ordinary navigation', () => {
+  vi.useFakeTimers();
+  const original = globalThis.matchMedia;
+  // SAFETY: prefersReducedMotion only reads matches from this query result.
+  globalThis.matchMedia = () => ({ matches: true }) as MediaQueryList;
+  const view = setup();
+  try {
+    view.rerender({ request: view.request, renderedReference: 'JHN.3' });
+    act(() => {
+      vi.advanceTimersByTime(16);
+    });
+    expect(view.scrollIntoView).toHaveBeenCalledWith({ block: 'center', behavior: 'auto' });
+    expect(view.verse).toHaveClass('yv-v-focused');
+    view.rerender({
+      request: { ...view.request, seq: 2, shouldFocus: false },
+      renderedReference: 'JHN.3',
+    });
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+    expect(view.container).not.toHaveAttribute('data-yv-verse-focus');
+  } finally {
+    view.dispose();
+    globalThis.matchMedia = original;
+    vi.useRealTimers();
+  }
 });

@@ -11,7 +11,14 @@ import {
   type BibleSearchResult,
   type UseBibleSearchResult,
 } from '@youversion/platform-react-hooks';
-import { type ReactElement } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type RefCallback,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useBibleReaderContext } from './bible-reader';
 import { SearchIcon } from './icons/search';
@@ -20,8 +27,6 @@ import { LoaderIcon } from './icons/loader';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 import { InputGroup, InputGroupAddon, InputGroupInput } from './ui/input-group';
-
-const SEARCH_INPUT_MAX_LENGTH = 100;
 
 export type BibleReaderSearchProps = {
   open?: boolean;
@@ -72,9 +77,14 @@ export function BibleReaderSearch({
             theme={background}
             className="yv:flex yv:max-h-[min(36rem,80vh)] yv:w-[calc(100vw-2rem)] yv:max-w-md yv:flex-col yv:gap-4 yv:p-4"
           >
-            <DialogTitle className="yv:text-base yv:font-semibold">
-              {t('bibleSearchDialogTitle', 'Search')}
-            </DialogTitle>
+            <div className="yv:flex yv:items-center yv:justify-between yv:gap-3">
+              <DialogTitle className="yv:text-base yv:font-semibold">
+                {t('bibleSearchDialogTitle', 'Search')}
+              </DialogTitle>
+              <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+                {t('closeAriaLabel', 'Close')}
+              </Button>
+            </div>
             <DialogDescription className="yv:sr-only">
               {t('bibleSearchPlaceholder', 'Search verses')}
             </DialogDescription>
@@ -88,13 +98,13 @@ export function BibleReaderSearch({
 
 function SearchPanel({ onClose }: { onClose: () => void }): ReactElement {
   const { t } = useTranslation(undefined, { i18n });
-  const { versionId, navigateToVerse, booksData } = useBibleReaderContext();
+  const { versionId, navigation, booksData } = useBibleReaderContext();
   const { version } = useVersion(versionId);
   const search = useBibleSearch({ versionId });
 
   const onSelectVerse = (verse: BibleSearchResult): void => {
     onClose();
-    navigateToVerse({ book: verse.book, chapter: verse.chapter, verses: verse.verses });
+    navigation.focusReference({ versionId, passageId: verse.id });
   };
 
   return (
@@ -107,7 +117,6 @@ function SearchPanel({ onClose }: { onClose: () => void }): ReactElement {
           type="text"
           enterKeyHint="search"
           value={search.query}
-          maxLength={SEARCH_INPUT_MAX_LENGTH}
           autoFocus
           placeholder={t('bibleSearchPlaceholder', 'Search verses')}
           aria-label={t('bibleSearchAriaLabel', 'Search the Bible')}
@@ -206,7 +215,7 @@ function SearchPhaseBody({
       );
     case 'failed':
       return (
-        <div className="yv:flex yv:flex-col yv:gap-2">
+        <div role="alert" className="yv:flex yv:flex-col yv:gap-2">
           <p className="yv:text-sm yv:text-muted-foreground">
             {t('bibleSearchFailure', "We couldn't complete this search. Try again.")}
           </p>
@@ -281,12 +290,26 @@ function VerseResults({
   onSelect: (verse: BibleSearchResult) => void;
 }): ReactElement {
   const { t } = useTranslation(undefined, { i18n });
+  const requested = useRef(false);
+  useEffect(() => {
+    if (nextPage !== 'available') requested.current = false;
+  }, [nextPage]);
+  const loadMoreWhenNearEnd = useCallback(() => {
+    if (nextPage !== 'available' || requested.current) return;
+    requested.current = true;
+    onLoadMore();
+  }, [nextPage, onLoadMore]);
+  const paginationTriggerRef = useIntersectionCallback(loadMoreWhenNearEnd);
+  const paginationTriggerIndex = Math.max(0, verses.length - 5);
 
   return (
     <div className="yv:flex yv:min-h-0 yv:flex-col yv:gap-2">
       <ul className="yv:flex yv:min-h-0 yv:flex-col yv:gap-1 yv:overflow-y-auto">
-        {verses.map((verse) => (
-          <li key={verse.id}>
+        {verses.map((verse, index) => (
+          <li
+            key={verse.id}
+            ref={index >= paginationTriggerIndex ? paginationTriggerRef : undefined}
+          >
             <SearchVerseRow
               verse={verse}
               versionId={versionId}
@@ -298,7 +321,7 @@ function VerseResults({
         ))}
       </ul>
       {nextPage === 'available' ? (
-        <Button variant="secondary" onClick={onLoadMore}>
+        <Button variant="secondary" onClick={loadMoreWhenNearEnd}>
           {t('bibleSearchLoadMore', 'Load more')}
         </Button>
       ) : null}
@@ -308,9 +331,14 @@ function VerseResults({
         </div>
       ) : null}
       {nextPage === 'failed' ? (
-        <Button variant="secondary" onClick={onRetry}>
-          {t('bibleSearchRetry', 'Try again')}
-        </Button>
+        <div role="alert" className="yv:flex yv:flex-col yv:gap-2">
+          <p className="yv:text-sm yv:text-muted-foreground">
+            {t('bibleSearchFailure', "We couldn't complete this search. Try again.")}
+          </p>
+          <Button variant="secondary" onClick={onRetry}>
+            {t('bibleSearchRetry', 'Try again')}
+          </Button>
+        </div>
       ) : null}
     </div>
   );
@@ -349,13 +377,14 @@ function SearchVerseRow({
   versionAbbreviation: string;
   onSelect: () => void;
 }): ReactElement {
+  const [isNearViewport, visibilityRef] = useNearViewport();
   const { passage, loading, error } = usePassage({
     versionId,
     usfm: verse.id,
     format: 'text',
     include_headings: false,
     include_notes: false,
-    options: { keepPreviousData: false },
+    options: { enabled: isNearViewport, keepPreviousData: false },
   });
 
   const text: PassageText = loading
@@ -373,6 +402,7 @@ function SearchVerseRow({
 
   return (
     <button
+      ref={visibilityRef}
       type="button"
       className="yv:flex yv:w-full yv:flex-col yv:gap-1 yv:rounded-md yv:px-2 yv:py-2 yv:text-start yv:hover:bg-muted"
       onClick={onSelect}
@@ -384,5 +414,32 @@ function SearchVerseRow({
         <span className="yv:line-clamp-2 yv:text-sm">{text.value}</span>
       ) : null}
     </button>
+  );
+}
+
+const PREFETCH_ROOT_MARGIN = '200px 0px';
+
+function useNearViewport(): [boolean, RefCallback<Element>] {
+  const [isNearViewport, setIsNearViewport] = useState(
+    () => globalThis.IntersectionObserver === undefined,
+  );
+  const markVisible = useCallback(() => setIsNearViewport(true), []);
+  return [isNearViewport, useIntersectionCallback(markVisible)];
+}
+
+function useIntersectionCallback(onIntersect: () => void): RefCallback<Element> {
+  return useCallback<RefCallback<Element>>(
+    (element) => {
+      if (element === null || globalThis.IntersectionObserver === undefined) return;
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry?.isIntersecting) onIntersect();
+        },
+        { rootMargin: PREFETCH_ROOT_MARGIN },
+      );
+      observer.observe(element);
+      return () => observer.disconnect();
+    },
+    [onIntersect],
   );
 }

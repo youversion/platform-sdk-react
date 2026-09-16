@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { BibleVersion, SearchQueries, SearchVersesResponse } from '@youversion/platform-core';
 import { useBibleSearch, type UseBibleSearchResult } from './useBibleSearch';
 import {
@@ -42,11 +42,11 @@ async function settleDebounce(): Promise<void> {
   });
 }
 
-describe('useBibleSearch', () => {
-  const mockGetVersion = vi.fn();
-  const mockGetTrendingQueries = vi.fn();
-  const mockGetSuggestedQueries = vi.fn();
-  const mockSearchVerses = vi.fn();
+function createSearchFixture() {
+  const mockGetVersion = vi.fn().mockResolvedValue(mockVersion);
+  const mockGetTrendingQueries = vi.fn().mockResolvedValue(trending);
+  const mockGetSuggestedQueries = vi.fn().mockResolvedValue(suggestions);
+  const mockSearchVerses = vi.fn().mockResolvedValue(versesPage(['JHN.3.16'], 'page-2'));
 
   const bibleClient = createBibleClientStub({ getVersion: mockGetVersion });
   const searchClient = createSearchClientStub({
@@ -56,18 +56,20 @@ describe('useBibleSearch', () => {
   });
   const wrapper = createYVWrapper('test-app-key', { bibleClient, searchClient });
 
-  beforeEach(() => {
-    mockGetVersion.mockReset();
-    mockGetTrendingQueries.mockReset();
-    mockGetSuggestedQueries.mockReset();
-    mockSearchVerses.mockReset();
-    mockGetVersion.mockResolvedValue(mockVersion);
-    mockGetTrendingQueries.mockResolvedValue(trending);
-    mockGetSuggestedQueries.mockResolvedValue(suggestions);
-    mockSearchVerses.mockResolvedValue(versesPage(['JHN.3.16'], 'page-2'));
-  });
+  return {
+    wrapper,
+    bibleClient,
+    searchClient,
+    mockGetVersion,
+    mockGetTrendingQueries,
+    mockGetSuggestedQueries,
+    mockSearchVerses,
+  };
+}
 
+describe('useBibleSearch', () => {
   it('waits for version.language_tag before requesting trending', async () => {
+    const { wrapper, mockGetVersion, mockGetTrendingQueries } = createSearchFixture();
     let resolveVersion: (version: BibleVersion) => void = () => {};
     mockGetVersion.mockReturnValue(
       new Promise<BibleVersion>((resolve) => {
@@ -100,7 +102,40 @@ describe('useBibleSearch', () => {
     });
   });
 
-  it('debounces suggestions and keeps the previous list without a spinner', async () => {
+  it('falls back to wildcard discovery when version metadata fails', async () => {
+    const { wrapper, mockGetVersion, mockGetTrendingQueries } = createSearchFixture();
+    mockGetVersion.mockRejectedValueOnce(new Error('metadata unavailable'));
+
+    const { result } = renderHook(() => useBibleSearch({ versionId: 111 }), { wrapper });
+
+    await waitFor(() => {
+      expect(mockGetTrendingQueries).toHaveBeenCalledWith('*');
+    });
+    await waitFor(() => {
+      expect(result.current.phase).toEqual({
+        kind: 'trending',
+        queries: trending.queries,
+        loading: false,
+      });
+    });
+  });
+
+  it.each(['', 'not a language tag'])(
+    'falls back to wildcard discovery for unusable language tag %j',
+    async (languageTag) => {
+      const { wrapper, mockGetVersion, mockGetTrendingQueries } = createSearchFixture();
+      mockGetVersion.mockResolvedValueOnce({ ...mockVersion, language_tag: languageTag });
+
+      renderHook(() => useBibleSearch({ versionId: 111 }), { wrapper });
+
+      await waitFor(() => {
+        expect(mockGetTrendingQueries).toHaveBeenCalledWith('*');
+      });
+    },
+  );
+
+  it('debounces suggestions without requesting or displaying a stale query', async () => {
+    const { wrapper, mockGetSuggestedQueries } = createSearchFixture();
     const { result } = renderHook(() => useBibleSearch({ versionId: 111 }), { wrapper });
 
     await waitFor(() => {
@@ -118,7 +153,7 @@ describe('useBibleSearch', () => {
     expect(result.current.query).toBe('love');
     expect(result.current.phase).toEqual({
       kind: 'suggesting',
-      queries: trending.queries,
+      queries: [],
       loading: false,
       debouncing: true,
     });
@@ -139,7 +174,50 @@ describe('useBibleSearch', () => {
     });
   });
 
+  it('supersedes an earlier suggestion response as soon as normalized input changes', async () => {
+    const { wrapper, mockGetSuggestedQueries } = createSearchFixture();
+    let resolveEarlier: (value: SearchQueries) => void = () => {};
+    mockGetSuggestedQueries.mockReturnValueOnce(
+      new Promise<SearchQueries>((resolve) => {
+        resolveEarlier = resolve;
+      }),
+    );
+    const { result } = renderHook(() => useBibleSearch({ versionId: 111 }), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.phase.kind).toBe('trending');
+    });
+    act(() => {
+      result.current.setQuery('love');
+    });
+    await settleDebounce();
+    await waitFor(() => {
+      expect(mockGetSuggestedQueries).toHaveBeenCalledWith('love', 'en');
+    });
+
+    act(() => {
+      result.current.setQuery('loved');
+    });
+    expect(result.current.phase).toEqual({
+      kind: 'suggesting',
+      queries: [],
+      loading: false,
+      debouncing: true,
+    });
+
+    await act(async () => {
+      resolveEarlier({ queries: [{ text: 'stale love' }] });
+    });
+    expect(result.current.phase).toEqual({
+      kind: 'suggesting',
+      queries: [],
+      loading: false,
+      debouncing: true,
+    });
+  });
+
   it('submits verses, suppresses suggestions, paginates, and retries a failed next page', async () => {
+    const { wrapper, mockGetSuggestedQueries, mockSearchVerses } = createSearchFixture();
     const { result } = renderHook(() => useBibleSearch({ versionId: 111 }), { wrapper });
 
     await waitFor(() => {
@@ -192,7 +270,7 @@ describe('useBibleSearch', () => {
       });
     });
 
-    mockSearchVerses.mockResolvedValueOnce(versesPage(['ROM.8.28'], null));
+    mockSearchVerses.mockResolvedValueOnce(versesPage(['JHN.3.16', 'ROM.8.28'], null));
     act(() => {
       result.current.retry();
     });
@@ -210,6 +288,7 @@ describe('useBibleSearch', () => {
   });
 
   it('does not re-request the submitted query as suggestions during the first edit debounce', async () => {
+    const { wrapper, mockGetSuggestedQueries } = createSearchFixture();
     const { result } = renderHook(() => useBibleSearch({ versionId: 111 }), { wrapper });
 
     await waitFor(() => {
@@ -254,6 +333,7 @@ describe('useBibleSearch', () => {
   });
 
   it('selectSuggestion submits immediately without a filled-but-idle frame', async () => {
+    const { wrapper, mockSearchVerses } = createSearchFixture();
     const { result } = renderHook(() => useBibleSearch({ versionId: 111 }), { wrapper });
 
     await waitFor(() => {
@@ -274,6 +354,8 @@ describe('useBibleSearch', () => {
   });
 
   it('returns the hook override without fetching search', async () => {
+    const { bibleClient, searchClient, mockGetTrendingQueries, mockSearchVerses } =
+      createSearchFixture();
     const stub: UseBibleSearchResult = {
       query: 'love',
       phase: { kind: 'empty' },

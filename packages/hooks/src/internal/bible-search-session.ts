@@ -1,4 +1,8 @@
-import { parseUsfmReference } from '@youversion/platform-core';
+import {
+  MAX_SEARCH_QUERY_GRAPHEMES,
+  clampSearchText,
+  parseUsfmReference,
+} from '@youversion/platform-core';
 import type { SearchQuery, SearchVerseHit, SearchVersesResponse } from '@youversion/platform-core';
 
 export type NormalizedQuery = string & { readonly __normalizedQuery: unique symbol };
@@ -77,7 +81,7 @@ export type BibleSearchPhase =
   | { readonly kind: 'empty' }
   | { readonly kind: 'failed'; readonly error: Error };
 
-export const MAX_SEARCH_QUERY_LENGTH = 100;
+export const MAX_SEARCH_QUERY_LENGTH = MAX_SEARCH_QUERY_GRAPHEMES;
 export const SEARCH_SUGGESTION_DEBOUNCE_MS = 300;
 export const SEARCH_VERSES_PAGE_SIZE = 20;
 export const EMPTY_QUERY =
@@ -86,7 +90,7 @@ export const EMPTY_QUERY =
   '' as NormalizedQuery;
 
 export function clampSearchInput(raw: string): string {
-  return raw.length <= MAX_SEARCH_QUERY_LENGTH ? raw : raw.slice(0, MAX_SEARCH_QUERY_LENGTH);
+  return clampSearchText(raw);
 }
 
 export function normalizeQuery(raw: string): NormalizedQuery {
@@ -244,6 +248,9 @@ export function queriesRequest(
   if (session.lane.kind === 'submitted' || settled === null) {
     return null;
   }
+  if (settled !== session.normalized) {
+    return null;
+  }
   if (settled === EMPTY_QUERY) {
     return { kind: 'trending' };
   }
@@ -277,7 +284,12 @@ export function versesRequest(session: SearchSession): VersesRequest | null {
 
 export function projectVerses(hits: readonly SearchVerseHit[]): readonly BibleSearchResult[] {
   const verses: BibleSearchResult[] = [];
+  const seen = new Set<string>();
   for (const hit of hits) {
+    if (seen.has(hit.id)) {
+      continue;
+    }
+    seen.add(hit.id);
     const parsed = parseUsfmReference(hit.id);
     if (parsed === null) {
       continue;

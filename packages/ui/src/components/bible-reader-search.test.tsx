@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState, type ReactElement } from 'react';
 import type { BibleBook, BiblePassage, BibleVersion } from '@youversion/platform-core';
@@ -11,6 +11,7 @@ import type {
   BibleSearchResult,
   HookOverrides,
   UseBibleSearchResult,
+  UsePassageProps,
 } from '@youversion/platform-react-hooks';
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import { installResizeObserverStub } from '@/test/dom-stubs';
@@ -124,6 +125,43 @@ function renderSearch(search: UseBibleSearchResult, extra?: ReactElement) {
   );
 }
 
+function installControlledIntersectionObserver() {
+  const original = globalThis.IntersectionObserver;
+  const observed = new Map<Element, IntersectionObserverCallback>();
+  globalThis.IntersectionObserver = class implements IntersectionObserver {
+    readonly root = null;
+    readonly rootMargin = '200px 0px';
+    readonly scrollMargin = '0px';
+    readonly thresholds = [0];
+    disconnect(): void {}
+    observe(target: Element): void {
+      observed.set(target, this.callback);
+    }
+    unobserve(target: Element): void {
+      observed.delete(target);
+    }
+    takeRecords(): IntersectionObserverEntry[] {
+      return [];
+    }
+    constructor(private readonly callback: IntersectionObserverCallback) {}
+  };
+  return {
+    intersect(target: Element) {
+      const callback = observed.get(target);
+      if (!callback) throw new Error('element is not observed');
+      callback(
+        // SAFETY: the callback only reads isIntersecting; target identifies the controlled row.
+        [{ isIntersecting: true, target } as IntersectionObserverEntry],
+        // SAFETY: neither visibility callback reads the observer argument.
+        {} as IntersectionObserver,
+      );
+    },
+    restore() {
+      globalThis.IntersectionObserver = original;
+    },
+  };
+}
+
 describe('BibleReaderSearch', () => {
   it('lists trending queries as options', () => {
     renderSearch(
@@ -157,6 +195,19 @@ describe('BibleReaderSearch', () => {
       'text',
     );
     expect(screen.getAllByRole('button', { name: 'Clear search' })).toHaveLength(1);
+    expect(screen.getByRole('textbox', { name: 'Search the Bible' })).not.toHaveAttribute(
+      'maxlength',
+    );
+  });
+
+  it('provides a visible keyboard-operable close action', async () => {
+    const user = userEvent.setup();
+    renderSearch(searchOf({ kind: 'trending', queries: [], loading: false }));
+
+    const close = screen.getByRole('button', { name: 'Close' });
+    close.focus();
+    await user.keyboard('{Enter}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('lists suggestions as options', () => {
@@ -201,6 +252,84 @@ describe('BibleReaderSearch', () => {
     expect(loadMore).toHaveBeenCalledTimes(1);
   });
 
+  it('enriches only near-visible rows while keeping references selectable', () => {
+    const observer = installControlledIntersectionObserver();
+    const passageCalls: UsePassageProps[] = [];
+    const overrides = baseOverrides(
+      searchOf({ kind: 'results', verses: [john316], nextPage: 'none' }),
+    );
+    overrides.usePassage = (props) => {
+      passageCalls.push(props);
+      return { passage: mockPassage, loading: false, error: null, refetch: () => undefined };
+    };
+
+    render(
+      <HookOverrideProvider overrides={overrides}>
+        <BibleReader.Root defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
+          <BibleReaderSearch defaultOpen />
+        </BibleReader.Root>
+      </HookOverrideProvider>,
+    );
+
+    const row = screen.getByRole('button', { name: /john 3:16/i });
+    expect(passageCalls.at(-1)?.options?.enabled).toBe(false);
+    expect(row).toBeEnabled();
+    act(() => observer.intersect(row));
+    expect(passageCalls.at(-1)?.options?.enabled).toBe(true);
+    observer.restore();
+  });
+
+  it('auto-loads near the final five rows once and stops when pagination is exhausted', () => {
+    const observer = installControlledIntersectionObserver();
+    const loadMore = vi.fn();
+    const generatedVerses = Array.from({ length: 8 }, (_, index) => ({
+      ...john316,
+      id: `JHN.3.${index + 1}`,
+      verses: [index + 1],
+    }));
+    const verses: [BibleSearchResult, ...BibleSearchResult[]] = [
+      generatedVerses[0]!,
+      ...generatedVerses.slice(1),
+    ];
+    const search = {
+      ...searchOf({ kind: 'results' as const, verses, nextPage: 'available' as const }),
+      loadMore,
+    };
+    const view = renderSearch(search);
+    const rows = screen.getAllByRole('button', { name: /john 3:/i });
+
+    // Jumping to the bottom must work even if the fifth-last row was skipped.
+    act(() => observer.intersect(rows[7]!.closest('li')!));
+    act(() => observer.intersect(rows[3]!.closest('li')!));
+    expect(loadMore).toHaveBeenCalledTimes(1);
+
+    const next = (nextPage: 'available' | 'loading' | 'none') =>
+      view.rerender(
+        <HookOverrideProvider
+          overrides={baseOverrides({
+            ...search,
+            phase: { kind: 'results', verses, nextPage },
+          })}
+        >
+          <BibleReader.Root defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
+            <BibleReaderSearch defaultOpen />
+          </BibleReader.Root>
+        </HookOverrideProvider>,
+      );
+    next('loading');
+    act(() => observer.intersect(rows[3]!.closest('li')!));
+    expect(loadMore).toHaveBeenCalledTimes(1);
+    // A duplicate-only page can retain the same rows but advance the token.
+    next('available');
+    act(() => observer.intersect(rows[3]!.closest('li')!));
+    expect(loadMore).toHaveBeenCalledTimes(2);
+    next('none');
+    act(() => observer.intersect(rows[3]!.closest('li')!));
+    expect(loadMore).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
+    observer.restore();
+  });
+
   it('keeps the dialog open with no list when the verse search is empty', () => {
     renderSearch(searchOf({ kind: 'empty' }, 'xyzzy'));
 
@@ -218,6 +347,7 @@ describe('BibleReaderSearch', () => {
     const user = userEvent.setup();
     renderSearch(search);
 
+    expect(screen.getByRole('alert')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Try again' }));
     expect(retry).toHaveBeenCalledTimes(1);
   });

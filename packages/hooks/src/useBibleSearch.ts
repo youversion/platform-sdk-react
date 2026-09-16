@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useReducer } from 'react';
-import type { SearchVersesOptions } from '@youversion/platform-core';
+import { parseSearchLanguageRange, type SearchVersesOptions } from '@youversion/platform-core';
 import { useApiData } from './useApiData';
 import { useHookOverride } from './useHookOverride';
 import { useQueryKeyBase } from './internal/useQueryKeyBase';
@@ -49,8 +49,15 @@ export function useBibleSearch(props: UseBibleSearchProps): UseBibleSearchResult
     dispatch({ type: 'setVersion', versionId });
   }, [versionId]);
 
-  const { version } = useVersion(versionId);
-  const languageRanges = version?.language_tag ?? null;
+  const { version, loading: versionLoading } = useVersion(versionId);
+  let languageRanges: string | null = null;
+  if (!versionLoading) {
+    try {
+      languageRanges = parseSearchLanguageRange(version?.language_tag ?? '*');
+    } catch {
+      languageRanges = '*';
+    }
+  }
   const debounced = useDebounce(
     session.lane.kind === 'submitted' ? null : session.normalized,
     SEARCH_SUGGESTION_DEBOUNCE_MS,

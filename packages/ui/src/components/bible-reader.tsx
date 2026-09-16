@@ -28,7 +28,6 @@ import {
 } from '@youversion/platform-react-hooks';
 import React, {
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -60,6 +59,7 @@ import { isHighlightsLive } from '@/lib/feature-flags';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { BibleReaderSearch } from './bible-reader-search';
 import { useTransientVerseFocus, type VerseFocusRequest } from '@/lib/use-transient-verse-focus';
+import { BibleReaderNavigation } from './bible-reader-navigation';
 
 type BibleReaderContextType = {
   book: string;
@@ -95,7 +95,7 @@ type BibleReaderContextType = {
   onHighlightRemove?: (intent: BibleReaderHighlightIntent) => void;
   verseActions: 'popover' | 'none';
   clearSelectionSignal?: number;
-  navigateToVerse: (target: Omit<VerseFocusRequest, 'seq'>) => void;
+  navigation: BibleReaderNavigation;
   verseFocus: VerseFocusRequest | null;
 };
 
@@ -190,6 +190,8 @@ export function useBibleReaderContext(): BibleReaderContextType {
 }
 
 export type RootProps = {
+  /** Retain this connection outside the reader to request navigation before mount. */
+  navigation?: BibleReaderNavigation;
   book?: string;
   defaultBook?: string;
   onBookChange?: (book: string) => void;
@@ -451,6 +453,7 @@ export function createBibleThemeSettingsContentHandlers(options: {
 }
 
 function Root({
+  navigation: navigationProp,
   book: controlledBook,
   defaultBook = 'JHN',
   onBookChange,
@@ -635,28 +638,47 @@ function Root({
 
   const [verseFocus, setVerseFocus] = useState<VerseFocusRequest | null>(null);
   const verseFocusSeqRef = useRef(0);
-  const navigateToVerse = useCallback(
-    (target: Omit<VerseFocusRequest, 'seq'>) => {
+  const [localNavigation] = useState(() => new BibleReaderNavigation());
+  const navigation = navigationProp ?? localNavigation;
+  useEffect(() => {
+    const consume = (): void => {
+      const target = navigation.consume();
+      if (target === null) return;
+      if (
+        !target.scrollsToVerse &&
+        (target.versionId !== versionId || target.book !== book || target.chapter !== chapter)
+      )
+        return;
       verseFocusSeqRef.current += 1;
+      setVersionId(target.versionId);
       setBook(target.book);
       setChapter(target.chapter);
       setVerseFocus({
+        ...target,
         seq: verseFocusSeqRef.current,
-        book: target.book,
-        chapter: target.chapter,
-        verses: target.verses,
       });
-    },
-    [setBook, setChapter],
-  );
+    };
+    const unsubscribe = navigation.subscribe(consume);
+    consume();
+    return unsubscribe;
+  }, [navigation, versionId, book, chapter, setVersionId, setBook, setChapter]);
 
   const contextValue: BibleReaderContextType = {
     book,
     chapter,
     versionId,
-    setBook,
-    setChapter,
-    setVersionId,
+    setBook: (value) => {
+      setVerseFocus(null);
+      setBook(value);
+    },
+    setChapter: (value) => {
+      setVerseFocus(null);
+      setChapter(value);
+    },
+    setVersionId: (value) => {
+      setVerseFocus(null);
+      setVersionId(value);
+    },
     booksData,
     booksLoading,
     currentFontFamily,
@@ -684,7 +706,7 @@ function Root({
     onHighlightRemove,
     verseActions,
     clearSelectionSignal,
-    navigateToVerse,
+    navigation,
     verseFocus,
   };
 
@@ -731,7 +753,17 @@ function Content() {
     return booksData.find((b) => b.id === book);
   }, [booksData, book]);
 
-  const usfmReference = `${book}.${chapter}`;
+  const chapterReference = `${book}.${chapter}`;
+  const activeNavigation =
+    verseFocus?.versionId === versionId &&
+    verseFocus.book === book &&
+    verseFocus.chapter === chapter
+      ? verseFocus
+      : null;
+  const usfmReference =
+    activeNavigation && !activeNavigation.showsFullChapter
+      ? activeNavigation.passageId
+      : chapterReference;
 
   // Check if the current chapter is available in this version
   const chapterUnavailable = useMemo(() => {
@@ -760,7 +792,7 @@ function Content() {
 
   // Version-only changes intentionally preserve scroll position.
   const scrollContainerRef = useRef<HTMLElement>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     scrollContainerRef.current?.scrollTo({ top: 0 });
   }, [book, chapter]);
 
@@ -771,9 +803,9 @@ function Content() {
   // dark-launched behind HIGHLIGHTS_LIVE. The reader DOM ref anchors the
   // popover and supplies clean verse text for Copy / Share.
   const readerRef = useRef<HTMLDivElement>(null);
-  const renderedReference = !passageLoading && passage ? usfmReference : '';
+  const renderedReference = !passageLoading && !passageError && passage ? usfmReference : '';
   useTransientVerseFocus({
-    request: verseFocus,
+    request: activeNavigation,
     renderedReference,
     containerRef: readerRef,
   });
@@ -840,7 +872,7 @@ function Content() {
         shareData: null,
       });
     }
-  }, [book, chapter, versionId]);
+  }, [book, chapter, versionId, activeNavigation?.seq]);
 
   // Distinct colors present in the current selection → drives the X (remove) circles.
   const activeHighlights = useMemo(

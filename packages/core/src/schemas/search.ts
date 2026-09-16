@@ -1,6 +1,24 @@
 import * as z from 'zod/mini';
 import { parseUsfmReference } from '../usfm-reference';
 
+export const MAX_SEARCH_QUERY_GRAPHEMES = 100;
+
+const searchTextSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+
+/** Truncates search text to the API limit without splitting a user-perceived character. */
+export function clampSearchText(raw: string): string {
+  const segments = searchTextSegmenter.segment(raw)[Symbol.iterator]();
+  let end = 0;
+  for (let count = 0; count < MAX_SEARCH_QUERY_GRAPHEMES; count += 1) {
+    const next = segments.next();
+    if (next.done) {
+      return raw;
+    }
+    end = next.value.index + next.value.segment.length;
+  }
+  return raw.slice(0, end);
+}
+
 /** Known Platform Search user-intent values. Unknown wire strings remain valid. */
 export const KNOWN_SEARCH_USER_INTENTS = ['unknown', 'topical', 'text', 'reference'] as const;
 
@@ -217,14 +235,15 @@ export function toSearchTopicsResponse(wire: SearchTopicsWire): SearchTopicsResp
   };
 }
 
-/** Input validation for verse/topic search queries (1–100 characters). */
-export const SearchTextQuerySchema = z
-  .string()
-  .check(
-    z.trim(),
-    z.minLength(1, 'Query must be between 1 and 100 characters'),
-    z.maxLength(100, 'Query must be between 1 and 100 characters'),
-  );
+/** Input validation for verse/topic search queries (1–100 grapheme clusters). */
+export const SearchTextQuerySchema = z.string().check(
+  z.trim(),
+  z.minLength(1, 'Query must be between 1 and 100 characters'),
+  z.refine(
+    (value) => clampSearchText(value) === value,
+    'Query must be between 1 and 100 characters',
+  ),
+);
 
 /** Input validation for suggested-query partial text (non-empty). */
 export const SuggestedSearchQuerySchema = z
