@@ -12,13 +12,14 @@
  * 3. Narrow bundle is smaller than a multi-export barrel bundle.
  * 4. Integrity probe: treeShaking:false on the narrow import includes sentinels
  *    (proves the check is not a no-op against pre-bundled tsup output).
+ * 5. The lazy hooks auth ESM chunk retains its "use client" directive.
  *
  * 0. package.json sideEffects matches expected values (webpack/Rollup consumers).
  *
  * Note: esbuild tree-shaking checks use pre-bundled tsup dist and do not honor
  * package.json sideEffects; CI asserts sideEffects separately (step 0).
  */
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -84,7 +85,22 @@ function assertPackageSideEffects() {
   return errors;
 }
 
-/** @type {Array<{ package: string; external: string[]; narrow: object; controls: object[]; fullBarrel: object }>} */
+function assertHooksAuthChunkDirective() {
+  const hooksDist = join(repoRoot, 'packages/hooks/dist');
+  const authChunks = readdirSync(hooksDist).filter(
+    (fileName) => fileName.startsWith('YouVersionAuthProvider-') && fileName.endsWith('.js'),
+  );
+  if (authChunks.length !== 1) {
+    return [`expected one hooks auth ESM chunk, found ${authChunks.length}`];
+  }
+
+  const source = readFileSync(join(hooksDist, authChunks[0]), 'utf8');
+  return source.startsWith("'use client';\n")
+    ? []
+    : [`${authChunks[0]} is missing its leading "use client" directive`];
+}
+
+/** @type {Array<{ package: string; external: string[]; narrow: object; controls: object[]; focused?: object[]; fullBarrel: object }>} */
 const CHECKS = [
   {
     package: '@youversion/platform-core',
@@ -113,6 +129,26 @@ const CHECKS = [
         label: 'YouVersionAPIUsers',
         source: `import { YouVersionAPIUsers } from '@youversion/platform-core';\nexport { YouVersionAPIUsers };\n`,
         present: ['Invalid state parameter - possible CSRF attack'],
+      },
+    ],
+    focused: [
+      {
+        label: 'getBibleStylesheets only',
+        source: `import { getBibleStylesheets } from '@youversion/platform-core';
+export const stylesheets = getBibleStylesheets({ appKey: 'fixture' });
+`,
+        absent: [
+          'missing_passage_attribution',
+          'Passage ID must be a non-empty string',
+          'Server-side HTML transformation requires "jsdom".',
+        ],
+        maxBytes: 5_000,
+        control: {
+          label: 'getPassageDisplay',
+          source: `import { getPassageDisplay } from '@youversion/platform-core';
+export { getPassageDisplay };
+`,
+        },
       },
     ],
     fullBarrel: {
@@ -145,6 +181,7 @@ export {
       absent: [
         'A redirect URL is required to start sign-in for highlights.',
         'YouVersion context is required to start a data exchange.',
+        'youversion-platform:granted-permissions',
       ],
     },
     controls: [
@@ -154,6 +191,7 @@ export {
         present: [
           'A redirect URL is required to start sign-in for highlights.',
           'YouVersion context is required to start a data exchange.',
+          'youversion-platform:granted-permissions',
         ],
       },
     ],
@@ -242,6 +280,48 @@ async function runPackageCheck(check) {
     }
   }
 
+  for (const focused of check.focused ?? []) {
+    const bundle = await bundleConsumer(focused.source, check.external);
+    const leaked = focused.absent.filter((sentinel) => bundle.text.includes(sentinel));
+    const sizePass = bundle.bytes <= focused.maxBytes;
+    const pass = leaked.length === 0 && sizePass;
+    const details = [];
+    if (leaked.length > 0) {
+      details.push(`leaked: ${leaked.map((s) => JSON.stringify(s)).join(', ')}`);
+    }
+    if (!sizePass) {
+      details.push(`${bundle.bytes.toLocaleString()} B > ${focused.maxBytes.toLocaleString()} B`);
+    }
+    rows.push({
+      kind: 'focused',
+      label: focused.label,
+      bytes: bundle.bytes,
+      pass,
+      detail: pass ? 'isolated from display orchestration' : details.join('; '),
+    });
+    if (!pass) {
+      errors.push(`${check.package} focused import "${focused.label}" is not isolated`);
+    }
+
+    const control = await bundleConsumer(focused.control.source, check.external);
+    const missing = focused.absent.filter((sentinel) => !control.text.includes(sentinel));
+    const controlPass = missing.length === 0;
+    rows.push({
+      kind: 'control',
+      label: `${focused.control.label} sentinel control`,
+      bytes: control.bytes,
+      pass: controlPass,
+      detail: controlPass
+        ? 'all excluded sentinels present'
+        : `missing: ${missing.map((s) => JSON.stringify(s)).join(', ')}`,
+    });
+    if (!controlPass) {
+      errors.push(
+        `${check.package} focused control "${focused.control.label}" has stale sentinels`,
+      );
+    }
+  }
+
   const full = await bundleConsumer(check.fullBarrel.source, check.external);
   const sizePass = narrow.bytes < full.bytes;
   rows.push({
@@ -294,6 +374,15 @@ async function main() {
   if (sideEffectsErrors.length > 0) {
     console.error(red(`${sideEffectsErrors.length} package.json sideEffects check(s) failed.`));
     for (const error of sideEffectsErrors) {
+      console.error(red(`  ✗ ${error}`));
+    }
+    process.exit(1);
+  }
+
+  const authChunkErrors = assertHooksAuthChunkDirective();
+  if (authChunkErrors.length > 0) {
+    console.error(red(`${authChunkErrors.length} hooks auth chunk check(s) failed.`));
+    for (const error of authChunkErrors) {
       console.error(red(`  ✗ ${error}`));
     }
     process.exit(1);

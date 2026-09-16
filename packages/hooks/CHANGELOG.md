@@ -1,5 +1,13 @@
 # @youversion/platform-react-hooks
 
+## 2.14.0
+
+### Patch Changes
+
+- 67223e4: Add an optional `timeout` prop to `YouVersionProvider` and configure the Vite demo to wait longer for slower Bible content requests.
+- Updated dependencies [1e6c8a2]
+  - @youversion/platform-core@2.14.0
+
 ## 2.13.0
 
 ### Patch Changes
