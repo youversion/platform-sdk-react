@@ -231,7 +231,9 @@ export const RtlScriptureWithLtrChrome: Story = {
     await expect(table).toBeInTheDocument();
     const heading = canvasElement.querySelector('h1')!;
     await expect(heading).toHaveAttribute('dir', 'rtl');
-    await expect(heading.querySelectorAll('bdi[dir="auto"]')).toHaveLength(2);
+    await waitFor(async () => {
+      await expect(heading.querySelectorAll('bdi[dir="auto"]')).toHaveLength(2);
+    });
 
     await userEvent.click(screen.getByRole('button', { name: /footnote/i }));
     await waitFor(async () => {
