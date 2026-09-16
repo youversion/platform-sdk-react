@@ -217,6 +217,10 @@ function Root({
   );
 }
 
+/**
+ * Props for the chapter picker trigger. Interface direction owns the rendered
+ * trigger's `dir`; a consumer-supplied `dir` is intentionally ignored.
+ */
 export type TriggerProps = Omit<React.ComponentProps<typeof PopoverTrigger>, 'children'> & {
   children?:
     | React.ReactNode

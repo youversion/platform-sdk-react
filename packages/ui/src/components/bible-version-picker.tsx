@@ -513,6 +513,10 @@ function Root({
   );
 }
 
+/**
+ * Props for the version picker trigger. Interface direction owns the rendered
+ * trigger's `dir`; a consumer-supplied `dir` is intentionally ignored.
+ */
 export type BibleVersionPickerTriggerProps = Omit<
   React.ComponentProps<typeof PopoverTrigger>,
   'children'

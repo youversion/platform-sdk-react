@@ -1,6 +1,7 @@
 import * as React from 'react';
 import type { TextDirection } from '@youversion/platform-core';
 
+// Keep this aligned with RTL locale packs in i18n/resources.generated.ts.
 const RTL_LOCALES = new Set(['ar']);
 
 export function resolveInterfaceDirection(
