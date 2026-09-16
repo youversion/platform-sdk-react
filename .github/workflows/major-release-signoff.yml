@@ -14,7 +14,10 @@ on:
 permissions: {}
 
 concurrency:
-  group: major-release-signoff-${{ github.event.pull_request.number || github.event.issue.number }}
+  # Workflow concurrency is resolved before job `if` conditions. Isolate bot comment
+  # runs so comments from changeset-bot or this workflow cannot cancel an active PR
+  # evaluation before their jobs are skipped.
+  group: major-release-signoff-${{ github.event.pull_request.number || github.event.issue.number }}-${{ github.event_name == 'issue_comment' && github.event.comment.user.type == 'Bot' && format('bot-{0}', github.run_id) || 'evaluation' }}
   cancel-in-progress: true
 
 env:
@@ -23,13 +26,18 @@ env:
 jobs:
   context:
     # issue_comment fires for issues AND PRs across the repo. Skip non-PR
-    # issues so we don't waste a run when someone comments on a plain issue.
-    if: ${{ github.event_name != 'issue_comment' || github.event.issue.pull_request != null }}
+    # issues and bot comments. Bot runs have isolated concurrency keys above,
+    # because this condition is not evaluated until after concurrency handling.
+    if: ${{ github.event_name != 'issue_comment' || (github.event.issue.pull_request != null && github.event.comment.user.type != 'Bot') }}
     name: Resolve PR context
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: read
     outputs:
+      base_sha: ${{ steps.pr.outputs.base_sha }}
+      generated_candidate: ${{ steps.pr.outputs.generated_candidate }}
+      generated_release_pr: ${{ steps.pr.outputs.generated_release_pr }}
       head_sha: ${{ steps.pr.outputs.head_sha }}
       is_fork: ${{ steps.pr.outputs.is_fork }}
       pr_author: ${{ steps.pr.outputs.pr_author }}
@@ -39,39 +47,144 @@ jobs:
         id: pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_ISSUE_NUMBER: ${{ github.event.issue.number }}
+          EVENT_PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            PR_NUMBER=${{ github.event.pull_request.number }}
-            HEAD_SHA=${{ github.event.pull_request.head.sha }}
-            PR_AUTHOR=${{ github.event.pull_request.user.login }}
-            HEAD_REPO=${{ github.event.pull_request.head.repo.full_name }}
-          else
-            PR_NUMBER=${{ github.event.issue.number }}
-            # issue_comment payload has no head/base info — look it up so
-            # we evaluate the PR's *current* head, not a stale snapshot.
-            PR_JSON=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER)
-            HEAD_SHA=$(jq -r .head.sha <<<"$PR_JSON")
-            PR_AUTHOR=$(jq -r .user.login <<<"$PR_JSON")
-            HEAD_REPO=$(jq -r '.head.repo.full_name // ""' <<<"$PR_JSON")
+          PR_NUMBER=${EVENT_PR_NUMBER:-$EVENT_ISSUE_NUMBER}
+          # Resolve every event through the API. In particular, issue_comment payloads
+          # contain no PR head, and created/edited/deleted comments must evaluate the
+          # current immutable head rather than the head from an earlier workflow run.
+          PR_JSON=$(gh api "repos/$REPOSITORY/pulls/$PR_NUMBER")
+          HEAD_SHA=$(jq -r '.head.sha // empty' <<<"$PR_JSON")
+          if ! [[ "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Could not resolve a full PR head SHA."
+            exit 1
           fi
+          BASE_SHA=$(jq -r '.base.sha // empty' <<<"$PR_JSON")
+          PR_AUTHOR=$(jq -r '.user.login // empty' <<<"$PR_JSON")
+          PR_AUTHOR_ID=$(jq -r '.user.id // empty' <<<"$PR_JSON")
+          PR_AUTHOR_TYPE=$(jq -r '.user.type // empty' <<<"$PR_JSON")
+          HEAD_REPO=$(jq -r '.head.repo.full_name // empty' <<<"$PR_JSON")
+          HEAD_REF=$(jq -r '.head.ref // empty' <<<"$PR_JSON")
+          BASE_REPO=$(jq -r '.base.repo.full_name // empty' <<<"$PR_JSON")
+          BASE_REF=$(jq -r '.base.ref // empty' <<<"$PR_JSON")
+
           # A deleted fork reports no head repo. Treat that as a fork too, since we
           # cannot show it came from here.
-          if [ "$HEAD_REPO" = "${{ github.repository }}" ]; then
+          if [ "$HEAD_REPO" = "$REPOSITORY" ]; then
             IS_FORK=false
           else
             IS_FORK=true
           fi
+
+          GENERATED_CANDIDATE=false
+          GENERATED_RELEASE_PR=false
+          if [ "$HEAD_REPO" = "$REPOSITORY" ] && \
+             [ "$BASE_REPO" = "$REPOSITORY" ] && \
+             [ "$BASE_REF" = "main" ] && \
+             [ "$HEAD_REF" = "changeset-release/main" ] && \
+             [ "$PR_AUTHOR" = 'github-actions[bot]' ] && \
+             [ "$PR_AUTHOR_ID" = "41898282" ] && \
+             [ "$PR_AUTHOR_TYPE" = "Bot" ]; then
+            GENERATED_RELEASE_PR=true
+            # Bot authorship does not authenticate later commits pushed to the branch.
+            # Bind the exception to this immutable base/head pair and only accept the
+            # release lifecycle shape: one or more consumed changeset Markdown files,
+            # with no added, modified, renamed, or copied changeset input. The complete
+            # generated contents are verified separately with base-owned tooling below.
+            if ! [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "::warning::Could not resolve a full PR base SHA for generated release verification."
+            elif COMPARE_JSON=$(gh api "repos/$REPOSITORY/compare/$BASE_SHA...$HEAD_SHA"); then
+              if jq -e --arg base "$BASE_SHA" '
+                (.base_commit.sha == $base) and
+                (.files | type == "array") and
+                ((.files | length) < 300) and
+                ([.files[] | select(.filename | startswith(".changeset/"))] as $changesets |
+                  ($changesets | length) > 0 and
+                  all($changesets[];
+                    .status == "removed" and
+                    (.filename | test("^\\.changeset/[^/]+\\.md$"))))
+              ' >/dev/null <<<"$COMPARE_JSON"; then
+                GENERATED_CANDIDATE=true
+              else
+                echo "::warning::Generated release comparison was incomplete, ambiguous, or contained non-deletion changeset input."
+              fi
+            else
+              echo "::warning::Could not verify the generated release PR comparison."
+            fi
+          fi
+
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
           echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
           echo "pr_author=$PR_AUTHOR" >> "$GITHUB_OUTPUT"
           echo "is_fork=$IS_FORK" >> "$GITHUB_OUTPUT"
+          echo "generated_candidate=$GENERATED_CANDIDATE" >> "$GITHUB_OUTPUT"
+          echo "generated_release_pr=$GENERATED_RELEASE_PR" >> "$GITHUB_OUTPUT"
+
+
+  generated_release:
+    # The metadata and comparison shape are a cheap fail-closed prefilter. Prove the
+    # contents separately by reproducing Changesets' output from the immutable base.
+    if: needs.context.outputs.generated_candidate == 'true'
+    name: Verify generated release contents
+    needs: context
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      verified: ${{ steps.verify.outputs.verified }}
+    steps:
+      - name: Checkout immutable base
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ needs.context.outputs.base_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install base-owned release tooling
+        run: pnpm install --frozen-lockfile --ignore-scripts --ignore-pnpmfile
+
+      - name: Regenerate and verify release contents
+        id: verify
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ needs.context.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --force origin "$HEAD_SHA"
+          git cat-file -e "$HEAD_SHA^{commit}"
+          pnpm version-packages
+          # Compare complete Git trees, not allowed paths or patches. This proves that
+          # base-owned Changesets tooling generated every byte at the evaluated head.
+          git add -A
+          GENERATED_TREE=$(git write-tree)
+          HEAD_TREE=$(git rev-parse "$HEAD_SHA^{tree}")
+          if [ "$GENERATED_TREE" = "$HEAD_TREE" ]; then
+            echo "verified=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "verified=false" >> "$GITHUB_OUTPUT"
+            echo "::error::Release PR contents do not exactly match base-owned Changesets output."
+          fi
 
 
   preview:
     # Skipped for forks. A fork's code is untrusted, so rather than run it we fail closed
-    # in the gate below and require a signoff regardless of what the PR declares.
-    if: needs.context.outputs.is_fork != 'true'
+    # in the gate below and report that its release impact could not be determined. Any
+    # PR with the exact generated-release identity stays out of the ordinary preview,
+    # even when its comparison is unverifiable, so ambiguity cannot bypass verification.
+    if: needs.context.outputs.is_fork != 'true' && needs.context.outputs.generated_release_pr != 'true'
     name: Compute release preview
     needs: context
     runs-on: ubuntu-latest
@@ -168,7 +281,7 @@ jobs:
     # `always()`: `preview` is skipped for forks and the gate still has to post a status.
     if: always() && needs.context.result == 'success'
     name: Major release signoff
-    needs: [context, preview]
+    needs: [context, generated_release, preview]
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -177,27 +290,59 @@ jobs:
       - name: Decide whether a signoff is required
         id: decision
         env:
+          GENERATED_CANDIDATE: ${{ needs.context.outputs.generated_candidate }}
+          GENERATED_RELEASE_PR: ${{ needs.context.outputs.generated_release_pr }}
+          GENERATED_RELEASE_RESULT: ${{ needs.generated_release.result }}
           IS_FORK: ${{ needs.context.outputs.is_fork }}
           PREVIEW_RESULT: ${{ needs.preview.result }}
           PREVIEW_IS_MAJOR: ${{ needs.preview.outputs.is_major }}
           PREVIEW_NEXT: ${{ needs.preview.outputs.next }}
           PREVIEW_RELEASE_TYPE: ${{ needs.preview.outputs.release_type }}
+          VERIFIED_GENERATED_RELEASE: ${{ needs.generated_release.outputs.verified }}
         run: |
           set -euo pipefail
-          # Fail closed. A fork, or a preview that did not succeed, means we could not
-          # establish that this PR is non-breaking, so require the signoff rather than
-          # trusting a value computed by code we did not run in a trusted context.
+          if [ "$GENERATED_RELEASE_PR" = "true" ]; then
+            echo "is_major=0" >> "$GITHUB_OUTPUT"
+            echo "next=" >> "$GITHUB_OUTPUT"
+            echo "release_type=" >> "$GITHUB_OUTPUT"
+            if [ "$GENERATED_CANDIDATE" != "true" ]; then
+              echo "blocked=generated release comparison could not be verified" >> "$GITHUB_OUTPUT"
+              echo "generated_release=false" >> "$GITHUB_OUTPUT"
+            elif [ "$GENERATED_RELEASE_RESULT" = "success" ] && \
+               [ "$VERIFIED_GENERATED_RELEASE" = "true" ]; then
+              echo "blocked=" >> "$GITHUB_OUTPUT"
+              echo "generated_release=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "blocked=generated release contents did not match base-owned Changesets output" >> "$GITHUB_OUTPUT"
+              echo "generated_release=false" >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
+          echo "generated_release=false" >> "$GITHUB_OUTPUT"
+          # Fail closed. A fork, or a preview that did not succeed, means release impact
+          # is unknown. Keep the gate red, but do not classify that uncertainty as a
+          # confirmed breaking change or offer signoff instructions for an unknown result.
           if [ "$IS_FORK" = "true" ] || [ "$PREVIEW_RESULT" != "success" ]; then
             if [ "$IS_FORK" = "true" ]; then
               echo "blocked=pull request is from a fork, so its release preview is not trusted" >> "$GITHUB_OUTPUT"
             else
               echo "blocked=release preview did not succeed ($PREVIEW_RESULT)" >> "$GITHUB_OUTPUT"
             fi
-            echo "is_major=1" >> "$GITHUB_OUTPUT"
+            echo "is_major=0" >> "$GITHUB_OUTPUT"
             echo "next=$PREVIEW_NEXT" >> "$GITHUB_OUTPUT"
             echo "release_type=$PREVIEW_RELEASE_TYPE" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          case "$PREVIEW_IS_MAJOR" in
+            0|1) ;;
+            *)
+              echo "blocked=release preview returned an invalid major decision" >> "$GITHUB_OUTPUT"
+              echo "is_major=0" >> "$GITHUB_OUTPUT"
+              echo "next=$PREVIEW_NEXT" >> "$GITHUB_OUTPUT"
+              echo "release_type=$PREVIEW_RELEASE_TYPE" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
           # The version reaches a regex below, so anything that is not a plain semver
           # string is recorded as unevaluable rather than aborting: the job must still
           # reach the step that posts a red status.
@@ -205,7 +350,7 @@ jobs:
              ! printf '%s' "$PREVIEW_NEXT" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
             echo "::error::Preview reported a major but next version '$PREVIEW_NEXT' is not a plain semver string."
             echo "blocked=next version '$PREVIEW_NEXT' is not a plain semver string" >> "$GITHUB_OUTPUT"
-            echo "is_major=1" >> "$GITHUB_OUTPUT"
+            echo "is_major=0" >> "$GITHUB_OUTPUT"
             echo "next=" >> "$GITHUB_OUTPUT"
             echo "release_type=$PREVIEW_RELEASE_TYPE" >> "$GITHUB_OUTPUT"
             exit 0
@@ -215,8 +360,27 @@ jobs:
           echo "next=$PREVIEW_NEXT" >> "$GITHUB_OUTPUT"
           echo "release_type=$PREVIEW_RELEASE_TYPE" >> "$GITHUB_OUTPUT"
 
-      - name: Mark PRs without a breaking change as success and exit
-        if: steps.decision.outputs.is_major != '1'
+      - name: Remove stale workflow-owned signoff instructions
+        # Unknown impact must not leave a comment claiming a confirmed breaking change.
+        # Trusted non-major results also retire instructions from an earlier evaluation.
+        if: steps.decision.outputs.blocked != '' || steps.decision.outputs.is_major != '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.context.outputs.pr_number }}
+        run: |
+          set -euo pipefail
+          MARKER='<!-- major-signoff-required -->'
+          gh api --paginate \
+            "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$MARKER\"))) | .id" |
+            while read -r COMMENT_ID; do
+              [ -z "$COMMENT_ID" ] && continue
+              gh api -X DELETE "repos/${{ github.repository }}/issues/comments/$COMMENT_ID"
+              echo "Removed stale blocking comment ($COMMENT_ID)."
+            done
+
+      - name: Mark PRs without a breaking change as success
+        if: steps.decision.outputs.blocked == '' && steps.decision.outputs.is_major != '1' && steps.decision.outputs.generated_release != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ needs.context.outputs.head_sha }}
@@ -229,6 +393,36 @@ jobs:
             -f context="$STATUS_CONTEXT" \
             -f description="No breaking changeset added (${RELEASE_TYPE:-no bump}); signoff not required." \
             -f target_url="$RUN_URL"
+
+      - name: Mark generated release PR as success
+        if: steps.decision.outputs.generated_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ needs.context.outputs.head_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh api repos/${{ github.repository }}/statuses/$HEAD_SHA \
+            -f state=success \
+            -f context="$STATUS_CONTEXT" \
+            -f description="Generated release PR; major signoff is enforced on source PRs." \
+            -f target_url="$RUN_URL"
+
+      - name: Post failure status when release impact cannot be determined
+        if: steps.decision.outputs.blocked != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ needs.context.outputs.head_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BLOCKED: ${{ steps.decision.outputs.blocked }}
+        run: |
+          set -euo pipefail
+          gh api repos/${{ github.repository }}/statuses/$HEAD_SHA \
+            -f state=failure \
+            -f context="$STATUS_CONTEXT" \
+            -f description="Unable to determine release impact; inspect the workflow run." \
+            -f target_url="$RUN_URL"
+          echo "Unable to determine release impact: $BLOCKED"
 
       - name: Search PR comments for valid approver signoff
         id: signoff
@@ -323,7 +517,7 @@ jobs:
           fi
 
       - name: Post success status when signoff present
-        if: steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off == '1'
+        if: steps.decision.outputs.blocked == '' && steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off == '1'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ needs.context.outputs.head_sha }}
@@ -339,7 +533,7 @@ jobs:
             -f target_url="$RUN_URL"
 
       - name: Upsert blocking comment when signoff missing
-        if: always() && steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off != '1' && github.event_name == 'pull_request'
+        if: always() && steps.decision.outputs.blocked == '' && steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off != '1' && github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ needs.context.outputs.pr_number }}
@@ -390,7 +584,7 @@ jobs:
           fi
 
       - name: Post failure status when signoff missing
-        if: always() && steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off != '1'
+        if: always() && steps.decision.outputs.blocked == '' && steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off != '1'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ needs.context.outputs.head_sha }}
@@ -405,7 +599,13 @@ jobs:
             -f target_url="$RUN_URL"
 
       - name: Fail the job so the gate is loud in the PR UI
-        if: always() && steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off != '1'
+        if: always() && ((steps.decision.outputs.blocked != '') || (steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off != '1'))
+        env:
+          BLOCKED: ${{ steps.decision.outputs.blocked }}
         run: |
-          echo "Breaking change detected; awaiting write-access collaborator signoff."
+          if [ -n "$BLOCKED" ]; then
+            echo "Unable to determine release impact: $BLOCKED"
+          else
+            echo "Breaking change detected; awaiting write-access collaborator signoff."
+          fi
           exit 1

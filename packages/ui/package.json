@@ -1,6 +1,6 @@
 {
   "name": "@youversion/platform-react-ui",
-  "version": "2.13.0",
+  "version": "2.14.0",
   "description": "Pre-built React components for Bible applications with styling included.",
   "license": "Apache-2.0",
   "type": "module",
@@ -12,11 +12,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
-    "./styles.css": "./dist/tailwind.css"
+    "./styles.css": "./dist/styles.css"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
-  "style": "./dist/tailwind.css",
+  "style": "./dist/styles.css",
   "types": "./dist/index.d.ts",
   "browser": {
     "jsdom": false
@@ -33,18 +33,21 @@
   "scripts": {
     "build:types": "tsc -p tsconfig.build.json",
     "build:js": "tsup",
-    "build:css": "tailwindcss -i src/styles/global.css -o dist/tailwind.css --minify && node scripts/preserve-host-revert-layer.js",
+    "build:css": "tailwindcss -i src/styles/chrome.css -o dist/chrome.css --minify && tailwindcss -i src/styles/global.css -o dist/tailwind.css --minify && node scripts/preserve-host-revert-layer.js && tailwindcss -i src/styles/reader.css -o dist/bible-reader.css --minify && node scripts/write-public-styles.js",
+    "build:storybook-css": "tailwindcss -i .storybook/styles.css -o .storybook/generated-styles.css --minify",
     "verify:styles": "node scripts/verify-styles.js",
     "generate:i18n": "node scripts/generate-i18n-resources.mjs",
-    "build": "pnpm generate:i18n && pnpm build:css && pnpm build:js && pnpm verify:styles && pnpm build:types",
-    "dev": "concurrently \"node scripts/generate-i18n-resources.mjs --watch\" \"tailwindcss -i src/styles/global.css -o dist/tailwind.css --watch\" \"NODE_ENV=development tsup --watch\"",
+    "check:entries": "node scripts/check-public-entries.mjs",
+    "check:exports": "node scripts/check-public-exports.mjs",
+    "build": "rm -rf dist && pnpm generate:i18n && pnpm check:entries && pnpm build:css && pnpm build:js && pnpm check:exports && pnpm verify:styles && pnpm build:types",
+    "dev": "pnpm build:css && concurrently \"node scripts/generate-i18n-resources.mjs --watch\" \"tailwindcss -i src/styles/chrome.css -o dist/chrome.css --watch\" \"tailwindcss -i src/styles/global.css -o dist/tailwind.css --watch\" \"tailwindcss -i src/styles/reader.css -o dist/bible-reader.css --watch\" \"node scripts/write-public-styles.js --watch\" \"NODE_ENV=development tsup --watch\"",
     "test": "pnpm generate:i18n && vitest run --project unit",
     "test:watch": "pnpm generate:i18n && vitest --project unit",
     "test:coverage": "pnpm generate:i18n && vitest run --project unit --coverage",
     "typecheck": "pnpm generate:i18n && tsc --noEmit",
-    "prepublishOnly": "YVP_PUBLISH_BUILD=true pnpm --filter @youversion/platform-core build && pnpm build && node ../../scripts/check-sdk-version-stamp.mjs ui",
-    "storybook": "concurrently \"node scripts/generate-i18n-resources.mjs --watch\" \"tailwindcss -i src/styles/global.css -o dist/tailwind.css --watch\" \"storybook dev -p 6006\"",
-    "build-storybook": "pnpm generate:i18n && storybook build",
+    "prepublishOnly": "YVP_PUBLISH_BUILD=true pnpm --filter @youversion/platform-core build && pnpm build && node ../../scripts/check-sdk-version-stamp.mjs core",
+    "storybook": "pnpm build:css && pnpm build:storybook-css && concurrently \"node scripts/generate-i18n-resources.mjs --watch\" \"tailwindcss -i src/styles/chrome.css -o dist/chrome.css --watch\" \"tailwindcss -i src/styles/global.css -o dist/tailwind.css --watch\" \"tailwindcss -i src/styles/reader.css -o dist/bible-reader.css --watch\" \"node scripts/write-public-styles.js --watch\" \"storybook dev -p 6006\"",
+    "build-storybook": "pnpm generate:i18n && pnpm build:css && pnpm build:storybook-css && storybook build",
     "test:integration": "vitest run"
   },
   "dependencies": {

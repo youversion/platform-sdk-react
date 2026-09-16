@@ -1,5 +1,13 @@
 # @youversion/platform-core
 
+## 2.14.0
+
+### Minor Changes
+
+- 1e6c8a2: Add a declarative passage display API that returns transformed Bible HTML,
+  current attribution, required stylesheet descriptors, and container attributes
+  without rendering or mutating the DOM.
+
 ## 2.13.0
 
 ### Minor Changes

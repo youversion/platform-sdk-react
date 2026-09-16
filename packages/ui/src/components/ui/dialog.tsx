@@ -2,6 +2,7 @@ import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 
 import { cn } from '../../lib/utils';
+import { useInterfaceDirection } from '../../lib/direction';
 
 const Dialog = DialogPrimitive.Root;
 const DialogTitle = DialogPrimitive.Title;
@@ -24,6 +25,7 @@ function DialogContent({
   children,
   ...props
 }: DialogContentProps): React.ReactElement {
+  const direction = useInterfaceDirection();
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
@@ -47,6 +49,7 @@ function DialogContent({
           'yv:data-[state=closed]:zoom-out-95 yv:data-[state=open]:zoom-in-95',
         )}
         {...props}
+        dir={direction}
       >
         {children}
       </DialogPrimitive.Content>

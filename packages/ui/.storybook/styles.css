@@ -1,0 +1,4 @@
+/* Story wrappers use utilities that do not belong in the published component sheet. */
+@import '../src/styles/global.css';
+
+@source '../src/**/*.stories.tsx';

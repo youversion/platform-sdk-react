@@ -14,8 +14,8 @@ function InputGroup({ className, ...props }: React.ComponentProps<'div'>): React
         'yv:h-9 yv:min-w-0 yv:has-[>textarea]:h-auto',
 
         // Variants based on alignment.
-        'yv:has-[>[data-align=inline-start]]:[&>input]:pl-2',
-        'yv:has-[>[data-align=inline-end]]:[&>input]:pr-2',
+        'yv:has-[>[data-align=inline-start]]:[&>input]:ps-2',
+        'yv:has-[>[data-align=inline-end]]:[&>input]:pe-2',
         'yv:has-[>[data-align=block-start]]:h-auto yv:has-[>[data-align=block-start]]:flex-col yv:has-[>[data-align=block-start]]:[&>input]:pb-3',
         'yv:has-[>[data-align=block-end]]:h-auto yv:has-[>[data-align=block-end]]:flex-col yv:has-[>[data-align=block-end]]:[&>input]:pt-3',
 
@@ -38,9 +38,9 @@ const inputGroupAddonVariants = cva(
     variants: {
       align: {
         'inline-start':
-          'yv:order-first yv:pl-3 yv:has-[>button]:ml-[-0.45rem] yv:has-[>kbd]:ml-[-0.35rem]',
+          'yv:order-first yv:ps-3 yv:has-[>button]:ms-[-0.45rem] yv:has-[>kbd]:ms-[-0.35rem]',
         'inline-end':
-          'yv:order-last yv:pr-3 yv:has-[>button]:mr-[-0.45rem] yv:has-[>kbd]:mr-[-0.35rem]',
+          'yv:order-last yv:pe-3 yv:has-[>button]:me-[-0.45rem] yv:has-[>kbd]:me-[-0.35rem]',
         'block-start':
           'yv:order-first yv:w-full yv:justify-start yv:px-3 yv:pt-3 yv:[.border-b]:pb-3 yv:group-has-[>input]/input-group:pt-2.5',
         'block-end':

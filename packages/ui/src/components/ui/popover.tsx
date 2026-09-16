@@ -2,6 +2,7 @@ import * as React from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
+import { useInterfaceDirection } from '@/lib/direction';
 import { Button } from './button';
 import { XIcon } from '../icons/x';
 
@@ -38,6 +39,7 @@ function PopoverContent({
   theme?: 'light' | 'dark';
 }): React.ReactNode {
   const { t } = useTranslation(undefined, { i18n });
+  const direction = useInterfaceDirection();
 
   return (
     <PopoverPrimitive.Portal>
@@ -53,6 +55,7 @@ function PopoverContent({
           className,
         )}
         {...props}
+        dir={direction}
       >
         {showHeader ? (
           <section

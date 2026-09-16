@@ -70,6 +70,7 @@ yarn-error.log*
 # Storybook
 *storybook.log
 storybook-static
+packages/ui/.storybook/generated-styles.css
 
 # Yarn (legacy)
 .pnp.*

@@ -3,6 +3,21 @@
 Glossary of domain terms for the YouVersion Platform SDK. Terms here are
 canonical: code, docs, and conversation should use them exactly.
 
+## Interface direction
+
+The left-to-right or right-to-left flow of SDK-owned chrome: controls, rows,
+pickers, directional icons, and portaled surfaces. It follows an explicit
+`YouVersionProvider.direction`, then the resolved SDK UI locale, then LTR as a
+deterministic fallback. It is independent of Bible picker language and
+**Scripture direction**.
+
+## Scripture direction
+
+The left-to-right, right-to-left, or automatically detected flow of rendered
+Bible content, including Scripture typography, references, and Scripture-owned
+footnotes. It follows an explicit `scriptureDirection`, then transformed YVDOM
+direction, then `auto`. It is independent of **Interface direction**.
+
 ## Highlight
 
 A user-owned color marking on a Bible passage, stored on the user's
@@ -19,6 +34,25 @@ exactly one **color**.
 A verse or contiguous verse range in one chapter of one Bible version,
 identified by a USFM string (`JHN.3.16`, `JHN.3.16-18`). A chapter USFM
 (`JHN.3`) is a passage *scope* used for querying, not a highlightable unit.
+
+## Passage ID
+
+The canonical string identifier for a passage, expressed in USFM format, such
+as `JHN.3.16` or `JHN.3.16-18`. _Avoid_: USFM, reference string.
+
+## Passage display model
+
+A declarative representation of a passage and everything a web application
+needs to display it with YouVersion's rendering contract. _Avoid_: rendered
+passage, passage component, display bundle.
+
+## Passage display model attribution
+
+The current, non-empty legal text returned by the passage display model. The
+short copyright text is preferred; promotional content is its fallback. This
+fail-closed contract applies to `getPassageDisplay`; existing React UI
+components retain their own attribution behavior.
+_Avoid_: copyright HTML.
 
 ## Bible version
 

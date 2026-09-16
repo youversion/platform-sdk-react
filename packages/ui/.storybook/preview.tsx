@@ -1,17 +1,16 @@
 import React, { useEffect } from 'react';
 import type { Preview, ReactRenderer } from '@storybook/react-vite';
 import type { PartialStoryFn, StoryContext } from 'storybook/internal/csf';
+import { initialize, mswLoader } from 'msw-storybook-addon';
+import { YouVersionProvider } from '../src/components/YouVersionProvider';
+import { globalHandlers } from '../src/test/mocks/handlers';
+import { StorybookEnvCheck } from '../src/test/StorybookEnvCheck';
 
 function getTheme(value: string | undefined): 'light' | 'dark' | 'system' {
   if (value === 'dark') return 'dark';
   if (value === 'system') return 'system';
   return 'light';
 }
-
-import { initialize, mswLoader } from 'msw-storybook-addon';
-import { StorybookEnvCheck } from '../src/test/StorybookEnvCheck';
-import { YouVersionProvider } from '../src/components/YouVersionProvider';
-import { globalHandlers } from '../src/test/mocks/handlers';
 
 const THEME_BACKGROUNDS = {
   light: '#ffffff',
@@ -31,6 +30,30 @@ initialize({
 
 const preview: Preview = {
   globalTypes: {
+    locale: {
+      description: 'Provider UI locale',
+      toolbar: {
+        title: 'Locale',
+        icon: 'globe',
+        items: [
+          { value: 'en', title: 'English' },
+          { value: 'ar', title: 'Arabic' },
+        ],
+        dynamicTitle: true,
+      },
+    },
+    interfaceDirection: {
+      description: 'Provider interface direction',
+      toolbar: {
+        title: 'Interface direction',
+        icon: 'transfer',
+        items: [
+          { value: 'ltr', title: 'LTR' },
+          { value: 'rtl', title: 'RTL' },
+        ],
+        dynamicTitle: true,
+      },
+    },
     theme: {
       description: 'Provider theme',
       toolbar: {
@@ -46,6 +69,8 @@ const preview: Preview = {
     },
   },
   initialGlobals: {
+    locale: 'en',
+    interfaceDirection: 'ltr',
     theme: 'light',
   },
   decorators: [
@@ -64,6 +89,10 @@ const preview: Preview = {
       }, [theme]);
 
       const includeAuth = context.parameters.includeAuth !== false;
+      const locale =
+        typeof context.parameters.locale === 'string'
+          ? context.parameters.locale
+          : context.globals.locale;
       const requiredEnvVars = ['STORYBOOK_YOUVERSION_APP_KEY'];
 
       if (includeAuth) {
@@ -76,7 +105,9 @@ const preview: Preview = {
               }
               apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
               includeAuth={true}
+              locale={locale}
               theme={getTheme(context.globals.theme)}
+              direction={context.globals.interfaceDirection}
             >
               <Story />
             </YouVersionProvider>
@@ -89,7 +120,9 @@ const preview: Preview = {
           <YouVersionProvider
             appKey={import.meta.env.STORYBOOK_YOUVERSION_APP_KEY || ''}
             apiHost={import.meta.env.STORYBOOK_YOUVERSION_API_HOST}
+            locale={locale}
             theme={getTheme(context.globals.theme)}
+            direction={context.globals.interfaceDirection}
           >
             <Story />
           </YouVersionProvider>
