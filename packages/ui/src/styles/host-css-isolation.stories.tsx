@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor } from 'storybook/test';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { YvComponentStyles } from '@/lib/yv-styles-components';
 
 /**
  * Hostile unlayered host CSS — Tailwind v3 preflight + a partner `button {}`.
@@ -60,6 +61,7 @@ function requiredElement(root: ParentNode, testId: string): HTMLElement {
 function HostCssIsolationFixture(): ReactElement {
   return (
     <>
+      <YvComponentStyles />
       <style>{HOSTILE_HOST_CSS}</style>
       <button type="button" data-testid="host-button">
         Host
