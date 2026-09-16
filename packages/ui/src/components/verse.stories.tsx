@@ -4,7 +4,13 @@ import React from 'react';
 
 import { useTheme } from '@youversion/platform-react-hooks';
 
-import { type BibleTextViewProps, BibleTextView, Verse, getCleanVerseText } from './verse';
+import {
+  type BibleTextViewProps,
+  BibleTextView,
+  FootnoteContent,
+  Verse,
+  getCleanVerseText,
+} from './verse';
 import { VerseActionPopover } from './verse-action-popover';
 import { buildVerseShareText } from '@/lib/verse-share';
 import { Button } from './ui/button';
@@ -28,6 +34,20 @@ const MULTIPLE_FOOTNOTE_SINGLE_VERSE_HTML = `
     <span class="wj">"Very truly I tell you,</span><span class="yv-n f"><span class="fr">1:51 </span><span class="ft">The Greek is plural.</span></span>
     <span class="wj">you</span><span class="yv-n f"><span class="fr">1:51 </span><span class="ft">The Greek is plural.</span></span>
     <span class="wj">will see heaven open."</span>
+  </div>
+`;
+
+const SWIFT_PHASE_TWO_FIXTURE_HTML = `
+  <div class="imt1">Introduction title</div><div class="imt2">Introduction subtitle</div>
+  <div class="imt3">Introduction tertiary title</div><div class="is1">Introduction section</div>
+  <div class="imq">Introduction quotation</div><div class="lh">List header</div>
+  <div class="li">List item</div><div class="lim">Embedded list item</div>
+  <div class="mt1">Major title</div><div class="mt2">Secondary title</div>
+  <div class="r yv-h">Parallel heading</div><div class="sr">Section range</div>
+  <div class="po">Letter opening</div><div class="p"><span class="yv-v" v="2"></span><span class="va">2a</span>
+    <span class="bd">Bold</span> <span class="em">emphasis</span> <span class="pn"><span class="bd">nested proper name</span></span>
+    <span class="rq">quotation reference</span> <span class="ref">reference</span> <span class="wg">glossary</span>
+    <span class="wh">Hebrew word</span> <span class="ior">outline range</span> <span class="xta">cross-reference target</span>
   </div>
 `;
 
@@ -301,6 +321,28 @@ export const MultipleFootnotesInSingleVerse: Story = {
       /will see heaven open/i,
     );
   },
+};
+
+export const SwiftPhaseTwoTypographyFixture: Story = {
+  args: { reference: 'GEN.1', versionId: 111 },
+  render: () => (
+    <div data-yv-sdk data-yv-theme="light" className="yv:grid yv:gap-8 yv:lg:grid-cols-2">
+      {(['ltr', 'rtl'] as const).map((direction) => (
+        <section key={direction} dir={direction} className="yv:min-w-0">
+          <h2 className="yv:font-sans yv:font-bold yv:mb-3">{direction.toUpperCase()}</h2>
+          <Verse.Html html={SWIFT_PHASE_TWO_FIXTURE_HTML} renderNotes={true} />
+          <FootnoteContent
+            verseNum="2"
+            verseHtml="Deterministic verse context."
+            notes={[
+              '<span class="ft">First footnote paragraph.</span><span class="fp"><span class="fk">Keyword</span> and <span class="fl">label</span> continue inline.</span>',
+            ]}
+          />
+        </section>
+      ))}
+    </div>
+  ),
+  parameters: { layout: 'padded' },
 };
 
 export const DarkMode: Story = {

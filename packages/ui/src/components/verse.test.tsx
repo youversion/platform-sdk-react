@@ -9,7 +9,14 @@ import type { ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
 import { requireHtmlButton, requireHtmlElement } from '@/test/dom-stubs';
 import { HookOverrideProvider } from '@/test/hook-overrides';
-import { Verse, BibleTextView, type BibleTextViewPassageState, type FootnoteData } from './verse';
+import {
+  Verse,
+  BibleTextView,
+  FootnoteContent,
+  getCleanVerseText,
+  type BibleTextViewPassageState,
+  type FootnoteData,
+} from './verse';
 import type { Highlight } from '@youversion/platform-core';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import type { HookOverrides } from '@youversion/platform-react-hooks';
@@ -1646,5 +1653,33 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
     expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
     expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(GREEN));
     expect(getVerseEl(container, 3).style.backgroundColor).toBe('');
+  });
+});
+
+describe('Bible rendering labels and footnotes', () => {
+  it('omits alternate labels from copied verse prose', () => {
+    const container = document.createElement('div');
+    container.innerHTML =
+      '<span class="yv-v" v="2"><span class="va">2a</span><span class="pn"><span class="bd">Paul</span></span> spoke.</span>';
+
+    expect(getCleanVerseText(container, 2)).toBe('Paul spoke.');
+  });
+
+  it('puts real footnote composition inside the canonical Bible CSS scope', () => {
+    const { container } = render(
+      <FootnoteContent
+        verseNum="2"
+        verseHtml="Verse context"
+        notes={[
+          '<span class="ft">First paragraph.</span><span class="fp"><span class="fk">Keyword</span> and <span class="fl">label</span>.</span>',
+        ]}
+      />,
+    );
+
+    const note = container.querySelector('[data-slot="yv-bible-renderer"]');
+    expect(note).not.toBeNull();
+    expect(note?.querySelector('.fp')?.textContent).toBe('Keyword and label.');
+    expect(note?.querySelector('.fk')).not.toBeNull();
+    expect(note?.querySelector('.fl')).not.toBeNull();
   });
 });

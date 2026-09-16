@@ -20,7 +20,7 @@ function rulesForExactClass(cls: string): string {
   return bodies.join('\n');
 }
 
-describe('bible-reader phase-1 typography (Swift-adjusted tags)', () => {
+describe('bible-reader Swift-aligned typography', () => {
   it('styles body, s1, and q1 with Swift rhythm and logical spacing', () => {
     const p = rulesForExactClass('p');
     expect(p).toContain('text-indent: 1em');
@@ -170,5 +170,58 @@ describe('bible-reader phase-1 typography (Swift-adjusted tags)', () => {
   it('sets highlight mix p to 1 in light and 0.2 in dark', () => {
     expect(themeCss).toContain('--yv-highlight-mix-p: 1;');
     expect(themeCss).toContain('--yv-highlight-mix-p: 0.2;');
+  });
+
+  it('applies phase-2 and phase-3 heading metrics without scaled margins or inherited indents', () => {
+    expect(rulesForExactClass('imt1')).toContain('font-size: 1.17em');
+    expect(rulesForExactClass('imt1')).toContain('font-weight: bold');
+    expect(rulesForExactClass('imt1')).toContain('text-align: center');
+    expect(rulesForExactClass('imt1')).toContain('margin-block-start: var(--yv-reader-font-size)');
+    expect(rulesForExactClass('imt1')).toContain('text-indent: 0');
+
+    expect(rulesForExactClass('imt2')).toContain('font-size: 1.08em');
+    expect(rulesForExactClass('imt2')).toContain(
+      'margin-block-start: calc(var(--yv-reader-font-size) * 0.5)',
+    );
+    expect(rulesForExactClass('mt1')).toContain('font-weight: 500');
+    expect(rulesForExactClass('mt1')).toContain('text-align: center');
+    expect(rulesForExactClass('mt2')).toContain('font-style: italic');
+    expect(rulesForExactClass('is1')).toContain('font-size: 1.17em');
+    expect(rulesForExactClass('is1')).toContain('font-weight: bold');
+    expect(rulesForExactClass('sr')).toContain('font-weight: 500');
+    expect(rulesForExactClass('sr')).toContain('text-align: center');
+    expect(rulesForExactClass('r')).toContain('text-align: center');
+
+    expect(css).toMatch(/& \.yv-h\.r,\s*& \.r\.yv-h\s*\{[^}]*font-weight: 500/s);
+  });
+
+  it('applies phase-2 and phase-3 block and inline styles', () => {
+    expect(rulesForExactClass('imq')).toContain('padding-inline-start: 2em');
+    expect(rulesForExactClass('imq')).toContain('margin-block: var(--yv-reader-font-size)');
+    expect(rulesForExactClass('li')).toContain('padding-inline-start: 2em');
+    expect(rulesForExactClass('li')).toContain('text-indent: 0');
+    expect(rulesForExactClass('lim')).toContain('padding-inline-start: 2em');
+    expect(rulesForExactClass('lh')).toContain('text-indent: 1em');
+    expect(rulesForExactClass('po')).toContain(
+      'margin-block-start: calc(var(--yv-reader-font-size) * 0.25)',
+    );
+
+    expect(rulesForExactClass('rq')).toContain('font-size: 0.83em');
+    expect(rulesForExactClass('fk')).toContain('font-weight: 500');
+    expect(rulesForExactClass('fk')).toContain('font-style: italic');
+    expect(rulesForExactClass('fl')).toContain('font-weight: 500');
+    expect(rulesForExactClass('pn')).toContain('font-weight: normal');
+    expect(rulesForExactClass('bd')).toContain('font-weight: bold');
+    expect(rulesForExactClass('fp')).toContain('display: block');
+    expect(rulesForExactClass('fp')).toContain('margin: 0');
+    expect(rulesForExactClass('fp')).toContain('text-indent: 0');
+  });
+
+  it('treats va consistently as a visible, hideable alternate verse label', () => {
+    const va = rulesForExactClass('va');
+    expect(va).toContain('font-size: 0.65em');
+    expect(va).toContain('font-family: var(--yv-font-sans)');
+    expect(css).toContain("&[data-show-verse-numbers='false'] .va");
+    expect(css).toContain(':is(.yv-vlbl, .va)::after');
   });
 });
