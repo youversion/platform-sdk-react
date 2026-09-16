@@ -134,7 +134,11 @@ export function useShadowDialogFocus({
 
   const onCloseAutoFocus = React.useCallback(
     (event: Event): void => {
-      if (event.defaultPrevented || container === undefined) return;
+      if (container === undefined) return;
+      if (event.defaultPrevented) {
+        restoreFocusRef.current = null;
+        return;
+      }
 
       event.preventDefault();
       const restoreFocusTo = restoreFocusRef.current;

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { expect, userEvent, waitFor } from 'storybook/test';
+import { expect, spyOn, userEvent, waitFor } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { requireShadowRoot } from '../test/dom-stubs';
 import { HighlightPermissionDialog } from './highlight-permission-dialog';
@@ -773,7 +773,7 @@ export const RapidCloseReopenDuringExitEvidence: Story = {
   },
 };
 
-export const RapidCloseReopenIgnoresCrossTreeOpenerEvidence: Story = {
+export const RapidCloseReopenIgnoresInvalidOpenerEvidence: Story = {
   tags: ['!dev'],
   args: { enableRapidReopen: true },
   play: async ({ canvasElement, step }) => {
@@ -848,15 +848,21 @@ export const RapidCloseReopenIgnoresCrossTreeOpenerEvidence: Story = {
           }
         });
 
-        runRapidCloseReopen.remove();
-        void expect(runRapidCloseReopen.isConnected).toBe(false);
-        await userEvent.keyboard('{Escape}');
-        await waitFor(() => {
-          void expect(getPermissionDialog(topLayer)).toBeNull();
-          void expect(contentWrapper.inert).toBe(false);
-          void expect(topLayer.matches(':popover-open')).toBe(false);
-        });
-        void expect(root.activeElement).not.toBe(runRapidCloseReopen);
+        const focus = spyOn(runRapidCloseReopen, 'focus');
+        try {
+          runRapidCloseReopen.remove();
+          void expect(runRapidCloseReopen.isConnected).toBe(false);
+          await userEvent.keyboard('{Escape}');
+          await waitFor(() => {
+            void expect(getPermissionDialog(topLayer)).toBeNull();
+            void expect(contentWrapper.inert).toBe(false);
+            void expect(topLayer.matches(':popover-open')).toBe(false);
+          });
+          void expect(focus).not.toHaveBeenCalled();
+          void expect(root.activeElement).not.toBe(runRapidCloseReopen);
+        } finally {
+          focus.mockRestore();
+        }
       });
     } finally {
       exitAnimationStyle.remove();

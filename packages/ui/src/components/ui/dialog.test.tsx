@@ -1,9 +1,49 @@
 import { render, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { ShadowRootHost } from '@/lib/shadow-root-host';
 import { requireShadowRoot } from '@/test/dom-stubs';
 import { Dialog, DialogContent, DialogTitle } from './dialog';
+
+function PreventedCloseAutoFocusHarness(): ReactNode {
+  const [open, setOpen] = useState(false);
+  const [preventCloseAutoFocus, setPreventCloseAutoFocus] = useState(false);
+
+  return (
+    <ShadowRootHost portalStrategy="local-inline">
+      <button
+        type="button"
+        onClick={() => {
+          setPreventCloseAutoFocus(true);
+          setOpen(true);
+        }}
+      >
+        First opener
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setPreventCloseAutoFocus(false);
+          setOpen(true);
+        }}
+      >
+        Second opener
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent
+          aria-describedby={undefined}
+          onCloseAutoFocus={(event) => {
+            if (preventCloseAutoFocus) event.preventDefault();
+          }}
+        >
+          <DialogTitle>Title</DialogTitle>
+          <button type="button">Inside</button>
+        </DialogContent>
+      </Dialog>
+    </ShadowRootHost>
+  );
+}
 
 describe('Dialog shadow portal coordination', () => {
   it('preserves light-DOM state and ref behavior without changing overlay focusability', async () => {
@@ -108,5 +148,24 @@ describe('Dialog shadow portal coordination', () => {
       expect(shadowRoot.querySelector('[role="dialog"]')).toBeNull();
     });
     expect(wrapper?.inert).toBe(false);
+  });
+
+  it('captures a new opener after a consumer prevents close autofocus', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<PreventedCloseAutoFocusHarness />);
+    const shadowRoot = requireShadowRoot(container);
+    const [firstOpener, secondOpener] = Array.from(shadowRoot.querySelectorAll('button'));
+
+    await user.click(firstOpener!);
+    await waitFor(() => expect(shadowRoot.querySelector('[role="dialog"]')).not.toBeNull());
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(shadowRoot.querySelector('[role="dialog"]')).toBeNull());
+
+    await user.click(secondOpener!);
+    await waitFor(() => expect(shadowRoot.querySelector('[role="dialog"]')).not.toBeNull());
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(shadowRoot.querySelector('[role="dialog"]')).toBeNull());
+
+    expect(shadowRoot.activeElement).toBe(secondOpener);
   });
 });
