@@ -99,6 +99,10 @@ it('establishes interface direction independently from Scripture direction', () 
   expect(container.querySelector('section')).toHaveAttribute('dir', 'rtl');
   expect(screen.getByText(MOCK_REFERENCE).closest('p')).toHaveAttribute('dir', 'ltr');
   expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute('dir', 'ltr');
+  expect(screen.getByRole('button', { name: en.shareAriaLabel })).toHaveClass('yv:-me-2');
+  expect(screen.getByRole('button', { name: en.shareAriaLabel }).className).not.toContain(
+    'translate-x',
+  );
 });
 
 function expectedShareData(verseText: string = MOCK_VERSE_TEXT): VerseOfTheDayShareData {

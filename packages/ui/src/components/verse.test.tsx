@@ -544,6 +544,7 @@ it('keeps portaled footnote chrome interface-directed and its Scripture content 
       html={
         '<div dir="rtl"><p><span class="yv-v" v="1"></span>Text<span class="yv-n f"><span class="ft">Note</span></span></p></div>'
       }
+      reference="John 1"
     />,
   );
 
@@ -558,6 +559,8 @@ it('keeps portaled footnote chrome interface-directed and its Scripture content 
     const popover = document.body.querySelector('[role="dialog"]');
     expect(popover).toHaveAttribute('dir', 'ltr');
     expect(popover?.querySelector('[data-yv-sdk]')).toHaveAttribute('dir', 'rtl');
+    expect(popover?.querySelector('bdi')).toHaveAttribute('dir', 'auto');
+    expect(popover?.querySelector('bdi')).toHaveTextContent('John 1:1');
   });
 });
 

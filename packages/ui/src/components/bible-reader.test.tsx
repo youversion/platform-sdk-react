@@ -448,6 +448,11 @@ it('keeps chapter targets canonical while semantic icons follow RTL interface di
     </InterfaceDirectionProvider>,
   );
 
+  const chapterButton = screen.getByRole('button', { name: 'Change Bible book and chapter' });
+  const labels = chapterButton.querySelectorAll('bdi[dir="auto"]');
+  expect(labels).toHaveLength(2);
+  expect(labels[1]).toHaveTextContent('1');
+
   await user.click(screen.getByRole('button', { name: 'Next chapter' }));
 
   expect(onChapterChange).toHaveBeenCalledWith('2');

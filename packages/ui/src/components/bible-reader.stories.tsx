@@ -229,7 +229,9 @@ export const RtlScriptureWithLtrChrome: Story = {
     await expect(Number.parseFloat(poetryStyle.paddingRight)).toBeGreaterThan(0);
     await expect(poetryStyle.paddingLeft).toBe('0px');
     await expect(table).toBeInTheDocument();
-    await expect(canvasElement.querySelector('h1')).toHaveAttribute('dir', 'rtl');
+    const heading = canvasElement.querySelector('h1')!;
+    await expect(heading).toHaveAttribute('dir', 'rtl');
+    await expect(heading.querySelectorAll('bdi[dir="auto"]')).toHaveLength(2);
 
     await userEvent.click(screen.getByRole('button', { name: /footnote/i }));
     await waitFor(async () => {

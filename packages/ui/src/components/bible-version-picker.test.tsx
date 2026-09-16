@@ -816,26 +816,31 @@ describe('BibleVersionPicker', () => {
       expect(screen.getByRole('heading', { name: /bible versions/i })).toBeInTheDocument();
     });
   });
+});
 
-  it('applies interface direction to its portaled content and Radix tabs', async () => {
-    renderWithOverrides(
-      <InterfaceDirectionProvider direction="rtl">
-        <BibleVersionPicker.Root versionId={111} onVersionChange={vi.fn()}>
-          <BibleVersionPicker.Trigger dir="ltr" />
-          <BibleVersionPicker.Content />
-        </BibleVersionPicker.Root>
-      </InterfaceDirectionProvider>,
-    );
+it('applies interface direction to its portaled content and Radix tabs', async () => {
+  YouVersionPlatformConfiguration.permittedVersionIds = undefined;
+  YouVersionPlatformConfiguration.excludedVersionIds = undefined;
+  YouVersionPlatformConfiguration.permittedLanguageTags = undefined;
+  localStorage.clear();
 
-    const trigger = screen.getByRole('button', { name: 'NIV' });
-    expect(trigger.querySelector('bdi')).toHaveAttribute('dir', 'auto');
-    await userEvent.click(trigger);
-    await userEvent.click(screen.getByRole('button', { name: /select (?:a )?language/i }));
+  renderWithOverrides(
+    <InterfaceDirectionProvider direction="rtl">
+      <BibleVersionPicker.Root versionId={111} onVersionChange={vi.fn()}>
+        <BibleVersionPicker.Trigger dir="ltr" />
+        <BibleVersionPicker.Content />
+      </BibleVersionPicker.Root>
+    </InterfaceDirectionProvider>,
+  );
 
-    expect(trigger).toHaveAttribute('dir', 'rtl');
-    expect(screen.getByRole('dialog')).toHaveAttribute('dir', 'rtl');
-    expect(screen.getByRole('tablist').parentElement).toHaveAttribute('dir', 'rtl');
-    expect(getLanguageSearchInput()).toHaveAttribute('dir', 'auto');
-    expect(screen.getAllByText('English')[0]?.closest('bdi')).toHaveAttribute('dir', 'auto');
-  });
+  const trigger = screen.getByRole('button', { name: 'NIV' });
+  expect(trigger.querySelector('bdi')).toHaveAttribute('dir', 'auto');
+  await userEvent.click(trigger);
+  await userEvent.click(screen.getByRole('button', { name: /select (?:a )?language/i }));
+
+  expect(trigger).toHaveAttribute('dir', 'rtl');
+  expect(screen.getByRole('dialog')).toHaveAttribute('dir', 'rtl');
+  expect(screen.getByRole('tablist').parentElement).toHaveAttribute('dir', 'rtl');
+  expect(getLanguageSearchInput()).toHaveAttribute('dir', 'auto');
+  expect(screen.getAllByText('English')[0]?.closest('bdi')).toHaveAttribute('dir', 'auto');
 });

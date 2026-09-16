@@ -1072,7 +1072,7 @@ function Content() {
           )}
         </span>
         <span className="yv:font-serif yv:leading-none yv:block yv:text-[2.5rem] yv:font-normal yv:tabular-nums">
-          {chapterLabel || chapter || '-'}
+          <bdi dir="auto">{chapterLabel || chapter || '-'}</bdi>
         </span>
       </h1>
 
@@ -1547,9 +1547,9 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
                       <bdi dir="auto" className="yv:min-w-[3ch] yv:truncate">
                         {currentBook?.title || t('select')}
                       </bdi>
-                      <span className="yv:tabular-nums yv:min-w-[1ch] yv:truncate">
+                      <bdi dir="auto" className="yv:tabular-nums yv:min-w-[1ch] yv:truncate">
                         {chapterLabel || ''}
-                      </span>
+                      </bdi>
                     </>
                   )}
                 </Button>

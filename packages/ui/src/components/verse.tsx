@@ -83,7 +83,9 @@ export function FootnoteContent({
       <div className="yv:p-3 yv:overflow-y-auto yv:bg-background yv:text-foreground">
         {showVerseContext && (
           <>
-            <div className="yv:font-bold yv:mb-2">{verseReference}</div>
+            <div className="yv:font-bold yv:mb-2">
+              <bdi dir="auto">{verseReference}</bdi>
+            </div>
             <div
               className="yv:mb-3 yv:font-serif yv:*:font-serif"
               style={{ fontSize: fontSize ? `${fontSize}px` : '1.25rem' }}

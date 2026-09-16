@@ -294,10 +294,10 @@ it.each([
 });
 
 it.each([
-  ['<div><p>Text</p></div>', 'missing'],
-  ['<div dir="auto"><p>Text</p></div>', 'invalid'],
-  ['<div dir="ltr">One</div><div dir="rtl">Two</div>', 'mixed'],
-])('does not resolve %s root directions', (html) => {
+  ['missing', '<div><p>Text</p></div>'],
+  ['invalid', '<div dir="auto"><p>Text</p></div>'],
+  ['mixed', '<div dir="ltr">One</div><div dir="rtl">Two</div>'],
+])('does not resolve %s root directions', (_label, html) => {
   const result = transformBibleHtml(html, createAdapters());
 
   expect(result.direction).toBeUndefined();

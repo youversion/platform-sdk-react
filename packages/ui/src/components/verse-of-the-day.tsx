@@ -20,7 +20,6 @@ import {
   type Highlight,
   type TextDirection,
 } from '@youversion/platform-core';
-import { cn } from '@/lib/utils';
 import { filterHighlightsForPassage } from '@/lib/highlight-projection';
 import { useHighlightsControlledLatch } from '@/lib/use-highlights-controlled-latch';
 import { useInterfaceDirection } from '@/lib/direction';
@@ -268,15 +267,7 @@ export function VerseOfTheDay({
             >
               <Button
                 aria-label={t('shareAriaLabel')}
-                className={cn(
-                  interfaceDirection === 'rtl'
-                    ? size === 'lg'
-                      ? 'yv:-translate-x-3'
-                      : 'yv:-translate-x-2'
-                    : size === 'lg'
-                      ? 'yv:translate-x-3'
-                      : 'yv:translate-x-2',
-                )}
+                className={size === 'lg' ? 'yv:-me-3' : 'yv:-me-2'}
                 onClick={() => void handleShareVerse()}
                 disabled={!!(errorPassage || errorVerseOfTheDay)}
                 size="icon"
