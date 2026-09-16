@@ -14,6 +14,7 @@ Keep this file brief. Put task-specific guidance behind a pointer.
 - Sister SDKs (`platform-sdk-swift`, `platform-sdk-kotlin`) define the Sign-In UI, logos, and i18n patterns — align with them. Swift is the source of truth for Bible reader typography.
 - Local auth/highlight/Bible demos: use `examples/vite-react`, loading env vars from the monorepo root (not worktree-local envs). Navbar Sign in requests only profile and email; grant highlights via the reader permission flow (tap a verse, tap a color). Highlights are per Bible version.
 - `pnpm lint` is oxlint (type-aware TypeScript, React hooks, i18n, anti-slop). Do not suppress anti-slop rules. How to run: `CONTRIBUTING.md`.
+- If pre-commit tooling crashes, use `SKIP_PRE_COMMIT=1`, not `HUSKY=0` or `--no-verify`, so commit-msg stays active. Before pushing, run `pnpm check:commits`. See `CONTRIBUTING.md#recover-from-pre-commit-tooling-failures`.
 - Every PR needs a changeset. Use `pnpm changeset --empty` for no-release changes (CI/docs/tooling). See `docs/release-hardening-decisions.md` (Decision 4).
 
 ## Guardrails
