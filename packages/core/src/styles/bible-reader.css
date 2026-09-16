@@ -904,6 +904,7 @@
   /* \rq - Inline cross-reference quotation — Italic, smaller */
   & .rq {
     font-style: italic;
+    font-weight: normal;
     font-size: calc(var(--yv-reader-font-size) * 0.83);
   }
 

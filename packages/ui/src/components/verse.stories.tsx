@@ -44,6 +44,8 @@ const SWIFT_PHASE_TWO_FIXTURE_HTML = `
   <div class="li">Andrew followed Jesus.</div><div class="lim">Simon was called Peter.</div><div class="lf">They stayed with him that day.</div>
   <div class="mt1">John</div><div class="mt2">The Good News</div>
   <div class="p">An indented paragraph before a heading.</div><div class="r yv-h">See also Genesis 1:1</div><div class="sr">John 1:1–5</div>
+  <div class="yv-h r">John 1:1–5</div><div class="cls">Grace be with you.</div>
+  <div class="is1"><span class="rq">(Genesis 1:1)</span><span class="va">1a</span></div>
   <div><span class="rq"><span class="pn">(Genesis 1:1)</span></span> <span class="em"><span class="bd">Word</span></span>
     <span class="qac">A</span> <span class="sig">John</span> <span class="litl">Selah</span>
     <span class="ref">John 1:1</span> <span class="wg">λόγος</span> <span class="wh">דָּבָר</span> <span class="ior">1–5</span> <span class="xta">Gen 1:1</span></div>
@@ -53,7 +55,7 @@ const SWIFT_PHASE_TWO_FIXTURE_HTML = `
 `;
 
 const SWIFT_PHASE_TWO_RTL_HTML = `
-  <div class="mt1">בְּרֵאשִׁית</div><div class="p"><span class="yv-v" v="1"><span class="yv-vlbl">1</span>
+  <div class="mt1">בְּרֵאשִׁית</div><div class="p"><span class="yv-v" v="1"><span class="yv-vlbl">1</span><span class="va">1א</span>
   בְּרֵאשִׁית בָּרָא אֱלֹהִים אֵת הַשָּׁמַיִם וְאֵת הָאָרֶץ׃</span></div>
 `;
 
@@ -332,7 +334,7 @@ export const MultipleFootnotesInSingleVerse: Story = {
 export const SwiftPhaseTwoTypographyFixture: Story = {
   args: { reference: 'GEN.1', versionId: 111 },
   render: () => (
-    <div data-yv-sdk data-yv-theme="light" className="yv:grid yv:gap-8 yv:lg:grid-cols-2">
+    <div data-yv-sdk data-yv-theme="light" className="yv:grid yv:gap-8 yv:lg:grid-cols-3">
       <section dir="ltr" className="yv:min-w-0">
         <h2 className="yv:font-sans yv:font-bold yv:mb-3">LTR</h2>
         <Verse.Html
@@ -351,6 +353,14 @@ export const SwiftPhaseTwoTypographyFixture: Story = {
       <section dir="rtl" className="yv:min-w-0">
         <h2 className="yv:font-sans yv:font-bold yv:mb-3">RTL</h2>
         <Verse.Html html={SWIFT_PHASE_TWO_RTL_HTML} showVerseNumbers={false} />
+      </section>
+      <section className="yv:min-w-0">
+        <h2 className="yv:font-sans yv:font-bold yv:mb-3">Standalone HTML/CSS</h2>
+        <div
+          data-yv-sdk-bible-reader=""
+          style={{ '--yv-reader-font-size': '24px' } as React.CSSProperties}
+          dangerouslySetInnerHTML={{ __html: SWIFT_PHASE_TWO_FIXTURE_HTML }}
+        />
       </section>
     </div>
   ),
@@ -371,6 +381,8 @@ export const SwiftPhaseTwoTypographyFixture: Story = {
     await expect(style('.li').paddingInlineStart).toBe('20px');
     await expect(style('.lf').marginTop).toBe('10px');
     await expect(style('.rq').fontSize).toBe('16.6px');
+    await expect(style('.is1 .rq').fontWeight).toBe('400');
+    await expect(style('.is1 .va').fontSize).toBe('13px');
     await expect(style('.rq .pn').fontSize).toBe('20px');
     await expect(style('.rq .pn').fontStyle).toBe('normal');
     await expect(style('.em .bd').fontStyle).toBe('normal');
@@ -378,11 +390,22 @@ export const SwiftPhaseTwoTypographyFixture: Story = {
     await expect(style('.qac').fontSize).toBe('20px');
     await expect(style('.ref').fontStyle).toBe(style('.p').fontStyle);
     await expect(style('.va').display).toBe('inline');
-    await expect(style('.va').color).toBe(style('.yv-v').color);
+    await expect(style('.yv-v .va').color).toBe(style('.yv-v').color);
     await expect(getComputedStyle(rtl.querySelector<HTMLElement>('.yv-vlbl')!).display).toBe(
       'none',
     );
     await expect(getComputedStyle(rtl).direction).toBe('rtl');
+    await expect(getComputedStyle(rtl.querySelector<HTMLElement>('.va')!).display).toBe('none');
+    await expect(style('.cls').textAlign).toBe('end');
+    const references = ltr.querySelectorAll('.r.yv-h');
+    await expect(getComputedStyle(references[0]!).fontWeight).toBe('500');
+    await expect(getComputedStyle(references[1]!).fontWeight).toBe('500');
+
+    const standalone = canvasElement.querySelector('[data-yv-sdk-bible-reader]')!;
+    await expect(getComputedStyle(standalone.querySelector('.imt1')!).fontSize).toBe('28.08px');
+    await expect(getComputedStyle(standalone.querySelector('.imt1')!).marginTop).toBe('24px');
+    await expect(getComputedStyle(standalone.querySelector('.is1 .rq')!).fontSize).toBe('19.92px');
+    await expect(getComputedStyle(standalone.querySelector('.is1 .va')!).fontSize).toBe('15.6px');
 
     const note = canvasElement.querySelector<HTMLElement>('[data-slot="yv-bible-note"]')!;
     const noteStyle = getComputedStyle(note);
