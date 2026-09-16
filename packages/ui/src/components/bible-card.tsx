@@ -1,3 +1,5 @@
+'use client';
+
 import type { CSSProperties } from 'react';
 import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hooks';
 import {

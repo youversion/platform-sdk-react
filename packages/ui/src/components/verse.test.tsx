@@ -11,7 +11,13 @@ import { renderToString } from 'react-dom/server';
 import userEvent from '@testing-library/user-event';
 import { requireHtmlButton, requireHtmlElement } from '@/test/dom-stubs';
 import { HookOverrideProvider } from '@/test/hook-overrides';
-import { Verse, BibleTextView, type BibleTextViewPassageState, type FootnoteData } from './verse';
+import {
+  Verse,
+  BibleTextView,
+  FootnoteContent,
+  type BibleTextViewPassageState,
+  type FootnoteData,
+} from './verse';
 import type { Highlight } from '@youversion/platform-core';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import type { HookOverrides } from '@youversion/platform-react-hooks';
@@ -1818,5 +1824,15 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
     expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
     expect(getVerseEl(container, 2).style.backgroundColor).toBe(fillFor(GREEN));
     expect(getVerseEl(container, 3).style.backgroundColor).toBe('');
+  });
+});
+
+describe('FootnoteContent styles', () => {
+  it('injects component styles when rendered standalone', () => {
+    rtlRender(
+      <FootnoteContent verseNum="1" notes={['A note']} verseHtml="Verse text" reference="John 1" />,
+    );
+
+    expect(document.head.querySelector('style[data-href="yv-sdk-components"]')).not.toBeNull();
   });
 });
