@@ -33,6 +33,7 @@ import { useHighlightsControlledLatch, warnOnce } from '@/lib/use-highlights-con
 import { highlightFillColorMix, highlightMixP } from '@/lib/highlight-colors';
 import { useScriptureHighlightPaint } from '@/lib/use-scripture-highlight-paint';
 import { useInterfaceDirection } from '@/lib/direction';
+import { useHydrationSafeScriptureDirection } from '@/lib/scripture-direction';
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
 type ResolvedScriptureDirection = TextDirection | 'auto';
@@ -300,6 +301,7 @@ function BibleTextHtml({
   highlightedVerses = {},
   onFootnotePress,
   direction,
+  directionOverride,
 }: {
   html: string;
   reference?: string;
@@ -310,8 +312,10 @@ function BibleTextHtml({
   highlightedVerses?: Record<number, string>;
   onFootnotePress?: (data: FootnoteData) => void;
   direction?: ResolvedScriptureDirection;
+  directionOverride?: TextDirection;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
+  const passageRootDirectionsRef = useRef(new Map<Element, string | null>());
   const [footnoteData, setFootnoteData] = useState<VerseFootnoteData[]>([]);
   const providerTheme = useTheme();
   const currentTheme = theme || providerTheme;
@@ -321,6 +325,26 @@ function BibleTextHtml({
   useLayoutEffect(() => {
     if (!contentRef.current) return;
     contentRef.current.innerHTML = html;
+
+    passageRootDirectionsRef.current = new Map(
+      Array.from(contentRef.current.children, (root) => [root, root.getAttribute('dir')]),
+    );
+  }, [html]);
+
+  // An explicit consumer override owns each passage root while preserving
+  // intentional nested bidi islands. Restore API-provided root directions when
+  // the override is removed without replacing the passage DOM.
+  useLayoutEffect(() => {
+    if (!contentRef.current) return;
+    passageRootDirectionsRef.current.forEach((originalDirection, root) => {
+      if (directionOverride) {
+        root.setAttribute('dir', directionOverride);
+      } else if (originalDirection === null) {
+        root.removeAttribute('dir');
+      } else {
+        root.setAttribute('dir', originalDirection);
+      }
+    });
 
     const anchors = contentRef.current.querySelectorAll('[data-verse-footnote]');
 
@@ -356,7 +380,7 @@ function BibleTextHtml({
       });
     });
     setFootnoteData(result);
-  }, [html, direction]);
+  }, [html, direction, directionOverride]);
 
   // Toggle selection underline + paint highlight fills on verse wrappers.
   // A verse can map to multiple `.yv-v[v="N"]` wrappers; each is painted so the
@@ -537,8 +561,10 @@ export const Verse = {
         () => (!globalThis.window ? { html } : transformBibleHtml(html)),
         [html],
       );
-      const direction: ResolvedScriptureDirection =
-        scriptureDirection ?? transformed.direction ?? 'auto';
+      const direction = useHydrationSafeScriptureDirection(
+        scriptureDirection,
+        transformed.direction,
+      );
       const providerTheme = useTheme();
       const currentTheme = theme || providerTheme;
       type ReaderStyleVars = CSSProperties & {
@@ -574,6 +600,7 @@ export const Verse = {
             highlightedVerses={highlightedVerses}
             onFootnotePress={onFootnotePress}
             direction={direction}
+            directionOverride={scriptureDirection}
           />
         </section>
       );

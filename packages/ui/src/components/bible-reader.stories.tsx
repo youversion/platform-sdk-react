@@ -174,6 +174,13 @@ const rtlPassage = {
   reference: 'يوحنا 1',
 };
 
+const conflictingRootDirectionPassage = {
+  id: 'JHN.1',
+  content:
+    '<div dir="rtl" data-passage-root><div class="p"><span class="v" v="1">1</span>In the beginning was the Word. <span dir="rtl" data-bidi-island>في البدء</span></div><table><tbody><tr><td>First column</td><td>Second column</td></tr></tbody></table></div>',
+  reference: 'John 1',
+};
+
 /**
  * Scripture derives RTL from the deterministic passage fixture while the
  * provider keeps the reader interface LTR. This verifies the two direction
@@ -293,6 +300,16 @@ export const ArabicInterfaceWithEnglishScripture: Story = {
     interfaceDirection: 'rtl',
     locale: 'ar',
   },
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('*/v1/bibles/111/passages/JHN.1', () =>
+          HttpResponse.json(conflictingRootDirectionPassage),
+        ),
+        ...globalHandlers,
+      ],
+    },
+  },
   render: (args) => (
     <div className="yv:h-screen yv:bg-background">
       <BibleReader.Root {...args}>
@@ -302,13 +319,19 @@ export const ArabicInterfaceWithEnglishScripture: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
-    await waitFor(async () => {
+    const renderer = await waitFor(async () => {
       await expect(canvasElement.querySelector('[data-yv-sdk][dir="rtl"]')).toBeInTheDocument();
-      await expect(canvasElement.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute(
-        'dir',
-        'ltr',
-      );
+      const element = canvasElement.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
+      await expect(element).toHaveAttribute('dir', 'ltr');
+      return element!;
     });
+
+    const passageRoot = renderer.querySelector<HTMLElement>('[data-passage-root]')!;
+    const table = passageRoot.querySelector('table')!;
+    const bidiIsland = passageRoot.querySelector<HTMLElement>('[data-bidi-island]')!;
+    await expect(passageRoot).toHaveAttribute('dir', 'ltr');
+    await expect(getComputedStyle(table).direction).toBe('ltr');
+    await expect(getComputedStyle(bidiIsland).direction).toBe('rtl');
   },
 };
 
