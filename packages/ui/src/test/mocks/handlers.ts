@@ -13,6 +13,11 @@ function pathParam(value: string | readonly string[] | undefined): string | unde
 }
 
 export const globalHandlers = [
+  // YouVersionProvider renders this stylesheet for every story. Keep it local so
+  // browser tests never depend on the Fonts API or leak failed link requests.
+  http.get('*/v1/fonts/1/stylesheet', () =>
+    HttpResponse.text('', { headers: { 'Content-Type': 'text/css' } }),
+  ),
   // Organization (publisher) lookup for the version picker
   http.get('*/v1/organizations/:id', ({ params }) => {
     const id = pathParam(params.id);
