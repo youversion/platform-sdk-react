@@ -1013,6 +1013,7 @@ export function BibleLanguagePickerContent({
       ) : (
         <Tabs
           className="yv:mt-4 yv:gap-4 yv:flex-1 yv:min-h-0 yv:flex yv:flex-col"
+          dir={interfaceDirection}
           value={languageTab}
           onValueChange={setLanguageTab}
         >

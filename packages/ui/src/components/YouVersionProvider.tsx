@@ -1,7 +1,6 @@
 import React, { type ComponentProps, Suspense, useEffect, useLayoutEffect, useState } from 'react';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionProvider as BaseYouVersionProvider } from '@youversion/platform-react-hooks';
-import { DirectionProvider } from '@radix-ui/react-direction';
 import { syncSdkLanguage } from '@/i18n';
 import { InterfaceDirectionProvider, resolveInterfaceDirection } from '@/lib/direction';
 import { YvStyles } from '@/lib/yv-styles';
@@ -119,22 +118,20 @@ export function YouVersionProvider({
 
   return (
     <BaseYouVersionProvider {...props} additionalHeaders={mergedHeaders}>
-      <DirectionProvider dir={interfaceDirection}>
-        <InterfaceDirectionProvider direction={interfaceDirection}>
-          <YvStyles />
-          {/* Only in this branch — the missing-app-key guard above has no key, and
-              without a key the gated Fonts API request would 401.
+      <InterfaceDirectionProvider direction={interfaceDirection}>
+        <YvStyles />
+        {/* Only in this branch — the missing-app-key guard above has no key, and
+            without a key the gated Fonts API request would 401.
 
-              React suspends the component that renders a `precedence` stylesheet
-              while it loads. The local boundary keeps that suspension scoped to the
-              font link so it can't bubble to the consumer's nearest boundary above
-              the provider and hold their tree during the Fonts API fetch. */}
-          <Suspense fallback={null}>
-            <YvFonts appKey={props.appKey} apiHost={props.apiHost} />
-          </Suspense>
-          {props.children}
-        </InterfaceDirectionProvider>
-      </DirectionProvider>
+            React suspends the component that renders a `precedence` stylesheet
+            while it loads. The local boundary keeps that suspension scoped to the
+            font link so it can't bubble to the consumer's nearest boundary above
+            the provider and hold their tree during the Fonts API fetch. */}
+        <Suspense fallback={null}>
+          <YvFonts appKey={props.appKey} apiHost={props.apiHost} />
+        </Suspense>
+        {props.children}
+      </InterfaceDirectionProvider>
     </BaseYouVersionProvider>
   );
 }

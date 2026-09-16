@@ -27,7 +27,6 @@ import {
 } from '@youversion/platform-core';
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import { InterfaceDirectionProvider } from '@/lib/direction';
-import { DirectionProvider } from '@radix-ui/react-direction';
 
 const mockVersions: BibleVersion[] = [
   {
@@ -820,20 +819,18 @@ describe('BibleVersionPicker', () => {
 
   it('applies interface direction to its portaled content and Radix tabs', async () => {
     renderWithOverrides(
-      <DirectionProvider dir="rtl">
-        <InterfaceDirectionProvider direction="rtl">
-          <BibleVersionPicker.Root versionId={111} onVersionChange={vi.fn()}>
-            <BibleVersionPicker.Trigger dir="ltr" />
-            <BibleVersionPicker.Content />
-          </BibleVersionPicker.Root>
-        </InterfaceDirectionProvider>
-      </DirectionProvider>,
+      <InterfaceDirectionProvider direction="rtl">
+        <BibleVersionPicker.Root versionId={111} onVersionChange={vi.fn()}>
+          <BibleVersionPicker.Trigger dir="ltr" />
+          <BibleVersionPicker.Content />
+        </BibleVersionPicker.Root>
+      </InterfaceDirectionProvider>,
     );
 
     const trigger = screen.getByRole('button', { name: 'NIV' });
     expect(trigger.querySelector('bdi')).toHaveAttribute('dir', 'auto');
     await userEvent.click(trigger);
-    await userEvent.click(screen.getByRole('button', { name: /select language/i }));
+    await userEvent.click(screen.getByRole('button', { name: /select (?:a )?language/i }));
 
     expect(trigger).toHaveAttribute('dir', 'rtl');
     expect(screen.getByRole('dialog')).toHaveAttribute('dir', 'rtl');
