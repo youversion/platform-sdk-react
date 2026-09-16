@@ -120,7 +120,7 @@ export function useShadowDialogFocus({
       capturedRestoreFocusRef.current = false;
       return;
     }
-    if (!container || capturedRestoreFocusRef.current) return;
+    if (!container || capturedRestoreFocusRef.current || restoreFocusRef.current) return;
 
     const shadowRoot = getOwnShadowRoot(container);
     const activeElement = shadowRoot

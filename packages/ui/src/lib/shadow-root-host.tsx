@@ -227,6 +227,12 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
     [hideIfIdle],
   );
 
+  const canRestoreFocus = useCallback(
+    (target: HTMLElement): boolean =>
+      target.isConnected && target.getRootNode() === shadowRootRef.current,
+    [],
+  );
+
   const setModalPresent = useCallback(
     (instanceId: string, present: boolean): void => {
       const ids = presentModalIdsRef.current;
@@ -239,9 +245,9 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
 
       const target = pendingFocusTargetRef.current;
       pendingFocusTargetRef.current = null;
-      if (target?.isConnected) target.focus();
+      if (target && canRestoreFocus(target)) target.focus();
     },
-    [],
+    [canRestoreFocus],
   );
 
   const restoreFocusWhenModalReleased = useCallback((target: HTMLElement): void => {
@@ -250,8 +256,8 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
       return;
     }
 
-    if (target.isConnected) target.focus();
-  }, []);
+    if (canRestoreFocus(target)) target.focus();
+  }, [canRestoreFocus]);
 
   const getLastFocusedElement = useCallback(
     (): HTMLElement | null => lastFocusedElementRef.current,
