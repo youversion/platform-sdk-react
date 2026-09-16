@@ -228,8 +228,15 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
   );
 
   const canRestoreFocus = useCallback(
-    (target: HTMLElement): boolean =>
-      target.isConnected && target.getRootNode() === shadowRootRef.current,
+    (target: HTMLElement): boolean => {
+      const shadowRoot = shadowRootRef.current;
+      if (!shadowRoot || !target.isConnected || target.ownerDocument !== shadowRoot.ownerDocument) {
+        return false;
+      }
+
+      const targetRoot = target.getRootNode();
+      return targetRoot === shadowRoot || targetRoot === shadowRoot.ownerDocument;
+    },
     [],
   );
 
