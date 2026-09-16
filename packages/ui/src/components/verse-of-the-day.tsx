@@ -1,3 +1,5 @@
+'use client';
+
 import {
   getDayOfYear,
   usePassage,
@@ -8,6 +10,7 @@ import {
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
+import { YvComponentStyles } from '@/lib/yv-styles-components';
 import { AnimatedHeight } from '@/components/animated-height';
 import { BibleAppLogoLockup } from '@/components/bible-app-logo-lockup';
 import { LoaderIcon } from '@/components/icons/loader';
@@ -212,98 +215,101 @@ export function VerseOfTheDay({
   };
 
   return (
-    <section
-      data-yv-sdk
-      data-yv-theme={theme}
-      data-size={size}
-      className={
-        'yv:data-[size=lg]:p-8 yv:data-[size=default]:p-4 yv:*:shrink-0 yv:font-sans yv:flex yv:flex-col yv:w-full yv:grow yv:p-4 yv:rounded-2xl yv:bg-card yv:box-border'
-      }
-    >
-      <div className="yv:card-content yv:flex yv:flex-col yv:gap-3">
-        <div className="yv:flex yv:items-center yv:gap-2 yv:text-black yv:dark:text-white">
-          {showSunIcon ? (
-            <div
-              data-slot="card-icon"
-              className="yv:col-start-1 yv:row-start-1 yv:self-start yv:justify-self-start"
-            >
-              <Votd className="yv:shrink-0 yv:h-10 yv:w-10" />
-            </div>
-          ) : null}
-          <div className="yv:grow yv:flex yv:flex-col">
-            <p
-              className={
-                'trim-both yv:line-clamp-1 yv:text-muted-foreground yv:uppercase yv:text-xs yv:font-medium yv:select-none'
-              }
-            >
-              {t('verseOfTheDay')}
-            </p>
-            {referenceText && !errorPassage && !errorVerseOfTheDay ? (
-              <p className="yv:text-black yv:dark:text-white yv:font-medium yv:text-sm">
-                {referenceText}
+    <>
+      <YvComponentStyles />
+      <section
+        data-yv-sdk
+        data-yv-theme={theme}
+        data-size={size}
+        className={
+          'yv:data-[size=lg]:p-8 yv:data-[size=default]:p-4 yv:*:shrink-0 yv:font-sans yv:flex yv:flex-col yv:w-full yv:grow yv:p-4 yv:rounded-2xl yv:bg-card yv:box-border'
+        }
+      >
+        <div className="yv:card-content yv:flex yv:flex-col yv:gap-3">
+          <div className="yv:flex yv:items-center yv:gap-2 yv:text-black yv:dark:text-white">
+            {showSunIcon ? (
+              <div
+                data-slot="card-icon"
+                className="yv:col-start-1 yv:row-start-1 yv:self-start yv:justify-self-start"
+              >
+                <Votd className="yv:shrink-0 yv:h-10 yv:w-10" />
+              </div>
+            ) : null}
+            <div className="yv:grow yv:flex yv:flex-col">
+              <p
+                className={
+                  'trim-both yv:line-clamp-1 yv:text-muted-foreground yv:uppercase yv:text-xs yv:font-medium yv:select-none'
+                }
+              >
+                {t('verseOfTheDay')}
               </p>
+              {referenceText && !errorPassage && !errorVerseOfTheDay ? (
+                <p className="yv:text-black yv:dark:text-white yv:font-medium yv:text-sm">
+                  {referenceText}
+                </p>
+              ) : null}
+            </div>
+            {showShareButton ? (
+              <div
+                data-slot="card-action"
+                className="yv:col-start-2 yv:row-span-2 yv:row-start-1 yv:self-start yv:justify-self-end"
+              >
+                <Button
+                  aria-label={t('shareAriaLabel')}
+                  className={cn(size === 'lg' ? 'yv:translate-x-3' : 'yv:translate-x-2')}
+                  onClick={() => void handleShareVerse()}
+                  disabled={!!(errorPassage || errorVerseOfTheDay)}
+                  size="icon"
+                  variant="ghost"
+                >
+                  <Share className="yv:h-6! yv:w-6!" />
+                </Button>
+              </div>
             ) : null}
           </div>
-          {showShareButton ? (
-            <div
-              data-slot="card-action"
-              className="yv:col-start-2 yv:row-span-2 yv:row-start-1 yv:self-start yv:justify-self-end"
-            >
-              <Button
-                aria-label={t('shareAriaLabel')}
-                className={cn(size === 'lg' ? 'yv:translate-x-3' : 'yv:translate-x-2')}
-                onClick={() => void handleShareVerse()}
-                disabled={!!(errorPassage || errorVerseOfTheDay)}
-                size="icon"
-                variant="ghost"
+
+          <AnimatedHeight>
+            {isLoading ? (
+              <div
+                className="yv:flex yv:justify-center yv:py-2"
+                role="status"
+                aria-label={t('loadingVerseAriaLabel')}
               >
-                <Share className="yv:h-6! yv:w-6!" />
-              </Button>
+                <LoaderIcon
+                  className="yv:size-4 yv:animate-spin yv:text-muted-foreground"
+                  aria-hidden="true"
+                />
+              </div>
+            ) : (
+              <BibleTextView
+                ref={verseRef}
+                theme={theme}
+                reference={data?.passage_id || ''}
+                versionId={versionId}
+                fontSize={size === 'default' ? 16 : 20}
+                fontFamily={size === 'default' ? 'var(--yv-font-sans)' : 'var(--yv-font-serif)'}
+                showVerseNumbers={false}
+                passageState={{
+                  passage,
+                  loading: isLoading,
+                  error: errorPassage || errorVerseOfTheDay || null,
+                }}
+                highlights={clippedHighlights}
+              />
+            )}
+          </AnimatedHeight>
+
+          {showBibleAppAttribution ? (
+            <div
+              className={
+                'yv:grid yv:grid-cols-1 yv:mt-4 yv:justify-between yv:items-center yv:gap-2 yv:w-full'
+              }
+            >
+              <BibleAppLogoLockup data-slot="attribution" className="yv:justify-self-end" />
             </div>
           ) : null}
         </div>
-
-        <AnimatedHeight>
-          {isLoading ? (
-            <div
-              className="yv:flex yv:justify-center yv:py-2"
-              role="status"
-              aria-label={t('loadingVerseAriaLabel')}
-            >
-              <LoaderIcon
-                className="yv:size-4 yv:animate-spin yv:text-muted-foreground"
-                aria-hidden="true"
-              />
-            </div>
-          ) : (
-            <BibleTextView
-              ref={verseRef}
-              theme={theme}
-              reference={data?.passage_id || ''}
-              versionId={versionId}
-              fontSize={size === 'default' ? 16 : 20}
-              fontFamily={size === 'default' ? 'var(--yv-font-sans)' : 'var(--yv-font-serif)'}
-              showVerseNumbers={false}
-              passageState={{
-                passage,
-                loading: isLoading,
-                error: errorPassage || errorVerseOfTheDay || null,
-              }}
-              highlights={clippedHighlights}
-            />
-          )}
-        </AnimatedHeight>
-
-        {showBibleAppAttribution ? (
-          <div
-            className={
-              'yv:grid yv:grid-cols-1 yv:mt-4 yv:justify-between yv:items-center yv:gap-2 yv:w-full'
-            }
-          >
-            <BibleAppLogoLockup data-slot="attribution" className="yv:justify-self-end" />
-          </div>
-        ) : null}
-      </div>
-    </section>
+      </section>
+    </>
   );
 }

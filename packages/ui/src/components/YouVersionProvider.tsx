@@ -1,8 +1,9 @@
+'use client';
+
 import React, { type ComponentProps, Suspense, useEffect, useLayoutEffect } from 'react';
-import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionProvider as BaseYouVersionProvider } from '@youversion/platform-react-hooks';
 import { syncSdkLanguage } from '@/i18n';
-import { YvStyles } from '@/lib/yv-styles';
+import { YvStyles } from '@/lib/yv-styles-chrome';
 import { YvFonts } from '@/lib/yv-fonts';
 import { MissingAppKey } from '@/components/missing-app-key';
 
@@ -44,19 +45,6 @@ export function YouVersionProvider({
   useLayoutEffect(() => {
     void syncSdkLanguage(normalizedLocale);
   }, [normalizedLocale]);
-
-  // UI tsup inlines `@youversion/platform-core`, so this singleton is a different
-  // copy from the one hooks syncs. BibleReader reads appName / signInPromptMessage
-  // and the version filter from *this* copy — keep it in sync with the provider
-  // props. Filters write during render so the first child fetch sees them.
-  YouVersionPlatformConfiguration.permittedVersionIds = props.permittedVersionIds;
-  YouVersionPlatformConfiguration.excludedVersionIds = props.excludedVersionIds;
-  YouVersionPlatformConfiguration.permittedLanguageTags = props.permittedLanguageTags;
-
-  useEffect(() => {
-    YouVersionPlatformConfiguration.appName = props.appName;
-    YouVersionPlatformConfiguration.signInPromptMessage = props.signInPromptMessage;
-  }, [props.appName, props.signInPromptMessage]);
 
   // Guard against a missing/empty app key here (rather than letting the base
   // provider throw) so consumers of the UI package see a styled message instead

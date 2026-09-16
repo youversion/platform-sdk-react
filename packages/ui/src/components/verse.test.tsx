@@ -9,7 +9,13 @@ import type { ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
 import { requireHtmlButton, requireHtmlElement } from '@/test/dom-stubs';
 import { HookOverrideProvider } from '@/test/hook-overrides';
-import { Verse, BibleTextView, type BibleTextViewPassageState, type FootnoteData } from './verse';
+import {
+  Verse,
+  BibleTextView,
+  FootnoteContent,
+  type BibleTextViewPassageState,
+  type FootnoteData,
+} from './verse';
 import type { Highlight } from '@youversion/platform-core';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import type { HookOverrides } from '@youversion/platform-react-hooks';
@@ -389,6 +395,16 @@ describe('Verse.Html - Footnotes', () => {
       const marker27 = listItems?.[26]?.querySelector('span')?.textContent;
       expect(marker27).toBe('aa.');
     });
+  });
+});
+
+describe('FootnoteContent styles', () => {
+  it('injects component styles when rendered standalone', () => {
+    rtlRender(
+      <FootnoteContent verseNum="1" notes={['A note']} verseHtml="Verse text" reference="John 1" />,
+    );
+
+    expect(document.head.querySelector('style[data-href="yv-sdk-components"]')).not.toBeNull();
   });
 });
 

@@ -20,6 +20,8 @@ import { LoaderIcon } from '@/components/icons/loader';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { getBibleTextErrorMessage } from '@/lib/bible-text-error';
 import { useVersionFilterWarning } from '@/lib/use-version-filter-warning';
+import { YvComponentStyles } from '@/lib/yv-styles-components';
+import { YvReaderStyles } from '@/lib/yv-styles-reader';
 import { cn } from '@/lib/utils';
 import { type FontFamily } from '@/lib/verse-html-utils';
 
@@ -74,36 +76,39 @@ export function FootnoteContent({
   const showVerseContext = hasVerseContext ?? verseHtml.length > 0;
 
   return (
-    <div data-yv-sdk data-yv-theme={theme}>
-      <div className="yv:p-3 yv:overflow-y-auto yv:bg-background yv:text-foreground">
-        {showVerseContext && (
-          <>
-            <div className="yv:font-bold yv:mb-2">{verseReference}</div>
-            <div
-              className="yv:mb-3 yv:font-serif yv:*:font-serif"
-              style={{ fontSize: fontSize ? `${fontSize}px` : '1.25rem' }}
-              // biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe
-              dangerouslySetInnerHTML={{ __html: verseHtml }}
-            />
-          </>
-        )}
-        <ul className="yv:list-none yv:p-0 yv:m-0 yv:space-y-1">
-          {notes.map((note, index) => {
-            const marker = getFootnoteMarker(index);
-            return (
-              <li
-                key={marker}
-                className="yv:flex yv:gap-2 yv:text-xs yv:border-b yv:border-border yv:py-2"
-              >
-                <span>{marker}.</span>
-                {/** biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe */}
-                <span dangerouslySetInnerHTML={{ __html: note }} />
-              </li>
-            );
-          })}
-        </ul>
+    <>
+      <YvComponentStyles />
+      <div data-yv-sdk data-yv-theme={theme}>
+        <div className="yv:p-3 yv:overflow-y-auto yv:bg-background yv:text-foreground">
+          {showVerseContext && (
+            <>
+              <div className="yv:font-bold yv:mb-2">{verseReference}</div>
+              <div
+                className="yv:mb-3 yv:font-serif yv:*:font-serif"
+                style={{ fontSize: fontSize ? `${fontSize}px` : '1.25rem' }}
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe
+                dangerouslySetInnerHTML={{ __html: verseHtml }}
+              />
+            </>
+          )}
+          <ul className="yv:list-none yv:p-0 yv:m-0 yv:space-y-1">
+            {notes.map((note, index) => {
+              const marker = getFootnoteMarker(index);
+              return (
+                <li
+                  key={marker}
+                  className="yv:flex yv:gap-2 yv:text-xs yv:border-b yv:border-border yv:py-2"
+                >
+                  <span>{marker}.</span>
+                  {/** biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe */}
+                  <span dangerouslySetInnerHTML={{ __html: note }} />
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -678,54 +683,66 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
 
     if (currentLoading && !currentPassage) {
       return (
-        <div
-          ref={ref}
-          data-yv-sdk
-          data-yv-theme={currentTheme}
-          role="status"
-          aria-label={t('loadingPassageAriaLabel')}
-          className="yv:flex yv:grow yv:items-center yv:justify-center"
-        >
-          <LoaderIcon
-            className="yv:size-4 yv:animate-spin yv:text-muted-foreground"
-            aria-hidden="true"
-          />
-        </div>
+        <>
+          <YvComponentStyles />
+          <YvReaderStyles />
+          <div
+            ref={ref}
+            data-yv-sdk
+            data-yv-theme={currentTheme}
+            role="status"
+            aria-label={t('loadingPassageAriaLabel')}
+            className="yv:flex yv:grow yv:items-center yv:justify-center"
+          >
+            <LoaderIcon
+              className="yv:size-4 yv:animate-spin yv:text-muted-foreground"
+              aria-hidden="true"
+            />
+          </div>
+        </>
       );
     }
 
     if (currentError) {
       return (
-        <div ref={ref} data-yv-sdk data-yv-theme={currentTheme}>
-          <VerseUnavailableMessage message={getBibleTextErrorMessage(currentError, t)} />
-        </div>
+        <>
+          <YvComponentStyles />
+          <YvReaderStyles />
+          <div ref={ref} data-yv-sdk data-yv-theme={currentTheme}>
+            <VerseUnavailableMessage message={getBibleTextErrorMessage(currentError, t)} />
+          </div>
+        </>
       );
     }
 
     return (
-      <div
-        data-yv-sdk
-        data-yv-theme={currentTheme}
-        className={cn(fetchedLoading || currentLoading ? 'yv:animate-pulse' : '')}
-        aria-busy={currentLoading || undefined}
-        style={currentLoading ? { pointerEvents: 'none' } : undefined}
-      >
-        <Verse.Html
-          ref={ref}
-          html={currentPassage?.content || ''}
-          fontFamily={fontFamily}
-          fontSize={fontSize}
-          lineHeight={lineHeight}
-          showVerseNumbers={showVerseNumbers}
-          renderNotes={renderNotes}
-          reference={currentPassage?.reference}
-          theme={currentTheme}
-          selectedVerses={selectedVerses}
-          onVerseSelect={onVerseSelect}
-          highlightedVerses={paintedVerses}
-          onFootnotePress={onFootnotePress}
-        />
-      </div>
+      <>
+        <YvComponentStyles />
+        <YvReaderStyles />
+        <div
+          data-yv-sdk
+          data-yv-theme={currentTheme}
+          className={cn(fetchedLoading || currentLoading ? 'yv:animate-pulse' : '')}
+          aria-busy={currentLoading || undefined}
+          style={currentLoading ? { pointerEvents: 'none' } : undefined}
+        >
+          <Verse.Html
+            ref={ref}
+            html={currentPassage?.content || ''}
+            fontFamily={fontFamily}
+            fontSize={fontSize}
+            lineHeight={lineHeight}
+            showVerseNumbers={showVerseNumbers}
+            renderNotes={renderNotes}
+            reference={currentPassage?.reference}
+            theme={currentTheme}
+            selectedVerses={selectedVerses}
+            onVerseSelect={onVerseSelect}
+            highlightedVerses={paintedVerses}
+            onFootnotePress={onFootnotePress}
+          />
+        </div>
+      </>
     );
   },
 );
