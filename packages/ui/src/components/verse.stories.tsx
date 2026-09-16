@@ -358,7 +358,10 @@ export const SwiftPhaseTwoTypographyFixture: Story = {
         <h2 className="yv:font-sans yv:font-bold yv:mb-3">Standalone HTML/CSS</h2>
         <div
           data-yv-sdk-bible-reader=""
-          style={{ '--yv-reader-font-size': '24px' } as React.CSSProperties}
+          style={
+            // SAFETY: CSSProperties omits custom properties; this is a valid CSS length variable.
+            { '--yv-reader-font-size': '24px' } as React.CSSProperties
+          }
           dangerouslySetInnerHTML={{ __html: SWIFT_PHASE_TWO_FIXTURE_HTML }}
         />
       </section>
