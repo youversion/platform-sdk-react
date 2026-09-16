@@ -13,6 +13,15 @@ function pathParam(value: string | readonly string[] | undefined): string | unde
 }
 
 export const globalHandlers = [
+  // React's hoisted stylesheet promise rejects when a story's mock app key
+  // reaches the real Fonts API. Keep browser tests independent of that service.
+  http.get(
+    '*/v1/fonts/:id/stylesheet',
+    () =>
+      new HttpResponse('', {
+        headers: { 'Content-Type': 'text/css' },
+      }),
+  ),
   // Organization (publisher) lookup for the version picker
   http.get('*/v1/organizations/:id', ({ params }) => {
     const id = pathParam(params.id);
@@ -44,8 +53,17 @@ export const globalHandlers = [
   }),
 
   // John passages for verse stories
-  http.get('*/v1/bibles/111/passages/JHN.3.16', () => {
-    return HttpResponse.json(mockPassages['JHN.3.16']);
+  http.get('*/v1/bibles/111/passages/JHN.3.16', ({ request }) => {
+    const passage = mockPassages['JHN.3.16'];
+    return HttpResponse.json(
+      new URL(request.url).searchParams.get('format') === 'text'
+        ? {
+            ...passage,
+            content:
+              'For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.',
+          }
+        : passage,
+    );
   }),
 
   http.get('*/v1/bibles/111/passages/JHN.3.16-17', () => {
