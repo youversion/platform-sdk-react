@@ -303,7 +303,7 @@ async function getPrimaryHarness(canvasElement: HTMLElement): Promise<PrimaryHar
     'primary island not rendered',
     productionWaitOptions,
   );
-  const root = await waitForShadowRoot(primaryIsland, productionWaitOptions);
+  const root = await waitForShadowRoot(primaryIsland);
   const contentWrapper = root.querySelector<HTMLElement>('[data-yv-shadow-content-wrapper]');
   if (!contentWrapper) throw new Error('shadow content wrapper not rendered');
   void expect(root.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
@@ -662,7 +662,7 @@ export const TwoIndependentOverlaysEvidence: Story = {
         'secondary island not rendered',
         productionWaitOptions,
       );
-      const secondaryRoot = await waitForShadowRoot(secondaryIsland, productionWaitOptions);
+      const secondaryRoot = await waitForShadowRoot(secondaryIsland);
       const secondaryTrigger = await waitForElement<HTMLButtonElement>(
         secondaryRoot,
         '[data-testid="secondary-popover-trigger"]',

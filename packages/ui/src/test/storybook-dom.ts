@@ -18,9 +18,6 @@ export async function waitForElement<ElementType extends Element>(
   }, options);
 }
 
-export async function waitForShadowRoot(
-  container: ParentNode,
-  options?: StorybookWaitOptions,
-): Promise<ShadowRoot> {
-  return waitFor(() => requireShadowRoot(container), options);
+export async function waitForShadowRoot(container: ParentNode): Promise<ShadowRoot> {
+  return waitFor(() => requireShadowRoot(container));
 }
