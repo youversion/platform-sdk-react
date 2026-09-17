@@ -5,8 +5,8 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
-import { requireShadowRoot } from '../test/dom-stubs';
 import { globalHandlers } from '../test/mocks/handlers';
+import { waitForElement, waitForShadowRoot } from '../test/storybook-dom';
 import { BibleVersionPicker } from './bible-version-picker';
 
 type PortalStrategy = 'local-inline' | 'local-top-layer';
@@ -110,28 +110,12 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-async function getComponentRoot(container: ParentNode): Promise<ShadowRoot> {
-  return waitFor(() => requireShadowRoot(container));
-}
-
-async function waitForElement<ElementType extends Element>(
-  container: ParentNode,
-  selector: string,
-  errorMessage: string,
-): Promise<ElementType> {
-  return waitFor(() => {
-    const element = container.querySelector<ElementType>(selector);
-    if (!element) throw new Error(errorMessage);
-    return element;
-  });
-}
-
 async function getTrigger(root: ShadowRoot): Promise<HTMLElement> {
   return waitForElement(root, '[data-slot="popover-trigger"]', 'picker trigger not rendered');
 }
 
 async function openPicker(container: ParentNode) {
-  const root = await getComponentRoot(container);
+  const root = await waitForShadowRoot(container);
   const trigger = await getTrigger(root);
   void expect(root.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
   await userEvent.click(trigger);
@@ -264,7 +248,7 @@ export const InlineControlIsClippedByItsAncestor: Story = {
       '[data-testid="clipping-container"]',
       'clipping container not rendered',
     );
-    const root = await getComponentRoot(clippingContainer);
+    const root = await waitForShadowRoot(clippingContainer);
     void expect(root.querySelector('[data-yv-shadow-inline-overlay]')).toBeNull();
     await userEvent.click(await getTrigger(root));
     const inlineContainer = await waitForElement<HTMLElement>(
@@ -519,8 +503,8 @@ export const MultiplePickersCreateIndependentLazyContainers: Story = {
     const first = canvasElement.querySelector<HTMLElement>('[data-testid="first-picker"]');
     const second = canvasElement.querySelector<HTMLElement>('[data-testid="second-picker"]');
     if (!first || !second) throw new Error('picker harness not rendered');
-    const firstRoot = await getComponentRoot(first);
-    const secondRoot = await getComponentRoot(second);
+    const firstRoot = await waitForShadowRoot(first);
+    const secondRoot = await waitForShadowRoot(second);
     void expect(firstRoot.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
     void expect(secondRoot.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
 
@@ -551,7 +535,7 @@ export const MultiplePickersCreateIndependentLazyContainers: Story = {
 export const MultiplePopoversShareOneIslandContainer: Story = {
   render: () => <TwoPickersInOneIsland />,
   play: async ({ canvasElement }) => {
-    const root = await getComponentRoot(canvasElement);
+    const root = await waitForShadowRoot(canvasElement);
     const triggers = Array.from(
       root.querySelectorAll<HTMLElement>('[data-slot="popover-trigger"]'),
     );
@@ -697,7 +681,7 @@ export const SameOriginIframeTopLayerRemainsInteractive: Story = {
   play: async ({ canvasElement }) => {
     const iframe = canvasElement.querySelector<HTMLIFrameElement>('[data-testid="iframe"]');
     if (!iframe?.contentDocument) throw new Error('same-origin iframe document not available');
-    const componentRoot = await getComponentRoot(iframe.contentDocument);
+    const componentRoot = await waitForShadowRoot(iframe.contentDocument);
     const trigger = await getTrigger(componentRoot);
     await userEvent.click(trigger);
     const topLayer = await waitForElement<HTMLElement>(
