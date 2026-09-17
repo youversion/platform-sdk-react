@@ -135,6 +135,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
     const providerTheme = useTheme();
     const theme = background || providerTheme;
     const { t } = useTranslation(undefined, { i18n });
+    const isSignOut = mode === 'signOut' || (mode === 'auto' && auth.isAuthenticated);
 
     const handleClick = async (e: React.MouseEvent<HTMLButtonElement>): Promise<void> => {
       e.preventDefault();
@@ -144,7 +145,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
       }
 
       try {
-        if (mode === 'signOut' || auth.isAuthenticated) {
+        if (isSignOut) {
           signOut();
         } else {
           await signIn({
@@ -163,8 +164,6 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
 
     const buttonText = useMemo(() => {
       if (text) return text;
-
-      const isSignOut = mode === 'signOut' || (mode === 'auto' && auth.isAuthenticated);
 
       if (size === 'short') {
         return isSignOut ? t('signOut') : t('signIn');
@@ -187,7 +186,7 @@ export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersi
           />
         </div>
       );
-    }, [mode, auth.isAuthenticated, size, text, t]);
+    }, [isSignOut, size, text, t]);
 
     const loadingSpinner = (
       <LoaderIcon className="yv:z-20 yv:absolute yv:left-1/2 yv:top-1/2 yv:animate-spin yv:-translate-x-1/2 yv:-translate-y-1/2 yv:fill-primary-foreground yv:text-primary" />
