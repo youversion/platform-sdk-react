@@ -2,7 +2,9 @@ name: Major Release Signoff
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    # `edited` covers base-branch retargets. A successful status computed for one
+    # base must not survive when the same head SHA is retargeted to another base.
+    types: [opened, synchronize, reopened, edited]
   issue_comment:
     # `deleted` ensures the gate re-runs when a signoff comment is removed,
     # so a previously-cached `success` status doesn't outlive its evidence.
@@ -201,11 +203,12 @@ jobs:
           ref: ${{ needs.context.outputs.head_sha }}
           fetch-depth: 0
 
-      - name: Restore release tooling from the base branch
+      - name: Restore trusted release tooling from main
         # The PR supplies changeset *data* only. The detector that reads it, the dependency
-        # set it runs under, and the changesets config all come from the immutable PR base,
-        # so a branch cannot rewrite the check that gates it. This runs before pnpm is set
-        # up, since `pnpm/action-setup` reads `packageManager` out of package.json.
+        # graph it runs under, and the changesets config all come from trusted `main`, so
+        # neither the PR nor a contributor-controlled intermediate base can rewrite the
+        # check that gates it. This runs before pnpm is set up, since `pnpm/action-setup`
+        # reads `packageManager` out of package.json.
         env:
           BASE_SHA: ${{ needs.context.outputs.base_sha }}
         run: |
@@ -214,27 +217,35 @@ jobs:
             echo "::error::Could not resolve a full PR base SHA."
             exit 1
           fi
+          git fetch --no-tags --force origin main:refs/heads/main
           git fetch --no-tags --force origin "$BASE_SHA"
-          # All of the base's tooling, or none of it. The detector, the dependency set it
-          # runs under, and the changesets config have to agree, so restoring only part of
-          # the base toolchain gives a detector without its own dependencies.
-          if git cat-file -e "$BASE_SHA:scripts/preview-release.mjs" 2>/dev/null; then
-            for f in scripts/preview-release.mjs package.json pnpm-lock.yaml \
-                     pnpm-workspace.yaml .changeset/config.json; do
-              git cat-file -e "$BASE_SHA:$f" 2>/dev/null && git checkout "$BASE_SHA" -- "$f"
+          git cat-file -e main:scripts/preview-release.mjs
+
+          # A frozen workspace install validates every importer, not only the root. Restore
+          # all current main workspace manifests and remove PR-only importers so main's lockfile
+          # and dependency graph remain internally consistent.
+          git ls-files |
+            grep -E '^(packages|examples|tools)/[^/]+/package[.]json$' |
+            while IFS= read -r f; do
+              git cat-file -e "main:$f" 2>/dev/null || rm -f "$f"
             done
-            # Install hooks a PR could add to rewrite what we just restored. Take the base's, or
-            # remove it outright: leaving a PR-authored one hands back the control.
-            for f in .npmrc .pnpmfile.cjs; do
-              if git cat-file -e "$BASE_SHA:$f" 2>/dev/null; then
-                git checkout "$BASE_SHA" -- "$f"
-              else
-                rm -f "$f"
-              fi
+          git checkout main -- scripts/preview-release.mjs package.json pnpm-lock.yaml \
+            pnpm-workspace.yaml .changeset/config.json
+          git ls-tree -r --name-only main |
+            grep -E '^(packages|examples|tools)/[^/]+/package[.]json$' |
+            while IFS= read -r f; do
+              git checkout main -- "$f"
             done
-          else
-            echo "::warning::scripts/preview-release.mjs is not on the PR base yet, so this PR supplies its own tooling. The trust boundary engages once it merges."
-          fi
+
+          # Install hooks are executable input too. Take main's copy or remove them;
+          # leaving a PR-authored hook would hand control of the trusted install back.
+          for f in .npmrc .pnpmfile.cjs; do
+            if git cat-file -e "main:$f" 2>/dev/null; then
+              git checkout main -- "$f"
+            else
+              rm -f "$f"
+            fi
+          done
 
       - name: Setup pnpm
         uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
@@ -258,10 +269,8 @@ jobs:
           HEAD_SHA: ${{ needs.context.outputs.head_sha }}
         run: |
           set -euo pipefail
-          # `changeset status` resolves `baseBranch` (main) as a LOCAL ref and fails with
-          # "Failed to find where HEAD diverged from main" if it is missing. A PR checkout
-          # has only origin/main, so create the local branch too.
-          git fetch --no-tags --force origin main:refs/heads/main
+          # The trusted-tooling step creates the local main ref required by
+          # `changeset status` and fetches the immutable PR base object.
           # Compare from the common ancestor of the immutable PR endpoints. This excludes
           # major changesets inherited from a stacked PR's base, and it does not make an
           # unchanged changeset at a stale head look new after the base consumes it.

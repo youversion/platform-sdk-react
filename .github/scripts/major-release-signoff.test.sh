@@ -30,7 +30,7 @@ extract_step() {
 }
 
 extract_step "Resolve PR context" > "$TMP/context.sh"
-extract_step "Restore release tooling from the base branch" > "$TMP/restore-tooling.sh"
+extract_step "Restore trusted release tooling from main" > "$TMP/restore-tooling.sh"
 extract_step "Compute release preview" > "$TMP/preview.sh"
 extract_step "Decide whether a signoff is required" > "$TMP/decision.sh"
 extract_step "Regenerate and verify release contents" > "$TMP/verify.sh"
@@ -74,20 +74,32 @@ git init --quiet "$TOOLING_SOURCE"
 git -C "$TOOLING_SOURCE" config commit.gpgsign false
 git -C "$TOOLING_SOURCE" config user.name test
 git -C "$TOOLING_SOURCE" config user.email test@example.com
-mkdir -p "$TOOLING_SOURCE/scripts" "$TOOLING_SOURCE/.changeset"
+mkdir -p "$TOOLING_SOURCE/scripts" "$TOOLING_SOURCE/.changeset" \
+  "$TOOLING_SOURCE/packages/ui" "$TOOLING_SOURCE/examples/demo" "$TOOLING_SOURCE/tools/config"
 for file in scripts/preview-release.mjs package.json pnpm-lock.yaml \
-  pnpm-workspace.yaml .changeset/config.json .npmrc; do
-  printf 'base %s\n' "$file" > "$TOOLING_SOURCE/$file"
+  pnpm-workspace.yaml .changeset/config.json .npmrc packages/ui/package.json \
+  examples/demo/package.json tools/config/package.json; do
+  printf 'main %s\n' "$file" > "$TOOLING_SOURCE/$file"
 done
 git -C "$TOOLING_SOURCE" add -A
-git -C "$TOOLING_SOURCE" commit --quiet -m base
-TOOLING_BASE=$(git -C "$TOOLING_SOURCE" rev-parse HEAD)
+git -C "$TOOLING_SOURCE" commit --quiet -m main
+git -C "$TOOLING_SOURCE" branch -M main
+git -C "$TOOLING_SOURCE" switch --quiet -c journey
+mkdir -p "$TOOLING_SOURCE/packages/pr-only"
+printf 'journey-only importer\n' > "$TOOLING_SOURCE/packages/pr-only/package.json"
 for file in scripts/preview-release.mjs package.json pnpm-lock.yaml \
-  pnpm-workspace.yaml .changeset/config.json; do
-  printf 'head %s\n' "$file" > "$TOOLING_SOURCE/$file"
+  pnpm-workspace.yaml .changeset/config.json packages/ui/package.json; do
+  printf 'journey %s\n' "$file" > "$TOOLING_SOURCE/$file"
 done
 rm "$TOOLING_SOURCE/.npmrc"
-printf 'head pnpm hook\n' > "$TOOLING_SOURCE/.pnpmfile.cjs"
+printf 'journey pnpm hook\n' > "$TOOLING_SOURCE/.pnpmfile.cjs"
+git -C "$TOOLING_SOURCE" add -A
+git -C "$TOOLING_SOURCE" commit --quiet -m journey
+TOOLING_BASE=$(git -C "$TOOLING_SOURCE" rev-parse HEAD)
+for file in scripts/preview-release.mjs package.json pnpm-lock.yaml \
+  pnpm-workspace.yaml .changeset/config.json packages/ui/package.json; do
+  printf 'head %s\n' "$file" > "$TOOLING_SOURCE/$file"
+done
 git -C "$TOOLING_SOURCE" add -A
 git -C "$TOOLING_SOURCE" commit --quiet -m head
 TOOLING_HEAD=$(git -C "$TOOLING_SOURCE" rev-parse HEAD)
@@ -97,14 +109,16 @@ git -C "$TOOLING_WORK" checkout --quiet "$TOOLING_HEAD"
 if (cd "$TOOLING_WORK" && BASE_SHA="$TOOLING_BASE" bash "$TMP/restore-tooling.sh") \
   >/dev/null 2>&1 &&
   [ "$(git -C "$TOOLING_WORK" rev-parse HEAD)" = "$TOOLING_HEAD" ] &&
-  [ "$(cat "$TOOLING_WORK/package.json")" = 'base package.json' ] &&
-  [ "$(cat "$TOOLING_WORK/pnpm-lock.yaml")" = 'base pnpm-lock.yaml' ] &&
-  [ "$(cat "$TOOLING_WORK/.npmrc")" = 'base .npmrc' ] &&
+  [ "$(cat "$TOOLING_WORK/package.json")" = 'main package.json' ] &&
+  [ "$(cat "$TOOLING_WORK/pnpm-lock.yaml")" = 'main pnpm-lock.yaml' ] &&
+  [ "$(cat "$TOOLING_WORK/packages/ui/package.json")" = 'main packages/ui/package.json' ] &&
+  [ "$(cat "$TOOLING_WORK/.npmrc")" = 'main .npmrc' ] &&
+  [ ! -e "$TOOLING_WORK/packages/pr-only/package.json" ] &&
   [ ! -e "$TOOLING_WORK/.pnpmfile.cjs" ]; then
-  pass "restores the complete release toolchain from the immutable PR base"
+  pass "restores the complete release toolchain from trusted main"
 else
-  fail "restores the complete release toolchain from the immutable PR base" \
-    "expected base-owned files, removed PR hooks, and an unchanged head commit"
+  fail "restores the complete release toolchain from trusted main" \
+    "expected main-owned files, removed PR inputs, and an unchanged head commit"
 fi
 
 HEAD_SHA=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -321,6 +335,13 @@ if grep -Fq \
   pass "bot comments retain an isolated pre-job concurrency key"
 else
   fail "bot comments retain an isolated pre-job concurrency key" "isolated concurrency expression is missing"
+fi
+
+if grep -Fq 'types: [opened, synchronize, reopened, edited]' "$WORKFLOW"; then
+  pass "base retargets trigger a fresh signoff evaluation"
+else
+  fail "base retargets trigger a fresh signoff evaluation" \
+    "pull_request edited events are not enabled"
 fi
 
 if grep -Fq \
