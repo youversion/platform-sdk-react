@@ -137,17 +137,22 @@ describe('bible-reader Swift-aligned typography', () => {
   });
 
   it('applies Swift inline styles and drops phase-1 sibling combinators', () => {
+    expect(rulesForExactClass('bdit')).toContain('font-size: var(--yv-reader-font-size)');
     expect(rulesForExactClass('bdit')).toContain('font-weight: 500');
     expect(rulesForExactClass('bdit')).toContain('font-style: italic');
     expect(rulesForExactClass('bdit')).not.toContain('font-weight: bold');
 
-    expect(rulesForExactClass('ord')).toContain('font-size: 0.65em');
+    expect(rulesForExactClass('ord')).toContain(
+      'font-size: calc(var(--yv-reader-font-size) * 0.65)',
+    );
     expect(rulesForExactClass('ord')).toContain('top: -0.2em');
     expect(rulesForExactClass('fv')).toContain(
       'font-size: calc(var(--yv-reader-font-size) * 0.65)',
     );
     expect(rulesForExactClass('fv')).toContain('top: -0.2em');
-    expect(rulesForExactClass('sup')).toContain('font-size: 0.65em');
+    expect(rulesForExactClass('sup')).toContain(
+      'font-size: calc(var(--yv-reader-font-size) * 0.65)',
+    );
     expect(rulesForExactClass('sup')).toContain('top: -0.2em');
     expect(css).not.toMatch(/&\s*\.note\s+\.fv\s*\{/);
 
@@ -158,6 +163,11 @@ describe('bible-reader Swift-aligned typography', () => {
     expect(rulesForExactClass('add')).toContain('font-style: italic');
     expect(rulesForExactClass('qs')).toContain('font-style: italic');
     expect(rulesForExactClass('qs')).not.toContain('display: block');
+
+    for (const cls of ['bk', 'add', 'it', 'tl', 'fq', 'fqa', 'qt', 'qs']) {
+      expect(rulesForExactClass(cls)).toContain('font-size: var(--yv-reader-font-size)');
+      expect(rulesForExactClass(cls)).toContain('font-weight: normal');
+    }
 
     expect(css).not.toMatch(/&\s*\.p\s*\+\s*\.s1\b/);
     expect(css).not.toMatch(/&\s*\.q1\s*\+\s*\.p\b/);

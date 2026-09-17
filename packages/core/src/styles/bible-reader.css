@@ -858,6 +858,7 @@
 
   /* \bdit - Medium-italic text */
   & .bdit {
+    font-size: var(--yv-reader-font-size);
     font-weight: 500;
     font-style: italic;
   }
@@ -872,12 +873,14 @@
 
   /* \bk - Book name reference — Italic */
   & .bk {
+    font-size: var(--yv-reader-font-size);
+    font-weight: normal;
     font-style: italic;
   }
 
   /* \ord - Ordinal number ending — verse-number metrics */
   & .ord {
-    font-size: 0.65em;
+    font-size: calc(var(--yv-reader-font-size) * 0.65);
     line-height: 1em;
     position: relative;
     vertical-align: baseline;
@@ -925,21 +928,31 @@
     * {@see https://docs.usfm.bible/usfm/latest/char/features/add.html}
     */
   & .add {
+    font-size: var(--yv-reader-font-size);
+    font-weight: normal;
     font-style: italic;
   }
 
   /* \it - Italic text, \tl - Transliterated word,
-     \fq / \fqa - Footnote quotation, \sls - Secondary language — Italic */
+     \fq / \fqa - Footnote quotation — Italic */
   & .it,
   & .tl,
   & .fq,
-  & .fqa,
+  & .fqa {
+    font-size: var(--yv-reader-font-size);
+    font-weight: normal;
+    font-style: italic;
+  }
+
+  /* \sls - Secondary language — Italic */
   & .sls {
     font-style: italic;
   }
 
   /* \qt - Quoted text (OT quotation in NT, etc.) — Italic */
   & .qt {
+    font-size: var(--yv-reader-font-size);
+    font-weight: normal;
     font-style: italic;
   }
 
@@ -1037,6 +1050,8 @@
 
   /* \qs - Selah (character style) */
   & .qs {
+    font-size: var(--yv-reader-font-size);
+    font-weight: normal;
     font-style: italic;
   }
 
@@ -1346,7 +1361,7 @@
 
   /* \sup - Superscript (verse-number metrics) */
   & .sup {
-    font-size: 0.65em;
+    font-size: calc(var(--yv-reader-font-size) * 0.65);
     line-height: 1em;
     position: relative;
     vertical-align: baseline;

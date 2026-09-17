@@ -50,6 +50,10 @@ const SWIFT_PHASE_TWO_FIXTURE_HTML = `
   <div><span class="rq"><span class="pn">(Genesis 1:1)</span></span> <span class="em"><span class="bd">Word</span></span>
     <span class="qac">A</span> <span class="sig">John</span> <span class="litl">Selah</span>
     <span class="ref">John 1:1</span> <span class="wg">λόγος</span> <span class="wh">דָּבָר</span> <span class="ior">1–5</span> <span class="xta">Gen 1:1</span></div>
+  <div><span class="rq"><span class="it">Nested italic</span></span> <span class="is1"><span class="bdit">Nested medium italic</span></span>
+    <span class="bd"><span class="bk">Book</span> <span class="add">addition</span></span>
+    <span class="tl">logos</span> <span class="fq">quoted</span> <span class="fqa">alternate</span> <span class="qt">quotation</span> <span class="qs">Selah</span>
+    <span class="rq"><span class="ord">th</span></span> <span class="is1"><span class="sup">sup</span></span> <span class="fv">a</span></div>
   <div class="p" data-indent-fixture>
     Indented ancestor: each heading below clears this first-line indent.
     <div class="cl">cl: Chapter label</div><div class="d">d: Descriptive title</div>
@@ -366,7 +370,7 @@ export const SwiftPhaseTwoTypographyFixture: Story = {
           verseNum="2"
           verseHtml="Deterministic verse context."
           notes={[
-            '<span class="ft">The Greek is plural.</span><span class="fp"><span class="fk">Word</span> <span class="fl">label</span> continues without an indent.</span>',
+            '<span class="ft">The Greek is plural.</span><span class="fq">quoted text</span> <span class="fqa">alternate translation</span><span class="fp"><span class="fk">Word</span> <span class="fl">label</span> continues without an indent.</span>',
           ]}
         />
       </section>
@@ -410,6 +414,14 @@ export const SwiftPhaseTwoTypographyFixture: Story = {
     await expect(style('.rq .pn').fontStyle).toBe('normal');
     await expect(style('.em .bd').fontStyle).toBe('normal');
     await expect(style('.em .bd').fontWeight).toBe('700');
+    await expect(style('.rq .it').fontSize).toBe('20px');
+    await expect(style('.is1 .bdit').fontSize).toBe('20px');
+    await expect(style('.is1 .bdit').fontWeight).toBe('500');
+    await expect(style('.bd .bk').fontWeight).toBe('400');
+    await expect(style('.bd .add').fontWeight).toBe('400');
+    await expect(style('.rq .ord').fontSize).toBe('13px');
+    await expect(style('.is1 .sup').fontSize).toBe('13px');
+    await expect(style('.fv').fontSize).toBe('13px');
     await expect(style('.qac').fontSize).toBe('20px');
     await expect(style('.ref').fontStyle).toBe(style('.p').fontStyle);
     await expect(style('.va').display).toBe('inline');
@@ -447,6 +459,10 @@ export const SwiftPhaseTwoTypographyFixture: Story = {
     await expect(fpStyle.textIndent).toBe('0px');
     await expect(fpStyle.marginTop).toBe('0px');
     await expect(getComputedStyle(note.querySelector<HTMLElement>('.fk')!).fontWeight).toBe('500');
+    await expect(getComputedStyle(note.querySelector<HTMLElement>('.fq')!).fontStyle).toBe(
+      'italic',
+    );
+    await expect(getComputedStyle(note.querySelector<HTMLElement>('.fqa')!).fontWeight).toBe('400');
   },
 };
 
