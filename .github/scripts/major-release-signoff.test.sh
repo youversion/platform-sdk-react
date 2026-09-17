@@ -393,6 +393,15 @@ else
     "the required native check must remain red when release impact is unknown"
 fi
 
+if grep -Fq \
+  "continue-on-error: \${{ steps.decision.outputs.blocked != '' }}" \
+  "$WORKFLOW"; then
+  pass "successful evaluations require stale instruction cleanup"
+else
+  fail "successful evaluations require stale instruction cleanup" \
+    "cleanup errors may be tolerated only when the evaluation is already blocked"
+fi
+
 CONTEXT_HEADER=$(sed -n '/^  context:$/,/^    steps:$/p' "$WORKFLOW")
 STATUS_CALL="$TMP/status-call"
 if PATH="$TMP/bin:$PATH" \

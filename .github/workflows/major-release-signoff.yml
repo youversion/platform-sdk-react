@@ -409,7 +409,9 @@ jobs:
         # Unknown impact must not leave a comment claiming a confirmed breaking change.
         # Trusted non-major results also retire instructions from an earlier evaluation.
         if: steps.decision.outputs.blocked != '' || steps.decision.outputs.is_major != '1'
-        continue-on-error: true
+        # Blocked evaluations still reach the red status and native failure steps below.
+        # A successful evaluation must not publish green while stale instructions remain.
+        continue-on-error: ${{ steps.decision.outputs.blocked != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ needs.context.outputs.pr_number }}
