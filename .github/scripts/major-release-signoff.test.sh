@@ -30,6 +30,7 @@ extract_step() {
 }
 
 extract_step "Resolve PR context" > "$TMP/context.sh"
+extract_step "Restore release tooling from the base branch" > "$TMP/restore-tooling.sh"
 extract_step "Decide whether a signoff is required" > "$TMP/decision.sh"
 extract_step "Regenerate and verify release contents" > "$TMP/verify.sh"
 
@@ -65,6 +66,45 @@ if [ -f CHANGELOG.md ]; then
 fi
 EOF
 chmod +x "$TMP/bin/pnpm"
+
+TOOLING_SOURCE="$TMP/tooling-source"
+TOOLING_WORK="$TMP/tooling-work"
+git init --quiet "$TOOLING_SOURCE"
+git -C "$TOOLING_SOURCE" config commit.gpgsign false
+git -C "$TOOLING_SOURCE" config user.name test
+git -C "$TOOLING_SOURCE" config user.email test@example.com
+mkdir -p "$TOOLING_SOURCE/scripts" "$TOOLING_SOURCE/.changeset"
+for file in scripts/preview-release.mjs package.json pnpm-lock.yaml \
+  pnpm-workspace.yaml .changeset/config.json .npmrc; do
+  printf 'base %s\n' "$file" > "$TOOLING_SOURCE/$file"
+done
+git -C "$TOOLING_SOURCE" add -A
+git -C "$TOOLING_SOURCE" commit --quiet -m base
+TOOLING_BASE=$(git -C "$TOOLING_SOURCE" rev-parse HEAD)
+for file in scripts/preview-release.mjs package.json pnpm-lock.yaml \
+  pnpm-workspace.yaml .changeset/config.json; do
+  printf 'head %s\n' "$file" > "$TOOLING_SOURCE/$file"
+done
+rm "$TOOLING_SOURCE/.npmrc"
+printf 'head pnpm hook\n' > "$TOOLING_SOURCE/.pnpmfile.cjs"
+git -C "$TOOLING_SOURCE" add -A
+git -C "$TOOLING_SOURCE" commit --quiet -m head
+TOOLING_HEAD=$(git -C "$TOOLING_SOURCE" rev-parse HEAD)
+git clone --quiet "$TOOLING_SOURCE" "$TOOLING_WORK"
+git -C "$TOOLING_WORK" checkout --quiet "$TOOLING_HEAD"
+
+if (cd "$TOOLING_WORK" && BASE_SHA="$TOOLING_BASE" bash "$TMP/restore-tooling.sh") \
+  >/dev/null 2>&1 &&
+  [ "$(git -C "$TOOLING_WORK" rev-parse HEAD)" = "$TOOLING_HEAD" ] &&
+  [ "$(cat "$TOOLING_WORK/package.json")" = 'base package.json' ] &&
+  [ "$(cat "$TOOLING_WORK/pnpm-lock.yaml")" = 'base pnpm-lock.yaml' ] &&
+  [ "$(cat "$TOOLING_WORK/.npmrc")" = 'base .npmrc' ] &&
+  [ ! -e "$TOOLING_WORK/.pnpmfile.cjs" ]; then
+  pass "restores the complete release toolchain from the immutable PR base"
+else
+  fail "restores the complete release toolchain from the immutable PR base" \
+    "expected base-owned files, removed PR hooks, and an unchanged head commit"
+fi
 
 HEAD_SHA=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 BASE_SHA=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb

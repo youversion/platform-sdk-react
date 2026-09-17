@@ -203,31 +203,37 @@ jobs:
 
       - name: Restore release tooling from the base branch
         # The PR supplies changeset *data* only. The detector that reads it, the dependency
-        # set it runs under, and the changesets config all come from `main`, so a branch
-        # cannot rewrite the check that gates it. This runs before pnpm is set up, since
-        # `pnpm/action-setup` reads `packageManager` out of package.json.
+        # set it runs under, and the changesets config all come from the immutable PR base,
+        # so a branch cannot rewrite the check that gates it. This runs before pnpm is set
+        # up, since `pnpm/action-setup` reads `packageManager` out of package.json.
+        env:
+          BASE_SHA: ${{ needs.context.outputs.base_sha }}
         run: |
           set -euo pipefail
-          git fetch --no-tags --force origin main:refs/heads/main
-          # All of main's tooling, or none of it. The detector, the dependency set it runs
-          # under, and the changesets config have to agree, so restoring some from main and
-          # taking the rest from the PR gives a detector without its own dependencies.
-          if git cat-file -e main:scripts/preview-release.mjs 2>/dev/null; then
+          if ! [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Could not resolve a full PR base SHA."
+            exit 1
+          fi
+          git fetch --no-tags --force origin "$BASE_SHA"
+          # All of the base's tooling, or none of it. The detector, the dependency set it
+          # runs under, and the changesets config have to agree, so restoring only part of
+          # the base toolchain gives a detector without its own dependencies.
+          if git cat-file -e "$BASE_SHA:scripts/preview-release.mjs" 2>/dev/null; then
             for f in scripts/preview-release.mjs package.json pnpm-lock.yaml \
                      pnpm-workspace.yaml .changeset/config.json; do
-              git cat-file -e "main:$f" 2>/dev/null && git checkout main -- "$f"
+              git cat-file -e "$BASE_SHA:$f" 2>/dev/null && git checkout "$BASE_SHA" -- "$f"
             done
-            # Install hooks a PR could add to rewrite what we just restored. Take main's, or
+            # Install hooks a PR could add to rewrite what we just restored. Take the base's, or
             # remove it outright: leaving a PR-authored one hands back the control.
             for f in .npmrc .pnpmfile.cjs; do
-              if git cat-file -e "main:$f" 2>/dev/null; then
-                git checkout main -- "$f"
+              if git cat-file -e "$BASE_SHA:$f" 2>/dev/null; then
+                git checkout "$BASE_SHA" -- "$f"
               else
                 rm -f "$f"
               fi
             done
           else
-            echo "::warning::scripts/preview-release.mjs is not on main yet, so this PR supplies its own tooling. The trust boundary engages once it merges."
+            echo "::warning::scripts/preview-release.mjs is not on the PR base yet, so this PR supplies its own tooling. The trust boundary engages once it merges."
           fi
 
       - name: Setup pnpm
