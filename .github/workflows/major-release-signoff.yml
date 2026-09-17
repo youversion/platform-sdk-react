@@ -328,6 +328,11 @@ jobs:
     if: always() && needs.context.result != 'skipped'
     name: Major release signoff
     needs: [context, generated_release, preview]
+    concurrency:
+      # Only one job may publish the SHA-scoped status at a time. The late uniqueness
+      # check below then observes any other PR before this job writes a terminal result.
+      group: major-release-signoff-head-${{ needs.context.outputs.head_sha || format('pr-{0}', needs.context.outputs.pr_number) }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -424,13 +429,36 @@ jobs:
           echo "next=$PREVIEW_NEXT" >> "$GITHUB_OUTPUT"
           echo "release_type=$PREVIEW_RELEASE_TYPE" >> "$GITHUB_OUTPUT"
 
+      - name: Recheck shared head before publishing status
+        id: late_head_check
+        if: steps.decision.outputs.blocked == ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ needs.context.outputs.head_sha }}
+          PR_NUMBER: ${{ needs.context.outputs.pr_number }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if ! SHARED_HEAD_PRS=$(gh api --paginate \
+            "repos/$REPOSITORY/pulls?state=open&per_page=100" \
+            --jq ".[] | select(.number != $PR_NUMBER and .head.sha == \"$HEAD_SHA\") | .number"); then
+            echo "blocked=could not recheck whether another open pull request shares the head commit" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          SHARED_HEAD_PRS=${SHARED_HEAD_PRS//$'\n'/,}
+          if [ -n "$SHARED_HEAD_PRS" ]; then
+            echo "blocked=head commit is also used by open pull request(s): #${SHARED_HEAD_PRS//,/, #}" >> "$GITHUB_OUTPUT"
+          else
+            echo "blocked=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Remove stale workflow-owned signoff instructions
         # Unknown impact must not leave a comment claiming a confirmed breaking change.
         # Trusted non-major results also retire instructions from an earlier evaluation.
-        if: steps.decision.outputs.blocked != '' || steps.decision.outputs.is_major != '1'
+        if: steps.decision.outputs.blocked != '' || steps.late_head_check.outputs.blocked != '' || steps.decision.outputs.is_major != '1'
         # Blocked evaluations still reach the red status and native failure steps below.
         # A successful evaluation must not publish green while stale instructions remain.
-        continue-on-error: ${{ steps.decision.outputs.blocked != '' }}
+        continue-on-error: ${{ steps.decision.outputs.blocked != '' || steps.late_head_check.outputs.blocked != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ needs.context.outputs.pr_number }}
@@ -447,7 +475,8 @@ jobs:
             done
 
       - name: Mark PRs without a breaking change as success
-        if: steps.decision.outputs.blocked == '' && steps.decision.outputs.is_major != '1' && steps.decision.outputs.generated_release != 'true'
+        id: non_major_success
+        if: steps.decision.outputs.blocked == '' && steps.late_head_check.outputs.blocked == '' && steps.decision.outputs.is_major != '1' && steps.decision.outputs.generated_release != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ needs.context.outputs.head_sha }}
@@ -462,7 +491,8 @@ jobs:
             -f target_url="$RUN_URL"
 
       - name: Mark generated release PR as success
-        if: steps.decision.outputs.generated_release == 'true'
+        id: generated_success
+        if: steps.decision.outputs.blocked == '' && steps.late_head_check.outputs.blocked == '' && steps.decision.outputs.generated_release == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ needs.context.outputs.head_sha }}
@@ -476,14 +506,16 @@ jobs:
             -f target_url="$RUN_URL"
 
       - name: Post failure status when release impact cannot be determined
-        if: steps.decision.outputs.blocked != ''
+        if: steps.decision.outputs.blocked != '' || steps.late_head_check.outputs.blocked != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ needs.context.outputs.head_sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          BLOCKED: ${{ steps.decision.outputs.blocked }}
+          DECISION_BLOCKED: ${{ steps.decision.outputs.blocked }}
+          LATE_BLOCKED: ${{ steps.late_head_check.outputs.blocked }}
         run: |
           set -euo pipefail
+          BLOCKED=${DECISION_BLOCKED:-$LATE_BLOCKED}
           gh api repos/${{ github.repository }}/statuses/$HEAD_SHA \
             -f state=failure \
             -f context="$STATUS_CONTEXT" \
@@ -492,16 +524,18 @@ jobs:
           echo "Unable to determine release impact: $BLOCKED"
 
       - name: Fail the native signoff check
-        if: always() && steps.decision.outputs.blocked != ''
+        if: always() && (steps.decision.outputs.blocked != '' || steps.late_head_check.outputs.blocked != '')
         env:
-          BLOCKED: ${{ steps.decision.outputs.blocked }}
+          DECISION_BLOCKED: ${{ steps.decision.outputs.blocked }}
+          LATE_BLOCKED: ${{ steps.late_head_check.outputs.blocked }}
         run: |
+          BLOCKED=${DECISION_BLOCKED:-$LATE_BLOCKED}
           echo "::error::Unable to determine release impact: $BLOCKED"
           exit 1
 
       - name: Search PR comments for valid approver signoff
         id: signoff
-        if: steps.decision.outputs.is_major == '1' && steps.decision.outputs.blocked == ''
+        if: steps.decision.outputs.is_major == '1' && steps.decision.outputs.blocked == '' && steps.late_head_check.outputs.blocked == ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ needs.context.outputs.pr_number }}
@@ -610,7 +644,8 @@ jobs:
             done
 
       - name: Post success status when signoff present
-        if: steps.decision.outputs.blocked == '' && steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off == '1'
+        id: signed_success
+        if: steps.decision.outputs.blocked == '' && steps.late_head_check.outputs.blocked == '' && steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off == '1'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ needs.context.outputs.head_sha }}
@@ -625,8 +660,40 @@ jobs:
             -f description="Major v${NEXT_VERSION} signed off by ${APPROVER}." \
             -f target_url="$RUN_URL"
 
+      - name: Verify head remained unique after publishing success
+        if: always() && (steps.non_major_success.outcome == 'success' || steps.generated_success.outcome == 'success' || steps.signed_success.outcome == 'success')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ needs.context.outputs.head_sha }}
+          PR_NUMBER: ${{ needs.context.outputs.pr_number }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          BLOCKED=
+          if ! SHARED_HEAD_PRS=$(gh api --paginate \
+            "repos/$REPOSITORY/pulls?state=open&per_page=100" \
+            --jq ".[] | select(.number != $PR_NUMBER and .head.sha == \"$HEAD_SHA\") | .number"); then
+            BLOCKED="could not verify head uniqueness after publishing success"
+          else
+            SHARED_HEAD_PRS=${SHARED_HEAD_PRS//$'\n'/,}
+            if [ -n "$SHARED_HEAD_PRS" ]; then
+              BLOCKED="head commit became shared by open pull request(s): #${SHARED_HEAD_PRS//,/, #}"
+            fi
+          fi
+          if [ -z "$BLOCKED" ]; then
+            exit 0
+          fi
+          gh api repos/$REPOSITORY/statuses/$HEAD_SHA \
+            -f state=failure \
+            -f context="$STATUS_CONTEXT" \
+            -f description="Unable to determine release impact; inspect the workflow run." \
+            -f target_url="$RUN_URL"
+          echo "::error::$BLOCKED"
+          exit 1
+
       - name: Upsert blocking comment when signoff missing
-        if: always() && steps.decision.outputs.blocked == '' && steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off != '1' && github.event_name == 'pull_request'
+        if: always() && steps.decision.outputs.blocked == '' && steps.late_head_check.outputs.blocked == '' && steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off != '1' && github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ needs.context.outputs.pr_number }}
@@ -677,7 +744,7 @@ jobs:
           fi
 
       - name: Post failure status when signoff missing
-        if: always() && steps.decision.outputs.blocked == '' && steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off != '1'
+        if: always() && steps.decision.outputs.blocked == '' && steps.late_head_check.outputs.blocked == '' && steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off != '1'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ needs.context.outputs.head_sha }}
@@ -692,10 +759,12 @@ jobs:
             -f target_url="$RUN_URL"
 
       - name: Fail the job so the gate is loud in the PR UI
-        if: always() && ((steps.decision.outputs.blocked != '') || (steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off != '1'))
+        if: always() && ((steps.decision.outputs.blocked != '') || (steps.late_head_check.outputs.blocked != '') || (steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off != '1'))
         env:
-          BLOCKED: ${{ steps.decision.outputs.blocked }}
+          DECISION_BLOCKED: ${{ steps.decision.outputs.blocked }}
+          LATE_BLOCKED: ${{ steps.late_head_check.outputs.blocked }}
         run: |
+          BLOCKED=${DECISION_BLOCKED:-$LATE_BLOCKED}
           if [ -n "$BLOCKED" ]; then
             echo "Unable to determine release impact: $BLOCKED"
           else

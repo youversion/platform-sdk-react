@@ -34,6 +34,8 @@ extract_step "Invalidate prior signoff status" > "$TMP/invalidate.sh"
 extract_step "Restore trusted release tooling from main" > "$TMP/restore-tooling.sh"
 extract_step "Compute release preview" > "$TMP/preview.sh"
 extract_step "Decide whether a signoff is required" > "$TMP/decision.sh"
+extract_step "Recheck shared head before publishing status" > "$TMP/late-head-check.sh"
+extract_step "Verify head remained unique after publishing success" > "$TMP/post-success-head-check.sh"
 extract_step "Remove fulfilled signoff instructions" > "$TMP/remove-fulfilled.sh"
 extract_step "Regenerate and verify release contents" > "$TMP/verify.sh"
 
@@ -43,6 +45,7 @@ cat > "$TMP/bin/gh" <<'EOF'
 set -u
 ARGS="$*"
 if [[ "$ARGS" == *"/pulls?state=open"* ]]; then
+  if [ "${MOCK_OPEN_PRS_ERROR:-0}" = "1" ]; then exit 1; fi
   jq -r \
     --argjson current "${MOCK_CURRENT_PR_NUMBER:-400}" \
     --arg head "${MOCK_HEAD_SHA:-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}" \
@@ -366,6 +369,56 @@ run_decision_case "a shared head across open PRs fails closed" \
   'blocked=head commit is also used by open pull request(s): #401' \
   false false skipped '' success 0 success 401
 
+printf '%s\n' "$SHARED_OPEN_PRS" > "$TMP/late-open-prs.json"
+: > "$TMP/late-head-output"
+if PATH="$TMP/bin:$PATH" \
+  MOCK_OPEN_PRS_FILE="$TMP/late-open-prs.json" \
+  HEAD_SHA="$HEAD_SHA" PR_NUMBER=400 REPOSITORY=youversion/platform-sdk-react \
+  GITHUB_OUTPUT="$TMP/late-head-output" \
+  bash "$TMP/late-head-check.sh" >/dev/null 2>&1 &&
+  grep -Fxq 'blocked=head commit is also used by open pull request(s): #401' \
+    "$TMP/late-head-output"; then
+  pass "late guard catches a head that became shared during evaluation"
+else
+  fail "late guard catches a head that became shared during evaluation" \
+    "the final status guard did not reject the newly shared head"
+fi
+
+: > "$TMP/post-success-output"
+: > "$TMP/post-success-status-call"
+if PATH="$TMP/bin:$PATH" \
+  MOCK_OPEN_PRS_FILE="$TMP/late-open-prs.json" \
+  MOCK_STATUS_CALL="$TMP/post-success-status-call" \
+  HEAD_SHA="$HEAD_SHA" PR_NUMBER=400 REPOSITORY=youversion/platform-sdk-react \
+  RUN_URL=https://github.example/actions/runs/123 STATUS_CONTEXT=major-release-signoff \
+  bash "$TMP/post-success-head-check.sh" >/dev/null 2>&1; then
+  post_success_result=success
+else
+  post_success_result=failure
+fi
+if [ "$post_success_result" = failure ] &&
+  grep -Fqx 'state=failure' "$TMP/post-success-status-call" &&
+  grep -Fqx 'context=major-release-signoff' "$TMP/post-success-status-call"; then
+  pass "a head shared during success publication is returned to failure"
+else
+  fail "a head shared during success publication is returned to failure" \
+    "the post-success guard did not replace the unsafe green status"
+fi
+
+: > "$TMP/late-head-output"
+if PATH="$TMP/bin:$PATH" \
+  MOCK_OPEN_PRS_ERROR=1 MOCK_OPEN_PRS_FILE="$TMP/late-open-prs.json" \
+  HEAD_SHA="$HEAD_SHA" PR_NUMBER=400 REPOSITORY=youversion/platform-sdk-react \
+  GITHUB_OUTPUT="$TMP/late-head-output" \
+  bash "$TMP/late-head-check.sh" >/dev/null 2>&1 &&
+  grep -Fxq 'blocked=could not recheck whether another open pull request shares the head commit' \
+    "$TMP/late-head-output"; then
+  pass "late shared-head lookup errors fail closed"
+else
+  fail "late shared-head lookup errors fail closed" \
+    "the final status guard did not convert an API error into a blocked decision"
+fi
+
 if "$ROOT/node_modules/.bin/prettier" --check "$WORKFLOW" >/dev/null; then
   pass "workflow YAML parses and is formatted"
 else
@@ -411,7 +464,33 @@ else
     "the final gate must fail closed when context resolution or status invalidation fails"
 fi
 
-if grep -Fq "if: always() && steps.decision.outputs.blocked != ''" "$WORKFLOW"; then
+GATE_HEADER=$(sed -n '/^  gate:$/,/^    permissions:$/p' "$WORKFLOW")
+if grep -Fq 'group: major-release-signoff-head-${{ needs.context.outputs.head_sha' \
+  <<<"$GATE_HEADER"; then
+  pass "terminal status writers serialize by head SHA"
+else
+  fail "terminal status writers serialize by head SHA" \
+    "shared-head evaluations need one concurrency lock around terminal status writes"
+fi
+
+for step_name in \
+  "Mark PRs without a breaking change as success" \
+  "Mark generated release PR as success" \
+  "Post success status when signoff present"; do
+  step_header=$(sed -n "/- name: $step_name/,/        env:/p" "$WORKFLOW")
+  if grep -Fq "steps.late_head_check.outputs.blocked == ''" <<<"$step_header"; then
+    pass "$step_name requires a fresh unique head"
+  else
+    fail "$step_name requires a fresh unique head" \
+      "terminal success must be gated by the late shared-head check"
+  fi
+done
+
+NATIVE_FAILURE_HEADER=$(sed -n \
+  '/- name: Fail the native signoff check/,/        env:/p' "$WORKFLOW")
+if grep -Fq "steps.decision.outputs.blocked != ''" <<<"$NATIVE_FAILURE_HEADER" &&
+  grep -Fq "steps.late_head_check.outputs.blocked != ''" \
+    <<<"$NATIVE_FAILURE_HEADER"; then
   pass "blocked evaluations fail the native signoff check"
 else
   fail "blocked evaluations fail the native signoff check" \
@@ -419,7 +498,7 @@ else
 fi
 
 if grep -Fq \
-  "continue-on-error: \${{ steps.decision.outputs.blocked != '' }}" \
+  "continue-on-error: \${{ steps.decision.outputs.blocked != '' || steps.late_head_check.outputs.blocked != '' }}" \
   "$WORKFLOW"; then
   pass "successful evaluations require stale instruction cleanup"
 else
