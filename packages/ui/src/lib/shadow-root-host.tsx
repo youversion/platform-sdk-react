@@ -19,13 +19,26 @@ const SDK_SHADOW_STYLE_HREF = 'yv-sdk-shadow-styles';
 const SDK_SHADOW_STYLE_PRECEDENCE = 'yv-sdk';
 type ShadowPortalStrategy = 'local-inline' | 'local-top-layer';
 
+export interface ShadowFocusRestoreSnapshot {
+  capturedRoot: Node;
+  target: HTMLElement;
+}
+
+interface ShadowModalFocusRestoration {
+  cancel: () => void;
+  reclaim: () => ShadowFocusRestoreSnapshot | null;
+  schedule: (snapshot: ShadowFocusRestoreSnapshot) => void;
+}
+
 interface ShadowPortalController {
+  cancelFocusRestore: (instanceId: string) => void;
   container: HTMLElement | null;
   getLastFocusedElement: () => HTMLElement | null;
   prepareOpen: (instanceId: string) => void;
+  reclaimFocusRestore: (instanceId: string) => ShadowFocusRestoreSnapshot | null;
   requestClose: (instanceId: string) => void;
+  scheduleFocusRestore: (instanceId: string, snapshot: ShadowFocusRestoreSnapshot) => void;
   setModalPresent: (instanceId: string, present: boolean) => void;
-  restoreFocusWhenModalReleased: (target: HTMLElement, capturedRoot: Node) => void;
 }
 
 const ShadowPortalContext = createContext<ShadowPortalController | null>(null);
@@ -53,13 +66,14 @@ export function useShadowPortalTarget(open: boolean): HTMLElement | null | undef
 
 /**
  * @internal Keeps sibling shadow content inert while mounted modal UI is present
- * and returns the host-owned focus restoration function.
+ * and returns focus restoration operations bound to that modal owner.
  */
-export function useShadowModalPresence(
-  present: boolean,
-): ShadowPortalController['restoreFocusWhenModalReleased'] | undefined {
+export function useShadowModalPresence(present: boolean): ShadowModalFocusRestoration | undefined {
   const controller = useContext(ShadowPortalContext);
   const instanceId = useId();
+  const cancelFocusRestore = controller?.cancelFocusRestore;
+  const reclaimFocusRestore = controller?.reclaimFocusRestore;
+  const scheduleFocusRestore = controller?.scheduleFocusRestore;
   const setModalPresent = controller?.setModalPresent;
 
   useLayoutEffect(() => {
@@ -69,7 +83,18 @@ export function useShadowModalPresence(
     return () => setModalPresent(instanceId, false);
   }, [instanceId, present, setModalPresent]);
 
-  return controller?.restoreFocusWhenModalReleased;
+  return useMemo(
+    () =>
+      cancelFocusRestore && reclaimFocusRestore && scheduleFocusRestore
+        ? {
+            cancel: () => cancelFocusRestore(instanceId),
+            reclaim: () => reclaimFocusRestore(instanceId),
+            schedule: (snapshot: ShadowFocusRestoreSnapshot) =>
+              scheduleFocusRestore(instanceId, snapshot),
+          }
+        : undefined,
+    [cancelFocusRestore, instanceId, reclaimFocusRestore, scheduleFocusRestore],
+  );
 }
 
 /** @internal Returns the most recent focus target from the component's non-overlay content. */
@@ -146,7 +171,9 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
   const activePortalIdsRef = useRef(new Set<string>());
   const contentWrapperRef = useRef<HTMLDivElement | null>(null);
   const presentModalIdsRef = useRef(new Set<string>());
-  const pendingFocusTargetRef = useRef<{ target: HTMLElement; capturedRoot: Node } | null>(null);
+  const pendingFocusTargetRef = useRef<
+    (ShadowFocusRestoreSnapshot & { ownerId: string }) | null
+  >(null);
   const lastFocusedElementRef = useRef<HTMLElement | null>(null);
   const [shadowRoot, setShadowRoot] = useState<ShadowRoot | null>(null);
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
@@ -262,17 +289,34 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
     [canRestoreFocus],
   );
 
-  const restoreFocusWhenModalReleased = useCallback(
-    (target: HTMLElement, capturedRoot: Node): void => {
+  const scheduleFocusRestore = useCallback(
+    (instanceId: string, snapshot: ShadowFocusRestoreSnapshot): void => {
       if (presentModalIdsRef.current.size > 0) {
-        pendingFocusTargetRef.current = { target, capturedRoot };
+        pendingFocusTargetRef.current = { ...snapshot, ownerId: instanceId };
         return;
       }
 
-      if (canRestoreFocus(target, capturedRoot)) target.focus();
+      if (canRestoreFocus(snapshot.target, snapshot.capturedRoot)) snapshot.target.focus();
     },
     [canRestoreFocus],
   );
+
+  const reclaimFocusRestore = useCallback(
+    (instanceId: string): ShadowFocusRestoreSnapshot | null => {
+      const pendingTarget = pendingFocusTargetRef.current;
+      if (!pendingTarget || pendingTarget.ownerId !== instanceId) return null;
+
+      pendingFocusTargetRef.current = null;
+      return { capturedRoot: pendingTarget.capturedRoot, target: pendingTarget.target };
+    },
+    [],
+  );
+
+  const cancelFocusRestore = useCallback((instanceId: string): void => {
+    if (pendingFocusTargetRef.current?.ownerId === instanceId) {
+      pendingFocusTargetRef.current = null;
+    }
+  }, []);
 
   const getLastFocusedElement = useCallback(
     (): HTMLElement | null => lastFocusedElementRef.current,
@@ -283,21 +327,25 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
     () =>
       portalStrategy
         ? {
+            cancelFocusRestore,
             container: portalContainer,
             getLastFocusedElement,
             prepareOpen,
+            reclaimFocusRestore,
             requestClose,
+            scheduleFocusRestore,
             setModalPresent,
-            restoreFocusWhenModalReleased,
           }
         : null,
     [
+      cancelFocusRestore,
       portalContainer,
       portalStrategy,
       getLastFocusedElement,
       prepareOpen,
+      reclaimFocusRestore,
       requestClose,
-      restoreFocusWhenModalReleased,
+      scheduleFocusRestore,
       setModalPresent,
     ],
   );
