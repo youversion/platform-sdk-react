@@ -83,6 +83,7 @@ export function FootnoteContent({
   return (
     <>
       <YvComponentStyles />
+      <YvReaderStyles />
       <div data-yv-sdk data-yv-theme={theme} dir={scriptureDirection ?? 'auto'}>
         <div className="yv:p-3 yv:overflow-y-auto yv:bg-background yv:text-foreground">
           {showVerseContext && (
@@ -108,7 +109,7 @@ export function FootnoteContent({
                 >
                   <span>{marker}.</span>
                   {/** biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe */}
-                  <span dangerouslySetInnerHTML={{ __html: note }} />
+                  <span data-slot="yv-bible-note" dangerouslySetInnerHTML={{ __html: note }} />
                 </li>
               );
             })}
@@ -151,7 +152,7 @@ function getVerseHtmlFromDom(container: HTMLElement, verseNum: string): string {
     if (i > 0) parts.push(' ');
     const clone = wrapper.cloneNode(true);
     if (!(clone instanceof Element)) return;
-    clone.querySelectorAll('.yv-h, .yv-vlbl').forEach((el) => el.remove());
+    clone.querySelectorAll('.yv-h, .yv-vlbl, .va').forEach((el) => el.remove());
     clone.querySelectorAll('[data-verse-footnote]').forEach((anchor) => {
       const sup = wrapper.ownerDocument.createElement('sup');
       sup.className = 'yv:text-muted-foreground';
@@ -178,7 +179,7 @@ export function isDarkHighlightHex(hex: string): boolean {
 /**
  * Extracts clean prose for a verse from the rendered DOM: concatenates every
  * `.yv-v[v="N"]` wrapper (a verse can span multiple, e.g. poetry) with verse
- * numbers (`.yv-vlbl`), headings (`.yv-h`), and footnote markers
+ * numbers (`.yv-vlbl` / `.va`), headings (`.yv-h`), and footnote markers
  * (`[data-verse-footnote]`) stripped. Used to build Copy / Share text.
  */
 export function getCleanVerseText(container: HTMLElement, verseNum: number): string {
@@ -189,7 +190,9 @@ export function getCleanVerseText(container: HTMLElement, verseNum: number): str
   wrappers.forEach((wrapper) => {
     const clone = wrapper.cloneNode(true);
     if (!(clone instanceof Element)) return;
-    clone.querySelectorAll('.yv-h, .yv-vlbl, [data-verse-footnote]').forEach((el) => el.remove());
+    clone
+      .querySelectorAll('.yv-h, .yv-vlbl, .va, [data-verse-footnote]')
+      .forEach((el) => el.remove());
     const text = (clone.textContent || '').trim();
     if (text) parts.push(text);
   });
@@ -421,7 +424,7 @@ function BibleTextHtml({
       // fixing the light-mode gray-on-fill clash. Unhighlighted labels reset to ''
       // so they keep their CSS muted color. Deliberate divergence from the Swift
       // SDK, which only recolors the label in dark mode.
-      el.querySelectorAll('.yv-vlbl').forEach((label) => {
+      el.querySelectorAll('.yv-vlbl, .va').forEach((label) => {
         if (!(label instanceof HTMLElement)) return;
         label.style.color = isHighlighted ? 'inherit' : '';
       });

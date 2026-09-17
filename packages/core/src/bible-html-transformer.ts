@@ -295,7 +295,7 @@ function replaceFootnotesWithAnchors(doc: Document, footnotes: Element[]): void 
 }
 
 function addNbspToVerseLabels(doc: Document): void {
-  doc.querySelectorAll('.yv-vlbl').forEach((label) => {
+  doc.querySelectorAll('.yv-vlbl, .va').forEach((label) => {
     const text = label.textContent || '';
     if (!text.endsWith(NON_BREAKING_SPACE)) {
       label.textContent = text + NON_BREAKING_SPACE;
@@ -372,6 +372,9 @@ export function transformBibleHtml(
   // still run verse wrapping and footnote extraction.
   const roots = topLevelElements(doc);
   if (roots.length > 0 && roots.every((el) => el.hasAttribute(TRANSFORMED_ATTR))) {
+    // Older transformed output predates alternate-label spacing. Backfill it
+    // without repeating verse wrapping or footnote extraction.
+    addNbspToVerseLabels(doc);
     return { html: options.serializeHtml(doc), direction: resolveTextDirection(roots) };
   }
 

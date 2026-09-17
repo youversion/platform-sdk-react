@@ -20,7 +20,8 @@ function mockAvatar() {
 }
 
 export const globalHandlers = [
-  // Keep Storybook deterministic and let React's stylesheet resource settle successfully.
+  // Keep typography stories deterministic without authenticated font requests.
+  // Browser fixtures use the configured fallback fonts.
   http.get('*/v1/fonts/:id/stylesheet', () => {
     return new HttpResponse('', { headers: { 'Content-Type': 'text/css' } });
   }),
