@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { expect, userEvent, waitFor } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
+import { waitForElement } from '../test/storybook-dom';
 import { Textarea } from './ui/textarea';
 import { YouVersionAuthButton } from './YouVersionAuthButton';
 
@@ -33,14 +34,6 @@ function requireElement<ElementType extends Element>(
   const element = container.querySelector<ElementType>(selector);
   if (!element) throw new Error(message);
   return element;
-}
-
-async function waitForElement<ElementType extends Element>(
-  container: ParentNode,
-  selector: string,
-  message: string,
-): Promise<ElementType> {
-  return waitFor(() => requireElement<ElementType>(container, selector, message));
 }
 
 async function requireShadowHost(container: ParentNode): Promise<HTMLElement> {
