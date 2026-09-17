@@ -1,5 +1,25 @@
 # @youversion/platform-react-ui
 
+## 2.14.0
+
+### Patch Changes
+
+- 67223e4: Add an optional `timeout` prop to `YouVersionProvider` and configure the Vite demo to wait longer for slower Bible content requests.
+- bb1f056: Sync localization from platform-localization (e4c7700): update 28 keys in en.
+- Updated dependencies [1e6c8a2]
+- Updated dependencies [67223e4]
+  - @youversion/platform-core@2.14.0
+  - @youversion/platform-react-hooks@2.14.0
+
+## 2.13.0
+
+### Patch Changes
+
+- Updated dependencies [42a7d88]
+- Updated dependencies [b3833e4]
+  - @youversion/platform-core@2.13.0
+  - @youversion/platform-react-hooks@2.13.0
+
 ## 2.12.1
 
 ### Patch Changes

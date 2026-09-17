@@ -4,7 +4,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { Highlight } from '@youversion/platform-core';
 import { delay, http, HttpResponse } from 'msw';
 import { useState } from 'react';
-import { expect, fn, screen, spyOn, userEvent, waitFor } from 'storybook/test';
+import { expect, fn, screen, spyOn, userEvent, waitFor, within } from 'storybook/test';
 import mockBibles from '../test/mock-data/bibles.json';
 import { globalHandlers } from '../test/mocks/handlers';
 import { setupAuthenticatedUser } from '../test/utils';
@@ -13,6 +13,7 @@ import {
   type BibleReaderHighlightIntent,
   type BibleReaderRootProps,
 } from './bible-reader';
+import { VerseActionPopover } from './verse-action-popover';
 
 type PathParams = {
   id?: string | readonly string[];
@@ -77,6 +78,11 @@ const meta: Meta<typeof BibleReader.Root> = {
     showVerseNumbers: {
       control: 'boolean',
       description: 'Show verse numbers',
+    },
+    scriptureDirection: {
+      control: 'select',
+      options: ['ltr', 'rtl'],
+      description: 'Explicit scripture direction for the shared Bible renderer',
     },
     background: {
       table: { disable: true },
@@ -266,6 +272,328 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     await expect(firstVerse).not.toHaveClass('yv-v-selected');
     await expect(secondVerse).not.toHaveClass('yv-v-selected');
     await expect(ownerDocument.activeElement).toBe(outsideControl);
+  },
+};
+
+const rtlPassage = {
+  id: 'JHN.1',
+  content:
+    '<div dir="rtl"><div class="s1">الكلمة</div><div class="p"><span class="v" v="1">1</span>في البدء كان الكلمة، والكلمة كان عند الله.<span class="yv-n f"><span class="ft">حاشية عربية.</span></span></div><div class="q1">وهذا سطر شعري بمسافة بادئة من البداية المنطقية.</div><table><tbody><tr><td>العمود الأول</td><td>العمود الثاني</td></tr></tbody></table></div>',
+  reference: 'يوحنا 1',
+};
+
+const conflictingRootDirectionPassage = {
+  id: 'JHN.1',
+  content:
+    '<div dir="rtl" data-passage-root><div class="p"><span class="v" v="1">1</span>In the beginning was the Word. <span dir="rtl" data-bidi-island>في البدء</span></div><table><tbody><tr><td>First column</td><td>Second column</td></tr></tbody></table></div>',
+  reference: 'John 1',
+};
+
+/**
+ * Scripture derives RTL from the deterministic passage fixture while the
+ * provider keeps the reader interface LTR. This verifies the two direction
+ * domains do not leak into each other in Chromium.
+ */
+export const RtlScriptureWithLtrChrome: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+  },
+  globals: {
+    interfaceDirection: 'ltr',
+    locale: 'en',
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('*/v1/bibles/111/passages/JHN.1', () => HttpResponse.json(rtlPassage)),
+        ...globalHandlers,
+      ],
+    },
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(async () => {
+      const renderer = canvasElement.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
+      await expect(renderer).toHaveAttribute('dir', 'rtl');
+      await expect(renderer?.textContent).toContain('في البدء');
+    });
+
+    const renderer = canvasElement.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]')!;
+    const poetry = renderer.querySelector<HTMLElement>('.q1')!;
+    const table = renderer.querySelector('table');
+    const rendererStyle = getComputedStyle(renderer);
+    const poetryStyle = getComputedStyle(poetry);
+    await expect(rendererStyle.textAlign).toBe('start');
+    await expect(Number.parseFloat(poetryStyle.paddingRight)).toBeGreaterThan(0);
+    await expect(poetryStyle.paddingLeft).toBe('0px');
+    await expect(table).toBeInTheDocument();
+    const heading = canvasElement.querySelector('h1')!;
+    await expect(heading).toHaveAttribute('dir', 'rtl');
+    await waitFor(async () => {
+      await expect(heading.querySelectorAll('bdi[dir="auto"]')).toHaveLength(2);
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: /footnote/i }));
+    await waitFor(async () => {
+      const dialog = await screen.findByRole('dialog');
+      await expect(dialog).toHaveAttribute('dir', 'ltr');
+      await expect(dialog.querySelector('[data-yv-sdk]')).toHaveAttribute('dir', 'rtl');
+      await expect(await screen.findByText('حاشية عربية.')).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByRole('button', { name: /close/i }));
+
+    await userEvent.click(screen.getByRole('button', { name: /settings/i }));
+    await waitFor(async () => {
+      const settings = await screen.findByText('Reader Settings');
+      await expect(settings.closest('[role="dialog"]')).toHaveAttribute('dir', 'ltr');
+    });
+  },
+};
+
+/** Arabic UI and Arabic Scripture keep both domains RTL. */
+export const ArabicInterfaceAndScripture: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+  },
+  globals: {
+    interfaceDirection: 'rtl',
+    locale: 'ar',
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('*/v1/bibles/111/passages/JHN.1', () => HttpResponse.json(rtlPassage)),
+        ...globalHandlers,
+      ],
+    },
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(async () => {
+      await expect(canvasElement.querySelector('[data-yv-sdk][dir="rtl"]')).toBeInTheDocument();
+      await expect(canvasElement.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute(
+        'dir',
+        'rtl',
+      );
+    });
+  },
+};
+
+/** Arabic interface geometry remains RTL around explicitly LTR English Scripture. */
+export const ArabicInterfaceWithEnglishScripture: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+    scriptureDirection: 'ltr',
+  },
+  globals: {
+    interfaceDirection: 'rtl',
+    locale: 'ar',
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('*/v1/bibles/111/passages/JHN.1', () =>
+          HttpResponse.json(conflictingRootDirectionPassage),
+        ),
+        ...globalHandlers,
+      ],
+    },
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const renderer = await waitFor(async () => {
+      await expect(canvasElement.querySelector('[data-yv-sdk][dir="rtl"]')).toBeInTheDocument();
+      const element = canvasElement.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
+      await expect(element).toHaveAttribute('dir', 'ltr');
+      return element!;
+    });
+
+    const passageRoot = renderer.querySelector<HTMLElement>('[data-passage-root]')!;
+    const table = passageRoot.querySelector('table')!;
+    const bidiIsland = passageRoot.querySelector<HTMLElement>('[data-bidi-island]')!;
+    await expect(passageRoot).toHaveAttribute('dir', 'ltr');
+    await expect(getComputedStyle(table).direction).toBe('ltr');
+    await expect(getComputedStyle(bidiIsland).direction).toBe('rtl');
+  },
+};
+
+/**
+ * English labels with forced RTL make geometry assertions stable and prove
+ * direction does not depend on translated copy. The 390px host exercises the
+ * reader's narrow composition while the browser project covers desktop width.
+ */
+export const ForcedRtlChromeGeometry: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+    scriptureDirection: 'ltr',
+  },
+  globals: {
+    interfaceDirection: 'rtl',
+    locale: 'en',
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:w-[390px] yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const previous = await screen.findByRole('button', { name: 'Previous chapter' });
+    const chapter = screen.getByRole('button', { name: 'Change Bible book and chapter' });
+    const next = screen.getByRole('button', { name: 'Next chapter' });
+    const renderer = await waitFor(async () => {
+      const element = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+      await expect(element).toBeInTheDocument();
+      return element;
+    });
+
+    await expect(renderer).toHaveAttribute('dir', 'ltr');
+    await expect(canvasElement.querySelector('h1')).toHaveAttribute('dir', 'ltr');
+    await expect(previous.getBoundingClientRect().left).toBeGreaterThan(
+      chapter.getBoundingClientRect().left,
+    );
+    await expect(chapter.getBoundingClientRect().left).toBeGreaterThan(
+      next.getBoundingClientRect().left,
+    );
+
+    await waitFor(async () => {
+      await expect(chapter).toBeEnabled();
+    });
+    await userEvent.click(chapter);
+    const chapterDialog = await screen.findByRole('dialog');
+    const chapterCanvas = within(chapterDialog);
+    const intro = chapterCanvas.getByTestId('intro-chapter-button');
+    const chapterOne = chapterCanvas.getByRole('button', { name: '1' });
+    const chapterTwo = chapterCanvas.getByRole('button', { name: '2' });
+    await expect(chapterDialog).toHaveAttribute('dir', 'rtl');
+    await expect(intro.getBoundingClientRect().left).toBeGreaterThan(
+      chapterOne.getBoundingClientRect().left,
+    );
+    await expect(chapterOne.getBoundingClientRect().left).toBeGreaterThan(
+      chapterTwo.getBoundingClientRect().left,
+    );
+    const chapterSearch = chapterCanvas.getByPlaceholderText('Search');
+    await expect(chapterSearch).toHaveAttribute('dir', 'auto');
+    const chapterSearchIcon = chapterSearch
+      .closest('[data-slot="input-group"]')
+      ?.querySelector('svg');
+    await expect(chapterSearchIcon?.getBoundingClientRect().left ?? 0).toBeGreaterThan(
+      chapterSearch.getBoundingClientRect().left,
+    );
+
+    await userEvent.click(chapterCanvas.getByRole('button', { name: 'Close' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Change Bible version' }));
+    const versionDialog = await screen.findByRole('dialog');
+    const versionCanvas = within(versionDialog);
+    const firstVersion = versionCanvas.getAllByRole('listitem')[0]!;
+    const tile = firstVersion.querySelector('[data-slot="item-media"]')!;
+    const label = firstVersion.querySelector('[data-slot="item-content"]')!;
+    await expect(tile.getBoundingClientRect().left).toBeGreaterThan(
+      label.getBoundingClientRect().left,
+    );
+    await expect(firstVersion.querySelector('bdi')).toHaveAttribute('dir', 'auto');
+    await expect(
+      versionCanvas.getByRole('textbox', { name: 'Search Bible versions' }),
+    ).toHaveAttribute('dir', 'auto');
+
+    await userEvent.click(versionCanvas.getByRole('button', { name: 'Close' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    const settingsDialog = await screen.findByRole('dialog');
+    const settingsCanvas = within(settingsDialog);
+    const decrease = settingsCanvas.getByTestId('decrease-font-size');
+    const increase = settingsCanvas.getByTestId('increase-font-size');
+    await expect(decrease.getBoundingClientRect().left).toBeGreaterThan(
+      increase.getBoundingClientRect().left,
+    );
+    await expect(getComputedStyle(decrease).borderStartStartRadius).not.toBe('0px');
+    await expect(getComputedStyle(increase).borderStartEndRadius).not.toBe('0px');
+  },
+};
+
+/**
+ * The highlight action bar is intentionally narrow so Chromium must clip its
+ * swatches. Its RTL portal direction drives geometry-based fade placement.
+ */
+export const RtlActionOverflow: Story = {
+  tags: ['integration'],
+  globals: {
+    interfaceDirection: 'rtl',
+    locale: 'en',
+  },
+  render: () => (
+    <VerseActionPopover
+      open
+      onOpenChange={fn()}
+      activeHighlights={new Set()}
+      selectedVerses={[]}
+      highlightedVerses={{}}
+      onHighlight={fn()}
+      onClearHighlight={fn()}
+      onCopy={fn()}
+      onShare={fn()}
+    />
+  ),
+  play: async () => {
+    const dialog = await screen.findByRole('dialog');
+    dialog.style.width = '260px';
+    const swatchRow = screen.getByRole('group', { name: /highlight colors/i });
+
+    // Width is constrained after Radix mounts the portal, so trigger the same
+    // measurement path the component uses for user-driven horizontal scrolling.
+    swatchRow.dispatchEvent(new Event('scroll'));
+
+    await waitFor(async () => {
+      await expect(dialog).toHaveAttribute('dir', 'rtl');
+      await expect(swatchRow.scrollWidth).toBeGreaterThan(swatchRow.clientWidth);
+    });
+
+    const first = swatchRow.firstElementChild!;
+    const last = swatchRow.lastElementChild!;
+    const viewport = swatchRow.getBoundingClientRect();
+    const firstRect = first.getBoundingClientRect();
+    const lastRect = last.getBoundingClientRect();
+    const startHidden = firstRect.right > viewport.right + 1;
+    const endHidden = lastRect.left < viewport.left - 1;
+    const mask = swatchRow.style.maskImage;
+
+    await expect(mask.length > 0).toBe(startHidden || endHidden);
+    if (startHidden) await expect(mask).toContain('transparent 100%');
+    if (endHidden) await expect(mask).toContain('transparent 0');
   },
 };
 

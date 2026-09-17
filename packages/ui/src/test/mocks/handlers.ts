@@ -12,12 +12,20 @@ function pathParam(value: string | readonly string[] | undefined): string | unde
   return parts.concat(value)[0];
 }
 
+function mockAvatar() {
+  return new HttpResponse(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="#767676"/></svg>',
+    { headers: { 'Content-Type': 'image/svg+xml' } },
+  );
+}
+
 export const globalHandlers = [
-  // YouVersionProvider renders this stylesheet for every story. Keep it local so
-  // browser tests never depend on the Fonts API or leak failed link requests.
-  http.get('*/v1/fonts/1/stylesheet', () =>
-    HttpResponse.text('', { headers: { 'Content-Type': 'text/css' } }),
-  ),
+  // Keep Storybook deterministic and let React's stylesheet resource settle successfully.
+  http.get('*/v1/fonts/:id/stylesheet', () => {
+    return new HttpResponse('', { headers: { 'Content-Type': 'text/css' } });
+  }),
+  http.get('https://notion-avatar.app/*', mockAvatar),
+  http.get('https://example.com/avatar/*', mockAvatar),
   // Organization (publisher) lookup for the version picker
   http.get('*/v1/organizations/:id', ({ params }) => {
     const id = pathParam(params.id);

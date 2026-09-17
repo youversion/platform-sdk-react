@@ -9,6 +9,7 @@ export type { HookOverrides };
 export type YouVersionContextData = {
   appKey: string;
   apiHost?: string;
+  timeout?: number;
   installationId?: string;
   theme?: 'light' | 'dark';
   authEnabled?: boolean;

@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+node_major=24
+
+time_step() {
+  local label="$1"
+  shift
+  local started=$SECONDS
+
+  printf '[setup] %s\n' "$label"
+  "$@"
+  printf '[setup] %s completed in %ss\n' "$label" "$((SECONDS - started))"
+}
+
+install_node() {
+  local architecture archive install_dir temporary_dir
+
+  case "$(uname -m)" in
+    x86_64) architecture=x64 ;;
+    aarch64 | arm64) architecture=arm64 ;;
+    *)
+      printf '[setup] Unsupported architecture: %s\n' "$(uname -m)" >&2
+      return 1
+      ;;
+  esac
+
+  install_dir="$HOME/.local/share/node-v${node_major}"
+  temporary_dir="$(mktemp -d)"
+
+  curl --fail --silent --show-error --location \
+    "https://nodejs.org/dist/latest-v${node_major}.x/SHASUMS256.txt" \
+    --output "$temporary_dir/SHASUMS256.txt"
+  archive="$(awk -v architecture="$architecture" \
+    '$2 ~ "node-v[0-9.]+-linux-" architecture "\\.tar\\.xz$" { print $2 }' \
+    "$temporary_dir/SHASUMS256.txt")"
+
+  if [[ -z "$archive" ]]; then
+    printf '[setup] Could not resolve the latest Node %s archive\n' "$node_major" >&2
+    return 1
+  fi
+
+  curl --fail --silent --show-error --location \
+    "https://nodejs.org/dist/latest-v${node_major}.x/$archive" \
+    --output "$temporary_dir/$archive"
+  (
+    cd "$temporary_dir"
+    grep -F "  $archive" SHASUMS256.txt | sha256sum --check --status
+  )
+
+  rm -rf "$install_dir"
+  mkdir -p "$install_dir" "$HOME/.local/bin"
+  tar -xJf "$temporary_dir/$archive" --strip-components=1 -C "$install_dir"
+  ln -sfn "$install_dir/bin/node" "$HOME/.local/bin/node"
+  ln -sfn "$install_dir/bin/npm" "$HOME/.local/bin/npm"
+  ln -sfn "$install_dir/bin/npx" "$HOME/.local/bin/npx"
+  ln -sfn "$install_dir/bin/corepack" "$HOME/.local/bin/corepack"
+  rm -rf "$temporary_dir"
+  hash -r
+}
+
+ensure_node() {
+  if command -v node >/dev/null 2>&1 &&
+    [[ "$(node --eval 'process.stdout.write(process.versions.node.split(".")[0])')" == "$node_major" ]]; then
+    printf '[setup] Node %s is already available\n' "$(node --version)"
+    return
+  fi
+
+  install_node
+  printf '[setup] Installed Node %s\n' "$(node --version)"
+}
+
+ensure_pnpm() {
+  local expected_version current_version=''
+  expected_version="$(node --eval \
+    'const value = require("./package.json").packageManager; process.stdout.write(value.match(/^pnpm@([^+]+)/)[1])')"
+
+  if command -v pnpm >/dev/null 2>&1; then
+    current_version="$(pnpm --version 2>/dev/null || true)"
+  fi
+
+  if [[ "$current_version" != "$expected_version" ]]; then
+    npm install --global --prefix "$HOME/.local" "pnpm@$expected_version"
+    hash -r
+  fi
+
+  printf '[setup] pnpm %s is available\n' "$(pnpm --version)"
+}
+
+cd "$repo_root"
+time_step 'Preparing Node.js' ensure_node
+time_step 'Preparing pnpm' ensure_pnpm
+time_step 'Installing workspace dependencies' pnpm install --frozen-lockfile
+
+printf '[setup] Orb setup complete\n'
