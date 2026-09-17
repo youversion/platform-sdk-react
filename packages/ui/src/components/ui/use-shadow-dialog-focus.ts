@@ -5,6 +5,7 @@ import {
   getOwnShadowRoot,
   isElementFromOwnerDocument,
   useShadowModalPresence,
+  type ShadowFocusRestoreSnapshot,
 } from '@/lib/shadow-root-host';
 
 interface ShadowDialogFocusOptions {
@@ -111,8 +112,8 @@ export function useShadowDialogFocus({
 }: ShadowDialogFocusOptions): ShadowDialogFocus {
   const modalPresent = modal && (overlay !== null || content !== null);
   useShadowDialogFocusContainment(modalPresent, content, overlay);
-  const restoreFocusWhenModalReleased = useShadowModalPresence(modalPresent);
-  const restoreFocusRef = React.useRef<HTMLElement | null>(null);
+  const focusRestoration = useShadowModalPresence(modalPresent);
+  const restoreFocusRef = React.useRef<ShadowFocusRestoreSnapshot | null>(null);
   const capturedRestoreFocusRef = React.useRef(false);
 
   React.useLayoutEffect(() => {
@@ -120,30 +121,43 @@ export function useShadowDialogFocus({
       capturedRestoreFocusRef.current = false;
       return;
     }
-    if (!container || capturedRestoreFocusRef.current) return;
+    if (!container || capturedRestoreFocusRef.current || restoreFocusRef.current) return;
+
+    const reclaimedRestoreFocus = focusRestoration?.reclaim();
+    if (reclaimedRestoreFocus) {
+      restoreFocusRef.current = reclaimedRestoreFocus;
+      capturedRestoreFocusRef.current = true;
+      return;
+    }
 
     const shadowRoot = getOwnShadowRoot(container);
     const activeElement = shadowRoot
       ? (shadowRoot.activeElement ?? container.ownerDocument.activeElement)
       : container.ownerDocument.activeElement;
     if (isElementFromOwnerDocument(activeElement, container, 'HTMLElement')) {
-      restoreFocusRef.current = activeElement;
+      restoreFocusRef.current = {
+        capturedRoot: activeElement.getRootNode(),
+        target: activeElement,
+      };
     }
     capturedRestoreFocusRef.current = true;
-  }, [container, open]);
+  }, [container, focusRestoration, open]);
 
   const onCloseAutoFocus = React.useCallback(
     (event: Event): void => {
-      if (event.defaultPrevented || container === undefined) return;
+      if (container === undefined) return;
+      if (event.defaultPrevented) {
+        restoreFocusRef.current = null;
+        focusRestoration?.cancel();
+        return;
+      }
 
       event.preventDefault();
-      const restoreFocusTo = restoreFocusRef.current;
+      const restoreFocus = restoreFocusRef.current;
       restoreFocusRef.current = null;
-      if (restoreFocusTo && restoreFocusWhenModalReleased) {
-        restoreFocusWhenModalReleased(restoreFocusTo);
-      }
+      if (restoreFocus && focusRestoration) focusRestoration.schedule(restoreFocus);
     },
-    [container, restoreFocusWhenModalReleased],
+    [container, focusRestoration],
   );
 
   return { onCloseAutoFocus };
