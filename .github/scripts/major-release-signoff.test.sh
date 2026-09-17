@@ -31,6 +31,7 @@ extract_step() {
 
 extract_step "Resolve PR context" > "$TMP/context.sh"
 extract_step "Restore release tooling from the base branch" > "$TMP/restore-tooling.sh"
+extract_step "Compute release preview" > "$TMP/preview.sh"
 extract_step "Decide whether a signoff is required" > "$TMP/decision.sh"
 extract_step "Regenerate and verify release contents" > "$TMP/verify.sh"
 
@@ -328,6 +329,15 @@ if grep -Fq \
   pass "generated release identity always stays out of the ordinary preview"
 else
   fail "generated release identity always stays out of the ordinary preview" "preview does not use generated release identity"
+fi
+
+if grep -Fq \
+  'node scripts/preview-release.mjs --base "$BASE_SHA" --head "$HEAD_SHA"' \
+  "$TMP/preview.sh" && ! grep -Fq 'git merge-base' "$TMP/preview.sh"; then
+  pass "ordinary previews compare the immutable PR base and head"
+else
+  fail "ordinary previews compare the immutable PR base and head" \
+    "preview does not use the immutable PR endpoints"
 fi
 
 if grep -Fq 'Generated release PR; major signoff is enforced on source PRs.' "$WORKFLOW"; then
