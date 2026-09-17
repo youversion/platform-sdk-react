@@ -53,7 +53,7 @@ function IsolatedProductionOverlaySeam({
     rapidTimers.current.push(
       window.setTimeout(() => {
         setPermissionOpen(false);
-        rapidTimers.current.push(window.setTimeout(() => setPermissionOpen(true), 75));
+        rapidTimers.current.push(window.setTimeout(() => setPermissionOpen(true), 650));
       }, 300),
     );
   };
@@ -741,8 +741,21 @@ export const RapidCloseReopenDuringExitEvidence: Story = {
         void expect(contentWrapper.inert).toBe(true);
       });
 
-      await step('Reopen before the first dialog unmounts', async () => {
-        void expect(firstDialog.isConnected).toBe(true);
+      await step('Retain the overlay after the first dialog unmounts', async () => {
+        const retainedOverlay = await waitFor(() => {
+          void expect(firstDialog.isConnected).toBe(false);
+          const overlay = topLayer.querySelector<HTMLElement>('[data-slot="dialog-overlay"]');
+          if (!overlay) throw new Error('dialog overlay did not remain during content exit');
+          return overlay;
+        });
+        await waitFor(() => {
+          void expect(root.activeElement).toBe(retainedOverlay);
+          void expect(contentWrapper.inert).toBe(true);
+          void expect(topLayer.matches(':popover-open')).toBe(true);
+        });
+      });
+
+      await step('Reopen from overlay-only retained presence', async () => {
         const reopenedDialog = await waitFor(() => {
           const dialog = getPermissionDialog(topLayer);
           if (!dialog || dialog.getAttribute('data-state') === 'closed') {
@@ -750,6 +763,7 @@ export const RapidCloseReopenDuringExitEvidence: Story = {
           }
           return dialog;
         });
+        void expect(reopenedDialog).not.toBe(firstDialog);
         await waitFor(() => {
           const focused = root.activeElement;
           void expect(focused !== null && reopenedDialog.contains(focused)).toBe(true);

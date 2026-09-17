@@ -19,6 +19,7 @@ const SDK_SHADOW_STYLE_HREF = 'yv-sdk-shadow-styles';
 const SDK_SHADOW_STYLE_PRECEDENCE = 'yv-sdk';
 type ShadowPortalStrategy = 'local-inline' | 'local-top-layer';
 
+/** @internal Focus target retained across one shadow-modal lifecycle. */
 export interface ShadowFocusRestoreSnapshot {
   capturedRoot: Node;
   target: HTMLElement;
