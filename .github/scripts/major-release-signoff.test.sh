@@ -332,12 +332,13 @@ else
 fi
 
 if grep -Fq \
-  'node scripts/preview-release.mjs --base "$BASE_SHA" --head "$HEAD_SHA"' \
-  "$TMP/preview.sh" && ! grep -Fq 'git merge-base' "$TMP/preview.sh"; then
-  pass "ordinary previews compare the immutable PR base and head"
+  'BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA")' "$TMP/preview.sh" && \
+  grep -Fq 'node scripts/preview-release.mjs --base "$BASE" --head "$HEAD_SHA"' \
+    "$TMP/preview.sh"; then
+  pass "ordinary previews compare from the immutable PR endpoints' merge base"
 else
-  fail "ordinary previews compare the immutable PR base and head" \
-    "preview does not use the immutable PR endpoints"
+  fail "ordinary previews compare from the immutable PR endpoints' merge base" \
+    "preview does not use the immutable PR endpoints' merge base"
 fi
 
 if grep -Fq 'Generated release PR; major signoff is enforced on source PRs.' "$WORKFLOW"; then

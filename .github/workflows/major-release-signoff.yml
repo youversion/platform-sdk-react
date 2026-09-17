@@ -262,11 +262,11 @@ jobs:
           # "Failed to find where HEAD diverged from main" if it is missing. A PR checkout
           # has only origin/main, so create the local branch too.
           git fetch --no-tags --force origin main:refs/heads/main
-          # Compare the immutable PR endpoints. This excludes major changesets already
-          # present on a stacked PR's base while still detecting a major introduced by
-          # the child PR itself. Base-only changes are deletions from the head endpoint,
-          # which the detector intentionally ignores.
-          node scripts/preview-release.mjs --base "$BASE_SHA" --head "$HEAD_SHA" > preview.json
+          # Compare from the common ancestor of the immutable PR endpoints. This excludes
+          # major changesets inherited from a stacked PR's base, and it does not make an
+          # unchanged changeset at a stale head look new after the base consumes it.
+          BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA")
+          node scripts/preview-release.mjs --base "$BASE" --head "$HEAD_SHA" > preview.json
           cat preview.json
           # `introduced_major`, not `is_major`: a major already pending on main
           # must not gate every unrelated PR until the release goes out. Only the
