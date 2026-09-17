@@ -167,14 +167,16 @@ export const InteractiveLanguageSelection: Story = {
     await expect(dialog).toBeInTheDocument();
 
     // Click language button
-    const languageButton = await screen.findByRole('button', { name: /select language/i });
+    const languageButton = await screen.findByRole('button', { name: /select a language/i });
     await waitFor(async () => {
       await expect(languageButton).toHaveTextContent('English');
     });
     await userEvent.click(languageButton);
 
     // Verify language list is visible
-    const selectLanguageHeading = await screen.findByRole('heading', { name: /select language/i });
+    const selectLanguageHeading = await screen.findByRole('heading', {
+      name: /select a language/i,
+    });
     await expect(selectLanguageHeading).toBeInTheDocument();
 
     // Select Korean
@@ -184,7 +186,7 @@ export const InteractiveLanguageSelection: Story = {
     // Wait for the language button to update with the selected language
     await waitFor(async () => {
       await expect(
-        await screen.findByRole('button', { name: /select language/i }),
+        await screen.findByRole('button', { name: /select a language/i }),
       ).toHaveTextContent(/korean/i);
     });
   },
@@ -231,7 +233,7 @@ export const SuggestedLanguagesTabs: Story = {
     await expect(dialog).toBeInTheDocument();
 
     // Click language button to open language selection
-    const languageButton = await screen.findByRole('button', { name: /select language/i });
+    const languageButton = await screen.findByRole('button', { name: /select a language/i });
     await userEvent.click(languageButton);
 
     // Verify the Suggested tab is active by default and shows "Regional" heading
@@ -288,7 +290,7 @@ export const SuggestedLanguagesTabs: Story = {
     // Verify the language button shows the selected language
     await waitFor(async () => {
       await expect(
-        await screen.findByRole('button', { name: /select language/i }),
+        await screen.findByRole('button', { name: /select a language/i }),
       ).toHaveTextContent(/english/i);
     });
   },
@@ -321,7 +323,7 @@ export const SuggestedLanguagesOrder: Story = {
     await userEvent.click(trigger);
 
     // Open language selection
-    const languageButton = await screen.findByRole('button', { name: /select language/i });
+    const languageButton = await screen.findByRole('button', { name: /select a language/i });
     await userEvent.click(languageButton);
 
     // Verify suggested languages appear in API order (not alphabetical or by population)
@@ -347,7 +349,7 @@ export const LanguageSearch: Story = {
     const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
     await userEvent.click(trigger);
 
-    const languageButton = await screen.findByRole('button', { name: /select language/i });
+    const languageButton = await screen.findByRole('button', { name: /select a language/i });
     await userEvent.click(languageButton);
 
     const languageSearchInput = screen.getByRole('textbox', { name: /search languages/i });

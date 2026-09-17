@@ -12,7 +12,8 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 
-declare const __YV_STYLES__: string;
+declare const __YV_COMPONENT_STYLES__: string;
+declare const __YV_READER_STYLES__: string;
 
 const sdkStyleSheets = new WeakMap<Document, CSSStyleSheet>();
 const SDK_SHADOW_STYLE_HREF = 'yv-sdk-shadow-styles';
@@ -112,7 +113,7 @@ function getOrCreateSdkStyleSheet(root: ShadowRoot): CSSStyleSheet {
 
   const StyleSheet = getStyleSheetConstructor(root)!;
   const sheet = new StyleSheet();
-  sheet.replaceSync(__YV_STYLES__);
+  sheet.replaceSync(`${__YV_COMPONENT_STYLES__}\n${__YV_READER_STYLES__}`);
   sdkStyleSheets.set(ownerDocument, sheet);
   return sheet;
 }
@@ -322,7 +323,7 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
             <ShadowPortalContext.Provider value={portalController}>
               {needsStyleFallback ? (
                 <style href={SDK_SHADOW_STYLE_HREF} precedence={SDK_SHADOW_STYLE_PRECEDENCE}>
-                  {__YV_STYLES__}
+                  {`${__YV_COMPONENT_STYLES__}\n${__YV_READER_STYLES__}`}
                 </style>
               ) : null}
               {/* Host selectors cannot reach this reset boundary. */}

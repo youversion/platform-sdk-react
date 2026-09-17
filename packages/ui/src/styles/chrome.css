@@ -1,0 +1,76 @@
+/*
+ * Provider chrome. Layer order matches global.css so later sheets can attach.
+ * Tokens and utilities are only the missing-app-key panel. The scoped reset
+ * stays. ProfileAvatar, Separator, Textarea, and scripture roots inject the
+ * full theme and utility sheet themselves.
+ */
+@layer theme, base, components, utilities, yv-sdk-fonts, yv-sdk-styles, yv-sdk-theme, yv-sdk-utilities, yv-sdk-bible-reader;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap')
+layer(yv-sdk-fonts);
+@import '@youversion/platform-core/browser/styles/preflight.css' layer(yv-sdk-styles);
+@import 'tailwindcss/theme.css' layer(yv-sdk-theme) prefix(yv);
+@import 'tailwindcss/utilities.css' layer(yv-sdk-utilities) prefix(yv) source(none);
+
+@source '../components/YouVersionProvider.tsx';
+@source '../components/missing-app-key.tsx';
+@source '../components/icons/exclamation-circle.tsx';
+@source '../lib/yv-fonts.tsx';
+@source '../lib/yv-styles-chrome.tsx';
+
+@custom-variant dark (&:is([data-yv-sdk][data-yv-theme='dark'] *));
+
+@layer yv-sdk-styles {
+  [data-yv-sdk] {
+    --yv-white: #ffffff;
+    --yv-gray-10: #edebeb;
+    --yv-gray-30: #636161;
+    --yv-gray-50: #121212;
+    --yv-background: var(--yv-white);
+    --yv-foreground: var(--yv-gray-50);
+    --yv-muted-foreground: var(--yv-gray-30);
+    --yv-font-sans: 'Inter', sans-serif;
+    --yv-font-serif: 'Untitled Serif', 'Source Serif 4', serif;
+
+    &[data-yv-theme='dark'] {
+      --yv-background: var(--yv-gray-50);
+      --yv-foreground: var(--yv-white);
+      --yv-muted-foreground: var(--yv-gray-10);
+    }
+  }
+}
+
+@layer yv-sdk-theme {
+  [data-yv-sdk] {
+    @theme inline {
+      --font-sans: 'Inter', sans-serif;
+      --font-serif: 'Untitled Serif', 'Source Serif 4', serif;
+      --color-background: var(--yv-background);
+      --color-foreground: var(--yv-foreground);
+      --color-muted-foreground: var(--yv-muted-foreground);
+    }
+  }
+}
+
+/*
+ * Same A2 rule as global.css. Provider chrome is the only sheet on a
+ * Provider-only import, so host `button {}` must revert here too.
+ */
+[data-yv-sdk] *,
+[data-yv-sdk] *::before,
+[data-yv-sdk] *::after {
+  box-sizing: revert-layer;
+  padding: revert-layer;
+  margin: revert-layer;
+  border: revert-layer;
+  background: revert-layer;
+  font: revert-layer;
+  color: revert-layer;
+  line-height: revert-layer;
+  letter-spacing: revert-layer;
+  appearance: revert-layer;
+  -webkit-appearance: revert-layer;
+  text-decoration: revert-layer;
+  list-style: revert-layer;
+  text-transform: revert-layer;
+}

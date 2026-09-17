@@ -1,4 +1,3 @@
-// Re-export types from @youversion/platform-core and add React SDK specific types
-export * from '@youversion/platform-core';
-
-// React SDK specific types can be added here
+// Types only. A value `export *` becomes `import * as core` in the UI barrel
+// and pulls the whole core graph into every named import.
+export type * from '@youversion/platform-core';

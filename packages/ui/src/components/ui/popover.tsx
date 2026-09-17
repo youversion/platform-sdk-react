@@ -7,6 +7,7 @@ import { useShadowPortalState } from './use-shadow-portal-state';
 import { XIcon } from '../icons/x';
 
 import { cn } from '@/lib/utils';
+import { useInterfaceDirection } from '@/lib/direction';
 
 interface PopoverPortalState {
   awaitingPortalTarget: boolean;
@@ -74,6 +75,7 @@ function PopoverContent({
   theme?: 'light' | 'dark';
 }): React.ReactNode {
   const { t } = useTranslation(undefined, { i18n });
+  const direction = useInterfaceDirection();
   const portal = React.useContext(PopoverPortalContext);
 
   if (portal.awaitingPortalTarget) return null;
@@ -84,6 +86,7 @@ function PopoverContent({
         data-slot="popover-content"
         data-yv-sdk
         data-yv-theme={theme}
+        dir={direction}
         align={align}
         sideOffset={sideOffset}
         collisionPadding={16}

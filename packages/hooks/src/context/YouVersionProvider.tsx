@@ -1,9 +1,10 @@
 'use client';
 
-import type { PropsWithChildren, ReactNode } from 'react';
+import type { LazyExoticComponent, PropsWithChildren, ReactNode } from 'react';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { QueryClient } from '@tanstack/react-query';
 import { YouVersionContext } from './YouVersionContext';
+import type YouVersionAuthProvider from './YouVersionAuthProvider';
 import { serializeAdditionalHeaders } from '../internal/additionalHeadersKey';
 import { InternalQueryClientProvider } from '../internal/QueryClientContext';
 import { queryClientDefaultOptions } from '../internal/queryClientDefaults';
@@ -16,6 +17,11 @@ interface YouVersionProviderPropsBase {
   children: ReactNode;
   appKey: string;
   apiHost?: string;
+  /**
+   * Optional request timeout, in milliseconds, for API calls made through
+   * hooks created by this provider. Omit to keep the core client's default.
+   */
+  timeout?: number;
   theme?: 'light' | 'dark' | 'system';
   /**
    * Integrator display name for the sign-in dialog body copy. Synced onto
@@ -72,7 +78,12 @@ interface YouVersionProviderPropsWithoutAuth extends YouVersionProviderPropsBase
   authRedirectUrl?: never;
 }
 
-const AuthProvider = lazy(() => import('./YouVersionAuthProvider'));
+let authProvider: LazyExoticComponent<typeof YouVersionAuthProvider> | undefined;
+
+function getAuthProvider(): LazyExoticComponent<typeof YouVersionAuthProvider> {
+  authProvider ??= lazy(() => import('./YouVersionAuthProvider'));
+  return authProvider;
+}
 
 function useResolvedTheme(theme: 'light' | 'dark' | 'system'): 'light' | 'dark' {
   const [resolved, setResolved] = useState<'light' | 'dark'>(() => {
@@ -130,6 +141,7 @@ function YouVersionProviderInner(
   const {
     appKey,
     apiHost = 'api.youversion.com',
+    timeout,
     includeAuth,
     theme = 'light',
     additionalHeaders,
@@ -189,6 +201,7 @@ function YouVersionProviderInner(
   const contextValue = {
     appKey,
     apiHost,
+    timeout,
     installationId: YouVersionPlatformConfiguration.installationId,
     theme: resolvedTheme,
     authEnabled: !!includeAuth,
@@ -196,6 +209,7 @@ function YouVersionProviderInner(
   };
 
   if (includeAuth) {
+    const AuthProvider = getAuthProvider();
     return (
       <YouVersionContext.Provider value={contextValue}>
         <InternalQueryClientProvider client={queryClient}>

@@ -61,6 +61,37 @@ export const WithHighlights: Story = {
   },
 };
 
+export const RtlInterfaceWithLtrScripture: Story = {
+  args: {
+    reference: 'LUK.1.39-45',
+    versionId: 111,
+    showVersionPicker: true,
+    scriptureDirection: 'ltr',
+  },
+  globals: {
+    interfaceDirection: 'rtl',
+    locale: 'ar',
+  },
+  tags: ['integration'],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const versionPicker = await canvas.findByRole('button', {
+      name: /تغيير إصدار الكتاب المقدس/i,
+    });
+    await canvas.findByText(/at that time mary got ready/i);
+    const card = canvasElement.querySelector('section[data-yv-sdk]');
+    const reference = canvasElement.querySelector('h2');
+    const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+
+    await expect(card).toHaveAttribute('dir', 'rtl');
+    await expect(renderer).toHaveAttribute('dir', 'ltr');
+    await expect(reference?.querySelector('bdi')).toHaveAttribute('dir', 'auto');
+    await expect(reference?.getBoundingClientRect().left ?? 0).toBeGreaterThan(
+      versionPicker.getBoundingClientRect().left,
+    );
+  },
+};
+
 export const WideContainer: Story = {
   args: {
     reference: 'LUK.1.39-45',

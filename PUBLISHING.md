@@ -61,7 +61,7 @@ The workflow keeps `NPM_TOKEN` as a fallback for any package where Trusted Publi
 
 ## CDN Stylesheet (bible.css)
 
-When the Release workflow publishes a new `@youversion/platform-react-ui` version, it also uploads the package's compiled stylesheet (`packages/ui/dist/tailwind.css`) to the YouVersion static-asset CDN, where it is served at:
+When the Release workflow publishes a new `@youversion/platform-react-ui` version, it also uploads the stylesheet selected by the package's public `./styles.css` export to the YouVersion static-asset CDN, where it is served at:
 
 ```
 https://cdn.youversion.com/platform/<major>/bible.css
@@ -75,6 +75,7 @@ The `<major>` path segment is defined in **one place**: the `packages/ui/CDN_CSS
 
 - **Do not bump it for routine releases.** The file at `/platform/<major>/bible.css` is overwritten in place with each UI package release.
 - **Bump it only when the CSS changes in a breaking way** (selectors/variables/class names that existing consumers depend on are removed or behave differently). Bumping starts publishing to a new `/platform/<major+1>/bible.css` URL and leaves the old file untouched for existing consumers.
+- **Keep core synchronized.** `pnpm check:cdn-css-major` verifies that the URL returned by `getBibleStylesheets` uses the same major. Root lint and CI run this guard.
 
 ### Feature flag: `feature.platform.sdkCssCdn`
 

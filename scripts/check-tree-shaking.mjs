@@ -10,15 +10,19 @@
  * 2. Control imports (symbols that own those sentinels) still include them (proves
  *    sentinels are valid and the check would catch a regression).
  * 3. Narrow bundle is smaller than a multi-export barrel bundle.
- * 4. Integrity probe: treeShaking:false on the narrow import includes sentinels
- *    (proves the check is not a no-op against pre-bundled tsup output).
+ * 4. Integrity probe: treeShaking:false on the narrow import includes
+ *    `probe` (or `absent`) sentinels that still live in that module graph.
+ *    Named tsup entries can keep other `absent` strings off the graph
+ *    entirely; those must be verified live by a control import instead.
+ * 5. The lazy hooks auth chunk and UI component outputs retain their "use client"
+ *    directives while the mixed UI package root remains server-compatible.
  *
  * 0. package.json sideEffects matches expected values (webpack/Rollup consumers).
  *
  * Note: esbuild tree-shaking checks use pre-bundled tsup dist and do not honor
  * package.json sideEffects; CI asserts sideEffects separately (step 0).
  */
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -28,7 +32,10 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const PACKAGE_ALIASES = {
   '@youversion/platform-core': join(repoRoot, 'packages/core'),
+  '@youversion/platform-core/browser': join(repoRoot, 'packages/core/dist/browser.js'),
+  '@youversion/platform-core/server': join(repoRoot, 'packages/core/dist/server.js'),
   '@youversion/platform-react-hooks': join(repoRoot, 'packages/hooks'),
+  '@youversion/platform-react-ui': join(repoRoot, 'packages/ui'),
 };
 
 const bold = (s) => `\x1B[1m${s}\x1B[0m`;
@@ -55,12 +62,6 @@ const EXPECTED_SIDE_EFFECTS = [
   },
 ];
 
-// UI is omitted from CHECKS: packages/ui/tsup.config.ts has splitting: false and
-// inlines core (noExternal), so dist/index.js is a single ~999 kB chunk. A narrow
-// YouVersionProvider-only import still retains BibleChapterPicker/BibleVersionPicker/
-// BibleReader sentinels — the check would fail CI. Follow-up: enable tsup splitting,
-// then add a UI CHECKS fixture here.
-
 /** @param {unknown} actual @param {boolean | string[]} expected */
 function sideEffectsEqual(actual, expected) {
   if (actual === expected) return true;
@@ -84,7 +85,42 @@ function assertPackageSideEffects() {
   return errors;
 }
 
-/** @type {Array<{ package: string; external: string[]; narrow: object; controls: object[]; fullBarrel: object }>} */
+function assertHooksAuthChunkDirective() {
+  const hooksDist = join(repoRoot, 'packages/hooks/dist');
+  const authChunks = readdirSync(hooksDist).filter(
+    (fileName) => fileName.startsWith('YouVersionAuthProvider-') && fileName.endsWith('.js'),
+  );
+  if (authChunks.length !== 1) {
+    return [`expected one hooks auth ESM chunk, found ${authChunks.length}`];
+  }
+
+  const source = readFileSync(join(hooksDist, authChunks[0]), 'utf8');
+  return source.startsWith("'use client';\n")
+    ? []
+    : [`${authChunks[0]} is missing its leading "use client" directive`];
+}
+
+function assertUiClientBoundaries() {
+  const uiDist = join(repoRoot, 'packages/ui/dist');
+  const outputs = readdirSync(uiDist, { recursive: true, encoding: 'utf8' }).filter((fileName) =>
+    /\.(js|cjs)$/.test(fileName),
+  );
+  if (outputs.length === 0) return ['expected UI JavaScript outputs, found none'];
+
+  return outputs.flatMap((fileName) => {
+    const hasDirective = readFileSync(join(uiDist, fileName), 'utf8').startsWith("'use client';\n");
+    const isPackageRoot = fileName === 'index.js' || fileName === 'index.cjs';
+    if (isPackageRoot && hasDirective) {
+      return [`${fileName} must remain server-compatible but has a "use client" directive`];
+    }
+    if (!isPackageRoot && !hasDirective) {
+      return [`${fileName} is missing its leading "use client" directive`];
+    }
+    return [];
+  });
+}
+
+/** @type {Array<{ package: string; external: string[]; narrow: object; controls: object[]; focused?: object[]; fullBarrel: object }>} */
 const CHECKS = [
   {
     package: '@youversion/platform-core',
@@ -113,6 +149,26 @@ const CHECKS = [
         label: 'YouVersionAPIUsers',
         source: `import { YouVersionAPIUsers } from '@youversion/platform-core';\nexport { YouVersionAPIUsers };\n`,
         present: ['Invalid state parameter - possible CSRF attack'],
+      },
+    ],
+    focused: [
+      {
+        label: 'getBibleStylesheets only',
+        source: `import { getBibleStylesheets } from '@youversion/platform-core';
+export const stylesheets = getBibleStylesheets({ appKey: 'fixture' });
+`,
+        absent: [
+          'missing_passage_attribution',
+          'Passage ID must be a non-empty string',
+          'Server-side HTML transformation requires "jsdom".',
+        ],
+        maxBytes: 5_000,
+        control: {
+          label: 'getPassageDisplay',
+          source: `import { getPassageDisplay } from '@youversion/platform-core';
+export { getPassageDisplay };
+`,
+        },
       },
     ],
     fullBarrel: {
@@ -145,6 +201,15 @@ export {
       absent: [
         'A redirect URL is required to start sign-in for highlights.',
         'YouVersion context is required to start a data exchange.',
+        'youversion-platform:granted-permissions',
+        'At least one language range is required',
+        'Server-side HTML transformation requires "jsdom"',
+      ],
+      // Auth strings still live on the hooks barrel. The grants key does not:
+      // useChapter reads version-filter state, not Configuration.
+      probe: [
+        'A redirect URL is required to start sign-in for highlights.',
+        'YouVersion context is required to start a data exchange.',
       ],
     },
     controls: [
@@ -154,7 +219,23 @@ export {
         present: [
           'A redirect URL is required to start sign-in for highlights.',
           'YouVersion context is required to start a data exchange.',
+          'youversion-platform:granted-permissions',
         ],
+      },
+      {
+        label: 'useVersions',
+        source: `import { useVersions } from '@youversion/platform-react-hooks';\nexport { useVersions };\n`,
+        present: ['At least one language range is required'],
+      },
+      {
+        label: 'usePassage',
+        source: `import { usePassage } from '@youversion/platform-react-hooks';\nexport { usePassage };\n`,
+        present: ['Server-side HTML transformation requires "jsdom"'],
+      },
+      {
+        label: 'useYVAuth',
+        source: `import { useYVAuth } from '@youversion/platform-react-hooks';\nexport { useYVAuth };\n`,
+        present: ['youversion-platform:granted-permissions'],
       },
     ],
     fullBarrel: {
@@ -167,6 +248,60 @@ export {
 } from '@youversion/platform-react-hooks';
 export { useChapter, useHighlightAuthActions, useYVAuth, useBibleClient };
 `,
+    },
+  },
+  {
+    package: '@youversion/platform-react-ui',
+    external: ['react', 'react/jsx-runtime', 'react-dom', 'jsdom', '@tanstack/react-query'],
+    narrow: {
+      label: 'YouVersionProvider only',
+      source: `import { YouVersionProvider } from '@youversion/platform-react-ui';\nexport { YouVersionProvider };\n`,
+      absent: [
+        'BibleChapterPicker components must be used within BibleChapterPicker.Root',
+        'BibleVersionPicker components must be used within BibleVersionPicker.Root',
+        'BibleReader components must be used within BibleReader.Root',
+        'youversion-platform:reader:font-size',
+        'youversion-platform:picker:recent-versions',
+      ],
+      // Named tsup entries keep picker / reader / VOTD off the Provider
+      // module graph, so those sentinels cannot appear here even with
+      // treeShaking:false. Staleness is proven by the controls instead:
+      // every absent sentinel must appear in a control's present list.
+      // The probe uses a core string that still rides in via hooks.
+      probe: ['Color must be a 6-character hex string without #'],
+      present: ['yv-sdk-styles', '@layer yv-sdk-styles'],
+    },
+    controls: [
+      {
+        label: 'BibleChapterPicker',
+        source: `import { BibleChapterPicker } from '@youversion/platform-react-ui';\nexport { BibleChapterPicker };\n`,
+        present: ['BibleChapterPicker components must be used within BibleChapterPicker.Root'],
+      },
+      {
+        label: 'BibleVersionPicker',
+        source: `import { BibleVersionPicker } from '@youversion/platform-react-ui';\nexport { BibleVersionPicker };\n`,
+        present: [
+          'BibleVersionPicker components must be used within BibleVersionPicker.Root',
+          'youversion-platform:picker:recent-versions',
+        ],
+      },
+      {
+        label: 'BibleReader',
+        source: `import { BibleReader } from '@youversion/platform-react-ui';\nexport { BibleReader };\n`,
+        present: [
+          'BibleReader components must be used within BibleReader.Root',
+          'youversion-platform:reader:font-size',
+        ],
+      },
+      {
+        label: 'Separator',
+        source: `import { Separator } from '@youversion/platform-react-ui';\nexport { Separator };\n`,
+        present: ['yv-sdk-components', 'scrollbar-hide'],
+      },
+    ],
+    fullBarrel: {
+      label: 'multi-export barrel',
+      source: `import { YouVersionProvider, BibleReader, BibleChapterPicker, BibleVersionPicker } from '@youversion/platform-react-ui';\nexport { YouVersionProvider, BibleReader, BibleChapterPicker, BibleVersionPicker };\n`,
     },
   },
 ];
@@ -200,6 +335,26 @@ async function bundleConsumer(source, external, { treeShaking = true } = {}) {
   }
 }
 
+/**
+ * Every narrow `absent` sentinel must be verifiable as live, or the narrow
+ * check can pass on a stale string. Liveness is proven by either a control
+ * import's `present` list or the integrity probe (which defaults to the full
+ * absent list when unspecified).
+ * @param {{ narrow: { absent: string[]; probe?: string[] }; controls: { present: string[] }[] }} check
+ */
+function sentinelCoverageErrors(check) {
+  const verified = new Set([
+    ...(check.narrow.probe ?? check.narrow.absent),
+    ...check.controls.flatMap((control) => control.present),
+  ]);
+  return check.narrow.absent
+    .filter((sentinel) => !verified.has(sentinel))
+    .map(
+      (sentinel) =>
+        `"${sentinel}" is not verified live: add it to a control import's present list or the probe`,
+    );
+}
+
 async function runPackageCheck(check) {
   const errors = [];
   const rows = [];
@@ -222,6 +377,26 @@ async function runPackageCheck(check) {
     );
   }
 
+  const narrowPresent = check.narrow.present ?? [];
+  if (narrowPresent.length > 0) {
+    const missingPresent = narrowPresent.filter((sentinel) => !narrow.text.includes(sentinel));
+    rows.push({
+      kind: 'narrow-present',
+      label: `${check.narrow.label} required`,
+      bytes: narrow.bytes,
+      pass: missingPresent.length === 0,
+      detail:
+        missingPresent.length === 0
+          ? 'expected sentinels present'
+          : `missing: ${missingPresent.map((s) => JSON.stringify(s)).join(', ')}`,
+    });
+    if (missingPresent.length > 0) {
+      errors.push(
+        `${check.package} narrow import missing required sentinels — styles left the Provider graph`,
+      );
+    }
+  }
+
   for (const control of check.controls) {
     const bundle = await bundleConsumer(control.source, check.external);
     const missing = control.present.filter((sentinel) => !bundle.text.includes(sentinel));
@@ -238,6 +413,48 @@ async function runPackageCheck(check) {
     if (missing.length > 0) {
       errors.push(
         `${check.package} control "${control.label}" missing expected sentinels — update sentinels or exports`,
+      );
+    }
+  }
+
+  for (const focused of check.focused ?? []) {
+    const bundle = await bundleConsumer(focused.source, check.external);
+    const leaked = focused.absent.filter((sentinel) => bundle.text.includes(sentinel));
+    const sizePass = bundle.bytes <= focused.maxBytes;
+    const pass = leaked.length === 0 && sizePass;
+    const details = [];
+    if (leaked.length > 0) {
+      details.push(`leaked: ${leaked.map((s) => JSON.stringify(s)).join(', ')}`);
+    }
+    if (!sizePass) {
+      details.push(`${bundle.bytes.toLocaleString()} B > ${focused.maxBytes.toLocaleString()} B`);
+    }
+    rows.push({
+      kind: 'focused',
+      label: focused.label,
+      bytes: bundle.bytes,
+      pass,
+      detail: pass ? 'isolated from display orchestration' : details.join('; '),
+    });
+    if (!pass) {
+      errors.push(`${check.package} focused import "${focused.label}" is not isolated`);
+    }
+
+    const control = await bundleConsumer(focused.control.source, check.external);
+    const missing = focused.absent.filter((sentinel) => !control.text.includes(sentinel));
+    const controlPass = missing.length === 0;
+    rows.push({
+      kind: 'control',
+      label: `${focused.control.label} sentinel control`,
+      bytes: control.bytes,
+      pass: controlPass,
+      detail: controlPass
+        ? 'all excluded sentinels present'
+        : `missing: ${missing.map((s) => JSON.stringify(s)).join(', ')}`,
+    });
+    if (!controlPass) {
+      errors.push(
+        `${check.package} focused control "${focused.control.label}" has stale sentinels`,
       );
     }
   }
@@ -262,20 +479,19 @@ async function runPackageCheck(check) {
   const withoutShake = await bundleConsumer(check.narrow.source, check.external, {
     treeShaking: false,
   });
-  const shakeProbeHits = check.narrow.absent.filter((sentinel) =>
-    withoutShake.text.includes(sentinel),
-  );
-  const probePass = shakeProbeHits.length === check.narrow.absent.length;
+  const probeSentinels = check.narrow.probe ?? check.narrow.absent;
+  const shakeProbeHits = probeSentinels.filter((sentinel) => withoutShake.text.includes(sentinel));
+  const probePass = shakeProbeHits.length === probeSentinels.length;
   rows.push({
     kind: 'probe',
     label: 'treeShaking:false probe',
     bytes: withoutShake.bytes,
     pass: probePass,
     detail: probePass
-      ? `all ${check.narrow.absent.length} sentinels appear without tree-shaking`
+      ? `all ${probeSentinels.length} sentinels appear without tree-shaking`
       : shakeProbeHits.length === 0
         ? 'sentinels never appear even with treeShaking:false — sentinels may be stale'
-        : `only ${shakeProbeHits.length}/${check.narrow.absent.length} sentinels appear with treeShaking:false`,
+        : `only ${shakeProbeHits.length}/${probeSentinels.length} sentinels appear with treeShaking:false`,
   });
   if (!probePass) {
     errors.push(
@@ -294,6 +510,33 @@ async function main() {
   if (sideEffectsErrors.length > 0) {
     console.error(red(`${sideEffectsErrors.length} package.json sideEffects check(s) failed.`));
     for (const error of sideEffectsErrors) {
+      console.error(red(`  ✗ ${error}`));
+    }
+    process.exit(1);
+  }
+
+  const authChunkErrors = assertHooksAuthChunkDirective();
+  if (authChunkErrors.length > 0) {
+    console.error(red(`${authChunkErrors.length} hooks auth chunk check(s) failed.`));
+    for (const error of authChunkErrors) {
+      console.error(red(`  ✗ ${error}`));
+    }
+    process.exit(1);
+  }
+
+  const uiDirectiveErrors = assertUiClientBoundaries();
+  if (uiDirectiveErrors.length > 0) {
+    console.error(red(`${uiDirectiveErrors.length} UI client directive check(s) failed.`));
+    for (const error of uiDirectiveErrors) {
+      console.error(red(`  ✗ ${error}`));
+    }
+    process.exit(1);
+  }
+
+  const coverageErrors = CHECKS.flatMap(sentinelCoverageErrors);
+  if (coverageErrors.length > 0) {
+    console.error(red(`${coverageErrors.length} sentinel coverage check(s) failed.`));
+    for (const error of coverageErrors) {
       console.error(red(`  ✗ ${error}`));
     }
     process.exit(1);

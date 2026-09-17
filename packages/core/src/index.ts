@@ -12,9 +12,24 @@ export {
 } from './bible-reads';
 export { getVersions, type GetVersionsOptions } from './bible-versions';
 export { getPassage } from './bible-passage';
+export {
+  BIBLE_CSS_STYLESHEET_URL,
+  UNTITLED_SERIF_FONT_ID,
+  getBibleStylesheets,
+} from './bible-display-resources';
+export {
+  BIBLE_CONTAINER_ATTRIBUTES,
+  MissingPassageAttributionError,
+  getPassageDisplay,
+} from './bible-passage-display';
 export { LanguagesClient } from './languages';
 export { getLanguage } from './languages-language';
 export { getLanguages, type GetLanguagesOptions } from './languages-list';
+export { SearchClient, type SearchVersesOptions } from './search';
+export { getSuggestedQueries, getTrendingQueries } from './search-queries';
+export { searchVerses } from './search-verses';
+export { searchTopics } from './search-topics';
+export { isValidStructuralUsfmReference } from './schemas/search';
 export { OrganizationsClient } from './organizations';
 export {
   HighlightsClient,
@@ -53,6 +68,7 @@ export * from './utils/constants';
 export { getAdjacentChapter } from './getAdjacentChapter';
 export {
   transformBibleHtml,
+  type TextDirection,
   type TransformBibleHtmlOptions,
   type TransformedBibleHtml,
 } from './bible-html-transformer';
