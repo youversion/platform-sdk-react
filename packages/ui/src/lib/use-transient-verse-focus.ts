@@ -1,8 +1,6 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 import type { BibleReaderNavigationRequest } from '@/components/bible-reader-navigation';
 
-export const SEARCH_VERSE_FOCUS_HOLD_MS = 1500;
-
 export type VerseFocusRequest = BibleReaderNavigationRequest &
   Readonly<{
     /** Monotonic. Re-selecting the same verse must re-trigger, like `clearSelectionSignal`. */
@@ -44,8 +42,8 @@ function overflowAncestor(start: HTMLElement): HTMLElement {
 
 /**
  * Holds a focus request until `renderedReference` equals
- * the requested passage, then scrolls, paints, and starts the
- * hold. A newer `seq` cancels the pending timer. Paint adds `yv-v-focused` to
+ * the requested passage, then scrolls and paints until user interaction.
+ * A newer `seq` cancels pending focus. Paint adds `yv-v-focused` to
  * `.yv-v[v="N"]` and `data-yv-verse-focus` to the renderer root.
  */
 export function useTransientVerseFocus(args: {
@@ -75,13 +73,11 @@ export function useTransientVerseFocus(args: {
     const scrollEvents = scroller === document.documentElement ? document : scroller;
     let waiting = false;
     let cleared = false;
-    let hold: ReturnType<typeof setTimeout> | undefined;
     let settle: ReturnType<typeof setTimeout> | undefined;
     let fallback: ReturnType<typeof setTimeout> | undefined;
     const clear = (): void => {
       cleared = true;
       waiting = false;
-      globalThis.clearTimeout(hold);
       globalThis.clearTimeout(settle);
       globalThis.clearTimeout(fallback);
       clearFocusPaint(container);
@@ -93,7 +89,10 @@ export function useTransientVerseFocus(args: {
       globalThis.clearTimeout(fallback);
       if (cleared || !request.shouldFocus || verses.length === 0) return;
       paintFocus(container, verses);
-      hold = globalThis.setTimeout(clear, SEARCH_VERSE_FOCUS_HOLD_MS);
+      if (target instanceof HTMLElement) {
+        target.tabIndex = -1;
+        target.focus({ preventScroll: true });
+      }
     };
     const onScroll = (): void => {
       if (!waiting) return;

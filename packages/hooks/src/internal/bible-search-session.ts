@@ -64,11 +64,13 @@ export type BibleSearchPhase =
       readonly kind: 'trending';
       readonly queries: readonly SearchQuery[];
       readonly loading: boolean;
+      readonly error?: Error;
     }
   | {
       readonly kind: 'suggesting';
       readonly queries: readonly SearchQuery[];
       readonly loading: boolean;
+      readonly error?: Error;
       /** A keystroke is still settling. Never drive a spinner from this. */
       readonly debouncing: boolean;
     }
@@ -332,29 +334,35 @@ function nextPageStatus(input: {
 
 export function deriveSearchPhase(input: {
   readonly session: SearchSession;
+  readonly bookIds?: readonly string[];
   readonly settled: NormalizedQuery | null;
   readonly queries: readonly SearchQuery[] | null;
   readonly queriesLoading: boolean;
+  readonly queriesError?: Error | null;
   readonly versesLoading: boolean;
   readonly versesError: Error | null;
 }): BibleSearchPhase {
   const queries = input.queries ?? [];
   if (input.session.lane.kind === 'browsing') {
+    const error = input.queriesError && !input.queriesLoading ? { error: input.queriesError } : {};
     if (input.session.normalized === EMPTY_QUERY) {
-      return { kind: 'trending', queries, loading: input.queriesLoading };
+      return { kind: 'trending', queries, loading: input.queriesLoading, ...error };
     }
     return {
       kind: 'suggesting',
       queries,
       loading: input.queriesLoading,
       debouncing: input.settled !== input.session.normalized,
+      ...error,
     };
   }
 
   const wanted = versesRequest(input.session);
   const failed = wanted !== null && input.versesError !== null && !input.versesLoading;
   const inFlight = wanted !== null && !failed;
-  const verses = projectVerses(flattenHits(input.session.lane.pages));
+  const verses = projectVerses(flattenHits(input.session.lane.pages)).filter(
+    (verse) => input.bookIds === undefined || input.bookIds.includes(verse.book),
+  );
 
   if (input.session.lane.pages.length === 0) {
     if (failed && input.versesError !== null) {
@@ -367,6 +375,13 @@ export function deriveSearchPhase(input: {
 
   const first = verses[0];
   if (first === undefined) {
+    if (failed && input.versesError !== null) return { kind: 'failed', error: input.versesError };
+    if (
+      input.bookIds?.length !== 0 &&
+      nextPageStatus({ session: input.session, failed, inFlight }) !== 'none'
+    ) {
+      return { kind: 'searching' };
+    }
     return { kind: 'empty' };
   }
 

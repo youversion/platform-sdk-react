@@ -1,11 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { StrictMode } from 'react';
-import {
-  SEARCH_VERSE_FOCUS_HOLD_MS,
-  useTransientVerseFocus,
-  type VerseFocusRequest,
-} from './use-transient-verse-focus';
+import { useTransientVerseFocus, type VerseFocusRequest } from './use-transient-verse-focus';
 
 function setup() {
   const scroller = document.createElement('div');
@@ -49,7 +45,7 @@ function setup() {
   };
 }
 
-it('waits for layout and scroll completion, then holds the range until expiry or user input', () => {
+it('waits for layout and scroll completion, then holds the range until user input', () => {
   vi.useFakeTimers();
   const view = setup();
   try {
@@ -72,14 +68,15 @@ it('waits for layout and scroll completion, then holds the range until expiry or
     expect(
       [...view.container.querySelectorAll('.yv-v-focused')].map((node) => node.getAttribute('v')),
     ).toEqual(['16', '17']);
+    expect(view.verse).toHaveFocus();
     act(() => {
       view.scroller.dispatchEvent(new Event('scroll'));
     });
     expect(view.verse).toHaveClass('yv-v-focused');
     act(() => {
-      vi.advanceTimersByTime(SEARCH_VERSE_FOCUS_HOLD_MS);
+      vi.advanceTimersByTime(10000);
     });
-    expect(view.container).not.toHaveAttribute('data-yv-verse-focus');
+    expect(view.container).toHaveAttribute('data-yv-verse-focus');
 
     view.rerender({
       request: { ...view.request, seq: 2, scrollsToVerse: false },
@@ -125,6 +122,7 @@ it('cancels pending focus on user interaction and superseding requests, with a n
     });
     expect(view.verse).not.toHaveClass('yv-v-focused');
     expect(view.container.querySelector('[v="18"]')).toHaveClass('yv-v-focused');
+    expect(view.container.querySelector('[v="18"]')).toHaveFocus();
   } finally {
     view.dispose();
     vi.useRealTimers();

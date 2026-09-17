@@ -60,7 +60,7 @@ import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/
 import { isHighlightsLive } from '@/lib/feature-flags';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
-import { BibleReaderSearch } from './bible-reader-search';
+import { BibleReaderSearch, type BibleReaderSearchPressData } from './bible-reader-search';
 import { useTransientVerseFocus, type VerseFocusRequest } from '@/lib/use-transient-verse-focus';
 import { BibleReaderNavigation } from './bible-reader-navigation';
 
@@ -84,6 +84,7 @@ type BibleReaderContextType = {
   onFootnotePress?: (data: FootnoteData) => void;
   onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
   onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
+  onSearchPress?: (data: BibleReaderSearchPressData) => void | Promise<void>;
   languageId?: string;
   defaultLanguageId?: string;
   onLanguageChange?: (languageId: string) => void;
@@ -225,6 +226,8 @@ export type RootProps = {
   onFootnotePress?: (data: FootnoteData) => void;
   onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
   onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
+  /** Replaces the built-in search popover with host-owned search. */
+  onSearchPress?: (data: BibleReaderSearchPressData) => void | Promise<void>;
   /**
    * Bible translation language for the version picker (`en`, `es`, …).
    * Controlled when set with `onLanguageChange`.
@@ -483,6 +486,7 @@ function Root({
   onFootnotePress,
   onChapterPickerPress,
   onVersionPickerPress,
+  onSearchPress,
   languageId,
   defaultLanguageId,
   onLanguageChange,
@@ -699,6 +703,7 @@ function Root({
     onFootnotePress,
     onChapterPickerPress,
     onVersionPickerPress,
+    onSearchPress,
     languageId,
     defaultLanguageId,
     onLanguageChange,

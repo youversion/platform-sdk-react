@@ -92,7 +92,7 @@
   /* When content hasn't been JS-transformed, add spacing after verse labels via CSS.
      Transformed HTML already has a \u00A0 inserted by addNbspToVerseLabels(). */
   &:not(:has([data-yv-transformed])) .yv-vlbl::after {
-    content: "\00A0";
+    content: '\00A0';
   }
 
   /* \f - Footnote container (YouVersion wrapper) */
@@ -170,15 +170,9 @@
   }
 
   /* Search-driven transient focus. Dim the rest of the chapter. */
-  & .yv-v.yv-v-focused {
-    background-color: color-mix(in srgb, var(--yv-foreground) 12%, transparent);
-    border-radius: 2px;
-    box-decoration-break: clone;
-    -webkit-box-decoration-break: clone;
-  }
-
-  &[data-yv-verse-focus] .yv-v:not(.yv-v-focused) {
-    opacity: 0.4;
+  &[data-yv-verse-focus] .yv-v:not(.yv-v-focused),
+  &[data-yv-verse-focus] .yv-h {
+    opacity: 0.35;
   }
 
   /* Demo highlighted verse styling 20% opacity of expressive yellow 30 */

@@ -68,6 +68,146 @@ function createSearchFixture() {
 }
 
 describe('useBibleSearch', () => {
+  it('replaces a failed continuation with loading immediately when the book filter changes', async () => {
+    const fixture = createSearchFixture();
+    let finishPage!: (page: SearchVersesResponse) => void;
+    fixture.mockSearchVerses
+      .mockResolvedValueOnce(versesPage(['PSA.91.1'], 'second'))
+      .mockRejectedValueOnce(new Error('page unavailable'))
+      .mockImplementationOnce(
+        () =>
+          new Promise<SearchVersesResponse>((resolve) => {
+            finishPage = resolve;
+          }),
+      );
+    const { result, rerender } = renderHook(
+      ({ bookIds }) => useBibleSearch({ versionId: 111, bookIds }),
+      { wrapper: fixture.wrapper, initialProps: { bookIds: ['JHN'] } },
+    );
+    act(() => result.current.selectSuggestion('Psalm 91'));
+    await waitFor(() => expect(result.current.phase.kind).toBe('failed'));
+    rerender({ bookIds: ['PSA'] });
+    expect(result.current.phase).toMatchObject({ kind: 'results', nextPage: 'loading' });
+    await waitFor(() => expect(fixture.mockSearchVerses).toHaveBeenCalledTimes(3));
+    await act(async () => finishPage(versesPage([], null)));
+    await waitFor(() =>
+      expect(result.current.phase).toMatchObject({ kind: 'results', nextPage: 'none' }),
+    );
+    rerender({ bookIds: ['JHN'] });
+    expect(result.current.phase).toEqual({ kind: 'empty' });
+  });
+
+  it('skips nonmatching pages, retries failures, and reuses loaded results when the book filter changes', async () => {
+    const fixture = createSearchFixture();
+    const unavailable = new Error('page unavailable');
+    fixture.mockSearchVerses
+      .mockResolvedValueOnce(versesPage(['GEN.1.1'], 'second'))
+      .mockRejectedValueOnce(unavailable)
+      .mockResolvedValueOnce(versesPage(['PSA.23.1'], 'third'))
+      .mockResolvedValueOnce(versesPage(['JHN.3.16', 'GEN.1.2'], null));
+    const phases: string[] = [];
+    const { result, rerender } = renderHook<
+      UseBibleSearchResult,
+      { bookIds: readonly string[] | undefined }
+    >(
+      ({ bookIds }) => {
+        const search = useBibleSearch({ versionId: 111, bookIds });
+        phases.push(search.phase.kind);
+        return search;
+      },
+      { wrapper: fixture.wrapper, initialProps: { bookIds: ['JHN'] } },
+    );
+    act(() => result.current.selectSuggestion('love'));
+    await waitFor(() =>
+      expect(result.current.phase).toEqual({ kind: 'failed', error: unavailable }),
+    );
+    expect(phases).not.toContain('empty');
+    act(() => result.current.retry());
+    await waitFor(() =>
+      expect(result.current.phase).toMatchObject({
+        kind: 'results',
+        verses: [{ id: 'JHN.3.16' }],
+        nextPage: 'none',
+      }),
+    );
+    expect(fixture.mockSearchVerses.mock.calls.map((call) => call[2].pageToken)).toEqual([
+      undefined,
+      'second',
+      'second',
+      'third',
+    ]);
+    rerender({ bookIds: undefined });
+    expect(result.current.phase).toMatchObject({
+      kind: 'results',
+      verses: [{ id: 'GEN.1.1' }, { id: 'PSA.23.1' }, { id: 'JHN.3.16' }, { id: 'GEN.1.2' }],
+    });
+    rerender({ bookIds: ['EXO'] });
+    expect(result.current.phase).toEqual({ kind: 'empty' });
+    expect(fixture.mockSearchVerses).toHaveBeenCalledTimes(4);
+  });
+
+  it('abandons filtered pagination when the query is cleared, ignoring its late response', async () => {
+    const fixture = createSearchFixture();
+    let finishPage!: (page: SearchVersesResponse) => void;
+    fixture.mockSearchVerses
+      .mockResolvedValueOnce(versesPage(['GEN.1.1'], 'second'))
+      .mockImplementationOnce(
+        () =>
+          new Promise<SearchVersesResponse>((resolve) => {
+            finishPage = resolve;
+          }),
+      );
+    const { result } = renderHook(() => useBibleSearch({ versionId: 111, bookIds: ['JHN'] }), {
+      wrapper: fixture.wrapper,
+    });
+    act(() => result.current.selectSuggestion('love'));
+    await waitFor(() => expect(fixture.mockSearchVerses).toHaveBeenCalledTimes(2));
+    expect(result.current.phase.kind).toBe('searching');
+    act(() => result.current.setQuery(''));
+    await act(async () => finishPage(versesPage(['JHN.3.16'], 'third')));
+    expect(result.current.phase.kind).toBe('trending');
+    expect(fixture.mockSearchVerses).toHaveBeenCalledTimes(2);
+  });
+
+  it('surfaces discovery failures, retries trending, and still submits after suggestions fail', async () => {
+    const { wrapper, mockGetTrendingQueries, mockGetSuggestedQueries, mockSearchVerses } =
+      createSearchFixture();
+    const unavailable = new Error('discovery unavailable');
+    mockGetTrendingQueries.mockRejectedValueOnce(unavailable);
+    mockGetSuggestedQueries.mockRejectedValueOnce(unavailable);
+    const { result } = renderHook(() => useBibleSearch({ versionId: 111 }), { wrapper });
+    await waitFor(() =>
+      expect(result.current.phase).toMatchObject({
+        kind: 'trending',
+        loading: false,
+        error: unavailable,
+      }),
+    );
+    act(() => result.current.retry());
+    await waitFor(() =>
+      expect(result.current.phase).toEqual({
+        kind: 'trending',
+        queries: trending.queries,
+        loading: false,
+      }),
+    );
+    act(() => result.current.setQuery('mercy'));
+    await settleDebounce();
+    await waitFor(() =>
+      expect(result.current.phase).toMatchObject({
+        kind: 'suggesting',
+        loading: false,
+        error: unavailable,
+      }),
+    );
+    act(() => result.current.submit());
+    await waitFor(() => expect(result.current.phase.kind).toBe('results'));
+    expect(result.current.query).toBe('mercy');
+    expect(mockSearchVerses).toHaveBeenCalledWith('mercy', 111, {
+      pageSize: SEARCH_VERSES_PAGE_SIZE,
+    });
+  });
+
   it('waits for version.language_tag before requesting trending', async () => {
     const { wrapper, mockGetVersion, mockGetTrendingQueries } = createSearchFixture();
     let resolveVersion: (version: BibleVersion) => void = () => {};

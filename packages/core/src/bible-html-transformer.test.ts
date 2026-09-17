@@ -84,6 +84,36 @@ describe('transformBibleHtml - intro chapter footnotes', () => {
 });
 
 describe('transformBibleHtml - verse wrapping', () => {
+  it('assigns poetry continuation lines to their verse without swallowing headings or the next verse', () => {
+    const html = `<div>
+      <div class="d"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>A Psalm of David.</div>
+      <div class="q1">The Lord is my shepherd;</div>
+      <div class="q2">I shall not want.</div>
+      <div class="q1"><span class="yv-v" v="2"></span><span class="yv-vlbl">2</span>He makes me lie down</div>
+      <div class="q2">beside quiet waters.</div>
+      <div class="s1">A heading</div>
+      <div class="q1"><span class="yv-v" v="3"></span><span class="yv-vlbl">3</span>He restores my soul.</div>
+      <div class="q2">He guides me.</div>
+    </div>`;
+    const result = transformBibleHtml(html, createAdapters());
+    const doc = new DOMParser().parseFromString(result.html, 'text/html');
+    expect(
+      [...doc.querySelectorAll('.yv-v[v]')].map((node) => [
+        node.getAttribute('v'),
+        node.textContent?.trim(),
+      ]),
+    ).toEqual([
+      ['1', '1\u00a0A Psalm of David.'],
+      ['1', 'The Lord is my shepherd;'],
+      ['1', 'I shall not want.'],
+      ['2', '2\u00a0He makes me lie down'],
+      ['2', 'beside quiet waters.'],
+      ['3', '3\u00a0He restores my soul.'],
+      ['3', 'He guides me.'],
+    ]);
+    expect(doc.querySelector('.s1')?.closest('.yv-v')).toBeNull();
+  });
+
   it('should wrap verse content in .yv-v[v] elements', () => {
     const html = `
       <div>

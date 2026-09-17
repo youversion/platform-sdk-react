@@ -409,10 +409,17 @@ describe('deriveSearchPhase', () => {
     ).toEqual({ kind: 'searching' });
   });
 
-  it('maps zero projected hits to empty', () => {
+  it('maps zero projected hits to empty only when pagination is exhausted', () => {
     expect(
       deriveSearchPhase({
         session: withPages(submitted('love'), ['BAD']),
+        settled: LOVE,
+        ...idle,
+      }),
+    ).toEqual({ kind: 'searching' });
+    expect(
+      deriveSearchPhase({
+        session: withPages(submitted('love'), ['BAD'], null),
         settled: LOVE,
         ...idle,
       }),

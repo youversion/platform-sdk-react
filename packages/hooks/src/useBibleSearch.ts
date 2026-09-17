@@ -25,6 +25,9 @@ export type { BibleSearchPhase, BibleSearchResult };
 
 export type UseBibleSearchProps = Readonly<{
   versionId: number;
+  /** Client-side result filter. Unset includes all books; empty includes none.
+   * Pages without matches are skipped until a match or the end is reached. */
+  bookIds?: readonly string[];
 }>;
 
 export type UseBibleSearchResult = Readonly<{
@@ -34,7 +37,7 @@ export type UseBibleSearchResult = Readonly<{
   submit: () => void;
   selectSuggestion: (text: string) => void;
   loadMore: () => void;
-  /** Re-requests the failed page. No-op unless phase is `failed` or `results` with `nextPage: 'failed'`. */
+  /** Re-requests failed suggestions, the initial search, or a failed results page. */
   retry: () => void;
 }>;
 
@@ -83,7 +86,14 @@ export function useBibleSearch(props: UseBibleSearchProps): UseBibleSearchResult
 
   const vReq = versesRequest(session);
   const verses = useApiData(
-    [...keyBase, 'searchVerses', vReq?.versionId, vReq?.query ?? '', vReq?.pageToken ?? ''],
+    [
+      ...keyBase,
+      'searchVerses',
+      vReq?.versionId,
+      vReq?.query ?? '',
+      vReq?.pageToken ?? '',
+      props.bookIds,
+    ],
     () => {
       if (vReq === null) {
         return Promise.reject(new Error('search verses requested while disabled'));
@@ -122,8 +132,26 @@ export function useBibleSearch(props: UseBibleSearchProps): UseBibleSearchResult
   const retry = useCallback(() => {
     if (vReq !== null && verses.error !== null) {
       verses.refetch();
+    } else if (qReq !== null && queries.error !== null) {
+      queries.refetch();
     }
-  }, [vReq, verses]);
+  }, [vReq, verses, qReq, queries]);
+
+  const phase = deriveSearchPhase({
+    session,
+    bookIds: props.bookIds,
+    settled,
+    queries: queries.data?.queries ?? null,
+    queriesLoading: queries.loading,
+    queriesError: queries.error,
+    versesLoading: verses.loading,
+    versesError: verses.error,
+  });
+  useEffect(() => {
+    if (!override && phase.kind === 'searching' && vReq === null) {
+      dispatch({ type: 'loadMore' });
+    }
+  }, [override, phase.kind, vReq]);
 
   if (override) {
     return override(props);
@@ -131,14 +159,7 @@ export function useBibleSearch(props: UseBibleSearchProps): UseBibleSearchResult
 
   return {
     query: session.raw,
-    phase: deriveSearchPhase({
-      session,
-      settled,
-      queries: queries.data?.queries ?? null,
-      queriesLoading: queries.loading,
-      versesLoading: verses.loading,
-      versesError: verses.error,
-    }),
+    phase,
     setQuery,
     submit,
     selectSuggestion,
