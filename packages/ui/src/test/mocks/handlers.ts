@@ -13,6 +13,10 @@ function pathParam(value: string | readonly string[] | undefined): string | unde
 }
 
 export const globalHandlers = [
+  // Font stylesheet loaded by YouVersionProvider
+  http.get('*/v1/fonts/1/stylesheet', () =>
+    HttpResponse.text('', { headers: { 'Content-Type': 'text/css' } }),
+  ),
   // Organization (publisher) lookup for the version picker
   http.get('*/v1/organizations/:id', ({ params }) => {
     const id = pathParam(params.id);
