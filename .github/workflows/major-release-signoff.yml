@@ -16,10 +16,9 @@ on:
 permissions: {}
 
 concurrency:
-  # Workflow concurrency is resolved before job `if` conditions. Isolate bot comment
-  # runs so comments from changeset-bot or this workflow cannot cancel an active PR
-  # evaluation before their jobs are skipped.
-  group: major-release-signoff-${{ github.event.pull_request.number || github.event.issue.number }}-${{ github.event_name == 'issue_comment' && github.event.comment.user.type == 'Bot' && format('bot-{0}', github.run_id) || 'evaluation' }}
+  # Workflow concurrency is resolved before job `if` conditions. Isolate ignored bot
+  # comments and non-base edits so their skipped jobs cannot cancel an active evaluation.
+  group: major-release-signoff-${{ github.event.pull_request.number || github.event.issue.number }}-${{ github.event_name == 'issue_comment' && github.event.comment.user.type == 'Bot' && format('bot-{0}', github.run_id) || github.event_name == 'pull_request' && github.event.action == 'edited' && github.event.changes.base == null && format('non-base-edit-{0}', github.run_id) || 'evaluation' }}
   cancel-in-progress: true
 
 env:
@@ -30,7 +29,9 @@ jobs:
     # issue_comment fires for issues AND PRs across the repo. Skip non-PR
     # issues and bot comments. Bot runs have isolated concurrency keys above,
     # because this condition is not evaluated until after concurrency handling.
-    if: ${{ github.event_name != 'issue_comment' || (github.event.issue.pull_request != null && github.event.comment.user.type != 'Bot') }}
+    # `edited` also covers title and body changes; only a base edit changes the
+    # release comparison and needs to invalidate the existing status.
+    if: ${{ (github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base != null) && (github.event_name != 'issue_comment' || (github.event.issue.pull_request != null && github.event.comment.user.type != 'Bot')) }}
     name: Resolve PR context
     runs-on: ubuntu-latest
     permissions:

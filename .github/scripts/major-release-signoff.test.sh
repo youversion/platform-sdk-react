@@ -326,18 +326,27 @@ run_decision_case "ordinary major previews still require signoff" \
 run_decision_case "failed ordinary previews remain blocked, not major" \
   'blocked=release preview did not succeed (failure)' false false skipped '' failure ''
 
-if pnpm exec prettier --check "$WORKFLOW" >/dev/null; then
+if "$ROOT/node_modules/.bin/prettier" --check "$WORKFLOW" >/dev/null; then
   pass "workflow YAML parses and is formatted"
 else
   fail "workflow YAML parses and is formatted" "prettier rejected $WORKFLOW"
 fi
 
 if grep -Fq \
-  "github.event.comment.user.type == 'Bot' && format('bot-{0}', github.run_id) || 'evaluation'" \
+  "github.event.comment.user.type == 'Bot' && format('bot-{0}', github.run_id)" \
   "$WORKFLOW"; then
   pass "bot comments retain an isolated pre-job concurrency key"
 else
   fail "bot comments retain an isolated pre-job concurrency key" "isolated concurrency expression is missing"
+fi
+
+if grep -Fq \
+  "github.event.changes.base == null && format('non-base-edit-{0}', github.run_id)" \
+  "$WORKFLOW"; then
+  pass "non-base edits cannot cancel an active signoff evaluation"
+else
+  fail "non-base edits cannot cancel an active signoff evaluation" \
+    "ignored edited events need an isolated concurrency key"
 fi
 
 if grep -Fq 'types: [opened, synchronize, reopened, edited]' "$WORKFLOW"; then
@@ -345,6 +354,14 @@ if grep -Fq 'types: [opened, synchronize, reopened, edited]' "$WORKFLOW"; then
 else
   fail "base retargets trigger a fresh signoff evaluation" \
     "pull_request edited events are not enabled"
+fi
+
+if grep -Fq "github.event.action != 'edited' || github.event.changes.base != null" \
+  "$WORKFLOW"; then
+  pass "non-base PR edits do not invalidate signoff status"
+else
+  fail "non-base PR edits do not invalidate signoff status" \
+    "edited events must be limited to base changes"
 fi
 
 CONTEXT_HEADER=$(sed -n '/^  context:$/,/^    steps:$/p' "$WORKFLOW")
