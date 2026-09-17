@@ -10,6 +10,24 @@ affected.
 Generated from the per-package changelogs by `scripts/build-root-changelog.mjs` — edit those,
 or the changeset, rather than this file.
 
+## 2.15.0
+
+### Minor Changes
+
+- _(@youversion/platform-core, @youversion/platform-react-ui)_ 053b460: Complete RTL support across Bible UI surfaces and pickers. SDK chrome now resolves Interface direction from an explicit provider override or the SDK UI locale, emits real `dir` boundaries and portals, mirrors semantic geometry and directional controls, and isolates mixed-direction API strings. Scripture surfaces independently resolve `scriptureDirection` from an explicit override, transformed YVDOM, or `auto`, including footnotes. RTL highlight swatch overflow fades use visible geometry instead of browser-specific scroll offsets.
+
+### Patch Changes
+
+- _(@youversion/platform-core, @youversion/platform-react-ui)_ ad543bf: Align Bible typography, alternate verse labels, and composed footnotes with the Swift phase-two rendering contract.
+
+- _(@youversion/platform-react-hooks)_ 90374fe: Hooks import `YouVersionContext` from its module, not the context barrel, so a `useChapter` import does not evaluate Auth. Hooks run tsup's Rollup tree-shake pass so unused exports drop from narrow graphs. Hooks wipe `dist` on build so stale tsup `.d.cts` files cannot publish.
+
+- _(@youversion/platform-react-ui)_ d8f2750: Sync localization from platform-localization (413e2e7): update 26 keys in es.
+
+- _(@youversion/platform-react-ui)_ b2c82ad: Split the UI JavaScript build so named package-root imports can drop unused UI. Keep core as a runtime dependency so UI and hooks share one copy, and re-export core values from UI by name instead of `export *`.
+
+  The package root remains the only public entry. Provider embeds only the chrome CSS needed for its missing-app-key panel. Components that need the utility or Bible reader sheets inject those styles from separate internal modules. The public stylesheet and CDN publisher both use the complete exported sheet. Consumer-shaped size, runtime-export, and tree-shaking checks guard the split for both ESM and CommonJS builds.
+
 ## 2.14.0
 
 ### Minor Changes

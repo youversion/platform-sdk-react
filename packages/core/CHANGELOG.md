@@ -1,5 +1,15 @@
 # @youversion/platform-core
 
+## 2.15.0
+
+### Minor Changes
+
+- 053b460: Complete RTL support across Bible UI surfaces and pickers. SDK chrome now resolves Interface direction from an explicit provider override or the SDK UI locale, emits real `dir` boundaries and portals, mirrors semantic geometry and directional controls, and isolates mixed-direction API strings. Scripture surfaces independently resolve `scriptureDirection` from an explicit override, transformed YVDOM, or `auto`, including footnotes. RTL highlight swatch overflow fades use visible geometry instead of browser-specific scroll offsets.
+
+### Patch Changes
+
+- ad543bf: Align Bible typography, alternate verse labels, and composed footnotes with the Swift phase-two rendering contract.
+
 ## 2.14.0
 
 ### Minor Changes
