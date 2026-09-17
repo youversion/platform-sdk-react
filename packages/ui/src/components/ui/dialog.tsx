@@ -3,6 +3,7 @@ import { useComposedRefs } from '@radix-ui/react-compose-refs';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 
 import { cn } from '@/lib/utils';
+import { useInterfaceDirection } from '@/lib/direction';
 import { useShadowDialogFocus } from './use-shadow-dialog-focus';
 import { useShadowPortalState } from './use-shadow-portal-state';
 
@@ -76,6 +77,7 @@ function DialogContent({
   ref,
   ...props
 }: DialogContentProps): React.ReactNode {
+  const direction = useInterfaceDirection();
   const portal = React.useContext(DialogPortalContext);
   const [overlayNode, setOverlayNode] = React.useState<HTMLDivElement | null>(null);
   const [contentNode, setContentNode] = React.useState<HTMLDivElement | null>(null);
@@ -106,6 +108,7 @@ function DialogContent({
         ref={contentRef}
         data-yv-sdk
         data-yv-theme={theme}
+        dir={direction}
         onCloseAutoFocus={(event) => {
           onCloseAutoFocus?.(event);
           shadowFocus.onCloseAutoFocus(event);

@@ -12,8 +12,10 @@ import { ExclamationCircle } from '@/components/icons/exclamation-circle';
  */
 export function MissingAppKey({
   theme = 'light',
+  direction = 'ltr',
 }: {
   theme?: 'light' | 'dark';
+  direction?: 'ltr' | 'rtl';
 }): React.ReactElement {
   const { t } = useTranslation(undefined, { i18n });
 
@@ -21,6 +23,7 @@ export function MissingAppKey({
     <div
       data-yv-sdk
       data-yv-theme={theme}
+      dir={direction}
       role="alert"
       className="yv:flex yv:items-start yv:gap-2.5 yv:p-4 yv:bg-background yv:text-foreground"
     >

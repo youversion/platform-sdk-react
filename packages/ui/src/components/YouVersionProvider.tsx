@@ -1,8 +1,10 @@
-import React, { type ComponentProps, Suspense, useEffect, useLayoutEffect } from 'react';
-import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
+'use client';
+
+import React, { type ComponentProps, Suspense, useEffect, useLayoutEffect, useState } from 'react';
 import { YouVersionProvider as BaseYouVersionProvider } from '@youversion/platform-react-hooks';
 import { syncSdkLanguage } from '@/i18n';
-import { YvStyles } from '@/lib/yv-styles';
+import { InterfaceDirectionProvider, resolveInterfaceDirection } from '@/lib/direction';
+import { YvStyles } from '@/lib/yv-styles-chrome';
 import { YvFonts } from '@/lib/yv-fonts';
 import { MissingAppKey } from '@/components/missing-app-key';
 
@@ -24,14 +26,27 @@ export type YouVersionProviderProps = ComponentProps<typeof BaseYouVersionProvid
    * `locale` to a Bible language.
    */
   locale?: string;
+  /**
+   * Direction for SDK interface controls and their portaled surfaces. When
+   * omitted, direction follows the resolved SDK UI locale, including browser
+   * detection. Server rendering uses a deterministic LTR fallback.
+   * Scripture direction remains controlled by each scripture surface.
+   */
+  direction?: 'ltr' | 'rtl';
 };
 
 export function YouVersionProvider({
   locale,
+  direction,
   additionalHeaders,
   ...props
 }: YouVersionProviderProps): React.ReactElement {
   const normalizedLocale = locale?.trim() || undefined;
+  const [browserLocale, setBrowserLocale] = useState<string>();
+  const interfaceDirection = resolveInterfaceDirection(
+    direction,
+    normalizedLocale ?? browserLocale,
+  );
 
   // Layout effects never run during SSR. Apply an explicit locale during render
   // so children emit the host language in the server HTML and the first client
@@ -42,21 +57,14 @@ export function YouVersionProvider({
   }
 
   useLayoutEffect(() => {
-    void syncSdkLanguage(normalizedLocale);
+    let active = true;
+    void syncSdkLanguage(normalizedLocale).then((resolvedLocale) => {
+      if (active && !normalizedLocale) setBrowserLocale(resolvedLocale);
+    });
+    return () => {
+      active = false;
+    };
   }, [normalizedLocale]);
-
-  // UI tsup inlines `@youversion/platform-core`, so this singleton is a different
-  // copy from the one hooks syncs. BibleReader reads appName / signInPromptMessage
-  // and the version filter from *this* copy — keep it in sync with the provider
-  // props. Filters write during render so the first child fetch sees them.
-  YouVersionPlatformConfiguration.permittedVersionIds = props.permittedVersionIds;
-  YouVersionPlatformConfiguration.excludedVersionIds = props.excludedVersionIds;
-  YouVersionPlatformConfiguration.permittedLanguageTags = props.permittedLanguageTags;
-
-  useEffect(() => {
-    YouVersionPlatformConfiguration.appName = props.appName;
-    YouVersionPlatformConfiguration.signInPromptMessage = props.signInPromptMessage;
-  }, [props.appName, props.signInPromptMessage]);
 
   // Guard against a missing/empty app key here (rather than letting the base
   // provider throw) so consumers of the UI package see a styled message instead
@@ -81,7 +89,7 @@ export function YouVersionProvider({
     return (
       <>
         <YvStyles />
-        <MissingAppKey theme={resolveTheme(props.theme)} />
+        <MissingAppKey theme={resolveTheme(props.theme)} direction={interfaceDirection} />
       </>
     );
   }
@@ -98,18 +106,20 @@ export function YouVersionProvider({
 
   return (
     <BaseYouVersionProvider {...props} additionalHeaders={mergedHeaders}>
-      <YvStyles />
-      {/* Only in this branch — the missing-app-key guard above has no key, and
-          without a key the gated Fonts API request would 401.
+      <InterfaceDirectionProvider direction={interfaceDirection}>
+        <YvStyles />
+        {/* Only in this branch — the missing-app-key guard above has no key, and
+            without a key the gated Fonts API request would 401.
 
-          React suspends the component that renders a `precedence` stylesheet
-          while it loads. The local boundary keeps that suspension scoped to the
-          font link so it can't bubble to the consumer's nearest boundary above
-          the provider and hold their tree during the Fonts API fetch. */}
-      <Suspense fallback={null}>
-        <YvFonts appKey={props.appKey} apiHost={props.apiHost} />
-      </Suspense>
-      {props.children}
+            React suspends the component that renders a `precedence` stylesheet
+            while it loads. The local boundary keeps that suspension scoped to the
+            font link so it can't bubble to the consumer's nearest boundary above
+            the provider and hold their tree during the Fonts API fetch. */}
+        <Suspense fallback={null}>
+          <YvFonts appKey={props.appKey} apiHost={props.apiHost} />
+        </Suspense>
+        {props.children}
+      </InterfaceDirectionProvider>
     </BaseYouVersionProvider>
   );
 }

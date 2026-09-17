@@ -37,18 +37,16 @@ export — treat those two as public API and breaking-change territory.
 - tsup for bundling, tsc for type declarations
 
 ## STYLING
-**React 19 `<style precedence>`**: The `YouVersionProvider` wrapper (in `src/components/YouVersionProvider.tsx`) renders `<YvStyles />` once, which outputs a `<style href="yv-sdk-styles" precedence="yv-sdk">` element. React handles hoisting to `<head>`, deduplication, SSR streaming, and Suspense integration. Individual components do NOT render `<YvStyles />` — it's centralized in the provider.
-- Shadow DOM exception: `ShadowRootHost` installs the embedded `__YV_STYLES__`
+**React 19 `<style precedence>`**: `YouVersionProvider` renders `<YvStyles />` (`href="yv-sdk-styles"`). That sheet is Provider chrome (`dist/chrome.css`). Scripture and interactive roots render `<YvComponentStyles />` (`href="yv-sdk-components"`, the full `dist/tailwind.css`) and `BibleTextView` also renders `<YvReaderStyles />`. The three injectors are separate modules so Provider does not import the fat sheets. Different hrefs so React 19 does not drop the fat sheet. React hoists, dedupes, and streams the tags.
+- CSS embedded via tsup define: chrome → `__YV_STYLES__`, full utilities → `__YV_COMPONENT_STYLES__`, reader → `__YV_READER_STYLES__`
+- Public stylesheet stays `import '@youversion/platform-react-ui/styles.css'` (`dist/styles.css`: utilities plus reader). JS still injects the three sheets separately.
+- Shadow DOM exception: `ShadowRootHost` installs the embedded component styles
   inside each component shadow root because document styles cannot cross that
   boundary. It prefers a cached constructable stylesheet and renders a local
   `<style>` fallback when adoption is unavailable.
 - Structural shadow selectors, including `:host` and dynamically-created
-  shadow overlay containers, are intentionally centralized in the existing
-  `src/styles/global.css` so they pass through the standard build and embedding
-  path.
-- CSS embedded as `__YV_STYLES__` constant via tsup define
-- Built Tailwind CSS: `dist/tailwind.css` → embedded as JS string at build time
-- Static CSS also available via `import '@youversion/platform-react-ui/styles.css'` for non-React consumers
+  shadow overlay containers, remain in `src/styles/global.css` so they pass
+  through the standard component build and embedding path.
 - Each component includes `data-yv-sdk` on its styled root. An isolated
   component's styled root is inside its shadow tree; its light-DOM boundary uses
   `data-yv-shadow-host` instead.
@@ -81,6 +79,6 @@ Follow `docs/testing.md`. This package’s flavors:
 - Do not talk to the network from UI tests; stub hooks via `YouVersionContext.hookOverrides` (`HookOverrideProvider` in `src/test/hook-overrides.tsx`) unless writing an intentional vertical smoke. Do not `vi.mock` `@youversion/platform-react-hooks`.
 
 ## CRITICAL
-- **No module side effects**: styles are rendered via React 19 `<style precedence>` in the `YouVersionProvider` wrapper
-- **Build sub-steps are order-dependent**: `build:css` (Tailwind, then `preserve-host-revert-layer.js` so minify keeps `-webkit-appearance`) → `build:js` (tsup, injects `__YV_STYLES__`) → `build:types`. Never skip `build:css` — without it the `__YV_STYLES__` constant is empty.
+- **No module side effects**: styles are rendered via React 19 `<style precedence>`
+- **Build sub-steps are order-dependent**: `build:css` (chrome, full Tailwind, `preserve-host-revert-layer.js` so minify keeps `-webkit-appearance`, then reader) → `build:js` (tsup embeds the three sheets) → `build:types`. Never skip `build:css`.
 - Always rebuild after CSS changes

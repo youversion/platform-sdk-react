@@ -284,6 +284,32 @@ describe('transformBibleHtml - return type', () => {
   });
 });
 
+it.each([
+  ['ltr', 'ltr'],
+  ['rtl', 'rtl'],
+] as const)('resolves a shared valid %s root direction', (dir, direction) => {
+  const result = transformBibleHtml(`<div dir="${dir}"><p>Text</p></div>`, createAdapters());
+
+  expect(result.direction).toBe(direction);
+});
+
+it.each([
+  ['missing', '<div><p>Text</p></div>'],
+  ['invalid', '<div dir="auto"><p>Text</p></div>'],
+  ['mixed', '<div dir="ltr">One</div><div dir="rtl">Two</div>'],
+])('does not resolve %s root directions', (_label, html) => {
+  const result = transformBibleHtml(html, createAdapters());
+
+  expect(result.direction).toBeUndefined();
+});
+
+it('preserves direction when transforming an already transformed fragment', () => {
+  const first = transformBibleHtml('<div dir="rtl"><p>Text</p></div>', createAdapters());
+  const second = transformBibleHtml(first.html, createAdapters());
+
+  expect(second.direction).toBe('rtl');
+});
+
 describe('transformBibleHtml - sanitization', () => {
   it('should remove script tags entirely', () => {
     const html = '<p>Safe text</p><script>alert("XSS")</script>';

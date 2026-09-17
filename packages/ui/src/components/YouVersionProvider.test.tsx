@@ -2,17 +2,22 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
 import React, { useContext } from 'react';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { YouVersionContext } from '@youversion/platform-react-hooks';
 import { YouVersionProvider } from '@/components/YouVersionProvider';
+import { useInterfaceDirection } from '@/lib/direction';
 import i18n from '@/i18n';
 
 function AdditionalHeadersProbe(): React.ReactElement {
   const headers = useContext(YouVersionContext)?.additionalHeaders;
   return <div data-testid="headers">{headers ? JSON.stringify(headers) : 'none'}</div>;
+}
+
+function DirectionProbe(): React.ReactElement {
+  return <div data-testid="direction">{useInterfaceDirection()}</div>;
 }
 
 describe('UI YouVersionProvider', () => {
@@ -82,7 +87,7 @@ describe('UI YouVersionProvider', () => {
     );
   });
 
-  it('mirrors appName and signInPromptMessage onto the UI-bundled config', () => {
+  it('forwards appName and signInPromptMessage onto the shared core config', () => {
     YouVersionPlatformConfiguration.appName = undefined;
     YouVersionPlatformConfiguration.signInPromptMessage = undefined;
 
@@ -128,6 +133,29 @@ describe('UI YouVersionProvider', () => {
     },
   );
 
+  it('applies explicit and locale-derived direction to the missing-app-key alert', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const { rerender } = render(
+      <YouVersionProvider appKey="" locale="en" direction="rtl">
+        <div />
+      </YouVersionProvider>,
+    );
+
+    expect(screen.getByRole('alert')).toHaveAttribute('dir', 'rtl');
+
+    rerender(
+      <YouVersionProvider appKey="" locale="ar">
+        <div />
+      </YouVersionProvider>,
+    );
+
+    expect(screen.getByRole('alert')).toHaveAttribute('dir', 'rtl');
+
+    await i18n.changeLanguage('en');
+    errorSpy.mockRestore();
+  });
+
   it('uses locale instead of the browser language', async () => {
     vi.stubGlobal('navigator', {
       language: 'en-US',
@@ -166,5 +194,64 @@ describe('UI YouVersionProvider', () => {
     expect(i18n.language).toBe('es');
 
     await i18n.changeLanguage('en');
+  });
+
+  it('uses explicit interface direction over the locale fallback', () => {
+    render(
+      <YouVersionProvider appKey="test-key" locale="ar" direction="ltr">
+        <DirectionProbe />
+      </YouVersionProvider>,
+    );
+
+    expect(screen.getByTestId('direction')).toHaveTextContent('ltr');
+  });
+
+  it('uses RTL for Arabic UI locale and LTR for other locales', () => {
+    const { rerender } = render(
+      <YouVersionProvider appKey="test-key" locale="ar-EG">
+        <DirectionProbe />
+      </YouVersionProvider>,
+    );
+
+    expect(screen.getByTestId('direction')).toHaveTextContent('rtl');
+
+    rerender(
+      <YouVersionProvider appKey="test-key" locale="en">
+        <DirectionProbe />
+      </YouVersionProvider>,
+    );
+
+    expect(screen.getByTestId('direction')).toHaveTextContent('ltr');
+  });
+
+  it('uses browser-detected Arabic for labels and interface direction when locale is omitted', async () => {
+    vi.stubGlobal('navigator', {
+      language: 'ar-EG',
+      languages: ['ar-EG', 'ar'],
+    });
+
+    render(
+      <YouVersionProvider appKey="test-key">
+        <DirectionProbe />
+      </YouVersionProvider>,
+    );
+
+    await waitFor(() => {
+      expect(i18n.language).toBe('ar');
+      expect(screen.getByTestId('direction')).toHaveTextContent('rtl');
+    });
+
+    await i18n.changeLanguage('en');
+    vi.unstubAllGlobals();
+  });
+
+  it('uses the LTR fallback during SSR when direction and locale are omitted', () => {
+    const html = renderToString(
+      <YouVersionProvider appKey="test-key">
+        <DirectionProbe />
+      </YouVersionProvider>,
+    );
+
+    expect(html).toContain('>ltr<');
   });
 });

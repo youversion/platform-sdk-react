@@ -171,4 +171,10 @@ describe('bible-reader phase-1 typography (Swift-adjusted tags)', () => {
     expect(themeCss).toContain('--yv-highlight-mix-p: 1;');
     expect(themeCss).toContain('--yv-highlight-mix-p: 0.2;');
   });
+
+  it('uses logical table borders for both directions', () => {
+    expect(css).toContain('border-inline-end: 1px solid var(--yv-border)');
+    expect(css).toContain('border-inline-end: none');
+    expect(css).not.toContain('border-right: 1px solid var(--yv-border)');
+  });
 });

@@ -9,6 +9,12 @@ export type { BibleBook, BibleBookIntro, CANON } from '../schemas/book';
 export type { BibleChapter } from '../schemas/chapter';
 export type { BibleVerse } from '../schemas/verse';
 export type { BiblePassage } from '../schemas/passage';
+export type {
+  BiblePassageDisplay,
+  GetPassageDisplayOptions,
+  PassageAttribution,
+  PassageStylesheet,
+} from '../schemas/passage-display';
 export type { VOTD } from '../schemas/votd';
 export type {
   BibleIndex,
@@ -20,6 +26,16 @@ export type {
 export type { Language } from '../schemas/language';
 export type { User } from '../schemas/user';
 export type { Highlight, CreateHighlight } from '../schemas/highlight';
+export type {
+  KnownSearchUserIntent,
+  SearchQueries,
+  SearchQuery,
+  SearchTopic,
+  SearchTopicsResponse,
+  SearchVerseHit,
+  SearchVersesOptions,
+  SearchVersesResponse,
+} from '../schemas/search';
 export type { Collection } from '../schemas/collection';
 export type { Organization, OrganizationAddress } from '../schemas/organization';
 export type { Video, VideoPlaybackSource, VideoThumbnail } from '../schemas/video';

@@ -30,6 +30,7 @@ Get your App Key at [platform.youversion.com](https://platform.youversion.com/)
 import {
   ApiClient,
   BibleClient,
+  SearchClient,
   YouVersionPlatformConfiguration,
 } from '@youversion/platform-core';
 
@@ -50,7 +51,38 @@ console.log(versions.data[0].title);
 // Fetch the html text of John 3:16 in that first Bible version
 const passage = await bibleClient.getPassage(versions.data[0].id, 'JHN.3.16');
 console.log(passage.content);
+
+// Search (`/v1/*` endpoints; requires an app key authorized for Search)
+const searchClient = new SearchClient(apiClient);
+const trending = await searchClient.getTrendingQueries('en');
+const verses = await searchClient.searchVerses('faith', versions.data[0].id, {
+  pageSize: 10,
+});
+console.log(trending.queries[0]?.text, verses.verses[0]?.id);
 ```
+
+### Display Bible HTML
+
+Use `getPassageDisplay` when you need transformed HTML together with current
+attribution and the resources required to apply YouVersion's Bible styles:
+
+```ts
+const display = await bibleClient.getPassageDisplay({
+  versionId: 3034,
+  passageId: 'JHN.3.16',
+});
+
+for (const stylesheet of display.stylesheets) {
+  console.log(stylesheet.href);
+}
+
+console.log(display.html);
+console.log(display.attribution.text);
+```
+
+The result is declarative. The SDK does not insert the stylesheets or HTML into
+your page. On a server, HTML transformation requires the optional `jsdom` peer
+dependency.
 
 ## Documentation and API Reference
 * [developers.youversion.com/sdks/typescript](https://developers.youversion.com/sdks/typescript)

@@ -1,3 +1,5 @@
+'use client';
+
 import {
   useEffect,
   useLayoutEffect,
@@ -22,6 +24,8 @@ import {
   useShadowFocusRestoreTarget,
 } from '@/lib/shadow-root-host';
 import { isDarkHighlightHex } from './verse';
+import { useInterfaceDirection } from '@/lib/direction';
+import { YvComponentStyles } from '@/lib/yv-styles-components';
 
 /** Re-export for back-compat; prefer `@/lib/highlight-colors` for new code. */
 export { HIGHLIGHT_COLORS, type HighlightColor } from '@/lib/highlight-colors';
@@ -38,29 +42,41 @@ popoverMotionStyle['--tw-animate-easing'] = 'cubic-bezier(0.16, 1, 0.3, 1)';
 /** Width, in px, of the fade applied at each overflowing edge of the swatch row. */
 const SCROLL_FADE_PX = 20;
 
-type ScrollMetrics = { scrollLeft: number; scrollWidth: number; clientWidth: number };
-type ScrollFade = { start: boolean; end: boolean };
+type HorizontalRect = Pick<DOMRectReadOnly, 'left' | 'right'>;
+type ScrollFade = { left: boolean; right: boolean };
+
+type ScrollFadeGeometry = {
+  firstSwatch: HorizontalRect;
+  lastSwatch: HorizontalRect;
+  viewport: HorizontalRect;
+  direction: 'ltr' | 'rtl';
+};
 
 /**
- * Decide which edges of a horizontally scrollable row should fade. A fade only
- * appears on an edge that has hidden content in that direction, so a row that
- * fits (or is scrolled fully to one end) shows no fade on the exhausted side.
- * Pure so it can be unit-tested without layout (jsdom reports zero sizes).
- * Assumes LTR positive `scrollLeft`.
+ * Decide which physical edges of a horizontally scrollable row should fade.
+ * First and last swatches are the logical start and end because a flex row
+ * follows its `dir`. Measuring their visible clipping avoids the browser's
+ * incompatible RTL `scrollLeft` coordinate models.
  */
 export function computeScrollFade({
-  scrollLeft,
-  scrollWidth,
-  clientWidth,
-}: ScrollMetrics): ScrollFade {
-  const maxScroll = scrollWidth - clientWidth;
-  // Sub-pixel slack: rounding in real browsers can leave scrollLeft a hair off
-  // its bound, which would otherwise flicker a fade at a fully-scrolled edge.
+  firstSwatch,
+  lastSwatch,
+  viewport,
+  direction,
+}: ScrollFadeGeometry): ScrollFade {
   const slack = 1;
-  if (maxScroll <= slack) return { start: false, end: false };
+  const start =
+    direction === 'ltr'
+      ? firstSwatch.left < viewport.left - slack
+      : firstSwatch.right > viewport.right + slack;
+  const end =
+    direction === 'ltr'
+      ? lastSwatch.right > viewport.right + slack
+      : lastSwatch.left < viewport.left - slack;
+
   return {
-    start: scrollLeft > slack,
-    end: scrollLeft < maxScroll - slack,
+    left: direction === 'ltr' ? start : end,
+    right: direction === 'ltr' ? end : start,
   };
 }
 
@@ -68,10 +84,13 @@ export function computeScrollFade({
  * Build the `mask-image` that fades the overflowing edge(s). Returns `undefined`
  * when neither edge fades so the element carries no mask at all (nothing to hint).
  */
-function scrollFadeMask({ start, end }: ScrollFade): React.CSSProperties | undefined {
-  if (!start && !end) return undefined;
-  const left = start ? 'transparent' : '#000';
-  const right = end ? 'transparent' : '#000';
+function scrollFadeMask({
+  left: fadeLeft,
+  right: fadeRight,
+}: ScrollFade): React.CSSProperties | undefined {
+  if (!fadeLeft && !fadeRight) return undefined;
+  const left = fadeLeft ? 'transparent' : '#000';
+  const right = fadeRight ? 'transparent' : '#000';
   const mask = `linear-gradient(to right, ${left} 0, #000 ${SCROLL_FADE_PX}px, #000 calc(100% - ${SCROLL_FADE_PX}px), ${right} 100%)`;
   return { maskImage: mask, WebkitMaskImage: mask };
 }
@@ -196,6 +215,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   theme = 'light',
 }) => {
   const { t } = useTranslation(undefined, { i18n });
+  const direction = useInterfaceDirection();
   const portal = useShadowPortalState({ open, onOpenChange });
   const getShadowFocusRestoreTarget = useShadowFocusRestoreTarget();
 
@@ -227,7 +247,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   // the `open` flip the element isn't attached yet — an effect keyed on `open`
   // alone would run against a null ref and never re-run to wire up the listener.
   const [swatchRow, setSwatchRow] = useState<HTMLDivElement | null>(null);
-  const [scrollFade, setScrollFade] = useState<ScrollFade>({ start: false, end: false });
+  const [scrollFade, setScrollFade] = useState<ScrollFade>({ left: false, right: false });
 
   // When the anchored verse scrolls out of the container, dock the bar to the
   // edge it exited through: scroll down (verse leaves the top) → dock top; scroll
@@ -368,17 +388,25 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   useEffect(() => {
     const el = swatchRow;
     if (!el) {
-      setScrollFade({ start: false, end: false });
+      setScrollFade({ left: false, right: false });
       return;
     }
-    const update = () =>
+    const update = () => {
+      const firstSwatch = el.firstElementChild;
+      const lastSwatch = el.lastElementChild;
+      if (!(firstSwatch instanceof HTMLElement) || !(lastSwatch instanceof HTMLElement)) {
+        setScrollFade({ left: false, right: false });
+        return;
+      }
       setScrollFade(
         computeScrollFade({
-          scrollLeft: el.scrollLeft,
-          scrollWidth: el.scrollWidth,
-          clientWidth: el.clientWidth,
+          firstSwatch: firstSwatch.getBoundingClientRect(),
+          lastSwatch: lastSwatch.getBoundingClientRect(),
+          viewport: el.getBoundingClientRect(),
+          direction,
         }),
       );
+    };
     update();
     el.addEventListener('scroll', update, { passive: true });
     let observer: ResizeObserver | undefined;
@@ -390,171 +418,175 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
       el.removeEventListener('scroll', update);
       observer?.disconnect();
     };
-  }, [swatchRow, swatchCount]);
+  }, [direction, swatchRow, swatchCount]);
 
   return (
-    <PopoverPrimitive.Root open={portal.open} onOpenChange={portal.onOpenChange}>
-      <PopoverPrimitive.Anchor ref={setPopoverAnchor} virtualRef={view.virtualRef} />
-      {!portal.awaitingPortalTarget && (
-        <PopoverPrimitive.Portal container={portal.container}>
-          <PopoverPrimitive.Content
-            ref={contentRef}
-            role="dialog"
-            data-slot="verse-action-popover"
-            aria-label={t('verseActionsAriaLabel')}
-            tabIndex={-1}
-            data-yv-sdk
-            data-yv-theme={theme}
-            onOpenAutoFocus={(event) => {
-              // Keep focus contained in the popover but off the first swatch: land
-              // it on the (non-tabbable) content element so no `:focus-visible` ring
-              // shows on pointer-open. The first Tab still moves to the first swatch,
-              // and because Tab is keyboard modality the ring correctly appears then.
-              event.preventDefault();
-              const content = contentRef.current;
-              if (!content) return;
-
-              const root = getOwnShadowRoot(content);
-              retainOutsideFocusRef.current = false;
-              const activeElement = root
-                ? (root.activeElement ?? getShadowFocusRestoreTarget?.())
-                : documentFocusRestoreTargetRef.current;
-              focusRestoreTargetRef.current = isElementFromOwnerDocument(
-                activeElement,
-                content,
-                'HTMLElement',
-              )
-                ? activeElement
-                : null;
-              content.focus({ preventScroll: true });
-            }}
-            onCloseAutoFocus={(event) => {
-              const root = portal.container ? getOwnShadowRoot(portal.container) : null;
-              const target = focusRestoreTargetRef.current;
-              const restoreTarget =
-                target?.isConnected && (!root || target.getRootNode() === root) ? target : null;
-              if (root || restoreTarget) event.preventDefault();
-              if (!retainOutsideFocusRef.current) restoreTarget?.focus();
-              retainOutsideFocusRef.current = false;
-              focusRestoreTargetRef.current = null;
-            }}
-            onPointerDownCapture={allowPriorFocusRestoration}
-            onFocusCapture={allowPriorFocusRestoration}
-            onEscapeKeyDown={allowPriorFocusRestoration}
-            onInteractOutside={(event) => {
-              // Tapping another verse modifies the selection — it should re-anchor
-              // the popover, not dismiss it. Only a tap truly outside the reader
-              // dismisses (which clears the selection via onOpenChange).
-              const content = contentRef.current;
-              if (!content) return;
-              const originalEvent = event.detail.originalEvent;
-              const interactedWithVerse =
-                versePointerEventsRef.current.has(originalEvent) ||
-                isVerseEvent(originalEvent, content);
-              if (interactedWithVerse) {
+    <>
+      <YvComponentStyles />
+      <PopoverPrimitive.Root open={portal.open} onOpenChange={portal.onOpenChange}>
+        <PopoverPrimitive.Anchor ref={setPopoverAnchor} virtualRef={view.virtualRef} />
+        {!portal.awaitingPortalTarget && (
+          <PopoverPrimitive.Portal container={portal.container}>
+            <PopoverPrimitive.Content
+              ref={contentRef}
+              role="dialog"
+              data-slot="verse-action-popover"
+              aria-label={t('verseActionsAriaLabel')}
+              tabIndex={-1}
+              data-yv-sdk
+              data-yv-theme={theme}
+              dir={direction}
+              onOpenAutoFocus={(event) => {
+                // Keep focus contained in the popover but off the first swatch: land
+                // it on the (non-tabbable) content element so no `:focus-visible` ring
+                // shows on pointer-open. The first Tab still moves to the first swatch,
+                // and because Tab is keyboard modality the ring correctly appears then.
                 event.preventDefault();
-                return;
-              }
-              retainOutsideFocusRef.current = true;
-            }}
-            side={view.side}
-            sideOffset={view.sideOffset}
-            align="center"
-            // Keep the pill off the screen edges; this also shrinks Radix's
-            // `--radix-popover-content-available-width`, which we cap to below.
-            collisionPadding={12}
-            className={cn(
-              'yv:bg-card yv:text-popover-foreground',
-              'yv:rounded-full yv:drop-shadow-[0px_4.8432px_20px_rgba(0,0,0,0.19)]',
-              'yv:px-4 yv:py-2',
-              'yv:flex yv:items-center yv:gap-3',
-              // Never wider than the viewport (minus collision padding). When the
-              // swatch row can't fit, it scrolls inside instead of overflowing the
-              // screen. Radix sets `--radix-popover-content-available-width`, but
-              // only recomputes it on reposition — it goes stale on a plain window
-              // resize. `min()` with a live `100vw` term keeps the cap honest when
-              // the viewport shrinks under an open popover (24px = 2×collisionPadding).
-              'yv:max-w-[min(var(--radix-popover-content-available-width),calc(100vw-24px))]',
-              'yv:z-50 yv:outline-hidden',
-              'yv:overflow-visible yv:relative',
-              'yv:origin-(--radix-popover-content-transform-origin)',
-              'yv:data-[state=open]:animate-in yv:data-[state=closed]:animate-out',
-              'yv:data-[state=closed]:fade-out-0 yv:data-[state=open]:fade-in-0',
-              'yv:data-[state=closed]:zoom-out-95 yv:data-[state=open]:zoom-in-95',
-              'yv:data-[side=bottom]:slide-in-from-top-2',
-              'yv:data-[side=top]:slide-in-from-bottom-2',
-            )}
-            style={popoverMotionStyle}
-          >
-            {/* Caret — matches the card background in both themes, pointing at the
+                const content = contentRef.current;
+                if (!content) return;
+
+                const root = getOwnShadowRoot(content);
+                retainOutsideFocusRef.current = false;
+                const activeElement = root
+                  ? (root.activeElement ?? getShadowFocusRestoreTarget?.())
+                  : documentFocusRestoreTargetRef.current;
+                focusRestoreTargetRef.current = isElementFromOwnerDocument(
+                  activeElement,
+                  content,
+                  'HTMLElement',
+                )
+                  ? activeElement
+                  : null;
+                content.focus({ preventScroll: true });
+              }}
+              onCloseAutoFocus={(event) => {
+                const root = portal.container ? getOwnShadowRoot(portal.container) : null;
+                const target = focusRestoreTargetRef.current;
+                const restoreTarget =
+                  target?.isConnected && (!root || target.getRootNode() === root) ? target : null;
+                if (root || restoreTarget) event.preventDefault();
+                if (!retainOutsideFocusRef.current) restoreTarget?.focus();
+                retainOutsideFocusRef.current = false;
+                focusRestoreTargetRef.current = null;
+              }}
+              onPointerDownCapture={allowPriorFocusRestoration}
+              onFocusCapture={allowPriorFocusRestoration}
+              onEscapeKeyDown={allowPriorFocusRestoration}
+              onInteractOutside={(event) => {
+                // Tapping another verse modifies the selection — it should re-anchor
+                // the popover, not dismiss it. Only a tap truly outside the reader
+                // dismisses (which clears the selection via onOpenChange).
+                const content = contentRef.current;
+                if (!content) return;
+                const originalEvent = event.detail.originalEvent;
+                const interactedWithVerse =
+                  versePointerEventsRef.current.has(originalEvent) ||
+                  isVerseEvent(originalEvent, content);
+                if (interactedWithVerse) {
+                  event.preventDefault();
+                  return;
+                }
+                retainOutsideFocusRef.current = true;
+              }}
+              side={view.side}
+              sideOffset={view.sideOffset}
+              align="center"
+              // Keep the pill off the screen edges; this also shrinks Radix's
+              // `--radix-popover-content-available-width`, which we cap to below.
+              collisionPadding={12}
+              className={cn(
+                'yv:bg-card yv:text-popover-foreground',
+                'yv:rounded-full yv:drop-shadow-[0px_4.8432px_20px_rgba(0,0,0,0.19)]',
+                'yv:px-4 yv:py-2',
+                'yv:flex yv:items-center yv:gap-3',
+                // Never wider than the viewport (minus collision padding). When the
+                // swatch row can't fit, it scrolls inside instead of overflowing the
+                // screen. Radix sets `--radix-popover-content-available-width`, but
+                // only recomputes it on reposition — it goes stale on a plain window
+                // resize. `min()` with a live `100vw` term keeps the cap honest when
+                // the viewport shrinks under an open popover (24px = 2×collisionPadding).
+                'yv:max-w-[min(var(--radix-popover-content-available-width),calc(100vw-24px))]',
+                'yv:z-50 yv:outline-hidden',
+                'yv:overflow-visible yv:relative',
+                'yv:origin-(--radix-popover-content-transform-origin)',
+                'yv:data-[state=open]:animate-in yv:data-[state=closed]:animate-out',
+                'yv:data-[state=closed]:fade-out-0 yv:data-[state=open]:fade-in-0',
+                'yv:data-[state=closed]:zoom-out-95 yv:data-[state=open]:zoom-in-95',
+                'yv:data-[side=bottom]:slide-in-from-top-2',
+                'yv:data-[side=top]:slide-in-from-bottom-2',
+              )}
+              style={popoverMotionStyle}
+            >
+              {/* Caret — matches the card background in both themes, pointing at the
               verse. Hidden when docked: the bar is no longer tied to a verse. */}
-            {view.showCaret && (
-              <svg
-                className="yv:text-card yv:absolute yv:-top-[16px] yv:left-1/2 yv:-translate-x-1/2"
-                width="33"
-                height="17"
-                viewBox="0 0 33 17"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
-              >
-                <path d="M16.0215 0L32.0429 16.5H0L16.0215 0Z" fill="currentColor" />
-              </svg>
-            )}
-
-            {/* Highlights UI is hidden entirely when the feature is off (flag off):
-              only Copy / Share remain. */}
-            {highlightsEnabled && (
-              <>
-                <div
-                  ref={setSwatchRow}
-                  // `min-w-0` lets this flex child actually shrink below its
-                  // content size so `overflow-x-auto` engages instead of widening
-                  // the pill. `py-1 -my-1` gives the hover:scale-110 swatches
-                  // vertical breathing room inside the (now-clipping) scroll box
-                  // without shifting the row's resting position. Scrollbar hidden;
-                  // the edge fade signals there's more to scroll.
-                  className="yv:flex yv:items-center yv:gap-2 yv:min-w-0 yv:overflow-x-auto yv:scrollbar-hide yv:py-1 yv:-my-1"
-                  style={scrollFadeMask(scrollFade)}
-                  role="group"
-                  aria-label={t('highlightColorsAriaLabel')}
+              {view.showCaret && (
+                <svg
+                  className="yv:text-card yv:absolute yv:-top-[16px] yv:left-1/2 yv:-translate-x-1/2"
+                  width="33"
+                  height="17"
+                  viewBox="0 0 33 17"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
                 >
-                  {view.colorCircles.map(({ color, showRemove, key }) => (
-                    <ColorCircle
-                      key={key}
-                      color={color}
-                      showRemove={showRemove}
-                      theme={theme}
-                      label={
-                        showRemove ? t('clearHighlightAriaLabel') : t('applyHighlightAriaLabel')
-                      }
-                      onClick={() => (showRemove ? onClearHighlight(color) : onHighlight(color))}
-                    />
-                  ))}
-                </div>
+                  <path d="M16.0215 0L32.0429 16.5H0L16.0215 0Z" fill="currentColor" />
+                </svg>
+              )}
 
-                {/* Separator — never shrinks, so only the swatch row scrolls. */}
-                <div className="yv:w-px yv:h-8 yv:shrink-0 yv:bg-border" aria-hidden="true" />
-              </>
-            )}
+              {/* Highlights UI is hidden entirely when the feature is off (flag off):
+              only Copy / Share remain. */}
+              {highlightsEnabled && (
+                <>
+                  <div
+                    ref={setSwatchRow}
+                    // `min-w-0` lets this flex child actually shrink below its
+                    // content size so `overflow-x-auto` engages instead of widening
+                    // the pill. `py-1 -my-1` gives the hover:scale-110 swatches
+                    // vertical breathing room inside the (now-clipping) scroll box
+                    // without shifting the row's resting position. Scrollbar hidden;
+                    // the edge fade signals there's more to scroll.
+                    className="yv:flex yv:items-center yv:gap-2 yv:min-w-0 yv:overflow-x-auto yv:scrollbar-hide yv:py-1 yv:-my-1"
+                    style={scrollFadeMask(scrollFade)}
+                    role="group"
+                    aria-label={t('highlightColorsAriaLabel')}
+                  >
+                    {view.colorCircles.map(({ color, showRemove, key }) => (
+                      <ColorCircle
+                        key={key}
+                        color={color}
+                        showRemove={showRemove}
+                        theme={theme}
+                        label={
+                          showRemove ? t('clearHighlightAriaLabel') : t('applyHighlightAriaLabel')
+                        }
+                        onClick={() => (showRemove ? onClearHighlight(color) : onHighlight(color))}
+                      />
+                    ))}
+                  </div>
 
-            {/* Copy / Share stay pinned and fully visible; only the swatch row
+                  {/* Separator — never shrinks, so only the swatch row scrolls. */}
+                  <div className="yv:w-px yv:h-8 yv:shrink-0 yv:bg-border" aria-hidden="true" />
+                </>
+              )}
+
+              {/* Copy / Share stay pinned and fully visible; only the swatch row
               scrolls when space is tight. */}
-            <div className="yv:flex yv:items-center yv:gap-1 yv:shrink-0">
-              <ActionButton
-                icon={<BoxStackIcon className="yv:size-5" />}
-                label={t('copy')}
-                onClick={onCopy}
-              />
-              <ActionButton
-                icon={<Share className="yv:size-5" />}
-                label={t('share')}
-                onClick={onShare}
-              />
-            </div>
-          </PopoverPrimitive.Content>
-        </PopoverPrimitive.Portal>
-      )}
-    </PopoverPrimitive.Root>
+              <div className="yv:flex yv:items-center yv:gap-1 yv:shrink-0">
+                <ActionButton
+                  icon={<BoxStackIcon className="yv:size-5" />}
+                  label={t('copy')}
+                  onClick={onCopy}
+                />
+                <ActionButton
+                  icon={<Share className="yv:size-5" />}
+                  label={t('share')}
+                  onClick={onShare}
+                />
+              </div>
+            </PopoverPrimitive.Content>
+          </PopoverPrimitive.Portal>
+        )}
+      </PopoverPrimitive.Root>
+    </>
   );
 };

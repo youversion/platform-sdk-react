@@ -1,7 +1,7 @@
 'use client';
 
 import { useContext, useMemo } from 'react';
-import { YouVersionContext } from '../context';
+import { YouVersionContext } from '../context/YouVersionContext';
 import { serializeAdditionalHeaders } from './additionalHeadersKey';
 import { serializeVersionFilters } from './versionFilterKey';
 
