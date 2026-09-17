@@ -2,4 +2,4 @@
 '@youversion/platform-react-ui': patch
 ---
 
-Restore the original Shadow DOM opener after a dialog closes and reopens during its exit animation, while ignoring disconnected targets and targets moved out of their captured root.
+Fix focus restoration for opt-in Shadow DOM dialogs by preserving the original opener across a close/reopen during exit, while ignoring disconnected targets and targets moved out of their captured root.

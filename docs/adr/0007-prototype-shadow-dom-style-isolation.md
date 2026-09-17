@@ -142,9 +142,9 @@ roots are a CSS boundary, not a security boundary.
 
 ## Nested and concurrent overlays
 
-YPE-5355 exercised nested and concurrent overlays through the production
-`ShadowRootHost` seam. Both nesting directions preserve topmost-only Escape
-dismissal and restore focus into the remaining parent overlay. Either
+YPE-5355 exercised nested and concurrent overlays through the real shared
+`ShadowRootHost` implementation. Both nesting directions preserve topmost-only
+Escape dismissal and restore focus into the remaining parent overlay. Either
 nested-overlay teardown order also works with the current architecture. Separate
 component shadow roots own distinct portal containers, but do not isolate Radix
 outside interaction: opening a peer popover dismisses the existing peer across

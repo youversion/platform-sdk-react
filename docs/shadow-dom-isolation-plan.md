@@ -11,7 +11,8 @@ This is a working plan, not approval for package-wide rollout.
 
 ## Current scope
 
-- `YouVersionAuthButton` creates its Shadow DOM boundary automatically.
+- `YouVersionAuthButton` is the only component automatically isolated by the
+  current prototype.
 - `BibleVersionPicker` validates shadow-local inline and native top-layer
   floating content through opt-in stories.
 - The shared Dialog and Popover primitives support opt-in shadow-local portals.
@@ -22,10 +23,10 @@ This is a working plan, not approval for package-wide rollout.
 - The internal `SignInDialog` is validated only through an opt-in
   `ShadowRootHost` story.
 - Nested and concurrent overlays within and across component shadow roots were
-  exercised through the production `ShadowRootHost` seam (YPE-5355). The Shadow
-  DOM ADR records the architectural boundary; the results below record the
-  supported contract and the remaining peer-dismissal gap. Runtime changes remain
-  YPE-5356.
+  exercised through the real shared `ShadowRootHost` implementation (YPE-5355).
+  The Shadow DOM ADR records the architectural boundary; the results below record
+  the supported contract and the remaining peer-dismissal gap. Broader component
+  rollout and peer-overlay coordination remain with YPE-5356.
 
 ## Nested and concurrent overlay evidence
 
