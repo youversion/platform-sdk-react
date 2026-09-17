@@ -46,6 +46,7 @@ jobs:
       is_fork: ${{ steps.pr.outputs.is_fork }}
       pr_author: ${{ steps.pr.outputs.pr_author }}
       pr_number: ${{ steps.pr.outputs.pr_number }}
+      shared_head_prs: ${{ steps.pr.outputs.shared_head_prs }}
     steps:
       - name: Resolve PR context
         id: pr
@@ -74,6 +75,14 @@ jobs:
           HEAD_REF=$(jq -r '.head.ref // empty' <<<"$PR_JSON")
           BASE_REPO=$(jq -r '.base.repo.full_name // empty' <<<"$PR_JSON")
           BASE_REF=$(jq -r '.base.ref // empty' <<<"$PR_JSON")
+
+          # Commit statuses are scoped only to SHA and context, not to a PR or base.
+          # Two open PRs with the same head could therefore overwrite each other's
+          # base-dependent decision. Detect that unsupported state and fail closed.
+          SHARED_HEAD_PRS=$(gh api --paginate \
+            "repos/$REPOSITORY/pulls?state=open&per_page=100" \
+            --jq ".[] | select(.number != $PR_NUMBER and .head.sha == \"$HEAD_SHA\") | .number")
+          SHARED_HEAD_PRS=${SHARED_HEAD_PRS//$'\n'/,}
 
           # A deleted fork reports no head repo. Treat that as a fork too, since we
           # cannot show it came from here.
@@ -121,6 +130,7 @@ jobs:
           fi
 
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "shared_head_prs=$SHARED_HEAD_PRS" >> "$GITHUB_OUTPUT"
           echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
           echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
           echo "pr_author=$PR_AUTHOR" >> "$GITHUB_OUTPUT"
@@ -335,11 +345,20 @@ jobs:
           PREVIEW_IS_MAJOR: ${{ needs.preview.outputs.is_major }}
           PREVIEW_NEXT: ${{ needs.preview.outputs.next }}
           PREVIEW_RELEASE_TYPE: ${{ needs.preview.outputs.release_type }}
+          SHARED_HEAD_PRS: ${{ needs.context.outputs.shared_head_prs }}
           VERIFIED_GENERATED_RELEASE: ${{ needs.generated_release.outputs.verified }}
         run: |
           set -euo pipefail
           if [ "$CONTEXT_RESULT" != "success" ]; then
             echo "blocked=PR context resolution or status invalidation did not succeed ($CONTEXT_RESULT)" >> "$GITHUB_OUTPUT"
+            echo "generated_release=false" >> "$GITHUB_OUTPUT"
+            echo "is_major=0" >> "$GITHUB_OUTPUT"
+            echo "next=" >> "$GITHUB_OUTPUT"
+            echo "release_type=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -n "$SHARED_HEAD_PRS" ]; then
+            echo "blocked=head commit is also used by open pull request(s): #${SHARED_HEAD_PRS//,/, #}" >> "$GITHUB_OUTPUT"
             echo "generated_release=false" >> "$GITHUB_OUTPUT"
             echo "is_major=0" >> "$GITHUB_OUTPUT"
             echo "next=" >> "$GITHUB_OUTPUT"
@@ -571,6 +590,24 @@ jobs:
             echo "signed_off=0" >> "$GITHUB_OUTPUT"
             echo "No qualifying signoff found yet."
           fi
+
+      - name: Remove fulfilled signoff instructions
+        if: steps.signoff.outputs.signed_off == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.context.outputs.pr_number }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          MARKER='<!-- major-signoff-required -->'
+          gh api --paginate \
+            "repos/$REPOSITORY/issues/$PR_NUMBER/comments" \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$MARKER\"))) | .id" |
+            while read -r COMMENT_ID; do
+              [ -z "$COMMENT_ID" ] && continue
+              gh api -X DELETE "repos/$REPOSITORY/issues/comments/$COMMENT_ID"
+              echo "Removed fulfilled blocking comment ($COMMENT_ID)."
+            done
 
       - name: Post success status when signoff present
         if: steps.decision.outputs.blocked == '' && steps.decision.outputs.is_major == '1' && steps.signoff.outputs.signed_off == '1'

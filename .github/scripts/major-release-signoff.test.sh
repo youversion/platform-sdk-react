@@ -34,13 +34,21 @@ extract_step "Invalidate prior signoff status" > "$TMP/invalidate.sh"
 extract_step "Restore trusted release tooling from main" > "$TMP/restore-tooling.sh"
 extract_step "Compute release preview" > "$TMP/preview.sh"
 extract_step "Decide whether a signoff is required" > "$TMP/decision.sh"
+extract_step "Remove fulfilled signoff instructions" > "$TMP/remove-fulfilled.sh"
 extract_step "Regenerate and verify release contents" > "$TMP/verify.sh"
 
 mkdir "$TMP/bin"
 cat > "$TMP/bin/gh" <<'EOF'
 #!/usr/bin/env bash
 set -u
-if [[ "$2" == *"/pulls/"* ]]; then
+ARGS="$*"
+if [[ "$ARGS" == *"/pulls?state=open"* ]]; then
+  jq -r \
+    --argjson current "${MOCK_CURRENT_PR_NUMBER:-400}" \
+    --arg head "${MOCK_HEAD_SHA:-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}" \
+    '.[] | select(.number != $current and .head.sha == $head) | .number' \
+    "$MOCK_OPEN_PRS_FILE"
+elif [[ "$2" == *"/pulls/"* ]]; then
   if [ "${MOCK_PULL_ERROR:-0}" = "1" ]; then exit 1; fi
   cat "$MOCK_PR_FILE"
 elif [[ "$2" == *"/compare/"* ]]; then
@@ -50,6 +58,10 @@ elif [[ "$2" == *"/compare/"* ]]; then
 elif [[ "$2" == *"/statuses/"* ]]; then
   if [ "${MOCK_STATUS_ERROR:-0}" = "1" ]; then exit 1; fi
   printf '%s\n' "$@" > "$MOCK_STATUS_CALL"
+elif [[ "$ARGS" == *"/issues/400/comments"* ]]; then
+  printf '%s\n' 12345
+elif [[ "$ARGS" == *"-X DELETE"* && "$ARGS" == *"/issues/comments/12345"* ]]; then
+  printf '%s\n' "$@" > "$MOCK_COMMENT_DELETE_CALL"
 else
   exit 2
 fi
@@ -160,7 +172,7 @@ VALID_COMPARE=$(jq -n --arg base "$BASE_SHA" '{
 
 run_context_case() {
   local name="$1" expected_release_pr="$2" expected_candidate="$3" pr_json="$4" compare_json="$5"
-  local event_kind="${6:-pull_request}"
+  local event_kind="${6:-pull_request}" open_prs_json="${7:-[]}" expected_shared="${8:-}"
   local output="$TMP/output" pr_file="$TMP/pr.json" compare_file="$TMP/compare.json"
   local event_pr_number=400 event_issue_number=
   if [ "$event_kind" = "issue_comment" ]; then
@@ -171,13 +183,16 @@ run_context_case() {
   : > "$TMP/compare-calls"
   printf '%s\n' "$pr_json" > "$pr_file"
   printf '%s\n' "$compare_json" > "$compare_file"
+  printf '%s\n' "$open_prs_json" > "$TMP/open-prs.json"
   if PATH="$TMP/bin:$PATH" \
     EVENT_PR_NUMBER="$event_pr_number" EVENT_ISSUE_NUMBER="$event_issue_number" \
     REPOSITORY=youversion/platform-sdk-react \
     GITHUB_OUTPUT="$output" MOCK_PR_FILE="$pr_file" MOCK_COMPARE_FILE="$compare_file" \
-    MOCK_COMPARE_CALLS="$TMP/compare-calls" bash "$TMP/context.sh" >/dev/null 2>&1 &&
+    MOCK_COMPARE_CALLS="$TMP/compare-calls" MOCK_OPEN_PRS_FILE="$TMP/open-prs.json" \
+    bash "$TMP/context.sh" >/dev/null 2>&1 &&
     grep -Fxq "generated_release_pr=$expected_release_pr" "$output" &&
-    grep -Fxq "generated_candidate=$expected_candidate" "$output"; then
+    grep -Fxq "generated_candidate=$expected_candidate" "$output" &&
+    grep -Fxq "shared_head_prs=$expected_shared" "$output"; then
     pass "$name"
   else
     fail "$name" "expected generated_release_pr=$expected_release_pr and generated_candidate=$expected_candidate; output: $(tr '\n' ' ' < "$output")"
@@ -191,10 +206,12 @@ run_context_error_case() {
   : > "$TMP/compare-calls"
   printf '%s\n' "$VALID_PR" > "$TMP/pr.json"
   printf '%s\n' "$VALID_COMPARE" > "$TMP/compare.json"
+  printf '%s\n' '[]' > "$TMP/open-prs.json"
   if env PATH="$TMP/bin:$PATH" \
     EVENT_PR_NUMBER= EVENT_ISSUE_NUMBER=400 REPOSITORY=youversion/platform-sdk-react \
     GITHUB_OUTPUT="$output" MOCK_PR_FILE="$TMP/pr.json" MOCK_COMPARE_FILE="$TMP/compare.json" \
-    MOCK_COMPARE_CALLS="$TMP/compare-calls" "$error_var"=1 \
+    MOCK_COMPARE_CALLS="$TMP/compare-calls" MOCK_OPEN_PRS_FILE="$TMP/open-prs.json" \
+    "$error_var"=1 \
     bash "$TMP/context.sh" >/dev/null 2>&1; then
     result=success
   else
@@ -214,6 +231,10 @@ run_context_case "accepts the exact generated release PR and consumed changeset 
   true true "$VALID_PR" "$VALID_COMPARE"
 run_context_case "human issue comments resolve the current PR identity and head" \
   true true "$VALID_PR" "$VALID_COMPARE" issue_comment
+SHARED_OPEN_PRS=$(jq -n --arg head "$HEAD_SHA" \
+  '[{number: 400, head: {sha: $head}}, {number: 401, head: {sha: $head}}]')
+run_context_case "detects another open PR sharing the immutable head" \
+  true true "$VALID_PR" "$VALID_COMPARE" pull_request "$SHARED_OPEN_PRS" 401
 
 for field in login id type; do
   case "$field" in
@@ -315,6 +336,7 @@ run_decision_case() {
     GENERATED_RELEASE_RESULT="$verification_result" \
     VERIFIED_GENERATED_RELEASE="$verified" IS_FORK=false PREVIEW_RESULT="$preview_result" \
     PREVIEW_IS_MAJOR="$preview_major" PREVIEW_NEXT=3.0.0 PREVIEW_RELEASE_TYPE=major \
+    SHARED_HEAD_PRS="${10:-}" \
     GITHUB_OUTPUT="$output" bash "$TMP/decision.sh" >/dev/null 2>&1 &&
     grep -Fxq "$expected" "$output"; then
     pass "$name"
@@ -340,6 +362,9 @@ run_decision_case "failed ordinary previews remain blocked, not major" \
 run_decision_case "failed context resolution or invalidation fails closed" \
   'blocked=PR context resolution or status invalidation did not succeed (failure)' \
   false false skipped '' skipped '' failure
+run_decision_case "a shared head across open PRs fails closed" \
+  'blocked=head commit is also used by open pull request(s): #401' \
+  false false skipped '' success 0 success 401
 
 if "$ROOT/node_modules/.bin/prettier" --check "$WORKFLOW" >/dev/null; then
   pass "workflow YAML parses and is formatted"
@@ -400,6 +425,23 @@ if grep -Fq \
 else
   fail "successful evaluations require stale instruction cleanup" \
     "cleanup errors may be tolerated only when the evaluation is already blocked"
+fi
+
+SIGNED_CLEANUP_HEADER=$(sed -n \
+  '/- name: Remove fulfilled signoff instructions/,/        env:/p' "$WORKFLOW")
+MOCK_COMMENT_DELETE_CALL="$TMP/comment-delete-call"
+if grep -Fq "if: steps.signoff.outputs.signed_off == '1'" \
+  <<<"$SIGNED_CLEANUP_HEADER" &&
+  PATH="$TMP/bin:$PATH" \
+    MOCK_COMMENT_DELETE_CALL="$MOCK_COMMENT_DELETE_CALL" \
+    PR_NUMBER=400 REPOSITORY=youversion/platform-sdk-react \
+    bash "$TMP/remove-fulfilled.sh" >/dev/null 2>&1 &&
+  grep -Fqx 'repos/youversion/platform-sdk-react/issues/comments/12345' \
+    "$MOCK_COMMENT_DELETE_CALL"; then
+  pass "signed-off majors remove stale instructions before publishing success"
+else
+  fail "signed-off majors remove stale instructions before publishing success" \
+    "a valid signoff must delete the workflow-owned blocking comment before green status"
 fi
 
 CONTEXT_HEADER=$(sed -n '/^  context:$/,/^    steps:$/p' "$WORKFLOW")
