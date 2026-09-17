@@ -48,6 +48,7 @@ elif [[ "$2" == *"/compare/"* ]]; then
   if [ "${MOCK_COMPARE_ERROR:-0}" = "1" ]; then exit 1; fi
   cat "$MOCK_COMPARE_FILE"
 elif [[ "$2" == *"/statuses/"* ]]; then
+  if [ "${MOCK_STATUS_ERROR:-0}" = "1" ]; then exit 1; fi
   printf '%s\n' "$@" > "$MOCK_STATUS_CALL"
 else
   exit 2
@@ -88,10 +89,15 @@ git -C "$TOOLING_SOURCE" add -A
 git -C "$TOOLING_SOURCE" commit --quiet -m main
 git -C "$TOOLING_SOURCE" branch -M main
 git -C "$TOOLING_SOURCE" switch --quiet -c journey
-mkdir -p "$TOOLING_SOURCE/packages/pr-only"
-printf 'journey-only importer\n' > "$TOOLING_SOURCE/packages/pr-only/package.json"
+mkdir -p "$TOOLING_SOURCE/packages/pr-only" \
+  "$TOOLING_SOURCE/examples/pr-only" "$TOOLING_SOURCE/tools/pr-only"
+for file in packages/pr-only/package.json examples/pr-only/package.json \
+  tools/pr-only/package.json; do
+  printf 'journey-only importer\n' > "$TOOLING_SOURCE/$file"
+done
 for file in scripts/preview-release.mjs package.json pnpm-lock.yaml \
-  pnpm-workspace.yaml .changeset/config.json packages/ui/package.json; do
+  pnpm-workspace.yaml .changeset/config.json packages/ui/package.json \
+  examples/demo/package.json tools/config/package.json; do
   printf 'journey %s\n' "$file" > "$TOOLING_SOURCE/$file"
 done
 rm "$TOOLING_SOURCE/.npmrc"
@@ -100,7 +106,8 @@ git -C "$TOOLING_SOURCE" add -A
 git -C "$TOOLING_SOURCE" commit --quiet -m journey
 TOOLING_BASE=$(git -C "$TOOLING_SOURCE" rev-parse HEAD)
 for file in scripts/preview-release.mjs package.json pnpm-lock.yaml \
-  pnpm-workspace.yaml .changeset/config.json packages/ui/package.json; do
+  pnpm-workspace.yaml .changeset/config.json packages/ui/package.json \
+  examples/demo/package.json tools/config/package.json; do
   printf 'head %s\n' "$file" > "$TOOLING_SOURCE/$file"
 done
 git -C "$TOOLING_SOURCE" add -A
@@ -115,8 +122,12 @@ if (cd "$TOOLING_WORK" && BASE_SHA="$TOOLING_BASE" bash "$TMP/restore-tooling.sh
   [ "$(cat "$TOOLING_WORK/package.json")" = 'main package.json' ] &&
   [ "$(cat "$TOOLING_WORK/pnpm-lock.yaml")" = 'main pnpm-lock.yaml' ] &&
   [ "$(cat "$TOOLING_WORK/packages/ui/package.json")" = 'main packages/ui/package.json' ] &&
+  [ "$(cat "$TOOLING_WORK/examples/demo/package.json")" = 'main examples/demo/package.json' ] &&
+  [ "$(cat "$TOOLING_WORK/tools/config/package.json")" = 'main tools/config/package.json' ] &&
   [ "$(cat "$TOOLING_WORK/.npmrc")" = 'main .npmrc' ] &&
   [ ! -e "$TOOLING_WORK/packages/pr-only/package.json" ] &&
+  [ ! -e "$TOOLING_WORK/examples/pr-only/package.json" ] &&
+  [ ! -e "$TOOLING_WORK/tools/pr-only/package.json" ] &&
   [ ! -e "$TOOLING_WORK/.pnpmfile.cjs" ]; then
   pass "restores the complete release toolchain from trusted main"
 else
@@ -299,7 +310,8 @@ run_decision_case() {
   local verification_result="$5" verified="$6" preview_result="$7" preview_major="$8"
   local output="$TMP/decision-output"
   : > "$output"
-  if GENERATED_RELEASE_PR="$generated_release_pr" GENERATED_CANDIDATE="$candidate" \
+  if CONTEXT_RESULT="${9:-success}" \
+    GENERATED_RELEASE_PR="$generated_release_pr" GENERATED_CANDIDATE="$candidate" \
     GENERATED_RELEASE_RESULT="$verification_result" \
     VERIFIED_GENERATED_RELEASE="$verified" IS_FORK=false PREVIEW_RESULT="$preview_result" \
     PREVIEW_IS_MAJOR="$preview_major" PREVIEW_NEXT=3.0.0 PREVIEW_RELEASE_TYPE=major \
@@ -325,6 +337,9 @@ run_decision_case "ordinary major previews still require signoff" \
   'is_major=1' false false skipped '' success 1
 run_decision_case "failed ordinary previews remain blocked, not major" \
   'blocked=release preview did not succeed (failure)' false false skipped '' failure ''
+run_decision_case "failed context resolution or invalidation fails closed" \
+  'blocked=PR context resolution or status invalidation did not succeed (failure)' \
+  false false skipped '' skipped '' failure
 
 if "$ROOT/node_modules/.bin/prettier" --check "$WORKFLOW" >/dev/null; then
   pass "workflow YAML parses and is formatted"
@@ -364,8 +379,36 @@ else
     "edited events must be limited to base changes"
 fi
 
+if grep -Fq "if: always() && needs.context.result != 'skipped'" "$WORKFLOW"; then
+  pass "context failures still run the native signoff gate"
+else
+  fail "context failures still run the native signoff gate" \
+    "the final gate must fail closed when context resolution or status invalidation fails"
+fi
+
+if grep -Fq "if: always() && steps.decision.outputs.blocked != ''" "$WORKFLOW"; then
+  pass "blocked evaluations fail the native signoff check"
+else
+  fail "blocked evaluations fail the native signoff check" \
+    "the required native check must remain red when release impact is unknown"
+fi
+
 CONTEXT_HEADER=$(sed -n '/^  context:$/,/^    steps:$/p' "$WORKFLOW")
 STATUS_CALL="$TMP/status-call"
+if PATH="$TMP/bin:$PATH" \
+  MOCK_STATUS_ERROR=1 \
+  MOCK_STATUS_CALL="$STATUS_CALL" \
+  HEAD_SHA="$HEAD_SHA" \
+  REPOSITORY="youversion/platform-sdk-react" \
+  RUN_URL="https://github.example/actions/runs/123" \
+  STATUS_CONTEXT="major-release-signoff" \
+  bash "$TMP/invalidate.sh" >/dev/null 2>&1; then
+  fail "status invalidation API errors fail the context job" \
+    "the invalidation step unexpectedly accepted a failed status POST"
+else
+  pass "status invalidation API errors fail the context job"
+fi
+
 if grep -Fq 'statuses: write' <<<"$CONTEXT_HEADER" &&
   PATH="$TMP/bin:$PATH" \
     MOCK_STATUS_CALL="$STATUS_CALL" \

@@ -312,8 +312,10 @@ jobs:
 
 
   gate:
-    # `always()`: `preview` is skipped for forks and the gate still has to post a status.
-    if: always() && needs.context.result == 'success'
+    # Run after context failures too: the native job must fail closed if resolving the PR
+    # or invalidating a same-SHA result fails. Intentionally ignored edits skip context and
+    # therefore skip this job as well.
+    if: always() && needs.context.result != 'skipped'
     name: Major release signoff
     needs: [context, generated_release, preview]
     runs-on: ubuntu-latest
@@ -324,6 +326,7 @@ jobs:
       - name: Decide whether a signoff is required
         id: decision
         env:
+          CONTEXT_RESULT: ${{ needs.context.result }}
           GENERATED_CANDIDATE: ${{ needs.context.outputs.generated_candidate }}
           GENERATED_RELEASE_PR: ${{ needs.context.outputs.generated_release_pr }}
           GENERATED_RELEASE_RESULT: ${{ needs.generated_release.result }}
@@ -335,6 +338,14 @@ jobs:
           VERIFIED_GENERATED_RELEASE: ${{ needs.generated_release.outputs.verified }}
         run: |
           set -euo pipefail
+          if [ "$CONTEXT_RESULT" != "success" ]; then
+            echo "blocked=PR context resolution or status invalidation did not succeed ($CONTEXT_RESULT)" >> "$GITHUB_OUTPUT"
+            echo "generated_release=false" >> "$GITHUB_OUTPUT"
+            echo "is_major=0" >> "$GITHUB_OUTPUT"
+            echo "next=" >> "$GITHUB_OUTPUT"
+            echo "release_type=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [ "$GENERATED_RELEASE_PR" = "true" ]; then
             echo "is_major=0" >> "$GITHUB_OUTPUT"
             echo "next=" >> "$GITHUB_OUTPUT"
@@ -398,6 +409,7 @@ jobs:
         # Unknown impact must not leave a comment claiming a confirmed breaking change.
         # Trusted non-major results also retire instructions from an earlier evaluation.
         if: steps.decision.outputs.blocked != '' || steps.decision.outputs.is_major != '1'
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ needs.context.outputs.pr_number }}
@@ -457,6 +469,14 @@ jobs:
             -f description="Unable to determine release impact; inspect the workflow run." \
             -f target_url="$RUN_URL"
           echo "Unable to determine release impact: $BLOCKED"
+
+      - name: Fail the native signoff check
+        if: always() && steps.decision.outputs.blocked != ''
+        env:
+          BLOCKED: ${{ steps.decision.outputs.blocked }}
+        run: |
+          echo "::error::Unable to determine release impact: $BLOCKED"
+          exit 1
 
       - name: Search PR comments for valid approver signoff
         id: signoff
