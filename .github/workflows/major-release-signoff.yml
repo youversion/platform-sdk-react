@@ -36,6 +36,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      statuses: write
     outputs:
       base_sha: ${{ steps.pr.outputs.base_sha }}
       generated_candidate: ${{ steps.pr.outputs.generated_candidate }}
@@ -125,6 +126,22 @@ jobs:
           echo "is_fork=$IS_FORK" >> "$GITHUB_OUTPUT"
           echo "generated_candidate=$GENERATED_CANDIDATE" >> "$GITHUB_OUTPUT"
           echo "generated_release_pr=$GENERATED_RELEASE_PR" >> "$GITHUB_OUTPUT"
+
+      - name: Invalidate prior signoff status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          # Retargeting does not change the head SHA, so replace any result computed for
+          # the previous base before the base-dependent preview begins.
+          gh api repos/$REPOSITORY/statuses/$HEAD_SHA \
+            -f state=pending \
+            -f context="$STATUS_CONTEXT" \
+            -f description="Reevaluating major release signoff for the current PR base." \
+            -f target_url="$RUN_URL"
 
 
   generated_release:

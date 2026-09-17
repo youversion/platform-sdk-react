@@ -30,6 +30,7 @@ extract_step() {
 }
 
 extract_step "Resolve PR context" > "$TMP/context.sh"
+extract_step "Invalidate prior signoff status" > "$TMP/invalidate.sh"
 extract_step "Restore trusted release tooling from main" > "$TMP/restore-tooling.sh"
 extract_step "Compute release preview" > "$TMP/preview.sh"
 extract_step "Decide whether a signoff is required" > "$TMP/decision.sh"
@@ -46,6 +47,8 @@ elif [[ "$2" == *"/compare/"* ]]; then
   echo called >> "$MOCK_COMPARE_CALLS"
   if [ "${MOCK_COMPARE_ERROR:-0}" = "1" ]; then exit 1; fi
   cat "$MOCK_COMPARE_FILE"
+elif [[ "$2" == *"/statuses/"* ]]; then
+  printf '%s\n' "$@" > "$MOCK_STATUS_CALL"
 else
   exit 2
 fi
@@ -342,6 +345,25 @@ if grep -Fq 'types: [opened, synchronize, reopened, edited]' "$WORKFLOW"; then
 else
   fail "base retargets trigger a fresh signoff evaluation" \
     "pull_request edited events are not enabled"
+fi
+
+CONTEXT_HEADER=$(sed -n '/^  context:$/,/^    steps:$/p' "$WORKFLOW")
+STATUS_CALL="$TMP/status-call"
+if grep -Fq 'statuses: write' <<<"$CONTEXT_HEADER" &&
+  PATH="$TMP/bin:$PATH" \
+    MOCK_STATUS_CALL="$STATUS_CALL" \
+    HEAD_SHA="$HEAD_SHA" \
+    REPOSITORY="youversion/platform-sdk-react" \
+    RUN_URL="https://github.example/actions/runs/123" \
+    STATUS_CONTEXT="major-release-signoff" \
+    bash "$TMP/invalidate.sh" &&
+  grep -Fqx "repos/youversion/platform-sdk-react/statuses/$HEAD_SHA" "$STATUS_CALL" &&
+  grep -Fqx 'state=pending' "$STATUS_CALL" &&
+  grep -Fqx 'context=major-release-signoff' "$STATUS_CALL"; then
+  pass "reevaluations invalidate the prior head status before preview work"
+else
+  fail "reevaluations invalidate the prior head status before preview work" \
+    "context job must have status write access and post pending to the immutable head"
 fi
 
 if grep -Fq \
