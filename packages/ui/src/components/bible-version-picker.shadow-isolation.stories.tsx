@@ -387,11 +387,12 @@ export const StylingFocusDismissalAndRapidReopen: Story = {
   },
 };
 
-export const DirectionOnlyInheritanceRejectsHostVisualValues: Story = {
+export const ProviderDirectionRejectsHostVisualValues: Story = {
+  globals: { interfaceDirection: 'rtl' },
   render: () => (
     <div
       data-testid="hostile-inheritance-container"
-      dir="rtl"
+      dir="ltr"
       style={{ display: 'flex', alignItems: 'center', gap: 24 }}
     >
       <span data-testid="hostile-inheritance-control">Host control</span>
@@ -420,9 +421,9 @@ export const DirectionOnlyInheritanceRejectsHostVisualValues: Story = {
     const headingTypography = typographySnapshot(heading, ownerWindow);
     void expect(headingTypography.fontFamily).toContain('Inter');
     void expect(ownerWindow.getComputedStyle(trigger).direction).toBe('rtl');
-    void expect(ownerWindow.getComputedStyle(wrapper).direction).toBe('rtl');
+    void expect(ownerWindow.getComputedStyle(wrapper).direction).toBe('ltr');
 
-    await userEvent.click(within(panel).getByRole('button', { name: /select language/i }));
+    await userEvent.click(within(panel).getByRole('button', { name: /select a language/i }));
     const languageTabs = await waitForElement<HTMLElement>(
       panel,
       '[data-slot="tabs-list"]',
@@ -481,7 +482,7 @@ export const DirectionOnlyInheritanceRejectsHostVisualValues: Story = {
       const wrapperStyle = ownerWindow.getComputedStyle(wrapper);
       const headingStyle = ownerWindow.getComputedStyle(heading);
       const panelStyle = ownerWindow.getComputedStyle(panel);
-      void expect(wrapperStyle.direction).toBe('rtl');
+      void expect(wrapperStyle.direction).toBe('ltr');
       void expect(wrapperStyle.writingMode).toBe('horizontal-tb');
       void expect(wrapperStyle.textOrientation).toBe('mixed');
       void expect(headingStyle.direction).toBe('rtl');
