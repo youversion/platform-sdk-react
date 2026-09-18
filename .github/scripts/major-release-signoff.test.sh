@@ -337,6 +337,15 @@ else
   fail "generated release identity always stays out of the ordinary preview" "preview does not use generated release identity"
 fi
 
+if grep -Fq 'BASE_SHA: ${{ needs.context.outputs.base_sha }}' "$WORKFLOW" &&
+  grep -Fq 'git fetch --no-tags --force origin "$BASE_SHA"' "$WORKFLOW" &&
+  grep -Fq 'BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA")' "$WORKFLOW"; then
+  pass "stacked PR previews compare only changes introduced after their base"
+else
+  fail "stacked PR previews compare only changes introduced after their base" \
+    "preview does not use the immutable PR base/head merge base"
+fi
+
 if grep -Fq 'Generated release PR; major signoff is enforced on source PRs.' "$WORKFLOW"; then
   pass "generated releases publish an explicit lifecycle-aware success"
 else

@@ -261,6 +261,7 @@ jobs:
       - name: Compute release preview
         id: preview
         env:
+          BASE_SHA: ${{ needs.context.outputs.base_sha }}
           HEAD_SHA: ${{ needs.context.outputs.head_sha }}
         run: |
           set -euo pipefail
@@ -268,10 +269,11 @@ jobs:
           # "Failed to find where HEAD diverged from main" if it is missing. A PR checkout
           # has only origin/main, so create the local branch too.
           git fetch --no-tags --force origin main:refs/heads/main
-          # Merge-base, not the PR's base sha: on a synchronize event the base
-          # branch may have moved, and diffing against its tip would attribute
-          # someone else's changesets to this PR.
-          BASE=$(git merge-base main "$HEAD_SHA")
+          git fetch --no-tags --force origin "$BASE_SHA"
+          # Compare from the common ancestor of the immutable PR endpoints. This excludes
+          # major changesets inherited from a stacked PR's base without attributing later
+          # movement on that base branch to the PR being evaluated.
+          BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA")
           node scripts/preview-release.mjs --base "$BASE" --head "$HEAD_SHA" > preview.json
           cat preview.json
           # `introduced_major`, not `is_major`: a major already pending on main
