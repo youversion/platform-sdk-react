@@ -173,6 +173,16 @@ describe('transformBibleHtml - addNbspToVerseLabels', () => {
     expect(label!.textContent).toContain('\u00A0');
   });
 
+  it('adds non-breaking space after alternate verse labels', () => {
+    const result = transformBibleHtml(
+      '<div><div class="p"><span class="yv-v" v="2"></span><span class="va">2a</span>Text.</div></div>',
+      createAdapters(),
+    );
+
+    const doc = new DOMParser().parseFromString(result.html, 'text/html');
+    expect(doc.querySelector('.va')?.textContent).toBe('2a\u00A0');
+  });
+
   it('should not duplicate non-breaking space if already present', () => {
     const html = `
       <div>
@@ -444,6 +454,20 @@ describe('transformBibleHtml - sanitization', () => {
 });
 
 describe('transformBibleHtml - idempotency', () => {
+  it('backfills alternate labels in marked legacy output without changing existing spacing or anchors', () => {
+    const html =
+      '<div data-yv-transformed dir="rtl"><span class="yv-v" v="2"><span class="yv-vlbl">2&nbsp;</span><span class="va">2a</span>Text<span data-verse-footnote="2" data-verse-footnote-content="A note"></span></span></div>' +
+      '<span class="va" data-yv-transformed dir="rtl">3a</span>';
+    const first = transformBibleHtml(html, createAdapters());
+
+    expect(first.html).toBe(
+      '<div data-yv-transformed="" dir="rtl"><span class="yv-v" v="2"><span class="yv-vlbl">2&nbsp;</span><span class="va">2a&nbsp;</span>Text<span data-verse-footnote="2" data-verse-footnote-content="A note"></span></span></div>' +
+        '<span class="va" data-yv-transformed="" dir="rtl">3a&nbsp;</span>',
+    );
+    expect(first.direction).toBe('rtl');
+    expect(transformBibleHtml(first.html, createAdapters())).toEqual(first);
+  });
+
   it('should add data-yv-transformed marker after transforming', () => {
     const html =
       '<div><div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text.</div></div>';
