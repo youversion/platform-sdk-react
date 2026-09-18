@@ -12,6 +12,9 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    env: {
+      YVP_API_HOST: process.env.YVP_API_HOST || 'api.youversion.com',
+    },
     setupFiles: ['./src/__tests__/polyfills.ts', './src/__tests__/setup.ts'],
     testTimeout: 10_000,
     coverage: {

@@ -97,10 +97,10 @@
     "build": "rm -rf dist && pnpm build:js && pnpm build:css && pnpm build:types",
     "prepublishOnly": "YVP_PUBLISH_BUILD=true pnpm build && node ../../scripts/check-sdk-version-stamp.mjs core",
     "typecheck": "tsc --noEmit",
-    "test": "dotenv -e .env.local -- vitest run",
-    "test:integration": "INTEGRATION_TESTS=true dotenv -e .env.local -- vitest run",
-    "test:watch": "dotenv -e .env.local -- vitest",
-    "test:coverage": "dotenv -e .env.local -- vitest run --coverage"
+    "test": "dotenv -e .env.local -e ../../.env -- vitest run",
+    "test:integration": "INTEGRATION_TESTS=true dotenv -e .env.local -e ../../.env -- vitest run",
+    "test:watch": "dotenv -e .env.local -e ../../.env -- vitest",
+    "test:coverage": "dotenv -e .env.local -e ../../.env -- vitest run --coverage"
   },
   "devDependencies": {
     "@internal/tsconfig": "workspace:*",

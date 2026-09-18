@@ -2,6 +2,8 @@ import type { StorybookConfig } from '@storybook/react-vite';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync, existsSync } from 'fs';
+import { parseEnv } from 'util';
+import { loadEnv } from 'vite';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -43,8 +45,42 @@ const config: StorybookConfig = {
   },
   staticDirs: ['../public'], // This is for Storybook mock service worker
   viteFinal: (config) => {
+    const rootEnvPath = resolve(__dirname, '../../..', '.env');
+    const rootEnv = existsSync(rootEnvPath) ? parseEnv(readFileSync(rootEnvPath, 'utf8')) : {};
+    const packageEnv = loadEnv(
+      config.mode ?? 'development',
+      resolve(__dirname, '..'),
+      'STORYBOOK_',
+    );
+    const exposedEnv = {
+      ...Object.fromEntries(
+        Object.entries(rootEnv).filter(([name]) => name.startsWith('STORYBOOK_')),
+      ),
+      ...packageEnv,
+      // Explicit prefixed or generic process variables win, then legacy package-local
+      // values, then the root .env fallback.
+      STORYBOOK_YOUVERSION_APP_KEY:
+        process.env.STORYBOOK_YOUVERSION_APP_KEY ??
+        process.env.YVP_APP_KEY ??
+        packageEnv.STORYBOOK_YOUVERSION_APP_KEY ??
+        rootEnv.STORYBOOK_YOUVERSION_APP_KEY ??
+        rootEnv.YVP_APP_KEY,
+      STORYBOOK_YOUVERSION_API_HOST:
+        process.env.STORYBOOK_YOUVERSION_API_HOST ??
+        process.env.YVP_API_HOST ??
+        packageEnv.STORYBOOK_YOUVERSION_API_HOST ??
+        rootEnv.STORYBOOK_YOUVERSION_API_HOST ??
+        rootEnv.YVP_API_HOST,
+    };
+    const definedEnv = Object.fromEntries(
+      Object.entries(exposedEnv)
+        .filter((entry): entry is [string, string] => entry[1] !== undefined)
+        .map(([name, value]) => [`import.meta.env.${name}`, JSON.stringify(value)]),
+    );
+
     config.define = {
       ...config.define,
+      ...definedEnv,
       __YV_STYLES__: yvStyles,
       __YV_COMPONENT_STYLES__: yvComponentStyles,
       __YV_READER_STYLES__: yvReaderStyles,
