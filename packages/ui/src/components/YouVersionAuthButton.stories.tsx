@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, userEvent, within, spyOn } from 'storybook/test';
+import { http, HttpResponse } from 'msw';
+import { expect, fn, userEvent, waitFor, spyOn } from 'storybook/test';
 import { YouVersionAuthButton } from './YouVersionAuthButton';
 
 // Store mock reference for interaction test
@@ -10,6 +11,13 @@ const meta = {
   component: YouVersionAuthButton,
   parameters: {
     layout: 'centered',
+    msw: {
+      handlers: [
+        http.get('*/v1/fonts/1/stylesheet', () =>
+          HttpResponse.text('', { headers: { 'Content-Type': 'text/css' } }),
+        ),
+      ],
+    },
   },
   tags: ['autodocs'],
   async beforeEach() {
@@ -73,6 +81,20 @@ const meta = {
 export default meta;
 
 type Story = StoryObj<typeof meta>;
+
+async function findAuthButton(
+  canvasElement: HTMLElement,
+  name: RegExp,
+): Promise<HTMLButtonElement> {
+  return waitFor(() => {
+    const host = canvasElement.querySelector<HTMLElement>('[data-yv-shadow-host]');
+    const button = Array.from(host?.shadowRoot?.querySelectorAll('button') ?? []).find(
+      (candidate) => name.test(candidate.textContent ?? ''),
+    );
+    if (!button) throw new Error(`auth button matching ${name} not found`);
+    return button;
+  });
+}
 
 export const Default: Story = {};
 
@@ -271,10 +293,8 @@ export const InteractionTestWithMockedAuth: Story = {
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
     // Wait for the auth provider to load and the button to appear
-    const loginButton = await canvas.findByRole('button', { name: /sign in with youversion/i });
+    const loginButton = await findAuthButton(canvasElement, /sign in with youversion/i);
     await userEvent.click(loginButton);
 
     void expect(signInMock).toHaveBeenCalled();
@@ -288,10 +308,8 @@ export const CustomText: Story = {
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
     // Wait for the auth provider to load and the button to appear
-    const loginButton = await canvas.findByRole('button', { name: /custom text/i });
+    const loginButton = await findAuthButton(canvasElement, /custom text/i);
     await userEvent.click(loginButton);
 
     void expect(signInMock).toHaveBeenCalled();

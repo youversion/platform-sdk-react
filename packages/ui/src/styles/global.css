@@ -54,6 +54,37 @@ layer(yv-sdk-fonts);
 
 @source '../components';
 
+/* The light-DOM shadow host remains selectable by the consumer page. Prevent
+   hostile host-page rules from generating content around the isolated SDK UI.
+   For !important declarations on a shadow host, the shadow-tree declaration
+   outranks an outer author declaration by design. */
+:host::before,
+:host::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* A shadow-local portal container can enter the native top layer without
+   becoming a full-screen hit target itself. Its Radix-owned children remain
+   interactive while the zero-sized container only supplies tree scope. */
+[data-yv-shadow-local-overlay] {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inline-size: 0;
+  block-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
+  pointer-events: none;
+}
+
+[data-yv-shadow-local-overlay] > * {
+  pointer-events: auto;
+}
+
 /* Untitled Serif has no @font-face here on purpose. Its stylesheet URL needs the
    consumer's app key, which this file cannot know — it is frozen into __YV_STYLES__ at
    build time. It is loaded instead by <YvFonts /> (src/lib/yv-fonts.tsx), rendered from
@@ -67,6 +98,10 @@ layer(yv-sdk-fonts);
 
 @layer yv-sdk-theme {
   [data-yv-sdk] {
+    /* Keep Tailwind and tw-animate-css spacing independent of host custom properties. */
+    --yv-spacing: 0.25rem;
+    --spacing: var(--yv-spacing);
+
     @theme inline {
       /* Untitled Serif is the brand serif, loaded from the gated Fonts API stylesheet
          endpoint by <YvFonts /> — see docs/adr/0004-adopt-untitled-serif-via-fonts-api.md.
@@ -96,10 +131,23 @@ layer(yv-sdk-fonts);
       --color-border: var(--yv-border);
       --color-input: var(--yv-input);
       --color-ring: var(--yv-ring);
+      --color-chart-1: var(--yv-chart-1);
+      --color-chart-2: var(--yv-chart-2);
+      --color-chart-3: var(--yv-chart-3);
+      --color-chart-4: var(--yv-chart-4);
+      --color-chart-5: var(--yv-chart-5);
       --radius-sm: calc(var(--yv-radius) - 4px);
       --radius-md: calc(var(--yv-radius) - 2px);
       --radius-lg: var(--yv-radius);
       --radius-xl: calc(var(--yv-radius) + 4px);
+      --color-sidebar: var(--yv-sidebar);
+      --color-sidebar-foreground: var(--yv-sidebar-foreground);
+      --color-sidebar-primary: var(--yv-sidebar-primary);
+      --color-sidebar-primary-foreground: var(--yv-sidebar-primary-foreground);
+      --color-sidebar-accent: var(--yv-sidebar-accent);
+      --color-sidebar-accent-foreground: var(--yv-sidebar-accent-foreground);
+      --color-sidebar-border: var(--yv-sidebar-border);
+      --color-sidebar-ring: var(--yv-sidebar-ring);
     }
   }
 }
@@ -114,6 +162,18 @@ layer(yv-sdk-fonts);
      `@utility card-content` only sets width / max-width (not in the revert list). */
   .yv\:card-content {
     margin-inline: auto;
+  }
+}
+
+/* Verse selection — an underline under the selected verse's text. Sits in the
+   bible-reader layer alongside the `.yv-v` verse structure. Highlight fills are
+   applied as inline styles in verse.tsx (per-verse color), so they aren't here. */
+@layer yv-sdk-bible-reader {
+  [data-yv-sdk] .yv-v-selected {
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 2px;
+    text-decoration-color: var(--yv-foreground);
   }
 }
 
