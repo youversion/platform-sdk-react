@@ -31,6 +31,7 @@ extract_step() {
 
 extract_step "Resolve PR context" > "$TMP/context.sh"
 extract_step "Restore release tooling from the base branch" > "$TMP/restore-tooling.sh"
+extract_step "Compute release preview" > "$TMP/preview.sh"
 extract_step "Decide whether a signoff is required" > "$TMP/decision.sh"
 extract_step "Regenerate and verify release contents" > "$TMP/verify.sh"
 
@@ -337,14 +338,105 @@ else
   fail "generated release identity always stays out of the ordinary preview" "preview does not use generated release identity"
 fi
 
-if grep -Fq 'BASE_SHA: ${{ needs.context.outputs.base_sha }}' "$WORKFLOW" &&
-  grep -Fq 'git fetch --no-tags --force origin "$BASE_SHA"' "$WORKFLOW" &&
-  grep -Fq 'BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA")' "$WORKFLOW"; then
-  pass "stacked PR previews compare only changes introduced after their base"
-else
-  fail "stacked PR previews compare only changes introduced after their base" \
-    "preview does not use the immutable PR base/head merge base"
-fi
+PREVIEW_REMOTE="$TMP/preview-remote.git"
+PREVIEW_REPO="$TMP/preview-repo"
+git init --quiet --bare "$PREVIEW_REMOTE"
+git init --quiet "$PREVIEW_REPO"
+git -C "$PREVIEW_REPO" config commit.gpgsign false
+git -C "$PREVIEW_REPO" config user.name test
+git -C "$PREVIEW_REPO" config user.email test@example.com
+git -C "$PREVIEW_REPO" remote add origin "$PREVIEW_REMOTE"
+mkdir -p "$PREVIEW_REPO/scripts" "$PREVIEW_REPO/.changeset" \
+  "$PREVIEW_REPO/packages/core" "$PREVIEW_REPO/packages/hooks" "$PREVIEW_REPO/packages/ui"
+cp "$ROOT/scripts/preview-release.mjs" "$PREVIEW_REPO/scripts/preview-release.mjs"
+cp "$ROOT/.changeset/config.json" "$PREVIEW_REPO/.changeset/config.json"
+cat > "$PREVIEW_REPO/package.json" <<'EOF'
+{"name":"preview-fixture","private":true,"packageManager":"pnpm@11.10.0"}
+EOF
+cat > "$PREVIEW_REPO/pnpm-workspace.yaml" <<'EOF'
+packages:
+  - "packages/*"
+EOF
+for package in core hooks ui; do
+  case "$package" in
+    core) name='@youversion/platform-core' ;;
+    hooks) name='@youversion/platform-react-hooks' ;;
+    ui) name='@youversion/platform-react-ui' ;;
+  esac
+  printf '{"name":"%s","version":"1.0.0"}\n' "$name" > "$PREVIEW_REPO/packages/$package/package.json"
+done
+git -C "$PREVIEW_REPO" add -A
+git -C "$PREVIEW_REPO" commit --quiet -m main
+git -C "$PREVIEW_REPO" branch -M main
+git -C "$PREVIEW_REPO" push --quiet origin main
+
+git -C "$PREVIEW_REPO" switch --quiet -c target
+cat > "$PREVIEW_REPO/.changeset/target-major.md" <<'EOF'
+---
+"@youversion/platform-core": major
+---
+
+Major change inherited from the target branch.
+EOF
+git -C "$PREVIEW_REPO" add -A
+git -C "$PREVIEW_REPO" commit --quiet -m 'target major'
+git -C "$PREVIEW_REPO" push --quiet origin target
+PREVIEW_BASE_SHA=$(git -C "$PREVIEW_REPO" rev-parse HEAD)
+
+git -C "$PREVIEW_REPO" switch --quiet -c pr
+printf 'non-major PR change\n' > "$PREVIEW_REPO/README.md"
+git -C "$PREVIEW_REPO" add README.md
+git -C "$PREVIEW_REPO" commit --quiet -m 'non-major PR change'
+git -C "$PREVIEW_REPO" push --quiet origin pr
+ln -s "$ROOT/node_modules" "$PREVIEW_REPO/node_modules"
+PREVIEW_BIN="$TMP/preview-bin"
+mkdir "$PREVIEW_BIN"
+cat > "$PREVIEW_BIN/pnpm" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+[ "\$1" = exec ] && [ "\$2" = changeset ] && [ "\$3" = status ]
+output=\${4#--output=}
+printf '%s\n' \
+  '{"releases":[{"name":"@youversion/platform-core","type":"major","oldVersion":"1.0.0","newVersion":"2.0.0"}]}' \
+  > "\$output"
+EOF
+chmod +x "$PREVIEW_BIN/pnpm"
+
+run_preview_case() {
+  local name="$1" expected_introduced="$2" expected_output="$3"
+  local output="$TMP/preview-output"
+  local error="$TMP/preview-error"
+  local preview="$PREVIEW_REPO/preview.json"
+  local head_sha
+  head_sha=$(git -C "$PREVIEW_REPO" rev-parse HEAD)
+  : > "$output"
+  rm -f "$preview"
+  if (cd "$PREVIEW_REPO" && \
+    PATH="$PREVIEW_BIN:$PATH" BASE_SHA="$PREVIEW_BASE_SHA" HEAD_SHA="$head_sha" \
+    GITHUB_OUTPUT="$output" \
+    bash "$TMP/preview.sh") >/dev/null 2> "$error" &&
+    jq -e ".introduced_major == $expected_introduced" "$preview" >/dev/null &&
+    grep -Fxq "is_major=$expected_output" "$output"; then
+    pass "$name"
+  else
+    fail "$name" \
+      "expected introduced_major=$expected_introduced and is_major=$expected_output; preview: $(cat "$preview" 2>/dev/null || true); output: $(tr '\n' ' ' < "$output"); error: $(tr '\n' ' ' < "$error")"
+  fi
+}
+
+run_preview_case "stacked PRs ignore a major inherited from their target branch" false 0
+
+cat > "$PREVIEW_REPO/.changeset/pr-major.md" <<'EOF'
+---
+"@youversion/platform-react-ui": major
+---
+
+Major change introduced by the pull request.
+EOF
+git -C "$PREVIEW_REPO" add .changeset/pr-major.md
+git -C "$PREVIEW_REPO" commit --quiet -m 'PR major'
+git -C "$PREVIEW_REPO" push --quiet origin pr
+run_preview_case "stacked PRs require signoff for a newly introduced major" true 1
 
 if grep -Fq 'Generated release PR; major signoff is enforced on source PRs.' "$WORKFLOW"; then
   pass "generated releases publish an explicit lifecycle-aware success"
