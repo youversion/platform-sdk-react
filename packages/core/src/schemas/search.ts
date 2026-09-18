@@ -3,10 +3,14 @@ import { parseUsfmReference } from '../usfm-reference';
 
 export const MAX_SEARCH_QUERY_GRAPHEMES = 100;
 
-const searchTextSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+let searchTextSegmenter: Intl.Segmenter | undefined;
 
-/** Truncates search text to the API limit without splitting a user-perceived character. */
+/** Truncates to 100 graphemes, or Unicode code points when Intl.Segmenter is unavailable. */
 export function clampSearchText(raw: string): string {
+  if (Intl.Segmenter === undefined) {
+    return Array.from(raw).slice(0, MAX_SEARCH_QUERY_GRAPHEMES).join('');
+  }
+  searchTextSegmenter ??= new Intl.Segmenter(undefined, { granularity: 'grapheme' });
   const segments = searchTextSegmenter.segment(raw)[Symbol.iterator]();
   let end = 0;
   for (let count = 0; count < MAX_SEARCH_QUERY_GRAPHEMES; count += 1) {

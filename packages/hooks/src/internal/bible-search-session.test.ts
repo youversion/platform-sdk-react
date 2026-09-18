@@ -141,9 +141,17 @@ describe('searchSessionReducer', () => {
     });
   });
 
-  it('submit returns the same object when that query is already submitted', () => {
-    const state = submitted('love');
-    expect(searchSessionReducer(state, { type: 'submit' })).toBe(state);
+  it('resubmission clears pages and refreshes whitespace-only suggestion text', () => {
+    const state = withPages(submitted('love'), ['JHN.3.16']);
+    expect(searchSessionReducer(state, { type: 'submit' })).toEqual({
+      versionId: 111,
+      raw: 'love',
+      normalized: 'love',
+      lane: { kind: 'submitted', query: 'love', pages: [], wantsMore: false },
+    });
+    expect(searchSessionReducer(state, { type: 'selectSuggestion', text: ' love ' })).toMatchObject(
+      { raw: ' love ', normalized: 'love', lane: { pages: [] } },
+    );
   });
 
   it('selectSuggestion fills the input and submits in one transition', () => {

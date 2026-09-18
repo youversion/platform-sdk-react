@@ -68,6 +68,45 @@ function createSearchFixture() {
 }
 
 describe('useBibleSearch', () => {
+  it('resubmits failed and empty searches without replaying cached pages or duplicating an in-flight request', async () => {
+    const fixture = createSearchFixture();
+    let finishRetry!: (page: SearchVersesResponse) => void;
+    fixture.mockSearchVerses
+      .mockRejectedValueOnce(new Error('unavailable'))
+      .mockResolvedValueOnce(versesPage([], null))
+      .mockImplementationOnce(
+        () =>
+          new Promise<SearchVersesResponse>((resolve) => {
+            finishRetry = resolve;
+          }),
+      );
+    const { result } = renderHook(() => useBibleSearch({ versionId: 111 }), {
+      wrapper: fixture.wrapper,
+    });
+    act(() => result.current.selectSuggestion('love'));
+    await waitFor(() => expect(result.current.phase.kind).toBe('failed'));
+    act(() => result.current.submit());
+    await waitFor(() => expect(result.current.phase.kind).toBe('empty'));
+    expect(fixture.mockSearchVerses).toHaveBeenCalledTimes(2);
+    act(() => result.current.submit());
+    expect(result.current.phase.kind).toBe('searching');
+    await waitFor(() => expect(fixture.mockSearchVerses).toHaveBeenCalledTimes(3));
+    act(() => result.current.submit());
+    act(() => result.current.selectSuggestion(' love '));
+    expect(result.current.query).toBe(' love ');
+    expect(result.current.phase.kind).toBe('searching');
+    expect(fixture.mockSearchVerses).toHaveBeenCalledTimes(3);
+    await act(async () => finishRetry(versesPage(['JHN.3.16'], null)));
+    await waitFor(() =>
+      expect(result.current.phase).toMatchObject({
+        kind: 'results',
+        verses: [{ id: 'JHN.3.16' }],
+        nextPage: 'none',
+      }),
+    );
+    expect(fixture.mockGetSuggestedQueries).not.toHaveBeenCalled();
+  });
+
   it('replaces a failed continuation with loading immediately when the book filter changes', async () => {
     const fixture = createSearchFixture();
     let finishPage!: (page: SearchVersesResponse) => void;

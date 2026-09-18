@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useReducer } from 'react';
+import { useCallback, useEffect, useReducer, useState } from 'react';
 import { parseSearchLanguageRange, type SearchVersesOptions } from '@youversion/platform-core';
 import { useApiData } from './useApiData';
 import { useHookOverride } from './useHookOverride';
@@ -12,8 +12,10 @@ import {
   EMPTY_QUERY,
   SEARCH_SUGGESTION_DEBOUNCE_MS,
   SEARCH_VERSES_PAGE_SIZE,
+  clampSearchInput,
   createSearchSession,
   deriveSearchPhase,
+  normalizeQuery,
   queriesRequest,
   searchSessionReducer,
   versesRequest,
@@ -47,6 +49,7 @@ export function useBibleSearch(props: UseBibleSearchProps): UseBibleSearchResult
   const client = useSearchClient();
   const keyBase = useQueryKeyBase();
   const [session, dispatch] = useReducer(searchSessionReducer, versionId, createSearchSession);
+  const [submission, setSubmission] = useState(0);
 
   useEffect(() => {
     dispatch({ type: 'setVersion', versionId });
@@ -61,10 +64,7 @@ export function useBibleSearch(props: UseBibleSearchProps): UseBibleSearchResult
       languageRanges = '*';
     }
   }
-  const debounced = useDebounce(
-    session.lane.kind === 'submitted' ? null : session.normalized,
-    SEARCH_SUGGESTION_DEBOUNCE_MS,
-  );
+  const debounced = useDebounce(session.normalized, SEARCH_SUGGESTION_DEBOUNCE_MS);
   const settled = session.normalized === EMPTY_QUERY ? EMPTY_QUERY : debounced;
   const qReq = queriesRequest(session, settled);
   const suggestQuery = qReq?.kind === 'suggest' ? qReq.query : '';
@@ -93,6 +93,7 @@ export function useBibleSearch(props: UseBibleSearchProps): UseBibleSearchResult
       vReq?.query ?? '',
       vReq?.pageToken ?? '',
       props.bookIds,
+      submission,
     ],
     () => {
       if (vReq === null) {
@@ -120,12 +121,24 @@ export function useBibleSearch(props: UseBibleSearchProps): UseBibleSearchResult
   const setQuery = useCallback((raw: string) => {
     dispatch({ type: 'setQuery', raw });
   }, []);
+  const selectSuggestion = useCallback(
+    (text: string) => {
+      const normalized = normalizeQuery(clampSearchInput(text));
+      if (session.lane.kind === 'submitted' && session.lane.query === normalized) {
+        if (verses.loading) {
+          dispatch({ type: 'setQuery', raw: text });
+          return;
+        }
+        // A deliberate resubmission must not recommit a cached empty or failed search.
+        setSubmission((previous) => previous + 1);
+      }
+      dispatch({ type: 'selectSuggestion', text });
+    },
+    [session.lane, verses.loading],
+  );
   const submit = useCallback(() => {
-    dispatch({ type: 'submit' });
-  }, []);
-  const selectSuggestion = useCallback((text: string) => {
-    dispatch({ type: 'selectSuggestion', text });
-  }, []);
+    selectSuggestion(session.raw);
+  }, [selectSuggestion, session.raw]);
   const loadMore = useCallback(() => {
     dispatch({ type: 'loadMore' });
   }, []);

@@ -17,3 +17,5 @@ Add Old Testament, New Testament, and Both search filters using the selected Bib
 Give search rows inset hover surfaces without shifting content, align initial search and preview spinners, and reveal loaded previews with a short reduced-motion-aware transition. Reuse existing localized empty-state copy and clear stale failures when changing testament filters.
 
 Start testament controls collapsed behind an accessible Filters disclosure. Preserve and indicate active filtering while collapsed, and reset to Both and collapsed on Back or clear. Expand and collapse the controls with an interruptible accordion transition, immediate keyboard toggles, and fade-only reduced motion.
+
+Keep core imports usable without Intl.Segmenter, falling back to Unicode code-point limits for search on those runtimes. Preserve the generic useDebounce delay for null values while suppressing suggestions in submitted searches. Allow Enter to resubmit failed or empty searches without replaying cached pages or duplicating an in-flight request.

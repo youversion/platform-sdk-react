@@ -74,6 +74,25 @@ describe('SearchClient.searchVerses', () => {
     expect(clampSearchText(`${surrogateBoundary}z`)).toBe(surrogateBoundary);
   });
 
+  it('imports core without Intl.Segmenter and clamps fallback input without splitting surrogate pairs', async () => {
+    const nativeSegmenter = Intl.Segmenter;
+    vi.resetModules();
+    Object.defineProperty(Intl, 'Segmenter', { configurable: true, value: undefined });
+    try {
+      const core = await import('../index');
+      expect(core.ApiClient).toBeTypeOf('function');
+      const boundary = `${'a'.repeat(99)}😀`;
+      expect(core.clampSearchText(`${boundary}z`)).toBe(boundary);
+      expect(core.clampSearchText('short')).toBe('short');
+      const { SearchTextQuerySchema: fallbackSchema } = await import('../schemas/search');
+      expect(fallbackSchema.parse(boundary)).toBe(boundary);
+      expect(() => fallbackSchema.parse(`${boundary}z`)).toThrow(/Query must/);
+    } finally {
+      Object.defineProperty(Intl, 'Segmenter', { configurable: true, value: nativeSegmenter });
+      vi.resetModules();
+    }
+  });
+
   it('maps wire reference to SDK id and metadata fields', async () => {
     const searchClient = createSearchClient();
 

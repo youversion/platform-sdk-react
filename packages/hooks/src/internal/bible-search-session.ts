@@ -136,9 +136,6 @@ function submitNormalized(
     }
     return { ...state, raw: '', normalized: EMPTY_QUERY, lane: { kind: 'browsing' } };
   }
-  if (state.lane.kind === 'submitted' && state.lane.query === normalized) {
-    return state;
-  }
   return {
     ...state,
     raw,
