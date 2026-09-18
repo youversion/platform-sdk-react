@@ -53,6 +53,11 @@ export class BibleReaderNavigation {
     for (const listener of this.listeners) listener();
   }
 
+  /** @internal Read without consuming during render; consume only after commit. */
+  peek(): BibleReaderNavigationRequest | null {
+    return this.pending;
+  }
+
   /** @internal */
   consume(): BibleReaderNavigationRequest | null {
     const request = this.pending;

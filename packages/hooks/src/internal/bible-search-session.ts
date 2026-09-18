@@ -55,7 +55,7 @@ export type BibleSearchResult = Readonly<{
   book: string;
   /** Chapter id as a string, matching `BibleReaderContext.setChapter`. */
   chapter: string;
-  /** Expanded, ascending. `JHN.3.16-18` becomes `[16, 17, 18]`. `[]` for a chapter hit. */
+  /** Expanded, ascending. `JHN.3.16-18` becomes `[16, 17, 18]`. Chapter-only hits are omitted. */
   verses: readonly number[];
 }>;
 
@@ -290,7 +290,7 @@ export function projectVerses(hits: readonly SearchVerseHit[]): readonly BibleSe
     }
     seen.add(hit.id);
     const parsed = parseUsfmReference(hit.id);
-    if (parsed === null) {
+    if (parsed === null || parsed.verses.length === 0) {
       continue;
     }
     verses.push({

@@ -149,7 +149,7 @@ export const SearchAndReturn: Story = {
       handlers: [
         http.get('*/v1/search-verses', () =>
           HttpResponse.json({
-            verses: [{ reference: 'JHN.1.51' }],
+            verses: [{ reference: 'JHN.1' }, { reference: 'JHN.1.51' }],
             did_you_mean: [],
             search_instead_for: null,
             next_page_token: null,
@@ -165,6 +165,9 @@ export const SearchAndReturn: Story = {
     await expect(input).toHaveFocus();
     await userEvent.type(input, 'angels{Enter}');
     const result = await screen.findByRole('button', { name: /John 1:51/i });
+    await expect(
+      screen.queryByRole('button', { name: /^John 1(?:\s|$)/i }),
+    ).not.toBeInTheDocument();
     await userEvent.click(result);
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     await waitFor(() => expect(context.canvasElement.querySelector('.yv-v[v="51"]')).toHaveFocus());
@@ -191,7 +194,9 @@ export const EmptyResults: Story = {
   parameters: {
     msw: {
       handlers: [
-        http.get('*/v1/search-verses', () => HttpResponse.json({ verses: [], did_you_mean: [] })),
+        http.get('*/v1/search-verses', () =>
+          HttpResponse.json({ verses: [{ reference: 'JHN.1' }], did_you_mean: [] }),
+        ),
         ...globalHandlers,
       ],
     },

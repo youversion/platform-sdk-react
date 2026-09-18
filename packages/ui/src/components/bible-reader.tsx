@@ -508,23 +508,44 @@ function Root({
   // render as "no highlights", never fall through to the self-contained path.
   const isHighlightsControlled = useHighlightsControlledLatch(highlights, 'BibleReader.Root');
 
-  const [book, setBook] = useControllableState({
+  const [localNavigation] = useState(() => new BibleReaderNavigation());
+  const navigation = navigationProp ?? localNavigation;
+  const [initialNavigation, setInitialNavigation] = useState(() => {
+    const target = navigation.peek();
+    if (
+      target &&
+      !target.scrollsToVerse &&
+      (target.versionId !== (controlledVersionId ?? defaultVersionId) ||
+        target.book !== (controlledBook ?? defaultBook) ||
+        target.chapter !== (controlledChapter ?? defaultChapter))
+    )
+      return null;
+    return target;
+  });
+
+  const [currentBook, setBook] = useControllableState({
     prop: controlledBook,
     defaultProp: defaultBook,
     onChange: onBookChange,
   });
 
-  const [chapter, setChapter] = useControllableState({
+  const [currentChapter, setChapter] = useControllableState({
     prop: controlledChapter,
     defaultProp: defaultChapter,
     onChange: onChapterChange,
   });
 
-  const [versionId, setVersionId] = useControllableState({
+  const [currentVersionId, setVersionId] = useControllableState({
     prop: controlledVersionId,
     defaultProp: defaultVersionId,
     onChange: onVersionChange,
   });
+
+  // Show the queued destination on the first render without consuming it during
+  // render. Controlled values still belong to the host; Content waits for them.
+  const book = controlledBook ?? initialNavigation?.book ?? currentBook;
+  const chapter = controlledChapter ?? initialNavigation?.chapter ?? currentChapter;
+  const versionId = controlledVersionId ?? initialNavigation?.versionId ?? currentVersionId;
 
   const validatedDefaultFontSize =
     defaultFontSize > MAX_FONT_SIZE || defaultFontSize < MIN_FONT_SIZE
@@ -647,14 +668,28 @@ function Root({
   const { books, loading: booksLoading } = useBooks(versionId);
   const booksData = books?.data ?? [];
 
-  const [verseFocus, setVerseFocus] = useState<VerseFocusRequest | null>(null);
+  const [verseFocus, setVerseFocus] = useState<VerseFocusRequest | null>(() =>
+    initialNavigation ? { ...initialNavigation, seq: 0 } : null,
+  );
+  const [activatedFocus, setActivatedFocus] = useState<VerseFocusRequest | null>(null);
+  const atFocusDestination =
+    verseFocus?.versionId === versionId &&
+    verseFocus.book === book &&
+    verseFocus.chapter === chapter;
+  if (verseFocus !== null && atFocusDestination && activatedFocus !== verseFocus) {
+    setActivatedFocus(verseFocus);
+  } else if (verseFocus !== null && !atFocusDestination && activatedFocus === verseFocus) {
+    // Clear before children render when controlled props leave an activated
+    // destination. A request awaiting its first host round-trip stays pending.
+    setVerseFocus(null);
+    setActivatedFocus(null);
+  }
   const verseFocusSeqRef = useRef(0);
-  const [localNavigation] = useState(() => new BibleReaderNavigation());
-  const navigation = navigationProp ?? localNavigation;
   useEffect(() => {
     const consume = (): void => {
       const target = navigation.consume();
       if (target === null) return;
+      setInitialNavigation(null);
       if (
         !target.scrollsToVerse &&
         (target.versionId !== versionId || target.book !== book || target.chapter !== chapter)
@@ -664,15 +699,17 @@ function Root({
       setVersionId(target.versionId);
       setBook(target.book);
       setChapter(target.chapter);
-      setVerseFocus({
-        ...target,
-        seq: verseFocusSeqRef.current,
-      });
+      if (target !== initialNavigation) {
+        setVerseFocus({
+          ...target,
+          seq: verseFocusSeqRef.current,
+        });
+      }
     };
     const unsubscribe = navigation.subscribe(consume);
     consume();
     return unsubscribe;
-  }, [navigation, versionId, book, chapter, setVersionId, setBook, setChapter]);
+  }, [navigation, initialNavigation, versionId, book, chapter, setVersionId, setBook, setChapter]);
 
   const contextValue: BibleReaderContextType = {
     book,
@@ -780,6 +817,7 @@ function Content() {
     activeNavigation && !activeNavigation.showsFullChapter
       ? activeNavigation.passageId
       : chapterReference;
+  const awaitingNavigation = verseFocus !== null && activeNavigation === null;
 
   // Check if the current chapter is available in this version
   const chapterUnavailable = useMemo(() => {
@@ -792,16 +830,19 @@ function Content() {
   // Own the passage fetch here (instead of BibleTextView) to control the loading
   // treatment. Args mirror BibleTextView's internal fetch so the cache key matches.
   const {
-    passage,
-    loading: passageLoading,
-    error: passageError,
+    passage: fetchedPassage,
+    loading: fetchingPassage,
+    error: fetchedPassageError,
   } = usePassage({
     versionId,
     usfm: usfmReference,
     include_headings: true,
     include_notes: true,
-    options: { enabled: !chapterUnavailable },
+    options: { enabled: !chapterUnavailable && !awaitingNavigation },
   });
+  const passage = awaitingNavigation ? null : fetchedPassage;
+  const passageLoading = awaitingNavigation || fetchingPassage;
+  const passageError = awaitingNavigation ? null : fetchedPassageError;
   const resolvedScriptureDirection = useResolvedScriptureDirection(
     passage?.content,
     scriptureDirection,

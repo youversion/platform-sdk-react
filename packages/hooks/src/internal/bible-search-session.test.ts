@@ -286,13 +286,10 @@ describe('queriesRequest and versesRequest', () => {
 });
 
 describe('projectVerses', () => {
-  it('parses hits, drops malformed ids, and keeps only the first duplicate', () => {
+  it('parses verse hits, drops malformed and chapter-only ids, and keeps only the first duplicate', () => {
     expect(
       projectVerses([{ id: 'JHN.3.16-18' }, { id: 'BAD' }, { id: 'JHN.3.16-18' }, { id: 'JHN.3' }]),
-    ).toEqual([
-      { id: 'JHN.3.16-18', book: 'JHN', chapter: '3', verses: [16, 17, 18] },
-      { id: 'JHN.3', book: 'JHN', chapter: '3', verses: [] },
-    ]);
+    ).toEqual([{ id: 'JHN.3.16-18', book: 'JHN', chapter: '3', verses: [16, 17, 18] }]);
   });
 });
 
@@ -420,14 +417,14 @@ describe('deriveSearchPhase', () => {
   it('maps zero projected hits to empty only when pagination is exhausted', () => {
     expect(
       deriveSearchPhase({
-        session: withPages(submitted('love'), ['BAD']),
+        session: withPages(submitted('love'), ['BAD', 'JHN.3']),
         settled: LOVE,
         ...idle,
       }),
     ).toEqual({ kind: 'searching' });
     expect(
       deriveSearchPhase({
-        session: withPages(submitted('love'), ['BAD'], null),
+        session: withPages(submitted('love'), ['BAD', 'JHN.3'], null),
         settled: LOVE,
         ...idle,
       }),
