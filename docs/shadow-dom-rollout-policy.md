@@ -35,8 +35,10 @@ boundary. Runtime feature flags and a phased-release framework are unnecessary.
 
 ## Public component boundary
 
-The inventory follows `packages/ui/src/components/index.ts`. Types, constants,
-and helper functions are not component rollout targets.
+The inventory follows the package's public entrypoint,
+`packages/ui/src/index.ts`, with `packages/ui/src/components/index.ts` as its
+primary component barrel. Types, constants, and helper functions are not
+component rollout targets.
 
 | Public export | Disposition | Automatic boundary | Required implementation or reason |
 | --- | --- | --- | --- |
@@ -109,7 +111,6 @@ exported function. Each ticket links to YPE-5356 and this policy.
    - Add stylesheet construction and adoption failure recovery.
    - Preserve the per-document stylesheet cache, owner-document behavior,
      Strict Mode lifecycle, and the existing open-root contract.
-   - Depend on YPE-5889/PR 414 for the known focus-restoration correction.
 2. **YPE-5948: Leaf and standalone content components**
    - Roll out `ProfileAvatar`, `Separator`, `FootnoteContent`, and standalone
      `BibleThemeSettingsContent`.
