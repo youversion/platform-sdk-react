@@ -10,6 +10,7 @@ import type { UseLanguageResult } from './useLanguage';
 import type { UseLanguagesResult } from './useLanguages';
 import type { UseOrganizationsResult } from './useOrganizations';
 import type { UsePassageProps, UsePassageResult } from './usePassage';
+import type { UseBibleSearchProps, UseBibleSearchResult } from './useBibleSearch';
 import type { UseVersionResult } from './useVersion';
 import type { UseVersionsOptions, UseVersionsResult } from './useVersions';
 import type { UseVerseOfTheDayResult } from './useVOTD';
@@ -39,6 +40,7 @@ export type HookOverrides = {
   ) => UseLanguagesResult;
   useOrganizations?: (organizationIds: (string | null | undefined)[]) => UseOrganizationsResult;
   usePassage?: (props: UsePassageProps) => UsePassageResult;
+  useBibleSearch?: (props: UseBibleSearchProps) => UseBibleSearchResult;
   useTheme?: () => 'light' | 'dark';
   useVersion?: (versionId: number, options?: UseApiDataOptions) => UseVersionResult;
   useVersions?: (

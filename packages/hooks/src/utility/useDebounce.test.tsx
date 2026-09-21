@@ -92,4 +92,45 @@ describe('useDebounce', () => {
 
     expect(result.current).toBe('updated');
   });
+
+  it('debounces null like any other value and cancels it when superseded', () => {
+    type NullableProps = { value: string | null };
+    const { result, rerender } = renderHook<string | null, NullableProps>(
+      ({ value }) => useDebounce(value, 500),
+      { initialProps: { value: 'love' } },
+    );
+
+    rerender({ value: null });
+    expect(result.current).toBe('love');
+    act(() => {
+      vi.advanceTimersByTime(499);
+    });
+    expect(result.current).toBe('love');
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(result.current).toBeNull();
+
+    rerender({ value: 'loved' });
+    expect(result.current).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(result.current).toBe('loved');
+    rerender({ value: null });
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    rerender({ value: 'hope' });
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(result.current).toBe('loved');
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(result.current).toBe('hope');
+  });
 });
