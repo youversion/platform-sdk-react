@@ -45,6 +45,7 @@
     },
     "test:watch": {
       "dependsOn": ["build"],
+      "env": ["INTEGRATION_TESTS", "YVP_APP_KEY", "YVP_API_HOST"],
       "cache": false,
       "persistent": true
     },
