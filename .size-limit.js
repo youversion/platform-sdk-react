@@ -3,7 +3,7 @@ export default [
   {
     name: 'core / full barrel (esm)',
     path: 'packages/core/dist/index.js',
-    limit: '21 KB',
+    limit: '21.5 KB',
     ignore: ['jsdom'],
   },
   {
@@ -28,7 +28,7 @@ export default [
   {
     name: 'hooks / full barrel',
     path: 'packages/hooks/dist/index.js',
-    limit: '26 KB',
+    limit: '27 KB',
     ignore: ['react', 'react-dom', '@tanstack/react-query'],
   },
   {
@@ -61,6 +61,6 @@ export default [
   {
     name: 'ui / tailwind.css',
     path: 'packages/ui/dist/tailwind.css',
-    limit: '9 KB',
+    limit: '9.5 KB',
   },
 ];

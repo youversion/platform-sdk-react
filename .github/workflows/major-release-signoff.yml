@@ -217,6 +217,10 @@ jobs:
                      pnpm-workspace.yaml .changeset/config.json; do
               git cat-file -e "main:$f" 2>/dev/null && git checkout main -- "$f"
             done
+            # Frozen installs validate every workspace manifest against the base lockfile.
+            # Remove PR-only manifests and restore base manifests, including PR deletions.
+            # Keep PR changesets as data; never resolve PR-owned dependencies for tooling.
+            git restore --source=main --staged --worktree -- ':(glob)**/package.json'
             # Install hooks a PR could add to rewrite what we just restored. Take main's, or
             # remove it outright: leaving a PR-authored one hands back the control.
             for f in .npmrc .pnpmfile.cjs; do

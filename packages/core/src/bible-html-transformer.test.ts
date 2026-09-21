@@ -84,6 +84,36 @@ describe('transformBibleHtml - intro chapter footnotes', () => {
 });
 
 describe('transformBibleHtml - verse wrapping', () => {
+  it('assigns poetry continuation lines to their verse without swallowing headings or the next verse', () => {
+    const html = `<div>
+      <div class="d"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>A Psalm of David.</div>
+      <div class="q1">The Lord is my shepherd;</div>
+      <div class="q2">I shall not want.</div>
+      <div class="q1"><span class="yv-v" v="2"></span><span class="yv-vlbl">2</span>He makes me lie down</div>
+      <div class="q2">beside quiet waters.</div>
+      <div class="s1">A heading</div>
+      <div class="q1"><span class="yv-v" v="3"></span><span class="yv-vlbl">3</span>He restores my soul.</div>
+      <div class="q2">He guides me.</div>
+    </div>`;
+    const result = transformBibleHtml(html, createAdapters());
+    const doc = new DOMParser().parseFromString(result.html, 'text/html');
+    expect(
+      [...doc.querySelectorAll('.yv-v[v]')].map((node) => [
+        node.getAttribute('v'),
+        node.textContent?.trim(),
+      ]),
+    ).toEqual([
+      ['1', '1\u00a0A Psalm of David.'],
+      ['1', 'The Lord is my shepherd;'],
+      ['1', 'I shall not want.'],
+      ['2', '2\u00a0He makes me lie down'],
+      ['2', 'beside quiet waters.'],
+      ['3', '3\u00a0He restores my soul.'],
+      ['3', 'He guides me.'],
+    ]);
+    expect(doc.querySelector('.s1')?.closest('.yv-v')).toBeNull();
+  });
+
   it('should wrap verse content in .yv-v[v] elements', () => {
     const html = `
       <div>
@@ -141,6 +171,16 @@ describe('transformBibleHtml - addNbspToVerseLabels', () => {
     const label = doc.querySelector('.yv-vlbl');
     expect(label).not.toBeNull();
     expect(label!.textContent).toContain('\u00A0');
+  });
+
+  it('adds non-breaking space after alternate verse labels', () => {
+    const result = transformBibleHtml(
+      '<div><div class="p"><span class="yv-v" v="2"></span><span class="va">2a</span>Text.</div></div>',
+      createAdapters(),
+    );
+
+    const doc = new DOMParser().parseFromString(result.html, 'text/html');
+    expect(doc.querySelector('.va')?.textContent).toBe('2a\u00A0');
   });
 
   it('should not duplicate non-breaking space if already present', () => {
@@ -414,6 +454,20 @@ describe('transformBibleHtml - sanitization', () => {
 });
 
 describe('transformBibleHtml - idempotency', () => {
+  it('backfills alternate labels in marked legacy output without changing existing spacing or anchors', () => {
+    const html =
+      '<div data-yv-transformed dir="rtl"><span class="yv-v" v="2"><span class="yv-vlbl">2&nbsp;</span><span class="va">2a</span>Text<span data-verse-footnote="2" data-verse-footnote-content="A note"></span></span></div>' +
+      '<span class="va" data-yv-transformed dir="rtl">3a</span>';
+    const first = transformBibleHtml(html, createAdapters());
+
+    expect(first.html).toBe(
+      '<div data-yv-transformed="" dir="rtl"><span class="yv-v" v="2"><span class="yv-vlbl">2&nbsp;</span><span class="va">2a&nbsp;</span>Text<span data-verse-footnote="2" data-verse-footnote-content="A note"></span></span></div>' +
+        '<span class="va" data-yv-transformed="" dir="rtl">3a&nbsp;</span>',
+    );
+    expect(first.direction).toBe('rtl');
+    expect(transformBibleHtml(first.html, createAdapters())).toEqual(first);
+  });
+
   it('should add data-yv-transformed marker after transforming', () => {
     const html =
       '<div><div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Text.</div></div>';
