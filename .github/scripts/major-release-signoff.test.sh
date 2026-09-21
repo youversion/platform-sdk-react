@@ -33,6 +33,9 @@ extract_step "Resolve PR context" > "$TMP/context.sh"
 extract_step "Decide whether a signoff is required" > "$TMP/decision.sh"
 extract_step "Regenerate and verify release contents" > "$TMP/verify.sh"
 
+# The context step backs off between retries; real delays would add ~9s per error case.
+export RETRY_BACKOFF_SECONDS=0
+
 mkdir "$TMP/bin"
 cat > "$TMP/bin/gh" <<'EOF'
 #!/usr/bin/env bash
