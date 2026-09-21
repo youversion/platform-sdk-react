@@ -1,15 +1,32 @@
 import * as z from 'zod/mini';
+import { parseUsfmReference } from '../usfm-reference';
+
+export const MAX_SEARCH_QUERY_GRAPHEMES = 100;
+
+let searchTextSegmenter: Intl.Segmenter | undefined;
+
+/** Truncates to 100 graphemes, or Unicode code points when Intl.Segmenter is unavailable. */
+export function clampSearchText(raw: string): string {
+  if (Intl.Segmenter === undefined) {
+    return Array.from(raw).slice(0, MAX_SEARCH_QUERY_GRAPHEMES).join('');
+  }
+  searchTextSegmenter ??= new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+  const segments = searchTextSegmenter.segment(raw)[Symbol.iterator]();
+  let end = 0;
+  for (let count = 0; count < MAX_SEARCH_QUERY_GRAPHEMES; count += 1) {
+    const next = segments.next();
+    if (next.done) {
+      return raw;
+    }
+    end = next.value.index + next.value.segment.length;
+  }
+  return raw.slice(0, end);
+}
 
 /** Known Platform Search user-intent values. Unknown wire strings remain valid. */
 export const KNOWN_SEARCH_USER_INTENTS = ['unknown', 'topical', 'text', 'reference'] as const;
 
 export type KnownSearchUserIntent = (typeof KNOWN_SEARCH_USER_INTENTS)[number];
-
-/**
- * Dot-separated USFM passage id for search hits (`BOOK.CHAPTER[.VERSE[-VERSE]]`).
- * Structural only: book codes are not checked against {@link BOOK_IDS}.
- */
-const USFM_REFERENCE_PATTERN = /^([A-Z0-9]{1,3})\.(\d+)(?:\.(\d+)(?:-(\d+))?)?$/;
 
 /**
  * Structural USFM reference check for search verse hits.
@@ -22,31 +39,7 @@ const USFM_REFERENCE_PATTERN = /^([A-Z0-9]{1,3})\.(\d+)(?:\.(\d+)(?:-(\d+))?)?$/
  * (for example `ZZZ.1.1`) so bad hits drop without throwing while good hits stay.
  */
 export function isValidStructuralUsfmReference(usfm: string): boolean {
-  const match = USFM_REFERENCE_PATTERN.exec(usfm);
-  if (!match) {
-    return false;
-  }
-
-  const chapter = Number(match[2]);
-  if (!Number.isInteger(chapter) || chapter <= 0) {
-    return false;
-  }
-
-  if (match[3] !== undefined) {
-    const verse = Number(match[3]);
-    if (!Number.isInteger(verse) || verse <= 0) {
-      return false;
-    }
-  }
-
-  if (match[4] !== undefined) {
-    const verseEnd = Number(match[4]);
-    if (!Number.isInteger(verseEnd) || verseEnd <= 0) {
-      return false;
-    }
-  }
-
-  return true;
+  return parseUsfmReference(usfm) !== null;
 }
 
 /** Normalizes caller language ranges for search endpoints (`en_US` → `en-us`). */
@@ -246,14 +239,15 @@ export function toSearchTopicsResponse(wire: SearchTopicsWire): SearchTopicsResp
   };
 }
 
-/** Input validation for verse/topic search queries (1–100 characters). */
-export const SearchTextQuerySchema = z
-  .string()
-  .check(
-    z.trim(),
-    z.minLength(1, 'Query must be between 1 and 100 characters'),
-    z.maxLength(100, 'Query must be between 1 and 100 characters'),
-  );
+/** Input validation for verse/topic search queries (1–100 grapheme clusters). */
+export const SearchTextQuerySchema = z.string().check(
+  z.trim(),
+  z.minLength(1, 'Query must be between 1 and 100 characters'),
+  z.refine(
+    (value) => clampSearchText(value) === value,
+    'Query must be between 1 and 100 characters',
+  ),
+);
 
 /** Input validation for suggested-query partial text (non-empty). */
 export const SuggestedSearchQuerySchema = z

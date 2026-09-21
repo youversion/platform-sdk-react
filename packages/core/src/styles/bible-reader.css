@@ -70,9 +70,10 @@
   /* Verse labels */
   & .verse > .label,
   & .fv,
-  & .yv-vlbl {
+  & .yv-vlbl,
+  & .va {
     display: inline;
-    font-size: 0.65em;
+    font-size: calc(var(--yv-reader-font-size) * 0.65);
     color: var(--yv-muted-foreground);
     line-height: 1em;
     vertical-align: baseline;
@@ -81,18 +82,21 @@
     white-space: nowrap;
   }
 
-  &[data-show-verse-numbers='false'] .yv-vlbl {
+  &[data-show-verse-numbers='false'] .yv-vlbl,
+  &[data-show-verse-numbers='false'] .va {
     display: none;
   }
 
-  & .yv-vlbl {
+  & .yv-vlbl,
+  & .va {
     font-family: var(--yv-font-sans);
   }
 
-  /* When content hasn't been JS-transformed, add spacing after verse labels via CSS.
-     Transformed HTML already has a \u00A0 inserted by addNbspToVerseLabels(). */
-  &:not(:has([data-yv-transformed])) .yv-vlbl::after {
-    content: "\00A0";
+  /* Raw labels need CSS spacing even beside transformed fragments. Labels on or
+     inside a transformed root already have a NBSP from addNbspToVerseLabels(). */
+  & .yv-vlbl:not([data-yv-transformed], [data-yv-transformed] *)::after,
+  & .va:not([data-yv-transformed], [data-yv-transformed] *)::after {
+    content: '\00A0';
   }
 
   /* \f - Footnote container (YouVersion wrapper) */
@@ -119,6 +123,7 @@
   /* Prevent verse label from wrapping away from first word */
   & .verse > .label + .content,
   & .yv-vlbl + .content,
+  & .va + .content,
   & .fv + .content {
     white-space: normal;
   }
@@ -169,6 +174,12 @@
     text-underline-offset: 0.33em;
   }
 
+  /* Search-driven transient focus. Dim the rest of the chapter. */
+  &[data-yv-verse-focus] .yv-v:not(.yv-v-focused),
+  &[data-yv-verse-focus] .yv-h {
+    opacity: 0.35;
+  }
+
   /* Demo highlighted verse styling 20% opacity of expressive yellow 30 */
   & .yv-v.yv-v-highlighted {
     background-color: rgba(241, 156, 51, 0.2);
@@ -181,24 +192,37 @@
      TITLES — Major Book Titles
      ============================================================ */
 
-  /* \mt, \mt1 - Main title (level 1) — FontSize 20, Bold, Center */
-  & .mt,
-  & .mt1 {
+  /* \mt - Main title */
+  & .mt {
     font-size: 1.6em;
     font-weight: bold;
     line-height: 1.4em;
-    text-align: start; /* Intentionally set as left-aligned per YV standards */
+    text-align: start;
     margin: 1em 0 0.25em;
     display: block;
   }
 
-  /* \mt2 - Main title (level 2) — FontSize 16, Italic, Center */
+  /* \mt1 - Main title (level 1) */
+  & .mt1 {
+    font-size: 1.17em;
+    font-weight: 500;
+    text-align: center;
+    margin-block-start: calc(var(--yv-reader-font-size) * 0.25);
+    margin-block-end: calc(var(--yv-reader-font-size) * 0.5);
+    padding-inline: 0;
+    text-indent: 0;
+    display: block;
+  }
+
+  /* \mt2 - Main title (level 2) */
   & .mt2 {
-    font-size: 1.3em;
+    font-size: 1.17em;
+    font-weight: 500;
     font-style: italic;
-    line-height: 1.4em;
-    text-align: start; /* Intentionally set as left-aligned per YV standards */
-    margin: 0.5em 0 0.15em;
+    text-align: center;
+    margin-block-end: calc(var(--yv-reader-font-size) * 0.25);
+    padding-inline: 0;
+    text-indent: 0;
     display: block;
   }
 
@@ -232,32 +256,36 @@
     text-align: center;
   }
 
-  /* \imt1 - Introduction major title (level 1) — unadjusted */
+  /* \imt1 - Introduction major title (level 1) */
   & .imt1 {
     font-size: 1.17em;
     font-weight: bold;
-    line-height: 1.8em;
-    text-align: start; /* Intentionally set as left-aligned per YV standards */
-    margin: 1em 0 0.25em;
+    text-align: center;
+    margin-block-start: var(--yv-reader-font-size);
+    margin-block-end: calc(var(--yv-reader-font-size) * 0.25);
+    padding-inline: 0;
+    text-indent: 0;
     display: block;
   }
 
-  /* \imt2 - Introduction major title (level 2) — FontSize 13, Italic, Center */
+  /* \imt2 - Introduction major title (level 2) */
   & .imt2 {
     font-size: 1.08em;
     font-style: italic;
-    line-height: 1.8em;
-    text-align: start; /* Intentionally set as left-aligned per YV standards */
-    margin: 0.5em 0 0.25em;
+    text-align: center;
+    margin-block-start: calc(var(--yv-reader-font-size) * 0.5);
+    margin-block-end: calc(var(--yv-reader-font-size) * 0.25);
+    padding-inline: 0;
+    text-indent: 0;
     display: block;
   }
 
-  /* \imt3 - Introduction major title (level 3) — FontSize 12, Bold, Center */
+  /* \imt3 - Introduction major title (level 3) */
   & .imt3 {
-    font-weight: bold;
-    line-height: 1.8em;
-    text-align: start; /* Intentionally set as left-aligned per YV standards */
-    margin: 0.15em 0;
+    text-align: center;
+    margin-block: calc(var(--yv-reader-font-size) * 0.15);
+    padding-inline: 0;
+    text-indent: 0;
     display: block;
   }
 
@@ -287,11 +315,13 @@
 
   /* \imte2 - Introduction major title ending (level 2) — FontSize 16, Italic, Center */
   & .imte2 {
-    font-size: 1.3em;
+    font-size: var(--yv-reader-font-size);
     font-style: italic;
-    line-height: 1.4em;
-    text-align: start; /* Intentionally set as left-aligned per YV standards */
-    margin: 0.5em 0 0.15em;
+    text-align: center;
+    margin-block-start: calc(var(--yv-reader-font-size) * 0.5);
+    margin-block-end: calc(var(--yv-reader-font-size) * 0.25);
+    padding-inline: 0;
+    text-indent: 0;
     display: block;
   }
 
@@ -368,22 +398,25 @@
     margin-block-end: 0.5em;
   }
 
-  /* \sr - Section reference range — Bold, Center */
+  /* \sr - Section reference range */
   & .sr {
     display: block;
-    font-weight: bold;
-    line-height: 1.8em;
-    text-align: start; /* Intentionally set as left-aligned per YV standards */
-    margin: 0 0 0.5em;
+    font-weight: 500;
+    text-align: center;
+    margin-block-end: calc(var(--yv-reader-font-size) * 0.25);
+    padding-inline: 0;
+    text-indent: 0;
   }
 
-  /* \r - Parallel passage reference — Italic, Center */
+  /* \r - Parallel passage reference */
   & .r {
     display: block;
     font-style: italic;
-    line-height: 1.8em;
-    text-align: start; /* Intentionally set as left-aligned per YV standards */
-    margin: 0 0 0.5em;
+    text-align: center;
+    margin-block-start: 0;
+    margin-block-end: calc(var(--yv-reader-font-size) * 0.25);
+    padding-inline: 0;
+    text-indent: 0;
   }
 
   /* \sp - Speaker identification */
@@ -436,13 +469,15 @@
     text-indent: 0;
   }
 
-  /* \is1 - Introduction section heading (level 1) — unadjusted */
+  /* \is1 - Introduction section heading (level 1) */
   & .is1 {
     font-size: 1.17em;
     font-weight: bold;
-    line-height: 1.8em;
-    text-align: start; /* Intentionally set as left-aligned per YV standards */
-    margin: 0.5em 0 0.5em 0;
+    text-align: center;
+    margin-block-start: calc(var(--yv-reader-font-size) * 0.5);
+    margin-block-end: calc(var(--yv-reader-font-size) * 0.5);
+    padding-inline: 0;
+    text-indent: 0;
     display: block;
   }
 
@@ -462,14 +497,51 @@
     text-indent: 0;
   }
 
+  /* Headings never inherit a paragraph/list first-line indent. */
+  & .cl,
+  & .d,
+  & .imt,
+  & .imt1,
+  & .imt2,
+  & .imt3,
+  & .imt4,
+  & .imte,
+  & .imte1,
+  & .imte2,
+  & .iot,
+  & .is,
+  & .is1,
+  & .is2,
+  & .mr,
+  & .ms,
+  & .ms1,
+  & .ms2,
+  & .ms3,
+  & .ms4,
+  & .mt,
+  & .mt1,
+  & .mt2,
+  & .pc,
+  & .qc,
+  & .r,
+  & .s,
+  & .s1,
+  & .s2,
+  & .s3,
+  & .s4,
+  & .sr {
+    text-indent: 0;
+  }
+
   & .yv-h.r {
     font-size: 1em;
-    font-weight: normal;
-    line-height: 1.8em;
+    font-weight: 500;
     font-style: italic;
-    text-align: start;
-    margin: 0 0 0.5em 0;
-    display: block;
+    text-align: center;
+    margin-block-start: 0;
+    margin-block-end: calc(var(--yv-reader-font-size) * 0.25);
+    padding-inline: 0;
+    text-indent: 0;
   }
 
   /* ============================================================
@@ -609,7 +681,8 @@
     display: block;
     font-style: italic;
     text-indent: 0;
-    margin: 1em;
+    padding-inline-start: 1em;
+    margin-block: var(--yv-reader-font-size);
   }
 
   /* \ipr - Introduction right-aligned paragraph — Italic, Right, margins */
@@ -721,14 +794,14 @@
   }
 
   & .note .fk {
-    /* \fk - Footnote keyword — Bold + Italic */
+    /* \fk - Footnote keyword — Medium + Italic */
     font-style: italic;
-    font-weight: bold;
+    font-weight: 500;
   }
 
   & .note .fl {
-    /* \fl - Footnote label — Italic + Bold */
-    font-weight: bold;
+    /* \fl - Footnote label — Italic + Medium */
+    font-weight: 500;
     font-style: italic;
   }
 
@@ -777,28 +850,43 @@
 
   /* \bd - Bold text */
   & .bd {
+    font-size: var(--yv-reader-font-size);
     font-weight: bold;
+    font-style: normal;
   }
 
   /* \em - Emphasis text — Italic */
   & .em {
+    font-size: var(--yv-reader-font-size);
+    font-weight: normal;
     font-style: italic;
   }
 
   /* \bdit - Medium-italic text */
   & .bdit {
+    font-size: var(--yv-reader-font-size);
+    font-weight: 500;
+    font-style: italic;
+  }
+
+  /* \fk / \fl - Footnote keyword and label */
+  & .fk,
+  & .fl {
+    font-size: var(--yv-reader-font-size);
     font-weight: 500;
     font-style: italic;
   }
 
   /* \bk - Book name reference — Italic */
   & .bk {
+    font-size: var(--yv-reader-font-size);
+    font-weight: normal;
     font-style: italic;
   }
 
   /* \ord - Ordinal number ending — verse-number metrics */
   & .ord {
-    font-size: 0.65em;
+    font-size: calc(var(--yv-reader-font-size) * 0.65);
     line-height: 1em;
     position: relative;
     vertical-align: baseline;
@@ -807,6 +895,7 @@
 
   /* \pn - Proper name (semantic marker, no special formatting in this reader) */
   & .pn {
+    font-size: var(--yv-reader-font-size);
     font-weight: normal;
     font-style: normal;
   }
@@ -825,7 +914,8 @@
   /* \rq - Inline cross-reference quotation — Italic, smaller */
   & .rq {
     font-style: italic;
-    font-size: 0.8em;
+    font-weight: normal;
+    font-size: calc(var(--yv-reader-font-size) * 0.83);
   }
 
   /* \x - Cross-reference note */
@@ -844,27 +934,48 @@
     * {@see https://docs.usfm.bible/usfm/latest/char/features/add.html}
     */
   & .add {
+    font-size: var(--yv-reader-font-size);
+    font-weight: normal;
     font-style: italic;
   }
 
   /* \it - Italic text, \tl - Transliterated word,
-     \fq / \fqa - Footnote quotation, \sls - Secondary language — Italic */
+     \fq / \fqa - Footnote quotation — Italic */
   & .it,
   & .tl,
   & .fq,
-  & .fqa,
+  & .fqa {
+    font-size: var(--yv-reader-font-size);
+    font-weight: normal;
+    font-style: italic;
+  }
+
+  /* \sls - Secondary language — Italic */
   & .sls {
     font-style: italic;
   }
 
   /* \qt - Quoted text (OT quotation in NT, etc.) — Italic */
   & .qt {
+    font-size: var(--yv-reader-font-size);
+    font-weight: normal;
     font-style: italic;
   }
 
   /* \sig - Signature of the author of a letter/epistle — Italic */
   & .sig {
+    font-size: var(--yv-reader-font-size);
+    font-weight: normal;
     font-style: italic;
+  }
+
+  /* Typography-neutral semantic spans preserve inherited styling. */
+  & .ior,
+  & .ref,
+  & .wg,
+  & .wh,
+  & .xta {
+    font: inherit;
   }
 
   /* \dc - Deuterocanonical/LXX additions — Italic */
@@ -945,11 +1056,15 @@
 
   /* \qs - Selah (character style) */
   & .qs {
+    font-size: var(--yv-reader-font-size);
+    font-weight: normal;
     font-style: italic;
   }
 
   /* \qac - Acrostic letter within a poetic line — Italic */
   & .qac {
+    font-size: var(--yv-reader-font-size);
+    font-weight: normal;
     font-style: italic;
   }
 
@@ -1093,7 +1208,8 @@
   & .po {
     display: block;
     text-indent: 1em;
-    margin-bottom: calc(var(--yv-reader-font-size) * 0.5);
+    margin-block-start: calc(var(--yv-reader-font-size) * 0.25);
+    margin-block-end: calc(var(--yv-reader-font-size) * 0.25);
   }
 
   /* \ph - Indented paragraph with hanging indent (deprecated, use \li) */
@@ -1130,19 +1246,25 @@
      LISTS
      ============================================================ */
 
-  /* \lh - List header, \lf - List footer */
-  & .lh,
+  /* \lh - List header */
+  & .lh {
+    display: block;
+    margin-block-start: calc(var(--yv-reader-font-size) * 0.5);
+    text-indent: 1em;
+  }
+
+  /* \lf - List footer */
   & .lf {
     display: block;
     margin: 0.5em 0 0.25em;
   }
 
-  /* \li - List entry (unadjusted) — hanging indent, no bullets per USFM spec */
+  /* \li - List entry */
   & .li {
     display: block;
     list-style-type: none;
-    padding-inline-start: 2em;
-    text-indent: -1.5em;
+    padding-inline-start: 1em;
+    text-indent: 0;
   }
 
   /* \li1-\li4 - List entries (Swift phase 1) — pad only, no hanging indent */
@@ -1174,8 +1296,15 @@
     text-indent: 0;
   }
 
-  /* \lim, \lim1 - Embedded list entry (level 1) — hanging indent, no bullets per USFM spec */
-  & .lim,
+  /* \lim - Embedded list entry */
+  & .lim {
+    display: block;
+    list-style-type: none;
+    padding-inline-start: 1em;
+    text-indent: 0;
+  }
+
+  /* \lim1 - Embedded list entry (level 1) */
   & .lim1 {
     display: block;
     list-style-type: none;
@@ -1238,7 +1367,7 @@
 
   /* \sup - Superscript (verse-number metrics) */
   & .sup {
-    font-size: 0.65em;
+    font-size: calc(var(--yv-reader-font-size) * 0.65);
     line-height: 1em;
     position: relative;
     vertical-align: baseline;
@@ -1343,8 +1472,8 @@
   /* \fp - Footnote paragraph (block-level paragraph within a footnote) */
   & .fp {
     display: block;
-    margin-top: 0.5em;
-    text-indent: 1em;
+    margin: 0;
+    text-indent: 0;
   }
 
   /* \lit - Liturgical note — Right-aligned, Bold */
@@ -1354,6 +1483,13 @@
     font-weight: bold;
   }
 
+  /* \litl - Liturgical note label */
+  & .litl {
+    font-size: var(--yv-reader-font-size);
+    font-weight: normal;
+    font-style: italic;
+  }
+
   /* ============================================================
      RTL SUPPORT
      ============================================================ */
@@ -1361,5 +1497,33 @@
   &[dir='rtl'] {
     direction: rtl;
     text-align: start;
+  }
+}
+
+/* Footnote popup prose shares only Bible note character styles. It intentionally
+   does not use the full reader root, whose reset, width, 20px default, and
+   selection rules would disturb the surrounding popup UI. */
+[data-slot='yv-bible-note'] {
+  font: inherit;
+  direction: inherit;
+
+  & .fp {
+    display: block;
+    margin: 0;
+    text-indent: 0;
+  }
+
+  & .fk,
+  & .fl {
+    font-size: inherit;
+    font-weight: 500;
+    font-style: italic;
+  }
+
+  & .fq,
+  & .fqa {
+    font-size: inherit;
+    font-weight: normal;
+    font-style: italic;
   }
 }

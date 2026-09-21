@@ -20,7 +20,7 @@ function rulesForExactClass(cls: string): string {
   return bodies.join('\n');
 }
 
-describe('bible-reader phase-1 typography (Swift-adjusted tags)', () => {
+describe('bible-reader Swift-aligned typography', () => {
   it('styles body, s1, and q1 with Swift rhythm and logical spacing', () => {
     const p = rulesForExactClass('p');
     expect(p).toContain('text-indent: 1em');
@@ -45,7 +45,7 @@ describe('bible-reader phase-1 typography (Swift-adjusted tags)', () => {
 
   it('raises verse labels 0.2em at 0.65em without changing family', () => {
     const labels = rulesForExactClass('yv-vlbl');
-    expect(labels).toContain('font-size: 0.65em');
+    expect(labels).toContain('font-size: calc(var(--yv-reader-font-size) * 0.65)');
     expect(labels).toContain('top: -0.2em');
     expect(labels).not.toContain('top: -0.3em');
     expect(labels).toContain('font-family: var(--yv-font-sans)');
@@ -137,15 +137,22 @@ describe('bible-reader phase-1 typography (Swift-adjusted tags)', () => {
   });
 
   it('applies Swift inline styles and drops phase-1 sibling combinators', () => {
+    expect(rulesForExactClass('bdit')).toContain('font-size: var(--yv-reader-font-size)');
     expect(rulesForExactClass('bdit')).toContain('font-weight: 500');
     expect(rulesForExactClass('bdit')).toContain('font-style: italic');
     expect(rulesForExactClass('bdit')).not.toContain('font-weight: bold');
 
-    expect(rulesForExactClass('ord')).toContain('font-size: 0.65em');
+    expect(rulesForExactClass('ord')).toContain(
+      'font-size: calc(var(--yv-reader-font-size) * 0.65)',
+    );
     expect(rulesForExactClass('ord')).toContain('top: -0.2em');
-    expect(rulesForExactClass('fv')).toContain('font-size: 0.65em');
+    expect(rulesForExactClass('fv')).toContain(
+      'font-size: calc(var(--yv-reader-font-size) * 0.65)',
+    );
     expect(rulesForExactClass('fv')).toContain('top: -0.2em');
-    expect(rulesForExactClass('sup')).toContain('font-size: 0.65em');
+    expect(rulesForExactClass('sup')).toContain(
+      'font-size: calc(var(--yv-reader-font-size) * 0.65)',
+    );
     expect(rulesForExactClass('sup')).toContain('top: -0.2em');
     expect(css).not.toMatch(/&\s*\.note\s+\.fv\s*\{/);
 
@@ -156,6 +163,11 @@ describe('bible-reader phase-1 typography (Swift-adjusted tags)', () => {
     expect(rulesForExactClass('add')).toContain('font-style: italic');
     expect(rulesForExactClass('qs')).toContain('font-style: italic');
     expect(rulesForExactClass('qs')).not.toContain('display: block');
+
+    for (const cls of ['bk', 'add', 'it', 'tl', 'fq', 'fqa', 'qt', 'qs']) {
+      expect(rulesForExactClass(cls)).toContain('font-size: var(--yv-reader-font-size)');
+      expect(rulesForExactClass(cls)).toContain('font-weight: normal');
+    }
 
     expect(css).not.toMatch(/&\s*\.p\s*\+\s*\.s1\b/);
     expect(css).not.toMatch(/&\s*\.q1\s*\+\s*\.p\b/);
@@ -170,6 +182,61 @@ describe('bible-reader phase-1 typography (Swift-adjusted tags)', () => {
   it('sets highlight mix p to 1 in light and 0.2 in dark', () => {
     expect(themeCss).toContain('--yv-highlight-mix-p: 1;');
     expect(themeCss).toContain('--yv-highlight-mix-p: 0.2;');
+  });
+
+  it('applies phase-2 and phase-3 heading metrics without scaled margins or inherited indents', () => {
+    expect(rulesForExactClass('imt1')).toContain('font-size: 1.17em');
+    expect(rulesForExactClass('imt1')).toContain('font-weight: bold');
+    expect(rulesForExactClass('imt1')).toContain('text-align: center');
+    expect(rulesForExactClass('imt1')).toContain('margin-block-start: var(--yv-reader-font-size)');
+    expect(rulesForExactClass('imt1')).toContain('text-indent: 0');
+
+    expect(rulesForExactClass('imt2')).toContain('font-size: 1.08em');
+    expect(rulesForExactClass('imt2')).toContain(
+      'margin-block-start: calc(var(--yv-reader-font-size) * 0.5)',
+    );
+    expect(rulesForExactClass('mt1')).toContain('font-weight: 500');
+    expect(rulesForExactClass('mt1')).toContain('text-align: center');
+    expect(rulesForExactClass('mt2')).toContain('font-style: italic');
+    expect(rulesForExactClass('is1')).toContain('font-size: 1.17em');
+    expect(rulesForExactClass('is1')).toContain('font-weight: bold');
+    expect(rulesForExactClass('sr')).toContain('font-weight: 500');
+    expect(rulesForExactClass('sr')).toContain('text-align: center');
+    expect(rulesForExactClass('r')).toContain('text-align: center');
+
+    expect(rulesForExactClass('yv-h.r')).toContain('font-weight: 500');
+  });
+
+  it('applies phase-2 and phase-3 block and inline styles', () => {
+    expect(rulesForExactClass('imq')).toContain('padding-inline-start: 1em');
+    expect(rulesForExactClass('imq')).toContain('margin-block: var(--yv-reader-font-size)');
+    expect(rulesForExactClass('li')).toContain('padding-inline-start: 1em');
+    expect(rulesForExactClass('li')).toContain('text-indent: 0');
+    expect(rulesForExactClass('lim')).toContain('padding-inline-start: 1em');
+    expect(rulesForExactClass('lh')).toContain('text-indent: 1em');
+    expect(rulesForExactClass('po')).toContain(
+      'margin-block-start: calc(var(--yv-reader-font-size) * 0.25)',
+    );
+
+    expect(rulesForExactClass('rq')).toContain(
+      'font-size: calc(var(--yv-reader-font-size) * 0.83)',
+    );
+    expect(rulesForExactClass('fk')).toContain('font-weight: 500');
+    expect(rulesForExactClass('fk')).toContain('font-style: italic');
+    expect(rulesForExactClass('fl')).toContain('font-weight: 500');
+    expect(rulesForExactClass('pn')).toContain('font-weight: normal');
+    expect(rulesForExactClass('bd')).toContain('font-weight: bold');
+    expect(rulesForExactClass('fp')).toContain('display: block');
+    expect(rulesForExactClass('fp')).toContain('margin: 0');
+    expect(rulesForExactClass('fp')).toContain('text-indent: 0');
+  });
+
+  it('treats va consistently as a visible, hideable alternate verse label', () => {
+    const va = rulesForExactClass('va');
+    expect(va).toContain('font-size: calc(var(--yv-reader-font-size) * 0.65)');
+    expect(va).toContain('font-family: var(--yv-font-sans)');
+    expect(css).toContain("&[data-show-verse-numbers='false'] .va");
+    expect(css).toContain('& .va:not([data-yv-transformed], [data-yv-transformed] *)::after');
   });
 
   it('uses logical table borders for both directions', () => {
