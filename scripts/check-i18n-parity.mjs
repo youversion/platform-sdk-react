@@ -2,13 +2,15 @@
 /**
  * i18n parity checker for @youversion/platform-react-ui locale bundles.
  *
- * Hard-fail (exit 1): invalid JSON, t()/i18nKey references missing from en.json,
+ * Hard-fail (exit 1): invalid JSON, t()/i18nKey references missing from en.json
+ * (unless every t() call for that key passes an inline English defaultValue),
  * extra translation locale keys not in en.json, interpolation token mismatches,
  * stale resources.generated.ts (run pnpm generate:i18n).
  *
  * Warn-only (exit 0): en.json keys missing from translation locales (upstream Crowdin sync),
  * orphan en.json keys unused in UI source (static scan misses dynamic t() patterns;
- * add intentional dynamic keys to ORPHAN_KEY_ALLOWLIST).
+ * add intentional dynamic keys to ORPHAN_KEY_ALLOWLIST), t() keys that ship an
+ * English defaultValue ahead of a platform-localization sync.
  */
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -31,9 +33,11 @@ function discoverTranslationLocales() {
 
 // i18next allows whitespace and formatter args: {{ count }}, {{count, number}}
 const INTERPOLATION_TOKEN_RE = /\{\{\s*(\w+)[^}]*\}\}/g;
-// Matches literal-string args to any function named `t` (not i18next-specific).
+// Matches t('key') and t('key', 'English default'). Quote style must match
+// within each string so defaults may contain the other quote (couldn't).
 // Dynamic keys (templates/vars) and non-i18n `t()` helpers can false-pos/neg.
-const T_CALL_RE = /\bt\(\s*['"]([^'"]+)['"]/g;
+const T_CALL_RE =
+  /\bt\(\s*(['"])([^'"]+)\1(?:\s*,\s*(['"])((?:(?!\3).)*)\3)?/g;
 const I18N_KEY_RE = /i18nKey\s*=\s*['"]([^'"]+)['"]/g;
 
 /** Keys referenced only via dynamic t(`prefix_${x}`) patterns; static scan cannot detect them. */
@@ -158,17 +162,22 @@ function walkSourceFiles(dir, files = []) {
 
 function collectUsedKeys() {
   const usedKeys = new Map();
+  const keysWithoutDefault = new Set();
 
   for (const filePath of walkSourceFiles(uiSrcDir)) {
     const content = readFileSync(filePath, 'utf8');
     const relPath = relative(repoRoot, filePath);
 
     for (const match of content.matchAll(T_CALL_RE)) {
-      const key = match[1];
+      const key = match[2];
+      const hasDefault = match[4] !== undefined;
       if (!usedKeys.has(key)) {
         usedKeys.set(key, []);
       }
       usedKeys.get(key).push(relPath);
+      if (!hasDefault) {
+        keysWithoutDefault.add(key);
+      }
     }
 
     for (const match of content.matchAll(I18N_KEY_RE)) {
@@ -177,10 +186,11 @@ function collectUsedKeys() {
         usedKeys.set(key, []);
       }
       usedKeys.get(key).push(relPath);
+      keysWithoutDefault.add(key);
     }
   }
 
-  return usedKeys;
+  return { usedKeys, keysWithoutDefault };
 }
 
 console.log(`\n${bold('Checking i18n parity...')}\n`);
@@ -199,12 +209,18 @@ if (!en) {
 }
 
 const enKeys = Object.keys(en);
-const usedKeys = collectUsedKeys();
+const { usedKeys, keysWithoutDefault } = collectUsedKeys();
 
 for (const [key, locations] of usedKeys) {
   if (!Object.hasOwn(en, key)) {
     const locList = [...new Set(locations)].join(', ');
-    errors.push(`Key "${key}" used in source but missing from en.json (${locList})`);
+    if (keysWithoutDefault.has(key)) {
+      errors.push(`Key "${key}" used in source but missing from en.json (${locList})`);
+    } else {
+      warnings.push(
+        `Key "${key}" used with an English defaultValue but missing from en.json (${locList}). Add it in platform-localization (react.* in sources/common/en.json).`,
+      );
+    }
   }
 }
 
