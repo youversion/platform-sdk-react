@@ -3,7 +3,7 @@ import { http, HttpResponse } from 'msw';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { expect, spyOn, userEvent, waitFor } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
-import { requireShadowRoot } from '../test/dom-stubs';
+import { waitForElement, waitForShadowRoot } from '../test/storybook-dom';
 import { HighlightPermissionDialog } from './highlight-permission-dialog';
 import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -209,20 +209,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-async function waitForElement<ElementType extends Element>(
-  container: ParentNode,
-  selector: string,
-  message: string,
-): Promise<ElementType> {
-  return waitFor(
-    () => {
-      const element = container.querySelector<ElementType>(selector);
-      if (!element) throw new Error(message);
-      return element;
-    },
-    { timeout: 5_000 },
-  );
-}
+const productionWaitOptions = { timeout: 5_000 } as const;
 
 function getPermissionDialog(topLayer: HTMLElement): HTMLElement | null {
   return topLayer.querySelector<HTMLElement>(
@@ -314,8 +301,9 @@ async function getPrimaryHarness(canvasElement: HTMLElement): Promise<PrimaryHar
     canvasElement,
     '[data-testid="primary-island"]',
     'primary island not rendered',
+    productionWaitOptions,
   );
-  const root = await waitFor(() => requireShadowRoot(primaryIsland));
+  const root = await waitForShadowRoot(primaryIsland);
   const contentWrapper = root.querySelector<HTMLElement>('[data-yv-shadow-content-wrapper]');
   if (!contentWrapper) throw new Error('shadow content wrapper not rendered');
   void expect(root.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
@@ -331,11 +319,13 @@ async function openVerseActionPopover(
     root,
     '[data-yv-shadow-local-overlay]',
     'shadow-local top layer not created',
+    productionWaitOptions,
   );
   const versePopover = await waitForElement<HTMLElement>(
     topLayer,
     '[data-slot="verse-action-popover"]',
     'verse action popover not rendered',
+    productionWaitOptions,
   );
   await waitFor(() => void expect(topLayer.matches(':popover-open')).toBe(true));
   return { topLayer, versePopover };
@@ -394,21 +384,25 @@ export const PopoverOpensDialogEvidence: Story = {
       root,
       '[data-testid="prior-control"]',
       'prior focus control not rendered',
+      productionWaitOptions,
     );
     const verse = await waitForElement<HTMLElement>(
       root,
       '[data-testid="verse-1"]',
       'verse not rendered',
+      productionWaitOptions,
     );
     const closeAllOverlays = await waitForElement<HTMLButtonElement>(
       canvasElement,
       '[data-testid="close-all-overlays"]',
       'close-all control not rendered',
+      productionWaitOptions,
     );
     const closeAllRequests = await waitForElement<HTMLOutputElement>(
       canvasElement,
       '[data-testid="close-all-requests"]',
       'close-all request count not rendered',
+      productionWaitOptions,
     );
     const exitAnimationStyles: HTMLStyleElement[] = [];
     let topLayer!: HTMLElement;
@@ -537,11 +531,13 @@ export const DialogContainsPopoverEvidence: Story = {
       root,
       '[data-testid="open-notes-dialog"]',
       'notes opener not rendered',
+      productionWaitOptions,
     );
     const noteActionCount = await waitForElement<HTMLOutputElement>(
       canvasElement,
       '[data-testid="note-action-count"]',
       'note action count not rendered',
+      productionWaitOptions,
     );
 
     let notesDialog!: HTMLElement;
@@ -554,22 +550,26 @@ export const DialogContainsPopoverEvidence: Story = {
         root,
         '[data-yv-shadow-local-overlay]',
         'shadow-local top layer not created',
+        productionWaitOptions,
       );
       notesDialog = await waitForElement<HTMLElement>(
         topLayer,
         '[data-testid="notes-dialog"]',
         'notes dialog not rendered',
+        productionWaitOptions,
       );
       notesTrigger = await waitForElement<HTMLButtonElement>(
         notesDialog,
         '[data-testid="notes-popover-trigger"]',
         'notes popover trigger not rendered',
+        productionWaitOptions,
       );
       await userEvent.click(notesTrigger);
       notesPopover = await waitForElement<HTMLElement>(
         topLayer,
         '[data-testid="notes-popover"]',
         'notes popover not rendered',
+        productionWaitOptions,
       );
       const restorePosition = placeOverlayCenterUnderneath(notesDialog, notesPopover);
       try {
@@ -581,6 +581,7 @@ export const DialogContainsPopoverEvidence: Story = {
         notesPopover,
         '[data-testid="notes-popover-action"]',
         'notes popover action not rendered',
+        productionWaitOptions,
       );
       await userEvent.click(notesAction);
       await waitFor(() => void expect(noteActionCount.getAttribute('data-count')).toBe('1'));
@@ -617,16 +618,19 @@ export const TwoIndependentOverlaysEvidence: Story = {
       root,
       '[data-testid="verse-1"]',
       'verse not rendered',
+      productionWaitOptions,
     );
     const independentTrigger = await waitForElement<HTMLButtonElement>(
       root,
       '[data-testid="independent-popover-trigger"]',
       'independent popover trigger not rendered',
+      productionWaitOptions,
     );
     const closeAllOverlays = await waitForElement<HTMLButtonElement>(
       canvasElement,
       '[data-testid="close-all-overlays"]',
       'close-all control not rendered',
+      productionWaitOptions,
     );
 
     await step('Open a second same-root peer and tear down cleanly', async () => {
@@ -636,6 +640,7 @@ export const TwoIndependentOverlaysEvidence: Story = {
         topLayer,
         '[data-testid="independent-popover"]',
         'independent popover not rendered',
+        productionWaitOptions,
       );
       await waitFor(() => {
         const focused = root.activeElement;
@@ -654,23 +659,27 @@ export const TwoIndependentOverlaysEvidence: Story = {
         canvasElement,
         '[data-testid="secondary-island"]',
         'secondary island not rendered',
+        productionWaitOptions,
       );
-      const secondaryRoot = await waitFor(() => requireShadowRoot(secondaryIsland));
+      const secondaryRoot = await waitForShadowRoot(secondaryIsland);
       const secondaryTrigger = await waitForElement<HTMLButtonElement>(
         secondaryRoot,
         '[data-testid="secondary-popover-trigger"]',
         'secondary popover trigger not rendered',
+        productionWaitOptions,
       );
       await userEvent.click(secondaryTrigger);
       const secondaryTopLayer = await waitForElement<HTMLElement>(
         secondaryRoot,
         '[data-yv-shadow-local-overlay]',
         'secondary island top layer not created',
+        productionWaitOptions,
       );
       const secondaryPopover = await waitForElement<HTMLElement>(
         secondaryTopLayer,
         '[data-testid="secondary-popover"]',
         'secondary popover not rendered',
+        productionWaitOptions,
       );
 
       const opened = await openVerseActionPopover(root, verse);
@@ -680,6 +689,7 @@ export const TwoIndependentOverlaysEvidence: Story = {
         canvasElement,
         '[data-testid="unmount-primary"]',
         'primary island unmount control not rendered',
+        productionWaitOptions,
       );
       unmountPrimary.click();
       await waitFor(() => void expect(primaryIsland.isConnected).toBe(false));
@@ -693,6 +703,7 @@ export const TwoIndependentOverlaysEvidence: Story = {
         secondaryTopLayer,
         '[data-testid="secondary-popover"]',
         'secondary popover did not reopen after primary teardown',
+        productionWaitOptions,
       );
       void expect(reopenedSecondaryPopover).toHaveAttribute('data-state', 'open');
       void expect(secondaryTopLayer.matches(':popover-open')).toBe(true);
@@ -710,6 +721,7 @@ export const RapidCloseReopenDuringExitEvidence: Story = {
       root,
       '[data-testid="run-rapid-close-reopen"]',
       'rapid close/reopen control not rendered',
+      productionWaitOptions,
     );
     const exitAnimationStyle = installUnequalExitDurations(root, {
       dialog: 400,
@@ -726,6 +738,7 @@ export const RapidCloseReopenDuringExitEvidence: Story = {
           root,
           '[data-yv-shadow-local-overlay]',
           'shadow-local top layer not created',
+          productionWaitOptions,
         );
         firstDialog = await waitFor(() => {
           const dialog = getPermissionDialog(topLayer);

@@ -3,7 +3,7 @@ import { http, HttpResponse } from 'msw';
 import { useState } from 'react';
 import { expect, userEvent, waitFor } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
-import { requireShadowRoot } from '../test/dom-stubs';
+import { waitForShadowRoot } from '../test/storybook-dom';
 import { SignInDialog } from './sign-in-dialog';
 
 function SignInDialogHarness(): React.ReactNode {
@@ -92,7 +92,7 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
       return { outsideControl: outside, clippingContainer: clipping };
     });
 
-    const root = await waitFor(() => requireShadowRoot(canvasElement));
+    const root = await waitForShadowRoot(canvasElement);
     const exitAnimationStyle = canvasElement.ownerDocument.createElement('style');
     exitAnimationStyle.textContent = `
       [role='dialog'][data-state='closed'] { animation-duration: 400ms !important; }
