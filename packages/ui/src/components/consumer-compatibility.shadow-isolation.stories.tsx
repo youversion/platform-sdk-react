@@ -9,7 +9,7 @@ import { YouVersionAuthButton } from './YouVersionAuthButton';
 
 const meta = {
   title: 'Spikes/Shadow DOM consumer compatibility',
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom'],
   parameters: {
     layout: 'padded',
     msw: {
@@ -204,13 +204,13 @@ export const FormsAndExternalRelationshipsStopAtTheTreeScope: Story = {
       ariaLabelledByElements?: readonly Element[];
       ariaDescribedByElements?: readonly Element[];
     };
-    // SAFETY: The optional extension models Chromium properties, and the guards below verify them.
+    // SAFETY: The optional extension models draft reflected-ARIA properties; verify before use.
     const reflectedTextarea = textarea as ReflectedAriaElement;
     if (!reflectedTextarea.ariaLabelledByElements) {
-      throw new Error('Chromium did not expose ariaLabelledByElements');
+      throw new Error('browser did not expose ariaLabelledByElements');
     }
     if (!reflectedTextarea.ariaDescribedByElements) {
-      throw new Error('Chromium did not expose ariaDescribedByElements');
+      throw new Error('browser did not expose ariaDescribedByElements');
     }
 
     void expect(textarea.getAttribute('aria-labelledby')).toBe('external-name');

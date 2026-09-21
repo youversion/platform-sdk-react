@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { YouVersionProvider as HooksYouVersionProvider } from '@youversion/platform-react-hooks';
 import { http, HttpResponse } from 'msw';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
@@ -53,14 +53,14 @@ function TwoPickersInOneIsland(): React.ReactNode {
 }
 
 function SameOriginIframeHarness(): React.ReactNode {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [iframeDocument, setIframeDocument] = useState<Document | null>(null);
   const [container, setContainer] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
-    const iframeDocument = iframeRef.current?.contentDocument;
     if (!iframeDocument) return;
 
     const portalContainer = iframeDocument.createElement('div');
+    portalContainer.setAttribute('data-testid', 'iframe-portal-container');
     portalContainer.style.setProperty('display', 'grid');
     portalContainer.style.setProperty('min-block-size', '100vh');
     portalContainer.style.setProperty('place-items', 'center');
@@ -68,15 +68,16 @@ function SameOriginIframeHarness(): React.ReactNode {
     setContainer(portalContainer);
 
     return () => portalContainer.remove();
-  }, []);
+  }, [iframeDocument]);
 
   return (
     <>
       <iframe
-        ref={iframeRef}
         data-testid="iframe"
+        srcDoc="<!doctype html><html><head></head><body></body></html>"
         title="same-origin picker target"
         style={{ inlineSize: 800, blockSize: 600 }}
+        onLoad={(event) => setIframeDocument(event.currentTarget.contentDocument)}
       />
       {container
         ? createPortal(
@@ -93,7 +94,7 @@ function SameOriginIframeHarness(): React.ReactNode {
 const meta = {
   title: 'Spikes/BibleVersionPicker Shadow DOM isolation',
   component: IsolatedBibleVersionPicker,
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom'],
   parameters: {
     layout: 'centered',
     msw: {
@@ -220,11 +221,11 @@ export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
     const hit = root.elementFromPoint(sampleX, sampleY);
     void expect(hit === panel || (hit !== null && panel.contains(hit))).toBe(true);
 
-    // SAFETY: Chromium exposes this reflected-ARIA draft property; the guard below verifies it.
+    // SAFETY: The reflected-ARIA property is still a draft; verify browser support before use.
     const reflectedControls = (
       trigger as HTMLElement & { ariaControlsElements?: readonly Element[] }
     ).ariaControlsElements;
-    if (!reflectedControls) throw new Error('Chromium did not expose ariaControlsElements');
+    if (!reflectedControls) throw new Error('browser did not expose ariaControlsElements');
     void expect(trigger.getAttribute('aria-controls')).toBe(panel.id);
     void expect(reflectedControls).toEqual([panel]);
   },
@@ -312,15 +313,23 @@ export const StylingFocusDismissalAndRapidReopen: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
-    const outsideControl = canvasElement.querySelector<HTMLButtonElement>(
+    const outsideControl = await waitForElement<HTMLButtonElement>(
+      canvasElement,
       '[data-testid="outside-control"]',
+      'outside control not rendered',
     );
-    if (!outsideControl) throw new Error('outside control not rendered');
     const { root, trigger, topLayer, panel } = await openPicker(canvasElement);
     await waitFor(() => {
       const focused = root.activeElement;
       void expect(focused !== null && panel.contains(focused)).toBe(true);
     });
+    const exitAnimationStyle = canvasElement.ownerDocument.createElement('style');
+    exitAnimationStyle.textContent = `
+      [data-slot='popover-content'][data-state='closed'] {
+        animation-duration: 400ms !important;
+      }
+    `;
+    root.append(exitAnimationStyle);
 
     const baseline = styleSnapshot(panel);
     const hostileStyle = canvasElement.ownerDocument.createElement('style');
@@ -387,11 +396,12 @@ export const StylingFocusDismissalAndRapidReopen: Story = {
   },
 };
 
-export const DirectionOnlyInheritanceRejectsHostVisualValues: Story = {
+export const ProviderDirectionRejectsHostVisualValues: Story = {
+  globals: { interfaceDirection: 'rtl' },
   render: () => (
     <div
       data-testid="hostile-inheritance-container"
-      dir="rtl"
+      dir="ltr"
       style={{ display: 'flex', alignItems: 'center', gap: 24 }}
     >
       <span data-testid="hostile-inheritance-control">Host control</span>
@@ -409,6 +419,7 @@ export const DirectionOnlyInheritanceRejectsHostVisualValues: Story = {
     if (!hostControl) throw new Error('hostile inheritance control not rendered');
 
     const { root, trigger, panel } = await openPicker(canvasElement);
+    await waitFor(() => void expect(trigger).toHaveTextContent('NIV'));
     const wrapper = root.querySelector<HTMLElement>('[data-yv-shadow-content-wrapper]');
     const heading = panel.querySelector<HTMLElement>('h2');
     const inputGroup = panel.querySelector<HTMLElement>('[data-slot="input-group"]');
@@ -420,9 +431,9 @@ export const DirectionOnlyInheritanceRejectsHostVisualValues: Story = {
     const headingTypography = typographySnapshot(heading, ownerWindow);
     void expect(headingTypography.fontFamily).toContain('Inter');
     void expect(ownerWindow.getComputedStyle(trigger).direction).toBe('rtl');
-    void expect(ownerWindow.getComputedStyle(wrapper).direction).toBe('rtl');
+    void expect(ownerWindow.getComputedStyle(wrapper).direction).toBe('ltr');
 
-    await userEvent.click(within(panel).getByRole('button', { name: /select language/i }));
+    await userEvent.click(within(panel).getByRole('button', { name: /select a language/i }));
     const languageTabs = await waitForElement<HTMLElement>(
       panel,
       '[data-slot="tabs-list"]',
@@ -481,7 +492,7 @@ export const DirectionOnlyInheritanceRejectsHostVisualValues: Story = {
       const wrapperStyle = ownerWindow.getComputedStyle(wrapper);
       const headingStyle = ownerWindow.getComputedStyle(heading);
       const panelStyle = ownerWindow.getComputedStyle(panel);
-      void expect(wrapperStyle.direction).toBe('rtl');
+      void expect(wrapperStyle.direction).toBe('ltr');
       void expect(wrapperStyle.writingMode).toBe('horizontal-tb');
       void expect(wrapperStyle.textOrientation).toBe('mixed');
       void expect(headingStyle.direction).toBe('rtl');
@@ -695,9 +706,19 @@ export const PanelTracksAncestorScrollAndVersionListScrollsInternally: Story = {
 export const SameOriginIframeTopLayerRemainsInteractive: Story = {
   render: () => <SameOriginIframeHarness />,
   play: async ({ canvasElement }) => {
-    const iframe = canvasElement.querySelector<HTMLIFrameElement>('[data-testid="iframe"]');
-    if (!iframe?.contentDocument) throw new Error('same-origin iframe document not available');
-    const componentRoot = await getComponentRoot(iframe.contentDocument);
+    const { iframe, iframeDocument } = await waitFor(() => {
+      const currentIframe =
+        canvasElement.querySelector<HTMLIFrameElement>('[data-testid="iframe"]');
+      const currentDocument = currentIframe?.contentDocument;
+      if (!currentIframe || !currentDocument) {
+        throw new Error('same-origin iframe document not available');
+      }
+      if (!currentDocument.querySelector('[data-testid="iframe-portal-container"]')) {
+        throw new Error('same-origin iframe portal container not mounted');
+      }
+      return { iframe: currentIframe, iframeDocument: currentDocument };
+    });
+    const componentRoot = await getComponentRoot(iframeDocument);
     const trigger = await getTrigger(componentRoot);
     await userEvent.click(trigger);
     const topLayer = await waitForElement<HTMLElement>(

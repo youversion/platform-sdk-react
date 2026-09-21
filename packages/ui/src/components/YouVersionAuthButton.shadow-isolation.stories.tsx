@@ -35,6 +35,7 @@ const HOSTILE_CSS = `
 const meta = {
   title: 'Spikes/Automatic Shadow DOM isolation',
   component: YouVersionAuthButton,
+  tags: ['integration', 'shadow-dom'],
   parameters: {
     msw: {
       handlers: [
@@ -70,7 +71,6 @@ function buttonStyleSnapshot(button: HTMLButtonElement) {
 }
 
 export const HostileGlobalButtonRule: Story = {
-  tags: ['integration'],
   render: () => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
       <button type="button" data-testid="host-control" data-host-pseudo-control>
@@ -136,7 +136,6 @@ export const HostileGlobalButtonRule: Story = {
 };
 
 export const SameOriginIframeDocument: Story = {
-  tags: ['integration'],
   parameters: { includeAuth: false },
   render: () => <iframe data-testid="iframe" title="same-origin isolation target" />,
   play: async ({ canvasElement }) => {

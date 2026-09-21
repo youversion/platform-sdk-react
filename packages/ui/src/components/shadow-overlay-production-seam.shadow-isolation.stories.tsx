@@ -387,7 +387,7 @@ export const RapidCloseReopenDuringExit = manualWorkflow(
 
 /** YPE-5355 stable regression evidence; unsupported observations remain in the decision docs. */
 export const PopoverOpensDialogEvidence: Story = {
-  tags: ['!dev'],
+  tags: ['!dev', 'shadow-dom'],
   play: async ({ canvasElement, step }) => {
     const { contentWrapper, root } = await getPrimaryHarness(canvasElement);
     const priorControl = await waitForElement<HTMLButtonElement>(
@@ -531,7 +531,7 @@ export const PopoverOpensDialogEvidence: Story = {
 };
 
 export const DialogContainsPopoverEvidence: Story = {
-  tags: ['!dev'],
+  tags: ['!dev', 'shadow-dom'],
   play: async ({ canvasElement, step }) => {
     const { contentWrapper, root } = await getPrimaryHarness(canvasElement);
     const openNotes = await waitForElement<HTMLButtonElement>(
@@ -611,7 +611,7 @@ export const DialogContainsPopoverEvidence: Story = {
 
 /** YPE-5355 stable regression evidence; peer-dismissal observations remain in the docs. */
 export const TwoIndependentOverlaysEvidence: Story = {
-  tags: ['!dev'],
+  tags: ['!dev', 'shadow-dom'],
   play: async ({ canvasElement, step }) => {
     const { contentWrapper, primaryIsland, root } = await getPrimaryHarness(canvasElement);
     const verse = await waitForElement<HTMLElement>(
@@ -703,7 +703,7 @@ export const TwoIndependentOverlaysEvidence: Story = {
 
 /** YPE-5355 stable regression evidence; final-focus observations remain in the docs. */
 export const RapidCloseReopenDuringExitEvidence: Story = {
-  tags: ['!dev'],
+  tags: ['!dev', 'shadow-dom'],
   args: { enableRapidReopen: true },
   play: async ({ canvasElement, step }) => {
     const { contentWrapper, root } = await getPrimaryHarness(canvasElement);

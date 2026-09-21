@@ -38,7 +38,7 @@ function SignInDialogHarness(): React.ReactNode {
 const meta = {
   title: 'Spikes/SignInDialog Shadow DOM isolation',
   component: SignInDialogHarness,
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom'],
   parameters: {
     layout: 'centered',
     msw: {
@@ -99,8 +99,11 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
       [data-slot='dialog-overlay'][data-state='closed'] { animation-duration: 800ms !important; }
     `;
     root.append(exitAnimationStyle);
-    const insideControl = root.querySelector<HTMLButtonElement>('[data-testid="inside-control"]');
-    if (!insideControl) throw new Error('inside-island control not rendered');
+    const insideControl = await waitFor(() => {
+      const element = root.querySelector<HTMLButtonElement>('[data-testid="inside-control"]');
+      if (!element) throw new Error('inside-island control not rendered');
+      return element;
+    });
     void expect(root.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
     insideControl.focus();
     await userEvent.click(insideControl);
@@ -126,13 +129,13 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
     const description = root.getElementById(descriptionId!);
     void expect(title).not.toBeNull();
     void expect(description).not.toBeNull();
-    // SAFETY: This Chromium-only story checks that both reflected properties exist before use.
+    // SAFETY: These reflected-ARIA properties are still a draft; verify support before use.
     const reflectedDialog = dialog as HTMLElement & {
       ariaLabelledByElements?: readonly Element[];
       ariaDescribedByElements?: readonly Element[];
     };
     if (!reflectedDialog.ariaLabelledByElements || !reflectedDialog.ariaDescribedByElements) {
-      throw new Error('Chromium did not expose the dialog ARIA element relationships');
+      throw new Error('browser did not expose the dialog ARIA element relationships');
     }
     void expect(reflectedDialog.ariaLabelledByElements).toEqual([title]);
     void expect(reflectedDialog.ariaDescribedByElements).toEqual([description]);

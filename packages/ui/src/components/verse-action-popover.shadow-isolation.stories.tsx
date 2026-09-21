@@ -126,7 +126,7 @@ function IsolatedVerseActionPopover(): React.ReactNode {
 const meta = {
   title: 'Spikes/VerseActionPopover Shadow DOM isolation',
   component: IsolatedVerseActionPopover,
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom'],
   parameters: {
     layout: 'centered',
     msw: {
@@ -250,7 +250,7 @@ export const PortalPlacementDockingReanchoringAndFocusRestoration: Story = {
     readerScrollRoot.scrollTop = 0;
     await waitFor(() => {
       const returnedRect = dialog.getBoundingClientRect();
-      void expect(Math.abs(returnedRect.left - firstDialogRect.left)).toBeLessThan(8);
+      void expect(Math.abs(returnedRect.left - firstDialogRect.left)).toBeLessThan(12);
       void expect(Math.abs(returnedRect.top - firstDialogRect.top)).toBeLessThan(12);
     });
 

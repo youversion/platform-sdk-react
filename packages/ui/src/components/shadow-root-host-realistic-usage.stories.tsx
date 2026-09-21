@@ -29,7 +29,7 @@ const EXPECTED_COMPONENT_IDS = [
 
 const meta = {
   title: 'Spikes/Shadow DOM realistic usage',
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom'],
   parameters: {
     includeAuth: false,
     layout: 'fullscreen',
