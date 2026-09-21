@@ -57,6 +57,7 @@ component rollout targets.
 | `Textarea` | Excluded | None | Native outer-form ownership, serialization, and external `<label for>` relationships do not cross a shadow boundary. Include it only after an explicit form-associated public contract is designed. |
 | `VerseActionPopover` | Excluded as an independent boundary; included inside `BibleReader` | The owning reader boundary | Its public contract accepts verse elements and a virtual anchor from the owning DOM tree. An independent shadow host would split that anchor relationship. |
 | `YouVersionProvider` | Excluded | None | It is the document-level context, document stylesheet, and font owner rather than a visual component boundary. It must remain outside isolated descendants. |
+| `BaseYouVersionProvider` | Excluded | None | This hooks-package provider is re-exported for advanced consumers. It supplies React context without rendering a visual SDK boundary. |
 
 Exports nested under a compound root are not exclusions from isolated behavior;
 they are exclusions from creating an additional host. This distinction prevents
@@ -75,7 +76,7 @@ the inventory from treating implementation fragments as separate rollout units.
 | YPE-5400 | The compiled custom-property inventory and exact allowlist guard close known ambient dependencies. | Keep the guard green and review every new reference-only custom property. |
 | YPE-5436 | Forms, external labels and ARIA ID references stop at the boundary; refs, events, queries, and nested roots have documented constraints. | Exclude `Textarea`; require focused public-contract checks and consumer guidance for included components. |
 | YPE-5437 | Twelve realistic component instances mount, unmount, and remount in Normal and Strict Mode while sharing one stylesheet object. | No shared-host scale blocker; performance remains a component-layout review rather than a CI timing threshold. |
-| YPE-5946 | The 21 focused interactions pass Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2. | Make Chromium, Firefox, and WebKit CI release gates and repeat actual Safari only at the targeted triggers below. |
+| YPE-5946 | Its branch's 21 focused interactions pass Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2; that branch is not yet merged into this one. | Make Chromium, Firefox, and WebKit CI release gates and repeat actual Safari only at the targeted triggers below. |
 
 YPE-5890/PR 415 is test-maintenance support and does not change the rollout
 policy. PR 418 repairs integration-branch CI and likewise does not change the
