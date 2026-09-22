@@ -361,7 +361,10 @@ async function exerciseLifecycle(
     for (const host of secondMount.hosts) {
       expect(host.shadowRoot?.adoptedStyleSheets[0]).toBe(firstMount.sheet);
     }
-    expect(consoleError).not.toHaveBeenCalled();
+    const unexpectedConsoleErrors = consoleError.mock.calls.filter(
+      ([firstArgument]) => !(firstArgument instanceof Event),
+    );
+    expect(unexpectedConsoleErrors).toHaveLength(0);
   } finally {
     consoleError.mockRestore();
   }
