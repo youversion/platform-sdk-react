@@ -16,12 +16,22 @@ Object.defineProperty(navigator, 'language', {
   configurable: true,
 });
 
+function isExpectedFontStylesheetRejection(reason: unknown): boolean {
+  if (!(reason instanceof Event)) return false;
+  const target = reason.target;
+  return (
+    target instanceof HTMLLinkElement &&
+    target.rel === 'stylesheet' &&
+    target.href.includes('/v1/fonts/1/stylesheet?app_key=')
+  );
+}
+
 // React's precedence stylesheet resource rejects with the browser's generic
 // load Event when the optional Fonts API sheet is unavailable. Firefox exposes
-// that expected asset failure as an unhandled rejection; keep it from masking
-// the story assertions while leaving non-Event rejections visible to Vitest.
+// that expected asset failure as an unhandled rejection; keep only that known
+// request from masking the story assertions.
 globalThis.addEventListener('unhandledrejection', (event) => {
-  if (event.reason instanceof Event) event.preventDefault();
+  if (isExpectedFontStylesheetRejection(event.reason)) event.preventDefault();
 });
 
 beforeEach(() => {
