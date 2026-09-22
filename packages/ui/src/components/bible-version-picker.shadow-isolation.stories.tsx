@@ -118,7 +118,7 @@ async function getTrigger(root: ShadowRoot): Promise<HTMLElement> {
 async function openPicker(container: ParentNode) {
   const root = await waitForShadowRoot(container);
   const trigger = await getTrigger(root);
-  void expect(root.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
+  await expect(root.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
   await userEvent.click(trigger);
   const topLayer = await waitForElement<HTMLElement>(
     root,
@@ -130,7 +130,7 @@ async function openPicker(container: ParentNode) {
     '[data-slot="popover-content"]',
     'picker panel not rendered in local top layer',
   );
-  await waitFor(() => void expect(topLayer.matches(':popover-open')).toBe(true));
+  await waitFor(async () => await expect(topLayer.matches(':popover-open')).toBe(true));
   return { root, trigger, topLayer, panel };
 }
 
@@ -183,35 +183,35 @@ export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
     );
     const { root, trigger, topLayer, panel } = await openPicker(clippingContainer);
 
-    void expect(topLayer.getRootNode()).toBe(root);
-    void expect(panel.getRootNode()).toBe(root);
-    void expect(
+    await expect(topLayer.getRootNode()).toBe(root);
+    await expect(panel.getRootNode()).toBe(root);
+    await expect(
       canvasElement.ownerDocument.body.querySelector('[data-yv-shadow-overlay-host]'),
     ).toBeNull();
 
     const clippingRect = clippingContainer.getBoundingClientRect();
     const panelRect = panel.getBoundingClientRect();
-    void expect(panelRect.bottom).toBeGreaterThan(clippingRect.bottom + 1);
+    await expect(panelRect.bottom).toBeGreaterThan(clippingRect.bottom + 1);
     const viewport = canvasElement.ownerDocument.defaultView;
     if (!viewport) throw new Error('story window not available');
-    void expect(panelRect.top).toBeGreaterThanOrEqual(16);
-    void expect(panelRect.left).toBeGreaterThanOrEqual(16);
-    void expect(panelRect.bottom).toBeLessThanOrEqual(viewport.innerHeight - 16);
-    void expect(panelRect.right).toBeLessThanOrEqual(viewport.innerWidth - 16);
+    await expect(panelRect.top).toBeGreaterThanOrEqual(16);
+    await expect(panelRect.left).toBeGreaterThanOrEqual(16);
+    await expect(panelRect.bottom).toBeLessThanOrEqual(viewport.innerHeight - 16);
+    await expect(panelRect.right).toBeLessThanOrEqual(viewport.innerWidth - 16);
 
     const sampleX = panelRect.left + panelRect.width / 2;
     const sampleY = Math.max(panelRect.top + 2, clippingRect.bottom + 2);
     if (sampleY >= panelRect.bottom) throw new Error('panel did not extend beyond its ancestor');
     const hit = root.elementFromPoint(sampleX, sampleY);
-    void expect(hit === panel || (hit !== null && panel.contains(hit))).toBe(true);
+    await expect(hit === panel || (hit !== null && panel.contains(hit))).toBe(true);
 
     // SAFETY: The reflected-ARIA property is still a draft; verify browser support before use.
     const reflectedControls = (
       trigger as HTMLElement & { ariaControlsElements?: readonly Element[] }
     ).ariaControlsElements;
     if (!reflectedControls) throw new Error('browser did not expose ariaControlsElements');
-    void expect(trigger.getAttribute('aria-controls')).toBe(panel.id);
-    void expect(reflectedControls).toEqual([panel]);
+    await expect(trigger.getAttribute('aria-controls')).toBe(panel.id);
+    await expect(reflectedControls).toEqual([panel]);
   },
 };
 
@@ -250,7 +250,7 @@ export const InlineControlIsClippedByItsAncestor: Story = {
       'clipping container not rendered',
     );
     const root = await waitForShadowRoot(clippingContainer);
-    void expect(root.querySelector('[data-yv-shadow-inline-overlay]')).toBeNull();
+    await expect(root.querySelector('[data-yv-shadow-inline-overlay]')).toBeNull();
     await userEvent.click(await getTrigger(root));
     const inlineContainer = await waitForElement<HTMLElement>(
       root,
@@ -265,14 +265,14 @@ export const InlineControlIsClippedByItsAncestor: Story = {
 
     const clippingRect = clippingContainer.getBoundingClientRect();
     const panelRect = panel.getBoundingClientRect();
-    void expect(panelRect.bottom).toBeGreaterThan(clippingRect.bottom + 1);
+    await expect(panelRect.bottom).toBeGreaterThan(clippingRect.bottom + 1);
     const sampleX = panelRect.left + panelRect.width / 2;
     const visibleSampleY = Math.max(panelRect.top + 2, clippingRect.top + 2);
     if (visibleSampleY >= clippingRect.bottom) {
       throw new Error('panel has no visible area inside its clipping ancestor');
     }
     const visibleHit = root.elementFromPoint(sampleX, visibleSampleY);
-    void expect(visibleHit === panel || (visibleHit !== null && panel.contains(visibleHit))).toBe(
+    await expect(visibleHit === panel || (visibleHit !== null && panel.contains(visibleHit))).toBe(
       true,
     );
 
@@ -281,7 +281,7 @@ export const InlineControlIsClippedByItsAncestor: Story = {
       throw new Error('panel did not extend beyond its clipping ancestor');
     }
     const clippedHit = root.elementFromPoint(sampleX, clippedSampleY);
-    void expect(clippedHit === panel || (clippedHit !== null && panel.contains(clippedHit))).toBe(
+    await expect(clippedHit === panel || (clippedHit !== null && panel.contains(clippedHit))).toBe(
       false,
     );
   },
@@ -303,9 +303,9 @@ export const StylingFocusDismissalAndRapidReopen: Story = {
       'outside control not rendered',
     );
     const { root, trigger, topLayer, panel } = await openPicker(canvasElement);
-    await waitFor(() => {
+    await waitFor(async () => {
       const focused = root.activeElement;
-      void expect(focused !== null && panel.contains(focused)).toBe(true);
+      await expect(focused !== null && panel.contains(focused)).toBe(true);
     });
     const exitAnimationStyle = canvasElement.ownerDocument.createElement('style');
     exitAnimationStyle.textContent = `
@@ -330,23 +330,23 @@ export const StylingFocusDismissalAndRapidReopen: Story = {
     try {
       canvasElement.ownerDocument.head.append(hostileStyle);
       await waitFor(
-        () =>
-          void expect(getComputedStyle(outsideControl).backgroundColor).toBe('rgb(185, 28, 28)'),
+        async () =>
+          await expect(getComputedStyle(outsideControl).backgroundColor).toBe('rgb(185, 28, 28)'),
       );
-      void expect(styleSnapshot(panel)).toEqual(baseline);
+      await expect(styleSnapshot(panel)).toEqual(baseline);
     } finally {
       hostileStyle.remove();
     }
 
     await userEvent.click(outsideControl);
-    await waitFor(() => {
-      void expect(panel).toHaveAttribute('data-state', 'closed');
-      void expect(topLayer).toContainElement(panel);
-      void expect(topLayer.matches(':popover-open')).toBe(true);
+    await waitFor(async () => {
+      await expect(panel).toHaveAttribute('data-state', 'closed');
+      await expect(topLayer).toContainElement(panel);
+      await expect(topLayer.matches(':popover-open')).toBe(true);
     });
-    await waitFor(() => {
-      void expect(topLayer.querySelector('[data-slot="popover-content"]')).toBeNull();
-      void expect(topLayer.matches(':popover-open')).toBe(false);
+    await waitFor(async () => {
+      await expect(topLayer.querySelector('[data-slot="popover-content"]')).toBeNull();
+      await expect(topLayer.matches(':popover-open')).toBe(false);
     });
 
     await userEvent.click(trigger);
@@ -355,9 +355,9 @@ export const StylingFocusDismissalAndRapidReopen: Story = {
       '[data-slot="popover-content"]',
       'picker panel did not reopen',
     );
-    await waitFor(() => {
+    await waitFor(async () => {
       const activeElement = root.activeElement;
-      void expect(activeElement !== null && reopenedPanel.contains(activeElement)).toBe(true);
+      await expect(activeElement !== null && reopenedPanel.contains(activeElement)).toBe(true);
     });
 
     const focused = root.activeElement;
@@ -366,16 +366,16 @@ export const StylingFocusDismissalAndRapidReopen: Story = {
       new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true }),
     );
     trigger.click();
-    await waitFor(() => {
-      void expect(topLayer.matches(':popover-open')).toBe(true);
-      void expect(topLayer.querySelectorAll('[data-slot="popover-content"]')).toHaveLength(1);
+    await waitFor(async () => {
+      await expect(topLayer.matches(':popover-open')).toBe(true);
+      await expect(topLayer.querySelectorAll('[data-slot="popover-content"]')).toHaveLength(1);
     });
 
     await userEvent.keyboard('{Escape}');
-    await waitFor(() => {
-      void expect(topLayer.querySelector('[data-slot="popover-content"]')).toBeNull();
-      void expect(topLayer.matches(':popover-open')).toBe(false);
-      void expect(root.activeElement).toBe(trigger);
+    await waitFor(async () => {
+      await expect(topLayer.querySelector('[data-slot="popover-content"]')).toBeNull();
+      await expect(topLayer.matches(':popover-open')).toBe(false);
+      await expect(root.activeElement).toBe(trigger);
     });
   },
 };
@@ -403,7 +403,7 @@ export const ProviderDirectionRejectsHostVisualValues: Story = {
     if (!hostControl) throw new Error('hostile inheritance control not rendered');
 
     const { root, trigger, panel } = await openPicker(canvasElement);
-    await waitFor(() => void expect(trigger).toHaveTextContent('NIV'));
+    await waitFor(async () => await expect(trigger).toHaveTextContent('NIV'));
     const wrapper = root.querySelector<HTMLElement>('[data-yv-shadow-content-wrapper]');
     const heading = panel.querySelector<HTMLElement>('h2');
     const inputGroup = panel.querySelector<HTMLElement>('[data-slot="input-group"]');
@@ -413,9 +413,9 @@ export const ProviderDirectionRejectsHostVisualValues: Story = {
     const panelGeometry = geometrySnapshot(panel);
     const inputGeometry = geometrySnapshot(inputGroup);
     const headingTypography = typographySnapshot(heading, ownerWindow);
-    void expect(headingTypography.fontFamily).toContain('Inter');
-    void expect(ownerWindow.getComputedStyle(trigger).direction).toBe('rtl');
-    void expect(ownerWindow.getComputedStyle(wrapper).direction).toBe('ltr');
+    await expect(headingTypography.fontFamily).toContain('Inter');
+    await expect(ownerWindow.getComputedStyle(trigger).direction).toBe('rtl');
+    await expect(ownerWindow.getComputedStyle(wrapper).direction).toBe('ltr');
 
     await userEvent.click(within(panel).getByRole('button', { name: /select a language/i }));
     const languageTabs = await waitForElement<HTMLElement>(
@@ -433,8 +433,8 @@ export const ProviderDirectionRejectsHostVisualValues: Story = {
     }
     const languageTabsInlineSize = languageTabs.offsetWidth;
     const languageInputRadius = ownerWindow.getComputedStyle(languageInputGroup).borderRadius;
-    void expect(languageTabsInlineSize).toBe(languageTabsContainer.clientWidth - 32);
-    void expect(languageInputRadius).toBe('30px');
+    await expect(languageTabsInlineSize).toBe(languageTabsContainer.clientWidth - 32);
+    await expect(languageInputRadius).toBe('30px');
 
     const hostileStyle = ownerDocument.createElement('style');
     hostileStyle.textContent = `
@@ -460,39 +460,39 @@ export const ProviderDirectionRejectsHostVisualValues: Story = {
 
     try {
       ownerDocument.head.append(hostileStyle);
-      await waitFor(() => {
+      await waitFor(async () => {
         const controlStyle = ownerWindow.getComputedStyle(hostControl);
-        void expect(controlStyle.writingMode).toBe('vertical-rl');
-        void expect(controlStyle.textOrientation).toBe('upright');
-        void expect(controlStyle.color).toBe('rgb(185, 28, 28)');
-        void expect(controlStyle.fontFamily).toContain('fantasy');
-        void expect(controlStyle.fontSize).toBe('32px');
-        void expect(controlStyle.letterSpacing).toBe('16px');
-        void expect(controlStyle.lineHeight).toBe('96px');
-        void expect(controlStyle.wordSpacing).toBe('32px');
-        void expect(controlStyle.borderRadius).toBe('0px');
+        await expect(controlStyle.writingMode).toBe('vertical-rl');
+        await expect(controlStyle.textOrientation).toBe('upright');
+        await expect(controlStyle.color).toBe('rgb(185, 28, 28)');
+        await expect(controlStyle.fontFamily).toContain('fantasy');
+        await expect(controlStyle.fontSize).toBe('32px');
+        await expect(controlStyle.letterSpacing).toBe('16px');
+        await expect(controlStyle.lineHeight).toBe('96px');
+        await expect(controlStyle.wordSpacing).toBe('32px');
+        await expect(controlStyle.borderRadius).toBe('0px');
       });
 
       const wrapperStyle = ownerWindow.getComputedStyle(wrapper);
       const headingStyle = ownerWindow.getComputedStyle(heading);
       const panelStyle = ownerWindow.getComputedStyle(panel);
-      void expect(wrapperStyle.direction).toBe('ltr');
-      void expect(wrapperStyle.writingMode).toBe('horizontal-tb');
-      void expect(wrapperStyle.textOrientation).toBe('mixed');
-      void expect(headingStyle.direction).toBe('rtl');
-      void expect(headingStyle.writingMode).toBe('horizontal-tb');
-      void expect(headingStyle.textOrientation).toBe('mixed');
-      void expect(typographySnapshot(heading, ownerWindow)).toEqual(headingTypography);
-      void expect(panelStyle.getPropertyValue('--yv-spacing').trim()).toBe('.25rem');
-      void expect(panelStyle.getPropertyValue('--spacing').trim()).toBe('.25rem');
-      void expect(panelStyle.getPropertyValue('--yv-radius').trim()).toBe('2rem');
-      void expect(languageTabs.offsetWidth).toBe(languageTabsInlineSize);
-      void expect(ownerWindow.getComputedStyle(languageInputGroup).borderRadius).toBe(
+      await expect(wrapperStyle.direction).toBe('ltr');
+      await expect(wrapperStyle.writingMode).toBe('horizontal-tb');
+      await expect(wrapperStyle.textOrientation).toBe('mixed');
+      await expect(headingStyle.direction).toBe('rtl');
+      await expect(headingStyle.writingMode).toBe('horizontal-tb');
+      await expect(headingStyle.textOrientation).toBe('mixed');
+      await expect(typographySnapshot(heading, ownerWindow)).toEqual(headingTypography);
+      await expect(panelStyle.getPropertyValue('--yv-spacing').trim()).toBe('.25rem');
+      await expect(panelStyle.getPropertyValue('--spacing').trim()).toBe('.25rem');
+      await expect(panelStyle.getPropertyValue('--yv-radius').trim()).toBe('2rem');
+      await expect(languageTabs.offsetWidth).toBe(languageTabsInlineSize);
+      await expect(ownerWindow.getComputedStyle(languageInputGroup).borderRadius).toBe(
         languageInputRadius,
       );
-      void expect(geometrySnapshot(trigger)).toEqual(triggerGeometry);
-      void expect(geometrySnapshot(panel)).toEqual(panelGeometry);
-      void expect(geometrySnapshot(inputGroup)).toEqual(inputGeometry);
+      await expect(geometrySnapshot(trigger)).toEqual(triggerGeometry);
+      await expect(geometrySnapshot(panel)).toEqual(panelGeometry);
+      await expect(geometrySnapshot(inputGroup)).toEqual(inputGeometry);
     } finally {
       hostileStyle.remove();
     }
@@ -516,8 +516,8 @@ export const MultiplePickersCreateIndependentLazyContainers: Story = {
     if (!first || !second) throw new Error('picker harness not rendered');
     const firstRoot = await waitForShadowRoot(first);
     const secondRoot = await waitForShadowRoot(second);
-    void expect(firstRoot.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
-    void expect(secondRoot.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
+    await expect(firstRoot.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
+    await expect(secondRoot.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
 
     const firstTrigger = await getTrigger(firstRoot);
     const secondTrigger = await getTrigger(secondRoot);
@@ -527,7 +527,7 @@ export const MultiplePickersCreateIndependentLazyContainers: Story = {
       '[data-yv-shadow-local-overlay]',
       'first local container not created',
     );
-    void expect(secondRoot.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
+    await expect(secondRoot.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
 
     await userEvent.click(secondTrigger);
     const secondTopLayer = await waitForElement<HTMLElement>(
@@ -535,10 +535,12 @@ export const MultiplePickersCreateIndependentLazyContainers: Story = {
       '[data-yv-shadow-local-overlay]',
       'second local container not created',
     );
-    await waitFor(() => {
-      void expect(firstTopLayer.matches(':popover-open')).toBe(false);
-      void expect(secondTopLayer.matches(':popover-open')).toBe(true);
-      void expect(secondTopLayer.querySelectorAll('[data-slot="popover-content"]')).toHaveLength(1);
+    await waitFor(async () => {
+      await expect(firstTopLayer.matches(':popover-open')).toBe(false);
+      await expect(secondTopLayer.matches(':popover-open')).toBe(true);
+      await expect(secondTopLayer.querySelectorAll('[data-slot="popover-content"]')).toHaveLength(
+        1,
+      );
     });
   },
 };
@@ -550,10 +552,10 @@ export const MultiplePopoversShareOneIslandContainer: Story = {
     const triggers = Array.from(
       root.querySelectorAll<HTMLElement>('[data-slot="popover-trigger"]'),
     );
-    void expect(triggers).toHaveLength(2);
+    await expect(triggers).toHaveLength(2);
     const [firstTrigger, secondTrigger] = triggers;
     if (!firstTrigger || !secondTrigger) throw new Error('picker triggers not rendered');
-    void expect(root.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
+    await expect(root.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
 
     await userEvent.click(firstTrigger);
     const topLayer = await waitForElement<HTMLElement>(
@@ -561,18 +563,18 @@ export const MultiplePopoversShareOneIslandContainer: Story = {
       '[data-yv-shadow-local-overlay]',
       'shared island container not created',
     );
-    await waitFor(() => {
-      void expect(firstTrigger).toHaveAttribute('aria-expanded', 'true');
-      void expect(topLayer.querySelectorAll('[data-slot="popover-content"]')).toHaveLength(1);
+    await waitFor(async () => {
+      await expect(firstTrigger).toHaveAttribute('aria-expanded', 'true');
+      await expect(topLayer.querySelectorAll('[data-slot="popover-content"]')).toHaveLength(1);
     });
 
     await userEvent.click(secondTrigger);
-    await waitFor(() => {
-      void expect(firstTrigger).toHaveAttribute('aria-expanded', 'false');
-      void expect(secondTrigger).toHaveAttribute('aria-expanded', 'true');
-      void expect(topLayer.matches(':popover-open')).toBe(true);
-      void expect(topLayer.querySelectorAll('[data-slot="popover-content"]')).toHaveLength(1);
-      void expect(root.querySelectorAll('[data-yv-shadow-local-overlay]')).toHaveLength(1);
+    await waitFor(async () => {
+      await expect(firstTrigger).toHaveAttribute('aria-expanded', 'false');
+      await expect(secondTrigger).toHaveAttribute('aria-expanded', 'true');
+      await expect(topLayer.matches(':popover-open')).toBe(true);
+      await expect(topLayer.querySelectorAll('[data-slot="popover-content"]')).toHaveLength(1);
+      await expect(root.querySelectorAll('[data-yv-shadow-local-overlay]')).toHaveLength(1);
     });
 
     const panel = topLayer.querySelector<HTMLElement>('[data-slot="popover-content"]');
@@ -580,8 +582,8 @@ export const MultiplePopoversShareOneIslandContainer: Story = {
     const panelRect = panel.getBoundingClientRect();
     const viewport = canvasElement.ownerDocument.defaultView;
     if (!viewport) throw new Error('story window not available');
-    void expect(panelRect.top).toBeGreaterThanOrEqual(16);
-    void expect(panelRect.bottom).toBeLessThanOrEqual(viewport.innerHeight - 16);
+    await expect(panelRect.top).toBeGreaterThanOrEqual(16);
+    await expect(panelRect.bottom).toBeLessThanOrEqual(viewport.innerHeight - 16);
   },
 };
 
@@ -634,16 +636,16 @@ export const PanelTracksAncestorScrollAndVersionListScrollsInternally: Story = {
     scrollAncestor.scrollTop += scrollDelta;
     scrollAncestor.dispatchEvent(new Event('scroll', { bubbles: true }));
 
-    await waitFor(() => {
+    await waitFor(async () => {
       const triggerRectAfter = trigger.getBoundingClientRect();
-      void expect(
+      await expect(
         Math.abs(triggerRectAfter.top - (triggerRectBefore.top - scrollDelta)),
       ).toBeLessThan(2);
     });
     const triggerRectAfter = trigger.getBoundingClientRect();
     const panelRectAfter = panel.getBoundingClientRect();
     const offsetAfter = panelRectAfter.top - triggerRectAfter.bottom;
-    void expect(Math.abs(offsetAfter - offsetBefore)).toBeLessThanOrEqual(8);
+    await expect(Math.abs(offsetAfter - offsetBefore)).toBeLessThanOrEqual(8);
 
     // Part 2: the version list scrolls internally within the panel. Locate
     // the scroll region via the unconditional "All Versions" marker's
@@ -674,8 +676,8 @@ export const PanelTracksAncestorScrollAndVersionListScrollsInternally: Story = {
     scrollRegion.scrollTop = scrollRegion.scrollHeight;
     scrollRegion.dispatchEvent(new Event('scroll', { bubbles: true }));
 
-    await waitFor(() => {
-      void expect(scrollRegion.scrollTop).toBeGreaterThan(initialScrollTop);
+    await waitFor(async () => {
+      await expect(scrollRegion.scrollTop).toBeGreaterThan(initialScrollTop);
     });
 
     const lastItemRect = lastItem.getBoundingClientRect();
@@ -683,14 +685,14 @@ export const PanelTracksAncestorScrollAndVersionListScrollsInternally: Story = {
       lastItemRect.left + lastItemRect.width / 2,
       lastItemRect.top + lastItemRect.height / 2,
     );
-    void expect(hit === lastItem || (hit !== null && lastItem.contains(hit))).toBe(true);
+    await expect(hit === lastItem || (hit !== null && lastItem.contains(hit))).toBe(true);
   },
 };
 
 export const SameOriginIframeTopLayerRemainsInteractive: Story = {
   render: () => <SameOriginIframeHarness />,
   play: async ({ canvasElement }) => {
-    const { iframe, iframeDocument } = await waitFor(() => {
+    const { iframe, iframeDocument } = await waitFor(async () => {
       const currentIframe =
         canvasElement.querySelector<HTMLIFrameElement>('[data-testid="iframe"]');
       const currentDocument = currentIframe?.contentDocument;
@@ -710,7 +712,7 @@ export const SameOriginIframeTopLayerRemainsInteractive: Story = {
       '[data-yv-shadow-local-overlay]',
       'iframe top-layer container not created',
     );
-    const portalWrapper = await waitFor(() => {
+    const portalWrapper = await waitFor(async () => {
       const element = topLayer.firstElementChild;
       // SAFETY: A same-origin iframe exposes its realm's HTMLElement constructor on its Window.
       const frameWindow = iframe.contentWindow as
@@ -723,7 +725,7 @@ export const SameOriginIframeTopLayerRemainsInteractive: Story = {
     });
     const portalWindow = portalWrapper.ownerDocument.defaultView;
     if (!portalWindow) throw new Error('iframe portal window not available');
-    void expect(portalWindow.getComputedStyle(portalWrapper).pointerEvents).toBe('auto');
+    await expect(portalWindow.getComputedStyle(portalWrapper).pointerEvents).toBe('auto');
 
     const input = await waitForElement<HTMLInputElement>(
       topLayer,
@@ -731,14 +733,14 @@ export const SameOriginIframeTopLayerRemainsInteractive: Story = {
       'iframe picker input not rendered',
     );
     await userEvent.click(input);
-    void expect(componentRoot.activeElement).toBe(input);
+    await expect(componentRoot.activeElement).toBe(input);
 
     const panel = topLayer.querySelector<HTMLElement>('[data-slot="popover-content"]');
     if (!panel) throw new Error('iframe picker panel not rendered');
     const panelRect = panel.getBoundingClientRect();
     const frameWindow = iframe.contentWindow;
     if (!frameWindow) throw new Error('iframe window not available');
-    void expect(panelRect.top).toBeGreaterThanOrEqual(16);
-    void expect(panelRect.bottom).toBeLessThanOrEqual(frameWindow.innerHeight - 16);
+    await expect(panelRect.top).toBeGreaterThanOrEqual(16);
+    await expect(panelRect.bottom).toBeLessThanOrEqual(frameWindow.innerHeight - 16);
   },
 };
