@@ -11,7 +11,8 @@ This is a working plan, not approval for package-wide rollout.
 
 ## Current scope
 
-- `YouVersionAuthButton` creates its Shadow DOM boundary automatically.
+- `YouVersionAuthButton` is the only component automatically isolated by the
+  current prototype.
 - `BibleVersionPicker` validates shadow-local inline and native top-layer
   floating content through opt-in stories.
 - The shared Dialog and Popover primitives support opt-in shadow-local portals.
@@ -22,19 +23,19 @@ This is a working plan, not approval for package-wide rollout.
 - The internal `SignInDialog` is validated only through an opt-in
   `ShadowRootHost` story.
 - Nested and concurrent overlays within and across component shadow roots were
-  exercised through the production `ShadowRootHost` seam (YPE-5355). The Shadow
-  DOM ADR records the architectural boundary; the results below record the
-  supported contract and peer-dismissal and final focus-restoration gaps. Runtime
-  changes remain YPE-5356.
+  exercised through the real shared `ShadowRootHost` implementation (YPE-5355).
+  The Shadow DOM ADR records the architectural boundary; the results below record
+  the supported contract and the remaining peer-dismissal gap. Broader component
+  rollout and peer-overlay coordination remain with YPE-5356.
 
 ## Nested and concurrent overlay evidence
 
 | Scenario | Result | Evidence and limitation |
 | --- | --- | --- |
-| Verse action popover opens the highlights permission dialog | Partially supported | Both render in the shadow-local top layer. The dialog receives focus and the wrapper is inert. A first Escape closes only the dialog and restores focus inside the popover; a second closes the popover. Chromium spike observation found no final focus restoration. Automated evidence covers the stable dismissal, containment, and teardown contract without requiring that known gap to remain. |
+| Verse action popover opens the highlights permission dialog | Supported | Both render in the shadow-local top layer. The dialog receives focus and the wrapper is inert. A first Escape closes only the dialog and restores focus inside the popover; a second closes the popover and restores the original outside control. |
 | Dialog contains a popover | Supported | The popover is interactive and receives focus. Escape closes it first and restores its trigger while the dialog remains modal. A second Escape closes the dialog and restores its opener. |
 | Two independent popovers in the same or separate roots | Unsupported as concurrent peers | Chromium spike observation found that opening a popover dismisses an existing peer through Radix outside interaction, including when the peers use separate component shadow roots. Automated evidence covers the stable contract that the new peer receives focus, remains non-modal, tears down cleanly, and that separate roots remain usable after primary teardown. |
-| Rapid dialog close/reopen during exit | Unsupported | The first dialog remains connected in its closed state when it is reopened. The reopened dialog receives focus and the wrapper remains inert. Chromium spike observation found that final dismissal loses the opener; automated evidence requires safe modal release without locking in that focus loss. |
+| Rapid dialog close/reopen during exit | Supported | The first dialog unmounts while the overlay retains modal presence. The dialog then reopens as a new node during that retained presence, receives focus, and keeps the wrapper inert. Final dismissal releases the modal state and restores the original opener. Disconnected targets and targets moved out of their captured root—including into the light DOM, another shadow root, or another document—are ignored. |
 
 Separate `ShadowRootHost` instances use different portal containers and tear
 those containers down independently. This provides lifecycle isolation, not
@@ -56,12 +57,12 @@ Safari 26.6.2 through SafariDriver. Assistive-technology checks remain open.
 | Portal lifecycle | Unit and browser coverage exercise lazy creation, exit-animation retention, cleanup, immediate reopen behavior, and the direct-Radix `VerseActionPopover` consumer. | Validated for shared primitives and the known bypass | Repeat the consumer audit when adding another direct overlay primitive. |
 | Dialog relationships | Browser coverage resolves title and description relationships inside the component tree. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | Verify announcements with real assistive technology. |
 | Dialog keyboard containment | Browser coverage exercises initial focus, programmatic escape redirection, forward and reverse traversal, radio-group collapsing, negative `tabindex`, and wraparound. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | Verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
-| Dialog modal lifetime | Coverage verifies inert background content while open and through staggered Content and Overlay exit animations. YPE-5355 also exercises both unmount orders for overlapping popover and dialog exits. | Validated for order-independent teardown | YPE-5356 owns peer concurrency across component roots and final focus-restoration gaps. Verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
+| Dialog modal lifetime | Coverage verifies inert background content while open and through staggered Content and Overlay exit animations. YPE-5355 also exercises both unmount orders for overlapping popover and dialog exits. | Validated for order-independent teardown | YPE-5356 owns peer concurrency across component roots. Verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
 | Dialog dismissal and restoration | Coverage exercises Escape, backdrop click, full-viewport hit testing, overlay-only focus, and restoration after both modal nodes unmount. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | Verify real screen-reader behavior and repeat actual-Safari checks for significant platform changes. |
 | Consumer form participation | Browser coverage verifies that a light-DOM form does not own or serialize a native control inside an SDK shadow root. | Unsupported across tree scopes | Use an explicit component contract if a rollout target requires outer-form participation. |
 | Consumer labels and ARIA ID references | Browser coverage verifies that external native labels, `aria-labelledby`, and `aria-describedby` relationships do not resolve to controls inside the root. | Unsupported across tree scopes | Keep relationships in one tree scope; verify real assistive technology separately. |
 | Consumer events, refs, and automation | Coverage verifies native retargeting, the auth button's React handler and forwarded ref, open-root queries, and effect-driven attachment timing. | Supported with documented constraints | Repeat for each public component selected for rollout. |
-| Nested shadow roots | Coverage verifies basic rendering, recursive queries, and event retargeting at each boundary. | Supported for the validated basics | Nested and concurrent overlay ownership remains with YPE-5355. |
+| Nested shadow roots | Coverage verifies basic rendering, recursive queries, and event retargeting at each boundary. | Supported for the validated basics | Peer-overlay coordination remains with YPE-5356; verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
 | Realistic same-page usage | YPE-5437 mounts, removes, and re-adds a 12-component mix in Normal and Strict Mode. Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 coverage verifies exact host counts, rendered scripture content, and one shared stylesheet object across roots and remounts. A production-build comparison found a small warm-run mount-cost difference on one machine. | No shared-host blocker found | Repeat user-visible performance and compatibility checks for each component selected for rollout. |
 
 ## Direct overlay inventory
@@ -86,10 +87,9 @@ decision. YPE-5356 owns whether and how to implement that coordination.
 - Apply [ADR 0007's client-only SSR and hydration contract](adr/0007-prototype-shadow-dom-style-isolation.md#ssr-and-hydration-contract)
   per rollout component. YPE-5356 decides whether its first-paint, layout, and
   no-JavaScript limitations are acceptable for that component.
-- Resolve the YPE-5355 peer-dismissal and final focus-restoration gaps before
-  shipping nested and concurrent overlays (YPE-5356). The decision must consider
-  trigger-time peer dismissal as well as overlay order and restore targets;
-  ADR 0007 records the gaps but does not select a coordination design.
+- Resolve the YPE-5355 peer-dismissal gap before shipping concurrent peer
+  overlays (YPE-5356). The decision must consider trigger-time peer dismissal
+  and overlay order; ADR 0007 records the gap but does not select a coordination design.
   Recurring actual-Safari and assistive-technology coverage still remain.
 - Keep the YPE-5400 custom-property contract and compiled-stylesheet prevention
   guard green as component styles change. The audit below closes the known

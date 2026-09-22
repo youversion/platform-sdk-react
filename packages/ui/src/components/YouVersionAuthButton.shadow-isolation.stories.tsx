@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw';
 import { createRoot, type Root } from 'react-dom/client';
 import { expect, waitFor } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
+import { waitForElement } from '../test/storybook-dom';
 import { YouVersionAuthButton } from './YouVersionAuthButton';
 
 /**
@@ -50,6 +51,8 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const browserWaitOptions = { timeout: 5_000 } as const;
+
 function buttonStyleSnapshot(button: HTMLButtonElement) {
   const ownerWindow = button.ownerDocument.defaultView;
   if (!ownerWindow) throw new Error('button owner window not available');
@@ -84,25 +87,28 @@ export const HostileGlobalButtonRule: Story = {
     const ownerWindow = ownerDocument.defaultView;
     if (!ownerWindow) throw new Error('story owner window not available');
 
-    const control = await waitFor(() => {
-      const element = canvasElement.querySelector<HTMLButtonElement>(
-        '[data-testid="host-control"]',
-      );
-      if (!element) throw new Error('host control not rendered');
-      return element;
-    });
-    const host = await waitFor(() => {
-      const element = canvasElement.querySelector<HTMLElement>('[data-yv-shadow-host]');
-      if (!element?.shadowRoot) throw new Error('shadow root not attached');
-      return element;
-    });
-    const sdkButton = await waitFor(() => {
-      const element = host.shadowRoot?.querySelector<HTMLButtonElement>(
-        '[data-testid="sdk-button"]',
-      );
-      if (!element) throw new Error('SDK button not rendered');
-      return element;
-    });
+    const control = await waitForElement<HTMLButtonElement>(
+      canvasElement,
+      '[data-testid="host-control"]',
+      'host control not rendered',
+      browserWaitOptions,
+    );
+    const host = await waitForElement<HTMLElement>(
+      canvasElement,
+      '[data-yv-shadow-host]',
+      'shadow host not rendered',
+      browserWaitOptions,
+    );
+    const shadowRoot = await waitFor(() => {
+      if (!host.shadowRoot) throw new Error('shadow root not attached');
+      return host.shadowRoot;
+    }, browserWaitOptions);
+    const sdkButton = await waitForElement<HTMLButtonElement>(
+      shadowRoot,
+      '[data-testid="sdk-button"]',
+      'SDK button not rendered',
+      browserWaitOptions,
+    );
 
     const sdkBaseline = buttonStyleSnapshot(sdkButton);
     // Guard against a false positive where an unstyled browser-default button
@@ -139,12 +145,20 @@ export const SameOriginIframeDocument: Story = {
   parameters: { includeAuth: false },
   render: () => <iframe data-testid="iframe" title="same-origin isolation target" />,
   play: async ({ canvasElement }) => {
-    const iframe = canvasElement.querySelector<HTMLIFrameElement>('[data-testid="iframe"]');
-    const iframeDocument = iframe?.contentDocument;
-    const iframeWindow = iframeDocument?.defaultView;
-    if (!iframeDocument || !iframeWindow) {
-      throw new Error('same-origin iframe document not available');
-    }
+    const iframe = await waitForElement<HTMLIFrameElement>(
+      canvasElement,
+      '[data-testid="iframe"]',
+      'same-origin iframe not rendered',
+      browserWaitOptions,
+    );
+    const { iframeDocument, iframeWindow } = await waitFor(() => {
+      const currentDocument = iframe.contentDocument;
+      const currentWindow = currentDocument?.defaultView;
+      if (!currentDocument?.body || !currentWindow) {
+        throw new Error('same-origin iframe document not available');
+      }
+      return { iframeDocument: currentDocument, iframeWindow: currentWindow };
+    }, browserWaitOptions);
 
     const container = iframeDocument.createElement('div');
     iframeDocument.body.append(container);
@@ -170,7 +184,7 @@ export const SameOriginIframeDocument: Story = {
         void expect(shadowRoot?.adoptedStyleSheets).toHaveLength(1);
         void expect(shadowRoot?.adoptedStyleSheets[0]).toBeInstanceOf(iframeWindow.CSSStyleSheet);
         void expect(iframeWindow.getComputedStyle(content).display).toBe('flex');
-      });
+      }, browserWaitOptions);
 
       const styleSheetPrototype = iframeWindow.CSSStyleSheet.prototype;
       const replaceSyncDescriptor = Object.getOwnPropertyDescriptor(
@@ -205,7 +219,7 @@ export const SameOriginIframeDocument: Story = {
           void expect(style.getAttribute('data-href')).toBe('yv-sdk-shadow-styles');
           void expect(style.getAttribute('data-precedence')).toBe('yv-sdk');
           void expect(iframeWindow.getComputedStyle(content).display).toBe('flex');
-        });
+        }, browserWaitOptions);
       } finally {
         fallbackRoot?.unmount();
         fallbackContainer?.remove();

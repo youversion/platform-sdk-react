@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import i18n from '../i18n';
 import { ShadowRootHost } from '../lib/shadow-root-host';
-import { requireShadowRoot } from '../test/dom-stubs';
+import { waitForElement, waitForShadowRoot } from '../test/storybook-dom';
 import { VerseActionPopover } from './verse-action-popover';
 
 function IsolatedVerseActionPopover(): React.ReactNode {
@@ -142,18 +142,6 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-async function waitForElement<ElementType extends Element>(
-  container: ParentNode,
-  selector: string,
-  message: string,
-): Promise<ElementType> {
-  return waitFor(() => {
-    const element = container.querySelector<ElementType>(selector);
-    if (!element) throw new Error(message);
-    return element;
-  });
-}
-
 async function waitForClosed(topLayer: HTMLElement): Promise<void> {
   await waitFor(() => {
     void expect(topLayer.querySelector('[role="dialog"]')).toBeNull();
@@ -167,7 +155,7 @@ function getCopyButton(dialog: HTMLElement): HTMLButtonElement {
 
 export const PortalPlacementDockingReanchoringAndFocusRestoration: Story = {
   play: async ({ canvasElement }) => {
-    const shadowRoot = await waitFor(() => requireShadowRoot(canvasElement));
+    const shadowRoot = await waitForShadowRoot(canvasElement);
     const priorControl = await waitForElement<HTMLButtonElement>(
       shadowRoot,
       '[data-testid="prior-control"]',
