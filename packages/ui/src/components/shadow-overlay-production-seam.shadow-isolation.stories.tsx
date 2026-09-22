@@ -429,7 +429,7 @@ export const PopoverOpensDialogEvidence: Story = {
         await waitFor(() => {
           const focused = root.activeElement;
           void expect(focused !== null && permissionDialog.contains(focused)).toBe(true);
-        });
+        }, productionWaitOptions);
         void expect(contentWrapper.inert).toBe(true);
         void expect(opened.versePopover).toHaveAttribute('data-state', 'open');
       });
@@ -442,13 +442,13 @@ export const PopoverOpensDialogEvidence: Story = {
           void expect(contentWrapper.inert).toBe(false);
           const focused = root.activeElement;
           void expect(focused !== null && versePopover.contains(focused)).toBe(true);
-        });
+        }, productionWaitOptions);
         await userEvent.keyboard('{Escape}');
         await waitFor(() => {
           void expect(topLayer.querySelector('[data-slot="verse-action-popover"]')).toBeNull();
           void expect(topLayer.matches(':popover-open')).toBe(false);
           void expect(root.activeElement).toBe(priorControl);
-        });
+        }, productionWaitOptions);
       });
 
       await step('Keep modal ownership when the popover exits first', async () => {

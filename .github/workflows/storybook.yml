@@ -71,3 +71,5 @@ jobs:
 
       - name: Run Shadow DOM browser tests
         run: cd packages/ui && pnpm run test:shadow-browser
+        env:
+          HOME: /root
