@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 import { useRef, useState } from 'react';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { userEvent, waitFor, within } from 'storybook/test';
+import { expect } from 'vitest';
 import i18n from '../i18n';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { waitForElement, waitForShadowRoot } from '../test/storybook-dom';
@@ -143,9 +144,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 async function waitForClosed(topLayer: HTMLElement): Promise<void> {
-  await waitFor(async () => {
-    await expect(topLayer.querySelector('[role="dialog"]')).toBeNull();
-    await expect(topLayer.matches(':popover-open')).toBe(false);
+  await waitFor(() => {
+    expect(topLayer.querySelector('[role="dialog"]')).toBeNull();
+    expect(topLayer.matches(':popover-open')).toBe(false);
   });
 }
 
@@ -204,19 +205,19 @@ export const PortalPlacementDockingReanchoringAndFocusRestoration: Story = {
       'verse action popover not rendered',
     );
 
-    await waitFor(async () => await expect(topLayer.matches(':popover-open')).toBe(true));
-    await expect(topLayer.getRootNode()).toBe(shadowRoot);
-    await expect(dialog.getRootNode()).toBe(shadowRoot);
-    await expect(canvasElement.ownerDocument.body.querySelector('[role="dialog"]')).toBeNull();
-    await expect(dialog).toHaveAccessibleName(/.+/);
-    await expect(dialog.querySelector('[role="group"]')).toHaveAccessibleName(/.+/);
-    await waitFor(async () => await expect(shadowRoot.activeElement).toBe(dialog));
+    await waitFor(() => expect(topLayer.matches(':popover-open')).toBe(true));
+    expect(topLayer.getRootNode()).toBe(shadowRoot);
+    expect(dialog.getRootNode()).toBe(shadowRoot);
+    expect(canvasElement.ownerDocument.body.querySelector('[role="dialog"]')).toBeNull();
+    void expect(dialog).toHaveAccessibleName(/.+/);
+    void expect(dialog.querySelector('[role="group"]')).toHaveAccessibleName(/.+/);
+    await waitFor(() => expect(shadowRoot.activeElement).toBe(dialog));
 
     const clippingRect = clippingContainer.getBoundingClientRect();
     const firstDialogRect = dialog.getBoundingClientRect();
     const escapesAbove = firstDialogRect.top < clippingRect.top - 1;
     const escapesBelow = firstDialogRect.bottom > clippingRect.bottom + 1;
-    await expect(escapesAbove || escapesBelow).toBe(true);
+    expect(escapesAbove || escapesBelow).toBe(true);
     const sampleX = firstDialogRect.left + firstDialogRect.width / 2;
     const sampleY = escapesBelow
       ? Math.max(firstDialogRect.top + 2, clippingRect.bottom + 2)
@@ -224,44 +225,44 @@ export const PortalPlacementDockingReanchoringAndFocusRestoration: Story = {
     if (sampleY <= firstDialogRect.top || sampleY >= firstDialogRect.bottom)
       throw new Error('popover did not escape clipping bounds');
     const hit = shadowRoot.elementFromPoint(sampleX, sampleY);
-    await expect(hit === dialog || (hit !== null && dialog.contains(hit))).toBe(true);
+    expect(hit === dialog || (hit !== null && dialog.contains(hit))).toBe(true);
 
     readerScrollRoot.scrollTop = readerScrollRoot.scrollHeight;
-    await waitFor(async () => {
+    await waitFor(() => {
       const readerRect = readerScrollRoot.getBoundingClientRect();
       const dockedRect = dialog.getBoundingClientRect();
-      await expect(Math.abs(dockedRect.top - (readerRect.top + 24))).toBeLessThan(12);
-      await expect(
+      expect(Math.abs(dockedRect.top - (readerRect.top + 24))).toBeLessThan(12);
+      expect(
         Math.abs(dockedRect.left + dockedRect.width / 2 - (readerRect.left + readerRect.width / 2)),
       ).toBeLessThan(2);
     });
     readerScrollRoot.scrollTop = 0;
-    await waitFor(async () => {
+    await waitFor(() => {
       const returnedRect = dialog.getBoundingClientRect();
-      await expect(Math.abs(returnedRect.left - firstDialogRect.left)).toBeLessThan(12);
-      await expect(Math.abs(returnedRect.top - firstDialogRect.top)).toBeLessThan(12);
+      expect(Math.abs(returnedRect.left - firstDialogRect.left)).toBeLessThan(12);
+      expect(Math.abs(returnedRect.top - firstDialogRect.top)).toBeLessThan(12);
     });
 
     await userEvent.click(secondVerse);
-    await waitFor(async () => {
+    await waitFor(() => {
       const nextRect = dialog.getBoundingClientRect();
-      await expect(nextRect.left).toBeGreaterThan(firstDialogRect.left + 20);
+      expect(nextRect.left).toBeGreaterThan(firstDialogRect.left + 20);
     });
-    await expect(
+    expect(
       shadowRoot.querySelector('[data-testid="close-requests"]')?.getAttribute('data-count'),
     ).toBe('0');
-    await expect(topLayer).toContainElement(dialog);
+    void expect(topLayer).toContainElement(dialog);
 
     await userEvent.keyboard('{Escape}');
     await waitForClosed(topLayer);
-    await expect(shadowRoot.activeElement).toBe(priorControl);
+    expect(shadowRoot.activeElement).toBe(priorControl);
 
     priorControl.focus();
     await userEvent.click(firstVerse);
     dialog = await waitForElement(topLayer, '[role="dialog"]', 'popover did not reopen');
     await userEvent.click(getCopyButton(dialog));
     await waitForClosed(topLayer);
-    await expect(shadowRoot.activeElement).toBe(priorControl);
+    expect(shadowRoot.activeElement).toBe(priorControl);
 
     priorControl.focus();
     await userEvent.click(firstVerse);
@@ -276,31 +277,30 @@ export const PortalPlacementDockingReanchoringAndFocusRestoration: Story = {
     if (!closeRequestOutput) throw new Error('close request output missing');
     const closeRequestsBeforeRejection = Number(closeRequestOutput.getAttribute('data-count'));
     await userEvent.click(rejectedOutsideControl);
-    await waitFor(
-      async () =>
-        await expect(Number(closeRequestOutput.getAttribute('data-count'))).toBe(
-          closeRequestsBeforeRejection + 1,
-        ),
+    await waitFor(() =>
+      expect(Number(closeRequestOutput.getAttribute('data-count'))).toBe(
+        closeRequestsBeforeRejection + 1,
+      ),
     );
-    await expect(topLayer).toContainElement(dialog);
-    await expect(canvasElement.ownerDocument.activeElement).toBe(rejectedOutsideControl);
+    void expect(topLayer).toContainElement(dialog);
+    expect(canvasElement.ownerDocument.activeElement).toBe(rejectedOutsideControl);
     await userEvent.click(getCopyButton(dialog));
     await waitForClosed(topLayer);
-    await expect(shadowRoot.activeElement).toBe(priorControl);
+    expect(shadowRoot.activeElement).toBe(priorControl);
 
     priorControl.focus();
     await userEvent.click(firstVerse);
     await waitForElement(topLayer, '[role="dialog"]', 'popover did not reopen for delayed close');
     await userEvent.click(delayedOutsideControl);
     await waitForClosed(topLayer);
-    await expect(canvasElement.ownerDocument.activeElement).toBe(delayedOutsideControl);
+    expect(canvasElement.ownerDocument.activeElement).toBe(delayedOutsideControl);
 
     priorControl.focus();
     await userEvent.click(firstVerse);
     await waitForElement(topLayer, '[role="dialog"]', 'popover did not reopen for outside click');
     await userEvent.click(outsideControl);
     await waitForClosed(topLayer);
-    await expect(canvasElement.ownerDocument.activeElement).toBe(outsideControl);
+    expect(canvasElement.ownerDocument.activeElement).toBe(outsideControl);
 
     const closeRequestsBeforeTouch = Number(closeRequestOutput.getAttribute('data-count'));
     const touchUser = userEvent.setup({ document: canvasElement.ownerDocument });
@@ -308,22 +308,20 @@ export const PortalPlacementDockingReanchoringAndFocusRestoration: Story = {
     dialog = await waitForElement(topLayer, '[role="dialog"]', 'popover did not open for touch');
     const touchDialogRect = dialog.getBoundingClientRect();
     await touchUser.pointer({ keys: '[TouchA]', target: secondVerse });
-    await expect(firstVerse).toHaveClass('yv-v-selected');
-    await expect(secondVerse).toHaveClass('yv-v-selected');
-    await expect(dialog).toHaveAttribute('data-state', 'open');
-    await expect(Number(closeRequestOutput.getAttribute('data-count'))).toBe(
-      closeRequestsBeforeTouch,
-    );
-    await waitFor(async () => {
-      await expect(dialog.getBoundingClientRect().left).toBeGreaterThan(touchDialogRect.left + 20);
+    void expect(firstVerse).toHaveClass('yv-v-selected');
+    void expect(secondVerse).toHaveClass('yv-v-selected');
+    void expect(dialog).toHaveAttribute('data-state', 'open');
+    expect(Number(closeRequestOutput.getAttribute('data-count'))).toBe(closeRequestsBeforeTouch);
+    await waitFor(() => {
+      expect(dialog.getBoundingClientRect().left).toBeGreaterThan(touchDialogRect.left + 20);
     });
     await touchUser.pointer({ keys: '[TouchA>]', target: outsideControl });
-    await expect(dialog).toHaveAttribute('data-state', 'open');
+    void expect(dialog).toHaveAttribute('data-state', 'open');
     await touchUser.pointer({ keys: '[/TouchA]', target: outsideControl });
     await waitForClosed(topLayer);
-    await expect(Number(closeRequestOutput.getAttribute('data-count'))).toBe(
+    expect(Number(closeRequestOutput.getAttribute('data-count'))).toBe(
       closeRequestsBeforeTouch + 1,
     );
-    await expect(canvasElement.ownerDocument.activeElement).toBe(outsideControl);
+    expect(canvasElement.ownerDocument.activeElement).toBe(outsideControl);
   },
 };
