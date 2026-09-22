@@ -290,6 +290,10 @@ function installUnequalExitDurations(
   return style;
 }
 
+function finishAnimations(element: HTMLElement): void {
+  for (const animation of element.getAnimations()) animation.finish();
+}
+
 interface PrimaryHarness {
   contentWrapper: HTMLElement;
   primaryIsland: HTMLElement;
@@ -454,33 +458,41 @@ export const PopoverOpensDialogEvidence: Story = {
       await step('Keep modal ownership when the popover exits first', async () => {
         exitAnimationStyles.push(
           installUnequalExitDurations(root, {
-            dialog: 400,
-            overlay: 800,
-            popover: 180,
+            dialog: 40_000,
+            overlay: 50_000,
+            popover: 30_000,
           }),
         );
         const opened = await openVerseActionPopover(root, verse);
-        await openPermissionDialogFromVerseAction(opened.topLayer, opened.versePopover);
+        const permissionDialog = await openPermissionDialogFromVerseAction(
+          opened.topLayer,
+          opened.versePopover,
+        );
+        const dialogOverlay = opened.topLayer.querySelector<HTMLElement>(
+          '[data-slot="dialog-overlay"]',
+        );
+        if (!dialogOverlay) throw new Error('dialog overlay not rendered');
         closeAllOverlays.click();
         closeAllOverlays.click();
-        await waitFor(
-          () => {
-            void expect(
-              opened.topLayer.querySelector('[data-slot="verse-action-popover"]'),
-            ).toBeNull();
-            void expect(getPermissionDialog(opened.topLayer)).not.toBeNull();
-            void expect(contentWrapper.inert).toBe(true);
-          },
-          { timeout: 2_000 },
-        );
-        await waitFor(
-          () => {
-            void expect(getPermissionDialog(opened.topLayer)).toBeNull();
-            void expect(contentWrapper.inert).toBe(false);
-            void expect(opened.topLayer.matches(':popover-open')).toBe(false);
-          },
-          { timeout: 2_000 },
-        );
+        await waitFor(() => {
+          void expect(opened.versePopover).toHaveAttribute('data-state', 'closed');
+          void expect(permissionDialog).toHaveAttribute('data-state', 'closed');
+        }, productionWaitOptions);
+        finishAnimations(opened.versePopover);
+        await waitFor(() => {
+          void expect(
+            opened.topLayer.querySelector('[data-slot="verse-action-popover"]'),
+          ).toBeNull();
+          void expect(getPermissionDialog(opened.topLayer)).toBe(permissionDialog);
+          void expect(contentWrapper.inert).toBe(true);
+        }, productionWaitOptions);
+        finishAnimations(permissionDialog);
+        finishAnimations(dialogOverlay);
+        await waitFor(() => {
+          void expect(getPermissionDialog(opened.topLayer)).toBeNull();
+          void expect(contentWrapper.inert).toBe(false);
+          void expect(opened.topLayer.matches(':popover-open')).toBe(false);
+        }, productionWaitOptions);
         void expect(closeAllRequests.getAttribute('data-count')).toBe('2');
       });
 
@@ -488,33 +500,41 @@ export const PopoverOpensDialogEvidence: Story = {
         exitAnimationStyles.at(-1)?.remove();
         exitAnimationStyles.push(
           installUnequalExitDurations(root, {
-            dialog: 120,
-            overlay: 160,
-            popover: 800,
+            dialog: 30_000,
+            overlay: 40_000,
+            popover: 50_000,
           }),
         );
         const opened = await openVerseActionPopover(root, verse);
-        await openPermissionDialogFromVerseAction(opened.topLayer, opened.versePopover);
+        const permissionDialog = await openPermissionDialogFromVerseAction(
+          opened.topLayer,
+          opened.versePopover,
+        );
+        const dialogOverlay = opened.topLayer.querySelector<HTMLElement>(
+          '[data-slot="dialog-overlay"]',
+        );
+        if (!dialogOverlay) throw new Error('dialog overlay not rendered');
         closeAllOverlays.click();
-        await waitFor(
-          () => {
-            void expect(getPermissionDialog(opened.topLayer)).toBeNull();
-            void expect(
-              opened.topLayer.querySelector('[data-slot="verse-action-popover"]'),
-            ).not.toBeNull();
-          },
-          { timeout: 2_000 },
-        );
-        await waitFor(
-          () => {
-            void expect(
-              opened.topLayer.querySelector('[data-slot="verse-action-popover"]'),
-            ).toBeNull();
-            void expect(contentWrapper.inert).toBe(false);
-            void expect(opened.topLayer.matches(':popover-open')).toBe(false);
-          },
-          { timeout: 2_000 },
-        );
+        await waitFor(() => {
+          void expect(opened.versePopover).toHaveAttribute('data-state', 'closed');
+          void expect(permissionDialog).toHaveAttribute('data-state', 'closed');
+        }, productionWaitOptions);
+        finishAnimations(permissionDialog);
+        finishAnimations(dialogOverlay);
+        await waitFor(() => {
+          void expect(getPermissionDialog(opened.topLayer)).toBeNull();
+          void expect(
+            opened.topLayer.querySelector('[data-slot="verse-action-popover"]'),
+          ).not.toBeNull();
+        }, productionWaitOptions);
+        finishAnimations(opened.versePopover);
+        await waitFor(() => {
+          void expect(
+            opened.topLayer.querySelector('[data-slot="verse-action-popover"]'),
+          ).toBeNull();
+          void expect(contentWrapper.inert).toBe(false);
+          void expect(opened.topLayer.matches(':popover-open')).toBe(false);
+        }, productionWaitOptions);
         void expect(closeAllRequests.getAttribute('data-count')).toBe('3');
       });
     } finally {
