@@ -4,10 +4,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useTheme } from '@youversion/platform-react-hooks';
 import { http, HttpResponse } from 'msw';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { userEvent, waitFor } from 'storybook/test';
+import { userEvent } from 'storybook/test';
 import { expect } from 'vitest';
 import { ShadowRootHost } from '../lib/shadow-root-host';
-import { waitForElement } from '../test/storybook-dom';
+import { waitFor, waitForElement } from '../test/storybook-dom';
 import { Textarea } from './ui/textarea';
 import { YouVersionAuthButton } from './YouVersionAuthButton';
 

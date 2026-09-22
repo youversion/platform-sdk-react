@@ -3,11 +3,11 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import { http, HttpResponse } from 'msw';
 import { useRef, useState } from 'react';
-import { userEvent, waitFor, within } from 'storybook/test';
+import { userEvent, within } from 'storybook/test';
 import { expect } from 'vitest';
 import i18n from '../i18n';
 import { ShadowRootHost } from '../lib/shadow-root-host';
-import { waitForElement, waitForShadowRoot } from '../test/storybook-dom';
+import { waitFor, waitForElement, waitForShadowRoot } from '../test/storybook-dom';
 import { VerseActionPopover } from './verse-action-popover';
 
 function IsolatedVerseActionPopover(): React.ReactNode {
@@ -152,6 +152,10 @@ async function waitForClosed(topLayer: HTMLElement): Promise<void> {
   });
 }
 
+async function waitForFocus(shadowRoot: ShadowRoot, element: HTMLElement): Promise<void> {
+  await waitFor(async () => await expect(shadowRoot.activeElement).toBe(element));
+}
+
 function getCopyButton(dialog: HTMLElement): HTMLButtonElement {
   return within(dialog).getByRole('button', { name: i18n.t('copy') });
 }
@@ -257,14 +261,14 @@ export const PortalPlacementDockingReanchoringAndFocusRestoration: Story = {
 
     await userEvent.keyboard('{Escape}');
     await waitForClosed(topLayer);
-    await expect(shadowRoot.activeElement).toBe(priorControl);
+    await waitForFocus(shadowRoot, priorControl);
 
     priorControl.focus();
     await userEvent.click(firstVerse);
     dialog = await waitForElement(topLayer, '[role="dialog"]', 'popover did not reopen');
     await userEvent.click(getCopyButton(dialog));
     await waitForClosed(topLayer);
-    await expect(shadowRoot.activeElement).toBe(priorControl);
+    await waitForFocus(shadowRoot, priorControl);
 
     priorControl.focus();
     await userEvent.click(firstVerse);
@@ -289,7 +293,7 @@ export const PortalPlacementDockingReanchoringAndFocusRestoration: Story = {
     await expect(canvasElement.ownerDocument.activeElement).toBe(rejectedOutsideControl);
     await userEvent.click(getCopyButton(dialog));
     await waitForClosed(topLayer);
-    await expect(shadowRoot.activeElement).toBe(priorControl);
+    await waitForFocus(shadowRoot, priorControl);
 
     priorControl.focus();
     await userEvent.click(firstVerse);

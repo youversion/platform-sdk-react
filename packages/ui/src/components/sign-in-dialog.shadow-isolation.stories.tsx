@@ -3,10 +3,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import { http, HttpResponse } from 'msw';
 import { useState } from 'react';
-import { userEvent, waitFor } from 'storybook/test';
+import { userEvent } from 'storybook/test';
 import { expect } from 'vitest';
 import { ShadowRootHost } from '../lib/shadow-root-host';
-import { waitForShadowRoot } from '../test/storybook-dom';
+import { waitFor, waitForShadowRoot } from '../test/storybook-dom';
 import { SignInDialog } from './sign-in-dialog';
 
 function SignInDialogHarness(): React.ReactNode {

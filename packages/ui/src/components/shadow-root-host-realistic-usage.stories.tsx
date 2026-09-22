@@ -5,7 +5,7 @@ import type { BibleBook, BibleVersion } from '@youversion/platform-core';
 import { YouVersionContext, type HookOverrides } from '@youversion/platform-react-hooks';
 import { http, HttpResponse } from 'msw';
 import { StrictMode, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { spyOn, userEvent, waitFor } from 'storybook/test';
+import { spyOn, userEvent } from 'storybook/test';
 import { expect } from 'vitest';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { BibleCard } from './bible-card';
@@ -14,6 +14,7 @@ import { ProfileAvatar } from './profile-avatar';
 import { Separator } from './ui/separator';
 import { Textarea } from './ui/textarea';
 import { VerseOfTheDay } from './verse-of-the-day';
+import { waitFor } from '../test/storybook-dom';
 
 const EXPECTED_COMPONENT_IDS = [
   'reader',

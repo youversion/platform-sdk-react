@@ -5,11 +5,11 @@ import { YouVersionProvider as HooksYouVersionProvider } from '@youversion/platf
 import { http, HttpResponse } from 'msw';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { userEvent, waitFor, within } from 'storybook/test';
+import { userEvent, within } from 'storybook/test';
 import { expect } from 'vitest';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { globalHandlers } from '../test/mocks/handlers';
-import { waitForElement, waitForShadowRoot } from '../test/storybook-dom';
+import { waitFor, waitForElement, waitForShadowRoot } from '../test/storybook-dom';
 import { BibleVersionPicker } from './bible-version-picker';
 
 type PortalStrategy = 'local-inline' | 'local-top-layer';
@@ -641,14 +641,13 @@ export const PanelTracksAncestorScrollAndVersionListScrollsInternally: Story = {
 
     await waitFor(async () => {
       const triggerRectAfter = trigger.getBoundingClientRect();
+      const panelRectAfter = panel.getBoundingClientRect();
       await expect(
         Math.abs(triggerRectAfter.top - (triggerRectBefore.top - scrollDelta)),
       ).toBeLessThan(2);
+      const offsetAfter = panelRectAfter.top - triggerRectAfter.bottom;
+      await expect(Math.abs(offsetAfter - offsetBefore)).toBeLessThanOrEqual(8);
     });
-    const triggerRectAfter = trigger.getBoundingClientRect();
-    const panelRectAfter = panel.getBoundingClientRect();
-    const offsetAfter = panelRectAfter.top - triggerRectAfter.bottom;
-    await expect(Math.abs(offsetAfter - offsetBefore)).toBeLessThanOrEqual(8);
 
     // Part 2: the version list scrolls internally within the panel. Locate
     // the scroll region via the unconditional "All Versions" marker's

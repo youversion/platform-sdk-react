@@ -3,10 +3,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import { http, HttpResponse } from 'msw';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { spyOn, userEvent, waitFor } from 'storybook/test';
+import { spyOn, userEvent } from 'storybook/test';
 import { expect } from 'vitest';
 import { ShadowRootHost } from '../lib/shadow-root-host';
-import { waitForElement, waitForShadowRoot } from '../test/storybook-dom';
+import { waitFor, waitForElement, waitForShadowRoot } from '../test/storybook-dom';
 import { HighlightPermissionDialog } from './highlight-permission-dialog';
 import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -618,7 +618,7 @@ export const DialogContainsPopoverEvidence: Story = {
       await userEvent.keyboard('{Escape}');
       await waitFor(async () => await expect(notesPopover.isConnected).toBe(false));
       await expect(topLayer).toContainElement(notesDialog);
-      await expect(root.activeElement).toBe(notesTrigger);
+      await waitFor(async () => await expect(root.activeElement).toBe(notesTrigger));
       await expect(contentWrapper.inert).toBe(true);
     });
 
@@ -627,7 +627,7 @@ export const DialogContainsPopoverEvidence: Story = {
       await waitFor(async () => await expect(notesDialog.isConnected).toBe(false));
       await waitFor(async () => await expect(contentWrapper.inert).toBe(false));
       await waitFor(async () => await expect(topLayer.matches(':popover-open')).toBe(false));
-      await expect(root.activeElement).toBe(openNotes);
+      await waitFor(async () => await expect(root.activeElement).toBe(openNotes));
     });
   },
 };
