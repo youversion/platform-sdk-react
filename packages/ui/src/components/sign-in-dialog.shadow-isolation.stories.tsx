@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+/* oxlint-disable typescript/await-thenable -- Vitest browser assertions are runtime-async. */
+
 import { http, HttpResponse } from 'msw';
 import { useState } from 'react';
 import { userEvent, waitFor } from 'storybook/test';
@@ -73,16 +75,16 @@ async function expectOutsideFocusRedirectedInto(
   dialog: HTMLElement,
 ): Promise<void> {
   outsideControl.focus();
-  await waitFor(() => {
+  await waitFor(async () => {
     const focused = root.activeElement;
-    expect(focused !== null && dialog.contains(focused)).toBe(true);
+    await expect(focused !== null && dialog.contains(focused)).toBe(true);
   });
-  expect(outsideControl.ownerDocument.activeElement).not.toBe(outsideControl);
+  await expect(outsideControl.ownerDocument.activeElement).not.toBe(outsideControl);
 }
 
 export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
   play: async ({ canvasElement }) => {
-    const { outsideControl, clippingContainer } = await waitFor(() => {
+    const { outsideControl, clippingContainer } = await waitFor(async () => {
       const outside = canvasElement.querySelector<HTMLButtonElement>(
         '[data-testid="outside-control"]',
       );
@@ -100,15 +102,15 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
       [data-slot='dialog-overlay'][data-state='closed'] { animation-duration: 800ms !important; }
     `;
     root.append(exitAnimationStyle);
-    const insideControl = await waitFor(() => {
+    const insideControl = await waitFor(async () => {
       const element = root.querySelector<HTMLButtonElement>('[data-testid="inside-control"]');
       if (!element) throw new Error('inside-island control not rendered');
       return element;
     });
-    expect(root.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
+    await expect(root.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
     insideControl.focus();
     await userEvent.click(insideControl);
-    const dialog = await waitFor(() => {
+    const dialog = await waitFor(async () => {
       const element = root.querySelector<HTMLElement>('[role="dialog"]');
       if (!element) throw new Error('sign-in dialog not rendered in the component shadow root');
       return element;
@@ -117,19 +119,19 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
     const contentWrapper = root.querySelector<HTMLElement>('[data-yv-shadow-content-wrapper]');
     if (!topLayer || !contentWrapper) throw new Error('shadow modal coordination not rendered');
 
-    expect(dialog.getRootNode()).toBe(root);
-    expect(topLayer.getRootNode()).toBe(root);
-    expect(canvasElement.ownerDocument.body.querySelector('[role="dialog"]')).toBeNull();
-    await waitFor(() => expect(topLayer.matches(':popover-open')).toBe(true));
+    await expect(dialog.getRootNode()).toBe(root);
+    await expect(topLayer.getRootNode()).toBe(root);
+    await expect(canvasElement.ownerDocument.body.querySelector('[role="dialog"]')).toBeNull();
+    await waitFor(async () => await expect(topLayer.matches(':popover-open')).toBe(true));
 
     const titleId = dialog.getAttribute('aria-labelledby');
     const descriptionId = dialog.getAttribute('aria-describedby');
-    expect(titleId).toBeTruthy();
-    expect(descriptionId).toBeTruthy();
+    await expect(titleId).toBeTruthy();
+    await expect(descriptionId).toBeTruthy();
     const title = root.getElementById(titleId!);
     const description = root.getElementById(descriptionId!);
-    expect(title).not.toBeNull();
-    expect(description).not.toBeNull();
+    await expect(title).not.toBeNull();
+    await expect(description).not.toBeNull();
     // SAFETY: These reflected-ARIA properties are still a draft; verify support before use.
     const reflectedDialog = dialog as HTMLElement & {
       ariaLabelledByElements?: readonly Element[];
@@ -138,12 +140,12 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
     if (!reflectedDialog.ariaLabelledByElements || !reflectedDialog.ariaDescribedByElements) {
       throw new Error('browser did not expose the dialog ARIA element relationships');
     }
-    expect(reflectedDialog.ariaLabelledByElements).toEqual([title]);
-    expect(reflectedDialog.ariaDescribedByElements).toEqual([description]);
+    await expect(reflectedDialog.ariaLabelledByElements).toEqual([title]);
+    await expect(reflectedDialog.ariaDescribedByElements).toEqual([description]);
 
-    await waitFor(() => {
+    await waitFor(async () => {
       const focused = root.activeElement;
-      expect(focused !== null && dialog.contains(focused)).toBe(true);
+      await expect(focused !== null && dialog.contains(focused)).toBe(true);
     });
 
     const hiddenWrapper = canvasElement.ownerDocument.createElement('div');
@@ -156,7 +158,7 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
     const dialogButtons = Array.from(
       dialog.querySelectorAll<HTMLButtonElement>('button[data-slot="button"]'),
     );
-    expect(dialogButtons).toHaveLength(2);
+    await expect(dialogButtons).toHaveLength(2);
     const [confirmButton, declineButton] = dialogButtons;
     if (!confirmButton || !declineButton) throw new Error('sign-in dialog actions not rendered');
 
@@ -176,24 +178,24 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
 
     confirmButton.focus();
     await userEvent.tab();
-    expect(root.activeElement).toBe(firstRadio);
+    await expect(root.activeElement).toBe(firstRadio);
     await userEvent.tab();
-    expect(root.activeElement).toBe(declineButton);
+    await expect(root.activeElement).toBe(declineButton);
     await userEvent.tab();
-    await waitFor(() => expect(root.activeElement).toBe(confirmButton));
+    await waitFor(async () => await expect(root.activeElement).toBe(confirmButton));
     await userEvent.tab({ shift: true });
-    await waitFor(() => expect(root.activeElement).toBe(declineButton));
-    expect(root.activeElement).not.toBe(negativeTabIndexButton);
-    expect(root.activeElement).not.toBe(secondRadio);
+    await waitFor(async () => await expect(root.activeElement).toBe(declineButton));
+    await expect(root.activeElement).not.toBe(negativeTabIndexButton);
+    await expect(root.activeElement).not.toBe(secondRadio);
 
-    expect(getComputedStyle(outsideControl).pointerEvents).toBe('none');
+    await expect(getComputedStyle(outsideControl).pointerEvents).toBe('none');
 
     await expectOutsideFocusRedirectedInto(root, outsideControl, dialog);
 
-    expect(insideControl.closest('[inert]')).not.toBeNull();
+    await expect(insideControl.closest('[inert]')).not.toBeNull();
 
     insideControl.focus();
-    expect(root.activeElement).not.toBe(insideControl);
+    await expect(root.activeElement).not.toBe(insideControl);
 
     const overlay = dialog.previousElementSibling;
     if (!(overlay instanceof HTMLElement)) throw new Error('dialog overlay not rendered');
@@ -202,23 +204,25 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
     const clippingRect = clippingContainer.getBoundingClientRect();
     const viewport = canvasElement.ownerDocument.defaultView;
     if (!viewport) throw new Error('story window not available');
-    expect(overlayRect.width).toBeGreaterThanOrEqual(viewport.innerWidth - 1);
-    expect(overlayRect.height).toBeGreaterThanOrEqual(viewport.innerHeight - 1);
+    await expect(overlayRect.width).toBeGreaterThanOrEqual(viewport.innerWidth - 1);
+    await expect(overlayRect.height).toBeGreaterThanOrEqual(viewport.innerHeight - 1);
     const sampleX =
       clippingRect.right + 4 < viewport.innerWidth ? clippingRect.right + 4 : clippingRect.left - 4;
     const sampleY = Math.min(viewport.innerHeight - 4, Math.max(4, clippingRect.top + 4));
     const escapedHit = root.elementFromPoint(sampleX, sampleY);
-    expect(escapedHit === overlay || (escapedHit !== null && overlay.contains(escapedHit))).toBe(
-      true,
-    );
-    expect(dialogRect.bottom).toBeGreaterThan(clippingRect.bottom + 1);
+    await expect(
+      escapedHit === overlay || (escapedHit !== null && overlay.contains(escapedHit)),
+    ).toBe(true);
+    await expect(dialogRect.bottom).toBeGreaterThan(clippingRect.bottom + 1);
     const dialogSampleX = dialogRect.left + dialogRect.width / 2;
     const dialogSampleY = Math.max(dialogRect.top + 2, clippingRect.bottom + 2);
     if (dialogSampleY >= dialogRect.bottom) {
       throw new Error('dialog did not extend beyond its clipping ancestor');
     }
     const dialogHit = root.elementFromPoint(dialogSampleX, dialogSampleY);
-    expect(dialogHit === dialog || (dialogHit !== null && dialog.contains(dialogHit))).toBe(true);
+    await expect(dialogHit === dialog || (dialogHit !== null && dialog.contains(dialogHit))).toBe(
+      true,
+    );
 
     const dialogStyles = styleSnapshot(dialog);
     const overlayStyles = styleSnapshot(overlay);
@@ -236,39 +240,40 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
     `;
     try {
       canvasElement.ownerDocument.head.append(hostileStyle);
-      await waitFor(() =>
-        expect(getComputedStyle(outsideControl).backgroundColor).toBe('rgb(185, 28, 28)'),
+      await waitFor(
+        async () =>
+          await expect(getComputedStyle(outsideControl).backgroundColor).toBe('rgb(185, 28, 28)'),
       );
-      expect(styleSnapshot(dialog)).toEqual(dialogStyles);
-      expect(styleSnapshot(overlay)).toEqual(overlayStyles);
+      await expect(styleSnapshot(dialog)).toEqual(dialogStyles);
+      await expect(styleSnapshot(overlay)).toEqual(overlayStyles);
     } finally {
       hostileStyle.remove();
     }
 
     await userEvent.keyboard('{Escape}');
-    await waitFor(() => {
-      void expect(dialog).toHaveAttribute('data-state', 'closed');
-      void expect(topLayer).toContainElement(dialog);
-      expect(contentWrapper.inert).toBe(true);
-      expect(getComputedStyle(outsideControl).pointerEvents).toBe('none');
-      expect(topLayer.matches(':popover-open')).toBe(true);
+    await waitFor(async () => {
+      await expect(dialog).toHaveAttribute('data-state', 'closed');
+      await expect(topLayer).toContainElement(dialog);
+      await expect(contentWrapper.inert).toBe(true);
+      await expect(getComputedStyle(outsideControl).pointerEvents).toBe('none');
+      await expect(topLayer.matches(':popover-open')).toBe(true);
     });
     await expectOutsideFocusRedirectedInto(root, outsideControl, dialog);
-    await waitFor(() => {
-      expect(topLayer.querySelector('[role="dialog"]')).toBeNull();
-      expect(topLayer.querySelector('[data-slot="dialog-overlay"]')).not.toBeNull();
-      expect(contentWrapper.inert).toBe(true);
-      expect(root.activeElement).toBe(overlay);
+    await waitFor(async () => {
+      await expect(topLayer.querySelector('[role="dialog"]')).toBeNull();
+      await expect(topLayer.querySelector('[data-slot="dialog-overlay"]')).not.toBeNull();
+      await expect(contentWrapper.inert).toBe(true);
+      await expect(root.activeElement).toBe(overlay);
     });
-    await waitFor(() => {
-      expect(topLayer.childElementCount).toBe(0);
-      expect(topLayer.matches(':popover-open')).toBe(false);
-      expect(contentWrapper.inert).toBe(false);
-      expect(root.activeElement).toBe(insideControl);
+    await waitFor(async () => {
+      await expect(topLayer.childElementCount).toBe(0);
+      await expect(topLayer.matches(':popover-open')).toBe(false);
+      await expect(contentWrapper.inert).toBe(false);
+      await expect(root.activeElement).toBe(insideControl);
     });
 
     await userEvent.click(outsideControl);
-    const reopenedDialog = await waitFor(() => {
+    const reopenedDialog = await waitFor(async () => {
       const element = root.querySelector<HTMLElement>('[role="dialog"]');
       if (!element) throw new Error('dialog did not reopen');
       return element;
@@ -278,30 +283,32 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
       throw new Error('reopened dialog overlay not rendered');
     }
     await userEvent.click(reopenedOverlay);
-    await waitFor(() => {
-      void expect(reopenedDialog).toHaveAttribute('data-state', 'closed');
-      expect(contentWrapper.inert).toBe(true);
-      expect(getComputedStyle(outsideControl).pointerEvents).toBe('none');
-      expect(topLayer.matches(':popover-open')).toBe(true);
+    await waitFor(async () => {
+      await expect(reopenedDialog).toHaveAttribute('data-state', 'closed');
+      await expect(contentWrapper.inert).toBe(true);
+      await expect(getComputedStyle(outsideControl).pointerEvents).toBe('none');
+      await expect(topLayer.matches(':popover-open')).toBe(true);
     });
     await expectOutsideFocusRedirectedInto(root, outsideControl, reopenedDialog);
-    await waitFor(() => {
-      expect(topLayer.querySelector('[role="dialog"]')).toBeNull();
-      expect(topLayer.querySelector('[data-slot="dialog-overlay"]')).not.toBeNull();
-      expect(contentWrapper.inert).toBe(true);
-      expect(root.activeElement).toBe(reopenedOverlay);
+    await waitFor(async () => {
+      await expect(topLayer.querySelector('[role="dialog"]')).toBeNull();
+      await expect(topLayer.querySelector('[data-slot="dialog-overlay"]')).not.toBeNull();
+      await expect(contentWrapper.inert).toBe(true);
+      await expect(root.activeElement).toBe(reopenedOverlay);
     });
     outsideControl.focus();
-    await waitFor(() => {
-      expect(canvasElement.ownerDocument.activeElement).not.toBe(outsideControl);
-      expect(root.activeElement).toBe(reopenedOverlay);
+    await waitFor(async () => {
+      await expect(canvasElement.ownerDocument.activeElement).not.toBe(outsideControl);
+      await expect(root.activeElement).toBe(reopenedOverlay);
     });
-    await waitFor(() => {
-      expect(topLayer.childElementCount).toBe(0);
-      expect(topLayer.matches(':popover-open')).toBe(false);
-      expect(contentWrapper.inert).toBe(false);
-      expect(canvasElement.ownerDocument.activeElement).toBe(outsideControl);
+    await waitFor(async () => {
+      await expect(topLayer.childElementCount).toBe(0);
+      await expect(topLayer.matches(':popover-open')).toBe(false);
+      await expect(contentWrapper.inert).toBe(false);
+      await expect(canvasElement.ownerDocument.activeElement).toBe(outsideControl);
     });
     exitAnimationStyle.remove();
   },
 };
+/* oxlint-disable typescript/await-thenable -- Vitest browser assertions are runtime-async. */
+/* oxlint-disable typescript/await-thenable -- Vitest browser assertions are runtime-async. */
