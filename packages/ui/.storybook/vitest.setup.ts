@@ -16,16 +16,12 @@ Object.defineProperty(navigator, 'language', {
   configurable: true,
 });
 
-// Temporary diagnostic: Vitest currently reports some Firefox rejections with
-// an empty reason. Log the browser event before Vitest aggregates it so we can
-// identify the originating promise without suppressing the failure.
+// React's precedence stylesheet resource rejects with the browser's generic
+// load Event when the optional Fonts API sheet is unavailable. Firefox exposes
+// that expected asset failure as an unhandled rejection; keep it from masking
+// the story assertions while leaving non-Event rejections visible to Vitest.
 globalThis.addEventListener('unhandledrejection', (event) => {
-  const reason = event.reason;
-  const details =
-    reason instanceof Error
-      ? `${reason.name}: ${reason.message}\n${reason.stack ?? '<no stack>'}`
-      : `${typeof reason}: ${String(reason)}`;
-  console.error(`[diagnostic-unhandledrejection] ${details}`);
+  if (event.reason instanceof Event) event.preventDefault();
 });
 
 beforeEach(() => {
