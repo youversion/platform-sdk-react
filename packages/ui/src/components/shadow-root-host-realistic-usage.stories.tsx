@@ -229,7 +229,7 @@ async function requireMountedFixture(canvasElement: HTMLElement): Promise<Mounte
   const hosts = Array.from(
     canvasElement.ownerDocument.querySelectorAll<HTMLElement>('[data-yv-shadow-host]'),
   );
-  await expect(hosts).toHaveLength(EXPECTED_COMPONENT_IDS.length);
+  expect(hosts).toHaveLength(EXPECTED_COMPONENT_IDS.length);
 
   const roots = hosts.map((host) => {
     if (!host.shadowRoot) throw new Error('shadow root not attached');
@@ -239,7 +239,7 @@ async function requireMountedFixture(canvasElement: HTMLElement): Promise<Mounte
     (root) =>
       root.querySelector<HTMLElement>('[data-realistic-component]')?.dataset.realisticComponent,
   );
-  await expect(componentIds).toEqual(EXPECTED_COMPONENT_IDS);
+  expect(componentIds).toEqual(EXPECTED_COMPONENT_IDS);
 
   const components = new Map(
     roots.map((root, index) => [
@@ -255,35 +255,27 @@ async function requireMountedFixture(canvasElement: HTMLElement): Promise<Mounte
     ['votd-large', 'JHN.3.16'],
   ]);
   for (const [id, usfm] of expectedPassages) {
-    await expect(components.get(id)).toHaveTextContent(`Fixture scripture content for ${usfm}.`);
+    expect(components.get(id)).toHaveTextContent(`Fixture scripture content for ${usfm}.`);
   }
-  await expect(
+  expect(
     components.get('avatar-primary')?.querySelector('[aria-label="SDK Reader"]'),
   ).not.toBeNull();
-  await expect(
+  expect(
     components.get('avatar-secondary')?.querySelector('[aria-label="Bible Partner"]'),
   ).not.toBeNull();
-  await expect(components.get('notes-primary')?.querySelector('textarea')).toHaveValue(
-    'Primary notes',
-  );
-  await expect(components.get('notes-secondary')?.querySelector('textarea')).toHaveValue(
+  expect(components.get('notes-primary')?.querySelector('textarea')).toHaveValue('Primary notes');
+  expect(components.get('notes-secondary')?.querySelector('textarea')).toHaveValue(
     'Secondary notes',
   );
-  await expect(components.get('notes-tertiary')?.querySelector('textarea')).toHaveValue(
-    'Tertiary notes',
-  );
-  await expect(
-    components.get('separator-primary')?.querySelector('[role="separator"]'),
-  ).not.toBeNull();
-  await expect(
-    components.get('separator-secondary')?.querySelector('[role="separator"]'),
-  ).not.toBeNull();
+  expect(components.get('notes-tertiary')?.querySelector('textarea')).toHaveValue('Tertiary notes');
+  expect(components.get('separator-primary')?.querySelector('[role="separator"]')).not.toBeNull();
+  expect(components.get('separator-secondary')?.querySelector('[role="separator"]')).not.toBeNull();
 
   const sheet = roots[0]?.adoptedStyleSheets[0];
   if (!sheet) throw new Error('shared SDK stylesheet not adopted');
   for (const root of roots) {
-    await expect(root.adoptedStyleSheets).toHaveLength(1);
-    await expect(root.adoptedStyleSheets[0]).toBe(sheet);
+    expect(root.adoptedStyleSheets).toHaveLength(1);
+    expect(root.adoptedStyleSheets[0]).toBe(sheet);
   }
 
   return { hosts, sheet };
@@ -314,8 +306,8 @@ async function requireEffectCounts(
   [setup, cleanup]: [setup: number, cleanup: number],
 ): Promise<void> {
   const counts = canvasElement.querySelector('[data-testid="effect-lifecycle-counts"]');
-  await expect(counts).toHaveAttribute('data-effect-setup', String(setup));
-  await expect(counts).toHaveAttribute('data-effect-cleanup', String(cleanup));
+  expect(counts).toHaveAttribute('data-effect-setup', String(setup));
+  expect(counts).toHaveAttribute('data-effect-cleanup', String(cleanup));
 }
 
 async function exerciseLifecycle(
@@ -358,8 +350,8 @@ async function exerciseLifecycle(
     await requireEffectCounts(canvasElement, expectedEffectCounts.firstMount);
 
     await userEvent.click(toggle);
-    await expect(canvasElement.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
-    await expect(canvasElement.querySelector('[data-testid="realistic-component-mix"]')).toBeNull();
+    expect(canvasElement.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
+    expect(canvasElement.querySelector('[data-testid="realistic-component-mix"]')).toBeNull();
     await requireEffectCounts(canvasElement, expectedEffectCounts.removal);
 
     await userEvent.click(toggle);
@@ -367,9 +359,9 @@ async function exerciseLifecycle(
     await requireMountedFixture(canvasElement);
     await requireEffectCounts(canvasElement, expectedEffectCounts.secondMount);
     for (const host of secondMount.hosts) {
-      await expect(host.shadowRoot?.adoptedStyleSheets[0]).toBe(firstMount.sheet);
+      expect(host.shadowRoot?.adoptedStyleSheets[0]).toBe(firstMount.sheet);
     }
-    await expect(consoleError).not.toHaveBeenCalled();
+    expect(consoleError).not.toHaveBeenCalled();
   } finally {
     consoleError.mockRestore();
   }
