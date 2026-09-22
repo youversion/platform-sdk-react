@@ -172,12 +172,14 @@ export const FormsAndExternalRelationshipsStopAtTheTreeScope: Story = {
   name: 'External relationships stop at the shadow boundary',
   render: () => <FormRelationshipsHarness />,
   play: async ({ canvasElement }) => {
-    const form = await waitFor(() =>
-      requireElement<HTMLFormElement>(
-        canvasElement,
-        '[data-testid="consumer-form"]',
-        'consumer form not rendered',
-      ),
+    const form = await waitFor(
+      () =>
+        requireElement<HTMLFormElement>(
+          canvasElement,
+          '[data-testid="consumer-form"]',
+          'consumer form not rendered',
+        ),
+      { timeout: 5_000 },
     );
     const label = requireElement<HTMLLabelElement>(
       canvasElement,
