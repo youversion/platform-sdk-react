@@ -16,6 +16,18 @@ Object.defineProperty(navigator, 'language', {
   configurable: true,
 });
 
+// Temporary diagnostic: Vitest currently reports some Firefox rejections with
+// an empty reason. Log the browser event before Vitest aggregates it so we can
+// identify the originating promise without suppressing the failure.
+globalThis.addEventListener('unhandledrejection', (event) => {
+  const reason = event.reason;
+  const details =
+    reason instanceof Error
+      ? `${reason.name}: ${reason.message}\n${reason.stack ?? '<no stack>'}`
+      : `${typeof reason}: ${String(reason)}`;
+  console.error(`[diagnostic-unhandledrejection] ${details}`);
+});
+
 beforeEach(() => {
   localStorage?.clear?.();
   sessionStorage?.clear?.();
