@@ -413,7 +413,6 @@ export const ProviderDirectionRejectsHostVisualValues: Story = {
     if (!wrapper || !heading || !inputGroup) throw new Error('picker landmarks not rendered');
 
     const triggerGeometry = geometrySnapshot(trigger);
-    const panelGeometry = geometrySnapshot(panel);
     const inputGeometry = geometrySnapshot(inputGroup);
     const headingTypography = typographySnapshot(heading, ownerWindow);
     await expect(headingTypography.fontFamily).toContain('Inter');
@@ -436,6 +435,7 @@ export const ProviderDirectionRejectsHostVisualValues: Story = {
     }
     const languageTabsInlineSize = languageTabs.offsetWidth;
     const languageInputRadius = ownerWindow.getComputedStyle(languageInputGroup).borderRadius;
+    const panelGeometry = geometrySnapshot(panel);
     await expect(languageTabsInlineSize).toBe(languageTabsContainer.clientWidth - 32);
     await expect(languageInputRadius).toBe('30px');
 

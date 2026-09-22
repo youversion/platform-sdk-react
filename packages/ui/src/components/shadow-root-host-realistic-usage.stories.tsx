@@ -325,13 +325,36 @@ async function exerciseLifecycle(
   if (!toggle) throw new Error('lifecycle toggle not rendered');
   const consoleError = spyOn(console, 'error').mockImplementation(() => undefined);
 
+  const waitForMountedDom = async (): Promise<MountedFixture> =>
+    waitFor(() => {
+      const hosts = Array.from(
+        canvasElement.ownerDocument.querySelectorAll<HTMLElement>('[data-yv-shadow-host]'),
+      );
+      if (hosts.length !== EXPECTED_COMPONENT_IDS.length) {
+        throw new Error('realistic component mix is still mounting');
+      }
+
+      const roots = hosts.map((host) => host.shadowRoot);
+      if (roots.some((root) => !root)) throw new Error('shadow roots are still mounting');
+      const componentIds = roots.map(
+        (root) =>
+          root?.querySelector<HTMLElement>('[data-realistic-component]')?.dataset
+            .realisticComponent,
+      );
+      if (componentIds.some((id, index) => id !== EXPECTED_COMPONENT_IDS[index])) {
+        throw new Error('realistic component mix is still mounting');
+      }
+
+      const sheet = roots[0]?.adoptedStyleSheets[0];
+      if (!sheet) throw new Error('shared SDK stylesheet is still mounting');
+      return { hosts, sheet };
+    });
+
   try {
     await userEvent.click(toggle);
-    const firstMount = await waitFor(async () => {
-      const fixture = await requireMountedFixture(canvasElement);
-      await requireEffectCounts(canvasElement, expectedEffectCounts.firstMount);
-      return fixture;
-    });
+    const firstMount = await waitForMountedDom();
+    await requireMountedFixture(canvasElement);
+    await requireEffectCounts(canvasElement, expectedEffectCounts.firstMount);
 
     await userEvent.click(toggle);
     await expect(canvasElement.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
@@ -339,11 +362,9 @@ async function exerciseLifecycle(
     await requireEffectCounts(canvasElement, expectedEffectCounts.removal);
 
     await userEvent.click(toggle);
-    const secondMount = await waitFor(async () => {
-      const fixture = await requireMountedFixture(canvasElement);
-      await requireEffectCounts(canvasElement, expectedEffectCounts.secondMount);
-      return fixture;
-    });
+    const secondMount = await waitForMountedDom();
+    await requireMountedFixture(canvasElement);
+    await requireEffectCounts(canvasElement, expectedEffectCounts.secondMount);
     for (const host of secondMount.hosts) {
       await expect(host.shadowRoot?.adoptedStyleSheets[0]).toBe(firstMount.sheet);
     }
