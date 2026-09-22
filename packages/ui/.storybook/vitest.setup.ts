@@ -24,6 +24,12 @@ globalThis.addEventListener('unhandledrejection', (event) => {
   if (event.reason instanceof Event) event.preventDefault();
 });
 
+const originalConsoleError = console.error;
+console.error = (...args: Parameters<typeof console.error>) => {
+  if (args.length === 1 && args[0] instanceof Event) return;
+  originalConsoleError(...args);
+};
+
 beforeEach(() => {
   localStorage?.clear?.();
   sessionStorage?.clear?.();
