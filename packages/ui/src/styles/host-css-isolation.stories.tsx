@@ -115,11 +115,14 @@ export const HostileHost: Story = {
     const heading = requiredElement(canvasElement, 'sdk-heading');
     const input = requiredElement(canvasElement, 'sdk-input');
 
+    await waitFor(async () => {
+      const buttonStyle = getComputedStyle(button);
+      await expect(buttonStyle.paddingTop).toBe('8px');
+      await expect(buttonStyle.paddingRight).toBe('16px');
+      await expect(buttonStyle.paddingBottom).toBe('8px');
+      await expect(buttonStyle.paddingLeft).toBe('16px');
+    });
     const buttonStyle = getComputedStyle(button);
-    await expect(buttonStyle.paddingTop).toBe('8px');
-    await expect(buttonStyle.paddingRight).toBe('16px');
-    await expect(buttonStyle.paddingBottom).toBe('8px');
-    await expect(buttonStyle.paddingLeft).toBe('16px');
     await expect(buttonStyle.backgroundColor).toBe('rgb(18, 18, 18)');
     await expect(buttonStyle.color).toBe('rgb(255, 255, 255)');
     await expect(buttonStyle.fontFamily).not.toContain('HostileHostSerif');

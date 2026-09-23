@@ -74,6 +74,12 @@ selectors can reach SDK descendants. An isolated Safari rerun measured the
 expected `12px 16px` header and row padding, matching Chromium; the focused
 picker story now checks this spacing.
 
+The document-root hostile-CSS story also exposed a Safari spacing failure:
+variable-backed Tailwind padding resolved to zero through the unlayered
+`revert-layer` reset. The fixed SDK spacing scale is now inlined into generated
+utilities, and actual Safari and focused WebKit runs verify the SDK button and
+input padding while the host button remains overridden.
+
 ## Direct overlay inventory
 
 | Location | Classification | Shadow portal requirement |
@@ -118,7 +124,7 @@ generated `--tw-*` names, and the local `--spacing` compatibility alias.
 | --- | --- |
 | `--yv-*` | SDK-owned properties. The README's documented overrides are supported consumer inputs for light-DOM components under `[data-yv-sdk]`. They are not a public document-level override API for the automatically isolated `YouVersionAuthButton`. |
 | `--tw-*` | Tailwind and `tw-animate-css` implementation state that is declared or initialized in the compiled stylesheet. It is not a supported consumer input. |
-| `--spacing` | SDK-owned local compatibility alias for `--yv-spacing`, used by generated Tailwind utilities. |
+| `--spacing` | SDK-owned local compatibility alias for `--yv-spacing`, used by `tw-animate-css`. The fixed Tailwind spacing scale is inlined into generated utilities. |
 | Authored `--font-*`, `--color-*`, and `--radius-*` theme aliases | Compile-time Tailwind inputs that produce utilities backed by `--yv-*` values. They are not runtime consumer inputs. |
 | Exact `--radix-*` exceptions below | Third-party runtime inputs supplied inline by the corresponding Radix primitive. |
 | Exact cross-framework accordion exceptions below | Optional inputs in `tw-animate-css`'s fallback chain. The chain first checks the Radix value and ultimately falls back to `auto`. |

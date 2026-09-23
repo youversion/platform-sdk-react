@@ -52,6 +52,12 @@ layer(yv-sdk-fonts);
 @import 'tailwindcss/utilities.css' layer(yv-sdk-utilities) prefix(yv) source(none);
 @import 'tw-animate-css';
 
+/* Resolve the fixed SDK spacing scale in generated utilities. WebKit loses
+ * var(--yv-spacing) values when the document-root reset rolls back a layer. */
+@theme inline {
+  --spacing: 0.25rem;
+}
+
 @source '../components';
 
 /* The light-DOM shadow host remains selectable by the consumer page. Prevent

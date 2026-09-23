@@ -2,4 +2,4 @@
 '@youversion/platform-react-ui': patch
 ---
 
-Preserve logical spacing in Safari for components rendered inside Shadow DOM by applying the host CSS reset only in document roots.
+Preserve SDK spacing in Safari inside Shadow DOM and document roots by scoping the host CSS reset and inlining the fixed Tailwind spacing scale.
