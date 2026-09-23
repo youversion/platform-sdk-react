@@ -67,6 +67,13 @@ functions; assistive-technology checks remain open.
 | Nested shadow roots | Coverage verifies basic rendering, recursive queries, and event retargeting at each boundary. | Supported for the validated basics | Peer-overlay coordination remains with YPE-5356; verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
 | Realistic same-page usage | YPE-5437 mounts, removes, and re-adds a 12-component mix in Normal and Strict Mode. Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 coverage verifies exact host counts, rendered scripture content, and one shared stylesheet object across roots and remounts. A production-build comparison found a small warm-run mount-cost difference on one machine. | No shared-host blocker found | Repeat user-visible performance and compatibility checks for each component selected for rollout. |
 
+Actual Safari 26.6.2 exposed a visual gap the initial focused assertions missed:
+the picker header and version rows lost their logical padding inside the shadow
+root. The unlayered host-CSS reset now applies only in document roots, where host
+selectors can reach SDK descendants. An isolated Safari rerun measured the
+expected `12px 16px` header and row padding, matching Chromium; the focused
+picker story now checks this spacing.
+
 ## Direct overlay inventory
 
 | Location | Classification | Shadow portal requirement |

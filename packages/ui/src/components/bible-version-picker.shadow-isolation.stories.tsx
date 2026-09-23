@@ -186,6 +186,26 @@ export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
 
     await expect(topLayer.getRootNode()).toBe(root);
     await expect(panel.getRootNode()).toBe(root);
+    const header = await waitForElement<HTMLElement>(
+      panel,
+      'section',
+      'picker header not rendered',
+    );
+    const versionHeading = await waitForElement<HTMLElement>(
+      panel,
+      '[data-testid="version-list"] h3',
+      'version heading not rendered',
+    );
+    const firstVersion = await waitForElement<HTMLElement>(
+      panel,
+      '[data-testid="version-list"] [data-slot="item"]',
+      'version row not rendered',
+    );
+    for (const element of [header, versionHeading, firstVersion]) {
+      const styles = getComputedStyle(element);
+      await expect(parseFloat(styles.paddingInlineStart)).toBeGreaterThan(0);
+      await expect(parseFloat(styles.paddingBlockStart)).toBeGreaterThan(0);
+    }
     await expect(
       canvasElement.ownerDocument.body.querySelector('[data-yv-shadow-overlay-host]'),
     ).toBeNull();
