@@ -1,12 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-/* oxlint-disable typescript/await-thenable -- Vitest browser assertions are runtime-async. */
 
 import type { BibleBook, BibleVersion } from '@youversion/platform-core';
 import { YouVersionContext, type HookOverrides } from '@youversion/platform-react-hooks';
 import { http, HttpResponse } from 'msw';
 import { StrictMode, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { spyOn, userEvent } from 'storybook/test';
-import { expect } from 'vitest';
+import { expect, spyOn, userEvent } from 'storybook/test';
+import { isExpectedFontStylesheetEvent } from '../test/storybook-font-stylesheet';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { BibleCard } from './bible-card';
 import { BibleReader } from './bible-reader';
@@ -229,7 +228,7 @@ async function requireMountedFixture(canvasElement: HTMLElement): Promise<Mounte
   const hosts = Array.from(
     canvasElement.ownerDocument.querySelectorAll<HTMLElement>('[data-yv-shadow-host]'),
   );
-  expect(hosts).toHaveLength(EXPECTED_COMPONENT_IDS.length);
+  await expect(hosts).toHaveLength(EXPECTED_COMPONENT_IDS.length);
 
   const roots = hosts.map((host) => {
     if (!host.shadowRoot) throw new Error('shadow root not attached');
@@ -239,7 +238,7 @@ async function requireMountedFixture(canvasElement: HTMLElement): Promise<Mounte
     (root) =>
       root.querySelector<HTMLElement>('[data-realistic-component]')?.dataset.realisticComponent,
   );
-  expect(componentIds).toEqual(EXPECTED_COMPONENT_IDS);
+  await expect(componentIds).toEqual(EXPECTED_COMPONENT_IDS);
 
   const components = new Map(
     roots.map((root, index) => [
@@ -255,27 +254,35 @@ async function requireMountedFixture(canvasElement: HTMLElement): Promise<Mounte
     ['votd-large', 'JHN.3.16'],
   ]);
   for (const [id, usfm] of expectedPassages) {
-    expect(components.get(id)).toHaveTextContent(`Fixture scripture content for ${usfm}.`);
+    await expect(components.get(id)).toHaveTextContent(`Fixture scripture content for ${usfm}.`);
   }
-  expect(
+  await expect(
     components.get('avatar-primary')?.querySelector('[aria-label="SDK Reader"]'),
   ).not.toBeNull();
-  expect(
+  await expect(
     components.get('avatar-secondary')?.querySelector('[aria-label="Bible Partner"]'),
   ).not.toBeNull();
-  expect(components.get('notes-primary')?.querySelector('textarea')).toHaveValue('Primary notes');
-  expect(components.get('notes-secondary')?.querySelector('textarea')).toHaveValue(
+  await expect(components.get('notes-primary')?.querySelector('textarea')).toHaveValue(
+    'Primary notes',
+  );
+  await expect(components.get('notes-secondary')?.querySelector('textarea')).toHaveValue(
     'Secondary notes',
   );
-  expect(components.get('notes-tertiary')?.querySelector('textarea')).toHaveValue('Tertiary notes');
-  expect(components.get('separator-primary')?.querySelector('[role="separator"]')).not.toBeNull();
-  expect(components.get('separator-secondary')?.querySelector('[role="separator"]')).not.toBeNull();
+  await expect(components.get('notes-tertiary')?.querySelector('textarea')).toHaveValue(
+    'Tertiary notes',
+  );
+  await expect(
+    components.get('separator-primary')?.querySelector('[role="separator"]'),
+  ).not.toBeNull();
+  await expect(
+    components.get('separator-secondary')?.querySelector('[role="separator"]'),
+  ).not.toBeNull();
 
   const sheet = roots[0]?.adoptedStyleSheets[0];
   if (!sheet) throw new Error('shared SDK stylesheet not adopted');
   for (const root of roots) {
-    expect(root.adoptedStyleSheets).toHaveLength(1);
-    expect(root.adoptedStyleSheets[0]).toBe(sheet);
+    await expect(root.adoptedStyleSheets).toHaveLength(1);
+    await expect(root.adoptedStyleSheets[0]).toBe(sheet);
   }
 
   return { hosts, sheet };
@@ -306,8 +313,8 @@ async function requireEffectCounts(
   [setup, cleanup]: [setup: number, cleanup: number],
 ): Promise<void> {
   const counts = canvasElement.querySelector('[data-testid="effect-lifecycle-counts"]');
-  expect(counts).toHaveAttribute('data-effect-setup', String(setup));
-  expect(counts).toHaveAttribute('data-effect-cleanup', String(cleanup));
+  await expect(counts).toHaveAttribute('data-effect-setup', String(setup));
+  await expect(counts).toHaveAttribute('data-effect-cleanup', String(cleanup));
 }
 
 async function exerciseLifecycle(
@@ -350,8 +357,8 @@ async function exerciseLifecycle(
     await requireEffectCounts(canvasElement, expectedEffectCounts.firstMount);
 
     await userEvent.click(toggle);
-    expect(canvasElement.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
-    expect(canvasElement.querySelector('[data-testid="realistic-component-mix"]')).toBeNull();
+    await expect(canvasElement.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
+    await expect(canvasElement.querySelector('[data-testid="realistic-component-mix"]')).toBeNull();
     await requireEffectCounts(canvasElement, expectedEffectCounts.removal);
 
     await userEvent.click(toggle);
@@ -359,12 +366,13 @@ async function exerciseLifecycle(
     await requireMountedFixture(canvasElement);
     await requireEffectCounts(canvasElement, expectedEffectCounts.secondMount);
     for (const host of secondMount.hosts) {
-      expect(host.shadowRoot?.adoptedStyleSheets[0]).toBe(firstMount.sheet);
+      await expect(host.shadowRoot?.adoptedStyleSheets[0]).toBe(firstMount.sheet);
     }
     const unexpectedConsoleErrors = consoleError.mock.calls.filter(
-      ([firstArgument]) => !(firstArgument instanceof Event),
+      ([firstArgument]) =>
+        !(firstArgument instanceof Event && isExpectedFontStylesheetEvent(firstArgument)),
     );
-    expect(unexpectedConsoleErrors).toHaveLength(0);
+    await expect(unexpectedConsoleErrors).toHaveLength(0);
   } finally {
     consoleError.mockRestore();
   }
@@ -391,5 +399,3 @@ export const StrictModeLifecycle: Story = {
     await exerciseLifecycle(canvasElement, STRICT_EFFECT_COUNTS);
   },
 };
-/* oxlint-disable typescript/await-thenable -- Vitest browser assertions are runtime-async. */
-/* oxlint-disable typescript/await-thenable -- Vitest browser assertions are runtime-async. */

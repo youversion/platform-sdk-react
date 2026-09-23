@@ -53,8 +53,11 @@ an automation and styling boundary rather than a security boundary. Selectors
 that depend on internal markup remain fragile even when they traverse the root.
 
 The focused Shadow DOM suite runs in Chromium, Firefox, and Playwright WebKit.
-All 21 automated interactions also passed a local Safari 26.6.2 run through
-SafariDriver; actual Safari is not part of continuous integration. Real
+All 22 current stories returned assertion-level success in local Safari 26.6.2
+through SafariDriver when each ran in a fresh browser session. A single
+long-lived SafariDriver session stalled on the sign-in dialog and verse action
+popover stories after 20 successes, so isolated sessions are required for this
+smoke setup. Actual Safari is not part of continuous integration. Real
 assistive technologies remain unverified. Reflected ARIA element properties
 demonstrate DOM relationship resolution, not announcements or other
 assistive-technology behavior.
@@ -87,7 +90,7 @@ No production defect is fixed by this validation ticket. If a selected rollout
 component must participate in an outer native form or consume external labeling
 relationships, create a component-specific implementation ticket for an
 explicit public contract rather than relying on cross-scope browser behavior.
-Recurring actual-Safari and assistive-technology validation, consumer-facing
-rollout documentation, and any production implementation belong to YPE-5356 or
-separately authorized follow-up tickets. No new Jira issue is created by this
-document.
+The current ticket's actual-Safari smoke is recorded above. Recurring Safari and
+assistive-technology validation, consumer-facing rollout documentation, and any
+production implementation belong to YPE-5356 or separately authorized follow-up
+tickets. No new Jira issue is created by this document.

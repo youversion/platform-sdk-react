@@ -1,5 +1,6 @@
 import { setProjectAnnotations } from '@storybook/react-vite';
 import { beforeEach } from 'vitest';
+import { isExpectedFontStylesheetEvent } from '../src/test/storybook-font-stylesheet';
 import * as previewAnnotations from './preview';
 
 const _annotations = setProjectAnnotations([previewAnnotations]);
@@ -16,22 +17,14 @@ Object.defineProperty(navigator, 'language', {
   configurable: true,
 });
 
-function isExpectedFontStylesheetRejection(reason: unknown): boolean {
-  if (!(reason instanceof Event)) return false;
-  const target = reason.target;
-  return (
-    target instanceof HTMLLinkElement &&
-    target.rel === 'stylesheet' &&
-    target.href.includes('/v1/fonts/1/stylesheet?app_key=')
-  );
-}
-
 // React's precedence stylesheet resource rejects with the browser's generic
 // load Event when the optional Fonts API sheet is unavailable. Firefox exposes
 // that expected asset failure as an unhandled rejection; keep only that known
 // request from masking the story assertions.
 globalThis.addEventListener('unhandledrejection', (event) => {
-  if (isExpectedFontStylesheetRejection(event.reason)) event.preventDefault();
+  if (event.reason instanceof Event && isExpectedFontStylesheetEvent(event.reason)) {
+    event.preventDefault();
+  }
 });
 
 beforeEach(() => {

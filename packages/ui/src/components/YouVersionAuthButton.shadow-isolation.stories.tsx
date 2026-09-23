@@ -1,9 +1,7 @@
-/* oxlint-disable typescript/await-thenable -- Vitest browser assertions are runtime-async. */
-
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 import { createRoot, type Root } from 'react-dom/client';
-import { expect } from 'vitest';
+import { expect } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { waitFor, waitForElement } from '../test/storybook-dom';
 import { YouVersionAuthButton } from './YouVersionAuthButton';

@@ -41,8 +41,10 @@ Separate `ShadowRootHost` instances use different portal containers and tear
 those containers down independently. This provides lifecycle isolation, not
 interactive concurrency: pointer interaction in another root dismisses the
 existing peer overlay. Automated Firefox and Playwright WebKit coverage now
-exercises these journeys, and all 21 automated interactions passed locally in
-Safari 26.6.2 through SafariDriver. Assistive-technology checks remain open.
+exercises these journeys. All 22 focused stories returned assertion-level success
+in local Safari 26.6.2 through SafariDriver when each story used a fresh browser
+session. A single long-lived SafariDriver session stalled on the final two play
+functions; assistive-technology checks remain open.
 
 ## Validation matrix
 
@@ -55,10 +57,10 @@ Safari 26.6.2 through SafariDriver. Assistive-technology checks remain open.
 | Inline floating content | The picker negative control preserves tree-scope relationships but demonstrates clipping beyond a constrained ancestor. | Validated as a negative control | None; clipping is why inline placement is not the selected escaping strategy. |
 | Native top-layer floating content | Picker stories verify clipping escape, hit testing, collision handling, hostile-CSS isolation, and resolved `aria-controls` relationships. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | Verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
 | Portal lifecycle | Unit and browser coverage exercise lazy creation, exit-animation retention, cleanup, immediate reopen behavior, and the direct-Radix `VerseActionPopover` consumer. | Validated for shared primitives and the known bypass | Repeat the consumer audit when adding another direct overlay primitive. |
-| Dialog relationships | Browser coverage resolves title and description relationships inside the component tree. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | Verify announcements with real assistive technology. |
-| Dialog keyboard containment | Browser coverage exercises initial focus, programmatic escape redirection, forward and reverse traversal, radio-group collapsing, negative `tabindex`, and wraparound. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | Verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
+| Dialog relationships | Browser coverage resolves title and description relationships inside the component tree. | Validated in Chromium, Firefox, Playwright WebKit, and an isolated local Safari 26.6.2 run | Verify announcements with real assistive technology. |
+| Dialog keyboard containment | Browser coverage exercises initial focus, programmatic escape redirection, forward and reverse traversal, radio-group collapsing, negative `tabindex`, and wraparound. | Validated in Chromium, Firefox, Playwright WebKit, and an isolated local Safari 26.6.2 run | Verify assistive-technology behavior. |
 | Dialog modal lifetime | Coverage verifies inert background content while open and through staggered Content and Overlay exit animations. YPE-5355 also exercises both unmount orders for overlapping popover and dialog exits. | Validated for order-independent teardown | YPE-5356 owns peer concurrency across component roots. Verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
-| Dialog dismissal and restoration | Coverage exercises Escape, backdrop click, full-viewport hit testing, overlay-only focus, and restoration after both modal nodes unmount. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | Verify real screen-reader behavior and repeat actual-Safari checks for significant platform changes. |
+| Dialog dismissal and restoration | Coverage exercises Escape, backdrop click, full-viewport hit testing, overlay-only focus, and restoration after both modal nodes unmount. | Validated in Chromium, Firefox, Playwright WebKit, and isolated local Safari 26.6.2 runs | Verify real screen-reader behavior. |
 | Consumer form participation | Browser coverage verifies that a light-DOM form does not own or serialize a native control inside an SDK shadow root. | Unsupported across tree scopes | Use an explicit component contract if a rollout target requires outer-form participation. |
 | Consumer labels and ARIA ID references | Browser coverage verifies that external native labels, `aria-labelledby`, and `aria-describedby` relationships do not resolve to controls inside the root. | Unsupported across tree scopes | Keep relationships in one tree scope; verify real assistive technology separately. |
 | Consumer events, refs, and automation | Coverage verifies native retargeting, the auth button's React handler and forwarded ref, open-root queries, and effect-driven attachment timing. | Supported with documented constraints | Repeat for each public component selected for rollout. |
@@ -182,8 +184,12 @@ separately in YPE-5749.
 - Open shadow roots prevent CSS selector crossover; they do not prevent
   same-page JavaScript from inspecting or mutating the root.
 - The focused Shadow DOM browser suite runs in Chromium, Firefox, and Playwright
-  WebKit. Playwright WebKit is not a substitute for testing actual Safari; all
-  21 automated interactions also passed a local Safari 26.6.2 SafariDriver run.
+  WebKit. Playwright WebKit is not a substitute for testing actual Safari. All
+  22 current stories returned explicit success events in local Safari 26.6.2
+  when each ran in a fresh SafariDriver session. A single long-lived session
+  returned success for 20/22 and left the sign-in and verse-action play
+  functions pending. The cause of that session-dependent stall is unresolved;
+  repeat actual-Safari validation in isolated sessions.
 - Browser DOM relationship reflection is not a substitute for VoiceOver, NVDA,
   or other real assistive-technology verification.
 

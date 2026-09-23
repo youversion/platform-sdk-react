@@ -1,12 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-/* oxlint-disable typescript/await-thenable -- Vitest browser assertions are runtime-async. */
 
 import { YouVersionProvider as HooksYouVersionProvider } from '@youversion/platform-react-hooks';
 import { http, HttpResponse } from 'msw';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { userEvent, within } from 'storybook/test';
-import { expect } from 'vitest';
+import { expect, userEvent, within } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { globalHandlers } from '../test/mocks/handlers';
 import { waitFor, waitForElement, waitForShadowRoot } from '../test/storybook-dom';
@@ -493,9 +491,11 @@ export const ProviderDirectionRejectsHostVisualValues: Story = {
       await expect(ownerWindow.getComputedStyle(languageInputGroup).borderRadius).toBe(
         languageInputRadius,
       );
-      await expect(geometrySnapshot(trigger)).toEqual(triggerGeometry);
-      await expect(geometrySnapshot(panel)).toEqual(panelGeometry);
-      await expect(geometrySnapshot(inputGroup)).toEqual(inputGeometry);
+      await waitFor(async () => {
+        await expect(geometrySnapshot(trigger)).toEqual(triggerGeometry);
+        await expect(geometrySnapshot(panel)).toEqual(panelGeometry);
+        await expect(geometrySnapshot(inputGroup)).toEqual(inputGeometry);
+      });
     } finally {
       hostileStyle.remove();
     }
@@ -746,5 +746,3 @@ export const SameOriginIframeTopLayerRemainsInteractive: Story = {
     await expect(panelRect.bottom).toBeLessThanOrEqual(frameWindow.innerHeight - 16);
   },
 };
-/* oxlint-disable typescript/await-thenable -- Vitest browser assertions are runtime-async. */
-/* oxlint-disable typescript/await-thenable -- Vitest browser assertions are runtime-async. */

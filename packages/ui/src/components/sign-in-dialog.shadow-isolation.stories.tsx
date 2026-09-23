@@ -1,10 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-/* oxlint-disable typescript/await-thenable -- Vitest browser assertions are runtime-async. */
 
 import { http, HttpResponse } from 'msw';
 import { useState } from 'react';
-import { userEvent } from 'storybook/test';
-import { expect } from 'vitest';
+import { expect, userEvent } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { waitFor, waitForShadowRoot } from '../test/storybook-dom';
 import { SignInDialog } from './sign-in-dialog';
@@ -310,5 +308,3 @@ export const IsolatesFocusInertnessBackdropAndRestoration: Story = {
     exitAnimationStyle.remove();
   },
 };
-/* oxlint-disable typescript/await-thenable -- Vitest browser assertions are runtime-async. */
-/* oxlint-disable typescript/await-thenable -- Vitest browser assertions are runtime-async. */

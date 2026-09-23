@@ -1,10 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-/* oxlint-disable typescript/await-thenable -- Vitest browser assertions are runtime-async. */
 
 import { http, HttpResponse } from 'msw';
 import { useRef, useState } from 'react';
-import { userEvent, within } from 'storybook/test';
-import { expect } from 'vitest';
+import { expect, userEvent, within } from 'storybook/test';
 import i18n from '../i18n';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { waitFor, waitForElement, waitForShadowRoot } from '../test/storybook-dom';
@@ -334,5 +332,3 @@ export const PortalPlacementDockingReanchoringAndFocusRestoration: Story = {
     await expect(canvasElement.ownerDocument.activeElement).toBe(outsideControl);
   },
 };
-/* oxlint-disable typescript/await-thenable -- Vitest browser assertions are runtime-async. */
-/* oxlint-disable typescript/await-thenable -- Vitest browser assertions are runtime-async. */

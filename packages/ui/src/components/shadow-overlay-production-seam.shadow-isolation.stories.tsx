@@ -1,10 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-/* oxlint-disable typescript/await-thenable -- Vitest browser assertions are runtime-async. */
 
 import { http, HttpResponse } from 'msw';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { spyOn, userEvent } from 'storybook/test';
-import { expect } from 'vitest';
+import { expect, spyOn, userEvent } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { waitFor, waitForElement, waitForShadowRoot } from '../test/storybook-dom';
 import { HighlightPermissionDialog } from './highlight-permission-dialog';
@@ -15,11 +13,13 @@ import { VerseActionPopover } from './verse-action-popover';
 interface IsolatedProductionOverlaySeamProps {
   enableRapidReopen?: boolean;
   manualInstructions?: string;
+  reopenOnDemand?: boolean;
 }
 
 function IsolatedProductionOverlaySeam({
   enableRapidReopen = false,
   manualInstructions,
+  reopenOnDemand = false,
 }: IsolatedProductionOverlaySeamProps): React.ReactNode {
   const [primaryMounted, setPrimaryMounted] = useState(true);
   const [verseOpen, setVerseOpen] = useState(false);
@@ -56,7 +56,9 @@ function IsolatedProductionOverlaySeam({
     rapidTimers.current.push(
       window.setTimeout(() => {
         setPermissionOpen(false);
-        rapidTimers.current.push(window.setTimeout(() => setPermissionOpen(true), 650));
+        if (!reopenOnDemand) {
+          rapidTimers.current.push(window.setTimeout(() => setPermissionOpen(true), 650));
+        }
       }, 300),
     );
   };
@@ -84,6 +86,15 @@ function IsolatedProductionOverlaySeam({
         Close all overlays
       </button>
       <output data-testid="close-all-requests" data-count={closeAllRequests} />
+      {reopenOnDemand ? (
+        <button
+          type="button"
+          data-testid="finish-rapid-reopen"
+          onClick={() => setPermissionOpen(true)}
+        >
+          Finish rapid reopen
+        </button>
+      ) : null}
 
       {primaryMounted ? (
         <div data-testid="primary-island">
@@ -672,7 +683,7 @@ export const TwoIndependentOverlaysEvidence: Story = {
       await expect(contentWrapper.inert).toBe(false);
       await userEvent.keyboard('{Escape}');
       await waitFor(async () => await expect(independentPopover.isConnected).toBe(false));
-      await expect(root.activeElement).toBe(independentTrigger);
+      await waitFor(async () => await expect(root.activeElement).toBe(independentTrigger));
       closeAllOverlays.click();
       await waitFor(async () => await expect(topLayer.matches(':popover-open')).toBe(false));
     });
@@ -739,13 +750,19 @@ export const TwoIndependentOverlaysEvidence: Story = {
 /** YPE-5355 lifecycle evidence with YPE-5889 final-focus coverage. */
 export const RapidCloseReopenDuringExitEvidence: Story = {
   tags: ['!dev', 'shadow-dom'],
-  args: { enableRapidReopen: true },
+  args: { enableRapidReopen: true, reopenOnDemand: true },
   play: async ({ canvasElement, step }) => {
     const { contentWrapper, root } = await getPrimaryHarness(canvasElement);
     const runRapidCloseReopen = await waitForElement<HTMLButtonElement>(
       root,
       '[data-testid="run-rapid-close-reopen"]',
       'rapid close/reopen control not rendered',
+      productionWaitOptions,
+    );
+    const finishRapidReopen = await waitForElement<HTMLButtonElement>(
+      canvasElement,
+      '[data-testid="finish-rapid-reopen"]',
+      'rapid reopen completion control not rendered',
       productionWaitOptions,
     );
     const exitAnimationStyle = installUnequalExitDurations(root, {
@@ -781,19 +798,20 @@ export const RapidCloseReopenDuringExitEvidence: Story = {
         await expect(contentWrapper.inert).toBe(true);
       });
 
-      await step('Preserve modal focus after the first dialog unmounts', async () => {
-        await waitFor(async () => {
-          await expect(firstDialog.isConnected).toBe(false);
+      await step('Reopen while the retained overlay owns focus', async () => {
+        await waitFor(() => {
+          if (firstDialog.isConnected) throw new Error('first dialog has not unmounted');
           const overlay = topLayer.querySelector<HTMLElement>('[data-slot="dialog-overlay"]');
           if (!overlay) throw new Error('dialog overlay did not remain during content exit');
-          const currentDialog = getPermissionDialog(topLayer);
-          const focused = root.activeElement;
-          await expect(
-            focused === overlay ||
-              (focused !== null && currentDialog !== null && currentDialog.contains(focused)),
-          ).toBe(true);
-          await expect(contentWrapper.inert).toBe(true);
-          await expect(topLayer.matches(':popover-open')).toBe(true);
+          if (getPermissionDialog(topLayer)) throw new Error('dialog content is still mounted');
+          if (root.activeElement !== overlay)
+            throw new Error('retained overlay does not own focus');
+          if (!contentWrapper.inert) throw new Error('background content is not inert');
+          if (!topLayer.matches(':popover-open')) throw new Error('top layer exited before reopen');
+
+          // Request the next dialog in the same task that observed the retained
+          // overlay, before its exit animation can finish.
+          finishRapidReopen.click();
         });
       });
 
@@ -830,7 +848,7 @@ export const RapidCloseReopenDuringExitEvidence: Story = {
 };
 
 export const RapidCloseReopenIgnoresInvalidOpenerEvidence: Story = {
-  tags: ['!dev'],
+  tags: ['!dev', 'shadow-dom'],
   args: { enableRapidReopen: true },
   play: async ({ canvasElement, step }) => {
     const { contentWrapper, root } = await getPrimaryHarness(canvasElement);
@@ -1001,5 +1019,3 @@ export const RapidCloseReopenIgnoresInvalidOpenerEvidence: Story = {
     }
   },
 };
-/* oxlint-disable typescript/await-thenable -- Vitest browser assertions are runtime-async. */
-/* oxlint-disable typescript/await-thenable -- Vitest browser assertions are runtime-async. */
