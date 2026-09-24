@@ -2,6 +2,8 @@
   "extends": "@internal/tsconfig/react.json",
   "compilerOptions": {
     "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "outDir": "dist",
