@@ -50,7 +50,7 @@ if [[ "$2" == *"/pulls/"* ]]; then
   if [ "$(wc -l < "$MOCK_PULL_CALLS")" -le "${MOCK_PULL_FAILURES:-0}" ]; then exit 1; fi
   cat "$MOCK_PR_FILE"
 elif [[ "$2" == *"/statuses/"* ]]; then
-  echo "$2" >> "${MOCK_STATUS_CALLS:-/dev/null}"
+  echo "$*" >> "${MOCK_STATUS_CALLS:-/dev/null}"
 elif [[ "$2" == *"/compare/"* ]]; then
   echo called >> "$MOCK_COMPARE_CALLS"
   if [ "${MOCK_COMPARE_ERROR:-0}" = "1" ]; then exit 1; fi
@@ -192,9 +192,12 @@ run_context_retry_case() {
   fi
 }
 
+# Asserts the whole request, not just its target. A test that only checks which
+# SHA was addressed passes just as happily when the job posts `state=success`,
+# which is the one outcome this job exists to prevent.
 run_unresolved_case() {
   local name="$1" payload_sha="$2" lsremote_error="$3" expected_sha="$4"
-  local statuses="$TMP/status-calls" posted
+  local statuses="$TMP/status-calls" call result=0
   : > "$statuses"
   : > "$TMP/lsremote-calls"
   env PATH="$TMP/bin:$PATH" \
@@ -203,15 +206,32 @@ run_unresolved_case() {
     RUN_URL=https://example.invalid/run GH_TOKEN=token \
     MOCK_STATUS_CALLS="$statuses" MOCK_LSREMOTE_SHA="$RECOVERED_SHA" \
     MOCK_LSREMOTE_ERROR="$lsremote_error" MOCK_LSREMOTE_CALLS="$TMP/lsremote-calls" \
-    bash "$TMP/unresolved.sh" >/dev/null 2>&1 || true
-  posted=$(sed 's|.*/statuses/||' "$statuses" | tr -d '\n')
+    bash "$TMP/unresolved.sh" >/dev/null 2>&1 || result=$?
+  call=$(cat "$statuses")
+
+  # No recoverable head: the job must address no status at all rather than guess.
   if [ -z "$expected_sha" ]; then
-    [ ! -s "$statuses" ] && posted="" || posted="$(cat "$statuses")"
+    if [ ! -s "$statuses" ] && [ "$result" -ne 0 ]; then
+      pass "$name"
+    else
+      fail "$name" "expected no status request and a nonzero exit; got '$call' and exit $result"
+    fi
+    return
   fi
-  if [ "$posted" = "$expected_sha" ]; then
+
+  local problem=""
+  [[ "$call" == *"/statuses/$expected_sha"* ]] || problem="wrong target SHA"
+  [[ "$call" == *"state=failure"* ]] || problem="${problem:-status was not failure}"
+  [[ "$call" == *"context=major-release-signoff"* ]] || problem="${problem:-wrong context}"
+  [[ "$call" == *"target_url=https://example.invalid/run"* ]] || problem="${problem:-no target_url}"
+  [[ "$call" == *"Could not resolve PR context"* ]] || problem="${problem:-no description}"
+  # The job exits nonzero so the check is red in the PR UI, not merely recorded.
+  [ "$result" -ne 0 ] || problem="${problem:-job exited 0}"
+
+  if [ -z "$problem" ]; then
     pass "$name"
   else
-    fail "$name" "expected a failing status on '$expected_sha'; got '$posted'"
+    fail "$name" "$problem; call was '$call' (exit $result)"
   fi
 }
 
