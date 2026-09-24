@@ -109,5 +109,11 @@
   "back": "Back",
   "bibleApp": "Bible App",
   "clearSearch": "Clear search",
-  "done": "Done"
+  "done": "Done",
+  "alphabetical": "Alphabetical",
+  "retry": "Retry",
+  "traditional": "Traditional",
+  "bibleSearchClearAriaLabel": "Clear search",
+  "bibleSearchRecentHeading": "Recent Searches",
+  "bibleSearchTrendingHeading": "Trending Searches"
 }
