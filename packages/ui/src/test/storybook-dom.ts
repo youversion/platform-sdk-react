@@ -1,27 +1,15 @@
+import { waitFor as storybookWaitFor } from 'storybook/test';
 import { requireShadowRoot } from './dom-stubs';
 
 interface StorybookWaitOptions {
   timeout?: number;
 }
 
-export async function waitFor<T>(
+export function waitFor<T>(
   callback: () => T | Promise<T>,
   options: StorybookWaitOptions = {},
 ): Promise<T> {
-  const timeout = options.timeout ?? 5000;
-  const deadline = Date.now() + timeout;
-  let lastError: unknown;
-
-  while (Date.now() <= deadline) {
-    try {
-      return await callback();
-    } catch (error) {
-      lastError = error;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
-
-  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+  return storybookWaitFor(callback, { timeout: 5000, ...options });
 }
 
 export async function waitForElement<ElementType extends Element>(
