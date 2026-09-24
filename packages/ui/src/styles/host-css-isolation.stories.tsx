@@ -98,7 +98,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const HostileHost: Story = {
-  tags: ['integration'],
+  tags: ['integration', 'cross-browser'],
   play: async ({ canvasElement }) => {
     await waitFor(async () => {
       const hostButton = requiredElement(document, 'host-button');

@@ -11,7 +11,7 @@ const browserName = process.env.VITEST_BROWSER ?? 'chromium';
 if (!['chromium', 'firefox', 'webkit'].includes(browserName)) {
   throw new Error(`Unsupported VITEST_BROWSER: ${browserName}`);
 }
-const storyTag = process.env.VITEST_STORY_TAG ?? 'integration';
+const storyTags = (process.env.VITEST_STORY_TAG ?? 'integration').split(',');
 
 export default defineConfig({
   plugins: [react()],
@@ -57,7 +57,7 @@ export default defineConfig({
             // This should match your package.json script to run Storybook
             // The --ci flag will skip prompts and not open a browser
             storybookScript: 'pnpm storybook --no-open',
-            tags: { include: [storyTag] },
+            tags: { include: storyTags },
           }),
         ],
         test: {

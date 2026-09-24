@@ -167,6 +167,17 @@ function typographySnapshot(element: HTMLElement, ownerWindow: Window) {
   };
 }
 
+async function expectLogicalPadding(
+  element: HTMLElement,
+  expected: { block: string; inline: string },
+): Promise<void> {
+  const style = getComputedStyle(element);
+  await expect(style.paddingBlockStart).toBe(expected.block);
+  await expect(style.paddingBlockEnd).toBe(expected.block);
+  await expect(style.paddingInlineStart).toBe(expected.inline);
+  await expect(style.paddingInlineEnd).toBe(expected.inline);
+}
+
 export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
   render: () => (
     <div
@@ -201,11 +212,9 @@ export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
       '[data-testid="version-list"] [data-slot="item"]',
       'version row not rendered',
     );
-    for (const element of [header, versionHeading, firstVersion]) {
-      const styles = getComputedStyle(element);
-      await expect(parseFloat(styles.paddingInlineStart)).toBeGreaterThan(0);
-      await expect(parseFloat(styles.paddingBlockStart)).toBeGreaterThan(0);
-    }
+    await expectLogicalPadding(header, { block: '12px', inline: '16px' });
+    await expectLogicalPadding(versionHeading, { block: '8px', inline: '16px' });
+    await expectLogicalPadding(firstVersion, { block: '12px', inline: '16px' });
     await expect(
       canvasElement.ownerDocument.body.querySelector('[data-yv-shadow-overlay-host]'),
     ).toBeNull();

@@ -49,7 +49,7 @@
     "storybook": "pnpm build:css && pnpm build:storybook-css && concurrently \"node scripts/generate-i18n-resources.mjs --watch\" \"tailwindcss -i src/styles/chrome.css -o dist/chrome.css --watch\" \"tailwindcss -i src/styles/global.css -o dist/tailwind.css --watch\" \"tailwindcss -i src/styles/reader.css -o dist/bible-reader.css --watch\" \"node scripts/write-public-styles.js --watch\" \"storybook dev -p 6006\"",
     "build-storybook": "pnpm generate:i18n && pnpm build:css && pnpm build:storybook-css && storybook build",
     "test:integration": "vitest run",
-    "test:shadow-browser": "VITEST_STORY_TAG=shadow-dom vitest run --project storybook"
+    "test:shadow-browser": "VITEST_STORY_TAG=shadow-dom,cross-browser vitest run --project storybook"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "1.2.12",
