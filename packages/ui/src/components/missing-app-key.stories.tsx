@@ -46,15 +46,24 @@ export const RendersMessage: Story = {
   args: {
     theme: 'light',
   },
-  tags: ['integration'],
+  tags: ['integration', 'cross-browser'],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await waitFor(async () => {
-      await expect(canvas.getByRole('alert')).toBeInTheDocument();
+    const alert = await waitFor(async () => {
+      const element = canvas.getByRole('alert');
+      await expect(element).toBeInTheDocument();
+      return element;
     });
 
     await expect(canvas.getByText('Error')).toBeInTheDocument();
     await expect(canvas.getByText(/app key/)).toBeInTheDocument();
+    await waitFor(async () => {
+      const style = getComputedStyle(alert);
+      await expect(style.paddingBlockStart).toBe('16px');
+      await expect(style.paddingBlockEnd).toBe('16px');
+      await expect(style.paddingInlineStart).toBe('16px');
+      await expect(style.paddingInlineEnd).toBe('16px');
+    });
   },
 };

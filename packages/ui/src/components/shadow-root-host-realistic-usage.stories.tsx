@@ -1,9 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+
 import type { BibleBook, BibleVersion } from '@youversion/platform-core';
 import { YouVersionContext, type HookOverrides } from '@youversion/platform-react-hooks';
 import { http, HttpResponse } from 'msw';
 import { StrictMode, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { expect, spyOn, userEvent, waitFor } from 'storybook/test';
+import { expect, spyOn, userEvent } from 'storybook/test';
+import { isExpectedFontStylesheetEvent } from '../test/storybook-font-stylesheet';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { BibleCard } from './bible-card';
 import { BibleReader } from './bible-reader';
@@ -11,6 +13,7 @@ import { ProfileAvatar } from './profile-avatar';
 import { Separator } from './ui/separator';
 import { Textarea } from './ui/textarea';
 import { VerseOfTheDay } from './verse-of-the-day';
+import { waitFor } from '../test/storybook-dom';
 
 const EXPECTED_COMPONENT_IDS = [
   'reader',
@@ -29,7 +32,7 @@ const EXPECTED_COMPONENT_IDS = [
 
 const meta = {
   title: 'Spikes/Shadow DOM realistic usage',
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom'],
   parameters: {
     includeAuth: false,
     layout: 'fullscreen',
@@ -221,11 +224,11 @@ interface MountedFixture {
   sheet: CSSStyleSheet;
 }
 
-function requireMountedFixture(canvasElement: HTMLElement): MountedFixture {
+async function requireMountedFixture(canvasElement: HTMLElement): Promise<MountedFixture> {
   const hosts = Array.from(
     canvasElement.ownerDocument.querySelectorAll<HTMLElement>('[data-yv-shadow-host]'),
   );
-  void expect(hosts).toHaveLength(EXPECTED_COMPONENT_IDS.length);
+  await expect(hosts).toHaveLength(EXPECTED_COMPONENT_IDS.length);
 
   const roots = hosts.map((host) => {
     if (!host.shadowRoot) throw new Error('shadow root not attached');
@@ -235,7 +238,7 @@ function requireMountedFixture(canvasElement: HTMLElement): MountedFixture {
     (root) =>
       root.querySelector<HTMLElement>('[data-realistic-component]')?.dataset.realisticComponent,
   );
-  void expect(componentIds).toEqual(EXPECTED_COMPONENT_IDS);
+  await expect(componentIds).toEqual(EXPECTED_COMPONENT_IDS);
 
   const components = new Map(
     roots.map((root, index) => [
@@ -251,35 +254,35 @@ function requireMountedFixture(canvasElement: HTMLElement): MountedFixture {
     ['votd-large', 'JHN.3.16'],
   ]);
   for (const [id, usfm] of expectedPassages) {
-    void expect(components.get(id)).toHaveTextContent(`Fixture scripture content for ${usfm}.`);
+    await expect(components.get(id)).toHaveTextContent(`Fixture scripture content for ${usfm}.`);
   }
-  void expect(
+  await expect(
     components.get('avatar-primary')?.querySelector('[aria-label="SDK Reader"]'),
   ).not.toBeNull();
-  void expect(
+  await expect(
     components.get('avatar-secondary')?.querySelector('[aria-label="Bible Partner"]'),
   ).not.toBeNull();
-  void expect(components.get('notes-primary')?.querySelector('textarea')).toHaveValue(
+  await expect(components.get('notes-primary')?.querySelector('textarea')).toHaveValue(
     'Primary notes',
   );
-  void expect(components.get('notes-secondary')?.querySelector('textarea')).toHaveValue(
+  await expect(components.get('notes-secondary')?.querySelector('textarea')).toHaveValue(
     'Secondary notes',
   );
-  void expect(components.get('notes-tertiary')?.querySelector('textarea')).toHaveValue(
+  await expect(components.get('notes-tertiary')?.querySelector('textarea')).toHaveValue(
     'Tertiary notes',
   );
-  void expect(
+  await expect(
     components.get('separator-primary')?.querySelector('[role="separator"]'),
   ).not.toBeNull();
-  void expect(
+  await expect(
     components.get('separator-secondary')?.querySelector('[role="separator"]'),
   ).not.toBeNull();
 
   const sheet = roots[0]?.adoptedStyleSheets[0];
   if (!sheet) throw new Error('shared SDK stylesheet not adopted');
   for (const root of roots) {
-    void expect(root.adoptedStyleSheets).toHaveLength(1);
-    void expect(root.adoptedStyleSheets[0]).toBe(sheet);
+    await expect(root.adoptedStyleSheets).toHaveLength(1);
+    await expect(root.adoptedStyleSheets[0]).toBe(sheet);
   }
 
   return { hosts, sheet };
@@ -305,13 +308,13 @@ const STRICT_EFFECT_COUNTS: ExpectedEffectCounts = import.meta.env.DEV
     }
   : NORMAL_EFFECT_COUNTS;
 
-function requireEffectCounts(
+async function requireEffectCounts(
   canvasElement: HTMLElement,
   [setup, cleanup]: [setup: number, cleanup: number],
-): void {
+): Promise<void> {
   const counts = canvasElement.querySelector('[data-testid="effect-lifecycle-counts"]');
-  void expect(counts).toHaveAttribute('data-effect-setup', String(setup));
-  void expect(counts).toHaveAttribute('data-effect-cleanup', String(cleanup));
+  await expect(counts).toHaveAttribute('data-effect-setup', String(setup));
+  await expect(counts).toHaveAttribute('data-effect-cleanup', String(cleanup));
 }
 
 async function exerciseLifecycle(
@@ -322,29 +325,54 @@ async function exerciseLifecycle(
   if (!toggle) throw new Error('lifecycle toggle not rendered');
   const consoleError = spyOn(console, 'error').mockImplementation(() => undefined);
 
+  const waitForMountedDom = async (): Promise<MountedFixture> =>
+    waitFor(() => {
+      const hosts = Array.from(
+        canvasElement.ownerDocument.querySelectorAll<HTMLElement>('[data-yv-shadow-host]'),
+      );
+      if (hosts.length !== EXPECTED_COMPONENT_IDS.length) {
+        throw new Error('realistic component mix is still mounting');
+      }
+
+      const roots = hosts.map((host) => host.shadowRoot);
+      if (roots.some((root) => !root)) throw new Error('shadow roots are still mounting');
+      const componentIds = roots.map(
+        (root) =>
+          root?.querySelector<HTMLElement>('[data-realistic-component]')?.dataset
+            .realisticComponent,
+      );
+      if (componentIds.some((id, index) => id !== EXPECTED_COMPONENT_IDS[index])) {
+        throw new Error('realistic component mix is still mounting');
+      }
+
+      const sheet = roots[0]?.adoptedStyleSheets[0];
+      if (!sheet) throw new Error('shared SDK stylesheet is still mounting');
+      return { hosts, sheet };
+    });
+
   try {
     await userEvent.click(toggle);
-    const firstMount = await waitFor(() => {
-      const fixture = requireMountedFixture(canvasElement);
-      requireEffectCounts(canvasElement, expectedEffectCounts.firstMount);
-      return fixture;
-    });
+    const firstMount = await waitForMountedDom();
+    await requireMountedFixture(canvasElement);
+    await requireEffectCounts(canvasElement, expectedEffectCounts.firstMount);
 
     await userEvent.click(toggle);
-    void expect(canvasElement.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
-    void expect(canvasElement.querySelector('[data-testid="realistic-component-mix"]')).toBeNull();
-    requireEffectCounts(canvasElement, expectedEffectCounts.removal);
+    await expect(canvasElement.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
+    await expect(canvasElement.querySelector('[data-testid="realistic-component-mix"]')).toBeNull();
+    await requireEffectCounts(canvasElement, expectedEffectCounts.removal);
 
     await userEvent.click(toggle);
-    const secondMount = await waitFor(() => {
-      const fixture = requireMountedFixture(canvasElement);
-      requireEffectCounts(canvasElement, expectedEffectCounts.secondMount);
-      return fixture;
-    });
+    const secondMount = await waitForMountedDom();
+    await requireMountedFixture(canvasElement);
+    await requireEffectCounts(canvasElement, expectedEffectCounts.secondMount);
     for (const host of secondMount.hosts) {
-      void expect(host.shadowRoot?.adoptedStyleSheets[0]).toBe(firstMount.sheet);
+      await expect(host.shadowRoot?.adoptedStyleSheets[0]).toBe(firstMount.sheet);
     }
-    void expect(consoleError).not.toHaveBeenCalled();
+    const unexpectedConsoleErrors = consoleError.mock.calls.filter(
+      ([firstArgument]) =>
+        !(firstArgument instanceof Event && isExpectedFontStylesheetEvent(firstArgument)),
+    );
+    await expect(unexpectedConsoleErrors).toHaveLength(0);
   } finally {
     consoleError.mockRestore();
   }

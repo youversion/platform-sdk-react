@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+
 import { http, HttpResponse } from 'msw';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { expect, spyOn, userEvent, waitFor } from 'storybook/test';
+import { expect, spyOn, userEvent } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
-import { waitForElement, waitForShadowRoot } from '../test/storybook-dom';
+import { waitFor, waitForElement, waitForShadowRoot } from '../test/storybook-dom';
 import { HighlightPermissionDialog } from './highlight-permission-dialog';
 import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -12,11 +13,13 @@ import { VerseActionPopover } from './verse-action-popover';
 interface IsolatedProductionOverlaySeamProps {
   enableRapidReopen?: boolean;
   manualInstructions?: string;
+  reopenOnDemand?: boolean;
 }
 
 function IsolatedProductionOverlaySeam({
   enableRapidReopen = false,
   manualInstructions,
+  reopenOnDemand = false,
 }: IsolatedProductionOverlaySeamProps): React.ReactNode {
   const [primaryMounted, setPrimaryMounted] = useState(true);
   const [verseOpen, setVerseOpen] = useState(false);
@@ -53,7 +56,9 @@ function IsolatedProductionOverlaySeam({
     rapidTimers.current.push(
       window.setTimeout(() => {
         setPermissionOpen(false);
-        rapidTimers.current.push(window.setTimeout(() => setPermissionOpen(true), 650));
+        if (!reopenOnDemand) {
+          rapidTimers.current.push(window.setTimeout(() => setPermissionOpen(true), 650));
+        }
       }, 300),
     );
   };
@@ -81,6 +86,15 @@ function IsolatedProductionOverlaySeam({
         Close all overlays
       </button>
       <output data-testid="close-all-requests" data-count={closeAllRequests} />
+      {reopenOnDemand ? (
+        <button
+          type="button"
+          data-testid="finish-rapid-reopen"
+          onClick={() => setPermissionOpen(true)}
+        >
+          Finish rapid reopen
+        </button>
+      ) : null}
 
       {primaryMounted ? (
         <div data-testid="primary-island">
@@ -217,11 +231,11 @@ function getPermissionDialog(topLayer: HTMLElement): HTMLElement | null {
   );
 }
 
-function expectOverlayAboveAtOverlap(
+async function expectOverlayAboveAtOverlap(
   root: ShadowRoot,
   expectedTop: HTMLElement,
   underneath: HTMLElement,
-): void {
+): Promise<void> {
   const topRect = expectedTop.getBoundingClientRect();
   const underneathRect = underneath.getBoundingClientRect();
   const overlapLeft = Math.max(topRect.left, underneathRect.left);
@@ -229,14 +243,14 @@ function expectOverlayAboveAtOverlap(
   const overlapTop = Math.max(topRect.top, underneathRect.top);
   const overlapBottom = Math.min(topRect.bottom, underneathRect.bottom);
 
-  void expect(overlapRight).toBeGreaterThan(overlapLeft);
-  void expect(overlapBottom).toBeGreaterThan(overlapTop);
+  await expect(overlapRight).toBeGreaterThan(overlapLeft);
+  await expect(overlapBottom).toBeGreaterThan(overlapTop);
 
   const hit = root.elementFromPoint(
     overlapLeft + (overlapRight - overlapLeft) / 2,
     overlapTop + (overlapBottom - overlapTop) / 2,
   );
-  void expect(hit === expectedTop || (hit !== null && expectedTop.contains(hit))).toBe(true);
+  await expect(hit === expectedTop || (hit !== null && expectedTop.contains(hit))).toBe(true);
 }
 
 function placeOverlayCenterUnderneath(
@@ -290,6 +304,10 @@ function installUnequalExitDurations(
   return style;
 }
 
+function finishAnimations(element: HTMLElement): void {
+  for (const animation of element.getAnimations()) animation.finish();
+}
+
 interface PrimaryHarness {
   contentWrapper: HTMLElement;
   primaryIsland: HTMLElement;
@@ -306,7 +324,7 @@ async function getPrimaryHarness(canvasElement: HTMLElement): Promise<PrimaryHar
   const root = await waitForShadowRoot(primaryIsland);
   const contentWrapper = root.querySelector<HTMLElement>('[data-yv-shadow-content-wrapper]');
   if (!contentWrapper) throw new Error('shadow content wrapper not rendered');
-  void expect(root.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
+  await expect(root.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
   return { contentWrapper, primaryIsland, root };
 }
 
@@ -327,7 +345,7 @@ async function openVerseActionPopover(
     'verse action popover not rendered',
     productionWaitOptions,
   );
-  await waitFor(() => void expect(topLayer.matches(':popover-open')).toBe(true));
+  await waitFor(async () => await expect(topLayer.matches(':popover-open')).toBe(true));
   return { topLayer, versePopover };
 }
 
@@ -338,7 +356,7 @@ async function openPermissionDialogFromVerseAction(
   const swatch = versePopover.querySelector<HTMLButtonElement>('[role="group"] button');
   if (!swatch) throw new Error('highlight swatch not rendered');
   await userEvent.click(swatch);
-  return waitFor(() => {
+  return waitFor(async () => {
     const dialog = getPermissionDialog(topLayer);
     if (!dialog) throw new Error('highlight permission dialog not rendered');
     return dialog;
@@ -377,7 +395,7 @@ export const RapidCloseReopenDuringExit = manualWorkflow(
 
 /** YPE-5355 regression evidence with YPE-5889 final-focus coverage. */
 export const PopoverOpensDialogEvidence: Story = {
-  tags: ['!dev'],
+  tags: ['!dev', 'shadow-dom'],
   play: async ({ canvasElement, step }) => {
     const { contentWrapper, root } = await getPrimaryHarness(canvasElement);
     const priorControl = await waitForElement<HTMLButtonElement>(
@@ -418,104 +436,120 @@ export const PopoverOpensDialogEvidence: Story = {
           opened.topLayer,
           opened.versePopover,
         );
-        void expect(opened.versePopover.getRootNode()).toBe(root);
-        void expect(permissionDialog.getRootNode()).toBe(root);
+        await expect(opened.versePopover.getRootNode()).toBe(root);
+        await expect(permissionDialog.getRootNode()).toBe(root);
         const restorePosition = placeOverlayCenterUnderneath(opened.versePopover, permissionDialog);
         try {
-          expectOverlayAboveAtOverlap(root, permissionDialog, opened.versePopover);
+          await expectOverlayAboveAtOverlap(root, permissionDialog, opened.versePopover);
         } finally {
           restorePosition();
         }
-        await waitFor(() => {
+        await waitFor(async () => {
           const focused = root.activeElement;
-          void expect(focused !== null && permissionDialog.contains(focused)).toBe(true);
-        });
-        void expect(contentWrapper.inert).toBe(true);
-        void expect(opened.versePopover).toHaveAttribute('data-state', 'open');
+          await expect(focused !== null && permissionDialog.contains(focused)).toBe(true);
+        }, productionWaitOptions);
+        await expect(contentWrapper.inert).toBe(true);
+        await expect(opened.versePopover).toHaveAttribute('data-state', 'open');
       });
 
       await step('Escape dismisses one nested overlay at a time', async () => {
         await userEvent.keyboard('{Escape}');
-        await waitFor(() => {
-          void expect(getPermissionDialog(topLayer)).toBeNull();
-          void expect(topLayer.querySelector('[data-slot="verse-action-popover"]')).not.toBeNull();
-          void expect(contentWrapper.inert).toBe(false);
+        await waitFor(async () => {
+          await expect(getPermissionDialog(topLayer)).toBeNull();
+          await expect(topLayer.querySelector('[data-slot="verse-action-popover"]')).not.toBeNull();
+          await expect(contentWrapper.inert).toBe(false);
           const focused = root.activeElement;
-          void expect(focused !== null && versePopover.contains(focused)).toBe(true);
-        });
+          await expect(focused !== null && versePopover.contains(focused)).toBe(true);
+        }, productionWaitOptions);
         await userEvent.keyboard('{Escape}');
-        await waitFor(() => {
-          void expect(topLayer.querySelector('[data-slot="verse-action-popover"]')).toBeNull();
-          void expect(topLayer.matches(':popover-open')).toBe(false);
-          void expect(root.activeElement).toBe(priorControl);
-        });
+        await waitFor(async () => {
+          await expect(topLayer.querySelector('[data-slot="verse-action-popover"]')).toBeNull();
+          await expect(topLayer.matches(':popover-open')).toBe(false);
+          await expect(root.activeElement).toBe(priorControl);
+        }, productionWaitOptions);
       });
 
       await step('Keep modal ownership when the popover exits first', async () => {
         exitAnimationStyles.push(
           installUnequalExitDurations(root, {
-            dialog: 400,
-            overlay: 800,
-            popover: 180,
+            dialog: 40_000,
+            overlay: 50_000,
+            popover: 30_000,
           }),
         );
         const opened = await openVerseActionPopover(root, verse);
-        await openPermissionDialogFromVerseAction(opened.topLayer, opened.versePopover);
+        const permissionDialog = await openPermissionDialogFromVerseAction(
+          opened.topLayer,
+          opened.versePopover,
+        );
+        const dialogOverlay = opened.topLayer.querySelector<HTMLElement>(
+          '[data-slot="dialog-overlay"]',
+        );
+        if (!dialogOverlay) throw new Error('dialog overlay not rendered');
         closeAllOverlays.click();
         closeAllOverlays.click();
-        await waitFor(
-          () => {
-            void expect(
-              opened.topLayer.querySelector('[data-slot="verse-action-popover"]'),
-            ).toBeNull();
-            void expect(getPermissionDialog(opened.topLayer)).not.toBeNull();
-            void expect(contentWrapper.inert).toBe(true);
-          },
-          { timeout: 2_000 },
-        );
-        await waitFor(
-          () => {
-            void expect(getPermissionDialog(opened.topLayer)).toBeNull();
-            void expect(contentWrapper.inert).toBe(false);
-            void expect(opened.topLayer.matches(':popover-open')).toBe(false);
-          },
-          { timeout: 2_000 },
-        );
-        void expect(closeAllRequests.getAttribute('data-count')).toBe('2');
+        await waitFor(async () => {
+          await expect(opened.versePopover).toHaveAttribute('data-state', 'closed');
+          await expect(permissionDialog).toHaveAttribute('data-state', 'closed');
+        }, productionWaitOptions);
+        finishAnimations(opened.versePopover);
+        await waitFor(async () => {
+          await expect(
+            opened.topLayer.querySelector('[data-slot="verse-action-popover"]'),
+          ).toBeNull();
+          await expect(getPermissionDialog(opened.topLayer)).toBe(permissionDialog);
+          await expect(contentWrapper.inert).toBe(true);
+        }, productionWaitOptions);
+        finishAnimations(permissionDialog);
+        finishAnimations(dialogOverlay);
+        await waitFor(async () => {
+          await expect(getPermissionDialog(opened.topLayer)).toBeNull();
+          await expect(contentWrapper.inert).toBe(false);
+          await expect(opened.topLayer.matches(':popover-open')).toBe(false);
+        }, productionWaitOptions);
+        await expect(closeAllRequests.getAttribute('data-count')).toBe('2');
       });
 
       await step('Finish teardown when the dialog exits first', async () => {
         exitAnimationStyles.at(-1)?.remove();
         exitAnimationStyles.push(
           installUnequalExitDurations(root, {
-            dialog: 120,
-            overlay: 160,
-            popover: 800,
+            dialog: 30_000,
+            overlay: 40_000,
+            popover: 50_000,
           }),
         );
         const opened = await openVerseActionPopover(root, verse);
-        await openPermissionDialogFromVerseAction(opened.topLayer, opened.versePopover);
+        const permissionDialog = await openPermissionDialogFromVerseAction(
+          opened.topLayer,
+          opened.versePopover,
+        );
+        const dialogOverlay = opened.topLayer.querySelector<HTMLElement>(
+          '[data-slot="dialog-overlay"]',
+        );
+        if (!dialogOverlay) throw new Error('dialog overlay not rendered');
         closeAllOverlays.click();
-        await waitFor(
-          () => {
-            void expect(getPermissionDialog(opened.topLayer)).toBeNull();
-            void expect(
-              opened.topLayer.querySelector('[data-slot="verse-action-popover"]'),
-            ).not.toBeNull();
-          },
-          { timeout: 2_000 },
-        );
-        await waitFor(
-          () => {
-            void expect(
-              opened.topLayer.querySelector('[data-slot="verse-action-popover"]'),
-            ).toBeNull();
-            void expect(contentWrapper.inert).toBe(false);
-            void expect(opened.topLayer.matches(':popover-open')).toBe(false);
-          },
-          { timeout: 2_000 },
-        );
-        void expect(closeAllRequests.getAttribute('data-count')).toBe('3');
+        await waitFor(async () => {
+          await expect(opened.versePopover).toHaveAttribute('data-state', 'closed');
+          await expect(permissionDialog).toHaveAttribute('data-state', 'closed');
+        }, productionWaitOptions);
+        finishAnimations(permissionDialog);
+        finishAnimations(dialogOverlay);
+        await waitFor(async () => {
+          await expect(getPermissionDialog(opened.topLayer)).toBeNull();
+          await expect(
+            opened.topLayer.querySelector('[data-slot="verse-action-popover"]'),
+          ).not.toBeNull();
+        }, productionWaitOptions);
+        finishAnimations(opened.versePopover);
+        await waitFor(async () => {
+          await expect(
+            opened.topLayer.querySelector('[data-slot="verse-action-popover"]'),
+          ).toBeNull();
+          await expect(contentWrapper.inert).toBe(false);
+          await expect(opened.topLayer.matches(':popover-open')).toBe(false);
+        }, productionWaitOptions);
+        await expect(closeAllRequests.getAttribute('data-count')).toBe('3');
       });
     } finally {
       for (const style of exitAnimationStyles) style.remove();
@@ -524,7 +558,7 @@ export const PopoverOpensDialogEvidence: Story = {
 };
 
 export const DialogContainsPopoverEvidence: Story = {
-  tags: ['!dev'],
+  tags: ['!dev', 'shadow-dom'],
   play: async ({ canvasElement, step }) => {
     const { contentWrapper, root } = await getPrimaryHarness(canvasElement);
     const openNotes = await waitForElement<HTMLButtonElement>(
@@ -573,7 +607,7 @@ export const DialogContainsPopoverEvidence: Story = {
       );
       const restorePosition = placeOverlayCenterUnderneath(notesDialog, notesPopover);
       try {
-        expectOverlayAboveAtOverlap(root, notesPopover, notesDialog);
+        await expectOverlayAboveAtOverlap(root, notesPopover, notesDialog);
       } finally {
         restorePosition();
       }
@@ -584,34 +618,34 @@ export const DialogContainsPopoverEvidence: Story = {
         productionWaitOptions,
       );
       await userEvent.click(notesAction);
-      await waitFor(() => void expect(noteActionCount.getAttribute('data-count')).toBe('1'));
-      await waitFor(() => {
+      await waitFor(async () => await expect(noteActionCount.getAttribute('data-count')).toBe('1'));
+      await waitFor(async () => {
         const focused = root.activeElement;
-        void expect(focused !== null && notesPopover.contains(focused)).toBe(true);
+        await expect(focused !== null && notesPopover.contains(focused)).toBe(true);
       });
     });
 
     await step('Escape closes only the popover and restores its trigger', async () => {
       await userEvent.keyboard('{Escape}');
-      await waitFor(() => void expect(notesPopover.isConnected).toBe(false));
-      void expect(topLayer).toContainElement(notesDialog);
-      void expect(root.activeElement).toBe(notesTrigger);
-      void expect(contentWrapper.inert).toBe(true);
+      await waitFor(async () => await expect(notesPopover.isConnected).toBe(false));
+      await expect(topLayer).toContainElement(notesDialog);
+      await waitFor(async () => await expect(root.activeElement).toBe(notesTrigger));
+      await expect(contentWrapper.inert).toBe(true);
     });
 
     await step('The next Escape closes the dialog and restores its opener', async () => {
       await userEvent.keyboard('{Escape}');
-      await waitFor(() => void expect(notesDialog.isConnected).toBe(false));
-      await waitFor(() => void expect(contentWrapper.inert).toBe(false));
-      await waitFor(() => void expect(topLayer.matches(':popover-open')).toBe(false));
-      void expect(root.activeElement).toBe(openNotes);
+      await waitFor(async () => await expect(notesDialog.isConnected).toBe(false));
+      await waitFor(async () => await expect(contentWrapper.inert).toBe(false));
+      await waitFor(async () => await expect(topLayer.matches(':popover-open')).toBe(false));
+      await waitFor(async () => await expect(root.activeElement).toBe(openNotes));
     });
   },
 };
 
 /** YPE-5355 stable regression evidence; peer-dismissal observations remain in the docs. */
 export const TwoIndependentOverlaysEvidence: Story = {
-  tags: ['!dev'],
+  tags: ['!dev', 'shadow-dom'],
   play: async ({ canvasElement, step }) => {
     const { contentWrapper, primaryIsland, root } = await getPrimaryHarness(canvasElement);
     const verse = await waitForElement<HTMLElement>(
@@ -642,16 +676,16 @@ export const TwoIndependentOverlaysEvidence: Story = {
         'independent popover not rendered',
         productionWaitOptions,
       );
-      await waitFor(() => {
+      await waitFor(async () => {
         const focused = root.activeElement;
-        void expect(focused !== null && independentPopover.contains(focused)).toBe(true);
+        await expect(focused !== null && independentPopover.contains(focused)).toBe(true);
       });
-      void expect(contentWrapper.inert).toBe(false);
+      await expect(contentWrapper.inert).toBe(false);
       await userEvent.keyboard('{Escape}');
-      await waitFor(() => void expect(independentPopover.isConnected).toBe(false));
-      void expect(root.activeElement).toBe(independentTrigger);
+      await waitFor(async () => await expect(independentPopover.isConnected).toBe(false));
+      await waitFor(async () => await expect(root.activeElement).toBe(independentTrigger));
       closeAllOverlays.click();
-      await waitFor(() => void expect(topLayer.matches(':popover-open')).toBe(false));
+      await waitFor(async () => await expect(topLayer.matches(':popover-open')).toBe(false));
     });
 
     await step('Keep the secondary root usable through primary teardown', async () => {
@@ -683,7 +717,7 @@ export const TwoIndependentOverlaysEvidence: Story = {
       );
 
       const opened = await openVerseActionPopover(root, verse);
-      void expect(opened.topLayer).not.toBe(secondaryTopLayer);
+      await expect(opened.topLayer).not.toBe(secondaryTopLayer);
       await openPermissionDialogFromVerseAction(opened.topLayer, opened.versePopover);
       const unmountPrimary = await waitForElement<HTMLButtonElement>(
         canvasElement,
@@ -692,11 +726,13 @@ export const TwoIndependentOverlaysEvidence: Story = {
         productionWaitOptions,
       );
       unmountPrimary.click();
-      await waitFor(() => void expect(primaryIsland.isConnected).toBe(false));
+      await waitFor(async () => await expect(primaryIsland.isConnected).toBe(false));
       closeAllOverlays.click();
-      await waitFor(() => void expect(secondaryPopover.isConnected).toBe(false));
-      await waitFor(() => void expect(secondaryTopLayer.matches(':popover-open')).toBe(false));
-      void expect(secondaryIsland.isConnected).toBe(true);
+      await waitFor(async () => await expect(secondaryPopover.isConnected).toBe(false));
+      await waitFor(
+        async () => await expect(secondaryTopLayer.matches(':popover-open')).toBe(false),
+      );
+      await expect(secondaryIsland.isConnected).toBe(true);
 
       await userEvent.click(secondaryTrigger);
       const reopenedSecondaryPopover = await waitForElement<HTMLElement>(
@@ -705,22 +741,28 @@ export const TwoIndependentOverlaysEvidence: Story = {
         'secondary popover did not reopen after primary teardown',
         productionWaitOptions,
       );
-      void expect(reopenedSecondaryPopover).toHaveAttribute('data-state', 'open');
-      void expect(secondaryTopLayer.matches(':popover-open')).toBe(true);
+      await expect(reopenedSecondaryPopover).toHaveAttribute('data-state', 'open');
+      await expect(secondaryTopLayer.matches(':popover-open')).toBe(true);
     });
   },
 };
 
 /** YPE-5355 lifecycle evidence with YPE-5889 final-focus coverage. */
 export const RapidCloseReopenDuringExitEvidence: Story = {
-  tags: ['!dev'],
-  args: { enableRapidReopen: true },
+  tags: ['!dev', 'shadow-dom'],
+  args: { enableRapidReopen: true, reopenOnDemand: true },
   play: async ({ canvasElement, step }) => {
     const { contentWrapper, root } = await getPrimaryHarness(canvasElement);
     const runRapidCloseReopen = await waitForElement<HTMLButtonElement>(
       root,
       '[data-testid="run-rapid-close-reopen"]',
       'rapid close/reopen control not rendered',
+      productionWaitOptions,
+    );
+    const finishRapidReopen = await waitForElement<HTMLButtonElement>(
+      canvasElement,
+      '[data-testid="finish-rapid-reopen"]',
+      'rapid reopen completion control not rendered',
       productionWaitOptions,
     );
     const exitAnimationStyle = installUnequalExitDurations(root, {
@@ -740,7 +782,7 @@ export const RapidCloseReopenDuringExitEvidence: Story = {
           'shadow-local top layer not created',
           productionWaitOptions,
         );
-        firstDialog = await waitFor(() => {
+        firstDialog = await waitFor(async () => {
           const dialog = getPermissionDialog(topLayer);
           if (!dialog) throw new Error('permission dialog did not open');
           return dialog;
@@ -748,50 +790,55 @@ export const RapidCloseReopenDuringExitEvidence: Story = {
       });
 
       await step('Retain modal ownership while the dialog starts exiting', async () => {
-        await waitFor(() => void expect(firstDialog).toHaveAttribute('data-state', 'closed'));
-        void expect(firstDialog.isConnected).toBe(true);
-        void expect(topLayer).toContainElement(firstDialog);
-        void expect(contentWrapper.inert).toBe(true);
+        await waitFor(
+          async () => await expect(firstDialog).toHaveAttribute('data-state', 'closed'),
+        );
+        await expect(firstDialog.isConnected).toBe(true);
+        await expect(topLayer).toContainElement(firstDialog);
+        await expect(contentWrapper.inert).toBe(true);
       });
 
-      await step('Retain the overlay after the first dialog unmounts', async () => {
-        const retainedOverlay = await waitFor(() => {
-          void expect(firstDialog.isConnected).toBe(false);
+      await step('Reopen while the retained overlay owns focus', async () => {
+        await waitFor(() => {
+          if (firstDialog.isConnected) throw new Error('first dialog has not unmounted');
           const overlay = topLayer.querySelector<HTMLElement>('[data-slot="dialog-overlay"]');
           if (!overlay) throw new Error('dialog overlay did not remain during content exit');
-          return overlay;
-        });
-        await waitFor(() => {
-          void expect(root.activeElement).toBe(retainedOverlay);
-          void expect(contentWrapper.inert).toBe(true);
-          void expect(topLayer.matches(':popover-open')).toBe(true);
+          if (getPermissionDialog(topLayer)) throw new Error('dialog content is still mounted');
+          if (root.activeElement !== overlay)
+            throw new Error('retained overlay does not own focus');
+          if (!contentWrapper.inert) throw new Error('background content is not inert');
+          if (!topLayer.matches(':popover-open')) throw new Error('top layer exited before reopen');
+
+          // Request the next dialog in the same task that observed the retained
+          // overlay, before its exit animation can finish.
+          finishRapidReopen.click();
         });
       });
 
       await step('Reopen from overlay-only retained presence', async () => {
-        const reopenedDialog = await waitFor(() => {
+        const reopenedDialog = await waitFor(async () => {
           const dialog = getPermissionDialog(topLayer);
           if (!dialog || dialog.getAttribute('data-state') === 'closed') {
             throw new Error('permission dialog did not reopen during exit');
           }
           return dialog;
         });
-        void expect(reopenedDialog).not.toBe(firstDialog);
-        await waitFor(() => {
+        await expect(reopenedDialog).not.toBe(firstDialog);
+        await waitFor(async () => {
           const focused = root.activeElement;
-          void expect(focused !== null && reopenedDialog.contains(focused)).toBe(true);
-          void expect(contentWrapper.inert).toBe(true);
-          void expect(topLayer.matches(':popover-open')).toBe(true);
+          await expect(focused !== null && reopenedDialog.contains(focused)).toBe(true);
+          await expect(contentWrapper.inert).toBe(true);
+          await expect(topLayer.matches(':popover-open')).toBe(true);
         });
       });
 
       await step('Release modal ownership after the final close', async () => {
         await userEvent.keyboard('{Escape}');
-        await waitFor(() => {
-          void expect(getPermissionDialog(topLayer)).toBeNull();
-          void expect(contentWrapper.inert).toBe(false);
-          void expect(topLayer.matches(':popover-open')).toBe(false);
-          void expect(root.activeElement).toBe(runRapidCloseReopen);
+        await waitFor(async () => {
+          await expect(getPermissionDialog(topLayer)).toBeNull();
+          await expect(contentWrapper.inert).toBe(false);
+          await expect(topLayer.matches(':popover-open')).toBe(false);
+          await expect(root.activeElement).toBe(runRapidCloseReopen);
         });
       });
     } finally {
@@ -801,7 +848,7 @@ export const RapidCloseReopenDuringExitEvidence: Story = {
 };
 
 export const RapidCloseReopenIgnoresInvalidOpenerEvidence: Story = {
-  tags: ['!dev'],
+  tags: ['!dev', 'shadow-dom'],
   args: { enableRapidReopen: true },
   play: async ({ canvasElement, step }) => {
     const { contentWrapper, root } = await getPrimaryHarness(canvasElement);
@@ -815,7 +862,7 @@ export const RapidCloseReopenIgnoresInvalidOpenerEvidence: Story = {
       '[data-testid="secondary-island"]',
       'secondary island not rendered',
     );
-    const secondaryRoot = await waitFor(() => requireShadowRoot(secondaryIsland));
+    const secondaryRoot = await waitForShadowRoot(secondaryIsland);
     const exitAnimationStyle = installUnequalExitDurations(root, {
       dialog: 400,
       overlay: 800,
@@ -831,44 +878,48 @@ export const RapidCloseReopenIgnoresInvalidOpenerEvidence: Story = {
           '[data-yv-shadow-local-overlay]',
           'shadow-local top layer not created',
         );
-        const firstDialog = await waitFor(() => {
+        const firstDialog = await waitFor(async () => {
           const dialog = getPermissionDialog(topLayer);
           if (!dialog) throw new Error('permission dialog did not open');
           return dialog;
         });
-        await waitFor(() => void expect(firstDialog).toHaveAttribute('data-state', 'closed'));
-        await waitFor(() => {
+        await waitFor(
+          async () => await expect(firstDialog).toHaveAttribute('data-state', 'closed'),
+        );
+        await waitFor(async () => {
           const dialog = getPermissionDialog(topLayer);
           if (!dialog || dialog.getAttribute('data-state') === 'closed') {
             throw new Error('permission dialog did not reopen during exit');
           }
-          void expect(contentWrapper.inert).toBe(true);
+          await expect(contentWrapper.inert).toBe(true);
         });
       });
 
       await step('Ignore the opener after it moves to another shadow root', async () => {
         secondaryRoot.append(runRapidCloseReopen);
-        void expect(runRapidCloseReopen.getRootNode()).toBe(secondaryRoot);
+        await expect(runRapidCloseReopen.getRootNode()).toBe(secondaryRoot);
 
         await userEvent.keyboard('{Escape}');
-        await waitFor(() => {
-          void expect(getPermissionDialog(topLayer)).toBeNull();
-          void expect(contentWrapper.inert).toBe(false);
-          void expect(topLayer.matches(':popover-open')).toBe(false);
+        await waitFor(async () => {
+          await expect(getPermissionDialog(topLayer)).toBeNull();
+          await expect(contentWrapper.inert).toBe(false);
+          await expect(topLayer.matches(':popover-open')).toBe(false);
         });
-        void expect(secondaryRoot.activeElement).not.toBe(runRapidCloseReopen);
+        await expect(secondaryRoot.activeElement).not.toBe(runRapidCloseReopen);
       });
 
       await step('Ignore the opener after it moves into the light DOM', async () => {
         contentWrapper.append(runRapidCloseReopen);
         await userEvent.click(runRapidCloseReopen);
-        const firstDialog = await waitFor(() => {
+        const firstDialog = await waitFor(async () => {
           const dialog = getPermissionDialog(topLayer);
           if (!dialog) throw new Error('permission dialog did not reopen for light-DOM target');
           return dialog;
         });
-        await waitFor(() => void expect(firstDialog).toHaveAttribute('data-state', 'closed'));
-        await waitFor(() => {
+        await waitFor(
+          async () => await expect(firstDialog).toHaveAttribute('data-state', 'closed'),
+        );
+        await waitFor(async () => {
           const dialog = getPermissionDialog(topLayer);
           if (!dialog || dialog.getAttribute('data-state') === 'closed') {
             throw new Error('permission dialog did not rapidly reopen for light-DOM target');
@@ -878,15 +929,15 @@ export const RapidCloseReopenIgnoresInvalidOpenerEvidence: Story = {
         const focus = spyOn(runRapidCloseReopen, 'focus');
         try {
           canvasElement.ownerDocument.body.append(runRapidCloseReopen);
-          void expect(runRapidCloseReopen.getRootNode()).toBe(canvasElement.ownerDocument);
+          await expect(runRapidCloseReopen.getRootNode()).toBe(canvasElement.ownerDocument);
           await userEvent.keyboard('{Escape}');
-          await waitFor(() => {
-            void expect(getPermissionDialog(topLayer)).toBeNull();
-            void expect(contentWrapper.inert).toBe(false);
-            void expect(topLayer.matches(':popover-open')).toBe(false);
+          await waitFor(async () => {
+            await expect(getPermissionDialog(topLayer)).toBeNull();
+            await expect(contentWrapper.inert).toBe(false);
+            await expect(topLayer.matches(':popover-open')).toBe(false);
           });
-          void expect(focus).not.toHaveBeenCalled();
-          void expect(canvasElement.ownerDocument.activeElement).not.toBe(runRapidCloseReopen);
+          await expect(focus).not.toHaveBeenCalled();
+          await expect(canvasElement.ownerDocument.activeElement).not.toBe(runRapidCloseReopen);
         } finally {
           focus.mockRestore();
         }
@@ -895,13 +946,15 @@ export const RapidCloseReopenIgnoresInvalidOpenerEvidence: Story = {
       await step('Ignore the opener after it disconnects', async () => {
         contentWrapper.append(runRapidCloseReopen);
         await userEvent.click(runRapidCloseReopen);
-        const firstDialog = await waitFor(() => {
+        const firstDialog = await waitFor(async () => {
           const dialog = getPermissionDialog(topLayer);
           if (!dialog) throw new Error('permission dialog did not reopen for disconnected target');
           return dialog;
         });
-        await waitFor(() => void expect(firstDialog).toHaveAttribute('data-state', 'closed'));
-        await waitFor(() => {
+        await waitFor(
+          async () => await expect(firstDialog).toHaveAttribute('data-state', 'closed'),
+        );
+        await waitFor(async () => {
           const dialog = getPermissionDialog(topLayer);
           if (!dialog || dialog.getAttribute('data-state') === 'closed') {
             throw new Error('permission dialog did not rapidly reopen for disconnected target');
@@ -911,15 +964,15 @@ export const RapidCloseReopenIgnoresInvalidOpenerEvidence: Story = {
         const focus = spyOn(runRapidCloseReopen, 'focus');
         try {
           runRapidCloseReopen.remove();
-          void expect(runRapidCloseReopen.isConnected).toBe(false);
+          await expect(runRapidCloseReopen.isConnected).toBe(false);
           await userEvent.keyboard('{Escape}');
-          await waitFor(() => {
-            void expect(getPermissionDialog(topLayer)).toBeNull();
-            void expect(contentWrapper.inert).toBe(false);
-            void expect(topLayer.matches(':popover-open')).toBe(false);
+          await waitFor(async () => {
+            await expect(getPermissionDialog(topLayer)).toBeNull();
+            await expect(contentWrapper.inert).toBe(false);
+            await expect(topLayer.matches(':popover-open')).toBe(false);
           });
-          void expect(focus).not.toHaveBeenCalled();
-          void expect(root.activeElement).not.toBe(runRapidCloseReopen);
+          await expect(focus).not.toHaveBeenCalled();
+          await expect(root.activeElement).not.toBe(runRapidCloseReopen);
         } finally {
           focus.mockRestore();
         }
@@ -928,14 +981,16 @@ export const RapidCloseReopenIgnoresInvalidOpenerEvidence: Story = {
       await step('Ignore the opener after it moves to another document', async () => {
         contentWrapper.append(runRapidCloseReopen);
         await userEvent.click(runRapidCloseReopen);
-        const firstDialog = await waitFor(() => {
+        const firstDialog = await waitFor(async () => {
           const dialog = getPermissionDialog(topLayer);
           if (!dialog)
             throw new Error('permission dialog did not reopen for cross-document target');
           return dialog;
         });
-        await waitFor(() => void expect(firstDialog).toHaveAttribute('data-state', 'closed'));
-        await waitFor(() => {
+        await waitFor(
+          async () => await expect(firstDialog).toHaveAttribute('data-state', 'closed'),
+        );
+        await waitFor(async () => {
           const dialog = getPermissionDialog(topLayer);
           if (!dialog || dialog.getAttribute('data-state') === 'closed') {
             throw new Error('permission dialog did not rapidly reopen for cross-document target');
@@ -946,15 +1001,15 @@ export const RapidCloseReopenIgnoresInvalidOpenerEvidence: Story = {
         const focus = spyOn(runRapidCloseReopen, 'focus');
         try {
           secondaryDocument.body.append(runRapidCloseReopen);
-          void expect(runRapidCloseReopen.isConnected).toBe(true);
-          void expect(runRapidCloseReopen.ownerDocument).toBe(secondaryDocument);
+          await expect(runRapidCloseReopen.isConnected).toBe(true);
+          await expect(runRapidCloseReopen.ownerDocument).toBe(secondaryDocument);
           await userEvent.keyboard('{Escape}');
-          await waitFor(() => {
-            void expect(getPermissionDialog(topLayer)).toBeNull();
-            void expect(contentWrapper.inert).toBe(false);
-            void expect(topLayer.matches(':popover-open')).toBe(false);
+          await waitFor(async () => {
+            await expect(getPermissionDialog(topLayer)).toBeNull();
+            await expect(contentWrapper.inert).toBe(false);
+            await expect(topLayer.matches(':popover-open')).toBe(false);
           });
-          void expect(focus).not.toHaveBeenCalled();
+          await expect(focus).not.toHaveBeenCalled();
         } finally {
           focus.mockRestore();
         }

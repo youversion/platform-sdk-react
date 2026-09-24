@@ -40,29 +40,45 @@ This is a working plan, not approval for package-wide rollout.
 Separate `ShadowRootHost` instances use different portal containers and tear
 those containers down independently. This provides lifecycle isolation, not
 interactive concurrency: pointer interaction in another root dismisses the
-existing peer overlay. Firefox, WebKit, and assistive-technology checks remain
-open.
+existing peer overlay. Automated Firefox and Playwright WebKit coverage now
+exercises these journeys. All 22 focused stories returned assertion-level success
+in local Safari 26.6.2 through SafariDriver when each story used a fresh browser
+session. A single long-lived SafariDriver session stalled on the final two play
+functions; assistive-technology checks remain open.
 
 ## Validation matrix
 
 | Area | Evidence today | Status | Remaining work |
 | --- | --- | --- | --- |
-| Host CSS isolation | Hostile-CSS demo and focused Chromium coverage exercise element selectors, direction inheritance, vertical writing and typography resets, hostile custom properties, universal `!important` rules, host attacks, and generated pseudo-content. | Validated for the prototype | Repeat against each component selected for rollout. |
+| Host CSS isolation | Hostile-CSS demos and focused browser coverage exercise element selectors, direction inheritance, vertical writing and typography resets, hostile custom properties, universal `!important` rules, host attacks, and generated pseudo-content. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | Repeat against each component selected for rollout. |
 | SSR and hydration | Focused React coverage verifies reuse of the exact empty server host, matching hydration without recoverable errors or duplicate content, and a null forwarded ref before the passive-effect mount. | Validated for the client-only prototype | Decide per rollout component whether a possibly empty first paint, layout shift, and no-JavaScript absence are acceptable. |
 | Component behavior | Auth button interaction works through the React portal; Strict Mode does not attach the root twice. | Validated for the prototype | Audit component-specific refs, events, and consumer integrations during rollout. |
-| Owner-document handling | Focused coverage mounts into a same-origin iframe and verifies document-compatible stylesheet construction. | Validated for the prototype | Verify stylesheet failure recovery. |
+| Owner-document handling | Focused coverage mounts into a same-origin iframe and verifies document-compatible stylesheet construction. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | Verify stylesheet failure recovery. |
 | Inline floating content | The picker negative control preserves tree-scope relationships but demonstrates clipping beyond a constrained ancestor. | Validated as a negative control | None; clipping is why inline placement is not the selected escaping strategy. |
-| Native top-layer floating content | Picker stories verify clipping escape, hit testing, collision handling, hostile-CSS isolation, and resolved `aria-controls` relationships. | Validated in Chromium | Expand browser and assistive-technology coverage. |
+| Native top-layer floating content | Picker stories verify clipping escape, hit testing, collision handling, hostile-CSS isolation, and resolved `aria-controls` relationships. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | Verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
 | Portal lifecycle | Unit and browser coverage exercise lazy creation, exit-animation retention, cleanup, immediate reopen behavior, and the direct-Radix `VerseActionPopover` consumer. | Validated for shared primitives and the known bypass | Repeat the consumer audit when adding another direct overlay primitive. |
-| Dialog relationships | Chromium resolves title and description relationships inside the component tree. | Validated in Chromium | Verify announcements with real assistive technology. |
-| Dialog keyboard containment | Browser coverage exercises initial focus, programmatic escape redirection, forward and reverse traversal, radio-group collapsing, negative `tabindex`, and wraparound. | Validated in Chromium | Expand the browser and assistive-technology matrix. |
-| Dialog modal lifetime | Coverage verifies inert background content while open and through staggered Content and Overlay exit animations. YPE-5355 also exercises both unmount orders for overlapping popover and dialog exits. | Validated for order-independent teardown | YPE-5356 owns peer concurrency across component roots. Expand browser and assistive-technology coverage. |
-| Dialog dismissal and restoration | Coverage exercises Escape, backdrop click, full-viewport hit testing, overlay-only focus, and restoration after both modal nodes unmount. | Validated in Chromium | Verify real screen-reader and cross-browser behavior. |
-| Consumer form participation | Chromium coverage verifies that a light-DOM form does not own or serialize a native control inside an SDK shadow root. | Unsupported across tree scopes | Use an explicit component contract if a rollout target requires outer-form participation. |
-| Consumer labels and ARIA ID references | Chromium coverage verifies that external native labels, `aria-labelledby`, and `aria-describedby` relationships do not resolve to controls inside the root. | Unsupported across tree scopes | Keep relationships in one tree scope; verify real assistive technology separately. |
+| Dialog relationships | Browser coverage resolves title and description relationships inside the component tree. | Validated in Chromium, Firefox, Playwright WebKit, and an isolated local Safari 26.6.2 run | Verify announcements with real assistive technology. |
+| Dialog keyboard containment | Browser coverage exercises initial focus, programmatic escape redirection, forward and reverse traversal, radio-group collapsing, negative `tabindex`, and wraparound. | Validated in Chromium, Firefox, Playwright WebKit, and an isolated local Safari 26.6.2 run | Verify assistive-technology behavior. |
+| Dialog modal lifetime | Coverage verifies inert background content while open and through staggered Content and Overlay exit animations. YPE-5355 also exercises both unmount orders for overlapping popover and dialog exits. | Validated for order-independent teardown | YPE-5356 owns peer concurrency across component roots. Verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
+| Dialog dismissal and restoration | Coverage exercises Escape, backdrop click, full-viewport hit testing, overlay-only focus, and restoration after both modal nodes unmount. | Validated in Chromium, Firefox, Playwright WebKit, and isolated local Safari 26.6.2 runs | Verify real screen-reader behavior. |
+| Consumer form participation | Browser coverage verifies that a light-DOM form does not own or serialize a native control inside an SDK shadow root. | Unsupported across tree scopes | Use an explicit component contract if a rollout target requires outer-form participation. |
+| Consumer labels and ARIA ID references | Browser coverage verifies that external native labels, `aria-labelledby`, and `aria-describedby` relationships do not resolve to controls inside the root. | Unsupported across tree scopes | Keep relationships in one tree scope; verify real assistive technology separately. |
 | Consumer events, refs, and automation | Coverage verifies native retargeting, the auth button's React handler and forwarded ref, open-root queries, and effect-driven attachment timing. | Supported with documented constraints | Repeat for each public component selected for rollout. |
-| Nested shadow roots | Coverage verifies basic rendering, recursive queries, and event retargeting at each boundary. | Supported for the validated basics | Peer-overlay coordination remains with YPE-5356; expand nested-overlay browser and assistive-technology validation during rollout. |
-| Realistic same-page usage | YPE-5437 mounts, removes, and re-adds a 12-component mix in Normal and Strict Mode. Chromium coverage verifies exact host counts, rendered scripture content, and one shared stylesheet object across roots and remounts. A production-build comparison found a small warm-run mount-cost difference on one machine. | No shared-host blocker found | Repeat user-visible performance and compatibility checks for each component selected for rollout. |
+| Nested shadow roots | Coverage verifies basic rendering, recursive queries, and event retargeting at each boundary. | Supported for the validated basics | Peer-overlay coordination remains with YPE-5356; verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
+| Realistic same-page usage | YPE-5437 mounts, removes, and re-adds a 12-component mix in Normal and Strict Mode. Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 coverage verifies exact host counts, rendered scripture content, and one shared stylesheet object across roots and remounts. A production-build comparison found a small warm-run mount-cost difference on one machine. | No shared-host blocker found | Repeat user-visible performance and compatibility checks for each component selected for rollout. |
+
+Actual Safari 26.6.2 exposed a visual gap the initial focused assertions missed:
+the picker header and version rows lost their logical padding inside the shadow
+root. The unlayered host-CSS reset now applies only in document roots, where host
+selectors can reach SDK descendants. An isolated Safari rerun measured the
+expected `12px 16px` header and row padding, matching Chromium; the focused
+picker story now checks this spacing.
+
+The document-root hostile-CSS story also exposed a Safari spacing failure:
+variable-backed Tailwind padding resolved to zero through the unlayered
+`revert-layer` reset. The fixed SDK spacing scale is now inlined into generated
+utilities, and actual Safari and focused WebKit runs verify the SDK button and
+input padding while the host button remains overridden.
 
 ## Direct overlay inventory
 
@@ -89,7 +105,7 @@ decision. YPE-5356 owns whether and how to implement that coordination.
 - Resolve the YPE-5355 peer-dismissal gap before shipping concurrent peer
   overlays (YPE-5356). The decision must consider trigger-time peer dismissal
   and overlay order; ADR 0007 records the gap but does not select a coordination design.
-  Cross-browser and assistive-technology coverage still remain.
+  Recurring actual-Safari and assistive-technology coverage still remain.
 - Keep the YPE-5400 custom-property contract and compiled-stylesheet prevention
   guard green as component styles change. The audit below closes the known
   ambient dependency; `all: initial` still does not reset custom properties.
@@ -108,7 +124,7 @@ generated `--tw-*` names, and the local `--spacing` compatibility alias.
 | --- | --- |
 | `--yv-*` | SDK-owned properties. The README's documented overrides are supported consumer inputs for light-DOM components under `[data-yv-sdk]`. They are not a public document-level override API for the automatically isolated `YouVersionAuthButton`. |
 | `--tw-*` | Tailwind and `tw-animate-css` implementation state that is declared or initialized in the compiled stylesheet. It is not a supported consumer input. |
-| `--spacing` | SDK-owned local compatibility alias for `--yv-spacing`, used by generated Tailwind utilities. |
+| `--spacing` | SDK-owned local compatibility alias for `--yv-spacing`, used by `tw-animate-css`. The fixed Tailwind spacing scale is inlined into generated utilities. |
 | Authored `--font-*`, `--color-*`, and `--radius-*` theme aliases | Compile-time Tailwind inputs that produce utilities backed by `--yv-*` values. They are not runtime consumer inputs. |
 | Exact `--radix-*` exceptions below | Third-party runtime inputs supplied inline by the corresponding Radix primitive. |
 | Exact cross-framework accordion exceptions below | Optional inputs in `tw-animate-css`'s fallback chain. The chain first checks the Radix value and ultimately falls back to `auto`. |
@@ -148,7 +164,8 @@ separately in YPE-5749.
 - Apply the [Shadow DOM consumer compatibility contract](shadow-dom-consumer-compatibility.md)
   to every proposed rollout component. Native outer-form participation and
   external `label`, `aria-labelledby`, and `aria-describedby` relationships are
-  unsupported across tree scopes in the current Chromium evidence.
+  unsupported across tree scopes in current Chromium, Firefox, and Playwright
+  WebKit evidence.
 - Preserve `direction` as the only intentional inherited CSS property. Vertical
   writing modes, text orientation, inherited host typography, and undeclared
   host custom properties are not supported customization inputs. The prototype
@@ -179,9 +196,14 @@ separately in YPE-5749.
   constraining the component host or its ancestors.
 - Open shadow roots prevent CSS selector crossover; they do not prevent
   same-page JavaScript from inspecting or mutating the root.
-- Browser automation currently focuses on Chromium. Firefox and WebKit remain
-  to be evaluated.
-- Chromium DOM relationship reflection is not a substitute for VoiceOver, NVDA,
+- The focused Shadow DOM browser suite runs in Chromium, Firefox, and Playwright
+  WebKit. Playwright WebKit is not a substitute for testing actual Safari. All
+  22 current stories returned explicit success events in local Safari 26.6.2
+  when each ran in a fresh SafariDriver session. A single long-lived session
+  returned success for 20/22 and left the sign-in and verse-action play
+  functions pending. The cause of that session-dependent stall is unresolved;
+  repeat actual-Safari validation in isolated sessions.
+- Browser DOM relationship reflection is not a substitute for VoiceOver, NVDA,
   or other real assistive-technology verification.
 
 ## Research handoff and completion gate

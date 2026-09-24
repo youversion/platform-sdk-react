@@ -1,16 +1,17 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+
 import { useTheme } from '@youversion/platform-react-hooks';
 import { http, HttpResponse } from 'msw';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { expect, userEvent, waitFor } from 'storybook/test';
+import { expect, userEvent } from 'storybook/test';
 import { ShadowRootHost } from '../lib/shadow-root-host';
-import { waitForElement } from '../test/storybook-dom';
+import { waitFor, waitForElement } from '../test/storybook-dom';
 import { Textarea } from './ui/textarea';
 import { YouVersionAuthButton } from './YouVersionAuthButton';
 
 const meta = {
   title: 'Spikes/Shadow DOM consumer compatibility',
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom'],
   parameters: {
     layout: 'padded',
     msw: {
@@ -37,7 +38,7 @@ function requireElement<ElementType extends Element>(
 }
 
 async function requireShadowHost(container: ParentNode): Promise<HTMLElement> {
-  return waitFor(() => {
+  return waitFor(async () => {
     const host = requireElement<HTMLElement>(
       container,
       '[data-yv-shadow-host]',
@@ -165,12 +166,14 @@ export const FormsAndExternalRelationshipsStopAtTheTreeScope: Story = {
   name: 'External relationships stop at the shadow boundary',
   render: () => <FormRelationshipsHarness />,
   play: async ({ canvasElement }) => {
-    const form = await waitFor(() =>
-      requireElement<HTMLFormElement>(
-        canvasElement,
-        '[data-testid="consumer-form"]',
-        'consumer form not rendered',
-      ),
+    const form = await waitFor(
+      () =>
+        requireElement<HTMLFormElement>(
+          canvasElement,
+          '[data-testid="consumer-form"]',
+          'consumer form not rendered',
+        ),
+      { timeout: 5_000 },
     );
     const label = requireElement<HTMLLabelElement>(
       canvasElement,
@@ -185,31 +188,31 @@ export const FormsAndExternalRelationshipsStopAtTheTreeScope: Story = {
       'isolated textarea not rendered',
     );
 
-    void expect(textarea.form).toBeNull();
-    void expect(form.elements.namedItem('notes')).toBeNull();
-    void expect(new FormData(form).has('notes')).toBe(false);
+    await expect(textarea.form).toBeNull();
+    await expect(form.elements.namedItem('notes')).toBeNull();
+    await expect(new FormData(form).has('notes')).toBe(false);
 
-    void expect(label.control).toBeNull();
+    await expect(label.control).toBeNull();
     await userEvent.click(label);
-    void expect(root.activeElement).not.toBe(textarea);
+    await expect(root.activeElement).not.toBe(textarea);
 
     type ReflectedAriaElement = HTMLElement & {
       ariaLabelledByElements?: readonly Element[];
       ariaDescribedByElements?: readonly Element[];
     };
-    // SAFETY: The optional extension models Chromium properties, and the guards below verify them.
+    // SAFETY: The optional extension models draft reflected-ARIA properties; verify before use.
     const reflectedTextarea = textarea as ReflectedAriaElement;
     if (!reflectedTextarea.ariaLabelledByElements) {
-      throw new Error('Chromium did not expose ariaLabelledByElements');
+      throw new Error('browser did not expose ariaLabelledByElements');
     }
     if (!reflectedTextarea.ariaDescribedByElements) {
-      throw new Error('Chromium did not expose ariaDescribedByElements');
+      throw new Error('browser did not expose ariaDescribedByElements');
     }
 
-    void expect(textarea.getAttribute('aria-labelledby')).toBe('external-name');
-    void expect(textarea.getAttribute('aria-describedby')).toBe('external-description');
-    void expect(reflectedTextarea.ariaLabelledByElements).toEqual([]);
-    void expect(reflectedTextarea.ariaDescribedByElements).toEqual([]);
+    await expect(textarea.getAttribute('aria-labelledby')).toBe('external-name');
+    await expect(textarea.getAttribute('aria-describedby')).toBe('external-description');
+    await expect(reflectedTextarea.ariaLabelledByElements).toEqual([]);
+    await expect(reflectedTextarea.ariaDescribedByElements).toEqual([]);
   },
 };
 
@@ -276,7 +279,7 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
   name: 'Events, refs, and DOM queries expose different views',
   render: () => <AutomaticButtonHarness />,
   play: async ({ canvasElement }) => {
-    const observer = await waitFor(() =>
+    const observer = await waitFor(async () =>
       requireElement<HTMLElement>(
         canvasElement,
         '[data-testid="consumer-observer"]',
@@ -291,8 +294,8 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
       'isolated auth button not rendered',
     );
 
-    void expect(canvasElement.querySelector('[data-testid="isolated-auth-button"]')).toBeNull();
-    void expect(root.querySelector('[data-testid="isolated-auth-button"]')).toBe(button);
+    await expect(canvasElement.querySelector('[data-testid="isolated-auth-button"]')).toBeNull();
+    await expect(root.querySelector('[data-testid="isolated-auth-button"]')).toBe(button);
     const firstLayoutEvidence = requireElement<HTMLOutputElement>(
       canvasElement,
       '[data-testid="first-layout-ref-state"]',
@@ -314,9 +317,9 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
       'consumer current target evidence not rendered',
     );
 
-    void expect(firstLayoutEvidence).toHaveTextContent('null');
-    void expect(firstLayoutEvidence).toHaveAttribute('hidden');
-    await waitFor(() => void expect(forwardedRefEvidence.observedNode).toBe(button));
+    await expect(firstLayoutEvidence).toHaveTextContent('null');
+    await expect(firstLayoutEvidence).toHaveAttribute('hidden');
+    await waitFor(async () => await expect(forwardedRefEvidence.observedNode).toBe(button));
 
     const clickTarget = requireElement<HTMLDivElement>(
       button,
@@ -336,12 +339,12 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
 
     await userEvent.click(clickTarget);
 
-    void expect(outsideTarget).toBe(host);
-    void expect(outsidePath[0]).toBe(clickTarget);
-    void expect(outsidePath).toContain(button);
-    void expect(outsidePath).toContain(host);
-    void expect(consumerTargetEvidence.observedNode).toBe(clickTarget);
-    void expect(consumerCurrentTargetEvidence.observedNode).toBe(button);
+    await expect(outsideTarget).toBe(host);
+    await expect(outsidePath[0]).toBe(clickTarget);
+    await expect(outsidePath).toContain(button);
+    await expect(outsidePath).toContain(host);
+    await expect(consumerTargetEvidence.observedNode).toBe(clickTarget);
+    await expect(consumerCurrentTargetEvidence.observedNode).toBe(button);
   },
 };
 
@@ -381,9 +384,9 @@ export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
       'nested auth button not rendered',
     );
 
-    void expect(canvasElement.querySelector('[data-testid="nested-auth-button"]')).toBeNull();
-    void expect(outerRoot.querySelector('[data-testid="nested-auth-button"]')).toBeNull();
-    void expect(innerRoot.querySelector('[data-testid="nested-auth-button"]')).toBe(button);
+    await expect(canvasElement.querySelector('[data-testid="nested-auth-button"]')).toBeNull();
+    await expect(outerRoot.querySelector('[data-testid="nested-auth-button"]')).toBeNull();
+    await expect(innerRoot.querySelector('[data-testid="nested-auth-button"]')).toBe(button);
 
     let outerScopeTarget: EventTarget | null = null;
     let documentScopeTarget: EventTarget | null = null;
@@ -406,10 +409,10 @@ export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
 
     await userEvent.click(button);
 
-    void expect(outerScopeTarget).toBe(innerHost);
-    void expect(documentScopeTarget).toBe(outerHost);
-    void expect(composedPath[0]).toBe(button);
-    void expect(composedPath).toContain(innerHost);
-    void expect(composedPath).toContain(outerHost);
+    await expect(outerScopeTarget).toBe(innerHost);
+    await expect(documentScopeTarget).toBe(outerHost);
+    await expect(composedPath[0]).toBe(button);
+    await expect(composedPath).toContain(innerHost);
+    await expect(composedPath).toContain(outerHost);
   },
 };
