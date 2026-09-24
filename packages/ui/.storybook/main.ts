@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { readFileSync, existsSync } from 'fs';
 import { parseEnv } from 'util';
 import { loadEnv } from 'vite';
+import { firstAppKey } from './env.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -59,12 +60,13 @@ const config: StorybookConfig = {
       ...packageEnv,
       // Explicit prefixed or generic process variables win, then legacy package-local
       // values, then the root .env fallback.
-      STORYBOOK_YOUVERSION_APP_KEY:
-        process.env.STORYBOOK_YOUVERSION_APP_KEY ??
-        process.env.YVP_APP_KEY ??
-        packageEnv.STORYBOOK_YOUVERSION_APP_KEY ??
-        rootEnv.STORYBOOK_YOUVERSION_APP_KEY ??
+      STORYBOOK_YOUVERSION_APP_KEY: firstAppKey(
+        process.env.STORYBOOK_YOUVERSION_APP_KEY,
+        process.env.YVP_APP_KEY,
+        packageEnv.STORYBOOK_YOUVERSION_APP_KEY,
+        rootEnv.STORYBOOK_YOUVERSION_APP_KEY,
         rootEnv.YVP_APP_KEY,
+      ),
       STORYBOOK_YOUVERSION_API_HOST:
         process.env.STORYBOOK_YOUVERSION_API_HOST ??
         process.env.YVP_API_HOST ??

@@ -17,8 +17,9 @@ builds do not require it. Existing package-local `.env.local` files remain suppo
 harness-specific overrides. Shell and CI variables take precedence over files.
 
 Get a real app key from https://platform.youversion.com. Without `YVP_APP_KEY` or a
-harness-specific app-key override, the demo and Storybook render the SDK missing-app-key panel,
-and live core integration tests remain skipped.
+harness-specific app-key override, the demo renders the SDK missing-app-key panel, while Storybook
+shows its own Missing Environment Variables warning before mounting the SDK. Live core integration
+tests remain skipped.
 
 ## Running the demo
 

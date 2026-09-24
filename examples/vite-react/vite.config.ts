@@ -14,12 +14,13 @@ export default defineConfig(({ mode }) => {
     ...packageEnv,
     // Explicit prefixed or generic process variables win, then legacy package-local
     // values, then the root .env fallback.
-    VITE_YVP_APP_KEY:
-      process.env.VITE_YVP_APP_KEY ??
-      process.env.YVP_APP_KEY ??
-      packageEnv.VITE_YVP_APP_KEY ??
-      rootEnv.VITE_YVP_APP_KEY ??
+    VITE_YVP_APP_KEY: [
+      process.env.VITE_YVP_APP_KEY,
+      process.env.YVP_APP_KEY,
+      packageEnv.VITE_YVP_APP_KEY,
+      rootEnv.VITE_YVP_APP_KEY,
       rootEnv.YVP_APP_KEY,
+    ].find((key) => key?.trim()),
     VITE_YVP_API_HOST:
       process.env.VITE_YVP_API_HOST ??
       process.env.YVP_API_HOST ??
@@ -37,6 +38,7 @@ export default defineConfig(({ mode }) => {
     base: process.env.VITE_BASE_PATH ?? '/',
     define: definedEnv,
     plugins: [react(), tailwindcss()],
+    server: { host: '127.0.0.1' },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
