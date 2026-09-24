@@ -355,6 +355,49 @@ run_decision_case "ordinary major previews still require signoff" \
 run_decision_case "failed ordinary previews remain blocked, not major" \
   'blocked=release preview did not succeed (failure)' false false skipped '' failure ''
 
+extract_step "Restore release tooling from the base branch" > "$TMP/restore.sh"
+PREVIEW_REPO="$TMP/preview-repo"
+git init --quiet --initial-branch=main "$PREVIEW_REPO"
+git -C "$PREVIEW_REPO" config commit.gpgsign false
+git -C "$PREVIEW_REPO" config user.name test
+git -C "$PREVIEW_REPO" config user.email test@example.com
+mkdir -p "$PREVIEW_REPO/packages/ui" "$PREVIEW_REPO/packages/core" \
+  "$PREVIEW_REPO/scripts" "$PREVIEW_REPO/.changeset"
+printf '{"name":"fixture","private":true}\n' > "$PREVIEW_REPO/package.json"
+printf '{"name":"@fixture/ui","version":"1.0.0"}\n' > "$PREVIEW_REPO/packages/ui/package.json"
+printf '{"name":"@fixture/core","version":"1.0.0"}\n' > "$PREVIEW_REPO/packages/core/package.json"
+printf 'packages:\n  - "packages/*"\n' > "$PREVIEW_REPO/pnpm-workspace.yaml"
+printf '// base-owned detector\n' > "$PREVIEW_REPO/scripts/preview-release.mjs"
+printf '{}\n' > "$PREVIEW_REPO/.changeset/config.json"
+pnpm --dir "$PREVIEW_REPO" install --lockfile-only --ignore-scripts --offline > "$TMP/preview-install.log" 2>&1
+git -C "$PREVIEW_REPO" add -A
+git -C "$PREVIEW_REPO" commit --quiet -m base
+git -C "$PREVIEW_REPO" switch --quiet -c feature
+git -C "$PREVIEW_REPO" remote add origin "$PREVIEW_REPO"
+# A changed dependency, a new workspace, and a deleted workspace must not influence
+# the base-owned install. The PR's major changeset must still reach the detector.
+printf '{"name":"@fixture/ui","version":"1.0.0","dependencies":{"zod":"4.1.12"}}\n' \
+  > "$PREVIEW_REPO/packages/ui/package.json"
+mkdir "$PREVIEW_REPO/packages/new"
+printf '{"name":"@fixture/new","version":"1.0.0"}\n' > "$PREVIEW_REPO/packages/new/package.json"
+rm "$PREVIEW_REPO/packages/core/package.json"
+printf '%s\n' '---' '"@fixture/ui": major' '---' 'PR release data' \
+  > "$PREVIEW_REPO/.changeset/pr-change.md"
+git -C "$PREVIEW_REPO" add -A
+git -C "$PREVIEW_REPO" commit --quiet -m feature
+
+if (cd "$PREVIEW_REPO" && bash "$TMP/restore.sh" && \
+    pnpm install --frozen-lockfile --ignore-scripts --ignore-pnpmfile --offline && \
+    git diff --exit-code main -- package.json pnpm-lock.yaml ':(glob)**/package.json' && \
+    test ! -e packages/new/package.json && \
+    git diff --exit-code HEAD -- .changeset/pr-change.md && \
+    grep -Fq '"@fixture/ui": major' .changeset/pr-change.md) > "$TMP/restore.log" 2>&1; then
+  pass "base tooling installs despite PR workspace dependency changes and preserves release data"
+else
+  fail "base tooling installs despite PR workspace dependency changes and preserves release data" \
+    "$(cat "$TMP/restore.log")"
+fi
+
 if pnpm exec prettier --check "$WORKFLOW" >/dev/null; then
   pass "workflow YAML parses and is formatted"
 else

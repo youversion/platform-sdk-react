@@ -3,6 +3,7 @@
 @import './preflight.css';
 
 [data-yv-sdk] {
+  color-scheme: light;
   /* Brand colors */
   --yv-red: oklch(from #ff3d4d l c h);
   --yv-red-dark-mode: oklch(from #f04c59 l c h);
@@ -123,6 +124,7 @@
   --yv-highlight-mix-p: 1;
 
   &[data-yv-theme='dark'] {
+    color-scheme: dark;
     /* Brand colors - Dark theme */
     --yv-background: var(--yv-gray-50);
     --yv-foreground: var(--yv-white);
