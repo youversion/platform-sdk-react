@@ -48,8 +48,33 @@ const IsolatedCompositionProbe = withShadowIsolation(
 
 type StyleSheetFailureStage = 'adoption' | 'construction' | 'replacement';
 
+function installWorkingConstructableStyleSheets(ownerDocument: Document): void {
+  const ownerWindow = ownerDocument.defaultView!;
+  const shadowRootPrototype = Object.getPrototypeOf(
+    ownerDocument.createElement('div').attachShadow({ mode: 'open' }),
+  );
+  const adoptedStyleSheets = new WeakMap<ShadowRoot, CSSStyleSheet[]>();
+
+  Object.defineProperty(shadowRootPrototype, 'adoptedStyleSheets', {
+    configurable: true,
+    get(this: ShadowRoot): CSSStyleSheet[] {
+      return adoptedStyleSheets.get(this) ?? [];
+    },
+    set(this: ShadowRoot, sheets: CSSStyleSheet[]) {
+      adoptedStyleSheets.set(this, sheets);
+    },
+  });
+  Object.defineProperty(ownerWindow, 'CSSStyleSheet', {
+    configurable: true,
+    value: class TestStyleSheet {
+      replaceSync(): void {}
+    },
+  });
+}
+
 async function expectStyleSheetFailureRecovery(stage: StyleSheetFailureStage): Promise<void> {
   const iframe = document.createElement('iframe');
+  const laterIframe = document.createElement('iframe');
   document.body.append(iframe);
   const ownerWindow = iframe.contentWindow!;
   const ownerDocument = iframe.contentDocument!;
@@ -59,10 +84,13 @@ async function expectStyleSheetFailureRecovery(stage: StyleSheetFailureStage): P
   const adoptedStyleSheets = new WeakMap<ShadowRoot, CSSStyleSheet[]>();
   const failedContainer = ownerDocument.createElement('div');
   const recoveredContainer = ownerDocument.createElement('div');
-  ownerDocument.body.append(failedContainer, recoveredContainer);
+  const sharedContainer = ownerDocument.createElement('div');
+  ownerDocument.body.append(failedContainer, recoveredContainer, sharedContainer);
   let rejectFailure = true;
   let unmountFailed: (() => void) | undefined;
   let unmountRecovered: (() => void) | undefined;
+  let unmountShared: (() => void) | undefined;
+  let unmountLaterDocument: (() => void) | undefined;
 
   try {
     Object.defineProperty(ownerShadowRootPrototype, 'adoptedStyleSheets', {
@@ -130,10 +158,51 @@ async function expectStyleSheetFailureRecovery(stage: StyleSheetFailureStage): P
     });
     expect(recoveredRoot.adoptedStyleSheets).toHaveLength(1);
     expect(recoveredRoot.querySelector('style')).toBeNull();
+
+    const sharedView = render(
+      <ShadowRootHost>
+        <span data-testid="shared-content">Shared content</span>
+      </ShadowRootHost>,
+      { container: sharedContainer },
+    );
+    unmountShared = sharedView.unmount;
+    const sharedRoot = await waitFor(() => {
+      const root = sharedContainer.querySelector<HTMLElement>('[data-yv-shadow-host]')?.shadowRoot;
+      if (!root?.querySelector('[data-testid="shared-content"]')) {
+        throw new Error('shared content not rendered');
+      }
+      return root;
+    });
+    expect(sharedRoot.adoptedStyleSheets[0]).toBe(recoveredRoot.adoptedStyleSheets[0]);
+
+    document.body.append(laterIframe);
+    const laterDocument = laterIframe.contentDocument!;
+    installWorkingConstructableStyleSheets(laterDocument);
+    const laterContainer = laterDocument.createElement('div');
+    laterDocument.body.append(laterContainer);
+    const laterView = render(
+      <ShadowRootHost>
+        <span data-testid="later-document-content">Later document content</span>
+      </ShadowRootHost>,
+      { container: laterContainer },
+    );
+    unmountLaterDocument = laterView.unmount;
+    const laterRoot = await waitFor(() => {
+      const root = laterContainer.querySelector<HTMLElement>('[data-yv-shadow-host]')?.shadowRoot;
+      if (!root?.querySelector('[data-testid="later-document-content"]')) {
+        throw new Error('later document content not rendered');
+      }
+      return root;
+    });
+    expect(laterRoot.adoptedStyleSheets).toHaveLength(1);
+    expect(laterRoot.querySelector('style')).toBeNull();
   } finally {
     unmountFailed?.();
     unmountRecovered?.();
+    unmountShared?.();
+    unmountLaterDocument?.();
     iframe.remove();
+    laterIframe.remove();
   }
 }
 
@@ -286,15 +355,15 @@ describe('ShadowRootHost', () => {
     expect(style?.getAttribute('data-precedence')).toBe('yv-sdk');
   });
 
-  it('recovers from stylesheet construction failure without poisoning later roots', async () => {
+  it('recovers from stylesheet construction failure without poisoning later roots or documents', async () => {
     await expectStyleSheetFailureRecovery('construction');
   });
 
-  it('recovers from stylesheet replacement failure without poisoning later roots', async () => {
+  it('recovers from stylesheet replacement failure without poisoning later roots or documents', async () => {
     await expectStyleSheetFailureRecovery('replacement');
   });
 
-  it('recovers from stylesheet adoption failure without poisoning later roots', async () => {
+  it('recovers from stylesheet adoption failure without poisoning later roots or documents', async () => {
     await expectStyleSheetFailureRecovery('adoption');
   });
 
