@@ -4,7 +4,8 @@ YPE-5356 reconciles this research into the
 [Shadow DOM production rollout policy](shadow-dom-rollout-policy.md). This file
 remains the detailed evidence inventory; the policy owns the approved public
 boundary, implementation groups, accepted limitations, and coordinated release
-gate. Neither document changes the currently shipped prototype by itself.
+gate. Neither document changes the current integration-branch prototype by
+itself.
 
 ## Why this doc exists
 

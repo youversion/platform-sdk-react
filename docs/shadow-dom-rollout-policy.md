@@ -84,22 +84,22 @@ supported component contract.
 
 ## Known limitations and dispositions
 
-| Limitation | Disposition |
-| --- | --- |
-| Empty server host, possible visible pop-in, no no-JavaScript content, and possible layout movement | Accepted as the shared starting contract. Every included group must review its intended layouts and either accept the result or add a component-specific reservation/strategy ticket. |
-| Ref is unavailable until the passive-effect shadow mount | Accepted and documented. Component tickets verify forwarded refs where the public component exposes one. |
-| Native outer-form participation and cross-tree label or ARIA ID references do not work | Accepted boundary; `Textarea` is excluded. Included components keep their accessible relationships inside their root or expose explicit props/callbacks. |
-| Document-rooted selectors and native event targets change | Accepted breaking change. Open-root traversal, role-based automation, public callbacks, and composed-event retargeting are documented. |
-| Consumer global CSS and document-level token overrides do not style internals | Intentional. Supported props and component-owned tokens replace accidental global customization; consumer-supplied children require focused review. |
-| `rem` still follows the owning document root size | Accepted sizing input and reviewed per component. |
-| Font loading and public `@font-face` names remain document-owned | Accepted. `YouVersionProvider` remains responsible for document fonts, including inside same-origin iframe documents. |
-| Ancestor layout can still hide, clip, transform, or constrain the shadow host | Accepted platform boundary. |
-| Open roots are inspectable and mutable by same-page JavaScript | Accepted; isolation is not a security boundary. |
-| Opening a peer popover dismisses the current peer across component roots | Accepted single-active-peer behavior. Supporting concurrent peer popovers would require a demonstrated product journey and separate design. |
-| Nested-dialog and rapid-reopen final focus restoration | Resolved by YPE-5889/PR 414. Preserve the completed behavior as regression coverage rather than duplicating the implementation in rollout tickets. |
-| Stylesheet construction or adoption can throw | Shared implementation blocker. The foundation ticket must prove recovery to the local `<style>` path without losing component rendering. |
-| Playwright WebKit is not actual Safari | Accepted CI boundary. Repeat SafariDriver validation before the coordinated release candidate and after changes to the host, stylesheet installation, portal controller, or focus controller. |
-| Real screen-reader behavior is unverified | Explicitly deferred. Do not claim VoiceOver, NVDA, or other assistive-technology validation in release notes. |
+| Limitation | Status | Disposition |
+| --- | --- | --- |
+| Empty server host, possible visible pop-in, no no-JavaScript content, and possible layout movement | Accepted | Use as the shared starting contract. Every included group must review its intended layouts and either accept the result or add a component-specific reservation/strategy ticket. |
+| Ref is unavailable until the passive-effect shadow mount | Accepted | Document the timing. Component tickets verify forwarded refs where the public component exposes one. |
+| Native outer-form participation and cross-tree label or ARIA ID references do not work | Accepted | Exclude `Textarea`. Included components keep their accessible relationships inside their root or expose explicit props/callbacks. |
+| Document-rooted selectors and native event targets change | Accepted | Treat this as a breaking change. Document open-root traversal, role-based automation, public callbacks, and composed-event retargeting. |
+| Consumer global CSS and document-level token overrides do not style internals | Accepted | Supported props and component-owned tokens replace accidental global customization; consumer-supplied children require focused review. |
+| `rem` still follows the owning document root size | Accepted | Review this sizing input per component. |
+| Font loading and public `@font-face` names remain document-owned | Accepted | `YouVersionProvider` remains responsible for document fonts, including inside same-origin iframe documents. |
+| Ancestor layout can still hide, clip, transform, or constrain the shadow host | Accepted | Treat this as a platform boundary. |
+| Open roots are inspectable and mutable by same-page JavaScript | Accepted | Isolation is not a security boundary. |
+| Opening a peer popover dismisses the current peer across component roots | Accepted | Keep the single-active-peer behavior. Supporting concurrent peer popovers would require a demonstrated product journey and separate design. |
+| Nested-dialog and rapid-reopen final focus restoration | Accepted | Preserve the behavior resolved by YPE-5889/PR 414 as regression coverage rather than duplicating the implementation in rollout tickets. |
+| Stylesheet construction or adoption can throw | Blocker | The foundation ticket must prove recovery to the local `<style>` path without losing component rendering. |
+| Playwright WebKit is not actual Safari | Follow-up | Repeat SafariDriver validation before the coordinated release candidate and after changes to the host, stylesheet installation, portal controller, or focus controller. |
+| Real screen-reader behavior is unverified | Follow-up | Keep real assistive-technology validation deferred and do not claim VoiceOver, NVDA, or other assistive-technology validation in release notes. |
 
 ## Implementation plan
 
