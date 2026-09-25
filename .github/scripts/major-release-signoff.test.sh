@@ -32,14 +32,25 @@ extract_step() {
 extract_step "Resolve PR context" > "$TMP/context.sh"
 extract_step "Decide whether a signoff is required" > "$TMP/decision.sh"
 extract_step "Regenerate and verify release contents" > "$TMP/verify.sh"
+extract_step "Post an unresolved status" > "$TMP/unresolved.sh"
 
 mkdir "$TMP/bin"
+# The context step backs off between retries; real delays would add ~9s per error case.
+cat > "$TMP/bin/sleep" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$TMP/bin/sleep"
 cat > "$TMP/bin/gh" <<'EOF'
 #!/usr/bin/env bash
 set -u
 if [[ "$2" == *"/pulls/"* ]]; then
+  echo called >> "$MOCK_PULL_CALLS"
   if [ "${MOCK_PULL_ERROR:-0}" = "1" ]; then exit 1; fi
+  if [ "$(wc -l < "$MOCK_PULL_CALLS")" -le "${MOCK_PULL_FAILURES:-0}" ]; then exit 1; fi
   cat "$MOCK_PR_FILE"
+elif [[ "$2" == *"/statuses/"* ]]; then
+  echo "$*" >> "${MOCK_STATUS_CALLS:-/dev/null}"
 elif [[ "$2" == *"/compare/"* ]]; then
   echo called >> "$MOCK_COMPARE_CALLS"
   if [ "${MOCK_COMPARE_ERROR:-0}" = "1" ]; then exit 1; fi
@@ -49,6 +60,17 @@ else
 fi
 EOF
 chmod +x "$TMP/bin/gh"
+cat > "$TMP/bin/git" <<EOF
+#!/usr/bin/env bash
+if [ "\$1" = "ls-remote" ]; then
+  echo called >> "\${MOCK_LSREMOTE_CALLS:-/dev/null}"
+  [ "\${MOCK_LSREMOTE_ERROR:-0}" = "1" ] && exit 1
+  printf '%s\trefs/pull/400/head\n' "\$MOCK_LSREMOTE_SHA"
+  exit 0
+fi
+exec $(command -v git) "\$@"
+EOF
+chmod +x "$TMP/bin/git"
 cat > "$TMP/bin/pnpm" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -68,6 +90,7 @@ chmod +x "$TMP/bin/pnpm"
 
 HEAD_SHA=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 BASE_SHA=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+RECOVERED_SHA=cccccccccccccccccccccccccccccccccccccccc
 VALID_PR=$(jq -n \
   --arg head "$HEAD_SHA" --arg base "$BASE_SHA" \
   '{
@@ -100,13 +123,14 @@ run_context_case() {
   fi
   : > "$output"
   : > "$TMP/compare-calls"
+  : > "$TMP/pull-calls"
   printf '%s\n' "$pr_json" > "$pr_file"
   printf '%s\n' "$compare_json" > "$compare_file"
   if PATH="$TMP/bin:$PATH" \
     EVENT_PR_NUMBER="$event_pr_number" EVENT_ISSUE_NUMBER="$event_issue_number" \
     REPOSITORY=youversion/platform-sdk-react \
     GITHUB_OUTPUT="$output" MOCK_PR_FILE="$pr_file" MOCK_COMPARE_FILE="$compare_file" \
-    MOCK_COMPARE_CALLS="$TMP/compare-calls" bash "$TMP/context.sh" >/dev/null 2>&1 &&
+    MOCK_COMPARE_CALLS="$TMP/compare-calls" MOCK_PULL_CALLS="$TMP/pull-calls" bash "$TMP/context.sh" >/dev/null 2>&1 &&
     grep -Fxq "generated_release_pr=$expected_release_pr" "$output" &&
     grep -Fxq "generated_candidate=$expected_candidate" "$output"; then
     pass "$name"
@@ -120,12 +144,13 @@ run_context_error_case() {
   local output="$TMP/output"
   : > "$output"
   : > "$TMP/compare-calls"
+  : > "$TMP/pull-calls"
   printf '%s\n' "$VALID_PR" > "$TMP/pr.json"
   printf '%s\n' "$VALID_COMPARE" > "$TMP/compare.json"
   if env PATH="$TMP/bin:$PATH" \
     EVENT_PR_NUMBER= EVENT_ISSUE_NUMBER=400 REPOSITORY=youversion/platform-sdk-react \
     GITHUB_OUTPUT="$output" MOCK_PR_FILE="$TMP/pr.json" MOCK_COMPARE_FILE="$TMP/compare.json" \
-    MOCK_COMPARE_CALLS="$TMP/compare-calls" "$error_var"=1 \
+    MOCK_COMPARE_CALLS="$TMP/compare-calls" MOCK_PULL_CALLS="$TMP/pull-calls" "$error_var"=1 \
     bash "$TMP/context.sh" >/dev/null 2>&1; then
     result=success
   else
@@ -138,6 +163,75 @@ run_context_error_case() {
     pass "$name"
   else
     fail "$name" "expected $expected_result with generated_release_pr=$expected_release_pr and generated_candidate=$expected_candidate; got $result and $(tr '\n' ' ' < "$output")"
+  fi
+}
+
+run_context_retry_case() {
+  local name="$1" pull_failures="$2" expected_result="$3" expected_calls="$4"
+  local output="$TMP/output" result calls
+  : > "$output"
+  : > "$TMP/compare-calls"
+  : > "$TMP/pull-calls"
+  printf '%s\n' "$VALID_PR" > "$TMP/pr.json"
+  printf '%s\n' "$VALID_COMPARE" > "$TMP/compare.json"
+  if env PATH="$TMP/bin:$PATH" \
+    EVENT_PR_NUMBER= EVENT_ISSUE_NUMBER=400 REPOSITORY=youversion/platform-sdk-react \
+    GITHUB_OUTPUT="$output" MOCK_PR_FILE="$TMP/pr.json" MOCK_COMPARE_FILE="$TMP/compare.json" \
+    MOCK_COMPARE_CALLS="$TMP/compare-calls" MOCK_PULL_CALLS="$TMP/pull-calls" \
+    MOCK_PULL_FAILURES="$pull_failures" \
+    bash "$TMP/context.sh" >/dev/null 2>&1; then
+    result=success
+  else
+    result=failure
+  fi
+  calls=$(wc -l < "$TMP/pull-calls" | tr -d ' ')
+  if [ "$result" = "$expected_result" ] && [ "$calls" = "$expected_calls" ]; then
+    pass "$name"
+  else
+    fail "$name" "expected $expected_result after $expected_calls PR API calls; got $result after $calls"
+  fi
+}
+
+# Asserts the whole request, not just its target. A test that only checks which
+# SHA was addressed passes just as happily when the job posts `state=success`,
+# which is the one outcome this job exists to prevent.
+run_unresolved_case() {
+  local name="$1" payload_sha="$2" lsremote_error="$3" expected_sha="$4"
+  local statuses="$TMP/status-calls" call result=0
+  : > "$statuses"
+  : > "$TMP/lsremote-calls"
+  env PATH="$TMP/bin:$PATH" \
+    EVENT_ISSUE_NUMBER=400 PAYLOAD_HEAD_SHA="$payload_sha" \
+    REPOSITORY=youversion/platform-sdk-react STATUS_CONTEXT=major-release-signoff \
+    RUN_URL=https://example.invalid/run GH_TOKEN=token \
+    MOCK_STATUS_CALLS="$statuses" MOCK_LSREMOTE_SHA="$RECOVERED_SHA" \
+    MOCK_LSREMOTE_ERROR="$lsremote_error" MOCK_LSREMOTE_CALLS="$TMP/lsremote-calls" \
+    bash "$TMP/unresolved.sh" >/dev/null 2>&1 || result=$?
+  call=$(cat "$statuses")
+
+  # No recoverable head: the job must address no status at all rather than guess.
+  if [ -z "$expected_sha" ]; then
+    if [ ! -s "$statuses" ] && [ "$result" -ne 0 ]; then
+      pass "$name"
+    else
+      fail "$name" "expected no status request and a nonzero exit; got '$call' and exit $result"
+    fi
+    return
+  fi
+
+  local problem=""
+  [[ "$call" == *"/statuses/$expected_sha"* ]] || problem="wrong target SHA"
+  [[ "$call" == *"state=failure"* ]] || problem="${problem:-status was not failure}"
+  [[ "$call" == *"context=major-release-signoff"* ]] || problem="${problem:-wrong context}"
+  [[ "$call" == *"target_url=https://example.invalid/run"* ]] || problem="${problem:-no target_url}"
+  [[ "$call" == *"Could not resolve PR context"* ]] || problem="${problem:-no description}"
+  # The job exits nonzero so the check is red in the PR UI, not merely recorded.
+  [ "$result" -ne 0 ] || problem="${problem:-job exited 0}"
+
+  if [ -z "$problem" ]; then
+    pass "$name"
+  else
+    fail "$name" "$problem; call was '$call' (exit $result)"
   fi
 }
 
@@ -181,6 +275,19 @@ run_context_case "blocks a potentially truncated 300-file generated release comp
 run_context_error_case "comparison API errors retain generated identity and fail the precheck" \
   success true false MOCK_COMPARE_ERROR
 run_context_error_case "PR API errors fail the resolver closed" failure false false MOCK_PULL_ERROR
+
+# The retry exists so a blip cannot leave a revoked signoff's status untouched. Assert it
+# both recovers and gives up, by call count -- a loop that never retries also "passes" a
+# test that only checks the outcome.
+run_context_retry_case "transient PR API errors recover on retry" 2 success 3
+run_context_retry_case "persistent PR API errors stop after three attempts" 3 failure 3
+
+# The whole point of the job: an unresolved context must still land a failing status on the
+# head, whichever event triggered it. issue_comment payloads carry no SHA, so it comes from
+# the git ref instead of the REST call that just failed.
+run_unresolved_case "a pull_request payload head takes the failing status" "$HEAD_SHA" 0 "$HEAD_SHA"
+run_unresolved_case "an issue_comment recovers the head over git" "" 0 "$RECOVERED_SHA"
+run_unresolved_case "an unrecoverable head posts no status at all" "" 1 ""
 
 VERIFY_REPO="$TMP/verify-repo"
 git init --quiet "$VERIFY_REPO"
@@ -337,6 +444,14 @@ if grep -Fq 'Generated release PR; major signoff is enforced on source PRs.' "$W
   pass "generated releases publish an explicit lifecycle-aware success"
 else
   fail "generated releases publish an explicit lifecycle-aware success" "status wording is missing"
+fi
+
+if awk '/^  context_unresolved:/{f=1} f && /^    if:/{print; exit}' "$WORKFLOW" |
+  grep -Fq "event_name"; then
+  fail "an unresolved context fails the status on every event" \
+    "context_unresolved is gated to a subset of events, so a revocation can leave a stale success"
+else
+  pass "an unresolved context fails the status on every event"
 fi
 
 printf '\n%d passed, %d failed\n' "$passes" "$failures"

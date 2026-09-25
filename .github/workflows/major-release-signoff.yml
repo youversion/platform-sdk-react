@@ -56,7 +56,25 @@ jobs:
           # Resolve every event through the API. In particular, issue_comment payloads
           # contain no PR head, and created/edited/deleted comments must evaluate the
           # current immutable head rather than the head from an earlier workflow run.
-          PR_JSON=$(gh api "repos/$REPOSITORY/pulls/$PR_NUMBER")
+          # Retry rather than die on the first blip. Everything downstream needs the head
+          # SHA this call returns, and on issue_comment there is no payload fallback, so a
+          # transient API failure here would otherwise leave the status already on the SHA
+          # untouched -- including a success whose signoff has since been revoked.
+          PR_JSON=""
+          for attempt in 1 2 3; do
+            if PR_JSON=$(gh api "repos/$REPOSITORY/pulls/$PR_NUMBER"); then
+              break
+            fi
+            PR_JSON=""
+            echo "::warning::Could not read PR $PR_NUMBER (attempt $attempt of 3)."
+            if [ "$attempt" -lt 3 ]; then
+              sleep $((attempt * 3))
+            fi
+          done
+          if [ -z "$PR_JSON" ]; then
+            echo "::error::Could not read PR $PR_NUMBER after 3 attempts."
+            exit 1
+          fi
           HEAD_SHA=$(jq -r '.head.sha // empty' <<<"$PR_JSON")
           if ! [[ "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]; then
             echo "::error::Could not resolve a full PR head SHA."
@@ -124,6 +142,54 @@ jobs:
           echo "generated_candidate=$GENERATED_CANDIDATE" >> "$GITHUB_OUTPUT"
           echo "generated_release_pr=$GENERATED_RELEASE_PR" >> "$GITHUB_OUTPUT"
 
+
+  # `context` is what resolves the head SHA, so when it fails the gate below is skipped
+  # and whatever status was last written to that SHA stands -- including a `success` whose
+  # signoff comment has since been edited or deleted. Write a failing status so a revocation
+  # can never leave a stale green on a major release.
+  #
+  # The head SHA has to come from somewhere other than the API call that just failed.
+  # `pull_request` payloads carry it; `issue_comment` payloads do not, so read
+  # `refs/pull/N/head` over git, which is a different backend from the REST call in
+  # `context` and needs no scope beyond `contents: read`.
+  #
+  # `failure`, not `!= 'success'`: a cancelled run has been superseded by a newer one, and
+  # painting the PR red for that is the noise #404 removed.
+  context_unresolved:
+    if: always() && needs.context.result == 'failure'
+    name: Signoff status when context is unresolved
+    needs: context
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+      - name: Post an unresolved status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_ISSUE_NUMBER: ${{ github.event.issue.number }}
+          PAYLOAD_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          HEAD_SHA="$PAYLOAD_HEAD_SHA"
+          if [ -z "$HEAD_SHA" ]; then
+            HEAD_SHA=$(git ls-remote \
+              "https://x-access-token:$GH_TOKEN@github.com/$REPOSITORY" \
+              "refs/pull/$EVENT_ISSUE_NUMBER/head" | cut -f1) || HEAD_SHA=""
+          fi
+          if ! [[ "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::PR context is unresolved and no head SHA could be recovered."
+            exit 1
+          fi
+          gh api "repos/$REPOSITORY/statuses/$HEAD_SHA" \
+            -f state=failure \
+            -f context="$STATUS_CONTEXT" \
+            -f description="Could not resolve PR context; release impact is unknown." \
+            -f target_url="$RUN_URL" > /dev/null
+          echo "Posted a failing status: PR context could not be resolved."
+          exit 1
 
   generated_release:
     # The metadata and comparison shape are a cheap fail-closed prefilter. Prove the
