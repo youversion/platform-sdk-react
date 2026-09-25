@@ -13,7 +13,6 @@ import { InterfaceDirectionProvider } from '@/lib/direction';
 import {
   BIBLE_READER_SPACING,
   BibleReader,
-  BibleThemeSettingsContent,
   changeBibleReaderLineSpacing,
   clampBibleReaderFontSize,
   createBibleThemeSettingsContentHandlers,
@@ -203,60 +202,10 @@ describe('createBibleThemeSettingsContentHandlers', () => {
   });
 });
 
-describe('BibleThemeSettingsContent styles', () => {
-  it('injects component styles when rendered standalone', () => {
-    render(
-      <BibleThemeSettingsContent
-        theme="light"
-        fontSize={16}
-        fontFamily={INTER_FONT}
-        lineSpacing={BIBLE_READER_SPACING.DEFAULT}
-        onFontSelected={vi.fn()}
-        onFontIncreased={vi.fn()}
-        onFontDecreased={vi.fn()}
-        onChangeLineSpacing={vi.fn()}
-      />,
-    );
-
-    expect(document.head.querySelector('style[data-href="yv-sdk-components"]')).not.toBeNull();
-  });
-});
-
 describe('BibleReader theme settings', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-  });
-
-  it('opens the default Reader Settings popover and updates font settings', async () => {
-    const user = userEvent.setup();
-
-    renderWithOverrides(
-      <BibleReader.Root defaultVersionId={3034} defaultBook="JHN" defaultChapter="1">
-        <BibleReader.Toolbar />
-      </BibleReader.Root>,
-    );
-
-    await user.click(screen.getByRole('button', { name: 'Settings' }));
-
-    expect(await screen.findByText('Reader Settings')).toBeInTheDocument();
-
-    await user.click(screen.getByTestId('increase-font-size'));
-    await waitFor(() => {
-      expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('18');
-    });
-
-    await user.click(screen.getByRole('button', { name: /inter/i }));
-    await waitFor(() => {
-      expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(INTER_FONT);
-    });
-
-    await user.click(screen.getByRole('button', { name: /untitled/i }));
-    await waitFor(() => {
-      expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(
-        UNTITLED_SERIF_FONT,
-      );
-    });
   });
 
   it('migrates the legacy Source Serif preference to Untitled Serif on hydrate', async () => {

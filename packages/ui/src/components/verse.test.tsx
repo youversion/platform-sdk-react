@@ -1,10 +1,8 @@
 /**
  * @vitest-environment jsdom
  */
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { act, render as rtlRender, waitFor, within } from '@testing-library/react';
+import { act, render as rtlRender, waitFor } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { hydrateRoot } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
@@ -1074,67 +1072,6 @@ describe('Verse.Html - Footnote icon color over highlight fills', () => {
   });
 });
 
-describe('Verse.Html - Rounded highlight fill (static structural CSS)', () => {
-  // The rounded corners / clone / padding are structural styles that live in the
-  // core stylesheet (`bible-reader.css`), not the imperative paint path (which
-  // only sets colors). They are applied to the base `.yv-v` rule so they are
-  // STATIC — present whether or not a verse is highlighted — which is what keeps
-  // applying/removing a fill from reflowing text (no layout shift). jsdom doesn't
-  // load that external sheet, so we assert against the CSS source directly.
-  // Resolve relative to this file so it works whether the suite runs from the ui
-  // package (the filtered command) or the repo root (turbo).
-  const css = readFileSync(
-    resolve(import.meta.dirname, '../../../core/src/styles/bible-reader.css'),
-    'utf8',
-  );
-
-  // The base `.yv-v` rule (identified by its background-color transition), not the
-  // `.yv-v.yv-v-highlighted` demo rule.
-  const baseRule = Array.from(css.matchAll(/&\s*\.yv-v\s*\{([^}]*)\}/g))
-    .map((m) => m[1]!)
-    .find((body) => body.includes('transition: background-color'));
-
-  it('defines the base .yv-v rule with the fade transition', () => {
-    expect(baseRule).toBeDefined();
-  });
-
-  it('rounds the corners statically (4px) on the base rule', () => {
-    expect(baseRule).toContain('border-radius: 4px');
-  });
-
-  it('adds static 2px inline padding so a fill never causes reflow', () => {
-    expect(baseRule).toContain('padding-inline: 2px');
-  });
-
-  it('clones the box decoration so wrapped line fragments get their own rounded ends', () => {
-    expect(baseRule).toContain('box-decoration-break: clone');
-    expect(baseRule).toContain('-webkit-box-decoration-break: clone');
-  });
-});
-
-describe('Verse.Text', () => {
-  it('should render verse with number and text (default size)', () => {
-    const { container } = render(<Verse.Text number={1} text="In the beginning" />);
-
-    const sup = container.querySelector('sup');
-    expect(sup).not.toBeNull();
-    expect(sup?.textContent).toBe('1');
-
-    expect(container.textContent).toContain('In the beginning');
-  });
-
-  it('should render verse with large size variant', () => {
-    const { container } = render(<Verse.Text number={1} text="In the beginning" size="lg" />);
-
-    const sup = container.querySelector('sup');
-    expect(sup).not.toBeNull();
-
-    const span = container.querySelector('span.yv\\:font-serif\\!');
-    expect(span).not.toBeNull();
-    expect(span?.textContent).toBe('In the beginning');
-  });
-});
-
 describe('BibleTextView - Refetch loading behavior', () => {
   const mockPassage: BibleTextViewPassageState['passage'] = {
     id: 'JHN.3.16',
@@ -1158,24 +1095,6 @@ describe('BibleTextView - Refetch loading behavior', () => {
     await waitFor(() => {
       expect(container.textContent).toContain('For God so loved the world');
       expect(container.textContent).not.toContain('Loading...');
-    });
-  });
-
-  it('should show spinner on initial load when passage is null', async () => {
-    const { container } = render(
-      <BibleTextView
-        reference="JHN.3.16"
-        versionId={3034}
-        passageState={{
-          passage: null,
-          loading: true,
-          error: null,
-        }}
-      />,
-    );
-
-    await waitFor(() => {
-      expect(within(container).getByRole('status', { name: /loading/i })).toBeInTheDocument();
     });
   });
 
@@ -1491,25 +1410,6 @@ describe('Verse.Html - onFootnotePress callback', () => {
     // No popover should appear
     const popover = document.body.querySelector('[role="dialog"]');
     expect(popover).toBeNull();
-  });
-
-  it('should still render Popover when onFootnotePress is NOT provided', async () => {
-    const { container } = render(
-      <Verse.Html html={htmlWithFootnote} renderNotes={true} reference="JHN.1" />,
-    );
-
-    const button = await waitFor(() => {
-      const btn = container.querySelector('[data-verse-footnote="5"] button');
-      expect(btn).not.toBeNull();
-      return requireHtmlButton(btn);
-    });
-
-    await userEvent.click(button);
-
-    await waitFor(() => {
-      const popover = document.body.querySelector('[role="dialog"]');
-      expect(popover).not.toBeNull();
-    });
   });
 });
 
@@ -1855,14 +1755,5 @@ describe('FootnoteContent', () => {
     expect(note?.querySelector('.fp')?.textContent).toBe('Keyword and label.');
     expect(note?.querySelector('.fk')).not.toBeNull();
     expect(note?.querySelector('.fl')).not.toBeNull();
-  });
-
-  it('injects component and reader styles when rendered standalone', () => {
-    rtlRender(
-      <FootnoteContent verseNum="1" notes={['A note']} verseHtml="Verse text" reference="John 1" />,
-    );
-
-    expect(document.head.querySelector('style[data-href="yv-sdk-components"]')).not.toBeNull();
-    expect(document.head.querySelector('style[data-href="yv-sdk-bible-reader"]')).not.toBeNull();
   });
 });

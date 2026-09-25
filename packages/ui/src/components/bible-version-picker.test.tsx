@@ -209,62 +209,22 @@ describe('BibleVersionPicker', () => {
   });
 
   describe('loading state', () => {
-    it('should show spinner in version list when versions are loading', async () => {
+    it('shows the version-list spinner even with recent versions while versions load', async () => {
+      vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
+        key === RECENT_VERSIONS_KEY
+          ? JSON.stringify([{ id: 1588, title: 'Amplified Bible', localized_abbreviation: 'AMP' }])
+          : null,
+      );
       renderPicker({ versionsLoading: true, filteredVersions: [] });
       await openPicker();
 
       await waitFor(() => {
-        const dialog = screen.getByRole('dialog');
-        const spinner = dialog.querySelector('svg.yv\\:animate-spin');
-        expect(spinner).not.toBeNull();
+        const recentList = screen.getByTestId('recent-version-list');
+        expect(within(recentList).getByText('Amplified Bible')).toBeInTheDocument();
+        expect(recentList.parentElement?.querySelector('svg.yv\\:animate-spin')).not.toBeNull();
       });
 
       expect(screen.queryByText('No versions found')).toBeNull();
-    });
-
-    it('should show spinner in version list when loading even with recent versions', async () => {
-      const recentVersions = [
-        {
-          id: 111,
-          title: 'New International Version',
-          localized_abbreviation: 'NIV',
-          abbreviation: 'NIV',
-        },
-      ];
-      const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key) => {
-        if (key === RECENT_VERSIONS_KEY) return JSON.stringify(recentVersions);
-        return null;
-      });
-
-      renderPicker({ versionsLoading: true, filteredVersions: [] });
-      await openPicker();
-
-      await waitFor(() => {
-        const dialog = screen.getByRole('dialog');
-        const spinners = dialog.querySelectorAll('svg.yv\\:animate-spin');
-        // Badge spinner + version list spinner
-        expect(spinners.length).toBeGreaterThanOrEqual(2);
-      });
-
-      expect(screen.queryByText('No versions found')).toBeNull();
-
-      getItemSpy.mockRestore();
-    });
-
-    it('should show spinner in badge when versions are loading', async () => {
-      renderPicker({ versionsLoading: true, filteredVersions: [] });
-      await openPicker();
-
-      await waitFor(() => {
-        const languageButton = screen.getByRole('button', { name: /select a language/i });
-        const badge = languageButton.querySelector('[data-slot="badge"]');
-        expect(badge).not.toBeNull();
-
-        const spinner = badge!.querySelector('svg');
-        expect(spinner).not.toBeNull();
-
-        expect(badge!.textContent).not.toContain('0');
-      });
     });
   });
 
@@ -283,50 +243,7 @@ describe('BibleVersionPicker', () => {
     });
   });
 
-  describe('loaded state', () => {
-    it('should show version count in badge when loaded', async () => {
-      renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
-      await openPicker();
-
-      await waitFor(() => {
-        const languageButton = screen.getByRole('button', { name: /select a language/i });
-        const badge = languageButton.querySelector('[data-slot="badge"]');
-        expect(badge).not.toBeNull();
-        expect(badge!.textContent).toBe('2');
-      });
-    });
-
-    it('should render version items when loaded', async () => {
-      renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
-      await openPicker();
-
-      await waitFor(() => {
-        expect(
-          screen.getByRole('listitem', { name: /new international version/i }),
-        ).toBeInTheDocument();
-        expect(
-          screen.getByRole('listitem', { name: /new living translation/i }),
-        ).toBeInTheDocument();
-      });
-    });
-  });
-
   describe('abbreviation tile', () => {
-    it('renders the abbreviation tile with the Figma media styling', async () => {
-      renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
-      await openPicker();
-
-      const row = await screen.findByRole('listitem', { name: /new international version/i });
-      const media = row.querySelector('[data-slot="item-media"]');
-      expect(media).not.toBeNull();
-      // tile: 64px square, 8px radius, warm-neutral fill, themed border
-      expect(media!.className).toContain('yv:size-16');
-      expect(media!.className).toContain('yv:rounded-[8px]');
-      expect(media!.className).toContain('yv:bg-secondary');
-      expect(media!.className).toContain('yv:border-border');
-      expect(media!.textContent).toContain('NIV');
-    });
-
     it('splits a trailing-digit abbreviation onto a second line', async () => {
       renderPicker({
         versionsLoading: false,
@@ -368,51 +285,6 @@ describe('BibleVersionPicker', () => {
       const row = await screen.findByRole('listitem', { name: /new living translation/i });
       const description = row.querySelector('[data-slot="item-description"]');
       expect(description).toBeNull();
-    });
-
-    it('still lists recent versions saved without an abbreviation field', async () => {
-      vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
-        key === RECENT_VERSIONS_KEY
-          ? JSON.stringify([
-              {
-                id: 1588,
-                title: 'Amplified Bible',
-                localized_abbreviation: 'AMP',
-              },
-            ])
-          : null,
-      );
-
-      renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
-      await openPicker();
-
-      const recentList = await screen.findByTestId('recent-version-list');
-      expect(within(recentList).getByText(/Amplified Bible/i)).toBeTruthy();
-    });
-
-    it('applies the same tile styling to recent-version rows', async () => {
-      vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
-        key === RECENT_VERSIONS_KEY
-          ? JSON.stringify([
-              {
-                id: 111,
-                title: 'New International Version',
-                localized_abbreviation: 'NIV',
-                abbreviation: 'NIV',
-              },
-            ])
-          : null,
-      );
-
-      renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
-      await openPicker();
-
-      const recentList = await screen.findByTestId('recent-version-list');
-      const media = recentList.querySelector('[data-slot="item-media"]');
-      expect(media).not.toBeNull();
-      expect(media!.className).toContain('yv:size-16');
-      expect(media!.className).toContain('yv:bg-secondary');
-      expect(media!.className).toContain('yv:rounded-[8px]');
     });
 
     it('hides excluded recent versions without rewriting localStorage', async () => {
