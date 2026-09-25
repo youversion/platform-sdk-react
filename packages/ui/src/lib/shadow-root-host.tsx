@@ -171,11 +171,11 @@ function hidePopoverIfOpen(container: HTMLElement | null): void {
 
 interface ShadowRootHostProps {
   children: ReactNode;
-  /** @internal Spike-only, mount-stable strategy; omit for leaves without overlays. */
+  /** @internal Component-owned, mount-stable strategy; omit for leaves without overlays. */
   portalStrategy?: ShadowPortalStrategy;
 }
 
-/** @internal Proof-of-concept primitive; not part of the public API. */
+/** @internal Shadow boundary primitive; not part of the public API. */
 export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps): ReactNode {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const shadowRootRef = useRef<ShadowRoot | null>(null);

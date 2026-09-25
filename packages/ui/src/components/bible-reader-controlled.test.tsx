@@ -29,6 +29,7 @@ import {
 import type { HighlightedVerses } from '@/lib/highlight-colors';
 import { HIGHLIGHT_COLORS } from './verse-action-popover';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
+import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
 
 import { fillFor } from '@/test/highlights-test-utils';
 import { installResizeObserverStub } from '@/test/dom-stubs';
@@ -177,7 +178,11 @@ function wrapReader(
   props: Partial<BibleReaderRootProps> = {},
   overrides: HookOverrides = defaultOverrides(),
 ) {
-  return <HookOverrideProvider overrides={overrides}>{readerJsx(props)}</HookOverrideProvider>;
+  return (
+    <HookOverrideProvider overrides={overrides}>
+      <ReuseShadowBoundary>{readerJsx(props)}</ReuseShadowBoundary>
+    </HookOverrideProvider>
+  );
 }
 
 function renderReader(props: Partial<BibleReaderRootProps> = {}, overrides?: HookOverrides) {

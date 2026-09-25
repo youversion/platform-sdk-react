@@ -24,6 +24,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/accordion';
 import { InputGroup, InputGroupInput, InputGroupAddon } from './ui/input-group';
 import { useInterfaceDirection } from '@/lib/direction';
+import { ShadowIsolationBoundary } from '@/lib/shadow-isolation';
 
 export interface BibleChapterPickerPressData {
   book: string;
@@ -86,7 +87,7 @@ export type RootProps = {
 
 export type BibleChapterPickerRootProps = RootProps;
 
-function Root({
+function RootImplementation({
   book: controlledBook,
   defaultBook = '',
   onBookChange,
@@ -217,6 +218,14 @@ function Root({
         </PopoverContent>
       </BibleChapterPickerContext.Provider>
     </Popover>
+  );
+}
+
+function Root(props: RootProps) {
+  return (
+    <ShadowIsolationBoundary portalStrategy="local-top-layer">
+      <RootImplementation {...props} />
+    </ShadowIsolationBoundary>
   );
 }
 
@@ -436,7 +445,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
             dir="auto"
             className="yv:text-base yv:leading-normal"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onInput={(event) => setSearchQuery(event.currentTarget.value)}
           />
           <InputGroupAddon align="inline-start">
             <SearchIcon className="yv:size-5 yv:text-muted-foreground" />

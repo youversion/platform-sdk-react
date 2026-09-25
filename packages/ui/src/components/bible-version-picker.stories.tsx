@@ -1,12 +1,35 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { BibleVersionPicker, type RootProps } from './bible-version-picker';
 import { useState } from 'react';
-import { screen, userEvent, within, expect, waitFor } from 'storybook/test';
+import { fireEvent, userEvent, within, expect, waitFor } from 'storybook/test';
 import { http, HttpResponse, delay } from 'msw';
 import { BookOpenIcon } from './icons/book-open';
 import { Button } from './ui/button';
 import { RECENT_VERSIONS_KEY } from './bible-version-picker';
 import i18n from '@/i18n';
+import { waitForElement, waitForShadowRoot } from '../test/storybook-dom';
+
+async function getPickerQueries(container: ParentNode) {
+  const root = await waitForShadowRoot(container);
+  const content = await waitForElement<HTMLElement>(
+    root,
+    '[data-yv-shadow-content-wrapper]',
+    'version picker content not rendered',
+  );
+  return { root, picker: within(content) };
+}
+
+async function openPicker(container: ParentNode, triggerName: RegExp = /NIV/i) {
+  const { root, picker } = await getPickerQueries(container);
+  const trigger = await picker.findByRole('button', { name: triggerName }, { timeout: 10_000 });
+  await userEvent.click(trigger);
+  const overlayElement = await waitForElement<HTMLElement>(
+    root,
+    '[data-yv-shadow-local-overlay]',
+    'version picker overlay not rendered',
+  );
+  return { picker, overlay: within(overlayElement) };
+}
 
 type StoredRecentVersion = {
   id: number;
@@ -154,39 +177,33 @@ export const InteractiveLanguageSelection: Story = {
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+    const { overlay } = await openPicker(canvasElement);
 
-    // Open popover
-    const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
-    await userEvent.click(trigger);
-
-    // Validate the dialog is open
-    // P.S. I use screen here because the Popover uses a Portal that moves
-    // the element out of the original canvas element.
-    const dialog = await screen.findByRole('dialog');
+    // Validate the dialog in the picker root's shadow-local overlay.
+    const dialog = await overlay.findByRole('dialog');
     await expect(dialog).toBeInTheDocument();
 
     // Click language button
-    const languageButton = await screen.findByRole('button', { name: /select a language/i });
+    const languageButton = await overlay.findByRole('button', { name: /select a language/i });
     await waitFor(async () => {
       await expect(languageButton).toHaveTextContent('English');
     });
     await userEvent.click(languageButton);
 
     // Verify language list is visible
-    const selectLanguageHeading = await screen.findByRole('heading', {
+    const selectLanguageHeading = await overlay.findByRole('heading', {
       name: /select a language/i,
     });
     await expect(selectLanguageHeading).toBeInTheDocument();
 
     // Select Korean
-    const koreanOption = await screen.findByRole('listitem', { name: /korean/i });
+    const koreanOption = await overlay.findByRole('listitem', { name: /korean/i });
     await userEvent.click(koreanOption);
 
     // Wait for the language button to update with the selected language
     await waitFor(async () => {
       await expect(
-        await screen.findByRole('button', { name: /select a language/i }),
+        await overlay.findByRole('button', { name: /select a language/i }),
       ).toHaveTextContent(/korean/i);
     });
   },
@@ -215,8 +232,6 @@ export const SuggestedLanguagesTabs: Story = {
     };
   },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
     // The ko-KR stub above exists to drive the *suggested languages* list, but
     // YouVersionProvider also syncs the SDK's own UI language from
     // navigator.languages on mount — and we ship a Korean bundle. Pin the UI back
@@ -224,27 +239,27 @@ export const SuggestedLanguagesTabs: Story = {
     // assertions below can match English labels.
     await i18n.changeLanguage('en');
 
-    // Open popover
-    const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
-    await userEvent.click(trigger);
+    const { overlay } = await openPicker(canvasElement);
 
     // Validate the dialog is open
-    const dialog = await screen.findByRole('dialog');
+    const dialog = await overlay.findByRole('dialog');
     await expect(dialog).toBeInTheDocument();
 
     // Click language button to open language selection
-    const languageButton = await screen.findByRole('button', { name: /select a language/i });
+    const languageButton = await overlay.findByRole('button', { name: /select a language/i });
     await userEvent.click(languageButton);
 
     // Verify the Suggested tab is active by default and shows "Regional" heading
-    const suggestedTab = await screen.findByRole('tab', { name: /suggested/i });
-    await expect(suggestedTab).toHaveAttribute('data-state', 'active');
+    const suggestedTab = await overlay.findByRole('tab', { name: /suggested/i });
+    await waitFor(async () => {
+      await expect(suggestedTab).toHaveAttribute('data-state', 'active');
+    });
 
-    const regionalHeading = await screen.findByRole('heading', { name: /regional/i });
+    const regionalHeading = await overlay.findByRole('heading', { name: /regional/i });
     await expect(regionalHeading).toBeInTheDocument();
 
     // Find the active tab panel (Suggested) to scope our language queries
-    const suggestedTabPanel = await screen.findByRole('tabpanel');
+    const suggestedTabPanel = await overlay.findByRole('tabpanel');
 
     // Verify user's browser languages appear at the top of suggested languages
     // We mocked navigator.languages to ['en-US', 'ko-KR'], so English should be first, Korean second
@@ -253,7 +268,7 @@ export const SuggestedLanguagesTabs: Story = {
     await expect(suggestedLanguageItems[0]).toHaveAttribute('aria-label', 'Korean');
 
     // Verify the All tab exists with language count
-    const allTab = await screen.findByRole('tab', { name: /all/i });
+    const allTab = await overlay.findByRole('tab', { name: /all/i });
     await expect(allTab).toBeInTheDocument();
 
     // Switch to All tab
@@ -262,11 +277,11 @@ export const SuggestedLanguagesTabs: Story = {
     await expect(suggestedTab).toHaveAttribute('data-state', 'inactive');
 
     // Verify All Languages heading is shown
-    const allLanguagesHeading = await screen.findByRole('heading', { name: /all languages/i });
+    const allLanguagesHeading = await overlay.findByRole('heading', { name: /all languages/i });
     await expect(allLanguagesHeading).toBeInTheDocument();
 
     // Find the active tab panel (All) to scope our language queries
-    const allTabPanel = await screen.findByRole('tabpanel');
+    const allTabPanel = await overlay.findByRole('tabpanel');
 
     // Verify languages in All tab are sorted alphabetically by display name
     // English comes before Korean alphabetically
@@ -281,7 +296,7 @@ export const SuggestedLanguagesTabs: Story = {
     await expect(suggestedTab).toHaveAttribute('data-state', 'active');
 
     // Find the active tab panel again after switching tabs
-    const suggestedTabPanelAgain = await screen.findByRole('tabpanel');
+    const suggestedTabPanelAgain = await overlay.findByRole('tabpanel');
     const englishOption = await within(suggestedTabPanelAgain).findByRole('listitem', {
       name: /english/i,
     });
@@ -290,7 +305,7 @@ export const SuggestedLanguagesTabs: Story = {
     // Verify the language button shows the selected language
     await waitFor(async () => {
       await expect(
-        await screen.findByRole('button', { name: /select a language/i }),
+        await overlay.findByRole('button', { name: /select a language/i }),
       ).toHaveTextContent(/english/i);
     });
   },
@@ -316,25 +331,23 @@ export const SuggestedLanguagesOrder: Story = {
     };
   },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    // Open popover
-    const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
-    await userEvent.click(trigger);
+    const { overlay } = await openPicker(canvasElement);
 
     // Open language selection
-    const languageButton = await screen.findByRole('button', { name: /select a language/i });
+    const languageButton = await overlay.findByRole('button', { name: /select a language/i });
     await userEvent.click(languageButton);
 
     // Verify suggested languages appear in API order (not alphabetical or by population)
-    const suggestedTabPanel = await screen.findByRole('tabpanel');
-    const suggestedLanguageItems = within(suggestedTabPanel).getAllByRole('listitem');
-    const labels = suggestedLanguageItems.map((item) => item.getAttribute('aria-label'));
-
-    await expect(labels[0]).toBe('English');
-    await expect(labels[1]).toBe('Spanish');
-    await expect(labels[2]).toMatch(/Portuguese/);
-    await expect(labels[3]).toBe('French');
+    const suggestedTabPanel = await overlay.findByRole('tabpanel');
+    await waitFor(async () => {
+      const labels = within(suggestedTabPanel)
+        .getAllByRole('listitem')
+        .map((item) => item.getAttribute('aria-label'));
+      await expect(labels[0]).toBe('English');
+      await expect(labels[1]).toBe('Spanish');
+      await expect(labels[2]).toMatch(/Portuguese/);
+      await expect(labels[3]).toBe('French');
+    });
   },
 };
 
@@ -344,29 +357,31 @@ export const LanguageSearch: Story = {
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+    const { overlay } = await openPicker(canvasElement);
 
-    const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
-    await userEvent.click(trigger);
-
-    const languageButton = await screen.findByRole('button', { name: /select a language/i });
+    const languageButton = await overlay.findByRole('button', { name: /select a language/i });
     await userEvent.click(languageButton);
 
-    const languageSearchInput = screen.getByRole('textbox', { name: /search languages/i });
+    const languageSearchInput = overlay.getByRole('textbox', { name: /search languages/i });
     await userEvent.type(languageSearchInput, 'Korean', { delay: 50 });
 
-    await expect(screen.queryByRole('tab', { name: /suggested/i })).not.toBeInTheDocument();
-    await expect(screen.queryByRole('tab', { name: /all/i })).not.toBeInTheDocument();
+    await waitFor(async () => {
+      await expect(overlay.queryByRole('tab', { name: /suggested/i })).not.toBeInTheDocument();
+      await expect(overlay.queryByRole('tab', { name: /all/i })).not.toBeInTheDocument();
+    });
 
-    const results = await screen.findByTestId('language-search-results');
+    const results = await overlay.findByTestId('language-search-results');
     await expect(within(results).getAllByRole('listitem')).toHaveLength(1);
     await expect(within(results).getByRole('listitem', { name: /korean/i })).toBeInTheDocument();
 
-    await userEvent.clear(languageSearchInput);
-    await userEvent.type(languageSearchInput, 'Koreanea', { delay: 50 });
+    const currentLanguageSearchInput = overlay.getByRole('textbox', {
+      name: /search languages/i,
+    });
+    await fireEvent.input(currentLanguageSearchInput, { target: { value: '' } });
+    await userEvent.type(currentLanguageSearchInput, 'Koreanea', { delay: 50 });
 
     await expect(
-      screen.getByText("We're sorry, there are no results for this search."),
+      overlay.getByText("We're sorry, there are no results for this search."),
     ).toBeInTheDocument();
   },
 };
@@ -377,21 +392,17 @@ export const InteractiveVersionSearch: Story = {
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    // Open popover
-    const trigger = canvas.getByRole('button', { name: /select|111|1/i });
-    await userEvent.click(trigger);
+    const { overlay } = await openPicker(canvasElement, /select|111|1/i);
 
     // Type in search
-    const searchInput = screen.getByRole('textbox', { name: /search bible versions/i });
+    const searchInput = overlay.getByRole('textbox', { name: /search bible versions/i });
     await userEvent.type(searchInput, 'NIV', { delay: 50 });
 
     // Verify search is working (versions should be filtered)
     await expect(searchInput).toHaveValue('NIV');
 
     await expect(
-      await screen.findByRole(
+      await overlay.findByRole(
         'listitem',
         { name: /new international version 2011/i },
         { timeout: 5_000 },
@@ -416,27 +427,25 @@ export const RecentVersionsSelection: Story = {
     versionId: 111,
   },
   tags: ['integration'],
-  play: async () => {
-    // Open popover
-    const trigger = await screen.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
-    await userEvent.click(trigger);
+  play: async ({ canvasElement }) => {
+    const { picker, overlay } = await openPicker(canvasElement);
 
     // Verify initially there's no recent versions section
-    const dialog = await screen.findByRole('dialog');
+    const dialog = await overlay.findByRole('dialog');
     await expect(dialog).toBeInTheDocument();
-    await expect(screen.queryByText('Recently Used Versions')).not.toBeInTheDocument();
+    await expect(overlay.queryByText('Recently Used Versions')).not.toBeInTheDocument();
 
     // Select a different version (Amplified Bible)
-    const ampOption = await screen.findByRole('listitem', { name: /Amplified Bible/i });
+    const ampOption = await overlay.findByRole('listitem', { name: /Amplified Bible/i });
     await userEvent.click(ampOption);
 
     // Reopen the popover and verify the recent versions section now appears
-    const updatedTrigger = await screen.findByRole('button', { name: /AMP/i });
+    const updatedTrigger = await picker.findByRole('button', { name: /AMP/i });
     await expect(updatedTrigger).toBeInTheDocument();
     await userEvent.click(updatedTrigger);
 
-    await expect(await screen.findByText('Recently Used Versions')).toBeInTheDocument();
-    const recentVersionList = await screen.findByTestId('recent-version-list');
+    await expect(await overlay.findByText('Recently Used Versions')).toBeInTheDocument();
+    const recentVersionList = await overlay.findByTestId('recent-version-list');
     await expect(within(recentVersionList).getByText(/Amplified Bible/i)).toBeInTheDocument();
 
     // Verify localStorage was updated
@@ -445,24 +454,24 @@ export const RecentVersionsSelection: Story = {
     await expect(storedVersions[0]?.title).toContain('Amplified');
 
     // Now select NIV from the main list
-    const nivOption = await screen.findByRole('listitem', {
+    const nivOption = await overlay.findByRole('listitem', {
       name: /New International Version 2011/i,
     });
     await userEvent.click(nivOption);
 
     // Reopen and select AMP from recent versions
-    const nivTrigger = await screen.findByRole('button', { name: /NIV/i });
+    const nivTrigger = await picker.findByRole('button', { name: /NIV/i });
     await expect(nivTrigger).toBeInTheDocument();
     await userEvent.click(nivTrigger);
 
-    const recentList = await screen.findByTestId('recent-version-list');
+    const recentList = await overlay.findByTestId('recent-version-list');
     const ampRecentOption = within(recentList).getByRole('listitem', {
       name: /Amplified Bible/i,
     });
     await userEvent.click(ampRecentOption);
 
     // Verify AMP is selected and moved to top of recent versions
-    const ampTrigger = await screen.findByRole('button', { name: /AMP/i });
+    const ampTrigger = await picker.findByRole('button', { name: /AMP/i });
     await expect(ampTrigger).toBeInTheDocument();
 
     storedVersions = getStoredRecentVersions();
@@ -476,27 +485,23 @@ export const SearchResetsAfterSelection: Story = {
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    // Open popover
-    const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
-    await userEvent.click(trigger);
+    const { picker, overlay } = await openPicker(canvasElement);
 
     // Type in search
-    const searchInput = screen.getByRole('textbox', { name: /search bible versions/i });
+    const searchInput = overlay.getByRole('textbox', { name: /search bible versions/i });
     await userEvent.type(searchInput, 'Amplified', { delay: 50 });
     await expect(searchInput).toHaveValue('Amplified');
 
     // Select a version from the filtered results
-    const ampOption = await screen.findByRole('listitem', { name: /Amplified Bible/i });
+    const ampOption = await overlay.findByRole('listitem', { name: /Amplified Bible/i });
     await userEvent.click(ampOption);
 
     // Reopen the popover
-    const updatedTrigger = await canvas.findByRole('button', { name: /AMP/i });
+    const updatedTrigger = await picker.findByRole('button', { name: /AMP/i });
     await userEvent.click(updatedTrigger);
 
     // Verify search input is cleared
-    const resetSearchInput = screen.getByRole('textbox', { name: /search bible versions/i });
+    const resetSearchInput = overlay.getByRole('textbox', { name: /search bible versions/i });
     await expect(resetSearchInput).toHaveValue('');
   },
 };
@@ -516,29 +521,30 @@ export const RecentVersionsSearchFilter: Story = {
       ]),
     );
   },
-  play: async () => {
-    // Open popover
-    const trigger = await screen.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
-    await userEvent.click(trigger);
+  play: async ({ canvasElement }) => {
+    const { overlay } = await openPicker(canvasElement);
 
     // Verify recent versions are displayed
-    await expect(await screen.findByText('Recently Used Versions')).toBeInTheDocument();
-    const recentVersionList = await screen.findByTestId('recent-version-list');
+    await expect(await overlay.findByText('Recently Used Versions')).toBeInTheDocument();
+    const recentVersionList = await overlay.findByTestId('recent-version-list');
     await expect(within(recentVersionList).getByText(/Amplified Bible/i)).toBeInTheDocument();
     await expect(
       within(recentVersionList).getByText(/American Standard Version/i),
     ).toBeInTheDocument();
 
     // Search for "ASV"
-    const searchInput = screen.getByRole('textbox', { name: /search bible versions/i });
+    const searchInput = overlay.getByRole('textbox', { name: /search bible versions/i });
     await userEvent.type(searchInput, 'ASV', { delay: 50 });
 
     // Verify only ASV appears in recent versions after filtering
     await waitFor(async () => {
-      await expect(screen.queryByText(/Amplified Bible/i)).not.toBeInTheDocument();
+      const filteredRecentList = await overlay.findByTestId('recent-version-list');
+      await expect(
+        within(filteredRecentList).queryByText(/Amplified Bible/i),
+      ).not.toBeInTheDocument();
     });
     await expect(
-      within(await screen.findByTestId('recent-version-list')).getByText(
+      within(await overlay.findByTestId('recent-version-list')).getByText(
         /American Standard Version/i,
       ),
     ).toBeInTheDocument();
@@ -561,13 +567,11 @@ export const RecentVersionsMaxLimit: Story = {
       ]),
     );
   },
-  play: async () => {
-    // Open popover
-    const trigger = await screen.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
-    await userEvent.click(trigger);
+  play: async ({ canvasElement }) => {
+    const { overlay } = await openPicker(canvasElement);
 
     // Select a new version (NASB2020) - this should push out ASV
-    const nasbOption = await screen.findByRole('listitem', {
+    const nasbOption = await overlay.findByRole('listitem', {
       name: /New American Standard Bible 2020/i,
     });
     await userEvent.click(nasbOption);

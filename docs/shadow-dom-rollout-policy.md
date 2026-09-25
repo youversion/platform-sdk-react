@@ -5,9 +5,12 @@
 YPE-5356 approves a coordinated package-wide rollout plan for compatible public
 UI components. It does not claim that the rollout has shipped. Until every
 included implementation group and the release gate below are complete, the
-runtime behavior remains the prototype recorded in
-[ADR 0007](adr/0007-prototype-shadow-dom-style-isolation.md): only
-`YouVersionAuthButton` creates an automatic shadow boundary.
+runtime behavior on the Shadow DOM integration branch remains an in-progress
+implementation of the prototype recorded in
+[ADR 0007](adr/0007-prototype-shadow-dom-style-isolation.md):
+`YouVersionAuthButton`, `BibleChapterPicker.Root`, and
+`BibleVersionPicker.Root` create automatic shadow boundaries. The picker member
+exports reuse their owning root rather than creating independent boundaries.
 
 The rollout is coordinated at release time, not implemented in one change.
 Focused component or component-group tickets may land independently on the
@@ -139,7 +142,8 @@ YPE-5947 adds no public Shadow DOM configuration and does not expand the current
 automatic boundary beyond `YouVersionAuthButton`. Its independently releasable
 runtime effect is a patch-level resilience fix for stylesheet installation; the
 additional automatic component boundaries remain part of the coordinated major
-release.
+release. The picker boundaries described above are implemented on the Shadow DOM
+integration branch but are not yet a stable-package release contract.
 
 Excluded components are not hidden work in these groups. `Textarea` needs a
 separately approved form contract, and standalone `VerseActionPopover` needs an
