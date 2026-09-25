@@ -6,32 +6,36 @@ Standard install/lint/test/build/dev commands live in `CONTRIBUTING.md` and root
 
 ## Env files (gitignored)
 
-Core unit tests use MSW but still throw if `YVP_API_HOST` is unset (`packages/core/src/__tests__/handlers.ts`). Copy the examples before `pnpm test`:
+Copy the root environment template and add a real app key when live API access is needed:
 
-- `packages/core/.env.example` → `packages/core/.env.local` (`YVP_API_HOST=api.youversion.com`; a placeholder `YVP_APP_KEY` is enough for mocked tests)
-- `packages/ui/.env.example` → `packages/ui/.env.local` (Storybook)
-- `examples/vite-react/.env.example` → `examples/vite-react/.env.local` (`VITE_YVP_APP_KEY` required for live Bible content)
+```bash
+cp .env.example .env
+```
 
-Get a real app key from https://platform.youversion.com. Without `VITE_YVP_APP_KEY`, the demo renders the SDK missing-app-key panel instead of the Bible reader.
+The root `.env` configures core integration tests, Storybook, and the Vite demo. Mocked tests and
+builds do not require it. Existing package-local `.env.local` files remain supported as optional
+harness-specific overrides. Shell and CI variables take precedence over files.
+
+Get a real app key from https://platform.youversion.com. Without `YVP_APP_KEY` or a
+harness-specific app-key override, the demo renders the SDK missing-app-key panel, while Storybook
+shows its own Missing Environment Variables warning before mounting the SDK. Live core integration
+tests remain skipped.
 
 ## Running the demo
 
-`pnpm dev:web` is stale (it still filters a removed `nextjs` package). Start the demo with:
+Start the demo and its workspace dependency watchers with:
 
 ```bash
-pnpm --filter vite-react dev --host 127.0.0.1 --port 5173
+pnpm dev:web
 ```
-
-Do not put an extra `--` before `--host`. `pnpm --filter vite-react dev -- --host 127.0.0.1` becomes `vite -- --host 127.0.0.1`; Vite then ignores `--host` and listens on `localhost` (often `::1` only), so `curl http://127.0.0.1:5173` fails.
-
-`pnpm --filter vite-react exec vite --host 127.0.0.1 --port 5173` is equivalent.
 
 ## Live core client
 
-After `pnpm build`, source `packages/core/.env.local` and pass those values into `ApiClient`. Test scripts load the file via `dotenv-cli`; the runtime client reads only the config object you give it.
+After `pnpm build`, source the root `.env` and pass those values into `ApiClient`. Test scripts load
+the root file via `dotenv-cli`; the runtime client reads only the config object you give it.
 
 ```bash
-set -a && . packages/core/.env.local && set +a
+set -a && . .env && set +a
 cd packages/core
 ```
 
