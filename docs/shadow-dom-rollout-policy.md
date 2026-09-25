@@ -72,11 +72,11 @@ the inventory from treating implementation fragments as separate rollout units.
 | YPE-5352 | Host resets, inherited properties, and ambient custom properties were hardened. | Preserve `direction` as the intentional inherited property and retain the host/wrapper resets. |
 | YPE-5353 | Shared Dialog and Popover primitives and the direct `VerseActionPopover` path use the shadow portal controller. | Reuse those seams; audit any newly introduced direct overlay consumer. |
 | YPE-5354 | The existing empty-server-host contract is valid but can visibly pop in or shift layout. | Accept it only after component-specific first-paint review; do not claim zero CLS or no visible delay. |
-| YPE-5355 | Nested overlay order and teardown are sound; peer popovers dismiss one another, and focus-restoration gaps were identified. | Accept single-active-peer dismissal. Require the YPE-5889/PR 414 focus-restoration fix before overlay-heavy rollout groups complete. |
+| YPE-5355 | Nested overlay order and teardown are sound; peer popovers dismiss one another, and focus-restoration gaps were identified. YPE-5889/PR 414 resolved the final restoration defects. | Accept single-active-peer dismissal and preserve the completed focus-restoration behavior as regression coverage. |
 | YPE-5400 | The compiled custom-property inventory and exact allowlist guard close known ambient dependencies. | Keep the guard green and review every new reference-only custom property. |
 | YPE-5436 | Forms, external labels and ARIA ID references stop at the boundary; refs, events, queries, and nested roots have documented constraints. | Exclude `Textarea`; require focused public-contract checks and consumer guidance for included components. |
 | YPE-5437 | Twelve realistic component instances mount, unmount, and remount in Normal and Strict Mode while sharing one stylesheet object. | No shared-host scale blocker; performance remains a component-layout review rather than a CI timing threshold. |
-| YPE-5946 | Its branch's 21 focused interactions pass Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2; that branch is not yet merged into this one. | Make Chromium, Firefox, and WebKit CI release gates and repeat actual Safari only at the targeted triggers below. |
+| YPE-5946 | All 22 focused stories pass Chromium, Firefox, and Playwright WebKit. All 22 also returned assertion-level success in local Safari 26.6.2 when each used a fresh SafariDriver session; one long-lived session stalled after 20 successes. PR 420 also fixed Safari-specific picker and document-root spacing defects exposed by that validation. | Keep Chromium, Firefox, and WebKit as CI release gates. Repeat actual Safari in isolated sessions only at the targeted triggers below. |
 
 YPE-5890/PR 415 is test-maintenance support and does not change the rollout
 policy. PR 418 repairs integration-branch CI and likewise does not change the
@@ -96,7 +96,7 @@ supported component contract.
 | Ancestor layout can still hide, clip, transform, or constrain the shadow host | Accepted platform boundary. |
 | Open roots are inspectable and mutable by same-page JavaScript | Accepted; isolation is not a security boundary. |
 | Opening a peer popover dismisses the current peer across component roots | Accepted single-active-peer behavior. Supporting concurrent peer popovers would require a demonstrated product journey and separate design. |
-| Nested-dialog and rapid-reopen final focus restoration is not fixed on the base branch | Release dependency assigned to YPE-5889/PR 414. Do not duplicate it in rollout tickets. |
+| Nested-dialog and rapid-reopen final focus restoration | Resolved by YPE-5889/PR 414. Preserve the completed behavior as regression coverage rather than duplicating the implementation in rollout tickets. |
 | Stylesheet construction or adoption can throw | Shared implementation blocker. The foundation ticket must prove recovery to the local `<style>` path without losing component rendering. |
 | Playwright WebKit is not actual Safari | Accepted CI boundary. Repeat SafariDriver validation before the coordinated release candidate and after changes to the host, stylesheet installation, portal controller, or focus controller. |
 | Real screen-reader behavior is unverified | Explicitly deferred. Do not claim VoiceOver, NVDA, or other assistive-technology validation in release notes. |
@@ -141,9 +141,9 @@ anchor contract that does not cross tree scopes before either can join a future
 boundary.
 
 YPE-5947 blocks the component groups. YPE-5949 also blocks the scripture and
-reader groups; YPE-5948 and YPE-5950 block the reader. YPE-5889/PR 414 blocks the
-reader's overlay completion. YPE-5946 and the completed reader group block the
-coordinated release.
+reader groups; YPE-5948 and YPE-5950 block the reader. Completed YPE-5889 and
+YPE-5946 provide reusable focus-restoration and cross-browser evidence. The
+YPE-5951 reader group blocks the coordinated release.
 
 ## Validation gates
 

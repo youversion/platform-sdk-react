@@ -3,8 +3,9 @@
 ## Purpose
 
 This contract records cross-browser evidence for consumer-facing behavior at
-the SDK's Shadow DOM boundary. It is input to YPE-5356's production rollout
-policy, not approval for automatic isolation beyond `YouVersionAuthButton`.
+the SDK's Shadow DOM boundary. YPE-5356 incorporates it into the
+[production rollout policy](shadow-dom-rollout-policy.md); this contract alone
+does not enable automatic isolation beyond `YouVersionAuthButton`.
 
 The executable evidence lives in
 `consumer-compatibility.shadow-isolation.stories.tsx`. The existing
@@ -62,27 +63,27 @@ assistive technologies remain unverified. Reflected ARIA element properties
 demonstrate DOM relationship resolution, not announcements or other
 assistive-technology behavior.
 
-## Input for YPE-5356
+## Rollout-policy ownership
 
-The rollout policy should treat automatic isolation as a compatibility change
-and require a component-specific audit before each rollout. In particular, it
-must:
+The [production rollout policy](shadow-dom-rollout-policy.md) treats automatic
+isolation as a compatibility change and requires a focused audit for every
+implementation group. In particular, it:
 
-- identify consumers that rely on native outer-form participation, external
+- identifies consumers that rely on native outer-form participation, external
   labels or ARIA ID references, document-rooted queries, synchronous refs, or
   unretargeted native events;
-- prefer rollout candidates whose public callbacks, refs, and internal labels
+- prefers rollout candidates whose public callbacks, refs, and internal labels
   already avoid those cross-scope dependencies;
-- define consumer automation guidance around roles, public refs, and
+- defines consumer automation guidance around roles, public refs, and
   tool-specific shadow behavior: [Playwright locators pierce open roots by
   default](https://playwright.dev/docs/locators#locate-in-shadow-dom), while DOM
   selector APIs need explicit traversal after root attachment and internal
   rendering;
-- preserve Firefox and WebKit coverage, define when to repeat actual-Safari
-  validation, and define required assistive-technology evidence rather than
-  treating browser DOM results as universal; and
-- preserve YPE-5355's separate ownership of nested and concurrent overlay
-  behavior.
+- preserves Firefox and WebKit coverage, defines when to repeat actual-Safari
+  validation, and defers assistive-technology claims rather than treating
+  browser DOM results as universal; and
+- accepts single-active-peer popover dismissal and preserves YPE-5889/PR 414's
+  completed focus-restoration behavior as regression coverage.
 
 ## Follow-up work outside this ticket
 
@@ -91,6 +92,7 @@ component must participate in an outer native form or consume external labeling
 relationships, create a component-specific implementation ticket for an
 explicit public contract rather than relying on cross-scope browser behavior.
 The current ticket's actual-Safari smoke is recorded above. Recurring Safari and
-assistive-technology validation, consumer-facing rollout documentation, and any
-production implementation belong to YPE-5356 or separately authorized follow-up
-tickets. No new Jira issue is created by this document.
+deferred assistive-technology validation, consumer-facing release documentation,
+and production implementation are assigned by the
+[production rollout policy](shadow-dom-rollout-policy.md). No runtime behavior
+or Jira issue is created by this compatibility document.

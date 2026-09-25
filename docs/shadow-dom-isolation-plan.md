@@ -1,5 +1,11 @@
 # Shadow DOM Isolation Validation and Rollout Plan
 
+YPE-5356 reconciles this research into the
+[Shadow DOM production rollout policy](shadow-dom-rollout-policy.md). This file
+remains the detailed evidence inventory; the policy owns the approved public
+boundary, implementation groups, accepted limitations, and coordinated release
+gate. Neither document changes the currently shipped prototype by itself.
+
 ## Why this doc exists
 
 [ADR 0007](adr/0007-prototype-shadow-dom-style-isolation.md) records the durable
@@ -25,8 +31,9 @@ This is a working plan, not approval for package-wide rollout.
 - Nested and concurrent overlays within and across component shadow roots were
   exercised through the real shared `ShadowRootHost` implementation (YPE-5355).
   The Shadow DOM ADR records the architectural boundary; the results below record
-  the supported contract and the remaining peer-dismissal gap. Broader component
-  rollout and peer-overlay coordination remain with YPE-5356.
+  the supported contract and the remaining peer-dismissal limitation. The
+  production policy accepts single-active-peer dismissal and assigns broader
+  component rollout to focused follow-up work.
 
 ## Nested and concurrent overlay evidence
 
@@ -59,12 +66,12 @@ functions; assistive-technology checks remain open.
 | Portal lifecycle | Unit and browser coverage exercise lazy creation, exit-animation retention, cleanup, immediate reopen behavior, and the direct-Radix `VerseActionPopover` consumer. | Validated for shared primitives and the known bypass | Repeat the consumer audit when adding another direct overlay primitive. |
 | Dialog relationships | Browser coverage resolves title and description relationships inside the component tree. | Validated in Chromium, Firefox, Playwright WebKit, and an isolated local Safari 26.6.2 run | Verify announcements with real assistive technology. |
 | Dialog keyboard containment | Browser coverage exercises initial focus, programmatic escape redirection, forward and reverse traversal, radio-group collapsing, negative `tabindex`, and wraparound. | Validated in Chromium, Firefox, Playwright WebKit, and an isolated local Safari 26.6.2 run | Verify assistive-technology behavior. |
-| Dialog modal lifetime | Coverage verifies inert background content while open and through staggered Content and Overlay exit animations. YPE-5355 also exercises both unmount orders for overlapping popover and dialog exits. | Validated for order-independent teardown | YPE-5356 owns peer concurrency across component roots. Verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
+| Dialog modal lifetime | Coverage verifies inert background content while open and through staggered Content and Overlay exit animations. YPE-5355 also exercises both unmount orders for overlapping popover and dialog exits. | Validated for order-independent teardown | The rollout policy accepts single-active-peer dismissal. Verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
 | Dialog dismissal and restoration | Coverage exercises Escape, backdrop click, full-viewport hit testing, overlay-only focus, and restoration after both modal nodes unmount. | Validated in Chromium, Firefox, Playwright WebKit, and isolated local Safari 26.6.2 runs | Verify real screen-reader behavior. |
 | Consumer form participation | Browser coverage verifies that a light-DOM form does not own or serialize a native control inside an SDK shadow root. | Unsupported across tree scopes | Use an explicit component contract if a rollout target requires outer-form participation. |
 | Consumer labels and ARIA ID references | Browser coverage verifies that external native labels, `aria-labelledby`, and `aria-describedby` relationships do not resolve to controls inside the root. | Unsupported across tree scopes | Keep relationships in one tree scope; verify real assistive technology separately. |
 | Consumer events, refs, and automation | Coverage verifies native retargeting, the auth button's React handler and forwarded ref, open-root queries, and effect-driven attachment timing. | Supported with documented constraints | Repeat for each public component selected for rollout. |
-| Nested shadow roots | Coverage verifies basic rendering, recursive queries, and event retargeting at each boundary. | Supported for the validated basics | Peer-overlay coordination remains with YPE-5356; verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
+| Nested shadow roots | Coverage verifies basic rendering, recursive queries, and event retargeting at each boundary. | Supported for the validated basics | Single-active-peer dismissal is accepted; verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
 | Realistic same-page usage | YPE-5437 mounts, removes, and re-adds a 12-component mix in Normal and Strict Mode. Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 coverage verifies exact host counts, rendered scripture content, and one shared stylesheet object across roots and remounts. A production-build comparison found a small warm-run mount-cost difference on one machine. | No shared-host blocker found | Repeat user-visible performance and compatibility checks for each component selected for rollout. |
 
 Actual Safari 26.6.2 exposed a visual gap the initial focused assertions missed:
@@ -92,20 +99,21 @@ input padding while the host button remains overridden.
 No other production direct-overlay bypass was found. The inventory therefore
 produced no equivalent low-risk migration and no materially different case that
 requires follow-up work. Extending the controller already owned by
-`ShadowRootHost` is a candidate seam for added overlay coordination, not an ADR
-decision. YPE-5356 owns whether and how to implement that coordination.
+`ShadowRootHost` remains a possible seam if a product journey later requires
+concurrent peer popovers. YPE-5356 does not require that speculative
+coordination for the coordinated rollout.
 
-## Blocking production-readiness decisions
+## Production-readiness decisions
 
-- Decide whether isolation is enabled per component instance, per public export,
-  or package-wide.
+- Apply automatic isolation at the SDK-owned top-level component boundary.
+  Compound members and composed SDK children reuse the owning boundary rather
+  than creating accidental nested roots.
 - Apply [ADR 0007's client-only SSR and hydration contract](adr/0007-prototype-shadow-dom-style-isolation.md#ssr-and-hydration-contract)
-  per rollout component. YPE-5356 decides whether its first-paint, layout, and
-  no-JavaScript limitations are acceptable for that component.
-- Resolve the YPE-5355 peer-dismissal gap before shipping concurrent peer
-  overlays (YPE-5356). The decision must consider trigger-time peer dismissal
-  and overlay order; ADR 0007 records the gap but does not select a coordination design.
-  Recurring actual-Safari and assistive-technology coverage still remain.
+  per rollout group. Each implementation ticket reviews whether its first-paint,
+  layout, and no-JavaScript limitations are acceptable for that component.
+- Accept single-active-peer popover dismissal. Concurrent peer overlays require
+  a demonstrated product journey and a separate design. Recurring actual-Safari
+  and assistive-technology coverage still remain.
 - Keep the YPE-5400 custom-property contract and compiled-stylesheet prevention
   guard green as component styles change. The audit below closes the known
   ambient dependency; `all: initial` still does not reset custom properties.
@@ -209,27 +217,26 @@ separately in YPE-5749.
 ## Research handoff and completion gate
 
 YPE-5356 is the convergence point for the Shadow DOM research. Its foundational
-evidence comes from YPE-5298, YPE-5310, YPE-5352, and YPE-5353. It must not be
-completed until the final findings from YPE-5354, YPE-5355, YPE-5400, YPE-5436,
-and [YPE-5437](ype-5437-shadow-dom-realistic-usage.md) have been reconciled into
-the rollout policy and these durable Shadow DOM documents. Any conflicts and
-accepted limitations must be recorded rather than left implicit.
+evidence comes from YPE-5298, YPE-5310, YPE-5352, and YPE-5353. The final
+findings from YPE-5354, YPE-5355, YPE-5400, YPE-5436,
+[YPE-5437](ype-5437-shadow-dom-realistic-usage.md), and YPE-5946 are reconciled
+into the rollout policy and these durable Shadow DOM documents. Conflicts and
+accepted limitations are recorded rather than left implicit.
 
 Every component rollout ticket produced by YPE-5356 must link back to that
-policy and repeat the compatibility matrix for its selected component. Its gates
-must cover browser and assistive-technology behavior, customization,
-performance, and stylesheet failure recovery in addition to the component's
-forms, labels, ARIA relationships, events, refs, queries, and overlays.
+policy and apply the compatibility matrix to its selected component. Its gates
+cover browser and assistive-technology claims, customization, performance, and
+stylesheet failure recovery in addition to the component's forms, labels, ARIA
+relationships, events, refs, queries, and overlays.
 
 ## Rollout sequence
 
 1. Maintain YPE-5400's completed custom-property inventory and prevention guard.
-2. Reconcile YPE-5354's SSR/hydration decision, YPE-5355's overlay findings,
-   YPE-5436's consumer contract, and YPE-5437's realistic-usage result in
-   YPE-5356.
-3. Select the next public component and add component-specific compatibility,
-   browser, and accessibility coverage before enabling isolation.
-4. Publish consumer guidance for DOM queries, automation, customization, forms,
-   accessibility, and the loss of global CSS styling.
-5. Repeat the validation matrix for each component rather than assuming that the
-   infrastructure proof covers its component-specific behavior.
+2. Complete YPE-5947's shared boundary and stylesheet-failure recovery work.
+3. Implement YPE-5948 through YPE-5951 in the dependency order defined by the
+   production rollout policy, applying component-specific compatibility,
+   browser, accessibility, and first-paint checks.
+4. Complete YPE-5952's consumer guidance, coordinated validation, and major
+   release gate after every included group is ready.
+5. Repeat the component validation matrix rather than assuming the shared
+   infrastructure proof covers component-specific behavior.

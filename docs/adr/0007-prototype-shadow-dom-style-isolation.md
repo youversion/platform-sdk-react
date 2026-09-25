@@ -1,6 +1,21 @@
 # ADR 0007: Prototype automatic Shadow DOM style isolation
 
-Status: Proposed (validated experimentally; not approved for production rollout)
+Status: Accepted for coordinated rollout planning; production expansion is not yet shipped
+
+YPE-5356 accepts the architecture for a coordinated major-version rollout
+across the compatible public UI boundary defined in the
+[production rollout policy](../shadow-dom-rollout-policy.md). Implementation is
+split into dependency-ordered component groups, but the package must not publish
+a partial boundary. This ADR continues to describe current runtime behavior
+until those groups land: only `YouVersionAuthButton` creates an automatic shadow
+root.
+
+The automatic boundary belongs to the SDK-owned top-level component instance.
+Compound members and SDK components composed inside another isolated SDK
+component reuse their owning boundary instead of creating accidental nested
+roots. `Textarea`, standalone `VerseActionPopover`, and `YouVersionProvider`
+remain outside the approved automatic boundary for the reasons recorded in the
+rollout policy.
 
 Host applications can apply unlayered global CSS, including Tailwind preflight,
 that outranks the UI package's layered styles. Resets, stronger selectors,
@@ -119,11 +134,12 @@ available after the shadow content mounts and points to the real component
 element inside the shadow root, not to the light-DOM host. Before that mount,
 the component cannot receive focus or interaction.
 
-This contract must be accepted separately for every component selected for
-automatic isolation. A component that requires server content, no-JavaScript
-content, or a stable first-paint footprint cannot use this host unchanged.
-YPE-5356 owns that rollout policy, including whether a component needs reserved
-space, a product timing budget, or a different SSR strategy.
+This contract is reviewed separately for every implementation group selected
+for automatic isolation. YPE-5356 accepts it as the shared starting point, but a
+component that requires server content, no-JavaScript content, or a stable
+first-paint footprint cannot use this host unchanged. Its implementation ticket
+must exclude it or define reserved space, a product timing budget, or a
+separately approved SSR strategy.
 
 ## Consequences
 
@@ -154,9 +170,11 @@ that closes and reopens during retained exit presence also preserves and restore
 its original opener; disconnected targets and targets moved out of their captured
 root (into the light DOM, another shadow root, or another document) are ignored.
 
-These observations do not select or design production overlay coordination.
-YPE-5356 owns deciding whether and how to support concurrent peers. The detailed
-Chromium evidence and remaining validation live in the rollout plan.
+YPE-5356 accepts single-active-peer popover dismissal rather than introducing
+cross-root overlay coordination without a demonstrated product journey. The
+focus-restoration defects found by YPE-5355 were resolved by YPE-5889/PR 414 and
+remain covered as regressions. The detailed cross-browser evidence and remaining
+validation live in the rollout plan.
 
 Radix's development-only relationship checks can also emit warnings for valid
 IDs inside a shadow root because those checks query the document rather than
@@ -165,8 +183,11 @@ the root.
 Only `YouVersionAuthButton` is automatically isolated by this prototype.
 `BibleVersionPicker` and other public exports do not gain automatic isolation
 from the opt-in validation work. The internal `SignInDialog` is validated only
-through an opt-in story. Any wider rollout requires a separate decision and
-change.
+through an opt-in story. Wider automatic isolation requires completing the
+linked implementation groups and coordinated major-release gate.
 
-The detailed evidence, unresolved audits, and rollout gates live in the
-[Shadow DOM isolation validation and rollout plan](../shadow-dom-isolation-plan.md).
+The detailed experimental evidence remains in the
+[Shadow DOM isolation validation plan](../shadow-dom-isolation-plan.md). The
+[production rollout policy](../shadow-dom-rollout-policy.md) records the public
+component boundary, accepted limitations, implementation order, and release
+gates without representing that planned behavior as shipped.
