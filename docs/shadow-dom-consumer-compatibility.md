@@ -3,8 +3,9 @@
 ## Purpose
 
 This contract records cross-browser evidence for consumer-facing behavior at
-the SDK's Shadow DOM boundary. It is input to YPE-5356's production rollout
-policy, not approval for automatic isolation beyond `YouVersionAuthButton`.
+the SDK's Shadow DOM boundary. YPE-5356 incorporates it into the
+[production rollout policy](shadow-dom-rollout-policy.md); this contract alone
+does not enable automatic isolation beyond `YouVersionAuthButton`.
 
 The executable evidence lives in
 `consumer-compatibility.shadow-isolation.stories.tsx`. The existing
@@ -37,7 +38,8 @@ exercise. They do not establish compatibility for every SDK component.
 | An ordinary document or Storybook-canvas selector finds SDK internals | Unsupported | DOM selector APIs do not cross a shadow boundary. `document.querySelector` and Testing Library queries rooted at the document need explicit open-root traversal. Automation behavior is tool-specific: [Playwright locators pierce open roots by default](https://playwright.dev/docs/locators#locate-in-shadow-dom), except for XPath locators, while closed roots remain inaccessible. |
 | A consumer traverses an open root and queries after attachment | Supported with timing and access constraints | Wait for the host's open `shadowRoot`, then query within it. The contract depends on the prototype's open-root policy and does not make internals a stable semantic API; prefer public refs, roles, and component callbacks where available. |
 | An automatically isolated component is nested inside another open SDK shadow root | Supported for basic rendering, traversal, and composed events | `NestedRootsRequireTraversalAndRetargetAtEveryBoundary` verifies recursive root traversal and target retargeting to the inner host in the outer scope and to the outer host in the document scope. Consumers must traverse every root explicitly. |
-| Nested or concurrent overlays inside shadow roots | Unsupported by this contract | YPE-5355 owns stacking, focus, inertness, dismissal, and restoration. Basic nested-root evidence here does not change that overlay boundary. |
+| Nested overlays inside shadow roots | Supported in current browser evidence | YPE-5355 verifies nested dialog and popover stacking, focus, inertness, dismissal, and restoration through the shared shadow-local portal infrastructure. Repeat component-specific validation during rollout. |
+| Concurrent peer popovers inside the same or separate component roots | Unsupported as simultaneous peers | Opening a peer dismisses the current popover through Radix outside interaction. YPE-5356 accepts this single-active-peer behavior; supporting simultaneous peers requires a demonstrated product journey and separate design. |
 | Shadow-local ID relationships inside `BibleVersionPicker` | Supported in current browser evidence | `TopLayerEscapesClippingAndPreservesSemantics` verifies that the trigger and controlled panel remain in one root and Chromium, Firefox, and Playwright WebKit resolve their `aria-controls` relationship. This does not make cross-scope ID references supported. |
 
 ## Consumer risks
@@ -62,28 +64,6 @@ assistive technologies remain unverified. Reflected ARIA element properties
 demonstrate DOM relationship resolution, not announcements or other
 assistive-technology behavior.
 
-## Input for YPE-5356
-
-The rollout policy should treat automatic isolation as a compatibility change
-and require a component-specific audit before each rollout. In particular, it
-must:
-
-- identify consumers that rely on native outer-form participation, external
-  labels or ARIA ID references, document-rooted queries, synchronous refs, or
-  unretargeted native events;
-- prefer rollout candidates whose public callbacks, refs, and internal labels
-  already avoid those cross-scope dependencies;
-- define consumer automation guidance around roles, public refs, and
-  tool-specific shadow behavior: [Playwright locators pierce open roots by
-  default](https://playwright.dev/docs/locators#locate-in-shadow-dom), while DOM
-  selector APIs need explicit traversal after root attachment and internal
-  rendering;
-- preserve Firefox and WebKit coverage, define when to repeat actual-Safari
-  validation, and define required assistive-technology evidence rather than
-  treating browser DOM results as universal; and
-- preserve YPE-5355's separate ownership of nested and concurrent overlay
-  behavior.
-
 ## Follow-up work outside this ticket
 
 No production defect is fixed by this validation ticket. If a selected rollout
@@ -91,6 +71,7 @@ component must participate in an outer native form or consume external labeling
 relationships, create a component-specific implementation ticket for an
 explicit public contract rather than relying on cross-scope browser behavior.
 The current ticket's actual-Safari smoke is recorded above. Recurring Safari and
-assistive-technology validation, consumer-facing rollout documentation, and any
-production implementation belong to YPE-5356 or separately authorized follow-up
-tickets. No new Jira issue is created by this document.
+deferred assistive-technology validation, consumer-facing release documentation,
+and production implementation are assigned by the
+[production rollout policy](shadow-dom-rollout-policy.md). No runtime behavior
+or Jira issue is created by this compatibility document.
