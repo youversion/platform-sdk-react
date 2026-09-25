@@ -13,9 +13,7 @@ root.
 The automatic boundary belongs to the SDK-owned top-level component instance.
 Compound members and SDK components composed inside another isolated SDK
 component reuse their owning boundary instead of creating accidental nested
-roots. `Textarea`, standalone `VerseActionPopover`, and `YouVersionProvider`
-remain outside the approved automatic boundary for the reasons recorded in the
-rollout policy.
+roots. Excluded exports and their reasons are defined in the rollout policy.
 
 Host applications can apply unlayered global CSS, including Tailwind preflight,
 that outranks the UI package's layered styles. Resets, stronger selectors,

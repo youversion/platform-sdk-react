@@ -63,28 +63,6 @@ assistive technologies remain unverified. Reflected ARIA element properties
 demonstrate DOM relationship resolution, not announcements or other
 assistive-technology behavior.
 
-## Rollout-policy ownership
-
-The [production rollout policy](shadow-dom-rollout-policy.md) treats automatic
-isolation as a compatibility change and requires a focused audit for every
-implementation group. In particular, it:
-
-- identifies consumers that rely on native outer-form participation, external
-  labels or ARIA ID references, document-rooted queries, synchronous refs, or
-  unretargeted native events;
-- prefers rollout candidates whose public callbacks, refs, and internal labels
-  already avoid those cross-scope dependencies;
-- defines consumer automation guidance around roles, public refs, and
-  tool-specific shadow behavior: [Playwright locators pierce open roots by
-  default](https://playwright.dev/docs/locators#locate-in-shadow-dom), while DOM
-  selector APIs need explicit traversal after root attachment and internal
-  rendering;
-- preserves Firefox and WebKit coverage, defines when to repeat actual-Safari
-  validation, and defers assistive-technology claims rather than treating
-  browser DOM results as universal; and
-- accepts single-active-peer popover dismissal and preserves YPE-5889/PR 414's
-  completed focus-restoration behavior as regression coverage.
-
 ## Follow-up work outside this ticket
 
 No production defect is fixed by this validation ticket. If a selected rollout

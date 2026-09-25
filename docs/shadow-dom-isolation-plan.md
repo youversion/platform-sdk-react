@@ -229,14 +229,5 @@ cover browser and assistive-technology claims, customization, performance, and
 stylesheet failure recovery in addition to the component's forms, labels, ARIA
 relationships, events, refs, queries, and overlays.
 
-## Rollout sequence
-
-1. Maintain YPE-5400's completed custom-property inventory and prevention guard.
-2. Complete YPE-5947's shared boundary and stylesheet-failure recovery work.
-3. Implement YPE-5948 through YPE-5951 in the dependency order defined by the
-   production rollout policy, applying component-specific compatibility,
-   browser, accessibility, and first-paint checks.
-4. Complete YPE-5952's consumer guidance, coordinated validation, and major
-   release gate after every included group is ready.
-5. Repeat the component validation matrix rather than assuming the shared
-   infrastructure proof covers component-specific behavior.
+The dependency-ordered rollout sequence and release gate are defined in the
+[production rollout policy](shadow-dom-rollout-policy.md#implementation-plan).
