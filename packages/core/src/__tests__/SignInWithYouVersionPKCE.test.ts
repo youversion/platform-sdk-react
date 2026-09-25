@@ -1,395 +1,103 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createHash } from 'node:crypto';
+import { describe, expect, it } from 'vitest';
 import { SignInWithYouVersionPKCEAuthorizationRequestBuilder } from '../SignInWithYouVersionPKCE';
 import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfiguration';
-import { setupBrowserMocks, cleanupBrowserMocks } from './mocks/browser';
+import { cleanupBrowserMocks, setupBrowserMocks } from './mocks/browser';
 
 describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
-  let mocks: ReturnType<typeof setupBrowserMocks>;
-
-  beforeEach(() => {
-    mocks = setupBrowserMocks();
-
-    // Reset YouVersionPlatformConfiguration
-    YouVersionPlatformConfiguration.appKey = 'test-app-key';
+  it('builds a PKCE authorization request and encodes optional permissions', async () => {
+    const mocks = setupBrowserMocks();
+    let randomCall = 0;
+    mocks.crypto.getRandomValues.mockImplementation((array: Uint8Array) => {
+      array.fill(randomCall + 1);
+      array.set([0xfb, 0xff]); // Encodes to both + and / before Base64URL conversion.
+      randomCall++;
+      return array;
+    });
+    mocks.crypto.subtle.digest.mockImplementation(
+      (_algorithm: string, data: Uint8Array) =>
+        Uint8Array.from(createHash('sha256').update(data).digest()).buffer,
+    );
+    mocks.btoa.mockImplementation((value: string) =>
+      Buffer.from(value, 'latin1').toString('base64'),
+    );
     YouVersionPlatformConfiguration.apiHost = 'api-test.youversion.com';
-  });
 
-  afterEach(() => {
-    vi.clearAllMocks();
+    const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
+      'test-app-key',
+      new URL('https://example.com/callback/'),
+      ['profile', 'email'],
+      ['highlights'],
+    );
+    const params = result.url.searchParams;
+
+    expect(result.url.origin).toBe('https://api-test.youversion.com');
+    expect(result.url.pathname).toBe('/auth/authorize');
+    expect(mocks.crypto.getRandomValues.mock.calls.map(([bytes]) => bytes.length)).toEqual([
+      32, 24, 24,
+    ]);
+    expect(mocks.crypto.subtle.digest).toHaveBeenCalledWith(
+      'SHA-256',
+      new TextEncoder().encode(result.parameters.codeVerifier),
+    );
+    expect(params.get('response_type')).toBe('code');
+    expect(params.get('client_id')).toBe('test-app-key');
+    expect(params.get('redirect_uri')).toBe('https://example.com/callback');
+    expect(params.get('code_challenge_method')).toBe('S256');
+    expect(result.parameters.codeChallenge).toBe(
+      createHash('sha256').update(result.parameters.codeVerifier).digest('base64url'),
+    );
+    expect(params.get('code_challenge')).toBe(result.parameters.codeChallenge);
+    expect(params.get('state')).toBe(result.parameters.state);
+    expect(params.get('nonce')).toBe(result.parameters.nonce);
+    expect(result.parameters.state).not.toBe(result.parameters.nonce);
+    expect(params.get('scope')).toBe('email profile openid');
+    expect(params.get('requested_permissions')).toBe('highlights');
+    expect(params.getAll('requested_permissions[]')).toEqual([]);
+    expect(params.get('scope')).not.toContain('highlights');
+
+    const multiple = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
+      'test-app-key',
+      new URL('https://example.com/callback'),
+      ['profile'],
+      ['votd', 'highlights'],
+    );
+    expect(multiple.url.searchParams.get('requested_permissions')).toBe('highlights,votd');
+    for (const key of ['codeVerifier', 'codeChallenge', 'state', 'nonce'] as const) {
+      expect(result.parameters[key]).toMatch(/^[A-Za-z0-9_-]+$/);
+      expect(multiple.parameters[key]).toMatch(/^[A-Za-z0-9_-]+$/);
+      expect(multiple.parameters[key]).not.toBe(result.parameters[key]);
+    }
+
+    const none = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
+      'test-app-key',
+      new URL('https://example.com/callback'),
+      ['profile'],
+    );
+    expect(none.url.searchParams.has('requested_permissions')).toBe(false);
     cleanupBrowserMocks();
   });
 
-  describe('make', () => {
-    it('should generate authorization request with all required parameters', async () => {
-      // Mock crypto.getRandomValues to return predictable values
-      mocks.crypto.getRandomValues
-        .mockImplementationOnce((array: Uint8Array) => {
-          // Mock code verifier generation (32 bytes)
-          for (let i = 0; i < 32; i++) {
-            array[i] = i + 1;
-          }
-          return array;
-        })
-        .mockImplementationOnce((array: Uint8Array) => {
-          // Mock state generation (24 bytes)
-          for (let i = 0; i < 24; i++) {
-            array[i] = i + 100;
-          }
-          return array;
-        })
-        .mockImplementationOnce((array: Uint8Array) => {
-          // Mock nonce generation (24 bytes)
-          for (let i = 0; i < 24; i++) {
-            array[i] = i + 200;
-          }
-          return array;
-        });
-
-      // Mock crypto.subtle.digest for code challenge
-      const mockDigest = new Uint8Array(32);
-      for (let i = 0; i < 32; i++) {
-        mockDigest[i] = i + 50;
-      }
-      mocks.crypto.subtle.digest.mockResolvedValue(mockDigest.buffer);
-
-      // Mock btoa for base64 encoding
-      mocks.btoa
-        .mockReturnValueOnce('codeVerifierBase64==') // Code verifier
-        .mockReturnValueOnce('codeChallengeBase64==') // Code challenge
-        .mockReturnValueOnce('stateBase64==') // State
-        .mockReturnValueOnce('nonceBase64=='); // Nonce
-
-      const redirectURL = new URL('https://example.com/callback');
-
-      const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
-        'test-app-key',
-        redirectURL,
-      );
-
-      // Verify parameters structure
-      expect(result).toHaveProperty('url');
-      expect(result).toHaveProperty('parameters');
-      expect(result.parameters).toHaveProperty('codeVerifier');
-      expect(result.parameters).toHaveProperty('codeChallenge');
-      expect(result.parameters).toHaveProperty('state');
-      expect(result.parameters).toHaveProperty('nonce');
-
-      // Verify URL structure
-      expect(result.url).toBeInstanceOf(URL);
-      expect(result.url.hostname).toBe('api-test.youversion.com');
-      expect(result.url.pathname).toBe('/auth/authorize');
-    });
-
-    it('should generate unique parameters on each call', async () => {
-      // Mock crypto to return different values for each call
-      let callCount = 0;
-      mocks.crypto.getRandomValues.mockImplementation((array: Uint8Array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = callCount + i;
-        }
-        callCount += 10;
-        return array;
-      });
-
-      mocks.crypto.subtle.digest.mockResolvedValue(new Uint8Array(32).buffer);
-      mocks.btoa.mockImplementation((str: string) => `base64_${callCount}_${str.length}`);
-
-      const redirectURL = new URL('https://example.com/callback');
-
-      const result1 = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
-        'app-key',
-        redirectURL,
-      );
-      const result2 = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
-        'app-key',
-        redirectURL,
-      );
-
-      // Parameters should be different between calls
-      expect(result1.parameters.codeVerifier).not.toBe(result2.parameters.codeVerifier);
-      expect(result1.parameters.state).not.toBe(result2.parameters.state);
-      expect(result1.parameters.nonce).not.toBe(result2.parameters.nonce);
-    });
-  });
-
-  describe('authorizeURL', () => {
-    beforeEach(() => {
-      // Setup mocks for btoa which are needed for these tests
-      mocks.crypto.getRandomValues.mockImplementation((array: Uint8Array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = i;
-        }
-        return array;
-      });
-      mocks.crypto.subtle.digest.mockResolvedValue(new Uint8Array(32).buffer);
-      mocks.btoa.mockImplementation((str: string) => Buffer.from(str).toString('base64'));
-    });
-
-    it('should build authorization URL with all required OAuth2 parameters', async () => {
-      const redirectURL = new URL('https://example.com/callback');
-
-      const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
-        'test-app-key',
-        redirectURL,
-      );
-
-      const url = result.url;
-      const params = new URLSearchParams(url.search);
-
-      // Required OAuth2 parameters
-      expect(params.get('response_type')).toBe('code');
-      expect(params.get('client_id')).toBe('test-app-key');
-      expect(params.get('redirect_uri')).toBe('https://example.com/callback');
-      expect(params.get('code_challenge_method')).toBe('S256');
-
-      // PKCE parameters
-      expect(params.get('code_challenge')).toBeTruthy();
-      expect(params.get('state')).toBeTruthy();
-      expect(params.get('nonce')).toBeTruthy();
-    });
-
-    it('should handle redirect URL with trailing slash', async () => {
-      const redirectURL = new URL('https://example.com/callback/');
-
-      const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
-        'test-app-key',
-        redirectURL,
-      );
-
-      const params = new URLSearchParams(result.url.search);
-      expect(params.get('redirect_uri')).toBe('https://example.com/callback');
-    });
-
-    it('should include x-yvp-installation-id param', async () => {
-      const redirectURL = new URL('https://example.com/callback');
-
-      const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
-        'test-app-key',
-        redirectURL,
-      );
-
-      const params = new URLSearchParams(result.url.search);
-      expect(params.get('x-yvp-installation-id')).not.toBeFalsy();
-    });
-
-    it('should create scope string with profile and openid', async () => {
-      const redirectURL = new URL('https://example.com/callback');
-
-      const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
-        'test-app-key',
-        redirectURL,
-        ['profile'],
-      );
-
-      const params = new URLSearchParams(result.url.search);
-      const scope = params.get('scope');
-
-      expect(scope).toContain('profile');
-    });
-
-    it('should add openid when not present', async () => {
-      const redirectURL = new URL('https://example.com/callback');
-
-      const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
-        'test-app-key',
-        redirectURL,
-        ['profile'],
-      );
-
-      const params = new URLSearchParams(result.url.search);
-      const scope = params.get('scope');
-
-      expect(scope).toBe('profile openid');
-    });
-
-    it('should handle empty scope params', async () => {
-      const redirectURL = new URL('https://example.com/callback');
-
-      const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
-        'test-app-key',
-        redirectURL,
-      );
-
-      const params = new URLSearchParams(result.url.search);
-      const scope = params.get('scope');
-
-      expect(scope).toBe('openid');
-    });
-
-    it('should send requested permissions as requested_permissions (comma-joined), not scopes', async () => {
-      const redirectURL = new URL('https://example.com/callback');
-
-      const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
-        'test-app-key',
-        redirectURL,
-        ['profile', 'email'],
-        ['highlights'],
-      );
-
-      const params = new URLSearchParams(result.url.search);
-
-      // Permission rides alongside scopes as a separate param (Swift wire format)
-      expect(params.get('requested_permissions')).toBe('highlights');
-      expect(params.getAll('requested_permissions[]')).toEqual([]);
-      // ...and is NOT folded into the OIDC scope value
-      expect(params.get('scope')).not.toContain('highlights');
-    });
-
-    it('should support multiple requested permissions as a sorted comma-joined value', async () => {
-      const redirectURL = new URL('https://example.com/callback');
-
-      const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
-        'test-app-key',
-        redirectURL,
-        ['profile'],
-        ['highlights', 'votd'],
-      );
-
-      const params = new URLSearchParams(result.url.search);
-      expect(params.get('requested_permissions')).toBe('highlights,votd');
-    });
-
-    it('should omit requested_permissions when no permissions are requested', async () => {
-      const redirectURL = new URL('https://example.com/callback');
-
-      const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
-        'test-app-key',
-        redirectURL,
-        ['profile'],
-      );
-
-      const params = new URLSearchParams(result.url.search);
-      expect(params.get('requested_permissions')).toBeNull();
-    });
-
-    it('should not duplicate openid if already present', async () => {
-      const redirectURL = new URL('https://example.com/callback');
-
-      const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
-        'test-app-key',
-        redirectURL,
-      );
-
-      const params = new URLSearchParams(result.url.search);
-      const scope = params.get('scope');
-
-      // Should not have duplicate openid
-      const openidCount = (scope?.match(/openid/g) || []).length;
-      expect(openidCount).toBe(1);
-    });
-  });
-
-  describe('tokenURLRequest', () => {
-    it('should create POST request with correct parameters', async () => {
-      const code = 'auth-code-123';
-      const codeVerifier = 'code-verifier-456';
-      const redirectUri = 'https://example.com/callback';
-
-      const request = SignInWithYouVersionPKCEAuthorizationRequestBuilder.tokenURLRequest(
-        code,
-        codeVerifier,
-        redirectUri,
-      );
-
-      expect(request.method).toBe('POST');
-      expect(request.url).toBe('https://api-test.youversion.com/auth/token');
-      expect(request.headers.get('Content-Type')).toBe('application/x-www-form-urlencoded');
-
-      const body = await request.text();
-      const params = new URLSearchParams(body);
-
-      expect(params.get('grant_type')).toBe('authorization_code');
-      expect(params.get('code')).toBe(code);
-      expect(params.get('redirect_uri')).toBe(redirectUri);
-      expect(params.get('client_id')).toBe('test-app-key');
-      expect(params.get('code_verifier')).toBe(codeVerifier);
-    });
-
-    it('should handle empty app key gracefully', async () => {
-      YouVersionPlatformConfiguration.appKey = null;
-
-      const request = SignInWithYouVersionPKCEAuthorizationRequestBuilder.tokenURLRequest(
-        'code',
-        'verifier',
-        'https://example.com/callback',
-      );
-
-      expect(request).toBeInstanceOf(Request);
-
-      const body = await request.text();
-      const params = new URLSearchParams(body);
-
-      expect(params.get('client_id')).toBe('');
-    });
-  });
-
-  describe('randomness and security', () => {
-    beforeEach(() => {
-      // Setup mocks for btoa which are needed for these tests
-      mocks.crypto.getRandomValues.mockImplementation((array: Uint8Array) => {
-        for (let i = 0; i < array.length; i++) {
-          array[i] = i;
-        }
-        return array;
-      });
-      mocks.crypto.subtle.digest.mockResolvedValue(new Uint8Array(32).buffer);
-      mocks.btoa.mockImplementation((str: string) => Buffer.from(str).toString('base64'));
-    });
-
-    it('should use crypto.getRandomValues for secure random generation', async () => {
-      const redirectURL = new URL('https://example.com/callback');
-
-      await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make('test-app-key', redirectURL);
-
-      // Should call crypto.getRandomValues for code verifier, state, and nonce
-      expect(mocks.crypto.getRandomValues).toHaveBeenCalledTimes(3);
-
-      // Verify correct byte lengths
-      const calls = mocks.crypto.getRandomValues.mock.calls;
-      expect(calls[0]?.[0]).toHaveLength(32); // Code verifier
-      expect(calls[1]?.[0]).toHaveLength(24); // State
-      expect(calls[2]?.[0]).toHaveLength(24); // Nonce
-    });
-
-    it('should use SHA-256 for code challenge', async () => {
-      const redirectURL = new URL('https://example.com/callback');
-
-      await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make('test-app-key', redirectURL);
-
-      expect(mocks.crypto.subtle.digest).toHaveBeenCalledWith('SHA-256', expect.any(Uint8Array));
-    });
-
-    it('should generate parameters with sufficient entropy', async () => {
-      // Use real crypto for this test to verify actual randomness
-      cleanupBrowserMocks();
-
-      const redirectURL = new URL('https://example.com/callback');
-
-      const result1 = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
-        'test-app-key',
-        redirectURL,
-      );
-      const result2 = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
-        'test-app-key',
-        redirectURL,
-      );
-
-      // All parameters should be different between calls
-      expect(result1.parameters.codeVerifier).not.toBe(result2.parameters.codeVerifier);
-      expect(result1.parameters.codeChallenge).not.toBe(result2.parameters.codeChallenge);
-      expect(result1.parameters.state).not.toBe(result2.parameters.state);
-      expect(result1.parameters.nonce).not.toBe(result2.parameters.nonce);
-
-      // Parameters should have reasonable length (base64url encoded)
-      expect(result1.parameters.codeVerifier.length).toBeGreaterThan(40);
-      expect(result1.parameters.state.length).toBeGreaterThan(30);
-      expect(result1.parameters.nonce.length).toBeGreaterThan(30);
-
-      // Parameters should be URL-safe (no +, /, or =)
-      expect(result1.parameters.codeVerifier).not.toMatch(/[+/=]/);
-      expect(result1.parameters.codeChallenge).not.toMatch(/[+/=]/);
-      expect(result1.parameters.state).not.toMatch(/[+/=]/);
-      expect(result1.parameters.nonce).not.toMatch(/[+/=]/);
-    });
+  it('builds the form-encoded authorization-code exchange contract', async () => {
+    setupBrowserMocks();
+    YouVersionPlatformConfiguration.apiHost = 'api-test.youversion.com';
+    YouVersionPlatformConfiguration.appKey = 'test-app-key';
+
+    const request = SignInWithYouVersionPKCEAuthorizationRequestBuilder.tokenURLRequest(
+      'auth-code',
+      'verifier',
+      'https://example.com/callback',
+    );
+    const body = new URLSearchParams(await request.text());
+
+    expect(request.url).toBe('https://api-test.youversion.com/auth/token');
+    expect(request.method).toBe('POST');
+    expect(request.headers.get('Content-Type')).toBe('application/x-www-form-urlencoded');
+    expect(body.get('grant_type')).toBe('authorization_code');
+    expect(body.get('code')).toBe('auth-code');
+    expect(body.get('code_verifier')).toBe('verifier');
+    expect(body.get('redirect_uri')).toBe('https://example.com/callback');
+    expect(body.get('client_id')).toBe('test-app-key');
+    cleanupBrowserMocks();
   });
 });

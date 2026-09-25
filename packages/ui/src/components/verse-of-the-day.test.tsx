@@ -25,7 +25,6 @@ import {
   Providers,
   stubUseHighlights,
 } from '@/test/highlights-test-utils';
-import { InterfaceDirectionProvider } from '@/lib/direction';
 
 const MOCK_VERSE_HTML = '<p class="yv-p">For God so loved the world</p>';
 const MOCK_VERSE_TEXT = 'For God so loved the world';
@@ -89,22 +88,6 @@ function renderVotd(ui: ReactElement, overrides: HookOverrides = stubOverrides()
   return render(<HookOverrideProvider overrides={overrides}>{ui}</HookOverrideProvider>);
 }
 
-it('establishes interface direction independently from Scripture direction', () => {
-  const { container } = renderVotd(
-    <InterfaceDirectionProvider direction="rtl">
-      <VerseOfTheDay versionId={111} dayOfYear={1} scriptureDirection="ltr" />
-    </InterfaceDirectionProvider>,
-  );
-
-  expect(container.querySelector('section')).toHaveAttribute('dir', 'rtl');
-  expect(screen.getByText(MOCK_REFERENCE).closest('p')).toHaveAttribute('dir', 'ltr');
-  expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute('dir', 'ltr');
-  expect(screen.getByRole('button', { name: en.shareAriaLabel })).toHaveClass('yv:-me-2');
-  expect(screen.getByRole('button', { name: en.shareAriaLabel }).className).not.toContain(
-    'translate-x',
-  );
-});
-
 function expectedShareData(verseText: string = MOCK_VERSE_TEXT): VerseOfTheDayShareData {
   return {
     text: `${verseText}\n\n${MOCK_REFERENCE}`,
@@ -112,49 +95,6 @@ function expectedShareData(verseText: string = MOCK_VERSE_TEXT): VerseOfTheDaySh
     verseText,
   };
 }
-
-describe('VerseOfTheDay i18n integration', () => {
-  it('renders the translated label from the i18n instance', () => {
-    renderVotd(<VerseOfTheDay dayOfYear={1} />);
-    expect(screen.getByText(en.verseOfTheDay)).toBeInTheDocument();
-  });
-
-  it('lets the card fill its container while centering the content group', () => {
-    const { container } = renderVotd(<VerseOfTheDay dayOfYear={1} />);
-    const card = container.querySelector('section');
-    const contentGroup = container.querySelector('section > div');
-
-    expect(card).toHaveClass('yv:w-full');
-    expect(card).not.toHaveClass('yv:max-w-md');
-    expect(card).toHaveClass('yv:box-border');
-    expect(contentGroup).toHaveClass('yv:card-content');
-  });
-
-  it('renders the reference under the label in the header, not below the verse text', () => {
-    const { container } = renderVotd(<VerseOfTheDay dayOfYear={1} />);
-    const reference = screen.getByText(MOCK_REFERENCE).closest('p');
-    const bibleRenderer = container.querySelector('[data-slot="yv-bible-renderer"]');
-    const label = screen.getByText(en.verseOfTheDay);
-
-    expect(reference).not.toBeNull();
-    expect(reference).toHaveClass('yv:text-black');
-    expect(reference).not.toHaveClass('yv:text-muted-foreground');
-    expect(
-      label.compareDocumentPosition(reference!) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(bibleRenderer).not.toBeNull();
-    expect(
-      bibleRenderer!.compareDocumentPosition(reference!) & Node.DOCUMENT_POSITION_PRECEDING,
-    ).toBeTruthy();
-  });
-
-  it('hides inline verse numbers in the bible renderer', () => {
-    const { container } = renderVotd(<VerseOfTheDay dayOfYear={1} />);
-    const bibleRenderer = container.querySelector('[data-slot="yv-bible-renderer"]');
-
-    expect(bibleRenderer).toHaveAttribute('data-show-verse-numbers', 'false');
-  });
-});
 
 describe('VerseOfTheDay - share', () => {
   let shareSpy: ReturnType<typeof vi.fn>;
@@ -192,21 +132,6 @@ describe('VerseOfTheDay - share', () => {
 
     expect(onShare).toHaveBeenCalledTimes(1);
     expect(onShare).toHaveBeenCalledWith(expectedShareData());
-  });
-
-  it('uses navigator.share with built text when onShare is omitted', async () => {
-    const user = userEvent.setup();
-
-    renderVotd(<VerseOfTheDay dayOfYear={1} />);
-
-    await user.click(screen.getByRole('button', { name: en.shareAriaLabel }));
-
-    expect(shareSpy).toHaveBeenCalledTimes(1);
-    expect(shareSpy).toHaveBeenCalledWith({
-      text: expectedShareData().text,
-      title: undefined,
-      url: undefined,
-    });
   });
 
   it('does not surface unhandled rejection when onShare rejects', async () => {

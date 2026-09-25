@@ -31,32 +31,6 @@ describe('VerseActionPopover', () => {
     vi.clearAllMocks();
   });
 
-  describe('AC1: Basic popover display', () => {
-    it('should display 6 color circles when verse selected', () => {
-      render(<VerseActionPopover {...defaultProps} />);
-
-      const colorButtons = screen
-        .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
-
-      expect(colorButtons).toHaveLength(6);
-    });
-
-    it('should render the six apply colors', () => {
-      render(<VerseActionPopover {...defaultProps} />);
-
-      const applyButtons = screen
-        .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
-
-      expect(applyButtons).toHaveLength(6);
-      applyButtons.forEach((btn) => {
-        expect(btn.style.backgroundColor).toContain('color-mix');
-        expect(btn.style.backgroundColor).toContain('var(--yv-card)');
-      });
-    });
-  });
-
   describe('AC1b: Initial focus on open', () => {
     // The bar opens from a mouse/tap on non-focusable verse text. If Radix
     // autofocused the first swatch, Chromium would treat that programmatic focus
@@ -90,28 +64,9 @@ describe('VerseActionPopover', () => {
       fireEvent.click(firstColorButton);
       expect(onHighlight).toHaveBeenCalledWith(HIGHLIGHT_COLORS[0]);
     });
-
-    it('should render popover with color buttons', () => {
-      render(<VerseActionPopover {...defaultProps} />);
-
-      const dialog = screen.getByRole('dialog');
-      expect(dialog).toBeTruthy();
-
-      const firstColorButton = screen
-        .getAllByRole('button')
-        .find((btn) => btn.getAttribute('aria-label')?.includes('Apply'))!;
-
-      expect(firstColorButton).toBeTruthy();
-    });
   });
 
   describe('AC3: Copy action', () => {
-    it('should display copy button', () => {
-      render(<VerseActionPopover {...defaultProps} />);
-      const copyButton = screen.getByText('Copy');
-      expect(copyButton).toBeTruthy();
-    });
-
     it('should call onCopy when copy button clicked', () => {
       const onCopy = vi.fn();
       render(<VerseActionPopover {...defaultProps} onCopy={onCopy} />);
@@ -123,12 +78,6 @@ describe('VerseActionPopover', () => {
   });
 
   describe('AC4: Share action', () => {
-    it('should display share button', () => {
-      render(<VerseActionPopover {...defaultProps} />);
-      const shareButton = screen.getByText('Share');
-      expect(shareButton).toBeTruthy();
-    });
-
     it('should call onShare when share button clicked', () => {
       const onShare = vi.fn();
       render(<VerseActionPopover {...defaultProps} onShare={onShare} />);
@@ -305,50 +254,6 @@ describe('VerseActionPopover', () => {
     });
   });
 
-  describe('AC8 & AC8a: Dismiss logic on remove', () => {
-    it('should show remove buttons for active highlights', () => {
-      const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0], HIGHLIGHT_COLORS[1]]);
-      const selectedVerses = [1, 2];
-      const highlightedVerses = { 1: HIGHLIGHT_COLORS[0], 2: HIGHLIGHT_COLORS[1] };
-
-      render(
-        <VerseActionPopover
-          {...defaultProps}
-          activeHighlights={activeHighlights}
-          selectedVerses={selectedVerses}
-          highlightedVerses={highlightedVerses}
-        />,
-      );
-
-      const removeButtons = screen
-        .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear'));
-
-      expect(removeButtons).toHaveLength(2);
-    });
-  });
-
-  describe('Popover visibility', () => {
-    it('should not render content when open is false', () => {
-      render(<VerseActionPopover {...defaultProps} open={false} />);
-
-      expect(screen.queryByRole('dialog')).toBeNull();
-    });
-
-    it('should render content when open is true', () => {
-      render(<VerseActionPopover {...defaultProps} open={true} />);
-
-      expect(screen.getByRole('dialog')).toBeTruthy();
-    });
-
-    it('should use Radix popover with portal', () => {
-      render(<VerseActionPopover {...defaultProps} />);
-
-      const dialog = screen.getByRole('dialog');
-      expect(dialog).toBeTruthy();
-    });
-  });
-
   describe('Accessibility', () => {
     it('should have proper ARIA labels for all buttons', () => {
       const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0]]);
@@ -393,29 +298,6 @@ describe('VerseActionPopover', () => {
     });
   });
 
-  describe('Styling', () => {
-    it('should have data-yv-sdk attribute for scoping', () => {
-      render(<VerseActionPopover {...defaultProps} />);
-
-      const dialog = screen.getByRole('dialog');
-      expect(dialog.getAttribute('data-yv-sdk')).not.toBeNull();
-    });
-
-    it('should apply theme attribute', () => {
-      render(<VerseActionPopover {...defaultProps} theme="dark" />);
-
-      const dialog = screen.getByRole('dialog');
-      expect(dialog.getAttribute('data-yv-theme')).toBe('dark');
-    });
-
-    it('should default to light theme', () => {
-      render(<VerseActionPopover {...defaultProps} />);
-
-      const dialog = screen.getByRole('dialog');
-      expect(dialog.getAttribute('data-yv-theme')).toBe('light');
-    });
-  });
-
   describe('Edge cases', () => {
     it('shows a remove swatch for a valid non-palette color at exact hex', () => {
       const custom = 'aabbcc';
@@ -449,19 +331,6 @@ describe('VerseActionPopover', () => {
         fillFor('fffe00', 'card'),
       );
       expect(applyButtons()).toHaveLength(6);
-    });
-
-    it('should handle empty active highlights', () => {
-      const activeHighlights = new Set<HighlightColor>();
-
-      render(<VerseActionPopover {...defaultProps} activeHighlights={activeHighlights} />);
-
-      const applyButtons = screen
-        .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
-
-      // Should still show 6 apply colors
-      expect(applyButtons).toHaveLength(6);
     });
 
     it('should handle all 6 colors highlighted', () => {

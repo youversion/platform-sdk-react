@@ -58,11 +58,11 @@ Follow `docs/testing.md`. This package’s flavors:
 | Flavor | Use when | Avoid when |
 | --- | --- | --- |
 | Pure unit | Lib helpers (USFM, projection, pending highlight, etc.) | Needs a rendered component |
-| Component Vitest + RTL | Default for component behavior/a11y (`*.test.tsx`) | Journey needs real composition/slots |
-| Storybook `play` | User-visible composition journeys (reader, pickers, dialogs) | Fast leaf logic / edge cases Vitest can falsify |
+| Component Vitest + RTL | Behavior/a11y that an E2E journey cannot catch (`*.test.tsx`) | Journey can catch the bug |
+| Storybook `play` | User-visible composition journeys (reader, pickers, dialogs) | The behavior cannot be exercised in a browser |
 | Vertical smoke | Rare critical journeys that wire real hooks (e.g. highlight auth) | Re-testing core/hooks contracts |
 
-- Default: Vitest + jsdom + RTL; setup is `src/test/setup.ts`
+- Isolation tests: Vitest + jsdom + RTL; setup is `src/test/setup.ts`
 - Run unit/RTL: `pnpm --filter @youversion/platform-react-ui test` (`vitest --project unit` only — does **not** run Storybook play)
 - Run Storybook `play` / tagged stories: `pnpm --filter @youversion/platform-react-ui test:integration` (or from `packages/ui`: `pnpm test:integration`)
 - Storybook `play` is the higher rung — use when composition/slots matter; every play story still needs tooling tag `tags: ['integration']` (CI discovery, not a style term)

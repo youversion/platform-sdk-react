@@ -1,18 +1,19 @@
 # Testing
 
-Testing style adapted from [Kent C. Dodds / kody testing principles](https://github.com/kentcdodds/kody/blob/main/docs/contributing/testing-principles.md). Prefer the lightest falsifying flavor; do not mass-rewrite untouched suites. Package `AGENTS.md` files add each layer's flavor matrix.
+Testing style adapted from [Kent C. Dodds / kody testing principles](https://github.com/kentcdodds/kody/blob/main/docs/contributing/testing-principles.md). Follow the E2E-first rules in `AGENTS.md`; do not mass-rewrite untouched suites. Package `AGENTS.md` files describe the available isolation flavors.
 
-## Pick the lightest flavor that can falsify the behavior
+## Prefer E2E; isolate only failures the existing journeys miss
 
-Do not use "integration" as a style term — choose by capability:
+Before writing isolation tests, list the ways the system could fail and identify which ones the existing E2E and mocked browser journeys miss. Account for what their mocks bypass. Write those tests before implementation, never afterward; before deleting an existing test, preserve or replace its unique coverage. Do not use "integration" as a style term — choose by capability:
 
 | Flavor | Package | Use when |
 | --- | --- | --- |
+| E2E | examples | Complex behavior through the running app; produce a repeatable artifact with the command, inputs, and result at the end |
 | Pure unit | core / hooks utils / ui lib | Pure functions, transformers, machines |
 | Mocked client (MSW) | core | Client + Zod + error mapping against fake HTTP |
 | Hook + provider + factories | hooks | Hook state/cache/auth against stubbed core clients |
 | Component Vitest + RTL | ui | Behavior/a11y without Storybook chrome |
-| Storybook `play` | ui | User-visible journeys that need real composition/slots |
+| Storybook `play` | ui | Mocked browser journeys for user-visible composition/slots; not full app E2E |
 | Live API (`INTEGRATION_TESTS=true`) | core | Tiny smoke that mocks cannot falsify |
 
 ## Musts for new and edited tests
@@ -24,7 +25,7 @@ Do not use "integration" as a style term — choose by capability:
 - Don't test what TypeScript already guarantees
 - Assert behavior / stable contracts / roles — not i18n prose or instructional copy
 - Prefer local fakes/fixtures; avoid the public internet by default
-- High bar for slower flavors (Storybook play, live API) and for unlikely one-off regression tests
+- High bar for isolation tests that duplicate E2E coverage and for unlikely one-off regression tests
 - Assert intermediate states inside the workflow that causes them
 
 ## Package ownership

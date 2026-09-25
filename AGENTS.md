@@ -25,6 +25,10 @@ Package-specific guidance: read `packages/core/AGENTS.md`, `packages/hooks/AGENT
 ## Testing
 Testing or coverage: read `docs/testing.md`.
 
+- Never write unit tests after you write code. If isolation testing is necessary, write the failure cases before the implementation.
+- Highly prefer E2E tests as the sole testing mechanism. Use them to verify complex features work. At the end of E2E tests, produce a verifiable, repeatable artifact (for example, a test report with the command, inputs, and result).
+- If you must test a system in isolation, first write down all the ways it could fail, then write the code. Keep only tests that catch real bugs the E2E tests miss.
+
 ## Release
 Release, versioning, or publishing: read `PUBLISHING.md`; decisions live in `docs/release-hardening-decisions.md`.
 

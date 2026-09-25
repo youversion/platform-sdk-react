@@ -142,8 +142,8 @@ Follow `docs/testing.md`. This package’s flavors:
 
 | Flavor | Use when | Avoid when |
 | --- | --- | --- |
-| Pure unit | Transformers, storage, pure helpers | Needs HTTP |
-| Mocked client (MSW) | Client + Zod + error mapping against fake HTTP (default for client tests) | Hook/UI orchestration |
+| Pure unit | Transformer, storage, or pure-helper failure modes E2E cannot catch | Needs HTTP |
+| Mocked client (MSW) | HTTP contract failures E2E cannot reach (Zod and error mapping) | Hook/UI orchestration |
 | Live API (`INTEGRATION_TESTS=true`) | Tiny smoke mocks cannot falsify; CI or on-demand only | Capability-by-capability coverage |
 
 - Run: `pnpm --filter @youversion/platform-core test`

@@ -764,6 +764,7 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
 }
 
 export const VerseSelection: Story = {
+  tags: ['integration'],
   args: {
     reference: 'JHN.1',
     versionId: 111,
@@ -792,4 +793,41 @@ export const VerseSelection: Story = {
     },
   },
   render: (props) => <VerseSelectionDemo {...props} />,
+  play: async ({ canvasElement }) => {
+    const verse = await waitFor(async () => {
+      const element = canvasElement.querySelector<HTMLElement>('.yv-v[v="1"]');
+      await expect(element?.textContent).toContain('In the beginning was the Word');
+      return element!;
+    });
+    const nextVerse = canvasElement.querySelector<HTMLElement>('.yv-v[v="2"]')!;
+    await document.fonts.ready;
+    await expect(verse.getClientRects().length).toBeGreaterThan(1);
+
+    const before = nextVerse.getBoundingClientRect();
+    const beforeParagraph = nextVerse.parentElement!.getBoundingClientRect();
+    const plain = getComputedStyle(verse);
+    await expect(plain.paddingInlineStart).toBe('2px');
+    await expect(plain.paddingInlineEnd).toBe('2px');
+    await expect(plain.boxDecorationBreak).toBe('clone');
+
+    await userEvent.click(verse);
+    const swatches = await screen.findByRole('group', { name: /highlight colors/i });
+    await userEvent.click(
+      within(swatches).getAllByRole('button', { name: /apply highlight/i })[0]!,
+    );
+
+    await waitFor(() => expect(verse.style.backgroundColor).not.toBe(''));
+    const highlighted = getComputedStyle(verse);
+    await expect(highlighted.paddingInlineStart).toBe('2px');
+    await expect(highlighted.paddingInlineEnd).toBe('2px');
+    await expect(highlighted.boxDecorationBreak).toBe('clone');
+    const after = nextVerse.getBoundingClientRect();
+    const afterParagraph = nextVerse.parentElement!.getBoundingClientRect();
+    await expect(
+      Math.abs(after.top - afterParagraph.top - (before.top - beforeParagraph.top)),
+    ).toBeLessThan(1);
+    await expect(
+      Math.abs(after.left - afterParagraph.left - (before.left - beforeParagraph.left)),
+    ).toBeLessThan(1);
+  },
 };

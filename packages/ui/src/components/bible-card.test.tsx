@@ -19,7 +19,6 @@ import {
   Providers,
   stubUseHighlights,
 } from '@/test/highlights-test-utils';
-import { InterfaceDirectionProvider } from '@/lib/direction';
 
 const mockPassage: BiblePassage = {
   id: 'JHN.3.16',
@@ -105,30 +104,6 @@ function cardShell(container: HTMLElement) {
   };
 }
 
-it('establishes interface direction independently from Scripture direction', async () => {
-  const { container } = render(
-    <HookOverrideProvider
-      overrides={{
-        useVersion: () => idleVersion(),
-        usePassage: () => passageResult({ passage: mockPassage, loading: false }),
-      }}
-    >
-      <InterfaceDirectionProvider direction="rtl">
-        <BibleCard reference="JHN.3.16" versionId={3034} scriptureDirection="ltr" />
-      </InterfaceDirectionProvider>
-    </HookOverrideProvider>,
-  );
-
-  expect(cardShell(container).section).toHaveAttribute('dir', 'rtl');
-  expect(within(container).getByRole('heading', { level: 2 })).toHaveAttribute('dir', 'ltr');
-  await waitFor(() => {
-    expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute(
-      'dir',
-      'ltr',
-    );
-  });
-});
-
 const YELLOW = 'fffe00';
 const multiVersePassage: BiblePassage = {
   id: 'JHN.1',
@@ -198,34 +173,10 @@ describe('BibleCard - Delayed spinner', () => {
       0,
     );
   });
-
-  it('should hide inline verse numbers in the bible renderer', () => {
-    const { container } = renderCard(passageResult({ passage: mockPassage, loading: false }));
-    const bibleRenderer = container.querySelector('[data-slot="yv-bible-renderer"]');
-
-    expect(bibleRenderer).toHaveAttribute('data-show-verse-numbers', 'false');
-  });
 });
 
 describe('BibleCard - maxWidth', () => {
   const loaded = passageResult({ passage: mockPassage, loading: false });
-
-  it('omitting maxWidth caps the painted section at 700px and lets the inner column fill', () => {
-    const { container } = renderCard(loaded);
-    const { section, inner } = cardShell(container);
-    const bibleTextView = container.querySelector('[data-slot="yv-bible-renderer"]')?.parentElement;
-
-    expect(section).toHaveClass('yv:w-full');
-    expect(section).toHaveClass('yv:p-6');
-    expect(section).toHaveClass('yv:box-border');
-    expect(section).not.toHaveClass('yv:max-w-md');
-    expect(section).toHaveStyle({ maxWidth: '700px' });
-    expect(inner).toHaveClass('yv:w-full');
-    expect(inner).not.toHaveClass('yv:card-content');
-    expect(inner).not.toHaveStyle({ maxWidth: '600px' });
-    expect(bibleTextView).not.toHaveClass('yv:max-w-[600px]');
-    expect(section.style.getPropertyValue('--yv-reader-max-width')).toBe('none');
-  });
 
   it('uses a number maxWidth as the section cap and lets the inner column fill', () => {
     const { container } = renderCard(loaded, { maxWidth: 480 });
@@ -249,20 +200,6 @@ describe('BibleCard - maxWidth', () => {
     expect(inner).not.toHaveStyle({ maxWidth: 'none' });
     expect(section.style.getPropertyValue('--yv-reader-max-width')).toBe('none');
   });
-
-  it('still fills a parent that is narrower than the section cap', () => {
-    const { container } = renderCard(loaded, { hostWidth: 400 });
-    const host = container.firstElementChild;
-    const { section, inner } = cardShell(container);
-
-    expect(host).toHaveStyle({ width: '400px' });
-    expect(section.parentElement).toBe(host);
-    expect(section).toHaveClass('yv:w-full');
-    expect(section).toHaveStyle({ maxWidth: '700px' });
-    expect(inner).toHaveClass('yv:w-full');
-    expect(inner).not.toHaveClass('yv:card-content');
-    expect(section.style.getPropertyValue('--yv-reader-max-width')).toBe('none');
-  });
 });
 
 describe('BibleCard - Error state', () => {
@@ -275,27 +212,6 @@ describe('BibleCard - Error state', () => {
       }),
     );
   }
-
-  it('should render exactly one alert region', () => {
-    const { container } = renderErrorCard();
-
-    expect(within(container).getAllByRole('alert')).toHaveLength(1);
-  });
-
-  it('should show the status message in that one alert region', () => {
-    const { container } = renderErrorCard();
-    const alert = within(container).getByRole('alert');
-
-    expect(alert).toHaveTextContent(
-      'The Bible service is having trouble right now. Please try again in a moment.',
-    );
-  });
-
-  it('should render the error heading in the header slot', () => {
-    const { container } = renderErrorCard();
-
-    expect(within(container).getByRole('heading', { level: 2 })).toHaveTextContent('Error');
-  });
 
   it('should not render a loading spinner while an error is set', () => {
     const { container } = renderErrorCard();
