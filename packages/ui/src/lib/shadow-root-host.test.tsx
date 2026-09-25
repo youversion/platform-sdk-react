@@ -195,6 +195,7 @@ async function expectStyleSheetFailureRecovery(stage: StyleSheetFailureStage): P
       return root;
     });
     expect(laterRoot.adoptedStyleSheets).toHaveLength(1);
+    expect(laterRoot.adoptedStyleSheets[0]).not.toBe(recoveredRoot.adoptedStyleSheets[0]);
     expect(laterRoot.querySelector('style')).toBeNull();
   } finally {
     unmountFailed?.();
