@@ -1,9 +1,16 @@
-import { createRef, forwardRef, StrictMode, useLayoutEffect, useState } from 'react';
+import {
+  createRef,
+  forwardRef,
+  StrictMode,
+  useLayoutEffect,
+  useState,
+  type ReactNode,
+} from 'react';
 import { hydrateRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { act, render, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { withShadowIsolation } from './shadow-isolation';
+import { ReuseShadowBoundary, withShadowIsolation } from './shadow-isolation';
 import { ShadowRootHost, useShadowPortalTarget } from './shadow-root-host';
 
 function PortalRequester(): React.ReactNode {
@@ -25,7 +32,47 @@ const IsolatedRefProbe = withShadowIsolation(
   'IsolatedRefProbe',
 );
 
+interface CompositionProbeProps {
+  children?: ReactNode;
+  label: string;
+}
+
+const IsolatedCompositionProbe = withShadowIsolation(
+  forwardRef<HTMLDivElement, CompositionProbeProps>(({ children, label }, ref) => (
+    <div ref={ref} data-testid={label}>
+      {children}
+    </div>
+  )),
+  'IsolatedCompositionProbe',
+);
+
 describe('ShadowRootHost', () => {
+  it('reuses the owning boundary for SDK composition without flattening consumer-created nesting', async () => {
+    const { container } = render(
+      <IsolatedCompositionProbe label="owner">
+        <ReuseShadowBoundary>
+          <IsolatedCompositionProbe label="sdk-owned child">
+            <IsolatedCompositionProbe label="consumer child" />
+          </IsolatedCompositionProbe>
+        </ReuseShadowBoundary>
+      </IsolatedCompositionProbe>,
+    );
+
+    const outerHost = await waitFor(() => {
+      const host = container.querySelector<HTMLElement>('[data-yv-shadow-host]');
+      if (!host?.shadowRoot) throw new Error('outer shadow root not attached');
+      return host;
+    });
+    const outerRoot = outerHost.shadowRoot!;
+    const sdkOwnedChild = outerRoot.querySelector('[data-testid="sdk-owned child"]');
+    const consumerHost = outerRoot.querySelector<HTMLElement>('[data-yv-shadow-host]');
+
+    expect(container.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(1);
+    expect(sdkOwnedChild?.getRootNode()).toBe(outerRoot);
+    expect(outerRoot.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(1);
+    expect(consumerHost?.shadowRoot?.querySelector('[data-testid="consumer child"]')).not.toBeNull();
+  });
+
   it('reuses the empty server host before making the forwarded ref available after shadow mount', async () => {
     const buttonRef = createRef<HTMLButtonElement>();
     const refsDuringInitialClientRender: Array<HTMLButtonElement | null> = [];
@@ -146,6 +193,300 @@ describe('ShadowRootHost', () => {
     // stylesheet resources within the shadow root.
     expect(style?.getAttribute('data-href')).toBe('yv-sdk-shadow-styles');
     expect(style?.getAttribute('data-precedence')).toBe('yv-sdk');
+  });
+
+  it('recovers from stylesheet construction failure without poisoning later roots', async () => {
+    const styleSheetDescriptor = Object.getOwnPropertyDescriptor(window, 'CSSStyleSheet');
+    const adoptedStyleSheetsDescriptor = Object.getOwnPropertyDescriptor(
+      ShadowRoot.prototype,
+      'adoptedStyleSheets',
+    );
+    const adoptedStyleSheets = new WeakMap<ShadowRoot, CSSStyleSheet[]>();
+    let failedView: ReturnType<typeof render> | undefined;
+    let recoveredView: ReturnType<typeof render> | undefined;
+
+    try {
+      Object.defineProperty(ShadowRoot.prototype, 'adoptedStyleSheets', {
+        configurable: true,
+        get(this: ShadowRoot): CSSStyleSheet[] {
+          return adoptedStyleSheets.get(this) ?? [];
+        },
+        set(this: ShadowRoot, sheets: CSSStyleSheet[]) {
+          adoptedStyleSheets.set(this, sheets);
+        },
+      });
+      Object.defineProperty(window, 'CSSStyleSheet', {
+        configurable: true,
+        value: class ThrowingStyleSheet {
+          constructor() {
+            throw new Error('construction failed');
+          }
+
+          replaceSync(): void {}
+        },
+      });
+
+      expect(() => {
+        failedView = render(
+          <ShadowRootHost>
+            <span data-testid="fallback-content">Fallback content</span>
+          </ShadowRootHost>,
+        );
+      }).not.toThrow();
+
+      const failedRoot = await waitFor(() => {
+        const root = failedView?.container.querySelector<HTMLElement>('[data-yv-shadow-host]')
+          ?.shadowRoot;
+        if (!root?.querySelector('[data-testid="fallback-content"]')) {
+          throw new Error('fallback content not rendered');
+        }
+        return root;
+      });
+      expect(failedRoot.querySelector('style[data-href="yv-sdk-shadow-styles"]')).not.toBeNull();
+
+      Object.defineProperty(window, 'CSSStyleSheet', {
+        configurable: true,
+        value: class WorkingStyleSheet {
+          replaceSync(): void {}
+        },
+      });
+      recoveredView = render(
+        <ShadowRootHost>
+          <span data-testid="constructed-content">Constructed content</span>
+        </ShadowRootHost>,
+      );
+
+      const recoveredRoot = await waitFor(() => {
+        const root = recoveredView?.container.querySelector<HTMLElement>('[data-yv-shadow-host]')
+          ?.shadowRoot;
+        if (!root?.querySelector('[data-testid="constructed-content"]')) {
+          throw new Error('constructed content not rendered');
+        }
+        return root;
+      });
+      expect(recoveredRoot.adoptedStyleSheets).toHaveLength(1);
+      expect(recoveredRoot.querySelector('style')).toBeNull();
+    } finally {
+      failedView?.unmount();
+      recoveredView?.unmount();
+      if (styleSheetDescriptor) {
+        Object.defineProperty(window, 'CSSStyleSheet', styleSheetDescriptor);
+      } else {
+        Reflect.deleteProperty(window, 'CSSStyleSheet');
+      }
+      if (adoptedStyleSheetsDescriptor) {
+        Object.defineProperty(
+          ShadowRoot.prototype,
+          'adoptedStyleSheets',
+          adoptedStyleSheetsDescriptor,
+        );
+      } else {
+        Reflect.deleteProperty(ShadowRoot.prototype, 'adoptedStyleSheets');
+      }
+    }
+  });
+
+  it('recovers from stylesheet replacement failure without poisoning later roots', async () => {
+    const iframe = document.createElement('iframe');
+    document.body.append(iframe);
+    const ownerWindow = iframe.contentWindow!;
+    const ownerDocument = iframe.contentDocument!;
+    const ownerShadowRootPrototype = Object.getPrototypeOf(
+      ownerDocument.createElement('div').attachShadow({ mode: 'open' }),
+    );
+    const styleSheetDescriptor = Object.getOwnPropertyDescriptor(ownerWindow, 'CSSStyleSheet');
+    const adoptedStyleSheetsDescriptor = Object.getOwnPropertyDescriptor(
+      ownerShadowRootPrototype,
+      'adoptedStyleSheets',
+    );
+    const adoptedStyleSheets = new WeakMap<ShadowRoot, CSSStyleSheet[]>();
+    const container = ownerDocument.createElement('div');
+    ownerDocument.body.append(container);
+    let unmountFailed: (() => void) | undefined;
+    let unmountRecovered: (() => void) | undefined;
+
+    try {
+      Object.defineProperty(ownerShadowRootPrototype, 'adoptedStyleSheets', {
+        configurable: true,
+        get(this: ShadowRoot): CSSStyleSheet[] {
+          return adoptedStyleSheets.get(this) ?? [];
+        },
+        set(this: ShadowRoot, sheets: CSSStyleSheet[]) {
+          adoptedStyleSheets.set(this, sheets);
+        },
+      });
+      Object.defineProperty(ownerWindow, 'CSSStyleSheet', {
+        configurable: true,
+        value: class ThrowingStyleSheet {
+          replaceSync(): void {
+            throw new Error('replacement failed');
+          }
+        },
+      });
+
+      expect(() => {
+        const view = render(
+          <ShadowRootHost>
+            <span data-testid="fallback-content">Fallback content</span>
+          </ShadowRootHost>,
+          { container },
+        );
+        unmountFailed = view.unmount;
+      }).not.toThrow();
+
+      const failedRoot = await waitFor(() => {
+        const root = container.querySelector<HTMLElement>('[data-yv-shadow-host]')?.shadowRoot;
+        if (!root?.querySelector('[data-testid="fallback-content"]')) {
+          throw new Error('fallback content not rendered');
+        }
+        return root;
+      });
+      expect(failedRoot.querySelector('style[data-href="yv-sdk-shadow-styles"]')).not.toBeNull();
+
+      Object.defineProperty(ownerWindow, 'CSSStyleSheet', {
+        configurable: true,
+        value: class WorkingStyleSheet {
+          replaceSync(): void {}
+        },
+      });
+      const recoveredContainer = ownerDocument.createElement('div');
+      ownerDocument.body.append(recoveredContainer);
+      const recoveredView = render(
+        <ShadowRootHost>
+          <span data-testid="constructed-content">Constructed content</span>
+        </ShadowRootHost>,
+        { container: recoveredContainer },
+      );
+      unmountRecovered = recoveredView.unmount;
+
+      const recoveredRoot = await waitFor(() => {
+        const root = recoveredContainer.querySelector<HTMLElement>('[data-yv-shadow-host]')
+          ?.shadowRoot;
+        if (!root?.querySelector('[data-testid="constructed-content"]')) {
+          throw new Error('constructed content not rendered');
+        }
+        return root;
+      });
+      expect(recoveredRoot.adoptedStyleSheets).toHaveLength(1);
+      expect(recoveredRoot.querySelector('style')).toBeNull();
+    } finally {
+      unmountFailed?.();
+      unmountRecovered?.();
+      if (styleSheetDescriptor) {
+        Object.defineProperty(ownerWindow, 'CSSStyleSheet', styleSheetDescriptor);
+      } else {
+        Reflect.deleteProperty(ownerWindow, 'CSSStyleSheet');
+      }
+      if (adoptedStyleSheetsDescriptor) {
+        Object.defineProperty(
+          ownerShadowRootPrototype,
+          'adoptedStyleSheets',
+          adoptedStyleSheetsDescriptor,
+        );
+      } else {
+        Reflect.deleteProperty(ownerShadowRootPrototype, 'adoptedStyleSheets');
+      }
+      iframe.remove();
+    }
+  });
+
+  it('recovers from stylesheet adoption failure without poisoning later roots', async () => {
+    const iframe = document.createElement('iframe');
+    document.body.append(iframe);
+    const ownerWindow = iframe.contentWindow!;
+    const ownerDocument = iframe.contentDocument!;
+    const ownerShadowRootPrototype = Object.getPrototypeOf(
+      ownerDocument.createElement('div').attachShadow({ mode: 'open' }),
+    );
+    const styleSheetDescriptor = Object.getOwnPropertyDescriptor(ownerWindow, 'CSSStyleSheet');
+    const adoptedStyleSheetsDescriptor = Object.getOwnPropertyDescriptor(
+      ownerShadowRootPrototype,
+      'adoptedStyleSheets',
+    );
+    const adoptedStyleSheets = new WeakMap<ShadowRoot, CSSStyleSheet[]>();
+    const container = ownerDocument.createElement('div');
+    ownerDocument.body.append(container);
+    let rejectAdoption = true;
+    let unmountFailed: (() => void) | undefined;
+    let unmountRecovered: (() => void) | undefined;
+
+    try {
+      Object.defineProperty(ownerShadowRootPrototype, 'adoptedStyleSheets', {
+        configurable: true,
+        get(this: ShadowRoot): CSSStyleSheet[] {
+          return adoptedStyleSheets.get(this) ?? [];
+        },
+        set(this: ShadowRoot, sheets: CSSStyleSheet[]) {
+          if (rejectAdoption) throw new Error('adoption failed');
+          adoptedStyleSheets.set(this, sheets);
+        },
+      });
+      Object.defineProperty(ownerWindow, 'CSSStyleSheet', {
+        configurable: true,
+        value: class WorkingStyleSheet {
+          replaceSync(): void {}
+        },
+      });
+
+      expect(() => {
+        const view = render(
+          <ShadowRootHost>
+            <span data-testid="fallback-content">Fallback content</span>
+          </ShadowRootHost>,
+          { container },
+        );
+        unmountFailed = view.unmount;
+      }).not.toThrow();
+
+      const failedRoot = await waitFor(() => {
+        const root = container.querySelector<HTMLElement>('[data-yv-shadow-host]')?.shadowRoot;
+        if (!root?.querySelector('[data-testid="fallback-content"]')) {
+          throw new Error('fallback content not rendered');
+        }
+        return root;
+      });
+      expect(failedRoot.querySelector('style[data-href="yv-sdk-shadow-styles"]')).not.toBeNull();
+
+      rejectAdoption = false;
+      const recoveredContainer = ownerDocument.createElement('div');
+      ownerDocument.body.append(recoveredContainer);
+      const recoveredView = render(
+        <ShadowRootHost>
+          <span data-testid="constructed-content">Constructed content</span>
+        </ShadowRootHost>,
+        { container: recoveredContainer },
+      );
+      unmountRecovered = recoveredView.unmount;
+
+      const recoveredRoot = await waitFor(() => {
+        const root = recoveredContainer.querySelector<HTMLElement>('[data-yv-shadow-host]')
+          ?.shadowRoot;
+        if (!root?.querySelector('[data-testid="constructed-content"]')) {
+          throw new Error('constructed content not rendered');
+        }
+        return root;
+      });
+      expect(recoveredRoot.adoptedStyleSheets).toHaveLength(1);
+      expect(recoveredRoot.querySelector('style')).toBeNull();
+    } finally {
+      unmountFailed?.();
+      unmountRecovered?.();
+      if (styleSheetDescriptor) {
+        Object.defineProperty(ownerWindow, 'CSSStyleSheet', styleSheetDescriptor);
+      } else {
+        Reflect.deleteProperty(ownerWindow, 'CSSStyleSheet');
+      }
+      if (adoptedStyleSheetsDescriptor) {
+        Object.defineProperty(
+          ownerShadowRootPrototype,
+          'adoptedStyleSheets',
+          adoptedStyleSheetsDescriptor,
+        );
+      } else {
+        Reflect.deleteProperty(ownerShadowRootPrototype, 'adoptedStyleSheets');
+      }
+      iframe.remove();
+    }
   });
 
   it('creates a local portal lazily only after an overlay requests one', async () => {

@@ -144,6 +144,17 @@ function getOrCreateSdkStyleSheet(root: ShadowRoot): CSSStyleSheet {
   return sheet;
 }
 
+function adoptSdkStyleSheet(root: ShadowRoot): boolean {
+  if (!supportsAdoptedStyleSheets(root)) return false;
+
+  try {
+    root.adoptedStyleSheets = [getOrCreateSdkStyleSheet(root)];
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function resetHost(host: HTMLDivElement): void {
   // The host page can select this light-DOM element, including with !important.
   // Inline author-important declarations establish the smallest stable box.
@@ -363,9 +374,7 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
     shadowRootRef.current = root;
     if (!existingRoot) {
       resetHost(host);
-      if (supportsAdoptedStyleSheets(root)) {
-        root.adoptedStyleSheets = [getOrCreateSdkStyleSheet(root)];
-      } else {
+      if (!adoptSdkStyleSheet(root)) {
         setNeedsStyleFallback(true);
       }
     }
