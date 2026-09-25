@@ -55,6 +55,24 @@ describe('BibleClient runtime contracts', () => {
     );
   });
 
+  it('forwards multiple language ranges and only requests all available versions when enabled', async () => {
+    const api = new ApiClient({ apiHost: 'api.youversion.com', appKey: 'test-app' });
+    const get = vi.spyOn(api, 'get').mockResolvedValue({ data: [], next_page_token: null });
+    const client = new BibleClient(api);
+
+    await client.getVersions(['en*', 'es*'], undefined, { all_available: true });
+    expect(get).toHaveBeenLastCalledWith('/v1/bibles', {
+      'language_ranges[]': ['en*', 'es*'],
+      all_available: 'true',
+    });
+
+    await client.getVersions(['en*', 'es*'], undefined, { all_available: false });
+    expect(get).toHaveBeenLastCalledWith('/v1/bibles', {
+      'language_ranges[]': ['en*', 'es*'],
+    });
+    expect(get).toHaveBeenCalledTimes(2);
+  });
+
   it('enforces the verse-of-the-day calendar boundary', async () => {
     const client = createClient();
 

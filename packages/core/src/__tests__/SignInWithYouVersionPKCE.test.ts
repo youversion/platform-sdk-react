@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { SignInWithYouVersionPKCEAuthorizationRequestBuilder } from '../SignInWithYouVersionPKCE';
 import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfiguration';
@@ -8,12 +9,18 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
     const mocks = setupBrowserMocks();
     let randomCall = 0;
     mocks.crypto.getRandomValues.mockImplementation((array: Uint8Array) => {
-      array.forEach((_, index) => (array[index] = index + randomCall * 32 + 1));
+      array.fill(randomCall + 1);
+      array.set([0xfb, 0xff]); // Encodes to both + and / before Base64URL conversion.
       randomCall++;
       return array;
     });
-    mocks.crypto.subtle.digest.mockResolvedValue(new Uint8Array(32).buffer);
-    mocks.btoa.mockImplementation((value: string) => Buffer.from(value).toString('base64'));
+    mocks.crypto.subtle.digest.mockImplementation(
+      (_algorithm: string, data: Uint8Array) =>
+        Uint8Array.from(createHash('sha256').update(data).digest()).buffer,
+    );
+    mocks.btoa.mockImplementation((value: string) =>
+      Buffer.from(value, 'latin1').toString('base64'),
+    );
     YouVersionPlatformConfiguration.apiHost = 'api-test.youversion.com';
 
     const result = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
@@ -37,7 +44,9 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
     expect(params.get('client_id')).toBe('test-app-key');
     expect(params.get('redirect_uri')).toBe('https://example.com/callback');
     expect(params.get('code_challenge_method')).toBe('S256');
-    expect(result.parameters.codeChallenge).toBe(Buffer.alloc(32).toString('base64url'));
+    expect(result.parameters.codeChallenge).toBe(
+      createHash('sha256').update(result.parameters.codeVerifier).digest('base64url'),
+    );
     expect(params.get('code_challenge')).toBe(result.parameters.codeChallenge);
     expect(params.get('state')).toBe(result.parameters.state);
     expect(params.get('nonce')).toBe(result.parameters.nonce);
@@ -54,6 +63,11 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
       ['votd', 'highlights'],
     );
     expect(multiple.url.searchParams.get('requested_permissions')).toBe('highlights,votd');
+    for (const key of ['codeVerifier', 'codeChallenge', 'state', 'nonce'] as const) {
+      expect(result.parameters[key]).toMatch(/^[A-Za-z0-9_-]+$/);
+      expect(multiple.parameters[key]).toMatch(/^[A-Za-z0-9_-]+$/);
+      expect(multiple.parameters[key]).not.toBe(result.parameters[key]);
+    }
 
     const none = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
       'test-app-key',

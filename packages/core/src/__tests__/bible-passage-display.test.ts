@@ -118,6 +118,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('passage display model',
     );
 
     expect(passage).toHaveProperty('future_api_field', 'preserved');
+    expect(passage.content).toBe(mockNIVGen1Verse1PassageHTML.content);
   });
 
   it('requests fresh attribution for repeated display operations', async () => {
