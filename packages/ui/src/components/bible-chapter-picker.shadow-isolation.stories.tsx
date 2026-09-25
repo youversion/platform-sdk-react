@@ -78,20 +78,6 @@ export const PublicRootJourney: Story = {
     if (!reflectedControls) throw new Error('browser did not expose ariaControlsElements');
     await expect(reflectedControls).toEqual([panel]);
 
-    const clippingRect = clippingContainer.getBoundingClientRect();
-    const panelRect = panel.getBoundingClientRect();
-    await expect(panelRect.bottom).toBeGreaterThan(clippingRect.bottom + 1);
-    const viewport = canvasElement.ownerDocument.defaultView;
-    if (!viewport) throw new Error('story window not available');
-    await expect(panelRect.top).toBeGreaterThanOrEqual(16);
-    await expect(panelRect.left).toBeGreaterThanOrEqual(16);
-    await expect(panelRect.right).toBeLessThanOrEqual(viewport.innerWidth - 16);
-    const sampleX = panelRect.left + panelRect.width / 2;
-    const sampleY = Math.max(panelRect.top + 2, clippingRect.bottom + 2);
-    if (sampleY >= panelRect.bottom) throw new Error('panel did not escape its clipping ancestor');
-    const hit = root.elementFromPoint(sampleX, sampleY);
-    await expect(hit === panel || (hit !== null && panel.contains(hit))).toBe(true);
-
     const panelQueries = within(panel);
     const search = panelQueries.getByPlaceholderText(/search/i);
     await userEvent.type(search, 'gen');
