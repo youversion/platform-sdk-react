@@ -33,6 +33,23 @@ describe('YouVersionPlatformConfiguration storage contracts', () => {
     expect(localStorage.getItem('idToken')).toBeNull();
   });
 
+  it('removes a persisted session and profile on sign-out', () => {
+    localStorage.clear();
+    YouVersionPlatformConfiguration.saveAuthData(
+      'access-token',
+      'refresh-token',
+      new Date('2026-01-01T00:00:00Z'),
+    );
+    YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-123' });
+
+    const sessionKeys = ['accessToken', 'refreshToken', 'expiryDate', 'userInfo'];
+    for (const key of sessionKeys) expect(localStorage.getItem(key)).not.toBeNull();
+
+    YouVersionPlatformConfiguration.clearAuthTokens();
+
+    for (const key of sessionKeys) expect(localStorage.getItem(key)).toBeNull();
+  });
+
   it('fails closed when stored user information is malformed or untrusted', () => {
     localStorage.setItem('userInfo', 'not-json{');
     expect(YouVersionPlatformConfiguration.storedUserInfo).toBeNull();

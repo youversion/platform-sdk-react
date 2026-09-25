@@ -4,7 +4,7 @@ import { YouVersionPlatformConfiguration } from '../YouVersionPlatformConfigurat
 import { cleanupBrowserMocks, setupBrowserMocks } from './mocks/browser';
 
 describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
-  it('uses cryptographic randomness and SHA-256 for an OAuth authorization request', async () => {
+  it('builds a PKCE authorization request and encodes optional permissions', async () => {
     const mocks = setupBrowserMocks();
     let randomCall = 0;
     mocks.crypto.getRandomValues.mockImplementation((array: Uint8Array) => {
@@ -46,6 +46,21 @@ describe('SignInWithYouVersionPKCEAuthorizationRequestBuilder', () => {
     expect(params.get('requested_permissions')).toBe('highlights');
     expect(params.getAll('requested_permissions[]')).toEqual([]);
     expect(params.get('scope')).not.toContain('highlights');
+
+    const multiple = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
+      'test-app-key',
+      new URL('https://example.com/callback'),
+      ['profile'],
+      ['votd', 'highlights'],
+    );
+    expect(multiple.url.searchParams.get('requested_permissions')).toBe('highlights,votd');
+
+    const none = await SignInWithYouVersionPKCEAuthorizationRequestBuilder.make(
+      'test-app-key',
+      new URL('https://example.com/callback'),
+      ['profile'],
+    );
+    expect(none.url.searchParams.has('requested_permissions')).toBe(false);
     cleanupBrowserMocks();
   });
 

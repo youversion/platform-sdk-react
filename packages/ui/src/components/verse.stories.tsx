@@ -442,6 +442,17 @@ export const SwiftPhaseTwoTypographyFixture: Story = {
     await expect(getComputedStyle(standalone.querySelector('.is1 .rq')!).fontSize).toBe('19.92px');
     await expect(getComputedStyle(standalone.querySelector('.is1 .va')!).fontSize).toBe('15.6px');
 
+    // Highlighting changes the fill, not the inline box geometry at a wrap.
+    await expect(style('.yv-v[v="2"]').backgroundColor).not.toBe(
+      getComputedStyle(standalone.querySelector('.yv-v[v="2"]')!).backgroundColor,
+    );
+    for (const reader of [ltr, standalone]) {
+      const verse = getComputedStyle(reader.querySelector('.yv-v[v="2"]')!);
+      await expect(verse.paddingInlineStart).toBe('2px');
+      await expect(verse.paddingInlineEnd).toBe('2px');
+      await expect(verse.boxDecorationBreak).toBe('clone');
+    }
+
     for (const reader of [ltr, standalone]) {
       const indented = reader.querySelector('[data-indent-fixture]')!;
       await expect(parseFloat(getComputedStyle(indented).textIndent)).toBeGreaterThan(0);
