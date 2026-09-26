@@ -60,6 +60,9 @@ import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/
 import { isHighlightsLive } from '@/lib/feature-flags';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
+import { BibleReaderSearch, type BibleReaderSearchPressData } from './bible-reader-search';
+import { useTransientVerseFocus, type VerseFocusRequest } from '@/lib/use-transient-verse-focus';
+import { BibleReaderNavigation } from './bible-reader-navigation';
 
 type BibleReaderContextType = {
   book: string;
@@ -81,6 +84,7 @@ type BibleReaderContextType = {
   onFootnotePress?: (data: FootnoteData) => void;
   onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
   onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
+  onSearchPress?: (data: BibleReaderSearchPressData) => void | Promise<void>;
   languageId?: string;
   defaultLanguageId?: string;
   onLanguageChange?: (languageId: string) => void;
@@ -95,6 +99,8 @@ type BibleReaderContextType = {
   onHighlightRemove?: (intent: BibleReaderHighlightIntent) => void;
   verseActions: 'popover' | 'none';
   clearSelectionSignal?: number;
+  navigation: BibleReaderNavigation;
+  verseFocus: VerseFocusRequest | null;
   scriptureDirection?: TextDirection;
 };
 
@@ -180,7 +186,7 @@ export type BibleReaderShareData = {
 
 const BibleReaderContext = createContext<BibleReaderContextType | null>(null);
 
-function useBibleReaderContext() {
+export function useBibleReaderContext(): BibleReaderContextType {
   const context = useContext(BibleReaderContext);
   if (!context) {
     throw new Error('BibleReader components must be used within BibleReader.Root');
@@ -189,6 +195,8 @@ function useBibleReaderContext() {
 }
 
 export type RootProps = {
+  /** Retain this connection outside the reader to request navigation before mount. */
+  navigation?: BibleReaderNavigation;
   book?: string;
   defaultBook?: string;
   onBookChange?: (book: string) => void;
@@ -218,6 +226,8 @@ export type RootProps = {
   onFootnotePress?: (data: FootnoteData) => void;
   onChapterPickerPress?: (data: BibleChapterPickerPressData) => void;
   onVersionPickerPress?: (data: BibleVersionPickerPressData) => void;
+  /** Replaces the built-in search popover with host-owned search. */
+  onSearchPress?: (data: BibleReaderSearchPressData) => void | Promise<void>;
   /**
    * Bible translation language for the version picker (`en`, `es`, …).
    * Controlled when set with `onLanguageChange`.
@@ -451,6 +461,7 @@ export function createBibleThemeSettingsContentHandlers(options: {
 }
 
 function Root({
+  navigation: navigationProp,
   book: controlledBook,
   defaultBook = 'JHN',
   onBookChange,
@@ -475,6 +486,7 @@ function Root({
   onFootnotePress,
   onChapterPickerPress,
   onVersionPickerPress,
+  onSearchPress,
   languageId,
   defaultLanguageId,
   onLanguageChange,
@@ -496,23 +508,44 @@ function Root({
   // render as "no highlights", never fall through to the self-contained path.
   const isHighlightsControlled = useHighlightsControlledLatch(highlights, 'BibleReader.Root');
 
-  const [book, setBook] = useControllableState({
+  const [localNavigation] = useState(() => new BibleReaderNavigation());
+  const navigation = navigationProp ?? localNavigation;
+  const [initialNavigation, setInitialNavigation] = useState(() => {
+    const target = navigation.peek();
+    if (
+      target &&
+      !target.scrollsToVerse &&
+      (target.versionId !== (controlledVersionId ?? defaultVersionId) ||
+        target.book !== (controlledBook ?? defaultBook) ||
+        target.chapter !== (controlledChapter ?? defaultChapter))
+    )
+      return null;
+    return target;
+  });
+
+  const [currentBook, setBook] = useControllableState({
     prop: controlledBook,
     defaultProp: defaultBook,
     onChange: onBookChange,
   });
 
-  const [chapter, setChapter] = useControllableState({
+  const [currentChapter, setChapter] = useControllableState({
     prop: controlledChapter,
     defaultProp: defaultChapter,
     onChange: onChapterChange,
   });
 
-  const [versionId, setVersionId] = useControllableState({
+  const [currentVersionId, setVersionId] = useControllableState({
     prop: controlledVersionId,
     defaultProp: defaultVersionId,
     onChange: onVersionChange,
   });
+
+  // Show the queued destination on the first render without consuming it during
+  // render. Controlled values still belong to the host; Content waits for them.
+  const book = controlledBook ?? initialNavigation?.book ?? currentBook;
+  const chapter = controlledChapter ?? initialNavigation?.chapter ?? currentChapter;
+  const versionId = controlledVersionId ?? initialNavigation?.versionId ?? currentVersionId;
 
   const validatedDefaultFontSize =
     defaultFontSize > MAX_FONT_SIZE || defaultFontSize < MIN_FONT_SIZE
@@ -635,13 +668,65 @@ function Root({
   const { books, loading: booksLoading } = useBooks(versionId);
   const booksData = books?.data ?? [];
 
+  const [verseFocus, setVerseFocus] = useState<VerseFocusRequest | null>(() =>
+    initialNavigation ? { ...initialNavigation, seq: 0 } : null,
+  );
+  const [activatedFocus, setActivatedFocus] = useState<VerseFocusRequest | null>(null);
+  const atFocusDestination =
+    verseFocus?.versionId === versionId &&
+    verseFocus.book === book &&
+    verseFocus.chapter === chapter;
+  if (verseFocus !== null && atFocusDestination && activatedFocus !== verseFocus) {
+    setActivatedFocus(verseFocus);
+  } else if (verseFocus !== null && !atFocusDestination && activatedFocus === verseFocus) {
+    // Clear before children render when controlled props leave an activated
+    // destination. A request awaiting its first host round-trip stays pending.
+    setVerseFocus(null);
+    setActivatedFocus(null);
+  }
+  const verseFocusSeqRef = useRef(0);
+  useEffect(() => {
+    const consume = (): void => {
+      const target = navigation.consume();
+      if (target === null) return;
+      setInitialNavigation(null);
+      if (
+        !target.scrollsToVerse &&
+        (target.versionId !== versionId || target.book !== book || target.chapter !== chapter)
+      )
+        return;
+      verseFocusSeqRef.current += 1;
+      setVersionId(target.versionId);
+      setBook(target.book);
+      setChapter(target.chapter);
+      if (target !== initialNavigation) {
+        setVerseFocus({
+          ...target,
+          seq: verseFocusSeqRef.current,
+        });
+      }
+    };
+    const unsubscribe = navigation.subscribe(consume);
+    consume();
+    return unsubscribe;
+  }, [navigation, initialNavigation, versionId, book, chapter, setVersionId, setBook, setChapter]);
+
   const contextValue: BibleReaderContextType = {
     book,
     chapter,
     versionId,
-    setBook,
-    setChapter,
-    setVersionId,
+    setBook: (value) => {
+      setVerseFocus(null);
+      setBook(value);
+    },
+    setChapter: (value) => {
+      setVerseFocus(null);
+      setChapter(value);
+    },
+    setVersionId: (value) => {
+      setVerseFocus(null);
+      setVersionId(value);
+    },
     booksData,
     booksLoading,
     currentFontFamily,
@@ -655,6 +740,7 @@ function Root({
     onFootnotePress,
     onChapterPickerPress,
     onVersionPickerPress,
+    onSearchPress,
     languageId,
     defaultLanguageId,
     onLanguageChange,
@@ -669,6 +755,8 @@ function Root({
     onHighlightRemove,
     verseActions,
     clearSelectionSignal,
+    navigation,
+    verseFocus,
     scriptureDirection,
   };
 
@@ -709,6 +797,7 @@ function Content() {
     onHighlightRemove,
     verseActions,
     clearSelectionSignal,
+    verseFocus,
     scriptureDirection,
   } = useBibleReaderContext();
   const { version } = useVersion(versionId);
@@ -717,7 +806,18 @@ function Content() {
     return booksData.find((b) => b.id === book);
   }, [booksData, book]);
 
-  const usfmReference = `${book}.${chapter}`;
+  const chapterReference = `${book}.${chapter}`;
+  const activeNavigation =
+    verseFocus?.versionId === versionId &&
+    verseFocus.book === book &&
+    verseFocus.chapter === chapter
+      ? verseFocus
+      : null;
+  const usfmReference =
+    activeNavigation && !activeNavigation.showsFullChapter
+      ? activeNavigation.passageId
+      : chapterReference;
+  const awaitingNavigation = verseFocus !== null && activeNavigation === null;
 
   // Check if the current chapter is available in this version
   const chapterUnavailable = useMemo(() => {
@@ -730,16 +830,19 @@ function Content() {
   // Own the passage fetch here (instead of BibleTextView) to control the loading
   // treatment. Args mirror BibleTextView's internal fetch so the cache key matches.
   const {
-    passage,
-    loading: passageLoading,
-    error: passageError,
+    passage: fetchedPassage,
+    loading: fetchingPassage,
+    error: fetchedPassageError,
   } = usePassage({
     versionId,
     usfm: usfmReference,
     include_headings: true,
     include_notes: true,
-    options: { enabled: !chapterUnavailable },
+    options: { enabled: !chapterUnavailable && !awaitingNavigation },
   });
+  const passage = awaitingNavigation ? null : fetchedPassage;
+  const passageLoading = awaitingNavigation || fetchingPassage;
+  const passageError = awaitingNavigation ? null : fetchedPassageError;
   const resolvedScriptureDirection = useResolvedScriptureDirection(
     passage?.content,
     scriptureDirection,
@@ -750,7 +853,7 @@ function Content() {
 
   // Version-only changes intentionally preserve scroll position.
   const scrollContainerRef = useRef<HTMLElement>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     scrollContainerRef.current?.scrollTo({ top: 0 });
   }, [book, chapter]);
 
@@ -761,6 +864,12 @@ function Content() {
   // dark-launched behind HIGHLIGHTS_LIVE. The reader DOM ref anchors the
   // popover and supplies clean verse text for Copy / Share.
   const readerRef = useRef<HTMLDivElement>(null);
+  const renderedReference = !passageLoading && !passageError && passage ? usfmReference : '';
+  useTransientVerseFocus({
+    request: activeNavigation,
+    renderedReference,
+    containerRef: readerRef,
+  });
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null);
@@ -824,7 +933,7 @@ function Content() {
         shareData: null,
       });
     }
-  }, [book, chapter, versionId]);
+  }, [book, chapter, versionId, activeNavigation?.seq]);
 
   // Distinct colors present in the current selection → drives the X (remove) circles.
   const activeHighlights = useMemo(
@@ -1391,9 +1500,18 @@ export function BibleThemeSettingsContent({
 export type BibleReaderToolbarProps = {
   border?: 'top' | 'bottom';
   onOpenBibleThemeSettings?: (snapshot: BibleThemeSettingsSnapshot) => void;
+  /**
+   * Whether the toolbar renders the built-in search control.
+   * `'control'` (default) | `'none'`. Mirrors `RootProps.verseActions`.
+   */
+  search?: 'control' | 'none';
 };
 
-function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolbarProps) {
+function Toolbar({
+  border = 'top',
+  onOpenBibleThemeSettings,
+  search = 'control',
+}: BibleReaderToolbarProps) {
   const { t } = useTranslation(undefined, { i18n });
   const interfaceDirection = useInterfaceDirection();
   const {
@@ -1489,6 +1607,7 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
   const nextResult = getAdjacentChapter(booksData, book, chapter, 'next');
   const canNavigatePrevious = !booksLoading && prevResult !== null;
   const canNavigateNext = !booksLoading && nextResult !== null;
+  const showSearch = search !== 'none';
 
   return (
     <section
@@ -1503,8 +1622,12 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
         className={cn(
           'yv:grid yv:w-full yv:items-center yv:sm:max-w-lg yv:max-w-[calc(100vw-2rem)] yv:gap-3',
           yvContext?.authEnabled
-            ? 'yv:grid-cols-[auto_1fr_auto_auto]'
-            : 'yv:grid-cols-[1fr_auto_auto]',
+            ? showSearch
+              ? 'yv:grid-cols-[auto_1fr_auto_auto_auto]'
+              : 'yv:grid-cols-[auto_1fr_auto_auto]'
+            : showSearch
+              ? 'yv:grid-cols-[1fr_auto_auto_auto]'
+              : 'yv:grid-cols-[1fr_auto_auto]',
         )}
       >
         {yvContext?.authEnabled && <UserMenu />}
@@ -1615,6 +1738,8 @@ function Toolbar({ border = 'top', onOpenBibleThemeSettings }: BibleReaderToolba
           </BibleVersionPicker.Trigger>
           <BibleVersionPicker.Content />
         </BibleVersionPicker.Root>
+
+        {showSearch ? <BibleReaderSearch /> : null}
 
         {onOpenBibleThemeSettings ? (
           <Button

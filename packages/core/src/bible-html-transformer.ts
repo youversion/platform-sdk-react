@@ -122,6 +122,8 @@ export type TransformedBibleHtml = {
 };
 
 function wrapVerseContent(doc: Document): void {
+  const verseBlockSelector =
+    '.p, p, .d, .q, .q1, .q2, .q3, .q4, .qm, .qm1, .qm2, .qm3, .qm4, .qr, .qc, .m, .mi, .pi, .pi1, .pi2, .pi3, .pi4, .pc, .pr, .pm, .pmo, .pmc, .pmr, .li, .li1, .li2, .li3, .li4';
   function wrapParagraphContent(doc: Document, paragraph: Element, verseNum: string): void {
     const children = Array.from(paragraph.childNodes);
     if (children.length === 0) return;
@@ -162,7 +164,7 @@ function wrapVerseContent(doc: Document): void {
 
       if (currentParagraph.querySelector('.yv-v[v]')) break;
 
-      if (currentParagraph.classList.contains('p') || currentParagraph.tagName === 'P') {
+      if (currentParagraph.matches(verseBlockSelector)) {
         wrapParagraphContent(doc, currentParagraph, verseNum);
       }
 
@@ -197,8 +199,8 @@ function wrapVerseContent(doc: Document): void {
     const nodesToWrap = collectNodesBetweenMarkers(marker, nextMarker);
     if (nodesToWrap.length === 0) return;
 
-    const currentParagraph = marker.closest('.p, p, div.p');
-    const nextParagraph = nextMarker?.closest('.p, p, div.p') || null;
+    const currentParagraph = marker.closest(verseBlockSelector);
+    const nextParagraph = nextMarker?.closest(verseBlockSelector) || null;
     const doc = marker.ownerDocument;
 
     wrapNodesInVerse(marker, verseNum, nodesToWrap);
@@ -295,7 +297,7 @@ function replaceFootnotesWithAnchors(doc: Document, footnotes: Element[]): void 
 }
 
 function addNbspToVerseLabels(doc: Document): void {
-  doc.querySelectorAll('.yv-vlbl').forEach((label) => {
+  doc.querySelectorAll('.yv-vlbl, .va').forEach((label) => {
     const text = label.textContent || '';
     if (!text.endsWith(NON_BREAKING_SPACE)) {
       label.textContent = text + NON_BREAKING_SPACE;
@@ -372,6 +374,9 @@ export function transformBibleHtml(
   // still run verse wrapping and footnote extraction.
   const roots = topLevelElements(doc);
   if (roots.length > 0 && roots.every((el) => el.hasAttribute(TRANSFORMED_ATTR))) {
+    // Older transformed output predates alternate-label spacing. Backfill it
+    // without repeating verse wrapping or footnote extraction.
+    addNbspToVerseLabels(doc);
     return { html: options.serializeHtml(doc), direction: resolveTextDirection(roots) };
   }
 

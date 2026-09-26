@@ -6,12 +6,14 @@ A demo app showcasing `@youversion/platform-react-ui` components.
 
 ## Setup
 
+Run these commands from the repository root:
+
 ```bash
-cp .env.example .env.local
-# Add your YouVersion App Key to .env.local
+cp .env.example .env
+# Add your YouVersion App Key to .env
 # Optional: VITE_YVP_LOCALE and VITE_YVP_DEFAULT_LANGUAGE_ID (e.g. es)
 pnpm install
-pnpm dev
+pnpm dev:web
 ```
 
 ## React SDK Components Used

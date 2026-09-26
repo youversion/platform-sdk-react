@@ -20,10 +20,15 @@ function mockAvatar() {
 }
 
 export const globalHandlers = [
-  // Keep Storybook deterministic and let React's stylesheet resource settle successfully.
-  http.get('*/v1/fonts/:id/stylesheet', () => {
-    return new HttpResponse('', { headers: { 'Content-Type': 'text/css' } });
-  }),
+  // React's hoisted stylesheet promise rejects when a story's mock app key
+  // reaches the real Fonts API. Keep browser tests independent of that service.
+  http.get(
+    '*/v1/fonts/:id/stylesheet',
+    () =>
+      new HttpResponse('', {
+        headers: { 'Content-Type': 'text/css' },
+      }),
+  ),
   http.get('https://notion-avatar.app/*', mockAvatar),
   http.get('https://example.com/avatar/*', mockAvatar),
   // Organization (publisher) lookup for the version picker
@@ -57,8 +62,17 @@ export const globalHandlers = [
   }),
 
   // John passages for verse stories
-  http.get('*/v1/bibles/111/passages/JHN.3.16', () => {
-    return HttpResponse.json(mockPassages['JHN.3.16']);
+  http.get('*/v1/bibles/111/passages/JHN.3.16', ({ request }) => {
+    const passage = mockPassages['JHN.3.16'];
+    return HttpResponse.json(
+      new URL(request.url).searchParams.get('format') === 'text'
+        ? {
+            ...passage,
+            content:
+              'For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.',
+          }
+        : passage,
+    );
   }),
 
   http.get('*/v1/bibles/111/passages/JHN.3.16-17', () => {
@@ -208,6 +222,27 @@ export const globalHandlers = [
     return HttpResponse.json({
       day: 1,
       passage_id: 'ISA.43.19',
+    });
+  }),
+
+  http.get('*/v1/search-queries', ({ request }) => {
+    const url = new URL(request.url);
+    if (url.searchParams.get('trending') === 'true') {
+      return HttpResponse.json({
+        data: [{ text: 'love' }, { text: 'hope' }],
+      });
+    }
+    return HttpResponse.json({
+      data: [{ text: 'love of God' }],
+    });
+  }),
+
+  http.get('*/v1/search-verses', () => {
+    return HttpResponse.json({
+      verses: [{ reference: 'JHN.3.16' }],
+      did_you_mean: [],
+      search_instead_for: null,
+      next_page_token: null,
     });
   }),
 ];

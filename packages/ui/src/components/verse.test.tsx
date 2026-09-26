@@ -15,6 +15,7 @@ import {
   Verse,
   BibleTextView,
   FootnoteContent,
+  getCleanVerseText,
   type BibleTextViewPassageState,
   type FootnoteData,
 } from './verse';
@@ -1827,12 +1828,41 @@ describe('BibleTextView - host highlights (controlled mode)', () => {
   });
 });
 
-describe('FootnoteContent styles', () => {
-  it('injects component styles when rendered standalone', () => {
+describe('getCleanVerseText', () => {
+  it('omits alternate labels from copied verse prose', () => {
+    const container = document.createElement('div');
+    container.innerHTML =
+      '<span class="yv-v" v="2"><span class="va">2a</span><span class="pn"><span class="bd">Paul</span></span> spoke.</span>';
+
+    expect(getCleanVerseText(container, 2)).toBe('Paul spoke.');
+  });
+});
+
+describe('FootnoteContent', () => {
+  it('renders footnote paragraph and character-style markup inside the note scope', () => {
+    const { container } = render(
+      <FootnoteContent
+        verseNum="2"
+        verseHtml="Verse context"
+        notes={[
+          '<span class="ft">First paragraph.</span><span class="fp"><span class="fk">Keyword</span> and <span class="fl">label</span>.</span>',
+        ]}
+      />,
+    );
+
+    const note = container.querySelector('[data-slot="yv-bible-note"]');
+    expect(note).not.toBeNull();
+    expect(note?.querySelector('.fp')?.textContent).toBe('Keyword and label.');
+    expect(note?.querySelector('.fk')).not.toBeNull();
+    expect(note?.querySelector('.fl')).not.toBeNull();
+  });
+
+  it('injects component and reader styles when rendered standalone', () => {
     rtlRender(
       <FootnoteContent verseNum="1" notes={['A note']} verseHtml="Verse text" reference="John 1" />,
     );
 
     expect(document.head.querySelector('style[data-href="yv-sdk-components"]')).not.toBeNull();
+    expect(document.head.querySelector('style[data-href="yv-sdk-bible-reader"]')).not.toBeNull();
   });
 });
