@@ -118,14 +118,19 @@ export const PublicRootJourney: Story = {
     await expect(reflectedControls).toEqual([panel]);
 
     const panelQueries = within(panel);
+    const genesisBook = await panelQueries.findByRole(
+      'button',
+      { name: /genesis/i },
+      { timeout: 10_000 },
+    );
     const search = panelQueries.getByPlaceholderText(/search/i);
     await userEvent.type(search, 'g');
     await waitFor(async () => {
       await expect(search).toHaveValue('g');
-      await expect(panelQueries.getByRole('button', { name: /genesis/i })).toBeVisible();
+      await expect(genesisBook).toBeVisible();
       await expect(panelQueries.queryByRole('button', { name: /exodus/i })).toBeNull();
     });
-    await userEvent.click(panelQueries.getByRole('button', { name: /genesis/i }));
+    await userEvent.click(genesisBook);
     await userEvent.click(await panelQueries.findByRole('button', { name: '11' }));
 
     await waitFor(async () => {
