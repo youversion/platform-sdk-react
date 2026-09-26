@@ -1,8 +1,51 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useState } from 'react';
+import type { BibleBook } from '@youversion/platform-core';
+import { YouVersionContext, type HookOverrides } from '@youversion/platform-react-hooks';
+import { useContext, useState, type ReactNode } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { waitFor, waitForElement, waitForShadowRoot } from '../test/storybook-dom';
 import { BibleChapterPicker } from './bible-chapter-picker';
+
+const FIXTURE_BOOKS: BibleBook[] = [
+  {
+    id: 'GEN',
+    title: 'Genesis',
+    full_title: 'Genesis',
+    abbreviation: 'Gen',
+    canon: 'old_testament',
+    chapters: Array.from({ length: 11 }, (_, index) => ({
+      id: String(index + 1),
+      passage_id: `GEN.${index + 1}`,
+      title: String(index + 1),
+    })),
+  },
+  {
+    id: 'EXO',
+    title: 'Exodus',
+    full_title: 'Exodus',
+    abbreviation: 'Exod',
+    canon: 'old_testament',
+    chapters: [{ id: '1', passage_id: 'EXO.1', title: '1' }],
+  },
+];
+
+const HOOK_OVERRIDES = {
+  useBooks: () => ({
+    books: { data: FIXTURE_BOOKS, next_page_token: null },
+    loading: false,
+    error: null,
+    refetch: () => undefined,
+  }),
+} satisfies HookOverrides;
+
+function FixtureProviders({ children }: { children: ReactNode }): ReactNode {
+  const parentContext = useContext(YouVersionContext);
+  const value = parentContext
+    ? { ...parentContext, hookOverrides: HOOK_OVERRIDES }
+    : { appKey: 'test', hookOverrides: HOOK_OVERRIDES };
+
+  return <YouVersionContext.Provider value={value}>{children}</YouVersionContext.Provider>;
+}
 
 function AutomaticBibleChapterPicker(): React.ReactNode {
   const [book, setBook] = useState('MAT');
@@ -44,12 +87,14 @@ type Story = StoryObj<typeof meta>;
 
 export const PublicRootJourney: Story = {
   render: () => (
-    <div
-      data-testid="clipping-container"
-      style={{ inlineSize: 180, blockSize: 56, overflow: 'hidden', transform: 'translateZ(0)' }}
-    >
-      <AutomaticBibleChapterPicker />
-    </div>
+    <FixtureProviders>
+      <div
+        data-testid="clipping-container"
+        style={{ inlineSize: 180, blockSize: 56, overflow: 'hidden', transform: 'translateZ(0)' }}
+      >
+        <AutomaticBibleChapterPicker />
+      </div>
+    </FixtureProviders>
   ),
   play: async ({ canvasElement }) => {
     const clippingContainer = await waitForElement<HTMLElement>(
@@ -118,11 +163,7 @@ export const PublicRootJourney: Story = {
     await expect(reflectedControls).toEqual([panel]);
 
     const panelQueries = within(panel);
-    const genesisBook = await panelQueries.findByRole(
-      'button',
-      { name: /genesis/i },
-      { timeout: 10_000 },
-    );
+    const genesisBook = panelQueries.getByRole('button', { name: /genesis/i });
     const search = panelQueries.getByPlaceholderText(/search/i);
     await userEvent.type(search, 'g');
     await waitFor(async () => {
