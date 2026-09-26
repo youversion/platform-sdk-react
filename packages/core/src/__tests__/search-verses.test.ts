@@ -2,7 +2,13 @@ import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { ApiClient } from '../client';
 import { SearchClient } from '../search';
-import { isValidStructuralUsfmReference, parseSearchLanguageRange } from '../schemas/search';
+import {
+  MAX_SEARCH_QUERY_GRAPHEMES,
+  SearchTextQuerySchema,
+  clampSearchText,
+  isValidStructuralUsfmReference,
+  parseSearchLanguageRange,
+} from '../schemas/search';
 import { server } from './setup';
 
 const apiHost = process.env.YVP_API_HOST;
@@ -33,7 +39,13 @@ describe('SearchClient.searchVerses', () => {
     expect(isValidStructuralUsfmReference('JHN.0.1')).toBe(false);
     expect(isValidStructuralUsfmReference('JHN.1.0')).toBe(false);
     expect(isValidStructuralUsfmReference('JHN.1.1-0')).toBe(false);
+    expect(isValidStructuralUsfmReference('JHN.1.5-3')).toBe(false);
     expect(isValidStructuralUsfmReference('')).toBe(false);
+  });
+
+  it('accepts chapter-only and inclusive verse ranges', () => {
+    expect(isValidStructuralUsfmReference('JHN.6')).toBe(true);
+    expect(isValidStructuralUsfmReference('JHN.6.9-11')).toBe(true);
   });
 
   it('accepts valid language ranges and normalizes case and underscores', () => {
@@ -47,6 +59,38 @@ describe('SearchClient.searchVerses', () => {
   it('rejects language ranges with a 9-letter primary subtag or 9-character extension', () => {
     expect(() => parseSearchLanguageRange('abcdefghi')).toThrow(/Language range must/);
     expect(() => parseSearchLanguageRange('en-abcdefghi')).toThrow(/Language range must/);
+  });
+
+  it('validates and clamps search text by grapheme clusters', () => {
+    const combiningCluster = 'e\u0301';
+    const combiningBoundary = `${'a'.repeat(MAX_SEARCH_QUERY_GRAPHEMES - 1)}${combiningCluster}`;
+    const surrogateBoundary = `${'a'.repeat(MAX_SEARCH_QUERY_GRAPHEMES - 1)}😀`;
+
+    expect(SearchTextQuerySchema.parse(combiningBoundary)).toBe(combiningBoundary);
+    expect(SearchTextQuerySchema.parse(surrogateBoundary)).toBe(surrogateBoundary);
+    expect(() => SearchTextQuerySchema.parse(`${combiningBoundary}z`)).toThrow();
+    expect(() => SearchTextQuerySchema.parse(`${surrogateBoundary}z`)).toThrow();
+    expect(clampSearchText(`${combiningBoundary}z`)).toBe(combiningBoundary);
+    expect(clampSearchText(`${surrogateBoundary}z`)).toBe(surrogateBoundary);
+  });
+
+  it('imports core without Intl.Segmenter and clamps fallback input without splitting surrogate pairs', async () => {
+    const nativeSegmenter = Intl.Segmenter;
+    vi.resetModules();
+    Object.defineProperty(Intl, 'Segmenter', { configurable: true, value: undefined });
+    try {
+      const core = await import('../index');
+      expect(core.ApiClient).toBeTypeOf('function');
+      const boundary = `${'a'.repeat(99)}😀`;
+      expect(core.clampSearchText(`${boundary}z`)).toBe(boundary);
+      expect(core.clampSearchText('short')).toBe('short');
+      const { SearchTextQuerySchema: fallbackSchema } = await import('../schemas/search');
+      expect(fallbackSchema.parse(boundary)).toBe(boundary);
+      expect(() => fallbackSchema.parse(`${boundary}z`)).toThrow(/Query must/);
+    } finally {
+      Object.defineProperty(Intl, 'Segmenter', { configurable: true, value: nativeSegmenter });
+      vi.resetModules();
+    }
   });
 
   it('maps wire reference to SDK id and metadata fields', async () => {

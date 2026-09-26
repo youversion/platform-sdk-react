@@ -13,6 +13,8 @@ export default defineConfig({
     'src/index.ts',
     'src/components/YouVersionProvider.tsx',
     'src/components/bible-reader.tsx',
+    'src/components/bible-reader-search.tsx',
+    'src/components/bible-reader-navigation.ts',
     'src/components/bible-chapter-picker.tsx',
     'src/components/bible-version-picker.tsx',
     'src/components/YouVersionAuthButton.tsx',

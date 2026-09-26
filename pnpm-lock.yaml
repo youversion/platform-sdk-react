@@ -292,6 +292,9 @@ importers:
       xstate:
         specifier: 5.32.4
         version: 5.32.4
+      zod:
+        specifier: 4.1.12
+        version: 4.1.12
     devDependencies:
       '@internal/tsconfig':
         specifier: workspace:*

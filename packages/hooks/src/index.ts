@@ -14,6 +14,8 @@ export * from './useOrganizationsClient';
 export * from './context';
 export * from './utility';
 export * from './useBibleClient';
+export * from './useSearchClient';
+export * from './useBibleSearch';
 export * from './usePassage';
 export * from './useVOTD';
 export * from './useHighlights';

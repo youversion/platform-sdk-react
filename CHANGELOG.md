@@ -10,6 +10,46 @@ affected.
 Generated from the per-package changelogs by `scripts/build-root-changelog.mjs` — edit those,
 or the changeset, rather than this file.
 
+## 2.15.0
+
+### Minor Changes
+
+- _(@youversion/platform-core, @youversion/platform-react-ui)_ 053b460: Complete RTL support across Bible UI surfaces and pickers. SDK chrome now resolves Interface direction from an explicit provider override or the SDK UI locale, emits real `dir` boundaries and portals, mirrors semantic geometry and directional controls, and isolates mixed-direction API strings. Scripture surfaces independently resolve `scriptureDirection` from an explicit override, transformed YVDOM, or `auto`, including footnotes. RTL highlight swatch overflow fades use visible geometry instead of browser-specific scroll offsets.
+
+- _(all packages)_ 81690b5: Add Bible Reader search: one USFM grammar, an exclusive-lane `useBibleSearch` session, and a Toolbar-mounted `BibleReaderSearch` that navigates with transient verse focus.
+
+  Expose `BibleReaderNavigation` for host requests before reader mount, passage or full-chapter display, and optional in-place focus. Search supports grapheme-safe input, deduplicated results, verse previews, automatic pagination, and accessible dismissal and errors.
+
+  Align search with the reader designs in a toolbar-anchored popover. Show three trending queries and the latest three browser-local recent searches, and preserve query entry and recents when suggestions fail. Load verse previews behind one spinner, keeping earlier results visible during pagination. Result selection moves keyboard focus to the verse; dismissing search with Close or Escape restores the trigger.
+
+  Add an async-compatible `BibleReader.Root.onSearchPress` override for host-owned search. Match toolbar popover motion and native scrollbar themes. Correct verse mapping across poetry lines so focus dims the complete surrounding verses without adding a highlight, and retain focus until user interaction.
+
+  Add Old Testament, New Testament, and Both search filters using the selected Bible's book metadata. Continue through nonmatching result pages before reporting no results. Display sentence-case references above three-line serif previews with inline verse numbers. Back clears the search and filters without closing the popover; show only one X control at a time.
+
+  Give search rows inset hover surfaces without shifting content, align initial search and preview spinners, and reveal loaded previews with a short reduced-motion-aware transition. Reuse existing localized empty-state copy and clear stale failures when changing testament filters.
+
+  Start testament controls collapsed behind an accessible Filters disclosure. Preserve and indicate active filtering while collapsed, and reset to Both and collapsed on Back or clear. Expand and collapse the controls with an interruptible accordion transition, immediate keyboard toggles, and fade-only reduced motion.
+
+  Keep core imports usable without Intl.Segmenter, falling back to Unicode code-point limits for search on those runtimes. Preserve the generic useDebounce delay for null values while suppressing suggestions in submitted searches. Allow Enter to resubmit failed or empty searches without replaying cached pages or duplicating an in-flight request.
+
+  Apply queued reader destinations before fetching passage content, and wait for controlled props to accept pending navigation. Clear activated navigation when the host leaves its destination so returning does not restore stale passage selection or focus. Omit chapter-only search hits while preserving verse ranges and continuation loading.
+
+### Patch Changes
+
+- _(@youversion/platform-core, @youversion/platform-react-ui)_ ad543bf: Align Bible typography, alternate verse labels, and composed footnotes with the Swift phase-two rendering contract.
+
+- _(@youversion/platform-react-hooks)_ 90374fe: Hooks import `YouVersionContext` from its module, not the context barrel, so a `useChapter` import does not evaluate Auth. Hooks run tsup's Rollup tree-shake pass so unused exports drop from narrow graphs. Hooks wipe `dist` on build so stale tsup `.d.cts` files cannot publish.
+
+- _(@youversion/platform-react-ui)_ be82d6d: Make `YouVersionAuthButton` honor explicit and default sign-in modes for authenticated users.
+
+- _(@youversion/platform-react-ui)_ d8f2750: Sync localization from platform-localization (413e2e7): update 26 keys in es.
+
+- _(@youversion/platform-react-ui)_ 1a79aeb: Sync localization from platform-localization (f96d5b4): update 2 keys in en.
+
+- _(@youversion/platform-react-ui)_ b2c82ad: Split the UI JavaScript build so named package-root imports can drop unused UI. Keep core as a runtime dependency so UI and hooks share one copy, and re-export core values from UI by name instead of `export *`.
+
+  The package root remains the only public entry. Provider embeds only the chrome CSS needed for its missing-app-key panel. Components that need the utility or Bible reader sheets inject those styles from separate internal modules. The public stylesheet and CDN publisher both use the complete exported sheet. Consumer-shaped size, runtime-export, and tree-shaking checks guard the split for both ESM and CommonJS builds.
+
 ## 2.14.0
 
 ### Minor Changes
