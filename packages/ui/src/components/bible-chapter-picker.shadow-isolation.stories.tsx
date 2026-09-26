@@ -27,6 +27,18 @@ const FIXTURE_BOOKS: BibleBook[] = [
     canon: 'old_testament',
     chapters: [{ id: '1', passage_id: 'EXO.1', title: '1' }],
   },
+  {
+    id: 'MAT',
+    title: 'Matthew',
+    full_title: 'Matthew',
+    abbreviation: 'Matt',
+    canon: 'new_testament',
+    chapters: Array.from({ length: 5 }, (_, index) => ({
+      id: String(index + 1),
+      passage_id: `MAT.${index + 1}`,
+      title: String(index + 1),
+    })),
+  },
 ];
 
 const HOOK_OVERRIDES = {
@@ -111,6 +123,7 @@ export const PublicRootJourney: Story = {
       'button.consumer-chapter-trigger',
       'chapter picker trigger not rendered',
     );
+    await expect(trigger).toHaveTextContent(/matthew 5/i);
     await expect(trigger).toHaveAttribute('data-consumer-attribute', 'preserved');
     await expect(trigger).toHaveStyle({
       backgroundColor: 'rgb(12, 34, 56)',
