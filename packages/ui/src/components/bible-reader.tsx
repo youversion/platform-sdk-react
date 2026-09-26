@@ -1396,7 +1396,7 @@ export function BibleThemeSettingsContent({
         data-yv-sdk
         data-yv-theme={theme}
         dir={interfaceDirection}
-        className="yv:flex yv:flex-col yv:gap-4 yv:p-4"
+        className="yv:flex yv:min-h-0 yv:flex-col yv:gap-4 yv:overflow-y-auto yv:p-4"
       >
         <div className="yv:flex yv:justify-between yv:items-stretch yv:gap-4">
           <div className="yv:flex yv:flex-1">

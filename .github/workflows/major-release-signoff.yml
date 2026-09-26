@@ -203,9 +203,9 @@ jobs:
 
       - name: Restore release tooling from the base branch
         # The PR supplies changeset *data* only. The detector that reads it, the dependency
-        # set it runs under, and the changesets config all come from `main`, so a branch
-        # cannot rewrite the check that gates it. This runs before pnpm is set up, since
-        # `pnpm/action-setup` reads `packageManager` out of package.json.
+        # graph it runs under, and the changesets config all come from trusted `main`, so a
+        # branch cannot rewrite the check that gates it. This runs before pnpm is set up,
+        # since `pnpm/action-setup` reads `packageManager` out of package.json.
         run: |
           set -euo pipefail
           git fetch --no-tags --force origin main:refs/heads/main
@@ -213,6 +213,14 @@ jobs:
           # under, and the changesets config have to agree, so restoring some from main and
           # taking the rest from the PR gives a detector without its own dependencies.
           if git cat-file -e main:scripts/preview-release.mjs 2>/dev/null; then
+            # Frozen workspace installs validate every importer. Remove PR-only importers,
+            # then restore every manifest selected by main's workspace configuration so its
+            # lockfile and dependency graph remain internally consistent.
+            git ls-files |
+              grep -E '^(packages|examples|tools)/[^/]+/package[.]json$' |
+              while IFS= read -r f; do
+                git cat-file -e "main:$f" 2>/dev/null || rm -f "$f"
+              done
             for f in scripts/preview-release.mjs package.json pnpm-lock.yaml \
                      pnpm-workspace.yaml .changeset/config.json; do
               git cat-file -e "main:$f" 2>/dev/null && git checkout main -- "$f"
@@ -252,6 +260,7 @@ jobs:
       - name: Compute release preview
         id: preview
         env:
+          BASE_SHA: ${{ needs.context.outputs.base_sha }}
           HEAD_SHA: ${{ needs.context.outputs.head_sha }}
         run: |
           set -euo pipefail
@@ -259,10 +268,11 @@ jobs:
           # "Failed to find where HEAD diverged from main" if it is missing. A PR checkout
           # has only origin/main, so create the local branch too.
           git fetch --no-tags --force origin main:refs/heads/main
-          # Merge-base, not the PR's base sha: on a synchronize event the base
-          # branch may have moved, and diffing against its tip would attribute
-          # someone else's changesets to this PR.
-          BASE=$(git merge-base main "$HEAD_SHA")
+          git fetch --no-tags --force origin "$BASE_SHA"
+          # Compare from the common ancestor of the immutable PR endpoints. This excludes
+          # major changesets inherited from a stacked PR's base without attributing later
+          # movement on that base branch to the PR being evaluated.
+          BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA")
           node scripts/preview-release.mjs --base "$BASE" --head "$HEAD_SHA" > preview.json
           cat preview.json
           # `introduced_major`, not `is_major`: a major already pending on main
