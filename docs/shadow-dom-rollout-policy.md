@@ -125,6 +125,8 @@ exported function. Each ticket links to YPE-5356 and this policy.
      only boundaries for their compound exports.
    - Validate custom trigger children, context, storage, search inputs, focus,
      collision handling, and shadow-local top-layer behavior.
+   - Retain document-root `rem` scaling as the accepted sizing input; do not add
+     a picker-specific root-font reset.
 4. **YPE-5950: Scripture presentation**
    - Roll out standalone `BibleTextView`, `VerseOfTheDay`, and `BibleCard`.
    - Validate reader styles, scripture direction, footnotes, highlights,
