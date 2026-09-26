@@ -119,10 +119,11 @@ export const PublicRootJourney: Story = {
 
     const panelQueries = within(panel);
     const search = panelQueries.getByPlaceholderText(/search/i);
-    await userEvent.type(search, 'gen', { delay: 50 });
+    await userEvent.type(search, 'g');
     await waitFor(async () => {
-      await expect(search).toHaveValue('gen');
+      await expect(search).toHaveValue('g');
       await expect(panelQueries.getByRole('button', { name: /genesis/i })).toBeVisible();
+      await expect(panelQueries.queryByRole('button', { name: /exodus/i })).toBeNull();
     });
     await userEvent.click(panelQueries.getByRole('button', { name: /genesis/i }));
     await userEvent.click(await panelQueries.findByRole('button', { name: '11' }));
