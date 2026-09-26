@@ -97,7 +97,7 @@ supported component contract.
 | Open roots are inspectable and mutable by same-page JavaScript | Accepted | Isolation is not a security boundary. |
 | Opening a peer popover dismisses the current peer across component roots | Accepted | Keep the single-active-peer behavior. Supporting concurrent peer popovers would require a demonstrated product journey and separate design. |
 | Nested-dialog and rapid-reopen final focus restoration | Accepted | Preserve the behavior resolved by YPE-5889/PR 414 as regression coverage rather than duplicating the implementation in rollout tickets. |
-| Stylesheet construction or adoption can throw | Blocker | The foundation ticket must prove recovery to the local `<style>` path without losing component rendering. |
+| Stylesheet construction or adoption can throw | Resolved by YPE-5947 | Construction, replacement, and adoption failures recover to the local `<style>` path without losing component rendering; later roots can still use the per-document constructable sheet. |
 | Playwright WebKit is not actual Safari | Follow-up | Repeat SafariDriver validation before the coordinated release candidate and after changes to the host, stylesheet installation, portal controller, or focus controller. |
 | Real screen-reader behavior is unverified | Follow-up | Keep real assistive-technology validation deferred and do not claim VoiceOver, NVDA, or other assistive-technology validation in release notes. |
 
@@ -134,6 +134,12 @@ exported function. Each ticket links to YPE-5356 and this policy.
 6. **YPE-5952: Coordinated release**
    - Land all included groups, complete the package and component gates, update
      consumer documentation, and publish the behavior as one major release.
+
+YPE-5947 adds no public Shadow DOM configuration and does not expand the current
+automatic boundary beyond `YouVersionAuthButton`. Its independently releasable
+runtime effect is a patch-level resilience fix for stylesheet installation; the
+additional automatic component boundaries remain part of the coordinated major
+release.
 
 Excluded components are not hidden work in these groups. `Textarea` needs a
 separately approved form contract, and standalone `VerseActionPopover` needs an
