@@ -119,7 +119,7 @@ export const PublicRootJourney: Story = {
 
     const panelQueries = within(panel);
     const search = panelQueries.getByPlaceholderText(/search/i);
-    await userEvent.type(search, 'gen');
+    await userEvent.type(search, 'gen', { delay: 50 });
     await waitFor(async () => {
       await expect(search).toHaveValue('gen');
       await expect(panelQueries.getByRole('button', { name: /genesis/i })).toBeVisible();
