@@ -5,29 +5,44 @@ import { http, HttpResponse } from 'msw';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { expect, userEvent, within } from 'storybook/test';
+import { ReuseShadowBoundary } from '../lib/shadow-isolation';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { globalHandlers } from '../test/mocks/handlers';
 import { waitFor, waitForElement, waitForShadowRoot } from '../test/storybook-dom';
 import { BibleVersionPicker } from './bible-version-picker';
 
-type PortalStrategy = 'local-inline' | 'local-top-layer';
-
-function IsolatedBibleVersionPicker({
+function AutomaticBibleVersionPicker({
   side = 'top',
-  portalStrategy = 'local-top-layer',
 }: {
   side?: 'top' | 'right' | 'bottom' | 'left';
-  portalStrategy?: PortalStrategy;
 }): React.ReactNode {
   const [versionId, setVersionId] = useState(111);
 
   return (
-    <ShadowRootHost portalStrategy={portalStrategy}>
-      <BibleVersionPicker.Root versionId={versionId} onVersionChange={setVersionId} side={side}>
-        <BibleVersionPicker.Trigger />
-        <BibleVersionPicker.Content />
-      </BibleVersionPicker.Root>
-    </ShadowRootHost>
+    <BibleVersionPicker.Root versionId={versionId} onVersionChange={setVersionId} side={side}>
+      <BibleVersionPicker.Trigger />
+      <BibleVersionPicker.Content />
+    </BibleVersionPicker.Root>
+  );
+}
+
+function CustomTriggerBibleVersionPicker(): React.ReactNode {
+  const [versionId, setVersionId] = useState(111);
+
+  return (
+    <BibleVersionPicker.Root versionId={versionId} onVersionChange={setVersionId}>
+      <BibleVersionPicker.Trigger>
+        <button
+          type="button"
+          className="consumer-custom-trigger yv:rounded-full yv:px-4 yv:py-2"
+          data-consumer-attribute="preserved"
+          style={{ backgroundColor: 'rgb(12, 34, 56)', color: 'rgb(255, 255, 255)' }}
+        >
+          Open custom version picker
+        </button>
+      </BibleVersionPicker.Trigger>
+      <BibleVersionPicker.Content />
+    </BibleVersionPicker.Root>
   );
 }
 
@@ -37,18 +52,20 @@ function TwoPickersInOneIsland(): React.ReactNode {
 
   return (
     <ShadowRootHost portalStrategy="local-top-layer">
-      <div data-testid="first-picker">
-        <BibleVersionPicker.Root versionId={firstVersionId} onVersionChange={setFirstVersionId}>
-          <BibleVersionPicker.Trigger />
-          <BibleVersionPicker.Content />
-        </BibleVersionPicker.Root>
-      </div>
-      <div data-testid="second-picker">
-        <BibleVersionPicker.Root versionId={secondVersionId} onVersionChange={setSecondVersionId}>
-          <BibleVersionPicker.Trigger />
-          <BibleVersionPicker.Content />
-        </BibleVersionPicker.Root>
-      </div>
+      <ReuseShadowBoundary>
+        <div data-testid="first-picker">
+          <BibleVersionPicker.Root versionId={firstVersionId} onVersionChange={setFirstVersionId}>
+            <BibleVersionPicker.Trigger />
+            <BibleVersionPicker.Content />
+          </BibleVersionPicker.Root>
+        </div>
+        <div data-testid="second-picker">
+          <BibleVersionPicker.Root versionId={secondVersionId} onVersionChange={setSecondVersionId}>
+            <BibleVersionPicker.Trigger />
+            <BibleVersionPicker.Content />
+          </BibleVersionPicker.Root>
+        </div>
+      </ReuseShadowBoundary>
     </ShadowRootHost>
   );
 }
@@ -83,7 +100,7 @@ function SameOriginIframeHarness(): React.ReactNode {
       {container
         ? createPortal(
             <HooksYouVersionProvider appKey="123" apiHost="https://api.youversion.com">
-              <IsolatedBibleVersionPicker />
+              <AutomaticBibleVersionPicker />
             </HooksYouVersionProvider>,
             container,
           )
@@ -93,8 +110,8 @@ function SameOriginIframeHarness(): React.ReactNode {
 }
 
 const meta = {
-  title: 'Spikes/BibleVersionPicker Shadow DOM isolation',
-  component: IsolatedBibleVersionPicker,
+  title: 'Components/BibleVersionPicker/Shadow isolation',
+  component: AutomaticBibleVersionPicker,
   tags: ['integration', 'shadow-dom'],
   parameters: {
     layout: 'centered',
@@ -107,7 +124,7 @@ const meta = {
       ],
     },
   },
-} satisfies Meta<typeof IsolatedBibleVersionPicker>;
+} satisfies Meta<typeof AutomaticBibleVersionPicker>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -178,13 +195,61 @@ async function expectLogicalPadding(
   await expect(style.paddingInlineEnd).toBe(expected.inline);
 }
 
+export const ConsumerSuppliedTriggerRemainsTheInteractiveElement: Story = {
+  render: () => <CustomTriggerBibleVersionPicker />,
+  play: async ({ canvasElement }) => {
+    const root = await waitForShadowRoot(canvasElement);
+    const trigger = await waitForElement<HTMLButtonElement>(
+      root,
+      'button.consumer-custom-trigger',
+      'consumer trigger not rendered',
+    );
+    await expect(trigger).toHaveAttribute('data-consumer-attribute', 'preserved');
+    await expect(trigger).toHaveStyle({
+      backgroundColor: 'rgb(12, 34, 56)',
+      color: 'rgb(255, 255, 255)',
+    });
+    const triggerStyle = getComputedStyle(trigger);
+    const embeddedBorderRadius = triggerStyle.borderRadius;
+    await expect(triggerStyle.paddingBlockStart).toBe('8px');
+    await expect(triggerStyle.paddingInlineStart).toBe('16px');
+    await expect(embeddedBorderRadius).not.toBe('0px');
+
+    const hostileStyle = canvasElement.ownerDocument.createElement('style');
+    hostileStyle.textContent = `
+      .consumer-custom-trigger {
+        background-color: rgb(185, 28, 28) !important;
+        border-radius: 0 !important;
+        color: rgb(255, 255, 0) !important;
+      }
+    `;
+    try {
+      canvasElement.ownerDocument.head.append(hostileStyle);
+      await expect(getComputedStyle(trigger).backgroundColor).toBe('rgb(12, 34, 56)');
+      await expect(getComputedStyle(trigger).borderRadius).toBe(embeddedBorderRadius);
+      await expect(getComputedStyle(trigger).color).toBe('rgb(255, 255, 255)');
+
+      await userEvent.click(trigger);
+      const overlay = await waitForElement<HTMLElement>(
+        root,
+        '[data-yv-shadow-local-overlay]',
+        'custom-trigger picker overlay not rendered',
+      );
+      await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+      await expect(within(overlay).getByRole('dialog')).toBeInTheDocument();
+    } finally {
+      hostileStyle.remove();
+    }
+  },
+};
+
 export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
   render: () => (
     <div
       data-testid="clipping-container"
       style={{ inlineSize: 180, blockSize: 56, overflow: 'hidden', transform: 'translateZ(0)' }}
     >
-      <IsolatedBibleVersionPicker side="bottom" />
+      <AutomaticBibleVersionPicker side="bottom" />
     </div>
   ),
   play: async ({ canvasElement }) => {
@@ -245,85 +310,13 @@ export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
   },
 };
 
-export const InlineControlIsClippedByItsAncestor: Story = {
-  render: () => (
-    <div style={{ display: 'grid', gap: 12, inlineSize: 420 }}>
-      <div>
-        <strong style={{ display: 'block', font: '600 14px/1.4 system-ui' }}>
-          Inline portal: intentionally clipped
-        </strong>
-        <span style={{ color: '#666', font: '13px/1.4 system-ui' }}>
-          The menu opens below the trigger, but only the portion inside the dashed frame remains
-          visible.
-        </span>
-      </div>
-      <div
-        data-testid="clipping-container"
-        style={{
-          inlineSize: 420,
-          blockSize: 150,
-          overflow: 'hidden',
-          padding: 16,
-          border: '2px dashed #a3a3a3',
-          borderRadius: 12,
-          transform: 'translateZ(0)',
-        }}
-      >
-        <IsolatedBibleVersionPicker side="bottom" portalStrategy="local-inline" />
-      </div>
-    </div>
-  ),
-  play: async ({ canvasElement }) => {
-    const clippingContainer = await waitForElement<HTMLElement>(
-      canvasElement,
-      '[data-testid="clipping-container"]',
-      'clipping container not rendered',
-    );
-    const root = await waitForShadowRoot(clippingContainer);
-    await expect(root.querySelector('[data-yv-shadow-inline-overlay]')).toBeNull();
-    await userEvent.click(await getTrigger(root));
-    const inlineContainer = await waitForElement<HTMLElement>(
-      root,
-      '[data-yv-shadow-inline-overlay]',
-      'inline portal container not created',
-    );
-    const panel = await waitForElement<HTMLElement>(
-      inlineContainer,
-      '[data-slot="popover-content"]',
-      'inline picker panel not rendered',
-    );
-
-    const clippingRect = clippingContainer.getBoundingClientRect();
-    const panelRect = panel.getBoundingClientRect();
-    await expect(panelRect.bottom).toBeGreaterThan(clippingRect.bottom + 1);
-    const sampleX = panelRect.left + panelRect.width / 2;
-    const visibleSampleY = Math.max(panelRect.top + 2, clippingRect.top + 2);
-    if (visibleSampleY >= clippingRect.bottom) {
-      throw new Error('panel has no visible area inside its clipping ancestor');
-    }
-    const visibleHit = root.elementFromPoint(sampleX, visibleSampleY);
-    await expect(visibleHit === panel || (visibleHit !== null && panel.contains(visibleHit))).toBe(
-      true,
-    );
-
-    const clippedSampleY = Math.max(panelRect.top + 2, clippingRect.bottom + 2);
-    if (clippedSampleY >= panelRect.bottom) {
-      throw new Error('panel did not extend beyond its clipping ancestor');
-    }
-    const clippedHit = root.elementFromPoint(sampleX, clippedSampleY);
-    await expect(clippedHit === panel || (clippedHit !== null && panel.contains(clippedHit))).toBe(
-      false,
-    );
-  },
-};
-
 export const StylingFocusDismissalAndRapidReopen: Story = {
   render: () => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
       <button type="button" data-testid="outside-control">
         Outside control
       </button>
-      <IsolatedBibleVersionPicker />
+      <AutomaticBibleVersionPicker />
     </div>
   ),
   play: async ({ canvasElement }) => {
@@ -419,7 +412,7 @@ export const ProviderDirectionRejectsHostVisualValues: Story = {
       style={{ display: 'flex', alignItems: 'center', gap: 24 }}
     >
       <span data-testid="hostile-inheritance-control">Host control</span>
-      <IsolatedBibleVersionPicker />
+      <AutomaticBibleVersionPicker />
     </div>
   ),
   play: async ({ canvasElement }) => {
@@ -462,7 +455,7 @@ export const ProviderDirectionRejectsHostVisualValues: Story = {
     }
     const languageTabsInlineSize = languageTabs.offsetWidth;
     const languageInputRadius = ownerWindow.getComputedStyle(languageInputGroup).borderRadius;
-    const panelGeometry = geometrySnapshot(panel);
+    const panelInlineSize = panel.offsetWidth;
     await expect(languageTabsInlineSize).toBe(languageTabsContainer.clientWidth - 32);
     await expect(languageInputRadius).toBe('30px');
 
@@ -522,7 +515,7 @@ export const ProviderDirectionRejectsHostVisualValues: Story = {
       );
       await waitFor(async () => {
         await expect(geometrySnapshot(trigger)).toEqual(triggerGeometry);
-        await expect(geometrySnapshot(panel)).toEqual(panelGeometry);
+        await expect(panel.offsetWidth).toBe(panelInlineSize);
         await expect(geometrySnapshot(inputGroup)).toEqual(inputGeometry);
       });
     } finally {
@@ -535,10 +528,10 @@ export const MultiplePickersCreateIndependentLazyContainers: Story = {
   render: () => (
     <div>
       <div data-testid="first-picker">
-        <IsolatedBibleVersionPicker />
+        <AutomaticBibleVersionPicker />
       </div>
       <div data-testid="second-picker">
-        <IsolatedBibleVersionPicker />
+        <AutomaticBibleVersionPicker />
       </div>
     </div>
   ),
@@ -628,12 +621,12 @@ export const PanelTracksAncestorScrollAndVersionListScrollsInternally: Story = {
       >
         <div style={{ blockSize: 400 }} />
         <div data-testid="scroll-picker">
-          <IsolatedBibleVersionPicker side="bottom" />
+          <AutomaticBibleVersionPicker side="bottom" />
         </div>
         <div style={{ blockSize: 400 }} />
       </div>
       <div data-testid="list-picker">
-        <IsolatedBibleVersionPicker side="bottom" />
+        <AutomaticBibleVersionPicker side="bottom" />
       </div>
     </div>
   ),

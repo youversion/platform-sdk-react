@@ -18,15 +18,17 @@ This is a working plan, not approval for package-wide rollout.
 
 ## Current scope
 
-- `YouVersionAuthButton` is the only component automatically isolated by the
-  current prototype.
-- `BibleVersionPicker` validates shadow-local inline and native top-layer
-  floating content through opt-in stories.
+- In the current stable package, `YouVersionAuthButton` is the only component
+  with automatic isolation. On the Shadow DOM integration branch,
+  `BibleChapterPicker.Root` and `BibleVersionPicker.Root` also create automatic
+  boundaries.
+- The picker roots validate shadow-local native top-layer floating content
+  through their public runtime boundaries. The inline strategy remains a
+  negative control for clipping behavior.
 - The shared Dialog and Popover primitives support opt-in shadow-local portals.
 - `VerseActionPopover` uses the shared portal-state infrastructure while
   retaining its specialized direct Radix composition.
-- `BibleVersionPicker` and other public exports do not automatically create
-  Shadow DOM boundaries.
+- Other public exports do not yet automatically create Shadow DOM boundaries.
 - The internal `SignInDialog` is validated only through an opt-in
   `ShadowRootHost` story.
 - Nested and concurrent overlays within and across component shadow roots were
@@ -131,7 +133,7 @@ generated `--tw-*` names, and the local `--spacing` compatibility alias.
 
 | Name or namespace | Classification and ownership |
 | --- | --- |
-| `--yv-*` | SDK-owned properties. The README's documented overrides are supported consumer inputs for light-DOM components under `[data-yv-sdk]`. They are not a public document-level override API for the automatically isolated `YouVersionAuthButton`. |
+| `--yv-*` | SDK-owned properties. The README's documented overrides are supported consumer inputs for light-DOM components under `[data-yv-sdk]`. They are not a public document-level override API for automatically isolated components. |
 | `--tw-*` | Tailwind and `tw-animate-css` implementation state that is declared or initialized in the compiled stylesheet. It is not a supported consumer input. |
 | `--spacing` | SDK-owned local compatibility alias for `--yv-spacing`, used by `tw-animate-css`. The fixed Tailwind spacing scale is inlined into generated utilities. |
 | Authored `--font-*`, `--color-*`, and `--radius-*` theme aliases | Compile-time Tailwind inputs that produce utilities backed by `--yv-*` values. They are not runtime consumer inputs. |

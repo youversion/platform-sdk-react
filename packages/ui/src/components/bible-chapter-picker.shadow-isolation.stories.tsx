@@ -1,0 +1,196 @@
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { BibleBook } from '@youversion/platform-core';
+import { YouVersionContext, type HookOverrides } from '@youversion/platform-react-hooks';
+import { useContext, useState, type ReactNode } from 'react';
+import { expect, userEvent, within } from 'storybook/test';
+import { waitFor, waitForElement, waitForShadowRoot } from '../test/storybook-dom';
+import { BibleChapterPicker } from './bible-chapter-picker';
+
+const FIXTURE_BOOKS: BibleBook[] = [
+  {
+    id: 'GEN',
+    title: 'Genesis',
+    full_title: 'Genesis',
+    abbreviation: 'Gen',
+    canon: 'old_testament',
+    chapters: Array.from({ length: 11 }, (_, index) => ({
+      id: String(index + 1),
+      passage_id: `GEN.${index + 1}`,
+      title: String(index + 1),
+    })),
+  },
+  {
+    id: 'EXO',
+    title: 'Exodus',
+    full_title: 'Exodus',
+    abbreviation: 'Exod',
+    canon: 'old_testament',
+    chapters: [{ id: '1', passage_id: 'EXO.1', title: '1' }],
+  },
+  {
+    id: 'MAT',
+    title: 'Matthew',
+    full_title: 'Matthew',
+    abbreviation: 'Matt',
+    canon: 'new_testament',
+    chapters: Array.from({ length: 5 }, (_, index) => ({
+      id: String(index + 1),
+      passage_id: `MAT.${index + 1}`,
+      title: String(index + 1),
+    })),
+  },
+];
+
+const HOOK_OVERRIDES = {
+  useBooks: () => ({
+    books: { data: FIXTURE_BOOKS, next_page_token: null },
+    loading: false,
+    error: null,
+    refetch: () => undefined,
+  }),
+} satisfies HookOverrides;
+
+function FixtureProviders({ children }: { children: ReactNode }): ReactNode {
+  const parentContext = useContext(YouVersionContext);
+  const value = parentContext
+    ? { ...parentContext, hookOverrides: HOOK_OVERRIDES }
+    : { appKey: 'test', hookOverrides: HOOK_OVERRIDES };
+
+  return <YouVersionContext.Provider value={value}>{children}</YouVersionContext.Provider>;
+}
+
+function AutomaticBibleChapterPicker(): React.ReactNode {
+  const [book, setBook] = useState('MAT');
+  const [chapter, setChapter] = useState('5');
+
+  return (
+    <BibleChapterPicker.Root
+      book={book}
+      onBookChange={setBook}
+      chapter={chapter}
+      onChapterChange={setChapter}
+      versionId={111}
+    >
+      <BibleChapterPicker.Trigger>
+        {({ currentBook, chapterLabel }) => (
+          <button
+            type="button"
+            className="consumer-chapter-trigger yv:rounded-md yv:px-4 yv:py-2"
+            data-consumer-attribute="preserved"
+            style={{ backgroundColor: 'rgb(12, 34, 56)', color: 'rgb(255, 255, 255)' }}
+          >
+            {currentBook?.title} {chapterLabel}
+          </button>
+        )}
+      </BibleChapterPicker.Trigger>
+    </BibleChapterPicker.Root>
+  );
+}
+
+const meta = {
+  title: 'Components/BibleChapterPicker/Shadow isolation',
+  component: AutomaticBibleChapterPicker,
+  tags: ['integration', 'shadow-dom'],
+  parameters: { layout: 'centered' },
+} satisfies Meta<typeof AutomaticBibleChapterPicker>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const PublicRootJourney: Story = {
+  render: () => (
+    <FixtureProviders>
+      <div
+        data-testid="clipping-container"
+        style={{ inlineSize: 180, blockSize: 56, overflow: 'hidden', transform: 'translateZ(0)' }}
+      >
+        <AutomaticBibleChapterPicker />
+      </div>
+    </FixtureProviders>
+  ),
+  play: async ({ canvasElement }) => {
+    const clippingContainer = await waitForElement<HTMLElement>(
+      canvasElement,
+      '[data-testid="clipping-container"]',
+      'clipping container not rendered',
+    );
+    const root = await waitForShadowRoot(clippingContainer);
+    await expect(canvasElement.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(1);
+    await expect(root.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
+
+    const trigger = await waitForElement<HTMLButtonElement>(
+      root,
+      'button.consumer-chapter-trigger',
+      'chapter picker trigger not rendered',
+    );
+    await expect(trigger).toHaveTextContent(/matthew 5/i);
+    await expect(trigger).toHaveAttribute('data-consumer-attribute', 'preserved');
+    await expect(trigger).toHaveStyle({
+      backgroundColor: 'rgb(12, 34, 56)',
+      color: 'rgb(255, 255, 255)',
+    });
+    const triggerStyle = getComputedStyle(trigger);
+    const embeddedBorderRadius = triggerStyle.borderRadius;
+    await expect(triggerStyle.paddingBlockStart).toBe('8px');
+    await expect(triggerStyle.paddingInlineStart).toBe('16px');
+    await expect(embeddedBorderRadius).not.toBe('0px');
+
+    const hostileStyle = canvasElement.ownerDocument.createElement('style');
+    hostileStyle.textContent = `
+      .consumer-chapter-trigger {
+        background-color: rgb(185, 28, 28) !important;
+        border-radius: 0 !important;
+        color: rgb(255, 255, 0) !important;
+      }
+    `;
+    try {
+      canvasElement.ownerDocument.head.append(hostileStyle);
+      await expect(getComputedStyle(trigger).backgroundColor).toBe('rgb(12, 34, 56)');
+      await expect(getComputedStyle(trigger).borderRadius).toBe(embeddedBorderRadius);
+      await expect(getComputedStyle(trigger).color).toBe('rgb(255, 255, 255)');
+    } finally {
+      hostileStyle.remove();
+    }
+
+    await userEvent.click(trigger);
+
+    const topLayer = await waitForElement<HTMLElement>(
+      root,
+      '[data-yv-shadow-local-overlay]',
+      'local top-layer container not created',
+    );
+    const panel = await waitForElement<HTMLElement>(
+      topLayer,
+      '[data-slot="popover-content"]',
+      'chapter picker panel not rendered',
+    );
+    await expect(trigger.getRootNode()).toBe(root);
+    await expect(panel.getRootNode()).toBe(root);
+    await expect(topLayer.matches(':popover-open')).toBe(true);
+    await expect(trigger.getAttribute('aria-controls')).toBe(panel.id);
+    // SAFETY: The reflected-ARIA property is still a draft; verify browser support before use.
+    const reflectedControls = (
+      trigger as HTMLElement & { ariaControlsElements?: readonly Element[] }
+    ).ariaControlsElements;
+    if (!reflectedControls) throw new Error('browser did not expose ariaControlsElements');
+    await expect(reflectedControls).toEqual([panel]);
+
+    const panelQueries = within(panel);
+    const genesisBook = panelQueries.getByRole('button', { name: /genesis/i });
+    const search = panelQueries.getByPlaceholderText(/search/i);
+    await userEvent.type(search, 'g');
+    await waitFor(async () => {
+      await expect(search).toHaveValue('g');
+      await expect(genesisBook).toBeVisible();
+      await expect(panelQueries.queryByRole('button', { name: /exodus/i })).toBeNull();
+    });
+    await userEvent.click(genesisBook);
+    await userEvent.click(await panelQueries.findByRole('button', { name: '11' }));
+
+    await waitFor(async () => {
+      await expect(trigger).toHaveTextContent(/genesis 11/i);
+      await expect(topLayer.querySelector('[data-slot="popover-content"]')).toBeNull();
+      await expect(root.activeElement).toBe(trigger);
+    });
+  },
+};

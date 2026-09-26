@@ -10,6 +10,7 @@ import type { BibleBook, BibleVersion } from '@youversion/platform-core';
 import type { HookOverrides } from '@youversion/platform-react-hooks';
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import { InterfaceDirectionProvider } from '@/lib/direction';
+import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
 import {
   BIBLE_READER_SPACING,
   BibleReader,
@@ -79,7 +80,11 @@ function defaultOverrides(): HookOverrides {
 }
 
 function renderWithOverrides(ui: ReactElement) {
-  return render(<HookOverrideProvider overrides={defaultOverrides()}>{ui}</HookOverrideProvider>);
+  return render(
+    <HookOverrideProvider overrides={defaultOverrides()}>
+      <ReuseShadowBoundary>{ui}</ReuseShadowBoundary>
+    </HookOverrideProvider>,
+  );
 }
 
 function overridesRecordingVersionLanguage() {
