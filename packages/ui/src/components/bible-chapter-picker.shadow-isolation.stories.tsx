@@ -16,7 +16,18 @@ function AutomaticBibleChapterPicker(): React.ReactNode {
       onChapterChange={setChapter}
       versionId={111}
     >
-      <BibleChapterPicker.Trigger />
+      <BibleChapterPicker.Trigger>
+        {({ currentBook, chapterLabel }) => (
+          <button
+            type="button"
+            className="consumer-chapter-trigger yv:rounded-md yv:px-4 yv:py-2"
+            data-consumer-attribute="preserved"
+            style={{ backgroundColor: 'rgb(12, 34, 56)', color: 'rgb(255, 255, 255)' }}
+          >
+            {currentBook?.title} {chapterLabel}
+          </button>
+        )}
+      </BibleChapterPicker.Trigger>
     </BibleChapterPicker.Root>
   );
 }
@@ -50,11 +61,39 @@ export const PublicRootJourney: Story = {
     await expect(canvasElement.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(1);
     await expect(root.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
 
-    const trigger = await waitForElement<HTMLElement>(
+    const trigger = await waitForElement<HTMLButtonElement>(
       root,
-      '[data-slot="popover-trigger"]',
+      'button.consumer-chapter-trigger',
       'chapter picker trigger not rendered',
     );
+    await expect(trigger).toHaveAttribute('data-consumer-attribute', 'preserved');
+    await expect(trigger).toHaveStyle({
+      backgroundColor: 'rgb(12, 34, 56)',
+      color: 'rgb(255, 255, 255)',
+    });
+    const triggerStyle = getComputedStyle(trigger);
+    const embeddedBorderRadius = triggerStyle.borderRadius;
+    await expect(triggerStyle.paddingBlockStart).toBe('8px');
+    await expect(triggerStyle.paddingInlineStart).toBe('16px');
+    await expect(embeddedBorderRadius).not.toBe('0px');
+
+    const hostileStyle = canvasElement.ownerDocument.createElement('style');
+    hostileStyle.textContent = `
+      .consumer-chapter-trigger {
+        background-color: rgb(185, 28, 28) !important;
+        border-radius: 0 !important;
+        color: rgb(255, 255, 0) !important;
+      }
+    `;
+    try {
+      canvasElement.ownerDocument.head.append(hostileStyle);
+      await expect(getComputedStyle(trigger).backgroundColor).toBe('rgb(12, 34, 56)');
+      await expect(getComputedStyle(trigger).borderRadius).toBe(embeddedBorderRadius);
+      await expect(getComputedStyle(trigger).color).toBe('rgb(255, 255, 255)');
+    } finally {
+      hostileStyle.remove();
+    }
+
     await userEvent.click(trigger);
 
     const topLayer = await waitForElement<HTMLElement>(

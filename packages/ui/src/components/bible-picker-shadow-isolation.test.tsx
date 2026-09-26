@@ -9,11 +9,12 @@ import { renderToString } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import { installResizeObserverStub } from '@/test/dom-stubs';
-import { BibleChapterPicker } from './bible-chapter-picker';
+import { BibleChapterPicker, type BibleChapterPickerPressData } from './bible-chapter-picker';
 import {
   BibleLanguagePickerContent,
   BibleVersionPicker,
   BibleVersionPickerLanguageTrigger,
+  type BibleVersionPickerPressData,
 } from './bible-version-picker';
 
 installResizeObserverStub();
@@ -53,33 +54,36 @@ const overrides: HookOverrides = {
   useOrganizations: () => ({ organizations: new Map() }),
 };
 
-function chapterPicker(): ReactElement {
-  return (
-    <BibleChapterPicker.Root
-      book="GEN"
-      chapter="1"
-      versionId={111}
-      onChapterPickerPress={() => undefined}
-    >
+function chapterPicker() {
+  const onPress = vi.fn<(data: BibleChapterPickerPressData) => void>();
+  const element: ReactElement = (
+    <BibleChapterPicker.Root book="GEN" chapter="1" versionId={111} onChapterPickerPress={onPress}>
       <BibleChapterPicker.Trigger>
-        <button type="button">Chapter</button>
+        <button type="button" data-testid="picker-trigger">
+          Chapter
+        </button>
       </BibleChapterPicker.Trigger>
       <BibleChapterPicker.Content />
     </BibleChapterPicker.Root>
   );
+  return { element, expectedPress: { book: 'GEN', chapter: '1', versionId: 111 }, onPress };
 }
 
-function versionPicker(): ReactElement {
-  return (
-    <BibleVersionPicker.Root versionId={111} onVersionPickerPress={() => undefined}>
+function versionPicker() {
+  const onPress = vi.fn<(data: BibleVersionPickerPressData) => void>();
+  const element: ReactElement = (
+    <BibleVersionPicker.Root versionId={111} onVersionPickerPress={onPress}>
       <BibleVersionPicker.Trigger>
-        <button type="button">Version</button>
+        <button type="button" data-testid="picker-trigger">
+          Version
+        </button>
       </BibleVersionPicker.Trigger>
       <BibleVersionPicker.Content open />
       <BibleVersionPickerLanguageTrigger />
       <BibleLanguagePickerContent open />
     </BibleVersionPicker.Root>
   );
+  return { element, expectedPress: { languageId: 'en', versionId: 111 }, onPress };
 }
 
 describe('Bible picker public shadow boundaries', () => {
@@ -87,7 +91,10 @@ describe('Bible picker public shadow boundaries', () => {
     ['BibleChapterPicker.Root', chapterPicker],
     ['BibleVersionPicker.Root', versionPicker],
   ])('%s owns one empty SSR host and reuses it during hydration', async (_, picker) => {
-    const element = <HookOverrideProvider overrides={overrides}>{picker()}</HookOverrideProvider>;
+    const fixture = picker();
+    const element = (
+      <HookOverrideProvider overrides={overrides}>{fixture.element}</HookOverrideProvider>
+    );
     const serverMarkup = renderToString(element);
 
     expect(serverMarkup).toBe('<div data-yv-shadow-host="true"></div>');
@@ -117,7 +124,13 @@ describe('Bible picker public shadow boundaries', () => {
       expect(host).toBe(serverHost);
       expect(host.childNodes).toHaveLength(0);
       expect(host.shadowRoot?.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
-      expect(host.shadowRoot?.querySelector('button')).not.toBeNull();
+      const trigger = host.shadowRoot?.querySelector<HTMLButtonElement>(
+        '[data-testid="picker-trigger"]',
+      );
+      expect(trigger).not.toBeNull();
+      await act(async () => trigger?.click());
+      expect(fixture.onPress).toHaveBeenCalledOnce();
+      expect(fixture.onPress).toHaveBeenCalledWith(fixture.expectedPress);
       expect(recoverableErrors).toEqual([]);
       expect(consoleError).not.toHaveBeenCalled();
     } finally {
