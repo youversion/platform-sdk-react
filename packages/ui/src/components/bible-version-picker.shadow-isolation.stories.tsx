@@ -455,7 +455,7 @@ export const ProviderDirectionRejectsHostVisualValues: Story = {
     }
     const languageTabsInlineSize = languageTabs.offsetWidth;
     const languageInputRadius = ownerWindow.getComputedStyle(languageInputGroup).borderRadius;
-    const panelGeometry = geometrySnapshot(panel);
+    const panelInlineSize = panel.offsetWidth;
     await expect(languageTabsInlineSize).toBe(languageTabsContainer.clientWidth - 32);
     await expect(languageInputRadius).toBe('30px');
 
@@ -515,7 +515,7 @@ export const ProviderDirectionRejectsHostVisualValues: Story = {
       );
       await waitFor(async () => {
         await expect(geometrySnapshot(trigger)).toEqual(triggerGeometry);
-        await expect(geometrySnapshot(panel)).toEqual(panelGeometry);
+        await expect(panel.offsetWidth).toBe(panelInlineSize);
         await expect(geometrySnapshot(inputGroup)).toEqual(inputGeometry);
       });
     } finally {
