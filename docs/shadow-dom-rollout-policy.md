@@ -50,6 +50,7 @@ component rollout targets.
 | `BibleVersionPicker.Root`, `.Trigger`, `.Content` | Included as one compound component | `Root` only | Promote the validated opt-in host to the public root and audit custom trigger styling, storage, focus, and native top-layer behavior. |
 | `BibleLanguagePickerContent`, `BibleVersionPickerLanguageTrigger` | Included transitively | No independent boundary | Both require `BibleVersionPicker.Root` context and stay inside that root. Direct use outside the root is already unsupported. |
 | `BibleReader.Root`, `.Content`, `.Toolbar` | Included as one compound component | `Root` only | Keep reader content, toolbar, pickers, settings, verse actions, and dialogs in one boundary. Audit consumer children, scrolling, selection, overlays, focus, refs, and first paint. |
+| `BibleReaderSearch` | Included transitively | No independent boundary | It requires `BibleReader.Root` context and stays inside that root whether rendered by the toolbar or directly by a consumer. Preserve its shadow-local popover, controlled and host-owned modes, navigation, dismissal, and focus behavior. |
 | `BibleThemeSettingsContent` | Included | Its standalone mount, or the owning reader boundary | Preserve its Expo DOM callback contract and avoid a nested boundary when rendered by `BibleReader`. |
 | `BibleTextView` | Included | Its standalone mount, or the owning card/reader boundary | Preserve scripture rendering, footnote portals, selection callbacks, and reader stylesheet behavior without nesting roots inside composed SDK components. |
 | `FootnoteContent` | Included | Its standalone mount, or the owning scripture boundary | Treat it as a leaf when used alone and reuse the enclosing `BibleTextView` boundary otherwise. |
@@ -133,9 +134,11 @@ exported function. Each ticket links to YPE-5356 and this policy.
      sharing, loading/error states, picker composition, sizing, and first paint.
 5. **YPE-5951: Bible reader**
    - Roll out `BibleReader.Root` as the boundary for reader content, toolbar,
-     pickers, settings, verse actions, permission dialogs, and sign-in dialogs.
-   - Validate selection, scrolling, native-host callback modes, nested overlay
-     order, focus restoration, and user-visible performance in intended layouts.
+     `BibleReaderSearch`, pickers, settings, verse actions, permission dialogs,
+     and sign-in dialogs.
+   - Validate selection, search navigation and dismissal, scrolling, native-host
+     callback modes, nested overlay order, focus restoration, and user-visible
+     performance in intended layouts.
 6. **YPE-5952: Coordinated release**
    - Land all included groups, complete the package and component gates, update
      consumer documentation, and publish the behavior as one major release.
