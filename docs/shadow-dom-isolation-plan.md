@@ -23,8 +23,9 @@ This is a working plan, not approval for package-wide rollout.
   `BibleChapterPicker.Root` and `BibleVersionPicker.Root` also create automatic
   boundaries.
 - The picker roots validate shadow-local native top-layer floating content
-  through their public runtime boundaries. The inline strategy remains a
-  negative control for clipping behavior.
+  through their public runtime boundaries. A historical inline negative
+  control demonstrated clipping beyond a constrained ancestor before that
+  story was removed after strategy selection.
 - The shared Dialog and Popover primitives support opt-in shadow-local portals.
 - `VerseActionPopover` uses the shared portal-state infrastructure while
   retaining its specialized direct Radix composition.
@@ -63,8 +64,8 @@ functions; assistive-technology checks remain open.
 | Host CSS isolation | Hostile-CSS demos and focused browser coverage exercise element selectors, direction inheritance, vertical writing and typography resets, hostile custom properties, universal `!important` rules, host attacks, and generated pseudo-content. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | Repeat against each component selected for rollout. |
 | SSR and hydration | Focused React coverage verifies reuse of the exact empty server host, matching hydration without recoverable errors or duplicate content, and a null forwarded ref before the passive-effect mount. | Validated for the client-only prototype | Decide per rollout component whether a possibly empty first paint, layout shift, and no-JavaScript absence are acceptable. |
 | Component behavior | Auth button interaction works through the React portal; Strict Mode does not attach the root twice. | Validated for the prototype | Audit component-specific refs, events, and consumer integrations during rollout. |
-| Owner-document handling | Focused coverage mounts into a same-origin iframe and verifies document-compatible stylesheet construction. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | Verify stylesheet failure recovery. |
-| Inline floating content | The picker negative control preserves tree-scope relationships but demonstrates clipping beyond a constrained ancestor. | Validated as a negative control | None; clipping is why inline placement is not the selected escaping strategy. |
+| Owner-document handling | Focused coverage mounts into a same-origin iframe and verifies document-compatible stylesheet construction. YPE-5947 also covers construction, replacement, and adoption failure recovery. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | None. |
+| Inline floating content | A historical picker negative control preserved tree-scope relationships but demonstrated clipping beyond a constrained ancestor. | Validated historically; the story was removed after strategy selection. | None; clipping is why inline placement is not the selected escaping strategy. |
 | Native top-layer floating content | Picker stories verify clipping escape, hit testing, collision handling, hostile-CSS isolation, and resolved `aria-controls` relationships. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | Verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
 | Portal lifecycle | Unit and browser coverage exercise lazy creation, exit-animation retention, cleanup, immediate reopen behavior, and the direct-Radix `VerseActionPopover` consumer. | Validated for shared primitives and the known bypass | Repeat the consumer audit when adding another direct overlay primitive. |
 | Dialog relationships | Browser coverage resolves title and description relationships inside the component tree. | Validated in Chromium, Firefox, Playwright WebKit, and an isolated local Safari 26.6.2 run | Verify announcements with real assistive technology. |
@@ -184,8 +185,8 @@ separately in YPE-5749.
   size; review that accepted sizing input for each rollout component.
 - Repeat the documented event, ref, nested-root, and shadow-aware automation
   checks for every public component selected for rollout.
-- Verify stylesheet construction and adoption failure recovery beyond the
-  current feature fallback.
+- Preserve YPE-5947's stylesheet construction, replacement, and adoption
+  failure-recovery coverage.
 - Preserve YPE-5437's realistic-usage fixture as the shared-host regression
   check. Its one-machine mount comparison is diagnostic, so selected rollout
   components still need user-visible performance review in their intended
@@ -209,11 +210,11 @@ separately in YPE-5749.
   same-page JavaScript from inspecting or mutating the root.
 - The focused Shadow DOM browser suite runs in Chromium, Firefox, and Playwright
   WebKit. Playwright WebKit is not a substitute for testing actual Safari. All
-  22 current stories returned explicit success events in local Safari 26.6.2
-  when each ran in a fresh SafariDriver session. A single long-lived session
-  returned success for 20/22 and left the sign-in and verse-action play
-  functions pending. The cause of that session-dependent stall is unresolved;
-  repeat actual-Safari validation in isolated sessions.
+  22-story pre-picker-rollout baseline returned explicit success events in
+  local Safari 26.6.2 when each story ran in a fresh SafariDriver session. A
+  single long-lived session returned success for 20/22 and left the sign-in and
+  verse-action play functions pending. The cause of that session-dependent
+  stall is unresolved; repeat actual-Safari validation in isolated sessions.
 - Browser DOM relationship reflection is not a substitute for VoiceOver, NVDA,
   or other real assistive-technology verification.
 
