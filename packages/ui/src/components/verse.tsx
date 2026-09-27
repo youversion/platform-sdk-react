@@ -36,6 +36,7 @@ import { highlightFillColorMix, highlightMixP } from '@/lib/highlight-colors';
 import { useScriptureHighlightPaint } from '@/lib/use-scripture-highlight-paint';
 import { useInterfaceDirection } from '@/lib/direction';
 import { useHydrationSafeScriptureDirection } from '@/lib/scripture-direction';
+import { ReuseShadowBoundary, ShadowIsolationBoundary } from '@/lib/shadow-isolation';
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
 type ResolvedScriptureDirection = TextDirection | 'auto';
@@ -66,7 +67,7 @@ export type FootnoteContentProps = FootnoteData & {
   hasVerseContext?: boolean;
 };
 
-export function FootnoteContent({
+function FootnoteContentImplementation({
   verseNum,
   notes,
   verseHtml,
@@ -117,6 +118,14 @@ export function FootnoteContent({
         </div>
       </div>
     </>
+  );
+}
+
+export function FootnoteContent(props: FootnoteContentProps): React.ReactElement {
+  return (
+    <ShadowIsolationBoundary>
+      <FootnoteContentImplementation {...props} />
+    </ShadowIsolationBoundary>
   );
 }
 
@@ -259,16 +268,18 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
         theme={theme}
       >
         <div className="yv:max-h-[33svh] yv:overflow-y-auto">
-          <FootnoteContent
-            verseNum={verseNum}
-            notes={notes}
-            verseHtml={verseHtml}
-            hasVerseContext={hasVerseContext}
-            reference={reference}
-            fontSize={fontSize}
-            theme={theme}
-            scriptureDirection={direction}
-          />
+          <ReuseShadowBoundary>
+            <FootnoteContent
+              verseNum={verseNum}
+              notes={notes}
+              verseHtml={verseHtml}
+              hasVerseContext={hasVerseContext}
+              reference={reference}
+              fontSize={fontSize}
+              theme={theme}
+              scriptureDirection={direction}
+            />
+          </ReuseShadowBoundary>
         </div>
       </PopoverContent>
     </Popover>

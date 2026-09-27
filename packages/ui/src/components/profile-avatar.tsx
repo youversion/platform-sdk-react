@@ -1,6 +1,7 @@
 import * as React from 'react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { withShadowIsolation } from '@/lib/shadow-isolation';
 import { cn } from '@/lib/utils';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
 
@@ -23,18 +24,17 @@ function getInitials(name?: string | null): string {
  * Profile avatar: shows the user's image when available, otherwise their
  * initials ("CA" or "C") inside a bordered circle (YPE-3648).
  */
-export function ProfileAvatar({
-  name,
-  src,
-  className,
-  ...props
-}: ProfileAvatarProps): React.ReactNode {
+const ProfileAvatarImplementation = React.forwardRef<
+  React.ElementRef<typeof Avatar>,
+  ProfileAvatarProps
+>(({ name, src, className, ...props }, ref) => {
   const initial = getInitials(name);
   const [imageLoaded, setImageLoaded] = React.useState(false);
   return (
     <>
       <YvComponentStyles />
       <Avatar
+        ref={ref}
         aria-label={name?.trim() || undefined}
         className={cn(src && imageLoaded && 'yv:bg-(--yv-gray-10) yv:p-[3px]', className)}
         {...props}
@@ -57,4 +57,7 @@ export function ProfileAvatar({
       </Avatar>
     </>
   );
-}
+});
+ProfileAvatarImplementation.displayName = 'ProfileAvatarImplementation';
+
+export const ProfileAvatar = withShadowIsolation(ProfileAvatarImplementation, 'ProfileAvatar');

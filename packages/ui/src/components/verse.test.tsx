@@ -31,6 +31,7 @@ import {
   stubUseHighlights,
 } from '@/test/highlights-test-utils';
 import { InterfaceDirectionProvider } from '@/lib/direction';
+import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
 
 // BibleTextView always calls usePassage internally (even when passageState is
 // provided). Stub the result so these tests do not need a live BibleClient.
@@ -1509,6 +1510,7 @@ describe('Verse.Html - onFootnotePress callback', () => {
     await waitFor(() => {
       const popover = document.body.querySelector('[role="dialog"]');
       expect(popover).not.toBeNull();
+      expect(popover?.querySelector('[data-yv-shadow-host]')).toBeNull();
     });
   });
 });
@@ -1841,13 +1843,19 @@ describe('getCleanVerseText', () => {
 describe('FootnoteContent', () => {
   it('renders footnote paragraph and character-style markup inside the note scope', () => {
     const { container } = render(
-      <FootnoteContent
-        verseNum="2"
-        verseHtml="Verse context"
-        notes={[
-          '<span class="ft">First paragraph.</span><span class="fp"><span class="fk">Keyword</span> and <span class="fl">label</span>.</span>',
-        ]}
-      />,
+      <ReuseShadowBoundary>
+        <FootnoteContent
+          verseNum="2"
+          verseHtml="Verse context"
+          notes={[
+            '<span class="ft">First paragraph.</span><span class="fp"><span class="fk">Keyword</span> and <span class="fl">label</span>.</span>',
+          ]}
+          reference="John 1"
+          scriptureDirection="rtl"
+          theme="dark"
+          fontSize={18}
+        />
+      </ReuseShadowBoundary>,
     );
 
     const note = container.querySelector('[data-slot="yv-bible-note"]');
@@ -1855,11 +1863,24 @@ describe('FootnoteContent', () => {
     expect(note?.querySelector('.fp')?.textContent).toBe('Keyword and label.');
     expect(note?.querySelector('.fk')).not.toBeNull();
     expect(note?.querySelector('.fl')).not.toBeNull();
+    expect(container.querySelector('[data-yv-sdk]')).toHaveAttribute('dir', 'rtl');
+    expect(container.querySelector('[data-yv-sdk]')).toHaveAttribute('data-yv-theme', 'dark');
+    expect(container.querySelector('bdi')).toHaveTextContent('John 1:2');
+    expect(container.querySelector<HTMLElement>('.yv\\:font-serif')).toHaveStyle({
+      fontSize: '18px',
+    });
   });
 
   it('injects component and reader styles when rendered standalone', () => {
     rtlRender(
-      <FootnoteContent verseNum="1" notes={['A note']} verseHtml="Verse text" reference="John 1" />,
+      <ReuseShadowBoundary>
+        <FootnoteContent
+          verseNum="1"
+          notes={['A note']}
+          verseHtml="Verse text"
+          reference="John 1"
+        />
+      </ReuseShadowBoundary>,
     );
 
     expect(document.head.querySelector('style[data-href="yv-sdk-components"]')).not.toBeNull();

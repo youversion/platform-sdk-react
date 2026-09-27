@@ -1,8 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { within, expect, waitFor } from 'storybook/test';
+import { expect, waitFor } from 'storybook/test';
+import { waitForShadowRoot } from '../test/storybook-dom';
 import { ProfileAvatar } from './profile-avatar';
 
-const TEST_IMAGE = 'https://notion-avatar.app/image/avatar-1.jpg';
+const TEST_IMAGE =
+  'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="32" height="32"%3E%3Crect width="32" height="32" fill="%23121212"/%3E%3C/svg%3E';
+const ERROR_IMAGE = 'data:image/png;base64,AAAA';
 
 const meta = {
   title: 'Components/ProfileAvatar',
@@ -39,25 +42,32 @@ export const WithImage: Story = {
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await waitFor(async () => {
-      const img = canvasElement.querySelector('img');
-      await expect(img).toBeInTheDocument();
-      await expect(img).toHaveAttribute('src', TEST_IMAGE);
+    const root = await waitForShadowRoot(canvasElement);
+    const img = await waitFor(() => {
+      const candidate = root.querySelector('img');
+      if (!candidate) throw new Error('avatar image not rendered');
+      return candidate;
     });
-    await expect(canvas.queryByText('CA')).not.toBeInTheDocument();
+    await expect(img).toHaveAttribute('src', TEST_IMAGE);
+    await waitFor(async () => {
+      await expect(root.querySelector('[data-slot="avatar-fallback"]')).toBeNull();
+    });
   },
 };
 
 export const InitialsFallback: Story = {
   args: {
     name: 'Cam Anderson',
+    src: ERROR_IMAGE,
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.getByText('CA')).toBeInTheDocument();
-    await expect(canvasElement.querySelector('[data-slot="avatar"]')).toHaveAttribute(
+    const root = await waitForShadowRoot(canvasElement);
+    await waitFor(async () => {
+      await expect(root.querySelector('[data-slot="avatar-fallback"]')).toHaveTextContent('CA');
+      await expect(root.querySelector('img')).toBeNull();
+    });
+    await expect(root.querySelector('[data-slot="avatar"]')).toHaveAttribute(
       'aria-label',
       'Cam Anderson',
     );
@@ -70,8 +80,8 @@ export const SingleName: Story = {
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.getByText('C')).toBeInTheDocument();
+    const root = await waitForShadowRoot(canvasElement);
+    await expect(root.querySelector('[data-slot="avatar-fallback"]')).toHaveTextContent('C');
   },
 };
 
@@ -81,8 +91,7 @@ export const EmptyName: Story = {
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
-    await expect(canvasElement.querySelector('[data-slot="avatar-fallback"]')).toHaveTextContent(
-      '',
-    );
+    const root = await waitForShadowRoot(canvasElement);
+    await expect(root.querySelector('[data-slot="avatar-fallback"]')).toHaveTextContent('');
   },
 };

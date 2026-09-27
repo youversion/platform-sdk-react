@@ -14,6 +14,7 @@ import { Separator } from './ui/separator';
 import { Textarea } from './ui/textarea';
 import { VerseOfTheDay } from './verse-of-the-day';
 import { waitFor } from '../test/storybook-dom';
+import { ReuseShadowBoundary } from '../lib/shadow-isolation';
 
 const EXPECTED_COMPONENT_IDS = [
   'reader',
@@ -117,7 +118,11 @@ interface FixtureItemProps {
 }
 
 function FixtureItem({ children, id }: FixtureItemProps): ReactNode {
-  const content = <div data-realistic-component={id}>{children}</div>;
+  const content = (
+    <ReuseShadowBoundary>
+      <div data-realistic-component={id}>{children}</div>
+    </ReuseShadowBoundary>
+  );
 
   return <ShadowRootHost>{content}</ShadowRootHost>;
 }
