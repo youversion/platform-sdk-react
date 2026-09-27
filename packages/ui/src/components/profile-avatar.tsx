@@ -60,4 +60,6 @@ const ProfileAvatarImplementation = React.forwardRef<
 });
 ProfileAvatarImplementation.displayName = 'ProfileAvatarImplementation';
 
-export const ProfileAvatar = withShadowIsolation(ProfileAvatarImplementation, 'ProfileAvatar');
+export const ProfileAvatar = withShadowIsolation(ProfileAvatarImplementation, 'ProfileAvatar', {
+  hostElement: 'span',
+});
