@@ -60,13 +60,19 @@ describe('ProfileAvatar', () => {
     expect(container.querySelector('[data-slot="avatar-fallback"]')).toHaveTextContent('');
   });
 
-  it('forwards DOM props, clicks, and its Radix ref to the production avatar element', async () => {
+  it('forwards class names, DOM props, clicks, and its Radix ref', async () => {
     const ref = createRef<HTMLSpanElement>();
     const onClick = vi.fn();
     const user = userEvent.setup();
     render(
       <ReuseShadowBoundary>
-        <ProfileAvatar name="Cam Anderson" ref={ref} onClick={onClick} data-consumer="avatar" />
+        <ProfileAvatar
+          name="Cam Anderson"
+          ref={ref}
+          className="consumer-avatar"
+          onClick={onClick}
+          data-consumer="avatar"
+        />
       </ReuseShadowBoundary>,
     );
 
@@ -74,6 +80,7 @@ describe('ProfileAvatar', () => {
     await user.click(avatar);
 
     expect(avatar).toHaveAttribute('data-consumer', 'avatar');
+    expect(avatar).toHaveClass('consumer-avatar');
     expect(onClick).toHaveBeenCalledOnce();
     expect(ref.current).toBe(avatar);
   });

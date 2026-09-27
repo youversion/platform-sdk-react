@@ -6,13 +6,19 @@ import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
 import { Separator } from './separator';
 
 describe('Separator', () => {
-  it('preserves decorative defaults and nondecorative horizontal and vertical semantics', async () => {
+  it('preserves semantics while forwarding class names, DOM props, clicks, and its Radix ref', async () => {
     const ref = createRef<HTMLDivElement>();
     const onClick = vi.fn();
     const user = userEvent.setup();
     const { rerender } = render(
       <ReuseShadowBoundary>
-        <Separator data-testid="separator" data-consumer="separator" ref={ref} onClick={onClick} />
+        <Separator
+          data-testid="separator"
+          data-consumer="separator"
+          ref={ref}
+          className="consumer-separator"
+          onClick={onClick}
+        />
       </ReuseShadowBoundary>,
     );
 
@@ -20,6 +26,7 @@ describe('Separator', () => {
     expect(decorative).toHaveAttribute('role', 'none');
     expect(decorative).toHaveAttribute('data-orientation', 'horizontal');
     expect(decorative).toHaveAttribute('data-consumer', 'separator');
+    expect(decorative).toHaveClass('consumer-separator');
     expect(ref.current).toBe(decorative);
     await user.click(decorative);
     expect(onClick).toHaveBeenCalledOnce();

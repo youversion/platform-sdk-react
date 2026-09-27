@@ -47,7 +47,7 @@ component rollout targets.
 | `BibleVersionPicker.Root`, `.Trigger`, `.Content` | Included as one compound component | `Root` only | Promote the validated opt-in host to the public root and audit custom trigger styling, storage, focus, and native top-layer behavior. |
 | `BibleLanguagePickerContent`, `BibleVersionPickerLanguageTrigger` | Included transitively | No independent boundary | Both require `BibleVersionPicker.Root` context and stay inside that root. Direct use outside the root is already unsupported. |
 | `BibleReader.Root`, `.Content`, `.Toolbar` | Included as one compound component | `Root` only | Keep reader content, toolbar, pickers, settings, verse actions, and dialogs in one boundary. Audit consumer children, scrolling, selection, overlays, focus, refs, and first paint. |
-| `BibleThemeSettingsContent` | Included | Its standalone mount, or the owning reader boundary | Preserve its Expo DOM callback contract and avoid a nested boundary when rendered by `BibleReader`. |
+| `BibleThemeSettingsContent` | Included through YPE-5994 | Its standalone mount, or the owning reader boundary | Preserve its Expo DOM callback contract, constrained Popover scrolling, and reuse of the owning `BibleReader` boundary. |
 | `BibleTextView` | Included | Its standalone mount, or the owning card/reader boundary | Preserve scripture rendering, footnote portals, selection callbacks, and reader stylesheet behavior without nesting roots inside composed SDK components. |
 | `FootnoteContent` | Included | Its standalone mount, or the owning scripture boundary | Treat it as a leaf when used alone and reuse the enclosing `BibleTextView` boundary otherwise. |
 | `VerseOfTheDay` | Included | The card | Audit loading/error states, Web Share and clipboard callbacks, scripture direction, and first-paint geometry. Its internal `BibleTextView` reuses the card boundary. |
@@ -113,25 +113,28 @@ exported function. Each ticket links to YPE-5356 and this policy.
    - Preserve the per-document stylesheet cache, owner-document behavior,
      Strict Mode lifecycle, and the existing open-root contract.
 2. **YPE-5948: Leaf and standalone content components**
-   - Roll out `ProfileAvatar`, `Separator`, `FootnoteContent`, and standalone
-     `BibleThemeSettingsContent`.
+   - Roll out `ProfileAvatar`, `Separator`, and `FootnoteContent`.
    - Validate compact layout, public props/refs/events, first paint, and
      suppression of nested hosts in owning components.
-3. **YPE-5949: Compound pickers**
+3. **YPE-5994: Standalone theme settings layout**
+   - Roll out standalone `BibleThemeSettingsContent` with the smallest internal
+     layout strategy that preserves constrained Popover scrolling.
+   - Preserve Expo DOM callbacks and reuse the owning `BibleReader` boundary.
+4. **YPE-5949: Compound pickers**
    - Roll out `BibleChapterPicker.Root` and `BibleVersionPicker.Root` as the
      only boundaries for their compound exports.
    - Validate custom trigger children, context, storage, search inputs, focus,
      collision handling, and shadow-local top-layer behavior.
-4. **YPE-5950: Scripture presentation**
+5. **YPE-5950: Scripture presentation**
    - Roll out standalone `BibleTextView`, `VerseOfTheDay`, and `BibleCard`.
    - Validate reader styles, scripture direction, footnotes, highlights,
      sharing, loading/error states, picker composition, sizing, and first paint.
-5. **YPE-5951: Bible reader**
+6. **YPE-5951: Bible reader**
    - Roll out `BibleReader.Root` as the boundary for reader content, toolbar,
      pickers, settings, verse actions, permission dialogs, and sign-in dialogs.
    - Validate selection, scrolling, native-host callback modes, nested overlay
      order, focus restoration, and user-visible performance in intended layouts.
-6. **YPE-5952: Coordinated release**
+7. **YPE-5952: Coordinated release**
    - Land all included groups, complete the package and component gates, update
      consumer documentation, and publish the behavior as one major release.
 
@@ -149,7 +152,8 @@ boundary.
 YPE-5947 blocks the component groups. YPE-5949 also blocks the scripture and
 reader groups; YPE-5948 and YPE-5950 block the reader. Completed YPE-5889 and
 YPE-5946 provide reusable focus-restoration and cross-browser evidence. The
-YPE-5951 reader group blocks the coordinated release.
+YPE-5951 reader group and YPE-5994 standalone settings work block the
+coordinated release.
 
 ## Validation gates
 

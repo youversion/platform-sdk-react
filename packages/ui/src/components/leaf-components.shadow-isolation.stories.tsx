@@ -24,15 +24,12 @@ function LeafIsolationFixture(): React.ReactNode {
     <>
       <style>{HOSTILE_CSS}</style>
       <main data-leaf-fixture style={{ display: 'grid', gap: 24, inlineSize: 360 }}>
-        <div
-          data-testid="avatar-row"
-          style={{ alignItems: 'center', display: 'flex', gap: 8, inlineSize: 180 }}
-        >
+        <div style={{ alignItems: 'center', display: 'flex', gap: 8, inlineSize: 180 }}>
           <span data-testid="row-start">Start</span>
           <ProfileAvatar name="Cam Anderson" />
           <span data-testid="row-end">End</span>
         </div>
-        <div style={{ inlineSize: 180 }}>
+        <div style={{ display: 'grid', inlineSize: 180 }}>
           <Separator data-testid="horizontal-separator" decorative={false} />
         </div>
         <div style={{ alignItems: 'stretch', blockSize: 48, display: 'flex' }}>

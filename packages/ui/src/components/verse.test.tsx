@@ -1841,7 +1841,7 @@ describe('getCleanVerseText', () => {
 });
 
 describe('FootnoteContent', () => {
-  it('renders footnote paragraph and character-style markup inside the note scope', () => {
+  it('preserves markup, reference, direction, theme, and font sizing', () => {
     const { container } = render(
       <ReuseShadowBoundary>
         <FootnoteContent
@@ -1871,7 +1871,7 @@ describe('FootnoteContent', () => {
     });
   });
 
-  it('injects component and reader styles when rendered standalone', () => {
+  it('injects component and reader styles when reusing an owner boundary', () => {
     rtlRender(
       <ReuseShadowBoundary>
         <FootnoteContent
