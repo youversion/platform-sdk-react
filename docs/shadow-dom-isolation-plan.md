@@ -21,9 +21,9 @@ This is a working plan, not approval for package-wide rollout.
 - In the current stable package, `YouVersionAuthButton` is the only component
   with automatic isolation. On the Shadow DOM integration branch,
   `BibleChapterPicker.Root`, `BibleVersionPicker.Root`, `ProfileAvatar`,
-  `Separator`, and `FootnoteContent` also create automatic boundaries. This
-  work must not publish independently of the coordinated rollout. Standalone
-  `BibleThemeSettingsContent` moved to YPE-5994.
+  `Separator`, and `FootnoteContent` also create automatic boundaries. These
+  boundaries remain subject to the rollout policy's coordinated release gate.
+  Standalone `BibleThemeSettingsContent` moved to YPE-5994.
 - The picker roots validate shadow-local native top-layer floating content
   through their public runtime boundaries. A historical inline negative
   control demonstrated clipping beyond a constrained ancestor before that
@@ -31,8 +31,7 @@ This is a working plan, not approval for package-wide rollout.
 - The shared Dialog and Popover primitives support opt-in shadow-local portals.
 - `VerseActionPopover` uses the shared portal-state infrastructure while
   retaining its specialized direct Radix composition.
-- Other public exports do not automatically create
-  Shadow DOM boundaries outside their assigned implementation groups.
+- No other public exports currently create automatic Shadow DOM boundaries.
 - The internal `SignInDialog` is validated only through an opt-in
   `ShadowRootHost` story.
 - Nested and concurrent overlays within and across component shadow roots were
@@ -84,10 +83,10 @@ functions; assistive-technology checks remain open.
 ## YPE-5948 leaf evidence
 
 `ProfileAvatar`, `Separator`, and `FootnoteContent` now use the shared automatic
-boundary. The reader user menu and verse footnote composition explicitly reuse
-their SDK-owned enclosing boundary; no synthetic Separator owner was
-introduced. The realistic-usage fixture retains exactly 12 manually owned hosts
-and one shared stylesheet object by marking its contents for boundary reuse.
+boundary. In the reader user menu and verse footnote composition, they remain
+in their owning component tree and reuse its boundary when present. The
+realistic-usage fixture retains exactly 12 manually owned hosts and one shared
+stylesheet object by marking its contents for boundary reuse.
 
 The focused component matrix verifies exact empty-host SSR and one open client
 root containing each production element. Component behavior coverage preserves
@@ -106,15 +105,11 @@ interaction.
 
 The intended-layout review moved standalone `BibleThemeSettingsContent` to
 YPE-5994. Its automatic host prevented the settings body from participating as
-the constrained Popover grid's shrinkable, scrollable item. YPE-5994 owns the
-approved sizing strategy and blocks YPE-5952; it does not block the reduced
-YPE-5948 scope. The settings component and its reader composition remain in
-their baseline light-DOM behavior here.
+the constrained Popover grid's shrinkable, scrollable item. The settings
+component and its reader composition remain in their baseline light-DOM
+behavior here.
 
-YPE-5948 does not claim zero layout shift, a timing budget, no-JavaScript
-content, actual assistive-technology validation, or a stable release. README,
-changelog, and release-note updates remain assigned to YPE-5952's coordinated
-major release.
+## Safari spacing evidence
 
 Actual Safari 26.6.2 exposed a visual gap the initial focused assertions missed:
 the picker header and version rows lost their logical padding inside the shadow

@@ -10,8 +10,9 @@ implementation of the prototype recorded in
 [ADR 0007](adr/0007-prototype-shadow-dom-style-isolation.md):
 `YouVersionAuthButton`, `BibleChapterPicker.Root`, `BibleVersionPicker.Root`,
 `ProfileAvatar`, `Separator`, and `FootnoteContent` create automatic shadow
-boundaries. Compound members and composed leaf components reuse their owning
-root rather than creating independent boundaries.
+boundaries. Compound members and composed leaf components remain in their
+owning component tree and reuse its boundary when present rather than creating
+independent boundaries.
 
 The rollout is coordinated at release time, not implemented in one change.
 Focused component or component-group tickets may land independently on the

@@ -4,10 +4,9 @@
 
 This contract records cross-browser evidence for consumer-facing behavior at
 the SDK's Shadow DOM boundary. YPE-5356 incorporates it into the
-[production rollout policy](shadow-dom-rollout-policy.md). On the Shadow DOM
-integration branch, `YouVersionAuthButton`, `BibleChapterPicker.Root`, and
-`BibleVersionPicker.Root` create automatic boundaries; the coordinated stable
-release is still pending.
+[production rollout policy](shadow-dom-rollout-policy.md), which maintains the
+current stable-package and integration-branch boundary inventory and coordinated
+release status.
 
 The executable evidence lives in
 `consumer-compatibility.shadow-isolation.stories.tsx`. The existing
