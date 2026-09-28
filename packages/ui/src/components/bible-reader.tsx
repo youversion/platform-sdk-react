@@ -1382,7 +1382,7 @@ function UserMenu() {
 
 export function BibleThemeSettingsContent(props: BibleThemeSettingsContentProps): ReactElement {
   return (
-    <ShadowIsolationBoundary theme={props.theme} constrainBlockSize>
+    <ShadowIsolationBoundary theme={props.theme} shrinkableBlockHost>
       <BibleThemeSettingsBody {...props} />
     </ShadowIsolationBoundary>
   );

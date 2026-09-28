@@ -265,7 +265,7 @@ describe('BibleThemeSettingsContent public boundary', () => {
     }
   });
 
-  it('preserves the standalone settings workflow across its public props', async () => {
+  it('preserves standalone callbacks, limits, selected font, theme, direction, and controls', async () => {
     const user = userEvent.setup();
     const onFontIncreased = vi.fn();
     const onFontDecreased = vi.fn();
@@ -276,16 +276,20 @@ describe('BibleThemeSettingsContent public boundary', () => {
       direction,
       fontSize = 12,
       fontFamily = UNTITLED_SERIF_FONT,
+      theme = 'light',
+      providerTheme = 'dark',
     }: {
       direction: 'ltr' | 'rtl';
       fontSize?: number;
       fontFamily?: FontFamily;
+      theme?: 'light' | 'dark';
+      providerTheme?: 'light' | 'dark';
     }) {
       return (
-        <YouVersionContext.Provider value={{ appKey: 'test', theme: 'dark' }}>
+        <YouVersionContext.Provider value={{ appKey: 'test', theme: providerTheme }}>
           <InterfaceDirectionProvider direction={direction}>
             <BibleThemeSettingsContent
-              theme="light"
+              theme={theme}
               fontSize={fontSize}
               fontFamily={fontFamily}
               lineSpacing={BIBLE_READER_SPACING.DEFAULT}
@@ -335,8 +339,18 @@ describe('BibleThemeSettingsContent public boundary', () => {
     await user.click(lineSpacing);
     expect(onChangeLineSpacing).toHaveBeenCalledTimes(1);
 
-    view.rerender(<StandaloneSettings direction="ltr" fontSize={20} fontFamily={INTER_FONT} />);
+    view.rerender(
+      <StandaloneSettings
+        direction="ltr"
+        fontSize={20}
+        fontFamily={INTER_FONT}
+        theme="dark"
+        providerTheme="light"
+      />,
+    );
     expect(body).toHaveAttribute('dir', 'ltr');
+    expect(wrapper).toHaveAttribute('data-yv-theme', 'dark');
+    expect(body).toHaveAttribute('data-yv-theme', 'dark');
     expect(inter.className).toContain('yv:bg-primary');
     expect(serif.className).not.toContain('yv:bg-primary');
     expect(increase).toBeDisabled();
@@ -346,6 +360,42 @@ describe('BibleThemeSettingsContent public boundary', () => {
     await user.click(decrease);
     expect(onFontDecreased).toHaveBeenCalledTimes(1);
   });
+});
+
+it('reuses a future reader boundary without nesting a settings host', async () => {
+  localStorage.clear();
+  const user = userEvent.setup();
+  const reader = (
+    <HookOverrideProvider overrides={defaultOverrides()}>
+      <BibleReader.Root defaultVersionId={3034} defaultBook="JHN" defaultChapter="1">
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </HookOverrideProvider>
+  );
+  const outerView = render(
+    <ShadowRootHost portalStrategy="local-inline">
+      <ReuseShadowBoundary>{reader}</ReuseShadowBoundary>
+    </ShadowRootHost>,
+  );
+  const outerHost = await waitFor(() => {
+    const candidate = outerView.container.querySelector<HTMLElement>('[data-yv-shadow-host]');
+    if (!candidate?.shadowRoot?.querySelector('button[aria-label="Settings"]')) {
+      throw new Error('reader not mounted in the simulated boundary');
+    }
+    return candidate;
+  });
+  const outerRoot = outerHost.shadowRoot!;
+  const outerScope = outerRoot.querySelector<HTMLElement>('[data-yv-shadow-content-wrapper]')!;
+
+  await user.click(within(outerScope).getByRole('button', { name: 'Settings' }));
+  const settingsControl = await waitFor(() => {
+    const candidate = outerRoot.querySelector<HTMLElement>('[data-testid="line-spacing"]');
+    if (!candidate) throw new Error('reader settings not rendered in the outer root');
+    return candidate;
+  });
+  expect(outerView.container.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(1);
+  expect(outerRoot.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
+  expect(settingsControl.getRootNode()).toBe(outerRoot);
 });
 
 describe('BibleReader theme settings', () => {
@@ -383,41 +433,6 @@ describe('BibleReader theme settings', () => {
         UNTITLED_SERIF_FONT,
       );
     });
-  });
-
-  it('reuses a future reader boundary without nesting a settings host', async () => {
-    const user = userEvent.setup();
-    const reader = (
-      <HookOverrideProvider overrides={defaultOverrides()}>
-        <BibleReader.Root defaultVersionId={3034} defaultBook="JHN" defaultChapter="1">
-          <BibleReader.Toolbar />
-        </BibleReader.Root>
-      </HookOverrideProvider>
-    );
-    const outerView = render(
-      <ShadowRootHost portalStrategy="local-inline">
-        <ReuseShadowBoundary>{reader}</ReuseShadowBoundary>
-      </ShadowRootHost>,
-    );
-    const outerHost = await waitFor(() => {
-      const candidate = outerView.container.querySelector<HTMLElement>('[data-yv-shadow-host]');
-      if (!candidate?.shadowRoot?.querySelector('button[aria-label="Settings"]')) {
-        throw new Error('reader not mounted in the simulated boundary');
-      }
-      return candidate;
-    });
-    const outerRoot = outerHost.shadowRoot!;
-    const outerScope = outerRoot.querySelector<HTMLElement>('[data-yv-shadow-content-wrapper]')!;
-
-    await user.click(within(outerScope).getByRole('button', { name: 'Settings' }));
-    const nestedSettings = await waitFor(() => {
-      const candidate = outerRoot.querySelector<HTMLElement>('[data-testid="line-spacing"]');
-      if (!candidate) throw new Error('reader settings not rendered in the outer root');
-      return candidate;
-    });
-    expect(outerView.container.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(1);
-    expect(outerRoot.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
-    expect(nestedSettings.getRootNode()).toBe(outerRoot);
   });
 
   it('migrates the legacy Source Serif preference to Untitled Serif on hydrate', async () => {

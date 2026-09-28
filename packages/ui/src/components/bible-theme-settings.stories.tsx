@@ -90,6 +90,8 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
       const boundaryRect = boundary.getBoundingClientRect();
       void expect(panelRect.top).toBeGreaterThanOrEqual(boundaryRect.top);
       void expect(panelRect.bottom).toBeLessThanOrEqual(boundaryRect.bottom);
+      void expect(panelRect.left).toBeGreaterThanOrEqual(boundaryRect.left);
+      void expect(panelRect.right).toBeLessThanOrEqual(boundaryRect.right);
       void expect(settingsBody.scrollHeight).toBeGreaterThan(settingsBody.clientHeight);
       void expect(getComputedStyle(settingsBody).overflowY).toBe('auto');
     });

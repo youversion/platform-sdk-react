@@ -24,7 +24,7 @@ interface ShadowIsolationBoundaryProps {
   /** @internal Component-resolved theme when it intentionally overrides the provider. */
   theme?: 'light' | 'dark';
   /** @internal Lets this component remain shrinkable in a constrained block-size track. */
-  constrainBlockSize?: boolean;
+  shrinkableBlockHost?: boolean;
 }
 
 /** @internal Applies automatic isolation while honoring SDK-owned boundary reuse. */
@@ -33,7 +33,7 @@ export function ShadowIsolationBoundary({
   hostElement,
   portalStrategy,
   theme,
-  constrainBlockSize,
+  shrinkableBlockHost,
 }: ShadowIsolationBoundaryProps): ReactNode {
   const reuseBoundary = useContext(ShadowBoundaryReuseContext);
   const providerTheme = useTheme();
@@ -51,7 +51,7 @@ export function ShadowIsolationBoundary({
       hostElement={hostElement}
       portalStrategy={portalStrategy}
       theme={theme ?? providerTheme}
-      constrainBlockSize={constrainBlockSize}
+      shrinkableBlockHost={shrinkableBlockHost}
     >
       {children}
     </ShadowRootHost>
