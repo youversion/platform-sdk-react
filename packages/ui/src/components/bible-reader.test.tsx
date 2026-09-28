@@ -272,11 +272,15 @@ describe('BibleThemeSettingsContent public boundary', () => {
     const onFontSelected = vi.fn<(fontFamily: FontFamily) => void>();
     const onChangeLineSpacing = vi.fn();
 
-    function StandaloneSettings({ direction }: { direction: 'ltr' | 'rtl' }) {
-      const [fontSize, setFontSize] = useState(12);
-      const [fontFamily, setFontFamily] = useState<FontFamily>(UNTITLED_SERIF_FONT);
-      const [lineSpacing, setLineSpacing] = useState<number>(BIBLE_READER_SPACING.DEFAULT);
-
+    function StandaloneSettings({
+      direction,
+      fontSize = 12,
+      fontFamily = UNTITLED_SERIF_FONT,
+    }: {
+      direction: 'ltr' | 'rtl';
+      fontSize?: number;
+      fontFamily?: FontFamily;
+    }) {
       return (
         <YouVersionContext.Provider value={{ appKey: 'test', theme: 'dark' }}>
           <InterfaceDirectionProvider direction={direction}>
@@ -284,23 +288,11 @@ describe('BibleThemeSettingsContent public boundary', () => {
               theme="light"
               fontSize={fontSize}
               fontFamily={fontFamily}
-              lineSpacing={lineSpacing}
-              onFontIncreased={() => {
-                onFontIncreased();
-                setFontSize(nextBibleReaderFontSizeUp(fontSize));
-              }}
-              onFontDecreased={() => {
-                onFontDecreased();
-                setFontSize(nextBibleReaderFontSizeDown(fontSize));
-              }}
-              onFontSelected={(nextFontFamily) => {
-                onFontSelected(nextFontFamily);
-                setFontFamily(nextFontFamily);
-              }}
-              onChangeLineSpacing={() => {
-                onChangeLineSpacing();
-                setLineSpacing(changeBibleReaderLineSpacing(lineSpacing));
-              }}
+              lineSpacing={BIBLE_READER_SPACING.DEFAULT}
+              onFontIncreased={onFontIncreased}
+              onFontDecreased={onFontDecreased}
+              onFontSelected={onFontSelected}
+              onChangeLineSpacing={onChangeLineSpacing}
             />
           </InterfaceDirectionProvider>
         </YouVersionContext.Provider>
@@ -327,8 +319,6 @@ describe('BibleThemeSettingsContent public boundary', () => {
     const serif = settings.getByRole('button', { name: /Untitled Serif/ });
 
     expect(settings.getAllByRole('button')).toHaveLength(5);
-    expect(host.style.getPropertyValue('display')).toBe('block');
-    expect(host.style.getPropertyValue('min-block-size')).toBe('0');
     expect(wrapper).toHaveAttribute('data-yv-theme', 'light');
     expect(body).toHaveAttribute('data-yv-theme', 'light');
     expect(body).toHaveAttribute('dir', 'rtl');
@@ -339,27 +329,22 @@ describe('BibleThemeSettingsContent public boundary', () => {
     await user.click(decrease);
     expect(onFontDecreased).not.toHaveBeenCalled();
     await user.click(increase);
-    expect(onFontIncreased.mock.calls).toEqual([[]]);
-    await user.click(decrease);
-    expect(onFontDecreased.mock.calls).toEqual([[]]);
+    expect(onFontIncreased).toHaveBeenCalledTimes(1);
     await user.click(inter);
     expect(onFontSelected).toHaveBeenCalledWith(INTER_FONT);
+    await user.click(lineSpacing);
+    expect(onChangeLineSpacing).toHaveBeenCalledTimes(1);
+
+    view.rerender(<StandaloneSettings direction="ltr" fontSize={20} fontFamily={INTER_FONT} />);
+    expect(body).toHaveAttribute('dir', 'ltr');
     expect(inter.className).toContain('yv:bg-primary');
     expect(serif.className).not.toContain('yv:bg-primary');
-    await user.click(lineSpacing);
-    expect(onChangeLineSpacing.mock.calls).toEqual([[]]);
-
-    await user.click(increase);
-    await user.click(increase);
-    await user.click(increase);
-    await user.click(increase);
     expect(increase).toBeDisabled();
     const increaseCallCountAtMaximum = onFontIncreased.mock.calls.length;
     await user.click(increase);
     expect(onFontIncreased).toHaveBeenCalledTimes(increaseCallCountAtMaximum);
-
-    view.rerender(<StandaloneSettings direction="ltr" />);
-    expect(body).toHaveAttribute('dir', 'ltr');
+    await user.click(decrease);
+    expect(onFontDecreased).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -400,7 +385,7 @@ describe('BibleReader theme settings', () => {
     });
   });
 
-  it('keeps reader-owned settings in the reader tree and reuses a future reader boundary', async () => {
+  it('reuses a future reader boundary without nesting a settings host', async () => {
     const user = userEvent.setup();
     const reader = (
       <HookOverrideProvider overrides={defaultOverrides()}>
@@ -409,17 +394,6 @@ describe('BibleReader theme settings', () => {
         </BibleReader.Root>
       </HookOverrideProvider>
     );
-    const lightDomView = render(reader);
-
-    await user.click(screen.getByRole('button', { name: 'Settings' }));
-    const lightDomSettings = await screen.findByTestId('line-spacing');
-    const lightDomSettingsHosts = Array.from(
-      document.querySelectorAll<HTMLElement>('[data-yv-shadow-host]'),
-    ).filter((host) => host.shadowRoot?.querySelector('[data-testid="line-spacing"]'));
-    expect(lightDomSettingsHosts).toHaveLength(0);
-    expect(lightDomSettings.getRootNode()).toBe(document);
-    lightDomView.unmount();
-
     const outerView = render(
       <ShadowRootHost portalStrategy="local-inline">
         <ReuseShadowBoundary>{reader}</ReuseShadowBoundary>

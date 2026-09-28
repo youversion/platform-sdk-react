@@ -1380,28 +1380,10 @@ function UserMenu() {
   );
 }
 
-export function BibleThemeSettingsContent({
-  theme,
-  fontSize,
-  fontFamily,
-  lineSpacing,
-  onFontSelected,
-  onFontIncreased,
-  onFontDecreased,
-  onChangeLineSpacing,
-}: BibleThemeSettingsContentProps): ReactElement {
+export function BibleThemeSettingsContent(props: BibleThemeSettingsContentProps): ReactElement {
   return (
-    <ShadowIsolationBoundary theme={theme} constrainBlockSize>
-      <BibleThemeSettingsBody
-        theme={theme}
-        fontSize={fontSize}
-        fontFamily={fontFamily}
-        lineSpacing={lineSpacing}
-        onFontSelected={onFontSelected}
-        onFontIncreased={onFontIncreased}
-        onFontDecreased={onFontDecreased}
-        onChangeLineSpacing={onChangeLineSpacing}
-      />
+    <ShadowIsolationBoundary theme={props.theme} constrainBlockSize>
+      <BibleThemeSettingsBody {...props} />
     </ShadowIsolationBoundary>
   );
 }
