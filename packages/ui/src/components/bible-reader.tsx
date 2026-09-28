@@ -49,7 +49,7 @@ import { InfoIcon } from './icons/info';
 import { LoaderIcon } from './icons/loader';
 import { PersonIcon } from './icons/person';
 import { ProfileAvatar } from './profile-avatar';
-import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
+import { ReuseShadowBoundary, ShadowIsolationBoundary } from '@/lib/shadow-isolation';
 import { Button } from './ui/button';
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from './ui/popover';
 import { VerseActionPopover } from './verse-action-popover';
@@ -1390,6 +1390,32 @@ export function BibleThemeSettingsContent({
   onFontDecreased,
   onChangeLineSpacing,
 }: BibleThemeSettingsContentProps): ReactElement {
+  return (
+    <ShadowIsolationBoundary theme={theme} constrainBlockSize>
+      <BibleThemeSettingsBody
+        theme={theme}
+        fontSize={fontSize}
+        fontFamily={fontFamily}
+        lineSpacing={lineSpacing}
+        onFontSelected={onFontSelected}
+        onFontIncreased={onFontIncreased}
+        onFontDecreased={onFontDecreased}
+        onChangeLineSpacing={onChangeLineSpacing}
+      />
+    </ShadowIsolationBoundary>
+  );
+}
+
+function BibleThemeSettingsBody({
+  theme,
+  fontSize,
+  fontFamily,
+  lineSpacing,
+  onFontSelected,
+  onFontIncreased,
+  onFontDecreased,
+  onChangeLineSpacing,
+}: BibleThemeSettingsContentProps): ReactElement {
   const { t } = useTranslation(undefined, { i18n });
   const interfaceDirection = useInterfaceDirection();
   return (
@@ -1399,7 +1425,7 @@ export function BibleThemeSettingsContent({
         data-yv-sdk
         data-yv-theme={theme}
         dir={interfaceDirection}
-        className="yv:flex yv:min-h-0 yv:flex-col yv:gap-4 yv:overflow-y-auto yv:p-4"
+        className="yv:flex yv:h-full yv:min-h-0 yv:flex-col yv:gap-4 yv:overflow-y-auto yv:p-4"
       >
         <div className="yv:flex yv:justify-between yv:items-stretch yv:gap-4">
           <div className="yv:flex yv:flex-1">
@@ -1762,16 +1788,18 @@ function Toolbar({
             </PopoverTrigger>
 
             <PopoverContent sideOffset={16} heading={t('readerSettingsHeading')} theme={background}>
-              <BibleThemeSettingsContent
-                theme={background}
-                fontSize={currentFontSize}
-                fontFamily={currentFontFamily}
-                lineSpacing={currentLineSpacing}
-                onFontDecreased={handleFontDecreased}
-                onFontIncreased={handleFontIncreased}
-                onFontSelected={handleFontSelected}
-                onChangeLineSpacing={handleLineSpacingChange}
-              />
+              <ReuseShadowBoundary>
+                <BibleThemeSettingsContent
+                  theme={background}
+                  fontSize={currentFontSize}
+                  fontFamily={currentFontFamily}
+                  lineSpacing={currentLineSpacing}
+                  onFontDecreased={handleFontDecreased}
+                  onFontIncreased={handleFontIncreased}
+                  onFontSelected={handleFontSelected}
+                  onChangeLineSpacing={handleLineSpacingChange}
+                />
+              </ReuseShadowBoundary>
             </PopoverContent>
           </Popover>
         )}

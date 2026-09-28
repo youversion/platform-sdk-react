@@ -155,12 +155,13 @@ function adoptSdkStyleSheet(root: ShadowRoot): boolean {
   }
 }
 
-function resetHost(host: HTMLElement): void {
+function resetHost(host: HTMLElement, constrainBlockSize: boolean): void {
   // The host page can select this light-DOM element, including with !important.
   // Inline author-important declarations establish the smallest stable box.
   host.style.setProperty('all', 'initial', 'important');
-  host.style.setProperty('display', 'contents', 'important');
+  host.style.setProperty('display', constrainBlockSize ? 'block' : 'contents', 'important');
   host.style.setProperty('direction', 'inherit', 'important');
+  if (constrainBlockSize) host.style.setProperty('min-block-size', '0', 'important');
 }
 
 function hidePopoverIfOpen(container: HTMLElement | null): void {
@@ -177,6 +178,8 @@ interface ShadowRootHostProps {
   portalStrategy?: ShadowPortalStrategy;
   /** @internal Establishes SDK token scope for an automatic component boundary. */
   theme?: 'light' | 'dark';
+  /** @internal Lets a component host participate in a constrained block-size track. */
+  constrainBlockSize?: boolean;
 }
 
 /** @internal Shadow boundary primitive; not part of the public API. */
@@ -185,6 +188,7 @@ export function ShadowRootHost({
   hostElement: HostElement = 'div',
   portalStrategy,
   theme,
+  constrainBlockSize = false,
 }: ShadowRootHostProps): ReactNode {
   const hostRef = useRef<HTMLElement | null>(null);
   const shadowRootRef = useRef<ShadowRoot | null>(null);
@@ -385,7 +389,7 @@ export function ShadowRootHost({
     const root = existingRoot ?? host.attachShadow({ mode: 'open' });
     shadowRootRef.current = root;
     if (!existingRoot) {
-      resetHost(host);
+      resetHost(host, constrainBlockSize);
       if (!adoptSdkStyleSheet(root)) {
         setNeedsStyleFallback(true);
       }
@@ -405,7 +409,7 @@ export function ShadowRootHost({
       lastFocusedElementRef.current = null;
       if (contentWrapperRef.current) contentWrapperRef.current.inert = false;
     };
-  }, []);
+  }, [constrainBlockSize]);
 
   return (
     <HostElement ref={setHostRef} data-yv-shadow-host>

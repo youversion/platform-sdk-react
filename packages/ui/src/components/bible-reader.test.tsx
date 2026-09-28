@@ -3,14 +3,17 @@
  */
 // We stub ResizeObserver for jsdom (used by Radix/@floating-ui). The stub methods are intentionally no-ops.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState, type ReactElement } from 'react';
+import { hydrateRoot, type Root } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
 import type { BibleBook, BibleVersion } from '@youversion/platform-core';
-import type { HookOverrides } from '@youversion/platform-react-hooks';
+import { YouVersionContext, type HookOverrides } from '@youversion/platform-react-hooks';
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import { InterfaceDirectionProvider } from '@/lib/direction';
 import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
+import { ShadowRootHost } from '@/lib/shadow-root-host';
 import {
   BIBLE_READER_SPACING,
   BibleReader,
@@ -208,9 +211,9 @@ describe('createBibleThemeSettingsContentHandlers', () => {
   });
 });
 
-describe('BibleThemeSettingsContent styles', () => {
-  it('injects component styles when rendered standalone', () => {
-    render(
+describe('BibleThemeSettingsContent public boundary', () => {
+  it('owns one empty SSR host and reuses it during hydration', async () => {
+    const element = (
       <BibleThemeSettingsContent
         theme="light"
         fontSize={16}
@@ -220,10 +223,143 @@ describe('BibleThemeSettingsContent styles', () => {
         onFontIncreased={vi.fn()}
         onFontDecreased={vi.fn()}
         onChangeLineSpacing={vi.fn()}
-      />,
+      />
     );
+    const serverMarkup = renderToString(element);
 
-    expect(document.head.querySelector('style[data-href="yv-sdk-components"]')).not.toBeNull();
+    expect(serverMarkup).toBe('<div data-yv-shadow-host="true"></div>');
+
+    const container = document.createElement('div');
+    container.innerHTML = serverMarkup;
+    document.body.append(container);
+    const serverHost = container.firstElementChild;
+    const recoverableErrors: unknown[] = [];
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    let root: Root | undefined;
+
+    try {
+      await act(async () => {
+        root = hydrateRoot(container, element, {
+          onRecoverableError: (error) => recoverableErrors.push(error),
+        });
+      });
+
+      const host = await waitFor(() => {
+        const candidate = container.querySelector<HTMLElement>('[data-yv-shadow-host]');
+        if (!candidate?.shadowRoot?.querySelector('[data-testid="line-spacing"]')) {
+          throw new Error('settings controls not mounted inside an open shadow root');
+        }
+        return candidate;
+      });
+
+      expect(container.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(1);
+      expect(host).toBe(serverHost);
+      expect(host.childNodes).toHaveLength(0);
+      expect(host.shadowRoot?.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
+      expect(recoverableErrors).toEqual([]);
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      if (root) await act(async () => root?.unmount());
+      consoleError.mockRestore();
+      container.remove();
+    }
+  });
+
+  it('preserves the standalone settings workflow across its public props', async () => {
+    const user = userEvent.setup();
+    const onFontIncreased = vi.fn();
+    const onFontDecreased = vi.fn();
+    const onFontSelected = vi.fn<(fontFamily: FontFamily) => void>();
+    const onChangeLineSpacing = vi.fn();
+
+    function StandaloneSettings({ direction }: { direction: 'ltr' | 'rtl' }) {
+      const [fontSize, setFontSize] = useState(12);
+      const [fontFamily, setFontFamily] = useState<FontFamily>(UNTITLED_SERIF_FONT);
+      const [lineSpacing, setLineSpacing] = useState<number>(BIBLE_READER_SPACING.DEFAULT);
+
+      return (
+        <YouVersionContext.Provider value={{ appKey: 'test', theme: 'dark' }}>
+          <InterfaceDirectionProvider direction={direction}>
+            <BibleThemeSettingsContent
+              theme="light"
+              fontSize={fontSize}
+              fontFamily={fontFamily}
+              lineSpacing={lineSpacing}
+              onFontIncreased={() => {
+                onFontIncreased();
+                setFontSize(nextBibleReaderFontSizeUp(fontSize));
+              }}
+              onFontDecreased={() => {
+                onFontDecreased();
+                setFontSize(nextBibleReaderFontSizeDown(fontSize));
+              }}
+              onFontSelected={(nextFontFamily) => {
+                onFontSelected(nextFontFamily);
+                setFontFamily(nextFontFamily);
+              }}
+              onChangeLineSpacing={() => {
+                onChangeLineSpacing();
+                setLineSpacing(changeBibleReaderLineSpacing(lineSpacing));
+              }}
+            />
+          </InterfaceDirectionProvider>
+        </YouVersionContext.Provider>
+      );
+    }
+
+    const view = render(<StandaloneSettings direction="rtl" />);
+    const host = await waitFor(() => {
+      const candidate = view.container.querySelector<HTMLElement>('[data-yv-shadow-host]');
+      if (!candidate?.shadowRoot?.querySelector('[data-testid="line-spacing"]')) {
+        throw new Error('standalone settings not mounted');
+      }
+      return candidate;
+    });
+    const root = host.shadowRoot!;
+    const shadowScope = root.querySelector<HTMLElement>('[data-yv-shadow-content-wrapper]')!;
+    const settings = within(shadowScope);
+    const body = settings.getByTestId('line-spacing').closest<HTMLElement>('[data-yv-sdk]');
+    const wrapper = root.querySelector('[data-yv-shadow-content-wrapper]');
+    const decrease = settings.getByRole('button', { name: 'Decrease font size' });
+    const increase = settings.getByRole('button', { name: 'Increase font size' });
+    const lineSpacing = settings.getByRole('button', { name: 'Change line spacing' });
+    const inter = settings.getByRole('button', { name: /Inter/ });
+    const serif = settings.getByRole('button', { name: /Untitled Serif/ });
+
+    expect(settings.getAllByRole('button')).toHaveLength(5);
+    expect(host.style.getPropertyValue('display')).toBe('block');
+    expect(host.style.getPropertyValue('min-block-size')).toBe('0');
+    expect(wrapper).toHaveAttribute('data-yv-theme', 'light');
+    expect(body).toHaveAttribute('data-yv-theme', 'light');
+    expect(body).toHaveAttribute('dir', 'rtl');
+    expect(decrease).toBeDisabled();
+    expect(serif.className).toContain('yv:bg-primary');
+    expect(inter.className).not.toContain('yv:bg-primary');
+
+    await user.click(decrease);
+    expect(onFontDecreased).not.toHaveBeenCalled();
+    await user.click(increase);
+    expect(onFontIncreased.mock.calls).toEqual([[]]);
+    await user.click(decrease);
+    expect(onFontDecreased.mock.calls).toEqual([[]]);
+    await user.click(inter);
+    expect(onFontSelected).toHaveBeenCalledWith(INTER_FONT);
+    expect(inter.className).toContain('yv:bg-primary');
+    expect(serif.className).not.toContain('yv:bg-primary');
+    await user.click(lineSpacing);
+    expect(onChangeLineSpacing.mock.calls).toEqual([[]]);
+
+    await user.click(increase);
+    await user.click(increase);
+    await user.click(increase);
+    await user.click(increase);
+    expect(increase).toBeDisabled();
+    const increaseCallCountAtMaximum = onFontIncreased.mock.calls.length;
+    await user.click(increase);
+    expect(onFontIncreased).toHaveBeenCalledTimes(increaseCallCountAtMaximum);
+
+    view.rerender(<StandaloneSettings direction="ltr" />);
+    expect(body).toHaveAttribute('dir', 'ltr');
   });
 });
 
@@ -262,6 +398,52 @@ describe('BibleReader theme settings', () => {
         UNTITLED_SERIF_FONT,
       );
     });
+  });
+
+  it('keeps reader-owned settings in the reader tree and reuses a future reader boundary', async () => {
+    const user = userEvent.setup();
+    const reader = (
+      <HookOverrideProvider overrides={defaultOverrides()}>
+        <BibleReader.Root defaultVersionId={3034} defaultBook="JHN" defaultChapter="1">
+          <BibleReader.Toolbar />
+        </BibleReader.Root>
+      </HookOverrideProvider>
+    );
+    const lightDomView = render(reader);
+
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    const lightDomSettings = await screen.findByTestId('line-spacing');
+    const lightDomSettingsHosts = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-yv-shadow-host]'),
+    ).filter((host) => host.shadowRoot?.querySelector('[data-testid="line-spacing"]'));
+    expect(lightDomSettingsHosts).toHaveLength(0);
+    expect(lightDomSettings.getRootNode()).toBe(document);
+    lightDomView.unmount();
+
+    const outerView = render(
+      <ShadowRootHost portalStrategy="local-inline">
+        <ReuseShadowBoundary>{reader}</ReuseShadowBoundary>
+      </ShadowRootHost>,
+    );
+    const outerHost = await waitFor(() => {
+      const candidate = outerView.container.querySelector<HTMLElement>('[data-yv-shadow-host]');
+      if (!candidate?.shadowRoot?.querySelector('button[aria-label="Settings"]')) {
+        throw new Error('reader not mounted in the simulated boundary');
+      }
+      return candidate;
+    });
+    const outerRoot = outerHost.shadowRoot!;
+    const outerScope = outerRoot.querySelector<HTMLElement>('[data-yv-shadow-content-wrapper]')!;
+
+    await user.click(within(outerScope).getByRole('button', { name: 'Settings' }));
+    const nestedSettings = await waitFor(() => {
+      const candidate = outerRoot.querySelector<HTMLElement>('[data-testid="line-spacing"]');
+      if (!candidate) throw new Error('reader settings not rendered in the outer root');
+      return candidate;
+    });
+    expect(outerView.container.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(1);
+    expect(outerRoot.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
+    expect(nestedSettings.getRootNode()).toBe(outerRoot);
   });
 
   it('migrates the legacy Source Serif preference to Untitled Serif on hydrate', async () => {

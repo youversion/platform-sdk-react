@@ -6,42 +6,46 @@ import i18n from '../i18n';
 import { INTER_FONT, UNTITLED_SERIF_FONT, type FontFamily } from '../lib/verse-html-utils';
 import { BibleThemeSettingsContent } from './bible-reader';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { YvComponentStyles } from '../lib/yv-styles-components';
 
 function ConstrainedSettings(): React.ReactNode {
   const [boundary, setBoundary] = useState<HTMLDivElement | null>(null);
   const [fontFamily, setFontFamily] = useState<FontFamily>(INTER_FONT);
   return (
-    <div
-      ref={setBoundary}
-      data-testid="settings-boundary"
-      data-font-family={fontFamily}
-      style={{ position: 'relative', blockSize: 360, inlineSize: 800 }}
-    >
-      <div style={{ position: 'absolute', insetBlockStart: '53%', insetInlineStart: '50%' }}>
-        <Popover>
-          <PopoverTrigger data-testid="settings-trigger">Settings</PopoverTrigger>
-          <PopoverContent heading="Reader settings" collisionBoundary={boundary} sideOffset={16}>
-            <BibleThemeSettingsContent
-              theme="light"
-              fontFamily={fontFamily}
-              fontSize={16}
-              lineSpacing={1.7}
-              onFontSelected={setFontFamily}
-              onFontIncreased={() => undefined}
-              onFontDecreased={() => undefined}
-              onChangeLineSpacing={() => undefined}
-            />
-          </PopoverContent>
-        </Popover>
+    <>
+      <YvComponentStyles />
+      <div
+        ref={setBoundary}
+        data-testid="settings-boundary"
+        data-font-family={fontFamily}
+        style={{ position: 'relative', blockSize: 360, inlineSize: 800 }}
+      >
+        <div style={{ position: 'absolute', insetBlockStart: '53%', insetInlineStart: '50%' }}>
+          <Popover>
+            <PopoverTrigger data-testid="settings-trigger">Settings</PopoverTrigger>
+            <PopoverContent heading="Reader settings" collisionBoundary={boundary} sideOffset={16}>
+              <BibleThemeSettingsContent
+                theme="light"
+                fontFamily={fontFamily}
+                fontSize={16}
+                lineSpacing={1.7}
+                onFontSelected={setFontFamily}
+                onFontIncreased={() => undefined}
+                onFontDecreased={() => undefined}
+                onChangeLineSpacing={() => undefined}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
 const meta = {
   title: 'Components/BibleReader/Settings',
   component: ConstrainedSettings,
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
   parameters: {
     layout: 'fullscreen',
     msw: {
@@ -63,34 +67,55 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
     await userEvent.click(await canvas.findByTestId('settings-trigger'));
     const ownerDocument = canvasElement.ownerDocument;
     const dialog = await within(ownerDocument.body).findByRole('dialog');
-    const serifButton = within(dialog).getByRole('button', {
+    const settingsHost = await waitFor(() => {
+      const candidate = dialog.querySelector<HTMLElement>('[data-yv-shadow-host]');
+      if (!candidate?.shadowRoot) throw new Error('settings shadow root not attached');
+      return candidate;
+    });
+    const settingsRoot = settingsHost.shadowRoot!;
+    const settingsScope = settingsRoot.querySelector<HTMLElement>(
+      '[data-yv-shadow-content-wrapper]',
+    )!;
+    const settings = within(settingsScope);
+    const serifButton = settings.getByRole('button', {
       name: `${i18n.t('fontLabel')} ${i18n.t('untitledSerifFontName')}`,
     });
     // Use the real settings body and Radix collision cap. Unlike a click helper,
     // hit testing can detect controls rendered but clipped below the panel.
     const settingsBody = serifButton.closest<HTMLElement>('[data-yv-sdk]');
     if (!settingsBody) throw new Error('settings body not rendered');
+    const boundary = canvas.getByTestId('settings-boundary');
     await waitFor(() => {
+      const panelRect = dialog.getBoundingClientRect();
+      const boundaryRect = boundary.getBoundingClientRect();
+      void expect(panelRect.top).toBeGreaterThanOrEqual(boundaryRect.top);
+      void expect(panelRect.bottom).toBeLessThanOrEqual(boundaryRect.bottom);
       void expect(settingsBody.scrollHeight).toBeGreaterThan(settingsBody.clientHeight);
+      void expect(getComputedStyle(settingsBody).overflowY).toBe('auto');
     });
     await Promise.all(dialog.getAnimations().map((animation) => animation.finished));
     const header = within(dialog).getByRole('heading');
     const headerTop = header.getBoundingClientRect().top;
-    settingsBody.scrollTop = settingsBody.scrollHeight;
-    await waitFor(() => {
-      void expect(settingsBody.scrollTop).toBeGreaterThan(0);
-      const buttonRect = serifButton.getBoundingClientRect();
-      const bodyRect = settingsBody.getBoundingClientRect();
-      void expect(buttonRect.top).toBeGreaterThanOrEqual(bodyRect.top);
-      void expect(buttonRect.bottom).toBeLessThanOrEqual(bodyRect.bottom);
-      const hit = ownerDocument.elementFromPoint(
-        buttonRect.left + buttonRect.width / 2,
-        buttonRect.top + buttonRect.height / 2,
-      );
-      void expect(serifButton.contains(hit)).toBe(true);
-      void expect(header.getBoundingClientRect().top).toBe(headerTop);
-    });
-    await userEvent.click(serifButton);
+    const controls = settings.getAllByRole('button');
+    void expect(controls).toHaveLength(5);
+    for (const control of controls) {
+      control.scrollIntoView({ block: 'center' });
+      await waitFor(() => {
+        const controlRect = control.getBoundingClientRect();
+        const bodyRect = settingsBody.getBoundingClientRect();
+        void expect(controlRect.top).toBeGreaterThanOrEqual(bodyRect.top);
+        void expect(controlRect.bottom).toBeLessThanOrEqual(bodyRect.bottom);
+        const hit = settingsRoot.elementFromPoint(
+          controlRect.left + controlRect.width / 2,
+          controlRect.top + controlRect.height / 2,
+        );
+        void expect(control.contains(hit)).toBe(true);
+        void expect(header.getBoundingClientRect().top).toBe(headerTop);
+      });
+    }
+    void expect(settingsBody.scrollTop).toBeGreaterThan(0);
+    serifButton.focus();
+    await userEvent.keyboard('{Enter}');
     void expect(canvas.getByTestId('settings-boundary')).toHaveAttribute(
       'data-font-family',
       UNTITLED_SERIF_FONT,
