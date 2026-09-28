@@ -15,6 +15,30 @@ import {
 } from './bible-reader';
 import { VerseActionPopover } from './verse-action-popover';
 
+async function getPickerQueries(container: ParentNode, triggerName: RegExp | string) {
+  return waitFor(() => {
+    for (const host of container.querySelectorAll<HTMLElement>('[data-yv-shadow-host]')) {
+      if (!host.shadowRoot) continue;
+      const content = host.shadowRoot.querySelector<HTMLElement>(
+        '[data-yv-shadow-content-wrapper]',
+      );
+      if (!content) continue;
+      const picker = within(content);
+      const trigger = picker.queryByRole('button', { name: triggerName });
+      if (trigger) return { root: host.shadowRoot, picker, trigger };
+    }
+    throw new Error('picker shadow root not rendered');
+  });
+}
+
+async function getPickerOverlay(root: ShadowRoot) {
+  return waitFor(() => {
+    const overlay = root.querySelector<HTMLElement>('[data-yv-shadow-local-overlay]');
+    if (!overlay) throw new Error('picker overlay not rendered');
+    return within(overlay);
+  });
+}
+
 type PathParams = {
   id?: string | readonly string[];
   usfm?: string | readonly string[];
@@ -473,9 +497,13 @@ export const ForcedRtlChromeGeometry: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
-    const previous = await screen.findByRole('button', { name: 'Previous chapter' });
-    const chapter = screen.getByRole('button', { name: 'Change Bible book and chapter' });
-    const next = screen.getByRole('button', { name: 'Next chapter' });
+    const {
+      root: chapterRoot,
+      picker: chapterPicker,
+      trigger: chapter,
+    } = await getPickerQueries(canvasElement, 'Change Bible book and chapter');
+    const previous = chapterPicker.getByRole('button', { name: 'Previous chapter' });
+    const next = chapterPicker.getByRole('button', { name: 'Next chapter' });
     const renderer = await waitFor(async () => {
       const element = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
       await expect(element).toBeInTheDocument();
@@ -495,8 +523,8 @@ export const ForcedRtlChromeGeometry: Story = {
       await expect(chapter).toBeEnabled();
     });
     await userEvent.click(chapter);
-    const chapterDialog = await screen.findByRole('dialog');
-    const chapterCanvas = within(chapterDialog);
+    const chapterCanvas = await getPickerOverlay(chapterRoot);
+    const chapterDialog = chapterCanvas.getByRole('dialog');
     const intro = chapterCanvas.getByTestId('intro-chapter-button');
     const chapterOne = chapterCanvas.getByRole('button', { name: '1' });
     const chapterTwo = chapterCanvas.getByRole('button', { name: '2' });
@@ -517,9 +545,12 @@ export const ForcedRtlChromeGeometry: Story = {
     );
 
     await userEvent.click(chapterCanvas.getByRole('button', { name: 'Close' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Change Bible version' }));
-    const versionDialog = await screen.findByRole('dialog');
-    const versionCanvas = within(versionDialog);
+    const { root: versionRoot, trigger: versionTrigger } = await getPickerQueries(
+      canvasElement,
+      'Change Bible version',
+    );
+    await userEvent.click(versionTrigger);
+    const versionCanvas = await getPickerOverlay(versionRoot);
     const firstVersion = versionCanvas.getAllByRole('listitem')[0]!;
     const tile = firstVersion.querySelector('[data-slot="item-media"]')!;
     const label = firstVersion.querySelector('[data-slot="item-content"]')!;
@@ -1101,10 +1132,13 @@ export const WithoutAuth: Story = {
     await expect(userMenuTrigger).not.toBeInTheDocument();
 
     // Chapter picker and version picker should still work
-    const chapterButton = screen.getByRole('button', { name: /change bible book and chapter/i });
+    const { trigger: chapterButton } = await getPickerQueries(
+      canvasElement,
+      /change bible book and chapter/i,
+    );
     await expect(chapterButton).toBeInTheDocument();
 
-    const versionButton = await screen.findByRole('button', { name: /bible version/i });
+    const { trigger: versionButton } = await getPickerQueries(canvasElement, /bible version/i);
     await expect(versionButton).toBeInTheDocument();
 
     // Settings should still work
@@ -1149,9 +1183,9 @@ export const VersionButtonLoadingStates: Story = {
       </BibleReader.Root>
     </div>
   ),
-  play: async () => {
+  play: async ({ canvasElement }) => {
     // Wait for the toolbar to mount, then capture the button in loading state
-    const versionButton = await screen.findByRole('button', { name: /bible version/i });
+    const { trigger: versionButton } = await getPickerQueries(canvasElement, /bible version/i);
 
     // The delayed MSW handler guarantees the loading state is visible
     const spinner = versionButton.querySelector('[role="status"]');
@@ -1237,11 +1271,12 @@ export const JoshuaIntroChapter: Story = {
     await expect(verseContainer.textContent).toContain('Yahweh');
 
     // Toolbar trigger should show "Intro" (title-case label), NOT "INTRO" (raw chapter ID)
+    const { trigger: chapterButton } = await getPickerQueries(
+      canvasElement,
+      /change bible book and chapter/i,
+    );
     await waitFor(
       async () => {
-        const chapterButton = screen.getByRole('button', {
-          name: /change bible book and chapter/i,
-        });
         await expect(chapterButton.textContent).toContain('Intro');
         await expect(chapterButton.textContent).not.toContain('INTRO');
       },
@@ -1424,7 +1459,11 @@ export const ChapterChangeLoadingOverlay: Story = {
       { timeout: 5000 },
     );
 
-    const nextButton = screen.getByRole('button', { name: /next chapter/i });
+    const { picker: chapterPicker } = await getPickerQueries(
+      canvasElement,
+      /change bible book and chapter/i,
+    );
+    const nextButton = chapterPicker.getByRole('button', { name: /next chapter/i });
     await userEvent.click(nextButton);
 
     const rendererAfterClick = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
