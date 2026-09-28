@@ -17,7 +17,7 @@ describe('leaf component shadow isolation', () => {
     {
       name: 'Separator',
       element: createElement(Separator),
-      hostElement: 'div',
+      hostElement: 'span',
       selector: '[data-slot="separator"]',
     },
     {
@@ -74,6 +74,48 @@ describe('leaf component shadow isolation', () => {
     );
     const serverMarkup = renderToString(element);
     expect(serverMarkup).toBe('<p>Before <span data-yv-shadow-host="true"></span> after</p>');
+
+    const container = document.createElement('div');
+    container.innerHTML = serverMarkup;
+    document.body.append(container);
+    const serverHost = container.querySelector('[data-yv-shadow-host]');
+    const recoverableErrors: unknown[] = [];
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    let root: ReturnType<typeof hydrateRoot> | undefined;
+
+    try {
+      await act(async () => {
+        root = hydrateRoot(container, element, {
+          onRecoverableError: (error) => recoverableErrors.push(error),
+        });
+      });
+
+      expect(container.children).toHaveLength(1);
+      expect(container.firstElementChild).toHaveProperty('tagName', 'P');
+      expect(container.querySelector('[data-yv-shadow-host]')).toBe(serverHost);
+      expect(recoverableErrors).toEqual([]);
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => root?.unmount());
+      consoleError.mockRestore();
+      container.remove();
+    }
+  });
+
+  it('preserves a phrasing-compatible separator child through server parsing and hydration', async () => {
+    const element = (
+      <p>
+        Before{' '}
+        <Separator asChild>
+          <span />
+        </Separator>{' '}
+        after
+      </p>
+    );
+    const serverMarkup = renderToString(element);
+    expect(serverMarkup).toBe(
+      '<p>Before<!-- --> <span data-yv-shadow-host="true"></span> <!-- -->after</p>',
+    );
 
     const container = document.createElement('div');
     container.innerHTML = serverMarkup;

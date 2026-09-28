@@ -28,6 +28,8 @@ const SeparatorImplementation = React.forwardRef<
 });
 SeparatorImplementation.displayName = 'SeparatorImplementation';
 
-const Separator = withShadowIsolation(SeparatorImplementation, 'Separator');
+const Separator = withShadowIsolation(SeparatorImplementation, 'Separator', {
+  hostElement: 'span',
+});
 
 export { Separator };

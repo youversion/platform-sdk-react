@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { act, waitFor } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import type { HookOverrides } from '@youversion/platform-react-hooks';
 import type { ReactElement } from 'react';
 import { hydrateRoot, type Root } from 'react-dom/client';
@@ -138,5 +138,47 @@ describe('Bible picker public shadow boundaries', () => {
       consoleError.mockRestore();
       container.remove();
     }
+  });
+
+  it.each([
+    [
+      'BibleChapterPicker.Root',
+      <BibleChapterPicker.Root
+        background="light"
+        book="GEN"
+        chapter="1"
+        versionId={111}
+        onChapterPickerPress={() => undefined}
+      >
+        <BibleChapterPicker.Trigger />
+      </BibleChapterPicker.Root>,
+    ],
+    [
+      'BibleVersionPicker.Root',
+      <BibleVersionPicker.Root
+        background="light"
+        versionId={111}
+        onVersionPickerPress={() => undefined}
+      >
+        <BibleVersionPicker.Trigger />
+      </BibleVersionPicker.Root>,
+    ],
+  ])('%s keeps its explicit light boundary under a dark provider', async (_, picker) => {
+    const { container, unmount } = render(
+      <HookOverrideProvider overrides={overrides} theme="dark">
+        {picker}
+      </HookOverrideProvider>,
+    );
+
+    await waitFor(() => {
+      const shadowRoot = container.querySelector<HTMLElement>('[data-yv-shadow-host]')?.shadowRoot;
+      expect(shadowRoot?.querySelector('[data-yv-shadow-content-wrapper]')).toHaveAttribute(
+        'data-yv-theme',
+        'light',
+      );
+      expect(shadowRoot?.querySelector('[data-yv-sdk]')).toHaveAttribute('data-yv-theme', 'light');
+    });
+
+    unmount();
   });
 });

@@ -194,3 +194,40 @@ export const PublicRootJourney: Story = {
     });
   },
 };
+
+export const ExplicitLightThemeUnderDarkProvider: Story = {
+  render: () => (
+    <YouVersionContext.Provider
+      value={{ appKey: 'test', theme: 'dark', hookOverrides: HOOK_OVERRIDES }}
+    >
+      <BibleChapterPicker.Root background="light" book="MAT" chapter="5" versionId={111}>
+        <BibleChapterPicker.Trigger />
+      </BibleChapterPicker.Root>
+    </YouVersionContext.Provider>
+  ),
+  play: async ({ canvasElement }) => {
+    const root = await waitForShadowRoot(canvasElement);
+    const wrapper = await waitForElement<HTMLElement>(
+      root,
+      '[data-yv-shadow-content-wrapper]',
+      'shadow content wrapper not rendered',
+    );
+    await expect(wrapper).toHaveAttribute('data-yv-theme', 'light');
+
+    const trigger = await waitForElement<HTMLButtonElement>(
+      root,
+      '[data-slot="popover-trigger"]',
+      'chapter picker trigger not rendered',
+    );
+    await userEvent.click(trigger);
+
+    const inputGroup = await waitForElement<HTMLElement>(
+      root,
+      '[data-slot="input-group"]',
+      'chapter picker search input not rendered',
+    );
+    await waitFor(async () => {
+      await expect(getComputedStyle(inputGroup).backgroundColor).toBe('rgb(255, 255, 255)');
+    });
+  },
+};
