@@ -123,7 +123,7 @@ function FootnoteContentImplementation({
 
 export function FootnoteContent(props: FootnoteContentProps): React.ReactElement {
   return (
-    <ShadowIsolationBoundary>
+    <ShadowIsolationBoundary theme={props.theme}>
       <FootnoteContentImplementation {...props} />
     </ShadowIsolationBoundary>
   );

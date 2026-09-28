@@ -21,6 +21,8 @@ interface ShadowIsolationBoundaryProps {
   hostElement?: 'div' | 'span';
   /** @internal Component-owned overlay strategy; not a public configuration surface. */
   portalStrategy?: ShadowPortalStrategy;
+  /** @internal Component-resolved theme when it intentionally overrides the provider. */
+  theme?: 'light' | 'dark';
 }
 
 /** @internal Applies automatic isolation while honoring SDK-owned boundary reuse. */
@@ -28,9 +30,10 @@ export function ShadowIsolationBoundary({
   children,
   hostElement,
   portalStrategy,
+  theme,
 }: ShadowIsolationBoundaryProps): ReactNode {
   const reuseBoundary = useContext(ShadowBoundaryReuseContext);
-  const theme = useTheme();
+  const providerTheme = useTheme();
 
   if (reuseBoundary) {
     return (
@@ -41,7 +44,11 @@ export function ShadowIsolationBoundary({
   }
 
   return (
-    <ShadowRootHost hostElement={hostElement} portalStrategy={portalStrategy} theme={theme}>
+    <ShadowRootHost
+      hostElement={hostElement}
+      portalStrategy={portalStrategy}
+      theme={theme ?? providerTheme}
+    >
       {children}
     </ShadowRootHost>
   );

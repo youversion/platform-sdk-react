@@ -13,7 +13,7 @@ import { Button } from '../components/ui/button';
 import { YouVersionLogo } from './icons/youversion-logo';
 import { cn } from '../lib/utils';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
-import { withShadowIsolation } from '../lib/shadow-isolation';
+import { ShadowIsolationBoundary } from '../lib/shadow-isolation';
 
 interface SignInAuthProps {
   /**
@@ -274,7 +274,11 @@ YouVersionAuthButtonImpl.displayName = 'YouVersionAuthButtonImpl';
  * Automatically rendered in a Shadow DOM so host-page selectors cannot style
  * the button's internal DOM. No consumer wrapper or opt-in flag is required.
  */
-export const YouVersionAuthButton = withShadowIsolation(
-  YouVersionAuthButtonImpl,
-  'YouVersionAuthButton',
+export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersionAuthButtonProps>(
+  (props, ref) => (
+    <ShadowIsolationBoundary theme={props.background}>
+      <YouVersionAuthButtonImpl {...props} ref={ref} />
+    </ShadowIsolationBoundary>
+  ),
 );
+YouVersionAuthButton.displayName = 'YouVersionAuthButton';
