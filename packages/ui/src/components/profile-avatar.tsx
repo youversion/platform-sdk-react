@@ -49,7 +49,7 @@ const ProfileAvatarImplementation = React.forwardRef<
         ) : null}
         <AvatarFallback
           className={cn(
-            'yv:border-2 yv:border-foreground yv:bg-background yv:font-sans yv:text-xs yv:font-bold yv:text-foreground',
+            'yv:border-2 yv:border-solid yv:border-foreground yv:bg-background yv:font-sans yv:text-xs yv:font-bold yv:text-foreground',
           )}
         >
           {initial}

@@ -106,7 +106,7 @@ function FootnoteContentImplementation({
               return (
                 <li
                   key={marker}
-                  className="yv:flex yv:gap-2 yv:text-xs yv:border-b yv:border-border yv:py-2"
+                  className="yv:flex yv:gap-2 yv:text-xs yv:border-b yv:border-solid yv:border-border yv:py-2"
                 >
                   <span>{marker}.</span>
                   {/** biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe */}

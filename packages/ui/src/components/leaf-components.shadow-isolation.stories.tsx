@@ -83,6 +83,7 @@ export const HostileCssAndCompactGeometry: Story = {
     const footnote = footnoteRoot
       .querySelector<HTMLElement>('[data-slot="yv-bible-note"]')!
       .closest<HTMLElement>('[data-yv-sdk]')!;
+    const footnoteItem = footnote.querySelector<HTMLElement>('li')!;
 
     await waitFor(async () => {
       const avatarRect = avatar.getBoundingClientRect();
@@ -108,7 +109,11 @@ export const HostileCssAndCompactGeometry: Story = {
     await expect(getComputedStyle(avatar).backgroundColor).not.toBe('rgb(255, 0, 128)');
     await expect(getComputedStyle(avatarFallback).backgroundColor).toBe('rgb(255, 255, 255)');
     await expect(getComputedStyle(avatarFallback).borderColor).toBe('rgb(18, 18, 18)');
+    await expect(getComputedStyle(avatarFallback).borderStyle).toBe('solid');
+    await expect(getComputedStyle(avatarFallback).borderWidth).toBe('2px');
     await expect(getComputedStyle(horizontal).backgroundColor).toBe('rgb(221, 219, 219)');
+    await expect(getComputedStyle(footnoteItem).borderBottomStyle).toBe('solid');
+    await expect(getComputedStyle(footnoteItem).borderBottomWidth).toBe('1px');
     await expect(footnote).toHaveAttribute('data-yv-theme', 'dark');
     await expect(footnote).toHaveAttribute('dir', 'rtl');
     await expect(getComputedStyle(footnote).direction).toBe('rtl');
