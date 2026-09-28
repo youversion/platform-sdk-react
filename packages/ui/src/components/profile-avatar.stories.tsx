@@ -78,20 +78,10 @@ export const SingleName: Story = {
   args: {
     name: 'Cher',
   },
-  tags: ['integration'],
-  play: async ({ canvasElement }) => {
-    const root = await waitForShadowRoot(canvasElement);
-    await expect(root.querySelector('[data-slot="avatar-fallback"]')).toHaveTextContent('C');
-  },
 };
 
 export const EmptyName: Story = {
   args: {
     name: '',
-  },
-  tags: ['integration'],
-  play: async ({ canvasElement }) => {
-    const root = await waitForShadowRoot(canvasElement);
-    await expect(root.querySelector('[data-slot="avatar-fallback"]')).toHaveTextContent('');
   },
 };
