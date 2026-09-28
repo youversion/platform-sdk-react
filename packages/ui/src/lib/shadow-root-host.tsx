@@ -173,13 +173,13 @@ interface ShadowRootHostProps {
   children: ReactNode;
   /** @internal Keeps inline public roots valid in phrasing content. */
   hostElement?: 'div' | 'span';
-  /** @internal Spike-only, mount-stable strategy; omit for leaves without overlays. */
+  /** @internal Component-owned, mount-stable strategy; omit for leaves without overlays. */
   portalStrategy?: ShadowPortalStrategy;
   /** @internal Establishes SDK token scope for an automatic component boundary. */
   theme?: 'light' | 'dark';
 }
 
-/** @internal Proof-of-concept primitive; not part of the public API. */
+/** @internal Shadow boundary primitive; not part of the public API. */
 export function ShadowRootHost({
   children,
   hostElement: HostElement = 'div',

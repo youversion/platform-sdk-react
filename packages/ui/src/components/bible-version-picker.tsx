@@ -45,6 +45,7 @@ import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } f
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { useInterfaceDirection } from '@/lib/direction';
+import { ShadowIsolationBoundary } from '@/lib/shadow-isolation';
 
 export const RECENT_VERSIONS_KEY = 'youversion-platform:picker:recent-versions';
 const MAX_RECENT_VERSIONS = 3;
@@ -291,7 +292,7 @@ export type BibleVersionPickerLanguageTriggerProps = Omit<
   'children'
 >;
 
-function Root({
+function RootImplementation({
   versionId: controlledVersionId,
   onVersionChange,
   languageId: controlledLanguageId,
@@ -515,6 +516,14 @@ function Root({
         {children}
       </Popover>
     </BibleVersionPickerContext.Provider>
+  );
+}
+
+function Root(props: RootProps) {
+  return (
+    <ShadowIsolationBoundary portalStrategy="local-top-layer">
+      <RootImplementation {...props} />
+    </ShadowIsolationBoundary>
   );
 }
 
@@ -748,6 +757,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
       >
         <div className="yv:relative yv:min-h-0 yv:overflow-hidden">
           <div
+            inert={isLanguagesOpen ? true : undefined}
             className={`yv:h-full yv:min-h-0 yv:overflow-hidden yv:transition-all yv:duration-300 yv:ease-out yv:motion-reduce:transition-none ${
               isLanguagesOpen
                 ? 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
@@ -757,6 +767,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
             <Content onRequestClose={() => setIsPopoverOpen(false)} />
           </div>
           <div
+            inert={isLanguagesOpen ? undefined : true}
             className={`yv:h-full yv:min-h-0 yv:overflow-hidden yv:absolute yv:inset-0 yv:transition-all yv:duration-300 yv:ease-out yv:motion-reduce:transition-none ${
               isLanguagesOpen
                 ? 'yv:opacity-100 yv:pointer-events-auto yv:blur-none yv:scale-100'
@@ -881,7 +892,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
               placeholder={t('searchPlaceholder')}
               dir="auto"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onInput={(event) => setSearchQuery(event.currentTarget.value)}
             ></InputGroupInput>
             <InputGroupAddon>
               <SearchIcon className="yv:size-5 yv:text-muted-foreground" />
@@ -1087,7 +1098,7 @@ export function BibleLanguagePickerContent({
               placeholder={t('searchPlaceholder')}
               dir="auto"
               value={languageSearchQuery}
-              onChange={(e) => setLanguageSearchQuery(e.target.value)}
+              onInput={(event) => setLanguageSearchQuery(event.currentTarget.value)}
             />
             <InputGroupAddon>
               <SearchIcon className="yv:size-5 yv:text-muted-foreground" />

@@ -60,6 +60,10 @@ Storybook stories are the live reference for every component's props and states.
 `examples/vite-react` at the repo root shows integration in a real app. Both are
 type-checked; prefer them over any prose description of a component's API.
 
+Shadow DOM boundaries or overlays: read
+`../../docs/shadow-dom-rollout-policy.md`; validation evidence lives in
+`../../docs/shadow-dom-isolation-plan.md`.
+
 ## TESTING
 
 Follow `docs/testing.md`. This package’s flavors:

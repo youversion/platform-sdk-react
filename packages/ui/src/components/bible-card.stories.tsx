@@ -4,6 +4,30 @@ import { http, HttpResponse } from 'msw';
 import { BibleCard } from './bible-card';
 import { globalHandlers } from '../test/mocks/handlers';
 
+async function getVersionPickerQueries(container: ParentNode, triggerName: RegExp) {
+  return waitFor(() => {
+    for (const host of container.querySelectorAll<HTMLElement>('[data-yv-shadow-host]')) {
+      if (!host.shadowRoot) continue;
+      const content = host.shadowRoot.querySelector<HTMLElement>(
+        '[data-yv-shadow-content-wrapper]',
+      );
+      if (!content) continue;
+      const picker = within(content);
+      const trigger = picker.queryByRole('button', { name: triggerName });
+      if (trigger) return { root: host.shadowRoot, picker, trigger };
+    }
+    throw new globalThis.Error('version picker shadow root not rendered');
+  });
+}
+
+async function getVersionPickerOverlay(root: ShadowRoot) {
+  return waitFor(() => {
+    const overlay = root.querySelector<HTMLElement>('[data-yv-shadow-local-overlay]');
+    if (!overlay) throw new globalThis.Error('version picker overlay not rendered');
+    return within(overlay);
+  });
+}
+
 const meta = {
   title: 'Components/BibleCard',
   component: BibleCard,
@@ -75,9 +99,10 @@ export const RtlInterfaceWithLtrScripture: Story = {
   tags: ['integration'],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const versionPicker = await canvas.findByRole('button', {
-      name: /تغيير إصدار الكتاب المقدس/i,
-    });
+    const { trigger: versionPicker } = await getVersionPickerQueries(
+      canvasElement,
+      /تغيير إصدار الكتاب المقدس/i,
+    );
     await canvas.findByText(/at that time mary got ready/i);
     const card = canvasElement.querySelector('section[data-yv-sdk]');
     const reference = canvasElement.querySelector('h2');
@@ -160,9 +185,11 @@ export const WithVersionPicker: Story = {
     const canvas = within(canvasElement);
 
     // Wait for initial content to load
-    const versionPickerButton = await canvas.findByRole('button', {
-      name: /change bible version/i,
-    });
+    const {
+      root,
+      picker,
+      trigger: versionPickerButton,
+    } = await getVersionPickerQueries(canvasElement, /change bible version/i);
 
     await waitFor(async () => {
       await expect(versionPickerButton).toHaveTextContent(/NIV/i);
@@ -171,13 +198,13 @@ export const WithVersionPicker: Story = {
 
     // Open version picker dialog
     await userEvent.click(versionPickerButton);
+    const overlay = await getVersionPickerOverlay(root);
 
-    // Use screen for portal elements (popover renders outside canvas)
-    await expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    await expect(await overlay.findByRole('dialog')).toBeInTheDocument();
 
     // Wait for versions to actually load (not just the container)
     await waitFor(async () => {
-      const versionList = within(await screen.findByRole('dialog')).getByTestId('version-list');
+      const versionList = overlay.getByTestId('version-list');
       // Search for New International Version to exist to show data came back from API
       await within(versionList).findByText(/new international version 2011/i);
       const items = await within(versionList).findAllByRole('listitem');
@@ -185,27 +212,27 @@ export const WithVersionPicker: Story = {
     });
 
     // Search for Amplified Bible
-    const searchInput = within(await screen.findByRole('dialog')).getByRole('textbox', {
+    const searchInput = overlay.getByRole('textbox', {
       name: /search bible versions/i,
     });
     await userEvent.type(searchInput, 'amplified bible');
 
     await waitFor(async () => {
-      const versionList = within(await screen.findByRole('dialog')).getByTestId('version-list');
+      const versionList = overlay.getByTestId('version-list');
       const versionItems = within(versionList).getAllByRole('listitem');
       await expect(versionItems).toHaveLength(1);
       await expect(versionItems[0]).toHaveTextContent(/amplified bible/i);
     });
 
     // Select Amplified Bible version
-    const versionListItem = within(await screen.findByRole('dialog')).getByRole('listitem', {
+    const versionListItem = overlay.getByRole('listitem', {
       name: /amplified bible/i,
     });
     await userEvent.click(versionListItem);
 
     // Verify version changed to AMP
     await waitFor(async () => {
-      await expect(screen.getByRole('button', { name: /change bible version/i })).toHaveTextContent(
+      await expect(picker.getByRole('button', { name: /change bible version/i })).toHaveTextContent(
         'AMP',
       );
     });
@@ -277,9 +304,10 @@ export const Error: Story = {
     await expect(alerts[0]).toHaveAttribute('aria-live', 'polite');
 
     // The picker is the in-card recovery path: a 404 is fixed by switching versions.
-    const versionPickerButton = await canvas.findByRole('button', {
-      name: /change bible version/i,
-    });
+    const { root, trigger: versionPickerButton } = await getVersionPickerQueries(
+      canvasElement,
+      /change bible version/i,
+    );
 
     await waitFor(async () => {
       await expect(versionPickerButton).toBeEnabled();
@@ -289,19 +317,19 @@ export const Error: Story = {
     // Walk the recovery path: switch to a version whose passage resolves.
     await userEvent.click(versionPickerButton);
 
-    const dialog = await screen.findByRole('dialog');
-    const searchInput = within(dialog).getByRole('textbox', { name: /search bible versions/i });
+    const overlay = await getVersionPickerOverlay(root);
+    const searchInput = overlay.getByRole('textbox', { name: /search bible versions/i });
 
     await userEvent.type(searchInput, 'amplified bible');
 
     await waitFor(async () => {
-      const versionList = within(dialog).getByTestId('version-list');
+      const versionList = overlay.getByTestId('version-list');
       const versionItems = within(versionList).getAllByRole('listitem');
       await expect(versionItems).toHaveLength(1);
       await expect(versionItems[0]).toHaveTextContent(/amplified bible/i);
     });
 
-    await userEvent.click(within(dialog).getByRole('listitem', { name: /amplified bible/i }));
+    await userEvent.click(overlay.getByRole('listitem', { name: /amplified bible/i }));
 
     // The error clears: no alert, and the passage replaces the "Error" heading.
     await waitFor(async () => {

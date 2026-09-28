@@ -6,9 +6,11 @@ YPE-5356 accepts the architecture for a coordinated major-version rollout
 across the compatible public UI boundary defined in the
 [production rollout policy](../shadow-dom-rollout-policy.md). Implementation is
 split into dependency-ordered component groups, but the package must not publish
-a partial boundary. This ADR continues to describe current runtime behavior
-until those groups land: only `YouVersionAuthButton` creates an automatic shadow
-root.
+a partial boundary. In the current stable package, only `YouVersionAuthButton`
+creates an automatic shadow root. On the Shadow DOM integration branch,
+`BibleChapterPicker.Root` and `BibleVersionPicker.Root` also create automatic
+boundaries while the remaining rollout groups and coordinated release are
+pending.
 
 The automatic boundary belongs to the SDK-owned top-level component instance.
 Compound members and SDK components composed inside another isolated SDK
@@ -178,11 +180,12 @@ Radix's development-only relationship checks can also emit warnings for valid
 IDs inside a shadow root because those checks query the document rather than
 the root.
 
-Only `YouVersionAuthButton` is automatically isolated by this prototype.
-`BibleVersionPicker` and other public exports do not gain automatic isolation
-from the opt-in validation work. The internal `SignInDialog` is validated only
-through an opt-in story. Wider automatic isolation requires completing the
-linked implementation groups and coordinated major-release gate.
+In the current stable package, only `YouVersionAuthButton` is automatically
+isolated. On the Shadow DOM integration branch, `BibleChapterPicker.Root` and
+`BibleVersionPicker.Root` also use automatic boundaries. The internal
+`SignInDialog` remains validated only through an opt-in story. Wider automatic
+isolation still requires the linked implementation groups and the coordinated
+major-release gate.
 
 The detailed experimental evidence remains in the
 [Shadow DOM isolation validation plan](../shadow-dom-isolation-plan.md). The

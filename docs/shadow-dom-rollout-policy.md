@@ -5,9 +5,13 @@
 YPE-5356 approves a coordinated package-wide rollout plan for compatible public
 UI components. It does not claim that the rollout has shipped. Until every
 included implementation group and the release gate below are complete, the
-runtime behavior remains the prototype recorded in
-[ADR 0007](adr/0007-prototype-shadow-dom-style-isolation.md): only
-`YouVersionAuthButton` creates an automatic shadow boundary.
+runtime behavior on the Shadow DOM integration branch remains an in-progress
+implementation of the prototype recorded in
+[ADR 0007](adr/0007-prototype-shadow-dom-style-isolation.md):
+`YouVersionAuthButton`, `BibleChapterPicker.Root`, `BibleVersionPicker.Root`,
+`ProfileAvatar`, `Separator`, and `FootnoteContent` create automatic shadow
+boundaries. Compound members and composed leaf components reuse their owning
+root rather than creating independent boundaries.
 
 The rollout is coordinated at release time, not implemented in one change.
 Focused component or component-group tickets may land independently on the
@@ -47,6 +51,7 @@ component rollout targets.
 | `BibleVersionPicker.Root`, `.Trigger`, `.Content` | Included as one compound component | `Root` only | Promote the validated opt-in host to the public root and audit custom trigger styling, storage, focus, and native top-layer behavior. |
 | `BibleLanguagePickerContent`, `BibleVersionPickerLanguageTrigger` | Included transitively | No independent boundary | Both require `BibleVersionPicker.Root` context and stay inside that root. Direct use outside the root is already unsupported. |
 | `BibleReader.Root`, `.Content`, `.Toolbar` | Included as one compound component | `Root` only | Keep reader content, toolbar, pickers, settings, verse actions, and dialogs in one boundary. Audit consumer children, scrolling, selection, overlays, focus, refs, and first paint. |
+| `BibleReaderSearch` | Included transitively | No independent boundary | It requires `BibleReader.Root` context and stays inside that root whether rendered by the toolbar or directly by a consumer. Preserve its shadow-local popover, controlled and host-owned modes, navigation, dismissal, and focus behavior. |
 | `BibleThemeSettingsContent` | Included through YPE-5994 | Its standalone mount, or the owning reader boundary | Preserve its Expo DOM callback contract, constrained Popover scrolling, and reuse of the owning `BibleReader` boundary. |
 | `BibleTextView` | Included | Its standalone mount, or the owning card/reader boundary | Preserve scripture rendering, footnote portals, selection callbacks, and reader stylesheet behavior without nesting roots inside composed SDK components. |
 | `FootnoteContent` | Included | Its standalone mount, or the owning scripture boundary | Treat it as a leaf when used alone and reuse the enclosing `BibleTextView` boundary otherwise. |
@@ -125,15 +130,19 @@ exported function. Each ticket links to YPE-5356 and this policy.
      only boundaries for their compound exports.
    - Validate custom trigger children, context, storage, search inputs, focus,
      collision handling, and shadow-local top-layer behavior.
+   - Retain document-root `rem` scaling as the accepted sizing input; do not add
+     a picker-specific root-font reset.
 5. **YPE-5950: Scripture presentation**
    - Roll out standalone `BibleTextView`, `VerseOfTheDay`, and `BibleCard`.
    - Validate reader styles, scripture direction, footnotes, highlights,
      sharing, loading/error states, picker composition, sizing, and first paint.
 6. **YPE-5951: Bible reader**
    - Roll out `BibleReader.Root` as the boundary for reader content, toolbar,
-     pickers, settings, verse actions, permission dialogs, and sign-in dialogs.
-   - Validate selection, scrolling, native-host callback modes, nested overlay
-     order, focus restoration, and user-visible performance in intended layouts.
+     `BibleReaderSearch`, pickers, settings, verse actions, permission dialogs,
+     and sign-in dialogs.
+   - Validate selection, search navigation and dismissal, scrolling, native-host
+     callback modes, nested overlay order, focus restoration, and user-visible
+     performance in intended layouts.
 7. **YPE-5952: Coordinated release**
    - Land all included groups, complete the package and component gates, update
      consumer documentation, and publish the behavior as one major release.
@@ -142,7 +151,8 @@ YPE-5947 adds no public Shadow DOM configuration and does not expand the current
 automatic boundary beyond `YouVersionAuthButton`. Its independently releasable
 runtime effect is a patch-level resilience fix for stylesheet installation; the
 additional automatic component boundaries remain part of the coordinated major
-release.
+release. The picker and leaf boundaries described above are implemented on the
+Shadow DOM integration branch but are not yet a stable-package release contract.
 
 Excluded components are not hidden work in these groups. `Textarea` needs a
 separately approved form contract, and standalone `VerseActionPopover` needs an

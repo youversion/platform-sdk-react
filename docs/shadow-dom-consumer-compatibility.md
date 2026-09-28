@@ -4,8 +4,10 @@
 
 This contract records cross-browser evidence for consumer-facing behavior at
 the SDK's Shadow DOM boundary. YPE-5356 incorporates it into the
-[production rollout policy](shadow-dom-rollout-policy.md); this contract alone
-does not enable automatic isolation beyond `YouVersionAuthButton`.
+[production rollout policy](shadow-dom-rollout-policy.md). On the Shadow DOM
+integration branch, `YouVersionAuthButton`, `BibleChapterPicker.Root`, and
+`BibleVersionPicker.Root` create automatic boundaries; the coordinated stable
+release is still pending.
 
 The executable evidence lives in
 `consumer-compatibility.shadow-isolation.stories.tsx`. The existing
@@ -19,8 +21,9 @@ scope.
   public event and forwarded-ref props.
 - `Textarea`, rendered through the internal opt-in `ShadowRootHost`, isolates a
   native form control without adding a production behavior or public wrapper.
-- `BibleVersionPicker`, also rendered through the opt-in host, exercises a
-  composed public module with shadow-local floating content.
+- `BibleChapterPicker.Root` and `BibleVersionPicker.Root` exercise automatic
+  compound-component boundaries with shadow-local floating content. Their
+  trigger, content, and language members reuse the owning root.
 
 These modules validate the shared boundary and specific public interfaces they
 exercise. They do not establish compatibility for every SDK component.
@@ -40,7 +43,8 @@ exercise. They do not establish compatibility for every SDK component.
 | An automatically isolated component is nested inside another open SDK shadow root | Supported for basic rendering, traversal, and composed events | `NestedRootsRequireTraversalAndRetargetAtEveryBoundary` verifies recursive root traversal and target retargeting to the inner host in the outer scope and to the outer host in the document scope. Consumers must traverse every root explicitly. |
 | Nested overlays inside shadow roots | Supported in current browser evidence | YPE-5355 verifies nested dialog and popover stacking, focus, inertness, dismissal, and restoration through the shared shadow-local portal infrastructure. Repeat component-specific validation during rollout. |
 | Concurrent peer popovers inside the same or separate component roots | Unsupported as simultaneous peers | Opening a peer dismisses the current popover through Radix outside interaction. YPE-5356 accepts this single-active-peer behavior; supporting simultaneous peers requires a demonstrated product journey and separate design. |
-| Shadow-local ID relationships inside `BibleVersionPicker` | Supported in current browser evidence | `TopLayerEscapesClippingAndPreservesSemantics` verifies that the trigger and controlled panel remain in one root and Chromium, Firefox, and Playwright WebKit resolve their `aria-controls` relationship. This does not make cross-scope ID references supported. |
+| Shadow-local picker relationships | Supported in current browser evidence | The chapter and version picker stories verify that each trigger and controlled panel remain in one root and resolve their `aria-controls` relationship. This does not make cross-scope ID references supported. |
+| Consumer-supplied picker triggers | Supported within the explicit styling contract | The supplied element remains the interactive trigger. Inline style, ordinary attributes, and SDK-embedded utility classes are preserved. Document/global class rules and document-level token overrides do not cross the root. The SDK does not promise CSS Parts, arbitrary stylesheet injection, or styling of picker internals. |
 
 ## Consumer risks
 
@@ -55,7 +59,7 @@ an automation and styling boundary rather than a security boundary. Selectors
 that depend on internal markup remain fragile even when they traverse the root.
 
 The focused Shadow DOM suite runs in Chromium, Firefox, and Playwright WebKit.
-All 22 current stories returned assertion-level success in local Safari 26.6.2
+The 22-story pre-picker-rollout baseline returned assertion-level success in local Safari 26.6.2
 through SafariDriver when each ran in a fresh browser session. A single
 long-lived SafariDriver session stalled on the sign-in dialog and verse action
 popover stories after 20 successes, so isolated sessions are required for this
@@ -64,14 +68,11 @@ assistive technologies remain unverified. Reflected ARIA element properties
 demonstrate DOM relationship resolution, not announcements or other
 assistive-technology behavior.
 
-## Follow-up work outside this ticket
+## Follow-up work
 
-No production defect is fixed by this validation ticket. If a selected rollout
-component must participate in an outer native form or consume external labeling
-relationships, create a component-specific implementation ticket for an
-explicit public contract rather than relying on cross-scope browser behavior.
-The current ticket's actual-Safari smoke is recorded above. Recurring Safari and
-deferred assistive-technology validation, consumer-facing release documentation,
-and production implementation are assigned by the
-[production rollout policy](shadow-dom-rollout-policy.md). No runtime behavior
-or Jira issue is created by this compatibility document.
+If a rollout component must participate in an outer native form or consume
+external labeling relationships, it needs an explicit public contract rather
+than cross-scope browser behavior. Recurring Safari, deferred assistive-
+technology validation, release documentation, and the coordinated stable
+release remain assigned by the
+[production rollout policy](shadow-dom-rollout-policy.md).
