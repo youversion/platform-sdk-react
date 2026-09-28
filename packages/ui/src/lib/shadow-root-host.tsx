@@ -161,6 +161,8 @@ function resetHost(host: HTMLElement, shrinkableBlockHost: boolean): void {
   host.style.setProperty('all', 'initial', 'important');
   host.style.setProperty('display', shrinkableBlockHost ? 'flex' : 'contents', 'important');
   host.style.setProperty('direction', 'inherit', 'important');
+  host.style.removeProperty('flex-direction');
+  host.style.removeProperty('min-block-size');
   if (shrinkableBlockHost) {
     host.style.setProperty('flex-direction', 'column', 'important');
     host.style.setProperty('min-block-size', '0', 'important');
@@ -391,8 +393,8 @@ export function ShadowRootHost({
     const existingRoot = host.shadowRoot;
     const root = existingRoot ?? host.attachShadow({ mode: 'open' });
     shadowRootRef.current = root;
+    resetHost(host, shrinkableBlockHost);
     if (!existingRoot) {
-      resetHost(host, shrinkableBlockHost);
       if (!adoptSdkStyleSheet(root)) {
         setNeedsStyleFallback(true);
       }

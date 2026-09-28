@@ -121,8 +121,9 @@ selected font state, font limits, and four top-level Expo callbacks retain
 their public behavior.
 
 The constrained Popover journey identified the only layout exception needed:
-this component's private host uses `display: block` with a zero logical minimum
-block size, and the settings body fills that allocated block before scrolling.
+this component's private host uses a flex-column layout with a zero logical
+minimum block size, and the settings body fills that allocated block before
+scrolling.
 The generic host reset and shadow content wrapper retain `display: contents`.
 Focused Chromium, Firefox, and Playwright WebKit coverage verifies
 collision-boundary containment, internal overflow and scroll, stable header

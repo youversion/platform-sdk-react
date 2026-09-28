@@ -338,6 +338,36 @@ describe('ShadowRootHost', () => {
     expect(host?.style.getPropertyPriority('display')).toBe('important');
   });
 
+  it('updates the shrinkable host layout without replacing the shadow root', () => {
+    const { container, rerender } = render(
+      <ShadowRootHost>
+        <span>content</span>
+      </ShadowRootHost>,
+    );
+    const host = container.querySelector<HTMLElement>('[data-yv-shadow-host]')!;
+    const root = host.shadowRoot;
+
+    rerender(
+      <ShadowRootHost shrinkableBlockHost>
+        <span>content</span>
+      </ShadowRootHost>,
+    );
+    expect(host.shadowRoot).toBe(root);
+    expect(host.style.getPropertyValue('display')).toBe('flex');
+    expect(host.style.getPropertyValue('flex-direction')).toBe('column');
+    expect(host.style.getPropertyValue('min-block-size')).toBe('0');
+
+    rerender(
+      <ShadowRootHost>
+        <span>content</span>
+      </ShadowRootHost>,
+    );
+    expect(host.shadowRoot).toBe(root);
+    expect(host.style.getPropertyValue('display')).toBe('contents');
+    expect(host.style.getPropertyValue('flex-direction')).toBe('');
+    expect(host.style.getPropertyValue('min-block-size')).toBe('');
+  });
+
   it('gives the fallback stylesheet a stable React resource identity', () => {
     const { container } = render(
       <ShadowRootHost>
