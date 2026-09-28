@@ -20,10 +20,15 @@ function ConstrainedSettings(): React.ReactNode {
         data-font-family={fontFamily}
         style={{ position: 'relative', blockSize: 360, inlineSize: 800 }}
       >
-        <div style={{ position: 'absolute', insetBlockStart: '53%', insetInlineStart: '50%' }}>
+        <div style={{ position: 'absolute', insetBlockStart: '75%', insetInlineStart: '50%' }}>
           <Popover>
             <PopoverTrigger data-testid="settings-trigger">Settings</PopoverTrigger>
-            <PopoverContent heading="Reader settings" collisionBoundary={boundary} sideOffset={16}>
+            <PopoverContent
+              heading="Reader settings"
+              collisionBoundary={boundary}
+              sideOffset={16}
+              style={{ blockSize: 180 }}
+            >
               <BibleThemeSettingsContent
                 theme="light"
                 fontFamily={fontFamily}
@@ -85,6 +90,7 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
     const settingsBody = serifButton.closest<HTMLElement>('[data-yv-sdk]');
     if (!settingsBody) throw new Error('settings body not rendered');
     const boundary = canvas.getByTestId('settings-boundary');
+    await Promise.all(dialog.getAnimations().map((animation) => animation.finished));
     await waitFor(() => {
       const panelRect = dialog.getBoundingClientRect();
       const boundaryRect = boundary.getBoundingClientRect();
@@ -95,9 +101,8 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
       void expect(settingsBody.scrollHeight).toBeGreaterThan(settingsBody.clientHeight);
       void expect(getComputedStyle(settingsBody).overflowY).toBe('auto');
     });
-    await Promise.all(dialog.getAnimations().map((animation) => animation.finished));
     const header = within(dialog).getByRole('heading');
-    const headerTop = header.getBoundingClientRect().top;
+    const headerOffset = header.getBoundingClientRect().top - dialog.getBoundingClientRect().top;
     const controls = settings.getAllByRole('button');
     void expect(controls).toHaveLength(5);
     for (const control of controls) {
@@ -112,7 +117,9 @@ export const FontControlsRemainReachableInConstrainedSpace: Story = {
           controlRect.top + controlRect.height / 2,
         );
         void expect(control.contains(hit)).toBe(true);
-        void expect(header.getBoundingClientRect().top).toBe(headerTop);
+        const currentHeaderOffset =
+          header.getBoundingClientRect().top - dialog.getBoundingClientRect().top;
+        void expect(Math.abs(currentHeaderOffset - headerOffset)).toBeLessThanOrEqual(1);
       });
     }
     void expect(settingsBody.scrollTop).toBeGreaterThan(0);

@@ -159,9 +159,12 @@ function resetHost(host: HTMLElement, shrinkableBlockHost: boolean): void {
   // The host page can select this light-DOM element, including with !important.
   // Inline author-important declarations establish the smallest stable box.
   host.style.setProperty('all', 'initial', 'important');
-  host.style.setProperty('display', shrinkableBlockHost ? 'block' : 'contents', 'important');
+  host.style.setProperty('display', shrinkableBlockHost ? 'flex' : 'contents', 'important');
   host.style.setProperty('direction', 'inherit', 'important');
-  if (shrinkableBlockHost) host.style.setProperty('min-block-size', '0', 'important');
+  if (shrinkableBlockHost) {
+    host.style.setProperty('flex-direction', 'column', 'important');
+    host.style.setProperty('min-block-size', '0', 'important');
+  }
 }
 
 function hidePopoverIfOpen(container: HTMLElement | null): void {
