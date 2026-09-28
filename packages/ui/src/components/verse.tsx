@@ -122,9 +122,12 @@ function FootnoteContentImplementation({
 }
 
 export function FootnoteContent(props: FootnoteContentProps): React.ReactElement {
+  const providerTheme = useTheme();
+  const resolvedTheme = props.theme ?? providerTheme;
+
   return (
-    <ShadowIsolationBoundary theme={props.theme}>
-      <FootnoteContentImplementation {...props} />
+    <ShadowIsolationBoundary theme={resolvedTheme}>
+      <FootnoteContentImplementation {...props} theme={resolvedTheme} />
     </ShadowIsolationBoundary>
   );
 }

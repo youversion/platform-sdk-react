@@ -141,4 +141,23 @@ describe('leaf component shadow isolation', () => {
       ).toHaveAttribute('data-yv-theme', 'light');
     });
   });
+
+  it('carries the resolved provider theme into standalone footnote scopes', async () => {
+    const { container } = render(
+      <YouVersionContext.Provider value={{ appKey: 'test', theme: 'dark' }}>
+        <FootnoteContent verseNum="16" notes={['A note']} verseHtml="For God so loved the world." />
+      </YouVersionContext.Provider>,
+    );
+
+    await waitFor(() => {
+      const shadowRoot = container.querySelector<HTMLElement>('[data-yv-shadow-host]')?.shadowRoot;
+      expect(shadowRoot?.querySelector('[data-yv-shadow-content-wrapper]')).toHaveAttribute(
+        'data-yv-theme',
+        'dark',
+      );
+      expect(
+        shadowRoot?.querySelector('[data-slot="yv-bible-note"]')?.closest('[data-yv-sdk]'),
+      ).toHaveAttribute('data-yv-theme', 'dark');
+    });
+  });
 });
