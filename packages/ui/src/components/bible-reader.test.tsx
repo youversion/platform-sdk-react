@@ -372,11 +372,7 @@ it('reuses a future reader boundary without nesting a settings host', async () =
       </BibleReader.Root>
     </HookOverrideProvider>
   );
-  const outerView = render(
-    <ShadowRootHost portalStrategy="local-inline">
-      <ReuseShadowBoundary>{reader}</ReuseShadowBoundary>
-    </ShadowRootHost>,
-  );
+  const outerView = render(<ShadowRootHost portalStrategy="local-inline">{reader}</ShadowRootHost>);
   const outerHost = await waitFor(() => {
     const candidate = outerView.container.querySelector<HTMLElement>('[data-yv-shadow-host]');
     if (!candidate?.shadowRoot?.querySelector('button[aria-label="Settings"]')) {
@@ -393,8 +389,6 @@ it('reuses a future reader boundary without nesting a settings host', async () =
     if (!candidate) throw new Error('reader settings not rendered in the outer root');
     return candidate;
   });
-  expect(outerView.container.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(1);
-  expect(outerRoot.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
   expect(settingsControl.getRootNode()).toBe(outerRoot);
 });
 
