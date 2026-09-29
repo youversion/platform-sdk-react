@@ -49,6 +49,7 @@ import { InfoIcon } from './icons/info';
 import { LoaderIcon } from './icons/loader';
 import { PersonIcon } from './icons/person';
 import { ProfileAvatar } from './profile-avatar';
+import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
 import { Button } from './ui/button';
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from './ui/popover';
 import { VerseActionPopover } from './verse-action-popover';
@@ -1333,12 +1334,14 @@ function UserMenu() {
       <PopoverTrigger asChild data-testid="user-menu-trigger">
         {auth.isAuthenticated ? (
           <Button size="icon" variant="outline">
-            <ProfileAvatar
-              name={userInfo?.name}
-              src={userInfo?.getAvatarUrl(32, 32)?.toString()}
-              aria-label={userInfo?.name || t('userAvatarAlt')}
-              className="yv:size-full"
-            />
+            <ReuseShadowBoundary>
+              <ProfileAvatar
+                name={userInfo?.name}
+                src={userInfo?.getAvatarUrl(32, 32)?.toString()}
+                aria-label={userInfo?.name || t('userAvatarAlt')}
+                className="yv:size-full"
+              />
+            </ReuseShadowBoundary>
           </Button>
         ) : (
           <Button size="sm" variant="secondary">

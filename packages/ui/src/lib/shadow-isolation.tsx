@@ -8,6 +8,7 @@ import {
   type ReactNode,
   type RefAttributes,
 } from 'react';
+import { useTheme } from '@youversion/platform-react-hooks';
 import { ShadowRootHost } from './shadow-root-host';
 
 const ShadowBoundaryReuseContext = createContext(false);
@@ -16,16 +17,23 @@ type ShadowPortalStrategy = 'local-inline' | 'local-top-layer';
 
 interface ShadowIsolationBoundaryProps {
   children: ReactNode;
+  /** @internal Keeps inline public roots valid in phrasing content. */
+  hostElement?: 'div' | 'span';
   /** @internal Component-owned overlay strategy; not a public configuration surface. */
   portalStrategy?: ShadowPortalStrategy;
+  /** @internal Component-resolved theme when it intentionally overrides the provider. */
+  theme?: 'light' | 'dark';
 }
 
 /** @internal Applies automatic isolation while honoring SDK-owned boundary reuse. */
 export function ShadowIsolationBoundary({
   children,
+  hostElement,
   portalStrategy,
+  theme,
 }: ShadowIsolationBoundaryProps): ReactNode {
   const reuseBoundary = useContext(ShadowBoundaryReuseContext);
+  const providerTheme = useTheme();
 
   if (reuseBoundary) {
     return (
@@ -35,7 +43,15 @@ export function ShadowIsolationBoundary({
     );
   }
 
-  return <ShadowRootHost portalStrategy={portalStrategy}>{children}</ShadowRootHost>;
+  return (
+    <ShadowRootHost
+      hostElement={hostElement}
+      portalStrategy={portalStrategy}
+      theme={theme ?? providerTheme}
+    >
+      {children}
+    </ShadowRootHost>
+  );
 }
 
 /** @internal Marks SDK-owned composition that must reuse an existing automatic boundary. */
@@ -49,6 +65,7 @@ export function ReuseShadowBoundary({ children }: { children: ReactNode }): Reac
 export function withShadowIsolation<P extends object, T>(
   Implementation: ForwardRefExoticComponent<PropsWithoutRef<P> & RefAttributes<T>>,
   displayName: string,
+  options?: { hostElement?: 'div' | 'span' },
 ): ForwardRefExoticComponent<PropsWithoutRef<P> & RefAttributes<T>> {
   const Isolated = forwardRef<T, P>((props, ref) => {
     const implementationProps: PropsWithoutRef<P> & RefAttributes<T> = {
@@ -57,7 +74,7 @@ export function withShadowIsolation<P extends object, T>(
     };
 
     return (
-      <ShadowIsolationBoundary>
+      <ShadowIsolationBoundary hostElement={options?.hostElement}>
         {createElement(Implementation, implementationProps)}
       </ShadowIsolationBoundary>
     );

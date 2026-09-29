@@ -223,7 +223,7 @@ function RootImplementation({
 
 function Root(props: RootProps) {
   return (
-    <ShadowIsolationBoundary portalStrategy="local-top-layer">
+    <ShadowIsolationBoundary portalStrategy="local-top-layer" theme={props.background}>
       <RootImplementation {...props} />
     </ShadowIsolationBoundary>
   );

@@ -155,7 +155,7 @@ function adoptSdkStyleSheet(root: ShadowRoot): boolean {
   }
 }
 
-function resetHost(host: HTMLDivElement): void {
+function resetHost(host: HTMLElement): void {
   // The host page can select this light-DOM element, including with !important.
   // Inline author-important declarations establish the smallest stable box.
   host.style.setProperty('all', 'initial', 'important');
@@ -171,13 +171,22 @@ function hidePopoverIfOpen(container: HTMLElement | null): void {
 
 interface ShadowRootHostProps {
   children: ReactNode;
+  /** @internal Keeps inline public roots valid in phrasing content. */
+  hostElement?: 'div' | 'span';
   /** @internal Component-owned, mount-stable strategy; omit for leaves without overlays. */
   portalStrategy?: ShadowPortalStrategy;
+  /** @internal Establishes SDK token scope for an automatic component boundary. */
+  theme?: 'light' | 'dark';
 }
 
 /** @internal Shadow boundary primitive; not part of the public API. */
-export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps): ReactNode {
-  const hostRef = useRef<HTMLDivElement | null>(null);
+export function ShadowRootHost({
+  children,
+  hostElement: HostElement = 'div',
+  portalStrategy,
+  theme,
+}: ShadowRootHostProps): ReactNode {
+  const hostRef = useRef<HTMLElement | null>(null);
   const shadowRootRef = useRef<ShadowRoot | null>(null);
   const portalContainerRef = useRef<HTMLElement | null>(null);
   const portalObserverRef = useRef<MutationObserver | null>(null);
@@ -191,6 +200,9 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
   const [shadowRoot, setShadowRoot] = useState<ShadowRoot | null>(null);
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
   const [needsStyleFallback, setNeedsStyleFallback] = useState(false);
+  const setHostRef = useCallback((node: HTMLElement | null): void => {
+    hostRef.current = node;
+  }, []);
 
   const hideIfIdle = useCallback(
     (): void => {
@@ -396,7 +408,7 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
   }, []);
 
   return (
-    <div ref={hostRef} data-yv-shadow-host>
+    <HostElement ref={setHostRef} data-yv-shadow-host>
       {shadowRoot
         ? createPortal(
             <ShadowPortalContext.Provider value={portalController}>
@@ -408,6 +420,8 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
               {/* Host selectors cannot reach this reset boundary. */}
               <div
                 ref={contentWrapperRef}
+                data-yv-sdk={theme ? true : undefined}
+                data-yv-theme={theme}
                 data-yv-shadow-content-wrapper
                 style={{ all: 'initial', direction: 'inherit', display: 'contents' }}
                 onFocusCapture={(event) => {
@@ -425,6 +439,6 @@ export function ShadowRootHost({ children, portalStrategy }: ShadowRootHostProps
             shadowRoot,
           )
         : null}
-    </div>
+    </HostElement>
   );
 }

@@ -20,8 +20,10 @@ This is a working plan, not approval for package-wide rollout.
 
 - In the current stable package, `YouVersionAuthButton` is the only component
   with automatic isolation. On the Shadow DOM integration branch,
-  `BibleChapterPicker.Root` and `BibleVersionPicker.Root` also create automatic
-  boundaries.
+  `BibleChapterPicker.Root`, `BibleVersionPicker.Root`, `ProfileAvatar`,
+  `Separator`, and `FootnoteContent` also create automatic boundaries. These
+  boundaries remain subject to the rollout policy's coordinated release gate.
+  Standalone `BibleThemeSettingsContent` moved to YPE-5994.
 - The picker roots validate shadow-local native top-layer floating content
   through their public runtime boundaries. A historical inline negative
   control demonstrated clipping beyond a constrained ancestor before that
@@ -29,7 +31,7 @@ This is a working plan, not approval for package-wide rollout.
 - The shared Dialog and Popover primitives support opt-in shadow-local portals.
 - `VerseActionPopover` uses the shared portal-state infrastructure while
   retaining its specialized direct Radix composition.
-- Other public exports do not yet automatically create Shadow DOM boundaries.
+- No other public exports currently create automatic Shadow DOM boundaries.
 - The internal `SignInDialog` is validated only through an opt-in
   `ShadowRootHost` story.
 - Nested and concurrent overlays within and across component shadow roots were
@@ -77,6 +79,37 @@ functions; assistive-technology checks remain open.
 | Consumer events, refs, and automation | Coverage verifies native retargeting, the auth button's React handler and forwarded ref, open-root queries, and effect-driven attachment timing. | Supported with documented constraints | Repeat for each public component selected for rollout. |
 | Nested shadow roots | Coverage verifies basic rendering, recursive queries, and event retargeting at each boundary. | Supported for the validated basics | Single-active-peer dismissal is accepted; verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
 | Realistic same-page usage | YPE-5437 mounts, removes, and re-adds a 12-component mix in Normal and Strict Mode. Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 coverage verifies exact host counts, rendered scripture content, and one shared stylesheet object across roots and remounts. A production-build comparison found a small warm-run mount-cost difference on one machine. | No shared-host blocker found | Repeat user-visible performance and compatibility checks for each component selected for rollout. |
+
+## YPE-5948 leaf evidence
+
+`ProfileAvatar`, `Separator`, and `FootnoteContent` now use the shared automatic
+boundary. In the reader user menu and verse footnote composition, they remain
+in their owning component tree and reuse its boundary when present. The
+realistic-usage fixture retains exactly 12 manually owned hosts and one shared
+stylesheet object by marking its contents for boundary reuse.
+
+The focused component matrix verifies exact empty-host SSR and one open client
+root containing each production element. Component behavior coverage preserves
+the avatar's image/fallback and forwarded Radix ref contract; Separator's
+decorative, orientation, DOM prop, event, and ref behavior; footnote context,
+reference, direction, theme, and font sizing. The focused browser story
+exercises hostile light-DOM CSS, the avatar's 32-by-32 compact flex placement,
+horizontal and vertical Separator geometry, and representative footnote theme
+and direction in the package browser matrix.
+
+The ADR's client-only first-paint contract is accepted for the reviewed avatar
+rows and stacks, separators, and standalone footnotes. Their empty server host
+reserves no space, so content can appear and move nearby layout after the
+passive-effect mount; footnote composition normally appears only after
+interaction.
+
+The intended-layout review moved standalone `BibleThemeSettingsContent` to
+YPE-5994. Its automatic host prevented the settings body from participating as
+the constrained Popover grid's shrinkable, scrollable item. The settings
+component and its reader composition remain in their baseline light-DOM
+behavior here.
+
+## Safari spacing evidence
 
 Actual Safari 26.6.2 exposed a visual gap the initial focused assertions missed:
 the picker header and version rows lost their logical padding inside the shadow

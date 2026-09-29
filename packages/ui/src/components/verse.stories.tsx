@@ -451,7 +451,12 @@ export const SwiftPhaseTwoTypographyFixture: Story = {
       }
     }
 
-    const note = canvasElement.querySelector<HTMLElement>('[data-slot="yv-bible-note"]')!;
+    const noteRoot = await waitFor(() => {
+      const host = canvasElement.querySelector<HTMLElement>('[data-yv-shadow-host]');
+      if (!host?.shadowRoot) throw new Error('footnote shadow root not mounted');
+      return host.shadowRoot;
+    });
+    const note = noteRoot.querySelector<HTMLElement>('[data-slot="yv-bible-note"]')!;
     const noteStyle = getComputedStyle(note);
     const fpStyle = getComputedStyle(note.querySelector<HTMLElement>('.fp')!);
     await expect(noteStyle.fontSize).toBe('12px');

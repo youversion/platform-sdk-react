@@ -9,6 +9,28 @@ import { requireHtmlButton, requireShadowRoot } from '@/test/dom-stubs';
 import { YouVersionAuthButton } from './YouVersionAuthButton';
 
 describe('YouVersionAuthButton', () => {
+  it('uses an explicit background for the automatic shadow theme scope', async () => {
+    const { container } = render(
+      <YouVersionProvider
+        appKey="test-app-key"
+        authRedirectUrl="https://example.com/callback"
+        includeAuth
+        theme="dark"
+      >
+        <YouVersionAuthButton background="light" />
+      </YouVersionProvider>,
+    );
+
+    const shadowRoot = await waitFor(() => requireShadowRoot(container));
+    await waitFor(() => {
+      expect(shadowRoot.querySelector('[data-yv-shadow-content-wrapper]')).toHaveAttribute(
+        'data-yv-theme',
+        'light',
+      );
+      expect(shadowRoot.querySelector('button')).toHaveAttribute('data-yv-theme', 'light');
+    });
+  });
+
   it('uses mode, rather than authentication state alone, to choose the auth action', async () => {
     const signIn = vi.spyOn(YouVersionAPIUsers, 'signIn').mockResolvedValue(undefined);
     const clearAuthTokens = vi
