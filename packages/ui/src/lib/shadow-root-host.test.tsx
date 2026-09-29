@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { hydrateRoot, type Root } from 'react-dom/client';
+import { createPortal } from 'react-dom';
 import { renderToString } from 'react-dom/server';
 import { act, render, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -21,6 +22,11 @@ function PortalRequester(): React.ReactNode {
       Open portal
     </button>
   );
+}
+
+function OpenPortalMarker(): React.ReactNode {
+  const target = useShadowPortalTarget(true);
+  return target ? createPortal(<span data-testid="portal-marker">Portal content</span>, target) : null;
 }
 
 const IsolatedRefProbe = withShadowIsolation(
@@ -338,31 +344,42 @@ describe('ShadowRootHost', () => {
     expect(host?.style.getPropertyPriority('display')).toBe('important');
   });
 
-  it('updates the shrinkable host layout without replacing the shadow root', () => {
+  it('updates the shrinkable host layout without replacing the shadow root or open portal', async () => {
     const { container, rerender } = render(
-      <ShadowRootHost>
-        <span>content</span>
+      <ShadowRootHost portalStrategy="local-inline">
+        <OpenPortalMarker />
       </ShadowRootHost>,
     );
     const host = container.querySelector<HTMLElement>('[data-yv-shadow-host]')!;
     const root = host.shadowRoot;
+    const portal = await waitFor(() => {
+      const candidate = root?.querySelector<HTMLElement>('[data-yv-shadow-inline-overlay]');
+      if (!candidate?.querySelector('[data-testid="portal-marker"]')) {
+        throw new Error('open portal not mounted');
+      }
+      return candidate;
+    });
 
     rerender(
-      <ShadowRootHost shrinkableBlockHost>
-        <span>content</span>
+      <ShadowRootHost portalStrategy="local-inline" shrinkableBlockHost>
+        <OpenPortalMarker />
       </ShadowRootHost>,
     );
     expect(host.shadowRoot).toBe(root);
+    expect(root?.querySelector('[data-yv-shadow-inline-overlay]')).toBe(portal);
+    expect(portal.querySelector('[data-testid="portal-marker"]')).not.toBeNull();
     expect(host.style.getPropertyValue('display')).toBe('flex');
     expect(host.style.getPropertyValue('flex-direction')).toBe('column');
     expect(host.style.getPropertyValue('min-block-size')).toBe('0');
 
     rerender(
-      <ShadowRootHost>
-        <span>content</span>
+      <ShadowRootHost portalStrategy="local-inline">
+        <OpenPortalMarker />
       </ShadowRootHost>,
     );
     expect(host.shadowRoot).toBe(root);
+    expect(root?.querySelector('[data-yv-shadow-inline-overlay]')).toBe(portal);
+    expect(portal.querySelector('[data-testid="portal-marker"]')).not.toBeNull();
     expect(host.style.getPropertyValue('display')).toBe('contents');
     expect(host.style.getPropertyValue('flex-direction')).toBe('');
     expect(host.style.getPropertyValue('min-block-size')).toBe('');

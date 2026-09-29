@@ -393,7 +393,6 @@ export function ShadowRootHost({
     const existingRoot = host.shadowRoot;
     const root = existingRoot ?? host.attachShadow({ mode: 'open' });
     shadowRootRef.current = root;
-    resetHost(host, shrinkableBlockHost);
     if (!existingRoot) {
       if (!adoptSdkStyleSheet(root)) {
         setNeedsStyleFallback(true);
@@ -414,6 +413,11 @@ export function ShadowRootHost({
       lastFocusedElementRef.current = null;
       if (contentWrapperRef.current) contentWrapperRef.current.inert = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (host) resetHost(host, shrinkableBlockHost);
   }, [shrinkableBlockHost]);
 
   return (
