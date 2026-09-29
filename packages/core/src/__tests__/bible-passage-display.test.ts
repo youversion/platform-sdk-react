@@ -97,6 +97,23 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('passage display model',
     expect(display.attribution.source).toBe('copyright');
   });
 
+  it('transforms and sanitizes direct HTML passage reads by default', async () => {
+    setupDisplayTest();
+    server.use(
+      http.get(`https://${apiHost}/v1/bibles/:id/passages/:passageId`, () =>
+        HttpResponse.json({
+          ...mockNIVGen1Verse1PassageHTML,
+          content: `${mockNIVGen1Verse1PassageHTML.content}<script>unsafe()</script>`,
+        }),
+      ),
+    );
+
+    const passage = await createBibleClient().getPassage(111, 'GEN.1.1');
+
+    expect(passage.content).toContain('data-yv-transformed');
+    expect(passage.content).not.toContain('<script>');
+  });
+
   it('preserves additional API fields returned by the existing getPassage method', async () => {
     setupDisplayTest();
     server.use(

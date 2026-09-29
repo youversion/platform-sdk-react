@@ -10,6 +10,7 @@ it('labels the sign-in prompt and routes each choice to its own callback', () =>
       open
       onOpenChange={vi.fn()}
       appName="Acme Bible"
+      promptMessage="Keep your reading history connected."
       onConfirm={onConfirm}
       onDecline={onDecline}
     />,
@@ -18,6 +19,7 @@ it('labels the sign-in prompt and routes each choice to its own callback', () =>
   const dialog = screen.getByRole('dialog');
   expect(dialog).toHaveAccessibleName('INTRODUCING');
   expect(dialog).toHaveAccessibleDescription(/wants to connect to your YouVersion Bible App/);
+  expect(screen.getByText(/Keep your reading history connected\./)).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: 'Yes Please' }));
   expect(onConfirm).toHaveBeenCalledOnce();

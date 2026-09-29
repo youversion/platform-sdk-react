@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { expect, it, vi } from 'vitest';
 import { createMockAuthResult, createMockUserInfo } from './__tests__/mocks/auth';
 import { YouVersionAuthContext } from './context/YouVersionAuthContext';
+import type { AuthContextValue } from './types/auth';
 import { useYVAuth } from './useYVAuth';
 
 function wrapperWith(redirectUri?: string, setUserInfo = vi.fn()) {
@@ -26,6 +27,41 @@ it('requires the auth provider boundary', () => {
   expect(() => renderHook(() => useYVAuth())).toThrow(
     'useYouVersionAuthContext must be used within an auth provider',
   );
+});
+
+it('derives authentication, loading, token, and error state from its boundaries', () => {
+  const userInfo = createMockUserInfo();
+  const providerError = new Error('session unavailable');
+  const accessToken = vi
+    .spyOn(YouVersionPlatformConfiguration, 'accessToken', 'get')
+    .mockReturnValue('access-token');
+  let context: AuthContextValue = {
+    userInfo: null,
+    setUserInfo: vi.fn(),
+    isLoading: true,
+    error: providerError,
+  };
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <YouVersionAuthContext.Provider value={context}>{children}</YouVersionAuthContext.Provider>
+  );
+  const { result, rerender } = renderHook(() => useYVAuth(), { wrapper });
+
+  expect(result.current.auth).toMatchObject({
+    isAuthenticated: false,
+    isLoading: true,
+    accessToken: 'access-token',
+    error: providerError,
+  });
+
+  context = { ...context, userInfo, isLoading: false, error: null };
+  rerender();
+  expect(result.current.auth).toMatchObject({
+    isAuthenticated: true,
+    isLoading: false,
+    accessToken: 'access-token',
+    error: null,
+  });
+  accessToken.mockRestore();
 });
 
 it('forwards scopes and permissions while honoring an explicit redirect URL', async () => {

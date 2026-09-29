@@ -1756,4 +1756,13 @@ describe('FootnoteContent', () => {
     expect(note?.querySelector('.fk')).not.toBeNull();
     expect(note?.querySelector('.fl')).not.toBeNull();
   });
+
+  it('injects component and reader styles when rendered standalone', () => {
+    rtlRender(
+      <FootnoteContent verseNum="1" notes={['A note']} verseHtml="Verse text" reference="John 1" />,
+    );
+
+    expect(document.head.querySelector('style[data-href="yv-sdk-components"]')).not.toBeNull();
+    expect(document.head.querySelector('style[data-href="yv-sdk-bible-reader"]')).not.toBeNull();
+  });
 });

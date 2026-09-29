@@ -13,6 +13,7 @@ import { InterfaceDirectionProvider } from '@/lib/direction';
 import {
   BIBLE_READER_SPACING,
   BibleReader,
+  BibleThemeSettingsContent,
   changeBibleReaderLineSpacing,
   clampBibleReaderFontSize,
   createBibleThemeSettingsContentHandlers,
@@ -200,6 +201,23 @@ describe('createBibleThemeSettingsContentHandlers', () => {
     handlers.onChangeLineSpacing();
     expect(setLineSpacing).toHaveBeenLastCalledWith(BIBLE_READER_SPACING.DEFAULT);
   });
+});
+
+it('injects component styles when theme settings render standalone', () => {
+  render(
+    <BibleThemeSettingsContent
+      theme="light"
+      fontSize={16}
+      fontFamily={INTER_FONT}
+      lineSpacing={BIBLE_READER_SPACING.DEFAULT}
+      onFontSelected={vi.fn()}
+      onFontIncreased={vi.fn()}
+      onFontDecreased={vi.fn()}
+      onChangeLineSpacing={vi.fn()}
+    />,
+  );
+
+  expect(document.head.querySelector('style[data-href="yv-sdk-components"]')).not.toBeNull();
 });
 
 describe('BibleReader theme settings', () => {
