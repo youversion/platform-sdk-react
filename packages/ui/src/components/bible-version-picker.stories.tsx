@@ -377,6 +377,8 @@ export const LanguageSearch: Story = {
     const currentLanguageSearchInput = overlay.getByRole('textbox', {
       name: /search languages/i,
     });
+    // user-event cannot clear an input in a shadow root: it checks
+    // document.activeElement, which is the shadow host.
     await fireEvent.input(currentLanguageSearchInput, { target: { value: '' } });
     await userEvent.type(currentLanguageSearchInput, 'Koreanea', { delay: 50 });
 
