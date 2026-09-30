@@ -445,6 +445,8 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
             dir="auto"
             className="yv:text-base yv:leading-normal"
             value={searchQuery}
+            // onInput, not onChange: onChange does not update the query inside the picker's
+            // shadow root. The picker search stories fail with onChange.
             onInput={(event) => setSearchQuery(event.currentTarget.value)}
           />
           <InputGroupAddon align="inline-start">

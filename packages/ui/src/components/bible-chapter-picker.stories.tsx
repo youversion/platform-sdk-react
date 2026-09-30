@@ -98,6 +98,8 @@ export const LightBackground: Story = {
 
     // Clear search and select Genesis
     const currentSearchInput = overlay.getByPlaceholderText(/search/i);
+    // user-event cannot clear an input in a shadow root: it checks
+    // document.activeElement, which is the shadow host.
     await fireEvent.input(currentSearchInput, { target: { value: '' } });
     await waitFor(() => expect(overlay.getByText('Genesis')).toBeInTheDocument());
     await userEvent.click(overlay.getByText('Genesis'));

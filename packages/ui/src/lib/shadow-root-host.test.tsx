@@ -82,6 +82,7 @@ async function expectStyleSheetFailureRecovery(stage: StyleSheetFailureStage): P
     ownerDocument.createElement('div').attachShadow({ mode: 'open' }),
   );
   const adoptedStyleSheets = new WeakMap<ShadowRoot, CSSStyleSheet[]>();
+  const populatedStyleSheets = new WeakSet<object>();
   const failedContainer = ownerDocument.createElement('div');
   const recoveredContainer = ownerDocument.createElement('div');
   const sharedContainer = ownerDocument.createElement('div');
@@ -116,6 +117,7 @@ async function expectStyleSheetFailureRecovery(stage: StyleSheetFailureStage): P
           if (stage === 'replacement' && rejectFailure) {
             throw new Error('replacement failed');
           }
+          populatedStyleSheets.add(this);
         }
       },
     });
@@ -157,6 +159,8 @@ async function expectStyleSheetFailureRecovery(stage: StyleSheetFailureStage): P
       return root;
     });
     expect(recoveredRoot.adoptedStyleSheets).toHaveLength(1);
+    // A sheet cached before a failed replaceSync would be adopted here without SDK styles.
+    expect(populatedStyleSheets.has(recoveredRoot.adoptedStyleSheets[0]!)).toBe(true);
     expect(recoveredRoot.querySelector('style')).toBeNull();
 
     const sharedView = render(
