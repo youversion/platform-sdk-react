@@ -74,7 +74,7 @@ signature.
 
 ## TESTING
 
-Follow the E2E-first rules in root `AGENTS.md` and `docs/testing.md`. This package’s isolation flavors:
+Follow `docs/testing.md`. This package’s isolation flavors:
 
 | Flavor | Use when | Avoid when |
 | --- | --- | --- |

@@ -821,6 +821,10 @@ export const VerseSelection: Story = {
     await expect(highlighted.paddingInlineStart).toBe('2px');
     await expect(highlighted.paddingInlineEnd).toBe('2px');
     await expect(highlighted.boxDecorationBreak).toBe('clone');
+    await expect(highlighted.borderStartStartRadius).toBe('4px');
+    await expect(highlighted.borderStartEndRadius).toBe('4px');
+    await expect(highlighted.borderEndStartRadius).toBe('4px');
+    await expect(highlighted.borderEndEndRadius).toBe('4px');
     const after = nextVerse.getBoundingClientRect();
     const afterParagraph = nextVerse.parentElement!.getBoundingClientRect();
     await expect(

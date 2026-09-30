@@ -1,8 +1,10 @@
 # Testing
 
-Testing style adapted from [Kent C. Dodds / kody testing principles](https://github.com/kentcdodds/kody/blob/main/docs/contributing/testing-principles.md). Follow the E2E-first rules in `AGENTS.md`; do not mass-rewrite untouched suites. Package `AGENTS.md` files describe the available isolation flavors.
+Testing style adapted from [Kent C. Dodds / kody testing principles](https://github.com/kentcdodds/kody/blob/main/docs/contributing/testing-principles.md). This document owns the E2E-first rules; do not mass-rewrite untouched suites. Package `AGENTS.md` files describe the available isolation flavors.
 
 ## Prefer E2E; isolate only failures the existing journeys miss
+
+Highly prefer E2E tests as the sole testing mechanism for complex features. Use isolation tests only for real failures the existing journeys miss.
 
 Before writing isolation tests, list the ways the system could fail and identify which ones the existing E2E and mocked browser journeys miss. Account for what their mocks bypass. Write those tests before implementation, never afterward; before deleting an existing test, preserve or replace its unique coverage. Do not use "integration" as a style term — choose by capability:
 
