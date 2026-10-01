@@ -178,6 +178,16 @@ describe('BibleCard - Delayed spinner', () => {
 describe('BibleCard - maxWidth', () => {
   const loaded = passageResult({ passage: mockPassage, loading: false });
 
+  it('defaults to a 700px section cap without adding an inner width cap', () => {
+    const { container } = renderCard(loaded);
+    const { section, inner } = cardShell(container);
+
+    expect(section).toHaveStyle({ maxWidth: '700px' });
+    expect(inner).toHaveClass('yv:w-full');
+    expect(inner).not.toHaveClass('yv:card-content');
+    expect(section.style.getPropertyValue('--yv-reader-max-width')).toBe('none');
+  });
+
   it('uses a number maxWidth as the section cap and lets the inner column fill', () => {
     const { container } = renderCard(loaded, { maxWidth: 480 });
     const { section, inner } = cardShell(container);

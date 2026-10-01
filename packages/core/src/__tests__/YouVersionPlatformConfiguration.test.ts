@@ -19,17 +19,15 @@ describe('YouVersionPlatformConfiguration storage contracts', () => {
     randomUUID.mockRestore();
   });
 
-  it('does not persist an ID token with the browser session', () => {
+  it('round-trips the session expiry without persisting an ID token', () => {
     localStorage.clear();
+    const expiryDate = new Date('2026-01-01T12:34:56.789Z');
 
-    YouVersionPlatformConfiguration.saveAuthData(
-      'access-token',
-      'refresh-token',
-      new Date('2026-01-01T00:00:00Z'),
-    );
+    YouVersionPlatformConfiguration.saveAuthData('access-token', 'refresh-token', expiryDate);
 
     expect(localStorage.getItem('accessToken')).toBe('access-token');
     expect(localStorage.getItem('refreshToken')).toBe('refresh-token');
+    expect(YouVersionPlatformConfiguration.tokenExpiryDate).toEqual(expiryDate);
     expect(localStorage.getItem('idToken')).toBeNull();
   });
 

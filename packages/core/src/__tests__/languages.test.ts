@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { http, HttpResponse } from 'msw';
 import { ApiClient } from '../client';
 import { LanguagesClient } from '../languages';
+import { server } from './setup';
 
 function createClient(): LanguagesClient {
   return new LanguagesClient(
@@ -17,6 +19,30 @@ describe('LanguagesClient runtime contracts', () => {
     const language = await createClient().getLanguage('sr-Latn');
     expect(language.id).toBe('sr-Latn');
     expect(language.script).toBe('Latn');
+  });
+
+  it('normalizes a lowercase country code in the language-list request', async () => {
+    if (process.env.INTEGRATION_TESTS) server.listen();
+    try {
+      let requestedCountry: string | null = null;
+      server.use(
+        http.get('https://test_placeholder.youversion.com/v1/languages', ({ request }) => {
+          requestedCountry = new URL(request.url).searchParams.get('country');
+          return HttpResponse.json({ data: [], next_page_token: null });
+        }),
+      );
+      const client = new LanguagesClient(
+        new ApiClient({ apiHost: 'test_placeholder.youversion.com', appKey: 'test-app' }),
+      );
+
+      await client.getLanguages({ country: 'us' });
+      expect(requestedCountry).toBe('US');
+    } finally {
+      if (process.env.INTEGRATION_TESTS) {
+        server.resetHandlers();
+        server.close();
+      }
+    }
   });
 
   it('rejects malformed BCP 47 language ids and country codes', async () => {
