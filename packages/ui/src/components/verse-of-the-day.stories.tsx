@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within, userEvent, spyOn } from 'storybook/test';
 
 import { VerseOfTheDay } from './verse-of-the-day';
-import { waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
+import { waitFor, waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
 
 const meta = {
   title: 'Components/VerseOfTheDay',
@@ -71,9 +71,9 @@ export const Default: Story = {
     const canvas = within(await waitForShadowContent(await waitForShadowRoot(canvasElement)));
 
     // Wait for component to load, then check that the verse appears.
-    await expect(
-      await canvas.findByText(/for I am about to do something new/i),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(canvas.getByText(/for I am about to do something new/i)).toBeInTheDocument(),
+    );
     await expect(await canvas.findByText(/isaiah 43:19/i)).toBeInTheDocument();
     await expect(await canvas.findByTitle(/Sun/i)).toBeInTheDocument();
     await expect(await canvas.findByTitle(/Bible App/i)).toBeInTheDocument();

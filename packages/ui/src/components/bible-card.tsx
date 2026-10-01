@@ -21,6 +21,7 @@ import { AnimatedHeight } from './animated-height';
 import { useInterfaceDirection } from '@/lib/direction';
 import { useResolvedScriptureDirection } from '@/lib/scripture-direction';
 import { ReuseShadowBoundary, ShadowIsolationBoundary } from '@/lib/shadow-isolation';
+import { useHighlightsControlledLatch } from '@/lib/use-highlights-controlled-latch';
 
 type PassageResult = ReturnType<typeof usePassage>;
 type VersionResult = ReturnType<typeof useVersion>;
@@ -68,6 +69,7 @@ type BibleCardSectionStyle = CSSProperties & {
 
 type BibleCardImplementationProps = BibleCardProps & {
   initialVersionDefault: number;
+  isHighlightsControlled: boolean;
 };
 
 /**
@@ -176,6 +178,7 @@ function BibleCardImplementation({
   maxWidth = BIBLE_CARD_DEFAULT_MAX_WIDTH_PX,
   scriptureDirection,
   initialVersionDefault,
+  isHighlightsControlled,
 }: BibleCardImplementationProps): React.ReactNode {
   const interfaceDirection = useInterfaceDirection();
   // Controlled only when both versionId + onVersionChange are provided.
@@ -278,7 +281,7 @@ function BibleCardImplementation({
                 error: passageError,
               }}
               onFootnotePress={onFootnotePress}
-              highlights={highlights}
+              highlights={isHighlightsControlled ? (highlights ?? []) : undefined}
               scriptureDirection={scriptureDirection}
             />
           </ReuseShadowBoundary>
@@ -298,10 +301,15 @@ export function BibleCard(props: BibleCardProps): React.ReactNode {
       ? (props.defaultVersionId ?? DEFAULT_LICENSE_FREE_BIBLE_VERSION)
       : (props.versionId ?? props.defaultVersionId ?? DEFAULT_LICENSE_FREE_BIBLE_VERSION),
   ).current;
+  const isHighlightsControlled = useHighlightsControlledLatch(props.highlights, 'BibleCard');
 
   return (
     <ShadowIsolationBoundary theme={props.background} portalStrategy="local-top-layer">
-      <BibleCardImplementation {...props} initialVersionDefault={initialVersionDefault} />
+      <BibleCardImplementation
+        {...props}
+        initialVersionDefault={initialVersionDefault}
+        isHighlightsControlled={isHighlightsControlled}
+      />
     </ShadowIsolationBoundary>
   );
 }

@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render as rtlRender, act, within, waitFor } from '@testing-library/react';
-import type { ReactElement } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
 import { requireHtmlButton, requireHtmlElement } from '@/test/dom-stubs';
 import { HookOverrideProvider } from '@/test/hook-overrides';
@@ -429,6 +429,49 @@ it('host highlights: paints from a stubbed fetch when the prop is omitted, and p
     );
     expect(getVerseEl(hostEmpty.container, 2).style.backgroundColor).toBe('');
   } finally {
+    hasPermission.mockRestore();
+  }
+});
+
+it('latches controlled highlights before the production shadow boundary mounts', async () => {
+  const hasPermission = vi
+    .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
+    .mockReturnValue(true);
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+  function RemoveControlledHighlightsAfterMount() {
+    const [controlled, setControlled] = useState(true);
+    useEffect(() => setControlled(false), []);
+
+    return (
+      <BibleCard reference="JHN.1" versionId={111} {...(controlled ? { highlights: [] } : {})} />
+    );
+  }
+
+  try {
+    const { container } = rtlRender(
+      <Providers
+        hookOverrides={{
+          useVersion: () => idleVersion(),
+          usePassage: () => passageResult({ passage: multiVersePassage, loading: false }),
+          useHighlights: stubUseHighlights({ highlights: collection(highlights) }),
+        }}
+      >
+        <RemoveControlledHighlightsAfterMount />
+      </Providers>,
+    );
+    const verse = await waitFor(() => {
+      const candidate = container
+        .querySelector<HTMLElement>('[data-yv-shadow-host]')
+        ?.shadowRoot?.querySelector<HTMLElement>('.yv-v[v="2"]');
+      if (!candidate) throw new Error('BibleCard shadow content not mounted');
+      return candidate;
+    });
+
+    expect(verse.style.backgroundColor).toBe('');
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('BibleCard'));
+  } finally {
+    warn.mockRestore();
     hasPermission.mockRestore();
   }
 });
