@@ -21,9 +21,11 @@ This is a working plan, not approval for package-wide rollout.
 - In the current stable package, `YouVersionAuthButton` is the only component
   with automatic isolation. On the Shadow DOM integration branch,
   `BibleChapterPicker.Root`, `BibleVersionPicker.Root`, `ProfileAvatar`,
-  `Separator`, and `FootnoteContent` also create automatic boundaries. These
+  `Separator`, `FootnoteContent`, and standalone `BibleThemeSettingsContent`
+  also create automatic boundaries. These
   boundaries remain subject to the rollout policy's coordinated release gate.
-  Standalone `BibleThemeSettingsContent` moved to YPE-5994.
+  YPE-5994 completed standalone `BibleThemeSettingsContent`; reader-owned
+  settings remain in the reader tree and are ready to reuse its future root.
 - The picker roots validate shadow-local native top-layer floating content
   through their public runtime boundaries. A historical inline negative
   control demonstrated clipping beyond a constrained ancestor before that
@@ -104,10 +106,42 @@ passive-effect mount; footnote composition normally appears only after
 interaction.
 
 The intended-layout review moved standalone `BibleThemeSettingsContent` to
-YPE-5994. Its automatic host prevented the settings body from participating as
-the constrained Popover grid's shrinkable, scrollable item. The settings
-component and its reader composition remain in their baseline light-DOM
-behavior here.
+YPE-5994 because its initial automatic host prevented the settings body from
+participating as the constrained Popover grid's shrinkable, scrollable item.
+The completed result and its component-specific accommodation are recorded
+below.
+
+## YPE-5994 standalone theme settings evidence
+
+Standalone `BibleThemeSettingsContent` now owns one client-only open shadow
+root and reuses the exact empty server host during hydration. Its explicit
+theme scopes both the shadow wrapper and settings body even when the provider
+theme conflicts, and its interface direction, five native button controls,
+selected font state, font limits, and four top-level Expo callbacks retain
+their public behavior.
+
+The constrained Popover journey identified the only layout exception needed:
+this component's private host uses a flex-column layout with a zero logical
+minimum block size, and the settings body fills that allocated block before
+scrolling.
+The generic host reset and shadow content wrapper retain `display: contents`.
+Focused Chromium, Firefox, and Playwright WebKit coverage verifies
+collision-boundary containment, internal overflow and scroll, stable header
+placement, center hit testing for all five controls, keyboard activation, and
+focus restoration. On 2026-09-28 the same built Storybook journey completed in
+a fresh SafariDriver session on Safari 26.6.2 (macOS build 25G83); its final
+state confirmed the selected Untitled Serif value, closed dialog, and restored
+trigger focus. This focused browser evidence does not establish
+assistive-technology support.
+
+The current light-DOM `BibleReader` suppresses the standalone boundary around
+its owned settings. A simulated future reader boundary proves that composition
+produces exactly one outer host, no nested settings host, and a settings body in
+the outer root. YPE-5952 must document the empty-host client-only contract,
+open-root automation, native event retargeting, loss of global-CSS access, and
+the supported explicit theme, direction, and callback inputs as part of the
+coordinated major release. YPE-5994 has an empty changeset and must not publish
+an independent partial rollout.
 
 ## Safari spacing evidence
 

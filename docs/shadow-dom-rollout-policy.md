@@ -9,7 +9,8 @@ runtime behavior on the Shadow DOM integration branch remains an in-progress
 implementation of the prototype recorded in
 [ADR 0007](adr/0007-prototype-shadow-dom-style-isolation.md):
 `YouVersionAuthButton`, `BibleChapterPicker.Root`, `BibleVersionPicker.Root`,
-`ProfileAvatar`, `Separator`, and `FootnoteContent` create automatic shadow
+`ProfileAvatar`, `Separator`, `FootnoteContent`, and standalone
+`BibleThemeSettingsContent` create automatic shadow
 boundaries. Compound members and composed leaf components remain in their
 owning component tree and reuse its boundary when present rather than creating
 independent boundaries.
@@ -126,6 +127,11 @@ exported function. Each ticket links to YPE-5356 and this policy.
    - Roll out standalone `BibleThemeSettingsContent` with the smallest internal
      layout strategy that preserves constrained Popover scrolling.
    - Preserve Expo DOM callbacks and reuse the owning `BibleReader` boundary.
+   - Implemented on the integration branch: the standalone component owns one
+     client-only open root. Its private host is a shrinkable block-size grid
+     item while generic shadow hosts keep `display: contents`; reader-owned
+     settings suppress the nested boundary and are ready to reuse YPE-5951's
+     future reader root.
 4. **YPE-5949: Compound pickers**
    - Roll out `BibleChapterPicker.Root` and `BibleVersionPicker.Root` as the
      only boundaries for their compound exports.
@@ -221,6 +227,15 @@ applicable, Storybook guidance, changelog, and release notes to explain:
 
 Release notes must identify the rollout as a breaking rendered-DOM change even
 when a component's TypeScript props are unchanged.
+
+YPE-5994 adds no independently releasable public configuration or package
+version. YPE-5952 must include standalone theme settings in that coordinated
+consumer handoff: open-root traversal replaces document-only queries, server
+markup is an empty host until the passive-effect client mount, native events
+retarget at the host, global CSS no longer reaches the five internal controls,
+and the explicit `theme`, interface direction, and four top-level Expo callback
+props remain the supported integration contract. Do not describe the focused
+browser matrix as real assistive-technology validation.
 
 ## Follow-up ticket contract
 
