@@ -293,7 +293,7 @@ it('uses defaultVersionId as the initial uncontrolled version', () => {
     </HookOverrideProvider>,
   );
 
-  expect(requestedVersionIds).toContain(222);
+  expect(requestedVersionIds[0]).toBe(222);
 });
 
 describe('BibleCard - Error state', () => {

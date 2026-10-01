@@ -32,14 +32,13 @@ function ScripturePresentationIsolationFixture(): React.ReactNode {
             showVerseNumbers={false}
             theme="dark"
             scriptureDirection="rtl"
-            highlights={[{ version_id: 111, passage_id: 'JHN.3.16', color: 'fffe00' }]}
           />
         </div>
         <div data-testid="votd-default">
           <VerseOfTheDay dayOfYear={1} versionId={111} size="default" />
         </div>
         <div data-testid="votd-large">
-          <VerseOfTheDay dayOfYear={1} versionId={111} size="lg" background="dark" />
+          <VerseOfTheDay dayOfYear={1} versionId={111} size="lg" />
         </div>
         <div data-testid="card-default">
           <BibleCard reference="LUK.1.39-45" versionId={111} />

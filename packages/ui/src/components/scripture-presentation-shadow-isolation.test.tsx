@@ -101,6 +101,14 @@ describe('scripture presentation public shadow boundaries', () => {
         expect(host.shadowRoot?.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
         expect(recoverableErrors).toEqual([]);
         expect(consoleError).not.toHaveBeenCalled();
+
+        const internalTarget = host.shadowRoot?.querySelector(selector);
+        const outsideTargets: EventTarget[] = [];
+        container.addEventListener('click', (event) => outsideTargets.push(event.target!), {
+          once: true,
+        });
+        internalTarget?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+        expect(outsideTargets).toEqual([host]);
       } finally {
         if (root) await act(async () => root?.unmount());
         consoleError.mockRestore();
@@ -109,7 +117,7 @@ describe('scripture presentation public shadow boundaries', () => {
     },
   );
 
-  it('preserves open-root queries, native retargeting, selection callbacks, and the forwarded ref', async () => {
+  it('preserves open-root queries, selection callbacks, and the forwarded ref', async () => {
     const onVerseSelect = vi.fn<(verses: number[]) => void>();
     const readerRef = createRef<HTMLDivElement>();
     const passageWithVerse = {
@@ -118,15 +126,19 @@ describe('scripture presentation public shadow boundaries', () => {
         '<div class="p"><span class="yv-v" v="16"></span><span class="yv-vlbl">16</span>For God so loved the world.</div>',
     };
     const { container } = render(
-      withOverrides(
+      <HookOverrideProvider
+        overrides={{
+          usePassage: () => ({ passage, loading: false, error: null, refetch: () => undefined }),
+        }}
+      >
         <BibleTextView
           ref={readerRef}
           reference="JHN.3.16"
           versionId={111}
           passageState={{ passage: passageWithVerse, loading: false, error: null }}
           onVerseSelect={onVerseSelect}
-        />,
-      ),
+        />
+      </HookOverrideProvider>,
     );
     const host = await waitFor(() => {
       const candidate = container.querySelector<HTMLElement>('[data-yv-shadow-host]');
@@ -139,20 +151,10 @@ describe('scripture presentation public shadow boundaries', () => {
     const renderer = shadowRoot.querySelector<HTMLDivElement>('[data-slot="yv-bible-renderer"]');
     const verse = shadowRoot.querySelector<HTMLElement>('.yv-v[v="16"]');
     if (!renderer || !verse) throw new Error('BibleTextView selection fixture not rendered');
-    const nativeEvents: Array<{ target: EventTarget | null; origin: EventTarget | undefined }> = [];
-    container.addEventListener(
-      'click',
-      (event) => nativeEvents.push({ target: event.target, origin: event.composedPath()[0] }),
-      { once: true },
-    );
-
     fireEvent.click(verse);
 
     expect(onVerseSelect).toHaveBeenCalledWith([16]);
     expect(readerRef.current).toBe(renderer);
-    expect(nativeEvents).toHaveLength(1);
-    expect(nativeEvents[0]?.target).toBe(host);
-    expect(nativeEvents[0]?.origin).toBe(verse);
     expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toBeNull();
   });
 });

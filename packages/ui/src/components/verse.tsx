@@ -667,10 +667,14 @@ export type BibleTextViewProps = {
   scriptureDirection?: TextDirection;
 };
 
+type BibleTextViewImplementationProps = BibleTextViewProps & {
+  isHighlightsControlled: boolean;
+};
+
 /**
  * A component that renders style Bible text.
  */
-const BibleTextViewImplementation = forwardRef<HTMLDivElement, BibleTextViewProps>(
+const BibleTextViewImplementation = forwardRef<HTMLDivElement, BibleTextViewImplementationProps>(
   (
     {
       reference,
@@ -688,6 +692,7 @@ const BibleTextViewImplementation = forwardRef<HTMLDivElement, BibleTextViewProp
       passageState,
       onFootnotePress,
       scriptureDirection,
+      isHighlightsControlled,
     },
     ref,
   ): React.ReactElement => {
@@ -697,9 +702,6 @@ const BibleTextViewImplementation = forwardRef<HTMLDivElement, BibleTextViewProp
     const currentTheme = theme || providerTheme;
     useVersionFilterWarning(versionId);
 
-    // Latched at first mount. Controlled (prop present) never falls through to
-    // `highlightedVerses` or the self-contained fetch.
-    const isHighlightsControlled = useHighlightsControlledLatch(highlights, 'BibleTextView');
     const didWarnDualHighlightPropsRef = useRef(false);
     if (isHighlightsControlled && highlightedVerses !== undefined) {
       warnOnce(
@@ -827,9 +829,19 @@ const BibleTextViewImplementation = forwardRef<HTMLDivElement, BibleTextViewProp
 );
 BibleTextViewImplementation.displayName = 'BibleTextViewImplementation';
 
-export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>((props, ref) => (
-  <ShadowIsolationBoundary theme={props.theme} portalStrategy="local-top-layer">
-    <BibleTextViewImplementation {...props} ref={ref} />
-  </ShadowIsolationBoundary>
-));
+export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>((props, ref) => {
+  // Capture the public component's first render, before its client-only shadow
+  // content mounts in a passive effect.
+  const isHighlightsControlled = useHighlightsControlledLatch(props.highlights, 'BibleTextView');
+
+  return (
+    <ShadowIsolationBoundary theme={props.theme} portalStrategy="local-top-layer">
+      <BibleTextViewImplementation
+        {...props}
+        ref={ref}
+        isHighlightsControlled={isHighlightsControlled}
+      />
+    </ShadowIsolationBoundary>
+  );
+});
 BibleTextView.displayName = 'BibleTextView';

@@ -1,6 +1,6 @@
 'use client';
 
-import type { CSSProperties } from 'react';
+import { useRef, type CSSProperties } from 'react';
 import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hooks';
 import {
   DEFAULT_LICENSE_FREE_BIBLE_VERSION,
@@ -64,6 +64,10 @@ export type BibleCardProps = {
 
 type BibleCardSectionStyle = CSSProperties & {
   '--yv-reader-max-width': 'none';
+};
+
+type BibleCardImplementationProps = BibleCardProps & {
+  initialVersionDefault: number;
 };
 
 /**
@@ -163,7 +167,6 @@ const BIBLE_CARD_DEFAULT_MAX_WIDTH_PX = 700;
 function BibleCardImplementation({
   reference,
   versionId: controlledVersionId,
-  defaultVersionId = DEFAULT_LICENSE_FREE_BIBLE_VERSION,
   onVersionChange,
   background,
   showVersionPicker = false,
@@ -172,7 +175,8 @@ function BibleCardImplementation({
   highlights,
   maxWidth = BIBLE_CARD_DEFAULT_MAX_WIDTH_PX,
   scriptureDirection,
-}: BibleCardProps): React.ReactNode {
+  initialVersionDefault,
+}: BibleCardImplementationProps): React.ReactNode {
   const interfaceDirection = useInterfaceDirection();
   // Controlled only when both versionId + onVersionChange are provided.
   // versionId alone seeds uncontrolled state, preserving backwards compatibility
@@ -181,7 +185,7 @@ function BibleCardImplementation({
 
   const [versionNum, setVersionNum] = useControllableState({
     prop: isControlled ? controlledVersionId : undefined,
-    defaultProp: isControlled ? defaultVersionId : (controlledVersionId ?? defaultVersionId),
+    defaultProp: initialVersionDefault,
     onChange: onVersionChange,
   });
   const { version } = useVersion(versionNum);
@@ -287,9 +291,17 @@ function BibleCardImplementation({
 }
 
 export function BibleCard(props: BibleCardProps): React.ReactNode {
+  // Preserve the pre-isolation first-render seed even though the card body
+  // mounts only after the shadow root attaches.
+  const initialVersionDefault = useRef(
+    props.versionId !== undefined && props.onVersionChange !== undefined
+      ? (props.defaultVersionId ?? DEFAULT_LICENSE_FREE_BIBLE_VERSION)
+      : (props.versionId ?? props.defaultVersionId ?? DEFAULT_LICENSE_FREE_BIBLE_VERSION),
+  ).current;
+
   return (
     <ShadowIsolationBoundary theme={props.background} portalStrategy="local-top-layer">
-      <BibleCardImplementation {...props} />
+      <BibleCardImplementation {...props} initialVersionDefault={initialVersionDefault} />
     </ShadowIsolationBoundary>
   );
 }

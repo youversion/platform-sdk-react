@@ -62,15 +62,11 @@ export const Default: Story = {
     size: 'default',
   },
   tags: ['integration', 'shadow-dom', 'cross-browser'],
-  beforeEach: () => {
-    Object.defineProperty(navigator, 'share', {
-      configurable: true, // Allows the property to be redefined later
-      value: async () => {
-        return Promise.resolve(); // Simulate a successful share
-      },
-    });
-  },
   play: async ({ canvasElement }) => {
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: async () => Promise.resolve(),
+    });
     const mockSpy = spyOn(navigator, 'share');
     const canvas = within(await waitForShadowContent(await waitForShadowRoot(canvasElement)));
 

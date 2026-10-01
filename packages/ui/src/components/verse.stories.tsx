@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import React from 'react';
 
 import { transformBibleHtml } from '@youversion/platform-core/browser';
@@ -628,7 +628,7 @@ export const FootnotePopoverThemeDark: Story = {
 
 function VerseSelectionDemo(props: BibleTextViewProps) {
   const providerTheme = useTheme();
-  const containerRef = React.useRef<HTMLDivElement>(null);
+  const readerRef = React.useRef<HTMLDivElement>(null);
   // Captured as state (not a ref) so the popover's docking observer re-subscribes
   // once the scroll container mounts.
   const [scrollEl, setScrollEl] = React.useState<HTMLElement | null>(null);
@@ -665,7 +665,7 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
       return;
     }
     const anchorVerse = added ?? Math.max(...verses);
-    const wrappers = containerRef.current?.querySelectorAll(`.yv-v[v="${anchorVerse}"]`);
+    const wrappers = readerRef.current?.querySelectorAll(`.yv-v[v="${anchorVerse}"]`);
     const anchor = wrappers?.[wrappers.length - 1];
     setAnchorElement(anchor instanceof HTMLElement ? anchor : null);
     setPopoverOpen(true);
@@ -696,10 +696,10 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
   };
 
   const buildText = () => {
-    const container = containerRef.current;
-    if (!container) return '';
+    const reader = readerRef.current;
+    if (!reader) return '';
     const textByVerse: Record<number, string> = {};
-    for (const verse of selectedVerses) textByVerse[verse] = getCleanVerseText(container, verse);
+    for (const verse of selectedVerses) textByVerse[verse] = getCleanVerseText(reader, verse);
     return buildVerseShareText({
       verses: selectedVerses,
       textByVerse,
@@ -731,7 +731,6 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
 
   return (
     <div
-      ref={containerRef}
       data-yv-sdk
       className="yv:grid yv:grid-rows-[auto_1fr] yv:gap-4 yv:max-w-lg yv:h-svh yv:max-h-svh yv:overflow-hidden"
     >
@@ -753,6 +752,7 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
 
       <div ref={setScrollEl} className="yv:h-full yv:overflow-y-auto">
         <BibleTextView
+          ref={readerRef}
           renderNotes={true}
           {...props}
           selectedVerses={selectedVerses}
@@ -807,5 +807,26 @@ export const VerseSelection: Story = {
       },
     },
   },
+  tags: ['integration'],
   render: (props) => <VerseSelectionDemo {...props} />,
+  play: async ({ canvasElement }) => {
+    const writeText = fn();
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const root = await waitForShadowRoot(canvasElement);
+    const verse = await waitForElement<HTMLElement>(
+      root,
+      '.yv-v[v="1"]',
+      'selectable verse not rendered',
+    );
+
+    await userEvent.click(verse);
+    const page = within(canvasElement.ownerDocument.body);
+    await userEvent.click(await page.findByRole('button', { name: /copy/i }));
+
+    await expect(writeText).toHaveBeenCalledOnce();
+    await expect(writeText).toHaveBeenCalledWith(expect.stringContaining('In the beginning'));
+  },
 };

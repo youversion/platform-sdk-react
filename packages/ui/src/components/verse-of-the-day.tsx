@@ -94,6 +94,10 @@ export type VerseOfTheDayProps = {
   scriptureDirection?: TextDirection;
 };
 
+type VerseOfTheDayImplementationProps = VerseOfTheDayProps & {
+  isHighlightsControlled: boolean;
+};
+
 function clipHighlightsToPassage(
   highlights: Highlight[] | undefined,
   passageId: string | undefined,
@@ -169,7 +173,8 @@ function VerseOfTheDayImplementation({
   size = 'default',
   highlights,
   scriptureDirection,
-}: VerseOfTheDayProps): React.ReactElement {
+  isHighlightsControlled,
+}: VerseOfTheDayImplementationProps): React.ReactElement {
   const { t } = useTranslation(undefined, { i18n });
   const interfaceDirection = useInterfaceDirection();
   const day = React.useMemo(() => dayOfYear || getDayOfYear(new Date()), [dayOfYear]);
@@ -200,7 +205,6 @@ function VerseOfTheDayImplementation({
   // delays mounting the child until load finishes; latching only there would
   // treat a highlights array that arrived during load as "present on first
   // mount" and paint, which BibleReader.Root would ignore.
-  const isHighlightsControlled = useHighlightsControlledLatch(highlights, 'VerseOfTheDay');
   const hostHighlights = isHighlightsControlled ? (highlights ?? []) : undefined;
   const clippedHighlights = clipHighlightsToPassage(hostHighlights, data?.passage_id);
 
@@ -335,9 +339,13 @@ function VerseOfTheDayImplementation({
 }
 
 export function VerseOfTheDay(props: VerseOfTheDayProps): React.ReactElement {
+  // Capture the public component's first render, before its client-only shadow
+  // content mounts in a passive effect.
+  const isHighlightsControlled = useHighlightsControlledLatch(props.highlights, 'VerseOfTheDay');
+
   return (
     <ShadowIsolationBoundary theme={props.background} portalStrategy="local-top-layer">
-      <VerseOfTheDayImplementation {...props} />
+      <VerseOfTheDayImplementation {...props} isHighlightsControlled={isHighlightsControlled} />
     </ShadowIsolationBoundary>
   );
 }
