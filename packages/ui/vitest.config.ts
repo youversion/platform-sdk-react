@@ -7,6 +7,12 @@ import { fileURLToPath } from 'node:url';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const browserName = process.env.VITEST_BROWSER ?? 'chromium';
+if (!['chromium', 'firefox', 'webkit'].includes(browserName)) {
+  throw new Error(`Unsupported VITEST_BROWSER: ${browserName}`);
+}
+const storyTags = (process.env.VITEST_STORY_TAG ?? 'integration').split(',');
+
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -51,7 +57,7 @@ export default defineConfig({
             // This should match your package.json script to run Storybook
             // The --ci flag will skip prompts and not open a browser
             storybookScript: 'pnpm storybook --no-open',
-            tags: { include: ['integration'] },
+            tags: { include: storyTags },
           }),
         ],
         test: {
@@ -65,7 +71,7 @@ export default defineConfig({
             // Make sure to install Playwright
             provider: playwright(),
             headless: true,
-            instances: [{ browser: 'chromium' }],
+            instances: [{ browser: browserName as 'chromium' | 'firefox' | 'webkit' }],
           },
           setupFiles: ['./.storybook/vitest.setup.ts'],
         },

@@ -49,6 +49,7 @@ import { InfoIcon } from './icons/info';
 import { LoaderIcon } from './icons/loader';
 import { PersonIcon } from './icons/person';
 import { ProfileAvatar } from './profile-avatar';
+import { ReuseShadowBoundary, ShadowIsolationBoundary } from '@/lib/shadow-isolation';
 import { Button } from './ui/button';
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from './ui/popover';
 import { VerseActionPopover } from './verse-action-popover';
@@ -1333,12 +1334,14 @@ function UserMenu() {
       <PopoverTrigger asChild data-testid="user-menu-trigger">
         {auth.isAuthenticated ? (
           <Button size="icon" variant="outline">
-            <ProfileAvatar
-              name={userInfo?.name}
-              src={userInfo?.getAvatarUrl(32, 32)?.toString()}
-              aria-label={userInfo?.name || t('userAvatarAlt')}
-              className="yv:size-full"
-            />
+            <ReuseShadowBoundary>
+              <ProfileAvatar
+                name={userInfo?.name}
+                src={userInfo?.getAvatarUrl(32, 32)?.toString()}
+                aria-label={userInfo?.name || t('userAvatarAlt')}
+                className="yv:size-full"
+              />
+            </ReuseShadowBoundary>
           </Button>
         ) : (
           <Button size="sm" variant="secondary">
@@ -1377,7 +1380,15 @@ function UserMenu() {
   );
 }
 
-export function BibleThemeSettingsContent({
+export function BibleThemeSettingsContent(props: BibleThemeSettingsContentProps): ReactElement {
+  return (
+    <ShadowIsolationBoundary theme={props.theme} shrinkableBlockHost>
+      <BibleThemeSettingsBody {...props} />
+    </ShadowIsolationBoundary>
+  );
+}
+
+function BibleThemeSettingsBody({
   theme,
   fontSize,
   fontFamily,
@@ -1396,7 +1407,7 @@ export function BibleThemeSettingsContent({
         data-yv-sdk
         data-yv-theme={theme}
         dir={interfaceDirection}
-        className="yv:flex yv:flex-col yv:gap-4 yv:p-4"
+        className="yv:flex yv:[block-size:100%] yv:min-h-0 yv:flex-col yv:gap-4 yv:overflow-y-auto yv:p-4"
       >
         <div className="yv:flex yv:justify-between yv:items-stretch yv:gap-4">
           <div className="yv:flex yv:flex-1">
@@ -1759,16 +1770,18 @@ function Toolbar({
             </PopoverTrigger>
 
             <PopoverContent sideOffset={16} heading={t('readerSettingsHeading')} theme={background}>
-              <BibleThemeSettingsContent
-                theme={background}
-                fontSize={currentFontSize}
-                fontFamily={currentFontFamily}
-                lineSpacing={currentLineSpacing}
-                onFontDecreased={handleFontDecreased}
-                onFontIncreased={handleFontIncreased}
-                onFontSelected={handleFontSelected}
-                onChangeLineSpacing={handleLineSpacingChange}
-              />
+              <ReuseShadowBoundary>
+                <BibleThemeSettingsContent
+                  theme={background}
+                  fontSize={currentFontSize}
+                  fontFamily={currentFontFamily}
+                  lineSpacing={currentLineSpacing}
+                  onFontDecreased={handleFontDecreased}
+                  onFontIncreased={handleFontIncreased}
+                  onFontSelected={handleFontSelected}
+                  onChangeLineSpacing={handleLineSpacingChange}
+                />
+              </ReuseShadowBoundary>
             </PopoverContent>
           </Popover>
         )}

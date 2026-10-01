@@ -15,6 +15,30 @@ import {
 } from './bible-reader';
 import { VerseActionPopover } from './verse-action-popover';
 
+async function getPickerQueries(container: ParentNode, triggerName: RegExp | string) {
+  return waitFor(() => {
+    for (const host of container.querySelectorAll<HTMLElement>('[data-yv-shadow-host]')) {
+      if (!host.shadowRoot) continue;
+      const content = host.shadowRoot.querySelector<HTMLElement>(
+        '[data-yv-shadow-content-wrapper]',
+      );
+      if (!content) continue;
+      const picker = within(content);
+      const trigger = picker.queryByRole('button', { name: triggerName });
+      if (trigger) return { root: host.shadowRoot, picker, trigger };
+    }
+    throw new Error('picker shadow root not rendered');
+  });
+}
+
+async function getPickerOverlay(root: ShadowRoot) {
+  return waitFor(() => {
+    const overlay = root.querySelector<HTMLElement>('[data-yv-shadow-local-overlay]');
+    if (!overlay) throw new Error('picker overlay not rendered');
+    return within(overlay);
+  });
+}
+
 type PathParams = {
   id?: string | readonly string[];
   usfm?: string | readonly string[];
@@ -164,6 +188,114 @@ export const Default: Story = {
 
     await userEvent.click(interButton);
     await expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(INTER_FONT);
+  },
+};
+
+export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
+  tags: ['integration'],
+  args: {
+    defaultVersionId: 111,
+    lineSpacing: 1.7,
+    fontFamily: INTER_FONT,
+    showVerseNumbers: true,
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('*/v1/fonts/1/stylesheet', () =>
+          HttpResponse.text('', { headers: { 'Content-Type': 'text/css' } }),
+        ),
+        ...globalHandlers,
+      ],
+    },
+  },
+  render: (args) => (
+    <div className="yv:grid yv:h-screen yv:grid-rows-[auto_1fr] yv:bg-background">
+      <button type="button" data-testid="outside-reader-control" autoFocus>
+        Outside reader
+      </button>
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <BibleReader.Toolbar />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const firstVerse = await waitFor(() => {
+      const element = canvasElement.querySelector<HTMLElement>('.yv-v[v="1"]');
+      if (!element) throw new Error('first verse not rendered');
+      return element;
+    });
+    const secondVerse = canvasElement.querySelector<HTMLElement>('.yv-v[v="2"]');
+    const secondVerseLabel = secondVerse?.querySelector<HTMLElement>('.yv-vlbl');
+    const outsideControl = canvasElement.querySelector<HTMLButtonElement>(
+      '[data-testid="outside-reader-control"]',
+    );
+    if (!secondVerse || !secondVerseLabel || !outsideControl)
+      throw new Error('reader interaction controls not rendered');
+
+    const ownerDocument = canvasElement.ownerDocument;
+    await waitFor(() => expect(ownerDocument.activeElement).toBe(outsideControl));
+    await userEvent.click(firstVerse);
+    let dialog = await screen.findByRole('dialog');
+
+    await expect(dialog.getRootNode()).toBe(ownerDocument);
+    await expect(ownerDocument.body).toContainElement(dialog);
+    await waitFor(() => expect(ownerDocument.activeElement).toBe(dialog));
+
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await expect(ownerDocument.activeElement).toBe(outsideControl);
+
+    await userEvent.click(firstVerse);
+    dialog = await screen.findByRole('dialog');
+    const firstDialogRect = dialog.getBoundingClientRect();
+
+    await userEvent.click(secondVerseLabel);
+    await expect(firstVerse).toHaveClass('yv-v-selected');
+    await expect(secondVerse).toHaveClass('yv-v-selected');
+    await expect(dialog).toBeInTheDocument();
+    await waitFor(() => {
+      const reanchoredRect = dialog.getBoundingClientRect();
+      const movedInline = Math.abs(reanchoredRect.left - firstDialogRect.left) > 8;
+      const movedBlock = Math.abs(reanchoredRect.top - firstDialogRect.top) > 8;
+      void expect(movedInline || movedBlock).toBe(true);
+    });
+
+    await userEvent.pointer({ keys: '[MouseLeft>]', target: outsideControl });
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    await expect(firstVerse).not.toHaveClass('yv-v-selected');
+    await expect(secondVerse).not.toHaveClass('yv-v-selected');
+    await userEvent.pointer({ keys: '[/MouseLeft]', target: outsideControl });
+    await expect(ownerDocument.activeElement).toBe(outsideControl);
+
+    // Touch outside events are deferred until click: the original pointerdown's
+    // composed path is already empty when Radix asks whether to dismiss.
+    const touchUser = userEvent.setup({ document: ownerDocument });
+    await touchUser.pointer({ keys: '[TouchA]', target: firstVerse });
+    dialog = await screen.findByRole('dialog');
+    // Radix disables animations until placement completes. Measure after both
+    // so initial positioning or animation cannot count as verse reanchoring.
+    await waitFor(() => expect(dialog.style.animation).not.toBe('none'));
+    await Promise.all(dialog.getAnimations().map((animation) => animation.finished));
+    const touchDialogRect = dialog.getBoundingClientRect();
+    await touchUser.pointer({ keys: '[TouchA]', target: secondVerseLabel });
+    await expect(firstVerse).toHaveClass('yv-v-selected');
+    await expect(secondVerse).toHaveClass('yv-v-selected');
+    await expect(dialog).toHaveAttribute('data-state', 'open');
+    await waitFor(() => {
+      const nextRect = dialog.getBoundingClientRect();
+      const movedInline = Math.abs(nextRect.left - touchDialogRect.left) > 8;
+      const movedBlock = Math.abs(nextRect.top - touchDialogRect.top) > 8;
+      void expect(movedInline || movedBlock).toBe(true);
+    });
+    await touchUser.pointer({ keys: '[TouchA>]', target: outsideControl });
+    await expect(dialog).toHaveAttribute('data-state', 'open');
+    await touchUser.pointer({ keys: '[/TouchA]', target: outsideControl });
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    await expect(firstVerse).not.toHaveClass('yv-v-selected');
+    await expect(secondVerse).not.toHaveClass('yv-v-selected');
+    await expect(ownerDocument.activeElement).toBe(outsideControl);
   },
 };
 
@@ -365,9 +497,13 @@ export const ForcedRtlChromeGeometry: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
-    const previous = await screen.findByRole('button', { name: 'Previous chapter' });
-    const chapter = screen.getByRole('button', { name: 'Change Bible book and chapter' });
-    const next = screen.getByRole('button', { name: 'Next chapter' });
+    const {
+      root: chapterRoot,
+      picker: chapterPicker,
+      trigger: chapter,
+    } = await getPickerQueries(canvasElement, 'Change Bible book and chapter');
+    const previous = chapterPicker.getByRole('button', { name: 'Previous chapter' });
+    const next = chapterPicker.getByRole('button', { name: 'Next chapter' });
     const renderer = await waitFor(async () => {
       const element = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
       await expect(element).toBeInTheDocument();
@@ -387,8 +523,8 @@ export const ForcedRtlChromeGeometry: Story = {
       await expect(chapter).toBeEnabled();
     });
     await userEvent.click(chapter);
-    const chapterDialog = await screen.findByRole('dialog');
-    const chapterCanvas = within(chapterDialog);
+    const chapterCanvas = await getPickerOverlay(chapterRoot);
+    const chapterDialog = chapterCanvas.getByRole('dialog');
     const intro = chapterCanvas.getByTestId('intro-chapter-button');
     const chapterOne = chapterCanvas.getByRole('button', { name: '1' });
     const chapterTwo = chapterCanvas.getByRole('button', { name: '2' });
@@ -409,9 +545,12 @@ export const ForcedRtlChromeGeometry: Story = {
     );
 
     await userEvent.click(chapterCanvas.getByRole('button', { name: 'Close' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Change Bible version' }));
-    const versionDialog = await screen.findByRole('dialog');
-    const versionCanvas = within(versionDialog);
+    const { root: versionRoot, trigger: versionTrigger } = await getPickerQueries(
+      canvasElement,
+      'Change Bible version',
+    );
+    await userEvent.click(versionTrigger);
+    const versionCanvas = await getPickerOverlay(versionRoot);
     const firstVersion = versionCanvas.getAllByRole('listitem')[0]!;
     const tile = firstVersion.querySelector('[data-slot="item-media"]')!;
     const label = firstVersion.querySelector('[data-slot="item-content"]')!;
@@ -993,10 +1132,13 @@ export const WithoutAuth: Story = {
     await expect(userMenuTrigger).not.toBeInTheDocument();
 
     // Chapter picker and version picker should still work
-    const chapterButton = screen.getByRole('button', { name: /change bible book and chapter/i });
+    const { trigger: chapterButton } = await getPickerQueries(
+      canvasElement,
+      /change bible book and chapter/i,
+    );
     await expect(chapterButton).toBeInTheDocument();
 
-    const versionButton = await screen.findByRole('button', { name: /bible version/i });
+    const { trigger: versionButton } = await getPickerQueries(canvasElement, /bible version/i);
     await expect(versionButton).toBeInTheDocument();
 
     // Settings should still work
@@ -1041,9 +1183,9 @@ export const VersionButtonLoadingStates: Story = {
       </BibleReader.Root>
     </div>
   ),
-  play: async () => {
+  play: async ({ canvasElement }) => {
     // Wait for the toolbar to mount, then capture the button in loading state
-    const versionButton = await screen.findByRole('button', { name: /bible version/i });
+    const { trigger: versionButton } = await getPickerQueries(canvasElement, /bible version/i);
 
     // The delayed MSW handler guarantees the loading state is visible
     const spinner = versionButton.querySelector('[role="status"]');
@@ -1129,11 +1271,12 @@ export const JoshuaIntroChapter: Story = {
     await expect(verseContainer.textContent).toContain('Yahweh');
 
     // Toolbar trigger should show "Intro" (title-case label), NOT "INTRO" (raw chapter ID)
+    const { trigger: chapterButton } = await getPickerQueries(
+      canvasElement,
+      /change bible book and chapter/i,
+    );
     await waitFor(
       async () => {
-        const chapterButton = screen.getByRole('button', {
-          name: /change bible book and chapter/i,
-        });
         await expect(chapterButton.textContent).toContain('Intro');
         await expect(chapterButton.textContent).not.toContain('INTRO');
       },
@@ -1316,7 +1459,11 @@ export const ChapterChangeLoadingOverlay: Story = {
       { timeout: 5000 },
     );
 
-    const nextButton = screen.getByRole('button', { name: /next chapter/i });
+    const { picker: chapterPicker } = await getPickerQueries(
+      canvasElement,
+      /change bible book and chapter/i,
+    );
+    const nextButton = chapterPicker.getByRole('button', { name: /next chapter/i });
     await userEvent.click(nextButton);
 
     const rendererAfterClick = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
