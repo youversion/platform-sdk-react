@@ -4,6 +4,7 @@ import { requireShadowContent, waitFor, waitForShadowRoot } from '@/test/storybo
 import { BibleCard } from './bible-card';
 import { BibleTextView } from './verse';
 import { VerseOfTheDay } from './verse-of-the-day';
+import { globalHandlers } from '@/test/mocks/handlers';
 
 const HOSTILE_CSS = `
   [data-scripture-fixture] div,
@@ -54,8 +55,12 @@ function ScripturePresentationIsolationFixture(): React.ReactNode {
 const meta = {
   title: 'Components/Scripture presentation/Shadow isolation',
   component: ScripturePresentationIsolationFixture,
-  parameters: { includeAuth: false, layout: 'padded' },
-  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  parameters: {
+    includeAuth: false,
+    layout: 'padded',
+    msw: { handlers: globalHandlers },
+  },
+  tags: ['integration'],
 } satisfies Meta<typeof ScripturePresentationIsolationFixture>;
 
 export default meta;

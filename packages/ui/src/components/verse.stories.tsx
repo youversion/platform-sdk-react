@@ -19,6 +19,7 @@ import { XIcon } from '@/components/icons/x';
 import { waitForElement, waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
 import { YvReaderStyles } from '@/lib/yv-styles-reader';
+import mockPassages from '@/test/mock-data/passages.json';
 
 // USFM format: BOOK.CHAPTER or BOOK.CHAPTER.VERSE or BOOK.CHAPTER.VERSE-VERSE
 const USFM_PATTERN = /^[A-Z1-4]{3}\.\d+(\.\d+(-\d+)?)?$/;
@@ -280,6 +281,11 @@ export const FootnoteInteraction: Story = {
     versionId: 111,
     renderNotes: true,
     showVerseNumbers: true,
+    passageState: {
+      passage: mockPassages['JHN.1.51'],
+      loading: false,
+      error: null,
+    },
   },
   tags: ['integration', 'shadow-dom', 'cross-browser'],
   play: async ({ canvasElement }) => {

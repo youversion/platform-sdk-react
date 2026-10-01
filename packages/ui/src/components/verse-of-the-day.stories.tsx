@@ -3,12 +3,14 @@ import { expect, within, userEvent, spyOn } from 'storybook/test';
 
 import { VerseOfTheDay } from './verse-of-the-day';
 import { waitFor, waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
+import { globalHandlers } from '@/test/mocks/handlers';
 
 const meta = {
   title: 'Components/VerseOfTheDay',
   component: VerseOfTheDay,
   parameters: {
     layout: 'fullscreen',
+    msw: { handlers: globalHandlers },
   },
   render: (args) => (
     <div className="yv:w-full">
@@ -108,9 +110,9 @@ export const WideContainer: Story = {
     const root = await waitForShadowRoot(canvasElement);
     const canvas = within(await waitForShadowContent(root));
 
-    await expect(
-      await canvas.findByText(/for I am about to do something new/i),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(canvas.getByText(/for I am about to do something new/i)).toBeInTheDocument(),
+    );
 
     const card = root.querySelector('section[data-yv-sdk][data-yv-theme]');
     const contentGroup = root.querySelector('section[data-yv-sdk][data-yv-theme] > div');
@@ -141,9 +143,9 @@ export const Large: Story = {
   play: async ({ canvasElement }) => {
     const root = await waitForShadowRoot(canvasElement);
     const canvas = within(await waitForShadowContent(root));
-    await expect(
-      await canvas.findByText(/for I am about to do something new/i),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(canvas.getByText(/for I am about to do something new/i)).toBeInTheDocument(),
+    );
     await expect(root.querySelector('section[data-size="lg"]')).toBeInTheDocument();
     await expect(root.querySelector('[data-slot="yv-bible-renderer"]')).toHaveStyle({
       '--yv-reader-font-size': '20px',

@@ -48,6 +48,7 @@ const meta = {
   component: BibleCard,
   parameters: {
     layout: 'fullscreen',
+    msw: { handlers: globalHandlers },
   },
   render: (args) => (
     <div className="yv:w-full">
