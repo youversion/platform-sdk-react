@@ -3,9 +3,10 @@
  */
 import { expect, it, vi } from 'vitest';
 import { MemoryStorageStrategy, SessionStorageStrategy } from '../StorageStrategy';
+import { clearStorage, getSessionStorage } from '../web-storage';
 
 it('persists, replaces, removes, and clears session values', () => {
-  sessionStorage.clear();
+  clearStorage(getSessionStorage());
   const storage = new SessionStorageStrategy();
 
   storage.setItem('first', 'one');
