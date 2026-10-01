@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render as rtlRender, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
 import type { HookOverrides } from '@youversion/platform-react-hooks';
@@ -26,6 +26,13 @@ import {
   stubUseHighlights,
 } from '@/test/highlights-test-utils';
 import { InterfaceDirectionProvider } from '@/lib/direction';
+import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
+
+function render(ui: ReactElement) {
+  return rtlRender(ui, {
+    wrapper: ({ children }) => <ReuseShadowBoundary>{children}</ReuseShadowBoundary>,
+  });
+}
 
 const MOCK_VERSE_HTML = '<p class="yv-p">For God so loved the world</p>';
 const MOCK_VERSE_TEXT = 'For God so loved the world';
@@ -207,6 +214,25 @@ describe('VerseOfTheDay - share', () => {
       title: undefined,
       url: undefined,
     });
+  });
+
+  it('copies the built text when Web Share is unavailable', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      'navigator',
+      Object.assign({}, navigator, {
+        share: undefined,
+        clipboard: { writeText: clipboardWriteTextSpy },
+      }),
+    );
+
+    renderVotd(<VerseOfTheDay dayOfYear={1} />);
+
+    await user.click(screen.getByRole('button', { name: en.shareAriaLabel }));
+
+    expect(clipboardWriteTextSpy).toHaveBeenCalledOnce();
+    expect(clipboardWriteTextSpy).toHaveBeenCalledWith(expectedShareData().text);
+    expect(shareSpy).not.toHaveBeenCalled();
   });
 
   it('does not surface unhandled rejection when onShare rejects', async () => {

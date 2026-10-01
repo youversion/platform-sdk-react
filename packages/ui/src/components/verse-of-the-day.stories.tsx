@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within, userEvent, spyOn } from 'storybook/test';
 
 import { VerseOfTheDay } from './verse-of-the-day';
+import { waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
 
 const meta = {
   title: 'Components/VerseOfTheDay',
@@ -60,7 +61,7 @@ export const Default: Story = {
     showShareButton: true,
     size: 'default',
   },
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
   beforeEach: () => {
     Object.defineProperty(navigator, 'share', {
       configurable: true, // Allows the property to be redefined later
@@ -71,7 +72,7 @@ export const Default: Story = {
   },
   play: async ({ canvasElement }) => {
     const mockSpy = spyOn(navigator, 'share');
-    const canvas = within(canvasElement);
+    const canvas = within(await waitForShadowContent(await waitForShadowRoot(canvasElement)));
 
     // Wait for component to load, then check that the verse appears.
     await expect(
@@ -98,7 +99,7 @@ export const WideContainer: Story = {
     showShareButton: true,
     size: 'default',
   },
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
   parameters: {
     layout: 'fullscreen',
   },
@@ -108,15 +109,16 @@ export const WideContainer: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+    const root = await waitForShadowRoot(canvasElement);
+    const canvas = within(await waitForShadowContent(root));
 
     await expect(
       await canvas.findByText(/for I am about to do something new/i),
     ).toBeInTheDocument();
 
-    const card = canvasElement.querySelector('section[data-yv-sdk][data-yv-theme]');
-    const contentGroup = canvasElement.querySelector('section[data-yv-sdk][data-yv-theme] > div');
-    const bibleText = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+    const card = root.querySelector('section[data-yv-sdk][data-yv-theme]');
+    const contentGroup = root.querySelector('section[data-yv-sdk][data-yv-theme] > div');
+    const bibleText = root.querySelector('[data-slot="yv-bible-renderer"]');
 
     await expect(card).not.toBeNull();
     await expect(contentGroup).not.toBeNull();
@@ -136,7 +138,20 @@ export const WideContainer: Story = {
 
 export const Large: Story = {
   args: {
+    versionId: 111,
     size: 'lg',
+  },
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  play: async ({ canvasElement }) => {
+    const root = await waitForShadowRoot(canvasElement);
+    const canvas = within(await waitForShadowContent(root));
+    await expect(
+      await canvas.findByText(/for I am about to do something new/i),
+    ).toBeInTheDocument();
+    await expect(root.querySelector('section[data-size="lg"]')).toBeInTheDocument();
+    await expect(root.querySelector('[data-slot="yv-bible-renderer"]')).toHaveStyle({
+      '--yv-reader-font-size': '20px',
+    });
   },
 };
 
@@ -172,12 +187,13 @@ export const RtlInterfaceWithLtrScripture: Story = {
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+    const root = await waitForShadowRoot(canvasElement);
+    const canvas = within(await waitForShadowContent(root));
     await canvas.findByText(/for I am about to do something new/i);
-    const card = canvasElement.querySelector('section[data-yv-sdk]');
-    const icon = canvasElement.querySelector('[data-slot="card-icon"]');
-    const action = canvasElement.querySelector('[data-slot="card-action"]');
-    const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+    const card = root.querySelector('section[data-yv-sdk]');
+    const icon = root.querySelector('[data-slot="card-icon"]');
+    const action = root.querySelector('[data-slot="card-action"]');
+    const renderer = root.querySelector('[data-slot="yv-bible-renderer"]');
 
     await expect(card).toHaveAttribute('dir', 'rtl');
     await expect(renderer).toHaveAttribute('dir', 'ltr');

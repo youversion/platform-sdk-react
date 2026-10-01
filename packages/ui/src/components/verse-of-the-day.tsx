@@ -27,6 +27,7 @@ import { filterHighlightsForPassage } from '@/lib/highlight-projection';
 import { useHighlightsControlledLatch } from '@/lib/use-highlights-controlled-latch';
 import { useInterfaceDirection } from '@/lib/direction';
 import { useResolvedScriptureDirection } from '@/lib/scripture-direction';
+import { ReuseShadowBoundary, ShadowIsolationBoundary } from '@/lib/shadow-isolation';
 
 export type VerseOfTheDayShareData = {
   /** Full share body: verse text, blank line, then reference (same as Web Share `text`). */
@@ -157,7 +158,7 @@ async function share({
  * />
  * ```
  */
-export function VerseOfTheDay({
+function VerseOfTheDayImplementation({
   background,
   dayOfYear,
   versionId = DEFAULT_LICENSE_FREE_BIBLE_VERSION,
@@ -297,22 +298,24 @@ export function VerseOfTheDay({
                 />
               </div>
             ) : (
-              <BibleTextView
-                ref={verseRef}
-                theme={theme}
-                reference={data?.passage_id || ''}
-                versionId={versionId}
-                fontSize={size === 'default' ? 16 : 20}
-                fontFamily={size === 'default' ? 'var(--yv-font-sans)' : 'var(--yv-font-serif)'}
-                showVerseNumbers={false}
-                passageState={{
-                  passage,
-                  loading: isLoading,
-                  error: errorPassage || errorVerseOfTheDay || null,
-                }}
-                highlights={clippedHighlights}
-                scriptureDirection={scriptureDirection}
-              />
+              <ReuseShadowBoundary>
+                <BibleTextView
+                  ref={verseRef}
+                  theme={theme}
+                  reference={data?.passage_id || ''}
+                  versionId={versionId}
+                  fontSize={size === 'default' ? 16 : 20}
+                  fontFamily={size === 'default' ? 'var(--yv-font-sans)' : 'var(--yv-font-serif)'}
+                  showVerseNumbers={false}
+                  passageState={{
+                    passage,
+                    loading: isLoading,
+                    error: errorPassage || errorVerseOfTheDay || null,
+                  }}
+                  highlights={clippedHighlights}
+                  scriptureDirection={scriptureDirection}
+                />
+              </ReuseShadowBoundary>
             )}
           </AnimatedHeight>
 
@@ -328,5 +331,13 @@ export function VerseOfTheDay({
         </div>
       </section>
     </>
+  );
+}
+
+export function VerseOfTheDay(props: VerseOfTheDayProps): React.ReactElement {
+  return (
+    <ShadowIsolationBoundary theme={props.background} portalStrategy="local-top-layer">
+      <VerseOfTheDayImplementation {...props} />
+    </ShadowIsolationBoundary>
   );
 }

@@ -2,13 +2,18 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, act, within, waitFor } from '@testing-library/react';
+import { render as rtlRender, act, within, waitFor } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
 import { requireHtmlButton, requireHtmlElement } from '@/test/dom-stubs';
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import { BibleCard } from './bible-card';
 import type { FootnoteData } from './verse';
-import type { UsePassageResult, UseVersionResult } from '@youversion/platform-react-hooks';
+import type {
+  HookOverrides,
+  UsePassageResult,
+  UseVersionResult,
+} from '@youversion/platform-react-hooks';
 import type { BiblePassage, BibleVersion, Highlight } from '@youversion/platform-core';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import {
@@ -20,6 +25,13 @@ import {
   stubUseHighlights,
 } from '@/test/highlights-test-utils';
 import { InterfaceDirectionProvider } from '@/lib/direction';
+import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
+
+function render(ui: ReactElement) {
+  return rtlRender(ui, {
+    wrapper: ({ children }) => <ReuseShadowBoundary>{children}</ReuseShadowBoundary>,
+  });
+}
 
 const mockPassage: BiblePassage = {
   id: 'JHN.3.16',
@@ -263,6 +275,25 @@ describe('BibleCard - maxWidth', () => {
     expect(inner).not.toHaveClass('yv:card-content');
     expect(section.style.getPropertyValue('--yv-reader-max-width')).toBe('none');
   });
+});
+
+it('uses defaultVersionId as the initial uncontrolled version', () => {
+  const requestedVersionIds: number[] = [];
+  const overrides: HookOverrides = {
+    useVersion: (versionId) => {
+      requestedVersionIds.push(versionId);
+      return idleVersion();
+    },
+    usePassage: () => passageResult({ passage: mockPassage, loading: false }),
+  };
+
+  render(
+    <HookOverrideProvider overrides={overrides}>
+      <BibleCard reference="JHN.3.16" defaultVersionId={222} />
+    </HookOverrideProvider>,
+  );
+
+  expect(requestedVersionIds).toContain(222);
 });
 
 describe('BibleCard - Error state', () => {

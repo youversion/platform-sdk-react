@@ -670,7 +670,7 @@ export type BibleTextViewProps = {
 /**
  * A component that renders style Bible text.
  */
-export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
+const BibleTextViewImplementation = forwardRef<HTMLDivElement, BibleTextViewProps>(
   (
     {
       reference,
@@ -825,3 +825,11 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
     );
   },
 );
+BibleTextViewImplementation.displayName = 'BibleTextViewImplementation';
+
+export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>((props, ref) => (
+  <ShadowIsolationBoundary theme={props.theme} portalStrategy="local-top-layer">
+    <BibleTextViewImplementation {...props} ref={ref} />
+  </ShadowIsolationBoundary>
+));
+BibleTextView.displayName = 'BibleTextView';
