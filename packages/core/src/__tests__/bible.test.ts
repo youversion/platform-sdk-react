@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
+import { http, HttpResponse } from 'msw';
 import { ApiClient } from '../client';
 import { BibleClient } from '../bible';
+import { server } from './setup';
 
 function createClient(): BibleClient {
   return new BibleClient(
@@ -13,7 +15,7 @@ function createClient(): BibleClient {
 }
 
 describe('BibleClient runtime contracts', () => {
-  it('routes the direct book and verse reads not exercised by browser journeys', async () => {
+  it('routes direct Bible reads and forwards the canon filter to the HTTP request', async () => {
     const api = new ApiClient({
       apiHost: process.env.YVP_API_HOST || '',
       appKey: process.env.YVP_APP_KEY || '',
@@ -21,17 +23,46 @@ describe('BibleClient runtime contracts', () => {
     });
     const get = vi.spyOn(api, 'get');
     const client = new BibleClient(api);
+    const requests: URL[] = [];
+    const onRequest = ({ request }: { request: Request }) => {
+      requests.push(new URL(request.url));
+    };
+    const index = { text_direction: 'rtl', books: [] };
+    if (process.env.INTEGRATION_TESTS) server.listen();
+    server.events.on('request:start', onRequest);
+    try {
+      server.use(
+        http.get(`https://${api.config.apiHost}/v1/bibles/:id/index`, () =>
+          HttpResponse.json(index),
+        ),
+      );
 
-    expect((await client.getBook(111, 'GEN')).id).toBe('GEN');
-    expect(get).toHaveBeenCalledWith('/v1/bibles/111/books/GEN');
-    expect((await client.getChapters(111, 'GEN')).data[0]?.passage_id).toBe('GEN.1');
-    expect(get).toHaveBeenCalledWith('/v1/bibles/111/books/GEN/chapters');
-    expect((await client.getVerses(111, 'GEN', 1)).data[0]?.passage_id).toBe('GEN.1.1');
-    expect(get).toHaveBeenCalledWith('/v1/bibles/111/books/GEN/chapters/1/verses');
-    expect((await client.getVerse(111, 'GEN', 1, 1)).passage_id).toBe('GEN.1.1');
-    expect(get).toHaveBeenCalledWith('/v1/bibles/111/books/GEN/chapters/1/verses/1');
-    expect((await client.getAllVOTDs()).data[0]?.day).toBe(1);
-    expect(get).toHaveBeenCalledWith('/v1/verse_of_the_days');
+      expect((await client.getBooks(111, 'old_testament')).data[0]?.id).toBe('GEN');
+      expect(requests.at(-1)?.pathname).toBe('/v1/bibles/111/books');
+      expect(requests.at(-1)?.searchParams.get('canon')).toBe('old_testament');
+      await client.getBooks(111);
+      expect(requests.at(-1)?.searchParams.has('canon')).toBe(false);
+
+      expect((await client.getBook(111, 'GEN')).id).toBe('GEN');
+      expect(get).toHaveBeenCalledWith('/v1/bibles/111/books/GEN');
+      expect((await client.getChapters(111, 'GEN')).data[0]?.passage_id).toBe('GEN.1');
+      expect(get).toHaveBeenCalledWith('/v1/bibles/111/books/GEN/chapters');
+      expect((await client.getVerses(111, 'GEN', 1)).data[0]?.passage_id).toBe('GEN.1.1');
+      expect(get).toHaveBeenCalledWith('/v1/bibles/111/books/GEN/chapters/1/verses');
+      expect((await client.getVerse(111, 'GEN', 1, 1)).passage_id).toBe('GEN.1.1');
+      expect(get).toHaveBeenCalledWith('/v1/bibles/111/books/GEN/chapters/1/verses/1');
+      expect(await client.getIndex(206)).toEqual(index);
+      expect(requests.at(-1)?.pathname).toBe('/v1/bibles/206/index');
+      expect((await client.getAllVOTDs()).data[0]?.day).toBe(1);
+      expect(get).toHaveBeenCalledWith('/v1/verse_of_the_days');
+    } finally {
+      server.events.removeListener('request:start', onRequest);
+      get.mockRestore();
+      if (process.env.INTEGRATION_TESTS) {
+        server.resetHandlers();
+        server.close();
+      }
+    }
   });
 
   it('rejects malformed Bible coordinates before making a request', async () => {

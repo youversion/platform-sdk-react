@@ -1,9 +1,10 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { YouVersionAPIUsers, YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import type { ReactNode } from 'react';
 import { expect, it, vi } from 'vitest';
 import { createMockAuthResult, createMockUserInfo } from './__tests__/mocks/auth';
 import { YouVersionAuthContext } from './context/YouVersionAuthContext';
+import { YouVersionProvider } from './context/YouVersionProvider';
 import type { AuthContextValue } from './types/auth';
 import { useYVAuth } from './useYVAuth';
 
@@ -80,15 +81,32 @@ it('forwards scopes and permissions while honoring an explicit redirect URL', as
   signIn.mockRestore();
 });
 
-it('falls back to the provider redirect and rejects when neither redirect is configured', async () => {
+it('uses the real provider redirect, follows configuration changes, and rejects a missing redirect', async () => {
   const signIn = vi.spyOn(YouVersionAPIUsers, 'signIn').mockResolvedValue(undefined);
-  const configured = renderHook(() => useYVAuth(), { wrapper: wrapperWith('https://default') });
-  await act(() => configured.result.current.signIn());
-  expect(signIn).toHaveBeenCalledWith('https://default', undefined, undefined);
+  let redirect = 'https://default';
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <YouVersionProvider appKey="test-app" includeAuth authRedirectUrl={redirect} userInfo={null}>
+      {children}
+    </YouVersionProvider>
+  );
+  try {
+    const { result, rerender } = renderHook(() => useYVAuth(), { wrapper });
+    await waitFor(() => expect(result.current?.auth.isLoading).toBe(false));
+    await act(() => result.current.signIn());
+    expect(signIn).toHaveBeenLastCalledWith('https://default', undefined, undefined);
 
-  const missing = renderHook(() => useYVAuth(), { wrapper: wrapperWith() });
-  await expect(missing.result.current.signIn()).rejects.toThrow('redirectUrl is required');
-  signIn.mockRestore();
+    redirect = 'https://changed';
+    rerender();
+    await act(() => result.current.signIn());
+    expect(signIn).toHaveBeenLastCalledWith('https://changed', undefined, undefined);
+
+    redirect = '';
+    rerender();
+    await expect(result.current.signIn()).rejects.toThrow('redirectUrl is required');
+    expect(signIn).toHaveBeenCalledTimes(2);
+  } finally {
+    signIn.mockRestore();
+  }
 });
 
 it('returns the authentication callback result unchanged', async () => {
