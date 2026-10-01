@@ -3,14 +3,12 @@ import { expect, within, userEvent, spyOn } from 'storybook/test';
 
 import { VerseOfTheDay } from './verse-of-the-day';
 import { waitFor, waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
-import { globalHandlers } from '@/test/mocks/handlers';
 
 const meta = {
   title: 'Components/VerseOfTheDay',
   component: VerseOfTheDay,
   parameters: {
     layout: 'fullscreen',
-    msw: { handlers: globalHandlers },
   },
   render: (args) => (
     <div className="yv:w-full">
@@ -63,7 +61,7 @@ export const Default: Story = {
     showShareButton: true,
     size: 'default',
   },
-  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  tags: ['integration'],
   play: async ({ canvasElement }) => {
     Object.defineProperty(navigator, 'share', {
       configurable: true,
@@ -97,7 +95,7 @@ export const WideContainer: Story = {
     showShareButton: true,
     size: 'default',
   },
-  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  tags: ['integration'],
   parameters: {
     layout: 'fullscreen',
   },
@@ -139,7 +137,7 @@ export const Large: Story = {
     versionId: 111,
     size: 'lg',
   },
-  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  tags: ['integration'],
   play: async ({ canvasElement }) => {
     const root = await waitForShadowRoot(canvasElement);
     const canvas = within(await waitForShadowContent(root));

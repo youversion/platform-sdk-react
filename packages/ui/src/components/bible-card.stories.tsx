@@ -48,7 +48,6 @@ const meta = {
   component: BibleCard,
   parameters: {
     layout: 'fullscreen',
-    msw: { handlers: globalHandlers },
   },
   render: (args) => (
     <div className="yv:w-full">
@@ -140,7 +139,7 @@ export const WideContainer: Story = {
     versionId: 111,
     maxWidth: '100%',
   },
-  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  tags: ['integration'],
   parameters: {
     layout: 'fullscreen',
   },
@@ -198,7 +197,7 @@ export const WithVersionPicker: Story = {
   globals: {
     theme: 'dark',
   },
-  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  tags: ['integration'],
   play: async ({ canvasElement }) => {
     const root = await waitForShadowRoot(canvasElement);
     const canvas = within(await waitForShadowContent(root));
