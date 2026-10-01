@@ -9,6 +9,13 @@ import {
   waitForShadowContent,
   waitForShadowRoot,
 } from '../test/storybook-dom';
+import { ScriptureStoryDataProvider } from '../test/scripture-story-data';
+
+const withScriptureStoryData = (Story: React.ComponentType) => (
+  <ScriptureStoryDataProvider>
+    <Story />
+  </ScriptureStoryDataProvider>
+);
 
 async function getVersionPickerQueries(container: ParentNode, triggerName: RegExp) {
   const root = await waitForShadowRoot(container);
@@ -193,11 +200,13 @@ export const WithVersionPicker: Story = {
     reference: 'LUK.1.39-45',
     versionId: 111,
     showVersionPicker: true,
+    highlights: [],
   },
   globals: {
     theme: 'dark',
   },
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  decorators: [withScriptureStoryData],
   play: async ({ canvasElement }) => {
     const root = await waitForShadowRoot(canvasElement);
     const canvas = within(await waitForShadowContent(root));

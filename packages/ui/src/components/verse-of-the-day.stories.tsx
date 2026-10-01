@@ -3,6 +3,13 @@ import { expect, within, userEvent, spyOn } from 'storybook/test';
 
 import { VerseOfTheDay } from './verse-of-the-day';
 import { waitFor, waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
+import { ScriptureStoryDataProvider } from '@/test/scripture-story-data';
+
+const withScriptureStoryData = (Story: React.ComponentType) => (
+  <ScriptureStoryDataProvider>
+    <Story />
+  </ScriptureStoryDataProvider>
+);
 
 const meta = {
   title: 'Components/VerseOfTheDay',
@@ -60,8 +67,10 @@ export const Default: Story = {
     showBibleAppAttribution: true,
     showShareButton: true,
     size: 'default',
+    highlights: [],
   },
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  decorators: [withScriptureStoryData],
   play: async ({ canvasElement }) => {
     Object.defineProperty(navigator, 'share', {
       configurable: true,

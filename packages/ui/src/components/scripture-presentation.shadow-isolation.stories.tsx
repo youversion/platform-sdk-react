@@ -1,61 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import type { BiblePassage, BibleVersion } from '@youversion/platform-core';
-import { YouVersionContext, type HookOverrides } from '@youversion/platform-react-hooks';
-import { useContext, type ReactNode } from 'react';
 import { expect, within } from 'storybook/test';
 import { requireShadowContent, waitFor, waitForShadowRoot } from '@/test/storybook-dom';
-import mockPassages from '@/test/mock-data/passages.json';
+import { ScriptureStoryDataProvider } from '@/test/scripture-story-data';
 import { BibleCard } from './bible-card';
 import { BibleTextView } from './verse';
 import { VerseOfTheDay } from './verse-of-the-day';
-
-const FIXTURE_VERSION: BibleVersion = {
-  id: 111,
-  title: 'New International Version',
-  abbreviation: 'NIV',
-  localized_title: 'New International Version',
-  localized_abbreviation: 'NIV',
-  language_tag: 'en',
-  books: ['JHN', 'ISA', 'LUK'],
-  youversion_deep_link: 'https://bible.com/versions/111',
-};
-
-function fixturePassage(usfm: string): BiblePassage | null {
-  if (usfm === 'JHN.3.16') return mockPassages['JHN.3.16'];
-  if (usfm === 'ISA.43.19') return mockPassages['ISA.43.19'];
-  if (usfm === 'LUK.1.39-45') return mockPassages['LUK.1.39-45.NIV'];
-  return null;
-}
-
-const HOOK_OVERRIDES = {
-  usePassage: ({ usfm }) => ({
-    passage: fixturePassage(usfm),
-    loading: false,
-    error: null,
-    refetch: () => undefined,
-  }),
-  useVersion: () => ({
-    version: FIXTURE_VERSION,
-    loading: false,
-    error: null,
-    refetch: () => undefined,
-  }),
-  useVerseOfTheDay: () => ({
-    data: { day: 1, passage_id: 'ISA.43.19' },
-    loading: false,
-    error: null,
-    refetch: () => undefined,
-  }),
-} satisfies HookOverrides;
-
-function FixtureProviders({ children }: { children: ReactNode }): ReactNode {
-  const parentContext = useContext(YouVersionContext);
-  const value = parentContext
-    ? { ...parentContext, hookOverrides: HOOK_OVERRIDES }
-    : { appKey: 'test', hookOverrides: HOOK_OVERRIDES };
-
-  return <YouVersionContext.Provider value={value}>{children}</YouVersionContext.Provider>;
-}
 
 const HOSTILE_CSS = `
   [data-scripture-fixture] div,
@@ -71,7 +20,7 @@ const HOSTILE_CSS = `
 
 function ScripturePresentationIsolationFixture(): React.ReactNode {
   return (
-    <FixtureProviders>
+    <ScriptureStoryDataProvider>
       <style>{HOSTILE_CSS}</style>
       <main data-scripture-fixture style={{ display: 'grid', gap: 24, inlineSize: 900 }}>
         <div data-testid="standalone-scripture">
@@ -100,7 +49,7 @@ function ScripturePresentationIsolationFixture(): React.ReactNode {
           <BibleCard reference="LUK.1.39-45" versionId={111} maxWidth="100%" highlights={[]} />
         </div>
       </main>
-    </FixtureProviders>
+    </ScriptureStoryDataProvider>
   );
 }
 
