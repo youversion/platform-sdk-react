@@ -350,7 +350,7 @@ jobs:
   gate:
     # `always()`: `preview` is skipped for forks and the gate still has to post a status.
     if: always() && needs.context.result == 'success'
-    name: Major release signoff
+    name: Evaluate release signoff
     needs: [context, generated_release, preview]
     runs-on: ubuntu-latest
     permissions:
