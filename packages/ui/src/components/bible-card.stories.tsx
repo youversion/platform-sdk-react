@@ -12,9 +12,8 @@ import {
 
 async function getVersionPickerQueries(container: ParentNode, triggerName: RegExp) {
   const root = await waitForShadowRoot(container);
+  const content = await waitForShadowContent(root);
   return waitFor(() => {
-    const content = root.querySelector<HTMLElement>('[data-yv-shadow-content-wrapper]');
-    if (!content) throw new globalThis.Error('BibleCard shadow content not rendered');
     const picker = within(content);
     const trigger = picker.queryByRole('button', { name: triggerName });
     if (!trigger) throw new globalThis.Error('version picker trigger not rendered');

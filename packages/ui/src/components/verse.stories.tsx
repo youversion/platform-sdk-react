@@ -284,17 +284,13 @@ export const FootnoteInteraction: Story = {
   tags: ['integration', 'shadow-dom', 'cross-browser'],
   play: async ({ canvasElement }) => {
     const root = await waitForShadowRoot(canvasElement);
-    await waitFor(
-      async () => {
-        const footnoteButtons = root.querySelectorAll('[data-verse-footnote] button');
-        await expect(footnoteButtons.length).toBeGreaterThan(0);
-      },
-      { timeout: 5000 },
+    const footnoteButton = await waitForElement<HTMLButtonElement>(
+      root,
+      '[data-verse-footnote] button',
+      'footnote button not rendered',
     );
 
-    const footnoteButtons = root.querySelectorAll('[data-verse-footnote] button');
-    await expect(footnoteButtons.length).toBeGreaterThan(0);
-    await userEvent.click(footnoteButtons[0]!);
+    await userEvent.click(footnoteButton);
     const overlay = await waitForElement<HTMLElement>(
       root,
       '[data-yv-shadow-local-overlay]',
@@ -302,20 +298,15 @@ export const FootnoteInteraction: Story = {
     );
     const floating = within(overlay);
 
-    await waitFor(async () => {
-      await expect(floating.getByText('Footnotes')).toBeInTheDocument();
-    });
-
-    await waitFor(async () => {
-      await expect(floating.getByText(/John 1:51/i)).toBeInTheDocument();
-    });
-
-    await waitFor(async () => {
-      const noteItems = root.querySelectorAll<HTMLElement>('[data-yv-sdk] ul li');
-      await expect(noteItems.length).toBeGreaterThan(0);
-      await expect(overlay).toContainElement(noteItems[0]!);
-      await expect(root.querySelector('[data-yv-shadow-host]')).toBeNull();
-    });
+    await expect(await floating.findByText('Footnotes')).toBeInTheDocument();
+    await expect(await floating.findByText(/John 1:51/i)).toBeInTheDocument();
+    const noteItem = await waitForElement<HTMLElement>(
+      overlay,
+      '[data-yv-sdk] ul li',
+      'footnote item not rendered in the local overlay',
+    );
+    await expect(overlay).toContainElement(noteItem);
+    await expect(root.querySelector('[data-yv-shadow-host]')).toBeNull();
   },
 };
 

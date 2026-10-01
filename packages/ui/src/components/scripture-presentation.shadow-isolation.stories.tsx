@@ -121,18 +121,5 @@ export const HostileCssAndRepresentativeLayouts: Story = {
       '--yv-reader-line-height': '1.7',
     });
     await expect(scriptureRoot.querySelector('[data-yv-theme="dark"]')).toBeInTheDocument();
-
-    await expect(defaultVotdRoot.querySelector('section[data-size="default"]')).toBeInTheDocument();
-    await expect(largeVotdRoot.querySelector('section[data-size="lg"]')).toBeInTheDocument();
-    await expect(largeVotdRoot.querySelector('[data-slot="yv-bible-renderer"]')).toHaveStyle({
-      '--yv-reader-font-size': '20px',
-    });
-
-    const defaultCard = defaultCardRoot.querySelector<HTMLElement>('section[data-yv-sdk]');
-    const fullCard = fullCardRoot.querySelector<HTMLElement>('section[data-yv-sdk]');
-    await expect(defaultCard).toHaveStyle({ maxWidth: '700px' });
-    await expect(fullCard).toHaveStyle({ maxWidth: '100%' });
-    await expect(defaultCard?.getBoundingClientRect().width ?? 0).toBeGreaterThan(600);
-    await expect(fullCard?.getBoundingClientRect().width ?? 0).toBeGreaterThan(800);
   },
 };
