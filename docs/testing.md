@@ -1,18 +1,21 @@
 # Testing
 
-Testing style adapted from [Kent C. Dodds / kody testing principles](https://github.com/kentcdodds/kody/blob/main/docs/contributing/testing-principles.md). Prefer the lightest falsifying flavor; do not mass-rewrite untouched suites. Package ownership below defines each layer's test seams.
+Testing style adapted from [Kent C. Dodds / kody testing principles](https://github.com/kentcdodds/kody/blob/main/docs/contributing/testing-principles.md). This document owns the E2E-first rules; do not mass-rewrite untouched suites. Package ownership below defines each layer's test seams.
 
-## Pick the lightest flavor that can falsify the behavior
+## Prefer E2E; isolate only failures the existing journeys miss
 
-Do not use "integration" as a style term — choose by capability:
+Highly prefer E2E tests as the sole testing mechanism for complex features. Use isolation tests only for real failures the existing journeys miss.
+
+Before writing isolation tests, list the ways the system could fail and identify which ones the existing E2E and mocked browser journeys miss. Account for what their mocks bypass. Write those tests before implementation, never afterward; before deleting an existing test, preserve or replace its unique coverage. Do not use "integration" as a style term — choose by capability:
 
 | Flavor | Package | Use when |
 | --- | --- | --- |
+| E2E | examples | Complex behavior through the running app; produce a repeatable artifact with the command, inputs, and result at the end |
 | Pure unit | core / hooks utils / ui lib | Pure functions, transformers, machines |
 | Mocked client (MSW) | core | Client + Zod + error mapping against fake HTTP |
 | Hook + provider + factories | hooks | Hook state/cache/auth against stubbed core clients |
 | Component Vitest + RTL | ui | Behavior/a11y without Storybook chrome |
-| Storybook `play` | ui | User-visible journeys that need real composition/slots |
+| Storybook `play` | ui | Mocked browser journeys for user-visible composition/slots; not full app E2E |
 | Live API (`INTEGRATION_TESTS=true`) | core | Tiny smoke that mocks cannot falsify |
 
 ## Musts for new and edited tests
@@ -24,14 +27,14 @@ Do not use "integration" as a style term — choose by capability:
 - Don't test what TypeScript already guarantees
 - Assert behavior / stable contracts / roles — not i18n prose or instructional copy
 - Prefer local fakes/fixtures; avoid the public internet by default
-- High bar for slower flavors (Storybook play, live API) and for unlikely one-off regression tests
+- High bar for isolation tests that duplicate E2E coverage and for unlikely one-off regression tests
 - Assert intermediate states inside the workflow that causes them
 
 ## Package ownership
 
 Core owns client HTTP and Zod tests with their MSW server; hooks own React state against stubbed clients; UI owns user-visible behavior against stubbed hooks/providers. Do not re-test a lower package's contract unless the bug is at the boundary. Rare vertical smokes (e.g. highlight auth) may climb one rung for critical journeys.
 
-- **Core:** Vitest runs in Node. Prefer mocked-client workflows for API clients
+- **Core:** Vitest runs in Node. For HTTP contract failures E2E cannot reach, use mocked-client workflows
   using the shared MSW server from `packages/core/src/__tests__/setup.ts`, which
   loads `handlers.ts` and manages the server lifecycle. Override responses inside
   tests with `server.use(...)`. Live API smokes stay tiny and opt-in with
@@ -40,7 +43,7 @@ Core owns client HTTP and Zod tests with their MSW server; hooks own React state
   factories under `packages/hooks/src/__tests__/mocks`; wrap hooks in the real
   provider through ready-to-run wrapper factories. Hook tests do not use MSW or
   re-test HTTP or Zod parsing.
-- **UI:** Default to Vitest, jsdom, and React Testing Library with
+- **UI:** For isolation tests that catch failures E2E journeys miss, use Vitest, jsdom, and React Testing Library with
   `packages/ui/src/test/setup.ts`. Stub hook results with
   `YouVersionContext.hookOverrides` through `HookOverrideProvider` in
   `packages/ui/src/test/hook-overrides.tsx`, not `vi.mock` of

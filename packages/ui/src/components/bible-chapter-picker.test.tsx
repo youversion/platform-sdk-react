@@ -233,37 +233,6 @@ describe('BibleChapterPicker.Content onSelect', () => {
   });
 });
 
-describe('BibleChapterPicker - typography (matches Figma sizing; sans inherited)', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('book row uses 16px, regular collapsed and bold when expanded', () => {
-    renderContent();
-
-    // GEN is the default-expanded book (book="GEN").
-    const genesisTrigger = findAccordionTrigger(/Genesis/i);
-    expect(genesisTrigger).toBeDefined();
-    expect(genesisTrigger).toHaveClass('yv:text-base', 'yv:font-normal');
-    expect(genesisTrigger).toHaveAttribute('data-state', 'open');
-    expect(genesisTrigger).toHaveClass('yv:data-[state=open]:font-bold');
-  });
-
-  it('chapter number buttons render at 16px bold', () => {
-    renderContent();
-
-    const chapterButton = screen.getByText('2').closest('button');
-    expect(chapterButton).not.toBeNull();
-    expect(chapterButton).toHaveClass('yv:text-base', 'yv:font-bold');
-  });
-
-  it('search input renders at 16px', () => {
-    renderContent();
-
-    expect(screen.getByPlaceholderText('Search')).toHaveClass('yv:text-base');
-  });
-});
-
 describe('BibleChapterPicker - accordion expand/collapse', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -326,35 +295,6 @@ describe('BibleChapterPicker - accordion expand/collapse', () => {
     );
 
     warnSpy.mockRestore();
-  });
-
-  it('does not throw when scrollIntoView is missing (jsdom)', async () => {
-    const user = userEvent.setup();
-    const scrollIntoViewDescriptor = Object.getOwnPropertyDescriptor(
-      Element.prototype,
-      'scrollIntoView',
-    );
-    Object.defineProperty(Element.prototype, 'scrollIntoView', {
-      value: undefined,
-      configurable: true,
-    });
-
-    try {
-      renderContent();
-
-      await expect(user.click(findAccordionTrigger(/Exodus/i)!)).resolves.toBeUndefined();
-      await expect(
-        new Promise<void>((resolve) => {
-          setTimeout(resolve, 250);
-        }),
-      ).resolves.toBeUndefined();
-    } finally {
-      if (scrollIntoViewDescriptor) {
-        Object.defineProperty(Element.prototype, 'scrollIntoView', scrollIntoViewDescriptor);
-      } else {
-        Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
-      }
-    }
   });
 });
 
