@@ -6,7 +6,7 @@ Keep this file brief. Put task-specific guidance behind a pointer.
 
 ## Gotchas
 
-- Public exports come from `src/index.ts`, including core and hooks re-exports. `src/types.ts` star-exports core, so adding a core export changes this package's public surface too.
+- Public exports come from `src/index.ts`, including core and hooks re-exports. Core types flow through `src/types.ts` via `export type *`; core runtime values become public here only when `src/index.ts` explicitly re-exports them.
 - `src/components/ui/` primitives are internal except `Separator` and `Textarea`, which are public API. Treat changes to those exports as potential breaking changes.
 
 ## Guardrails

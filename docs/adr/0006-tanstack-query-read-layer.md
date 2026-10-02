@@ -24,9 +24,10 @@ scope is `null`.
 `useOrganizations` is the batch exception: `useApiData` wraps one `useQuery`, but
 the batch needs one query per id. It calls `useQueries` with keys
 `[...useQueryKeyBase(), 'organization', <id>]`, matching `useOrganization`, so
-the hooks share cache entries and only uncached ids reach the network. Keep the
-`combine` callback stable so TanStack Query memoizes it and the returned Map stays
-referentially stable. No TanStack Query type reaches the public surface.
+the hooks share cache entries. Growing the id list adds queries for new ids;
+stale cached entries still revalidate on mount. Keep the `combine` callback stable
+so TanStack Query memoizes it and the returned Map stays referentially stable.
+No TanStack Query type reaches the public surface.
 
 The cache is memory-only. `refetch` performs exact query invalidation. Writes stay
 outside this read layer, owned by the highlights machine, and refresh via

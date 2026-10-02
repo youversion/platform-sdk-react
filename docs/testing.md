@@ -29,24 +29,26 @@ Do not use "integration" as a style term — choose by capability:
 
 ## Package ownership
 
-core owns HTTP+Zod+MSW; hooks own React state against stubbed clients; UI owns user-visible behavior against stubbed hooks/providers. Do not re-test a lower package's contract unless the bug is at the boundary. Rare vertical smokes (e.g. highlight auth) may climb one rung for critical journeys.
+Core owns client HTTP and Zod tests with their MSW server; hooks own React state against stubbed clients; UI owns user-visible behavior against stubbed hooks/providers. Do not re-test a lower package's contract unless the bug is at the boundary. Rare vertical smokes (e.g. highlight auth) may climb one rung for critical journeys.
 
 - **Core:** Vitest runs in Node. Prefer mocked-client workflows for API clients
-  and shared MSW handlers/factories under `packages/core/src/__tests__/`, such as
-  `handlers.ts`. Import or call them inside each test. Live API smokes stay tiny
-  and opt-in with `INTEGRATION_TESTS=true`.
+  using the shared MSW server from `packages/core/src/__tests__/setup.ts`, which
+  loads `handlers.ts` and manages the server lifecycle. Override responses inside
+  tests with `server.use(...)`. Live API smokes stay tiny and opt-in with
+  `INTEGRATION_TESTS=true`.
 - **Hooks:** Vitest uses jsdom and React Testing Library. Stub core clients with
   factories under `packages/hooks/src/__tests__/mocks`; wrap hooks in the real
-  provider through ready-to-run wrapper factories. Core owns MSW; hook tests do
-  not re-test HTTP or Zod parsing.
+  provider through ready-to-run wrapper factories. Hook tests do not use MSW or
+  re-test HTTP or Zod parsing.
 - **UI:** Default to Vitest, jsdom, and React Testing Library with
   `packages/ui/src/test/setup.ts`. Stub hook results with
   `YouVersionContext.hookOverrides` through `HookOverrideProvider` in
   `packages/ui/src/test/hook-overrides.tsx`, not `vi.mock` of
-  `@youversion/platform-react-hooks`. Network access belongs only in intentional
-  vertical smokes. Assert roles and behavior, not localized copy blobs. Use
+  `@youversion/platform-react-hooks`. In component unit tests, use network access
+  only for intentional vertical smokes. Assert roles and behavior, not localized copy blobs. Use
   Storybook `play` when composition or slots matter; tag each journey with
-  `tags: ['integration']` so CI discovers it.
+  `tags: ['integration']` so CI discovers it. Storybook has its own MSW handlers in
+  `packages/ui/src/test/mocks/handlers.ts`, wired through `packages/ui/.storybook/preview.tsx`.
 
 ## Run tests with their dependencies
 
@@ -80,7 +82,14 @@ directory while tests may still be importing it. If build output is stale, add
 ### Storybook browser journeys
 
 Storybook needs built workspace dependencies, production CSS, story-only CSS, and
-Playwright's Chromium. On a machine without the browser, install it through the UI
+Playwright's Chromium, plus an app-key setting. Set `YVP_APP_KEY` in the root `.env`
+or shell, or supply `STORYBOOK_YOUVERSION_APP_KEY` directly;
+`packages/ui/.storybook/main.ts` maps the generic key to the Storybook setting.
+Without it, the preview renders a
+Missing Environment Variables warning instead of the SDK. See
+[environment setup](./cursor-cloud.md#env-files-gitignored).
+
+On a machine without the browser, install it through the UI
 package with `pnpm --filter @youversion/platform-react-ui exec playwright install chromium`.
 If Playwright reports missing Linux system libraries, use its `install --with-deps chromium`
 option on a disposable development machine.
@@ -93,9 +102,12 @@ pnpm --filter @youversion/platform-react-ui exec vitest run --project storybook 
 
 Omit the file path to run all discovered Storybook journeys. The `integration` story
 tag controls discovery. `test:integration` currently runs both Vitest projects;
-`--project storybook` selects browser journeys only. These journeys use mocked HTTP,
-not the live API. Check the executed test count: a successful run with every test
-skipped does not verify the story.
+`--project storybook` selects browser journeys only. These journeys use the UI MSW
+handlers, but the preview sets `onUnhandledRequest: 'warn'`, so unmatched requests
+can reach the network. CI configures the API host and app key for those requests;
+use a real app key when live API access is needed. Passing tests alone do not prove
+that all requests were mocked. Check the executed test count: a successful run with
+every test skipped does not verify the story.
 
 For coverage across all packages, run `pnpm build` followed by `pnpm test:coverage`;
 the coverage script calls package scripts directly.

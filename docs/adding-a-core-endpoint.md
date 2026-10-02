@@ -43,13 +43,17 @@ for every input and output type.
 ## Environment-specific entry points
 
 Core has three entry points, and the split is deliberate — it keeps the main
-export runtime-agnostic while `linkedom` stays out of browser bundles:
+export runtime-agnostic while `jsdom` stays out of browser bundles:
 
 | Entry point | Behavior |
 |---|---|
 | `@youversion/platform-core` | Runtime-agnostic; requires DOM adapters |
 | `@youversion/platform-core/browser` | Convenience wrapper using native `DOMParser` |
 | `@youversion/platform-core/server` | Convenience wrapper using `jsdom` |
+
+The package's `"browser": { "jsdom": false }` field lets Vite/Rollup stub `jsdom`
+in client builds, including the main entry's dynamic import for server-side
+passage transformation.
 
 If a new client needs DOM access, follow the same pattern rather than importing
 a DOM library into the main entry point.

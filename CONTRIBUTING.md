@@ -65,7 +65,7 @@ pnpm build
 
 # Build specific packages
 pnpm build:core    # Build core
-pnpm build:react   # Build React SDK (hooks + ui)
+pnpm build:react   # Build UI only; dependencies must already be built
 ```
 
 ### Test Commands
