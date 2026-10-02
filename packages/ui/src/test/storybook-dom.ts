@@ -28,3 +28,13 @@ export async function waitForElement<ElementType extends Element>(
 export async function waitForShadowRoot(container: ParentNode): Promise<ShadowRoot> {
   return waitFor(() => requireShadowRoot(container));
 }
+
+export function requireShadowContent(root: ShadowRoot): HTMLElement {
+  const content = root.querySelector<HTMLElement>('[data-yv-shadow-content-wrapper]');
+  if (!content) throw new Error('shadow content wrapper not rendered');
+  return content;
+}
+
+export function waitForShadowContent(root: ShadowRoot): Promise<HTMLElement> {
+  return waitFor(() => requireShadowContent(root));
+}

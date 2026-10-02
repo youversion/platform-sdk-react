@@ -1200,26 +1200,28 @@ function Content() {
               showLoadingOverlay ? 'yv:opacity-40' : 'yv:opacity-100',
             )}
           >
-            <BibleTextView
-              ref={readerRef}
-              reference={usfmReference}
-              versionId={versionId}
-              fontFamily={currentFontFamily}
-              fontSize={currentFontSize}
-              lineHeight={currentLineSpacing}
-              showVerseNumbers={showVerseNumbers}
-              theme={background}
-              onFootnotePress={onFootnotePress}
-              scriptureDirection={scriptureDirection}
-              selectedVerses={selectedVerses}
-              onVerseSelect={handleVerseSelect}
-              highlightedVerses={highlightedVerses}
-              passageState={{
-                passage,
-                loading: isRefetching ? false : passageLoading,
-                error: passageError,
-              }}
-            />
+            <ReuseShadowBoundary>
+              <BibleTextView
+                ref={readerRef}
+                reference={usfmReference}
+                versionId={versionId}
+                fontFamily={currentFontFamily}
+                fontSize={currentFontSize}
+                lineHeight={currentLineSpacing}
+                showVerseNumbers={showVerseNumbers}
+                theme={background}
+                onFootnotePress={onFootnotePress}
+                scriptureDirection={scriptureDirection}
+                selectedVerses={selectedVerses}
+                onVerseSelect={handleVerseSelect}
+                highlightedVerses={highlightedVerses}
+                passageState={{
+                  passage,
+                  loading: isRefetching ? false : passageLoading,
+                  error: passageError,
+                }}
+              />
+            </ReuseShadowBoundary>
           </div>
 
           {/* `verseActions="none"`: the host renders its own action UI (e.g. a

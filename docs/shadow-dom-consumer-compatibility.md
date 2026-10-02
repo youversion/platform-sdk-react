@@ -23,6 +23,9 @@ scope.
 - `BibleChapterPicker.Root` and `BibleVersionPicker.Root` exercise automatic
   compound-component boundaries with shadow-local floating content. Their
   trigger, content, and language members reuse the owning root.
+- `BibleTextView`, `VerseOfTheDay`, and `BibleCard` exercise automatic
+  scripture-presentation boundaries and reuse the owning root for composed
+  scripture and picker content.
 
 These modules validate the shared boundary and specific public interfaces they
 exercise. They do not establish compatibility for every SDK component.
@@ -36,6 +39,7 @@ exercise. They do not establish compatibility for every SDK component.
 | An internal control resolves light-DOM `aria-labelledby` or `aria-describedby` ID references | Unsupported | The attributes remain present, but reflected element arrays are empty across the boundary in Chromium, Firefox, and Playwright WebKit. Keep referenced nodes in the same tree scope. This DOM evidence is not a substitute for assistive-technology testing. |
 | A native composed event crosses one shadow boundary | Supported with native retargeting | `EventsRefsAndDomQueriesExposeDifferentConsumerViews` clicks an internal label element and verifies that a light-DOM listener receives the shadow host as `event.target`; `composedPath()` begins with the label and includes the internal button and host. Consumers must not assume an external native listener's target is the internal control. |
 | A React handler passed to `YouVersionAuthButton` receives its button event | Supported for this public component | The same story verifies that the consumer `onClick` handler receives the internal originating label as `target` and the internal button as `currentTarget`. Consumers may rely on the button current target, not on every event originating at the button itself. This is component-specific evidence, not a package-wide promise for every event prop. |
+| A consumer React handler wraps an automatically isolated component in the light DOM | Known limitation; fix required before coordinated release | Real-browser validation in YPE-5950 found that one composed click can invoke the ancestor handler twice: once through the shadow-root portal path with the internal target and once through the application-root path with the event retargeted to the shadow host. Keyboard and focus dispatch need the same shared-host audit. Do not use an ancestor React handler as the only state-toggle seam until YPE-6040 deduplicates dispatch. Native listeners retain the single retargeted-event contract above. |
 | A forwarded `YouVersionAuthButton` ref exposes the internal button | Supported after mount | The ref resolves to the exact internal `HTMLButtonElement`. It remains `null` through the consumer's first layout effect because the shadow root attaches in a passive effect; consumers must handle callback-ref updates or read object refs after a later commit. |
 | An ordinary document or Storybook-canvas selector finds SDK internals | Unsupported | DOM selector APIs do not cross a shadow boundary. `document.querySelector` and Testing Library queries rooted at the document need explicit open-root traversal. Automation behavior is tool-specific: [Playwright locators pierce open roots by default](https://playwright.dev/docs/locators#locate-in-shadow-dom), except for XPath locators, while closed roots remain inaccessible. |
 | A consumer traverses an open root and queries after attachment | Supported with timing and access constraints | Wait for the host's open `shadowRoot`, then query within it. The contract depends on the prototype's open-root policy and does not make internals a stable semantic API; prefer public refs, roles, and component callbacks where available. |
@@ -50,7 +54,8 @@ exercise. They do not establish compatibility for every SDK component.
 Automatic isolation changes rendered DOM even when React props stay the same.
 Consumer selectors and global CSS stop reaching internals; native event targets
 change at every boundary; external form and ID-reference relationships stop
-resolving; and forwarded refs become available later. These are compatibility
+resolving; forwarded refs become available later; and, pending YPE-6040,
+light-DOM ancestor React handlers can receive duplicate dispatch. These are compatibility
 and potentially breaking changes, not internal implementation details.
 
 An open root permits inspection and mutation by same-page JavaScript, so it is
