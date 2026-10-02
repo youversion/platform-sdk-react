@@ -10,7 +10,8 @@ implementation of the prototype recorded in
 [ADR 0007](adr/0007-prototype-shadow-dom-style-isolation.md):
 `YouVersionAuthButton`, `BibleChapterPicker.Root`, `BibleVersionPicker.Root`,
 `ProfileAvatar`, `Separator`, `FootnoteContent`, and standalone
-`BibleThemeSettingsContent` create automatic shadow
+`BibleThemeSettingsContent`, `BibleTextView`, `VerseOfTheDay`, and `BibleCard`
+create automatic shadow
 boundaries. Compound members and composed leaf components remain in their
 owning component tree and reuse its boundary when present rather than creating
 independent boundaries.
@@ -97,6 +98,7 @@ supported component contract.
 | Ref is unavailable until the passive-effect shadow mount | Accepted | Document the timing. Component tickets verify forwarded refs where the public component exposes one. |
 | Native outer-form participation and cross-tree label or ARIA ID references do not work | Accepted | Exclude `Textarea`. Included components keep their accessible relationships inside their root or expose explicit props/callbacks. |
 | Document-rooted selectors and native event targets change | Accepted | Treat this as a breaking change. Document open-root traversal, role-based automation, public callbacks, and composed-event retargeting. |
+| A consumer React handler on a light-DOM ancestor can receive one composed event twice | Follow-up YPE-6040 | The shared portal dispatches once through the shadow-root React listener and again through the application-root listener after native retargeting. Document the limitation for integration-branch consumers and deduplicate shared-host dispatch before YPE-5952 releases the coordinated major version. |
 | Consumer global CSS and document-level token overrides do not style internals | Accepted | Supported props and component-owned tokens replace accidental global customization; consumer-supplied children require focused review. |
 | `rem` still follows the owning document root size | Accepted | Review this sizing input per component. |
 | Font loading and public `@font-face` names remain document-owned | Accepted | `YouVersionProvider` remains responsible for document fonts, including inside same-origin iframe documents. |

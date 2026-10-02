@@ -277,7 +277,7 @@ describe('BibleCard - maxWidth', () => {
   });
 });
 
-it('uses defaultVersionId as the initial uncontrolled version', () => {
+it('captures defaultVersionId before passive shadow content mounts', async () => {
   const requestedVersionIds: number[] = [];
   const overrides: HookOverrides = {
     useVersion: (versionId) => {
@@ -287,13 +287,21 @@ it('uses defaultVersionId as the initial uncontrolled version', () => {
     usePassage: () => passageResult({ passage: mockPassage, loading: false }),
   };
 
-  render(
+  function ChangeDefaultVersionAfterMount() {
+    const [defaultVersionId, setDefaultVersionId] = useState(222);
+    useEffect(() => setDefaultVersionId(333), []);
+    return <BibleCard reference="JHN.3.16" defaultVersionId={defaultVersionId} />;
+  }
+
+  rtlRender(
     <HookOverrideProvider overrides={overrides}>
-      <BibleCard reference="JHN.3.16" defaultVersionId={222} />
+      <ChangeDefaultVersionAfterMount />
     </HookOverrideProvider>,
   );
 
-  expect(requestedVersionIds[0]).toBe(222);
+  await waitFor(() => expect(requestedVersionIds.length).toBeGreaterThan(0));
+  expect(requestedVersionIds).not.toContain(333);
+  expect(requestedVersionIds.every((versionId) => versionId === 222)).toBe(true);
 });
 
 describe('BibleCard - Error state', () => {

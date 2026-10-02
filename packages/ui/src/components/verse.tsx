@@ -671,9 +671,6 @@ type BibleTextViewImplementationProps = BibleTextViewProps & {
   isHighlightsControlled: boolean;
 };
 
-/**
- * A component that renders style Bible text.
- */
 const BibleTextViewImplementation = forwardRef<HTMLDivElement, BibleTextViewImplementationProps>(
   (
     {
@@ -829,6 +826,9 @@ const BibleTextViewImplementation = forwardRef<HTMLDivElement, BibleTextViewImpl
 );
 BibleTextViewImplementation.displayName = 'BibleTextViewImplementation';
 
+/**
+ * A component that renders styled Bible text.
+ */
 export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>((props, ref) => {
   // Capture the public component's first render, before its client-only shadow
   // content mounts in a passive effect.

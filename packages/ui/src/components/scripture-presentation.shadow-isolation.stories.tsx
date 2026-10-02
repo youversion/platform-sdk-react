@@ -112,7 +112,7 @@ export const HostileCssAndRepresentativeLayouts: Story = {
         '[data-yv-shadow-content-wrapper] > [data-yv-sdk]',
       );
       if (!sdkRoot) throw new Error('SDK content missing from scripture presentation root');
-      await expect(getComputedStyle(sdkRoot).backgroundColor).not.toBe('rgb(255, 0, 128)');
+      await expect(getComputedStyle(sdkRoot).color).not.toBe('rgb(0, 128, 0)');
       await expect(getComputedStyle(sdkRoot).fontFamily).not.toContain('cursive');
     }
 

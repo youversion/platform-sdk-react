@@ -167,14 +167,20 @@ cover the verse-of-the-day clipboard fallback and `BibleCard`'s
 
 Focused Chromium, Firefox, and Playwright WebKit stories exercise hostile
 light-DOM CSS, representative standalone layouts, both verse-of-the-day sizes,
-the default and full card compositions, card version selection, native callback
-retargeting, and the shadow-local footnote overlay. The ADR's empty-host
+the default and full card compositions, card version selection, and the
+shadow-local footnote overlay. The ADR's empty-host
 client-only first-paint contract is accepted for these reviewed layouts; without
 JavaScript the component content remains absent, and nearby layout can move
 after the passive-effect mount. This evidence does not establish actual-Safari
 or assistive-technology support. YPE-5952 must document the coordinated public
 behavior, and YPE-5950 carries an empty changeset so it cannot publish a partial
 rollout independently.
+
+Real Chromium validation also found that a consumer React handler on a
+light-DOM ancestor can receive one composed event through both the shadow-root
+portal path and the application-root retargeted path. The shared-host correction
+and click, keyboard, and focus regression coverage are assigned to YPE-6040 and
+must land before YPE-5952 releases the coordinated major version.
 
 ## Safari spacing evidence
 

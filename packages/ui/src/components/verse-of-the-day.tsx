@@ -148,20 +148,6 @@ async function share({
   }
 }
 
-/**
- * A Verse of the Day card component with customizable options.
- *
- * @example
- * ```tsx
- * <VerseOfTheDay
- *   versionId={3034}
- *   showSunIcon={true}
- *   showShareButton={false}
- *   showBibleAppAttribution={true}
- *   size={size}
- * />
- * ```
- */
 function VerseOfTheDayImplementation({
   background,
   dayOfYear,
@@ -338,6 +324,20 @@ function VerseOfTheDayImplementation({
   );
 }
 
+/**
+ * A Verse of the Day card component with customizable options.
+ *
+ * @example
+ * ```tsx
+ * <VerseOfTheDay
+ *   versionId={3034}
+ *   showSunIcon={true}
+ *   showShareButton={false}
+ *   showBibleAppAttribution={true}
+ *   size={size}
+ * />
+ * ```
+ */
 export function VerseOfTheDay(props: VerseOfTheDayProps): React.ReactElement {
   // Capture the public component's first render, before its client-only shadow
   // content mounts in a passive effect.

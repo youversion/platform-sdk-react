@@ -3,13 +3,18 @@
  */
 import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import type { HookOverrides } from '@youversion/platform-react-hooks';
-import type { BibleVersion } from '@youversion/platform-core';
-import { createRef, type ReactElement } from 'react';
+import {
+  YouVersionPlatformConfiguration,
+  type BibleVersion,
+  type Highlight,
+} from '@youversion/platform-core';
+import { createRef, useEffect, useState, type ReactElement } from 'react';
 import { hydrateRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import { installResizeObserverStub } from '@/test/dom-stubs';
+import { collection, Providers, stubUseHighlights } from '@/test/highlights-test-utils';
 import { BibleCard } from './bible-card';
 import { BibleTextView } from './verse';
 import { VerseOfTheDay } from './verse-of-the-day';
@@ -18,7 +23,8 @@ installResizeObserverStub();
 
 const passage = {
   id: 'JHN.3.16',
-  content: '<p class="yv-p">For God so loved the world</p>',
+  content:
+    '<p class="yv-p"><span class="yv-v" v="16"></span><span class="yv-vlbl">16</span>For God so loved the world</p>',
   reference: 'John 3:16',
 };
 
@@ -157,4 +163,70 @@ describe('scripture presentation public shadow boundaries', () => {
     expect(readerRef.current).toBe(renderer);
     expect(container.querySelector('[data-slot="yv-bible-renderer"]')).toBeNull();
   });
+
+  it.each([
+    [
+      'BibleTextView',
+      (highlightProps: { highlights?: Highlight[] }) => (
+        <BibleTextView reference="JHN.3.16" versionId={111} {...highlightProps} />
+      ),
+    ],
+    [
+      'VerseOfTheDay',
+      (highlightProps: { highlights?: Highlight[] }) => (
+        <VerseOfTheDay dayOfYear={1} versionId={111} {...highlightProps} />
+      ),
+    ],
+    [
+      'BibleCard',
+      (highlightProps: { highlights?: Highlight[] }) => (
+        <BibleCard reference="JHN.3.16" versionId={111} {...highlightProps} />
+      ),
+    ],
+  ])(
+    '%s latches controlled highlights before passive shadow content mounts',
+    async (name, subject) => {
+      const permission = vi
+        .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
+        .mockReturnValue(true);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const fetchedHighlight: Highlight = {
+        version_id: 111,
+        passage_id: 'JHN.3.16',
+        color: 'fffe00',
+      };
+
+      function RemoveControlledHighlightsAfterMount(): ReactElement {
+        const [controlled, setControlled] = useState(true);
+        useEffect(() => setControlled(false), []);
+        return subject(controlled ? { highlights: [] } : {});
+      }
+
+      try {
+        const { container } = render(
+          <Providers
+            hookOverrides={{
+              ...overrides,
+              useHighlights: stubUseHighlights({ highlights: collection([fetchedHighlight]) }),
+            }}
+          >
+            <RemoveControlledHighlightsAfterMount />
+          </Providers>,
+        );
+        const verse = await waitFor(() => {
+          const candidate = container
+            .querySelector<HTMLElement>('[data-yv-shadow-host]')
+            ?.shadowRoot?.querySelector<HTMLElement>('.yv-v[v="16"]');
+          if (!candidate) throw new Error(`${name} shadow scripture not mounted`);
+          return candidate;
+        });
+
+        expect(verse.style.backgroundColor).toBe('');
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining(name));
+      } finally {
+        warn.mockRestore();
+        permission.mockRestore();
+      }
+    },
+  );
 });

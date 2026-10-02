@@ -304,7 +304,7 @@ export const FootnoteInteraction: Story = {
     );
     const floating = within(overlay);
 
-    await expect(await floating.findByText('Footnotes')).toBeInTheDocument();
+    await expect(await floating.findByRole('heading', { name: /footnotes/i })).toBeInTheDocument();
     await expect(await floating.findByText(/John 1:51/i)).toBeInTheDocument();
     const noteItem = await waitForElement<HTMLElement>(
       overlay,
