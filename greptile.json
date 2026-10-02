@@ -29,11 +29,11 @@
       },
       {
         "scope": ["packages/ui/src/**"],
-        "rule": "Auto-injected styles: index.ts calls injectStyles() on module load"
+        "rule": "Style injection follows packages/ui/AGENTS.md (Styling and Guardrails): render styles through React 19 style tags with precedence, without module-load injection."
       },
       {
         "scope": ["packages/ui/src/components/**"],
-        "rule": "No hardcoded user-facing strings: use t() or Trans/i18nKey for aria-label, title, placeholder, alt, and visible copy. Oxlint i18next/no-literal-string enforces this."
+        "rule": "For shipped components, use t() or Trans/i18nKey for aria-label, title, placeholder, alt, and visible copy. Follow the Oxlint i18next/no-literal-string scope in oxlint.config.ts: *.test.tsx and *.stories.tsx fixtures are excluded. See docs/i18n-guidelines.md."
       },
       {
         "scope": ["packages/ui/src/i18n/locales/**"],

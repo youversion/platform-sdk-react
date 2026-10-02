@@ -25,7 +25,7 @@ for every input and output type.
 4. **Export from the public API** in `src/index.ts` so consumers can import the
    client and its types.
 5. **Add tests.** Prefer mocked-client (MSW) workflow tests; see
-   `packages/core/AGENTS.md` Testing. Live API smokes are optional and guarded by
+   `docs/testing.md` for package ownership and commands. Live API smokes are optional and guarded by
    `INTEGRATION_TESTS=true`.
 
 ## Constraints
@@ -35,20 +35,25 @@ for every input and output type.
   consistent. `YouVersionAPI` is a separate static header helper — do not build
   a new client on it.
 - HTTP goes through native `fetch`. Do not add an HTTP library.
-- No React, `window`, `document`, or browser storage in the default entry point.
+- Keep the default entry point React-free and runtime-agnostic.
   Browser-only code exports from `/browser`; server-only code exports from
-  `/server`.
+  `/server`. Auth and configuration storage use the capability-checked helpers
+  described in `packages/core/AGENTS.md`.
 
 ## Environment-specific entry points
 
 Core has three entry points, and the split is deliberate — it keeps the main
-export runtime-agnostic while `linkedom` stays out of browser bundles:
+export runtime-agnostic while `jsdom` stays out of browser bundles:
 
 | Entry point | Behavior |
 |---|---|
 | `@youversion/platform-core` | Runtime-agnostic; requires DOM adapters |
 | `@youversion/platform-core/browser` | Convenience wrapper using native `DOMParser` |
 | `@youversion/platform-core/server` | Convenience wrapper using `jsdom` |
+
+The package's `"browser": { "jsdom": false }` field lets Vite/Rollup stub `jsdom`
+in client builds, including the main entry's dynamic import for server-side
+passage transformation.
 
 If a new client needs DOM access, follow the same pattern rather than importing
 a DOM library into the main entry point.
