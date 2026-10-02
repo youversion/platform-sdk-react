@@ -70,22 +70,22 @@ pnpm build:react   # Build React SDK (hooks + ui)
 
 ### Test Commands
 
+See [Testing](docs/testing.md#run-tests-with-their-dependencies) for focused unit tests,
+Storybook prerequisites, and package ownership. Use Turbo for package suites so
+dependency bundles build before tests start.
+
 ```bash
-# Run all tests (sequential execution for clear output)
+# Run all unit suites with their dependency builds
 pnpm test
 
 # Run tests in watch mode
 pnpm test:watch
 
-# Run tests for specific packages
-pnpm --filter @youversion/platform-core test
-pnpm --filter @youversion/platform-react-hooks test
-pnpm --filter @youversion/platform-react-ui test
+# Run one package's unit suite with its dependency builds
+pnpm exec turbo test --filter=@youversion/platform-react-hooks
 
-# Run tests with coverage
-pnpm --filter @youversion/platform-core test:coverage
-pnpm --filter @youversion/platform-react-hooks test:coverage
-pnpm --filter @youversion/platform-react-ui test:coverage
+# Build first, then run coverage across all packages
+pnpm build && pnpm test:coverage
 ```
 
 ### Type Checking
@@ -157,7 +157,7 @@ pnpm dev:web
 
 **Important Rules:**
 
-- ✅ Every PR must pass `pnpm build` (includes type definitions and linting)
+- ✅ Every PR must pass `pnpm build` (includes type definitions), `pnpm lint`, and `pnpm typecheck`
 - ✅ Always use package imports (e.g., `@youversion/platform-core`), never deep imports
 - ✅ Keep exports organized behind barrels (index files)
 - ✅ If you add new exports, update the package's "exports" map in package.json
@@ -166,7 +166,7 @@ pnpm dev:web
 
 ### Workflow
 
-1. Make your changes and run `pnpm build` + `pnpm test`
+1. Make your changes and run `pnpm build`, `pnpm test`, `pnpm lint`, and `pnpm typecheck`
 2. Run `pnpm changeset` (select patch/minor/major) when the change should release, or `pnpm changeset --empty` when it should not
 3. Submit PR → once merged, CI creates a "Version Packages" PR
 4. Merge version PR → packages auto-publish to npm

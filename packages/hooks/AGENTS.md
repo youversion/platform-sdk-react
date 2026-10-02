@@ -81,7 +81,7 @@ Follow `docs/testing.md`. This package’s flavors:
 | Pure unit | Utilities (`extractTextFromHTML`, etc.) | Needs React providers |
 | Hook + provider + factories | Hook state, cache, auth, refetch against stubbed core clients | Re-testing core HTTP/Zod parsing |
 
-- Run: `pnpm --filter @youversion/platform-react-hooks test`
+- Run from the repo root: `pnpm exec turbo test --filter=@youversion/platform-react-hooks` (builds dependencies first). Focused files: see `docs/testing.md`.
 - Framework: Vitest (jsdom) + React Testing Library
 - Mock object factories live in `__tests__/mocks`. This package does **not** use MSW — core owns request mocking
 - Wrap hooks in the real provider so they see the same context as in the app; build ready-to-run wrappers via factories, not `beforeEach`

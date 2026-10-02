@@ -31,6 +31,58 @@ Do not use "integration" as a style term — choose by capability:
 
 core owns HTTP+Zod+MSW; hooks own React state against stubbed clients; UI owns user-visible behavior against stubbed hooks/providers. Stub UI hook results with `YouVersionContext.hookOverrides` (see `packages/ui/src/test/hook-overrides.tsx`), not `vi.mock`. Do not re-test a lower package's contract unless the bug is at the boundary. Rare vertical smokes (e.g. highlight auth) may climb one rung for critical journeys.
 
+## Run tests with their dependencies
+
+Run these commands from the repository root after `pnpm install --frozen-lockfile`.
+
+For a package's full unit suite, use Turbo so dependency bundles build first:
+
+```bash
+pnpm exec turbo test --filter=@youversion/platform-react-hooks
+```
+
+Replace the filter with the core or UI package name as needed. `pnpm test` uses the
+same dependency-aware path for all packages. Direct package scripts and `exec vitest`
+bypass Turbo's build prerequisites.
+
+For selected hook or UI files, finish the dependency build before starting Vitest:
+
+```bash
+# Builds core, then hooks, including the test-utils export used by UI tests.
+pnpm exec turbo build --filter=@youversion/platform-react-hooks
+pnpm --filter @youversion/platform-react-hooks exec vitest run src/useChapter.test.tsx
+pnpm --filter @youversion/platform-react-ui exec vitest run --project unit src/components/verse.test.tsx
+```
+
+Change the file paths to match your task. For core files, use
+`pnpm --filter @youversion/platform-core exec vitest run src/__tests__/client.test.ts`.
+Keep builds and test runs sequential: rebuilding a dependency deletes its `dist`
+directory while tests may still be importing it. If build output is stale, add
+`--force` to the Turbo build command.
+
+### Storybook browser journeys
+
+Storybook needs built workspace dependencies, production CSS, story-only CSS, and
+Playwright's Chromium. On a machine without the browser, install it through the UI
+package with `pnpm --filter @youversion/platform-react-ui exec playwright install chromium`.
+If Playwright reports missing Linux system libraries, use its `install --with-deps chromium`
+option on a disposable development machine.
+
+```bash
+pnpm exec turbo build --filter=@youversion/platform-react-ui
+pnpm --filter @youversion/platform-react-ui build:storybook-css
+pnpm --filter @youversion/platform-react-ui exec vitest run --project storybook src/components/verse.stories.tsx
+```
+
+Omit the file path to run all discovered Storybook journeys. The `integration` story
+tag controls discovery. `test:integration` currently runs both Vitest projects;
+`--project storybook` selects browser journeys only. These journeys use mocked HTTP,
+not the live API. Check the executed test count: a successful run with every test
+skipped does not verify the story.
+
+For coverage across all packages, run `pnpm build` followed by `pnpm test:coverage`;
+the coverage script calls package scripts directly.
+
 ## Scope
 
 Bind on new/edited tests. When touching a file, bend the cases you edit toward this style — no mass rewrite of untouched suites.
