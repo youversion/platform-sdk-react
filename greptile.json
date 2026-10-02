@@ -29,7 +29,7 @@
       },
       {
         "scope": ["packages/ui/src/**"],
-        "rule": "Style injection follows packages/ui/AGENTS.md (STYLING and CRITICAL): render styles through React 19 style tags with precedence, without module-load injection."
+        "rule": "Style injection follows packages/ui/AGENTS.md (Styling and Guardrails): render styles through React 19 style tags with precedence, without module-load injection."
       },
       {
         "scope": ["packages/ui/src/components/**"],

@@ -1,6 +1,6 @@
 # Testing
 
-Testing style adapted from [Kent C. Dodds / kody testing principles](https://github.com/kentcdodds/kody/blob/main/docs/contributing/testing-principles.md). Prefer the lightest falsifying flavor; do not mass-rewrite untouched suites. Package `AGENTS.md` files add each layer's flavor matrix.
+Testing style adapted from [Kent C. Dodds / kody testing principles](https://github.com/kentcdodds/kody/blob/main/docs/contributing/testing-principles.md). Prefer the lightest falsifying flavor; do not mass-rewrite untouched suites. Package ownership below defines each layer's test seams.
 
 ## Pick the lightest flavor that can falsify the behavior
 
@@ -29,7 +29,24 @@ Do not use "integration" as a style term — choose by capability:
 
 ## Package ownership
 
-core owns HTTP+Zod+MSW; hooks own React state against stubbed clients; UI owns user-visible behavior against stubbed hooks/providers. Stub UI hook results with `YouVersionContext.hookOverrides` (see `packages/ui/src/test/hook-overrides.tsx`), not `vi.mock`. Do not re-test a lower package's contract unless the bug is at the boundary. Rare vertical smokes (e.g. highlight auth) may climb one rung for critical journeys.
+core owns HTTP+Zod+MSW; hooks own React state against stubbed clients; UI owns user-visible behavior against stubbed hooks/providers. Do not re-test a lower package's contract unless the bug is at the boundary. Rare vertical smokes (e.g. highlight auth) may climb one rung for critical journeys.
+
+- **Core:** Vitest runs in Node. Prefer mocked-client workflows for API clients
+  and shared MSW handlers/factories under `packages/core/src/__tests__/`, such as
+  `handlers.ts`. Import or call them inside each test. Live API smokes stay tiny
+  and opt-in with `INTEGRATION_TESTS=true`.
+- **Hooks:** Vitest uses jsdom and React Testing Library. Stub core clients with
+  factories under `packages/hooks/src/__tests__/mocks`; wrap hooks in the real
+  provider through ready-to-run wrapper factories. Core owns MSW; hook tests do
+  not re-test HTTP or Zod parsing.
+- **UI:** Default to Vitest, jsdom, and React Testing Library with
+  `packages/ui/src/test/setup.ts`. Stub hook results with
+  `YouVersionContext.hookOverrides` through `HookOverrideProvider` in
+  `packages/ui/src/test/hook-overrides.tsx`, not `vi.mock` of
+  `@youversion/platform-react-hooks`. Network access belongs only in intentional
+  vertical smokes. Assert roles and behavior, not localized copy blobs. Use
+  Storybook `play` when composition or slots matter; tag each journey with
+  `tags: ['integration']` so CI discovers it.
 
 ## Run tests with their dependencies
 

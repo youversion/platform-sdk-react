@@ -1,152 +1,32 @@
 # @youversion/platform-core
 
-## OVERVIEW
-Foundation package providing pure TypeScript API clients for YouVersion services with zero React dependencies. Also provides framework-agnostic browser CSS (design tokens, preflight reset, Bible reader typography) so any web platform can render Bible content with proper styling.
+Pure TypeScript API clients and framework-agnostic Bible rendering resources. This package has zero React dependencies.
 
-**Related packages:**
-- For React hooks wrapping these clients → see `packages/hooks/AGENTS.md`
-- For pre-built UI components → see `packages/ui/AGENTS.md`
+Keep this file brief. Put task-specific guidance behind a pointer.
 
-## STRUCTURE
-```
-schemas/                     # Zod schemas for all data types (schema-first design)
-styles/                      # Browser CSS (exported via ./browser/styles/*)
-  fonts.css                  # Google Fonts import (Inter, Source Serif 4)
-  theme.css                  # --yv-* design tokens + @import of scoped preflight
-  preflight.css              # scoped [data-yv-sdk] reset (also imported by UI chrome)
-  bible-reader.css           # USFM/Bible typography for [data-slot='yv-bible-renderer']
-  index.css                  # Barrel: imports fonts + theme + bible-reader
-client.ts                    # ApiClient - main HTTP client
-bible.ts                     # BibleClient - Bible data operations (facade over bible-* modules)
-bible-chapter.ts             # getVersion/getChapter + shared id/book/chapter parse helpers
-bible-reads.ts               # Book/chapter/verse/VOTD reads (tree-shakable module)
-bible-versions.ts            # Version listing (tree-shakable module)
-bible-passage.ts             # Passage fetch (tree-shakable module)
-bible-display-resources.ts   # Dependency-free Bible CSS/font resource descriptors
-bible-passage-display.ts     # Declarative styled-passage model and resources
-languages.ts                 # LanguagesClient - language data (facade over languages-* modules)
-languages-language.ts        # Single-language fetch (tree-shakable module)
-languages-list.ts            # Language listing (tree-shakable module)
-search.ts                    # SearchClient - Platform Search API (facade over search-* modules)
-search-queries.ts            # Suggested/trending queries (tree-shakable module)
-search-verses.ts             # Verse search (tree-shakable module)
-search-topics.ts             # Topic search (tree-shakable module)
-version-filter-state.ts      # Version-filter allowlists without pulling auth storage
-highlights.ts                # HighlightsClient - user highlights
-organizations.ts             # OrganizationsClient
-YouVersionAPI.ts             # Base YouVersion API client
-SignInWithYouVersionPKCE.ts  # PKCE auth implementation
-StorageStrategy.ts           # Storage interface (SessionStorage, MemoryStorage)
-bible-html-transformer.ts    # Runtime-agnostic transformer (also contains browser convenience fn)
-bible-html-transformer-server.ts # Server convenience wrapper (uses jsdom)
-browser.ts                   # Browser entry point
-server.ts                    # Server entry point
-index.ts                     # Main entry point (runtime-agnostic)
-```
+## Gotchas
 
-## PUBLIC API
+- Client modules import schema files directly, such as `./schemas/version`, rather than the `./schemas` barrel, so tree-shakable entries stay narrow.
+- Auth and configuration use storage from the default entry point through `web-storage.ts`. Resolve stores with `getLocalStorage()` or `getSessionStorage()`; they return `null` when unusable. Even a resolved store can throw on writes, so mutate through `setStorageItem()`, `removeStorageItem()`, or `clearStorage()`.
+- Browser CSS is plain CSS, without Tailwind or preprocessors. Its public specifier stays `@youversion/platform-core/browser/styles/*`.
 
-### TypeScript (`@youversion/platform-core`)
-- `ApiClient`: Main HTTP client with auth handling
-- `BibleClient`: Fetch Bibles, chapters, verses, versions
-- `LanguagesClient`: Get available languages
-- `SearchClient`: Platform Search (`/v1/search-queries`, `/v1/search-verses`, `/v1/search-topics`)
-- `HighlightsClient`: Manage user highlights
-- `SignInWithYouVersionPKCE()`: PKCE auth flow function
-- `SessionStorage`, `MemoryStorage`: Storage strategies
-- `getLocalStorage()`, `getSessionStorage()`: Capability-checked Web Storage accessors, `null` when unusable
-- `setStorageItem()`, `removeStorageItem()`, `clearStorage()`: Throw-safe mutations for a resolved store (`setStorageItem` returns whether the write landed)
-- `transformBibleHtml`: Runtime-agnostic Bible HTML transformer (requires DOM adapters)
-- `TransformBibleHtmlOptions`: Options for DOM parsing and serialization
-- `getPassageDisplay`: Fetch transformed HTML, current attribution, and declarative rendering resources
-- `getBibleStylesheets`: Build the ordered Bible CSS and Fonts API stylesheet descriptors
-- `MissingPassageAttributionError`: Fail-closed error when a version has no display attribution
+## Guardrails
 
-### Browser CSS (`@youversion/platform-core/browser/styles/*`)
-- `index.css`: All-in-one import (fonts + theme + bible-reader)
-- `theme.css`: `--yv-*` design tokens on `[data-yv-sdk]` + dark mode + `@import` of scoped preflight
-- `preflight.css`: scoped `[data-yv-sdk]` reset. UI chrome imports this without the full token sheet.
-- `bible-reader.css`: USFM typography for `[data-slot='yv-bible-renderer']` or `[data-yv-sdk-bible-reader]`
-- `fonts.css`: Google Fonts import (Inter, Source Serif 4)
+- Keep the default entry point runtime-agnostic and React-free. Browser-specific code exports from `/browser`; server-specific code exports from `/server`. Storage uses the capability-checked helpers above.
+- Define input/output types with Zod schemas and validate API responses before returning them.
 
-## DOs / DON'Ts
+## Endpoints and clients
 
-✅ Do: Keep this package **framework-agnostic**, but if you must target server or browser, those files must export from `/server` or `/browser`
-✅ Do: Define all input/output types in `schemas/` using Zod; schemas are the single source of truth. Client modules import schema files directly (`./schemas/version`), not the `./schemas` barrel, so tree-shakable entries stay narrow.
-✅ Do: Compose `ApiClient` in new service clients; take it as a constructor argument
-✅ Do: Parse API responses with Zod schemas for validation
+Endpoint, client, schema, or environment-specific export changes: read `docs/adding-a-core-endpoint.md` at the repo root.
 
-❌ Don't: Import React, `window`, `document`, or browser storage APIs, but if you must target the browser, those files must export from `/browser`. The one carve-out is `web-storage.ts`: auth and configuration live in the `"."` entry and need storage, so all of it goes through `getLocalStorage()`/`getSessionStorage()`, which feature-detect and return `null` off-browser. Never touch `localStorage`/`sessionStorage` directly. Resolving a store does not make a write safe (Safari private mode reads fine and throws on `setItem`), so mutate through `setStorageItem()`/`removeStorageItem()`/`clearStorage()` rather than calling the store's own methods.
-❌ Don't: Bypass Zod validation for API responses
-❌ Don't: Implement UI, hooks, or React state here
+## Passage display
 
-## ENVIRONMENT-SPECIFIC EXPORTS
+Passage display model or rendering-resource changes: read `docs/passage-display-api.md` at the repo root.
 
-Three entry points, deliberately separate:
+## Public API
 
-- `@youversion/platform-core` → Runtime-agnostic `transformBibleHtml` (requires DOM adapters)
-- `@youversion/platform-core/browser` → Browser convenience wrapper (uses native DOMParser)
-- `@youversion/platform-core/server` → Server convenience wrapper (uses jsdom)
+Export changes: inspect `src/index.ts`, `src/browser.ts`, `src/server.ts`, and the `exports` map in this package's `package.json`.
 
-**Examples:**
+## Testing
 
-```ts
-// Runtime-agnostic (works anywhere with custom adapters)
-import { transformBibleHtml } from '@youversion/platform-core';
-
-const result = transformBibleHtml(html, {
-  parseHtml: (h) => new DOMParser().parseFromString(h, 'text/html'),
-  serializeHtml: (doc) => doc.body.innerHTML,
-});
-
-// Browser convenience (uses native DOMParser)
-import { transformBibleHtml } from '@youversion/platform-core/browser';
-
-const result = transformBibleHtml(html);
-
-// Server convenience (uses jsdom, requires: npm install jsdom)
-import { transformBibleHtml } from '@youversion/platform-core/server';
-
-const result = transformBibleHtml(html);
-```
-
-**Why separate entry points?**
-
-This architecture keeps the main export truly runtime-agnostic while providing ergonomic convenience wrappers for common environments. The separate `/browser` and `/server` entry points ensure optimal bundle sizes. `package.json` also maps `"browser": { "jsdom": false }` so Vite/Rollup client builds stub jsdom even when the main entry's dynamic `import('jsdom')` is present (Node-only path; browsers use native `DOMParser`).
-
-## ADDING A NEW ENDPOINT OR CLIENT
-
-See `docs/adding-a-core-endpoint.md`.
-
-## HTTP & CONFIGURATION
-
-- HTTP client: Native `fetch` API
-- Base client: `ApiClient` (`src/client.ts`) handles base URL, timeout, default
-  headers, and response handling
-- Every domain client composes `ApiClient` for consistent HTTP behavior
-- `YouVersionAPI` is a separate static header helper, not a base client. Do not
-  build a new client on it.
-
-## CONVENTIONS
-- Schema-first: All types defined in schemas/*.ts using Zod
-- Zero React: Pure TypeScript, no React dependencies
-- Storage: Abstract via StorageStrategy interface
-- Auth: PKCE flow with pluggable storage backends
-- Error handling: Zod validation for all API responses
-- Browser CSS: Plain CSS only (no Tailwind, no preprocessors). Source lives in `src/styles/`. Publish minifies copies to `dist/styles/`. The specifier stays `@youversion/platform-core/browser/styles/*`.
-- Two export namespaces: `"."` for TS (framework-agnostic), `"./browser"` for browser environments, and `"./server` for server environments
-
-## TESTING
-
-Follow `docs/testing.md`. This package’s flavors:
-
-| Flavor | Use when | Avoid when |
-| --- | --- | --- |
-| Pure unit | Transformers, storage, pure helpers | Needs HTTP |
-| Mocked client (MSW) | Client + Zod + error mapping against fake HTTP (default for client tests) | Hook/UI orchestration |
-| Live API (`INTEGRATION_TESTS=true`) | Tiny smoke mocks cannot falsify; CI or on-demand only | Capability-by-capability coverage |
-
-- Run: `pnpm --filter @youversion/platform-core test`
-- Framework: Vitest (Node)
-- MSW handlers/helpers: prefer shared factories under `__tests__/` (e.g. `handlers.ts`); import/call them inside each test — do not hide setup in `beforeEach`
-- Do not re-prove hook/UI orchestration here
+Testing or coverage: read `docs/testing.md` at the repo root for package ownership and dependency-aware commands.

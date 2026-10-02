@@ -1,88 +1,28 @@
 # @youversion/platform-react-hooks
 
-## OVERVIEW
-React integration layer providing data fetching hooks with 2 core providers: YouVersionProvider and YouVersionAuthProvider.
+React data hooks and providers backed by `@youversion/platform-core` clients.
 
-**Depends on `@youversion/platform-core` for all API calls.** Hooks delegate to core clients; do not implement raw HTTP here.
+Keep this file brief. Put task-specific guidance behind a pointer.
 
-**Related packages:**
-- For lower-level API clients → see `packages/core/AGENTS.md`
-- For pre-built UI components → see `packages/ui/AGENTS.md`
+## Gotchas
 
-The public API is whatever `src/index.ts` exports. Hooks live in `src/use*.ts`,
-providers and contexts in `src/context/`, helpers in `src/utility/`.
+- Keep contexts and providers in separate files; export contexts through `src/context/index.ts`.
+- Choose the `YouVersionContext.hookOverrides` posture at mount and keep it unchanged for that instance. Data hooks still call their inner hooks and skip fetches with `enabled: !override`.
 
-## PROVIDERS
+## Guardrails
 
-- **YouVersionProvider**
-  - Holds core SDK configuration (API base URL, clients)
-  - Wrap this around your app before using any data hooks
+- Delegate HTTP and auth storage to core clients and storage abstractions. Keep hooks UI-agnostic, without JSX returns or direct DOM manipulation; this package must not depend on UI.
+- Keep TanStack Query types and the `QueryClient` private. The public read contract stays `{ data, loading, error, refetch }`.
+- Account-scoped hooks include `useUserScope()` in their key and pass `keepPreviousData: false`. If the scope is `null`, disable the query so unidentified accounts cannot share data.
 
-- **YouVersionAuthProvider**
-  - Manages authentication state (userInfo, tokens, isLoading, error)
-  - Auth hooks like `useYVAuth` depend on this provider
+## Data fetching
 
-## DOs / DON'Ts
+Data hook, query-key, cache, or refetch changes: read `docs/adr/0006-tanstack-query-read-layer.md` at the repo root. New data hooks use `useApiData`; the ADR describes the batch exception.
 
-✅ Do: Use `YouVersionProvider` for configuration and access that config in hooks
-✅ Do: Wrap async data access in hooks rather than calling core clients directly in components
-✅ Do: Keep hooks **UI-agnostic** (no JSX returned, no direct DOM manipulation)
-✅ Do: Use the `useApiData` pattern for new data fetching hooks
+## Public API and usage
 
-❌ Don't: Import components from `@youversion/platform-react-ui`
-❌ Don't: Talk directly to `fetch`/HTTP; always use `@youversion/platform-core`
-❌ Don't: Access `window.localStorage` directly for auth; rely on core's storage abstractions
+Export changes: inspect `src/index.ts`. Hook signatures: read each hook's props type. Provider usage: read `examples/vite-react` at the repo root.
 
-## DATA FETCHING PATTERN
+## Testing
 
-Data hooks go through `useApiData`, which is backed by TanStack Query
-(`@tanstack/react-query`, a direct dependency — exact-pinned; bumps must clear
-the pnpm `minimumReleaseAge` window):
-- Returns `{ data, loading, error, refetch }` — never TanStack Query types.
-  The QueryClient is private to `YouVersionProvider`; export no TQ surface.
-- Call as `useApiData([...useQueryKeyBase(), '<hookName>', ...params], fetchFn)`.
-  Key segments must be serializable (no class instances). Account-scoped hooks
-  (e.g. `useHighlights`) also append `useUserScope()` **and** pass
-  `keepPreviousData: false` so users never see each other's cached data.
-  `useUserScope()` returns `null` when the account is not identified yet — set
-  `enabled: false` for that render, because an unidentified account has no key
-  of its own and two of them would share one cache entry.
-- `useOrganizations` is the one hook that reaches TanStack Query directly:
-  `useApiData` wraps a single `useQuery`, and a batch needs one query per id.
-  It calls `useQueries` with one entry per id, keyed
-  `[...useQueryKeyBase(), 'organization', <id>]` — the key `useOrganization`
-  builds — so the two hooks share cache entries and only ids the cache does
-  not hold reach the network. Its `combine` callback has a stable identity, so
-  TanStack Query memoizes it and the returned Map stays referentially stable.
-  No TanStack Query type reaches its public surface. New hooks use `useApiData`.
-- Cache is memory-only; `refetch` performs exact query invalidation. Writes
-  stay outside this layer (the highlights machine owns them) and refresh via
-  `refetch` after the write.
-- Design decisions: `docs/adr/0006-tanstack-query-read-layer.md`.
-
-## CONVENTIONS
-- Context and Provider in separate files
-- All contexts exported via context/index.ts
-- TypeScript declarations generated separately (no bundling)
-- Build: tsup JS + tsc dts
-
-## REFERENCES
-
-For working usage, read `examples/vite-react` at the repo root — it is
-type-checked and stays current. Each hook's own props type is the authoritative
-signature.
-
-## TESTING
-
-Follow `docs/testing.md`. This package’s flavors:
-
-| Flavor | Use when | Avoid when |
-| --- | --- | --- |
-| Pure unit | Utilities (`extractTextFromHTML`, etc.) | Needs React providers |
-| Hook + provider + factories | Hook state, cache, auth, refetch against stubbed core clients | Re-testing core HTTP/Zod parsing |
-
-- Run from the repo root: `pnpm exec turbo test --filter=@youversion/platform-react-hooks` (builds dependencies first). Focused files: see `docs/testing.md`.
-- Framework: Vitest (jsdom) + React Testing Library
-- Mock object factories live in `__tests__/mocks`. This package does **not** use MSW — core owns request mocking
-- Wrap hooks in the real provider so they see the same context as in the app; build ready-to-run wrappers via factories, not `beforeEach`
-- UI tests that need stub hook results set `YouVersionContext.hookOverrides`. Data hooks still call their inner hooks; fetch is skipped with `enabled: !override`. Do not add or remove an override between renders of the same instance. This package’s own tests still stub core clients, not hook results.
+Testing or coverage: read `docs/testing.md` at the repo root for package ownership, provider factories, and dependency-aware commands.

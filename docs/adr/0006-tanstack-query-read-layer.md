@@ -8,11 +8,29 @@ Accepted
 
 ## Context
 
-`useApiData` was a hand-rolled effect: every mount and every dep change refetched, nothing was cached, and disabling a query threw its data away. Revisiting a chapter re-blanked the reader; account data was cleared imperatively on auth changes, which is easy to get wrong once and leak one user's highlights to another. The hook-level call shape is documented in `packages/hooks/AGENTS.md`.
+`useApiData` was a hand-rolled effect: every mount and every dep change refetched, nothing was cached, and disabling a query threw its data away. Revisiting a chapter re-blanked the reader; account data was cleared imperatively on auth changes, which is easy to get wrong once and leak one user's highlights to another.
 
 ## Decision
 
 Rewrite `useApiData` on TanStack Query v5, exact-pinned (`5.101.4`, no caret) as a direct dependency of `@youversion/platform-react-hooks`. The `QueryClient` is private: created inside `YouVersionProvider` (one per provider instance, `retry: false`), never accepted as a prop, never exported. `useApiData` takes an explicit query key; key bases come from provider config via `useQueryKeyBase` — app key, API host, installation id, the serialized `additionalHeaders`, and the serialized Bible version filter from `YouVersionPlatformConfiguration` (the filter decides which versions a read may return, so a provider that tightens it reads a different key and never serves content cached under the looser filter) — and account-scoped hooks (`useHighlights`) add a user segment from `useUserScope`: the `userId` when a user is identified, `'anon'` when nobody is or can be signed in, and `null` when the account is not known yet (auth still loading, or a signed-in profile with no `userId` — the field is optional). A `null` scope disables the query, so an unidentified account never reads or writes a cache entry. The public hook contract — `{ data, loading, error, refetch }` — is unchanged; nothing TanStack-shaped is exported.
+
+## Hook implementation
+
+New data hooks call `useApiData([...useQueryKeyBase(), '<hookName>', ...params], fetchFn)`.
+Use serializable key segments, without class instances. Account-scoped hooks append
+`useUserScope()`, pass `keepPreviousData: false`, and disable the query when the
+scope is `null`.
+
+`useOrganizations` is the batch exception: `useApiData` wraps one `useQuery`, but
+the batch needs one query per id. It calls `useQueries` with keys
+`[...useQueryKeyBase(), 'organization', <id>]`, matching `useOrganization`, so
+the hooks share cache entries and only uncached ids reach the network. Keep the
+`combine` callback stable so TanStack Query memoizes it and the returned Map stays
+referentially stable. No TanStack Query type reaches the public surface.
+
+The cache is memory-only. `refetch` performs exact query invalidation. Writes stay
+outside this read layer, owned by the highlights machine, and refresh via
+`refetch` after the write.
 
 ## Why
 
