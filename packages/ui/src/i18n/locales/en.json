@@ -109,5 +109,16 @@
   "back": "Back",
   "bibleApp": "Bible App",
   "clearSearch": "Clear search",
-  "done": "Done"
+  "done": "Done",
+  "alphabetical": "Alphabetical",
+  "retry": "Retry",
+  "traditional": "Traditional",
+  "bibleSearchBibleHeading": "Bible",
+  "bibleSearchClearAriaLabel": "Clear search",
+  "bibleSearchFilterBoth": "Both",
+  "bibleSearchFilterNewTestament": "New Testament",
+  "bibleSearchFilterOldTestament": "Old Testament",
+  "bibleSearchFiltersButton": "Filters",
+  "bibleSearchRecentHeading": "Recent Searches",
+  "bibleSearchTrendingHeading": "Trending Searches"
 }
