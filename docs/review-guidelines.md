@@ -2,6 +2,25 @@
 
 When conducting code reviews, AI agents should systematically evaluate the following aspects:
 
+### Pin the review revision first
+
+1. Read the PR's declared base branch, base SHA, and head SHA with
+   `gh pr view <number> --json baseRefName,baseRefOid,headRefOid`.
+2. Fetch the declared base branch and PR head before reading revision-dependent
+   files: `git fetch origin <base-branch> pull/<number>/head`. Confirm both recorded
+   SHAs are available with `git cat-file -t <sha>`.
+3. Compute `git merge-base <base-sha> <head-sha>` and review
+   `git diff <merge-base> <head-sha>`. Use the declared base, which may differ from `main`.
+4. Read root and scoped `AGENTS.md`, this checklist, and task-specific docs from the
+   pinned head with `git show <head-sha>:<path>`, or use a detached worktree at that
+   SHA. Keep code and guidance on the same revision. Use base-revision docs only
+   when comparing what changed.
+5. Before posting a review, recheck the PR head. If it changed, inspect the delta
+   and update the evidence before submitting.
+
+For local verification prerequisites and focused commands, follow
+[Testing](./testing.md) from the pinned revision.
+
 ### Code Standards and Conventions
 - Do the changes follow the established conventions and patterns used throughout the codebase?
 - Is the code style consistent with existing code (indentation, naming conventions, file organization)?
@@ -77,7 +96,7 @@ When conducting code reviews, AI agents should systematically evaluate the follo
 ### Build System and Tooling
 - Do changes work with the Turbo build cache?
 - Are tsup configurations properly maintained?
-- Does API Extractor successfully generate type definitions?
+- Do tsup JavaScript builds and separate `tsc` declaration builds pass? API Extractor is not used.
 - Do lint and format commands pass successfully?
 - Are pre-commit hooks passing?
 - Are changeset entries created for user-facing changes?
