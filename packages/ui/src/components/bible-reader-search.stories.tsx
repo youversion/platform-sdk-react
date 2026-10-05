@@ -1,11 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
 import { BibleReader } from './bible-reader';
-import { useState } from 'react';
+import { useContext, useState } from 'react';
+import {
+  YouVersionContext,
+  type BibleSearchPhase,
+  type BibleSearchResult,
+  type UseBibleSearchResult,
+} from '@youversion/platform-react-hooks';
 import { BibleReaderNavigation } from './bible-reader-navigation';
 import { Button } from './ui/button';
 import { delay, http, HttpResponse } from 'msw';
 import { globalHandlers } from '@/test/mocks/handlers';
+import mockPassages from '@/test/mock-data/passages.json';
 import { waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
 
 const meta = {
@@ -180,26 +187,98 @@ export const SearchFailure: Story = {
   },
 };
 
-export const ToolbarSearchLifecycle: Story = {
+const searchResult: BibleSearchResult = {
+  id: 'JHN.1.51',
+  book: 'JHN',
+  chapter: '1',
+  verses: [51],
+};
+
+function useSearchStoryFixture(): UseBibleSearchResult {
+  const [query, setQuery] = useState('');
+  const [phase, setPhase] = useState<BibleSearchPhase>({
+    kind: 'trending',
+    queries: [{ text: 'love' }],
+    loading: false,
+  });
+  const selectSuggestion = (text: string): void => {
+    setQuery(text);
+    setPhase({ kind: 'results', verses: [searchResult], nextPage: 'none' });
+  };
+  return {
+    query,
+    phase,
+    setQuery,
+    submit: () => selectSuggestion(query),
+    selectSuggestion,
+    loadMore: () => undefined,
+    retry: () => undefined,
+  };
+}
+
+function SearchJourneyToolbar() {
+  const context = useContext(YouVersionContext);
+  if (context === null) throw new Error('Search story requires YouVersionProvider');
+  return (
+    <YouVersionContext.Provider
+      value={{
+        ...context,
+        hookOverrides: {
+          ...context.hookOverrides,
+          useBibleSearch: useSearchStoryFixture,
+          usePassage: () => ({
+            passage: mockPassages['JHN.1.51'],
+            loading: false,
+            error: null,
+            refetch: () => undefined,
+          }),
+        },
+      }}
+    >
+      <BibleReader.Toolbar />
+    </YouVersionContext.Provider>
+  );
+}
+
+export const SearchAndReturn: Story = {
   ...OpenTrending,
   tags: ['integration', 'shadow-dom', 'cross-browser'],
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+        <SearchJourneyToolbar />
+      </BibleReader.Root>
+    </div>
+  ),
   play: async (context) => {
     const { root, reader } = await getReaderStory(context.canvasElement);
     const trigger = await reader.findByRole('button', { name: 'Search the Bible' });
     await userEvent.click(trigger);
     const { search } = await getOpenSearch(context.canvasElement);
-    const input = await search.findByRole('textbox', { name: 'Search the Bible' });
-    await expect(root.activeElement).toBe(input);
-    await expect(search.getByRole('dialog')).not.toHaveAttribute('aria-modal', 'true');
-    await userEvent.click(search.getByRole('button', { name: 'Close search' }));
+    await expect(root.activeElement).toBe(
+      await search.findByRole('textbox', { name: 'Search the Bible' }),
+    );
+    const trending = within(search.getByRole('region', { name: 'Trending Searches' }));
+    await userEvent.click(trending.getByRole('button', { name: 'love' }));
+    const result = await search.findByRole('button', { name: /John 1:51/i }, { timeout: 20000 });
+    await userEvent.click(result);
     await waitFor(() => expect(search.queryByRole('dialog')).not.toBeInTheDocument());
-    await waitFor(() => expect(root.activeElement).toBe(trigger));
+    await waitFor(() => expect(root.activeElement).toBe(root.querySelector('.yv-v[v="51"]')));
     await userEvent.click(trigger);
     const { search: reopenedSearch } = await getOpenSearch(context.canvasElement);
+    await expect(reopenedSearch.getByRole('textbox')).toHaveValue('');
+    const recents = within(reopenedSearch.getByRole('region', { name: 'Recent Searches' }));
+    await expect(recents.getByRole('button', { name: 'love' })).toBeVisible();
+    await expect(reopenedSearch.getByRole('dialog')).not.toHaveAttribute('aria-modal', 'true');
+    await userEvent.click(reopenedSearch.getByRole('button', { name: 'Close search' }));
+    await waitFor(() => expect(root.activeElement).toBe(trigger));
+    await userEvent.click(trigger);
+    const { search: finalSearch } = await getOpenSearch(context.canvasElement);
     await userEvent.click(reader.getByRole('button', { name: 'Settings' }));
     await waitFor(() =>
       expect(
-        reopenedSearch.queryByRole('textbox', { name: 'Search the Bible' }),
+        finalSearch.queryByRole('textbox', { name: 'Search the Bible' }),
       ).not.toBeInTheDocument(),
     );
   },
