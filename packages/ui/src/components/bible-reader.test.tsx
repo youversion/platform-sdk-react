@@ -13,7 +13,6 @@ import { YouVersionContext, type HookOverrides } from '@youversion/platform-reac
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import { InterfaceDirectionProvider } from '@/lib/direction';
 import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
-import { ShadowRootHost } from '@/lib/shadow-root-host';
 import {
   BIBLE_READER_SPACING,
   BibleReader,
@@ -360,36 +359,6 @@ describe('BibleThemeSettingsContent public boundary', () => {
     await user.click(decrease);
     expect(onFontDecreased).toHaveBeenCalledTimes(1);
   });
-});
-
-it('reuses a future reader boundary without nesting a settings host', async () => {
-  localStorage.clear();
-  const user = userEvent.setup();
-  const reader = (
-    <HookOverrideProvider overrides={defaultOverrides()}>
-      <BibleReader.Root defaultVersionId={3034} defaultBook="JHN" defaultChapter="1">
-        <BibleReader.Toolbar />
-      </BibleReader.Root>
-    </HookOverrideProvider>
-  );
-  const outerView = render(<ShadowRootHost portalStrategy="local-inline">{reader}</ShadowRootHost>);
-  const outerHost = await waitFor(() => {
-    const candidate = outerView.container.querySelector<HTMLElement>('[data-yv-shadow-host]');
-    if (!candidate?.shadowRoot?.querySelector('button[aria-label="Settings"]')) {
-      throw new Error('reader not mounted in the simulated boundary');
-    }
-    return candidate;
-  });
-  const outerRoot = outerHost.shadowRoot!;
-  const outerScope = outerRoot.querySelector<HTMLElement>('[data-yv-shadow-content-wrapper]')!;
-
-  await user.click(within(outerScope).getByRole('button', { name: 'Settings' }));
-  const settingsControl = await waitFor(() => {
-    const candidate = outerRoot.querySelector<HTMLElement>('[data-testid="line-spacing"]');
-    if (!candidate) throw new Error('reader settings not rendered in the outer root');
-    return candidate;
-  });
-  expect(settingsControl.getRootNode()).toBe(outerRoot);
 });
 
 describe('BibleReader theme settings', () => {

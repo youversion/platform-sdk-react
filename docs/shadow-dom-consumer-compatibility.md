@@ -26,6 +26,9 @@ scope.
 - `BibleTextView`, `VerseOfTheDay`, and `BibleCard` exercise automatic
   scripture-presentation boundaries and reuse the owning root for composed
   scripture and picker content.
+- `BibleReader.Root` exercises a compound application surface whose arbitrary
+  React children move into the reader root while reader-owned descendants
+  reuse that boundary.
 
 These modules validate the shared boundary and specific public interfaces they
 exercise. They do not establish compatibility for every SDK component.
@@ -48,6 +51,7 @@ exercise. They do not establish compatibility for every SDK component.
 | Concurrent peer popovers inside the same or separate component roots | Unsupported as simultaneous peers | Opening a peer dismisses the current popover through Radix outside interaction. YPE-5356 accepts this single-active-peer behavior; supporting simultaneous peers requires a demonstrated product journey and separate design. |
 | Shadow-local picker relationships | Supported in current browser evidence | The chapter and version picker stories verify that each trigger and controlled panel remain in one root and resolve their `aria-controls` relationship. This does not make cross-scope ID references supported. |
 | Consumer-supplied picker triggers | Supported within the explicit styling contract | The supplied element remains the interactive trigger. Inline style, ordinary attributes, and SDK-embedded utility classes are preserved. Document/global class rules and document-level token overrides do not cross the root. The SDK does not promise CSS Parts, arbitrary stylesheet injection, or styling of picker internals. |
+| Arbitrary `BibleReader.Root` children | Supported inside the reader root; breaking DOM/CSS placement change | Children render in the reader's open shadow root. Their React context and callbacks remain intact, but document-root selectors, global CSS, and document queries no longer reach them. A child that is itself an automatically isolated public component may intentionally create a nested root; reader-owned SDK composition suppresses accidental nesting. YPE-5952 owns the coordinated release documentation. |
 
 ## Consumer risks
 

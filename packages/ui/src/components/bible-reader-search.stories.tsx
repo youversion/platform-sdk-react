@@ -1,11 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
+import { expect, fireEvent, screen, userEvent, waitFor, within } from 'storybook/test';
 import { BibleReader } from './bible-reader';
 import { useState } from 'react';
 import { BibleReaderNavigation } from './bible-reader-navigation';
 import { Button } from './ui/button';
 import { delay, http, HttpResponse } from 'msw';
 import { globalHandlers } from '@/test/mocks/handlers';
+import { waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
 
 const meta = {
   title: 'Components/BibleReaderSearch',
@@ -143,7 +144,7 @@ export const SearchFailure: Story = {
 
 export const SearchAndReturn: Story = {
   ...OpenTrending,
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
   parameters: {
     msw: {
       handlers: [
@@ -160,30 +161,42 @@ export const SearchAndReturn: Story = {
     },
   },
   play: async (context) => {
-    await OpenTrending.play?.(context);
-    const input = screen.getByRole('textbox', { name: 'Search the Bible' });
-    await expect(input).toHaveFocus();
-    await userEvent.type(input, 'angels{Enter}');
-    const result = await screen.findByRole('button', { name: /John 1:51/i });
+    const root = await waitForShadowRoot(context.canvasElement);
+    const reader = within(await waitForShadowContent(root));
+    await waitFor(() =>
+      expect(reader.getByRole('button', { name: 'Search the Bible' })).toBeVisible(),
+    );
+    await userEvent.click(reader.getByRole('button', { name: 'Search the Bible' }));
+    const overlay = await waitFor(() => {
+      const element = root.querySelector<HTMLElement>('[data-yv-shadow-local-overlay]');
+      if (!element) throw new Error('reader search overlay not mounted');
+      return element;
+    });
+    const search = within(overlay);
+    const input = await search.findByRole('textbox', { name: 'Search the Bible' });
+    await expect(root.activeElement).toBe(input);
+    await fireEvent.change(input, { target: { value: 'angels' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    const result = await search.findByRole('button', { name: /John 1:51/i });
     await expect(
-      screen.queryByRole('button', { name: /^John 1(?:\s|$)/i }),
+      search.queryByRole('button', { name: /^John 1(?:\s|$)/i }),
     ).not.toBeInTheDocument();
     await userEvent.click(result);
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    await waitFor(() => expect(context.canvasElement.querySelector('.yv-v[v="51"]')).toHaveFocus());
-    await userEvent.click(screen.getByRole('button', { name: 'Search the Bible' }));
-    await expect(screen.getByRole('textbox')).toHaveValue('');
-    const recents = within(screen.getByRole('region', { name: 'Recent Searches' }));
+    await waitFor(() => expect(search.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(root.activeElement).toBe(root.querySelector('.yv-v[v="51"]')));
+    await userEvent.click(reader.getByRole('button', { name: 'Search the Bible' }));
+    await expect(search.getByRole('textbox')).toHaveValue('');
+    const recents = within(search.getByRole('region', { name: 'Recent Searches' }));
     await waitFor(() => expect(recents.getByRole('button', { name: 'angels' })).toBeVisible());
-    await userEvent.click(screen.getByRole('button', { name: 'Close search' }));
+    await userEvent.click(search.getByRole('button', { name: 'Close search' }));
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Search the Bible' })).toHaveFocus(),
+      expect(root.activeElement).toBe(reader.getByRole('button', { name: 'Search the Bible' })),
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Search the Bible' }));
-    await expect(screen.getByRole('dialog')).not.toHaveAttribute('aria-modal', 'true');
-    await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    await userEvent.click(reader.getByRole('button', { name: 'Search the Bible' }));
+    await expect(search.getByRole('dialog')).not.toHaveAttribute('aria-modal', 'true');
+    await userEvent.click(reader.getByRole('button', { name: 'Settings' }));
     await waitFor(() =>
-      expect(screen.queryByRole('textbox', { name: 'Search the Bible' })).not.toBeInTheDocument(),
+      expect(search.queryByRole('textbox', { name: 'Search the Bible' })).not.toBeInTheDocument(),
     );
   },
 };
