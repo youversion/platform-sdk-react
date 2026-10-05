@@ -64,6 +64,7 @@ import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { BibleReaderSearch, type BibleReaderSearchPressData } from './bible-reader-search';
 import { useTransientVerseFocus, type VerseFocusRequest } from '@/lib/use-transient-verse-focus';
 import { BibleReaderNavigation } from './bible-reader-navigation';
+import { VerseActionPopoverFocusRestoreProvider } from '@/lib/verse-action-popover-focus';
 
 type BibleReaderContextType = {
   book: string;
@@ -1240,22 +1241,23 @@ function Content() {
               all — two action surfaces would stack. Selection, painting, and
               every payload above are untouched. */}
           {verseActions !== 'none' && (
-            <VerseActionPopover
-              open={popoverOpen && selectedVerses.length > 0}
-              onOpenChange={handlePopoverOpenChange}
-              activeHighlights={activeHighlights}
-              selectedVerses={selectedVerses}
-              highlightedVerses={highlightedVerses}
-              highlightsEnabled={highlightsEnabled}
-              anchorElement={anchorElement}
-              focusRestoreTarget={verseFocusRestoreTargetRef.current}
-              scrollRoot={scrollContainerRef.current}
-              onHighlight={handleHighlight}
-              onClearHighlight={handleClearHighlight}
-              onCopy={handleCopy}
-              onShare={handleShare}
-              theme={background}
-            />
+            <VerseActionPopoverFocusRestoreProvider target={verseFocusRestoreTargetRef.current}>
+              <VerseActionPopover
+                open={popoverOpen && selectedVerses.length > 0}
+                onOpenChange={handlePopoverOpenChange}
+                activeHighlights={activeHighlights}
+                selectedVerses={selectedVerses}
+                highlightedVerses={highlightedVerses}
+                highlightsEnabled={highlightsEnabled}
+                anchorElement={anchorElement}
+                scrollRoot={scrollContainerRef.current}
+                onHighlight={handleHighlight}
+                onClearHighlight={handleClearHighlight}
+                onCopy={handleCopy}
+                onShare={handleShare}
+                theme={background}
+              />
+            </VerseActionPopoverFocusRestoreProvider>
           )}
 
           <HighlightPermissionDialog

@@ -26,6 +26,7 @@ import {
 import { isDarkHighlightHex } from './verse';
 import { useInterfaceDirection } from '@/lib/direction';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
+import { useVerseActionPopoverFocusRestoreTarget } from '@/lib/verse-action-popover-focus';
 
 /** Re-export for back-compat; prefer `@/lib/highlight-colors` for new code. */
 export { HIGHLIGHT_COLORS, type HighlightColor } from '@/lib/highlight-colors';
@@ -111,8 +112,6 @@ type VerseActionPopoverProps = {
   selectedVerses: number[];
   highlightedVerses: Record<number, string>;
   anchorElement?: HTMLElement | null;
-  /** Focused host element captured before a shadow-local verse interaction. */
-  focusRestoreTarget?: Element | null;
   /**
    * The reader's scroll container. When provided, the bar docks to the edge of
    * this element that the anchored verse scrolls out through, so the actions stay
@@ -208,7 +207,6 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   selectedVerses,
   highlightedVerses,
   anchorElement,
-  focusRestoreTarget,
   scrollRoot,
   highlightsEnabled = true,
   onHighlight,
@@ -221,6 +219,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   const direction = useInterfaceDirection();
   const portal = useShadowPortalState({ open, onOpenChange });
   const getShadowFocusRestoreTarget = useShadowFocusRestoreTarget();
+  const readerFocusRestoreTarget = useVerseActionPopoverFocusRestoreTarget();
 
   // On open, Radix's FocusScope would autofocus the first swatch. Because the bar
   // opens from a mouse/tap on non-focusable verse text, Chromium treats that
@@ -451,7 +450,9 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                 const root = getOwnShadowRoot(content);
                 retainOutsideFocusRef.current = false;
                 const activeElement = root
-                  ? (root.activeElement ?? focusRestoreTarget ?? getShadowFocusRestoreTarget?.())
+                  ? (root.activeElement ??
+                    readerFocusRestoreTarget ??
+                    getShadowFocusRestoreTarget?.())
                   : documentFocusRestoreTargetRef.current;
                 focusRestoreTargetRef.current = isElementFromOwnerDocument(
                   activeElement,
