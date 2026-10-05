@@ -15,7 +15,6 @@ import {
 } from './bible-reader';
 import { VerseActionPopover } from './verse-action-popover';
 import { waitForShadowRoot } from '@/test/storybook-dom';
-import { waitForShadowContent } from '@/test/storybook-dom';
 
 async function getPickerQueries(container: ParentNode, triggerName: RegExp | string) {
   return waitFor(() => {
@@ -367,7 +366,6 @@ export const HostileCssConstrainedLayout: Story = {
 
 async function openReaderHighlightAuthDialog(canvasElement: HTMLElement) {
   const root = await waitForShadowRoot(canvasElement);
-  await waitForShadowContent(root);
   const verse = await waitFor(() => {
     const element = root.querySelector<HTMLElement>('.yv-v[v="1"]');
     if (!element) throw new Error('highlight-auth verse not rendered');
@@ -409,7 +407,6 @@ export const SignedOutHighlightAuthOwnership: Story = {
     const dialog = yes.closest<HTMLElement>('[role="dialog"]');
     if (!dialog) throw new Error('sign-in dialog not rendered');
     await expect(dialog.getRootNode()).toBe(root);
-    await expect(yes).toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(overlays.queryByRole('button', { name: 'Yes Please' })).toBeNull());
     await expect(root.activeElement).toBe(apply);
@@ -442,7 +439,6 @@ export const SignedInHighlightPermissionOwnership: Story = {
     const dialog = continueButton.closest<HTMLElement>('[role="dialog"]');
     if (!dialog) throw new Error('permission dialog not rendered');
     await expect(dialog.getRootNode()).toBe(root);
-    await expect(continueButton).toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(overlays.queryByRole('button', { name: 'Continue' })).toBeNull());
     await expect(root.activeElement).toBe(apply);

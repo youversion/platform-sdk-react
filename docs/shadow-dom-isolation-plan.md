@@ -152,8 +152,8 @@ Standalone `BibleTextView`, `VerseOfTheDay`, and `BibleCard` now each own one
 client-only open shadow root and reuse the exact empty server host during
 hydration. `VerseOfTheDay` and `BibleCard` suppress the automatic boundary on
 their composed `BibleTextView`; `BibleCard` also suppresses it on its composed
-version picker. The current light-DOM `BibleReader` suppresses the boundary on
-its owned scripture renderer until the reader root lands in YPE-5951.
+version picker. `BibleReader` suppresses the standalone `BibleTextView`
+boundary so its owned scripture renderer reuses the reader root.
 
 Focused unit coverage verifies the exact host matrix, hydration without nested
 or duplicate roots, open-root queries, native event retargeting, the React verse
