@@ -26,6 +26,10 @@ This is a working plan, not approval for package-wide rollout.
   boundaries remain subject to the rollout policy's coordinated release gate.
   YPE-5994 completed standalone `BibleThemeSettingsContent`; reader-owned
   settings remain in the reader tree and are ready to reuse its future root.
+- YPE-5950 adds automatic boundaries to standalone `BibleTextView`,
+  `VerseOfTheDay`, and `BibleCard`. Their composed scripture and picker children
+  reuse the owner boundary, while the current `BibleReader` continues to render
+  its owned `BibleTextView` in the reader tree until YPE-5951.
 - The picker roots validate shadow-local native top-layer floating content
   through their public runtime boundaries. A historical inline negative
   control demonstrated clipping beyond a constrained ancestor before that
@@ -142,6 +146,41 @@ open-root automation, native event retargeting, loss of global-CSS access, and
 the supported explicit theme, direction, and callback inputs as part of the
 coordinated major release. YPE-5994 has an empty changeset and must not publish
 an independent partial rollout.
+
+## YPE-5950 scripture presentation evidence
+
+Standalone `BibleTextView`, `VerseOfTheDay`, and `BibleCard` now each own one
+client-only open shadow root and reuse the exact empty server host during
+hydration. `VerseOfTheDay` and `BibleCard` suppress the automatic boundary on
+their composed `BibleTextView`; `BibleCard` also suppresses it on its composed
+version picker. The current light-DOM `BibleReader` suppresses the boundary on
+its owned scripture renderer until the reader root lands in YPE-5951.
+
+Focused unit coverage verifies the exact host matrix, hydration without nested
+or duplicate roots, open-root queries, native event retargeting, the React verse
+selection callback, and the forwarded element ref. Existing behavior suites
+continue to exercise scripture typography, direction, footnotes, highlights,
+loading and error states, selection and sharing, card version control, and
+picker callbacks at the reusable implementation seam. Added regression cases
+cover the verse-of-the-day clipboard fallback and `BibleCard`'s
+`defaultVersionId` path.
+
+Focused Chromium, Firefox, and Playwright WebKit stories exercise hostile
+light-DOM CSS, representative standalone layouts, both verse-of-the-day sizes,
+the default and full card compositions, card version selection, and the
+shadow-local footnote overlay. The ADR's empty-host
+client-only first-paint contract is accepted for these reviewed layouts; without
+JavaScript the component content remains absent, and nearby layout can move
+after the passive-effect mount. This evidence does not establish actual-Safari
+or assistive-technology support. YPE-5952 must document the coordinated public
+behavior, and YPE-5950 carries an empty changeset so it cannot publish a partial
+rollout independently.
+
+Real Chromium validation also found that a consumer React handler on a
+light-DOM ancestor can receive one composed event through both the shadow-root
+portal path and the application-root retargeted path. The shared-host correction
+and click, keyboard, and focus regression coverage are assigned to YPE-6040 and
+must land before YPE-5952 releases the coordinated major version.
 
 ## Safari spacing evidence
 

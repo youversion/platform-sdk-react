@@ -49,7 +49,7 @@ function render(ui: ReactElement, extraOverrides?: HookOverrides) {
           ...extraOverrides,
         }}
       >
-        {children}
+        <ReuseShadowBoundary>{children}</ReuseShadowBoundary>
       </HookOverrideProvider>
     ),
   });

@@ -198,6 +198,24 @@ function renderReader(props: Partial<BibleReaderRootProps> = {}, overrides?: Hoo
   return render(wrapReader(props, overrides));
 }
 
+it('keeps reader-owned scripture in the reader tree without a standalone shadow boundary', async () => {
+  const { container } = render(
+    <HookOverrideProvider overrides={defaultOverrides()}>
+      <BibleReader.Root defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
+        <BibleReader.Content />
+      </BibleReader.Root>
+    </HookOverrideProvider>,
+  );
+
+  const renderer = await waitFor(() => {
+    const candidate = container.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
+    if (!candidate) throw new Error('reader-owned scripture not rendered in the reader tree');
+    return candidate;
+  });
+
+  expect(renderer.getRootNode()).toBe(document);
+});
+
 function getVerseEl(container: HTMLElement, verse: number): HTMLElement {
   const els = container.querySelectorAll<HTMLElement>(`.yv-v[v="${verse}"]`);
   const el = els[els.length - 1];
