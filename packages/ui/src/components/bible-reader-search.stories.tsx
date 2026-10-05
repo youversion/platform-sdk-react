@@ -46,8 +46,9 @@ async function typeInShadowInput(input: HTMLElement, text: string) {
     // Wait for React to commit the controlled value before Enter reads it.
     const inputRoot = input.getRootNode();
     if (!(inputRoot instanceof ShadowRoot)) throw new Error('search input is not shadow-local');
-    const root = within(inputRoot);
-    await waitFor(() => expect(root.getByRole('button', { name: 'Clear search' })).toBeVisible());
+    await waitFor(() =>
+      expect(inputRoot.querySelector('button[aria-label="Clear search"]')).toBeVisible(),
+    );
     await fireEvent.keyDown(input, { key: 'Enter' });
   }
 }

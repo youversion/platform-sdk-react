@@ -111,6 +111,8 @@ type VerseActionPopoverProps = {
   selectedVerses: number[];
   highlightedVerses: Record<number, string>;
   anchorElement?: HTMLElement | null;
+  /** Focused host element captured before a shadow-local verse interaction. */
+  focusRestoreTarget?: Element | null;
   /**
    * The reader's scroll container. When provided, the bar docks to the edge of
    * this element that the anchored verse scrolls out through, so the actions stay
@@ -206,6 +208,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   selectedVerses,
   highlightedVerses,
   anchorElement,
+  focusRestoreTarget,
   scrollRoot,
   highlightsEnabled = true,
   onHighlight,
@@ -448,7 +451,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                 const root = getOwnShadowRoot(content);
                 retainOutsideFocusRef.current = false;
                 const activeElement = root
-                  ? (root.activeElement ?? getShadowFocusRestoreTarget?.())
+                  ? (root.activeElement ?? focusRestoreTarget ?? getShadowFocusRestoreTarget?.())
                   : documentFocusRestoreTargetRef.current;
                 focusRestoreTargetRef.current = isElementFromOwnerDocument(
                   activeElement,
@@ -463,7 +466,9 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                 const root = portal.container ? getOwnShadowRoot(portal.container) : null;
                 const target = focusRestoreTargetRef.current;
                 const restoreTarget =
-                  target?.isConnected && (!root || target.getRootNode() === root) ? target : null;
+                  target?.isConnected && (!root || target.ownerDocument === root.ownerDocument)
+                    ? target
+                    : null;
                 if (root || restoreTarget) event.preventDefault();
                 if (!retainOutsideFocusRef.current) restoreTarget?.focus();
                 retainOutsideFocusRef.current = false;

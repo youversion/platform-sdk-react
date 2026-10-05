@@ -876,6 +876,7 @@ function Content() {
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null);
+  const verseFocusRestoreTargetRef = useRef<Element | null>(null);
   const lastSelectionRef = useRef<number[]>([]);
 
   const {
@@ -1169,6 +1170,14 @@ function Content() {
     <main
       ref={scrollContainerRef}
       className="yv:*:max-w-lg yv:flex yv:flex-col yv:items-center yv:gap-6 yv:overflow-y-auto yv:px-6 yv:max-sm:px-4 yv:py-12 yv:h-full"
+      onPointerDownCapture={(event) => {
+        let activeElement = event.currentTarget.ownerDocument.activeElement;
+        while (activeElement?.shadowRoot?.activeElement) {
+          activeElement = activeElement.shadowRoot.activeElement;
+        }
+        verseFocusRestoreTargetRef.current =
+          activeElement === event.currentTarget.ownerDocument.body ? null : activeElement;
+      }}
     >
       <h1
         dir={resolvedScriptureDirection}
@@ -1239,6 +1248,7 @@ function Content() {
               highlightedVerses={highlightedVerses}
               highlightsEnabled={highlightsEnabled}
               anchorElement={anchorElement}
+              focusRestoreTarget={verseFocusRestoreTargetRef.current}
               scrollRoot={scrollContainerRef.current}
               onHighlight={handleHighlight}
               onClearHighlight={handleClearHighlight}
