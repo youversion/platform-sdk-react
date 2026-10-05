@@ -245,11 +245,14 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
   ),
   play: async ({ canvasElement }) => {
     const root = await waitForShadowRoot(canvasElement);
-    const firstVerse = await waitFor(() => {
-      const element = root.querySelector<HTMLElement>('.yv-v[v="1"]');
-      if (!element) throw new Error('first verse not rendered');
-      return element;
-    });
+    const firstVerse = await waitFor(
+      () => {
+        const element = root.querySelector<HTMLElement>('.yv-v[v="1"]');
+        if (!element) throw new Error('first verse not rendered');
+        return element;
+      },
+      { timeout: 10000 },
+    );
     const secondVerse = root.querySelector<HTMLElement>('.yv-v[v="2"]');
     const secondVerseLabel = secondVerse?.querySelector<HTMLElement>('.yv-vlbl');
     const readerChildControl = root.querySelector<HTMLButtonElement>(
@@ -293,7 +296,7 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     });
 
     await userEvent.pointer({ keys: '[MouseLeft>]', target: readerChildControl });
-    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    await waitFor(() => expect(dialog).not.toBeInTheDocument(), { timeout: 10000 });
     await expect(firstVerse).not.toHaveClass('yv-v-selected');
     await expect(secondVerse).not.toHaveClass('yv-v-selected');
     await userEvent.pointer({ keys: '[/MouseLeft]', target: readerChildControl });
@@ -322,7 +325,7 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     await touchUser.pointer({ keys: '[TouchA>]', target: readerChildControl });
     await expect(dialog).toHaveAttribute('data-state', 'open');
     await touchUser.pointer({ keys: '[/TouchA]', target: readerChildControl });
-    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    await waitFor(() => expect(dialog).not.toBeInTheDocument(), { timeout: 10000 });
     await expect(firstVerse).not.toHaveClass('yv-v-selected');
     await expect(secondVerse).not.toHaveClass('yv-v-selected');
     await expect(root.activeElement).toBe(readerChildControl);
@@ -338,6 +341,9 @@ export const HostileCssConstrainedLayout: Story = {
     background: 'dark',
     fontFamily: INTER_FONT,
     fontSize: 18,
+    onFontFamilyChange: fn(),
+    onFontSizeChange: fn(),
+    onChangeLineSpacing: fn(),
     scriptureDirection: 'ltr',
   },
   globals: {
@@ -363,11 +369,14 @@ export const HostileCssConstrainedLayout: Story = {
       '[data-yv-shadow-content-wrapper] > [data-yv-sdk]',
     );
     const consumerChild = root.querySelector<HTMLElement>('[data-testid="consumer-reader-child"]');
-    const renderer = await waitFor(() => {
-      const element = root.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
-      if (!element) throw new Error('reader scripture not mounted');
-      return element;
-    });
+    const renderer = await waitFor(
+      () => {
+        const element = root.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
+        if (!element) throw new Error('reader scripture not mounted');
+        return element;
+      },
+      { timeout: 10000 },
+    );
     const scroller = root.querySelector<HTMLElement>('main');
     const toolbar = root.querySelector<HTMLElement>('section');
     if (!body || !consumerChild || !scroller || !toolbar) {

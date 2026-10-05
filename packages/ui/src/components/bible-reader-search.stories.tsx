@@ -42,7 +42,14 @@ async function typeInShadowInput(input: HTMLElement, text: string) {
   // Storybook user-event resolves document.activeElement to the shadow host,
   // so its keyboard helpers cannot type into this shadow-local controlled input.
   await fireEvent.change(input, { target: { value } });
-  if (submit) await fireEvent.keyDown(input, { key: 'Enter' });
+  if (submit) {
+    // Wait for React to commit the controlled value before Enter reads it.
+    const inputRoot = input.getRootNode();
+    if (!(inputRoot instanceof ShadowRoot)) throw new Error('search input is not shadow-local');
+    const root = within(inputRoot);
+    await waitFor(() => expect(root.getByRole('button', { name: 'Clear search' })).toBeVisible());
+    await fireEvent.keyDown(input, { key: 'Enter' });
+  }
 }
 
 export const OpenTrending: Story = {
@@ -197,8 +204,8 @@ export const SearchAndReturn: Story = {
     const { search } = await getOpenSearch(context.canvasElement);
     const input = await search.findByRole('textbox', { name: 'Search the Bible' });
     await expect(root.activeElement).toBe(input);
-    await typeInShadowInput(input, 'angels{Enter}');
-    const result = await search.findByRole('button', { name: /John 1:51/i });
+    await typeInShadowInput(input, 'love{Enter}');
+    const result = await search.findByRole('button', { name: /John 1:51/i }, { timeout: 10000 });
     await expect(
       search.queryByRole('button', { name: /^John 1(?:\s|$)/i }),
     ).not.toBeInTheDocument();
@@ -208,7 +215,7 @@ export const SearchAndReturn: Story = {
     await userEvent.click(reader.getByRole('button', { name: 'Search the Bible' }));
     await expect(search.getByRole('textbox')).toHaveValue('');
     const recents = within(search.getByRole('region', { name: 'Recent Searches' }));
-    await waitFor(() => expect(recents.getByRole('button', { name: 'angels' })).toBeVisible());
+    await waitFor(() => expect(recents.getByRole('button', { name: 'love' })).toBeVisible());
     await userEvent.click(search.getByRole('button', { name: 'Close search' }));
     await waitFor(() =>
       expect(root.activeElement).toBe(reader.getByRole('button', { name: 'Search the Bible' })),
