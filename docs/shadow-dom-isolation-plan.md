@@ -200,6 +200,16 @@ journeys traverse the reader root, and focused hostile-CSS/constrained-layout
 coverage reviews theme, interface and Scripture direction, typography,
 scrolling, and geometry in Chromium, Firefox, and Playwright WebKit.
 
+The concrete `examples/vite-react` reader page was also reviewed in its
+`h-[calc(100vh-3.5rem)]` shell beneath the example navbar: the reader host
+continues to fill that shell, its toolbar remains above the independently
+scrolling scripture pane, and the constrained browser evidence retains usable
+toolbar and scripture geometry. Interactive review found no obvious
+user-visible performance regression while opening reader-owned settings,
+search, verse actions, and auth overlays; each reuses the one reader root and
+local overlay rather than adding duplicate automatic hosts. This is a
+qualitative product-layout check, not benchmark evidence.
+
 The ADR's client-only first-paint gap is accepted for the reviewed reader
 layout: without JavaScript the reader remains absent, and nearby layout can
 move after the passive-effect mount. This evidence is qualitative and does not

@@ -2,6 +2,7 @@
  * @vitest-environment jsdom
  */
 import { act, render, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { BibleBook, BibleVersion } from '@youversion/platform-core';
 import type { HookOverrides } from '@youversion/platform-react-hooks';
 import { type ReactElement } from 'react';
@@ -15,7 +16,6 @@ import { BibleReaderSearch } from './bible-reader-search';
 import { ProfileAvatar } from './profile-avatar';
 
 installResizeObserverStub();
-HTMLElement.prototype.scrollTo = vi.fn();
 
 const books: BibleBook[] = [
   {
@@ -94,6 +94,27 @@ function withOverrides(element: ReactElement): ReactElement {
 
 describe('BibleReader.Root public shadow boundary', () => {
   it('owns one empty SSR host and reuses it for all reader-owned content', async () => {
+    const scrollToDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollTo');
+    const showPopoverDescriptor = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      'showPopover',
+    );
+    const hidePopoverDescriptor = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      'hidePopover',
+    );
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      value: vi.fn(),
+    });
+    Object.defineProperty(HTMLElement.prototype, 'showPopover', {
+      configurable: true,
+      value: vi.fn(),
+    });
+    Object.defineProperty(HTMLElement.prototype, 'hidePopover', {
+      configurable: true,
+      value: vi.fn(),
+    });
     const element = withOverrides(
       <BibleReader.Root defaultBook="JHN" defaultChapter="1" defaultVersionId={111} highlights={[]}>
         <BibleReader.Content />
@@ -137,12 +158,45 @@ describe('BibleReader.Root public shadow boundary', () => {
       expect(
         host.shadowRoot?.querySelector('button[aria-label="Change Bible version"]'),
       ).toBeInTheDocument();
+      const settingsTrigger = host.shadowRoot?.querySelector<HTMLButtonElement>(
+        'button[aria-label="Settings"]',
+      );
+      expect(settingsTrigger).toBeInTheDocument();
+      await userEvent.click(settingsTrigger!);
+      const settings = await waitFor(() => {
+        const candidate = host.shadowRoot?.querySelector<HTMLElement>('[role="dialog"]');
+        if (!candidate?.textContent?.includes('Reader Settings')) {
+          throw new Error('reader settings did not open in the reader root');
+        }
+        return candidate;
+      });
+      expect(settings.getRootNode()).toBe(host.shadowRoot);
+      expect(settings.querySelector('[data-yv-shadow-host]')).toBeNull();
+      expect(host.shadowRoot?.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
+      expect(settings.querySelector('[data-testid="increase-font-size"]')?.getRootNode()).toBe(
+        host.shadowRoot,
+      );
       expect(recoverableErrors).toEqual([]);
       expect(consoleError).not.toHaveBeenCalled();
     } finally {
       if (root) await act(async () => root?.unmount());
       consoleError.mockRestore();
       container.remove();
+      if (scrollToDescriptor) {
+        Object.defineProperty(HTMLElement.prototype, 'scrollTo', scrollToDescriptor);
+      } else {
+        Reflect.deleteProperty(HTMLElement.prototype, 'scrollTo');
+      }
+      if (showPopoverDescriptor) {
+        Object.defineProperty(HTMLElement.prototype, 'showPopover', showPopoverDescriptor);
+      } else {
+        Reflect.deleteProperty(HTMLElement.prototype, 'showPopover');
+      }
+      if (hidePopoverDescriptor) {
+        Object.defineProperty(HTMLElement.prototype, 'hidePopover', hidePopoverDescriptor);
+      } else {
+        Reflect.deleteProperty(HTMLElement.prototype, 'hidePopover');
+      }
     }
   });
 

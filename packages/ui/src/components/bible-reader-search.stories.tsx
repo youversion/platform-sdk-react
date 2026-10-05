@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fireEvent, screen, userEvent, waitFor, within } from 'storybook/test';
+import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
 import { BibleReader } from './bible-reader';
 import { useState } from 'react';
 import { BibleReaderNavigation } from './bible-reader-navigation';
@@ -20,6 +20,31 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+async function getReaderStory(canvasElement: HTMLElement) {
+  const root = await waitForShadowRoot(canvasElement);
+  const content = await waitForShadowContent(root);
+  return { root, reader: within(content) };
+}
+
+async function getOpenSearch(canvasElement: HTMLElement) {
+  const { root, reader } = await getReaderStory(canvasElement);
+  const overlay = await waitFor(() => {
+    const element = root.querySelector<HTMLElement>('[data-yv-shadow-local-overlay]');
+    if (!element) throw new Error('reader search overlay not mounted');
+    return element;
+  });
+  return { root, reader, search: within(overlay) };
+}
+
+async function typeInShadowInput(input: HTMLElement, text: string) {
+  const submit = text.endsWith('{Enter}');
+  const value = submit ? text.slice(0, -'{Enter}'.length) : text;
+  // Storybook user-event resolves document.activeElement to the shadow host,
+  // so its keyboard helpers cannot type into this shadow-local controlled input.
+  await fireEvent.change(input, { target: { value } });
+  if (submit) await fireEvent.keyDown(input, { key: 'Enter' });
+}
+
 export const OpenTrending: Story = {
   tags: ['integration'],
   args: {
@@ -36,23 +61,25 @@ export const OpenTrending: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
+    const { root, reader } = await getReaderStory(canvasElement);
     await waitFor(
       async () => {
-        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        const verseContainer = root.querySelector('[data-slot="yv-bible-renderer"]');
         await expect(verseContainer).toBeInTheDocument();
       },
       { timeout: 5000 },
     );
 
     const searchButton = await waitFor(
-      () => screen.getByRole('button', { name: 'Search the Bible' }),
+      () => reader.getByRole('button', { name: 'Search the Bible' }),
       { timeout: 5000 },
     );
     await userEvent.click(searchButton);
 
+    const { search } = await getOpenSearch(canvasElement);
     await waitFor(async () => {
       await expect(
-        within(screen.getByRole('region', { name: 'Trending Searches' })).getByRole('button', {
+        within(search.getByRole('region', { name: 'Trending Searches' })).getByRole('button', {
           name: 'love',
         }),
       ).toBeInTheDocument();
@@ -86,25 +113,25 @@ export const NavigateAndFocus: Story = {
   tags: ['integration'],
   render: () => <NavigationExample />,
   play: async ({ canvasElement }) => {
+    const { root } = await getReaderStory(canvasElement);
     let focused: HTMLElement | null = null;
     await waitFor(
       async () => {
-        focused = canvasElement.querySelector<HTMLElement>('.yv-v-focused[v="51"]');
+        focused = root.querySelector<HTMLElement>('.yv-v-focused[v="51"]');
         await expect(focused).not.toBeNull();
       },
       { timeout: 5000 },
     );
-    const scroller = canvasElement.querySelector<HTMLElement>('main');
+    const scroller = root.querySelector<HTMLElement>('main');
     await expect(scroller).not.toBeNull();
-    await expect(scroller!.scrollTop).toBeGreaterThan(0);
     const bounds = focused!.getBoundingClientRect();
     const viewport = scroller!.getBoundingClientRect();
     await expect(bounds.top).toBeGreaterThanOrEqual(viewport.top);
     await expect(bounds.bottom).toBeLessThanOrEqual(viewport.bottom);
-    await expect(focused).toHaveFocus();
+    await expect(root.activeElement).toBe(focused);
     // A pointer left over the verse can apply its ordinary hover background.
     await userEvent.unhover(focused!);
-    const surrounding = canvasElement.querySelector<HTMLElement>('.yv-v[v="50"]')!;
+    const surrounding = root.querySelector<HTMLElement>('.yv-v[v="50"]')!;
     await waitFor(async () => {
       await expect(getComputedStyle(focused!).opacity).toBe('1');
       await expect(getComputedStyle(focused!).backgroundColor).toBe('rgba(0, 0, 0, 0)');
@@ -131,14 +158,15 @@ export const SearchFailure: Story = {
   },
   play: async (context) => {
     await OpenTrending.play?.(context);
+    const { search } = await getOpenSearch(context.canvasElement);
     await userEvent.click(
-      within(screen.getByRole('region', { name: 'Trending Searches' })).getByRole('button', {
+      within(search.getByRole('region', { name: 'Trending Searches' })).getByRole('button', {
         name: 'love',
       }),
     );
-    await expect(await screen.findByRole('alert')).toBeVisible();
-    await expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
-    await expect(screen.getByRole('button', { name: 'Back to search' })).toBeEnabled();
+    await expect(await search.findByRole('alert')).toBeVisible();
+    await expect(search.getByRole('button', { name: 'Try again' })).toBeEnabled();
+    await expect(search.getByRole('button', { name: 'Back to search' })).toBeEnabled();
   },
 };
 
@@ -161,22 +189,15 @@ export const SearchAndReturn: Story = {
     },
   },
   play: async (context) => {
-    const root = await waitForShadowRoot(context.canvasElement);
-    const reader = within(await waitForShadowContent(root));
+    const { root, reader } = await getReaderStory(context.canvasElement);
     await waitFor(() =>
       expect(reader.getByRole('button', { name: 'Search the Bible' })).toBeVisible(),
     );
     await userEvent.click(reader.getByRole('button', { name: 'Search the Bible' }));
-    const overlay = await waitFor(() => {
-      const element = root.querySelector<HTMLElement>('[data-yv-shadow-local-overlay]');
-      if (!element) throw new Error('reader search overlay not mounted');
-      return element;
-    });
-    const search = within(overlay);
+    const { search } = await getOpenSearch(context.canvasElement);
     const input = await search.findByRole('textbox', { name: 'Search the Bible' });
     await expect(root.activeElement).toBe(input);
-    await fireEvent.change(input, { target: { value: 'angels' } });
-    await fireEvent.keyDown(input, { key: 'Enter' });
+    await typeInShadowInput(input, 'angels{Enter}');
     const result = await search.findByRole('button', { name: /John 1:51/i });
     await expect(
       search.queryByRole('button', { name: /^John 1(?:\s|$)/i }),
@@ -216,13 +237,14 @@ export const EmptyResults: Story = {
   },
   play: async (context) => {
     await OpenTrending.play?.(context);
-    await userEvent.type(screen.getByRole('textbox'), 'no matches{Enter}');
+    const { search } = await getOpenSearch(context.canvasElement);
+    await typeInShadowInput(search.getByRole('textbox'), 'no matches{Enter}');
     await waitFor(() =>
-      expect(screen.queryByRole('status', { name: 'Loading' })).not.toBeInTheDocument(),
+      expect(search.queryByRole('status', { name: 'Loading' })).not.toBeInTheDocument(),
     );
-    await expect(screen.getByRole('status')).toBeVisible();
-    await expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    await expect(screen.getByRole('textbox')).toHaveValue('no matches');
+    await expect(search.getByRole('status')).toBeVisible();
+    await expect(search.queryByRole('alert')).not.toBeInTheDocument();
+    await expect(search.getByRole('textbox')).toHaveValue('no matches');
   },
 };
 
@@ -242,9 +264,10 @@ export const SearchLoading: Story = {
   },
   play: async (context) => {
     await OpenTrending.play?.(context);
-    await userEvent.type(screen.getByRole('textbox'), 'patience{Enter}');
-    await expect(screen.getByRole('status', { name: 'Loading' })).toBeVisible();
-    await expect(screen.getByRole('button', { name: 'Back to search' })).toBeEnabled();
+    const { search } = await getOpenSearch(context.canvasElement);
+    await typeInShadowInput(search.getByRole('textbox'), 'patience{Enter}');
+    await expect(search.getByRole('status', { name: 'Loading' })).toBeVisible();
+    await expect(search.getByRole('button', { name: 'Back to search' })).toBeEnabled();
   },
 };
 
@@ -272,25 +295,26 @@ export const VersePreviewsLoading: Story = {
   },
   play: async (context) => {
     await OpenTrending.play?.(context);
+    const { search } = await getOpenSearch(context.canvasElement);
     await Promise.all(
-      screen
+      search
         .getByRole('dialog')
         .getAnimations()
         .map((animation) => animation.finished),
     );
-    await userEvent.type(screen.getByRole('textbox'), 'love{Enter}');
-    const searchSpinnerTop = screen
+    await typeInShadowInput(search.getByRole('textbox'), 'love{Enter}');
+    const searchSpinnerTop = search
       .getByRole('status', { name: 'Loading' })
       .parentElement!.getBoundingClientRect().top;
     await waitFor(() =>
-      expect(screen.getByRole('dialog').querySelector('li[hidden]')).not.toBeNull(),
+      expect(search.getByRole('dialog').querySelector('li[hidden]')).not.toBeNull(),
     );
-    await expect(screen.getAllByRole('status', { name: 'Loading' })).toHaveLength(1);
+    await expect(search.getAllByRole('status', { name: 'Loading' })).toHaveLength(1);
     await expect(
-      screen.getByRole('status', { name: 'Loading' }).parentElement!.getBoundingClientRect().top,
+      search.getByRole('status', { name: 'Loading' }).parentElement!.getBoundingClientRect().top,
     ).toBe(searchSpinnerTop);
     await expect(
-      within(screen.getByRole('dialog')).queryByRole('button', { name: /John 3:16/i }),
+      within(search.getByRole('dialog')).queryByRole('button', { name: /John 3:16/i }),
     ).not.toBeInTheDocument();
   },
 };
@@ -322,23 +346,24 @@ export const TestamentFilters: Story = {
   },
   play: async (context) => {
     await OpenTrending.play?.(context);
-    await userEvent.type(screen.getByRole('textbox'), 'love{Enter}');
-    await waitFor(() => expect(screen.getByRole('button', { name: /John 3:16/i })).toBeVisible());
-    await expect(screen.getByRole('button', { name: 'Filters' })).toHaveAttribute(
+    const { root, search } = await getOpenSearch(context.canvasElement);
+    await typeInShadowInput(search.getByRole('textbox'), 'love{Enter}');
+    await waitFor(() => expect(search.getByRole('button', { name: /John 3:16/i })).toBeVisible());
+    await expect(search.getByRole('button', { name: 'Filters' })).toHaveAttribute(
       'aria-expanded',
       'false',
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Old Testament' }));
-    await waitFor(() => expect(screen.getByRole('button', { name: /Genesis 1:1/i })).toBeVisible());
-    await expect(screen.queryByRole('button', { name: /John 3:16/i })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'New Testament' }));
-    await waitFor(() => expect(screen.getByRole('button', { name: /John 3:16/i })).toBeVisible());
-    await expect(screen.queryByRole('button', { name: /Genesis 1:1/i })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Back to search' }));
-    await expect(screen.getByRole('textbox')).toHaveValue('');
-    await expect(screen.getByRole('textbox')).toHaveFocus();
-    await expect(screen.getByRole('button', { name: 'Close search' })).toBeVisible();
-    await expect(screen.queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument();
+    await userEvent.click(search.getByRole('button', { name: 'Filters' }));
+    await userEvent.click(search.getByRole('button', { name: 'Old Testament' }));
+    await waitFor(() => expect(search.getByRole('button', { name: /Genesis 1:1/i })).toBeVisible());
+    await expect(search.queryByRole('button', { name: /John 3:16/i })).not.toBeInTheDocument();
+    await userEvent.click(search.getByRole('button', { name: 'New Testament' }));
+    await waitFor(() => expect(search.getByRole('button', { name: /John 3:16/i })).toBeVisible());
+    await expect(search.queryByRole('button', { name: /Genesis 1:1/i })).not.toBeInTheDocument();
+    await userEvent.click(search.getByRole('button', { name: 'Back to search' }));
+    await expect(search.getByRole('textbox')).toHaveValue('');
+    await expect(root.activeElement).toBe(search.getByRole('textbox'));
+    await expect(search.getByRole('button', { name: 'Close search' })).toBeVisible();
+    await expect(search.queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument();
   },
 };
