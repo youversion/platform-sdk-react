@@ -259,6 +259,7 @@ jobs:
     outputs:
       is_major: ${{ steps.preview.outputs.is_major }}
       next: ${{ steps.preview.outputs.next }}
+      signoff_token: ${{ steps.preview.outputs.signoff_token }}
       release_type: ${{ steps.preview.outputs.release_type }}
     steps:
       - name: Checkout PR head
@@ -344,6 +345,7 @@ jobs:
           # "null", which is not empty, so the `${VAR:-default}` fallbacks downstream never
           # fire and the status reads "No breaking changeset added (null)".
           echo "next=$(jq -r '.next // empty' preview.json)" >> "$GITHUB_OUTPUT"
+          echo "signoff_token=$(jq -r '.signoff_token // empty' preview.json)" >> "$GITHUB_OUTPUT"
           echo "release_type=$(jq -r '.release_type // empty' preview.json)" >> "$GITHUB_OUTPUT"
 
 
@@ -503,6 +505,7 @@ jobs:
           PR_AUTHOR: ${{ needs.context.outputs.pr_author }}
           HEAD_SHA: ${{ needs.context.outputs.head_sha }}
           NEXT_VERSION: ${{ steps.decision.outputs.next }}
+          SIGNOFF_TOKEN: ${{ needs.preview.outputs.signoff_token }}
         run: |
           set -euo pipefail
           # Guard: a major changeset must also have produced a real `next`
@@ -539,8 +542,20 @@ jobs:
           # The full 40 characters, not an abbreviation: a 7-character prefix is
           # 28 bits, which is cheap to brute-force, so an author could craft a new
           # commit sharing the approved prefix and inherit its signoff.
-          SHA_RE="(^|[^0-9A-Za-z])${HEAD_SHA}([^0-9A-Za-z]|$)"
-          echo "Signoff must name head $HEAD_SHA."
+          # A signoff approves a release, so it names that release: the `.changeset/` state plus
+          # the resulting version, digested by `signoffToken` in scripts/preview-release.mjs.
+          # Naming the head SHA instead voided the signoff on every push, so a lint fix cost a
+          # fresh one while changing nothing about what was approved. Comparing timestamps is not
+          # an option either: `committer.date` is attacker-controlled, so a backdated commit could
+          # inherit an older approval. The digest is content-derived and cannot be backdated.
+          # 64 bits, not a short prefix, so a second preimage against an approved token is out of
+          # reach for someone wanting a different release to inherit its signoff.
+          if ! [[ "$SIGNOFF_TOKEN" =~ ^[0-9a-f]{16}$ ]]; then
+            echo "::error::Refusing to evaluate a signoff without a well-formed release token."
+            exit 1
+          fi
+          TOKEN_RE="(^|[^0-9A-Za-z])${SIGNOFF_TOKEN}([^0-9A-Za-z]|$)"
+          echo "Signoff must name release token $SIGNOFF_TOKEN."
 
           COMMENTS=$(gh api --paginate \
             "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" \
@@ -563,7 +578,7 @@ jobs:
             NORM_BODY=$(normalize "$BODY")
             if [[ "$NORM_BODY" != *"$NORM_TEMPLATE"* ]]; then continue; fi
             if ! [[ "$BODY" =~ $VERSION_RE ]] || ! [[ "$BODY" =~ $ROCKET_RE ]]; then continue; fi
-            if ! [[ "$BODY" =~ $SHA_RE ]]; then continue; fi
+            if ! [[ "$BODY" =~ $TOKEN_RE ]]; then continue; fi
             # Then verify write+ permission. Cached so a chatty approver doesn't
             # cost one API call per comment.
             PERM="${PERM_CACHE[$LOGIN]:-}"
@@ -609,6 +624,7 @@ jobs:
           PR_NUMBER: ${{ needs.context.outputs.pr_number }}
           HEAD_SHA: ${{ needs.context.outputs.head_sha }}
           NEXT_VERSION: ${{ steps.decision.outputs.next }}
+          SIGNOFF_TOKEN: ${{ needs.preview.outputs.signoff_token }}
         run: |
           set -euo pipefail
           MARKER='<!-- major-signoff-required -->'
@@ -622,7 +638,7 @@ jobs:
             echo
             echo "1. The verbatim acknowledgment phrase below,"
             echo "2. The precise next version (\`v$NEXT_VERSION\` or \`$NEXT_VERSION\`),"
-            echo "3. The full commit hash being approved (\`$HEAD_SHA\`), and"
+            echo "3. The release token being approved (\`$SIGNOFF_TOKEN\`), and"
             echo "4. A 🚀 (\`:rocket:\`) emoji."
             echo
             echo "I confirm that this is an intentional breaking change, and I have read the release procedures. I understand and have documented its impact upon release."
@@ -632,10 +648,10 @@ jobs:
             echo '```'
             echo "I confirm that this is an intentional breaking change, and I have read the release procedures. I understand and have documented its impact upon release."
             echo
-            echo "v$NEXT_VERSION $HEAD_SHA 🚀"
+            echo "v$NEXT_VERSION $SIGNOFF_TOKEN 🚀"
             echo '```'
             echo
-            echo "The check re-runs automatically when a qualifying comment is posted or edited. Pushing new commits changes the hash, so a fresh signoff is needed."
+            echo "The check re-runs automatically when a qualifying comment is posted or edited. The token covers this release's changesets and version, so ordinary pushes (review fixes, lint, docs) leave this signoff standing; adding or editing a changeset, or a change to the version, needs a fresh one."
           } > comment.md
 
           EXISTING=$(gh api --paginate \
