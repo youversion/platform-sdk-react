@@ -105,6 +105,17 @@ function isVerseEvent(event: Event, owner: HTMLElement): boolean {
     );
 }
 
+function isDurableFocusRestoreTarget(
+  target: HTMLElement | null | undefined,
+  ownerDocument?: Document,
+): target is HTMLElement {
+  return Boolean(
+    target?.isConnected &&
+      (!ownerDocument || target.ownerDocument === ownerDocument) &&
+      !target.closest('[data-yv-shadow-local-overlay], [data-yv-shadow-inline-overlay]'),
+  );
+}
+
 type VerseActionPopoverProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -449,10 +460,13 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
 
                 const root = getOwnShadowRoot(content);
                 retainOutsideFocusRef.current = false;
+                const readerTarget =
+                  isElementFromOwnerDocument(readerFocusRestoreTarget, content, 'HTMLElement') &&
+                  isDurableFocusRestoreTarget(readerFocusRestoreTarget, content.ownerDocument)
+                    ? readerFocusRestoreTarget
+                    : null;
                 const activeElement = root
-                  ? (readerFocusRestoreTarget ??
-                    root.activeElement ??
-                    getShadowFocusRestoreTarget?.())
+                  ? (readerTarget ?? root.activeElement ?? getShadowFocusRestoreTarget?.())
                   : documentFocusRestoreTargetRef.current;
                 focusRestoreTargetRef.current = isElementFromOwnerDocument(
                   activeElement,
@@ -466,9 +480,11 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
               onCloseAutoFocus={(event) => {
                 const root = portal.container ? getOwnShadowRoot(portal.container) : null;
                 const target = focusRestoreTargetRef.current;
-                const restoreTarget =
-                  target?.isConnected && (!root || target.ownerDocument === root.ownerDocument)
-                    ? target
+                const fallbackTarget = getShadowFocusRestoreTarget?.();
+                const restoreTarget = isDurableFocusRestoreTarget(target, root?.ownerDocument)
+                  ? target
+                  : isDurableFocusRestoreTarget(fallbackTarget, root?.ownerDocument)
+                    ? fallbackTarget
                     : null;
                 if (root || restoreTarget) event.preventDefault();
                 if (!retainOutsideFocusRef.current) restoreTarget?.focus();

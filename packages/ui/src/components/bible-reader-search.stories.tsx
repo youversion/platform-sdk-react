@@ -305,6 +305,28 @@ export const SearchAndReturn: Story = {
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(verseActions).not.toBeInTheDocument());
     await expect(context.canvasElement.ownerDocument.activeElement).toBe(outsideControl);
+
+    await userEvent.click(trigger);
+    const { search: overlaySearch } = await getOpenSearch(context.canvasElement);
+    await expect(root.activeElement).toBe(
+      await overlaySearch.findByRole('textbox', { name: 'Search the Bible' }),
+    );
+    await userEvent.click(destinationVerse);
+    await waitFor(() =>
+      expect(
+        overlaySearch.queryByRole('dialog', { name: 'Search the Bible' }),
+      ).not.toBeInTheDocument(),
+    );
+    const reopenedVerseActions = await waitFor(() => {
+      const element = root.querySelector<HTMLElement>(
+        '[data-slot="verse-action-popover"][data-state="open"]',
+      );
+      if (!element) throw new Error('verse actions did not reopen');
+      return element;
+    });
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(reopenedVerseActions).not.toBeInTheDocument());
+    await expect(root.activeElement).toBe(destinationVerse);
   },
 };
 
