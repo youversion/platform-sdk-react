@@ -487,5 +487,24 @@ else
     "an unset SIGNOFF_TOKEN is caught by the guard, but only after the job has already run"
 fi
 
+if grep -qF 'scripts/preview-release.mjs scripts/signoff-token.mjs' "$WORKFLOW"; then
+  pass "the token module is restored from main with the rest of the tooling"
+else
+  fail "the token module is restored from main with the rest of the tooling" \
+    "a PR-supplied token module could mint a token matching an older signoff"
+fi
+
+# The gate reads `.signoff_token` out of preview.json. If the preview stops emitting it the
+# guard rejects an empty token and every major PR blocks, which is how this shipped the first
+# time: four assertions about the workflow's text all passed while the key was never written.
+PREVIEW_SRC="$ROOT/scripts/preview-release.mjs"
+if grep -q "signoff_token: signoffToken(" "$PREVIEW_SRC" \
+  && grep -q "jq -r '.signoff_token // empty' preview.json" "$WORKFLOW"; then
+  pass "the preview emits the token under the key the gate reads"
+else
+  fail "the preview emits the token under the key the gate reads" \
+    "an unemitted or renamed key blocks every major PR behind an empty-token guard"
+fi
+
 printf '\n%d passed, %d failed\n' "$passes" "$failures"
 [[ "$failures" -eq 0 ]]

@@ -280,7 +280,7 @@ jobs:
           # under, and the changesets config have to agree, so restoring some from main and
           # taking the rest from the PR gives a detector without its own dependencies.
           if git cat-file -e main:scripts/preview-release.mjs 2>/dev/null; then
-            for f in scripts/preview-release.mjs package.json pnpm-lock.yaml \
+            for f in scripts/preview-release.mjs scripts/signoff-token.mjs package.json pnpm-lock.yaml \
                      pnpm-workspace.yaml .changeset/config.json; do
               git cat-file -e "main:$f" 2>/dev/null && git checkout main -- "$f"
             done
