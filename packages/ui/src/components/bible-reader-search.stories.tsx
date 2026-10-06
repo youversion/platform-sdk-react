@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
 import { BibleReader } from './bible-reader';
-import { useContext, useState } from 'react';
+import { useContext, useState, type ReactNode } from 'react';
 import {
   YouVersionContext,
   type BibleSearchPhase,
@@ -194,6 +194,10 @@ const searchResult: BibleSearchResult = {
   verses: [51],
 };
 
+function searchJourneyPassage(usfm: string) {
+  return Object.entries(mockPassages).find(([reference]) => reference === usfm)?.[1] ?? null;
+}
+
 function useSearchStoryFixture(): UseBibleSearchResult {
   const [query, setQuery] = useState('');
   const [phase, setPhase] = useState<BibleSearchPhase>({
@@ -216,7 +220,7 @@ function useSearchStoryFixture(): UseBibleSearchResult {
   };
 }
 
-function SearchJourneyToolbar() {
+function SearchJourneyFixture({ children }: { children: ReactNode }) {
   const context = useContext(YouVersionContext);
   if (context === null) throw new Error('Search story requires YouVersionProvider');
   return (
@@ -226,8 +230,8 @@ function SearchJourneyToolbar() {
         hookOverrides: {
           ...context.hookOverrides,
           useBibleSearch: useSearchStoryFixture,
-          usePassage: () => ({
-            passage: mockPassages['JHN.1.51'],
+          usePassage: ({ usfm }) => ({
+            passage: searchJourneyPassage(usfm),
             loading: false,
             error: null,
             refetch: () => undefined,
@@ -235,7 +239,7 @@ function SearchJourneyToolbar() {
         },
       }}
     >
-      <BibleReader.Toolbar />
+      {children}
     </YouVersionContext.Provider>
   );
 }
@@ -249,8 +253,10 @@ export const SearchAndReturn: Story = {
         Outside reader
       </button>
       <BibleReader.Root {...args}>
-        <BibleReader.Content />
-        <SearchJourneyToolbar />
+        <SearchJourneyFixture>
+          <BibleReader.Content />
+          <BibleReader.Toolbar />
+        </SearchJourneyFixture>
       </BibleReader.Root>
     </div>
   ),
