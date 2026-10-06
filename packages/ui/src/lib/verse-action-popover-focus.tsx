@@ -2,22 +2,24 @@
 
 import { createContext, useContext, type ReactElement, type ReactNode } from 'react';
 
-const VerseActionPopoverFocusRestoreContext = createContext<Element | null>(null);
+type TakeFocusRestoreTarget = () => Element | null;
+
+const VerseActionPopoverFocusRestoreContext = createContext<TakeFocusRestoreTarget | null>(null);
 
 export function VerseActionPopoverFocusRestoreProvider({
-  target,
+  takeTarget,
   children,
 }: {
-  target: Element | null;
+  takeTarget: TakeFocusRestoreTarget;
   children: ReactNode;
 }): ReactElement {
   return (
-    <VerseActionPopoverFocusRestoreContext.Provider value={target}>
+    <VerseActionPopoverFocusRestoreContext.Provider value={takeTarget}>
       {children}
     </VerseActionPopoverFocusRestoreContext.Provider>
   );
 }
 
-export function useVerseActionPopoverFocusRestoreTarget(): Element | null {
+export function useTakeVerseActionPopoverFocusRestoreTarget(): TakeFocusRestoreTarget | null {
   return useContext(VerseActionPopoverFocusRestoreContext);
 }

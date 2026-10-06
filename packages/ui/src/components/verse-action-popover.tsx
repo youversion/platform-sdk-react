@@ -26,7 +26,7 @@ import {
 import { isDarkHighlightHex } from './verse';
 import { useInterfaceDirection } from '@/lib/direction';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
-import { useVerseActionPopoverFocusRestoreTarget } from '@/lib/verse-action-popover-focus';
+import { useTakeVerseActionPopoverFocusRestoreTarget } from '@/lib/verse-action-popover-focus';
 
 /** Re-export for back-compat; prefer `@/lib/highlight-colors` for new code. */
 export { HIGHLIGHT_COLORS, type HighlightColor } from '@/lib/highlight-colors';
@@ -230,7 +230,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   const direction = useInterfaceDirection();
   const portal = useShadowPortalState({ open, onOpenChange });
   const getShadowFocusRestoreTarget = useShadowFocusRestoreTarget();
-  const readerFocusRestoreTarget = useVerseActionPopoverFocusRestoreTarget();
+  const takeReaderFocusRestoreTarget = useTakeVerseActionPopoverFocusRestoreTarget();
 
   // On open, Radix's FocusScope would autofocus the first swatch. Because the bar
   // opens from a mouse/tap on non-focusable verse text, Chromium treats that
@@ -460,6 +460,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
 
                 const root = getOwnShadowRoot(content);
                 retainOutsideFocusRef.current = false;
+                const readerFocusRestoreTarget = takeReaderFocusRestoreTarget?.() ?? null;
                 const readerTarget =
                   isElementFromOwnerDocument(readerFocusRestoreTarget, content, 'HTMLElement') &&
                   isDurableFocusRestoreTarget(readerFocusRestoreTarget, content.ownerDocument)

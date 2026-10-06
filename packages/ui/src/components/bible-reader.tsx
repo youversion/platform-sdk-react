@@ -878,6 +878,11 @@ function Content() {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null);
   const verseFocusRestoreTargetRef = useRef<Element | null>(null);
+  const takeVerseFocusRestoreTarget = React.useCallback(() => {
+    const target = verseFocusRestoreTargetRef.current;
+    verseFocusRestoreTargetRef.current = null;
+    return target;
+  }, []);
   const lastSelectionRef = useRef<number[]>([]);
 
   const {
@@ -1241,7 +1246,7 @@ function Content() {
               all — two action surfaces would stack. Selection, painting, and
               every payload above are untouched. */}
           {verseActions !== 'none' && (
-            <VerseActionPopoverFocusRestoreProvider target={verseFocusRestoreTargetRef.current}>
+            <VerseActionPopoverFocusRestoreProvider takeTarget={takeVerseFocusRestoreTarget}>
               <VerseActionPopover
                 open={popoverOpen && selectedVerses.length > 0}
                 onOpenChange={handlePopoverOpenChange}
