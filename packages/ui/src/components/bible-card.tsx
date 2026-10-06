@@ -20,6 +20,7 @@ import { LoaderIcon } from './icons/loader';
 import { AnimatedHeight } from './animated-height';
 import { useInterfaceDirection } from '@/lib/direction';
 import { useResolvedScriptureDirection } from '@/lib/scripture-direction';
+import { getBibleVersionAttribution } from '@/lib/bible-version-attribution';
 
 type PassageResult = ReturnType<typeof usePassage>;
 type VersionResult = ReturnType<typeof useVersion>;
@@ -143,20 +144,11 @@ function BibleCardVersionPicker({
   );
 }
 
-function BibleCardFooter({
-  copyright,
-  promotionalContent,
-}: {
-  copyright?: string | null;
-  promotionalContent?: string | null;
-}): React.ReactNode {
-  const attribution =
-    (copyright?.trim() && copyright) || (promotionalContent?.trim() && promotionalContent) || '';
-
+function BibleCardFooter({ attribution }: { attribution?: string | null }): React.ReactNode {
   return (
     <div className="yv:grid yv:grid-cols-[1fr_auto] yv:gap-4 yv:items-center yv:mt-4">
       <p className="yv:text-balance yv:text-muted-foreground yv:justify-self-start yv:font-bold yv:text-[0.5rem]">
-        <bdi dir="auto">{attribution}</bdi>
+        <bdi dir="auto">{attribution || ''}</bdi>
       </p>
 
       <div className="yv:justify-self-end">
@@ -284,10 +276,7 @@ export function BibleCard({
           />
         </AnimatedHeight>
 
-        <BibleCardFooter
-          copyright={!passageError ? version?.copyright : null}
-          promotionalContent={!passageError ? version?.promotional_content : null}
-        />
+        <BibleCardFooter attribution={!passageError ? getBibleVersionAttribution(version) : null} />
       </div>
     </section>
   );
