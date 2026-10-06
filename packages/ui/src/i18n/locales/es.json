@@ -106,5 +106,18 @@
   "agreeAndDownload": "Aceptar y descargar",
   "all": "Todos",
   "back": "Atrás",
-  "bibleApp": "Biblia App"
+  "bibleApp": "Biblia App",
+  "alphabetical": "Alfabético",
+  "clearSearch": "Borrar búsqueda",
+  "done": "Listo",
+  "retry": "Reintentar",
+  "traditional": "Tradicional",
+  "bibleSearchBibleHeading": "Biblia",
+  "bibleSearchClearAriaLabel": "Borrar búsqueda",
+  "bibleSearchFilterBoth": "Ambos",
+  "bibleSearchFilterNewTestament": "Nuevo Testamento",
+  "bibleSearchFilterOldTestament": "Antiguo Testamento",
+  "bibleSearchFiltersButton": "Filtros",
+  "bibleSearchRecentHeading": "Búsquedas recientes",
+  "bibleSearchTrendingHeading": "Búsquedas de tendencia"
 }
