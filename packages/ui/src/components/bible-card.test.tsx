@@ -114,56 +114,54 @@ const multiVersePassage: BiblePassage = {
 };
 const highlights: Highlight[] = [{ version_id: 111, passage_id: 'JHN.1.2', color: YELLOW }];
 
-describe('BibleCard - attribution', () => {
-  const loaded = passageResult({ passage: mockPassage, loading: false });
+const loadedPassage = passageResult({ passage: mockPassage, loading: false });
 
-  it('prefers non-whitespace copyright over promotional content', () => {
-    const { container } = renderCard(loaded, {
+it('prefers non-whitespace copyright over promotional content', () => {
+  const { container } = renderCard(loadedPassage, {
+    version: {
+      ...mockVersion,
+      copyright: 'Copyright attribution',
+      promotional_content: 'Promotional attribution',
+    },
+  });
+
+  expect(within(container).getByText('Copyright attribution')).toBeInTheDocument();
+  expect(within(container).queryByText('Promotional attribution')).toBeNull();
+});
+
+it.each([null, undefined, '', '   \n  '])(
+  'falls back to promotional content when copyright is %s',
+  (copyright) => {
+    const { container } = renderCard(loadedPassage, {
       version: {
         ...mockVersion,
-        copyright: 'Copyright attribution',
-        promotional_content: 'Promotional attribution',
+        copyright,
+        promotional_content: '<strong>Promotional attribution</strong>',
       },
     });
 
-    expect(within(container).getByText('Copyright attribution')).toBeInTheDocument();
-    expect(within(container).queryByText('Promotional attribution')).toBeNull();
+    expect(
+      within(container).getByText('<strong>Promotional attribution</strong>'),
+    ).toBeInTheDocument();
+    expect(container.querySelector('strong')).toBeNull();
+  },
+);
+
+it.each([
+  { state: 'absent', version: mockVersion },
+  {
+    state: 'blank',
+    version: { ...mockVersion, copyright: '  ', promotional_content: '\n' },
+  },
+])('renders no attribution when both fields are $state', ({ version }) => {
+  const { container } = renderCard(loadedPassage, {
+    version,
   });
 
-  it.each([null, undefined, '', '   \n  '])(
-    'falls back to promotional content when copyright is %s',
-    (copyright) => {
-      const { container } = renderCard(loaded, {
-        version: {
-          ...mockVersion,
-          copyright,
-          promotional_content: '<strong>Promotional attribution</strong>',
-        },
-      });
-
-      expect(
-        within(container).getByText('<strong>Promotional attribution</strong>'),
-      ).toBeInTheDocument();
-      expect(container.querySelector('strong')).toBeNull();
-    },
+  const attribution = requireHtmlElement(
+    container.querySelector('section > div > div:last-child p bdi'),
   );
-
-  it.each([
-    { state: 'absent', version: mockVersion },
-    {
-      state: 'blank',
-      version: { ...mockVersion, copyright: '  ', promotional_content: '\n' },
-    },
-  ])('renders no attribution when both fields are $state', ({ version }) => {
-    const { container } = renderCard(loaded, {
-      version,
-    });
-
-    const attribution = requireHtmlElement(
-      container.querySelector('section > div > div:last-child p bdi'),
-    );
-    expect(attribution).toHaveTextContent(/^\s*$/);
-  });
+  expect(attribution).toHaveTextContent(/^\s*$/);
 });
 
 describe('BibleCard - Delayed spinner', () => {
