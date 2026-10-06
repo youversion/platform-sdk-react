@@ -271,8 +271,12 @@ export const SearchAndReturn: Story = {
     );
     await userEvent.click(result);
     await waitFor(() => expect(search.queryByRole('dialog')).not.toBeInTheDocument());
-    const destinationVerse = root.querySelector<HTMLElement>('.yv-v[v="51"]');
-    await waitFor(() => expect(root.activeElement).toBe(destinationVerse));
+    const destinationVerse = await waitFor(async () => {
+      const element = root.querySelector<HTMLElement>('.yv-v[v="51"]');
+      if (!element) throw new Error('destination verse not rendered');
+      await expect(root.activeElement).toBe(element);
+      return element;
+    });
 
     await userEvent.click(trigger);
     const { search: reopenedSearch } = await getOpenSearch(context.canvasElement);
@@ -282,7 +286,7 @@ export const SearchAndReturn: Story = {
     const outsideControl = context.canvasElement.querySelector<HTMLButtonElement>(
       '[data-testid="outside-reader-control"]',
     );
-    if (!destinationVerse || !outsideControl) throw new Error('focus regression controls missing');
+    if (!outsideControl) throw new Error('outside focus control missing');
     outsideControl.focus();
     await userEvent.click(destinationVerse);
     const verseActions = await waitFor(() => {
