@@ -244,7 +244,10 @@ export const SearchAndReturn: Story = {
   ...OpenTrending,
   tags: ['integration', 'shadow-dom', 'cross-browser'],
   render: (args) => (
-    <div className="yv:h-screen yv:bg-background">
+    <div className="yv:grid yv:h-screen yv:grid-rows-[auto_1fr] yv:bg-background">
+      <button type="button" data-testid="outside-reader-control">
+        Outside reader
+      </button>
       <BibleReader.Root {...args}>
         <BibleReader.Content />
         <SearchJourneyToolbar />
@@ -268,7 +271,30 @@ export const SearchAndReturn: Story = {
     );
     await userEvent.click(result);
     await waitFor(() => expect(search.queryByRole('dialog')).not.toBeInTheDocument());
-    await waitFor(() => expect(root.activeElement).toBe(root.querySelector('.yv-v[v="51"]')));
+    const destinationVerse = root.querySelector<HTMLElement>('.yv-v[v="51"]');
+    await waitFor(() => expect(root.activeElement).toBe(destinationVerse));
+
+    await userEvent.click(trigger);
+    const { search: reopenedSearch } = await getOpenSearch(context.canvasElement);
+    await userEvent.click(reopenedSearch.getByRole('button', { name: 'Close search' }));
+    await waitFor(() => expect(root.activeElement).toBe(trigger));
+
+    const outsideControl = context.canvasElement.querySelector<HTMLButtonElement>(
+      '[data-testid="outside-reader-control"]',
+    );
+    if (!destinationVerse || !outsideControl) throw new Error('focus regression controls missing');
+    outsideControl.focus();
+    await userEvent.click(destinationVerse);
+    const verseActions = await waitFor(() => {
+      const element = root.querySelector<HTMLElement>(
+        '[data-slot="verse-action-popover"][data-state="open"]',
+      );
+      if (!element) throw new Error('verse actions did not open');
+      return element;
+    });
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(verseActions).not.toBeInTheDocument());
+    await expect(context.canvasElement.ownerDocument.activeElement).toBe(outsideControl);
   },
 };
 

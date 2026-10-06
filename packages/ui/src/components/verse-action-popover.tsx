@@ -450,8 +450,8 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                 const root = getOwnShadowRoot(content);
                 retainOutsideFocusRef.current = false;
                 const activeElement = root
-                  ? (root.activeElement ??
-                    readerFocusRestoreTarget ??
+                  ? (readerFocusRestoreTarget ??
+                    root.activeElement ??
                     getShadowFocusRestoreTarget?.())
                   : documentFocusRestoreTargetRef.current;
                 focusRestoreTargetRef.current = isElementFromOwnerDocument(
