@@ -40,8 +40,8 @@ export function signoffToken({ repoRoot, head, nextVersion }) {
       // `<mode> <type> <object>\t<path>`. Split at the first tab only: a path may contain one,
       // and losing its tail would drop the file from the digest, so an edit to it would not
       // re-trigger a signoff.
-      const tab = line.indexOf('\t');
-      return { meta: line.slice(0, tab), path: line.slice(tab + 1) };
+      const [meta, path] = line.split(/\t(.*)/s);
+      return { meta, path };
     })
     .filter(({ path }) => isChangesetPath(path))
     .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
