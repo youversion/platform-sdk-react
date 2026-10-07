@@ -59,11 +59,10 @@ import { BibleTextView, getCleanVerseText, type FootnoteData } from './verse';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
 import { isHighlightsLive } from '@/lib/feature-flags';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
-import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
+import { YouVersionPlatformConfiguration, getPassageAttribution } from '@youversion/platform-core';
 import { BibleReaderSearch, type BibleReaderSearchPressData } from './bible-reader-search';
 import { useTransientVerseFocus, type VerseFocusRequest } from '@/lib/use-transient-verse-focus';
 import { BibleReaderNavigation } from './bible-reader-navigation';
-import { getBibleVersionAttribution } from '@/lib/bible-version-attribution';
 
 type BibleReaderContextType = {
   book: string;
@@ -802,7 +801,7 @@ function Content() {
     scriptureDirection,
   } = useBibleReaderContext();
   const { version } = useVersion(versionId);
-  const attribution = getBibleVersionAttribution(version);
+  const attribution = version ? getPassageAttribution(version) : null;
   const publisherUrl = version?.publisher_url;
 
   const bookData = useMemo(() => {
@@ -1290,7 +1289,7 @@ function Content() {
           style={{ fontSize: currentFontSize }}
         >
           <p className="yv:text-balance yv:text-[0.75em] yv:text-center yv:text-muted-foreground">
-            <bdi dir="auto">{attribution}</bdi>
+            <bdi dir="auto">{attribution.text}</bdi>
           </p>
           {publisherUrl ? (
             <a

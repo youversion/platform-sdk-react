@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react';
 import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hooks';
 import {
   DEFAULT_LICENSE_FREE_BIBLE_VERSION,
+  getPassageAttribution,
   type Highlight,
   type TextDirection,
 } from '@youversion/platform-core';
@@ -20,7 +21,6 @@ import { LoaderIcon } from './icons/loader';
 import { AnimatedHeight } from './animated-height';
 import { useInterfaceDirection } from '@/lib/direction';
 import { useResolvedScriptureDirection } from '@/lib/scripture-direction';
-import { getBibleVersionAttribution } from '@/lib/bible-version-attribution';
 
 type PassageResult = ReturnType<typeof usePassage>;
 type VersionResult = ReturnType<typeof useVersion>;
@@ -276,7 +276,9 @@ export function BibleCard({
           />
         </AnimatedHeight>
 
-        <BibleCardFooter attribution={!passageError ? getBibleVersionAttribution(version) : null} />
+        <BibleCardFooter
+          attribution={!passageError && version ? getPassageAttribution(version)?.text : null}
+        />
       </div>
     </section>
   );
