@@ -30,6 +30,7 @@ import {
 } from '@youversion/platform-react-hooks';
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -64,6 +65,7 @@ import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import { BibleReaderSearch, type BibleReaderSearchPressData } from './bible-reader-search';
 import { useTransientVerseFocus, type VerseFocusRequest } from '@/lib/use-transient-verse-focus';
 import { BibleReaderNavigation } from './bible-reader-navigation';
+import { VerseActionPopoverFocusRestoreProvider } from '@/lib/verse-action-popover-focus';
 
 type BibleReaderContextType = {
   book: string;
@@ -762,17 +764,19 @@ function Root({
   };
 
   return (
-    <BibleReaderContext.Provider value={contextValue}>
-      <YvComponentStyles />
-      <div
-        data-yv-sdk
-        data-yv-theme={theme}
-        dir={interfaceDirection}
-        className="yv:flex yv:flex-col yv:h-full yv:bg-background yv:text-foreground"
-      >
-        {children}
-      </div>
-    </BibleReaderContext.Provider>
+    <ShadowIsolationBoundary theme={theme} portalStrategy="local-top-layer">
+      <BibleReaderContext.Provider value={contextValue}>
+        <YvComponentStyles />
+        <div
+          data-yv-sdk
+          data-yv-theme={theme}
+          dir={interfaceDirection}
+          className="yv:flex yv:flex-col yv:h-full yv:bg-background yv:text-foreground"
+        >
+          {children}
+        </div>
+      </BibleReaderContext.Provider>
+    </ShadowIsolationBoundary>
   );
 }
 
@@ -874,6 +878,12 @@ function Content() {
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null);
+  const verseFocusRestoreTargetRef = useRef<Element | null>(null);
+  const takeVerseFocusRestoreTarget = useCallback(() => {
+    const target = verseFocusRestoreTargetRef.current;
+    verseFocusRestoreTargetRef.current = null;
+    return target;
+  }, []);
   const lastSelectionRef = useRef<number[]>([]);
 
   const {
@@ -1167,6 +1177,14 @@ function Content() {
     <main
       ref={scrollContainerRef}
       className="yv:*:max-w-lg yv:flex yv:flex-col yv:items-center yv:gap-6 yv:overflow-y-auto yv:px-6 yv:max-sm:px-4 yv:py-12 yv:h-full"
+      onPointerDownCapture={(event) => {
+        let activeElement = event.currentTarget.ownerDocument.activeElement;
+        while (activeElement?.shadowRoot?.activeElement) {
+          activeElement = activeElement.shadowRoot.activeElement;
+        }
+        verseFocusRestoreTargetRef.current =
+          activeElement === event.currentTarget.ownerDocument.body ? null : activeElement;
+      }}
     >
       <h1
         dir={resolvedScriptureDirection}
@@ -1229,21 +1247,23 @@ function Content() {
               all — two action surfaces would stack. Selection, painting, and
               every payload above are untouched. */}
           {verseActions !== 'none' && (
-            <VerseActionPopover
-              open={popoverOpen && selectedVerses.length > 0}
-              onOpenChange={handlePopoverOpenChange}
-              activeHighlights={activeHighlights}
-              selectedVerses={selectedVerses}
-              highlightedVerses={highlightedVerses}
-              highlightsEnabled={highlightsEnabled}
-              anchorElement={anchorElement}
-              scrollRoot={scrollContainerRef.current}
-              onHighlight={handleHighlight}
-              onClearHighlight={handleClearHighlight}
-              onCopy={handleCopy}
-              onShare={handleShare}
-              theme={background}
-            />
+            <VerseActionPopoverFocusRestoreProvider takeTarget={takeVerseFocusRestoreTarget}>
+              <VerseActionPopover
+                open={popoverOpen && selectedVerses.length > 0}
+                onOpenChange={handlePopoverOpenChange}
+                activeHighlights={activeHighlights}
+                selectedVerses={selectedVerses}
+                highlightedVerses={highlightedVerses}
+                highlightsEnabled={highlightsEnabled}
+                anchorElement={anchorElement}
+                scrollRoot={scrollContainerRef.current}
+                onHighlight={handleHighlight}
+                onClearHighlight={handleClearHighlight}
+                onCopy={handleCopy}
+                onShare={handleShare}
+                theme={background}
+              />
+            </VerseActionPopoverFocusRestoreProvider>
           )}
 
           <HighlightPermissionDialog
@@ -1645,112 +1665,116 @@ function Toolbar({
       >
         {yvContext?.authEnabled && <UserMenu />}
 
-        <BibleChapterPicker.Root
-          book={book}
-          chapter={chapter}
-          onBookChange={setBook}
-          onChapterChange={setChapter}
-          versionId={versionId}
-          background={background}
-          onChapterPickerPress={onChapterPickerPress}
-        >
-          <BibleChapterPicker.Trigger>
-            {({ chapterLabel, currentBook, loading }) => (
-              <div className="yv:grid yv:grid-cols-[auto_1fr_auto] yv:justify-start yv:grid-rows-1 yv:overflow-hidden yv:rounded-full yv:min-w-30 yv:bg-muted yv:text-muted-foreground yv:hover:bg-muted/80">
-                <Button
-                  className="yv:min-w-0 yv:group yv:place-self-center yv:max-size-9 yv:touch-hitbox"
-                  size="icon"
-                  variant="ghost"
-                  disabled={!canNavigatePrevious}
-                  aria-label={t('previousChapterAriaLabel')}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (prevResult) {
-                      setBook(prevResult.bookId);
-                      setChapter(prevResult.chapterId);
-                    }
-                  }}
-                >
-                  <ChevronBackwardIcon className="yv:transition-transform yv:duration-100 yv:group-active:translate-y-px" />
-                </Button>
+        <ReuseShadowBoundary>
+          <BibleChapterPicker.Root
+            book={book}
+            chapter={chapter}
+            onBookChange={setBook}
+            onChapterChange={setChapter}
+            versionId={versionId}
+            background={background}
+            onChapterPickerPress={onChapterPickerPress}
+          >
+            <BibleChapterPicker.Trigger>
+              {({ chapterLabel, currentBook, loading }) => (
+                <div className="yv:grid yv:grid-cols-[auto_1fr_auto] yv:justify-start yv:grid-rows-1 yv:overflow-hidden yv:rounded-full yv:min-w-30 yv:bg-muted yv:text-muted-foreground yv:hover:bg-muted/80">
+                  <Button
+                    className="yv:min-w-0 yv:group yv:place-self-center yv:max-size-9 yv:touch-hitbox"
+                    size="icon"
+                    variant="ghost"
+                    disabled={!canNavigatePrevious}
+                    aria-label={t('previousChapterAriaLabel')}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (prevResult) {
+                        setBook(prevResult.bookId);
+                        setChapter(prevResult.chapterId);
+                      }
+                    }}
+                  >
+                    <ChevronBackwardIcon className="yv:transition-transform yv:duration-100 yv:group-active:translate-y-px" />
+                  </Button>
 
+                  <Button
+                    size="lg"
+                    variant="secondary"
+                    className="yv:px-0 yv:font-bold yv:text-foreground yv:min-w-[5ch]"
+                    disabled={loading}
+                    aria-label={t('changeBibleBookAndChapterAriaLabel')}
+                  >
+                    {loading ? (
+                      <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
+                    ) : (
+                      <>
+                        <bdi dir="auto" className="yv:min-w-[3ch] yv:truncate">
+                          {currentBook?.title || t('select')}
+                        </bdi>
+                        <bdi dir="auto" className="yv:tabular-nums yv:min-w-[1ch] yv:truncate">
+                          {chapterLabel || ''}
+                        </bdi>
+                      </>
+                    )}
+                  </Button>
+
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (nextResult) {
+                        setBook(nextResult.bookId);
+                        setChapter(nextResult.chapterId);
+                      }
+                    }}
+                    className="yv:min-w-0 yv:group yv:place-self-center yv:size-9 yv:touch-hitbox"
+                    size="icon"
+                    variant="ghost"
+                    disabled={!canNavigateNext}
+                    aria-label={t('nextChapterAriaLabel')}
+                  >
+                    <ChevronForwardIcon className="yv:transition-transform yv:duration-100 yv:group-active:translate-y-px" />
+                  </Button>
+                </div>
+              )}
+            </BibleChapterPicker.Trigger>
+          </BibleChapterPicker.Root>
+        </ReuseShadowBoundary>
+
+        <ReuseShadowBoundary>
+          <BibleVersionPicker.Root
+            versionId={versionId}
+            onVersionChange={setVersionId}
+            languageId={languageId}
+            defaultLanguageId={defaultLanguageId}
+            onLanguageChange={onLanguageChange}
+            background={background}
+            onVersionPickerPress={onVersionPickerPress}
+          >
+            <BibleVersionPicker.Trigger aria-label={t('changeBibleVersionAriaLabel')}>
+              {({ version, loading }) => (
                 <Button
                   size="lg"
                   variant="secondary"
-                  className="yv:px-0 yv:font-bold yv:text-foreground yv:min-w-[5ch]"
+                  className="yv:min-w-[calc(0.25rem*4*2+3ch)] yv:px-4 yv:font-bold yv:text-foreground"
                   disabled={loading}
-                  aria-label={t('changeBibleBookAndChapterAriaLabel')}
+                  aria-label={
+                    loading ? t('loadingBibleVersionAriaLabel') : t('changeBibleVersionAriaLabel')
+                  }
                 >
-                  {loading ? (
-                    <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
-                  ) : (
-                    <>
-                      <bdi dir="auto" className="yv:min-w-[3ch] yv:truncate">
-                        {currentBook?.title || t('select')}
+                  {/* This div exists merely as a wrapper to minimize width layout shifting */}
+                  <div className="yv:min-w-[3ch] yv:flex yv:justify-center">
+                    {loading ? (
+                      <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
+                    ) : (
+                      <bdi dir="auto" className="yv:truncate">
+                        {version?.localized_abbreviation || t('selectVersion')}
                       </bdi>
-                      <bdi dir="auto" className="yv:tabular-nums yv:min-w-[1ch] yv:truncate">
-                        {chapterLabel || ''}
-                      </bdi>
-                    </>
-                  )}
+                    )}
+                  </div>
                 </Button>
-
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (nextResult) {
-                      setBook(nextResult.bookId);
-                      setChapter(nextResult.chapterId);
-                    }
-                  }}
-                  className="yv:min-w-0 yv:group yv:place-self-center yv:size-9 yv:touch-hitbox"
-                  size="icon"
-                  variant="ghost"
-                  disabled={!canNavigateNext}
-                  aria-label={t('nextChapterAriaLabel')}
-                >
-                  <ChevronForwardIcon className="yv:transition-transform yv:duration-100 yv:group-active:translate-y-px" />
-                </Button>
-              </div>
-            )}
-          </BibleChapterPicker.Trigger>
-        </BibleChapterPicker.Root>
-
-        <BibleVersionPicker.Root
-          versionId={versionId}
-          onVersionChange={setVersionId}
-          languageId={languageId}
-          defaultLanguageId={defaultLanguageId}
-          onLanguageChange={onLanguageChange}
-          background={background}
-          onVersionPickerPress={onVersionPickerPress}
-        >
-          <BibleVersionPicker.Trigger aria-label={t('changeBibleVersionAriaLabel')}>
-            {({ version, loading }) => (
-              <Button
-                size="lg"
-                variant="secondary"
-                className="yv:min-w-[calc(0.25rem*4*2+3ch)] yv:px-4 yv:font-bold yv:text-foreground"
-                disabled={loading}
-                aria-label={
-                  loading ? t('loadingBibleVersionAriaLabel') : t('changeBibleVersionAriaLabel')
-                }
-              >
-                {/* This div exists merely as a wrapper to minimize width layout shifting */}
-                <div className="yv:min-w-[3ch] yv:flex yv:justify-center">
-                  {loading ? (
-                    <LoaderIcon className="yv:size-4 yv:animate-spin yv:text-muted-foreground" />
-                  ) : (
-                    <bdi dir="auto" className="yv:truncate">
-                      {version?.localized_abbreviation || t('selectVersion')}
-                    </bdi>
-                  )}
-                </div>
-              </Button>
-            )}
-          </BibleVersionPicker.Trigger>
-          <BibleVersionPicker.Content />
-        </BibleVersionPicker.Root>
+              )}
+            </BibleVersionPicker.Trigger>
+            <BibleVersionPicker.Content />
+          </BibleVersionPicker.Root>
+        </ReuseShadowBoundary>
 
         {showSearch ? <BibleReaderSearch /> : null}
 

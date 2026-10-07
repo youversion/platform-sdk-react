@@ -201,9 +201,11 @@ function renderReader(props: Partial<BibleReaderRootProps> = {}, overrides?: Hoo
 it('keeps reader-owned scripture in the reader tree without a standalone shadow boundary', async () => {
   const { container } = render(
     <HookOverrideProvider overrides={defaultOverrides()}>
-      <BibleReader.Root defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
-        <BibleReader.Content />
-      </BibleReader.Root>
+      <ReuseShadowBoundary>
+        <BibleReader.Root defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
+          <BibleReader.Content />
+        </BibleReader.Root>
+      </ReuseShadowBoundary>
     </HookOverrideProvider>,
   );
 

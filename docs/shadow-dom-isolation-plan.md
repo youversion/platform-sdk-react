@@ -138,14 +138,13 @@ state confirmed the selected Untitled Serif value, closed dialog, and restored
 trigger focus. This focused browser evidence does not establish
 assistive-technology support.
 
-The current light-DOM `BibleReader` suppresses the standalone boundary around
-its owned settings. A simulated future reader boundary proves that composition
-produces exactly one outer host, no nested settings host, and a settings body in
-the outer root. YPE-5952 must document the empty-host client-only contract,
-open-root automation, native event retargeting, loss of global-CSS access, and
-the supported explicit theme, direction, and callback inputs as part of the
-coordinated major release. YPE-5994 has an empty changeset and must not publish
-an independent partial rollout.
+`BibleReader.Root` suppresses the standalone boundary around its owned settings,
+so the settings body remains in the reader root without nesting. YPE-5952 must
+document the empty-host client-only contract, open-root automation, native
+event retargeting, loss of global-CSS access, and the supported explicit theme,
+direction, and callback inputs as part of the coordinated major release.
+YPE-5994 has an empty changeset and must not publish an independent partial
+rollout.
 
 ## YPE-5950 scripture presentation evidence
 
@@ -153,8 +152,8 @@ Standalone `BibleTextView`, `VerseOfTheDay`, and `BibleCard` now each own one
 client-only open shadow root and reuse the exact empty server host during
 hydration. `VerseOfTheDay` and `BibleCard` suppress the automatic boundary on
 their composed `BibleTextView`; `BibleCard` also suppresses it on its composed
-version picker. The current light-DOM `BibleReader` suppresses the boundary on
-its owned scripture renderer until the reader root lands in YPE-5951.
+version picker. `BibleReader` suppresses the standalone `BibleTextView`
+boundary so its owned scripture renderer reuses the reader root.
 
 Focused unit coverage verifies the exact host matrix, hydration without nested
 or duplicate roots, open-root queries, native event retargeting, the React verse
@@ -181,6 +180,44 @@ light-DOM ancestor can receive one composed event through both the shadow-root
 portal path and the application-root retargeted path. The shared-host correction
 and click, keyboard, and focus regression coverage are assigned to YPE-6040 and
 must land before YPE-5952 releases the coordinated major version.
+
+## YPE-5951 Bible reader evidence
+
+`BibleReader.Root` now owns one client-only open shadow root and reuses the
+exact empty server host during hydration. Reader-owned content, toolbar,
+search, scripture, chapter and version pickers, theme settings, avatar, verse
+actions, and authentication dialogs remain in that root; the chapter and
+version picker `Root` components explicitly reuse it. A consumer may still
+intentionally render another public isolated component as an arbitrary reader
+child, which creates the documented nested-root topology.
+
+Focused unit evidence verifies hydration without recoverable errors, empty
+light DOM, no accidental reader-owned roots, direct `BibleReaderSearch`
+placement, arbitrary child relocation, and intentional public nesting. The
+existing detailed reader behavior suites continue at their reusable
+implementation seams. The existing search and verse-selection browser
+journeys traverse the reader root, and focused hostile-CSS/constrained-layout
+coverage reviews theme, interface and Scripture direction, typography,
+scrolling, and geometry in Chromium, Firefox, and Playwright WebKit.
+
+The concrete `examples/vite-react` reader page was also reviewed in its
+`h-[calc(100vh-3.5rem)]` shell beneath the example navbar: the reader surface
+continues to fill that shell, its toolbar remains above the independently
+scrolling scripture pane, and the constrained browser evidence retains usable
+toolbar and scripture geometry. Interactive review found no obvious
+user-visible performance regression while opening reader-owned settings,
+search, verse actions, and auth overlays; each reuses the one reader root and
+local overlay rather than adding duplicate automatic hosts. This is a
+qualitative product-layout check, not benchmark evidence.
+
+The ADR's client-only first-paint gap is accepted for the reviewed reader
+layout: without JavaScript the reader remains absent, and nearby layout can
+move after the passive-effect mount. This evidence is qualitative and does not
+claim zero layout shift, a benchmark, actual-Safari coverage, or
+assistive-technology coverage. YPE-5952 must document that arbitrary
+`BibleReader.Root` children move into the open root, so document-root queries
+and global CSS no longer reach them. YPE-6040's ancestor React-event dispatch
+correction remains out of scope.
 
 ## Safari spacing evidence
 

@@ -26,6 +26,7 @@ import {
 import { isDarkHighlightHex } from './verse';
 import { useInterfaceDirection } from '@/lib/direction';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
+import { useTakeVerseActionPopoverFocusRestoreTarget } from '@/lib/verse-action-popover-focus';
 
 /** Re-export for back-compat; prefer `@/lib/highlight-colors` for new code. */
 export { HIGHLIGHT_COLORS, type HighlightColor } from '@/lib/highlight-colors';
@@ -102,6 +103,17 @@ function isVerseEvent(event: Event, owner: HTMLElement): boolean {
       (target) =>
         isElementFromOwnerDocument(target, owner, 'Element') && target.matches('.yv-v[v]'),
     );
+}
+
+function isDurableFocusRestoreTarget(
+  target: HTMLElement | null | undefined,
+  ownerDocument?: Document,
+): target is HTMLElement {
+  return Boolean(
+    target?.isConnected &&
+      (!ownerDocument || target.ownerDocument === ownerDocument) &&
+      !target.closest('[data-yv-shadow-local-overlay], [data-yv-shadow-inline-overlay]'),
+  );
 }
 
 type VerseActionPopoverProps = {
@@ -218,6 +230,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
   const direction = useInterfaceDirection();
   const portal = useShadowPortalState({ open, onOpenChange });
   const getShadowFocusRestoreTarget = useShadowFocusRestoreTarget();
+  const takeReaderFocusRestoreTarget = useTakeVerseActionPopoverFocusRestoreTarget();
 
   // On open, Radix's FocusScope would autofocus the first swatch. Because the bar
   // opens from a mouse/tap on non-focusable verse text, Chromium treats that
@@ -447,8 +460,14 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
 
                 const root = getOwnShadowRoot(content);
                 retainOutsideFocusRef.current = false;
+                const readerFocusRestoreTarget = takeReaderFocusRestoreTarget?.() ?? null;
+                const readerTarget =
+                  isElementFromOwnerDocument(readerFocusRestoreTarget, content, 'HTMLElement') &&
+                  isDurableFocusRestoreTarget(readerFocusRestoreTarget, content.ownerDocument)
+                    ? readerFocusRestoreTarget
+                    : null;
                 const activeElement = root
-                  ? (root.activeElement ?? getShadowFocusRestoreTarget?.())
+                  ? (readerTarget ?? root.activeElement ?? getShadowFocusRestoreTarget?.())
                   : documentFocusRestoreTargetRef.current;
                 focusRestoreTargetRef.current = isElementFromOwnerDocument(
                   activeElement,
@@ -462,8 +481,12 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
               onCloseAutoFocus={(event) => {
                 const root = portal.container ? getOwnShadowRoot(portal.container) : null;
                 const target = focusRestoreTargetRef.current;
-                const restoreTarget =
-                  target?.isConnected && (!root || target.getRootNode() === root) ? target : null;
+                const fallbackTarget = getShadowFocusRestoreTarget?.();
+                const restoreTarget = isDurableFocusRestoreTarget(target, root?.ownerDocument)
+                  ? target
+                  : isDurableFocusRestoreTarget(fallbackTarget, root?.ownerDocument)
+                    ? fallbackTarget
+                    : null;
                 if (root || restoreTarget) event.preventDefault();
                 if (!retainOutsideFocusRef.current) restoreTarget?.focus();
                 retainOutsideFocusRef.current = false;

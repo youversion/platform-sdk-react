@@ -1,7 +1,12 @@
 import { expandPassageId } from '@/lib/highlight-projection';
 import { INTER_FONT, SOURCE_SERIF_FONT, UNTITLED_SERIF_FONT } from '@/lib/verse-html-utils';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import type { Highlight } from '@youversion/platform-core';
+import {
+  YouVersionPlatformConfiguration,
+  YouVersionUserInfo,
+  type Highlight,
+} from '@youversion/platform-core';
+import { YouVersionAuthContext } from '@youversion/platform-react-hooks';
 import { delay, http, HttpResponse } from 'msw';
 import { useState } from 'react';
 import { expect, fn, screen, spyOn, userEvent, waitFor, within } from 'storybook/test';
@@ -14,6 +19,22 @@ import {
   type BibleReaderRootProps,
 } from './bible-reader';
 import { VerseActionPopover } from './verse-action-popover';
+import { waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
+
+async function getReaderStory(canvasElement: HTMLElement) {
+  const root = await waitForShadowRoot(canvasElement);
+  const content = await waitForShadowContent(root);
+  return { root, reader: within(content) };
+}
+
+async function getReaderOverlay(root: ShadowRoot) {
+  const overlay = await waitFor(() => {
+    const element = root.querySelector<HTMLElement>('[data-yv-shadow-local-overlay]');
+    if (!element) throw new Error('reader overlay not rendered');
+    return element;
+  });
+  return within(overlay);
+}
 
 async function getPickerQueries(container: ParentNode, triggerName: RegExp | string) {
   return waitFor(() => {
@@ -137,32 +158,34 @@ export const Default: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
+    const { root, reader } = await getReaderStory(canvasElement);
     await waitFor(
       async () => {
-        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        const verseContainer = root.querySelector('[data-slot="yv-bible-renderer"]');
         await expect(verseContainer).toBeInTheDocument();
       },
       { timeout: 5000 },
     );
 
-    const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+    const verseContainer = root.querySelector('[data-slot="yv-bible-renderer"]');
     await expect(verseContainer).toBeInTheDocument();
 
-    const themeContainer = canvasElement.querySelector('[data-yv-theme="light"]');
+    const themeContainer = root.querySelector('[data-yv-theme="light"]');
     await expect(themeContainer).toBeInTheDocument();
 
-    const settingsButton = screen.getByRole('button', { name: /settings/i });
+    const settingsButton = reader.getByRole('button', { name: /settings/i });
     await userEvent.click(settingsButton);
+    const settings = await getReaderOverlay(root);
 
     await waitFor(async () => {
-      await expect(await screen.findByText('Reader Settings')).toBeInTheDocument();
+      await expect(await settings.findByText('Reader Settings')).toBeInTheDocument();
     });
 
-    const fontButtons = screen.getAllByRole('button', { name: /font/i });
+    const fontButtons = settings.getAllByRole('button', { name: /font/i });
     await expect(fontButtons.length).toBe(4);
 
-    const decreaseFontButton = screen.getByTestId('decrease-font-size');
-    const increaseFontButton = screen.getByTestId('increase-font-size');
+    const decreaseFontButton = settings.getByTestId('decrease-font-size');
+    const increaseFontButton = settings.getByTestId('increase-font-size');
 
     await userEvent.click(increaseFontButton);
     await expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('18');
@@ -178,8 +201,8 @@ export const Default: Story = {
     await expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('12');
     await expect(decreaseFontButton).toBeDisabled();
 
-    const interButton = screen.getByRole('button', { name: /inter/i });
-    const untitledSerifButton = screen.getByRole('button', { name: /untitled/i });
+    const interButton = settings.getByRole('button', { name: /inter/i });
+    const untitledSerifButton = settings.getByRole('button', { name: /untitled/i });
 
     await userEvent.click(untitledSerifButton);
     await expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(
@@ -192,7 +215,7 @@ export const Default: Story = {
 };
 
 export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
   args: {
     defaultVersionId: 111,
     lineSpacing: 1.7,
@@ -221,12 +244,16 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
-    const firstVerse = await waitFor(() => {
-      const element = canvasElement.querySelector<HTMLElement>('.yv-v[v="1"]');
-      if (!element) throw new Error('first verse not rendered');
-      return element;
-    });
-    const secondVerse = canvasElement.querySelector<HTMLElement>('.yv-v[v="2"]');
+    const root = await waitForShadowRoot(canvasElement);
+    const firstVerse = await waitFor(
+      () => {
+        const element = root.querySelector<HTMLElement>('.yv-v[v="1"]');
+        if (!element) throw new Error('first verse not rendered');
+        return element;
+      },
+      { timeout: 10000 },
+    );
+    const secondVerse = root.querySelector<HTMLElement>('.yv-v[v="2"]');
     const secondVerseLabel = secondVerse?.querySelector<HTMLElement>('.yv-vlbl');
     const outsideControl = canvasElement.querySelector<HTMLButtonElement>(
       '[data-testid="outside-reader-control"]',
@@ -237,18 +264,41 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     const ownerDocument = canvasElement.ownerDocument;
     await waitFor(() => expect(ownerDocument.activeElement).toBe(outsideControl));
     await userEvent.click(firstVerse);
-    let dialog = await screen.findByRole('dialog');
+    const overlay = await waitFor(() => {
+      const element = root.querySelector<HTMLElement>('[data-yv-shadow-local-overlay]');
+      if (!element) throw new Error('reader verse-action overlay not mounted');
+      return element;
+    });
+    const reader = within(overlay);
+    let dialog = await reader.findByRole('dialog');
 
-    await expect(dialog.getRootNode()).toBe(ownerDocument);
-    await expect(ownerDocument.body).toContainElement(dialog);
-    await waitFor(() => expect(ownerDocument.activeElement).toBe(dialog));
+    await expect(dialog.getRootNode()).toBe(root);
+    await expect(root.contains(dialog)).toBe(true);
+    await waitFor(() => expect(root.activeElement).toBe(dialog));
 
     await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(reader.queryByRole('dialog')).not.toBeInTheDocument());
     await expect(ownerDocument.activeElement).toBe(outsideControl);
 
+    const externalShadowHost = ownerDocument.createElement('div');
+    const externalShadowRoot = externalShadowHost.attachShadow({ mode: 'open' });
+    const externalShadowControl = ownerDocument.createElement('button');
+    externalShadowControl.textContent = 'External shadow control';
+    externalShadowRoot.append(externalShadowControl);
+    outsideControl.after(externalShadowHost);
+    externalShadowControl.focus();
+    await expect(externalShadowRoot.activeElement).toBe(externalShadowControl);
+
     await userEvent.click(firstVerse);
-    dialog = await screen.findByRole('dialog');
+    dialog = await reader.findByRole('dialog');
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(dialog).not.toBeInTheDocument(), { timeout: 10000 });
+    await expect(externalShadowRoot.activeElement).toBe(externalShadowControl);
+    externalShadowHost.remove();
+    outsideControl.focus();
+
+    await userEvent.click(firstVerse);
+    dialog = await reader.findByRole('dialog');
     const firstDialogRect = dialog.getBoundingClientRect();
 
     await userEvent.click(secondVerseLabel);
@@ -263,7 +313,7 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     });
 
     await userEvent.pointer({ keys: '[MouseLeft>]', target: outsideControl });
-    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    await waitFor(() => expect(dialog).not.toBeInTheDocument(), { timeout: 10000 });
     await expect(firstVerse).not.toHaveClass('yv-v-selected');
     await expect(secondVerse).not.toHaveClass('yv-v-selected');
     await userEvent.pointer({ keys: '[/MouseLeft]', target: outsideControl });
@@ -273,7 +323,7 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     // composed path is already empty when Radix asks whether to dismiss.
     const touchUser = userEvent.setup({ document: ownerDocument });
     await touchUser.pointer({ keys: '[TouchA]', target: firstVerse });
-    dialog = await screen.findByRole('dialog');
+    dialog = await reader.findByRole('dialog');
     // Radix disables animations until placement completes. Measure after both
     // so initial positioning or animation cannot count as verse reanchoring.
     await waitFor(() => expect(dialog.style.animation).not.toBe('none'));
@@ -292,10 +342,189 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     await touchUser.pointer({ keys: '[TouchA>]', target: outsideControl });
     await expect(dialog).toHaveAttribute('data-state', 'open');
     await touchUser.pointer({ keys: '[/TouchA]', target: outsideControl });
-    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    await waitFor(() => expect(dialog).not.toBeInTheDocument(), { timeout: 10000 });
     await expect(firstVerse).not.toHaveClass('yv-v-selected');
     await expect(secondVerse).not.toHaveClass('yv-v-selected');
     await expect(ownerDocument.activeElement).toBe(outsideControl);
+  },
+};
+
+export const HostileCssConstrainedLayout: Story = {
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+    background: 'dark',
+    fontFamily: INTER_FONT,
+    fontSize: 18,
+    onFontFamilyChange: fn(),
+    onFontSizeChange: fn(),
+    onChangeLineSpacing: fn(),
+    scriptureDirection: 'ltr',
+  },
+  globals: {
+    interfaceDirection: 'rtl',
+    locale: 'en',
+  },
+  render: (args) => (
+    <div data-testid="hostile-reader-layout" style={{ blockSize: 520, inlineSize: 390 }}>
+      <style>{`
+        [data-testid='hostile-reader-layout'] * { all: unset !important; color: rgb(255 0 0) !important; }
+        [data-testid='consumer-reader-child'] { position: fixed !important; inline-size: 9999px !important; }
+      `}</style>
+      <BibleReader.Root {...args}>
+        <p data-testid="consumer-reader-child">Consumer child</p>
+        <BibleReader.Toolbar />
+        <BibleReader.Content />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const root = await waitForShadowRoot(canvasElement);
+    const body = root.querySelector<HTMLElement>(
+      '[data-yv-shadow-content-wrapper] > [data-yv-sdk]',
+    );
+    const consumerChild = root.querySelector<HTMLElement>('[data-testid="consumer-reader-child"]');
+    const renderer = await waitFor(
+      () => {
+        const element = root.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
+        if (!element) throw new Error('reader scripture not mounted');
+        return element;
+      },
+      { timeout: 10000 },
+    );
+    const scroller = root.querySelector<HTMLElement>('main');
+    const toolbar = root.querySelector<HTMLElement>('section');
+    if (!body || !consumerChild || !scroller || !toolbar) {
+      throw new Error('reader layout evidence not rendered');
+    }
+
+    await expect(canvasElement.querySelector('[data-testid="consumer-reader-child"]')).toBeNull();
+    await expect(body).toHaveAttribute('data-yv-theme', 'dark');
+    await expect(body).toHaveAttribute('dir', 'rtl');
+    await expect(renderer).toHaveAttribute('dir', 'ltr');
+    await expect(getComputedStyle(renderer).fontFamily).toContain('Inter');
+    await expect(getComputedStyle(renderer).fontSize).toBe('18px');
+    await expect(getComputedStyle(scroller).overflowY).toBe('auto');
+    await expect(getComputedStyle(consumerChild).color).not.toBe('rgb(255, 0, 0)');
+    await expect(consumerChild.getBoundingClientRect().width).toBeLessThanOrEqual(390);
+    await expect(toolbar.getBoundingClientRect().width).toBeLessThanOrEqual(390);
+  },
+};
+
+async function openReaderHighlightAuthDialog(canvasElement: HTMLElement) {
+  const root = await waitForShadowRoot(canvasElement);
+  const verse = await waitFor(() => {
+    const element = root.querySelector<HTMLElement>('.yv-v[v="1"]');
+    if (!element) throw new Error('highlight-auth verse not rendered');
+    return element;
+  });
+  await userEvent.click(verse);
+  const overlay = await waitFor(() => {
+    const element = root.querySelector<HTMLElement>('[data-yv-shadow-local-overlay]');
+    if (!element) throw new Error('reader auth overlay not mounted');
+    return element;
+  });
+  const overlays = within(overlay);
+  const colors = await overlays.findByRole('group', { name: 'Highlight colors' });
+  const apply = Array.from(colors.querySelectorAll<HTMLButtonElement>('button')).find((button) =>
+    button.getAttribute('aria-label')?.includes('Apply'),
+  );
+  if (!apply) throw new Error('highlight apply control not rendered');
+  await userEvent.click(apply);
+  return { apply, overlays, root };
+}
+
+export const SignedOutHighlightAuthOwnership: Story = {
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+  },
+  render: (args) => (
+    <div className="yv:h-screen yv:bg-background">
+      <BibleReader.Root {...args}>
+        <BibleReader.Content />
+      </BibleReader.Root>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const { apply, overlays, root } = await openReaderHighlightAuthDialog(canvasElement);
+    const yes = await overlays.findByRole('button', { name: 'Yes Please' });
+    const dialog = yes.closest<HTMLElement>('[role="dialog"]');
+    if (!dialog) throw new Error('sign-in dialog not rendered');
+    await expect(dialog.getRootNode()).toBe(root);
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(overlays.queryByRole('button', { name: 'Yes Please' })).toBeNull());
+    // The shared local overlay stays mounted because the verse-actions dialog
+    // remains open underneath the dismissed auth dialog.
+    await expect(overlays.getByRole('dialog', { name: 'Verse actions' })).toBeInTheDocument();
+    await expect(root.activeElement).toBe(apply);
+  },
+};
+
+function SignedInPermissionReader(args: BibleReaderRootProps) {
+  const [userInfo] = useState(
+    () =>
+      new YouVersionUserInfo({
+        id: 'mock-user-id',
+        name: 'Test User',
+        email: 'test@example.com',
+      }),
+  );
+
+  return (
+    <YouVersionAuthContext.Provider
+      value={{ userInfo, setUserInfo: fn(), isLoading: false, error: null }}
+    >
+      <div className="yv:h-screen yv:bg-background">
+        <BibleReader.Root {...args}>
+          <BibleReader.Content />
+          <BibleReader.Toolbar />
+        </BibleReader.Root>
+      </div>
+    </YouVersionAuthContext.Provider>
+  );
+}
+
+export const SignedInHighlightPermissionOwnership: Story = {
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  args: {
+    defaultVersionId: 111,
+    defaultBook: 'JHN',
+    defaultChapter: '1',
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('*/v1/highlights', () => HttpResponse.json({ data: [], next_page_token: null })),
+        ...globalHandlers,
+      ],
+    },
+  },
+  render: (args) => <SignedInPermissionReader {...args} />,
+  play: async ({ canvasElement }) => {
+    await setupAuthenticatedUser();
+    YouVersionPlatformConfiguration.clearGrantedPermissions();
+    const { root: readerRoot, reader } = await getReaderStory(canvasElement);
+    const avatarTrigger = await reader.findByTestId('user-menu-trigger');
+    const avatar = avatarTrigger.querySelector<HTMLElement>('[data-slot="avatar"]');
+    await expect(avatar).toBeInTheDocument();
+    await expect(avatar?.getRootNode()).toBe(readerRoot);
+    await expect(readerRoot.querySelector('[data-yv-shadow-host]')).toBeNull();
+
+    const { apply, overlays, root } = await openReaderHighlightAuthDialog(canvasElement);
+    const continueButton = await overlays.findByRole('button', { name: 'Continue' });
+    const dialog = continueButton.closest<HTMLElement>('[role="dialog"]');
+    if (!dialog) throw new Error('permission dialog not rendered');
+    await expect(dialog.getRootNode()).toBe(root);
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(overlays.queryByRole('button', { name: 'Continue' })).toBeNull());
+    // The reader-owned overlay container still serves the open verse-actions dialog.
+    await expect(overlays.getByRole('dialog', { name: 'Verse actions' })).toBeInTheDocument();
+    await expect(root.activeElement).toBe(apply);
   },
 };
 
@@ -346,13 +575,14 @@ export const RtlScriptureWithLtrChrome: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
+    const { root, reader } = await getReaderStory(canvasElement);
     await waitFor(async () => {
-      const renderer = canvasElement.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
+      const renderer = root.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
       await expect(renderer).toHaveAttribute('dir', 'rtl');
       await expect(renderer?.textContent).toContain('في البدء');
     });
 
-    const renderer = canvasElement.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]')!;
+    const renderer = root.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]')!;
     const poetry = renderer.querySelector<HTMLElement>('.q1')!;
     const table = renderer.querySelector('table');
     const rendererStyle = getComputedStyle(renderer);
@@ -361,24 +591,25 @@ export const RtlScriptureWithLtrChrome: Story = {
     await expect(Number.parseFloat(poetryStyle.paddingRight)).toBeGreaterThan(0);
     await expect(poetryStyle.paddingLeft).toBe('0px');
     await expect(table).toBeInTheDocument();
-    const heading = canvasElement.querySelector('h1')!;
+    const heading = root.querySelector('h1')!;
     await expect(heading).toHaveAttribute('dir', 'rtl');
     await waitFor(async () => {
       await expect(heading.querySelectorAll('bdi[dir="auto"]')).toHaveLength(2);
     });
 
-    await userEvent.click(screen.getByRole('button', { name: /footnote/i }));
+    await userEvent.click(reader.getByRole('button', { name: /footnote/i }));
+    const overlays = await getReaderOverlay(root);
     await waitFor(async () => {
-      const dialog = await screen.findByRole('dialog');
+      const dialog = await overlays.findByRole('dialog');
       await expect(dialog).toHaveAttribute('dir', 'ltr');
       await expect(dialog.querySelector('[data-yv-sdk]')).toHaveAttribute('dir', 'rtl');
-      await expect(await screen.findByText('حاشية عربية.')).toBeInTheDocument();
+      await expect(await overlays.findByText('حاشية عربية.')).toBeInTheDocument();
     });
-    await userEvent.click(screen.getByRole('button', { name: /close/i }));
+    await userEvent.click(overlays.getByRole('button', { name: /close/i }));
 
-    await userEvent.click(screen.getByRole('button', { name: /settings/i }));
+    await userEvent.click(reader.getByRole('button', { name: /settings/i }));
     await waitFor(async () => {
-      const settings = await screen.findByText('Reader Settings');
+      const settings = await overlays.findByText('Reader Settings');
       await expect(settings.closest('[role="dialog"]')).toHaveAttribute('dir', 'ltr');
     });
   },
@@ -413,9 +644,10 @@ export const ArabicInterfaceAndScripture: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
+    const { root } = await getReaderStory(canvasElement);
     await waitFor(async () => {
-      await expect(canvasElement.querySelector('[data-yv-sdk][dir="rtl"]')).toBeInTheDocument();
-      await expect(canvasElement.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute(
+      await expect(root.querySelector('[data-yv-sdk][dir="rtl"]')).toBeInTheDocument();
+      await expect(root.querySelector('[data-slot="yv-bible-renderer"]')).toHaveAttribute(
         'dir',
         'rtl',
       );
@@ -455,9 +687,10 @@ export const ArabicInterfaceWithEnglishScripture: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
+    const { root } = await getReaderStory(canvasElement);
     const renderer = await waitFor(async () => {
-      await expect(canvasElement.querySelector('[data-yv-sdk][dir="rtl"]')).toBeInTheDocument();
-      const element = canvasElement.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
+      await expect(root.querySelector('[data-yv-sdk][dir="rtl"]')).toBeInTheDocument();
+      const element = root.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
       await expect(element).toHaveAttribute('dir', 'ltr');
       return element!;
     });
@@ -497,6 +730,7 @@ export const ForcedRtlChromeGeometry: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
+    const { root, reader } = await getReaderStory(canvasElement);
     const {
       root: chapterRoot,
       picker: chapterPicker,
@@ -505,13 +739,13 @@ export const ForcedRtlChromeGeometry: Story = {
     const previous = chapterPicker.getByRole('button', { name: 'Previous chapter' });
     const next = chapterPicker.getByRole('button', { name: 'Next chapter' });
     const renderer = await waitFor(async () => {
-      const element = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+      const element = root.querySelector('[data-slot="yv-bible-renderer"]');
       await expect(element).toBeInTheDocument();
       return element;
     });
 
     await expect(renderer).toHaveAttribute('dir', 'ltr');
-    await expect(canvasElement.querySelector('h1')).toHaveAttribute('dir', 'ltr');
+    await expect(root.querySelector('h1')).toHaveAttribute('dir', 'ltr');
     await expect(previous.getBoundingClientRect().left).toBeGreaterThan(
       chapter.getBoundingClientRect().left,
     );
@@ -563,8 +797,8 @@ export const ForcedRtlChromeGeometry: Story = {
     ).toHaveAttribute('dir', 'auto');
 
     await userEvent.click(versionCanvas.getByRole('button', { name: 'Close' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
-    const settingsDialog = await screen.findByRole('dialog');
+    await userEvent.click(reader.getByRole('button', { name: 'Settings' }));
+    const settingsDialog = await (await getReaderOverlay(root)).findByRole('dialog');
     const settingsCanvas = within(settingsDialog);
     const decrease = settingsCanvas.getByTestId('decrease-font-size');
     const increase = settingsCanvas.getByTestId('increase-font-size');
@@ -673,9 +907,10 @@ export const CustomStyling: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
+    const { root } = await getReaderStory(canvasElement);
     await waitFor(
       async () => {
-        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        const verseContainer = root.querySelector('[data-slot="yv-bible-renderer"]');
         await expect(verseContainer).toBeInTheDocument();
       },
       { timeout: 5000 },
@@ -703,9 +938,10 @@ export const FontSizeOutOfRange: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
+    const { root } = await getReaderStory(canvasElement);
     await waitFor(
       async () => {
-        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        const verseContainer = root.querySelector('[data-slot="yv-bible-renderer"]');
         await expect(verseContainer).toBeInTheDocument();
       },
       { timeout: 5000 },
@@ -750,15 +986,16 @@ export const FootnotesPersistAfterFontSizeChange: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
+    const { root, reader } = await getReaderStory(canvasElement);
     await waitFor(
       async () => {
-        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        const verseContainer = root.querySelector('[data-slot="yv-bible-renderer"]');
         await expect(verseContainer).toBeInTheDocument();
       },
       { timeout: 5000 },
     );
 
-    const getFootnoteButtons = () => canvasElement.querySelectorAll('[data-verse-footnote] button');
+    const getFootnoteButtons = () => root.querySelectorAll('[data-verse-footnote] button');
 
     await waitFor(
       async () => {
@@ -770,14 +1007,15 @@ export const FootnotesPersistAfterFontSizeChange: Story = {
 
     const initialFootnoteCount = getFootnoteButtons().length;
 
-    const settingsButton = screen.getByRole('button', { name: /settings/i });
+    const settingsButton = reader.getByRole('button', { name: /settings/i });
     await userEvent.click(settingsButton);
+    const settings = await getReaderOverlay(root);
 
     await waitFor(async () => {
-      await expect(await screen.findByText('Reader Settings')).toBeInTheDocument();
+      await expect(await settings.findByText('Reader Settings')).toBeInTheDocument();
     });
 
-    const increaseFontButton = screen.getByTestId('increase-font-size');
+    const increaseFontButton = settings.getByTestId('increase-font-size');
     await userEvent.click(increaseFontButton);
 
     await waitFor(async () => {
@@ -785,7 +1023,7 @@ export const FootnotesPersistAfterFontSizeChange: Story = {
       await expect(footnoteButtons.length).toBe(initialFootnoteCount);
     });
 
-    const decreaseFontButton = screen.getByTestId('decrease-font-size');
+    const decreaseFontButton = settings.getByTestId('decrease-font-size');
     await userEvent.click(decreaseFontButton);
     await userEvent.click(decreaseFontButton);
 
@@ -816,32 +1054,34 @@ export const ThemeOverridesProvider: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
+    const { root } = await getReaderStory(canvasElement);
     await waitFor(
       async () => {
-        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        const verseContainer = root.querySelector('[data-slot="yv-bible-renderer"]');
         await expect(verseContainer).toBeInTheDocument();
       },
       { timeout: 5000 },
     );
 
-    const readerTheme = canvasElement.querySelector('[data-yv-theme="light"]');
+    const readerTheme = root.querySelector('[data-yv-theme="light"]');
     await expect(readerTheme).toBeInTheDocument();
 
     await waitFor(
       async () => {
-        const footnoteButton = canvasElement.querySelector('[data-verse-footnote] button');
+        const footnoteButton = root.querySelector('[data-verse-footnote] button');
         await expect(footnoteButton).toBeInTheDocument();
       },
       { timeout: 5000 },
     );
 
-    const footnoteButton = canvasElement.querySelector('[data-verse-footnote] button');
+    const footnoteButton = root.querySelector('[data-verse-footnote] button');
     await expect(footnoteButton?.closest('[data-yv-theme="light"]')).toBeInTheDocument();
 
     await userEvent.click(footnoteButton!);
 
+    const overlays = await getReaderOverlay(root);
     await waitFor(async () => {
-      const popover = document.querySelector('[data-slot="popover-content"]');
+      const popover = overlays.queryByRole('dialog');
       await expect(popover).toBeInTheDocument();
       await expect(popover?.closest('[data-yv-theme="light"]')).toBeInTheDocument();
     });
@@ -863,26 +1103,28 @@ export const SignInFlow: Story = {
       </BibleReader.Root>
     </div>
   ),
-  play: async () => {
+  play: async ({ canvasElement }) => {
+    const { root, reader } = await getReaderStory(canvasElement);
     await waitFor(
       async () => {
-        const userMenuTrigger = screen.getByTestId('user-menu-trigger');
+        const userMenuTrigger = reader.getByTestId('user-menu-trigger');
         await expect(userMenuTrigger).toBeInTheDocument();
       },
       { timeout: 5000 },
     );
 
-    const userMenuTrigger = screen.getByTestId('user-menu-trigger');
+    const userMenuTrigger = reader.getByTestId('user-menu-trigger');
     await expect(userMenuTrigger.querySelector('img')).not.toBeInTheDocument();
 
     await userEvent.click(userMenuTrigger);
 
+    const overlays = await getReaderOverlay(root);
     await waitFor(async () => {
-      const signInButton = await screen.findByRole('button', { name: /sign in/i });
+      const signInButton = await overlays.findByRole('button', { name: /sign in/i });
       await expect(signInButton).toBeInTheDocument();
     });
 
-    const signInButton = screen.getByRole('button', { name: /sign in/i });
+    const signInButton = overlays.getByRole('button', { name: /sign in/i });
     await userEvent.click(signInButton);
 
     await expect(signInMock).toHaveBeenCalled();
@@ -910,16 +1152,17 @@ export const SignOutFlow: Story = {
       </BibleReader.Root>
     </div>
   ),
-  play: async () => {
+  play: async ({ canvasElement }) => {
+    const { root, reader } = await getReaderStory(canvasElement);
     await waitFor(
       async () => {
-        const userMenuTrigger = screen.getByTestId('user-menu-trigger');
+        const userMenuTrigger = reader.getByTestId('user-menu-trigger');
         await expect(userMenuTrigger).toBeInTheDocument();
       },
       { timeout: 5000 },
     );
 
-    const userMenuTrigger = screen.getByTestId('user-menu-trigger');
+    const userMenuTrigger = reader.getByTestId('user-menu-trigger');
 
     await waitFor(async () => {
       const avatar = userMenuTrigger.querySelector('[data-slot="avatar"]');
@@ -928,16 +1171,17 @@ export const SignOutFlow: Story = {
 
     await userEvent.click(userMenuTrigger);
 
+    const overlays = await getReaderOverlay(root);
     await waitFor(async () => {
-      const signOutButton = await screen.findByRole('button', { name: /sign out/i });
+      const signOutButton = await overlays.findByRole('button', { name: /sign out/i });
       await expect(signOutButton).toBeInTheDocument();
     });
 
-    const signOutButton = screen.getByRole('button', { name: /sign out/i });
+    const signOutButton = overlays.getByRole('button', { name: /sign out/i });
     await userEvent.click(signOutButton);
 
     await waitFor(async () => {
-      const userMenuTriggerAfterSignOut = screen.getByTestId('user-menu-trigger');
+      const userMenuTriggerAfterSignOut = reader.getByTestId('user-menu-trigger');
       await expect(userMenuTriggerAfterSignOut.querySelector('img')).not.toBeInTheDocument();
     });
   },
@@ -964,16 +1208,17 @@ export const AuthenticatedWithAvatar: Story = {
       </BibleReader.Root>
     </div>
   ),
-  play: async () => {
+  play: async ({ canvasElement }) => {
+    const { reader } = await getReaderStory(canvasElement);
     await waitFor(
       async () => {
-        const userMenuTrigger = screen.getByTestId('user-menu-trigger');
+        const userMenuTrigger = reader.getByTestId('user-menu-trigger');
         await expect(userMenuTrigger).toBeInTheDocument();
       },
       { timeout: 5000 },
     );
 
-    const userMenuTrigger = screen.getByTestId('user-menu-trigger');
+    const userMenuTrigger = reader.getByTestId('user-menu-trigger');
 
     // Radix only renders the <img> once it loads successfully.
     await waitFor(async () => {
@@ -1008,18 +1253,17 @@ export const LoadsSavedPreferencesFromLocalStorage: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
+    const { root, reader } = await getReaderStory(canvasElement);
     await waitFor(
       async () => {
-        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        const verseContainer = root.querySelector('[data-slot="yv-bible-renderer"]');
         await expect(verseContainer).toBeInTheDocument();
       },
       { timeout: 5000 },
     );
 
     // Verify the saved settings were applied via CSS variables
-    const verseContainer = canvasElement.querySelector<HTMLElement>(
-      '[data-slot="yv-bible-renderer"]',
-    )!;
+    const verseContainer = root.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]')!;
     await expect(verseContainer.style.getPropertyValue('--yv-reader-font-size')).toBe('18px');
     // The legacy Source Serif value seeded above is migrated forward on hydrate.
     await expect(verseContainer.style.getPropertyValue('--yv-reader-font-family')).toBe(
@@ -1030,17 +1274,18 @@ export const LoadsSavedPreferencesFromLocalStorage: Story = {
     );
 
     // Open settings and verify the correct font family button is active
-    const settingsButton = screen.getByRole('button', { name: /settings/i });
+    const settingsButton = reader.getByRole('button', { name: /settings/i });
     await userEvent.click(settingsButton);
+    const settings = await getReaderOverlay(root);
 
     await waitFor(async () => {
-      await expect(await screen.findByText('Reader Settings')).toBeInTheDocument();
+      await expect(await settings.findByText('Reader Settings')).toBeInTheDocument();
     });
 
-    const untitledSerifButton = screen.getByRole('button', { name: /untitled/i });
+    const untitledSerifButton = settings.getByRole('button', { name: /untitled/i });
     await expect(untitledSerifButton).toHaveClass('yv:bg-primary');
 
-    const interButton = screen.getByRole('button', { name: /inter/i });
+    const interButton = settings.getByRole('button', { name: /inter/i });
     await expect(interButton).not.toHaveClass('yv:bg-primary');
   },
 };
@@ -1064,16 +1309,17 @@ export const AuthenticatedWithoutAvatar: Story = {
       </BibleReader.Root>
     </div>
   ),
-  play: async () => {
+  play: async ({ canvasElement }) => {
+    const { root, reader } = await getReaderStory(canvasElement);
     await waitFor(
       async () => {
-        const userMenuTrigger = screen.getByTestId('user-menu-trigger');
+        const userMenuTrigger = reader.getByTestId('user-menu-trigger');
         await expect(userMenuTrigger).toBeInTheDocument();
       },
       { timeout: 5000 },
     );
 
-    const userMenuTrigger = screen.getByTestId('user-menu-trigger');
+    const userMenuTrigger = reader.getByTestId('user-menu-trigger');
     // No image URL → initials fallback ("Test User" → "TU") inside the avatar circle.
     await expect(userMenuTrigger.querySelector('img')).not.toBeInTheDocument();
     await waitFor(async () => {
@@ -1084,8 +1330,9 @@ export const AuthenticatedWithoutAvatar: Story = {
 
     await userEvent.click(userMenuTrigger);
 
+    const overlays = await getReaderOverlay(root);
     await waitFor(async () => {
-      const signOutButton = await screen.findByRole('button', { name: /sign out/i });
+      const signOutButton = await overlays.findByRole('button', { name: /sign out/i });
       await expect(signOutButton).toBeInTheDocument();
     });
   },
@@ -1114,21 +1361,22 @@ export const WithoutAuth: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
+    const { root, reader } = await getReaderStory(canvasElement);
     // Wait for the Bible content to load
     await waitFor(
       async () => {
-        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        const verseContainer = root.querySelector('[data-slot="yv-bible-renderer"]');
         await expect(verseContainer).toBeInTheDocument();
       },
       { timeout: 5000 },
     );
 
     // Verify Bible content is displayed
-    const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+    const verseContainer = root.querySelector('[data-slot="yv-bible-renderer"]');
     await expect(verseContainer).toBeInTheDocument();
 
     // User menu should not be visible when auth is disabled
-    const userMenuTrigger = canvasElement.querySelector('[data-testid="user-menu-trigger"]');
+    const userMenuTrigger = root.querySelector('[data-testid="user-menu-trigger"]');
     await expect(userMenuTrigger).not.toBeInTheDocument();
 
     // Chapter picker and version picker should still work
@@ -1142,7 +1390,7 @@ export const WithoutAuth: Story = {
     await expect(versionButton).toBeInTheDocument();
 
     // Settings should still work
-    const settingsButton = screen.getByRole('button', { name: /settings/i });
+    const settingsButton = reader.getByRole('button', { name: /settings/i });
     await expect(settingsButton).toBeInTheDocument();
   },
 };
@@ -1231,17 +1479,18 @@ export const JoshuaIntroChapter: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
+    const { root } = await getReaderStory(canvasElement);
     // Wait for the intro content to fully load (not just the renderer element)
     await waitFor(
       async () => {
-        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        const verseContainer = root.querySelector('[data-slot="yv-bible-renderer"]');
         await expect(verseContainer).toBeInTheDocument();
         await expect(verseContainer?.textContent).toContain('Joshua');
       },
       { timeout: 5000 },
     );
 
-    const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]')!;
+    const verseContainer = root.querySelector('[data-slot="yv-bible-renderer"]')!;
 
     // The unavailable message should not appear
     const hasUnavailableText = verseContainer.textContent?.includes('not available');
@@ -1290,8 +1539,9 @@ export const JoshuaIntroChapter: Story = {
     // Click the footnote and verify the popover shows note content without verse reference
     await userEvent.click(footnoteButton!);
 
+    const overlays = await getReaderOverlay(root);
     await waitFor(async () => {
-      const popover = document.querySelector('[role="dialog"]');
+      const popover = overlays.queryByRole('dialog');
       await expect(popover).toBeInTheDocument();
 
       // Should show note content (e.g., "See Rashi")
@@ -1451,9 +1701,10 @@ export const ChapterChangeLoadingOverlay: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
+    const { root } = await getReaderStory(canvasElement);
     await waitFor(
       async () => {
-        const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        const renderer = root.querySelector('[data-slot="yv-bible-renderer"]');
         await expect(renderer?.textContent).toContain('JHN.1');
       },
       { timeout: 5000 },
@@ -1466,16 +1717,16 @@ export const ChapterChangeLoadingOverlay: Story = {
     const nextButton = chapterPicker.getByRole('button', { name: /next chapter/i });
     await userEvent.click(nextButton);
 
-    const rendererAfterClick = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+    const rendererAfterClick = root.querySelector('[data-slot="yv-bible-renderer"]');
     await expect(rendererAfterClick?.textContent).toContain('JHN.1');
 
     await waitFor(
       async () => {
-        const overlay = canvasElement.querySelector('[aria-label="Loading passage"]');
+        const overlay = root.querySelector('[aria-label="Loading passage"]');
         await expect(overlay).toBeInTheDocument();
         await expect(overlay).toHaveAttribute('role', 'status');
-        await expect(canvasElement.querySelector('[class*="opacity-40"]')).toBeInTheDocument();
-        const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        await expect(root.querySelector('[class*="opacity-40"]')).toBeInTheDocument();
+        const renderer = root.querySelector('[data-slot="yv-bible-renderer"]');
         await expect(renderer?.textContent).toContain('JHN.1');
       },
       { timeout: 2000 },
@@ -1483,17 +1734,15 @@ export const ChapterChangeLoadingOverlay: Story = {
 
     await waitFor(
       async () => {
-        const renderer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        const renderer = root.querySelector('[data-slot="yv-bible-renderer"]');
         await expect(renderer?.textContent).toContain('JHN.2');
-        await expect(
-          canvasElement.querySelector('[aria-label="Loading passage"]'),
-        ).not.toBeInTheDocument();
-        await expect(canvasElement.querySelector('[class*="opacity-40"]')).not.toBeInTheDocument();
+        await expect(root.querySelector('[aria-label="Loading passage"]')).not.toBeInTheDocument();
+        await expect(root.querySelector('[class*="opacity-40"]')).not.toBeInTheDocument();
       },
       { timeout: 5000 },
     );
 
-    const scroller = canvasElement.querySelector('main');
+    const scroller = root.querySelector('main');
     await expect(scroller?.scrollTop).toBe(0);
   },
 };
