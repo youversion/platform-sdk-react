@@ -203,7 +203,7 @@ export function ShadowRootHost({
   const activePortalIdsRef = useRef(new Set<string>());
   const contentWrapperRef = useRef<HTMLDivElement | null>(null);
   const presentModalIdsRef = useRef(new Set<string>());
-  const dispatchedEventsRef = useRef(new WeakSet<Event>());
+  const reactTraversedNativeEventsRef = useRef(new WeakSet<Event>());
   const pendingFocusTargetRef = useRef<
     (ShadowFocusRestoreSnapshot & { ownerId: string }) | null
   >(null);
@@ -216,11 +216,12 @@ export function ShadowRootHost({
   }, []);
   const stopDuplicateReactPropagation = useCallback((event: SyntheticEvent<HTMLElement>): void => {
     const nativeEvent = event.nativeEvent;
-    if (!dispatchedEventsRef.current.has(nativeEvent)) {
-      dispatchedEventsRef.current.add(nativeEvent);
+    if (!reactTraversedNativeEventsRef.current.has(nativeEvent)) {
+      reactTraversedNativeEventsRef.current.add(nativeEvent);
       return;
     }
 
+    reactTraversedNativeEventsRef.current.delete(nativeEvent);
     // A portal event follows the React tree once from inside the shadow root,
     // then the same native event reaches the application root after retargeting.
     // Stop only React's second logical traversal so native propagation remains intact.

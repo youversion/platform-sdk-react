@@ -58,9 +58,11 @@ interface AutomaticButtonEvidenceOutput extends HTMLOutputElement {
   componentClickTarget?: EventTarget | null;
   componentFocusCount?: number;
   componentFocusCurrentTarget?: EventTarget | null;
+  componentFocusTarget?: EventTarget | null;
   componentKey?: string;
   componentKeyDownCount?: number;
   componentKeyDownCurrentTarget?: EventTarget | null;
+  componentKeyDownTarget?: EventTarget | null;
   forwardedRefNode?: EventTarget | null;
 }
 
@@ -298,6 +300,7 @@ function AutomaticButtonHarness(): React.ReactNode {
               if (evidenceRef.current) {
                 evidenceRef.current.componentFocusCount =
                   (evidenceRef.current.componentFocusCount ?? 0) + 1;
+                evidenceRef.current.componentFocusTarget = event.target;
                 evidenceRef.current.componentFocusCurrentTarget = event.currentTarget;
               }
             }}
@@ -306,6 +309,7 @@ function AutomaticButtonHarness(): React.ReactNode {
                 evidenceRef.current.componentKeyDownCount =
                   (evidenceRef.current.componentKeyDownCount ?? 0) + 1;
                 evidenceRef.current.componentKey = event.key;
+                evidenceRef.current.componentKeyDownTarget = event.target;
                 evidenceRef.current.componentKeyDownCurrentTarget = event.currentTarget;
               }
             }}
@@ -378,11 +382,12 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
       outsideClicks.push({ event, path: event.composedPath(), target: event.target });
     });
     const outsideKeyDowns: Array<{
+      event: Event;
       path: EventTarget[];
       target: EventTarget | null;
     }> = [];
     observer.addEventListener('keydown', (event) => {
-      outsideKeyDowns.push({ path: event.composedPath(), target: event.target });
+      outsideKeyDowns.push({ event, path: event.composedPath(), target: event.target });
     });
     const outsideFocusEvents: Array<{
       path: EventTarget[];
@@ -398,28 +403,31 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
     await expect(root.activeElement).toBe(button);
     await expect(evidence.ancestorFocusCount).toBe(1);
     await expect(evidence.componentFocusCount).toBe(1);
+    await expect(evidence.componentFocusTarget).toBe(button);
     await expect(evidence.componentFocusCurrentTarget).toBe(button);
     await expect(outsideFocusEvents).toHaveLength(1);
     await expect(outsideFocusEvents[0]?.target).toBe(host);
     await expect(outsideFocusEvents[0]?.path[0]).toBe(button);
     await expect(outsideFocusEvents[0]?.path).toContain(host);
 
-    button.dispatchEvent(
-      new button.ownerDocument.defaultView!.KeyboardEvent('keydown', {
-        bubbles: true,
-        composed: true,
-        key: 'Enter',
-      }),
-    );
+    const keyDownEvent = new button.ownerDocument.defaultView!.KeyboardEvent('keydown', {
+      bubbles: true,
+      composed: true,
+      key: 'Enter',
+    });
+    button.dispatchEvent(keyDownEvent);
+    button.dispatchEvent(keyDownEvent);
 
-    await expect(evidence.ancestorKeyDownCount).toBe(1);
-    await expect(evidence.componentKeyDownCount).toBe(1);
+    await expect(evidence.ancestorKeyDownCount).toBe(2);
+    await expect(evidence.componentKeyDownCount).toBe(2);
     await expect(evidence.componentKey).toBe('Enter');
+    await expect(evidence.componentKeyDownTarget).toBe(button);
     await expect(evidence.componentKeyDownCurrentTarget).toBe(button);
-    await expect(outsideKeyDowns).toHaveLength(1);
-    await expect(outsideKeyDowns[0]?.target).toBe(host);
-    await expect(outsideKeyDowns[0]?.path[0]).toBe(button);
-    await expect(outsideKeyDowns[0]?.path).toContain(host);
+    await expect(outsideKeyDowns).toHaveLength(2);
+    await expect(new Set(outsideKeyDowns.map(({ event }) => event))).toHaveLength(1);
+    await expect(outsideKeyDowns[1]?.target).toBe(host);
+    await expect(outsideKeyDowns[1]?.path[0]).toBe(button);
+    await expect(outsideKeyDowns[1]?.path).toContain(host);
 
     await userEvent.click(clickTarget);
     await userEvent.click(clickTarget);
@@ -448,7 +456,6 @@ function NestedRootsHarness(): React.ReactNode {
       title="Nested shadow roots"
     >
       <div
-        data-testid="light-dom-react-observer"
         onClick={() => {
           if (evidenceRef.current) {
             evidenceRef.current.lightDomAncestorClickCount =
