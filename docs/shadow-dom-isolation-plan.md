@@ -82,8 +82,8 @@ functions; assistive-technology checks remain open.
 | Dialog dismissal and restoration | Coverage exercises Escape, backdrop click, full-viewport hit testing, overlay-only focus, and restoration after both modal nodes unmount. | Validated in Chromium, Firefox, Playwright WebKit, and isolated local Safari 26.6.2 runs | Verify real screen-reader behavior. |
 | Consumer form participation | Browser coverage verifies that a light-DOM form does not own or serialize a native control inside an SDK shadow root. | Unsupported across tree scopes | Use an explicit component contract if a rollout target requires outer-form participation. |
 | Consumer labels and ARIA ID references | Browser coverage verifies that external native labels, `aria-labelledby`, and `aria-describedby` relationships do not resolve to controls inside the root. | Unsupported across tree scopes | Keep relationships in one tree scope; verify real assistive technology separately. |
-| Consumer events, refs, and automation | Coverage verifies native retargeting, the auth button's React handler and forwarded ref, open-root queries, and effect-driven attachment timing. | Supported with documented constraints | Repeat for each public component selected for rollout. |
-| Nested shadow roots | Coverage verifies basic rendering, recursive queries, and event retargeting at each boundary. | Supported for the validated basics | Single-active-peer dismissal is accepted; verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
+| Consumer events, refs, and automation | Coverage verifies native retargeting, the auth button's React handler and forwarded ref, open-root queries, effect-driven attachment timing, and one light-DOM ancestor dispatch for each validated bubbling click, keydown, and focus event. | Supported with documented constraints | Repeat for each public component selected for rollout. Capture-phase and other event types are not part of this evidence. |
+| Nested shadow roots | Coverage verifies basic rendering, recursive queries, event retargeting at each boundary, and one React ancestor dispatch per scope for a nested click. | Supported for the validated basics | Single-active-peer dismissal is accepted; verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
 | Realistic same-page usage | YPE-5437 mounts, removes, and re-adds a 12-component mix in Normal and Strict Mode. Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 coverage verifies exact host counts, rendered scripture content, and one shared stylesheet object across roots and remounts. A production-build comparison found a small warm-run mount-cost difference on one machine. | No shared-host blocker found | Repeat user-visible performance and compatibility checks for each component selected for rollout. |
 
 ## YPE-5948 leaf evidence
@@ -177,9 +177,17 @@ rollout independently.
 
 Real Chromium validation also found that a consumer React handler on a
 light-DOM ancestor can receive one composed event through both the shadow-root
-portal path and the application-root retargeted path. The shared-host correction
-and click, keyboard, and focus regression coverage are assigned to YPE-6040 and
-must land before YPE-5952 releases the coordinated major version.
+portal path and the application-root retargeted path.
+
+YPE-6040 now keeps one React logical traversal for each native click, keydown,
+and focus event without stopping native propagation. The representative auth
+button story verifies component callback counts and target semantics, exact
+light-DOM ancestor counts, separate repeated clicks, native retargeting, and
+the original composed path. The nested-root story retains its existing native
+retargeting evidence and adds one React ancestor dispatch per scope. The main
+workflow passes Chromium, Firefox, and Playwright WebKit. Because the correction
+changes the shared host, YPE-5952 retains the required actual-Safari
+release-candidate validation; this evidence makes no assistive-technology claim.
 
 ## YPE-5951 Bible reader evidence
 
