@@ -49,20 +49,19 @@ async function requireShadowHost(container: ParentNode): Promise<HTMLElement> {
   });
 }
 
+interface ReactEventObservation {
+  currentTarget: EventTarget | null;
+  nativeEvent: Event;
+  target: EventTarget | null;
+}
+
 interface AutomaticButtonEvidenceOutput extends HTMLOutputElement {
-  ancestorClickCount?: number;
-  ancestorFocusCount?: number;
-  ancestorKeyDownCount?: number;
-  componentClickCount?: number;
-  componentClickCurrentTarget?: EventTarget | null;
-  componentClickTarget?: EventTarget | null;
-  componentFocusCount?: number;
-  componentFocusCurrentTarget?: EventTarget | null;
-  componentFocusTarget?: EventTarget | null;
-  componentKey?: string;
-  componentKeyDownCount?: number;
-  componentKeyDownCurrentTarget?: EventTarget | null;
-  componentKeyDownTarget?: EventTarget | null;
+  ancestorClicks?: ReactEventObservation[];
+  ancestorFocuses?: ReactEventObservation[];
+  ancestorKeyDowns?: ReactEventObservation[];
+  componentClicks?: ReactEventObservation[];
+  componentFocuses?: ReactEventObservation[];
+  componentKeyDowns?: ReactEventObservation[];
   forwardedRefNode?: EventTarget | null;
 }
 
@@ -265,22 +264,31 @@ function AutomaticButtonHarness(): React.ReactNode {
       <>
         <div
           data-testid="consumer-observer"
-          onClick={() => {
+          onClick={(event) => {
             if (evidenceRef.current) {
-              evidenceRef.current.ancestorClickCount =
-                (evidenceRef.current.ancestorClickCount ?? 0) + 1;
+              (evidenceRef.current.ancestorClicks ??= []).push({
+                currentTarget: event.currentTarget,
+                nativeEvent: event.nativeEvent,
+                target: event.target,
+              });
             }
           }}
-          onFocus={() => {
+          onFocus={(event) => {
             if (evidenceRef.current) {
-              evidenceRef.current.ancestorFocusCount =
-                (evidenceRef.current.ancestorFocusCount ?? 0) + 1;
+              (evidenceRef.current.ancestorFocuses ??= []).push({
+                currentTarget: event.currentTarget,
+                nativeEvent: event.nativeEvent,
+                target: event.target,
+              });
             }
           }}
-          onKeyDown={() => {
+          onKeyDown={(event) => {
             if (evidenceRef.current) {
-              evidenceRef.current.ancestorKeyDownCount =
-                (evidenceRef.current.ancestorKeyDownCount ?? 0) + 1;
+              (evidenceRef.current.ancestorKeyDowns ??= []).push({
+                currentTarget: event.currentTarget,
+                nativeEvent: event.nativeEvent,
+                target: event.target,
+              });
             }
           }}
         >
@@ -290,27 +298,29 @@ function AutomaticButtonHarness(): React.ReactNode {
             mode="signOut"
             onClick={(event) => {
               if (evidenceRef.current) {
-                evidenceRef.current.componentClickCount =
-                  (evidenceRef.current.componentClickCount ?? 0) + 1;
-                evidenceRef.current.componentClickTarget = event.target;
-                evidenceRef.current.componentClickCurrentTarget = event.currentTarget;
+                (evidenceRef.current.componentClicks ??= []).push({
+                  currentTarget: event.currentTarget,
+                  nativeEvent: event.nativeEvent,
+                  target: event.target,
+                });
               }
             }}
             onFocus={(event) => {
               if (evidenceRef.current) {
-                evidenceRef.current.componentFocusCount =
-                  (evidenceRef.current.componentFocusCount ?? 0) + 1;
-                evidenceRef.current.componentFocusTarget = event.target;
-                evidenceRef.current.componentFocusCurrentTarget = event.currentTarget;
+                (evidenceRef.current.componentFocuses ??= []).push({
+                  currentTarget: event.currentTarget,
+                  nativeEvent: event.nativeEvent,
+                  target: event.target,
+                });
               }
             }}
             onKeyDown={(event) => {
               if (evidenceRef.current) {
-                evidenceRef.current.componentKeyDownCount =
-                  (evidenceRef.current.componentKeyDownCount ?? 0) + 1;
-                evidenceRef.current.componentKey = event.key;
-                evidenceRef.current.componentKeyDownTarget = event.target;
-                evidenceRef.current.componentKeyDownCurrentTarget = event.currentTarget;
+                (evidenceRef.current.componentKeyDowns ??= []).push({
+                  currentTarget: event.currentTarget,
+                  nativeEvent: event.nativeEvent,
+                  target: event.target,
+                });
               }
             }}
           />
@@ -390,21 +400,24 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
       outsideKeyDowns.push({ event, path: event.composedPath(), target: event.target });
     });
     const outsideFocusEvents: Array<{
+      event: Event;
       path: EventTarget[];
       target: EventTarget | null;
     }> = [];
     observer.addEventListener('focusin', (event) => {
-      outsideFocusEvents.push({ path: event.composedPath(), target: event.target });
+      outsideFocusEvents.push({ event, path: event.composedPath(), target: event.target });
     });
 
     outsideFocusTarget.focus();
     button.focus();
 
     await expect(root.activeElement).toBe(button);
-    await expect(evidence.ancestorFocusCount).toBe(1);
-    await expect(evidence.componentFocusCount).toBe(1);
-    await expect(evidence.componentFocusTarget).toBe(button);
-    await expect(evidence.componentFocusCurrentTarget).toBe(button);
+    await expect(evidence.ancestorFocuses).toEqual([
+      { currentTarget: observer, nativeEvent: outsideFocusEvents[0]?.event, target: button },
+    ]);
+    await expect(evidence.componentFocuses).toEqual([
+      { currentTarget: button, nativeEvent: outsideFocusEvents[0]?.event, target: button },
+    ]);
     await expect(outsideFocusEvents).toHaveLength(1);
     await expect(outsideFocusEvents[0]?.target).toBe(host);
     await expect(outsideFocusEvents[0]?.path[0]).toBe(button);
@@ -418,13 +431,16 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
     button.dispatchEvent(keyDownEvent);
     button.dispatchEvent(keyDownEvent);
 
-    await expect(evidence.ancestorKeyDownCount).toBe(2);
-    await expect(evidence.componentKeyDownCount).toBe(2);
-    await expect(evidence.componentKey).toBe('Enter');
-    await expect(evidence.componentKeyDownTarget).toBe(button);
-    await expect(evidence.componentKeyDownCurrentTarget).toBe(button);
     await expect(outsideKeyDowns).toHaveLength(2);
     await expect(new Set(outsideKeyDowns.map(({ event }) => event))).toHaveLength(1);
+    await expect(evidence.ancestorKeyDowns).toEqual([
+      { currentTarget: observer, nativeEvent: keyDownEvent, target: button },
+      { currentTarget: observer, nativeEvent: keyDownEvent, target: button },
+    ]);
+    await expect(evidence.componentKeyDowns).toEqual([
+      { currentTarget: button, nativeEvent: keyDownEvent, target: button },
+      { currentTarget: button, nativeEvent: keyDownEvent, target: button },
+    ]);
     await expect(outsideKeyDowns[1]?.target).toBe(host);
     await expect(outsideKeyDowns[1]?.path[0]).toBe(button);
     await expect(outsideKeyDowns[1]?.path).toContain(host);
@@ -437,8 +453,11 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
     host.dispatchEvent(hostKeyDownEvent);
     host.dispatchEvent(hostKeyDownEvent);
 
-    await expect(evidence.ancestorKeyDownCount).toBe(4);
-    await expect(evidence.componentKeyDownCount).toBe(2);
+    await expect(evidence.ancestorKeyDowns?.slice(2)).toEqual([
+      { currentTarget: observer, nativeEvent: hostKeyDownEvent, target: host },
+      { currentTarget: observer, nativeEvent: hostKeyDownEvent, target: host },
+    ]);
+    await expect(evidence.componentKeyDowns).toHaveLength(2);
     await expect(outsideKeyDowns).toHaveLength(4);
     await expect(outsideKeyDowns[3]?.target).toBe(host);
     await expect(outsideKeyDowns[3]?.path[0]).toBe(host);
@@ -446,16 +465,26 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
     await userEvent.click(clickTarget);
     await userEvent.click(clickTarget);
 
-    await expect(evidence.ancestorClickCount).toBe(2);
-    await expect(evidence.componentClickCount).toBe(2);
     await expect(outsideClicks).toHaveLength(2);
     await expect(new Set(outsideClicks.map(({ event }) => event))).toHaveLength(2);
+    await expect(evidence.ancestorClicks).toEqual(
+      outsideClicks.map(({ event }) => ({
+        currentTarget: observer,
+        nativeEvent: event,
+        target: clickTarget,
+      })),
+    );
+    await expect(evidence.componentClicks).toEqual(
+      outsideClicks.map(({ event }) => ({
+        currentTarget: button,
+        nativeEvent: event,
+        target: clickTarget,
+      })),
+    );
     await expect(outsideClicks[1]?.target).toBe(host);
     await expect(outsideClicks[1]?.path[0]).toBe(clickTarget);
     await expect(outsideClicks[1]?.path).toContain(button);
     await expect(outsideClicks[1]?.path).toContain(host);
-    await expect(evidence.componentClickTarget).toBe(clickTarget);
-    await expect(evidence.componentClickCurrentTarget).toBe(button);
   },
 };
 
