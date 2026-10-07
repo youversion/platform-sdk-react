@@ -49,10 +49,24 @@ async function requireShadowHost(container: ParentNode): Promise<HTMLElement> {
   });
 }
 
-interface NodeEvidenceOutput extends HTMLOutputElement {
-  count?: number;
-  key?: string;
-  observedNode?: EventTarget | null;
+interface AutomaticButtonEvidenceOutput extends HTMLOutputElement {
+  ancestorClickCount?: number;
+  ancestorFocusCount?: number;
+  ancestorKeyDownCount?: number;
+  componentClickCount?: number;
+  componentClickCurrentTarget?: EventTarget | null;
+  componentClickTarget?: EventTarget | null;
+  componentFocusCount?: number;
+  componentFocusCurrentTarget?: EventTarget | null;
+  componentKey?: string;
+  componentKeyDownCount?: number;
+  componentKeyDownCurrentTarget?: EventTarget | null;
+  forwardedRefNode?: EventTarget | null;
+}
+
+interface NestedRootsEvidenceOutput extends HTMLOutputElement {
+  lightDomAncestorClickCount?: number;
+  outerShadowAncestorClickCount?: number;
 }
 
 interface CompatibilityScenarioProps {
@@ -221,14 +235,7 @@ export const FormsAndExternalRelationshipsStopAtTheTreeScope: Story = {
 function AutomaticButtonHarness(): React.ReactNode {
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const firstLayoutRefState = useRef<'pending' | 'null' | 'resolved'>('pending');
-  const forwardedRefEvidence = useRef<NodeEvidenceOutput | null>(null);
-  const ancestorClickEvidence = useRef<NodeEvidenceOutput | null>(null);
-  const ancestorFocusEvidence = useRef<NodeEvidenceOutput | null>(null);
-  const ancestorKeyDownEvidence = useRef<NodeEvidenceOutput | null>(null);
-  const consumerFocusEvidence = useRef<NodeEvidenceOutput | null>(null);
-  const consumerKeyDownEvidence = useRef<NodeEvidenceOutput | null>(null);
-  const consumerTargetEvidence = useRef<NodeEvidenceOutput | null>(null);
-  const consumerCurrentTargetEvidence = useRef<NodeEvidenceOutput | null>(null);
+  const evidenceRef = useRef<AutomaticButtonEvidenceOutput | null>(null);
   const [firstLayoutResult, setFirstLayoutResult] = useState<'pending' | 'null' | 'resolved'>(
     'pending',
   );
@@ -243,7 +250,7 @@ function AutomaticButtonHarness(): React.ReactNode {
 
   const receiveButtonRef = useCallback((node: HTMLButtonElement | null): void => {
     buttonRef.current = node;
-    if (forwardedRefEvidence.current) forwardedRefEvidence.current.observedNode = node;
+    if (evidenceRef.current) evidenceRef.current.forwardedRefNode = node;
   }, []);
 
   return (
@@ -257,19 +264,21 @@ function AutomaticButtonHarness(): React.ReactNode {
         <div
           data-testid="consumer-observer"
           onClick={() => {
-            if (ancestorClickEvidence.current) {
-              ancestorClickEvidence.current.count = (ancestorClickEvidence.current.count ?? 0) + 1;
+            if (evidenceRef.current) {
+              evidenceRef.current.ancestorClickCount =
+                (evidenceRef.current.ancestorClickCount ?? 0) + 1;
             }
           }}
           onFocus={() => {
-            if (ancestorFocusEvidence.current) {
-              ancestorFocusEvidence.current.count = (ancestorFocusEvidence.current.count ?? 0) + 1;
+            if (evidenceRef.current) {
+              evidenceRef.current.ancestorFocusCount =
+                (evidenceRef.current.ancestorFocusCount ?? 0) + 1;
             }
           }}
           onKeyDown={() => {
-            if (ancestorKeyDownEvidence.current) {
-              ancestorKeyDownEvidence.current.count =
-                (ancestorKeyDownEvidence.current.count ?? 0) + 1;
+            if (evidenceRef.current) {
+              evidenceRef.current.ancestorKeyDownCount =
+                (evidenceRef.current.ancestorKeyDownCount ?? 0) + 1;
             }
           }}
         >
@@ -278,46 +287,33 @@ function AutomaticButtonHarness(): React.ReactNode {
             data-testid="isolated-auth-button"
             mode="signOut"
             onClick={(event) => {
-              if (consumerTargetEvidence.current) {
-                consumerTargetEvidence.current.observedNode = event.target;
-              }
-              if (consumerCurrentTargetEvidence.current) {
-                consumerCurrentTargetEvidence.current.count =
-                  (consumerCurrentTargetEvidence.current.count ?? 0) + 1;
-                consumerCurrentTargetEvidence.current.observedNode = event.currentTarget;
+              if (evidenceRef.current) {
+                evidenceRef.current.componentClickCount =
+                  (evidenceRef.current.componentClickCount ?? 0) + 1;
+                evidenceRef.current.componentClickTarget = event.target;
+                evidenceRef.current.componentClickCurrentTarget = event.currentTarget;
               }
             }}
             onFocus={(event) => {
-              if (consumerFocusEvidence.current) {
-                consumerFocusEvidence.current.count =
-                  (consumerFocusEvidence.current.count ?? 0) + 1;
-                consumerFocusEvidence.current.observedNode = event.currentTarget;
+              if (evidenceRef.current) {
+                evidenceRef.current.componentFocusCount =
+                  (evidenceRef.current.componentFocusCount ?? 0) + 1;
+                evidenceRef.current.componentFocusCurrentTarget = event.currentTarget;
               }
             }}
             onKeyDown={(event) => {
-              if (consumerKeyDownEvidence.current) {
-                consumerKeyDownEvidence.current.count =
-                  (consumerKeyDownEvidence.current.count ?? 0) + 1;
-                consumerKeyDownEvidence.current.key = event.key;
-                consumerKeyDownEvidence.current.observedNode = event.currentTarget;
+              if (evidenceRef.current) {
+                evidenceRef.current.componentKeyDownCount =
+                  (evidenceRef.current.componentKeyDownCount ?? 0) + 1;
+                evidenceRef.current.componentKey = event.key;
+                evidenceRef.current.componentKeyDownCurrentTarget = event.currentTarget;
               }
             }}
           />
           <output hidden data-testid="first-layout-ref-state">
             {firstLayoutResult}
           </output>
-          <output hidden ref={forwardedRefEvidence} data-testid="forwarded-ref-evidence" />
-          <output hidden ref={ancestorClickEvidence} data-testid="ancestor-click-evidence" />
-          <output hidden ref={ancestorFocusEvidence} data-testid="ancestor-focus-evidence" />
-          <output hidden ref={ancestorKeyDownEvidence} data-testid="ancestor-keydown-evidence" />
-          <output hidden ref={consumerFocusEvidence} data-testid="consumer-focus-evidence" />
-          <output hidden ref={consumerKeyDownEvidence} data-testid="consumer-keydown-evidence" />
-          <output hidden ref={consumerTargetEvidence} data-testid="consumer-target-evidence" />
-          <output
-            hidden
-            ref={consumerCurrentTargetEvidence}
-            data-testid="consumer-current-target-evidence"
-          />
+          <output hidden ref={evidenceRef} data-testid="automatic-button-evidence" />
         </div>
         <button type="button" data-testid="outside-focus-target">
           Outside focus target
@@ -354,55 +350,19 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
       '[data-testid="first-layout-ref-state"]',
       'first layout ref state not rendered',
     );
-    const forwardedRefEvidence = requireElement<NodeEvidenceOutput>(
+    const evidence = requireElement<AutomaticButtonEvidenceOutput>(
       canvasElement,
-      '[data-testid="forwarded-ref-evidence"]',
-      'forwarded ref evidence not rendered',
-    );
-    const ancestorClickEvidence = requireElement<NodeEvidenceOutput>(
-      canvasElement,
-      '[data-testid="ancestor-click-evidence"]',
-      'ancestor click evidence not rendered',
-    );
-    const ancestorFocusEvidence = requireElement<NodeEvidenceOutput>(
-      canvasElement,
-      '[data-testid="ancestor-focus-evidence"]',
-      'ancestor focus evidence not rendered',
-    );
-    const ancestorKeyDownEvidence = requireElement<NodeEvidenceOutput>(
-      canvasElement,
-      '[data-testid="ancestor-keydown-evidence"]',
-      'ancestor keydown evidence not rendered',
-    );
-    const consumerKeyDownEvidence = requireElement<NodeEvidenceOutput>(
-      canvasElement,
-      '[data-testid="consumer-keydown-evidence"]',
-      'consumer keydown evidence not rendered',
-    );
-    const consumerFocusEvidence = requireElement<NodeEvidenceOutput>(
-      canvasElement,
-      '[data-testid="consumer-focus-evidence"]',
-      'consumer focus evidence not rendered',
+      '[data-testid="automatic-button-evidence"]',
+      'automatic button evidence not rendered',
     );
     const outsideFocusTarget = requireElement<HTMLButtonElement>(
       canvasElement,
       '[data-testid="outside-focus-target"]',
       'outside focus target not rendered',
     );
-    const consumerTargetEvidence = requireElement<NodeEvidenceOutput>(
-      canvasElement,
-      '[data-testid="consumer-target-evidence"]',
-      'consumer target evidence not rendered',
-    );
-    const consumerCurrentTargetEvidence = requireElement<NodeEvidenceOutput>(
-      canvasElement,
-      '[data-testid="consumer-current-target-evidence"]',
-      'consumer current target evidence not rendered',
-    );
-
     await expect(firstLayoutEvidence).toHaveTextContent('null');
     await expect(firstLayoutEvidence).toHaveAttribute('hidden');
-    await waitFor(async () => await expect(forwardedRefEvidence.observedNode).toBe(button));
+    await waitFor(async () => await expect(evidence.forwardedRefNode).toBe(button));
 
     const clickTarget = requireElement<HTMLDivElement>(
       button,
@@ -436,9 +396,9 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
     button.focus();
 
     await expect(root.activeElement).toBe(button);
-    await expect(ancestorFocusEvidence.count).toBe(1);
-    await expect(consumerFocusEvidence.count).toBe(1);
-    await expect(consumerFocusEvidence.observedNode).toBe(button);
+    await expect(evidence.ancestorFocusCount).toBe(1);
+    await expect(evidence.componentFocusCount).toBe(1);
+    await expect(evidence.componentFocusCurrentTarget).toBe(button);
     await expect(outsideFocusEvents).toHaveLength(1);
     await expect(outsideFocusEvents[0]?.target).toBe(host);
     await expect(outsideFocusEvents[0]?.path[0]).toBe(button);
@@ -452,10 +412,10 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
       }),
     );
 
-    await expect(ancestorKeyDownEvidence.count).toBe(1);
-    await expect(consumerKeyDownEvidence.count).toBe(1);
-    await expect(consumerKeyDownEvidence.key).toBe('Enter');
-    await expect(consumerKeyDownEvidence.observedNode).toBe(button);
+    await expect(evidence.ancestorKeyDownCount).toBe(1);
+    await expect(evidence.componentKeyDownCount).toBe(1);
+    await expect(evidence.componentKey).toBe('Enter');
+    await expect(evidence.componentKeyDownCurrentTarget).toBe(button);
     await expect(outsideKeyDowns).toHaveLength(1);
     await expect(outsideKeyDowns[0]?.target).toBe(host);
     await expect(outsideKeyDowns[0]?.path[0]).toBe(button);
@@ -464,22 +424,21 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
     await userEvent.click(clickTarget);
     await userEvent.click(clickTarget);
 
-    await expect(ancestorClickEvidence.count).toBe(2);
-    await expect(consumerCurrentTargetEvidence.count).toBe(2);
+    await expect(evidence.ancestorClickCount).toBe(2);
+    await expect(evidence.componentClickCount).toBe(2);
     await expect(outsideClicks).toHaveLength(2);
     await expect(new Set(outsideClicks.map(({ event }) => event))).toHaveLength(2);
     await expect(outsideClicks[1]?.target).toBe(host);
     await expect(outsideClicks[1]?.path[0]).toBe(clickTarget);
     await expect(outsideClicks[1]?.path).toContain(button);
     await expect(outsideClicks[1]?.path).toContain(host);
-    await expect(consumerTargetEvidence.observedNode).toBe(clickTarget);
-    await expect(consumerCurrentTargetEvidence.observedNode).toBe(button);
+    await expect(evidence.componentClickTarget).toBe(clickTarget);
+    await expect(evidence.componentClickCurrentTarget).toBe(button);
   },
 };
 
 function NestedRootsHarness(): React.ReactNode {
-  const lightDomAncestorEvidence = useRef<NodeEvidenceOutput | null>(null);
-  const outerShadowAncestorEvidence = useRef<NodeEvidenceOutput | null>(null);
+  const evidenceRef = useRef<NestedRootsEvidenceOutput | null>(null);
 
   return (
     <CompatibilityScenario
@@ -491,9 +450,9 @@ function NestedRootsHarness(): React.ReactNode {
       <div
         data-testid="light-dom-react-observer"
         onClick={() => {
-          if (lightDomAncestorEvidence.current) {
-            lightDomAncestorEvidence.current.count =
-              (lightDomAncestorEvidence.current.count ?? 0) + 1;
+          if (evidenceRef.current) {
+            evidenceRef.current.lightDomAncestorClickCount =
+              (evidenceRef.current.lightDomAncestorClickCount ?? 0) + 1;
           }
         }}
       >
@@ -501,9 +460,9 @@ function NestedRootsHarness(): React.ReactNode {
           <div
             data-testid="outer-shadow-observer"
             onClick={() => {
-              if (outerShadowAncestorEvidence.current) {
-                outerShadowAncestorEvidence.current.count =
-                  (outerShadowAncestorEvidence.current.count ?? 0) + 1;
+              if (evidenceRef.current) {
+                evidenceRef.current.outerShadowAncestorClickCount =
+                  (evidenceRef.current.outerShadowAncestorClickCount ?? 0) + 1;
               }
             }}
           >
@@ -511,12 +470,7 @@ function NestedRootsHarness(): React.ReactNode {
           </div>
         </ShadowRootHost>
       </div>
-      <output hidden ref={lightDomAncestorEvidence} data-testid="light-dom-ancestor-evidence" />
-      <output
-        hidden
-        ref={outerShadowAncestorEvidence}
-        data-testid="outer-shadow-ancestor-evidence"
-      />
+      <output hidden ref={evidenceRef} data-testid="nested-roots-evidence" />
     </CompatibilityScenario>
   );
 }
@@ -526,15 +480,10 @@ export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
   render: () => <NestedRootsHarness />,
   play: async ({ canvasElement }) => {
     const outerHost = await requireShadowHost(canvasElement);
-    const lightDomAncestorEvidence = requireElement<NodeEvidenceOutput>(
+    const evidence = requireElement<NestedRootsEvidenceOutput>(
       canvasElement,
-      '[data-testid="light-dom-ancestor-evidence"]',
-      'light DOM ancestor evidence not rendered',
-    );
-    const outerShadowAncestorEvidence = requireElement<NodeEvidenceOutput>(
-      canvasElement,
-      '[data-testid="outer-shadow-ancestor-evidence"]',
-      'outer shadow ancestor evidence not rendered',
+      '[data-testid="nested-roots-evidence"]',
+      'nested roots evidence not rendered',
     );
     const outerRoot = outerHost.shadowRoot!;
     const outerObserver = await waitForElement<HTMLElement>(
@@ -575,8 +524,8 @@ export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
 
     await userEvent.click(button);
 
-    await expect(lightDomAncestorEvidence.count).toBe(1);
-    await expect(outerShadowAncestorEvidence.count).toBe(1);
+    await expect(evidence.lightDomAncestorClickCount).toBe(1);
+    await expect(evidence.outerShadowAncestorClickCount).toBe(1);
     await expect(outerScopeTarget).toBe(innerHost);
     await expect(documentScopeTarget).toBe(outerHost);
     await expect(composedPath[0]).toBe(button);
