@@ -33,14 +33,15 @@ export class MissingPassageAttributionError extends Error {
   }
 }
 
-function getPassageAttribution(version: BibleVersion): PassageAttribution {
+/** Selects the preferred non-empty attribution for a Bible version. */
+export function getPassageAttribution(version: BibleVersion): PassageAttribution | null {
   if (version.copyright?.trim()) {
     return { text: version.copyright, source: 'copyright' };
   }
   if (version.promotional_content?.trim()) {
     return { text: version.promotional_content, source: 'promotionalContent' };
   }
-  throw new MissingPassageAttributionError(version.id);
+  return null;
 }
 
 async function fetchDisplayResources(client: ApiClient, options: GetPassageDisplayOptions) {
@@ -85,10 +86,13 @@ export async function getPassageDisplay(
 
   const resources = await fetchDisplayResources(client, options);
   const version = BibleVersionSchema.parse(resources.version);
+  const attribution = getPassageAttribution(version);
+  if (!attribution) throw new MissingPassageAttributionError(version.id);
+
   return {
     version,
     html: resources.passage.content,
-    attribution: getPassageAttribution(version),
+    attribution,
     stylesheets,
     containerAttributes: BIBLE_CONTAINER_ATTRIBUTES,
   };

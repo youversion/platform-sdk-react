@@ -54,6 +54,7 @@ export {
   getLanguages,
   getLocalStorage,
   getPassage,
+  getPassageAttribution,
   getPassageDisplay,
   getSessionStorage,
   getSuggestedQueries,

@@ -37,9 +37,9 @@ const mockVersion: BibleVersion = {
   youversion_deep_link: 'https://bible.com/versions/3034',
 };
 
-function idleVersion(): UseVersionResult {
+function idleVersion(version: BibleVersion = mockVersion): UseVersionResult {
   return {
-    version: mockVersion,
+    version,
     loading: false,
     error: null,
     refetch: () => undefined,
@@ -66,6 +66,7 @@ function renderCard(
     onVersionChange?: (id: number) => void;
     maxWidth?: number | '100%';
     hostWidth?: number;
+    version?: BibleVersion;
   } = {},
 ) {
   const {
@@ -76,11 +77,12 @@ function renderCard(
     onVersionChange,
     maxWidth,
     hostWidth,
+    version = mockVersion,
   } = extra;
   const card = (
     <HookOverrideProvider
       overrides={{
-        useVersion: () => idleVersion(),
+        useVersion: () => idleVersion(version),
         usePassage: () => passage,
       }}
     >
@@ -111,6 +113,56 @@ const multiVersePassage: BiblePassage = {
   reference: 'John 1',
 };
 const highlights: Highlight[] = [{ version_id: 111, passage_id: 'JHN.1.2', color: YELLOW }];
+
+const loadedPassage = passageResult({ passage: mockPassage, loading: false });
+
+it('prefers non-whitespace copyright over promotional content', () => {
+  const { container } = renderCard(loadedPassage, {
+    version: {
+      ...mockVersion,
+      copyright: 'Copyright attribution',
+      promotional_content: 'Promotional attribution',
+    },
+  });
+
+  expect(within(container).getByText('Copyright attribution')).toBeInTheDocument();
+  expect(within(container).queryByText('Promotional attribution')).toBeNull();
+});
+
+it.each([null, undefined, '', '   \n  '])(
+  'falls back to promotional content when copyright is %s',
+  (copyright) => {
+    const { container } = renderCard(loadedPassage, {
+      version: {
+        ...mockVersion,
+        copyright,
+        promotional_content: '<strong>Promotional attribution</strong>',
+      },
+    });
+
+    expect(
+      within(container).getByText('<strong>Promotional attribution</strong>'),
+    ).toBeInTheDocument();
+    expect(container.querySelector('strong')).toBeNull();
+  },
+);
+
+it.each([
+  { state: 'absent', version: mockVersion },
+  {
+    state: 'blank',
+    version: { ...mockVersion, copyright: '  ', promotional_content: '\n' },
+  },
+])('renders no attribution when both fields are $state', ({ version }) => {
+  const { container } = renderCard(loadedPassage, {
+    version,
+  });
+
+  const attribution = requireHtmlElement(
+    container.querySelector('section > div > div:last-child p bdi'),
+  );
+  expect(attribution).toHaveTextContent(/^\s*$/);
+});
 
 describe('BibleCard - Delayed spinner', () => {
   beforeEach(() => {

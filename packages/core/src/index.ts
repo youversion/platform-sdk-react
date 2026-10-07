@@ -20,6 +20,7 @@ export {
 export {
   BIBLE_CONTAINER_ATTRIBUTES,
   MissingPassageAttributionError,
+  getPassageAttribution,
   getPassageDisplay,
 } from './bible-passage-display';
 export { LanguagesClient } from './languages';
