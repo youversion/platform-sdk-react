@@ -481,7 +481,7 @@ describe('reader font brand names', () => {
     );
   }
 
-  it('shows Inter when Arabic would otherwise translate interFontName', async () => {
+  it('shows Inter in Arabic reader font settings', async () => {
     await i18n.changeLanguage('ar');
     renderFontSettings();
 
@@ -489,7 +489,7 @@ describe('reader font brand names', () => {
     expect(screen.queryByText('إدخال')).not.toBeInTheDocument();
   });
 
-  it('shows Untitled Serif when Welsh would otherwise translate untitledSerifFontName', async () => {
+  it('shows Untitled Serif in Welsh reader font settings', async () => {
     await i18n.changeLanguage('cy');
     renderFontSettings();
 
