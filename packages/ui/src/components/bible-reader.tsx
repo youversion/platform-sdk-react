@@ -30,6 +30,7 @@ import {
 } from '@youversion/platform-react-hooks';
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -878,7 +879,7 @@ function Content() {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null);
   const verseFocusRestoreTargetRef = useRef<Element | null>(null);
-  const takeVerseFocusRestoreTarget = React.useCallback(() => {
+  const takeVerseFocusRestoreTarget = useCallback(() => {
     const target = verseFocusRestoreTargetRef.current;
     verseFocusRestoreTargetRef.current = null;
     return target;
