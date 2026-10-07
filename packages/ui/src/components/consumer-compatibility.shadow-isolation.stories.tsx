@@ -258,9 +258,9 @@ function AutomaticButtonHarness(): React.ReactNode {
   return (
     <CompatibilityScenario
       classification="Supported with documented constraints"
-      expectedResult="The React click handler and forwarded ref expose the internal button. Native listeners outside the root see the shadow host as the event target. DOM selector APIs need explicit root traversal."
+      expectedResult="Each click, keydown, and focus dispatch reaches the component and its light-DOM React ancestor once. Component callbacks and the forwarded ref expose the internal button. Native listeners outside the root see the shadow host as the event target, and DOM selector APIs need explicit root traversal."
       summary="This example compares the views exposed to React consumers, native event listeners, refs, and DOM selector APIs."
-      title="Events, refs, and test queries"
+      title="Single event dispatch, refs, and test queries"
     >
       <>
         <div
@@ -328,7 +328,7 @@ function AutomaticButtonHarness(): React.ReactNode {
 }
 
 export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
-  name: 'Events, refs, and DOM queries expose different views',
+  name: 'Events dispatch once while preserving consumer views',
   tags: ['cross-browser'],
   render: () => <AutomaticButtonHarness />,
   play: async ({ canvasElement }) => {
@@ -428,6 +428,20 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
     await expect(outsideKeyDowns[1]?.target).toBe(host);
     await expect(outsideKeyDowns[1]?.path[0]).toBe(button);
     await expect(outsideKeyDowns[1]?.path).toContain(host);
+
+    const hostKeyDownEvent = new button.ownerDocument.defaultView!.KeyboardEvent('keydown', {
+      bubbles: true,
+      composed: true,
+      key: 'Escape',
+    });
+    host.dispatchEvent(hostKeyDownEvent);
+    host.dispatchEvent(hostKeyDownEvent);
+
+    await expect(evidence.ancestorKeyDownCount).toBe(4);
+    await expect(evidence.componentKeyDownCount).toBe(2);
+    await expect(outsideKeyDowns).toHaveLength(4);
+    await expect(outsideKeyDowns[3]?.target).toBe(host);
+    await expect(outsideKeyDowns[3]?.path[0]).toBe(host);
 
     await userEvent.click(clickTarget);
     await userEvent.click(clickTarget);
