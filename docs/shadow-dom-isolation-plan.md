@@ -187,9 +187,9 @@ must land before YPE-5952 releases the coordinated major version.
 exact empty server host during hydration. Reader-owned content, toolbar,
 search, scripture, chapter and version pickers, theme settings, avatar, verse
 actions, and authentication dialogs remain in that root; the chapter and
-version picker roots explicitly reuse it. A consumer may still intentionally
-render another public isolated component as an arbitrary reader child, which
-creates the documented nested-root topology.
+version picker `Root` components explicitly reuse it. A consumer may still
+intentionally render another public isolated component as an arbitrary reader
+child, which creates the documented nested-root topology.
 
 Focused unit evidence verifies hydration without recoverable errors, empty
 light DOM, no accidental reader-owned roots, direct `BibleReaderSearch`
@@ -201,7 +201,7 @@ coverage reviews theme, interface and Scripture direction, typography,
 scrolling, and geometry in Chromium, Firefox, and Playwright WebKit.
 
 The concrete `examples/vite-react` reader page was also reviewed in its
-`h-[calc(100vh-3.5rem)]` shell beneath the example navbar: the reader host
+`h-[calc(100vh-3.5rem)]` shell beneath the example navbar: the reader surface
 continues to fill that shell, its toolbar remains above the independently
 scrolling scripture pane, and the constrained browser evidence retains usable
 toolbar and scripture geometry. Interactive review found no obvious

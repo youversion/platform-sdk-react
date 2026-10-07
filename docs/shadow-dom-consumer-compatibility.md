@@ -8,11 +8,17 @@ the SDK's Shadow DOM boundary. YPE-5356 incorporates it into the
 current stable-package and integration-branch boundary inventory and coordinated
 release status.
 
-The executable evidence lives in
-`consumer-compatibility.shadow-isolation.stories.tsx`. The existing
-`bible-version-picker.shadow-isolation.stories.tsx` suite supplies additional
-evidence for shadow-aware queries and relationships that stay within one tree
-scope.
+The executable evidence is grouped by rollout surface:
+
+- `consumer-compatibility.shadow-isolation.stories.tsx` covers shared consumer
+  boundary behavior.
+- `bible-version-picker.shadow-isolation.stories.tsx` covers shadow-aware picker
+  queries and relationships that stay within one tree scope.
+- `scripture-presentation-shadow-isolation.test.tsx` and
+  `scripture-presentation.shadow-isolation.stories.tsx` cover `BibleTextView`,
+  `VerseOfTheDay`, and `BibleCard`.
+- `bible-reader-shadow-isolation.test.tsx` and `bible-reader.stories.tsx` cover
+  the `BibleReader.Root` boundary and consumer composition contract.
 
 ## Representative modules
 
