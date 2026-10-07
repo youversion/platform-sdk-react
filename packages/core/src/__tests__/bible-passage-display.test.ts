@@ -7,6 +7,7 @@ import {
   BibleClient,
   MissingPassageAttributionError,
   getBibleStylesheets,
+  getPassageAttribution,
   getPassageDisplay,
 } from '../index';
 import { BiblePassageDisplaySchema } from '../schemas/passage-display';
@@ -44,6 +45,30 @@ function setupDisplayTest(): void {
 }
 
 describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('passage display model', () => {
+  it('selects copyright, then promotional content, without failing on missing attribution', () => {
+    expect(
+      getPassageAttribution({
+        ...mockDisplayVersion,
+        copyright: 'Preferred copyright',
+        promotional_content: 'Fallback promotional content',
+      }),
+    ).toEqual({ text: 'Preferred copyright', source: 'copyright' });
+    expect(
+      getPassageAttribution({
+        ...mockDisplayVersion,
+        copyright: '   ',
+        promotional_content: 'Fallback promotional content',
+      }),
+    ).toEqual({ text: 'Fallback promotional content', source: 'promotionalContent' });
+    expect(
+      getPassageAttribution({
+        ...mockDisplayVersion,
+        copyright: null,
+        promotional_content: null,
+      }),
+    ).toBeNull();
+  });
+
   it('returns transformed HTML, current attribution, stylesheets, and container attributes', async () => {
     setupDisplayTest();
     const display = await createBibleClient().getPassageDisplay({

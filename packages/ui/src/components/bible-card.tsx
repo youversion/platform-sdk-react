@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react';
 import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hooks';
 import {
   DEFAULT_LICENSE_FREE_BIBLE_VERSION,
+  getPassageAttribution,
   type Highlight,
   type TextDirection,
 } from '@youversion/platform-core';
@@ -143,11 +144,11 @@ function BibleCardVersionPicker({
   );
 }
 
-function BibleCardFooter({ copyright }: { copyright?: string | null }): React.ReactNode {
+function BibleCardFooter({ attribution }: { attribution?: string | null }): React.ReactNode {
   return (
     <div className="yv:grid yv:grid-cols-[1fr_auto] yv:gap-4 yv:items-center yv:mt-4">
       <p className="yv:text-balance yv:text-muted-foreground yv:justify-self-start yv:font-bold yv:text-[0.5rem]">
-        <bdi dir="auto">{copyright || ''}</bdi>
+        <bdi dir="auto">{attribution || ''}</bdi>
       </p>
 
       <div className="yv:justify-self-end">
@@ -275,7 +276,9 @@ export function BibleCard({
           />
         </AnimatedHeight>
 
-        <BibleCardFooter copyright={!passageError ? version?.copyright : null} />
+        <BibleCardFooter
+          attribution={!passageError && version ? getPassageAttribution(version)?.text : null}
+        />
       </div>
     </section>
   );
