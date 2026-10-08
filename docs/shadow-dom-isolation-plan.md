@@ -179,8 +179,8 @@ Real Chromium validation also found that a consumer React handler on a
 light-DOM ancestor can receive one composed event through both the shadow-root
 portal path and the application-root retargeted path.
 
-YPE-6040 now keeps one React logical traversal for each native click, keydown,
-and focus event without stopping native propagation. The representative auth
+YPE-6040 now keeps one React logical traversal for each native `click`, `keydown`,
+and `focusin` event without stopping native propagation. The representative auth
 button story verifies component callback counts and target semantics, exact
 light-DOM ancestor counts, separate repeated clicks, native retargeting, and
 the original composed path. The nested-root story retains its existing native
