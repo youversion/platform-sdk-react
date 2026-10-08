@@ -1,5 +1,15 @@
 # @youversion/platform-react-ui
 
+## 2.16.0
+
+### Patch Changes
+
+- da12b12: Export shared Bible version attribution selection and fall back to promotional content in BibleCard and BibleReader when copyright is blank.
+- 60d022e: Keep the reader font labels Inter and Untitled Serif in every language.
+- Updated dependencies [da12b12]
+  - @youversion/platform-core@2.16.0
+  - @youversion/platform-react-hooks@2.16.0
+
 ## 2.15.0
 
 ### Minor Changes
