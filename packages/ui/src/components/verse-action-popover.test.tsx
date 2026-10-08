@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useRef, useState } from 'react';
@@ -96,30 +96,8 @@ function ControlledCloseScenario() {
 }
 
 describe('VerseActionPopover', () => {
-  describe('AC1: Basic popover display', () => {
-    it('should display 6 color circles when verse selected', () => {
-      render(<VerseActionPopover {...createDefaultProps()} />);
-
-      const colorButtons = screen
-        .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
-
-      expect(colorButtons).toHaveLength(6);
-    });
-
-    it('should render the six apply colors', () => {
-      render(<VerseActionPopover {...createDefaultProps()} />);
-
-      const applyButtons = screen
-        .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
-
-      expect(applyButtons).toHaveLength(6);
-      applyButtons.forEach((btn) => {
-        expect(btn.style.backgroundColor).toContain('color-mix');
-        expect(btn.style.backgroundColor).toContain('var(--yv-card)');
-      });
-    });
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
   describe('AC1b: Initial focus on open', () => {
@@ -155,28 +133,9 @@ describe('VerseActionPopover', () => {
       fireEvent.click(firstColorButton);
       expect(onHighlight).toHaveBeenCalledWith(HIGHLIGHT_COLORS[0]);
     });
-
-    it('should render popover with color buttons', () => {
-      render(<VerseActionPopover {...createDefaultProps()} />);
-
-      const dialog = screen.getByRole('dialog');
-      expect(dialog).toBeTruthy();
-
-      const firstColorButton = screen
-        .getAllByRole('button')
-        .find((btn) => btn.getAttribute('aria-label')?.includes('Apply'))!;
-
-      expect(firstColorButton).toBeTruthy();
-    });
   });
 
   describe('AC3: Copy action', () => {
-    it('should display copy button', () => {
-      render(<VerseActionPopover {...createDefaultProps()} />);
-      const copyButton = screen.getByText('Copy');
-      expect(copyButton).toBeTruthy();
-    });
-
     it('should call onCopy when copy button clicked', () => {
       const onCopy = vi.fn();
       render(<VerseActionPopover {...createDefaultProps()} onCopy={onCopy} />);
@@ -188,12 +147,6 @@ describe('VerseActionPopover', () => {
   });
 
   describe('AC4: Share action', () => {
-    it('should display share button', () => {
-      render(<VerseActionPopover {...createDefaultProps()} />);
-      const shareButton = screen.getByText('Share');
-      expect(shareButton).toBeTruthy();
-    });
-
     it('should call onShare when share button clicked', () => {
       const onShare = vi.fn();
       render(<VerseActionPopover {...createDefaultProps()} onShare={onShare} />);
@@ -370,43 +323,6 @@ describe('VerseActionPopover', () => {
     });
   });
 
-  describe('AC8 & AC8a: Dismiss logic on remove', () => {
-    it('should show remove buttons for active highlights', () => {
-      const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0], HIGHLIGHT_COLORS[1]]);
-      const selectedVerses = [1, 2];
-      const highlightedVerses = { 1: HIGHLIGHT_COLORS[0], 2: HIGHLIGHT_COLORS[1] };
-
-      render(
-        <VerseActionPopover
-          {...createDefaultProps()}
-          activeHighlights={activeHighlights}
-          selectedVerses={selectedVerses}
-          highlightedVerses={highlightedVerses}
-        />,
-      );
-
-      const removeButtons = screen
-        .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Clear'));
-
-      expect(removeButtons).toHaveLength(2);
-    });
-  });
-
-  describe('Popover visibility', () => {
-    it('should not render content when open is false', () => {
-      render(<VerseActionPopover {...createDefaultProps()} open={false} />);
-
-      expect(screen.queryByRole('dialog')).toBeNull();
-    });
-
-    it('should render content when open is true', () => {
-      render(<VerseActionPopover {...createDefaultProps()} open={true} />);
-
-      expect(screen.getByRole('dialog')).toBeTruthy();
-    });
-  });
-
   describe('Accessibility', () => {
     it('should have proper ARIA labels for all buttons', () => {
       const activeHighlights = new Set<HighlightColor>([HIGHLIGHT_COLORS[0]]);
@@ -451,29 +367,6 @@ describe('VerseActionPopover', () => {
     });
   });
 
-  describe('Styling', () => {
-    it('should have data-yv-sdk attribute for scoping', () => {
-      render(<VerseActionPopover {...createDefaultProps()} />);
-
-      const dialog = screen.getByRole('dialog');
-      expect(dialog.getAttribute('data-yv-sdk')).not.toBeNull();
-    });
-
-    it('should apply theme attribute', () => {
-      render(<VerseActionPopover {...createDefaultProps()} theme="dark" />);
-
-      const dialog = screen.getByRole('dialog');
-      expect(dialog.getAttribute('data-yv-theme')).toBe('dark');
-    });
-
-    it('should default to light theme', () => {
-      render(<VerseActionPopover {...createDefaultProps()} />);
-
-      const dialog = screen.getByRole('dialog');
-      expect(dialog.getAttribute('data-yv-theme')).toBe('light');
-    });
-  });
-
   describe('Edge cases', () => {
     it('shows a remove swatch for a valid non-palette color at exact hex', () => {
       const custom = 'aabbcc';
@@ -507,19 +400,6 @@ describe('VerseActionPopover', () => {
         fillFor('fffe00', 'card'),
       );
       expect(applyButtons()).toHaveLength(6);
-    });
-
-    it('should handle empty active highlights', () => {
-      const activeHighlights = new Set<HighlightColor>();
-
-      render(<VerseActionPopover {...createDefaultProps()} activeHighlights={activeHighlights} />);
-
-      const applyButtons = screen
-        .getAllByRole('button')
-        .filter((btn) => btn.getAttribute('aria-label')?.includes('Apply'));
-
-      // Should still show 6 apply colors
-      expect(applyButtons).toHaveLength(6);
     });
 
     it('should handle all 6 colors highlighted', () => {

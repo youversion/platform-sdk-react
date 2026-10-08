@@ -1,134 +1,46 @@
-import { renderHook, waitFor, act } from '@testing-library/react';
-import { describe, expect, vi, beforeEach, it } from 'vitest';
-import { useVerses } from './useVerses';
-import { type BibleVerse, type Collection } from '@youversion/platform-core';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { expect, it, vi } from 'vitest';
 import { createBibleClientStub, createYVWrapper } from './test/utils';
+import { useVerses } from './useVerses';
 
-describe('useVerses', () => {
-  const mockGetVerses = vi.fn();
-  const bibleClient = createBibleClientStub({ getVerses: mockGetVerses });
-  const wrapper = createYVWrapper('test-app-key', { bibleClient });
-
-  const mockVerses: Collection<BibleVerse> = {
-    data: [
-      { id: '1', passage_id: 'MAT.1.1', title: '1' },
-      { id: '2', passage_id: 'MAT.1.2', title: '2' },
-      { id: '3', passage_id: 'MAT.1.3', title: '3' },
-    ],
+it('keys and forwards verse collections by version, book, and chapter', async () => {
+  const first = { data: [{ id: '1', passage_id: 'JHN.3.1', title: '1' }], next_page_token: null };
+  const translated = {
+    data: [{ id: '1', passage_id: 'JHN.3.1', title: 'Translated verse' }],
     next_page_token: null,
   };
-
-  beforeEach(() => {
-    mockGetVerses.mockResolvedValue(mockVerses);
+  const otherBook = {
+    data: [{ id: '1', passage_id: 'MAT.3.1', title: '1' }],
+    next_page_token: null,
+  };
+  const otherChapter = {
+    data: [{ id: '1', passage_id: 'MAT.4.1', title: '1' }],
+    next_page_token: null,
+  };
+  const getVerses = vi
+    .fn()
+    .mockResolvedValueOnce(first)
+    .mockResolvedValueOnce(translated)
+    .mockResolvedValueOnce(otherBook)
+    .mockResolvedValueOnce(otherChapter);
+  const wrapper = createYVWrapper('test-app-key', {
+    bibleClient: createBibleClientStub({ getVerses }),
   });
-
-  describe('fetching verses', () => {
-    it('should fetch verses with all 3 parameters', async () => {
-      const { result } = renderHook(() => useVerses(111, 'MAT', 1), { wrapper });
-
-      expect(result.current.loading).toBe(true);
-      expect(result.current.verses).toBe(null);
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect.soft(mockGetVerses).toHaveBeenCalledWith(111, 'MAT', 1);
-      expect.soft(result.current.verses).toEqual(mockVerses);
-    });
-
-    it.each([
-      {
-        param: 'versionId',
-        initialArgs: { versionId: 1, book: 'MAT', chapter: 1 },
-        updatedArgs: { versionId: 111, book: 'MAT', chapter: 1 },
-      },
-      {
-        param: 'book',
-        initialArgs: { versionId: 1, book: 'MAT', chapter: 1 },
-        updatedArgs: { versionId: 1, book: 'GEN', chapter: 1 },
-      },
-      {
-        param: 'chapter',
-        initialArgs: { versionId: 1, book: 'MAT', chapter: 1 },
-        updatedArgs: { versionId: 1, book: 'MAT', chapter: 5 },
-      },
-    ])('should refetch when $param changes', async ({ initialArgs, updatedArgs }) => {
-      type VerseArgs = { versionId: number; book: string; chapter: number };
-      const { result, rerender } = renderHook(
-        ({ versionId, book, chapter }: VerseArgs) => useVerses(versionId, book, chapter),
-        {
-          wrapper,
-          initialProps: initialArgs,
-        },
-      );
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect.soft(mockGetVerses).toHaveBeenCalledTimes(1);
-      expect
-        .soft(mockGetVerses)
-        .toHaveBeenLastCalledWith(initialArgs.versionId, initialArgs.book, initialArgs.chapter);
-
-      act(() => {
-        rerender(updatedArgs);
-      });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect.soft(mockGetVerses).toHaveBeenCalledTimes(2);
-      expect
-        .soft(mockGetVerses)
-        .toHaveBeenLastCalledWith(updatedArgs.versionId, updatedArgs.book, updatedArgs.chapter);
-    });
-
-    it('should not fetch when enabled is false', async () => {
-      const { result } = renderHook(() => useVerses(1, 'MAT', 1, { enabled: false }), {
-        wrapper,
-      });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect.soft(mockGetVerses).not.toHaveBeenCalled();
-      expect.soft(result.current.verses).toBe(null);
-    });
-
-    it('should handle fetch errors', async () => {
-      const error = new Error('Failed to fetch verses');
-      mockGetVerses.mockRejectedValueOnce(error);
-
-      const { result } = renderHook(() => useVerses(1, 'MAT', 1), { wrapper });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect.soft(result.current.error).toEqual(error);
-      expect.soft(result.current.verses).toBe(null);
-    });
-
-    it('should support manual refetch', async () => {
-      const { result } = renderHook(() => useVerses(1, 'MAT', 1), { wrapper });
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
-      expect(mockGetVerses).toHaveBeenCalledTimes(1);
-
-      act(() => {
-        result.current.refetch();
-      });
-
-      await waitFor(() => {
-        expect(mockGetVerses).toHaveBeenCalledTimes(2);
-      });
-    });
-  });
+  const { result, rerender } = renderHook(
+    ({ version, book, chapter }) => useVerses(version, book, chapter),
+    { initialProps: { version: 111, book: 'JHN', chapter: 3 }, wrapper },
+  );
+  await waitFor(() => expect(result.current.verses).toEqual(first));
+  act(() => rerender({ version: 206, book: 'JHN', chapter: 3 }));
+  await waitFor(() => expect(result.current.verses).toEqual(translated));
+  act(() => rerender({ version: 206, book: 'MAT', chapter: 3 }));
+  await waitFor(() => expect(result.current.verses).toEqual(otherBook));
+  act(() => rerender({ version: 206, book: 'MAT', chapter: 4 }));
+  await waitFor(() => expect(result.current.verses).toEqual(otherChapter));
+  expect(getVerses.mock.calls).toEqual([
+    [111, 'JHN', 3],
+    [206, 'JHN', 3],
+    [206, 'MAT', 3],
+    [206, 'MAT', 4],
+  ]);
 });

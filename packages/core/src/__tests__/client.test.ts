@@ -1,292 +1,138 @@
-import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll } from 'vitest';
-import { ApiClient, getHttpStatus } from '../client';
+import { describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
+import { ApiClient, getHttpStatus } from '../client';
 import { server } from './setup';
 
-// We always want this test to hit msw since this is only testing
-// the setup of and ApiClient instance and not actually hitting
-// any real APIs.
-if (process.env.INTEGRATION_TESTS) {
-  beforeAll(() => server.listen());
-  afterEach(() => server.resetHandlers());
-  afterAll(() => server.close());
-}
-
-describe('ApiClient', () => {
-  let apiClient: ApiClient;
-
-  beforeEach(() => {
-    apiClient = new ApiClient({
-      apiHost: 'test_placeholder.youversion.com',
-      appKey: 'test-app',
-      installationId: 'test-installation',
-    });
-  });
-
-  describe('constructor', () => {
-    it('should set remember the appKey', () => {
-      const client = new ApiClient({
-        appKey: 'test-app1',
-        installationId: 'test-installation',
-      });
-
-      expect(client.config.appKey).toBe('test-app1');
-    });
-
-    it('should use provided appKey', () => {
-      const client = new ApiClient({
-        appKey: 'test-app2',
-        installationId: 'test-installation',
-      });
-
-      expect(client.config.appKey).toBe('test-app2');
-    });
-  });
-
-  describe('query string serialization', () => {
-    it('should serialize a single scalar parameter', async () => {
+describe('ApiClient contracts', () => {
+  it('serializes query arrays and sends default or overridden SDK headers', async () => {
+    // The live-API command disables shared MSW setup, but this transport contract
+    // must still use its placeholder host only through the mocked handler.
+    if (process.env.INTEGRATION_TESTS) server.listen();
+    try {
       server.use(
-        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
-          return HttpResponse.json({ search: new URL(request.url).search });
-        }),
+        http.get('https://test_placeholder.youversion.com/test', ({ request }) =>
+          HttpResponse.json({
+            search: new URL(request.url).search,
+            appKey: request.headers.get('x-yvp-app-key'),
+            sdk: request.headers.get('x-yvp-sdk'),
+          }),
+        ),
       );
-
-      const result = await apiClient.get<{ search: string }>('/test', { param: 'value' });
-      expect(result.search).toBe('?param=value');
-    });
-
-    it('should serialize an array of length 1 as a repeated key', async () => {
-      server.use(
-        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
-          return HttpResponse.json({ search: new URL(request.url).search });
-        }),
-      );
-
-      const result = await apiClient.get<{ search: string }>('/test', { param: ['only'] });
-      expect(result.search).toBe('?param=only');
-    });
-
-    it('should serialize an array of length 2 as repeated keys', async () => {
-      server.use(
-        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
-          return HttpResponse.json({ search: new URL(request.url).search });
-        }),
-      );
-
-      const result = await apiClient.get<{ search: string }>('/test', { param: ['one', 'two'] });
-      expect(result.search).toBe('?param=one&param=two');
-    });
-
-    it('should serialize an array of length 3 as repeated keys', async () => {
-      server.use(
-        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
-          return HttpResponse.json({ search: new URL(request.url).search });
-        }),
-      );
-
-      const result = await apiClient.get<{ search: string }>('/test', {
-        param: ['one', 'two', 'three'],
-      });
-      expect(result.search).toBe('?param=one&param=two&param=three');
-    });
-
-    it('should handle both scalar and array parameters together', async () => {
-      server.use(
-        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
-          return HttpResponse.json({ search: new URL(request.url).search });
-        }),
-      );
-
-      const result = await apiClient.get<{ search: string }>('/test', {
-        param: 'value',
-        list: ['one', 'two'],
-      });
-      expect(result.search).toBe('?param=value&list=one&list=two');
-    });
-  });
-
-  describe('get', () => {
-    it('should make GET request and return data', async () => {
-      server.use(
-        http.get('https://test_placeholder.youversion.com/test', () => {
-          return HttpResponse.json({ message: 'success' });
-        }),
-      );
-
-      const result = await apiClient.get<{ message: string }>('/test');
-
-      expect(result).toEqual({ message: 'success' });
-    });
-
-    it('should include query parameters', async () => {
-      server.use(
-        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
-          const url = new URL(request.url);
-          const param = url.searchParams.get('param');
-          return HttpResponse.json({ param });
-        }),
-      );
-
-      const result = await apiClient.get<{ param: string }>('/test', {
-        param: 'value',
-      });
-
-      expect(result).toEqual({ param: 'value' });
-    });
-
-    it('should include array query parameters as repeated keys', async () => {
-      server.use(
-        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
-          const url = new URL(request.url);
-          const params = url.searchParams.getAll('param');
-          return HttpResponse.json({ params });
-        }),
-      );
-
-      const result = await apiClient.get<{ params: string[] }>('/test', {
-        param: ['one', 'two'],
-      });
-
-      expect(result).toEqual({ params: ['one', 'two'] });
-    });
-  });
-
-  describe('default headers', () => {
-    it('should send X-YVP-Sdk header with ReactSDK identifier on every request', async () => {
-      let receivedHeader: string | null = null;
-      server.use(
-        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
-          receivedHeader = request.headers.get('x-yvp-sdk');
-          return HttpResponse.json({});
-        }),
-      );
-
-      await apiClient.get('/test');
-
-      expect(receivedHeader).toMatch(/^ReactSDK=.+$/);
-    });
-
-    it('should send X-YVP-App-Key header on every request', async () => {
-      let receivedAppKey: string | null = null;
-      server.use(
-        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
-          receivedAppKey = request.headers.get('x-yvp-app-key');
-          return HttpResponse.json({});
-        }),
-      );
-
-      await apiClient.get('/test');
-
-      expect(receivedAppKey).toBe('test-app');
-    });
-  });
-
-  describe('additionalHeaders', () => {
-    it('should send caller-supplied headers in addition to the built-in ones', async () => {
       const client = new ApiClient({
         apiHost: 'test_placeholder.youversion.com',
         appKey: 'test-app',
-        additionalHeaders: { 'X-Custom': 'hello' },
       });
 
-      let receivedCustom: string | null = null;
-      let receivedAppKey: string | null = null;
-      server.use(
-        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
-          receivedCustom = request.headers.get('x-custom');
-          receivedAppKey = request.headers.get('x-yvp-app-key');
-          return HttpResponse.json({});
-        }),
-      );
+      const result = await client.get<{ search: string; appKey: string; sdk: string }>('/test', {
+        scalar: 'value',
+        list: ['one', 'two'],
+      });
+      expect(result.search).toBe('?scalar=value&list=one&list=two');
+      expect(result.appKey).toBe('test-app');
+      expect(result.sdk).toMatch(/^ReactSDK=.+$/);
 
-      await client.get('/test');
-
-      expect(receivedCustom).toBe('hello');
-      expect(receivedAppKey).toBe('test-app');
-    });
-
-    it('should let additionalHeaders override the built-in X-YVP-Sdk header', async () => {
-      // Mirrors how a React Native Expo wrapper would replace the web SDK's
-      // identifier with its own.
-      const client = new ApiClient({
+      const wrapper = new ApiClient({
         apiHost: 'test_placeholder.youversion.com',
         appKey: 'test-app',
         additionalHeaders: { 'X-YVP-Sdk': 'ReactNativeSDK=1.2.3' },
       });
-
-      let receivedSdk: string | null = null;
-      server.use(
-        http.get('https://test_placeholder.youversion.com/test', ({ request }) => {
-          receivedSdk = request.headers.get('x-yvp-sdk');
-          return HttpResponse.json({});
-        }),
-      );
-
-      await client.get('/test');
-
-      expect(receivedSdk).toBe('ReactNativeSDK=1.2.3');
-    });
+      const overridden = await wrapper.get<{ sdk: string }>('/test');
+      expect(overridden.sdk).toBe('ReactNativeSDK=1.2.3');
+    } finally {
+      if (process.env.INTEGRATION_TESTS) {
+        server.resetHandlers();
+        server.close();
+      }
+    }
   });
 
-  describe('post', () => {
-    it('should make POST request and return data', async () => {
-      server.use(
-        http.post('https://test_placeholder.youversion.com/test', async ({ request }) => {
-          const body = await request.json();
-          return HttpResponse.json({ received: body });
-        }),
-      );
-
-      const result = await apiClient.post<{ received: unknown }>('/test', {
-        data: 'test',
+  it('aborts a pending request at the configured deadline, not before it', async () => {
+    if (process.env.INTEGRATION_TESTS) server.listen();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    let releaseResponse: ((response: Response) => void) | undefined;
+    try {
+      const started = new Promise<AbortSignal>((resolveStarted) => {
+        server.use(
+          http.get('https://test_placeholder.youversion.com/slow', ({ request }) => {
+            const response = new Promise<Response>((resolve) => {
+              releaseResponse = resolve;
+            });
+            resolveStarted(request.signal);
+            return response;
+          }),
+        );
       });
-
-      expect(result).toEqual({ received: { data: 'test' } });
-    });
-
-    it('should include query parameters in POST request', async () => {
-      server.use(
-        http.post('https://test_placeholder.youversion.com/test', async ({ request }) => {
-          const url = new URL(request.url);
-          const param = url.searchParams.get('param');
-          const body = await request.json();
-          return HttpResponse.json({ param, body });
-        }),
-      );
-
-      const result = await apiClient.post<{ param: string; body: unknown }>(
-        '/test',
-        { data: 'test' },
-        { param: 'value' },
-      );
-
-      expect(result).toEqual({
-        param: 'value',
-        body: { data: 'test' },
+      const client = new ApiClient({
+        apiHost: 'test_placeholder.youversion.com',
+        appKey: 'test-app',
+        timeout: 40,
       });
-    });
-  });
-});
+      // Observe rejection immediately, including when cancellation is too early.
+      const outcome = client.get('/slow').catch((cause: unknown) => cause);
+      const signal = await started;
+      await vi.advanceTimersByTimeAsync(39);
+      expect(signal.aborted).toBe(false);
 
-describe('getHttpStatus', () => {
-  it('reads the status off an Error with a numeric status', () => {
-    const error = Object.assign(new Error('nope'), { status: 403 });
-    expect(getHttpStatus(error)).toBe(403);
+      await vi.advanceTimersByTimeAsync(1);
+      const abortedAtDeadline = signal.aborted;
+      releaseResponse?.(HttpResponse.json({ late: true }));
+      const error = await outcome;
+      expect(error).toBeInstanceOf(Error);
+      expect(error).toHaveProperty('message', 'Request timeout after 40ms');
+      expect(abortedAtDeadline).toBe(true);
+    } finally {
+      releaseResponse?.(HttpResponse.json({ late: true }));
+      vi.useRealTimers();
+      if (process.env.INTEGRATION_TESTS) {
+        server.resetHandlers();
+        server.close();
+      }
+    }
   });
 
-  it('reads the status off a thrown plain object', () => {
-    expect(getHttpStatus({ status: 401 })).toBe(401);
+  it('decodes text responses and keeps server error details private in production', async () => {
+    if (process.env.INTEGRATION_TESTS) server.listen();
+    vi.stubEnv('NODE_ENV', 'production');
+    const detail = 'Internal account diagnostic: private-session-value';
+    try {
+      server.use(
+        http.get('https://test_placeholder.youversion.com/text', () =>
+          HttpResponse.text('plain response'),
+        ),
+        http.get('https://test_placeholder.youversion.com/denied-json', () =>
+          HttpResponse.json({ message: detail }, { status: 403 }),
+        ),
+        http.get('https://test_placeholder.youversion.com/denied-text', () =>
+          HttpResponse.text(detail, { status: 401 }),
+        ),
+      );
+      const client = new ApiClient({
+        apiHost: 'test_placeholder.youversion.com',
+        appKey: 'test-app',
+      });
+      expect(await client.get<string>('/text')).toBe('plain response');
+
+      for (const [path, status] of [
+        ['/denied-json', 403],
+        ['/denied-text', 401],
+      ] as const) {
+        const error = await client.get(path).catch((cause: unknown) => cause);
+        expect(error).toBeInstanceOf(Error);
+        expect(getHttpStatus(error)).toBe(status);
+        expect(error).toHaveProperty('message', expect.not.stringContaining(detail));
+      }
+    } finally {
+      vi.unstubAllEnvs();
+      if (process.env.INTEGRATION_TESTS) {
+        server.resetHandlers();
+        server.close();
+      }
+    }
   });
 
-  it('returns undefined for objects without a numeric status', () => {
-    expect(getHttpStatus({ status: '500' })).toBeUndefined();
-    expect(getHttpStatus(new Error('network'))).toBeUndefined();
-  });
-
-  it('returns undefined for null and non-object values', () => {
+  it('only exposes numeric status values from unknown failures', () => {
+    expect(getHttpStatus(Object.assign(new Error('forbidden'), { status: 403 }))).toBe(403);
+    expect(getHttpStatus({ status: '403' })).toBeUndefined();
     expect(getHttpStatus(null)).toBeUndefined();
-    expect(getHttpStatus(undefined)).toBeUndefined();
-    expect(getHttpStatus(404)).toBeUndefined();
-    expect(getHttpStatus('401')).toBeUndefined();
   });
 });

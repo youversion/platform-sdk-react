@@ -7,6 +7,7 @@ import {
   BibleClient,
   MissingPassageAttributionError,
   getBibleStylesheets,
+  getPassageAttribution,
   getPassageDisplay,
 } from '../index';
 import { BiblePassageDisplaySchema } from '../schemas/passage-display';
@@ -44,6 +45,30 @@ function setupDisplayTest(): void {
 }
 
 describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('passage display model', () => {
+  it('selects copyright, then promotional content, without failing on missing attribution', () => {
+    expect(
+      getPassageAttribution({
+        ...mockDisplayVersion,
+        copyright: 'Preferred copyright',
+        promotional_content: 'Fallback promotional content',
+      }),
+    ).toEqual({ text: 'Preferred copyright', source: 'copyright' });
+    expect(
+      getPassageAttribution({
+        ...mockDisplayVersion,
+        copyright: '   ',
+        promotional_content: 'Fallback promotional content',
+      }),
+    ).toEqual({ text: 'Fallback promotional content', source: 'promotionalContent' });
+    expect(
+      getPassageAttribution({
+        ...mockDisplayVersion,
+        copyright: null,
+        promotional_content: null,
+      }),
+    ).toBeNull();
+  });
+
   it('returns transformed HTML, current attribution, stylesheets, and container attributes', async () => {
     setupDisplayTest();
     const display = await createBibleClient().getPassageDisplay({
@@ -97,6 +122,23 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('passage display model',
     expect(display.attribution.source).toBe('copyright');
   });
 
+  it('transforms and sanitizes direct HTML passage reads by default', async () => {
+    setupDisplayTest();
+    server.use(
+      http.get(`https://${apiHost}/v1/bibles/:id/passages/:passageId`, () =>
+        HttpResponse.json({
+          ...mockNIVGen1Verse1PassageHTML,
+          content: `${mockNIVGen1Verse1PassageHTML.content}<script>unsafe()</script>`,
+        }),
+      ),
+    );
+
+    const passage = await createBibleClient().getPassage(111, 'GEN.1.1');
+
+    expect(passage.content).toContain('data-yv-transformed');
+    expect(passage.content).not.toContain('<script>');
+  });
+
   it('preserves additional API fields returned by the existing getPassage method', async () => {
     setupDisplayTest();
     server.use(
@@ -118,6 +160,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('passage display model',
     );
 
     expect(passage).toHaveProperty('future_api_field', 'preserved');
+    expect(passage.content).toBe(mockNIVGen1Verse1PassageHTML.content);
   });
 
   it('requests fresh attribution for repeated display operations', async () => {

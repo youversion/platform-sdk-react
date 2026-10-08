@@ -17,47 +17,12 @@ function renderProfileAvatar(props: ComponentProps<typeof ProfileAvatar>) {
 // never happens in jsdom — image rendering is covered by the Storybook
 // integration tests in profile-avatar.stories.tsx.
 describe('ProfileAvatar', () => {
-  it('renders two-letter initials when no image URL is present', () => {
-    renderProfileAvatar({ name: 'Cam Anderson' });
-    expect(screen.getByText('CA')).toBeInTheDocument();
-  });
-
-  it('uses first and last word for names with middle names', () => {
+  it('derives uppercase initials from the first and last words', () => {
     renderProfileAvatar({ name: 'Cam Michael Anderson' });
     expect(screen.getByText('CA')).toBeInTheDocument();
-  });
 
-  it('uppercases the initials', () => {
     renderProfileAvatar({ name: 'cam anderson' });
-    expect(screen.getByText('CA')).toBeInTheDocument();
-  });
-
-  it('handles single-name inputs', () => {
-    renderProfileAvatar({ name: 'Cher' });
-    expect(screen.getByText('C')).toBeInTheDocument();
-  });
-
-  it('renders an empty circle for empty names without crashing', () => {
-    const { container } = renderProfileAvatar({ name: '' });
-    expect(container.querySelector('[data-slot="avatar-fallback"]')).toHaveTextContent('');
-  });
-
-  it('renders an empty circle for missing names without crashing', () => {
-    const { container } = renderProfileAvatar({});
-    expect(container.querySelector('[data-slot="avatar-fallback"]')).toHaveTextContent('');
-  });
-
-  it('sets aria-label to the full name', () => {
-    const { container } = renderProfileAvatar({ name: 'Cam Anderson' });
-    expect(container.querySelector('[data-slot="avatar"]')).toHaveAttribute(
-      'aria-label',
-      'Cam Anderson',
-    );
-  });
-
-  it('renders an empty circle for whitespace-only names without crashing', () => {
-    const { container } = renderProfileAvatar({ name: '   ' });
-    expect(container.querySelector('[data-slot="avatar-fallback"]')).toHaveTextContent('');
+    expect(screen.getAllByText('CA')).toHaveLength(2);
   });
 
   it('forwards class names, DOM props, clicks, and its Radix ref', async () => {

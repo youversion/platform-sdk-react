@@ -61,7 +61,7 @@ import { BibleTextView, getCleanVerseText, type FootnoteData } from './verse';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
 import { isHighlightsLive } from '@/lib/feature-flags';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
-import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
+import { YouVersionPlatformConfiguration, getPassageAttribution } from '@youversion/platform-core';
 import { BibleReaderSearch, type BibleReaderSearchPressData } from './bible-reader-search';
 import { useTransientVerseFocus, type VerseFocusRequest } from '@/lib/use-transient-verse-focus';
 import { BibleReaderNavigation } from './bible-reader-navigation';
@@ -806,6 +806,8 @@ function Content() {
     scriptureDirection,
   } = useBibleReaderContext();
   const { version } = useVersion(versionId);
+  const attribution = version ? getPassageAttribution(version) : null;
+  const publisherUrl = version?.publisher_url;
 
   const bookData = useMemo(() => {
     return booksData.find((b) => b.id === book);
@@ -1304,18 +1306,18 @@ function Content() {
         </div>
       )}
 
-      {version?.copyright && (
+      {attribution && (
         <footer
           className="yv:flex yv:flex-col yv:items-center yv:gap-2"
           style={{ fontSize: currentFontSize }}
         >
           <p className="yv:text-balance yv:text-[0.75em] yv:text-center yv:text-muted-foreground">
-            <bdi dir="auto">{version.copyright}</bdi>
+            <bdi dir="auto">{attribution.text}</bdi>
           </p>
-          {version.publisher_url ? (
+          {publisherUrl ? (
             <a
               className="yv:flex yv:items-center yv:gap-1 yv:text-xs yv:font-bold"
-              href={version.publisher_url}
+              href={publisherUrl}
               target="_blank"
               rel="noopener noreferrer"
             >

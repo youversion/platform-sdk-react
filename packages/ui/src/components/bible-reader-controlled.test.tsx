@@ -218,6 +218,50 @@ it('keeps reader-owned scripture in the reader tree without a standalone shadow 
   expect(renderer.getRootNode()).toBe(document);
 });
 
+it.each([
+  {
+    state: 'copyright and promotional content are populated',
+    copyright: 'Copyright attribution',
+    promotionalContent: 'Promotional attribution',
+    expected: 'Copyright attribution',
+  },
+  {
+    state: 'copyright is blank',
+    copyright: '  \n ',
+    promotionalContent: '<strong>Promotional attribution</strong>',
+    expected: '<strong>Promotional attribution</strong>',
+  },
+])(
+  'renders the selected version attribution when $state',
+  ({ copyright, promotionalContent, expected }) => {
+    const { container } = renderReader(
+      {},
+      {
+        ...defaultOverrides(),
+        useVersion: () => ({
+          version: {
+            ...mockVersion,
+            copyright,
+            promotional_content: promotionalContent,
+          },
+          loading: false,
+          error: null,
+          refetch: () => undefined,
+        }),
+      },
+    );
+
+    expect(screen.getByText(expected)).toBeInTheDocument();
+    expect(container.querySelector('footer strong')).toBeNull();
+  },
+);
+
+it('renders no attribution footer when both fields are absent', () => {
+  const { container } = renderReader();
+
+  expect(container.querySelector('footer')).toBeNull();
+});
+
 function getVerseEl(container: HTMLElement, verse: number): HTMLElement {
   const els = container.querySelectorAll<HTMLElement>(`.yv-v[v="${verse}"]`);
   const el = els[els.length - 1];
