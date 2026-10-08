@@ -189,6 +189,11 @@ console.log(
     introduced_major: levels.some((l) => l.level === 'major'),
     packages: releases.map((r) => r.name),
     added_changesets: added,
-    signoff_token: signoffToken({ repoRoot: REPO_ROOT, head, nextVersion: versions[0] ?? null }),
+    signoff_token: signoffToken({
+      repoRoot: REPO_ROOT,
+      base: args.base,
+      head,
+      nextVersion: versions[0] ?? null,
+    }),
   }),
 );

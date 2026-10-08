@@ -9,14 +9,16 @@ import { signoffToken } from '../../scripts/signoff-token.mjs'
 const repo = mkdtempSync(join(tmpdir(), 'signoff-token-'))
 const git = (...a) => execFileSync('git', a, { cwd: repo, encoding: 'utf8' }).trim()
 const commit = (msg) => { git('add', '-A'); git('-c', 'commit.gpgsign=false', 'commit', '-q', '-m', msg); return git('rev-parse', 'HEAD') }
-const tok = (head, v = '2.0.0') => signoffToken({ repoRoot: repo, head, nextVersion: v })
+let base
+const tok = (head, v = '2.0.0') => signoffToken({ repoRoot: repo, base, head, nextVersion: v })
 
 git('init', '-q', '-b', 'main'); git('config', 'user.email', 't@t'); git('config', 'user.name', 't')
 mkdirSync(join(repo, '.changeset'))
 writeFileSync(join(repo, '.changeset', 'a.md'), "---\n'p': major\n---\n\nbreak\n")
 writeFileSync(join(repo, '.changeset', 'README.md'), 'docs\n')
 writeFileSync(join(repo, 'src.txt'), 'code\n')
-const base = commit('base'); const baseTok = tok(base)
+writeFileSync(join(repo, '.changeset', 'config.json'), '{}\n')
+base = commit('base'); const baseTok = tok(base)
 
 const results = []
 const check = (name, actual, expectSame) =>
@@ -58,6 +60,30 @@ results.push({
   name: 'editing a tab-named changeset replaces the token',
   ok: tabBefore !== tabAfter,
 })
+
+git('reset', '-q', '--hard', afterDocs)
+writeFileSync(join(repo, '.changeset', 'config.json'), '{"fixed": []}\n')
+check('editing .changeset/config.json replaces the token', tok(commit('edit config')), false)
+
+// The branch has to be current with main before it merges, and every other PR brings its own
+// changeset. Merging main in must leave the signoff standing, so only this PR's changesets count.
+git('reset', '-q', '--hard', afterDocs)
+git('checkout', '-q', '-b', 'pr')
+writeFileSync(join(repo, '.changeset', 'mine.md'), "---\n'p': major\n---\n\nmine\n")
+const prTok = tok(commit('pr changeset'))
+git('checkout', '-q', 'main')
+git('reset', '-q', '--hard', afterDocs)
+writeFileSync(join(repo, '.changeset', 'theirs.md'), "---\n'p': patch\n---\n\ntheirs\n")
+commit('another PR lands on main')
+git('checkout', '-q', 'pr')
+git('-c', 'commit.gpgsign=false', 'merge', '-q', '--no-edit', 'main')
+const savedBase = base
+base = 'main'
+results.push({
+  name: 'merging a changeset in from main keeps the token',
+  ok: tok(git('rev-parse', 'HEAD')) === prTok,
+})
+base = savedBase
 
 rmSync(repo, { recursive: true, force: true })
 for (const r of results) console.log(`${r.ok ? 'ok' : 'FAIL'}\t${r.name}`)

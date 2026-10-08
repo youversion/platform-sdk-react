@@ -7,10 +7,16 @@
  * rubber-stamp the gate, and it is stricter than this repo's own review policy, which keeps
  * approvals across pushes (`dismiss_stale_reviews_on_push: false`).
  *
- * Keyed on every changeset at head plus the resulting version, deliberately wider than "only the
- * changesets declaring major": any changeset edit can move the release, and erring toward asking
- * again is the safe direction. Blob ids come from git, so the hash changes if and only if the
- * content does. Renaming a changeset re-triggers, which is correct: Changesets reads it by path.
+ * Keyed on the changesets this PR adds, edits, renames or removes since `base` (the merge-base), plus
+ * `.changeset/config.json` at head and the resulting version. Keying on every changeset at head
+ * voided the signoff whenever main was merged in, because main brings other PRs' changesets.
+ * Every changeset this PR touches counts, not only the ones declaring major: any changeset edit
+ * can move the release, and erring toward asking again is the safe direction. Blob ids come from
+ * git, so the hash changes if and only if the content does. Renaming a changeset re-triggers,
+ * which is correct: Changesets reads it by path.
+ *
+ * `config.json` is read from the head commit, not the working tree: the preview job restores
+ * main's copy before running, but after the merge this PR's copy is the one that governs.
  *
  * 16 hex characters (64 bits). The signoff names this value, so a collaborator who wanted a
  * different release to inherit an existing signoff would have to grind a second preimage against
@@ -27,28 +33,34 @@ import { createHash } from 'node:crypto';
 export const isChangesetPath = (f) =>
   /^\.changeset\/[^]+\.md$/.test(f) && !/README\.md$/.test(f);
 
-export function signoffToken({ repoRoot, head, nextVersion }) {
-  const raw = execFileSync('git', ['ls-tree', '-r', '-z', head, '--', '.changeset'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-    maxBuffer: 64 * 1024 * 1024,
-  });
-  const entries = raw
+export function signoffToken({ repoRoot, base, head, nextVersion }) {
+  const git = (...args) =>
+    execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  // `--raw -z`: `:<old mode> <new mode> <old blob> <new blob> <status>`, then one path, or two
+  // for a rename. `-z` keeps unusual paths unquoted, so they still pass the eligibility test.
+  const fields = git('diff', '--raw', '-z', '-M', '--no-abbrev', base, head, '--', '.changeset')
     .split('\0')
-    .filter((line) => line !== '')
-    .map((line) => {
-      // `<mode> <type> <object>\t<path>`. Split at the first tab only: a path may contain one,
-      // and losing its tail would drop the file from the digest, so an edit to it would not
-      // re-trigger a signoff.
-      const [meta, path] = line.split(/\t(.*)/s);
-      return { meta, path };
-    })
-    .filter(({ path }) => isChangesetPath(path))
-    .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
-    .map(({ meta, path }) => `${meta.split(/\s+/)[2]} ${path}`);
+    .filter((f) => f !== '');
+  const changes = [];
+  for (let i = 0; i < fields.length; ) {
+    const [, newMode, , newBlob, status] = fields[i].split(' ');
+    const pathCount = /^[RC]/.test(status) ? 2 : 1;
+    const paths = fields.slice(i + 1, i + 1 + pathCount);
+    i += 1 + pathCount;
+    if (!paths.some(isChangesetPath)) continue;
+    changes.push([status[0], newMode, newBlob, ...paths]);
+  }
+  changes.sort((a, b) => (a.join('\0') < b.join('\0') ? -1 : 1));
+
+  let config = null;
+  try {
+    config = git('rev-parse', '--verify', '--quiet', `${head}:.changeset/config.json`).trim();
+  } catch {
+    // Absent at head. Null still hashes distinctly from any blob id.
+  }
 
   return createHash('sha256')
-    .update(`${nextVersion ?? ''}\n${entries.join('\n')}`)
+    .update(JSON.stringify({ nextVersion: nextVersion ?? null, config, changes }))
     .digest('hex')
     .slice(0, 16);
 }
