@@ -9,7 +9,7 @@ export function waitFor<T>(
   callback: () => T | Promise<T>,
   options: StorybookWaitOptions = {},
 ): Promise<T> {
-  return storybookWaitFor(callback, { timeout: 10000, ...options });
+  return storybookWaitFor(callback, { timeout: 5000, ...options });
 }
 
 export async function waitForElement<ElementType extends Element>(

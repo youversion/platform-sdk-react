@@ -136,6 +136,7 @@ async function getTrigger(root: ShadowRoot): Promise<HTMLElement> {
 async function openPicker(container: ParentNode) {
   const root = await waitForShadowRoot(container);
   const trigger = await getTrigger(root);
+  await waitFor(async () => await expect(trigger).toHaveTextContent('NIV'), { timeout: 20_000 });
   await expect(root.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
   await userEvent.click(trigger);
   const topLayer = await waitForElement<HTMLElement>(
