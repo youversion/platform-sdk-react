@@ -1,15 +1,68 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import { YouVersionProvider as HooksYouVersionProvider } from '@youversion/platform-react-hooks';
-import { http, HttpResponse } from 'msw';
-import { useEffect, useState } from 'react';
+import type { BibleVersion, Language, Organization } from '@youversion/platform-core';
+import { YouVersionContext, type HookOverrides } from '@youversion/platform-react-hooks';
+import { useContext, useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { expect, userEvent, within } from 'storybook/test';
 import { ReuseShadowBoundary } from '../lib/shadow-isolation';
 import { ShadowRootHost } from '../lib/shadow-root-host';
-import { globalHandlers } from '../test/mocks/handlers';
+import mockBibles from '../test/mock-data/bibles.json';
+import mockLanguages from '../test/mock-data/languages.json';
+import mockOrganizations from '../test/mock-data/organizations.json';
 import { waitFor, waitForElement, waitForShadowRoot } from '../test/storybook-dom';
 import { BibleVersionPicker } from './bible-version-picker';
+
+const VERSIONS = mockBibles.collections.default.data satisfies BibleVersion[];
+const LANGUAGES = mockLanguages.data.map(({ id, display_names }) => ({
+  id,
+  language: display_names.en ?? id,
+  display_names: { en: display_names.en ?? id },
+})) satisfies Language[];
+const ORGANIZATIONS = Object.values(mockOrganizations) satisfies Organization[];
+
+const HOOK_OVERRIDES = {
+  useVersion: (versionId) => ({
+    version: VERSIONS.find((version) => version.id === versionId) ?? null,
+    loading: false,
+    error: null,
+    refetch: () => undefined,
+  }),
+  useVersions: () => ({
+    versions: { data: VERSIONS, next_page_token: null },
+    loading: false,
+    error: null,
+    refetch: () => undefined,
+  }),
+  useLanguages: () => ({
+    languages: { data: LANGUAGES, next_page_token: null },
+    loading: false,
+    error: null,
+    refetch: () => undefined,
+  }),
+  useLanguage: (languageId) => ({
+    language: LANGUAGES.find((language) => language.id === languageId) ?? null,
+    loading: false,
+    error: null,
+    refetch: () => undefined,
+  }),
+  useOrganizations: (organizationIds) => ({
+    organizations: new Map(
+      ORGANIZATIONS.filter((organization) => organizationIds.includes(organization.id)).map(
+        (organization) => [organization.id, organization],
+      ),
+    ),
+  }),
+} satisfies HookOverrides;
+
+function FixtureProviders({ children }: { children: ReactNode }): ReactNode {
+  const parentContext = useContext(YouVersionContext);
+  const value = parentContext
+    ? { ...parentContext, hookOverrides: HOOK_OVERRIDES }
+    : { appKey: 'test', hookOverrides: HOOK_OVERRIDES };
+
+  return <YouVersionContext.Provider value={value}>{children}</YouVersionContext.Provider>;
+}
 
 function AutomaticBibleVersionPicker({
   side = 'top',
@@ -97,14 +150,7 @@ function SameOriginIframeHarness(): React.ReactNode {
         style={{ inlineSize: 800, blockSize: 600 }}
         onLoad={(event) => setIframeDocument(event.currentTarget.contentDocument)}
       />
-      {container
-        ? createPortal(
-            <HooksYouVersionProvider appKey="123" apiHost="https://api.youversion.com">
-              <AutomaticBibleVersionPicker />
-            </HooksYouVersionProvider>,
-            container,
-          )
-        : null}
+      {container ? createPortal(<AutomaticBibleVersionPicker />, container) : null}
     </>
   );
 }
@@ -115,15 +161,8 @@ const meta = {
   tags: ['integration', 'shadow-dom'],
   parameters: {
     layout: 'centered',
-    msw: {
-      handlers: [
-        ...globalHandlers,
-        http.get('*/v1/fonts/1/stylesheet', () =>
-          HttpResponse.text('', { headers: { 'Content-Type': 'text/css' } }),
-        ),
-      ],
-    },
   },
+  decorators: [(Story) => <FixtureProviders>{Story()}</FixtureProviders>],
 } satisfies Meta<typeof AutomaticBibleVersionPicker>;
 
 export default meta;
@@ -136,7 +175,7 @@ async function getTrigger(root: ShadowRoot): Promise<HTMLElement> {
 async function openPicker(container: ParentNode) {
   const root = await waitForShadowRoot(container);
   const trigger = await getTrigger(root);
-  await waitFor(async () => await expect(trigger).toHaveTextContent('NIV'), { timeout: 20_000 });
+  await waitFor(async () => await expect(trigger).toHaveTextContent('NIV'));
   await expect(root.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
   await userEvent.click(trigger);
   const topLayer = await waitForElement<HTMLElement>(
