@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 // We stub ResizeObserver for jsdom (used by Radix/@floating-ui). The stub methods are intentionally no-ops.
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState, type ReactElement } from 'react';
@@ -461,13 +461,11 @@ it('keeps chapter targets canonical while semantic icons follow RTL interface di
   ).toContain('8.29289');
 });
 
-describe('reader font brand names', () => {
-  afterEach(async () => {
-    await i18n.changeLanguage('en');
-  });
+it('keeps Inter and Untitled Serif in Arabic and Welsh reader font settings', async () => {
+  const previousLanguage = i18n.language;
 
-  function renderFontSettings(): void {
-    render(
+  function renderFontSettings(): ReturnType<typeof render> {
+    return render(
       <BibleThemeSettingsContent
         theme="light"
         fontSize={16}
@@ -481,21 +479,20 @@ describe('reader font brand names', () => {
     );
   }
 
-  it('shows Inter in Arabic reader font settings', async () => {
+  try {
     await i18n.changeLanguage('ar');
-    renderFontSettings();
-
+    const arabic = renderFontSettings();
     expect(screen.getByRole('button', { name: /Inter/ })).toBeInTheDocument();
     expect(screen.queryByText('إدخال')).not.toBeInTheDocument();
-  });
+    arabic.unmount();
 
-  it('shows Untitled Serif in Welsh reader font settings', async () => {
     await i18n.changeLanguage('cy');
     renderFontSettings();
-
     expect(screen.getByRole('button', { name: /Untitled Serif/ })).toBeInTheDocument();
     expect(screen.queryByText('Serif Dideitl')).not.toBeInTheDocument();
-  });
+  } finally {
+    await i18n.changeLanguage(previousLanguage);
+  }
 });
 
 describe('BibleReader version picker language', () => {
