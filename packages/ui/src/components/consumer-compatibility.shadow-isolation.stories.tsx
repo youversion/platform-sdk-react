@@ -49,8 +49,25 @@ async function requireShadowHost(container: ParentNode): Promise<HTMLElement> {
   });
 }
 
-interface NodeEvidenceOutput extends HTMLOutputElement {
-  observedNode?: EventTarget | null;
+interface ReactEventObservation {
+  currentTarget: EventTarget | null;
+  nativeEvent: Event;
+  target: EventTarget | null;
+}
+
+interface AutomaticButtonEvidenceOutput extends HTMLOutputElement {
+  ancestorClicks?: ReactEventObservation[];
+  ancestorFocuses?: ReactEventObservation[];
+  ancestorKeyDowns?: ReactEventObservation[];
+  componentClicks?: ReactEventObservation[];
+  componentFocuses?: ReactEventObservation[];
+  componentKeyDowns?: ReactEventObservation[];
+  forwardedRefNode?: EventTarget | null;
+}
+
+interface NestedRootsEvidenceOutput extends HTMLOutputElement {
+  lightDomAncestorClickCount?: number;
+  outerShadowAncestorClickCount?: number;
 }
 
 interface CompatibilityScenarioProps {
@@ -219,9 +236,7 @@ export const FormsAndExternalRelationshipsStopAtTheTreeScope: Story = {
 function AutomaticButtonHarness(): React.ReactNode {
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const firstLayoutRefState = useRef<'pending' | 'null' | 'resolved'>('pending');
-  const forwardedRefEvidence = useRef<NodeEvidenceOutput | null>(null);
-  const consumerTargetEvidence = useRef<NodeEvidenceOutput | null>(null);
-  const consumerCurrentTargetEvidence = useRef<NodeEvidenceOutput | null>(null);
+  const evidenceRef = useRef<AutomaticButtonEvidenceOutput | null>(null);
   const [firstLayoutResult, setFirstLayoutResult] = useState<'pending' | 'null' | 'resolved'>(
     'pending',
   );
@@ -236,47 +251,95 @@ function AutomaticButtonHarness(): React.ReactNode {
 
   const receiveButtonRef = useCallback((node: HTMLButtonElement | null): void => {
     buttonRef.current = node;
-    if (forwardedRefEvidence.current) forwardedRefEvidence.current.observedNode = node;
+    if (evidenceRef.current) evidenceRef.current.forwardedRefNode = node;
   }, []);
 
   return (
     <CompatibilityScenario
       classification="Supported with documented constraints"
-      expectedResult="The React click handler and forwarded ref expose the internal button. Native listeners outside the root see the shadow host as the event target. DOM selector APIs need explicit root traversal."
+      expectedResult="Each click, keydown, and focus dispatch reaches the component and its light-DOM React ancestor once. Component callbacks and the forwarded ref expose the internal button. Native listeners outside the root see the shadow host as the event target, and DOM selector APIs need explicit root traversal."
       summary="This example compares the views exposed to React consumers, native event listeners, refs, and DOM selector APIs."
-      title="Events, refs, and test queries"
+      title="Single event dispatch, refs, and test queries"
     >
-      <div data-testid="consumer-observer">
-        <YouVersionAuthButton
-          ref={receiveButtonRef}
-          data-testid="isolated-auth-button"
-          mode="signOut"
+      <>
+        <div
+          data-testid="consumer-observer"
           onClick={(event) => {
-            if (consumerTargetEvidence.current) {
-              consumerTargetEvidence.current.observedNode = event.target;
-            }
-            if (consumerCurrentTargetEvidence.current) {
-              consumerCurrentTargetEvidence.current.observedNode = event.currentTarget;
+            if (evidenceRef.current) {
+              (evidenceRef.current.ancestorClicks ??= []).push({
+                currentTarget: event.currentTarget,
+                nativeEvent: event.nativeEvent,
+                target: event.target,
+              });
             }
           }}
-        />
-        <output hidden data-testid="first-layout-ref-state">
-          {firstLayoutResult}
-        </output>
-        <output hidden ref={forwardedRefEvidence} data-testid="forwarded-ref-evidence" />
-        <output hidden ref={consumerTargetEvidence} data-testid="consumer-target-evidence" />
-        <output
-          hidden
-          ref={consumerCurrentTargetEvidence}
-          data-testid="consumer-current-target-evidence"
-        />
-      </div>
+          onFocus={(event) => {
+            if (evidenceRef.current) {
+              (evidenceRef.current.ancestorFocuses ??= []).push({
+                currentTarget: event.currentTarget,
+                nativeEvent: event.nativeEvent,
+                target: event.target,
+              });
+            }
+          }}
+          onKeyDown={(event) => {
+            if (evidenceRef.current) {
+              (evidenceRef.current.ancestorKeyDowns ??= []).push({
+                currentTarget: event.currentTarget,
+                nativeEvent: event.nativeEvent,
+                target: event.target,
+              });
+            }
+          }}
+        >
+          <YouVersionAuthButton
+            ref={receiveButtonRef}
+            data-testid="isolated-auth-button"
+            mode="signOut"
+            onClick={(event) => {
+              if (evidenceRef.current) {
+                (evidenceRef.current.componentClicks ??= []).push({
+                  currentTarget: event.currentTarget,
+                  nativeEvent: event.nativeEvent,
+                  target: event.target,
+                });
+              }
+            }}
+            onFocus={(event) => {
+              if (evidenceRef.current) {
+                (evidenceRef.current.componentFocuses ??= []).push({
+                  currentTarget: event.currentTarget,
+                  nativeEvent: event.nativeEvent,
+                  target: event.target,
+                });
+              }
+            }}
+            onKeyDown={(event) => {
+              if (evidenceRef.current) {
+                (evidenceRef.current.componentKeyDowns ??= []).push({
+                  currentTarget: event.currentTarget,
+                  nativeEvent: event.nativeEvent,
+                  target: event.target,
+                });
+              }
+            }}
+          />
+          <output hidden data-testid="first-layout-ref-state">
+            {firstLayoutResult}
+          </output>
+          <output hidden ref={evidenceRef} data-testid="automatic-button-evidence" />
+        </div>
+        <button type="button" data-testid="outside-focus-target">
+          Outside focus target
+        </button>
+      </>
     </CompatibilityScenario>
   );
 }
 
 export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
-  name: 'Events, refs, and DOM queries expose different views',
+  name: 'Events dispatch once while preserving consumer views',
+  tags: ['cross-browser'],
   render: () => <AutomaticButtonHarness />,
   play: async ({ canvasElement }) => {
     const observer = await waitFor(async () =>
@@ -301,54 +364,133 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
       '[data-testid="first-layout-ref-state"]',
       'first layout ref state not rendered',
     );
-    const forwardedRefEvidence = requireElement<NodeEvidenceOutput>(
+    const evidence = requireElement<AutomaticButtonEvidenceOutput>(
       canvasElement,
-      '[data-testid="forwarded-ref-evidence"]',
-      'forwarded ref evidence not rendered',
+      '[data-testid="automatic-button-evidence"]',
+      'automatic button evidence not rendered',
     );
-    const consumerTargetEvidence = requireElement<NodeEvidenceOutput>(
+    const outsideFocusTarget = requireElement<HTMLButtonElement>(
       canvasElement,
-      '[data-testid="consumer-target-evidence"]',
-      'consumer target evidence not rendered',
+      '[data-testid="outside-focus-target"]',
+      'outside focus target not rendered',
     );
-    const consumerCurrentTargetEvidence = requireElement<NodeEvidenceOutput>(
-      canvasElement,
-      '[data-testid="consumer-current-target-evidence"]',
-      'consumer current target evidence not rendered',
-    );
-
     await expect(firstLayoutEvidence).toHaveTextContent('null');
     await expect(firstLayoutEvidence).toHaveAttribute('hidden');
-    await waitFor(async () => await expect(forwardedRefEvidence.observedNode).toBe(button));
+    await waitFor(async () => await expect(evidence.forwardedRefNode).toBe(button));
 
     const clickTarget = requireElement<HTMLDivElement>(
       button,
       'div',
       'auth button label click target not rendered',
     );
-    let outsideTarget: EventTarget | null = null;
-    let outsidePath: EventTarget[] = [];
-    observer.addEventListener(
-      'click',
-      (event) => {
-        outsideTarget = event.target;
-        outsidePath = event.composedPath();
-      },
-      { once: true },
-    );
+    const outsideClicks: Array<{
+      event: Event;
+      path: EventTarget[];
+      target: EventTarget | null;
+    }> = [];
+    observer.addEventListener('click', (event) => {
+      outsideClicks.push({ event, path: event.composedPath(), target: event.target });
+    });
+    const outsideKeyDowns: Array<{
+      event: Event;
+      path: EventTarget[];
+      target: EventTarget | null;
+    }> = [];
+    observer.addEventListener('keydown', (event) => {
+      outsideKeyDowns.push({ event, path: event.composedPath(), target: event.target });
+    });
+    const outsideFocusEvents: Array<{
+      event: Event;
+      path: EventTarget[];
+      target: EventTarget | null;
+    }> = [];
+    observer.addEventListener('focusin', (event) => {
+      outsideFocusEvents.push({ event, path: event.composedPath(), target: event.target });
+    });
+
+    outsideFocusTarget.focus();
+    button.focus();
+
+    await expect(root.activeElement).toBe(button);
+    await expect(evidence.ancestorFocuses).toEqual([
+      { currentTarget: observer, nativeEvent: outsideFocusEvents[0]?.event, target: button },
+    ]);
+    await expect(evidence.componentFocuses).toEqual([
+      { currentTarget: button, nativeEvent: outsideFocusEvents[0]?.event, target: button },
+    ]);
+    await expect(outsideFocusEvents).toHaveLength(1);
+    await expect(outsideFocusEvents[0]?.target).toBe(host);
+    await expect(outsideFocusEvents[0]?.path[0]).toBe(button);
+    await expect(outsideFocusEvents[0]?.path).toContain(host);
+
+    const keyDownEvent = new button.ownerDocument.defaultView!.KeyboardEvent('keydown', {
+      bubbles: true,
+      composed: true,
+      key: 'Enter',
+    });
+    button.dispatchEvent(keyDownEvent);
+    button.dispatchEvent(keyDownEvent);
+
+    await expect(outsideKeyDowns).toHaveLength(2);
+    await expect(new Set(outsideKeyDowns.map(({ event }) => event))).toHaveLength(1);
+    await expect(evidence.ancestorKeyDowns).toEqual([
+      { currentTarget: observer, nativeEvent: keyDownEvent, target: button },
+      { currentTarget: observer, nativeEvent: keyDownEvent, target: button },
+    ]);
+    await expect(evidence.componentKeyDowns).toEqual([
+      { currentTarget: button, nativeEvent: keyDownEvent, target: button },
+      { currentTarget: button, nativeEvent: keyDownEvent, target: button },
+    ]);
+    await expect(outsideKeyDowns[1]?.target).toBe(host);
+    await expect(outsideKeyDowns[1]?.path[0]).toBe(button);
+    await expect(outsideKeyDowns[1]?.path).toContain(host);
+
+    const hostKeyDownEvent = new button.ownerDocument.defaultView!.KeyboardEvent('keydown', {
+      bubbles: true,
+      composed: true,
+      key: 'Escape',
+    });
+    host.dispatchEvent(hostKeyDownEvent);
+    host.dispatchEvent(hostKeyDownEvent);
+
+    await expect(evidence.ancestorKeyDowns?.slice(2)).toEqual([
+      { currentTarget: observer, nativeEvent: hostKeyDownEvent, target: host },
+      { currentTarget: observer, nativeEvent: hostKeyDownEvent, target: host },
+    ]);
+    await expect(evidence.componentKeyDowns).toHaveLength(2);
+    await expect(outsideKeyDowns).toHaveLength(4);
+    await expect(outsideKeyDowns[3]?.target).toBe(host);
+    await expect(outsideKeyDowns[3]?.path[0]).toBe(host);
 
     await userEvent.click(clickTarget);
+    await userEvent.click(clickTarget);
 
-    await expect(outsideTarget).toBe(host);
-    await expect(outsidePath[0]).toBe(clickTarget);
-    await expect(outsidePath).toContain(button);
-    await expect(outsidePath).toContain(host);
-    await expect(consumerTargetEvidence.observedNode).toBe(clickTarget);
-    await expect(consumerCurrentTargetEvidence.observedNode).toBe(button);
+    await expect(outsideClicks).toHaveLength(2);
+    await expect(new Set(outsideClicks.map(({ event }) => event))).toHaveLength(2);
+    await expect(evidence.ancestorClicks).toEqual(
+      outsideClicks.map(({ event }) => ({
+        currentTarget: observer,
+        nativeEvent: event,
+        target: clickTarget,
+      })),
+    );
+    await expect(evidence.componentClicks).toEqual(
+      outsideClicks.map(({ event }) => ({
+        currentTarget: button,
+        nativeEvent: event,
+        target: clickTarget,
+      })),
+    );
+    await expect(outsideClicks[1]?.target).toBe(host);
+    await expect(outsideClicks[1]?.path[0]).toBe(clickTarget);
+    await expect(outsideClicks[1]?.path).toContain(button);
+    await expect(outsideClicks[1]?.path).toContain(host);
   },
 };
 
 function NestedRootsHarness(): React.ReactNode {
+  const evidenceRef = useRef<NestedRootsEvidenceOutput | null>(null);
+
   return (
     <CompatibilityScenario
       classification="Supported for the validated basics"
@@ -356,11 +498,29 @@ function NestedRootsHarness(): React.ReactNode {
       summary="This example places an automatically isolated button inside a second SDK shadow root."
       title="Nested shadow roots"
     >
-      <ShadowRootHost>
-        <div data-testid="outer-shadow-observer">
-          <YouVersionAuthButton data-testid="nested-auth-button" mode="signOut" />
-        </div>
-      </ShadowRootHost>
+      <div
+        onClick={() => {
+          if (evidenceRef.current) {
+            evidenceRef.current.lightDomAncestorClickCount =
+              (evidenceRef.current.lightDomAncestorClickCount ?? 0) + 1;
+          }
+        }}
+      >
+        <ShadowRootHost>
+          <div
+            data-testid="outer-shadow-observer"
+            onClick={() => {
+              if (evidenceRef.current) {
+                evidenceRef.current.outerShadowAncestorClickCount =
+                  (evidenceRef.current.outerShadowAncestorClickCount ?? 0) + 1;
+              }
+            }}
+          >
+            <YouVersionAuthButton data-testid="nested-auth-button" mode="signOut" />
+          </div>
+        </ShadowRootHost>
+      </div>
+      <output hidden ref={evidenceRef} data-testid="nested-roots-evidence" />
     </CompatibilityScenario>
   );
 }
@@ -370,6 +530,11 @@ export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
   render: () => <NestedRootsHarness />,
   play: async ({ canvasElement }) => {
     const outerHost = await requireShadowHost(canvasElement);
+    const evidence = requireElement<NestedRootsEvidenceOutput>(
+      canvasElement,
+      '[data-testid="nested-roots-evidence"]',
+      'nested roots evidence not rendered',
+    );
     const outerRoot = outerHost.shadowRoot!;
     const outerObserver = await waitForElement<HTMLElement>(
       outerRoot,
@@ -409,6 +574,8 @@ export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
 
     await userEvent.click(button);
 
+    await expect(evidence.lightDomAncestorClickCount).toBe(1);
+    await expect(evidence.outerShadowAncestorClickCount).toBe(1);
     await expect(outerScopeTarget).toBe(innerHost);
     await expect(documentScopeTarget).toBe(outerHost);
     await expect(composedPath[0]).toBe(button);

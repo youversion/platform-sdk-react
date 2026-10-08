@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type SyntheticEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -211,6 +212,18 @@ export function ShadowRootHost({
   const [needsStyleFallback, setNeedsStyleFallback] = useState(false);
   const setHostRef = useCallback((node: HTMLElement | null): void => {
     hostRef.current = node;
+  }, []);
+  const stopDuplicateReactPropagation = useCallback((event: SyntheticEvent<HTMLElement>): void => {
+    const nativeEvent = event.nativeEvent;
+    const host = event.currentTarget;
+    const origin = nativeEvent.composedPath()[0];
+    const isRetargetedHostTraversal = nativeEvent.target === host && origin !== host;
+    if (!isRetargetedHostTraversal) return;
+
+    // A portal event follows the React tree once from inside the shadow root,
+    // then the same native event reaches the application root after retargeting.
+    // Stop only React's second logical traversal so native propagation remains intact.
+    event.isPropagationStopped = () => true;
   }, []);
 
   const hideIfIdle = useCallback(
@@ -421,7 +434,13 @@ export function ShadowRootHost({
   }, [shrinkableBlockHost]);
 
   return (
-    <HostElement ref={setHostRef} data-yv-shadow-host>
+    <HostElement
+      ref={setHostRef}
+      data-yv-shadow-host
+      onClick={stopDuplicateReactPropagation}
+      onFocus={stopDuplicateReactPropagation}
+      onKeyDown={stopDuplicateReactPropagation}
+    >
       {shadowRoot
         ? createPortal(
             <ShadowPortalContext.Provider value={portalController}>
