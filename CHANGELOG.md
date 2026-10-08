@@ -10,6 +10,16 @@ affected.
 Generated from the per-package changelogs by `scripts/build-root-changelog.mjs` — edit those,
 or the changeset, rather than this file.
 
+## 2.16.0
+
+### Minor Changes
+
+- _(@youversion/platform-core, @youversion/platform-react-ui)_ da12b12: Export shared Bible version attribution selection and fall back to promotional content in BibleCard and BibleReader when copyright is blank.
+
+### Patch Changes
+
+- _(@youversion/platform-react-ui)_ 60d022e: Keep the reader font labels Inter and Untitled Serif in every language.
+
 ## 2.15.0
 
 ### Minor Changes
