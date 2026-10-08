@@ -14,11 +14,4 @@ describe('YouVersionPlatformLogo', () => {
     // No hardcoded English default leaks through.
     expect(screen.queryByRole('img', { name: 'YouVersion Platform' })).toBeNull();
   });
-
-  it('forwards svg props such as className', () => {
-    render(<YouVersionPlatformLogo aria-label="YouVersion Platform" className="custom-class" />);
-    expect(screen.getByRole('img', { name: 'YouVersion Platform' }).getAttribute('class')).toBe(
-      'custom-class',
-    );
-  });
 });

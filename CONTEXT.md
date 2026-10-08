@@ -49,9 +49,9 @@ passage, passage component, display bundle.
 ## Passage display model attribution
 
 The current, non-empty legal text returned by the passage display model. The
-short copyright text is preferred; promotional content is its fallback. This
-fail-closed contract applies to `getPassageDisplay`; existing React UI
-components retain their own attribution behavior.
+short copyright text is preferred; promotional content is its fallback. Core
+and React UI use the same attribution selection. `getPassageDisplay` fails
+closed when neither value exists; React UI components omit the attribution.
 _Avoid_: copyright HTML.
 
 ## Bible version

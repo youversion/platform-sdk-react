@@ -25,6 +25,9 @@ Package-specific guidance: read `packages/core/AGENTS.md`, `packages/hooks/AGENT
 ## Testing
 Testing or coverage: read `docs/testing.md`.
 
+## Review
+PR review: read `docs/review-guidelines.md` from the pinned PR head revision.
+
 ## Release
 Release, versioning, or publishing: read `PUBLISHING.md`; decisions live in `docs/release-hardening-decisions.md`.
 

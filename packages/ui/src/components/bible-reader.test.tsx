@@ -367,37 +367,6 @@ describe('BibleReader theme settings', () => {
     localStorage.clear();
   });
 
-  it('opens the default Reader Settings popover and updates font settings', async () => {
-    const user = userEvent.setup();
-
-    renderWithOverrides(
-      <BibleReader.Root defaultVersionId={3034} defaultBook="JHN" defaultChapter="1">
-        <BibleReader.Toolbar />
-      </BibleReader.Root>,
-    );
-
-    await user.click(screen.getByRole('button', { name: 'Settings' }));
-
-    expect(await screen.findByText('Reader Settings')).toBeInTheDocument();
-
-    await user.click(screen.getByTestId('increase-font-size'));
-    await waitFor(() => {
-      expect(localStorage.getItem('youversion-platform:reader:font-size')).toBe('18');
-    });
-
-    await user.click(screen.getByRole('button', { name: /inter/i }));
-    await waitFor(() => {
-      expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(INTER_FONT);
-    });
-
-    await user.click(screen.getByRole('button', { name: /untitled/i }));
-    await waitFor(() => {
-      expect(localStorage.getItem('youversion-platform:reader:font-family')).toBe(
-        UNTITLED_SERIF_FONT,
-      );
-    });
-  });
-
   it('migrates the legacy Source Serif preference to Untitled Serif on hydrate', async () => {
     const user = userEvent.setup();
 

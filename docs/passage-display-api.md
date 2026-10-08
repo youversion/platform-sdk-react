@@ -51,8 +51,9 @@ const display = await bibleClient.getPassageDisplay({
 
 The module also exports `getPassageDisplay(client, options)` for the
 tree-shakable functional API, `getBibleStylesheets(config)` for applications
-that install global resources once, and stable constants for the Bible CSS URL,
-Untitled Serif font ID, and container attributes.
+that install global resources once, `getPassageAttribution(version)` for shared
+attribution selection, and stable constants for the Bible CSS URL, Untitled
+Serif font ID, and container attributes.
 
 ## Behavior
 
@@ -64,13 +65,12 @@ Untitled Serif font ID, and container attributes.
   validated before Scripture is fetched, and that same response supplies the
   display model. No duplicate metadata request is made.
 - Passage display model attribution is freshly requested for every operation
-  and is never cached by this API. This contract is scoped to
-  `getPassageDisplay`; it does not redefine existing React UI component
-  behavior.
+  and is never cached by this API.
 - Non-empty `copyright` is preferred. Non-empty `promotional_content` is the
-  fallback. If neither exists, `MissingPassageAttributionError` rejects the
-  operation so a caller cannot receive a display-ready passage without legal
-  text.
+  fallback. `getPassageAttribution` returns `null` if neither exists. React UI
+  components use this shared selection and omit missing attribution.
+  `getPassageDisplay` instead rejects with `MissingPassageAttributionError` so
+  a caller cannot receive a display-ready passage without legal text.
 - The font stylesheet URL uses font ID `1`, respects the configured API host,
   and URL-encodes the app key. Untitled Serif is the intended first-choice font;
   Source Serif 4 remains the CSS fallback.
