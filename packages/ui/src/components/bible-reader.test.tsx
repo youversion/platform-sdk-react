@@ -29,6 +29,7 @@ import {
 } from '@/lib/verse-html-utils';
 
 import { installResizeObserverStub } from '@/test/dom-stubs';
+import i18n from '@/i18n';
 
 installResizeObserverStub();
 
@@ -458,6 +459,40 @@ it('keeps chapter targets canonical while semantic icons follow RTL interface di
       .querySelector('path')
       ?.getAttribute('d'),
   ).toContain('8.29289');
+});
+
+it('keeps Inter and Untitled Serif in Arabic and Welsh reader font settings', async () => {
+  const previousLanguage = i18n.language;
+
+  function renderFontSettings(): ReturnType<typeof render> {
+    return render(
+      <BibleThemeSettingsContent
+        theme="light"
+        fontSize={16}
+        fontFamily={INTER_FONT}
+        lineSpacing={BIBLE_READER_SPACING.DEFAULT}
+        onFontSelected={vi.fn()}
+        onFontIncreased={vi.fn()}
+        onFontDecreased={vi.fn()}
+        onChangeLineSpacing={vi.fn()}
+      />,
+    );
+  }
+
+  try {
+    await i18n.changeLanguage('ar');
+    const arabic = renderFontSettings();
+    expect(screen.getByRole('button', { name: /Inter/ })).toBeInTheDocument();
+    expect(screen.queryByText('إدخال')).not.toBeInTheDocument();
+    arabic.unmount();
+
+    await i18n.changeLanguage('cy');
+    renderFontSettings();
+    expect(screen.getByRole('button', { name: /Untitled Serif/ })).toBeInTheDocument();
+    expect(screen.queryByText('Serif Dideitl')).not.toBeInTheDocument();
+  } finally {
+    await i18n.changeLanguage(previousLanguage);
+  }
 });
 
 describe('BibleReader version picker language', () => {
