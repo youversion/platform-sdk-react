@@ -29,6 +29,7 @@ import {
 import type { HighlightedVerses } from '@/lib/highlight-colors';
 import { HIGHLIGHT_COLORS } from './verse-action-popover';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
+import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
 
 import { fillFor } from '@/test/highlights-test-utils';
 import { installResizeObserverStub } from '@/test/dom-stubs';
@@ -186,12 +187,36 @@ function wrapReader(
   props: Partial<BibleReaderRootProps> = {},
   overrides: HookOverrides = defaultOverrides(),
 ) {
-  return <HookOverrideProvider overrides={overrides}>{readerJsx(props)}</HookOverrideProvider>;
+  return (
+    <HookOverrideProvider overrides={overrides}>
+      <ReuseShadowBoundary>{readerJsx(props)}</ReuseShadowBoundary>
+    </HookOverrideProvider>
+  );
 }
 
 function renderReader(props: Partial<BibleReaderRootProps> = {}, overrides?: HookOverrides) {
   return render(wrapReader(props, overrides));
 }
+
+it('keeps reader-owned scripture in the reader tree without a standalone shadow boundary', async () => {
+  const { container } = render(
+    <HookOverrideProvider overrides={defaultOverrides()}>
+      <ReuseShadowBoundary>
+        <BibleReader.Root defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
+          <BibleReader.Content />
+        </BibleReader.Root>
+      </ReuseShadowBoundary>
+    </HookOverrideProvider>,
+  );
+
+  const renderer = await waitFor(() => {
+    const candidate = container.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
+    if (!candidate) throw new Error('reader-owned scripture not rendered in the reader tree');
+    return candidate;
+  });
+
+  expect(renderer.getRootNode()).toBe(document);
+});
 
 it.each([
   {
@@ -390,6 +415,8 @@ describe('BibleReader controlled mode - pure projection', () => {
 });
 
 describe('BibleReader controlled mode - provable inertness', () => {
+  // The two rendered selection workflows can exceed Vitest's default 5s timeout
+  // when the unit and Storybook projects contend on a loaded CI runner.
   it('never touches the network or localStorage for highlights, even across select/apply/clear', async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal('fetch', fetchSpy);
@@ -424,7 +451,7 @@ describe('BibleReader controlled mode - provable inertness', () => {
       getItemSpy.mockRestore();
       setItemSpy.mockRestore();
     }
-  });
+  }, 20_000);
 
   it('color taps paint nothing (no optimistic echo)', async () => {
     const { container } = renderReader({ highlights: [], onHighlightApply: vi.fn() });
@@ -559,7 +586,7 @@ describe('BibleReader controlled mode - events', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).toBeNull();
     });
-  });
+  }, 20_000);
 
   it('ignores onHighlightApply / onHighlightRemove in self-contained mode', async () => {
     const onHighlightApply = vi.fn();

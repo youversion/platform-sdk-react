@@ -36,6 +36,7 @@ import { highlightFillColorMix, highlightMixP } from '@/lib/highlight-colors';
 import { useScriptureHighlightPaint } from '@/lib/use-scripture-highlight-paint';
 import { useInterfaceDirection } from '@/lib/direction';
 import { useHydrationSafeScriptureDirection } from '@/lib/scripture-direction';
+import { ReuseShadowBoundary, ShadowIsolationBoundary } from '@/lib/shadow-isolation';
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
 type ResolvedScriptureDirection = TextDirection | 'auto';
@@ -66,7 +67,7 @@ export type FootnoteContentProps = FootnoteData & {
   hasVerseContext?: boolean;
 };
 
-export function FootnoteContent({
+function FootnoteContentImplementation({
   verseNum,
   notes,
   verseHtml,
@@ -105,7 +106,7 @@ export function FootnoteContent({
               return (
                 <li
                   key={marker}
-                  className="yv:flex yv:gap-2 yv:text-xs yv:border-b yv:border-border yv:py-2"
+                  className="yv:flex yv:gap-2 yv:text-xs yv:border-b yv:border-solid yv:border-border yv:py-2"
                 >
                   <span>{marker}.</span>
                   {/** biome-ignore lint/security/noDangerouslySetInnerHtml: Bible footnote HTML comes from our YouVersion APIs and is safe */}
@@ -117,6 +118,17 @@ export function FootnoteContent({
         </div>
       </div>
     </>
+  );
+}
+
+export function FootnoteContent(props: FootnoteContentProps): React.ReactElement {
+  const providerTheme = useTheme();
+  const resolvedTheme = props.theme ?? providerTheme;
+
+  return (
+    <ShadowIsolationBoundary theme={resolvedTheme}>
+      <FootnoteContentImplementation {...props} theme={resolvedTheme} />
+    </ShadowIsolationBoundary>
   );
 }
 
@@ -259,16 +271,18 @@ const VerseFootnoteButton = memo(function VerseFootnoteButton({
         theme={theme}
       >
         <div className="yv:max-h-[33svh] yv:overflow-y-auto">
-          <FootnoteContent
-            verseNum={verseNum}
-            notes={notes}
-            verseHtml={verseHtml}
-            hasVerseContext={hasVerseContext}
-            reference={reference}
-            fontSize={fontSize}
-            theme={theme}
-            scriptureDirection={direction}
-          />
+          <ReuseShadowBoundary>
+            <FootnoteContent
+              verseNum={verseNum}
+              notes={notes}
+              verseHtml={verseHtml}
+              hasVerseContext={hasVerseContext}
+              reference={reference}
+              fontSize={fontSize}
+              theme={theme}
+              scriptureDirection={direction}
+            />
+          </ReuseShadowBoundary>
         </div>
       </PopoverContent>
     </Popover>
@@ -653,10 +667,11 @@ export type BibleTextViewProps = {
   scriptureDirection?: TextDirection;
 };
 
-/**
- * A component that renders style Bible text.
- */
-export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
+type BibleTextViewImplementationProps = BibleTextViewProps & {
+  isHighlightsControlled: boolean;
+};
+
+const BibleTextViewImplementation = forwardRef<HTMLDivElement, BibleTextViewImplementationProps>(
   (
     {
       reference,
@@ -674,6 +689,7 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
       passageState,
       onFootnotePress,
       scriptureDirection,
+      isHighlightsControlled,
     },
     ref,
   ): React.ReactElement => {
@@ -683,9 +699,6 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
     const currentTheme = theme || providerTheme;
     useVersionFilterWarning(versionId);
 
-    // Latched at first mount. Controlled (prop present) never falls through to
-    // `highlightedVerses` or the self-contained fetch.
-    const isHighlightsControlled = useHighlightsControlledLatch(highlights, 'BibleTextView');
     const didWarnDualHighlightPropsRef = useRef(false);
     if (isHighlightsControlled && highlightedVerses !== undefined) {
       warnOnce(
@@ -811,3 +824,24 @@ export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>(
     );
   },
 );
+BibleTextViewImplementation.displayName = 'BibleTextViewImplementation';
+
+/**
+ * A component that renders styled Bible text.
+ */
+export const BibleTextView = forwardRef<HTMLDivElement, BibleTextViewProps>((props, ref) => {
+  // Capture the public component's first render, before its client-only shadow
+  // content mounts in a passive effect.
+  const isHighlightsControlled = useHighlightsControlledLatch(props.highlights, 'BibleTextView');
+
+  return (
+    <ShadowIsolationBoundary theme={props.theme} portalStrategy="local-top-layer">
+      <BibleTextViewImplementation
+        {...props}
+        ref={ref}
+        isHighlightsControlled={isHighlightsControlled}
+      />
+    </ShadowIsolationBoundary>
+  );
+});
+BibleTextView.displayName = 'BibleTextView';

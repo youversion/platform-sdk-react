@@ -2,18 +2,18 @@ import * as React from 'react';
 import * as SeparatorPrimitive from '@radix-ui/react-separator';
 
 import { cn } from '@/lib/utils';
+import { withShadowIsolation } from '@/lib/shadow-isolation';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
 
-function Separator({
-  className,
-  orientation = 'horizontal',
-  decorative = true,
-  ...props
-}: React.ComponentProps<typeof SeparatorPrimitive.Root>): React.ReactNode {
+const SeparatorImplementation = React.forwardRef<
+  React.ElementRef<typeof SeparatorPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof SeparatorPrimitive.Root>
+>(({ className, orientation = 'horizontal', decorative = true, ...props }, ref) => {
   return (
     <>
       <YvComponentStyles />
       <SeparatorPrimitive.Root
+        ref={ref}
         data-slot="separator"
         decorative={decorative}
         orientation={orientation}
@@ -25,6 +25,11 @@ function Separator({
       />
     </>
   );
-}
+});
+SeparatorImplementation.displayName = 'SeparatorImplementation';
+
+const Separator = withShadowIsolation(SeparatorImplementation, 'Separator', {
+  hostElement: 'span',
+});
 
 export { Separator };

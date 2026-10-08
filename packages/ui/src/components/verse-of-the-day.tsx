@@ -27,6 +27,7 @@ import { filterHighlightsForPassage } from '@/lib/highlight-projection';
 import { useHighlightsControlledLatch } from '@/lib/use-highlights-controlled-latch';
 import { useInterfaceDirection } from '@/lib/direction';
 import { useResolvedScriptureDirection } from '@/lib/scripture-direction';
+import { ReuseShadowBoundary, ShadowIsolationBoundary } from '@/lib/shadow-isolation';
 
 export type VerseOfTheDayShareData = {
   /** Full share body: verse text, blank line, then reference (same as Web Share `text`). */
@@ -93,6 +94,10 @@ export type VerseOfTheDayProps = {
   scriptureDirection?: TextDirection;
 };
 
+type VerseOfTheDayImplementationProps = VerseOfTheDayProps & {
+  isHighlightsControlled: boolean;
+};
+
 function clipHighlightsToPassage(
   highlights: Highlight[] | undefined,
   passageId: string | undefined,
@@ -143,21 +148,7 @@ async function share({
   }
 }
 
-/**
- * A Verse of the Day card component with customizable options.
- *
- * @example
- * ```tsx
- * <VerseOfTheDay
- *   versionId={3034}
- *   showSunIcon={true}
- *   showShareButton={false}
- *   showBibleAppAttribution={true}
- *   size={size}
- * />
- * ```
- */
-export function VerseOfTheDay({
+function VerseOfTheDayImplementation({
   background,
   dayOfYear,
   versionId = DEFAULT_LICENSE_FREE_BIBLE_VERSION,
@@ -168,7 +159,8 @@ export function VerseOfTheDay({
   size = 'default',
   highlights,
   scriptureDirection,
-}: VerseOfTheDayProps): React.ReactElement {
+  isHighlightsControlled,
+}: VerseOfTheDayImplementationProps): React.ReactElement {
   const { t } = useTranslation(undefined, { i18n });
   const interfaceDirection = useInterfaceDirection();
   const day = React.useMemo(() => dayOfYear || getDayOfYear(new Date()), [dayOfYear]);
@@ -199,7 +191,6 @@ export function VerseOfTheDay({
   // delays mounting the child until load finishes; latching only there would
   // treat a highlights array that arrived during load as "present on first
   // mount" and paint, which BibleReader.Root would ignore.
-  const isHighlightsControlled = useHighlightsControlledLatch(highlights, 'VerseOfTheDay');
   const hostHighlights = isHighlightsControlled ? (highlights ?? []) : undefined;
   const clippedHighlights = clipHighlightsToPassage(hostHighlights, data?.passage_id);
 
@@ -297,22 +288,24 @@ export function VerseOfTheDay({
                 />
               </div>
             ) : (
-              <BibleTextView
-                ref={verseRef}
-                theme={theme}
-                reference={data?.passage_id || ''}
-                versionId={versionId}
-                fontSize={size === 'default' ? 16 : 20}
-                fontFamily={size === 'default' ? 'var(--yv-font-sans)' : 'var(--yv-font-serif)'}
-                showVerseNumbers={false}
-                passageState={{
-                  passage,
-                  loading: isLoading,
-                  error: errorPassage || errorVerseOfTheDay || null,
-                }}
-                highlights={clippedHighlights}
-                scriptureDirection={scriptureDirection}
-              />
+              <ReuseShadowBoundary>
+                <BibleTextView
+                  ref={verseRef}
+                  theme={theme}
+                  reference={data?.passage_id || ''}
+                  versionId={versionId}
+                  fontSize={size === 'default' ? 16 : 20}
+                  fontFamily={size === 'default' ? 'var(--yv-font-sans)' : 'var(--yv-font-serif)'}
+                  showVerseNumbers={false}
+                  passageState={{
+                    passage,
+                    loading: isLoading,
+                    error: errorPassage || errorVerseOfTheDay || null,
+                  }}
+                  highlights={clippedHighlights}
+                  scriptureDirection={scriptureDirection}
+                />
+              </ReuseShadowBoundary>
             )}
           </AnimatedHeight>
 
@@ -328,5 +321,31 @@ export function VerseOfTheDay({
         </div>
       </section>
     </>
+  );
+}
+
+/**
+ * A Verse of the Day card component with customizable options.
+ *
+ * @example
+ * ```tsx
+ * <VerseOfTheDay
+ *   versionId={3034}
+ *   showSunIcon={true}
+ *   showShareButton={false}
+ *   showBibleAppAttribution={true}
+ *   size={size}
+ * />
+ * ```
+ */
+export function VerseOfTheDay(props: VerseOfTheDayProps): React.ReactElement {
+  // Capture the public component's first render, before its client-only shadow
+  // content mounts in a passive effect.
+  const isHighlightsControlled = useHighlightsControlledLatch(props.highlights, 'VerseOfTheDay');
+
+  return (
+    <ShadowIsolationBoundary theme={props.background} portalStrategy="local-top-layer">
+      <VerseOfTheDayImplementation {...props} isHighlightsControlled={isHighlightsControlled} />
+    </ShadowIsolationBoundary>
   );
 }

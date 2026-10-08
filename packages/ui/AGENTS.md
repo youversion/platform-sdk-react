@@ -20,13 +20,27 @@ Keep this file brief. Put task-specific guidance behind a pointer.
 **React 19 `<style precedence>`**: `YouVersionProvider` renders `<YvStyles />` (`href="yv-sdk-styles"`). That sheet is Provider chrome (`dist/chrome.css`). Scripture and interactive roots render `<YvComponentStyles />` (`href="yv-sdk-components"`, the full `dist/tailwind.css`) and `BibleTextView` also renders `<YvReaderStyles />`. The three injectors are separate modules so Provider does not import the fat sheets. Different hrefs so React 19 does not drop the fat sheet. React hoists, dedupes, and streams the tags.
 - CSS embedded via tsup define: chrome uses `__YV_STYLES__`, full utilities use `__YV_COMPONENT_STYLES__`, and reader uses `__YV_READER_STYLES__`.
 - Public stylesheet stays `import '@youversion/platform-react-ui/styles.css'` (`dist/styles.css`: utilities plus reader). JS still injects the three sheets separately.
-- Each component includes a `data-yv-sdk` attribute on its root element for style scoping (consumers don't need to add this)
+- Shadow DOM exception: `ShadowRootHost` installs the embedded component styles
+  inside each component shadow root because document styles cannot cross that
+  boundary. It prefers a cached constructable stylesheet and renders a local
+  `<style>` fallback when adoption is unavailable.
+- Structural shadow selectors, including `:host` and dynamically-created
+  shadow overlay containers, remain in `src/styles/global.css` so they pass
+  through the standard component build and embedding path.
+- Each component includes `data-yv-sdk` on its styled root. An isolated
+  component's styled root is inside its shadow tree; its light-DOM boundary uses
+  `data-yv-shadow-host` instead.
+- Tailwind CSS classes must be prefixed with `yv:` to prevent class naming collision when someone uses our components in their app. For example, `mt-4` becomes `yv:mt-4`
 - Light/dark mode via CSS variables (`[data-yv-sdk]`)
 - Build sub-steps are order-dependent: `build:css` (including `preserve-host-revert-layer.js`, which keeps `-webkit-appearance` through minification), then `build:js` (which embeds the sheets), then `build:types`. Always rebuild after CSS changes; never skip `build:css`.
 
 ## Usage
 
 Component props or states: read the component's Storybook stories. App integration: read `examples/vite-react` at the repo root. Both are type-checked references.
+
+Shadow DOM boundaries or overlays: read
+`../../docs/shadow-dom-rollout-policy.md`; validation evidence lives in
+`../../docs/shadow-dom-isolation-plan.md`.
 
 ## Testing
 

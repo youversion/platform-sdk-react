@@ -12,6 +12,12 @@ layer(yv-sdk-fonts);
 @import 'tailwindcss/theme.css' layer(yv-sdk-theme) prefix(yv);
 @import 'tailwindcss/utilities.css' layer(yv-sdk-utilities) prefix(yv) source(none);
 
+/* Match component CSS: WebKit can lose variable-backed spacing when the
+ * document-root revert-layer reset restores a layered utility. */
+@theme inline {
+  --spacing: 0.25rem;
+}
+
 @source '../components/YouVersionProvider.tsx';
 @source '../components/missing-app-key.tsx';
 @source '../components/icons/exclamation-circle.tsx';
