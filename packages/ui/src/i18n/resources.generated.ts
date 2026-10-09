@@ -8,13 +8,14 @@ import locale4 from './locales/cy.json' with { type: 'json' };
 import locale5 from './locales/de.json' with { type: 'json' };
 import locale6 from './locales/es.json' with { type: 'json' };
 import locale7 from './locales/fr.json' with { type: 'json' };
-import locale8 from './locales/ko.json' with { type: 'json' };
-import locale9 from './locales/no.json' with { type: 'json' };
-import locale10 from './locales/pt.json' with { type: 'json' };
-import locale11 from './locales/sr.json' with { type: 'json' };
-import locale12 from './locales/tr.json' with { type: 'json' };
-import locale13 from './locales/vi.json' with { type: 'json' };
-import locale14 from './locales/zh.json' with { type: 'json' };
+import locale8 from './locales/ig.json' with { type: 'json' };
+import locale9 from './locales/ko.json' with { type: 'json' };
+import locale10 from './locales/no.json' with { type: 'json' };
+import locale11 from './locales/pt.json' with { type: 'json' };
+import locale12 from './locales/sr.json' with { type: 'json' };
+import locale13 from './locales/tr.json' with { type: 'json' };
+import locale14 from './locales/vi.json' with { type: 'json' };
+import locale15 from './locales/zh.json' with { type: 'json' };
 
 const defaultNS = 'translation';
 
@@ -27,13 +28,14 @@ export const resources = {
   de: { [defaultNS]: locale5 },
   es: { [defaultNS]: locale6 },
   fr: { [defaultNS]: locale7 },
-  ko: { [defaultNS]: locale8 },
-  no: { [defaultNS]: locale9 },
-  pt: { [defaultNS]: locale10 },
-  sr: { [defaultNS]: locale11 },
-  tr: { [defaultNS]: locale12 },
-  vi: { [defaultNS]: locale13 },
-  zh: { [defaultNS]: locale14 },
+  ig: { [defaultNS]: locale8 },
+  ko: { [defaultNS]: locale9 },
+  no: { [defaultNS]: locale10 },
+  pt: { [defaultNS]: locale11 },
+  sr: { [defaultNS]: locale12 },
+  tr: { [defaultNS]: locale13 },
+  vi: { [defaultNS]: locale14 },
+  zh: { [defaultNS]: locale15 },
 } as const;
 
 export const supportedLngs = Object.keys(resources);
