@@ -10,9 +10,15 @@ import { Textarea } from './ui/textarea';
 import { YouVersionAuthButton } from './YouVersionAuthButton';
 
 const meta = {
-  title: 'Spikes/Shadow DOM consumer compatibility',
+  title: 'Guides/Shadow DOM consumer compatibility',
   tags: ['integration', 'shadow-dom'],
   parameters: {
+    docs: {
+      description: {
+        component:
+          'Use these scenarios to understand the supported consumer boundary: query through open shadow roots, keep form and ARIA relationships within one tree scope, and account for documented event-retargeting limits.',
+      },
+    },
     layout: 'padded',
     msw: {
       handlers: [

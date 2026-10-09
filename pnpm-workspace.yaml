@@ -24,6 +24,7 @@ overrides:
   "@types/react-dom": "19.1.2"
   vite: "7.3.3"
   typescript: "7.0.2"
+  webdriverio: "9.32.0"
 allowBuilds:
   '@parcel/watcher': true
   '@swc/core': false # tsup uses esbuild; swc native build not needed

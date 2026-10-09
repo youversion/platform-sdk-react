@@ -34,6 +34,7 @@ describe('Popover portal placement and shadow coordination', () => {
     expect(headingContent).not.toHaveAttribute('aria-label');
     expect(headingId).not.toBeNull();
     expect(document.getElementById(headingId!)).toHaveTextContent('Panel title');
+    expect(headingContent).toHaveAccessibleName('Panel title');
     headingRender.unmount();
 
     const explicitLabelRender = render(
@@ -51,6 +52,7 @@ describe('Popover portal placement and shadow coordination', () => {
     });
     expect(explicitLabelContent).toHaveAttribute('aria-label', 'Consumer name');
     expect(explicitLabelContent).not.toHaveAttribute('aria-labelledby');
+    expect(explicitLabelContent).toHaveAccessibleName('Consumer name');
     explicitLabelRender.unmount();
 
     const explicitLabelledByRender = render(
@@ -71,6 +73,7 @@ describe('Popover portal placement and shadow coordination', () => {
     });
     expect(explicitLabelledByContent).toHaveAttribute('aria-labelledby', 'consumer-name');
     expect(explicitLabelledByContent).not.toHaveAttribute('aria-label');
+    expect(explicitLabelledByContent).toHaveAccessibleName('Consumer relationship');
     explicitLabelledByRender.unmount();
   });
 
