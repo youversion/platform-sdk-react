@@ -17,6 +17,8 @@ const storyTimeout = Number(process.env.SAFARI_STORY_TIMEOUT_MS ?? 120_000);
 const safariSessionRetryDelay = 2_000;
 const safariSessionCreationFailure = 'Could not create a session';
 const safariSessionUnavailable = 'Safari instance is already paired with another WebDriver session';
+const safariBrowserConnectionFailure = 'Failed to connect to the browser session';
+const safariAutomationProcess = 'Safari.app/Contents/MacOS/Safari .*--automation';
 
 if (!Number.isFinite(storyTimeout) || storyTimeout <= 0) {
   throw new Error('SAFARI_STORY_TIMEOUT_MS must be a positive number');
@@ -42,6 +44,14 @@ function printCapturedOutput(result) {
   }
   if (result.stderr) {
     process.stderr.write(result.stderr);
+  }
+}
+
+function stopStaleSafariAutomation() {
+  const result = spawnSync('pkill', ['-f', safariAutomationProcess], { encoding: 'utf8' });
+  if (result.status !== 0 && result.status !== 1) {
+    const detail = result.error?.message ?? result.stderr?.trim() ?? `exit code ${result.status}`;
+    throw new Error(`Could not stop the stale Safari automation process: ${detail}`);
   }
 }
 
@@ -160,16 +170,23 @@ try {
       printCapturedOutput(result);
 
       const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
+      const safariProcessTimedOut = result.error?.code === 'ETIMEDOUT';
       const previousSafariSessionStillPaired =
         output.includes(safariSessionCreationFailure) && output.includes(safariSessionUnavailable);
-      if (result.status === 0 || !previousSafariSessionStillPaired || attempts === 2) {
+      const safariBrowserFailedToConnect = output.includes(safariBrowserConnectionFailure);
+      const retryableSafariTransportFailure =
+        safariProcessTimedOut || previousSafariSessionStillPaired || safariBrowserFailedToConnect;
+      if (result.status === 0 || !retryableSafariTransportFailure || attempts === 2) {
         break;
       }
 
-      retryReason = 'SafariDriver retained the previous WebDriver session';
-      console.warn(
-        `SafariDriver retained the previous session; retrying ${relativeFile} :: ${story.name} once.`,
-      );
+      retryReason = safariProcessTimedOut
+        ? 'Safari exceeded the isolated-process timeout'
+        : safariBrowserFailedToConnect
+          ? 'Safari failed to connect the Vitest browser session'
+          : 'SafariDriver retained the previous WebDriver session';
+      stopStaleSafariAutomation();
+      console.warn(`${retryReason}; retrying ${relativeFile} :: ${story.name} once.`);
       await new Promise((resolve) => setTimeout(resolve, safariSessionRetryDelay));
     } while (attempts < 2);
 
