@@ -15,6 +15,7 @@ const dryRun = process.argv.includes('--dry-run');
 const discoveryTimeout = 90_000;
 const storyTimeout = Number(process.env.SAFARI_STORY_TIMEOUT_MS ?? 120_000);
 const safariSessionRetryDelay = 2_000;
+const maxSafariTransportAttempts = 3;
 const safariSessionCreationFailure = 'Could not create a session';
 const safariSessionUnavailable = 'Safari instance is already paired with another WebDriver session';
 const safariBrowserConnectionFailure = 'Failed to connect to the browser session';
@@ -176,7 +177,11 @@ try {
       const safariBrowserFailedToConnect = output.includes(safariBrowserConnectionFailure);
       const retryableSafariTransportFailure =
         safariProcessTimedOut || previousSafariSessionStillPaired || safariBrowserFailedToConnect;
-      if (result.status === 0 || !retryableSafariTransportFailure || attempts === 2) {
+      if (
+        result.status === 0 ||
+        !retryableSafariTransportFailure ||
+        attempts === maxSafariTransportAttempts
+      ) {
         break;
       }
 
@@ -186,9 +191,12 @@ try {
           ? 'Safari failed to connect the Vitest browser session'
           : 'SafariDriver retained the previous WebDriver session';
       stopStaleSafariAutomation();
-      console.warn(`${retryReason}; retrying ${relativeFile} :: ${story.name} once.`);
+      console.warn(
+        `${retryReason}; retrying ${relativeFile} :: ${story.name} ` +
+          `(attempt ${attempts + 1}/${maxSafariTransportAttempts}).`,
+      );
       await new Promise((resolve) => setTimeout(resolve, safariSessionRetryDelay));
-    } while (attempts < 2);
+    } while (attempts < maxSafariTransportAttempts);
 
     const timedOut = result.error?.code === 'ETIMEDOUT';
     const evidence = readStoryEvidence(resultPath, story);
