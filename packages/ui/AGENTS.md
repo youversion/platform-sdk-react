@@ -9,6 +9,10 @@ Keep this file brief. Put task-specific guidance behind a pointer.
 - Public exports come from `src/index.ts`, including core and hooks re-exports. Core types flow through `src/types.ts` via `export type *`; core runtime values become public here only when `src/index.ts` explicitly re-exports them.
 - `src/components/ui/` primitives are internal except `Separator` and `Textarea`, which are public API. Treat changes to those exports as potential breaking changes.
 
+## Localization
+
+User-facing strings: `docs/i18n-guidelines.md`. Do not edit `src/i18n/locales`. Open a pull request on [platform-localization](https://github.com/youversion/platform-localization) that edits `sources/common/en.json` (`react.*`).
+
 ## Guardrails
 
 - Fetch data through hooks, rather than raw HTTP or core API clients called from components. Reuse core types and runtime-agnostic helpers instead of implementing UI-local copies.

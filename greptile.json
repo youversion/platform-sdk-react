@@ -70,6 +70,11 @@
         "scope": ["packages/ui/**"],
         "path": "docs/i18n-guidelines.md",
         "description": "Localization workflow: platform-localization source, Crowdin, and downstream sync"
+      },
+      {
+        "scope": ["*"],
+        "path": "AGENTS.md",
+        "description": "Agent index: pointers to CI, review, localization, and ADRs"
       }
     ]
   }

@@ -9,7 +9,7 @@ Keep this file brief. Put task-specific guidance behind a pointer.
 - API Extractor is listed but not actually used — don't wire anything to it.
 - Turbo build cache can skip changes; rebuild with `turbo build --force` when stale.
 - Rebuild dependent packages after modifying core or hooks.
-- Root and package `CLAUDE.md` files are symlinks to `AGENTS.md` — edit `AGENTS.md` only.
+- Root and package instruction files beside each AGENTS.md are symlinks to that file — edit AGENTS.md only.
 - Bible chapter HTML from the API is YVDOM, not display-ready — transform before rendering.
 - Sister SDKs (`platform-sdk-swift`, `platform-sdk-kotlin`) define the Sign-In UI, logos, and i18n patterns — align with them. Swift is the source of truth for Bible reader typography.
 - Local auth/highlight/Bible demos: use `examples/vite-react`, loading env vars from the monorepo root (not worktree-local envs). Navbar Sign in requests only profile and email; grant highlights via the reader permission flow (tap a verse, tap a color). Highlights are per Bible version.
@@ -26,7 +26,16 @@ Package-specific guidance: read `packages/core/AGENTS.md`, `packages/hooks/AGENT
 Testing or coverage: read `docs/testing.md`.
 
 ## Review
-PR review: read `docs/review-guidelines.md` from the pinned PR head revision.
+PR review: read `docs/review-guidelines.md` from the pinned PR head revision. Greptile loads `greptile.json`.
+
+## Localization
+User-facing strings: `docs/i18n-guidelines.md`. Do not edit `packages/ui/src/i18n/locales`. Open a pull request on [platform-localization](https://github.com/youversion/platform-localization) that edits `sources/common/en.json` (`react.*`).
+
+## CI
+CI lives in the `.github/workflows` directory.
+
+## Decisions
+Index: `docs/adr/README.md`.
 
 ## Release
 Release, versioning, or publishing: read `PUBLISHING.md`; decisions live in `docs/release-hardening-decisions.md`.
