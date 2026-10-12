@@ -131,7 +131,7 @@ than naming only the product family.
 
 | Combination | Operating system | Browser | Assistive technology | Date and operator | Status |
 | --- | --- | --- | --- | --- | --- |
-| Safari with VoiceOver | Pending exact version/build | Pending exact version/build | Pending exact VoiceOver version/build | Pending | Pending—not run |
+| Safari with VoiceOver | macOS 26.6.2 (25G83) | Safari 26.6.2 (21624.5.1.11.3) | VoiceOver 10 (993) | 2026-10-12; Austin Harms | Complete—seven required journeys remained usable; picker opening announcements have the non-blocking finding recorded below |
 | Chrome or Edge with NVDA | Pending exact Windows version/build | Pending exact browser version/build | Pending exact NVDA version/build | Pending | Pending—not run |
 
 For every journey and combination, record announcements, accessible names and
@@ -143,13 +143,13 @@ accessibility redesign.
 
 | Journey | Safari + VoiceOver | Chrome/Edge + NVDA | Finding or follow-up |
 | --- | --- | --- | --- |
-| Sign-in dialog | Pending—not run | Pending—not run | Pending |
-| Chapter picker | Pending—not run | Pending—not run | Pending |
-| Version picker | Pending—not run | Pending—not run | Pending |
-| Bible Reader | Pending—not run | Pending—not run | Pending |
-| Verse actions | Pending—not run | Pending—not run | Pending |
-| Theme settings | Pending—not run | Pending—not run | Pending |
-| Nested overlays | Pending—not run | Pending—not run | Pending |
+| Sign-in dialog | Pass. VoiceOver announced the title and description, announced each control once, kept forward and reverse keyboard traversal inside the dialog, and preserved dismissal and focus restoration. | Pending—not run | None |
+| Chapter picker | Pass with the shared picker-announcement finding. Space opened the picker; VoiceOver exposed the `Books` web-dialog context on subsequent navigation, announced Genesis as collapsed and then expanded, allowed selection of Genesis 1, and preserved focus restoration on close. | Pending—not run | Safari/VoiceOver did not announce the newly opened picker or its initial programmatic focus until the operator navigated. Core keyboard and screen-reader operation remained available. [YPE-6181](https://lifechurch.atlassian.net/browse/YPE-6181) tracks this with the version-picker instance as one focused follow-up. |
+| Version picker | Pass with the shared picker-announcement finding. Keyboard focus entered on the English selector, Tab moved next to Close, VoiceOver announced the `Bible Versions` web-dialog context and Close control, and dismissal restored focus to NIV. | Pending—not run | On open, VoiceOver continued to announce the NIV trigger and `Control-Option-F4` reported no keyboard focus even though Safari exposed the English selector as the shadow root's active element. The next Tab correctly advanced from English to Close and exposed the dialog to VoiceOver. This did not prevent operation, so [YPE-6181](https://lifechurch.atlassian.net/browse/YPE-6181) is a non-blocking follow-up rather than a YPE-5952 expansion. |
+| Bible Reader | Pass. VoiceOver exposed the reader controls and scripture in reading order, and the chapter/version navigation exercised above remained operable inside the reader. | Pending—not run | None beyond the shared picker-announcement finding |
+| Verse actions | Pass. Selecting a verse exposed the verse-actions dialog; keyboard navigation reached the highlight action and the controls remained operable. | Pending—not run | None |
+| Theme settings | Pass. VoiceOver exposed the Reader Settings dialog and its close, font-size, line-spacing, and font controls; traversal stayed inside and Escape restored focus to Settings. | Pending—not run | None |
+| Nested overlays | Pass. Activating a highlight action opened the sign-in dialog; the first Escape dismissed only the sign-in dialog and retained the verse-actions overlay, and the second Escape dismissed the verse-actions overlay. | Pending—not run | None |
 
 Release notes may claim only the exact combinations and successful journeys
 recorded here. They must identify untested combinations—including JAWS and
