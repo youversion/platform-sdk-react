@@ -1150,11 +1150,18 @@ function Content() {
     closeAndClearSelection();
   }
 
+  // Sign-in and permission prompts are modal. Opening one is an outside
+  // interaction for the verse-action popover, so Radix dismisses it. That
+  // dismiss is the prompt taking focus. The selection stays, and the menu
+  // returns when the prompt closes without applying a highlight (YPE-5943).
+  const highlightPromptOpen = permissionDialogOpen || signInDialogOpen;
+
   function handlePopoverOpenChange(open: boolean) {
     if (open) {
       setPopoverOpen(true);
       return;
     }
+    if (highlightPromptOpen) return;
     // Outside click / Escape closes and clears (ADR-007).
     closeAndClearSelection();
   }
@@ -1229,7 +1236,7 @@ function Content() {
               every payload above are untouched. */}
           {verseActions !== 'none' && (
             <VerseActionPopover
-              open={popoverOpen && selectedVerses.length > 0}
+              open={popoverOpen && selectedVerses.length > 0 && !highlightPromptOpen}
               onOpenChange={handlePopoverOpenChange}
               activeHighlights={activeHighlights}
               selectedVerses={selectedVerses}
