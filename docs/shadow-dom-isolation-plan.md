@@ -116,13 +116,13 @@ means a single shared session is not acceptable evidence.
 
 | Field | Release-candidate evidence |
 | --- | --- |
-| Commit SHA | `574ccd3ec9bc240e7dcf969c108e8a600d5b8197` |
+| Commit SHA | `c0092043182bb3dcc0a73f7d82323de0d0c229a5` |
 | Date and operator | 2026-10-12; Codex on Austin Harms's local machine |
 | macOS version and build | macOS 26.6.2, build 25G83 |
 | Safari version and build | Safari 26.6.2; SafariDriver 21624.5.1.11.3 |
 | Storybook build command or artifact | `pnpm --filter @youversion/platform-react-ui test:shadow-safari` |
-| Focused story count and per-story results | 38/38 passed. The final candidate run used one fresh process and SafariDriver session per story; 34 stories passed on their first attempt and 4 passed on their second attempt after SafariDriver retained the preceding session. |
-| Failures, linked blockers, or reruns | The final candidate run had 0 assertion failures and 0 interaction timeouts. Four recognized SafariDriver session-handoff failures used one bounded transport retry each. Earlier exploratory runs exposed the same session-handoff failure and one non-reproducing interaction timeout. The runner permits at most two retries only for recognized transport failures; story assertion and interaction failures are not retried. |
+| Focused story count and per-story results | 38/38 passed. The final candidate matrix used one fresh process and SafariDriver session per story: 36 stories passed on their first attempt, 1 passed on its second attempt after SafariDriver retained the preceding session, and the Bible Card version-picker story passed in a direct isolated rerun after its matrix process exceeded the 120-second limit without producing a test result. |
+| Failures, linked blockers, or reruns | The final candidate evidence had 0 assertion failures. One recognized SafariDriver session-handoff failure used one bounded transport retry. One generic process timeout was surfaced as a matrix failure, was not automatically retried, and passed in a direct isolated rerun in 1.1 seconds. The runner permits at most two retries only for recognized transport failures; generic process timeouts, story assertion failures, and interaction failures are not retried. |
 
 ### Assistive-technology evidence
 
@@ -432,8 +432,8 @@ separately in YPE-5749.
   same-page JavaScript from inspecting or mutating the root.
 - The focused Shadow DOM browser suite runs in Chromium, Firefox, and Playwright
   WebKit. Playwright WebKit is not a substitute for testing actual Safari. The
-  final release-candidate run completed 38/38 stories in isolated SafariDriver
-  sessions at commit `574ccd3ec9bc240e7dcf969c108e8a600d5b8197`. Repeat actual
+  final release-candidate evidence completed 38/38 stories in isolated SafariDriver
+  sessions at commit `c0092043182bb3dcc0a73f7d82323de0d0c229a5`. Repeat actual
   Safari after the rollout-policy trigger changes.
 - Browser DOM relationship reflection is not a substitute for VoiceOver, NVDA,
   or other real assistive-technology verification. The required manual evidence
