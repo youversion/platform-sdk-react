@@ -522,6 +522,30 @@ export const SignedInHighlightPermissionOwnership: Story = {
     await expect(avatar?.getRootNode()).toBe(readerRoot);
     await expect(readerRoot.querySelector('[data-yv-shadow-host]')).toBeNull();
 
+    await userEvent.click(avatarTrigger);
+    const readerOverlays = await getReaderOverlay(readerRoot);
+    await expect(
+      await readerOverlays.findByRole('dialog', { name: 'Sign out' }),
+    ).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(readerOverlays.queryByRole('dialog', { name: 'Sign out' })).toBeNull(),
+    );
+    await expect(readerRoot.activeElement).toBe(avatarTrigger);
+
+    const { root: versionRoot, trigger: versionTrigger } = await getPickerQueries(
+      canvasElement,
+      'Change Bible version',
+    );
+    await userEvent.click(versionTrigger);
+    const versionCanvas = await getPickerOverlay(versionRoot);
+    await waitFor(async () => {
+      await expect(versionRoot.activeElement).toBe(
+        versionCanvas.getByRole('button', { name: /select.*language/i }),
+      );
+    });
+    await userEvent.click(versionCanvas.getByRole('button', { name: 'Close' }));
+
     const { apply, overlays, root } = await openReaderHighlightAuthDialog(canvasElement);
     const continueButton = await overlays.findByRole('button', { name: 'Continue' });
     const dialog = continueButton.closest<HTMLElement>('[role="dialog"]');
@@ -792,11 +816,6 @@ export const ForcedRtlChromeGeometry: Story = {
     );
     await userEvent.click(versionTrigger);
     const versionCanvas = await getPickerOverlay(versionRoot);
-    await waitFor(async () => {
-      await expect(versionRoot.activeElement).toBe(
-        versionCanvas.getByRole('button', { name: /select.*language/i }),
-      );
-    });
     const firstVersion = versionCanvas.getAllByRole('listitem')[0]!;
     const tile = firstVersion.querySelector('[data-slot="item-media"]')!;
     const label = firstVersion.querySelector('[data-slot="item-content"]')!;

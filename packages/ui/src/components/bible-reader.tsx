@@ -1375,6 +1375,7 @@ function UserMenu() {
       </PopoverTrigger>
 
       <PopoverContent
+        aria-label={auth.isAuthenticated ? t('signOut') : t('signIn')}
         theme={yvContext?.theme}
         className="yv:w-fit! yv:rounded-full"
         sideOffset={16}

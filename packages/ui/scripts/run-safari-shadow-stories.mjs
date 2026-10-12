@@ -171,12 +171,11 @@ try {
       printCapturedOutput(result);
 
       const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
-      const safariProcessTimedOut = result.error?.code === 'ETIMEDOUT';
       const previousSafariSessionStillPaired =
         output.includes(safariSessionCreationFailure) && output.includes(safariSessionUnavailable);
       const safariBrowserFailedToConnect = output.includes(safariBrowserConnectionFailure);
       const retryableSafariTransportFailure =
-        safariProcessTimedOut || previousSafariSessionStillPaired || safariBrowserFailedToConnect;
+        previousSafariSessionStillPaired || safariBrowserFailedToConnect;
       if (
         result.status === 0 ||
         !retryableSafariTransportFailure ||
@@ -185,11 +184,9 @@ try {
         break;
       }
 
-      retryReason = safariProcessTimedOut
-        ? 'Safari exceeded the isolated-process timeout'
-        : safariBrowserFailedToConnect
-          ? 'Safari failed to connect the Vitest browser session'
-          : 'SafariDriver retained the previous WebDriver session';
+      retryReason = safariBrowserFailedToConnect
+        ? 'Safari failed to connect the Vitest browser session'
+        : 'SafariDriver retained the previous WebDriver session';
       stopStaleSafariAutomation();
       console.warn(
         `${retryReason}; retrying ${relativeFile} :: ${story.name} ` +
