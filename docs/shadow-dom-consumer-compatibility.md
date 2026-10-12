@@ -82,7 +82,7 @@ long-lived SafariDriver session stalled on the sign-in dialog and verse action
 popover stories after 20 successes, so isolated sessions are required for this
 smoke setup. Actual Safari is not part of continuous integration. The current
 YPE-5952 release-candidate run completed 38/38 focused stories in isolated local
-Safari sessions at commit `ddccb9dfdcc0f93b109415b9e716577b8b2a8552` and is
+Safari sessions at commit `08bcb30d9c1e2ba4739c2fb8c6ba256475b69442` and is
 recorded in the [validation plan](shadow-dom-isolation-plan.md#ype-5952-release-candidate-validation).
 Human assistive-technology evidence remains pending. Actual Safari must be
 repeated after the trigger changes defined by the rollout policy.
