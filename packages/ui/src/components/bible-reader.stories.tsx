@@ -496,7 +496,7 @@ function SignedInPermissionReader(args: BibleReaderRootProps) {
   );
 }
 
-export const SignedInHighlightPermissionOwnership: Story = {
+export const SignedInReaderOverlayOwnership: Story = {
   tags: ['integration', 'shadow-dom', 'cross-browser'],
   args: {
     defaultVersionId: 111,
