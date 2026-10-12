@@ -228,6 +228,11 @@ export const WithVersionPicker: Story = {
     const overlay = await getVersionPickerOverlay(pickerRoot);
 
     await expect(await overlay.findByRole('dialog')).toBeInTheDocument();
+    await waitFor(async () => {
+      await expect(pickerRoot.activeElement).toBe(
+        overlay.getByRole('button', { name: /select.*language/i }),
+      );
+    });
 
     // Wait for versions to actually load (not just the container)
     await waitFor(async () => {

@@ -792,6 +792,11 @@ export const ForcedRtlChromeGeometry: Story = {
     );
     await userEvent.click(versionTrigger);
     const versionCanvas = await getPickerOverlay(versionRoot);
+    await waitFor(async () => {
+      await expect(versionRoot.activeElement).toBe(
+        versionCanvas.getByRole('button', { name: /select.*language/i }),
+      );
+    });
     const firstVersion = versionCanvas.getAllByRole('listitem')[0]!;
     const tile = firstVersion.querySelector('[data-slot="item-media"]')!;
     const label = firstVersion.querySelector('[data-slot="item-content"]')!;

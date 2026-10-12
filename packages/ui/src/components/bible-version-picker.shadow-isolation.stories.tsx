@@ -371,14 +371,15 @@ export const StylingFocusDismissalAndRapidReopen: Story = {
       '[data-testid="outside-control"]',
       'outside control not rendered',
     );
+    const initialScrollTop = canvasElement.ownerDocument.scrollingElement?.scrollTop ?? 0;
     const { root, trigger, topLayer, panel } = await openPicker(canvasElement);
-    const versionSearchInput = Array.from(
-      panel.querySelectorAll<HTMLInputElement>('[data-slot="input-group-control"]'),
-    ).find((input) => !input.closest('[inert]'));
-    if (!versionSearchInput) throw new Error('visible version search input not rendered');
+    const languageTrigger = within(panel).getByRole('button', { name: /select.*language/i });
     await waitFor(async () => {
-      await expect(root.activeElement).toBe(versionSearchInput);
+      await expect(root.activeElement).toBe(languageTrigger);
     });
+    await expect(canvasElement.ownerDocument.scrollingElement?.scrollTop ?? 0).toBe(
+      initialScrollTop,
+    );
     const exitAnimationStyle = canvasElement.ownerDocument.createElement('style');
     exitAnimationStyle.textContent = `
       [data-slot='popover-content'][data-state='closed'] {

@@ -7,7 +7,8 @@ components. Every included implementation group is present on the coordinated
 release branch, but this document does not claim that the major release has
 shipped. Publishing remains gated by the YPE-5952 package, browser, and
 assistive-technology validation below. The final release-candidate actual-Safari
-run is complete at commit `08bcb30d9c1e2ba4739c2fb8c6ba256475b69442`;
+result is recorded in the
+[validation plan](shadow-dom-isolation-plan.md#actual-safari-browser-evidence);
 human assistive-technology validation remains pending, and future trigger
 changes require another Safari run. The implemented boundary extends the
 architecture recorded in [ADR 0007](adr/0007-prototype-shadow-dom-style-isolation.md):
@@ -103,7 +104,7 @@ supported component contract.
 | Ref is unavailable until the passive-effect shadow mount | Accepted | Document the timing. Component tickets verify forwarded refs where the public component exposes one. |
 | Native outer-form participation and cross-tree label or ARIA ID references do not work | Accepted | Exclude `Textarea`. Included components keep their accessible relationships inside their root or expose explicit props/callbacks. |
 | Document-rooted selectors and native event targets change | Accepted | Treat this as a breaking change. Document open-root traversal, role-based automation, public callbacks, and composed-event retargeting. |
-| A consumer React handler on a light-DOM ancestor can receive one composed event twice | Accepted for YPE-5952 | The shared host keeps one React logical traversal for each validated bubbling click and keydown plus React `onFocus`/native `focusin` delivery while preserving native propagation and retargeting. Distinct native events remain distinct, including repeated clicks. Duplicate delivery remains for `onBlur` when focus leaves the root, for capture-phase handlers such as `onClickCapture`, and for other composed bubbling events including `onKeyUp`, `onPointerDown`, `onMouseDown`, `onDoubleClick`, and `onContextMenu`. Document the supported paths and remaining limitations in the consumer compatibility contract. |
+| A consumer React handler on a light-DOM ancestor can receive one composed event twice | Accepted for YPE-5952 | The shared host keeps one React logical traversal for each validated bubbling click and keydown plus React `onFocus`/native `focusin` delivery while preserving native propagation and retargeting. Distinct native events remain distinct, including repeated clicks. Duplicate delivery remains for `onBlur` when focus leaves the root, for capture-phase handlers such as `onClickCapture`, and for other composed bubbling events including `onKeyUp`, `onPointerDown`, `onMouseDown`, `onDoubleClick`, and `onContextMenu`. Document the supported paths and remaining limitations in the consumer compatibility contract. [YPE-6135](https://youversion.atlassian.net/browse/YPE-6135) tracks the optional `onBlur` extension and blocks this rollout only if the assistive-technology smoke pass finds a user-facing failure. |
 | Consumer global CSS and document-level token overrides do not style internals | Accepted | Supported props and component-owned tokens replace accidental global customization; consumer-supplied children require focused review. |
 | `rem` still follows the owning document root size | Accepted | Review this sizing input per component. |
 | Font loading and public `@font-face` names remain document-owned | Accepted | `YouVersionProvider` remains responsible for document fonts, including inside same-origin iframe documents. |
@@ -112,7 +113,7 @@ supported component contract.
 | Opening a peer popover dismisses the current peer across component roots | Accepted | Keep the single-active-peer behavior. Supporting concurrent peer popovers would require a demonstrated product journey and separate design. |
 | Nested-dialog and rapid-reopen final focus restoration | Accepted | Preserve the behavior resolved by YPE-5889/PR 414 as regression coverage rather than duplicating the implementation in rollout tickets. |
 | Stylesheet construction or adoption can throw | Resolved by YPE-5947 | Construction, replacement, and adoption failures recover to the local `<style>` path without losing component rendering; later roots can still use the per-document constructable sheet. |
-| Playwright WebKit is not actual Safari | Release-candidate run complete; future trigger | The isolated-session SafariDriver run completed 38/38 stories at commit `08bcb30d9c1e2ba4739c2fb8c6ba256475b69442`. Repeat after changes to the host, stylesheet installation, portal controller, focus controller, or other significant platform seams. |
+| Playwright WebKit is not actual Safari | Release-candidate run complete; future trigger | Keep the exact isolated-session SafariDriver result in the [validation plan](shadow-dom-isolation-plan.md#actual-safari-browser-evidence). Repeat after changes to the host, stylesheet installation, portal controller, focus controller, or other significant platform seams. |
 | Release-candidate screen-reader evidence is pending | Release gate | Complete the bounded YPE-5952 Safari/VoiceOver and Chrome-or-Edge/NVDA smoke pass. Record exact versions and per-journey results; do not generalize beyond them. |
 
 ## Implementation plan
@@ -176,8 +177,8 @@ The dependency-ordered component groups, YPE-5994, and YPE-6040 are complete.
 YPE-5889 and YPE-5946 provide reusable focus-restoration and cross-browser
 evidence. YPE-5952 owns the remaining human assistive-technology validation,
 consumer documentation, and major-release gate. Its final actual-Safari
-candidate run is complete at commit
-`08bcb30d9c1e2ba4739c2fb8c6ba256475b69442`.
+candidate result is recorded in the
+[validation plan](shadow-dom-isolation-plan.md#actual-safari-browser-evidence).
 
 ## Validation gates
 
@@ -185,10 +186,10 @@ candidate run is complete at commit
 
 - Existing unit, type, lint, build, export, and compiled-style checks pass.
 - The focused Shadow DOM suite passes Chromium, Firefox, and Playwright WebKit.
-- The final actual-Safari candidate run completed 38/38 isolated-session stories
-  at commit `08bcb30d9c1e2ba4739c2fb8c6ba256475b69442`. Repeat after changes to the
-  host, stylesheet installation, portal controller, focus controller, or other
-  significant platform seams.
+- Keep the exact final actual-Safari candidate result in the
+  [validation plan](shadow-dom-isolation-plan.md#actual-safari-browser-evidence).
+  Repeat after changes to the host, stylesheet installation, portal controller,
+  focus controller, or other significant platform seams.
 - YPE-5437's Normal and Strict Mode mount/remove/remount fixture stays green and
   continues to reuse one stylesheet object per document.
 - The YPE-5400 custom-property guard stays exact; no wildcard ambient namespace
