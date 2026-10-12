@@ -17,8 +17,14 @@ import {
   type MockInstance,
 } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import type { BibleBook, BiblePassage, BibleVersion, Highlight } from '@youversion/platform-core';
-import type { HookOverrides } from '@youversion/platform-react-hooks';
+import {
+  YouVersionPlatformConfiguration,
+  type BibleBook,
+  type BiblePassage,
+  type BibleVersion,
+  type Highlight,
+} from '@youversion/platform-core';
+import { YouVersionAuthContext, type HookOverrides } from '@youversion/platform-react-hooks';
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import {
   BibleReader,
@@ -30,7 +36,9 @@ import type { HighlightedVerses } from '@/lib/highlight-colors';
 import { HIGHLIGHT_COLORS } from './verse-action-popover';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
 
-import { fillFor } from '@/test/highlights-test-utils';
+import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
+import { peekPendingHighlights } from '@/lib/pending-highlight';
+import { fillFor, mockUserInfo } from '@/test/highlights-test-utils';
 import { installResizeObserverStub } from '@/test/dom-stubs';
 
 installResizeObserverStub();
@@ -946,4 +954,62 @@ describe('BibleReader clearSelectionSignal', () => {
     expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
     expect(onVerseSelect).not.toHaveBeenCalled();
   });
+});
+
+function renderSelfContainedReader(userInfo: typeof mockUserInfo | null) {
+  return render(
+    <YouVersionAuthContext.Provider
+      value={{
+        userInfo,
+        setUserInfo: vi.fn(),
+        isLoading: false,
+        error: null,
+      }}
+    >
+      {wrapReader()}
+    </YouVersionAuthContext.Provider>,
+  );
+}
+
+it('keeps Copy and the verse selection after No Thanks on highlight sign-in', async () => {
+  setHighlightsLive(true);
+  try {
+    const { container } = renderSelfContainedReader(null);
+
+    selectVerse(container, 1);
+    await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
+    fireEvent.click(getApplyButtons()[0]!);
+    fireEvent.click(await screen.findByRole('button', { name: /no thanks/i }));
+
+    expect(screen.queryByRole('button', { name: /no thanks/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /^copy$/i })).toBeTruthy();
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
+    expect(peekPendingHighlights()).toEqual([]);
+  } finally {
+    setHighlightsLive(HIGHLIGHTS_LIVE);
+    sessionStorage.clear();
+  }
+});
+
+it('keeps Copy and the verse selection after Cancel on highlight permission', async () => {
+  setHighlightsLive(true);
+  YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-1', name: 'Test User' });
+  YouVersionPlatformConfiguration.saveGrantedPermissions([]);
+  try {
+    const { container } = renderSelfContainedReader(mockUserInfo);
+
+    selectVerse(container, 1);
+    await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
+    fireEvent.click(getApplyButtons()[0]!);
+    fireEvent.click(await screen.findByRole('button', { name: /^cancel$/i }));
+
+    expect(screen.queryByRole('button', { name: /^cancel$/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /^copy$/i })).toBeTruthy();
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
+    expect(peekPendingHighlights()).toEqual([]);
+  } finally {
+    setHighlightsLive(HIGHLIGHTS_LIVE);
+    sessionStorage.clear();
+    localStorage.clear();
+  }
 });
