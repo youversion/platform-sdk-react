@@ -31,6 +31,21 @@ describe('VerseActionPopover', () => {
     vi.clearAllMocks();
   });
 
+  describe('enter motion', () => {
+    it('uses a 180ms duration and the popover easing curve', () => {
+      render(<VerseActionPopover {...defaultProps} />);
+      const dialog = screen.getByRole('dialog');
+      // tw-animate-css 1.4.0 reads these names, in this order.
+      const duration =
+        dialog.style.getPropertyValue('--tw-animation-duration') ||
+        dialog.style.getPropertyValue('--tw-duration') ||
+        '.15s';
+      const easing = dialog.style.getPropertyValue('--tw-ease') || 'ease';
+      expect(duration).toBe('180ms');
+      expect(easing).toBe('cubic-bezier(0.16, 1, 0.3, 1)');
+    });
+  });
+
   describe('AC1b: Initial focus on open', () => {
     // The bar opens from a mouse/tap on non-focusable verse text. If Radix
     // autofocused the first swatch, Chromium would treat that programmatic focus
