@@ -25,8 +25,20 @@ dismisses the current peer.
 document-level form, anchor, context, style, or font contracts. The release does
 not add runtime rollout controls or phased-release infrastructure.
 
-The release gate requires Chromium, Firefox, and Playwright WebKit coverage;
-Playwright WebKit is not actual Safari. Release documentation may record actual
-Safari and assistive-technology results only for the exact browser and
-assistive-technology versions validated and must not imply broader screen-reader
-support or WCAG certification.
+The release-candidate gates passed in Chromium, Firefox, and Playwright WebKit.
+Actual Safari 26.6.2 with SafariDriver 21624.5.1.11.3 on macOS 26.6.2 passed all
+38 focused stories in isolated sessions. Safari 26.6.2 with VoiceOver 10 (993)
+on macOS 26.6.2 kept all seven required journeys usable; opening the chapter and
+version pickers did not announce their dialog context and initial focus until
+the next navigation command, a non-blocking finding tracked by
+[YPE-6181](https://lifechurch.atlassian.net/browse/YPE-6181). Chrome or Edge with
+NVDA was not run because no Windows environment was available; JAWS and mobile
+screen readers remain unvalidated. These results do not establish broader
+screen-reader support or WCAG certification. See the
+[release-candidate evidence](https://github.com/youversion/platform-sdk-react/blob/main/docs/shadow-dom-isolation-plan.md#ype-5952-release-candidate-validation)
+for the exact environments and per-journey results.
+
+Shared popover dialogs now derive an accessible name from their visible heading
+unless the consumer provides an explicit label. The reader sign-in and sign-out
+menu has an explicit accessible name, and the version picker places initial
+focus on its language selector.
