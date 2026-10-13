@@ -56,9 +56,11 @@ interface ReactEventObservation {
 }
 
 interface AutomaticButtonEvidenceOutput extends HTMLOutputElement {
+  ancestorBlurs?: ReactEventObservation[];
   ancestorClicks?: ReactEventObservation[];
   ancestorFocuses?: ReactEventObservation[];
   ancestorKeyDowns?: ReactEventObservation[];
+  componentBlurs?: ReactEventObservation[];
   componentClicks?: ReactEventObservation[];
   componentFocuses?: ReactEventObservation[];
   componentKeyDowns?: ReactEventObservation[];
@@ -257,13 +259,22 @@ function AutomaticButtonHarness(): React.ReactNode {
   return (
     <CompatibilityScenario
       classification="Supported with documented constraints"
-      expectedResult="Each click, keydown, and focus dispatch reaches the component and its light-DOM React ancestor once. Component callbacks and the forwarded ref expose the internal button. Native listeners outside the root see the shadow host as the event target, and DOM selector APIs need explicit root traversal."
+      expectedResult="Each click, keydown, focus, and focus-leave dispatch reaches the component and its light-DOM React ancestor once. Component callbacks and the forwarded ref expose the internal button. Native listeners outside the root see the shadow host as the event target, and DOM selector APIs need explicit root traversal."
       summary="This example compares the views exposed to React consumers, native event listeners, refs, and DOM selector APIs."
       title="Single event dispatch, refs, and test queries"
     >
       <>
         <div
           data-testid="consumer-observer"
+          onBlur={(event) => {
+            if (evidenceRef.current) {
+              (evidenceRef.current.ancestorBlurs ??= []).push({
+                currentTarget: event.currentTarget,
+                nativeEvent: event.nativeEvent,
+                target: event.target,
+              });
+            }
+          }}
           onClick={(event) => {
             if (evidenceRef.current) {
               (evidenceRef.current.ancestorClicks ??= []).push({
@@ -296,6 +307,15 @@ function AutomaticButtonHarness(): React.ReactNode {
             ref={receiveButtonRef}
             data-testid="isolated-auth-button"
             mode="signOut"
+            onBlur={(event) => {
+              if (evidenceRef.current) {
+                (evidenceRef.current.componentBlurs ??= []).push({
+                  currentTarget: event.currentTarget,
+                  nativeEvent: event.nativeEvent,
+                  target: event.target,
+                });
+              }
+            }}
             onClick={(event) => {
               if (evidenceRef.current) {
                 (evidenceRef.current.componentClicks ??= []).push({
@@ -407,6 +427,14 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
     observer.addEventListener('focusin', (event) => {
       outsideFocusEvents.push({ event, path: event.composedPath(), target: event.target });
     });
+    const outsideFocusOutEvents: Array<{
+      event: Event;
+      path: EventTarget[];
+      target: EventTarget | null;
+    }> = [];
+    observer.addEventListener('focusout', (event) => {
+      outsideFocusOutEvents.push({ event, path: event.composedPath(), target: event.target });
+    });
 
     outsideFocusTarget.focus();
     button.focus();
@@ -422,6 +450,32 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
     await expect(outsideFocusEvents[0]?.target).toBe(host);
     await expect(outsideFocusEvents[0]?.path[0]).toBe(button);
     await expect(outsideFocusEvents[0]?.path).toContain(host);
+
+    outsideFocusTarget.focus();
+    button.focus();
+    outsideFocusTarget.focus();
+
+    await expect(outsideFocusOutEvents).toHaveLength(2);
+    await expect(new Set(outsideFocusOutEvents.map(({ event }) => event))).toHaveLength(2);
+    await expect(evidence.componentBlurs).toEqual(
+      outsideFocusOutEvents.map(({ event }) => ({
+        currentTarget: button,
+        nativeEvent: event,
+        target: button,
+      })),
+    );
+    await expect(evidence.ancestorBlurs).toEqual(
+      outsideFocusOutEvents.map(({ event }) => ({
+        currentTarget: observer,
+        nativeEvent: event,
+        target: button,
+      })),
+    );
+    for (const outsideFocusOutEvent of outsideFocusOutEvents) {
+      await expect(outsideFocusOutEvent.target).toBe(host);
+      await expect(outsideFocusOutEvent.path[0]).toBe(button);
+      await expect(outsideFocusOutEvent.path).toContain(host);
+    }
 
     const keyDownEvent = new button.ownerDocument.defaultView!.KeyboardEvent('keydown', {
       bubbles: true,

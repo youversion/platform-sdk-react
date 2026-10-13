@@ -437,6 +437,7 @@ export function ShadowRootHost({
     <HostElement
       ref={setHostRef}
       data-yv-shadow-host
+      onBlur={stopDuplicateReactPropagation}
       onClick={stopDuplicateReactPropagation}
       onFocus={stopDuplicateReactPropagation}
       onKeyDown={stopDuplicateReactPropagation}
