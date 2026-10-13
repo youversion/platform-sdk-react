@@ -17,13 +17,14 @@ import { YvComponentStyles } from '@/lib/yv-styles-components';
 export { HIGHLIGHT_COLORS, type HighlightColor } from '@/lib/highlight-colors';
 
 type PopoverMotionStyle = CSSProperties & {
-  '--tw-animate-duration'?: string;
-  '--tw-animate-easing'?: string;
+  '--tw-animation-duration'?: string;
+  '--tw-ease'?: string;
 };
 
-const popoverMotionStyle: PopoverMotionStyle = {};
-popoverMotionStyle['--tw-animate-duration'] = '180ms';
-popoverMotionStyle['--tw-animate-easing'] = 'cubic-bezier(0.16, 1, 0.3, 1)';
+const popoverMotionStyle: PopoverMotionStyle = {
+  '--tw-animation-duration': '180ms',
+  '--tw-ease': 'cubic-bezier(0.16, 1, 0.3, 1)',
+};
 
 /** Width, in px, of the fade applied at each overflowing edge of the swatch row. */
 const SCROLL_FADE_PX = 20;
