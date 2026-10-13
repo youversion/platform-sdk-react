@@ -17,11 +17,12 @@
 //                      unrelated PR until the release went out.
 //
 // Output (stdout): one line of JSON:
-//   { current, next, release_type, is_major, introduced_major, packages, added_changesets }
+//   { current, next, release_type, is_major, introduced_major, packages, added_changesets, signoff_token }
 //
 // Usage:
 //   node scripts/preview-release.mjs --base <sha> [--head <sha>]
 import { execFileSync } from 'node:child_process';
+import { isChangesetPath, signoffToken } from './signoff-token.mjs';
 import parseChangeset from '@changesets/parse';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -135,7 +136,7 @@ function addedChangesetLevels(base) {
 
   // `[^]` rather than `.`: a filename containing a line terminator would otherwise fail
   // this test and drop out of the scan entirely.
-  const isChangeset = (f) => /^\.changeset\/[^]+\.md$/.test(f) && !/README\.md$/.test(f);
+  const isChangeset = isChangesetPath;
   const levels = [];
   const touched = [];
 
@@ -188,5 +189,11 @@ console.log(
     introduced_major: levels.some((l) => l.level === 'major'),
     packages: releases.map((r) => r.name),
     added_changesets: added,
+    signoff_token: signoffToken({
+      repoRoot: REPO_ROOT,
+      base: args.base,
+      head,
+      nextVersion: versions[0] ?? null,
+    }),
   }),
 );

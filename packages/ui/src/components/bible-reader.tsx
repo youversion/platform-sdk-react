@@ -1405,6 +1405,9 @@ function UserMenu() {
   );
 }
 
+const INTER_FONT_NAME = 'Inter';
+const UNTITLED_SERIF_FONT_NAME = 'Untitled Serif';
+
 export function BibleThemeSettingsContent(props: BibleThemeSettingsContentProps): ReactElement {
   return (
     <ShadowIsolationBoundary theme={props.theme} shrinkableBlockHost>
@@ -1498,7 +1501,7 @@ function BibleThemeSettingsBody({
               >
                 {t('fontLabel')}
               </span>
-              <span className="yv:sm:text-xl yv:text-base">{t('interFontName')}</span>
+              <span className="yv:sm:text-xl yv:text-base">{INTER_FONT_NAME}</span>
             </div>
           </Button>
           <Button
@@ -1523,7 +1526,7 @@ function BibleThemeSettingsBody({
                 {t('fontLabel')}
               </span>
               <span className="yv:sm:text-xl yv:text-base yv:font-serif">
-                {t('untitledSerifFontName')}
+                {UNTITLED_SERIF_FONT_NAME}
               </span>
             </div>
           </Button>
