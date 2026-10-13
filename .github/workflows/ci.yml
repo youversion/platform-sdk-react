@@ -83,6 +83,9 @@ jobs:
       - name: Run lint
         run: pnpm lint
 
+      - name: Run repo script regression tests
+        run: pnpm test:ci-scripts
+
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest

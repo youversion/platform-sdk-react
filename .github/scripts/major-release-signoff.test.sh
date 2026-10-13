@@ -499,6 +499,7 @@ git -C "$PREVIEW_REPO" remote add origin "$PREVIEW_REMOTE"
 mkdir -p "$PREVIEW_REPO/scripts" "$PREVIEW_REPO/.changeset" \
   "$PREVIEW_REPO/packages/core" "$PREVIEW_REPO/packages/hooks" "$PREVIEW_REPO/packages/ui"
 cp "$ROOT/scripts/preview-release.mjs" "$PREVIEW_REPO/scripts/preview-release.mjs"
+cp "$ROOT/scripts/signoff-token.mjs" "$PREVIEW_REPO/scripts/signoff-token.mjs"
 cp "$ROOT/.changeset/config.json" "$PREVIEW_REPO/.changeset/config.json"
 cat > "$PREVIEW_REPO/package.json" <<'EOF'
 {"name":"preview-fixture","private":true,"packageManager":"pnpm@11.10.0"}
@@ -600,6 +601,58 @@ if awk '/^  context_unresolved:/{f=1} f && /^    if:/{print; exit}' "$WORKFLOW" 
     "context_unresolved is gated to a subset of events, so a revocation can leave a stale success"
 else
   pass "an unresolved context fails the status on every event"
+fi
+
+# --- signoff is pinned to the release, not the commit (YPE-6068) ---------------
+
+if grep -q 'TOKEN_RE="(\^|\[\^0-9A-Za-z\])\${SIGNOFF_TOKEN}' "$WORKFLOW" \
+  && ! grep -q 'SHA_RE=' "$WORKFLOW"; then
+  pass "the signoff matches the release token, not the head SHA"
+else
+  fail "the signoff matches the release token, not the head SHA" \
+    "matching on HEAD_SHA voids a valid signoff on every push"
+fi
+
+if grep -q 'SIGNOFF_TOKEN" =~ \^\[0-9a-f\]{16}\$' "$WORKFLOW"; then
+  pass "a malformed release token fails closed"
+else
+  fail "a malformed release token fails closed" \
+    "an empty token would degenerate the matcher into one that matches almost any comment"
+fi
+
+if grep -q 'echo "v\$NEXT_VERSION \$SIGNOFF_TOKEN' "$WORKFLOW" \
+  && ! grep -q 'echo "v\$NEXT_VERSION \$HEAD_SHA' "$WORKFLOW"; then
+  pass "the copy-paste block names the token the matcher looks for"
+else
+  fail "the copy-paste block names the token the matcher looks for" \
+    "instructions that name a different value than the matcher are unfollowable"
+fi
+
+if grep -q 'signoff_token: \${{ steps.preview.outputs.signoff_token }}' "$WORKFLOW" \
+  && grep -q 'SIGNOFF_TOKEN: \${{ needs.preview.outputs.signoff_token }}' "$WORKFLOW"; then
+  pass "the token reaches the signoff and comment steps from the preview job"
+else
+  fail "the token reaches the signoff and comment steps from the preview job" \
+    "an unset SIGNOFF_TOKEN is caught by the guard, but only after the job has already run"
+fi
+
+if grep -qF 'scripts/preview-release.mjs scripts/signoff-token.mjs' "$WORKFLOW"; then
+  pass "the token module is restored from main with the rest of the tooling"
+else
+  fail "the token module is restored from main with the rest of the tooling" \
+    "a PR-supplied token module could mint a token matching an older signoff"
+fi
+
+# The gate reads `.signoff_token` out of preview.json. If the preview stops emitting it the
+# guard rejects an empty token and every major PR blocks, which is how this shipped the first
+# time: four assertions about the workflow's text all passed while the key was never written.
+PREVIEW_SRC="$ROOT/scripts/preview-release.mjs"
+if grep -q "signoff_token: signoffToken(" "$PREVIEW_SRC" \
+  && grep -q "jq -r '.signoff_token // empty' preview.json" "$WORKFLOW"; then
+  pass "the preview emits the token under the key the gate reads"
+else
+  fail "the preview emits the token under the key the gate reads" \
+    "an unemitted or renamed key blocks every major PR behind an empty-token guard"
 fi
 
 printf '\n%d passed, %d failed\n' "$passes" "$failures"
