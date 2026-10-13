@@ -1,6 +1,6 @@
 # Architecture decision records
 
-Numbered records stay `NNNN-kebab-case.md` (0001–0009; the next number is 0010) and ticket-keyed records stay `YPE-<id>-kebab-case.md`; do not renumber either set.
+Numbered records stay `NNNN-kebab-case.md` and ticket-keyed records stay `YPE-<id>-kebab-case.md`; do not renumber either set.
 
 - [`0001-revert-brand-fonts-pending-licensing.md`](./0001-revert-brand-fonts-pending-licensing.md) — Revert brand fonts to Inter / Source Serif 4
 - [`0002-sdk-version-dev-suffix-on-build.md`](./0002-sdk-version-dev-suffix-on-build.md) — Suffix the X-YVP-Sdk version with `-dev` for non-published builds

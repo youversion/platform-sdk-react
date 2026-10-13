@@ -11,7 +11,7 @@ Keep this file brief. Put task-specific guidance behind a pointer.
 
 ## Localization
 
-User-facing strings: `docs/i18n-guidelines.md`. Do not edit `src/i18n/locales`. Open a pull request on [platform-localization](https://github.com/youversion/platform-localization) that edits `sources/common/en.json` (`react.*`).
+User-facing strings: `docs/i18n-guidelines.md`.
 
 ## Guardrails
 

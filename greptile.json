@@ -74,7 +74,7 @@
       {
         "scope": ["*"],
         "path": "AGENTS.md",
-        "description": "Agent index: pointers to CI, review, localization, and ADRs"
+        "description": "Repo gotchas, guardrails, and doc index"
       }
     ]
   }
