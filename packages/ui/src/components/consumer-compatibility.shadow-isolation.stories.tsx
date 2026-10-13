@@ -68,7 +68,10 @@ interface AutomaticButtonEvidenceOutput extends HTMLOutputElement {
 }
 
 interface NestedRootsEvidenceOutput extends HTMLOutputElement {
+  componentBlurs?: ReactEventObservation[];
+  lightDomAncestorBlurs?: ReactEventObservation[];
   lightDomAncestorClickCount?: number;
+  outerShadowAncestorBlurs?: ReactEventObservation[];
   outerShadowAncestorClickCount?: number;
 }
 
@@ -455,6 +458,28 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
     button.focus();
     outsideFocusTarget.focus();
 
+    await expect(outsideFocusEvents).toHaveLength(2);
+    await expect(new Set(outsideFocusEvents.map(({ event }) => event))).toHaveLength(2);
+    await expect(evidence.componentFocuses).toEqual(
+      outsideFocusEvents.map(({ event }) => ({
+        currentTarget: button,
+        nativeEvent: event,
+        target: button,
+      })),
+    );
+    await expect(evidence.ancestorFocuses).toEqual(
+      outsideFocusEvents.map(({ event }) => ({
+        currentTarget: observer,
+        nativeEvent: event,
+        target: button,
+      })),
+    );
+    for (const outsideFocusEvent of outsideFocusEvents) {
+      await expect(outsideFocusEvent.target).toBe(host);
+      await expect(outsideFocusEvent.path[0]).toBe(button);
+      await expect(outsideFocusEvent.path).toContain(host);
+    }
+
     await expect(outsideFocusOutEvents).toHaveLength(2);
     await expect(new Set(outsideFocusOutEvents.map(({ event }) => event))).toHaveLength(2);
     await expect(evidence.componentBlurs).toEqual(
@@ -548,11 +573,21 @@ function NestedRootsHarness(): React.ReactNode {
   return (
     <CompatibilityScenario
       classification="Supported for the validated basics"
-      expectedResult="The button renders and its composed click crosses both roots. DOM selector APIs must traverse the outer root and then the inner root. Overlay behavior is not part of this evidence."
+      expectedResult="The button renders, and its composed click and focus-leave dispatch cross both roots once. DOM selector APIs must traverse the outer root and then the inner root. Overlay behavior is not part of this evidence."
       summary="This example places an automatically isolated button inside a second SDK shadow root."
       title="Nested shadow roots"
     >
       <div
+        data-testid="nested-light-dom-observer"
+        onBlur={(event) => {
+          if (evidenceRef.current) {
+            (evidenceRef.current.lightDomAncestorBlurs ??= []).push({
+              currentTarget: event.currentTarget,
+              nativeEvent: event.nativeEvent,
+              target: event.target,
+            });
+          }
+        }}
         onClick={() => {
           if (evidenceRef.current) {
             evidenceRef.current.lightDomAncestorClickCount =
@@ -563,6 +598,15 @@ function NestedRootsHarness(): React.ReactNode {
         <ShadowRootHost>
           <div
             data-testid="outer-shadow-observer"
+            onBlur={(event) => {
+              if (evidenceRef.current) {
+                (evidenceRef.current.outerShadowAncestorBlurs ??= []).push({
+                  currentTarget: event.currentTarget,
+                  nativeEvent: event.nativeEvent,
+                  target: event.target,
+                });
+              }
+            }}
             onClick={() => {
               if (evidenceRef.current) {
                 evidenceRef.current.outerShadowAncestorClickCount =
@@ -570,10 +614,25 @@ function NestedRootsHarness(): React.ReactNode {
               }
             }}
           >
-            <YouVersionAuthButton data-testid="nested-auth-button" mode="signOut" />
+            <YouVersionAuthButton
+              data-testid="nested-auth-button"
+              mode="signOut"
+              onBlur={(event) => {
+                if (evidenceRef.current) {
+                  (evidenceRef.current.componentBlurs ??= []).push({
+                    currentTarget: event.currentTarget,
+                    nativeEvent: event.nativeEvent,
+                    target: event.target,
+                  });
+                }
+              }}
+            />
           </div>
         </ShadowRootHost>
       </div>
+      <button type="button" data-testid="nested-outside-focus-target">
+        Outside focus target
+      </button>
       <output hidden ref={evidenceRef} data-testid="nested-roots-evidence" />
     </CompatibilityScenario>
   );
@@ -584,6 +643,11 @@ export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
   render: () => <NestedRootsHarness />,
   play: async ({ canvasElement }) => {
     const outerHost = await requireShadowHost(canvasElement);
+    const lightDomObserver = requireElement<HTMLElement>(
+      canvasElement,
+      '[data-testid="nested-light-dom-observer"]',
+      'nested light DOM observer not rendered',
+    );
     const evidence = requireElement<NestedRootsEvidenceOutput>(
       canvasElement,
       '[data-testid="nested-roots-evidence"]',
@@ -601,6 +665,11 @@ export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
       innerRoot,
       '[data-testid="nested-auth-button"]',
       'nested auth button not rendered',
+    );
+    const outsideFocusTarget = requireElement<HTMLButtonElement>(
+      canvasElement,
+      '[data-testid="nested-outside-focus-target"]',
+      'nested outside focus target not rendered',
     );
 
     await expect(canvasElement.querySelector('[data-testid="nested-auth-button"]')).toBeNull();
@@ -635,5 +704,66 @@ export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
     await expect(composedPath[0]).toBe(button);
     await expect(composedPath).toContain(innerHost);
     await expect(composedPath).toContain(outerHost);
+
+    const outerScopeFocusOuts: Array<{
+      event: Event;
+      path: EventTarget[];
+      target: EventTarget | null;
+    }> = [];
+    outerObserver.addEventListener('focusout', (event) => {
+      outerScopeFocusOuts.push({
+        event,
+        path: event.composedPath(),
+        target: event.target,
+      });
+    });
+    const documentScopeFocusOuts: Array<{
+      event: Event;
+      path: EventTarget[];
+      target: EventTarget | null;
+    }> = [];
+    canvasElement.addEventListener('focusout', (event) => {
+      documentScopeFocusOuts.push({
+        event,
+        path: event.composedPath(),
+        target: event.target,
+      });
+    });
+
+    button.focus();
+    outsideFocusTarget.focus();
+
+    await expect(outerScopeFocusOuts).toHaveLength(1);
+    await expect(documentScopeFocusOuts).toHaveLength(1);
+    await expect(documentScopeFocusOuts[0]?.event).toBe(outerScopeFocusOuts[0]?.event);
+    await expect(evidence.componentBlurs).toEqual([
+      {
+        currentTarget: button,
+        nativeEvent: outerScopeFocusOuts[0]?.event,
+        target: button,
+      },
+    ]);
+    await expect(evidence.outerShadowAncestorBlurs).toEqual([
+      {
+        currentTarget: outerObserver,
+        nativeEvent: outerScopeFocusOuts[0]?.event,
+        target: button,
+      },
+    ]);
+    await expect(evidence.lightDomAncestorBlurs).toEqual([
+      {
+        currentTarget: lightDomObserver,
+        nativeEvent: outerScopeFocusOuts[0]?.event,
+        target: button,
+      },
+    ]);
+    await expect(outerScopeFocusOuts[0]?.target).toBe(innerHost);
+    await expect(outerScopeFocusOuts[0]?.path[0]).toBe(button);
+    await expect(outerScopeFocusOuts[0]?.path).toContain(innerHost);
+    await expect(outerScopeFocusOuts[0]?.path).toContain(outerHost);
+    await expect(documentScopeFocusOuts[0]?.target).toBe(outerHost);
+    await expect(documentScopeFocusOuts[0]?.path[0]).toBe(button);
+    await expect(documentScopeFocusOuts[0]?.path).toContain(innerHost);
+    await expect(documentScopeFocusOuts[0]?.path).toContain(outerHost);
   },
 };
