@@ -177,6 +177,7 @@ try {
       const retryableSafariTransportFailure =
         previousSafariSessionStillPaired || safariBrowserFailedToConnect;
       if (
+        result.error ||
         result.status === 0 ||
         !retryableSafariTransportFailure ||
         attempts === maxSafariTransportAttempts
