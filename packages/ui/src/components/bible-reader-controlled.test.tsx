@@ -965,8 +965,12 @@ function renderSelfContainedReader(userInfo: typeof mockUserInfo | null) {
     color: 'ffec5b',
   });
   const overrides = defaultOverrides();
+  const useHighlights = overrides.useHighlights;
+  if (!useHighlights) {
+    throw new Error('defaultOverrides must provide useHighlights');
+  }
   overrides.useHighlights = () => ({
-    ...defaultOverrides().useHighlights(),
+    ...useHighlights({ version_id: 111, passage_id: 'JHN.1' }),
     createHighlight,
   });
   return {
