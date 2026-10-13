@@ -18,6 +18,8 @@ import {
 } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import {
+  DataExchangeClient,
+  YouVersionAPIUsers,
   YouVersionPlatformConfiguration,
   type BibleBook,
   type BiblePassage,
@@ -957,33 +959,54 @@ describe('BibleReader clearSelectionSignal', () => {
 });
 
 function renderSelfContainedReader(userInfo: typeof mockUserInfo | null) {
-  return render(
-    <YouVersionAuthContext.Provider
-      value={{
-        userInfo,
-        setUserInfo: vi.fn(),
-        isLoading: false,
-        error: null,
-      }}
-    >
-      {wrapReader()}
-    </YouVersionAuthContext.Provider>,
-  );
+  const createHighlight = vi.fn().mockResolvedValue({
+    version_id: 111,
+    passage_id: 'JHN.1.1',
+    color: 'ffec5b',
+  });
+  const overrides = defaultOverrides();
+  overrides.useHighlights = () => ({
+    ...defaultOverrides().useHighlights(),
+    createHighlight,
+  });
+  return {
+    createHighlight,
+    ...render(
+      <YouVersionAuthContext.Provider
+        value={{
+          userInfo,
+          setUserInfo: vi.fn(),
+          isLoading: false,
+          error: null,
+        }}
+      >
+        {wrapReader({}, overrides)}
+      </YouVersionAuthContext.Provider>,
+    ),
+  };
+}
+
+function expectVerseMenuAbsent() {
+  expect(screen.queryByRole('button', { name: /^copy$/i, hidden: true })).toBeNull();
 }
 
 it('keeps Copy and the verse selection after No Thanks on highlight sign-in', async () => {
   setHighlightsLive(true);
   try {
-    const { container } = renderSelfContainedReader(null);
+    const { container, createHighlight } = renderSelfContainedReader(null);
 
     selectVerse(container, 1);
     await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
     fireEvent.click(getApplyButtons()[0]!);
-    fireEvent.click(await screen.findByRole('button', { name: /no thanks/i }));
+    await screen.findByRole('button', { name: /no thanks/i });
+    expectVerseMenuAbsent();
+    fireEvent.click(screen.getByRole('button', { name: /no thanks/i }));
 
     expect(screen.queryByRole('button', { name: /no thanks/i })).toBeNull();
     expect(screen.getByRole('button', { name: /^copy$/i })).toBeTruthy();
     expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
+    expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
+    expect(createHighlight).not.toHaveBeenCalled();
     expect(peekPendingHighlights()).toEqual([]);
   } finally {
     setHighlightsLive(HIGHLIGHTS_LIVE);
@@ -996,18 +1019,80 @@ it('keeps Copy and the verse selection after Cancel on highlight permission', as
   YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-1', name: 'Test User' });
   YouVersionPlatformConfiguration.saveGrantedPermissions([]);
   try {
-    const { container } = renderSelfContainedReader(mockUserInfo);
+    const { container, createHighlight } = renderSelfContainedReader(mockUserInfo);
 
     selectVerse(container, 1);
     await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
     fireEvent.click(getApplyButtons()[0]!);
-    fireEvent.click(await screen.findByRole('button', { name: /^cancel$/i }));
+    await screen.findByRole('button', { name: /^cancel$/i });
+    expectVerseMenuAbsent();
+    fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
 
     expect(screen.queryByRole('button', { name: /^cancel$/i })).toBeNull();
     expect(screen.getByRole('button', { name: /^copy$/i })).toBeTruthy();
     expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
+    expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
+    expect(createHighlight).not.toHaveBeenCalled();
     expect(peekPendingHighlights()).toEqual([]);
   } finally {
+    setHighlightsLive(HIGHLIGHTS_LIVE);
+    sessionStorage.clear();
+    localStorage.clear();
+  }
+});
+
+it('clears the verse menu while highlight sign-in is still starting', async () => {
+  setHighlightsLive(true);
+  let releaseSignIn: () => void = () => undefined;
+  const signIn = vi.spyOn(YouVersionAPIUsers, 'signIn').mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        releaseSignIn = () => resolve(undefined);
+      }),
+  );
+  try {
+    const { container, createHighlight } = renderSelfContainedReader(null);
+
+    selectVerse(container, 1);
+    await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
+    fireEvent.click(getApplyButtons()[0]!);
+    fireEvent.click(await screen.findByRole('button', { name: /yes please/i }));
+
+    expect(signIn).toHaveBeenCalledTimes(1);
+    expectVerseMenuAbsent();
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(false);
+    expect(createHighlight).not.toHaveBeenCalled();
+    expect(peekPendingHighlights()).toHaveLength(1);
+    releaseSignIn();
+  } finally {
+    signIn.mockRestore();
+    setHighlightsLive(HIGHLIGHTS_LIVE);
+    sessionStorage.clear();
+  }
+});
+
+it('clears the verse menu while the highlight permission grant is still starting', async () => {
+  setHighlightsLive(true);
+  YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-1', name: 'Test User' });
+  YouVersionPlatformConfiguration.saveGrantedPermissions([]);
+  const updateToken = vi
+    .spyOn(DataExchangeClient.prototype, 'updateToken')
+    .mockImplementation(() => new Promise(() => undefined));
+  try {
+    const { container, createHighlight } = renderSelfContainedReader(mockUserInfo);
+
+    selectVerse(container, 1);
+    await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
+    fireEvent.click(getApplyButtons()[0]!);
+    fireEvent.click(await screen.findByRole('button', { name: /^continue$/i }));
+
+    expect(updateToken).toHaveBeenCalledTimes(1);
+    expectVerseMenuAbsent();
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(false);
+    expect(createHighlight).not.toHaveBeenCalled();
+    expect(peekPendingHighlights()).toHaveLength(1);
+  } finally {
+    updateToken.mockRestore();
     setHighlightsLive(HIGHLIGHTS_LIVE);
     sessionStorage.clear();
     localStorage.clear();

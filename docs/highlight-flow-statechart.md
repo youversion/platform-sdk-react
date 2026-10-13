@@ -76,10 +76,10 @@ stateDiagram-v2
       idle --> permissionDialog: TAP_COLOR no permission / stash pending
 
       signInDialog --> idle: CONFIRM_SIGN_IN / start sign-in redirect
-      signInDialog --> idle: DECLINE_SIGN_IN / clear pending
+      signInDialog --> idle: DECLINE_SIGN_IN / clear pending, keep selection
 
       permissionDialog --> idle: CONFIRM_PERMISSION / start data-exchange
-      permissionDialog --> idle: CANCEL_PERMISSION / clear pending
+      permissionDialog --> idle: CANCEL_PERMISSION / clear pending, keep selection
 
       idle --> permissionDialog: PERMISSION_LOST (401/403 on write)
     }
@@ -93,6 +93,8 @@ stateDiagram-v2
     }
   }
 ```
+
+`DECLINE_SIGN_IN` and `CANCEL_PERMISSION` clear the pending highlight only. The reader keeps the verse selection and shows the menu again. Confirming either prompt clears that selection in the reader, so the menu is not tappable while sign-in or the permission grant is still starting.
 
 _(`ENQUEUE`, `AUTH_CHANGED`, `HIGHLIGHTS_UPDATED`, and `SCOPE_CHANGED` are handled
 without leaving the current state: they update context and let the `always`

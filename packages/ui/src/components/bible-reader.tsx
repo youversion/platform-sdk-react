@@ -1162,8 +1162,15 @@ function Content() {
       return;
     }
     if (highlightPromptOpen) return;
-    // Outside click / Escape closes and clears (ADR-007).
+    // Outside click / Escape closes and clears (YPE-642, Resolved round 2).
     closeAndClearSelection();
+  }
+
+  function confirmHighlightPrompt(confirm: () => void) {
+    // Confirm leaves the reader for a redirect. Clear the menu in this click so
+    // it is not tappable while sign-in or the permission grant is still starting.
+    closeAndClearSelection();
+    confirm();
   }
 
   let chapterLabel: string = bookData?.chapters?.find((ch) => ch.id === chapter)?.title || chapter;
@@ -1255,7 +1262,7 @@ function Content() {
           <HighlightPermissionDialog
             open={permissionDialogOpen}
             onOpenChange={onPermissionDialogOpenChange}
-            onConfirm={confirmPermissionDialog}
+            onConfirm={() => confirmHighlightPrompt(confirmPermissionDialog)}
             onCancel={cancelPermissionDialog}
             theme={background}
           />
@@ -1267,7 +1274,7 @@ function Content() {
             }}
             appName={signInAppName}
             promptMessage={signInPromptMessage}
-            onConfirm={confirmSignInDialog}
+            onConfirm={() => confirmHighlightPrompt(confirmSignInDialog)}
             onDecline={cancelSignInDialog}
             theme={background}
           />

@@ -191,8 +191,15 @@ Selection is always enabled in BibleReader (no opt-out prop for now; YAGNI).
   alpha (`HIGHLIGHT_FILL_OPACITY_DARK`) via `hexToRgba` from `verse.tsx`, with the
   active-swatch checkmark switched to white and the inner stroke flipped to a light
   `rgba(255,255,255,0.2)` so the dimmed circle stays legible on the dark popover.
-- **Verse-tap vs outside-click:** ADR-007 says outside-click clears selection,
-  but Radix treats a *second verse tap* as an outside-click too. The popover's
+- **Highlight prompt (YPE-5943):** the sign-in and permission prompts are modal,
+  so opening one closes the verse menu. That dismiss keeps the selection. No
+  Thanks or Cancel brings the menu back and discards only the pending highlight.
+  Yes Please or Continue clears the selection, so the menu is not tappable while
+  the redirect is still starting. A real outside click still clears the selection
+  (Resolved round 2).
+- **Verse-tap vs outside-click:** Resolved (round 2) says an outside click clears
+  the selection, but Radix treats a *second verse tap* as an outside-click too.
+  The popover's
   `onInteractOutside` calls `preventDefault()` when the target is inside
   `.yv-v[v]`, so tapping more verses re-anchors instead of dismissing. Only a
   true outside tap clears (matches the YV apps).
