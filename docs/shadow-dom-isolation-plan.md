@@ -64,8 +64,8 @@ existing peer overlay. Automated Firefox and Playwright WebKit coverage now
 exercises these journeys. All 22 focused stories returned assertion-level success
 in local Safari 26.6.2 through SafariDriver when each story used a fresh browser
 session. A single long-lived SafariDriver session stalled on the final two play
-functions; the release-candidate assistive-technology checks remain pending in
-the YPE-5952 section below.
+functions. The release-candidate Safari/VoiceOver result and explicit
+Windows/NVDA validation gap are recorded in the YPE-5952 section below.
 
 ## Validation matrix
 
@@ -93,8 +93,8 @@ the YPE-5952 section below.
 This section is the durable record for the final coordinated-release checks. It
 does not convert automated DOM assertions into screen-reader evidence. The final
 release-candidate Safari browser run is recorded below. All assistive-technology
-results remain **pending** until a human records the exact environment and
-per-journey result below.
+claims are limited to the exact environment and per-journey results recorded
+below; Windows/NVDA was not run and remains unvalidated.
 
 Use the existing production Storybook journeys; do not add duplicate stories
 only to execute this checklist:
@@ -126,13 +126,14 @@ means a single shared session is not acceptable evidence.
 
 ### Assistive-technology evidence
 
-Test both required combinations. Record versions from the tested machines rather
-than naming only the product family.
+Record versions from the tested machines rather than naming only the product
+family. The planned Windows/NVDA combination was not run because no Windows test
+environment was available; it is an explicit validation gap, not a pass.
 
 | Combination | Operating system | Browser | Assistive technology | Date and operator | Status |
 | --- | --- | --- | --- | --- | --- |
 | Safari with VoiceOver | macOS 26.6.2 (25G83) | Safari 26.6.2 (21624.5.1.11.3) | VoiceOver 10 (993) | 2026-10-12; Austin Harms | Complete—seven required journeys remained usable; picker opening announcements have the non-blocking finding recorded below |
-| Chrome or Edge with NVDA | Pending exact Windows version/build | Pending exact browser version/build | Pending exact NVDA version/build | Pending | Pending—not run |
+| Chrome or Edge with NVDA | Not available | Not run | Not run | 2026-10-13; release decision by Austin Harms | Not run—no Windows/NVDA environment was available; this combination remains unvalidated |
 
 For every journey and combination, record announcements, accessible names and
 descriptions, reading order, keyboard operation, modal focus containment,
@@ -143,13 +144,13 @@ accessibility redesign.
 
 | Journey | Safari + VoiceOver | Chrome/Edge + NVDA | Finding or follow-up |
 | --- | --- | --- | --- |
-| Sign-in dialog | Pass. VoiceOver announced the title and description, announced each control once, kept forward and reverse keyboard traversal inside the dialog, and preserved dismissal and focus restoration. | Pending—not run | None |
-| Chapter picker | Pass with the shared picker-announcement finding. Space opened the picker; VoiceOver exposed the `Books` web-dialog context on subsequent navigation, announced Genesis as collapsed and then expanded, allowed selection of Genesis 1, and preserved focus restoration on close. | Pending—not run | Safari/VoiceOver did not announce the newly opened picker or its initial programmatic focus until the operator navigated. Core keyboard and screen-reader operation remained available. [YPE-6181](https://lifechurch.atlassian.net/browse/YPE-6181) tracks this with the version-picker instance as one focused follow-up. |
-| Version picker | Pass with the shared picker-announcement finding. Keyboard focus entered on the English selector, Tab moved next to Close, VoiceOver announced the `Bible Versions` web-dialog context and Close control, and dismissal restored focus to NIV. | Pending—not run | On open, VoiceOver continued to announce the NIV trigger and `Control-Option-F4` reported no keyboard focus even though Safari exposed the English selector as the shadow root's active element. The next Tab correctly advanced from English to Close and exposed the dialog to VoiceOver. This did not prevent operation, so [YPE-6181](https://lifechurch.atlassian.net/browse/YPE-6181) is a non-blocking follow-up rather than a YPE-5952 expansion. |
-| Bible Reader | Pass. VoiceOver exposed the reader controls and scripture in reading order, and the chapter/version navigation exercised above remained operable inside the reader. | Pending—not run | None beyond the shared picker-announcement finding |
-| Verse actions | Pass. Selecting a verse exposed the verse-actions dialog; keyboard navigation reached the highlight action and the controls remained operable. | Pending—not run | None |
-| Theme settings | Pass. VoiceOver exposed the Reader Settings dialog and its close, font-size, line-spacing, and font controls; traversal stayed inside and Escape restored focus to Settings. | Pending—not run | None |
-| Nested overlays | Pass. Activating a highlight action opened the sign-in dialog; the first Escape dismissed only the sign-in dialog and retained the verse-actions overlay, and the second Escape dismissed the verse-actions overlay. | Pending—not run | None |
+| Sign-in dialog | Pass. VoiceOver announced the title and description, announced each control once, kept forward and reverse keyboard traversal inside the dialog, and preserved dismissal and focus restoration. | Not run—unvalidated | None |
+| Chapter picker | Pass with the shared picker-announcement finding. Space opened the picker; VoiceOver exposed the `Books` web-dialog context on subsequent navigation, announced Genesis as collapsed and then expanded, allowed selection of Genesis 1, and preserved focus restoration on close. | Not run—unvalidated | Safari/VoiceOver did not announce the newly opened picker or its initial programmatic focus until the operator navigated. Core keyboard and screen-reader operation remained available. [YPE-6181](https://lifechurch.atlassian.net/browse/YPE-6181) tracks this with the version-picker instance as one focused follow-up. |
+| Version picker | Pass with the shared picker-announcement finding. Keyboard focus entered on the English selector, Tab moved next to Close, VoiceOver announced the `Bible Versions` web-dialog context and Close control, and dismissal restored focus to NIV. | Not run—unvalidated | On open, VoiceOver continued to announce the NIV trigger and `Control-Option-F4` reported no keyboard focus even though Safari exposed the English selector as the shadow root's active element. The next Tab correctly advanced from English to Close and exposed the dialog to VoiceOver. This did not prevent operation, so [YPE-6181](https://lifechurch.atlassian.net/browse/YPE-6181) is a non-blocking follow-up rather than a YPE-5952 expansion. |
+| Bible Reader | Pass. VoiceOver exposed the reader controls and scripture in reading order, and the chapter/version navigation exercised above remained operable inside the reader. | Not run—unvalidated | None beyond the shared picker-announcement finding |
+| Verse actions | Pass. Selecting a verse exposed the verse-actions dialog; keyboard navigation reached the highlight action and the controls remained operable. | Not run—unvalidated | None |
+| Theme settings | Pass. VoiceOver exposed the Reader Settings dialog and its close, font-size, line-spacing, and font controls; traversal stayed inside and Escape restored focus to Settings. | Not run—unvalidated | None |
+| Nested overlays | Pass. Activating a highlight action opened the sign-in dialog; the first Escape dismissed only the sign-in dialog and retained the verse-actions overlay, and the second Escape dismissed the verse-actions overlay. | Not run—unvalidated | None |
 
 Release notes may claim only the exact combinations and successful journeys
 recorded here. They must identify untested combinations—including JAWS and
@@ -338,8 +339,8 @@ coordination for the coordinated rollout.
   layout, and no-JavaScript limitations are acceptable for that component.
 - Accept single-active-peer popover dismissal. Concurrent peer overlays require
   a demonstrated product journey and a separate design. The final actual-Safari
-  candidate run is recorded above; the bounded assistive-technology smoke pass
-  remains pending, and future trigger changes require another Safari run.
+  candidate and Safari/VoiceOver runs are recorded above. Windows/NVDA was not
+  run and remains unvalidated. Future trigger changes require another Safari run.
 - Keep the YPE-5400 custom-property contract and compiled-stylesheet prevention
   guard green as component styles change. The audit below closes the known
   ambient dependency; `all: initial` still does not reset custom properties.
@@ -436,9 +437,9 @@ separately in YPE-5749.
   sessions at commit `c0092043182bb3dcc0a73f7d82323de0d0c229a5`. Repeat actual
   Safari after the rollout-policy trigger changes.
 - Browser DOM relationship reflection is not a substitute for VoiceOver, NVDA,
-  or other real assistive-technology verification. The required manual evidence
-  remains pending until the exact environments and journey results are recorded
-  above.
+  or other real assistive-technology verification. The Safari/VoiceOver evidence
+  above applies only to that exact combination; Windows/NVDA and every other
+  untested combination remain unvalidated.
 
 ## Research handoff and completion gate
 

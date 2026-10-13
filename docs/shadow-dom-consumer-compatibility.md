@@ -83,11 +83,13 @@ popover stories after 20 successes, so isolated sessions are required for this
 smoke setup. Actual Safari is not part of continuous integration. The current
 YPE-5952 release-candidate result is recorded in the
 [validation plan](shadow-dom-isolation-plan.md#actual-safari-browser-evidence).
-Human assistive-technology evidence remains pending. Actual Safari must be
-repeated after the trigger changes defined by the rollout policy.
+The bounded Safari/VoiceOver evidence is also recorded there. Windows with
+Chrome or Edge and NVDA was not run because no Windows test environment was
+available and remains unvalidated. Actual Safari must be repeated after the
+trigger changes defined by the rollout policy.
 Reflected ARIA element properties demonstrate DOM relationship resolution, not
-announcements or other assistive-technology behavior. Any eventual claim must
-name only the exact browser and assistive-technology combination validated.
+announcements or other assistive-technology behavior. Claims name only the exact
+browser and assistive-technology combination validated.
 
 ## Follow-up work
 

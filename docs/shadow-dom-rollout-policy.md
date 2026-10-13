@@ -9,9 +9,11 @@ shipped. Publishing remains gated by the YPE-5952 package, browser, and
 assistive-technology validation below. The final release-candidate actual-Safari
 result is recorded in the
 [validation plan](shadow-dom-isolation-plan.md#actual-safari-browser-evidence);
-human assistive-technology validation remains pending, and future trigger
-changes require another Safari run. The implemented boundary extends the
-architecture recorded in [ADR 0007](adr/0007-prototype-shadow-dom-style-isolation.md):
+the bounded Safari/VoiceOver validation is complete, while Windows with NVDA
+was not run because no test environment was available and remains explicitly
+unvalidated. Future trigger changes require another Safari run. The implemented
+boundary extends the architecture recorded in
+[ADR 0007](adr/0007-prototype-shadow-dom-style-isolation.md):
 `YouVersionAuthButton`, `BibleChapterPicker.Root`, `BibleVersionPicker.Root`,
 `BibleReader.Root`, `ProfileAvatar`, `Separator`, `FootnoteContent`, and standalone
 `BibleThemeSettingsContent`, `BibleTextView`, `VerseOfTheDay`, and `BibleCard`
@@ -42,9 +44,11 @@ boundary. Runtime feature flags and a phased-release framework are unnecessary.
   targets, ref timing, global styling, and cross-tree relationships can change.
 - Automated keyboard and DOM semantics remain required but do not substitute
   for real assistive-technology validation. YPE-5952 requires a bounded release-
-  candidate smoke pass with Safari and VoiceOver plus Chrome or Edge and NVDA.
-  Claims must name only the exact combinations validated and must not imply
-  broader screen-reader support or WCAG certification.
+  candidate smoke pass with Safari and VoiceOver. The planned Chrome-or-Edge
+  and NVDA pass was not run because no Windows test environment was available,
+  so that combination must remain explicitly unvalidated. Claims must name only
+  the exact combinations validated and must not imply broader screen-reader
+  support or WCAG certification.
 
 ## Public component boundary
 
@@ -114,7 +118,7 @@ supported component contract.
 | Nested-dialog and rapid-reopen final focus restoration | Accepted | Preserve the behavior resolved by YPE-5889/PR 414 as regression coverage rather than duplicating the implementation in rollout tickets. |
 | Stylesheet construction or adoption can throw | Resolved by YPE-5947 | Construction, replacement, and adoption failures recover to the local `<style>` path without losing component rendering; later roots can still use the per-document constructable sheet. |
 | Playwright WebKit is not actual Safari | Release-candidate run complete; future trigger | Keep the exact isolated-session SafariDriver result in the [validation plan](shadow-dom-isolation-plan.md#actual-safari-browser-evidence). Repeat after changes to the host, stylesheet installation, portal controller, focus controller, or other significant platform seams. |
-| Release-candidate screen-reader evidence is pending | Release gate | Complete the bounded YPE-5952 Safari/VoiceOver and Chrome-or-Edge/NVDA smoke pass. Record exact versions and per-journey results; do not generalize beyond them. |
+| Release-candidate screen-reader evidence | Accepted with an explicit validation gap | The bounded YPE-5952 Safari/VoiceOver pass is complete. Chrome-or-Edge/NVDA was not run because no Windows environment was available and remains unvalidated. Record exact versions and per-journey results only for combinations actually tested; do not generalize beyond them. |
 
 ## Implementation plan
 
@@ -175,9 +179,10 @@ boundary.
 
 The dependency-ordered component groups, YPE-5994, and YPE-6040 are complete.
 YPE-5889 and YPE-5946 provide reusable focus-restoration and cross-browser
-evidence. YPE-5952 owns the remaining human assistive-technology validation,
-consumer documentation, and major-release gate. Its final actual-Safari
-candidate result is recorded in the
+evidence. YPE-5952 owns the bounded human assistive-technology validation,
+consumer documentation, and major-release gate. Its final actual-Safari and
+Safari/VoiceOver results, plus the explicit Windows/NVDA validation gap, are
+recorded in the
 [validation plan](shadow-dom-isolation-plan.md#actual-safari-browser-evidence).
 
 ## Validation gates
@@ -194,9 +199,10 @@ candidate result is recorded in the
   continues to reuse one stylesheet object per document.
 - The YPE-5400 custom-property guard stays exact; no wildcard ambient namespace
   is introduced.
-- The bounded YPE-5952 Safari/VoiceOver and Chrome-or-Edge/NVDA smoke pass is
-  recorded with exact browser, operating-system, and assistive-technology
-  versions plus a result for every required journey.
+- The bounded YPE-5952 Safari/VoiceOver smoke pass is recorded with exact
+  browser, operating-system, and assistive-technology versions plus a result
+  for every required journey. Chrome-or-Edge/NVDA is explicitly recorded as
+  not run because no Windows test environment was available.
 - Release claims are limited to those exact combinations and do not imply
   broader VoiceOver, NVDA, JAWS, mobile-screen-reader, or WCAG coverage.
 
