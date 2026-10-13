@@ -312,7 +312,7 @@ export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
     const dialogLabelId = panel.getAttribute('aria-labelledby');
     await expect(dialogLabelId).toBeTruthy();
     await expect(root.getElementById(dialogLabelId!)).toBe(dialogHeading);
-    await expect(dialogHeading).toBeVisible();
+    await waitFor(async () => await expect(dialogHeading).toBeVisible());
     const versionHeading = await waitForElement<HTMLElement>(
       panel,
       '[data-testid="version-list"] h3',
