@@ -400,7 +400,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
               'yv:data-[side=bottom]:slide-in-from-top-2',
               'yv:data-[side=top]:slide-in-from-bottom-2',
             )}
-            style={popoverMotionStyle}
+            style={open ? popoverMotionStyle : undefined}
           >
             {/* Caret — matches the card background in both themes, pointing at the
               verse. Hidden when docked: the bar is no longer tied to a verse. */}
