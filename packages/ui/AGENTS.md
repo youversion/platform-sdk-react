@@ -9,6 +9,10 @@ Keep this file brief. Put task-specific guidance behind a pointer.
 - Public exports come from `src/index.ts`, including core and hooks re-exports. Core types flow through `src/types.ts` via `export type *`; core runtime values become public here only when `src/index.ts` explicitly re-exports them.
 - `src/components/ui/` primitives are internal except `Separator` and `Textarea`, which are public API. Treat changes to those exports as potential breaking changes.
 
+## Localization
+
+User-facing strings: read `docs/i18n-guidelines.md` at the repo root.
+
 ## Guardrails
 
 - Fetch data through hooks, rather than raw HTTP or core API clients called from components. Reuse core types and runtime-agnostic helpers instead of implementing UI-local copies.

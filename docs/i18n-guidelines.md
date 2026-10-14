@@ -7,7 +7,7 @@ User-facing strings in `@youversion/platform-react-ui` must go through i18next. 
 | What | Where |
 |------|-------|
 | English strings (canonical) | [`platform-localization/sources/common/en.json`](https://github.com/youversion/platform-localization) — `react.*` namespace |
-| React locale bundles (this repo) | `packages/ui/src/i18n/locales/*.json` (currently `en`, `fr`, `es`, `ko`, `tr`, `zh`) |
+| React locale bundles (this repo) | `packages/ui/src/i18n/locales/*.json` (every `*.json` in that directory; `en` is required) |
 | Translation workflow | Crowdin (upload on merge, weekly download) |
 | Downstream sync | `platform-localization` → **Distribute React Localization** (`distribute-react.yml`) → PRs authored by `platform-localization-pr-bot[bot]` (currently on the reused `chore/localization-sync-react` branch) |
 
@@ -15,11 +15,11 @@ See [platform-localization README](https://github.com/youversion/platform-locali
 
 ## Adding or changing strings
 
-1. **Edit English in platform-localization** — add keys under the `react.*` prefix in `sources/common/en.json`.
-2. Run `npm run generate && npm run validate` in platform-localization.
-3. Open a PR there; after merge, Crowdin upload runs automatically.
-4. **Do not hand-edit non-English bundles in this repo** — they are synced from `dist/react/*.json` via `distribute-react.yml`.
-5. After translations are approved in Crowdin and the sync PR merges here, keys appear in the translated bundles.
+1. **Open a pull request on [platform-localization](https://github.com/youversion/platform-localization)** that edits `sources/common/en.json` under the `react.*` prefix.
+2. Run `npm run generate && npm run validate` in platform-localization before that pull request merges. CI validates the same commands.
+3. After that pull request merges, Crowdin upload runs automatically. **Distribute React Localization** (`distribute-react.yml`) then opens the sync pull request in this repo.
+4. **Do not hand-edit any file under `packages/ui/src/i18n/locales/`**, including `en.json`. The locale-ownership gate rejects those edits unless the pull request author is `platform-localization-pr-bot[bot]`.
+5. After translations are approved in Crowdin and the sync pull request merges here, keys appear in the translated bundles.
 
 To import existing React keys into platform-localization for the first time:
 
@@ -76,7 +76,7 @@ This is app locale, not Bible translation language. Seed the version picker with
 
 ```bash
 # Hard fail: missing en keys, extra translation keys, interpolation tokens,
-#            locale files not registered in i18n/index.ts
+#            stale resources.generated.ts (index.ts only imports that file)
 # Warn only: missing translation keys (upstream-owned), orphan en keys (unused in static scan)
 # Dynamic t(`prefix_${x}`) keys: add to ORPHAN_KEY_ALLOWLIST in scripts/check-i18n-parity.mjs
 pnpm check:i18n
@@ -90,7 +90,7 @@ pnpm test:ci-scripts
 
 ## CI
 
-- **locale-ownership** job fails PRs that touch `packages/ui/src/i18n/locales/**` unless the PR author is `platform-localization-pr-bot[bot]`, the localization sync App. The branch name is deliberately not part of the check — upstream owns it and has changed it before ([ADR 0003](./adr/0003-locale-ownership-gate-keys-on-pr-author.md)). Add English strings upstream in platform-localization instead.
+- **locale-ownership** job fails PRs that touch `packages/ui/src/i18n/locales/**` unless the PR author is `platform-localization-pr-bot[bot]`, the localization sync App. The branch name is deliberately not part of the check — upstream owns it and has changed it before ([ADR 0003](./adr/0003-locale-ownership-gate-keys-on-pr-author.md)). Follow [Adding or changing strings](#adding-or-changing-strings) instead.
 - **i18n-check** job runs `pnpm check:i18n` on every PR.
 - **Lint** job runs oxlint with `eslint-plugin-i18next` as a JS plugin, scoped to `packages/ui/src/components/**` (excluding `*.test.*` and `*.stories.*`).
 
