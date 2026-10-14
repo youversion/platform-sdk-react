@@ -1,5 +1,18 @@
 # @youversion/platform-react-ui
 
+## 2.16.0
+
+### Patch Changes
+
+- da12b12: Export shared Bible version attribution selection and fall back to promotional content in BibleCard and BibleReader when copyright is blank.
+- 3073603: Keep the verse action menu after cancelling a highlight sign-in or permission prompt. Confirming either prompt hides the menu until the redirect starts, and brings it back if the redirect fails to start.
+- 60d022e: Keep the reader font labels Inter and Untitled Serif in every language.
+- 8a82cb9: The verse action popover enters in 180ms with its easing curve. The exit stays on the library default.
+- 1699a0f: Sync localization from platform-localization (237cba4): add Igbo (ig); update 26 keys in en, es.
+- Updated dependencies [da12b12]
+  - @youversion/platform-core@2.16.0
+  - @youversion/platform-react-hooks@2.16.0
+
 ## 2.15.0
 
 ### Minor Changes
