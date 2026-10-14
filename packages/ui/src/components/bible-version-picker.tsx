@@ -690,6 +690,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
   } = useBibleVersionPickerContext();
   const wasOpenRef = useRef(open ?? false);
   const languageTriggerRef = useRef<HTMLButtonElement>(null);
+  const focusRequestRef = useRef(0);
 
   // Resolve publisher names once for the whole list, deduped by organization id,
   // instead of mounting a fetching hook per row (avoids N+1 requests).
@@ -759,12 +760,32 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           if (isLanguagesOpen) return;
-          queueMicrotask(() => {
+          // SAFETY: Radix invokes this handler with the popover content as currentTarget.
+          const panel = event.currentTarget as HTMLElement;
+          // SAFETY: Element roots are Documents or ShadowRoots, which both expose activeElement.
+          const focusRoot = panel.getRootNode() as Document | ShadowRoot;
+          const previousFocus = focusRoot.activeElement;
+          const focusRequest = ++focusRequestRef.current;
+          const focusLanguageTrigger = () => {
             const languageTrigger = languageTriggerRef.current;
-            if (languageTrigger?.isConnected && !languageTrigger.closest('[inert]')) {
+            if (
+              focusRequestRef.current === focusRequest &&
+              focusRoot.activeElement === previousFocus &&
+              languageTrigger?.isConnected &&
+              panel.isConnected &&
+              panel.dataset.state === 'open' &&
+              !languageTrigger.closest('[inert]')
+            ) {
               languageTrigger.focus({ preventScroll: true });
             }
-          });
+          };
+          // Let Safari expose the newly painted dialog before moving focus into it.
+          const view = panel.ownerDocument.defaultView;
+          if (!view?.requestAnimationFrame) {
+            queueMicrotask(focusLanguageTrigger);
+            return;
+          }
+          view.requestAnimationFrame(() => view.requestAnimationFrame(focusLanguageTrigger));
         }}
       >
         <div className="yv:relative yv:min-h-0 yv:overflow-hidden">

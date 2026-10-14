@@ -159,7 +159,7 @@ export const PublicRootJourney: Story = {
       '[data-yv-shadow-local-overlay]',
       'local top-layer container not created',
     );
-    const panel = await waitForElement<HTMLElement>(
+    let panel = await waitForElement<HTMLElement>(
       topLayer,
       '[data-slot="popover-content"]',
       'chapter picker panel not rendered',
@@ -175,7 +175,30 @@ export const PublicRootJourney: Story = {
     if (!reflectedControls) throw new Error('browser did not expose ariaControlsElements');
     await expect(reflectedControls).toEqual([panel]);
 
-    const panelQueries = within(panel);
+    let panelQueries = within(panel);
+    const closeButton = panelQueries.getByRole('button', { name: 'Close' });
+    const initialSearch = panelQueries.getByPlaceholderText(/search/i);
+    const lastChapterButton = panelQueries.getByRole('button', { name: '5' });
+    await waitFor(async () => {
+      await expect(root.activeElement).toBe(panel);
+    });
+    await userEvent.tab({ shift: true });
+    await expect(root.activeElement).toBe(lastChapterButton);
+    await userEvent.tab();
+    await expect(root.activeElement).toBe(initialSearch);
+    await userEvent.click(closeButton);
+    await waitFor(async () => {
+      await expect(topLayer.querySelector('[data-slot="popover-content"]')).toBeNull();
+      await expect(root.activeElement).toBe(trigger);
+    });
+
+    await userEvent.click(trigger);
+    panel = await waitForElement<HTMLElement>(
+      topLayer,
+      '[data-slot="popover-content"]',
+      'chapter picker panel did not reopen',
+    );
+    panelQueries = within(panel);
     const genesisBook = panelQueries.getByRole('button', { name: /genesis/i });
     const search = panelQueries.getByPlaceholderText(/search/i);
     await userEvent.type(search, 'g');

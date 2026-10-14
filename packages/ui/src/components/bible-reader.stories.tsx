@@ -545,6 +545,9 @@ export const SignedInReaderOverlayOwnership: Story = {
       );
     });
     await userEvent.click(versionCanvas.getByRole('button', { name: 'Close' }));
+    await waitFor(async () => {
+      await expect(versionRoot.activeElement).toBe(versionTrigger);
+    });
 
     const { apply, overlays, root } = await openReaderHighlightAuthDialog(canvasElement);
     const continueButton = await overlays.findByRole('button', { name: 'Continue' });
