@@ -372,21 +372,53 @@ export const StylingFocusDismissalAndRapidReopen: Story = {
       'outside control not rendered',
     );
     const initialScrollTop = canvasElement.ownerDocument.scrollingElement?.scrollTop ?? 0;
-    const { root, trigger, topLayer, panel } = await openPicker(canvasElement);
+    const root = await waitForShadowRoot(canvasElement);
+    const trigger = await getTrigger(root);
+    await waitFor(async () => await expect(trigger).toHaveTextContent('NIV'));
+    await expect(root.querySelector('[data-yv-shadow-local-overlay]')).toBeNull();
+    const exitAnimationStyle = canvasElement.ownerDocument.createElement('style');
+    exitAnimationStyle.textContent = `
+      @keyframes yv-test-retain-on-close {
+        from { opacity: 1; }
+        to { opacity: 0.99; }
+      }
+      [data-slot='popover-content'][data-state='closed'] {
+        animation: yv-test-retain-on-close 2000ms linear !important;
+      }
+    `;
+    root.append(exitAnimationStyle);
+
+    trigger.click();
+    await Promise.resolve();
+    const topLayer = root.querySelector<HTMLElement>('[data-yv-shadow-local-overlay]');
+    if (!topLayer) throw new Error('local top-layer container not created synchronously');
+    const panel = topLayer.querySelector<HTMLElement>('[data-slot="popover-content"]');
+    if (!panel) throw new Error('version picker panel not rendered synchronously');
     const languageTrigger = within(panel).getByRole('button', { name: /select.*language/i });
+
+    const openingPanelWindow = panel.ownerDocument.defaultView;
+    if (!openingPanelWindow) throw new Error('version picker window not available');
+    await new Promise<void>((resolve) => openingPanelWindow.requestAnimationFrame(() => resolve()));
+    trigger.click();
     await waitFor(async () => {
+      await expect(panel).toHaveAttribute('data-state', 'closed');
+      await expect(topLayer).toContainElement(panel);
+    });
+    const panelWindow = panel.ownerDocument.defaultView;
+    if (!panelWindow) throw new Error('version picker window not available');
+    await new Promise<void>((resolve) =>
+      panelWindow.requestAnimationFrame(() => panelWindow.requestAnimationFrame(() => resolve())),
+    );
+    trigger.click();
+    await waitFor(async () => {
+      await expect(topLayer.querySelector('[data-slot="popover-content"]')).toBe(panel);
+      await expect(panel).toHaveAttribute('data-state', 'open');
       await expect(root.activeElement).toBe(languageTrigger);
     });
     await expect(canvasElement.ownerDocument.scrollingElement?.scrollTop ?? 0).toBe(
       initialScrollTop,
     );
-    const exitAnimationStyle = canvasElement.ownerDocument.createElement('style');
-    exitAnimationStyle.textContent = `
-      [data-slot='popover-content'][data-state='closed'] {
-        animation-duration: 400ms !important;
-      }
-    `;
-    root.append(exitAnimationStyle);
+    exitAnimationStyle.remove();
 
     const baseline = styleSnapshot(panel);
     const hostileStyle = canvasElement.ownerDocument.createElement('style');
