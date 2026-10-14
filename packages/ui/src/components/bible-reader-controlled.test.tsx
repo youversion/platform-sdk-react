@@ -1083,10 +1083,37 @@ it('clears the verse menu while highlight sign-in is still starting', async () =
 
     expect(signIn).toHaveBeenCalledTimes(1);
     expectVerseMenuAbsent();
-    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(false);
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
     expect(createHighlight).not.toHaveBeenCalled();
     expect(peekPendingHighlights()).toHaveLength(1);
   } finally {
+    signIn.mockRestore();
+    setHighlightsLive(HIGHLIGHTS_LIVE);
+    sessionStorage.clear();
+  }
+});
+
+it('brings the verse menu back when highlight sign-in fails to start', async () => {
+  setHighlightsLive(true);
+  const signIn = vi
+    .spyOn(YouVersionAPIUsers, 'signIn')
+    .mockRejectedValue(new Error('sign-in failed'));
+  const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  try {
+    const { container, createHighlight } = renderReaderWithHighlightAuth(null);
+
+    selectVerse(container, 1);
+    await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
+    fireEvent.click(getApplyButtons()[0]!);
+    fireEvent.click(await screen.findByRole('button', { name: /yes please/i }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /^copy$/i })).toBeTruthy());
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
+    expect(createHighlight).not.toHaveBeenCalled();
+    expect(peekPendingHighlights()).toEqual([]);
+    expect(errorLog).toHaveBeenCalled();
+  } finally {
+    errorLog.mockRestore();
     signIn.mockRestore();
     setHighlightsLive(HIGHLIGHTS_LIVE);
     sessionStorage.clear();
@@ -1110,7 +1137,7 @@ it('clears the verse menu while the highlight permission grant is still starting
 
     expect(updateToken).toHaveBeenCalledTimes(1);
     expectVerseMenuAbsent();
-    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(false);
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
     expect(createHighlight).not.toHaveBeenCalled();
     expect(peekPendingHighlights()).toHaveLength(1);
   } finally {

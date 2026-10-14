@@ -94,7 +94,7 @@ stateDiagram-v2
   }
 ```
 
-`DECLINE_SIGN_IN` and `CANCEL_PERMISSION` clear the pending highlight only. The reader keeps the verse selection and shows the menu again. Confirming either prompt clears that selection in the reader, so the menu is not tappable while sign-in or the permission grant is still starting.
+`DECLINE_SIGN_IN` and `CANCEL_PERMISSION` clear the pending highlight only. The reader keeps the verse selection and shows the menu again. Confirming either prompt hides the menu and keeps the selection until the redirect promise fulfills, then clears the selection. If that promise rejects, the menu comes back.
 
 _(`ENQUEUE`, `AUTH_CHANGED`, `HIGHLIGHTS_UPDATED`, and `SCOPE_CHANGED` are handled
 without leaving the current state: they update context and let the `always`

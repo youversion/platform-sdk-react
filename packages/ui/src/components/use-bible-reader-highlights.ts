@@ -51,6 +51,10 @@ export type UseBibleReaderHighlightsOptions = {
   chapter: string;
   /** Presence selects controlled mode (latched by the caller at first mount). */
   controlled?: ControlledHighlightsInput;
+  /** Fires when the sign-in or permission redirect promise fulfills. */
+  onAuthRedirectStarted?: () => void;
+  /** Fires when that promise rejects and the reader is still on the page. */
+  onAuthRedirectFailed?: () => void;
 };
 
 export type UseBibleReaderHighlightsReturn = {
@@ -64,8 +68,9 @@ export type UseBibleReaderHighlightsReturn = {
    * returns `'flow'`. Returns `'noop'` when highlighting is inert (flag off, no
    * verses, or no auth provider). The caller uses the outcome to decide whether
    * to keep the verse selection: `'flow'` keeps it. The reader hides the verse
-   * menu while the prompt is open and shows it again on cancel; confirming the
-   * prompt clears the selection.
+   * menu while the prompt is open and shows it again on cancel. Confirming the
+   * prompt hides the menu and keeps the selection until the redirect starts.
+   * If the redirect fails to start, the menu comes back.
    *
    * In controlled mode always emits an intent (no paint) and returns
    * `'applied'` so the caller clears the selection as usual.
@@ -173,6 +178,8 @@ export function useBibleReaderHighlights({
   book,
   chapter,
   controlled,
+  onAuthRedirectStarted,
+  onAuthRedirectFailed,
 }: UseBibleReaderHighlightsOptions): UseBibleReaderHighlightsReturn {
   const isControlled = controlled !== undefined;
 
@@ -232,6 +239,8 @@ export function useBibleReaderHighlights({
     consumeDataExchangeReturn,
     startSignInForHighlights,
     startDataExchangeForHighlights,
+    onAuthRedirectStarted,
+    onAuthRedirectFailed,
   };
   const servicesRef = useRef(services);
   servicesRef.current = services;

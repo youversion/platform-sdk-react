@@ -875,7 +875,12 @@ function Content() {
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null);
+  const [highlightRedirectPending, setHighlightRedirectPending] = useState(false);
   const lastSelectionRef = useRef<number[]>([]);
+  const highlightRedirectRef = useRef({
+    onStarted: () => undefined,
+    onFailed: () => undefined,
+  });
 
   const {
     highlightedVerses,
@@ -900,6 +905,8 @@ function Content() {
           onRemove: onHighlightRemove,
         }
       : undefined,
+    onAuthRedirectStarted: () => highlightRedirectRef.current.onStarted(),
+    onAuthRedirectFailed: () => highlightRedirectRef.current.onFailed(),
   });
 
   // Color row: controlled mode always shows it (YPE-3705 bypasses HIGHLIGHTS_LIVE).
@@ -1049,9 +1056,10 @@ function Content() {
     const outcome = applyHighlight(color, selectedVerses);
     // Entering the auth flow (sign-in or permission prompt) keeps only the verse
     // selection. The popover is hidden while the prompt is open and returns on
-    // cancel; confirm clears the selection. This is the YPE-5943 exception to
-    // YPE-642 Resolved (round 2). An immediate apply — or an inert no-op —
-    // clears as before.
+    // cancel. Confirm hides it until the redirect starts, then clears the
+    // selection. If the redirect fails to start, the menu comes back. This is
+    // the YPE-5943 exception to YPE-642 Resolved (round 2). An immediate apply
+    // — or an inert no-op — clears as before.
     if (outcome === 'flow') return;
     closeAndClearSelection();
   }
@@ -1151,11 +1159,21 @@ function Content() {
     closeAndClearSelection();
   }
 
+  highlightRedirectRef.current = {
+    onStarted: () => {
+      setHighlightRedirectPending(false);
+      closeAndClearSelection();
+    },
+    onFailed: () => {
+      setHighlightRedirectPending(false);
+    },
+  };
+
   // Sign-in and permission prompts are modal. Opening one is an outside
   // interaction for the verse-action popover, so Radix dismisses it. That
   // dismiss is the prompt taking focus. The selection stays, and the menu
   // returns when the prompt closes without applying a highlight (YPE-5943).
-  const highlightPromptOpen = permissionDialogOpen || signInDialogOpen;
+  const highlightPromptOpen = permissionDialogOpen || signInDialogOpen || highlightRedirectPending;
 
   function handlePopoverOpenChange(open: boolean) {
     if (open) {
@@ -1168,9 +1186,9 @@ function Content() {
   }
 
   function confirmHighlightPrompt(confirm: () => void) {
-    // Confirm leaves the reader for a redirect. Clear the menu in this click so
-    // it is not tappable while sign-in or the permission grant is still starting.
-    closeAndClearSelection();
+    // Hide the menu without dropping the selection. The selection clears only
+    // after the redirect promise fulfills. If it rejects, the menu comes back.
+    setHighlightRedirectPending(true);
     confirm();
   }
 

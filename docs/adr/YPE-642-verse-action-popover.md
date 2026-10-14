@@ -195,8 +195,9 @@ Selection is always enabled in BibleReader (no opt-out prop for now; YAGNI).
 - **Highlight prompt (YPE-5943):** the sign-in and permission prompts are modal,
   so opening one closes the verse menu. That dismiss keeps the selection. No
   Thanks or Cancel brings the menu back and discards only the pending highlight.
-  Yes Please or Continue clears the selection, so the menu is not tappable while
-  the redirect is still starting. A real outside click still clears the selection
+  Yes Please or Continue hides the menu and keeps the selection until the
+  redirect promise fulfills, then clears the selection. If that promise rejects,
+  the menu comes back. A real outside click still clears the selection
   (Resolved round 2).
 - **Verse-tap vs outside-click:** Resolved (round 2) says an outside click clears
   the selection, but Radix treats a *second verse tap* as an outside-click too.
