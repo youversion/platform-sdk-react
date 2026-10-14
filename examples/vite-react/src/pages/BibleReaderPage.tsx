@@ -7,7 +7,7 @@ export function BibleReaderPage() {
     <div className="h-[calc(100vh-3.5rem)]">
       <BibleReader.Root
         defaultBook="JHN"
-        defaultChapter="1"
+        defaultChapter="3"
         defaultVersionId={3034}
         defaultLanguageId={defaultLanguageId}
       >
