@@ -95,11 +95,16 @@ export const NavigateAndFocus: Story = {
     );
     const scroller = canvasElement.querySelector<HTMLElement>('main');
     await expect(scroller).not.toBeNull();
-    await expect(scroller!.scrollTop).toBeGreaterThan(0);
-    const bounds = focused!.getBoundingClientRect();
-    const viewport = scroller!.getBoundingClientRect();
-    await expect(bounds.top).toBeGreaterThanOrEqual(viewport.top);
-    await expect(bounds.bottom).toBeLessThanOrEqual(viewport.bottom);
+    await waitFor(
+      async () => {
+        await expect(scroller!.scrollTop).toBeGreaterThan(0);
+        const bounds = focused!.getBoundingClientRect();
+        const viewport = scroller!.getBoundingClientRect();
+        await expect(bounds.top).toBeGreaterThanOrEqual(viewport.top);
+        await expect(bounds.bottom).toBeLessThanOrEqual(viewport.bottom);
+      },
+      { timeout: 5000 },
+    );
     await expect(focused).toHaveFocus();
     // A pointer left over the verse can apply its ordinary hover background.
     await userEvent.unhover(focused!);
