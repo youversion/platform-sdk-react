@@ -875,7 +875,12 @@ function Content() {
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null);
+  const [highlightRedirectPending, setHighlightRedirectPending] = useState(false);
   const lastSelectionRef = useRef<number[]>([]);
+  const highlightRedirectRef = useRef({
+    onStarted: () => undefined,
+    onFailed: () => undefined,
+  });
 
   const {
     highlightedVerses,
@@ -900,6 +905,8 @@ function Content() {
           onRemove: onHighlightRemove,
         }
       : undefined,
+    onAuthRedirectStarted: () => highlightRedirectRef.current.onStarted(),
+    onAuthRedirectFailed: () => highlightRedirectRef.current.onFailed(),
   });
 
   // Color row: controlled mode always shows it (YPE-3705 bypasses HIGHLIGHTS_LIVE).
@@ -974,6 +981,27 @@ function Content() {
     closeAndClearSelectionRef.current();
   }, [clearSelectionSignal]);
 
+  // The verse menu is hidden while a redirect starts, so the popover cannot see
+  // an outside click. Keep that dismiss alive until the prompt's modal is gone.
+  useEffect(() => {
+    if (!highlightRedirectPending || permissionDialogOpen || signInDialogOpen) return;
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (target instanceof Element && target.closest('.yv-v[v]')) return;
+      closeAndClearSelectionRef.current();
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      closeAndClearSelectionRef.current();
+    }
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [highlightRedirectPending, permissionDialogOpen, signInDialogOpen]);
+
   /** Builds the serializable selection payload (verses ascending, de-duped). */
   function buildVerseSelection(verses: number[]): BibleReaderVerseSelection {
     const sorted = [...new Set(verses)].sort((a, b) => a - b);
@@ -1047,10 +1075,12 @@ function Content() {
 
   function handleHighlight(color: string) {
     const outcome = applyHighlight(color, selectedVerses);
-    // Entering the auth flow (sign-in redirect or the permission confirm dialog)
-    // keeps the verse selection and popover intact so a cancel leaves the reader
-    // exactly where it was (YPE-1034 decision 7). An immediate apply — or an
-    // inert no-op — clears as before.
+    // Entering the auth flow (sign-in or permission prompt) keeps only the verse
+    // selection. The popover is hidden while the prompt is open and returns on
+    // cancel. Confirm hides it until the redirect starts, then clears the
+    // selection. If the redirect fails to start, the menu comes back. This is
+    // the YPE-5943 exception to YPE-642 Resolved (round 2). An immediate apply
+    // — or an inert no-op — clears as before.
     if (outcome === 'flow') return;
     closeAndClearSelection();
   }
@@ -1150,13 +1180,41 @@ function Content() {
     closeAndClearSelection();
   }
 
+  highlightRedirectRef.current = {
+    onStarted: () => {
+      setHighlightRedirectPending(false);
+      closeAndClearSelection();
+    },
+    onFailed: () => {
+      setHighlightRedirectPending(false);
+    },
+  };
+
+  // Sign-in and permission prompts are modal. Opening one is an outside
+  // interaction for the verse-action popover, so Radix dismisses it. That
+  // dismiss is the prompt taking focus. The selection stays, and the menu
+  // returns when the prompt closes without applying a highlight (YPE-5943).
+  // Once the prompt is gone and the redirect is still starting, an outside
+  // click clears the selection again, so a failed start does not restore a
+  // menu the reader already dismissed.
+  const highlightDialogOpen = permissionDialogOpen || signInDialogOpen;
+  const highlightPromptOpen = highlightDialogOpen || highlightRedirectPending;
+
   function handlePopoverOpenChange(open: boolean) {
     if (open) {
       setPopoverOpen(true);
       return;
     }
-    // Outside click / Escape closes and clears (ADR-007).
+    if (highlightDialogOpen) return;
+    // Outside click / Escape closes and clears (YPE-642, Resolved round 2).
     closeAndClearSelection();
+  }
+
+  function confirmHighlightPrompt(confirm: () => void) {
+    // Hide the menu without dropping the selection. The selection clears only
+    // after the redirect promise fulfills. If it rejects, the menu comes back.
+    setHighlightRedirectPending(true);
+    confirm();
   }
 
   let chapterLabel: string = bookData?.chapters?.find((ch) => ch.id === chapter)?.title || chapter;
@@ -1229,7 +1287,7 @@ function Content() {
               every payload above are untouched. */}
           {verseActions !== 'none' && (
             <VerseActionPopover
-              open={popoverOpen && selectedVerses.length > 0}
+              open={popoverOpen && selectedVerses.length > 0 && !highlightPromptOpen}
               onOpenChange={handlePopoverOpenChange}
               activeHighlights={activeHighlights}
               selectedVerses={selectedVerses}
@@ -1248,7 +1306,7 @@ function Content() {
           <HighlightPermissionDialog
             open={permissionDialogOpen}
             onOpenChange={onPermissionDialogOpenChange}
-            onConfirm={confirmPermissionDialog}
+            onConfirm={() => confirmHighlightPrompt(confirmPermissionDialog)}
             onCancel={cancelPermissionDialog}
             theme={background}
           />
@@ -1260,7 +1318,7 @@ function Content() {
             }}
             appName={signInAppName}
             promptMessage={signInPromptMessage}
-            onConfirm={confirmSignInDialog}
+            onConfirm={() => confirmHighlightPrompt(confirmSignInDialog)}
             onDecline={cancelSignInDialog}
             theme={background}
           />
