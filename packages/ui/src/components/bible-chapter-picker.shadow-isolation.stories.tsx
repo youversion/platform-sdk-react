@@ -187,7 +187,12 @@ export const PublicRootJourney: Story = {
     const lastChapterButton = panelQueries.getByRole('button', { name: '5' });
     const openingPanelWindow = panel.ownerDocument.defaultView;
     if (!openingPanelWindow) throw new Error('chapter picker window not available');
-    await new Promise<void>((resolve) => openingPanelWindow.requestAnimationFrame(() => resolve()));
+    await new Promise<void>((resolve) =>
+      openingPanelWindow.requestAnimationFrame(() =>
+        openingPanelWindow.requestAnimationFrame(() => resolve()),
+      ),
+    );
+    await expect(root.activeElement).toBe(panel);
     trigger.click();
     await waitFor(async () => {
       await expect(panel).toHaveAttribute('data-state', 'closed');

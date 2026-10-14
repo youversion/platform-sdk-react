@@ -260,6 +260,7 @@ function RootImplementation({
             // SAFETY: Radix invokes this handler with the popover content as currentTarget.
             const panel = event.currentTarget as HTMLElement;
             panelRef.current = panel;
+            schedulePanelFocus(panel);
           }}
         >
           <Content onRequestClose={() => setIsPopoverOpen(false)} />
