@@ -1147,3 +1147,43 @@ it('clears the verse menu while the highlight permission grant is still starting
     localStorage.clear();
   }
 });
+
+it('does not restore the verse menu after an outside click if the permission grant fails', async () => {
+  setHighlightsLive(true);
+  YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-1', name: 'Test User' });
+  YouVersionPlatformConfiguration.saveGrantedPermissions([]);
+  let rejectToken: (error: Error) => void = () => undefined;
+  const updateToken = vi.spyOn(DataExchangeClient.prototype, 'updateToken').mockImplementation(
+    () =>
+      new Promise((_resolve, reject) => {
+        rejectToken = reject;
+      }),
+  );
+  const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  try {
+    const { container, createHighlight } = renderReaderWithHighlightAuth(mockUserInfo);
+
+    selectVerse(container, 1);
+    await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
+    fireEvent.click(getApplyButtons()[0]!);
+    fireEvent.click(await screen.findByRole('button', { name: /^continue$/i }));
+    expect(updateToken).toHaveBeenCalledTimes(1);
+    expectVerseMenuAbsent();
+
+    fireEvent.pointerDown(screen.getByRole('heading', { name: /john/i }));
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(false);
+    expectVerseMenuAbsent();
+
+    rejectToken(new Error('token failed'));
+    await waitFor(() => expect(errorLog).toHaveBeenCalled());
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(false);
+    expectVerseMenuAbsent();
+    expect(createHighlight).not.toHaveBeenCalled();
+  } finally {
+    errorLog.mockRestore();
+    updateToken.mockRestore();
+    setHighlightsLive(HIGHLIGHTS_LIVE);
+    sessionStorage.clear();
+    localStorage.clear();
+  }
+});

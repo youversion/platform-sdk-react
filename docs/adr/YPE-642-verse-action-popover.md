@@ -196,9 +196,9 @@ Selection is always enabled in BibleReader (no opt-out prop for now; YAGNI).
   so opening one closes the verse menu. That dismiss keeps the selection. No
   Thanks or Cancel brings the menu back and discards only the pending highlight.
   Yes Please or Continue hides the menu and keeps the selection until the
-  redirect promise fulfills, then clears the selection. If that promise rejects,
-  the menu comes back. A real outside click still clears the selection
-  (Resolved round 2).
+  redirect promise fulfills, then clears the selection. If that promise rejects
+  and the reader has not tapped outside, the menu comes back. An outside click
+  during the wait still clears the selection (Resolved round 2).
 - **Verse-tap vs outside-click:** Resolved (round 2) says an outside click clears
   the selection, but Radix treats a *second verse tap* as an outside-click too.
   The popover's `onInteractOutside` calls `preventDefault()` when the target is inside

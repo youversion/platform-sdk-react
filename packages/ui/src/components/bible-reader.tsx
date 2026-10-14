@@ -981,6 +981,27 @@ function Content() {
     closeAndClearSelectionRef.current();
   }, [clearSelectionSignal]);
 
+  // The verse menu is hidden while a redirect starts, so the popover cannot see
+  // an outside click. Keep that dismiss alive until the prompt's modal is gone.
+  useEffect(() => {
+    if (!highlightRedirectPending || permissionDialogOpen || signInDialogOpen) return;
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (target instanceof Element && target.closest('.yv-v[v]')) return;
+      closeAndClearSelectionRef.current();
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      closeAndClearSelectionRef.current();
+    }
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [highlightRedirectPending, permissionDialogOpen, signInDialogOpen]);
+
   /** Builds the serializable selection payload (verses ascending, de-duped). */
   function buildVerseSelection(verses: number[]): BibleReaderVerseSelection {
     const sorted = [...new Set(verses)].sort((a, b) => a - b);
@@ -1173,14 +1194,18 @@ function Content() {
   // interaction for the verse-action popover, so Radix dismisses it. That
   // dismiss is the prompt taking focus. The selection stays, and the menu
   // returns when the prompt closes without applying a highlight (YPE-5943).
-  const highlightPromptOpen = permissionDialogOpen || signInDialogOpen || highlightRedirectPending;
+  // Once the prompt is gone and the redirect is still starting, an outside
+  // click clears the selection again, so a failed start does not restore a
+  // menu the reader already dismissed.
+  const highlightDialogOpen = permissionDialogOpen || signInDialogOpen;
+  const highlightPromptOpen = highlightDialogOpen || highlightRedirectPending;
 
   function handlePopoverOpenChange(open: boolean) {
     if (open) {
       setPopoverOpen(true);
       return;
     }
-    if (highlightPromptOpen) return;
+    if (highlightDialogOpen) return;
     // Outside click / Escape closes and clears (YPE-642, Resolved round 2).
     closeAndClearSelection();
   }
