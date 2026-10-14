@@ -63,8 +63,9 @@ export type UseBibleReaderHighlightsReturn = {
    * out) or the just-in-time permission dialog (signed in, no permission) and
    * returns `'flow'`. Returns `'noop'` when highlighting is inert (flag off, no
    * verses, or no auth provider). The caller uses the outcome to decide whether
-   * to keep the verse selection: `'flow'` keeps it so cancelling the dialog
-   * leaves the selection and popover intact.
+   * to keep the verse selection: `'flow'` keeps it. The reader hides the verse
+   * menu while the prompt is open and shows it again on cancel; confirming the
+   * prompt clears the selection.
    *
    * In controlled mode always emits an intent (no paint) and returns
    * `'applied'` so the caller clears the selection as usual.

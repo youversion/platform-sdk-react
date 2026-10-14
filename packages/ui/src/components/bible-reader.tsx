@@ -1047,10 +1047,11 @@ function Content() {
 
   function handleHighlight(color: string) {
     const outcome = applyHighlight(color, selectedVerses);
-    // Entering the auth flow (sign-in redirect or the permission confirm dialog)
-    // keeps the verse selection and popover intact so a cancel leaves the reader
-    // exactly where it was (YPE-1034 decision 7). An immediate apply — or an
-    // inert no-op — clears as before.
+    // Entering the auth flow (sign-in or permission prompt) keeps only the verse
+    // selection. The popover is hidden while the prompt is open and returns on
+    // cancel; confirm clears the selection. This is the YPE-5943 exception to
+    // YPE-642 Resolved (round 2). An immediate apply — or an inert no-op —
+    // clears as before.
     if (outcome === 'flow') return;
     closeAndClearSelection();
   }

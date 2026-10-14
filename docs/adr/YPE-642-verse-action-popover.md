@@ -128,7 +128,8 @@ Cam's example, mimics bible.com:
 ## Resolved (round 2)
 - Palette → theme.css expressive (ADR-005). Copy format → bible.com (ADR-006).
 - Share = text only, no deep link. No auth gating. Apply/copy/share + outside
-  click all clear selection and close the popover.
+  click all clear selection and close the popover. (Highlight prompts are an
+  exception; see the YPE-5943 as-built note.)
 
 ## Resolved (round 3)
 - **Copy text cleaning:** strip verse numbers + footnote markers; clean prose only.
@@ -199,8 +200,7 @@ Selection is always enabled in BibleReader (no opt-out prop for now; YAGNI).
   (Resolved round 2).
 - **Verse-tap vs outside-click:** Resolved (round 2) says an outside click clears
   the selection, but Radix treats a *second verse tap* as an outside-click too.
-  The popover's
-  `onInteractOutside` calls `preventDefault()` when the target is inside
+  The popover's `onInteractOutside` calls `preventDefault()` when the target is inside
   `.yv-v[v]`, so tapping more verses re-anchors instead of dismissing. Only a
   true outside tap clears (matches the YV apps).
 - **localStorage key:** `youversion-platform:highlights:<versionId>` →
