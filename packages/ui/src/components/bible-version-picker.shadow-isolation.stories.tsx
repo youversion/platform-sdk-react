@@ -819,6 +819,9 @@ export const SameOriginIframeTopLayerRemainsInteractive: Story = {
       'iframe picker input not rendered',
     );
     await userEvent.click(input);
+    await new Promise<void>((resolve) =>
+      portalWindow.requestAnimationFrame(() => portalWindow.requestAnimationFrame(() => resolve())),
+    );
     await expect(componentRoot.activeElement).toBe(input);
 
     const panel = topLayer.querySelector<HTMLElement>('[data-slot="popover-content"]');

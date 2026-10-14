@@ -202,6 +202,12 @@ export const PublicRootJourney: Story = {
     const genesisBook = panelQueries.getByRole('button', { name: /genesis/i });
     const search = panelQueries.getByPlaceholderText(/search/i);
     await userEvent.type(search, 'g');
+    const panelWindow = panel.ownerDocument.defaultView;
+    if (!panelWindow) throw new Error('chapter picker window not available');
+    await new Promise<void>((resolve) =>
+      panelWindow.requestAnimationFrame(() => panelWindow.requestAnimationFrame(() => resolve())),
+    );
+    await expect(root.activeElement).toBe(search);
     await waitFor(async () => {
       await expect(search).toHaveValue('g');
       await expect(genesisBook).toBeVisible();
