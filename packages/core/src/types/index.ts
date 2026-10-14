@@ -38,6 +38,7 @@ export type {
 } from '../schemas/search';
 export type { Collection } from '../schemas/collection';
 export type { Organization, OrganizationAddress } from '../schemas/organization';
+export type { Image, GetImagesOptions } from '../schemas/image';
 export type { Video, VideoPlaybackSource, VideoThumbnail } from '../schemas/video';
 export type { Font, FontVariant, FontSource } from '../schemas/font';
 export type { License } from '../schemas/license';
