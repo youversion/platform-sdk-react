@@ -52,6 +52,7 @@ async function requireShadowHost(container: ParentNode): Promise<HTMLElement> {
 interface ReactEventObservation {
   currentTarget: EventTarget | null;
   nativeEvent: Event;
+  relatedTarget?: EventTarget | null;
   target: EventTarget | null;
 }
 
@@ -274,6 +275,7 @@ function AutomaticButtonHarness(): React.ReactNode {
               (evidenceRef.current.ancestorBlurs ??= []).push({
                 currentTarget: event.currentTarget,
                 nativeEvent: event.nativeEvent,
+                relatedTarget: event.relatedTarget,
                 target: event.target,
               });
             }
@@ -315,6 +317,7 @@ function AutomaticButtonHarness(): React.ReactNode {
                 (evidenceRef.current.componentBlurs ??= []).push({
                   currentTarget: event.currentTarget,
                   nativeEvent: event.nativeEvent,
+                  relatedTarget: event.relatedTarget,
                   target: event.target,
                 });
               }
@@ -433,10 +436,16 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
     const outsideFocusOutEvents: Array<{
       event: Event;
       path: EventTarget[];
+      relatedTarget: EventTarget | null;
       target: EventTarget | null;
     }> = [];
     observer.addEventListener('focusout', (event) => {
-      outsideFocusOutEvents.push({ event, path: event.composedPath(), target: event.target });
+      outsideFocusOutEvents.push({
+        event,
+        path: event.composedPath(),
+        relatedTarget: event.relatedTarget,
+        target: event.target,
+      });
     });
 
     outsideFocusTarget.focus();
@@ -486,6 +495,7 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
       outsideFocusOutEvents.map(({ event }) => ({
         currentTarget: button,
         nativeEvent: event,
+        relatedTarget: outsideFocusTarget,
         target: button,
       })),
     );
@@ -493,10 +503,12 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
       outsideFocusOutEvents.map(({ event }) => ({
         currentTarget: observer,
         nativeEvent: event,
+        relatedTarget: outsideFocusTarget,
         target: button,
       })),
     );
     for (const outsideFocusOutEvent of outsideFocusOutEvents) {
+      await expect(outsideFocusOutEvent.relatedTarget).toBe(outsideFocusTarget);
       await expect(outsideFocusOutEvent.target).toBe(host);
       await expect(outsideFocusOutEvent.path[0]).toBe(button);
       await expect(outsideFocusOutEvent.path).toContain(host);
@@ -710,27 +722,35 @@ export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
       path: EventTarget[];
       target: EventTarget | null;
     }> = [];
-    outerObserver.addEventListener('focusout', (event) => {
-      outerScopeFocusOuts.push({
-        event,
-        path: event.composedPath(),
-        target: event.target,
-      });
-    });
+    outerObserver.addEventListener(
+      'focusout',
+      (event) => {
+        outerScopeFocusOuts.push({
+          event,
+          path: event.composedPath(),
+          target: event.target,
+        });
+      },
+      { once: true },
+    );
     const documentScopeFocusOuts: Array<{
       event: Event;
       path: EventTarget[];
       target: EventTarget | null;
     }> = [];
-    canvasElement.addEventListener('focusout', (event) => {
-      documentScopeFocusOuts.push({
-        event,
-        path: event.composedPath(),
-        target: event.target,
-      });
-    });
+    canvasElement.addEventListener(
+      'focusout',
+      (event) => {
+        documentScopeFocusOuts.push({
+          event,
+          path: event.composedPath(),
+          target: event.target,
+        });
+      },
+      { once: true },
+    );
 
-    button.focus();
+    await expect(innerRoot.activeElement).toBe(button);
     outsideFocusTarget.focus();
 
     await expect(outerScopeFocusOuts).toHaveLength(1);
