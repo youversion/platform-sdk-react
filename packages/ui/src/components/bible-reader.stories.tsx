@@ -814,6 +814,9 @@ export const ForcedRtlChromeGeometry: Story = {
     );
 
     await userEvent.click(chapterCanvas.getByRole('button', { name: 'Close' }));
+    await waitFor(async () => {
+      await expect(chapterCanvas.queryByRole('dialog')).toBeNull();
+    });
     const { root: versionRoot, trigger: versionTrigger } = await getPickerQueries(
       canvasElement,
       'Change Bible version',
