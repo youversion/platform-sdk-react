@@ -295,11 +295,8 @@ export const SearchUnifiedOptionsSchema = z.object({
 
 export type SearchUnifiedOptions = z.infer<typeof SearchUnifiedOptionsSchema>;
 
-/** Thin image hit from unified search. Not an Images API record. */
 export const SearchImageHitSchema = z.object({
-  /** Opaque image id. */
   id: z.string().check(z.minLength(1)),
-  /** Illustrating passage. Wire name is `passage_id`. */
   passageId: z.string().check(z.minLength(1)),
 });
 
@@ -340,7 +337,6 @@ type SearchUnifiedFieldCoverage = {
   [K in SearchUnifiedField]: SearchUnifiedResponse[K] extends readonly unknown[] ? true : never;
 };
 
-// A kind listed only in `SEARCH_UNIFIED_FIELDS` or only here fails the build.
 const _searchUnifiedFieldCoverage = {
   verses: true,
   topics: true,
