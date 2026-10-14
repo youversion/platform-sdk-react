@@ -180,10 +180,11 @@ light-DOM ancestor can receive one composed event through both the shadow-root
 portal path and the application-root retargeted path.
 
 YPE-6040 and YPE-6135 now keep one React logical traversal for each native
-`click`, `keydown`, `focusin`, and `focusout` event without stopping native propagation. The representative auth
-button story verifies component callback counts and target semantics, exact
-light-DOM ancestor counts, separate repeated clicks, native retargeting, and
-the original composed path. The nested-root story retains its existing native
+`click`, `keydown`, `focusin`, and `focusout` event without stopping native
+propagation. The representative auth button story verifies component callback
+counts and target semantics, exact light-DOM ancestor counts, separate repeated
+clicks and focus/blur cycles, native retargeting, and the original composed
+path. The nested-root story retains its existing native
 retargeting evidence and adds one React ancestor dispatch per scope. The main
 workflow passes Chromium, Firefox, and Playwright WebKit. Because the correction
 changes the shared host, YPE-5952 retains the required actual-Safari
