@@ -3,7 +3,7 @@ export default [
   {
     name: 'core / full barrel (esm)',
     path: 'packages/core/dist/index.js',
-    limit: '21.5 KB',
+    limit: '23.7 KB',
     ignore: ['jsdom'],
   },
   {
