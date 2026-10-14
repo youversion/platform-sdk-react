@@ -1,5 +1,11 @@
 # @youversion/platform-core
 
+## 2.16.0
+
+### Minor Changes
+
+- da12b12: Export shared Bible version attribution selection and fall back to promotional content in BibleCard and BibleReader when copyright is blank.
+
 ## 2.15.0
 
 ### Minor Changes
