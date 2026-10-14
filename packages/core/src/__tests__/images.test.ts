@@ -418,4 +418,22 @@ describe('ImagesClient', () => {
     expect(detailUrl).toContain('/v1-beta/images/img-1');
     expect(detailUrl).not.toContain('/v1/images');
   });
+
+  it('exports ImagesClient from the package entry', async () => {
+    const core = await import('../index');
+    const images = new core.ImagesClient(
+      new ApiClient({
+        apiHost,
+        appKey: 'test-app',
+        installationId: 'test-installation',
+      }),
+    );
+
+    server.use(http.get(`https://${apiHost}/v1/images/img-1`, () => HttpResponse.json(image)));
+
+    const result = await images.getImage('img-1');
+
+    expect(result).toEqual(image);
+    expect(core.ImagesClient).toBe(ImagesClient);
+  });
 });
