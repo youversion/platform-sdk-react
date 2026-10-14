@@ -90,7 +90,7 @@ pnpm test:ci-scripts
 
 ## CI
 
-- **locale-ownership** job fails PRs that touch `packages/ui/src/i18n/locales/**` unless the PR author is `platform-localization-pr-bot[bot]`, the localization sync App. The branch name is deliberately not part of the check — upstream owns it and has changed it before ([ADR 0003](./adr/0003-locale-ownership-gate-keys-on-pr-author.md)). Open a pull request on [platform-localization](https://github.com/youversion/platform-localization) that edits `sources/common/en.json` under `react.*` instead.
+- **locale-ownership** job fails PRs that touch `packages/ui/src/i18n/locales/**` unless the PR author is `platform-localization-pr-bot[bot]`, the localization sync App. The branch name is deliberately not part of the check — upstream owns it and has changed it before ([ADR 0003](./adr/0003-locale-ownership-gate-keys-on-pr-author.md)). Follow [Adding or changing strings](#adding-or-changing-strings) instead.
 - **i18n-check** job runs `pnpm check:i18n` on every PR.
 - **Lint** job runs oxlint with `eslint-plugin-i18next` as a JS plugin, scoped to `packages/ui/src/components/**` (excluding `*.test.*` and `*.stories.*`).
 

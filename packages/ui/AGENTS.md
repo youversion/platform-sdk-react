@@ -11,7 +11,7 @@ Keep this file brief. Put task-specific guidance behind a pointer.
 
 ## Localization
 
-User-facing strings: `docs/i18n-guidelines.md`.
+User-facing strings: read `docs/i18n-guidelines.md` at the repo root.
 
 ## Guardrails
 
