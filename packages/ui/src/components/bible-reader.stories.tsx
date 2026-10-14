@@ -546,6 +546,7 @@ export const SignedInReaderOverlayOwnership: Story = {
     });
     await userEvent.click(versionCanvas.getByRole('button', { name: 'Close' }));
     await waitFor(async () => {
+      await expect(versionCanvas.queryByRole('dialog')).toBeNull();
       await expect(versionRoot.activeElement).toBe(versionTrigger);
     });
 
@@ -813,6 +814,9 @@ export const ForcedRtlChromeGeometry: Story = {
     );
 
     await userEvent.click(chapterCanvas.getByRole('button', { name: 'Close' }));
+    await waitFor(async () => {
+      await expect(chapterCanvas.queryByRole('dialog')).toBeNull();
+    });
     const { root: versionRoot, trigger: versionTrigger } = await getPickerQueries(
       canvasElement,
       'Change Bible version',

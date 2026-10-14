@@ -210,12 +210,11 @@ try {
     });
   }
 } finally {
+  console.log('\nSafari focused-story summary:');
+  console.table(results);
+  console.log(JSON.stringify(results, null, 2));
   rmSync(resultsDirectory, { recursive: true, force: true });
 }
-
-console.log('\nSafari focused-story summary:');
-console.table(results);
-console.log(JSON.stringify(results, null, 2));
 
 const unsuccessful = results.filter(({ status }) => status !== 'passed');
 if (unsuccessful.length > 0) {

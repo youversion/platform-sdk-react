@@ -766,11 +766,13 @@ export const RapidCloseReopenDuringExitEvidence: Story = {
       productionWaitOptions,
     );
     const exitAnimationStyle = installUnequalExitDurations(root, {
-      dialog: 400,
-      overlay: 800,
-      popover: 180,
+      dialog: 40_000,
+      overlay: 50_000,
+      popover: 30_000,
     });
     let firstDialog!: HTMLElement;
+    let dialogOverlay!: HTMLElement;
+    let reopenedDialog!: HTMLElement;
     let topLayer!: HTMLElement;
 
     try {
@@ -787,6 +789,9 @@ export const RapidCloseReopenDuringExitEvidence: Story = {
           if (!dialog) throw new Error('permission dialog did not open');
           return dialog;
         });
+        const overlay = topLayer.querySelector<HTMLElement>('[data-slot="dialog-overlay"]');
+        if (!overlay) throw new Error('dialog overlay did not render');
+        dialogOverlay = overlay;
       });
 
       await step('Retain modal ownership while the dialog starts exiting', async () => {
@@ -796,15 +801,17 @@ export const RapidCloseReopenDuringExitEvidence: Story = {
         await expect(firstDialog.isConnected).toBe(true);
         await expect(topLayer).toContainElement(firstDialog);
         await expect(contentWrapper.inert).toBe(true);
+        finishAnimations(firstDialog);
       });
 
       await step('Reopen while the retained overlay owns focus', async () => {
         await waitFor(() => {
           if (firstDialog.isConnected) throw new Error('first dialog has not unmounted');
-          const overlay = topLayer.querySelector<HTMLElement>('[data-slot="dialog-overlay"]');
-          if (!overlay) throw new Error('dialog overlay did not remain during content exit');
+          if (!dialogOverlay.isConnected) {
+            throw new Error('dialog overlay did not remain during content exit');
+          }
           if (getPermissionDialog(topLayer)) throw new Error('dialog content is still mounted');
-          if (root.activeElement !== overlay)
+          if (root.activeElement !== dialogOverlay)
             throw new Error('retained overlay does not own focus');
           if (!contentWrapper.inert) throw new Error('background content is not inert');
           if (!topLayer.matches(':popover-open')) throw new Error('top layer exited before reopen');
@@ -816,7 +823,7 @@ export const RapidCloseReopenDuringExitEvidence: Story = {
       });
 
       await step('Reopen from overlay-only retained presence', async () => {
-        const reopenedDialog = await waitFor(async () => {
+        reopenedDialog = await waitFor(async () => {
           const dialog = getPermissionDialog(topLayer);
           if (!dialog || dialog.getAttribute('data-state') === 'closed') {
             throw new Error('permission dialog did not reopen during exit');
@@ -834,6 +841,12 @@ export const RapidCloseReopenDuringExitEvidence: Story = {
 
       await step('Release modal ownership after the final close', async () => {
         await userEvent.keyboard('{Escape}');
+        await waitFor(async () => {
+          await expect(reopenedDialog).toHaveAttribute('data-state', 'closed');
+          await expect(dialogOverlay).toHaveAttribute('data-state', 'closed');
+        });
+        finishAnimations(reopenedDialog);
+        finishAnimations(dialogOverlay);
         await waitFor(async () => {
           await expect(getPermissionDialog(topLayer)).toBeNull();
           await expect(contentWrapper.inert).toBe(false);
