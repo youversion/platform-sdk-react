@@ -722,6 +722,7 @@ export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
       path: EventTarget[];
       target: EventTarget | null;
     }> = [];
+    const focusOutController = new canvasElement.ownerDocument.defaultView!.AbortController();
     outerObserver.addEventListener(
       'focusout',
       (event) => {
@@ -731,7 +732,7 @@ export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
           target: event.target,
         });
       },
-      { once: true },
+      { signal: focusOutController.signal },
     );
     const documentScopeFocusOuts: Array<{
       event: Event;
@@ -747,11 +748,15 @@ export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
           target: event.target,
         });
       },
-      { once: true },
+      { signal: focusOutController.signal },
     );
 
     await expect(innerRoot.activeElement).toBe(button);
-    outsideFocusTarget.focus();
+    try {
+      outsideFocusTarget.focus();
+    } finally {
+      focusOutController.abort();
+    }
 
     await expect(outerScopeFocusOuts).toHaveLength(1);
     await expect(documentScopeFocusOuts).toHaveLength(1);
