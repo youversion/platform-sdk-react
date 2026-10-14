@@ -163,11 +163,13 @@ and English language selector. Neither journey required an additional Tab or
 VoiceOver navigation command to expose the newly opened picker. The targeted
 SafariDriver journeys also passed, including explicit close and Escape focus
 restoration. The completed YPE-6181 implementation at
-`f752f8f0d78297b0e315aa2e7e55a4094469d221` then passed the full focused actual
-Safari matrix: 38/38 stories passed on their first attempt with one fresh process
-and SafariDriver session per story. This final run included both picker journeys,
-their retained-content rapid-close-and-reopen paths, and the shared overlay
-production seams, with no transport retries, timeouts, or assertion failures.
+`8f99e6c0d161bdb04cc8ab06a06933bf08992848` then passed the full focused actual
+Safari matrix: 38/38 stories passed with one fresh process and SafariDriver
+session per story. This final run included both picker journeys, their
+first-mount and retained-content rapid-close-and-reopen paths, and the shared
+overlay production seams. Thirty-six stories passed on their first attempt; two
+shared-overlay stories passed after bounded SafariDriver transport retries. No
+story assertion failed.
 
 Release notes may claim only the exact combinations and successful journeys
 recorded here. They must identify untested combinations—including JAWS and
