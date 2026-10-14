@@ -261,3 +261,109 @@ export const SearchVersesOptionsSchema = z.object({
 });
 
 export type SearchVersesOptions = z.infer<typeof SearchVersesOptionsSchema>;
+
+const SEARCH_UNIFIED_FIELDS = ['verses', 'topics', 'images'] as const;
+
+export type SearchUnifiedField = (typeof SEARCH_UNIFIED_FIELDS)[number];
+
+const SearchUnifiedFieldSchema = z.enum(SEARCH_UNIFIED_FIELDS, {
+  error: 'Search field must be verses, topics, or images',
+});
+
+function dedupeSearchUnifiedFields(fields: SearchUnifiedField[]): SearchUnifiedField[] {
+  const seen = new Set<SearchUnifiedField>();
+  const unique: SearchUnifiedField[] = [];
+  for (const field of fields) {
+    if (seen.has(field)) {
+      continue;
+    }
+    seen.add(field);
+    unique.push(field);
+  }
+  return unique;
+}
+
+const SearchUnifiedFieldsSchema = z.pipe(
+  z.array(SearchUnifiedFieldSchema).check(z.minLength(1, 'At least one search field is required')),
+  z.transform(dedupeSearchUnifiedFields),
+);
+
+export const SearchUnifiedOptionsSchema = z.object({
+  userIntent: z.optional(z.string()),
+  fields: z.optional(SearchUnifiedFieldsSchema),
+});
+
+export type SearchUnifiedOptions = z.infer<typeof SearchUnifiedOptionsSchema>;
+
+/** Thin image hit from unified search. Not an Images API record. */
+export const SearchImageHitSchema = z.object({
+  /** Opaque image id. */
+  id: z.string().check(z.minLength(1)),
+  /** Illustrating passage. Wire name is `passage_id`. */
+  passageId: z.string().check(z.minLength(1)),
+});
+
+export type SearchImageHit = Readonly<z.infer<typeof SearchImageHitSchema>>;
+
+const SearchImageHitWireSchema = z.object({
+  id: z.string().check(z.minLength(1)),
+  passage_id: z.string().check(z.minLength(1)),
+});
+
+type SearchImageHitWire = z.infer<typeof SearchImageHitWireSchema>;
+
+export const SearchUnifiedWireSchema = z.object({
+  verses: z.array(SearchVerseHitWireSchema),
+  topics: z.array(SearchTopicWireSchema),
+  images: z.array(SearchImageHitWireSchema),
+  user_intent: z.optional(z.nullable(z.string())),
+  did_you_mean: z.array(z.string()),
+  search_instead_for: z.optional(z.nullable(z.string())),
+});
+
+export type SearchUnifiedWire = z.infer<typeof SearchUnifiedWireSchema>;
+
+export const SearchUnifiedResponseSchema = z.object({
+  /** Verse hits. Malformed USFM references are removed. */
+  verses: z.array(SearchVerseHitSchema),
+  topics: z.array(SearchTopicSchema),
+  images: z.array(SearchImageHitSchema),
+  /** Set only when the API returns a non-null user intent. */
+  userIntent: z.optional(z.string()),
+  didYouMean: z.array(z.string()),
+  searchInsteadFor: z.nullable(z.string()),
+});
+
+export type SearchUnifiedResponse = Readonly<z.infer<typeof SearchUnifiedResponseSchema>>;
+
+type SearchUnifiedFieldCoverage = {
+  [K in SearchUnifiedField]: SearchUnifiedResponse[K] extends readonly unknown[] ? true : never;
+};
+
+// A kind listed only in `SEARCH_UNIFIED_FIELDS` or only here fails the build.
+const _searchUnifiedFieldCoverage = {
+  verses: true,
+  topics: true,
+  images: true,
+} as const satisfies SearchUnifiedFieldCoverage;
+
+function toSearchImageHit(wire: SearchImageHitWire): SearchImageHit {
+  return {
+    id: wire.id,
+    passageId: wire.passage_id,
+  };
+}
+
+export function toSearchUnifiedResponse(wire: SearchUnifiedWire): SearchUnifiedResponse {
+  const response: SearchUnifiedResponse = {
+    verses: wire.verses.map(toSearchVerseHit).filter((hit): hit is SearchVerseHit => hit !== null),
+    topics: wire.topics.map(toSearchTopic),
+    images: wire.images.map(toSearchImageHit),
+    didYouMean: wire.did_you_mean,
+    searchInsteadFor: wire.search_instead_for ?? null,
+  };
+  if (wire.user_intent != null) {
+    return { ...response, userIntent: wire.user_intent };
+  }
+  return response;
+}

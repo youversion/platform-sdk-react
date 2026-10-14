@@ -58,7 +58,10 @@ const trending = await searchClient.getTrendingQueries('en');
 const verses = await searchClient.searchVerses('faith', versions.data[0].id, {
   pageSize: 10,
 });
-console.log(trending.queries[0]?.text, verses.verses[0]?.id);
+const unified = await searchClient.searchUnified('psalm 23', versions.data[0].id, 'en', {
+  fields: ['images'],
+});
+console.log(trending.queries[0]?.text, verses.verses[0]?.id, unified.images[0]?.passageId);
 ```
 
 ### Display Bible HTML

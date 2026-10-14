@@ -45,6 +45,8 @@
     "!dist/search-verses.cjs",
     "!dist/search-topics.js",
     "!dist/search-topics.cjs",
+    "!dist/search-unified.js",
+    "!dist/search-unified.cjs",
     "!dist/highlights.js",
     "!dist/highlights.cjs",
     "!dist/organizations.js",
