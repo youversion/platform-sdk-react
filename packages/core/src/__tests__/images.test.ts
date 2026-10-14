@@ -296,6 +296,9 @@ describe('ImagesClient', () => {
     await expect(images.getImages({ language_ranges: [' '] })).rejects.toThrow(
       'Language ranges must be a non-empty string',
     );
+    await expect(images.getImages({ language_ranges: ['not a range!!!'] })).rejects.toThrow(
+      /Basic Language Range/,
+    );
     await expect(images.getImages({ page_token: '' })).rejects.toThrow(
       'Page token must be a non-empty string',
     );

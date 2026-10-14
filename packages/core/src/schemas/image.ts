@@ -25,9 +25,15 @@ export const ImageSchema = z.object({
 
 export type Image = Readonly<z.infer<typeof ImageSchema>>;
 
+/** Wire list cursor. Empty string and null both mean no further page. */
+const ImageNextPageTokenWireSchema = z.pipe(
+  z.optional(z.nullable(z.string())),
+  z.transform((token): string | null => (token == null || token === '' ? null : token)),
+);
+
 export const ImageCollectionWireSchema = z.object({
   data: z.array(ImageSchema),
-  next_page_token: z.optional(z.nullable(z.string())),
+  next_page_token: ImageNextPageTokenWireSchema,
   total_size: z.optional(z.nullable(z.int().check(z.nonnegative()))),
 });
 
@@ -41,9 +47,19 @@ const ImagePassageIdSchema = z
   .string()
   .check(z.trim(), z.minLength(1, 'Passage ID must be a non-empty string'));
 
+/** OpenAPI Basic Language Range for Images `language_ranges[]`. Case and `_` are kept. */
+const IMAGE_LANGUAGE_RANGE_REGEX = /^(\*|[A-Za-z0-9]{1,8}([-_][A-Za-z0-9]{1,8})*)$/;
+
+const IMAGE_LANGUAGE_RANGE_ERROR =
+  'Language range must be "*" or a Basic Language Range (e.g., "en", "en-US", "en_US")';
+
 const ImageLanguageRangeSchema = z
   .string()
-  .check(z.trim(), z.minLength(1, 'Language ranges must be a non-empty string'));
+  .check(
+    z.trim(),
+    z.minLength(1, 'Language ranges must be a non-empty string'),
+    z.regex(IMAGE_LANGUAGE_RANGE_REGEX, IMAGE_LANGUAGE_RANGE_ERROR),
+  );
 
 const PAGE_SIZE_ERROR = 'Page size must be an integer from 1 to 99';
 

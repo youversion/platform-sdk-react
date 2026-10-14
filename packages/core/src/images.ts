@@ -68,6 +68,7 @@ export class ImagesClient {
    */
   async getImages(options: GetImagesOptions = {}): Promise<Collection<Image>> {
     const parsed = GetImagesOptionsSchema.parse(options);
+    // ApiClient.get: empty JSON body → undefined; HTTP 204 → ''.
     const body = await this.client.get<unknown>(this.basePath, toImagesQuery(parsed));
     if (body === '' || body == null) {
       return { data: [], next_page_token: null };
@@ -119,10 +120,9 @@ function toImagesQuery(options: GetImagesOptions): ImagesListQuery {
 }
 
 function toImageCollection(wire: ImageCollectionWire): Collection<Image> {
-  const token = wire.next_page_token;
   const page: Collection<Image> = {
     data: wire.data,
-    next_page_token: token == null || token === '' ? null : token,
+    next_page_token: wire.next_page_token,
   };
   if (wire.total_size == null) {
     return page;
