@@ -69,7 +69,6 @@ export class ImagesClient {
   async getImages(options: GetImagesOptions = {}): Promise<Collection<Image>> {
     const parsed = GetImagesOptionsSchema.parse(options);
     const body = await this.client.get<unknown>(this.basePath, toImagesQuery(parsed));
-    // 204 and an empty JSON body arrive as '' or undefined. Both mean no images.
     if (body === '' || body == null) {
       return { data: [], next_page_token: null };
     }
@@ -103,8 +102,6 @@ export class ImagesClient {
 }
 
 function toImagesQuery(options: GetImagesOptions): ImagesListQuery {
-  // ApiClient stringifies every value, including undefined, so an absent
-  // filter must stay off the query string.
   const query: ImagesListQuery = {};
   if (options.passage_id !== undefined) {
     query.passage_id = options.passage_id;
@@ -122,13 +119,11 @@ function toImagesQuery(options: GetImagesOptions): ImagesListQuery {
 }
 
 function toImageCollection(wire: ImageCollectionWire): Collection<Image> {
-  // '' is not null. A loop that stops on null would spin if the empty token were forwarded.
   const token = wire.next_page_token;
   const page: Collection<Image> = {
     data: wire.data,
     next_page_token: token == null || token === '' ? null : token,
   };
-  // Collection has no null total. A missing key means the total is unknown.
   if (wire.total_size == null) {
     return page;
   }
