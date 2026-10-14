@@ -152,18 +152,24 @@ export const PublicRootJourney: Story = {
       hostileStyle.remove();
     }
 
-    await userEvent.click(trigger);
+    const exitAnimationStyle = canvasElement.ownerDocument.createElement('style');
+    exitAnimationStyle.textContent = `
+      @keyframes yv-test-retain-on-close {
+        from { opacity: 1; }
+        to { opacity: 0.99; }
+      }
+      [data-slot='popover-content'][data-state='closed'] {
+        animation: yv-test-retain-on-close 2000ms linear !important;
+      }
+    `;
+    root.append(exitAnimationStyle);
 
-    const topLayer = await waitForElement<HTMLElement>(
-      root,
-      '[data-yv-shadow-local-overlay]',
-      'local top-layer container not created',
-    );
-    const panel = await waitForElement<HTMLElement>(
-      topLayer,
-      '[data-slot="popover-content"]',
-      'chapter picker panel not rendered',
-    );
+    trigger.click();
+    await Promise.resolve();
+    const topLayer = root.querySelector<HTMLElement>('[data-yv-shadow-local-overlay]');
+    if (!topLayer) throw new Error('local top-layer container not created synchronously');
+    let panel = topLayer.querySelector<HTMLElement>('[data-slot="popover-content"]');
+    if (!panel) throw new Error('chapter picker panel not rendered synchronously');
     await expect(trigger.getRootNode()).toBe(root);
     await expect(panel.getRootNode()).toBe(root);
     await expect(topLayer.matches(':popover-open')).toBe(true);
@@ -175,10 +181,65 @@ export const PublicRootJourney: Story = {
     if (!reflectedControls) throw new Error('browser did not expose ariaControlsElements');
     await expect(reflectedControls).toEqual([panel]);
 
-    const panelQueries = within(panel);
+    let panelQueries = within(panel);
+    const closeButton = panelQueries.getByRole('button', { name: 'Close' });
+    const initialSearch = panelQueries.getByPlaceholderText(/search/i);
+    const lastChapterButton = panelQueries.getByRole('button', { name: '5' });
+    const openingPanelWindow = panel.ownerDocument.defaultView;
+    if (!openingPanelWindow) throw new Error('chapter picker window not available');
+    await new Promise<void>((resolve) =>
+      openingPanelWindow.requestAnimationFrame(() =>
+        openingPanelWindow.requestAnimationFrame(() => resolve()),
+      ),
+    );
+    await expect(root.activeElement).toBe(panel);
+    trigger.click();
+    await waitFor(async () => {
+      await expect(panel).toHaveAttribute('data-state', 'closed');
+      await expect(topLayer).toContainElement(panel);
+    });
+    const initialPanelWindow = panel.ownerDocument.defaultView;
+    if (!initialPanelWindow) throw new Error('chapter picker window not available');
+    await new Promise<void>((resolve) =>
+      initialPanelWindow.requestAnimationFrame(() =>
+        initialPanelWindow.requestAnimationFrame(() => resolve()),
+      ),
+    );
+    trigger.click();
+    await waitFor(async () => {
+      await expect(topLayer.querySelector('[data-slot="popover-content"]')).toBe(panel);
+      await expect(panel).toHaveAttribute('data-state', 'open');
+    });
+    await waitFor(async () => {
+      await expect(root.activeElement).toBe(panel);
+    });
+    exitAnimationStyle.remove();
+    await userEvent.tab({ shift: true });
+    await expect(root.activeElement).toBe(lastChapterButton);
+    await userEvent.tab();
+    await expect(root.activeElement).toBe(initialSearch);
+    await userEvent.click(closeButton);
+    await waitFor(async () => {
+      await expect(topLayer.querySelector('[data-slot="popover-content"]')).toBeNull();
+      await expect(root.activeElement).toBe(trigger);
+    });
+
+    await userEvent.click(trigger);
+    panel = await waitForElement<HTMLElement>(
+      topLayer,
+      '[data-slot="popover-content"]',
+      'chapter picker panel did not reopen',
+    );
+    panelQueries = within(panel);
     const genesisBook = panelQueries.getByRole('button', { name: /genesis/i });
     const search = panelQueries.getByPlaceholderText(/search/i);
     await userEvent.type(search, 'g');
+    const panelWindow = panel.ownerDocument.defaultView;
+    if (!panelWindow) throw new Error('chapter picker window not available');
+    await new Promise<void>((resolve) =>
+      panelWindow.requestAnimationFrame(() => panelWindow.requestAnimationFrame(() => resolve())),
+    );
+    await expect(root.activeElement).toBe(search);
     await waitFor(async () => {
       await expect(search).toHaveValue('g');
       await expect(genesisBook).toBeVisible();

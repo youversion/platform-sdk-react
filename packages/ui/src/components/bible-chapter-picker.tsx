@@ -7,6 +7,7 @@ import {
   cloneElement,
   createContext,
   isValidElement,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -117,6 +118,8 @@ function RootImplementation({
 
   const [isPopoverOpenRaw, setIsPopoverOpenRaw] = useState(false);
   const isPopoverOpen = onChapterPickerPress ? false : isPopoverOpenRaw;
+  const focusRequestRef = useRef(0);
+  const panelRef = useRef<HTMLElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   // Non-nullable so the Accordion below stays controlled for its whole lifetime.
   // `''` means collapsed; passing `undefined` would flip Radix back to uncontrolled.
@@ -184,6 +187,40 @@ function RootImplementation({
     }
   };
 
+  const schedulePanelFocus = useCallback((panel: HTMLElement) => {
+    // SAFETY: Element roots are Documents or ShadowRoots, which both expose activeElement.
+    const focusRoot = panel.getRootNode() as Document | ShadowRoot;
+    const previousFocus = focusRoot.activeElement;
+    const focusRequest = ++focusRequestRef.current;
+    const focusPanel = () => {
+      if (
+        focusRequestRef.current === focusRequest &&
+        focusRoot.activeElement === previousFocus &&
+        panel.isConnected &&
+        panel.dataset.state === 'open'
+      ) {
+        panel.focus({ preventScroll: true });
+      }
+    };
+    // Let Safari expose the newly painted dialog before moving focus into it.
+    const view = panel.ownerDocument.defaultView;
+    if (!view?.requestAnimationFrame) {
+      queueMicrotask(focusPanel);
+      return;
+    }
+    view.requestAnimationFrame(() => view.requestAnimationFrame(focusPanel));
+  }, []);
+
+  useEffect(() => {
+    if (!isPopoverOpen) {
+      focusRequestRef.current += 1;
+      return;
+    }
+
+    const panel = panelRef.current;
+    if (panel) schedulePanelFocus(panel);
+  }, [isPopoverOpen, schedulePanelFocus]);
+
   const contextValue: BibleChapterPickerContextType = {
     book,
     chapter,
@@ -213,7 +250,19 @@ function RootImplementation({
         {children}
 
         {/* data-yv-sdk for styles is needed because the popover gets rendered outside of the providers scope **/}
-        <PopoverContent sideOffset={16} heading={t('booksHeading')} theme={theme} side="top">
+        <PopoverContent
+          sideOffset={16}
+          heading={t('booksHeading')}
+          theme={theme}
+          side="top"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            // SAFETY: Radix invokes this handler with the popover content as currentTarget.
+            const panel = event.currentTarget as HTMLElement;
+            panelRef.current = panel;
+            schedulePanelFocus(panel);
+          }}
+        >
           <Content onRequestClose={() => setIsPopoverOpen(false)} />
         </PopoverContent>
       </BibleChapterPickerContext.Provider>

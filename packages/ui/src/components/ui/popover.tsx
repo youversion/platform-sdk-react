@@ -113,17 +113,29 @@ function PopoverContent({
             return;
           }
 
-          // Radix's focus loop only scans light DOM. Take over the loop when this
-          // Popover owns tabbable controls through a nested shadow boundary.
+          // Radix's focus loop relies on document.activeElement and a light-DOM
+          // scan. Take over when this Popover is in or owns a shadow tree.
           const candidates = tabbable(event.currentTarget, { getShadowRoot: true });
           const contentRoot = event.currentTarget.getRootNode();
-          if (!candidates.some((candidate) => candidate.getRootNode() !== contentRoot)) return;
+          const ownsNestedShadowTree = candidates.some(
+            (candidate) => candidate.getRootNode() !== contentRoot,
+          );
+          if (contentRoot === event.currentTarget.ownerDocument && !ownsNestedShadowTree) {
+            return;
+          }
 
           const eventPath = event.nativeEvent.composedPath();
           if (!eventPath.includes(event.currentTarget)) return;
 
           const [realTarget] = eventPath;
           const currentIndex = candidates.findIndex((candidate) => candidate === realTarget);
+          if (
+            !ownsNestedShadowTree &&
+            currentIndex !== -1 &&
+            (event.shiftKey ? currentIndex !== 0 : currentIndex !== candidates.length - 1)
+          ) {
+            return;
+          }
           const nextIndex = event.shiftKey
             ? currentIndex <= 0
               ? candidates.length - 1

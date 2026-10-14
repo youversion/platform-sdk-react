@@ -152,6 +152,25 @@ accessibility redesign.
 | Theme settings | Pass. VoiceOver exposed the Reader Settings dialog and its close, font-size, line-spacing, and font controls; traversal stayed inside and Escape restored focus to Settings. | Not run—unvalidated | None |
 | Nested overlays | Pass. Activating a highlight action opened the sign-in dialog; the first Escape dismissed only the sign-in dialog and retained the verse-actions overlay, and the second Escape dismissed the verse-actions overlay. | Not run—unvalidated | None |
 
+### YPE-6181 Safari and VoiceOver follow-up
+
+On 2026-10-14, Austin Harms repeated the two existing picker journeys on the
+same macOS 26.6.2 (25G83), Safari 26.6.2 (21624.5.1.11.3), and VoiceOver 10
+(993) combination. The chapter picker immediately announced its `Books`
+web-dialog context with the dialog as its established initial focus target. The
+version picker immediately announced its `Bible Versions` web-dialog context
+and English language selector. Neither journey required an additional Tab or
+VoiceOver navigation command to expose the newly opened picker. The targeted
+SafariDriver journeys also passed, including explicit close and Escape focus
+restoration. The completed YPE-6181 implementation at
+`8f99e6c0d161bdb04cc8ab06a06933bf08992848` then passed the full focused actual
+Safari matrix: 38/38 stories passed with one fresh process and SafariDriver
+session per story. This final run included both picker journeys, their
+first-mount and retained-content rapid-close-and-reopen paths, and the shared
+overlay production seams. Thirty-six stories passed on their first attempt; two
+shared-overlay stories passed after bounded SafariDriver transport retries. No
+story assertion failed.
+
 Release notes may claim only the exact combinations and successful journeys
 recorded here. They must identify untested combinations—including JAWS and
 mobile screen readers—as unvalidated and must not imply WCAG certification.

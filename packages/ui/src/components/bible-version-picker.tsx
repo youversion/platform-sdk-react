@@ -681,6 +681,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
     versionsLoading,
     background,
     side,
+    isPopoverOpen,
     isLanguagesOpen,
     setIsLanguagesOpen,
     setIsPopoverOpen,
@@ -690,6 +691,49 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
   } = useBibleVersionPickerContext();
   const wasOpenRef = useRef(open ?? false);
   const languageTriggerRef = useRef<HTMLButtonElement>(null);
+  const focusRequestRef = useRef(0);
+  const panelRef = useRef<HTMLElement>(null);
+
+  const scheduleLanguageTriggerFocus = useCallback(
+    (panel: HTMLElement) => {
+      if (isLanguagesOpen) return;
+      // SAFETY: Element roots are Documents or ShadowRoots, which both expose activeElement.
+      const focusRoot = panel.getRootNode() as Document | ShadowRoot;
+      const previousFocus = focusRoot.activeElement;
+      const focusRequest = ++focusRequestRef.current;
+      const focusLanguageTrigger = () => {
+        const languageTrigger = languageTriggerRef.current;
+        if (
+          focusRequestRef.current === focusRequest &&
+          focusRoot.activeElement === previousFocus &&
+          languageTrigger?.isConnected &&
+          panel.isConnected &&
+          panel.dataset.state === 'open' &&
+          !languageTrigger.closest('[inert]')
+        ) {
+          languageTrigger.focus({ preventScroll: true });
+        }
+      };
+      // Let Safari expose the newly painted dialog before moving focus into it.
+      const view = panel.ownerDocument.defaultView;
+      if (!view?.requestAnimationFrame) {
+        queueMicrotask(focusLanguageTrigger);
+        return;
+      }
+      view.requestAnimationFrame(() => view.requestAnimationFrame(focusLanguageTrigger));
+    },
+    [isLanguagesOpen],
+  );
+
+  useEffect(() => {
+    if (!isPopoverOpen) {
+      focusRequestRef.current += 1;
+      return;
+    }
+
+    const panel = panelRef.current;
+    if (panel) scheduleLanguageTriggerFocus(panel);
+  }, [isPopoverOpen, scheduleLanguageTriggerFocus]);
 
   // Resolve publisher names once for the whole list, deduped by organization id,
   // instead of mounting a fetching hook per row (avoids N+1 requests).
@@ -758,13 +802,10 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
         side={side}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
-          if (isLanguagesOpen) return;
-          queueMicrotask(() => {
-            const languageTrigger = languageTriggerRef.current;
-            if (languageTrigger?.isConnected && !languageTrigger.closest('[inert]')) {
-              languageTrigger.focus({ preventScroll: true });
-            }
-          });
+          // SAFETY: Radix invokes this handler with the popover content as currentTarget.
+          const panel = event.currentTarget as HTMLElement;
+          panelRef.current = panel;
+          scheduleLanguageTriggerFocus(panel);
         }}
       >
         <div className="yv:relative yv:min-h-0 yv:overflow-hidden">
