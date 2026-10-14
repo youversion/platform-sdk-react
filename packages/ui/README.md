@@ -102,8 +102,8 @@ are unchanged:
 - **Events:** Native composed events observed outside the root are retargeted to
   the host. React callbacks passed to a component retain their documented target
   semantics. Light-DOM ancestor React handlers receive one delivery for the
-  validated bubbling `click`, `keydown`, and `focus` paths; duplicate delivery can
-  remain for `blur`, capture handlers, and other composed events.
+  validated bubbling `click`, `keydown`, `focus`, and `blur` paths; duplicate
+  delivery can remain for capture handlers and other composed events.
 - **Forms and accessibility relationships:** Native outer forms, external
   `<label for>`, and cross-tree `aria-labelledby` or `aria-describedby` references
   do not cross a shadow boundary. Keep related nodes in one tree or use an

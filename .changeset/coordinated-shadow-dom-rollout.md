@@ -18,7 +18,9 @@ props, callbacks, refs, and role-based automation instead of depending on
 internal markup. Fonts remain document-owned, `rem` sizing follows the document
 root, `direction` remains inherited, and ancestor layout can still constrain the
 host. Shadow-local overlays use the native top layer, and opening a peer popover
-dismisses the current peer.
+dismisses the current peer. Validated bubbling click, keydown, focus, and blur
+paths reach light-DOM ancestor React handlers once; capture handlers and other
+composed event paths retain their documented compatibility caveat.
 
 `Textarea`, standalone `VerseActionPopover`, `YouVersionProvider`, and
 `BaseYouVersionProvider` remain outside the automatic boundary for their
