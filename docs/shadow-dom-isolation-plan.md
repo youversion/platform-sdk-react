@@ -71,7 +71,7 @@ Windows/NVDA validation gap are recorded in the YPE-5952 section below.
 
 | Area | Evidence today | Status | Remaining work |
 | --- | --- | --- | --- |
-| Host CSS isolation | Hostile-CSS demos and focused browser coverage exercise element selectors, direction inheritance, vertical writing and typography resets, hostile custom properties, universal `!important` rules, host attacks, and generated pseudo-content. | Validated for the included groups in Chromium, Firefox, Playwright WebKit, and the recorded 38/38 final-candidate Safari run | Repeat actual Safari after the rollout-policy trigger changes. |
+| Host CSS isolation | Hostile-CSS demos and focused browser coverage exercise element selectors, direction inheritance, vertical writing and typography resets, hostile custom properties, universal `!important` rules, host attacks, and generated pseudo-content. | Validated for the included groups in Chromium, Firefox, Playwright WebKit, and the recorded 39/39 YPE-6216 Safari revalidation | Repeat actual Safari after future rollout-policy trigger changes. |
 | SSR and hydration | Focused React coverage verifies reuse of the exact childless, declaratively styled server host, matching hydration without recoverable errors or duplicate content, and a null forwarded ref before the passive-effect mount. Group-specific sections below cover the included boundary. | Accepted for the coordinated client-only boundary | Preserve the childless-host, possible-pop-in, possible-layout-movement, and no-JavaScript limitations in consumer documentation. |
 | Component behavior | Group-specific unit and browser coverage below exercises public behavior, refs, events, composition, and Strict Mode lifecycle. | Validated for the included groups | Complete the final package/browser gates and manual release-candidate checks. |
 | Owner-document handling | Focused coverage mounts into a same-origin iframe and verifies document-compatible stylesheet construction. YPE-5947 also covers construction, replacement, and adoption failure recovery. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | None. |
@@ -123,6 +123,16 @@ means a single shared session is not acceptable evidence.
 | Storybook build command or artifact | `pnpm --filter @youversion/platform-react-ui test:shadow-safari` |
 | Focused story count and per-story results | 38/38 passed. The final candidate matrix used one fresh process and SafariDriver session per story: 36 stories passed on their first attempt, 1 passed on its second attempt after SafariDriver retained the preceding session, and the Bible Card version-picker story passed in a direct isolated rerun after its matrix process exceeded the 120-second limit without producing a test result. |
 | Failures, linked blockers, or reruns | The final candidate evidence had 0 assertion failures. One recognized SafariDriver session-handoff failure used one bounded transport retry. One generic process timeout was surfaced as a matrix failure, was not automatically retried, and passed in a direct isolated rerun in 1.1 seconds. The runner permits at most two retries only for recognized transport failures; generic process timeouts, story assertion failures, and interaction failures are not retried. |
+
+### YPE-6216 actual Safari host-change revalidation
+
+| Field | Evidence |
+| --- | --- |
+| Runtime commit | `a86369b8e133e0ab5f073de4733de6b8a01dd3d4` |
+| Date and operator | 2026-10-15; Codex on Austin Harms's local machine |
+| Environment | macOS 26.6.2 (25G83); Safari 26.6.2; SafariDriver 21624.5.1.11.3 |
+| Command | `pnpm --filter @youversion/platform-react-ui test:shadow-safari` |
+| Result | 39/39 focused stories passed in fresh SafariDriver sessions. Every story passed on its first attempt with no assertion failures, transport retries, or process timeouts. `Suspense Reveal Restores Host Layout` passed in its isolated run. |
 
 ### Assistive-technology evidence
 
