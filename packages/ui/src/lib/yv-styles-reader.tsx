@@ -10,9 +10,12 @@ declare const __YV_READER_STYLES__: string;
  * renders by `href`. Automatic shadow roots already provide this sheet.
  */
 export function YvReaderStyles(): ReactElement | null {
-  if (useShadowStylesProvided()) return null;
+  const [probeRef, stylesProvided] = useShadowStylesProvided();
+  if (stylesProvided === null) {
+    return <template ref={probeRef} />;
+  }
 
-  return (
+  return stylesProvided ? null : (
     <style href="yv-sdk-bible-reader" precedence="yv-sdk">
       {__YV_READER_STYLES__}
     </style>

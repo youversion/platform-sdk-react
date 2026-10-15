@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type RefCallback,
   type SyntheticEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
@@ -45,10 +46,24 @@ interface ShadowPortalController {
 }
 
 const ShadowPortalContext = createContext<ShadowPortalController | null | undefined>(undefined);
+const ShadowStyleRootContext = createContext<ShadowRoot | undefined>(undefined);
 
-/** @internal Reports whether the nearest automatic shadow root already provides SDK styles. */
-export function useShadowStylesProvided(): boolean {
-  return useContext(ShadowPortalContext) !== undefined;
+type ShadowStyleProvision = readonly [RefCallback<HTMLTemplateElement>, boolean | null];
+
+/** @internal Checks whether the rendered node physically remains in its providing shadow root. */
+export function useShadowStylesProvided(): ShadowStyleProvision {
+  const providedRoot = useContext(ShadowStyleRootContext);
+  const [stylesProvided, setStylesProvided] = useState<boolean | null>(null);
+  const probeRef = useCallback<RefCallback<HTMLTemplateElement>>(
+    (probe) => {
+      if (!probe) return;
+
+      setStylesProvided(probe.getRootNode() === providedRoot);
+    },
+    [providedRoot],
+  );
+
+  return [probeRef, providedRoot ? stylesProvided : false];
 }
 
 /**
@@ -449,31 +464,36 @@ export function ShadowRootHost({
     >
       {shadowRoot
         ? createPortal(
-            <ShadowPortalContext.Provider value={portalController}>
-              {needsStyleFallback ? (
-                <style href={SDK_SHADOW_STYLE_HREF} precedence={SDK_SHADOW_STYLE_PRECEDENCE}>
-                  {`${__YV_COMPONENT_STYLES__}\n${__YV_READER_STYLES__}`}
-                </style>
-              ) : null}
-              {/* Host selectors cannot reach this reset boundary. */}
-              <div
-                ref={contentWrapperRef}
-                data-yv-sdk={theme ? true : undefined}
-                data-yv-theme={theme}
-                data-yv-shadow-content-wrapper
-                style={{ all: 'initial', direction: 'inherit', display: 'contents' }}
-                onFocusCapture={(event) => {
-                  if (
-                    isElementFromOwnerDocument(event.target, event.currentTarget, 'HTMLElement') &&
-                    event.currentTarget.contains(event.target)
-                  ) {
-                    lastFocusedElementRef.current = event.target;
-                  }
-                }}
-              >
-                {children}
-              </div>
-            </ShadowPortalContext.Provider>,
+            <ShadowStyleRootContext.Provider value={shadowRoot}>
+              <ShadowPortalContext.Provider value={portalController}>
+                {needsStyleFallback ? (
+                  <style href={SDK_SHADOW_STYLE_HREF} precedence={SDK_SHADOW_STYLE_PRECEDENCE}>
+                    {`${__YV_COMPONENT_STYLES__}\n${__YV_READER_STYLES__}`}
+                  </style>
+                ) : null}
+                {/* Host selectors cannot reach this reset boundary. */}
+                <div
+                  ref={contentWrapperRef}
+                  data-yv-sdk={theme ? true : undefined}
+                  data-yv-theme={theme}
+                  data-yv-shadow-content-wrapper
+                  style={{ all: 'initial', direction: 'inherit', display: 'contents' }}
+                  onFocusCapture={(event) => {
+                    if (
+                      isElementFromOwnerDocument(
+                        event.target,
+                        event.currentTarget,
+                        'HTMLElement',
+                      ) && event.currentTarget.contains(event.target)
+                    ) {
+                      lastFocusedElementRef.current = event.target;
+                    }
+                  }}
+                >
+                  {children}
+                </div>
+              </ShadowPortalContext.Provider>
+            </ShadowStyleRootContext.Provider>,
             shadowRoot,
           )
         : null}
