@@ -52,6 +52,13 @@ if (!css.trim()) {
   if (css.includes('.yv-v-selected')) {
     errors.push('dist/tailwind.css contains reader-only verse selection styles');
   }
+
+  const { unexplainedReferences } = auditCustomProperties(css);
+  if (unexplainedReferences.length > 0) {
+    errors.push(
+      `dist/tailwind.css contains unexplained custom-property references: ${unexplainedReferences.join(', ')}. Add a local declaration or document an exact reviewed runtime exception in packages/ui/scripts/custom-property-contract.js`,
+    );
+  }
 }
 
 const readerCssPath = resolve(dist, 'bible-reader.css');
