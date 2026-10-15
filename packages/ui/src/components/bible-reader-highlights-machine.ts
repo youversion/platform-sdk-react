@@ -114,6 +114,10 @@ export type HighlightServices = {
   consumeDataExchangeReturn: () => { status: DataExchangeStatus } | null;
   startSignInForHighlights: () => Promise<void>;
   startDataExchangeForHighlights: () => Promise<void>;
+  /** The redirect promise fulfilled. The page is leaving, or about to. */
+  onAuthRedirectStarted?: () => void;
+  /** The redirect promise rejected. The reader is still on the page. */
+  onAuthRedirectFailed?: () => void;
 };
 
 export type HighlightServicesRef = { current: HighlightServices };
@@ -705,16 +709,28 @@ export const bibleReaderHighlightsMachine = setup({
 
     // ── Dialog side effects (fire-and-forget redirects, matching the hook) ──
     startSignIn: ({ context }) => {
-      void context.services.current.startSignInForHighlights().catch((error) => {
-        console.error('[YouVersion SDK] Failed to start sign-in for highlights', error);
-        clearPendingHighlight();
-      });
+      void context.services.current.startSignInForHighlights().then(
+        () => {
+          context.services.current.onAuthRedirectStarted?.();
+        },
+        (error) => {
+          console.error('[YouVersion SDK] Failed to start sign-in for highlights', error);
+          clearPendingHighlight();
+          context.services.current.onAuthRedirectFailed?.();
+        },
+      );
     },
     startDataExchange: ({ context }) => {
-      void context.services.current.startDataExchangeForHighlights().catch((error) => {
-        console.error('[YouVersion SDK] Failed to start data exchange for highlights', error);
-        clearPendingHighlight();
-      });
+      void context.services.current.startDataExchangeForHighlights().then(
+        () => {
+          context.services.current.onAuthRedirectStarted?.();
+        },
+        (error) => {
+          console.error('[YouVersion SDK] Failed to start data exchange for highlights', error);
+          clearPendingHighlight();
+          context.services.current.onAuthRedirectFailed?.();
+        },
+      );
     },
     clearPending: () => clearPendingHighlight(),
   },

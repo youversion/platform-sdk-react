@@ -17,8 +17,16 @@ import {
   type MockInstance,
 } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import type { BibleBook, BiblePassage, BibleVersion, Highlight } from '@youversion/platform-core';
-import type { HookOverrides } from '@youversion/platform-react-hooks';
+import {
+  DataExchangeClient,
+  YouVersionAPIUsers,
+  YouVersionPlatformConfiguration,
+  type BibleBook,
+  type BiblePassage,
+  type BibleVersion,
+  type Highlight,
+} from '@youversion/platform-core';
+import { YouVersionAuthContext, type HookOverrides } from '@youversion/platform-react-hooks';
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import {
   BibleReader,
@@ -30,7 +38,9 @@ import type { HighlightedVerses } from '@/lib/highlight-colors';
 import { HIGHLIGHT_COLORS } from './verse-action-popover';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
 
-import { fillFor } from '@/test/highlights-test-utils';
+import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
+import { peekPendingHighlights } from '@/lib/pending-highlight';
+import { fillFor, mockUserInfo } from '@/test/highlights-test-utils';
 import { installResizeObserverStub } from '@/test/dom-stubs';
 
 installResizeObserverStub();
@@ -946,4 +956,234 @@ describe('BibleReader clearSelectionSignal', () => {
     expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
     expect(onVerseSelect).not.toHaveBeenCalled();
   });
+});
+
+function renderReaderWithHighlightAuth(userInfo: typeof mockUserInfo | null) {
+  const createHighlight = vi.fn().mockResolvedValue({
+    version_id: 111,
+    passage_id: 'JHN.1.1',
+    color: 'ffec5b',
+  });
+  const overrides = defaultOverrides();
+  const useHighlights = overrides.useHighlights;
+  if (!useHighlights) {
+    throw new Error('defaultOverrides must provide useHighlights');
+  }
+  overrides.useHighlights = () => ({
+    ...useHighlights({ version_id: 111, passage_id: 'JHN.1' }),
+    createHighlight,
+  });
+  return {
+    createHighlight,
+    ...render(
+      <YouVersionAuthContext.Provider
+        value={{
+          userInfo,
+          setUserInfo: vi.fn(),
+          isLoading: false,
+          error: null,
+        }}
+      >
+        {wrapReader({}, overrides)}
+      </YouVersionAuthContext.Provider>,
+    ),
+  };
+}
+
+function expectVerseMenuAbsent() {
+  expect(screen.queryByRole('button', { name: /^copy$/i, hidden: true })).toBeNull();
+}
+
+it('keeps Copy and the verse selection after No Thanks on highlight sign-in', async () => {
+  setHighlightsLive(true);
+  try {
+    const { container, createHighlight } = renderReaderWithHighlightAuth(null);
+
+    selectVerse(container, 1);
+    await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
+    fireEvent.click(getApplyButtons()[0]!);
+    await screen.findByRole('button', { name: /no thanks/i });
+    expectVerseMenuAbsent();
+    fireEvent.click(screen.getByRole('button', { name: /no thanks/i }));
+
+    expect(screen.queryByRole('button', { name: /no thanks/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /^copy$/i })).toBeTruthy();
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
+    expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
+    expect(createHighlight).not.toHaveBeenCalled();
+    expect(peekPendingHighlights()).toEqual([]);
+  } finally {
+    setHighlightsLive(HIGHLIGHTS_LIVE);
+    sessionStorage.clear();
+  }
+});
+
+it('keeps Copy and the verse selection after Escape on highlight sign-in', async () => {
+  setHighlightsLive(true);
+  try {
+    const { container, createHighlight } = renderReaderWithHighlightAuth(null);
+
+    selectVerse(container, 1);
+    await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
+    fireEvent.click(getApplyButtons()[0]!);
+    await screen.findByRole('button', { name: /no thanks/i });
+    expectVerseMenuAbsent();
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+
+    await waitFor(() => expect(screen.queryByRole('button', { name: /no thanks/i })).toBeNull());
+    expect(screen.getByRole('button', { name: /^copy$/i })).toBeTruthy();
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
+    expect(createHighlight).not.toHaveBeenCalled();
+    expect(peekPendingHighlights()).toEqual([]);
+  } finally {
+    setHighlightsLive(HIGHLIGHTS_LIVE);
+    sessionStorage.clear();
+  }
+});
+
+it('keeps Copy and the verse selection after Cancel on highlight permission', async () => {
+  setHighlightsLive(true);
+  YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-1', name: 'Test User' });
+  YouVersionPlatformConfiguration.saveGrantedPermissions([]);
+  try {
+    const { container, createHighlight } = renderReaderWithHighlightAuth(mockUserInfo);
+
+    selectVerse(container, 1);
+    await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
+    fireEvent.click(getApplyButtons()[0]!);
+    await screen.findByRole('button', { name: /^cancel$/i });
+    expectVerseMenuAbsent();
+    fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+
+    expect(screen.queryByRole('button', { name: /^cancel$/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /^copy$/i })).toBeTruthy();
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
+    expect(getVerseEl(container, 1).style.backgroundColor).toBe('');
+    expect(createHighlight).not.toHaveBeenCalled();
+    expect(peekPendingHighlights()).toEqual([]);
+  } finally {
+    setHighlightsLive(HIGHLIGHTS_LIVE);
+    sessionStorage.clear();
+    localStorage.clear();
+  }
+});
+
+it('clears the verse menu while highlight sign-in is still starting', async () => {
+  setHighlightsLive(true);
+  const signIn = vi
+    .spyOn(YouVersionAPIUsers, 'signIn')
+    .mockImplementation(() => new Promise(() => undefined));
+  try {
+    const { container, createHighlight } = renderReaderWithHighlightAuth(null);
+
+    selectVerse(container, 1);
+    await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
+    fireEvent.click(getApplyButtons()[0]!);
+    fireEvent.click(await screen.findByRole('button', { name: /yes please/i }));
+
+    expect(signIn).toHaveBeenCalledTimes(1);
+    expectVerseMenuAbsent();
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
+    expect(createHighlight).not.toHaveBeenCalled();
+    expect(peekPendingHighlights()).toHaveLength(1);
+  } finally {
+    signIn.mockRestore();
+    setHighlightsLive(HIGHLIGHTS_LIVE);
+    sessionStorage.clear();
+  }
+});
+
+it('brings the verse menu back when highlight sign-in fails to start', async () => {
+  setHighlightsLive(true);
+  const signIn = vi
+    .spyOn(YouVersionAPIUsers, 'signIn')
+    .mockRejectedValue(new Error('sign-in failed'));
+  const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  try {
+    const { container, createHighlight } = renderReaderWithHighlightAuth(null);
+
+    selectVerse(container, 1);
+    await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
+    fireEvent.click(getApplyButtons()[0]!);
+    fireEvent.click(await screen.findByRole('button', { name: /yes please/i }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /^copy$/i })).toBeTruthy());
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
+    expect(createHighlight).not.toHaveBeenCalled();
+    expect(peekPendingHighlights()).toEqual([]);
+    expect(errorLog).toHaveBeenCalled();
+  } finally {
+    errorLog.mockRestore();
+    signIn.mockRestore();
+    setHighlightsLive(HIGHLIGHTS_LIVE);
+    sessionStorage.clear();
+  }
+});
+
+it('clears the verse menu while the highlight permission grant is still starting', async () => {
+  setHighlightsLive(true);
+  YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-1', name: 'Test User' });
+  YouVersionPlatformConfiguration.saveGrantedPermissions([]);
+  const updateToken = vi
+    .spyOn(DataExchangeClient.prototype, 'updateToken')
+    .mockImplementation(() => new Promise(() => undefined));
+  try {
+    const { container, createHighlight } = renderReaderWithHighlightAuth(mockUserInfo);
+
+    selectVerse(container, 1);
+    await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
+    fireEvent.click(getApplyButtons()[0]!);
+    fireEvent.click(await screen.findByRole('button', { name: /^continue$/i }));
+
+    expect(updateToken).toHaveBeenCalledTimes(1);
+    expectVerseMenuAbsent();
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
+    expect(createHighlight).not.toHaveBeenCalled();
+    expect(peekPendingHighlights()).toHaveLength(1);
+  } finally {
+    updateToken.mockRestore();
+    setHighlightsLive(HIGHLIGHTS_LIVE);
+    sessionStorage.clear();
+    localStorage.clear();
+  }
+});
+
+it('does not restore the verse menu after an outside click if the permission grant fails', async () => {
+  setHighlightsLive(true);
+  YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-1', name: 'Test User' });
+  YouVersionPlatformConfiguration.saveGrantedPermissions([]);
+  let rejectToken: (error: Error) => void = () => undefined;
+  const updateToken = vi.spyOn(DataExchangeClient.prototype, 'updateToken').mockImplementation(
+    () =>
+      new Promise((_resolve, reject) => {
+        rejectToken = reject;
+      }),
+  );
+  const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  try {
+    const { container, createHighlight } = renderReaderWithHighlightAuth(mockUserInfo);
+
+    selectVerse(container, 1);
+    await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
+    fireEvent.click(getApplyButtons()[0]!);
+    fireEvent.click(await screen.findByRole('button', { name: /^continue$/i }));
+    expect(updateToken).toHaveBeenCalledTimes(1);
+    expectVerseMenuAbsent();
+
+    fireEvent.pointerDown(screen.getByRole('heading', { name: /john/i }));
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(false);
+    expectVerseMenuAbsent();
+
+    rejectToken(new Error('token failed'));
+    await waitFor(() => expect(errorLog).toHaveBeenCalled());
+    expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(false);
+    expectVerseMenuAbsent();
+    expect(createHighlight).not.toHaveBeenCalled();
+  } finally {
+    errorLog.mockRestore();
+    updateToken.mockRestore();
+    setHighlightsLive(HIGHLIGHTS_LIVE);
+    sessionStorage.clear();
+    localStorage.clear();
+  }
 });
