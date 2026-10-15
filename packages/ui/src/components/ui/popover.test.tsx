@@ -16,6 +16,67 @@ function OpenPopover(): ReactNode {
 }
 
 describe('Popover portal placement and shadow coordination', () => {
+  it('normalizes explicit accessible names and falls back to its visible heading', async () => {
+    const headingRender = render(
+      <Popover open>
+        <PopoverTrigger>Open</PopoverTrigger>
+        <PopoverContent heading="Panel title" aria-label="   " aria-labelledby={undefined}>
+          Panel
+        </PopoverContent>
+      </Popover>,
+    );
+    const headingContent = await waitFor(() => {
+      const element = document.querySelector('[data-slot="popover-content"]');
+      if (!element) throw new Error('heading popover content not rendered');
+      return element;
+    });
+    const headingId = headingContent.getAttribute('aria-labelledby');
+    expect(headingContent).not.toHaveAttribute('aria-label');
+    expect(headingId).not.toBeNull();
+    expect(document.getElementById(headingId!)).toHaveTextContent('Panel title');
+    expect(headingContent).toHaveAccessibleName('Panel title');
+    headingRender.unmount();
+
+    const explicitLabelRender = render(
+      <Popover open>
+        <PopoverTrigger>Open</PopoverTrigger>
+        <PopoverContent heading="Panel title" aria-label="  Consumer name  ">
+          Panel
+        </PopoverContent>
+      </Popover>,
+    );
+    const explicitLabelContent = await waitFor(() => {
+      const element = document.querySelector('[data-slot="popover-content"]');
+      if (!element) throw new Error('explicitly labelled popover content not rendered');
+      return element;
+    });
+    expect(explicitLabelContent).toHaveAttribute('aria-label', 'Consumer name');
+    expect(explicitLabelContent).not.toHaveAttribute('aria-labelledby');
+    expect(explicitLabelContent).toHaveAccessibleName('Consumer name');
+    explicitLabelRender.unmount();
+
+    const explicitLabelledByRender = render(
+      <>
+        <span id="consumer-name">Consumer relationship</span>
+        <Popover open>
+          <PopoverTrigger>Open</PopoverTrigger>
+          <PopoverContent heading="Panel title" aria-labelledby="  consumer-name  ">
+            Panel
+          </PopoverContent>
+        </Popover>
+      </>,
+    );
+    const explicitLabelledByContent = await waitFor(() => {
+      const element = document.querySelector('[data-slot="popover-content"]');
+      if (!element) throw new Error('consumer-labelled popover content not rendered');
+      return element;
+    });
+    expect(explicitLabelledByContent).toHaveAttribute('aria-labelledby', 'consumer-name');
+    expect(explicitLabelledByContent).not.toHaveAttribute('aria-label');
+    expect(explicitLabelledByContent).toHaveAccessibleName('Consumer relationship');
+    explicitLabelledByRender.unmount();
+  });
+
   it('renders initially open controlled and uncontrolled content in their shadow roots', async () => {
     const defaultOpenRender = render(
       <ShadowRootHost portalStrategy="local-inline">

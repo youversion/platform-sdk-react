@@ -68,6 +68,8 @@ function PopoverContent({
   sideOffset = 4,
   theme = 'light',
   onKeyDown,
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content> & {
   showHeader?: boolean;
@@ -79,6 +81,13 @@ function PopoverContent({
   const { t } = useTranslation(undefined, { i18n });
   const direction = useInterfaceDirection();
   const portal = React.useContext(PopoverPortalContext);
+  const generatedHeadingId = React.useId();
+  const normalizedAriaLabel = ariaLabel?.trim() || undefined;
+  const normalizedAriaLabelledBy = ariaLabelledBy?.trim() || undefined;
+  const headingId =
+    showHeader && heading != null && !normalizedAriaLabel && !normalizedAriaLabelledBy
+      ? generatedHeadingId
+      : undefined;
 
   if (portal.awaitingPortalTarget) return null;
 
@@ -104,17 +113,29 @@ function PopoverContent({
             return;
           }
 
-          // Radix's focus loop only scans light DOM. Take over the loop when this
-          // Popover owns tabbable controls through a nested shadow boundary.
+          // Radix's focus loop relies on document.activeElement and a light-DOM
+          // scan. Take over when this Popover is in or owns a shadow tree.
           const candidates = tabbable(event.currentTarget, { getShadowRoot: true });
           const contentRoot = event.currentTarget.getRootNode();
-          if (!candidates.some((candidate) => candidate.getRootNode() !== contentRoot)) return;
+          const ownsNestedShadowTree = candidates.some(
+            (candidate) => candidate.getRootNode() !== contentRoot,
+          );
+          if (contentRoot === event.currentTarget.ownerDocument && !ownsNestedShadowTree) {
+            return;
+          }
 
           const eventPath = event.nativeEvent.composedPath();
           if (!eventPath.includes(event.currentTarget)) return;
 
           const [realTarget] = eventPath;
           const currentIndex = candidates.findIndex((candidate) => candidate === realTarget);
+          if (
+            !ownsNestedShadowTree &&
+            currentIndex !== -1 &&
+            (event.shiftKey ? currentIndex !== 0 : currentIndex !== candidates.length - 1)
+          ) {
+            return;
+          }
           const nextIndex = event.shiftKey
             ? currentIndex <= 0
               ? candidates.length - 1
@@ -136,6 +157,8 @@ function PopoverContent({
           className,
         )}
         {...props}
+        aria-label={normalizedAriaLabel}
+        aria-labelledby={normalizedAriaLabelledBy ?? headingId}
       >
         {showHeader ? (
           <section
@@ -147,7 +170,9 @@ function PopoverContent({
             ])}
           >
             {headerLeading}
-            <h2 className="yv:font-bold yv:text-base">{heading}</h2>
+            <h2 id={headingId} className="yv:font-bold yv:text-base">
+              {heading}
+            </h2>
             {headerChild}
             <PopoverClose asChild>
               <Button

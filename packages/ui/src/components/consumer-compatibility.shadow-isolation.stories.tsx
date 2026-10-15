@@ -10,9 +10,15 @@ import { Textarea } from './ui/textarea';
 import { YouVersionAuthButton } from './YouVersionAuthButton';
 
 const meta = {
-  title: 'Spikes/Shadow DOM consumer compatibility',
+  title: 'Guides/Shadow DOM consumer compatibility',
   tags: ['integration', 'shadow-dom'],
   parameters: {
+    docs: {
+      description: {
+        component:
+          'Use these scenarios to understand the supported consumer boundary: query through open shadow roots, keep form and ARIA relationships within one tree scope, and account for documented event-retargeting limits. Review the [migration guidance](https://github.com/youversion/platform-sdk-react/blob/main/packages/ui/README.md#shadow-dom-migration-guidance) for client-only rendering, ref timing, styling, fonts, layout, and overlays. See the [release-candidate evidence](https://github.com/youversion/platform-sdk-react/blob/main/docs/shadow-dom-isolation-plan.md#ype-5952-release-candidate-validation) for the validated browser and assistive-technology combinations and remaining gaps.',
+      },
+    },
     layout: 'padded',
     msw: {
       handlers: [

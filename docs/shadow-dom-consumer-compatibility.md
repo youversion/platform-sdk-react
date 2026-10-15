@@ -5,8 +5,8 @@
 This contract records cross-browser evidence for consumer-facing behavior at
 the SDK's Shadow DOM boundary. YPE-5356 incorporates it into the
 [production rollout policy](shadow-dom-rollout-policy.md), which maintains the
-current stable-package and integration-branch boundary inventory and coordinated
-release status.
+stable-package and coordinated-release-branch boundary inventory and release
+status.
 
 The executable evidence is grouped by rollout surface:
 
@@ -51,7 +51,7 @@ exercise. They do not establish compatibility for every SDK component.
 | A consumer React handler wraps an automatically isolated component in the light DOM | Supported only for validated bubbling events | YPE-6040 and YPE-6135 verify that one native click or keydown, or one native `focusin`/`focusout` corresponding to React `onFocus`/`onBlur`, invokes the light-DOM ancestor React handler once. That React handler receives the internal shadow node as `event.target`, so `event.currentTarget.contains(event.target)` is false; an external native listener still receives the shadow host as its retargeted target. Separately, standard React focus semantics mean that a focus move between nodes inside one root still invokes light-DOM ancestor React `onFocus`/`onBlur` handlers, while native light-DOM listeners receive no event; the cited stories do not exercise this intra-root path. On that internal move, the ancestor React `onBlur` receives the internal destination as `event.relatedTarget`, so `event.currentTarget.contains(event.relatedTarget)` is also false and must not be used to decide whether focus left the ancestor. Separate native events remain separate, and component callbacks retain their target semantics. Duplicate React ancestor delivery remains for capture-phase handlers such as `onClickCapture` and for other composed bubbling events including `onKeyUp`, `onPointerDown`, `onMouseDown`, `onDoubleClick`, and `onContextMenu`. |
 | A forwarded `YouVersionAuthButton` ref exposes the internal button | Supported after mount | The ref resolves to the exact internal `HTMLButtonElement`. It remains `null` through the consumer's first layout effect because the shadow root attaches in a passive effect; consumers must handle callback-ref updates or read object refs after a later commit. |
 | An ordinary document or Storybook-canvas selector finds SDK internals | Unsupported | DOM selector APIs do not cross a shadow boundary. `document.querySelector` and Testing Library queries rooted at the document need explicit open-root traversal. Automation behavior is tool-specific: [Playwright locators pierce open roots by default](https://playwright.dev/docs/locators#locate-in-shadow-dom), except for XPath locators, while closed roots remain inaccessible. |
-| A consumer traverses an open root and queries after attachment | Supported with timing and access constraints | Wait for the host's open `shadowRoot`, then query within it. The contract depends on the prototype's open-root policy and does not make internals a stable semantic API; prefer public refs, roles, and component callbacks where available. |
+| A consumer traverses an open root and queries after attachment | Supported with timing and access constraints | Wait for the host's open `shadowRoot`, then query within it. The contract depends on the rollout's open-root policy and does not make internals a stable semantic API; prefer public refs, roles, and component callbacks where available. |
 | An automatically isolated component is nested inside another open SDK shadow root | Supported for basic rendering, traversal, and composed events | `NestedRootsRequireTraversalAndRetargetAtEveryBoundary` verifies recursive root traversal and target retargeting to the inner host in the outer scope and to the outer host in the document scope. Consumers must traverse every root explicitly. |
 | Nested overlays inside shadow roots | Supported in current browser evidence | YPE-5355 verifies nested dialog and popover stacking, focus, inertness, dismissal, and restoration through the shared shadow-local portal infrastructure. Repeat component-specific validation during rollout. |
 | Concurrent peer popovers inside the same or separate component roots | Unsupported as simultaneous peers | Opening a peer dismisses the current popover through Radix outside interaction. YPE-5356 accepts this single-active-peer behavior; supporting simultaneous peers requires a demonstrated product journey and separate design. |
@@ -80,16 +80,21 @@ The 22-story pre-picker-rollout baseline returned assertion-level success in loc
 through SafariDriver when each ran in a fresh browser session. A single
 long-lived SafariDriver session stalled on the sign-in dialog and verse action
 popover stories after 20 successes, so isolated sessions are required for this
-smoke setup. Actual Safari is not part of continuous integration. Real
-assistive technologies remain unverified. Reflected ARIA element properties
-demonstrate DOM relationship resolution, not announcements or other
-assistive-technology behavior.
+smoke setup. Actual Safari is not part of continuous integration. The current
+YPE-5952 release-candidate result is recorded in the
+[validation plan](shadow-dom-isolation-plan.md#actual-safari-browser-evidence).
+The bounded Safari/VoiceOver evidence is also recorded there. Windows with
+Chrome or Edge and NVDA was not run because no Windows test environment was
+available and remains unvalidated. Actual Safari must be repeated after the
+trigger changes defined by the rollout policy.
+Reflected ARIA element properties demonstrate DOM relationship resolution, not
+announcements or other assistive-technology behavior. Claims name only the exact
+browser and assistive-technology combination validated.
 
 ## Follow-up work
 
 If a rollout component must participate in an outer native form or consume
 external labeling relationships, it needs an explicit public contract rather
-than cross-scope browser behavior. Recurring Safari, deferred assistive-
-technology validation, release documentation, and the coordinated stable
-release remain assigned by the
+than cross-scope browser behavior. Bounded assistive-technology validation,
+release documentation, and the coordinated stable release remain assigned by the
 [production rollout policy](shadow-dom-rollout-policy.md).

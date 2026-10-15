@@ -4,32 +4,31 @@ YPE-5356 reconciles this research into the
 [Shadow DOM production rollout policy](shadow-dom-rollout-policy.md). This file
 remains the detailed evidence inventory; the policy owns the approved public
 boundary, implementation groups, accepted limitations, and coordinated release
-gate. Neither document changes the current integration-branch prototype by
-itself.
+gate. The implementation groups are complete on the coordinated release branch;
+publishing remains gated by the YPE-5952 evidence recorded below.
 
 ## Why this doc exists
 
 [ADR 0007](adr/0007-prototype-shadow-dom-style-isolation.md) records the durable
 architectural decision behind the Shadow DOM prototype. This document tracks
-the implementation evidence, unresolved audits, and conditions for expanding
-automatic isolation beyond `YouVersionAuthButton`.
+the implementation evidence, unresolved audits, and coordinated-release
+validation for the approved public boundary.
 
-This is a working plan, not approval for package-wide rollout.
+This is an evidence inventory and release-candidate plan, not a claim that the
+major release or any pending manual validation has completed.
 
 ## Current scope
 
 - In the current stable package, `YouVersionAuthButton` is the only component
-  with automatic isolation. On the Shadow DOM integration branch,
-  `BibleChapterPicker.Root`, `BibleVersionPicker.Root`, `ProfileAvatar`,
-  `Separator`, `FootnoteContent`, and standalone `BibleThemeSettingsContent`
-  also create automatic boundaries. These
-  boundaries remain subject to the rollout policy's coordinated release gate.
-  YPE-5994 completed standalone `BibleThemeSettingsContent`; reader-owned
-  settings remain in the reader tree and are ready to reuse its future root.
-- YPE-5950 adds automatic boundaries to standalone `BibleTextView`,
-  `VerseOfTheDay`, and `BibleCard`. Their composed scripture and picker children
-  reuse the owner boundary, while the current `BibleReader` continues to render
-  its owned `BibleTextView` in the reader tree until YPE-5951.
+  with automatic isolation. On the coordinated release branch, every included
+  YPE-5356 component boundary is implemented: the auth button, chapter and
+  version picker roots, `BibleReader.Root`, `ProfileAvatar`, `Separator`,
+  `FootnoteContent`, and standalone `BibleThemeSettingsContent`,
+  `BibleTextView`, `VerseOfTheDay`, and `BibleCard`.
+- Compound members and SDK-owned composed children reuse the owner boundary.
+  Reader-owned scripture, pickers, settings, avatar, verse actions, and dialogs
+  therefore stay in the reader root instead of creating accidental nested roots.
+  The boundaries remain subject to the coordinated YPE-5952 release gate.
 - The picker roots validate shadow-local native top-layer floating content
   through their public runtime boundaries. A historical inline negative
   control demonstrated clipping beyond a constrained ancestor before that
@@ -37,9 +36,11 @@ This is a working plan, not approval for package-wide rollout.
 - The shared Dialog and Popover primitives support opt-in shadow-local portals.
 - `VerseActionPopover` uses the shared portal-state infrastructure while
   retaining its specialized direct Radix composition.
-- No other public exports currently create automatic Shadow DOM boundaries.
-- The internal `SignInDialog` is validated only through an opt-in
-  `ShadowRootHost` story.
+- The exclusions and their reasons remain in the
+  [rollout policy](shadow-dom-rollout-policy.md#public-component-boundary); no
+  other public exports create automatic boundaries.
+- The internal `SignInDialog` has focused `ShadowRootHost` evidence and is also
+  exercised as reader-owned UI in the public reader boundary.
 - Nested and concurrent overlays within and across component shadow roots were
   exercised through the real shared `ShadowRootHost` implementation (YPE-5355).
   The Shadow DOM ADR records the architectural boundary; the results below record
@@ -63,15 +64,16 @@ existing peer overlay. Automated Firefox and Playwright WebKit coverage now
 exercises these journeys. All 22 focused stories returned assertion-level success
 in local Safari 26.6.2 through SafariDriver when each story used a fresh browser
 session. A single long-lived SafariDriver session stalled on the final two play
-functions; assistive-technology checks remain open.
+functions. The release-candidate Safari/VoiceOver result and explicit
+Windows/NVDA validation gap are recorded in the YPE-5952 section below.
 
 ## Validation matrix
 
 | Area | Evidence today | Status | Remaining work |
 | --- | --- | --- | --- |
-| Host CSS isolation | Hostile-CSS demos and focused browser coverage exercise element selectors, direction inheritance, vertical writing and typography resets, hostile custom properties, universal `!important` rules, host attacks, and generated pseudo-content. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | Repeat against each component selected for rollout. |
-| SSR and hydration | Focused React coverage verifies reuse of the exact empty server host, matching hydration without recoverable errors or duplicate content, and a null forwarded ref before the passive-effect mount. | Validated for the client-only prototype | Decide per rollout component whether a possibly empty first paint, layout shift, and no-JavaScript absence are acceptable. |
-| Component behavior | Auth button interaction works through the React portal; Strict Mode does not attach the root twice. | Validated for the prototype | Audit component-specific refs, events, and consumer integrations during rollout. |
+| Host CSS isolation | Hostile-CSS demos and focused browser coverage exercise element selectors, direction inheritance, vertical writing and typography resets, hostile custom properties, universal `!important` rules, host attacks, and generated pseudo-content. | Validated for the included groups in Chromium, Firefox, Playwright WebKit, and the recorded 38/38 final-candidate Safari run | Repeat actual Safari after the rollout-policy trigger changes. |
+| SSR and hydration | Focused React coverage verifies reuse of the exact empty server host, matching hydration without recoverable errors or duplicate content, and a null forwarded ref before the passive-effect mount. Group-specific sections below cover the included boundary. | Accepted for the coordinated client-only boundary | Preserve the empty-host, possible-pop-in, possible-layout-movement, and no-JavaScript limitations in consumer documentation. |
+| Component behavior | Group-specific unit and browser coverage below exercises public behavior, refs, events, composition, and Strict Mode lifecycle. | Validated for the included groups | Complete the final package/browser gates and manual release-candidate checks. |
 | Owner-document handling | Focused coverage mounts into a same-origin iframe and verifies document-compatible stylesheet construction. YPE-5947 also covers construction, replacement, and adoption failure recovery. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | None. |
 | Inline floating content | A historical picker negative control preserved tree-scope relationships but demonstrated clipping beyond a constrained ancestor. | Validated historically; the story was removed after strategy selection. | None; clipping is why inline placement is not the selected escaping strategy. |
 | Native top-layer floating content | Picker stories verify clipping escape, hit testing, collision handling, hostile-CSS isolation, and resolved `aria-controls` relationships. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | Verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
@@ -82,9 +84,96 @@ functions; assistive-technology checks remain open.
 | Dialog dismissal and restoration | Coverage exercises Escape, backdrop click, full-viewport hit testing, overlay-only focus, and restoration after both modal nodes unmount. | Validated in Chromium, Firefox, Playwright WebKit, and isolated local Safari 26.6.2 runs | Verify real screen-reader behavior. |
 | Consumer form participation | Browser coverage verifies that a light-DOM form does not own or serialize a native control inside an SDK shadow root. | Unsupported across tree scopes | Use an explicit component contract if a rollout target requires outer-form participation. |
 | Consumer labels and ARIA ID references | Browser coverage verifies that external native labels, `aria-labelledby`, and `aria-describedby` relationships do not resolve to controls inside the root. | Unsupported across tree scopes | Keep relationships in one tree scope; verify real assistive technology separately. |
-| Consumer events, refs, and automation | Coverage verifies native retargeting, the auth button's React handler and forwarded ref, open-root queries, effect-driven attachment timing, and one light-DOM ancestor dispatch for each validated bubbling click and keydown plus React `onFocus`/native `focusin` and React `onBlur`/native `focusout` delivery. | Supported with documented constraints | Repeat for each public component selected for rollout. Capture-phase and other event types are not part of this evidence. |
-| Nested shadow roots | Coverage verifies basic rendering, recursive queries, event retargeting at each boundary, and one React ancestor dispatch per scope for a nested click. | Supported for the validated basics | Single-active-peer dismissal is accepted; verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
-| Realistic same-page usage | YPE-5437 mounts, removes, and re-adds a 12-component mix in Normal and Strict Mode. Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 coverage verifies exact host counts, rendered scripture content, and one shared stylesheet object across roots and remounts. A production-build comparison found a small warm-run mount-cost difference on one machine. | No shared-host blocker found | Repeat user-visible performance and compatibility checks for each component selected for rollout. |
+| Consumer events, refs, and automation | Coverage verifies native retargeting, public callbacks and refs, open-root queries, effect-driven attachment timing, and one light-DOM ancestor dispatch for each validated bubbling click and keydown plus React `onFocus`/native `focusin` and React `onBlur`/native `focusout` delivery. | Supported for the documented component paths | Capture-phase and other composed event types remain outside this evidence and must stay documented. |
+| Nested shadow roots | Coverage verifies basic rendering, recursive queries, event retargeting at each boundary, and one React ancestor dispatch per scope for a nested click and focus-leave cycle. | Supported for the validated basics | Single-active-peer dismissal is accepted; verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
+| Realistic same-page usage | YPE-5437 mounts, removes, and re-adds a 12-component mix in Normal and Strict Mode. Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 coverage verifies exact host counts, rendered scripture content, and one shared stylesheet object across roots and remounts. A production-build comparison found a small warm-run mount-cost difference on one machine. | No shared-host blocker found; component layout reviews are recorded below | Keep the lifecycle fixture green; it is not a universal performance budget. |
+
+## YPE-5952 release-candidate validation
+
+This section is the durable record for the final coordinated-release checks. It
+does not convert automated DOM assertions into screen-reader evidence. The final
+release-candidate Safari browser run is recorded below. All assistive-technology
+claims are limited to the exact environment and per-journey results recorded
+below; Windows/NVDA was not run and remains unvalidated.
+
+Use the existing production Storybook journeys; do not add duplicate stories
+only to execute this checklist:
+
+| Required surface | Existing journey |
+| --- | --- |
+| Sign-in dialog | `sign-in-dialog.shadow-isolation.stories.tsx` → `IsolatesFocusInertnessBackdropAndRestoration` |
+| Chapter picker | `bible-chapter-picker.shadow-isolation.stories.tsx` → `PublicRootJourney` |
+| Version picker | `bible-version-picker.shadow-isolation.stories.tsx` → `TopLayerEscapesClippingAndPreservesSemantics` and `StylingFocusDismissalAndRapidReopen` |
+| Bible Reader and verse actions | `bible-reader.stories.tsx` → `VerseSelectionReanchoringDismissalAndFocusRestoration` |
+| Theme settings | `bible-theme-settings.stories.tsx` → `FontControlsRemainReachableInConstrainedSpace` and `MixedAndPortaledControlsPreserveTabOrder` |
+| Representative nested overlays | `shadow-overlay-production-seam.shadow-isolation.stories.tsx` → `PopoverOpensDialogEvidence` and `DialogContainsPopoverEvidence` |
+
+### Actual Safari browser evidence
+
+Run the focused Shadow DOM suite against the final release-candidate commit with
+each story in a fresh SafariDriver session. The earlier long-lived-session stall
+means a single shared session is not acceptable evidence.
+
+| Field | Release-candidate evidence |
+| --- | --- |
+| Commit SHA | `c0092043182bb3dcc0a73f7d82323de0d0c229a5` |
+| Date and operator | 2026-10-12; Codex on Austin Harms's local machine |
+| macOS version and build | macOS 26.6.2, build 25G83 |
+| Safari version and build | Safari 26.6.2; SafariDriver 21624.5.1.11.3 |
+| Storybook build command or artifact | `pnpm --filter @youversion/platform-react-ui test:shadow-safari` |
+| Focused story count and per-story results | 38/38 passed. The final candidate matrix used one fresh process and SafariDriver session per story: 36 stories passed on their first attempt, 1 passed on its second attempt after SafariDriver retained the preceding session, and the Bible Card version-picker story passed in a direct isolated rerun after its matrix process exceeded the 120-second limit without producing a test result. |
+| Failures, linked blockers, or reruns | The final candidate evidence had 0 assertion failures. One recognized SafariDriver session-handoff failure used one bounded transport retry. One generic process timeout was surfaced as a matrix failure, was not automatically retried, and passed in a direct isolated rerun in 1.1 seconds. The runner permits at most two retries only for recognized transport failures; generic process timeouts, story assertion failures, and interaction failures are not retried. |
+
+### Assistive-technology evidence
+
+Record versions from the tested machines rather than naming only the product
+family. The planned Windows/NVDA combination was not run because no Windows test
+environment was available; it is an explicit validation gap, not a pass.
+
+| Combination | Operating system | Browser | Assistive technology | Date and operator | Status |
+| --- | --- | --- | --- | --- | --- |
+| Safari with VoiceOver | macOS 26.6.2 (25G83) | Safari 26.6.2 (21624.5.1.11.3) | VoiceOver 10 (993) | 2026-10-12; Austin Harms | Complete—seven required journeys remained usable; picker opening announcements have the non-blocking finding recorded below |
+| Chrome or Edge with NVDA | Not available | Not run | Not run | 2026-10-13; release decision by Austin Harms | Not run—no Windows/NVDA environment was available; this combination remains unvalidated |
+
+For every journey and combination, record announcements, accessible names and
+descriptions, reading order, keyboard operation, modal focus containment,
+dismissal, focus restoration, and the final result. A failure that prevents core
+keyboard or screen-reader use blocks the release; record narrower non-blocking
+findings as linked follow-ups without expanding this ticket into a general
+accessibility redesign.
+
+| Journey | Safari + VoiceOver | Chrome/Edge + NVDA | Finding or follow-up |
+| --- | --- | --- | --- |
+| Sign-in dialog | Pass. VoiceOver announced the title and description, announced each control once, kept forward and reverse keyboard traversal inside the dialog, and preserved dismissal and focus restoration. | Not run—unvalidated | None |
+| Chapter picker | Pass with the shared picker-announcement finding. Space opened the picker; VoiceOver exposed the `Books` web-dialog context on subsequent navigation, announced Genesis as collapsed and then expanded, allowed selection of Genesis 1, and preserved focus restoration on close. | Not run—unvalidated | Safari/VoiceOver did not announce the newly opened picker or its initial programmatic focus until the operator navigated. Core keyboard and screen-reader operation remained available. [YPE-6181](https://lifechurch.atlassian.net/browse/YPE-6181) tracks this with the version-picker instance as one focused follow-up. |
+| Version picker | Pass with the shared picker-announcement finding. Keyboard focus entered on the English selector, Tab moved next to Close, VoiceOver announced the `Bible Versions` web-dialog context and Close control, and dismissal restored focus to NIV. | Not run—unvalidated | On open, VoiceOver continued to announce the NIV trigger and `Control-Option-F4` reported no keyboard focus even though Safari exposed the English selector as the shadow root's active element. The next Tab correctly advanced from English to Close and exposed the dialog to VoiceOver. This did not prevent operation, so [YPE-6181](https://lifechurch.atlassian.net/browse/YPE-6181) is a non-blocking follow-up rather than a YPE-5952 expansion. |
+| Bible Reader | Pass. VoiceOver exposed the reader controls and scripture in reading order, and the chapter/version navigation exercised above remained operable inside the reader. | Not run—unvalidated | None beyond the shared picker-announcement finding |
+| Verse actions | Pass. Selecting a verse exposed the verse-actions dialog; keyboard navigation reached the highlight action and the controls remained operable. | Not run—unvalidated | None |
+| Theme settings | Pass. VoiceOver exposed the Reader Settings dialog and its close, font-size, line-spacing, and font controls; traversal stayed inside and Escape restored focus to Settings. | Not run—unvalidated | None |
+| Nested overlays | Pass. Activating a highlight action opened the sign-in dialog; the first Escape dismissed only the sign-in dialog and retained the verse-actions overlay, and the second Escape dismissed the verse-actions overlay. | Not run—unvalidated | None |
+
+### YPE-6181 Safari and VoiceOver follow-up
+
+On 2026-10-14, Austin Harms repeated the two existing picker journeys on the
+same macOS 26.6.2 (25G83), Safari 26.6.2 (21624.5.1.11.3), and VoiceOver 10
+(993) combination. The chapter picker immediately announced its `Books`
+web-dialog context with the dialog as its established initial focus target. The
+version picker immediately announced its `Bible Versions` web-dialog context
+and English language selector. Neither journey required an additional Tab or
+VoiceOver navigation command to expose the newly opened picker. The targeted
+SafariDriver journeys also passed, including explicit close and Escape focus
+restoration. The completed YPE-6181 implementation at
+`8f99e6c0d161bdb04cc8ab06a06933bf08992848` then passed the full focused actual
+Safari matrix: 38/38 stories passed with one fresh process and SafariDriver
+session per story. This final run included both picker journeys, their
+first-mount and retained-content rapid-close-and-reopen paths, and the shared
+overlay production seams. Thirty-six stories passed on their first attempt; two
+shared-overlay stories passed after bounded SafariDriver transport retries. No
+story assertion failed.
+
+Release notes may claim only the exact combinations and successful journeys
+recorded here. They must identify untested combinations—including JAWS and
+mobile screen readers—as unvalidated and must not imply WCAG certification.
 
 ## YPE-5948 leaf evidence
 
@@ -226,7 +315,8 @@ claim zero layout shift, a benchmark, actual-Safari coverage, or
 assistive-technology coverage. YPE-5952 must document that arbitrary
 `BibleReader.Root` children move into the open root, so document-root queries
 and global CSS no longer reach them. YPE-6040's ancestor React-event dispatch
-correction remains out of scope.
+correction is included in the coordinated release branch with the limitations
+recorded in the consumer compatibility contract.
 
 ## Safari spacing evidence
 
@@ -268,8 +358,9 @@ coordination for the coordinated rollout.
   per rollout group. Each implementation ticket reviews whether its first-paint,
   layout, and no-JavaScript limitations are acceptable for that component.
 - Accept single-active-peer popover dismissal. Concurrent peer overlays require
-  a demonstrated product journey and a separate design. Recurring actual-Safari
-  and assistive-technology coverage still remain.
+  a demonstrated product journey and a separate design. The final actual-Safari
+  candidate and Safari/VoiceOver runs are recorded above. Windows/NVDA was not
+  run and remains unvalidated. Future trigger changes require another Safari run.
 - Keep the YPE-5400 custom-property contract and compiled-stylesheet prevention
   guard green as component styles change. The audit below closes the known
   ambient dependency; `all: initial` still does not reset custom properties.
@@ -332,7 +423,7 @@ separately in YPE-5749.
   WebKit evidence.
 - Preserve `direction` as the only intentional inherited CSS property. Vertical
   writing modes, text orientation, inherited host typography, and undeclared
-  host custom properties are not supported customization inputs. The prototype
+  host custom properties are not supported customization inputs. The rollout
   retains `rem` sizing, which still responds to the owning document's root font
   size; review that accepted sizing input for each rollout component.
 - Repeat the documented event, ref, nested-root, and shadow-aware automation
@@ -354,21 +445,21 @@ separately in YPE-5749.
   document, including same-origin iframes.
 - Host `@font-face` registrations are document-scoped and can collide with the
   public font family names used inside a shadow root. This limitation is
-  accepted for the prototype; avoiding it requires private family names and
+  accepted for the rollout; avoiding it requires private family names and
   controlled font declarations.
 - Shadow DOM cannot prevent a host from hiding, clipping, transforming, or
   constraining the component host or its ancestors.
 - Open shadow roots prevent CSS selector crossover; they do not prevent
   same-page JavaScript from inspecting or mutating the root.
 - The focused Shadow DOM browser suite runs in Chromium, Firefox, and Playwright
-  WebKit. Playwright WebKit is not a substitute for testing actual Safari. All
-  22-story pre-picker-rollout baseline returned explicit success events in
-  local Safari 26.6.2 when each story ran in a fresh SafariDriver session. A
-  single long-lived session returned success for 20/22 and left the sign-in and
-  verse-action play functions pending. The cause of that session-dependent
-  stall is unresolved; repeat actual-Safari validation in isolated sessions.
+  WebKit. Playwright WebKit is not a substitute for testing actual Safari. The
+  final release-candidate evidence completed 38/38 stories in isolated SafariDriver
+  sessions at commit `c0092043182bb3dcc0a73f7d82323de0d0c229a5`. Repeat actual
+  Safari after the rollout-policy trigger changes.
 - Browser DOM relationship reflection is not a substitute for VoiceOver, NVDA,
-  or other real assistive-technology verification.
+  or other real assistive-technology verification. The Safari/VoiceOver evidence
+  above applies only to that exact combination; Windows/NVDA and every other
+  untested combination remain unvalidated.
 
 ## Research handoff and completion gate
 

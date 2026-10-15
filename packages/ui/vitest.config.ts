@@ -8,10 +8,15 @@ import { fileURLToPath } from 'node:url';
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const browserName = process.env.VITEST_BROWSER ?? 'chromium';
-if (!['chromium', 'firefox', 'webkit'].includes(browserName)) {
+if (!['chromium', 'firefox', 'webkit', 'safari'].includes(browserName)) {
   throw new Error(`Unsupported VITEST_BROWSER: ${browserName}`);
 }
+const isSafari = browserName === 'safari';
+const browserProvider = isSafari
+  ? (await import('@vitest/browser-webdriverio')).webdriverio()
+  : playwright();
 const storyTags = (process.env.VITEST_STORY_TAG ?? 'integration').split(',');
+const discoveryOnly = process.env.VITEST_STORY_DISCOVERY === '1';
 
 export default defineConfig({
   plugins: [react()],
@@ -67,13 +72,18 @@ export default defineConfig({
           hookTimeout: 30000, // 30 seconds for setup/teardown hooks
           // Enable browser mode
           browser: {
-            enabled: true,
-            // Make sure to install Playwright
-            provider: playwright(),
-            headless: true,
-            instances: [{ browser: browserName as 'chromium' | 'firefox' | 'webkit' }],
+            enabled: !discoveryOnly,
+            provider: browserProvider,
+            // SafariDriver controls the installed Safari application and does not
+            // provide a headless mode. CI browsers remain headless Playwright.
+            headless: !isSafari,
+            instances: [
+              isSafari
+                ? { browser: 'safari' }
+                : { browser: browserName as 'chromium' | 'firefox' | 'webkit' },
+            ],
           },
-          setupFiles: ['./.storybook/vitest.setup.ts'],
+          setupFiles: discoveryOnly ? [] : ['./.storybook/vitest.setup.ts'],
         },
       }),
     ],

@@ -2,14 +2,20 @@
 
 ## Status and intent
 
-YPE-5356 approves a coordinated package-wide rollout plan for compatible public
-UI components. It does not claim that the rollout has shipped. Until every
-included implementation group and the release gate below are complete, the
-runtime behavior on the Shadow DOM integration branch remains an in-progress
-implementation of the prototype recorded in
+YPE-5356 defines the coordinated package-wide rollout for compatible public UI
+components. Every included implementation group is present on the coordinated
+release branch, but this document does not claim that the major release has
+shipped. Publishing remains gated by the YPE-5952 package, browser, and
+assistive-technology validation below. The final release-candidate actual-Safari
+result is recorded in the
+[validation plan](shadow-dom-isolation-plan.md#actual-safari-browser-evidence);
+the bounded Safari/VoiceOver validation is complete, while Windows with NVDA
+was not run because no test environment was available and remains explicitly
+unvalidated. Future trigger changes require another Safari run. The implemented
+boundary extends the architecture recorded in
 [ADR 0007](adr/0007-prototype-shadow-dom-style-isolation.md):
 `YouVersionAuthButton`, `BibleChapterPicker.Root`, `BibleVersionPicker.Root`,
-`ProfileAvatar`, `Separator`, `FootnoteContent`, and standalone
+`BibleReader.Root`, `ProfileAvatar`, `Separator`, `FootnoteContent`, and standalone
 `BibleThemeSettingsContent`, `BibleTextView`, `VerseOfTheDay`, and `BibleCard`
 create automatic shadow
 boundaries. Compound members and composed leaf components remain in their
@@ -36,9 +42,13 @@ boundary. Runtime feature flags and a phased-release framework are unnecessary.
 - Automatic isolation is a breaking rendered-DOM change and ships in a major
   release. React props need not change, but document queries, native event
   targets, ref timing, global styling, and cross-tree relationships can change.
-- Real assistive-technology validation is deferred. Automated keyboard and DOM
-  semantics remain required, and release notes must not imply verified screen-
-  reader behavior.
+- Automated keyboard and DOM semantics remain required but do not substitute
+  for real assistive-technology validation. YPE-5952 requires a bounded release-
+  candidate smoke pass with Safari and VoiceOver. The planned Chrome-or-Edge
+  and NVDA pass was not run because no Windows test environment was available,
+  so that combination must remain explicitly unvalidated. Claims must name only
+  the exact combinations validated and must not imply broader screen-reader
+  support or WCAG certification.
 
 ## Public component boundary
 
@@ -107,13 +117,13 @@ supported component contract.
 | Opening a peer popover dismisses the current peer across component roots | Accepted | Keep the single-active-peer behavior. Supporting concurrent peer popovers would require a demonstrated product journey and separate design. |
 | Nested-dialog and rapid-reopen final focus restoration | Accepted | Preserve the behavior resolved by YPE-5889/PR 414 as regression coverage rather than duplicating the implementation in rollout tickets. |
 | Stylesheet construction or adoption can throw | Resolved by YPE-5947 | Construction, replacement, and adoption failures recover to the local `<style>` path without losing component rendering; later roots can still use the per-document constructable sheet. |
-| Playwright WebKit is not actual Safari | Follow-up | Repeat SafariDriver validation before the coordinated release candidate and after changes to the host, stylesheet installation, portal controller, or focus controller. |
-| Real screen-reader behavior is unverified | Follow-up | Keep real assistive-technology validation deferred and do not claim VoiceOver, NVDA, or other assistive-technology validation in release notes. |
+| Playwright WebKit is not actual Safari | Release-candidate run complete; future trigger | Keep the exact isolated-session SafariDriver result in the [validation plan](shadow-dom-isolation-plan.md#actual-safari-browser-evidence). Repeat after changes to the host, stylesheet installation, portal controller, focus controller, or other significant platform seams. |
+| Release-candidate screen-reader evidence | Accepted with an explicit validation gap | The bounded YPE-5952 Safari/VoiceOver pass is complete. Chrome-or-Edge/NVDA was not run because no Windows environment was available and remains unvalidated. Record exact versions and per-journey results only for combinations actually tested; do not generalize beyond them. |
 
 ## Implementation plan
 
-Implementation work is grouped by composition and risk rather than by every
-exported function. Each ticket links to YPE-5356 and this policy.
+Implementation work was grouped by composition and risk rather than by every
+exported function. Each completed ticket links to YPE-5356 and this policy.
 
 1. **YPE-5947: Shared automatic-boundary foundation**
    - Prevent accidental nested roots when included SDK components compose one
@@ -130,10 +140,10 @@ exported function. Each ticket links to YPE-5356 and this policy.
      layout strategy that preserves constrained Popover scrolling.
    - Preserve Expo DOM callbacks and reuse the owning `BibleReader` boundary.
    - Implemented on the integration branch: the standalone component owns one
-     client-only open root. Its private host is a shrinkable block-size grid
-     item while generic shadow hosts keep `display: contents`; reader-owned
-     settings suppress the nested boundary and are ready to reuse YPE-5951's
-     future reader root.
+   client-only open root. Its private host is a shrinkable block-size grid
+   item while generic shadow hosts keep `display: contents`; reader-owned
+   settings suppress the nested boundary and reuse the completed YPE-5951
+   reader root.
 4. **YPE-5949: Compound pickers**
    - Roll out `BibleChapterPicker.Root` and `BibleVersionPicker.Root` as the
      only boundaries for their compound exports.
@@ -156,23 +166,24 @@ exported function. Each ticket links to YPE-5356 and this policy.
    - Land all included groups, complete the package and component gates, update
      consumer documentation, and publish the behavior as one major release.
 
-YPE-5947 adds no public Shadow DOM configuration and does not expand the current
-automatic boundary beyond `YouVersionAuthButton`. Its independently releasable
-runtime effect is a patch-level resilience fix for stylesheet installation; the
-additional automatic component boundaries remain part of the coordinated major
-release. The picker and leaf boundaries described above are implemented on the
-Shadow DOM integration branch but are not yet a stable-package release contract.
+YPE-5947 added no public Shadow DOM configuration. Its independently releasable
+runtime effect was a patch-level resilience fix for stylesheet installation;
+the additional automatic component boundaries now implemented by the later
+groups remain one coordinated major-release contract and must not publish
+partially.
 
 Excluded components are not hidden work in these groups. `Textarea` needs a
 separately approved form contract, and standalone `VerseActionPopover` needs an
 anchor contract that does not cross tree scopes before either can join a future
 boundary.
 
-YPE-5947 blocks the component groups. YPE-5949 also blocks the scripture and
-reader groups; YPE-5948 and YPE-5950 block the reader. Completed YPE-5889 and
-YPE-5946 provide reusable focus-restoration and cross-browser evidence. The
-YPE-5951 reader group and YPE-5994 standalone settings work block the
-coordinated release.
+The dependency-ordered component groups, YPE-5994, and YPE-6040 are complete.
+YPE-5889 and YPE-5946 provide reusable focus-restoration and cross-browser
+evidence. YPE-5952 owns the bounded human assistive-technology validation,
+consumer documentation, and major-release gate. Its final actual-Safari and
+Safari/VoiceOver results, plus the explicit Windows/NVDA validation gap, are
+recorded in the
+[validation plan](shadow-dom-isolation-plan.md#actual-safari-browser-evidence).
 
 ## Validation gates
 
@@ -180,14 +191,20 @@ coordinated release.
 
 - Existing unit, type, lint, build, export, and compiled-style checks pass.
 - The focused Shadow DOM suite passes Chromium, Firefox, and Playwright WebKit.
-- Actual Safari is repeated before the coordinated release candidate and after
-  changes to the host, stylesheet installation, portal controller, or focus
-  controller.
+- Keep the exact final actual-Safari candidate result in the
+  [validation plan](shadow-dom-isolation-plan.md#actual-safari-browser-evidence).
+  Repeat after changes to the host, stylesheet installation, portal controller,
+  focus controller, or other significant platform seams.
 - YPE-5437's Normal and Strict Mode mount/remove/remount fixture stays green and
   continues to reuse one stylesheet object per document.
 - The YPE-5400 custom-property guard stays exact; no wildcard ambient namespace
   is introduced.
-- No release claim implies real assistive-technology validation.
+- The bounded YPE-5952 Safari/VoiceOver smoke pass is recorded with exact
+  browser, operating-system, and assistive-technology versions plus a result
+  for every required journey. Chrome-or-Edge/NVDA is explicitly recorded as
+  not run because no Windows test environment was available.
+- Release claims are limited to those exact combinations and do not imply
+  broader VoiceOver, NVDA, JAWS, mobile-screen-reader, or WCAG coverage.
 
 ### Component-ticket gate
 
@@ -205,7 +222,8 @@ them; it does not repeat shared infrastructure proofs without a changed seam.
 - Overlays remain in the owning root, escape clipping through the native top
   layer, and preserve dismissal, focus containment, restoration, and teardown.
 - Role and keyboard behavior is automated. Real assistive-technology behavior
-  remains unclaimed until separately validated.
+  is claimed only for the exact YPE-5952 combinations and journeys recorded in
+  the release-candidate evidence.
 - User-visible performance is reviewed in the component's intended layout; the
   YPE-5437 diagnostic is not treated as a universal budget.
 - The focused component journeys pass the package browser matrix.
@@ -224,8 +242,9 @@ applicable, Storybook guidance, changelog, and release notes to explain:
 - document-owned fonts, retained root `rem` sizing, direction inheritance, and
   ancestor-layout limitations;
 - shadow-local overlay behavior and single-active-peer dismissal; and
-- the exact automated browser matrix, targeted actual-Safari evidence, and
-  explicit deferral of real assistive-technology claims.
+- the exact automated browser matrix, targeted actual-Safari evidence, exact
+  assistive-technology combinations and journey results, and every material
+  unvalidated combination.
 
 Release notes must identify the rollout as a breaking rendered-DOM change even
 when a component's TypeScript props are unchanged.
@@ -237,7 +256,8 @@ markup is an empty host until the passive-effect client mount, native events
 retarget at the host, global CSS no longer reaches the five internal controls,
 and the explicit `theme`, interface direction, and four top-level Expo callback
 props remain the supported integration contract. Do not describe the focused
-browser matrix as real assistive-technology validation.
+browser matrix or DOM relationship assertions as real assistive-technology
+validation.
 
 ## Follow-up ticket contract
 
