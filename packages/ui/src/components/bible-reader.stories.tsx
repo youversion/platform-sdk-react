@@ -434,11 +434,13 @@ async function openReaderHighlightAuthDialog(canvasElement: HTMLElement) {
     return element;
   });
   const overlays = within(overlay);
+  const verseActions = await overlays.findByRole('dialog', { name: 'Verse actions' });
   const colors = await overlays.findByRole('group', { name: 'Highlight colors' });
   const apply = Array.from(colors.querySelectorAll<HTMLButtonElement>('button')).find((button) =>
     button.getAttribute('aria-label')?.includes('Apply'),
   );
   if (!apply) throw new Error('highlight apply control not rendered');
+  await waitFor(() => expect(root.activeElement).toBe(verseActions));
   await userEvent.click(apply);
   return { apply, overlays, root };
 }
@@ -468,7 +470,7 @@ export const SignedOutHighlightAuthOwnership: Story = {
     // The shared local overlay stays mounted because the verse-actions dialog
     // remains open underneath the dismissed auth dialog.
     await expect(overlays.getByRole('dialog', { name: 'Verse actions' })).toBeInTheDocument();
-    await waitFor(() => expect(root.activeElement).toBe(apply), { timeout: 5000 });
+    await waitFor(() => expect(root.activeElement).toBe(apply));
   },
 };
 
@@ -559,7 +561,7 @@ export const SignedInReaderOverlayOwnership: Story = {
     await waitFor(() => expect(overlays.queryByRole('button', { name: 'Continue' })).toBeNull());
     // The reader-owned overlay container still serves the open verse-actions dialog.
     await expect(overlays.getByRole('dialog', { name: 'Verse actions' })).toBeInTheDocument();
-    await waitFor(() => expect(root.activeElement).toBe(apply), { timeout: 5000 });
+    await waitFor(() => expect(root.activeElement).toBe(apply));
   },
 };
 
