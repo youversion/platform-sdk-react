@@ -65,8 +65,20 @@ const readerCssPath = resolve(dist, 'bible-reader.css');
 const readerCss = existsSync(readerCssPath) ? readFileSync(readerCssPath, 'utf-8') : '';
 if (!readerCss.trim()) {
   errors.push('dist/bible-reader.css is missing or empty — did build:css run?');
-} else if (!readerCss.includes('.yv-v-selected')) {
-  errors.push('dist/bible-reader.css missing verse selection styles');
+} else {
+  const verseSelectionRule = readerCss.match(/\[data-yv-sdk\] \.yv-v-selected\{([^}]*)\}/)?.[1];
+  const requiredDeclarations = [
+    'text-decoration-line:underline',
+    'text-decoration-thickness:2px',
+    'text-underline-offset:2px',
+    'text-decoration-color:var(--yv-foreground)',
+  ];
+  if (
+    !verseSelectionRule ||
+    requiredDeclarations.some((declaration) => !verseSelectionRule.includes(declaration))
+  ) {
+    errors.push('dist/bible-reader.css missing SDK verse selection styles');
+  }
 }
 
 if (css.trim() && readerCss.trim()) {
