@@ -227,7 +227,7 @@ describe('BibleThemeSettingsContent public boundary', () => {
     );
     const serverMarkup = renderToString(element);
 
-    expect(serverMarkup).toBe('<div data-yv-shadow-host="true"></div>');
+    expect(serverMarkup).toBe('<div data-yv-shadow-host="true" style="display:flex"></div>');
 
     const container = document.createElement('div');
     container.innerHTML = serverMarkup;
@@ -256,6 +256,12 @@ describe('BibleThemeSettingsContent public boundary', () => {
       expect(host).toBe(serverHost);
       expect(host.childNodes).toHaveLength(0);
       expect(host.shadowRoot?.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
+      expect(host.style.getPropertyValue('all')).toBe('initial');
+      expect(host.style.getPropertyValue('display')).toBe('flex');
+      expect(host.style.getPropertyPriority('display')).toBe('important');
+      expect(host.style.getPropertyValue('direction')).toBe('inherit');
+      expect(host.style.getPropertyValue('flex-direction')).toBe('column');
+      expect(host.style.getPropertyValue('min-block-size')).toBe('0');
       expect(recoverableErrors).toEqual([]);
       expect(consoleError).not.toHaveBeenCalled();
     } finally {

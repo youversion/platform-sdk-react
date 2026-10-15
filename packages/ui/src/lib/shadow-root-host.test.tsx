@@ -3,6 +3,7 @@ import {
   forwardRef,
   StrictMode,
   useLayoutEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -262,7 +263,9 @@ describe('ShadowRootHost', () => {
     );
     const serverMarkup = renderToString(element);
 
-    expect(serverMarkup).toBe('<div data-yv-shadow-host="true"></div>');
+    expect(serverMarkup).toBe(
+      '<div data-yv-shadow-host="true" style="display:contents"></div>',
+    );
     expect(buttonRef.current).toBeNull();
 
     const container = document.createElement('div');
@@ -285,6 +288,10 @@ describe('ShadowRootHost', () => {
       expect(hosts[0]).toBe(serverHost);
       expect(hosts[0]?.childNodes).toHaveLength(0);
       expect(hosts[0]?.shadowRoot?.querySelectorAll('button')).toHaveLength(1);
+      expect(hosts[0]?.style.getPropertyValue('all')).toBe('initial');
+      expect(hosts[0]?.style.getPropertyValue('display')).toBe('contents');
+      expect(hosts[0]?.style.getPropertyPriority('display')).toBe('important');
+      expect(hosts[0]?.style.getPropertyValue('direction')).toBe('inherit');
       expect(refsDuringInitialClientRender.length).toBeGreaterThan(0);
       expect(refsDuringInitialClientRender.every((value) => value === null)).toBe(true);
       expect(buttonRef.current).toBe(hosts[0]?.shadowRoot?.querySelector('button'));
@@ -317,11 +324,38 @@ describe('ShadowRootHost', () => {
     expect(host?.shadowRoot?.textContent).toContain('content');
   });
 
-  it('stabilizes the host box while preserving only writing direction', () => {
+  it('stabilizes the host box by the parent layout phase while preserving only writing direction', () => {
+    const hostResetObservedByParentLayout: Array<{
+      all: string;
+      direction: string;
+      display: string;
+      displayPriority: string;
+    }> = [];
+
+    function ParentLayoutProbe(): ReactNode {
+      const containerRef = useRef<HTMLDivElement>(null);
+      useLayoutEffect(() => {
+        const host = containerRef.current?.querySelector<HTMLElement>('[data-yv-shadow-host]');
+        if (!host) throw new Error('shadow host not mounted before parent layout effect');
+        hostResetObservedByParentLayout.push({
+          all: host.style.getPropertyValue('all'),
+          direction: host.style.getPropertyValue('direction'),
+          display: host.style.getPropertyValue('display'),
+          displayPriority: host.style.getPropertyPriority('display'),
+        });
+      }, []);
+
+      return (
+        <div ref={containerRef}>
+          <ShadowRootHost>
+            <span>content</span>
+          </ShadowRootHost>
+        </div>
+      );
+    }
+
     const { container } = render(
-      <ShadowRootHost>
-        <span>content</span>
-      </ShadowRootHost>,
+      <ParentLayoutProbe />,
     );
 
     const host = container.querySelector<HTMLElement>('[data-yv-shadow-host]');
@@ -346,6 +380,14 @@ describe('ShadowRootHost', () => {
     // getPropertyPriority here. The value-only checks above still prove
     // direction was set.
     expect(host?.style.getPropertyPriority('display')).toBe('important');
+    expect(hostResetObservedByParentLayout).toEqual([
+      {
+        all: 'initial',
+        direction: 'inherit',
+        display: 'contents',
+        displayPriority: 'important',
+      },
+    ]);
   });
 
   it('updates the shrinkable host layout without replacing the shadow root or open portal', async () => {

@@ -3,18 +3,27 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { BibleBook, BibleVersion } from '@youversion/platform-core';
 import { YouVersionContext, type HookOverrides } from '@youversion/platform-react-hooks';
 import { http, HttpResponse } from 'msw';
-import { StrictMode, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import {
+  StrictMode,
+  Suspense,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
 import { expect, spyOn, userEvent } from 'storybook/test';
 import { isExpectedFontStylesheetEvent } from '../test/storybook-font-stylesheet';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { BibleCard } from './bible-card';
-import { BibleReader } from './bible-reader';
+import { BIBLE_READER_SPACING, BibleReader, BibleThemeSettingsContent } from './bible-reader';
 import { ProfileAvatar } from './profile-avatar';
 import { Separator } from './ui/separator';
 import { Textarea } from './ui/textarea';
 import { VerseOfTheDay } from './verse-of-the-day';
 import { waitFor } from '../test/storybook-dom';
 import { ReuseShadowBoundary } from '../lib/shadow-isolation';
+import { INTER_FONT } from '../lib/verse-html-utils';
 
 const EXPECTED_COMPONENT_IDS = [
   'reader',
@@ -402,5 +411,133 @@ export const StrictModeLifecycle: Story = {
   ),
   play: async ({ canvasElement }) => {
     await exerciseLifecycle(canvasElement, STRICT_EFFECT_COUNTS);
+  },
+};
+
+interface SuspensionResource {
+  promise: Promise<void>;
+  read: () => void;
+  resolve: () => void;
+}
+
+function createSuspensionResource(): SuspensionResource {
+  let pending = true;
+  let resolvePromise!: () => void;
+  const promise = new Promise<void>((resolve) => {
+    resolvePromise = resolve;
+  });
+
+  return {
+    promise,
+    read: () => {
+      if (pending) throw promise;
+    },
+    resolve: () => {
+      pending = false;
+      resolvePromise();
+    },
+  };
+}
+
+function SuspensionGate({ resource }: { resource: SuspensionResource | null }): null {
+  resource?.read();
+  return null;
+}
+
+function SuspenseHostLayoutHarness(): ReactNode {
+  const [resource, setResource] = useState<SuspensionResource | null>(null);
+
+  return (
+    <main>
+      <style>{`[data-yv-shadow-host] { display: grid !important; }`}</style>
+      <button
+        type="button"
+        onClick={() => {
+          const nextResource = createSuspensionResource();
+          setResource(nextResource);
+        }}
+      >
+        Suspend hosts
+      </button>
+      <button type="button" onClick={() => resource?.resolve()}>
+        Reveal hosts
+      </button>
+      <Suspense fallback={<span data-testid="suspense-fallback">Loading</span>}>
+        <SuspensionGate resource={resource} />
+        <ShadowRootHost>
+          <span data-testid="ordinary-shadow-content">Ordinary shadow content</span>
+        </ShadowRootHost>
+        <BibleThemeSettingsContent
+          theme="light"
+          fontSize={16}
+          fontFamily={INTER_FONT}
+          lineSpacing={BIBLE_READER_SPACING.DEFAULT}
+          onFontSelected={() => undefined}
+          onFontIncreased={() => undefined}
+          onFontDecreased={() => undefined}
+          onChangeLineSpacing={() => undefined}
+        />
+      </Suspense>
+    </main>
+  );
+}
+
+export const SuspenseRevealRestoresHostLayout: Story = {
+  render: () => <SuspenseHostLayoutHarness />,
+  play: async ({ canvasElement }) => {
+    const hosts = await waitFor(() => {
+      const candidates = Array.from(
+        canvasElement.querySelectorAll<HTMLElement>('[data-yv-shadow-host]'),
+      );
+      if (candidates.length !== 2 || candidates.some((host) => !host.shadowRoot)) {
+        throw new Error('shadow hosts are still mounting');
+      }
+      return candidates;
+    });
+    const ordinaryHost = hosts.find((host) =>
+      host.shadowRoot?.querySelector('[data-testid="ordinary-shadow-content"]'),
+    );
+    const settingsHost = hosts.find((host) =>
+      host.shadowRoot?.querySelector('[data-testid="line-spacing"]'),
+    );
+    if (!ordinaryHost?.shadowRoot || !settingsHost?.shadowRoot) {
+      throw new Error('expected shadow host content not mounted');
+    }
+    const ordinaryRoot = ordinaryHost.shadowRoot;
+    const settingsRoot = settingsHost.shadowRoot;
+    const ordinaryContent = ordinaryRoot.querySelector('[data-testid="ordinary-shadow-content"]');
+    const settingsContent = settingsRoot.querySelector('[data-testid="line-spacing"]');
+
+    await expect(ordinaryHost.style.getPropertyValue('display')).toBe('contents');
+    await expect(ordinaryHost.style.getPropertyPriority('display')).toBe('important');
+    await expect(getComputedStyle(ordinaryHost).display).toBe('contents');
+    await expect(settingsHost.style.getPropertyValue('display')).toBe('flex');
+    await expect(settingsHost.style.getPropertyPriority('display')).toBe('important');
+    await expect(getComputedStyle(settingsHost).display).toBe('flex');
+
+    await userEvent.click(canvasElement.querySelectorAll('button')[0]!);
+    await expect(canvasElement.querySelector('[data-testid="suspense-fallback"]')).not.toBeNull();
+    await expect(getComputedStyle(ordinaryHost).display).toBe('none');
+    await expect(getComputedStyle(settingsHost).display).toBe('none');
+
+    await userEvent.click(canvasElement.querySelectorAll('button')[1]!);
+    await waitFor(() => {
+      if (canvasElement.querySelector('[data-testid="suspense-fallback"]')) {
+        throw new Error('suspended hosts have not been revealed');
+      }
+    });
+
+    await expect(ordinaryHost.style.getPropertyValue('display')).toBe('contents');
+    await expect(ordinaryHost.style.getPropertyPriority('display')).toBe('important');
+    await expect(getComputedStyle(ordinaryHost).display).toBe('contents');
+    await expect(settingsHost.style.getPropertyValue('display')).toBe('flex');
+    await expect(settingsHost.style.getPropertyPriority('display')).toBe('important');
+    await expect(getComputedStyle(settingsHost).display).toBe('flex');
+    await expect(ordinaryHost.shadowRoot).toBe(ordinaryRoot);
+    await expect(settingsHost.shadowRoot).toBe(settingsRoot);
+    await expect(ordinaryRoot.querySelector('[data-testid="ordinary-shadow-content"]')).toBe(
+      ordinaryContent,
+    );
+    await expect(settingsRoot.querySelector('[data-testid="line-spacing"]')).toBe(settingsContent);
   },
 };
