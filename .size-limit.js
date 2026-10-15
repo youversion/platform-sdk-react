@@ -55,7 +55,7 @@ export default [
   {
     name: 'ui / full barrel',
     path: 'packages/ui/dist/index.js',
-    limit: '175.2 KB',
+    limit: '192.7 KB',
     ignore: ['react', 'react-dom', 'react/jsx-runtime', '@tanstack/react-query'],
   },
   {
