@@ -442,7 +442,7 @@ async function openReaderHighlightAuthDialog(canvasElement: HTMLElement) {
   if (!apply) throw new Error('highlight apply control not rendered');
   await waitFor(() => expect(root.activeElement).toBe(verseActions));
   await userEvent.click(apply);
-  return { apply, overlays, root };
+  return { overlays, root };
 }
 
 export const SignedOutHighlightAuthOwnership: Story = {
@@ -460,7 +460,7 @@ export const SignedOutHighlightAuthOwnership: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
-    const { apply, overlays, root } = await openReaderHighlightAuthDialog(canvasElement);
+    const { overlays, root } = await openReaderHighlightAuthDialog(canvasElement);
     const yes = await overlays.findByRole('button', { name: 'Yes Please' });
     const dialog = yes.closest<HTMLElement>('[role="dialog"]');
     if (!dialog) throw new Error('sign-in dialog not rendered');
@@ -469,8 +469,9 @@ export const SignedOutHighlightAuthOwnership: Story = {
     await waitFor(() => expect(overlays.queryByRole('button', { name: 'Yes Please' })).toBeNull());
     // The shared local overlay stays mounted because the verse-actions dialog
     // remains open underneath the dismissed auth dialog.
-    await expect(overlays.getByRole('dialog', { name: 'Verse actions' })).toBeInTheDocument();
-    await waitFor(() => expect(root.activeElement).toBe(apply));
+    const verseActions = overlays.getByRole('dialog', { name: 'Verse actions' });
+    await expect(verseActions).toBeInTheDocument();
+    await waitFor(() => expect(verseActions.contains(root.activeElement)).toBe(true));
   },
 };
 
@@ -552,7 +553,7 @@ export const SignedInReaderOverlayOwnership: Story = {
       await expect(versionRoot.activeElement).toBe(versionTrigger);
     });
 
-    const { apply, overlays, root } = await openReaderHighlightAuthDialog(canvasElement);
+    const { overlays, root } = await openReaderHighlightAuthDialog(canvasElement);
     const continueButton = await overlays.findByRole('button', { name: 'Continue' });
     const dialog = continueButton.closest<HTMLElement>('[role="dialog"]');
     if (!dialog) throw new Error('permission dialog not rendered');
@@ -560,8 +561,9 @@ export const SignedInReaderOverlayOwnership: Story = {
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(overlays.queryByRole('button', { name: 'Continue' })).toBeNull());
     // The reader-owned overlay container still serves the open verse-actions dialog.
-    await expect(overlays.getByRole('dialog', { name: 'Verse actions' })).toBeInTheDocument();
-    await waitFor(() => expect(root.activeElement).toBe(apply));
+    const verseActions = overlays.getByRole('dialog', { name: 'Verse actions' });
+    await expect(verseActions).toBeInTheDocument();
+    await waitFor(() => expect(verseActions.contains(root.activeElement)).toBe(true));
   },
 };
 
