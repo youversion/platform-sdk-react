@@ -130,10 +130,9 @@ All component classes are prefixed with `yv:` to avoid collisions with your app'
 
 The SDK emits inline `<style>` elements and inline style attributes for component
 CSS and runtime layout, including the declarative `display` on automatic shadow
-hosts. A policy that blocks inline styles blocks supported component rendering.
-Permit inline style elements and attributes in addition to allowlisting the font
-origins. For CSP Level 3, merge equivalent directives into your application's
-policy:
+hosts. The simplest supported policy permits inline style elements and attributes
+in addition to allowlisting the font origins. For CSP Level 3, merge equivalent
+directives into your application's policy:
 
 ```
 style-src-elem 'unsafe-inline' https://fonts.googleapis.com https://api.youversion.com;
@@ -141,16 +140,16 @@ style-src-attr 'unsafe-inline';
 font-src https://fonts.gstatic.com https://cdn.youversion.com;
 ```
 
-The SDK does not currently expose a CSP nonce, and dynamic style attributes are
-not practical to pre-hash. Applications that prohibit `'unsafe-inline'` for both
-style elements and attributes cannot currently render every SDK component with
-its supported styling and layout.
+The SDK does not currently expose a CSP nonce. Applications that prohibit
+`'unsafe-inline'` must maintain matching hashes for embedded style elements and
+server-rendered style attributes (using `'unsafe-hashes'` for attributes);
+nonce-only policies are not currently supported.
 
 - `fonts.googleapis.com` / `fonts.gstatic.com` — Inter and Source Serif 4 (base typography), loaded from Google Fonts
 - `api.youversion.com` — the Fonts API stylesheet (`/v1/fonts/1/stylesheet`), which `YouVersionProvider` requests with your app key
 - `cdn.youversion.com` — the Untitled Serif woff2 files that stylesheet points at
 
-Untitled Serif is YouVersion's brand serif and the SDK's default serif face. There is no prop to turn it off. If these hosts are blocked, serif text falls back to Source Serif 4 with no layout break — the stack is `'Untitled Serif', 'Source Serif 4', serif`. If you load Untitled Serif yourself, your copy is used; the stack names it first regardless of who fetched it.
+Untitled Serif is YouVersion's brand serif and the SDK's default serif face. There is no prop to turn it off. If the Fonts API or CDN is blocked, serif text falls back to Source Serif 4 when Google Fonts is available; if Google Fonts is also blocked, it falls back to the browser's generic serif face. The stack is `'Untitled Serif', 'Source Serif 4', serif`. If you load Untitled Serif yourself, your copy is used; the stack names it first regardless of who fetched it.
 
 ## Theming
 
