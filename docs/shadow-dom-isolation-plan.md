@@ -124,6 +124,18 @@ means a single shared session is not acceptable evidence.
 | Focused story count and per-story results | 38/38 passed. The final candidate matrix used one fresh process and SafariDriver session per story: 36 stories passed on their first attempt, 1 passed on its second attempt after SafariDriver retained the preceding session, and the Bible Card version-picker story passed in a direct isolated rerun after its matrix process exceeded the 120-second limit without producing a test result. |
 | Failures, linked blockers, or reruns | The final candidate evidence had 0 assertion failures. One recognized SafariDriver session-handoff failure used one bounded transport retry. One generic process timeout was surfaced as a matrix failure, was not automatically retried, and passed in a direct isolated rerun in 1.1 seconds. The runner permits at most two retries only for recognized transport failures; generic process timeouts, story assertion failures, and interaction failures are not retried. |
 
+YPE-6217 changed the automatic-root stylesheet installation path, which triggers
+another actual-Safari run under the rollout policy. The code candidate at
+`264f8b11365af52b2260f50f91d0535a1fe903eb` was tested on 2026-10-15 by Codex
+on Austin Harms's local machine with macOS 26.6.2 (25G83), Safari 26.6.2, and
+SafariDriver 21624.5.1.11.3. Running
+`pnpm --filter @youversion/platform-react-ui test:shadow-safari` exercised all
+38 focused stories in a fresh SafariDriver session per story. All 38 passed on
+their first attempt with zero assertion failures, transport retries, or process
+timeouts. The run included both realistic-usage stories, whose assertions
+verify that automatic roots share the adopted component and reader stylesheets
+without installing redundant local `<style>` resources.
+
 ### Assistive-technology evidence
 
 Record versions from the tested machines rather than naming only the product
