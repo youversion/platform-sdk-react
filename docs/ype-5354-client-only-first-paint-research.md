@@ -17,11 +17,12 @@ The [CLS guidance](https://web.dev/articles/cls) and
 [Layout Instability specification](https://wicg.github.io/layout-instability/)
 define that behavior.
 
-`ShadowRootHost` emits an empty server host and renders its children after a
-passive effect ([source](../packages/ui/src/lib/shadow-root-host.tsx)). React
-effects run only on the client, and a non-interaction effect may run after the
-browser paints. A slow client can therefore display an empty state before the
-component appears. Changing to `useLayoutEffect` would not supply server
+`ShadowRootHost` emits a childless server host with declarative display and
+renders its children after a passive effect
+([source](../packages/ui/src/lib/shadow-root-host.tsx)). Its box reset runs in a
+layout effect, but the shadow attachment and content mount can still occur after
+the browser paints. A slow client can therefore display an empty state before
+the component appears. Moving shadow attachment earlier would not supply server
 geometry or make JavaScript arrive sooner.
 [React documents both effect timings](https://react.dev/reference/react/useEffect#caveats).
 
@@ -46,12 +47,12 @@ reservation would either leave blank space or fail for supported inputs.
 Reserving built-in block size could prevent vertical movement in a stacked
 layout, but it would not prevent horizontal movement in a navigation row.
 
-The server currently emits a normal empty `div`; the client changes it to
-`display: contents` when the shadow root attaches. Any reservation must be
-present in server markup and remain a box through the first client render.
-Adding dimensions in the existing effect is too late. A reserved host would
-revise the exact server-markup contract in ADR 0007 and would need its own
-compatibility validation.
+The ordinary server host is childless and already declares `display: contents`;
+the client retains that display while applying its protected reset. Any
+reservation must instead be present in server markup and remain a box through
+the first client render. Adding dimensions in an effect is too late. A reserved
+host would revise the exact server-markup contract in ADR 0007 and would need
+its own compatibility validation.
 
 Official guidance recommends reserving space for late content. When exact size
 is unknown, a likely-size placeholder can reduce movement but may leave blank

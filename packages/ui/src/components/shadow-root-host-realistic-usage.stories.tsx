@@ -415,7 +415,6 @@ export const StrictModeLifecycle: Story = {
 };
 
 interface SuspensionResource {
-  promise: Promise<void>;
   read: () => void;
   resolve: () => void;
 }
@@ -428,7 +427,6 @@ function createSuspensionResource(): SuspensionResource {
   });
 
   return {
-    promise,
     read: () => {
       if (pending) throw promise;
     },
@@ -482,6 +480,15 @@ function SuspenseHostLayoutHarness(): ReactNode {
   );
 }
 
+async function expectHostDisplay(
+  host: HTMLElement,
+  expectedDisplay: 'contents' | 'flex',
+): Promise<void> {
+  await expect(host.style.getPropertyValue('display')).toBe(expectedDisplay);
+  await expect(host.style.getPropertyPriority('display')).toBe('important');
+  await expect(getComputedStyle(host).display).toBe(expectedDisplay);
+}
+
 export const SuspenseRevealRestoresHostLayout: Story = {
   render: () => <SuspenseHostLayoutHarness />,
   play: async ({ canvasElement }) => {
@@ -508,12 +515,8 @@ export const SuspenseRevealRestoresHostLayout: Story = {
     const ordinaryContent = ordinaryRoot.querySelector('[data-testid="ordinary-shadow-content"]');
     const settingsContent = settingsRoot.querySelector('[data-testid="line-spacing"]');
 
-    await expect(ordinaryHost.style.getPropertyValue('display')).toBe('contents');
-    await expect(ordinaryHost.style.getPropertyPriority('display')).toBe('important');
-    await expect(getComputedStyle(ordinaryHost).display).toBe('contents');
-    await expect(settingsHost.style.getPropertyValue('display')).toBe('flex');
-    await expect(settingsHost.style.getPropertyPriority('display')).toBe('important');
-    await expect(getComputedStyle(settingsHost).display).toBe('flex');
+    await expectHostDisplay(ordinaryHost, 'contents');
+    await expectHostDisplay(settingsHost, 'flex');
 
     await userEvent.click(canvasElement.querySelectorAll('button')[0]!);
     await expect(canvasElement.querySelector('[data-testid="suspense-fallback"]')).not.toBeNull();
@@ -527,17 +530,30 @@ export const SuspenseRevealRestoresHostLayout: Story = {
       }
     });
 
-    await expect(ordinaryHost.style.getPropertyValue('display')).toBe('contents');
-    await expect(ordinaryHost.style.getPropertyPriority('display')).toBe('important');
-    await expect(getComputedStyle(ordinaryHost).display).toBe('contents');
-    await expect(settingsHost.style.getPropertyValue('display')).toBe('flex');
-    await expect(settingsHost.style.getPropertyPriority('display')).toBe('important');
-    await expect(getComputedStyle(settingsHost).display).toBe('flex');
-    await expect(ordinaryHost.shadowRoot).toBe(ordinaryRoot);
-    await expect(settingsHost.shadowRoot).toBe(settingsRoot);
-    await expect(ordinaryRoot.querySelector('[data-testid="ordinary-shadow-content"]')).toBe(
-      ordinaryContent,
+    const revealedHosts = Array.from(
+      canvasElement.querySelectorAll<HTMLElement>('[data-yv-shadow-host]'),
     );
-    await expect(settingsRoot.querySelector('[data-testid="line-spacing"]')).toBe(settingsContent);
+    const revealedOrdinaryHost = revealedHosts.find((host) =>
+      host.shadowRoot?.querySelector('[data-testid="ordinary-shadow-content"]'),
+    );
+    const revealedSettingsHost = revealedHosts.find((host) =>
+      host.shadowRoot?.querySelector('[data-testid="line-spacing"]'),
+    );
+    if (!revealedOrdinaryHost?.shadowRoot || !revealedSettingsHost?.shadowRoot) {
+      throw new Error('revealed shadow host content not mounted');
+    }
+
+    await expect(revealedOrdinaryHost).toBe(ordinaryHost);
+    await expect(revealedSettingsHost).toBe(settingsHost);
+    await expectHostDisplay(revealedOrdinaryHost, 'contents');
+    await expectHostDisplay(revealedSettingsHost, 'flex');
+    await expect(revealedOrdinaryHost.shadowRoot).toBe(ordinaryRoot);
+    await expect(revealedSettingsHost.shadowRoot).toBe(settingsRoot);
+    await expect(
+      revealedOrdinaryHost.shadowRoot.querySelector('[data-testid="ordinary-shadow-content"]'),
+    ).toBe(ordinaryContent);
+    await expect(
+      revealedSettingsHost.shadowRoot.querySelector('[data-testid="line-spacing"]'),
+    ).toBe(settingsContent);
   },
 };
