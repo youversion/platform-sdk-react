@@ -89,7 +89,7 @@ the inventory from treating implementation fragments as separate rollout units.
 | YPE-5310 | A shadow-local native top layer preserves tree-scoped relationships while escaping clipping. | Overlay-owning components require native Popover API support and focused top-layer checks. |
 | YPE-5352 | Host resets, inherited properties, and ambient custom properties were hardened. | Preserve `direction` as the intentional inherited property and retain the host/wrapper resets. |
 | YPE-5353 | Shared Dialog and Popover primitives and the direct `VerseActionPopover` path use the shadow portal controller. | Reuse those seams; audit any newly introduced direct overlay consumer. |
-| YPE-5354 | The existing empty-server-host contract is valid but can visibly pop in or shift layout. | Accept it only after component-specific first-paint review; do not claim zero CLS or no visible delay. |
+| YPE-5354 | The childless-server-host contract is valid but can visibly pop in or shift layout. The host now declares its intended `display` in server markup. | Accept it only after component-specific first-paint review; do not claim zero CLS or no visible delay. |
 | YPE-5355 | Nested overlay order and teardown are sound; peer popovers dismiss one another, and focus-restoration gaps were identified. YPE-5889/PR 414 resolved the final restoration defects. | Accept single-active-peer dismissal and preserve the completed focus-restoration behavior as regression coverage. |
 | YPE-5400 | The compiled custom-property inventory and exact allowlist guard close known ambient dependencies. | Keep the guard green and review every new reference-only custom property. |
 | YPE-5436 | Forms, external labels and ARIA ID references stop at the boundary; refs, events, queries, and nested roots have documented constraints. | Exclude `Textarea`; require focused public-contract checks and consumer guidance for included components. |
@@ -104,7 +104,7 @@ supported component contract.
 
 | Limitation | Status | Disposition |
 | --- | --- | --- |
-| Empty server host, possible visible pop-in, no no-JavaScript content, and possible layout movement | Accepted | Use as the shared starting contract. Every included group must review its intended layouts and either accept the result or add a component-specific reservation/strategy ticket. |
+| Childless, declaratively styled server host; possible visible pop-in; no no-JavaScript content; and possible layout movement | Accepted | Use as the shared starting contract. Every included group must review its intended layouts and either accept the result or add a component-specific reservation/strategy ticket. |
 | Ref is unavailable until the passive-effect shadow mount | Accepted | Document the timing. Component tickets verify forwarded refs where the public component exposes one. |
 | Native outer-form participation and cross-tree label or ARIA ID references do not work | Accepted | Exclude `Textarea`. Included components keep their accessible relationships inside their root or expose explicit props/callbacks. |
 | Document-rooted selectors and native event targets change | Accepted | Treat this as a breaking change. Document open-root traversal, role-based automation, public callbacks, and composed-event retargeting. |
@@ -252,12 +252,12 @@ when a component's TypeScript props are unchanged.
 YPE-5994 adds no independently releasable public configuration or package
 version. YPE-5952 must include standalone theme settings in that coordinated
 consumer handoff: open-root traversal replaces document-only queries, server
-markup is an empty host until the passive-effect client mount, native events
-retarget at the host, global CSS no longer reaches the five internal controls,
-and the explicit `theme`, interface direction, and four top-level Expo callback
-props remain the supported integration contract. Do not describe the focused
-browser matrix or DOM relationship assertions as real assistive-technology
-validation.
+markup is a childless host with declarative display until the passive-effect
+client mount, native events retarget at the host, global CSS no longer reaches
+the five internal controls, and the explicit `theme`, interface direction, and
+four top-level Expo callback props remain the supported integration contract. Do
+not describe the focused browser matrix or DOM relationship assertions as real
+assistive-technology validation.
 
 ## Follow-up ticket contract
 

@@ -93,7 +93,7 @@ function withOverrides(element: ReactElement): ReactElement {
 }
 
 describe('BibleReader.Root public shadow boundary', () => {
-  it('owns one empty SSR host and reuses it for all reader-owned content', async () => {
+  it('owns one childless styled SSR host and reuses it for all reader-owned content', async () => {
     const scrollToDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollTo');
     const showPopoverDescriptor = Object.getOwnPropertyDescriptor(
       HTMLElement.prototype,

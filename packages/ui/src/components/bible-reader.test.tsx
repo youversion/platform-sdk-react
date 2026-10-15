@@ -212,7 +212,7 @@ describe('createBibleThemeSettingsContentHandlers', () => {
 });
 
 describe('BibleThemeSettingsContent public boundary', () => {
-  it('owns one empty SSR host and reuses it during hydration', async () => {
+  it('owns one childless styled SSR host and reuses it during hydration', async () => {
     const element = (
       <BibleThemeSettingsContent
         theme="light"

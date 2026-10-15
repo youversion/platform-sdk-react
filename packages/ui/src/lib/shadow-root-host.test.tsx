@@ -245,7 +245,7 @@ describe('ShadowRootHost', () => {
     expect(consumerHost?.shadowRoot?.querySelector('[data-testid="consumer child"]')).not.toBeNull();
   });
 
-  it('reuses the empty server host before making the forwarded ref available after shadow mount', async () => {
+  it('reuses the childless styled server host before making the forwarded ref available after shadow mount', async () => {
     const buttonRef = createRef<HTMLButtonElement>();
     const refsDuringInitialClientRender: Array<HTMLButtonElement | null> = [];
 

@@ -240,9 +240,9 @@ assistive-technology support.
 
 `BibleReader.Root` suppresses the standalone boundary around its owned settings,
 so the settings body remains in the reader root without nesting. YPE-5952 must
-document the empty-host client-only contract, open-root automation, native
-event retargeting, loss of global-CSS access, and the supported explicit theme,
-direction, and callback inputs as part of the coordinated major release.
+document the childless, declaratively styled host contract, open-root automation,
+native event retargeting, loss of global-CSS access, and the supported explicit
+theme, direction, and callback inputs as part of the coordinated major release.
 YPE-5994 has an empty changeset and must not publish an independent partial
 rollout.
 
@@ -268,7 +268,7 @@ cover the verse-of-the-day clipboard fallback and `BibleCard`'s
 Focused Chromium, Firefox, and Playwright WebKit stories exercise hostile
 light-DOM CSS, representative standalone layouts, both verse-of-the-day sizes,
 the default and full card compositions, card version selection, and the
-shadow-local footnote overlay. The ADR's empty-host
+shadow-local footnote overlay. The ADR's childless, declaratively styled host
 client-only first-paint contract is accepted for these reviewed layouts; without
 JavaScript the component content remains absent, and nearby layout can move
 after the passive-effect mount. This evidence does not establish actual-Safari

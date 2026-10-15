@@ -90,7 +90,7 @@ describe('Bible picker public shadow boundaries', () => {
   it.each([
     ['BibleChapterPicker.Root', chapterPicker],
     ['BibleVersionPicker.Root', versionPicker],
-  ])('%s owns one empty SSR host and reuses it during hydration', async (_, picker) => {
+  ])('%s owns one childless styled SSR host and reuses it during hydration', async (_, picker) => {
     const fixture = picker();
     const element = (
       <HookOverrideProvider overrides={overrides}>{fixture.element}</HookOverrideProvider>

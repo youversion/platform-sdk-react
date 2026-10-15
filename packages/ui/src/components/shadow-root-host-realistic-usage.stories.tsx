@@ -12,7 +12,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { expect, spyOn, userEvent } from 'storybook/test';
+import { expect, spyOn, userEvent, within } from 'storybook/test';
 import { isExpectedFontStylesheetEvent } from '../test/storybook-font-stylesheet';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import { BibleCard } from './bible-card';
@@ -492,6 +492,7 @@ async function expectHostDisplay(
 export const SuspenseRevealRestoresHostLayout: Story = {
   render: () => <SuspenseHostLayoutHarness />,
   play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
     const hosts = await waitFor(() => {
       const candidates = Array.from(
         canvasElement.querySelectorAll<HTMLElement>('[data-yv-shadow-host]'),
@@ -518,12 +519,12 @@ export const SuspenseRevealRestoresHostLayout: Story = {
     await expectHostDisplay(ordinaryHost, 'contents');
     await expectHostDisplay(settingsHost, 'flex');
 
-    await userEvent.click(canvasElement.querySelectorAll('button')[0]!);
+    await userEvent.click(canvas.getByRole('button', { name: 'Suspend hosts' }));
     await expect(canvasElement.querySelector('[data-testid="suspense-fallback"]')).not.toBeNull();
     await expect(getComputedStyle(ordinaryHost).display).toBe('none');
     await expect(getComputedStyle(settingsHost).display).toBe('none');
 
-    await userEvent.click(canvasElement.querySelectorAll('button')[1]!);
+    await userEvent.click(canvas.getByRole('button', { name: 'Reveal hosts' }));
     await waitFor(() => {
       if (canvasElement.querySelector('[data-testid="suspense-fallback"]')) {
         throw new Error('suspended hosts have not been revealed');
