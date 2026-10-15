@@ -103,10 +103,9 @@ For local verification prerequisites and focused commands, follow
 
 ### Internationalization (i18n)
 - Are user-facing strings routed through `t()` or `Trans` / `i18nKey` — not hardcoded in JSX?
-- Are new English keys added in **platform-localization** (`sources/common/en.json`, `react.*` namespace), not only in this repo?
-- Are `fr.json` / `es.json` left untouched (synced upstream via Crowdin → `distribute-react.yml`)?
+- Are new English keys added upstream in **platform-localization**, with every file under `packages/ui/src/i18n/locales/` (including `en.json`) left untouched?
 - Do interpolation tokens (`{{name}}`) match across locale files once translations exist?
-- Does `pnpm check:i18n` pass (warnings for missing fr/es keys and orphan en keys are acceptable until upstream sync or intentional dynamic-key allowlisting)?
+- Does `pnpm check:i18n` pass? Warnings for missing translation keys and orphan English keys are acceptable until upstream sync or intentional dynamic-key allowlisting.
 - See [i18n-guidelines.md](./i18n-guidelines.md) for the full workflow.
 
 ### Accessibility

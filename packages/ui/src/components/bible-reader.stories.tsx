@@ -900,6 +900,48 @@ export const RtlActionOverflow: Story = {
   },
 };
 
+function EnterExitProbe() {
+  const [open, setOpen] = useState(true);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(false)}>
+        Close actions
+      </button>
+      <VerseActionPopover
+        open={open}
+        onOpenChange={setOpen}
+        activeHighlights={new Set()}
+        selectedVerses={[]}
+        highlightedVerses={{}}
+        onHighlight={fn()}
+        onClearHighlight={fn()}
+        onCopy={fn()}
+        onShare={fn()}
+      />
+    </>
+  );
+}
+
+export const EnterAndExitMotion: Story = {
+  tags: ['integration'],
+  render: () => <EnterExitProbe />,
+  play: async () => {
+    const dialog = await screen.findByRole('dialog');
+    const openStyle = getComputedStyle(dialog);
+    await expect(openStyle.animationDuration).toBe('0.18s');
+    await expect(openStyle.animationTimingFunction).toBe('cubic-bezier(0.16, 1, 0.3, 1)');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Close actions' }));
+    await waitFor(async () => {
+      const closed = screen.getByRole('dialog');
+      const closedStyle = getComputedStyle(closed);
+      await expect(closed).toHaveAttribute('data-state', 'closed');
+      await expect(closedStyle.animationDuration).toBe('0.15s');
+      await expect(closedStyle.animationTimingFunction).toBe('ease');
+    });
+  },
+};
+
 /**
  * Dark theme
  */

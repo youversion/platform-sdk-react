@@ -32,13 +32,14 @@ import { useTakeVerseActionPopoverFocusRestoreTarget } from '@/lib/verse-action-
 export { HIGHLIGHT_COLORS, type HighlightColor } from '@/lib/highlight-colors';
 
 type PopoverMotionStyle = CSSProperties & {
-  '--tw-animate-duration'?: string;
-  '--tw-animate-easing'?: string;
+  '--tw-animation-duration'?: string;
+  '--tw-ease'?: string;
 };
 
-const popoverMotionStyle: PopoverMotionStyle = {};
-popoverMotionStyle['--tw-animate-duration'] = '180ms';
-popoverMotionStyle['--tw-animate-easing'] = 'cubic-bezier(0.16, 1, 0.3, 1)';
+const popoverMotionStyle: PopoverMotionStyle = {
+  '--tw-animation-duration': '180ms',
+  '--tw-ease': 'cubic-bezier(0.16, 1, 0.3, 1)',
+};
 
 /** Width, in px, of the fade applied at each overflowing edge of the swatch row. */
 const SCROLL_FADE_PX = 20;
@@ -538,7 +539,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                 'yv:data-[side=bottom]:slide-in-from-top-2',
                 'yv:data-[side=top]:slide-in-from-bottom-2',
               )}
-              style={popoverMotionStyle}
+              style={open ? popoverMotionStyle : undefined}
             >
               {/* Caret — matches the card background in both themes, pointing at the
               verse. Hidden when docked: the bar is no longer tied to a verse. */}
