@@ -123,7 +123,7 @@ describe('BibleReader.Root public shadow boundary', () => {
     );
     const serverMarkup = renderToString(element);
 
-    expect(serverMarkup).toBe('<div data-yv-shadow-host="true"></div>');
+    expect(serverMarkup).toBe('<div data-yv-shadow-host="true" style="display:contents"></div>');
 
     const container = document.createElement('div');
     container.innerHTML = serverMarkup;
