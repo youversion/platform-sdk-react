@@ -79,9 +79,14 @@ const page = await images.getImages({
   page_size: 12,
 });
 
-const image = await images.getImage(page.data[0].id);
-const url = new URL(image.image_url);
-url.searchParams.set('size', 'card');
+const [first] = page.data;
+if (!first) {
+  console.log('No images for that filter');
+} else {
+  const image = await images.getImage(first.id);
+  const url = new URL(image.image_url);
+  url.searchParams.set('size', 'card');
+}
 ```
 
 `next_page_token` is `null` on the last page. Pass that value back as
