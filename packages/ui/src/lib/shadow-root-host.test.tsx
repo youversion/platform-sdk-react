@@ -424,6 +424,11 @@ describe('ShadowRootHost', () => {
         'style[data-href="yv-sdk-components"], style[data-href="yv-sdk-bible-reader"]',
       ),
     ).toHaveLength(0);
+    expect(
+      document.head.querySelectorAll(
+        'style[data-href="yv-sdk-components"], style[data-href="yv-sdk-bible-reader"]',
+      ),
+    ).toHaveLength(0);
     expect(shadowRoot?.querySelector('template')).toBeNull();
   });
 
