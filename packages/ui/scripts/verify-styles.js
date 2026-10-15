@@ -43,11 +43,14 @@ if (!css.trim()) {
     );
   }
 
-  const { unexplainedReferences } = auditCustomProperties(css);
-  if (unexplainedReferences.length > 0) {
-    errors.push(
-      `dist/tailwind.css contains unexplained custom-property references: ${unexplainedReferences.join(', ')}. Add a local declaration or document an exact reviewed runtime exception in packages/ui/scripts/custom-property-contract.js`,
-    );
+  if (/--color-chart-[1-5]\s*:/.test(css)) {
+    errors.push('dist/tailwind.css contains unused chart color mappings');
+  }
+  if (/--color-sidebar(?:-[\w-]+)?\s*:/.test(css)) {
+    errors.push('dist/tailwind.css contains unused sidebar color mappings');
+  }
+  if (css.includes('.yv-v-selected')) {
+    errors.push('dist/tailwind.css contains reader-only verse selection styles');
   }
 }
 
@@ -55,6 +58,17 @@ const readerCssPath = resolve(dist, 'bible-reader.css');
 const readerCss = existsSync(readerCssPath) ? readFileSync(readerCssPath, 'utf-8') : '';
 if (!readerCss.trim()) {
   errors.push('dist/bible-reader.css is missing or empty — did build:css run?');
+} else if (!readerCss.includes('.yv-v-selected')) {
+  errors.push('dist/bible-reader.css missing verse selection styles');
+}
+
+if (css.trim() && readerCss.trim()) {
+  const { unexplainedReferences } = auditCustomProperties(`${css}\n${readerCss}`);
+  if (unexplainedReferences.length > 0) {
+    errors.push(
+      `compiled component and reader CSS contain unexplained custom-property references: ${unexplainedReferences.join(', ')}. Add a local declaration or document an exact reviewed runtime exception in packages/ui/scripts/custom-property-contract.js`,
+    );
+  }
 }
 
 const publicCssPath = typeof publicCssExport === 'string' ? resolve(uiRoot, publicCssExport) : '';

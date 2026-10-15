@@ -44,7 +44,12 @@ interface ShadowPortalController {
   setModalPresent: (instanceId: string, present: boolean) => void;
 }
 
-const ShadowPortalContext = createContext<ShadowPortalController | null>(null);
+const ShadowPortalContext = createContext<ShadowPortalController | null | undefined>(undefined);
+
+/** @internal Reports whether the nearest automatic shadow root already provides SDK styles. */
+export function useShadowStylesProvided(): boolean {
+  return useContext(ShadowPortalContext) !== undefined;
+}
 
 /**
  * @internal Registers one floating-content owner and returns its portal target.

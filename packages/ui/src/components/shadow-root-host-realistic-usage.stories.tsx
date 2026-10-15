@@ -288,6 +288,11 @@ async function requireMountedFixture(canvasElement: HTMLElement): Promise<Mounte
   for (const root of roots) {
     await expect(root.adoptedStyleSheets).toHaveLength(1);
     await expect(root.adoptedStyleSheets[0]).toBe(sheet);
+    await expect(
+      root.querySelectorAll(
+        'style[data-href="yv-sdk-components"], style[data-href="yv-sdk-bible-reader"]',
+      ),
+    ).toHaveLength(0);
   }
 
   return { hosts, sheet };
