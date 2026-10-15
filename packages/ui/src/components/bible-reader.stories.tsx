@@ -468,7 +468,7 @@ export const SignedOutHighlightAuthOwnership: Story = {
     // The shared local overlay stays mounted because the verse-actions dialog
     // remains open underneath the dismissed auth dialog.
     await expect(overlays.getByRole('dialog', { name: 'Verse actions' })).toBeInTheDocument();
-    await expect(root.activeElement).toBe(apply);
+    await waitFor(async () => await expect(root.activeElement).toBe(apply));
   },
 };
 
@@ -559,7 +559,7 @@ export const SignedInReaderOverlayOwnership: Story = {
     await waitFor(() => expect(overlays.queryByRole('button', { name: 'Continue' })).toBeNull());
     // The reader-owned overlay container still serves the open verse-actions dialog.
     await expect(overlays.getByRole('dialog', { name: 'Verse actions' })).toBeInTheDocument();
-    await expect(root.activeElement).toBe(apply);
+    await waitFor(async () => await expect(root.activeElement).toBe(apply));
   },
 };
 
