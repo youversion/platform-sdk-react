@@ -44,10 +44,10 @@ if (!css.trim()) {
   }
 
   if (/--color-chart-[1-5]\s*:/.test(css)) {
-    errors.push('dist/tailwind.css contains unused chart color mappings');
+    errors.push('dist/tailwind.css contains unexpected chart color mappings (see YPE-6217)');
   }
   if (/--color-sidebar(?:-[\w-]+)?\s*:/.test(css)) {
-    errors.push('dist/tailwind.css contains unused sidebar color mappings');
+    errors.push('dist/tailwind.css contains unexpected sidebar color mappings (see YPE-6217)');
   }
   if (css.includes('.yv-v-selected')) {
     errors.push('dist/tailwind.css contains reader-only verse selection styles');
