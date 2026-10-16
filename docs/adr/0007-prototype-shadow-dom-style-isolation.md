@@ -71,8 +71,9 @@ focus is restored to the real opener.
 
 ## Considered options
 
-- Client-side attachment emits an empty host from the server, hydrates that
-  host, and mounts isolated content after an effect attaches the shadow root.
+- Client-side attachment emits a childless host with its layout display from
+  the server, hydrates that host, and mounts isolated content after an effect
+  attaches the shadow root.
   This preserves React's ownership of the light-DOM tree and never exposes the
   component internals to consuming-app CSS. It is the selected contract for the
   prototype.
@@ -102,16 +103,18 @@ fall back to the clipped inline arrangement.
 
 ## SSR and hydration contract
 
-`ShadowRootHost` is client-only. Its server markup is exactly an empty host:
+`ShadowRootHost` is client-only. Its server markup is a childless host with the
+ordinary boundary's declarative display:
 
 ```html
-<div data-yv-shadow-host="true"></div>
+<div data-yv-shadow-host="true" style="display:contents"></div>
 ```
 
-The first client render matches that markup. After hydration, `useEffect`
-attaches or reuses one open shadow root, installs the SDK stylesheet, and then
-portals the component into that root. The component is not rendered in the
-light DOM, so hydration does not replace server content or create a duplicate.
+The first client render matches that markup. A layout effect applies the
+protected host reset before paint. After hydration, a passive effect attaches
+or reuses one open shadow root, installs the SDK stylesheet, and then portals
+the component into that root. The component is not rendered in the light DOM,
+so hydration does not replace server content or create a duplicate.
 If constructable stylesheets are unavailable, the local `<style>` fallback and
 the component mount in the shadow root together. A same-origin iframe uses a
 stylesheet constructed for its own `Document`; it never adopts the parent

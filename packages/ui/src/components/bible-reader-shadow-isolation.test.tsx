@@ -93,7 +93,7 @@ function withOverrides(element: ReactElement): ReactElement {
 }
 
 describe('BibleReader.Root public shadow boundary', () => {
-  it('owns one empty SSR host and reuses it for all reader-owned content', async () => {
+  it('owns one childless styled SSR host and reuses it for all reader-owned content', async () => {
     const scrollToDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollTo');
     const showPopoverDescriptor = Object.getOwnPropertyDescriptor(
       HTMLElement.prototype,
@@ -123,7 +123,7 @@ describe('BibleReader.Root public shadow boundary', () => {
     );
     const serverMarkup = renderToString(element);
 
-    expect(serverMarkup).toBe('<div data-yv-shadow-host="true"></div>');
+    expect(serverMarkup).toBe('<div data-yv-shadow-host="true" style="display:contents"></div>');
 
     const container = document.createElement('div');
     container.innerHTML = serverMarkup;

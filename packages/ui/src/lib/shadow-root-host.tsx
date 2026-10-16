@@ -176,11 +176,18 @@ function adoptSdkStyleSheet(root: ShadowRoot): boolean {
   }
 }
 
+function getHostDisplay(shrinkableBlockHost: boolean): 'contents' | 'flex' {
+  return shrinkableBlockHost ? 'flex' : 'contents';
+}
+
 function resetHost(host: HTMLElement, shrinkableBlockHost: boolean): void {
   // The host page can select this light-DOM element, including with !important.
   // Inline author-important declarations establish the smallest stable box.
   host.style.setProperty('all', 'initial', 'important');
-  host.style.setProperty('display', shrinkableBlockHost ? 'flex' : 'contents', 'important');
+  // React owns the declarative value, but reinsert the longhand after `all` so
+  // the shorthand cannot win solely because React created `display` first.
+  host.style.removeProperty('display');
+  host.style.setProperty('display', getHostDisplay(shrinkableBlockHost), 'important');
   host.style.setProperty('direction', 'inherit', 'important');
   host.style.removeProperty('flex-direction');
   host.style.removeProperty('min-block-size');
@@ -448,15 +455,18 @@ export function ShadowRootHost({
     };
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const host = hostRef.current;
     if (host) resetHost(host, shrinkableBlockHost);
   }, [shrinkableBlockHost]);
+
+  const hostDisplay = getHostDisplay(shrinkableBlockHost);
 
   return (
     <HostElement
       ref={setHostRef}
       data-yv-shadow-host
+      style={{ display: hostDisplay }}
       onBlur={stopDuplicateReactPropagation}
       onClick={stopDuplicateReactPropagation}
       onFocus={stopDuplicateReactPropagation}

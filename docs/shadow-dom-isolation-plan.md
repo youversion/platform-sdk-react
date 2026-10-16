@@ -71,8 +71,8 @@ Windows/NVDA validation gap are recorded in the YPE-5952 section below.
 
 | Area | Evidence today | Status | Remaining work |
 | --- | --- | --- | --- |
-| Host CSS isolation | Hostile-CSS demos and focused browser coverage exercise element selectors, direction inheritance, vertical writing and typography resets, hostile custom properties, universal `!important` rules, host attacks, and generated pseudo-content. | Validated for the included groups in Chromium, Firefox, Playwright WebKit, and the recorded 38/38 final-candidate Safari run | Repeat actual Safari after the rollout-policy trigger changes. |
-| SSR and hydration | Focused React coverage verifies reuse of the exact empty server host, matching hydration without recoverable errors or duplicate content, and a null forwarded ref before the passive-effect mount. Group-specific sections below cover the included boundary. | Accepted for the coordinated client-only boundary | Preserve the empty-host, possible-pop-in, possible-layout-movement, and no-JavaScript limitations in consumer documentation. |
+| Host CSS isolation | Hostile-CSS demos and focused browser coverage exercise element selectors, direction inheritance, vertical writing and typography resets, hostile custom properties, universal `!important` rules, host attacks, and generated pseudo-content. | Validated for the included groups in Chromium, Firefox, Playwright WebKit, and the recorded 39/39 YPE-6216 Safari revalidation | Repeat actual Safari after future rollout-policy trigger changes. |
+| SSR and hydration | Focused React coverage verifies reuse of the exact childless, declaratively styled server host, matching hydration without recoverable errors or duplicate content, and a null forwarded ref before the passive-effect mount. Group-specific sections below cover the included boundary. | Accepted for the coordinated client-only boundary | Preserve the childless-host, possible-pop-in, possible-layout-movement, and no-JavaScript limitations in consumer documentation. |
 | Component behavior | Group-specific unit and browser coverage below exercises public behavior, refs, events, composition, and Strict Mode lifecycle. | Validated for the included groups | Complete the final package/browser gates and manual release-candidate checks. |
 | Owner-document handling | Focused coverage mounts into a same-origin iframe and verifies document-compatible stylesheet construction. YPE-5947 also covers construction, replacement, and adoption failure recovery. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | None. |
 | Inline floating content | A historical picker negative control preserved tree-scope relationships but demonstrated clipping beyond a constrained ancestor. | Validated historically; the story was removed after strategy selection. | None; clipping is why inline placement is not the selected escaping strategy. |
@@ -123,6 +123,18 @@ means a single shared session is not acceptable evidence.
 | Storybook build command or artifact | `pnpm --filter @youversion/platform-react-ui test:shadow-safari` |
 | Focused story count and per-story results | 38/38 passed. The final candidate matrix used one fresh process and SafariDriver session per story: 36 stories passed on their first attempt, 1 passed on its second attempt after SafariDriver retained the preceding session, and the Bible Card version-picker story passed in a direct isolated rerun after its matrix process exceeded the 120-second limit without producing a test result. |
 | Failures, linked blockers, or reruns | The final candidate evidence had 0 assertion failures. One recognized SafariDriver session-handoff failure used one bounded transport retry. One generic process timeout was surfaced as a matrix failure, was not automatically retried, and passed in a direct isolated rerun in 1.1 seconds. The runner permits at most two retries only for recognized transport failures; generic process timeouts, story assertion failures, and interaction failures are not retried. |
+
+### YPE-6216 actual Safari host-change revalidation
+
+| Field | Evidence |
+| --- | --- |
+| Runtime commit | `a86369b8e133e0ab5f073de4733de6b8a01dd3d4` |
+| Date and operator | 2026-10-15; Codex on Austin Harms's local machine |
+| Environment | macOS 26.6.2 (25G83); Safari 26.6.2; SafariDriver 21624.5.1.11.3 |
+| Command | `pnpm --filter @youversion/platform-react-ui test:shadow-safari` |
+| Result | 39/39 focused stories passed in fresh SafariDriver sessions. Every story passed on its first attempt with no assertion failures, transport retries, or process timeouts. `Suspense Reveal Restores Host Layout` passed in its isolated run. |
+
+### YPE-6217 actual Safari stylesheet revalidation
 
 YPE-6217 changed the automatic-root stylesheet installation path, which triggers
 another actual-Safari run under the rollout policy. On 2026-10-15, commit
@@ -194,8 +206,9 @@ in their owning component tree and reuse its boundary when present. The
 realistic-usage fixture retains exactly 12 manually owned hosts and one shared
 stylesheet object by marking its contents for boundary reuse.
 
-The focused component matrix verifies exact empty-host SSR and one open client
-root containing each production element. Component behavior coverage preserves
+The focused component matrix verifies exact childless, declaratively styled
+host SSR and one open client root containing each production element. Component
+behavior coverage preserves
 the avatar's image/fallback and forwarded Radix ref contract; Separator's
 decorative, orientation, DOM prop, event, and ref behavior; footnote context,
 reference, direction, theme, and font sizing. The focused browser story
@@ -204,10 +217,10 @@ horizontal and vertical Separator geometry, and representative footnote theme
 and direction in the package browser matrix.
 
 The ADR's client-only first-paint contract is accepted for the reviewed avatar
-rows and stacks, separators, and standalone footnotes. Their empty server host
-reserves no space, so content can appear and move nearby layout after the
-passive-effect mount; footnote composition normally appears only after
-interaction.
+rows and stacks, separators, and standalone footnotes. Their childless,
+declaratively styled server host reserves no space, so content can appear and
+move nearby layout after the passive-effect mount; footnote composition normally
+appears only after interaction.
 
 The intended-layout review moved standalone `BibleThemeSettingsContent` to
 YPE-5994 because its initial automatic host prevented the settings body from
@@ -218,11 +231,11 @@ below.
 ## YPE-5994 standalone theme settings evidence
 
 Standalone `BibleThemeSettingsContent` now owns one client-only open shadow
-root and reuses the exact empty server host during hydration. Its explicit
-theme scopes both the shadow wrapper and settings body even when the provider
-theme conflicts, and its interface direction, five native button controls,
-selected font state, font limits, and four top-level Expo callbacks retain
-their public behavior.
+root and reuses the exact childless, declaratively styled server host during
+hydration. Its explicit theme scopes both the shadow wrapper and settings body
+even when the provider theme conflicts, and its interface direction, five
+native button controls, selected font state, font limits, and four top-level
+Expo callbacks retain their public behavior.
 
 The constrained Popover journey identified the only layout exception needed:
 this component's private host uses a flex-column layout with a zero logical
@@ -240,20 +253,21 @@ assistive-technology support.
 
 `BibleReader.Root` suppresses the standalone boundary around its owned settings,
 so the settings body remains in the reader root without nesting. YPE-5952 must
-document the empty-host client-only contract, open-root automation, native
-event retargeting, loss of global-CSS access, and the supported explicit theme,
-direction, and callback inputs as part of the coordinated major release.
+document the childless, declaratively styled host contract, open-root automation,
+native event retargeting, loss of global-CSS access, and the supported explicit
+theme, direction, and callback inputs as part of the coordinated major release.
 YPE-5994 has an empty changeset and must not publish an independent partial
 rollout.
 
 ## YPE-5950 scripture presentation evidence
 
 Standalone `BibleTextView`, `VerseOfTheDay`, and `BibleCard` now each own one
-client-only open shadow root and reuse the exact empty server host during
-hydration. `VerseOfTheDay` and `BibleCard` suppress the automatic boundary on
-their composed `BibleTextView`; `BibleCard` also suppresses it on its composed
-version picker. `BibleReader` suppresses the standalone `BibleTextView`
-boundary so its owned scripture renderer reuses the reader root.
+client-only open shadow root and reuse the exact childless, declaratively styled
+server host during hydration. `VerseOfTheDay` and `BibleCard` suppress the
+automatic boundary on their composed `BibleTextView`; `BibleCard` also
+suppresses it on its composed version picker. `BibleReader` suppresses the
+standalone `BibleTextView` boundary so its owned scripture renderer reuses the
+reader root.
 
 Focused unit coverage verifies the exact host matrix, hydration without nested
 or duplicate roots, open-root queries, native event retargeting, the React verse
@@ -267,7 +281,7 @@ cover the verse-of-the-day clipboard fallback and `BibleCard`'s
 Focused Chromium, Firefox, and Playwright WebKit stories exercise hostile
 light-DOM CSS, representative standalone layouts, both verse-of-the-day sizes,
 the default and full card compositions, card version selection, and the
-shadow-local footnote overlay. The ADR's empty-host
+shadow-local footnote overlay. The ADR's childless, declaratively styled host
 client-only first-paint contract is accepted for these reviewed layouts; without
 JavaScript the component content remains absent, and nearby layout can move
 after the passive-effect mount. This evidence does not establish actual-Safari
@@ -293,12 +307,12 @@ release-candidate validation; this evidence makes no assistive-technology claim.
 ## YPE-5951 Bible reader evidence
 
 `BibleReader.Root` now owns one client-only open shadow root and reuses the
-exact empty server host during hydration. Reader-owned content, toolbar,
-search, scripture, chapter and version pickers, theme settings, avatar, verse
-actions, and authentication dialogs remain in that root; the chapter and
-version picker `Root` components explicitly reuse it. A consumer may still
-intentionally render another public isolated component as an arbitrary reader
-child, which creates the documented nested-root topology.
+exact childless, declaratively styled server host during hydration. Reader-owned
+content, toolbar, search, scripture, chapter and version pickers, theme settings,
+avatar, verse actions, and authentication dialogs remain in that root; the
+chapter and version picker `Root` components explicitly reuse it. A consumer may
+still intentionally render another public isolated component as an arbitrary
+reader child, which creates the documented nested-root topology.
 
 Focused unit evidence verifies hydration without recoverable errors, empty
 light DOM, no accidental reader-owned roots, direct `BibleReaderSearch`

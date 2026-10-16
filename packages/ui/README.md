@@ -91,10 +91,11 @@ for the complete boundary and evidence.
 Automatic isolation is a breaking rendered-DOM change even when component props
 are unchanged:
 
-- **Client rendering and refs:** Server output is an empty light-DOM host. Content
-  and forwarded element refs become available after the passive-effect client
-  mount, so there can be visible pop-in or nearby layout movement and no component
-  content without JavaScript.
+- **Client rendering and refs:** Server output is a childless light-DOM host whose
+  inline `display` declares the boundary's intended layout. Content and forwarded
+  element refs become available after the passive-effect client mount, so there
+  can be visible pop-in or nearby layout movement and no component content without
+  JavaScript.
 - **DOM access and automation:** Document queries do not cross the boundary. Wait
   for the host's open `shadowRoot`, then query within it, or prefer public refs,
   callbacks, and role-based locators. Playwright CSS locators pierce open roots by
@@ -127,18 +128,28 @@ All component classes are prefixed with `yv:` to avoid collisions with your app'
 
 ### Content Security Policy
 
-The SDK loads webfonts from external origins. If your app sets a strict `Content-Security-Policy`, allowlist these hosts so fonts aren't blocked (without them, components fall back to a system sans-serif):
+The SDK emits inline `<style>` elements and inline style attributes for component
+CSS and runtime layout, including the declarative `display` on automatic shadow
+hosts. The simplest supported policy permits inline style elements and attributes
+in addition to allowlisting the font origins. For CSP Level 3, merge equivalent
+directives into your application's policy:
 
 ```
-font-src  https://fonts.gstatic.com https://cdn.youversion.com;
-style-src https://fonts.googleapis.com https://api.youversion.com;
+style-src-elem 'unsafe-inline' https://fonts.googleapis.com https://api.youversion.com;
+style-src-attr 'unsafe-inline';
+font-src https://fonts.gstatic.com https://cdn.youversion.com;
 ```
+
+The SDK does not currently expose a CSP nonce. Applications that prohibit
+`'unsafe-inline'` must maintain matching hashes for embedded style elements and
+server-rendered style attributes (using `'unsafe-hashes'` for attributes);
+nonce-only policies are not currently supported.
 
 - `fonts.googleapis.com` / `fonts.gstatic.com` — Inter and Source Serif 4 (base typography), loaded from Google Fonts
 - `api.youversion.com` — the Fonts API stylesheet (`/v1/fonts/1/stylesheet`), which `YouVersionProvider` requests with your app key
 - `cdn.youversion.com` — the Untitled Serif woff2 files that stylesheet points at
 
-Untitled Serif is YouVersion's brand serif and the SDK's default serif face. There is no prop to turn it off. If these hosts are blocked, serif text falls back to Source Serif 4 with no layout break — the stack is `'Untitled Serif', 'Source Serif 4', serif`. If you load Untitled Serif yourself, your copy is used; the stack names it first regardless of who fetched it.
+Untitled Serif is YouVersion's brand serif and the SDK's default serif face. There is no prop to turn it off. If the Fonts API or CDN is blocked, serif text falls back to Source Serif 4 when Google Fonts is available; if Google Fonts is also blocked, it falls back to the browser's generic serif face. The stack is `'Untitled Serif', 'Source Serif 4', serif`. If you load Untitled Serif yourself, your copy is used; the stack names it first regardless of who fetched it.
 
 ## Theming
 

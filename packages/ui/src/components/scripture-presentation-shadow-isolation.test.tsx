@@ -72,11 +72,11 @@ describe('scripture presentation public shadow boundaries', () => {
       'section[data-yv-sdk]',
     ],
   ])(
-    '%s owns one empty SSR host and reuses it without nested roots',
+    '%s owns one childless styled SSR host and reuses it without nested roots',
     async (_, element, selector) => {
       const serverMarkup = renderToString(element);
 
-      expect(serverMarkup).toBe('<div data-yv-shadow-host="true"></div>');
+      expect(serverMarkup).toBe('<div data-yv-shadow-host="true" style="display:contents"></div>');
 
       const container = document.createElement('div');
       container.innerHTML = serverMarkup;

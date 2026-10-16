@@ -40,7 +40,7 @@ describe('leaf component shadow isolation', () => {
     '$name renders one automatic boundary with its production element inside',
     async ({ element, hostElement, selector }) => {
       expect(renderToString(element)).toBe(
-        `<${hostElement} data-yv-shadow-host="true"></${hostElement}>`,
+        `<${hostElement} data-yv-shadow-host="true" style="display:contents"></${hostElement}>`,
       );
 
       const { container, unmount } = render(element);
@@ -73,7 +73,9 @@ describe('leaf component shadow isolation', () => {
       </p>
     );
     const serverMarkup = renderToString(element);
-    expect(serverMarkup).toBe('<p>Before <span data-yv-shadow-host="true"></span> after</p>');
+    expect(serverMarkup).toBe(
+      '<p>Before <span data-yv-shadow-host="true" style="display:contents"></span> after</p>',
+    );
 
     const container = document.createElement('div');
     container.innerHTML = serverMarkup;
@@ -114,7 +116,7 @@ describe('leaf component shadow isolation', () => {
     );
     const serverMarkup = renderToString(element);
     expect(serverMarkup).toBe(
-      '<p>Before<!-- --> <span data-yv-shadow-host="true"></span> <!-- -->after</p>',
+      '<p>Before<!-- --> <span data-yv-shadow-host="true" style="display:contents"></span> <!-- -->after</p>',
     );
 
     const container = document.createElement('div');

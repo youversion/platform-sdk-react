@@ -22,6 +22,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
+    maxWorkers: 4,
     setupFiles: './src/test/setup.ts',
     passWithNoTests: true,
     coverage: {
@@ -47,6 +48,8 @@ export default defineConfig({
         },
         test: {
           name: 'unit',
+          // Avoid browser-project contention exhausting the unit-test budget.
+          sequence: { groupOrder: 0 },
           environment: 'jsdom',
           setupFiles: './src/test/setup.ts',
           include: ['src/**/*.test.{ts,tsx}'],
@@ -67,6 +70,7 @@ export default defineConfig({
         ],
         test: {
           name: 'storybook',
+          sequence: { groupOrder: 1 },
           // Increase timeouts for CI stability
           testTimeout: 60000, // 60 seconds for test execution
           hookTimeout: 30000, // 30 seconds for setup/teardown hooks
