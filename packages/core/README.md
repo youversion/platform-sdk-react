@@ -61,6 +61,51 @@ const verses = await searchClient.searchVerses('faith', versions.data[0].id, {
 console.log(trending.queries[0]?.text, verses.verses[0]?.id);
 ```
 
+### Verse-art images
+
+`ImagesClient` reads image metadata from `GET /v1/images`. Image bytes stay on
+the CDN. Set `size` to `thumb`, `card`, or `full` on `image_url` when you want
+a smaller rendition.
+
+```ts
+import { ApiClient, ImagesClient } from '@youversion/platform-core';
+
+const apiClient = new ApiClient({ appKey: 'YOUR_APP_KEY' });
+const images = new ImagesClient(apiClient);
+
+const page = await images.getImages({
+  passage_id: 'JHN.3.16',
+  language_ranges: ['en', 'es'],
+  page_size: 12,
+});
+
+const [first] = page.data;
+if (!first) {
+  console.log('No images for that filter');
+} else {
+  const image = await images.getImage(first.id);
+  const url = new URL(image.image_url);
+  url.searchParams.set('size', 'card');
+}
+```
+
+`next_page_token` is `null` on the last page. Pass that value back as
+`page_token`, including `null`, to request the next page or the first page.
+`total_size` is present only when the API sends a number, which it does when
+`passage_id` is set. That value is the server's count and can exceed
+`data.length` when off-contract records were dropped from the page. A null or
+missing total is omitted. `0` is kept.
+
+Pass `{ beta: true }` to call `/v1-beta/images` from that client.
+
+```ts
+const betaImages = new ImagesClient(apiClient, { beta: true });
+```
+
+A blank `passage_id` is rejected before the request. A bare chapter such as
+`JHN.3` is sent to the server, which answers 400. Read that status with
+`getHttpStatus`.
+
 ### Display Bible HTML
 
 Use `getPassageDisplay` when you need transformed HTML together with current

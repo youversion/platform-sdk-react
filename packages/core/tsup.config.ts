@@ -40,6 +40,7 @@ export default defineConfig({
     'src/search-verses.ts',
     'src/search-topics.ts',
     'src/highlights.ts',
+    'src/images.ts',
     'src/organizations.ts',
     'src/data-exchange.ts',
     'src/Users.ts',
