@@ -1,4 +1,5 @@
 import * as z from 'zod/mini';
+import { parseSearchLanguageRange } from './search';
 
 /** A verse-art image record from the Images API. */
 export const ImageSchema = z.object({
@@ -31,35 +32,42 @@ const ImageNextPageTokenWireSchema = z.pipe(
   z.transform((token): string | null => (token == null || token === '' ? null : token)),
 );
 
-export const ImageCollectionWireSchema = z.object({
-  data: z.array(ImageSchema),
-  next_page_token: ImageNextPageTokenWireSchema,
-  total_size: z.optional(z.nullable(z.int().check(z.nonnegative()))),
-});
+/**
+ * List envelope. Each `data` item is parsed with {@link ImageSchema}; off-contract
+ * items are dropped so one bad record does not reject the page.
+ */
+export const ImageCollectionWireSchema = z.pipe(
+  z.object({
+    data: z.array(z.unknown()),
+    next_page_token: ImageNextPageTokenWireSchema,
+    total_size: z.optional(z.nullable(z.int().check(z.nonnegative()))),
+  }),
+  z.transform((wire) => ({
+    ...wire,
+    data: wire.data.flatMap((item) => {
+      const parsed = ImageSchema.safeParse(item);
+      return parsed.success ? [parsed.data] : [];
+    }),
+  })),
+);
 
 export type ImageCollectionWire = z.infer<typeof ImageCollectionWireSchema>;
 
-export const ImageIdSchema = z
-  .string()
-  .check(z.trim(), z.minLength(1, 'Image ID must be a non-empty string'));
+/** Opaque image id. Blank rejected; value otherwise sent unchanged (no trim). */
+export const ImageIdSchema = z.string().check(
+  z.minLength(1, 'Image ID must be a non-empty string'),
+  z.refine((value) => value.trim().length > 0, 'Image ID must be a non-empty string'),
+);
 
 const ImagePassageIdSchema = z
   .string()
   .check(z.trim(), z.minLength(1, 'Passage ID must be a non-empty string'));
 
-/** OpenAPI Basic Language Range for Images `language_ranges[]`. Case and `_` are kept. */
-const IMAGE_LANGUAGE_RANGE_REGEX = /^(\*|[A-Za-z0-9]{1,8}([-_][A-Za-z0-9]{1,8})*)$/;
-
-const IMAGE_LANGUAGE_RANGE_ERROR =
-  'Language range must be "*" or a Basic Language Range (e.g., "en", "en-US", "en_US")';
-
-const ImageLanguageRangeSchema = z
-  .string()
-  .check(
-    z.trim(),
-    z.minLength(1, 'Language ranges must be a non-empty string'),
-    z.regex(IMAGE_LANGUAGE_RANGE_REGEX, IMAGE_LANGUAGE_RANGE_ERROR),
-  );
+/** Same Basic Language Range grammar and normalization as search (`en_US` → `en-us`). */
+const ImageLanguageRangeSchema = z.pipe(
+  z.string(),
+  z.transform((range) => parseSearchLanguageRange(range)),
+);
 
 const PAGE_SIZE_ERROR = 'Page size must be an integer from 1 to 99';
 
@@ -70,7 +78,10 @@ export const GetImagesOptionsSchema = z.object({
    * The API reports `total_size` only when this is set.
    */
   passage_id: z.optional(ImagePassageIdSchema),
-  /** Ordered language ranges, sent as `language_ranges[]`. Omit to include every language. */
+  /**
+   * Ordered language ranges, sent as `language_ranges[]`. Omit to include every language.
+   * Normalized with {@link parseSearchLanguageRange} (`en_US` → `en-us`).
+   */
   language_ranges: z.optional(
     z.readonly(
       z

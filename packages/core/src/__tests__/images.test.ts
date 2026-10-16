@@ -64,10 +64,10 @@ describe('ImagesClient', () => {
     expect(headers.get('Authorization')).toBeNull();
   });
 
-  it('sends trimmed filters as language_ranges[] and drops unknown response fields', async () => {
+  it('normalizes language_ranges[] like search and drops unknown response fields', async () => {
     const images = createImagesClient();
     const fetchSpy = vi.spyOn(global, 'fetch');
-    const languageRanges: readonly string[] = [' EN ', 'es'];
+    const languageRanges: readonly string[] = [' EN ', 'en_US', 'es'];
 
     server.use(
       http.get(`https://${apiHost}/v1/images`, ({ request }) => {
@@ -75,7 +75,7 @@ describe('ImagesClient', () => {
         expect(url.searchParams.get('passage_id')).toBe('jhn.3.16');
         expect(url.searchParams.get('page_size')).toBe('12');
         expect(url.searchParams.get('page_token')).toBe('tok-1');
-        expect(url.searchParams.getAll('language_ranges[]')).toEqual(['EN', 'es']);
+        expect(url.searchParams.getAll('language_ranges[]')).toEqual(['en', 'en-us', 'es']);
         expect(url.searchParams.has('fields')).toBe(false);
         expect(url.searchParams.has('fields[]')).toBe(false);
         return HttpResponse.json({
@@ -95,7 +95,8 @@ describe('ImagesClient', () => {
 
     expect(page).toEqual({ data: [image], next_page_token: 'next', total_size: 4 });
     const raw = urlFromFetchInput(fetchSpy.mock.calls[0]?.[0]);
-    expect(raw).toContain('language_ranges%5B%5D=EN');
+    expect(raw).toContain('language_ranges%5B%5D=en');
+    expect(raw).toContain('language_ranges%5B%5D=en-us');
     expect(raw).toContain('language_ranges%5B%5D=es');
     expect(raw).toContain('passage_id=jhn.3.16');
     expect(raw).not.toContain('fields');
@@ -234,7 +235,7 @@ describe('ImagesClient', () => {
     expect(page).toEqual({ data: [], next_page_token: null });
   });
 
-  it('rejects a list body that breaks the image contract', async () => {
+  it('drops malformed list items and keeps valid ones', async () => {
     const images = createImagesClient();
 
     server.use(
@@ -242,18 +243,34 @@ describe('ImagesClient', () => {
         HttpResponse.json({
           data: [
             {
-              id: 'img-1',
-              image_url: 'https://cdn.example/img-1.png?v=2',
+              id: 'img-bad',
+              image_url: 'https://cdn.example/img-bad.png',
               passage_id: 'JHN.3.16',
-              attribution: 'YouVersion',
+              attribution: null,
               language_tag: 'en',
+              width: 1200.5,
               height: 800,
               aspect_ratio: 1.5,
             },
+            { ...image, category: 'verse-art' },
+            { id: 'img-partial' },
           ],
           next_page_token: null,
+          total_size: 3,
         }),
       ),
+    );
+
+    const page = await images.getImages();
+
+    expect(page).toEqual({ data: [image], next_page_token: null, total_size: 3 });
+  });
+
+  it('rejects a list envelope that is not an object with a data array', async () => {
+    const images = createImagesClient();
+
+    server.use(
+      http.get(`https://${apiHost}/v1/images`, () => HttpResponse.json({ data: 'not-an-array' })),
     );
 
     await expect(images.getImages()).rejects.toThrow(/Unexpected images API response/);
@@ -320,25 +337,48 @@ describe('ImagesClient', () => {
     expect(raw).toContain('passage_id=JHN.3.16');
   });
 
-  it('encodes an opaque id once on the detail path', async () => {
+  it('encodes an opaque id once on the detail path without trimming', async () => {
     const images = createImagesClient();
     const fetchSpy = vi.spyOn(global, 'fetch');
+    const opaqueId = 'abc/def?x';
 
     server.use(
       http.get(`https://${apiHost}/v1/images/abc%2Fdef%3Fx`, () =>
-        HttpResponse.json({ ...image, id: 'abc/def?x', category: 'verse-art' }),
+        HttpResponse.json({ ...image, id: opaqueId, category: 'verse-art' }),
       ),
     );
 
-    const result = await images.getImage('  abc/def?x  ');
+    const result = await images.getImage(opaqueId);
 
-    expect(result).toEqual({ ...image, id: 'abc/def?x' });
+    expect(result).toEqual({ ...image, id: opaqueId });
     const raw = urlFromFetchInput(fetchSpy.mock.calls[0]?.[0]);
     expect(raw).toContain('/v1/images/abc%2Fdef%3Fx');
     expect(raw).not.toContain('fields');
     const headers = new Headers(fetchSpy.mock.calls[0]?.[1]?.headers);
     expect(headers.get('X-YVP-App-Key')).toBe('test-app');
     expect(headers.get('Authorization')).toBeNull();
+  });
+
+  it('rejects blank image ids without trimming a padded opaque id on the wire', async () => {
+    const images = createImagesClient();
+    const fetchSpy = vi.spyOn(global, 'fetch');
+    const paddedId = '  abc/def?x  ';
+
+    await expect(images.getImage('')).rejects.toThrow('Image ID must be a non-empty string');
+    await expect(images.getImage('   ')).rejects.toThrow('Image ID must be a non-empty string');
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    server.use(
+      http.get(`https://${apiHost}/v1/images/%20%20abc%2Fdef%3Fx%20%20`, () =>
+        HttpResponse.json({ ...image, id: paddedId }),
+      ),
+    );
+
+    const result = await images.getImage(paddedId);
+
+    expect(result).toEqual({ ...image, id: paddedId });
+    const raw = urlFromFetchInput(fetchSpy.mock.calls[0]?.[0]);
+    expect(raw).toContain('/v1/images/%20%20abc%2Fdef%3Fx%20%20');
   });
 
   it('exposes 404 from getImage through getHttpStatus', async () => {

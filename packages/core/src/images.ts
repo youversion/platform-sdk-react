@@ -83,9 +83,10 @@ export class ImagesClient {
   /**
    * Fetches one image by its opaque id.
    *
-   * The id is trimmed, then placed on the path with one `encodeURIComponent`
-   * call. Pass `Image.id` or a search hit as stored. Percent-encoding the id
-   * before this call encodes it a second time and changes the path.
+   * The id is placed on the path unchanged (blank rejected) with one
+   * `encodeURIComponent` call. Pass `Image.id` or a search hit as stored.
+   * Percent-encoding the id before this call encodes it a second time and
+   * changes the path.
    *
    * @param imageId `Image.id` from a list response or a search hit.
    * @returns The image record.
