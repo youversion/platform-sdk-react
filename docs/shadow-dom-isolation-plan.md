@@ -9,8 +9,8 @@ publishing remains gated by the YPE-5952 evidence recorded below.
 
 ## Why this doc exists
 
-[ADR 0007](adr/0007-prototype-shadow-dom-style-isolation.md) records the durable
-architectural decision behind the Shadow DOM prototype. This document tracks
+[ADR 0010](adr/0010-automatic-shadow-dom-style-isolation.md) records the durable
+architectural decision behind automatic Shadow DOM isolation. This document tracks
 the implementation evidence, unresolved audits, and coordinated-release
 validation for the approved public boundary.
 
@@ -19,9 +19,9 @@ major release or any pending manual validation has completed.
 
 ## Current scope
 
-- In the current stable package, `YouVersionAuthButton` is the only component
-  with automatic isolation. On the coordinated release branch, every included
-  YPE-5356 component boundary is implemented: the auth button, chapter and
+- The current stable package has no automatically isolated components. On the
+  coordinated release branch, every included YPE-5356 component boundary is
+  implemented: the auth button, chapter and
   version picker roots, `BibleReader.Root`, `ProfileAvatar`, `Separator`,
   `FootnoteContent`, and standalone `BibleThemeSettingsContent`,
   `BibleTextView`, `VerseOfTheDay`, and `BibleCard`.
@@ -71,7 +71,7 @@ Windows/NVDA validation gap are recorded in the YPE-5952 section below.
 
 | Area | Evidence today | Status | Remaining work |
 | --- | --- | --- | --- |
-| Host CSS isolation | Hostile-CSS demos and focused browser coverage exercise element selectors, direction inheritance, vertical writing and typography resets, hostile custom properties, universal `!important` rules, host attacks, and generated pseudo-content. | Validated for the included groups in Chromium, Firefox, Playwright WebKit, and the recorded 39/39 YPE-6216 Safari revalidation | Repeat actual Safari after future rollout-policy trigger changes. |
+| Host CSS isolation | Focused browser coverage exercises element selectors, direction inheritance, vertical writing and typography resets, hostile custom properties, universal `!important` rules, host attacks, and generated pseudo-content. | Validated for the included groups in Chromium, Firefox, Playwright WebKit, and the recorded 39/39 YPE-6216 Safari revalidation | Repeat actual Safari after future rollout-policy trigger changes. |
 | SSR and hydration | Focused React coverage verifies reuse of the exact childless, declaratively styled server host, matching hydration without recoverable errors or duplicate content, and a null forwarded ref before the passive-effect mount. Group-specific sections below cover the included boundary. | Accepted for the coordinated client-only boundary | Preserve the childless-host, possible-pop-in, possible-layout-movement, and no-JavaScript limitations in consumer documentation. |
 | Component behavior | Group-specific unit and browser coverage below exercises public behavior, refs, events, composition, and Strict Mode lifecycle. | Validated for the included groups | Complete the final package/browser gates and manual release-candidate checks. |
 | Owner-document handling | Focused coverage mounts into a same-origin iframe and verifies document-compatible stylesheet construction. YPE-5947 also covers construction, replacement, and adoption failure recovery. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | None. |
@@ -379,7 +379,7 @@ coordination for the coordinated rollout.
 - Apply automatic isolation at the SDK-owned top-level component boundary.
   Compound members and composed SDK children reuse the owning boundary rather
   than creating accidental nested roots.
-- Apply [ADR 0007's client-only SSR and hydration contract](adr/0007-prototype-shadow-dom-style-isolation.md#ssr-and-hydration-contract)
+- Apply [ADR 0010's client-only SSR and hydration contract](adr/0010-automatic-shadow-dom-style-isolation.md#ssr-and-hydration-contract)
   per rollout group. Each implementation ticket reviews whether its first-paint,
   layout, and no-JavaScript limitations are acceptable for that component.
 - Accept single-active-peer popover dismissal. Concurrent peer overlays require
@@ -472,8 +472,6 @@ separately in YPE-5749.
   public font family names used inside a shadow root. This limitation is
   accepted for the rollout; avoiding it requires private family names and
   controlled font declarations.
-- Shadow DOM cannot prevent a host from hiding, clipping, transforming, or
-  constraining the component host or its ancestors.
 - Open shadow roots prevent CSS selector crossover; they do not prevent
   same-page JavaScript from inspecting or mutating the root.
 - The focused Shadow DOM browser suite runs in Chromium, Firefox, and Playwright

@@ -99,7 +99,9 @@ are unchanged:
 - **DOM access and automation:** Document queries do not cross the boundary. Wait
   for the host's open `shadowRoot`, then query within it, or prefer public refs,
   callbacks, and role-based locators. Playwright CSS locators pierce open roots by
-  default; XPath does not. Internal markup is not a stable public API.
+  default; XPath does not. Internal markup is not a stable public API. Arbitrary
+  `BibleReader.Root` children and consumer-supplied picker triggers move into the
+  owning root, so document queries no longer find them there.
 - **Events:** Native composed events observed outside the root are retargeted to
   the host. React callbacks passed to a component retain their documented target
   semantics. Light-DOM ancestor React handlers receive one delivery for the
@@ -112,11 +114,19 @@ are unchanged:
 - **Styling and layout:** Consumer global CSS and document-level token overrides
   cannot style shadow internals. Use supported component props and theme inputs.
   Fonts remain document-owned, `rem` units still follow the owning document root,
-  `direction` is intentionally inherited, and ancestors can still size, hide,
-  clip, or transform the light-DOM host.
+  and `direction` is intentionally inherited. Ancestor geometry can size, clip,
+  or transform the light-DOM host, but the internal reset can restore
+  `visibility` and `pointer-events`. To hide an isolated component, apply
+  `display: none` to a consumer-owned light-DOM wrapper or do not render the
+  component. To disable one, use a supported component API instead of ancestor
+  `pointer-events`.
 - **Overlays:** Popovers and dialogs stay in their owning root and use the native
   top layer where needed. Opening a peer popover dismisses the current peer;
-  simultaneous peer popovers are not supported.
+  simultaneous peer popovers are not supported. The native Popover API is
+  required for isolated floating content; there is no clipped inline fallback,
+  and opening an overlay throws when the API is unavailable. Without a consumer
+  error boundary, that error can unmount the affected React root. A standalone
+  `VerseActionPopover` and its anchor must remain in the same DOM tree.
 
 **Non-React or manual CSS import:**
 

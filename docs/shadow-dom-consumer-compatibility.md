@@ -55,9 +55,12 @@ exercise. They do not establish compatibility for every SDK component.
 | An automatically isolated component is nested inside another open SDK shadow root | Supported for basic rendering, traversal, and composed events | `NestedRootsRequireTraversalAndRetargetAtEveryBoundary` verifies recursive root traversal and target retargeting to the inner host in the outer scope and to the outer host in the document scope. Consumers must traverse every root explicitly. |
 | Nested overlays inside shadow roots | Supported in current browser evidence | YPE-5355 verifies nested dialog and popover stacking, focus, inertness, dismissal, and restoration through the shared shadow-local portal infrastructure. Repeat component-specific validation during rollout. |
 | Concurrent peer popovers inside the same or separate component roots | Unsupported as simultaneous peers | Opening a peer dismisses the current popover through Radix outside interaction. YPE-5356 accepts this single-active-peer behavior; supporting simultaneous peers requires a demonstrated product journey and separate design. |
+| Native Popover API support is unavailable | Unsupported for isolated floating content | The shadow-local top-layer strategy has no silent inline fallback. Opening an affected overlay throws; if no consumer error boundary contains the error, React can unmount the affected consumer root. |
+| A standalone `VerseActionPopover` receives an anchor from another DOM tree | Unsupported | The public popover accepts a live anchor element and does not create an automatic boundary. Keep the anchor and standalone popover in the same document or shadow root. |
 | Shadow-local picker relationships | Supported in current browser evidence | The chapter and version picker stories verify that each trigger and controlled panel remain in one root and resolve their `aria-controls` relationship. This does not make cross-scope ID references supported. |
 | Consumer-supplied picker triggers | Supported within the explicit styling contract | The supplied element remains the interactive trigger. Inline style, ordinary attributes, and SDK-embedded utility classes are preserved. Document/global class rules and document-level token overrides do not cross the root. The SDK does not promise CSS Parts, arbitrary stylesheet injection, or styling of picker internals. |
 | Arbitrary `BibleReader.Root` children | Supported inside the reader root; breaking DOM/CSS placement change | Children render in the reader's open shadow root. Their React context and callbacks remain intact, but document-root selectors, global CSS, and document queries no longer reach them. A child that is itself an automatically isolated public component may intentionally create a nested root; reader-owned SDK composition suppresses accidental nesting. YPE-5952 owns the coordinated release documentation. |
+| An ancestor uses `visibility` or `pointer-events` to hide or disable an isolated descendant | Unsupported as a control mechanism | The internal shadow reset can restore those properties, leaving descendants visible, clickable, or focusable. Ancestor geometry can still clip, transform, size, or otherwise constrain the light-DOM host. To hide an isolated component, apply `display: none` to a consumer-owned light-DOM wrapper or do not render the component. To disable one, use a supported component API instead of ancestor `pointer-events`. |
 
 ## Consumer risks
 
@@ -75,18 +78,10 @@ An open root permits inspection and mutation by same-page JavaScript, so it is
 an automation and styling boundary rather than a security boundary. Selectors
 that depend on internal markup remain fragile even when they traverse the root.
 
-The focused Shadow DOM suite runs in Chromium, Firefox, and Playwright WebKit.
-The 22-story pre-picker-rollout baseline returned assertion-level success in local Safari 26.6.2
-through SafariDriver when each ran in a fresh browser session. A single
-long-lived SafariDriver session stalled on the sign-in dialog and verse action
-popover stories after 20 successes, so isolated sessions are required for this
-smoke setup. Actual Safari is not part of continuous integration. The current
-YPE-5952 release-candidate result is recorded in the
-[validation plan](shadow-dom-isolation-plan.md#actual-safari-browser-evidence).
-The bounded Safari/VoiceOver evidence is also recorded there. Windows with
-Chrome or Edge and NVDA was not run because no Windows test environment was
-available and remains unvalidated. Actual Safari must be repeated after the
-trigger changes defined by the rollout policy.
+The focused Shadow DOM suite supplies the browser evidence cited by this
+contract. Exact release-candidate environments, tested commits, per-journey
+results, and remaining assistive-technology gaps live in the
+[validation plan](shadow-dom-isolation-plan.md#ype-5952-release-candidate-validation).
 Reflected ARIA element properties demonstrate DOM relationship resolution, not
 announcements or other assistive-technology behavior. Claims name only the exact
 browser and assistive-technology combination validated.

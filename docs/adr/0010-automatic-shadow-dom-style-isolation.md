@@ -1,14 +1,13 @@
-# ADR 0007: Prototype automatic Shadow DOM style isolation
+# 10. Automatic Shadow DOM style isolation
 
-Status: Accepted for coordinated rollout planning; production expansion is not yet shipped
+## Status
 
-YPE-5356 accepts the architecture for a coordinated major-version rollout
-across the compatible public UI boundary defined in the
-[production rollout policy](../shadow-dom-rollout-policy.md). Implementation is
-split into dependency-ordered component groups, but the package must not publish
-a partial boundary. The production rollout policy maintains the current
-stable-package and integration-branch boundary inventory while the remaining
-rollout groups and coordinated release are pending.
+Accepted
+
+Compatible public UI components use the automatic boundary defined by the
+[production rollout policy](../shadow-dom-rollout-policy.md). The coordinated
+major release treats that boundary as one breaking rendered-DOM change rather
+than publishing partial component groups.
 
 The automatic boundary belongs to the SDK-owned top-level component instance.
 Compound members and SDK components composed inside another isolated SDK
@@ -19,25 +18,25 @@ Host applications can apply unlayered global CSS, including Tailwind preflight,
 that outranks the UI package's layered styles. Resets, stronger selectors,
 `!important`, cascade layers, and `@scope` remain part of the host document's
 cascade and cannot prevent outside selectors from matching SDK internals. The
-prototype therefore uses Shadow DOM as the browser-enforced style boundary.
+decision therefore uses Shadow DOM as the browser-enforced style boundary.
 
-## Decision for the prototype
+## Decision
 
-`YouVersionAuthButton` automatically creates an open shadow root and renders its
-existing implementation into it through a React portal. Consumers continue to
-use the same component API; they do not need to discover or enable isolation.
-The SDK's compiled Tailwind component rules are installed inside the root, the light-DOM host
-receives a protected box reset, and an internal wrapper resets inherited visual
-properties.
+Each compatible top-level component named by the rollout policy automatically
+creates an open shadow root and renders its existing implementation into it
+through a React portal. Consumers continue to use the same component APIs; they
+do not need to discover or enable isolation. The SDK's compiled Tailwind
+component rules are installed inside the root, the light-DOM host receives a
+protected box reset, and an internal wrapper resets inherited visual properties.
 
 Writing direction is the only intentional inherited CSS property: both reset
 boundaries explicitly preserve `direction`, while `all: initial` restores
 horizontal writing, mixed text orientation, SDK typography, and other visual
-properties. Vertical host writing modes and inherited host typography are unsupported.
-This is selector and inheritance isolation, not independent document sizing:
-the prototype retains `rem` units, so the owning document's root font size still
+properties. Vertical host writing modes and inherited host typography are
+unsupported. This is selector and inheritance isolation, not independent document sizing:
+the boundary retains `rem` units, so the owning document's root font size still
 scales SDK text, spacing, and controls. That sizing input is accepted for the
-prototype; it is not reset by a shadow boundary.
+automatic boundary; it is not reset by a shadow boundary.
 Known ambient custom-property dependencies are closed by using SDK-owned
 `--yv-spacing` and `--yv-radius` values and by defining a local `--spacing`
 compatibility alias for `tw-animate-css`. The completed YPE-5400 inventory,
@@ -56,11 +55,11 @@ The local `<style>` fallback retains the import but is not a substitute for
 document-owned font loading. For iframe consumers, fonts must be loaded in the
 iframe's owning document, not merely in the parent document.
 
-The same infrastructure was exercised as an internal opt-in with
-`BibleVersionPicker` and the shared Dialog and Popover primitives. Floating
-content remains in its component's shadow tree so ID relationships remain
-resolvable. When it must escape a clipping ancestor, a shadow-local portal
-container enters the native top layer using `popover="manual"`.
+The same infrastructure supports the picker roots and the shared Dialog and
+Popover primitives. Floating content remains in its component's shadow tree so
+ID relationships remain resolvable. When it must escape a clipping ancestor, a
+shadow-local portal container enters the native top layer using
+`popover="manual"`.
 
 Modal dialogs require additional shadow-aware focus coordination. Radix's
 document-level tracking sees the shadow host rather than the focused descendant,
@@ -75,8 +74,7 @@ focus is restored to the real opener.
   the server, hydrates that host, and mounts isolated content after an effect
   attaches the shadow root.
   This preserves React's ownership of the light-DOM tree and never exposes the
-  component internals to consuming-app CSS. It is the selected contract for the
-  prototype.
+  component internals to consuming-app CSS. It is the selected contract.
 - Rendering the component in the light DOM on the server and moving or
   remounting it after hydration would make content visible sooner, but exposes
   that first paint to consuming-app CSS and risks replacement, duplicate
@@ -96,8 +94,8 @@ focus is restored to the real opener.
 - An iframe provides stronger document isolation, but does not compose naturally
   with React context, refs, events, sizing, focus, or floating content.
 
-The shadow-local native top-layer arrangement is the selected prototype because
-it preserves tree scope and style isolation while escaping ancestor clipping.
+The shadow-local native top-layer arrangement is selected because it preserves
+tree scope and style isolation while escaping ancestor clipping.
 The top-layer strategy requires the native Popover API; it does not silently
 fall back to the clipped inline arrangement.
 
@@ -125,22 +123,20 @@ effect runs, that paint is also empty; on a slow client, the user can see this
 empty state followed by the component appearing. If JavaScript does not run,
 the component never appears. No placeholder space is reserved, so mounting can
 move nearby content. Cumulative Layout Shift is a page-level result that also
-depends on the consuming app's layout; this prototype neither guarantees zero
+depends on the consuming app's layout; this boundary neither guarantees zero
 shift nor claims the delay is negligible.
 The [YPE-5354 first-paint research](../ype-5354-client-only-first-paint-research.md)
-records the measurement and reservation options for a future rollout decision.
+records the measurement and reservation options for a future boundary revision.
 
 A forwarded component ref remains `null` during server rendering. It becomes
 available after the shadow content mounts and points to the real component
 element inside the shadow root, not to the light-DOM host. Before that mount,
 the component cannot receive focus or interaction.
 
-This contract is reviewed separately for every implementation group selected
-for automatic isolation. YPE-5356 accepts it as the shared starting point, but a
-component that requires server content, no-JavaScript content, or a stable
-first-paint footprint cannot use this host unchanged. Its implementation ticket
-must exclude it or define reserved space, a product timing budget, or a
-separately approved SSR strategy.
+This contract applies to every selected automatic boundary. A future component
+that requires server content, no-JavaScript content, or a stable first-paint
+footprint cannot use this host unchanged; it needs reserved space, a product
+timing budget, or a separately approved SSR strategy.
 
 ## Consequences
 
@@ -152,10 +148,13 @@ The client-only SSR and hydration behavior above is part of the component
 contract. Automatic isolation is therefore a breaking change rather than an
 internal implementation detail.
 
-Shadow DOM does not isolate document-scoped `@font-face` names; the prototype
+Shadow DOM does not isolate document-scoped `@font-face` names; the decision
 accepts that host registrations can collide with SDK family names. It also
-cannot protect a component host from constraints applied to its ancestors. Open
-roots are a CSS boundary, not a security boundary.
+cannot protect a component host from geometric constraints applied to its
+ancestors. Because the internal reset restores properties such as `visibility`
+and `pointer-events`, applying those properties only to an ancestor is not a
+reliable way to hide or disable isolated descendants. Open roots are a CSS
+boundary, not a security boundary.
 
 ## Nested and concurrent overlays
 
@@ -181,12 +180,7 @@ Radix's development-only relationship checks can also emit warnings for valid
 IDs inside a shadow root because those checks query the document rather than
 the root.
 
-The internal `SignInDialog` remains validated only through an opt-in story.
-Wider automatic isolation still requires the linked implementation groups and
-the coordinated major-release gate.
-
 The detailed experimental evidence remains in the
 [Shadow DOM isolation validation plan](../shadow-dom-isolation-plan.md). The
 [production rollout policy](../shadow-dom-rollout-policy.md) records the public
-component boundary, accepted limitations, implementation order, and release
-gates without representing that planned behavior as shipped.
+component boundary, accepted limitations, and release gates.
