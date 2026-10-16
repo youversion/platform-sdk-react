@@ -33,7 +33,7 @@ describe('SearchClient.searchUnified', () => {
         return HttpResponse.json({
           verses: [],
           topics: [],
-          images: [{ id: 'img-9', passage_id: 'JHN' }],
+          images: [{ id: 'img-9', passage_id: 'PSA.23.1' }],
           user_intent: null,
           did_you_mean: ['psalm'],
           search_instead_for: 'psalm 23',
@@ -49,11 +49,39 @@ describe('SearchClient.searchUnified', () => {
     expect(result).toEqual({
       verses: [],
       topics: [],
-      images: [{ id: 'img-9', passageId: 'JHN' }],
+      images: [{ id: 'img-9', passageId: 'PSA.23.1' }],
       didYouMean: ['psalm'],
       searchInsteadFor: 'psalm 23',
     });
     expect(result).not.toHaveProperty('userIntent');
+  });
+
+  it('defaults omitted sections to empty arrays when the API leaves unrequested keys out', async () => {
+    const searchClient = createSearchClient();
+
+    server.use(
+      http.get(`https://${apiHost}/v1/search-unified`, ({ request }) => {
+        const url = new URL(request.url);
+        expect(url.searchParams.getAll('fields[]')).toEqual(['images']);
+        return HttpResponse.json({
+          images: [{ id: 'img-2', passage_id: 'PSA.23.1' }],
+          did_you_mean: [],
+          search_instead_for: null,
+        });
+      }),
+    );
+
+    const result = await searchClient.searchUnified('psalm 23', 111, 'en', {
+      fields: ['images'],
+    });
+
+    expect(result).toEqual({
+      verses: [],
+      topics: [],
+      images: [{ id: 'img-2', passageId: 'PSA.23.1' }],
+      didYouMean: [],
+      searchInsteadFor: null,
+    });
   });
 
   it('drops a malformed verse and keeps the image hit', async () => {
@@ -184,31 +212,47 @@ describe('SearchClient.searchUnified', () => {
     fetchSpy.mockRestore();
   });
 
-  it('throws when the response is missing images or has an empty passage id', async () => {
+  it('drops bad image hits and keeps verses and topics', async () => {
     const searchClient = createSearchClient();
 
     server.use(
       http.get(`https://${apiHost}/v1/search-unified`, () =>
         HttpResponse.json({
-          verses: [],
-          topics: [],
+          verses: [{ reference: 'JHN.6.35' }],
+          topics: [{ text: 'faith', subtopics: [] }],
+          images: [
+            { id: 'img-good', passage_id: 'PSA.23.1' },
+            { id: '', passage_id: 'PSA.23.2' },
+            { id: 'img-empty-passage', passage_id: '' },
+            { id: 'img-bad', passage_id: 'BAD' },
+            { id: 'img-book-only', passage_id: 'JHN' },
+          ],
           did_you_mean: [],
           search_instead_for: null,
         }),
       ),
     );
 
-    await expect(searchClient.searchUnified('faith', 111, 'en')).rejects.toThrow(
-      'Unexpected search-unified API response',
-    );
+    const result = await searchClient.searchUnified('faith', 111, 'en', {
+      fields: ['verses', 'topics', 'images'],
+    });
+
+    expect(result).toEqual({
+      verses: [{ id: 'JHN.6.35' }],
+      topics: [{ text: 'faith', subtopics: [] }],
+      images: [{ id: 'img-good', passageId: 'PSA.23.1' }],
+      didYouMean: [],
+      searchInsteadFor: null,
+    });
+  });
+
+  it('throws when did_you_mean is missing', async () => {
+    const searchClient = createSearchClient();
 
     server.use(
       http.get(`https://${apiHost}/v1/search-unified`, () =>
         HttpResponse.json({
-          verses: [],
-          topics: [],
-          images: [{ id: 'img-1', passage_id: '' }],
-          did_you_mean: [],
+          images: [{ id: 'img-1', passage_id: 'PSA.23.1' }],
           search_instead_for: null,
         }),
       ),
