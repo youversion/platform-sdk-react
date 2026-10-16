@@ -21,13 +21,13 @@ User-facing strings: read `docs/i18n-guidelines.md` at the repo root.
 
 ## Styling
 
-**React 19 `<style precedence>`**: `YouVersionProvider` renders `<YvStyles />` (`href="yv-sdk-styles"`). That sheet is Provider chrome (`dist/chrome.css`). Scripture and interactive roots render `<YvComponentStyles />` (`href="yv-sdk-components"`, the full `dist/tailwind.css`) and `BibleTextView` also renders `<YvReaderStyles />`. The three injectors are separate modules so Provider does not import the fat sheets. Different hrefs so React 19 does not drop the fat sheet. React hoists, dedupes, and streams the tags.
+**React 19 `<style precedence>`**: `YouVersionProvider` renders `<YvStyles />` (`href="yv-sdk-styles"`). That sheet is Provider chrome (`dist/chrome.css`). Scripture and interactive roots render `<YvComponentStyles />` (`href="yv-sdk-components"`, the full `dist/tailwind.css`) and `BibleTextView` also renders `<YvReaderStyles />`. In light DOM, React hoists, dedupes, and streams those tags. Inside a `ShadowRootHost`, the injectors verify their physical tree scope and render no style resource while the host supplies the sheet; a React portal that leaves the root injects styles for its destination instead. The three injectors are separate modules so Provider does not import the fat sheets, and their distinct hrefs prevent React 19 from dropping the fat sheets.
 - CSS embedded via tsup define: chrome uses `__YV_STYLES__`, full utilities use `__YV_COMPONENT_STYLES__`, and reader uses `__YV_READER_STYLES__`.
 - Public stylesheet stays `import '@youversion/platform-react-ui/styles.css'` (`dist/styles.css`: utilities plus reader). JS still injects the three sheets separately.
-- Shadow DOM exception: `ShadowRootHost` installs the embedded component styles
-  inside each component shadow root because document styles cannot cross that
-  boundary. It prefers a cached constructable stylesheet and renders a local
-  `<style>` fallback when adoption is unavailable.
+- Shadow DOM exception: `ShadowRootHost` installs the embedded component and reader
+  styles inside each component shadow root because document styles cannot cross
+  that boundary. It prefers a cached constructable stylesheet and renders one
+  combined local `<style>` fallback when adoption is unavailable.
 - Structural shadow selectors, including `:host` and dynamically-created
   shadow overlay containers, remain in `src/styles/global.css` so they pass
   through the standard component build and embedding path.

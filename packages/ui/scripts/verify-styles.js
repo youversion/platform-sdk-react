@@ -43,6 +43,16 @@ if (!css.trim()) {
     );
   }
 
+  if (/--color-chart-[1-5]\s*:/.test(css)) {
+    errors.push('dist/tailwind.css contains unexpected chart color mappings (see YPE-6217)');
+  }
+  if (/--color-sidebar(?:-[\w-]+)?\s*:/.test(css)) {
+    errors.push('dist/tailwind.css contains unexpected sidebar color mappings (see YPE-6217)');
+  }
+  if (css.includes('.yv-v-selected')) {
+    errors.push('dist/tailwind.css contains reader-only verse selection styles');
+  }
+
   const { unexplainedReferences } = auditCustomProperties(css);
   if (unexplainedReferences.length > 0) {
     errors.push(
@@ -55,6 +65,29 @@ const readerCssPath = resolve(dist, 'bible-reader.css');
 const readerCss = existsSync(readerCssPath) ? readFileSync(readerCssPath, 'utf-8') : '';
 if (!readerCss.trim()) {
   errors.push('dist/bible-reader.css is missing or empty — did build:css run?');
+} else {
+  const verseSelectionRule = readerCss.match(/\[data-yv-sdk\] \.yv-v-selected\{([^}]*)\}/)?.[1];
+  const requiredDeclarations = [
+    'text-decoration-line:underline',
+    'text-decoration-thickness:2px',
+    'text-underline-offset:2px',
+    'text-decoration-color:var(--yv-foreground)',
+  ];
+  if (
+    !verseSelectionRule ||
+    requiredDeclarations.some((declaration) => !verseSelectionRule.includes(declaration))
+  ) {
+    errors.push('dist/bible-reader.css missing SDK verse selection styles');
+  }
+}
+
+if (css.trim() && readerCss.trim()) {
+  const { unexplainedReferences } = auditCustomProperties(`${css}\n${readerCss}`);
+  if (unexplainedReferences.length > 0) {
+    errors.push(
+      `compiled component and reader CSS contain unexplained custom-property references: ${unexplainedReferences.join(', ')}. Add a local declaration or document an exact reviewed runtime exception in packages/ui/scripts/custom-property-contract.js`,
+    );
+  }
 }
 
 const publicCssPath = typeof publicCssExport === 'string' ? resolve(uiRoot, publicCssExport) : '';

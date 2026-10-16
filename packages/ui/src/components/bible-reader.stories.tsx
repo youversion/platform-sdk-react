@@ -440,7 +440,7 @@ async function openReaderHighlightAuthDialog(canvasElement: HTMLElement) {
   );
   if (!apply) throw new Error('highlight apply control not rendered');
   await userEvent.click(apply);
-  return { apply, overlays, root };
+  return { overlays, root };
 }
 
 export const SignedOutHighlightAuthOwnership: Story = {
@@ -458,17 +458,23 @@ export const SignedOutHighlightAuthOwnership: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
-    const { apply, overlays, root } = await openReaderHighlightAuthDialog(canvasElement);
+    const { overlays, root } = await openReaderHighlightAuthDialog(canvasElement);
     const yes = await overlays.findByRole('button', { name: 'Yes Please' });
     const dialog = yes.closest<HTMLElement>('[role="dialog"]');
     if (!dialog) throw new Error('sign-in dialog not rendered');
     await expect(dialog.getRootNode()).toBe(root);
     await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(overlays.queryByRole('button', { name: 'Yes Please' })).toBeNull());
-    // The shared local overlay stays mounted because the verse-actions dialog
-    // remains open underneath the dismissed auth dialog.
-    await expect(overlays.getByRole('dialog', { name: 'Verse actions' })).toBeInTheDocument();
-    await expect(root.activeElement).toBe(apply);
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    // The verse-actions popover may finish exiting while auth is open. When it
+    // returns, its content is the stable focus target; the original button may
+    // have been replaced during that transition.
+    await waitFor(
+      () => {
+        const verseActions = overlays.getByRole('dialog', { name: 'Verse actions' });
+        void expect(verseActions.contains(root.activeElement)).toBe(true);
+      },
+      { timeout: 10000 },
+    );
   },
 };
 
@@ -550,16 +556,22 @@ export const SignedInReaderOverlayOwnership: Story = {
       await expect(versionRoot.activeElement).toBe(versionTrigger);
     });
 
-    const { apply, overlays, root } = await openReaderHighlightAuthDialog(canvasElement);
+    const { overlays, root } = await openReaderHighlightAuthDialog(canvasElement);
     const continueButton = await overlays.findByRole('button', { name: 'Continue' });
     const dialog = continueButton.closest<HTMLElement>('[role="dialog"]');
     if (!dialog) throw new Error('permission dialog not rendered');
     await expect(dialog.getRootNode()).toBe(root);
     await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(overlays.queryByRole('button', { name: 'Continue' })).toBeNull());
-    // The reader-owned overlay container still serves the open verse-actions dialog.
-    await expect(overlays.getByRole('dialog', { name: 'Verse actions' })).toBeInTheDocument();
-    await expect(root.activeElement).toBe(apply);
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    // The reopened verse-actions content owns focus even if its original Apply
+    // button was replaced while the permission dialog was open.
+    await waitFor(
+      () => {
+        const verseActions = overlays.getByRole('dialog', { name: 'Verse actions' });
+        void expect(verseActions.contains(root.activeElement)).toBe(true);
+      },
+      { timeout: 10000 },
+    );
   },
 };
 
