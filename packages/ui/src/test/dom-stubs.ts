@@ -26,3 +26,9 @@ export function requireHtmlElement(node: Element | null): HTMLElement {
   }
   return node;
 }
+
+export function requireShadowRoot(container: ParentNode): ShadowRoot {
+  const host = container.querySelector<HTMLElement>('[data-yv-shadow-host]');
+  if (!host?.shadowRoot) throw new Error('shadow root not attached');
+  return host.shadowRoot;
+}

@@ -70,28 +70,86 @@ Language tags are BCP 47 (`en`, `es`, `zh-Hans`). Version ids are YouVersion Bib
 
 All component CSS is automatically injected when you wrap your app with `YouVersionProvider` — no extra imports or build steps needed. Under the hood, it uses React 19's [`<style precedence>`](https://react.dev/reference/react-dom/components/style) to hoist styles into `<head>` with built-in deduplication and SSR/Suspense support.
 
+The YPE-5356 component boundary renders automatically inside client-created open
+shadow roots. This includes `YouVersionAuthButton`, the chapter and version picker
+roots, `BibleReader.Root`, and standalone `BibleThemeSettingsContent`,
+`BibleTextView`, `FootnoteContent`, `VerseOfTheDay`, `BibleCard`, `ProfileAvatar`,
+and `Separator`. Compound members and SDK-owned composed children reuse their
+owning root instead of creating accidental nested roots.
+
+`Textarea`, standalone `VerseActionPopover`, `YouVersionProvider`, and
+`BaseYouVersionProvider` do not create automatic roots. `Textarea` must retain
+native outer-form and external-label behavior; standalone `VerseActionPopover`
+must retain its owning-DOM anchor; and the providers own document context, styles,
+and fonts rather than a visual component boundary. See the
+[rollout policy](../../docs/shadow-dom-rollout-policy.md) and
+[consumer compatibility contract](../../docs/shadow-dom-consumer-compatibility.md)
+for the complete boundary and evidence.
+
+### Shadow DOM migration guidance
+
+Automatic isolation is a breaking rendered-DOM change even when component props
+are unchanged:
+
+- **Client rendering and refs:** Server output is a childless light-DOM host whose
+  inline `display` declares the boundary's intended layout. Content and forwarded
+  element refs become available after the passive-effect client mount, so there
+  can be visible pop-in or nearby layout movement and no component content without
+  JavaScript.
+- **DOM access and automation:** Document queries do not cross the boundary. Wait
+  for the host's open `shadowRoot`, then query within it, or prefer public refs,
+  callbacks, and role-based locators. Playwright CSS locators pierce open roots by
+  default; XPath does not. Internal markup is not a stable public API.
+- **Events:** Native composed events observed outside the root are retargeted to
+  the host. React callbacks passed to a component retain their documented target
+  semantics. Light-DOM ancestor React handlers receive one delivery for the
+  validated bubbling `click`, `keydown`, `focus`, and `blur` paths; duplicate
+  delivery can remain for capture handlers and other composed events.
+- **Forms and accessibility relationships:** Native outer forms, external
+  `<label for>`, and cross-tree `aria-labelledby` or `aria-describedby` references
+  do not cross a shadow boundary. Keep related nodes in one tree or use an
+  explicit component prop or callback.
+- **Styling and layout:** Consumer global CSS and document-level token overrides
+  cannot style shadow internals. Use supported component props and theme inputs.
+  Fonts remain document-owned, `rem` units still follow the owning document root,
+  `direction` is intentionally inherited, and ancestors can still size, hide,
+  clip, or transform the light-DOM host.
+- **Overlays:** Popovers and dialogs stay in their owning root and use the native
+  top layer where needed. Opening a peer popover dismisses the current peer;
+  simultaneous peer popovers are not supported.
+
 **Non-React or manual CSS import:**
 
 ```tsx
 import '@youversion/platform-react-ui/styles.css';
 ```
 
-All component classes are prefixed with `yv:` to avoid collisions with your app's styles. Override design tokens with CSS variables on `[data-yv-sdk]` (see [Custom CSS variables](#custom-css-variables)).
+All component classes are prefixed with `yv:` to avoid collisions with your app's styles. For light-DOM components, override design tokens with CSS variables on `[data-yv-sdk]` (see [Custom CSS variables](#custom-css-variables)). Document selectors cannot reach automatically isolated component internals.
 
 ### Content Security Policy
 
-The SDK loads webfonts from external origins. If your app sets a strict `Content-Security-Policy`, allowlist these hosts so fonts aren't blocked (without them, components fall back to a system sans-serif):
+The SDK emits inline `<style>` elements and inline style attributes for component
+CSS and runtime layout, including the declarative `display` on automatic shadow
+hosts. The simplest supported policy permits inline style elements and attributes
+in addition to allowlisting the font origins. For CSP Level 3, merge equivalent
+directives into your application's policy:
 
 ```
-font-src  https://fonts.gstatic.com https://cdn.youversion.com;
-style-src https://fonts.googleapis.com https://api.youversion.com;
+style-src-elem 'unsafe-inline' https://fonts.googleapis.com https://api.youversion.com;
+style-src-attr 'unsafe-inline';
+font-src https://fonts.gstatic.com https://cdn.youversion.com;
 ```
+
+The SDK does not currently expose a CSP nonce. Applications that prohibit
+`'unsafe-inline'` must maintain matching hashes for embedded style elements and
+server-rendered style attributes (using `'unsafe-hashes'` for attributes);
+nonce-only policies are not currently supported.
 
 - `fonts.googleapis.com` / `fonts.gstatic.com` — Inter and Source Serif 4 (base typography), loaded from Google Fonts
 - `api.youversion.com` — the Fonts API stylesheet (`/v1/fonts/1/stylesheet`), which `YouVersionProvider` requests with your app key
 - `cdn.youversion.com` — the Untitled Serif woff2 files that stylesheet points at
 
-Untitled Serif is YouVersion's brand serif and the SDK's default serif face. There is no prop to turn it off. If these hosts are blocked, serif text falls back to Source Serif 4 with no layout break — the stack is `'Untitled Serif', 'Source Serif 4', serif`. If you load Untitled Serif yourself, your copy is used; the stack names it first regardless of who fetched it.
+Untitled Serif is YouVersion's brand serif and the SDK's default serif face. There is no prop to turn it off. If the Fonts API or CDN is blocked, serif text falls back to Source Serif 4 when Google Fonts is available; if Google Fonts is also blocked, it falls back to the browser's generic serif face. The stack is `'Untitled Serif', 'Source Serif 4', serif`. If you load Untitled Serif yourself, your copy is used; the stack names it first regardless of who fetched it.
 
 ## Theming
 
@@ -161,6 +219,8 @@ Individual components accept a `background` prop to override the provider theme 
 ```
 
 ### Custom CSS variables
+
+These document-level overrides apply to light-DOM components, not to automatically isolated component internals. The package does not expose a public shadow-root token override API.
 
 ```css
 [data-yv-sdk] {

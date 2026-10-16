@@ -7,6 +7,7 @@ import {
   cloneElement,
   createContext,
   isValidElement,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -24,6 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/accordion';
 import { InputGroup, InputGroupInput, InputGroupAddon } from './ui/input-group';
 import { useInterfaceDirection } from '@/lib/direction';
+import { ShadowIsolationBoundary } from '@/lib/shadow-isolation';
 
 export interface BibleChapterPickerPressData {
   book: string;
@@ -86,7 +88,7 @@ export type RootProps = {
 
 export type BibleChapterPickerRootProps = RootProps;
 
-function Root({
+function RootImplementation({
   book: controlledBook,
   defaultBook = '',
   onBookChange,
@@ -116,6 +118,8 @@ function Root({
 
   const [isPopoverOpenRaw, setIsPopoverOpenRaw] = useState(false);
   const isPopoverOpen = onChapterPickerPress ? false : isPopoverOpenRaw;
+  const focusRequestRef = useRef(0);
+  const panelRef = useRef<HTMLElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   // Non-nullable so the Accordion below stays controlled for its whole lifetime.
   // `''` means collapsed; passing `undefined` would flip Radix back to uncontrolled.
@@ -183,6 +187,40 @@ function Root({
     }
   };
 
+  const schedulePanelFocus = useCallback((panel: HTMLElement) => {
+    // SAFETY: Element roots are Documents or ShadowRoots, which both expose activeElement.
+    const focusRoot = panel.getRootNode() as Document | ShadowRoot;
+    const previousFocus = focusRoot.activeElement;
+    const focusRequest = ++focusRequestRef.current;
+    const focusPanel = () => {
+      if (
+        focusRequestRef.current === focusRequest &&
+        focusRoot.activeElement === previousFocus &&
+        panel.isConnected &&
+        panel.dataset.state === 'open'
+      ) {
+        panel.focus({ preventScroll: true });
+      }
+    };
+    // Let Safari expose the newly painted dialog before moving focus into it.
+    const view = panel.ownerDocument.defaultView;
+    if (!view?.requestAnimationFrame) {
+      queueMicrotask(focusPanel);
+      return;
+    }
+    view.requestAnimationFrame(() => view.requestAnimationFrame(focusPanel));
+  }, []);
+
+  useEffect(() => {
+    if (!isPopoverOpen) {
+      focusRequestRef.current += 1;
+      return;
+    }
+
+    const panel = panelRef.current;
+    if (panel) schedulePanelFocus(panel);
+  }, [isPopoverOpen, schedulePanelFocus]);
+
   const contextValue: BibleChapterPickerContextType = {
     book,
     chapter,
@@ -212,11 +250,31 @@ function Root({
         {children}
 
         {/* data-yv-sdk for styles is needed because the popover gets rendered outside of the providers scope **/}
-        <PopoverContent sideOffset={16} heading={t('booksHeading')} theme={theme} side="top">
+        <PopoverContent
+          sideOffset={16}
+          heading={t('booksHeading')}
+          theme={theme}
+          side="top"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            // SAFETY: Radix invokes this handler with the popover content as currentTarget.
+            const panel = event.currentTarget as HTMLElement;
+            panelRef.current = panel;
+            schedulePanelFocus(panel);
+          }}
+        >
           <Content onRequestClose={() => setIsPopoverOpen(false)} />
         </PopoverContent>
       </BibleChapterPickerContext.Provider>
     </Popover>
+  );
+}
+
+function Root(props: RootProps) {
+  return (
+    <ShadowIsolationBoundary portalStrategy="local-top-layer" theme={props.background}>
+      <RootImplementation {...props} />
+    </ShadowIsolationBoundary>
   );
 }
 
@@ -436,7 +494,9 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
             dir="auto"
             className="yv:text-base yv:leading-normal"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            // onInput, not onChange: onChange does not update the query inside the picker's
+            // shadow root. The picker search stories fail with onChange.
+            onInput={(event) => setSearchQuery(event.currentTarget.value)}
           />
           <InputGroupAddon align="inline-start">
             <SearchIcon className="yv:size-5 yv:text-muted-foreground" />

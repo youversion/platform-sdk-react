@@ -3,13 +3,16 @@
  */
 // We stub ResizeObserver for jsdom (used by Radix/@floating-ui). The stub methods are intentionally no-ops.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState, type ReactElement } from 'react';
+import { hydrateRoot, type Root } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
 import type { BibleBook, BibleVersion } from '@youversion/platform-core';
-import type { HookOverrides } from '@youversion/platform-react-hooks';
+import { YouVersionContext, type HookOverrides } from '@youversion/platform-react-hooks';
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import { InterfaceDirectionProvider } from '@/lib/direction';
+import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
 import {
   BIBLE_READER_SPACING,
   BibleReader,
@@ -80,7 +83,11 @@ function defaultOverrides(): HookOverrides {
 }
 
 function renderWithOverrides(ui: ReactElement) {
-  return render(<HookOverrideProvider overrides={defaultOverrides()}>{ui}</HookOverrideProvider>);
+  return render(
+    <HookOverrideProvider overrides={defaultOverrides()}>
+      <ReuseShadowBoundary>{ui}</ReuseShadowBoundary>
+    </HookOverrideProvider>,
+  );
 }
 
 function overridesRecordingVersionLanguage() {
@@ -204,21 +211,161 @@ describe('createBibleThemeSettingsContentHandlers', () => {
   });
 });
 
-it('injects component styles when theme settings render standalone', () => {
-  render(
-    <BibleThemeSettingsContent
-      theme="light"
-      fontSize={16}
-      fontFamily={INTER_FONT}
-      lineSpacing={BIBLE_READER_SPACING.DEFAULT}
-      onFontSelected={vi.fn()}
-      onFontIncreased={vi.fn()}
-      onFontDecreased={vi.fn()}
-      onChangeLineSpacing={vi.fn()}
-    />,
-  );
+describe('BibleThemeSettingsContent public boundary', () => {
+  it('owns one childless styled SSR host and reuses it during hydration', async () => {
+    const element = (
+      <BibleThemeSettingsContent
+        theme="light"
+        fontSize={16}
+        fontFamily={INTER_FONT}
+        lineSpacing={BIBLE_READER_SPACING.DEFAULT}
+        onFontSelected={vi.fn()}
+        onFontIncreased={vi.fn()}
+        onFontDecreased={vi.fn()}
+        onChangeLineSpacing={vi.fn()}
+      />
+    );
+    const serverMarkup = renderToString(element);
 
-  expect(document.head.querySelector('style[data-href="yv-sdk-components"]')).not.toBeNull();
+    expect(serverMarkup).toBe('<div data-yv-shadow-host="true" style="display:flex"></div>');
+
+    const container = document.createElement('div');
+    container.innerHTML = serverMarkup;
+    document.body.append(container);
+    const serverHost = container.firstElementChild;
+    const recoverableErrors: unknown[] = [];
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    let root: Root | undefined;
+
+    try {
+      await act(async () => {
+        root = hydrateRoot(container, element, {
+          onRecoverableError: (error) => recoverableErrors.push(error),
+        });
+      });
+
+      const host = await waitFor(() => {
+        const candidate = container.querySelector<HTMLElement>('[data-yv-shadow-host]');
+        if (!candidate?.shadowRoot?.querySelector('[data-testid="line-spacing"]')) {
+          throw new Error('settings controls not mounted inside an open shadow root');
+        }
+        return candidate;
+      });
+
+      expect(container.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(1);
+      expect(host).toBe(serverHost);
+      expect(host.childNodes).toHaveLength(0);
+      expect(host.shadowRoot?.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
+      expect(host.style.getPropertyValue('all')).toBe('initial');
+      expect(host.style.getPropertyValue('display')).toBe('flex');
+      expect(host.style.getPropertyPriority('display')).toBe('important');
+      expect(host.style.getPropertyValue('direction')).toBe('inherit');
+      expect(host.style.getPropertyValue('flex-direction')).toBe('column');
+      expect(host.style.getPropertyValue('min-block-size')).toBe('0');
+      expect(recoverableErrors).toEqual([]);
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      if (root) await act(async () => root?.unmount());
+      consoleError.mockRestore();
+      container.remove();
+    }
+  });
+
+  it('preserves standalone callbacks, limits, selected font, theme, direction, and controls', async () => {
+    const user = userEvent.setup();
+    const onFontIncreased = vi.fn();
+    const onFontDecreased = vi.fn();
+    const onFontSelected = vi.fn<(fontFamily: FontFamily) => void>();
+    const onChangeLineSpacing = vi.fn();
+
+    function StandaloneSettings({
+      direction,
+      fontSize = 12,
+      fontFamily = UNTITLED_SERIF_FONT,
+      theme = 'light',
+      providerTheme = 'dark',
+    }: {
+      direction: 'ltr' | 'rtl';
+      fontSize?: number;
+      fontFamily?: FontFamily;
+      theme?: 'light' | 'dark';
+      providerTheme?: 'light' | 'dark';
+    }) {
+      return (
+        <YouVersionContext.Provider value={{ appKey: 'test', theme: providerTheme }}>
+          <InterfaceDirectionProvider direction={direction}>
+            <BibleThemeSettingsContent
+              theme={theme}
+              fontSize={fontSize}
+              fontFamily={fontFamily}
+              lineSpacing={BIBLE_READER_SPACING.DEFAULT}
+              onFontIncreased={onFontIncreased}
+              onFontDecreased={onFontDecreased}
+              onFontSelected={onFontSelected}
+              onChangeLineSpacing={onChangeLineSpacing}
+            />
+          </InterfaceDirectionProvider>
+        </YouVersionContext.Provider>
+      );
+    }
+
+    const view = render(<StandaloneSettings direction="rtl" />);
+    const host = await waitFor(() => {
+      const candidate = view.container.querySelector<HTMLElement>('[data-yv-shadow-host]');
+      if (!candidate?.shadowRoot?.querySelector('[data-testid="line-spacing"]')) {
+        throw new Error('standalone settings not mounted');
+      }
+      return candidate;
+    });
+    const root = host.shadowRoot!;
+    const shadowScope = root.querySelector<HTMLElement>('[data-yv-shadow-content-wrapper]')!;
+    const settings = within(shadowScope);
+    const body = settings.getByTestId('line-spacing').closest<HTMLElement>('[data-yv-sdk]');
+    const wrapper = root.querySelector('[data-yv-shadow-content-wrapper]');
+    const decrease = settings.getByRole('button', { name: 'Decrease font size' });
+    const increase = settings.getByRole('button', { name: 'Increase font size' });
+    const lineSpacing = settings.getByRole('button', { name: 'Change line spacing' });
+    const inter = settings.getByRole('button', { name: /Inter/ });
+    const serif = settings.getByRole('button', { name: /Untitled Serif/ });
+
+    expect(settings.getAllByRole('button')).toHaveLength(5);
+    expect(wrapper).toHaveAttribute('data-yv-theme', 'light');
+    expect(body).toHaveAttribute('data-yv-theme', 'light');
+    expect(body).toHaveAttribute('dir', 'rtl');
+    expect(decrease).toBeDisabled();
+    expect(serif.className).toContain('yv:bg-primary');
+    expect(inter.className).not.toContain('yv:bg-primary');
+
+    await user.click(decrease);
+    expect(onFontDecreased).not.toHaveBeenCalled();
+    await user.click(increase);
+    expect(onFontIncreased).toHaveBeenCalledTimes(1);
+    await user.click(inter);
+    expect(onFontSelected).toHaveBeenCalledWith(INTER_FONT);
+    await user.click(lineSpacing);
+    expect(onChangeLineSpacing).toHaveBeenCalledTimes(1);
+
+    view.rerender(
+      <StandaloneSettings
+        direction="ltr"
+        fontSize={20}
+        fontFamily={INTER_FONT}
+        theme="dark"
+        providerTheme="light"
+      />,
+    );
+    expect(body).toHaveAttribute('dir', 'ltr');
+    expect(wrapper).toHaveAttribute('data-yv-theme', 'dark');
+    expect(body).toHaveAttribute('data-yv-theme', 'dark');
+    expect(inter.className).toContain('yv:bg-primary');
+    expect(serif.className).not.toContain('yv:bg-primary');
+    expect(increase).toBeDisabled();
+    const increaseCallCountAtMaximum = onFontIncreased.mock.calls.length;
+    await user.click(increase);
+    expect(onFontIncreased).toHaveBeenCalledTimes(increaseCallCountAtMaximum);
+    await user.click(decrease);
+    expect(onFontDecreased).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('BibleReader theme settings', () => {
@@ -464,8 +611,8 @@ it('keeps chapter targets canonical while semantic icons follow RTL interface di
 it('keeps Inter and Untitled Serif in Arabic and Welsh reader font settings', async () => {
   const previousLanguage = i18n.language;
 
-  function renderFontSettings(): ReturnType<typeof render> {
-    return render(
+  async function renderFontSettings() {
+    const view = render(
       <BibleThemeSettingsContent
         theme="light"
         fontSize={16}
@@ -477,19 +624,29 @@ it('keeps Inter and Untitled Serif in Arabic and Welsh reader font settings', as
         onChangeLineSpacing={vi.fn()}
       />,
     );
+
+    const settings = await waitFor(() => {
+      const shadowContent = view.container
+        .querySelector<HTMLElement>('[data-yv-shadow-host]')
+        ?.shadowRoot?.querySelector<HTMLElement>('[data-yv-shadow-content-wrapper]');
+      if (!shadowContent) throw new Error('font settings not mounted inside the shadow root');
+      return within(shadowContent);
+    });
+
+    return { settings, view };
   }
 
   try {
     await i18n.changeLanguage('ar');
-    const arabic = renderFontSettings();
-    expect(screen.getByRole('button', { name: /Inter/ })).toBeInTheDocument();
-    expect(screen.queryByText('إدخال')).not.toBeInTheDocument();
-    arabic.unmount();
+    const arabic = await renderFontSettings();
+    expect(arabic.settings.getByRole('button', { name: /Inter/ })).toBeInTheDocument();
+    expect(arabic.settings.queryByText('إدخال')).not.toBeInTheDocument();
+    arabic.view.unmount();
 
     await i18n.changeLanguage('cy');
-    renderFontSettings();
-    expect(screen.getByRole('button', { name: /Untitled Serif/ })).toBeInTheDocument();
-    expect(screen.queryByText('Serif Dideitl')).not.toBeInTheDocument();
+    const welsh = await renderFontSettings();
+    expect(welsh.settings.getByRole('button', { name: /Untitled Serif/ })).toBeInTheDocument();
+    expect(welsh.settings.queryByText('Serif Dideitl')).not.toBeInTheDocument();
   } finally {
     await i18n.changeLanguage(previousLanguage);
   }

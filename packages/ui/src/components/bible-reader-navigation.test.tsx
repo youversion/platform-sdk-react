@@ -5,6 +5,7 @@ import { BibleReader, useBibleReaderContext } from './bible-reader';
 import { BibleReaderNavigation } from './bible-reader-navigation';
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import type { HookOverrides } from '@youversion/platform-react-hooks';
+import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
 
 function CurrentDestination() {
   const { book, chapter, versionId, verseFocus } = useBibleReaderContext();
@@ -26,9 +27,15 @@ it('consumes the newest pre-mount request once and supports mounted cross-versio
   const jsx = (
     <StrictMode>
       <HookOverrideProvider overrides={overrides}>
-        <BibleReader.Root navigation={navigation} defaultVersionId={111} onVersionChange={changed}>
-          <CurrentDestination />
-        </BibleReader.Root>
+        <ReuseShadowBoundary>
+          <BibleReader.Root
+            navigation={navigation}
+            defaultVersionId={111}
+            onVersionChange={changed}
+          >
+            <CurrentDestination />
+          </BibleReader.Root>
+        </ReuseShadowBoundary>
       </HookOverrideProvider>
     </StrictMode>
   );
@@ -102,9 +109,11 @@ it('renders passage-only and full-chapter destinations through the reader fetch'
   render(
     <StrictMode>
       <HookOverrideProvider overrides={overrides}>
-        <BibleReader.Root navigation={navigation} highlights={[]}>
-          <BibleReader.Content />
-        </BibleReader.Root>
+        <ReuseShadowBoundary>
+          <BibleReader.Root navigation={navigation} highlights={[]}>
+            <BibleReader.Content />
+          </BibleReader.Root>
+        </ReuseShadowBoundary>
       </HookOverrideProvider>
     </StrictMode>,
   );
@@ -145,19 +154,21 @@ it('waits for controlled destinations and never revives an activated passage or 
   const reader = (versionId: number, book: string, chapter: string) => (
     <StrictMode>
       <HookOverrideProvider overrides={overrides}>
-        <BibleReader.Root
-          navigation={navigation}
-          versionId={versionId}
-          book={book}
-          chapter={chapter}
-          onVersionChange={changed}
-          onBookChange={changed}
-          onChapterChange={changed}
-          highlights={[]}
-        >
-          <CurrentDestination />
-          <BibleReader.Content />
-        </BibleReader.Root>
+        <ReuseShadowBoundary>
+          <BibleReader.Root
+            navigation={navigation}
+            versionId={versionId}
+            book={book}
+            chapter={chapter}
+            onVersionChange={changed}
+            onBookChange={changed}
+            onChapterChange={changed}
+            highlights={[]}
+          >
+            <CurrentDestination />
+            <BibleReader.Content />
+          </BibleReader.Root>
+        </ReuseShadowBoundary>
       </HookOverrideProvider>
     </StrictMode>
   );

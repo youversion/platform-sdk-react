@@ -22,6 +22,7 @@ import type { HookOverrides } from '@youversion/platform-react-hooks';
 import type { BibleBook } from '@youversion/platform-core';
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import { InterfaceDirectionProvider } from '@/lib/direction';
+import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
 
 const mockBooks: BibleBook[] = [
   {
@@ -61,7 +62,11 @@ function defaultOverrides(): HookOverrides {
 }
 
 function renderWithOverrides(ui: ReactElement) {
-  return render(<HookOverrideProvider overrides={defaultOverrides()}>{ui}</HookOverrideProvider>);
+  return render(
+    <HookOverrideProvider overrides={defaultOverrides()}>
+      <ReuseShadowBoundary>{ui}</ReuseShadowBoundary>
+    </HookOverrideProvider>,
+  );
 }
 
 function findAccordionTrigger(name: RegExp): HTMLElement | undefined {

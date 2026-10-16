@@ -1,6 +1,6 @@
 'use client';
 
-import type { CSSProperties } from 'react';
+import { useRef, type CSSProperties } from 'react';
 import { usePassage, useVersion, useTheme } from '@youversion/platform-react-hooks';
 import {
   DEFAULT_LICENSE_FREE_BIBLE_VERSION,
@@ -21,6 +21,8 @@ import { LoaderIcon } from './icons/loader';
 import { AnimatedHeight } from './animated-height';
 import { useInterfaceDirection } from '@/lib/direction';
 import { useResolvedScriptureDirection } from '@/lib/scripture-direction';
+import { ReuseShadowBoundary, ShadowIsolationBoundary } from '@/lib/shadow-isolation';
+import { useHighlightsControlledLatch } from '@/lib/use-highlights-controlled-latch';
 
 type PassageResult = ReturnType<typeof usePassage>;
 type VersionResult = ReturnType<typeof useVersion>;
@@ -64,6 +66,11 @@ export type BibleCardProps = {
 
 type BibleCardSectionStyle = CSSProperties & {
   '--yv-reader-max-width': 'none';
+};
+
+type BibleCardImplementationProps = BibleCardProps & {
+  initialVersionDefault: number;
+  isHighlightsControlled: boolean;
 };
 
 /**
@@ -160,10 +167,9 @@ function BibleCardFooter({ attribution }: { attribution?: string | null }): Reac
 
 const BIBLE_CARD_DEFAULT_MAX_WIDTH_PX = 700;
 
-export function BibleCard({
+function BibleCardImplementation({
   reference,
   versionId: controlledVersionId,
-  defaultVersionId = DEFAULT_LICENSE_FREE_BIBLE_VERSION,
   onVersionChange,
   background,
   showVersionPicker = false,
@@ -172,7 +178,9 @@ export function BibleCard({
   highlights,
   maxWidth = BIBLE_CARD_DEFAULT_MAX_WIDTH_PX,
   scriptureDirection,
-}: BibleCardProps): React.ReactNode {
+  initialVersionDefault,
+  isHighlightsControlled,
+}: BibleCardImplementationProps): React.ReactNode {
   const interfaceDirection = useInterfaceDirection();
   // Controlled only when both versionId + onVersionChange are provided.
   // versionId alone seeds uncontrolled state, preserving backwards compatibility
@@ -181,7 +189,7 @@ export function BibleCard({
 
   const [versionNum, setVersionNum] = useControllableState({
     prop: isControlled ? controlledVersionId : undefined,
-    defaultProp: isControlled ? defaultVersionId : (controlledVersionId ?? defaultVersionId),
+    defaultProp: initialVersionDefault,
     onChange: onVersionChange,
   });
   const { version } = useVersion(versionNum);
@@ -248,32 +256,36 @@ export function BibleCard({
             is not in the selected version, so switching versions is the fix.
           */}
           {showVersionPicker ? (
-            <BibleCardVersionPicker
-              versionId={versionNum}
-              onVersionChange={setVersionNum}
-              theme={theme}
-              onVersionPickerPress={onVersionPickerPress}
-            />
+            <ReuseShadowBoundary>
+              <BibleCardVersionPicker
+                versionId={versionNum}
+                onVersionChange={setVersionNum}
+                theme={theme}
+                onVersionPickerPress={onVersionPickerPress}
+              />
+            </ReuseShadowBoundary>
           ) : null}
         </div>
 
         <AnimatedHeight>
-          <BibleTextView
-            theme={theme}
-            fontSize={16}
-            fontFamily={UNTITLED_SERIF_FONT}
-            reference={reference}
-            versionId={versionNum}
-            showVerseNumbers={false}
-            passageState={{
-              passage,
-              loading: passageLoading,
-              error: passageError,
-            }}
-            onFootnotePress={onFootnotePress}
-            highlights={highlights}
-            scriptureDirection={scriptureDirection}
-          />
+          <ReuseShadowBoundary>
+            <BibleTextView
+              theme={theme}
+              fontSize={16}
+              fontFamily={UNTITLED_SERIF_FONT}
+              reference={reference}
+              versionId={versionNum}
+              showVerseNumbers={false}
+              passageState={{
+                passage,
+                loading: passageLoading,
+                error: passageError,
+              }}
+              onFootnotePress={onFootnotePress}
+              highlights={isHighlightsControlled ? (highlights ?? []) : undefined}
+              scriptureDirection={scriptureDirection}
+            />
+          </ReuseShadowBoundary>
         </AnimatedHeight>
 
         <BibleCardFooter
@@ -281,5 +293,26 @@ export function BibleCard({
         />
       </div>
     </section>
+  );
+}
+
+export function BibleCard(props: BibleCardProps): React.ReactNode {
+  // Preserve the pre-isolation first-render seed even though the card body
+  // mounts only after the shadow root attaches.
+  const initialVersionDefault = useRef(
+    props.versionId !== undefined && props.onVersionChange !== undefined
+      ? (props.defaultVersionId ?? DEFAULT_LICENSE_FREE_BIBLE_VERSION)
+      : (props.versionId ?? props.defaultVersionId ?? DEFAULT_LICENSE_FREE_BIBLE_VERSION),
+  ).current;
+  const isHighlightsControlled = useHighlightsControlledLatch(props.highlights, 'BibleCard');
+
+  return (
+    <ShadowIsolationBoundary theme={props.background} portalStrategy="local-top-layer">
+      <BibleCardImplementation
+        {...props}
+        initialVersionDefault={initialVersionDefault}
+        isHighlightsControlled={isHighlightsControlled}
+      />
+    </ShadowIsolationBoundary>
   );
 }

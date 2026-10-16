@@ -45,6 +45,7 @@ import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } f
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { useInterfaceDirection } from '@/lib/direction';
+import { ShadowIsolationBoundary } from '@/lib/shadow-isolation';
 
 export const RECENT_VERSIONS_KEY = 'youversion-platform:picker:recent-versions';
 const MAX_RECENT_VERSIONS = 3;
@@ -291,7 +292,7 @@ export type BibleVersionPickerLanguageTriggerProps = Omit<
   'children'
 >;
 
-function Root({
+function RootImplementation({
   versionId: controlledVersionId,
   onVersionChange,
   languageId: controlledLanguageId,
@@ -518,6 +519,14 @@ function Root({
   );
 }
 
+function Root(props: RootProps) {
+  return (
+    <ShadowIsolationBoundary portalStrategy="local-top-layer" theme={props.background}>
+      <RootImplementation {...props} />
+    </ShadowIsolationBoundary>
+  );
+}
+
 /**
  * Props for the version picker trigger. Interface direction owns the rendered
  * trigger's `dir`; a consumer-supplied `dir` is intentionally ignored.
@@ -672,6 +681,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
     versionsLoading,
     background,
     side,
+    isPopoverOpen,
     isLanguagesOpen,
     setIsLanguagesOpen,
     setIsPopoverOpen,
@@ -680,6 +690,50 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
     onVersionPickerPress,
   } = useBibleVersionPickerContext();
   const wasOpenRef = useRef(open ?? false);
+  const languageTriggerRef = useRef<HTMLButtonElement>(null);
+  const focusRequestRef = useRef(0);
+  const panelRef = useRef<HTMLElement>(null);
+
+  const scheduleLanguageTriggerFocus = useCallback(
+    (panel: HTMLElement) => {
+      if (isLanguagesOpen) return;
+      // SAFETY: Element roots are Documents or ShadowRoots, which both expose activeElement.
+      const focusRoot = panel.getRootNode() as Document | ShadowRoot;
+      const previousFocus = focusRoot.activeElement;
+      const focusRequest = ++focusRequestRef.current;
+      const focusLanguageTrigger = () => {
+        const languageTrigger = languageTriggerRef.current;
+        if (
+          focusRequestRef.current === focusRequest &&
+          focusRoot.activeElement === previousFocus &&
+          languageTrigger?.isConnected &&
+          panel.isConnected &&
+          panel.dataset.state === 'open' &&
+          !languageTrigger.closest('[inert]')
+        ) {
+          languageTrigger.focus({ preventScroll: true });
+        }
+      };
+      // Let Safari expose the newly painted dialog before moving focus into it.
+      const view = panel.ownerDocument.defaultView;
+      if (!view?.requestAnimationFrame) {
+        queueMicrotask(focusLanguageTrigger);
+        return;
+      }
+      view.requestAnimationFrame(() => view.requestAnimationFrame(focusLanguageTrigger));
+    },
+    [isLanguagesOpen],
+  );
+
+  useEffect(() => {
+    if (!isPopoverOpen) {
+      focusRequestRef.current += 1;
+      return;
+    }
+
+    const panel = panelRef.current;
+    if (panel) scheduleLanguageTriggerFocus(panel);
+  }, [isPopoverOpen, scheduleLanguageTriggerFocus]);
 
   // Resolve publisher names once for the whole list, deduped by organization id,
   // instead of mounting a fetching hook per row (avoids N+1 requests).
@@ -737,6 +791,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
         }
         headerChild={
           <BibleVersionPickerLanguageTrigger
+            ref={languageTriggerRef}
             disabled={isLanguagesOpen}
             style={
               isLanguagesOpen ? { visibility: 'hidden', opacity: 0, pointerEvents: 'none' } : {}
@@ -745,9 +800,17 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
         }
         theme={background}
         side={side}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          // SAFETY: Radix invokes this handler with the popover content as currentTarget.
+          const panel = event.currentTarget as HTMLElement;
+          panelRef.current = panel;
+          scheduleLanguageTriggerFocus(panel);
+        }}
       >
         <div className="yv:relative yv:min-h-0 yv:overflow-hidden">
           <div
+            inert={isLanguagesOpen ? true : undefined}
             className={`yv:h-full yv:min-h-0 yv:overflow-hidden yv:transition-all yv:duration-300 yv:ease-out yv:motion-reduce:transition-none ${
               isLanguagesOpen
                 ? 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
@@ -757,6 +820,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
             <Content onRequestClose={() => setIsPopoverOpen(false)} />
           </div>
           <div
+            inert={isLanguagesOpen ? undefined : true}
             className={`yv:h-full yv:min-h-0 yv:overflow-hidden yv:absolute yv:inset-0 yv:transition-all yv:duration-300 yv:ease-out yv:motion-reduce:transition-none ${
               isLanguagesOpen
                 ? 'yv:opacity-100 yv:pointer-events-auto yv:blur-none yv:scale-100'
@@ -881,7 +945,9 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
               placeholder={t('searchPlaceholder')}
               dir="auto"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              // onInput, not onChange: onChange does not update the query inside the picker's
+              // shadow root. The picker search stories fail with onChange.
+              onInput={(event) => setSearchQuery(event.currentTarget.value)}
             ></InputGroupInput>
             <InputGroupAddon>
               <SearchIcon className="yv:size-5 yv:text-muted-foreground" />
@@ -1026,7 +1092,7 @@ export function BibleLanguagePickerContent({
           value={languageTab}
           onValueChange={setLanguageTab}
         >
-          <TabsList className="yv:mx-4 yv:w-[calc(100%-4*var(--spacing)*2)]">
+          <TabsList className="yv:mx-4 yv:w-[calc(100%-4*var(--yv-spacing)*2)]">
             <TabsTrigger className="yv:p-0" value="suggested">
               {t('suggestedTab')}
             </TabsTrigger>
@@ -1087,7 +1153,9 @@ export function BibleLanguagePickerContent({
               placeholder={t('searchPlaceholder')}
               dir="auto"
               value={languageSearchQuery}
-              onChange={(e) => setLanguageSearchQuery(e.target.value)}
+              // onInput, not onChange: onChange does not update the query inside the picker's
+              // shadow root. The picker search stories fail with onChange.
+              onInput={(event) => setLanguageSearchQuery(event.currentTarget.value)}
             />
             <InputGroupAddon>
               <SearchIcon className="yv:size-5 yv:text-muted-foreground" />

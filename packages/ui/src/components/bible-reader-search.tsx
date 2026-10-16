@@ -20,6 +20,7 @@ import {
   useState,
   type ReactElement,
   type RefCallback,
+  type RefObject,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useBibleReaderContext } from './bible-reader';
@@ -69,6 +70,7 @@ export function BibleReaderSearch({
   const { background, onSearchPress, versionId, book, chapter } = useBibleReaderContext();
   const history = useRecentSearches();
   const navigating = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useControllableState({
     prop: openProp,
     defaultProp: defaultOpen ?? false,
@@ -115,9 +117,14 @@ export function BibleReaderSearch({
           if (navigating.current) event.preventDefault();
           navigating.current = false;
         }}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          inputRef.current?.focus();
+        }}
       >
         <SearchPanel
           {...history}
+          inputRef={inputRef}
           onClose={() => setOpen(false)}
           onNavigate={() => {
             navigating.current = true;
@@ -134,11 +141,13 @@ function SearchPanel({
   onNavigate,
   recentSearches,
   rememberSearch,
+  inputRef,
 }: {
   onClose: () => void;
   onNavigate: () => void;
   recentSearches: readonly string[];
   rememberSearch: (query: string) => void;
+  inputRef: RefObject<HTMLInputElement | null>;
 }): ReactElement {
   const { t } = useTranslation(undefined, { i18n });
   const { versionId, navigation, booksData, booksLoading } = useBibleReaderContext();
@@ -158,7 +167,6 @@ function SearchPanel({
         ? undefined
         : booksData.filter((book) => book.canon === testament).map((book) => book.id),
   });
-  const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const hasQuery = search.query !== '';
   const showingResults = !['trending', 'suggesting'].includes(search.phase.kind);
@@ -206,7 +214,6 @@ function SearchPanel({
             type="text"
             enterKeyHint="search"
             value={search.query}
-            autoFocus
             placeholder={t('searchPlaceholder')}
             aria-label={t('bibleSearchAriaLabel', 'Search the Bible')}
             onChange={(event) => search.setQuery(event.target.value)}

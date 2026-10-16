@@ -27,6 +27,7 @@ import {
 } from '@youversion/platform-core';
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import { InterfaceDirectionProvider } from '@/lib/direction';
+import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
 
 const mockVersions: BibleVersion[] = [
   {
@@ -156,7 +157,9 @@ function defaultOverrides({
 function renderWithOverrides(ui: ReactElement, setup?: OverrideSetup) {
   return render(ui, {
     wrapper: ({ children }) => (
-      <HookOverrideProvider overrides={defaultOverrides(setup)}>{children}</HookOverrideProvider>
+      <HookOverrideProvider overrides={defaultOverrides(setup)}>
+        <ReuseShadowBoundary>{children}</ReuseShadowBoundary>
+      </HookOverrideProvider>
     ),
   });
 }
