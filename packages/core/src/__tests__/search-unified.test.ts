@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { ApiClient } from '../client';
 import { SearchClient } from '../search';
-import type { SearchUnifiedField } from '../schemas/search';
 import { server } from './setup';
 
 const apiHost = process.env.YVP_API_HOST;
@@ -200,11 +199,10 @@ describe('SearchClient.searchUnified', () => {
     await expect(searchClient.searchUnified('faith', 111, 'en', { fields: [] })).rejects.toThrow(
       'At least one search field is required',
     );
-    const unknownField: string[] = ['nope'];
-    // SAFETY: a JavaScript caller can pass a kind outside SearchUnifiedField. The schema must reject it before fetch.
     await expect(
       searchClient.searchUnified('faith', 111, 'en', {
-        fields: unknownField as SearchUnifiedField[],
+        // @ts-expect-error - verifies runtime validation for unsafe JavaScript callers
+        fields: ['nope'],
       }),
     ).rejects.toThrow('Search field must be verses, topics, or images');
 
