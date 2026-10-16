@@ -134,6 +134,19 @@ means a single shared session is not acceptable evidence.
 | Command | `pnpm --filter @youversion/platform-react-ui test:shadow-safari` |
 | Result | 39/39 focused stories passed in fresh SafariDriver sessions. Every story passed on its first attempt with no assertion failures, transport retries, or process timeouts. `Suspense Reveal Restores Host Layout` passed in its isolated run. |
 
+### YPE-6217 actual Safari stylesheet revalidation
+
+YPE-6217 changed the automatic-root stylesheet installation path, which triggers
+another actual-Safari run under the rollout policy. On 2026-10-15, commit
+`21dce78233d11ea0f80e7f56f47f1facbd3ac5a0` was validated on macOS 26.6.2
+(25G83) with Safari 26.6.2 and SafariDriver 21624.5.1.11.3. Running
+`STORYBOOK_YOUVERSION_APP_KEY=test pnpm --filter @youversion/platform-react-ui test:shadow-safari`
+exercised all 38 focused stories in a fresh SafariDriver session per story. All
+38 passed on their first attempt with zero assertion failures, transport
+retries, or process timeouts. The run included both realistic-usage stories,
+whose assertions verify that automatic roots share the adopted component and
+reader stylesheets without installing redundant local `<style>` resources.
+
 ### Assistive-technology evidence
 
 Record versions from the tested machines rather than naming only the product

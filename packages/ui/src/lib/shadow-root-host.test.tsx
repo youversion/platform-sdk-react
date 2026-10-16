@@ -14,6 +14,8 @@ import { act, render, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ReuseShadowBoundary, withShadowIsolation } from './shadow-isolation';
 import { ShadowRootHost, useShadowPortalTarget } from './shadow-root-host';
+import { YvComponentStyles } from './yv-styles-components';
+import { YvReaderStyles } from './yv-styles-reader';
 
 function PortalRequester(): React.ReactNode {
   const [open, setOpen] = useState(false);
@@ -28,6 +30,17 @@ function PortalRequester(): React.ReactNode {
 function OpenPortalMarker(): React.ReactNode {
   const target = useShadowPortalTarget(true);
   return target ? createPortal(<span data-testid="portal-marker">Portal content</span>, target) : null;
+}
+
+function DocumentStylePortal(): React.ReactNode {
+  return createPortal(
+    <>
+      <YvComponentStyles />
+      <YvReaderStyles />
+      <span data-testid="document-style-portal">Document portal</span>
+    </>,
+    document.body,
+  );
 }
 
 const IsolatedRefProbe = withShadowIsolation(
@@ -434,19 +447,54 @@ describe('ShadowRootHost', () => {
   it('gives the fallback stylesheet a stable React resource identity', () => {
     const { container } = render(
       <ShadowRootHost>
+        <YvComponentStyles />
+        <YvReaderStyles />
         <span>content</span>
       </ShadowRootHost>,
     );
 
-    const style = container
-      .querySelector<HTMLElement>('[data-yv-shadow-host]')
-      ?.shadowRoot?.querySelector('style');
+    const shadowRoot = container.querySelector<HTMLElement>('[data-yv-shadow-host]')?.shadowRoot;
+    const style = shadowRoot?.querySelector('style');
 
     // jsdom does not implement constructable stylesheets, so this exercises
     // the fallback path. React uses href + precedence to hoist and de-duplicate
     // stylesheet resources within the shadow root.
     expect(style?.getAttribute('data-href')).toBe('yv-sdk-shadow-styles');
     expect(style?.getAttribute('data-precedence')).toBe('yv-sdk');
+    expect(
+      shadowRoot?.querySelectorAll(
+        'style[data-href="yv-sdk-components"], style[data-href="yv-sdk-bible-reader"]',
+      ),
+    ).toHaveLength(0);
+    expect(
+      document.head.querySelectorAll(
+        'style[data-href="yv-sdk-components"], style[data-href="yv-sdk-bible-reader"]',
+      ),
+    ).toHaveLength(0);
+    expect(shadowRoot?.querySelector('template')).toBeNull();
+  });
+
+  it('injects document styles when shadow context crosses a React portal', async () => {
+    const { container } = render(
+      <ShadowRootHost>
+        <DocumentStylePortal />
+      </ShadowRootHost>,
+    );
+
+    const shadowRoot = container.querySelector<HTMLElement>('[data-yv-shadow-host]')?.shadowRoot;
+    expect(shadowRoot?.querySelector('style[data-href="yv-sdk-shadow-styles"]')).not.toBeNull();
+    expect(
+      shadowRoot?.querySelectorAll(
+        'style[data-href="yv-sdk-components"], style[data-href="yv-sdk-bible-reader"]',
+      ),
+    ).toHaveLength(0);
+
+    await waitFor(() => {
+      expect(document.querySelector('[data-testid="document-style-portal"]')).not.toBeNull();
+      expect(document.head.querySelector('style[data-href="yv-sdk-components"]')).not.toBeNull();
+      expect(document.head.querySelector('style[data-href="yv-sdk-bible-reader"]')).not.toBeNull();
+      expect(document.querySelector('template')).toBeNull();
+    });
   });
 
   it('recovers from stylesheet construction failure without poisoning later roots or documents', async () => {
