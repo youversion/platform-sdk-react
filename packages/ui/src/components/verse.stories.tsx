@@ -851,8 +851,6 @@ export const VerseSelection: Story = {
       '[data-slot="verse-action-popover"]',
       'verse action popover did not share the scripture shadow root',
     );
-    await expect(verse.getRootNode()).toBe(root);
-    await expect(dialog.getRootNode()).toBe(root);
     const swatches = within(dialog).getByRole('group', { name: /highlight colors/i });
     await userEvent.click(
       within(swatches).getAllByRole('button', { name: /apply highlight/i })[0]!,
