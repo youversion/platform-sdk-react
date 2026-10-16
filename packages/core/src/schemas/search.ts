@@ -324,7 +324,7 @@ export type SearchUnifiedResponse = Readonly<z.infer<typeof SearchUnifiedRespons
 type EnsureSearchUnifiedFieldArrays<T extends Record<SearchUnifiedField, true>> = T;
 
 type _SearchUnifiedFieldCoverage = EnsureSearchUnifiedFieldArrays<{
-  [K in SearchUnifiedField]: SearchUnifiedResponse[K] extends readonly unknown[] ? true : never;
+  [K in SearchUnifiedField]: SearchUnifiedResponse[K] extends readonly unknown[] ? true : false;
 }>;
 
 function toSearchImageHit(wire: SearchImageHitWire): SearchImageHit | null {
