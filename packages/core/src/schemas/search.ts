@@ -261,3 +261,96 @@ export const SearchVersesOptionsSchema = z.object({
 });
 
 export type SearchVersesOptions = z.infer<typeof SearchVersesOptionsSchema>;
+
+const SEARCH_UNIFIED_FIELDS = ['verses', 'topics', 'images'] as const;
+
+export type SearchUnifiedField = (typeof SEARCH_UNIFIED_FIELDS)[number];
+
+const SearchUnifiedFieldSchema = z.enum(SEARCH_UNIFIED_FIELDS, {
+  error: 'Search field must be verses, topics, or images',
+});
+
+const SearchUnifiedFieldsSchema = z.pipe(
+  z.array(SearchUnifiedFieldSchema).check(z.minLength(1, 'At least one search field is required')),
+  z.transform((fields) => [...new Set(fields)]),
+);
+
+export const SearchUnifiedOptionsSchema = z.object({
+  userIntent: z.optional(z.string()),
+  fields: z.optional(SearchUnifiedFieldsSchema),
+});
+
+export type SearchUnifiedOptions = z.infer<typeof SearchUnifiedOptionsSchema>;
+
+export const SearchImageHitSchema = z.object({
+  id: z.string().check(z.minLength(1)),
+  passageId: z.string().check(z.minLength(1)),
+});
+
+export type SearchImageHit = Readonly<z.infer<typeof SearchImageHitSchema>>;
+
+const SearchImageHitWireSchema = z.object({
+  id: z.string(),
+  passage_id: z.string(),
+});
+
+type SearchImageHitWire = z.infer<typeof SearchImageHitWireSchema>;
+
+export const SearchUnifiedWireSchema = z.object({
+  verses: z.optional(z.array(SearchVerseHitWireSchema)),
+  topics: z.optional(z.array(SearchTopicWireSchema)),
+  images: z.optional(z.array(SearchImageHitWireSchema)),
+  user_intent: z.optional(z.nullable(z.string())),
+  did_you_mean: z.array(z.string()),
+  search_instead_for: z.optional(z.nullable(z.string())),
+});
+
+export type SearchUnifiedWire = z.infer<typeof SearchUnifiedWireSchema>;
+
+export const SearchUnifiedResponseSchema = z.object({
+  /** Verse hits. Malformed USFM references are removed. */
+  verses: z.array(SearchVerseHitSchema),
+  topics: z.array(SearchTopicSchema),
+  /** Image hits. Empty id or invalid `passageId` entries are removed. */
+  images: z.array(SearchImageHitSchema),
+  /** Set only when the API returns a non-null user intent. */
+  userIntent: z.optional(z.string()),
+  didYouMean: z.array(z.string()),
+  searchInsteadFor: z.nullable(z.string()),
+});
+
+export type SearchUnifiedResponse = Readonly<z.infer<typeof SearchUnifiedResponseSchema>>;
+
+type EnsureSearchUnifiedFieldArrays<T extends Record<SearchUnifiedField, true>> = T;
+
+type _SearchUnifiedFieldCoverage = EnsureSearchUnifiedFieldArrays<{
+  [K in SearchUnifiedField]: SearchUnifiedResponse[K] extends readonly unknown[] ? true : false;
+}>;
+
+function toSearchImageHit(wire: SearchImageHitWire): SearchImageHit | null {
+  if (wire.id.length === 0 || !isValidStructuralUsfmReference(wire.passage_id)) {
+    return null;
+  }
+  return {
+    id: wire.id,
+    passageId: wire.passage_id,
+  };
+}
+
+export function toSearchUnifiedResponse(wire: SearchUnifiedWire): SearchUnifiedResponse {
+  const response: SearchUnifiedResponse = {
+    verses: (wire.verses ?? [])
+      .map(toSearchVerseHit)
+      .filter((hit): hit is SearchVerseHit => hit !== null),
+    topics: (wire.topics ?? []).map(toSearchTopic),
+    images: (wire.images ?? [])
+      .map(toSearchImageHit)
+      .filter((hit): hit is SearchImageHit => hit !== null),
+    didYouMean: wire.did_you_mean,
+    searchInsteadFor: wire.search_instead_for ?? null,
+  };
+  if (wire.user_intent != null) {
+    return { ...response, userIntent: wire.user_intent };
+  }
+  return response;
+}
