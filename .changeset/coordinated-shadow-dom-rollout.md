@@ -19,8 +19,10 @@ props, callbacks, refs, and role-based automation instead of depending on
 internal markup. Fonts remain document-owned, `rem` sizing follows the document
 root, `direction` remains inherited, and ancestor layout can still constrain the
 host. Shadow-local overlays use the native top layer, and opening a peer popover
-dismisses the current peer. Popover content also respects Radix's available
-collision height. Validated bubbling click, keydown, focus, and blur
+dismisses the current peer. The native Popover API is required for isolated
+floating content; there is no inline fallback, and an unhandled open error can
+unmount the affected consumer React root. Popover content also respects Radix's
+available collision height. Validated bubbling click, keydown, focus, and blur
 paths reach light-DOM ancestor React handlers once; capture handlers and other
 composed event paths retain their documented compatibility caveat.
 
@@ -31,8 +33,8 @@ not add runtime rollout controls or phased-release infrastructure.
 
 See the
 [release-candidate evidence](https://github.com/youversion/platform-sdk-react/blob/main/docs/shadow-dom-isolation-plan.md#ype-5952-release-candidate-validation)
-for the tested commit, environments, browser and assistive-technology results,
-performance measurements, and remaining validation gaps.
+for environments, browser and assistive-technology results, per-journey results,
+and remaining validation gaps.
 
 Shared popover dialogs now derive an accessible name from their visible heading
 unless the consumer provides an explicit label. The reader sign-in and sign-out

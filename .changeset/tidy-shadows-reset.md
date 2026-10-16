@@ -2,4 +2,7 @@
 '@youversion/platform-react-ui': patch
 ---
 
-Harden Shadow DOM style isolation so text direction is the only intentionally inherited CSS property and host custom properties cannot alter known SDK spacing or radius values. Document-root font sizing still affects the automatic boundary's rem-based dimensions.
+Keep text direction as the only intentionally inherited CSS property across an
+automatic Shadow DOM boundary. Ambient host custom properties cannot alter SDK
+spacing or radius values, while document-root font sizing still affects rem-based
+dimensions.

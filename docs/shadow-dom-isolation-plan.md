@@ -472,10 +472,6 @@ separately in YPE-5749.
   public font family names used inside a shadow root. This limitation is
   accepted for the rollout; avoiding it requires private family names and
   controlled font declarations.
-- Ancestor geometry can clip, transform, or constrain the component host. The
-  shadow reset restores properties such as `visibility` and `pointer-events`,
-  so applying those properties only to an ancestor is not a reliable way to
-  hide or disable isolated descendants.
 - Open shadow roots prevent CSS selector crossover; they do not prevent
   same-page JavaScript from inspecting or mutating the root.
 - The focused Shadow DOM browser suite runs in Chromium, Firefox, and Playwright

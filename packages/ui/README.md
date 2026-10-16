@@ -116,8 +116,10 @@ are unchanged:
   Fonts remain document-owned, `rem` units still follow the owning document root,
   and `direction` is intentionally inherited. Ancestor geometry can size, clip,
   or transform the light-DOM host, but the internal reset can restore
-  `visibility` and `pointer-events`; explicitly hide, disable, or unmount an
-  isolated component instead of relying on those ancestor properties.
+  `visibility` and `pointer-events`. To hide an isolated component, apply
+  `display: none` to a consumer-owned light-DOM wrapper or do not render the
+  component. To disable one, use a supported component API instead of ancestor
+  `pointer-events`.
 - **Overlays:** Popovers and dialogs stay in their owning root and use the native
   top layer where needed. Opening a peer popover dismisses the current peer;
   simultaneous peer popovers are not supported. The native Popover API is
