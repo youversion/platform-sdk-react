@@ -2,4 +2,4 @@
 '@youversion/platform-react-ui': patch
 ---
 
-Validate shadow-local top-layer Dialog behavior, including focus containment and modal background inertness.
+Keep shadow-local top-layer dialogs focus-contained, make their background inert while mounted, and restore focus after dismissal.

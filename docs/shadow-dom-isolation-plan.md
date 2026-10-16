@@ -9,8 +9,8 @@ publishing remains gated by the YPE-5952 evidence recorded below.
 
 ## Why this doc exists
 
-[ADR 0007](adr/0007-prototype-shadow-dom-style-isolation.md) records the durable
-architectural decision behind the Shadow DOM prototype. This document tracks
+[ADR 0010](adr/0010-automatic-shadow-dom-style-isolation.md) records the durable
+architectural decision behind automatic Shadow DOM isolation. This document tracks
 the implementation evidence, unresolved audits, and coordinated-release
 validation for the approved public boundary.
 
@@ -19,9 +19,9 @@ major release or any pending manual validation has completed.
 
 ## Current scope
 
-- In the current stable package, `YouVersionAuthButton` is the only component
-  with automatic isolation. On the coordinated release branch, every included
-  YPE-5356 component boundary is implemented: the auth button, chapter and
+- The current stable package has no automatically isolated components. On the
+  coordinated release branch, every included YPE-5356 component boundary is
+  implemented: the auth button, chapter and
   version picker roots, `BibleReader.Root`, `ProfileAvatar`, `Separator`,
   `FootnoteContent`, and standalone `BibleThemeSettingsContent`,
   `BibleTextView`, `VerseOfTheDay`, and `BibleCard`.
@@ -379,7 +379,7 @@ coordination for the coordinated rollout.
 - Apply automatic isolation at the SDK-owned top-level component boundary.
   Compound members and composed SDK children reuse the owning boundary rather
   than creating accidental nested roots.
-- Apply [ADR 0007's client-only SSR and hydration contract](adr/0007-prototype-shadow-dom-style-isolation.md#ssr-and-hydration-contract)
+- Apply [ADR 0010's client-only SSR and hydration contract](adr/0010-automatic-shadow-dom-style-isolation.md#ssr-and-hydration-contract)
   per rollout group. Each implementation ticket reviews whether its first-paint,
   layout, and no-JavaScript limitations are acceptable for that component.
 - Accept single-active-peer popover dismissal. Concurrent peer overlays require
@@ -472,8 +472,10 @@ separately in YPE-5749.
   public font family names used inside a shadow root. This limitation is
   accepted for the rollout; avoiding it requires private family names and
   controlled font declarations.
-- Shadow DOM cannot prevent a host from hiding, clipping, transforming, or
-  constraining the component host or its ancestors.
+- Ancestor geometry can clip, transform, or constrain the component host. The
+  shadow reset restores properties such as `visibility` and `pointer-events`,
+  so applying those properties only to an ancestor is not a reliable way to
+  hide or disable isolated descendants.
 - Open shadow roots prevent CSS selector crossover; they do not prevent
   same-page JavaScript from inspecting or mutating the root.
 - The focused Shadow DOM browser suite runs in Chromium, Firefox, and Playwright

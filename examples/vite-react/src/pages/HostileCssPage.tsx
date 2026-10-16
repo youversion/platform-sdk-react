@@ -127,12 +127,12 @@ export function HostileCssPage() {
       ))}
 
       <section className="rounded-lg border p-5">
-        <h1 className="text-xl font-semibold">Automatic Shadow DOM isolation POC</h1>
+        <h1 className="text-xl font-semibold">Automatic Shadow DOM isolation</h1>
         <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-          This branch automatically isolates only <code>YouVersionAuthButton</code>. The plain host
-          controls are positive witnesses: they should look broken when an attack is active, while
-          the SDK button should remain stable. The font-face option demonstrates a known Shadow DOM
-          limitation.
+          This focused harness uses <code>YouVersionAuthButton</code> as a representative automatic
+          boundary. The plain host controls are positive witnesses: they should look broken when an
+          attack is active, while the SDK button should remain stable. The font-face option
+          demonstrates a known Shadow DOM limitation.
         </p>
 
         <fieldset className="mt-5 flex flex-col gap-3">
@@ -181,7 +181,7 @@ export function HostileCssPage() {
         </section>
 
         <section className="flex flex-col gap-5 rounded-lg border p-5">
-          <h2 className="text-sm font-semibold">SDK POC — SHOULD RESIST</h2>
+          <h2 className="text-sm font-semibold">SDK SHADOW ROOT — SHOULD RESIST</h2>
           <div className="hostile-zone">
             <YouVersionAuthButton
               size="short"
@@ -189,8 +189,8 @@ export function HostileCssPage() {
             />
           </div>
           <p className="text-sm text-muted-foreground">
-            Other SDK components are intentionally absent: automatic isolation has not been rolled
-            out to them on this POC branch.
+            Other automatically isolated SDK components are intentionally absent so this page stays
+            a focused hostile-CSS witness rather than a component gallery.
           </p>
         </section>
       </div>

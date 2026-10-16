@@ -13,7 +13,7 @@ the bounded Safari/VoiceOver validation is complete, while Windows with NVDA
 was not run because no test environment was available and remains explicitly
 unvalidated. Future trigger changes require another Safari run. The implemented
 boundary extends the architecture recorded in
-[ADR 0007](adr/0007-prototype-shadow-dom-style-isolation.md):
+[ADR 0010](adr/0010-automatic-shadow-dom-style-isolation.md):
 `YouVersionAuthButton`, `BibleChapterPicker.Root`, `BibleVersionPicker.Root`,
 `BibleReader.Root`, `ProfileAvatar`, `Separator`, `FootnoteContent`, and standalone
 `BibleThemeSettingsContent`, `BibleTextView`, `VerseOfTheDay`, and `BibleCard`
@@ -59,7 +59,7 @@ component rollout targets.
 
 | Public export | Disposition | Automatic boundary | Required implementation or reason |
 | --- | --- | --- | --- |
-| `YouVersionAuthButton` | Included; already prototyped | The button | Preserve its current ref and event contract and include it in the final release checks. |
+| `YouVersionAuthButton` | Included | The button | Preserve its current ref and event contract and include it in the final release checks. |
 | `BibleChapterPicker.Root`, `.Trigger`, `.Content` | Included as one compound component | `Root` only | Keep context, trigger, content, and shadow-local popover in one tree. Audit consumer-supplied trigger children, callbacks, focus, and picker geometry. |
 | `BibleVersionPicker.Root`, `.Trigger`, `.Content` | Included as one compound component | `Root` only | Promote the validated opt-in host to the public root and audit custom trigger styling, storage, focus, and native top-layer behavior. |
 | `BibleLanguagePickerContent`, `BibleVersionPickerLanguageTrigger` | Included transitively | No independent boundary | Both require `BibleVersionPicker.Root` context and stay inside that root. Direct use outside the root is already unsupported. |
@@ -112,7 +112,8 @@ supported component contract.
 | Consumer global CSS and document-level token overrides do not style internals | Accepted | Supported props and component-owned tokens replace accidental global customization; consumer-supplied children require focused review. |
 | `rem` still follows the owning document root size | Accepted | Review this sizing input per component. |
 | Font loading and public `@font-face` names remain document-owned | Accepted | `YouVersionProvider` remains responsible for document fonts, including inside same-origin iframe documents. |
-| Ancestor layout can still hide, clip, transform, or constrain the shadow host | Accepted | Treat this as a platform boundary. |
+| Ancestor geometry can clip, transform, or constrain the shadow host, while ancestor `visibility` or `pointer-events` values can be reset inside the shadow tree | Accepted | Do not rely on those ancestor properties to hide or disable isolated descendants; explicitly hide, disable, or unmount the component. |
+| Native Popover API support is absent | Unsupported for isolated floating content | The SDK does not silently use the clipped inline arrangement. Opening affected content throws; an unhandled error can unmount the affected consumer React root. |
 | Open roots are inspectable and mutable by same-page JavaScript | Accepted | Isolation is not a security boundary. |
 | Opening a peer popover dismisses the current peer across component roots | Accepted | Keep the single-active-peer behavior. Supporting concurrent peer popovers would require a demonstrated product journey and separate design. |
 | Nested-dialog and rapid-reopen final focus restoration | Accepted | Preserve the behavior resolved by YPE-5889/PR 414 as regression coverage rather than duplicating the implementation in rollout tickets. |
