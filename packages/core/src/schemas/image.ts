@@ -34,7 +34,8 @@ const ImageNextPageTokenWireSchema = z.pipe(
 
 /**
  * List envelope. Each `data` item is parsed with {@link ImageSchema}; off-contract
- * items are dropped so one bad record does not reject the page.
+ * items are dropped so one bad record does not reject the page. `total_size` stays
+ * the server's count and may exceed the kept `data` length.
  */
 export const ImageCollectionWireSchema = z.pipe(
   z.object({

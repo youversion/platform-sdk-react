@@ -92,7 +92,9 @@ if (!first) {
 `next_page_token` is `null` on the last page. Pass that value back as
 `page_token`, including `null`, to request the next page or the first page.
 `total_size` is present only when the API sends a number, which it does when
-`passage_id` is set. A null or missing total is omitted. `0` is kept.
+`passage_id` is set. That value is the server's count and can exceed
+`data.length` when off-contract records were dropped from the page. A null or
+missing total is omitted. `0` is kept.
 
 Pass `{ beta: true }` to call `/v1-beta/images` from that client.
 

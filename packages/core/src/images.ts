@@ -63,8 +63,10 @@ export class ImagesClient {
    * @param options Filters and pagination. Invalid options throw before any request.
    * @returns One page. `next_page_token` is `null` on the last page. `total_size`
    *   is present only when the API reports a number, which it does when
-   *   `passage_id` is set. `0` is kept. No matches returns an empty page.
-   *   Large verse ranges can fail on the server. See YPE-6178.
+   *   `passage_id` is set. That value is the server's count and can exceed
+   *   `data.length` when off-contract records were dropped. `0` is kept.
+   *   No matches returns an empty page. Large verse ranges can fail on the
+   *   server. See YPE-6178.
    */
   async getImages(options: GetImagesOptions = {}): Promise<Collection<Image>> {
     const parsed = GetImagesOptionsSchema.parse(options);
