@@ -11,7 +11,10 @@ children reuse their owning boundary.
 
 Server output for these components is a childless light-DOM host whose inline
 `display` declares the boundary's intended layout until the passive-effect client
-mount. Document queries and global CSS no longer reach component internals,
+mount. Automatic shadow hosts therefore require strict CSP applications to allow
+or hash style attributes as described in the
+[UI Content Security Policy guidance](https://github.com/youversion/platform-sdk-react/blob/main/packages/ui/README.md#content-security-policy).
+Document queries and global CSS no longer reach component internals,
 forwarded element refs become available after that mount, and native events
 observed outside a root are retargeted to its host. Keep form
 ownership, native labels, and ARIA ID references within one tree; use public
