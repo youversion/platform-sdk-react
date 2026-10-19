@@ -119,5 +119,6 @@
   "decreaseFontSizeAriaLabel": "Bèlátá nha fọntù",
   "increaseFontSizeAriaLabel": "Bàwányé nha fọntù",
   "interFontName": "Inter",
-  "untitledSerifFontName": "Serif N'enweghị Aha"
+  "untitledSerifFontName": "Serif N'enweghị Aha",
+  "generic.requestErrorBody": "Arịrịọ a enweghị ike imezu ugbu a."
 }
