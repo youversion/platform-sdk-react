@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ApiClient,
   ImagesClient,
@@ -17,13 +17,18 @@ type ImagesDemoState =
   | { kind: 'detail'; passageId: string; page: Collection<Image>; image: Image }
   | { kind: 'error'; passageId: string; message: string };
 
+function resolveApiTimeoutMs(): number {
+  const configured = Number(import.meta.env.VITE_YVP_API_TIMEOUT_MS);
+  return Number.isFinite(configured) && configured > 0 ? configured : 60000;
+}
+
 function createImagesClient(): ImagesClient {
   const appKey = import.meta.env.VITE_YVP_APP_KEY?.trim();
   if (!appKey) {
     throw new Error('Missing VITE_YVP_APP_KEY (set YVP_APP_KEY in the monorepo root .env)');
   }
   const apiHost = import.meta.env.VITE_YVP_API_HOST ?? 'api.youversion.com';
-  return new ImagesClient(new ApiClient({ appKey, apiHost }));
+  return new ImagesClient(new ApiClient({ appKey, apiHost, timeout: resolveApiTimeoutMs() }));
 }
 
 function formatCaughtError(cause: unknown): string {
@@ -45,6 +50,7 @@ export function ImagesPage() {
   });
   const [detailBusy, setDetailBusy] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const detailRequestId = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,10 +84,12 @@ export function ImagesPage() {
   }, []);
 
   async function openDetail(page: Collection<Image>, imageId: string) {
+    const requestId = ++detailRequestId.current;
     setDetailError(null);
     setDetailBusy(true);
     try {
       const image = await createImagesClient().getImage(imageId);
+      if (requestId !== detailRequestId.current) return;
       setState({
         kind: 'detail',
         passageId: DEFAULT_PASSAGE_ID,
@@ -89,13 +97,18 @@ export function ImagesPage() {
         image,
       });
     } catch (err) {
+      if (requestId !== detailRequestId.current) return;
       setDetailError(formatCaughtError(err));
     } finally {
-      setDetailBusy(false);
+      if (requestId === detailRequestId.current) {
+        setDetailBusy(false);
+      }
     }
   }
 
   function backToList(page: Collection<Image>) {
+    detailRequestId.current += 1;
+    setDetailBusy(false);
     setDetailError(null);
     setState({ kind: 'list', passageId: DEFAULT_PASSAGE_ID, page });
   }
