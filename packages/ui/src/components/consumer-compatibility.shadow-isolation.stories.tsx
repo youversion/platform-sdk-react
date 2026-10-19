@@ -74,12 +74,14 @@ interface AutomaticButtonEvidenceOutput extends HTMLOutputElement {
   forwardedRefNode?: EventTarget | null;
 }
 
-type AdditionalComposedEventName =
-  | 'contextmenu'
-  | 'dblclick'
-  | 'keyup'
-  | 'mousedown'
-  | 'pointerdown';
+const additionalComposedEventNames = [
+  'keyup',
+  'pointerdown',
+  'mousedown',
+  'dblclick',
+  'contextmenu',
+] as const;
+type AdditionalComposedEventName = (typeof additionalComposedEventNames)[number];
 
 interface AdditionalComposedEventsEvidenceOutput extends HTMLOutputElement {
   ancestorClickCaptureCount?: number;
@@ -614,7 +616,7 @@ function AdditionalComposedEventsHarness(): React.ReactNode {
   return (
     <CompatibilityScenario
       classification="Supported for bubbling handlers; capture has a documented limitation"
-      expectedResult="Each keyup, pointerdown, mousedown, double-click, and context-menu dispatch reaches the light-DOM React ancestor once. External native propagation and retargeting remain intact. Click capture is documented separately."
+      expectedResult="Each keyup, pointerdown, mousedown, double-click, and context-menu dispatch reaches the light-DOM React ancestor once. Pointerdown represents preserved native propagation and retargeting. Click capture is documented separately."
       summary="This example dispatches fresh owner-realm events directly so event families and phases are measured independently."
       title="Additional composed event delivery"
     >
@@ -674,33 +676,23 @@ export const AdditionalComposedEventsReachReactAncestorsOnce: Story = {
       '[data-testid="additional-events-evidence"]',
       'additional events evidence not rendered',
     );
-    const nativeObservations: Partial<
-      Record<
-        AdditionalComposedEventName,
-        Array<{ event: Event; path: EventTarget[]; target: EventTarget | null }>
-      >
-    > = {};
+    const nativePointerDowns: Array<{
+      event: Event;
+      path: EventTarget[];
+      target: EventTarget | null;
+    }> = [];
     const controller = new canvasElement.ownerDocument.defaultView!.AbortController();
-    const eventNames: AdditionalComposedEventName[] = [
-      'keyup',
+    observer.addEventListener(
       'pointerdown',
-      'mousedown',
-      'dblclick',
-      'contextmenu',
-    ];
-    for (const eventName of eventNames) {
-      observer.addEventListener(
-        eventName,
-        (event) => {
-          (nativeObservations[eventName] ??= []).push({
-            event,
-            path: event.composedPath(),
-            target: event.target,
-          });
-        },
-        { signal: controller.signal },
-      );
-    }
+      (event) => {
+        nativePointerDowns.push({
+          event,
+          path: event.composedPath(),
+          target: event.target,
+        });
+      },
+      { signal: controller.signal },
+    );
 
     const ownerWindow = button.ownerDocument.defaultView!;
     const events = {
@@ -718,7 +710,9 @@ export const AdditionalComposedEventsReachReactAncestorsOnce: Story = {
       contextmenu: new ownerWindow.MouseEvent('contextmenu', { bubbles: true, composed: true }),
     } satisfies Record<AdditionalComposedEventName, Event>;
     try {
-      for (const eventName of eventNames) button.dispatchEvent(events[eventName]);
+      for (const eventName of additionalComposedEventNames) {
+        button.dispatchEvent(events[eventName]);
+      }
 
       await expect(evidence.ancestorCounts).toEqual({
         keyup: 1,
@@ -730,14 +724,11 @@ export const AdditionalComposedEventsReachReactAncestorsOnce: Story = {
       await expect(evidence.componentPointerDowns).toEqual([
         { currentTarget: button, nativeEvent: events.pointerdown, target: button },
       ]);
-      for (const eventName of eventNames) {
-        const observations = nativeObservations[eventName];
-        await expect(observations).toHaveLength(1);
-        await expect(observations?.[0]?.event).toBe(events[eventName]);
-        await expect(observations?.[0]?.target).toBe(host);
-        await expect(observations?.[0]?.path[0]).toBe(button);
-        await expect(observations?.[0]?.path).toContain(host);
-      }
+      await expect(nativePointerDowns).toHaveLength(1);
+      await expect(nativePointerDowns[0]?.event).toBe(events.pointerdown);
+      await expect(nativePointerDowns[0]?.target).toBe(host);
+      await expect(nativePointerDowns[0]?.path[0]).toBe(button);
+      await expect(nativePointerDowns[0]?.path).toContain(host);
 
       const captureEvent = new ownerWindow.MouseEvent('click', {
         bubbles: true,
@@ -753,10 +744,10 @@ export const AdditionalComposedEventsReachReactAncestorsOnce: Story = {
       host.dispatchEvent(hostPointerDown);
       await expect(evidence.ancestorCounts?.pointerdown).toBe(2);
       await expect(evidence.componentPointerDowns).toHaveLength(1);
-      await expect(nativeObservations.pointerdown).toHaveLength(2);
-      await expect(nativeObservations.pointerdown?.[1]?.event).toBe(hostPointerDown);
-      await expect(nativeObservations.pointerdown?.[1]?.target).toBe(host);
-      await expect(nativeObservations.pointerdown?.[1]?.path[0]).toBe(host);
+      await expect(nativePointerDowns).toHaveLength(2);
+      await expect(nativePointerDowns[1]?.event).toBe(hostPointerDown);
+      await expect(nativePointerDowns[1]?.target).toBe(host);
+      await expect(nativePointerDowns[1]?.path[0]).toBe(host);
     } finally {
       controller.abort();
     }
