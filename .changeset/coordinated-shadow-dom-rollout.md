@@ -27,9 +27,10 @@ floating content; there is no inline fallback, and an unhandled open error can
 unmount the affected consumer React root. Popover content also respects Radix's
 available collision height. Validated bubbling `click`, `keydown`, `keyup`,
 `pointerdown`, `mousedown`, `dblclick`, `contextmenu`, focus, and blur paths
-reach light-DOM ancestor React handlers once. Capture handlers can still receive
-duplicate delivery; other bubbling families require focused evidence before
-support is claimed.
+reach light-DOM ancestor React handlers once. Capture handlers and unlisted
+composed bubbling families can still receive duplicate delivery. YPE-6210 covers
+`onClickCapture`; a focused Chromium probe observed duplicate `onPointerUp`
+delivery.
 
 `Textarea`, standalone `VerseActionPopover`, `YouVersionProvider`, and
 `BaseYouVersionProvider` remain outside the automatic boundary for their

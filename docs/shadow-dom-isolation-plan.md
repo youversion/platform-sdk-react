@@ -303,6 +303,9 @@ path, and host-origin pointer delivery. The nested-root story retains its
 existing native retargeting evidence and adds one React ancestor dispatch per
 scope. YPE-6210 also records the separate capture behavior class: one fresh
 composed internal click invokes a light-DOM ancestor `onClickCapture` twice.
+One focused Chromium Storybook probe also observed two light-DOM ancestor
+deliveries for one internal `pointerup`. It records the remaining unlisted-family
+limitation, not automated or cross-browser support coverage.
 Capture remains a documented limitation; it is not folded into the narrow
 bubbling-event correction. The main workflow passes Chromium, Firefox, and
 Playwright WebKit. Because the correction changes the shared host, YPE-6214 must

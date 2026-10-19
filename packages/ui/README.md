@@ -106,9 +106,10 @@ are unchanged:
   the host. React callbacks passed to a component retain their documented target
   semantics. Light-DOM ancestor React handlers receive one delivery for the
   validated bubbling `click`, `keydown`, `keyup`, `pointerdown`, `mousedown`,
-  `dblclick`, `contextmenu`, `focus`, and `blur` paths. Capture handlers can
-  still receive duplicate delivery; other bubbling families require focused
-  evidence before support is claimed.
+  `dblclick`, `contextmenu`, `focus`, and `blur` paths. Capture handlers and
+  unlisted composed bubbling families can still receive duplicate delivery.
+  YPE-6210 covers `onClickCapture`; a focused Chromium probe observed duplicate
+  `onPointerUp` delivery.
 - **Forms and accessibility relationships:** Native outer forms, external
   `<label for>`, and cross-tree `aria-labelledby` or `aria-describedby` references
   do not cross a shadow boundary. Keep related nodes in one tree or use an
