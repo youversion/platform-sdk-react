@@ -11,7 +11,7 @@ type FieldMode = 'images' | 'images_and_verses';
 type DemoStatus =
   | { kind: 'idle' }
   | { kind: 'loading' }
-  | { kind: 'ok'; data: SearchUnifiedResponse }
+  | { kind: 'ok'; data: SearchUnifiedResponse; fieldMode: FieldMode }
   | { kind: 'error'; message: string };
 
 const DEFAULT_QUERY = 'psalm 23';
@@ -64,12 +64,13 @@ export function SearchUnifiedPage() {
       return;
     }
 
+    const submittedFieldMode = fieldMode;
     setStatus({ kind: 'loading' });
     try {
       const data = await searchClient.searchUnified(query, parsedVersionId, language, {
-        fields: fieldsForMode(fieldMode),
+        fields: fieldsForMode(submittedFieldMode),
       });
-      setStatus({ kind: 'ok', data });
+      setStatus({ kind: 'ok', data, fieldMode: submittedFieldMode });
     } catch (error) {
       const message = error instanceof Error ? messageFromError(error) : 'searchUnified failed';
       setStatus({ kind: 'error', message });
@@ -157,7 +158,9 @@ export function SearchUnifiedPage() {
           {status.message}
         </p>
       ) : null}
-      {status.kind === 'ok' ? <Results data={status.data} fieldMode={fieldMode} /> : null}
+      {status.kind === 'ok' ? (
+        <Results data={status.data} fieldMode={status.fieldMode} />
+      ) : null}
     </div>
   );
 }
