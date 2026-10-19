@@ -25,9 +25,11 @@ host. Shadow-local overlays use the native top layer, and opening a peer popover
 dismisses the current peer. The native Popover API is required for isolated
 floating content; there is no inline fallback, and an unhandled open error can
 unmount the affected consumer React root. Popover content also respects Radix's
-available collision height. Validated bubbling click, keydown, focus, and blur
-paths reach light-DOM ancestor React handlers once; capture handlers and other
-composed event paths retain their documented compatibility caveat.
+available collision height. Validated bubbling `click`, `keydown`, `keyup`,
+`pointerdown`, `mousedown`, `dblclick`, `contextmenu`, focus, and blur paths
+reach light-DOM ancestor React handlers once. Capture handlers can still receive
+duplicate delivery; other bubbling families require focused evidence before
+support is claimed.
 
 `Textarea`, standalone `VerseActionPopover`, `YouVersionProvider`, and
 `BaseYouVersionProvider` remain outside the automatic boundary for their

@@ -74,18 +74,18 @@ interface AutomaticButtonEvidenceOutput extends HTMLOutputElement {
   forwardedRefNode?: EventTarget | null;
 }
 
-const additionalComposedEventNames = [
+const validatedBubblingEventNames = [
   'keyup',
   'pointerdown',
   'mousedown',
   'dblclick',
   'contextmenu',
 ] as const;
-type AdditionalComposedEventName = (typeof additionalComposedEventNames)[number];
+type ValidatedBubblingEventName = (typeof validatedBubblingEventNames)[number];
 
-interface AdditionalComposedEventsEvidenceOutput extends HTMLOutputElement {
+interface ValidatedBubblingEventsEvidenceOutput extends HTMLOutputElement {
   ancestorClickCaptureCount?: number;
-  ancestorCounts?: Partial<Record<AdditionalComposedEventName, number>>;
+  ancestorCounts?: Partial<Record<ValidatedBubblingEventName, number>>;
   componentPointerDowns?: ReactEventObservation[];
 }
 
@@ -602,10 +602,10 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
   },
 };
 
-function AdditionalComposedEventsHarness(): React.ReactNode {
-  const evidenceRef = useRef<AdditionalComposedEventsEvidenceOutput | null>(null);
+function ValidatedBubblingEventsHarness(): React.ReactNode {
+  const evidenceRef = useRef<ValidatedBubblingEventsEvidenceOutput | null>(null);
 
-  const recordAncestorEvent = useCallback((name: AdditionalComposedEventName): void => {
+  const recordAncestorEvent = useCallback((name: ValidatedBubblingEventName): void => {
     const evidence = evidenceRef.current;
     if (!evidence) return;
 
@@ -653,10 +653,10 @@ function AdditionalComposedEventsHarness(): React.ReactNode {
   );
 }
 
-export const AdditionalComposedEventsReachReactAncestorsOnce: Story = {
-  name: 'Additional composed events reach React ancestors once',
+export const KeyUpPointerAndMouseEventsReachReactAncestorsOnce: Story = {
+  name: 'Keyup, pointer, and mouse events reach React ancestors once',
   tags: ['cross-browser'],
-  render: () => <AdditionalComposedEventsHarness />,
+  render: () => <ValidatedBubblingEventsHarness />,
   play: async ({ canvasElement }) => {
     const observer = await waitFor(async () =>
       requireElement<HTMLElement>(
@@ -671,7 +671,7 @@ export const AdditionalComposedEventsReachReactAncestorsOnce: Story = {
       '[data-testid="additional-events-auth-button"]',
       'additional events auth button not rendered',
     );
-    const evidence = requireElement<AdditionalComposedEventsEvidenceOutput>(
+    const evidence = requireElement<ValidatedBubblingEventsEvidenceOutput>(
       canvasElement,
       '[data-testid="additional-events-evidence"]',
       'additional events evidence not rendered',
@@ -708,9 +708,9 @@ export const AdditionalComposedEventsReachReactAncestorsOnce: Story = {
       mousedown: new ownerWindow.MouseEvent('mousedown', { bubbles: true, composed: true }),
       dblclick: new ownerWindow.MouseEvent('dblclick', { bubbles: true, composed: true }),
       contextmenu: new ownerWindow.MouseEvent('contextmenu', { bubbles: true, composed: true }),
-    } satisfies Record<AdditionalComposedEventName, Event>;
+    } satisfies Record<ValidatedBubblingEventName, Event>;
     try {
-      for (const eventName of additionalComposedEventNames) {
+      for (const eventName of validatedBubblingEventNames) {
         button.dispatchEvent(events[eventName]);
       }
 
