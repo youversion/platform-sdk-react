@@ -125,8 +125,13 @@ are unchanged:
   simultaneous peer popovers are not supported. The native Popover API is
   required for isolated floating content; there is no clipped inline fallback,
   and opening an overlay throws when the API is unavailable. Without a consumer
-  error boundary, that error can unmount the affected React root. A standalone
-  `VerseActionPopover` and its anchor must remain in the same DOM tree.
+  error boundary, that error can unmount the affected React root. Do not combine
+  an automatically isolated `BibleTextView` with a consumer-rendered
+  `VerseActionPopover`: the verses and popover would be in different DOM trees,
+  so their anchor relationship is unsupported. Use `BibleReader` for the
+  supported verse-selection and verse-action flow. In any other standalone
+  `VerseActionPopover` integration, the popover and its anchor must remain in the
+  same DOM tree.
 
 **Non-React or manual CSS import:**
 

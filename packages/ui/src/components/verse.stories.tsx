@@ -793,6 +793,14 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
 
 export const VerseSelection: Story = {
   tags: ['integration'],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'This regression fixture uses internal Shadow DOM composition so the verse action popover and its anchor share one root. It is not a public integration pattern; use BibleReader for supported verse selection and actions.',
+      },
+    },
+  },
   args: {
     reference: 'JHN.1',
     versionId: 111,
