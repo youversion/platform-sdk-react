@@ -32,7 +32,6 @@ export function Navbar({ currentPage, onNavigate }: NavbarProps) {
       <div className="flex h-14 items-center px-4 md:px-6">
         <span className="mr-6 font-semibold text-sm hidden md:block">SDK Demo</span>
 
-        {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-1">
           {navItems.map((item) => (
             <Button
@@ -46,7 +45,6 @@ export function Navbar({ currentPage, onNavigate }: NavbarProps) {
           ))}
         </nav>
 
-        {/* Mobile hamburger */}
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild className="md:hidden">
             <Button variant="ghost" size="icon">
@@ -73,7 +71,6 @@ export function Navbar({ currentPage, onNavigate }: NavbarProps) {
           </SheetContent>
         </Sheet>
 
-        {/* Right side: auth + dark mode */}
         <div className="ml-auto flex items-center gap-2">
           {auth.isAuthenticated ? (
             <div className="flex items-center gap-2">
