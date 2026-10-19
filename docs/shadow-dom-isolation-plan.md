@@ -305,9 +305,9 @@ scope. YPE-6210 also records the separate capture behavior class: one fresh
 composed internal click invokes a light-DOM ancestor `onClickCapture` twice.
 Capture remains a documented limitation; it is not folded into the narrow
 bubbling-event correction. The main workflow passes Chromium, Firefox, and
-Playwright WebKit. Because the correction changes the shared host, YPE-5952
-retains the required actual-Safari release-candidate validation; this evidence
-makes no assistive-technology claim.
+Playwright WebKit. Because the correction changes the shared host, YPE-6214 must
+repeat actual-Safari release-candidate validation afterward; this evidence makes
+no assistive-technology claim.
 
 ## YPE-5951 Bible reader evidence
 
