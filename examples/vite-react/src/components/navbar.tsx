@@ -10,7 +10,6 @@ const navItems: { label: string; page: Page }[] = [
   { label: 'Bible Reader', page: 'bible-reader' },
   { label: 'Verse of the Day', page: 'votd' },
   { label: 'Bible Card', page: 'bible-card' },
-  { label: 'Hostile CSS', page: 'hostile-css' },
 ];
 
 interface NavbarProps {

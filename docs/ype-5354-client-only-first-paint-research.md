@@ -51,7 +51,7 @@ The ordinary server host is childless and already declares `display: contents`;
 the client retains that display while applying its protected reset. Any
 reservation must instead be present in server markup and remain a box through
 the first client render. Adding dimensions in an effect is too late. A reserved
-host would revise the exact server-markup contract in ADR 0007 and would need
+host would revise the exact server-markup contract in ADR 0010 and would need
 its own compatibility validation.
 
 Official guidance recommends reserving space for late content. When exact size

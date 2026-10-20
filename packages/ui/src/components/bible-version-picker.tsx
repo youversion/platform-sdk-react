@@ -945,8 +945,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
               placeholder={t('searchPlaceholder')}
               dir="auto"
               value={searchQuery}
-              // onInput, not onChange: onChange does not update the query inside the picker's
-              // shadow root. The picker search stories fail with onChange.
+              // Use the native input event so every browser-level edit updates the controlled query.
               onInput={(event) => setSearchQuery(event.currentTarget.value)}
             ></InputGroupInput>
             <InputGroupAddon>
@@ -1153,8 +1152,7 @@ export function BibleLanguagePickerContent({
               placeholder={t('searchPlaceholder')}
               dir="auto"
               value={languageSearchQuery}
-              // onInput, not onChange: onChange does not update the query inside the picker's
-              // shadow root. The picker search stories fail with onChange.
+              // Use the native input event so every browser-level edit updates the controlled query.
               onInput={(event) => setLanguageSearchQuery(event.currentTarget.value)}
             />
             <InputGroupAddon>

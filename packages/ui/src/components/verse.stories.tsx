@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import React from 'react';
 
 import { transformBibleHtml } from '@youversion/platform-core/browser';
@@ -19,6 +19,8 @@ import { XIcon } from '@/components/icons/x';
 import { waitForElement, waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
 import { YvReaderStyles } from '@/lib/yv-styles-reader';
+import { ShadowRootHost } from '@/lib/shadow-root-host';
+import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
 import mockPassages from '@/test/mock-data/passages.json';
 
 // USFM format: BOOK.CHAPTER or BOOK.CHAPTER.VERSE or BOOK.CHAPTER.VERSE-VERSE
@@ -736,57 +738,69 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
   };
 
   return (
-    <div
-      data-yv-sdk
-      className="yv:grid yv:grid-rows-[auto_1fr] yv:gap-4 yv:max-w-lg yv:h-svh yv:max-h-svh yv:overflow-hidden"
-    >
-      <div className="yv:flex yv:items-center yv:gap-2 yv:bg-secondary yv:py-2 yv:px-4 yv:rounded-sm yv:sticky yv:text-sm yv:text-muted-foreground">
-        <p className="yv:flex-1">
-          Selected: {selectedVerses.length > 0 ? selectedVerses.join(', ') : 'None'}
-        </p>
-        <Button
-          disabled={!selectedVerses.length}
-          type="button"
-          size="icon"
-          variant="outline"
-          onClick={closeAndClear}
-          className="yv:text-primary"
+    <ShadowRootHost portalStrategy="local-top-layer" theme={props.theme ?? providerTheme}>
+      <ReuseShadowBoundary>
+        <div
+          data-yv-sdk
+          className="yv:grid yv:grid-rows-[auto_1fr] yv:gap-4 yv:max-w-lg yv:h-svh yv:max-h-svh yv:overflow-hidden"
         >
-          <XIcon className="yv:size-4" />
-        </Button>
-      </div>
+          <div className="yv:flex yv:items-center yv:gap-2 yv:bg-secondary yv:py-2 yv:px-4 yv:rounded-sm yv:sticky yv:text-sm yv:text-muted-foreground">
+            <p className="yv:flex-1">
+              Selected: {selectedVerses.length > 0 ? selectedVerses.join(', ') : 'None'}
+            </p>
+            <Button
+              disabled={!selectedVerses.length}
+              type="button"
+              size="icon"
+              variant="outline"
+              onClick={closeAndClear}
+              className="yv:text-primary"
+            >
+              <XIcon className="yv:size-4" />
+            </Button>
+          </div>
 
-      <div ref={setScrollEl} className="yv:h-full yv:overflow-y-auto">
-        <BibleTextView
-          ref={readerRef}
-          renderNotes={true}
-          {...props}
-          selectedVerses={selectedVerses}
-          onVerseSelect={handleVerseSelect}
-          highlightedVerses={highlightedVerses}
-        />
-      </div>
+          <div ref={setScrollEl} className="yv:h-full yv:overflow-y-auto">
+            <BibleTextView
+              ref={readerRef}
+              renderNotes={true}
+              {...props}
+              selectedVerses={selectedVerses}
+              onVerseSelect={handleVerseSelect}
+              highlightedVerses={highlightedVerses}
+            />
+          </div>
 
-      <VerseActionPopover
-        open={popoverOpen && selectedVerses.length > 0}
-        onOpenChange={(open) => (open ? setPopoverOpen(true) : closeAndClear())}
-        activeHighlights={activeHighlights}
-        selectedVerses={selectedVerses}
-        highlightedVerses={highlightedVerses}
-        anchorElement={anchorElement}
-        scrollRoot={scrollEl}
-        onHighlight={handleHighlight}
-        onClearHighlight={handleClearHighlight}
-        onCopy={handleCopy}
-        onShare={handleShare}
-        theme={props.theme ?? providerTheme}
-      />
-    </div>
+          <VerseActionPopover
+            open={popoverOpen && selectedVerses.length > 0}
+            onOpenChange={(open) => (open ? setPopoverOpen(true) : closeAndClear())}
+            activeHighlights={activeHighlights}
+            selectedVerses={selectedVerses}
+            highlightedVerses={highlightedVerses}
+            anchorElement={anchorElement}
+            scrollRoot={scrollEl}
+            onHighlight={handleHighlight}
+            onClearHighlight={handleClearHighlight}
+            onCopy={handleCopy}
+            onShare={handleShare}
+            theme={props.theme ?? providerTheme}
+          />
+        </div>
+      </ReuseShadowBoundary>
+    </ShadowRootHost>
   );
 }
 
 export const VerseSelection: Story = {
   tags: ['integration'],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'This regression fixture uses internal Shadow DOM composition so the verse action popover and its anchor share one root. It is not a public integration pattern; use BibleReader for supported verse selection and actions.',
+      },
+    },
+  },
   args: {
     reference: 'JHN.1',
     versionId: 111,
@@ -840,7 +854,12 @@ export const VerseSelection: Story = {
     await expect(plain.boxDecorationBreak).toBe('clone');
 
     await userEvent.click(verse);
-    const swatches = await screen.findByRole('group', { name: /highlight colors/i });
+    const dialog = await waitForElement<HTMLElement>(
+      root,
+      '[data-slot="verse-action-popover"]',
+      'verse action popover did not share the scripture shadow root',
+    );
+    const swatches = within(dialog).getByRole('group', { name: /highlight colors/i });
     await userEvent.click(
       within(swatches).getAllByRole('button', { name: /apply highlight/i })[0]!,
     );
@@ -864,8 +883,12 @@ export const VerseSelection: Story = {
     ).toBeLessThan(1);
 
     await userEvent.click(verse);
-    const page = within(canvasElement.ownerDocument.body);
-    await userEvent.click(await page.findByRole('button', { name: /copy/i }));
+    const reopenedDialog = await waitForElement<HTMLElement>(
+      root,
+      '[data-slot="verse-action-popover"]',
+      'verse action popover did not reopen in the scripture shadow root',
+    );
+    await userEvent.click(within(reopenedDialog).getByRole('button', { name: /copy/i }));
 
     await expect(writeText).toHaveBeenCalledOnce();
     await expect(writeText).toHaveBeenCalledWith(expect.stringContaining('In the beginning'));
