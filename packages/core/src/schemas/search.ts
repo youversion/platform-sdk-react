@@ -261,3 +261,46 @@ export const SearchVersesOptionsSchema = z.object({
 });
 
 export type SearchVersesOptions = z.infer<typeof SearchVersesOptionsSchema>;
+
+export const SearchUnifiedOptionsSchema = z.object({
+  /** Omit to use the service default, `unknown`. */
+  userIntent: z.optional(z.enum(KNOWN_SEARCH_USER_INTENTS)),
+  /** Result kinds to include. Omit or pass an empty array for all kinds. */
+  fields: z.optional(z.array(z.enum(['verses', 'topics']))),
+});
+
+export type SearchUnifiedOptions = z.infer<typeof SearchUnifiedOptionsSchema>;
+
+/** Top results per kind, not the entire verse result set. No pagination is available. */
+export const SearchUnifiedResponseSchema = z.object({
+  verses: z.array(SearchVerseHitSchema),
+  topics: z.array(SearchTopicSchema),
+  userIntent: z.optional(z.string()),
+  didYouMean: z.array(z.string()),
+  searchInsteadFor: z.nullable(z.string()),
+});
+
+export type SearchUnifiedResponse = Readonly<z.infer<typeof SearchUnifiedResponseSchema>>;
+
+export const SearchUnifiedWireSchema = z.object({
+  verses: z.array(SearchVerseHitWireSchema),
+  topics: z.array(z.extend(SearchTopicWireSchema, { id: z.nullable(z.int()) })),
+  user_intent: z.nullable(z.string()),
+  did_you_mean: z.array(z.string()),
+  search_instead_for: z.nullable(z.string()),
+});
+
+export type SearchUnifiedWire = z.infer<typeof SearchUnifiedWireSchema>;
+
+export function toSearchUnifiedResponse(wire: SearchUnifiedWire): SearchUnifiedResponse {
+  const response: SearchUnifiedResponse = {
+    verses: wire.verses.map(toSearchVerseHit).filter((hit): hit is SearchVerseHit => hit !== null),
+    topics: wire.topics.map(toSearchTopic),
+    didYouMean: wire.did_you_mean,
+    searchInsteadFor: wire.search_instead_for,
+  };
+  if (wire.user_intent != null) {
+    return { ...response, userIntent: wire.user_intent };
+  }
+  return response;
+}

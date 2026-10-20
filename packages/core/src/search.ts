@@ -1,10 +1,17 @@
 import type { ApiClient } from './client';
 import { getSuggestedQueries, getTrendingQueries } from './search-queries';
 import { searchTopics } from './search-topics';
+import { searchUnified } from './search-unified';
 import { searchVerses, type SearchVersesOptions } from './search-verses';
-import type { SearchQueries, SearchTopicsResponse, SearchVersesResponse } from './schemas/search';
+import type {
+  SearchQueries,
+  SearchTopicsResponse,
+  SearchUnifiedOptions,
+  SearchUnifiedResponse,
+  SearchVersesResponse,
+} from './schemas/search';
 
-export type { SearchVersesOptions };
+export type { SearchUnifiedOptions, SearchVersesOptions };
 
 /**
  * Client for YouVersion Platform Search API endpoints (`/v1/*`).
@@ -64,5 +71,23 @@ export class SearchClient {
     languageRanges: string | string[],
   ): Promise<SearchTopicsResponse> {
     return searchTopics(this.client, query, languageRanges);
+  }
+
+  /**
+   * Returns one unpaginated snapshot of top verse references and related topics.
+   * Resolve passage text through the licensed-content endpoints. Use `searchVerses`
+   * to paginate verse results; this snapshot is not the entire verse result set.
+   * @param query Search text (1–100 characters).
+   * @param versionId Bible version identifier (sent as `bible_id`).
+   * @param languageRanges Ordered Basic Language Ranges, normalized as in `searchTopics`.
+   * @param options Optional intent and result kinds. Omit fields for all kinds.
+   */
+  async searchUnified(
+    query: string,
+    versionId: number,
+    languageRanges: string | string[],
+    options?: SearchUnifiedOptions,
+  ): Promise<SearchUnifiedResponse> {
+    return searchUnified(this.client, query, versionId, languageRanges, options);
   }
 }

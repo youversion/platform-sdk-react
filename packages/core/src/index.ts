@@ -30,6 +30,7 @@ export { SearchClient, type SearchVersesOptions } from './search';
 export { getSuggestedQueries, getTrendingQueries } from './search-queries';
 export { searchVerses } from './search-verses';
 export { searchTopics } from './search-topics';
+export { searchUnified } from './search-unified';
 export {
   MAX_SEARCH_QUERY_GRAPHEMES,
   clampSearchText,
