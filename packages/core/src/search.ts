@@ -73,12 +73,11 @@ export class SearchClient {
   }
 
   /**
-   * Searches verses, topics, and images in one unpaginated request.
-   * Image hits are `id` and `passageId` only.
+   * Searches verses and topics in one unpaginated request.
    * @param query Search text (1 to 100 graphemes).
    * @param versionId Bible version identifier (sent to the API as `bible_id`).
    * @param languageRanges Ordered language ranges (`en_US` is normalized to `en-us` on the wire).
-   * @param options Optional `userIntent` and `fields` (`verses`, `topics`, or `images`).
+   * @param options Optional `userIntent` and nonempty `fields` selection (`verses` or `topics`).
    */
   async searchUnified(
     query: string,

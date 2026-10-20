@@ -3,9 +3,8 @@ import { Navbar } from '@/components/navbar';
 import { BibleReaderPage } from '@/pages/BibleReaderPage';
 import { VotdPage } from '@/pages/VotdPage';
 import { BibleCardPage } from '@/pages/BibleCardPage';
-import { SearchUnifiedPage } from '@/pages/SearchUnifiedPage';
 
-export type Page = 'bible-reader' | 'votd' | 'bible-card' | 'search-unified';
+export type Page = 'bible-reader' | 'votd' | 'bible-card';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('bible-reader');
@@ -17,7 +16,6 @@ function App() {
         {currentPage === 'bible-reader' && <BibleReaderPage />}
         {currentPage === 'votd' && <VotdPage />}
         {currentPage === 'bible-card' && <BibleCardPage />}
-        {currentPage === 'search-unified' && <SearchUnifiedPage />}
       </main>
     </div>
   );
