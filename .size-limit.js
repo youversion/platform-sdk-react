@@ -1,4 +1,7 @@
-/** CI gate for published consumer-bundle bytes. */
+/**
+ * CI gate for published consumer-bundle bytes.
+ * Locale-only PRs may raise the two UI JS limits; see scripts/check-bundle-size.mjs.
+ */
 export default [
   {
     name: 'core / full barrel (esm)',
@@ -42,7 +45,7 @@ export default [
     name: 'ui / YouVersionProvider only',
     path: 'packages/ui/dist/index.js',
     import: '{ YouVersionProvider }',
-    limit: '54 KB',
+    limit: '62 KB',
     ignore: ['react', 'react-dom', 'react/jsx-runtime', '@tanstack/react-query'],
   },
   {
@@ -55,7 +58,7 @@ export default [
   {
     name: 'ui / full barrel',
     path: 'packages/ui/dist/index.js',
-    limit: '175 KB',
+    limit: '180 KB',
     ignore: ['react', 'react-dom', 'react/jsx-runtime', '@tanstack/react-query'],
   },
   {

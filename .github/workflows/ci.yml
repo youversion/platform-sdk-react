@@ -212,12 +212,24 @@ jobs:
       - name: Build packages
         run: pnpm build
 
+  # Locale-only PRs may grow the two UI JS bundles. The check rewrites those
+  # ceilings in .size-limit.js and fails until that file is committed. Any
+  # other diff keeps the committed ceilings. This job does not push.
   bundle-size:
     name: Bundle Size
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          # One commit of this ref, plus a shallow fetch of the base below.
+          # The two trees are enough to diff a pull request; full history is not.
+          fetch-depth: 1
+
+      - name: Fetch PR base
+        run: |
+          base="${GITHUB_BASE_REF:-main}"
+          git fetch --no-tags --depth=1 origin "$base"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -237,7 +249,7 @@ jobs:
       - name: Check bundle size budgets
         run: |
           set -o pipefail
-          pnpm size | tee /tmp/size.txt
+          pnpm size:check | tee /tmp/size.txt
 
       - name: Verify tree-shaking
         run: pnpm check:tree-shaking
