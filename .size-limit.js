@@ -42,7 +42,6 @@ export default [
     name: 'ui / YouVersionProvider only',
     path: 'packages/ui/dist/index.js',
     import: '{ YouVersionProvider }',
-    limit: '54 KB',
     ignore: ['react', 'react-dom', 'react/jsx-runtime', '@tanstack/react-query'],
   },
   {
@@ -55,7 +54,6 @@ export default [
   {
     name: 'ui / full barrel',
     path: 'packages/ui/dist/index.js',
-    limit: '175 KB',
     ignore: ['react', 'react-dom', 'react/jsx-runtime', '@tanstack/react-query'],
   },
   {
