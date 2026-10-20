@@ -4,26 +4,20 @@
  *
  * `pnpm size` stays the raw size-limit table. This script is what CI runs.
  * Within-limit builds pass. Any other diff fails when a ceiling is exceeded.
- * A pure locale sync may grow `ui / YouVersionProvider only` and
- * `ui / full barrel`: those ceilings move to the measured brotli size,
- * rounded up to the next whole kB. The updated `.size-limit.js` is written
- * and the process exits 1 so that file can be committed. This script does
- * not commit or push.
+ * A pure locale sync skips `ui / YouVersionProvider only` and
+ * `ui / full barrel` and exits 0. Other entries still fail when they exceed
+ * their ceilings. This script does not rewrite `.size-limit.js`.
  *
  * The diff base is `origin/$GITHUB_BASE_REF`, or `origin/main` when that
- * ref is unset. CI checks out one commit, so the base ref is fetched with
- * `--depth=1` — the two trees are enough; full history is not.
+ * ref is unset. CI checks out one commit; the workflow's "Fetch PR base"
+ * step owns the shallow fetch of that ref. This script only verifies
+ * `origin/<base>` exists. Locally, fetch that ref before running the check.
  */
 import { spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  applyLimitUpdates,
-  decideSizeLimitAction,
-  parseChangedPaths,
-} from './bundle-size-policy.mjs';
+import { decideSizeLimitAction, parseChangedPaths } from './bundle-size-policy.mjs';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
@@ -75,6 +69,12 @@ function git(args) {
 }
 
 /**
+ * Resolve `origin/<name>` without fetching.
+ *
+ * On GitHub Actions the workflow's "Fetch PR base" step already created the
+ * ref. Fetching again would duplicate that step. Locally the caller must
+ * have the remote ref; this function does not fetch in either place.
+ *
  * @param {string} name
  * @returns {string}
  */
@@ -83,16 +83,13 @@ function remoteBase(name) {
     throw new Error(`Unexpected base ref: ${name}`);
   }
   const remoteRef = `origin/${name}`;
-  if (process.env.GITHUB_ACTIONS === 'true') {
-    const fetched = git(['fetch', '--no-tags', '--depth=1', 'origin', name]);
-    if (fetched.status !== 0) {
-      throw new Error(`Failed to fetch ${remoteRef}:\n${fetched.stderr ?? ''}`);
-    }
-    return remoteRef;
-  }
   const verified = git(['rev-parse', '--verify', '--quiet', remoteRef]);
   if (verified.status !== 0) {
-    throw new Error(`Missing ${remoteRef}. Fetch it before running the bundle-size check.`);
+    const hint =
+      process.env.GITHUB_ACTIONS === 'true'
+        ? 'The Fetch PR base step should have created it.'
+        : 'Fetch it before running the bundle-size check.';
+    throw new Error(`Missing ${remoteRef}. ${hint}`);
   }
   return remoteRef;
 }
@@ -137,14 +134,6 @@ function measure() {
   return { checks: parsed, status: result.status ?? 1 };
 }
 
-/**
- * @param {readonly { name: string, limit: string }[]} updates
- * @returns {string}
- */
-function formatUpdates(updates) {
-  return updates.map((update) => `  ${update.name}: ${update.limit}`).join('\n');
-}
-
 function main() {
   const baseName = process.env.GITHUB_BASE_REF || 'main';
   const base = remoteBase(baseName);
@@ -162,19 +151,9 @@ function main() {
     process.exit(1);
   }
 
-  const sizeLimitPath = join(repoRoot, '.size-limit.js');
-  const current = readFileSync(sizeLimitPath, 'utf8');
-  const updated = applyLimitUpdates(current, decision.updates);
-  const summary = `Raised UI size limits for locale catalogs:\n${formatUpdates(decision.updates)}\n`;
-  if (updated === current) {
-    process.stdout.write('Package size limit has exceeded\n');
-    process.stdout.write(summary);
-    process.exit(1);
-  }
-  writeFileSync(sizeLimitPath, updated);
-  process.stdout.write(summary);
-  process.stdout.write('Commit the new limits in .size-limit.js.\n');
-  process.exit(1);
+  process.stdout.write(
+    `Skipped UI size budgets because this pull request is locale-only: ${decision.skipped.join(', ')}\n`,
+  );
 }
 
 try {

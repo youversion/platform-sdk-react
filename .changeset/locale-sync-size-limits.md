@@ -1,4 +1,4 @@
 ---
 ---
 
-Let a locale-only pull request raise the two UI bundle ceilings. No package release.
+Skip the two UI bundle budgets on a locale-only pull request. No package release.

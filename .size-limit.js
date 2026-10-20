@@ -1,6 +1,6 @@
 /**
  * CI gate for published consumer-bundle bytes.
- * Locale-only PRs may raise the two UI JS limits; see scripts/check-bundle-size.mjs.
+ * Locale-only PRs skip the two UI JS budgets; see scripts/check-bundle-size.mjs.
  */
 export default [
   {
