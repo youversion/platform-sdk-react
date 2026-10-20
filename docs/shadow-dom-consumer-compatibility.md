@@ -73,8 +73,13 @@ and potentially breaking changes, not internal implementation details.
 
 Light-DOM ancestor React capture handlers and unlisted composed bubbling
 families can still receive duplicate dispatch. YPE-6210 covers
-`onClickCapture`, and a focused Chromium probe observed duplicate `onPointerUp`
-delivery.
+`onClickCapture`. Focused Chromium probes observed duplicate `pointerup`,
+`mouseup`, `pointermove`, `mousemove`, `wheel`, `input`, `keypress`,
+`dragstart`, and `copy` delivery. The list is representative, not exhaustive;
+only the validated families above have the single-delivery contract. In
+particular, a pointer or mouse press can deliver one `down` but two `up` events
+to a light-DOM React ancestor, and text input can invoke an ancestor React
+`onChange` twice.
 
 An open root permits inspection and mutation by same-page JavaScript, so it is
 an automation and styling boundary rather than a security boundary. Selectors

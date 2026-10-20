@@ -108,8 +108,11 @@ are unchanged:
   validated bubbling `click`, `keydown`, `keyup`, `pointerdown`, `mousedown`,
   `dblclick`, `contextmenu`, `focus`, and `blur` paths. Capture handlers and
   unlisted composed bubbling families can still receive duplicate delivery.
-  YPE-6210 covers `onClickCapture`; a focused Chromium probe observed duplicate
-  `onPointerUp` delivery.
+  YPE-6210 covers `onClickCapture`; focused Chromium probes observed duplicate
+  up, move, wheel, input, keypress, drag-start, and copy delivery. This list is
+  representative, not exhaustive. A light-DOM ancestor can therefore receive
+  one pointer or mouse down but two corresponding ups, and text input can invoke
+  an ancestor React `onChange` twice.
 - **Forms and accessibility relationships:** Native outer forms, external
   `<label for>`, and cross-tree `aria-labelledby` or `aria-describedby` references
   do not cross a shadow boundary. Keep related nodes in one tree or use an

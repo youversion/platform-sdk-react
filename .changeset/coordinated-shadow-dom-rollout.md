@@ -29,8 +29,11 @@ available collision height. Validated bubbling `click`, `keydown`, `keyup`,
 `pointerdown`, `mousedown`, `dblclick`, `contextmenu`, focus, and blur paths
 reach light-DOM ancestor React handlers once. Capture handlers and unlisted
 composed bubbling families can still receive duplicate delivery. YPE-6210 covers
-`onClickCapture`; a focused Chromium probe observed duplicate `onPointerUp`
-delivery.
+`onClickCapture`; focused Chromium probes observed duplicate up, move, wheel,
+input, keypress, drag-start, and copy delivery. This list is representative, not
+exhaustive. A light-DOM ancestor can therefore receive one pointer or mouse down
+but two corresponding ups, and text input can invoke an ancestor React
+`onChange` twice.
 
 `Textarea`, standalone `VerseActionPopover`, `YouVersionProvider`, and
 `BaseYouVersionProvider` remain outside the automatic boundary for their
