@@ -61,6 +61,31 @@ const verses = await searchClient.searchVerses('faith', versions.data[0].id, {
 console.log(trending.queries[0]?.text, verses.verses[0]?.id);
 ```
 
+### Unified search
+
+Use `searchUnified` to fetch top verse references and related topics in one
+`GET /v1/search-unified` request:
+
+```ts
+const results = await searchClient.searchUnified('faith', 111, ['en'], {
+  userIntent: 'topical',
+  fields: ['verses', 'topics'],
+});
+console.log(results.verses[0]?.id, results.topics[0]?.text);
+```
+
+Omit `fields` or pass an empty array to include all kinds. The response includes
+`didYouMean`, `searchInsteadFor`, and an optional `userIntent`. This unpaginated
+snapshot contains top results, not the entire verse result set. Use `searchVerses`
+for verse pagination. Verse hits contain passage IDs, not passage text; resolve
+text through `BibleClient.getPassage`.
+
+You can also import `searchUnified` and call it with an `ApiClient` as the first
+argument, followed by the same arguments as the client method.
+
+Use supported search language codes such as `en`. Valid language-range syntax
+does not guarantee backend support; the SDK does not add fallback ranges.
+
 ### Display Bible HTML
 
 Use `getPassageDisplay` when you need transformed HTML together with current

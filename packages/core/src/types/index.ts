@@ -32,6 +32,8 @@ export type {
   SearchQuery,
   SearchTopic,
   SearchTopicsResponse,
+  SearchUnifiedOptions,
+  SearchUnifiedResponse,
   SearchVerseHit,
   SearchVersesOptions,
   SearchVersesResponse,
