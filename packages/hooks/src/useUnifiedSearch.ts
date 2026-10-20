@@ -18,8 +18,8 @@ export type UseUnifiedSearchProps = Readonly<
 export type UseUnifiedSearchResult = UseQueryResult<SearchUnifiedResponse>;
 
 /**
- * Reads one unpaginated snapshot of top verses and topics.
- * Does not load suggestions or debounce.
+ * Reads one unpaginated snapshot of top verses, topics, and image hits.
+ * Image selection requires backend support. Does not load suggestions or debounce.
  * Pass `enabled: false` until the query is ready.
  * Omit `fields` for all kinds, or provide a nonempty selection.
  * `useBibleSearch` remains the separate, paginated verse-search flow.
