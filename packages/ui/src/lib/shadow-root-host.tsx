@@ -475,7 +475,9 @@ export function ShadowRootHost({
       onKeyDown={stopDuplicateReactPropagation}
       onKeyUp={stopDuplicateReactPropagation}
       onMouseDown={stopDuplicateReactPropagation}
+      onMouseUp={stopDuplicateReactPropagation}
       onPointerDown={stopDuplicateReactPropagation}
+      onPointerUp={stopDuplicateReactPropagation}
     >
       {shadowRoot
         ? createPortal(

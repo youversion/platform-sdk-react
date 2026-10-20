@@ -294,18 +294,19 @@ light-DOM ancestor can receive one composed event through both the shadow-root
 portal path and the application-root retargeted path.
 
 YPE-6040, YPE-6135, and YPE-6210 now keep one React logical traversal for each
-validated bubbling `click`, `keydown`, `keyup`, `pointerdown`, `mousedown`,
-`dblclick`, `contextmenu`, `focusin`, and `focusout` event without stopping
-native propagation. The representative auth button stories verify component
-callback counts and target semantics, exact light-DOM ancestor counts, separate
+validated bubbling `click`, `keydown`, `keyup`, `pointerdown`, `pointerup`,
+`mousedown`, `mouseup`, `dblclick`, `contextmenu`, `focusin`, and `focusout`
+event without stopping native propagation. The representative auth button
+stories verify component callback counts and target semantics, exact light-DOM
+ancestor counts, separate
 repeated clicks and focus/blur cycles, native retargeting, the original composed
 path, and host-origin pointer delivery. The nested-root story retains its
 existing native retargeting evidence and adds one React ancestor dispatch per
 scope. YPE-6210 also records the separate capture behavior class: one fresh
 composed internal click invokes a light-DOM ancestor `onClickCapture` twice.
-One focused Chromium Storybook probe also observed two light-DOM ancestor
-deliveries for one internal `pointerup`. It records the remaining unlisted-family
-limitation, not automated or cross-browser support coverage.
+Focused Chromium probes observed duplicate move, wheel, input, keypress,
+drag-start, and copy delivery. Those observations record the remaining
+unlisted-family limitation, not automated or cross-browser support coverage.
 Capture remains a documented limitation; it is not folded into the narrow
 bubbling-event correction. The main workflow passes Chromium, Firefox, and
 Playwright WebKit. Because the correction changes the shared host, YPE-6214 must

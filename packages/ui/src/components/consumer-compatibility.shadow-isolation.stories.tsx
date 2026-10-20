@@ -77,7 +77,9 @@ interface AutomaticButtonEvidenceOutput extends HTMLOutputElement {
 const validatedBubblingEventNames = [
   'keyup',
   'pointerdown',
+  'pointerup',
   'mousedown',
+  'mouseup',
   'dblclick',
   'contextmenu',
 ] as const;
@@ -87,6 +89,7 @@ interface ValidatedBubblingEventsEvidenceOutput extends HTMLOutputElement {
   ancestorClickCaptureCount?: number;
   ancestorCounts?: Partial<Record<ValidatedBubblingEventName, number>>;
   componentPointerDowns?: ReactEventObservation[];
+  componentPointerUps?: ReactEventObservation[];
 }
 
 interface NestedRootsEvidenceOutput extends HTMLOutputElement {
@@ -616,7 +619,7 @@ function ValidatedBubblingEventsHarness(): React.ReactNode {
   return (
     <CompatibilityScenario
       classification="Supported for bubbling handlers; capture has a documented limitation"
-      expectedResult="Each keyup, pointerdown, mousedown, double-click, and context-menu dispatch reaches the light-DOM React ancestor once. Pointerdown represents preserved native propagation and retargeting. Click capture is documented separately."
+      expectedResult="Each keyup, pointerdown, pointerup, mousedown, mouseup, double-click, and context-menu dispatch reaches the light-DOM React ancestor once. Pointerdown represents preserved native propagation and retargeting. Click capture is documented separately."
       summary="This example dispatches fresh owner-realm events directly so event families and phases are measured independently."
       title="Additional composed event delivery"
     >
@@ -632,7 +635,9 @@ function ValidatedBubblingEventsHarness(): React.ReactNode {
         onDoubleClick={() => recordAncestorEvent('dblclick')}
         onKeyUp={() => recordAncestorEvent('keyup')}
         onMouseDown={() => recordAncestorEvent('mousedown')}
+        onMouseUp={() => recordAncestorEvent('mouseup')}
         onPointerDown={() => recordAncestorEvent('pointerdown')}
+        onPointerUp={() => recordAncestorEvent('pointerup')}
       >
         <YouVersionAuthButton
           data-testid="additional-events-auth-button"
@@ -640,6 +645,15 @@ function ValidatedBubblingEventsHarness(): React.ReactNode {
           onPointerDown={(event) => {
             if (evidenceRef.current) {
               (evidenceRef.current.componentPointerDowns ??= []).push({
+                currentTarget: event.currentTarget,
+                nativeEvent: event.nativeEvent,
+                target: event.target,
+              });
+            }
+          }}
+          onPointerUp={(event) => {
+            if (evidenceRef.current) {
+              (evidenceRef.current.componentPointerUps ??= []).push({
                 currentTarget: event.currentTarget,
                 nativeEvent: event.nativeEvent,
                 target: event.target,
@@ -705,7 +719,12 @@ export const KeyUpPointerAndMouseEventsReachReactAncestorsOnce: Story = {
         bubbles: true,
         composed: true,
       }),
+      pointerup: new ownerWindow.PointerEvent('pointerup', {
+        bubbles: true,
+        composed: true,
+      }),
       mousedown: new ownerWindow.MouseEvent('mousedown', { bubbles: true, composed: true }),
+      mouseup: new ownerWindow.MouseEvent('mouseup', { bubbles: true, composed: true }),
       dblclick: new ownerWindow.MouseEvent('dblclick', { bubbles: true, composed: true }),
       contextmenu: new ownerWindow.MouseEvent('contextmenu', { bubbles: true, composed: true }),
     } satisfies Record<ValidatedBubblingEventName, Event>;
@@ -717,12 +736,17 @@ export const KeyUpPointerAndMouseEventsReachReactAncestorsOnce: Story = {
       await expect(evidence.ancestorCounts).toEqual({
         keyup: 1,
         pointerdown: 1,
+        pointerup: 1,
         mousedown: 1,
+        mouseup: 1,
         dblclick: 1,
         contextmenu: 1,
       });
       await expect(evidence.componentPointerDowns).toEqual([
         { currentTarget: button, nativeEvent: events.pointerdown, target: button },
+      ]);
+      await expect(evidence.componentPointerUps).toEqual([
+        { currentTarget: button, nativeEvent: events.pointerup, target: button },
       ]);
       await expect(nativePointerDowns).toHaveLength(1);
       await expect(nativePointerDowns[0]?.event).toBe(events.pointerdown);
