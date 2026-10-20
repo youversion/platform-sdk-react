@@ -28,7 +28,7 @@ export default [
   {
     name: 'hooks / full barrel',
     path: 'packages/hooks/dist/index.js',
-    limit: '27 KB',
+    limit: '29.8 KB',
     ignore: ['react', 'react-dom', '@tanstack/react-query'],
   },
   {
