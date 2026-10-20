@@ -468,7 +468,6 @@ export function ShadowRootHost({
       data-yv-shadow-host
       style={{ display: hostDisplay }}
       onBlur={stopDuplicateReactPropagation}
-      onChange={stopDuplicateReactPropagation}
       onClick={stopDuplicateReactPropagation}
       onContextMenu={stopDuplicateReactPropagation}
       onDoubleClick={stopDuplicateReactPropagation}

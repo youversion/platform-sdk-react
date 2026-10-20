@@ -790,9 +790,9 @@ function TextInputEventsHarness(): React.ReactNode {
 
   return (
     <CompatibilityScenario
-      classification="Supported for text-entry bubbling handlers"
-      expectedResult="One native input event reaches light-DOM React onInput and onChange handlers once while preserving the component callbacks and native event."
-      summary="This example verifies React's input and change event paths independently from form ownership across the shadow boundary."
+      classification="Supported for native input delivery"
+      expectedResult="One native input event reaches light-DOM React onInput and onChange handlers once while preserving the component callbacks and native event. The host guard corrects duplicate onInput delivery; React onChange is already single-delivery because the outer event is retargeted to the non-form host."
+      summary="This example distinguishes the corrected React input path from React's existing change-event behavior across the shadow boundary."
       title="Text-input event delivery"
     >
       <div
