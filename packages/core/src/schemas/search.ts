@@ -276,7 +276,8 @@ const SearchUnifiedFieldsSchema = z.pipe(
 );
 
 export const SearchUnifiedOptionsSchema = z.object({
-  userIntent: z.optional(z.string()),
+  /** Omit to use the service default, `unknown`. */
+  userIntent: z.optional(z.enum(KNOWN_SEARCH_USER_INTENTS)),
   fields: z.optional(SearchUnifiedFieldsSchema),
 });
 
@@ -297,12 +298,12 @@ const SearchImageHitWireSchema = z.object({
 type SearchImageHitWire = z.infer<typeof SearchImageHitWireSchema>;
 
 export const SearchUnifiedWireSchema = z.object({
-  verses: z.optional(z.array(SearchVerseHitWireSchema)),
-  topics: z.optional(z.array(SearchTopicWireSchema)),
+  verses: z.array(SearchVerseHitWireSchema),
+  topics: z.array(z.extend(SearchTopicWireSchema, { id: z.nullable(z.int()) })),
   images: z.optional(z.array(SearchImageHitWireSchema)),
-  user_intent: z.optional(z.nullable(z.string())),
+  user_intent: z.nullable(z.string()),
   did_you_mean: z.array(z.string()),
-  search_instead_for: z.optional(z.nullable(z.string())),
+  search_instead_for: z.nullable(z.string()),
 });
 
 export type SearchUnifiedWire = z.infer<typeof SearchUnifiedWireSchema>;
@@ -339,15 +340,13 @@ function toSearchImageHit(wire: SearchImageHitWire): SearchImageHit | null {
 
 export function toSearchUnifiedResponse(wire: SearchUnifiedWire): SearchUnifiedResponse {
   const response: SearchUnifiedResponse = {
-    verses: (wire.verses ?? [])
-      .map(toSearchVerseHit)
-      .filter((hit): hit is SearchVerseHit => hit !== null),
-    topics: (wire.topics ?? []).map(toSearchTopic),
+    verses: wire.verses.map(toSearchVerseHit).filter((hit): hit is SearchVerseHit => hit !== null),
+    topics: wire.topics.map(toSearchTopic),
     images: (wire.images ?? [])
       .map(toSearchImageHit)
       .filter((hit): hit is SearchImageHit => hit !== null),
     didYouMean: wire.did_you_mean,
-    searchInsteadFor: wire.search_instead_for ?? null,
+    searchInsteadFor: wire.search_instead_for,
   };
   if (wire.user_intent != null) {
     return { ...response, userIntent: wire.user_intent };

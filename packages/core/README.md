@@ -59,10 +59,20 @@ const verses = await searchClient.searchVerses('faith', versions.data[0].id, {
   pageSize: 10,
 });
 const unified = await searchClient.searchUnified('psalm 23', versions.data[0].id, 'en', {
-  fields: ['images'],
+  fields: ['verses', 'topics'],
 });
-console.log(trending.queries[0]?.text, verses.verses[0]?.id, unified.images[0]?.passageId);
+console.log(trending.queries[0]?.text, verses.verses[0]?.id, unified.topics[0]?.text);
 ```
+
+Unified search returns one snapshot of top results, not the entire verse result
+set. Omit `fields` for all available kinds, or pass a nonempty selection.
+`userIntent` accepts `unknown`, `topical`, `text`, or `reference`; response intent
+strings remain open-ended.
+
+The SDK also accepts `fields: ['images']` and maps image hits to `{ id, passageId }`,
+not image URLs. Image selection requires backend support. A production check on
+2026-10-20 returned HTTP 400 for `fields: ['images']`; successful verse/topic
+responses omitted images, which the SDK returns as `images: []`.
 
 ### Display Bible HTML
 
