@@ -15,7 +15,7 @@ it('loads distinct snapshots for every search input and supports disabling, erro
           {
             id: null,
             text: `${query}:${languageRanges.toString()}`,
-            subtopics: options?.fields ?? [],
+            subtopics: [...(options?.fields ?? [])],
           },
         ],
         userIntent: options?.userIntent,
@@ -59,7 +59,7 @@ it('loads distinct snapshots for every search input and supports disabling, erro
           {
             id: null,
             text: `${props.query}:${props.languageRanges.toString()}`,
-            subtopics: props.fields ?? [],
+            subtopics: [...(props.fields ?? [])],
           },
         ],
         userIntent: props.userIntent,
