@@ -62,10 +62,11 @@ for Search.
 import { useUnifiedSearch } from '@youversion/platform-react-hooks';
 
 function SearchResults({ query }: { query: string }) {
-  const { data, loading, error, refetch } = useUnifiedSearch(
-    { query, versionId: 111, languageRanges: ['en'] },
-    { enabled: query.trim().length > 0 },
-  );
+  const { data, loading, error, refetch } = useUnifiedSearch({
+    query,
+    versionId: 111,
+    languageRanges: ['en'],
+  });
   if (loading) return <div>Loading...</div>;
   if (error) return <button onClick={refetch}>Retry</button>;
   return <ul>{data?.topics.map((topic) => <li key={topic.text}>{topic.text}</li>)}</ul>;

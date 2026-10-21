@@ -82,7 +82,7 @@ export class SearchClient {
   async searchUnified(
     query: string,
     versionId: number,
-    languageRanges: string | string[],
+    languageRanges: string | readonly string[],
     options?: SearchUnifiedOptions,
   ): Promise<SearchUnifiedResponse> {
     return searchUnified(this.client, query, versionId, languageRanges, options);
