@@ -469,8 +469,16 @@ export function ShadowRootHost({
       style={{ display: hostDisplay }}
       onBlur={stopDuplicateReactPropagation}
       onClick={stopDuplicateReactPropagation}
+      onContextMenu={stopDuplicateReactPropagation}
+      onDoubleClick={stopDuplicateReactPropagation}
       onFocus={stopDuplicateReactPropagation}
+      onInput={stopDuplicateReactPropagation}
       onKeyDown={stopDuplicateReactPropagation}
+      onKeyUp={stopDuplicateReactPropagation}
+      onMouseDown={stopDuplicateReactPropagation}
+      onMouseUp={stopDuplicateReactPropagation}
+      onPointerDown={stopDuplicateReactPropagation}
+      onPointerUp={stopDuplicateReactPropagation}
     >
       {shadowRoot
         ? createPortal(

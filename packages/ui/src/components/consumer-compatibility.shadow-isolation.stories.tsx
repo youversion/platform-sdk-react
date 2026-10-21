@@ -74,12 +74,39 @@ interface AutomaticButtonEvidenceOutput extends HTMLOutputElement {
   forwardedRefNode?: EventTarget | null;
 }
 
+const validatedBubblingEventNames = [
+  'keyup',
+  'pointerdown',
+  'pointerup',
+  'mousedown',
+  'mouseup',
+  'dblclick',
+  'contextmenu',
+] as const;
+type ValidatedBubblingEventName = (typeof validatedBubblingEventNames)[number];
+
+interface ValidatedBubblingEventsEvidenceOutput extends HTMLOutputElement {
+  ancestorClickCaptureCount?: number;
+  ancestorCounts?: Partial<Record<ValidatedBubblingEventName, number>>;
+  componentPointerDowns?: ReactEventObservation[];
+  componentPointerUps?: ReactEventObservation[];
+}
+
+interface TextInputEventsEvidenceOutput extends HTMLOutputElement {
+  ancestorChangeCount?: number;
+  ancestorInputCount?: number;
+  componentChanges?: ReactEventObservation[];
+  componentInputs?: ReactEventObservation[];
+}
+
 interface NestedRootsEvidenceOutput extends HTMLOutputElement {
   componentBlurs?: ReactEventObservation[];
   lightDomAncestorBlurs?: ReactEventObservation[];
   lightDomAncestorClickCount?: number;
+  lightDomAncestorPointerDownCount?: number;
   outerShadowAncestorBlurs?: ReactEventObservation[];
   outerShadowAncestorClickCount?: number;
+  outerShadowAncestorPointerDownCount?: number;
 }
 
 interface CompatibilityScenarioProps {
@@ -585,13 +612,314 @@ export const EventsRefsAndDomQueriesExposeDifferentConsumerViews: Story = {
   },
 };
 
+function ValidatedBubblingEventsHarness(): React.ReactNode {
+  const evidenceRef = useRef<ValidatedBubblingEventsEvidenceOutput | null>(null);
+
+  const recordAncestorEvent = useCallback((name: ValidatedBubblingEventName): void => {
+    const evidence = evidenceRef.current;
+    if (!evidence) return;
+
+    const counts = (evidence.ancestorCounts ??= {});
+    counts[name] = (counts[name] ?? 0) + 1;
+  }, []);
+
+  return (
+    <CompatibilityScenario
+      classification="Supported for bubbling handlers; capture has a documented limitation"
+      expectedResult="Each keyup, pointerdown, pointerup, mousedown, mouseup, double-click, and context-menu dispatch reaches the light-DOM React ancestor once. Pointerdown represents preserved native propagation and retargeting. Click capture is documented separately."
+      summary="This example dispatches fresh owner-realm events directly so event families and phases are measured independently."
+      title="Additional composed event delivery"
+    >
+      <div
+        data-testid="additional-events-observer"
+        onClickCapture={() => {
+          if (evidenceRef.current) {
+            evidenceRef.current.ancestorClickCaptureCount =
+              (evidenceRef.current.ancestorClickCaptureCount ?? 0) + 1;
+          }
+        }}
+        onContextMenu={() => recordAncestorEvent('contextmenu')}
+        onDoubleClick={() => recordAncestorEvent('dblclick')}
+        onKeyUp={() => recordAncestorEvent('keyup')}
+        onMouseDown={() => recordAncestorEvent('mousedown')}
+        onMouseUp={() => recordAncestorEvent('mouseup')}
+        onPointerDown={() => recordAncestorEvent('pointerdown')}
+        onPointerUp={() => recordAncestorEvent('pointerup')}
+      >
+        <YouVersionAuthButton
+          data-testid="additional-events-auth-button"
+          mode="signOut"
+          onPointerDown={(event) => {
+            if (evidenceRef.current) {
+              (evidenceRef.current.componentPointerDowns ??= []).push({
+                currentTarget: event.currentTarget,
+                nativeEvent: event.nativeEvent,
+                target: event.target,
+              });
+            }
+          }}
+          onPointerUp={(event) => {
+            if (evidenceRef.current) {
+              (evidenceRef.current.componentPointerUps ??= []).push({
+                currentTarget: event.currentTarget,
+                nativeEvent: event.nativeEvent,
+                target: event.target,
+              });
+            }
+          }}
+        />
+        <output hidden ref={evidenceRef} data-testid="additional-events-evidence" />
+      </div>
+    </CompatibilityScenario>
+  );
+}
+
+export const KeyUpPointerAndMouseEventsReachReactAncestorsOnce: Story = {
+  name: 'Keyup, pointer, and mouse events reach React ancestors once',
+  tags: ['cross-browser'],
+  render: () => <ValidatedBubblingEventsHarness />,
+  play: async ({ canvasElement }) => {
+    const observer = await waitFor(async () =>
+      requireElement<HTMLElement>(
+        canvasElement,
+        '[data-testid="additional-events-observer"]',
+        'additional events observer not rendered',
+      ),
+    );
+    const host = await requireShadowHost(observer);
+    const button = await waitForElement<HTMLButtonElement>(
+      host.shadowRoot!,
+      '[data-testid="additional-events-auth-button"]',
+      'additional events auth button not rendered',
+    );
+    const evidence = requireElement<ValidatedBubblingEventsEvidenceOutput>(
+      canvasElement,
+      '[data-testid="additional-events-evidence"]',
+      'additional events evidence not rendered',
+    );
+    const nativePointerDowns: Array<{
+      event: Event;
+      path: EventTarget[];
+      target: EventTarget | null;
+    }> = [];
+    const controller = new canvasElement.ownerDocument.defaultView!.AbortController();
+    observer.addEventListener(
+      'pointerdown',
+      (event) => {
+        nativePointerDowns.push({
+          event,
+          path: event.composedPath(),
+          target: event.target,
+        });
+      },
+      { signal: controller.signal },
+    );
+
+    const ownerWindow = button.ownerDocument.defaultView!;
+    const events = {
+      keyup: new ownerWindow.KeyboardEvent('keyup', {
+        bubbles: true,
+        composed: true,
+        key: 'Enter',
+      }),
+      pointerdown: new ownerWindow.PointerEvent('pointerdown', {
+        bubbles: true,
+        composed: true,
+      }),
+      pointerup: new ownerWindow.PointerEvent('pointerup', {
+        bubbles: true,
+        composed: true,
+      }),
+      mousedown: new ownerWindow.MouseEvent('mousedown', { bubbles: true, composed: true }),
+      mouseup: new ownerWindow.MouseEvent('mouseup', { bubbles: true, composed: true }),
+      dblclick: new ownerWindow.MouseEvent('dblclick', { bubbles: true, composed: true }),
+      contextmenu: new ownerWindow.MouseEvent('contextmenu', { bubbles: true, composed: true }),
+    } satisfies Record<ValidatedBubblingEventName, Event>;
+    try {
+      for (const eventName of validatedBubblingEventNames) {
+        button.dispatchEvent(events[eventName]);
+      }
+
+      await expect(evidence.ancestorCounts).toEqual({
+        keyup: 1,
+        pointerdown: 1,
+        pointerup: 1,
+        mousedown: 1,
+        mouseup: 1,
+        dblclick: 1,
+        contextmenu: 1,
+      });
+      await expect(evidence.componentPointerDowns).toEqual([
+        { currentTarget: button, nativeEvent: events.pointerdown, target: button },
+      ]);
+      await expect(evidence.componentPointerUps).toEqual([
+        { currentTarget: button, nativeEvent: events.pointerup, target: button },
+      ]);
+      await expect(nativePointerDowns).toHaveLength(1);
+      await expect(nativePointerDowns[0]?.event).toBe(events.pointerdown);
+      await expect(nativePointerDowns[0]?.target).toBe(host);
+      await expect(nativePointerDowns[0]?.path[0]).toBe(button);
+      await expect(nativePointerDowns[0]?.path).toContain(host);
+
+      const captureEvent = new ownerWindow.MouseEvent('click', {
+        bubbles: true,
+        composed: true,
+      });
+      button.dispatchEvent(captureEvent);
+      await expect(evidence.ancestorClickCaptureCount).toBe(2);
+
+      const hostPointerDown = new ownerWindow.PointerEvent('pointerdown', {
+        bubbles: true,
+        composed: true,
+      });
+      host.dispatchEvent(hostPointerDown);
+      await expect(evidence.ancestorCounts?.pointerdown).toBe(2);
+      await expect(evidence.componentPointerDowns).toHaveLength(1);
+      await expect(nativePointerDowns).toHaveLength(2);
+      await expect(nativePointerDowns[1]?.event).toBe(hostPointerDown);
+      await expect(nativePointerDowns[1]?.target).toBe(host);
+      await expect(nativePointerDowns[1]?.path[0]).toBe(host);
+    } finally {
+      controller.abort();
+    }
+  },
+};
+
+function TextInputEventsHarness(): React.ReactNode {
+  const evidenceRef = useRef<TextInputEventsEvidenceOutput | null>(null);
+
+  return (
+    <CompatibilityScenario
+      classification="Supported for native input delivery"
+      expectedResult="One native input event reaches light-DOM React onInput and onChange handlers once while preserving the component callbacks and native event. The host guard corrects duplicate onInput delivery; React onChange is already single-delivery because the outer event is retargeted to the non-form host."
+      summary="This example distinguishes the corrected React input path from React's existing change-event behavior across the shadow boundary."
+      title="Text-input event delivery"
+    >
+      <div
+        data-testid="text-input-events-observer"
+        onChange={() => {
+          if (evidenceRef.current) {
+            evidenceRef.current.ancestorChangeCount =
+              (evidenceRef.current.ancestorChangeCount ?? 0) + 1;
+          }
+        }}
+        onInput={() => {
+          if (evidenceRef.current) {
+            evidenceRef.current.ancestorInputCount =
+              (evidenceRef.current.ancestorInputCount ?? 0) + 1;
+          }
+        }}
+      >
+        <ShadowRootHost>
+          <input
+            data-testid="text-input-events-control"
+            onChange={(event) => {
+              if (evidenceRef.current) {
+                (evidenceRef.current.componentChanges ??= []).push({
+                  currentTarget: event.currentTarget,
+                  nativeEvent: event.nativeEvent,
+                  target: event.target,
+                });
+              }
+            }}
+            onInput={(event) => {
+              if (evidenceRef.current) {
+                (evidenceRef.current.componentInputs ??= []).push({
+                  currentTarget: event.currentTarget,
+                  nativeEvent: event.nativeEvent,
+                  target: event.target,
+                });
+              }
+            }}
+          />
+        </ShadowRootHost>
+        <output hidden ref={evidenceRef} data-testid="text-input-events-evidence" />
+      </div>
+    </CompatibilityScenario>
+  );
+}
+
+export const InputAndChangeEventsReachReactAncestorsOnce: Story = {
+  name: 'Input and change events reach React ancestors once',
+  tags: ['cross-browser'],
+  render: () => <TextInputEventsHarness />,
+  play: async ({ canvasElement }) => {
+    const observer = await waitFor(async () =>
+      requireElement<HTMLElement>(
+        canvasElement,
+        '[data-testid="text-input-events-observer"]',
+        'text input events observer not rendered',
+      ),
+    );
+    const host = await requireShadowHost(observer);
+    const input = await waitForElement<HTMLInputElement>(
+      host.shadowRoot!,
+      '[data-testid="text-input-events-control"]',
+      'text input events control not rendered',
+    );
+    const evidence = requireElement<TextInputEventsEvidenceOutput>(
+      canvasElement,
+      '[data-testid="text-input-events-evidence"]',
+      'text input events evidence not rendered',
+    );
+    const nativeInputs: Array<{
+      event: Event;
+      path: EventTarget[];
+      target: EventTarget | null;
+    }> = [];
+    const controller = new canvasElement.ownerDocument.defaultView!.AbortController();
+    observer.addEventListener(
+      'input',
+      (event) => {
+        nativeInputs.push({
+          event,
+          path: event.composedPath(),
+          target: event.target,
+        });
+      },
+      { signal: controller.signal },
+    );
+
+    const ownerWindow = input.ownerDocument.defaultView!;
+    const inputEvent = new ownerWindow.InputEvent('input', {
+      bubbles: true,
+      composed: true,
+      data: 'a',
+      inputType: 'insertText',
+    });
+
+    try {
+      if (!Reflect.set(ownerWindow.HTMLInputElement.prototype, 'value', 'a', input)) {
+        throw new Error('native input value setter unavailable');
+      }
+      input.dispatchEvent(inputEvent);
+
+      await expect(evidence.ancestorInputCount).toBe(1);
+      await expect(evidence.ancestorChangeCount).toBe(1);
+      await expect(evidence.componentInputs).toEqual([
+        { currentTarget: input, nativeEvent: inputEvent, target: input },
+      ]);
+      await expect(evidence.componentChanges).toEqual([
+        { currentTarget: input, nativeEvent: inputEvent, target: input },
+      ]);
+      await expect(nativeInputs).toHaveLength(1);
+      await expect(nativeInputs[0]?.event).toBe(inputEvent);
+      await expect(nativeInputs[0]?.target).toBe(host);
+      await expect(nativeInputs[0]?.path[0]).toBe(input);
+      await expect(nativeInputs[0]?.path).toContain(host);
+    } finally {
+      controller.abort();
+    }
+  },
+};
+
 function NestedRootsHarness(): React.ReactNode {
   const evidenceRef = useRef<NestedRootsEvidenceOutput | null>(null);
 
   return (
     <CompatibilityScenario
       classification="Supported for the validated basics"
-      expectedResult="The button renders, and its composed click and focus-leave dispatch cross both roots once. DOM selector APIs must traverse the outer root and then the inner root. Overlay behavior is not part of this evidence."
+      expectedResult="The button renders, and its composed click, pointerdown, and focus-leave dispatch cross both roots once. DOM selector APIs must traverse the outer root and then the inner root. Overlay behavior is not part of this evidence."
       summary="This example places an automatically isolated button inside a second SDK shadow root."
       title="Nested shadow roots"
     >
@@ -612,6 +940,12 @@ function NestedRootsHarness(): React.ReactNode {
               (evidenceRef.current.lightDomAncestorClickCount ?? 0) + 1;
           }
         }}
+        onPointerDown={() => {
+          if (evidenceRef.current) {
+            evidenceRef.current.lightDomAncestorPointerDownCount =
+              (evidenceRef.current.lightDomAncestorPointerDownCount ?? 0) + 1;
+          }
+        }}
       >
         <ShadowRootHost>
           <div
@@ -629,6 +963,12 @@ function NestedRootsHarness(): React.ReactNode {
               if (evidenceRef.current) {
                 evidenceRef.current.outerShadowAncestorClickCount =
                   (evidenceRef.current.outerShadowAncestorClickCount ?? 0) + 1;
+              }
+            }}
+            onPointerDown={() => {
+              if (evidenceRef.current) {
+                evidenceRef.current.outerShadowAncestorPointerDownCount =
+                  (evidenceRef.current.outerShadowAncestorPointerDownCount ?? 0) + 1;
               }
             }}
           >
@@ -722,6 +1062,42 @@ export const NestedRootsRequireTraversalAndRetargetAtEveryBoundary: Story = {
     await expect(composedPath[0]).toBe(button);
     await expect(composedPath).toContain(innerHost);
     await expect(composedPath).toContain(outerHost);
+
+    // userEvent.click includes a pointerdown; isolate the direct event below.
+    evidence.lightDomAncestorPointerDownCount = 0;
+    evidence.outerShadowAncestorPointerDownCount = 0;
+
+    let outerScopePointerDownTarget: EventTarget | null = null;
+    let documentScopePointerDownTarget: EventTarget | null = null;
+    let pointerDownPath: EventTarget[] = [];
+    outerObserver.addEventListener(
+      'pointerdown',
+      (event) => {
+        outerScopePointerDownTarget = event.target;
+        pointerDownPath = event.composedPath();
+      },
+      { once: true },
+    );
+    canvasElement.addEventListener(
+      'pointerdown',
+      (event) => {
+        documentScopePointerDownTarget = event.target;
+      },
+      { once: true },
+    );
+    const pointerDownEvent = new button.ownerDocument.defaultView!.PointerEvent('pointerdown', {
+      bubbles: true,
+      composed: true,
+    });
+    button.dispatchEvent(pointerDownEvent);
+
+    await expect(evidence.lightDomAncestorPointerDownCount).toBe(1);
+    await expect(evidence.outerShadowAncestorPointerDownCount).toBe(1);
+    await expect(outerScopePointerDownTarget).toBe(innerHost);
+    await expect(documentScopePointerDownTarget).toBe(outerHost);
+    await expect(pointerDownPath[0]).toBe(button);
+    await expect(pointerDownPath).toContain(innerHost);
+    await expect(pointerDownPath).toContain(outerHost);
 
     const outerScopeFocusOuts: Array<{
       event: Event;

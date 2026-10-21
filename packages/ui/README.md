@@ -105,8 +105,14 @@ are unchanged:
 - **Events:** Native composed events observed outside the root are retargeted to
   the host. React callbacks passed to a component retain their documented target
   semantics. Light-DOM ancestor React handlers receive one delivery for the
-  validated bubbling `click`, `keydown`, `focus`, and `blur` paths; duplicate
-  delivery can remain for capture handlers and other composed events.
+  validated bubbling `click`, `keydown`, `keyup`, `pointerdown`, `pointerup`,
+  `mousedown`, `mouseup`, `dblclick`, `contextmenu`, `focus`, `blur`, and native
+  `input` paths. The host corrects duplicate React `onInput` delivery; React
+  `onChange` was already delivered once because the outer event is retargeted to
+  the non-form host. Capture handlers and unlisted composed bubbling families can
+  still receive duplicate delivery. YPE-6210 covers `onClickCapture`; focused
+  Chromium probes observed duplicate move, wheel, keypress, drag-start, and copy
+  delivery. This list is representative, not exhaustive.
 - **Forms and accessibility relationships:** Native outer forms, external
   `<label for>`, and cross-tree `aria-labelledby` or `aria-describedby` references
   do not cross a shadow boundary. Keep related nodes in one tree or use an

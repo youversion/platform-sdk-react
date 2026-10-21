@@ -84,8 +84,8 @@ Windows/NVDA validation gap are recorded in the YPE-5952 section below.
 | Dialog dismissal and restoration | Coverage exercises Escape, backdrop click, full-viewport hit testing, overlay-only focus, and restoration after both modal nodes unmount. | Validated in Chromium, Firefox, Playwright WebKit, and isolated local Safari 26.6.2 runs | Verify real screen-reader behavior. |
 | Consumer form participation | Browser coverage verifies that a light-DOM form does not own or serialize a native control inside an SDK shadow root. | Unsupported across tree scopes | Use an explicit component contract if a rollout target requires outer-form participation. |
 | Consumer labels and ARIA ID references | Browser coverage verifies that external native labels, `aria-labelledby`, and `aria-describedby` relationships do not resolve to controls inside the root. | Unsupported across tree scopes | Keep relationships in one tree scope; verify real assistive technology separately. |
-| Consumer events, refs, and automation | Coverage verifies native retargeting, public callbacks and refs, open-root queries, effect-driven attachment timing, and one light-DOM ancestor dispatch for each validated bubbling click and keydown plus React `onFocus`/native `focusin` and React `onBlur`/native `focusout` delivery. | Supported for the documented component paths | Capture-phase and other composed event types remain outside this evidence and must stay documented. |
-| Nested shadow roots | Coverage verifies basic rendering, recursive queries, event retargeting at each boundary, and one React ancestor dispatch per scope for a nested click and focus-leave cycle. | Supported for the validated basics | Single-active-peer dismissal is accepted; verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
+| Consumer events, refs, and automation | Coverage verifies native retargeting, public callbacks and refs, open-root queries, effect-driven attachment timing, and one light-DOM ancestor dispatch for each validated bubbling `click`, `keydown`, `keyup`, `pointerdown`, `pointerup`, `mousedown`, `mouseup`, `dblclick`, and `contextmenu`; React `onInput` from one native `input`; plus React `onFocus`/native `focusin` and React `onBlur`/native `focusout` delivery. The same native `input` produces one React `onChange` without a host handler because its outer pass is retargeted to the non-form host. YPE-6210 separately records two `onClickCapture` deliveries. | Supported for the documented bubbling component paths; capture has a documented limitation | Bubbling families outside the validated set require focused evidence. Keep capture duplication documented unless a separately approved React event redesign changes it. |
+| Nested shadow roots | Coverage verifies basic rendering, recursive queries, event retargeting at each boundary, and one React ancestor dispatch per scope for nested click, pointerdown, and focus-leave events. | Supported for the validated basics | Single-active-peer dismissal is accepted; verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
 | Realistic same-page usage | YPE-5437 mounts, removes, and re-adds a 12-component mix in Normal and Strict Mode. Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 coverage verifies exact host counts, rendered scripture content, and one shared stylesheet object across roots and remounts. A production-build comparison found a small warm-run mount-cost difference on one machine. | No shared-host blocker found; component layout reviews are recorded below | Keep the lifecycle fixture green; it is not a universal performance budget. |
 
 ## YPE-5952 release-candidate validation
@@ -293,16 +293,27 @@ Real Chromium validation also found that a consumer React handler on a
 light-DOM ancestor can receive one composed event through both the shadow-root
 portal path and the application-root retargeted path.
 
-YPE-6040 and YPE-6135 now keep one React logical traversal for each native
-`click`, `keydown`, `focusin`, and `focusout` event without stopping native
-propagation. The representative auth button story verifies component callback
-counts and target semantics, exact light-DOM ancestor counts, separate repeated
-clicks and focus/blur cycles, native retargeting, and the original composed
-path. The nested-root story retains its existing native
-retargeting evidence and adds one React ancestor dispatch per scope. The main
-workflow passes Chromium, Firefox, and Playwright WebKit. Because the correction
-changes the shared host, YPE-5952 retains the required actual-Safari
-release-candidate validation; this evidence makes no assistive-technology claim.
+YPE-6040, YPE-6135, and YPE-6210 now keep one React logical traversal for each
+validated bubbling `click`, `keydown`, `keyup`, `pointerdown`, `pointerup`,
+`mousedown`, `mouseup`, `dblclick`, `contextmenu`, `input`, `focusin`, and
+`focusout` event without stopping native propagation. The host guard corrects
+duplicate React `onInput`; the same evidence records React `onChange` as already
+single-delivery because the outer event targets the non-form host. The
+representative stories verify component callback counts and target semantics,
+exact light-DOM ancestor counts, separate
+repeated clicks and focus/blur cycles, native retargeting, the original composed
+path, and host-origin pointer delivery. The nested-root story retains its
+existing native retargeting evidence and adds one React ancestor dispatch per
+scope. YPE-6210 also records the separate capture behavior class: one fresh
+composed internal click invokes a light-DOM ancestor `onClickCapture` twice.
+Focused Chromium probes observed duplicate move, wheel, keypress, drag-start,
+and copy delivery. Those observations record the remaining
+unlisted-family limitation, not automated or cross-browser support coverage.
+Capture remains a documented limitation; it is not folded into the narrow
+bubbling-event correction. The main workflow passes Chromium, Firefox, and
+Playwright WebKit. Because the correction changes the shared host, YPE-6214 must
+repeat actual-Safari release-candidate validation afterward; this evidence makes
+no assistive-technology claim.
 
 ## YPE-5951 Bible reader evidence
 
