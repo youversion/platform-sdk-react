@@ -231,40 +231,57 @@ describe('SearchClient.searchUnified', () => {
     fetchSpy.mockRestore();
   });
 
-  it('drops bad image hits and keeps verses and topics', async () => {
-    const searchClient = createSearchClient();
+  it.each([
+    { label: 'missing id', row: { passage_id: 'PSA.23.2' } },
+    { label: 'null id', row: { id: null, passage_id: 'PSA.23.2' } },
+    { label: 'missing passage_id', row: { id: 'img-missing-passage' } },
+    { label: 'null passage_id', row: { id: 'img-null-passage', passage_id: null } },
+    { label: 'non-string id', row: { id: 42, passage_id: 'PSA.23.2' } },
+    { label: 'non-string passage_id', row: { id: 'img-numeric-passage', passage_id: 42 } },
+    { label: 'null row', row: null },
+    { label: 'non-object row', row: 'invalid' },
+  ])(
+    'drops bad image hits including $label and keeps verses, topics, and sibling images',
+    async ({ row }) => {
+      const searchClient = createSearchClient();
 
-    server.use(
-      http.get(`https://${apiHost}/v1/search-unified`, () =>
-        HttpResponse.json({
-          verses: [{ reference: 'JHN.6.35' }],
-          topics: [{ id: 7, text: 'faith', subtopics: [] }],
-          images: [
-            { id: 'img-good', passage_id: 'PSA.23.1' },
-            { id: '', passage_id: 'PSA.23.2' },
-            { id: 'img-empty-passage', passage_id: '' },
-            { id: 'img-bad', passage_id: 'BAD' },
-            { id: 'img-book-only', passage_id: 'JHN' },
-          ],
-          user_intent: null,
-          did_you_mean: [],
-          search_instead_for: null,
-        }),
-      ),
-    );
+      server.use(
+        http.get(`https://${apiHost}/v1/search-unified`, () =>
+          HttpResponse.json({
+            verses: [{ reference: 'JHN.6.35' }],
+            topics: [{ id: 7, text: 'faith', subtopics: [] }],
+            images: [
+              { id: 'img-good', passage_id: 'PSA.23.1' },
+              row,
+              { id: '', passage_id: 'PSA.23.2' },
+              { id: 'img-empty-passage', passage_id: '' },
+              { id: 'img-bad', passage_id: 'BAD' },
+              { id: 'img-book-only', passage_id: 'JHN' },
+              { id: 'img-good-last', passage_id: 'JHN.6.35' },
+            ],
+            user_intent: null,
+            did_you_mean: [],
+            search_instead_for: null,
+          }),
+        ),
+      );
 
-    const result = await searchClient.searchUnified('faith', 111, 'en', {
-      fields: ['verses', 'topics', 'images'],
-    });
+      const result = await searchClient.searchUnified('faith', 111, 'en', {
+        fields: ['verses', 'topics', 'images'],
+      });
 
-    expect(result).toEqual({
-      verses: [{ id: 'JHN.6.35' }],
-      topics: [{ id: 7, text: 'faith', subtopics: [] }],
-      images: [{ id: 'img-good', passageId: 'PSA.23.1' }],
-      didYouMean: [],
-      searchInsteadFor: null,
-    });
-  });
+      expect(result).toEqual({
+        verses: [{ id: 'JHN.6.35' }],
+        topics: [{ id: 7, text: 'faith', subtopics: [] }],
+        images: [
+          { id: 'img-good', passageId: 'PSA.23.1' },
+          { id: 'img-good-last', passageId: 'JHN.6.35' },
+        ],
+        didYouMean: [],
+        searchInsteadFor: null,
+      });
+    },
+  );
 
   it('preserves future response intents but rejects missing required fields and malformed topics', async () => {
     const searchClient = createSearchClient();

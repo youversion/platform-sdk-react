@@ -300,7 +300,7 @@ type SearchImageHitWire = z.infer<typeof SearchImageHitWireSchema>;
 export const SearchUnifiedWireSchema = z.object({
   verses: z.array(SearchVerseHitWireSchema),
   topics: z.array(z.extend(SearchTopicWireSchema, { id: z.nullable(z.int()) })),
-  images: z.optional(z.array(SearchImageHitWireSchema)),
+  images: z.optional(z.array(z.unknown())),
   user_intent: z.nullable(z.string()),
   did_you_mean: z.array(z.string()),
   search_instead_for: z.nullable(z.string()),
@@ -343,7 +343,10 @@ export function toSearchUnifiedResponse(wire: SearchUnifiedWire): SearchUnifiedR
     verses: wire.verses.map(toSearchVerseHit).filter((hit): hit is SearchVerseHit => hit !== null),
     topics: wire.topics.map(toSearchTopic),
     images: (wire.images ?? [])
-      .map(toSearchImageHit)
+      .map((hit) => {
+        const parsed = SearchImageHitWireSchema.safeParse(hit);
+        return parsed.success ? toSearchImageHit(parsed.data) : null;
+      })
       .filter((hit): hit is SearchImageHit => hit !== null),
     didYouMean: wire.did_you_mean,
     searchInsteadFor: wire.search_instead_for,
