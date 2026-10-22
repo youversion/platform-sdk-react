@@ -1,10 +1,16 @@
 import type { ApiClient } from './client';
 import { getSuggestedQueries, getTrendingQueries } from './search-queries';
 import { searchTopics } from './search-topics';
+import { searchUnified, type SearchUnifiedOptions } from './search-unified';
 import { searchVerses, type SearchVersesOptions } from './search-verses';
-import type { SearchQueries, SearchTopicsResponse, SearchVersesResponse } from './schemas/search';
+import type {
+  SearchQueries,
+  SearchTopicsResponse,
+  SearchUnifiedResponse,
+  SearchVersesResponse,
+} from './schemas/search';
 
-export type { SearchVersesOptions };
+export type { SearchUnifiedOptions, SearchVersesOptions };
 
 /**
  * Client for YouVersion Platform Search API endpoints (`/v1/*`).
@@ -64,5 +70,21 @@ export class SearchClient {
     languageRanges: string | string[],
   ): Promise<SearchTopicsResponse> {
     return searchTopics(this.client, query, languageRanges);
+  }
+
+  /**
+   * Searches verses and topics in one unpaginated request.
+   * @param query Search text (1 to 100 graphemes).
+   * @param versionId Bible version identifier (sent to the API as `bible_id`).
+   * @param languageRanges Ordered language ranges (`en_US` is normalized to `en-us` on the wire).
+   * @param options Optional `userIntent` and nonempty `fields` selection (`verses` or `topics`).
+   */
+  async searchUnified(
+    query: string,
+    versionId: number,
+    languageRanges: string | readonly string[],
+    options?: SearchUnifiedOptions,
+  ): Promise<SearchUnifiedResponse> {
+    return searchUnified(this.client, query, versionId, languageRanges, options);
   }
 }

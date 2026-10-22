@@ -58,8 +58,16 @@ const trending = await searchClient.getTrendingQueries('en');
 const verses = await searchClient.searchVerses('faith', versions.data[0].id, {
   pageSize: 10,
 });
-console.log(trending.queries[0]?.text, verses.verses[0]?.id);
+const unified = await searchClient.searchUnified('psalm 23', versions.data[0].id, 'en', {
+  fields: ['verses', 'topics'],
+});
+console.log(trending.queries[0]?.text, verses.verses[0]?.id, unified.topics[0]?.text);
 ```
+
+Unified search returns one snapshot of top results, not the entire verse result
+set. Omit `fields` for all available kinds, or pass a nonempty selection.
+`userIntent` accepts `unknown`, `topical`, `text`, or `reference`; response intent
+strings remain open-ended.
 
 ### Display Bible HTML
 

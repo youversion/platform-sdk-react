@@ -52,6 +52,37 @@ function App() {
 }
 ```
 
+## Unified search
+
+Inside `YouVersionProvider`, use `useUnifiedSearch` for an unpaginated snapshot
+of top verse references and related topics. Search requires an app key authorized
+for Search.
+
+```tsx
+import { useUnifiedSearch } from '@youversion/platform-react-hooks';
+
+function SearchResults({ query }: { query: string }) {
+  const { data, loading, error, refetch } = useUnifiedSearch({
+    query,
+    versionId: 111,
+    languageRanges: ['en'],
+  });
+  if (loading) return <div>Loading...</div>;
+  if (error) return <button onClick={refetch}>Retry</button>;
+  return <ul>{data?.topics.map((topic) => <li key={topic.text}>{topic.text}</li>)}</ul>;
+}
+```
+
+The props also accept `userIntent` and `fields` (`verses` and/or `topics`). Omit
+`fields` for both kinds, or provide a nonempty selection such as
+`fields: ['topics']`. An empty array is invalid. Verse hits contain passage IDs,
+not passage text.
+
+You control when to submit or debounce the query. This hook does not load
+suggestions or paginate. The existing `useBibleSearch` hook keeps its suggestion
+and paginated verse-search behavior. Use supported search language codes such as
+`en`; the SDK does not add fallback ranges.
+
 ## Documentation and API Reference
 * [developers.youversion.com/sdks/react](https://developers.youversion.com/sdks/react)
 

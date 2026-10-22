@@ -71,8 +71,8 @@ export function parseSearchLanguageRange(range: string): string {
 }
 
 /** Validates and normalizes one or more search language ranges. */
-export function parseLanguageRanges(languageRanges: string | string[]): string[] {
-  const rangeArray = Array.isArray(languageRanges) ? languageRanges : [languageRanges];
+export function parseLanguageRanges(languageRanges: string | readonly string[]): string[] {
+  const rangeArray = Array.isArray(languageRanges) ? [...languageRanges] : [languageRanges];
   z.array(z.string())
     .check(z.minLength(1, 'At least one language range is required'))
     .parse(rangeArray);
@@ -261,3 +261,99 @@ export const SearchVersesOptionsSchema = z.object({
 });
 
 export type SearchVersesOptions = z.infer<typeof SearchVersesOptionsSchema>;
+
+const SEARCH_UNIFIED_FIELDS = ['verses', 'topics'] as const;
+
+export type SearchUnifiedField = (typeof SEARCH_UNIFIED_FIELDS)[number];
+
+const SearchUnifiedFieldSchema = z.enum(SEARCH_UNIFIED_FIELDS, {
+  error: 'Search field must be verses or topics',
+});
+
+const SearchUnifiedFieldsSchema = z.pipe(
+  z.array(SearchUnifiedFieldSchema).check(z.minLength(1, 'At least one search field is required')),
+  z.transform((fields) => [...new Set(fields)]),
+);
+
+export const SearchUnifiedOptionsSchema = z.object({
+  /** Omit to use the service default, `unknown`. */
+  userIntent: z.optional(z.enum(KNOWN_SEARCH_USER_INTENTS)),
+  fields: z.optional(SearchUnifiedFieldsSchema),
+});
+
+type SearchUnifiedOptionsParsed = z.infer<typeof SearchUnifiedOptionsSchema>;
+
+export type SearchUnifiedOptions = Readonly<{
+  userIntent?: SearchUnifiedOptionsParsed['userIntent'];
+  fields?: readonly SearchUnifiedField[];
+}>;
+
+const SearchUnifiedTopicHitWireSchema = z.extend(SearchTopicWireSchema, {
+  id: z.nullable(z.int()),
+});
+
+export type SearchUnifiedTopicHitWire = z.infer<typeof SearchUnifiedTopicHitWireSchema>;
+
+export const SearchUnifiedWireSchema = z.object({
+  verses: z.optional(z.array(z.unknown())),
+  topics: z.optional(z.array(z.unknown())),
+  user_intent: z.optional(z.nullable(z.string())),
+  did_you_mean: z.optional(z.array(z.string())),
+  search_instead_for: z.optional(z.nullable(z.string())),
+  /** Reserved on the wire for image hits; ignored until the API ships this field. */
+  images: z.optional(z.array(z.unknown())),
+});
+
+export type SearchUnifiedWire = z.infer<typeof SearchUnifiedWireSchema>;
+
+export const SearchUnifiedResponseSchema = z.object({
+  /** Verse hits. Malformed USFM references are removed. */
+  verses: z.array(SearchVerseHitSchema),
+  topics: z.array(SearchTopicSchema),
+  /**
+   * Image hits reserved for a future unified-search response shape.
+   * Optional until image search ships; will become required in a later release.
+   */
+  images: z.optional(z.array(z.unknown())),
+  /** Set only when the API returns a non-null user intent. */
+  userIntent: z.optional(z.string()),
+  didYouMean: z.array(z.string()),
+  searchInsteadFor: z.nullable(z.string()),
+});
+
+export type SearchUnifiedResponse = Readonly<z.infer<typeof SearchUnifiedResponseSchema>>;
+
+type EnsureSearchUnifiedFieldArrays<T extends Record<SearchUnifiedField, true>> = T;
+
+type _SearchUnifiedFieldCoverage = EnsureSearchUnifiedFieldArrays<{
+  [K in SearchUnifiedField]: SearchUnifiedResponse[K] extends readonly unknown[] ? true : false;
+}>;
+
+export function toSearchUnifiedResponse(wire: SearchUnifiedWire): SearchUnifiedResponse {
+  let response: SearchUnifiedResponse = {
+    verses: (wire.verses ?? []).flatMap((hit) => {
+      const parsed = SearchVerseHitWireSchema.safeParse(hit);
+      if (!parsed.success) {
+        return [];
+      }
+      const verse = toSearchVerseHit(parsed.data);
+      return verse === null ? [] : [verse];
+    }),
+    topics: (wire.topics ?? []).flatMap((hit) => {
+      const parsed = SearchUnifiedTopicHitWireSchema.safeParse(hit);
+      if (!parsed.success) {
+        return [];
+      }
+      return [toSearchTopic(parsed.data)];
+    }),
+    didYouMean: wire.did_you_mean ?? [],
+    searchInsteadFor: wire.search_instead_for ?? null,
+  };
+  if (wire.images !== undefined && wire.images.length > 0) {
+    response = { ...response, images: wire.images };
+  }
+  if (wire.user_intent != null) {
+    response = { ...response, userIntent: wire.user_intent };
+  }
+  return response;
+}
