@@ -718,6 +718,40 @@ describe('BibleVersionPicker', () => {
       expect(onLanguageChange).toHaveBeenCalledWith('ko');
       expect(screen.getByRole('heading', { name: /bible versions/i })).toBeInTheDocument();
     });
+
+    it('puts the native language name before English and leaves English once', async () => {
+      const user = userEvent.setup();
+      renderPicker();
+      await openLanguagePanel();
+
+      const english = screen.getByRole('listitem', { name: 'English' });
+      expect(english).toHaveTextContent(/^English$/);
+      expect(english.className.split(' ')).toContain('yv:bg-muted');
+
+      await user.click(screen.getByRole('tab', { name: /all/i }));
+      const spanish = screen.getByRole('listitem', { name: 'Español Spanish' });
+      const spanishText = spanish.textContent ?? '';
+      expect(spanishText.indexOf('Español')).toBeLessThan(spanishText.indexOf('Spanish'));
+      expect(spanish.className.split(' ')).not.toContain('yv:bg-muted');
+    });
+
+    it('counts All from the languages that have versions', async () => {
+      renderPicker();
+      await openLanguagePanel();
+
+      expect(
+        screen.getByRole('tab', { name: `All (${mockLanguages.length})` }),
+      ).toBeInTheDocument();
+    });
+
+    it('keeps version search at the top and leaves the header pill out', async () => {
+      renderPicker();
+      await openPicker();
+
+      expect(screen.queryByRole('button', { name: /select a language/i })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^language /i })).toBeInTheDocument();
+      expect(screen.getAllByRole('textbox', { name: /search bible versions/i })).toHaveLength(1);
+    });
   });
 });
 

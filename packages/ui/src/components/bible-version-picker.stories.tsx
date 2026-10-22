@@ -167,7 +167,7 @@ export const InteractiveLanguageSelection: Story = {
     await expect(dialog).toBeInTheDocument();
 
     // Click language button
-    const languageButton = await screen.findByRole('button', { name: /select a language/i });
+    const languageButton = await screen.findByRole('button', { name: /^language /i });
     await waitFor(async () => {
       await expect(languageButton).toHaveTextContent('English');
     });
@@ -185,9 +185,9 @@ export const InteractiveLanguageSelection: Story = {
 
     // Wait for the language button to update with the selected language
     await waitFor(async () => {
-      await expect(
-        await screen.findByRole('button', { name: /select a language/i }),
-      ).toHaveTextContent(/korean/i);
+      await expect(await screen.findByRole('button', { name: /^language /i })).toHaveTextContent(
+        /korean/i,
+      );
     });
   },
 };
@@ -233,7 +233,7 @@ export const SuggestedLanguagesTabs: Story = {
     await expect(dialog).toBeInTheDocument();
 
     // Click language button to open language selection
-    const languageButton = await screen.findByRole('button', { name: /select a language/i });
+    const languageButton = await screen.findByRole('button', { name: /^language /i });
     await userEvent.click(languageButton);
 
     // Verify the Suggested tab is active by default and shows "Regional" heading
@@ -250,7 +250,7 @@ export const SuggestedLanguagesTabs: Story = {
     // We mocked navigator.languages to ['en-US', 'ko-KR'], so English should be first, Korean second
     const suggestedLanguageItems = within(suggestedTabPanel).getAllByRole('listitem');
     await expect(suggestedLanguageItems[1]).toHaveAttribute('aria-label', 'English');
-    await expect(suggestedLanguageItems[0]).toHaveAttribute('aria-label', 'Korean');
+    await expect(suggestedLanguageItems[0]?.getAttribute('aria-label')).toMatch(/Korean$/);
 
     // Verify the All tab exists with language count
     const allTab = await screen.findByRole('tab', { name: /all/i });
@@ -273,7 +273,7 @@ export const SuggestedLanguagesTabs: Story = {
     const allLanguageItems = within(allTabPanel).getAllByRole('listitem');
     const languageLabels = allLanguageItems.map((item) => item.getAttribute('aria-label'));
     const englishIndex = languageLabels.indexOf('English');
-    const koreanIndex = languageLabels.indexOf('Korean');
+    const koreanIndex = languageLabels.findIndex((label) => label?.endsWith('Korean'));
     await expect(englishIndex).toBeLessThan(koreanIndex);
 
     // Switch back to Suggested tab and select a language
@@ -289,9 +289,9 @@ export const SuggestedLanguagesTabs: Story = {
 
     // Verify the language button shows the selected language
     await waitFor(async () => {
-      await expect(
-        await screen.findByRole('button', { name: /select a language/i }),
-      ).toHaveTextContent(/english/i);
+      await expect(await screen.findByRole('button', { name: /^language /i })).toHaveTextContent(
+        /english/i,
+      );
     });
   },
 };
@@ -323,7 +323,7 @@ export const SuggestedLanguagesOrder: Story = {
     await userEvent.click(trigger);
 
     // Open language selection
-    const languageButton = await screen.findByRole('button', { name: /select a language/i });
+    const languageButton = await screen.findByRole('button', { name: /^language /i });
     await userEvent.click(languageButton);
 
     // Verify suggested languages appear in API order (not alphabetical or by population)
@@ -332,9 +332,9 @@ export const SuggestedLanguagesOrder: Story = {
     const labels = suggestedLanguageItems.map((item) => item.getAttribute('aria-label'));
 
     await expect(labels[0]).toBe('English');
-    await expect(labels[1]).toBe('Spanish');
+    await expect(labels[1]).toMatch(/Spanish$/);
     await expect(labels[2]).toMatch(/Portuguese/);
-    await expect(labels[3]).toBe('French');
+    await expect(labels[3]).toMatch(/French$/);
   },
 };
 
@@ -349,8 +349,9 @@ export const LanguageSearch: Story = {
     const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
     await userEvent.click(trigger);
 
-    const languageButton = await screen.findByRole('button', { name: /select a language/i });
+    const languageButton = await screen.findByRole('button', { name: /^language /i });
     await userEvent.click(languageButton);
+    await userEvent.click(await screen.findByRole('button', { name: /search languages/i }));
 
     const languageSearchInput = screen.getByRole('textbox', { name: /search languages/i });
     await userEvent.type(languageSearchInput, 'Korean', { delay: 50 });
