@@ -28,11 +28,13 @@ function PopoverContent({
   align = 'center',
   heading,
   showHeader = true,
+  showClose = true,
   sideOffset = 4,
   theme = 'light',
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content> & {
   showHeader?: boolean;
+  showClose?: boolean;
   heading?: React.ReactNode;
   headerLeading?: React.ReactNode;
   headerChild?: React.ReactNode;
@@ -59,32 +61,41 @@ function PopoverContent({
       >
         {showHeader ? (
           <section
-            className={cn([
-              'yv:bg-muted yv:py-3 yv:rounded-t-2xl yv:px-4 yv:border-b yv:border-border yv:grid yv:grid-cols-[1fr_auto] yv:justify-between yv:items-center yv:gap-2',
-              headerChild ? 'yv:grid-cols-[1fr_auto_auto]' : '',
-              headerLeading ? 'yv:grid-cols-[auto_1fr_auto]' : '',
-              headerLeading && headerChild ? 'yv:grid-cols-[auto_1fr_auto_auto]' : '',
-            ])}
+            className={cn(
+              'yv:bg-muted yv:py-3 yv:rounded-t-2xl yv:px-4 yv:border-b yv:border-border yv:grid yv:justify-between yv:items-center yv:gap-2',
+              popoverHeaderColumns(Boolean(headerLeading), Boolean(headerChild), showClose),
+            )}
           >
             {headerLeading}
             <h2 className="yv:font-bold yv:text-base">{heading}</h2>
             {headerChild}
-            <PopoverClose asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="yv:w-6 yv:h-6 yv:text-muted-foreground"
-              >
-                <XIcon className="yv:size-5" />
-                <span className="yv:sr-only">{t('closeAriaLabel')}</span>
-              </Button>
-            </PopoverClose>
+            {showClose ? (
+              <PopoverClose asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="yv:w-6 yv:h-6 yv:text-muted-foreground"
+                >
+                  <XIcon className="yv:size-5" />
+                  <span className="yv:sr-only">{t('closeAriaLabel')}</span>
+                </Button>
+              </PopoverClose>
+            ) : null}
           </section>
         ) : null}
         {children}
       </PopoverPrimitive.Content>
     </PopoverPrimitive.Portal>
   );
+}
+
+function popoverHeaderColumns(hasLeading: boolean, hasChild: boolean, showClose: boolean): string {
+  if (hasLeading && hasChild && showClose) return 'yv:grid-cols-[auto_1fr_auto_auto]';
+  if (hasLeading && (hasChild || showClose)) return 'yv:grid-cols-[auto_1fr_auto]';
+  if (hasLeading) return 'yv:grid-cols-[auto_1fr]';
+  if (hasChild && showClose) return 'yv:grid-cols-[1fr_auto_auto]';
+  if (hasChild || showClose) return 'yv:grid-cols-[1fr_auto]';
+  return 'yv:grid-cols-[1fr]';
 }
 
 function PopoverClose({

@@ -122,7 +122,7 @@ export function VersionList({
     versionsLoading,
     background,
     resetLanguageSearch,
-    setIsLanguagesOpen,
+    setView,
   } = useBibleVersionPickerContext();
   const wasOpenRef = useRef(open ?? false);
 
@@ -150,10 +150,10 @@ export function VersionList({
     if (wasOpenRef.current && open === false) {
       setSearchQuery('');
       resetLanguageSearch();
-      setIsLanguagesOpen(false);
+      setView('versions');
     }
     wasOpenRef.current = open ?? false;
-  }, [open, resetLanguageSearch, setIsLanguagesOpen, setSearchQuery]);
+  }, [open, resetLanguageSearch, setSearchQuery, setView]);
 
   return (
     <div

@@ -183,6 +183,11 @@ async function openLanguagePanel() {
   await userEvent.click(screen.getByRole('button', { name: /select a language/i }));
 }
 
+async function openLanguageSearch() {
+  await openLanguagePanel();
+  await userEvent.click(screen.getByRole('button', { name: /search languages/i }));
+}
+
 function getLanguageSearchInput() {
   return screen.getByRole('textbox', { name: /search languages/i });
 }
@@ -511,29 +516,42 @@ describe('BibleVersionPicker', () => {
       expect(screen.queryByText('All Languages')).not.toBeInTheDocument();
     });
 
-    it('bounds and animates the default language view inside the popover content', async () => {
+    it('mounts one language view, then a search view, and returns to versions', async () => {
       const user = userEvent.setup();
 
       renderPicker();
-
       await openPicker();
+
+      expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
+      expect(screen.getByTestId('version-list')).toBeInTheDocument();
+
       await user.click(screen.getByRole('button', { name: /select a language/i }));
 
       expect(screen.getByRole('heading', { name: /select a language/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
+      expect(screen.queryByTestId('version-list')).not.toBeInTheDocument();
+      expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
 
-      const dialog = screen.getByRole('dialog');
-      const viewport = dialog.querySelector('.yv\\:relative.yv\\:min-h-0.yv\\:overflow-hidden');
-      expect(viewport).not.toBeNull();
+      await user.click(screen.getByRole('button', { name: /search languages/i }));
 
-      const animatedPanels = dialog.querySelectorAll(
-        '.yv\\:transition-all.yv\\:duration-300.yv\\:ease-out',
-      );
-      expect(animatedPanels).toHaveLength(2);
+      expect(screen.getByRole('heading', { name: /search languages/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(getLanguageSearchInput()).toHaveFocus();
+      });
+      expect(screen.getByRole('heading', { name: /regional/i })).toBeInTheDocument();
+      expect(screen.queryByRole('tab', { name: /suggested/i })).not.toBeInTheDocument();
 
-      const languagePanel = screen
-        .getByRole('tab', { name: /suggested/i })
-        .closest('.yv\\:h-full.yv\\:min-h-0.yv\\:overflow-hidden');
-      expect(languagePanel).not.toBeNull();
+      await user.click(screen.getByRole('button', { name: /^back$/i }));
+
+      expect(screen.getByRole('tab', { name: /suggested/i })).toBeInTheDocument();
+      expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: /back to bible versions/i }));
+
+      expect(screen.getByRole('heading', { name: /bible versions/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: /select a language/i })).not.toBeInTheDocument();
     });
 
     it('open=false clears version search for pre-warmed standalone content', async () => {
@@ -567,6 +585,7 @@ describe('BibleVersionPicker', () => {
         </BibleVersionPicker.Root>,
       );
 
+      await user.click(screen.getByRole('button', { name: /search languages/i }));
       await user.type(getLanguageSearchInput(), 'span');
       expect(getLanguageSearchInput()).toHaveValue('span');
       expect(screen.queryByRole('tab', { name: /suggested/i })).not.toBeInTheDocument();
@@ -577,7 +596,8 @@ describe('BibleVersionPicker', () => {
         </BibleVersionPicker.Root>,
       );
 
-      expect(getLanguageSearchInput()).toHaveValue('');
+      expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /suggested/i })).toBeInTheDocument();
 
       rerender(
         <BibleVersionPicker.Root {...rootProps}>
@@ -586,6 +606,7 @@ describe('BibleVersionPicker', () => {
       );
 
       expect(screen.getByRole('tab', { name: /suggested/i })).toBeInTheDocument();
+      expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
     });
   });
 
@@ -594,7 +615,7 @@ describe('BibleVersionPicker', () => {
       const user = userEvent.setup();
 
       renderPicker();
-      await openLanguagePanel();
+      await openLanguageSearch();
 
       await user.type(getLanguageSearchInput(), 'span');
 
@@ -610,7 +631,7 @@ describe('BibleVersionPicker', () => {
       const user = userEvent.setup();
 
       renderPicker();
-      await openLanguagePanel();
+      await openLanguageSearch();
 
       await user.type(getLanguageSearchInput(), 'Koreanea');
 
@@ -624,7 +645,7 @@ describe('BibleVersionPicker', () => {
       const user = userEvent.setup();
 
       renderPicker({ languagesLoading: true });
-      await openLanguagePanel();
+      await openLanguageSearch();
 
       await user.type(getLanguageSearchInput(), 'span');
 
@@ -643,13 +664,17 @@ describe('BibleVersionPicker', () => {
       const user = userEvent.setup();
 
       renderPicker();
-      await openLanguagePanel();
+      await openLanguageSearch();
 
       await user.type(getLanguageSearchInput(), 'korean');
       expect(getLanguageSearchInput()).toHaveValue('korean');
 
+      await user.click(screen.getByRole('button', { name: /^back$/i }));
+      expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
+
       await user.click(screen.getByRole('button', { name: /back to bible versions/i }));
       await user.click(screen.getByRole('button', { name: /select a language/i }));
+      await user.click(screen.getByRole('button', { name: /search languages/i }));
 
       expect(getLanguageSearchInput()).toHaveValue('');
     });
@@ -661,8 +686,14 @@ describe('BibleVersionPicker', () => {
       await openLanguagePanel();
 
       await user.click(screen.getByRole('tab', { name: /all/i }));
+      await user.click(screen.getByRole('button', { name: /search languages/i }));
       await user.type(getLanguageSearchInput(), 'span');
       await user.clear(getLanguageSearchInput());
+
+      expect(screen.getByRole('heading', { name: /regional/i })).toBeInTheDocument();
+      expect(screen.queryByRole('tab', { name: /all/i })).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: /^back$/i }));
 
       expect(screen.getByRole('tab', { name: /all/i })).toHaveAttribute('aria-selected', 'true');
     });
@@ -680,7 +711,7 @@ describe('BibleVersionPicker', () => {
         </BibleVersionPicker.Root>,
       );
 
-      await openLanguagePanel();
+      await openLanguageSearch();
       await user.type(getLanguageSearchInput(), 'korean');
       await user.click(screen.getByRole('listitem', { name: /korean/i }));
 
@@ -713,6 +744,7 @@ it('applies interface direction to its portaled content and Radix tabs', async (
   expect(trigger).toHaveAttribute('dir', 'rtl');
   expect(screen.getByRole('dialog')).toHaveAttribute('dir', 'rtl');
   expect(screen.getByRole('tablist').parentElement).toHaveAttribute('dir', 'rtl');
-  expect(getLanguageSearchInput()).toHaveAttribute('dir', 'auto');
   expect(screen.getAllByText('English')[0]?.closest('bdi')).toHaveAttribute('dir', 'auto');
+  await userEvent.click(screen.getByRole('button', { name: /search languages/i }));
+  expect(getLanguageSearchInput()).toHaveAttribute('dir', 'auto');
 });

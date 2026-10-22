@@ -3,24 +3,96 @@
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { useInterfaceDirection } from '@/lib/direction';
+import { ChevronBackwardIcon } from '../icons/chevron-backward';
 import { LoaderIcon } from '../icons/loader';
 import { SearchIcon } from '../icons/search';
+import { Button } from '../ui/button';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '../ui/input-group';
 import { ItemGroup } from '../ui/item';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { useEffect, useRef, useState } from 'react';
-import { useBibleVersionPickerContext, type BibleLanguagePickerContentProps } from './index';
+import { useEffect, useRef, useState, type ReactElement, type RefObject } from 'react';
+import {
+  useBibleVersionPickerContext,
+  type BibleLanguagePickerContentProps,
+  type LanguageListItem,
+} from './index';
 import { LanguageRow } from './language-row';
+
+export function LanguageSearchButton(): ReactElement {
+  const { t } = useTranslation(undefined, { i18n });
+  const { setView } = useBibleVersionPickerContext();
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className="yv:w-6 yv:h-6 yv:text-muted-foreground"
+      aria-label={t('languageSearchAriaLabel')}
+      data-slot="language-search-open"
+      onClick={() => setView('languageSearch')}
+    >
+      <SearchIcon className="yv:size-5" />
+    </Button>
+  );
+}
+
+export function LanguageBackButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}): ReactElement {
+  return (
+    <Button
+      type="button"
+      onClick={onClick}
+      variant="ghost"
+      size="icon"
+      className="yv:w-6 yv:h-6 yv:text-muted-foreground"
+      data-slot="language-back"
+    >
+      <ChevronBackwardIcon className="yv:size-5" />
+      <span className="yv:sr-only">{label}</span>
+    </Button>
+  );
+}
 
 export function LanguagePanel({
   onRequestClose,
-}: BibleLanguagePickerContentProps = {}): React.ReactElement {
+}: BibleLanguagePickerContentProps = {}): ReactElement {
   return (
-    <div className="yv:h-full yv:min-h-0 yv:overflow-hidden yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center">
+    <div className="yv:h-full yv:min-h-0 yv:overflow-hidden yv:flex yv:flex-col">
       <div className="yv:flex-1 yv:min-h-0 yv:overflow-hidden">
         <BibleLanguagePickerContent onRequestClose={onRequestClose} />
       </div>
     </div>
+  );
+}
+
+function LanguageRows({
+  languages,
+  selectedLanguageId,
+  onSelect,
+  testId,
+}: {
+  languages: LanguageListItem[];
+  selectedLanguageId: string;
+  onSelect: (languageId: string) => void;
+  testId?: string;
+}): ReactElement {
+  return (
+    <ItemGroup className="yv:gap-1" data-testid={testId}>
+      {languages.map((language) => (
+        <LanguageRow
+          key={language.id}
+          language={language}
+          onSelect={onSelect}
+          selectedLanguageId={selectedLanguageId}
+        />
+      ))}
+    </ItemGroup>
   );
 }
 
@@ -33,7 +105,7 @@ export function LanguagePanel({
 export function BibleLanguagePickerContent({
   open,
   onRequestClose,
-}: BibleLanguagePickerContentProps = {}): React.ReactElement {
+}: BibleLanguagePickerContentProps = {}): ReactElement {
   const { t } = useTranslation(undefined, { i18n });
   const interfaceDirection = useInterfaceDirection();
   const {
@@ -46,29 +118,48 @@ export function BibleLanguagePickerContent({
     languageSearchQuery,
     setLanguageSearchQuery,
     resetLanguageSearch,
+    closeLanguageSearch,
     isLoadingLanguages,
     background,
+    view,
+    setView,
+    headerOwnsChrome,
   } = useBibleVersionPickerContext();
 
   const [languageTab, setLanguageTab] = useState('suggested');
   const wasOpenRef = useRef(open ?? false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // RN standalone/Expo integrations keep this content mounted and toggle `open`;
-  // reset search so reopening starts on suggested/all tabs, not stale results.
+  // RN standalone/Expo integrations keep this content mounted and toggle `open`.
+  // Reopening should land on the language tabs, not a stale search screen.
   useEffect(() => {
     if (wasOpenRef.current && open === false) {
       resetLanguageSearch();
+      if (view === 'languageSearch') {
+        setView('languages');
+      }
     }
     wasOpenRef.current = open ?? false;
-  }, [open, resetLanguageSearch]);
+  }, [open, resetLanguageSearch, setView, view]);
 
-  const isSearching = languageSearchQuery.trim().length > 0;
+  useEffect(() => {
+    if (view !== 'languageSearch') return;
+    searchInputRef.current?.focus();
+    return () => {
+      const opener = document.querySelector<HTMLElement>('[data-slot="language-search-open"]');
+      const back = document.querySelector<HTMLElement>('[data-slot="language-back"]');
+      (opener ?? back)?.focus();
+    };
+  }, [view]);
 
   const handleSelectLanguage = (languageId: string) => {
     setSelectedLanguageId(languageId);
     resetLanguageSearch();
     onRequestClose?.();
   };
+
+  const searching = view === 'languageSearch';
+  const query = languageSearchQuery.trim();
 
   return (
     <div
@@ -78,105 +169,163 @@ export function BibleLanguagePickerContent({
       dir={interfaceDirection}
       data-open={open}
     >
-      {isSearching ? (
-        <div className="yv:mt-4 yv:flex-1 yv:min-h-0 yv:overflow-y-auto">
-          {isLoadingLanguages ? (
+      {searching ? (
+        <LanguageSearchView
+          closeLanguageSearch={closeLanguageSearch}
+          filteredLanguages={filteredLanguages}
+          headerOwnsChrome={headerOwnsChrome}
+          isLoadingLanguages={isLoadingLanguages}
+          languageSearchQuery={languageSearchQuery}
+          onQueryChange={setLanguageSearchQuery}
+          onSelect={handleSelectLanguage}
+          query={query}
+          searchInputRef={searchInputRef}
+          selectedLanguageId={selectedLanguageId}
+          suggestedLanguages={suggestedLanguages}
+        />
+      ) : (
+        <>
+          {headerOwnsChrome ? null : (
+            <div className="yv:flex yv:justify-end yv:px-4 yv:pt-4">
+              <LanguageSearchButton />
+            </div>
+          )}
+          <Tabs
+            className="yv:mt-4 yv:gap-4 yv:flex-1 yv:min-h-0 yv:flex yv:flex-col"
+            dir={interfaceDirection}
+            value={languageTab}
+            onValueChange={setLanguageTab}
+          >
+            <TabsList className="yv:mx-4 yv:w-[calc(100%-4*var(--spacing)*2)]">
+              <TabsTrigger className="yv:p-0" value="suggested">
+                {t('suggestedTab')}
+              </TabsTrigger>
+              <TabsTrigger className="yv:p-0" value="all">
+                {t('allLanguagesTab', { count: totalLanguages })}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="suggested" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
+              {suggestedLanguages.length > 0 ? (
+                <>
+                  <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">
+                    {t('regionalHeading')}
+                  </h3>
+                  <LanguageRows
+                    languages={suggestedLanguages}
+                    onSelect={handleSelectLanguage}
+                    selectedLanguageId={selectedLanguageId}
+                  />
+                </>
+              ) : (
+                <p className="yv:px-4 yv:py-8 yv:text-center yv:text-muted-foreground">
+                  {t('noRegionalLanguagesAvailable')}
+                </p>
+              )}
+            </TabsContent>
+
+            <TabsContent value="all" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
+              <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">
+                {t('allLanguagesHeading')}
+              </h3>
+              <LanguageRows
+                languages={languages}
+                onSelect={handleSelectLanguage}
+                selectedLanguageId={selectedLanguageId}
+              />
+            </TabsContent>
+          </Tabs>
+        </>
+      )}
+    </div>
+  );
+}
+
+function LanguageSearchView({
+  closeLanguageSearch,
+  filteredLanguages,
+  headerOwnsChrome,
+  isLoadingLanguages,
+  languageSearchQuery,
+  onQueryChange,
+  onSelect,
+  query,
+  searchInputRef,
+  selectedLanguageId,
+  suggestedLanguages,
+}: {
+  closeLanguageSearch: () => void;
+  filteredLanguages: LanguageListItem[];
+  headerOwnsChrome: boolean;
+  isLoadingLanguages: boolean;
+  languageSearchQuery: string;
+  onQueryChange: (query: string) => void;
+  onSelect: (languageId: string) => void;
+  query: string;
+  searchInputRef: RefObject<HTMLInputElement | null>;
+  selectedLanguageId: string;
+  suggestedLanguages: LanguageListItem[];
+}): ReactElement {
+  const { t } = useTranslation(undefined, { i18n });
+
+  return (
+    <>
+      {headerOwnsChrome ? null : (
+        <div className="yv:px-4 yv:pt-4">
+          <LanguageBackButton label={t('back')} onClick={closeLanguageSearch} />
+        </div>
+      )}
+      <section className="yv:p-4">
+        <InputGroup className="yv:bg-background yv:shadow-none yv:border-border">
+          <InputGroupInput
+            ref={searchInputRef}
+            aria-label={t('languageSearchAriaLabel')}
+            type="text"
+            placeholder={t('searchPlaceholder')}
+            dir="auto"
+            value={languageSearchQuery}
+            onChange={(event) => onQueryChange(event.target.value)}
+          />
+          <InputGroupAddon>
+            <SearchIcon className="yv:size-5 yv:text-muted-foreground" />
+          </InputGroupAddon>
+        </InputGroup>
+      </section>
+      <div className="yv:flex-1 yv:min-h-0 yv:overflow-y-auto">
+        {query ? (
+          isLoadingLanguages ? (
             <div className="yv:flex yv:flex-1 yv:items-center yv:justify-center yv:py-8">
               <LoaderIcon className="yv:size-6 yv:animate-spin yv:text-muted-foreground" />
             </div>
           ) : filteredLanguages.length > 0 ? (
-            <ItemGroup className="yv:gap-1" data-testid="language-search-results">
-              {filteredLanguages.map((language) => (
-                <LanguageRow
-                  key={language.id}
-                  language={language}
-                  onSelect={handleSelectLanguage}
-                  selectedLanguageId={selectedLanguageId}
-                />
-              ))}
-            </ItemGroup>
+            <LanguageRows
+              languages={filteredLanguages}
+              onSelect={onSelect}
+              selectedLanguageId={selectedLanguageId}
+              testId="language-search-results"
+            />
           ) : (
             <p className="yv:px-4 yv:py-8 yv:text-center yv:text-muted-foreground yv:text-sm">
               {t('noLanguageSearchResults')}
             </p>
-          )}
-        </div>
-      ) : (
-        <Tabs
-          className="yv:mt-4 yv:gap-4 yv:flex-1 yv:min-h-0 yv:flex yv:flex-col"
-          dir={interfaceDirection}
-          value={languageTab}
-          onValueChange={setLanguageTab}
-        >
-          <TabsList className="yv:mx-4 yv:w-[calc(100%-4*var(--spacing)*2)]">
-            <TabsTrigger className="yv:p-0" value="suggested">
-              {t('suggestedTab')}
-            </TabsTrigger>
-            <TabsTrigger className="yv:p-0" value="all">
-              {t('allLanguagesTab', { count: totalLanguages })}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="suggested" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
-            {suggestedLanguages.length > 0 ? (
-              <>
-                <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">
-                  {t('regionalHeading')}
-                </h3>
-                <ItemGroup className="yv:gap-1">
-                  {suggestedLanguages.map((suggestedLanguage) => (
-                    <LanguageRow
-                      key={suggestedLanguage.id}
-                      language={suggestedLanguage}
-                      onSelect={handleSelectLanguage}
-                      selectedLanguageId={selectedLanguageId}
-                    />
-                  ))}
-                </ItemGroup>
-              </>
-            ) : (
-              <p className="yv:px-4 yv:py-8 yv:text-center yv:text-muted-foreground">
-                {t('noRegionalLanguagesAvailable')}
-              </p>
-            )}
-          </TabsContent>
-
-          <TabsContent value="all" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
+          )
+        ) : suggestedLanguages.length > 0 ? (
+          <>
             <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">
-              {t('allLanguagesHeading')}
+              {t('regionalHeading')}
             </h3>
-            <ItemGroup className="yv:gap-1">
-              {languages.map((language) => (
-                <LanguageRow
-                  key={language.id}
-                  language={language}
-                  onSelect={handleSelectLanguage}
-                  selectedLanguageId={selectedLanguageId}
-                />
-              ))}
-            </ItemGroup>
-          </TabsContent>
-        </Tabs>
-      )}
-
-      <section className="yv:bg-muted yv:border-s yv:border-muted yv:p-4">
-        <div className="yv:grid yv:grid-cols-[1fr_auto] yv:gap-2">
-          <InputGroup className="yv:bg-background yv:shadow-none yv:border-border">
-            <InputGroupInput
-              aria-label={t('languageSearchAriaLabel')}
-              tabIndex={1}
-              type="text"
-              placeholder={t('searchPlaceholder')}
-              dir="auto"
-              value={languageSearchQuery}
-              onChange={(e) => setLanguageSearchQuery(e.target.value)}
+            <LanguageRows
+              languages={suggestedLanguages}
+              onSelect={onSelect}
+              selectedLanguageId={selectedLanguageId}
             />
-            <InputGroupAddon>
-              <SearchIcon className="yv:size-5 yv:text-muted-foreground" />
-            </InputGroupAddon>
-          </InputGroup>
-        </div>
-      </section>
-    </div>
+          </>
+        ) : (
+          <p className="yv:px-4 yv:py-8 yv:text-center yv:text-muted-foreground">
+            {t('noRegionalLanguagesAvailable')}
+          </p>
+        )}
+      </div>
+    </>
   );
 }

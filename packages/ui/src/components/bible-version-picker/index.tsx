@@ -31,14 +31,13 @@ import {
   useState,
 } from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronBackwardIcon } from '../icons/chevron-backward';
 import { GlobeIcon } from '../icons/globe';
 import { LoaderIcon } from '../icons/loader';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { useInterfaceDirection } from '@/lib/direction';
-import { LanguagePanel } from './language-panel';
+import { LanguageBackButton, LanguagePanel, LanguageSearchButton } from './language-panel';
 import { VersionList } from './version-list';
 
 export { BibleLanguagePickerContent } from './language-panel';
@@ -120,6 +119,8 @@ function filterLanguagesBySearch(languages: LanguageListItem[], query: string): 
   });
 }
 
+export type PickerView = 'versions' | 'languages' | 'languageSearch';
+
 type BibleVersionPickerContextType = {
   versionId: number;
   setVersionId: (versionId: number) => void;
@@ -136,12 +137,14 @@ type BibleVersionPickerContextType = {
   filteredLanguages: LanguageListItem[];
   isLoadingLanguages: boolean;
   closeLanguagePanel: () => void;
+  closeLanguageSearch: () => void;
   resetLanguageSearch: () => void;
   suggestedLanguages: Pick<Language, 'id' | 'display_names'>[];
   filteredVersions: BibleVersion[];
   filteredRecentVersions: RecentVersion[];
-  isLanguagesOpen: boolean;
-  setIsLanguagesOpen: (open: boolean) => void;
+  view: PickerView;
+  setView: (view: PickerView) => void;
+  headerOwnsChrome: boolean;
   recentVersions: RecentVersion[];
   addRecentVersion: (version: RecentVersion) => void;
   isPopoverOpen: boolean;
@@ -221,7 +224,7 @@ function Root({
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [languageSearchQuery, setLanguageSearchQuery] = useState('');
-  const [isLanguagesOpen, setIsLanguagesOpen] = useState(false);
+  const [view, setView] = useState<PickerView>('versions');
   const [recentVersions, setRecentVersions] = useState<RecentVersion[]>(getRecentVersions);
   const [isPopoverOpenRaw, setIsPopoverOpenRaw] = useState(false);
   const isPopoverOpen = onVersionPickerPress ? false : isPopoverOpenRaw;
@@ -232,7 +235,12 @@ function Root({
 
   const closeLanguagePanel = useCallback(() => {
     setLanguageSearchQuery('');
-    setIsLanguagesOpen(false);
+    setView('versions');
+  }, []);
+
+  const closeLanguageSearch = useCallback(() => {
+    setLanguageSearchQuery('');
+    setView('languages');
   }, []);
 
   const setIsPopoverOpen = useCallback(
@@ -242,7 +250,7 @@ function Root({
       if (!open) {
         setSearchQuery('');
         setLanguageSearchQuery('');
-        setIsLanguagesOpen(false);
+        setView('versions');
       }
     },
     [onVersionPickerPress],
@@ -386,12 +394,14 @@ function Root({
     filteredLanguages,
     isLoadingLanguages,
     closeLanguagePanel,
+    closeLanguageSearch,
     resetLanguageSearch,
     suggestedLanguages,
     filteredVersions,
     filteredRecentVersions,
-    isLanguagesOpen,
-    setIsLanguagesOpen,
+    view,
+    setView,
+    headerOwnsChrome: false,
     recentVersions,
     addRecentVersion,
     isPopoverOpen,
@@ -511,20 +521,15 @@ export function BibleVersionPickerLanguageTrigger({
 }: BibleVersionPickerLanguageTriggerProps): React.ReactElement {
   const { t } = useTranslation(undefined, { i18n });
   const interfaceDirection = useInterfaceDirection();
-  const {
-    filteredVersions,
-    filteredRecentVersions,
-    setIsLanguagesOpen,
-    selectedLanguageId,
-    versionsLoading,
-  } = useBibleVersionPickerContext();
+  const { filteredVersions, filteredRecentVersions, setView, selectedLanguageId, versionsLoading } =
+    useBibleVersionPickerContext();
   // Fetch the selected language details (may not be in the paginated languages list)
   const { language: selectedLanguage } = useLanguage(selectedLanguageId);
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     onClick?.(event);
     if (!event.defaultPrevented) {
-      setIsLanguagesOpen(true);
+      setView('languages');
     }
   };
 
@@ -560,71 +565,62 @@ export function BibleVersionPickerLanguageTrigger({
 }
 
 function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) {
+  const picker = useBibleVersionPickerContext();
   const { t } = useTranslation(undefined, { i18n });
   const {
     background,
     side,
-    isLanguagesOpen,
+    view,
     setIsPopoverOpen,
     closeLanguagePanel,
+    closeLanguageSearch,
     onVersionPickerPress,
-  } = useBibleVersionPickerContext();
+  } = picker;
 
   if (onVersionPickerPress && open === undefined && !onRequestClose) {
     return null;
   }
 
   if (open === undefined && !onRequestClose) {
+    const heading =
+      view === 'versions'
+        ? t('bibleVersionsHeading')
+        : view === 'languageSearch'
+          ? t('searchLanguages')
+          : t('selectLanguageHeading');
+
     return (
-      <PopoverContent
-        sideOffset={16}
-        className="yv:h-[66svh]"
-        heading={isLanguagesOpen ? t('selectLanguageHeading') : t('bibleVersionsHeading')}
-        headerLeading={
-          isLanguagesOpen ? (
-            <Button
-              onClick={closeLanguagePanel}
-              variant="ghost"
-              size="icon"
-              className="yv:w-6 yv:h-6 yv:text-muted-foreground"
-            >
-              <ChevronBackwardIcon className="yv:size-5" />
-              <span className="yv:sr-only">{t('backToBibleVersionsAriaLabel')}</span>
-            </Button>
-          ) : null
-        }
-        headerChild={
-          <BibleVersionPickerLanguageTrigger
-            disabled={isLanguagesOpen}
-            style={
-              isLanguagesOpen ? { visibility: 'hidden', opacity: 0, pointerEvents: 'none' } : {}
-            }
-          />
-        }
-        theme={background}
-        side={side}
-      >
-        <div className="yv:relative yv:min-h-0 yv:overflow-hidden">
-          <div
-            className={`yv:h-full yv:min-h-0 yv:overflow-hidden yv:transition-all yv:duration-300 yv:ease-out yv:motion-reduce:transition-none ${
-              isLanguagesOpen
-                ? 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
-                : 'yv:opacity-100 yv:pointer-events-auto yv:blur-none yv:scale-100'
-            }`}
-          >
+      <BibleVersionPickerContext.Provider value={{ ...picker, headerOwnsChrome: true }}>
+        <PopoverContent
+          sideOffset={16}
+          className="yv:h-[66svh]"
+          heading={heading}
+          showClose={view === 'versions'}
+          headerLeading={
+            view === 'versions' ? null : (
+              <LanguageBackButton
+                label={view === 'languageSearch' ? t('back') : t('backToBibleVersionsAriaLabel')}
+                onClick={view === 'languageSearch' ? closeLanguageSearch : closeLanguagePanel}
+              />
+            )
+          }
+          headerChild={
+            view === 'versions' ? (
+              <BibleVersionPickerLanguageTrigger />
+            ) : view === 'languages' ? (
+              <LanguageSearchButton />
+            ) : null
+          }
+          theme={background}
+          side={side}
+        >
+          {view === 'versions' ? (
             <VersionList onRequestClose={() => setIsPopoverOpen(false)} />
-          </div>
-          <div
-            className={`yv:h-full yv:min-h-0 yv:overflow-hidden yv:absolute yv:inset-0 yv:transition-all yv:duration-300 yv:ease-out yv:motion-reduce:transition-none ${
-              isLanguagesOpen
-                ? 'yv:opacity-100 yv:pointer-events-auto yv:blur-none yv:scale-100'
-                : 'yv:opacity-0 yv:pointer-events-none yv:blur-sm yv:scale-95'
-            }`}
-          >
+          ) : (
             <LanguagePanel onRequestClose={closeLanguagePanel} />
-          </div>
-        </div>
-      </PopoverContent>
+          )}
+        </PopoverContent>
+      </BibleVersionPickerContext.Provider>
     );
   }
 
