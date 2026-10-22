@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import { stripLayerBlocks } from './strip-layer-blocks.js';
 
 const uiRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -8,6 +9,16 @@ const dist = resolve(uiRoot, 'dist');
 const errors = [];
 const packageJson = JSON.parse(readFileSync(resolve(uiRoot, 'package.json'), 'utf8'));
 const publicCssExport = packageJson.exports?.['./styles.css'];
+
+// Tailwind --watch (and a concurrent build) can rewrite dist CSS after
+// build:css already ran preserve-host-revert-layer. Re-apply before gating.
+spawnSync(
+  process.execPath,
+  [resolve(dirname(fileURLToPath(import.meta.url)), 'preserve-host-revert-layer.js')],
+  {
+    stdio: 'inherit',
+  },
+);
 
 const chromeCssPath = resolve(dist, 'chrome.css');
 const chromeCss = existsSync(chromeCssPath) ? readFileSync(chromeCssPath, 'utf-8') : '';
