@@ -842,7 +842,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
       dir={interfaceDirection}
     >
       {/* Versions View */}
-      <div className="yv:flex-1 yv:overflow-y-auto yv:py-2">
+      <div className="yv:flex-1 yv:overflow-y-auto yv:py-2" tabIndex={-1}>
         {/* Recent Versions */}
         {filteredRecentVersions.length > 0 && (
           <>
