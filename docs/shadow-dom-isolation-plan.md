@@ -157,37 +157,25 @@ release-candidate validation below.
 ### YPE-6214 final release-candidate Safari validation
 
 YPE-6214 completed the final actual-Safari gate after the release-blocking
-shared-host changes.
-
-| Field | Evidence |
-| --- | --- |
-| Runtime commit | `d495aab3c1fb54634efcdd2dc5f04c6ab0ab7c3f` |
-| Date and operator | 2026-10-21; Codex on Austin Harms's local machine |
-| Environment | macOS 26.6.2 (25G83); Safari 26.6.2; SafariDriver 21624.5.1.11.3 |
-| Command | `pnpm --filter @youversion/platform-react-ui test:shadow-safari` |
-| Discovered stories | 41 focused Shadow DOM stories |
-| Final result | 41/41 passed in fresh SafariDriver sessions. Every story passed on its first attempt with no assertion failures, transport retries, or process timeouts. |
+shared-host changes. The completion decision is the durable repository
+conclusion; manual execution details remain in the YPE-6214 ticket and its pull
+request.
 
 The standalone-picker first-paint and layout review used the existing
 `Explicit Light Theme Under Dark Provider` chapter-picker story and
-`Top Layer Escapes Clipping And Preserves Semantics` version-picker story in
-Safari at a 1440 by 1000 review viewport against the runtime commit above. At
-first paint, each client-only host reserved no picker-content space. The compact
-trigger then appeared after the passive-effect reveal, so trigger-sized movement
-of nearby layout remains an accepted limitation. No larger picker panel moved
-document layout. After reveal, the chapter picker's header, book rows, chapter
-grid, search control, and trigger were fully visible with consistent spacing and
-no overlap or clipping. The version picker escaped its constrained ancestor,
-remained fully inside the viewport, and kept its header controls, version rows,
-typography, search control, and trigger aligned without clipping or malformed
-spacing. Without JavaScript, the client-only host remains empty, so neither the
-trigger nor the picker renders. This is a qualitative acceptance of the
-documented pop-in risk, not a zero-CLS or performance claim.
+`Top Layer Escapes Clipping And Preserves Semantics` version-picker story. The
+review accepted that each client-only host reserves no picker-content space at
+first paint, then reveals a compact trigger after the passive-effect mount and
+can cause trigger-sized movement of nearby layout. The top-layer picker panels
+do not move document layout. Without JavaScript, the client-only host remains
+empty, so neither the trigger nor the picker renders. These are qualitative
+acceptances of the documented client-only boundary, not zero-CLS or performance
+claims.
 
-Repository documentation retains this aggregate execution context, outcome,
-and acceptance decision; it does not retain per-story runner output or local
-execution artifacts. Repeat actual-Safari validation after future rollout-policy
-trigger changes.
+Repository documentation for YPE-6214 does not retain manual execution metadata,
+per-story results, screenshots, raw terminal output, or other local test
+artifacts. Repeat actual-Safari validation after future rollout-policy trigger
+changes.
 
 ### Assistive-technology evidence
 
