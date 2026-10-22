@@ -18,6 +18,9 @@ import {
 } from './index';
 import { LanguageRow } from './language-row';
 
+const languageTabClassName =
+  'yv:p-0 yv:text-muted-foreground! yv:data-[state=active]:bg-foreground! yv:data-[state=active]:text-background! yv:data-[state=active]:shadow-none!';
+
 export function LanguageSearchButton(): ReactElement {
   const { t } = useTranslation(undefined, { i18n });
   const { setView } = useBibleVersionPickerContext();
@@ -197,10 +200,10 @@ export function BibleLanguagePickerContent({
             onValueChange={setLanguageTab}
           >
             <TabsList className="yv:mx-4 yv:w-[calc(100%-4*var(--spacing)*2)]">
-              <TabsTrigger className="yv:p-0" value="suggested">
+              <TabsTrigger className={languageTabClassName} value="suggested">
                 {t('suggestedTab')}
               </TabsTrigger>
-              <TabsTrigger className="yv:p-0" value="all">
+              <TabsTrigger className={languageTabClassName} value="all">
                 {t('allLanguagesTab', { count: totalLanguages })}
               </TabsTrigger>
             </TabsList>
@@ -208,7 +211,7 @@ export function BibleLanguagePickerContent({
             <TabsContent value="suggested" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
               {suggestedLanguages.length > 0 ? (
                 <>
-                  <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">
+                  <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-xl yv:font-bold">
                     {t('regionalHeading')}
                   </h3>
                   <LanguageRows
@@ -225,7 +228,7 @@ export function BibleLanguagePickerContent({
             </TabsContent>
 
             <TabsContent value="all" className="yv:overflow-y-auto yv:flex-1 yv:min-h-0">
-              <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">
+              <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-xl yv:font-bold">
                 {t('allLanguagesHeading')}
               </h3>
               <LanguageRows
@@ -311,7 +314,7 @@ function LanguageSearchView({
           )
         ) : suggestedLanguages.length > 0 ? (
           <>
-            <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-lg yv:font-bold">
+            <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-xl yv:font-bold">
               {t('regionalHeading')}
             </h3>
             <LanguageRows

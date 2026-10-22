@@ -18,6 +18,7 @@ import {
   type BibleVersionPickerContentProps,
   type RecentVersion,
 } from './index';
+import { languageRowNames } from './language-row';
 
 // The name is resolved once at the list level and passed in, so rows sharing a
 // publisher don't each fire their own request. Renders nothing when no name is
@@ -112,10 +113,9 @@ function LanguageEntry(): ReactElement {
   const { filteredVersions, filteredRecentVersions, selectedLanguageId, setView, versionsLoading } =
     useBibleVersionPickerContext();
   const { language } = useLanguage(selectedLanguageId);
-  const name =
-    language?.display_names?.[selectedLanguageId] ||
-    language?.display_names?.en ||
-    selectedLanguageId;
+  const name = language
+    ? languageRowNames({ id: selectedLanguageId, display_names: language.display_names }).primary
+    : selectedLanguageId;
   const count = filteredVersions.length + filteredRecentVersions.length;
 
   return (
