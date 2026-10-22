@@ -180,7 +180,7 @@ async function openPicker() {
 
 async function openLanguagePanel() {
   await openPicker();
-  await userEvent.click(screen.getByRole('button', { name: /select a language/i }));
+  await userEvent.click(screen.getByRole('button', { name: /^language /i }));
 }
 
 async function openLanguageSearch() {
@@ -525,7 +525,7 @@ describe('BibleVersionPicker', () => {
       expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
       expect(screen.getByTestId('version-list')).toBeInTheDocument();
 
-      await user.click(screen.getByRole('button', { name: /select a language/i }));
+      await user.click(screen.getByRole('button', { name: /^language /i }));
 
       expect(screen.getByRole('heading', { name: /select a language/i })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
@@ -673,7 +673,7 @@ describe('BibleVersionPicker', () => {
       expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
 
       await user.click(screen.getByRole('button', { name: /back to bible versions/i }));
-      await user.click(screen.getByRole('button', { name: /select a language/i }));
+      await user.click(screen.getByRole('button', { name: /^language /i }));
       await user.click(screen.getByRole('button', { name: /search languages/i }));
 
       expect(getLanguageSearchInput()).toHaveValue('');
@@ -739,7 +739,7 @@ it('applies interface direction to its portaled content and Radix tabs', async (
   const trigger = screen.getByRole('button', { name: 'NIV' });
   expect(trigger.querySelector('bdi')).toHaveAttribute('dir', 'auto');
   await userEvent.click(trigger);
-  await userEvent.click(screen.getByRole('button', { name: /select (?:a )?language/i }));
+  await userEvent.click(screen.getByRole('button', { name: /^language /i }));
 
   expect(trigger).toHaveAttribute('dir', 'rtl');
   expect(screen.getByRole('dialog')).toHaveAttribute('dir', 'rtl');

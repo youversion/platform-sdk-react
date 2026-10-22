@@ -604,13 +604,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
               />
             )
           }
-          headerChild={
-            view === 'versions' ? (
-              <BibleVersionPickerLanguageTrigger />
-            ) : view === 'languages' ? (
-              <LanguageSearchButton />
-            ) : null
-          }
+          headerChild={view === 'languages' ? <LanguageSearchButton /> : null}
           theme={background}
           side={side}
         >

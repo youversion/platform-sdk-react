@@ -5,8 +5,10 @@ import i18n from '@/i18n';
 import { useInterfaceDirection } from '@/lib/direction';
 import { cn } from '@/lib/utils';
 import { type BibleVersion } from '@youversion/platform-core';
-import { useOrganizations } from '@youversion/platform-react-hooks';
+import { useLanguage, useOrganizations } from '@youversion/platform-react-hooks';
 import { useEffect, useRef, useState, type ReactElement } from 'react';
+import { ChevronForwardIcon } from '../icons/chevron-forward';
+import { GlobeIcon } from '../icons/globe';
 import { LoaderIcon } from '../icons/loader';
 import { SearchIcon } from '../icons/search';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '../ui/input-group';
@@ -105,6 +107,36 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
   );
 }
 
+function LanguageEntry(): ReactElement {
+  const { t } = useTranslation(undefined, { i18n });
+  const { filteredVersions, filteredRecentVersions, selectedLanguageId, setView, versionsLoading } =
+    useBibleVersionPickerContext();
+  const { language } = useLanguage(selectedLanguageId);
+  const name =
+    language?.display_names?.[selectedLanguageId] ||
+    language?.display_names?.en ||
+    selectedLanguageId;
+  const count = filteredVersions.length + filteredRecentVersions.length;
+
+  return (
+    <button
+      type="button"
+      className="yv:flex yv:w-full yv:items-center yv:gap-3 yv:px-4 yv:py-3 yv:text-start yv:hover:bg-muted"
+      onClick={() => setView('languages')}
+    >
+      <GlobeIcon className="yv:size-5 yv:shrink-0" />
+      <span className="yv:min-w-0 yv:flex-1 yv:truncate">
+        <span className="yv:text-sm yv:font-medium">{t('language')}</span>{' '}
+        <bdi dir="auto">{name}</bdi>
+      </span>
+      <span className="yv:text-sm yv:tabular-nums">
+        {versionsLoading ? <LoaderIcon className="yv:size-4 yv:animate-spin" /> : ` ${count}`}
+      </span>
+      <ChevronForwardIcon className="yv:size-5 yv:shrink-0" />
+    </button>
+  );
+}
+
 export function VersionList({
   open,
   onRequestClose,
@@ -162,6 +194,25 @@ export function VersionList({
       data-yv-theme={background}
       dir={interfaceDirection}
     >
+      <div className="yv:shrink-0">
+        <section className="yv:px-4 yv:pt-4">
+          <InputGroup className="yv:bg-background yv:shadow-none yv:border-border">
+            <InputGroupInput
+              aria-label={t('versionSearchAriaLabel')}
+              tabIndex={1}
+              type="text"
+              placeholder={t('searchPlaceholder')}
+              dir="auto"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            ></InputGroupInput>
+            <InputGroupAddon>
+              <SearchIcon className="yv:size-5 yv:text-muted-foreground" />
+            </InputGroupAddon>
+          </InputGroup>
+        </section>
+        <LanguageEntry />
+      </div>
       <div className="yv:flex-1 yv:overflow-y-auto yv:py-2">
         {filteredRecentVersions.length > 0 && (
           <>
@@ -252,25 +303,6 @@ export function VersionList({
           </div>
         ) : null}
       </div>
-
-      <section className="yv:bg-muted yv:border-s yv:border-muted yv:p-4">
-        <div className="yv:grid yv:grid-cols-[1fr_auto] yv:gap-2">
-          <InputGroup className="yv:bg-background yv:shadow-none yv:border-border">
-            <InputGroupInput
-              aria-label={t('versionSearchAriaLabel')}
-              tabIndex={1}
-              type="text"
-              placeholder={t('searchPlaceholder')}
-              dir="auto"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            ></InputGroupInput>
-            <InputGroupAddon>
-              <SearchIcon className="yv:size-5 yv:text-muted-foreground" />
-            </InputGroupAddon>
-          </InputGroup>
-        </div>
-      </section>
     </div>
   );
 }
