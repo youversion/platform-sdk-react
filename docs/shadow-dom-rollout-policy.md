@@ -7,7 +7,7 @@ components. Every included implementation group is present on the coordinated
 release branch, but this document does not claim that the major release has
 shipped. Publishing remains gated by the YPE-5952 package, browser, and
 assistive-technology validation below. The final release-candidate actual-Safari
-decision is recorded in the
+result is recorded in the
 [validation plan](shadow-dom-isolation-plan.md#ype-6214-final-release-candidate-safari-validation);
 the bounded Safari/VoiceOver validation is complete, while Windows with NVDA
 was not run because no test environment was available and remains explicitly
@@ -119,7 +119,7 @@ supported component contract.
 | Opening a peer popover dismisses the current peer across component roots | Accepted | Keep the single-active-peer behavior. Supporting concurrent peer popovers would require a demonstrated product journey and separate design. |
 | Nested-dialog and rapid-reopen final focus restoration | Accepted | Preserve the behavior resolved by YPE-5889/PR 414 as regression coverage rather than duplicating the implementation in rollout tickets. |
 | Stylesheet construction or adoption can throw | Resolved by YPE-5947 | Construction, replacement, and adoption failures recover to the local `<style>` path without losing component rendering; later roots can still use the per-document constructable sheet. |
-| Playwright WebKit is not actual Safari | Release-candidate run complete; future trigger | Keep the completed actual-Safari gate and accepted limitations in the [validation plan](shadow-dom-isolation-plan.md#ype-6214-final-release-candidate-safari-validation). Repeat after changes to the host, stylesheet installation, portal controller, focus controller, or other significant platform seams. |
+| Playwright WebKit is not actual Safari | Release-candidate run complete; future trigger | Keep the aggregate actual-Safari execution context, outcome, and accepted limitations in the [validation plan](shadow-dom-isolation-plan.md#ype-6214-final-release-candidate-safari-validation). Repeat after changes to the host, stylesheet installation, portal controller, focus controller, or other significant platform seams. |
 | Release-candidate screen-reader evidence | Accepted with an explicit validation gap | The bounded YPE-5952 Safari/VoiceOver pass is complete. Chrome-or-Edge/NVDA was not run because no Windows environment was available and remains unvalidated. Record exact versions and per-journey results only for combinations actually tested; do not generalize beyond them. |
 
 ## Implementation plan
@@ -182,9 +182,9 @@ boundary.
 The dependency-ordered component groups, YPE-5994, and YPE-6040 are complete.
 YPE-5889 and YPE-5946 provide reusable focus-restoration and cross-browser
 evidence. YPE-5952 owns the bounded human assistive-technology validation,
-consumer documentation, and major-release gate. Its final actual-Safari decision
+consumer documentation, and major-release gate. Its final actual-Safari result
 and Safari/VoiceOver results, plus the explicit Windows/NVDA validation gap, are
-recorded in the validation plan: the [final actual-Safari decision](shadow-dom-isolation-plan.md#ype-6214-final-release-candidate-safari-validation)
+recorded in the validation plan: the [final actual-Safari result](shadow-dom-isolation-plan.md#ype-6214-final-release-candidate-safari-validation)
 and the [Safari/VoiceOver result](shadow-dom-isolation-plan.md#assistive-technology-evidence).
 
 ## Validation gates
@@ -193,8 +193,11 @@ and the [Safari/VoiceOver result](shadow-dom-isolation-plan.md#assistive-technol
 
 - Existing unit, type, lint, build, export, and compiled-style checks pass.
 - The focused Shadow DOM suite passes Chromium, Firefox, and Playwright WebKit.
-- Keep the final actual-Safari gate decision and accepted limitations in the
+- Keep the aggregate final actual-Safari execution context, outcome, and
+  accepted limitations in the
   [validation plan](shadow-dom-isolation-plan.md#ype-6214-final-release-candidate-safari-validation).
+  Repository documentation does not retain per-story runner output or local
+  execution artifacts.
   Repeat after changes to the host, stylesheet installation, portal controller,
   focus controller, or other significant platform seams.
 - YPE-5437's Normal and Strict Mode mount/remove/remount fixture stays green and

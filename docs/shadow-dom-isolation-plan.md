@@ -14,8 +14,8 @@ architectural decision behind automatic Shadow DOM isolation. This document trac
 the implementation evidence, unresolved audits, and coordinated-release
 validation for the approved public boundary.
 
-This is an evidence inventory and release-candidate plan, not a claim that the
-major release or any pending manual validation has completed.
+This is an evidence inventory and release-candidate plan. The manual validation
+recorded below is complete, but the major release has not shipped.
 
 ## Current scope
 
@@ -126,7 +126,10 @@ single shared session is not acceptable evidence.
 | Focused story count and per-story results | 38/38 passed. The final candidate matrix used one fresh process and SafariDriver session per story: 36 stories passed on their first attempt, 1 passed on its second attempt after SafariDriver retained the preceding session, and the Bible Card version-picker story passed in a direct isolated rerun after its matrix process exceeded the 120-second limit without producing a test result. |
 | Failures, linked blockers, or reruns | The final candidate evidence had 0 assertion failures. One recognized SafariDriver session-handoff failure used one bounded transport retry. One generic process timeout was surfaced as a matrix failure, was not automatically retried, and passed in a direct isolated rerun in 1.1 seconds. The runner permits at most two retries only for recognized transport failures; generic process timeouts, story assertion failures, and interaction failures are not retried. |
 
-### YPE-6216 actual Safari host-change revalidation
+### Historical YPE-6216 actual Safari host-change revalidation
+
+This run is retained as historical evidence and is superseded by the YPE-6214
+final release-candidate validation below.
 
 | Field | Evidence |
 | --- | --- |
@@ -136,7 +139,7 @@ single shared session is not acceptable evidence.
 | Command | `pnpm --filter @youversion/platform-react-ui test:shadow-safari` |
 | Result | 39/39 focused stories passed in fresh SafariDriver sessions. Every story passed on its first attempt with no assertion failures, transport retries, or process timeouts. `Suspense Reveal Restores Host Layout` passed in its isolated run. |
 
-### YPE-6217 actual Safari stylesheet revalidation
+### Historical YPE-6217 actual Safari stylesheet revalidation
 
 YPE-6217 changed the automatic-root stylesheet installation path, which triggers
 another actual-Safari run under the rollout policy. On 2026-10-15, commit
@@ -147,17 +150,44 @@ exercised all 38 focused stories in a fresh SafariDriver session per story. All
 38 passed on their first attempt with zero assertion failures, transport
 retries, or process timeouts. The run included both realistic-usage stories,
 whose assertions verify that automatic roots share the adopted component and
-reader stylesheets without installing redundant local `<style>` resources.
+reader stylesheets without installing redundant local `<style>` resources. This
+run is retained as historical evidence and is superseded by the YPE-6214 final
+release-candidate validation below.
 
 ### YPE-6214 final release-candidate Safari validation
 
 YPE-6214 completed the final actual-Safari gate after the release-blocking
-shared-host changes. The standalone chapter- and version-picker first-paint and
-layout limitations were reviewed using existing stories and accepted.
-Client-only triggers can appear after the passive-effect mount and cause
-trigger-sized layout movement; their top-layer panels do not move document
-layout. Repeat actual-Safari validation after future rollout-policy trigger
-changes.
+shared-host changes.
+
+| Field | Evidence |
+| --- | --- |
+| Runtime commit | `d495aab3c1fb54634efcdd2dc5f04c6ab0ab7c3f` |
+| Date and operator | 2026-10-21; Codex on Austin Harms's local machine |
+| Environment | macOS 26.6.2 (25G83); Safari 26.6.2; SafariDriver 21624.5.1.11.3 |
+| Command | `pnpm --filter @youversion/platform-react-ui test:shadow-safari` |
+| Discovered stories | 41 focused Shadow DOM stories |
+| Final result | 41/41 passed in fresh SafariDriver sessions. Every story passed on its first attempt with no assertion failures, transport retries, or process timeouts. |
+
+The standalone-picker first-paint and layout review used the existing
+`Explicit Light Theme Under Dark Provider` chapter-picker story and
+`Top Layer Escapes Clipping And Preserves Semantics` version-picker story in
+Safari at a 1440 by 1000 review viewport against the runtime commit above. At
+first paint, each client-only host reserved no picker-content space. The compact
+trigger then appeared after the passive-effect reveal, so trigger-sized movement
+of nearby layout remains an accepted limitation. No larger picker panel moved
+document layout. After reveal, the chapter picker's header, book rows, chapter
+grid, search control, and trigger were fully visible with consistent spacing and
+no overlap or clipping. The version picker escaped its constrained ancestor,
+remained fully inside the viewport, and kept its header controls, version rows,
+typography, search control, and trigger aligned without clipping or malformed
+spacing. Without JavaScript, the client-only host remains empty, so neither the
+trigger nor the picker renders. This is a qualitative acceptance of the
+documented pop-in risk, not a zero-CLS or performance claim.
+
+Repository documentation retains this aggregate execution context, outcome,
+and acceptance decision; it does not retain per-story runner output or local
+execution artifacts. Repeat actual-Safari validation after future rollout-policy
+trigger changes.
 
 ### Assistive-technology evidence
 
@@ -200,7 +230,7 @@ SafariDriver journeys also passed, including explicit close and Escape focus
 restoration. The completed YPE-6181 implementation at
 `8f99e6c0d161bdb04cc8ab06a06933bf08992848` then passed the full focused actual
 Safari matrix: 38/38 stories passed with one fresh process and SafariDriver
-session per story. This final run included both picker journeys, their
+session per story. This pre-YPE-6214 run included both picker journeys, their
 first-mount and retained-content rapid-close-and-reopen paths, and the shared
 overlay production seams. Thirty-six stories passed on their first attempt; two
 shared-overlay stories passed after bounded SafariDriver transport retries. No
