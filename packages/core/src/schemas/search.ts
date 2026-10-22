@@ -71,8 +71,8 @@ export function parseSearchLanguageRange(range: string): string {
 }
 
 /** Validates and normalizes one or more search language ranges. */
-export function parseLanguageRanges(languageRanges: string | string[]): string[] {
-  const rangeArray = Array.isArray(languageRanges) ? languageRanges : [languageRanges];
+export function parseLanguageRanges(languageRanges: string | readonly string[]): string[] {
+  const rangeArray = Array.isArray(languageRanges) ? [...languageRanges] : [languageRanges];
   z.array(z.string())
     .check(z.minLength(1, 'At least one language range is required'))
     .parse(rangeArray);
@@ -281,7 +281,18 @@ export const SearchUnifiedOptionsSchema = z.object({
   fields: z.optional(SearchUnifiedFieldsSchema),
 });
 
-export type SearchUnifiedOptions = z.infer<typeof SearchUnifiedOptionsSchema>;
+type SearchUnifiedOptionsParsed = z.infer<typeof SearchUnifiedOptionsSchema>;
+
+export type SearchUnifiedOptions = Readonly<{
+  userIntent?: SearchUnifiedOptionsParsed['userIntent'];
+  fields?: readonly SearchUnifiedField[];
+}>;
+
+const SearchUnifiedTopicHitWireSchema = z.extend(SearchTopicWireSchema, {
+  id: z.nullable(z.int()),
+});
+
+export type SearchUnifiedTopicHitWire = z.infer<typeof SearchUnifiedTopicHitWireSchema>;
 
 export const SearchImageHitSchema = z.object({
   id: z.string().check(z.minLength(1)),
@@ -298,12 +309,12 @@ const SearchImageHitWireSchema = z.object({
 type SearchImageHitWire = z.infer<typeof SearchImageHitWireSchema>;
 
 export const SearchUnifiedWireSchema = z.object({
-  verses: z.array(SearchVerseHitWireSchema),
-  topics: z.array(z.extend(SearchTopicWireSchema, { id: z.nullable(z.int()) })),
+  verses: z.optional(z.array(z.unknown())),
+  topics: z.optional(z.array(z.unknown())),
+  user_intent: z.optional(z.nullable(z.string())),
+  did_you_mean: z.optional(z.array(z.string())),
+  search_instead_for: z.optional(z.nullable(z.string())),
   images: z.optional(z.array(z.unknown())),
-  user_intent: z.nullable(z.string()),
-  did_you_mean: z.array(z.string()),
-  search_instead_for: z.nullable(z.string()),
 });
 
 export type SearchUnifiedWire = z.infer<typeof SearchUnifiedWireSchema>;
@@ -340,16 +351,29 @@ function toSearchImageHit(wire: SearchImageHitWire): SearchImageHit | null {
 
 export function toSearchUnifiedResponse(wire: SearchUnifiedWire): SearchUnifiedResponse {
   const response: SearchUnifiedResponse = {
-    verses: wire.verses.map(toSearchVerseHit).filter((hit): hit is SearchVerseHit => hit !== null),
-    topics: wire.topics.map(toSearchTopic),
+    verses: (wire.verses ?? []).flatMap((hit) => {
+      const parsed = SearchVerseHitWireSchema.safeParse(hit);
+      if (!parsed.success) {
+        return [];
+      }
+      const verse = toSearchVerseHit(parsed.data);
+      return verse === null ? [] : [verse];
+    }),
+    topics: (wire.topics ?? []).flatMap((hit) => {
+      const parsed = SearchUnifiedTopicHitWireSchema.safeParse(hit);
+      if (!parsed.success) {
+        return [];
+      }
+      return [toSearchTopic(parsed.data)];
+    }),
     images: (wire.images ?? [])
       .map((hit) => {
         const parsed = SearchImageHitWireSchema.safeParse(hit);
         return parsed.success ? toSearchImageHit(parsed.data) : null;
       })
       .filter((hit): hit is SearchImageHit => hit !== null),
-    didYouMean: wire.did_you_mean,
-    searchInsteadFor: wire.search_instead_for,
+    didYouMean: wire.did_you_mean ?? [],
+    searchInsteadFor: wire.search_instead_for ?? null,
   };
   if (wire.user_intent != null) {
     return { ...response, userIntent: wire.user_intent };
