@@ -19,7 +19,7 @@ import {
 import { LanguageRow } from './language-row';
 
 const languageTabClassName =
-  'yv:p-0 yv:text-muted-foreground! yv:data-[state=active]:bg-foreground! yv:data-[state=active]:text-background! yv:data-[state=active]:shadow-none!';
+  'yv:rounded-full yv:p-0 yv:text-sm yv:font-bold yv:text-foreground! yv:data-[state=active]:bg-foreground! yv:data-[state=active]:text-background! yv:data-[state=active]:shadow-none!';
 
 export const LanguageSearchButton = forwardRef<HTMLButtonElement>(
   function LanguageSearchButton(_props, ref): ReactElement {
@@ -182,7 +182,7 @@ export function BibleLanguagePickerContent({
   return (
     <div
       ref={panelRootRef}
-      className="yv:h-full yv:min-h-0 yv:overflow-hidden yv:flex yv:flex-col"
+      className="yv:h-full yv:min-h-0 yv:overflow-hidden yv:flex yv:flex-col yv:font-sans"
       data-yv-sdk
       data-yv-theme={background}
       dir={interfaceDirection}
@@ -216,7 +216,7 @@ export function BibleLanguagePickerContent({
             value={languageTab}
             onValueChange={setLanguageTab}
           >
-            <TabsList className="yv:mx-4 yv:w-[calc(100%-4*var(--spacing)*2)]">
+            <TabsList className="yv:mx-4 yv:w-[calc(100%-4*var(--spacing)*2)] yv:rounded-full yv:border yv:border-border yv:bg-transparent yv:p-0.5">
               <TabsTrigger className={languageTabClassName} value="suggested">
                 {t('suggestedTab')}
               </TabsTrigger>

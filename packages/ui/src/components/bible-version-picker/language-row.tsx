@@ -36,7 +36,7 @@ export function LanguageRow({
   return (
     <Item
       className={cn(
-        'yv:hover:bg-muted yv:rounded-[8px] yv:px-4 yv:py-5',
+        'yv:hover:bg-muted yv:rounded-lg yv:px-4 yv:py-3',
         selectedLanguageId === language.id ? 'yv:bg-muted' : '',
       )}
       size="default"
@@ -46,17 +46,17 @@ export function LanguageRow({
       asChild
     >
       <Button
-        className="yv:w-full yv:h-auto"
+        className="yv:w-full yv:h-auto yv:min-h-12"
         onClick={() => onSelect(language.id)}
         type="button"
         variant="ghost"
       >
-        <ItemContent className="yv:flex yv:flex-row yv:flex-wrap yv:items-baseline yv:justify-start yv:gap-3">
-          <ItemTitle className="yv:text-start yv:shrink-0">
+        <ItemContent className="yv:flex yv:flex-row yv:flex-wrap yv:items-baseline yv:justify-start yv:gap-2">
+          <ItemTitle className="yv:text-start yv:shrink-0 yv:text-base yv:font-normal yv:leading-[1.25]">
             <bdi dir="auto">{primary}</bdi>
           </ItemTitle>
           {secondary ? (
-            <ItemDescription className="yv:text-start yv:shrink-0">
+            <ItemDescription className="yv:text-start yv:shrink-0 yv:text-[11px] yv:font-medium yv:leading-4">
               <bdi dir="auto">{secondary}</bdi>
             </ItemDescription>
           ) : null}
