@@ -157,9 +157,10 @@ release-candidate validation below.
 ### YPE-6214 final release-candidate Safari validation
 
 YPE-6214 completed the final actual-Safari gate after the release-blocking
-shared-host changes. The completion decision is the durable repository
-conclusion; manual execution details remain in the YPE-6214 ticket and its pull
-request.
+shared-host changes. The validation ran against runtime commit
+`d495aab3c1fb54634efcdd2dc5f04c6ab0ab7c3f`. The completion decision and
+baseline commit are the durable repository conclusions; the remaining manual
+execution details live in [pull request #455](https://github.com/youversion/platform-sdk-react/pull/455).
 
 The standalone-picker first-paint and layout review used the existing
 `Explicit Light Theme Under Dark Provider` chapter-picker story and

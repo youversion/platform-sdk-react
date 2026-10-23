@@ -42,8 +42,10 @@ not add runtime rollout controls or phased-release infrastructure.
 
 See the
 [release-candidate evidence](https://github.com/youversion/platform-sdk-react/blob/main/docs/shadow-dom-isolation-plan.md#ype-5952-release-candidate-validation)
-for environments, browser and assistive-technology results, per-journey results,
-and remaining validation gaps.
+for the automated browser matrix, assistive-technology environments and
+per-journey results, and remaining validation gaps. The
+[final actual-Safari gate decision](https://github.com/youversion/platform-sdk-react/blob/main/docs/shadow-dom-isolation-plan.md#ype-6214-final-release-candidate-safari-validation)
+records the accepted standalone-picker limitations and future rerun requirement.
 
 Shared popover dialogs now derive an accessible name from their visible heading
 unless the consumer provides an explicit label. The reader sign-in and sign-out
