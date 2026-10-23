@@ -58,7 +58,10 @@ const trending = await searchClient.getTrendingQueries('en');
 const verses = await searchClient.searchVerses('faith', versions.data[0].id, {
   pageSize: 10,
 });
-console.log(trending.queries[0]?.text, verses.verses[0]?.id);
+const unified = await searchClient.searchUnified('psalm 23', versions.data[0].id, 'en', {
+  fields: ['verses', 'topics'],
+});
+console.log(trending.queries[0]?.text, verses.verses[0]?.id, unified.topics[0]?.text);
 ```
 
 ### Verse-art images
@@ -99,6 +102,16 @@ missing total is omitted. `0` is kept.
 A blank `passage_id` is rejected before the request. A bare chapter such as
 `JHN.3` is sent to the server, which answers 400. Read that status with
 `getHttpStatus`.
+
+Unified search returns one snapshot of top results, not the entire verse result
+set. Omit `fields` for all available kinds, or pass a nonempty selection.
+`userIntent` accepts `unknown`, `topical`, `text`, or `reference`; response intent
+strings remain open-ended.
+
+The SDK also accepts `fields: ['images']` and maps image hits to `{ id, passageId }`,
+not image URLs. Image selection requires backend support. A production check on
+2026-10-20 returned HTTP 400 for `fields: ['images']`; successful verse/topic
+responses omitted images, which the SDK returns as `images: []`.
 
 ### Display Bible HTML
 

@@ -6,6 +6,7 @@ import {
   type Collection,
   type Image,
 } from '@youversion/platform-react-ui';
+import { API_TIMEOUT_MS } from '../api-timeout';
 
 const DEFAULT_PASSAGE_ID = 'JHN.3.16';
 const LIST_PAGE_SIZE = 12;
@@ -17,18 +18,13 @@ type ImagesDemoState =
   | { kind: 'detail'; passageId: string; page: Collection<Image>; image: Image }
   | { kind: 'error'; passageId: string; message: string };
 
-function resolveApiTimeoutMs(): number {
-  const configured = Number(import.meta.env.VITE_YVP_API_TIMEOUT_MS);
-  return Number.isFinite(configured) && configured > 0 ? configured : 60000;
-}
-
 function createImagesClient(): ImagesClient {
   const appKey = import.meta.env.VITE_YVP_APP_KEY?.trim();
   if (!appKey) {
     throw new Error('Missing VITE_YVP_APP_KEY (set YVP_APP_KEY in the monorepo root .env)');
   }
   const apiHost = import.meta.env.VITE_YVP_API_HOST ?? 'api.youversion.com';
-  return new ImagesClient(new ApiClient({ appKey, apiHost, timeout: resolveApiTimeoutMs() }));
+  return new ImagesClient(new ApiClient({ appKey, apiHost, timeout: API_TIMEOUT_MS }));
 }
 
 function formatCaughtError(cause: unknown): string {

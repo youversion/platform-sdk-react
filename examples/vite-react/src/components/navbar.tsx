@@ -11,6 +11,7 @@ const navItems: { label: string; page: Page }[] = [
   { label: 'Verse of the Day', page: 'votd' },
   { label: 'Bible Card', page: 'bible-card' },
   { label: 'Images', page: 'images' },
+  { label: 'Unified Search', page: 'search-unified' },
 ];
 
 interface NavbarProps {

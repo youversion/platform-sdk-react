@@ -78,6 +78,7 @@ export {
   parseUsfmReference,
   removeStorageItem,
   searchTopics,
+  searchUnified,
   searchVerses,
   setStorageItem,
   throwUnusableBibleVersion,
