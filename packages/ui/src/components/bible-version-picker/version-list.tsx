@@ -37,8 +37,9 @@ function VersionPublisherName({ name }: { name?: string | null }) {
 // second line so "KJV2" stays readable inside the fixed tile.
 function VersionAbbreviationIcon({ text }: { text: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const prefixRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
   const [prefixSize, setPrefixSize] = useState(20);
+  const prefixSizeRef = useRef(20);
 
   const match = /^(.+?)(\d+)$/.exec(text) || [];
   const prefix = match[1] || text;
@@ -46,38 +47,41 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
 
   useEffect(() => {
     const container = containerRef.current;
-    const prefixElement = prefixRef.current;
-    if (!container || !prefixElement) return;
+    const measureElement = measureRef.current;
+    if (!container || !measureElement) return;
 
-    const calculateSize = (element: HTMLElement | null) => {
-      if (!element) return 20;
-
+    const calculateSize = () => {
       const containerWidth = container.offsetWidth;
       const containerHeight = container.offsetHeight;
+      if (containerWidth === 0 || containerHeight === 0) {
+        return prefixSizeRef.current;
+      }
+
       const targetWidth = containerWidth * 0.7;
       const maxHeight = containerHeight * 0.4;
 
       let currentSize = 20;
-      let ratio = 1;
 
       for (let i = 0; i < 5; i++) {
-        element.style.fontSize = `${currentSize}px`;
-        const currentWidth = element.scrollWidth;
-        const currentHeight = element.offsetHeight;
+        measureElement.style.fontSize = `${currentSize}px`;
+        const currentWidth = measureElement.scrollWidth;
+        const currentHeight = measureElement.offsetHeight;
 
         if (currentWidth > 0) {
           const widthRatio = targetWidth / currentWidth;
           const heightRatio = maxHeight / currentHeight;
-          ratio = Math.min(widthRatio, heightRatio);
+          const ratio = Math.min(widthRatio, heightRatio);
           currentSize = currentSize * ratio;
         }
       }
 
-      return Math.max(12, currentSize);
+      return Math.max(12, Math.round(currentSize));
     };
 
     const updateSizes = () => {
-      const newPrefixSize = calculateSize(prefixElement);
+      const newPrefixSize = calculateSize();
+      if (newPrefixSize === prefixSizeRef.current) return;
+      prefixSizeRef.current = newPrefixSize;
       setPrefixSize(newPrefixSize);
     };
 
@@ -88,15 +92,22 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
     return () => {
       resizeObserver.disconnect();
     };
-  }, []);
+  }, [prefix]);
 
   return (
     <div
       ref={containerRef}
       dir="auto"
-      className="yv:flex yv:flex-col yv:w-full yv:h-full yv:px-1.5 yv:font-serif! yv:[&_*]:font-serif! yv:leading-[1.03] yv:font-bold yv:text-foreground yv:items-center yv:justify-center"
+      className="yv:relative yv:flex yv:flex-col yv:w-full yv:h-full yv:px-1.5 yv:font-serif! yv:[&_*]:font-serif! yv:leading-[1.03] yv:font-bold yv:text-foreground yv:items-center yv:justify-center"
     >
-      <div ref={prefixRef} className="yv:whitespace-nowrap" style={{ fontSize: `${prefixSize}px` }}>
+      <div
+        ref={measureRef}
+        aria-hidden
+        className="yv:pointer-events-none yv:absolute yv:opacity-0 yv:whitespace-nowrap yv:font-bold"
+      >
+        {prefix}
+      </div>
+      <div className="yv:whitespace-nowrap" style={{ fontSize: `${prefixSize}px` }}>
         {prefix}
       </div>
       {digits && (
