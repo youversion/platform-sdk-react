@@ -158,7 +158,7 @@ release-candidate validation below.
 
 YPE-6214 completed the final actual-Safari gate after the release-blocking
 shared-host changes. The validation ran against runtime commit
-`d495aab3c1fb54634efcdd2dc5f04c6ab0ab7c3f`. The completion decision and
+`91f02085307e94e97b45372833b4e32ffe947f1a`. The completion decision and
 baseline commit are the durable repository conclusions; the remaining manual
 execution details live in [pull request #455](https://github.com/youversion/platform-sdk-react/pull/455).
 
