@@ -121,18 +121,25 @@ function LanguageEntry(): ReactElement {
   return (
     <button
       type="button"
-      className="yv:flex yv:w-full yv:items-center yv:gap-3 yv:px-4 yv:py-3 yv:text-start yv:hover:bg-muted"
+      className="yv:flex yv:w-full yv:items-center yv:justify-between yv:gap-3 yv:px-4 yv:py-3 yv:text-start yv:hover:bg-muted"
+      aria-label={`${t('language')} ${name}`}
       onClick={() => setView('languages')}
     >
-      <GlobeIcon className="yv:size-5 yv:shrink-0" />
-      <span className="yv:min-w-0 yv:flex-1 yv:truncate">
-        <span className="yv:text-sm yv:font-medium">{t('language')}</span>{' '}
-        <bdi dir="auto">{name}</bdi>
+      <span className="yv:flex yv:min-w-0 yv:items-center yv:gap-2" aria-hidden="true">
+        <GlobeIcon className="yv:size-6 yv:shrink-0" />
+        <span className="yv:truncate yv:text-[13px]! yv:font-normal! yv:leading-[1.25]">
+          {t('language')}
+        </span>
       </span>
-      <span className="yv:text-sm yv:tabular-nums">
-        {versionsLoading ? <LoaderIcon className="yv:size-4 yv:animate-spin" /> : ` ${count}`}
+      <span className="yv:flex yv:shrink-0 yv:items-center yv:gap-1.5" aria-hidden="true">
+        <bdi dir="auto" className="yv:text-xs! yv:font-bold! yv:leading-4">
+          {name}
+        </bdi>
+        <span className="yv:flex yv:min-w-4 yv:items-center yv:justify-center yv:rounded-lg yv:bg-muted yv:px-1 yv:text-[10px]! yv:font-medium! yv:leading-4 yv:tabular-nums">
+          {versionsLoading ? <LoaderIcon className="yv:size-3 yv:animate-spin" /> : count}
+        </span>
+        <ChevronForwardIcon className="yv:size-4 yv:shrink-0 yv:text-muted-foreground" />
       </span>
-      <ChevronForwardIcon className="yv:size-5 yv:shrink-0" />
     </button>
   );
 }
@@ -187,16 +194,21 @@ export function VersionList({
     wasOpenRef.current = open ?? false;
   }, [open, resetLanguageSearch, setSearchQuery, setView]);
 
+  const versionTileClassName =
+    'yv:rounded-[6px] yv:size-12 yv:bg-secondary yv:border yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center';
+  const versionRowClassName = (selected: boolean) =>
+    cn('yv:hover:bg-muted yv:rounded-lg', selected ? 'yv:bg-muted' : '');
+
   return (
     <div
-      className="yv:overflow-y-auto yv:h-full yv:flex yv:flex-col yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center"
+      className="yv:overflow-y-auto yv:h-full yv:flex yv:flex-col yv:font-sans yv:transition-all yv:duration-300 yv:rounded-2xl yv:origin-center"
       data-yv-sdk
       data-yv-theme={background}
       dir={interfaceDirection}
     >
       <div className="yv:shrink-0">
         <section className="yv:px-4 yv:pt-4">
-          <InputGroup className="yv:bg-background yv:shadow-none yv:border-border">
+          <InputGroup className="yv:h-auto yv:rounded-full yv:border-0 yv:bg-muted yv:py-1 yv:shadow-none">
             <InputGroupInput
               aria-label={t('versionSearchAriaLabel')}
               tabIndex={1}
@@ -207,7 +219,7 @@ export function VersionList({
               onChange={(e) => setSearchQuery(e.target.value)}
             ></InputGroupInput>
             <InputGroupAddon>
-              <SearchIcon className="yv:size-5 yv:text-muted-foreground" />
+              <SearchIcon className="yv:size-6 yv:text-muted-foreground" />
             </InputGroupAddon>
           </InputGroup>
         </section>
@@ -216,17 +228,14 @@ export function VersionList({
       <div className="yv:flex-1 yv:overflow-y-auto yv:py-2">
         {filteredRecentVersions.length > 0 && (
           <>
-            <h2 className="yv:px-4 yv:py-2 yv:text-lg yv:font-bold">
+            <h2 className="yv:px-4 yv:py-2 yv:text-xl yv:font-bold yv:leading-6">
               {t('recentlyUsedVersionsHeading')}
             </h2>
             <ItemGroup data-testid="recent-version-list">
               {filteredRecentVersions.map((version) => (
                 <Item
                   key={`recent-${version.id}`}
-                  className={cn(
-                    'yv:hover:bg-muted yv:rounded-[8px]',
-                    versionId === version.id ? 'yv:bg-muted' : '',
-                  )}
+                  className={versionRowClassName(versionId === version.id)}
                   size="sm"
                   variant="default"
                   role="listitem"
@@ -238,15 +247,12 @@ export function VersionList({
                     className="yv:w-full"
                     onClick={() => handleSelectVersion(version)}
                   >
-                    <ItemMedia
-                      variant="icon"
-                      className="yv:rounded-[8px] yv:size-16 yv:bg-secondary yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center"
-                    >
+                    <ItemMedia variant="icon" className={versionTileClassName}>
                       <VersionAbbreviationIcon text={version.localized_abbreviation} />
                     </ItemMedia>
                     <ItemContent>
                       <VersionPublisherName name={publisherName(version.organization_id)} />
-                      <ItemTitle className="yv:line-clamp-2 yv:text-start">
+                      <ItemTitle className="yv:line-clamp-2 yv:text-start yv:text-[13px]! yv:font-medium! yv:leading-[1.25]">
                         <bdi dir="auto">{version.title}</bdi>
                       </ItemTitle>
                     </ItemContent>
@@ -258,14 +264,13 @@ export function VersionList({
         )}
         {filteredVersions.length > 0 ? (
           <ItemGroup data-testid="version-list">
-            <h3 className="yv:px-4 yv:py-2 yv:font-bold">{t('allVersionsHeading')}</h3>
+            <h3 className="yv:px-4 yv:py-2 yv:text-xl yv:font-bold yv:leading-6">
+              {t('allVersionsHeading')}
+            </h3>
             {filteredVersions.map((version: BibleVersion) => (
               <Item
                 key={version.id}
-                className={cn(
-                  'yv:hover:bg-muted yv:rounded-[8px]',
-                  versionId === version.id ? 'yv:bg-muted' : '',
-                )}
+                className={versionRowClassName(versionId === version.id)}
                 size="sm"
                 variant="default"
                 role="listitem"
@@ -277,15 +282,12 @@ export function VersionList({
                   className="yv:w-full"
                   onClick={() => handleSelectVersion(version)}
                 >
-                  <ItemMedia
-                    variant="icon"
-                    className="yv:rounded-[8px] yv:size-16 yv:bg-secondary yv:border-border yv:flex yv:flex-col yv:justify-center yv:items-center"
-                  >
+                  <ItemMedia variant="icon" className={versionTileClassName}>
                     <VersionAbbreviationIcon text={version.localized_abbreviation} />
                   </ItemMedia>
                   <ItemContent>
                     <VersionPublisherName name={publisherName(version.organization_id)} />
-                    <ItemTitle className="yv:line-clamp-2 yv:text-start">
+                    <ItemTitle className="yv:line-clamp-2 yv:text-start yv:text-[13px]! yv:font-medium! yv:leading-[1.25]">
                       <bdi dir="auto">{version.title}</bdi>
                     </ItemTitle>
                   </ItemContent>
