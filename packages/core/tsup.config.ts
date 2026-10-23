@@ -41,6 +41,7 @@ export default defineConfig({
     'src/search-topics.ts',
     'src/search-unified.ts',
     'src/highlights.ts',
+    'src/images.ts',
     'src/organizations.ts',
     'src/data-exchange.ts',
     'src/Users.ts',

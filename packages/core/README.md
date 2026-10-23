@@ -64,6 +64,44 @@ const unified = await searchClient.searchUnified('psalm 23', versions.data[0].id
 console.log(trending.queries[0]?.text, verses.verses[0]?.id, unified.topics[0]?.text);
 ```
 
+### Verse-art images
+
+`ImagesClient` reads image metadata from `GET /v1/images`. Image bytes stay on
+the CDN. Set `size` to `thumb`, `card`, or `full` on `image_url` when you want
+a smaller rendition.
+
+```ts
+import { ApiClient, ImagesClient } from '@youversion/platform-core';
+
+const apiClient = new ApiClient({ appKey: 'YOUR_APP_KEY' });
+const images = new ImagesClient(apiClient);
+
+const page = await images.getImages({
+  passage_id: 'JHN.3.16',
+  language_ranges: ['en', 'es'],
+  page_size: 12,
+});
+
+const [first] = page.data;
+if (!first) {
+  console.log('No images for that filter');
+} else {
+  const image = await images.getImage(first.id);
+  const url = new URL(image.image_url);
+  url.searchParams.set('size', 'card');
+}
+```
+
+`next_page_token` is `null` on the last page. Pass that value back as
+`page_token`, including `null`, to request the next page or the first page.
+`total_size` is present only when the API sends a number, which it does when
+`passage_id` is set. That value is the server's count and can exceed
+`data.length` when off-contract records were dropped from the page. A null or
+missing total is omitted. `0` is kept.
+
+A blank `passage_id` is rejected before the request. Pass a single verse or a
+verse range, such as `JHN.3.16` or `JHN.3.16-18`.
+
 Unified search returns one snapshot of top results, not the entire verse result
 set. Omit `fields` for all available kinds, or pass a nonempty selection.
 `userIntent` accepts `unknown`, `topical`, `text`, or `reference`; response intent

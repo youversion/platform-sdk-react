@@ -49,6 +49,8 @@
     "!dist/search-unified.cjs",
     "!dist/highlights.js",
     "!dist/highlights.cjs",
+    "!dist/images.js",
+    "!dist/images.cjs",
     "!dist/organizations.js",
     "!dist/organizations.cjs",
     "!dist/data-exchange.js",

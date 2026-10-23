@@ -16,6 +16,7 @@ export {
   DEFAULT_LICENSE_FREE_BIBLE_VERSION,
   DataExchangeClient,
   HighlightsClient,
+  ImagesClient,
   LanguagesClient,
   MAX_SEARCH_QUERY_GRAPHEMES,
   MemoryStorageStrategy,
