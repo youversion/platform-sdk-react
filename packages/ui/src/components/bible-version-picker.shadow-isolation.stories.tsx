@@ -5,6 +5,7 @@ import { YouVersionContext, type HookOverrides } from '@youversion/platform-reac
 import { useContext, useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { expect, userEvent, within } from 'storybook/test';
+import { userEvent as browserUserEvent } from 'vitest/browser';
 import { ReuseShadowBoundary } from '../lib/shadow-isolation';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import mockBibles from '../test/mock-data/bibles.json';
@@ -353,6 +354,28 @@ export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
     if (!reflectedControls) throw new Error('browser did not expose ariaControlsElements');
     await expect(trigger.getAttribute('aria-controls')).toBe(panel.id);
     await expect(reflectedControls).toEqual([panel]);
+  },
+};
+
+export const ForwardTabMovesFromCloseToFirstVersion: Story = {
+  play: async ({ canvasElement }) => {
+    const { root, panel } = await openPicker(canvasElement);
+    const languageTrigger = within(panel).getByRole('button', { name: /select.*language/i });
+    const closeButton = within(panel).getByRole('button', { name: /close/i });
+    const firstVersion = await waitForElement<HTMLButtonElement>(
+      panel,
+      '[data-testid="version-list"] button',
+      'version row not rendered',
+    );
+    await waitFor(async () => await expect(root.activeElement).toBe(languageTrigger));
+    const forwardTraversalKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+      ? '{Alt>}{Tab}{/Alt}'
+      : '{Tab}';
+    await browserUserEvent.keyboard(forwardTraversalKey);
+    await expect(root.activeElement).toBe(closeButton);
+
+    await browserUserEvent.keyboard(forwardTraversalKey);
+    await expect(root.activeElement).toBe(firstVersion);
   },
 };
 
