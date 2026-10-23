@@ -1,5 +1,24 @@
 # @youversion/platform-core
 
+## 2.16.0
+
+### Minor Changes
+
+- da12b12: Export shared Bible version attribution selection and fall back to promotional content in BibleCard and BibleReader when copyright is blank.
+- 23ed5bc: Add `ImagesClient` for verse-art image metadata. `getImages` calls `GET /v1/images` and returns a `Collection<Image>`. `getImage` calls `GET /v1/images/{image_id}`.
+
+  `total_size` is included only when the API sends a number. A null or missing total is omitted, and `0` is kept. `page_token` accepts `null`. A blank passage id is rejected before the request. `passage_id` takes a single verse or a verse range. The SDK returns metadata only. Read image bytes from `image_url`.
+
+- 529192b: Add `searchUnified` for `GET /v1/search-unified`, returning one unpaginated snapshot of top verse references and related topics.
+- 24cd0f2: Add image hits to unified search. `searchUnified` and `useUnifiedSearch` accept `fields: ['images']` and return `images` as `{ id, passageId }` entries. Malformed image rows are dropped.
+
+### Patch Changes
+
+- 24cd0f2: Drop malformed unified-search image rows individually so missing or null identifiers do not discard valid verses, topics, or sibling images.
+- 529192b: Add useUnifiedSearch for loading top verse references and related topics through the unified-search core client, without changing the existing paginated Bible search flow.
+
+  Validate unified-search request intents and required response fields against the API contract while preserving unknown response intent strings.
+
 ## 2.15.0
 
 ### Minor Changes
