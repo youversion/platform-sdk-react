@@ -5,7 +5,6 @@ import { YouVersionContext, type HookOverrides } from '@youversion/platform-reac
 import { useContext, useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { expect, userEvent, within } from 'storybook/test';
-import { userEvent as browserUserEvent } from 'vitest/browser';
 import { ReuseShadowBoundary } from '../lib/shadow-isolation';
 import { ShadowRootHost } from '../lib/shadow-root-host';
 import mockBibles from '../test/mock-data/bibles.json';
@@ -359,6 +358,7 @@ export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
 
 export const ForwardTabMovesFromCloseToFirstVersion: Story = {
   play: async ({ canvasElement }) => {
+    const { userEvent: browserUserEvent } = await import('vitest/browser');
     const { root, panel } = await openPicker(canvasElement);
     const languageTrigger = within(panel).getByRole('button', { name: /select.*language/i });
     const closeButton = within(panel).getByRole('button', { name: /close/i });

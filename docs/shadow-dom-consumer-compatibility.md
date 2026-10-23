@@ -83,9 +83,11 @@ an automation and styling boundary rather than a security boundary. Selectors
 that depend on internal markup remain fragile even when they traverse the root.
 
 The focused Shadow DOM suite supplies the browser evidence cited by this
-contract. Exact release-candidate environments, tested commits, per-journey
-results, and remaining assistive-technology gaps live in the
-[validation plan](shadow-dom-isolation-plan.md#ype-5952-release-candidate-validation).
+contract. The final actual-Safari gate decision, accepted limitations, and
+future rerun requirements live in the
+[validation plan](shadow-dom-isolation-plan.md#ype-6214-final-release-candidate-safari-validation).
+Exact assistive-technology environments, per-journey results, and remaining gaps
+live in the [assistive-technology evidence](shadow-dom-isolation-plan.md#assistive-technology-evidence).
 Reflected ARIA element properties demonstrate DOM relationship resolution, not
 announcements or other assistive-technology behavior. Claims name only the exact
 browser and assistive-technology combination validated.

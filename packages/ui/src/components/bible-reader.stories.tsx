@@ -277,7 +277,9 @@ export const VerseSelectionReanchoringDismissalAndFocusRestoration: Story = {
     await waitFor(() => expect(root.activeElement).toBe(dialog));
 
     await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(reader.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(reader.queryByRole('dialog')).not.toBeInTheDocument(), {
+      timeout: 10000,
+    });
     await expect(ownerDocument.activeElement).toBe(outsideControl);
 
     const externalShadowHost = ownerDocument.createElement('div');

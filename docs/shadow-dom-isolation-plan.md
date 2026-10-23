@@ -14,8 +14,8 @@ architectural decision behind automatic Shadow DOM isolation. This document trac
 the implementation evidence, unresolved audits, and coordinated-release
 validation for the approved public boundary.
 
-This is an evidence inventory and release-candidate plan, not a claim that the
-major release or any pending manual validation has completed.
+This is an evidence inventory and release-candidate plan. The manual validation
+recorded below is complete, but the major release has not shipped.
 
 ## Current scope
 
@@ -71,9 +71,9 @@ Windows/NVDA validation gap are recorded in the YPE-5952 section below.
 
 | Area | Evidence today | Status | Remaining work |
 | --- | --- | --- | --- |
-| Host CSS isolation | Focused browser coverage exercises element selectors, direction inheritance, vertical writing and typography resets, hostile custom properties, universal `!important` rules, host attacks, and generated pseudo-content. | Validated for the included groups in Chromium, Firefox, Playwright WebKit, and the recorded 39/39 YPE-6216 Safari revalidation | Repeat actual Safari after future rollout-policy trigger changes. |
+| Host CSS isolation | Focused browser coverage exercises element selectors, direction inheritance, vertical writing and typography resets, hostile custom properties, universal `!important` rules, host attacks, and generated pseudo-content. | Validated for the included groups in Chromium, Firefox, Playwright WebKit, and the completed YPE-6214 final Safari validation | Repeat actual Safari after future rollout-policy trigger changes. |
 | SSR and hydration | Focused React coverage verifies reuse of the exact childless, declaratively styled server host, matching hydration without recoverable errors or duplicate content, and a null forwarded ref before the passive-effect mount. Group-specific sections below cover the included boundary. | Accepted for the coordinated client-only boundary | Preserve the childless-host, possible-pop-in, possible-layout-movement, and no-JavaScript limitations in consumer documentation. |
-| Component behavior | Group-specific unit and browser coverage below exercises public behavior, refs, events, composition, and Strict Mode lifecycle. | Validated for the included groups | Complete the final package/browser gates and manual release-candidate checks. |
+| Component behavior | Group-specific unit and browser coverage below exercises public behavior, refs, events, composition, and Strict Mode lifecycle. | Validated for the included groups | Keep the release gates green and repeat checks after future rollout-policy trigger changes. |
 | Owner-document handling | Focused coverage mounts into a same-origin iframe and verifies document-compatible stylesheet construction. YPE-5947 also covers construction, replacement, and adoption failure recovery. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | None. |
 | Inline floating content | A historical picker negative control preserved tree-scope relationships but demonstrated clipping beyond a constrained ancestor. | Validated historically; the story was removed after strategy selection. | None; clipping is why inline placement is not the selected escaping strategy. |
 | Native top-layer floating content | Picker stories verify clipping escape, hit testing, collision handling, hostile-CSS isolation, and resolved `aria-controls` relationships. | Validated in Chromium, Firefox, Playwright WebKit, and local Safari 26.6.2 | Verify assistive-technology behavior and repeat actual-Safari checks for significant platform changes. |
@@ -90,11 +90,12 @@ Windows/NVDA validation gap are recorded in the YPE-5952 section below.
 
 ## YPE-5952 release-candidate validation
 
-This section is the durable record for the final coordinated-release checks. It
-does not convert automated DOM assertions into screen-reader evidence. The final
-release-candidate Safari browser run is recorded below. All assistive-technology
-claims are limited to the exact environment and per-journey results recorded
-below; Windows/NVDA was not run and remains unvalidated.
+This section is the durable record for the coordinated-release checks. It does
+not convert automated DOM assertions into screen-reader evidence. Historical
+Safari runs remain below, and the authoritative final release-candidate result
+is the YPE-6214 validation. All assistive-technology claims are limited to the
+exact environment and per-journey results recorded below; Windows/NVDA was not
+run and remains unvalidated.
 
 Use the existing production Storybook journeys; do not add duplicate stories
 only to execute this checklist:
@@ -108,13 +109,14 @@ only to execute this checklist:
 | Theme settings | `bible-theme-settings.stories.tsx` → `FontControlsRemainReachableInConstrainedSpace` and `MixedAndPortaledControlsPreserveTabOrder` |
 | Representative nested overlays | `shadow-overlay-production-seam.shadow-isolation.stories.tsx` → `PopoverOpensDialogEvidence` and `DialogContainsPopoverEvidence` |
 
-### Actual Safari browser evidence
+### Historical YPE-5952 Safari browser evidence
 
-Run the focused Shadow DOM suite against the final release-candidate commit with
-each story in a fresh SafariDriver session. The earlier long-lived-session stall
-means a single shared session is not acceptable evidence.
+This initial release-candidate run established the isolated-session procedure.
+It is retained as historical evidence and is superseded by the YPE-6214 final
+release-candidate validation below. The earlier long-lived-session stall means a
+single shared session is not acceptable evidence.
 
-| Field | Release-candidate evidence |
+| Field | Historical release-candidate evidence |
 | --- | --- |
 | Commit SHA | `c0092043182bb3dcc0a73f7d82323de0d0c229a5` |
 | Date and operator | 2026-10-12; Codex on Austin Harms's local machine |
@@ -124,7 +126,10 @@ means a single shared session is not acceptable evidence.
 | Focused story count and per-story results | 38/38 passed. The final candidate matrix used one fresh process and SafariDriver session per story: 36 stories passed on their first attempt, 1 passed on its second attempt after SafariDriver retained the preceding session, and the Bible Card version-picker story passed in a direct isolated rerun after its matrix process exceeded the 120-second limit without producing a test result. |
 | Failures, linked blockers, or reruns | The final candidate evidence had 0 assertion failures. One recognized SafariDriver session-handoff failure used one bounded transport retry. One generic process timeout was surfaced as a matrix failure, was not automatically retried, and passed in a direct isolated rerun in 1.1 seconds. The runner permits at most two retries only for recognized transport failures; generic process timeouts, story assertion failures, and interaction failures are not retried. |
 
-### YPE-6216 actual Safari host-change revalidation
+### Historical YPE-6216 actual Safari host-change revalidation
+
+This run is retained as historical evidence and is superseded by the YPE-6214
+final release-candidate validation below.
 
 | Field | Evidence |
 | --- | --- |
@@ -134,7 +139,7 @@ means a single shared session is not acceptable evidence.
 | Command | `pnpm --filter @youversion/platform-react-ui test:shadow-safari` |
 | Result | 39/39 focused stories passed in fresh SafariDriver sessions. Every story passed on its first attempt with no assertion failures, transport retries, or process timeouts. `Suspense Reveal Restores Host Layout` passed in its isolated run. |
 
-### YPE-6217 actual Safari stylesheet revalidation
+### Historical YPE-6217 actual Safari stylesheet revalidation
 
 YPE-6217 changed the automatic-root stylesheet installation path, which triggers
 another actual-Safari run under the rollout policy. On 2026-10-15, commit
@@ -145,7 +150,33 @@ exercised all 38 focused stories in a fresh SafariDriver session per story. All
 38 passed on their first attempt with zero assertion failures, transport
 retries, or process timeouts. The run included both realistic-usage stories,
 whose assertions verify that automatic roots share the adopted component and
-reader stylesheets without installing redundant local `<style>` resources.
+reader stylesheets without installing redundant local `<style>` resources. This
+run is retained as historical evidence and is superseded by the YPE-6214 final
+release-candidate validation below.
+
+### YPE-6214 final release-candidate Safari validation
+
+YPE-6214 completed the final actual-Safari gate after the release-blocking
+shared-host changes. The validation ran against runtime commit
+`91f02085307e94e97b45372833b4e32ffe947f1a`. The completion decision and
+baseline commit are the durable repository conclusions; the remaining manual
+execution details live in [pull request #455](https://github.com/youversion/platform-sdk-react/pull/455).
+
+The standalone-picker first-paint and layout review used the existing
+`Explicit Light Theme Under Dark Provider` chapter-picker story and
+`Top Layer Escapes Clipping And Preserves Semantics` version-picker story. The
+review accepted that each client-only host reserves no picker-content space at
+first paint, then reveals a compact trigger after the passive-effect mount and
+can cause trigger-sized movement of nearby layout. The top-layer picker panels
+do not move document layout. Without JavaScript, the client-only host remains
+empty, so neither the trigger nor the picker renders. These are qualitative
+acceptances of the documented client-only boundary, not zero-CLS or performance
+claims.
+
+Repository documentation for YPE-6214 does not retain manual execution metadata,
+per-story results, screenshots, raw terminal output, or other local test
+artifacts. Repeat actual-Safari validation after future rollout-policy trigger
+changes.
 
 ### Assistive-technology evidence
 
@@ -188,7 +219,7 @@ SafariDriver journeys also passed, including explicit close and Escape focus
 restoration. The completed YPE-6181 implementation at
 `8f99e6c0d161bdb04cc8ab06a06933bf08992848` then passed the full focused actual
 Safari matrix: 38/38 stories passed with one fresh process and SafariDriver
-session per story. This final run included both picker journeys, their
+session per story. This pre-YPE-6214 run included both picker journeys, their
 first-mount and retained-content rapid-close-and-reopen paths, and the shared
 overlay production seams. Thirty-six stories passed on their first attempt; two
 shared-overlay stories passed after bounded SafariDriver transport retries. No
@@ -311,9 +342,9 @@ and copy delivery. Those observations record the remaining
 unlisted-family limitation, not automated or cross-browser support coverage.
 Capture remains a documented limitation; it is not folded into the narrow
 bubbling-event correction. The main workflow passes Chromium, Firefox, and
-Playwright WebKit. Because the correction changes the shared host, YPE-6214 must
-repeat actual-Safari release-candidate validation afterward; this evidence makes
-no assistive-technology claim.
+Playwright WebKit. Because the correction changed the shared host, YPE-6214
+repeated actual-Safari release-candidate validation afterward as recorded above;
+this evidence makes no assistive-technology claim.
 
 ## YPE-5951 Bible reader evidence
 
@@ -487,9 +518,8 @@ separately in YPE-5749.
   same-page JavaScript from inspecting or mutating the root.
 - The focused Shadow DOM browser suite runs in Chromium, Firefox, and Playwright
   WebKit. Playwright WebKit is not a substitute for testing actual Safari. The
-  final release-candidate evidence completed 38/38 stories in isolated SafariDriver
-  sessions at commit `c0092043182bb3dcc0a73f7d82323de0d0c229a5`. Repeat actual
-  Safari after the rollout-policy trigger changes.
+  final release-candidate actual-Safari validation completed under YPE-6214.
+  Repeat actual Safari after future rollout-policy trigger changes.
 - Browser DOM relationship reflection is not a substitute for VoiceOver, NVDA,
   or other real assistive-technology verification. The Safari/VoiceOver evidence
   above applies only to that exact combination; Windows/NVDA and every other
