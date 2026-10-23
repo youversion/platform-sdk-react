@@ -69,6 +69,11 @@ set. Omit `fields` for all available kinds, or pass a nonempty selection.
 `userIntent` accepts `unknown`, `topical`, `text`, or `reference`; response intent
 strings remain open-ended.
 
+The SDK also accepts `fields: ['images']` and maps image hits to `{ id, passageId }`,
+not image URLs. Image selection requires backend support. A production check on
+2026-10-20 returned HTTP 400 for `fields: ['images']`; successful verse/topic
+responses omitted images, which the SDK returns as `images: []`.
+
 ### Display Bible HTML
 
 Use `getPassageDisplay` when you need transformed HTML together with current

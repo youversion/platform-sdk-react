@@ -21,7 +21,7 @@ export type UseUnifiedSearchProps = Readonly<{
   languageRanges: string | readonly string[];
   /** Known user-intent hint; omit for the service default (`unknown`). */
   userIntent?: 'unknown' | 'topical' | 'text' | 'reference';
-  /** Result kinds to request; omit for both `verses` and `topics`. Must not be empty. */
+  /** Result kinds to request; omit for the service default. Must not be empty. */
   fields?: readonly SearchUnifiedField[];
 }>;
 
@@ -54,8 +54,8 @@ function isUnifiedSearchInputReady(
 }
 
 /**
- * Reads one unpaginated snapshot of top verses and topics.
- * Does not load suggestions or debounce.
+ * Reads one unpaginated snapshot of top verses, topics, and image hits.
+ * Image selection requires backend support. Does not load suggestions or debounce.
  * Omit `fields` for all kinds, or provide a nonempty selection.
  * `useBibleSearch` remains the separate, paginated verse-search flow.
  */

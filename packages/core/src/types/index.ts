@@ -30,6 +30,7 @@ export type {
   KnownSearchUserIntent,
   SearchQueries,
   SearchQuery,
+  SearchImageHit,
   SearchTopic,
   SearchTopicsResponse,
   SearchUnifiedField,

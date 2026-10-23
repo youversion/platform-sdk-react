@@ -9,6 +9,16 @@ it('loads distinct snapshots for every search input and supports disabling, erro
   const searchClient = createSearchClientStub({
     async searchUnified(query, versionId, languageRanges, options) {
       if (fail) throw new Error('unavailable');
+      if (options?.fields?.includes('images')) {
+        return {
+          verses: [],
+          topics: [],
+          images: [{ id: 'hope-image', passageId: 'PSA.23.1' }],
+          userIntent: options.userIntent,
+          didYouMean: [],
+          searchInsteadFor: null,
+        };
+      }
       return {
         verses: [{ id: `JHN.3.${versionId}` }],
         topics: [
@@ -18,6 +28,7 @@ it('loads distinct snapshots for every search input and supports disabling, erro
             subtopics: [...(options?.fields ?? [])],
           },
         ],
+        images: [],
         userIntent: options?.userIntent,
         didYouMean: [],
         searchInsteadFor: null,
@@ -62,12 +73,26 @@ it('loads distinct snapshots for every search input and supports disabling, erro
             subtopics: [...(props.fields ?? [])],
           },
         ],
+        images: [],
         userIntent: props.userIntent,
         didYouMean: [],
         searchInsteadFor: null,
       });
     });
   }
+  props = { ...props, fields: ['images'] };
+  rerender(props);
+  await waitFor(() => {
+    expect(result.current.loading).toBe(false);
+    expect(result.current.data).toEqual({
+      verses: [],
+      topics: [],
+      images: [{ id: 'hope-image', passageId: 'PSA.23.1' }],
+      userIntent: 'topical',
+      didYouMean: [],
+      searchInsteadFor: null,
+    });
+  });
   fail = true;
   act(() => result.current.refetch());
   await waitFor(() => expect(result.current.error?.message).toBe('unavailable'));
@@ -80,6 +105,7 @@ it('loads distinct snapshots for every search input and supports disabling, erro
   const snapshot: SearchUnifiedResponse = {
     verses: [],
     topics: [],
+    images: [],
     didYouMean: ['override'],
     searchInsteadFor: null,
   };
@@ -106,12 +132,14 @@ it('preserves the loading contract across a query change', async () => {
   const first: SearchUnifiedResponse = {
     verses: [{ id: 'JHN.3.16' }],
     topics: [{ id: null, text: 'faith', subtopics: [] }],
+    images: [],
     didYouMean: [],
     searchInsteadFor: null,
   };
   const next: SearchUnifiedResponse = {
     verses: [{ id: 'ROM.8.28' }],
     topics: [{ id: null, text: 'hope', subtopics: [] }],
+    images: [],
     didYouMean: [],
     searchInsteadFor: null,
   };
