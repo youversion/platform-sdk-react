@@ -34,8 +34,13 @@ function barrelModules() {
 
 function resolveBarrelEntry(specifier) {
   const rel = specifier.replace(/^\.\//, '');
-  for (const ext of ['.tsx', '.ts']) {
-    const entry = `src/components/${rel}${ext}`;
+  const candidates = [
+    `src/components/${rel}.tsx`,
+    `src/components/${rel}.ts`,
+    `src/components/${rel}/index.tsx`,
+    `src/components/${rel}/index.ts`,
+  ];
+  for (const entry of candidates) {
     if (existsSync(join(uiRoot, entry))) {
       return entry;
     }

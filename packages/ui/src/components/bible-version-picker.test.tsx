@@ -180,7 +180,12 @@ async function openPicker() {
 
 async function openLanguagePanel() {
   await openPicker();
-  await userEvent.click(screen.getByRole('button', { name: /select a language/i }));
+  await userEvent.click(screen.getByRole('button', { name: /^language /i }));
+}
+
+async function openLanguageSearch() {
+  await openLanguagePanel();
+  await userEvent.click(screen.getByRole('button', { name: /search languages/i }));
 }
 
 function getLanguageSearchInput() {
@@ -511,29 +516,42 @@ describe('BibleVersionPicker', () => {
       expect(screen.queryByText('All Languages')).not.toBeInTheDocument();
     });
 
-    it('bounds and animates the default language view inside the popover content', async () => {
+    it('mounts one language view, then a search view, and returns to versions', async () => {
       const user = userEvent.setup();
 
       renderPicker();
-
       await openPicker();
-      await user.click(screen.getByRole('button', { name: /select a language/i }));
+
+      expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
+      expect(screen.getByTestId('version-list')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: /^language /i }));
 
       expect(screen.getByRole('heading', { name: /select a language/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
+      expect(screen.queryByTestId('version-list')).not.toBeInTheDocument();
+      expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
 
-      const dialog = screen.getByRole('dialog');
-      const viewport = dialog.querySelector('.yv\\:relative.yv\\:min-h-0.yv\\:overflow-hidden');
-      expect(viewport).not.toBeNull();
+      await user.click(screen.getByRole('button', { name: /search languages/i }));
 
-      const animatedPanels = dialog.querySelectorAll(
-        '.yv\\:transition-all.yv\\:duration-300.yv\\:ease-out',
-      );
-      expect(animatedPanels).toHaveLength(2);
+      expect(screen.getByRole('heading', { name: /search languages/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(getLanguageSearchInput()).toHaveFocus();
+      });
+      expect(screen.getByRole('heading', { name: /regional/i })).toBeInTheDocument();
+      expect(screen.queryByRole('tab', { name: /suggested/i })).not.toBeInTheDocument();
 
-      const languagePanel = screen
-        .getByRole('tab', { name: /suggested/i })
-        .closest('.yv\\:h-full.yv\\:min-h-0.yv\\:overflow-hidden');
-      expect(languagePanel).not.toBeNull();
+      await user.click(screen.getByRole('button', { name: /^back$/i }));
+
+      expect(screen.getByRole('tab', { name: /suggested/i })).toBeInTheDocument();
+      expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: /back to bible versions/i }));
+
+      expect(screen.getByRole('heading', { name: /bible versions/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: /select a language/i })).not.toBeInTheDocument();
     });
 
     it('open=false clears version search for pre-warmed standalone content', async () => {
@@ -567,6 +585,7 @@ describe('BibleVersionPicker', () => {
         </BibleVersionPicker.Root>,
       );
 
+      await user.click(screen.getByRole('button', { name: /search languages/i }));
       await user.type(getLanguageSearchInput(), 'span');
       expect(getLanguageSearchInput()).toHaveValue('span');
       expect(screen.queryByRole('tab', { name: /suggested/i })).not.toBeInTheDocument();
@@ -577,7 +596,8 @@ describe('BibleVersionPicker', () => {
         </BibleVersionPicker.Root>,
       );
 
-      expect(getLanguageSearchInput()).toHaveValue('');
+      expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /suggested/i })).toBeInTheDocument();
 
       rerender(
         <BibleVersionPicker.Root {...rootProps}>
@@ -586,107 +606,148 @@ describe('BibleVersionPicker', () => {
       );
 
       expect(screen.getByRole('tab', { name: /suggested/i })).toBeInTheDocument();
+      expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
     });
   });
 
-  describe('language search', () => {
-    it('filters languages globally when searching', async () => {
-      const user = userEvent.setup();
+  it('filters languages globally when searching', async () => {
+    const user = userEvent.setup();
 
-      renderPicker();
-      await openLanguagePanel();
+    renderPicker();
+    await openLanguageSearch();
 
-      await user.type(getLanguageSearchInput(), 'span');
+    await user.type(getLanguageSearchInput(), 'span');
 
-      expect(screen.queryByRole('tab', { name: /suggested/i })).not.toBeInTheDocument();
-      expect(screen.queryByRole('tab', { name: /all/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /suggested/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /all/i })).not.toBeInTheDocument();
 
-      const results = screen.getByTestId('language-search-results');
-      expect(within(results).getAllByRole('listitem')).toHaveLength(1);
-      expect(within(results).getByRole('listitem', { name: /spanish/i })).toBeInTheDocument();
-    });
+    const results = screen.getByTestId('language-search-results');
+    expect(within(results).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(results).getByRole('listitem', { name: /spanish/i })).toBeInTheDocument();
+  });
 
-    it('shows empty state when no languages match the search', async () => {
-      const user = userEvent.setup();
+  it('shows empty state when no languages match the search', async () => {
+    const user = userEvent.setup();
 
-      renderPicker();
-      await openLanguagePanel();
+    renderPicker();
+    await openLanguageSearch();
 
-      await user.type(getLanguageSearchInput(), 'Koreanea');
+    await user.type(getLanguageSearchInput(), 'Koreanea');
 
-      expect(
-        screen.getByText("We're sorry, there are no results for this search."),
-      ).toBeInTheDocument();
-      expect(screen.queryByTestId('language-search-results')).not.toBeInTheDocument();
-    });
+    expect(
+      screen.getByText("We're sorry, there are no results for this search."),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('language-search-results')).not.toBeInTheDocument();
+  });
 
-    it('shows loading state instead of empty results while languages are loading', async () => {
-      const user = userEvent.setup();
+  it('shows loading state instead of empty results while languages are loading', async () => {
+    const user = userEvent.setup();
 
-      renderPicker({ languagesLoading: true });
-      await openLanguagePanel();
+    renderPicker({ languagesLoading: true });
+    await openLanguageSearch();
 
-      await user.type(getLanguageSearchInput(), 'span');
+    await user.type(getLanguageSearchInput(), 'span');
 
-      expect(
-        screen.queryByText("We're sorry, there are no results for this search."),
-      ).not.toBeInTheDocument();
-      expect(
-        screen
-          .getByRole('textbox', { name: /search languages/i })
-          .closest('[data-yv-sdk]')
-          ?.querySelector('.yv\\:animate-spin'),
-      ).toBeInTheDocument();
-    });
+    expect(
+      screen.queryByText("We're sorry, there are no results for this search."),
+    ).not.toBeInTheDocument();
+    expect(
+      screen
+        .getByRole('textbox', { name: /search languages/i })
+        .closest('[data-yv-sdk]')
+        ?.querySelector('.yv\\:animate-spin'),
+    ).toBeInTheDocument();
+  });
 
-    it('clears language search when navigating back to bible versions', async () => {
-      const user = userEvent.setup();
+  it('clears language search when navigating back to bible versions', async () => {
+    const user = userEvent.setup();
 
-      renderPicker();
-      await openLanguagePanel();
+    renderPicker();
+    await openLanguageSearch();
 
-      await user.type(getLanguageSearchInput(), 'korean');
-      expect(getLanguageSearchInput()).toHaveValue('korean');
+    await user.type(getLanguageSearchInput(), 'korean');
+    expect(getLanguageSearchInput()).toHaveValue('korean');
 
-      await user.click(screen.getByRole('button', { name: /back to bible versions/i }));
-      await user.click(screen.getByRole('button', { name: /select a language/i }));
+    await user.click(screen.getByRole('button', { name: /^back$/i }));
+    expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
 
-      expect(getLanguageSearchInput()).toHaveValue('');
-    });
+    await user.click(screen.getByRole('button', { name: /back to bible versions/i }));
+    await user.click(screen.getByRole('button', { name: /^language /i }));
+    await user.click(screen.getByRole('button', { name: /search languages/i }));
 
-    it('preserves the selected tab after clearing language search', async () => {
-      const user = userEvent.setup();
+    expect(getLanguageSearchInput()).toHaveValue('');
+  });
 
-      renderPicker();
-      await openLanguagePanel();
+  it('preserves the selected tab after clearing language search', async () => {
+    const user = userEvent.setup();
 
-      await user.click(screen.getByRole('tab', { name: /all/i }));
-      await user.type(getLanguageSearchInput(), 'span');
-      await user.clear(getLanguageSearchInput());
+    renderPicker();
+    await openLanguagePanel();
 
-      expect(screen.getByRole('tab', { name: /all/i })).toHaveAttribute('aria-selected', 'true');
-    });
+    await user.click(screen.getByRole('tab', { name: /all/i }));
+    await user.click(screen.getByRole('button', { name: /search languages/i }));
+    await user.type(getLanguageSearchInput(), 'span');
+    await user.clear(getLanguageSearchInput());
 
-    it('calls onLanguageChange and clears search after selecting a filtered language', async () => {
-      const user = userEvent.setup();
-      const onLanguageChange = vi.fn();
+    expect(screen.getByRole('heading', { name: /regional/i })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /all/i })).not.toBeInTheDocument();
 
-      renderWithOverrides(
-        <BibleVersionPicker.Root versionId={111} onLanguageChange={onLanguageChange}>
-          <BibleVersionPicker.Trigger>
-            <button type="button">Open</button>
-          </BibleVersionPicker.Trigger>
-          <BibleVersionPicker.Content />
-        </BibleVersionPicker.Root>,
-      );
+    await user.click(screen.getByRole('button', { name: /^back$/i }));
 
-      await openLanguagePanel();
-      await user.type(getLanguageSearchInput(), 'korean');
-      await user.click(screen.getByRole('listitem', { name: /korean/i }));
+    expect(screen.getByRole('tab', { name: /all/i })).toHaveAttribute('aria-selected', 'true');
+  });
 
-      expect(onLanguageChange).toHaveBeenCalledWith('ko');
-      expect(screen.getByRole('heading', { name: /bible versions/i })).toBeInTheDocument();
-    });
+  it('calls onLanguageChange and clears search after selecting a filtered language', async () => {
+    const user = userEvent.setup();
+    const onLanguageChange = vi.fn();
+
+    renderWithOverrides(
+      <BibleVersionPicker.Root versionId={111} onLanguageChange={onLanguageChange}>
+        <BibleVersionPicker.Trigger>
+          <button type="button">Open</button>
+        </BibleVersionPicker.Trigger>
+        <BibleVersionPicker.Content />
+      </BibleVersionPicker.Root>,
+    );
+
+    await openLanguageSearch();
+    await user.type(getLanguageSearchInput(), 'korean');
+    await user.click(screen.getByRole('listitem', { name: /korean/i }));
+
+    expect(onLanguageChange).toHaveBeenCalledWith('ko');
+    expect(screen.getByRole('heading', { name: /bible versions/i })).toBeInTheDocument();
+  });
+
+  it('puts the native language name before English and leaves English once', async () => {
+    const user = userEvent.setup();
+    renderPicker();
+    await openLanguagePanel();
+
+    const english = screen.getByRole('listitem', { name: 'English' });
+    expect(english).toHaveTextContent(/^English$/);
+    expect(english.className.split(' ')).toContain('yv:bg-muted');
+
+    await user.click(screen.getByRole('tab', { name: /all/i }));
+    const spanish = screen.getByRole('listitem', { name: 'Español Spanish' });
+    const spanishText = spanish.textContent ?? '';
+    expect(spanishText.indexOf('Español')).toBeLessThan(spanishText.indexOf('Spanish'));
+    expect(spanish.className.split(' ')).not.toContain('yv:bg-muted');
+  });
+
+  it('counts All from the languages that have versions', async () => {
+    renderPicker();
+    await openLanguagePanel();
+
+    expect(screen.getByRole('tab', { name: `All (${mockLanguages.length})` })).toBeInTheDocument();
+  });
+
+  it('keeps version search at the top and leaves the header pill out', async () => {
+    renderPicker();
+    await openPicker();
+
+    expect(screen.queryByRole('button', { name: /select a language/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^language /i })).toBeInTheDocument();
+    expect(screen.getAllByRole('textbox', { name: /search bible versions/i })).toHaveLength(1);
   });
 });
 
@@ -708,11 +769,12 @@ it('applies interface direction to its portaled content and Radix tabs', async (
   const trigger = screen.getByRole('button', { name: 'NIV' });
   expect(trigger.querySelector('bdi')).toHaveAttribute('dir', 'auto');
   await userEvent.click(trigger);
-  await userEvent.click(screen.getByRole('button', { name: /select (?:a )?language/i }));
+  await userEvent.click(screen.getByRole('button', { name: /^language /i }));
 
   expect(trigger).toHaveAttribute('dir', 'rtl');
   expect(screen.getByRole('dialog')).toHaveAttribute('dir', 'rtl');
   expect(screen.getByRole('tablist').parentElement).toHaveAttribute('dir', 'rtl');
-  expect(getLanguageSearchInput()).toHaveAttribute('dir', 'auto');
   expect(screen.getAllByText('English')[0]?.closest('bdi')).toHaveAttribute('dir', 'auto');
+  await userEvent.click(screen.getByRole('button', { name: /search languages/i }));
+  expect(getLanguageSearchInput()).toHaveAttribute('dir', 'auto');
 });
