@@ -4,7 +4,7 @@ import {
   ImagesClient,
   getHttpStatus,
   type Collection,
-  type Image,
+  type VerseImage,
 } from '@youversion/platform-react-ui';
 import { API_TIMEOUT_MS } from '../api-timeout';
 
@@ -14,8 +14,8 @@ const LIST_PAGE_SIZE = 12;
 type ImagesDemoState =
   | { kind: 'loading'; passageId: string }
   | { kind: 'empty'; passageId: string }
-  | { kind: 'list'; passageId: string; page: Collection<Image> }
-  | { kind: 'detail'; passageId: string; page: Collection<Image>; image: Image }
+  | { kind: 'list'; passageId: string; page: Collection<VerseImage> }
+  | { kind: 'detail'; passageId: string; page: Collection<VerseImage>; image: VerseImage }
   | { kind: 'error'; passageId: string; message: string };
 
 function createImagesClient(): ImagesClient {
@@ -79,7 +79,7 @@ export function ImagesPage() {
     };
   }, []);
 
-  async function openDetail(page: Collection<Image>, imageId: string) {
+  async function openDetail(page: Collection<VerseImage>, imageId: string) {
     const requestId = ++detailRequestId.current;
     setDetailError(null);
     setDetailBusy(true);
@@ -102,7 +102,7 @@ export function ImagesPage() {
     }
   }
 
-  function backToList(page: Collection<Image>) {
+  function backToList(page: Collection<VerseImage>) {
     detailRequestId.current += 1;
     setDetailBusy(false);
     setDetailError(null);

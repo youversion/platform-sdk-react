@@ -24,7 +24,7 @@ export const ImageSchema = z.object({
   aspect_ratio: z.number(),
 });
 
-export type Image = Readonly<z.infer<typeof ImageSchema>>;
+export type VerseImage = Readonly<z.infer<typeof ImageSchema>>;
 
 /** Wire list cursor. Empty string and null both mean no further page. */
 const ImageNextPageTokenWireSchema = z.pipe(
@@ -75,7 +75,7 @@ const PAGE_SIZE_ERROR = 'Page size must be an integer from 1 to 99';
 export const GetImagesOptionsSchema = z.object({
   /**
    * Passage filter. Trimmed, and a blank value is rejected.
-   * A bare chapter is sent as written. The server returns 400 for it.
+   * Pass a single verse or a verse range, such as `JHN.3.16` or `JHN.3.16-18`.
    * The API reports `total_size` only when this is set.
    */
   passage_id: z.optional(ImagePassageIdSchema),

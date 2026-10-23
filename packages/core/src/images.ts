@@ -1,5 +1,5 @@
 import type { ApiClient } from './client';
-import type { Collection, Image } from './types';
+import type { Collection, VerseImage } from './types';
 import {
   GetImagesOptionsSchema,
   ImageCollectionWireSchema,
@@ -52,10 +52,9 @@ export class ImagesClient {
    *   is present only when the API reports a number, which it does when
    *   `passage_id` is set. That value is the server's count and can exceed
    *   `data.length` when off-contract records were dropped. `0` is kept.
-   *   No matches returns an empty page. Large verse ranges can fail on the
-   *   server. See YPE-6178.
+   *   No matches returns an empty page.
    */
-  async getImages(options: GetImagesOptions = {}): Promise<Collection<Image>> {
+  async getImages(options: GetImagesOptions = {}): Promise<Collection<VerseImage>> {
     const parsed = GetImagesOptionsSchema.parse(options);
     // ApiClient.get: empty JSON body → undefined; HTTP 204 → ''.
     const body = await this.client.get<unknown>(IMAGES_PATH, toImagesQuery(parsed));
@@ -78,10 +77,11 @@ export class ImagesClient {
    * changes the path.
    *
    * @param imageId `Image.id` from a list response or a search hit.
-   * @returns The image record.
+   * @returns The image record. Unlike `getImages`, which drops list items that
+   *   break the contract, this throws when the record breaks the contract.
    * @throws An error with status 404 when no image has this id. Read it with `getHttpStatus`.
    */
-  async getImage(imageId: string): Promise<Image> {
+  async getImage(imageId: string): Promise<VerseImage> {
     const id = ImageIdSchema.parse(imageId);
     const body = await this.client.get<unknown>(`${IMAGES_PATH}/${encodeURIComponent(id)}`);
     const parsed = ImageSchema.safeParse(body);
@@ -109,8 +109,8 @@ function toImagesQuery(options: GetImagesOptions): ImagesListQuery {
   return query;
 }
 
-function toImageCollection(wire: ImageCollectionWire): Collection<Image> {
-  const page: Collection<Image> = {
+function toImageCollection(wire: ImageCollectionWire): Collection<VerseImage> {
+  const page: Collection<VerseImage> = {
     data: wire.data,
     next_page_token: wire.next_page_token,
   };

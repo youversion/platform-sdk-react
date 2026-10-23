@@ -99,9 +99,8 @@ if (!first) {
 `data.length` when off-contract records were dropped from the page. A null or
 missing total is omitted. `0` is kept.
 
-A blank `passage_id` is rejected before the request. A bare chapter such as
-`JHN.3` is sent to the server, which answers 400. Read that status with
-`getHttpStatus`.
+A blank `passage_id` is rejected before the request. Pass a single verse or a
+verse range, such as `JHN.3.16` or `JHN.3.16-18`.
 
 Unified search returns one snapshot of top results, not the entire verse result
 set. Omit `fields` for all available kinds, or pass a nonempty selection.
