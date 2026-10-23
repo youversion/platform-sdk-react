@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { ApiClient, getHttpStatus } from '../client';
-import { ImagesClient, type ImagesClientOptions } from '../images';
+import { ImagesClient } from '../images';
 import { server } from './setup';
 
 const apiHost = process.env.YVP_API_HOST;
@@ -23,13 +23,13 @@ function urlFromFetchInput(input: RequestInfo | URL | undefined): string {
   return input ?? '';
 }
 
-function createImagesClient(options?: ImagesClientOptions): ImagesClient {
+function createImagesClient(): ImagesClient {
   const apiClient = new ApiClient({
     apiHost,
     appKey: 'test-app',
     installationId: 'test-installation',
   });
-  return new ImagesClient(apiClient, options);
+  return new ImagesClient(apiClient);
 }
 
 describe('ImagesClient', () => {
@@ -436,30 +436,6 @@ describe('ImagesClient', () => {
     } catch (error) {
       expect(getHttpStatus(error)).toBe(400);
     }
-  });
-
-  it('sends list and detail requests to /v1-beta/images when beta is set', async () => {
-    const images = createImagesClient({ beta: true });
-    const fetchSpy = vi.spyOn(global, 'fetch');
-
-    server.use(
-      http.get(`https://${apiHost}/v1-beta/images`, () =>
-        HttpResponse.json({ data: [image], next_page_token: null, total_size: 1 }),
-      ),
-      http.get(`https://${apiHost}/v1-beta/images/img-1`, () => HttpResponse.json(image)),
-    );
-
-    const page = await images.getImages({ passage_id: 'JHN.3.16' });
-    const result = await images.getImage('img-1');
-
-    expect(page).toEqual({ data: [image], next_page_token: null, total_size: 1 });
-    expect(result).toEqual(image);
-    const listUrl = urlFromFetchInput(fetchSpy.mock.calls[0]?.[0]);
-    const detailUrl = urlFromFetchInput(fetchSpy.mock.calls[1]?.[0]);
-    expect(listUrl).toContain('/v1-beta/images');
-    expect(listUrl).not.toContain('/v1/images');
-    expect(detailUrl).toContain('/v1-beta/images/img-1');
-    expect(detailUrl).not.toContain('/v1/images');
   });
 
   it('exports ImagesClient from the package entry', async () => {

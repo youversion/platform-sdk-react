@@ -96,12 +96,6 @@ if (!first) {
 `data.length` when off-contract records were dropped from the page. A null or
 missing total is omitted. `0` is kept.
 
-Pass `{ beta: true }` to call `/v1-beta/images` from that client.
-
-```ts
-const betaImages = new ImagesClient(apiClient, { beta: true });
-```
-
 A blank `passage_id` is rejected before the request. A bare chapter such as
 `JHN.3` is sent to the server, which answers 400. Read that status with
 `getHttpStatus`.

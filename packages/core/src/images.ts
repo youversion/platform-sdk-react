@@ -11,16 +11,7 @@ import {
 
 export type { GetImagesOptions };
 
-/** Settings fixed for the lifetime of an `ImagesClient`. */
-export type ImagesClientOptions = Readonly<{
-  /**
-   * Send every request to `/v1-beta/images` instead of `/v1/images`.
-   * For testing before general availability. Defaults to false.
-   */
-  beta?: boolean;
-}>;
-
-type ImagesBasePath = '/v1/images' | '/v1-beta/images';
+const IMAGES_PATH = '/v1/images';
 
 type ImagesListQuery = {
   passage_id?: string;
@@ -32,8 +23,7 @@ type ImagesListQuery = {
 /**
  * Client for the verse-art Images API.
  *
- * Requests go to `/v1/images`. Construct with `{ beta: true }` to send every
- * request to `/v1-beta/images` instead. The client returns metadata only.
+ * Requests go to `/v1/images`. The client returns metadata only.
  * Image bytes come from the CDN at `Image.image_url`.
  *
  * Calls use the app key on `ApiClient`. No `Authorization` header is added.
@@ -47,15 +37,12 @@ type ImagesListQuery = {
  */
 export class ImagesClient {
   private client: ApiClient;
-  private basePath: ImagesBasePath;
 
   /**
    * @param client The API client to use for requests.
-   * @param options Pass `{ beta: true }` to target `/v1-beta/images`.
    */
-  constructor(client: ApiClient, options: ImagesClientOptions = {}) {
+  constructor(client: ApiClient) {
     this.client = client;
-    this.basePath = options.beta === true ? '/v1-beta/images' : '/v1/images';
   }
 
   /**
@@ -71,7 +58,7 @@ export class ImagesClient {
   async getImages(options: GetImagesOptions = {}): Promise<Collection<Image>> {
     const parsed = GetImagesOptionsSchema.parse(options);
     // ApiClient.get: empty JSON body → undefined; HTTP 204 → ''.
-    const body = await this.client.get<unknown>(this.basePath, toImagesQuery(parsed));
+    const body = await this.client.get<unknown>(IMAGES_PATH, toImagesQuery(parsed));
     if (body === '' || body == null) {
       return { data: [], next_page_token: null };
     }
@@ -96,7 +83,7 @@ export class ImagesClient {
    */
   async getImage(imageId: string): Promise<Image> {
     const id = ImageIdSchema.parse(imageId);
-    const body = await this.client.get<unknown>(`${this.basePath}/${encodeURIComponent(id)}`);
+    const body = await this.client.get<unknown>(`${IMAGES_PATH}/${encodeURIComponent(id)}`);
     const parsed = ImageSchema.safeParse(body);
     if (!parsed.success) {
       throw new Error(`Unexpected images API response: ${parsed.error.message}`);

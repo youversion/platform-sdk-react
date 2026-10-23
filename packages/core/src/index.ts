@@ -38,7 +38,7 @@ export {
 } from './schemas/search';
 export { parseUsfmReference, type UsfmReference } from './usfm-reference';
 export { OrganizationsClient } from './organizations';
-export { ImagesClient, type ImagesClientOptions } from './images';
+export { ImagesClient } from './images';
 export {
   HighlightsClient,
   type GetHighlightsOptions,
