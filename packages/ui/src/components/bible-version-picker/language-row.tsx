@@ -52,11 +52,11 @@ export function LanguageRow({
         variant="ghost"
       >
         <ItemContent className="yv:flex yv:flex-row yv:flex-wrap yv:items-baseline yv:justify-start yv:gap-2">
-          <ItemTitle className="yv:text-start yv:shrink-0 yv:text-base yv:font-normal yv:leading-[1.25]">
+          <ItemTitle className="yv:text-start yv:shrink-0 yv:text-base! yv:font-normal! yv:leading-[1.25]">
             <bdi dir="auto">{primary}</bdi>
           </ItemTitle>
           {secondary ? (
-            <ItemDescription className="yv:text-start yv:shrink-0 yv:text-[11px] yv:font-medium yv:leading-4">
+            <ItemDescription className="yv:text-start yv:shrink-0 yv:text-[11px]! yv:font-medium! yv:leading-4 yv:text-muted-foreground!">
               <bdi dir="auto">{secondary}</bdi>
             </ItemDescription>
           ) : null}
