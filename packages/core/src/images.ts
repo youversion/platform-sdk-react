@@ -24,7 +24,7 @@ type ImagesListQuery = {
  * Client for the verse-art Images API.
  *
  * Requests go to `/v1/images`. The client returns metadata only.
- * Image bytes come from the CDN at `Image.image_url`.
+ * Image bytes come from the CDN at `VerseImage.image_url`.
  *
  * Calls use the app key on `ApiClient`. No `Authorization` header is added.
  *
@@ -72,11 +72,11 @@ export class ImagesClient {
    * Fetches one image by its opaque id.
    *
    * The id is placed on the path unchanged (blank rejected) with one
-   * `encodeURIComponent` call. Pass `Image.id` or a search hit as stored.
+   * `encodeURIComponent` call. Pass `VerseImage.id` or a search hit as stored.
    * Percent-encoding the id before this call encodes it a second time and
    * changes the path.
    *
-   * @param imageId `Image.id` from a list response or a search hit.
+   * @param imageId `VerseImage.id` from a list response or a search hit.
    * @returns The image record. Unlike `getImages`, which drops list items that
    *   break the contract, this throws when the record breaks the contract.
    * @throws An error with status 404 when no image has this id. Read it with `getHttpStatus`.
