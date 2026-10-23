@@ -10,6 +10,40 @@ affected.
 Generated from the per-package changelogs by `scripts/build-root-changelog.mjs` — edit those,
 or the changeset, rather than this file.
 
+## 2.16.0
+
+### Minor Changes
+
+- _(@youversion/platform-core, @youversion/platform-react-ui)_ da12b12: Export shared Bible version attribution selection and fall back to promotional content in BibleCard and BibleReader when copyright is blank.
+
+- _(@youversion/platform-core)_ 23ed5bc: Add `ImagesClient` for verse-art image metadata. `getImages` calls `GET /v1/images` and returns a `Collection<Image>`. `getImage` calls `GET /v1/images/{image_id}`.
+
+  `total_size` is included only when the API sends a number. A null or missing total is omitted, and `0` is kept. `page_token` accepts `null`. A blank passage id is rejected before the request. `passage_id` takes a single verse or a verse range. The SDK returns metadata only. Read image bytes from `image_url`.
+
+- _(@youversion/platform-core)_ 529192b: Add `searchUnified` for `GET /v1/search-unified`, returning one unpaginated snapshot of top verse references and related topics.
+
+- _(@youversion/platform-core, @youversion/platform-react-hooks)_ 24cd0f2: Add image hits to unified search. `searchUnified` and `useUnifiedSearch` accept `fields: ['images']` and return `images` as `{ id, passageId }` entries. Malformed image rows are dropped.
+
+- _(@youversion/platform-core, @youversion/platform-react-hooks)_ 529192b: Add useUnifiedSearch for loading top verse references and related topics through the unified-search core client, without changing the existing paginated Bible search flow.
+
+  Validate unified-search request intents and required response fields against the API contract while preserving unknown response intent strings.
+
+- _(@youversion/platform-react-ui)_ 529192b: Re-export unified search client helpers from the UI package entry point.
+
+### Patch Changes
+
+- _(@youversion/platform-core)_ 24cd0f2: Drop malformed unified-search image rows individually so missing or null identifiers do not discard valid verses, topics, or sibling images.
+
+- _(@youversion/platform-react-ui)_ 3073603: Keep the verse action menu after cancelling a highlight sign-in or permission prompt. Confirming either prompt hides the menu until the redirect starts, and brings it back if the redirect fails to start.
+
+- _(@youversion/platform-react-ui)_ 60d022e: Keep the reader font labels Inter and Untitled Serif in every language.
+
+- _(@youversion/platform-react-ui)_ 8a82cb9: The verse action popover enters in 180ms with its easing curve. The exit stays on the library default.
+
+- _(@youversion/platform-react-ui)_ f197bfa: Sync localization from platform-localization (13a6914): add Dutch (nl), Russian (ru), Ukrainian (uk); update 515 keys in af, ar, cy, de, fr, ig, no, pt, sr, tr, vi, zh.
+
+- _(@youversion/platform-react-ui)_ 1699a0f: Sync localization from platform-localization (237cba4): add Igbo (ig); update 26 keys in en, es.
+
 ## 2.15.0
 
 ### Minor Changes
