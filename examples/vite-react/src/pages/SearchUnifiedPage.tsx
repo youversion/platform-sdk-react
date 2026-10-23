@@ -5,6 +5,7 @@ import {
   type SearchUnifiedField,
   type SearchUnifiedResponse,
 } from '@youversion/platform-react-ui';
+import { API_TIMEOUT_MS } from '../api-timeout';
 
 type FieldMode = 'images' | 'images_and_verses';
 
@@ -46,6 +47,7 @@ export function SearchUnifiedPage() {
         new ApiClient({
           appKey,
           apiHost,
+          timeout: API_TIMEOUT_MS,
         }),
       ),
     [appKey, apiHost],
@@ -158,9 +160,7 @@ export function SearchUnifiedPage() {
           {status.message}
         </p>
       ) : null}
-      {status.kind === 'ok' ? (
-        <Results data={status.data} fieldMode={status.fieldMode} />
-      ) : null}
+      {status.kind === 'ok' ? <Results data={status.data} fieldMode={status.fieldMode} /> : null}
     </div>
   );
 }
