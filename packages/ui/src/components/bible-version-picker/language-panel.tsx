@@ -21,7 +21,7 @@ import { LanguageRow } from './language-row';
 const languageTabClassName =
   'yv:p-0 yv:text-muted-foreground! yv:data-[state=active]:bg-foreground! yv:data-[state=active]:text-background! yv:data-[state=active]:shadow-none!';
 
-export const LanguageSearchButton = forwardRef<HTMLButtonElement, Record<string, never>>(
+export const LanguageSearchButton = forwardRef<HTMLButtonElement>(
   function LanguageSearchButton(_props, ref): ReactElement {
     const { t } = useTranslation(undefined, { i18n });
     const { setView } = useBibleVersionPickerContext();
