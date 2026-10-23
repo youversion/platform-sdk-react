@@ -128,6 +128,7 @@ type BibleVersionPickerContextType = {
   side: 'top' | 'right' | 'bottom' | 'left';
   languages: Pick<Language, 'id' | 'display_names' | 'speaking_population'>[];
   totalLanguages: number;
+  totalVersions: number;
   selectedLanguageId: string;
   setSelectedLanguageId: (id: string) => void;
   searchQuery: string;
@@ -385,6 +386,7 @@ function Root({
     side,
     languages: uniqueLanguages,
     totalLanguages: uniqueLanguages.length || 0,
+    totalVersions: versionsLanguageInfo?.data?.length || 0,
     selectedLanguageId,
     setSelectedLanguageId,
     searchQuery,
@@ -588,6 +590,14 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
         : view === 'languageSearch'
           ? t('searchLanguages')
           : t('selectLanguageHeading');
+    const headingDescription =
+      view === 'versions'
+        ? t('versionsStatistics', {
+            versionsCount: picker.totalVersions.toLocaleString(),
+            languagesCount: picker.totalLanguages.toLocaleString(),
+            defaultValue: '{{versionsCount}} Versions in {{languagesCount}} Languages',
+          })
+        : undefined;
 
     return (
       <BibleVersionPickerContext.Provider value={{ ...picker, headerOwnsChrome: true }}>
@@ -595,6 +605,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
           sideOffset={16}
           className="yv:h-[66svh]"
           heading={heading}
+          headingDescription={headingDescription}
           showClose={view === 'versions'}
           headerLeading={
             view === 'versions' ? null : (

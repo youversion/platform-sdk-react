@@ -27,6 +27,7 @@ function PopoverContent({
   headerChild,
   align = 'center',
   heading,
+  headingDescription,
   showHeader = true,
   showClose = true,
   sideOffset = 4,
@@ -36,6 +37,7 @@ function PopoverContent({
   showHeader?: boolean;
   showClose?: boolean;
   heading?: React.ReactNode;
+  headingDescription?: React.ReactNode;
   headerLeading?: React.ReactNode;
   headerChild?: React.ReactNode;
   theme?: 'light' | 'dark';
@@ -62,19 +64,26 @@ function PopoverContent({
         {showHeader ? (
           <section
             className={cn(
-              'yv:bg-muted yv:py-3 yv:rounded-t-2xl yv:px-4 yv:border-b yv:border-border yv:grid yv:justify-between yv:items-center yv:gap-2',
+              'yv:bg-popover yv:py-3 yv:rounded-t-2xl yv:px-4 yv:grid yv:justify-between yv:items-center yv:gap-2',
               popoverHeaderColumns(Boolean(headerLeading), Boolean(headerChild), showClose),
             )}
           >
             {headerLeading}
-            <h2 className="yv:font-bold yv:text-base">{heading}</h2>
+            <div className="yv:min-w-0 yv:flex yv:flex-col">
+              <h2 className="yv:font-bold yv:text-base yv:leading-[1.25]">{heading}</h2>
+              {headingDescription ? (
+                <p className="yv:text-[10px]! yv:font-medium! yv:leading-4 yv:text-muted-foreground">
+                  {headingDescription}
+                </p>
+              ) : null}
+            </div>
             {headerChild}
             {showClose ? (
               <PopoverClose asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="yv:w-6 yv:h-6 yv:text-muted-foreground"
+                  className="yv:w-6 yv:h-6 yv:rounded-full yv:border yv:border-border yv:text-muted-foreground"
                 >
                   <XIcon className="yv:size-5" />
                   <span className="yv:sr-only">{t('closeAriaLabel')}</span>
