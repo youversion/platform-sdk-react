@@ -10,7 +10,7 @@ import { Button } from '../ui/button';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '../ui/input-group';
 import { ItemGroup } from '../ui/item';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { useEffect, useRef, useState, type ReactElement, type RefObject } from 'react';
+import { forwardRef, useEffect, useRef, useState, type ReactElement, type RefObject } from 'react';
 import {
   useBibleVersionPickerContext,
   type BibleLanguagePickerContentProps,
@@ -21,34 +21,38 @@ import { LanguageRow } from './language-row';
 const languageTabClassName =
   'yv:p-0 yv:text-muted-foreground! yv:data-[state=active]:bg-foreground! yv:data-[state=active]:text-background! yv:data-[state=active]:shadow-none!';
 
-export function LanguageSearchButton(): ReactElement {
-  const { t } = useTranslation(undefined, { i18n });
-  const { setView } = useBibleVersionPickerContext();
+export const LanguageSearchButton = forwardRef<HTMLButtonElement, Record<string, never>>(
+  function LanguageSearchButton(_props, ref): ReactElement {
+    const { t } = useTranslation(undefined, { i18n });
+    const { setView } = useBibleVersionPickerContext();
 
+    return (
+      <Button
+        ref={ref}
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="yv:w-6 yv:h-6 yv:text-muted-foreground"
+        aria-label={t('languageSearchAriaLabel')}
+        data-slot="language-search-open"
+        onClick={() => setView('languageSearch')}
+      >
+        <SearchIcon className="yv:size-5" />
+      </Button>
+    );
+  },
+);
+
+export const LanguageBackButton = forwardRef<
+  HTMLButtonElement,
+  {
+    label: string;
+    onClick: () => void;
+  }
+>(function LanguageBackButton({ label, onClick }, ref): ReactElement {
   return (
     <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      className="yv:w-6 yv:h-6 yv:text-muted-foreground"
-      aria-label={t('languageSearchAriaLabel')}
-      data-slot="language-search-open"
-      onClick={() => setView('languageSearch')}
-    >
-      <SearchIcon className="yv:size-5" />
-    </Button>
-  );
-}
-
-export function LanguageBackButton({
-  label,
-  onClick,
-}: {
-  label: string;
-  onClick: () => void;
-}): ReactElement {
-  return (
-    <Button
+      ref={ref}
       type="button"
       onClick={onClick}
       variant="ghost"
@@ -60,7 +64,7 @@ export function LanguageBackButton({
       <span className="yv:sr-only">{label}</span>
     </Button>
   );
-}
+});
 
 export function LanguagePanel({
   onRequestClose,
@@ -131,6 +135,9 @@ export function BibleLanguagePickerContent({
 
   const [languageTab, setLanguageTab] = useState('suggested');
   const wasOpenRef = useRef(open ?? false);
+  const panelRootRef = useRef<HTMLDivElement>(null);
+  const searchOpenRef = useRef<HTMLButtonElement>(null);
+  const backRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // RN standalone/Expo integrations keep this content mounted and toggle `open`.
@@ -149,9 +156,17 @@ export function BibleLanguagePickerContent({
     if (view !== 'languageSearch') return;
     searchInputRef.current?.focus();
     return () => {
-      const opener = document.querySelector<HTMLElement>('[data-slot="language-search-open"]');
-      const back = document.querySelector<HTMLElement>('[data-slot="language-back"]');
-      (opener ?? back)?.focus();
+      const opener = searchOpenRef.current;
+      const back = backRef.current;
+      if (opener ?? back) {
+        (opener ?? back)?.focus();
+        return;
+      }
+      const scope =
+        panelRootRef.current?.closest('[data-slot="popover-content"]') ?? panelRootRef.current;
+      const scopedOpener = scope?.querySelector<HTMLElement>('[data-slot="language-search-open"]');
+      const scopedBack = scope?.querySelector<HTMLElement>('[data-slot="language-back"]');
+      (scopedOpener ?? scopedBack)?.focus();
     };
   }, [view]);
 
@@ -166,6 +181,7 @@ export function BibleLanguagePickerContent({
 
   return (
     <div
+      ref={panelRootRef}
       className="yv:h-full yv:min-h-0 yv:overflow-hidden yv:flex yv:flex-col"
       data-yv-sdk
       data-yv-theme={background}
@@ -174,6 +190,7 @@ export function BibleLanguagePickerContent({
     >
       {searching ? (
         <LanguageSearchView
+          backRef={backRef}
           closeLanguageSearch={closeLanguageSearch}
           filteredLanguages={filteredLanguages}
           headerOwnsChrome={headerOwnsChrome}
@@ -190,7 +207,7 @@ export function BibleLanguagePickerContent({
         <>
           {headerOwnsChrome ? null : (
             <div className="yv:flex yv:justify-end yv:px-4 yv:pt-4">
-              <LanguageSearchButton />
+              <LanguageSearchButton ref={searchOpenRef} />
             </div>
           )}
           <Tabs
@@ -245,6 +262,7 @@ export function BibleLanguagePickerContent({
 }
 
 function LanguageSearchView({
+  backRef,
   closeLanguageSearch,
   filteredLanguages,
   headerOwnsChrome,
@@ -257,6 +275,7 @@ function LanguageSearchView({
   selectedLanguageId,
   suggestedLanguages,
 }: {
+  backRef: RefObject<HTMLButtonElement | null>;
   closeLanguageSearch: () => void;
   filteredLanguages: LanguageListItem[];
   headerOwnsChrome: boolean;
@@ -275,7 +294,7 @@ function LanguageSearchView({
     <>
       {headerOwnsChrome ? null : (
         <div className="yv:px-4 yv:pt-4">
-          <LanguageBackButton label={t('back')} onClick={closeLanguageSearch} />
+          <LanguageBackButton ref={backRef} label={t('back')} onClick={closeLanguageSearch} />
         </div>
       )}
       <section className="yv:p-4">

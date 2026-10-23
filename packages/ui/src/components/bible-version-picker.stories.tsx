@@ -186,7 +186,7 @@ export const InteractiveLanguageSelection: Story = {
     // Wait for the language button to update with the selected language
     await waitFor(async () => {
       await expect(await screen.findByRole('button', { name: /^language /i })).toHaveTextContent(
-        /korean/i,
+        /한국어/,
       );
     });
   },
