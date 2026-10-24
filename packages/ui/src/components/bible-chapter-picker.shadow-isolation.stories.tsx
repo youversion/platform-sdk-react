@@ -184,7 +184,6 @@ export const PublicRootJourney: Story = {
     let panelQueries = within(panel);
     const closeButton = panelQueries.getByRole('button', { name: 'Close' });
     const initialSearch = panelQueries.getByPlaceholderText(/search/i);
-    const lastChapterButton = panelQueries.getByRole('button', { name: '5' });
     const openingPanelWindow = panel.ownerDocument.defaultView;
     if (!openingPanelWindow) throw new Error('chapter picker window not available');
     await new Promise<void>((resolve) =>
@@ -215,9 +214,9 @@ export const PublicRootJourney: Story = {
     });
     exitAnimationStyle.remove();
     await userEvent.tab({ shift: true });
-    await expect(root.activeElement).toBe(lastChapterButton);
-    await userEvent.tab();
     await expect(root.activeElement).toBe(initialSearch);
+    await userEvent.tab();
+    await expect(root.activeElement).toBe(closeButton);
     await userEvent.click(closeButton);
     await waitFor(async () => {
       await expect(topLayer.querySelector('[data-slot="popover-content"]')).toBeNull();
