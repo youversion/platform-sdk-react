@@ -3,6 +3,7 @@ import type { BibleBook } from '@youversion/platform-core';
 import { YouVersionContext, type HookOverrides } from '@youversion/platform-react-hooks';
 import { useContext, useState, type ReactNode } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
+import { tabbable } from 'tabbable';
 import { waitFor, waitForElement, waitForShadowRoot } from '../test/storybook-dom';
 import { BibleChapterPicker } from './bible-chapter-picker';
 
@@ -184,6 +185,7 @@ export const PublicRootJourney: Story = {
     let panelQueries = within(panel);
     const closeButton = panelQueries.getByRole('button', { name: 'Close' });
     const initialSearch = panelQueries.getByPlaceholderText(/search/i);
+    const lastChapterButton = panelQueries.getByRole('button', { name: '5' });
     const openingPanelWindow = panel.ownerDocument.defaultView;
     if (!openingPanelWindow) throw new Error('chapter picker window not available');
     await new Promise<void>((resolve) =>
@@ -215,6 +217,9 @@ export const PublicRootJourney: Story = {
     exitAnimationStyle.remove();
     await userEvent.tab({ shift: true });
     await expect(root.activeElement).toBe(initialSearch);
+    const tabOrder = tabbable(panel, { getShadowRoot: true });
+    await expect(tabOrder.at(-2)).toBe(lastChapterButton);
+    await expect(tabOrder.at(-1)).toBe(initialSearch);
     await userEvent.tab();
     await expect(root.activeElement).toBe(closeButton);
     await userEvent.click(closeButton);
