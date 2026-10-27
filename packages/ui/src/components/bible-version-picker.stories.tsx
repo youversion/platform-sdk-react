@@ -174,10 +174,10 @@ export const InteractiveLanguageSelection: Story = {
     await userEvent.click(languageButton);
 
     // Verify language list is visible
-    const selectLanguageHeading = await screen.findByRole('heading', {
-      name: /select a language/i,
+    const bibleLanguagesHeading = await screen.findByRole('heading', {
+      name: /bible languages/i,
     });
-    await expect(selectLanguageHeading).toBeInTheDocument();
+    await expect(bibleLanguagesHeading).toBeInTheDocument();
 
     // Select Korean
     const koreanOption = await screen.findByRole('listitem', { name: /korean/i });

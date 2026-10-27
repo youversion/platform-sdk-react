@@ -589,7 +589,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
         ? t('bibleVersionsHeading')
         : view === 'languageSearch'
           ? t('searchLanguages')
-          : t('selectLanguageHeading');
+          : t('bibleLanguagesHeading', 'Bible Languages');
     const headingDescription =
       view === 'versions'
         ? t('versionsStatistics', '{{versionsCount}} Versions in {{languagesCount}} Languages', {
