@@ -592,10 +592,9 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
           : t('selectLanguageHeading');
     const headingDescription =
       view === 'versions'
-        ? t('versionsStatistics', {
+        ? t('versionsStatistics', '{{versionsCount}} Versions in {{languagesCount}} Languages', {
             versionsCount: picker.totalVersions.toLocaleString(),
             languagesCount: picker.totalLanguages.toLocaleString(),
-            defaultValue: '{{versionsCount}} Versions in {{languagesCount}} Languages',
           })
         : undefined;
 
@@ -603,7 +602,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
       <BibleVersionPickerContext.Provider value={{ ...picker, headerOwnsChrome: true }}>
         <PopoverContent
           sideOffset={16}
-          className="yv:h-[66svh]"
+          className="yv:h-[600px] yv:w-[400px] yv:max-h-[min(600px,calc(100svh-32px),var(--radix-popover-content-available-height,600px))] yv:max-sm:max-w-[min(400px,calc(100vw-32px))] yv:sm:max-w-[min(400px,calc(100vw-32px))]"
           heading={heading}
           headingDescription={headingDescription}
           showClose={view === 'versions'}

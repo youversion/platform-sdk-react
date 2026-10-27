@@ -454,6 +454,7 @@ describe('BibleVersionPicker', () => {
         </BibleVersionPicker.Root>,
       );
 
+      expect(screen.queryByRole('button', { name: /language/i })).not.toBeInTheDocument();
       await user.click(screen.getByRole('listitem', { name: /new living translation/i }));
 
       expect(onVersionChange).toHaveBeenCalledWith(206);

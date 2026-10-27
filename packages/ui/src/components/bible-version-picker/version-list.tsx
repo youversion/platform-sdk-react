@@ -119,14 +119,18 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
   );
 }
 
-function LanguageEntry(): ReactElement {
+function VersionCountBadge({ count, loading }: { count: number; loading: boolean }): ReactElement {
+  return (
+    <span className="yv:flex yv:shrink-0 yv:min-w-4 yv:items-center yv:justify-center yv:rounded-lg yv:bg-muted yv:px-1 yv:text-[10px]! yv:font-medium! yv:leading-4 yv:tabular-nums">
+      {loading ? <LoaderIcon className="yv:size-3 yv:animate-spin" /> : count}
+    </span>
+  );
+}
+
+function LanguageEntry({ name }: { name: string }): ReactElement {
   const { t } = useTranslation(undefined, { i18n });
-  const { filteredVersions, filteredRecentVersions, selectedLanguageId, setView, versionsLoading } =
+  const { filteredVersions, filteredRecentVersions, setView, versionsLoading } =
     useBibleVersionPickerContext();
-  const { language } = useLanguage(selectedLanguageId);
-  const name = language
-    ? languageRowNames({ id: selectedLanguageId, display_names: language.display_names }).primary
-    : selectedLanguageId;
   const count = filteredVersions.length + filteredRecentVersions.length;
 
   return (
@@ -146,9 +150,7 @@ function LanguageEntry(): ReactElement {
         <bdi dir="auto" className="yv:text-xs! yv:font-bold! yv:leading-4">
           {name}
         </bdi>
-        <span className="yv:flex yv:min-w-4 yv:items-center yv:justify-center yv:rounded-lg yv:bg-muted yv:px-1 yv:text-[10px]! yv:font-medium! yv:leading-4 yv:tabular-nums">
-          {versionsLoading ? <LoaderIcon className="yv:size-3 yv:animate-spin" /> : count}
-        </span>
+        <VersionCountBadge count={count} loading={versionsLoading} />
         <ChevronForwardIcon className="yv:size-4 yv:shrink-0 yv:text-muted-foreground" />
       </span>
     </button>
@@ -173,7 +175,16 @@ export function VersionList({
     background,
     resetLanguageSearch,
     setView,
+    selectedLanguageId,
+    headerOwnsChrome,
   } = useBibleVersionPickerContext();
+  const { language: selectedLanguage } = useLanguage(selectedLanguageId);
+  const selectedLanguageName = selectedLanguage
+    ? languageRowNames({
+        id: selectedLanguageId,
+        display_names: selectedLanguage.display_names,
+      }).primary
+    : selectedLanguageId;
   const wasOpenRef = useRef(open ?? false);
 
   const { organizations } = useOrganizations([
@@ -224,7 +235,7 @@ export function VersionList({
               aria-label={t('versionSearchAriaLabel')}
               tabIndex={1}
               type="text"
-              placeholder={t('searchPlaceholder')}
+              placeholder={t('searchVersions')}
               dir="auto"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -234,7 +245,7 @@ export function VersionList({
             </InputGroupAddon>
           </InputGroup>
         </section>
-        <LanguageEntry />
+        {headerOwnsChrome ? <LanguageEntry name={selectedLanguageName} /> : null}
       </div>
       <div className="yv:flex-1 yv:overflow-y-auto yv:py-2">
         {filteredRecentVersions.length > 0 && (
@@ -261,12 +272,16 @@ export function VersionList({
                     <ItemMedia variant="icon" className={versionTileClassName}>
                       <VersionAbbreviationIcon text={version.localized_abbreviation} />
                     </ItemMedia>
-                    <ItemContent>
+                    <ItemContent className="yv:min-w-0">
                       <VersionPublisherName name={publisherName(version.organization_id)} />
                       <ItemTitle className="yv:line-clamp-2 yv:text-start yv:text-[13px]! yv:font-medium! yv:leading-[1.25]">
                         <bdi dir="auto">{version.title}</bdi>
                       </ItemTitle>
                     </ItemContent>
+                    <ChevronForwardIcon
+                      aria-hidden="true"
+                      className="yv:size-4 yv:shrink-0 yv:text-muted-foreground"
+                    />
                   </button>
                 </Item>
               ))}
@@ -275,8 +290,13 @@ export function VersionList({
         )}
         {filteredVersions.length > 0 ? (
           <ItemGroup data-testid="version-list">
-            <h3 className="yv:px-4 yv:py-2 yv:text-xl yv:font-bold yv:leading-6">
-              {t('allVersionsHeading')}
+            <h3 className="yv:flex yv:min-w-0 yv:items-center yv:gap-1.5 yv:px-4 yv:py-2 yv:text-xl yv:font-bold yv:leading-6">
+              <span className="yv:min-w-0 yv:break-words">
+                {t('languageVersionsHeading', '{{language}} Versions', {
+                  language: selectedLanguageName,
+                })}
+              </span>
+              <VersionCountBadge count={filteredVersions.length} loading={versionsLoading} />
             </h3>
             {filteredVersions.map((version: BibleVersion) => (
               <Item
@@ -296,12 +316,16 @@ export function VersionList({
                   <ItemMedia variant="icon" className={versionTileClassName}>
                     <VersionAbbreviationIcon text={version.localized_abbreviation} />
                   </ItemMedia>
-                  <ItemContent>
+                  <ItemContent className="yv:min-w-0">
                     <VersionPublisherName name={publisherName(version.organization_id)} />
                     <ItemTitle className="yv:line-clamp-2 yv:text-start yv:text-[13px]! yv:font-medium! yv:leading-[1.25]">
                       <bdi dir="auto">{version.title}</bdi>
                     </ItemTitle>
                   </ItemContent>
+                  <ChevronForwardIcon
+                    aria-hidden="true"
+                    className="yv:size-4 yv:shrink-0 yv:text-muted-foreground"
+                  />
                 </button>
               </Item>
             ))}

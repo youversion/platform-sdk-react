@@ -298,18 +298,18 @@ function LanguageSearchView({
         </div>
       )}
       <section className="yv:p-4">
-        <InputGroup className="yv:bg-background yv:shadow-none yv:border-border">
+        <InputGroup className="yv:h-auto yv:rounded-full yv:border-0 yv:bg-muted yv:py-1 yv:shadow-none">
           <InputGroupInput
             ref={searchInputRef}
             aria-label={t('languageSearchAriaLabel')}
             type="text"
-            placeholder={t('searchPlaceholder')}
+            placeholder={t('searchLanguages')}
             dir="auto"
             value={languageSearchQuery}
             onChange={(event) => onQueryChange(event.target.value)}
           />
           <InputGroupAddon>
-            <SearchIcon className="yv:size-5 yv:text-muted-foreground" />
+            <SearchIcon className="yv:size-6 yv:text-muted-foreground" />
           </InputGroupAddon>
         </InputGroup>
       </section>
