@@ -7,6 +7,8 @@ import { BookOpenIcon } from './icons/book-open';
 import { Button } from './ui/button';
 import { RECENT_VERSIONS_KEY } from './bible-version-picker';
 import i18n from '@/i18n';
+import mockLanguages from '@/test/mock-data/languages.json';
+import { globalHandlers } from '@/test/mocks/handlers';
 
 type StoredRecentVersion = {
   id: number;
@@ -89,6 +91,122 @@ export const Default: Story = {
     versionId: 111,
     side: 'top',
   },
+};
+
+const tabletJourney: Story = {
+  args: { versionId: 111 },
+  parameters: {
+    viewport: {
+      options: {
+        tabletPortrait: { name: 'Tablet portrait', styles: { width: '834px', height: '1194px' } },
+        tabletLandscape: { name: 'Tablet landscape', styles: { width: '1180px', height: '820px' } },
+        narrow: { name: 'Narrow', styles: { width: '375px', height: '812px' } },
+        short: { name: 'Short', styles: { width: '820px', height: '400px' } },
+      },
+    },
+    msw: {
+      handlers: [
+        http.get('*/v1/languages', ({ request }) =>
+          HttpResponse.json(
+            new URL(request.url).searchParams.has('country')
+              ? {
+                  data: mockLanguages.data.filter((language) => language.id === 'en'),
+                  next_page_token: null,
+                }
+              : mockLanguages,
+          ),
+        ),
+        http.get('*/v1/languages/es', () =>
+          HttpResponse.json({
+            id: 'es',
+            language: 'es',
+            display_names: { es: 'Español (América Latina)', en: 'Spanish' },
+          }),
+        ),
+        ...globalHandlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const trigger = await canvas.findByRole('button', { name: /NIV/i });
+    await userEvent.click(trigger);
+    const dialog = await screen.findByRole('dialog');
+    await waitFor(async () => {
+      await expect(screen.getByRole('button', { name: /^Language English 9$/ })).toBeVisible();
+      const bounds = dialog.getBoundingClientRect();
+      await expect(
+        Math.abs(bounds.width - Math.min(400, window.innerWidth - 32)),
+      ).toBeLessThanOrEqual(1);
+      await expect(bounds.height).toBeLessThanOrEqual(Math.min(600, window.innerHeight - 32) + 1);
+      if (window.innerWidth >= 640 && window.innerHeight >= 768) {
+        await expect(Math.abs(bounds.height - 600)).toBeLessThanOrEqual(1);
+      }
+      await expect(bounds.left).toBeGreaterThanOrEqual(15);
+      await expect(bounds.right).toBeLessThanOrEqual(window.innerWidth - 15);
+      await expect(bounds.top).toBeGreaterThanOrEqual(15);
+      await expect(bounds.bottom).toBeLessThanOrEqual(window.innerHeight - 15);
+      await expect(dialog.scrollWidth).toBeLessThanOrEqual(dialog.clientWidth);
+    });
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await userEvent.click(trigger);
+    await userEvent.click(await screen.findByRole('button', { name: /^Language\b/ }));
+    await expect(screen.getByRole('tab', { name: /suggested/i })).toHaveAttribute(
+      'data-state',
+      'active',
+    );
+    await expect(screen.queryByRole('listitem', { name: /Spanish/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /search languages/i }));
+    await userEvent.type(screen.getByRole('textbox', { name: /search languages/i }), 'Spanish');
+    const results = await screen.findByTestId('language-search-results');
+    await waitFor(() => expect(within(results).getAllByRole('listitem')).toHaveLength(1));
+    await expect(within(results).getByRole('listitem', { name: /Spanish/ })).toBeVisible();
+    await expect(
+      within(results).queryByRole('listitem', { name: /English/ }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /^back$/i }));
+    await expect(screen.getByRole('tab', { name: /suggested/i })).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: /back to bible versions/i }));
+    await expect(screen.getByRole('textbox', { name: /search bible versions/i })).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: /^Language\b/ }));
+    await userEvent.click(screen.getByRole('tab', { name: /^All\b/ }));
+    await userEvent.click(await screen.findByRole('listitem', { name: /Spanish/ }));
+    await waitFor(async () => {
+      const heading = within(screen.getByTestId('version-list')).getByRole('heading');
+      await expect(heading).toHaveTextContent('Español (América Latina)');
+      const badge = within(heading).getByText('1').getBoundingClientRect();
+      await expect(badge.right).toBeLessThanOrEqual(heading.getBoundingClientRect().right - 15);
+      await expect(dialog.scrollWidth).toBeLessThanOrEqual(dialog.clientWidth);
+    });
+    await userEvent.click(screen.getByRole('listitem', { name: /Reina-Valera 1960/i }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await expect(trigger).toHaveTextContent('RVR1960');
+  },
+};
+
+export const TabletPortrait: Story = {
+  ...tabletJourney,
+  tags: ['integration'],
+  globals: { viewport: { value: 'tabletPortrait', isRotated: false } },
+};
+
+export const TabletLandscape: Story = {
+  ...tabletJourney,
+  tags: ['integration'],
+  globals: { viewport: { value: 'tabletLandscape', isRotated: false } },
+};
+
+export const NarrowLanguageHeading: Story = {
+  ...tabletJourney,
+  tags: ['integration'],
+  globals: { viewport: { value: 'narrow', isRotated: false } },
+};
+
+export const ShortViewport: Story = {
+  ...tabletJourney,
+  tags: ['integration'],
+  globals: { viewport: { value: 'short', isRotated: false } },
 };
 
 export const Loading: Story = {

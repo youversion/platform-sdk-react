@@ -122,7 +122,7 @@ function VersionAbbreviationIcon({ text }: { text: string }) {
 function VersionCountBadge({ count, loading }: { count: number; loading: boolean }): ReactElement {
   return (
     <span className="yv:flex yv:shrink-0 yv:min-w-4 yv:items-center yv:justify-center yv:rounded-lg yv:bg-muted yv:px-1 yv:text-[10px]! yv:font-medium! yv:leading-4 yv:tabular-nums">
-      {loading ? <LoaderIcon className="yv:size-3 yv:animate-spin" /> : count}
+      {loading ? <LoaderIcon aria-hidden="true" className="yv:size-3 yv:animate-spin" /> : count}
     </span>
   );
 }
@@ -137,21 +137,23 @@ function LanguageEntry({ name }: { name: string }): ReactElement {
     <button
       type="button"
       className="yv:flex yv:w-full yv:items-center yv:justify-between yv:gap-3 yv:px-4 yv:py-3 yv:text-start yv:hover:bg-muted"
-      aria-label={`${t('language')} ${name}`}
       onClick={() => setView('languages')}
     >
-      <span className="yv:flex yv:min-w-0 yv:items-center yv:gap-2" aria-hidden="true">
-        <GlobeIcon className="yv:size-6 yv:shrink-0" />
+      <span className="yv:flex yv:min-w-0 yv:items-center yv:gap-2">
+        <GlobeIcon aria-hidden="true" className="yv:size-6 yv:shrink-0" />
         <span className="yv:truncate yv:text-[13px]! yv:font-normal! yv:leading-[1.25]">
           {t('language')}
         </span>
-      </span>
-      <span className="yv:flex yv:shrink-0 yv:items-center yv:gap-1.5" aria-hidden="true">
+      </span>{' '}
+      <span className="yv:flex yv:shrink-0 yv:items-center yv:gap-1.5">
         <bdi dir="auto" className="yv:text-xs! yv:font-bold! yv:leading-4">
           {name}
-        </bdi>
+        </bdi>{' '}
         <VersionCountBadge count={count} loading={versionsLoading} />
-        <ChevronForwardIcon className="yv:size-4 yv:shrink-0 yv:text-muted-foreground" />
+        <ChevronForwardIcon
+          aria-hidden="true"
+          className="yv:size-4 yv:shrink-0 yv:text-muted-foreground"
+        />
       </span>
     </button>
   );
