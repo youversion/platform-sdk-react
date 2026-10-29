@@ -10,6 +10,12 @@ affected.
 Generated from the per-package changelogs by `scripts/build-root-changelog.mjs` — edit those,
 or the changeset, rather than this file.
 
+## 2.16.1
+
+### Patch Changes
+
+- _(@youversion/platform-react-ui)_ 4eed87a: Sync localization from platform-localization (dc70b8b): update 6 keys in en.
+
 ## 2.16.0
 
 ### Minor Changes

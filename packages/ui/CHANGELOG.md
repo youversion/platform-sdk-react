@@ -1,5 +1,13 @@
 # @youversion/platform-react-ui
 
+## 2.16.1
+
+### Patch Changes
+
+- 4eed87a: Sync localization from platform-localization (dc70b8b): update 6 keys in en.
+  - @youversion/platform-core@2.16.1
+  - @youversion/platform-react-hooks@2.16.1
+
 ## 2.16.0
 
 ### Minor Changes
