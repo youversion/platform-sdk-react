@@ -42,8 +42,11 @@ export const OrganizationSchema = z.object({
    * used. The chosen language is returned in the Content-Language header.
    */
   name: z.optional(z.string()),
-  /** Description of the organization: its purpose, goals, values, and mission. */
-  description: z.optional(z.string()),
+  /**
+   * Description of the organization: its purpose, goals, values, and mission.
+   * The API sends null when there is none (the OpenAPI spec does not mark it nullable).
+   */
+  description: z.optional(z.nullable(z.string())),
   /** The contact email address for the organization if provided. */
   email: z.optional(z.nullable(z.string())),
   /** The contact phone number for the organization if provided. */
@@ -52,8 +55,11 @@ export const OrganizationSchema = z.object({
   primary_language: z.optional(z.string()),
   /** The web site for the organization. */
   website_url: z.optional(z.string()),
-  /** The organization's address. */
-  address: z.optional(OrganizationAddressSchema),
+  /**
+   * The organization's address. The API sends null when there is none (the OpenAPI spec
+   * does not mark it nullable).
+   */
+  address: z.optional(z.nullable(OrganizationAddressSchema)),
 });
 
 export type Organization = Readonly<z.infer<typeof OrganizationSchema>>;
