@@ -1,7 +1,17 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ApiClient } from '../client';
 import { OrganizationsClient } from '../organizations';
-import { mockOrganizationWithoutDescription } from './MockOrganizations';
+import { mockLockmanOrganization, mockOrganizationWithoutDescription } from './MockOrganizations';
+
+function createOrganizationsClient(): OrganizationsClient {
+  return new OrganizationsClient(
+    new ApiClient({
+      apiHost: process.env.YVP_API_HOST || '',
+      appKey: process.env.YVP_APP_KEY || '',
+      installationId: 'test-installation',
+    }),
+  );
+}
 
 describe('OrganizationsClient', () => {
   let apiClient: ApiClient;
@@ -25,25 +35,26 @@ describe('OrganizationsClient', () => {
       expect(organization.name).toBe('The Lockman Foundation');
     });
 
-    it('accepts the null address the API sends for organizations without one', async () => {
-      const organization = await organizationsClient.getOrganization(
-        '798d8fa4-f640-4155-8cfb-fa91d1d8a06c',
-      );
-      expect(organization.address).toBeNull();
-    });
-
-    it('accepts a null description', async () => {
-      const organization = await organizationsClient.getOrganization(
-        mockOrganizationWithoutDescription.id,
-      );
-      expect(organization.name).toBe('MissionAssist');
-      expect(organization.description).toBeNull();
-    });
-
     it('should throw an error for invalid organization ID', async () => {
       await expect(organizationsClient.getOrganization('not-a-uuid')).rejects.toThrow(
         'Organization ID must be a valid UUID',
       );
     });
   });
+});
+
+it('parses organizations whose address and description arrive as null', async () => {
+  const organizationsClient = createOrganizationsClient();
+
+  // Every live organization sends address: null
+  const lockman = await organizationsClient.getOrganization(mockLockmanOrganization.id);
+  expect(lockman.name).toBe('The Lockman Foundation');
+  expect(lockman.address).toBeNull();
+
+  // Some also send description: null
+  const missionAssist = await organizationsClient.getOrganization(
+    mockOrganizationWithoutDescription.id,
+  );
+  expect(missionAssist.name).toBe('MissionAssist');
+  expect(missionAssist.description).toBeNull();
 });
