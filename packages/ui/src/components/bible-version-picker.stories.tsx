@@ -543,7 +543,9 @@ export const RecentVersionsSelection: Story = {
     // Verify initially there's no recent versions section
     const dialog = await screen.findByRole('dialog');
     await expect(dialog).toBeInTheDocument();
-    await expect(screen.queryByText('Recently Used Versions')).not.toBeInTheDocument();
+    await expect(
+      screen.queryByRole('heading', { name: i18n.t('recentlyUsedVersionsHeading') }),
+    ).not.toBeInTheDocument();
 
     // Select a different version (Amplified Bible)
     const ampOption = await screen.findByRole('listitem', { name: /Amplified Bible/i });
@@ -554,7 +556,9 @@ export const RecentVersionsSelection: Story = {
     await expect(updatedTrigger).toBeInTheDocument();
     await userEvent.click(updatedTrigger);
 
-    await expect(await screen.findByText('Recently Used Versions')).toBeInTheDocument();
+    await expect(
+      await screen.findByRole('heading', { name: i18n.t('recentlyUsedVersionsHeading') }),
+    ).toBeInTheDocument();
     const recentVersionList = await screen.findByTestId('recent-version-list');
     await expect(within(recentVersionList).getByText(/Amplified Bible/i)).toBeInTheDocument();
 
@@ -641,7 +645,9 @@ export const RecentVersionsSearchFilter: Story = {
     await userEvent.click(trigger);
 
     // Verify recent versions are displayed
-    await expect(await screen.findByText('Recently Used Versions')).toBeInTheDocument();
+    await expect(
+      await screen.findByRole('heading', { name: i18n.t('recentlyUsedVersionsHeading') }),
+    ).toBeInTheDocument();
     const recentVersionList = await screen.findByTestId('recent-version-list');
     await expect(within(recentVersionList).getByText(/Amplified Bible/i)).toBeInTheDocument();
     await expect(

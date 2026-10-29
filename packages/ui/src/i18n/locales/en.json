@@ -30,7 +30,7 @@
   "bibleVersionsHeading": "Bible Versions",
   "selectLanguageHeading": "Select a Language",
   "selectLanguageAriaLabel": "Select a Language",
-  "recentlyUsedVersionsHeading": "Recently Used Versions",
+  "recentlyUsedVersionsHeading": "Recent Versions",
   "allVersionsHeading": "All Versions",
   "regionalHeading": "Regional",
   "allLanguagesHeading": "All Languages",
@@ -99,8 +99,8 @@
   "passageUnavailable": "This passage is unavailable in the selected Bible version.",
   "regional": "Regional",
   "search": "Search",
-  "searchLanguages": "Search languages",
-  "searchVersions": "Search versions",
+  "searchLanguages": "Search Languages",
+  "searchVersions": "Search Versions",
   "selectLanguage": "Select a Language",
   "suggested": "Suggested",
   "versionUnavailableAutoSelectedMessage": "Your previously selected Bible version is unavailable. Please switch to another one.",
@@ -121,5 +121,8 @@
   "bibleSearchFilterOldTestament": "Old Testament",
   "bibleSearchFiltersButton": "Filters",
   "bibleSearchRecentHeading": "Recent Searches",
-  "bibleSearchTrendingHeading": "Trending Searches"
+  "bibleSearchTrendingHeading": "Trending Searches",
+  "bibleLanguagesHeading": "Bible Languages",
+  "languageVersionsHeading": "{{language}} Versions",
+  "versionsStatistics": "{{versionsCount}} Versions in {{languagesCount}} Languages"
 }
