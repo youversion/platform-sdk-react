@@ -46,17 +46,17 @@ export function LanguageRow({
       asChild
     >
       <Button
-        className="yv:w-full yv:h-auto yv:min-h-12"
+        className="yv:h-auto yv:min-h-12 yv:w-full yv:whitespace-normal"
         onClick={() => onSelect(language.id)}
         type="button"
         variant="ghost"
       >
-        <ItemContent className="yv:flex yv:flex-row yv:flex-wrap yv:items-baseline yv:justify-start yv:gap-2">
-          <ItemTitle className="yv:text-start yv:shrink-0 yv:text-base! yv:font-normal! yv:leading-[1.25]">
+        <ItemContent className="yv:flex yv:min-w-0 yv:flex-row yv:flex-wrap yv:items-baseline yv:justify-start yv:gap-2">
+          <ItemTitle className="yv:max-w-full yv:min-w-0 yv:w-auto yv:text-start yv:whitespace-normal yv:text-base! yv:font-normal! yv:leading-[1.25]">
             <bdi dir="auto">{primary}</bdi>
           </ItemTitle>
           {secondary ? (
-            <ItemDescription className="yv:text-start yv:shrink-0 yv:text-[11px]! yv:font-medium! yv:leading-4 yv:text-muted-foreground!">
+            <ItemDescription className="yv:max-w-full yv:min-w-0 yv:text-start yv:whitespace-normal yv:text-[11px]! yv:font-medium! yv:leading-4 yv:text-muted-foreground!">
               <bdi dir="auto">{secondary}</bdi>
             </ItemDescription>
           ) : null}

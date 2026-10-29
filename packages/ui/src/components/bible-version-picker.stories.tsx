@@ -173,11 +173,12 @@ const tabletJourney: Story = {
     await userEvent.click(screen.getByRole('tab', { name: /^All\b/ }));
     await userEvent.click(await screen.findByRole('listitem', { name: /Spanish/ }));
     await waitFor(async () => {
+      const openDialog = screen.getByRole('dialog');
       const heading = within(screen.getByTestId('version-list')).getByRole('heading');
       await expect(heading).toHaveTextContent('Español (América Latina)');
       const badge = within(heading).getByText('1').getBoundingClientRect();
       await expect(badge.right).toBeLessThanOrEqual(heading.getBoundingClientRect().right - 15);
-      await expect(dialog.scrollWidth).toBeLessThanOrEqual(dialog.clientWidth);
+      await expect(openDialog.scrollWidth).toBeLessThanOrEqual(openDialog.clientWidth);
     });
     await userEvent.click(screen.getByRole('listitem', { name: /Reina-Valera 1960/i }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
