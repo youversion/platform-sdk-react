@@ -25,8 +25,11 @@ Package-specific guidance: read `packages/core/AGENTS.md`, `packages/hooks/AGENT
 ## Testing
 Testing or coverage: read `docs/testing.md`.
 
-## Review
-PR review: read `docs/review-guidelines.md` from the pinned PR head revision.
+## Read these, do not copy them
+- PR review: `docs/review-guidelines.md` (from the pinned PR head revision). Greptile loads `greptile.json`.
+- User-facing strings: `docs/i18n-guidelines.md`.
+- CI: the `.github/workflows` directory.
+- Decisions: `docs/adr/README.md`.
 
 ## Release
 Release, versioning, or publishing: read `PUBLISHING.md`; decisions live in `docs/release-hardening-decisions.md`.

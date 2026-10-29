@@ -52,6 +52,41 @@ function App() {
 }
 ```
 
+## Unified search
+
+Inside `YouVersionProvider`, use `useUnifiedSearch` for an unpaginated snapshot
+of top verse references, related topics, and image hits. Search requires an app
+key authorized for Search.
+
+```tsx
+import { useUnifiedSearch } from '@youversion/platform-react-hooks';
+
+function SearchResults({ query }: { query: string }) {
+  const { data, loading, error, refetch } = useUnifiedSearch({
+    query,
+    versionId: 111,
+    languageRanges: ['en'],
+  });
+  if (loading) return <div>Loading...</div>;
+  if (error) return <button onClick={refetch}>Retry</button>;
+  return <ul>{data?.topics.map((topic) => <li key={topic.text}>{topic.text}</li>)}</ul>;
+}
+```
+
+The props also accept `userIntent` and `fields` (`verses`, `topics`, and/or
+`images`). Omit `fields` for all kinds, or provide a nonempty selection such as
+`fields: ['images']`. An empty array is invalid. Image hits contain `id` and
+`passageId`, not image URLs. Verse hits contain passage IDs, not passage text.
+
+Image selection requires backend support. A production check on 2026-10-20
+returned HTTP 400 for `fields: ['images']`; the SDK supports mapping image hits,
+but this does not make image selection available on that deployment.
+
+You control when to submit or debounce the query. This hook does not load
+suggestions or paginate. The existing `useBibleSearch` hook keeps its suggestion
+and paginated verse-search behavior. Use supported search language codes such as
+`en`; the SDK does not add fallback ranges.
+
 ## Documentation and API Reference
 * [developers.youversion.com/sdks/react](https://developers.youversion.com/sdks/react)
 

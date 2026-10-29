@@ -128,7 +128,8 @@ Cam's example, mimics bible.com:
 ## Resolved (round 2)
 - Palette → theme.css expressive (ADR-005). Copy format → bible.com (ADR-006).
 - Share = text only, no deep link. No auth gating. Apply/copy/share + outside
-  click all clear selection and close the popover.
+  click all clear selection and close the popover. (Highlight prompts are an
+  exception; see the YPE-5943 as-built note.)
 
 ## Resolved (round 3)
 - **Copy text cleaning:** strip verse numbers + footnote markers; clean prose only.
@@ -191,9 +192,16 @@ Selection is always enabled in BibleReader (no opt-out prop for now; YAGNI).
   alpha (`HIGHLIGHT_FILL_OPACITY_DARK`) via `hexToRgba` from `verse.tsx`, with the
   active-swatch checkmark switched to white and the inner stroke flipped to a light
   `rgba(255,255,255,0.2)` so the dimmed circle stays legible on the dark popover.
-- **Verse-tap vs outside-click:** ADR-007 says outside-click clears selection,
-  but Radix treats a *second verse tap* as an outside-click too. The popover's
-  `onInteractOutside` calls `preventDefault()` when the target is inside
+- **Highlight prompt (YPE-5943):** the sign-in and permission prompts are modal,
+  so opening one closes the verse menu. That dismiss keeps the selection. No
+  Thanks or Cancel brings the menu back and discards only the pending highlight.
+  Yes Please or Continue hides the menu and keeps the selection until the
+  redirect promise fulfills, then clears the selection. If that promise rejects
+  and the reader has not tapped outside, the menu comes back. An outside click
+  during the wait still clears the selection (Resolved round 2).
+- **Verse-tap vs outside-click:** Resolved (round 2) says an outside click clears
+  the selection, but Radix treats a *second verse tap* as an outside-click too.
+  The popover's `onInteractOutside` calls `preventDefault()` when the target is inside
   `.yv-v[v]`, so tapping more verses re-anchors instead of dismissing. Only a
   true outside tap clears (matches the YV apps).
 - **localStorage key:** `youversion-platform:highlights:<versionId>` →
