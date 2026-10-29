@@ -61,9 +61,13 @@ function getNext(
     }
   }
 
-  // Cross-book: first non-intro chapter of next book
+  // Cross-book: next book's intro when it has one (mirrors previous from chapter 1, and
+  // matches Swift's goToNextChapter), else its first non-intro chapter
   const nextBook = books[bookIndex + 1];
   if (!nextBook) return null;
+  if (nextBook.intro) {
+    return { bookId: nextBook.id, chapterId: nextBook.intro.id };
+  }
 
   const nextChapters: BibleChapter[] = nextBook.chapters ?? [];
   const firstCanonical = nextChapters.find((c) => !isIntroChapter(c.id));
