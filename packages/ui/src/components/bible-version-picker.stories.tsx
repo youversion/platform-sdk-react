@@ -138,7 +138,15 @@ const tabletJourney: Story = {
       await expect(
         Math.abs(bounds.width - Math.min(400, window.innerWidth - 32)),
       ).toBeLessThanOrEqual(1);
-      const expectedHeight = Math.min(600, window.innerHeight - 32);
+      // Matches max-h: min(600px, 100svh - 32px, --radix-popover-content-available-height).
+      const radixAvailable = Number.parseFloat(
+        getComputedStyle(dialog).getPropertyValue('--radix-popover-content-available-height'),
+      );
+      const expectedHeight = Math.min(
+        600,
+        window.innerHeight - 32,
+        Number.isFinite(radixAvailable) ? radixAvailable : 600,
+      );
       await expect(Math.abs(bounds.height - expectedHeight)).toBeLessThanOrEqual(1);
       await expect(bounds.left).toBeGreaterThanOrEqual(15);
       await expect(bounds.right).toBeLessThanOrEqual(window.innerWidth - 15);
