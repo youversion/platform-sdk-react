@@ -25,6 +25,8 @@ function PopoverContent({
   children,
   headerLeading,
   headerChild,
+  headerClassName,
+  closeButtonClassName,
   align = 'center',
   heading,
   headingDescription,
@@ -40,6 +42,10 @@ function PopoverContent({
   headingDescription?: React.ReactNode;
   headerLeading?: React.ReactNode;
   headerChild?: React.ReactNode;
+  /** Overrides the shared muted header shell (e.g. version picker flat header). */
+  headerClassName?: string;
+  /** Overrides the shared Close button classes (e.g. version picker bordered Close). */
+  closeButtonClassName?: string;
   theme?: 'light' | 'dark';
 }): React.ReactNode {
   const { t } = useTranslation(undefined, { i18n });
@@ -55,7 +61,7 @@ function PopoverContent({
         sideOffset={sideOffset}
         collisionPadding={16}
         className={cn(
-          'yv:bg-popover yv:text-popover-foreground yv:font-sans yv:data-[state=open]:animate-in yv:data-[state=closed]:animate-out yv:data-[state=closed]:fade-out-0 yv:data-[state=open]:fade-in-0 yv:data-[state=closed]:zoom-out-95 yv:data-[state=open]:zoom-in-95 yv:data-[side=bottom]:slide-in-from-top-2 yv:data-[side=left]:slide-in-from-right-2 yv:data-[side=right]:slide-in-from-left-2 yv:data-[side=top]:slide-in-from-bottom-2 yv:z-50 yv:origin-(--radix-popover-content-transform-origin) yv:outline-hidden yv:grid yv:grid-rows-[auto_1fr_auto] yv:p-0 yv:h-full yv:max-h-[66svh] yv:max-sm:max-w-[calc(100vw-2rem)] yv:w-sm yv:sm:max-w-sm yv:overflow-hidden yv:rounded-2xl yv:border-0 yv:shadow-lg',
+          'yv:bg-popover yv:text-popover-foreground yv:data-[state=open]:animate-in yv:data-[state=closed]:animate-out yv:data-[state=closed]:fade-out-0 yv:data-[state=open]:fade-in-0 yv:data-[state=closed]:zoom-out-95 yv:data-[state=open]:zoom-in-95 yv:data-[side=bottom]:slide-in-from-top-2 yv:data-[side=left]:slide-in-from-right-2 yv:data-[side=right]:slide-in-from-left-2 yv:data-[side=top]:slide-in-from-bottom-2 yv:z-50 yv:origin-(--radix-popover-content-transform-origin) yv:outline-hidden yv:grid yv:grid-rows-[auto_1fr_auto] yv:p-0 yv:h-full yv:max-h-[66svh] yv:max-sm:max-w-[calc(100vw-2rem)] yv:w-sm yv:sm:max-w-sm yv:overflow-hidden yv:rounded-2xl yv:border-0 yv:shadow-lg',
           className,
         )}
         {...props}
@@ -64,8 +70,9 @@ function PopoverContent({
         {showHeader ? (
           <section
             className={cn(
-              'yv:bg-popover yv:py-3 yv:rounded-t-2xl yv:px-4 yv:grid yv:justify-between yv:items-center yv:gap-2',
+              'yv:bg-muted yv:py-3 yv:rounded-t-2xl yv:px-4 yv:border-b yv:border-border yv:grid yv:justify-between yv:items-center yv:gap-2',
               popoverHeaderColumns(Boolean(headerLeading), Boolean(headerChild), showClose),
+              headerClassName,
             )}
           >
             {headerLeading}
@@ -83,7 +90,7 @@ function PopoverContent({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="yv:w-6 yv:h-6 yv:rounded-full yv:border yv:border-border yv:text-muted-foreground"
+                  className={cn('yv:w-6 yv:h-6 yv:text-muted-foreground', closeButtonClassName)}
                 >
                   <XIcon className="yv:size-5" />
                   <span className="yv:sr-only">{t('closeAriaLabel')}</span>

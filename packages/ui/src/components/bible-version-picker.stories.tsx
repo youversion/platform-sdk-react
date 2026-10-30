@@ -138,10 +138,8 @@ const tabletJourney: Story = {
       await expect(
         Math.abs(bounds.width - Math.min(400, window.innerWidth - 32)),
       ).toBeLessThanOrEqual(1);
-      await expect(bounds.height).toBeLessThanOrEqual(Math.min(600, window.innerHeight - 32) + 1);
-      if (window.innerWidth >= 640 && window.innerHeight >= 768) {
-        await expect(Math.abs(bounds.height - 600)).toBeLessThanOrEqual(1);
-      }
+      const expectedHeight = Math.min(600, window.innerHeight - 32);
+      await expect(Math.abs(bounds.height - expectedHeight)).toBeLessThanOrEqual(1);
       await expect(bounds.left).toBeGreaterThanOrEqual(15);
       await expect(bounds.right).toBeLessThanOrEqual(window.innerWidth - 15);
       await expect(bounds.top).toBeGreaterThanOrEqual(15);

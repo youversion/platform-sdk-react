@@ -196,21 +196,27 @@ function getVersionSearchInput() {
   return screen.getByRole('textbox', { name: /search bible versions/i });
 }
 
+/** Ready-to-run setup for new/edited picker workflows (see docs/testing.md). */
+function resetPickerTestEnvironment() {
+  vi.resetAllMocks();
+  YouVersionPlatformConfiguration.permittedVersionIds = undefined;
+  YouVersionPlatformConfiguration.excludedVersionIds = undefined;
+  YouVersionPlatformConfiguration.permittedLanguageTags = undefined;
+  Object.defineProperty(window, 'localStorage', {
+    value: {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    },
+    writable: true,
+  });
+}
+
 describe('BibleVersionPicker', () => {
   beforeEach(() => {
-    vi.resetAllMocks();
-    YouVersionPlatformConfiguration.permittedVersionIds = undefined;
-    YouVersionPlatformConfiguration.excludedVersionIds = undefined;
-    YouVersionPlatformConfiguration.permittedLanguageTags = undefined;
-    Object.defineProperty(window, 'localStorage', {
-      value: {
-        getItem: vi.fn(() => null),
-        setItem: vi.fn(),
-        removeItem: vi.fn(),
-        clear: vi.fn(),
-      },
-      writable: true,
-    });
+    // Legacy cases keep suite-wide resets; new workflows call resetPickerTestEnvironment.
+    resetPickerTestEnvironment();
   });
 
   describe('loading state', () => {
@@ -517,6 +523,7 @@ describe('BibleVersionPicker', () => {
   });
 
   it('mounts one language view, then a search view, and returns to versions', async () => {
+    resetPickerTestEnvironment();
     const user = userEvent.setup();
 
     renderPicker();
@@ -565,6 +572,7 @@ describe('BibleVersionPicker', () => {
   });
 
   it('keeps view-change focus inside this picker when another popover-content is on the page', async () => {
+    resetPickerTestEnvironment();
     const user = userEvent.setup();
 
     renderWithOverrides(
@@ -600,6 +608,45 @@ describe('BibleVersionPicker', () => {
       expect(screen.getByRole('button', { name: 'Language English 2' })).toHaveFocus();
     });
     expect(screen.getByRole('button', { name: 'Outer Language' })).not.toHaveFocus();
+  });
+
+  it('tabs from Close into version search, then Language, then versions', async () => {
+    resetPickerTestEnvironment();
+    const user = userEvent.setup();
+
+    renderPicker();
+    await openPicker();
+
+    const close = screen.getByRole('button', { name: 'Close' });
+    close.focus();
+    expect(close).toHaveFocus();
+
+    await user.tab();
+    expect(getVersionSearchInput()).toHaveFocus();
+
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Language English 2' })).toHaveFocus();
+
+    await user.tab();
+    expect(screen.getByRole('listitem', { name: /new international version/i })).toHaveFocus();
+  });
+
+  it('returns standalone language search to tabs after selecting a result without onRequestClose', async () => {
+    resetPickerTestEnvironment();
+    const user = userEvent.setup();
+
+    renderWithOverrides(
+      <BibleVersionPicker.Root versionId={111} onVersionPickerPress={vi.fn()}>
+        <BibleLanguagePickerContent open />
+      </BibleVersionPicker.Root>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /search languages/i }));
+    await user.type(getLanguageSearchInput(), 'span');
+    await user.click(screen.getByRole('listitem', { name: /spanish/i }));
+
+    expect(screen.getByRole('tab', { name: /suggested/i })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
   });
 
   it('open=false clears version search for pre-warmed standalone content', async () => {

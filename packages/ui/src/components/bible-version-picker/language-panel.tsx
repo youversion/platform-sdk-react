@@ -173,6 +173,9 @@ export function BibleLanguagePickerContent({
   const handleSelectLanguage = (languageId: string) => {
     setSelectedLanguageId(languageId);
     resetLanguageSearch();
+    // Return to tabs before the host close callback so a delayed/absent close
+    // does not leave the user on an empty Search Languages view.
+    setView('languages');
     onRequestClose?.();
   };
 

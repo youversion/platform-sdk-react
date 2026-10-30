@@ -631,10 +631,12 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
         <PopoverContent
           ref={popoverContentRef}
           sideOffset={16}
-          className="yv:h-[600px] yv:w-[400px] yv:max-h-[min(600px,calc(100svh-32px),var(--radix-popover-content-available-height,600px))] yv:max-sm:max-w-[min(400px,calc(100vw-32px))] yv:sm:max-w-[min(400px,calc(100vw-32px))]"
+          className="yv:font-sans yv:h-[600px] yv:w-[400px] yv:max-h-[min(600px,calc(100svh-32px),var(--radix-popover-content-available-height,600px))] yv:max-sm:max-w-[min(400px,calc(100vw-32px))] yv:sm:max-w-[min(400px,calc(100vw-32px))]"
           heading={heading}
           headingDescription={headingDescription}
           showClose={view === 'versions'}
+          headerClassName="yv:bg-popover yv:border-b-0"
+          closeButtonClassName="yv:rounded-full yv:border yv:border-border"
           headerLeading={
             view === 'versions' ? null : (
               <LanguageBackButton
