@@ -6,6 +6,8 @@ const TRANSFORMED_ATTR = 'data-yv-transformed';
 
 const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]'"'»›]/;
 
+const PAUSE_PUNCTUATION = /^[\s.!?…]+$/;
+
 const ALLOWED_TAGS = new Set([
   'DIV',
   'P',
@@ -263,6 +265,18 @@ function wrapVerseContent(doc: Document): void {
   verseMarkers.forEach(processVerseMarker);
 }
 
+function appendFollowingPausePunctuation(doc: Document): void {
+  for (const pause of doc.querySelectorAll('.qs')) {
+    if (pause.closest('.yv-n')) continue;
+    const next = pause.nextSibling;
+    if (!next || next.nodeType !== 3) continue;
+    const text = next.textContent ?? '';
+    if (!PAUSE_PUNCTUATION.test(text) || text.trim() === '') continue;
+    pause.append(text.trim());
+    next.parentNode?.removeChild(next);
+  }
+}
+
 function assignFootnoteKeys(doc: Document): void {
   let introIdx = 0;
   doc.querySelectorAll('.yv-n.f').forEach((fn) => {
@@ -377,10 +391,12 @@ export function transformBibleHtml(
     // Older transformed output predates alternate-label spacing. Backfill it
     // without repeating verse wrapping or footnote extraction.
     addNbspToVerseLabels(doc);
+    appendFollowingPausePunctuation(doc);
     return { html: options.serializeHtml(doc), direction: resolveTextDirection(roots) };
   }
 
   wrapVerseContent(doc);
+  appendFollowingPausePunctuation(doc);
   assignFootnoteKeys(doc);
 
   const footnotes = Array.from(doc.querySelectorAll('.yv-n.f'));

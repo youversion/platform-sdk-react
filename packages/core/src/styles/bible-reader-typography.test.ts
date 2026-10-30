@@ -178,21 +178,22 @@ describe('bible-reader Swift-aligned typography', () => {
 
   it('puts a qs pause on its own end-aligned line in q and q4, and leaves qr alone', () => {
     const pause = rulesForExactClass('qs');
-    expect(pause).toContain('display: block');
-    expect(pause).toContain('text-align: end');
-    expect(pause).toContain('text-indent: 0');
     expect(pause).toContain('font-style: italic');
+    expect(pause).not.toContain('display: block');
 
-    const refrainPause = ruleBodies('& .qr > .qs');
-    expect(refrainPause).toContain('display: inline');
+    const ownLine = ruleBodies('& .qs:not(.qr .qs)');
+    expect(ownLine).toContain('display: block');
+    expect(ownLine).toContain('text-align: end');
+    expect(ownLine).toContain('text-indent: 0');
+    expect(ruleBodies('& .qr .qs')).toBe('');
     expect(rulesForExactClass('qr')).toContain('display: block');
     expect(rulesForExactClass('qr')).toContain('text-align: end');
     expect(rulesForExactClass('qr')).toContain('font-style: italic');
 
     const reserve = ruleBodies(
-      "&[data-show-notes='true'] :not(.qr) > .qs:has(+ [data-verse-footnote])",
+      "&[data-show-notes='true'] .qs:not(.qr .qs):has(+ [data-verse-footnote])",
     );
-    const beside = ruleBodies("&[data-show-notes='true'] :not(.qr) > .qs + [data-verse-footnote]");
+    const beside = ruleBodies("&[data-show-notes='true'] .qs:not(.qr .qs) + [data-verse-footnote]");
     expect(reserve).toContain('padding-inline-end:');
     expect(beside).toContain('float: inline-end');
     expect(beside).toContain('margin-block-start:');
