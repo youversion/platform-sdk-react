@@ -418,6 +418,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
     >
       <Accordion
         className="yv:relative yv:min-h-0 yv:flex-1 yv:overflow-y-auto yv:bg-background yv:px-6"
+        tabIndex={-1}
         dir={interfaceDirection}
         type="single"
         collapsible
@@ -488,7 +489,6 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
       <section className="yv:bg-muted yv:border-s yv:border-muted yv:p-4 yv:w-full">
         <InputGroup className="yv:rounded-3xl yv:bg-background yv:shadow-none yv:border-border">
           <InputGroupInput
-            tabIndex={1}
             type="text"
             placeholder={t('searchPlaceholder')}
             dir="auto"
