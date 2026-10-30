@@ -1179,7 +1179,7 @@ it('clears the verse menu while the highlight permission grant is still starting
   }
 });
 
-it('keeps a same-origin iframe verse selected while the highlights permission grant starts', async () => {
+it('classifies pending-highlight pointers in the reader document realm', async () => {
   setHighlightsLive(true);
   YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-1', name: 'Test User' });
   YouVersionPlatformConfiguration.saveGrantedPermissions([]);
@@ -1219,6 +1219,10 @@ it('keeps a same-origin iframe verse selected while the highlights permission gr
     expect(onVerseSelect).not.toHaveBeenCalled();
     expect(view.createHighlight).not.toHaveBeenCalled();
     expect(peekPendingHighlights()).toHaveLength(1);
+
+    fireEvent.pointerDown(iframeDocument.body);
+    expect(onVerseSelect).toHaveBeenCalledTimes(1);
+    expect(onVerseSelect).toHaveBeenCalledWith(selection([]));
   } finally {
     iframe.remove();
     updateToken.mockRestore();

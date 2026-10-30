@@ -2,4 +2,4 @@
 '@youversion/platform-react-ui': patch
 ---
 
-Preserve the verse selection when a verse is pressed inside a supported same-origin iframe during the highlight auth flow.
+Classify pending-highlight pointer targets with the reader document's element realm.
