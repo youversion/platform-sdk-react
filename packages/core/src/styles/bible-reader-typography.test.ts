@@ -6,18 +6,21 @@ const css = readFileSync(resolve(import.meta.dirname, './bible-reader.css'), 'ut
 const themeCss = readFileSync(resolve(import.meta.dirname, './theme.css'), 'utf8');
 const cssWithoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
 
-function rulesForExactClass(cls: string): string {
+function ruleBodies(selector: string): string {
+  const wanted = selector.replace(/\s+/g, ' ').trim();
   const bodies: string[] = [];
   for (const match of cssWithoutComments.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
     const rawSel = match[1];
     const body = match[2];
     if (rawSel === undefined || body === undefined) continue;
     const sels = rawSel.split(',').map((s) => s.trim().replace(/\s+/g, ' '));
-    if (sels.some((s) => s === `& .${cls}`)) {
-      bodies.push(body);
-    }
+    if (sels.some((s) => s === wanted)) bodies.push(body);
   }
   return bodies.join('\n');
+}
+
+function rulesForExactClass(cls: string): string {
+  return ruleBodies(`& .${cls}`);
 }
 
 describe('bible-reader Swift-aligned typography', () => {
@@ -162,7 +165,6 @@ describe('bible-reader Swift-aligned typography', () => {
     expect(rulesForExactClass('it')).toContain('font-style: italic');
     expect(rulesForExactClass('add')).toContain('font-style: italic');
     expect(rulesForExactClass('qs')).toContain('font-style: italic');
-    expect(rulesForExactClass('qs')).not.toContain('display: block');
 
     for (const cls of ['bk', 'add', 'it', 'tl', 'fq', 'fqa', 'qt', 'qs']) {
       expect(rulesForExactClass(cls)).toContain('font-size: var(--yv-reader-font-size)');
@@ -172,6 +174,29 @@ describe('bible-reader Swift-aligned typography', () => {
     expect(css).not.toMatch(/&\s*\.p\s*\+\s*\.s1\b/);
     expect(css).not.toMatch(/&\s*\.q1\s*\+\s*\.p\b/);
     expect(css).not.toMatch(/&\s*\.p\s*\+\s*\.q1\b/);
+  });
+
+  it('puts a qs pause on its own end-aligned line in q and q4, and leaves qr alone', () => {
+    const pause = rulesForExactClass('qs');
+    expect(pause).toContain('font-style: italic');
+    expect(pause).not.toContain('display: block');
+
+    const ownLine = ruleBodies('& .qs:not(.qr .qs)');
+    expect(ownLine).toContain('display: block');
+    expect(ownLine).toContain('text-align: end');
+    expect(ownLine).toContain('text-indent: 0');
+    expect(ruleBodies('& .qr .qs')).toBe('');
+    expect(rulesForExactClass('qr')).toContain('display: block');
+    expect(rulesForExactClass('qr')).toContain('text-align: end');
+    expect(rulesForExactClass('qr')).toContain('font-style: italic');
+
+    const reserve = ruleBodies(
+      "&[data-show-notes='true'] .qs:not(.qr .qs):has(+ [data-verse-footnote])",
+    );
+    const beside = ruleBodies("&[data-show-notes='true'] .qs:not(.qr .qs) + [data-verse-footnote]");
+    expect(reserve).toContain('padding-inline-end:');
+    expect(beside).toContain('float: inline-end');
+    expect(beside).toContain('margin-block-start:');
   });
 
   it('keeps WOC text unmixed: #94000c light / #e4bfc2 dark', () => {

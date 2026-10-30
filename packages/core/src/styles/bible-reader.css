@@ -1054,11 +1054,28 @@
     font-style: italic;
   }
 
-  /* \qs - Selah (character style) */
+  /* \qs - Selah */
   & .qs {
     font-size: var(--yv-reader-font-size);
     font-weight: normal;
     font-style: italic;
+  }
+
+  & .qs:not(.qr .qs) {
+    display: block;
+    text-align: end;
+    text-indent: 0;
+  }
+
+  /* YPE-6406 open decision. The footnote marker stays on the pause line.
+     Delete these two rules to let the marker start the next line. */
+  &[data-show-notes='true'] .qs:not(.qr .qs):has(+ [data-verse-footnote]) {
+    padding-inline-end: 2em;
+  }
+
+  &[data-show-notes='true'] .qs:not(.qr .qs) + [data-verse-footnote] {
+    float: inline-end;
+    margin-block-start: calc(var(--yv-reader-line-height) * -1em);
   }
 
   /* \qac - Acrostic letter within a poetic line — Italic */
