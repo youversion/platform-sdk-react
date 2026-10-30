@@ -28,25 +28,70 @@ const FIXTURE_BOOKS: BibleBook[] = [
     canon: 'old_testament',
     chapters: [{ id: '1', passage_id: 'EXO.1', title: '1' }],
   },
-  ...(
-    [
-      ['LEV', 'Leviticus'],
-      ['NUM', 'Numbers'],
-      ['DEU', 'Deuteronomy'],
-      ['JOS', 'Joshua'],
-      ['JDG', 'Judges'],
-      ['RUT', 'Ruth'],
-      ['1SA', '1 Samuel'],
-      ['1KI', '1 Kings'],
-    ] as const
-  ).map(([id, title]) => ({
-    id,
-    title,
-    full_title: title,
-    abbreviation: title,
-    canon: 'old_testament' as const,
-    chapters: [{ id: '1', passage_id: `${id}.1`, title: '1' }],
-  })),
+  {
+    id: 'LEV',
+    title: 'Leviticus',
+    full_title: 'Leviticus',
+    abbreviation: 'Lev',
+    canon: 'old_testament',
+    chapters: [{ id: '1', passage_id: 'LEV.1', title: '1' }],
+  },
+  {
+    id: 'NUM',
+    title: 'Numbers',
+    full_title: 'Numbers',
+    abbreviation: 'Num',
+    canon: 'old_testament',
+    chapters: [{ id: '1', passage_id: 'NUM.1', title: '1' }],
+  },
+  {
+    id: 'DEU',
+    title: 'Deuteronomy',
+    full_title: 'Deuteronomy',
+    abbreviation: 'Deut',
+    canon: 'old_testament',
+    chapters: [{ id: '1', passage_id: 'DEU.1', title: '1' }],
+  },
+  {
+    id: 'JOS',
+    title: 'Joshua',
+    full_title: 'Joshua',
+    abbreviation: 'Josh',
+    canon: 'old_testament',
+    chapters: [{ id: '1', passage_id: 'JOS.1', title: '1' }],
+  },
+  {
+    id: 'JDG',
+    title: 'Judges',
+    full_title: 'Judges',
+    abbreviation: 'Judg',
+    canon: 'old_testament',
+    chapters: [{ id: '1', passage_id: 'JDG.1', title: '1' }],
+  },
+  {
+    id: 'RUT',
+    title: 'Ruth',
+    full_title: 'Ruth',
+    abbreviation: 'Ruth',
+    canon: 'old_testament',
+    chapters: [{ id: '1', passage_id: 'RUT.1', title: '1' }],
+  },
+  {
+    id: '1SA',
+    title: '1 Samuel',
+    full_title: '1 Samuel',
+    abbreviation: '1 Sam',
+    canon: 'old_testament',
+    chapters: [{ id: '1', passage_id: '1SA.1', title: '1' }],
+  },
+  {
+    id: '1KI',
+    title: '1 Kings',
+    full_title: '1 Kings',
+    abbreviation: '1 Kgs',
+    canon: 'old_testament',
+    chapters: [{ id: '1', passage_id: '1KI.1', title: '1' }],
+  },
   {
     id: 'MAT',
     title: 'Matthew',
@@ -190,6 +235,8 @@ export const PublicRootJourney: Story = {
     if (!topLayer) throw new Error('local top-layer container not created synchronously');
     let panel = topLayer.querySelector<HTMLElement>('[data-slot="popover-content"]');
     if (!panel) throw new Error('chapter picker panel not rendered synchronously');
+    // Keep overflow deterministic instead of relying on the browser-test viewport height.
+    panel.style.blockSize = '24rem';
     await expect(trigger.getRootNode()).toBe(root);
     await expect(panel.getRootNode()).toBe(root);
     await expect(topLayer.matches(':popover-open')).toBe(true);
