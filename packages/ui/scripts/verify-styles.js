@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import { stripLayerBlocks } from './strip-layer-blocks.js';
 
 const uiRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -8,6 +9,16 @@ const dist = resolve(uiRoot, 'dist');
 const errors = [];
 const packageJson = JSON.parse(readFileSync(resolve(uiRoot, 'package.json'), 'utf8'));
 const publicCssExport = packageJson.exports?.['./styles.css'];
+
+// Tailwind --watch (and a concurrent build) can rewrite dist CSS after
+// build:css already ran preserve-host-revert-layer. Re-apply before gating.
+const scriptsDir = dirname(fileURLToPath(import.meta.url));
+spawnSync(process.execPath, [resolve(scriptsDir, 'preserve-host-revert-layer.js')], {
+  stdio: 'inherit',
+});
+spawnSync(process.execPath, [resolve(scriptsDir, 'write-public-styles.js')], {
+  stdio: 'inherit',
+});
 
 const chromeCssPath = resolve(dist, 'chrome.css');
 const chromeCss = existsSync(chromeCssPath) ? readFileSync(chromeCssPath, 'utf-8') : '';
@@ -60,6 +71,13 @@ if (!publicCss.trim()) {
   if (!publicCss.includes('--yv-reader-font-size')) {
     errors.push('dist/styles.css missing reader typography (manual import contract)');
   }
+  const unlayeredPublic = stripLayerBlocks(publicCss);
+  if (!unlayeredPublic.includes('revert-layer')) {
+    errors.push('dist/styles.css missing unlayered A2 revert-layer rule');
+  }
+  if (!unlayeredPublic.includes('-webkit-appearance:revert-layer')) {
+    errors.push('dist/styles.css missing -webkit-appearance:revert-layer on the unlayered A2 rule');
+  }
 }
 
 const jsPath = resolve(dist, 'index.js');
@@ -103,6 +121,9 @@ if (existsSync(dist)) {
 
   if (!js.includes('revert-layer')) {
     errors.push('dist/index.js missing A2 revert-layer isolation rule');
+  }
+  if (!js.includes('-webkit-appearance:revert-layer')) {
+    errors.push('dist/index.js missing -webkit-appearance:revert-layer on the A2 rule');
   }
 }
 

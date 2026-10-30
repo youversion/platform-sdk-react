@@ -62,6 +62,8 @@ export default [
   {
     name: 'ui / tailwind.css',
     path: 'packages/ui/dist/tailwind.css',
-    limit: '9.5 KB',
+    // Language picker wrap/truncate (whitespace-normal, max-w-full, w-auto).
+    // Measured brotlied size 9502 B; set to measured + ~10% per CONTRIBUTING.
+    limit: '10.5 KB',
   },
 ];
