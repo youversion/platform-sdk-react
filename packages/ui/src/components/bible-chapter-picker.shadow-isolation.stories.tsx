@@ -28,6 +28,25 @@ const FIXTURE_BOOKS: BibleBook[] = [
     canon: 'old_testament',
     chapters: [{ id: '1', passage_id: 'EXO.1', title: '1' }],
   },
+  ...(
+    [
+      ['LEV', 'Leviticus'],
+      ['NUM', 'Numbers'],
+      ['DEU', 'Deuteronomy'],
+      ['JOS', 'Joshua'],
+      ['JDG', 'Judges'],
+      ['RUT', 'Ruth'],
+      ['1SA', '1 Samuel'],
+      ['1KI', '1 Kings'],
+    ] as const
+  ).map(([id, title]) => ({
+    id,
+    title,
+    full_title: title,
+    abbreviation: title,
+    canon: 'old_testament' as const,
+    chapters: [{ id: '1', passage_id: `${id}.1`, title: '1' }],
+  })),
   {
     id: 'MAT',
     title: 'Matthew',
@@ -184,6 +203,13 @@ export const PublicRootJourney: Story = {
 
     let panelQueries = within(panel);
     const closeButton = panelQueries.getByRole('button', { name: 'Close' });
+    const genesisBook = panelQueries.getByRole('button', { name: /genesis/i });
+    const exodusBook = panelQueries.getByRole('button', { name: /exodus/i });
+    const bookList = await waitForElement<HTMLElement>(
+      panel,
+      '[data-slot="accordion"]',
+      'book list not rendered',
+    );
     const initialSearch = panelQueries.getByPlaceholderText(/search/i);
     const lastChapterButton = panelQueries.getByRole('button', { name: '5' });
     const openingPanelWindow = panel.ownerDocument.defaultView;
@@ -220,8 +246,17 @@ export const PublicRootJourney: Story = {
     const tabOrder = tabbable(panel, { getShadowRoot: true });
     await expect(tabOrder.at(-2)).toBe(lastChapterButton);
     await expect(tabOrder.at(-1)).toBe(initialSearch);
+    await expect(bookList.scrollHeight).toBeGreaterThan(bookList.clientHeight);
     await userEvent.tab();
     await expect(root.activeElement).toBe(closeButton);
+    const { userEvent: browserUserEvent } = await import('vitest/browser');
+    const forwardTraversalKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+      ? '{Alt>}{Tab}{/Alt}'
+      : '{Tab}';
+    await browserUserEvent.keyboard(forwardTraversalKey);
+    await expect(root.activeElement).toBe(genesisBook);
+    await browserUserEvent.keyboard(forwardTraversalKey);
+    await expect(root.activeElement).toBe(exodusBook);
     await userEvent.click(closeButton);
     await waitFor(async () => {
       await expect(topLayer.querySelector('[data-slot="popover-content"]')).toBeNull();
@@ -235,7 +270,7 @@ export const PublicRootJourney: Story = {
       'chapter picker panel did not reopen',
     );
     panelQueries = within(panel);
-    const genesisBook = panelQueries.getByRole('button', { name: /genesis/i });
+    const filteredGenesisBook = panelQueries.getByRole('button', { name: /genesis/i });
     const search = panelQueries.getByPlaceholderText(/search/i);
     await userEvent.type(search, 'g');
     const panelWindow = panel.ownerDocument.defaultView;
@@ -246,10 +281,10 @@ export const PublicRootJourney: Story = {
     await expect(root.activeElement).toBe(search);
     await waitFor(async () => {
       await expect(search).toHaveValue('g');
-      await expect(genesisBook).toBeVisible();
+      await expect(filteredGenesisBook).toBeVisible();
       await expect(panelQueries.queryByRole('button', { name: /exodus/i })).toBeNull();
     });
-    await userEvent.click(genesisBook);
+    await userEvent.click(filteredGenesisBook);
     await userEvent.click(await panelQueries.findByRole('button', { name: '11' }));
 
     await waitFor(async () => {

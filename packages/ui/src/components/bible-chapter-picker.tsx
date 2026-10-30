@@ -419,6 +419,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
       <Accordion
         className="yv:relative yv:min-h-0 yv:flex-1 yv:overflow-y-auto yv:bg-background yv:px-6"
         dir={interfaceDirection}
+        tabIndex={-1}
         type="single"
         collapsible
         value={expandedBook}
