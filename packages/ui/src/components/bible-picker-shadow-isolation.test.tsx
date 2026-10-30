@@ -93,21 +93,31 @@ describe('Bible picker public shadow boundaries', () => {
   ])('%s owns one childless styled SSR host and reuses it during hydration', async (_, picker) => {
     const fixture = picker();
     const element = (
-      <HookOverrideProvider overrides={overrides}>{fixture.element}</HookOverrideProvider>
+      <p>
+        Before <HookOverrideProvider overrides={overrides}>{fixture.element}</HookOverrideProvider>{' '}
+        after
+      </p>
     );
     const serverMarkup = renderToString(element);
 
-    expect(serverMarkup).toBe('<div data-yv-shadow-host="true" style="display:contents"></div>');
+    expect(serverMarkup).toContain(
+      '<span data-yv-shadow-host="true" style="display:contents"></span>',
+    );
 
     const container = document.createElement('div');
     container.innerHTML = serverMarkup;
     document.body.append(container);
-    const serverHost = container.firstElementChild;
+    const paragraph = container.querySelector('p');
+    const serverHost = container.querySelector<HTMLElement>('[data-yv-shadow-host]');
     const recoverableErrors: unknown[] = [];
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     let root: Root | undefined;
 
     try {
+      expect(container.querySelectorAll('p')).toHaveLength(1);
+      expect(paragraph).toContainElement(serverHost);
+      expect(paragraph).toHaveTextContent('Before after');
+
       await act(async () => {
         root = hydrateRoot(container, element, {
           onRecoverableError: (error) => recoverableErrors.push(error),
