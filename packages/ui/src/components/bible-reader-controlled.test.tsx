@@ -1179,7 +1179,7 @@ it('clears the verse menu while the highlight permission grant is still starting
   }
 });
 
-it('keeps an iframe verse selected while a highlight permission grant is starting', async () => {
+it('keeps a same-origin iframe verse selected while the highlights permission grant starts', async () => {
   setHighlightsLive(true);
   YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-1', name: 'Test User' });
   YouVersionPlatformConfiguration.saveGrantedPermissions([]);
