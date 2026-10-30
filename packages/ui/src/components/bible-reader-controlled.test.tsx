@@ -985,7 +985,10 @@ describe('BibleReader clearSelectionSignal', () => {
   });
 });
 
-function renderReaderWithHighlightAuth(userInfo: typeof mockUserInfo | null) {
+function renderReaderWithHighlightAuth(
+  userInfo: typeof mockUserInfo | null,
+  props: Partial<BibleReaderRootProps> = {},
+) {
   const createHighlight = vi.fn().mockResolvedValue({
     version_id: 111,
     passage_id: 'JHN.1.1',
@@ -1011,7 +1014,7 @@ function renderReaderWithHighlightAuth(userInfo: typeof mockUserInfo | null) {
           error: null,
         }}
       >
-        {wrapReader({}, overrides)}
+        {wrapReader(props, overrides)}
       </YouVersionAuthContext.Provider>,
     ),
   };
@@ -1169,6 +1172,59 @@ it('clears the verse menu while the highlight permission grant is still starting
     expect(createHighlight).not.toHaveBeenCalled();
     expect(peekPendingHighlights()).toHaveLength(1);
   } finally {
+    updateToken.mockRestore();
+    setHighlightsLive(HIGHLIGHTS_LIVE);
+    sessionStorage.clear();
+    localStorage.clear();
+  }
+});
+
+it('classifies pending-highlight pointers in the reader document realm', async () => {
+  setHighlightsLive(true);
+  YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-1', name: 'Test User' });
+  YouVersionPlatformConfiguration.saveGrantedPermissions([]);
+  const updateToken = vi
+    .spyOn(DataExchangeClient.prototype, 'updateToken')
+    .mockImplementation(() => new Promise(() => undefined));
+  const iframe = document.createElement('iframe');
+  document.body.append(iframe);
+  const iframeDocument = iframe.contentDocument;
+  if (!iframeDocument) throw new Error('same-origin iframe document not available');
+  // SAFETY: A same-origin iframe exposes its realm's Element constructor on its Window.
+  const iframeWindow = iframe.contentWindow as (Window & { Element: typeof Element }) | null;
+  if (!iframeWindow) throw new Error('same-origin iframe window not available');
+  const onVerseSelect = vi.fn();
+
+  try {
+    const view = renderReaderWithHighlightAuth(mockUserInfo, { onVerseSelect });
+
+    selectVerse(view.container, 1);
+    expect(onVerseSelect).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
+    fireEvent.click(getApplyButtons()[0]!);
+
+    iframeDocument.body.append(view.container);
+    const topRealmVerse = getVerseEl(view.container, 1);
+    const iframeVerse = iframeDocument.importNode(topRealmVerse, true);
+    topRealmVerse.replaceWith(iframeVerse);
+    onVerseSelect.mockClear();
+    fireEvent.click(await screen.findByRole('button', { name: /^continue$/i }));
+
+    expect(updateToken).toHaveBeenCalledTimes(1);
+    expectVerseMenuAbsent();
+    expect(iframeVerse).toBeInstanceOf(iframeWindow.Element);
+    expect(iframeVerse).not.toBeInstanceOf(Element);
+
+    fireEvent.pointerDown(iframeVerse);
+    expect(onVerseSelect).not.toHaveBeenCalled();
+    expect(view.createHighlight).not.toHaveBeenCalled();
+    expect(peekPendingHighlights()).toHaveLength(1);
+
+    fireEvent.pointerDown(iframeDocument.body);
+    expect(onVerseSelect).toHaveBeenCalledTimes(1);
+    expect(onVerseSelect).toHaveBeenCalledWith(selection([]));
+  } finally {
+    iframe.remove();
     updateToken.mockRestore();
     setHighlightsLive(HIGHLIGHTS_LIVE);
     sessionStorage.clear();

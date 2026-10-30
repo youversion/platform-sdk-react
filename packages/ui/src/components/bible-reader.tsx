@@ -66,6 +66,7 @@ import { BibleReaderSearch, type BibleReaderSearchPressData } from './bible-read
 import { useTransientVerseFocus, type VerseFocusRequest } from '@/lib/use-transient-verse-focus';
 import { BibleReaderNavigation } from './bible-reader-navigation';
 import { VerseActionPopoverFocusRestoreProvider } from '@/lib/verse-action-popover-focus';
+import { isElementFromOwnerDocument } from '@/lib/shadow-root-host';
 
 type BibleReaderContextType = {
   book: string;
@@ -1000,7 +1001,11 @@ function Content() {
     function onPointerDown(event: PointerEvent) {
       const interactedWithVerse = event
         .composedPath()
-        .some((target) => target instanceof Element && target.matches('.yv-v[v]'));
+        .some(
+          (target) =>
+            isElementFromOwnerDocument(target, ownerDocument.documentElement, 'Element') &&
+            target.matches('.yv-v[v]'),
+        );
       if (interactedWithVerse) return;
       closeAndClearSelectionRef.current();
     }
