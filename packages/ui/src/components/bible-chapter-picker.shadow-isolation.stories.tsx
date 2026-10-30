@@ -184,6 +184,9 @@ export const PublicRootJourney: Story = {
 
     let panelQueries = within(panel);
     const closeButton = panelQueries.getByRole('button', { name: 'Close' });
+    const bookList = panel.querySelector<HTMLElement>('[data-slot="accordion"]');
+    if (!bookList) throw new Error('chapter picker book list not rendered');
+    await expect(bookList).toHaveAttribute('tabindex', '-1');
     const initialSearch = panelQueries.getByPlaceholderText(/search/i);
     const lastChapterButton = panelQueries.getByRole('button', { name: '5' });
     const openingPanelWindow = panel.ownerDocument.defaultView;
