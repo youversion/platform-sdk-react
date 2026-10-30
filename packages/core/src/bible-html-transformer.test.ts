@@ -529,6 +529,58 @@ describe('transformBibleHtml - idempotency', () => {
   });
 });
 
+describe('transformBibleHtml - qs pause punctuation', () => {
+  it('keeps a period after a qs pause with the pause', () => {
+    const html =
+      '<div><div class="q"><span class="qs">Selah</span>.</div><div class="q">Next sentence.</div></div>';
+    const result = transformBibleHtml(html, createAdapters());
+    const doc = new DOMParser().parseFromString(result.html, 'text/html');
+    const pause = doc.querySelector('.q .qs');
+
+    expect(pause?.textContent).toBe('Selah.');
+    expect(pause?.parentElement?.textContent).toBe('Selah.');
+    expect(doc.querySelectorAll('.q')[1]?.textContent).toBe('Next sentence.');
+  });
+
+  it('leaves the sentence before a qs pause in q where it was', () => {
+    const html =
+      '<div><div class="q">There is no salvation. <span class="qs">Selah</span></div></div>';
+    const result = transformBibleHtml(html, createAdapters());
+    const doc = new DOMParser().parseFromString(result.html, 'text/html');
+    const line = doc.querySelector('.q');
+
+    expect(line?.querySelector('.qs')?.textContent).toBe('Selah');
+    expect(line?.textContent).toContain('There is no salvation.');
+  });
+
+  it('keeps a footnote after a qs pause in q4 as the next marker', () => {
+    const html =
+      '<div><div class="q4"><span class="qs">Pausa</span><span class="yv-n f"><span class="ft">Hebrew Selah</span></span></div></div>';
+    const result = transformBibleHtml(html, createAdapters());
+    const doc = new DOMParser().parseFromString(result.html, 'text/html');
+    const pause = doc.querySelector('.q4 .qs');
+
+    expect(pause?.textContent).toBe('Pausa');
+    expect(pause?.nextElementSibling?.getAttribute('data-verse-footnote')).toBeTruthy();
+    expect(pause?.nextElementSibling?.getAttribute('data-verse-footnote-content')).toContain(
+      'Hebrew Selah',
+    );
+  });
+
+  it('leaves a qs pause inside qr beside the refrain', () => {
+    const html =
+      '<div><div class="qr"><span class="qs">Pause in his presence</span><span class="yv-n f"><span class="ft">Or Selah</span></span></div></div>';
+    const result = transformBibleHtml(html, createAdapters());
+    const doc = new DOMParser().parseFromString(result.html, 'text/html');
+    const refrain = doc.querySelector('.qr');
+    const pause = refrain?.querySelector(':scope > .qs');
+
+    expect(pause?.textContent).toBe('Pause in his presence');
+    expect(pause?.nextElementSibling?.hasAttribute('data-verse-footnote')).toBe(true);
+    expect(refrain?.className).toBe('qr');
+  });
+});
+
 describe('transformBibleHtmlForBrowser - DOMParser fallback', () => {
   it('should throw when DOMParser is unavailable', () => {
     const original = globalThis.DOMParser;
