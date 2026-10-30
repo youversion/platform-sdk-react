@@ -210,6 +210,7 @@ export const PublicRootJourney: Story = {
       '[data-slot="accordion"]',
       'book list not rendered',
     );
+    await expect(bookList).toHaveAttribute('tabindex', '-1');
     const initialSearch = panelQueries.getByPlaceholderText(/search/i);
     const lastChapterButton = panelQueries.getByRole('button', { name: '5' });
     const openingPanelWindow = panel.ownerDocument.defaultView;
