@@ -532,6 +532,9 @@ describe('BibleVersionPicker', () => {
     expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
     expect(screen.queryByTestId('version-list')).not.toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /back to bible versions/i })).toHaveFocus();
+    });
 
     await user.click(screen.getByRole('button', { name: /search languages/i }));
 
@@ -547,12 +550,18 @@ describe('BibleVersionPicker', () => {
 
     expect(screen.getByRole('tab', { name: /suggested/i })).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /search languages/i })).toHaveFocus();
+    });
 
     await user.click(screen.getByRole('button', { name: /back to bible versions/i }));
 
     expect(screen.getByRole('heading', { name: /bible versions/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /bible languages/i })).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Language English 2' })).toHaveFocus();
+    });
   });
 
   it('open=false clears version search for pre-warmed standalone content', async () => {

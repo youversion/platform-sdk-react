@@ -136,7 +136,8 @@ function LanguageEntry({ name }: { name: string }): ReactElement {
   return (
     <button
       type="button"
-      className="yv:flex yv:w-full yv:items-center yv:justify-between yv:gap-3 yv:px-4 yv:py-3 yv:text-start yv:hover:bg-muted"
+      data-slot="language-entry"
+      className="yv:flex yv:w-full yv:min-w-0 yv:items-center yv:justify-between yv:gap-3 yv:px-4 yv:py-3 yv:text-start yv:hover:bg-muted"
       onClick={() => setView('languages')}
     >
       <span className="yv:flex yv:min-w-0 yv:items-center yv:gap-2">
@@ -145,8 +146,8 @@ function LanguageEntry({ name }: { name: string }): ReactElement {
           {t('language')}
         </span>
       </span>{' '}
-      <span className="yv:flex yv:shrink-0 yv:items-center yv:gap-1.5">
-        <bdi dir="auto" className="yv:text-xs! yv:font-bold! yv:leading-4">
+      <span className="yv:flex yv:min-w-0 yv:items-center yv:justify-end yv:gap-1.5">
+        <bdi dir="auto" className="yv:min-w-0 yv:truncate yv:text-xs! yv:font-bold! yv:leading-4">
           {name}
         </bdi>{' '}
         <VersionCountBadge count={count} loading={versionsLoading} />

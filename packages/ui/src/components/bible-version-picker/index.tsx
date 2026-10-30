@@ -27,7 +27,9 @@ import {
   type ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { cn } from '@/lib/utils';
@@ -578,6 +580,30 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
     closeLanguageSearch,
     onVersionPickerPress,
   } = picker;
+  const previousViewRef = useRef(view);
+
+  // Keep keyboard focus inside the card when VersionList and LanguagePanel remount.
+  // Language search already focuses its field and restores the opener on exit.
+  useEffect(() => {
+    const previous = previousViewRef.current;
+    previousViewRef.current = view;
+    if (previous === view) return;
+    if (view === 'languageSearch') return;
+    if (previous === 'languageSearch' && view === 'languages') return;
+
+    const frame = window.requestAnimationFrame(() => {
+      const scope = document.querySelector<HTMLElement>('[data-slot="popover-content"]');
+      if (!scope) return;
+      if (view === 'languages' && previous === 'versions') {
+        scope.querySelector<HTMLElement>('[data-slot="language-back"]')?.focus();
+        return;
+      }
+      if (view === 'versions') {
+        scope.querySelector<HTMLElement>('[data-slot="language-entry"]')?.focus();
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [view]);
 
   if (onVersionPickerPress && open === undefined && !onRequestClose) {
     return null;
