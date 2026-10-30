@@ -564,6 +564,44 @@ describe('BibleVersionPicker', () => {
     });
   });
 
+  it('keeps view-change focus inside this picker when another popover-content is on the page', async () => {
+    const user = userEvent.setup();
+
+    renderWithOverrides(
+      <>
+        <div data-slot="popover-content">
+          <button type="button" data-slot="language-back">
+            Outer Back
+          </button>
+          <button type="button" data-slot="language-entry">
+            Outer Language
+          </button>
+        </div>
+        <BibleVersionPicker.Root versionId={111} onVersionChange={vi.fn()}>
+          <BibleVersionPicker.Trigger>
+            <button type="button">Open</button>
+          </BibleVersionPicker.Trigger>
+          <BibleVersionPicker.Content />
+        </BibleVersionPicker.Root>
+      </>,
+    );
+
+    await openPicker();
+    await user.click(screen.getByRole('button', { name: /^language /i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /back to bible versions/i })).toHaveFocus();
+    });
+    expect(screen.getByRole('button', { name: 'Outer Back' })).not.toHaveFocus();
+
+    await user.click(screen.getByRole('button', { name: /back to bible versions/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Language English 2' })).toHaveFocus();
+    });
+    expect(screen.getByRole('button', { name: 'Outer Language' })).not.toHaveFocus();
+  });
+
   it('open=false clears version search for pre-warmed standalone content', async () => {
     const user = userEvent.setup();
 

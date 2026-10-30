@@ -581,9 +581,11 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
     onVersionPickerPress,
   } = picker;
   const previousViewRef = useRef(view);
+  const popoverContentRef = useRef<HTMLDivElement>(null);
 
-  // Keep keyboard focus inside the card when VersionList and LanguagePanel remount.
-  // Language search already focuses its field and restores the opener on exit.
+  // Keep keyboard focus inside this picker's card when VersionList and LanguagePanel remount.
+  // Scope via ref so an outer host popover with the same data-slot is never selected.
+  // Standalone Content has no PopoverContent — skip. Language search owns its own focus.
   useEffect(() => {
     const previous = previousViewRef.current;
     previousViewRef.current = view;
@@ -592,7 +594,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
     if (previous === 'languageSearch' && view === 'languages') return;
 
     const frame = window.requestAnimationFrame(() => {
-      const scope = document.querySelector<HTMLElement>('[data-slot="popover-content"]');
+      const scope = popoverContentRef.current;
       if (!scope) return;
       if (view === 'languages' && previous === 'versions') {
         scope.querySelector<HTMLElement>('[data-slot="language-back"]')?.focus();
@@ -627,6 +629,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
     return (
       <BibleVersionPickerContext.Provider value={{ ...picker, headerOwnsChrome: true }}>
         <PopoverContent
+          ref={popoverContentRef}
           sideOffset={16}
           className="yv:h-[600px] yv:w-[400px] yv:max-h-[min(600px,calc(100svh-32px),var(--radix-popover-content-available-height,600px))] yv:max-sm:max-w-[min(400px,calc(100vw-32px))] yv:sm:max-w-[min(400px,calc(100vw-32px))]"
           heading={heading}
