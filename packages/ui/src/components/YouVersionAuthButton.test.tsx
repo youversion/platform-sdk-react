@@ -48,7 +48,9 @@ describe('YouVersionAuthButton', () => {
     );
     const serverMarkup = await renderAfterAllReady(element);
 
-    expect(serverMarkup).toContain('<span data-yv-shadow-host="true"');
+    expect(serverMarkup).toContain(
+      '<span data-yv-shadow-host="true" style="display:contents"></span>',
+    );
 
     const container = document.createElement('div');
     container.innerHTML = serverMarkup;
@@ -75,9 +77,11 @@ describe('YouVersionAuthButton', () => {
       expect(shadowRoot.querySelector('button')).not.toBeNull();
       expect(recoverableErrors).toEqual([]);
 
+      // The provider can emit unrelated multiple-renderer errors when server and client
+      // renderers share this process, so only reject diagnostics for this regression.
       const invalidNestingDiagnostics = consoleError.mock.calls.filter((call) =>
         call.some((value) =>
-          /cannot be a descendant of <p>|cannot contain a nested|validateDOMNesting/i.test(
+          /cannot be a (?:child|descendant) of|cannot contain a nested|validateDOMNesting/i.test(
             String(value),
           ),
         ),
