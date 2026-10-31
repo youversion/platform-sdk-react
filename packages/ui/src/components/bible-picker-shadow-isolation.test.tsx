@@ -90,24 +90,52 @@ describe('Bible picker public shadow boundaries', () => {
   it.each([
     ['BibleChapterPicker.Root', chapterPicker],
     ['BibleVersionPicker.Root', versionPicker],
-  ])('%s owns one childless styled SSR host and reuses it during hydration', async (_, picker) => {
+  ])('%s preserves phrasing content around its SSR host during hydration', async (_, picker) => {
     const fixture = picker();
     const element = (
-      <HookOverrideProvider overrides={overrides}>{fixture.element}</HookOverrideProvider>
+      <p>
+        Before <HookOverrideProvider overrides={overrides}>{fixture.element}</HookOverrideProvider>{' '}
+        after
+      </p>
     );
     const serverMarkup = renderToString(element);
 
-    expect(serverMarkup).toBe('<div data-yv-shadow-host="true" style="display:contents"></div>');
+    expect(serverMarkup).toContain(
+      '<span data-yv-shadow-host="true" style="display:contents"></span>',
+    );
 
     const container = document.createElement('div');
     container.innerHTML = serverMarkup;
     document.body.append(container);
-    const serverHost = container.firstElementChild;
+    const paragraph = container.querySelector('p');
+    const serverHost = container.querySelector<HTMLElement>('[data-yv-shadow-host]');
+    if (!paragraph || !serverHost) throw new Error('parsed picker phrasing fixture is incomplete');
     const recoverableErrors: unknown[] = [];
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     let root: Root | undefined;
 
     try {
+      expect(container.querySelectorAll('p')).toHaveLength(1);
+      expect(paragraph).toContainElement(serverHost);
+      expect(paragraph).toHaveTextContent('Before after');
+      const phrasingNodes = Array.from(paragraph.childNodes).filter(
+        (node) => node.nodeType !== Node.COMMENT_NODE,
+      );
+      const hostIndex = phrasingNodes.indexOf(serverHost);
+      expect(hostIndex).toBeGreaterThan(0);
+      expect(
+        phrasingNodes
+          .slice(0, hostIndex)
+          .map((node) => node.textContent)
+          .join(''),
+      ).toBe('Before ');
+      expect(
+        phrasingNodes
+          .slice(hostIndex + 1)
+          .map((node) => node.textContent)
+          .join(''),
+      ).toBe(' after');
+
       await act(async () => {
         root = hydrateRoot(container, element, {
           onRecoverableError: (error) => recoverableErrors.push(error),

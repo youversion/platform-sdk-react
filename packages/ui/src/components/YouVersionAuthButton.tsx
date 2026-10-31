@@ -276,7 +276,7 @@ YouVersionAuthButtonImpl.displayName = 'YouVersionAuthButtonImpl';
  */
 export const YouVersionAuthButton = React.forwardRef<HTMLButtonElement, YouVersionAuthButtonProps>(
   (props, ref) => (
-    <ShadowIsolationBoundary theme={props.background}>
+    <ShadowIsolationBoundary hostElement="span" theme={props.background}>
       <YouVersionAuthButtonImpl {...props} ref={ref} />
     </ShadowIsolationBoundary>
   ),
