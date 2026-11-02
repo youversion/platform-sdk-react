@@ -120,5 +120,8 @@
   "bibleSearchFilterOldTestament": "舊約",
   "bibleSearchFiltersButton": "篩選",
   "bibleSearchRecentHeading": "最近搜尋",
-  "bibleSearchTrendingHeading": "熱門搜尋"
+  "bibleSearchTrendingHeading": "熱門搜尋",
+  "bibleLanguagesHeading": "聖經語言",
+  "languageVersionsHeading": "{{language}} 版本",
+  "versionsStatistics": "{{versionsCount}} 個譯本，支援 {{languagesCount}} 種語言"
 }
