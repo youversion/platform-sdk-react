@@ -265,15 +265,51 @@ function wrapVerseContent(doc: Document): void {
   verseMarkers.forEach(processVerseMarker);
 }
 
+function pausePunctuation(node: Node | null): string | null {
+  if (node?.nodeType !== 3) return null;
+  const text = node.textContent ?? '';
+  if (!PAUSE_PUNCTUATION.test(text) || text.trim() === '') return null;
+  return text.trim();
+}
+
+function isPauseFootnote(node: Node | null): node is Element {
+  if (node?.nodeType !== 1) return false;
+  // SAFETY: nodeType 1 is an Element. TypeScript's Node union does not narrow
+  // on nodeType, and instanceof Element fails across JSDOM/window realms.
+  const element = node as Element;
+  return element.classList.contains('yv-n') && element.classList.contains('f');
+}
+
+function punctuationAfter(start: Node | null): { text: string; node: Node } | null {
+  let current = start;
+  const blanks: Node[] = [];
+  while (current?.nodeType === 3 && (current.textContent ?? '').trim() === '') {
+    blanks.push(current);
+    current = current.nextSibling;
+  }
+  const text = pausePunctuation(current);
+  if (!text || !current) return null;
+  for (const blank of blanks) blank.parentNode?.removeChild(blank);
+  return { text, node: current };
+}
+
 function appendFollowingPausePunctuation(doc: Document): void {
   for (const pause of doc.querySelectorAll('.qs')) {
     if (pause.closest('.yv-n')) continue;
     const next = pause.nextSibling;
-    if (!next || next.nodeType !== 3) continue;
-    const text = next.textContent ?? '';
-    if (!PAUSE_PUNCTUATION.test(text) || text.trim() === '') continue;
-    pause.append(text.trim());
-    next.parentNode?.removeChild(next);
+    const direct = pausePunctuation(next);
+    if (direct && next) {
+      pause.append(direct);
+      next.parentNode?.removeChild(next);
+      continue;
+    }
+    if (!isPauseFootnote(next)) continue;
+    const trailing = punctuationAfter(next.nextSibling);
+    if (!trailing) continue;
+    // Selah, then the marker, then the period, all inside the pause line.
+    pause.appendChild(next);
+    pause.append(trailing.text);
+    trailing.node.parentNode?.removeChild(trailing.node);
   }
 }
 

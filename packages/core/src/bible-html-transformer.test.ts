@@ -553,6 +553,36 @@ describe('transformBibleHtml - qs pause punctuation', () => {
     expect(line?.textContent).toContain('There is no salvation.');
   });
 
+  it('keeps Selah, the footnote marker, then the period when notes are on', () => {
+    const html =
+      '<div><div class="q"><span class="qs">Selah</span><span class="yv-n f"><span class="ft">A note</span></span>.</div></div>';
+    const result = transformBibleHtml(html, createAdapters());
+    const doc = new DOMParser().parseFromString(result.html, 'text/html');
+    const pause = doc.querySelector('.qs');
+    const parts = [...(pause?.childNodes ?? [])].map((node) => {
+      if (node.nodeType === Node.TEXT_NODE) return `text:${node.textContent}`;
+      if (node instanceof Element && node.hasAttribute('data-verse-footnote')) return 'footnote';
+      return node.nodeName;
+    });
+
+    expect(parts).toEqual(['text:Selah', 'footnote', 'text:.']);
+    expect(pause?.querySelector('[data-verse-footnote-content]')).toBeTruthy();
+    expect(
+      pause?.querySelector('[data-verse-footnote]')?.getAttribute('data-verse-footnote-content'),
+    ).toContain('A note');
+  });
+
+  it('keeps the period with Selah when the footnote marker is off', () => {
+    const html =
+      '<div><div class="q"><span class="qs">Selah</span><span class="yv-n f"><span class="ft">A note</span></span>.</div></div>';
+    const result = transformBibleHtml(html, createAdapters());
+    const doc = new DOMParser().parseFromString(result.html, 'text/html');
+    const pause = doc.querySelector('.qs');
+    pause?.querySelector('[data-verse-footnote]')?.remove();
+
+    expect(pause?.textContent).toBe('Selah.');
+  });
+
   it('keeps a footnote after a qs pause in q4 as the next marker', () => {
     const html =
       '<div><div class="q4"><span class="qs">Pausa</span><span class="yv-n f"><span class="ft">Hebrew Selah</span></span></div></div>';
