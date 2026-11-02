@@ -19,11 +19,7 @@ export const VOTDSchema = z.object({
 export type VOTD = Readonly<z.infer<typeof VOTDSchema>>;
 
 export const VOTDRecordWireSchema = z.pipe(
-  z.object({
-    day: VOTDDaySchema,
-    passage_id: z.string(),
-    image_id: z.optional(z.nullable(z.string())),
-  }),
+  VOTDSchema,
   z.transform(
     (wire): VOTD => ({
       day: wire.day,
@@ -59,9 +55,7 @@ const GetVOTDOptionsSchema = z.object({
   ),
 });
 
-export type GetVOTDOptions = Readonly<{
-  language_ranges?: readonly string[];
-}>;
+export type GetVOTDOptions = Readonly<z.infer<typeof GetVOTDOptionsSchema>>;
 
 export function parseVOTDDay(day: number): number {
   return VOTDDaySchema.parse(day);

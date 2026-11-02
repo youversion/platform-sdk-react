@@ -117,7 +117,7 @@ do {
 
 ```ts
 const today = await bibleClient.getVOTD(1, { language_ranges: ['en', 'es'] });
-if (today.image_id !== null) {
+if (today.image_id != null) {
   const curated = await images.getImage(today.image_id);
   console.log(today.day, today.passage_id, curated.image_url);
 }
