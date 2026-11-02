@@ -34,7 +34,7 @@
   "backToBibleVersionsAriaLabel": "Tilbake til bibelutgaver",
   "selectLanguageHeading": "Velg et språk",
   "selectLanguageAriaLabel": "Velg et språk",
-  "recentlyUsedVersionsHeading": "Nylig brukte utgaver",
+  "recentlyUsedVersionsHeading": "Nylige utgaver",
   "allVersionsHeading": "Alle utgaver",
   "regionalHeading": "Regional",
   "allLanguagesHeading": "Alle språk",
@@ -103,7 +103,7 @@
   "regional": "Regional",
   "retry": "Prøv igjen",
   "search": "Søk",
-  "searchLanguages": "Søk etter språk",
+  "searchLanguages": "Søk i språk",
   "searchVersions": "Søk i utgaver",
   "selectLanguage": "Velg et språk",
   "suggested": "Foreslått",
@@ -120,5 +120,8 @@
   "bibleSearchFilterOldTestament": "Det gamle testamentet",
   "bibleSearchFiltersButton": "Filtre",
   "bibleSearchRecentHeading": "Nylige søk",
-  "bibleSearchTrendingHeading": "Populære søk"
+  "bibleSearchTrendingHeading": "Populære søk",
+  "bibleLanguagesHeading": "Bibelspråk",
+  "languageVersionsHeading": "{{language}} utgaver",
+  "versionsStatistics": "{{versionsCount}} utgaver på {{languagesCount}} språk"
 }

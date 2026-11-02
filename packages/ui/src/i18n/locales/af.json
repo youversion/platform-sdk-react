@@ -34,7 +34,7 @@
   "backToBibleVersionsAriaLabel": "Terug na Bybelweergawes",
   "selectLanguageHeading": "Kies 'n taal",
   "selectLanguageAriaLabel": "Kies 'n taal",
-  "recentlyUsedVersionsHeading": "Onlangs gebruikte weergawes",
+  "recentlyUsedVersionsHeading": "Onlangse weergawes",
   "allVersionsHeading": "Alle weergawes",
   "regionalHeading": "Streek",
   "allLanguagesHeading": "Alle tale",
@@ -103,8 +103,8 @@
   "regional": "Streekstale",
   "retry": "Probeer weer",
   "search": "Soek",
-  "searchLanguages": "Soek tale",
-  "searchVersions": "Deursoek weergawes",
+  "searchLanguages": "Soek vir tale",
+  "searchVersions": "Soek vir weergawes",
   "selectLanguage": "Kies 'n taal",
   "suggested": "Voorgestel",
   "traditional": "Tradisioneel",
@@ -120,5 +120,8 @@
   "bibleSearchFilterOldTestament": "Ou Testament",
   "bibleSearchFiltersButton": "Filters",
   "bibleSearchRecentHeading": "Onlangse soektogte",
-  "bibleSearchTrendingHeading": "Gewilde soektogte"
+  "bibleSearchTrendingHeading": "Gewilde soektogte",
+  "bibleLanguagesHeading": "Bybeltale",
+  "languageVersionsHeading": "Weergawes in {{language}}",
+  "versionsStatistics": "Aantal weergawes: {{versionsCount}}. Beskikbaar in {{languagesCount}} tale"
 }

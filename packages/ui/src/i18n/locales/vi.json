@@ -34,7 +34,7 @@
   "backToBibleVersionsAriaLabel": "Quay lại các phiên bản Kinh Thánh",
   "selectLanguageHeading": "Chọn ngôn ngữ",
   "selectLanguageAriaLabel": "Chọn ngôn ngữ",
-  "recentlyUsedVersionsHeading": "Các phiên bản đã dùng gần đây",
+  "recentlyUsedVersionsHeading": "Bản Dịch Gần Đây",
   "allVersionsHeading": "Tất Cả Phiên Bản",
   "regionalHeading": "Khu Vực",
   "allLanguagesHeading": "Tất Cả Ngôn Ngữ",
@@ -103,8 +103,8 @@
   "regional": "Khu vực",
   "retry": "Thử lại",
   "search": "Tìm kiếm",
-  "searchLanguages": "Tìm kiếm ngôn ngữ",
-  "searchVersions": "Tìm kiếm phiên bản",
+  "searchLanguages": "Tìm Kiếm Ngôn Ngữ",
+  "searchVersions": "Tìm Kiếm Bản Dịch",
   "selectLanguage": "Chọn ngôn ngữ",
   "suggested": "Gợi ý",
   "traditional": "Truyền thống",
@@ -120,5 +120,8 @@
   "bibleSearchFilterOldTestament": "Cựu Ước",
   "bibleSearchFiltersButton": "Bộ lọc",
   "bibleSearchRecentHeading": "Tìm kiếm gần đây",
-  "bibleSearchTrendingHeading": "Tìm kiếm thịnh hành"
+  "bibleSearchTrendingHeading": "Tìm kiếm thịnh hành",
+  "bibleLanguagesHeading": "Ngôn Ngữ Kinh Thánh",
+  "languageVersionsHeading": "{{language}} Phiên bản",
+  "versionsStatistics": "{{versionsCount}} Bản dịch trong {{languagesCount}} Ngôn ngữ"
 }
