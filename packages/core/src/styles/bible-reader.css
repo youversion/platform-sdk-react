@@ -1067,8 +1067,7 @@
     text-indent: 0;
   }
 
-  /* YPE-6406 open decision. The footnote marker stays on the pause line.
-     Delete these two rules to let the marker start the next line. */
+  /* The footnote marker stays immediately after a Selah pause, on the pause line. */
   &[data-show-notes='true'] .qs:not(.qr .qs):has(+ [data-verse-footnote]) {
     padding-inline-end: 2em;
   }
