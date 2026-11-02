@@ -9,6 +9,7 @@ export {
   getVerse,
   getVerses,
   getVOTD,
+  type GetVOTDOptions,
 } from './bible-reads';
 export { getVersions, type GetVersionsOptions } from './bible-versions';
 export { getPassage } from './bible-passage';
@@ -26,8 +27,14 @@ export {
 export { LanguagesClient } from './languages';
 export { getLanguage } from './languages-language';
 export { getLanguages, type GetLanguagesOptions } from './languages-list';
-export { SearchClient, type SearchUnifiedOptions, type SearchVersesOptions } from './search';
+export {
+  SearchClient,
+  type SearchImagesOptions,
+  type SearchUnifiedOptions,
+  type SearchVersesOptions,
+} from './search';
 export { getSuggestedQueries, getTrendingQueries } from './search-queries';
+export { searchImages } from './search-images';
 export { searchVerses } from './search-verses';
 export { searchTopics } from './search-topics';
 export { searchUnified } from './search-unified';

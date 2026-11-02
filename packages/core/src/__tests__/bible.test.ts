@@ -54,7 +54,7 @@ describe('BibleClient runtime contracts', () => {
       expect(await client.getIndex(206)).toEqual(index);
       expect(requests.at(-1)?.pathname).toBe('/v1/bibles/206/index');
       expect((await client.getAllVOTDs()).data[0]?.day).toBe(1);
-      expect(get).toHaveBeenCalledWith('/v1/verse_of_the_days');
+      expect(get).toHaveBeenCalledWith('/v1/verse-of-the-days');
     } finally {
       server.events.removeListener('request:start', onRequest);
       get.mockRestore();

@@ -77,6 +77,7 @@ export {
   parseSearchLanguageRange,
   parseUsfmReference,
   removeStorageItem,
+  searchImages,
   searchTopics,
   searchUnified,
   searchVerses,

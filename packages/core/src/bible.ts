@@ -11,6 +11,7 @@ import {
   getVerse,
   getVerses,
   getVOTD,
+  type GetVOTDOptions,
 } from './bible-reads';
 import { getVersions, type GetVersionsOptions } from './bible-versions';
 import type {
@@ -221,16 +222,20 @@ export class BibleClient {
 
   /**
    * Fetches the verse of the day calendar for an entire year.
-   * @returns A collection of VOTD objects for all days of the year.
+   * @param options Optional `language_ranges`. When omitted, the request sends no language query.
+   *   When set, the request repeats `language_ranges[]` in that order.
+   * @returns Calendar rows for the year. Each row keeps `day` and `passage_id`.
+   *   `image_id` is a string, or `null` when the API omits it or sends null.
    */
-  async getAllVOTDs(): Promise<Collection<VOTD>> {
-    return getAllVOTDs(this.client);
+  async getAllVOTDs(options?: GetVOTDOptions): Promise<Collection<VOTD>> {
+    return getAllVOTDs(this.client, options);
   }
 
   /**
-   * Fetches the passage_id for the Verse Of The Day.
+   * Fetches the verse of the day for one day of the year.
    * @param day The day of the year (1-366).
-   * @returns The day of the year and the passage_id for that day of the year
+   * @param options Optional `language_ranges`. When omitted, the request sends no language query.
+   * @returns The day, `passage_id`, and `image_id`. `image_id` is `null` when the API omits it or sends null.
    * @example
    * ```ts
    * // Get the passageId for the verse of the first day of the year.
@@ -240,7 +245,7 @@ export class BibleClient {
    * const passageId = await bibleClient.getVOTD(100);
    * ```
    */
-  async getVOTD(day: number): Promise<VOTD> {
-    return getVOTD(this.client, day);
+  async getVOTD(day: number, options?: GetVOTDOptions): Promise<VOTD> {
+    return getVOTD(this.client, day, options);
   }
 }

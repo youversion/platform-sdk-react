@@ -28,6 +28,8 @@ export type { User } from '../schemas/user';
 export type { Highlight, CreateHighlight } from '../schemas/highlight';
 export type {
   KnownSearchUserIntent,
+  SearchImagesOptions,
+  SearchImagesResponse,
   SearchQueries,
   SearchQuery,
   SearchImageHit,

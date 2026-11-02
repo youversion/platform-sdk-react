@@ -349,6 +349,45 @@ function toSearchImageHit(wire: SearchImageHitWire): SearchImageHit | null {
   };
 }
 
+function searchImageHits(hits: readonly unknown[]): SearchImageHit[] {
+  return hits.flatMap((hit) => {
+    const parsed = SearchImageHitWireSchema.safeParse(hit);
+    if (!parsed.success) {
+      return [];
+    }
+    const image = toSearchImageHit(parsed.data);
+    return image === null ? [] : [image];
+  });
+}
+
+export const SearchImagesOptionsSchema = z.object({
+  pageSize: z.optional(z.int().check(z.gte(1), z.lte(99))),
+  pageToken: z.optional(z.string()),
+});
+
+export type SearchImagesOptions = z.infer<typeof SearchImagesOptionsSchema>;
+
+export const SearchImagesWireSchema = z.object({
+  images: z.array(z.unknown()),
+  next_page_token: z.optional(z.nullable(z.string())),
+});
+
+export type SearchImagesWire = z.infer<typeof SearchImagesWireSchema>;
+
+export const SearchImagesResponseSchema = z.object({
+  images: z.array(SearchImageHitSchema),
+  nextPageToken: z.nullable(z.string()),
+});
+
+export type SearchImagesResponse = Readonly<z.infer<typeof SearchImagesResponseSchema>>;
+
+export function toSearchImagesResponse(wire: SearchImagesWire): SearchImagesResponse {
+  return {
+    images: searchImageHits(wire.images),
+    nextPageToken: wire.next_page_token ?? null,
+  };
+}
+
 export function toSearchUnifiedResponse(wire: SearchUnifiedWire): SearchUnifiedResponse {
   const response: SearchUnifiedResponse = {
     verses: (wire.verses ?? []).flatMap((hit) => {
@@ -366,12 +405,7 @@ export function toSearchUnifiedResponse(wire: SearchUnifiedWire): SearchUnifiedR
       }
       return [toSearchTopic(parsed.data)];
     }),
-    images: (wire.images ?? [])
-      .map((hit) => {
-        const parsed = SearchImageHitWireSchema.safeParse(hit);
-        return parsed.success ? toSearchImageHit(parsed.data) : null;
-      })
-      .filter((hit): hit is SearchImageHit => hit !== null),
+    images: searchImageHits(wire.images ?? []),
     didYouMean: wire.did_you_mean ?? [],
     searchInsteadFor: wire.search_instead_for ?? null,
   };
