@@ -29,6 +29,70 @@ const FIXTURE_BOOKS: BibleBook[] = [
     chapters: [{ id: '1', passage_id: 'EXO.1', title: '1' }],
   },
   {
+    id: 'LEV',
+    title: 'Leviticus',
+    full_title: 'Leviticus',
+    abbreviation: 'Lev',
+    canon: 'old_testament',
+    chapters: [{ id: '1', passage_id: 'LEV.1', title: '1' }],
+  },
+  {
+    id: 'NUM',
+    title: 'Numbers',
+    full_title: 'Numbers',
+    abbreviation: 'Num',
+    canon: 'old_testament',
+    chapters: [{ id: '1', passage_id: 'NUM.1', title: '1' }],
+  },
+  {
+    id: 'DEU',
+    title: 'Deuteronomy',
+    full_title: 'Deuteronomy',
+    abbreviation: 'Deut',
+    canon: 'old_testament',
+    chapters: [{ id: '1', passage_id: 'DEU.1', title: '1' }],
+  },
+  {
+    id: 'JOS',
+    title: 'Joshua',
+    full_title: 'Joshua',
+    abbreviation: 'Josh',
+    canon: 'old_testament',
+    chapters: [{ id: '1', passage_id: 'JOS.1', title: '1' }],
+  },
+  {
+    id: 'JDG',
+    title: 'Judges',
+    full_title: 'Judges',
+    abbreviation: 'Judg',
+    canon: 'old_testament',
+    chapters: [{ id: '1', passage_id: 'JDG.1', title: '1' }],
+  },
+  {
+    id: 'RUT',
+    title: 'Ruth',
+    full_title: 'Ruth',
+    abbreviation: 'Ruth',
+    canon: 'old_testament',
+    chapters: [{ id: '1', passage_id: 'RUT.1', title: '1' }],
+  },
+  {
+    id: '1SA',
+    title: '1 Samuel',
+    full_title: '1 Samuel',
+    abbreviation: '1 Sam',
+    canon: 'old_testament',
+    chapters: [{ id: '1', passage_id: '1SA.1', title: '1' }],
+  },
+  {
+    id: '1KI',
+    title: '1 Kings',
+    full_title: '1 Kings',
+    abbreviation: '1 Kgs',
+    canon: 'old_testament',
+    chapters: [{ id: '1', passage_id: '1KI.1', title: '1' }],
+  },
+  {
     id: 'MAT',
     title: 'Matthew',
     full_title: 'Matthew',
@@ -171,6 +235,8 @@ export const PublicRootJourney: Story = {
     if (!topLayer) throw new Error('local top-layer container not created synchronously');
     let panel = topLayer.querySelector<HTMLElement>('[data-slot="popover-content"]');
     if (!panel) throw new Error('chapter picker panel not rendered synchronously');
+    // Keep overflow deterministic instead of relying on the browser-test viewport height.
+    panel.style.blockSize = '24rem';
     await expect(trigger.getRootNode()).toBe(root);
     await expect(panel.getRootNode()).toBe(root);
     await expect(topLayer.matches(':popover-open')).toBe(true);
@@ -184,8 +250,13 @@ export const PublicRootJourney: Story = {
 
     let panelQueries = within(panel);
     const closeButton = panelQueries.getByRole('button', { name: 'Close' });
-    const bookList = panel.querySelector<HTMLElement>('[data-slot="accordion"]');
-    if (!bookList) throw new Error('chapter picker book list not rendered');
+    const genesisBook = panelQueries.getByRole('button', { name: /genesis/i });
+    const exodusBook = panelQueries.getByRole('button', { name: /exodus/i });
+    const bookList = await waitForElement<HTMLElement>(
+      panel,
+      '[data-slot="accordion"]',
+      'book list not rendered',
+    );
     await expect(bookList).toHaveAttribute('tabindex', '-1');
     const initialSearch = panelQueries.getByPlaceholderText(/search/i);
     const lastChapterButton = panelQueries.getByRole('button', { name: '5' });
@@ -223,8 +294,17 @@ export const PublicRootJourney: Story = {
     const tabOrder = tabbable(panel, { getShadowRoot: true });
     await expect(tabOrder.at(-2)).toBe(lastChapterButton);
     await expect(tabOrder.at(-1)).toBe(initialSearch);
+    await expect(bookList.scrollHeight).toBeGreaterThan(bookList.clientHeight);
     await userEvent.tab();
     await expect(root.activeElement).toBe(closeButton);
+    const { userEvent: browserUserEvent } = await import('vitest/browser');
+    const forwardTraversalKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+      ? '{Alt>}{Tab}{/Alt}'
+      : '{Tab}';
+    await browserUserEvent.keyboard(forwardTraversalKey);
+    await expect(root.activeElement).toBe(genesisBook);
+    await browserUserEvent.keyboard(forwardTraversalKey);
+    await expect(root.activeElement).toBe(exodusBook);
     await userEvent.click(closeButton);
     await waitFor(async () => {
       await expect(topLayer.querySelector('[data-slot="popover-content"]')).toBeNull();
@@ -238,7 +318,7 @@ export const PublicRootJourney: Story = {
       'chapter picker panel did not reopen',
     );
     panelQueries = within(panel);
-    const genesisBook = panelQueries.getByRole('button', { name: /genesis/i });
+    const filteredGenesisBook = panelQueries.getByRole('button', { name: /genesis/i });
     const search = panelQueries.getByPlaceholderText(/search/i);
     await userEvent.type(search, 'g');
     const panelWindow = panel.ownerDocument.defaultView;
@@ -249,10 +329,10 @@ export const PublicRootJourney: Story = {
     await expect(root.activeElement).toBe(search);
     await waitFor(async () => {
       await expect(search).toHaveValue('g');
-      await expect(genesisBook).toBeVisible();
+      await expect(filteredGenesisBook).toBeVisible();
       await expect(panelQueries.queryByRole('button', { name: /exodus/i })).toBeNull();
     });
-    await userEvent.click(genesisBook);
+    await userEvent.click(filteredGenesisBook);
     await userEvent.click(await panelQueries.findByRole('button', { name: '11' }));
 
     await waitFor(async () => {

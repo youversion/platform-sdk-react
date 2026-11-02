@@ -2,4 +2,4 @@
 '@youversion/platform-react-ui': patch
 ---
 
-Keep keyboard focus inside the Bible chapter picker by using the natural tab order for its search field.
+Preserve the Bible chapter picker's natural keyboard order and keep its scrolling book list out of Firefox's sequential focus order.
