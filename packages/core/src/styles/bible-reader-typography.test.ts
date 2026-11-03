@@ -185,6 +185,7 @@ describe('bible-reader Swift-aligned typography', () => {
     expect(ownLine).toContain('display: block');
     expect(ownLine).toContain('text-align: end');
     expect(ownLine).toContain('text-indent: 0');
+    expect(ownLine).toContain('background-color: inherit');
     expect(ruleBodies('& .qr .qs')).toBe('');
     expect(rulesForExactClass('qr')).toContain('display: block');
     expect(rulesForExactClass('qr')).toContain('text-align: end');

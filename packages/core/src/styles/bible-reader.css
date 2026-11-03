@@ -1061,10 +1061,13 @@
     font-style: italic;
   }
 
+  /* Highlight fill is painted on the inline verse. A block pause is outside
+     that paint, so it uses the same fill. The verse text color still inherits. */
   & .qs:not(.qr .qs) {
     display: block;
     text-align: end;
     text-indent: 0;
+    background-color: inherit;
   }
 
   /* The footnote marker stays immediately after a Selah pause, on the pause line. */
