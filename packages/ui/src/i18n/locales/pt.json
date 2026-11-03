@@ -34,7 +34,7 @@
   "backToBibleVersionsAriaLabel": "Voltar para versões da Bíblia",
   "selectLanguageHeading": "Selecionar um Idioma",
   "selectLanguageAriaLabel": "Selecionar um Idioma",
-  "recentlyUsedVersionsHeading": "Versões Usadas Recentemente",
+  "recentlyUsedVersionsHeading": "Versões recentes",
   "allVersionsHeading": "Todas as Versões",
   "regionalHeading": "Regional",
   "allLanguagesHeading": "Todos os Idiomas",
@@ -120,5 +120,8 @@
   "bibleSearchFilterOldTestament": "Antigo Testamento",
   "bibleSearchFiltersButton": "Filtros",
   "bibleSearchRecentHeading": "Pesquisas recentes",
-  "bibleSearchTrendingHeading": "Pesquisas em alta"
+  "bibleSearchTrendingHeading": "Pesquisas em alta",
+  "bibleLanguagesHeading": "Idiomas da Bíblia",
+  "languageVersionsHeading": "Versões em {{language}}",
+  "versionsStatistics": "{{versionsCount}} versões em {{languagesCount}} idiomas"
 }

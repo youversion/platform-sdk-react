@@ -34,7 +34,7 @@
   "backToBibleVersionsAriaLabel": "العودة إلى إصدارات الكتاب المقدس",
   "selectLanguageHeading": "اختر لغة",
   "selectLanguageAriaLabel": "اختر لغة",
-  "recentlyUsedVersionsHeading": "الإصدارات المستخدمة مؤخراً",
+  "recentlyUsedVersionsHeading": "النسخ الأخيرة",
   "allVersionsHeading": "جميع الإصدارات",
   "regionalHeading": "إقليمي",
   "allLanguagesHeading": "جميع اللغات",
@@ -104,7 +104,7 @@
   "retry": "إعادة المحاولة",
   "search": "بحث",
   "searchLanguages": "البحث في اللغات",
-  "searchVersions": "البحث في الإصدارات",
+  "searchVersions": "البحث في النسخ",
   "selectLanguage": "اختر لغة",
   "suggested": "مقترح",
   "traditional": "تقليدي",
@@ -120,5 +120,8 @@
   "bibleSearchFilterOldTestament": "العهد القديم",
   "bibleSearchFiltersButton": "عوامل التصفية",
   "bibleSearchRecentHeading": "عمليات البحث الأخيرة",
-  "bibleSearchTrendingHeading": "عمليات البحث الرائجة"
+  "bibleSearchTrendingHeading": "عمليات البحث الرائجة",
+  "bibleLanguagesHeading": "لغات الكتاب المقدس",
+  "languageVersionsHeading": "إصدارات {{language}}",
+  "versionsStatistics": "{{versionsCount}} نسخة بـ {{languagesCount}} لغة"
 }
