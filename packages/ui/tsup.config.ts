@@ -16,7 +16,7 @@ export default defineConfig({
     'src/components/bible-reader-search.tsx',
     'src/components/bible-reader-navigation.ts',
     'src/components/bible-chapter-picker.tsx',
-    'src/components/bible-version-picker.tsx',
+    'src/components/bible-version-picker/index.tsx',
     'src/components/YouVersionAuthButton.tsx',
     'src/components/verse-of-the-day.tsx',
     'src/components/verse.tsx',

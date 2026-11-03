@@ -28,7 +28,7 @@
   "bibleVersionsHeading": "Versions de la Bible",
   "selectLanguageHeading": "Sélectionner une langue",
   "selectLanguageAriaLabel": "Sélectionner une langue",
-  "recentlyUsedVersionsHeading": "Versions récemment utilisées",
+  "recentlyUsedVersionsHeading": "Versions récentes",
   "allVersionsHeading": "Toutes les versions",
   "regionalHeading": "Régional",
   "allLanguagesHeading": "Toutes les langues",
@@ -120,5 +120,8 @@
   "changeLineSpacingAriaLabel": "Modifier l'interligne",
   "decreaseFontSizeAriaLabel": "Réduire la police",
   "increaseFontSizeAriaLabel": "Augmenter la police",
-  "untitledSerifFontName": "Sans titre – Police à empattement"
+  "untitledSerifFontName": "Sans titre – Police à empattement",
+  "bibleLanguagesHeading": "Langues de la Bible",
+  "languageVersionsHeading": "{{language}} Versions",
+  "versionsStatistics": "{{versionsCount}} versions en {{languagesCount}} langues"
 }
