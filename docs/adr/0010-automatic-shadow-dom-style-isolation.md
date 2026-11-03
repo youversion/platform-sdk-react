@@ -108,6 +108,10 @@ ordinary boundary's declarative display:
 <div data-yv-shadow-host="true" style="display:contents"></div>
 ```
 
+Components that can be in phrasing content (`YouVersionAuthButton`, the picker
+roots, `Separator`, and `ProfileAvatar`) use a `span` host with the same
+attributes.
+
 The first client render matches that markup. A layout effect applies the
 protected host reset before paint. After hydration, a passive effect attaches
 or reuses one open shadow root, installs the SDK stylesheet, and then portals

@@ -178,6 +178,10 @@ per-story results, screenshots, raw terminal output, or other local test
 artifacts. Repeat actual-Safari validation after future rollout-policy trigger
 changes.
 
+YPE-6218 repeated the targeted actual-Safari gate for the host-tag change at
+commit `1d1bddb`; all 42 stories passed, with the YPE-6214 limitations
+unchanged.
+
 ### Assistive-technology evidence
 
 Record versions from the tested machines rather than naming only the product
