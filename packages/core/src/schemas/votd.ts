@@ -1,6 +1,6 @@
 import * as z from 'zod/mini';
 import type { Collection } from './collection';
-import { parseLanguageRanges } from './search';
+import { parseLanguageRanges } from './language-range';
 
 const VOTDDaySchema = z.int().check(z.gte(1), z.lte(366));
 

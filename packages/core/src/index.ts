@@ -42,8 +42,8 @@ export {
   MAX_SEARCH_QUERY_GRAPHEMES,
   clampSearchText,
   isValidStructuralUsfmReference,
-  parseSearchLanguageRange,
 } from './schemas/search';
+export { parseSearchLanguageRange } from './schemas/language-range';
 export { parseUsfmReference, type UsfmReference } from './usfm-reference';
 export { OrganizationsClient } from './organizations';
 export { ImagesClient } from './images';

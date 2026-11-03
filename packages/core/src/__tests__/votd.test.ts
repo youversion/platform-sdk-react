@@ -20,7 +20,7 @@ function urlFromFetchInput(input: RequestInfo | URL | undefined): string {
   return input ?? '';
 }
 
-describe('verse of the day reads', () => {
+describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('verse of the day reads', () => {
   it('reads one day and the calendar on hyphenated routes', async () => {
     const { api, bible } = createClients();
     const fetchSpy = vi.spyOn(global, 'fetch');

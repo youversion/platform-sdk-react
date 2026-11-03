@@ -31,7 +31,7 @@ function createClients() {
   return { api, search: new SearchClient(api), images: new ImagesClient(api) };
 }
 
-describe('searchImages', () => {
+describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('searchImages', () => {
   it('pages image hits and resolves an opaque id with getImage', async () => {
     const { api, search, images } = createClients();
     const fetchSpy = vi.spyOn(global, 'fetch');
