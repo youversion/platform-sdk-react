@@ -2,4 +2,4 @@
 '@youversion/platform-react-ui': patch
 ---
 
-Keep Firefox keyboard traversal moving directly from the Bible version picker controls to the first version row.
+Keep Bible version picker focus on the intended target during Firefox keyboard traversal and outside-click dismissal.

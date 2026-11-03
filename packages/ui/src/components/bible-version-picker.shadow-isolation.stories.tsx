@@ -473,12 +473,17 @@ export const StylingFocusDismissalAndRapidReopen: Story = {
       hostileStyle.remove();
     }
 
+    await userEvent.click(within(panel).getByRole('button', { name: /^language /i }));
+    await expect(within(panel).getByRole('heading', { name: /bible languages/i })).toBeVisible();
+
     await userEvent.click(outsideControl);
     await waitFor(async () => {
       await expect(panel).toHaveAttribute('data-state', 'closed');
       await expect(topLayer).toContainElement(panel);
       await expect(topLayer.matches(':popover-open')).toBe(true);
     });
+    await new Promise<void>((resolve) => panelWindow.requestAnimationFrame(() => resolve()));
+    await expect(canvasElement.ownerDocument.activeElement).toBe(outsideControl);
     await waitFor(async () => {
       await expect(topLayer.querySelector('[data-slot="popover-content"]')).toBeNull();
       await expect(topLayer.matches(':popover-open')).toBe(false);

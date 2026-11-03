@@ -588,6 +588,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
     background,
     side,
     view,
+    isPopoverOpen,
     setIsPopoverOpen,
     closeLanguagePanel,
     closeLanguageSearch,
@@ -602,13 +603,14 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
   useEffect(() => {
     const previous = previousViewRef.current;
     previousViewRef.current = view;
+    if (!isPopoverOpen) return;
     if (previous === view) return;
     if (view === 'languageSearch') return;
     if (previous === 'languageSearch' && view === 'languages') return;
 
     const frame = window.requestAnimationFrame(() => {
       const scope = popoverContentRef.current;
-      if (!scope) return;
+      if (!scope || scope.dataset.state !== 'open') return;
       if (view === 'languages' && previous === 'versions') {
         scope.querySelector<HTMLElement>('[data-slot="language-back"]')?.focus();
         return;
@@ -618,7 +620,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
       }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [view]);
+  }, [isPopoverOpen, view]);
 
   if (onVersionPickerPress && open === undefined && !onRequestClose) {
     return null;
