@@ -475,6 +475,8 @@ export const StylingFocusDismissalAndRapidReopen: Story = {
 
     await userEvent.click(within(panel).getByRole('button', { name: /^language /i }));
     await expect(within(panel).getByRole('heading', { name: /bible languages/i })).toBeVisible();
+    await userEvent.click(within(panel).getByRole('button', { name: /search languages/i }));
+    await expect(within(panel).getByRole('heading', { name: /search languages/i })).toBeVisible();
 
     await userEvent.click(outsideControl);
     await waitFor(async () => {
