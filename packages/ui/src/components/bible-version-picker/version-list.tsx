@@ -249,7 +249,7 @@ export function VersionList({
         </section>
         {headerOwnsChrome ? <LanguageEntry name={selectedLanguageName} /> : null}
       </div>
-      <div className="yv:flex-1 yv:overflow-y-auto yv:py-2">
+      <div className="yv:flex-1 yv:overflow-y-auto yv:py-2" tabIndex={-1}>
         {filteredRecentVersions.length > 0 && (
           <>
             <h2 className="yv:px-4 yv:py-2 yv:text-xl yv:font-bold yv:leading-6">
