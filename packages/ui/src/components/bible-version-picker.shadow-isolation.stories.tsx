@@ -356,7 +356,7 @@ export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
   },
 };
 
-export const ForwardTabFollowsPickerV2Order: Story = {
+export const ForwardTabSkipsScrollableVersionList: Story = {
   play: async ({ canvasElement }) => {
     const { userEvent: browserUserEvent } = await import('vitest/browser');
     const { root, panel } = await openPicker(canvasElement);
@@ -602,12 +602,12 @@ export const ProviderDirectionRejectsHostVisualValues: Story = {
       baselineLanguageInputGroup.offsetHeight / 2,
     );
     await userEvent.click(within(panel).getByRole('button', { name: /^back$/i }));
-    const languageTabsBeforeHostileStyle = await waitForElement<HTMLElement>(
+    const languageTabsAfterSearchRoundTrip = await waitForElement<HTMLElement>(
       panel,
       '[data-slot="tabs-list"]',
       'language tabs did not return',
     );
-    await expect(languageTabsBeforeHostileStyle.offsetWidth).toBe(languageTabsInlineSize);
+    await expect(languageTabsAfterSearchRoundTrip.offsetWidth).toBe(languageTabsInlineSize);
 
     const hostileStyle = ownerDocument.createElement('style');
     hostileStyle.textContent = `
@@ -659,7 +659,7 @@ export const ProviderDirectionRejectsHostVisualValues: Story = {
       await expect(panelStyle.getPropertyValue('--yv-spacing').trim()).toBe('.25rem');
       await expect(panelStyle.getPropertyValue('--spacing').trim()).toBe('.25rem');
       await expect(panelStyle.getPropertyValue('--yv-radius').trim()).toBe('2rem');
-      await expect(languageTabsBeforeHostileStyle.offsetWidth).toBe(languageTabsInlineSize);
+      await expect(languageTabsAfterSearchRoundTrip.offsetWidth).toBe(languageTabsInlineSize);
 
       await userEvent.click(within(panel).getByRole('button', { name: /search languages/i }));
       const languageInputGroup = await waitForElement<HTMLElement>(
