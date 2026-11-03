@@ -1,5 +1,28 @@
 # @youversion/platform-react-ui
 
+## 2.16.0
+
+### Minor Changes
+
+- 529192b: Re-export unified search client helpers from the UI package entry point.
+
+### Patch Changes
+
+- da12b12: Export shared Bible version attribution selection and fall back to promotional content in BibleCard and BibleReader when copyright is blank.
+- 3073603: Keep the verse action menu after cancelling a highlight sign-in or permission prompt. Confirming either prompt hides the menu until the redirect starts, and brings it back if the redirect fails to start.
+- 60d022e: Keep the reader font labels Inter and Untitled Serif in every language.
+- 8a82cb9: The verse action popover enters in 180ms with its easing curve. The exit stays on the library default.
+- f197bfa: Sync localization from platform-localization (13a6914): add Dutch (nl), Russian (ru), Ukrainian (uk); update 515 keys in af, ar, cy, de, fr, ig, no, pt, sr, tr, vi, zh.
+- 1699a0f: Sync localization from platform-localization (237cba4): add Igbo (ig); update 26 keys in en, es.
+- Updated dependencies [da12b12]
+- Updated dependencies [23ed5bc]
+- Updated dependencies [529192b]
+- Updated dependencies [24cd0f2]
+- Updated dependencies [529192b]
+- Updated dependencies [24cd0f2]
+  - @youversion/platform-core@2.16.0
+  - @youversion/platform-react-hooks@2.16.0
+
 ## 2.15.0
 
 ### Minor Changes

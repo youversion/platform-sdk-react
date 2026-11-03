@@ -26,10 +26,11 @@ export {
 export { LanguagesClient } from './languages';
 export { getLanguage } from './languages-language';
 export { getLanguages, type GetLanguagesOptions } from './languages-list';
-export { SearchClient, type SearchVersesOptions } from './search';
+export { SearchClient, type SearchUnifiedOptions, type SearchVersesOptions } from './search';
 export { getSuggestedQueries, getTrendingQueries } from './search-queries';
 export { searchVerses } from './search-verses';
 export { searchTopics } from './search-topics';
+export { searchUnified } from './search-unified';
 export {
   MAX_SEARCH_QUERY_GRAPHEMES,
   clampSearchText,
@@ -38,6 +39,7 @@ export {
 } from './schemas/search';
 export { parseUsfmReference, type UsfmReference } from './usfm-reference';
 export { OrganizationsClient } from './organizations';
+export { ImagesClient } from './images';
 export {
   HighlightsClient,
   type GetHighlightsOptions,

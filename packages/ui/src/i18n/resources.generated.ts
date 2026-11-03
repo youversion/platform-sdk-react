@@ -10,12 +10,15 @@ import locale6 from './locales/es.json' with { type: 'json' };
 import locale7 from './locales/fr.json' with { type: 'json' };
 import locale8 from './locales/ig.json' with { type: 'json' };
 import locale9 from './locales/ko.json' with { type: 'json' };
-import locale10 from './locales/no.json' with { type: 'json' };
-import locale11 from './locales/pt.json' with { type: 'json' };
-import locale12 from './locales/sr.json' with { type: 'json' };
-import locale13 from './locales/tr.json' with { type: 'json' };
-import locale14 from './locales/vi.json' with { type: 'json' };
-import locale15 from './locales/zh.json' with { type: 'json' };
+import locale10 from './locales/nl.json' with { type: 'json' };
+import locale11 from './locales/no.json' with { type: 'json' };
+import locale12 from './locales/pt.json' with { type: 'json' };
+import locale13 from './locales/ru.json' with { type: 'json' };
+import locale14 from './locales/sr.json' with { type: 'json' };
+import locale15 from './locales/tr.json' with { type: 'json' };
+import locale16 from './locales/uk.json' with { type: 'json' };
+import locale17 from './locales/vi.json' with { type: 'json' };
+import locale18 from './locales/zh.json' with { type: 'json' };
 
 const defaultNS = 'translation';
 
@@ -30,12 +33,15 @@ export const resources = {
   fr: { [defaultNS]: locale7 },
   ig: { [defaultNS]: locale8 },
   ko: { [defaultNS]: locale9 },
-  no: { [defaultNS]: locale10 },
-  pt: { [defaultNS]: locale11 },
-  sr: { [defaultNS]: locale12 },
-  tr: { [defaultNS]: locale13 },
-  vi: { [defaultNS]: locale14 },
-  zh: { [defaultNS]: locale15 },
+  nl: { [defaultNS]: locale10 },
+  no: { [defaultNS]: locale11 },
+  pt: { [defaultNS]: locale12 },
+  ru: { [defaultNS]: locale13 },
+  sr: { [defaultNS]: locale14 },
+  tr: { [defaultNS]: locale15 },
+  uk: { [defaultNS]: locale16 },
+  vi: { [defaultNS]: locale17 },
+  zh: { [defaultNS]: locale18 },
 } as const;
 
 export const supportedLngs = Object.keys(resources);

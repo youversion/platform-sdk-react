@@ -1,5 +1,25 @@
 # @youversion/platform-react-hooks
 
+## 2.16.0
+
+### Minor Changes
+
+- 529192b: Add useUnifiedSearch for loading top verse references and related topics through the unified-search core client, without changing the existing paginated Bible search flow.
+
+  Validate unified-search request intents and required response fields against the API contract while preserving unknown response intent strings.
+
+- 24cd0f2: Add image hits to unified search. `searchUnified` and `useUnifiedSearch` accept `fields: ['images']` and return `images` as `{ id, passageId }` entries. Malformed image rows are dropped.
+
+### Patch Changes
+
+- Updated dependencies [da12b12]
+- Updated dependencies [23ed5bc]
+- Updated dependencies [529192b]
+- Updated dependencies [24cd0f2]
+- Updated dependencies [529192b]
+- Updated dependencies [24cd0f2]
+  - @youversion/platform-core@2.16.0
+
 ## 2.15.0
 
 ### Minor Changes

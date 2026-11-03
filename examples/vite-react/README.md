@@ -21,4 +21,5 @@ pnpm dev:web
 - **Bible Reader** — Full interactive Bible reader with chapter/version navigation
 - **Verse of the Day** — Daily verse card
 - **Bible Card** — Embeddable Bible passage card
+- **Images** — Smoke page for `ImagesClient` list and detail (metadata only)
 - **Sign in with YouVersion Button** - Authentication with YouVersion

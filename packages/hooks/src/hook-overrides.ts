@@ -11,6 +11,7 @@ import type { UseLanguagesResult } from './useLanguages';
 import type { UseOrganizationsResult } from './useOrganizations';
 import type { UsePassageProps, UsePassageResult } from './usePassage';
 import type { UseBibleSearchProps, UseBibleSearchResult } from './useBibleSearch';
+import type { UseUnifiedSearchProps, UseUnifiedSearchResult } from './useUnifiedSearch';
 import type { UseVersionResult } from './useVersion';
 import type { UseVersionsOptions, UseVersionsResult } from './useVersions';
 import type { UseVerseOfTheDayResult } from './useVOTD';
@@ -41,6 +42,10 @@ export type HookOverrides = {
   useOrganizations?: (organizationIds: (string | null | undefined)[]) => UseOrganizationsResult;
   usePassage?: (props: UsePassageProps) => UsePassageResult;
   useBibleSearch?: (props: UseBibleSearchProps) => UseBibleSearchResult;
+  useUnifiedSearch?: (
+    props: UseUnifiedSearchProps,
+    apiOptions?: UseApiDataOptions,
+  ) => UseUnifiedSearchResult;
   useTheme?: () => 'light' | 'dark';
   useVersion?: (versionId: number, options?: UseApiDataOptions) => UseVersionResult;
   useVersions?: (
