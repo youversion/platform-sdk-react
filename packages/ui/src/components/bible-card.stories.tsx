@@ -227,11 +227,10 @@ export const WithVersionPicker: Story = {
     await userEvent.click(versionPickerButton);
     const overlay = await getVersionPickerOverlay(pickerRoot);
 
-    await expect(await overlay.findByRole('dialog')).toBeInTheDocument();
+    const dialog = await overlay.findByRole('dialog');
+    await expect(dialog).toBeInTheDocument();
     await waitFor(async () => {
-      await expect(pickerRoot.activeElement).toBe(
-        overlay.getByRole('button', { name: /select.*language/i }),
-      );
+      await expect(pickerRoot.activeElement).toBe(dialog);
     });
 
     // Wait for versions to actually load (not just the container)

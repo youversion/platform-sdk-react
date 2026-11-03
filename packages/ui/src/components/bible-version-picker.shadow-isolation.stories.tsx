@@ -356,23 +356,30 @@ export const TopLayerEscapesClippingAndPreservesSemantics: Story = {
   },
 };
 
-export const ForwardTabMovesFromCloseToFirstVersion: Story = {
+export const ForwardTabFollowsPickerV2Order: Story = {
   play: async ({ canvasElement }) => {
     const { userEvent: browserUserEvent } = await import('vitest/browser');
     const { root, panel } = await openPicker(canvasElement);
-    const languageTrigger = within(panel).getByRole('button', { name: /select.*language/i });
     const closeButton = within(panel).getByRole('button', { name: /close/i });
+    const versionSearch = within(panel).getByRole('textbox', { name: /search bible versions/i });
+    const languageEntry = within(panel).getByRole('button', { name: /^language /i });
     const firstVersion = await waitForElement<HTMLButtonElement>(
       panel,
       '[data-testid="version-list"] button',
       'version row not rendered',
     );
-    await waitFor(async () => await expect(root.activeElement).toBe(languageTrigger));
+    await waitFor(async () => await expect(root.activeElement).toBe(panel));
     const forwardTraversalKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
       ? '{Alt>}{Tab}{/Alt}'
       : '{Tab}';
     await browserUserEvent.keyboard(forwardTraversalKey);
     await expect(root.activeElement).toBe(closeButton);
+
+    await browserUserEvent.keyboard(forwardTraversalKey);
+    await expect(root.activeElement).toBe(versionSearch);
+
+    await browserUserEvent.keyboard(forwardTraversalKey);
+    await expect(root.activeElement).toBe(languageEntry);
 
     await browserUserEvent.keyboard(forwardTraversalKey);
     await expect(root.activeElement).toBe(firstVersion);
@@ -417,7 +424,7 @@ export const StylingFocusDismissalAndRapidReopen: Story = {
     if (!topLayer) throw new Error('local top-layer container not created synchronously');
     const panel = topLayer.querySelector<HTMLElement>('[data-slot="popover-content"]');
     if (!panel) throw new Error('version picker panel not rendered synchronously');
-    const languageTrigger = within(panel).getByRole('button', { name: /select.*language/i });
+    const closeButton = within(panel).getByRole('button', { name: /close/i });
 
     const openingPanelWindow = panel.ownerDocument.defaultView;
     if (!openingPanelWindow) throw new Error('version picker window not available');
@@ -436,7 +443,7 @@ export const StylingFocusDismissalAndRapidReopen: Story = {
     await waitFor(async () => {
       await expect(topLayer.querySelector('[data-slot="popover-content"]')).toBe(panel);
       await expect(panel).toHaveAttribute('data-state', 'open');
-      await expect(root.activeElement).toBe(languageTrigger);
+      await expect(root.activeElement).toBe(closeButton);
     });
     await expect(canvasElement.ownerDocument.scrollingElement?.scrollTop ?? 0).toBe(
       initialScrollTop,
@@ -546,25 +553,34 @@ export const ProviderDirectionRejectsHostVisualValues: Story = {
     await expect(ownerWindow.getComputedStyle(trigger).direction).toBe('rtl');
     await expect(ownerWindow.getComputedStyle(wrapper).direction).toBe('ltr');
 
-    await userEvent.click(within(panel).getByRole('button', { name: /select a language/i }));
+    await userEvent.click(within(panel).getByRole('button', { name: /^language /i }));
     const languageTabs = await waitForElement<HTMLElement>(
       panel,
       '[data-slot="tabs-list"]',
       'language tabs did not render',
     );
     const languageTabsContainer = languageTabs.parentElement;
-    const languageContent = languageTabs.closest<HTMLElement>('[data-yv-sdk]');
-    const languageInputGroup = languageContent?.querySelector<HTMLElement>(
-      '[data-slot="input-group"]',
-    );
-    if (!languageTabsContainer || !languageInputGroup) {
-      throw new Error('language panel geometry landmarks not rendered');
-    }
+    if (!languageTabsContainer) throw new Error('language tabs container not rendered');
     const languageTabsInlineSize = languageTabs.offsetWidth;
-    const languageInputRadius = ownerWindow.getComputedStyle(languageInputGroup).borderRadius;
     const panelInlineSize = panel.offsetWidth;
     await expect(languageTabsInlineSize).toBe(languageTabsContainer.clientWidth - 32);
-    await expect(languageInputRadius).toBe('30px');
+
+    await userEvent.click(within(panel).getByRole('button', { name: /search languages/i }));
+    const baselineLanguageInputGroup = await waitForElement<HTMLElement>(
+      panel,
+      '[data-slot="input-group"]',
+      'language search input group did not render',
+    );
+    const languageInputRadius = ownerWindow.getComputedStyle(
+      baselineLanguageInputGroup,
+    ).borderRadius;
+    await userEvent.click(within(panel).getByRole('button', { name: /^back$/i }));
+    const languageTabsBeforeHostileStyle = await waitForElement<HTMLElement>(
+      panel,
+      '[data-slot="tabs-list"]',
+      'language tabs did not return',
+    );
+    await expect(languageTabsBeforeHostileStyle.offsetWidth).toBe(languageTabsInlineSize);
 
     const hostileStyle = ownerDocument.createElement('style');
     hostileStyle.textContent = `
@@ -616,14 +632,36 @@ export const ProviderDirectionRejectsHostVisualValues: Story = {
       await expect(panelStyle.getPropertyValue('--yv-spacing').trim()).toBe('.25rem');
       await expect(panelStyle.getPropertyValue('--spacing').trim()).toBe('.25rem');
       await expect(panelStyle.getPropertyValue('--yv-radius').trim()).toBe('2rem');
-      await expect(languageTabs.offsetWidth).toBe(languageTabsInlineSize);
+      await expect(languageTabsBeforeHostileStyle.offsetWidth).toBe(languageTabsInlineSize);
+
+      await userEvent.click(within(panel).getByRole('button', { name: /search languages/i }));
+      const languageInputGroup = await waitForElement<HTMLElement>(
+        panel,
+        '[data-slot="input-group"]',
+        'language search input group did not render',
+      );
       await expect(ownerWindow.getComputedStyle(languageInputGroup).borderRadius).toBe(
         languageInputRadius,
+      );
+
+      await userEvent.click(within(panel).getByRole('button', { name: /^back$/i }));
+      const restoredLanguageTabs = await waitForElement<HTMLElement>(
+        panel,
+        '[data-slot="tabs-list"]',
+        'language tabs did not return',
+      );
+      await expect(restoredLanguageTabs.offsetWidth).toBe(languageTabsInlineSize);
+
+      await userEvent.click(within(panel).getByRole('button', { name: /back to bible versions/i }));
+      const restoredVersionInputGroup = await waitForElement<HTMLElement>(
+        panel,
+        '[data-slot="input-group"]',
+        'version search input group did not return',
       );
       await waitFor(async () => {
         await expect(geometrySnapshot(trigger)).toEqual(triggerGeometry);
         await expect(panel.offsetWidth).toBe(panelInlineSize);
-        await expect(geometrySnapshot(inputGroup)).toEqual(inputGeometry);
+        await expect(geometrySnapshot(restoredVersionInputGroup)).toEqual(inputGeometry);
       });
     } finally {
       hostileStyle.remove();
