@@ -512,9 +512,11 @@ export const StylingFocusDismissalAndRapidReopen: Story = {
 
     const languagesPanel = await reopenPicker();
     await userEvent.click(within(languagesPanel).getByRole('button', { name: /^language /i }));
-    await expect(
-      within(languagesPanel).getByRole('heading', { name: /bible languages/i }),
-    ).toBeVisible();
+    await waitFor(async () => {
+      await expect(
+        within(languagesPanel).getByRole('heading', { name: /bible languages/i }),
+      ).toBeVisible();
+    });
     await dismissOutsideKeepsOutsideFocus(languagesPanel);
 
     await reopenPicker();
