@@ -2,4 +2,4 @@
 '@youversion/platform-react-ui': patch
 ---
 
-Keep Bible version picker focus on the intended target during Firefox keyboard traversal and outside-click dismissal.
+Skip the Bible version picker's version list scroll area in keyboard Tab order, and keep focus on the outside target when dismissing the picker from a language screen.

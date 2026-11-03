@@ -600,6 +600,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
   // Keep keyboard focus inside this picker's card when VersionList and LanguagePanel remount.
   // Scope via ref so an outer host popover with the same data-slot is never selected.
   // Standalone Content has no PopoverContent — skip. Language search owns its own focus.
+  // Never move focus while closed or closing: the exiting panel would steal outside focus.
   useEffect(() => {
     const previous = previousViewRef.current;
     previousViewRef.current = view;

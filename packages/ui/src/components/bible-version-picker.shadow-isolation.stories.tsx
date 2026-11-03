@@ -368,6 +368,9 @@ export const ForwardTabFollowsPickerV2Order: Story = {
       '[data-testid="version-list"] button',
       'version row not rendered',
     );
+    const scrollRegion = firstVersion.closest('[data-testid="version-list"]')?.parentElement;
+    if (!scrollRegion) throw new Error('version list scroll region not found');
+    await expect(scrollRegion.scrollHeight).toBeGreaterThan(scrollRegion.clientHeight);
     await waitFor(async () => await expect(root.activeElement).toBe(panel));
     const forwardTraversalKey = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
       ? '{Alt>}{Tab}{/Alt}'
@@ -473,34 +476,48 @@ export const StylingFocusDismissalAndRapidReopen: Story = {
       hostileStyle.remove();
     }
 
+    const dismissOutsideKeepsOutsideFocus = async (dismissedPanel: HTMLElement) => {
+      await userEvent.click(outsideControl);
+      await waitFor(async () => {
+        await expect(dismissedPanel).toHaveAttribute('data-state', 'closed');
+        await expect(topLayer).toContainElement(dismissedPanel);
+        await expect(topLayer.matches(':popover-open')).toBe(true);
+      });
+      await new Promise<void>((resolve) => panelWindow.requestAnimationFrame(() => resolve()));
+      await expect(canvasElement.ownerDocument.activeElement).toBe(outsideControl);
+      await waitFor(async () => {
+        await expect(topLayer.querySelector('[data-slot="popover-content"]')).toBeNull();
+        await expect(topLayer.matches(':popover-open')).toBe(false);
+      });
+    };
+    const reopenPicker = async () => {
+      await userEvent.click(trigger);
+      const reopenedPanel = await waitForElement<HTMLElement>(
+        topLayer,
+        '[data-slot="popover-content"]',
+        'picker panel did not reopen',
+      );
+      await waitFor(async () => {
+        const activeElement = root.activeElement;
+        await expect(activeElement !== null && reopenedPanel.contains(activeElement)).toBe(true);
+      });
+      return reopenedPanel;
+    };
+
     await userEvent.click(within(panel).getByRole('button', { name: /^language /i }));
     await expect(within(panel).getByRole('heading', { name: /bible languages/i })).toBeVisible();
     await userEvent.click(within(panel).getByRole('button', { name: /search languages/i }));
     await expect(within(panel).getByRole('heading', { name: /search languages/i })).toBeVisible();
+    await dismissOutsideKeepsOutsideFocus(panel);
 
-    await userEvent.click(outsideControl);
-    await waitFor(async () => {
-      await expect(panel).toHaveAttribute('data-state', 'closed');
-      await expect(topLayer).toContainElement(panel);
-      await expect(topLayer.matches(':popover-open')).toBe(true);
-    });
-    await new Promise<void>((resolve) => panelWindow.requestAnimationFrame(() => resolve()));
-    await expect(canvasElement.ownerDocument.activeElement).toBe(outsideControl);
-    await waitFor(async () => {
-      await expect(topLayer.querySelector('[data-slot="popover-content"]')).toBeNull();
-      await expect(topLayer.matches(':popover-open')).toBe(false);
-    });
+    const languagesPanel = await reopenPicker();
+    await userEvent.click(within(languagesPanel).getByRole('button', { name: /^language /i }));
+    await expect(
+      within(languagesPanel).getByRole('heading', { name: /bible languages/i }),
+    ).toBeVisible();
+    await dismissOutsideKeepsOutsideFocus(languagesPanel);
 
-    await userEvent.click(trigger);
-    const reopenedPanel = await waitForElement<HTMLElement>(
-      topLayer,
-      '[data-slot="popover-content"]',
-      'picker panel did not reopen',
-    );
-    await waitFor(async () => {
-      const activeElement = root.activeElement;
-      await expect(activeElement !== null && reopenedPanel.contains(activeElement)).toBe(true);
-    });
+    await reopenPicker();
 
     const focused = root.activeElement;
     if (!(focused instanceof HTMLElement)) throw new Error('picker focus not available');
@@ -581,6 +598,9 @@ export const ProviderDirectionRejectsHostVisualValues: Story = {
     const languageInputRadius = ownerWindow.getComputedStyle(
       baselineLanguageInputGroup,
     ).borderRadius;
+    await expect(Number.parseFloat(languageInputRadius)).toBeGreaterThanOrEqual(
+      baselineLanguageInputGroup.offsetHeight / 2,
+    );
     await userEvent.click(within(panel).getByRole('button', { name: /^back$/i }));
     const languageTabsBeforeHostileStyle = await waitForElement<HTMLElement>(
       panel,
