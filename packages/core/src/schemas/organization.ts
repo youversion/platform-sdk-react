@@ -44,7 +44,8 @@ export const OrganizationSchema = z.object({
   name: z.optional(z.string()),
   /**
    * Description of the organization: its purpose, goals, values, and mission.
-   * The API sends null when there is none (the OpenAPI spec does not mark it nullable).
+   * The API sends null when there is none. The OpenAPI spec does not mark it nullable yet
+   * (YPE-6438).
    */
   description: z.optional(z.nullable(z.string())),
   /** The contact email address for the organization if provided. */
@@ -56,8 +57,8 @@ export const OrganizationSchema = z.object({
   /** The web site for the organization. */
   website_url: z.optional(z.string()),
   /**
-   * The organization's address. The API sends null when there is none (the OpenAPI spec
-   * does not mark it nullable).
+   * The organization's address. The API sends null when there is none. The OpenAPI spec
+   * does not mark it nullable yet (YPE-6438).
    */
   address: z.optional(z.nullable(OrganizationAddressSchema)),
 });

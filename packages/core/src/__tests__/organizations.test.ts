@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ApiClient } from '../client';
 import { OrganizationsClient } from '../organizations';
+import { OrganizationSchema } from '../schemas/organization';
 import { mockLockmanOrganization, mockOrganizationWithoutDescription } from './MockOrganizations';
 
 function createOrganizationsClient(): OrganizationsClient {
@@ -57,4 +58,12 @@ it('parses organizations whose address and description arrive as null', async ()
   );
   expect(missionAssist.name).toBe('MissionAssist');
   expect(missionAssist.description).toBeNull();
+});
+
+it('accepts null only for address and description, keeping the other fields strict', () => {
+  const organization = { ...mockLockmanOrganization, address: null, description: null };
+  expect(OrganizationSchema.safeParse(organization).success).toBe(true);
+
+  expect(OrganizationSchema.safeParse({ ...organization, name: null }).success).toBe(false);
+  expect(OrganizationSchema.safeParse({ ...organization, website_url: null }).success).toBe(false);
 });
