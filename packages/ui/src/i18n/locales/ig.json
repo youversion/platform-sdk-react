@@ -88,8 +88,8 @@
   "regional": "Nke Mpaghara",
   "retry": "Nwaa Ọzọ",
   "search": "Chọọ-Ihe",
-  "searchLanguages": "Chọọ asụsụ gasị",
-  "searchVersions": "Chọọ ụdị-nsụgharị-gasị",
+  "searchLanguages": "Chọọ Asụsụ Gasị",
+  "searchVersions": "Chọọ Ụdị-Nsụgharị-Gasị",
   "selectLanguage": "Họrọ Asụsụ",
   "suggested": "A tụrụ aro",
   "traditional": "N'Ụdị Ama Ama",
@@ -114,11 +114,14 @@
   "backToBibleVersionsAriaLabel": "Laghachi na Ụdị Nsụgharị Gasị Akwụkwọ Nsọ",
   "noLanguageSearchResults": "Iwe ewela gị, ènweghị nsonaazụ maka ọchịchọ a.",
   "noRegionalLanguagesAvailable": "Ò nweghị asụsụ-gasị mpaghara dị́ adị",
-  "recentlyUsedVersionsHeading": "Ụdị-Nsụgharị-Gasị Éjìrì Mee Ihe N'oge Na-Adịbeghị Anya",
+  "recentlyUsedVersionsHeading": "Ụdị Nsụgharị Gasị Éjìrì Mee Ihe N'Oge Na-Adịbeghị Anya",
   "changeLineSpacingAriaLabel": "Gbanwee oghere dị́ n'etiti ahịrị",
   "decreaseFontSizeAriaLabel": "Bèlátá nha fọntù",
   "increaseFontSizeAriaLabel": "Bàwányé nha fọntù",
   "interFontName": "Inter",
   "untitledSerifFontName": "Serif N'enweghị Aha",
-  "generic.requestErrorBody": "Arịrịọ a enweghị ike imezu ugbu a."
+  "generic.requestErrorBody": "Ènweghị ike imezù arịrịọ a ugbu a.",
+  "bibleLanguagesHeading": "Asụsụ Baịbụl Gasị",
+  "languageVersionsHeading": "{{language}} Ụdị Nsụgharị Gasị",
+  "versionsStatistics": "{{versionsCount}} Ụdị-Nsụgharị-Gasị na {{languagesCount}} Asụsụ-Gasị"
 }

@@ -180,7 +180,12 @@ async function openPicker() {
 
 async function openLanguagePanel() {
   await openPicker();
-  await userEvent.click(screen.getByRole('button', { name: /select a language/i }));
+  await userEvent.click(screen.getByRole('button', { name: /^language /i }));
+}
+
+async function openLanguageSearch() {
+  await openLanguagePanel();
+  await userEvent.click(screen.getByRole('button', { name: /search languages/i }));
 }
 
 function getLanguageSearchInput() {
@@ -191,159 +196,193 @@ function getVersionSearchInput() {
   return screen.getByRole('textbox', { name: /search bible versions/i });
 }
 
+/** Ready-to-run setup for new/edited picker workflows (see docs/testing.md). */
+function resetPickerTestEnvironment() {
+  vi.resetAllMocks();
+  YouVersionPlatformConfiguration.permittedVersionIds = undefined;
+  YouVersionPlatformConfiguration.excludedVersionIds = undefined;
+  YouVersionPlatformConfiguration.permittedLanguageTags = undefined;
+  Object.defineProperty(window, 'localStorage', {
+    value: {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    },
+    writable: true,
+  });
+}
+
 describe('BibleVersionPicker', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    YouVersionPlatformConfiguration.permittedVersionIds = undefined;
-    YouVersionPlatformConfiguration.excludedVersionIds = undefined;
-    YouVersionPlatformConfiguration.permittedLanguageTags = undefined;
-    Object.defineProperty(window, 'localStorage', {
-      value: {
-        getItem: vi.fn(() => null),
-        setItem: vi.fn(),
-        removeItem: vi.fn(),
-        clear: vi.fn(),
-      },
-      writable: true,
+  // Untouched cases keep suite-wide resets; new/edited workflows below use explicit setup only.
+  describe('legacy', () => {
+    beforeEach(() => {
+      resetPickerTestEnvironment();
     });
-  });
 
-  describe('loading state', () => {
-    it('shows the version-list spinner even with recent versions while versions load', async () => {
-      vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
-        key === RECENT_VERSIONS_KEY
-          ? JSON.stringify([{ id: 1588, title: 'Amplified Bible', localized_abbreviation: 'AMP' }])
-          : null,
-      );
-      renderPicker({ versionsLoading: true, filteredVersions: [] });
-      await openPicker();
+    describe('loading state', () => {
+      it('shows the version-list spinner even with recent versions while versions load', async () => {
+        vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
+          key === RECENT_VERSIONS_KEY
+            ? JSON.stringify([
+                { id: 1588, title: 'Amplified Bible', localized_abbreviation: 'AMP' },
+              ])
+            : null,
+        );
+        renderPicker({ versionsLoading: true, filteredVersions: [] });
+        await openPicker();
 
-      await waitFor(() => {
-        const recentList = screen.getByTestId('recent-version-list');
-        expect(within(recentList).getByText('Amplified Bible')).toBeInTheDocument();
-        expect(recentList.parentElement?.querySelector('svg.yv\\:animate-spin')).not.toBeNull();
+        await waitFor(() => {
+          const recentList = screen.getByTestId('recent-version-list');
+          expect(within(recentList).getByText('Amplified Bible')).toBeInTheDocument();
+          expect(recentList.parentElement?.querySelector('svg.yv\\:animate-spin')).not.toBeNull();
+        });
+
+        expect(screen.queryByText('No versions found')).toBeNull();
+      });
+    });
+
+    describe('empty state', () => {
+      it('should show "No versions found" when not loading and results are empty', async () => {
+        renderPicker({ versionsLoading: false, filteredVersions: [] });
+        await openPicker();
+
+        await waitFor(() => {
+          expect(screen.getByText('No versions found')).toBeInTheDocument();
+        });
+
+        const dialog = screen.getByRole('dialog');
+        const spinners = dialog.querySelectorAll('svg.yv\\:animate-spin');
+        expect(spinners).toHaveLength(0);
+      });
+    });
+
+    describe('abbreviation tile', () => {
+      it('splits a trailing-digit abbreviation onto a second line', async () => {
+        renderPicker({
+          versionsLoading: false,
+          filteredVersions: [
+            {
+              ...mockVersions[0]!,
+              id: 1995,
+              title: 'New American Standard Bible',
+              localized_abbreviation: 'NASB1995',
+              abbreviation: 'NASB1995',
+            },
+          ],
+        });
+        await openPicker();
+
+        const row = await screen.findByRole('listitem', { name: /new american standard bible/i });
+        const media = row.querySelector('[data-slot="item-media"]');
+        expect(media).not.toBeNull();
+        // prefix + digits render as separate lines, not the raw concatenation
+        const lines = Array.from(media!.querySelectorAll('div > div')).map((n) => n.textContent);
+        expect(lines).toContain('NASB');
+        expect(lines).toContain('1995');
       });
 
-      expect(screen.queryByText('No versions found')).toBeNull();
-    });
-  });
+      it('renders the publisher name above the version title when available', async () => {
+        renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
+        await openPicker();
 
-  describe('empty state', () => {
-    it('should show "No versions found" when not loading and results are empty', async () => {
-      renderPicker({ versionsLoading: false, filteredVersions: [] });
-      await openPicker();
-
-      await waitFor(() => {
-        expect(screen.getByText('No versions found')).toBeInTheDocument();
+        const row = await screen.findByRole('listitem', { name: /new international version/i });
+        const description = row.querySelector('[data-slot="item-description"]');
+        expect(description).not.toBeNull();
+        expect(description!.textContent).toBe('Biblica');
       });
 
-      const dialog = screen.getByRole('dialog');
-      const spinners = dialog.querySelectorAll('svg.yv\\:animate-spin');
-      expect(spinners).toHaveLength(0);
-    });
-  });
+      it('omits the publisher name when the version has no organization', async () => {
+        renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
+        await openPicker();
 
-  describe('abbreviation tile', () => {
-    it('splits a trailing-digit abbreviation onto a second line', async () => {
-      renderPicker({
-        versionsLoading: false,
-        filteredVersions: [
+        const row = await screen.findByRole('listitem', { name: /new living translation/i });
+        const description = row.querySelector('[data-slot="item-description"]');
+        expect(description).toBeNull();
+      });
+
+      it('hides excluded recent versions without rewriting localStorage', async () => {
+        const stored = [
           {
-            ...mockVersions[0]!,
-            id: 1995,
-            title: 'New American Standard Bible',
-            localized_abbreviation: 'NASB1995',
-            abbreviation: 'NASB1995',
+            id: 111,
+            title: 'New International Version',
+            localized_abbreviation: 'NIV',
+            abbreviation: 'NIV',
           },
-        ],
+          {
+            id: 206,
+            title: 'New Living Translation',
+            localized_abbreviation: 'NLT',
+            abbreviation: 'NLT',
+          },
+        ];
+        const setItem = vi.fn();
+        vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
+          key === RECENT_VERSIONS_KEY ? JSON.stringify(stored) : null,
+        );
+        vi.spyOn(window.localStorage, 'setItem').mockImplementation(setItem);
+
+        YouVersionPlatformConfiguration.excludedVersionIds = [111];
+        renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
+        await openPicker();
+
+        const recentList = await screen.findByTestId('recent-version-list');
+        expect(recentList.textContent).toContain('NLT');
+        expect(recentList.textContent).not.toContain('NIV');
+        expect(setItem).not.toHaveBeenCalled();
       });
-      await openPicker();
-
-      const row = await screen.findByRole('listitem', { name: /new american standard bible/i });
-      const media = row.querySelector('[data-slot="item-media"]');
-      expect(media).not.toBeNull();
-      // prefix + digits render as separate lines, not the raw concatenation
-      const lines = Array.from(media!.querySelectorAll('div > div')).map((n) => n.textContent);
-      expect(lines).toContain('NASB');
-      expect(lines).toContain('1995');
     });
 
-    it('renders the publisher name above the version title when available', async () => {
-      renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
-      await openPicker();
+    describe('recent versions storage', () => {
+      it('falls back to [] when localStorage contains [null]', async () => {
+        vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
+          key === RECENT_VERSIONS_KEY ? '[null]' : null,
+        );
 
-      const row = await screen.findByRole('listitem', { name: /new international version/i });
-      const description = row.querySelector('[data-slot="item-description"]');
-      expect(description).not.toBeNull();
-      expect(description!.textContent).toBe('Biblica');
-    });
+        expect(() => renderPicker()).not.toThrow();
+        await openPicker();
 
-    it('omits the publisher name when the version has no organization', async () => {
-      renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
-      await openPicker();
-
-      const row = await screen.findByRole('listitem', { name: /new living translation/i });
-      const description = row.querySelector('[data-slot="item-description"]');
-      expect(description).toBeNull();
-    });
-
-    it('hides excluded recent versions without rewriting localStorage', async () => {
-      const stored = [
-        {
-          id: 111,
-          title: 'New International Version',
-          localized_abbreviation: 'NIV',
-          abbreviation: 'NIV',
-        },
-        {
-          id: 206,
-          title: 'New Living Translation',
-          localized_abbreviation: 'NLT',
-          abbreviation: 'NLT',
-        },
-      ];
-      const setItem = vi.fn();
-      vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
-        key === RECENT_VERSIONS_KEY ? JSON.stringify(stored) : null,
-      );
-      vi.spyOn(window.localStorage, 'setItem').mockImplementation(setItem);
-
-      YouVersionPlatformConfiguration.excludedVersionIds = [111];
-      renderPicker({ versionsLoading: false, filteredVersions: mockVersions });
-      await openPicker();
-
-      const recentList = await screen.findByTestId('recent-version-list');
-      expect(recentList.textContent).toContain('NLT');
-      expect(recentList.textContent).not.toContain('NIV');
-      expect(setItem).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('recent versions storage', () => {
-    it('falls back to [] when localStorage contains [null]', async () => {
-      vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
-        key === RECENT_VERSIONS_KEY ? '[null]' : null,
-      );
-
-      expect(() => renderPicker()).not.toThrow();
-      await openPicker();
-
-      expect(screen.queryByTestId('recent-version-list')).not.toBeInTheDocument();
-    });
-
-    it('falls back to en when navigator exists but languages is missing', async () => {
-      const user = userEvent.setup();
-      const languagesDescriptor = Object.getOwnPropertyDescriptor(
-        globalThis.navigator,
-        'languages',
-      );
-      Object.defineProperty(globalThis.navigator, 'languages', {
-        value: undefined,
-        configurable: true,
+        expect(screen.queryByTestId('recent-version-list')).not.toBeInTheDocument();
       });
 
-      try {
+      it('falls back to en when navigator exists but languages is missing', async () => {
+        const user = userEvent.setup();
+        const languagesDescriptor = Object.getOwnPropertyDescriptor(
+          globalThis.navigator,
+          'languages',
+        );
+        Object.defineProperty(globalThis.navigator, 'languages', {
+          value: undefined,
+          configurable: true,
+        });
+
+        try {
+          const onVersionPickerPress = vi.fn();
+          renderWithOverrides(
+            <BibleVersionPicker.Root versionId={111} onVersionPickerPress={onVersionPickerPress}>
+              <BibleVersionPicker.Trigger />
+            </BibleVersionPicker.Root>,
+          );
+
+          await user.click(screen.getByRole('button'));
+
+          expect(onVersionPickerPress).toHaveBeenCalledWith({
+            versionId: 111,
+            languageId: 'en',
+          });
+        } finally {
+          if (languagesDescriptor) {
+            Object.defineProperty(globalThis.navigator, 'languages', languagesDescriptor);
+          }
+        }
+      });
+    });
+
+    describe('onVersionPickerPress override', () => {
+      it('calls onVersionPickerPress with { versionId, languageId } when Trigger is clicked', async () => {
+        const user = userEvent.setup();
         const onVersionPickerPress = vi.fn();
+
         renderWithOverrides(
           <BibleVersionPicker.Root versionId={111} onVersionPickerPress={onVersionPickerPress}>
             <BibleVersionPicker.Trigger />
@@ -352,88 +391,62 @@ describe('BibleVersionPicker', () => {
 
         await user.click(screen.getByRole('button'));
 
+        expect(onVersionPickerPress).toHaveBeenCalledTimes(1);
         expect(onVersionPickerPress).toHaveBeenCalledWith({
           versionId: 111,
           languageId: 'en',
         });
-      } finally {
-        if (languagesDescriptor) {
-          Object.defineProperty(globalThis.navigator, 'languages', languagesDescriptor);
-        }
-      }
-    });
-  });
+      });
 
-  describe('onVersionPickerPress override', () => {
-    it('calls onVersionPickerPress with { versionId, languageId } when Trigger is clicked', async () => {
-      const user = userEvent.setup();
-      const onVersionPickerPress = vi.fn();
+      it('does NOT render popover content when onVersionPickerPress is provided', () => {
+        renderWithOverrides(
+          <BibleVersionPicker.Root versionId={111} onVersionPickerPress={vi.fn()}>
+            <BibleVersionPicker.Trigger />
+          </BibleVersionPicker.Root>,
+        );
 
-      renderWithOverrides(
-        <BibleVersionPicker.Root versionId={111} onVersionPickerPress={onVersionPickerPress}>
-          <BibleVersionPicker.Trigger />
-        </BibleVersionPicker.Root>,
-      );
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(screen.queryByPlaceholderText('Search')).not.toBeInTheDocument();
+      });
 
-      await user.click(screen.getByRole('button'));
+      it('uses controlled languageId in onVersionPickerPress payload', async () => {
+        const user = userEvent.setup();
+        const onVersionPickerPress = vi.fn();
 
-      expect(onVersionPickerPress).toHaveBeenCalledTimes(1);
-      expect(onVersionPickerPress).toHaveBeenCalledWith({
-        versionId: 111,
-        languageId: 'en',
+        renderWithOverrides(
+          <BibleVersionPicker.Root
+            versionId={111}
+            languageId="es"
+            onVersionPickerPress={onVersionPickerPress}
+          >
+            <BibleVersionPicker.Trigger />
+          </BibleVersionPicker.Root>,
+        );
+
+        await user.click(screen.getByRole('button'));
+
+        expect(onVersionPickerPress).toHaveBeenCalledWith({
+          versionId: 111,
+          languageId: 'es',
+        });
+      });
+
+      it('does not call onVersionPickerPress when trigger click is prevented', async () => {
+        const user = userEvent.setup();
+        const onVersionPickerPress = vi.fn();
+
+        renderWithOverrides(
+          <BibleVersionPicker.Root versionId={111} onVersionPickerPress={onVersionPickerPress}>
+            <BibleVersionPicker.Trigger onClick={(event) => event.preventDefault()} />
+          </BibleVersionPicker.Root>,
+        );
+
+        await user.click(screen.getByRole('button'));
+
+        expect(onVersionPickerPress).not.toHaveBeenCalled();
       });
     });
 
-    it('does NOT render popover content when onVersionPickerPress is provided', () => {
-      renderWithOverrides(
-        <BibleVersionPicker.Root versionId={111} onVersionPickerPress={vi.fn()}>
-          <BibleVersionPicker.Trigger />
-        </BibleVersionPicker.Root>,
-      );
-
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-      expect(screen.queryByPlaceholderText('Search')).not.toBeInTheDocument();
-    });
-
-    it('uses controlled languageId in onVersionPickerPress payload', async () => {
-      const user = userEvent.setup();
-      const onVersionPickerPress = vi.fn();
-
-      renderWithOverrides(
-        <BibleVersionPicker.Root
-          versionId={111}
-          languageId="es"
-          onVersionPickerPress={onVersionPickerPress}
-        >
-          <BibleVersionPicker.Trigger />
-        </BibleVersionPicker.Root>,
-      );
-
-      await user.click(screen.getByRole('button'));
-
-      expect(onVersionPickerPress).toHaveBeenCalledWith({
-        versionId: 111,
-        languageId: 'es',
-      });
-    });
-
-    it('does not call onVersionPickerPress when trigger click is prevented', async () => {
-      const user = userEvent.setup();
-      const onVersionPickerPress = vi.fn();
-
-      renderWithOverrides(
-        <BibleVersionPicker.Root versionId={111} onVersionPickerPress={onVersionPickerPress}>
-          <BibleVersionPicker.Trigger onClick={(event) => event.preventDefault()} />
-        </BibleVersionPicker.Root>,
-      );
-
-      await user.click(screen.getByRole('button'));
-
-      expect(onVersionPickerPress).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('standalone content', () => {
     it('renders version content and calls onRequestClose after version selection', async () => {
       const user = userEvent.setup();
       const onVersionChange = vi.fn();
@@ -449,6 +462,7 @@ describe('BibleVersionPicker', () => {
         </BibleVersionPicker.Root>,
       );
 
+      expect(screen.queryByRole('button', { name: /language/i })).not.toBeInTheDocument();
       await user.click(screen.getByRole('listitem', { name: /new living translation/i }));
 
       expect(onVersionChange).toHaveBeenCalledWith(206);
@@ -511,31 +525,6 @@ describe('BibleVersionPicker', () => {
       expect(screen.queryByText('All Languages')).not.toBeInTheDocument();
     });
 
-    it('bounds and animates the default language view inside the popover content', async () => {
-      const user = userEvent.setup();
-
-      renderPicker();
-
-      await openPicker();
-      await user.click(screen.getByRole('button', { name: /select a language/i }));
-
-      expect(screen.getByRole('heading', { name: /select a language/i })).toBeInTheDocument();
-
-      const dialog = screen.getByRole('dialog');
-      const viewport = dialog.querySelector('.yv\\:relative.yv\\:min-h-0.yv\\:overflow-hidden');
-      expect(viewport).not.toBeNull();
-
-      const animatedPanels = dialog.querySelectorAll(
-        '.yv\\:transition-all.yv\\:duration-300.yv\\:ease-out',
-      );
-      expect(animatedPanels).toHaveLength(2);
-
-      const languagePanel = screen
-        .getByRole('tab', { name: /suggested/i })
-        .closest('.yv\\:h-full.yv\\:min-h-0.yv\\:overflow-hidden');
-      expect(languagePanel).not.toBeNull();
-    });
-
     it('open=false clears version search for pre-warmed standalone content', async () => {
       const user = userEvent.setup();
 
@@ -556,137 +545,317 @@ describe('BibleVersionPicker', () => {
 
       expect(getVersionSearchInput()).toHaveValue('');
     });
+  });
 
-    it('open=false clears language search for pre-warmed standalone content', async () => {
-      const user = userEvent.setup();
+  it('open=false clears language search for pre-warmed standalone content', async () => {
+    resetPickerTestEnvironment();
+    const user = userEvent.setup();
 
-      const rootProps = { versionId: 111, onVersionPickerPress: vi.fn() };
-      const { rerender } = renderWithOverrides(
-        <BibleVersionPicker.Root {...rootProps}>
-          <BibleLanguagePickerContent open />
-        </BibleVersionPicker.Root>,
-      );
+    const rootProps = { versionId: 111, onVersionPickerPress: vi.fn() };
+    const { rerender } = renderWithOverrides(
+      <BibleVersionPicker.Root {...rootProps}>
+        <BibleLanguagePickerContent open />
+      </BibleVersionPicker.Root>,
+    );
 
-      await user.type(getLanguageSearchInput(), 'span');
-      expect(getLanguageSearchInput()).toHaveValue('span');
-      expect(screen.queryByRole('tab', { name: /suggested/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /search languages/i }));
+    await user.type(getLanguageSearchInput(), 'span');
+    expect(getLanguageSearchInput()).toHaveValue('span');
+    expect(screen.queryByRole('tab', { name: /suggested/i })).not.toBeInTheDocument();
 
-      rerender(
-        <BibleVersionPicker.Root {...rootProps}>
-          <BibleLanguagePickerContent open={false} />
-        </BibleVersionPicker.Root>,
-      );
+    rerender(
+      <BibleVersionPicker.Root {...rootProps}>
+        <BibleLanguagePickerContent open={false} />
+      </BibleVersionPicker.Root>,
+    );
 
-      expect(getLanguageSearchInput()).toHaveValue('');
+    expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /suggested/i })).toBeInTheDocument();
 
-      rerender(
-        <BibleVersionPicker.Root {...rootProps}>
-          <BibleLanguagePickerContent open />
-        </BibleVersionPicker.Root>,
-      );
+    rerender(
+      <BibleVersionPicker.Root {...rootProps}>
+        <BibleLanguagePickerContent open />
+      </BibleVersionPicker.Root>,
+    );
 
-      expect(screen.getByRole('tab', { name: /suggested/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /suggested/i })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
+  });
+
+  it('filters languages globally when searching', async () => {
+    resetPickerTestEnvironment();
+    const user = userEvent.setup();
+
+    renderPicker();
+    await openLanguageSearch();
+
+    await user.type(getLanguageSearchInput(), 'span');
+
+    expect(screen.queryByRole('tab', { name: /suggested/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /all/i })).not.toBeInTheDocument();
+
+    const results = screen.getByTestId('language-search-results');
+    expect(within(results).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(results).getByRole('listitem', { name: /spanish/i })).toBeInTheDocument();
+  });
+
+  it('shows empty state when no languages match the search', async () => {
+    resetPickerTestEnvironment();
+    const user = userEvent.setup();
+
+    renderPicker();
+    await openLanguageSearch();
+
+    await user.type(getLanguageSearchInput(), 'Koreanea');
+
+    expect(
+      screen.getByText("We're sorry, there are no results for this search."),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('language-search-results')).not.toBeInTheDocument();
+  });
+
+  it('shows loading state instead of empty results while languages are loading', async () => {
+    resetPickerTestEnvironment();
+    const user = userEvent.setup();
+
+    renderPicker({ languagesLoading: true });
+    await openLanguageSearch();
+
+    await user.type(getLanguageSearchInput(), 'span');
+
+    expect(
+      screen.queryByText("We're sorry, there are no results for this search."),
+    ).not.toBeInTheDocument();
+    expect(
+      screen
+        .getByRole('textbox', { name: /search languages/i })
+        .closest('[data-yv-sdk]')
+        ?.querySelector('.yv\\:animate-spin'),
+    ).toBeInTheDocument();
+  });
+
+  it('clears language search when navigating back to bible versions', async () => {
+    resetPickerTestEnvironment();
+    const user = userEvent.setup();
+
+    renderPicker();
+    await openLanguageSearch();
+
+    await user.type(getLanguageSearchInput(), 'korean');
+    expect(getLanguageSearchInput()).toHaveValue('korean');
+
+    await user.click(screen.getByRole('button', { name: /^back$/i }));
+    expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /back to bible versions/i }));
+    await user.click(screen.getByRole('button', { name: /^language /i }));
+    await user.click(screen.getByRole('button', { name: /search languages/i }));
+
+    expect(getLanguageSearchInput()).toHaveValue('');
+  });
+
+  it('preserves the selected tab after clearing language search', async () => {
+    resetPickerTestEnvironment();
+    const user = userEvent.setup();
+
+    renderPicker();
+    await openLanguagePanel();
+
+    await user.click(screen.getByRole('tab', { name: /all/i }));
+    await user.click(screen.getByRole('button', { name: /search languages/i }));
+    await user.type(getLanguageSearchInput(), 'span');
+    await user.clear(getLanguageSearchInput());
+
+    expect(screen.getByRole('heading', { name: /regional/i })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /all/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^back$/i }));
+
+    expect(screen.getByRole('tab', { name: /all/i })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('calls onLanguageChange and clears search after selecting a filtered language', async () => {
+    resetPickerTestEnvironment();
+    const user = userEvent.setup();
+    const onLanguageChange = vi.fn();
+
+    renderWithOverrides(
+      <BibleVersionPicker.Root versionId={111} onLanguageChange={onLanguageChange}>
+        <BibleVersionPicker.Trigger>
+          <button type="button">Open</button>
+        </BibleVersionPicker.Trigger>
+        <BibleVersionPicker.Content />
+      </BibleVersionPicker.Root>,
+    );
+
+    await openLanguageSearch();
+    await user.type(getLanguageSearchInput(), 'korean');
+    await user.click(screen.getByRole('listitem', { name: /korean/i }));
+
+    expect(onLanguageChange).toHaveBeenCalledWith('ko');
+    expect(screen.getByRole('heading', { name: /bible versions/i })).toBeInTheDocument();
+  });
+
+  it('puts the native language name before English and leaves English once', async () => {
+    resetPickerTestEnvironment();
+    const user = userEvent.setup();
+    renderPicker();
+    await openLanguagePanel();
+
+    const english = screen.getByRole('listitem', { name: 'English' });
+    expect(english).toHaveTextContent(/^English$/);
+    expect(english.className.split(' ')).toContain('yv:bg-muted');
+
+    await user.click(screen.getByRole('tab', { name: /all/i }));
+    const spanish = screen.getByRole('listitem', { name: 'Español Spanish' });
+    const spanishText = spanish.textContent ?? '';
+    expect(spanishText.indexOf('Español')).toBeLessThan(spanishText.indexOf('Spanish'));
+    expect(spanish.className.split(' ')).not.toContain('yv:bg-muted');
+  });
+
+  it('counts All from the languages that have versions', async () => {
+    resetPickerTestEnvironment();
+    renderPicker();
+    await openLanguagePanel();
+
+    expect(screen.getByRole('tab', { name: `All (${mockLanguages.length})` })).toBeInTheDocument();
+  });
+
+  it('keeps version search at the top and leaves the header pill out', async () => {
+    resetPickerTestEnvironment();
+    renderPicker();
+    await openPicker();
+
+    expect(screen.queryByRole('button', { name: /select a language/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^language /i })).toBeInTheDocument();
+    expect(screen.getAllByRole('textbox', { name: /search bible versions/i })).toHaveLength(1);
+  });
+
+  it('mounts one language view, then a search view, and returns to versions', async () => {
+    resetPickerTestEnvironment();
+    const user = userEvent.setup();
+
+    renderPicker();
+    await openPicker();
+
+    expect(screen.getByRole('button', { name: 'Language English 2' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
+    expect(screen.getByTestId('version-list')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^language /i }));
+
+    expect(screen.getByRole('heading', { name: /bible languages/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('version-list')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /back to bible versions/i })).toHaveFocus();
+    });
+
+    await user.click(screen.getByRole('button', { name: /search languages/i }));
+
+    expect(screen.getByRole('heading', { name: /search languages/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(getLanguageSearchInput()).toHaveFocus();
+    });
+    expect(screen.getByRole('heading', { name: /regional/i })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /suggested/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^back$/i }));
+
+    expect(screen.getByRole('tab', { name: /suggested/i })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /search languages/i })).toHaveFocus();
+    });
+
+    await user.click(screen.getByRole('button', { name: /back to bible versions/i }));
+
+    expect(screen.getByRole('heading', { name: /bible versions/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /bible languages/i })).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Language English 2' })).toHaveFocus();
     });
   });
 
-  describe('language search', () => {
-    it('filters languages globally when searching', async () => {
-      const user = userEvent.setup();
+  it('keeps view-change focus inside this picker when another popover-content is on the page', async () => {
+    resetPickerTestEnvironment();
+    const user = userEvent.setup();
 
-      renderPicker();
-      await openLanguagePanel();
-
-      await user.type(getLanguageSearchInput(), 'span');
-
-      expect(screen.queryByRole('tab', { name: /suggested/i })).not.toBeInTheDocument();
-      expect(screen.queryByRole('tab', { name: /all/i })).not.toBeInTheDocument();
-
-      const results = screen.getByTestId('language-search-results');
-      expect(within(results).getAllByRole('listitem')).toHaveLength(1);
-      expect(within(results).getByRole('listitem', { name: /spanish/i })).toBeInTheDocument();
-    });
-
-    it('shows empty state when no languages match the search', async () => {
-      const user = userEvent.setup();
-
-      renderPicker();
-      await openLanguagePanel();
-
-      await user.type(getLanguageSearchInput(), 'Koreanea');
-
-      expect(
-        screen.getByText("We're sorry, there are no results for this search."),
-      ).toBeInTheDocument();
-      expect(screen.queryByTestId('language-search-results')).not.toBeInTheDocument();
-    });
-
-    it('shows loading state instead of empty results while languages are loading', async () => {
-      const user = userEvent.setup();
-
-      renderPicker({ languagesLoading: true });
-      await openLanguagePanel();
-
-      await user.type(getLanguageSearchInput(), 'span');
-
-      expect(
-        screen.queryByText("We're sorry, there are no results for this search."),
-      ).not.toBeInTheDocument();
-      expect(
-        screen
-          .getByRole('textbox', { name: /search languages/i })
-          .closest('[data-yv-sdk]')
-          ?.querySelector('.yv\\:animate-spin'),
-      ).toBeInTheDocument();
-    });
-
-    it('clears language search when navigating back to bible versions', async () => {
-      const user = userEvent.setup();
-
-      renderPicker();
-      await openLanguagePanel();
-
-      await user.type(getLanguageSearchInput(), 'korean');
-      expect(getLanguageSearchInput()).toHaveValue('korean');
-
-      await user.click(screen.getByRole('button', { name: /back to bible versions/i }));
-      await user.click(screen.getByRole('button', { name: /select a language/i }));
-
-      expect(getLanguageSearchInput()).toHaveValue('');
-    });
-
-    it('preserves the selected tab after clearing language search', async () => {
-      const user = userEvent.setup();
-
-      renderPicker();
-      await openLanguagePanel();
-
-      await user.click(screen.getByRole('tab', { name: /all/i }));
-      await user.type(getLanguageSearchInput(), 'span');
-      await user.clear(getLanguageSearchInput());
-
-      expect(screen.getByRole('tab', { name: /all/i })).toHaveAttribute('aria-selected', 'true');
-    });
-
-    it('calls onLanguageChange and clears search after selecting a filtered language', async () => {
-      const user = userEvent.setup();
-      const onLanguageChange = vi.fn();
-
-      renderWithOverrides(
-        <BibleVersionPicker.Root versionId={111} onLanguageChange={onLanguageChange}>
+    renderWithOverrides(
+      <>
+        <div data-slot="popover-content">
+          <button type="button" data-slot="language-back">
+            Outer Back
+          </button>
+          <button type="button" data-slot="language-entry">
+            Outer Language
+          </button>
+        </div>
+        <BibleVersionPicker.Root versionId={111} onVersionChange={vi.fn()}>
           <BibleVersionPicker.Trigger>
             <button type="button">Open</button>
           </BibleVersionPicker.Trigger>
           <BibleVersionPicker.Content />
-        </BibleVersionPicker.Root>,
-      );
+        </BibleVersionPicker.Root>
+      </>,
+    );
 
-      await openLanguagePanel();
-      await user.type(getLanguageSearchInput(), 'korean');
-      await user.click(screen.getByRole('listitem', { name: /korean/i }));
+    await openPicker();
+    await user.click(screen.getByRole('button', { name: /^language /i }));
 
-      expect(onLanguageChange).toHaveBeenCalledWith('ko');
-      expect(screen.getByRole('heading', { name: /bible versions/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /back to bible versions/i })).toHaveFocus();
     });
+    expect(screen.getByRole('button', { name: 'Outer Back' })).not.toHaveFocus();
+
+    await user.click(screen.getByRole('button', { name: /back to bible versions/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Language English 2' })).toHaveFocus();
+    });
+    expect(screen.getByRole('button', { name: 'Outer Language' })).not.toHaveFocus();
+  });
+
+  it('tabs from Close into version search, then Language, then versions', async () => {
+    resetPickerTestEnvironment();
+    const user = userEvent.setup();
+
+    renderPicker();
+    await openPicker();
+
+    const close = screen.getByRole('button', { name: 'Close' });
+    close.focus();
+    expect(close).toHaveFocus();
+
+    await user.tab();
+    expect(getVersionSearchInput()).toHaveFocus();
+
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Language English 2' })).toHaveFocus();
+
+    await user.tab();
+    expect(screen.getByRole('listitem', { name: /new international version/i })).toHaveFocus();
+  });
+
+  it('returns standalone language search to tabs after selecting a result without onRequestClose', async () => {
+    resetPickerTestEnvironment();
+    const user = userEvent.setup();
+
+    renderWithOverrides(
+      <BibleVersionPicker.Root versionId={111} onVersionPickerPress={vi.fn()}>
+        <BibleLanguagePickerContent open />
+      </BibleVersionPicker.Root>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /search languages/i }));
+    await user.type(getLanguageSearchInput(), 'span');
+    await user.click(screen.getByRole('listitem', { name: /spanish/i }));
+
+    expect(screen.getByRole('tab', { name: /suggested/i })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /search languages/i })).not.toBeInTheDocument();
   });
 });
 
@@ -708,11 +877,12 @@ it('applies interface direction to its portaled content and Radix tabs', async (
   const trigger = screen.getByRole('button', { name: 'NIV' });
   expect(trigger.querySelector('bdi')).toHaveAttribute('dir', 'auto');
   await userEvent.click(trigger);
-  await userEvent.click(screen.getByRole('button', { name: /select (?:a )?language/i }));
+  await userEvent.click(screen.getByRole('button', { name: /^language /i }));
 
   expect(trigger).toHaveAttribute('dir', 'rtl');
   expect(screen.getByRole('dialog')).toHaveAttribute('dir', 'rtl');
   expect(screen.getByRole('tablist').parentElement).toHaveAttribute('dir', 'rtl');
-  expect(getLanguageSearchInput()).toHaveAttribute('dir', 'auto');
   expect(screen.getAllByText('English')[0]?.closest('bdi')).toHaveAttribute('dir', 'auto');
+  await userEvent.click(screen.getByRole('button', { name: /search languages/i }));
+  expect(getLanguageSearchInput()).toHaveAttribute('dir', 'auto');
 });

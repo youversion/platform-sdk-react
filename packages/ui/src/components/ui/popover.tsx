@@ -25,17 +25,27 @@ function PopoverContent({
   children,
   headerLeading,
   headerChild,
+  headerClassName,
+  closeButtonClassName,
   align = 'center',
   heading,
+  headingDescription,
   showHeader = true,
+  showClose = true,
   sideOffset = 4,
   theme = 'light',
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content> & {
   showHeader?: boolean;
+  showClose?: boolean;
   heading?: React.ReactNode;
+  headingDescription?: React.ReactNode;
   headerLeading?: React.ReactNode;
   headerChild?: React.ReactNode;
+  /** Overrides the shared muted header shell (e.g. version picker flat header). */
+  headerClassName?: string;
+  /** Overrides the shared Close button classes (e.g. version picker bordered Close). */
+  closeButtonClassName?: string;
   theme?: 'light' | 'dark';
 }): React.ReactNode {
   const { t } = useTranslation(undefined, { i18n });
@@ -59,32 +69,49 @@ function PopoverContent({
       >
         {showHeader ? (
           <section
-            className={cn([
-              'yv:bg-muted yv:py-3 yv:rounded-t-2xl yv:px-4 yv:border-b yv:border-border yv:grid yv:grid-cols-[1fr_auto] yv:justify-between yv:items-center yv:gap-2',
-              headerChild ? 'yv:grid-cols-[1fr_auto_auto]' : '',
-              headerLeading ? 'yv:grid-cols-[auto_1fr_auto]' : '',
-              headerLeading && headerChild ? 'yv:grid-cols-[auto_1fr_auto_auto]' : '',
-            ])}
+            className={cn(
+              'yv:bg-muted yv:py-3 yv:rounded-t-2xl yv:px-4 yv:border-b yv:border-border yv:grid yv:justify-between yv:items-center yv:gap-2',
+              popoverHeaderColumns(Boolean(headerLeading), Boolean(headerChild), showClose),
+              headerClassName,
+            )}
           >
             {headerLeading}
-            <h2 className="yv:font-bold yv:text-base">{heading}</h2>
+            <div className="yv:min-w-0 yv:flex yv:flex-col">
+              <h2 className="yv:font-bold yv:text-base yv:leading-[1.25]">{heading}</h2>
+              {headingDescription ? (
+                <p className="yv:text-[10px]! yv:font-medium! yv:leading-4 yv:text-muted-foreground">
+                  {headingDescription}
+                </p>
+              ) : null}
+            </div>
             {headerChild}
-            <PopoverClose asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="yv:w-6 yv:h-6 yv:text-muted-foreground"
-              >
-                <XIcon className="yv:size-5" />
-                <span className="yv:sr-only">{t('closeAriaLabel')}</span>
-              </Button>
-            </PopoverClose>
+            {showClose ? (
+              <PopoverClose asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn('yv:w-6 yv:h-6 yv:text-muted-foreground', closeButtonClassName)}
+                >
+                  <XIcon className="yv:size-5" />
+                  <span className="yv:sr-only">{t('closeAriaLabel')}</span>
+                </Button>
+              </PopoverClose>
+            ) : null}
           </section>
         ) : null}
         {children}
       </PopoverPrimitive.Content>
     </PopoverPrimitive.Portal>
   );
+}
+
+function popoverHeaderColumns(hasLeading: boolean, hasChild: boolean, showClose: boolean): string {
+  if (hasLeading && hasChild && showClose) return 'yv:grid-cols-[auto_1fr_auto_auto]';
+  if (hasLeading && (hasChild || showClose)) return 'yv:grid-cols-[auto_1fr_auto]';
+  if (hasLeading) return 'yv:grid-cols-[auto_1fr]';
+  if (hasChild && showClose) return 'yv:grid-cols-[1fr_auto_auto]';
+  if (hasChild || showClose) return 'yv:grid-cols-[1fr_auto]';
+  return 'yv:grid-cols-[1fr]';
 }
 
 function PopoverClose({

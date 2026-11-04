@@ -34,7 +34,7 @@
   "backToBibleVersionsAriaLabel": "Yn ôl i fersiynau'r Beibl",
   "selectLanguageHeading": "Dewisa Iaith",
   "selectLanguageAriaLabel": "Dewisa Iaith",
-  "recentlyUsedVersionsHeading": "Fersiynau a Ddefnyddiwyd yn Ddiweddar",
+  "recentlyUsedVersionsHeading": "Fersiynau Diweddar",
   "allVersionsHeading": "Dewis fersiwn",
   "regionalHeading": "Rhanbarthol",
   "allLanguagesHeading": "Pob Iaith",
@@ -103,8 +103,8 @@
   "regional": "Rhanbarthol",
   "retry": "Ailgeisio",
   "search": "Chwilio",
-  "searchLanguages": "Chwilio ieithoedd",
-  "searchVersions": "Chwilio fersiynau",
+  "searchLanguages": "Chwilio Ieithoedd",
+  "searchVersions": "Chwilio Fersiynau",
   "selectLanguage": "Dewisa Iaith",
   "suggested": "Awgrymedig",
   "traditional": "Traddodiadol",
@@ -120,5 +120,8 @@
   "bibleSearchFilterOldTestament": "Yr Hen Destament",
   "bibleSearchFiltersButton": "Hidlyddion",
   "bibleSearchRecentHeading": "Chwiliadau Diweddar",
-  "bibleSearchTrendingHeading": "Chwiliadau Poblogaidd"
+  "bibleSearchTrendingHeading": "Chwiliadau Poblogaidd",
+  "bibleLanguagesHeading": "Ieithoedd y Beibl",
+  "languageVersionsHeading": "Fersiwn {{language}}",
+  "versionsStatistics": "{{versionsCount}} Fersiwn mewn {{languagesCount}} Iaith"
 }
