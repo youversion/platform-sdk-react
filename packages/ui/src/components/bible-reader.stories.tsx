@@ -546,10 +546,9 @@ export const SignedInReaderOverlayOwnership: Story = {
     );
     await userEvent.click(versionTrigger);
     const versionCanvas = await getPickerOverlay(versionRoot);
+    const versionDialog = await versionCanvas.findByRole('dialog');
     await waitFor(async () => {
-      await expect(versionRoot.activeElement).toBe(
-        versionCanvas.getByRole('button', { name: /select.*language/i }),
-      );
+      await expect(versionRoot.activeElement).toBe(versionDialog);
     });
     await userEvent.click(versionCanvas.getByRole('button', { name: 'Close' }));
     await waitFor(async () => {

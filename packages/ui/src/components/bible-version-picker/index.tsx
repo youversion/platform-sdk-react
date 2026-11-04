@@ -588,6 +588,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
     background,
     side,
     view,
+    isPopoverOpen,
     setIsPopoverOpen,
     closeLanguagePanel,
     closeLanguageSearch,
@@ -595,20 +596,57 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
   } = picker;
   const previousViewRef = useRef(view);
   const popoverContentRef = useRef<HTMLDivElement>(null);
+  const focusRequestRef = useRef(0);
+
+  const schedulePanelFocus = useCallback((panel: HTMLElement) => {
+    // SAFETY: Element roots are Documents or ShadowRoots, which both expose activeElement.
+    const focusRoot = panel.getRootNode() as Document | ShadowRoot;
+    const previousFocus = focusRoot.activeElement;
+    const focusRequest = ++focusRequestRef.current;
+    const focusPanel = () => {
+      if (
+        focusRequestRef.current === focusRequest &&
+        focusRoot.activeElement === previousFocus &&
+        panel.isConnected &&
+        panel.dataset.state === 'open'
+      ) {
+        panel.focus({ preventScroll: true });
+      }
+    };
+    // Let Safari expose the newly painted dialog before moving focus into it.
+    const ownerWindow = panel.ownerDocument.defaultView;
+    if (!ownerWindow?.requestAnimationFrame) {
+      queueMicrotask(focusPanel);
+      return;
+    }
+    ownerWindow.requestAnimationFrame(() => ownerWindow.requestAnimationFrame(focusPanel));
+  }, []);
+
+  useEffect(() => {
+    if (!isPopoverOpen) {
+      focusRequestRef.current += 1;
+      return;
+    }
+
+    const panel = popoverContentRef.current;
+    if (panel) schedulePanelFocus(panel);
+  }, [isPopoverOpen, schedulePanelFocus]);
 
   // Keep keyboard focus inside this picker's card when VersionList and LanguagePanel remount.
   // Scope via ref so an outer host popover with the same data-slot is never selected.
   // Standalone Content has no PopoverContent — skip. Language search owns its own focus.
+  // Never move focus while closed or closing: the exiting panel would steal outside focus.
   useEffect(() => {
     const previous = previousViewRef.current;
     previousViewRef.current = view;
+    if (!isPopoverOpen) return;
     if (previous === view) return;
     if (view === 'languageSearch') return;
     if (previous === 'languageSearch' && view === 'languages') return;
 
     const frame = window.requestAnimationFrame(() => {
       const scope = popoverContentRef.current;
-      if (!scope) return;
+      if (!scope || scope.dataset.state !== 'open') return;
       if (view === 'languages' && previous === 'versions') {
         scope.querySelector<HTMLElement>('[data-slot="language-back"]')?.focus();
         return;
@@ -618,7 +656,7 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
       }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [view]);
+  }, [isPopoverOpen, view]);
 
   if (onVersionPickerPress && open === undefined && !onRequestClose) {
     return null;
@@ -661,6 +699,13 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
           headerChild={view === 'languages' ? <LanguageSearchButton /> : null}
           theme={background}
           side={side}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            // SAFETY: Radix invokes this handler with the popover content as currentTarget.
+            const panel = event.currentTarget as HTMLDivElement;
+            popoverContentRef.current = panel;
+            schedulePanelFocus(panel);
+          }}
         >
           {view === 'versions' ? (
             <VersionList onRequestClose={() => setIsPopoverOpen(false)} />
