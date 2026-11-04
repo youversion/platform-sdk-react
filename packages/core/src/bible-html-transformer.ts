@@ -307,6 +307,8 @@ function punctuationAfter(start: Node | null): { text: string; node: Node } | nu
 function appendFollowingPausePunctuation(doc: Document): void {
   for (const pause of doc.querySelectorAll('.qs')) {
     if (pause.closest('.yv-n')) continue;
+    // Refrains keep pause + punctuation inline; CSS also leaves `.qr .qs` alone.
+    if (pause.closest('.qr')) continue;
     const { node: next, blanks: leadingBlanks } = nextNonBlankSibling(pause.nextSibling);
     const direct = pausePunctuation(next);
     if (direct && next) {

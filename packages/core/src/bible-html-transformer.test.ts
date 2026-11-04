@@ -610,6 +610,16 @@ describe('transformBibleHtml - qs pause punctuation', () => {
     expect(refrain?.className).toBe('qr');
   });
 
+  it('leaves a period after a qs pause inside qr outside the pause', () => {
+    const html = '<div><div class="qr"><span class="qs">Selah</span>.</div></div>';
+    const result = transformBibleHtml(html, createAdapters());
+    const doc = new DOMParser().parseFromString(result.html, 'text/html');
+    const pause = doc.querySelector('.qr .qs');
+
+    expect(pause?.textContent).toBe('Selah');
+    expect(pause?.nextSibling?.textContent).toBe('.');
+  });
+
   it('keeps Selah, the footnote marker, then the period when a blank sits between them', () => {
     const html =
       '<div><div class="q"><span class="qs">Selah</span> <span class="yv-n f"><span class="ft">A note</span></span>.</div></div>';
