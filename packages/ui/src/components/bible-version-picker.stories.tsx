@@ -544,15 +544,11 @@ export const PublisherNames: Story = {
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    // Open popover
-    const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
-    await userEvent.click(trigger);
+    const { overlay } = await openPicker(canvasElement);
 
     // The organization mocks send null fields like the live API, so the publisher name
     // shows only if core parses those responses
-    const row = await screen.findByRole(
+    const row = await overlay.findByRole(
       'listitem',
       { name: /new international version 2011/i },
       { timeout: 5_000 },
