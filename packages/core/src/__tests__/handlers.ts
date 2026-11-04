@@ -259,12 +259,12 @@ export const handlers = [
   }),
 
   // Verse Of The Day endpoints
-  http.get(`https://${apiHost}/v1/verse_of_the_days/:day`, ({ params }) => {
+  http.get(`https://${apiHost}/v1/verse-of-the-days/:day`, ({ params }) => {
     const { day } = params;
     const votd = mockAllVOTDs.find((v) => v.day === Number(day));
     return HttpResponse.json(votd || mockAllVOTDs[0]);
   }),
-  http.get(`https://${apiHost}/v1/verse_of_the_days`, () => {
+  http.get(`https://${apiHost}/v1/verse-of-the-days`, () => {
     return HttpResponse.json({ data: mockAllVOTDs });
   }),
 ];

@@ -1,6 +1,6 @@
+import { parseLanguageRanges } from './schemas/language-range';
 import type { ApiClient } from './client';
 import {
-  parseLanguageRanges,
   SearchQueriesSchema,
   SearchQueriesWireSchema,
   SuggestedSearchQuerySchema,

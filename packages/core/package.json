@@ -43,6 +43,8 @@
     "!dist/search-queries.cjs",
     "!dist/search-verses.js",
     "!dist/search-verses.cjs",
+    "!dist/search-images.js",
+    "!dist/search-images.cjs",
     "!dist/search-topics.js",
     "!dist/search-topics.cjs",
     "!dist/search-unified.js",

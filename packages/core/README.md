@@ -71,10 +71,12 @@ the CDN. Set `size` to `thumb`, `card`, or `full` on `image_url` when you want
 a smaller rendition.
 
 ```ts
-import { ApiClient, ImagesClient } from '@youversion/platform-core';
+import { ApiClient, BibleClient, ImagesClient, SearchClient } from '@youversion/platform-core';
 
 const apiClient = new ApiClient({ appKey: 'YOUR_APP_KEY' });
 const images = new ImagesClient(apiClient);
+const search = new SearchClient(apiClient);
+const bibleClient = new BibleClient(apiClient);
 
 const page = await images.getImages({
   passage_id: 'JHN.3.16',
@@ -90,6 +92,38 @@ if (!first) {
   const url = new URL(image.image_url);
   url.searchParams.set('size', 'card');
 }
+```
+
+Search verse-art images with `searchImages`. Keep the query, version id, and `pageSize` the same on every page. Pass `nextPageToken` back as `pageToken`. The last page uses `null`. An earlier page can be empty and still return a token, including an empty string. Pass each hit `id` to `getImage` unchanged.
+
+```ts
+let pageToken: string | null = null;
+
+do {
+  const options: { pageSize: number; pageToken?: string } = { pageSize: 10 };
+  if (pageToken !== null) {
+    options.pageToken = pageToken;
+  }
+  const found = await search.searchImages('love', 111, options);
+  for (const hit of found.images) {
+    const image = await images.getImage(hit.id);
+    console.log(hit.passageId, image.image_url);
+  }
+  pageToken = found.nextPageToken;
+} while (pageToken !== null);
+```
+
+`getVOTD` and `getAllVOTDs` call `GET /v1/verse-of-the-days`. Omit `language_ranges` when you want no language query. Supplied ranges are trimmed, lowercased, and normalized from underscores to hyphens (`' EN '` becomes `en`; `en_US` becomes `en-us`). Invalid Basic Language Ranges are rejected before the request. Valid ranges are sent in the supplied order as repeated `language_ranges[]` parameters. The response keeps `day` and `passage_id`. `image_id` is `null` when the API omits it or sends null. Any other string stays unchanged. Pass that string to `getImage`.
+
+```ts
+const today = await bibleClient.getVOTD(1, { language_ranges: ['en', 'es'] });
+if (today.image_id != null) {
+  const curated = await images.getImage(today.image_id);
+  console.log(today.day, today.passage_id, curated.image_url);
+}
+
+const calendar = await bibleClient.getAllVOTDs({ language_ranges: ['en'] });
+console.log(calendar.data[0]?.passage_id, calendar.data[0]?.image_id);
 ```
 
 `next_page_token` is `null` on the last page. Pass that value back as
