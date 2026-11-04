@@ -535,11 +535,11 @@ describe('transformBibleHtml - qs pause punctuation', () => {
       '<div><div class="q"><span class="qs">Selah</span>.</div><div class="q">Next sentence.</div></div>';
     const result = transformBibleHtml(html, createAdapters());
     const doc = new DOMParser().parseFromString(result.html, 'text/html');
-    const pause = doc.querySelector('.q .qs');
+    const pause = doc.querySelector('.yv-qs-line .qs');
 
     expect(pause?.textContent).toBe('Selah.');
-    expect(pause?.parentElement?.textContent).toBe('Selah.');
-    expect(doc.querySelectorAll('.q')[1]?.textContent).toBe('Next sentence.');
+    expect(pause?.closest('.yv-qs-line')?.textContent).toBe('Selah.');
+    expect(doc.querySelector('.q')?.textContent).toBe('Next sentence.');
   });
 
   it('keeps a closing quote, Arabic question mark, and CJK period with the pause', () => {
@@ -563,8 +563,27 @@ describe('transformBibleHtml - qs pause punctuation', () => {
     const doc = new DOMParser().parseFromString(result.html, 'text/html');
     const line = doc.querySelector('.q');
 
-    expect(line?.querySelector('.qs')?.textContent).toBe('Selah');
+    expect(line?.querySelector('.qs')).toBeNull();
     expect(line?.textContent).toContain('There is no salvation.');
+    expect(doc.querySelector('.yv-qs-line .qs')?.textContent).toBe('Selah');
+  });
+
+  it('lifts a non-refrain qs pause onto its own verse-tagged line', () => {
+    const html =
+      '<div><div class="q"><span class="yv-v" v="3"></span>His glory covered the heavens. <span class="qs">Selah</span>.</div></div>';
+    const result = transformBibleHtml(html, createAdapters());
+    const doc = new DOMParser().parseFromString(result.html, 'text/html');
+    const poetry = doc.querySelector('.q .yv-v[v="3"]');
+    const pauseLine = doc.querySelector('.yv-qs-line');
+    const pauseVerse = pauseLine?.querySelector('.yv-v[v="3"]');
+
+    const pause = pauseLine?.querySelector('.qs');
+
+    expect(poetry?.textContent).toContain('His glory covered the heavens.');
+    expect(poetry?.querySelector('.qs')).toBeNull();
+    expect(pause?.textContent).toBe('Selah.');
+    expect(pause && pauseVerse?.contains(pause)).toBe(true);
+    expect(doc.querySelector('.yv-v .yv-qs-line')).toBeNull();
   });
 
   it('keeps Selah, the footnote marker, then the period when notes are on', () => {
@@ -602,13 +621,14 @@ describe('transformBibleHtml - qs pause punctuation', () => {
       '<div><div class="q4"><span class="qs">Pausa</span><span class="yv-n f"><span class="ft">Hebrew Selah</span></span></div></div>';
     const result = transformBibleHtml(html, createAdapters());
     const doc = new DOMParser().parseFromString(result.html, 'text/html');
-    const pause = doc.querySelector('.q4 .qs');
+    const pause = doc.querySelector('.yv-qs-line .qs');
 
     expect(pause?.textContent).toBe('Pausa');
     expect(pause?.nextElementSibling?.getAttribute('data-verse-footnote')).toBeTruthy();
     expect(pause?.nextElementSibling?.getAttribute('data-verse-footnote-content')).toContain(
       'Hebrew Selah',
     );
+    expect(pause?.closest('.yv-qs-line')).toBeTruthy();
   });
 
   it('leaves a qs pause inside qr beside the refrain', () => {
@@ -654,7 +674,7 @@ describe('transformBibleHtml - qs pause punctuation', () => {
       '<div data-yv-transformed=""><div class="q"><span class="yv-v" v="3"><span class="qs">Selah</span><span data-verse-footnote="3" data-verse-footnote-content="x"></span>.</span></div></div>';
     const result = transformBibleHtml(html, createAdapters());
     const doc = new DOMParser().parseFromString(result.html, 'text/html');
-    const pause = doc.querySelector('.qs');
+    const pause = doc.querySelector('.yv-qs-line .qs');
     const parts = [...(pause?.childNodes ?? [])].map((node) => {
       if (node.nodeType === Node.TEXT_NODE) return `text:${node.textContent}`;
       if (node instanceof Element && node.hasAttribute('data-verse-footnote')) return 'footnote';
@@ -662,6 +682,8 @@ describe('transformBibleHtml - qs pause punctuation', () => {
     });
 
     expect(parts).toEqual(['text:Selah', 'footnote', 'text:.']);
+    expect(doc.querySelector('.yv-qs-line .yv-v[v="3"]')).toBeTruthy();
+    expect(doc.querySelector('.q .qs')).toBeNull();
   });
 });
 

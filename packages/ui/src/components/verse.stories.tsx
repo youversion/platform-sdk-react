@@ -835,3 +835,119 @@ export const VerseSelection: Story = {
     ).toBeLessThan(1);
   },
 };
+
+const SELAH_PAUSE_RAW_HTML = `
+  <div>
+    <div class="q"><span class="yv-v" v="3"></span><span class="yv-vlbl">3</span>God came from Teman, and the Holy One from Mount Paran. <span class="qs">Selah</span><span class="yv-n f"><span class="ft">Hebrew Selah</span></span>.</div>
+    <div class="q"><span class="yv-v" v="3"></span>His glory covered the heavens.</div>
+  </div>
+`;
+
+const SELAH_PAUSE_RTL_RAW_HTML = `
+  <div>
+    <div class="q"><span class="yv-v" v="3"></span><span class="yv-vlbl">3</span>جاء الله من تيمان. <span class="qs">سلاه</span><span class="yv-n f"><span class="ft">سلاه</span></span>.</div>
+  </div>
+`;
+
+async function assertSelahOwnLine(root: HTMLElement, options: { rtl?: boolean } = {}) {
+  const line = root.querySelector<HTMLElement>('.yv-qs-line');
+  const pause = line?.querySelector<HTMLElement>('.qs');
+  const pauseVerse = line?.querySelector<HTMLElement>('.yv-v[v="3"]');
+
+  await expect(line).toBeTruthy();
+  await expect(pause).toBeTruthy();
+  await expect(pauseVerse).toBeTruthy();
+  await expect(root.querySelector('.yv-v .yv-qs-line')).toBeNull();
+  await expect(root.querySelector('.q .qs')).toBeNull();
+
+  const lineStyle = getComputedStyle(line!);
+  const pauseStyle = getComputedStyle(pause!);
+  await expect(lineStyle.display).toBe('block');
+  await expect(pauseStyle.display).not.toBe('block');
+  await expect(pauseStyle.fontStyle).toBe('italic');
+
+  if (options.rtl) {
+    await expect(['end', 'left']).toContain(lineStyle.textAlign);
+  } else {
+    await expect(['end', 'right']).toContain(lineStyle.textAlign);
+  }
+
+  // A block pause inside the inline verse wrapper used to leave blank lines and
+  // grow to ~3× one line. The shelf must stay about one reader line tall.
+  const fontSize = parseFloat(pauseStyle.fontSize);
+  const lineHeight =
+    lineStyle.lineHeight === 'normal' ? fontSize * 1.5 : parseFloat(lineStyle.lineHeight);
+  const height = line!.getBoundingClientRect().height;
+  await expect(height).toBeGreaterThan(fontSize * 0.8);
+  await expect(height).toBeLessThan(lineHeight * 2.1);
+
+  return { line: line!, pause: pause!, pauseVerse: pauseVerse! };
+}
+
+export const SelahPauseOwnLine: Story = {
+  args: { reference: 'HAB.3', versionId: 130 },
+  parameters: { layout: 'padded' },
+  tags: ['integration'],
+  render: () => {
+    const html = transformBibleHtml(SELAH_PAUSE_RAW_HTML).html;
+    const rtlHtml = transformBibleHtml(SELAH_PAUSE_RTL_RAW_HTML).html;
+
+    return (
+      <div data-yv-sdk data-yv-theme="light" className="yv:grid yv:gap-8">
+        <section data-testid="selah-notes-on">
+          <h2 className="yv:font-sans yv:font-bold yv:mb-3">Notes on</h2>
+          <Verse.Html html={html} renderNotes={true} showVerseNumbers={true} />
+        </section>
+        <section data-testid="selah-notes-off">
+          <h2 className="yv:font-sans yv:font-bold yv:mb-3">Notes off</h2>
+          <Verse.Html html={html} renderNotes={false} showVerseNumbers={true} />
+        </section>
+        <section data-testid="selah-highlight">
+          <h2 className="yv:font-sans yv:font-bold yv:mb-3">Highlight</h2>
+          <Verse.Html
+            html={html}
+            renderNotes={true}
+            showVerseNumbers={true}
+            highlightedVerses={{ 3: '#ffec5b' }}
+          />
+        </section>
+        <section data-testid="selah-rtl" dir="rtl">
+          <h2 className="yv:font-sans yv:font-bold yv:mb-3">RTL</h2>
+          <Verse.Html
+            html={rtlHtml}
+            renderNotes={true}
+            showVerseNumbers={true}
+            scriptureDirection="rtl"
+          />
+        </section>
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    await document.fonts.ready;
+
+    const notesOn = canvasElement.querySelector<HTMLElement>('[data-testid="selah-notes-on"]')!;
+    const notesOff = canvasElement.querySelector<HTMLElement>('[data-testid="selah-notes-off"]')!;
+    const highlight = canvasElement.querySelector<HTMLElement>('[data-testid="selah-highlight"]')!;
+    const rtl = canvasElement.querySelector<HTMLElement>('[data-testid="selah-rtl"]')!;
+
+    const on = await assertSelahOwnLine(notesOn);
+    await expect(on.pause.textContent).toBe('Selah.');
+    await expect(on.line.querySelector('[data-verse-footnote]')).toBeTruthy();
+
+    const off = await assertSelahOwnLine(notesOff);
+    await expect(off.pause.textContent).toBe('Selah.');
+    await expect(
+      notesOff.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]')?.dataset.showNotes,
+    ).toBe('false');
+
+    const painted = await assertSelahOwnLine(highlight);
+    await waitFor(async () => {
+      await expect(painted.pauseVerse.style.backgroundColor).not.toBe('');
+    });
+    await expect(painted.pauseVerse.style.backgroundColor).toContain('color-mix');
+
+    const rtlPause = await assertSelahOwnLine(rtl, { rtl: true });
+    await expect(rtlPause.pause.textContent).toBe('سلاه.');
+  },
+};

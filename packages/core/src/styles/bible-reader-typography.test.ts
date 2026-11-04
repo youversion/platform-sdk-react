@@ -181,20 +181,21 @@ describe('bible-reader Swift-aligned typography', () => {
     expect(pause).toContain('font-style: italic');
     expect(pause).not.toContain('display: block');
 
-    const ownLine = ruleBodies('& .qs:not(.qr .qs)');
+    const ownLine = rulesForExactClass('yv-qs-line');
     expect(ownLine).toContain('display: block');
     expect(ownLine).toContain('text-align: end');
     expect(ownLine).toContain('text-indent: 0');
-    expect(ownLine).toContain('background-color: inherit');
+    expect(ownLine).not.toContain('background-color: inherit');
+    expect(ruleBodies('& .qs:not(.qr .qs)')).toBe('');
     expect(ruleBodies('& .qr .qs')).toBe('');
     expect(rulesForExactClass('qr')).toContain('display: block');
     expect(rulesForExactClass('qr')).toContain('text-align: end');
     expect(rulesForExactClass('qr')).toContain('font-style: italic');
 
     const reserve = ruleBodies(
-      "&[data-show-notes='true'] .qs:not(.qr .qs):has(+ [data-verse-footnote])",
+      "&[data-show-notes='true'] .yv-qs-line .qs:has(+ [data-verse-footnote])",
     );
-    const beside = ruleBodies("&[data-show-notes='true'] .qs:not(.qr .qs) + [data-verse-footnote]");
+    const beside = ruleBodies("&[data-show-notes='true'] .yv-qs-line .qs + [data-verse-footnote]");
     expect(reserve).toContain('padding-inline-end:');
     expect(beside).toContain('float: inline-end');
     expect(beside).toContain('margin-block-start:');

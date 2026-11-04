@@ -329,6 +329,71 @@ function appendFollowingPausePunctuation(doc: Document): void {
   }
 }
 
+const PAUSE_LINE_HOST =
+  '.p, p, .d, .q, .q1, .q2, .q3, .q4, .qm, .qm1, .qm2, .qm3, .qm4, .qc, .m, .mi, .pi, .pi1, .pi2, .pi3, .pi4, .pc, .pr, .pm, .pmo, .pmc, .pmr, .li, .li1, .li2, .li3, .li4';
+
+function isElementVisuallyEmpty(el: Element): boolean {
+  if (el.querySelector('[data-verse-footnote], .yv-n, .qs, .yv-vlbl, .va')) return false;
+  return (el.textContent ?? '').trim() === '';
+}
+
+function insertionPointAfterHost(host: Element): Node | null {
+  let sibling: Node | null = host.nextSibling;
+  while (
+    sibling?.nodeType === 1 &&
+    // SAFETY: nodeType 1 is an Element. TypeScript's Node union does not narrow
+    // on nodeType, and instanceof Element fails across JSDOM/window realms.
+    (sibling as Element).classList.contains('yv-qs-line')
+  ) {
+    sibling = sibling.nextSibling;
+  }
+  return sibling;
+}
+
+/**
+ * Lift a non-refrain `qs` pause out of the inline verse wrapper onto its own
+ * end-aligned line. A block inside `.yv-v` leaves blank highlight bars above
+ * and below the pause; a sibling line-level host keeps one line and still
+ * paints through a matching `.yv-v[v]`.
+ */
+function extractPauseLines(doc: Document): void {
+  for (const pause of Array.from(doc.querySelectorAll('.qs'))) {
+    if (pause.closest('.yv-n')) continue;
+    if (pause.closest('.qr')) continue;
+    if (pause.closest('.yv-qs-line')) continue;
+
+    const verse = pause.closest('.yv-v[v]');
+    const verseNum = verse?.getAttribute('v');
+    const host = pause.closest(PAUSE_LINE_HOST) ?? pause.parentElement;
+    if (!host?.parentNode) continue;
+
+    const nodes: Node[] = [pause];
+    const { node: next, blanks } = nextNonBlankSibling(pause.nextSibling);
+    if (next && isPauseFootnote(next) && next.parentNode === pause.parentNode) {
+      removeNodes(blanks);
+      nodes.push(next);
+    }
+
+    const line = doc.createElement('div');
+    line.className = 'yv-qs-line';
+    const lineVerse = doc.createElement('span');
+    lineVerse.className = 'yv-v';
+    if (verseNum) lineVerse.setAttribute('v', verseNum);
+    for (const node of nodes) {
+      lineVerse.appendChild(node);
+    }
+    line.appendChild(lineVerse);
+    host.parentNode.insertBefore(line, insertionPointAfterHost(host));
+
+    if (verse && isElementVisuallyEmpty(verse)) {
+      verse.remove();
+    }
+    if (host !== line && isElementVisuallyEmpty(host)) {
+      host.remove();
+    }
+  }
+}
+
 function assignFootnoteKeys(doc: Document): void {
   let introIdx = 0;
   doc.querySelectorAll('.yv-n.f').forEach((fn) => {
@@ -444,6 +509,7 @@ export function transformBibleHtml(
     // without repeating verse wrapping or footnote extraction.
     addNbspToVerseLabels(doc);
     appendFollowingPausePunctuation(doc);
+    extractPauseLines(doc);
     return { html: options.serializeHtml(doc), direction: resolveTextDirection(roots) };
   }
 
@@ -454,6 +520,7 @@ export function transformBibleHtml(
   const footnotes = Array.from(doc.querySelectorAll('.yv-n.f'));
   replaceFootnotesWithAnchors(doc, footnotes);
 
+  extractPauseLines(doc);
   addNbspToVerseLabels(doc);
   fixIrregularTables(doc);
 

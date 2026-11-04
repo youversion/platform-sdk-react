@@ -1054,28 +1054,27 @@
     font-style: italic;
   }
 
-  /* \qs - Selah */
+  /* \qs - Selah (character style). Non-refrain pauses are lifted onto
+     `.yv-qs-line` by the HTML transformer so we never put a block inside the
+     inline `.yv-v` highlight wrapper. */
   & .qs {
     font-size: var(--yv-reader-font-size);
     font-weight: normal;
     font-style: italic;
   }
 
-  /* Highlight fill is painted on the inline verse. A block pause is outside
-     that paint, so it uses the same fill. The verse text color still inherits. */
-  & .qs:not(.qr .qs) {
+  & .yv-qs-line {
     display: block;
     text-align: end;
     text-indent: 0;
-    background-color: inherit;
   }
 
   /* The footnote marker stays immediately after a Selah pause, on the pause line. */
-  &[data-show-notes='true'] .qs:not(.qr .qs):has(+ [data-verse-footnote]) {
+  &[data-show-notes='true'] .yv-qs-line .qs:has(+ [data-verse-footnote]) {
     padding-inline-end: 2em;
   }
 
-  &[data-show-notes='true'] .qs:not(.qr .qs) + [data-verse-footnote] {
+  &[data-show-notes='true'] .yv-qs-line .qs + [data-verse-footnote] {
     float: inline-end;
     margin-block-start: calc(var(--yv-reader-line-height) * -1em);
   }
