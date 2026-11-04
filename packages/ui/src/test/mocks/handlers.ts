@@ -218,7 +218,7 @@ export const globalHandlers = [
   }),
 
   // Verse of the day by day number
-  http.get('*/v1/verse_of_the_days/*', () => {
+  http.get('*/v1/verse-of-the-days/*', () => {
     return HttpResponse.json({
       day: 1,
       passage_id: 'ISA.43.19',

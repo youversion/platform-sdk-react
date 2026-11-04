@@ -1,3 +1,4 @@
+import { parseSearchLanguageRange } from '../schemas/language-range';
 import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { ApiClient } from '../client';
@@ -7,7 +8,6 @@ import {
   SearchTextQuerySchema,
   clampSearchText,
   isValidStructuralUsfmReference,
-  parseSearchLanguageRange,
 } from '../schemas/search';
 import { server } from './setup';
 

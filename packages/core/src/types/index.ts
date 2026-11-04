@@ -15,7 +15,7 @@ export type {
   PassageAttribution,
   PassageStylesheet,
 } from '../schemas/passage-display';
-export type { VOTD } from '../schemas/votd';
+export type { VOTD, VOTDResponse } from '../schemas/votd';
 export type {
   BibleIndex,
   BibleIndexBook,
@@ -28,6 +28,8 @@ export type { User } from '../schemas/user';
 export type { Highlight, CreateHighlight } from '../schemas/highlight';
 export type {
   KnownSearchUserIntent,
+  SearchImagesOptions,
+  SearchImagesResponse,
   SearchQueries,
   SearchQuery,
   SearchImageHit,

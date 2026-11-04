@@ -153,6 +153,19 @@ const CHECKS = [
     ],
     focused: [
       {
+        label: 'Bible reads only',
+        source: `import { BibleClient, getBooks } from '@youversion/platform-core';
+export { BibleClient, getBooks };
+`,
+        absent: ['At least one search field is required'],
+        control: {
+          label: 'SearchClient',
+          source: `import { SearchClient } from '@youversion/platform-core';
+export { SearchClient };
+`,
+        },
+      },
+      {
         label: 'getBibleStylesheets only',
         source: `import { getBibleStylesheets } from '@youversion/platform-core';
 export const stylesheets = getBibleStylesheets({ appKey: 'fixture' });
@@ -420,7 +433,7 @@ async function runPackageCheck(check) {
   for (const focused of check.focused ?? []) {
     const bundle = await bundleConsumer(focused.source, check.external);
     const leaked = focused.absent.filter((sentinel) => bundle.text.includes(sentinel));
-    const sizePass = bundle.bytes <= focused.maxBytes;
+    const sizePass = focused.maxBytes === undefined || bundle.bytes <= focused.maxBytes;
     const pass = leaked.length === 0 && sizePass;
     const details = [];
     if (leaked.length > 0) {
@@ -434,7 +447,7 @@ async function runPackageCheck(check) {
       label: focused.label,
       bytes: bundle.bytes,
       pass,
-      detail: pass ? 'isolated from display orchestration' : details.join('; '),
+      detail: pass ? 'no leaked sentinels; within any size limit' : details.join('; '),
     });
     if (!pass) {
       errors.push(`${check.package} focused import "${focused.label}" is not isolated`);
