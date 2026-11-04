@@ -49,9 +49,16 @@ describe('getAdjacentChapter', () => {
     });
   });
 
-  it('next chapter cross-book, skipping intro', () => {
+  it('next chapter cross-book → intro of next book', () => {
     expect(getAdjacentChapter(books, 'GEN', '50', 'next')).toEqual({
       bookId: 'EXO',
+      chapterId: 'INTRO',
+    });
+  });
+
+  it('next chapter cross-book when next book has no intro → chapter 1', () => {
+    expect(getAdjacentChapter(books, 'EXO', '40', 'next')).toEqual({
+      bookId: 'LEV',
       chapterId: '1',
     });
   });
@@ -134,14 +141,31 @@ describe('getAdjacentChapter', () => {
     });
   });
 
-  it('cross-book next skips intro in chapters array of next book', () => {
+  it('cross-book next → intro of next book when intro is also in its chapters array', () => {
     const booksWithIntroInArray = [
       makeBook('GEN', 50),
       makeBook('EXO', 40, { hasIntro: true, introInChapters: true }),
     ];
     expect(getAdjacentChapter(booksWithIntroInArray, 'GEN', '50', 'next')).toEqual({
       bookId: 'EXO',
-      chapterId: '1',
+      chapterId: 'INTRO',
+    });
+  });
+
+  it('next and previous are inverses across every chapter and intro', () => {
+    // Reading order: each book's intro (when present), then its numbered chapters.
+    const positions = books.flatMap((b) => [
+      ...(b.intro ? [{ bookId: b.id, chapterId: b.intro.id }] : []),
+      ...(b.chapters ?? []).map((c) => ({ bookId: b.id, chapterId: c.id })),
+    ]);
+
+    positions.forEach((position, i) => {
+      expect(getAdjacentChapter(books, position.bookId, position.chapterId, 'next')).toEqual(
+        positions[i + 1] ?? null,
+      );
+      expect(getAdjacentChapter(books, position.bookId, position.chapterId, 'previous')).toEqual(
+        positions[i - 1] ?? null,
+      );
     });
   });
 
