@@ -603,6 +603,21 @@ describe('transformBibleHtml - qs pause punctuation', () => {
     ]);
   });
 
+  it('keeps same-verse text after a pause inside its .yv-v wrapper', () => {
+    const html =
+      '<div><div class="q"><span class="yv-v" v="3">First <span class="qs">Selah</span> last</span></div></div>';
+    const result = transformBibleHtml(html, createAdapters());
+    const doc = new DOMParser().parseFromString(result.html, 'text/html');
+    const before = doc.querySelectorAll('.q')[0];
+    const after = doc.querySelectorAll('.q')[1];
+    const afterVerse = after?.querySelector('.yv-v[v="3"]');
+
+    expect(before?.querySelector('.yv-v[v="3"]')?.textContent).toBe('First ');
+    expect(doc.querySelector('.yv-qs-line .qs')?.textContent).toBe('Selah');
+    expect(afterVerse?.textContent).toBe(' last');
+    expect(after?.querySelector(':scope > .yv-v[v="3"]')).toBeTruthy();
+  });
+
   it('copies the host reading direction onto the pause line', () => {
     // Top-level hosts so resolveTextDirection sees both roots after the split.
     const html =

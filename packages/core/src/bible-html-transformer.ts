@@ -349,13 +349,17 @@ function readingDirectionOf(el: Element): string | null {
 
 /**
  * Move every node after `marker` within `host` into a same-tagged sibling.
- * Keeps text/verses that followed a mid-host pause after the new pause line.
+ * Clones intermediate wrappers (such as `.yv-v[v]`) so trailing same-verse
+ * text stays selectable, highlightable, and included in Copy / Share.
  */
 function takeTrailingContentAfter(host: Element, marker: Node): Element | null {
-  const trailing: Node[] = [];
-  let collecting = false;
+  const doc = host.ownerDocument;
+  if (!doc) return null;
 
-  const visit = (parent: Element): void => {
+  const splitAfter = (parent: Element): DocumentFragment => {
+    const frag = doc.createDocumentFragment();
+    let collecting = false;
+
     for (const child of Array.from(parent.childNodes)) {
       if (!collecting) {
         if (child === marker) {
@@ -367,25 +371,30 @@ function takeTrailingContentAfter(host: Element, marker: Node): Element | null {
           // JSDOM/window realms.
           const el = child as Element;
           if (el.contains(marker)) {
-            visit(el);
+            const inner = splitAfter(el);
+            if (inner.childNodes.length > 0) {
+              // SAFETY: Element.cloneNode(false) returns an Element of the same tag.
+              const wrap = el.cloneNode(false) as Element;
+              wrap.appendChild(inner);
+              frag.appendChild(wrap);
+            }
             collecting = true;
           }
           continue;
         }
         continue;
       }
-      trailing.push(child);
+      frag.appendChild(child);
     }
+    return frag;
   };
-  visit(host);
 
-  if (trailing.length === 0) return null;
+  const frag = splitAfter(host);
+  if (frag.childNodes.length === 0) return null;
 
   // SAFETY: Element.cloneNode(false) returns an Element of the same tag.
   const after = host.cloneNode(false) as Element;
-  for (const node of trailing) {
-    after.appendChild(node);
-  }
+  after.appendChild(frag);
   return after;
 }
 
