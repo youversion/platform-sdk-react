@@ -277,7 +277,9 @@ function isPauseFootnote(node: Node | null): node is Element {
   // SAFETY: nodeType 1 is an Element. TypeScript's Node union does not narrow
   // on nodeType, and instanceof Element fails across JSDOM/window realms.
   const element = node as Element;
-  return element.classList.contains('yv-n') && element.classList.contains('f');
+  // Fresh transforms still have `.yv-n.f`. Already-transformed HTML (the
+  // backfill path) has replaced those with `[data-verse-footnote]` anchors.
+  return element.matches('.yv-n.f, [data-verse-footnote]');
 }
 
 function punctuationAfter(start: Node | null): { text: string; node: Node } | null {
