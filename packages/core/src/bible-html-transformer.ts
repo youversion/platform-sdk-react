@@ -6,7 +6,8 @@ const TRANSFORMED_ATTR = 'data-yv-transformed';
 
 const NEEDS_SPACE_BEFORE = /^[^\s.,;:!?)}\]'"'»›]/;
 
-const PAUSE_PUNCTUATION = /^[\s.!?…]+$/;
+// Other punctuation, final quotes, and closers — not only Latin .!?…
+const PAUSE_PUNCTUATION = /^[\s\p{Po}\p{Pf}\p{Pe}]+$/u;
 
 const ALLOWED_TAGS = new Set([
   'DIV',

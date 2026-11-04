@@ -542,6 +542,20 @@ describe('transformBibleHtml - qs pause punctuation', () => {
     expect(doc.querySelectorAll('.q')[1]?.textContent).toBe('Next sentence.');
   });
 
+  it('keeps a closing quote, Arabic question mark, and CJK period with the pause', () => {
+    const cases = [
+      { html: '<div><div class="q"><span class="qs">Selah</span>”</div></div>', want: 'Selah”' },
+      { html: '<div><div class="q"><span class="qs">سلاه</span>؟</div></div>', want: 'سلاه؟' },
+      { html: '<div><div class="q"><span class="qs">细拉</span>。</div></div>', want: '细拉。' },
+    ] as const;
+
+    for (const { html, want } of cases) {
+      const result = transformBibleHtml(html, createAdapters());
+      const doc = new DOMParser().parseFromString(result.html, 'text/html');
+      expect(doc.querySelector('.qs')?.textContent).toBe(want);
+    }
+  });
+
   it('leaves the sentence before a qs pause in q where it was', () => {
     const html =
       '<div><div class="q">There is no salvation. <span class="qs">Selah</span></div></div>';
