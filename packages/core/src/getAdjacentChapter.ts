@@ -10,6 +10,12 @@ function isIntroChapter(chapterId: string): boolean {
 /**
  * Computes the next or previous chapter across book boundaries.
  *
+ * Reading order is each book's intro (when `book.intro` is present), then its numbered
+ * chapters. `next` from the last chapter of a book returns the next book's intro when it has
+ * one, otherwise its first numbered chapter. `previous` from chapter 1 returns the book's
+ * intro when it has one, otherwise the last chapter of the previous book. `next` and
+ * `previous` are inverses of each other.
+ *
  * @param books - Ordered array of Bible books with populated chapters
  * @param currentBookId - USFM book ID (e.g., "JHN")
  * @param currentChapterId - Chapter ID string (e.g., "1", "INTRO")
