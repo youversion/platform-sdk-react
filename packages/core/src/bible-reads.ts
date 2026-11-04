@@ -1,4 +1,3 @@
-import * as z from 'zod/mini';
 import type { ApiClient } from './client';
 import {
   assertUsableVersion,
@@ -7,7 +6,18 @@ import {
   parseBibleVersionId,
 } from './bible-chapter';
 import { BibleVerseNumberSchema } from './schemas/verse';
-import type { BibleBook, BibleChapter, BibleVerse, CANON, Collection, VOTD } from './types';
+import {
+  VOTDCollectionWireSchema,
+  VOTDRecordWireSchema,
+  parseVOTDDay,
+  parseVOTDLanguageQuery,
+  type GetVOTDOptions,
+} from './schemas/votd';
+import type { BibleBook, BibleChapter, BibleVerse, CANON, Collection, VOTDResponse } from './types';
+
+export type { GetVOTDOptions };
+
+const VOTD_COLLECTION_PATH = '/v1/verse-of-the-days';
 
 export async function getBooks(
   client: ApiClient,
@@ -75,11 +85,31 @@ export async function getVerse(
   );
 }
 
-export async function getAllVOTDs(client: ApiClient): Promise<Collection<VOTD>> {
-  return client.get<Collection<VOTD>>(`/v1/verse_of_the_days`);
+export async function getAllVOTDs(
+  client: ApiClient,
+  options?: GetVOTDOptions,
+): Promise<Collection<VOTDResponse>> {
+  const params = parseVOTDLanguageQuery(options);
+  const body = await client.get<unknown>(VOTD_COLLECTION_PATH, params);
+  const parsed = VOTDCollectionWireSchema.safeParse(body);
+  if (!parsed.success) {
+    throw new Error(`Unexpected verse-of-the-day API response: ${parsed.error.message}`);
+  }
+  return parsed.data;
 }
 
-export async function getVOTD(client: ApiClient, day: number): Promise<VOTD> {
-  z.int().check(z.gte(1), z.lte(366)).parse(day);
-  return client.get<VOTD>(`/v1/verse_of_the_days/${day}`);
+export async function getVOTD(
+  client: ApiClient,
+  day: number,
+  options?: GetVOTDOptions,
+): Promise<VOTDResponse> {
+  const parsedDay = parseVOTDDay(day);
+  const path = `${VOTD_COLLECTION_PATH}/${parsedDay}`;
+  const params = parseVOTDLanguageQuery(options);
+  const body = await client.get<unknown>(path, params);
+  const parsed = VOTDRecordWireSchema.safeParse(body);
+  if (!parsed.success) {
+    throw new Error(`Unexpected verse-of-the-day API response: ${parsed.error.message}`);
+  }
+  return parsed.data;
 }

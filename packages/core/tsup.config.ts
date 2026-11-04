@@ -38,6 +38,7 @@ export default defineConfig({
     'src/search.ts',
     'src/search-queries.ts',
     'src/search-verses.ts',
+    'src/search-images.ts',
     'src/search-topics.ts',
     'src/search-unified.ts',
     'src/highlights.ts',

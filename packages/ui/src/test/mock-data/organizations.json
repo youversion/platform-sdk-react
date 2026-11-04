@@ -1,26 +1,46 @@
 {
   "05a9aa40-37b6-4e34-b9f1-a443fa4b1fff": {
     "id": "05a9aa40-37b6-4e34-b9f1-a443fa4b1fff",
+    "parent_organization_id": null,
     "name": "Biblica",
+    "description": "Publisher and translation sponsor of the New International Version.",
+    "email": null,
+    "phone": null,
     "primary_language": "en",
-    "website_url": "https://www.biblica.com"
+    "website_url": "https://www.biblica.com",
+    "address": null
   },
   "798d8fa4-f640-4155-8cfb-fa91d1d8a06c": {
     "id": "798d8fa4-f640-4155-8cfb-fa91d1d8a06c",
+    "parent_organization_id": null,
     "name": "The Lockman Foundation",
+    "description": "Publisher of the New American Standard Bible and the Amplified Bible.",
+    "email": null,
+    "phone": null,
     "primary_language": "en",
-    "website_url": "https://www.lockman.org"
+    "website_url": "https://www.lockman.org",
+    "address": null
   },
   "f2ac19b4-768c-4564-acaf-f28724235ad0": {
     "id": "f2ac19b4-768c-4564-acaf-f28724235ad0",
+    "parent_organization_id": null,
     "name": "Artists for Israel International",
+    "description": "Publisher of the Tree of Life Version.",
+    "email": null,
+    "phone": null,
     "primary_language": "en",
-    "website_url": "https://www.afii.org"
+    "website_url": "https://www.afii.org",
+    "address": null
   },
   "f819451a-bc31-4037-b4bd-0c4aa00fe0f6": {
     "id": "f819451a-bc31-4037-b4bd-0c4aa00fe0f6",
+    "parent_organization_id": null,
     "name": "Cambridge University Press",
+    "description": null,
+    "email": null,
+    "phone": null,
     "primary_language": "en",
-    "website_url": "https://www.cambridge.org/bibles"
+    "website_url": "https://www.cambridge.org/bibles",
+    "address": null
   }
 }

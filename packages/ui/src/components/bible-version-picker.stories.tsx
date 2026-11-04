@@ -538,6 +538,31 @@ export const InteractiveVersionSearch: Story = {
   },
 };
 
+export const PublisherNames: Story = {
+  args: {
+    versionId: 111,
+  },
+  tags: ['integration'],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Open popover
+    const trigger = await canvas.findByRole('button', { name: /NIV/i }, { timeout: 10_000 });
+    await userEvent.click(trigger);
+
+    // The organization mocks send null fields like the live API, so the publisher name
+    // shows only if core parses those responses
+    const row = await screen.findByRole(
+      'listitem',
+      { name: /new international version 2011/i },
+      { timeout: 5_000 },
+    );
+    await expect(
+      await within(row).findByText('Biblica', {}, { timeout: 5_000 }),
+    ).toBeInTheDocument();
+  },
+};
+
 export const RealAPI: Story = {
   args: {
     versionId: 111,
