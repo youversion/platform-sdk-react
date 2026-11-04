@@ -1,6 +1,18 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ApiClient } from '../client';
 import { OrganizationsClient } from '../organizations';
+import { OrganizationSchema } from '../schemas/organization';
+import { mockLockmanOrganization, mockOrganizationWithoutDescription } from './MockOrganizations';
+
+function createOrganizationsClient(): OrganizationsClient {
+  return new OrganizationsClient(
+    new ApiClient({
+      apiHost: process.env.YVP_API_HOST || '',
+      appKey: process.env.YVP_APP_KEY || '',
+      installationId: 'test-installation',
+    }),
+  );
+}
 
 describe('OrganizationsClient', () => {
   let apiClient: ApiClient;
@@ -30,4 +42,28 @@ describe('OrganizationsClient', () => {
       );
     });
   });
+});
+
+it('parses organizations whose address and description arrive as null', async () => {
+  const organizationsClient = createOrganizationsClient();
+
+  // Every live organization sends address: null
+  const lockman = await organizationsClient.getOrganization(mockLockmanOrganization.id);
+  expect(lockman.name).toBe('The Lockman Foundation');
+  expect(lockman.address).toBeNull();
+
+  // Some also send description: null
+  const missionAssist = await organizationsClient.getOrganization(
+    mockOrganizationWithoutDescription.id,
+  );
+  expect(missionAssist.name).toBe('MissionAssist');
+  expect(missionAssist.description).toBeNull();
+});
+
+it('accepts null only for address and description, keeping the other fields strict', () => {
+  const organization = { ...mockLockmanOrganization, address: null, description: null };
+  expect(OrganizationSchema.safeParse(organization).success).toBe(true);
+
+  expect(OrganizationSchema.safeParse({ ...organization, name: null }).success).toBe(false);
+  expect(OrganizationSchema.safeParse({ ...organization, website_url: null }).success).toBe(false);
 });
