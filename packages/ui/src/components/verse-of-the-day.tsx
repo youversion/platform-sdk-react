@@ -271,7 +271,7 @@ export function VerseOfTheDay({
                 className="yv:col-start-2 yv:row-span-2 yv:row-start-1 yv:self-start yv:justify-self-end"
               >
                 <Button
-                  aria-label={t('shareAriaLabel')}
+                  aria-label={t('share')}
                   className={size === 'lg' ? 'yv:-me-3' : 'yv:-me-2'}
                   onClick={() => void handleShareVerse()}
                   disabled={!!(errorPassage || errorVerseOfTheDay)}

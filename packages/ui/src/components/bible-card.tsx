@@ -79,7 +79,7 @@ function BibleCardHeaderError(): React.ReactNode {
   const { t } = useTranslation(undefined, { i18n });
   return (
     <h2 className="yv:font-bold yv:tracking-widest yv:text-xs yv:uppercase yv:text-foreground">
-      {t('errorHeading')}
+      {t('error')}
     </h2>
   );
 }

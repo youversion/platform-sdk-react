@@ -47,7 +47,7 @@ Use `useTranslation` + `t()` for simple strings and `Trans` with `i18nKey` for r
 ```tsx
 const { t } = useTranslation(undefined, { i18n });
 
-<button aria-label={t('shareAriaLabel')}>{t('share')}</button>
+<button aria-label={t('share')}>{t('share')}</button>
 
 <Trans
   i18nKey="signInWithYouVersion"
@@ -74,6 +74,8 @@ This is app locale, not Bible translation language. Seed the version picker with
 
 ## Local checks
 
+Known translation gaps from the shared-key migration are listed in [Shared localization migration](./shared-localization-migration.md).
+
 ```bash
 # Hard fail: missing en keys, extra translation keys, interpolation tokens,
 #            stale resources.generated.ts (index.ts only imports that file)
@@ -96,6 +98,6 @@ pnpm test:ci-scripts
 
 ## Key naming
 
-- Flat camelCase keys in locale JSON (e.g. `shareAriaLabel`, `verseOfTheDay`).
-- In platform-localization source, prefix with `react.` (e.g. `react.shareAriaLabel`).
+- Flat camelCase keys in locale JSON (e.g. `share`, `verseOfTheDay`).
+- Prefer existing shared keys in platform-localization. Prefix React-only source keys with `react.` (e.g. `react.readerSettingsHeading`).
 - Interpolation tokens use `{{tokenName}}` and must match across every bundle once translations land.

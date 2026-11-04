@@ -1,3 +1,4 @@
+import i18n from '@/i18n';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { within, expect, userEvent, screen, waitFor } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
@@ -186,7 +187,7 @@ export const WithVersionPicker: Story = {
 
     // Search for Amplified Bible
     const searchInput = within(await screen.findByRole('dialog')).getByRole('textbox', {
-      name: /search bible versions/i,
+      name: i18n.t('searchVersions'),
     });
     await userEvent.type(searchInput, 'amplified bible');
 
@@ -290,7 +291,7 @@ export const Error: Story = {
     await userEvent.click(versionPickerButton);
 
     const dialog = await screen.findByRole('dialog');
-    const searchInput = within(dialog).getByRole('textbox', { name: /search bible versions/i });
+    const searchInput = within(dialog).getByRole('textbox', { name: i18n.t('searchVersions') });
 
     await userEvent.type(searchInput, 'amplified bible');
 

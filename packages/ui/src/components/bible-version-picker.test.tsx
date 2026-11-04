@@ -1,6 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
+import i18n from '@/i18n';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import type { ReactElement } from 'react';
@@ -193,7 +194,7 @@ function getLanguageSearchInput() {
 }
 
 function getVersionSearchInput() {
-  return screen.getByRole('textbox', { name: /search bible versions/i });
+  return screen.getByRole('textbox', { name: i18n.t('searchVersions') });
 }
 
 /** Ready-to-run setup for new/edited picker workflows (see docs/testing.md). */
@@ -728,7 +729,7 @@ describe('BibleVersionPicker', () => {
 
     expect(screen.queryByRole('button', { name: /select a language/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^language /i })).toBeInTheDocument();
-    expect(screen.getAllByRole('textbox', { name: /search bible versions/i })).toHaveLength(1);
+    expect(screen.getAllByRole('textbox', { name: i18n.t('searchVersions') })).toHaveLength(1);
   });
 
   it('mounts one language view, then a search view, and returns to versions', async () => {

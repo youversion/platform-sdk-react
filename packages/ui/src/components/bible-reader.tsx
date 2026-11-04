@@ -1523,7 +1523,7 @@ export function BibleThemeSettingsContent({
                     : '',
                 )}
               >
-                {t('fontLabel')}
+                {t('font')}
               </span>
               <span className="yv:sm:text-xl yv:text-base">{INTER_FONT_NAME}</span>
             </div>
@@ -1547,7 +1547,7 @@ export function BibleThemeSettingsContent({
                     : '',
                 )}
               >
-                {t('fontLabel')}
+                {t('font')}
               </span>
               <span className="yv:sm:text-xl yv:text-base yv:font-serif">
                 {UNTITLED_SERIF_FONT_NAME}

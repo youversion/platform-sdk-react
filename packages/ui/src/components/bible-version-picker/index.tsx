@@ -539,7 +539,7 @@ export function BibleVersionPickerLanguageTrigger({
 
   return (
     <Button
-      aria-label={ariaLabel ?? t('selectLanguageAriaLabel')}
+      aria-label={ariaLabel ?? t('selectLanguage')}
       className={cn(
         'yv:ms-auto yv:bg-card yv:border yv:border-transparent yv:hover:bg-card yv:hover:border-border yv:max-w-40',
         className,

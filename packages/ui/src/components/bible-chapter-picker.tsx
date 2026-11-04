@@ -432,7 +432,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
           <InputGroupInput
             tabIndex={1}
             type="text"
-            placeholder={t('searchPlaceholder')}
+            placeholder={t('search')}
             dir="auto"
             className="yv:text-base yv:leading-normal"
             value={searchQuery}

@@ -128,7 +128,7 @@ describe('VerseOfTheDay - share', () => {
 
     renderVotd(<VerseOfTheDay dayOfYear={1} onShare={onShare} />);
 
-    await user.click(screen.getByRole('button', { name: en.shareAriaLabel }));
+    await user.click(screen.getByRole('button', { name: en.share }));
 
     expect(onShare).toHaveBeenCalledTimes(1);
     expect(onShare).toHaveBeenCalledWith(expectedShareData());
@@ -145,7 +145,7 @@ describe('VerseOfTheDay - share', () => {
 
     try {
       renderVotd(<VerseOfTheDay dayOfYear={1} onShare={onShare} />);
-      await user.click(screen.getByRole('button', { name: en.shareAriaLabel }));
+      await user.click(screen.getByRole('button', { name: en.share }));
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(onShare).toHaveBeenCalledTimes(1);
@@ -161,7 +161,7 @@ describe('VerseOfTheDay - share', () => {
 
     renderVotd(<VerseOfTheDay dayOfYear={1} onShare={onShare} />);
 
-    await user.click(screen.getByRole('button', { name: en.shareAriaLabel }));
+    await user.click(screen.getByRole('button', { name: en.share }));
 
     expect(onShare).toHaveBeenCalledTimes(1);
     expect(shareSpy).not.toHaveBeenCalled();
@@ -173,7 +173,7 @@ describe('VerseOfTheDay - share', () => {
 
     renderVotd(<VerseOfTheDay dayOfYear={1} showShareButton={false} onShare={onShare} />);
 
-    expect(screen.queryByRole('button', { name: en.shareAriaLabel })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: en.share })).not.toBeInTheDocument();
     expect(onShare).not.toHaveBeenCalled();
   });
 
@@ -186,7 +186,7 @@ describe('VerseOfTheDay - share', () => {
       stubOverrides({ passageError: new Error('Passage failed') }),
     );
 
-    const shareButton = screen.getByRole('button', { name: en.shareAriaLabel });
+    const shareButton = screen.getByRole('button', { name: en.share });
     expect(shareButton).toBeDisabled();
 
     await user.click(shareButton);

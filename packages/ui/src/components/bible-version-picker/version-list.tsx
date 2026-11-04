@@ -235,7 +235,7 @@ export function VersionList({
         <section className="yv:px-4 yv:pt-4">
           <InputGroup className="yv:h-auto yv:rounded-full yv:border-0 yv:bg-muted yv:py-1 yv:shadow-none">
             <InputGroupInput
-              aria-label={t('versionSearchAriaLabel')}
+              aria-label={t('searchVersions')}
               type="text"
               placeholder={t('searchVersions')}
               dir="auto"

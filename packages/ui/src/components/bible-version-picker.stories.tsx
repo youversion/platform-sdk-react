@@ -174,7 +174,7 @@ const tabletJourney: Story = {
     await userEvent.click(screen.getByRole('button', { name: /^back$/i }));
     await expect(screen.getByRole('tab', { name: /suggested/i })).toBeVisible();
     await userEvent.click(screen.getByRole('button', { name: /back to bible versions/i }));
-    await expect(screen.getByRole('textbox', { name: /search bible versions/i })).toBeVisible();
+    await expect(screen.getByRole('textbox', { name: i18n.t('searchVersions') })).toBeVisible();
     await userEvent.click(screen.getByRole('button', { name: /^Language\b/ }));
     await userEvent.click(screen.getByRole('tab', { name: /^All\b/ }));
     await userEvent.click(await screen.findByRole('listitem', { name: /Spanish/ }));
@@ -510,7 +510,7 @@ export const InteractiveVersionSearch: Story = {
     await userEvent.click(trigger);
 
     // Type in search
-    const searchInput = screen.getByRole('textbox', { name: /search bible versions/i });
+    const searchInput = screen.getByRole('textbox', { name: i18n.t('searchVersions') });
     await userEvent.type(searchInput, 'NIV', { delay: 50 });
 
     // Verify search is working (versions should be filtered)
@@ -613,7 +613,7 @@ export const SearchResetsAfterSelection: Story = {
     await userEvent.click(trigger);
 
     // Type in search
-    const searchInput = screen.getByRole('textbox', { name: /search bible versions/i });
+    const searchInput = screen.getByRole('textbox', { name: i18n.t('searchVersions') });
     await userEvent.type(searchInput, 'Amplified', { delay: 50 });
     await expect(searchInput).toHaveValue('Amplified');
 
@@ -626,7 +626,7 @@ export const SearchResetsAfterSelection: Story = {
     await userEvent.click(updatedTrigger);
 
     // Verify search input is cleared
-    const resetSearchInput = screen.getByRole('textbox', { name: /search bible versions/i });
+    const resetSearchInput = screen.getByRole('textbox', { name: i18n.t('searchVersions') });
     await expect(resetSearchInput).toHaveValue('');
   },
 };
@@ -662,7 +662,7 @@ export const RecentVersionsSearchFilter: Story = {
     ).toBeInTheDocument();
 
     // Search for "ASV"
-    const searchInput = screen.getByRole('textbox', { name: /search bible versions/i });
+    const searchInput = screen.getByRole('textbox', { name: i18n.t('searchVersions') });
     await userEvent.type(searchInput, 'ASV', { delay: 50 });
 
     // Verify only ASV appears in recent versions after filtering
