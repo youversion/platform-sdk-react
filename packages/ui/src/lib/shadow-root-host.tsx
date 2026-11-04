@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
   type RefCallback,
+  type CSSProperties,
   type SyntheticEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
@@ -20,6 +21,14 @@ declare const __YV_READER_STYLES__: string;
 const sdkStyleSheets = new WeakMap<Document, CSSStyleSheet>();
 const SDK_SHADOW_STYLE_HREF = 'yv-sdk-shadow-styles';
 const SDK_SHADOW_STYLE_PRECEDENCE = 'yv-sdk';
+const SHADOW_CONTENT_WRAPPER_STYLE: CSSProperties & { '--yv-reader-max-width': string } = {
+  all: 'initial',
+  direction: 'inherit',
+  display: 'contents',
+  // Custom properties inherit through `all: initial`; redeclare the reader's
+  // supported default so a consumer ancestor cannot constrain isolated Scripture.
+  '--yv-reader-max-width': '65ch',
+};
 type ShadowPortalStrategy = 'local-inline' | 'local-top-layer';
 
 /** @internal Focus target retained across one shadow-modal lifecycle. */
@@ -495,7 +504,7 @@ export function ShadowRootHost({
                   data-yv-sdk={theme ? true : undefined}
                   data-yv-theme={theme}
                   data-yv-shadow-content-wrapper
-                  style={{ all: 'initial', direction: 'inherit', display: 'contents' }}
+                  style={SHADOW_CONTENT_WRAPPER_STYLE}
                   onFocusCapture={(event) => {
                     if (
                       isElementFromOwnerDocument(

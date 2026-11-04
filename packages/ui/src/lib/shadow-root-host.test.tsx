@@ -385,6 +385,7 @@ describe('ShadowRootHost', () => {
     expect(wrapper?.style.getPropertyValue('all')).toBe('initial');
     expect(wrapper?.style.getPropertyValue('display')).toBe('contents');
     expect(wrapper?.style.getPropertyValue('direction')).toBe('inherit');
+    expect(wrapper?.style.getPropertyValue('--yv-reader-max-width')).toBe('65ch');
     expect(wrapper?.style.getPropertyValue('writing-mode')).toBe('');
     expect(wrapper?.style.getPropertyValue('text-orientation')).toBe('');
 

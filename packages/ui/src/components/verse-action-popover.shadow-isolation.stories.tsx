@@ -217,6 +217,16 @@ export const PortalPlacementDockingReanchoringAndFocusRestoration: Story = {
     await expect(dialog.querySelector('[role="group"]')).toHaveAccessibleName(/.+/);
     await waitFor(async () => await expect(shadowRoot.activeElement).toBe(dialog));
 
+    const firstSwatch = dialog.querySelector<HTMLButtonElement>('[role="group"] button');
+    const shareButton = within(dialog).getByRole('button', { name: i18n.t('share') });
+    if (!firstSwatch) throw new Error('first highlight swatch not rendered');
+    await userEvent.keyboard('{Tab}');
+    await waitForFocus(shadowRoot, firstSwatch);
+    await userEvent.keyboard('{Shift>}{Tab}{/Shift}');
+    await waitForFocus(shadowRoot, shareButton);
+    await userEvent.keyboard('{Tab}');
+    await waitForFocus(shadowRoot, firstSwatch);
+
     const clippingRect = clippingContainer.getBoundingClientRect();
     const firstDialogRect = dialog.getBoundingClientRect();
     const escapesAbove = firstDialogRect.top < clippingRect.top - 1;

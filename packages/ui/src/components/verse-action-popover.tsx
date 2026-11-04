@@ -27,6 +27,7 @@ import { isDarkHighlightHex } from './verse';
 import { useInterfaceDirection } from '@/lib/direction';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
 import { useTakeVerseActionPopoverFocusRestoreTarget } from '@/lib/verse-action-popover-focus';
+import { handleShadowPopoverTabLoop } from './ui/shadow-popover-tab-loop';
 
 /** Re-export for back-compat; prefer `@/lib/highlight-colors` for new code. */
 export { HIGHLIGHT_COLORS, type HighlightColor } from '@/lib/highlight-colors';
@@ -450,6 +451,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
               data-yv-sdk
               data-yv-theme={theme}
               dir={direction}
+              onKeyDown={handleShadowPopoverTabLoop}
               onOpenAutoFocus={(event) => {
                 // Keep focus contained in the popover but off the first swatch: land
                 // it on the (non-tabbable) content element so no `:focus-visible` ring

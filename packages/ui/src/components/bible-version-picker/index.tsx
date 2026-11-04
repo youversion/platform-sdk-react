@@ -203,13 +203,13 @@ function RootImplementation({
   versionId: controlledVersionId,
   onVersionChange,
   languageId: controlledLanguageId,
-  defaultLanguageId,
+  initialDefaultLanguageId,
   onLanguageChange,
   background,
   side = 'top',
   onVersionPickerPress,
   children,
-}: RootProps) {
+}: RootProps & { initialDefaultLanguageId: string }) {
   const [versionId, setVersionIdState] = useControllableState({
     prop: controlledVersionId,
     defaultProp: controlledVersionId,
@@ -219,11 +219,9 @@ function RootImplementation({
   const providerTheme = useTheme();
   const theme = background || providerTheme;
 
-  const fallbackLanguageId =
-    defaultLanguageId || globalThis.navigator?.languages?.[0]?.split('-')[0] || 'en';
   const [selectedLanguageId, setSelectedLanguageId] = useControllableState({
     prop: controlledLanguageId,
-    defaultProp: fallbackLanguageId,
+    defaultProp: initialDefaultLanguageId,
     onChange: onLanguageChange,
   });
   const [searchQuery, setSearchQuery] = useState('');
@@ -435,13 +433,17 @@ function RootImplementation({
 }
 
 function Root(props: RootProps) {
+  const initialDefaultLanguageId = useRef(
+    props.defaultLanguageId || globalThis.navigator?.languages?.[0]?.split('-')[0] || 'en',
+  ).current;
+
   return (
     <ShadowIsolationBoundary
       hostElement="span"
       portalStrategy="local-top-layer"
       theme={props.background}
     >
-      <RootImplementation {...props} />
+      <RootImplementation {...props} initialDefaultLanguageId={initialDefaultLanguageId} />
     </ShadowIsolationBoundary>
   );
 }

@@ -5,7 +5,7 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import type { ReactElement } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
 
 // ResizeObserver is used by @floating-ui/dom (Radix Popover)
@@ -135,6 +135,48 @@ describe('BibleChapterPicker - onChapterPickerPress override', () => {
 
     expect(screen.queryByText('Books')).not.toBeInTheDocument();
     expect(screen.queryByPlaceholderText('Search')).not.toBeInTheDocument();
+  });
+
+  it('preserves first-render defaults when a parent mount effect changes them', async () => {
+    const user = userEvent.setup();
+    const onChapterPickerPress = vi.fn();
+
+    function PickerWithChangingDefaults(): ReactElement {
+      const [defaults, setDefaults] = useState({ book: 'GEN', chapter: '1' });
+      useEffect(() => setDefaults({ book: 'EXO', chapter: '2' }), []);
+
+      return (
+        <BibleChapterPicker.Root
+          versionId={3034}
+          defaultBook={defaults.book}
+          defaultChapter={defaults.chapter}
+          onChapterPickerPress={onChapterPickerPress}
+        >
+          <BibleChapterPicker.Trigger />
+        </BibleChapterPicker.Root>
+      );
+    }
+
+    const { container } = render(
+      <HookOverrideProvider overrides={defaultOverrides()}>
+        <PickerWithChangingDefaults />
+      </HookOverrideProvider>,
+    );
+    const trigger = await waitFor(() => {
+      const button = container
+        .querySelector<HTMLElement>('[data-yv-shadow-host]')
+        ?.shadowRoot?.querySelector<HTMLButtonElement>('button');
+      if (!button) throw new Error('chapter picker trigger not mounted');
+      return button;
+    });
+
+    await user.click(trigger);
+
+    expect(onChapterPickerPress).toHaveBeenCalledWith({
+      book: 'GEN',
+      chapter: '1',
+      versionId: 3034,
+    });
   });
 });
 

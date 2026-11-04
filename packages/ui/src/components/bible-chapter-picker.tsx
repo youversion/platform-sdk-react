@@ -88,28 +88,33 @@ export type RootProps = {
 
 export type BibleChapterPickerRootProps = RootProps;
 
+type RootImplementationProps = RootProps & {
+  initialDefaultBook: BibleBook['id'];
+  initialDefaultChapter: string;
+};
+
 function RootImplementation({
   book: controlledBook,
-  defaultBook = '',
+  initialDefaultBook,
   onBookChange,
   chapter: controlledChapter,
-  defaultChapter = '',
+  initialDefaultChapter,
   onChapterChange,
   versionId,
   background,
   onChapterPickerPress,
   children,
-}: RootProps) {
+}: RootImplementationProps) {
   const { t } = useTranslation(undefined, { i18n });
   const [book, setBook] = useControllableState({
     prop: controlledBook,
-    defaultProp: defaultBook,
+    defaultProp: initialDefaultBook,
     onChange: onBookChange,
   });
 
   const [chapter, setChapter] = useControllableState({
     prop: controlledChapter,
-    defaultProp: defaultChapter,
+    defaultProp: initialDefaultChapter,
     onChange: onChapterChange,
   });
 
@@ -271,13 +276,22 @@ function RootImplementation({
 }
 
 function Root(props: RootProps) {
+  const initialDefaults = useRef({
+    book: props.defaultBook ?? '',
+    chapter: props.defaultChapter ?? '',
+  }).current;
+
   return (
     <ShadowIsolationBoundary
       hostElement="span"
       portalStrategy="local-top-layer"
       theme={props.background}
     >
-      <RootImplementation {...props} />
+      <RootImplementation
+        {...props}
+        initialDefaultBook={initialDefaults.book}
+        initialDefaultChapter={initialDefaults.chapter}
+      />
     </ShadowIsolationBoundary>
   );
 }
