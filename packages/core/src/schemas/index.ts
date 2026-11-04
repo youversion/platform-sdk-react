@@ -8,6 +8,7 @@ export * from './data-exchange';
 export * from './font';
 export * from './highlight';
 export * from './language';
+export * from './language-range';
 export * from './license';
 export * from './organization';
 export * from './passage';

@@ -2,15 +2,17 @@ import type { ApiClient } from './client';
 import { getSuggestedQueries, getTrendingQueries } from './search-queries';
 import { searchTopics } from './search-topics';
 import { searchUnified, type SearchUnifiedOptions } from './search-unified';
+import { searchImages, type SearchImagesOptions } from './search-images';
 import { searchVerses, type SearchVersesOptions } from './search-verses';
 import type {
+  SearchImagesResponse,
   SearchQueries,
   SearchTopicsResponse,
   SearchUnifiedResponse,
   SearchVersesResponse,
 } from './schemas/search';
 
-export type { SearchUnifiedOptions, SearchVersesOptions };
+export type { SearchImagesOptions, SearchUnifiedOptions, SearchVersesOptions };
 
 /**
  * Client for YouVersion Platform Search API endpoints (`/v1/*`).
@@ -58,6 +60,23 @@ export class SearchClient {
     options?: SearchVersesOptions,
   ): Promise<SearchVersesResponse> {
     return searchVerses(this.client, query, versionId, options);
+  }
+
+  /**
+   * Searches verse-art images in one Bible version.
+   * Pass the same query, version id, and `pageSize` when you request the next page.
+   * `nextPageToken` is `null` on the last page. An empty string token is kept.
+   * Resolve a hit with `ImagesClient.getImage` and the returned `id` unchanged.
+   * @param query Search text (1 to 100 graphemes).
+   * @param versionId Bible version identifier (sent to the API as `bible_id`).
+   * @param options Optional `pageSize` (1 to 99) and `pageToken`.
+   */
+  async searchImages(
+    query: string,
+    versionId: number,
+    options?: SearchImagesOptions,
+  ): Promise<SearchImagesResponse> {
+    return searchImages(this.client, query, versionId, options);
   }
 
   /**

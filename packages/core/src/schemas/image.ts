@@ -1,5 +1,5 @@
 import * as z from 'zod/mini';
-import { parseSearchLanguageRange } from './search';
+import { parseSearchLanguageRange } from './language-range';
 
 /** A verse-art image record from the Images API. */
 export const ImageSchema = z.object({
