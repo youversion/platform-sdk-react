@@ -60,7 +60,7 @@ function stubOverrides(
 
   return {
     useVerseOfTheDay: () => ({
-      data: votdLoading ? null : { day: 1, passage_id: 'JHN.3.16' },
+      data: votdLoading ? null : { day: 1, passage_id: 'JHN.3.16', image_id: null },
       loading: votdLoading,
       error: votdError,
       refetch: () => undefined,

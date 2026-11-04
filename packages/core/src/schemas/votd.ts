@@ -16,18 +16,18 @@ export const VOTDSchema = z.object({
   image_id: z.optional(z.nullable(z.string())),
 });
 
-export type VOTD = Readonly<z.infer<typeof VOTDSchema>>;
+export type VOTDInput = Readonly<z.input<typeof VOTDSchema>>;
 
 export const VOTDRecordWireSchema = z.pipe(
   VOTDSchema,
-  z.transform(
-    (wire): VOTD => ({
-      day: wire.day,
-      passage_id: wire.passage_id,
-      image_id: wire.image_id ?? null,
-    }),
-  ),
+  z.transform((wire) => ({
+    day: wire.day,
+    passage_id: wire.passage_id,
+    image_id: wire.image_id ?? null,
+  })),
 );
+
+export type VOTD = Readonly<z.output<typeof VOTDRecordWireSchema>>;
 
 export const VOTDCollectionWireSchema = z.pipe(
   z.object({

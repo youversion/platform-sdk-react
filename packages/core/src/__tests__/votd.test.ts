@@ -1,6 +1,13 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { ApiClient, BibleClient, getAllVOTDs, getHttpStatus, getVOTD } from '../index';
+import {
+  ApiClient,
+  BibleClient,
+  getAllVOTDs,
+  getHttpStatus,
+  getVOTD,
+  type VOTDInput,
+} from '../index';
 import { server } from './setup';
 
 const apiHost = process.env.YVP_API_HOST;
@@ -24,13 +31,14 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('verse of the day reads'
   it('reads one day and the calendar on hyphenated routes', async () => {
     const { api, bible } = createClients();
     const fetchSpy = vi.spyOn(global, 'fetch');
+    const legacyInput: VOTDInput = { day: 1, passage_id: 'ISA.43.19' };
 
     try {
       server.use(
         http.get(`https://${apiHost}/v1/verse-of-the-days/:day`, ({ params }) => {
           const day = String(params.day);
           if (day === '1') {
-            return HttpResponse.json({ day: 1, passage_id: 'ISA.43.19' });
+            return HttpResponse.json(legacyInput);
           }
           if (day === '2') {
             return HttpResponse.json({ day: 2, passage_id: 'HEB.13.5', image_id: null });
@@ -68,15 +76,18 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('verse of the day reads'
       );
 
       const missingImage = await bible.getVOTD(1);
+      expectTypeOf(missingImage.image_id).toEqualTypeOf<string | null>();
       expect(missingImage).toEqual({ day: 1, passage_id: 'ISA.43.19', image_id: null });
 
       const nullImage = await getVOTD(api, 2, { language_ranges: ['en'] });
+      expectTypeOf(nullImage.image_id).toEqualTypeOf<string | null>();
       expect(nullImage).toEqual({ day: 2, passage_id: 'HEB.13.5', image_id: null });
 
       const curated = await bible.getVOTD(366, { language_ranges: [' EN ', 'en_US'] });
       expect(curated).toEqual({ day: 366, passage_id: 'PSA.23.1', image_id: 'img/366?x' });
 
       const legacy = await bible.getAllVOTDs();
+      expectTypeOf<(typeof legacy.data)[number]['image_id']>().toEqualTypeOf<string | null>();
       expect(legacy).toEqual({
         data: [
           { day: 1, passage_id: 'ISA.43.19', image_id: null },
@@ -87,6 +98,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('verse of the day reads'
       expect(Object.hasOwn(legacy, 'total_size')).toBe(false);
 
       const calendar = await getAllVOTDs(api, { language_ranges: ['es', '*'] });
+      expectTypeOf<(typeof calendar.data)[number]['image_id']>().toEqualTypeOf<string | null>();
       expect(calendar).toEqual({
         data: [
           { day: 1, passage_id: 'ISA.43.19', image_id: 'img/1?x' },

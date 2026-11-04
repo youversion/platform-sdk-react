@@ -90,10 +90,7 @@ export async function getAllVOTDs(
   options?: GetVOTDOptions,
 ): Promise<Collection<VOTD>> {
   const params = parseVOTDLanguageQuery(options);
-  const body =
-    params === undefined
-      ? await client.get<unknown>(VOTD_COLLECTION_PATH)
-      : await client.get<unknown>(VOTD_COLLECTION_PATH, params);
+  const body = await client.get<unknown>(VOTD_COLLECTION_PATH, params);
   const parsed = VOTDCollectionWireSchema.safeParse(body);
   if (!parsed.success) {
     throw new Error(`Unexpected verse-of-the-day API response: ${parsed.error.message}`);
@@ -109,10 +106,7 @@ export async function getVOTD(
   const parsedDay = parseVOTDDay(day);
   const path = `${VOTD_COLLECTION_PATH}/${parsedDay}`;
   const params = parseVOTDLanguageQuery(options);
-  const body =
-    params === undefined
-      ? await client.get<unknown>(path)
-      : await client.get<unknown>(path, params);
+  const body = await client.get<unknown>(path, params);
   const parsed = VOTDRecordWireSchema.safeParse(body);
   if (!parsed.success) {
     throw new Error(`Unexpected verse-of-the-day API response: ${parsed.error.message}`);
