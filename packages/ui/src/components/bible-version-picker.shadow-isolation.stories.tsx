@@ -427,7 +427,6 @@ export const StylingFocusDismissalAndRapidReopen: Story = {
     if (!topLayer) throw new Error('local top-layer container not created synchronously');
     const panel = topLayer.querySelector<HTMLElement>('[data-slot="popover-content"]');
     if (!panel) throw new Error('version picker panel not rendered synchronously');
-    const closeButton = within(panel).getByRole('button', { name: /close/i });
 
     const openingPanelWindow = panel.ownerDocument.defaultView;
     if (!openingPanelWindow) throw new Error('version picker window not available');
@@ -446,7 +445,7 @@ export const StylingFocusDismissalAndRapidReopen: Story = {
     await waitFor(async () => {
       await expect(topLayer.querySelector('[data-slot="popover-content"]')).toBe(panel);
       await expect(panel).toHaveAttribute('data-state', 'open');
-      await expect(root.activeElement).toBe(closeButton);
+      await expect(root.activeElement).toBe(panel);
     });
     await expect(canvasElement.ownerDocument.scrollingElement?.scrollTop ?? 0).toBe(
       initialScrollTop,

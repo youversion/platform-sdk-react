@@ -596,6 +596,41 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
   } = picker;
   const previousViewRef = useRef(view);
   const popoverContentRef = useRef<HTMLDivElement>(null);
+  const focusRequestRef = useRef(0);
+
+  const schedulePanelFocus = useCallback((panel: HTMLElement) => {
+    // SAFETY: Element roots are Documents or ShadowRoots, which both expose activeElement.
+    const focusRoot = panel.getRootNode() as Document | ShadowRoot;
+    const previousFocus = focusRoot.activeElement;
+    const focusRequest = ++focusRequestRef.current;
+    const focusPanel = () => {
+      if (
+        focusRequestRef.current === focusRequest &&
+        focusRoot.activeElement === previousFocus &&
+        panel.isConnected &&
+        panel.dataset.state === 'open'
+      ) {
+        panel.focus({ preventScroll: true });
+      }
+    };
+    // Let Safari expose the newly painted dialog before moving focus into it.
+    const ownerWindow = panel.ownerDocument.defaultView;
+    if (!ownerWindow?.requestAnimationFrame) {
+      queueMicrotask(focusPanel);
+      return;
+    }
+    ownerWindow.requestAnimationFrame(() => ownerWindow.requestAnimationFrame(focusPanel));
+  }, []);
+
+  useEffect(() => {
+    if (!isPopoverOpen) {
+      focusRequestRef.current += 1;
+      return;
+    }
+
+    const panel = popoverContentRef.current;
+    if (panel) schedulePanelFocus(panel);
+  }, [isPopoverOpen, schedulePanelFocus]);
 
   // Keep keyboard focus inside this picker's card when VersionList and LanguagePanel remount.
   // Scope via ref so an outer host popover with the same data-slot is never selected.
@@ -664,6 +699,13 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
           headerChild={view === 'languages' ? <LanguageSearchButton /> : null}
           theme={background}
           side={side}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            // SAFETY: Radix invokes this handler with the popover content as currentTarget.
+            const panel = event.currentTarget as HTMLDivElement;
+            popoverContentRef.current = panel;
+            schedulePanelFocus(panel);
+          }}
         >
           {view === 'versions' ? (
             <VersionList onRequestClose={() => setIsPopoverOpen(false)} />

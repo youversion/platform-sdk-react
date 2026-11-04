@@ -249,6 +249,7 @@ export function VersionList({
         </section>
         {headerOwnsChrome ? <LanguageEntry name={selectedLanguageName} /> : null}
       </div>
+      {/* Firefox makes scroll containers a Tab stop; the version rows are the keyboard targets. */}
       <div className="yv:flex-1 yv:overflow-y-auto yv:py-2" tabIndex={-1}>
         {filteredRecentVersions.length > 0 && (
           <>
