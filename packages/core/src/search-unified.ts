@@ -1,7 +1,7 @@
+import { parseLanguageRanges } from './schemas/language-range';
 import type { ApiClient } from './client';
 import { BibleVersionIdSchema } from './schemas/version';
 import {
-  parseLanguageRanges,
   SearchTextQuerySchema,
   SearchUnifiedOptionsSchema,
   SearchUnifiedWireSchema,
