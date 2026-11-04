@@ -586,6 +586,34 @@ describe('transformBibleHtml - qs pause punctuation', () => {
     expect(doc.querySelector('.yv-v .yv-qs-line')).toBeNull();
   });
 
+  it('keeps text that followed a mid-host pause after the pause line', () => {
+    const html =
+      '<div><div class="p"><span class="yv-v" v="1"></span>First. <span class="qs">Selah</span>. <span class="yv-v" v="2"></span>Second verse.</div></div>';
+    const result = transformBibleHtml(html, createAdapters());
+    const doc = new DOMParser().parseFromString(result.html, 'text/html');
+    const parts = [...doc.body.querySelectorAll('.p, .yv-qs-line')].map((el) => ({
+      kind: el.className,
+      text: (el.textContent ?? '').replace(/\s+/g, ' ').trim(),
+    }));
+
+    expect(parts).toEqual([
+      { kind: 'p', text: 'First.' },
+      { kind: 'yv-qs-line', text: 'Selah.' },
+      { kind: 'p', text: 'Second verse.' },
+    ]);
+  });
+
+  it('copies the host reading direction onto the pause line', () => {
+    // Top-level hosts so resolveTextDirection sees both roots after the split.
+    const html =
+      '<div class="q" dir="rtl"><span class="yv-v" v="3"></span>نص. <span class="qs">سلاه</span>.</div>';
+    const result = transformBibleHtml(html, createAdapters());
+    const doc = new DOMParser().parseFromString(result.html, 'text/html');
+
+    expect(doc.querySelector('.yv-qs-line')?.getAttribute('dir')).toBe('rtl');
+    expect(result.direction).toBe('rtl');
+  });
+
   it('keeps Selah, the footnote marker, then the period when notes are on', () => {
     const html =
       '<div><div class="q"><span class="qs">Selah</span><span class="yv-n f"><span class="ft">A note</span></span>.</div></div>';

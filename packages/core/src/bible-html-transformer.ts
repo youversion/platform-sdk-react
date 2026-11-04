@@ -337,17 +337,56 @@ function isElementVisuallyEmpty(el: Element): boolean {
   return (el.textContent ?? '').trim() === '';
 }
 
-function insertionPointAfterHost(host: Element): Node | null {
-  let sibling: Node | null = host.nextSibling;
-  while (
-    sibling?.nodeType === 1 &&
-    // SAFETY: nodeType 1 is an Element. TypeScript's Node union does not narrow
-    // on nodeType, and instanceof Element fails across JSDOM/window realms.
-    (sibling as Element).classList.contains('yv-qs-line')
-  ) {
-    sibling = sibling.nextSibling;
+function readingDirectionOf(el: Element): string | null {
+  let cur: Element | null = el;
+  while (cur) {
+    const dir = cur.getAttribute('dir');
+    if (dir === 'ltr' || dir === 'rtl' || dir === 'auto') return dir;
+    cur = cur.parentElement;
   }
-  return sibling;
+  return null;
+}
+
+/**
+ * Move every node after `marker` within `host` into a same-tagged sibling.
+ * Keeps text/verses that followed a mid-host pause after the new pause line.
+ */
+function takeTrailingContentAfter(host: Element, marker: Node): Element | null {
+  const trailing: Node[] = [];
+  let collecting = false;
+
+  const visit = (parent: Element): void => {
+    for (const child of Array.from(parent.childNodes)) {
+      if (!collecting) {
+        if (child === marker) {
+          collecting = true;
+          continue;
+        }
+        if (child.nodeType === 1) {
+          // SAFETY: nodeType 1 is an Element. instanceof Element fails across
+          // JSDOM/window realms.
+          const el = child as Element;
+          if (el.contains(marker)) {
+            visit(el);
+            collecting = true;
+          }
+          continue;
+        }
+        continue;
+      }
+      trailing.push(child);
+    }
+  };
+  visit(host);
+
+  if (trailing.length === 0) return null;
+
+  // SAFETY: Element.cloneNode(false) returns an Element of the same tag.
+  const after = host.cloneNode(false) as Element;
+  for (const node of trailing) {
+    after.appendChild(node);
+  }
+  return after;
 }
 
 /**
@@ -374,8 +413,13 @@ function extractPauseLines(doc: Document): void {
       nodes.push(next);
     }
 
+    const clusterEnd = nodes[nodes.length - 1]!;
+    const afterHost = takeTrailingContentAfter(host, clusterEnd);
+
     const line = doc.createElement('div');
     line.className = 'yv-qs-line';
+    const hostDir = readingDirectionOf(host);
+    if (hostDir) line.setAttribute('dir', hostDir);
     const lineVerse = doc.createElement('span');
     lineVerse.className = 'yv-v';
     if (verseNum) lineVerse.setAttribute('v', verseNum);
@@ -383,7 +427,12 @@ function extractPauseLines(doc: Document): void {
       lineVerse.appendChild(node);
     }
     line.appendChild(lineVerse);
-    host.parentNode.insertBefore(line, insertionPointAfterHost(host));
+
+    const parent = host.parentNode;
+    parent.insertBefore(line, host.nextSibling);
+    if (afterHost) {
+      parent.insertBefore(afterHost, line.nextSibling);
+    }
 
     if (verse && isElementVisuallyEmpty(verse)) {
       verse.remove();

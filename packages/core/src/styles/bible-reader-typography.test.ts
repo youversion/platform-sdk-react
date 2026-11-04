@@ -192,13 +192,12 @@ describe('bible-reader Swift-aligned typography', () => {
     expect(rulesForExactClass('qr')).toContain('text-align: end');
     expect(rulesForExactClass('qr')).toContain('font-style: italic');
 
-    const reserve = ruleBodies(
-      "&[data-show-notes='true'] .yv-qs-line .qs:has(+ [data-verse-footnote])",
+    expect(
+      ruleBodies("&[data-show-notes='true'] .yv-qs-line .qs:has(+ [data-verse-footnote])"),
+    ).toBe('');
+    expect(ruleBodies("&[data-show-notes='true'] .yv-qs-line .qs + [data-verse-footnote]")).toBe(
+      '',
     );
-    const beside = ruleBodies("&[data-show-notes='true'] .yv-qs-line .qs + [data-verse-footnote]");
-    expect(reserve).toContain('padding-inline-end:');
-    expect(beside).toContain('float: inline-end');
-    expect(beside).toContain('margin-block-start:');
   });
 
   it('keeps WOC text unmixed: #94000c light / #e4bfc2 dark', () => {

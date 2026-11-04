@@ -1069,15 +1069,9 @@
     text-indent: 0;
   }
 
-  /* The footnote marker stays immediately after a Selah pause, on the pause line. */
-  &[data-show-notes='true'] .yv-qs-line .qs:has(+ [data-verse-footnote]) {
-    padding-inline-end: 2em;
-  }
-
-  &[data-show-notes='true'] .yv-qs-line .qs + [data-verse-footnote] {
-    float: inline-end;
-    margin-block-start: calc(var(--yv-reader-line-height) * -1em);
-  }
+  /* Footnote markers stay inline beside the pause on the end-aligned line.
+     The old float + negative margin lifted the marker when `.qs` itself was
+     the block; that offset is wrong now that `.yv-qs-line` is the block. */
 
   /* \qac - Acrostic letter within a poetic line — Italic */
   & .qac {

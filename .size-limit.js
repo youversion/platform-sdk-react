@@ -16,13 +16,15 @@ export default [
   {
     name: 'core / browser entry',
     path: 'packages/core/dist/browser.js',
-    limit: '2 KB',
+    // extractPauseLines + trailing split; measured ~2.1 kB brotli, +~10%.
+    limit: '2.4 KB',
     ignore: ['jsdom'],
   },
   {
     name: 'core / server entry',
     path: 'packages/core/dist/server.js',
-    limit: '2 KB',
+    // Same pause-line transform surface as browser; measured ~2.18 kB brotli.
+    limit: '2.4 KB',
     ignore: ['jsdom'],
   },
   {
