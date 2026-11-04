@@ -13,7 +13,7 @@ import {
   parseVOTDLanguageQuery,
   type GetVOTDOptions,
 } from './schemas/votd';
-import type { BibleBook, BibleChapter, BibleVerse, CANON, Collection, VOTD } from './types';
+import type { BibleBook, BibleChapter, BibleVerse, CANON, Collection, VOTDResponse } from './types';
 
 export type { GetVOTDOptions };
 
@@ -88,7 +88,7 @@ export async function getVerse(
 export async function getAllVOTDs(
   client: ApiClient,
   options?: GetVOTDOptions,
-): Promise<Collection<VOTD>> {
+): Promise<Collection<VOTDResponse>> {
   const params = parseVOTDLanguageQuery(options);
   const body = await client.get<unknown>(VOTD_COLLECTION_PATH, params);
   const parsed = VOTDCollectionWireSchema.safeParse(body);
@@ -102,7 +102,7 @@ export async function getVOTD(
   client: ApiClient,
   day: number,
   options?: GetVOTDOptions,
-): Promise<VOTD> {
+): Promise<VOTDResponse> {
   const parsedDay = parseVOTDDay(day);
   const path = `${VOTD_COLLECTION_PATH}/${parsedDay}`;
   const params = parseVOTDLanguageQuery(options);

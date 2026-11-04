@@ -16,7 +16,8 @@ export const VOTDSchema = z.object({
   image_id: z.optional(z.nullable(z.string())),
 });
 
-export type VOTDInput = Readonly<z.input<typeof VOTDSchema>>;
+export type VOTD = Readonly<z.input<typeof VOTDSchema>>;
+export type VOTDInput = VOTD;
 
 export const VOTDRecordWireSchema = z.pipe(
   VOTDSchema,
@@ -27,7 +28,7 @@ export const VOTDRecordWireSchema = z.pipe(
   })),
 );
 
-export type VOTD = Readonly<z.output<typeof VOTDRecordWireSchema>>;
+export type VOTDResponse = Readonly<z.output<typeof VOTDRecordWireSchema>>;
 
 export const VOTDCollectionWireSchema = z.pipe(
   z.object({
@@ -35,8 +36,8 @@ export const VOTDCollectionWireSchema = z.pipe(
     next_page_token: z.optional(z.nullable(z.string())),
     total_size: z.optional(z.nullable(z.int().check(z.nonnegative()))),
   }),
-  z.transform((wire): Collection<VOTD> => {
-    const page: Collection<VOTD> = {
+  z.transform((wire): Collection<VOTDResponse> => {
+    const page: Collection<VOTDResponse> = {
       data: wire.data,
       next_page_token: wire.next_page_token ?? null,
     };

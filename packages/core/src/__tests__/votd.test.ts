@@ -1,13 +1,6 @@
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import {
-  ApiClient,
-  BibleClient,
-  getAllVOTDs,
-  getHttpStatus,
-  getVOTD,
-  type VOTDInput,
-} from '../index';
+import { ApiClient, BibleClient, getAllVOTDs, getHttpStatus, getVOTD, type VOTD } from '../index';
 import { server } from './setup';
 
 const apiHost = process.env.YVP_API_HOST;
@@ -31,7 +24,7 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('verse of the day reads'
   it('reads one day and the calendar on hyphenated routes', async () => {
     const { api, bible } = createClients();
     const fetchSpy = vi.spyOn(global, 'fetch');
-    const legacyInput: VOTDInput = { day: 1, passage_id: 'ISA.43.19' };
+    const legacyInput: VOTD = { day: 1, passage_id: 'ISA.43.19' };
 
     try {
       server.use(

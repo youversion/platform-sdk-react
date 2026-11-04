@@ -15,7 +15,7 @@ export type {
   PassageAttribution,
   PassageStylesheet,
 } from '../schemas/passage-display';
-export type { VOTD, VOTDInput } from '../schemas/votd';
+export type { VOTD, VOTDInput, VOTDResponse } from '../schemas/votd';
 export type {
   BibleIndex,
   BibleIndexBook,

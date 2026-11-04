@@ -23,7 +23,7 @@ import type {
   BibleVersion,
   CANON,
   Collection,
-  VOTD,
+  VOTDResponse,
 } from './types';
 
 /**
@@ -227,7 +227,7 @@ export class BibleClient {
    * @returns Calendar rows for the year. Each row keeps `day` and `passage_id`.
    *   `image_id` is a string, or `null` when the API omits it or sends null.
    */
-  async getAllVOTDs(options?: GetVOTDOptions): Promise<Collection<VOTD>> {
+  async getAllVOTDs(options?: GetVOTDOptions): Promise<Collection<VOTDResponse>> {
     return getAllVOTDs(this.client, options);
   }
 
@@ -245,7 +245,7 @@ export class BibleClient {
    * const passageId = await bibleClient.getVOTD(100);
    * ```
    */
-  async getVOTD(day: number, options?: GetVOTDOptions): Promise<VOTD> {
+  async getVOTD(day: number, options?: GetVOTDOptions): Promise<VOTDResponse> {
     return getVOTD(this.client, day, options);
   }
 }
