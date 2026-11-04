@@ -207,10 +207,10 @@ describe.skipIf(Boolean(process.env.INTEGRATION_TESTS))('searchImages', () => {
       /Unexpected search-images API response/,
     );
     await expect(searchImages(api, 'faith', 111, { pageToken: 'empty-body' })).rejects.toThrow(
-      /Unexpected search-images API response/,
+      'search-images returned no content; expected a JSON response',
     );
     await expect(searchImages(api, 'faith', 111, { pageToken: 'no-content' })).rejects.toThrow(
-      /Unexpected search-images API response/,
+      'search-images returned no content; expected a JSON response',
     );
 
     try {

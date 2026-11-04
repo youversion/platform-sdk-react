@@ -40,6 +40,9 @@ export async function searchImages(
   }
 
   const response = await client.get<unknown>('/v1/search-images', params);
+  if (response === '' || response === undefined) {
+    throw new Error('search-images returned no content; expected a JSON response');
+  }
   const parsed = SearchImagesWireSchema.safeParse(response);
   if (!parsed.success) {
     throw new Error(`Unexpected search-images API response: ${parsed.error.message}`);

@@ -17,7 +17,6 @@ export const VOTDSchema = z.object({
 });
 
 export type VOTD = Readonly<z.input<typeof VOTDSchema>>;
-export type VOTDInput = VOTD;
 
 export const VOTDRecordWireSchema = z.pipe(
   VOTDSchema,

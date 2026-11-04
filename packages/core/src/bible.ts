@@ -223,7 +223,9 @@ export class BibleClient {
   /**
    * Fetches the verse of the day calendar for an entire year.
    * @param options Optional `language_ranges`. When omitted, the request sends no language query.
-   *   When set, the request repeats `language_ranges[]` in that order.
+   *   Ranges are trimmed, lowercased, and normalized from underscores to hyphens.
+   *   Invalid Basic Language Ranges are rejected. Valid ranges retain their order
+   *   as repeated `language_ranges[]` parameters.
    * @returns Calendar rows for the year. Each row keeps `day` and `passage_id`.
    *   `image_id` is a string, or `null` when the API omits it or sends null.
    */
@@ -235,6 +237,9 @@ export class BibleClient {
    * Fetches the verse of the day for one day of the year.
    * @param day The day of the year (1-366).
    * @param options Optional `language_ranges`. When omitted, the request sends no language query.
+   *   Ranges are trimmed, lowercased, and normalized from underscores to hyphens.
+   *   Invalid Basic Language Ranges are rejected. Valid ranges retain their order
+   *   as repeated `language_ranges[]` parameters.
    * @returns The day, `passage_id`, and `image_id`. `image_id` is `null` when the API omits it or sends null.
    * @example
    * ```ts

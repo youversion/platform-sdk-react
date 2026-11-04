@@ -113,7 +113,7 @@ do {
 } while (pageToken !== null);
 ```
 
-`getVOTD` and `getAllVOTDs` call `GET /v1/verse-of-the-days`. Omit `language_ranges` when you want no language query. Pass ranges to send repeated `language_ranges[]` values. The response keeps `day` and `passage_id`. `image_id` is `null` when the API omits it or sends null. Any other string stays unchanged. Pass that string to `getImage`.
+`getVOTD` and `getAllVOTDs` call `GET /v1/verse-of-the-days`. Omit `language_ranges` when you want no language query. Supplied ranges are trimmed, lowercased, and normalized from underscores to hyphens (`' EN '` becomes `en`; `en_US` becomes `en-us`). Invalid Basic Language Ranges are rejected before the request. Valid ranges are sent in the supplied order as repeated `language_ranges[]` parameters. The response keeps `day` and `passage_id`. `image_id` is `null` when the API omits it or sends null. Any other string stays unchanged. Pass that string to `getImage`.
 
 ```ts
 const today = await bibleClient.getVOTD(1, { language_ranges: ['en', 'es'] });
