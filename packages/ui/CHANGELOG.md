@@ -1,5 +1,23 @@
 # @youversion/platform-react-ui
 
+## 2.17.0
+
+### Minor Changes
+
+- b0280a5: Open Bible languages from a row under version search, and search languages on their own screen. Keep tablet picker cards at 400 by 600 pixels, capped to fit the viewport. Show the selected language and the number of rows in its version section, excluding recent versions. Add a forward chevron to version rows. Keep language navigation in the SDK popover so standalone content retains host-owned controls. Expose the language count to screen readers.
+- 9741f24: Re-export `searchImages` from the UI package entry point.
+
+### Patch Changes
+
+- b0280a5: Re-apply the host revert-layer `-webkit-appearance` fix when Tailwind watch rewrites CSS during `dev` and Storybook.
+- f1c55f1: Sync localization from platform-localization (70fd234): update 57 keys in af, ar, cy, de, es, fr, ig, no, pt, vi, zh.
+- 4eed87a: Sync localization from platform-localization (dc70b8b): update 6 keys in en.
+- Updated dependencies [669db59]
+- Updated dependencies [f64b654]
+- Updated dependencies [9741f24]
+  - @youversion/platform-core@2.17.0
+  - @youversion/platform-react-hooks@2.17.0
+
 ## 2.16.0
 
 ### Minor Changes
