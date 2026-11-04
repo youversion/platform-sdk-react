@@ -610,6 +610,21 @@ describe('transformBibleHtml - qs pause punctuation', () => {
     expect(refrain?.className).toBe('qr');
   });
 
+  it('keeps Selah, the footnote marker, then the period when a blank sits between them', () => {
+    const html =
+      '<div><div class="q"><span class="qs">Selah</span> <span class="yv-n f"><span class="ft">A note</span></span>.</div></div>';
+    const result = transformBibleHtml(html, createAdapters());
+    const doc = new DOMParser().parseFromString(result.html, 'text/html');
+    const pause = doc.querySelector('.qs');
+    const parts = [...(pause?.childNodes ?? [])].map((node) => {
+      if (node.nodeType === Node.TEXT_NODE) return `text:${node.textContent}`;
+      if (node instanceof Element && node.hasAttribute('data-verse-footnote')) return 'footnote';
+      return node.nodeName;
+    });
+
+    expect(parts).toEqual(['text:Selah', 'footnote', 'text:.']);
+  });
+
   it('keeps Selah, the footnote marker, then the period for already-transformed HTML', () => {
     const html =
       '<div data-yv-transformed=""><div class="q"><span class="yv-v" v="3"><span class="qs">Selah</span><span data-verse-footnote="3" data-verse-footnote-content="x"></span>.</span></div></div>';

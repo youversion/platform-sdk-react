@@ -282,25 +282,35 @@ function isPauseFootnote(node: Node | null): node is Element {
   return element.matches('.yv-n.f, [data-verse-footnote]');
 }
 
-function punctuationAfter(start: Node | null): { text: string; node: Node } | null {
+function nextNonBlankSibling(start: Node | null) {
   let current = start;
   const blanks: Node[] = [];
   while (current?.nodeType === 3 && (current.textContent ?? '').trim() === '') {
     blanks.push(current);
     current = current.nextSibling;
   }
+  return { node: current, blanks };
+}
+
+function removeNodes(nodes: Node[]): void {
+  for (const node of nodes) node.parentNode?.removeChild(node);
+}
+
+function punctuationAfter(start: Node | null): { text: string; node: Node } | null {
+  const { node: current, blanks } = nextNonBlankSibling(start);
   const text = pausePunctuation(current);
   if (!text || !current) return null;
-  for (const blank of blanks) blank.parentNode?.removeChild(blank);
+  removeNodes(blanks);
   return { text, node: current };
 }
 
 function appendFollowingPausePunctuation(doc: Document): void {
   for (const pause of doc.querySelectorAll('.qs')) {
     if (pause.closest('.yv-n')) continue;
-    const next = pause.nextSibling;
+    const { node: next, blanks: leadingBlanks } = nextNonBlankSibling(pause.nextSibling);
     const direct = pausePunctuation(next);
     if (direct && next) {
+      removeNodes(leadingBlanks);
       pause.append(direct);
       next.parentNode?.removeChild(next);
       continue;
@@ -309,6 +319,7 @@ function appendFollowingPausePunctuation(doc: Document): void {
     const trailing = punctuationAfter(next.nextSibling);
     if (!trailing) continue;
     // Selah, then the marker, then the period, all inside the pause line.
+    removeNodes(leadingBlanks);
     pause.appendChild(next);
     pause.append(trailing.text);
     trailing.node.parentNode?.removeChild(trailing.node);
