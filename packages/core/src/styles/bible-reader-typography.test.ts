@@ -176,7 +176,7 @@ describe('bible-reader Swift-aligned typography', () => {
     expect(css).not.toMatch(/&\s*\.p\s*\+\s*\.q1\b/);
   });
 
-  it('puts a qs pause on its own end-aligned line in q and q4, and leaves qr alone', () => {
+  it('puts a non-refrain qs pause on its own end-aligned line, and leaves qr alone', () => {
     const pause = rulesForExactClass('qs');
     expect(pause).toContain('font-style: italic');
     expect(pause).not.toContain('display: block');
