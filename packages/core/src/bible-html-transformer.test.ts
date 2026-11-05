@@ -730,12 +730,17 @@ describe('transformBibleHtml - qs pause punctuation', () => {
   });
 
   it('keeps already-transformed pause backfill stable on a second transform', () => {
+    // Marked top-level `.q` with text before the pause so the host stays and a
+    // sibling `.yv-qs-line` is inserted (the case that must get marked too).
     const html =
-      '<div data-yv-transformed=""><div class="q"><span class="yv-v" v="3"><span class="qs">Selah</span><span data-verse-footnote="3" data-verse-footnote-content="x"></span>.</span></div></div>';
+      '<div class="q" data-yv-transformed=""><span class="yv-v" v="3">God came. <span class="qs">Selah</span><span data-verse-footnote="3" data-verse-footnote-content="x"></span>.</span></div>';
     const first = transformBibleHtml(html, createAdapters());
     const second = transformBibleHtml(first.html, createAdapters());
+    const doc = new DOMParser().parseFromString(first.html, 'text/html');
+    const topLevel = [...doc.body.children];
 
-    expect(first.html).toContain('yv-qs-line');
+    expect(topLevel.map((el) => el.className)).toEqual(['q', 'yv-qs-line']);
+    expect(topLevel.every((el) => el.hasAttribute('data-yv-transformed'))).toBe(true);
     expect(second.html).toBe(first.html);
   });
 });
