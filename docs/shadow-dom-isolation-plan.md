@@ -182,6 +182,13 @@ YPE-6218 repeated the targeted actual-Safari gate for the host-tag change at
 commit `1d1bddb`; all 42 stories passed, with the YPE-6214 limitations
 unchanged.
 
+The targeted gate was repeated again on 2026-11-05 after the later focus,
+stylesheet-default, and popover interaction changes. Commit `a4239cf` passed all
+43 focused stories on macOS 26.6.2 (25G83) with Safari 26.6.2 and SafariDriver
+21624.5.1.11.3. Every story passed in its fresh SafariDriver session on the
+first attempt, with no assertion failures, transport retries, or process
+timeouts. The YPE-6214 accepted limitations remain unchanged.
+
 ### Assistive-technology evidence
 
 Record versions from the tested machines rather than naming only the product
