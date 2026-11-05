@@ -568,7 +568,15 @@ export function transformBibleHtml(
     addNbspToVerseLabels(doc);
     appendFollowingPausePunctuation(doc);
     extractPauseLines(doc);
-    return { html: options.serializeHtml(doc), direction: resolveTextDirection(roots) };
+    // extractPauseLines can add top-level .yv-qs-line nodes; mark them so the
+    // next call stays on this backfill path instead of re-wrapping.
+    for (const el of topLevelElements(doc)) {
+      el.setAttribute(TRANSFORMED_ATTR, '');
+    }
+    return {
+      html: options.serializeHtml(doc),
+      direction: resolveTextDirection(topLevelElements(doc)),
+    };
   }
 
   wrapVerseContent(doc);

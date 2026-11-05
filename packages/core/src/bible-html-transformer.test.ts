@@ -728,6 +728,16 @@ describe('transformBibleHtml - qs pause punctuation', () => {
     expect(doc.querySelector('.yv-qs-line .yv-v[v="3"]')).toBeTruthy();
     expect(doc.querySelector('.q .qs')).toBeNull();
   });
+
+  it('keeps already-transformed pause backfill stable on a second transform', () => {
+    const html =
+      '<div data-yv-transformed=""><div class="q"><span class="yv-v" v="3"><span class="qs">Selah</span><span data-verse-footnote="3" data-verse-footnote-content="x"></span>.</span></div></div>';
+    const first = transformBibleHtml(html, createAdapters());
+    const second = transformBibleHtml(first.html, createAdapters());
+
+    expect(first.html).toContain('yv-qs-line');
+    expect(second.html).toBe(first.html);
+  });
 });
 
 describe('transformBibleHtmlForBrowser - DOMParser fallback', () => {
