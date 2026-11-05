@@ -603,6 +603,17 @@ else
   pass "an unresolved context fails the status on every event"
 fi
 
+if awk '
+  /^  pull_request_target:/ { found = 1; next }
+  found && /^  [[:alnum:]_]+:/ { exit }
+  found { print }
+' "$WORKFLOW" | grep -Fq 'types: [edited]'; then
+  pass "base retargets reevaluate signoff even when the PR conflicts"
+else
+  fail "base retargets reevaluate signoff even when the PR conflicts" \
+    "pull_request_target edited is required because pull_request does not run for conflicted PRs"
+fi
+
 # --- signoff is pinned to the release, not the commit (YPE-6068) ---------------
 
 if grep -q 'TOKEN_RE="(\^|\[\^0-9A-Za-z\])\${SIGNOFF_TOKEN}' "$WORKFLOW" \

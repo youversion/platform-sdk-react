@@ -10,7 +10,16 @@ import { Button } from '../ui/button';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '../ui/input-group';
 import { ItemGroup } from '../ui/item';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { forwardRef, useEffect, useRef, useState, type ReactElement, type RefObject } from 'react';
+import {
+  forwardRef,
+  useEffect,
+  useRef,
+  useState,
+  type FocusEvent,
+  type KeyboardEvent,
+  type ReactElement,
+  type RefObject,
+} from 'react';
 import {
   useBibleVersionPickerContext,
   type BibleLanguagePickerContentProps,
@@ -20,6 +29,75 @@ import { LanguageRow } from './language-row';
 
 const languageTabClassName =
   'yv:rounded-full yv:p-0 yv:text-sm yv:font-bold yv:text-foreground! yv:data-[state=active]:bg-foreground! yv:data-[state=active]:text-background! yv:data-[state=active]:shadow-none!';
+
+function isInsideShadowRoot(node: HTMLElement): boolean {
+  const root = node.getRootNode();
+  const ShadowRootConstructor = node.ownerDocument.defaultView?.ShadowRoot;
+  return Boolean(ShadowRootConstructor && root instanceof ShadowRootConstructor);
+}
+
+function focusSelectedLanguageTabOnShadowEntry(event: FocusEvent<HTMLDivElement>): void {
+  if (
+    event.defaultPrevented ||
+    event.target !== event.currentTarget ||
+    !isInsideShadowRoot(event.currentTarget)
+  ) {
+    return;
+  }
+
+  const selectedTab = event.currentTarget.querySelector<HTMLButtonElement>(
+    '[role="tab"][aria-selected="true"]',
+  );
+  if (!selectedTab) return;
+
+  // Radix's entry loop checks document.activeElement, which remains the shadow
+  // host and makes it focus every candidate. Take over with the selected tab.
+  event.preventDefault();
+  selectedTab.focus({ preventScroll: true });
+}
+
+function handleShadowLanguageTabKeyDown(event: KeyboardEvent<HTMLButtonElement>): void {
+  if (
+    event.defaultPrevented ||
+    event.altKey ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.shiftKey ||
+    !isInsideShadowRoot(event.currentTarget)
+  ) {
+    return;
+  }
+
+  const tabList = event.currentTarget.closest<HTMLElement>('[role="tablist"]');
+  if (!tabList) return;
+  const tabs = [...tabList.querySelectorAll<HTMLButtonElement>('[role="tab"]:not(:disabled)')];
+  const currentIndex = tabs.indexOf(event.currentTarget);
+  if (currentIndex === -1 || tabs.length === 0) return;
+
+  const direction = tabList.ownerDocument.defaultView?.getComputedStyle(tabList).direction;
+  let nextIndex: number | undefined;
+  switch (event.key) {
+    case 'ArrowLeft':
+      nextIndex = currentIndex + (direction === 'rtl' ? 1 : -1);
+      break;
+    case 'ArrowRight':
+      nextIndex = currentIndex + (direction === 'rtl' ? -1 : 1);
+      break;
+    case 'Home':
+    case 'PageUp':
+      nextIndex = 0;
+      break;
+    case 'End':
+    case 'PageDown':
+      nextIndex = tabs.length - 1;
+      break;
+    default:
+      return;
+  }
+
+  event.preventDefault();
+  tabs[(nextIndex + tabs.length) % tabs.length]?.focus({ preventScroll: true });
+}
 
 export const LanguageSearchButton = forwardRef<HTMLButtonElement>(
   function LanguageSearchButton(_props, ref): ReactElement {
@@ -219,11 +297,22 @@ export function BibleLanguagePickerContent({
             value={languageTab}
             onValueChange={setLanguageTab}
           >
-            <TabsList className="yv:mx-4 yv:w-[calc(100%-4*var(--yv-spacing)*2)] yv:rounded-full yv:border yv:border-border yv:bg-transparent yv:p-0.5">
-              <TabsTrigger className={languageTabClassName} value="suggested">
+            <TabsList
+              className="yv:mx-4 yv:w-[calc(100%-4*var(--yv-spacing)*2)] yv:rounded-full yv:border yv:border-border yv:bg-transparent yv:p-0.5"
+              onFocus={focusSelectedLanguageTabOnShadowEntry}
+            >
+              <TabsTrigger
+                className={languageTabClassName}
+                value="suggested"
+                onKeyDown={handleShadowLanguageTabKeyDown}
+              >
                 {t('suggestedTab')}
               </TabsTrigger>
-              <TabsTrigger className={languageTabClassName} value="all">
+              <TabsTrigger
+                className={languageTabClassName}
+                value="all"
+                onKeyDown={handleShadowLanguageTabKeyDown}
+              >
                 {t('allLanguagesTab', { count: totalLanguages })}
               </TabsTrigger>
             </TabsList>

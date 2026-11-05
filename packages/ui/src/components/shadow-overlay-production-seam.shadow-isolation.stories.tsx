@@ -667,6 +667,25 @@ export const TwoIndependentOverlaysEvidence: Story = {
       productionWaitOptions,
     );
 
+    await step('A second trigger click closes the shadow-local popover', async () => {
+      await userEvent.click(independentTrigger);
+      const topLayer = await waitForElement<HTMLElement>(
+        root,
+        '[data-yv-shadow-local-overlay]',
+        'shadow-local top layer not created',
+        productionWaitOptions,
+      );
+      const independentPopover = await waitForElement<HTMLElement>(
+        topLayer,
+        '[data-testid="independent-popover"]',
+        'independent popover not rendered',
+        productionWaitOptions,
+      );
+      await userEvent.click(independentTrigger);
+      await waitFor(async () => await expect(independentPopover.isConnected).toBe(false));
+      await waitFor(async () => await expect(topLayer.matches(':popover-open')).toBe(false));
+    });
+
     await step('Open a second same-root peer and tear down cleanly', async () => {
       const { topLayer } = await openVerseActionPopover(root, verse);
       await userEvent.click(independentTrigger);

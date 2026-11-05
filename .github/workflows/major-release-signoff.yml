@@ -3,6 +3,11 @@ name: Major Release Signoff
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  # Unlike pull_request, this still runs when a base retarget leaves the PR in
+  # conflict. The workflow resolves the current immutable endpoints through the
+  # API; PR-authored code remains isolated from every write-capable job.
+  pull_request_target:
+    types: [edited]
   issue_comment:
     # `deleted` ensures the gate re-runs when a signoff comment is removed,
     # so a previously-cached `success` status doesn't outlive its evidence.

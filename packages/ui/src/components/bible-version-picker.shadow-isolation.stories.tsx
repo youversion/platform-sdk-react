@@ -389,6 +389,27 @@ export const ForwardTabSkipsScrollableVersionList: Story = {
   },
 };
 
+export const LanguageTabsKeepFocusAndSelectionTogether: Story = {
+  play: async ({ canvasElement }) => {
+    const { userEvent: browserUserEvent } = await import('vitest/browser');
+    const { root, panel } = await openPicker(canvasElement);
+    await userEvent.click(within(panel).getByRole('button', { name: /^language /i }));
+    const searchLanguages = within(panel).getByRole('button', { name: /search languages/i });
+    const tabs = within(panel).getAllByRole('tab');
+    const [suggestedTab, allTab] = tabs;
+    if (!suggestedTab || !allTab) throw new Error('language tabs not rendered');
+
+    searchLanguages.focus();
+    await browserUserEvent.keyboard('{Tab}');
+    await expect(root.activeElement).toBe(suggestedTab);
+    await expect(suggestedTab).toHaveAttribute('aria-selected', 'true');
+
+    await browserUserEvent.keyboard('{ArrowRight}');
+    await expect(root.activeElement).toBe(allTab);
+    await expect(allTab).toHaveAttribute('aria-selected', 'true');
+  },
+};
+
 export const StylingFocusDismissalAndRapidReopen: Story = {
   render: () => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
@@ -913,6 +934,11 @@ export const SameOriginIframeTopLayerRemainsInteractive: Story = {
     });
     const componentRoot = await waitForShadowRoot(iframeDocument);
     const trigger = await getTrigger(componentRoot);
+    trigger.focus();
+    await expect(componentRoot.activeElement).toBe(trigger);
+    const triggerWindow = trigger.ownerDocument.defaultView;
+    if (!triggerWindow) throw new Error('iframe trigger window not available');
+    await expect(triggerWindow.getComputedStyle(trigger).boxShadow).not.toBe('none');
     await userEvent.click(trigger);
     const topLayer = await waitForElement<HTMLElement>(
       componentRoot,
@@ -947,6 +973,13 @@ export const SameOriginIframeTopLayerRemainsInteractive: Story = {
 
     const panel = topLayer.querySelector<HTMLElement>('[data-slot="popover-content"]');
     if (!panel) throw new Error('iframe picker panel not rendered');
+    await expect(portalWindow.getComputedStyle(panel).boxShadow).not.toBe('none');
+    const closeButton = within(panel).getByRole('button', { name: /close/i });
+    const closeButtonStyles = portalWindow.getComputedStyle(closeButton);
+    await expect(closeButton).toHaveClass('yv:border');
+    await expect(closeButtonStyles.getPropertyValue('--tw-border-style')).toBe('solid');
+    await expect(Number.parseFloat(closeButtonStyles.borderTopWidth)).toBeGreaterThan(0);
+    await expect(closeButtonStyles.borderTopStyle).toBe('solid');
     const panelRect = panel.getBoundingClientRect();
     const frameWindow = iframe.contentWindow;
     if (!frameWindow) throw new Error('iframe window not available');

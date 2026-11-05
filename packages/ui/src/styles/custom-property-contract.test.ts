@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { auditCustomProperties } from '../../scripts/custom-property-contract.js';
+import {
+  auditCustomProperties,
+  auditShadowPropertyDefaults,
+} from '../../scripts/custom-property-contract.js';
 
 describe('auditCustomProperties', () => {
   it('inventories declarations, registrations, and nested references structurally', () => {
@@ -50,5 +53,39 @@ describe('auditCustomProperties', () => {
       '--radius',
       '--radix-popover-content-available-width-extra',
     ]);
+  });
+});
+
+describe('auditShadowPropertyDefaults', () => {
+  it('requires direct shadow descendants to initialize registered Tailwind properties', () => {
+    const audit = auditShadowPropertyDefaults(`
+      @property --tw-shadow {
+        syntax: "*";
+        inherits: false;
+        initial-value: 0 0 #0000;
+      }
+      @property --tw-runtime-input {
+        syntax: "*";
+        inherits: false;
+      }
+      :host { --tw-shadow: 0 0 #0000; }
+    `);
+
+    expect(audit.registeredDefaults).toEqual(['--tw-shadow']);
+    expect(audit.shadowDefaults).toEqual([]);
+    expect(audit.missingShadowDefaults).toEqual(['--tw-shadow']);
+  });
+
+  it('accepts a default applied directly to shadow descendants', () => {
+    const audit = auditShadowPropertyDefaults(`
+      @property --tw-shadow {
+        syntax: "*";
+        inherits: false;
+        initial-value: 0 0 #0000;
+      }
+      :host, :host *, :host *::before { --tw-shadow: 0 0 #0000; }
+    `);
+
+    expect(audit.missingShadowDefaults).toEqual([]);
   });
 });

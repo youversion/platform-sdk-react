@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useComposedRefs } from '@radix-ui/react-compose-refs';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
@@ -13,11 +14,13 @@ import { useInterfaceDirection } from '@/lib/direction';
 interface PopoverPortalState {
   awaitingPortalTarget: boolean;
   container: HTMLElement | undefined;
+  triggerRef: React.RefObject<HTMLButtonElement | null> | null;
 }
 
 const PopoverPortalContext = React.createContext<PopoverPortalState>({
   awaitingPortalTarget: false,
   container: undefined,
+  triggerRef: null,
 });
 
 function Popover({
@@ -26,6 +29,7 @@ function Popover({
   onOpenChange,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Root>): React.ReactNode {
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
   const portal = useShadowPortalState({
     open,
     defaultOpen,
@@ -35,6 +39,7 @@ function Popover({
     () => ({
       awaitingPortalTarget: portal.awaitingPortalTarget,
       container: portal.container,
+      triggerRef,
     }),
     [portal.awaitingPortalTarget, portal.container],
   );
@@ -52,9 +57,12 @@ function Popover({
 }
 
 function PopoverTrigger({
+  ref,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Trigger>): React.ReactNode {
-  return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;
+  const portal = React.useContext(PopoverPortalContext);
+  const composedRef = useComposedRefs(ref, portal.triggerRef);
+  return <PopoverPrimitive.Trigger ref={composedRef} data-slot="popover-trigger" {...props} />;
 }
 
 function PopoverContent({
@@ -72,6 +80,7 @@ function PopoverContent({
   sideOffset = 4,
   theme = 'light',
   onKeyDown,
+  onInteractOutside,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
   ...props
@@ -114,6 +123,16 @@ function PopoverContent({
         onKeyDown={(event) => {
           onKeyDown?.(event);
           handleShadowPopoverTabLoop(event);
+        }}
+        onInteractOutside={(event) => {
+          onInteractOutside?.(event);
+          if (event.defaultPrevented) return;
+
+          const trigger = portal.triggerRef?.current;
+          const originalEvent = event.detail.originalEvent;
+          if (trigger && originalEvent.composedPath().includes(trigger)) {
+            event.preventDefault();
+          }
         }}
         className={cn(
           'yv:bg-popover yv:text-popover-foreground yv:data-[state=open]:animate-in yv:data-[state=closed]:animate-out yv:data-[state=closed]:fade-out-0 yv:data-[state=open]:fade-in-0 yv:data-[state=closed]:zoom-out-95 yv:data-[state=open]:zoom-in-95 yv:data-[side=bottom]:slide-in-from-top-2 yv:data-[side=left]:slide-in-from-right-2 yv:data-[side=right]:slide-in-from-left-2 yv:data-[side=top]:slide-in-from-bottom-2 yv:z-50 yv:origin-(--radix-popover-content-transform-origin) yv:outline-hidden yv:grid yv:grid-rows-[auto_1fr_auto] yv:p-0 yv:h-full yv:max-h-[min(66svh,var(--radix-popover-content-available-height))] yv:max-sm:max-w-[calc(100vw-2rem)] yv:w-sm yv:sm:max-w-sm yv:overflow-hidden yv:rounded-2xl yv:border-0 yv:shadow-lg',

@@ -491,7 +491,7 @@ export const VerseActionPopover: FC<VerseActionPopoverProps> = ({
                     ? fallbackTarget
                     : null;
                 if (root || restoreTarget) event.preventDefault();
-                if (!retainOutsideFocusRef.current) restoreTarget?.focus();
+                if (!retainOutsideFocusRef.current) restoreTarget?.focus({ preventScroll: true });
                 retainOutsideFocusRef.current = false;
                 focusRestoreTargetRef.current = null;
               }}

@@ -216,6 +216,9 @@ export const PortalPlacementDockingReanchoringAndFocusRestoration: Story = {
     await expect(dialog).toHaveAccessibleName(/.+/);
     await expect(dialog.querySelector('[role="group"]')).toHaveAccessibleName(/.+/);
     await waitFor(async () => await expect(shadowRoot.activeElement).toBe(dialog));
+    const caret = dialog.querySelector<SVGElement>(':scope > svg[aria-hidden="true"]');
+    if (!caret) throw new Error('verse action caret not rendered');
+    await expect(getComputedStyle(caret).translate).not.toBe('none');
 
     const firstSwatch = dialog.querySelector<HTMLButtonElement>('[role="group"] button');
     const shareButton = within(dialog).getByRole('button', { name: i18n.t('share') });
@@ -274,9 +277,13 @@ export const PortalPlacementDockingReanchoringAndFocusRestoration: Story = {
     priorControl.focus();
     await userEvent.click(firstVerse);
     dialog = await waitForElement(topLayer, '[role="dialog"]', 'popover did not reopen');
+    readerScrollRoot.scrollTop = readerScrollRoot.scrollHeight;
+    const scrollTopBeforeFocusRestore = readerScrollRoot.scrollTop;
+    await expect(scrollTopBeforeFocusRestore).toBeGreaterThan(0);
     await userEvent.click(getCopyButton(dialog));
     await waitForClosed(topLayer);
     await waitForFocus(shadowRoot, priorControl);
+    await expect(readerScrollRoot.scrollTop).toBe(scrollTopBeforeFocusRestore);
 
     priorControl.focus();
     await userEvent.click(firstVerse);

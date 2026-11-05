@@ -1,4 +1,4 @@
-import { parse, walk } from 'css-tree';
+import { generate, parse, walk } from 'css-tree';
 
 const referenceOnlyExceptions = new Set([
   // SDK-owned component input
@@ -66,5 +66,51 @@ export function auditCustomProperties(css) {
     declarations: sorted(declarations),
     references: sorted(references),
     unexplainedReferences: sorted(unexplainedReferences),
+  };
+}
+
+/**
+ * Ensure Tailwind registrations with initial values also have direct shadow-local
+ * declarations. Chromium ignores registrations that exist only inside a shadow
+ * stylesheet, and registrations loaded in the document use `inherits: false`, so
+ * declarations on the host alone cannot supply descendant defaults.
+ */
+export function auditShadowPropertyDefaults(css) {
+  const ast = parse(css, { context: 'stylesheet', parseCustomProperty: true });
+  const registeredDefaults = new Set();
+  const shadowDefaults = new Set();
+
+  walk(ast, (node) => {
+    if (node.type !== 'Atrule' || node.name.toLowerCase() !== 'property') return;
+
+    const name = node.prelude?.children.first;
+    const hasInitialValue =
+      node.block?.children.some(
+        (child) => child.type === 'Declaration' && child.property === 'initial-value',
+      ) ?? false;
+    if (name?.type === 'Identifier' && name.name.startsWith('--tw-') && hasInitialValue) {
+      registeredDefaults.add(name.name);
+    }
+  });
+
+  walk(ast, {
+    visit: 'Rule',
+    enter(node) {
+      if (!generate(node.prelude).includes(':host *')) return;
+
+      walk(node.block, (child) => {
+        if (child.type === 'Declaration' && child.property.startsWith('--tw-')) {
+          shadowDefaults.add(child.property);
+        }
+      });
+    },
+  });
+
+  return {
+    registeredDefaults: sorted(registeredDefaults),
+    shadowDefaults: sorted(shadowDefaults),
+    missingShadowDefaults: sorted(
+      [...registeredDefaults].filter((name) => !shadowDefaults.has(name)),
+    ),
   };
 }

@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { auditCustomProperties } from './custom-property-contract.js';
+import { auditCustomProperties, auditShadowPropertyDefaults } from './custom-property-contract.js';
 import { stripLayerBlocks } from './strip-layer-blocks.js';
 
 const uiRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -68,6 +68,13 @@ if (!css.trim()) {
   if (unexplainedReferences.length > 0) {
     errors.push(
       `dist/tailwind.css contains unexplained custom-property references: ${unexplainedReferences.join(', ')}. Add a local declaration or document an exact reviewed runtime exception in packages/ui/scripts/custom-property-contract.js`,
+    );
+  }
+
+  const { missingShadowDefaults } = auditShadowPropertyDefaults(css);
+  if (missingShadowDefaults.length > 0) {
+    errors.push(
+      `dist/tailwind.css is missing shadow-local Tailwind property defaults: ${missingShadowDefaults.join(', ')}`,
     );
   }
 }
