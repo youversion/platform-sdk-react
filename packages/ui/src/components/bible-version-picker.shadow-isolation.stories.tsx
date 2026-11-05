@@ -939,7 +939,11 @@ export const SameOriginIframeTopLayerRemainsInteractive: Story = {
     await waitFor(async () => await expect(componentRoot.activeElement).toBe(trigger));
     const triggerWindow = trigger.ownerDocument.defaultView;
     if (!triggerWindow) throw new Error('iframe trigger window not available');
-    await expect(triggerWindow.getComputedStyle(trigger).boxShadow).not.toBe('none');
+    await waitFor(async () => {
+      const triggerStyles = triggerWindow.getComputedStyle(trigger);
+      await expect(triggerStyles.getPropertyValue('--tw-ring-offset-width')).toBe('0px');
+      await expect(triggerStyles.getPropertyValue('--tw-ring-shadow')).not.toBe('');
+    });
     await userEvent.click(trigger);
     const topLayer = await waitForElement<HTMLElement>(
       componentRoot,
