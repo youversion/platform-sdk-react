@@ -6,6 +6,7 @@ type TakeFocusRestoreTarget = () => Element | null;
 
 const VerseActionPopoverFocusRestoreContext = createContext<TakeFocusRestoreTarget | null>(null);
 
+/** @internal */
 export function VerseActionPopoverFocusRestoreProvider({
   takeTarget,
   children,
@@ -20,6 +21,7 @@ export function VerseActionPopoverFocusRestoreProvider({
   );
 }
 
+/** @internal */
 export function useTakeVerseActionPopoverFocusRestoreTarget(): TakeFocusRestoreTarget | null {
   return useContext(VerseActionPopoverFocusRestoreContext);
 }

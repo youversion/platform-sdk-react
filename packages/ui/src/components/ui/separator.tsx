@@ -6,7 +6,7 @@ import { withShadowIsolation } from '@/lib/shadow-isolation';
 import { YvComponentStyles } from '@/lib/yv-styles-components';
 
 const SeparatorImplementation = React.forwardRef<
-  React.ElementRef<typeof SeparatorPrimitive.Root>,
+  React.ComponentRef<typeof SeparatorPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof SeparatorPrimitive.Root>
 >(({ className, orientation = 'horizontal', decorative = true, ...props }, ref) => {
   return (

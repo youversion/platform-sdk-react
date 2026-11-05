@@ -46,6 +46,13 @@ for the automated browser matrix, assistive-technology environments and
 per-journey results, and remaining validation gaps. The
 [final actual-Safari gate decision](https://github.com/youversion/platform-sdk-react/blob/main/docs/shadow-dom-isolation-plan.md#ype-6214-final-release-candidate-safari-validation)
 records the accepted standalone-picker limitations and future rerun requirement.
+The focused automated matrix covers 43 Storybook tests in Chromium, Firefox,
+and Playwright WebKit; Playwright WebKit is not actual Safari. The completed
+real assistive-technology pass is limited to Safari 26.6.2 on macOS 26.6.2 with
+VoiceOver 10 and the seven required journeys. Chrome or Edge with NVDA on
+Windows was not run because no environment was available. JAWS, mobile screen
+readers, other browser and assistive-technology combinations, and WCAG
+conformance remain unvalidated.
 
 Shared popover dialogs now derive an accessible name from their visible heading
 unless the consumer provides an explicit label. The reader sign-in and sign-out

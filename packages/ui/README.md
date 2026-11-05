@@ -139,6 +139,22 @@ are unchanged:
   `VerseActionPopover` integration, the popover and its anchor must remain in the
   same DOM tree.
 
+Validated with:
+
+- The 43-test focused Storybook matrix in Chromium, Firefox, and Playwright
+  WebKit. Playwright WebKit is not actual Safari.
+- The targeted actual-Safari gate on Safari 26.6.2. The latest run and its exact
+  story count are recorded in the
+  [release-candidate evidence](../../docs/shadow-dom-isolation-plan.md#ype-6214-final-release-candidate-safari-validation).
+- Safari 26.6.2 on macOS 26.6.2 with VoiceOver 10 across the seven required
+  sign-in, picker, reader, verse-action, theme-settings, and nested-overlay
+  journeys. This is the only completed real assistive-technology combination.
+
+Chrome or Edge with NVDA on Windows was not run because no test environment was
+available. JAWS, mobile screen readers, other browser and assistive-technology
+combinations, and WCAG conformance remain unvalidated. The automated browser
+matrix and DOM relationship assertions do not establish screen-reader support.
+
 **Non-React or manual CSS import:**
 
 ```tsx

@@ -25,7 +25,7 @@ function getInitials(name?: string | null): string {
  * initials ("CA" or "C") inside a bordered circle (YPE-3648).
  */
 const ProfileAvatarImplementation = React.forwardRef<
-  React.ElementRef<typeof Avatar>,
+  React.ComponentRef<typeof Avatar>,
   ProfileAvatarProps
 >(({ name, src, className, ...props }, ref) => {
   const initial = getInitials(name);
