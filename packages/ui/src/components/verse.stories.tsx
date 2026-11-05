@@ -926,10 +926,14 @@ export const SelahPauseOwnLine: Story = {
   play: async ({ canvasElement }) => {
     await document.fonts.ready;
 
-    const notesOn = canvasElement.querySelector<HTMLElement>('[data-testid="selah-notes-on"]')!;
-    const notesOff = canvasElement.querySelector<HTMLElement>('[data-testid="selah-notes-off"]')!;
-    const highlight = canvasElement.querySelector<HTMLElement>('[data-testid="selah-highlight"]')!;
-    const rtl = canvasElement.querySelector<HTMLElement>('[data-testid="selah-rtl"]')!;
+    const canvas = within(canvasElement);
+    const notesOn = await canvas.findByTestId('selah-notes-on');
+    await waitFor(async () => {
+      await expect(notesOn.querySelector('.yv-qs-line')).toBeTruthy();
+    });
+    const notesOff = await canvas.findByTestId('selah-notes-off');
+    const highlight = await canvas.findByTestId('selah-highlight');
+    const rtl = await canvas.findByTestId('selah-rtl');
 
     const on = await assertSelahOwnLine(notesOn);
     await expect(on.pause.textContent).toBe('Selah.');
