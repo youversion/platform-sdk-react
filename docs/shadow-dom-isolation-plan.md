@@ -189,6 +189,12 @@ stylesheet-default, and popover interaction changes. Commit `a4239cf` passed all
 first attempt, with no assertion failures, transport retries, or process
 timeouts. The YPE-6214 accepted limitations remain unchanged.
 
+After the subsequent stale view-entry focus repair, commit `3cf4d6d` repeated
+the same targeted gate on 2026-11-05. All 43 focused stories passed in fresh
+SafariDriver sessions on their first attempt, with no assertion failures,
+transport retries, or process timeouts. This is the latest actual-Safari result;
+the environment and YPE-6214 accepted limitations remain unchanged.
+
 ### Assistive-technology evidence
 
 Record versions from the tested machines rather than naming only the product
