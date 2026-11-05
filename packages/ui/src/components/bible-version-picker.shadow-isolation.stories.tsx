@@ -934,8 +934,9 @@ export const SameOriginIframeTopLayerRemainsInteractive: Story = {
     });
     const componentRoot = await waitForShadowRoot(iframeDocument);
     const trigger = await getTrigger(componentRoot);
+    iframe.contentWindow?.focus();
     trigger.focus();
-    await expect(componentRoot.activeElement).toBe(trigger);
+    await waitFor(async () => await expect(componentRoot.activeElement).toBe(trigger));
     const triggerWindow = trigger.ownerDocument.defaultView;
     if (!triggerWindow) throw new Error('iframe trigger window not available');
     await expect(triggerWindow.getComputedStyle(trigger).boxShadow).not.toBe('none');
