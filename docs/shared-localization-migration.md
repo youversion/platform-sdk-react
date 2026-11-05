@@ -41,3 +41,5 @@ This migration does not establish why those translations are missing upstream.
 
 Run `node scripts/migrate-shared-i18n-keys.mjs` to check for remaining legacy callers and print the current Korean and Czech gaps.
 The optional `--write` argument applies the key substitutions to production TypeScript files.
+
+Remaining React-specific strings and their matches in sibling SDKs are listed in the [cross-SDK comparison](./react-string-cross-sdk-comparison.md).
