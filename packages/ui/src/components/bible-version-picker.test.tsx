@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { useEffect, useState, type ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
 
@@ -858,6 +858,38 @@ describe('BibleVersionPicker', () => {
       expect(screen.getByRole('button', { name: 'Language English 2' })).toHaveFocus();
     });
     expect(screen.getByRole('button', { name: 'Outer Language' })).not.toHaveFocus();
+  });
+
+  it('does not let delayed view-change focus override language-tab focus', async () => {
+    resetPickerTestEnvironment();
+    const user = userEvent.setup();
+
+    renderPicker();
+    await openPicker();
+
+    const frames: FrameRequestCallback[] = [];
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((callback) => {
+        frames.push(callback);
+        return frames.length;
+      });
+
+    try {
+      await user.click(screen.getByRole('button', { name: /^language /i }));
+      const suggestedTab = screen.getByRole('tab', { name: /suggested/i });
+      suggestedTab.focus();
+      expect(suggestedTab).toHaveFocus();
+      expect(frames.length).toBeGreaterThan(0);
+
+      act(() => {
+        while (frames.length > 0) frames.shift()?.(performance.now());
+      });
+
+      expect(suggestedTab).toHaveFocus();
+    } finally {
+      requestAnimationFrameSpy.mockRestore();
+    }
   });
 
   it('tabs from Close into version search, then Language, then versions', async () => {

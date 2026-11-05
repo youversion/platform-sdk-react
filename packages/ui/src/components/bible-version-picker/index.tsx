@@ -646,9 +646,23 @@ function Content({ open, onRequestClose }: BibleVersionPickerContentProps = {}) 
     if (view === 'languageSearch') return;
     if (previous === 'languageSearch' && view === 'languages') return;
 
+    const pendingScope = popoverContentRef.current;
+    if (!pendingScope || pendingScope.dataset.state !== 'open') return;
+    // Do not let a delayed view-entry request override focus that the user has
+    // already moved within the newly rendered view.
+    // SAFETY: Element roots are Documents or ShadowRoots, which both expose activeElement.
+    const focusRoot = pendingScope.getRootNode() as Document | ShadowRoot;
+    const previousFocus = focusRoot.activeElement;
     const frame = window.requestAnimationFrame(() => {
       const scope = popoverContentRef.current;
-      if (!scope || scope.dataset.state !== 'open') return;
+      if (
+        !scope ||
+        scope !== pendingScope ||
+        scope.dataset.state !== 'open' ||
+        focusRoot.activeElement !== previousFocus
+      ) {
+        return;
+      }
       if (view === 'languages' && previous === 'versions') {
         scope.querySelector<HTMLElement>('[data-slot="language-back"]')?.focus();
         return;
