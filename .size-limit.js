@@ -51,7 +51,7 @@ export default [
     name: 'ui / Separator only',
     path: 'packages/ui/dist/index.js',
     import: '{ Separator }',
-    limit: '19 KB',
+    limit: '24 KB',
     ignore: ['react', 'react-dom', 'react/jsx-runtime', '@tanstack/react-query'],
   },
   {

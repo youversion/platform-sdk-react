@@ -10,6 +10,101 @@ affected.
 Generated from the per-package changelogs by `scripts/build-root-changelog.mjs` — edit those,
 or the changeset, rather than this file.
 
+## 3.0.0
+
+### Major Changes
+
+- _(@youversion/platform-core, @youversion/platform-react-hooks)_ 7c578f2: Align Core and React Hooks with the UI package at version 3.0.0 as part of the
+  fixed package release. This version alignment does not add breaking API changes
+  to either package.
+
+- _(@youversion/platform-react-ui)_ 7c578f2: Ship the coordinated Shadow DOM rollout as a breaking rendered-DOM change. The
+  compatible public UI boundary now mounts in client-created open shadow roots:
+  `YouVersionAuthButton`, the chapter and version picker roots,
+  `BibleReader.Root`, and standalone theme settings, scripture, card, avatar,
+  footnote, and separator surfaces. SDK-owned compound members and composed
+  children reuse their owning boundary.
+
+  Server output for these components is a childless light-DOM host whose inline
+  `display` declares the boundary's intended layout until the passive-effect client
+  mount. Automatic shadow hosts therefore require strict CSP applications to allow
+  or hash style attributes as described in the
+  [UI Content Security Policy guidance](https://github.com/youversion/platform-sdk-react/blob/main/packages/ui/README.md#content-security-policy).
+  Document queries and global CSS no longer reach component internals,
+  forwarded element refs become available after that mount, and native events
+  observed outside a root are retargeted to its host. Keep form
+  ownership, native labels, and ARIA ID references within one tree; use public
+  props, callbacks, refs, and role-based automation instead of depending on
+  internal markup. Fonts remain document-owned, `rem` sizing follows the document
+  root, `direction` remains inherited, and ancestor layout can still constrain the
+  host. Shadow-local overlays use the native top layer, and opening a peer popover
+  dismisses the current peer. The native Popover API is required for isolated
+  floating content; there is no inline fallback, and an unhandled open error can
+  unmount the affected consumer React root. Popover content also respects Radix's
+  available collision height. Validated bubbling `click`, `keydown`, `keyup`,
+  `pointerdown`, `pointerup`, `mousedown`, `mouseup`, `dblclick`, `contextmenu`,
+  focus, blur, and native `input` paths reach light-DOM ancestor React handlers
+  once. The host corrects duplicate React `onInput` delivery; React `onChange` was
+  already delivered once because the outer event is retargeted to the non-form
+  host. Capture handlers and unlisted composed bubbling families can still receive
+  duplicate delivery. YPE-6210 covers `onClickCapture`; focused Chromium probes
+  observed duplicate move, wheel, keypress, drag-start, and copy delivery. This
+  list is representative, not exhaustive.
+
+  `Textarea`, standalone `VerseActionPopover`, `YouVersionProvider`, and
+  `BaseYouVersionProvider` remain outside the automatic boundary for their
+  document-level form, anchor, context, style, or font contracts. The release does
+  not add runtime rollout controls or phased-release infrastructure.
+
+  See the
+  [release-candidate evidence](https://github.com/youversion/platform-sdk-react/blob/main/docs/shadow-dom-isolation-plan.md#ype-5952-release-candidate-validation)
+  for the automated browser matrix, assistive-technology environments and
+  per-journey results, and remaining validation gaps. The
+  [final actual-Safari gate decision](https://github.com/youversion/platform-sdk-react/blob/main/docs/shadow-dom-isolation-plan.md#ype-6214-final-release-candidate-safari-validation)
+  records the accepted standalone-picker limitations and future rerun requirement.
+  The focused automated matrix covers 43 Storybook tests in Chromium, Firefox,
+  and Playwright WebKit; Playwright WebKit is not actual Safari. The completed
+  real assistive-technology pass is limited to Safari 26.6.2 on macOS 26.6.2 with
+  VoiceOver 10 and the seven required journeys. Chrome or Edge with NVDA on
+  Windows was not run because no environment was available. JAWS, mobile screen
+  readers, other browser and assistive-technology combinations, and WCAG
+  conformance remain unvalidated.
+
+  Shared popover dialogs now derive an accessible name from their visible heading
+  unless the consumer provides an explicit label. The reader sign-in and sign-out
+  menu has an explicit accessible name, and the version picker places initial
+  focus on its language selector.
+
+### Patch Changes
+
+- _(@youversion/platform-react-ui)_ 7c578f2: Preserve SDK spacing in Safari inside Shadow DOM and document roots by scoping the host CSS reset and inlining the fixed Tailwind spacing scale.
+
+- _(@youversion/platform-react-ui)_ 7c578f2: Skip the Bible version picker's version list scroll area in keyboard Tab order, keep focus on the outside target when dismissing from a language screen, and focus the dialog consistently when opening or rapidly reopening the picker.
+
+- _(@youversion/platform-react-ui)_ 7c578f2: Preserve the Bible chapter picker's natural keyboard order and keep its scrolling book list out of Firefox's sequential focus order.
+
+- _(@youversion/platform-react-ui)_ 7c578f2: Keep Firefox keyboard focus on Bible version options when tabbing forward through the version picker.
+
+- _(@youversion/platform-react-ui)_ 7c578f2: Keep verse actions open when touch selection moves to another verse, restore focus for initially anchored or conditionally mounted verse actions, and keep reader settings scrollable in constrained popovers. Clarify the automatic Shadow DOM boundary's document-owned font and root-sizing dependencies without expanding its rollout scope.
+
+- _(@youversion/platform-react-ui)_ 7c578f2: Classify pending-highlight pointer targets with the reader document's element realm.
+
+- _(@youversion/platform-react-ui)_ 7c578f2: Keep auth-button and Bible-picker Shadow DOM hosts valid in server-rendered phrasing content.
+
+- _(@youversion/platform-react-ui)_ 7c578f2: Keep isolated UI content rendered with local styles when constructable stylesheet setup fails.
+
+- _(@youversion/platform-react-ui)_ 7c578f2: Keep verse action popovers in their component's shadow-local portal and restore focus after dismissal.
+
+- _(@youversion/platform-react-ui)_ 7c578f2: Keep text direction as the only intentionally inherited CSS property across an
+  automatic Shadow DOM boundary. Ambient host custom properties cannot alter SDK
+  spacing or radius values, while document-root font sizing still affects rem-based
+  dimensions.
+
+- _(@youversion/platform-react-ui)_ 7c578f2: Keep shadow-local top-layer dialogs focus-contained and their background inert
+  while mounted. Restore focus to the original opener after dismissal, including
+  close/reopen during exit, while ignoring disconnected targets and targets moved
+  outside their captured root.
+
 ## 2.17.0
 
 ### Minor Changes

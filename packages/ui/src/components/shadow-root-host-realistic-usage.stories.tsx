@@ -1,0 +1,565 @@
+import type { Meta, StoryObj } from '@storybook/react-vite';
+
+import type { BibleBook, BibleVersion } from '@youversion/platform-core';
+import { YouVersionContext, type HookOverrides } from '@youversion/platform-react-hooks';
+import { http, HttpResponse } from 'msw';
+import {
+  StrictMode,
+  Suspense,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
+import { expect, spyOn, userEvent, within } from 'storybook/test';
+import { isExpectedFontStylesheetEvent } from '../test/storybook-font-stylesheet';
+import { ShadowRootHost } from '../lib/shadow-root-host';
+import { BibleCard } from './bible-card';
+import { BIBLE_READER_SPACING, BibleReader, BibleThemeSettingsContent } from './bible-reader';
+import { ProfileAvatar } from './profile-avatar';
+import { Separator } from './ui/separator';
+import { Textarea } from './ui/textarea';
+import { VerseOfTheDay } from './verse-of-the-day';
+import { waitFor } from '../test/storybook-dom';
+import { ReuseShadowBoundary } from '../lib/shadow-isolation';
+import { INTER_FONT } from '../lib/verse-html-utils';
+
+const EXPECTED_COMPONENT_IDS = [
+  'reader',
+  'card-luke',
+  'card-john',
+  'votd-default',
+  'votd-large',
+  'avatar-primary',
+  'avatar-secondary',
+  'notes-primary',
+  'notes-secondary',
+  'notes-tertiary',
+  'separator-primary',
+  'separator-secondary',
+];
+
+const meta = {
+  title: 'Spikes/Shadow DOM realistic usage',
+  tags: ['integration', 'shadow-dom'],
+  parameters: {
+    includeAuth: false,
+    layout: 'fullscreen',
+    msw: {
+      handlers: [
+        http.get('*/v1/fonts/1/stylesheet', () =>
+          HttpResponse.text('', { headers: { 'Content-Type': 'text/css' } }),
+        ),
+      ],
+    },
+  },
+} satisfies Meta;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const FIXTURE_BOOKS: BibleBook[] = [
+  {
+    id: 'JHN',
+    title: 'John',
+    full_title: 'The Gospel According to John',
+    canon: 'new_testament',
+    abbreviation: 'John',
+    chapters: [{ id: '1', title: '1', passage_id: 'JHN.1' }],
+  },
+];
+
+const FIXTURE_VERSION: BibleVersion = {
+  id: 111,
+  title: 'New International Version',
+  abbreviation: 'NIV',
+  localized_title: 'New International Version',
+  localized_abbreviation: 'NIV',
+  language_tag: 'en',
+  books: ['JHN'],
+  youversion_deep_link: 'https://bible.com/versions/111',
+};
+
+function fixturePassageContent(usfm: string): string {
+  return `<div class="p"><span class="yv-v" v="1"></span><span class="yv-vlbl">1</span>Fixture scripture content for ${usfm}.</div>`;
+}
+
+const HOOK_OVERRIDES = {
+  useBooks: () => ({
+    books: { data: FIXTURE_BOOKS, next_page_token: null },
+    loading: false,
+    error: null,
+    refetch: () => undefined,
+  }),
+  usePassage: ({ usfm }) => ({
+    passage: { id: usfm, content: fixturePassageContent(usfm), reference: usfm },
+    loading: false,
+    error: null,
+    refetch: () => undefined,
+  }),
+  useVersion: () => ({
+    version: FIXTURE_VERSION,
+    loading: false,
+    error: null,
+    refetch: () => undefined,
+  }),
+  useVerseOfTheDay: () => ({
+    data: { day: 1, passage_id: 'JHN.3.16' },
+    loading: false,
+    error: null,
+    refetch: () => undefined,
+  }),
+} satisfies HookOverrides;
+
+function FixtureProviders({ children }: { children: ReactNode }): ReactNode {
+  const parentContext = useContext(YouVersionContext);
+  const value = parentContext
+    ? { ...parentContext, hookOverrides: HOOK_OVERRIDES }
+    : { appKey: 'test', hookOverrides: HOOK_OVERRIDES };
+
+  return <YouVersionContext.Provider value={value}>{children}</YouVersionContext.Provider>;
+}
+
+interface FixtureItemProps {
+  children: ReactNode;
+  id: string;
+}
+
+function FixtureItem({ children, id }: FixtureItemProps): ReactNode {
+  const content = (
+    <ReuseShadowBoundary>
+      <div data-realistic-component={id}>{children}</div>
+    </ReuseShadowBoundary>
+  );
+
+  return <ShadowRootHost>{content}</ShadowRootHost>;
+}
+
+function RealisticComponentMix(): ReactNode {
+  return (
+    <div
+      data-testid="realistic-component-mix"
+      style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}
+    >
+      <FixtureItem id="reader">
+        <BibleReader.Root
+          defaultBook="JHN"
+          defaultChapter="1"
+          defaultVersionId={111}
+          highlights={[]}
+        >
+          <BibleReader.Content />
+        </BibleReader.Root>
+      </FixtureItem>
+      <FixtureItem id="card-luke">
+        <BibleCard reference="LUK.1.39-45" versionId={111} highlights={[]} />
+      </FixtureItem>
+      <FixtureItem id="card-john">
+        <BibleCard reference="JHN.3.16" versionId={111} highlights={[]} />
+      </FixtureItem>
+      <FixtureItem id="votd-default">
+        <VerseOfTheDay versionId={111} dayOfYear={1} highlights={[]} />
+      </FixtureItem>
+      <FixtureItem id="votd-large">
+        <VerseOfTheDay versionId={111} dayOfYear={1} size="lg" highlights={[]} />
+      </FixtureItem>
+      <FixtureItem id="avatar-primary">
+        <ProfileAvatar name="SDK Reader" />
+      </FixtureItem>
+      <FixtureItem id="avatar-secondary">
+        <ProfileAvatar name="Bible Partner" />
+      </FixtureItem>
+      <FixtureItem id="notes-primary">
+        <Textarea defaultValue="Primary notes" />
+      </FixtureItem>
+      <FixtureItem id="notes-secondary">
+        <Textarea defaultValue="Secondary notes" />
+      </FixtureItem>
+      <FixtureItem id="notes-tertiary">
+        <Textarea defaultValue="Tertiary notes" />
+      </FixtureItem>
+      <FixtureItem id="separator-primary">
+        <Separator decorative={false} />
+      </FixtureItem>
+      <FixtureItem id="separator-secondary">
+        <Separator decorative={false} />
+      </FixtureItem>
+    </div>
+  );
+}
+
+type EffectPhase = 'setup' | 'cleanup';
+
+function EffectLifecycleProbe({
+  recordEffectPhase,
+}: {
+  recordEffectPhase: (phase: EffectPhase) => void;
+}): null {
+  useEffect(() => {
+    recordEffectPhase('setup');
+    return () => recordEffectPhase('cleanup');
+  }, [recordEffectPhase]);
+
+  return null;
+}
+
+function LifecycleHarness({ strict }: { strict: boolean }): ReactNode {
+  const [mounted, setMounted] = useState(false);
+  const [effectCounts, setEffectCounts] = useState({ setup: 0, cleanup: 0 });
+  const recordEffectPhase = useCallback((phase: EffectPhase): void => {
+    setEffectCounts((current) => ({ ...current, [phase]: current[phase] + 1 }));
+  }, []);
+  const mix = mounted ? (
+    <>
+      <EffectLifecycleProbe recordEffectPhase={recordEffectPhase} />
+      <RealisticComponentMix />
+    </>
+  ) : null;
+
+  return (
+    <main data-yv-sdk style={{ padding: '1.5rem' }}>
+      <button type="button" onClick={() => setMounted((current) => !current)}>
+        Toggle component mix
+      </button>
+      <span
+        data-testid="effect-lifecycle-counts"
+        data-effect-setup={effectCounts.setup}
+        data-effect-cleanup={effectCounts.cleanup}
+        hidden
+      />
+      {strict ? <StrictMode>{mix}</StrictMode> : mix}
+    </main>
+  );
+}
+
+interface MountedFixture {
+  hosts: HTMLElement[];
+  sheet: CSSStyleSheet;
+}
+
+async function requireMountedFixture(canvasElement: HTMLElement): Promise<MountedFixture> {
+  const hosts = Array.from(
+    canvasElement.ownerDocument.querySelectorAll<HTMLElement>('[data-yv-shadow-host]'),
+  );
+  await expect(hosts).toHaveLength(EXPECTED_COMPONENT_IDS.length);
+
+  const roots = hosts.map((host) => {
+    if (!host.shadowRoot) throw new Error('shadow root not attached');
+    return host.shadowRoot;
+  });
+  const componentIds = roots.map(
+    (root) =>
+      root.querySelector<HTMLElement>('[data-realistic-component]')?.dataset.realisticComponent,
+  );
+  await expect(componentIds).toEqual(EXPECTED_COMPONENT_IDS);
+
+  const components = new Map(
+    roots.map((root, index) => [
+      componentIds[index],
+      root.querySelector<HTMLElement>('[data-realistic-component]'),
+    ]),
+  );
+  const expectedPassages = new Map([
+    ['reader', 'JHN.1'],
+    ['card-luke', 'LUK.1.39-45'],
+    ['card-john', 'JHN.3.16'],
+    ['votd-default', 'JHN.3.16'],
+    ['votd-large', 'JHN.3.16'],
+  ]);
+  for (const [id, usfm] of expectedPassages) {
+    await expect(components.get(id)).toHaveTextContent(`Fixture scripture content for ${usfm}.`);
+  }
+  await expect(
+    components.get('avatar-primary')?.querySelector('[aria-label="SDK Reader"]'),
+  ).not.toBeNull();
+  await expect(
+    components.get('avatar-secondary')?.querySelector('[aria-label="Bible Partner"]'),
+  ).not.toBeNull();
+  await expect(components.get('notes-primary')?.querySelector('textarea')).toHaveValue(
+    'Primary notes',
+  );
+  await expect(components.get('notes-secondary')?.querySelector('textarea')).toHaveValue(
+    'Secondary notes',
+  );
+  await expect(components.get('notes-tertiary')?.querySelector('textarea')).toHaveValue(
+    'Tertiary notes',
+  );
+  await expect(
+    components.get('separator-primary')?.querySelector('[role="separator"]'),
+  ).not.toBeNull();
+  await expect(
+    components.get('separator-secondary')?.querySelector('[role="separator"]'),
+  ).not.toBeNull();
+
+  const sheet = roots[0]?.adoptedStyleSheets[0];
+  if (!sheet) throw new Error('shared SDK stylesheet not adopted');
+  for (const root of roots) {
+    await expect(root.adoptedStyleSheets).toHaveLength(1);
+    await expect(root.adoptedStyleSheets[0]).toBe(sheet);
+    await expect(
+      root.querySelectorAll(
+        'style[data-href="yv-sdk-components"], style[data-href="yv-sdk-bible-reader"]',
+      ),
+    ).toHaveLength(0);
+  }
+
+  return { hosts, sheet };
+}
+
+interface ExpectedEffectCounts {
+  firstMount: [setup: number, cleanup: number];
+  removal: [setup: number, cleanup: number];
+  secondMount: [setup: number, cleanup: number];
+}
+
+const NORMAL_EFFECT_COUNTS: ExpectedEffectCounts = {
+  firstMount: [1, 0],
+  removal: [1, 1],
+  secondMount: [2, 1],
+};
+
+const STRICT_EFFECT_COUNTS: ExpectedEffectCounts = import.meta.env.DEV
+  ? {
+      firstMount: [2, 1],
+      removal: [2, 2],
+      secondMount: [4, 3],
+    }
+  : NORMAL_EFFECT_COUNTS;
+
+async function requireEffectCounts(
+  canvasElement: HTMLElement,
+  [setup, cleanup]: [setup: number, cleanup: number],
+): Promise<void> {
+  const counts = canvasElement.querySelector('[data-testid="effect-lifecycle-counts"]');
+  await expect(counts).toHaveAttribute('data-effect-setup', String(setup));
+  await expect(counts).toHaveAttribute('data-effect-cleanup', String(cleanup));
+}
+
+async function exerciseLifecycle(
+  canvasElement: HTMLElement,
+  expectedEffectCounts: ExpectedEffectCounts,
+): Promise<void> {
+  const toggle = canvasElement.querySelector<HTMLButtonElement>('button');
+  if (!toggle) throw new Error('lifecycle toggle not rendered');
+  const consoleError = spyOn(console, 'error').mockImplementation(() => undefined);
+
+  const waitForMountedDom = async (): Promise<MountedFixture> =>
+    waitFor(() => {
+      const hosts = Array.from(
+        canvasElement.ownerDocument.querySelectorAll<HTMLElement>('[data-yv-shadow-host]'),
+      );
+      if (hosts.length !== EXPECTED_COMPONENT_IDS.length) {
+        throw new Error('realistic component mix is still mounting');
+      }
+
+      const roots = hosts.map((host) => host.shadowRoot);
+      if (roots.some((root) => !root)) throw new Error('shadow roots are still mounting');
+      const componentIds = roots.map(
+        (root) =>
+          root?.querySelector<HTMLElement>('[data-realistic-component]')?.dataset
+            .realisticComponent,
+      );
+      if (componentIds.some((id, index) => id !== EXPECTED_COMPONENT_IDS[index])) {
+        throw new Error('realistic component mix is still mounting');
+      }
+
+      const sheet = roots[0]?.adoptedStyleSheets[0];
+      if (!sheet) throw new Error('shared SDK stylesheet is still mounting');
+      return { hosts, sheet };
+    });
+
+  try {
+    await userEvent.click(toggle);
+    const firstMount = await waitForMountedDom();
+    await requireMountedFixture(canvasElement);
+    await requireEffectCounts(canvasElement, expectedEffectCounts.firstMount);
+
+    await userEvent.click(toggle);
+    await expect(canvasElement.querySelectorAll('[data-yv-shadow-host]')).toHaveLength(0);
+    await expect(canvasElement.querySelector('[data-testid="realistic-component-mix"]')).toBeNull();
+    await requireEffectCounts(canvasElement, expectedEffectCounts.removal);
+
+    await userEvent.click(toggle);
+    const secondMount = await waitForMountedDom();
+    await requireMountedFixture(canvasElement);
+    await requireEffectCounts(canvasElement, expectedEffectCounts.secondMount);
+    for (const host of secondMount.hosts) {
+      await expect(host.shadowRoot?.adoptedStyleSheets[0]).toBe(firstMount.sheet);
+    }
+    const unexpectedConsoleErrors = consoleError.mock.calls.filter(
+      ([firstArgument]) =>
+        !(firstArgument instanceof Event && isExpectedFontStylesheetEvent(firstArgument)),
+    );
+    await expect(unexpectedConsoleErrors).toHaveLength(0);
+  } finally {
+    consoleError.mockRestore();
+  }
+}
+
+export const NormalLifecycle: Story = {
+  render: () => (
+    <FixtureProviders>
+      <LifecycleHarness strict={false} />
+    </FixtureProviders>
+  ),
+  play: async ({ canvasElement }) => {
+    await exerciseLifecycle(canvasElement, NORMAL_EFFECT_COUNTS);
+  },
+};
+
+export const StrictModeLifecycle: Story = {
+  render: () => (
+    <FixtureProviders>
+      <LifecycleHarness strict />
+    </FixtureProviders>
+  ),
+  play: async ({ canvasElement }) => {
+    await exerciseLifecycle(canvasElement, STRICT_EFFECT_COUNTS);
+  },
+};
+
+interface SuspensionResource {
+  read: () => void;
+  resolve: () => void;
+}
+
+function createSuspensionResource(): SuspensionResource {
+  let pending = true;
+  let resolvePromise!: () => void;
+  const promise = new Promise<void>((resolve) => {
+    resolvePromise = resolve;
+  });
+
+  return {
+    read: () => {
+      if (pending) throw promise;
+    },
+    resolve: () => {
+      pending = false;
+      resolvePromise();
+    },
+  };
+}
+
+function SuspensionGate({ resource }: { resource: SuspensionResource | null }): null {
+  resource?.read();
+  return null;
+}
+
+function SuspenseHostLayoutHarness(): ReactNode {
+  const [resource, setResource] = useState<SuspensionResource | null>(null);
+
+  return (
+    <main>
+      <style>{`[data-yv-shadow-host] { display: grid !important; }`}</style>
+      <button
+        type="button"
+        onClick={() => {
+          const nextResource = createSuspensionResource();
+          setResource(nextResource);
+        }}
+      >
+        Suspend hosts
+      </button>
+      <button type="button" onClick={() => resource?.resolve()}>
+        Reveal hosts
+      </button>
+      <Suspense fallback={<span data-testid="suspense-fallback">Loading</span>}>
+        <SuspensionGate resource={resource} />
+        <ShadowRootHost>
+          <span data-testid="ordinary-shadow-content">Ordinary shadow content</span>
+        </ShadowRootHost>
+        <BibleThemeSettingsContent
+          theme="light"
+          fontSize={16}
+          fontFamily={INTER_FONT}
+          lineSpacing={BIBLE_READER_SPACING.DEFAULT}
+          onFontSelected={() => undefined}
+          onFontIncreased={() => undefined}
+          onFontDecreased={() => undefined}
+          onChangeLineSpacing={() => undefined}
+        />
+      </Suspense>
+    </main>
+  );
+}
+
+async function expectHostDisplay(
+  host: HTMLElement,
+  expectedDisplay: 'contents' | 'flex',
+): Promise<void> {
+  await expect(host.style.getPropertyValue('display')).toBe(expectedDisplay);
+  await expect(host.style.getPropertyPriority('display')).toBe('important');
+  await expect(getComputedStyle(host).display).toBe(expectedDisplay);
+}
+
+export const SuspenseRevealRestoresHostLayout: Story = {
+  render: () => <SuspenseHostLayoutHarness />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const hosts = await waitFor(() => {
+      const candidates = Array.from(
+        canvasElement.querySelectorAll<HTMLElement>('[data-yv-shadow-host]'),
+      );
+      if (candidates.length !== 2 || candidates.some((host) => !host.shadowRoot)) {
+        throw new Error('shadow hosts are still mounting');
+      }
+      return candidates;
+    });
+    const ordinaryHost = hosts.find((host) =>
+      host.shadowRoot?.querySelector('[data-testid="ordinary-shadow-content"]'),
+    );
+    const settingsHost = hosts.find((host) =>
+      host.shadowRoot?.querySelector('[data-testid="line-spacing"]'),
+    );
+    if (!ordinaryHost?.shadowRoot || !settingsHost?.shadowRoot) {
+      throw new Error('expected shadow host content not mounted');
+    }
+    const ordinaryRoot = ordinaryHost.shadowRoot;
+    const settingsRoot = settingsHost.shadowRoot;
+    const ordinaryContent = ordinaryRoot.querySelector('[data-testid="ordinary-shadow-content"]');
+    const settingsContent = settingsRoot.querySelector('[data-testid="line-spacing"]');
+
+    await expectHostDisplay(ordinaryHost, 'contents');
+    await expectHostDisplay(settingsHost, 'flex');
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Suspend hosts' }));
+    await expect(canvasElement.querySelector('[data-testid="suspense-fallback"]')).not.toBeNull();
+    await expect(getComputedStyle(ordinaryHost).display).toBe('none');
+    await expect(getComputedStyle(settingsHost).display).toBe('none');
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Reveal hosts' }));
+    await waitFor(() => {
+      if (canvasElement.querySelector('[data-testid="suspense-fallback"]')) {
+        throw new Error('suspended hosts have not been revealed');
+      }
+    });
+
+    const revealedHosts = Array.from(
+      canvasElement.querySelectorAll<HTMLElement>('[data-yv-shadow-host]'),
+    );
+    const revealedOrdinaryHost = revealedHosts.find((host) =>
+      host.shadowRoot?.querySelector('[data-testid="ordinary-shadow-content"]'),
+    );
+    const revealedSettingsHost = revealedHosts.find((host) =>
+      host.shadowRoot?.querySelector('[data-testid="line-spacing"]'),
+    );
+    if (!revealedOrdinaryHost?.shadowRoot || !revealedSettingsHost?.shadowRoot) {
+      throw new Error('revealed shadow host content not mounted');
+    }
+
+    await expect(revealedOrdinaryHost).toBe(ordinaryHost);
+    await expect(revealedSettingsHost).toBe(settingsHost);
+    await expectHostDisplay(revealedOrdinaryHost, 'contents');
+    await expectHostDisplay(revealedSettingsHost, 'flex');
+    await expect(revealedOrdinaryHost.shadowRoot).toBe(ordinaryRoot);
+    await expect(revealedSettingsHost.shadowRoot).toBe(settingsRoot);
+    await expect(
+      revealedOrdinaryHost.shadowRoot.querySelector('[data-testid="ordinary-shadow-content"]'),
+    ).toBe(ordinaryContent);
+    await expect(
+      revealedSettingsHost.shadowRoot.querySelector('[data-testid="line-spacing"]'),
+    ).toBe(settingsContent);
+  },
+};

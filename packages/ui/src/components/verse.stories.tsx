@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import React from 'react';
 
 import { transformBibleHtml } from '@youversion/platform-core/browser';
@@ -16,6 +16,12 @@ import { VerseActionPopover } from './verse-action-popover';
 import { buildVerseShareText } from '@/lib/verse-share';
 import { Button } from './ui/button';
 import { XIcon } from '@/components/icons/x';
+import { waitForElement, waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
+import { YvComponentStyles } from '@/lib/yv-styles-components';
+import { YvReaderStyles } from '@/lib/yv-styles-reader';
+import { ShadowRootHost } from '@/lib/shadow-root-host';
+import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
+import mockPassages from '@/test/mock-data/passages.json';
 
 // USFM format: BOOK.CHAPTER or BOOK.CHAPTER.VERSE or BOOK.CHAPTER.VERSE-VERSE
 const USFM_PATTERN = /^[A-Z1-4]{3}\.\d+(\.\d+(-\d+)?)?$/;
@@ -221,9 +227,7 @@ export const SingleVerse: Story = {
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    await expect(await canvas.findByRole('status', { name: /loading/i })).toBeInTheDocument();
+    const canvas = within(await waitForShadowContent(await waitForShadowRoot(canvasElement)));
 
     await waitFor(async () => {
       await expect(await canvas.findByText(/for God so loved the world/i)).toBeInTheDocument();
@@ -279,33 +283,38 @@ export const FootnoteInteraction: Story = {
     versionId: 111,
     renderNotes: true,
     showVerseNumbers: true,
+    passageState: {
+      passage: mockPassages['JHN.1.51'],
+      loading: false,
+      error: null,
+    },
   },
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
   play: async ({ canvasElement }) => {
-    await waitFor(
-      async () => {
-        const footnoteButtons = canvasElement.querySelectorAll('[data-verse-footnote] button');
-        await expect(footnoteButtons.length).toBeGreaterThan(0);
-      },
-      { timeout: 5000 },
+    const root = await waitForShadowRoot(canvasElement);
+    const footnoteButton = await waitForElement<HTMLButtonElement>(
+      root,
+      '[data-verse-footnote] button',
+      'footnote button not rendered',
     );
 
-    const footnoteButtons = canvasElement.querySelectorAll('[data-verse-footnote] button');
-    await expect(footnoteButtons.length).toBeGreaterThan(0);
-    await userEvent.click(footnoteButtons[0]!);
+    await userEvent.click(footnoteButton);
+    const overlay = await waitForElement<HTMLElement>(
+      root,
+      '[data-yv-shadow-local-overlay]',
+      'footnote top layer not rendered',
+    );
+    const floating = within(overlay);
 
-    await waitFor(async () => {
-      await expect(await screen.findByText('Footnotes')).toBeInTheDocument();
-    });
-
-    await waitFor(async () => {
-      await expect(await screen.findByText(/John 1:51/i)).toBeInTheDocument();
-    });
-
-    await waitFor(async () => {
-      const noteItems = document.querySelectorAll('[data-yv-sdk] ul li');
-      await expect(noteItems.length).toBeGreaterThan(0);
-    });
+    await expect(await floating.findByRole('heading', { name: /footnotes/i })).toBeInTheDocument();
+    await expect(await floating.findByText(/John 1:51/i)).toBeInTheDocument();
+    const noteItem = await waitForElement<HTMLElement>(
+      overlay,
+      '[data-yv-sdk] ul li',
+      'footnote item not rendered in the local overlay',
+    );
+    await expect(overlay).toContainElement(noteItem);
+    await expect(root.querySelector('[data-yv-shadow-host]')).toBeNull();
   },
 };
 
@@ -358,38 +367,42 @@ export const MultipleFootnotesInSingleVerse: Story = {
 export const SwiftPhaseTwoTypographyFixture: Story = {
   args: { reference: 'GEN.1', versionId: 111 },
   render: () => (
-    <div data-yv-sdk data-yv-theme="light" className="yv:grid yv:gap-8 yv:lg:grid-cols-3">
-      <section dir="ltr" className="yv:min-w-0">
-        <h2 className="yv:font-sans yv:font-bold yv:mb-3">LTR</h2>
-        <Verse.Html
-          html={SWIFT_PHASE_TWO_FIXTURE_HTML}
-          renderNotes={true}
-          highlightedVerses={{ 2: '#f19c33' }}
-        />
-        <FootnoteContent
-          verseNum="2"
-          verseHtml="Deterministic verse context."
-          notes={[
-            '<span class="ft">The Greek is plural.</span><span class="fq">quoted text</span> <span class="fqa">alternate translation</span><span class="fp"><span class="fk">Word</span> <span class="fl">label</span> continues without an indent.</span>',
-          ]}
-        />
-      </section>
-      <section dir="rtl" className="yv:min-w-0">
-        <h2 className="yv:font-sans yv:font-bold yv:mb-3">RTL</h2>
-        <Verse.Html html={SWIFT_PHASE_TWO_RTL_HTML} showVerseNumbers={false} />
-      </section>
-      <section className="yv:min-w-0">
-        <h2 className="yv:font-sans yv:font-bold yv:mb-3">Standalone HTML/CSS</h2>
-        <div
-          data-yv-sdk-bible-reader=""
-          style={
-            // SAFETY: CSSProperties omits custom properties; this is a valid CSS length variable.
-            { '--yv-reader-font-size': '24px' } as React.CSSProperties
-          }
-          dangerouslySetInnerHTML={{ __html: SWIFT_PHASE_TWO_FIXTURE_HTML }}
-        />
-      </section>
-    </div>
+    <>
+      <YvComponentStyles />
+      <YvReaderStyles />
+      <div data-yv-sdk data-yv-theme="light" className="yv:grid yv:gap-8 yv:lg:grid-cols-3">
+        <section dir="ltr" className="yv:min-w-0">
+          <h2 className="yv:font-sans yv:font-bold yv:mb-3">LTR</h2>
+          <Verse.Html
+            html={SWIFT_PHASE_TWO_FIXTURE_HTML}
+            renderNotes={true}
+            highlightedVerses={{ 2: '#f19c33' }}
+          />
+          <FootnoteContent
+            verseNum="2"
+            verseHtml="Deterministic verse context."
+            notes={[
+              '<span class="ft">The Greek is plural.</span><span class="fq">quoted text</span> <span class="fqa">alternate translation</span><span class="fp"><span class="fk">Word</span> <span class="fl">label</span> continues without an indent.</span>',
+            ]}
+          />
+        </section>
+        <section dir="rtl" className="yv:min-w-0">
+          <h2 className="yv:font-sans yv:font-bold yv:mb-3">RTL</h2>
+          <Verse.Html html={SWIFT_PHASE_TWO_RTL_HTML} showVerseNumbers={false} />
+        </section>
+        <section className="yv:min-w-0">
+          <h2 className="yv:font-sans yv:font-bold yv:mb-3">Standalone HTML/CSS</h2>
+          <div
+            data-yv-sdk-bible-reader=""
+            style={
+              // SAFETY: CSSProperties omits custom properties; this is a valid CSS length variable.
+              { '--yv-reader-font-size': '24px' } as React.CSSProperties
+            }
+            dangerouslySetInnerHTML={{ __html: SWIFT_PHASE_TWO_FIXTURE_HTML }}
+          />
+        </section>
+      </div>
+    </>
   ),
   parameters: { layout: 'padded' },
   tags: ['integration'],
@@ -451,7 +464,12 @@ export const SwiftPhaseTwoTypographyFixture: Story = {
       }
     }
 
-    const note = canvasElement.querySelector<HTMLElement>('[data-slot="yv-bible-note"]')!;
+    const noteRoot = await waitFor(() => {
+      const host = canvasElement.querySelector<HTMLElement>('[data-yv-shadow-host]');
+      if (!host?.shadowRoot) throw new Error('footnote shadow root not mounted');
+      return host.shadowRoot;
+    });
+    const note = noteRoot.querySelector<HTMLElement>('[data-slot="yv-bible-note"]')!;
     const noteStyle = getComputedStyle(note);
     const fpStyle = getComputedStyle(note.querySelector<HTMLElement>('.fp')!);
     await expect(noteStyle.fontSize).toBe('12px');
@@ -480,15 +498,19 @@ export const MixedVerseLabelSpacing: Story = {
     ).html;
 
     return (
-      <div data-yv-sdk data-yv-sdk-bible-reader="">
-        <div data-testid="raw-before" dangerouslySetInnerHTML={{ __html: raw }} />
-        <div data-testid="transformed" dangerouslySetInnerHTML={{ __html: transformed }} />
-        <div data-testid="raw-after" dangerouslySetInnerHTML={{ __html: raw }} />
-        <div
-          data-testid="transformed-labels"
-          dangerouslySetInnerHTML={{ __html: transformedLabels }}
-        />
-      </div>
+      <>
+        <YvComponentStyles />
+        <YvReaderStyles />
+        <div data-yv-sdk data-yv-sdk-bible-reader="">
+          <div data-testid="raw-before" dangerouslySetInnerHTML={{ __html: raw }} />
+          <div data-testid="transformed" dangerouslySetInnerHTML={{ __html: transformed }} />
+          <div data-testid="raw-after" dangerouslySetInnerHTML={{ __html: raw }} />
+          <div
+            data-testid="transformed-labels"
+            dangerouslySetInnerHTML={{ __html: transformedLabels }}
+          />
+        </div>
+      </>
     );
   },
   play: async ({ canvasElement }) => {
@@ -537,9 +559,10 @@ export const FootnotePopoverThemeLight: Story = {
   },
   tags: ['integration'],
   play: async ({ canvasElement }) => {
+    const root = await waitForShadowRoot(canvasElement);
     await waitFor(
       async () => {
-        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        const verseContainer = root.querySelector('[data-slot="yv-bible-renderer"]');
         await expect(verseContainer).toBeInTheDocument();
       },
       { timeout: 5000 },
@@ -547,20 +570,20 @@ export const FootnotePopoverThemeLight: Story = {
 
     await waitFor(
       async () => {
-        const footnoteButtons = canvasElement.querySelectorAll('[data-verse-footnote] button');
+        const footnoteButtons = root.querySelectorAll('[data-verse-footnote] button');
         await expect(footnoteButtons.length).toBeGreaterThan(0);
       },
       { timeout: 5000 },
     );
 
-    const footnoteButtons = canvasElement.querySelectorAll('[data-verse-footnote] button');
+    const footnoteButtons = root.querySelectorAll('[data-verse-footnote] button');
     await expect(footnoteButtons.length).toBeGreaterThan(0);
     await expect(footnoteButtons[0]?.closest('[data-yv-theme="light"]')).toBeInTheDocument();
 
     await userEvent.click(footnoteButtons[0]!);
 
     await waitFor(async () => {
-      const popover = document.querySelector('[data-slot="popover-content"]');
+      const popover = root.querySelector('[data-slot="popover-content"]');
       await expect(popover).toBeInTheDocument();
       await expect(popover?.closest('[data-yv-theme="light"]')).toBeInTheDocument();
     });
@@ -580,9 +603,10 @@ export const FootnotePopoverThemeDark: Story = {
   tags: ['integration'],
   render: (args) => <BibleTextView {...args} />,
   play: async ({ canvasElement }) => {
+    const root = await waitForShadowRoot(canvasElement);
     await waitFor(
       async () => {
-        const verseContainer = canvasElement.querySelector('[data-slot="yv-bible-renderer"]');
+        const verseContainer = root.querySelector('[data-slot="yv-bible-renderer"]');
         await expect(verseContainer).toBeInTheDocument();
       },
       { timeout: 5000 },
@@ -590,20 +614,20 @@ export const FootnotePopoverThemeDark: Story = {
 
     await waitFor(
       async () => {
-        const footnoteButtons = canvasElement.querySelectorAll('[data-verse-footnote] button');
+        const footnoteButtons = root.querySelectorAll('[data-verse-footnote] button');
         await expect(footnoteButtons.length).toBeGreaterThan(0);
       },
       { timeout: 5000 },
     );
 
-    const footnoteButtons = canvasElement.querySelectorAll('[data-verse-footnote] button');
+    const footnoteButtons = root.querySelectorAll('[data-verse-footnote] button');
     await expect(footnoteButtons.length).toBeGreaterThan(0);
     await expect(footnoteButtons[0]?.closest('[data-yv-theme="dark"]')).toBeInTheDocument();
 
     await userEvent.click(footnoteButtons[0]!);
 
     await waitFor(async () => {
-      const popover = document.querySelector('[data-slot="popover-content"]');
+      const popover = root.querySelector('[data-slot="popover-content"]');
       await expect(popover).toBeInTheDocument();
       await expect(popover?.closest('[data-yv-theme="dark"]')).toBeInTheDocument();
     });
@@ -612,7 +636,7 @@ export const FootnotePopoverThemeDark: Story = {
 
 function VerseSelectionDemo(props: BibleTextViewProps) {
   const providerTheme = useTheme();
-  const containerRef = React.useRef<HTMLDivElement>(null);
+  const readerRef = React.useRef<HTMLDivElement>(null);
   // Captured as state (not a ref) so the popover's docking observer re-subscribes
   // once the scroll container mounts.
   const [scrollEl, setScrollEl] = React.useState<HTMLElement | null>(null);
@@ -649,7 +673,7 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
       return;
     }
     const anchorVerse = added ?? Math.max(...verses);
-    const wrappers = containerRef.current?.querySelectorAll(`.yv-v[v="${anchorVerse}"]`);
+    const wrappers = readerRef.current?.querySelectorAll(`.yv-v[v="${anchorVerse}"]`);
     const anchor = wrappers?.[wrappers.length - 1];
     setAnchorElement(anchor instanceof HTMLElement ? anchor : null);
     setPopoverOpen(true);
@@ -680,10 +704,10 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
   };
 
   const buildText = () => {
-    const container = containerRef.current;
-    if (!container) return '';
+    const reader = readerRef.current;
+    if (!reader) return '';
     const textByVerse: Record<number, string> = {};
-    for (const verse of selectedVerses) textByVerse[verse] = getCleanVerseText(container, verse);
+    for (const verse of selectedVerses) textByVerse[verse] = getCleanVerseText(reader, verse);
     return buildVerseShareText({
       verses: selectedVerses,
       textByVerse,
@@ -714,57 +738,69 @@ function VerseSelectionDemo(props: BibleTextViewProps) {
   };
 
   return (
-    <div
-      ref={containerRef}
-      data-yv-sdk
-      className="yv:grid yv:grid-rows-[auto_1fr] yv:gap-4 yv:max-w-lg yv:h-svh yv:max-h-svh yv:overflow-hidden"
-    >
-      <div className="yv:flex yv:items-center yv:gap-2 yv:bg-secondary yv:py-2 yv:px-4 yv:rounded-sm yv:sticky yv:text-sm yv:text-muted-foreground">
-        <p className="yv:flex-1">
-          Selected: {selectedVerses.length > 0 ? selectedVerses.join(', ') : 'None'}
-        </p>
-        <Button
-          disabled={!selectedVerses.length}
-          type="button"
-          size="icon"
-          variant="outline"
-          onClick={closeAndClear}
-          className="yv:text-primary"
+    <ShadowRootHost portalStrategy="local-top-layer" theme={props.theme ?? providerTheme}>
+      <ReuseShadowBoundary>
+        <div
+          data-yv-sdk
+          className="yv:grid yv:grid-rows-[auto_1fr] yv:gap-4 yv:max-w-lg yv:h-svh yv:max-h-svh yv:overflow-hidden"
         >
-          <XIcon className="yv:size-4" />
-        </Button>
-      </div>
+          <div className="yv:flex yv:items-center yv:gap-2 yv:bg-secondary yv:py-2 yv:px-4 yv:rounded-sm yv:sticky yv:text-sm yv:text-muted-foreground">
+            <p className="yv:flex-1">
+              Selected: {selectedVerses.length > 0 ? selectedVerses.join(', ') : 'None'}
+            </p>
+            <Button
+              disabled={!selectedVerses.length}
+              type="button"
+              size="icon"
+              variant="outline"
+              onClick={closeAndClear}
+              className="yv:text-primary"
+            >
+              <XIcon className="yv:size-4" />
+            </Button>
+          </div>
 
-      <div ref={setScrollEl} className="yv:h-full yv:overflow-y-auto">
-        <BibleTextView
-          renderNotes={true}
-          {...props}
-          selectedVerses={selectedVerses}
-          onVerseSelect={handleVerseSelect}
-          highlightedVerses={highlightedVerses}
-        />
-      </div>
+          <div ref={setScrollEl} className="yv:h-full yv:overflow-y-auto">
+            <BibleTextView
+              ref={readerRef}
+              renderNotes={true}
+              {...props}
+              selectedVerses={selectedVerses}
+              onVerseSelect={handleVerseSelect}
+              highlightedVerses={highlightedVerses}
+            />
+          </div>
 
-      <VerseActionPopover
-        open={popoverOpen && selectedVerses.length > 0}
-        onOpenChange={(open) => (open ? setPopoverOpen(true) : closeAndClear())}
-        activeHighlights={activeHighlights}
-        selectedVerses={selectedVerses}
-        highlightedVerses={highlightedVerses}
-        anchorElement={anchorElement}
-        scrollRoot={scrollEl}
-        onHighlight={handleHighlight}
-        onClearHighlight={handleClearHighlight}
-        onCopy={handleCopy}
-        onShare={handleShare}
-        theme={props.theme ?? providerTheme}
-      />
-    </div>
+          <VerseActionPopover
+            open={popoverOpen && selectedVerses.length > 0}
+            onOpenChange={(open) => (open ? setPopoverOpen(true) : closeAndClear())}
+            activeHighlights={activeHighlights}
+            selectedVerses={selectedVerses}
+            highlightedVerses={highlightedVerses}
+            anchorElement={anchorElement}
+            scrollRoot={scrollEl}
+            onHighlight={handleHighlight}
+            onClearHighlight={handleClearHighlight}
+            onCopy={handleCopy}
+            onShare={handleShare}
+            theme={props.theme ?? providerTheme}
+          />
+        </div>
+      </ReuseShadowBoundary>
+    </ShadowRootHost>
   );
 }
 
 export const VerseSelection: Story = {
   tags: ['integration'],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'This regression fixture uses internal Shadow DOM composition so the verse action popover and its anchor share one root. It is not a public integration pattern; use BibleReader for supported verse selection and actions.',
+      },
+    },
+  },
   args: {
     reference: 'JHN.1',
     versionId: 111,
@@ -794,12 +830,19 @@ export const VerseSelection: Story = {
   },
   render: (props) => <VerseSelectionDemo {...props} />,
   play: async ({ canvasElement }) => {
-    const verse = await waitFor(async () => {
-      const element = canvasElement.querySelector<HTMLElement>('.yv-v[v="1"]');
-      await expect(element?.textContent).toContain('In the beginning was the Word');
-      return element!;
+    const writeText = fn();
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
     });
-    const nextVerse = canvasElement.querySelector<HTMLElement>('.yv-v[v="2"]')!;
+    const root = await waitForShadowRoot(canvasElement);
+    const verse = await waitForElement<HTMLElement>(
+      root,
+      '.yv-v[v="1"]',
+      'selectable verse not rendered',
+    );
+    await expect(verse.textContent).toContain('In the beginning was the Word');
+    const nextVerse = root.querySelector<HTMLElement>('.yv-v[v="2"]')!;
     await document.fonts.ready;
     await expect(verse.getClientRects().length).toBeGreaterThan(1);
 
@@ -811,7 +854,12 @@ export const VerseSelection: Story = {
     await expect(plain.boxDecorationBreak).toBe('clone');
 
     await userEvent.click(verse);
-    const swatches = await screen.findByRole('group', { name: /highlight colors/i });
+    const dialog = await waitForElement<HTMLElement>(
+      root,
+      '[data-slot="verse-action-popover"]',
+      'verse action popover did not share the scripture shadow root',
+    );
+    const swatches = within(dialog).getByRole('group', { name: /highlight colors/i });
     await userEvent.click(
       within(swatches).getAllByRole('button', { name: /apply highlight/i })[0]!,
     );
@@ -833,5 +881,16 @@ export const VerseSelection: Story = {
     await expect(
       Math.abs(after.left - afterParagraph.left - (before.left - beforeParagraph.left)),
     ).toBeLessThan(1);
+
+    await userEvent.click(verse);
+    const reopenedDialog = await waitForElement<HTMLElement>(
+      root,
+      '[data-slot="verse-action-popover"]',
+      'verse action popover did not reopen in the scripture shadow root',
+    );
+    await userEvent.click(within(reopenedDialog).getByRole('button', { name: /copy/i }));
+
+    await expect(writeText).toHaveBeenCalledOnce();
+    await expect(writeText).toHaveBeenCalledWith(expect.stringContaining('In the beginning'));
   },
 };
