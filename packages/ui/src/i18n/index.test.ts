@@ -189,18 +189,39 @@ describe('i18n instance', () => {
     expect(i18n.t('verseOfTheDay')).toBe(localeStrings.verseOfTheDay);
   });
 
-  it('falls back to the English string for keys a translation bundle is missing', async () => {
-    vi.stubGlobal('navigator', {
-      language: 'ko-KR',
-      languages: ['ko-KR', 'ko'],
-    });
-    vi.resetModules();
+  it.each([
+    { language: 'ko-KR', locale: 'ko', strings: resources.ko.translation },
+    { language: 'cs-CZ', locale: 'cs', strings: resources.cs.translation },
+  ])(
+    'uses shared translations and English fallback for missing keys in $locale',
+    async ({ language, locale, strings }) => {
+      vi.stubGlobal('navigator', { language, languages: [language, locale] });
+      vi.resetModules();
 
-    const i18n = await loadI18n();
-    const koStrings = resources.ko.translation;
-    expect(koStrings).not.toHaveProperty('versionSearchAriaLabel');
-    expect(i18n.t('versionSearchAriaLabel')).toBe(en.versionSearchAriaLabel);
-  });
+      const i18n = await loadI18n();
+      expect(i18n.language).toBe(locale);
+      expect(i18n.t('share')).toBe(strings.share);
+      for (const key of [
+        'cancel',
+        'close',
+        'error',
+        'font',
+        'passageUnavailable',
+        'search',
+        'searchLanguages',
+        'searchVersions',
+        'selectLanguage',
+        'regional',
+        'suggested',
+        'bibleApp',
+      ]) {
+        expect(i18n.t(key)).toBe(
+          i18n.getResource(locale, 'translation', key) ??
+            i18n.getResource('en', 'translation', key),
+        );
+      }
+    },
+  );
 
   it('uses no strings when the browser prefers nb-NO', async () => {
     vi.stubGlobal('navigator', {

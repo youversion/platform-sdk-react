@@ -508,7 +508,7 @@ function Content({ onRequestClose, onSelect }: BibleChapterPickerContentProps) {
         <InputGroup className="yv:rounded-3xl yv:bg-background yv:shadow-none yv:border-border">
           <InputGroupInput
             type="text"
-            placeholder={t('searchPlaceholder')}
+            placeholder={t('search')}
             dir="auto"
             className="yv:text-base yv:leading-normal"
             value={searchQuery}

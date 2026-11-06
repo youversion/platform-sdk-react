@@ -35,7 +35,7 @@ export function getBibleTextErrorMessage(error: BibleTextError, t: TFunction): s
   }
 
   if (status === 404 || message.includes('not found')) {
-    return t('passageNotFoundError');
+    return t('passageUnavailable');
   }
 
   if (globalThis.navigator?.onLine === false) {

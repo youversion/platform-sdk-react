@@ -111,7 +111,7 @@ export const LanguageSearchButton = forwardRef<HTMLButtonElement>(
         variant="ghost"
         size="icon"
         className="yv:w-6 yv:h-6 yv:text-muted-foreground"
-        aria-label={t('languageSearchAriaLabel')}
+        aria-label={t('searchLanguages')}
         data-slot="language-search-open"
         onClick={() => setView('languageSearch')}
       >
@@ -306,7 +306,7 @@ export function BibleLanguagePickerContent({
                 value="suggested"
                 onKeyDown={handleShadowLanguageTabKeyDown}
               >
-                {t('suggestedTab')}
+                {t('suggested')}
               </TabsTrigger>
               <TabsTrigger
                 className={languageTabClassName}
@@ -321,7 +321,7 @@ export function BibleLanguagePickerContent({
               {suggestedLanguages.length > 0 ? (
                 <>
                   <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-xl yv:font-bold">
-                    {t('regionalHeading')}
+                    {t('regional')}
                   </h3>
                   <LanguageRows
                     languages={suggestedLanguages}
@@ -393,7 +393,7 @@ function LanguageSearchView({
         <InputGroup className="yv:h-auto yv:rounded-full yv:border-0 yv:bg-muted yv:py-1 yv:shadow-none">
           <InputGroupInput
             ref={searchInputRef}
-            aria-label={t('languageSearchAriaLabel')}
+            aria-label={t('searchLanguages')}
             type="text"
             placeholder={t('searchLanguages')}
             dir="auto"
@@ -426,7 +426,7 @@ function LanguageSearchView({
         ) : suggestedLanguages.length > 0 ? (
           <>
             <h3 className="yv:bg-popover yv:px-4 yv:pb-2 yv:text-xl yv:font-bold">
-              {t('regionalHeading')}
+              {t('regional')}
             </h3>
             <LanguageRows
               languages={suggestedLanguages}

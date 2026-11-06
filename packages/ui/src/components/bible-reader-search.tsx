@@ -214,7 +214,7 @@ function SearchPanel({
             type="text"
             enterKeyHint="search"
             value={search.query}
-            placeholder={t('searchPlaceholder')}
+            placeholder={t('search')}
             aria-label={t('bibleSearchAriaLabel', 'Search the Bible')}
             onChange={(event) => search.setQuery(event.target.value)}
             onKeyDown={(event) => {
