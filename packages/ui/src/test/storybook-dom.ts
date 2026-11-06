@@ -38,3 +38,10 @@ export function requireShadowContent(root: ShadowRoot): HTMLElement {
 export function waitForShadowContent(root: ShadowRoot): Promise<HTMLElement> {
   return waitFor(() => requireShadowContent(root));
 }
+
+export async function pressNativeBrowserKey(keys: string): Promise<boolean> {
+  if (!('__vitest_worker__' in globalThis)) return false;
+  const { userEvent } = await import('vitest/browser');
+  await userEvent.keyboard(keys);
+  return true;
+}

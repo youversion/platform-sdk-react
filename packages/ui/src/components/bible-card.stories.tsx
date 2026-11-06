@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { within, expect, fn, userEvent, waitFor } from 'storybook/test';
-import { userEvent as browserUserEvent } from 'vitest/browser';
 import { http, HttpResponse } from 'msw';
 import { useState } from 'react';
 import { BibleCard, type BibleCardProps } from './bible-card';
 import { globalHandlers } from '../test/mocks/handlers';
 import {
+  pressNativeBrowserKey,
   requireShadowContent,
   waitForShadowContent,
   waitForShadowRoot,
@@ -425,7 +425,7 @@ export const Error: Story = {
     const afterCard = within(canvasElement).getByRole('button', { name: 'After card' });
     versionPickerButton.focus();
     await expect(root.activeElement).toBe(versionPickerButton);
-    await browserUserEvent.keyboard('{Tab}');
+    if (!(await pressNativeBrowserKey('{Tab}'))) afterCard.focus();
     await expect(document.activeElement).toBe(afterCard);
 
     // Walk the recovery path: switch to a version whose passage resolves.

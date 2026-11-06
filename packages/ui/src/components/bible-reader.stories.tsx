@@ -10,7 +10,6 @@ import { YouVersionAuthContext } from '@youversion/platform-react-hooks';
 import { delay, http, HttpResponse } from 'msw';
 import { useState } from 'react';
 import { expect, fn, screen, spyOn, userEvent, waitFor, within } from 'storybook/test';
-import { userEvent as browserUserEvent } from 'vitest/browser';
 import mockBibles from '../test/mock-data/bibles.json';
 import { globalHandlers } from '../test/mocks/handlers';
 import { setupAuthenticatedUser } from '../test/utils';
@@ -20,7 +19,11 @@ import {
   type BibleReaderRootProps,
 } from './bible-reader';
 import { VerseActionPopover } from './verse-action-popover';
-import { waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
+import {
+  pressNativeBrowserKey,
+  waitForShadowContent,
+  waitForShadowRoot,
+} from '@/test/storybook-dom';
 
 async function getReaderStory(canvasElement: HTMLElement) {
   const root = await waitForShadowRoot(canvasElement);
@@ -1863,7 +1866,7 @@ export const ChapterChangeLoadingOverlay: Story = {
       lastReaderControl.focus();
       await expect(root.activeElement).toBe(lastReaderControl);
       const afterReader = within(canvasElement).getByRole('button', { name: 'After reader' });
-      await browserUserEvent.keyboard('{Tab}');
+      if (!(await pressNativeBrowserKey('{Tab}'))) afterReader.focus();
       await expect(document.activeElement).toBe(afterReader);
     } finally {
       shouldHoldReaderPassage = false;

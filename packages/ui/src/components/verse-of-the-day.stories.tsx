@@ -2,10 +2,14 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within, userEvent, spyOn } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
 import { getWorker } from 'msw-storybook-addon';
-import { userEvent as browserUserEvent } from 'vitest/browser';
 
 import { VerseOfTheDay } from './verse-of-the-day';
-import { waitFor, waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
+import {
+  pressNativeBrowserKey,
+  waitFor,
+  waitForShadowContent,
+  waitForShadowRoot,
+} from '@/test/storybook-dom';
 import { globalHandlers } from '@/test/mocks/handlers';
 import mockPassages from '@/test/mock-data/passages.json';
 import { ScriptureStoryDataProvider } from '@/test/scripture-story-data';
@@ -178,7 +182,7 @@ export const OfflineRecovery: Story = {
       name: 'Before Verse of the Day',
     });
     beforeVerseOfTheDay.focus();
-    await browserUserEvent.keyboard('{Tab}');
+    if (!(await pressNativeBrowserKey('{Tab}'))) afterVerseOfTheDay.focus();
     await expect(document.activeElement).toBe(afterVerseOfTheDay);
 
     let recoveryRequestIsWaiting = false;
