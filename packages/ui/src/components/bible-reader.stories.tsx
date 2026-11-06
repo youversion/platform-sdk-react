@@ -66,6 +66,8 @@ type PathParams = {
 };
 
 const READER_PASSAGE_RELEASE_EVENT = 'yv-storybook-release-reader-passage';
+const READER_PASSAGE_WAITING_EVENT = 'yv-storybook-reader-passage-waiting';
+let shouldHoldReaderPassage = false;
 
 function isPathParamText(value: string | readonly string[] | undefined): value is string {
   return Object.prototype.toString.call(value) === '[object String]';
@@ -1770,11 +1772,13 @@ export const ChapterChangeLoadingOverlay: Story = {
         http.get('*/v1/bibles/111/passages/:usfm', async ({ params }: { params: PathParams }) => {
           const usfm = firstPathParam(params.usfm);
           if (!usfm) return new HttpResponse(null, { status: 404 });
-          if (usfm === 'JHN.2') {
+          if (usfm === 'JHN.2' && shouldHoldReaderPassage) {
+            shouldHoldReaderPassage = false;
             await new Promise<void>((resolve) => {
               window.addEventListener(READER_PASSAGE_RELEASE_EVENT, () => resolve(), {
                 once: true,
               });
+              window.dispatchEvent(new Event(READER_PASSAGE_WAITING_EVENT));
             });
           }
           return HttpResponse.json({
@@ -1813,12 +1817,22 @@ export const ChapterChangeLoadingOverlay: Story = {
       /change bible book and chapter/i,
     );
     const nextButton = chapterPicker.getByRole('button', { name: /next chapter/i });
-    await userEvent.click(nextButton);
-
-    const rendererAfterClick = root.querySelector('[data-slot="yv-bible-renderer"]');
-    await expect(rendererAfterClick?.textContent).toContain('JHN.1');
+    let requestIsWaiting = false;
+    const markRequestWaiting = () => {
+      requestIsWaiting = true;
+    };
+    window.addEventListener(READER_PASSAGE_WAITING_EVENT, markRequestWaiting, { once: true });
+    shouldHoldReaderPassage = true;
 
     try {
+      await userEvent.click(nextButton);
+      await waitFor(async () => {
+        await expect(requestIsWaiting).toBe(true);
+      });
+
+      const rendererAfterClick = root.querySelector('[data-slot="yv-bible-renderer"]');
+      await expect(rendererAfterClick?.textContent).toContain('JHN.1');
+
       await waitFor(async () => {
         const overlay = root.querySelector('[aria-label="Loading passage"]');
         const reader = root.querySelector<HTMLElement>(
@@ -1829,11 +1843,32 @@ export const ChapterChangeLoadingOverlay: Story = {
         await expect(overlay?.getBoundingClientRect().height ?? 0).toBeGreaterThan(0);
         await expect(reader ? getComputedStyle(reader).display : '').toBe('flex');
         await expect(reader ? getComputedStyle(reader).flexDirection : '').toBe('column');
+        await expect(reader?.getBoundingClientRect().height ?? 0).toBeGreaterThan(0);
         await expect(root.querySelector('[class*="opacity-40"]')).toBeInTheDocument();
         const renderer = root.querySelector('[data-slot="yv-bible-renderer"]');
         await expect(renderer?.textContent).toContain('JHN.1');
+        await expect(nextButton).toBeInTheDocument();
       });
+
+      const focusableElements = root.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      const lastReaderControl = focusableElements.item(focusableElements.length - 1);
+      lastReaderControl.focus();
+      await expect(root.activeElement).toBe(lastReaderControl);
+      const tabEvent = new KeyboardEvent('keydown', {
+        key: 'Tab',
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+      });
+      await expect(lastReaderControl.dispatchEvent(tabEvent)).toBe(true);
+      const afterReader = within(canvasElement).getByRole('button', { name: 'After reader' });
+      afterReader.focus();
+      await expect(document.activeElement).toBe(afterReader);
     } finally {
+      shouldHoldReaderPassage = false;
+      window.removeEventListener(READER_PASSAGE_WAITING_EVENT, markRequestWaiting);
       window.dispatchEvent(new Event(READER_PASSAGE_RELEASE_EVENT));
     }
 
@@ -1849,9 +1884,5 @@ export const ChapterChangeLoadingOverlay: Story = {
 
     const scroller = root.querySelector('main');
     await expect(scroller?.scrollTop).toBe(0);
-
-    const afterReader = within(canvasElement).getByRole('button', { name: 'After reader' });
-    await userEvent.click(afterReader);
-    await expect(document.activeElement).toBe(afterReader);
   },
 };

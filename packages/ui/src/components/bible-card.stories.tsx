@@ -421,7 +421,16 @@ export const Error: Story = {
     });
 
     const afterCard = within(canvasElement).getByRole('button', { name: 'After card' });
-    await userEvent.click(afterCard);
+    versionPickerButton.focus();
+    await expect(root.activeElement).toBe(versionPickerButton);
+    const tabEvent = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    });
+    await expect(versionPickerButton.dispatchEvent(tabEvent)).toBe(true);
+    afterCard.focus();
     await expect(document.activeElement).toBe(afterCard);
 
     // Walk the recovery path: switch to a version whose passage resolves.
