@@ -2,8 +2,8 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
-import type { ReactElement } from 'react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { useEffect, useState, type ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
 
 // ResizeObserver is used by VersionAbbreviationIcon and @floating-ui/dom (Radix Popover)
@@ -27,6 +27,7 @@ import {
 } from '@youversion/platform-core';
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import { InterfaceDirectionProvider } from '@/lib/direction';
+import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
 
 const mockVersions: BibleVersion[] = [
   {
@@ -156,7 +157,9 @@ function defaultOverrides({
 function renderWithOverrides(ui: ReactElement, setup?: OverrideSetup) {
   return render(ui, {
     wrapper: ({ children }) => (
-      <HookOverrideProvider overrides={defaultOverrides(setup)}>{children}</HookOverrideProvider>
+      <HookOverrideProvider overrides={defaultOverrides(setup)}>
+        <ReuseShadowBoundary>{children}</ReuseShadowBoundary>
+      </HookOverrideProvider>
     ),
   });
 }
@@ -214,6 +217,44 @@ function resetPickerTestEnvironment() {
 }
 
 describe('BibleVersionPicker', () => {
+  it('preserves the first-render default language when a parent mount effect changes it', async () => {
+    resetPickerTestEnvironment();
+    const user = userEvent.setup();
+    const onVersionPickerPress = vi.fn();
+
+    function PickerWithChangingDefault(): ReactElement {
+      const [defaultLanguageId, setDefaultLanguageId] = useState('es');
+      useEffect(() => setDefaultLanguageId('ko'), []);
+
+      return (
+        <BibleVersionPicker.Root
+          versionId={111}
+          defaultLanguageId={defaultLanguageId}
+          onVersionPickerPress={onVersionPickerPress}
+        >
+          <BibleVersionPicker.Trigger />
+        </BibleVersionPicker.Root>
+      );
+    }
+
+    const { container } = render(
+      <HookOverrideProvider overrides={defaultOverrides()}>
+        <PickerWithChangingDefault />
+      </HookOverrideProvider>,
+    );
+    const trigger = await waitFor(() => {
+      const button = container
+        .querySelector<HTMLElement>('[data-yv-shadow-host]')
+        ?.shadowRoot?.querySelector<HTMLButtonElement>('button');
+      if (!button) throw new Error('version picker trigger not mounted');
+      return button;
+    });
+
+    await user.click(trigger);
+
+    expect(onVersionPickerPress).toHaveBeenCalledWith({ versionId: 111, languageId: 'es' });
+  });
+
   // Untouched cases keep suite-wide resets; new/edited workflows below use explicit setup only.
   describe('legacy', () => {
     beforeEach(() => {
@@ -817,6 +858,38 @@ describe('BibleVersionPicker', () => {
       expect(screen.getByRole('button', { name: 'Language English 2' })).toHaveFocus();
     });
     expect(screen.getByRole('button', { name: 'Outer Language' })).not.toHaveFocus();
+  });
+
+  it('does not let delayed view-change focus override language-tab focus', async () => {
+    resetPickerTestEnvironment();
+    const user = userEvent.setup();
+
+    renderPicker();
+    await openPicker();
+
+    const frames: FrameRequestCallback[] = [];
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((callback) => {
+        frames.push(callback);
+        return frames.length;
+      });
+
+    try {
+      await user.click(screen.getByRole('button', { name: /^language /i }));
+      const suggestedTab = screen.getByRole('tab', { name: /suggested/i });
+      suggestedTab.focus();
+      expect(suggestedTab).toHaveFocus();
+      expect(frames.length).toBeGreaterThan(0);
+
+      act(() => {
+        while (frames.length > 0) frames.shift()?.(performance.now());
+      });
+
+      expect(suggestedTab).toHaveFocus();
+    } finally {
+      requestAnimationFrameSpy.mockRestore();
+    }
   });
 
   it('tabs from Close into version search, then Language, then versions', async () => {

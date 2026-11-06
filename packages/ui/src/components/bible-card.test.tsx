@@ -2,13 +2,18 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, act, within, waitFor } from '@testing-library/react';
+import { render as rtlRender, act, within, waitFor } from '@testing-library/react';
+import { useEffect, useState, type ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
 import { requireHtmlButton, requireHtmlElement } from '@/test/dom-stubs';
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import { BibleCard } from './bible-card';
 import type { FootnoteData } from './verse';
-import type { UsePassageResult, UseVersionResult } from '@youversion/platform-react-hooks';
+import type {
+  HookOverrides,
+  UsePassageResult,
+  UseVersionResult,
+} from '@youversion/platform-react-hooks';
 import type { BiblePassage, BibleVersion, Highlight } from '@youversion/platform-core';
 import { YouVersionPlatformConfiguration } from '@youversion/platform-core';
 import {
@@ -19,6 +24,13 @@ import {
   Providers,
   stubUseHighlights,
 } from '@/test/highlights-test-utils';
+import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
+
+function render(ui: ReactElement) {
+  return rtlRender(ui, {
+    wrapper: ({ children }) => <ReuseShadowBoundary>{children}</ReuseShadowBoundary>,
+  });
+}
 
 const mockPassage: BiblePassage = {
   id: 'JHN.3.16',
@@ -264,6 +276,33 @@ describe('BibleCard - maxWidth', () => {
   });
 });
 
+it('captures defaultVersionId before passive shadow content mounts', async () => {
+  const requestedVersionIds: number[] = [];
+  const overrides: HookOverrides = {
+    useVersion: (versionId) => {
+      requestedVersionIds.push(versionId);
+      return idleVersion();
+    },
+    usePassage: () => passageResult({ passage: mockPassage, loading: false }),
+  };
+
+  function ChangeDefaultVersionAfterMount() {
+    const [defaultVersionId, setDefaultVersionId] = useState(222);
+    useEffect(() => setDefaultVersionId(333), []);
+    return <BibleCard reference="JHN.3.16" defaultVersionId={defaultVersionId} />;
+  }
+
+  rtlRender(
+    <HookOverrideProvider overrides={overrides}>
+      <ChangeDefaultVersionAfterMount />
+    </HookOverrideProvider>,
+  );
+
+  await waitFor(() => expect(requestedVersionIds.length).toBeGreaterThan(0));
+  expect(requestedVersionIds).not.toContain(333);
+  expect(requestedVersionIds.every((versionId) => versionId === 222)).toBe(true);
+});
+
 describe('BibleCard - Error state', () => {
   function renderErrorCard() {
     return renderCard(
@@ -376,6 +415,49 @@ it('host highlights: paints from a stubbed fetch when the prop is omitted, and p
     );
     expect(getVerseEl(hostEmpty.container, 2).style.backgroundColor).toBe('');
   } finally {
+    hasPermission.mockRestore();
+  }
+});
+
+it('latches controlled highlights before the production shadow boundary mounts', async () => {
+  const hasPermission = vi
+    .spyOn(YouVersionPlatformConfiguration, 'hasPermission')
+    .mockReturnValue(true);
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+  function RemoveControlledHighlightsAfterMount() {
+    const [controlled, setControlled] = useState(true);
+    useEffect(() => setControlled(false), []);
+
+    return (
+      <BibleCard reference="JHN.1" versionId={111} {...(controlled ? { highlights: [] } : {})} />
+    );
+  }
+
+  try {
+    const { container } = rtlRender(
+      <Providers
+        hookOverrides={{
+          useVersion: () => idleVersion(),
+          usePassage: () => passageResult({ passage: multiVersePassage, loading: false }),
+          useHighlights: stubUseHighlights({ highlights: collection(highlights) }),
+        }}
+      >
+        <RemoveControlledHighlightsAfterMount />
+      </Providers>,
+    );
+    const verse = await waitFor(() => {
+      const candidate = container
+        .querySelector<HTMLElement>('[data-yv-shadow-host]')
+        ?.shadowRoot?.querySelector<HTMLElement>('.yv-v[v="2"]');
+      if (!candidate) throw new Error('BibleCard shadow content not mounted');
+      return candidate;
+    });
+
+    expect(verse.style.backgroundColor).toBe('');
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('BibleCard'));
+  } finally {
+    warn.mockRestore();
     hasPermission.mockRestore();
   }
 });

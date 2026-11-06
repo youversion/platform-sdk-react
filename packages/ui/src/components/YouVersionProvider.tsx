@@ -53,14 +53,16 @@ export function YouVersionProvider({
   // paint matches it. When locale is omitted, wait for the layout effect so SSR
   // stays on the English fallback instead of a request-time browser language.
   if (normalizedLocale) {
-    void syncSdkLanguage(normalizedLocale);
+    void syncSdkLanguage(normalizedLocale).catch(() => undefined);
   }
 
   useLayoutEffect(() => {
     let active = true;
-    void syncSdkLanguage(normalizedLocale).then((resolvedLocale) => {
-      if (active && !normalizedLocale) setBrowserLocale(resolvedLocale);
-    });
+    void syncSdkLanguage(normalizedLocale)
+      .then((resolvedLocale) => {
+        if (active && !normalizedLocale) setBrowserLocale(resolvedLocale);
+      })
+      .catch(() => undefined);
     return () => {
       active = false;
     };

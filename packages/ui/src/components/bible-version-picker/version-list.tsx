@@ -240,7 +240,7 @@ export function VersionList({
               placeholder={t('searchVersions')}
               dir="auto"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onInput={(event) => setSearchQuery(event.currentTarget.value)}
             ></InputGroupInput>
             <InputGroupAddon>
               <SearchIcon className="yv:size-6 yv:text-muted-foreground" />
@@ -249,7 +249,8 @@ export function VersionList({
         </section>
         {headerOwnsChrome ? <LanguageEntry name={selectedLanguageName} /> : null}
       </div>
-      <div className="yv:flex-1 yv:overflow-y-auto yv:py-2">
+      {/* Firefox makes scroll containers a Tab stop; the version rows are the keyboard targets. */}
+      <div className="yv:flex-1 yv:overflow-y-auto yv:py-2" tabIndex={-1}>
         {filteredRecentVersions.length > 0 && (
           <>
             <h2 className="yv:px-4 yv:py-2 yv:text-xl yv:font-bold yv:leading-6">

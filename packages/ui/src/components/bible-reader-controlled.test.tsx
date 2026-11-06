@@ -37,6 +37,7 @@ import {
 import type { HighlightedVerses } from '@/lib/highlight-colors';
 import { HIGHLIGHT_COLORS } from './verse-action-popover';
 import { buildVerseReference, buildVerseShareText, joinVerseTexts } from '@/lib/verse-share';
+import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
 
 import { HIGHLIGHTS_LIVE, setHighlightsLive } from '@/lib/feature-flags';
 import { peekPendingHighlights } from '@/lib/pending-highlight';
@@ -196,12 +197,36 @@ function wrapReader(
   props: Partial<BibleReaderRootProps> = {},
   overrides: HookOverrides = defaultOverrides(),
 ) {
-  return <HookOverrideProvider overrides={overrides}>{readerJsx(props)}</HookOverrideProvider>;
+  return (
+    <HookOverrideProvider overrides={overrides}>
+      <ReuseShadowBoundary>{readerJsx(props)}</ReuseShadowBoundary>
+    </HookOverrideProvider>
+  );
 }
 
 function renderReader(props: Partial<BibleReaderRootProps> = {}, overrides?: HookOverrides) {
   return render(wrapReader(props, overrides));
 }
+
+it('keeps reader-owned scripture in the reader tree without a standalone shadow boundary', async () => {
+  const { container } = render(
+    <HookOverrideProvider overrides={defaultOverrides()}>
+      <ReuseShadowBoundary>
+        <BibleReader.Root defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
+          <BibleReader.Content />
+        </BibleReader.Root>
+      </ReuseShadowBoundary>
+    </HookOverrideProvider>,
+  );
+
+  const renderer = await waitFor(() => {
+    const candidate = container.querySelector<HTMLElement>('[data-slot="yv-bible-renderer"]');
+    if (!candidate) throw new Error('reader-owned scripture not rendered in the reader tree');
+    return candidate;
+  });
+
+  expect(renderer.getRootNode()).toBe(document);
+});
 
 it.each([
   {
@@ -400,6 +425,8 @@ describe('BibleReader controlled mode - pure projection', () => {
 });
 
 describe('BibleReader controlled mode - provable inertness', () => {
+  // The two rendered selection workflows can exceed Vitest's default 5s timeout
+  // when the unit and Storybook projects contend on a loaded CI runner.
   it('never touches the network or localStorage for highlights, even across select/apply/clear', async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal('fetch', fetchSpy);
@@ -434,7 +461,7 @@ describe('BibleReader controlled mode - provable inertness', () => {
       getItemSpy.mockRestore();
       setItemSpy.mockRestore();
     }
-  });
+  }, 20_000);
 
   it('color taps paint nothing (no optimistic echo)', async () => {
     const { container } = renderReader({ highlights: [], onHighlightApply: vi.fn() });
@@ -569,7 +596,7 @@ describe('BibleReader controlled mode - events', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).toBeNull();
     });
-  });
+  }, 20_000);
 
   it('ignores onHighlightApply / onHighlightRemove in self-contained mode', async () => {
     const onHighlightApply = vi.fn();
@@ -958,7 +985,10 @@ describe('BibleReader clearSelectionSignal', () => {
   });
 });
 
-function renderReaderWithHighlightAuth(userInfo: typeof mockUserInfo | null) {
+function renderReaderWithHighlightAuth(
+  userInfo: typeof mockUserInfo | null,
+  props: Partial<BibleReaderRootProps> = {},
+) {
   const createHighlight = vi.fn().mockResolvedValue({
     version_id: 111,
     passage_id: 'JHN.1.1',
@@ -984,7 +1014,7 @@ function renderReaderWithHighlightAuth(userInfo: typeof mockUserInfo | null) {
           error: null,
         }}
       >
-        {wrapReader({}, overrides)}
+        {wrapReader(props, overrides)}
       </YouVersionAuthContext.Provider>,
     ),
   };
@@ -1137,10 +1167,64 @@ it('clears the verse menu while the highlight permission grant is still starting
 
     expect(updateToken).toHaveBeenCalledTimes(1);
     expectVerseMenuAbsent();
+    fireEvent.pointerDown(getVerseEl(container, 1));
     expect(getVerseEl(container, 1).classList.contains('yv-v-selected')).toBe(true);
     expect(createHighlight).not.toHaveBeenCalled();
     expect(peekPendingHighlights()).toHaveLength(1);
   } finally {
+    updateToken.mockRestore();
+    setHighlightsLive(HIGHLIGHTS_LIVE);
+    sessionStorage.clear();
+    localStorage.clear();
+  }
+});
+
+it('classifies pending-highlight pointers in the reader document realm', async () => {
+  setHighlightsLive(true);
+  YouVersionPlatformConfiguration.saveUserInfo({ id: 'user-1', name: 'Test User' });
+  YouVersionPlatformConfiguration.saveGrantedPermissions([]);
+  const updateToken = vi
+    .spyOn(DataExchangeClient.prototype, 'updateToken')
+    .mockImplementation(() => new Promise(() => undefined));
+  const iframe = document.createElement('iframe');
+  document.body.append(iframe);
+  const iframeDocument = iframe.contentDocument;
+  if (!iframeDocument) throw new Error('same-origin iframe document not available');
+  // SAFETY: A same-origin iframe exposes its realm's Element constructor on its Window.
+  const iframeWindow = iframe.contentWindow as (Window & { Element: typeof Element }) | null;
+  if (!iframeWindow) throw new Error('same-origin iframe window not available');
+  const onVerseSelect = vi.fn();
+
+  try {
+    const view = renderReaderWithHighlightAuth(mockUserInfo, { onVerseSelect });
+
+    selectVerse(view.container, 1);
+    expect(onVerseSelect).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(getApplyButtons().length).toBeGreaterThan(0));
+    fireEvent.click(getApplyButtons()[0]!);
+
+    iframeDocument.body.append(view.container);
+    const topRealmVerse = getVerseEl(view.container, 1);
+    const iframeVerse = iframeDocument.importNode(topRealmVerse, true);
+    topRealmVerse.replaceWith(iframeVerse);
+    onVerseSelect.mockClear();
+    fireEvent.click(await screen.findByRole('button', { name: /^continue$/i }));
+
+    expect(updateToken).toHaveBeenCalledTimes(1);
+    expectVerseMenuAbsent();
+    expect(iframeVerse).toBeInstanceOf(iframeWindow.Element);
+    expect(iframeVerse).not.toBeInstanceOf(Element);
+
+    fireEvent.pointerDown(iframeVerse);
+    expect(onVerseSelect).not.toHaveBeenCalled();
+    expect(view.createHighlight).not.toHaveBeenCalled();
+    expect(peekPendingHighlights()).toHaveLength(1);
+
+    fireEvent.pointerDown(iframeDocument.body);
+    expect(onVerseSelect).toHaveBeenCalledTimes(1);
+    expect(onVerseSelect).toHaveBeenCalledWith(selection([]));
+  } finally {
+    iframe.remove();
     updateToken.mockRestore();
     setHighlightsLive(HIGHLIGHTS_LIVE);
     sessionStorage.clear();

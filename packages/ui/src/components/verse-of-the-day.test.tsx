@@ -1,8 +1,8 @@
 /**
  * @vitest-environment jsdom
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { render as rtlRender, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
 import type { HookOverrides } from '@youversion/platform-react-hooks';
@@ -25,6 +25,13 @@ import {
   Providers,
   stubUseHighlights,
 } from '@/test/highlights-test-utils';
+import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
+
+function render(ui: ReactElement) {
+  return rtlRender(ui, {
+    wrapper: ({ children }) => <ReuseShadowBoundary>{children}</ReuseShadowBoundary>,
+  });
+}
 
 const MOCK_VERSE_HTML = '<p class="yv-p">For God so loved the world</p>';
 const MOCK_VERSE_TEXT = 'For God so loved the world';
@@ -97,10 +104,7 @@ function expectedShareData(verseText: string = MOCK_VERSE_TEXT): VerseOfTheDaySh
 }
 
 describe('VerseOfTheDay - share', () => {
-  let shareSpy: ReturnType<typeof vi.fn>;
-  let clipboardWriteTextSpy: ReturnType<typeof vi.fn>;
-
-  beforeEach(() => {
+  function setupShareEnvironment({ webShare = true }: { webShare?: boolean } = {}) {
     // jsdom does not implement innerText; mirror textContent for share payload tests.
     Object.defineProperty(HTMLElement.prototype, 'innerText', {
       configurable: true,
@@ -109,20 +113,21 @@ describe('VerseOfTheDay - share', () => {
       },
     });
 
-    shareSpy = vi.fn().mockResolvedValue(undefined);
-    clipboardWriteTextSpy = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal(
-      'navigator',
-      Object.assign({}, navigator, {
-        share: shareSpy,
-        clipboard: {
-          writeText: clipboardWriteTextSpy,
-        },
-      }),
-    );
-  });
+    const shareSpy = vi.fn().mockResolvedValue(undefined);
+    const clipboardWriteTextSpy = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: webShare ? shareSpy : undefined,
+    });
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: clipboardWriteTextSpy },
+    });
+    return { clipboardWriteTextSpy, shareSpy };
+  }
 
   it('calls onShare with expected payload when provided', async () => {
+    setupShareEnvironment();
     const user = userEvent.setup();
     const onShare = vi.fn();
 
@@ -135,6 +140,7 @@ describe('VerseOfTheDay - share', () => {
   });
 
   it('does not surface unhandled rejection when onShare rejects', async () => {
+    setupShareEnvironment();
     const user = userEvent.setup();
     const onShare = vi.fn().mockRejectedValue(new Error('User dismissed'));
     const unhandledRejections: unknown[] = [];
@@ -156,6 +162,7 @@ describe('VerseOfTheDay - share', () => {
   });
 
   it('does not call navigator.share or clipboard when onShare is provided', async () => {
+    const { clipboardWriteTextSpy, shareSpy } = setupShareEnvironment();
     const user = userEvent.setup();
     const onShare = vi.fn();
 
@@ -169,6 +176,7 @@ describe('VerseOfTheDay - share', () => {
   });
 
   it('does not render share button or call onShare when showShareButton is false', () => {
+    setupShareEnvironment();
     const onShare = vi.fn();
 
     renderVotd(<VerseOfTheDay dayOfYear={1} showShareButton={false} onShare={onShare} />);
@@ -178,6 +186,7 @@ describe('VerseOfTheDay - share', () => {
   });
 
   it('does not call onShare when passage has an error', async () => {
+    setupShareEnvironment();
     const user = userEvent.setup();
     const onShare = vi.fn();
 

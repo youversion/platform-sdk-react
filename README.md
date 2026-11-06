@@ -65,6 +65,14 @@ function App() {
 }
 ```
 
+> [!IMPORTANT]
+> The UI package's coordinated major release moves its compatible public
+> component boundary into client-created open shadow roots. This is a breaking
+> rendered-DOM, styling, automation, and integration change even when React props
+> are unchanged. Review the UI package's
+> [Shadow DOM migration guidance](./packages/ui/README.md#shadow-dom-migration-guidance)
+> before upgrading.
+
 ### Custom Hooks
 
 ```tsx

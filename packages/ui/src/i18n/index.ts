@@ -43,7 +43,7 @@ export function syncSdkLanguage(languageTag?: string): Promise<string> {
  * Call from YouVersionProvider on mount when no `locale` prop is set.
  */
 export function syncBrowserLanguageFromNavigator(): void {
-  void syncSdkLanguage();
+  void syncSdkLanguage().catch(() => undefined);
 }
 
 function getInitialLanguage(): string {

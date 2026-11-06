@@ -4,7 +4,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState, type ReactElement } from 'react';
+import { useState, type ComponentProps, type ReactElement } from 'react';
 import type { BibleBook, BiblePassage, BibleVersion } from '@youversion/platform-core';
 import type {
   BibleSearchPhase,
@@ -15,10 +15,19 @@ import type {
 import { HookOverrideProvider } from '@/test/hook-overrides';
 import { installResizeObserverStub } from '@/test/dom-stubs';
 import { RECENT_SEARCHES_KEY } from '@/lib/use-recent-searches';
+import { ReuseShadowBoundary } from '@/lib/shadow-isolation';
 import { BibleReader } from './bible-reader';
 import { BibleReaderSearch } from './bible-reader-search';
 
 installResizeObserverStub();
+
+function ReaderRoot(props: ComponentProps<typeof BibleReader.Root>) {
+  return (
+    <ReuseShadowBoundary>
+      <BibleReader.Root {...props} />
+    </ReuseShadowBoundary>
+  );
+}
 
 const john316: BibleSearchResult = {
   id: 'JHN.3.16',
@@ -117,10 +126,10 @@ function baseOverrides(search: UseBibleSearchResult): HookOverrides {
 function renderSearch(search: UseBibleSearchResult, extra?: ReactElement) {
   return render(
     <HookOverrideProvider overrides={baseOverrides(search)}>
-      <BibleReader.Root defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
+      <ReaderRoot defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
         <BibleReaderSearch defaultOpen />
         {extra}
-      </BibleReader.Root>
+      </ReaderRoot>
     </HookOverrideProvider>,
   );
 }
@@ -195,9 +204,9 @@ describe('BibleReaderSearch', () => {
     const user = userEvent.setup();
     render(
       <HookOverrideProvider overrides={overrides}>
-        <BibleReader.Root defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
+        <ReaderRoot defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
           <BibleReaderSearch defaultOpen />
-        </BibleReader.Root>
+        </ReaderRoot>
       </HookOverrideProvider>,
     );
     const filters = screen.getByRole('button', { name: 'Filters' });
@@ -379,9 +388,9 @@ describe('BibleReaderSearch', () => {
       });
       return (
         <HookOverrideProvider overrides={overrides}>
-          <BibleReader.Root defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
+          <ReaderRoot defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
             <BibleReaderSearch defaultOpen />
-          </BibleReader.Root>
+          </ReaderRoot>
         </HookOverrideProvider>
       );
     }
@@ -457,9 +466,9 @@ describe('BibleReaderSearch', () => {
             phase: { kind: 'results', verses, nextPage },
           })}
         >
-          <BibleReader.Root defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
+          <ReaderRoot defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
             <BibleReaderSearch defaultOpen />
-          </BibleReader.Root>
+          </ReaderRoot>
         </HookOverrideProvider>,
       );
     next('loading');
@@ -525,9 +534,9 @@ describe('BibleReaderSearch', () => {
     const user = userEvent.setup();
     const view = render(
       <HookOverrideProvider overrides={overrides}>
-        <BibleReader.Root defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
+        <ReaderRoot defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
           <BibleReaderSearch />
-        </BibleReader.Root>
+        </ReaderRoot>
       </HookOverrideProvider>,
     );
     await user.click(screen.getByRole('button', { name: 'Search the Bible' }));
@@ -596,9 +605,9 @@ describe('BibleReaderSearch', () => {
     });
     render(
       <HookOverrideProvider overrides={overrides}>
-        <BibleReader.Root defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
+        <ReaderRoot defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
           <BibleReaderSearch defaultOpen />
-        </BibleReader.Root>
+        </ReaderRoot>
       </HookOverrideProvider>,
     );
     const user = userEvent.setup();
@@ -625,7 +634,7 @@ describe('BibleReaderSearch', () => {
             }),
           )}
         >
-          <BibleReader.Root
+          <ReaderRoot
             versionId={111}
             book={book}
             chapter={chapter}
@@ -634,7 +643,7 @@ describe('BibleReaderSearch', () => {
           >
             <BibleReaderSearch defaultOpen />
             <p data-testid="location">{`${book}.${chapter}`}</p>
-          </BibleReader.Root>
+          </ReaderRoot>
         </HookOverrideProvider>
       );
     }
@@ -657,14 +666,14 @@ describe('BibleReader.Toolbar search control', () => {
       <HookOverrideProvider
         overrides={baseOverrides(searchOf({ kind: 'trending', queries: [], loading: false }))}
       >
-        <BibleReader.Root
+        <ReaderRoot
           defaultVersionId={111}
           defaultBook="JHN"
           defaultChapter="3"
           onSearchPress={onSearchPress}
         >
           <BibleReader.Toolbar />
-        </BibleReader.Root>
+        </ReaderRoot>
       </HookOverrideProvider>,
     );
     await user.click(screen.getByRole('button', { name: 'Search the Bible' }));
@@ -681,9 +690,9 @@ describe('BibleReader.Toolbar search control', () => {
       <HookOverrideProvider
         overrides={baseOverrides(searchOf({ kind: 'trending', queries: [], loading: false }))}
       >
-        <BibleReader.Root defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
+        <ReaderRoot defaultVersionId={111} defaultBook="JHN" defaultChapter="1">
           <BibleReader.Toolbar search="none" />
-        </BibleReader.Root>
+        </ReaderRoot>
       </HookOverrideProvider>,
     );
 

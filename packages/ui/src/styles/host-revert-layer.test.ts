@@ -12,11 +12,13 @@ const styleDir = import.meta.dirname;
 const globalCss = readFileSync(resolve(styleDir, './global.css'), 'utf8');
 const chromeCss = readFileSync(resolve(styleDir, './chrome.css'), 'utf8');
 
-const EXPECTED_SELECTORS = [
+const DOCUMENT_SELECTORS = [
   '[data-yv-sdk] *',
   '[data-yv-sdk] *::before',
   '[data-yv-sdk] *::after',
 ] as const;
+
+const GLOBAL_SELECTORS = DOCUMENT_SELECTORS.map((selector) => `:where(:root) ${selector}`);
 
 const REVERT_PROPERTIES = [
   'box-sizing',
@@ -72,7 +74,7 @@ function revertLayerRules(css: string): [selectors: string[], body: string][] {
   return rules;
 }
 
-function expectA2Rule(css: string, label: string): void {
+function expectA2Rule(css: string, label: string, expectedSelectors: readonly string[]): void {
   const withoutComments = stripComments(css);
   const collapsed = withoutComments.replace(/\s+/g, ' ');
 
@@ -82,7 +84,7 @@ function expectA2Rule(css: string, label: string): void {
   expect(rules.length, `${label}: expected at least one revert-layer rule`).toBeGreaterThan(0);
 
   for (const [selectors, body] of rules) {
-    expect(selectors, label).toEqual([...EXPECTED_SELECTORS]);
+    expect(selectors, label).toEqual([...expectedSelectors]);
     expect(body, label).not.toMatch(/\bdisplay\s*:/);
     expect(body, label).not.toMatch(/\bmax-width\s*:/);
 
@@ -94,8 +96,8 @@ function expectA2Rule(css: string, label: string): void {
 }
 
 describe('A2 host isolation rule', () => {
-  it('declares revert-layer on the listed shorthands in global.css and chrome.css', () => {
-    expectA2Rule(globalCss, 'global.css');
-    expectA2Rule(chromeCss, 'chrome.css');
+  it('limits the full-sheet reset to document roots and preserves the chrome reset', () => {
+    expectA2Rule(globalCss, 'global.css', GLOBAL_SELECTORS);
+    expectA2Rule(chromeCss, 'chrome.css', DOCUMENT_SELECTORS);
   });
 });
