@@ -10,6 +10,7 @@ import { YouVersionAuthContext } from '@youversion/platform-react-hooks';
 import { delay, http, HttpResponse } from 'msw';
 import { useState } from 'react';
 import { expect, fn, screen, spyOn, userEvent, waitFor, within } from 'storybook/test';
+import { userEvent as browserUserEvent } from 'vitest/browser';
 import mockBibles from '../test/mock-data/bibles.json';
 import { globalHandlers } from '../test/mocks/handlers';
 import { setupAuthenticatedUser } from '../test/utils';
@@ -1769,6 +1770,7 @@ export const ChapterChangeLoadingOverlay: Story = {
   parameters: {
     msw: {
       handlers: [
+        http.get('https://fonts.gstatic.com/*', () => new HttpResponse(null, { status: 204 })),
         http.get('*/v1/bibles/111/passages/:usfm', async ({ params }: { params: PathParams }) => {
           const usfm = firstPathParam(params.usfm);
           if (!usfm) return new HttpResponse(null, { status: 404 });
@@ -1817,6 +1819,9 @@ export const ChapterChangeLoadingOverlay: Story = {
       /change bible book and chapter/i,
     );
     const nextButton = chapterPicker.getByRole('button', { name: /next chapter/i });
+    await waitFor(async () => {
+      await expect(getComputedStyle(nextButton).pointerEvents).not.toBe('none');
+    });
     let requestIsWaiting = false;
     const markRequestWaiting = () => {
       requestIsWaiting = true;
@@ -1848,6 +1853,7 @@ export const ChapterChangeLoadingOverlay: Story = {
         const renderer = root.querySelector('[data-slot="yv-bible-renderer"]');
         await expect(renderer?.textContent).toContain('JHN.1');
         await expect(nextButton).toBeInTheDocument();
+        await expect(nextButton).toBeVisible();
       });
 
       const focusableElements = root.querySelectorAll<HTMLElement>(
@@ -1856,15 +1862,8 @@ export const ChapterChangeLoadingOverlay: Story = {
       const lastReaderControl = focusableElements.item(focusableElements.length - 1);
       lastReaderControl.focus();
       await expect(root.activeElement).toBe(lastReaderControl);
-      const tabEvent = new KeyboardEvent('keydown', {
-        key: 'Tab',
-        bubbles: true,
-        cancelable: true,
-        composed: true,
-      });
-      await expect(lastReaderControl.dispatchEvent(tabEvent)).toBe(true);
       const afterReader = within(canvasElement).getByRole('button', { name: 'After reader' });
-      afterReader.focus();
+      await browserUserEvent.keyboard('{Tab}');
       await expect(document.activeElement).toBe(afterReader);
     } finally {
       shouldHoldReaderPassage = false;

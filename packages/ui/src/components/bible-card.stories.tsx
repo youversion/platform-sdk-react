@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { within, expect, fn, userEvent, waitFor } from 'storybook/test';
+import { userEvent as browserUserEvent } from 'vitest/browser';
 import { http, HttpResponse } from 'msw';
 import { useState } from 'react';
 import { BibleCard, type BibleCardProps } from './bible-card';
@@ -377,6 +378,7 @@ export const Error: Story = {
         makes the recovery path below testable.
       */
       handlers: [
+        http.get('https://fonts.gstatic.com/*', () => new HttpResponse(null, { status: 204 })),
         http.get('*/v1/bibles/111/passages/LUK.1.39-45', () => {
           return new HttpResponse(null, { status: 500 });
         }),
@@ -423,14 +425,7 @@ export const Error: Story = {
     const afterCard = within(canvasElement).getByRole('button', { name: 'After card' });
     versionPickerButton.focus();
     await expect(root.activeElement).toBe(versionPickerButton);
-    const tabEvent = new KeyboardEvent('keydown', {
-      key: 'Tab',
-      bubbles: true,
-      cancelable: true,
-      composed: true,
-    });
-    await expect(versionPickerButton.dispatchEvent(tabEvent)).toBe(true);
-    afterCard.focus();
+    await browserUserEvent.keyboard('{Tab}');
     await expect(document.activeElement).toBe(afterCard);
 
     // Walk the recovery path: switch to a version whose passage resolves.

@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within, userEvent, spyOn } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
 import { getWorker } from 'msw-storybook-addon';
+import { userEvent as browserUserEvent } from 'vitest/browser';
 
 import { VerseOfTheDay } from './verse-of-the-day';
 import { waitFor, waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
@@ -138,7 +139,10 @@ export const OfflineRecovery: Story = {
   ],
   parameters: {
     msw: {
-      handlers: globalHandlers,
+      handlers: [
+        http.get('https://fonts.gstatic.com/*', () => new HttpResponse(null, { status: 204 })),
+        ...globalHandlers,
+      ],
     },
   },
   render: (args) => (
@@ -161,6 +165,7 @@ export const OfflineRecovery: Story = {
 
     await expect(alert.getBoundingClientRect().height).toBeGreaterThan(0);
     await expect(alert).not.toBeEmptyDOMElement();
+    await expect(alert.textContent?.trim().length ?? 0).toBeGreaterThan(0);
     await expect(card ? getComputedStyle(card).display : '').toBe('flex');
     await expect(card ? getComputedStyle(card).flexDirection : '').toBe('column');
     await expect(shareButton).toBeDisabled();
@@ -173,7 +178,7 @@ export const OfflineRecovery: Story = {
       name: 'Before Verse of the Day',
     });
     beforeVerseOfTheDay.focus();
-    await userEvent.tab();
+    await browserUserEvent.keyboard('{Tab}');
     await expect(document.activeElement).toBe(afterVerseOfTheDay);
 
     let recoveryRequestIsWaiting = false;
