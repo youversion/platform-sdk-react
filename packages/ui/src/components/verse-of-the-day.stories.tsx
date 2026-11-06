@@ -1,9 +1,21 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within, userEvent, spyOn } from 'storybook/test';
+import { http, HttpResponse } from 'msw';
+import { getWorker } from 'msw-storybook-addon';
 
 import { VerseOfTheDay } from './verse-of-the-day';
-import { waitFor, waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
+import {
+  pressNativeBrowserKey,
+  waitFor,
+  waitForShadowContent,
+  waitForShadowRoot,
+} from '@/test/storybook-dom';
+import { globalHandlers } from '@/test/mocks/handlers';
+import mockPassages from '@/test/mock-data/passages.json';
 import { ScriptureStoryDataProvider } from '@/test/scripture-story-data';
+
+const VOTD_PASSAGE_RELEASE_EVENT = 'yv-storybook-release-votd-passage';
+const VOTD_PASSAGE_WAITING_EVENT = 'yv-storybook-votd-passage-waiting';
 
 const withScriptureStoryData = (Story: React.ComponentType) => (
   <ScriptureStoryDataProvider>
@@ -93,6 +105,115 @@ export const Default: Story = {
     await expect(callArgs).toHaveProperty('text');
     await expect(callArgs?.text).toContain('For I am about to do something new');
     await expect(callArgs?.text).toContain('Isaiah 43:19 NIV');
+  },
+};
+
+export const OfflineRecovery: Story = {
+  args: {
+    versionId: 111,
+    showSunIcon: true,
+    showBibleAppAttribution: true,
+    showShareButton: true,
+    size: 'default',
+    highlights: [],
+  },
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  loaders: [
+    () => {
+      getWorker().use(
+        http.get('*/v1/bibles/111/passages/ISA.43.19', () => HttpResponse.error(), {
+          once: true,
+        }),
+        http.get(
+          '*/v1/bibles/111/passages/ISA.43.19',
+          async () => {
+            await new Promise<void>((resolve) => {
+              window.addEventListener(VOTD_PASSAGE_RELEASE_EVENT, () => resolve(), {
+                once: true,
+              });
+              window.dispatchEvent(new Event(VOTD_PASSAGE_WAITING_EVENT));
+            });
+            return HttpResponse.json(mockPassages['ISA.43.19']);
+          },
+          { once: true },
+        ),
+      );
+      return {};
+    },
+  ],
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('https://fonts.gstatic.com/*', () => new HttpResponse(null, { status: 204 })),
+        ...globalHandlers,
+      ],
+    },
+  },
+  render: (args) => (
+    <>
+      <button type="button">Before Verse of the Day</button>
+      <div className="yv:w-full">
+        <VerseOfTheDay {...args} />
+      </div>
+      <button type="button">After Verse of the Day</button>
+    </>
+  ),
+  play: async ({ canvasElement }) => {
+    const root = await waitForShadowRoot(canvasElement);
+    const canvas = within(await waitForShadowContent(root));
+    const alert = await canvas.findByRole('alert');
+    const card = root.querySelector<HTMLElement>(
+      '[data-yv-shadow-content-wrapper] > section[data-yv-sdk]',
+    );
+    const shareButton = canvas.getByRole('button', { name: /share/i });
+
+    await expect(alert.getBoundingClientRect().height).toBeGreaterThan(0);
+    await expect(alert).not.toBeEmptyDOMElement();
+    await expect(alert.textContent?.trim().length ?? 0).toBeGreaterThan(0);
+    await expect(card ? getComputedStyle(card).display : '').toBe('flex');
+    await expect(card ? getComputedStyle(card).flexDirection : '').toBe('column');
+    await expect(shareButton).toBeDisabled();
+    await expect(canvas.getByTitle(/Bible App/i)).toBeInTheDocument();
+
+    const afterVerseOfTheDay = within(canvasElement).getByRole('button', {
+      name: 'After Verse of the Day',
+    });
+    const beforeVerseOfTheDay = within(canvasElement).getByRole('button', {
+      name: 'Before Verse of the Day',
+    });
+    beforeVerseOfTheDay.focus();
+    if (!(await pressNativeBrowserKey('{Tab}'))) afterVerseOfTheDay.focus();
+    await expect(document.activeElement).toBe(afterVerseOfTheDay);
+
+    let recoveryRequestIsWaiting = false;
+    const markRecoveryRequestWaiting = () => {
+      recoveryRequestIsWaiting = true;
+    };
+    window.addEventListener(VOTD_PASSAGE_WAITING_EVENT, markRecoveryRequestWaiting, { once: true });
+    window.dispatchEvent(new Event('offline'));
+    window.dispatchEvent(new Event('online'));
+
+    try {
+      await waitFor(async () => {
+        await expect(recoveryRequestIsWaiting).toBe(true);
+      });
+      await waitFor(async () => {
+        const loading = canvas.getByRole('status', { name: /loading verse/i });
+        await expect(loading.getBoundingClientRect().height).toBeGreaterThan(0);
+        await expect(canvas.queryByRole('alert')).not.toBeInTheDocument();
+      });
+    } finally {
+      window.removeEventListener(VOTD_PASSAGE_WAITING_EVENT, markRecoveryRequestWaiting);
+      window.dispatchEvent(new Event(VOTD_PASSAGE_RELEASE_EVENT));
+    }
+
+    await waitFor(async () => {
+      await expect(canvas.getByText(/for I am about to do something new/i)).toBeInTheDocument();
+      await expect(canvas.getByText(/isaiah 43:19/i)).toBeInTheDocument();
+      await expect(canvas.queryByRole('alert')).not.toBeInTheDocument();
+      await expect(canvas.queryByRole('status')).not.toBeInTheDocument();
+      await expect(shareButton).toBeEnabled();
+    });
   },
 };
 

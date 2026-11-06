@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { BibleCard, type BibleCardProps } from './bible-card';
 import { globalHandlers } from '../test/mocks/handlers';
 import {
+  pressNativeBrowserKey,
   requireShadowContent,
   waitForShadowContent,
   waitForShadowRoot,
@@ -354,7 +355,15 @@ export const Error: Story = {
     versionId: 111,
     showVersionPicker: true,
   },
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  render: (args) => (
+    <>
+      <div className="yv:w-full">
+        <BibleCard {...args} />
+      </div>
+      <button type="button">After card</button>
+    </>
+  ),
   parameters: {
     msw: {
       /*
@@ -369,6 +378,7 @@ export const Error: Story = {
         makes the recovery path below testable.
       */
       handlers: [
+        http.get('https://fonts.gstatic.com/*', () => new HttpResponse(null, { status: 204 })),
         http.get('*/v1/bibles/111/passages/LUK.1.39-45', () => {
           return new HttpResponse(null, { status: 500 });
         }),
@@ -386,8 +396,14 @@ export const Error: Story = {
     });
 
     const alerts = canvas.getAllByRole('alert');
+    const card = root.querySelector<HTMLElement>(
+      '[data-yv-shadow-content-wrapper] > section[data-yv-sdk]',
+    );
 
     await expect(alerts).toHaveLength(1);
+    await expect(alerts[0]?.getBoundingClientRect().height ?? 0).toBeGreaterThan(0);
+    await expect(card ? getComputedStyle(card).display : '').toBe('flex');
+    await expect(card ? getComputedStyle(card).flexDirection : '').toBe('column');
     await expect(alerts[0]).toHaveTextContent(
       'The Bible service is having trouble right now. Please try again in a moment.',
     );
@@ -405,6 +421,12 @@ export const Error: Story = {
       await expect(versionPickerButton).toBeEnabled();
       await expect(versionPickerButton).toHaveTextContent(/NIV/i);
     });
+
+    const afterCard = within(canvasElement).getByRole('button', { name: 'After card' });
+    versionPickerButton.focus();
+    await expect(root.activeElement).toBe(versionPickerButton);
+    if (!(await pressNativeBrowserKey('{Tab}'))) afterCard.focus();
+    await expect(document.activeElement).toBe(afterCard);
 
     // Walk the recovery path: switch to a version whose passage resolves.
     await userEvent.click(versionPickerButton);

@@ -19,7 +19,11 @@ import {
   type BibleReaderRootProps,
 } from './bible-reader';
 import { VerseActionPopover } from './verse-action-popover';
-import { waitForShadowContent, waitForShadowRoot } from '@/test/storybook-dom';
+import {
+  pressNativeBrowserKey,
+  waitForShadowContent,
+  waitForShadowRoot,
+} from '@/test/storybook-dom';
 
 async function getReaderStory(canvasElement: HTMLElement) {
   const root = await waitForShadowRoot(canvasElement);
@@ -64,6 +68,10 @@ type PathParams = {
   id?: string | readonly string[];
   usfm?: string | readonly string[];
 };
+
+const READER_PASSAGE_RELEASE_EVENT = 'yv-storybook-release-reader-passage';
+const READER_PASSAGE_WAITING_EVENT = 'yv-storybook-reader-passage-waiting';
+let shouldHoldReaderPassage = false;
 
 function isPathParamText(value: string | readonly string[] | undefined): value is string {
   return Object.prototype.toString.call(value) === '[object String]';
@@ -1756,7 +1764,7 @@ export const ControlledFakeHost: Story = {
 };
 
 export const ChapterChangeLoadingOverlay: Story = {
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
   args: {
     defaultVersionId: 111,
     defaultBook: 'JHN',
@@ -1765,10 +1773,19 @@ export const ChapterChangeLoadingOverlay: Story = {
   parameters: {
     msw: {
       handlers: [
+        http.get('https://fonts.gstatic.com/*', () => new HttpResponse(null, { status: 204 })),
         http.get('*/v1/bibles/111/passages/:usfm', async ({ params }: { params: PathParams }) => {
-          await delay(800);
           const usfm = firstPathParam(params.usfm);
           if (!usfm) return new HttpResponse(null, { status: 404 });
+          if (usfm === 'JHN.2' && shouldHoldReaderPassage) {
+            shouldHoldReaderPassage = false;
+            await new Promise<void>((resolve) => {
+              window.addEventListener(READER_PASSAGE_RELEASE_EVENT, () => resolve(), {
+                once: true,
+              });
+              window.dispatchEvent(new Event(READER_PASSAGE_WAITING_EVENT));
+            });
+          }
           return HttpResponse.json({
             id: usfm,
             content: `<div class="p"><span class="verse">Passage text for ${usfm}.</span></div>`,
@@ -1780,12 +1797,15 @@ export const ChapterChangeLoadingOverlay: Story = {
     },
   },
   render: (args) => (
-    <div className="yv:h-screen yv:bg-background">
-      <BibleReader.Root {...args}>
-        <BibleReader.Content />
-        <BibleReader.Toolbar />
-      </BibleReader.Root>
-    </div>
+    <>
+      <div className="yv:h-screen yv:bg-background">
+        <BibleReader.Root {...args}>
+          <BibleReader.Content />
+          <BibleReader.Toolbar />
+        </BibleReader.Root>
+      </div>
+      <button type="button">After reader</button>
+    </>
   ),
   play: async ({ canvasElement }) => {
     const { root } = await getReaderStory(canvasElement);
@@ -1802,22 +1822,57 @@ export const ChapterChangeLoadingOverlay: Story = {
       /change bible book and chapter/i,
     );
     const nextButton = chapterPicker.getByRole('button', { name: /next chapter/i });
-    await userEvent.click(nextButton);
+    await waitFor(async () => {
+      await expect(getComputedStyle(nextButton).pointerEvents).not.toBe('none');
+    });
+    let requestIsWaiting = false;
+    const markRequestWaiting = () => {
+      requestIsWaiting = true;
+    };
+    window.addEventListener(READER_PASSAGE_WAITING_EVENT, markRequestWaiting, { once: true });
+    shouldHoldReaderPassage = true;
 
-    const rendererAfterClick = root.querySelector('[data-slot="yv-bible-renderer"]');
-    await expect(rendererAfterClick?.textContent).toContain('JHN.1');
+    try {
+      await userEvent.click(nextButton);
+      await waitFor(async () => {
+        await expect(requestIsWaiting).toBe(true);
+      });
 
-    await waitFor(
-      async () => {
+      const rendererAfterClick = root.querySelector('[data-slot="yv-bible-renderer"]');
+      await expect(rendererAfterClick?.textContent).toContain('JHN.1');
+
+      await waitFor(async () => {
         const overlay = root.querySelector('[aria-label="Loading passage"]');
+        const reader = root.querySelector<HTMLElement>(
+          '[data-yv-shadow-content-wrapper] > [data-yv-sdk]',
+        );
         await expect(overlay).toBeInTheDocument();
         await expect(overlay).toHaveAttribute('role', 'status');
+        await expect(overlay?.getBoundingClientRect().height ?? 0).toBeGreaterThan(0);
+        await expect(reader ? getComputedStyle(reader).display : '').toBe('flex');
+        await expect(reader ? getComputedStyle(reader).flexDirection : '').toBe('column');
+        await expect(reader?.getBoundingClientRect().height ?? 0).toBeGreaterThan(0);
         await expect(root.querySelector('[class*="opacity-40"]')).toBeInTheDocument();
         const renderer = root.querySelector('[data-slot="yv-bible-renderer"]');
         await expect(renderer?.textContent).toContain('JHN.1');
-      },
-      { timeout: 2000 },
-    );
+        await expect(nextButton).toBeInTheDocument();
+        await expect(nextButton).toBeVisible();
+      });
+
+      const focusableElements = root.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      const lastReaderControl = focusableElements.item(focusableElements.length - 1);
+      lastReaderControl.focus();
+      await expect(root.activeElement).toBe(lastReaderControl);
+      const afterReader = within(canvasElement).getByRole('button', { name: 'After reader' });
+      if (!(await pressNativeBrowserKey('{Tab}'))) afterReader.focus();
+      await expect(document.activeElement).toBe(afterReader);
+    } finally {
+      shouldHoldReaderPassage = false;
+      window.removeEventListener(READER_PASSAGE_WAITING_EVENT, markRequestWaiting);
+      window.dispatchEvent(new Event(READER_PASSAGE_RELEASE_EVENT));
+    }
 
     await waitFor(
       async () => {
