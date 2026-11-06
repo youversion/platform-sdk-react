@@ -10,6 +10,12 @@ function isIntroChapter(chapterId: string): boolean {
 /**
  * Computes the next or previous chapter across book boundaries.
  *
+ * Reading order is each book's intro (when `book.intro` is present), then its numbered
+ * chapters. `next` from the last chapter of a book returns the next book's intro when it has
+ * one, otherwise its first numbered chapter. `previous` from chapter 1 returns the book's
+ * intro when it has one, otherwise the last chapter of the previous book. `next` and
+ * `previous` are inverses of each other.
+ *
  * @param books - Ordered array of Bible books with populated chapters
  * @param currentBookId - USFM book ID (e.g., "JHN")
  * @param currentChapterId - Chapter ID string (e.g., "1", "INTRO")
@@ -61,9 +67,13 @@ function getNext(
     }
   }
 
-  // Cross-book: first non-intro chapter of next book
+  // Cross-book: next book's intro when it has one (mirrors previous from chapter 1, and
+  // matches Swift's goToNextChapter), else its first non-intro chapter
   const nextBook = books[bookIndex + 1];
   if (!nextBook) return null;
+  if (nextBook.intro) {
+    return { bookId: nextBook.id, chapterId: nextBook.intro.id };
+  }
 
   const nextChapters: BibleChapter[] = nextBook.chapters ?? [];
   const firstCanonical = nextChapters.find((c) => !isIntroChapter(c.id));

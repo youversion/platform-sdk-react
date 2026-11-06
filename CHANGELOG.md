@@ -10,6 +10,34 @@ affected.
 Generated from the per-package changelogs by `scripts/build-root-changelog.mjs` — edit those,
 or the changeset, rather than this file.
 
+## 2.17.0
+
+### Minor Changes
+
+- _(@youversion/platform-core)_ 9741f24: Add paginated `searchImages` for `GET /v1/search-images`. Pass the same query, version id, and `pageSize` on each page, then pass `nextPageToken` back as `pageToken`. An empty page can still include a token. Empty success bodies, including HTTP 204, reject with `search-images returned no content; expected a JSON response`.
+
+  Verse-of-the-day reads move from `/v1/verse_of_the_days` to the canonical `/v1/verse-of-the-days` routes for both single days and the calendar. Pass `language_ranges` to send `language_ranges[]`. Core client methods return `VOTDResponse` records with a guaranteed `image_id: string | null`, including `null` when the API omits the field. The existing `VOTD` type and hook overrides still accept values without `image_id`.
+
+  VOTD reads now validate responses instead of returning unchecked bodies. `getAllVOTDs` requires a `{ data: [...] }` collection envelope. Both methods reject malformed responses with an `Unexpected verse-of-the-day API response` error, including invalid day, passage, or image field types.
+
+- _(@youversion/platform-react-ui)_ b0280a5: Open Bible languages from a row under version search, and search languages on their own screen. Keep tablet picker cards at 400 by 600 pixels, capped to fit the viewport. Show the selected language and the number of rows in its version section, excluding recent versions. Add a forward chevron to version rows. Keep language navigation in the SDK popover so standalone content retains host-owned controls. Expose the language count to screen readers.
+
+- _(@youversion/platform-react-ui)_ 9741f24: Re-export `searchImages` from the UI package entry point.
+
+### Patch Changes
+
+- _(@youversion/platform-core)_ 669db59: `getAdjacentChapter` now goes from the last chapter of a book to the next book's intro when it has one, instead of skipping to chapter 1. Next and previous are now inverses, and `BibleReader`'s next-chapter button reaches book intros the way the Swift reader does.
+
+- _(@youversion/platform-core)_ f64b654: Fix `OrganizationsClient.getOrganization` rejecting live API responses. The API sends `address: null` for organizations without an address and `description: null` for some, but `OrganizationSchema` only allowed those fields to be omitted, so every lookup threw a validation error. Both fields now accept `null`, and `BibleVersionPicker` now shows publisher names.
+
+  The `Organization` `description` and `address` types now include `null`; check for null when you read them. Code that passes these fields where `string | undefined` or `OrganizationAddress | undefined` is expected stops compiling under strict null checks.
+
+- _(@youversion/platform-react-ui)_ b0280a5: Re-apply the host revert-layer `-webkit-appearance` fix when Tailwind watch rewrites CSS during `dev` and Storybook.
+
+- _(@youversion/platform-react-ui)_ f1c55f1: Sync localization from platform-localization (70fd234): update 57 keys in af, ar, cy, de, es, fr, ig, no, pt, vi, zh.
+
+- _(@youversion/platform-react-ui)_ 4eed87a: Sync localization from platform-localization (dc70b8b): update 6 keys in en.
+
 ## 2.16.0
 
 ### Minor Changes
