@@ -354,7 +354,15 @@ export const Error: Story = {
     versionId: 111,
     showVersionPicker: true,
   },
-  tags: ['integration'],
+  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  render: (args) => (
+    <>
+      <div className="yv:w-full">
+        <BibleCard {...args} />
+      </div>
+      <button type="button">After card</button>
+    </>
+  ),
   parameters: {
     msw: {
       /*
@@ -386,8 +394,14 @@ export const Error: Story = {
     });
 
     const alerts = canvas.getAllByRole('alert');
+    const card = root.querySelector<HTMLElement>(
+      '[data-yv-shadow-content-wrapper] > section[data-yv-sdk]',
+    );
 
     await expect(alerts).toHaveLength(1);
+    await expect(alerts[0]?.getBoundingClientRect().height ?? 0).toBeGreaterThan(0);
+    await expect(card ? getComputedStyle(card).display : '').toBe('flex');
+    await expect(card ? getComputedStyle(card).flexDirection : '').toBe('column');
     await expect(alerts[0]).toHaveTextContent(
       'The Bible service is having trouble right now. Please try again in a moment.',
     );
@@ -405,6 +419,10 @@ export const Error: Story = {
       await expect(versionPickerButton).toBeEnabled();
       await expect(versionPickerButton).toHaveTextContent(/NIV/i);
     });
+
+    const afterCard = within(canvasElement).getByRole('button', { name: 'After card' });
+    await userEvent.click(afterCard);
+    await expect(document.activeElement).toBe(afterCard);
 
     // Walk the recovery path: switch to a version whose passage resolves.
     await userEvent.click(versionPickerButton);
