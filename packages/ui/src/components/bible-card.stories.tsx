@@ -1,3 +1,4 @@
+import i18n from '@/i18n';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { within, expect, fn, userEvent, waitFor } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
@@ -244,7 +245,7 @@ export const WithVersionPicker: Story = {
 
     // Search for Amplified Bible
     const searchInput = overlay.getByRole('textbox', {
-      name: /search bible versions/i,
+      name: i18n.t('searchVersions'),
     });
     await userEvent.type(searchInput, 'amplified bible');
 
@@ -292,7 +293,7 @@ export const WithControlledVersionPicker: Story = {
     });
     await userEvent.click(trigger);
     const overlay = await getVersionPickerOverlay(root);
-    const searchInput = overlay.getByRole('textbox', { name: /search bible versions/i });
+    const searchInput = overlay.getByRole('textbox', { name: i18n.t('searchVersions') });
     await userEvent.type(searchInput, 'amplified bible');
     const amplified = await overlay.findByRole('listitem', { name: /amplified bible/i });
 
@@ -410,7 +411,7 @@ export const Error: Story = {
     await userEvent.click(versionPickerButton);
 
     const overlay = await getVersionPickerOverlay(pickerRoot);
-    const searchInput = overlay.getByRole('textbox', { name: /search bible versions/i });
+    const searchInput = overlay.getByRole('textbox', { name: i18n.t('searchVersions') });
 
     await userEvent.type(searchInput, 'amplified bible');
 

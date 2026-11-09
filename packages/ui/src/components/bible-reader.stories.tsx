@@ -1,3 +1,4 @@
+import i18n from '@/i18n';
 import { expandPassageId } from '@/lib/highlight-projection';
 import { INTER_FONT, SOURCE_SERIF_FONT, UNTITLED_SERIF_FONT } from '@/lib/verse-html-utils';
 import type { Meta, StoryObj } from '@storybook/react-vite';
@@ -838,7 +839,7 @@ export const ForcedRtlChromeGeometry: Story = {
     );
     await expect(firstVersion.querySelector('bdi')).toHaveAttribute('dir', 'auto');
     await expect(
-      versionCanvas.getByRole('textbox', { name: 'Search Bible versions' }),
+      versionCanvas.getByRole('textbox', { name: i18n.t('searchVersions') }),
     ).toHaveAttribute('dir', 'auto');
 
     await userEvent.click(versionCanvas.getByRole('button', { name: 'Close' }));

@@ -170,7 +170,7 @@ function PopoverContent({
                   className={cn('yv:w-6 yv:h-6 yv:text-muted-foreground', closeButtonClassName)}
                 >
                   <XIcon className="yv:size-5" />
-                  <span className="yv:sr-only">{t('closeAriaLabel')}</span>
+                  <span className="yv:sr-only">{t('close')}</span>
                 </Button>
               </PopoverClose>
             ) : null}
