@@ -122,7 +122,7 @@ export const OfflineRecovery: Story = {
     size: 'default',
     highlights: [],
   },
-  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  tags: ['integration', 'shadow-dom', 'cross-browser', 'shadow-recovery'],
   decorators: [withShadowRecoveryProvider],
   loaders: [
     ({ abortSignal }) => {

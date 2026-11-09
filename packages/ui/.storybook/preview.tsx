@@ -23,10 +23,17 @@ const THEME_BACKGROUNDS = {
  * See https://github.com/mswjs/msw-storybook-addon#configuring-msw
  * to learn how to customize it
  */
-initialize({
-  onUnhandledRequest: 'warn',
-  quiet: true,
-});
+initialize(
+  {
+    onUnhandledRequest: 'warn',
+    quiet: true,
+  },
+  // Firefox replaces browser preview clients between serialized Vitest files.
+  // Keep stable handlers available when a story loader resets runtime handlers.
+  '__vitest_worker__' in globalThis && navigator.userAgent.includes('Firefox')
+    ? globalHandlers
+    : [],
+);
 
 const preview: Preview = {
   globalTypes: {

@@ -361,7 +361,7 @@ export const Error: Story = {
     versionId: 111,
     showVersionPicker: true,
   },
-  tags: ['integration', 'shadow-dom', 'cross-browser'],
+  tags: ['integration', 'shadow-dom', 'cross-browser', 'shadow-recovery'],
   decorators: [withShadowRecoveryProvider],
   render: (args) => (
     <>
